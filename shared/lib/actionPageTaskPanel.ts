@@ -1,6 +1,11 @@
-import { ActionDto } from "../client/types.gen";
+import { ActionDto, type ViewerActionRelation } from "../client/types.gen";
 import { CardStyle } from "../styles/card";
-import { deadlineHasPassed } from "./actionUtils";
+import {
+  deadlineHasPassed,
+  getViewerOnlyOptionalReason,
+  isActionOptional,
+  ViewerOnlyOptionalReason,
+} from "./actionUtils";
 
 export enum ActionPageTaskPanelState {
   PublicOnly = "public_only",
@@ -10,13 +15,17 @@ export enum ActionPageTaskPanelState {
   GuestCompleted = "guest_completed",
   OnboardingSignContractFirst = "onboarding_sign_contract_first",
   NotAssigned = "not_assigned",
+  StaffPreview = "staff_preview",
   Completed = "completed",
   Declined = "declined",
   MemberActionClosed = "member_action_closed",
+  DeadlineMissed = "deadline_missed",
   MissingDataOrNotActive = "missing_data_or_not_active",
   ShowTaskWithMissedDeadline = "show_task_with_missed_deadline",
   ShowTask = "show_task",
   Optional = "optional",
+  OptionalForViewer = "optional_for_viewer",
+  OptionalForContractGap = "optional_for_contract_gap",
 }
 
 enum ActionPageTaskPanelEnabled {
@@ -34,9 +43,12 @@ const stateIsDisabled = {
   [ActionPageTaskPanelState.GuestCompleted]:
     ActionPageTaskPanelEnabled.Disabled,
   [ActionPageTaskPanelState.NotAssigned]: ActionPageTaskPanelEnabled.Disabled,
+  [ActionPageTaskPanelState.StaffPreview]: ActionPageTaskPanelEnabled.Enabled,
   [ActionPageTaskPanelState.Completed]: ActionPageTaskPanelEnabled.Disabled,
   [ActionPageTaskPanelState.Declined]: ActionPageTaskPanelEnabled.Disabled,
   [ActionPageTaskPanelState.MemberActionClosed]:
+    ActionPageTaskPanelEnabled.Disabled,
+  [ActionPageTaskPanelState.DeadlineMissed]:
     ActionPageTaskPanelEnabled.Disabled,
   [ActionPageTaskPanelState.MissingDataOrNotActive]:
     ActionPageTaskPanelEnabled.Disabled,
@@ -45,6 +57,10 @@ const stateIsDisabled = {
   [ActionPageTaskPanelState.OnboardingSignContractFirst]:
     ActionPageTaskPanelEnabled.Disabled,
   [ActionPageTaskPanelState.Optional]: ActionPageTaskPanelEnabled.Enabled,
+  [ActionPageTaskPanelState.OptionalForViewer]:
+    ActionPageTaskPanelEnabled.Enabled,
+  [ActionPageTaskPanelState.OptionalForContractGap]:
+    ActionPageTaskPanelEnabled.Enabled,
   [ActionPageTaskPanelState.ShowTask]: ActionPageTaskPanelEnabled.Enabled,
 } as const satisfies Record<
   ActionPageTaskPanelState,
@@ -64,13 +80,17 @@ export const shouldLoadCompletedTaskFormByState = {
   [ActionPageTaskPanelState.GuestRef]: false,
   [ActionPageTaskPanelState.GuestCompleted]: false,
   [ActionPageTaskPanelState.NotAssigned]: false,
+  [ActionPageTaskPanelState.StaffPreview]: false,
   [ActionPageTaskPanelState.Completed]: true,
   [ActionPageTaskPanelState.Declined]: true,
   [ActionPageTaskPanelState.MemberActionClosed]: false,
+  [ActionPageTaskPanelState.DeadlineMissed]: false,
   [ActionPageTaskPanelState.MissingDataOrNotActive]: false,
   [ActionPageTaskPanelState.ShowTaskWithMissedDeadline]: false,
   [ActionPageTaskPanelState.OnboardingSignContractFirst]: false,
   [ActionPageTaskPanelState.Optional]: false,
+  [ActionPageTaskPanelState.OptionalForViewer]: false,
+  [ActionPageTaskPanelState.OptionalForContractGap]: false,
   [ActionPageTaskPanelState.ShowTask]: false,
 } as const satisfies Record<ActionPageTaskPanelState, boolean>;
 
@@ -95,6 +115,12 @@ export function cardStylesForState(
   return cardStylesByDisabled[stateIsDisabled[state]];
 }
 
+export function showActionPageTaskSection(
+  action: Pick<ActionDto, "status" | "viewer">,
+): boolean {
+  return action.status !== "planned" || !!action.viewer?.staffPreview;
+}
+
 /**
  * Onboarding actions stay locked until the member signs the contract — except
  * the contract-signing action itself. Single source for the action-page panel
@@ -108,6 +134,19 @@ export function mustSignContractFirst(
     action.onboarding && !contractSigned && !action.isContractSigningAction
   );
 }
+
+const stateByViewerOnlyOptionalReason = {
+  [ViewerOnlyOptionalReason.Unknown]:
+    ActionPageTaskPanelState.OptionalForViewer,
+  [ViewerOnlyOptionalReason.ContractGap]:
+    ActionPageTaskPanelState.OptionalForContractGap,
+} as const satisfies Record<ViewerOnlyOptionalReason, ActionPageTaskPanelState>;
+
+const relationKeepsPanel = {
+  completed: true,
+  withdrawn: true,
+  none: false,
+} as const satisfies Record<ViewerActionRelation, boolean>;
 
 /**
  * The auth/guest branches at the top are genuinely client-side; everything
@@ -147,11 +186,20 @@ export function getActionPageTaskPanelState(params: {
       : ActionPageTaskPanelState.NotAuthenticated;
   }
 
+  if (action.viewer?.staffPreview) {
+    return ActionPageTaskPanelState.StaffPreview;
+  }
+
   const canComplete = action.viewer
     ? action.viewer.canComplete
     : !!action.canParticipate;
 
-  if (!canComplete && !action.preventCompletion)
+  const { viewer } = action;
+  const keepsPanel =
+    !!viewer &&
+    (relationKeepsPanel[viewer.relation] ||
+      (viewer.assigned && viewer.deadlinePassed));
+  if (!canComplete && !action.preventCompletion && !keepsPanel)
     return ActionPageTaskPanelState.NotAssigned;
 
   if (mustSignContractFirst(action, contractSigned)) {
@@ -178,17 +226,24 @@ export function getActionPageTaskPanelState(params: {
       return ActionPageTaskPanelState.MissingDataOrNotActive;
   }
 
-  // Only reachable with preventCompletion (the NotAssigned check above
-  // caught every other cannot-complete case).
+  // Only reachable with preventCompletion or an assigned viewer past the
+  // deadline (the NotAssigned check above caught the rest).
   if (!canComplete) {
-    return ActionPageTaskPanelState.MemberActionClosed;
+    return action.preventCompletion
+      ? ActionPageTaskPanelState.MemberActionClosed
+      : ActionPageTaskPanelState.DeadlineMissed;
   }
 
   if (deadlineHasPassed(action)) {
     return ActionPageTaskPanelState.ShowTaskWithMissedDeadline;
   }
 
-  if (action.optional) {
+  const viewerOnlyReason = getViewerOnlyOptionalReason(action);
+  if (viewerOnlyReason) {
+    return stateByViewerOnlyOptionalReason[viewerOnlyReason];
+  }
+
+  if (isActionOptional(action)) {
     return ActionPageTaskPanelState.Optional;
   }
 

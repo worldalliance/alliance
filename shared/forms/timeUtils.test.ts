@@ -1,5 +1,6 @@
 import {
   buildTimeOfDayOptions,
+  commitTimeInput,
   formatTimeForDisplay,
   toTimeInputValue,
   toWireTime,
@@ -69,5 +70,38 @@ describe("buildTimeOfDayOptions", () => {
     const values = buildTimeOfDayOptions(15).map((option) => option.value);
 
     expect([...values].sort()).toEqual(values);
+  });
+
+  it("labels each slot the way the time input displays it, so the current slot highlights", () => {
+    for (const option of buildTimeOfDayOptions(30)) {
+      expect(option.label).toBe(formatTimeForDisplay(option.value));
+    }
+  });
+});
+
+describe("commitTimeInput", () => {
+  it("normalizes a typed 12-hour time to the answer form", () => {
+    expect(commitTimeInput({ raw: " 7:30 pm ", required: true })).toEqual({
+      answer: "19:30",
+      error: null,
+    });
+  });
+
+  it("clears the answer when emptied, flagging it only when required", () => {
+    expect(commitTimeInput({ raw: "  ", required: false })).toEqual({
+      answer: "",
+      error: null,
+    });
+    expect(commitTimeInput({ raw: "", required: true })).toEqual({
+      answer: "",
+      error: "Enter a time such as 7:30 PM",
+    });
+  });
+
+  it("keeps the saved answer when the text does not parse", () => {
+    expect(commitTimeInput({ raw: "noon-ish", required: false })).toEqual({
+      answer: null,
+      error: "Enter a time such as 7:30 PM",
+    });
   });
 });

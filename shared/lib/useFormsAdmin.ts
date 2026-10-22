@@ -6,6 +6,7 @@ import {
   useQueryClient,
   type UseQueryResult,
 } from "@tanstack/react-query";
+import { milliseconds } from "date-fns";
 import { chunk } from "es-toolkit";
 import { useCallback, useMemo } from "react";
 import {
@@ -21,7 +22,7 @@ const QUERY_KEY = queryKeys.formsAdmin();
 // Pickers mount repeatedly while editing a form, and FormsList remounts on
 // every trip out to a form's responses and back. Cache the index and the
 // counts drawn beside it for 30 seconds; writes invalidate both immediately.
-const FORMS_STALE_TIME = 30 * 1000;
+const FORMS_STALE_TIME = milliseconds({ seconds: 30 });
 
 const NO_FORMS: readonly FormSummaryDto[] = [];
 
@@ -81,8 +82,9 @@ export function useFormOptions(): {
   options: FormOption[];
   isLoading: boolean;
   isError: boolean;
+  refetch: () => void;
 } {
-  const { data, isLoading, isError } = useFormsQuery();
+  const { data, isLoading, isError, refetch } = useFormsQuery();
   const forms = data ?? NO_FORMS;
   const options = useMemo(
     () =>
@@ -94,7 +96,7 @@ export function useFormOptions(): {
       })),
     [forms],
   );
-  return { options, isLoading, isError };
+  return { options, isLoading, isError, refetch: () => void refetch() };
 }
 
 export enum ResponseCountStatus {

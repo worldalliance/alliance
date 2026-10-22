@@ -1,21 +1,88 @@
+import { R, type Result } from "@alliance/common/result";
+import type { CommentDto } from "@alliance/shared/client";
+import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import { MemoryRouter } from "react-router";
 
-const noComments = async () => ({ data: [] });
+let createError: { message: string } | null = null;
+let createStatus = 400;
+let commentFetches = 0;
 
-jest.mock("@alliance/shared/client", () => ({
-  forumCreateComment: async () => ({ data: { id: 7 } }),
-  forumFindCommentsForPost: noComments,
-  forumFindCommentsForActivity: noComments,
-  forumFindCommentsForAction: noComments,
-  forumDeleteComment: async () => ({}),
-  forumUpdateComment: async () => ({}),
-  forumPinCommentAdmin: async () => ({}),
-  forumLikeComment: async () => ({}),
-  forumUnlikeComment: async () => ({}),
-}));
+const storedComment: CommentDto = {
+  id: 3,
+  parentObjectType: "post",
+  parentObjectId: 1,
+  deleted: false,
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+  parentId: null,
+  pinned: false,
+  tagId: null,
+  author: {
+    id: 1,
+    displayName: "Jane Smith",
+    profilePicture: "",
+    admin: false,
+    staff: false,
+    ambassador: false,
+    profileDescription: null,
+    hasActiveContract: true,
+    isCommunityLeader: false,
+    anonymous: false,
+  },
+  children: [],
+  likes: [],
+  likesCount: 0,
+  editableContent: { body: "a comment", attachments: [] },
+};
+
+const storedThread: CommentDto[] = [
+  { ...storedComment, children: [{ ...storedComment, id: 4 }] },
+  { ...storedComment, id: 5 },
+];
+
+let postCommentsFail = false;
+let deleteFails = false;
+let updateRefusal: { status: number; message: string } | null = null;
+let extraRoots: CommentDto[] = [];
+
+serveApi(
+  routes({
+    "POST /forum/comments": () =>
+      createError
+        ? Response.json(createError, { status: createStatus })
+        : Response.json({ id: 7 }),
+    "GET /forum/posts/:id/comments": () => {
+      commentFetches++;
+      return postCommentsFail
+        ? Response.json(
+            { statusCode: 403, message: "the server said no" },
+            { status: 403 },
+          )
+        : Response.json([...storedThread, ...extraRoots]);
+    },
+    "DELETE /forum/comments/:id": () => {
+      if (deleteFails) throw new Error("the request never landed");
+      return new Response(null, { status: 204 });
+    },
+    "PATCH /forum/comments/:id": () =>
+      updateRefusal
+        ? Response.json(
+            { message: updateRefusal.message },
+            { status: updateRefusal.status },
+          )
+        : new Response(null, { status: 204 }),
+  }),
+);
+
+afterEach(() => {
+  postCommentsFail = false;
+  deleteFails = false;
+  updateRefusal = null;
+  extraRoots = [];
+});
 
 import { useCommentTree } from "./CommentsContext";
 
@@ -24,6 +91,11 @@ const wrapper = ({ children }: PropsWithChildren) => (
     <MemoryRouter>{children}</MemoryRouter>
   </QueryClientProvider>
 );
+
+afterEach(() => {
+  createError = null;
+  createStatus = 400;
+});
 
 it("leaves the reply target alone when a reply posts", async () => {
   const { result } = renderHook(() => useCommentTree(1, "post"), { wrapper });
@@ -54,4 +126,209 @@ it("leaves the composer free to take the caret when it posts itself", async () =
   });
 
   expect(result.current.focusComposer).toBe(true);
+});
+
+it("drops a rejected reply's message when another form opens", async () => {
+  const { result } = renderHook(() => useCommentTree(1, "post"), { wrapper });
+
+  act(() => {
+    result.current.setReplyingTo(5);
+  });
+
+  createError = { message: "Nothing to reply to" };
+  await act(async () => {
+    await result.current.handleSubmitReply({
+      body: "a reply",
+      attachments: [],
+    });
+  });
+
+  expect(result.current.submitErrorFor(5)).toBe("Nothing to reply to");
+
+  act(() => {
+    result.current.setReplyingTo(9);
+  });
+
+  expect(result.current.submitErrorFor(5)).toBeNull();
+});
+
+it("keeps a reply refused for a deleted comment open and reloads the thread", async () => {
+  const { result } = renderHook(() => useCommentTree(1, "post"), { wrapper });
+  await waitFor(() => expect(result.current.comments).not.toBeNull());
+
+  act(() => {
+    result.current.setReplyingTo(5);
+  });
+
+  createError = { message: "The reply you're answering is no longer here" };
+  createStatus = 404;
+  const fetchesBefore = commentFetches;
+  await act(async () => {
+    await result.current.handleSubmitReply({
+      body: "a reply",
+      attachments: [],
+    });
+  });
+
+  expect(result.current.replyingTo).toBe(5);
+  expect(result.current.submitErrorFor(5)).toBe(
+    "The reply you're answering is no longer here",
+  );
+  await waitFor(() => expect(commentFetches).toBeGreaterThan(fetchesBefore));
+});
+
+it.each([
+  [500, "Internal server error", "Failed to submit reply"],
+  [401, "Unauthorized", "Your session has expired. Sign in again to reply."],
+])("replaces the framework's text on a %i", async (status, message, shown) => {
+  jest.spyOn(console, "error").mockImplementation(() => {});
+  const { result } = renderHook(() => useCommentTree(1, "post"), { wrapper });
+
+  createError = { message };
+  createStatus = status;
+  await act(async () => {
+    await result.current.handleSubmitReply({
+      body: "a thread comment",
+      attachments: [],
+    });
+  });
+
+  expect(result.current.submitErrorFor(null)).toBe(shown);
+});
+
+it.each([
+  [404, "That reply is no longer here", "That reply is no longer here"],
+  [500, "Internal server error", "Failed to save your edit"],
+  [
+    401,
+    "Unauthorized",
+    "Your session has expired. Sign in again to save your edit.",
+  ],
+])("explains a %i edit refusal", async (status, message, shown) => {
+  const { result } = renderHook(() => useCommentTree(1, "post"), { wrapper });
+
+  updateRefusal = { status, message };
+  let saved: Result<void, string> | undefined;
+  await act(async () => {
+    saved = await result.current.handleUpdateReply(3, {
+      body: "an edit",
+      attachments: [],
+    });
+  });
+
+  expect(saved).toEqual(R.failure(shown));
+});
+
+it("keeps a rejection that landed while its own form was closed", async () => {
+  const { result } = renderHook(() => useCommentTree(1, "post"), { wrapper });
+
+  createError = { message: "Nothing to reply to" };
+  let pending: Promise<void> | undefined;
+  act(() => {
+    pending = result.current.handleSubmitReply({
+      body: "a thread comment",
+      attachments: [],
+    });
+  });
+  act(() => {
+    result.current.setReplyingTo(9);
+  });
+  await act(async () => {
+    await pending;
+  });
+
+  act(() => {
+    result.current.setReplyingTo(null);
+  });
+
+  expect(result.current.submitErrorFor(null)).toBe("Nothing to reply to");
+});
+
+it("keeps a failed delete out of the thread's error", async () => {
+  const { result } = renderHook(() => useCommentTree(1, "post"), { wrapper });
+
+  deleteFails = true;
+  jest.spyOn(window, "confirm").mockReturnValue(true);
+  await act(async () => {
+    await result.current.handleDeleteReply(5);
+  });
+
+  expect(result.current.deleteErrorFor(5)).toBe("Failed to delete reply");
+  expect(result.current.error).toBeNull();
+
+  await act(async () => {
+    await result.current.fetchComments();
+  });
+
+  expect(result.current.deleteErrorFor(5)).toBe("Failed to delete reply");
+});
+
+it("keeps the thread and reports the failure when a refetch fails", async () => {
+  const { result } = renderHook(() => useCommentTree(1, "post"), { wrapper });
+
+  await waitFor(() => expect(result.current.comments).toHaveLength(2));
+
+  postCommentsFail = true;
+  await act(async () => {
+    await result.current.fetchComments();
+  });
+
+  await waitFor(() => expect(result.current.error).toBe("the server said no"));
+  expect(result.current.comments).toHaveLength(2);
+
+  postCommentsFail = false;
+  await act(async () => {
+    await result.current.fetchComments();
+  });
+
+  await waitFor(() => expect(result.current.error).toBeNull());
+});
+
+it("hands back the comment objects a refetch left alone", async () => {
+  const { result } = renderHook(() => useCommentTree(1, "post"), { wrapper });
+
+  await waitFor(() => expect(result.current.comments).toHaveLength(2));
+  const [before] = result.current.comments ?? [];
+
+  // The added root is the only signal that the refetch reached the render the
+  // assertion below reads.
+  extraRoots = [{ ...storedComment, id: 6 }];
+  await act(async () => {
+    await result.current.fetchComments();
+  });
+  await waitFor(() => expect(result.current.comments).toHaveLength(3));
+
+  expect(result.current.comments?.[0]).toBe(before);
+});
+
+const replyThenDelete = async ({
+  replyingTo,
+  deleted,
+}: {
+  replyingTo: number;
+  deleted: number;
+}) => {
+  const { result } = renderHook(() => useCommentTree(1, "post"), { wrapper });
+  act(() => {
+    result.current.setReplyingTo(replyingTo);
+  });
+  jest.spyOn(window, "confirm").mockReturnValue(true);
+  await act(async () => {
+    await result.current.handleDeleteReply(deleted);
+  });
+  return result.current.replyingTo;
+};
+
+it("closes the reply form on the comment the member deletes", async () => {
+  expect(await replyThenDelete({ replyingTo: 5, deleted: 5 })).toBeNull();
+});
+
+it("leaves the reply form open when another comment is deleted", async () => {
+  expect(await replyThenDelete({ replyingTo: 5, deleted: 4 })).toBe(5);
+});
+
+it("leaves the reply form open when its comment's delete fails", async () => {
+  deleteFails = true;
+
+  expect(await replyThenDelete({ replyingTo: 5, deleted: 5 })).toBe(5);
 });

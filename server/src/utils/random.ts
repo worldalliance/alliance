@@ -7,7 +7,7 @@ import { randomBytes } from "crypto";
  *
  * - `base64url` (default): ~1.33 chars/byte, URL-safe — good for codes that end
  *   up in links.
- * - `hex`: 2 chars/byte — used by the notification/share CIDs.
+ * - `hex`: 2 chars/byte — used by the share CIDs.
  */
 export function randomToken(
   numBytes: number,

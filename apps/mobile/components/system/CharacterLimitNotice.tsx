@@ -1,6 +1,5 @@
 import { cn } from "@alliance/shared/styles/util";
-import { useEffect } from "react";
-import { AccessibilityInfo, Platform } from "react-native";
+import { useAnnounceOnIos } from "../../lib/useAnnounceOnIos";
 import Text from "./Text";
 
 export default function CharacterLimitNotice({
@@ -13,15 +12,9 @@ export default function CharacterLimitNotice({
   readOnly?: boolean;
 }) {
   const atLimit = !readOnly && value.length >= max;
+  const limitReached = `${max} character limit reached`;
 
-  // accessibilityLiveRegion is Android-only; iOS gets the announcement here.
-  useEffect(() => {
-    if (atLimit && Platform.OS === "ios") {
-      AccessibilityInfo.announceForAccessibility(
-        `${max} character limit reached`,
-      );
-    }
-  }, [atLimit, max]);
+  useAnnounceOnIos(atLimit ? limitReached : null);
 
   return (
     <Text
@@ -31,7 +24,7 @@ export default function CharacterLimitNotice({
       )}
       accessibilityLiveRegion="polite"
     >
-      {atLimit ? `${max} character limit reached` : `Maximum ${max} characters`}
+      {atLimit ? limitReached : `Maximum ${max} characters`}
     </Text>
   );
 }

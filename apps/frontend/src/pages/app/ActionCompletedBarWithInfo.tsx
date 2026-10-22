@@ -1,11 +1,12 @@
 import {
   ActionCompletedBarWithInfoPropsShared,
   getCompletedPercentage,
+  selectCompletedFriends,
 } from "@alliance/shared/lib/actionCompletedBarWithInfo";
 import { cn } from "@alliance/shared/styles/util";
 import CompletedBar from "@alliance/sharedweb/ui/CompletedBar";
 import InfoTooltip from "@alliance/sharedweb/ui/InfoTooltip";
-import { ReactNode, useMemo } from "react";
+import { useMemo } from "react";
 import { href, Link } from "react-router";
 import UserProfilePicRow from "../../components/UserProfilePicRow";
 
@@ -16,7 +17,9 @@ interface ActionCompletedBarWithInfoProps extends ActionCompletedBarWithInfoProp
   showInfoTooltip?: boolean;
   seeAllLink?: boolean;
   dark?: boolean;
-  labelAction?: ReactNode;
+  barRounded?: string;
+  barClassName?: string;
+  barFillClassName?: string;
 }
 
 const ActionCompletedBarWithInfo: React.FC<ActionCompletedBarWithInfoProps> = ({
@@ -28,17 +31,16 @@ const ActionCompletedBarWithInfo: React.FC<ActionCompletedBarWithInfoProps> = ({
   showInfoTooltip = false,
   seeAllLink = false,
   dark = false,
-  labelAction,
+  barRounded,
+  barClassName,
+  barFillClassName,
 }: ActionCompletedBarWithInfoProps) => {
   const { labelString, percentage } = getCompletedPercentage(action);
 
-  const completedFriends = useMemo(() => {
-    return (
-      friendActivities?.filter(
-        (activity) => activity.type === "user_completed",
-      ) ?? []
-    ).map((activity) => activity.user);
-  }, [friendActivities]);
+  const completedFriends = useMemo(
+    () => selectCompletedFriends(friendActivities),
+    [friendActivities],
+  );
 
   if (percentage === null) {
     return null;
@@ -51,7 +53,6 @@ const ActionCompletedBarWithInfo: React.FC<ActionCompletedBarWithInfoProps> = ({
           <p className={cn(`text-${textSize}`, `text-${textColor}`)}>
             {labelString}
           </p>
-          {labelAction}
           {showInfoTooltip && (
             <InfoTooltip
               content={
@@ -76,7 +77,13 @@ const ActionCompletedBarWithInfo: React.FC<ActionCompletedBarWithInfoProps> = ({
           <UserProfilePicRow users={completedFriends} />
         )}
       </div>
-      <CompletedBar percentage={percentage} dark={dark} />
+      <CompletedBar
+        percentage={percentage}
+        dark={dark}
+        rounded={barRounded}
+        className={barClassName}
+        fillClassName={barFillClassName}
+      />
     </div>
   );
 };

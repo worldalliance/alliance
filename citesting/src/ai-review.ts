@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { promises as fs } from "fs";
 import path from "path";
+import { fileExists } from "./file-exists";
 
 const logPrefix = "[citesting:ai-review]";
 
@@ -25,15 +26,6 @@ type DiffStats = Record<
 const toBase64 = async (filePath: string): Promise<string> => {
   const buf = await fs.readFile(filePath);
   return buf.toString("base64");
-};
-
-const fileExists = async (p: string): Promise<boolean> => {
-  try {
-    await fs.access(p);
-    return true;
-  } catch {
-    return false;
-  }
 };
 
 const reviewPage = async (

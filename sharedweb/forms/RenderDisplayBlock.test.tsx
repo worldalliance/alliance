@@ -1,13 +1,14 @@
-import type {
-  AccordionBlock,
-  BigLinkBlock,
+import {
+  CopyTextFormat,
+  type AccordionBlock,
+  type BigLinkBlock,
+  type CopyTextBlock,
 } from "@alliance/common/forms/display-blocks";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { AuthoredLinkProvider, SiteAppProvider } from "../ui/SiteAppProvider";
+import { SiteAppProvider, SiteOriginLinkProvider } from "../ui/SiteAppProvider";
 import RenderDisplayBlock from "./RenderDisplayBlock";
-
-afterEach(cleanup);
 
 const accordion = (singleOpen?: boolean): AccordionBlock => ({
   type: "display",
@@ -26,6 +27,28 @@ const accordion = (singleOpen?: boolean): AccordionBlock => ({
       blocks: [{ type: "display", kind: "label", id: "b", text: "Inside two" }],
     },
   ],
+});
+
+describe("the header display block", () => {
+  it("renders its level's heading, sized for it", () => {
+    render(
+      <RenderDisplayBlock
+        block={{ type: "display", kind: "header", text: "Small", level: 3 }}
+      />,
+    );
+    const heading = screen.getByRole("heading", { level: 3, name: "Small" });
+    expect(heading.className).toContain("text-xl");
+  });
+
+  it("defaults to a second-level heading", () => {
+    render(
+      <RenderDisplayBlock
+        block={{ type: "display", kind: "header", text: "Default" }}
+      />,
+    );
+    const heading = screen.getByRole("heading", { level: 2, name: "Default" });
+    expect(heading.className).toContain("text-2xl");
+  });
 });
 
 describe("the accordion display block", () => {
@@ -82,7 +105,7 @@ describe("the biglink display block", () => {
     ).toBe("/forum/post/22");
   });
 
-  it("shows the destination it links to", () => {
+  it("labels the link with its text and hides the URL", () => {
     render(
       <MemoryRouter>
         <SiteAppProvider>
@@ -90,21 +113,112 @@ describe("the biglink display block", () => {
         </SiteAppProvider>
       </MemoryRouter>,
     );
-    expect(screen.queryByText(biglink.url)).toBeNull();
-    expect(screen.getByText("/forum/post/22")).toBeTruthy();
+    expect(screen.getByRole("link").textContent).toBe(biglink.text);
   });
 
-  it("keeps the authored URL in an app that serves another domain", () => {
+  it("aims the link at the given origin in an app that serves another domain", () => {
     expect(
       hrefOf(
-        <AuthoredLinkProvider>
+        <SiteOriginLinkProvider origin="https://staging.thealliance.org">
           <RenderDisplayBlock block={biglink} />
-        </AuthoredLinkProvider>,
+        </SiteOriginLinkProvider>,
       ),
-    ).toBe("https://worldalliance.org/forum/post/22");
+    ).toBe("https://staging.thealliance.org/forum/post/22");
   });
 
   it("refuses to render in an app that has claimed neither", () => {
     expect(() => hrefOf(<RenderDisplayBlock block={biglink} />)).toThrow();
+  });
+});
+
+describe("the copytext display block", () => {
+  const copytext: CopyTextBlock = {
+    type: "display",
+    kind: "copytext",
+    id: "block-1",
+    text: "Dear council",
+  };
+
+  afterEach(() => jest.restoreAllMocks());
+
+  it.each([
+    ["Copied!", () => Promise.resolve()],
+    ["Copy failed", () => Promise.reject(new DOMException("denied"))],
+  ])("says %s", async (label, writeText) => {
+    jest.spyOn(navigator.clipboard, "writeText").mockImplementation(writeText);
+    render(<RenderDisplayBlock block={copytext} />);
+
+    fireEvent.click(screen.getByText("Dear council"));
+
+    expect(await screen.findByText(label)).toBeTruthy();
+  });
+
+  it("follows a link in a rich block without copying", () => {
+    const write = jest.fn(() => Promise.resolve());
+    jest.spyOn(navigator.clipboard, "write").mockImplementation(write);
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <SiteAppProvider>
+          <RenderDisplayBlock
+            block={{
+              ...copytext,
+              text: "See [the plan](https://example.org)",
+              format: CopyTextFormat.Markdown,
+            }}
+          />
+        </SiteAppProvider>
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByText("the plan"));
+
+    expect(write).not.toHaveBeenCalled();
+  });
+
+  it("doesn't copy on a click in a link's hover card", async () => {
+    const write = jest.fn(() => Promise.resolve());
+    jest.spyOn(navigator.clipboard, "write").mockImplementation(write);
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <SiteAppProvider>
+          <RenderDisplayBlock
+            block={{
+              ...copytext,
+              text: "See [the plan](https://example.org/plan)",
+              format: CopyTextFormat.Markdown,
+            }}
+          />
+        </SiteAppProvider>
+      </QueryClientProvider>,
+    );
+
+    fireEvent.pointerEnter(screen.getByText("the plan"));
+    fireEvent.mouseEnter(screen.getByText("the plan"));
+    const card = await screen.findByText("example.org");
+    fireEvent.click(card);
+
+    expect(write).not.toHaveBeenCalled();
+  });
+
+  it("renders and copies markdown when rich", async () => {
+    const write = jest.fn(() => Promise.resolve());
+    jest.spyOn(navigator.clipboard, "write").mockImplementation(write);
+    render(
+      <SiteAppProvider>
+        <RenderDisplayBlock
+          block={{
+            ...copytext,
+            text: "Dear **council**",
+            format: CopyTextFormat.Markdown,
+          }}
+        />
+      </SiteAppProvider>,
+    );
+
+    fireEvent.click(screen.getByText("council"));
+
+    expect(screen.getByText("council").tagName).toBe("STRONG");
+    expect(await screen.findByText("Copied!")).toBeTruthy();
+    expect(write).toHaveBeenCalledTimes(1);
   });
 });

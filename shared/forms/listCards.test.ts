@@ -1,9 +1,14 @@
 import type {
   FormValue,
+  ListField,
   ListFieldValue,
 } from "@alliance/common/forms/form-schema";
+import { formatOutputFieldValue } from "../outputrenderer";
+import type { ListRowContext } from "../useFormRenderer";
 import {
   CARD_ID_KEY,
+  cardSubFields,
+  listCardLimits,
   listCardWriters,
   newCardId,
   resolveCards,
@@ -80,6 +85,32 @@ describe("resolveCards", () => {
 
   it("falls back to no cards when the answer is not a list of cards", () => {
     expect(resolveCards({ value: "nope", defaultCardCount: 2 })).toEqual([]);
+  });
+});
+
+describe("listCardLimits", () => {
+  const list = (limits: Partial<ListField>): ListField => ({
+    id: "kids",
+    type: "input",
+    kind: "list",
+    label: "Kids",
+    fields: [],
+    ...limits,
+  });
+
+  it("allows any number of cards without limits", () => {
+    expect(listCardLimits(list({}))).toEqual({
+      minCards: 0,
+      maxCards: Infinity,
+    });
+  });
+
+  it("rounds the limits down and ignores a negative max", () => {
+    expect(listCardLimits(list({ min: 1.5, max: 3.7 }))).toEqual({
+      minCards: 1,
+      maxCards: 3,
+    });
+    expect(listCardLimits(list({ max: -1 })).maxCards).toBe(Infinity);
   });
 });
 
@@ -175,5 +206,70 @@ describe("listCardWriters", () => {
     list.seed([{ [CARD_ID_KEY]: "c0" }]);
     list.updateCard({ cardId: "c1", subFieldId: "name", value: "b" });
     expect(list.answer()).toEqual([{ [CARD_ID_KEY]: "c0" }]);
+  });
+});
+
+describe("cardSubFields", () => {
+  const listField: ListField = {
+    id: "pets",
+    kind: "list",
+    type: "input",
+    label: "Pets",
+    fields: [
+      { id: "name", kind: "text", type: "input", label: "Name" },
+      { id: "age", kind: "text", type: "input", label: "Age" },
+      { id: "notes", kind: "text", type: "input", label: "Notes" },
+    ],
+    outputViewHiddenFieldIds: ["notes"],
+  };
+  const hidingAge: ListRowContext = {
+    isFieldRequired: () => false,
+    visibleSubFields: (subFields) =>
+      subFields.filter((subField) => subField.id !== "age"),
+    forRow: () => hidingAge,
+  };
+  const showingAll: ListRowContext = {
+    ...hidingAge,
+    visibleSubFields: (subFields) => subFields,
+  };
+  const ids = (
+    params: Omit<Parameters<typeof cardSubFields>[0], "listField">,
+  ) => cardSubFields({ listField, ...params }).map((subField) => subField.id);
+
+  it("leaves out a sub-field the row hides", () => {
+    expect(ids({ card: {}, row: hidingAge, isOutputView: false })).toEqual([
+      "name",
+      "notes",
+    ]);
+  });
+
+  it("keeps blank and output-hidden sub-fields while filling the form", () => {
+    expect(ids({ card: {}, row: showingAll, isOutputView: false })).toEqual([
+      "name",
+      "age",
+      "notes",
+    ]);
+  });
+
+  it("leaves out output-hidden and unanswered sub-fields in an output view", () => {
+    expect(
+      ids({
+        card: { name: "Rex", age: "", notes: "bites" },
+        row: showingAll,
+        isOutputView: true,
+      }),
+    ).toEqual(["name"]);
+  });
+
+  it("counts and draws the same answered card regardless of form row visibility", () => {
+    const card = { age: "3" };
+    expect(formatOutputFieldValue(listField, [card])).toBe("1 item");
+    expect(
+      ids({
+        card,
+        row: hidingAge,
+        isOutputView: true,
+      }),
+    ).toEqual(["age"]);
   });
 });

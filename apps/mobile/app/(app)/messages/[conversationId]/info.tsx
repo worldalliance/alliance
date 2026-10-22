@@ -1,10 +1,14 @@
+import { CONVERSATION_TITLE_MAX_LENGTH } from "@alliance/common/conversation";
 import {
-  conversationAddParticipant,
-  conversationLeave,
-  conversationRemoveParticipant,
-  conversationUpdateInfo,
-} from "@alliance/shared/client";
+  canEditConversationInfo,
+  canEditConversationMembers,
+  canLeaveConversation,
+} from "@alliance/shared/lib/conversations";
+import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
+import { type Explanation } from "@alliance/shared/lib/sendOrExplain";
+import { useOneAtATime } from "@alliance/shared/lib/useOneAtATime";
 import { useMessageableUsersQuery } from "@alliance/shared/lib/user";
+import { cn } from "@alliance/shared/styles/util";
 import { router, useLocalSearchParams } from "expo-router";
 import { ChevronLeft, Edit, Plus, X } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -16,20 +20,22 @@ import {
   View,
 } from "react-native";
 import KeyboardAwareScrollView from "../../../../components/KeyboardAwareScrollView";
+import LoadFailed from "../../../../components/LoadFailed";
 import ProfileImage from "../../../../components/ProfileImage";
 import Button, { ButtonColor } from "../../../../components/system/Button";
+import CharacterLimitNotice from "../../../../components/system/CharacterLimitNotice";
 import Text, {
   FontFamily,
   FontWeight,
   resolveFontFamily,
 } from "../../../../components/system/Text";
 import { useAuth } from "../../../../lib/AuthContext";
-import {
-  mergeConversationUpdate,
-  useConversations,
-} from "../../../../lib/messages";
+import { useConversations } from "../../../../lib/messages";
 import { pickImageDataUri } from "../../../../lib/pickImageDataUri";
 import { colors } from "../../../../lib/style/colors";
+
+const explain = ({ title, message }: Explanation) =>
+  Alert.alert(title, message);
 
 export default function ConversationInfoScreen() {
   const { conversationId } = useLocalSearchParams<{
@@ -42,9 +48,14 @@ export default function ConversationInfoScreen() {
       )
     : NaN;
   const { user } = useAuth();
-  const { conversations, setConversations, loading } = useConversations(
-    Number.isNaN(convoId) ? null : convoId,
-  );
+  const {
+    conversations,
+    loading,
+    updateInfo,
+    addParticipant,
+    removeParticipant,
+    leave,
+  } = useConversations(Number.isNaN(convoId) ? null : convoId);
 
   const selectedConvo = useMemo(
     () =>
@@ -53,32 +64,28 @@ export default function ConversationInfoScreen() {
     [conversations, convoId],
   );
 
-  const participantMe = useMemo(
-    () =>
-      selectedConvo?.participants.find(
-        (participant) => participant.user.id === user?.id,
-      ) ?? null,
-    [selectedConvo, user?.id],
-  );
-
-  const isAdmin =
-    participantMe?.role === "admin" || participantMe?.role === "owner";
-  const isGroup = selectedConvo?.type === "multiple";
-  const isCommunity = selectedConvo?.type === "community";
+  const canEditInfo = canEditConversationInfo(selectedConvo, user?.id);
+  const canEditMembers = canEditConversationMembers(selectedConvo, user?.id);
+  const canLeave = canLeaveConversation(selectedConvo);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editingTitle, setEditingTitle] = useState("");
   const [editingPhoto, setEditingPhoto] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const { busy: saving, run: save } = useOneAtATime();
   const [search, setSearch] = useState("");
+  const [hasLeft, setHasLeft] = useState(false);
+  const { busy: changingMembers, run: changeMembers } = useOneAtATime();
+  const messageableUsersQuery = useMessageableUsersQuery({
+    enabled: canEditMembers,
+  });
   const { data: messageableUsers = [], isLoading: loadingUsers } =
-    useMessageableUsersQuery({ enabled: isGroup && isAdmin });
+    messageableUsersQuery;
+  const didUsersFail = failedToLoad(messageableUsersQuery);
+  const canPickPhoto = canEditInfo && isEditing;
 
   useEffect(() => {
-    if (!selectedConvo || isEditing) return;
-    setEditingTitle(selectedConvo.title);
-    setEditingPhoto(selectedConvo.photo ?? null);
-  }, [selectedConvo, isEditing]);
+    if (!canEditInfo) setIsEditing(false);
+  }, [canEditInfo]);
 
   const filteredUsers = useMemo(() => {
     if (!search.trim()) return [];
@@ -96,7 +103,6 @@ export default function ConversationInfoScreen() {
   }, [messageableUsers, search, selectedConvo?.participants]);
 
   const handlePickPhoto = useCallback(async () => {
-    if (!isAdmin || !isGroup) return;
     const picked = await pickImageDataUri();
     if (!picked.ok) {
       console.error("Failed to pick image", picked.error);
@@ -106,73 +112,72 @@ export default function ConversationInfoScreen() {
     if (picked.value) {
       setEditingPhoto(picked.value.dataUri);
     }
-  }, [isAdmin, isGroup]);
+  }, []);
 
   const handleSave = useCallback(async () => {
-    if (!selectedConvo || saving) return;
-    setSaving(true);
-    try {
-      const response = await conversationUpdateInfo({
-        path: { conversationId: selectedConvo.id },
-        body: {
-          title: editingTitle,
-          photo: editingPhoto ?? undefined,
-        },
+    if (!selectedConvo) return;
+    await save(async () => {
+      const saved = await updateInfo(selectedConvo.id, {
+        title: editingTitle,
+        photo: editingPhoto ?? undefined,
       });
-      if (response.data) {
-        setConversations((prev) =>
-          mergeConversationUpdate(prev, response.data!),
-        );
-        setIsEditing(false);
+      if (!saved.ok) {
+        explain(saved.error);
+        return;
       }
-    } catch (error) {
-      console.error("Failed to update conversation", error);
-    } finally {
-      setSaving(false);
-    }
-  }, [editingPhoto, editingTitle, saving, selectedConvo, setConversations]);
+      setIsEditing(false);
+    });
+  }, [editingPhoto, editingTitle, save, selectedConvo, updateInfo]);
 
   const handleAddMember = useCallback(
     async (userId: number) => {
       if (!selectedConvo) return;
-      const response = await conversationAddParticipant({
-        path: { conversationId: selectedConvo.id },
-        body: { userId },
-      });
-      if (response.data) {
-        setConversations((prev) =>
-          mergeConversationUpdate(prev, response.data!),
-        );
+      await changeMembers(async () => {
+        const added = await addParticipant({
+          conversationId: selectedConvo.id,
+          userId,
+        });
+        if (!added.ok) {
+          explain(added.error);
+          return;
+        }
         setSearch("");
-      }
+      });
     },
-    [selectedConvo, setConversations],
+    [addParticipant, changeMembers, selectedConvo],
   );
 
   const handleRemoveMember = useCallback(
     async (userId: number) => {
       if (!selectedConvo) return;
-      const response = await conversationRemoveParticipant({
-        path: { conversationId: selectedConvo.id, userId },
+      await changeMembers(async () => {
+        const removed = await removeParticipant({
+          conversationId: selectedConvo.id,
+          userId,
+        });
+        if (!removed.ok) explain(removed.error);
       });
-      if (response.data) {
-        setConversations((prev) =>
-          mergeConversationUpdate(prev, response.data!),
-        );
-      }
     },
-    [selectedConvo, setConversations],
+    [changeMembers, removeParticipant, selectedConvo],
   );
 
   const handleLeave = useCallback(async () => {
     if (!selectedConvo) return;
-    const response = await conversationLeave({
-      path: { conversationId: selectedConvo.id },
-    });
-    if (response.data) {
+    await changeMembers(async () => {
+      const left = await leave(selectedConvo.id);
+      if (!left.ok) {
+        explain(left.error);
+        return;
+      }
+      setHasLeft(true);
       router.replace("/messages");
-    }
-  }, [selectedConvo]);
+    });
+  }, [changeMembers, leave, selectedConvo]);
+
+  // Leaving drops the group from the list while this screen animates away.
+  if (hasLeft) {
+    return <View className="flex-1 bg-white" />;
+  }
 
   if (Number.isNaN(convoId)) {
     return (
@@ -211,28 +216,32 @@ export default function ConversationInfoScreen() {
 
       <KeyboardAwareScrollView>
         <View className="items-center px-4 pt-6">
-          <TouchableOpacity
-            onPress={handlePickPhoto}
-            disabled={!isAdmin || !isGroup}
-          >
+          <TouchableOpacity onPress={handlePickPhoto} disabled={!canPickPhoto}>
             <ProfileImage
-              pfp={editingPhoto ?? selectedConvo.photo ?? null}
+              pfp={isEditing ? editingPhoto : (selectedConvo.photo ?? null)}
               size="huge"
               className="mb-3"
             />
-            {isAdmin && isGroup && (
+            {canPickPhoto && (
               <View className="absolute bottom-1 right-1 bg-black/70 rounded-full p-1.5">
                 <Edit size={14} color="#fff" />
               </View>
             )}
           </TouchableOpacity>
           {isEditing ? (
-            <TextInput
-              value={editingTitle}
-              onChangeText={setEditingTitle}
-              className="text-xl text-zinc-900 border-b border-zinc-200 px-2 py-1 text-center"
-              style={resolveFontFamily(FontFamily.Sans, FontWeight.Semibold)}
-            />
+            <>
+              <TextInput
+                value={editingTitle}
+                onChangeText={setEditingTitle}
+                maxLength={CONVERSATION_TITLE_MAX_LENGTH}
+                className="text-xl text-zinc-900 border-b border-zinc-200 px-2 py-1 text-center"
+                style={resolveFontFamily(FontFamily.Sans, FontWeight.Semibold)}
+              />
+              <CharacterLimitNotice
+                value={editingTitle}
+                max={CONVERSATION_TITLE_MAX_LENGTH}
+              />
+            </>
           ) : (
             <Text
               className="text-xl text-zinc-900 text-center"
@@ -252,14 +261,14 @@ export default function ConversationInfoScreen() {
             </Text>
           )}
 
-          {isAdmin && isGroup && (
+          {canEditInfo && (
             <View className="flex-row items-center gap-2 mt-4">
               {isEditing ? (
                 <>
                   <Button
                     color={ButtonColor.Green}
                     onPress={handleSave}
-                    disabled={saving}
+                    disabled={saving || !editingTitle.trim()}
                   >
                     <Text className="text-white" weight={FontWeight.Medium}>
                       {saving ? "Saving..." : "Save"}
@@ -277,7 +286,11 @@ export default function ConversationInfoScreen() {
               ) : (
                 <Button
                   color={ButtonColor.Light}
-                  onPress={() => setIsEditing(true)}
+                  onPress={() => {
+                    setEditingTitle(selectedConvo.title);
+                    setEditingPhoto(selectedConvo.photo ?? null);
+                    setIsEditing(true);
+                  }}
                 >
                   <Text className="text-zinc-800" weight={FontWeight.Medium}>
                     Edit group
@@ -300,13 +313,16 @@ export default function ConversationInfoScreen() {
           <Text className="text-sm text-zinc-500 mb-3">Members</Text>
           <View className="overflow-hidden">
             {selectedConvo.participants.map((participant) => (
-              <TouchableOpacity
+              <View
                 key={participant.user.id}
-                className="flex-row items-center justify-between px-3 py-3 border-t border-zinc-200 last:border-b-0!"
-                onPress={() => router.push(`/member/${participant.user.id}`)}
-                activeOpacity={0.7}
+                className="flex-row items-center justify-between px-3 border-t border-zinc-200 last:border-b-0!"
               >
-                <View className="flex-row items-center gap-3">
+                <TouchableOpacity
+                  className="flex-1 flex-row items-center gap-3 py-3"
+                  onPress={() => router.push(`/member/${participant.user.id}`)}
+                  activeOpacity={0.7}
+                  accessibilityRole="link"
+                >
                   <ProfileImage
                     pfp={participant.user.profilePicture}
                     size="medium"
@@ -319,40 +335,54 @@ export default function ConversationInfoScreen() {
                       <Text className="text-xs text-zinc-500">Invited</Text>
                     )}
                   </View>
-                </View>
-                {isAdmin && isGroup && participant.user.id !== user?.id && (
+                </TouchableOpacity>
+                {canEditMembers && participant.user.id !== user?.id && (
                   <TouchableOpacity
-                    onPress={(event) => {
-                      event.stopPropagation();
+                    onPress={() => {
                       handleRemoveMember(participant.user.id);
                     }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Remove ${participant.user.displayName}`}
+                    disabled={changingMembers}
                     className="p-2"
                   >
-                    <X size={16} color={colors.error} />
+                    <X
+                      size={16}
+                      color={colors.error}
+                      opacity={changingMembers ? 0.5 : 1}
+                    />
                   </TouchableOpacity>
                 )}
-              </TouchableOpacity>
+              </View>
             ))}
           </View>
         </View>
 
-        {isAdmin && isGroup && !isCommunity && (
+        {canEditMembers && (
           <View className="px-4 mt-6">
             <Text className="text-sm text-zinc-500 mb-2">Add member</Text>
-            <View className="border border-zinc-200 rounded-lg px-3 py-2 flex-row items-center gap-2">
-              <Plus size={16} color="#71717a" />
-              <TextInput
-                value={search}
-                onChangeText={setSearch}
-                placeholder={
-                  loadingUsers ? "Loading members..." : "Search by name"
-                }
-                placeholderTextColor="#9ca3af"
-                editable={!loadingUsers}
-                className="flex-1 text-base text-zinc-900"
+            {didUsersFail ? (
+              <LoadFailed
+                message="Couldn't load the people you can add."
+                onRetry={() => void messageableUsersQuery.refetch()}
+                retrying={messageableUsersQuery.isFetching}
               />
-            </View>
-            {search.trim().length > 0 && (
+            ) : (
+              <View className="border border-zinc-200 rounded-lg px-3 py-2 flex-row items-center gap-2">
+                <Plus size={16} color="#71717a" />
+                <TextInput
+                  value={search}
+                  onChangeText={setSearch}
+                  placeholder={
+                    loadingUsers ? "Loading members..." : "Search by name"
+                  }
+                  placeholderTextColor="#9ca3af"
+                  editable={!loadingUsers}
+                  className="flex-1 text-base text-zinc-900"
+                />
+              </View>
+            )}
+            {!didUsersFail && search.trim().length > 0 && (
               <View className="border border-zinc-200 rounded-lg mt-2 overflow-hidden">
                 {filteredUsers.length === 0 ? (
                   <View className="px-3 py-2">
@@ -364,8 +394,12 @@ export default function ConversationInfoScreen() {
                   filteredUsers.map((member) => (
                     <TouchableOpacity
                       key={member.id}
-                      className="flex-row items-center gap-3 px-3 py-2 border-b border-zinc-200 last:border-b-0"
+                      className={cn(
+                        "flex-row items-center gap-3 px-3 py-2 border-b border-zinc-200 last:border-b-0",
+                        changingMembers && "opacity-50",
+                      )}
                       onPress={() => handleAddMember(member.id)}
+                      disabled={changingMembers}
                     >
                       <ProfileImage pfp={member.profilePicture} size="small" />
                       <Text className="text-zinc-900">
@@ -379,9 +413,13 @@ export default function ConversationInfoScreen() {
           </View>
         )}
 
-        {isGroup && (
+        {canLeave && (
           <View className="px-4 mt-8 mb-12">
-            <Button color={ButtonColor.Light} onPress={handleLeave}>
+            <Button
+              color={ButtonColor.Light}
+              onPress={handleLeave}
+              disabled={changingMembers}
+            >
               <Text className="text-zinc-800" weight={FontWeight.Medium}>
                 Leave group
               </Text>

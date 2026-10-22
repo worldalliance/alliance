@@ -1,8 +1,10 @@
+import { hoursInDay } from "@alliance/common/duration";
 import { withCount } from "@alliance/common/plural";
+import { millisecondsInDay, millisecondsInHour } from "date-fns/constants";
 import { ActionEvent } from "src/actions/entities/action-event.entity";
 
 export function getTimeLeftString(
-  deadlineEvent: ActionEvent,
+  deadlineEvent: Pick<ActionEvent, "date">,
   dateNow: Date,
   mode: "both" | "days" | "hours" = "both",
 ): string {
@@ -10,16 +12,16 @@ export function getTimeLeftString(
     return withCount(0, mode === "days" ? "day" : "hour");
   }
   let days = Math.floor(
-    (deadlineEvent.date.getTime() - dateNow.getTime()) / (1000 * 60 * 60 * 24),
+    (deadlineEvent.date.getTime() - dateNow.getTime()) / millisecondsInDay,
   );
   let hours = Math.round(
     (deadlineEvent.date.getTime() -
       dateNow.getTime() -
-      days * 1000 * 60 * 60 * 24) /
-      (1000 * 60 * 60),
+      days * millisecondsInDay) /
+      millisecondsInHour,
   );
 
-  if (hours === 24) {
+  if (hours === hoursInDay) {
     days += 1;
     hours = 0;
   }
@@ -46,4 +48,4 @@ export function getTimeLeftString(
 
 export const welcomeMessage = `Thanks for opting in to action notifications from the Alliance! You'll get a text here when a new action is ready to complete. Reply STOP to opt out.`;
 
-export const suspensionMessage = `You missed all assigned non-optional actions for 3 weeks in a row, so we've suspended your Alliance contract automatically. `;
+export const suspensionMessage = `You missed an assigned non-optional task in each of the last 3 weeks you had tasks, so we've suspended your Alliance agreement automatically. `;

@@ -1,0 +1,1 @@
+Account creation follows the existing claimed-invite relationship, rather than matching email addresses. Contract history includes every event for accounts linked through the entry’s invites, ordered newest first using the existing event comparator. Reuse ContractEventDto and display event dates with times so events on the same day remain distinguishable.

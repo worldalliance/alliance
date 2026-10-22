@@ -6,12 +6,15 @@ import {
   View,
 } from "react-native";
 
-import { useNavigationState } from "@react-navigation/native";
+import { useNavigationState } from "expo-router/react-navigation";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSharedValue, withSpring } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 import AnimatedSidebar from "../../components/AnimatedSidebar";
+import Button, { ButtonColor } from "../../components/system/Button";
+import Text from "../../components/system/Text";
+// import { Walkthrough } from "../../components/onboarding/Walkthrough";
 import Sidebar from "../../components/Sidebar";
 import TabBar from "../../components/TabBar";
 import {
@@ -24,7 +27,9 @@ import {
 } from "../../lib/appDrawerConfig";
 import { AppDrawerProvider, useAppDrawer } from "../../lib/AppDrawerContext";
 import { useAuth } from "../../lib/AuthContext";
+import { WalkthroughAnchorProvider } from "../../lib/onboarding/walkthrough";
 import { colors } from "../../lib/style/colors";
+import { useInterruptedLinkRedirect } from "../../lib/useInterruptedLinkRedirect";
 import { isVisualTestMode } from "../../lib/visualTest";
 
 function AppContent() {
@@ -32,6 +37,7 @@ function AppContent() {
   const { isPermanent, isOpen, openDrawer } = useAppDrawer();
   const { width: screenWidth } = useWindowDimensions();
   const sidebarWidth = Math.round(screenWidth * APP_DRAWER_SIDEBAR_RATIO);
+  useInterruptedLinkRedirect();
   const drawerTranslateX = useSharedValue(-sidebarWidth);
 
   const canGoBack = useNavigationState((state) => {
@@ -121,6 +127,10 @@ function AppContent() {
               options={{ contentStyle: notchContentStyle(colors.grey[0]) }}
             />
             <Stack.Screen
+              name="notification-settings/[section]"
+              options={{ contentStyle: notchContentStyle(colors.grey[0]) }}
+            />
+            <Stack.Screen
               name="groups/manage"
               options={{ contentStyle: notchContentStyle(colors.grey[0]) }}
             />
@@ -138,8 +148,37 @@ function AppContent() {
   );
 }
 
+function SessionUnavailable({
+  onRetry,
+  onLogIn,
+}: {
+  onRetry: () => void;
+  onLogIn: () => void;
+}) {
+  return (
+    <View className="flex-1 items-center justify-center gap-4 px-8">
+      <Text className="text-center">
+        We couldn&apos;t load your account. Check your connection and try again,
+        or log in again.
+      </Text>
+      <Button title="Try again" onPress={onRetry} />
+      <Button
+        title="Log in again"
+        color={ButtonColor.Outline}
+        onPress={onLogIn}
+      />
+    </View>
+  );
+}
+
 export default function AppLayout() {
-  const { isAuthenticated, isLoading, canConnectToServer } = useAuth();
+  const {
+    isAuthenticated,
+    isLoading,
+    sessionUnavailable,
+    retrySession,
+    logout,
+  } = useAuth();
   const dimensions = useWindowDimensions();
 
   if (isLoading) {
@@ -150,7 +189,11 @@ export default function AppLayout() {
     );
   }
 
-  if (!isAuthenticated && canConnectToServer) {
+  if (sessionUnavailable) {
+    return <SessionUnavailable onRetry={retrySession} onLogIn={logout} />;
+  }
+
+  if (!isAuthenticated) {
     if (isVisualTestMode) {
       return (
         <View className="flex-1 items-center justify-center">
@@ -158,14 +201,18 @@ export default function AppLayout() {
         </View>
       );
     }
-    return <Redirect href="/auth/login" />;
+    return <Redirect href="/onboarding" />;
   }
 
   return (
     <AppDrawerProvider isPermanent={dimensions.width >= 1024}>
-      <View className="flex-1" testID="vr-app-shell-ready">
-        <AppContent />
-      </View>
+      <WalkthroughAnchorProvider>
+        <View className="flex-1" testID="vr-app-shell-ready">
+          <AppContent />
+          {/* The platform tour is off: logging in lands on the platform. */}
+          {/* <Walkthrough /> */}
+        </View>
+      </WalkthroughAnchorProvider>
     </AppDrawerProvider>
   );
 }

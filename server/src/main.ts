@@ -1,25 +1,24 @@
 import { devPorts, PortCaller } from "@alliance/common/dev-ports";
+import { GUEST_HEADER } from "@alliance/common/guest";
 import { currentNodeEnv, isDeployed } from "@alliance/common/node-env";
-import { ValidationPipe } from "@nestjs/common";
-import { HttpAdapterHost, NestFactory } from "@nestjs/core";
+import { NOTIFS_LOADED_AT_HEADER } from "@alliance/common/notifs";
+import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { IoAdapter } from "@nestjs/platform-socket.io";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { useContainer } from "class-validator";
-import cookieParser from "cookie-parser";
-import { randomUUID } from "node:crypto";
-import { PostHog, setupExpressErrorHandler } from "posthog-node";
 import type { ServerOptions } from "socket.io";
 import { AppModule } from "./app.module";
+import { mailSendingEnabled } from "./mail/mail.service";
 import { MetricsInterceptor } from "./metrics";
 import { twilioSignatureEnforced } from "./mms/twilio-signature.guard";
 import { injectResponseSchemas } from "./openapi-errors";
-import { PosthogExceptionFilter } from "./posthog.filter";
-import { configureBodyParsers } from "./utils/body-parsers";
+import { capturePosthogExceptions } from "./posthog.filter";
+import { posthogClientIfEnabled } from "./posthog/posthog-client";
+import { configureApp } from "./utils/configure-app";
 import { socketCorsOrigins } from "./utils/cors-origins";
-import { requestContext } from "./utils/request-context";
 import { RouteContextGuard } from "./utils/request-context.guard";
-import { VALIDATION_PIPE_OPTIONS } from "./utils/validation-pipe-options";
+import { publicMailDailyCap } from "./waitlist/waitlist-mail.service";
 
 // Let validateNodeEnv report unknown values without treating them as deployed.
 function deployedUrlVars(): string[] {
@@ -37,6 +36,7 @@ function validateEnv() {
     "JWT_SECRET",
     "JWT_REFRESH_SECRET",
     ...(twilioSignatureEnforced() ? ["TWILIO_AUTH_TOKEN", "APP_URL"] : []),
+    ...(mailSendingEnabled() ? ["MAIL_FROM"] : []),
     ...deployedUrlVars(),
   ]);
 
@@ -48,6 +48,10 @@ function validateEnv() {
     );
     process.exit(1);
   }
+
+  // Parses the waitlist mail cap now, so a malformed one fails boot rather
+  // than a request.
+  publicMailDailyCap();
 
   validateNodeEnv();
 }
@@ -93,38 +97,24 @@ async function bootstrap() {
   validateEnv();
 
   const port = devPorts(PortCaller.Server).server;
-  let client: PostHog | null = null;
-
-  if (process.env.NODE_ENV === "production") {
-    client = new PostHog(process.env.POSTHOG_KEY!, {
-      host: "https://us.i.posthog.com",
-    });
-  }
+  const client = posthogClientIfEnabled();
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bodyParser: false,
   });
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
-  configureBodyParsers(app);
-  app.useGlobalPipes(new ValidationPipe(VALIDATION_PIPE_OPTIONS));
+  configureApp(app);
   app.useGlobalGuards(new RouteContextGuard());
   app.useGlobalInterceptors(new MetricsInterceptor());
-  app.use((req, _res, next) => {
-    requestContext.run(
-      {
-        requestId: randomUUID(),
-        method: req.method,
-        url: req.originalUrl,
-      },
-      () => next(),
-    );
-  });
-  app.use(cookieParser());
   app.enableCors({
     origin: true,
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
     credentials: true,
-    exposedHeaders: ["X-Guest-Token"],
+    exposedHeaders: [
+      GUEST_HEADER,
+      NOTIFS_LOADED_AT_HEADER,
+      "Content-Disposition",
+    ],
   });
   app.useWebSocketAdapter(new SocketIoAdapter(app));
   app.set("trust proxy", "loopback");
@@ -150,11 +140,7 @@ async function bootstrap() {
     });
   }
 
-  if (client) {
-    const { httpAdapter } = app.get(HttpAdapterHost);
-    app.useGlobalFilters(new PosthogExceptionFilter(client, httpAdapter));
-    setupExpressErrorHandler(client, app);
-  }
+  if (client) capturePosthogExceptions(app, client);
 
   await app.listen(port, "0.0.0.0");
 }

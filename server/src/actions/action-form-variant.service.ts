@@ -1,3 +1,5 @@
+import { hasMemberActionStarted } from "@alliance/common/actionEvent";
+import { actionFormIds } from "@alliance/common/cohort-expression";
 import {
   BadRequestException,
   Injectable,
@@ -5,15 +7,19 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { softDeleteWhere, writeUnderLive } from "src/datasources/soft-delete";
 import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { SnapshotHistoryOwner } from "src/tasks/entities/formsnapshot.entity";
 import { FormSnapshotService } from "src/tasks/formsnapshot.service";
 import { User } from "src/user/entities/user.entity";
+import type { Repository as TypedRepository } from "src/utils/Repository";
 import { EntityManager, In, QueryFailedError, Repository } from "typeorm";
+import { ActionEvent } from "./entities/action-event.entity";
 import { ActionFormAssignment } from "./entities/action-form-assignment.entity";
 import { ActionFormVariant } from "./entities/action-form-variant.entity";
 import { Action } from "./entities/action.entity";
+import { liveAssignments, variantForNewAssignment } from "./new-assignment";
 
 export interface CreateVariantInput {
   name: string;
@@ -39,7 +45,7 @@ export interface VariantStats {
 export class ActionFormVariantService {
   constructor(
     @InjectRepository(ActionFormVariant)
-    private readonly variantRepo: Repository<ActionFormVariant>,
+    private readonly variantRepo: TypedRepository<ActionFormVariant>,
     @InjectRepository(ActionFormAssignment)
     private readonly assignmentRepo: Repository<ActionFormAssignment>,
     @InjectRepository(Action)
@@ -56,6 +62,54 @@ export class ActionFormVariantService {
       where: { actionId },
       order: { id: "ASC" },
     });
+  }
+
+  /** The action owning each form of these actions: its task form or a variant's. */
+  async findActionIdByFormId(
+    actionIds: number[],
+  ): Promise<Map<number, number>> {
+    if (actionIds.length === 0) return new Map();
+    const [actions, variants] = await Promise.all([
+      this.actionRepo.find({
+        where: { id: In(actionIds) },
+        select: { id: true, taskFormId: true },
+      }),
+      this.variantRepo.find({ where: { actionId: In(actionIds) } }),
+    ]);
+    const actionIdByFormId = new Map<number, number>();
+    for (const action of actions) {
+      const formIds = actionFormIds({
+        taskFormId: action.taskFormId,
+        variantFormIds: variants
+          .filter((v) => v.actionId === action.id)
+          .map((v) => v.formId),
+      });
+      for (const formId of formIds) actionIdByFormId.set(formId, action.id);
+    }
+    return actionIdByFormId;
+  }
+
+  /** Each action's form the member submitted: its task form or a variant's. */
+  async findSubmittedFormIds(params: {
+    actionIds: number[];
+    userId: number;
+  }): Promise<Map<number, number>> {
+    const actionIdByFormId = await this.findActionIdByFormId(params.actionIds);
+    if (actionIdByFormId.size === 0) return new Map();
+
+    const responses = await this.variantRepo.manager.find(FormResponse, {
+      where: {
+        formId: In([...actionIdByFormId.keys()]),
+        user: { id: params.userId },
+      },
+      select: { formId: true },
+    });
+    const submitted = new Map<number, number>();
+    for (const { formId } of responses) {
+      const actionId = actionIdByFormId.get(formId);
+      if (actionId !== undefined) submitted.set(actionId, formId);
+    }
+    return submitted;
   }
 
   async createVariant(
@@ -126,24 +180,68 @@ export class ActionFormVariantService {
 
     return this.variantRepo.manager.transaction(async (em) => {
       await this.lockActionRow(em, variant.actionId);
-      const variantTxRepo = em.getRepository(ActionFormVariant);
-      await this.assertSplitTotalValid(
-        variant.actionId,
-        {
-          excludeVariantId: variantId,
-          addValue: nextValue,
+      return writeUnderLive(em, {
+        saved: {
+          target: ActionFormVariant,
+          id: variantId,
+          notFound: "Variant not found",
         },
-        variantTxRepo,
-      );
-      Object.assign(variant, {
-        ...(input.name !== undefined ? { name: input.name } : {}),
-        splitValue: nextValue,
+        write: async () => {
+          const variantTxRepo = em.getRepository(ActionFormVariant);
+          await this.assertSplitTotalValid(
+            variant.actionId,
+            {
+              excludeVariantId: variantId,
+              addValue: nextValue,
+            },
+            variantTxRepo,
+          );
+          Object.assign(variant, {
+            ...(input.name !== undefined ? { name: input.name } : {}),
+            splitValue: nextValue,
+          });
+          return variantTxRepo.save(variant);
+        },
       });
-      return variantTxRepo.save(variant);
     });
   }
 
   async deleteVariant(variantId: number): Promise<void> {
+    const variant = await this.variantRepo.findOne({
+      where: { id: variantId },
+    });
+    if (!variant) throw new NotFoundException("Variant not found");
+    const events = await this.variantRepo.manager.findBy(ActionEvent, {
+      action: { id: variant.actionId },
+    });
+
+    // Clients only submit once member_action starts, so a response means
+    // members were assigned after a launch whose member_action event later
+    // moved or was deleted.
+    if (
+      !hasMemberActionStarted(events, new Date()) &&
+      !(await this.variantRepo.manager.existsBy(FormResponse, {
+        formId: variant.formId,
+      }))
+    ) {
+      await this.variantRepo.manager.transaction(async (em) => {
+        // Waits out an assignment being written, so the deletion below sees it.
+        await em.findOne(ActionFormVariant, {
+          where: { id: variantId },
+          lock: { mode: "pessimistic_write" },
+        });
+        await softDeleteWhere(em, {
+          target: ActionFormAssignment,
+          where: { variantId },
+        });
+        await softDeleteWhere(em, {
+          target: ActionFormVariant,
+          where: { id: variantId },
+        });
+      });
+      return;
+    }
+
     const assignmentCount = await this.assignmentRepo.count({
       where: { variantId },
     });
@@ -153,8 +251,11 @@ export class ActionFormVariantService {
           `Variants with existing assignments must be kept.`,
       );
     }
-    const result = await this.variantRepo.delete({ id: variantId });
-    if (result.affected === 0) {
+    const deleted = await softDeleteWhere(this.variantRepo.manager, {
+      target: ActionFormVariant,
+      where: { id: variantId },
+    });
+    if (deleted === 0) {
       throw new NotFoundException("Variant not found");
     }
   }
@@ -177,13 +278,26 @@ export class ActionFormVariantService {
       return v?.formId ?? null;
     }
 
-    const chosenVariantId = this.pickVariantForNewUser(variants);
+    const submitted = await this.findSubmittedFormIds({
+      actionIds: [actionId],
+      userId,
+    });
+    const chosenVariantId = variantForNewAssignment({
+      variants,
+      submittedFormId: submitted.get(actionId),
+    });
     try {
-      await this.assignmentRepo.insert({
-        actionId,
-        userId,
-        variantId: chosenVariantId,
-      });
+      const inserted = await this.assignmentRepo.manager.transaction(
+        async (em) => {
+          const [live] = await liveAssignments(em, [
+            { actionId, userId, variantId: chosenVariantId },
+          ]);
+          if (!live) return false;
+          await em.insert(ActionFormAssignment, live);
+          return true;
+        },
+      );
+      if (!inserted) return null;
     } catch (err) {
       if (
         !(err instanceof QueryFailedError) ||
@@ -236,6 +350,13 @@ export class ActionFormVariantService {
       assignmentByAction.set(a.actionId, a);
     }
 
+    const submitted = await this.findSubmittedFormIds({
+      actionIds: actionIds.filter(
+        (id) => variantsByAction.has(id) && !assignmentByAction.has(id),
+      ),
+      userId,
+    });
+
     const result = new Map<number, number>();
     const inserts: {
       actionId: number;
@@ -255,7 +376,10 @@ export class ActionFormVariantService {
         continue;
       }
 
-      const chosenVariantId = this.pickVariantForNewUser(variants);
+      const chosenVariantId = variantForNewAssignment({
+        variants,
+        submittedFormId: submitted.get(actionId),
+      });
       inserts.push({ actionId, userId, variantId: chosenVariantId });
       if (chosenVariantId !== null) {
         const v = variants.find((x) => x.id === chosenVariantId);
@@ -265,15 +389,20 @@ export class ActionFormVariantService {
 
     if (inserts.length === 0) return result;
 
-    // ON CONFLICT DO NOTHING for the (actionId, userId) unique constraint —
-    // a parallel request may have inserted first. After the upsert, re-read
-    // to learn the canonical assignment for the conflicted rows.
-    await this.assignmentRepo
-      .createQueryBuilder()
-      .insert()
-      .values(inserts)
-      .orIgnore()
-      .execute();
+    // ON CONFLICT DO NOTHING for the live-row (actionId, userId) unique
+    // index — a parallel request may have inserted first. After the upsert,
+    // re-read to learn the canonical assignment for the conflicted rows.
+    await this.assignmentRepo.manager.transaction(async (em) => {
+      const live = await liveAssignments(em, inserts);
+      if (live.length === 0) return;
+      await em
+        .createQueryBuilder()
+        .insert()
+        .into(ActionFormAssignment)
+        .values(live)
+        .orIgnore()
+        .execute();
+    });
 
     const insertedActionIds = inserts.map((i) => i.actionId);
     const finalAssignments = await this.assignmentRepo.find({
@@ -284,7 +413,10 @@ export class ActionFormVariantService {
 
     for (const i of inserts) {
       const final = finalByAction.get(i.actionId);
-      if (!final) continue;
+      if (!final) {
+        result.delete(i.actionId);
+        continue;
+      }
       const variants = variantsByAction.get(i.actionId);
       if (!variants) continue;
       if (final.variantId === null) {
@@ -379,18 +511,6 @@ export class ActionFormVariantService {
     return assignedFormId === formId;
   }
 
-  private pickVariantForNewUser(variants: ActionFormVariant[]): number | null {
-    if (variants.length === 0) return null;
-
-    const r = Math.random();
-    let acc = 0;
-    for (const v of variants) {
-      acc += v.splitValue;
-      if (r < acc) return v.id;
-    }
-    return null;
-  }
-
   private async userExists(userId: number): Promise<boolean> {
     return this.userRepo.exists({ where: { id: userId } });
   }
@@ -412,12 +532,15 @@ export class ActionFormVariantService {
     em: EntityManager,
     actionId: number,
   ): Promise<void> {
-    await em
+    const action = await em
       .getRepository(Action)
       .createQueryBuilder("a")
       .setLock("pessimistic_write")
       .where("a.id = :id", { id: actionId })
       .getOne();
+    if (!action) {
+      throw new NotFoundException("Action not found");
+    }
   }
 
   private async assertSplitTotalValid(

@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
 import {
+  IsBoolean,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -23,6 +24,24 @@ export class RegisterDeviceDto {
   @IsUUID()
   @IsOptional()
   deviceId?: string;
+
+  @ApiPropertyOptional({
+    description: "The build handles badge-only pushes quietly",
+  })
+  @IsBoolean()
+  @IsOptional()
+  taskBadgePushes?: boolean;
+}
+
+export class UnregisterDeviceDto {
+  @ApiProperty()
+  @IsUUID()
+  deviceId: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  expoPushToken: string;
 }
 
 export class UserDeviceDto extends PickType(UserDevice, ["id"]) {

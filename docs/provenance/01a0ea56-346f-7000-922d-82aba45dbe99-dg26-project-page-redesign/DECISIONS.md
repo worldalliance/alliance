@@ -1,0 +1,17 @@
+Content uses the navbar's `SITE_COL`, as the user asked, replacing the design's wider margins. Below `lg` the page stacks as in the mobile frame. From `lg` up, the form column takes 28.65% of the content width with a 24rem minimum, and the gutter takes 5.65%; those shares come from the desktop frame.
+
+The two frames use different copy for the subtitle and for the timeline lines. Each breakpoint renders its own frame's copy. Two exceptions: the desktop frame's second "Week 3" reads "Week 4", matching mobile, and its "Office invite members and experts" reads "Office invites". The mobile frame shows `$100,000` in white; it stays green on both, matching the desktop frame and the previous page.
+
+The mobile frame has no featured people under the subtitle and no Members list, so both are hidden below `lg`.
+
+Nothing is fetched. `placeholders.ts` holds the inviter, featured people, members, counts, and lorem ipsum section copy. Its names are synthetic. Its picture keys are upload keys already committed in `citesting/fixtures/seed_dataonly.sql`, so no new photo references enter the repo. The keys resolve through `uploadSrc`, and `AvatarProfile` falls back to the default icon when the API can't serve one.
+
+The previous page's live member count, "$36,300 committed by funders", "Coming in fall 2026", and the mailto card aren't in the designs, so they're gone from this page. `GrantmakingMemberProgress` stays because the onboarding `GrantmakingCard` still uses it. The new members/waitlist bar scales against its exported `MEMBER_GOAL`.
+
+The signup form prevents submission until the waiting room backend exists. Name, email, and the commitment checkbox are `required`, so the browser flags an incomplete form.
+
+The timeline is a new component rather than an extension of `components/system/Timeline.tsx`. That one is vertical only, measures its line with a ref, and draws white-ringed dots for light backgrounds. This one is a horizontal six-column grid at `lg` and a vertical list below it.
+
+Type follows the site's components, not the frames' measured sizes. The h1 uses the interior page title sizes (`text-5xl sm:text-6xl lg:text-7xl`) and the subtitle uses `SiteSubtitle` `Page`. Section headings, Members, and the mobile Timeline heading use `BandHeading` `Section`, and section bodies render through `DocProse`, as on the Guide. Small labels use `text-sm`. `$100,000` carries `site-display` itself, because `.site-root *` gives nested elements the body face; the previous page's amount rendered in the sans face for the same reason. Names, roles, timeline text, and the bar legend are Source Sans 3 in the frames. A new `.site-sans` class sets that face under `.site-root`, since reusing `font-sans` there could change other site pages.
+
+The signup form shares the login page's sizing through the pieces it uses: `ACCOUNT_FIELD` and `ACCOUNT_BUTTON`, moved from `AccountStep` to `onboarding/chrome.tsx`, and the shared `Button`. Below `lg` the form is a white card in the login page's colors. From `lg` it drops the card and applies dark-band overrides.

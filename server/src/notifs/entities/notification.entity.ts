@@ -4,9 +4,11 @@ import { ActionUpdate } from "src/actions/entities/action-update.entity";
 import { CommunityInvite } from "src/community/entities/community-invite.entity";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { Comment } from "src/forum/entities/comment.entity";
+import { NotificationFormat } from "src/notifs/notification-content";
 import type { Push } from "src/push/push.entity";
 import { OnetimeInvite } from "src/user/entities/onetime-invite.entity";
 import type { Relation } from "src/utils/Repository";
@@ -36,6 +38,7 @@ export enum NotificationCategory {
   MemberJoinedCommunity = "member_joined_community",
   CommunityAssigned = "community_assigned",
   NewMemberReferred = "new_member_referred",
+  GroupMemberJoined = "group_member_joined",
 
   // Legacy
   CommunityInviteCreated = "community_invite_created",
@@ -45,7 +48,9 @@ export enum NotificationCategory {
   OnetimeInviteRequestApproved = "onetime_invite_request_approved",
   OnetimeInviteRequestRejected = "onetime_invite_request_rejected",
   CommunityInviteRequestCreated = "community_invite_request_created",
+  CommunityInviteRequestApproved = "community_invite_request_approved",
   CommunityInviteRequestRejected = "community_invite_request_rejected",
+  AmbassadorInviteGoal = "ambassador_invite_goal",
 }
 
 export enum NotifPriority {
@@ -68,6 +73,7 @@ export const NOTIFICATION_CATEGORY_PRIORITIES = {
   [NotificationCategory.MemberJoinedCommunity]: NotifPriority.High,
   [NotificationCategory.CommunityAssigned]: NotifPriority.High,
   [NotificationCategory.NewMemberReferred]: NotifPriority.High,
+  [NotificationCategory.GroupMemberJoined]: NotifPriority.High,
 
   // Legacy
   [NotificationCategory.CommunityInviteCreated]: NotifPriority.Low,
@@ -77,7 +83,9 @@ export const NOTIFICATION_CATEGORY_PRIORITIES = {
   [NotificationCategory.OnetimeInviteRequestApproved]: NotifPriority.High,
   [NotificationCategory.OnetimeInviteRequestRejected]: NotifPriority.High,
   [NotificationCategory.CommunityInviteRequestCreated]: NotifPriority.Low,
+  [NotificationCategory.CommunityInviteRequestApproved]: NotifPriority.High,
   [NotificationCategory.CommunityInviteRequestRejected]: NotifPriority.High,
+  [NotificationCategory.AmbassadorInviteGoal]: NotifPriority.High,
 } satisfies Record<NotificationCategory, NotifPriority>;
 
 @Entity()
@@ -97,9 +105,21 @@ export class Notification {
   @ApiProperty({ enum: NotificationCategory, enumName: "NotificationCategory" })
   category: NotificationCategory;
 
+  /** On referenced rows, the text as of the last write; reads render `content`. */
   @Column()
   @ApiProperty()
   message: string;
+
+  @Column({
+    type: "enum",
+    enum: NotificationFormat,
+    default: NotificationFormat.Legacy,
+  })
+  format: NotificationFormat;
+
+  /** `NotificationContent`; null on legacy rows. */
+  @Column({ type: "jsonb", nullable: true })
+  content: unknown | null;
 
   @Column({ type: "enum", enum: NotifPriority, default: NotifPriority.Low })
   @ApiProperty({ enum: NotifPriority, enumName: "NotifPriority" })
@@ -142,6 +162,10 @@ export class Notification {
   @ApiProperty({ type: Number, nullable: true })
   groupingCount: number | null;
 
+  /** Set when the row is written, from the member's in-app setting for its kind. */
+  @Column({ default: true })
+  visible: boolean;
+
   @Column({ default: true })
   @ApiProperty()
   shouldPush: boolean;
@@ -165,8 +189,7 @@ export class Notification {
     nullable: false,
     onDelete: "CASCADE",
   })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  user: Relation<User>;
+  user?: Relation<User>;
 
   @ManyToMany(() => User)
   @JoinTable({ name: "notification_associated_users" })
@@ -176,8 +199,7 @@ export class Notification {
     nullable: true,
     onDelete: "CASCADE",
   })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  pushes: Relation<Push>[];
+  pushes?: Relation<Push>[];
 
   @ApiPropertyOptional({ type: () => ActionUpdate })
   @ManyToOne(() => ActionUpdate, (actionUpdate) => actionUpdate.notifs, {
@@ -207,7 +229,13 @@ export class Notification {
   })
   communityInvite?: Relation<CommunityInvite>;
 
+  /** The shared tracking ID of a forum reply or missed-suite notice sent
+   * before each message got its own; no longer written. */
+  @Index({ where: `"cid" IS NOT NULL` })
   @Column({ type: "varchar", nullable: true })
   @ApiProperty({ nullable: true })
   cid: string | null;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

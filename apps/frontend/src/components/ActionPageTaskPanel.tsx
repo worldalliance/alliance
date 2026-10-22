@@ -10,20 +10,16 @@ import { ActionTaskPanelPropsShared } from "@alliance/shared/lib/actionTaskPanel
 import {
   useCompletedTaskForm,
   useGuestTaskForm,
-  useTaskForm,
 } from "@alliance/shared/lib/actionTaskPanelCompleted";
 import {
   clipboardCopy,
   guestReferral,
   taskHeaders,
+  type TitledCopy,
 } from "@alliance/shared/lib/copy";
-import {
-  buildActionShareUrl,
-  buildShareText,
-  getCompletedShareableTextTemplate,
-} from "@alliance/shared/lib/shareText";
-import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { getBaseUrl } from "@alliance/sharedweb/lib/config";
+import { getCompletedShareableTextTemplate } from "@alliance/shared/lib/shareText";
+import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
+import { cn } from "@alliance/shared/styles/util";
 import Card from "@alliance/sharedweb/ui/Card";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
 import { ArrowRight, Link2 } from "lucide-react";
@@ -31,6 +27,7 @@ import { useEffect, useState } from "react";
 import { isRouteErrorResponse, Link, useOutletContext } from "react-router";
 import { Route } from "../../.react-router/types/src/components/+types/ActionPageTaskPanel";
 import { useAuth } from "../lib/AuthContext";
+import { copyActionShareText } from "../lib/actionShare";
 import { isNonmemberOnPublicActionReferral } from "../lib/publicActionReferral";
 import ActionTaskPanel from "./ActionTaskPanel";
 import AllianceSignupPitch from "./AllianceSignupPitch";
@@ -67,6 +64,13 @@ export interface TaskPanelContext extends Omit<
   onGuestCompletionChange?: (completed: boolean) => void;
 }
 
+const renderTitledHeader = (copy: TitledCopy, titleClassName?: string) => (
+  <div>
+    <p className={cn("font-medium", titleClassName)}>{copy.title}</p>
+    <p className="text-zinc-500">{copy.description}</p>
+  </div>
+);
+
 const taskPanelHeaderByState: Record<
   ActionPageTaskPanelState,
   React.ReactNode
@@ -88,21 +92,23 @@ const taskPanelHeaderByState: Record<
   [ActionPageTaskPanelState.NotAssigned]: (
     <p>{taskHeaders.actionPage.notAssigned}</p>
   ),
+  [ActionPageTaskPanelState.StaffPreview]: (
+    <div>
+      <p className="font-medium">{taskHeaders.staffPreview.title}</p>
+      <p className="text-zinc-500">{taskHeaders.staffPreview.description}</p>
+    </div>
+  ),
   [ActionPageTaskPanelState.Completed]: null,
   [ActionPageTaskPanelState.Declined]: <p>{taskHeaders.actionPage.withdrew}</p>,
   [ActionPageTaskPanelState.MemberActionClosed]: (
     <p>{taskHeaders.actionPage.memberActionClosed}</p>
   ),
+  [ActionPageTaskPanelState.DeadlineMissed]: (
+    <p>{taskHeaders.actionPage.deadlinePassed.title}</p>
+  ),
   [ActionPageTaskPanelState.MissingDataOrNotActive]: null,
-  [ActionPageTaskPanelState.ShowTaskWithMissedDeadline]: (
-    <div>
-      <p className="font-medium">
-        {taskHeaders.actionPage.deadlinePassed.title}
-      </p>
-      <p className="text-zinc-500">
-        {taskHeaders.actionPage.deadlinePassed.description}
-      </p>
-    </div>
+  [ActionPageTaskPanelState.ShowTaskWithMissedDeadline]: renderTitledHeader(
+    taskHeaders.actionPage.deadlinePassed,
   ),
   [ActionPageTaskPanelState.OnboardingSignContractFirst]: (
     <div className="flex flex-row justify-between items-center gap-x-2">
@@ -113,15 +119,17 @@ const taskPanelHeaderByState: Record<
       </Link>
     </div>
   ),
-  [ActionPageTaskPanelState.Optional]: (
-    <div>
-      <p className="font-medium text-sky-500">
-        {taskHeaders.actionPage.optional.title}
-      </p>
-      <p className="text-zinc-500">
-        {taskHeaders.actionPage.optional.description}
-      </p>
-    </div>
+  [ActionPageTaskPanelState.Optional]: renderTitledHeader(
+    taskHeaders.actionPage.optional,
+    "text-sky-500",
+  ),
+  [ActionPageTaskPanelState.OptionalForViewer]: renderTitledHeader(
+    taskHeaders.actionPage.optionalForViewer,
+    "text-sky-500",
+  ),
+  [ActionPageTaskPanelState.OptionalForContractGap]: renderTitledHeader(
+    taskHeaders.actionPage.optionalForContractGap,
+    "text-sky-500",
   ),
   [ActionPageTaskPanelState.ShowTask]: null,
 };
@@ -181,7 +189,9 @@ const ActionPageTaskPanel = () => {
   const effectiveFormResponse = guestFormResponse ?? formResponse ?? undefined;
   const isCompletedPanel =
     state === ActionPageTaskPanelState.Completed || guestCompleted;
-  const taskForm = useTaskForm(action, isCompletedPanel);
+  const { data: taskForm } = useTaskForm(action.taskFormId, {
+    enabled: isCompletedPanel,
+  });
   const shareTemplate = getCompletedShareableTextTemplate({
     schemaSnapshot: effectiveFormResponse?.schemaSnapshot as
       | Record<string, unknown>
@@ -189,20 +199,14 @@ const ActionPageTaskPanel = () => {
     currentSchema: taskForm?.schema as Record<string, unknown> | undefined,
   });
 
-  const handleShareCopy = async () => {
-    const url = await buildActionShareUrl({
+  const handleShareCopy = () =>
+    copyActionShareText({
       actionId: action.id,
-      baseUrl: getBaseUrl(),
       isAuthenticated,
-    });
-    const text = buildShareText({
       template: shareTemplate,
       formResponse: effectiveFormResponse,
       userName: user?.name,
-      url,
     });
-    return copyToClipboard(text);
-  };
   const completedHeader = (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-x-3">
@@ -323,6 +327,7 @@ const ActionPageTaskPanel = () => {
     case ActionPageTaskPanelState.PublicOnlyAuthenticated:
     case ActionPageTaskPanelState.NotAssigned:
     case ActionPageTaskPanelState.MemberActionClosed:
+    case ActionPageTaskPanelState.DeadlineMissed:
     case ActionPageTaskPanelState.OnboardingSignContractFirst:
       return renderStackedCard(
         <ActionTaskPanel
@@ -347,7 +352,6 @@ const ActionPageTaskPanel = () => {
           disabled={formDisabledByState}
           formResponse={effectiveFormResponse}
           guestMode={guestMode}
-          createAccountHref={guestMode ? (signupHref ?? undefined) : undefined}
           forceRenderTask={guestMode || formDisabledByState}
           redirectOnComplete={!guestMode}
           onFormSubmitted={
@@ -368,7 +372,10 @@ const ActionPageTaskPanel = () => {
           missedDeadline
         />,
       );
+    case ActionPageTaskPanelState.StaffPreview:
     case ActionPageTaskPanelState.Optional:
+    case ActionPageTaskPanelState.OptionalForViewer:
+    case ActionPageTaskPanelState.OptionalForContractGap:
     case ActionPageTaskPanelState.ShowTask:
       return renderStackedCard(
         <ActionTaskPanel

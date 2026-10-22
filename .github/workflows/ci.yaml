@@ -5,8 +5,23 @@ on:
     branches: [main, production]
 
 jobs:
+  dirty-check:
+    if: ${{ github.base_ref == 'main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/dirty-check
+        with:
+          check: exists
+
+  actionlint:
+    uses: ./.github/workflows/actionlint.yaml
+
   format-check:
     uses: ./.github/workflows/format-check.yaml
+
+  gitignore-check:
+    uses: ./.github/workflows/gitignore-check.yaml
 
   typecheck:
     strategy:
@@ -40,6 +55,8 @@ jobs:
             apps/frontend,
             apps/admin,
             apps/mobile,
+            scripts,
+            .github,
           ]
     uses: ./.github/workflows/test-unit.yaml
     with:

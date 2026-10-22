@@ -1,39 +1,33 @@
 import { withCount } from "@alliance/common/plural";
-import { clusterListAdmin, clusterUpdateAdmin } from "@alliance/shared/client";
 import type { ClusterAdminDto } from "@alliance/shared/client/types.gen";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { CardStyle } from "@alliance/shared/styles/card";
-import { memberProfileUrl } from "@alliance/sharedweb/lib/config";
+import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Pencil } from "lucide-react";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router";
+import { memberProfileUrl } from "../lib/config";
+import { sessionExpiredMessage } from "../lib/sessionExpired";
+import {
+  useClustersAdmin,
+  useRenameClusterAdmin,
+} from "../lib/useClustersAdmin";
 
 const ClustersPage: React.FC = () => {
-  const [clusters, setClusters] = useState<ClusterAdminDto[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const list = useClustersAdmin();
+  const clusters = useMemo(() => list.data ?? [], [list.data]);
+  const error = list.isError
+    ? thrownRefusalMessage({
+        error: list.error,
+        fallback: "Unable to load clusters.",
+        sessionExpired: sessionExpiredMessage,
+      })
+    : null;
   const { success, error: toastError } = useToast();
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await clusterListAdmin();
-      setClusters(response.data ?? []);
-    } catch (err) {
-      console.error("Failed to load clusters", err);
-      setError("Unable to load clusters.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   const totalMembers = clusters.reduce((acc, c) => acc + c.members.length, 0);
 
@@ -60,14 +54,12 @@ const ClustersPage: React.FC = () => {
           `The other members of your introduction group (${cluster.displayName}) are:\n\n${list}`;
       }
     }
-    try {
-      await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+    if (await copyToClipboard(JSON.stringify(payload, null, 2))) {
       const userCount = Object.keys(payload).length;
       success(
         `Copied clustermates for ${withCount(userCount, "user")} to clipboard.`,
       );
-    } catch (err) {
-      console.error("Failed to copy clustermates", err);
+    } else {
       toastError("Could not copy to clipboard.");
     }
   }, [clusters, success, toastError]);
@@ -87,7 +79,7 @@ const ClustersPage: React.FC = () => {
             <Button
               color={ButtonColor.White}
               onClick={handleExportClustermates}
-              disabled={loading || clusters.length === 0}
+              disabled={clusters.length === 0}
               title="Copy a JSON object mapping each user id to a markdown list of their clustermates"
             >
               Export clustermates
@@ -97,33 +89,27 @@ const ClustersPage: React.FC = () => {
 
         {error && <p className="text-sm text-red-500">{error}</p>}
 
-        <Card style={CardStyle.White}>
-          <div className="flex items-center justify-between text-sm">
-            <p className="font-medium text-zinc-700">
-              {withCount(clusters.length, "cluster")}
-            </p>
-            <p className="text-zinc-500">
-              {withCount(totalMembers, "member")} placed
-            </p>
-          </div>
-        </Card>
+        {list.data && (
+          <Card style={CardStyle.White}>
+            <div className="flex items-center justify-between text-sm">
+              <p className="font-medium text-zinc-700">
+                {withCount(clusters.length, "cluster")}
+              </p>
+              <p className="text-zinc-500">
+                {withCount(totalMembers, "member")} placed
+              </p>
+            </div>
+          </Card>
+        )}
 
-        {loading ? (
+        {list.isPending ? (
           <p className="text-sm text-zinc-500">Loading clusters…</p>
-        ) : clusters.length === 0 ? (
+        ) : !list.data ? null : clusters.length === 0 ? (
           <p className="text-sm text-zinc-500">No clusters yet.</p>
         ) : (
           <div className="flex flex-col gap-3">
             {clusters.map((cluster) => (
-              <ClusterCard
-                key={cluster.id}
-                cluster={cluster}
-                onRenamed={(updated) =>
-                  setClusters((prev) =>
-                    prev.map((c) => (c.id === updated.id ? updated : c)),
-                  )
-                }
-              />
+              <ClusterCard key={cluster.id} cluster={cluster} />
             ))}
           </div>
         )}
@@ -134,14 +120,26 @@ const ClustersPage: React.FC = () => {
 
 type ClusterCardProps = {
   cluster: ClusterAdminDto;
-  onRenamed: (cluster: ClusterAdminDto) => void;
 };
 
-const ClusterCard: React.FC<ClusterCardProps> = ({ cluster, onRenamed }) => {
+const ClusterCard: React.FC<ClusterCardProps> = ({ cluster }) => {
   const [editing, setEditing] = useState<boolean>(false);
   const [draftName, setDraftName] = useState<string>(cluster.displayName);
-  const [saving, setSaving] = useState<boolean>(false);
   const { error: toastError } = useToast();
+
+  const { mutate: rename, isPending: saving } = useRenameClusterAdmin({
+    onSuccess: () => setEditing(false),
+    onError: (err) => {
+      console.error("Failed to rename cluster", err);
+      toastError(
+        thrownRefusalMessage({
+          error: err,
+          fallback: "Could not rename cluster.",
+          sessionExpired: sessionExpiredMessage,
+        }),
+      );
+    },
+  });
 
   const startEdit = () => {
     setDraftName(cluster.displayName);
@@ -153,28 +151,13 @@ const ClusterCard: React.FC<ClusterCardProps> = ({ cluster, onRenamed }) => {
     setDraftName(cluster.displayName);
   };
 
-  const save = async () => {
+  const save = () => {
     const trimmed = draftName.trim();
     if (!trimmed || trimmed === cluster.displayName) {
       cancelEdit();
       return;
     }
-    setSaving(true);
-    try {
-      const response = await clusterUpdateAdmin({
-        path: { id: cluster.id },
-        body: { displayName: trimmed },
-      });
-      if (response.data) {
-        onRenamed(response.data);
-      }
-      setEditing(false);
-    } catch (err) {
-      console.error("Failed to rename cluster", err);
-      toastError("Could not rename cluster.");
-    } finally {
-      setSaving(false);
-    }
+    rename({ id: cluster.id, displayName: trimmed });
   };
 
   return (
@@ -190,7 +173,7 @@ const ClusterCard: React.FC<ClusterCardProps> = ({ cluster, onRenamed }) => {
                 value={draftName}
                 onChange={(e) => setDraftName(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") void save();
+                  if (e.key === "Enter") save();
                   else if (e.key === "Escape") cancelEdit();
                 }}
                 disabled={saving}

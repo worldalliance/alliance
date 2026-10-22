@@ -1,9 +1,10 @@
 import type { CohortExpression } from "@alliance/common/cohort-expression";
-import { actionsEvaluateCohortAdmin } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
 import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { Search } from "lucide-react";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
+import { adminRefusalMessage } from "../lib/adminRefusal";
+import { useCohortEvaluationAdmin } from "../lib/useCohortEvaluationAdmin";
 
 interface CohortVisualizationProps {
   expression: CohortExpression | null | undefined;
@@ -21,12 +22,25 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
   users,
   compareExpression,
 }) => {
-  const [matchedIds, setMatchedIds] = useState<Set<number>>(new Set());
-  const [subMatchedIds, setSubMatchedIds] = useState<Set<number>>(new Set());
-  const [compareMatchedIds, setCompareMatchedIds] = useState<Set<number>>(
-    new Set(),
-  );
-  const [loading, setLoading] = useState(false);
+  const {
+    userIds: evaluatedIds,
+    evaluating: loading,
+    error: matchError,
+  } = useCohortEvaluationAdmin(expression);
+  const [settledIds, setSettledIds] = useState(evaluatedIds);
+  if (!loading && settledIds !== evaluatedIds) setSettledIds(evaluatedIds);
+  // The grid keeps the last result, dimmed, rather than flashing empty on each edit.
+  const matchedIds = loading ? settledIds : evaluatedIds;
+  const {
+    userIds: subMatchedIds,
+    evaluating: subLoading,
+    error: subMatchError,
+  } = useCohortEvaluationAdmin(selectedSubExpression);
+  const {
+    userIds: compareMatchedIds,
+    evaluating: compareLoading,
+    error: compareMatchError,
+  } = useCohortEvaluationAdmin(compareExpression);
   const [searchQuery, setSearchQuery] = useState("");
   const [hoveredUser, setHoveredUser] = useState<UserSelectUser | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number }>({
@@ -34,79 +48,8 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
     y: 0,
   });
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // Evaluate full expression
-  useEffect(() => {
-    if (!expression) {
-      setMatchedIds(new Set());
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    actionsEvaluateCohortAdmin({
-      body: { expression },
-    })
-      .then((res) => {
-        if (!cancelled && res.data) {
-          setMatchedIds(new Set(res.data.userIds));
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setMatchedIds(new Set());
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [expression]);
-
-  // Evaluate sub-expression
-  useEffect(() => {
-    if (!selectedSubExpression) {
-      setSubMatchedIds(new Set());
-      return;
-    }
-    let cancelled = false;
-    actionsEvaluateCohortAdmin({
-      body: { expression: selectedSubExpression },
-    })
-      .then((res) => {
-        if (!cancelled && res.data) {
-          setSubMatchedIds(new Set(res.data.userIds));
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setSubMatchedIds(new Set());
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedSubExpression]);
-
-  // Evaluate compare expression
-  useEffect(() => {
-    if (!compareExpression) {
-      setCompareMatchedIds(new Set());
-      return;
-    }
-    let cancelled = false;
-    actionsEvaluateCohortAdmin({
-      body: { expression: compareExpression },
-    })
-      .then((res) => {
-        if (!cancelled && res.data) {
-          setCompareMatchedIds(new Set(res.data.userIds));
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setCompareMatchedIds(new Set());
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [compareExpression]);
+  // The grid unmounts on a failed evaluation, so no mouseleave clears the hover.
+  if (matchError && hoveredUser) setHoveredUser(null);
 
   const sortedUsers = useMemo(() => {
     return [...users].sort((a, b) => {
@@ -173,7 +116,14 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
     <div className="space-y-2">
       <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
         <span>
-          {loading ? (
+          {matchError ? (
+            <span className="text-red-600">
+              {adminRefusalMessage(
+                matchError,
+                "Failed to evaluate the cohort.",
+              )}
+            </span>
+          ) : loading ? (
             "Evaluating..."
           ) : expression ? (
             <>
@@ -184,19 +134,42 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
             <>All {users.length} members (no expression)</>
           )}
         </span>
-        {selectedSubExpression && subMatchCount > 0 && (
-          <span>
-            <span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-500 mr-1 align-middle" />
-            {subMatchCount} in selected condition
+        {subMatchError ? (
+          <span className="text-red-600">
+            {adminRefusalMessage(
+              subMatchError,
+              "Failed to evaluate the selected condition.",
+            )}
           </span>
+        ) : subLoading ? (
+          <span>Evaluating selected condition...</span>
+        ) : (
+          selectedSubExpression &&
+          subMatchCount > 0 && (
+            <span>
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-500 mr-1 align-middle" />
+              {subMatchCount} in selected condition
+            </span>
+          )
         )}
         {compareExpression && (
           <>
-            <span>
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-violet-500 mr-1 align-middle" />
-              {compareMatchCount} in compare action
-            </span>
-            {expression && bothMatchCount > 0 && (
+            {compareMatchError ? (
+              <span className="text-red-600">
+                {adminRefusalMessage(
+                  compareMatchError,
+                  "Failed to evaluate the compare action's cohort.",
+                )}
+              </span>
+            ) : compareLoading ? (
+              <span>Evaluating compare action...</span>
+            ) : (
+              <span>
+                <span className="inline-block w-2.5 h-2.5 rounded-full bg-violet-500 mr-1 align-middle" />
+                {compareMatchCount} in compare action
+              </span>
+            )}
+            {expression && !loading && bothMatchCount > 0 && (
               <span>
                 <span
                   className="inline-block w-2.5 h-2.5 rounded-full mr-1 align-middle"
@@ -234,23 +207,25 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
                 className="flex items-center gap-2 text-sm px-1"
               >
                 <span className="font-medium text-gray-700">{user.name}</span>
-                {expression ? (
-                  <span
-                    className={cn(
-                      "text-xs px-1.5 py-0.5 rounded-full",
-                      inCohort
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-gray-100 text-gray-500",
-                    )}
-                  >
-                    {inCohort ? "in cohort" : "not in cohort"}
-                  </span>
-                ) : (
-                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
-                    no expression
-                  </span>
-                )}
-                {compareExpression && (
+                {!matchError &&
+                  !loading &&
+                  (expression ? (
+                    <span
+                      className={cn(
+                        "text-xs px-1.5 py-0.5 rounded-full",
+                        inCohort
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-gray-100 text-gray-500",
+                      )}
+                    >
+                      {inCohort ? "in cohort" : "not in cohort"}
+                    </span>
+                  ) : (
+                    <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                      no expression
+                    </span>
+                  ))}
+                {compareExpression && !compareMatchError && !compareLoading && (
                   <span
                     className={cn(
                       "text-xs px-1.5 py-0.5 rounded-full",
@@ -268,79 +243,80 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
         </div>
       )}
 
-      <div
-        ref={containerRef}
-        className="relative flex flex-wrap"
-        style={{ gap: `${DOT_GAP}px` }}
-      >
-        {sortedUsers.map((user) => {
-          const isMatched = expression ? matchedIds.has(user.id) : false;
-          const isSubMatched =
-            selectedSubExpression && subMatchedIds.has(user.id);
-          const isCompareMatched =
-            compareExpression && compareMatchedIds.has(user.id);
+      {!matchError && (
+        <div
+          ref={containerRef}
+          className={cn("relative flex flex-wrap", loading && "opacity-40")}
+          style={{ gap: `${DOT_GAP}px` }}
+        >
+          {sortedUsers.map((user) => {
+            const isMatched = expression ? matchedIds.has(user.id) : false;
+            const isSubMatched =
+              selectedSubExpression && subMatchedIds.has(user.id);
+            const isCompareMatched =
+              compareExpression && compareMatchedIds.has(user.id);
 
-          let bgColor: string | undefined;
-          let bgStyle: React.CSSProperties | undefined;
+            let bgColor: string | undefined;
+            let bgStyle: React.CSSProperties | undefined;
 
-          if (isSubMatched) {
-            bgColor = "bg-blue-500";
-          } else if (isMatched && isCompareMatched) {
-            // Striped emerald/amber for both
-            bgStyle = {
-              background:
-                "repeating-linear-gradient(45deg, #10b981, #10b981 2px, #8b5cf6 2px, #8b5cf6 4px)",
-            };
-          } else if (isMatched) {
-            bgColor = "bg-emerald-500";
-          } else if (isCompareMatched) {
-            bgColor = "bg-violet-500";
-          } else {
-            bgColor = "bg-gray-200";
-          }
+            if (isSubMatched) {
+              bgColor = "bg-blue-500";
+            } else if (isMatched && isCompareMatched) {
+              bgStyle = {
+                background:
+                  "repeating-linear-gradient(45deg, #10b981, #10b981 2px, #8b5cf6 2px, #8b5cf6 4px)",
+              };
+            } else if (isMatched) {
+              bgColor = "bg-emerald-500";
+            } else if (isCompareMatched) {
+              bgColor = "bg-violet-500";
+            } else {
+              bgColor = "bg-gray-200";
+            }
 
-          return (
+            return (
+              <div
+                key={user.id}
+                className={cn(
+                  "rounded-full cursor-default transition-colors",
+                  bgColor,
+                  searchQuery &&
+                    searchMatchIds.has(user.id) &&
+                    "ring-2 ring-gray-800 ring-offset-1",
+                )}
+                style={{
+                  width: `${DOT_SIZE}px`,
+                  height: `${DOT_SIZE}px`,
+                  ...bgStyle,
+                }}
+                onMouseEnter={(e) => {
+                  setHoveredUser(user);
+                  const rect = containerRef.current?.getBoundingClientRect();
+                  if (rect) {
+                    setTooltipPos({
+                      x: e.clientX - rect.left,
+                      y: e.clientY - rect.top,
+                    });
+                  }
+                }}
+                onMouseLeave={() => setHoveredUser(null)}
+              />
+            );
+          })}
+
+          {hoveredUser && (
             <div
-              key={user.id}
-              className={cn(
-                "rounded-full cursor-default transition-colors",
-                bgColor,
-                searchQuery &&
-                  searchMatchIds.has(user.id) &&
-                  "ring-2 ring-gray-800 ring-offset-1",
-              )}
+              className="absolute z-10 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded shadow-lg pointer-events-none whitespace-nowrap"
               style={{
-                width: `${DOT_SIZE}px`,
-                height: `${DOT_SIZE}px`,
-                ...bgStyle,
+                left: tooltipPos.x,
+                top: tooltipPos.y - 28,
               }}
-              onMouseEnter={(e) => {
-                setHoveredUser(user);
-                const rect = containerRef.current?.getBoundingClientRect();
-                if (rect) {
-                  setTooltipPos({
-                    x: e.clientX - rect.left,
-                    y: e.clientY - rect.top,
-                  });
-                }
-              }}
-              onMouseLeave={() => setHoveredUser(null)}
-            />
-          );
-        })}
-
-        {hoveredUser && (
-          <div
-            className="absolute z-10 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded shadow-lg pointer-events-none whitespace-nowrap"
-            style={{
-              left: tooltipPos.x,
-              top: tooltipPos.y - 28,
-            }}
-          >
-            {hoveredUser.name}
-          </div>
-        )}
-      </div>
+            >
+              {hoveredUser.name}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

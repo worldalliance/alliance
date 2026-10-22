@@ -1,4 +1,8 @@
 import {
+  hasMemberActionStarted,
+  memberActionPhase,
+} from "@alliance/common/actionEvent";
+import {
   ActionDto,
   CommunityUserInfoDto,
   GeneralUpdateDto,
@@ -8,6 +12,7 @@ import {
 } from "../client";
 
 type TaskPriority = {
+  id: number;
   priority: number;
   deadlineTimestamp: number;
   startTimestamp: number;
@@ -16,9 +21,9 @@ type TaskPriority = {
 
 type GeneralUpdatePriorityFields = Pick<
   GeneralUpdateDto,
-  "priority" | "endDate" | "startDate"
+  "id" | "priority" | "endDate" | "startDate"
 >;
-type ActionPriorityFields = Pick<ActionDto, "priority" | "events">;
+type ActionPriorityFields = Pick<ActionDto, "id" | "priority" | "events">;
 
 export function isGeneralUpdate(
   a: GeneralUpdatePriorityFields | ActionPriorityFields,
@@ -30,6 +35,7 @@ function generalUpdatePriority(
   generalUpdate: GeneralUpdatePriorityFields,
 ): TaskPriority {
   return {
+    id: generalUpdate.id,
     priority: generalUpdate.priority,
     deadlineTimestamp: generalUpdate.endDate
       ? new Date(generalUpdate.endDate).getTime()
@@ -42,15 +48,14 @@ function generalUpdatePriority(
 }
 
 function actionPriority(action: ActionPriorityFields): TaskPriority {
-  const startDateString = action.events.find(
-    (event) => event.newStatus === "member_action",
-  )?.date;
+  const { event, deadlineEvent } = memberActionPhase(action.events);
   return {
+    id: action.id,
     priority: action.priority,
-    deadlineTimestamp: getDeadlineTimestamp(action),
-    startTimestamp: startDateString
-      ? new Date(startDateString).getTime()
-      : -Infinity,
+    deadlineTimestamp: deadlineEvent
+      ? new Date(deadlineEvent.date).getTime()
+      : Infinity,
+    startTimestamp: event ? new Date(event.date).getTime() : -Infinity,
     typePriority: 0,
   };
 }
@@ -91,21 +96,7 @@ export function homePagePriorityComparator(
     return bPriority.typePriority - aPriority.typePriority;
   }
 
-  return 0;
-}
-
-export function isFollowUpFormActive(f: {
-  startDate?: string | null;
-  endDate?: string | null;
-}): boolean {
-  const now = new Date();
-  if (!f.startDate || new Date(f.startDate) > now) {
-    return false;
-  }
-  if (f.endDate && new Date(f.endDate) < now) {
-    return false;
-  }
-  return true;
+  return aPriority.id - bPriority.id;
 }
 
 export enum FilterMode {
@@ -117,28 +108,6 @@ export enum FilterMode {
 }
 
 export type ActionWithAwayStatus = ActionDto & { awayStatus: TaskAwayStatus };
-
-export function getDeadlineTimestamp(
-  action: Pick<ActionDto, "events">,
-): number {
-  let i = 0;
-  // Find first 'member_action' event
-  while (action.events[i] && action.events[i].newStatus !== "member_action") {
-    i++;
-  }
-
-  // Find next non-'member_action' event
-  while (action.events[i] && action.events[i].newStatus === "member_action") {
-    i++;
-  }
-
-  const nextEvent = action.events[i];
-  if (!nextEvent) {
-    return Infinity;
-  }
-
-  return new Date(nextEvent.date).getTime();
-}
 
 // Each predicate below reads the server-computed `action.viewer` status when
 // present and falls back to the legacy flat fields + events date math when
@@ -157,16 +126,69 @@ export function canCompleteAction(action: ActionDto): boolean {
     );
   }
   return (
-    action.events
-      .filter((event) => new Date(event.date) <= new Date())
-      .some((event) => event.newStatus === "member_action") &&
+    hasMemberActionStarted(action.events, new Date()) &&
     action.userRelation !== "completed" &&
     action.userRelation !== "declined" &&
     !!(action.canParticipate || action.publicOnly)
   );
 }
 
+/**
+ * Is the action optional for the viewer? The server may widen this past
+ * `action.optional`, which describes the action itself and stays the right
+ * read for admin views and cohort-wide stats.
+ */
+export function isActionOptional(action: ActionDto): boolean {
+  const { viewer } = action;
+  return viewer ? viewer.optional : action.optional;
+}
+
+export enum ViewerOnlyOptionalReason {
+  Unknown = "unknown",
+  ContractGap = "contract_gap",
+}
+
+export function getViewerOnlyOptionalReason(
+  action: ActionDto,
+): ViewerOnlyOptionalReason | null {
+  const { viewer } = action;
+  if (!viewer?.optional || action.optional) {
+    return null;
+  }
+  const reason = viewer.optionalReason;
+  switch (reason) {
+    case "contract_gap":
+      return ViewerOnlyOptionalReason.ContractGap;
+    case null:
+      break;
+    default:
+      reason satisfies never;
+  }
+  return ViewerOnlyOptionalReason.Unknown;
+}
+
+/**
+ * Does this task go after the viewer's other home items? Only a contract gap
+ * defers it: an action the admin marked optional keeps its admin-chosen rank.
+ */
+export function isDeferredForViewer(action: ActionDto): boolean {
+  return (
+    getViewerOnlyOptionalReason(action) === ViewerOnlyOptionalReason.ContractGap
+  );
+}
+
+export function isActionAssignedAndNotDismissed(action: ActionDto): boolean {
+  const { viewer } = action;
+  // Legacy `shouldParticipate` already folds dismissal into assignment.
+  return viewer
+    ? viewer.assigned && !viewer.dismissed
+    : !!action.shouldParticipate;
+}
+
 export function shouldCompleteAction(action: ActionDto): boolean {
+  if (action.viewer?.staffPreview) {
+    return !action.publicOnly;
+  }
   if (
     !canCompleteAction(action) ||
     action.publicOnly ||
@@ -177,25 +199,27 @@ export function shouldCompleteAction(action: ActionDto): boolean {
   ) {
     return false;
   }
-  const { viewer } = action;
-  // Legacy `shouldParticipate` folds dismissal into assignment; `viewer`
-  // models dismissal as a separate overlay.
-  return viewer
-    ? viewer.assigned && !viewer.dismissed
-    : !!action.shouldParticipate;
+  return isActionAssignedAndNotDismissed(action);
 }
 
 export function isCurrentlyCompletedAction(action: ActionDto): boolean {
-  if (action.status !== "member_action" || action.onboarding) {
+  if (
+    action.status !== "member_action" ||
+    action.onboarding ||
+    !isActionAssignedAndNotDismissed(action)
+  ) {
     return false;
   }
+  return hasViewerCompletedAction(action);
+}
+
+export function hasViewerCompletedAction(
+  action: Pick<ActionDto, "viewer" | "userRelation">,
+): boolean {
   const { viewer } = action;
-  if (viewer) {
-    return (
-      viewer.assigned && !viewer.dismissed && viewer.relation === "completed"
-    );
-  }
-  return !!action.shouldParticipate && action.userRelation === "completed";
+  return viewer
+    ? viewer.relation === "completed"
+    : action.userRelation === "completed";
 }
 
 export function showActionInSidebarList(action: ActionWithAwayStatus): boolean {
@@ -203,12 +227,7 @@ export function showActionInSidebarList(action: ActionWithAwayStatus): boolean {
     return false;
   }
   const { viewer } = action;
-  if (viewer) {
-    return viewer.away === "not_away" && !viewer.dismissed;
-  }
-  return (
-    action.awayStatus === "not_away" && action.userRelation !== "dismissed"
-  );
+  return viewer ? viewer.away === "not_away" : action.awayStatus === "not_away";
 }
 
 /**
@@ -225,11 +244,7 @@ export function deadlineHasPassed(action: ActionDto): boolean {
   if (viewer) {
     return viewer.memberActionStarted;
   }
-  const now = new Date();
-  return action.events.some(
-    (event) =>
-      new Date(event.date) <= now && event.newStatus === "member_action",
-  );
+  return hasMemberActionStarted(action.events, new Date());
 }
 
 /**

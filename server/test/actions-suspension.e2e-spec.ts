@@ -1,4 +1,6 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
+import { JwtService } from "@nestjs/jwt";
+import { millisecondsInDay } from "date-fns/constants";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import { ActionsService } from "../src/actions/actions.service";
@@ -8,19 +10,20 @@ import {
   ActionStatus,
 } from "../src/actions/entities/action-event.entity";
 import { ActionSuite } from "../src/actions/entities/action-suite.entity";
-import {
-  Action,
-  ActionTaskType,
-  VisibilityMode,
-} from "../src/actions/entities/action.entity";
+import { Action, VisibilityMode } from "../src/actions/entities/action.entity";
 import { ContractService } from "../src/contract/contract.service";
 import { ContractEventType } from "../src/user/entities/contract-event.entity";
+import {
+  UserAwayRange,
+  UserAwayRangeReason,
+} from "../src/user/entities/user-away-range.entity";
 import { User } from "../src/user/entities/user.entity";
 import { UserService } from "../src/user/user.service";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
+import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
 
 const addDays = (date: Date, days: number) =>
-  new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+  new Date(date.getTime() + days * millisecondsInDay);
 
 describe("findUsersToSuspend (e2e)", () => {
   let ctx: TestContext;
@@ -58,9 +61,8 @@ describe("findUsersToSuspend (e2e)", () => {
     const action = await actionRepo.save(
       actionRepo.create({
         name: actionName,
-        category: "Suspension Test",
+        category: [],
         body: "Body",
-        taskContents: "Tasks",
         shortDescription: "Short description",
         suite,
         visibilityMode: VisibilityMode.Public,
@@ -70,7 +72,6 @@ describe("findUsersToSuspend (e2e)", () => {
         },
         priority: options.priority,
         preventCompletion: false,
-        type: ActionTaskType.Activity,
       }),
     );
 
@@ -183,6 +184,7 @@ describe("findUsersToSuspend (e2e)", () => {
     const rangeStart = new Date("2023-04-01T00:00:00Z");
     const rangeEnd = new Date("2023-04-02T00:00:00Z");
 
+    await saveLiveCohortDecisions(ctx);
     const res = await request(ctx.app.getHttpServer())
       .get("/actions/scheduledPlans")
       .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
@@ -214,15 +216,13 @@ describe("findUsersToSuspend (e2e)", () => {
     const inProgressAction = await actionRepo.save(
       actionRepo.create({
         name: "Action In-Progress",
-        category: "Suspension Test",
+        category: [],
         body: "Body",
-        taskContents: "Tasks",
         shortDescription: "Short description",
         suite: inProgressSuite,
         visibilityMode: VisibilityMode.Public,
         priority: 0,
         preventCompletion: false,
-        type: ActionTaskType.Activity,
         cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
       }),
     );
@@ -251,6 +251,7 @@ describe("findUsersToSuspend (e2e)", () => {
       // Query at `now` — the in-progress suite deadline hasn't passed,
       // so only the first 3 (fully past) suites should count.
       // failingUser has failed all 3 past suites => still suspended.
+      await saveLiveCohortDecisions(ctx);
       const result = await actionsService.findUsersToSuspend(now);
       expect(result.map(({ user }) => user.id)).toEqual([failingUser.id]);
 
@@ -261,6 +262,7 @@ describe("findUsersToSuspend (e2e)", () => {
       // Suite Three: MemberAction at 2023-03-11, Completed at 2023-03-12
       // Check at 2023-03-11T12:00:00Z — between member start and deadline
       const midSuiteThree = new Date("2023-03-11T12:00:00Z");
+      await saveLiveCohortDecisions(ctx);
       const midResult = await actionsService.findUsersToSuspend(midSuiteThree);
       // Only 2 suites are fully past at this point, not enough for suspension
       expect(midResult).toHaveLength(0);
@@ -293,14 +295,12 @@ describe("findUsersToSuspend (e2e)", () => {
     const optionalAction = await actionRepo.save(
       actionRepo.create({
         name: "Optional Action",
-        category: "Suspension Test",
+        category: [],
         body: "Body",
-        taskContents: "Tasks",
         shortDescription: "Short description",
         suite: optionalSuite,
         visibilityMode: VisibilityMode.Public,
         preventCompletion: false,
-        type: ActionTaskType.Activity,
         optional: true,
         cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
       }),
@@ -331,6 +331,7 @@ describe("findUsersToSuspend (e2e)", () => {
 
     try {
       // 2 required failures + 1 optional failure should NOT trigger suspension
+      await saveLiveCohortDecisions(ctx);
       const result = await actionsService.findUsersToSuspend(now);
       expect(result.map(({ user }) => user.id)).not.toContain(failingUser.id);
     } finally {
@@ -355,6 +356,7 @@ describe("findUsersToSuspend (e2e)", () => {
   });
 
   it("suspends users who fail three suites and does not re-suspend once inactive or re-signed", async () => {
+    await saveLiveCohortDecisions(ctx);
     const initialRun = await actionsService.findUsersToSuspend(now);
 
     expect(initialRun.map(({ user }) => user.id)).toEqual([failingUser.id]);
@@ -369,20 +371,23 @@ describe("findUsersToSuspend (e2e)", () => {
       autoSuspendKey: "test-auto-key",
     });
 
+    await saveLiveCohortDecisions(ctx);
     const afterSuspension = await actionsService.findUsersToSuspend(now);
     expect(afterSuspension).toHaveLength(0);
 
     await contractService.signContract({
       userId: failingUser.id,
       signedName: "Test Name",
+      viaTaskForm: false,
       contractId: ctx.defaultContractId,
     });
 
+    await saveLiveCohortDecisions(ctx);
     const afterResigning = await actionsService.findUsersToSuspend(now);
     expect(afterResigning).toHaveLength(0);
   });
 
-  it("counts a user as failing a suite only when they miss every assigned action", async () => {
+  it("counts only the actions assigned to each member toward their suite", async () => {
     const multiActionFailingUser = await userService.create({
       email: "suspension-multi-action@example.com",
       password: "Password123!",
@@ -464,6 +469,7 @@ describe("findUsersToSuspend (e2e)", () => {
       }),
     );
 
+    await saveLiveCohortDecisions(ctx);
     const result = await actionsService.findUsersToSuspend(now);
 
     expect(result.map(({ user }) => user.id)).toContain(
@@ -472,5 +478,217 @@ describe("findUsersToSuspend (e2e)", () => {
     expect(result.map(({ user }) => user.id)).not.toContain(
       multiActionCompletingUser.id,
     );
+  });
+
+  const createSignedUser = (email: string, signedAt: Date) =>
+    userService.create({
+      email,
+      password: "Password123!",
+      name: email,
+      contractEvents: [
+        {
+          type: ContractEventType.SIGNED,
+          date: signedAt,
+          automatic: false,
+          contractId: ctx.defaultContractId,
+        },
+      ],
+    });
+
+  it("counts the suites a member was decided into after the live cohort drops them", async () => {
+    const member = await createSignedUser(
+      "suspension-decided@example.com",
+      new Date("2023-01-01T00:00:00Z"),
+    );
+    const actions = await Promise.all(
+      ["2023-03-13", "2023-03-16", "2023-03-19"].map((date, i) =>
+        createCompletedSuiteAction(
+          `Decided Suite ${i}`,
+          `Decided Action ${i}`,
+          new Date(`${date}T00:00:00Z`),
+          { cohortExpression: { type: "Manual", userIds: [member.id] } },
+        ),
+      ),
+    );
+    try {
+      await saveLiveCohortDecisions(ctx);
+      await Promise.all(
+        actions.map((action) =>
+          actionRepo.update(action.id, {
+            cohortExpression: { type: "Manual", userIds: [] },
+          }),
+        ),
+      );
+
+      const result = await actionsService.findUsersToSuspend(now);
+
+      expect(result.map(({ user }) => user.id)).toContain(member.id);
+    } finally {
+      await actionRepo.delete(actions.map((action) => action.id));
+    }
+  });
+
+  describe("missed streaks", () => {
+    let member: User;
+    let suiteActions: Action[][];
+
+    const createMemberSuites = async (
+      prefix: string,
+      dates: string[],
+      actionsPerSuite: number,
+    ) => {
+      member = await createSignedUser(
+        `${prefix}@example.com`,
+        new Date("2023-01-01T00:00:00Z"),
+      );
+      suiteActions = [];
+      for (const [i, date] of dates.entries()) {
+        const suite = await suiteRepo.save(
+          suiteRepo.create({ name: `${prefix} suite ${i}` }),
+        );
+        const actions: Action[] = [];
+        for (let j = 0; j < actionsPerSuite; j++) {
+          actions.push(
+            await createCompletedSuiteAction(
+              suite.name,
+              `${prefix} action ${i}.${j}`,
+              new Date(`${date}T00:00:00Z`),
+              {
+                cohortExpression: { type: "Manual", userIds: [member.id] },
+                suite,
+              },
+            ),
+          );
+        }
+        suiteActions.push(actions);
+      }
+      await saveLiveCohortDecisions(ctx);
+    };
+
+    const record = (action: Action, type: ActionActivityType) =>
+      activityRepo.save(
+        activityRepo.create({ actionId: action.id, userId: member.id, type }),
+      );
+
+    const isSuspended = async () =>
+      (await actionsService.findUsersToSuspend(now)).some(
+        ({ user }) => user.id === member.id,
+      );
+
+    afterEach(async () => {
+      await actionRepo.delete(suiteActions.flat().map((action) => action.id));
+    });
+
+    it("misses a suite when any assigned required action is missed", async () => {
+      await createMemberSuites(
+        "streak-partial",
+        ["2023-03-13", "2023-03-16", "2023-03-19"],
+        2,
+      );
+      for (const [first] of suiteActions) {
+        await record(first, ActionActivityType.USER_COMPLETED);
+      }
+      expect(await isSuspended()).toBe(true);
+
+      await record(suiteActions[2][1], ActionActivityType.USER_WONT_COMPLETE);
+      expect(await isSuspended()).toBe(false);
+    });
+
+    it("does not suspend for an older run that a satisfied suite reset", async () => {
+      await createMemberSuites(
+        "streak-reset",
+        ["2023-03-10", "2023-03-13", "2023-03-16", "2023-03-19"],
+        1,
+      );
+      await record(suiteActions[3][0], ActionActivityType.USER_COMPLETED);
+      expect(await isSuspended()).toBe(false);
+    });
+
+    it("counts dismissed actions as missed", async () => {
+      await createMemberSuites(
+        "streak-dismissed",
+        ["2023-03-13", "2023-03-16", "2023-03-19"],
+        1,
+      );
+      for (const [action] of suiteActions) {
+        await record(action, ActionActivityType.USER_DISMISSED);
+      }
+      expect(await isSuspended()).toBe(true);
+    });
+
+    it("recalculates the run after a late completion without erasing later misses", async () => {
+      await createMemberSuites(
+        "streak-late",
+        ["2023-03-10", "2023-03-13", "2023-03-16", "2023-03-19"],
+        1,
+      );
+      await record(suiteActions[0][0], ActionActivityType.USER_COMPLETED);
+      expect(await isSuspended()).toBe(true);
+
+      await record(suiteActions[1][0], ActionActivityType.USER_COMPLETED);
+      expect(await isSuspended()).toBe(false);
+    });
+
+    it("keeps a suite an ended away range excused unless an admin deletes the range", async () => {
+      await createMemberSuites(
+        "streak-away",
+        ["2023-03-13", "2023-03-16", "2023-03-19"],
+        1,
+      );
+      const range = await ctx.dataSource.getRepository(UserAwayRange).save({
+        userId: member.id,
+        startDate: new Date("2023-03-17T00:00:00Z"),
+        endDate: new Date("2023-03-18T00:00:00Z"),
+        createdAt: new Date("2023-03-01T00:00:00Z"),
+        reason: UserAwayRangeReason.VACATION,
+      });
+      expect(await isSuspended()).toBe(false);
+
+      const memberToken = signAccessToken(ctx.app.get(JwtService), member);
+      const memberDelete = await request(ctx.app.getHttpServer())
+        .delete(`/user/awayranges/${range.id}`)
+        .set("Authorization", `Bearer ${memberToken}`);
+      expect(memberDelete.status).toBe(400);
+      expect(await isSuspended()).toBe(false);
+
+      const adminDelete = await request(ctx.app.getHttpServer())
+        .delete(`/user/admin/${member.id}/awayranges/${range.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
+      expect(adminDelete.status).toBe(200);
+      expect(await isSuspended()).toBe(true);
+    });
+  });
+
+  it("previews suspensions from a suite that has not launched yet", async () => {
+    const today = new Date();
+    const member = await createSignedUser(
+      "suspension-upcoming@example.com",
+      addDays(today, -60),
+    );
+    const actions = await Promise.all(
+      [-30, -15, 1].map((offset, i) =>
+        createCompletedSuiteAction(
+          `Upcoming Suite ${i}`,
+          `Upcoming Action ${i}`,
+          addDays(today, offset - 1),
+          { cohortExpression: { type: "Manual", userIds: [member.id] } },
+        ),
+      ),
+    );
+    try {
+      await saveLiveCohortDecisions(ctx);
+
+      const plans = await actionsService.getSuspendPlans(
+        today,
+        addDays(today, 7),
+        6,
+      );
+
+      expect(
+        plans.flatMap((plan) => plan.users.map((user) => user.id)),
+      ).toContain(member.id);
+    } finally {
+      await actionRepo.delete(actions.map((action) => action.id));
+    }
   });
 });

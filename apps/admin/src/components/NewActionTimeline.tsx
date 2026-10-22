@@ -1,9 +1,11 @@
+import { milliseconds } from "date-fns";
+import { millisecondsInDay } from "date-fns/constants";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-const DATE_WIDTH = 1000 * 60 * 60 * 24 * 14;
+const DATE_WIDTH = milliseconds({ days: 14 });
 
 const NewActionTimeline = () => {
-  const [viewWidth, setViewWidth] = useState(1000 * 60 * 60 * 24 * 7);
+  const [viewWidth, setViewWidth] = useState(milliseconds({ days: 7 }));
   const [viewCenter, setViewCenter] = useState(new Date().getTime());
 
   const startDate = useMemo(
@@ -45,10 +47,10 @@ const NewActionTimeline = () => {
 
   const dates = useMemo((): Date[] => {
     const nRange =
-      (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
+      (endDate.getTime() - startDate.getTime()) / millisecondsInDay;
     const dates: Date[] = [];
     for (let i = 0; i <= nRange; i++) {
-      dates.push(new Date(startDate.getTime() + i * 1000 * 60 * 60 * 24));
+      dates.push(new Date(startDate.getTime() + i * millisecondsInDay));
     }
     return dates;
   }, [startDate, endDate]);
@@ -61,7 +63,7 @@ const NewActionTimeline = () => {
           className="absolute top-4 bottom-0 bg-zinc-100 text-sm text-zinc-600 font-mono pt-1"
           style={{
             left: `${timeToPixel(
-              startDate.getTime() + index * 1000 * 60 * 60 * 24,
+              startDate.getTime() + index * millisecondsInDay,
             )}px`,
             fontWeight: 450,
           }}

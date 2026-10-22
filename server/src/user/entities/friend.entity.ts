@@ -1,17 +1,19 @@
 import { ApiProperty } from "@nestjs/swagger";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
 import {
+  Check,
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToOne,
   PrimaryGeneratedColumn,
-  Unique,
 } from "typeorm";
 import { Notification } from "../../notifs/entities/notification.entity";
 import { User } from "./user.entity";
@@ -23,12 +25,28 @@ export enum FriendStatus {
 }
 
 @Entity()
-@Unique(["requester", "addressee"]) // a user can only request once per counterpart
+@Check(`"requesterId" <> "addresseeId"`)
+@Index(["lowUserId", "highUserId"], {
+  unique: true,
+  where: '"deletedAt" IS NULL',
+})
 export class Friend {
   // Fields
 
   @PrimaryGeneratedColumn()
   id: number;
+
+  @Column({
+    generatedType: "STORED",
+    asExpression: `LEAST("requesterId", "addresseeId")`,
+  })
+  lowUserId: number;
+
+  @Column({
+    generatedType: "STORED",
+    asExpression: `GREATEST("requesterId", "addresseeId")`,
+  })
+  highUserId: number;
 
   @Column({ type: "enum", enum: FriendStatus, default: FriendStatus.None })
   @ApiProperty({ enum: FriendStatus, enumName: "FriendStatus" })
@@ -63,8 +81,7 @@ export class Friend {
     onDelete: "SET NULL",
   })
   @JoinColumn()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  sentNotif: Relation<Notification> | null;
+  sentNotif?: Relation<Notification> | null;
 
   @OneToOne(() => Notification, {
     cascade: true,
@@ -72,6 +89,8 @@ export class Friend {
     onDelete: "SET NULL",
   })
   @JoinColumn()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  acceptedNotif: Relation<Notification> | null;
+  acceptedNotif?: Relation<Notification> | null;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

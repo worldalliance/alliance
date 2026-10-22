@@ -2,8 +2,6 @@ import {
   CHAT_TRANSCRIPT_SIZE_UNIT_PX,
   groupChatTranscriptMessages,
   type AccordionBlock,
-  type BigLinkBlock,
-  type BigLinkIcon,
   type DisplayBlock,
   type ImagesItem,
 } from "@alliance/common/forms/display-blocks";
@@ -15,68 +13,24 @@ import {
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import { Accordion } from "@base-ui/react/accordion";
-import {
-  Check,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Copy,
-  File,
-  FileCheck,
-  FileText,
-  MessagesSquare,
-  Signature,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import React, { useRef, useState } from "react";
-import { Link } from "react-router";
 import { resolveImageSrc } from "../lib/imageSrc";
 import { AvatarProfile } from "../ui/Avatar";
 import Card from "../ui/Card";
 import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
 import ImageLightbox from "../ui/ImageLightbox";
-import { useSiteHref } from "../ui/SiteAppProvider";
+import {
+  ACCORDION_CONTENTS,
+  ACCORDION_SECTIONS,
+  ACCORDION_TITLE,
+  AccordionChevron,
+} from "./accordionStyles";
+import BigLinkDisplay from "./BigLinkDisplay";
+import CopyTextDisplay from "./CopyTextDisplay";
+import { headerClassName, headerLevel } from "./headerStyles";
 import RenderPreviousAnswer from "./RenderPreviousAnswer";
 import VideoPlayer from "./VideoPlayer";
-
-const bigLinkIcons: Record<BigLinkIcon, React.FC<{ size?: number }>> = {
-  "messages-square": MessagesSquare,
-  file: File,
-  "file-text": FileText,
-  "file-check": FileCheck,
-  signature: Signature,
-};
-
-function CopyTextDisplay({ text, title }: { text: string; title?: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div>
-      {title && <span className="text-zinc-500 mb-1 block">{title}</span>}
-      <div
-        className="relative rounded-md border border-gray-200 bg-zinc-50 px-3 py-2 cursor-pointer hover:bg-zinc-100 transition-colors"
-        onClick={handleCopy}
-      >
-        <span className="text-black whitespace-pre-wrap">{text}</span>
-        <div className="absolute top-1.5 right-1.5 flex items-center gap-1 bg-zinc-50 border border-gray-200 px-1.5 py-0.5 rounded">
-          {copied ? (
-            <>
-              <p className="text-sm text-green">Copied!</p>
-              <Check size={14} className="text-green" />
-            </>
-          ) : (
-            <Copy size={14} className="text-gray-400" />
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function ImageFigure({
   resolvedSrc,
@@ -226,53 +180,19 @@ function ImagesDisplay({ images }: { images: ImagesItem[] }) {
   );
 }
 
-function BigLinkDisplay({ block }: { block: BigLinkBlock }) {
-  const siteHref = useSiteHref();
-  const IconComponent = bigLinkIcons[block.icon || "messages-square"];
-  const href = siteHref(block.url);
-
-  return (
-    <Link
-      to={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block group text-black "
-    >
-      <Card
-        className="flex flex-row items-center gap-3 hover:bg-zinc-100"
-        style={CardStyle.Grey}
-      >
-        <IconComponent size={20} />
-        <div>
-          <p className="text-base" style={{ fontWeight: 450 }}>
-            {block.text}
-          </p>
-          <p className="text-sm text-green">{href}</p>
-        </div>
-      </Card>
-    </Link>
-  );
-}
-
 function AccordionDisplay({ block }: { block: AccordionBlock }) {
   return (
-    <Accordion.Root
-      multiple={!block.singleOpen}
-      className="border-y border-gray-200 divide-y divide-gray-200"
-    >
+    <Accordion.Root multiple={!block.singleOpen} className={ACCORDION_SECTIONS}>
       {block.sections.map((section, index) => (
         <Accordion.Item key={section.id ?? index}>
           <Accordion.Header>
             <Accordion.Trigger className="group flex w-full items-center justify-between gap-3 py-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
-              <span className="font-medium text-zinc-900">{section.title}</span>
-              <ChevronDown
-                size={18}
-                className="shrink-0 text-zinc-500 transition-transform group-data-[panel-open]:rotate-180"
-              />
+              <span className={ACCORDION_TITLE}>{section.title}</span>
+              <AccordionChevron className="group-data-[panel-open]:rotate-180" />
             </Accordion.Trigger>
           </Accordion.Header>
           <Accordion.Panel className="overflow-hidden">
-            <div className="flex flex-col gap-3 pb-4">
+            <div className={ACCORDION_CONTENTS}>
               {section.blocks.map((nested, nestedIndex) => (
                 <RenderDisplayBlock
                   key={nested.id ?? nestedIndex}
@@ -296,20 +216,9 @@ export default function RenderDisplayBlock({
 }: Props) {
   switch (block.kind) {
     case "header":
-      const headerLevel = block.level || 2;
-      const headerClass = {
-        1: "text-3xl",
-        2: "text-2xl",
-        3: "text-xl",
-        4: "text-lg",
-        5: "text-base",
-        6: "",
-      }[headerLevel];
       return React.createElement(
-        `h${headerLevel}`,
-        {
-          className: cn("!font-semibold text-zinc-900", headerClass),
-        },
+        `h${headerLevel(block)}`,
+        { className: headerClassName(block) },
         block.text,
       );
 
@@ -393,7 +302,7 @@ export default function RenderDisplayBlock({
       return <BigLinkDisplay block={block} />;
 
     case "copytext":
-      return <CopyTextDisplay text={block.text} title={block.title} />;
+      return <CopyTextDisplay block={block} />;
 
     case "accordion":
       if (block.sections.length === 0) return null;
@@ -482,19 +391,6 @@ export default function RenderDisplayBlock({
     case "previousAnswer": {
       const answers = previousAnswerData?.[block.sourceFormId];
       const schema = previousAnswerSchemas?.[block.sourceFormId];
-      if (!answers || !schema) {
-        const placeholder = block.emptyText || "No previous answer available";
-        return (
-          <div>
-            {block.title && (
-              <h3 className="text-base font-medium text-zinc-900 mb-2">
-                {block.title}
-              </h3>
-            )}
-            <p className="text-sm text-gray-400 italic">{placeholder}</p>
-          </div>
-        );
-      }
       return (
         <RenderPreviousAnswer block={block} schema={schema} answers={answers} />
       );

@@ -5,6 +5,7 @@
 //   node scripts/fingerprint.mjs capture <build>... # record pending hashes
 //   node scripts/fingerprint.mjs promote [platform] # pending -> live baseline
 //   node scripts/fingerprint.mjs update <build>     # set live baseline
+//   node scripts/fingerprint.mjs artifact <build>   # print a build's hash
 //
 // Exit codes: 0 OK, 3 drift, other nonzero tool failure. Drift uses a
 // dedicated code so CI never reports an infra/tool failure as native drift.
@@ -16,13 +17,14 @@
 // capture records pending hashes so artifacts can be deleted before review;
 // promote moves pending hashes to live baselines.
 //
-// capture/update read baked artifact hashes, not the working tree:
+// capture/update/artifact read baked artifact hashes, not the working tree:
 //   iOS: <.ipa|.app|.xcarchive> -> EXUpdates.bundle/fingerprint
 //   Android: <.aab|.apk> -> assets/fingerprint
 //
 // Store builds must bump app.config.js `version`; fingerprints are unordered,
 // so apps use semver to distinguish "store is newer" from "server lags me".
-// check/print need APP_VARIANT=production; package scripts set it.
+// print hashes the APP_VARIANT app; check compares against production
+// baselines, so it needs APP_VARIANT=production, which package scripts set.
 
 import { createFingerprintAsync } from "@expo/fingerprint";
 import { execFileSync } from "node:child_process";
@@ -203,7 +205,7 @@ function die(message) {
   process.exit(2);
 }
 
-// --- artifact extraction (capture / update) ---
+// --- artifact extraction (capture / update / artifact) ---
 
 function readZipEntry(zipPath, endsWith, label) {
   const entries = execFileSync("unzip", ["-Z1", zipPath], { encoding: "utf8" })
@@ -236,7 +238,7 @@ function readDirEntry(dir, suffix, label) {
 function extractFromArtifact(artifact) {
   if (!artifact) {
     die(
-      "usage: node scripts/fingerprint.mjs <capture|update> <path-to-.ipa|.app|.xcarchive|.aab|.apk>",
+      "usage: node scripts/fingerprint.mjs <capture|update|artifact> <path-to-.ipa|.app|.xcarchive|.aab|.apk>",
     );
   }
   if (!fs.existsSync(artifact)) die(`no such artifact: ${artifact}`);
@@ -269,12 +271,17 @@ function extractFromArtifact(artifact) {
   }
 }
 
-/** Extracts artifact fingerprint and validates app version bump. */
-function buildEntryFromArtifact(artifact) {
+function fingerprintFromArtifact(artifact) {
   const { platform, hash } = extractFromArtifact(artifact);
   if (!FINGERPRINT_RE.test(hash)) {
     die(`extracted value is not a fingerprint: "${hash}"`);
   }
+  return { platform, hash };
+}
+
+/** Extracts artifact fingerprint and validates app version bump. */
+function buildEntryFromArtifact(artifact) {
+  const { platform, hash } = fingerprintFromArtifact(artifact);
   const version = readAppVersion();
   const baselines = readBaselines();
   ensureVersionBumpedForNewFingerprint(
@@ -431,6 +438,10 @@ async function commandCheck() {
   process.exitCode = EXIT_DRIFT;
 }
 
+function commandArtifact(artifact) {
+  console.log(fingerprintFromArtifact(artifact).hash);
+}
+
 async function commandPrint() {
   for (const platform of PLATFORMS) {
     console.log(`${platform}: ${await currentHash(platform)}`);
@@ -447,13 +458,15 @@ async function run() {
       return commandPromote(process.argv[3]);
     case "update":
       return commandUpdate(process.argv[3]);
+    case "artifact":
+      return commandArtifact(process.argv[3]);
     case "check":
       return commandCheck();
     case "print":
       return commandPrint();
     default:
       die(
-        `unknown command "${command}" — expected one of: print, check, capture, promote, update`,
+        `unknown command "${command}" — expected one of: print, check, capture, promote, update, artifact`,
       );
   }
 }

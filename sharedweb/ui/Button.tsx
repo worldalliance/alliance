@@ -1,14 +1,15 @@
 import { cn } from "@alliance/shared/styles/util";
 import React from "react";
 
-type ButtonProps = React.PropsWithChildren & {
-  className?: string;
-  color?: ButtonColor;
-  hoverText?: string;
-  title?: string;
-  disabled?: boolean;
-  size?: "small" | "medium" | "large" | "mediumDynamic";
-} & (
+type ButtonProps = React.PropsWithChildren &
+  React.AriaAttributes & {
+    className?: string;
+    color?: ButtonColor;
+    hoverText?: string;
+    title?: string;
+    disabled?: boolean;
+    size?: "small" | "medium" | "large" | "mediumDynamic";
+  } & (
     | ({
         asDiv?: false;
         ref?: React.RefObject<HTMLButtonElement | null>;
@@ -53,7 +54,7 @@ export enum ButtonColor {
   Outline = "border border-gray-2 text-black",
   White = "border border-gray-2 text-black bg-white hover:bg-zinc-50",
   WhiteBorderless = "text-black bg-white hover:bg-zinc-50",
-  Black = "bg-zinc-800 hover:bg-zinc-900 text-white border border-zinc-800 active:bg-zinc-700",
+  Black = "bg-[#081e40] hover:bg-[#0d2c5c] text-white border border-[#081e40] active:bg-[#0d2c5c]",
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -72,6 +73,7 @@ const Button: React.FC<ButtonProps> = ({
   onPointerDown,
   size = "medium",
   asDiv,
+  ...rest
 }) => {
   const color = colorProp ?? ButtonColor.White;
 
@@ -100,6 +102,7 @@ const Button: React.FC<ButtonProps> = ({
   if (asDiv) {
     return (
       <div
+        {...rest}
         ref={ref}
         title={title}
         className={cn(baseClassName, !disabled && "cursor-pointer")}
@@ -118,6 +121,7 @@ const Button: React.FC<ButtonProps> = ({
 
   return (
     <button
+      {...rest}
       ref={ref}
       type={type}
       title={title}

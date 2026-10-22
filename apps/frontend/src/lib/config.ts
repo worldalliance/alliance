@@ -1,6 +1,7 @@
 import { Features, isEnabled } from "@alliance/shared/lib/features";
 import {
   getApiUrl as getApiUrlShared,
+  getBaseUrl,
   getWebSocketUrl as getWebSocketUrlShared,
 } from "@alliance/sharedweb/lib/config";
 
@@ -34,6 +35,9 @@ export const getPosthogHost = (): string | undefined => {
     ? `${origin}${new URL(configured).pathname}`
     : configured;
 };
+
+/** The site on the domain the member loaded, for a URL they copy or share. */
+export const getSiteUrl = (): string => browserOrigin() ?? getBaseUrl();
 
 export const getSingleActionSSEUrl = (actionId: number) => {
   return `${getApiUrl()}/actions/live/${actionId}`;

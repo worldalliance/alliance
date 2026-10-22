@@ -11,9 +11,9 @@ import {
 } from "@alliance/shared/lib/actionTaskPanel";
 import { canCompleteAction } from "@alliance/shared/lib/actionUtils";
 import { captureEvent } from "@alliance/shared/lib/analytics";
+import { noop } from "@alliance/shared/lib/constants";
 import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
 import { useCallback, useMemo, type RefObject } from "react";
-import ActionTaskPanelActivity from "./ActionTaskPanelActivity";
 import ActionTaskPanelForm from "./ActionTaskPanelForm";
 
 export type ActionTaskPanelProps = ActionTaskPanelPropsShared & {
@@ -22,7 +22,6 @@ export type ActionTaskPanelProps = ActionTaskPanelPropsShared & {
   card?: boolean;
   redirectOnComplete?: boolean;
   onFormSubmitted?: (formResponse: FormResponseDto) => void;
-  createAccountHref?: string;
   forceRenderTask?: boolean;
   scrollContainerRef?: RefObject<HTMLElement | null>;
   staticTaskFormSchema?: FormSchema;
@@ -33,13 +32,13 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
   action,
   onCompleteAction,
   onOptOutAction,
+  onDeadlinePassed,
   card = false,
   disabled = false,
   formResponse,
   guestMode = false,
   redirectOnComplete,
   onFormSubmitted,
-  createAccountHref,
   forceRenderTask = false,
   scrollContainerRef,
   staticTaskFormSchema,
@@ -56,17 +55,15 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
   const handleFormStarted = useCallback(() => {
     captureEvent(AnalyticsEvent.FormStarted, {
       actionId: action.id,
-      actionType: action.type,
       actionName: action.name,
     });
   }, [action]);
 
-  const { handleCompleteWithTracking, actionError, handleAbandonAction } =
+  const { handleComplete, actionError, handleAbandonAction } =
     useTaskFormHandlers({
       action,
       onCompleteAction: handleCompleteAction,
       onOptOutAction,
-      guestMode,
     });
 
   // Contract signing actions cannot be withdrawn from.
@@ -98,6 +95,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
       <ActionTaskPanelForm
         taskFormId={action.taskFormId}
         onCompleteAction={null}
+        onDeadlinePassed={noop}
         onFormStarted={handleFormStarted}
         onAbandonAction={onAbandonAction}
         card={card}
@@ -107,6 +105,21 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
         onSubmitted={onFormSubmitted}
       />
     );
+  }
+
+  if (action.viewer?.staffPreview) {
+    return action.taskFormId ? (
+      <ActionTaskPanelForm
+        taskFormId={action.taskFormId}
+        onCompleteAction={null}
+        onDeadlinePassed={noop}
+        onFormStarted={noop}
+        card={card}
+        actionId={action.id}
+        scrollContainerRef={scrollContainerRef}
+        preview
+      />
+    ) : null;
   }
 
   const canSubmit = canCompleteAction(action) || forceRenderTask;
@@ -127,14 +140,15 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
       />
     );
   }
-  if (!completionElement && action.type === "Activity" && action.taskFormId) {
+  if (!completionElement && action.taskFormId) {
     completionElement = (
       <ActionTaskPanelForm
         publicAction={action.publicOnly || guestMode}
         taskFormId={action.taskFormId}
-        onCompleteAction={canSubmit ? handleCompleteWithTracking : null}
+        onCompleteAction={canSubmit ? handleComplete : null}
         onFormStarted={handleFormStarted}
         onAbandonAction={onAbandonAction}
+        onDeadlinePassed={onDeadlinePassed}
         card={card}
         actionId={action.id}
         redirectOnComplete={redirectOnComplete}
@@ -144,51 +158,15 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
       />
     );
   }
-  if (!completionElement && action.type === "Activity" && !action.taskFormId) {
+  if (!completionElement) {
     completionElement = <p>Couldn&apos;t load action contents</p>;
   }
-  if (
-    !completionElement &&
-    action.type === "Ongoing" &&
-    (canSubmit || forceRenderTask)
-  ) {
-    completionElement = (
-      <ActionTaskPanelActivity
-        action={action}
-        onCompleteAction={handleCompleteWithTracking}
-        disabled={disabled || !canSubmit}
-        createAccountHref={guestMode ? createAccountHref : undefined}
-      />
-    );
-  }
-  if (completionElement) {
-    return (
-      <>
-        {completionElement}
-        {errorMessageNode}
-      </>
-    );
-  }
-
-  if (action.status === "draft") {
-    return (
-      <>
-        {action.taskFormId && (
-          <ActionTaskPanelForm
-            taskFormId={action.taskFormId}
-            onCompleteAction={null}
-            onFormStarted={handleFormStarted}
-            onAbandonAction={onAbandonAction}
-            card={card}
-            actionId={action.id}
-          />
-        )}
-        {errorMessageNode}
-      </>
-    );
-  }
-
-  return errorMessageNode;
+  return (
+    <>
+      {completionElement}
+      {errorMessageNode}
+    </>
+  );
 };
 
 export default ActionTaskPanel;

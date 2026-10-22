@@ -1,14 +1,38 @@
-import { withCount } from "@alliance/common/plural";
+import { nameParts } from "@alliance/common/nameParts";
+import { R } from "@alliance/common/result";
 import { ISendMailOptions, MailerService } from "@nestjs-modules/mailer";
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ActionEvent } from "src/actions/entities/action-event.entity";
 import { Action } from "src/actions/entities/action.entity";
+import {
+  MessageChannel,
+  MessageSource,
+} from "src/link-tracking/message-tracking.entity";
+import {
+  MessageTrackingService,
+  type TrackedMessage,
+} from "src/link-tracking/message-tracking.service";
+import { tagHtmlLinks } from "src/link-tracking/tag-links";
+import {
+  ActionListStyle,
+  formatActionList,
+} from "src/notifs/notification-content";
 import { getTimeLeftString } from "src/notifs/textnotifcontents";
-import { groupMembersListUrl, tasksUrl, withCid } from "src/search/approutes";
+import {
+  groupMembersListUrl,
+  membershipUrl,
+  tasksUrl,
+} from "src/search/approutes";
 import { User } from "src/user/entities/user.entity";
+import { notifDeliveryEnabled } from "src/utils/notif-delivery";
 import type { Repository } from "src/utils/Repository";
+import { ContractReminderCopy } from "./contract-reminder-copy";
 import { EmailStatus, EmailType, Mail } from "./mail.entity";
+
+export function mailSendingEnabled(): boolean {
+  return process.env.NODE_ENV !== "test" && notifDeliveryEnabled();
+}
 
 function interpretEscapes(s: string): string {
   return s
@@ -21,29 +45,21 @@ function interpretEscapes(s: string): string {
 export function processKeywordReplacements(
   text: string,
   context: {
-    user: User;
-    action: Action;
-    deadlineEvent?: ActionEvent;
-    cid: string;
+    user: Pick<User, "id" | "name">;
+    action: Pick<Action, "name">;
+    deadlineEvent?: Pick<ActionEvent, "date">;
     uncompletedTasksCount: number;
     uncompletedTasksTime: string;
     uncompletedTasksNames: string[];
     dateNow?: Date;
     uncompletedMembersInGroupCount?: number;
     isFirstAssignedSuite?: boolean;
-    consecutiveMissedSuiteCount?: number;
   },
 ): string {
-  const names = context.user.name.split(" ");
   const dateNow = context.dateNow ?? new Date();
-  let firstname = "";
-  let lastname = "";
-  if (names.length < 2) {
-    console.error("User name has less than 2 parts: " + context.user.name);
-    firstname = context.user.name;
-  } else {
-    firstname = names[0];
-    lastname = names[names.length - 1];
+  const { firstname, lastname } = nameParts(context.user.name);
+  if (!lastname) {
+    console.error(`User ${context.user.id} has no last name`);
   }
   let str = text
     .replaceAll("#{fullname}", context.user.name)
@@ -53,10 +69,13 @@ export function processKeywordReplacements(
         ? "0"
         : context.uncompletedMembersInGroupCount.toString(),
     )
-    .replaceAll("#{grouplink}", withCid(groupMembersListUrl(true), context.cid))
+    .replaceAll("#{grouplink}", groupMembersListUrl(true))
     .replaceAll("#{lastname}", lastname)
     .replaceAll("#{action}", context.action.name)
-    .replaceAll("#{tasknames}", context.uncompletedTasksNames.join(", "))
+    .replaceAll(
+      "#{tasknames}",
+      formatActionList(context.uncompletedTasksNames, ActionListStyle.Comma),
+    )
     .replaceAll("#{n}", context.uncompletedTasksCount.toString())
     .replaceAll("#{tasktime}", context.uncompletedTasksTime)
     .replaceAll(
@@ -65,12 +84,8 @@ export function processKeywordReplacements(
         ? 'The Alliance counts on every member. We plan precise actions based on the number of people we expect to participate.\n\nTo learn more about our model, you can watch <a href="https://www.youtube.com/watch?v=fR7Upo0DlYs&t=125s">this video</a>.\n\nPlease know that if you miss several actions in a row, we will suspend your contract and no longer assign you tasks.'
         : "Remember that we plan each action around the number of members we expect to participate.",
     )
-    .replaceAll(
-      "#{secondmisswarning}",
-      context.consecutiveMissedSuiteCount === 2
-        ? "\n\nIf you miss all of your assigned non-optional actions again next week, your contract will be suspended automatically."
-        : "",
-    )
+    // Only marks a missed-suite group; a second miss sends its own copy.
+    .replaceAll("#{secondmisswarning}", "")
     .replaceAll("#{s}", context.uncompletedTasksCount === 1 ? "" : "s")
     .replaceAll(
       "#{days}",
@@ -90,14 +105,10 @@ export function processKeywordReplacements(
         ? getTimeLeftString(context.deadlineEvent, dateNow)
         : "[err]",
     )
-    .replaceAll("#{link}", withCid(tasksUrl(true), context.cid))
+    .replaceAll("#{link}", tasksUrl(true))
     .replaceAll(
       "#{formattedtasklist}",
-      context.uncompletedTasksCount === 1
-        ? context.uncompletedTasksNames.join(", ")
-        : context.uncompletedTasksNames
-            .map((name, index) => `${index + 1}. ${name}`)
-            .join("\n"),
+      formatActionList(context.uncompletedTasksNames, ActionListStyle.Numbered),
     );
 
   while (str.includes("|") && str.includes("#{") && str.includes("}")) {
@@ -118,12 +129,53 @@ export function processKeywordReplacements(
   return str;
 }
 
+export type WaitlistEmailType =
+  | EmailType.WaitlistConfirmation
+  | EmailType.WaitlistLink;
+
+/** `bodyHtml` must be safe to embed, as `renderWaitlistEmail` produces. */
+export type WaitlistStaffEmail = {
+  subject: string;
+  bodyHtml: string;
+  unsubscribeUrl: string;
+};
+
+const WAITLIST_SUBJECTS: Record<WaitlistEmailType, string> = {
+  [EmailType.WaitlistConfirmation]: "You’re on the Alliance waitlist",
+  [EmailType.WaitlistLink]: "Your Alliance waitlist link",
+};
+
+const CONTRACT_REMINDER_CONTENT: Record<
+  ContractReminderCopy,
+  { subject: string; link: () => string }
+> = {
+  [ContractReminderCopy.Control]: {
+    subject: "Sign your membership contract to participate in actions",
+    link: () => tasksUrl(true),
+  },
+  [ContractReminderCopy.AgreementV1]: {
+    subject: "The last step is entering into the membership agreement.",
+    link: () => membershipUrl(true),
+  },
+};
+
+/** Thrown by `sendMail` when it failed before handing the message to the mail server. */
+export class MailNotSentError extends Error {}
+
+const notSent = (error: unknown): never => {
+  throw new MailNotSentError(
+    error instanceof Error ? error.message : String(error),
+    { cause: error },
+  );
+};
+
 @Injectable()
 export class MailService {
   constructor(
     private readonly mailerService: MailerService,
     @InjectRepository(Mail)
     private readonly mailRepository: Repository<Mail>,
+    private readonly messageTracking: MessageTrackingService,
   ) {}
 
   private readonly templates: Record<EmailType, string> = {
@@ -131,18 +183,20 @@ export class MailService {
     [EmailType.PasswordReset]: "password-reset",
     [EmailType.Verification]: "",
     [EmailType.Other]: "",
-    [EmailType.PartialSignup]: "partial-signup",
     [EmailType.Commitment]: "commitment",
     [EmailType.MemberAction]: "memberaction",
     [EmailType.CommitmentReminder]: "commitmentreminder",
     [EmailType.MemberActionReminder]: "memberactionreminder",
-    [EmailType.ForumDigest]: "forumdigest",
+    [EmailType.ForumDigest]: "",
     [EmailType.ForumReply]: "forumreply",
     [EmailType.MissedDeadline]: "misseddeadline",
     [EmailType.MissedSecondDeadline]: "missedseconddeadline",
     [EmailType.CustomActionReminder]: "customactionreminder",
     [EmailType.ContractSuspended]: "contractsuspended",
     [EmailType.ContractReminder]: "contractreminder",
+    [EmailType.WaitlistConfirmation]: "waitlist-confirmation",
+    [EmailType.WaitlistLink]: "waitlist-link",
+    [EmailType.WaitlistStaff]: "waitlist-staff",
   };
 
   async renderHtml(emailType: EmailType, context: ISendMailOptions["context"]) {
@@ -154,14 +208,37 @@ export class MailService {
     );
   }
 
+  private async prepareSend(
+    emailType: EmailType,
+    context: ISendMailOptions["context"],
+  ): Promise<{ from: string; rendered: string }> {
+    // Apple forwards to a Hide My Email relay only from senders registered
+    // under Sign in with Apple for Email Communication in the developer
+    // portal. Register a new address there before changing MAIL_FROM.
+    const from = process.env.MAIL_FROM;
+    if (!from) {
+      throw new MailNotSentError("MAIL_FROM is unset");
+    }
+    const rendered = await this.renderHtml(emailType, context).catch(notSent);
+    return { from, rendered };
+  }
+
   async sendMail(params: {
     recipient: string;
     emailType: EmailType;
     subject: string | null;
     context: ISendMailOptions["context"];
-    cid: string | null;
+    tracking: TrackedMessage | null;
   }): Promise<Mail> {
-    const { recipient, emailType, subject, context, cid } = params;
+    const { recipient, emailType, subject, context, tracking } = params;
+    const prepared = mailSendingEnabled()
+      ? await this.prepareSend(emailType, context)
+      : null;
+    const cid =
+      tracking &&
+      (await this.messageTracking
+        .track({ message: tracking, channel: MessageChannel.Email })
+        .catch(notSent));
     const mail = this.mailRepository.create({
       sentMessageId: null,
       renderedHtml: null,
@@ -171,34 +248,45 @@ export class MailService {
       cid,
     });
 
-    if (
-      process.env.NODE_ENV === "test" ||
-      !(
-        process.env.NODE_ENV === "production" ||
-        process.env.SEND_DEV_NOTIFS === "1"
-      )
-    ) {
+    if (!prepared) {
       return await this.mailRepository.save(mail);
     }
+    const { from, rendered } = prepared;
 
     const tag =
       process.env.NODE_ENV === "production" ? "production" : "development";
 
-    const html = await this.renderHtml(emailType, context);
+    const html = cid
+      ? tagHtmlLinks({ html: rendered, trackingId: cid })
+      : rendered;
 
-    const e = await this.mailerService.sendMail({
-      to: recipient,
-      from: "Alliance <alliance@worldalliance.org>",
-      subject: subject ?? undefined,
-      headers: {
-        "o:tag": emailType,
-        "X-Mailgun-Tag": tag,
-      },
-      html,
+    mail.renderedHtml = html;
+    await this.mailRepository.save(mail).catch(async (error: unknown) => {
+      if (cid) await this.messageTracking.discard(cid);
+      return notSent(error);
     });
 
-    const accepted = e.accepted as string[];
-    const messageId = e.messageId as string;
+    const sent = await R.fromPromise(
+      this.mailerService.sendMail({
+        to: recipient,
+        from,
+        subject: subject ?? undefined,
+        headers: {
+          "o:tag": emailType,
+          "X-Mailgun-Tag": tag,
+        },
+        html,
+      }),
+    );
+
+    if (!sent.ok) {
+      mail.status = EmailStatus.Failed;
+      await this.mailRepository.save(mail);
+      throw sent.error;
+    }
+
+    const accepted = sent.value.accepted as string[];
+    const messageId = sent.value.messageId as string;
 
     if (accepted.length > 0) {
       mail.status = EmailStatus.Sent;
@@ -206,7 +294,6 @@ export class MailService {
       mail.status = EmailStatus.Failed;
     }
     mail.sentMessageId = messageId;
-    mail.renderedHtml = html;
     return this.mailRepository.save(mail);
   }
 
@@ -224,7 +311,7 @@ export class MailService {
         name,
         url: `${process.env.APP_URL}/verifyEmail?token=${verifyToken}`,
       },
-      cid: null,
+      tracking: null,
     });
   }
 
@@ -236,38 +323,21 @@ export class MailService {
     email: string;
     name: string;
     resetToken: string;
+    hasPassword: boolean;
   }): Promise<Mail> {
-    const { email, name, resetToken } = params;
+    const { email, name, resetToken, hasPassword } = params;
     const url = this.getPasswordResetUrl(resetToken);
+    const verb = hasPassword ? "reset" : "set";
     return this.sendMail({
       recipient: email,
       emailType: EmailType.PasswordReset,
-      subject: "a link to reset your password",
+      subject: `a link to ${verb} your password`,
       context: {
         name,
         url,
+        verb,
       },
-      cid: null,
-    });
-  }
-
-  public async sendPartialSignupEmail(params: {
-    email: string;
-    name: string;
-    resetToken: string;
-  }): Promise<Mail> {
-    const { email, name, resetToken } = params;
-    const url = this.getPasswordResetUrl(resetToken);
-    return this.sendMail({
-      recipient: email,
-      emailType: EmailType.PartialSignup,
-      subject: "Thanks for helping out! Want to do more?",
-      context: {
-        name,
-        email,
-        url,
-      },
-      cid: null,
+      tracking: null,
     });
   }
 
@@ -282,65 +352,86 @@ export class MailService {
       context: {
         name,
       },
-      cid: null,
+      tracking: null,
     });
   }
 
-  public async sendContractReminderEmail(
-    email: string,
-    name: string,
-  ): Promise<Mail> {
-    return this.sendMail({
-      recipient: email,
-      emailType: EmailType.ContractReminder,
-      subject: "Sign your membership contract to participate in actions",
-      context: {
-        name,
-        link: `${process.env.APP_URL}/tasks`,
-      },
-      cid: null,
-    });
-  }
-
-  public async sendForumDigestEmail(params: {
+  public async sendContractReminderEmail(params: {
+    userId: number;
     email: string;
     name: string;
-    unreadCount: number;
-    notifications: {
-      message: string;
-      url?: string | null;
-      createdAt: string;
-    }[];
-    cid: string;
+    copy: ContractReminderCopy;
   }): Promise<Mail> {
-    const { email, name, unreadCount, notifications, cid } = params;
-    const subject = `You have ${withCount(unreadCount, "unread Alliance forum notification")}`;
-
+    const { subject, link } = CONTRACT_REMINDER_CONTENT[params.copy];
     return this.sendMail({
-      recipient: email,
-      emailType: EmailType.ForumDigest,
+      recipient: params.email,
+      emailType: EmailType.ContractReminder,
       subject,
       context: {
-        name,
-        count: unreadCount,
-        notifications: notifications.map((item) => ({
-          message: item.message,
-          url: item.url,
-          createdAt: item.createdAt,
-        })),
-        appUrl: process.env.APP_URL,
+        copy: params.copy,
+        subject,
+        name: params.name,
+        link: link(),
       },
-      cid,
+      tracking: {
+        owner: { userId: params.userId },
+        source: MessageSource.ContractReminder,
+        context: { contractReminderCopy: params.copy, subject },
+        actionEventNotifId: null,
+      },
+    });
+  }
+
+  public async sendWaitlistLinkEmail(params: {
+    recipient: string;
+    emailType: WaitlistEmailType;
+    url: string;
+    unsubscribeUrl: string;
+  }): Promise<Mail> {
+    const { recipient, emailType, url, unsubscribeUrl } = params;
+    return this.sendMail({
+      recipient,
+      emailType,
+      subject: WAITLIST_SUBJECTS[emailType],
+      context: { url, unsubscribeUrl },
+      tracking: null,
+    });
+  }
+
+  renderWaitlistStaffEmail(content: WaitlistStaffEmail): Promise<string> {
+    return this.renderHtml(EmailType.WaitlistStaff, content);
+  }
+
+  /** Whether the mail server can be reached; true while sending is off. */
+  async verifyTransport(): Promise<boolean> {
+    if (!mailSendingEnabled()) return true;
+    const verified = await R.fromPromise(
+      this.mailerService.verifyAllTransporters(),
+    );
+    return verified.ok && verified.value;
+  }
+
+  public async sendWaitlistStaffEmail(params: {
+    recipient: string;
+    content: WaitlistStaffEmail;
+    tracking: TrackedMessage | null;
+  }): Promise<Mail> {
+    return this.sendMail({
+      recipient: params.recipient,
+      emailType: EmailType.WaitlistStaff,
+      subject: params.content.subject,
+      context: params.content,
+      tracking: params.tracking,
     });
   }
 
   public async sendActionEventNotificationEmail(params: {
     subject: string;
     message: string;
-    cid: string;
+    tracking: TrackedMessage;
     recipient: string;
   }): Promise<Mail> {
-    const { subject, message, cid, recipient } = params;
+    const { subject, message, tracking, recipient } = params;
     return this.sendMail({
       recipient,
       emailType: EmailType.CustomActionReminder,
@@ -348,7 +439,7 @@ export class MailService {
       context: {
         customMessage: message.replace(/\n/g, "<br>"),
       },
-      cid,
+      tracking,
     });
   }
 

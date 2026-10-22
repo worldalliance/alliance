@@ -1,7 +1,7 @@
 import {
   CohortExpression,
   cohortExpressionSchema,
-  expressionReferencesTag,
+  expressionHasLeaf,
   isBooleanOperator,
   isLeafCondition,
 } from "@alliance/common/cohort-expression";
@@ -22,7 +22,6 @@ function mockBatchContext(
   return {
     getUserIdsForTag: jest.fn().mockResolvedValue(new Set<number>()),
     getUserIdsCompletedAction: jest.fn().mockResolvedValue(new Set<number>()),
-    getUserIdsInProgressAction: jest.fn().mockResolvedValue(new Set<number>()),
     getUserIdsMissedActionDeadline: jest
       .fn()
       .mockResolvedValue(new Set<number>()),
@@ -30,6 +29,7 @@ function mockBatchContext(
     getGroupLeadUserIds: jest.fn().mockResolvedValue(new Set<number>()),
     getUserIdsByUsMembership: jest.fn().mockResolvedValue(new Set<number>()),
     getAllCandidateUserIds: jest.fn().mockResolvedValue(new Set<number>()),
+    getStaffUserIds: jest.fn().mockResolvedValue(new Set<number>()),
     ...overrides,
   };
 }
@@ -44,14 +44,13 @@ function scopedContext(
 ): CohortEvaluationContext {
   return singleUserCohortContext({
     userId,
-    isCandidate: true,
     hasTag: () => false,
     completedAction: async () => false,
-    inProgressAction: async () => false,
     missedActionDeadline: async () => false,
     matchesFormField: async () => false,
     isGroupLead: async () => false,
     usMembership: async () => UsMembership.Unknown,
+    isStaff: () => false,
     ...overrides,
   });
 }
@@ -78,9 +77,6 @@ describe("type guards", () => {
     expect(isLeafCondition({ type: "Tag", tagId: "abc" })).toBe(true);
     expect(isLeafCondition({ type: "Manual", userIds: [1] })).toBe(true);
     expect(isLeafCondition({ type: "CompletedAction", actionId: 1 })).toBe(
-      true,
-    );
-    expect(isLeafCondition({ type: "InProgressAction", actionId: 1 })).toBe(
       true,
     );
     expect(isLeafCondition({ type: "MissedActionDeadline", actionId: 1 })).toBe(
@@ -169,9 +165,18 @@ describe("formFieldValueConditionSchema refinement", () => {
   });
 });
 
-// --- expressionReferencesTag ---
+// --- expressionHasLeaf ---
 
-describe("expressionReferencesTag", () => {
+describe("expressionHasLeaf", () => {
+  const expressionReferencesTag = (
+    expr: CohortExpression | null | undefined,
+    tagId: string,
+  ) =>
+    expressionHasLeaf(
+      expr,
+      (leaf) => leaf.type === "Tag" && leaf.tagId === tagId,
+    );
+
   it("returns false for null/undefined", () => {
     expect(expressionReferencesTag(null, "tag1")).toBe(false);
     expect(expressionReferencesTag(undefined, "tag1")).toBe(false);
@@ -256,6 +261,15 @@ describe("expressionReferencesTag", () => {
     expect(expressionReferencesTag(expr, "missing-tag")).toBe(false);
   });
 
+  it("tests leaves of any type", () => {
+    expect(
+      expressionHasLeaf(
+        { type: "NOT", child: { type: "AllMembers" } },
+        (leaf) => leaf.type === "AllMembers",
+      ),
+    ).toBe(true);
+  });
+
   it("returns false when empty AND has no children", () => {
     expect(expressionReferencesTag({ type: "AND", children: [] }, "tag1")).toBe(
       false,
@@ -307,20 +321,6 @@ describe("evaluateCohortExpression", () => {
       );
       expect(result).toEqual(new Set([5, 6]));
       expect(ctx.getUserIdsCompletedAction).toHaveBeenCalledWith(42);
-    });
-
-    it("evaluates InProgressAction condition", async () => {
-      const ctx = mockBatchContext({
-        getUserIdsInProgressAction: jest
-          .fn()
-          .mockResolvedValue(new Set([7, 8, 9])),
-      });
-      const result = await evaluateCohortExpression(
-        { type: "InProgressAction", actionId: 99 },
-        ctx,
-      );
-      expect(result).toEqual(new Set([7, 8, 9]));
-      expect(ctx.getUserIdsInProgressAction).toHaveBeenCalledWith(99);
     });
 
     it("evaluates MissedActionDeadline condition", async () => {
@@ -386,6 +386,25 @@ describe("evaluateCohortExpression", () => {
       });
       const result = await evaluateCohortExpression({ type: "GroupLead" }, ctx);
       expect(result).toEqual(new Set([100, 200]));
+    });
+
+    it("selects every candidate on AllMembers and staff on Staff", async () => {
+      const ctx = mockBatchContext({
+        getAllCandidateUserIds: jest.fn().mockResolvedValue(new Set([1, 2, 3])),
+        getStaffUserIds: jest.fn().mockResolvedValue(new Set([2])),
+      });
+      expect(
+        await evaluateCohortExpression({ type: "AllMembers" }, ctx),
+      ).toEqual(new Set([1, 2, 3]));
+      expect(await evaluateCohortExpression({ type: "Staff" }, ctx)).toEqual(
+        new Set([2]),
+      );
+      expect(
+        await evaluateCohortExpression(
+          { type: "NOT", child: { type: "AllMembers" } },
+          ctx,
+        ),
+      ).toEqual(new Set());
     });
 
     it("asks for the US partition on USMember and the non-US one on NonUSMember", async () => {
@@ -648,34 +667,19 @@ describe("evaluateCohortExpression", () => {
   });
 
   describe("cycle detection", () => {
-    it("returns empty set for InProgressAction when actionId is in visited set", async () => {
-      const ctx = mockBatchContext({
-        getUserIdsInProgressAction: jest
-          .fn()
-          .mockResolvedValue(new Set([1, 2])),
-      });
-      const result = await evaluateCohortExpression(
-        { type: "InProgressAction", actionId: 42 },
-        ctx,
-        new Set([42]),
-      );
-      expect(result).toEqual(new Set());
-      expect(ctx.getUserIdsInProgressAction).not.toHaveBeenCalled();
-    });
-
     it("proceeds normally when actionId is not in visited set", async () => {
       const ctx = mockBatchContext({
-        getUserIdsInProgressAction: jest
+        getUserIdsMissedActionDeadline: jest
           .fn()
           .mockResolvedValue(new Set([1, 2])),
       });
       const result = await evaluateCohortExpression(
-        { type: "InProgressAction", actionId: 42 },
+        { type: "MissedActionDeadline", actionId: 42 },
         ctx,
         new Set([99]),
       );
       expect(result).toEqual(new Set([1, 2]));
-      expect(ctx.getUserIdsInProgressAction).toHaveBeenCalledWith(42);
+      expect(ctx.getUserIdsMissedActionDeadline).toHaveBeenCalledWith(42);
     });
 
     it("returns empty set for MissedActionDeadline when actionId is in visited set", async () => {
@@ -755,17 +759,6 @@ describe("single-user scoping (singleUserCohortContext)", () => {
       expect(completedAction).toHaveBeenCalledWith(42);
     });
 
-    it("evaluates InProgressAction condition", async () => {
-      const inProgressAction = jest.fn().mockResolvedValue(true);
-      const result = await userInCohort(
-        1,
-        { type: "InProgressAction", actionId: 99 },
-        { inProgressAction },
-      );
-      expect(result).toBe(true);
-      expect(inProgressAction).toHaveBeenCalledWith(99);
-    });
-
     it("evaluates MissedActionDeadline condition", async () => {
       const missedActionDeadline = jest.fn().mockResolvedValue(true);
       const result = await userInCohort(
@@ -807,6 +800,14 @@ describe("single-user scoping (singleUserCohortContext)", () => {
         },
       );
       expect(result).toBe(true);
+    });
+
+    it("places every member in AllMembers and only staff in Staff", async () => {
+      expect(await userInCohort(1, { type: "AllMembers" })).toBe(true);
+      expect(await userInCohort(1, { type: "Staff" })).toBe(false);
+      expect(
+        await userInCohort(1, { type: "Staff" }, { isStaff: () => true }),
+      ).toBe(true);
     });
 
     it.each([
@@ -927,28 +928,16 @@ describe("single-user scoping (singleUserCohortContext)", () => {
       expect(result).toBe(false);
     });
 
-    it("negates a false result for a candidate user", async () => {
+    it("negates a false result", async () => {
       const result = await userInCohort(
         1,
         {
           type: "NOT",
           child: { type: "Tag", tagId: "a" },
         },
-        { hasTag: () => false, isCandidate: true },
+        { hasTag: () => false },
       );
       expect(result).toBe(true);
-    });
-
-    it("excludes a non-candidate user from NOT (matches population NOT-universe)", async () => {
-      const result = await userInCohort(
-        1,
-        {
-          type: "NOT",
-          child: { type: "Tag", tagId: "a" },
-        },
-        { hasTag: () => false, isCandidate: false },
-      );
-      expect(result).toBe(false);
     });
   });
 
@@ -1010,28 +999,28 @@ describe("single-user scoping (singleUserCohortContext)", () => {
   });
 
   describe("cycle detection", () => {
-    it("skips InProgressAction when actionId is in visited set", async () => {
-      const inProgressAction = jest.fn().mockResolvedValue(true);
+    it("skips MissedActionDeadline when actionId is in visited set", async () => {
+      const missedActionDeadline = jest.fn().mockResolvedValue(true);
       const result = await userInCohort(
         1,
-        { type: "InProgressAction", actionId: 42 },
-        { inProgressAction },
+        { type: "MissedActionDeadline", actionId: 42 },
+        { missedActionDeadline },
         new Set([42]),
       );
       expect(result).toBe(false);
-      expect(inProgressAction).not.toHaveBeenCalled();
+      expect(missedActionDeadline).not.toHaveBeenCalled();
     });
 
     it("proceeds when actionId is not in visited set", async () => {
-      const inProgressAction = jest.fn().mockResolvedValue(true);
+      const missedActionDeadline = jest.fn().mockResolvedValue(true);
       const result = await userInCohort(
         1,
-        { type: "InProgressAction", actionId: 42 },
-        { inProgressAction },
+        { type: "MissedActionDeadline", actionId: 42 },
+        { missedActionDeadline },
         new Set([99]),
       );
       expect(result).toBe(true);
-      expect(inProgressAction).toHaveBeenCalledWith(42);
+      expect(missedActionDeadline).toHaveBeenCalledWith(42);
     });
   });
 });
@@ -1088,10 +1077,8 @@ describe("population and single-user agreement", () => {
     }
   });
 
-  it("agree for NOT(Tag) including the universe boundary", async () => {
-    // Population: universe = candidates {1,2,3,4}; tag = {2,4}; NOT = {1,3}.
-    // User 5 is not a candidate, so it must be excluded by both.
-    const candidates = new Set([1, 2, 3, 4]);
+  it("agree for NOT(Tag)", async () => {
+    const candidates = new Set([1, 2, 3, 4, 5]);
     const tagUsers = new Set([2, 4]);
     const expr: CohortExpression = {
       type: "NOT",
@@ -1105,11 +1092,10 @@ describe("population and single-user agreement", () => {
         getUserIdsForTag: jest.fn().mockResolvedValue(tagUsers),
       }),
     );
-    expect(batchResult).toEqual(new Set([1, 3]));
+    expect(batchResult).toEqual(new Set([1, 3, 5]));
 
     for (const userId of [1, 2, 3, 4, 5]) {
       const single = await userInCohort(userId, expr, {
-        isCandidate: candidates.has(userId),
         hasTag: () => tagUsers.has(userId),
       });
       expect(single).toBe(batchResult.has(userId));

@@ -7,7 +7,7 @@ import {
   VIDEO_LOAD_FAILED_MESSAGE,
   VIDEO_RETRY_LABEL,
 } from "@alliance/shared/lib/useVideoSource";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import VideoPlayer from "./VideoPlayer";
 
 const SRC = "https://cdn.test/v/abc";
@@ -43,8 +43,6 @@ beforeEach(() => {
   nativeHlsSupported = true;
   registerAnalytics(recordingBackend);
 });
-
-afterEach(cleanup);
 
 const videoElement = (): HTMLVideoElement => {
   const video = document.querySelector("video");

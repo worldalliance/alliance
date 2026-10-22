@@ -1,4 +1,5 @@
 import { cn } from "@alliance/shared/styles/util";
+import { milliseconds } from "date-fns";
 import {
   createContext,
   type CSSProperties,
@@ -14,7 +15,76 @@ import {
 } from "react";
 import { zIndex } from "./zIndex";
 
-type ToastVariant = "info" | "success" | "error" | "warning" | "confirm";
+enum ToastVariant {
+  Info = "info",
+  Success = "success",
+  Error = "error",
+  Warning = "warning",
+}
+
+export enum ToastPlacement {
+  Top = "top",
+  Bottom = "bottom",
+  Left = "left",
+  Right = "right",
+  TopLeft = "topleft",
+  TopRight = "topright",
+  BottomLeft = "bottomleft",
+  BottomRight = "bottomright",
+}
+
+export enum ConfirmMode {
+  Popover = "popover",
+  Fullscreen = "fullscreen",
+}
+
+const CONFIRM_ANCHOR_MARGIN = 8;
+
+const confirmAnchorStyle: Record<
+  ToastPlacement,
+  (rect: DOMRect) => CSSProperties
+> = {
+  [ToastPlacement.Top]: (rect) => ({
+    top: rect.top - CONFIRM_ANCHOR_MARGIN,
+    left: rect.left + rect.width / 2,
+    transform: "translate(-50%, -100%)",
+  }),
+  [ToastPlacement.Bottom]: (rect) => ({
+    top: rect.bottom + CONFIRM_ANCHOR_MARGIN,
+    left: rect.left + rect.width / 2,
+    transform: "translate(-50%, 0)",
+  }),
+  [ToastPlacement.Left]: (rect) => ({
+    top: rect.top + rect.height / 2,
+    left: rect.left - CONFIRM_ANCHOR_MARGIN,
+    transform: "translate(-100%, -50%)",
+  }),
+  [ToastPlacement.Right]: (rect) => ({
+    top: rect.top + rect.height / 2,
+    left: rect.right + CONFIRM_ANCHOR_MARGIN,
+    transform: "translate(0, -50%)",
+  }),
+  [ToastPlacement.TopLeft]: (rect) => ({
+    top: rect.top - CONFIRM_ANCHOR_MARGIN,
+    left: rect.right,
+    transform: "translate(-100%, -100%)",
+  }),
+  [ToastPlacement.TopRight]: (rect) => ({
+    top: rect.top - CONFIRM_ANCHOR_MARGIN,
+    left: rect.right + CONFIRM_ANCHOR_MARGIN,
+    transform: "translate(0, -100%)",
+  }),
+  [ToastPlacement.BottomLeft]: (rect) => ({
+    top: rect.bottom + CONFIRM_ANCHOR_MARGIN,
+    left: rect.left - CONFIRM_ANCHOR_MARGIN,
+    transform: "translate(-100%, 0)",
+  }),
+  [ToastPlacement.BottomRight]: (rect) => ({
+    top: rect.bottom + CONFIRM_ANCHOR_MARGIN,
+    left: rect.right + CONFIRM_ANCHOR_MARGIN,
+    transform: "translate(0, 0)",
+  }),
+};
 
 type ToastBase = {
   id: number;
@@ -29,42 +99,26 @@ type ConfirmOptions = {
   confirmLabel?: string;
   cancelLabel?: string;
   anchorEl?: HTMLElement | null;
-  placement?:
-    | "top"
-    | "bottom"
-    | "left"
-    | "right"
-    | "topleft"
-    | "topright"
-    | "bottomleft"
-    | "bottomright";
-  mode?: "popover" | "fullscreen";
+  placement?: ToastPlacement;
+  mode?: ConfirmMode;
   requiredText?: string;
   requiredTextLabel?: string;
   requiredTextPlaceholder?: string;
 };
 
 type ToastOptions = Omit<ToastBase, "id" | "variant"> & {
-  variant?: Exclude<ToastVariant, "confirm">;
+  variant?: ToastVariant;
   durationMs?: number;
 };
 
-type ToastConfirm = ToastBase & {
+type ToastConfirm = Omit<ToastBase, "variant"> & {
   anchorEl?: HTMLElement | null;
-  placement?:
-    | "top"
-    | "bottom"
-    | "left"
-    | "right"
-    | "topleft"
-    | "topright"
-    | "bottomleft"
-    | "bottomright";
+  placement?: ToastPlacement;
   variant: "confirm";
   confirmLabel: string;
   cancelLabel: string;
   resolve: (value: boolean) => void;
-  mode: "popover" | "fullscreen";
+  mode: ConfirmMode;
   requiredText?: string;
   requiredTextLabel?: string;
   requiredTextPlaceholder?: string;
@@ -79,6 +133,25 @@ type ToastContextValue = {
   info: (message: string, title?: string) => void;
   warning: (message: string, title?: string) => void;
   confirm: (opts: ConfirmOptions) => Promise<boolean>;
+};
+
+enum ToastRegion {
+  Status = "status",
+  Alert = "alert",
+}
+
+const toastRegion: Record<ToastVariant, ToastRegion> = {
+  [ToastVariant.Info]: ToastRegion.Status,
+  [ToastVariant.Success]: ToastRegion.Status,
+  [ToastVariant.Warning]: ToastRegion.Status,
+  [ToastVariant.Error]: ToastRegion.Alert,
+};
+
+const toastColorClasses: Record<ToastVariant, string> = {
+  [ToastVariant.Info]: "bg-slate-700 text-white",
+  [ToastVariant.Success]: "bg-emerald-600 text-white",
+  [ToastVariant.Warning]: "bg-amber-500 text-white",
+  [ToastVariant.Error]: "bg-white text-red-500 border border-red-500",
 };
 
 const ToastContext = createContext<ToastContextValue | undefined>(undefined);
@@ -100,7 +173,12 @@ export const ToastProvider: FC<{ children: ReactNode }> = ({ children }) => {
   }, []);
 
   const showToast = useCallback(
-    ({ variant = "info", title, message, durationMs = 4000 }: ToastOptions) => {
+    ({
+      variant = ToastVariant.Info,
+      title,
+      message,
+      durationMs = milliseconds({ seconds: 4 }),
+    }: ToastOptions) => {
       const id = ++idRef.current;
       const toast: AnyToast = { id, variant, title, message };
       setToasts((prev) => [...prev, toast]);
@@ -138,7 +216,9 @@ export const ToastProvider: FC<{ children: ReactNode }> = ({ children }) => {
           anchorEl,
           placement,
           resolve,
-          mode: mode ?? (requiredText ? "fullscreen" : "popover"),
+          mode:
+            mode ??
+            (requiredText ? ConfirmMode.Fullscreen : ConfirmMode.Popover),
           requiredText,
           requiredTextLabel,
           requiredTextPlaceholder,
@@ -159,22 +239,22 @@ export const ToastProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   const success = useCallback(
     (message: string, title?: string) =>
-      showToast({ variant: "success", message, title }),
+      showToast({ variant: ToastVariant.Success, message, title }),
     [showToast],
   );
   const error = useCallback(
     (message: string, title?: string) =>
-      showToast({ variant: "error", message, title }),
+      showToast({ variant: ToastVariant.Error, message, title }),
     [showToast],
   );
   const info = useCallback(
     (message: string, title?: string) =>
-      showToast({ variant: "info", message, title }),
+      showToast({ variant: ToastVariant.Info, message, title }),
     [showToast],
   );
   const warning = useCallback(
     (message: string, title?: string) =>
-      showToast({ variant: "warning", message, title }),
+      showToast({ variant: ToastVariant.Warning, message, title }),
     [showToast],
   );
 
@@ -191,28 +271,37 @@ export const ToastProvider: FC<{ children: ReactNode }> = ({ children }) => {
       <div
         className={cn(
           zIndex.toast,
-          "pointer-events-none fixed inset-0 flex flex-col items-end gap-2 px-4 py-6 sm:bottom-0 sm:items-end",
+          "pointer-events-none fixed inset-0 flex flex-col items-end px-4 py-6 sm:bottom-0 sm:items-end",
         )}
       >
-        {toasts.map((toast) => {
-          if (toast.variant === "confirm") {
-            return (
-              <ConfirmToastItem
-                key={toast.id}
-                toast={toast as ToastConfirm}
-                onConfirm={handleConfirm}
-              />
-            );
-          }
-
-          return (
-            <DefaultToastItem
+        {Object.values(ToastRegion).map((region) => (
+          <div
+            key={region}
+            role={region}
+            aria-atomic={false}
+            className="flex w-full flex-col items-end"
+          >
+            {toasts.map((toast) =>
+              toast.variant !== "confirm" &&
+              toastRegion[toast.variant] === region ? (
+                <DefaultToastItem
+                  key={toast.id}
+                  toast={toast}
+                  onDismiss={removeToast}
+                />
+              ) : null,
+            )}
+          </div>
+        ))}
+        {toasts.map((toast) =>
+          toast.variant === "confirm" ? (
+            <ConfirmToastItem
               key={toast.id}
-              toast={toast as ToastBase}
-              onDismiss={removeToast}
+              toast={toast}
+              onConfirm={handleConfirm}
             />
-          );
-        })}
+          ) : null,
+        )}
       </div>
     </ToastContext.Provider>
   );
@@ -224,20 +313,11 @@ type DefaultToastItemProps = {
 };
 
 const DefaultToastItem: FC<DefaultToastItemProps> = ({ toast, onDismiss }) => {
-  const colorClasses =
-    toast.variant === "success"
-      ? "bg-emerald-600 text-white"
-      : toast.variant === "error"
-        ? "bg-white text-red-500 border border-red-500"
-        : toast.variant === "warning"
-          ? "bg-amber-500 text-white"
-          : "bg-slate-700 text-white";
-
   return (
     <div
       className={cn(
-        "pointer-events-auto mb-2 w-full max-w-sm rounded-xl shadow-lg ring-1 ring-black/5",
-        colorClasses,
+        "pointer-events-auto mb-4 w-full max-w-sm rounded-xl shadow-lg ring-1 ring-black/5",
+        toastColorClasses[toast.variant],
       )}
     >
       <div className="flex items-start gap-3 px-4 py-3">
@@ -250,6 +330,7 @@ const DefaultToastItem: FC<DefaultToastItemProps> = ({ toast, onDismiss }) => {
 
         <button
           type="button"
+          aria-label="Dismiss"
           className="ml-2 text-slate-100/70 hover:text-white"
           onClick={() => onDismiss(toast.id)}
         >
@@ -270,7 +351,6 @@ const ConfirmToastItem: FC<ConfirmToastItemProps> = ({ toast, onConfirm }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const requiresText = toast.requiredText;
-  const isFullscreen = toast.mode === "fullscreen";
   const confirmDisabled =
     !!requiresText &&
     inputValue.trim() !== (requiresText ? requiresText.trim() : "");
@@ -374,94 +454,33 @@ const ConfirmToastItem: FC<ConfirmToastItemProps> = ({ toast, onConfirm }) => {
     </div>
   );
 
-  if (isFullscreen) {
-    return (
-      <div className="pointer-events-auto absolute inset-0 flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm px-4">
-        {modalContent}
-      </div>
-    );
+  switch (toast.mode) {
+    case ConfirmMode.Fullscreen:
+      return (
+        <div className="pointer-events-auto absolute inset-0 flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm px-4">
+          {modalContent}
+        </div>
+      );
+    case ConfirmMode.Popover:
+      break;
+    default:
+      throw new Error(`unknown confirm mode: ${toast.mode satisfies never}`);
   }
 
-  let style: CSSProperties = {};
-  if (toast.anchorEl) {
-    const rect = toast.anchorEl.getBoundingClientRect();
-    const placement = toast.placement || "bottom";
-    style = { position: "fixed" };
-    const margin = 8;
-
-    switch (placement) {
-      case "top":
-        style = {
-          ...style,
-          top: rect.top - margin,
-          left: rect.left + rect.width / 2,
-          transform: "translate(-50%, -100%)",
-        };
-        break;
-      case "bottom":
-        style = {
-          ...style,
-          top: rect.bottom + margin,
-          left: rect.left + rect.width / 2,
-          transform: "translate(-50%, 0)",
-        };
-        break;
-      case "left":
-        style = {
-          ...style,
-          top: rect.top + rect.height / 2,
-          left: rect.left - margin,
-          transform: "translate(-100%, -50%)",
-        };
-        break;
-      case "right":
-        style = {
-          ...style,
-          top: rect.top + rect.height / 2,
-          left: rect.right + margin,
-          transform: "translate(0, -50%)",
-        };
-        break;
-      case "topleft":
-        style = {
-          ...style,
-          top: rect.top - margin,
-          left: rect.right,
-          transform: "translate(-100%, -100%)",
-        };
-        break;
-      case "topright":
-        style = {
-          ...style,
-          top: rect.top - margin,
-          left: rect.right + margin,
-          transform: "translate(0, -100%)",
-        };
-        break;
-      case "bottomleft":
-        style = {
-          ...style,
-          top: rect.bottom + margin,
-          left: rect.left - margin,
-          transform: "translate(-100%, 0)",
-        };
-        break;
-      case "bottomright":
-        style = {
-          ...style,
-          top: rect.bottom + margin,
-          left: rect.right + margin,
-          transform: "translate(0, 0)",
-        };
-        break;
-    }
-  }
+  const style: CSSProperties = toast.anchorEl
+    ? {
+        position: "fixed",
+        ...confirmAnchorStyle[toast.placement ?? ToastPlacement.Bottom](
+          toast.anchorEl.getBoundingClientRect(),
+        ),
+      }
+    : {};
 
   return (
     <div
       ref={containerRef}
       style={style}
-      className="pointer-events-auto mb-2 w-full max-w-sm rounded border border-zinc-200 bg-white text-black shadow"
+      className="pointer-events-auto mb-4 w-full max-w-sm rounded border border-zinc-200 bg-white text-black shadow"
     >
       <div className="flex items-start gap-3 px-4 py-3">
         <div className="flex-1">

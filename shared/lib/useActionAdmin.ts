@@ -7,15 +7,15 @@ import {
 } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import {
+  actionFormsCreateFollowUpFormAdmin,
+  actionFormsDeleteFollowUpFormAdmin,
+  actionFormsUpdateFollowUpFormAdmin,
   actionsArchiveAdmin,
   actionsCreateAdmin,
-  actionsCreateFollowUpFormAdmin,
-  actionsDeleteFollowUpFormAdmin,
   actionsFindOneAdmin,
   actionsRemoveAdmin,
   actionsUnarchiveAdmin,
   actionsUpdateAdmin,
-  actionsUpdateFollowUpFormAdmin,
   AdminActionDto,
   CreateActionDto,
   CreateFollowUpFormDto,
@@ -24,6 +24,7 @@ import {
 } from "../client";
 import { parseActionDto } from "../parsed-dtos";
 import { queryKeys } from "./queryKeys";
+import { useInvalidateActionsAdmin } from "./useActionsAdmin";
 import { useInvalidateFormsIndex } from "./useFormsAdmin";
 
 /**
@@ -81,6 +82,7 @@ export function useActionAdmin(
 ) {
   const { enabled = true } = params ?? {};
   const queryClient = useQueryClient();
+  const invalidateActionsList = useInvalidateActionsAdmin();
   const invalidateFormsIndex = useInvalidateFormsIndex();
 
   const query = useQuery({
@@ -109,20 +111,21 @@ export function useActionAdmin(
   // The forms index carries the same facts as usedInAction, so it goes stale
   // on exactly these mutations too.
   const invalidateList = () =>
-    Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.actionsAllAdmin(),
-      }),
-      invalidateFormsIndex(),
-    ]);
+    Promise.all([invalidateActionsList(), invalidateFormsIndex()]);
 
   const invalidateActionAndList = () =>
     Promise.all([invalidate(), invalidateList()]);
 
+  // Follow-up forms are on the all-actions list but not in the forms index.
+  const invalidateActionAndActionsList = () =>
+    Promise.all([invalidate(), invalidateActionsList()]);
+
   /**
    * For child flows that hand back a raw AdminActionDto: validate the
    * cohortExpression at the boundary and write the result into the query
-   * cache, so `action` is always parsed.
+   * cache, so `action` is always parsed. The cache is then refetched, because
+   * a child that patches `events` leaves the server-derived phase fields
+   * (`memberActionStart`, `memberActionDeadline`) stale.
    */
   const setActionFromDto = useCallback(
     (dto: AdminActionDto) => {
@@ -130,6 +133,9 @@ export function useActionAdmin(
         queryKeys.actionAdmin(dto.id),
         parseActionDto(dto),
       );
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.actionAdmin(dto.id),
+      });
     },
     [queryClient],
   );
@@ -183,12 +189,12 @@ export function useActionAdmin(
 
   const createFollowUpFormMutation = useMutation({
     mutationFn: (body: CreateFollowUpFormDto) =>
-      actionsCreateFollowUpFormAdmin({
+      actionFormsCreateFollowUpFormAdmin({
         path: { id: requireActionId() },
         body,
         throwOnError: true,
       }).then((r) => r.data),
-    onSuccess: invalidate,
+    onSuccess: invalidateActionAndActionsList,
   });
 
   // A single useMutation only exposes the latest call's `variables`, but
@@ -209,7 +215,7 @@ export function useActionAdmin(
       followUpFormId: number;
       body: UpdateFollowUpFormDto;
     }) =>
-      actionsUpdateFollowUpFormAdmin({
+      actionFormsUpdateFollowUpFormAdmin({
         path: { followUpFormId },
         body,
         throwOnError: true,
@@ -220,12 +226,12 @@ export function useActionAdmin(
     onSettled: (_result, _error, { followUpFormId }) => {
       setSavingFollowUpFormIds((ids) => withRemoved(ids, followUpFormId));
     },
-    onSuccess: invalidate,
+    onSuccess: invalidateActionAndActionsList,
   });
 
   const deleteFollowUpFormMutation = useMutation({
     mutationFn: (followUpFormId: number) =>
-      actionsDeleteFollowUpFormAdmin({
+      actionFormsDeleteFollowUpFormAdmin({
         path: { followUpFormId },
         throwOnError: true,
       }).then((r) => r.data),
@@ -235,7 +241,7 @@ export function useActionAdmin(
     onSettled: (_result, _error, followUpFormId) => {
       setDeletingFollowUpFormIds((ids) => withRemoved(ids, followUpFormId));
     },
-    onSuccess: invalidate,
+    onSuccess: invalidateActionAndActionsList,
   });
 
   return {

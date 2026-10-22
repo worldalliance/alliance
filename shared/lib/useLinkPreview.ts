@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { milliseconds } from "date-fns";
 import { linkPreviewGetPreview } from "../client";
 import { queryKeys } from "./queryKeys";
 
@@ -28,7 +29,7 @@ export function useLinkPreview(
     // Previews are best-effort; retrying just multiplies requests (and
     // fights the server's rate limit when the failure is a 429).
     retry: false,
-    staleTime: 5 * 60 * 1000,
+    staleTime: milliseconds({ minutes: 5 }),
   });
 }
 

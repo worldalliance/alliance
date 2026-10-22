@@ -1,10 +1,19 @@
+import type { TaskBadgePushData } from "@alliance/common/taskBadge";
 import { Inject, Injectable } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { PickType } from "@nestjs/swagger";
 import { InjectRepository } from "@nestjs/typeorm";
+import { milliseconds } from "date-fns";
 import { Expo, ExpoPushMessage, ExpoPushTicket } from "expo-server-sdk";
 import { randomUUID } from "node:crypto";
+import {
+  lockLive,
+  softDeleteCascade,
+  updateLive,
+} from "src/datasources/soft-delete";
+import { Notification } from "src/notifs/entities/notification.entity";
 import { UserDevice } from "src/user/entities/user-device.entity";
+import { User } from "src/user/entities/user.entity";
 import {
   In,
   IsNull,
@@ -20,9 +29,9 @@ import { Push } from "./push.entity";
 export const EXPO_CLIENT = Symbol("EXPO_CLIENT");
 
 // Expo discards receipts ~24h after delivery, so a pending push older than
-// this will never get a receipt and must stop being re-checked. 48h = 24h
-// receipt TTL + generous slack for delivery lagging creation.
-const RECEIPT_MAX_AGE_MS = 1000 * 60 * 60 * 48;
+// this will never get a receipt and must stop being re-checked. Two days =
+// 24h receipt TTL + generous slack for delivery lagging creation.
+const RECEIPT_MAX_AGE_MS = milliseconds({ days: 2 });
 
 export class CreatePushMessage extends PickType(Push, [
   "expoPushToken",
@@ -33,6 +42,14 @@ export class CreatePushMessage extends PickType(Push, [
 ]) {
   userId: number;
   screen?: string;
+}
+
+function isValidExpoPushToken(token: string): boolean {
+  const valid = Expo.isExpoPushToken(token);
+  if (!valid) {
+    console.error(`Push token ${token} is not a valid Expo push token`);
+  }
+  return valid;
 }
 
 @Injectable()
@@ -86,10 +103,7 @@ export class PushService {
     const pushEntities: Push[] = [];
 
     for (const message of messages) {
-      if (!Expo.isExpoPushToken(message.expoPushToken)) {
-        console.error(
-          `Push token ${message.expoPushToken} is not a valid Expo push token`,
-        );
+      if (!isValidExpoPushToken(message.expoPushToken)) {
         continue;
       }
       let pushEntity = this.pushRepository.create({
@@ -97,7 +111,25 @@ export class PushService {
         user: { id: message.userId },
       });
       try {
-        pushEntity = await this.pushRepository.save(pushEntity);
+        const unsaved = pushEntity;
+        const saved = await this.pushRepository.manager.transaction(
+          async (em) =>
+            (await lockLive(em, [
+              { target: User, id: message.userId },
+              ...(message.notification
+                ? [{ target: Notification, id: message.notification.id }]
+                : []),
+            ]))
+              ? em.save(unsaved)
+              : null,
+        );
+        if (!saved) {
+          console.warn(
+            `skipping push to user ${message.userId}: account or notification deleted`,
+          );
+          continue;
+        }
+        pushEntity = saved;
       } catch (error) {
         if (error instanceof QueryFailedError) {
           console.error(`skipping duplicate push: ${error.message}`);
@@ -157,17 +189,82 @@ export class PushService {
         console.error(`expo push error: ${ticket.details?.error}`);
         console.error(`expo push error: ${ticket.message}`);
         if (ticket.details?.error === "DeviceNotRegistered") {
-          const userDevice = await this.userDeviceRepository.findOne({
-            where: { expoPushToken: pushEntities[i].expoPushToken },
-          });
-          if (userDevice) {
-            await this.userDeviceRepository.remove(userDevice); // todo: worth keeping+invalidating somehow or no?
-          }
+          await this.removeUnregisteredDevice(pushEntities[i].expoPushToken);
         }
       }
     }
 
-    return await this.pushRepository.save(pushEntities);
+    for (const push of pushEntities) {
+      await updateLive(this.pushRepository.manager, {
+        target: Push,
+        id: push.id,
+        changes: {
+          ticketStatus: push.ticketStatus,
+          receiptId: push.receiptId,
+          receiptStatus: push.receiptStatus,
+          errorCode: push.errorCode,
+          errorMessage: push.errorMessage,
+        },
+      });
+    }
+    return pushEntities;
+  }
+
+  private async removeUnregisteredDevice(expoPushToken: string) {
+    const userDevice = await this.userDeviceRepository.findOne({
+      where: { expoPushToken },
+    });
+    if (userDevice) {
+      await softDeleteCascade(this.userDeviceRepository.manager, {
+        target: UserDevice,
+        ids: [userDevice.id],
+      });
+    }
+  }
+
+  /**
+   * Quiet badge-only pushes: no title, body, or sound, so iOS applies `badge`
+   * without showing anything and Android delivers a data-only message to the
+   * app's background task. Returns the tokens whose send failed; an invalid
+   * token is skipped, not returned, since resending can't fix it.
+   */
+  async sendTaskBadge(params: {
+    expoPushTokens: string[];
+    count: number;
+  }): Promise<string[]> {
+    const { expoPushTokens, count } = params;
+    const messages: ExpoPushMessage[] = expoPushTokens
+      .filter(isValidExpoPushToken)
+      .map((to) => ({
+        to,
+        badge: count,
+        priority: "normal",
+        data: { taskBadgeCount: count } satisfies TaskBadgePushData,
+      }));
+
+    const rejected: string[] = [];
+    for (const chunk of this.expo.chunkPushNotifications(messages)) {
+      let tickets: ExpoPushTicket[];
+      try {
+        tickets = await this.expo.sendPushNotificationsAsync(chunk);
+      } catch (error) {
+        console.error(error);
+        rejected.push(...chunk.flatMap((message) => message.to));
+        continue;
+      }
+      for (const [i, ticket] of tickets.entries()) {
+        const { to } = chunk[i];
+        if (typeof to !== "string" || ticket.status === "ok") {
+          continue;
+        }
+        rejected.push(to);
+        console.error(`expo badge push error: ${ticket.message}`);
+        if (ticket.details?.error === "DeviceNotRegistered") {
+          await this.removeUnregisteredDevice(to);
+        }
+      }
+    }
+    return rejected;
   }
 
   @Cron(CronExpression.EVERY_MINUTE)
@@ -177,9 +274,7 @@ export class PushService {
         receiptStatus: "pending",
         lastCheckedStatusAt: Or(
           IsNull(),
-          LessThan(
-            new Date(Date.now() - 1000 * 60 * 5), // 5 minutes ago
-          ),
+          LessThan(new Date(Date.now() - milliseconds({ minutes: 5 }))),
         ),
         receiptId: Not(IsNull()),
       },
@@ -228,9 +323,17 @@ export class PushService {
 
     const now = new Date();
     for (const push of resolvedPushes) {
-      push.lastCheckedStatusAt = now;
+      await updateLive(this.pushRepository.manager, {
+        target: Push,
+        id: push.id,
+        changes: {
+          receiptStatus: push.receiptStatus,
+          errorCode: push.errorCode,
+          errorMessage: push.errorMessage,
+          lastCheckedStatusAt: now,
+        },
+      });
     }
-    const saved = await this.pushRepository.save([...resolvedPushes]);
 
     // Pushes with no receipt yet only need their recheck timestamp bumped;
     // one batched UPDATE instead of a row-at-a-time save().
@@ -239,7 +342,7 @@ export class PushService {
       .map((push) => push.id);
     if (unresolvedIds.length > 0) {
       await this.pushRepository.update(
-        { id: In(unresolvedIds) },
+        { id: In(unresolvedIds), deletedAt: IsNull() },
         { lastCheckedStatusAt: now },
       );
     }
@@ -249,10 +352,9 @@ export class PushService {
         receiptStatus: "pending",
         receiptId: Not(IsNull()),
         createdAt: LessThan(new Date(Date.now() - RECEIPT_MAX_AGE_MS)),
+        deletedAt: IsNull(),
       },
       { receiptStatus: "expired" },
     );
-
-    return saved;
   }
 }

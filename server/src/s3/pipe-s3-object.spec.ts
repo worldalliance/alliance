@@ -1,0 +1,164 @@
+import { S3Client } from "@aws-sdk/client-s3";
+import { HttpException, NotFoundException } from "@nestjs/common";
+import express from "express";
+import { Readable } from "stream";
+import request from "supertest";
+import { pipeS3Object } from "./pipe-s3-object";
+
+function serve(params: {
+  body: Readable | undefined;
+  storedType?: string;
+  contentType?: string;
+  maxAgeSeconds?: number;
+  contentRange?: string;
+  contentLength?: number;
+  filename?: string;
+  sendError?: Error;
+}) {
+  const s3 = new S3Client({ region: "us-west-2" });
+  jest.spyOn(s3, "send").mockImplementation(async () => {
+    if (params.sendError) throw params.sendError;
+    return {
+      Body: params.body,
+      ContentType: params.storedType,
+      ContentRange: params.contentRange,
+      ContentLength: params.contentLength,
+      AcceptRanges: "bytes",
+      ETag: '"stored"',
+      $metadata: {},
+    };
+  });
+  const app = express();
+  app.get("/", (_req, res) => {
+    pipeS3Object({
+      s3,
+      bucket: "bucket",
+      key: "dir/file.png",
+      res,
+      contentType: params.contentType,
+      maxAgeSeconds: params.maxAgeSeconds,
+      filename: params.filename,
+    }).catch((err) =>
+      res.status(err instanceof HttpException ? err.getStatus() : 500).end(),
+    );
+  });
+  return request(app).get("/");
+}
+
+describe("pipeS3Object", () => {
+  it("streams the object with its stored content type", async () => {
+    const res = await serve({
+      body: Readable.from([Buffer.from("png")]),
+      storedType: "image/png",
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toBe("image/png");
+    expect(res.headers["content-disposition"]).toBe(
+      'inline; filename="file.png"',
+    );
+    expect(res.body.toString()).toBe("png");
+    expect(res.headers["cache-control"]).toBe(
+      "public, max-age=31536000, immutable",
+    );
+    expect(res.headers.etag).toBeUndefined();
+  });
+
+  it("caches an object briefly when asked to", async () => {
+    const res = await serve({
+      body: Readable.from([Buffer.from("m3u8")]),
+      maxAgeSeconds: 60,
+    });
+    expect(res.headers["cache-control"]).toBe("public, max-age=60");
+    expect(res.headers.etag).toBeUndefined();
+  });
+
+  it("prefers the caller's content type over the stored one", async () => {
+    const res = await serve({
+      body: Readable.from([Buffer.from("ts")]),
+      storedType: "application/octet-stream",
+      contentType: "video/MP2T",
+    });
+    expect(res.headers["content-type"]).toBe("video/MP2T");
+  });
+
+  it("answers 404 and logs when the object has no body", async () => {
+    const log = jest.spyOn(console, "error").mockImplementation(() => {});
+    const res = await serve({ body: undefined });
+    expect(res.status).toBe(404);
+    expect(log).toHaveBeenCalledWith(
+      "Error getting %s:",
+      '"dir/file.png"',
+      expect.any(NotFoundException),
+    );
+    log.mockRestore();
+  });
+
+  it("aborts the response when the body fails mid-stream", async () => {
+    const log = jest.spyOn(console, "error").mockImplementation(() => {});
+    let sent = false;
+    // The second read comes once the first chunk is on its way out.
+    const body = new Readable({
+      read() {
+        if (sent) {
+          this.destroy(new Error("reset"));
+        } else {
+          sent = true;
+          this.push("par");
+        }
+      },
+    });
+    const failure = await serve({ body, storedType: "image/png" }).then(
+      () => null,
+      (err: Error) => err,
+    );
+    expect(failure).toBeInstanceOf(Error);
+    expect(log).toHaveBeenCalledWith(
+      "Error streaming %s:",
+      '"dir/file.png"',
+      expect.any(Error),
+    );
+    log.mockRestore();
+  });
+
+  it("answers an uncacheable 500 when the body fails before any bytes", async () => {
+    const log = jest.spyOn(console, "error").mockImplementation(() => {});
+    const body = new Readable({
+      read() {
+        this.destroy(new Error("reset"));
+      },
+    });
+    const res = await serve({ body, maxAgeSeconds: 60 });
+    expect(res.status).toBe(500);
+    expect(res.headers["cache-control"]).toBeUndefined();
+    expect(log).toHaveBeenCalledWith(
+      "Error streaming %s:",
+      '"dir/file.png"',
+      expect.any(Error),
+    );
+    log.mockRestore();
+  });
+
+  it("answers a ranged read as partial content under the given filename", async () => {
+    const res = await serve({
+      body: Readable.from([Buffer.from("PDF")]),
+      storedType: "application/pdf",
+      contentRange: "bytes 1-3/10",
+      contentLength: 3,
+      filename: "Pilot.pdf",
+    });
+    expect(res.status).toBe(206);
+    expect(res.headers["content-range"]).toBe("bytes 1-3/10");
+    expect(res.headers["content-length"]).toBe("3");
+    expect(res.headers["accept-ranges"]).toBe("bytes");
+    expect(res.headers["content-disposition"]).toBe(
+      'inline; filename="Pilot.pdf"',
+    );
+  });
+
+  it("answers 416 when S3 rejects the range", async () => {
+    const err = new Error("range");
+    err.name = "InvalidRange";
+    const res = await serve({ body: undefined, sendError: err });
+    expect(res.status).toBe(416);
+  });
+});

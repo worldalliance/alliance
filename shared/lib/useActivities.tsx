@@ -1,18 +1,21 @@
 import {
   ActionActivityDto,
-  actionsCommunityActivity,
-  actionsFindCompletedForUser,
-  actionsFriendActivity,
-  actionsFriendActivityForAction,
-  actionsGetActionActivities,
-  actionsGetActivityFeed,
-  actionsLikeActivity,
-  actionsUnlikeActivity,
+  actionFeedCommunityActivity,
+  actionFeedFindCompletedForUser,
+  actionFeedFriendActivity,
+  actionFeedFriendActivityForAction,
+  actionFeedGetActionActivities,
+  actionFeedGetActivity,
+  actionFeedGetActivityFeed,
+  actionFeedLikeActivity,
+  actionFeedUnlikeActivity,
 } from "@alliance/shared/client";
 import {
   InfiniteData,
+  skipToken,
   useInfiniteQuery,
   useMutation,
+  useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
@@ -20,6 +23,7 @@ import {
   actionActivityDtoIsVisibleInFeed,
   type FeedActionActivityDto,
 } from "./actionActivity";
+import { queryKeys } from "./queryKeys";
 
 export enum ActivityList {
   Friends = "friends",
@@ -49,41 +53,36 @@ export type UseActivitiesProps = {
     }
 );
 
+const DEFAULT_LIMIT = 50;
+
+const activitiesKey = (props: UseActivitiesProps) =>
+  queryKeys.activities({ ...props, limit: props.limit ?? DEFAULT_LIMIT });
+
 const supportsCursor = (list: ActivityList) =>
   list === ActivityList.Global ||
   list === ActivityList.Friends ||
   list === ActivityList.Community ||
   list === ActivityList.Action;
 
-const generateQueryKey = (props: UseActivitiesProps) => {
-  return [
-    "useActivities",
-    props.list,
-    props.objectId ?? "none",
-    props.limit ?? 50,
-    props.comments ?? false,
-  ];
-};
-
 const callActivityApi = async (props: UseActivitiesProps, before?: string) => {
-  const { list, objectId, limit = 50, comments = false } = props;
+  const { list, objectId, limit = DEFAULT_LIMIT, comments = false } = props;
   const beforeStr = before ?? new Date().toISOString();
 
   let apiCall;
   switch (list) {
     case ActivityList.Friends:
-      apiCall = actionsFriendActivity({
+      apiCall = actionFeedFriendActivity({
         query: { comments, limit: limit.toString(), before: beforeStr },
       });
       break;
     case ActivityList.User:
-      apiCall = actionsFindCompletedForUser({
+      apiCall = actionFeedFindCompletedForUser({
         path: { id: objectId! },
         query: { comments },
       });
       break;
     case ActivityList.Action:
-      apiCall = actionsGetActionActivities({
+      apiCall = actionFeedGetActionActivities({
         path: { id: objectId! },
         query: { limit: limit, comments, before: beforeStr },
       });
@@ -92,13 +91,13 @@ const callActivityApi = async (props: UseActivitiesProps, before?: string) => {
       if (!objectId) {
         throw new Error("objectId is required for FriendsForAction");
       }
-      apiCall = actionsFriendActivityForAction({
+      apiCall = actionFeedFriendActivityForAction({
         path: { actionId: objectId },
         query: { comments, limit: limit.toString() },
       });
       break;
     case ActivityList.Community:
-      apiCall = actionsCommunityActivity({
+      apiCall = actionFeedCommunityActivity({
         query: {
           limit: limit.toString(),
           before: beforeStr,
@@ -108,7 +107,7 @@ const callActivityApi = async (props: UseActivitiesProps, before?: string) => {
       });
       break;
     case ActivityList.Global:
-      apiCall = actionsGetActivityFeed({
+      apiCall = actionFeedGetActivityFeed({
         query: {
           limit: limit.toString(),
           before: beforeStr,
@@ -148,10 +147,10 @@ const fetchActivityPage = async (
   };
 };
 
-export type InfiniteActivityData = InfiniteData<ActivityPage>;
+type InfiniteActivityData = InfiniteData<ActivityPage>;
 
 /** Map over all activities across pages in an infinite query cache entry */
-export const mapInfiniteActivities = (
+const mapInfiniteActivities = (
   old: InfiniteActivityData | undefined,
   mapper: (activity: FeedActionActivityDto) => FeedActionActivityDto,
 ): InfiniteActivityData | undefined => {
@@ -165,11 +164,126 @@ export const mapInfiniteActivities = (
   };
 };
 
+export const useRefreshActivities = () => {
+  const queryClient = useQueryClient();
+  return useCallback(
+    (props: UseActivitiesProps) =>
+      queryClient.invalidateQueries({ queryKey: activitiesKey(props) }),
+    [queryClient],
+  );
+};
+
+export const useActivity = (activityId: number) =>
+  useQuery({
+    queryKey: queryKeys.activity(activityId),
+    queryFn: activityId
+      ? () =>
+          actionFeedGetActivity({
+            path: { id: activityId },
+            throwOnError: true,
+          }).then((res) => res.data)
+      : skipToken,
+  });
+
+/** Likes or unlikes an activity, optimistically in every cached activity
+ * list and in its useActivity entry. */
+export const useLikeActivity = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      activityId,
+      isLiked,
+    }: {
+      activityId: number;
+      isLiked: boolean;
+    }) => {
+      const response = isLiked
+        ? await actionFeedUnlikeActivity({ path: { id: activityId } })
+        : await actionFeedLikeActivity({ path: { id: activityId } });
+      if (response.response.ok && response.data) return response.data;
+      throw new Error("Like request failed");
+    },
+    onMutate: async ({ activityId, isLiked }) => {
+      const detailKey = queryKeys.activity(activityId);
+      // cancelQueries doesn't restart the fetch it cancels; onSettled does.
+      const detailWasFetching =
+        queryClient.isFetching({ queryKey: detailKey }) > 0;
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: queryKeys.activitiesAll() }),
+        queryClient.cancelQueries({ queryKey: detailKey }),
+      ]);
+
+      const previousQueries = queryClient.getQueriesData<InfiniteActivityData>({
+        queryKey: queryKeys.activitiesAll(),
+      });
+      const previousDetail =
+        queryClient.getQueryData<ActionActivityDto>(detailKey);
+
+      const toggle = <T extends ActionActivityDto>(a: T): T => ({
+        ...a,
+        likedByMe: !isLiked,
+        likesCount: isLiked ? a.likesCount - 1 : a.likesCount + 1,
+      });
+      queryClient.setQueriesData<InfiniteActivityData>(
+        { queryKey: queryKeys.activitiesAll() },
+        (old) =>
+          mapInfiniteActivities(old, (a) =>
+            a.id === activityId ? toggle(a) : a,
+          ),
+      );
+      queryClient.setQueryData<ActionActivityDto>(
+        detailKey,
+        (old) => old && toggle(old),
+      );
+
+      return { previousQueries, previousDetail, detailWasFetching };
+    },
+    onError: (_err, { activityId }, context) => {
+      context?.previousQueries?.forEach(([key, data]) => {
+        queryClient.setQueryData(key, data);
+      });
+      if (context?.previousDetail) {
+        queryClient.setQueryData(
+          queryKeys.activity(activityId),
+          context.previousDetail,
+        );
+      }
+    },
+    onSuccess: (data, { activityId }) => {
+      const fromServer = <T extends ActionActivityDto>(a: T): T => ({
+        ...a,
+        likes: data.likes,
+        likesCount: data.likesCount,
+        likedByMe: data.likedByMe,
+      });
+      queryClient.setQueriesData<InfiniteActivityData>(
+        { queryKey: queryKeys.activitiesAll() },
+        (old) =>
+          mapInfiniteActivities(old, (a) =>
+            a.id === activityId ? fromServer(a) : a,
+          ),
+      );
+      queryClient.setQueryData<ActionActivityDto>(
+        queryKeys.activity(activityId),
+        (old) => old && fromServer(old),
+      );
+    },
+    onSettled: (_data, _err, { activityId }, context) => {
+      if (context?.detailWasFetching) {
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.activity(activityId),
+        });
+      }
+    },
+  });
+};
+
 const useActivities = (props: UseActivitiesProps) => {
   const queryClient = useQueryClient();
-  const queryKey = generateQueryKey(props);
+  const refreshActivities = useRefreshActivities();
+  const queryKey = activitiesKey(props);
   const infinite = supportsCursor(props.list);
-  const limit = props.limit ?? 50;
+  const limit = props.limit ?? DEFAULT_LIMIT;
 
   const {
     data,
@@ -196,66 +310,7 @@ const useActivities = (props: UseActivitiesProps) => {
     [data],
   );
 
-  const likeMutation = useMutation({
-    mutationFn: async ({
-      activityId,
-      isLiked,
-    }: {
-      activityId: number;
-      isLiked: boolean;
-      activityType: string;
-    }) => {
-      const response = isLiked
-        ? await actionsUnlikeActivity({ path: { id: activityId } })
-        : await actionsLikeActivity({ path: { id: activityId } });
-      if (response.response.ok && response.data) return response.data;
-      throw new Error("Like request failed");
-    },
-    onMutate: async ({ activityId, isLiked }) => {
-      await queryClient.cancelQueries({ queryKey: ["useActivities"] });
-
-      const previousQueries = queryClient.getQueriesData<InfiniteActivityData>({
-        queryKey: ["useActivities"],
-      });
-
-      queryClient.setQueriesData<InfiniteActivityData>(
-        { queryKey: ["useActivities"] },
-        (old) =>
-          mapInfiniteActivities(old, (a) =>
-            a.id === activityId
-              ? {
-                  ...a,
-                  likedByMe: !isLiked,
-                  likesCount: isLiked ? a.likesCount - 1 : a.likesCount + 1,
-                }
-              : a,
-          ),
-      );
-
-      return { previousQueries };
-    },
-    onError: (_err, _vars, context) => {
-      context?.previousQueries?.forEach(([key, data]) => {
-        queryClient.setQueryData(key, data);
-      });
-    },
-    onSuccess: (data, { activityId }) => {
-      queryClient.setQueriesData<InfiniteActivityData>(
-        { queryKey: ["useActivities"] },
-        (old) =>
-          mapInfiniteActivities(old, (a) =>
-            a.id === activityId
-              ? {
-                  ...a,
-                  likes: data.likes,
-                  likesCount: data.likesCount,
-                  likedByMe: data.likedByMe,
-                }
-              : a,
-          ),
-      );
-    },
-  });
+  const likeMutation = useLikeActivity();
 
   const handleLikeActivity = useCallback(
     async (
@@ -266,11 +321,7 @@ const useActivities = (props: UseActivitiesProps) => {
       const isLiked = overrides?.isLiked ?? activity?.likedByMe ?? false;
       const activityType = overrides?.activityType ?? activity?.type;
       if (!activityType) return;
-      await likeMutation.mutateAsync({
-        activityId,
-        isLiked,
-        activityType,
-      });
+      await likeMutation.mutateAsync({ activityId, isLiked });
     },
     [activities, likeMutation],
   );
@@ -287,6 +338,8 @@ const useActivities = (props: UseActivitiesProps) => {
     [queryClient, queryKey],
   );
 
+  const refresh = () => refreshActivities(props);
+
   const noop = useCallback(() => {}, []);
 
   return {
@@ -294,6 +347,7 @@ const useActivities = (props: UseActivitiesProps) => {
     activities,
     handleLikeActivity,
     updateActivity,
+    refresh,
     fetchNextPage: infinite ? fetchNextPage : noop,
     hasNextPage: infinite ? (hasNextPage ?? false) : false,
     isFetchingNextPage: infinite ? isFetchingNextPage : false,

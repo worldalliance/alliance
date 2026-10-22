@@ -2,6 +2,7 @@ import type { DisplayOnlySchema } from "@alliance/common/forms/display-only-sche
 import {
   ApiProperty,
   ApiPropertyOptional,
+  IntersectionType,
   PartialType,
   PickType,
 } from "@nestjs/swagger";
@@ -17,7 +18,10 @@ import {
 import { displayOnlySchemaOf } from "src/tasks/display-only-snapshot";
 import { Tag } from "src/user/entities/tag.entity";
 import { ActionSuite } from "../entities/action-suite.entity";
-import { GeneralUpdate } from "../entities/general-update.entity";
+import {
+  GeneralUpdate,
+  loadedGeneralUpdateTags,
+} from "../entities/general-update.entity";
 
 function schemaOf(generalUpdate: GeneralUpdate): DisplayOnlySchema {
   return displayOnlySchemaOf({
@@ -86,18 +90,17 @@ export class GeneralUpdateAdminDto extends PickType(GeneralUpdate, [
     this.useManualCohort = generalUpdate.useManualCohort;
     this.manualCohortUserIds = generalUpdate.manualCohortUserIds;
     this.priority = generalUpdate.priority;
-    this.tags = generalUpdate.tags ?? [];
+    this.tags = loadedGeneralUpdateTags(generalUpdate);
     this.suites = generalUpdate.suites ?? [];
   }
 }
 
-export class CreateGeneralUpdateDto extends PickType(GeneralUpdate, [
-  "name",
-  "startDate",
-  "endDate",
-  "useManualCohort",
-  "manualCohortUserIds",
-]) {
+export class CreateGeneralUpdateDto extends IntersectionType(
+  PickType(GeneralUpdate, ["name", "useManualCohort"]),
+  PartialType(
+    PickType(GeneralUpdate, ["startDate", "endDate", "manualCohortUserIds"]),
+  ),
+) {
   @ApiPropertyOptional({ type: String, isArray: true })
   @IsOptional()
   @IsArray()

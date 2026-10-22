@@ -1,6 +1,6 @@
 import { FormSchema } from "@alliance/common/forms/form-schema";
 import { MailerModule } from "@nestjs-modules/mailer";
-import { INestApplication, Type, ValidationPipe } from "@nestjs/common";
+import { INestApplication, Type } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { JwtService } from "@nestjs/jwt";
@@ -8,12 +8,20 @@ import type { NestExpressApplication } from "@nestjs/platform-express";
 import { Test, TestingModule } from "@nestjs/testing";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import cookieParser from "cookie-parser";
+import type { Expo } from "expo-server-sdk";
+import { JWTTokenType, sessionTokenPayload } from "src/auth/tokens";
 import { Contract } from "src/contract/entities/contract.entity";
 import { testConnectionOptions } from "src/datasources/dataSourceTest";
 import { ForumModule } from "src/forum/forum.module";
+import { NotificationKind } from "src/notification-settings/notification-kind";
+import {
+  NotificationPreference,
+  PreferenceSource,
+} from "src/notification-settings/notification-preference.entity";
+import { NotificationChannel } from "src/notifs/notif-utils";
 import { NotifsModule } from "src/notifs/notifs.module";
 import { PosthogModule } from "src/posthog/posthog.module";
+import { EXPO_CLIENT } from "src/push/push.service";
 import { Form } from "src/tasks/entities/form.entity";
 import {
   FormSnapshot,
@@ -25,17 +33,17 @@ import {
   ContractEventType,
 } from "src/user/entities/contract-event.entity";
 import { Tag } from "src/user/entities/tag.entity";
-import { configureBodyParsers } from "src/utils/body-parsers";
+import { configureApp } from "src/utils/configure-app";
 import { ALL_THROTTLERS } from "src/utils/throttle";
-import { VALIDATION_PIPE_OPTIONS } from "src/utils/validation-pipe-options";
 import supertest from "supertest";
 import TestAgent from "supertest/lib/agent";
-import { DataSource } from "typeorm";
+import { DataSource, type EntityTarget, type ObjectLiteral } from "typeorm";
 import { ActionsModule } from "../src/actions/actions.module";
 import { AuthModule } from "../src/auth/auth.module";
 import { ContractModule } from "../src/contract/contract.module";
 import { ReferralSource, User } from "../src/user/entities/user.entity";
 import { UserModule } from "../src/user/user.module";
+import { UserService } from "../src/user/user.service";
 
 export interface TestContext {
   app: INestApplication;
@@ -48,6 +56,144 @@ export interface TestContext {
   agent: TestAgent;
   defaultTag: Tag;
   defaultContractId: number;
+}
+
+/**
+ * Polls `get` until `ready` accepts its value, for work an async listener does
+ * after the request returns. A fixed timer instead leaves the caller flaky on a
+ * loaded machine.
+ */
+export async function eventually<T>(
+  get: () => Promise<T>,
+  ready: (value: T) => boolean,
+  label = "the expected value",
+): Promise<T> {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const value = await get();
+    if (ready(value)) {
+      return value;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(`timed out waiting for ${label}`);
+}
+
+/** Accepts every push without calling Expo. */
+export function stubExpoClient(ctx: TestContext): void {
+  const expo = ctx.app.get<Expo>(EXPO_CLIENT);
+  jest
+    .spyOn(expo, "chunkPushNotifications")
+    .mockImplementation((messages) => [messages]);
+  jest
+    .spyOn(expo, "sendPushNotificationsAsync")
+    .mockImplementation(async (messages) =>
+      messages.map(() => ({ status: "ok", id: "receipt" })),
+    );
+}
+
+/** Resolves once `queries` queries in the test database wait on a row lock. */
+export function waitForLockWait(
+  dataSource: DataSource,
+  queries = 1,
+): Promise<unknown> {
+  return eventually(
+    (): Promise<{ waiting: number }[]> =>
+      dataSource.query(
+        `SELECT count(*)::int AS waiting FROM pg_stat_activity
+         WHERE datname = current_database() AND wait_event_type = 'Lock'`,
+      ),
+    ([row]) => row.waiting >= queries,
+    `${queries} queries to wait on a lock`,
+  );
+}
+
+/** Soft-deletes `deleted` right after the next account load. */
+export function deleteAfterUserLoad(params: {
+  ctx: TestContext;
+  deleted: User;
+}): void {
+  const { ctx, deleted } = params;
+  const userService = ctx.app.get(UserService);
+  const findOneOrFail = userService.findOneOrFail.bind(userService);
+  jest
+    .spyOn(userService, "findOneOrFail")
+    .mockImplementationOnce(async (id, relations) => {
+      const loaded = await findOneOrFail(id, relations);
+      await ctx.dataSource.getRepository(User).softDelete(deleted.id);
+      return loaded;
+    });
+}
+
+/**
+ * Starts `write` while another transaction holds the row `FOR UPDATE`, as a
+ * deletion does, then soft-deletes the row and commits. Resolves to what
+ * `write` resolved or rejected with.
+ */
+export async function writeDuringDeletion(params: {
+  dataSource: DataSource;
+  target: EntityTarget<ObjectLiteral>;
+  id: number | string;
+  write: () => Promise<unknown>;
+}): Promise<unknown> {
+  const { dataSource, target, id, write } = params;
+  const runner = dataSource.createQueryRunner();
+  await runner.startTransaction();
+  try {
+    await runner.manager
+      .createQueryBuilder(target, "row")
+      .where("row.id = :id", { id })
+      .setLock("pessimistic_write")
+      .getOne();
+    const settled = write().then(
+      (value) => value,
+      (err: unknown) => err,
+    );
+    await waitForLockWait(dataSource);
+    await runner.manager.softDelete(target, id);
+    await runner.commitTransaction();
+    return await settled;
+  } finally {
+    if (runner.isTransactionActive) await runner.rollbackTransaction();
+    await runner.release();
+  }
+}
+
+type TokenSubject = { id: number; email: string; sessionGeneration?: number };
+
+const withDefaultGeneration = (user: TokenSubject) => ({
+  ...user,
+  sessionGeneration: user.sessionGeneration ?? 0,
+});
+
+export function signAccessToken(
+  jwtService: JwtService,
+  user: TokenSubject,
+): string {
+  return jwtService.sign(
+    sessionTokenPayload({
+      user: withDefaultGeneration(user),
+      tokenType: JWTTokenType.access,
+    }),
+    {
+      secret: process.env.JWT_SECRET,
+    },
+  );
+}
+
+export function signImpersonationToken(
+  jwtService: JwtService,
+  user: TokenSubject,
+): string {
+  return jwtService.sign(
+    sessionTokenPayload({
+      user: withDefaultGeneration(user),
+      tokenType: JWTTokenType.access,
+      isImpersonation: true,
+    }),
+    {
+      secret: process.env.JWT_SECRET,
+    },
+  );
 }
 
 export async function createTestApp(
@@ -93,9 +239,7 @@ export async function createTestApp(
   const app = moduleFixture.createNestApplication<NestExpressApplication>({
     bodyParser: false,
   });
-  configureBodyParsers(app);
-  app.useGlobalPipes(new ValidationPipe(VALIDATION_PIPE_OPTIONS));
-  app.use(cookieParser());
+  configureApp(app);
   await app.init();
 
   const dataSource = moduleFixture.get(DataSource);
@@ -140,16 +284,9 @@ export async function createTestApp(
     }),
   );
 
-  // Generate tokens
-  const accessToken = jwtService.sign(
-    { sub: user.id, email: user.email, name: user.name },
-    { secret: process.env.JWT_SECRET },
-  );
+  const accessToken = signAccessToken(jwtService, user);
 
-  const adminAccessToken = jwtService.sign(
-    { sub: adminUser.id, email: adminUser.email, name: adminUser.name },
-    { secret: process.env.JWT_SECRET },
-  );
+  const adminAccessToken = signAccessToken(jwtService, adminUser);
 
   const agent = supertest.agent(app.getHttpServer());
 
@@ -213,6 +350,20 @@ export async function createFormWithSnapshot(
   );
   await attachFormSnapshot(dataSource, form.id, snapshot.id);
   return { form, snapshot };
+}
+
+export async function setPreference(
+  ctx: Pick<TestContext, "dataSource">,
+  params: {
+    userId: number;
+    kind: NotificationKind;
+    channel: NotificationChannel;
+    enabled: boolean;
+  },
+): Promise<void> {
+  await ctx.dataSource
+    .getRepository(NotificationPreference)
+    .save({ ...params, source: PreferenceSource.Member });
 }
 
 /**

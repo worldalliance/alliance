@@ -1,11 +1,20 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsOptional } from "class-validator";
+import { Allow, IsEmpty, IsOptional } from "class-validator";
+import { Campaign } from "src/campaign/entities/campaign.entity";
 import { Community } from "src/community/entities/community.entity";
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import { canModifyInvite } from "src/community/invite-permissions";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
 import { Notification } from "src/notifs/entities/notification.entity";
 import type { Relation } from "src/utils/Repository";
+import { WaitlistEntry } from "src/waitlist/entities/waitlist-entry.entity";
 import {
+  AfterInsert,
+  AfterLoad,
+  Check,
   Column,
   Entity,
   Index,
@@ -26,6 +35,10 @@ export enum OnetimeInviteStatus {
 }
 
 @Index(["createdAt", "id"])
+@Check(
+  "CHK_onetime_invite_issuer",
+  `"invitingUserId" IS NULL OR "organizationId" IS NULL`,
+)
 @Entity()
 export class OnetimeInvite {
   // Fields
@@ -40,17 +53,15 @@ export class OnetimeInvite {
   @Allow()
   invitee: string;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
+  @Column({ type: "varchar", nullable: true })
+  @ApiProperty({ type: String, nullable: true })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  inviteeDescription?: string;
+  inviteeDescription: string | null;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
+  @Column({ type: "varchar", nullable: true })
+  @ApiProperty({ type: String, nullable: true })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  info?: string;
+  info: string | null;
 
   @ApiProperty()
   @Column()
@@ -74,10 +85,11 @@ export class OnetimeInvite {
   @Allow()
   status: OnetimeInviteStatus;
 
-  @Column({ type: "timestamptz", nullable: true })
+  @DeleteDateColumnTz()
   @ApiProperty({ type: Date, nullable: true })
   @Type(() => Date)
   @IsOptional()
+  @IsEmpty()
   deletedAt: Date | null;
 
   @Column({ type: "timestamptz", nullable: true })
@@ -91,26 +103,30 @@ export class OnetimeInvite {
   @ManyToOne(() => User, {
     onDelete: "SET NULL",
   })
-  @ApiProperty({ type: () => User })
+  @ApiPropertyOptional({ type: () => User, nullable: true })
   @Type(() => User)
   @JoinColumn({ name: "invitingUserId" })
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  invitingUser: Relation<User>;
+  @IsOptional()
+  invitingUser?: Relation<User> | null;
 
   @OneToOne(() => User, (user) => user.referredByInvite)
-  @ApiProperty({ type: () => User, nullable: true })
+  @ApiPropertyOptional({ type: () => User, nullable: true })
   @Type(() => User)
   @IsOptional()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  invitedUser: Relation<User> | null;
+  invitedUser?: Relation<User> | null;
 
   @RelationId((invite: OnetimeInvite) => invite.invitedUser)
   @Type(() => Number)
-  @ApiPropertyOptional()
+  @ApiProperty({ type: Number, nullable: true })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  invitedUserId?: number;
+  invitedUserId: number | null;
+
+  // TypeORM leaves an inverse-side @RelationId unset when no row matches.
+  @AfterLoad()
+  @AfterInsert()
+  private nullInvitedUserId() {
+    this.invitedUserId ??= null;
+  }
 
   @ManyToOne(() => Community, (community) => community.invites, {
     nullable: true,
@@ -124,15 +140,51 @@ export class OnetimeInvite {
 
   @RelationId((invite: OnetimeInvite) => invite.community)
   @Type(() => Number)
-  @ApiPropertyOptional()
+  @ApiProperty({ type: Number, nullable: true })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  communityId?: number;
+  communityId: number | null;
+
+  @Column({ nullable: true })
+  @IsOptional()
+  organizationId: number | null;
+
+  @ManyToOne(() => Campaign, { nullable: true })
+  @JoinColumn({ name: "organizationId" })
+  @IsOptional()
+  organization?: Relation<Campaign> | null;
+
+  @Index()
+  @Column({ nullable: true })
+  @IsOptional()
+  waitlistEntryId: number | null;
+
+  @ManyToOne(() => WaitlistEntry, { nullable: true })
+  @JoinColumn({ name: "waitlistEntryId" })
+  @IsOptional()
+  waitlistEntry?: Relation<WaitlistEntry> | null;
 
   @OneToMany(() => Notification, (notif) => notif.onetimeInvite)
   @Type(() => Notification)
-  @ApiProperty({ type: () => Notification, isArray: true })
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  notifs: Relation<Notification>[];
+  @ApiPropertyOptional({ type: () => Notification, isArray: true })
+  @IsOptional()
+  notifs?: Relation<Notification>[];
+}
+
+export function loadedOnetimeInviteInvitingUser(
+  invite: OnetimeInvite,
+): Relation<User> | null {
+  if (invite.invitingUser === undefined) {
+    throw new Error(`invitingUser of onetime invite ${invite.id} not loaded`);
+  }
+  return invite.invitingUser;
+}
+
+export function canModifyOnetimeInvite(
+  user: Pick<User, "id" | "admin" | "leaderOfIdSet">,
+  invite: OnetimeInvite,
+): boolean {
+  return canModifyInvite(user, {
+    invitingUserId: loadedOnetimeInviteInvitingUser(invite)?.id ?? null,
+    communityId: invite.communityId,
+  });
 }

@@ -1,15 +1,23 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
+import {
+  emptyUserPropertyPresence,
+  type UserPropertyPresence,
+} from "@alliance/common/forms/user-properties";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useRef } from "react";
 import { userMyVisibilityContext } from "../client";
 import { schemaNeedsVisibilityContext } from "../formrenderer";
 import { queryKeys } from "./queryKeys";
+import { retryUnlessRefused } from "./retryQuery";
 
 export type VisibilityContext = {
   userHasCity: boolean;
+  userPropertyHasValue: UserPropertyPresence;
   firstContractSignedAt: string | null;
   completedActionCount: number;
   isLoading: boolean;
+  /** This mount's fetch failed, so the values above are stale or defaults. */
+  failed: boolean;
 };
 
 /**
@@ -44,7 +52,8 @@ export function hasSettledSinceMount(
 
 /**
  * The viewer's account-derived values consumed by form visibility conditions
- * (`userHasCity`, `firstContractSigned`, `completedActionCount`), fetched from
+ * (`userHasCity`, `userPropertyHasValue`, `firstContractSigned`,
+ * `completedActionCount`), fetched from
  * `GET /user/myvisibilitycontext` — the same values the server uses when
  * stripping hidden answers at submission. Only fetches when the schema
  * actually contains such a condition and `enabled` is true (pass the presence
@@ -76,7 +85,7 @@ export function useVisibilityContext(
     refetchOnMount: "always",
     // Whole form is gated on this, and failure only settles once react-query
     // stops retrying.
-    retry: 1,
+    retry: retryUnlessRefused(1),
   });
 
   const mountedAt = useRef(Date.now()).current;
@@ -84,27 +93,29 @@ export function useVisibilityContext(
     enabled &&
     needsContext &&
     !hasSettledSinceMount({ dataUpdatedAt, errorUpdatedAt }, mountedAt);
+  const failed =
+    enabled && needsContext && !isLoading && dataUpdatedAt < mountedAt;
 
   return useMemo(
     () => ({
       userHasCity: data?.userHasCity ?? false,
+      userPropertyHasValue:
+        data?.userPropertyHasValue ?? emptyUserPropertyPresence(),
       firstContractSignedAt: data?.firstContractSignedAt ?? null,
       completedActionCount: data?.completedActionCount ?? 0,
       isLoading,
+      failed,
     }),
-    [data, isLoading],
+    [data, isLoading, failed],
   );
 }
 
 /**
  * Drops the cached visibility context so the next form re-reads it.
  *
- * Call after anything that moves an account-derived value: completing an
- * action bumps `completedActionCount`, and signing a contract sets
- * `firstContractSignedAt`. Note that an action backed by a task form is
- * completed by the server inside `POST /tasks/submitForm` rather than by a
- * separate `actionsComplete` call, so the form-submission success path has to
- * invalidate too — see the callers.
+ * Call after anything that moves an account-derived value: completing or
+ * withdrawing from an action moves `completedActionCount`, and signing a
+ * contract sets `firstContractSignedAt`.
  *
  * No-op for guests: the query is disabled without a logged-in user.
  */

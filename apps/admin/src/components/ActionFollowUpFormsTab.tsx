@@ -1,12 +1,13 @@
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { FormSchema } from "@alliance/common/forms/form-schema";
 import { R } from "@alliance/common/result";
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import { AdminActionDto, tasksCreateFormAdmin } from "@alliance/shared/client";
 import type {
   AdminFollowUpFormDto,
-  FollowUpFormDto,
   TagDto,
 } from "@alliance/shared/client/types.gen";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { useInvalidateFormsIndex } from "@alliance/shared/lib/useFormsAdmin";
 import { parseFollowUpFormDto } from "@alliance/shared/parsed-dtos";
@@ -20,14 +21,22 @@ import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
+import { followUpFormLabel } from "../lib/followUpFormLabel";
+import { sessionExpiredMessage } from "../lib/sessionExpired";
 import CohortExpressionBuilder from "./CohortExpressionBuilder";
 import { FormBuilder } from "./FormBuilder";
 
 export interface ActionFollowUpFormsTabProps {
   action: AdminActionDto;
   availableTags: TagDto[];
+  tagsLoading: boolean;
+  tagsError: boolean;
   availableActions: { id: number; name: string }[];
+  actionsLoading: boolean;
+  actionsError: boolean;
   availableUsers: UserSelectUser[];
+  usersLoading: boolean;
+  usersError: boolean;
 }
 
 const emptyFormSchema: FormSchema = {
@@ -38,16 +47,17 @@ const emptyFormSchema: FormSchema = {
   aggregateViews: [],
 };
 
-function followUpFormLabel(fuf: FollowUpFormDto): string {
-  const label = fuf.name?.trim();
-  return label ? label : `Follow-up form #${fuf.id}`;
-}
-
 export default function ActionFollowUpFormsTab({
   action,
   availableTags,
+  tagsLoading,
+  tagsError,
   availableActions,
+  actionsLoading,
+  actionsError,
   availableUsers,
+  usersLoading,
+  usersError,
 }: ActionFollowUpFormsTabProps) {
   const followUpForms = useMemo(
     () => action.followUpForms ?? [],
@@ -148,11 +158,16 @@ export default function ActionFollowUpFormsTab({
             cohortExpression: fields.cohortExpression,
           },
         }),
+        (thrown) => {
+          console.error("Failed to save follow-up form fields", thrown);
+          return thrownRefusalMessage({
+            error: thrown,
+            fallback: "Failed to save follow-up form fields",
+            sessionExpired: sessionExpiredMessage,
+          });
+        },
       );
-      if (!result.ok) {
-        console.error("Failed to save follow-up form fields", result.error);
-        pushError("Failed to save follow-up form fields");
-      }
+      if (!result.ok) pushError(result.error);
     },
     [updateFollowUpForm, pushError],
   );
@@ -256,8 +271,14 @@ export default function ActionFollowUpFormsTab({
           savingFields={savingFollowUpFormIds.has(selectedForm.id)}
           deleting={deletingFollowUpFormIds.has(selectedForm.id)}
           availableTags={availableTags}
+          tagsLoading={tagsLoading}
+          tagsError={tagsError}
           availableActions={availableActions}
+          actionsLoading={actionsLoading}
+          actionsError={actionsError}
           availableUsers={availableUsers}
+          usersLoading={usersLoading}
+          usersError={usersError}
         />
       )}
     </div>
@@ -282,8 +303,14 @@ interface FollowUpFormCardProps {
   savingFields: boolean;
   deleting: boolean;
   availableTags: TagDto[];
+  tagsLoading: boolean;
+  tagsError: boolean;
   availableActions: { id: number; name: string }[];
+  actionsLoading: boolean;
+  actionsError: boolean;
   availableUsers: UserSelectUser[];
+  usersLoading: boolean;
+  usersError: boolean;
 }
 
 function FollowUpFormCard({
@@ -295,8 +322,14 @@ function FollowUpFormCard({
   savingFields,
   deleting,
   availableTags,
+  tagsLoading,
+  tagsError,
   availableActions,
+  actionsLoading,
+  actionsError,
   availableUsers,
+  usersLoading,
+  usersError,
 }: FollowUpFormCardProps) {
   const [startDate, setStartDate] = useState<string>(
     followUpForm.startDate ?? "",
@@ -379,8 +412,14 @@ function FollowUpFormCard({
             value={cohortExpr}
             onChange={setCohortExpr}
             availableTags={availableTags}
+            tagsLoading={tagsLoading}
+            tagsError={tagsError}
             availableActions={availableActions}
+            actionsLoading={actionsLoading}
+            actionsError={actionsError}
             availableUsers={availableUsers}
+            usersLoading={usersLoading}
+            usersError={usersError}
           />
         </div>
 

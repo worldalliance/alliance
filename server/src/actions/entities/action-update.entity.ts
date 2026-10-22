@@ -1,6 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsNotEmpty, IsOptional } from "class-validator";
+import {
+  Allow,
+  IsBoolean,
+  IsEmpty,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  ValidateIf,
+} from "class-validator";
+import { DeleteDateColumnTz } from "src/datasources/basecolumns";
 import { Notification } from "src/notifs/entities/notification.entity";
 import {
   ACTION_UPDATE_SNAPSHOT_HISTORY_TABLE,
@@ -18,6 +28,7 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
   RelationId,
+  type EntityManager,
 } from "typeorm";
 import { ActionEvent } from "./action-event.entity";
 import { Action } from "./action.entity";
@@ -27,6 +38,12 @@ export enum ActionUpdateNotifyType {
   ActionCohort = "action_cohort",
   AllMembers = "all_members",
   Tag = "tag",
+}
+
+/** Legacy is only for updates that predate recognition copy. */
+export enum ActionUpdateNotificationMode {
+  Legacy = "legacy",
+  Normal = "normal",
 }
 
 @Entity()
@@ -42,10 +59,9 @@ export class ActionUpdate {
   })
   @JoinColumn({ name: "actionId" })
   @Type(() => Action)
-  @Allow()
-  @ApiProperty({ type: () => Action })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  action: Relation<Action>;
+  @IsOptional()
+  @ApiPropertyOptional({ type: () => Action })
+  action?: Relation<Action>;
 
   @RelationId((update: ActionUpdate) => update.action)
   @Type(() => Number)
@@ -102,10 +118,31 @@ export class ActionUpdate {
   @IsOptional()
   visibleAt: Date | null;
 
+  /** The collective result; with the result split, the completed group's. */
   @Column({ type: "text" })
+  @ValidateIf((update: ActionUpdate) => !update.splitCollectiveResult)
   @IsNotEmpty()
   @ApiProperty()
   shortNotifString: string;
+
+  @Column({ default: false })
+  @IsBoolean()
+  @ApiProperty()
+  splitCollectiveResult: boolean;
+
+  /** Read only while the result is split; empty skips the group. */
+  @Column({ type: "text", nullable: true })
+  @IsOptional()
+  @IsString()
+  @ApiProperty({ type: String, nullable: true })
+  nonCompleterResult: string | null;
+
+  /** Read only while the result is split; empty skips the group. */
+  @Column({ type: "text", nullable: true })
+  @IsOptional()
+  @IsString()
+  @ApiProperty({ type: String, nullable: true })
+  uninvolvedResult: string | null;
 
   @ManyToOne(() => ActionEvent, (event) => event.updates, { nullable: true })
   @JoinColumn({ name: "associatedEventId" })
@@ -116,10 +153,9 @@ export class ActionUpdate {
 
   @RelationId((update: ActionUpdate) => update.associatedEvent)
   @Type(() => Number)
-  @ApiPropertyOptional({ type: Number })
+  @ApiProperty({ type: Number, nullable: true })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  associatedEventId?: number | null;
+  associatedEventId: number | null;
 
   @Column({
     type: "enum",
@@ -142,12 +178,31 @@ export class ActionUpdate {
   @IsOptional()
   notifiedAt: Date | null;
 
+  @Column({
+    type: "enum",
+    enum: ActionUpdateNotificationMode,
+    enumName: "ActionUpdateNotificationMode",
+    // Lets a server that predates the column keep inserting, mid-deploy or after a rollback.
+    default: ActionUpdateNotificationMode.Legacy,
+  })
+  @IsEnum(ActionUpdateNotificationMode)
+  notificationMode: ActionUpdateNotificationMode;
+
+  /** When recognition copy was frozen for every recipient. */
+  @Column({ type: "timestamptz", nullable: true })
+  @IsOptional()
+  recognitionPreparedAt: Date | null;
+
+  /** Why a due recognition send is waiting; cleared once it goes out. */
+  @Column({ type: "text", nullable: true })
+  @IsOptional()
+  notificationHeldReason: string | null;
+
   @OneToMany(() => Notification, (notif) => notif.actionUpdate)
   @Type(() => Notification)
-  @ApiProperty({ type: () => Notification, isArray: true })
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  notifs: Relation<Notification>[];
+  @ApiPropertyOptional({ type: () => Notification, isArray: true })
+  @IsOptional()
+  notifs?: Relation<Notification>[];
 
   @ManyToOne(() => Tag, { nullable: true })
   @JoinColumn({ name: "tagId" })
@@ -155,4 +210,14 @@ export class ActionUpdate {
   @ApiPropertyOptional({ type: () => Tag, nullable: true })
   @IsOptional()
   tag?: Relation<Tag> | null;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
+}
+
+/** Edits, sends and the recognition freeze serialize on this row lock. */
+export async function lockActionUpdateRow(em: EntityManager, id: number) {
+  await em.query("SELECT id FROM action_update WHERE id = $1 FOR UPDATE", [id]);
 }

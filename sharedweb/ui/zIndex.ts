@@ -28,8 +28,6 @@ export const zIndexValues = {
   drawer: 30,
   /** Dialogs, modals, lightboxes, and their backdrops. */
   modal: 40,
-  /** Below popovers. */
-  popoverBackdrop: 50,
   /** Dropdowns, selects, hover cards, tooltips, context menus. */
   popover: 60,
   /** Toasts / notifications — always on top. */
@@ -42,7 +40,6 @@ export const zIndex = {
   nav: "z-20",
   drawer: "z-30",
   modal: "z-40",
-  popoverBackdrop: "z-50",
   popover: "z-60",
   toast: "z-70",
 } as const satisfies {

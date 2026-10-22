@@ -6,7 +6,7 @@
 export enum GuideSectionKind {
   Introduction = "introduction",
   Structure = "structure",
-  Actions = "actions",
+  Projects = "projects",
   Priorities = "priorities",
   Roadmap = "roadmap",
   Resources = "resources",
@@ -52,19 +52,21 @@ We depend on members reliably completing the tasks they are assigned. Since we k
 New members sign a **membership contract** that sets a clear expectation of reliability. Once they sign a contract, we start to assign them tasks. If a member does not complete the tasks they are assigned, we automatically suspend their contract and no longer assign them tasks. They can re-sign the contract at any time.
 `,
   },
-  [GuideSectionKind.Actions]: {
-    label: "Actions",
+  [GuideSectionKind.Projects]: {
+    label: "Projects",
     markdown: `
-Planning actions is a creative, open-ended process that searches for levers of change which members can pull.
+The office plans projects to advance our priorities, and breaks them down into step-by-step tasks that members can complete.
 
-When ideating for and developing an action, we weigh many considerations. For instance:
+Planning projects is a creative, open-ended process that searches for levers of change which members can pull.
 
-- How does the action relate to the priorities of the Alliance?
-- Will the action produce a tangible impact on the world?
-- Will the action make effective use of members' time?
-- Will the action have any compounding effects – for instance, by providing an educational opportunity or growing the Alliance's network?
+When ideating for and developing a project, we weigh many considerations. For instance:
 
-Examples of actions we have taken:
+- How does the project relate to the priorities of the Alliance?
+- Will the project produce a tangible impact on the world?
+- Will the project make effective use of members' time?
+- Will the project have any compounding effects – for instance, by providing an educational opportunity or growing the Alliance's network?
+
+Examples of projects we have completed:
 `,
   },
   [GuideSectionKind.Priorities]: {
@@ -88,7 +90,7 @@ Once we are confident in our processes and structures, we will launch publicly. 
 
 As the Alliance grows, we plan to bring together experts from diverse fields to make increasingly impactful, long-term plans. Our online platform will enable direct communication between these experts and millions of members to enact rapid, large-scale change.
 
-It is difficult to know exactly which actions we will take as we grow. However, a few broad categories of actions include:
+It is difficult to know exactly which projects we will undertake as we grow. However, a few broad categories of projects include:
 `,
   },
   [GuideSectionKind.Resources]: {
@@ -100,7 +102,7 @@ It is difficult to know exactly which actions we will take as we grow. However, 
 export const GUIDE_SECTION_ORDER: GuideSectionKind[] = [
   GuideSectionKind.Introduction,
   GuideSectionKind.Structure,
-  GuideSectionKind.Actions,
+  GuideSectionKind.Projects,
   GuideSectionKind.Priorities,
   GuideSectionKind.Roadmap,
   GuideSectionKind.Resources,
@@ -221,7 +223,7 @@ We define "the Alliance" as the body of our members, not as any legal entity.
     id: "how-do-i-join",
     question: "How do I join the Alliance?",
     answer: `
-Membership is currently by invitation only. You can [request to join](/join), and we will follow up with a signup link if there is a fit.
+Membership is currently by invitation only. You can [join the waitlist](/projects/democratic-grantmaking-26), and we will email you when you can join.
 `,
   },
   {
@@ -313,7 +315,7 @@ If you have already spent 15 minutes completing tasks in a given week, you can w
 
 If you have a moral objection to a task, you can withdraw from that task without affecting your membership status.
 
-Otherwise, a member who misses all assigned non-optional actions for 3 weeks in a row will have their contract suspended and will be unable to participate in Alliance governance.
+Otherwise, a member who misses any assigned non-optional task for 3 weeks in a row will have their contract suspended and will be unable to participate in Alliance governance.
 
 Former members can rejoin the Alliance by re-signing the contract.
 `,
@@ -345,7 +347,7 @@ Initial funding for the Alliance was provided by [Elizabeth Barnes](https://barn
   },
 ];
 
-export const PRIVACY_UPDATED = "Last updated 25 August 2025";
+export const PRIVACY_UPDATED = "Last updated 15 September 2026";
 
 export const PRIVACY_MARKDOWN = `
 Alliance Foundation ("Alliance," "we," "our," or "us") operates the Alliance Platform (the "Platform"). This privacy policy explains how our organization uses the personal data we collect from you when you use our website and services.
@@ -357,7 +359,6 @@ The Alliance collects the following data:
 - Personal identification information (name, email address, phone number)
 - Account information (username, password, account preferences)
 - Activity data related to your use of the Platform (actions joined, events created, preferences set)
-- Payment information (processed securely through Stripe, never stored directly by us)
 - Technical information (IP address, browser type, device information, approximate location)
 
 ## How do we collect your data?
@@ -377,7 +378,6 @@ Alliance collects your data so that we can:
 
 - Provide you access to and maintain your account.
 - Notify you about activities, events, and updates you have opted in to receive.
-- Process your payments.
 - Improve our services, analytics, and website functionality.
 - Enforce our Terms of Service and comply with applicable laws.
 

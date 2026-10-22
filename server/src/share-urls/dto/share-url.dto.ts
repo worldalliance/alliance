@@ -1,3 +1,8 @@
+import {
+  INVITE_LINK_TOKEN,
+  INVITE_MESSAGE_TEMPLATE_MAX_LENGTH,
+} from "@alliance/common/inviteMessage";
+import { SHARE_URL_LABEL_MAX_LENGTH } from "@alliance/common/shareUrlLabel";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
@@ -6,6 +11,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   Min,
   ValidateIf,
@@ -27,6 +33,27 @@ export class ReusableInviteFeedQueryDto {
   @ApiProperty({ type: String, format: "date-time" })
   @IsDateString()
   startAt: string;
+}
+
+export class InviteMessageTemplateDto {
+  @ApiProperty()
+  template: string;
+
+  constructor(template: string) {
+    this.template = template;
+  }
+}
+
+export class UpdateInviteMessageTemplateDto {
+  @ApiProperty({
+    description: `Invitation message containing the ${INVITE_LINK_TOKEN} token.`,
+  })
+  @IsString()
+  @MaxLength(INVITE_MESSAGE_TEMPLATE_MAX_LENGTH)
+  @Matches(/\{invite_link\}/, {
+    message: `template must contain ${INVITE_LINK_TOKEN}`,
+  })
+  template: string;
 }
 
 export class ReusableInviteFeedItemDto {
@@ -150,7 +177,7 @@ export class CreateDuplicateShareLinkDto {
   })
   @IsOptional()
   @IsString()
-  @MaxLength(120)
+  @MaxLength(SHARE_URL_LABEL_MAX_LENGTH)
   label?: string;
 }
 
@@ -161,6 +188,7 @@ export class UpdateShareLinkLabelDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(SHARE_URL_LABEL_MAX_LENGTH)
   label?: string;
 }
 
@@ -170,7 +198,7 @@ export class CreateInviteDuplicateDto {
   })
   @IsOptional()
   @IsString()
-  @MaxLength(120)
+  @MaxLength(SHARE_URL_LABEL_MAX_LENGTH)
   label?: string;
 
   @ApiProperty({ type: Number, nullable: true })
@@ -189,7 +217,7 @@ export class UpdateInviteDto {
   // the declared `string` lying to everything downstream.
   @ValidateIf((_object, value) => value !== undefined)
   @IsString()
-  @MaxLength(120)
+  @MaxLength(SHARE_URL_LABEL_MAX_LENGTH)
   label?: string;
 
   @ApiPropertyOptional({
@@ -217,8 +245,8 @@ export class ShareUrlMineDto {
   @ApiProperty()
   duplicate: boolean;
 
-  @ApiPropertyOptional()
-  sid?: string;
+  @ApiProperty({ type: String, nullable: true })
+  sid: string | null;
 
   @ApiProperty({ type: Date })
   createdAt: Date;
@@ -289,8 +317,8 @@ export class ShareUrlAdminDto {
   @ApiProperty({ enum: ShareUrlKind, enumName: "ShareUrlKind" })
   kind: ShareUrlKind;
 
-  @ApiPropertyOptional()
-  sid?: string;
+  @ApiProperty({ type: String, nullable: true })
+  sid: string | null;
 
   @ApiProperty()
   url: string;

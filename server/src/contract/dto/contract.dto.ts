@@ -1,6 +1,6 @@
 import type { ContractField } from "@alliance/common/forms/form-schema";
 import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   IsArray,
   IsNotEmpty,
@@ -35,6 +35,7 @@ export class ContractDto extends PickType(Contract, ["id", "markdown"]) {
 
 export class SignContractDto {
   @ApiProperty()
+  @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
   @IsString()
   @IsNotEmpty()
   signedName: string;

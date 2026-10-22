@@ -1,5 +1,5 @@
 import { cn } from "@alliance/shared/styles/util";
-import React from "react";
+import React, { useId } from "react";
 
 interface SpinnerProps {
   size?: "small" | "medium" | "large";
@@ -10,6 +10,7 @@ const Spinner: React.FC<SpinnerProps> = ({
   size = "medium",
   color = "fill-green",
 }) => {
+  const labelId = useId();
   const sizeClass = {
     small: "w-6 h-6",
     medium: "w-9 h-9",
@@ -17,7 +18,7 @@ const Spinner: React.FC<SpinnerProps> = ({
   };
 
   return (
-    <div role="status">
+    <div role="status" aria-labelledby={labelId}>
       <svg
         aria-hidden="true"
         className={cn(
@@ -39,7 +40,9 @@ const Spinner: React.FC<SpinnerProps> = ({
           fill="currentFill"
         />
       </svg>
-      <span className="sr-only">Loading...</span>
+      <span id={labelId} className="sr-only">
+        Loading...
+      </span>
     </div>
   );
 };

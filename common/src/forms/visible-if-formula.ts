@@ -1,5 +1,6 @@
 import z from "zod";
 import { deviceVisibilityTargetSchema } from "./device";
+import { UserValueProperty } from "./user-properties";
 
 const conditionEqualsSchema = z.strictObject({
   kind: z.literal("equals"),
@@ -19,6 +20,22 @@ const conditionAnySelectedSchema = z.strictObject({
   kind: z.literal("anySelected"),
   when: z.string(),
   anySelected: z.boolean(),
+  sourceFormId: z.number().optional(),
+});
+
+export enum SelectedCountComparison {
+  GreaterThan = "gt",
+  AtLeast = "gte",
+  LessThan = "lt",
+  AtMost = "lte",
+  Equals = "eq",
+}
+
+const conditionSelectedCountSchema = z.strictObject({
+  kind: z.literal("selectedCount"),
+  when: z.string(),
+  comparison: z.enum(SelectedCountComparison),
+  count: z.number().int().min(0),
   sourceFormId: z.number().optional(),
 });
 
@@ -51,6 +68,12 @@ const conditionUserHasCitySchema = z.strictObject({
   userHasCity: z.boolean(),
 });
 
+const conditionUserPropertyHasValueSchema = z.strictObject({
+  kind: z.literal("userPropertyHasValue"),
+  property: z.enum(UserValueProperty),
+  hasValue: z.boolean(),
+});
+
 /**
  * True when the user's first contract signing (their earliest `signed`
  * contract event) falls `before` / `onOrAfter` `date`. Users who have never
@@ -74,11 +97,13 @@ export const conditionSchema = z.discriminatedUnion("kind", [
   conditionEqualsSchema,
   conditionIncludesOptionSchema,
   conditionAnySelectedSchema,
+  conditionSelectedCountSchema,
   conditionHasValueSchema,
   conditionValidatorSchema,
   conditionDeviceTypeSchema,
   conditionOutputBlockVisibleSchema,
   conditionUserHasCitySchema,
+  conditionUserPropertyHasValueSchema,
   conditionFirstContractSignedSchema,
   conditionCompletedActionCountSchema,
 ]);
@@ -97,11 +122,13 @@ export const CONDITION_KIND_IS_ACCOUNT_DERIVED = {
   equals: false,
   includesOption: false,
   anySelected: false,
+  selectedCount: false,
   hasValue: false,
   validator: false,
   deviceType: false,
   outputBlockVisible: false,
   userHasCity: true,
+  userPropertyHasValue: true,
   firstContractSigned: true,
   completedActionCount: true,
 } as const satisfies Record<ConditionKind, boolean>;
@@ -132,6 +159,40 @@ const KNOWN_CONDITION_KINDS: ReadonlySet<string> = new Set(
  */
 export function isKnownConditionKind(kind: string): kind is ConditionKind {
   return KNOWN_CONDITION_KINDS.has(kind);
+}
+
+/**
+ * The question a condition reads an answer to, on this form or, with a
+ * `sourceFormId`, another one; null for a condition that reads no answer.
+ */
+export function conditionFieldReference(
+  condition: Condition,
+): { fieldId: string; sourceFormId: number | null } | null {
+  switch (condition.kind) {
+    case "equals":
+    case "includesOption":
+    case "anySelected":
+    case "selectedCount":
+    case "hasValue":
+      return {
+        fieldId: condition.when,
+        sourceFormId: condition.sourceFormId ?? null,
+      };
+    case "validator":
+    case "deviceType":
+    case "outputBlockVisible":
+    case "userHasCity":
+    case "userPropertyHasValue":
+    case "firstContractSigned":
+    case "completedActionCount":
+      return null;
+    default:
+      // A kind added in a newer build reads nothing this build can follow.
+      // Renderers block such a schema outright, so skipping it is safe, and
+      // render-time callers can't throw.
+      condition satisfies never;
+      return null;
+  }
 }
 
 /** Formula tree for visibility: AND/OR of two operands, NOT of one. Leaves are condition names (e.g. condition1, condition2). */
@@ -181,35 +242,42 @@ export function evaluateVisibilityFormula(
   node: FormulaNode,
   results: Record<string, boolean>,
 ): boolean {
-  if (typeof node === "string") return results[node] === true;
-  if (node.op === "NOT") {
-    const operand =
-      typeof node.operand === "string"
-        ? results[node.operand] === true
-        : evaluateVisibilityFormula(node.operand, results);
-    return !operand;
+  return evaluateVisibilityFormulaWithUnknowns(node, results) === true;
+}
+
+/**
+ * `evaluateVisibilityFormula` where a condition mapped to `undefined` could be
+ * either: the result is `undefined` when it turns on one of those.
+ */
+export function evaluateVisibilityFormulaWithUnknowns(
+  node: FormulaNode,
+  results: Record<string, boolean | undefined>,
+): boolean | undefined {
+  if (typeof node === "string") {
+    return Object.hasOwn(results, node) ? results[node] : false;
   }
-  if (node.op === "AND") {
-    const left =
-      typeof node.left === "string"
-        ? results[node.left] === true
-        : evaluateVisibilityFormula(node.left, results);
-    const right =
-      typeof node.right === "string"
-        ? results[node.right] === true
-        : evaluateVisibilityFormula(node.right, results);
-    return left && right;
+  switch (node.op) {
+    case "NOT": {
+      const operand = evaluateVisibilityFormulaWithUnknowns(
+        node.operand,
+        results,
+      );
+      return operand === undefined ? undefined : !operand;
+    }
+    case "AND": {
+      const left = evaluateVisibilityFormulaWithUnknowns(node.left, results);
+      const right = evaluateVisibilityFormulaWithUnknowns(node.right, results);
+      if (left === false || right === false) return false;
+      return left && right;
+    }
+    case "OR": {
+      const left = evaluateVisibilityFormulaWithUnknowns(node.left, results);
+      const right = evaluateVisibilityFormulaWithUnknowns(node.right, results);
+      if (left === true || right === true) return true;
+      return left === undefined || right === undefined ? undefined : false;
+    }
+    default:
+      node satisfies never;
+      return false;
   }
-  if (node.op === "OR") {
-    const left =
-      typeof node.left === "string"
-        ? results[node.left] === true
-        : evaluateVisibilityFormula(node.left, results);
-    const right =
-      typeof node.right === "string"
-        ? results[node.right] === true
-        : evaluateVisibilityFormula(node.right, results);
-    return left || right;
-  }
-  return false;
 }

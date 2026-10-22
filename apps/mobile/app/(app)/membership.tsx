@@ -1,42 +1,34 @@
 import {
-  authMe,
-  contractGetById,
-  contractGetCurrent,
-  contractSignContract,
-  contractSuspendContract,
-} from "@alliance/shared/client";
-import {
-  ContractEventState,
-  getLastContractEvent,
   getSignedMessage,
   getSuspensionMessage,
+  WEEKLY_COMMITMENT_CONFIRMATION,
 } from "@alliance/shared/lib/contract";
-import { suspendContractConfirmation } from "@alliance/shared/lib/copy";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown } from "lucide-react-native";
 import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+  membershipAgreement,
+  membershipAgreementLoadFailed,
+  membershipFaq,
+  signedAgreementLoadFailed,
+  suspendContractConfirmation,
+} from "@alliance/shared/lib/copy";
+import { useMembershipAgreement } from "@alliance/shared/lib/useMembershipAgreement";
+import { ChevronDown } from "lucide-react-native";
+import { useMemo, useState, type ReactNode } from "react";
 import { Alert, TextInput, TouchableOpacity, View } from "react-native";
 import AppMarkdownWrapper from "../../components/AppMarkdownWrapper";
 import AwayRangesSection from "../../components/AwayRangesSection";
 import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
+import LoadFailed from "../../components/LoadFailed";
 import Button, { ButtonColor } from "../../components/system/Button";
 import Card, { CardStyle } from "../../components/system/Card";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
 import Text, { FontWeight } from "../../components/system/Text";
 import { useAuth } from "../../lib/AuthContext";
+import {
+  Anchor,
+  useWalkthroughScroll,
+  WalkthroughAnchor,
+} from "../../lib/onboarding/walkthrough";
 import { colors } from "../../lib/style/colors";
-
-const WEEKLY_COMMITMENT_CONFIRMATION =
-  "I commit to complete each task to the best of my ability.";
-
-const COMMITMENT_CONFIRMATION_LENGTH_TOLERANCE = 10;
 
 function FormalTextDropdown({ markdown }: { markdown: string }) {
   const [open, setOpen] = useState(false);
@@ -121,138 +113,47 @@ function SignedContractActions({
         color={ButtonColor.Red}
         disabled={isSubmitting}
         loading={isSubmitting}
-        title="Suspend contract"
+        title={membershipAgreement.suspend}
       />
     </View>
   );
 }
 
-const isConfirmationLengthCloseEnough = (confirmation: string) =>
-  Math.abs(
-    confirmation.trim().length - WEEKLY_COMMITMENT_CONFIRMATION.length,
-  ) <= COMMITMENT_CONFIRMATION_LENGTH_TOLERANCE;
-
 export default function MembershipScreen() {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-
-  const [editName, setEditName] = useState("");
-  const [weeklyCommitmentConfirmation, setWeeklyCommitmentConfirmation] =
-    useState("");
-  const [lastContractEvent, setLastContractEvent] =
-    useState<ContractEventState>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const weeklyCommitmentConfirmed = isConfirmationLengthCloseEnough(
-    weeklyCommitmentConfirmation,
-  );
-
-  const { data: latestContract } = useQuery({
-    queryKey: ["contractGetCurrent"],
-    queryFn: () => contractGetCurrent().then((res) => res.data ?? null),
-  });
-
-  const signedContractId = lastContractEvent?.contractId ?? null;
-
-  const { data: signedContract } = useQuery({
-    queryKey: ["contractGetById", signedContractId],
-    queryFn: () =>
-      contractGetById({
-        path: { id: signedContractId! },
-      }).then((res) => res.data ?? null),
-    enabled: signedContractId !== null,
-  });
-
-  useEffect(() => {
-    if (user) {
-      setLastContractEvent(getLastContractEvent(user.contractEvents));
-    }
-  }, [user]);
-
-  const refreshContractState = useCallback(async () => {
-    try {
-      const response = await authMe();
-      if (response.data?.user?.contractEvents) {
-        setLastContractEvent(
-          getLastContractEvent(response.data.user.contractEvents),
-        );
-      }
-    } catch (error) {
-      console.error("Error refreshing contract state:", error);
-    }
-  }, []);
-
-  const handleContractSign = useCallback(async () => {
-    if (isSubmitting || !latestContract || !weeklyCommitmentConfirmed) return;
-    setIsSubmitting(true);
-
-    try {
-      const res = await contractSignContract({
-        path: { id: latestContract.id },
-        body: { signedName: editName },
-      });
-      if (res.data) {
-        setLastContractEvent({
-          type: "signed",
-          date: res.data.date,
-          automatic: false,
-          contractId: latestContract.id,
-        });
-        setWeeklyCommitmentConfirmation("");
-        void queryClient.invalidateQueries({
-          queryKey: queryKeys.myVisibilityContext(),
-        });
-        await refreshContractState();
-      }
-    } catch (error) {
-      console.error("Error signing contract:", error);
-      Alert.alert(
-        "Error",
-        "There was an error signing the contract. Please try again.",
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [
-    isSubmitting,
+  const { user, refreshUser } = useAuth();
+  const walkthroughScroll = useWalkthroughScroll();
+  const {
     latestContract,
-    weeklyCommitmentConfirmed,
-    editName,
-    queryClient,
-    refreshContractState,
-  ]);
+    contractLoadFailed,
+    retryContractLoad,
+    retryingContractLoad,
+    lastContractEvent,
+    signedName,
+    setSignedName,
+    confirmation,
+    setConfirmation,
+    isSubmitting,
+    canSign,
+    sign,
+    suspend,
+    previousSignedContract,
+    previousContractLoadFailed,
+    retryPreviousContractLoad,
+    retryingPreviousContractLoad,
+    latestSigned,
+    updateAvailable,
+  } = useMembershipAgreement({
+    user,
+    refreshUser,
+    showError: (message) => Alert.alert("Error", message),
+  });
 
-  const handleContractSuspend = useCallback(() => {
-    Alert.alert("Suspend Contract", suspendContractConfirmation, [
+  const handleContractSuspend = () => {
+    Alert.alert(membershipAgreement.suspend, suspendContractConfirmation, [
       { text: "Cancel", style: "cancel" },
-      {
-        text: "Suspend",
-        style: "destructive",
-        onPress: async () => {
-          setIsSubmitting(true);
-          try {
-            const res = await contractSuspendContract();
-            if (res.data) {
-              setLastContractEvent({
-                type: "suspended",
-                date: res.data.date,
-                automatic: false,
-                contractId: null,
-              });
-              await refreshContractState();
-            }
-          } catch (error) {
-            console.error("Error suspending contract:", error);
-            Alert.alert(
-              "Error",
-              "There was an error suspending the contract. Please try again.",
-            );
-          } finally {
-            setIsSubmitting(false);
-          }
-        },
-      },
+      { text: "Suspend", style: "destructive", onPress: suspend },
     ]);
-  }, [refreshContractState]);
+  };
 
   const signedContractMessage = useMemo(() => {
     if (!lastContractEvent) return null;
@@ -277,7 +178,10 @@ export default function MembershipScreen() {
   return (
     <View className="flex-1" style={{ backgroundColor: colors.grey[0] }}>
       <SimplePageTitle title="Membership" />
-      <KeyboardAwareScrollView testID="vr-membership-ready">
+      <KeyboardAwareScrollView
+        testID="vr-membership-ready"
+        {...walkthroughScroll}
+      >
         <View className="px-2 pb-8 pt-2 flex flex-col gap-2">
           {lastContractEvent?.type === "suspended" && (
             <Card cardStyle={CardStyle.Red}>
@@ -290,175 +194,148 @@ export default function MembershipScreen() {
             </Card>
           )}
 
-          {(signedContract || latestContract) && (
+          {contractLoadFailed && (
             <Card cardStyle={CardStyle.White}>
-              <Text className="text-2xl mb-4" weight={FontWeight.Semibold}>
-                Contract
-              </Text>
-              <View className="gap-y-4">
-                {signedContract && signedContractId !== latestContract?.id && (
-                  <ContractDescriptionList
-                    items={signedContract.description}
-                    markdown={signedContract.markdown}
-                  >
-                    {lastContractEvent?.type === "signed" && (
+              <LoadFailed
+                message={membershipAgreementLoadFailed}
+                onRetry={retryContractLoad}
+                retrying={retryingContractLoad}
+              />
+            </Card>
+          )}
+
+          {(previousSignedContract ||
+            previousContractLoadFailed ||
+            latestContract) && (
+            <Anchor name={WalkthroughAnchor.Contract}>
+              <Card cardStyle={CardStyle.White}>
+                <Text className="text-2xl mb-4" weight={FontWeight.Semibold}>
+                  {membershipAgreement.heading}
+                </Text>
+                <View className="gap-y-4">
+                  {previousContractLoadFailed && (
+                    <LoadFailed
+                      message={signedAgreementLoadFailed}
+                      onRetry={retryPreviousContractLoad}
+                      retrying={retryingPreviousContractLoad}
+                    />
+                  )}
+                  {previousSignedContract && (
+                    <ContractDescriptionList
+                      items={previousSignedContract.description}
+                      markdown={previousSignedContract.markdown}
+                    >
                       <SignedContractActions
                         message={signedContractMessage}
                         onSuspend={handleContractSuspend}
                         isSubmitting={isSubmitting}
                       />
-                    )}
-                  </ContractDescriptionList>
-                )}
+                    </ContractDescriptionList>
+                  )}
 
-                {latestContract && (
-                  <>
-                    {signedContractId &&
-                      signedContractId !== latestContract.id && (
+                  {latestContract && (
+                    <>
+                      {updateAvailable && (
                         <Text weight={FontWeight.Semibold}>
-                          An updated contract is available.
+                          {membershipAgreement.updateAvailable}
                         </Text>
                       )}
-                    <ContractDescriptionList
-                      items={latestContract.description}
-                      markdown={latestContract.markdown}
-                    >
-                      {lastContractEvent?.type === "signed" &&
-                      lastContractEvent.contractId === latestContract.id ? (
-                        <SignedContractActions
-                          message={signedContractMessage}
-                          onSuspend={handleContractSuspend}
-                          isSubmitting={isSubmitting}
-                        />
-                      ) : (
-                        <View className="gap-y-4 border-t border-zinc-200 pt-5">
-                          <View className="gap-y-1">
-                            <Text
-                              className="text-zinc-900"
-                              weight={FontWeight.Semibold}
-                            >
-                              Signing
-                            </Text>
-                          </View>
-
-                          <View className="gap-y-2">
-                            <View className="rounded border border-l-4 border-zinc-200 border-l-green bg-zinc-50 px-4 py-3">
-                              <Text className="italic text-zinc-800">
-                                {WEEKLY_COMMITMENT_CONFIRMATION}
+                      <ContractDescriptionList
+                        items={latestContract.description}
+                        markdown={latestContract.markdown}
+                      >
+                        {latestSigned ? (
+                          <SignedContractActions
+                            message={signedContractMessage}
+                            onSuspend={handleContractSuspend}
+                            isSubmitting={isSubmitting}
+                          />
+                        ) : (
+                          <View className="gap-y-4 border-t border-zinc-200 pt-5">
+                            <View className="gap-y-1">
+                              <Text
+                                className="text-zinc-900"
+                                weight={FontWeight.Semibold}
+                              >
+                                Signing
                               </Text>
                             </View>
-                            <TextInput
-                              className={`${inputClasses} min-h-20`}
-                              value={weeklyCommitmentConfirmation}
-                              onChangeText={setWeeklyCommitmentConfirmation}
-                              placeholder="Type the statement here"
-                              placeholderTextColor="#9ca3af"
-                              accessibilityLabel="Weekly commitment confirmation"
-                              multiline
-                              scrollEnabled={false}
-                              textAlignVertical="top"
-                            />
-                          </View>
 
-                          <View className="flex-row items-start">
-                            <TextInput
-                              className={inputClasses}
-                              value={editName}
-                              onChangeText={setEditName}
-                              placeholder="Type your full name"
-                              placeholderTextColor="#9ca3af"
-                            />
-                            <Button
-                              onPress={handleContractSign}
-                              color={ButtonColor.Black}
-                              disabled={
-                                isSubmitting ||
-                                !editName ||
-                                !weeklyCommitmentConfirmed
-                              }
-                              loading={isSubmitting}
-                              title="Sign"
-                              className="ml-2 min-h-12"
-                            />
+                            <View className="gap-y-2">
+                              <View className="rounded border border-l-4 border-zinc-200 border-l-green bg-zinc-50 px-4 py-3">
+                                <Text className="italic text-zinc-800">
+                                  {WEEKLY_COMMITMENT_CONFIRMATION}
+                                </Text>
+                              </View>
+                              <TextInput
+                                className={`${inputClasses} min-h-20`}
+                                value={confirmation}
+                                onChangeText={setConfirmation}
+                                placeholder="Type the statement here"
+                                placeholderTextColor="#9ca3af"
+                                accessibilityLabel="Weekly commitment confirmation"
+                                multiline
+                                scrollEnabled={false}
+                                textAlignVertical="top"
+                              />
+                            </View>
+
+                            <View className="flex-row items-start">
+                              <TextInput
+                                className={inputClasses}
+                                value={signedName}
+                                onChangeText={setSignedName}
+                                placeholder="Type your full name"
+                                placeholderTextColor="#9ca3af"
+                              />
+                              <Button
+                                onPress={sign}
+                                color={ButtonColor.Black}
+                                disabled={!canSign}
+                                loading={isSubmitting}
+                                title="Sign"
+                                className="ml-2 min-h-12"
+                              />
+                            </View>
                           </View>
-                        </View>
-                      )}
-                    </ContractDescriptionList>
-                  </>
-                )}
-              </View>
-            </Card>
+                        )}
+                      </ContractDescriptionList>
+                    </>
+                  )}
+                </View>
+              </Card>
+            </Anchor>
           )}
 
-          <Card cardStyle={CardStyle.White}>
-            <AwayRangesSection />
-          </Card>
+          <Anchor name={WalkthroughAnchor.AwayRanges}>
+            <Card cardStyle={CardStyle.White}>
+              <AwayRangesSection />
+            </Card>
+          </Anchor>
 
           <Card cardStyle={CardStyle.White}>
             <Text className="text-2xl mb-4" weight={FontWeight.Semibold}>
-              Questions about membership
+              {membershipFaq.heading}
             </Text>
             <View className="gap-y-5">
-              <View className="gap-y-1">
-                <Text className="text-zinc-900" weight={FontWeight.Semibold}>
-                  Why is there a contract?
-                </Text>
-                <Text className="text-base">
-                  The contract ensures that we can count on your participation,
-                  which allows us to plan actions precisely. By signing, you are
-                  also making a commitment to your peers to work together
-                  consistently.
-                </Text>
-              </View>
-              <View className="gap-y-1">
-                <Text className="text-zinc-900" weight={FontWeight.Semibold}>
-                  What happens if I don&apos;t follow the contract?
-                </Text>
-                <Text className="text-base">
-                  If you miss all assigned non-optional actions for 3 weeks in a
-                  row, your contract will be suspended automatically. You can
-                  re-sign the contract to re-join the Alliance.
-                </Text>
-              </View>
-              <View className="gap-y-1">
-                <Text className="text-zinc-900" weight={FontWeight.Semibold}>
-                  Are there valid reasons to miss an action?
-                </Text>
-                <Text className="text-base">
-                  Yes. For our planning purposes, we ask that you inform us if
-                  you will be unable to complete an action with one of the
-                  following methods:
-                </Text>
-                <View className="gap-y-1 pl-4">
-                  <View className="flex-row gap-x-2">
-                    <Text className="text-base">1.</Text>
-                    <Text className="flex-1 text-base">
-                      You can withdraw from an action by tapping the three dots
-                      at the bottom right of an action, next to the Complete
-                      button. You can withdraw if the action is taking you
-                      longer than 15 minutes to complete, or if you have a moral
-                      objection to the action.
-                    </Text>
-                  </View>
-                  <View className="flex-row gap-x-2">
-                    <Text className="text-base">2.</Text>
-                    <Text className="flex-1 text-base">
-                      You can schedule an away period on this page if you
-                      won&apos;t be able to complete actions for a prolonged
-                      period, such as during a vacation.
-                    </Text>
-                  </View>
+              {membershipFaq.entries.map(({ question, answer, steps }) => (
+                <View key={question} className="gap-y-1">
+                  <Text className="text-zinc-900" weight={FontWeight.Semibold}>
+                    {question}
+                  </Text>
+                  <Text className="text-base">{answer}</Text>
+                  {steps && (
+                    <View className="gap-y-1 pl-4">
+                      {steps.map((step, index) => (
+                        <View key={step} className="flex-row gap-x-2">
+                          <Text className="text-base">{index + 1}.</Text>
+                          <Text className="flex-1 text-base">{step}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
                 </View>
-              </View>
-              <View className="gap-y-1">
-                <Text className="text-zinc-900" weight={FontWeight.Semibold}>
-                  How do I end my membership?
-                </Text>
-                <Text className="text-base">
-                  You can end your membership at any time by suspending your
-                  contract on this page.
-                </Text>
-              </View>
+              ))}
             </View>
           </Card>
         </View>

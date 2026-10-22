@@ -1,16 +1,14 @@
 import { MIGRATE_RESPONSE_SNAPSHOTS_MAX_BATCH } from "@alliance/common/forms/snapshot-migration";
 import { withCount } from "@alliance/common/plural";
 import {
-  tasksGetResponseSnapshotMigrationAdmin,
-  tasksMigrateResponseSnapshotsAdmin,
   type FormSnapshotDto,
   type SnapshotResponseGroupDto,
   type SnapshotResponseSummaryDto,
 } from "@alliance/shared/client";
+import { useResponseSnapshotMigrationAdmin } from "@alliance/shared/lib/useResponseSnapshotMigrationAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { getReturnTo } from "../lib/navigation";
@@ -139,12 +137,6 @@ const FormSnapshotMigration: React.FC = () => {
     [location.state, numericFormId],
   );
 
-  const queryClient = useQueryClient();
-  const queryKey = useMemo(
-    () => ["tasksGetResponseSnapshotMigrationAdmin", numericFormId] as const,
-    [numericFormId],
-  );
-
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [resultMessage, setResultMessage] = useState<string | null>(null);
 
@@ -152,35 +144,10 @@ const FormSnapshotMigration: React.FC = () => {
     data,
     isLoading,
     isError: isLoadError,
-  } = useQuery({
-    queryKey,
-    queryFn: async () => {
-      const res = await tasksGetResponseSnapshotMigrationAdmin({
-        path: { formId: numericFormId },
-      });
-      return res.data ?? null;
-    },
-    enabled: isFormIdValid,
-  });
-
-  const migrateMutation = useMutation({
-    mutationFn: async () => {
-      if (!data) throw new Error("Migration data not loaded");
-      const res = await tasksMigrateResponseSnapshotsAdmin({
-        path: { formId: numericFormId },
-        body: {
-          responseIds: Array.from(selectedIds),
-          targetSnapshotId: data.latestSnapshot.id,
-        },
-      });
-      return res.data?.updatedCount ?? 0;
-    },
-    onSuccess: async (updated) => {
-      setResultMessage(`Reassigned ${withCount(updated, "response")}.`);
-      setSelectedIds(new Set());
-      await queryClient.invalidateQueries({ queryKey });
-    },
-  });
+    migrate: migrateMutation,
+  } = useResponseSnapshotMigrationAdmin(
+    isFormIdValid ? numericFormId : undefined,
+  );
 
   const toggleResponse = useCallback((responseId: number) => {
     setSelectedIds((prev) => {
@@ -223,15 +190,21 @@ const FormSnapshotMigration: React.FC = () => {
       return;
     }
     setResultMessage(null);
-    migrateMutation.mutate();
+    migrateMutation.mutate(
+      {
+        responseIds: Array.from(selectedIds),
+        targetSnapshotId: data.latestSnapshot.id,
+      },
+      {
+        onSuccess: (updated) => {
+          setResultMessage(`Reassigned ${withCount(updated, "response")}.`);
+          setSelectedIds(new Set());
+        },
+      },
+    );
   }, [selectedIds, data, migrateMutation]);
 
   const submitting = migrateMutation.isPending;
-  const errorMessage = isLoadError
-    ? "Failed to load snapshot migration data"
-    : migrateMutation.isError
-      ? "Failed to reassign snapshots"
-      : null;
 
   return (
     <div className="space-y-4 p-5">
@@ -261,8 +234,8 @@ const FormSnapshotMigration: React.FC = () => {
 
       {isLoading ? (
         <p>Loading…</p>
-      ) : errorMessage ? (
-        <p className="text-red-500">{errorMessage}</p>
+      ) : isLoadError ? (
+        <p className="text-red-500">Failed to load snapshot migration data</p>
       ) : !data ? (
         <p className="text-zinc-500">No data.</p>
       ) : (
@@ -325,6 +298,11 @@ const FormSnapshotMigration: React.FC = () => {
 
               {resultMessage && (
                 <p className="text-sm text-green-700">{resultMessage}</p>
+              )}
+              {migrateMutation.isError && (
+                <p className="text-sm text-red-500">
+                  Failed to reassign snapshots
+                </p>
               )}
 
               <div className="space-y-3">

@@ -26,6 +26,9 @@ export enum AnalyticsEvent {
   NotificationsMarkedAllAsRead = "notifications_marked_all_as_read",
   NotifLinkClick = "notif_link_click",
 
+  // Navigation
+  NotFound = "not_found",
+
   // Signup / invites
   InvitePageOpened = "invite_page_opened",
   NewUser = "new_user",
@@ -113,7 +116,20 @@ export enum ExceptionEvent {
   FormSubmitError = "form_submit_error",
   FollowUpFormSubmitError = "follow_up_form_submit_error",
   PostReplyError = "post_reply_error",
+  LoadCommentsError = "load_comments_error",
+  DeleteCommentError = "delete_comment_error",
   OtaGateCrashed = "ota_gate_crashed",
+  RequestFailed = "request_failed",
+  ClearSessionTokensFailed = "clear_session_tokens_failed",
+  SessionLoadFailed = "session_load_failed",
+  OAuthFailed = "oauth_failed",
+  PasswordLoginFailed = "password_login_failed",
+  MalformedListAnswer = "malformed_list_answer",
+  LinkOpeningNotStored = "link_opening_not_stored",
+  LinkOpeningRefused = "link_opening_refused",
+  LinkOpeningsUnreadable = "link_openings_unreadable",
+  LinkOpeningExpired = "link_opening_expired",
+  UnregisterDeviceFailed = "unregister_device_failed",
 }
 
 export const SLACK_PROPERTY = "send_to_slack";
@@ -145,6 +161,9 @@ export const SEND_TO_SLACK: Record<AnalyticsEvent | ExceptionEvent, boolean> = {
   [AnalyticsEvent.NotificationMarkedRead]: false,
   [AnalyticsEvent.NotificationsMarkedAllAsRead]: false,
   [AnalyticsEvent.NotifLinkClick]: false,
+
+  // Navigation
+  [AnalyticsEvent.NotFound]: false,
 
   // Signup / invites
   [AnalyticsEvent.InvitePageOpened]: false,
@@ -200,5 +219,18 @@ export const SEND_TO_SLACK: Record<AnalyticsEvent | ExceptionEvent, boolean> = {
   [ExceptionEvent.FormSubmitError]: false,
   [ExceptionEvent.FollowUpFormSubmitError]: false,
   [ExceptionEvent.PostReplyError]: false,
+  [ExceptionEvent.LoadCommentsError]: false,
+  [ExceptionEvent.DeleteCommentError]: false,
   [ExceptionEvent.OtaGateCrashed]: true,
+  [ExceptionEvent.RequestFailed]: false,
+  [ExceptionEvent.ClearSessionTokensFailed]: true,
+  [ExceptionEvent.SessionLoadFailed]: false,
+  [ExceptionEvent.OAuthFailed]: true,
+  [ExceptionEvent.PasswordLoginFailed]: true,
+  [ExceptionEvent.MalformedListAnswer]: false,
+  [ExceptionEvent.LinkOpeningNotStored]: false,
+  [ExceptionEvent.LinkOpeningRefused]: false,
+  [ExceptionEvent.LinkOpeningsUnreadable]: false,
+  [ExceptionEvent.LinkOpeningExpired]: false,
+  [ExceptionEvent.UnregisterDeviceFailed]: false,
 };

@@ -1,14 +1,27 @@
+import {
+  hasRoomForReturningMember,
+  isAtCapacity,
+} from "@alliance/common/community";
 import { BadRequestException, Injectable } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import { CommunityService } from "src/community/community.service";
 import {
-  hasRoomForReturningMember,
   isCommunityLedBy,
+  memberJoinedCommunityNotif,
 } from "src/community/community.utils";
 import { Community } from "src/community/entities/community.entity";
+import { updateLive, writeUnderLive } from "src/datasources/soft-delete";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
+import { memberSuspendedMessage } from "src/notifs/notif-copy";
+import {
+  group,
+  member,
+  notifMessage,
+  userDestination,
+} from "src/notifs/notification-content";
 import {
   NotifsService,
   type CreateNotifParams,
@@ -23,14 +36,19 @@ import {
   ContractEvent,
   ContractEventType,
 } from "src/user/entities/contract-event.entity";
-import { ReferralSource, User } from "src/user/entities/user.entity";
+import {
+  ReferralSource,
+  User,
+  loadedUserCommunities,
+} from "src/user/entities/user.entity";
+import { findReferredByInvite } from "src/user/user-soft-delete";
 import { UserService } from "src/user/user.service";
 import { referralLabel } from "src/user/user.utils";
 import { IsNull, LessThanOrEqual, MoreThan, Or, Repository } from "typeorm";
+import { ContractEvents, type ContractSignedPayload } from "./contract.events";
 import {
   REFERRAL_COMMUNITY_SELECTORS,
   buildNotifForLeaderWithReferrer,
-  memberJoinedCommunityNotif,
   newMemberReferredNotif,
 } from "./contract.utils";
 import { CreateContractDto, UpdateContractDto } from "./dto/contract.dto";
@@ -53,6 +71,7 @@ export class ContractService {
     private readonly communityService: CommunityService,
     private readonly notifsService: NotifsService,
     private readonly eventLogService: EventLogService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async findAll(): Promise<ParsedContract[]> {
@@ -140,12 +159,13 @@ export class ContractService {
     }
   }
 
-  async signContract(params: {
-    userId: number;
-    signedName: string | null;
-    contractId: number;
-  }): Promise<Date> {
-    const { userId, signedName, contractId } = params;
+  async signContract(
+    params: { userId: number; contractId: number } & (
+      | { signedName: string; viaTaskForm: false }
+      | { signedName: null; viaTaskForm: true }
+    ),
+  ): Promise<Date> {
+    const { userId, signedName, contractId, viaTaskForm } = params;
 
     // Cheap initial load
     let user = await this.userRepository.findOneOrFail({
@@ -154,7 +174,6 @@ export class ContractService {
         contractEvents: true,
         referredBy: true,
         referredByCampaign: true,
-        referredByInvite: true,
         pendingCommunity: true,
       },
     });
@@ -166,20 +185,44 @@ export class ContractService {
       type: ContractEventType.SIGNED,
       date: new Date(),
       signedName,
+      viaTaskForm,
       contract: { id: contractId },
     });
-    const saveContractEventP = this.contractEventRepository.save(contractEvent);
+    await writeUnderLive(this.userRepository.manager, {
+      parents: [{ target: User, id: userId }],
+      write: (em) => em.save(contractEvent),
+    });
+
+    const signedOutsideTaskForm = user.contractEvents!.some(
+      (event) => event.type === ContractEventType.SIGNED && !event.viaTaskForm,
+    );
+    if (!viaTaskForm && !signedOutsideTaskForm) {
+      await updateLive(this.userRepository.manager, {
+        target: User,
+        id: userId,
+        changes: { name: signedName },
+      });
+      user.name = signedName;
+    }
 
     if (switchingContracts) {
-      await saveContractEventP;
       return contractEvent.date;
     }
 
     const firstSigning = user.contractEvents!.length === 0;
+    // Only a first signing places the member in their invite's group.
+    const referredByInvite = firstSigning
+      ? await findReferredByInvite(this.userRepository.manager, {
+          userId,
+          relations: { community: { users: true, leaders: true } },
+        })
+      : null;
     const promises: Promise<unknown>[] = [];
     const notifs: CreateNotifParams[] = [];
-    const userUpdate: Partial<User> = {
-      id: user.id,
+    const userUpdate: {
+      pendingCommunity: null;
+      undergoingGroupAssignment?: boolean;
+    } = {
       pendingCommunity: null,
     };
     if (!firstSigning) {
@@ -205,45 +248,50 @@ export class ContractService {
             community: user.pendingCommunity,
             contractBeingSigned: true,
             notifForLeader: ({ leader }) =>
-              memberJoinedCommunityNotif(
+              memberJoinedCommunityNotif({
                 leader,
-                user,
-                user.pendingCommunity!,
-                `${user.name} signed their contract and was re-added to your group (${user.pendingCommunity!.name})`,
-              ),
+                joiner: user,
+                community: user.pendingCommunity!,
+                message: notifMessage`${member(user)} signed their contract and was re-added to your group (${group(user.pendingCommunity!)})`,
+              }),
           }),
         );
       }
-    } else if (user.referredByInvite?.communityId) {
+    } else if (referredByInvite?.community) {
       user = await this.userRepository.findOneOrFail({
         where: { id: userId },
-        relations: {
-          contractEvents: true,
-          referredBy: true,
-          referredByInvite: { community: { users: true, leaders: true } },
-        },
+        relations: { contractEvents: true, referredBy: true },
       });
-      const community = user.referredByInvite!.community!;
+      const { community } = referredByInvite;
       let referrerNotified = false;
-      await this.communityService.addUsersToCommunityAndRefreshConversation({
-        user,
-        community,
-        contractBeingSigned: true,
-        notifForLeader: user.referredBy
-          ? buildNotifForLeaderWithReferrer(
-              user,
-              community,
-              user.referredBy,
-              (v) => (referrerNotified = v),
-            )
-          : ({ leader }) =>
-              memberJoinedCommunityNotif(
-                leader,
+      // A waitlist invite's group can fill after it is emailed; its claimant
+      // then awaits staff placement rather than overfilling it.
+      if (
+        referredByInvite.waitlistEntryId !== null &&
+        isAtCapacity(community)
+      ) {
+        userUpdate.undergoingGroupAssignment = true;
+      } else {
+        await this.communityService.addUsersToCommunityAndRefreshConversation({
+          user,
+          community,
+          contractBeingSigned: true,
+          notifForLeader: user.referredBy
+            ? buildNotifForLeaderWithReferrer(
                 user,
                 community,
-                `${user.name} joined the Alliance and your group (${community.name})`,
-              ),
-      });
+                user.referredBy,
+                (v) => (referrerNotified = v),
+              )
+            : ({ leader }) =>
+                memberJoinedCommunityNotif({
+                  leader,
+                  joiner: user,
+                  community,
+                  message: notifMessage`${member(user)} joined the Alliance and your group (${group(community)})`,
+                }),
+        });
+      }
       if (user.referredBy && !referrerNotified) {
         notifs.push(newMemberReferredNotif(user, user.referredBy));
       }
@@ -288,8 +336,11 @@ export class ContractService {
     }
 
     await Promise.all([
-      saveContractEventP,
-      this.userRepository.save(userUpdate),
+      updateLive(this.userRepository.manager, {
+        target: User,
+        id: user.id,
+        changes: userUpdate,
+      }),
       this.notifsService.sendNotifs(notifs),
       this.eventLogService.sendMessage({
         type: EventType.ContractSigned,
@@ -303,6 +354,16 @@ export class ContractService {
     ]);
 
     return contractEvent.date;
+  }
+
+  /**
+   * Call once everything the signing request writes has committed: listeners
+   * read the member's answers and activities as of the event.
+   */
+  announceSigned(userId: number): void {
+    this.eventEmitter.emit(ContractEvents.Signed, {
+      userId,
+    } satisfies ContractSignedPayload);
   }
 
   async suspendContract(params: {
@@ -329,7 +390,7 @@ export class ContractService {
     });
 
     const communitiesP = Promise.all(
-      (user.communities ?? []).map((community: Community) =>
+      loadedUserCommunities(user).map((community: Community) =>
         this.communityService.removeUserFromCommunityAndRefreshConversation({
           user,
           community,
@@ -337,7 +398,12 @@ export class ContractService {
           notifForLeader: ({ leader }) => ({
             user: leader,
             category: NotificationCategory.MemberSuspendedRemovedFromCommunity,
-            message: `${user.name} ${automatic ? "was automatically suspended" : "suspended their contract"} and has been removed from your group (${community.name})`,
+            message: memberSuspendedMessage({
+              suspended: user,
+              automatic,
+              community,
+            }),
+            destination: userDestination(user.id),
             webAppLocation: profileUrl(user.id),
             associatedUsers: [user],
           }),
@@ -347,7 +413,10 @@ export class ContractService {
     );
 
     await Promise.all([
-      this.contractEventRepository.save(contractEvent),
+      writeUnderLive(this.userRepository.manager, {
+        parents: [{ target: User, id: userId }],
+        write: (em) => em.save(contractEvent),
+      }),
       communitiesP,
     ]);
 

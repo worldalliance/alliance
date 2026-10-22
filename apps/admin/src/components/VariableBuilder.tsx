@@ -1,46 +1,32 @@
-import type {
-  AnyField,
-  FormSchema,
-  FormValue,
-} from "@alliance/common/forms/form-schema";
-import {
-  collectVariableInputFields,
-  fieldHasOptions,
-  variableInputFieldsById,
-} from "@alliance/common/forms/form-schema";
-import {
-  compileVariableExpression,
-  evaluateVariableExpression,
-  type ExprValue,
-} from "@alliance/common/forms/variable-expression";
-import { checkVariableFormulaType } from "@alliance/common/forms/variable-formula-check";
+import type { FormSchema } from "@alliance/common/forms/form-schema";
+import type { VariableInput } from "@alliance/common/forms/variable-inputs";
 import { collectUnresolvedVariableReferences } from "@alliance/common/forms/variable-interpolation";
 import {
-  FIELD_KIND_VARIABLE_INPUT_MODE,
-  formatVariableValue,
-  formValueToExprValue,
   sanitizeVariableName,
+  syncFormulaListInputs,
   VARIABLE_NAME_REGEX,
-  VariableInputMode,
-  variableInputNameForIndex,
-  variableTypeEnv,
   type FormVariable,
-  type VariableInput,
 } from "@alliance/common/forms/variables";
-import { R } from "@alliance/common/result";
 import { cn } from "@alliance/shared/styles/util";
+import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { Check, Copy, Info, Plus, X } from "lucide-react";
+import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { milliseconds } from "date-fns";
+import { Check, Copy, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  INPUT_MODE_HELP,
-  inputModeType,
-  VariableHelpModal,
-  type FormulaHelpInput,
-} from "./VariableHelpModal";
+import { makeTempId } from "../lib/tempId";
+import { FormPickerError, FormPickerErrorReason } from "./FormPickerError";
+import { FormulaEditor, inputForField } from "./FormulaEditor";
+import { FormulaResult } from "./formulaResult";
+import { useFormulaSources } from "./FormulaSourcesContext";
+import { SharedOutputSourceWarning } from "./SharedOutputSourceWarning";
+import { answerHelp } from "./variableInputHelp";
+import { type InputSources } from "./VariableInputPickers";
+import { inputText } from "./VariableSamples";
 
 function CopyableReference({ name }: { name: string }) {
   const [copied, setCopied] = useState(false);
+  const { error: pushError } = useToast();
   const resetTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
   const reference = `#{${name}}`;
 
@@ -52,13 +38,17 @@ function CopyableReference({ name }: { name: string }) {
       title="Copy reference"
       aria-label={`Copy ${reference}`}
       onClick={() => {
-        navigator.clipboard.writeText(reference).then(
-          () => {
-            setCopied(true);
-            resetTimeout.current = setTimeout(() => setCopied(false), 2000);
-          },
-          () => setCopied(false),
-        );
+        void copyToClipboard(reference).then((ok) => {
+          setCopied(ok);
+          if (ok) {
+            resetTimeout.current = setTimeout(
+              () => setCopied(false),
+              milliseconds({ seconds: 2 }),
+            );
+          } else {
+            pushError("Could not copy the reference to the clipboard");
+          }
+        });
       }}
       className="inline-flex items-center gap-1.5 rounded border border-gray-200 bg-gray-50 px-2 py-1 font-mono text-xs text-gray-700 hover:bg-gray-100"
     >
@@ -72,182 +62,20 @@ function CopyableReference({ name }: { name: string }) {
   );
 }
 
-const inputBase =
-  "w-full border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500";
-const inputText = cn(inputBase, "px-3 py-1.5");
-const inputPad = cn(inputBase, "px-3 py-2");
-
-const SAMPLE_PLACEHOLDER: Record<VariableInputMode, string> = {
-  [VariableInputMode.Number]: "sample",
-  [VariableInputMode.Text]: "sample",
-  [VariableInputMode.City]: "city name",
-  [VariableInputMode.Boolean]: "",
-  [VariableInputMode.Choice]: "",
-  [VariableInputMode.Choices]: "",
-  [VariableInputMode.None]: "sample",
-};
-
-const inputModeOf = (field: AnyField | undefined) =>
-  field ? FIELD_KIND_VARIABLE_INPUT_MODE[field.kind] : VariableInputMode.None;
-
-const fieldOptions = (field: AnyField | undefined) =>
-  field && fieldHasOptions(field) ? field.options : [];
-
-// A formula compares against .value, so the sample dropdown has to show it
-// rather than only the wording the respondent sees.
-const optionText = (option: { label: string; value: string }) =>
-  option.label && option.label !== option.value
-    ? `${option.value} (${option.label})`
-    : option.value;
-
-const sampleChoices = (value: FormValue | undefined): string[] =>
-  Array.isArray(value)
-    ? [...value].flatMap((item) => (typeof item === "string" ? [item] : []))
-    : [];
-
-const isBlankSample = (value: FormValue | undefined) =>
-  value === undefined ||
-  value === "" ||
-  (Array.isArray(value) && value.length === 0);
-
-const readSampleAnswer = (
-  field: AnyField | undefined,
-  sample: FormValue | undefined,
-): { value: ExprValue; error?: string } => {
-  if (!field || isBlankSample(sample)) return { value: undefined };
-
-  const mode = FIELD_KIND_VARIABLE_INPUT_MODE[field.kind];
-  if (mode === VariableInputMode.Number && typeof sample === "string") {
-    if (!Number.isFinite(Number(sample.trim()))) {
-      return { value: undefined, error: `"${sample}" is not a number.` };
-    }
-  }
-  if (mode === VariableInputMode.City && typeof sample === "string") {
-    // A real answer is the record the city picker stores, not the name typed.
-    return {
-      value: formValueToExprValue(
-        {
-          id: 0,
-          name: sample.trim(),
-          admin1: "",
-          countryCode: "",
-          countryName: "",
-        },
-        field,
-      ),
-    };
-  }
-  return { value: formValueToExprValue(sample, field) };
-};
-
-type SampleAnswerProps = {
-  inputName: string;
-  field: AnyField | undefined;
-  value: FormValue | undefined;
-  error: string | undefined;
-  onChange: (next: FormValue) => void;
-};
-
-function SampleAnswer({
-  inputName,
-  field,
-  value,
-  error,
-  onChange,
-}: SampleAnswerProps) {
-  const mode = inputModeOf(field);
-  const wide =
-    mode === VariableInputMode.Choice || mode === VariableInputMode.Choices;
-  const className = cn(
-    inputText,
-    "shrink-0",
-    wide ? "w-48" : "w-32",
-    error && "border-red-400",
-  );
-  const shared = {
-    className,
-    title: error ?? "Sample answer used only for the preview below",
-    "aria-label": `Sample answer for ${inputName}`,
-  };
-  const options = fieldOptions(field);
-
-  switch (mode) {
-    case VariableInputMode.Choice:
-      return (
-        <select
-          {...shared}
-          className={cn(className, "bg-white")}
-          value={typeof value === "string" ? value : ""}
-          onChange={(event) => onChange(event.target.value)}
-        >
-          <option value="">unanswered</option>
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {optionText(option)}
-            </option>
-          ))}
-        </select>
-      );
-
-    case VariableInputMode.Choices:
-      return (
-        <select
-          {...shared}
-          multiple
-          size={Math.min(Math.max(options.length, 2), 3)}
-          className={cn(className, "bg-white py-1")}
-          value={sampleChoices(value)}
-          onChange={(event) =>
-            onChange(
-              Array.from(
-                event.target.selectedOptions,
-                (option) => option.value,
-              ),
-            )
-          }
-        >
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {optionText(option)}
-            </option>
-          ))}
-        </select>
-      );
-
-    case VariableInputMode.Boolean:
-      return (
-        <select
-          {...shared}
-          className={cn(className, "bg-white")}
-          value={typeof value === "boolean" ? String(value) : ""}
-          onChange={(event) =>
-            onChange(event.target.value ? event.target.value === "true" : "")
-          }
-        >
-          <option value="">unanswered</option>
-          <option value="true">Ticked</option>
-          <option value="false">Not ticked</option>
-        </select>
-      );
-
-    case VariableInputMode.Number:
-    case VariableInputMode.Text:
-    case VariableInputMode.City:
-    case VariableInputMode.None:
-      return (
-        <input
-          {...shared}
-          value={typeof value === "string" ? value : ""}
-          disabled={!field}
-          placeholder={SAMPLE_PLACEHOLDER[mode]}
-          onChange={(event) => onChange(event.target.value)}
-        />
-      );
-
+const exampleFormula = (input: VariableInput): string => {
+  switch (input.kind) {
+    case "field":
+    case "sourceField":
+      return "input1";
+    case "list":
+    case "sourceList":
+    case "aggregate":
+    case "random":
+      return answerHelp(input, undefined).example("input1");
     default:
-      throw new Error(`unknown input mode: ${mode satisfies never}`);
+      throw new Error(`unknown input kind: ${input satisfies never}`);
   }
-}
+};
 
 const uniqueVariableName = (existing: FormVariable[]): string => {
   const taken = new Set(existing.map((variable) => variable.name));
@@ -260,7 +88,7 @@ const uniqueVariableName = (existing: FormVariable[]): string => {
 type VariableCardProps = {
   variable: FormVariable;
   allVariables: FormVariable[];
-  eligibleFields: AnyField[];
+  sources: InputSources;
   onChange: (next: FormVariable) => void;
   onRemove: () => void;
 };
@@ -268,42 +96,10 @@ type VariableCardProps = {
 function VariableCard({
   variable,
   allVariables,
-  eligibleFields,
+  sources,
   onChange,
   onRemove,
 }: VariableCardProps) {
-  const [samples, setSamples] = useState<Record<string, FormValue>>({});
-  const [helpOpen, setHelpOpen] = useState(false);
-  const [replacedFormula, setReplacedFormula] = useState<string | null>(null);
-  const formulaRef = useRef<HTMLTextAreaElement>(null);
-  // Null until the formula box has been used, which is what tells an inserted
-  // snippet whether it has somewhere to land.
-  const selection = useRef<{ start: number; end: number } | null>(null);
-
-  const inputNames = useMemo(
-    () => Object.keys(variable.inputs),
-    [variable.inputs],
-  );
-
-  const compiled = useMemo(
-    () => compileVariableExpression(variable.formula, new Set(inputNames)),
-    [variable.formula, inputNames],
-  );
-
-  const typed = useMemo(() => {
-    if (!compiled.ok) return compiled;
-    return checkVariableFormulaType(
-      variable.formula,
-      variableTypeEnv(variable, variableInputFieldsById(eligibleFields)),
-    );
-  }, [compiled, variable, eligibleFields]);
-
-  const formulaError = compiled.ok
-    ? typed.ok
-      ? null
-      : typed.error
-    : compiled.error;
-
   const nameError = useMemo(() => {
     if (!VARIABLE_NAME_REGEX.test(variable.name)) {
       return "Name can't be empty.";
@@ -315,109 +111,6 @@ function VariableCard({
       ? "Another variable already uses this name."
       : null;
   }, [variable.name, allVariables]);
-
-  const readings = useMemo(
-    () =>
-      new Map(
-        inputNames.map((name) => {
-          const field = eligibleFields.find(
-            (candidate) => candidate.id === variable.inputs[name].fieldId,
-          );
-          return [name, readSampleAnswer(field, samples[name])] as const;
-        }),
-      ),
-    [inputNames, samples, eligibleFields, variable.inputs],
-  );
-
-  const preview = useMemo(() => {
-    if (!compiled.ok || !typed.ok) return null;
-    const values = new Map<string, ExprValue>(
-      [...readings].map(([name, reading]) => [name, reading.value]),
-    );
-    // Evaluated during render, unlike the live form's, so a formula that throws
-    // has to end as an empty preview rather than as a blank screen.
-    const value = R.fromThrowable(() =>
-      evaluateVariableExpression(compiled.value, values),
-    );
-    return value.ok ? formatVariableValue(value.value) : "";
-  }, [compiled, typed, readings]);
-
-  const helpInputs = useMemo<FormulaHelpInput[]>(
-    () =>
-      inputNames.map((name) => {
-        const field = eligibleFields.find(
-          (candidate) => candidate.id === variable.inputs[name].fieldId,
-        );
-        const mode = inputModeOf(field);
-        const example = INPUT_MODE_HELP[mode].example(name);
-        return {
-          name,
-          type: field ? inputModeType(mode) : "any",
-          example: field && example !== "" ? example : null,
-        };
-      }),
-    [inputNames, variable.inputs, eligibleFields],
-  );
-
-  // A formula is a single expression, so a snippet appended to one already
-  // written is never valid. Without a caret to insert at, the snippet takes the
-  // formula over and the old one stays one click away.
-  const insertSnippet = (snippet: string) => {
-    const at = selection.current ?? {
-      start: 0,
-      end: variable.formula.length,
-    };
-    if (selection.current === null && variable.formula !== "") {
-      setReplacedFormula(variable.formula);
-    }
-    const caret = at.start + snippet.length;
-    selection.current = { start: caret, end: caret };
-    onChange({
-      ...variable,
-      formula:
-        variable.formula.slice(0, at.start) +
-        snippet +
-        variable.formula.slice(at.end),
-    });
-    requestAnimationFrame(() => {
-      formulaRef.current?.focus();
-      formulaRef.current?.setSelectionRange(caret, caret);
-    });
-  };
-
-  const setInput = (name: string, next: VariableInput) =>
-    onChange({ ...variable, inputs: { ...variable.inputs, [name]: next } });
-
-  const addInput = () => {
-    const field = eligibleFields[0];
-    if (!field) return;
-    const name = variableInputNameForIndex(inputNames.length);
-    onChange({
-      ...variable,
-      inputs: {
-        ...variable.inputs,
-        [name]: { kind: "field", fieldId: field.id },
-      },
-    });
-  };
-
-  // Inputs are renumbered so the names stay input1..inputN, and the formula is
-  // rewritten to match — otherwise removing input1 would silently break it.
-  const removeInput = (removed: string) => {
-    const remaining = inputNames.filter((name) => name !== removed);
-    const inputs: Record<string, VariableInput> = {};
-    const renames = new Map<string, string>();
-    remaining.forEach((oldName, index) => {
-      const newName = variableInputNameForIndex(index);
-      inputs[newName] = variable.inputs[oldName];
-      renames.set(oldName, newName);
-    });
-    const formula = variable.formula.replace(
-      /\b(input\d+)\b/g,
-      (whole, name: string) => renames.get(name) ?? whole,
-    );
-    onChange({ ...variable, inputs, formula });
-  };
 
   return (
     <div className="rounded-lg border border-gray-200 p-4 space-y-4">
@@ -463,176 +156,12 @@ function VariableCard({
         </button>
       </div>
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-medium text-gray-500">Inputs</p>
-          <button
-            type="button"
-            onClick={addInput}
-            disabled={eligibleFields.length === 0}
-            title="Add input"
-            aria-label="Add input"
-            className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-40"
-          >
-            <Plus size={16} />
-          </button>
-        </div>
-        {inputNames.length === 0 ? (
-          <p className="text-xs text-gray-500">
-            {eligibleFields.length === 0
-              ? "Add a question field to the form first."
-              : "No inputs yet."}
-          </p>
-        ) : (
-          inputNames.map((name) => {
-            const input = variable.inputs[name];
-            const field = eligibleFields.find(
-              (candidate) => candidate.id === input.fieldId,
-            );
-            const mode = inputModeOf(field);
-            const help = INPUT_MODE_HELP[mode];
-            const reading = readings.get(name);
-            return (
-              <div key={name} className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <span className="w-14 shrink-0 font-mono text-xs text-gray-600">
-                    {name}
-                  </span>
-                  <select
-                    value={input.fieldId}
-                    aria-label={`Field read by ${name}`}
-                    onChange={(event) =>
-                      setInput(name, {
-                        kind: "field",
-                        fieldId: event.target.value,
-                      })
-                    }
-                    className={cn(
-                      inputText,
-                      "bg-white flex-1",
-                      !field && "border-red-400",
-                    )}
-                  >
-                    {/* Keep an explicit option for deleted or unusable fields.
-                        Otherwise the browser displays the first eligible field. */}
-                    {!field && (
-                      <option value={input.fieldId}>
-                        Missing or unusable field — {input.fieldId}
-                      </option>
-                    )}
-                    {eligibleFields.map((candidate) => (
-                      <option key={candidate.id} value={candidate.id}>
-                        {candidate.label || "(no label)"} ({candidate.kind}) —{" "}
-                        {candidate.id}
-                      </option>
-                    ))}
-                  </select>
-                  <SampleAnswer
-                    inputName={name}
-                    field={field}
-                    value={samples[name]}
-                    error={reading?.error}
-                    onChange={(next) =>
-                      setSamples((prev) => ({ ...prev, [name]: next }))
-                    }
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeInput(name)}
-                    title="Remove input"
-                    aria-label={`Remove ${name}`}
-                    className="p-1 text-gray-400 hover:text-red-500"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-                {field && (
-                  <p
-                    className="pl-16 font-mono text-[10px] text-gray-500"
-                    title={help.notes}
-                  >
-                    {name}: {inputModeType(mode)}
-                  </p>
-                )}
-                {reading?.error && (
-                  <p className="pl-16 text-[10px] text-red-500">
-                    {reading.error} Reads as undefined.
-                  </p>
-                )}
-              </div>
-            );
-          })
-        )}
-      </div>
-
-      <div className="space-y-1">
-        <div className="flex items-center gap-1.5">
-          <label className="block text-xs font-medium text-gray-500">
-            Formula
-          </label>
-          <button
-            type="button"
-            onClick={() => setHelpOpen(true)}
-            title="What you can write here"
-            aria-label="What you can write here"
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <Info size={13} />
-          </button>
-        </div>
-        <textarea
-          ref={formulaRef}
-          value={variable.formula}
-          onChange={(event) => {
-            setReplacedFormula(null);
-            onChange({ ...variable, formula: event.target.value });
-          }}
-          onSelect={(event) => {
-            selection.current = {
-              start: event.currentTarget.selectionStart,
-              end: event.currentTarget.selectionEnd,
-            };
-          }}
-          rows={2}
-          spellCheck={false}
-          className={cn(
-            inputPad,
-            "font-mono text-sm",
-            formulaError !== null && "border-red-400",
-          )}
-        />
-        {replacedFormula !== null && (
-          <button
-            type="button"
-            onClick={() => {
-              onChange({ ...variable, formula: replacedFormula });
-              setReplacedFormula(null);
-            }}
-            className="text-xs text-blue-600 hover:underline"
-          >
-            Undo, back to <span className="font-mono">{replacedFormula}</span>
-          </button>
-        )}
-        {formulaError === null && typed.ok ? (
-          <p className="text-xs text-gray-500">
-            Result: <span className="font-mono">{preview || "—"}</span>{" "}
-            <span className="text-gray-400">&middot; {typed.value}</span>
-          </p>
-        ) : (
-          <p className="text-xs text-red-600">{formulaError}</p>
-        )}
-      </div>
-
-      {helpOpen && (
-        <VariableHelpModal
-          inputs={helpInputs}
-          onInsert={(snippet) => {
-            insertSnippet(snippet);
-            setHelpOpen(false);
-          }}
-          onClose={() => setHelpOpen(false)}
-        />
-      )}
+      <FormulaEditor
+        formula={variable}
+        result={FormulaResult.Text}
+        sources={sources}
+        onChange={(next) => onChange({ ...variable, ...next })}
+      />
     </div>
   );
 }
@@ -646,11 +175,25 @@ export function VariableBuilder({
   schema,
   onSchemaChange,
 }: VariableBuilderProps) {
-  const variables = useMemo(() => schema.variables ?? [], [schema.variables]);
-  const eligibleFields = useMemo(
-    () => collectVariableInputFields(schema),
-    [schema],
+  const { sources, formListFailed } = useFormulaSources();
+  // Shows the names a save would give sub-fields added since the last edit;
+  // any edit here stores them.
+  const variables = useMemo(
+    () =>
+      (schema.variables ?? []).map((variable) =>
+        syncFormulaListInputs(variable, sources.scope),
+      ),
+    [schema.variables, sources.scope],
   );
+
+  // Cards hold sample answers in their own state, so a key has to follow its
+  // variable when an earlier one is deleted. Names repeat and change as typed.
+  const [cardKeys, setCardKeys] = useState(() =>
+    variables.map(() => makeTempId()),
+  );
+  if (cardKeys.length !== variables.length) {
+    setCardKeys(variables.map((_, index) => cardKeys[index] ?? makeTempId()));
+  }
 
   const unresolvedReferences = useMemo(
     () => collectUnresolvedVariableReferences(schema),
@@ -664,13 +207,14 @@ export function VariableBuilder({
     });
 
   const addVariable = () => {
-    const field = eligibleFields[0];
+    const field = sources.fieldsFor(undefined)[0];
+    const input = field && inputForField(field, undefined);
     setVariables([
       ...variables,
       {
         name: uniqueVariableName(variables),
-        inputs: field ? { input1: { kind: "field", fieldId: field.id } } : {},
-        formula: field ? "input1" : "0",
+        inputs: input ? { input1: input } : {},
+        formula: input ? exampleFormula(input) : "0",
       },
     ]);
   };
@@ -686,11 +230,21 @@ export function VariableBuilder({
             </Button>
           </div>
           <p className="text-sm text-gray-600">
-            Compute a value from the answers on this form, then write it into
-            any text or field label as{" "}
+            Compute a value from the answers on this form, the member&apos;s
+            answers to other forms, or how many members chose each option of a
+            form&apos;s question, then write it into any text or field label as{" "}
             <span className="font-mono">#{"{name}"}</span>.
           </p>
         </div>
+
+        {formListFailed && (
+          <FormPickerError
+            reason={FormPickerErrorReason.FormList}
+            className="mb-6"
+          />
+        )}
+
+        <SharedOutputSourceWarning schema={schema} />
 
         {unresolvedReferences.length > 0 && (
           <div className="mb-6 rounded border border-amber-300 bg-amber-50 p-3 space-y-1">
@@ -720,10 +274,10 @@ export function VariableBuilder({
           <div className="space-y-4">
             {variables.map((variable, index) => (
               <VariableCard
-                key={index}
+                key={cardKeys[index]}
                 variable={variable}
                 allVariables={variables}
-                eligibleFields={eligibleFields}
+                sources={sources}
                 onChange={(next) =>
                   setVariables(
                     variables.map((current, i) =>
@@ -731,9 +285,10 @@ export function VariableBuilder({
                     ),
                   )
                 }
-                onRemove={() =>
-                  setVariables(variables.filter((_, i) => i !== index))
-                }
+                onRemove={() => {
+                  setCardKeys(cardKeys.filter((_, i) => i !== index));
+                  setVariables(variables.filter((_, i) => i !== index));
+                }}
               />
             ))}
           </div>

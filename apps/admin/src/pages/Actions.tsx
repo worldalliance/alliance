@@ -1,70 +1,72 @@
-import {
-  ActionDto,
-  actionsFindAllWithDraftsAdmin,
-} from "@alliance/shared/client";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { eventInEffectAt } from "@alliance/common/actionEvent";
+import { ActionDto, AdminActionListItemDto } from "@alliance/shared/client";
+import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
+import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
+import { parseActionDto } from "@alliance/shared/parsed-dtos";
+import React, { useMemo, useState } from "react";
+import { Link } from "react-router";
 import ActionListCard from "../components/ActionListCard";
+import ActionStatusBucketFilter from "../components/ActionStatusBucketFilter";
 import ActionTimeline from "../components/ActionTimeline";
+import CreateActionMenu from "../components/CreateActionMenu";
+import {
+  ActionStatusBucket,
+  actionStatusBucket,
+} from "../lib/actionStatusBucket";
+import { actionsLoadError } from "../lib/actionsLoadError";
+import { describeCohortExpression } from "../lib/describeCohortExpression";
 
 export const getLastPastEventDate = (
   action: Pick<ActionDto, "events">,
 ): Date | null => {
-  const now = Date.now();
-  let latest: Date | null = null;
-
-  for (const event of action.events) {
-    if (!event?.date) {
-      continue;
-    }
-
-    const eventDate = new Date(event.date);
-    const eventTime = eventDate.getTime();
-
-    if (Number.isNaN(eventTime) || eventTime > now) {
-      continue;
-    }
-
-    if (!latest || eventDate > latest) {
-      latest = eventDate;
-    }
-  }
-
-  return latest;
+  const { event } = eventInEffectAt(action.events, new Date());
+  return event ? new Date(event.date) : null;
 };
 
 type ActionSuiteGroup = {
   id: number | null;
   name: string;
-  actions: ActionDto[];
+  actions: AdminActionListItemDto[];
   sortVal: number;
   isArchivedOnly: boolean;
 };
 
 const ActionsList: React.FC = () => {
-  const [actions, setActions] = useState<ActionDto[]>([]);
-  const [actionsLoading, setActionsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
+  const list = useActionsAdmin();
+  const actions = useMemo(
+    () => (list.data ?? []).filter((action) => !action.archived),
+    [list.data],
+  );
+  const error = list.isError ? actionsLoadError(list.error) : null;
+  const { tags } = useTagsAdmin();
+  const [shownBuckets, setShownBuckets] = useState<
+    ReadonlySet<ActionStatusBucket>
+  >(
+    () =>
+      new Set([
+        ActionStatusBucket.Active,
+        ActionStatusBucket.Pending,
+        ActionStatusBucket.Draft,
+      ]),
+  );
 
-  const loadActions = useCallback(async () => {
-    try {
-      const response = await actionsFindAllWithDraftsAdmin();
-      if (response.data) {
-        setActions(response.data.filter((action) => !action.archived));
-      }
-      setActionsLoading(false);
-    } catch (err) {
-      setError("Failed to load actions");
-      setActionsLoading(false);
-      console.error(err);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadActions();
-  }, [loadActions]);
+  const participantsById = useMemo(() => {
+    const names = {
+      tagNames: new Map(tags.map((tag) => [tag.id, tag.name])),
+      actionNames: new Map(actions.map((action) => [action.id, action.name])),
+    };
+    return new Map(
+      actions.map((dto) => {
+        const { action, cohortExpressionError } = parseActionDto(dto);
+        return [
+          dto.id,
+          cohortExpressionError
+            ? [{ text: "Invalid cohort expression" }]
+            : describeCohortExpression(action.cohortExpression, names),
+        ];
+      }),
+    );
+  }, [actions, tags]);
 
   const groupedActions = useMemo<ActionSuiteGroup[]>(() => {
     if (actions.length === 0) {
@@ -76,7 +78,7 @@ const ActionsList: React.FC = () => {
       {
         id: number | null;
         name: string;
-        actions: ActionDto[];
+        actions: AdminActionListItemDto[];
       }
     >();
 
@@ -135,11 +137,11 @@ const ActionsList: React.FC = () => {
       });
   }, [actions]);
 
-  if (actionsLoading) {
+  if (list.isPending) {
     return <p>Loading actions...</p>;
   }
 
-  if (error) {
+  if (error && !list.data) {
     return <p className="text-red-500">{error}</p>;
   }
 
@@ -148,43 +150,40 @@ const ActionsList: React.FC = () => {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <p className="font-bold ml-2">Actions</p>
+          <CreateActionMenu />
         </div>
+        {error && <p className="text-red-500">{error}</p>}
         <p>No actions found.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col h-screen p-5 gap-y-3">
       <title>Admin panel</title>
+      {error && <p className="text-red-500 flex-shrink-0">{error}</p>}
       <ActionTimeline
-        actions={actions.filter(
-          (a) => !a.archived && !a.onboarding && a.status !== "completed",
+        actions={actions.filter((action) =>
+          shownBuckets.has(actionStatusBucket(action)),
         )}
-        className="h-full"
+        header={
+          <div className="flex h-full items-center gap-x-2">
+            <ActionStatusBucketFilter
+              selected={shownBuckets}
+              onChange={setShownBuckets}
+            />
+            <CreateActionMenu />
+          </div>
+        }
+        mostRecentFirst
+        participantsById={participantsById}
+        className="flex-shrink-0 max-h-[50vh] border border-zinc-200"
       />
-      <div className="flex items-center gap-x-2 px-5 my-4">
-        <p className="font-bold ">All actions</p>
-        <Button
-          onClick={() => navigate("/actions/new")}
-          className="hover:bg-green-2 text-white !px-3 !py-1 rounded-md text-sm"
-          color={ButtonColor.Green}
-        >
-          New action
-        </Button>
-        <Button
-          onClick={() => navigate("/new-suite")}
-          className="bg-green-3 !px-3 !py-1 rounded-md text-sm"
-          color={ButtonColor.White}
-        >
-          New suite
-        </Button>
-      </div>
-      <p className="text-sm text-zinc-500 px-5">
+      <p className="text-sm text-zinc-500 flex-shrink-0">
         Grouped by suite and ordered by latest event (most recent first)
       </p>
 
-      <div className="space-y-5 flex-1 overflow-y-auto p-5 pt-0">
+      <div className="space-y-5 flex-1 min-h-0 overflow-y-auto rounded-lg border border-zinc-200 bg-white p-5">
         {groupedActions.map((suite) => (
           <div
             key={suite.id ?? "suite-unspecified"}

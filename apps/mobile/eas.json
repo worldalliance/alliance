@@ -5,7 +5,7 @@
   },
   "build": {
     "base": {
-      "node": "20.19.1",
+      "node": "22.13.0",
       "env": {
         "APP_VARIANT": "production"
       }
@@ -25,6 +25,15 @@
         "simulator": true
       }
     },
+    "staging": {
+      "extends": "base",
+      "distribution": "store",
+      "autoIncrement": true,
+      "channel": "staging",
+      "env": {
+        "APP_VARIANT": "staging"
+      }
+    },
     "preview": {
       "extends": "base",
       "distribution": "internal",
@@ -37,6 +46,19 @@
     }
   },
   "submit": {
+    "staging": {
+      "ios": {
+        "ascAppId": "6819396166",
+        "ascApiKeyPath": "$ASC_API_KEY_PATH",
+        "ascApiKeyId": "$ASC_API_KEY_ID",
+        "ascApiKeyIssuerId": "$ASC_API_ISSUER_ID"
+      },
+      "android": {
+        "serviceAccountKeyPath": "$PLAY_SERVICE_ACCOUNT_KEY_PATH",
+        "track": "internal",
+        "releaseStatus": "completed"
+      }
+    },
     "production": {}
   }
 }

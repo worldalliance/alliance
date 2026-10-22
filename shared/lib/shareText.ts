@@ -1,5 +1,7 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { isQuestionField } from "@alliance/common/forms/form-schema";
+import { nameParts } from "@alliance/common/nameParts";
+// eslint-disable-next-line api-client/named-hooks-only -- one-off request whose result no query cache holds
 import { actionsGetActionReferralCode } from "../client/sdk.gen";
 import type { FormResponseDto } from "../client/types.gen";
 
@@ -39,9 +41,8 @@ const getUserNameParts = (name?: string | null) => {
     };
   }
 
-  const [firstName] = trimmedName.split(/\s+/, 1);
   return {
-    firstName: firstName || null,
+    firstName: nameParts(trimmedName).firstname,
     fullName: trimmedName,
   };
 };

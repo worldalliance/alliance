@@ -1,16 +1,24 @@
+import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
 import { ExceptionEvent } from "@alliance/common/analytics";
-import { errorMessage } from "@alliance/common/errorMessage";
 import { FormSchema } from "@alliance/common/forms/form-schema";
+import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options";
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
   FormResponseDto,
   SubmitFormDto,
-  tasksGetForm,
-  tasksGetLinkedGuestDraft,
   tasksSubmitForm,
   tasksSubmitPublicForm,
 } from "@alliance/shared/client";
-import type { ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
+import { formulaSourcesChanged } from "@alliance/shared/forms/formulaChoices";
+import { useRecordActionRelation } from "@alliance/shared/lib/actionsListPage";
+import {
+  formAlreadySubmitted,
+  memberActionDeadlinePassed,
+  type ActionWithdrawal,
+} from "@alliance/shared/lib/actionTaskPanel";
 import { captureException } from "@alliance/shared/lib/analytics";
+import { useLinkedGuestDraft } from "@alliance/shared/lib/useLinkedGuestDraft";
+import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import { useInvalidateVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
@@ -19,16 +27,16 @@ import FormRenderer, {
 } from "@alliance/sharedweb/forms/FormRenderer";
 import Card from "@alliance/sharedweb/ui/Card";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
-import { useQuery } from "@tanstack/react-query";
 import posthog from "posthog-js";
 import { useMemo, useState, type RefObject } from "react";
 import { useAuth } from "../lib/AuthContext";
 
 interface ActionTaskPanelFormProps {
   taskFormId: number;
-  onCompleteAction: ((sendComplete: boolean) => void) | null;
+  onCompleteAction: (() => void) | null;
   onFormStarted: () => void;
   onAbandonAction?: (withdrawal: ActionWithdrawal) => void;
+  onDeadlinePassed: () => void;
   card?: boolean;
   actionId: number;
   disabled?: boolean;
@@ -37,6 +45,8 @@ interface ActionTaskPanelFormProps {
   redirectOnComplete?: boolean;
   onSubmitted?: (formResponse: FormResponseDto) => void;
   scrollContainerRef?: RefObject<HTMLElement | null>;
+  /** Editable but unsubmittable, and nothing typed outlives the page. */
+  preview?: boolean;
 }
 
 const ActionTaskPanelForm = ({
@@ -44,6 +54,7 @@ const ActionTaskPanelForm = ({
   onCompleteAction,
   onFormStarted,
   onAbandonAction,
+  onDeadlinePassed,
   card = false,
   actionId,
   disabled = false,
@@ -52,47 +63,29 @@ const ActionTaskPanelForm = ({
   redirectOnComplete = publicAction,
   onSubmitted,
   scrollContainerRef,
+  preview = false,
 }: ActionTaskPanelFormProps) => {
   const [error, setError] = useState<string | null>(null);
-  const { user, isAuthenticated, refreshUser } = useAuth();
+  const {
+    user,
+    isAuthenticated,
+    refreshUser,
+    loading: authLoading,
+  } = useAuth();
   const invalidateVisibilityContext = useInvalidateVisibilityContext();
+  const recordRelation = useRecordActionRelation();
   const {
     data: form,
     error: formError,
     isPending,
-  } = useQuery({
-    queryKey: ["form", taskFormId],
-    queryFn: async () => {
-      const response = await tasksGetForm({
-        path: { id: taskFormId },
-      });
-
-      if (!response.data) {
-        throw new Error(
-          errorMessage({
-            error: response.error,
-            fallback: "Unable to load form",
-          }),
-        );
-      }
-
-      return response.data;
-    },
-    enabled: !formResponse,
-  });
+  } = useTaskForm(taskFormId, { enabled: !formResponse });
 
   const draftEnabled =
-    !formResponse && !disabled && !publicAction && isAuthenticated;
-  const { data: draftFormResponse } = useQuery({
-    queryKey: ["linkedGuestDraft", taskFormId],
-    queryFn: async () => {
-      const response = await tasksGetLinkedGuestDraft({
-        path: { id: taskFormId },
-      });
-      return response.data?.draft ?? null;
-    },
+    !formResponse && !disabled && !publicAction && !preview && isAuthenticated;
+  const { data: draftFormResponse } = useLinkedGuestDraft({
+    taskFormId,
+    actionId,
     enabled: draftEnabled,
-    retry: false,
   });
 
   const handleSubmitForm = onCompleteAction
@@ -113,6 +106,7 @@ const ActionTaskPanelForm = ({
             // Bumped `completedActionCount` (and `firstContractSignedAt` for a
             // contract-signing action).
             invalidateVisibilityContext();
+            recordRelation(actionId, "completed");
           }
           if (response.data) {
             onSubmitted?.(response.data);
@@ -131,11 +125,20 @@ const ActionTaskPanelForm = ({
             //TODO: better handling of user refresh (things used to break if the user signed a contract in another tab then went back to the first one)
             refreshUser();
           }
-          onCompleteAction(false); //tasksSubmitForm handles completion here
+          onCompleteAction();
           return true;
         }
-        if (response.error?.message === "Form already submitted") {
+        if (formAlreadySubmitted(response)) {
           window.location.reload();
+          return false;
+        }
+        if (memberActionDeadlinePassed(response)) {
+          setError(MEMBER_ACTION_DEADLINE_PASSED);
+          onDeadlinePassed();
+          return false;
+        }
+        if (formulaSourcesChanged(response)) {
+          setError(FORMULA_SOURCES_CHANGED);
           return false;
         }
         console.error(response.error);
@@ -171,8 +174,16 @@ const ActionTaskPanelForm = ({
     );
   }
 
-  if (!form) {
-    if (isPending) {
+  const schema = form?.schema as unknown as FormSchema | undefined;
+  // The form seeds its timezone fields from `user` at mount.
+  const waitsForUser =
+    authLoading &&
+    !!schema?.pages.some((page) =>
+      page.fields.some((item) => item.kind === "timezone"),
+    );
+
+  if (!form || !schema || waitsForUser) {
+    if (isPending || waitsForUser) {
       return (
         <div
           className={cn(
@@ -204,20 +215,22 @@ const ActionTaskPanelForm = ({
     <Wrapper className={card ? "p-4 sm:p-6" : "flex flex-col gap-y-2"}>
       <div>
         <FormRenderer
-          form={form.schema as unknown as FormSchema}
+          form={schema}
           id={form.id}
           formSnapshotId={form.formSnapshotId}
           actionId={actionId}
           onSubmit={handleSubmitForm}
-          persistKey={String(taskFormId)}
+          persistKey={preview ? null : String(taskFormId)}
           userId={user?.id}
           user={user}
+          userLoading={authLoading}
           loadCurrentUserLocation={!!user && isAuthenticated}
           onFormStarted={onFormStarted}
           onAbandonAction={onAbandonAction}
           renderFormAsCompleted={disabled}
           publicAction={publicAction}
           draftFormResponse={draftFormResponse}
+          syncDraftToServer={isAuthenticated && !publicAction}
           phDistinctId={distinctId}
           sessionReplayUrl={sessionReplayUrl}
           scrollContainerRef={scrollContainerRef}

@@ -1,7 +1,10 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsDefined } from "class-validator";
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import { Allow, IsDefined, IsEmpty, IsOptional } from "class-validator";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
 import { Column, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
 
 export const FORM_SNAPSHOT_HISTORY_TABLE = "form_snapshot_history";
@@ -45,8 +48,8 @@ export class FormSnapshot {
   @Allow()
   id: number;
 
-  // Update owners must narrow this with `displayOnlySchemaOf`; form snapshots
-  // have a different schema shape.
+  // Narrow this with `formSchemaOf` for a form's snapshot and
+  // `displayOnlySchemaOf` for an update owner's; the two shapes differ.
   @Column({ type: "jsonb" })
   @ApiProperty()
   @IsDefined()
@@ -63,4 +66,9 @@ export class FormSnapshot {
   @Allow()
   @Type(() => Date)
   createdAt: Date;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }

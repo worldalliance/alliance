@@ -1,6 +1,12 @@
 import { DataSource, QueryRunner } from "typeorm";
 
-export async function withPgAdvisoryLock<T>(
+/**
+ * Runs `fn` while holding a session advisory lock, on the lock's own
+ * connection. Rolls back any transaction `fn` leaves open, and rejects if `fn`
+ * resolved with one open. Resolves to null without running it when another
+ * session holds the lock.
+ */
+export async function withPgSessionLock<T>(
   dataSource: DataSource,
   lockKey1: number,
   lockKey2: number,
@@ -19,18 +25,37 @@ export async function withPgAdvisoryLock<T>(
       return null;
     }
 
-    await qr.startTransaction();
     try {
       const result = await fn(qr);
-      await qr.commitTransaction();
+      if (qr.isTransactionActive) {
+        throw new Error("withPgSessionLock: fn left a transaction open");
+      }
       return result;
-    } catch (err) {
-      await qr.rollbackTransaction();
-      throw err;
     } finally {
-      await qr.query("SELECT pg_advisory_unlock($1, $2)", [lockKey1, lockKey2]);
+      try {
+        while (qr.isTransactionActive) await qr.rollbackTransaction();
+      } finally {
+        await qr.query("SELECT pg_advisory_unlock($1, $2)", [
+          lockKey1,
+          lockKey2,
+        ]);
+      }
     }
   } finally {
     await qr.release();
   }
+}
+
+export function withPgAdvisoryLock<T>(
+  dataSource: DataSource,
+  lockKey1: number,
+  lockKey2: number,
+  fn: (qr: QueryRunner) => Promise<T>,
+): Promise<T | null> {
+  return withPgSessionLock(dataSource, lockKey1, lockKey2, async (qr) => {
+    await qr.startTransaction();
+    const result = await fn(qr);
+    await qr.commitTransaction();
+    return result;
+  });
 }

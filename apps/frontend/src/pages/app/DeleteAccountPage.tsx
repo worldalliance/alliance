@@ -1,4 +1,5 @@
 import { errorMessage } from "@alliance/common/errorMessage";
+// eslint-disable-next-line api-client/named-hooks-only -- one-off request whose result no query cache holds
 import { userRequestAccountDeletion } from "@alliance/shared/client";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import Button from "@alliance/sharedweb/ui/NewButton";

@@ -1,30 +1,24 @@
+/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
-  analyticsGetActionStatsAdmin,
   analyticsGetAggregateStatsAdmin,
-  analyticsGetContractStatusHistoryAdmin,
-  analyticsGetDailyStatsAdmin,
-  analyticsGetInviteFunnelAdmin,
   analyticsGetMemberCompletionRetentionAdmin,
   analyticsGetMemberReliabilityWindowAdmin,
-  analyticsGetReminderGroupClickRatesAdmin,
+  analyticsGetMissedActionsAdmin,
   analyticsGetTimeToChurnSamplesAdmin,
-  analyticsRecalculateActionStatsAdmin,
 } from "@alliance/shared/client";
-import { client } from "@alliance/shared/client/client.gen";
 import {
   ActionStatsWithOnboardingDto,
   AggregateStatsDto,
   ContractStatusPointDto,
   DailyStatsDto,
-  InviteFunnelDto,
   MemberCompletionRetentionCohortDto,
   MemberReliabilityWindowDto,
-  ReminderGroupClickRatePointDto,
+  MissedActionsDto,
   TimeToChurnSampleDto,
 } from "@alliance/shared/client/types.gen";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { dateToInputValue } from "@alliance/shared/lib/dateInput";
 import { cn } from "@alliance/shared/styles/util";
-import { useQuery } from "@tanstack/react-query";
 import chroma from "chroma-js";
 import {
   area,
@@ -38,6 +32,7 @@ import {
   scaleLinear,
   scaleTime,
 } from "d3";
+import { millisecondsInDay, minutesInHour } from "date-fns/constants";
 import React, {
   useCallback,
   useEffect,
@@ -48,12 +43,19 @@ import React, {
 import ActionCompletionCurveChart from "../components/ActionCompletionCurveChart";
 import {
   TimeSeriesChart,
-  formatDateAsLocal,
   fullDateFormatter,
   type ChartSeries,
   type DataPoint,
   type MultiLineSeries,
 } from "../components/TimeSeriesChart";
+import { adminRefusalMessage } from "../lib/adminRefusal";
+import { defaultInviteFunnelRange } from "../lib/defaultInviteFunnelRange";
+import { useActionStats } from "../lib/useActionStats";
+import { useContractStatusHistoryAdmin } from "../lib/useContractStatusHistoryAdmin";
+import { useDailyStatsAdmin } from "../lib/useDailyStatsAdmin";
+import { useInviteFunnelAdmin } from "../lib/useInviteFunnelAdmin";
+import { usePlatformTenureCohortAdmin } from "../lib/usePlatformTenureCohortAdmin";
+import { useReminderGroupClickRatesAdmin } from "../lib/useReminderGroupClickRatesAdmin";
 
 type ParsedDailyStats = DailyStatsDto & { parsedDate: Date };
 type ActionStatsWithWithdrawals = ActionStatsWithOnboardingDto & {
@@ -91,10 +93,6 @@ type HoveredRetentionCell = {
     memberCount: number;
   }>;
 };
-type ReminderGroupClickRatePoint = Omit<
-  ReminderGroupClickRatePointDto,
-  "date"
-> & { date: Date };
 type ReminderActionChannelBar = {
   actionId: number;
   actionName: string;
@@ -106,26 +104,6 @@ type ReminderActionChannelBar = {
 type HoveredReminderActionBar = {
   bar: ReminderActionChannelBar;
   channel: "email" | "text";
-};
-type PlatformTenureCohortActionStats = {
-  actionId: number;
-  actionName: string;
-  assignedCount: number;
-  completedCount: number;
-  completionRate: number;
-  memberActionStartDate: string;
-  memberActionEndDate?: string;
-};
-type PlatformTenureCohortStats = {
-  weeksOnPlatform: number;
-  cohortSize: number;
-  activeCount: number;
-  churnedCount: number;
-  churnRate: number;
-  assignedCount: number;
-  completedCount: number;
-  completionRate: number;
-  actions: PlatformTenureCohortActionStats[];
 };
 
 const buildRoundedLeftPath = (
@@ -179,9 +157,30 @@ const getDefaultRange = () => {
   const start = new Date();
   start.setDate(end.getDate() - 29);
   return {
-    start: formatDateAsLocal(start),
-    end: formatDateAsLocal(end),
+    start: dateToInputValue(start),
+    end: dateToInputValue(end),
   };
+};
+
+const invalidRangeMessage = (range: {
+  start: string;
+  end: string;
+}): string | null => {
+  const parsedStart = new Date(range.start);
+  const parsedEnd = new Date(range.end);
+
+  if (
+    Number.isNaN(parsedStart.getTime()) ||
+    Number.isNaN(parsedEnd.getTime())
+  ) {
+    return "Please provide valid start and end dates.";
+  }
+
+  if (parsedStart > parsedEnd) {
+    return "Start date must be before the end date.";
+  }
+
+  return null;
 };
 
 const parseIsoDate = (value?: string | null): Date | null => {
@@ -215,19 +214,11 @@ const findContractStatusPointDaysAgo = (
 
   const daysBetween =
     (latest.parsedDate.getTime() - closest.parsedDate.getTime()) /
-    (1000 * 60 * 60 * 24);
+    millisecondsInDay;
   if (daysBetween < daysAgo - 2) return null;
 
   return closest;
 };
-
-const asRecordArray = (value: unknown): Array<Record<string, unknown>> =>
-  Array.isArray(value)
-    ? value.filter(
-        (entry): entry is Record<string, unknown> =>
-          typeof entry === "object" && entry !== null,
-      )
-    : [];
 
 const parseLocalDateInput = (
   value?: string | null,
@@ -266,21 +257,6 @@ const getWeekStartDate = (value: Date): Date => {
   return date;
 };
 
-const fetchPlatformTenureCohort = async (
-  weeksOnPlatform: number,
-): Promise<PlatformTenureCohortStats> => {
-  const response = await client.get<PlatformTenureCohortStats>({
-    url: "/analytics/platform-tenure-cohort",
-    query: { weeksOnPlatform },
-  });
-
-  if (!response.data) {
-    throw new Error("No platform tenure cohort data returned");
-  }
-
-  return response.data;
-};
-
 const fetchMemberReliabilityWindow = async (
   weeks: number,
 ): Promise<MemberReliabilityWindowDto> => {
@@ -300,10 +276,7 @@ const StatsPage: React.FC = () => {
   const [startInput, setStartInput] = useState<string>(defaultRange.start);
   const [endInput, setEndInput] = useState<string>(defaultRange.end);
   const [queryRange, setQueryRange] = useState(defaultRange);
-  const [stats, setStats] = useState<DailyStatsDto[]>([]);
-  const [actionStats, setActionStats] = useState<ActionStatsWithWithdrawals[]>(
-    [],
-  );
+  const [rangeError, setRangeError] = useState<string | null>(null);
   const [aggregateStats, setAggregateStats] =
     useState<AggregateStatsDto | null>(null);
   const [aggregateStatsLoading, setAggregateStatsLoading] =
@@ -311,12 +284,7 @@ const StatsPage: React.FC = () => {
   const [retentionCohorts, setRetentionCohorts] = useState<
     MemberCompletionRetentionCohortDto[]
   >([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [actionStatsLoading, setActionStatsLoading] = useState<boolean>(false);
-  const [completionCurveRefreshKey, setCompletionCurveRefreshKey] =
-    useState<number>(0);
   const [retentionLoading, setRetentionLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
   const [hoveredActionBar, setHoveredActionBar] =
     useState<HoveredActionBar | null>(null);
   const [hoveredReminderActionBar, setHoveredReminderActionBar] =
@@ -327,11 +295,10 @@ const StatsPage: React.FC = () => {
   const [timeToChurnLoading, setTimeToChurnLoading] = useState<boolean>(false);
   const [platformTenureWeeksInput, setPlatformTenureWeeksInput] =
     useState<string>("4");
-  const [platformTenureCohort, setPlatformTenureCohort] =
-    useState<PlatformTenureCohortStats | null>(null);
-  const [platformTenureCohortLoading, setPlatformTenureCohortLoading] =
-    useState<boolean>(false);
-  const [platformTenureCohortError, setPlatformTenureCohortError] = useState<
+  const [platformTenureWeeks, setPlatformTenureWeeks] = useState<number | null>(
+    null,
+  );
+  const [platformTenureWeeksError, setPlatformTenureWeeksError] = useState<
     string | null
   >(null);
   const [memberReliabilityWeeksInput, setMemberReliabilityWeeksInput] =
@@ -343,7 +310,9 @@ const StatsPage: React.FC = () => {
   const [memberReliabilityError, setMemberReliabilityError] = useState<
     string | null
   >(null);
-  const [missedActions, setMissedActions] = useState<unknown>(null);
+  const [missedActions, setMissedActions] = useState<MissedActionsDto | null>(
+    null,
+  );
   const [missedActionsLoading, setMissedActionsLoading] =
     useState<boolean>(false);
   const [missedActionsRequested, setMissedActionsRequested] =
@@ -361,8 +330,8 @@ const StatsPage: React.FC = () => {
     const start = new Date();
     start.setMonth(start.getMonth() - 5);
     return {
-      start: formatDateAsLocal(start),
-      end: formatDateAsLocal(end),
+      start: dateToInputValue(start),
+      end: dateToInputValue(end),
     };
   });
   const [reminderClickRateRange, setReminderClickRateRange] = useState(() => {
@@ -370,34 +339,21 @@ const StatsPage: React.FC = () => {
     const start = new Date();
     start.setMonth(start.getMonth() - 5);
     return {
-      start: formatDateAsLocal(start),
-      end: formatDateAsLocal(end),
+      start: dateToInputValue(start),
+      end: dateToInputValue(end),
     };
   });
-  const [inviteFunnel, setInviteFunnel] = useState<InviteFunnelDto | null>(
-    null,
+  const [inviteFunnelRange, setInviteFunnelRange] = useState(() =>
+    defaultInviteFunnelRange(new Date()),
   );
-  const [inviteFunnelLoading, setInviteFunnelLoading] =
-    useState<boolean>(false);
-  const [inviteFunnelRange, setInviteFunnelRange] = useState(() => {
-    const end = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    const start = new Date();
-    start.setDate(end.getDate() - 14);
-    return { start: formatDateAsLocal(start), end: formatDateAsLocal(end) };
-  });
   const [assumedHourlyRate, setAssumedHourlyRate] = useState<number>(15);
-  const [contractStatusHistory, setContractStatusHistory] = useState<
-    ContractStatusPointDto[]
-  >([]);
-  const [contractStatusLoading, setContractStatusLoading] =
-    useState<boolean>(false);
   const [contractStatusRange, setContractStatusRange] = useState(() => {
     const end = new Date();
     const start = new Date();
     start.setMonth(start.getMonth() - 6);
     return {
-      start: formatDateAsLocal(start),
-      end: formatDateAsLocal(end),
+      start: dateToInputValue(start),
+      end: dateToInputValue(end),
     };
   });
 
@@ -406,80 +362,50 @@ const StatsPage: React.FC = () => {
   const [hoveredRetentionCell, setHoveredRetentionCell] =
     useState<HoveredRetentionCell | null>(null);
 
-  const loadStats = useCallback(async (startDate: string, endDate: string) => {
-    setLoading(true);
-    setError(null);
+  const {
+    data: stats = [],
+    isPending: loading,
+    error: statsError,
+  } = useDailyStatsAdmin(queryRange);
+  const error =
+    rangeError ??
+    (statsError &&
+      adminRefusalMessage(
+        statsError,
+        "Unable to load analytics right now. Please try again soon.",
+      ));
 
-    const parsedStart = new Date(startDate);
-    const parsedEnd = new Date(endDate);
-
-    if (
-      Number.isNaN(parsedStart.getTime()) ||
-      Number.isNaN(parsedEnd.getTime())
-    ) {
-      setError("Please provide valid start and end dates.");
-      setLoading(false);
-      return;
-    }
-
-    if (parsedStart > parsedEnd) {
-      setError("Start date must be before the end date.");
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const response = await analyticsGetDailyStatsAdmin({
-        query: {
-          date: parsedStart.toISOString(),
-          endDate: parsedEnd.toISOString(),
-        },
-      });
-
-      const orderedData = (response.data ?? []).slice().sort((a, b) => {
-        return new Date(a.date).getTime() - new Date(b.date).getTime();
-      });
-
-      setStats(orderedData);
-    } catch (err) {
-      console.error("Failed to load daily stats", err);
-      setError("Unable to load analytics right now. Please try again soon.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadStats(queryRange.start, queryRange.end);
-  }, [loadStats, queryRange.end, queryRange.start]);
-
-  const loadActionStats = useCallback(async () => {
-    setActionStatsLoading(true);
-    try {
-      const response = await analyticsGetActionStatsAdmin();
-      setActionStats(response.data ?? []);
-    } catch (err) {
-      console.error("Failed to load action stats", err);
-    } finally {
-      setActionStatsLoading(false);
-    }
-  }, []);
+  const {
+    stats: {
+      data: actionStats = [],
+      isPending: actionStatsPending,
+      isError: actionStatsLoadFailed,
+    },
+    recalculate: recalculateActionStats,
+  } = useActionStats();
+  const actionStatsLoading =
+    actionStatsPending || recalculateActionStats.isPending;
 
   const {
     data: reminderGroupClickRatePoints = [],
     isPending: reminderGroupClickRatesLoading,
-  } = useQuery({
-    queryKey: queryKeys.reminderGroupClickRatesAdmin(),
-    queryFn: async () => {
-      const response = await analyticsGetReminderGroupClickRatesAdmin();
-      return (response.data ?? []).map(
-        (point): ReminderGroupClickRatePoint => ({
-          ...point,
-          date: new Date(point.date),
-        }),
-      );
-    },
-  });
+    isError: reminderGroupClickRatesLoadFailed,
+  } = useReminderGroupClickRatesAdmin();
+
+  const {
+    data: inviteFunnel,
+    isPending: inviteFunnelLoading,
+    error: inviteFunnelError,
+  } = useInviteFunnelAdmin(inviteFunnelRange);
+
+  const {
+    data: contractStatusHistory = [],
+    isPending: contractStatusPending,
+    isPlaceholderData: contractStatusPlaceholder,
+    error: contractStatusError,
+  } = useContractStatusHistoryAdmin(contractStatusRange);
+  const contractStatusLoading =
+    contractStatusPending || contractStatusPlaceholder;
 
   const loadRetentionCohorts = useCallback(async () => {
     setRetentionLoading(true);
@@ -517,31 +443,38 @@ const StatsPage: React.FC = () => {
     }
   }, []);
 
-  const loadPlatformTenureCohort = useCallback(async (weeks: number) => {
-    setPlatformTenureCohortLoading(true);
-    setPlatformTenureCohortError(null);
-    try {
-      const cohort = await fetchPlatformTenureCohort(weeks);
-      setPlatformTenureCohort(cohort);
-    } catch (err) {
-      console.error("Failed to load platform tenure cohort", err);
-      setPlatformTenureCohort(null);
-      setPlatformTenureCohortError(
+  const {
+    data: platformTenureCohortData,
+    isFetching: platformTenureCohortLoading,
+    error: platformTenureCohortLoadError,
+    refetch: refetchPlatformTenureCohort,
+  } = usePlatformTenureCohortAdmin(platformTenureWeeks);
+  const platformTenureCohort = platformTenureCohortLoadError
+    ? undefined
+    : platformTenureCohortData;
+  const platformTenureCohortError =
+    platformTenureWeeksError ??
+    (platformTenureCohortLoadError &&
+      !platformTenureCohortLoading &&
+      adminRefusalMessage(
+        platformTenureCohortLoadError,
         "Unable to load this cohort right now. Please try again soon.",
-      );
-    } finally {
-      setPlatformTenureCohortLoading(false);
-    }
-  }, []);
+      ));
 
   const handleApplyPlatformTenureCohort = useCallback(() => {
     const weeks = Number(platformTenureWeeksInput);
     if (!Number.isInteger(weeks) || weeks < 0) {
-      setPlatformTenureCohortError("Weeks on platform must be a whole number.");
+      setPlatformTenureWeeksError("Weeks on platform must be a whole number.");
       return;
     }
-    void loadPlatformTenureCohort(weeks);
-  }, [loadPlatformTenureCohort, platformTenureWeeksInput]);
+    setPlatformTenureWeeksError(null);
+    if (weeks === platformTenureWeeks) void refetchPlatformTenureCohort();
+    else setPlatformTenureWeeks(weeks);
+  }, [
+    platformTenureWeeks,
+    platformTenureWeeksInput,
+    refetchPlatformTenureCohort,
+  ]);
 
   const loadMemberReliabilityWindow = useCallback(async (weeks: number) => {
     setMemberReliabilityLoading(true);
@@ -571,7 +504,7 @@ const StatsPage: React.FC = () => {
   const loadMissedActions = useCallback(async () => {
     setMissedActionsLoading(true);
     try {
-      const response = await client.get({ url: "/analytics/missed-actions" });
+      const response = await analyticsGetMissedActionsAdmin();
       setMissedActions(response.data ?? null);
     } catch (err) {
       console.error("Failed to load missed actions", err);
@@ -586,23 +519,6 @@ const StatsPage: React.FC = () => {
     void loadMissedActions();
   }, [loadMissedActions]);
 
-  const handleRecalculateActionStats = useCallback(async () => {
-    setActionStatsLoading(true);
-    try {
-      const actionStatsResponse = await analyticsRecalculateActionStatsAdmin();
-      setActionStats(actionStatsResponse.data ?? []);
-      setCompletionCurveRefreshKey((prev) => prev + 1);
-    } catch (err) {
-      console.error("Failed to recalculate action stats", err);
-    } finally {
-      setActionStatsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadActionStats();
-  }, [loadActionStats]);
-
   useEffect(() => {
     void loadRetentionCohorts();
   }, [loadRetentionCohorts]);
@@ -614,48 +530,6 @@ const StatsPage: React.FC = () => {
   useEffect(() => {
     void loadTimeToChurnSamples();
   }, [loadTimeToChurnSamples]);
-
-  const loadInviteFunnel = useCallback(async () => {
-    setInviteFunnelLoading(true);
-    try {
-      const response = await analyticsGetInviteFunnelAdmin({
-        query: {
-          startDate: inviteFunnelRange.start,
-          endDate: inviteFunnelRange.end,
-        },
-      });
-      setInviteFunnel(response.data ?? null);
-    } catch (err) {
-      console.error("Failed to load invite funnel", err);
-    } finally {
-      setInviteFunnelLoading(false);
-    }
-  }, [inviteFunnelRange]);
-
-  useEffect(() => {
-    void loadInviteFunnel();
-  }, [loadInviteFunnel]);
-
-  const loadContractStatusHistory = useCallback(async () => {
-    setContractStatusLoading(true);
-    try {
-      const response = await analyticsGetContractStatusHistoryAdmin({
-        query: {
-          startDate: contractStatusRange.start,
-          endDate: contractStatusRange.end,
-        },
-      });
-      setContractStatusHistory(response.data ?? []);
-    } catch (err) {
-      console.error("Failed to load contract status history", err);
-    } finally {
-      setContractStatusLoading(false);
-    }
-  }, [contractStatusRange]);
-
-  useEffect(() => {
-    void loadContractStatusHistory();
-  }, [loadContractStatusHistory]);
 
   const parsedStats = useMemo<ParsedDailyStats[]>(() => {
     return stats
@@ -774,7 +648,7 @@ const StatsPage: React.FC = () => {
 
       runningSum += action.completionRate;
       count += 1;
-      const dayKey = formatDateAsLocal(action.endDate);
+      const dayKey = dateToInputValue(action.endDate);
       const existingPoint = dataPoints[dataPoints.length - 1];
 
       if (existingPoint && existingPoint.dayKey === dayKey) {
@@ -879,7 +753,7 @@ const StatsPage: React.FC = () => {
       }
 
       const weekStart = getWeekStartDate(endDate);
-      const bucketKey = formatDateAsLocal(weekStart);
+      const bucketKey = dateToInputValue(weekStart);
       const existingBucket = weeklyBuckets.get(bucketKey) ?? {
         date: weekStart,
         actionCount: 0,
@@ -1426,17 +1300,21 @@ const StatsPage: React.FC = () => {
   }, [inviteFunnel]);
 
   const handleApplyRange = useCallback(() => {
-    setQueryRange({ start: startInput, end: endInput });
+    const range = { start: startInput, end: endInput };
+    const invalid = invalidRangeMessage(range);
+    setRangeError(invalid);
+    if (!invalid) setQueryRange(range);
   }, [endInput, startInput]);
 
   const handleQuickRange = useCallback((days: number) => {
     const end = new Date();
     const start = new Date();
     start.setDate(start.getDate() - (days - 1));
-    const startValue = formatDateAsLocal(start);
-    const endValue = formatDateAsLocal(end);
+    const startValue = dateToInputValue(start);
+    const endValue = dateToInputValue(end);
     setStartInput(startValue);
     setEndInput(endValue);
+    setRangeError(null);
     setQueryRange({ start: startValue, end: endValue });
   }, []);
 
@@ -1519,18 +1397,17 @@ const StatsPage: React.FC = () => {
   }, []);
 
   const missedActionGroups = useMemo(() => {
-    if (typeof missedActions !== "object" || missedActions === null) {
+    if (!missedActions) {
       return null;
     }
-    const stats = missedActions as Record<string, unknown>;
     return [
       {
         title: "Missed last action",
-        members: asRecordArray(stats.missedLastAction),
+        members: missedActions.missedLastAction,
       },
       {
         title: "Missed last two actions",
-        members: asRecordArray(stats.missedLastTwoActions),
+        members: missedActions.missedLastTwoActions,
       },
     ];
   }, [missedActions]);
@@ -1609,8 +1486,10 @@ const StatsPage: React.FC = () => {
                   Total expected weekly member time
                 </div>
                 <div className="text-base font-semibold text-gray-900">
-                  {((aggregateStats.signedUsers * 15) / 60).toFixed(2)} hours /
-                  week
+                  {((aggregateStats.signedUsers * 15) / minutesInHour).toFixed(
+                    2,
+                  )}{" "}
+                  hours / week
                 </div>
               </div>
               <div className="flex flex-col">
@@ -1629,7 +1508,7 @@ const StatsPage: React.FC = () => {
                 <div className="text-base font-semibold text-gray-900">
                   $
                   {(
-                    ((aggregateStats.signedUsers * 15) / 60) *
+                    ((aggregateStats.signedUsers * 15) / minutesInHour) *
                     assumedHourlyRate *
                     52
                   ).toFixed(2)}
@@ -1682,17 +1561,17 @@ const StatsPage: React.FC = () => {
                   <ul className="mt-3 max-h-64 space-y-1 overflow-y-auto text-sm">
                     {members.map((member) => (
                       <li
-                        key={String(member.userId)}
+                        key={member.userId}
                         className="flex justify-between gap-3"
                       >
                         <a
-                          href={`/member/${String(member.userId)}`}
+                          href={`/member/${member.userId}`}
                           className="min-w-0 truncate text-link hover:underline"
                         >
-                          {String(member.name)}
+                          {member.name}
                         </a>
                         <span className="shrink-0 text-xs text-gray-500">
-                          {String(member.lastActionName)}
+                          {member.lastActionName}
                         </span>
                       </li>
                     ))}
@@ -1990,8 +1869,8 @@ const StatsPage: React.FC = () => {
                 const start = new Date();
                 start.setDate(end.getDate() - 7);
                 setInviteFunnelRange({
-                  start: formatDateAsLocal(start),
-                  end: formatDateAsLocal(end),
+                  start: dateToInputValue(start),
+                  end: dateToInputValue(end),
                 });
               }}
               className="px-3 py-1 rounded-md text-xs border border-gray-300 bg-white hover:border-gray-400"
@@ -2001,11 +1880,16 @@ const StatsPage: React.FC = () => {
           </div>
         </div>
         <div className="relative p-4">
-          {inviteFunnelLoading && !inviteFunnel && (
+          {inviteFunnelLoading && (
             <p className="text-sm text-gray-600">Loading invite funnel...</p>
           )}
-          {!inviteFunnelLoading && !inviteFunnel && (
-            <p className="text-sm text-gray-600">No invite funnel data.</p>
+          {inviteFunnelError && (
+            <p className="text-sm text-red-600">
+              {adminRefusalMessage(
+                inviteFunnelError,
+                "Unable to load the invite funnel.",
+              )}
+            </p>
           )}
           {inviteFunnelGeometry && inviteFunnel && (
             <svg
@@ -2147,7 +2031,16 @@ const StatsPage: React.FC = () => {
             parsedContractStatusHistory.length === 0 && (
               <p className="text-sm text-gray-600">Loading...</p>
             )}
+          {contractStatusError && (
+            <p className="text-sm text-red-600">
+              {adminRefusalMessage(
+                contractStatusError,
+                "Unable to load members over time.",
+              )}
+            </p>
+          )}
           {!contractStatusLoading &&
+            !contractStatusError &&
             parsedContractStatusHistory.length === 0 && (
               <p className="text-sm text-gray-600">
                 No contract status data in this date range.
@@ -2375,7 +2268,7 @@ const StatsPage: React.FC = () => {
         </div>
       )}
       {loading && <p className="text-sm text-gray-600">Loading daily stats…</p>}
-      {!loading && parsedStats.length === 0 && (
+      {!loading && !statsError && parsedStats.length === 0 && (
         <p className="text-sm text-gray-600">No daily stats for this range.</p>
       )}
 
@@ -2386,7 +2279,7 @@ const StatsPage: React.FC = () => {
             Action Completion Stats
           </h3>
           <button
-            onClick={handleRecalculateActionStats}
+            onClick={() => recalculateActionStats.mutate()}
             disabled={actionStatsLoading}
             className="px-4 py-2 rounded-md text-sm bg-green text-white shadow hover:bg-green-2 disabled:opacity-50"
           >
@@ -2397,11 +2290,21 @@ const StatsPage: React.FC = () => {
           {actionStatsLoading && actionStats.length === 0 && (
             <p className="text-sm text-gray-600">Loading action stats...</p>
           )}
-          {!actionStatsLoading && actionStats.length === 0 && (
-            <p className="text-sm text-gray-600">
-              No action stats available. Click Recalculate to generate.
+          {actionStatsLoadFailed && (
+            <p className="text-sm text-red-600">Unable to load action stats.</p>
+          )}
+          {recalculateActionStats.isError && (
+            <p className="text-sm text-red-600">
+              Unable to recalculate action stats.
             </p>
           )}
+          {!actionStatsLoading &&
+            !actionStatsLoadFailed &&
+            actionStats.length === 0 && (
+              <p className="text-sm text-gray-600">
+                No action stats available. Click Recalculate to generate.
+              </p>
+            )}
           {actionBarsGeometry && chartActionStats.length > 0 && (
             <svg
               viewBox={`0 0 ${actionBarsGeometry.width} ${actionBarsGeometry.height}`}
@@ -2685,7 +2588,7 @@ const StatsPage: React.FC = () => {
       </div>
 
       {/* Action Completion Curves */}
-      <ActionCompletionCurveChart refreshKey={completionCurveRefreshKey} />
+      <ActionCompletionCurveChart />
 
       <TimeSeriesChart
         title="Cumulative Completion Rate"
@@ -2842,7 +2745,13 @@ const StatsPage: React.FC = () => {
             filteredReminderGroupClickRatePoints.length === 0 && (
               <p className="text-sm text-gray-600">Loading...</p>
             )}
+          {reminderGroupClickRatesLoadFailed && (
+            <p className="text-sm text-red-600">
+              Unable to load reminder click rates.
+            </p>
+          )}
           {!reminderGroupClickRatesLoading &&
+            !reminderGroupClickRatesLoadFailed &&
             filteredReminderGroupClickRatePoints.length === 0 && (
               <p className="text-sm text-gray-600">
                 No sent reminder groups with email/text link clicks in this date

@@ -6,6 +6,7 @@ import {
   type FieldKind,
   type OutputBlock,
   type OutputFieldBlock,
+  type PageItem,
 } from "./form-schema";
 
 export const FIELD_KIND_NAMES = {
@@ -128,7 +129,7 @@ function truncate(text: string, max: number | undefined): string {
  * pass it when the descriptor lands somewhere unwrappable, like an `<option>`.
  */
 export function elementInternalDescriptor(
-  element: AnyField | DisplayBlock,
+  element: PageItem,
   options?: { typeQualified?: boolean; maxTextLength?: number },
 ): string {
   if (isQuestionField(element)) {

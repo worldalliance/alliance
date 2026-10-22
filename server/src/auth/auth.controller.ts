@@ -1,6 +1,14 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
+import { thrownStack } from "@alliance/common/errorMessage";
+import { R } from "@alliance/common/result";
+import { REVIEW_SIGN_IN_FAILED_PARAM } from "@alliance/common/review-account";
+import {
+  ACCOUNT_MOVED_MESSAGE,
+  isLegacyAllianceHost,
+} from "@alliance/common/url";
 import {
   Body,
+  ConflictException,
   Controller,
   Get,
   HttpCode,
@@ -11,12 +19,15 @@ import {
   Query,
   Request,
   Res,
+  UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import {
   ApiBearerAuth,
+  ApiConflictResponse,
   ApiCookieAuth,
+  ApiForbiddenResponse,
   ApiOkResponse,
   ApiPropertyOptional,
   ApiResponse,
@@ -30,28 +41,39 @@ import { OnlyThrottle } from "src/utils/throttle";
 import { AuthService } from "./auth.service";
 import {
   AuthMeResponseDto,
+  type RefreshTokensResponse,
   RefreshTokensResponseDto,
 } from "./dto/authtokens.dto";
 import ForgotPasswordDto, { ResetPasswordDto } from "./dto/forgotpassword.dto";
 import { SignUpDto } from "./dto/sign-up.dto";
-import { SignInDto, SignInResponseDto, type TokenMode } from "./dto/signin.dto";
-import { AdminGuard } from "./guards/admin.guard";
 import {
-  AuthGuard,
-  extractAccessTokenFromCookie,
-  extractGuestTokenFromCookie,
-  extractRefreshTokenFromCookie,
-  extractTokenFromHeader,
-} from "./guards/auth.guard";
-import type { JwtPayload, JwtRequest } from "./guards/jwtreq";
+  ReviewSignInDto,
+  SignInDto,
+  SignInResponseDto,
+  TokenMode,
+} from "./dto/signin.dto";
+import { AdminGuard } from "./guards/admin.guard";
+import { AuthGuard } from "./guards/auth.guard";
 import { RefreshTokenGuard } from "./guards/refresh.guard";
 import { Public } from "./public.decorator";
-import { SIGNUP_THROTTLE } from "./signup-throttle.config";
+import { OAUTH_THROTTLE, SIGNUP_THROTTLE } from "./signup-throttle.config";
+import { siteUrlForHost } from "./site-url";
+import {
+  extractGuestTokenFromCookie,
+  extractRefreshTokenFromCookie,
+  type JwtRequest,
+  sessionFromRequest,
+} from "./tokens";
+
+const MODE_USES_COOKIES: Record<TokenMode, boolean> = {
+  [TokenMode.Cookie]: true,
+  [TokenMode.Header]: false,
+};
 
 class TokenModeQuery {
-  @ApiPropertyOptional({ enum: ["cookie", "header"] })
+  @ApiPropertyOptional({ enum: TokenMode, enumName: "TokenMode" })
   @IsOptional()
-  @IsEnum(["cookie", "header"])
+  @IsEnum(TokenMode)
   mode?: TokenMode;
 }
 
@@ -69,30 +91,44 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: SignInResponseDto })
   @ApiUnauthorizedResponse()
+  @ApiConflictResponse({
+    description: "Migrated account signing in on the legacy domain",
+  })
+  @ApiForbiddenResponse({
+    description: "Review account, which signs in on staging",
+  })
   @Post("login")
   async login(
     @Request() req: ExpressRequest,
     @Body() signInDto: SignInDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<SignInResponseDto> {
-    const { access_token, refresh_token, isAdmin, userId } =
+    this.clearHeaderModeCookies(res, signInDto.mode);
+    const { access_token, refresh_token, isAdmin, userId, switchedDomainAt } =
       await this.authService.login(signInDto.email, signInDto.password);
 
-    this.authService.setAuthCookies(res, access_token, refresh_token);
-    await this.mergeGuestSession(signInDto.guestToken, req, res, userId);
-    this.posthog.identify({
-      distinctId: String(userId),
-      properties: { email: signInDto.email },
-    });
-    this.posthog.capture({
-      event: AnalyticsEvent.Login,
-      distinctId: String(userId),
-      properties: { isAdmin },
-    });
-    if (signInDto.mode === "header") {
-      return new SignInResponseDto({ access_token, refresh_token, isAdmin });
+    // A cookie session cannot follow them to the new domain, so signing them in
+    // here only to have the web app bounce them is a loop. Header sessions are
+    // the mobile app, which has one API host and never moves.
+    if (
+      MODE_USES_COOKIES[signInDto.mode] &&
+      switchedDomainAt !== null &&
+      isLegacyAllianceHost(req.get("host") ?? "")
+    ) {
+      throw new ConflictException(ACCOUNT_MOVED_MESSAGE);
     }
-    return new SignInResponseDto({ isAdmin });
+
+    await this.mergeGuestSession(signInDto.guestToken, req, res, userId);
+    this.recordLogin({ userId, email: signInDto.email, isAdmin });
+    return new SignInResponseDto({
+      ...this.deliverTokens({
+        res,
+        mode: signInDto.mode,
+        access_token,
+        refresh_token,
+      }),
+      isAdmin,
+    });
   }
 
   @Public()
@@ -105,24 +141,112 @@ export class AuthController {
     @Body() signInDto: SignInDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<SignInResponseDto> {
+    this.clearHeaderModeCookies(res, signInDto.mode);
     const { access_token, refresh_token, isAdmin, userId } =
       await this.authService.login(signInDto.email, signInDto.password, true);
 
-    this.authService.setAuthCookies(res, access_token, refresh_token);
     await this.mergeGuestSession(signInDto.guestToken, req, res, userId);
+    this.recordLogin({ userId, email: signInDto.email, isAdmin: true });
+    return new SignInResponseDto({
+      ...this.deliverTokens({
+        res,
+        mode: signInDto.mode,
+        access_token,
+        refresh_token,
+      }),
+      isAdmin,
+    });
+  }
+
+  /**
+   * Production's web login hands a review account here as a top-level form
+   * post, which can set this host's cookies even from a cross-site page.
+   */
+  @Public()
+  @UseGuards(ThrottlerGuard)
+  @OnlyThrottle(OAUTH_THROTTLE)
+  @Post("review-login")
+  @ApiResponse({
+    status: HttpStatus.SEE_OTHER,
+    description: "Redirects to the web app, signed in or with the failure",
+  })
+  async reviewLogin(
+    @Request() req: ExpressRequest,
+    @Body() body: ReviewSignInDto,
+    @Res() res: Response,
+  ): Promise<void> {
+    const siteUrl = this.siteUrl(req);
+    const tokens = await R.fromPromise(
+      this.authService.reviewLogin(body.email, body.password),
+    );
+    if (!tokens.ok) {
+      // The reviewer is mid-navigation, where an exception filter's JSON body
+      // would strand them.
+      if (!(tokens.error instanceof UnauthorizedException)) {
+        console.error("review sign-in failed", thrownStack(tokens.error));
+      }
+      res.redirect(
+        HttpStatus.SEE_OTHER,
+        `${siteUrl}/login?${REVIEW_SIGN_IN_FAILED_PARAM}=1`,
+      );
+      return;
+    }
+    this.recordLogin({
+      userId: tokens.value.userId,
+      email: body.email,
+      isAdmin: tokens.value.isAdmin,
+    });
+    this.authService.setAuthCookies(
+      res,
+      tokens.value.access_token,
+      tokens.value.refresh_token,
+    );
+    res.redirect(HttpStatus.SEE_OTHER, `${siteUrl}/tasks`);
+  }
+
+  private recordLogin(params: {
+    userId: number;
+    email: string;
+    isAdmin: boolean;
+  }): void {
     this.posthog.identify({
-      distinctId: String(userId),
-      properties: { email: signInDto.email },
+      distinctId: String(params.userId),
+      properties: { email: params.email },
     });
     this.posthog.capture({
       event: AnalyticsEvent.Login,
-      distinctId: String(userId),
-      properties: { isAdmin: true },
+      distinctId: String(params.userId),
+      properties: { isAdmin: params.isAdmin },
     });
-    if (signInDto.mode === "header") {
-      return new SignInResponseDto({ access_token, refresh_token, isAdmin });
+  }
+
+  // `extractAccessToken` falls back to the access cookie, so a cookie beside
+  // header-mode tokens is a second session the client doesn't track. Clearing
+  // before the handler's work also drops it when the sign-in is rejected.
+  private clearHeaderModeCookies(res: Response, mode: TokenMode): void {
+    if (!MODE_USES_COOKIES[mode]) {
+      this.authService.clearAuthCookies(res);
     }
-    return new SignInResponseDto({ isAdmin: true });
+  }
+
+  private deliverTokens(params: {
+    res: Response;
+    mode: TokenMode;
+    access_token: string;
+    refresh_token: string;
+  }): RefreshTokensResponse {
+    if (MODE_USES_COOKIES[params.mode]) {
+      this.authService.setAuthCookies(
+        params.res,
+        params.access_token,
+        params.refresh_token,
+      );
+      return {};
+    }
+    return {
+      access_token: params.access_token,
+      refresh_token: params.refresh_token,
+    };
   }
 
   private async mergeGuestSession(
@@ -131,6 +255,7 @@ export class AuthController {
     res: Response,
     userId: number,
   ): Promise<void> {
+    // Mobile sends the guest token in the body, web in the cookie.
     const guestToken = bodyToken ?? extractGuestTokenFromCookie(req);
     if (!guestToken) {
       return;
@@ -155,12 +280,12 @@ export class AuthController {
     @Body() signUp: SignUpDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<SignInResponseDto> {
+    this.clearHeaderModeCookies(res, signUp.mode);
     await this.authService.register(signUp);
 
     const { access_token, refresh_token, isAdmin, userId } =
       await this.authService.login(signUp.email, signUp.password);
 
-    this.authService.setAuthCookies(res, access_token, refresh_token);
     await this.mergeGuestSession(signUp.guestToken, req, res, userId);
     this.posthog.identify({
       distinctId: String(userId),
@@ -175,10 +300,15 @@ export class AuthController {
         referral_code: signUp.referralCode,
       },
     });
-    if (signUp.mode === "header") {
-      return new SignInResponseDto({ access_token, refresh_token, isAdmin });
-    }
-    return new SignInResponseDto({ isAdmin });
+    return new SignInResponseDto({
+      ...this.deliverTokens({
+        res,
+        mode: signUp.mode,
+        access_token,
+        refresh_token,
+      }),
+      isAdmin,
+    });
   }
 
   @Post("refresh")
@@ -190,28 +320,26 @@ export class AuthController {
     @Query() query: TokenModeQuery,
     @Res({ passthrough: true }) res: Response,
   ): Promise<RefreshTokensResponseDto> {
+    const mode =
+      query.mode ??
+      (extractRefreshTokenFromCookie(req)
+        ? TokenMode.Cookie
+        : TokenMode.Header);
+    this.clearHeaderModeCookies(res, mode);
     const userId: number = req.user.sub;
     const isImpersonation = req.user.isImpersonation ?? false;
     const { access_token, refresh_token } =
       await this.authService.refreshTokens(userId, isImpersonation);
-    const mode: TokenMode =
-      query.mode === "header"
-        ? "header"
-        : extractRefreshTokenFromCookie(req)
-          ? "cookie"
-          : "header";
-    if (mode === "cookie") {
-      this.authService.setAuthCookies(res, access_token, refresh_token);
-      return new RefreshTokensResponseDto({});
-    }
-    return new RefreshTokensResponseDto({ access_token, refresh_token });
+    return new RefreshTokensResponseDto(
+      this.deliverTokens({ res, mode, access_token, refresh_token }),
+    );
   }
 
   @Get("/me")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: AuthMeResponseDto })
   async me(@Request() req: JwtRequest): Promise<AuthMeResponseDto> {
-    const profile = await this.authService.getProfile(req.user.email);
+    const profile = await this.authService.getProfile(req.user.sub);
     return new AuthMeResponseDto({
       user: profile,
       isImpersonation: req.user.isImpersonation ? true : undefined,
@@ -229,20 +357,14 @@ export class AuthController {
 
     // Logout is unauthenticated; best-effort resolve the user from a still-valid
     // access token so we can attribute the event.
-    const token =
-      extractTokenFromHeader(req) ?? extractAccessTokenFromCookie(req);
-    if (token) {
-      try {
-        const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
-          secret: process.env.JWT_SECRET,
-        });
-        this.posthog.capture({
-          event: AnalyticsEvent.Logout,
-          distinctId: String(payload.sub),
-        });
-      } catch {
-        // expired/invalid token — nothing to attribute
-      }
+    try {
+      const payload = await sessionFromRequest(this.jwtService, req);
+      this.posthog.capture({
+        event: AnalyticsEvent.Logout,
+        distinctId: String(payload.sub),
+      });
+    } catch {
+      // missing or invalid token, nothing to attribute
     }
   }
 
@@ -270,6 +392,7 @@ export class AuthController {
   })
   async impersonateAdmin(
     @Param("userId", ParseIntPipe) userId: number,
+    @Request() req: ExpressRequest,
     @Res() res: Response,
   ): Promise<void> {
     const { access_token, refresh_token } =
@@ -277,11 +400,17 @@ export class AuthController {
 
     this.authService.setAuthCookies(res, access_token, refresh_token);
 
+    res.redirect(this.siteUrl(req) + "/tasks");
+  }
+
+  private siteUrl(req: ExpressRequest): string {
     if (!process.env.APP_URL) {
       throw new Error("APP_URL is not set");
     }
-
-    const frontendUrl = process.env.APP_URL + "/tasks";
-    res.redirect(frontendUrl);
+    return siteUrlForHost({
+      host: req.get("host"),
+      appUrl: process.env.APP_URL,
+      altAppUrl: process.env.ALT_APP_URL,
+    });
   }
 }

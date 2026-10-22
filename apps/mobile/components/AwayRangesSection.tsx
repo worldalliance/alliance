@@ -1,6 +1,27 @@
+import {
+  AWAY_RANGE_NOTE_MISSING,
+  isAwayRangeNoteMissing,
+  isAwayRangeNoteRequired,
+} from "@alliance/common/awayRange";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { UserAwayRangeDto, UserAwayRangeReason } from "@alliance/shared/client";
-import { awayRangesDescription } from "@alliance/shared/lib/copy";
+import {
+  AWAY_RANGE_REMOVAL_CONFIRMS,
+  AWAY_RANGE_REMOVAL_ERRORS,
+  AWAY_RANGE_REMOVAL_LABELS,
+  AWAY_RANGE_REMOVAL_SESSION_EXPIRED,
+  AWAY_REASON_OPTIONS,
+  AwayRangeRemoval,
+  awayRangeRemoval,
+  AwayRangeStatus,
+  awayRangeStatus,
+  formatAwayReason,
+} from "@alliance/shared/lib/awayRangesFormatters";
+import {
+  awayRangesDescription,
+  membershipAgreement,
+} from "@alliance/shared/lib/copy";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { useMyAwayRanges } from "@alliance/shared/lib/useMyAwayRanges";
 import { cn } from "@alliance/shared/styles/util";
 import { ChevronDown, X } from "lucide-react-native";
@@ -17,25 +38,6 @@ import BottomSheetOptionPicker from "./BottomSheetOptionPicker";
 import Button, { ButtonColor } from "./system/Button";
 import Text, { FontWeight } from "./system/Text";
 
-const REASON_OPTIONS: { value: UserAwayRangeReason; label: string }[] = [
-  { value: "vacation", label: "Vacation" },
-  { value: "emergency", label: "Emergency" },
-  { value: "other", label: "Other" },
-];
-
-function reasonDisplayName(reason: UserAwayRangeReason): string {
-  switch (reason) {
-    case "vacation":
-      return "Vacation";
-    case "emergency":
-      return "Emergency";
-    case "other":
-      return "Other";
-    default:
-      return reason;
-  }
-}
-
 function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString(undefined, {
     year: "numeric",
@@ -44,14 +46,10 @@ function formatDate(dateString: string): string {
   });
 }
 
-function isCurrentlyAway(range: UserAwayRangeDto): boolean {
-  const now = new Date();
-  return new Date(range.startDate) <= now && new Date(range.endDate) >= now;
-}
-
-function isFutureRange(range: UserAwayRangeDto): boolean {
-  return new Date(range.startDate) > new Date();
-}
+const REMOVAL_CONFIRM_BUTTONS = {
+  [AwayRangeRemoval.Delete]: "Delete",
+  [AwayRangeRemoval.EndNow]: "End now",
+} satisfies Record<AwayRangeRemoval, string>;
 
 export default function AwayRangesSection() {
   const {
@@ -66,6 +64,11 @@ export default function AwayRangesSection() {
   const [noteInput, setNoteInput] = useState("");
   const [selectedReason, setSelectedReason] =
     useState<UserAwayRangeReason | null>(null);
+  const noteRequired = isAwayRangeNoteRequired(selectedReason);
+  const noteMissing = isAwayRangeNoteMissing({
+    reason: selectedReason,
+    note: noteInput,
+  });
   const [error, setError] = useState<string | null>(null);
   const [reasonModalOpen, setReasonModalOpen] = useState(false);
 
@@ -82,8 +85,8 @@ export default function AwayRangesSection() {
       return;
     }
 
-    if (selectedReason === "other" && !noteInput.trim()) {
-      Alert.alert("Error", "Please provide details for 'Other' reason.");
+    if (noteMissing) {
+      Alert.alert("Error", AWAY_RANGE_NOTE_MISSING);
       return;
     }
 
@@ -107,28 +110,65 @@ export default function AwayRangesSection() {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const remove = async (range: UserAwayRangeDto, removal: AwayRangeRemoval) => {
+    try {
+      await deleteAwayRange.mutateAsync(range.id);
+    } catch (err) {
+      console.error("Error removing away range:", err);
+      const fallback = AWAY_RANGE_REMOVAL_ERRORS[removal];
+      Alert.alert(
+        "Error",
+        thrownRefusalMessage({
+          error: err,
+          fallback,
+          sessionExpired: AWAY_RANGE_REMOVAL_SESSION_EXPIRED,
+        }),
+      );
+    }
+  };
+
+  const handleDelete = async (range: UserAwayRangeDto) => {
+    // Decided again at each press, including the confirmation's: a range's
+    // start can lock while its row or this dialog is on screen. A refused
+    // removal skips the dialog, and the server says why.
+    const shown = awayRangeRemoval(range);
+    if (!shown) {
+      await remove(range, AwayRangeRemoval.Delete);
+      return;
+    }
     Alert.alert(
-      "Delete Away Period",
-      "Are you sure you want to delete this away period?",
+      AWAY_RANGE_REMOVAL_LABELS[shown],
+      AWAY_RANGE_REMOVAL_CONFIRMS[shown],
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Delete",
+          text: REMOVAL_CONFIRM_BUTTONS[shown],
           style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteAwayRange.mutateAsync(id);
-            } catch (err) {
-              console.error("Error deleting away range:", err);
-              Alert.alert(
-                "Error",
-                "There was an error deleting your away period. Please try again.",
-              );
+          onPress: () => {
+            if (awayRangeRemoval(range) !== shown) {
+              void handleDelete(range);
+              return;
             }
+            void remove(range, shown);
           },
         },
       ],
+    );
+  };
+
+  const removeControl = (range: UserAwayRangeDto) => {
+    const removal = awayRangeRemoval(range);
+    return (
+      removal && (
+        <TouchableOpacity
+          onPress={() => handleDelete(range)}
+          className="ml-3 p-2"
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityLabel={AWAY_RANGE_REMOVAL_LABELS[removal]}
+        >
+          <X size={20} color="#ef4444" />
+        </TouchableOpacity>
+      )
     );
   };
 
@@ -162,14 +202,14 @@ export default function AwayRangesSection() {
               key={range.id}
               className={cn(
                 "p-4 rounded-lg border",
-                isCurrentlyAway(range)
+                awayRangeStatus(range) === AwayRangeStatus.Current
                   ? "bg-yellow-50 border-yellow-200"
                   : "bg-gray-50 border-gray-200",
               )}
             >
               <View className="flex-row justify-between items-start">
                 <View className="flex-1">
-                  {isCurrentlyAway(range) && (
+                  {awayRangeStatus(range) === AwayRangeStatus.Current && (
                     <Text
                       className="text-xs text-yellow-800 mb-1"
                       weight={FontWeight.Semibold}
@@ -177,7 +217,7 @@ export default function AwayRangesSection() {
                       Currently away
                     </Text>
                   )}
-                  {isFutureRange(range) && (
+                  {awayRangeStatus(range) === AwayRangeStatus.Upcoming && (
                     <Text
                       className="text-xs text-green-700 mb-1"
                       weight={FontWeight.Semibold}
@@ -189,17 +229,11 @@ export default function AwayRangesSection() {
                     {formatDate(range.startDate)} → {formatDate(range.endDate)}
                   </Text>
                   <Text className="text-sm text-zinc-600 mt-1">
-                    {reasonDisplayName(range.reason)}
+                    {formatAwayReason(range.reason)}
                     {range.note && `: ${range.note}`}
                   </Text>
                 </View>
-                <TouchableOpacity
-                  onPress={() => handleDelete(range.id)}
-                  className="ml-3 p-2"
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <X size={20} color="#ef4444" />
-                </TouchableOpacity>
+                {removeControl(range)}
               </View>
             </View>
           ))}
@@ -264,7 +298,7 @@ export default function AwayRangesSection() {
                 )}
               >
                 {selectedReason
-                  ? reasonDisplayName(selectedReason)
+                  ? formatAwayReason(selectedReason)
                   : "Select a reason"}
               </Text>
               <ChevronDown size={18} color={colors.text.icon} />
@@ -273,23 +307,20 @@ export default function AwayRangesSection() {
 
           <View>
             <Text className="text-sm mb-1" weight={FontWeight.Medium}>
-              Note{selectedReason !== "other" && " (optional)"}
+              Note{!noteRequired && " (optional)"}
             </Text>
             <TextInput
               className={inputClasses}
               value={noteInput}
               onChangeText={setNoteInput}
               placeholder={
-                selectedReason === "other"
-                  ? "Please provide more details"
-                  : "Optional note"
+                noteRequired ? "Please provide more details" : "Optional note"
               }
               placeholderTextColor="#9ca3af"
             />
             {selectedReason === "other" && (
               <Text className="text-sm text-zinc-500 mt-1">
-                See your contract above for guidelines on extenuating
-                circumstances.
+                {membershipAgreement.awayOtherReasonHint}
               </Text>
             )}
           </View>
@@ -302,7 +333,7 @@ export default function AwayRangesSection() {
               !startDateInput ||
               !endDateInput ||
               !selectedReason ||
-              (selectedReason === "other" && !noteInput.trim())
+              noteMissing
             }
             title={creating ? "Creating..." : "Schedule"}
           />
@@ -315,7 +346,7 @@ export default function AwayRangesSection() {
         visible={reasonModalOpen}
         onClose={() => setReasonModalOpen(false)}
         title="Select Reason"
-        options={REASON_OPTIONS}
+        options={AWAY_REASON_OPTIONS}
         value={selectedReason}
         onSelect={setSelectedReason}
       />

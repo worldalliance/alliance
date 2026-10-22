@@ -1,0 +1,335 @@
+import { PlaceKind } from "@alliance/common/forms/form-conditions";
+import type { Page, PageItem } from "@alliance/common/forms/form-schema";
+import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
+import { withCount } from "@alliance/common/plural";
+import { cn } from "@alliance/shared/styles/util";
+import { TriangleAlert } from "lucide-react";
+import { useRef, useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
+import {
+  addressedWrite,
+  type BlockWriteById,
+} from "../../lib/displayBlockById";
+import { IssueTargetKind, type IssueIndex } from "../../lib/formIssues";
+import {
+  pageSegments,
+  SegmentKind,
+  type VisibilityGroups,
+} from "../../lib/visibilityGroups";
+import { selectionRing } from "./CanvasContent";
+import { CanvasElement, type ContentOverride } from "./CanvasElement";
+import {
+  CanvasTargetKind,
+  describeElement,
+  elementTarget,
+  pageTitle,
+  targetKey,
+  type CanvasTarget,
+  type ResolvedTarget,
+} from "./canvasSelection";
+import { selectedOnCanvas } from "./CanvasWorkspace";
+import { ConditionsIndicator } from "./ConditionsIndicator";
+import {
+  EditTextButton,
+  InlineTextEditor,
+  startOnEnter,
+  TextLines,
+  type InlineEditing,
+} from "./InlineText";
+import type { InsertLoc } from "./InsertPoint";
+import { IssueMarker } from "./IssueList";
+import {
+  extendableClick,
+  inRange,
+  rangeFocus,
+  type Span,
+} from "./rangeSelection";
+import { SidebarSection } from "./sidebarSections";
+import { useListDrag, type ListMove } from "./useListDrag";
+
+type FormCanvasProps = {
+  page: Page;
+  groups: VisibilityGroups;
+  displayOnly: boolean;
+  selected: ResolvedTarget;
+  onSelect: (target: CanvasTarget, section: SidebarSection) => void;
+  /** Shift-click's selection through `clicked`, else `alone`. Null where ranges are off. */
+  onExtend: ((clicked: Span, alone: CanvasTarget) => void) | null;
+  summarize: (formula: VisibleIfFormula) => string;
+  issues: IssueIndex;
+  pageIndex: number;
+  renderInsertPoint: (
+    loc: InsertLoc,
+    options?: { prominent: true },
+  ) => ReactNode;
+  onMove: (move: ListMove) => void;
+  onUpdateElement: (index: number, updates: Partial<PageItem>) => void;
+  onUpdateBlockById: BlockWriteById;
+  onUpdatePage: (updates: Partial<Page>) => void;
+  /** The user whose content the selected block shows. */
+  override: ContentOverride | null;
+};
+
+/** The selected page as respondents see it, with selection and editing overlays. */
+export function FormCanvas({
+  page,
+  groups,
+  displayOnly,
+  selected,
+  onSelect,
+  onExtend,
+  summarize,
+  issues,
+  pageIndex,
+  renderInsertPoint,
+  onMove,
+  onUpdateElement,
+  onUpdateBlockById,
+  onUpdatePage,
+  override,
+}: FormCanvasProps) {
+  const fields = page.fields;
+  const { acceptDrop, drop, dragFor } = useListDrag<string>((_, move) =>
+    onMove(move),
+  );
+
+  const ref = useRef<HTMLDivElement>(null);
+  const selectedKey = targetKey(page, selected);
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  if (editingKey !== null && editingKey !== selectedKey) setEditingKey(null);
+  const inline: InlineEditing = {
+    editing: editingKey === selectedKey,
+    start: () => setEditingKey(selectedKey),
+    stop: ({ refocus }) => {
+      if (!refocus) return setEditingKey(null);
+      flushSync(() => setEditingKey(null));
+      selectedOnCanvas(ref.current)?.focus();
+    },
+  };
+
+  const renderElement = (
+    element: PageItem,
+    index: number,
+    inGroup: boolean,
+  ) => {
+    const target =
+      selected.kind === CanvasTargetKind.Element && selected.index === index
+        ? selected
+        : null;
+    const alone = elementTarget(element, index);
+    return (
+      <CanvasElement
+        key={element.id || index}
+        element={element}
+        label={describeElement(element)}
+        selected={
+          (target !== null && !target.child) || inRange(selected, index)
+        }
+        rangeFocus={rangeFocus(selected) === index}
+        selectedChild={target?.child}
+        onSelect={(section) => onSelect(alone, section)}
+        onExtend={
+          onExtend && (() => onExtend({ start: index, end: index + 1 }, alone))
+        }
+        onSelectChild={(child, section) =>
+          onSelect({ ...elementTarget(element, index), child }, section)
+        }
+        summarize={summarize}
+        onUpdate={(updates) => onUpdateElement(index, updates)}
+        updateCurrent={addressedWrite(element, onUpdateBlockById)}
+        inline={target ? inline : null}
+        override={target && !target.child ? override : null}
+        issueCount={issues.inElement(pageIndex, index)}
+        conditionSummary={
+          !displayOnly && !inGroup && element.visibleIfFormula
+            ? summarize(element.visibleIfFormula)
+            : null
+        }
+        drag={dragFor(page.id, index)}
+      />
+    );
+  };
+
+  const segments = pageSegments(fields, groups);
+  const pageSelected = selected.kind === CanvasTargetKind.Page;
+  const pageDescription = page.description && (
+    <span className="mt-1 block text-gray-600">{page.description}</span>
+  );
+
+  return (
+    <div
+      ref={ref}
+      className="mx-auto max-w-2xl rounded-lg border border-gray-200 bg-white px-10 py-8"
+      onDragOver={acceptDrop}
+      onDrop={drop}
+    >
+      {!displayOnly && (
+        <div className="relative mb-4 flex items-start gap-2">
+          {pageSelected && inline.editing ? (
+            <div className="-mx-3 flex-1 rounded-md px-3 py-1 ring-2 ring-blue-500">
+              <InlineTextEditor
+                value={page.title ?? ""}
+                variables={false}
+                onChange={(title) => onUpdatePage({ title })}
+                lines={TextLines.Single}
+                label="Page title"
+                onStop={inline.stop}
+                className="text-xl font-semibold text-gray-900"
+              />
+              {pageDescription}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() =>
+                onSelect(
+                  { kind: CanvasTargetKind.Page },
+                  SidebarSection.Content,
+                )
+              }
+              onKeyDown={pageSelected ? startOnEnter(inline) : undefined}
+              aria-label={`Page settings: ${pageTitle(page)}`}
+              aria-pressed={pageSelected}
+              className={cn(
+                "-mx-3 flex-1 rounded-md px-3 py-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
+                selectionRing(pageSelected),
+              )}
+            >
+              <span
+                className={cn(
+                  "block text-xl font-semibold",
+                  page.title ? "text-gray-900" : "text-gray-400",
+                )}
+              >
+                {pageTitle(page)}
+              </span>
+              {pageDescription}
+            </button>
+          )}
+          {pageSelected && !inline.editing && (
+            <EditTextButton
+              label="Edit page title"
+              onClick={inline.start}
+              className="mt-1 shrink-0"
+            />
+          )}
+          <IssueMarker
+            count={
+              issues.at({
+                kind: IssueTargetKind.Place,
+                place: { kind: PlaceKind.Page, pageIndex },
+              }).length
+            }
+            className="mt-2"
+          />
+          {page.visibleIfFormula && (
+            <ConditionsIndicator
+              onClick={() =>
+                onSelect(
+                  { kind: CanvasTargetKind.Page },
+                  SidebarSection.Conditions,
+                )
+              }
+              label={`Edit page conditions: shown when ${summarize(page.visibleIfFormula)}`}
+              title={`Page shown when ${summarize(page.visibleIfFormula)}`}
+              className="mt-1 shrink-0"
+            />
+          )}
+        </div>
+      )}
+      {fields.length === 0 && (
+        <p className="py-8 text-center text-sm text-gray-500">
+          {displayOnly
+            ? "This update is empty. Add some content to get started."
+            : "This page is empty. Add a question or some content to get started."}
+        </p>
+      )}
+      {segments.map((segment) => {
+        switch (segment.kind) {
+          case SegmentKind.Single: {
+            const element = fields[segment.index]!;
+            return (
+              <div key={element.id || segment.index}>
+                {renderInsertPoint({ groupKey: null, index: segment.index })}
+                {renderElement(element, segment.index, false)}
+              </div>
+            );
+          }
+          case SegmentKind.Group: {
+            const { key, start, end } = segment;
+            const group: CanvasTarget = { kind: CanvasTargetKind.Group, key };
+            const formula = fields[start]?.visibleIfFormula;
+            const groupSelected =
+              selected.kind === CanvasTargetKind.Group && selected.key === key;
+            const errors = issues.at({
+              kind: IssueTargetKind.Group,
+              pageIndex,
+              key,
+            }).length;
+            return (
+              <div key={key}>
+                {renderInsertPoint({ groupKey: null, index: start })}
+                <section
+                  aria-label="Visibility group"
+                  className={cn(
+                    "-mx-4 rounded-lg border border-dashed border-amber-300 bg-amber-50/30 px-4 pb-2",
+                    groupSelected && "ring-2 ring-blue-500",
+                  )}
+                >
+                  <button
+                    type="button"
+                    {...extendableClick({
+                      onSelect: () =>
+                        onSelect(group, SidebarSection.Conditions),
+                      onExtend:
+                        onExtend && (() => onExtend({ start, end }, group)),
+                    })}
+                    aria-pressed={groupSelected}
+                    className="block w-full rounded py-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  >
+                    <span className="block text-xs font-medium uppercase tracking-wide text-amber-800">
+                      Shared visibility · {withCount(end - start, "element")}
+                    </span>
+                    {formula && (
+                      <span className="block break-words text-sm text-gray-700">
+                        Shown when {summarize(formula)}
+                      </span>
+                    )}
+                    {errors > 0 && (
+                      <span className="mt-1 flex items-center gap-1 text-xs font-medium text-red-700">
+                        <TriangleAlert
+                          className="h-3.5 w-3.5"
+                          aria-hidden="true"
+                        />
+                        Shared rule has {withCount(errors, "issue")}
+                      </span>
+                    )}
+                  </button>
+                  {fields.slice(start, end).map((member, offset) => {
+                    const index = start + offset;
+                    return (
+                      <div key={member.id || index}>
+                        {offset > 0 &&
+                          renderInsertPoint({ groupKey: key, index })}
+                        {renderElement(member, index, true)}
+                      </div>
+                    );
+                  })}
+                  {renderInsertPoint({ groupKey: key, index: end })}
+                </section>
+              </div>
+            );
+          }
+          default:
+            throw new Error(
+              `unknown segment: ${JSON.stringify(segment satisfies never)}`,
+            );
+        }
+      })}
+      {renderInsertPoint(
+        { groupKey: null, index: fields.length },
+        { prominent: true },
+      )}
+    </div>
+  );
+}

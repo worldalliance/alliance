@@ -13,11 +13,8 @@ import type { BaseFieldProps } from "./types";
 export function EditableRadioField({
   field,
   onUpdate,
-  onRemove,
-  onDragStart,
-  onDragEnd,
-  isDragging,
   previousFields,
+  laterFields,
 }: BaseFieldProps<RadioField>) {
   const duplicates = duplicateOptionValues(field.options || []);
 
@@ -70,10 +67,7 @@ export function EditableRadioField({
       field={field}
       onUpdate={onUpdate}
       previousFields={previousFields}
-      onRemove={onRemove}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      isDragging={isDragging}
+      laterFields={laterFields}
     >
       <FieldLabelEditor
         value={field.label}

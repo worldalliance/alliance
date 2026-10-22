@@ -1,13 +1,23 @@
+import { acceptsAutomatedMember, freeSlots } from "@alliance/common/community";
 import {
-  acceptsAutomatedMember,
-  getMemberCount,
   isCommunityLedBy,
+  memberJoinedCommunityNotif,
 } from "src/community/community.utils";
 import { Community } from "src/community/entities/community.entity";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
+import {
+  group,
+  member,
+  notifMessage,
+  userDestination,
+} from "src/notifs/notification-content";
 import type { CreateNotifParams } from "src/notifs/notifs.service";
-import { groupUrl, profileUrl } from "src/search/approutes";
-import { ReferralSource, User } from "src/user/entities/user.entity";
+import { profileUrl } from "src/search/approutes";
+import {
+  loadedUserCommunities,
+  ReferralSource,
+  User,
+} from "src/user/entities/user.entity";
 
 /**
  * Ordering only: prefer the leader's roomiest group. An uncapped group sorts
@@ -16,7 +26,7 @@ import { ReferralSource, User } from "src/user/entities/user.entity";
  */
 function headroomForOrdering(c: Community): number {
   if (c.maxCapacity === null) return -1;
-  return c.maxCapacity - getMemberCount(c);
+  return freeSlots(c);
 }
 
 /**
@@ -24,10 +34,10 @@ function headroomForOrdering(c: Community): number {
  * this person in themselves — so `maxCapacity` does not gate it.
  */
 function selectCommunityForLinkReferral(referredBy: User): Community | null {
-  const led = referredBy.communities?.filter((c) =>
+  const led = loadedUserCommunities(referredBy).filter((c) =>
     isCommunityLedBy(c, referredBy.id),
   );
-  if (!led?.length) {
+  if (!led.length) {
     return null;
   }
   return [...led].sort(
@@ -47,7 +57,7 @@ export const REFERRAL_COMMUNITY_SELECTORS: Record<
    */
   [ReferralSource.OnetimeInvite](referredBy) {
     return (
-      referredBy.communities?.find(
+      loadedUserCommunities(referredBy).find(
         (c) => acceptsAutomatedMember(c) && !isCommunityLedBy(c, referredBy.id),
       ) ?? null
     );
@@ -60,22 +70,6 @@ export const REFERRAL_COMMUNITY_SELECTORS: Record<
   [ReferralSource.None]: () => null,
 };
 
-export function memberJoinedCommunityNotif(
-  leader: User,
-  user: User,
-  community: Community,
-  message: string,
-  associatedUsers: User[] = [user],
-): CreateNotifParams {
-  return {
-    user: leader,
-    category: NotificationCategory.MemberJoinedCommunity,
-    message,
-    webAppLocation: groupUrl({ tab: "members", communityId: community.id }),
-    associatedUsers,
-  };
-}
-
 export function buildNotifForLeaderWithReferrer(
   user: User,
   community: Community,
@@ -85,20 +79,20 @@ export function buildNotifForLeaderWithReferrer(
   return ({ leader }) => {
     if (leader.id === referredBy.id) {
       setReferrerNotified(true);
-      return memberJoinedCommunityNotif(
+      return memberJoinedCommunityNotif({
         leader,
-        user,
+        joiner: user,
         community,
-        `${user.name} joined the Alliance and your group (${community.name})`,
-      );
+        message: notifMessage`${member(user)} joined the Alliance and your group (${group(community)})`,
+      });
     }
-    return memberJoinedCommunityNotif(
+    return memberJoinedCommunityNotif({
       leader,
-      user,
+      joiner: user,
       community,
-      `${user.name} (invited by ${referredBy.name}) joined the Alliance and your group (${community.name})`,
-      [user, referredBy],
-    );
+      message: notifMessage`${member(user)} (invited by ${member(referredBy)}) joined the Alliance and your group (${group(community)})`,
+      associatedUsers: [user, referredBy],
+    });
   };
 }
 
@@ -109,7 +103,8 @@ export function newMemberReferredNotif(
   return {
     user: referredBy,
     category: NotificationCategory.NewMemberReferred,
-    message: `${user.name} joined the Alliance`,
+    message: notifMessage`${member(user)} joined the Alliance`,
+    destination: userDestination(user.id),
     webAppLocation: profileUrl(user.id),
     associatedUsers: [user],
   };

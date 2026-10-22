@@ -2,6 +2,7 @@ import type {
   ProfileDto,
   StaffDirectoryEntryDto,
 } from "@alliance/shared/client";
+// eslint-disable-next-line api-client/named-hooks-only -- the TanStack hooks in this file own these calls
 import {
   userFindOne,
   userMembersPublic,
@@ -9,11 +10,12 @@ import {
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useQuery } from "@tanstack/react-query";
+import { milliseconds } from "date-fns";
 
 /** Shown until the real pictures arrive, and for members who have none. */
 export const FALLBACK_FACE = "/noun-user-icon.svg";
 
-const PUBLIC_STALE_TIME = 60 * 60 * 1000;
+const PUBLIC_STALE_TIME = milliseconds({ hours: 1 });
 
 export function usePublicMembers() {
   return useQuery({

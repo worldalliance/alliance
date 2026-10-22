@@ -1,12 +1,14 @@
-import { authRefreshTokens } from "@alliance/shared/client";
 import { client } from "@alliance/shared/client/client.gen";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { registerErrorStatus } from "@alliance/shared/lib/hey-api";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { milliseconds } from "date-fns";
 import { useFonts } from "expo-font";
 import { setNotificationHandler } from "expo-notifications";
 import { Slot } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { AppState } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -18,35 +20,30 @@ import UpdateAvailableModal from "../components/UpdateAvailableModal";
 import "../global.css";
 import { AuthProvider } from "../lib/AuthContext";
 import PostHogProvider from "../lib/PostHogProvider";
-import { SecureStorage, SecureStorageKey } from "../lib/SecureStorage";
+import { getRefreshToken, saveSessionTokens } from "../lib/SecureStorage";
 import { getApiUrl } from "../lib/config";
+import { linkOpeningSession, startLinkOpenings } from "../lib/linkOpenings";
+import { notificationBehavior } from "../lib/notificationBehavior";
+import { queryClient, refetchActions } from "../lib/queryClient";
+import { refreshingFetch } from "../lib/session";
+import "../lib/setImmediatePolyfill";
 import { hideSplash } from "../lib/splash";
 
 // OtaUpdateGate decides when the app is ready to be seen, so the splash must
 // outlive the first render.
 void SplashScreen.preventAutoHideAsync().catch(() => {});
 
-const SPLASH_WATCHDOG_MS = 30_000;
+const SPLASH_WATCHDOG_MS = milliseconds({ seconds: 30 });
 setTimeout(hideSplash, SPLASH_WATCHDOG_MS);
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5,
-      gcTime: 1000 * 60 * 30,
-      retry: 2,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
+registerErrorStatus(client);
 
 setNotificationHandler({
-  handleNotification: async () => ({
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
+  handleNotification: async (notification) =>
+    notificationBehavior({
+      data: notification.request.content.data,
+      onTaskBadgePush: refetchActions,
+    }),
 });
 
 export default function RootLayout() {
@@ -62,59 +59,19 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    const originalFetch = fetch.bind(globalThis);
-
-    const wrappedFetch: typeof fetch = async (input, init) => {
-      const req = new Request(input, init);
-      const retryReq = req.clone();
-      const res = await originalFetch(req);
-
-      if (res.status !== 401 || req.url.includes("auth/refresh")) {
-        return res;
-      }
-
-      const refreshToken = await SecureStorage.getItem(
-        SecureStorageKey.REFRESH_TOKEN,
-      );
-      if (!refreshToken) return res;
-
-      const refreshRes = await authRefreshTokens({
-        query: { mode: "header" },
-        headers: { Authorization: `Bearer ${refreshToken}` },
-      });
-
-      if (refreshRes.response.ok && refreshRes.data?.access_token) {
-        await SecureStorage.setItem(
-          SecureStorageKey.ACCESS_TOKEN,
-          refreshRes.data.access_token,
-        );
-        if (refreshRes.data.refresh_token) {
-          await SecureStorage.setItem(
-            SecureStorageKey.REFRESH_TOKEN,
-            refreshRes.data.refresh_token,
-          );
-        }
-        client.setConfig({
-          baseUrl: getApiUrl(),
-          headers: { Authorization: `Bearer ${refreshRes.data.access_token}` },
-          fetch: wrappedFetch,
-          throwOnError: true,
-        });
-        const retryHeaders = new Headers(retryReq.headers);
-        retryHeaders.set(
-          "Authorization",
-          `Bearer ${refreshRes.data.access_token}`,
-        );
-        return originalFetch(new Request(retryReq, { headers: retryHeaders }));
-      }
-
-      return res;
-    };
-
     client.setConfig({
       baseUrl: getApiUrl(),
-      fetch: wrappedFetch,
+      fetch: refreshingFetch({
+        // eslint-disable-next-line no-restricted-globals -- the generated client's transport
+        fetch: fetch.bind(globalThis),
+        getRefreshToken,
+        saveTokens: saveSessionTokens,
+      }),
       throwOnError: true,
+    });
+    return startLinkOpenings({
+      appState: AppState,
+      posthogReady: linkOpeningSession.ready,
     });
   }, []);
 
@@ -125,12 +82,10 @@ export default function RootLayout() {
           <KeyboardProvider>
             <PostHogProvider>
               <OtaUpdateGate>
-                <AuthProvider queryClient={queryClient}>
+                <AuthProvider>
                   <KeyboardExtenderPortalProvider>
                     <DeviceRegistration />
-                    <PushNotificationResponseHandler
-                      queryClient={queryClient}
-                    />
+                    <PushNotificationResponseHandler />
                     <UpdateAvailableModal />
                     <StatusBar style="dark" />
                     <Slot />

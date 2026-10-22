@@ -9,13 +9,19 @@ export enum ActionActivityType {
    * The user acknowledged the action's card and chose to hide it from their
    * home page (the dismiss button is offered on optional, away, and
    * past-deadline cards). Think "notification marked as read": it only
-   * affects the user's own view — hides the card from their task list and
-   * mutes their reminders for this action. Not a terminal activity: a later
-   * completion or withdrawal supersedes it.
+   * hides the card from the user's home page, leaving assignment, reminders,
+   * completion, and suspension accounting unchanged. Not a terminal activity:
+   * a later completion or withdrawal supersedes it.
    */
   USER_DISMISSED = "user_dismissed",
   USER_SUBMITTED_FOLLOW_UP_FORM = "user_submitted_follow_up_form",
 }
+
+/** Installed apps recognize the server's refusal by this exact text. */
+export const MEMBER_ACTION_DEADLINE_PASSED =
+  "The deadline for this action has passed.";
+
+export const FORM_ALREADY_SUBMITTED = "Form already submitted";
 
 /** Which `ActionActivityType`s appear in feeds. */
 const ACTION_ACTIVITY_FEED_VISIBLE = {
@@ -58,9 +64,8 @@ export const actionActivityCommentable = {
 } as const satisfies Record<ActionActivityType, boolean>;
 
 /**
- * Display labels for withdrawal options — shown in the withdrawal UI and in
- * the opt-out event log. Key order determines the display order of the options
- * in the withdrawal UI.
+ * Display labels for withdrawal options. Key order determines the display
+ * order of the options in the withdrawal UI.
  */
 export const WITHDRAWAL_OPTION_LABELS = {
   out_of_time: "Took more than 15 minutes",
@@ -89,10 +94,13 @@ export function canSubmitWithdrawal(
   return !WITHDRAWAL_OPTION_REQUIRES_REASON[option] || reason.trim().length > 0;
 }
 
-/** Decodes the wire encoding of a withdrawal option. */
+/**
+ * Decodes the wire encoding of a withdrawal option. Stored withdrawals may
+ * carry null flags, which decode as unset.
+ */
 export function withdrawalOptionFromFlags(flags: {
-  outOfTime: boolean;
-  isMoral: boolean;
+  outOfTime?: boolean | null;
+  isMoral?: boolean | null;
 }): WithdrawalOption {
   if (flags.outOfTime) return "out_of_time";
   if (flags.isMoral) return "moral";

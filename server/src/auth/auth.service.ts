@@ -1,78 +1,125 @@
+import { R } from "@alliance/common/result";
+import { REVIEW_ACCOUNT_MESSAGE } from "@alliance/common/review-account";
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
+import { milliseconds } from "date-fns";
 import type { Request, Response } from "express";
 import { Campaign } from "src/campaign/entities/campaign.entity";
+import { lockLive } from "src/datasources/soft-delete";
 import { ShareUrl } from "src/share-urls/entities/share-url.entity";
 import {
   inviteAssignmentFromColumns,
   type StoredInviteAssignment,
 } from "src/share-urls/invite-assignment";
-import { OnetimeInvite } from "src/user/entities/onetime-invite.entity";
+import {
+  loadedOnetimeInviteInvitingUser,
+  OnetimeInvite,
+} from "src/user/entities/onetime-invite.entity";
 import type { Repository } from "src/utils/Repository";
 import { MailService } from "../mail/mail.service";
-import { ReferralSource, User } from "../user/entities/user.entity";
-import { type PWResetJwtPayload, UserService } from "../user/user.service";
+import { AccountEmailService } from "../user/account-email.service";
+import {
+  hasPassword,
+  ReferralSource,
+  User,
+} from "../user/entities/user.entity";
+import { FriendService } from "../user/friend.service";
+import { ReferralService } from "../user/referral.service";
+import { UserService } from "../user/user.service";
 import { SignUpDto } from "./dto/sign-up.dto";
 import { Guest } from "./entities/guest.entity";
+import type { OAuthProfile } from "./oauth/oauth-client";
 import {
-  extractAccessTokenFromCookie,
-  extractTokenFromHeader,
-} from "./guards/auth.guard";
+  isRefusedReviewAccount,
+  refusesReviewAccounts,
+} from "./review-account";
+import { SessionService } from "./session.service";
 import {
+  ACCESS_COOKIE,
+  GUEST_COOKIE,
+  guestJwtPayloadSchema,
+  JWTTokenType,
+  REFRESH_COOKIE,
+  sessionFromRequest,
+  sessionTokenPayload,
+  verifyMailedToken,
   type GuestJwtPayload,
   type JwtPayload,
-  JWTTokenType,
-} from "./guards/jwtreq";
+  type MailedJwtPayload,
+} from "./tokens";
+
+export type ReferredUser = {
+  name: string;
+  email: string;
+  /** Null for an account created through a provider, which has no password yet. */
+  password: string | null;
+  timeZone: string | null;
+  referralCode: string | undefined;
+  oauth?: OAuthProfile;
+};
+
+type PasswordSession = {
+  access_token: string;
+  refresh_token: string;
+  isAdmin: boolean;
+  userId: number;
+  switchedDomainAt: Date | null;
+};
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UserService,
+    private readonly accountEmailService: AccountEmailService,
+    private readonly friendService: FriendService,
+    private readonly referralService: ReferralService,
     private jwtService: JwtService,
     private mailService: MailService,
+    private sessionService: SessionService,
     @InjectRepository(Guest)
     private guestRepository: Repository<Guest>,
   ) {}
 
-  public static ACCESS_COOKIE = "access_token";
-  public static REFRESH_COOKIE = "refresh_token";
-  public static GUEST_COOKIE = "guest_token";
-  private static GUEST_COOKIE_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
+  private readonly logger = new Logger(AuthService.name);
+
+  private static GUEST_COOKIE_MAX_AGE_MS = milliseconds({ days: 30 });
 
   setAuthCookies(res: Response, access: string, refresh?: string) {
     const prod = process.env.NODE_ENV === "production";
 
-    res.cookie(AuthService.ACCESS_COOKIE, access, {
+    res.cookie(ACCESS_COOKIE, access, {
       httpOnly: true,
       secure: prod,
       path: "/",
       sameSite: "strict",
-      maxAge: 1000 * 60 * 30, // 30 min
+      maxAge: milliseconds({ minutes: 30 }),
     });
     if (refresh) {
-      res.cookie(AuthService.REFRESH_COOKIE, refresh, {
+      res.cookie(REFRESH_COOKIE, refresh, {
         httpOnly: true,
         secure: prod,
         sameSite: "strict",
         path: "/",
-        maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+        maxAge: milliseconds({ days: 30 }),
       });
     }
   }
 
   clearAuthCookies(res: Response) {
-    res.clearCookie(AuthService.ACCESS_COOKIE, { path: "/" });
-    res.clearCookie(AuthService.REFRESH_COOKIE, { path: "/" });
+    res.clearCookie(ACCESS_COOKIE, { path: "/" });
+    res.clearCookie(REFRESH_COOKIE, { path: "/" });
   }
 
   setGuestCookie(res: Response, token: string) {
     const prod = process.env.NODE_ENV === "production";
-    res.cookie(AuthService.GUEST_COOKIE, token, {
+    res.cookie(GUEST_COOKIE, token, {
       httpOnly: true,
       secure: prod,
       sameSite: "lax",
@@ -82,7 +129,7 @@ export class AuthService {
   }
 
   clearGuestCookie(res: Response) {
-    res.clearCookie(AuthService.GUEST_COOKIE, { path: "/" });
+    res.clearCookie(GUEST_COOKIE, { path: "/" });
   }
 
   async createGuestSession(
@@ -113,41 +160,31 @@ export class AuthService {
     return { guestId: guest.id, guestToken };
   }
 
-  private static TOKEN_TYPE_IS_AUTHENTICATED: Record<JWTTokenType, boolean> = {
-    [JWTTokenType.access]: true,
-    [JWTTokenType.refresh]: false,
-    [JWTTokenType.guest]: false,
-  };
+  async getAuthenticatedSession(req: Request): Promise<JwtPayload | null> {
+    const session = await R.fromPromise(
+      sessionFromRequest(this.jwtService, req),
+    );
+    if (!session.ok) return null;
+    const current = await R.fromPromise(
+      this.sessionService.assertCurrent(session.value),
+    );
+    if (current.ok) return session.value;
+    if (current.error instanceof UnauthorizedException) return null;
+    throw current.error;
+  }
 
   async getAuthenticatedUserId(req: Request): Promise<number | null> {
-    const token =
-      extractTokenFromHeader(req) ?? extractAccessTokenFromCookie(req);
-    if (!token) return null;
-    try {
-      const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
-        secret: process.env.JWT_SECRET,
-      });
-      if (!AuthService.TOKEN_TYPE_IS_AUTHENTICATED[payload.tokenType]) {
-        return null;
-      }
-      return payload.sub;
-    } catch {
-      return null;
-    }
+    return (await this.getAuthenticatedSession(req))?.sub ?? null;
   }
 
   async verifyGuestToken(token: string): Promise<GuestJwtPayload | null> {
     try {
-      const payload = await this.jwtService.verifyAsync<GuestJwtPayload>(
-        token,
-        {
+      const payload = guestJwtPayloadSchema.safeParse(
+        await this.jwtService.verifyAsync(token, {
           secret: process.env.JWT_SECRET,
-        },
+        }),
       );
-      if (payload.tokenType !== JWTTokenType.guest) {
-        return null;
-      }
-      return payload;
+      return payload.success ? payload.data : null;
     } catch {
       return null;
     }
@@ -157,12 +194,18 @@ export class AuthService {
     // Claim the guest atomically; only the first merger succeeds. Guest form
     // responses stay attached to the guest and are surfaced to the user as
     // drafts via TasksService.getLinkedGuestDraftFormResponse.
-    await this.guestRepository
-      .createQueryBuilder()
-      .update(Guest)
-      .set({ linkedUser: { id: userId } })
-      .where('id = :guestId AND "linkedUserId" IS NULL', { guestId })
-      .execute();
+    await this.guestRepository.manager.transaction(async (manager) => {
+      if (!(await lockLive(manager, [{ target: User, id: userId }]))) return;
+      await manager
+        .createQueryBuilder()
+        .update(Guest)
+        .set({ linkedUser: { id: userId } })
+        .where(
+          'id = :guestId AND "linkedUserId" IS NULL AND "deletedAt" IS NULL',
+          { guestId },
+        )
+        .execute();
+    });
   }
 
   async mergeGuestFromToken(
@@ -177,7 +220,8 @@ export class AuthService {
 
   /**
    * Resolves a referral code to invite (if onetime invite), referring user, and referral source.
-   * Throws if code is missing, invite already used, or (outside test) invalid referral code.
+   * Throws (outside test) on an invalid referral code. Creating the user claims
+   * the invite, which is where an already-used invite fails.
    */
   private async resolveReferralCode(referralCode: string): Promise<{
     invite: OnetimeInvite | null;
@@ -187,13 +231,15 @@ export class AuthService {
     inviteAssignment: StoredInviteAssignment | null;
     referralSource: ReferralSource;
   }> {
-    const resolution = await this.usersService.resolveReferral(referralCode, {
-      inviteRelations: {
-        invitingUser: { communities: true },
-        community: true,
-        invitedUser: true,
+    const resolution = await this.referralService.resolveReferral(
+      referralCode,
+      {
+        inviteRelations: {
+          invitingUser: { communities: true },
+          community: true,
+        },
       },
-    });
+    );
 
     if (!resolution) {
       if (process.env.NODE_ENV !== "test") {
@@ -212,15 +258,9 @@ export class AuthService {
     switch (resolution.kind) {
       case "invite": {
         const { invite } = resolution;
-        if (invite.invitedUser) {
-          throw new BadRequestException(
-            "This invite code has already been used",
-          );
-        }
-        await this.usersService.invalidateInvite(invite.id);
         return {
           invite,
-          referringUser: invite.invitingUser,
+          referringUser: loadedOnetimeInviteInvitingUser(invite),
           referredByCampaign: null,
           referredByShareUrl: null,
           inviteAssignment: null,
@@ -255,11 +295,21 @@ export class AuthService {
   }
 
   async register(signUp: SignUpDto): Promise<User> {
-    if (await this.usersService.findOneByEmail(signUp.email)) {
+    return this.createReferredUser({
+      name: signUp.name,
+      email: signUp.email,
+      password: signUp.password,
+      timeZone: signUp.timeZone,
+      referralCode: signUp.referralCode,
+    });
+  }
+
+  async createReferredUser(input: ReferredUser): Promise<User> {
+    if (await this.usersService.findOneByEmail(input.email)) {
       throw new BadRequestException("User already exists");
     }
 
-    if (!signUp.referralCode) {
+    if (!input.referralCode) {
       throw new BadRequestException("No referral code provided");
     }
 
@@ -270,28 +320,49 @@ export class AuthService {
       referredByShareUrl,
       inviteAssignment,
       referralSource,
-    } = await this.resolveReferralCode(signUp.referralCode);
-
-    const defaultTag = await this.usersService.findAllMembersTag();
+    } = await this.resolveReferralCode(input.referralCode);
 
     const user = await this.usersService.createWithInviteAssignment(
       {
-        ...signUp,
+        name: input.name,
+        email: input.email,
+        password: input.password,
+        timeZone: input.timeZone,
+        oauthAccounts: input.oauth
+          ? [
+              {
+                provider: input.oauth.provider,
+                subject: input.oauth.subject,
+                email: input.oauth.email,
+              },
+            ]
+          : [],
+        emailVerified: input.oauth?.emailVerified ?? false,
         referredBy: referringUser ?? null,
         referredByInvite: invite ?? null,
         referredByCampaign: referredByCampaign ?? null,
         referredByShareUrl: referredByShareUrl ?? null,
         referralSource,
-        tags: defaultTag ? [defaultTag] : undefined,
       },
       inviteAssignment,
     );
 
-    if (referringUser) {
-      await this.usersService.makeFriendsAutomated(referringUser.id, user.id);
+    if (user.referredBy) {
+      await this.friendService.makeFriendsAutomated(
+        user.referredBy.id,
+        user.id,
+      );
     }
 
-    await this.usersService.sendWelcomeEmail(user.id);
+    // The user row is already committed; a mail failure must not fail the signup.
+    const welcomeMail = await R.fromPromise(
+      this.accountEmailService.sendWelcomeEmail(user.id),
+    );
+    if (!welcomeMail.ok) {
+      this.logger.error(
+        `Failed to send welcome email to user ${user.id}: ${welcomeMail.error.message}`,
+      );
+    }
 
     return user;
   }
@@ -300,12 +371,35 @@ export class AuthService {
     email: string,
     password: string,
     adminOnly: boolean = false,
-  ): Promise<{
-    access_token: string;
-    refresh_token: string;
-    isAdmin: boolean;
-    userId: number;
-  }> {
+  ): Promise<PasswordSession> {
+    const user = await this.userWithPassword(email, password);
+
+    if (adminOnly && !user.admin) {
+      throw new UnauthorizedException();
+    }
+
+    if (isRefusedReviewAccount(user)) {
+      throw new ForbiddenException(REVIEW_ACCOUNT_MESSAGE);
+    }
+
+    return this.passwordSession(user);
+  }
+
+  async reviewLogin(email: string, password: string): Promise<PasswordSession> {
+    if (refusesReviewAccounts()) {
+      throw new UnauthorizedException();
+    }
+    const user = await this.userWithPassword(email, password);
+    if (!user.isTestUser) {
+      throw new UnauthorizedException();
+    }
+    return this.passwordSession(user);
+  }
+
+  private async userWithPassword(
+    email: string,
+    password: string,
+  ): Promise<User> {
     const user = await this.usersService.findOneByEmail(email);
 
     if (!user) {
@@ -316,15 +410,16 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
-    if (adminOnly && !user.admin) {
-      throw new UnauthorizedException();
-    }
+    return user;
+  }
 
+  private async passwordSession(user: User): Promise<PasswordSession> {
     return {
       access_token: await this.generateAccessToken(user),
       refresh_token: await this.generateRefreshToken(user),
       isAdmin: user.admin,
       userId: user.id,
+      switchedDomainAt: user.switchedDomainAt,
     };
   }
 
@@ -332,12 +427,11 @@ export class AuthService {
     user: User,
     isImpersonation = false,
   ): Promise<string> {
-    const payload: JwtPayload = {
-      sub: user.id,
-      email: user.email,
+    const payload = sessionTokenPayload({
+      user,
       tokenType: JWTTokenType.refresh,
-      ...(isImpersonation && { isImpersonation: true }),
-    };
+      isImpersonation,
+    });
     const token = await this.jwtService.signAsync(payload, {
       expiresIn: "14d",
       secret: process.env.JWT_REFRESH_SECRET,
@@ -349,12 +443,11 @@ export class AuthService {
     user: User,
     isImpersonation = false,
   ): Promise<string> {
-    const payload: JwtPayload = {
-      sub: user.id,
-      email: user.email,
+    const payload = sessionTokenPayload({
+      user,
       tokenType: JWTTokenType.access,
-      ...(isImpersonation && { isImpersonation: true }),
-    };
+      isImpersonation,
+    });
     return this.jwtService.signAsync(payload, { expiresIn: "1d" });
   }
 
@@ -372,11 +465,12 @@ export class AuthService {
     };
   }
 
-  async getProfile(email: string): Promise<User> {
-    const user = await this.usersService.findOneByEmail(email, {
+  async getProfile(userId: number): Promise<User> {
+    const user = await this.usersService.findOne(userId, {
       communities: true,
       contractEvents: true,
       city: true,
+      oauthAccounts: true,
     });
     if (!user) {
       throw new UnauthorizedException();
@@ -386,46 +480,49 @@ export class AuthService {
 
   async forgotPassword(email: string) {
     const user = await this.usersService.findOneByEmail(email);
-    if (!user) {
+    // Staging copies a review account's password from production each night,
+    // so a production reset would change the credentials the stores hold.
+    if (!user || isRefusedReviewAccount(user)) {
       return; // fail silently to avoid leaking emails
     }
 
-    const token = await this.usersService.generatePasswordResetToken(user.id);
+    const token = await this.generatePasswordResetToken(user.id);
     await this.mailService.sendPasswordResetEmail({
       email: user.email,
       name: user.name,
       resetToken: token,
+      hasPassword: hasPassword(user),
     });
     return user;
   }
 
+  async generatePasswordResetToken(userId: number) {
+    const payload: MailedJwtPayload = {
+      sub: userId,
+      tokenType: JWTTokenType.passwordReset,
+    };
+    return this.jwtService.sign(payload, {
+      secret: process.env.JWT_SECRET,
+      expiresIn: `1d`,
+    });
+  }
+
   async resetPassword(token: string, password: string) {
-    let payload: PWResetJwtPayload;
-    try {
-      payload = this.jwtService.verify<PWResetJwtPayload>(token, {
-        secret: process.env.JWT_SECRET,
-      });
-    } catch (error) {
-      console.log("password reset jwt verification error: ", error);
+    const userId = await verifyMailedToken(this.jwtService, {
+      token,
+      tokenType: JWTTokenType.passwordReset,
+    });
+    if (!userId.ok) {
+      console.log("password reset jwt verification error: ", userId.error);
       throw new UnauthorizedException();
     }
 
-    if (payload.type !== "password-reset") {
+    const user = await this.usersService.findOne(userId.value);
+    if (!user || isRefusedReviewAccount(user)) {
       throw new UnauthorizedException();
     }
 
-    const user = await this.usersService.findOne(payload.sub);
-    if (!user) {
-      throw new UnauthorizedException();
-    }
-
-    const updatedUser = await this.usersService.setPassword(user.id, password);
-
-    if (updatedUser.isNotSignedUpPartialProfile) {
-      await this.usersService.update(updatedUser.id, {
-        isNotSignedUpPartialProfile: false,
-      });
-    }
+    await this.usersService.setPassword(user.id, password);
   }
 
   async generateImpersonationTokens(
@@ -434,6 +531,11 @@ export class AuthService {
     const user = await this.usersService.findOne(userId);
     if (!user) {
       throw new BadRequestException("User not found");
+    }
+    if (isRefusedReviewAccount(user)) {
+      throw new ForbiddenException(
+        "Review accounts can't be impersonated in production",
+      );
     }
 
     return {

@@ -1,0 +1,4 @@
+- The migration and the push-worker comment come from the review of "Leave notifications that aren't due yet unread on mark-all-read", findings `stale-early-reads` and `worker-comment-reason`. The user asked for both to be fixed.
+- The migration clears `readAt` on `notification` and `unread_content` rows read before their `sendTime` whose `sendTime` is still in the future. Rows that already came due are left alone: the user has already seen them listed as read.
+- It can't tell a mark-all-read row from an action update marked read on its page before its date (read-by-content has no `sendTime` filter), so it also un-reads those. Accepted: that's one extra unread item per such update, against reminders that would otherwise never count toward the badge.
+- `down` is empty: which rows were read is gone once cleared.

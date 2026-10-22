@@ -1,9 +1,11 @@
 import { ProfileDto } from "@alliance/shared/client";
+import { cn } from "@alliance/shared/styles/util";
 import {
   AvatarGroup,
   AvatarGroupCount,
   AvatarProfile,
 } from "@alliance/sharedweb/ui/Avatar";
+import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import { useState } from "react";
 import { href } from "react-router";
 
@@ -22,7 +24,10 @@ const UserProfilePicRow = ({ users }: { users: ProfileDto[] }) => {
   };
 
   return (
-    <AvatarGroup className="flex-wrap cursor-pointer" onClick={handleClick}>
+    <AvatarGroup
+      className={cn("relative flex-wrap cursor-pointer", zIndex.raised)}
+      onClick={handleClick}
+    >
       {(expanded ? unique : unique.slice(0, 5)).map((user) => (
         <a
           href={href("/member/:id", { id: user.id.toString() })}

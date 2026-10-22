@@ -1,5 +1,9 @@
 import { resolveUploadSrc, uploadSrc } from "@alliance/common/image-src";
+import { R } from "@alliance/common/result";
+import { client } from "@alliance/shared/client/client.gen";
+import * as Application from "expo-application";
 import { NativeModules, Platform } from "react-native";
+import { type ReleaseTarget, releaseTargetFor, STAGING } from "./releaseTarget";
 import { getVisualTestApiUrl } from "./visualTest";
 
 // Keep this out of app.config.js `extra`, which changes the EAS fingerprint and
@@ -27,7 +31,25 @@ const getDevHost = (): string => {
   return ip ?? process.env.EXPO_PUBLIC_DEV_API_URL ?? "localhost";
 };
 
-export const getApiUrl = (): string => {
+/** The deployment a release build talks to, fixed by its bundle ID or package. */
+export const releaseTarget = (): ReleaseTarget =>
+  R.unwrap(releaseTargetFor(Application.applicationId));
+
+let reviewSession = false;
+
+/** An app-store review account's session runs against staging, whichever
+ * deployment the binary targets. */
+export const setReviewSession = (review: boolean): void => {
+  reviewSession = review;
+  client.setConfig({ baseUrl: getApiUrl() });
+};
+
+export const isReviewSession = (): boolean => reviewSession;
+
+export const getApiUrl = (): string =>
+  reviewSession ? STAGING.apiUrl : getBinaryApiUrl();
+
+export const getBinaryApiUrl = (): string => {
   const visualTestApiUrl = getVisualTestApiUrl();
   if (visualTestApiUrl) {
     return visualTestApiUrl;
@@ -36,7 +58,7 @@ export const getApiUrl = (): string => {
   if (__DEV__) {
     return `http://${getDevHost()}:${devApiPort()}`;
   } else {
-    return "https://worldalliance.org/api";
+    return releaseTarget().apiUrl;
   }
 };
 
@@ -44,6 +66,21 @@ export const getBaseUrl = (): string => {
   const apiUrl = getApiUrl();
   return apiUrl.replace(/\/api\/?$/, "") || "https://worldalliance.org";
 };
+
+/**
+ * Where links shared off the app or opened in a browser point: staging's web
+ * app in a review session, else the release target's, or the dev API server's
+ * origin under `__DEV__`.
+ */
+export const getSiteUrl = (): string =>
+  reviewSession
+    ? STAGING.siteUrl
+    : __DEV__
+      ? getBaseUrl()
+      : releaseTarget().siteUrl;
+
+export const getSitePageUrl = (path: string): string =>
+  `${getSiteUrl()}${path.startsWith("/") ? "" : "/"}${path}`;
 
 export const getImageSource = (key: string) =>
   uploadSrc({ key, apiUrl: getApiUrl() });

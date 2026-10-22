@@ -1,18 +1,21 @@
 import { appendQueryParam, isValidHttpUrl } from "@alliance/common/url";
-import {
-  externalShareTargetsCreateAdmin,
-  externalShareTargetsFindAllAdmin,
-  externalShareTargetsRemoveAdmin,
-  externalShareTargetsUpdateAdmin,
-} from "@alliance/shared/client";
 import type {
   CreateExternalShareTargetDto,
   ExternalShareTargetDto,
 } from "@alliance/shared/client/types.gen";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { CardStyle } from "@alliance/shared/styles/card";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { sessionExpiredMessage } from "../lib/sessionExpired";
+import {
+  externalShareTargetsLoadError,
+  useCreateExternalShareTargetAdmin,
+  useDeleteExternalShareTargetAdmin,
+  useExternalShareTargetsAdmin,
+  useUpdateExternalShareTargetAdmin,
+} from "../lib/useExternalShareTargetsAdmin";
 
 const INITIAL_NEW_TARGET: CreateExternalShareTargetDto = {
   name: "",
@@ -20,130 +23,91 @@ const INITIAL_NEW_TARGET: CreateExternalShareTargetDto = {
   paramName: "",
 };
 
+const withoutId = (ids: Set<number>, id: number) => {
+  const next = new Set(ids);
+  next.delete(id);
+  return next;
+};
+
 const ExternalShareTargetsPage: React.FC = () => {
-  const [targets, setTargets] = useState<ExternalShareTargetDto[]>([]);
-  const [loading, setLoading] = useState(false);
+  const list = useExternalShareTargetsAdmin();
+  const targets = list.data ?? [];
+  const loadError = list.isError
+    ? externalShareTargetsLoadError(list.error)
+    : null;
   const [error, setError] = useState<string | null>(null);
   const [newTarget, setNewTarget] =
     useState<CreateExternalShareTargetDto>(INITIAL_NEW_TARGET);
-  const [creating, setCreating] = useState(false);
   const [updatingIds, setUpdatingIds] = useState<Set<number>>(() => new Set());
   const [deletingIds, setDeletingIds] = useState<Set<number>>(() => new Set());
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await externalShareTargetsFindAllAdmin();
-      if (res.data) {
-        setTargets(res.data);
-      }
-    } catch (err) {
-      console.error("Failed to load share targets", err);
-      setError("Failed to load share targets.");
-    } finally {
-      setLoading(false);
+  const reportError = (err: unknown, fallback: string) => {
+    console.error(fallback, err);
+    setError(
+      thrownRefusalMessage({
+        error: err,
+        fallback,
+        sessionExpired: sessionExpiredMessage,
+      }),
+    );
+  };
+
+  const createTarget = useCreateExternalShareTargetAdmin({
+    onSuccess: () => setNewTarget(INITIAL_NEW_TARGET),
+    onError: (err) => reportError(err, "Unable to create share target."),
+  });
+
+  const updateTarget = useUpdateExternalShareTargetAdmin({
+    onError: (err) => reportError(err, "Unable to update share target."),
+  });
+
+  const deleteTarget = useDeleteExternalShareTargetAdmin({
+    onError: (err) => reportError(err, "Unable to delete share target."),
+  });
+
+  const handleCreate = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const name = newTarget.name.trim();
+    const url = newTarget.url.trim();
+    const paramName = newTarget.paramName.trim();
+    if (!name || !url || !paramName) {
+      setError("Name, URL, and parameter name are all required.");
+      return;
     }
-  }, []);
+    if (!isValidHttpUrl(url)) {
+      setError("Enter a valid http:// or https:// URL.");
+      return;
+    }
+    setError(null);
+    createTarget.mutate({ name, url, paramName });
+  };
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const handleUpdate = (id: number, values: CreateExternalShareTargetDto) => {
+    setError(null);
+    setUpdatingIds((prev) => new Set(prev).add(id));
+    return updateTarget
+      .mutateAsync({ id, values })
+      .then(
+        () => true,
+        () => false,
+      )
+      .finally(() => setUpdatingIds((prev) => withoutId(prev, id)));
+  };
 
-  const handleCreate = useCallback(
-    async (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      const name = newTarget.name.trim();
-      const url = newTarget.url.trim();
-      const paramName = newTarget.paramName.trim();
-      if (!name || !url || !paramName) {
-        setError("Name, URL, and parameter name are all required.");
-        return;
-      }
-      if (!isValidHttpUrl(url)) {
-        setError("Enter a valid http:// or https:// URL.");
-        return;
-      }
-      setCreating(true);
-      setError(null);
-      try {
-        const res = await externalShareTargetsCreateAdmin({
-          body: { name, url, paramName },
-        });
-        const created = res.data;
-        if (created) {
-          setTargets((prev) => [created, ...prev]);
-          setNewTarget(INITIAL_NEW_TARGET);
-        }
-      } catch (err) {
-        console.error("Failed to create share target", err);
-        setError("Unable to create share target.");
-      } finally {
-        setCreating(false);
-      }
-    },
-    [newTarget],
-  );
-
-  const handleUpdate = useCallback(
-    async (id: number, values: CreateExternalShareTargetDto) => {
-      setUpdatingIds((prev) => new Set(prev).add(id));
-      setError(null);
-      try {
-        const res = await externalShareTargetsUpdateAdmin({
-          path: { id },
-          body: {
-            name: values.name.trim(),
-            url: values.url.trim(),
-            paramName: values.paramName.trim(),
-          },
-        });
-        const updated = res.data;
-        if (updated) {
-          setTargets((prev) =>
-            prev.map((t) => (t.id === updated.id ? updated : t)),
-          );
-          return true;
-        }
-      } catch (err) {
-        console.error("Failed to update share target", err);
-        setError("Unable to update share target.");
-      } finally {
-        setUpdatingIds((prev) => {
-          const next = new Set(prev);
-          next.delete(id);
-          return next;
-        });
-      }
-      return false;
-    },
-    [],
-  );
-
-  const handleDelete = useCallback(async (id: number, name: string) => {
+  const handleDelete = (id: number, name: string) => {
     if (
       !window.confirm(`Delete share target "${name}"? This cannot be undone.`)
     ) {
-      return false;
+      return;
     }
-    setDeletingIds((prev) => new Set(prev).add(id));
     setError(null);
-    try {
-      await externalShareTargetsRemoveAdmin({ path: { id } });
-      setTargets((prev) => prev.filter((t) => t.id !== id));
-      return true;
-    } catch (err) {
-      console.error("Failed to delete share target", err);
-      setError("Unable to delete share target.");
-    } finally {
-      setDeletingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
-    }
-    return false;
-  }, []);
+    setDeletingIds((prev) => new Set(prev).add(id));
+    // onError reports the failure.
+    deleteTarget
+      .mutateAsync(id)
+      .catch(() => {})
+      .finally(() => setDeletingIds((prev) => withoutId(prev, id)));
+  };
 
   return (
     <div className="h-full p-5 pt-20 flex flex-col items-center gap-y-4">
@@ -160,21 +124,26 @@ const ExternalShareTargetsPage: React.FC = () => {
           Allowed off-site URLs that the &ldquo;Share URL&rdquo; form component
           can link to. Each user gets a unique share code per target.
         </p>
-        {loading ? (
+        {list.isPending ? (
           <p className="text-sm text-zinc-500">Loading…</p>
-        ) : targets.length ? (
-          targets.map((target) => (
-            <TargetCard
-              key={target.id}
-              target={target}
-              onSave={(values) => handleUpdate(target.id, values)}
-              onDelete={() => handleDelete(target.id, target.name)}
-              isUpdating={updatingIds.has(target.id)}
-              isDeleting={deletingIds.has(target.id)}
-            />
-          ))
         ) : (
-          <p className="text-sm text-zinc-500">No share targets yet.</p>
+          <>
+            {loadError && <p className="text-sm text-red-500">{loadError}</p>}
+            {targets.length
+              ? targets.map((target) => (
+                  <TargetCard
+                    key={target.id}
+                    target={target}
+                    onSave={(values) => handleUpdate(target.id, values)}
+                    onDelete={() => handleDelete(target.id, target.name)}
+                    isUpdating={updatingIds.has(target.id)}
+                    isDeleting={deletingIds.has(target.id)}
+                  />
+                ))
+              : list.data && (
+                  <p className="text-sm text-zinc-500">No share targets yet.</p>
+                )}
+          </>
         )}
       </div>
 
@@ -230,13 +199,13 @@ const ExternalShareTargetsPage: React.FC = () => {
             color={ButtonColor.Blue}
             className="self-start"
             disabled={
-              creating ||
+              createTarget.isPending ||
               !newTarget.name.trim() ||
               !newTarget.paramName.trim() ||
               !isValidHttpUrl(newTarget.url)
             }
           >
-            {creating ? "Creating…" : "Create"}
+            {createTarget.isPending ? "Creating…" : "Create"}
           </Button>
         </form>
       </Card>
@@ -257,7 +226,7 @@ const FormField: React.FC<{
 type TargetCardProps = {
   target: ExternalShareTargetDto;
   onSave: (values: CreateExternalShareTargetDto) => Promise<boolean> | boolean;
-  onDelete: () => Promise<boolean> | boolean;
+  onDelete: () => void;
   isUpdating: boolean;
   isDeleting: boolean;
 };
@@ -287,7 +256,7 @@ const TargetCard: React.FC<TargetCardProps> = ({
   const trimmedParamName = values.paramName.trim();
   const previewUrl =
     isValidHttpUrl(values.url) && trimmedParamName
-      ? appendQueryParam(values.url, trimmedParamName, "share-12345")
+      ? appendQueryParam(values.url, trimmedParamName, "1a2b3c4d5e")
       : null;
 
   const canSave =

@@ -35,6 +35,13 @@ export default tseslint.config([
     },
   },
   {
-    linterOptions: { reportUnusedDisableDirectives: "error" },
+    files: ["test/**/*.ts", "src/**/*.spec.ts"],
+    rules: {
+      "@typescript-eslint/no-floating-promises": [
+        "error",
+        { checkThenables: true },
+      ],
+      "local-rules/no-returned-thenable": "error",
+    },
   },
 ]);

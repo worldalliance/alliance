@@ -9,27 +9,27 @@ import { useCallback } from "react";
 import ActionTaskPanelForm from "./ActionTaskPanelForm";
 
 export type ActionTaskPanelProps = ActionTaskPanelPropsShared & {
+  onAlreadySubmitted: () => void;
   scrollPageTo: (y: number, animated?: boolean) => void;
   scrollToEnd: (animated?: boolean) => void;
-  onSubmitSuccess?: () => void;
 };
 
 const ActionTaskPanel = ({
   action,
   onCompleteAction,
   onOptOutAction,
+  onDeadlinePassed,
+  onAlreadySubmitted,
   scrollPageTo,
   scrollToEnd,
   disabled,
   formResponse,
-  onSubmitSuccess = noop,
 }: ActionTaskPanelProps) => {
-  const { handleCompleteWithTracking, handleAbandonAction } =
-    useTaskFormHandlers({
-      action,
-      onCompleteAction,
-      onOptOutAction,
-    });
+  const { handleComplete, handleAbandonAction } = useTaskFormHandlers({
+    action,
+    onCompleteAction,
+    onOptOutAction,
+  });
 
   // Contract signing actions cannot be withdrawn from.
   const onAbandonAction = action.isContractSigningAction
@@ -39,7 +39,6 @@ const ActionTaskPanel = ({
   const handleFormStarted = useCallback(() => {
     captureEvent(AnalyticsEvent.FormStarted, {
       actionId: action.id,
-      actionType: action.type,
       actionName: action.name,
     });
   }, [action]);
@@ -51,14 +50,31 @@ const ActionTaskPanel = ({
         scrollPageTo={scrollPageTo}
         scrollToEnd={scrollToEnd}
         onCompleteAction={null}
+        onDeadlinePassed={noop}
+        onAlreadySubmitted={noop}
         onFormStarted={handleFormStarted}
         onAbandonAction={onAbandonAction}
         actionId={action.id}
-        onSubmitSuccess={onSubmitSuccess}
         disabled={true}
         formResponse={formResponse}
       />
     );
+  }
+
+  if (action.viewer?.staffPreview) {
+    return action.taskFormId ? (
+      <ActionTaskPanelForm
+        taskFormId={action.taskFormId}
+        scrollPageTo={scrollPageTo}
+        scrollToEnd={scrollToEnd}
+        onCompleteAction={null}
+        onDeadlinePassed={noop}
+        onAlreadySubmitted={noop}
+        onFormStarted={noop}
+        actionId={action.id}
+        preview
+      />
+    ) : null;
   }
 
   if (action.taskFormId) {
@@ -67,11 +83,12 @@ const ActionTaskPanel = ({
         taskFormId={action.taskFormId}
         scrollPageTo={scrollPageTo}
         scrollToEnd={scrollToEnd}
-        onCompleteAction={handleCompleteWithTracking}
+        onCompleteAction={handleComplete}
         onFormStarted={handleFormStarted}
         onAbandonAction={onAbandonAction}
+        onDeadlinePassed={onDeadlinePassed}
+        onAlreadySubmitted={onAlreadySubmitted}
         actionId={action.id}
-        onSubmitSuccess={onSubmitSuccess}
         disabled={disabled}
       />
     );

@@ -1,32 +1,22 @@
 import type { ContractField } from "@alliance/common/forms/form-schema";
-import { contractAllAdmin, contractGetCurrent } from "@alliance/shared/client";
-import { useQuery } from "@tanstack/react-query";
+import { useCurrentContract } from "@alliance/shared/lib/useCurrentContract";
 import { useEffect, useMemo, useRef } from "react";
+import { useContractsAdmin } from "../../lib/useContractsAdmin";
 import { RequiredToggle } from "./CommonControls";
+import { useDerivedWrite } from "./derivedWrite";
 import { FieldWrapper } from "./FieldWrapper";
 import type { BaseFieldProps } from "./types";
 
 export function EditableContractField({
   field,
   onUpdate,
-  onRemove,
-  onDragStart,
-  onDragEnd,
-  isDragging,
   previousFields,
+  laterFields,
 }: BaseFieldProps<ContractField>) {
-  const { data: contracts = [] } = useQuery({
-    queryKey: ["contractAllAdmin"],
-    queryFn: async () => {
-      const res = await contractAllAdmin();
-      return res.data ?? [];
-    },
-  });
+  const { data: contracts = [] } = useContractsAdmin();
 
-  const { data: currentContract } = useQuery({
-    queryKey: ["contractGetCurrent"],
-    queryFn: () => contractGetCurrent().then((res) => res.data ?? null),
-  });
+  const { data: currentContract } = useCurrentContract();
+  const derivedWrite = useDerivedWrite();
 
   // Default to current contract when none selected (once per field)
   const hasDefaulted = useRef(false);
@@ -39,8 +29,8 @@ export function EditableContractField({
       return;
     }
     hasDefaulted.current = true;
-    onUpdate({ contractId: currentContract.id });
-  }, [currentContract, field.contractId, onUpdate]);
+    derivedWrite(() => onUpdate({ contractId: currentContract.id }));
+  }, [currentContract, derivedWrite, field.contractId, onUpdate]);
 
   const contractOptions = useMemo(
     () =>
@@ -64,13 +54,15 @@ export function EditableContractField({
     if (selectedContract.id === field.contract?.id) {
       return;
     }
-    onUpdate({
-      contract: {
-        id: selectedContract.id,
-        markdown: selectedContract.markdown,
-      },
-    });
-  }, [selectedContract, field.contract?.id, onUpdate]);
+    derivedWrite(() =>
+      onUpdate({
+        contract: {
+          id: selectedContract.id,
+          markdown: selectedContract.markdown,
+        },
+      }),
+    );
+  }, [derivedWrite, selectedContract, field.contract?.id, onUpdate]);
 
   // Merge selected contract onto field so RenderField (existing preview) can show markdown + sign toggle
   const fieldWithContract = useMemo(
@@ -83,10 +75,7 @@ export function EditableContractField({
       field={fieldWithContract}
       onUpdate={onUpdate}
       previousFields={previousFields}
-      onRemove={onRemove}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      isDragging={isDragging}
+      laterFields={laterFields}
     >
       <div>
         <label className="block text-xs font-medium text-gray-700 mb-1">

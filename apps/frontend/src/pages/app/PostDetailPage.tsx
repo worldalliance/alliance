@@ -1,6 +1,9 @@
-import { forumFindOnePost, forumRemovePost } from "@alliance/shared/client";
-import { formatFullDateTime } from "@alliance/shared/lib/dateFormatters";
-import { usePostLikeMutation } from "@alliance/shared/lib/usePostLikeMutation";
+import { isPostAuthor, postBylineAuthors } from "@alliance/common/postAuthors";
+import {
+  isScheduledPost,
+  scheduledPostNotice,
+} from "@alliance/shared/lib/scheduledPost";
+import { useForumPost } from "@alliance/shared/lib/useForumPost";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
@@ -8,14 +11,14 @@ import Card from "@alliance/sharedweb/ui/Card";
 import EditableContentRenderer from "@alliance/sharedweb/ui/EditableContentRenderer";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import UserDisplayName from "@alliance/sharedweb/ui/UserDisplayName";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Pin } from "lucide-react";
 import React, { useState } from "react";
 import { Link, href, useNavigate, useParams } from "react-router";
 import Comments from "../../components/Comments";
 import LikeFooter from "../../components/LikeFooter";
 import { useAuth } from "../../lib/AuthContext";
-import { useCIDFromParams } from "../../lib/utils";
+import { useSidFromParams } from "../../lib/utils";
+import { MissingRecordPage } from "../../site/NotFoundPage";
 
 const PostDetailPage: React.FC = () => {
   const { id: postId } = useParams<{ id: string }>();
@@ -23,22 +26,17 @@ const PostDetailPage: React.FC = () => {
 
   const { user } = useAuth();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
-  useCIDFromParams();
+  useSidFromParams();
 
   const {
-    data: post = null,
+    post,
     isLoading: loading,
     error: queryError,
-  } = useQuery({
-    queryKey: ["forumFindOnePost", postId],
-    queryFn: () =>
-      forumFindOnePost({ path: { id: postId! } }).then(
-        (res) => res.data ?? null,
-      ),
-    enabled: !!postId,
-  });
+    handleLike,
+    remove,
+    removed,
+  } = useForumPost(postId, { userId: user?.id });
 
   const handleDeletePost = async () => {
     if (!post || !amAuthor) {
@@ -47,9 +45,7 @@ const PostDetailPage: React.FC = () => {
 
     if (window.confirm("Are you sure you want to delete this post?")) {
       try {
-        await forumRemovePost({
-          path: { id: post.id },
-        });
+        await remove();
         navigate(href("/forum"));
       } catch (err) {
         console.error("Error deleting post:", err);
@@ -57,23 +53,6 @@ const PostDetailPage: React.FC = () => {
       }
     }
   };
-
-  const handleLike = usePostLikeMutation({
-    postId: Number(postId),
-    userId: user?.id,
-    getPost: () => post,
-    setPost: (updater) => {
-      queryClient.setQueryData(
-        ["forumFindOnePost", postId],
-        (old: typeof post) => (old ? updater(old) : old),
-      );
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["forumFindOnePost", postId],
-      });
-    },
-  });
 
   const displayError =
     error || (queryError ? "Failed to load post details" : null);
@@ -88,23 +67,20 @@ const PostDetailPage: React.FC = () => {
     );
   }
 
-  if (loading || !post) {
+  // After a delete the post page stays mounted while /forum loads.
+  if (loading || removed) {
     return (
       <div className="bg-page pt-20 px-8 md:px-16">
         <div className="absolute inset-0 flex items-center justify-center">
-          {loading ? (
-            <Spinner size="large" />
-          ) : (
-            <p className="text-center text-zinc-500">Post not found</p>
-          )}
+          <Spinner size="large" />
         </div>
       </div>
     );
   }
 
-  const amAuthor =
-    post.author.id === user?.id ||
-    post.authors?.some((author) => author.id === user?.id);
+  if (!post) return <MissingRecordPage />;
+
+  const amAuthor = isPostAuthor(post, user?.id);
 
   return (
     <div className="w-full">
@@ -117,11 +93,10 @@ const PostDetailPage: React.FC = () => {
           >
             <ArrowLeft size={18} />
           </Link>
-          {post.visibleAt && new Date(post.visibleAt) > new Date() && (
+          {isScheduledPost(post) && (
             <Card style={CardStyle.Alert} className="mb-2 border-none">
               <span className="text-zinc-800">
-                Not visible to members yet. This post is scheduled for{" "}
-                {formatFullDateTime(new Date(post.visibleAt))}
+                {scheduledPostNotice.detail(post.visibleAt)}
               </span>
             </Card>
           )}
@@ -138,40 +113,38 @@ const PostDetailPage: React.FC = () => {
               </h1>
             </div>
             <div className="flex flex-row gap-x-2 mb-2 sm:mb-4 mt-1 items-center text-base flex-wrap">
-              {(post.authors?.length ? post.authors : [post.author]).map(
-                (author) => (
-                  <React.Fragment key={author.id}>
-                    <Link
-                      to={href("/member/:id", {
-                        id: author.id.toString(),
-                      })}
-                      className="flex items-center"
+              {postBylineAuthors(post).map((author) => (
+                <React.Fragment key={author.id}>
+                  <Link
+                    to={href("/member/:id", {
+                      id: author.id.toString(),
+                    })}
+                    className="flex items-center"
+                  >
+                    <div className="hidden sm:inline">
+                      <AvatarProfile
+                        pfp={author.profilePicture}
+                        size="small"
+                        className="mr-1.5"
+                      />
+                    </div>
+                    <div className="inline sm:hidden">
+                      <AvatarProfile
+                        pfp={author.profilePicture}
+                        size="small"
+                        className="mr-1.5"
+                      />
+                    </div>
+                    <UserDisplayName
+                      staff={author.staff}
+                      ambassador={author.ambassador}
+                      grouplead={author.isCommunityLeader}
                     >
-                      <div className="hidden sm:inline">
-                        <AvatarProfile
-                          pfp={author.profilePicture}
-                          size="small"
-                          className="mr-1.5"
-                        />
-                      </div>
-                      <div className="inline sm:hidden">
-                        <AvatarProfile
-                          pfp={author.profilePicture}
-                          size="small"
-                          className="mr-1.5"
-                        />
-                      </div>
-                      <UserDisplayName
-                        staff={author.staff}
-                        ambassador={author.ambassador}
-                        grouplead={author.isCommunityLeader}
-                      >
-                        {author.displayName}
-                      </UserDisplayName>
-                    </Link>
-                  </React.Fragment>
-                ),
-              )}
+                      {author.displayName}
+                    </UserDisplayName>
+                  </Link>
+                </React.Fragment>
+              ))}
               <span className="text-zinc-500">
                 {formatTime(new Date(post.createdAt), {
                   addSuffix: true,

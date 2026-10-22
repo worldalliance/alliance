@@ -1,10 +1,15 @@
+import { milliseconds } from "date-fns";
 import "reflect-metadata";
 import {
   ACTION_PARTNERSHIP_RESPONSE_THROTTLE,
-  JOIN_REQUEST_THROTTLE,
+  OAUTH_THROTTLE,
   SIGNUP_THROTTLE,
+  WAITLIST_ENTRY_THROTTLE,
+  WAITLIST_LINK_THROTTLE,
 } from "src/auth/signup-throttle.config";
 import { LINK_PREVIEW_THROTTLE } from "src/link-preview/link-preview-throttle.config";
+import { LINK_OPENING_THROTTLE } from "src/link-tracking/link-opening-throttle.config";
+import { DEVICE_UNLINK_THROTTLE } from "src/user/device-unlink-throttle.config";
 import { ALL_THROTTLES, OnlyThrottle, UserThrottlerGuard } from "./throttle";
 
 // Metadata keys from @nestjs/throttler's internals (not re-exported from the
@@ -47,7 +52,9 @@ describe("OnlyThrottle", () => {
   // at all — refuse it at decoration (i.e. boot) time instead.
   it("throws for a group not registered in ALL_THROTTLES", () => {
     expect(() =>
-      OnlyThrottle({ rogueBurst: { limit: 5, ttl: 60 * 1000 } }),
+      OnlyThrottle({
+        rogueBurst: { limit: 5, ttl: milliseconds({ minutes: 1 }) },
+      }),
     ).toThrow("Throttle group not registered in ALL_THROTTLES: rogueBurst");
   });
 });
@@ -56,9 +63,13 @@ describe("ALL_THROTTLES", () => {
   it("has no name collisions between groups (spreading would silently drop one)", () => {
     const groups = [
       SIGNUP_THROTTLE,
+      OAUTH_THROTTLE,
       ACTION_PARTNERSHIP_RESPONSE_THROTTLE,
-      JOIN_REQUEST_THROTTLE,
+      WAITLIST_ENTRY_THROTTLE,
+      WAITLIST_LINK_THROTTLE,
       LINK_PREVIEW_THROTTLE,
+      LINK_OPENING_THROTTLE,
+      DEVICE_UNLINK_THROTTLE,
     ];
     const totalNames = groups.reduce(
       (count, group) => count + Object.keys(group).length,

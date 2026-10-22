@@ -1,8 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { ActionEvent } from "src/actions/entities/action-event.entity";
+import { ActionSuite } from "src/actions/entities/action-suite.entity";
 import { ReminderGroup } from "src/actions/entities/reminder-group.entity";
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
 import { Mail } from "src/mail/mail.entity";
 import { Mms } from "src/mms/mms.entity";
 import { Push } from "src/push/push.entity";
@@ -17,13 +21,37 @@ import {
   OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
+  RelationId,
 } from "typeorm";
+import { Notification } from "./notification.entity";
 
 export enum ActionEventNotifType {
   Announcement = "announcement",
   MissedDeadline = "misseddeadline",
   Reminder = "reminder",
   PersonalReminder = "personalreminder",
+}
+
+/** Which copy a missed-suite notice sent; a reworded copy gets a new value. */
+export enum MissedSuiteNoticeCopy {
+  /** The reminder group's configured text. */
+  FirstMissControl = "first_miss_control",
+  FirstMissReportV1 = "first_miss_report_v1",
+  SecondMissReportV1 = "second_miss_report_v1",
+}
+
+/**
+ * Which push and text copy a social-proof reminder chose; email is always the
+ * group's. The row's pushes and mms show whether it reached the member.
+ */
+export enum ReminderSocialProofOutcome {
+  /** The reminder group's configured text. */
+  Control = "control",
+  NamesV1 = "names_v1",
+  /** Variant arm got the configured text: fewer than two people qualified. */
+  FallbackTooFewCompleters = "fallback_too_few_completers",
+  /** Variant arm got the configured text: the completer lookup failed. */
+  FallbackLookupFailed = "fallback_lookup_failed",
 }
 
 @Entity()
@@ -45,17 +73,15 @@ export class ActionEventNotif {
   @ApiProperty({ enum: ActionEventNotifType, enumName: "ActionEventNotifType" })
   type: ActionEventNotifType;
 
-  @ApiProperty({ type: Mail, nullable: true })
+  @ApiPropertyOptional({ type: Mail, nullable: true })
   @OneToOne(() => Mail, { nullable: true })
   @JoinColumn({ name: "mailId" })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  mail: Relation<Mail> | null;
+  mail?: Relation<Mail> | null;
 
-  @ApiProperty({ type: Mms, nullable: true })
+  @ApiPropertyOptional({ type: Mms, nullable: true })
   @OneToOne(() => Mms, { nullable: true })
   @JoinColumn({ name: "mmsId" })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  mms: Relation<Mms> | null;
+  mms?: Relation<Mms> | null;
 
   @ApiPropertyOptional({ type: () => Push, isArray: true })
   @OneToMany(() => Push, (push) => push.actionEventNotif)
@@ -107,8 +133,55 @@ export class ActionEventNotif {
     onDelete: "CASCADE",
   })
   @JoinColumn({ name: "userId" })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  user: Relation<User>;
+  user?: Relation<User>;
+
+  @ManyToOne(() => ActionSuite, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "actionSuiteId" })
+  actionSuite?: Relation<ActionSuite>;
+
+  /** Position of `actionSuite` in the member's run of consecutive misses. */
+  @Column({ type: "integer", nullable: true })
+  missNumber: number | null;
+
+  @Column({
+    type: "enum",
+    enum: MissedSuiteNoticeCopy,
+    enumName: "MissedSuiteNoticeCopy",
+    nullable: true,
+  })
+  missedSuiteCopy: MissedSuiteNoticeCopy | null;
+
+  /**
+   * Null on reminders outside the social-proof experiment, and on ones whose
+   * recipient has push and text both off.
+   */
+  @Column({
+    type: "enum",
+    enum: ReminderSocialProofOutcome,
+    enumName: "ReminderSocialProofOutcome",
+    nullable: true,
+  })
+  socialProofOutcome: ReminderSocialProofOutcome | null;
+
+  /** The members a `NamesV1` reminder named, in the order it named them. */
+  @Column("integer", { array: true, nullable: true })
+  socialProofUserIds: number[] | null;
+
+  /**
+   * Every task the reminder counted, which qualifying completers finished;
+   * `notifiedActionIds` can be narrower.
+   */
+  @Column("integer", { array: true, nullable: true })
+  socialProofActionIds: number[] | null;
+
+  /** The in-app entry a missed-suite notice created alongside its channels. */
+  @OneToOne(() => Notification, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "notificationId" })
+  notification?: Relation<Notification>;
+
+  @RelationId((notif: ActionEventNotif) => notif.notification)
+  @ApiProperty({ type: Number, nullable: true })
+  notificationId: number | null;
 
   @Column({ default: false })
   @ApiProperty({
@@ -124,4 +197,7 @@ export class ActionEventNotif {
   @ApiProperty({ type: Date })
   @Type(() => Date)
   createdAt: Date;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

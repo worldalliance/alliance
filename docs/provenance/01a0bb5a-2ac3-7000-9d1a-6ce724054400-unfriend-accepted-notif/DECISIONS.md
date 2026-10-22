@@ -1,0 +1,5 @@
+- The fix comes from the review of "Mark a cancelled friend request's notification read", finding `accepted-notif-unread`. The user asked for every finding to be fixed. Un-friending deleted the row and left the requester's "accepted your friend request" notification unread when they hadn't opened it yet.
+- This reverses that commit's choice to leave `acceptedNotif` alone on un-friend. The notification describes something that happened, but an unread badge for a friendship that's gone points the user at nothing to act on.
+- `removeFriend` marks it read for the requester through `setRead`, next to `sentNotif`.
+- The e2e test compares the requester's unread count before and after, because earlier tests in the file leave their own "accepted" notifications unread.
+- It touches only the server, and nothing before it in the branch depends on it.

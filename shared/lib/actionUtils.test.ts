@@ -1,7 +1,9 @@
+import { countsTowardTaskBadge } from "@alliance/common/taskBadge";
 import type {
   ActionStatus,
   UserActionRelationDetailDto,
   UserActionRelationPillStatus,
+  UserActionStatusDto,
   UserActionSummaryDto,
 } from "../client/types.gen";
 import {
@@ -9,13 +11,22 @@ import {
   calculateCompletionData,
   canCompleteAction,
   deadlineHasPassed,
+  hasViewerCompletedAction,
+  homePagePriorityComparator,
+  isActionAssignedAndNotDismissed,
+  isActionOptional,
   isCurrentlyCompletedAction,
   shouldCompleteAction,
   showActionInSidebarList,
   withOptimisticDismissal,
   withOptimisticRelation,
 } from "./actionUtils";
-import { makeAction, makeLegacyAction, makeViewer } from "./testFixtures";
+import {
+  makeAction,
+  makeEvent,
+  makeLegacyAction,
+  makeViewer,
+} from "./testFixtures";
 
 function rel(
   actionId: number,
@@ -49,11 +60,20 @@ describe("viewer-based action predicates", () => {
     }
   });
 
+  it("reads optional off the viewer, falling back to the action flag for guests", () => {
+    expect(isActionOptional(makeAction())).toBe(false);
+    expect(
+      isActionOptional(makeAction({ viewer: makeViewer({ optional: true }) })),
+    ).toBe(true);
+    expect(isActionOptional(makeLegacyAction({ optional: true }))).toBe(true);
+  });
+
   it("keeps a dismissed action completable but out of home lists", () => {
     const action = makeAction({
       viewer: makeViewer({ dismissed: true }),
     });
     expect(canCompleteAction(action)).toBe(true);
+    expect(isActionAssignedAndNotDismissed(action)).toBe(false);
     expect(shouldCompleteAction(action)).toBe(false);
     expect(showActionInSidebarList(action)).toBe(false);
   });
@@ -79,6 +99,29 @@ describe("viewer-based action predicates", () => {
     expect(canCompleteAction(action)).toBe(false);
   });
 
+  it("lists a staff preview in home lists without making it completable", () => {
+    const action = makeAction({
+      status: "draft",
+      viewer: makeViewer({
+        assigned: false,
+        canComplete: false,
+        memberActionStarted: false,
+        staffPreview: true,
+      }),
+    });
+    expect(shouldCompleteAction(action)).toBe(true);
+    expect(showActionInSidebarList(action)).toBe(true);
+    expect(canCompleteAction(action)).toBe(false);
+  });
+
+  it("keeps a public-only staff preview off home lists", () => {
+    const action = makeAction({
+      publicOnly: true,
+      viewer: makeViewer({ memberActionStarted: false, staffPreview: true }),
+    });
+    expect(shouldCompleteAction(action)).toBe(false);
+  });
+
   it("lets an unassigned member complete without listing the task", () => {
     const action = makeAction({ viewer: makeViewer({ assigned: false }) });
     expect(canCompleteAction(action)).toBe(true);
@@ -98,6 +141,34 @@ describe("viewer-based action predicates", () => {
       viewer: makeViewer({ relation: "completed", display: "completed" }),
     });
     expect(isCurrentlyCompletedAction(action)).toBe(true);
+  });
+
+  it("reads completion off the viewer, falling back to the legacy relation", () => {
+    expect(
+      hasViewerCompletedAction(
+        makeAction({
+          userRelation: "none",
+          viewer: makeViewer({ relation: "completed" }),
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      hasViewerCompletedAction(
+        makeAction({
+          userRelation: "completed",
+          viewer: makeViewer({ relation: "withdrawn" }),
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      hasViewerCompletedAction(makeLegacyAction({ userRelation: "completed" })),
+    ).toBe(true);
+    expect(
+      hasViewerCompletedAction(makeLegacyAction({ userRelation: "declined" })),
+    ).toBe(false);
+    expect(
+      hasViewerCompletedAction(makeLegacyAction({ userRelation: undefined })),
+    ).toBe(false);
   });
 
   it("derives deadlineHasPassed from viewer.memberActionStarted", () => {
@@ -127,6 +198,15 @@ describe("viewer-based action predicates", () => {
     expect(showActionInSidebarList(action)).toBe(false);
   });
 
+  it("follows viewer.assigned where the server widened it past shouldParticipate", () => {
+    const optionallyAssigned = makeAction({
+      shouldParticipate: false,
+      viewer: makeViewer({ optional: true }),
+    });
+    expect(isActionAssignedAndNotDismissed(optionallyAssigned)).toBe(true);
+    expect(shouldCompleteAction(optionallyAssigned)).toBe(true);
+  });
+
   it("matches the legacy fallback on dismissal semantics", () => {
     const action = makeLegacyAction({
       userRelation: "dismissed",
@@ -134,9 +214,42 @@ describe("viewer-based action predicates", () => {
       shouldParticipate: false,
     });
     expect(canCompleteAction(action)).toBe(true);
+    expect(isActionAssignedAndNotDismissed(action)).toBe(false);
     expect(shouldCompleteAction(action)).toBe(false);
     expect(showActionInSidebarList(action)).toBe(false);
   });
+});
+
+const withViewer = (patch: Partial<UserActionStatusDto>) =>
+  makeAction({ viewer: makeViewer(patch) });
+
+it.each([
+  makeAction(),
+  makeAction({ status: "office_action", shouldCompleteAfterDeadline: true }),
+  makeAction({ publicOnly: true }),
+  makeAction({ onboarding: true }),
+  makeAction({ optional: true }),
+  makeAction({ shouldCompleteAfterDeadline: true }),
+  withViewer({ assigned: false }),
+  withViewer({ dismissed: true }),
+  withViewer({ contractGap: true }),
+  withViewer({ canComplete: false }),
+  withViewer({ memberActionStarted: false }),
+  withViewer({ staffPreview: true }),
+  withViewer({ relation: "completed" }),
+  withViewer({ relation: "withdrawn" }),
+  withViewer({ away: "away_currently" }),
+  withViewer({ away: "away_previously" }),
+  withViewer({ away: "away_later" }),
+  withViewer({ optional: true, optionalReason: "contract_gap" }),
+  withViewer({ deadlinePassed: true }),
+  withViewer({ display: "optional_task" }),
+  withViewer({ deadlineAt: new Date(Date.now() + 60_000).toISOString() }),
+])("counts only actions Home lists among its tasks (case %#)", (action) => {
+  expect(
+    countsTowardTaskBadge(action, new Date()) &&
+      !showActionInSidebarList(action),
+  ).toBe(false);
 });
 
 // The optimistic patches must flip the predicates the same way the next real
@@ -282,5 +395,34 @@ describe("calculateAllCompletionData", () => {
     expect(result.previous).toBeUndefined();
     expect(result.current).toBeDefined();
     expect(result.current?.nTotal).toBe(0);
+  });
+});
+
+describe("homePagePriorityComparator", () => {
+  const withDeadline = (id: number, deadline: string) =>
+    makeAction({
+      id,
+      events: [
+        makeEvent({
+          id: id * 10 + 1,
+          newStatus: "completed",
+          date: "2026-12-01T00:00:00.000Z",
+        }),
+        makeEvent({ id: id * 10 + 2, newStatus: "resolution", date: deadline }),
+        makeEvent({
+          id: id * 10 + 3,
+          newStatus: "member_action",
+          date: "2026-01-01T00:00:00.000Z",
+        }),
+      ],
+    });
+
+  it("orders by the earliest event after the member-action event, whatever the array order", () => {
+    const later = withDeadline(1, "2026-03-01T00:00:00.000Z");
+    const sooner = withDeadline(2, "2026-02-01T00:00:00.000Z");
+    expect([later, sooner].sort(homePagePriorityComparator)).toEqual([
+      sooner,
+      later,
+    ]);
   });
 });

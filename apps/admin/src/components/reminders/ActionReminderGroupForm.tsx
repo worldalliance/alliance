@@ -1,8 +1,15 @@
+/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { errorMessage } from "@alliance/common/errorMessage";
 import {
-  actionsPreviewEmailHtmlAdmin,
-  actionsPreviewTextMessageAdmin,
-  actionsTentativePlansForGroupAdmin,
+  defaultEmailContents,
+  defaultEmailSubject,
+  defaultPushMessage,
+  defaultTextMessage,
+} from "@alliance/common/reminderPresetCopy";
+import { R } from "@alliance/common/result";
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
+import {
+  actionRemindersTentativePlansForGroupAdmin,
   Tag,
   TagDto,
   type ActionEventDto,
@@ -20,14 +27,16 @@ import Card from "@alliance/sharedweb/ui/Card";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
 import LargeCheckbox from "@alliance/sharedweb/ui/LargeCheckbox";
 import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
+import { milliseconds } from "date-fns";
+import { secondsInHour } from "date-fns/constants";
+import { RotateCw } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import TextareaWithHighlights from "../TextareaWithHighlights";
 import {
-  defaultEmailContents,
-  defaultEmailSubject,
-  defaultPushMessage,
-  defaultTextMessage,
-} from "./defaultReminderContents";
+  useReminderEmailPreviewAdmin,
+  useReminderTextPreviewAdmin,
+} from "../../lib/useReminderPreviewsAdmin";
+import TextareaWithHighlights from "../TextareaWithHighlights";
+import ReminderPreviewError from "./ReminderPreviewError";
 
 type ReminderGroupContentFields = Pick<
   ReminderGroupDto,
@@ -44,7 +53,7 @@ type ReminderGroupContentFields = Pick<
 >;
 
 type ReminderGroupScheduleFields = Pick<
-  ReminderGroupDto,
+  CreateReminderGroupDto,
   | "sendAtAbsolute"
   | "sendAtSecondsFromDeadline"
   | "send_range_start"
@@ -119,10 +128,14 @@ const COHORT_OPTIONS = Object.entries(COHORT_OPTION_OBJ).map(
 );
 
 interface ActionReminderFormProps {
+  suiteId: number;
+  /** Holds submit until a current recipient count arrives, for a caller that confirms it. */
+  waitForRecipientCount: boolean;
   memberEvents: ActionEventDto[];
   anchorCandidates: ReminderAnchorCandidateDto[];
   users: UserSelectUser[];
   loadingUsers: boolean;
+  usersLoadFailed: boolean;
   userTags: TagDto[];
   loadingUserTags: boolean;
   userTagsError?: string | null;
@@ -136,15 +149,24 @@ interface ActionReminderFormProps {
   onEventChange?: (eventId: number) => void;
   onSubmit: (
     payload: ActionReminderGroupFormSubmitPayload,
-    recipientCount: number,
+    recipientCount: number | null,
   ) => Promise<void> | void;
 }
 
+type PreviewTaskCount = 1 | 2;
+
+const toggleTaskCount =
+  (count: PreviewTaskCount) => (current: PreviewTaskCount | null) =>
+    current === count ? null : count;
+
 const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
+  suiteId,
+  waitForRecipientCount,
   memberEvents,
   anchorCandidates,
   users,
   loadingUsers,
+  usersLoadFailed,
   userTags,
   loadingUserTags,
   userTagsError = null,
@@ -168,21 +190,21 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     initialGroup?.sendAtAbsolute ?? new Date().toISOString();
   const initialSendAtHours =
     initialGroup?.sendAtSecondsFromDeadline != null
-      ? initialGroup.sendAtSecondsFromDeadline / 3600
+      ? initialGroup.sendAtSecondsFromDeadline / secondsInHour
       : 0;
   const initialRelativeRangeStartHours =
     initialGroup?.relative_range_start_seconds_from_deadline != null
-      ? initialGroup.relative_range_start_seconds_from_deadline / 3600
+      ? initialGroup.relative_range_start_seconds_from_deadline / secondsInHour
       : 0;
   const initialRelativeRangeEndHours =
     initialGroup?.relative_range_end_seconds_from_deadline != null
-      ? initialGroup.relative_range_end_seconds_from_deadline / 3600
+      ? initialGroup.relative_range_end_seconds_from_deadline / secondsInHour
       : 0;
   const initialRangeStart =
     initialGroup?.send_range_start ?? new Date().toISOString();
   const initialRangeEnd =
     initialGroup?.send_range_end ??
-    new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    new Date(Date.now() + milliseconds({ hours: 1 })).toISOString();
   const [timingMode, setTimingMode] =
     useState<ReminderGroupTimingMode>(initialTimingMode);
   const [sendAtAbsolute, setSendAtAbsolute] = useState<string>(
@@ -241,8 +263,10 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
   }, [timingMode, relativeRangeStartHours, relativeRangeEndHours]);
 
   const [tentativePlans, setTentativePlans] = useState<
-    PreviewNotificationPlanDto[]
-  >([]);
+    PreviewNotificationPlanDto[] | null
+  >(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewAttempt, setPreviewAttempt] = useState(0);
 
   const [emailSubject, setEmailSubject] = useState<string>(
     initialValues.reminderGroup?.emailSubject ?? defaultEmailSubject,
@@ -276,31 +300,12 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
   const [localError, setLocalError] = useState<string | null>(null);
   const initialSnapshotRef = useRef<string>("");
 
-  const [previewingEmail1Task, setPreviewingEmail1Task] = useState(false);
-  const [previewEmail1TaskHtml, setPreviewEmail1TaskHtml] = useState<
-    string | null
-  >(null);
-  const [previewEmail1TaskSubject, setPreviewEmail1TaskSubject] = useState<
-    string | null
-  >(null);
-
-  const [previewingEmail2Task, setPreviewingEmail2Task] = useState(false);
-  const [previewEmail2TaskHtml, setPreviewEmail2TaskHtml] = useState<
-    string | null
-  >(null);
-  const [previewEmail2TaskSubject, setPreviewEmail2TaskSubject] = useState<
-    string | null
-  >(null);
-
-  const [previewingText1Task, setPreviewingText1Task] = useState(false);
-  const [previewText1Task, setPreviewText1Task] = useState<string | null>(null);
-  const [previewingText2Task, setPreviewingText2Task] = useState(false);
-  const [previewText2Task, setPreviewText2Task] = useState<string | null>(null);
-
-  const [previewingPushTask, setPreviewingPushTask] = useState(false);
-  const [previewPushTask, setPreviewPushTask] = useState<string | null>(null);
-  const [previewingPush2Task, setPreviewingPush2Task] = useState(false);
-  const [previewPush2Task, setPreviewPush2Task] = useState<string | null>(null);
+  const [emailPreviewTaskCount, setEmailPreviewTaskCount] =
+    useState<PreviewTaskCount | null>(null);
+  const [textPreviewTaskCount, setTextPreviewTaskCount] =
+    useState<PreviewTaskCount | null>(null);
+  const [pushPreviewTaskCount, setPushPreviewTaskCount] =
+    useState<PreviewTaskCount | null>(null);
 
   const computedInitialSnapshot = useMemo(() => {
     const userIds = [...initialValues.users.map((user) => user.id)].sort(
@@ -334,6 +339,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
 
   useEffect(() => {
     if (!selectedEventId) {
+      setTentativePlans(null);
       return;
     }
     if (cohortType === "tag" && !selectedTagId) {
@@ -350,62 +356,76 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
       return;
     }
 
-    const sendAtSecondsFromDeadline = sendAtHoursFromDeadline * 3600;
-    const relativeRangeStartSeconds = relativeRangeStartHours * 3600;
-    const relativeRangeEndSeconds = relativeRangeEndHours * 3600;
+    const sendAtSecondsFromDeadline = sendAtHoursFromDeadline * secondsInHour;
+    const relativeRangeStartSeconds = relativeRangeStartHours * secondsInHour;
+    const relativeRangeEndSeconds = relativeRangeEndHours * secondsInHour;
 
-    actionsTentativePlansForGroupAdmin({
-      path: {
-        eventId: selectedEventId,
-      },
-      body: {
-        name,
-        cohortType,
-        emailSubject,
-        emailMessage,
-        textMessage,
-        pushMessage,
-        timingMode,
-        useSuiteTaskCount,
-        userTagId:
-          cohortType === "tag" ? (selectedTagId ?? undefined) : undefined,
-        userIds: cohortType === "custom" ? selectedUserIds : undefined,
-        sendAtAbsolute: timingMode === "absolute" ? sendAtAbsolute : undefined,
-        sendAtSecondsFromDeadline:
-          timingMode === "from_deadline"
-            ? (sendAtSecondsFromDeadline ?? 0)
-            : undefined,
-        send_range_start:
-          timingMode === "within_range" ? sendRangeStart : undefined,
-        send_range_end:
-          timingMode === "within_range" ? sendRangeEnd : undefined,
-        relative_range_start_seconds_from_deadline:
-          timingMode === "within_relative_range"
-            ? relativeRangeStartSeconds
-            : undefined,
-        relative_range_end_seconds_from_deadline:
-          timingMode === "within_relative_range"
-            ? relativeRangeEndSeconds
-            : undefined,
-        excludeOptionalActions,
-        excludePreviouslyNotified: effectiveExcludePreviouslyNotified,
-        timingAnchorEventId: effectiveTimingAnchorEventId,
-      },
-    }).then((response) => {
-      if (response.error) {
-        setLocalError(
-          errorMessage({
-            error: response.error,
-            fallback: "Unable to get tentative plans",
-          }),
-        );
-        setTentativePlans([]);
-        return;
-      }
-      setLocalError(null);
-      setTentativePlans(response.data ?? []);
-    });
+    setTentativePlans(null);
+    setPreviewError(null);
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      R.fromPromise(
+        actionRemindersTentativePlansForGroupAdmin({
+          path: {
+            eventId: selectedEventId,
+          },
+          body: {
+            name,
+            cohortType,
+            emailSubject,
+            emailMessage,
+            textMessage,
+            pushMessage,
+            timingMode,
+            useSuiteTaskCount,
+            suiteId,
+            userTagId:
+              cohortType === "tag" ? (selectedTagId ?? undefined) : undefined,
+            userIds: cohortType === "custom" ? selectedUserIds : undefined,
+            sendAtAbsolute:
+              timingMode === "absolute" ? sendAtAbsolute : undefined,
+            sendAtSecondsFromDeadline:
+              timingMode === "from_deadline"
+                ? (sendAtSecondsFromDeadline ?? 0)
+                : undefined,
+            send_range_start:
+              timingMode === "within_range" ? sendRangeStart : undefined,
+            send_range_end:
+              timingMode === "within_range" ? sendRangeEnd : undefined,
+            relative_range_start_seconds_from_deadline:
+              timingMode === "within_relative_range"
+                ? relativeRangeStartSeconds
+                : undefined,
+            relative_range_end_seconds_from_deadline:
+              timingMode === "within_relative_range"
+                ? relativeRangeEndSeconds
+                : undefined,
+            excludeOptionalActions,
+            excludePreviouslyNotified: effectiveExcludePreviouslyNotified,
+            timingAnchorEventId: effectiveTimingAnchorEventId,
+          },
+        }),
+      ).then((result) => {
+        if (cancelled) return;
+        if (!result.ok || result.value.error) {
+          setPreviewError(
+            errorMessage({
+              error: result.ok ? result.value.error : result.error,
+              fallback: "Unable to get tentative plans",
+            }),
+          );
+          return;
+        }
+        setLocalError(null);
+        setTentativePlans(result.value.data ?? []);
+      });
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [
+    suiteId,
     selectedEventId,
     name,
     cohortType,
@@ -426,158 +446,27 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     relativeRangeStartHours,
     relativeRangeEndHours,
     useSuiteTaskCount,
+    previewAttempt,
   ]);
 
-  useEffect(() => {
-    if (previewingEmail1Task) {
-      actionsPreviewEmailHtmlAdmin({
-        path: {
-          eventId: selectedEventId ?? 0,
-        },
-        body: {
-          emailMessage,
-          emailSubject,
-          taskCount: 1,
-        },
-      }).then((response) => {
-        if (response.error) {
-          setLocalError(
-            errorMessage({
-              error: response.error,
-              fallback: "Unable to preview email",
-            }),
-          );
-          return;
-        }
-        setPreviewEmail1TaskHtml(response.data?.html ?? "");
-        setPreviewEmail1TaskSubject(response.data?.subject ?? "");
-      });
-    }
-    if (previewingEmail2Task) {
-      actionsPreviewEmailHtmlAdmin({
-        path: {
-          eventId: selectedEventId ?? 0,
-        },
-        body: {
-          emailMessage,
-          emailSubject,
-          taskCount: 2,
-        },
-      }).then((response) => {
-        if (response.error) {
-          setLocalError(
-            errorMessage({
-              error: response.error,
-              fallback: "Unable to preview email",
-            }),
-          );
-          return;
-        }
-        setPreviewEmail2TaskHtml(response.data?.html ?? "");
-        setPreviewEmail2TaskSubject(response.data?.subject ?? "");
-      });
-    }
-  }, [
-    previewingEmail1Task,
-    previewingEmail2Task,
-    emailMessage,
-    emailSubject,
+  const emailPreview = useReminderEmailPreviewAdmin(
     selectedEventId,
-  ]);
-
-  useEffect(() => {
-    if (previewingText1Task) {
-      actionsPreviewTextMessageAdmin({
-        path: {
-          eventId: selectedEventId ?? 0,
-        },
-        body: {
-          textMessage,
-          taskCount: 1,
-        },
-      }).then((response) => {
-        if (response.error) {
-          setLocalError(
-            errorMessage({
-              error: response.error,
-              fallback: "Unable to preview text message",
-            }),
-          );
-          return;
-        }
-        setPreviewText1Task(response.data?.text ?? "");
-      });
-    }
-    if (previewingText2Task) {
-      actionsPreviewTextMessageAdmin({
-        path: {
-          eventId: selectedEventId ?? 0,
-        },
-        body: {
-          textMessage,
-          taskCount: 2,
-        },
-      }).then((response) => {
-        if (response.error) {
-          setLocalError(
-            errorMessage({
-              error: response.error,
-              fallback: "Unable to preview text message",
-            }),
-          );
-          return;
-        }
-        setPreviewText2Task(response.data?.text ?? "");
-      });
-    }
-  }, [previewingText1Task, previewingText2Task, textMessage, selectedEventId]);
-
-  useEffect(() => {
-    if (previewingPushTask) {
-      actionsPreviewTextMessageAdmin({
-        path: {
-          eventId: selectedEventId ?? 0,
-        },
-        body: {
-          textMessage: pushMessage,
-          taskCount: 1,
-        },
-      }).then((response) => {
-        if (response.error) {
-          setLocalError(
-            errorMessage({
-              error: response.error,
-              fallback: "Unable to preview text message",
-            }),
-          );
-          return;
-        }
-        setPreviewPushTask(response.data?.text ?? "");
-      });
-    }
-    if (previewingPush2Task) {
-      actionsPreviewTextMessageAdmin({
-        path: {
-          eventId: selectedEventId ?? 0,
-        },
-        body: {
-          textMessage: pushMessage,
-          taskCount: 2,
-        },
-      }).then((response) => {
-        if (response.error) {
-          setLocalError(
-            errorMessage({
-              error: response.error,
-              fallback: "Unable to preview push message",
-            }),
-          );
-          return;
-        }
-        setPreviewPush2Task(response.data?.text ?? "");
-      });
-    }
-  }, [previewingPushTask, previewingPush2Task, pushMessage, selectedEventId]);
+    emailPreviewTaskCount === null
+      ? null
+      : { emailMessage, emailSubject, taskCount: emailPreviewTaskCount },
+  );
+  const textPreview = useReminderTextPreviewAdmin(
+    selectedEventId,
+    textPreviewTaskCount === null
+      ? null
+      : { textMessage, taskCount: textPreviewTaskCount },
+  );
+  const pushPreview = useReminderTextPreviewAdmin(
+    selectedEventId,
+    pushPreviewTaskCount === null
+      ? null
+      : { textMessage: pushMessage, taskCount: pushPreviewTaskCount },
+  );
 
   useEffect(() => {
     if (computedInitialSnapshot === initialSnapshotRef.current) {
@@ -592,22 +481,22 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     setSendAtAbsolute(nextGroup?.sendAtAbsolute ?? new Date().toISOString());
     setSendAtHoursFromDeadline(
       nextGroup?.sendAtSecondsFromDeadline != null
-        ? nextGroup.sendAtSecondsFromDeadline / 3600
+        ? nextGroup.sendAtSecondsFromDeadline / secondsInHour
         : 0,
     );
     setSendRangeStart(nextGroup?.send_range_start ?? new Date().toISOString());
     setSendRangeEnd(
       nextGroup?.send_range_end ??
-        new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        new Date(Date.now() + milliseconds({ hours: 1 })).toISOString(),
     );
     setRelativeRangeStartHours(
       nextGroup?.relative_range_start_seconds_from_deadline != null
-        ? nextGroup.relative_range_start_seconds_from_deadline / 3600
+        ? nextGroup.relative_range_start_seconds_from_deadline / secondsInHour
         : 0,
     );
     setRelativeRangeEndHours(
       nextGroup?.relative_range_end_seconds_from_deadline != null
-        ? nextGroup.relative_range_end_seconds_from_deadline / 3600
+        ? nextGroup.relative_range_end_seconds_from_deadline / secondsInHour
         : 0,
     );
     setName(initialValues.reminderGroup?.name ?? "");
@@ -738,9 +627,9 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
 
     const userIds = cohortType === "custom" ? selectedUserIds : undefined;
 
-    const sendAtSecondsFromDeadline = sendAtHoursFromDeadline * 3600;
-    const relativeRangeStartSeconds = relativeRangeStartHours * 3600;
-    const relativeRangeEndSeconds = relativeRangeEndHours * 3600;
+    const sendAtSecondsFromDeadline = sendAtHoursFromDeadline * secondsInHour;
+    const relativeRangeStartSeconds = relativeRangeStartHours * secondsInHour;
+    const relativeRangeEndSeconds = relativeRangeEndHours * secondsInHour;
     const payload = {
       name,
       cohortType,
@@ -779,14 +668,14 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
 
     console.log(payload);
 
-    await onSubmit(payload, tentativePlans.length);
+    await onSubmit(payload, tentativePlans?.length ?? null);
   };
 
   const combinedError = localError ?? serverError ?? null;
 
   const [keywordsHelpExpanded, setKeywordsHelpExpanded] = useState(false);
 
-  const sortedPlans = tentativePlans.sort(
+  const sortedPlans = (tentativePlans ?? []).sort(
     (a, b) =>
       new Date(a.scheduledFor).getTime() - new Date(b.scheduledFor).getTime(),
   );
@@ -796,35 +685,23 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     typeof window !== "undefined" && window.location.href.includes("localhost")
   );
 
-  const handlePreviewEmail2Task = async () => {
-    setPreviewingEmail2Task(!previewingEmail2Task);
-    setPreviewingEmail1Task(false);
-  };
+  const handlePreviewEmail2Task = () =>
+    setEmailPreviewTaskCount(toggleTaskCount(2));
 
-  const handlePreviewEmail1Task = async () => {
-    setPreviewingEmail1Task(!previewingEmail1Task);
-    setPreviewingEmail2Task(false);
-  };
+  const handlePreviewEmail1Task = () =>
+    setEmailPreviewTaskCount(toggleTaskCount(1));
 
-  const handlePreviewText1Task = async () => {
-    setPreviewingText1Task(!previewingText1Task);
-    setPreviewingText2Task(false);
-  };
+  const handlePreviewText1Task = () =>
+    setTextPreviewTaskCount(toggleTaskCount(1));
 
-  const handlePreviewText2Task = async () => {
-    setPreviewingText2Task(!previewingText2Task);
-    setPreviewingText1Task(false);
-  };
+  const handlePreviewText2Task = () =>
+    setTextPreviewTaskCount(toggleTaskCount(2));
 
-  const handlePreviewPushTask = async () => {
-    setPreviewingPushTask(!previewingPushTask);
-    setPreviewingPush2Task(false);
-  };
+  const handlePreviewPushTask = () =>
+    setPushPreviewTaskCount(toggleTaskCount(1));
 
-  const handlePreviewPush2Task = async () => {
-    setPreviewingPush2Task(!previewingPush2Task);
-    setPreviewingPushTask(false);
-  };
+  const handlePreviewPush2Task = () =>
+    setPushPreviewTaskCount(toggleTaskCount(2));
 
   // A set anchor that is no longer among the candidates (the dependency was
   // removed from the cohort expression, or the fetch failed) would otherwise
@@ -1098,6 +975,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           selectedUserIds={selectedUserIds}
           onChange={setSelectedUserIds}
           loading={loadingUsers}
+          loadFailed={usersLoadFailed}
         />
       )}
 
@@ -1122,7 +1000,11 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           <Button
             onClick={handlePreviewEmail1Task}
             size={"small"}
-            color={previewingEmail1Task ? ButtonColor.Stone : ButtonColor.Light}
+            color={
+              emailPreviewTaskCount === 1
+                ? ButtonColor.Stone
+                : ButtonColor.Light
+            }
             className="!px-2 !py-1"
           >
             Preview Email (1 task)
@@ -1130,24 +1012,24 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           <Button
             onClick={handlePreviewEmail2Task}
             size={"small"}
-            color={previewingEmail2Task ? ButtonColor.Stone : ButtonColor.Light}
+            color={
+              emailPreviewTaskCount === 2
+                ? ButtonColor.Stone
+                : ButtonColor.Light
+            }
             className="!px-2 !py-1"
           >
             Preview Email (2 tasks)
           </Button>
         </div>
-        {previewingEmail1Task ? (
+        {emailPreviewTaskCount !== null ? (
           <Card className="p-4">
-            <p className="font-bold mb-4">{previewEmail1TaskSubject}</p>
+            <ReminderPreviewError error={emailPreview.error} />
+            <p className="font-bold mb-4">{emailPreview.data?.subject}</p>
             <div
-              dangerouslySetInnerHTML={{ __html: previewEmail1TaskHtml ?? "" }}
-            />
-          </Card>
-        ) : previewingEmail2Task ? (
-          <Card className="p-4">
-            <p className="font-bold mb-4">{previewEmail2TaskSubject}</p>
-            <div
-              dangerouslySetInnerHTML={{ __html: previewEmail2TaskHtml ?? "" }}
+              dangerouslySetInnerHTML={{
+                __html: emailPreview.data?.html ?? "",
+              }}
             />
           </Card>
         ) : (
@@ -1169,7 +1051,9 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           <Button
             onClick={handlePreviewText1Task}
             size={"small"}
-            color={previewingText1Task ? ButtonColor.Stone : ButtonColor.Light}
+            color={
+              textPreviewTaskCount === 1 ? ButtonColor.Stone : ButtonColor.Light
+            }
             className="!px-2 !py-1"
           >
             Preview Text (1 task)
@@ -1177,25 +1061,20 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           <Button
             onClick={handlePreviewText2Task}
             size={"small"}
-            color={previewingText2Task ? ButtonColor.Stone : ButtonColor.Light}
+            color={
+              textPreviewTaskCount === 2 ? ButtonColor.Stone : ButtonColor.Light
+            }
             className="!px-2 !py-1"
           >
             Preview Text (2 tasks)
           </Button>
         </div>
-        {previewingText1Task ? (
+        {textPreviewTaskCount !== null ? (
           <Card className="p-4">
+            <ReminderPreviewError error={textPreview.error} />
             <p
               dangerouslySetInnerHTML={{
-                __html: previewText1Task?.replace(/\n/g, "<br>") ?? "",
-              }}
-            />
-          </Card>
-        ) : previewingText2Task ? (
-          <Card className="p-4">
-            <p
-              dangerouslySetInnerHTML={{
-                __html: previewText2Task?.replace(/\n/g, "<br>") ?? "",
+                __html: textPreview.data?.replace(/\n/g, "<br>") ?? "",
               }}
             />
           </Card>
@@ -1217,7 +1096,9 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           <Button
             onClick={handlePreviewPushTask}
             size={"small"}
-            color={previewingPushTask ? ButtonColor.Stone : ButtonColor.Light}
+            color={
+              pushPreviewTaskCount === 1 ? ButtonColor.Stone : ButtonColor.Light
+            }
             className="!px-2 !py-1"
           >
             Preview Push (1 task)
@@ -1225,25 +1106,20 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           <Button
             onClick={handlePreviewPush2Task}
             size={"small"}
-            color={previewingPush2Task ? ButtonColor.Stone : ButtonColor.Light}
+            color={
+              pushPreviewTaskCount === 2 ? ButtonColor.Stone : ButtonColor.Light
+            }
             className="!px-2 !py-1"
           >
             Preview Push (2 tasks)
           </Button>
         </div>
-        {previewingPushTask ? (
+        {pushPreviewTaskCount !== null ? (
           <Card className="p-4">
+            <ReminderPreviewError error={pushPreview.error} />
             <p
               dangerouslySetInnerHTML={{
-                __html: previewPushTask?.replace(/\n/g, "<br>") ?? "",
-              }}
-            />
-          </Card>
-        ) : previewingPush2Task ? (
-          <Card className="p-4">
-            <p
-              dangerouslySetInnerHTML={{
-                __html: previewPush2Task?.replace(/\n/g, "<br>") ?? "",
+                __html: pushPreview.data?.replace(/\n/g, "<br>") ?? "",
               }}
             />
           </Card>
@@ -1433,7 +1309,26 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
       )}
 
       <div className="flex justify-end gap-3">
-        {tentativePlans.length > 0 && (
+        {tentativePlans === null &&
+          (previewError ? (
+            <div className="px-4 py-2 self-start flex items-center gap-2 text-sm text-red-600">
+              <p>{previewError}</p>
+              <button
+                type="button"
+                onClick={() => setPreviewAttempt((attempt) => attempt + 1)}
+                aria-label="Retry recipient count"
+                title="Retry recipient count"
+                className="shrink-0 rounded p-1 hover:bg-red-50"
+              >
+                <RotateCw className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <p className="px-4 py-2 self-start text-sm text-zinc-500">
+              Counting recipients…
+            </p>
+          ))}
+        {tentativePlans !== null && tentativePlans.length > 0 && (
           <p
             className={cn(
               "px-4 py-2 rounded self-start",
@@ -1470,7 +1365,11 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
         )}
         <Button
           type="submit"
-          disabled={submitting || loadingUsers}
+          disabled={
+            submitting ||
+            loadingUsers ||
+            (waitForRecipientCount && tentativePlans === null)
+          }
           color={ButtonColor.Black}
           ref={anchor}
           className="px-4 py-2"

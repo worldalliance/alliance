@@ -3,117 +3,47 @@ import {
   COMMUNITY_NAME_MAX_LENGTH,
 } from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
-import type {
-  CommunityDto,
-  CreateOnetimeInviteDto,
-  OnetimeInviteDto,
-} from "@alliance/shared/client";
-import {
-  communityCreateCommunity,
-  userCreateOnetimeInvite,
-} from "@alliance/shared/client";
-import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
+import { NEW_COMMUNITY_SETTINGS } from "@alliance/shared/lib/constants";
 import { onetimeInviteCreation } from "@alliance/shared/lib/copy";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
-import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
-import { setStringAsync as setClipboardStringAsync } from "expo-clipboard";
-import { ChevronDown, ChevronRight } from "lucide-react-native";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useInvitePlacement } from "@alliance/shared/lib/useInvitePlacement";
 import {
-  Alert,
-  Linking,
-  ScrollView,
-  TouchableOpacity,
-  View,
-} from "react-native";
+  CREATE_GROUP_SESSION_EXPIRED,
+  useMyCommunities,
+} from "@alliance/shared/lib/useMyCommunities";
+import { useOnetimeInvitesOverview } from "@alliance/shared/lib/useOnetimeInvitesOverview";
+import { ChevronRight } from "lucide-react-native";
+import { useCallback, useState } from "react";
+import { Alert, Linking, TouchableOpacity, View } from "react-native";
 import { useAuth } from "../lib/AuthContext";
-import { getBaseUrl } from "../lib/config";
+import { copyToClipboard } from "../lib/clipboard";
+import { getSiteUrl } from "../lib/config";
 import { colors } from "../lib/style/colors";
 import AppMarkdownWrapper from "./AppMarkdownWrapper";
-import FormModal from "./forms/FormModal";
+import InviteGroupSelect from "./InviteGroupSelect";
 import Button, { ButtonColor } from "./system/Button";
 import Card, { CardStyle } from "./system/Card";
 import CharacterLimitNotice from "./system/CharacterLimitNotice";
 import Input from "./system/Input";
 import Text, { FontWeight } from "./system/Text";
 
-type PlacementSelection =
-  | { kind: "community"; id: number }
-  | { kind: "assign" }
-  | { kind: "new" };
-
 type InviteFormProps = {
-  onInviteCreated: (invite: OnetimeInviteDto) => void;
+  onInviteCreated: () => void;
 };
 
 export default function InviteForm({ onInviteCreated }: InviteFormProps) {
   const { user } = useAuth();
-  const [placement, setPlacement] = useState<PlacementSelection>({
-    kind: "new",
-  });
   const [inviteeName, setInviteeName] = useState("");
-  const [creatingInvite, setCreatingInvite] = useState(false);
-  const { communities, refreshCommunities } = useMyCommunities({});
-  const [groupSelectModalOpen, setGroupSelectModalOpen] = useState(false);
+  const { createInvite, isCreatingInvite } = useOnetimeInvitesOverview();
+  const { communities, createCommunity } = useMyCommunities({});
+  const { placement, setPlacement, leaderCommunities, selectedCommunity } =
+    useInvitePlacement(communities, user?.id);
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupDescription, setNewGroupDescription] = useState("");
   const [creatingGroup, setCreatingGroup] = useState(false);
 
-  // Default placement to a group the user leads. Runs once so it never clobbers
-  // a manual selection on a later refetch.
-  const didInitPlacement = useRef(false);
-  useEffect(() => {
-    if (didInitPlacement.current || communities.length === 0 || !user) {
-      return;
-    }
-    didInitPlacement.current = true;
-    const led = communities.find((community: CommunityDto) =>
-      community.leaders.some((leader: { id: number }) => leader.id === user.id),
-    );
-    setPlacement(led ? { kind: "community", id: led.id } : { kind: "new" });
-  }, [communities, user]);
-
-  const leaderCommunities = useMemo(() => {
-    if (!user) return [] as CommunityDto[];
-    return communities.filter((community: CommunityDto) =>
-      community.leaders?.some(
-        (leader: { id: number }) => leader.id === user.id,
-      ),
-    );
-  }, [communities, user]);
-
   const isLeader = leaderCommunities.length > 0;
-
-  const leaderCommunitiesById = useMemo(
-    () => new Map(leaderCommunities.map((c) => [c.id, c])),
-    [leaderCommunities],
-  );
-
-  const selectedCommunity = useMemo(() => {
-    if (placement.kind !== "community") return null;
-    return leaderCommunitiesById.get(placement.id) ?? null;
-  }, [leaderCommunitiesById, placement]);
-
-  useEffect(() => {
-    if (
-      placement.kind === "community" &&
-      !leaderCommunitiesById.has(placement.id)
-    ) {
-      setPlacement(
-        leaderCommunities[0]
-          ? { kind: "community", id: leaderCommunities[0].id }
-          : { kind: "new" },
-      );
-    }
-  }, [placement, leaderCommunities, leaderCommunitiesById]);
-
-  const groupSelectLabel = useMemo(() => {
-    if (placement.kind === "assign")
-      return onetimeInviteCreation.assignToOpenGroup;
-    if (placement.kind === "new")
-      return onetimeInviteCreation.createNewGroupOption;
-    return selectedCommunity?.name ?? "Select a group";
-  }, [placement, selectedCommunity]);
 
   const handleCreateInvite = useCallback(
     async (communityId: number | null) => {
@@ -122,41 +52,33 @@ export default function InviteForm({ onInviteCreated }: InviteFormProps) {
         return;
       }
 
-      setCreatingInvite(true);
       try {
-        const body: CreateOnetimeInviteDto = {
+        const invite = await createInvite({
           invitee: inviteeName.trim(),
           ...(communityId !== null && { communityId }),
-        };
-
-        const response = await userCreateOnetimeInvite({ body });
-        if (response.data) {
-          try {
-            await setClipboardStringAsync(
-              getOnetimeInviteSignupUrl(getBaseUrl(), response.data.code),
-            );
-            Alert.alert("Success", "Invite created and copied to clipboard.");
-          } catch {
-            Alert.alert(
-              "Invite created",
-              "The invite link could not be copied to the clipboard.",
-            );
-          }
-          setInviteeName("");
-          onInviteCreated(response.data);
+        });
+        if (
+          await copyToClipboard(
+            getOnetimeInviteSignupUrl(getSiteUrl(), invite.code),
+          )
+        ) {
+          Alert.alert("Success", "Invite created and copied to clipboard.");
         } else {
           Alert.alert(
-            "Error",
-            `Failed to create invite: ${response.response?.statusText || "Unknown error"}`,
+            "Invite created",
+            "The invite link could not be copied to the clipboard.",
           );
         }
-      } catch {
-        Alert.alert("Error", "Failed to create invite");
-      } finally {
-        setCreatingInvite(false);
+        setInviteeName("");
+        onInviteCreated();
+      } catch (error) {
+        Alert.alert(
+          "Error",
+          `Failed to create invite: ${errorMessage({ error, fallback: "Unknown error" })}`,
+        );
       }
     },
-    [inviteeName, onInviteCreated],
+    [createInvite, inviteeName, onInviteCreated],
   );
 
   const handleCreateGroup = useCallback(async () => {
@@ -167,36 +89,26 @@ export default function InviteForm({ onInviteCreated }: InviteFormProps) {
     }
     setCreatingGroup(true);
     try {
-      const response = await communityCreateCommunity({
-        body: {
-          name,
-          description: newGroupDescription.trim() || "",
-          public: false,
-          allowMemberInvites: true,
-          allowStaffAssignments: true,
-          maxCapacity: GROUP_MAX_CAPACITY_DEFAULT,
-        },
+      const community = await createCommunity({
+        name,
+        description: newGroupDescription.trim(),
+        ...NEW_COMMUNITY_SETTINGS,
       });
-      if (response.data) {
-        const community = response.data;
-        setNewGroupName("");
-        setNewGroupDescription("");
-        await refreshCommunities();
-        setPlacement({ kind: "community", id: community.id });
-        if (inviteeName.trim()) {
-          await handleCreateInvite(community.id);
-        }
-      } else {
-        Alert.alert(
-          "Error",
-          errorMessage({
-            error: response.error,
-            fallback: "Failed to create group.",
-          }),
-        );
+      setNewGroupName("");
+      setNewGroupDescription("");
+      setPlacement({ kind: "community", id: community.id });
+      if (inviteeName.trim()) {
+        await handleCreateInvite(community.id);
       }
-    } catch {
-      Alert.alert("Error", "Failed to create group.");
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        thrownRefusalMessage({
+          error,
+          fallback: "Failed to create group.",
+          sessionExpired: CREATE_GROUP_SESSION_EXPIRED,
+        }),
+      );
     } finally {
       setCreatingGroup(false);
     }
@@ -204,8 +116,9 @@ export default function InviteForm({ onInviteCreated }: InviteFormProps) {
     newGroupName,
     newGroupDescription,
     inviteeName,
-    refreshCommunities,
+    createCommunity,
     handleCreateInvite,
+    setPlacement,
   ]);
 
   return (
@@ -225,7 +138,7 @@ export default function InviteForm({ onInviteCreated }: InviteFormProps) {
             <TouchableOpacity
               onPress={() => {
                 const url =
-                  getOnetimeInviteSignupUrl(getBaseUrl(), user.referralCode!) +
+                  getOnetimeInviteSignupUrl(getSiteUrl(), user.referralCode!) +
                   "&preview=1";
                 Linking.openURL(url);
               }}
@@ -249,90 +162,11 @@ export default function InviteForm({ onInviteCreated }: InviteFormProps) {
           />
         </View>
 
-        {/* Group placement section */}
-        <View className="gap-3">
-          <Text
-            className="text-base text-zinc-900"
-            weight={FontWeight.Semibold}
-          >
-            {onetimeInviteCreation.responsible.leader.title}
-          </Text>
-          <Text className="text-sm text-zinc-500">
-            {onetimeInviteCreation.groupContext}
-          </Text>
-          <TouchableOpacity
-            onPress={() => setGroupSelectModalOpen(true)}
-            activeOpacity={0.85}
-            className="w-full rounded-lg border border-zinc-200 bg-white flex-row items-center justify-between px-3 py-3"
-          >
-            <Text className="text-base text-zinc-900 flex-1" numberOfLines={1}>
-              {groupSelectLabel}
-            </Text>
-            <ChevronDown size={18} color={colors.text.icon} />
-          </TouchableOpacity>
-
-          <FormModal
-            visible={groupSelectModalOpen}
-            onClose={() => setGroupSelectModalOpen(false)}
-          >
-            <View className="flex-row items-center justify-between mb-3">
-              <Text
-                className="text-lg text-zinc-900"
-                weight={FontWeight.Semibold}
-              >
-                {onetimeInviteCreation.responsible.leader.title}
-              </Text>
-              <TouchableOpacity onPress={() => setGroupSelectModalOpen(false)}>
-                <Text className="text-blue-600" weight={FontWeight.Medium}>
-                  Close
-                </Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView className="max-h-72">
-              <View className="gap-0">
-                {leaderCommunities.map((community) => (
-                  <TouchableOpacity
-                    key={community.id}
-                    onPress={() => {
-                      setPlacement({ kind: "community", id: community.id });
-                      setGroupSelectModalOpen(false);
-                    }}
-                    className="py-3 border-b border-zinc-100"
-                    activeOpacity={0.7}
-                  >
-                    <Text className="text-base text-zinc-900">
-                      {community.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-                <TouchableOpacity
-                  onPress={() => {
-                    setPlacement({ kind: "assign" });
-                    setGroupSelectModalOpen(false);
-                  }}
-                  className="py-3 border-b border-zinc-100"
-                  activeOpacity={0.7}
-                >
-                  <Text className="text-base text-zinc-900">
-                    {onetimeInviteCreation.assignToOpenGroup}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => {
-                    setPlacement({ kind: "new" });
-                    setGroupSelectModalOpen(false);
-                  }}
-                  className="py-3"
-                  activeOpacity={0.7}
-                >
-                  <Text className="text-base text-zinc-900">
-                    {onetimeInviteCreation.createNewGroupOption}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </FormModal>
-        </View>
+        <InviteGroupSelect
+          placement={placement}
+          onChange={setPlacement}
+          leaderCommunities={leaderCommunities}
+        />
 
         {/* Assign to open group */}
         {placement.kind === "assign" && (
@@ -340,9 +174,9 @@ export default function InviteForm({ onInviteCreated }: InviteFormProps) {
             <Button
               onPress={() => handleCreateInvite(null)}
               color={ButtonColor.Black}
-              title={creatingInvite ? "Creating…" : "Create invite"}
-              disabled={creatingInvite || !inviteeName.trim()}
-              loading={creatingInvite}
+              title={isCreatingInvite ? "Creating…" : "Create invite"}
+              disabled={isCreatingInvite || !inviteeName.trim()}
+              loading={isCreatingInvite}
             />
           </View>
         )}
@@ -429,9 +263,9 @@ export default function InviteForm({ onInviteCreated }: InviteFormProps) {
             <Button
               onPress={() => handleCreateInvite(placement.id)}
               color={ButtonColor.Black}
-              title={creatingInvite ? "Creating…" : "Create invite"}
-              disabled={creatingInvite || !inviteeName.trim()}
-              loading={creatingInvite}
+              title={isCreatingInvite ? "Creating…" : "Create invite"}
+              disabled={isCreatingInvite || !inviteeName.trim()}
+              loading={isCreatingInvite}
             />
           </View>
         )}

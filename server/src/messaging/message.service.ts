@@ -1,13 +1,12 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-} from "@nestjs/common";
+import { hasContent } from "@alliance/common/editableContent";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
+import { assertLive, updateLive } from "src/datasources/soft-delete";
 import { ImagesService } from "src/images/images.service";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
+import { ConversationService } from "./conversation.service";
 import {
   ConversationMessagesQueryDto,
   CreateMessageDto,
@@ -15,53 +14,48 @@ import {
 } from "./dto/messaging.dto";
 import { Conversation } from "./entities/conversation.entity";
 import { Message } from "./entities/message.entity";
-import { Participant, ParticipantState } from "./entities/participant.entity";
+import {
+  loadedParticipantConversation,
+  Participant,
+  ParticipantState,
+} from "./entities/participant.entity";
 import { MessagingEvents } from "./messaging.events";
+import { notInConversation } from "./not-in-conversation";
 
 @Injectable()
 export class MessageService {
   constructor(
     @InjectRepository(Message)
     private readonly messageRepository: Repository<Message>,
-    @InjectRepository(Conversation)
-    private readonly conversationRepository: Repository<Conversation>,
-    @InjectRepository(Participant)
-    private readonly participantRepository: Repository<Participant>,
     private readonly eventEmitter: EventEmitter2,
     private readonly imagesService: ImagesService,
+    private readonly conversationService: ConversationService,
   ) {}
 
   async sendMessage(
     userId: number,
     dto: CreateMessageDto,
   ): Promise<MessageDto> {
-    const participant = await this.participantRepository.findOne({
-      where: {
-        conversation: { id: dto.conversationId },
-        user: { id: userId },
-      },
+    const participant = await this.conversationService.getParticipantOrFail({
+      conversationId: dto.conversationId,
+      userId,
       relations: { conversation: true },
     });
-
-    if (!participant) {
-      throw new ForbiddenException("You are not part of this conversation.");
-    }
+    const conversation = loadedParticipantConversation(participant);
 
     if (participant.state !== ParticipantState.Joined) {
       participant.state = ParticipantState.Joined;
       participant.joinedAt = new Date();
-      await this.participantRepository.save(participant);
     }
 
     let replyTo: Message | undefined;
     if (dto.replyToId) {
       replyTo =
         (await this.messageRepository.findOne({
-          where: { id: dto.replyToId },
-          relations: { conversation: true },
+          where: { id: dto.replyToId, conversation: { id: conversation.id } },
         })) ?? undefined;
 
-      if (!replyTo || replyTo.conversation.id !== participant.conversation.id) {
+      if (!replyTo) {
         throw new BadRequestException("Invalid reply target.");
       }
     }
@@ -69,7 +63,7 @@ export class MessageService {
     const trimmedBody = dto.body?.trim?.() ?? "";
     const attachments = await this.saveAttachments(dto.attachments);
 
-    if (!trimmedBody.length && attachments.length === 0) {
+    if (!hasContent({ body: trimmedBody, attachments })) {
       throw new BadRequestException(
         "Message must include text or at least one attachment.",
       );
@@ -79,16 +73,51 @@ export class MessageService {
       body: trimmedBody,
       attachments,
       author: { id: userId } as User,
-      conversation: participant.conversation,
+      conversation,
       replyTo,
     });
 
-    const savedMessage = await this.messageRepository.save(message);
-    participant.lastReadMessage = savedMessage;
-    await this.participantRepository.save(participant);
-    await this.conversationRepository.update(participant.conversation.id, {
-      updatedAt: new Date(),
-    });
+    // Holds what the message joins, so a removal committing meanwhile either
+    // waits for the message or makes this throw.
+    const savedMessage = await this.messageRepository.manager.transaction(
+      async (manager) => {
+        // In the order deletions lock in: an account before its messages,
+        // a conversation before its messages, and a message before the read
+        // cursors on it.
+        await assertLive(manager, {
+          rows: [
+            { target: User, id: userId },
+            { target: Conversation, id: conversation.id },
+          ],
+          gone: notInConversation,
+        });
+        if (replyTo) {
+          await assertLive(manager, {
+            rows: [{ target: Message, id: replyTo.id }],
+            gone: () => new BadRequestException("Invalid reply target."),
+          });
+        }
+        await assertLive(manager, {
+          rows: [{ target: Participant, id: participant.id }],
+          gone: notInConversation,
+        });
+
+        const saved = await manager.save(message);
+        await updateLive(manager, {
+          target: Participant,
+          id: participant.id,
+          changes: {
+            lastReadMessage: { id: saved.id },
+            state: participant.state,
+            joinedAt: participant.joinedAt,
+          },
+        });
+        await manager.update(Conversation, conversation.id, {
+          updatedAt: new Date(),
+        });
+        return saved;
+      },
+    );
 
     const hydratedMessage = await this.messageRepository.findOneOrFail({
       where: { id: savedMessage.id },
@@ -101,8 +130,7 @@ export class MessageService {
 
     const dtoMessage = new MessageDto({
       message: hydratedMessage,
-      conversationId:
-        hydratedMessage.conversation?.id ?? participant.conversation.id,
+      conversationId: hydratedMessage.conversation?.id ?? conversation.id,
     });
 
     this.eventEmitter.emit(MessagingEvents.MessageCreated, {
@@ -118,31 +146,22 @@ export class MessageService {
     conversationId: number,
     query: ConversationMessagesQueryDto,
   ): Promise<MessageDto[]> {
-    await this.assertParticipant(conversationId, userId);
-
-    const limit = Math.min(query.limit ?? 50, 100);
-    const qb = this.messageRepository
-      .createQueryBuilder("message")
-      .leftJoinAndSelect("message.author", "author")
-      .leftJoinAndSelect("message.replyTo", "replyTo")
-      .leftJoinAndSelect("replyTo.author", "replyToAuthor")
-      .where("message.conversationId = :conversationId", { conversationId })
-      .orderBy("message.createdAt", "DESC")
-      .take(limit);
-
-    if (query.before) {
-      qb.andWhere("message.createdAt < :before", {
-        before: new Date(query.before),
-      });
-    }
-
-    const messages = await qb.getMany();
-    return messages
-      .reverse()
-      .map((message) => new MessageDto({ message, conversationId }));
+    await this.conversationService.getParticipantOrFail({
+      conversationId,
+      userId,
+      relations: {},
+    });
+    return this.findConversationMessages(conversationId, query);
   }
 
   async getConversationMessagesForAdmin(
+    conversationId: number,
+    query: ConversationMessagesQueryDto,
+  ): Promise<MessageDto[]> {
+    return this.findConversationMessages(conversationId, query);
+  }
+
+  private async findConversationMessages(
     conversationId: number,
     query: ConversationMessagesQueryDto,
   ): Promise<MessageDto[]> {
@@ -166,22 +185,6 @@ export class MessageService {
     return messages
       .reverse()
       .map((message) => new MessageDto({ message, conversationId }));
-  }
-
-  private async assertParticipant(
-    conversationId: number,
-    userId: number,
-  ): Promise<void> {
-    const count = await this.participantRepository.count({
-      where: {
-        conversation: { id: conversationId },
-        user: { id: userId },
-      },
-    });
-
-    if (!count) {
-      throw new ForbiddenException("You are not part of this conversation.");
-    }
   }
 
   private async saveAttachments(

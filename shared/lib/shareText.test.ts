@@ -1,21 +1,8 @@
 import type { FormResponseDto } from "../client/types.gen";
 import { buildShareText } from "./shareText";
+import { makeFormResponse } from "./testFixtures";
 
 const URL = "https://example.com/actions/1?sid=share-abc";
-
-const makeFormResponse = (
-  overrides: Partial<FormResponseDto> = {},
-): FormResponseDto =>
-  ({
-    id: 1,
-    formId: 1,
-    answers: {},
-    visibilityValidatorResults: {},
-    publicAnswers: {},
-    createdAt: new Date().toISOString(),
-    schemaSnapshot: {},
-    ...overrides,
-  }) as FormResponseDto;
 
 describe("buildShareText name-token interpolation", () => {
   it("replaces #{first-name} with the first whitespace-delimited word", () => {

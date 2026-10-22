@@ -79,7 +79,10 @@ export default function UserActivityCard({
           Object.keys(activity.formResponseOutput.publicAnswers ?? {}).length >
             0 && (
             <View className="my-3">
-              <OutputRenderer submission={activity.formResponseOutput} />
+              <OutputRenderer
+                submission={activity.formResponseOutput}
+                submitterId={activity.user.id}
+              />
             </View>
           )}
 

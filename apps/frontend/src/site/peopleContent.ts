@@ -67,4 +67,20 @@ export const experts: Expert[] = [
     name: "Lou Moore",
     description: "VP Engineering, EVgo; Former CTO, Code for America",
   },
+  {
+    name: "Sam Abernethy",
+    description: "Climate scientist, Spark Climate Solutions",
+  },
+  {
+    name: "Joanna Nelson",
+    description: "Founder & CEO, LandSea Science",
+  },
+  {
+    name: "Katie Chess",
+    description: "Former rare plant botanist, USGS",
+  },
+  {
+    name: "Luke Kemp",
+    description: "Author and Research Affiliate, University of Cambridge",
+  },
 ];

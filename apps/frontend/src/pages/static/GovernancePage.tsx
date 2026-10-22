@@ -1,12 +1,7 @@
 import { cn } from "@alliance/shared/styles/util";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
 import { ApprovedBy } from "../../site/ApprovedBy";
-import {
-  GOVERNANCE_MARKDOWN_AFTER,
-  GOVERNANCE_MARKDOWN_BEFORE,
-} from "../../site/docContent";
-import { DocProse } from "../../site/DocProse";
-import { ContractCard } from "../../site/PageCards";
+import { GovernanceBody } from "../../site/GovernanceBody";
 import { PageShell } from "../../site/PageShell";
 import { SITE_COL } from "../../site/ui";
 
@@ -25,9 +20,7 @@ export default function GovernancePage() {
     >
       <div className={cn(SITE_COL, "pt-16 pb-20 lg:pt-20 lg:pb-28")}>
         <div className="flex max-w-[46rem] flex-col gap-8">
-          <DocProse markdown={GOVERNANCE_MARKDOWN_BEFORE} />
-          <ContractCard />
-          <DocProse markdown={GOVERNANCE_MARKDOWN_AFTER} />
+          <GovernanceBody />
         </div>
       </div>
     </PageShell>

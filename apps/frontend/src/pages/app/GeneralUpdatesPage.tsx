@@ -5,11 +5,13 @@ import { MoveLeft } from "lucide-react";
 import React from "react";
 import { Link, href } from "react-router";
 import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
+import LoadFailed from "../../components/LoadFailed";
 
 const GeneralUpdatesPage: React.FC = () => {
   useWhiteBackground();
 
-  const { generalUpdates } = useAllGeneralUpdates();
+  const { generalUpdates, didFail, isFetching, refetch } =
+    useAllGeneralUpdates();
 
   return (
     <CenterLayout>
@@ -22,6 +24,13 @@ const GeneralUpdatesPage: React.FC = () => {
         <h1 className="text-title">General updates</h1>
 
         <div className="flex flex-col gap-y-4 text-base">
+          {didFail && (
+            <LoadFailed
+              message="Couldn't load general updates."
+              onRetry={() => void refetch()}
+              retrying={isFetching}
+            />
+          )}
           {generalUpdates.map((generalUpdate) => (
             <LargeGeneralUpdateCard
               key={generalUpdate.id}

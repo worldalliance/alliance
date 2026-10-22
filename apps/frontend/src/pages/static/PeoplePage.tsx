@@ -1,3 +1,4 @@
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
   userNmembers,
   type StaffDirectoryEntryDto,
@@ -7,23 +8,23 @@ import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { href, Link, useLoaderData } from "react-router";
-import officePhoto from "../../assets/redesign/office.jpg";
+import officePhoto from "../../assets/redesign/office.jpg?w=480;960;1200&format=avif;webp;jpg&as=picture";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
 import {
   BandHeading,
+  BandHeadingSize,
   BandTone,
   PageBand,
   PageShell,
 } from "../../site/PageShell";
 import { usePublicMembers, useStaffDirectory } from "../../site/data";
 import { experts } from "../../site/peopleContent";
-import { SectionSubtitle } from "../../site/ui";
+import { SitePicture, SiteSubtitle } from "../../site/ui";
 
 export function meta() {
   return socialPreviewMeta({
     title: "People — The Alliance",
-    description:
-      "A full-time office plans the actions. Members carry them out. Experts tell us where we are wrong.",
+    description: "The staff, experts, and members of the Alliance.",
     url: "/people",
   });
 }
@@ -34,10 +35,11 @@ export async function loader() {
 }
 
 const PEOPLE_TITLE = "People";
+const PEOPLE_LEDE = "Every member broadens the scope of what we can do.";
 
 const OFFICE_PHOTO_CAPTION = "The office in San Francisco, California";
 
-const MEMBER_ROWS = 2;
+const MEMBER_ROWS = 3;
 const MEMBER_GAP_PX = 8;
 const PROFILE_TILE_PX = 80;
 
@@ -60,11 +62,13 @@ function ExpertGroup() {
       className="flex flex-col gap-10"
     >
       <div className="flex flex-col gap-3">
-        <BandHeading onDark>Expert group</BandHeading>
-        <SectionSubtitle onDark>
+        <BandHeading onDark size={BandHeadingSize.Section}>
+          Expert group
+        </BandHeading>
+        <SiteSubtitle onDark>
           Experts occasionally lend time, knowledge, or resources to the
           Alliance.
-        </SectionSubtitle>
+        </SiteSubtitle>
       </div>
       <div className="grid gap-x-8 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
         {experts.map((expert) => (
@@ -131,17 +135,20 @@ function Office() {
   return (
     <PageBand id="office" className="flex flex-col gap-10">
       <div className="flex flex-col gap-3">
-        <BandHeading>Office</BandHeading>
-        <SectionSubtitle>
+        <BandHeading size={BandHeadingSize.Section}>Office</BandHeading>
+        <SiteSubtitle>
           Our staff team plans actions, creates infrastructure, and manages the
           Alliance.
-        </SectionSubtitle>
+        </SiteSubtitle>
       </div>
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-16">
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-16">
         <figure className="flex flex-col gap-3">
-          <img
-            src={officePhoto}
+          <SitePicture
+            image={officePhoto}
             alt={OFFICE_PHOTO_CAPTION}
+            sizes="(min-width: 1024px) 50vw, 100vw"
+            loading="eager"
+            fetchPriority="high"
             className="aspect-[4/3] w-full object-cover"
             style={{ borderRadius: "var(--site-radius-card)" }}
           />
@@ -191,11 +198,11 @@ function MemberDirectory({ memberCount }: { memberCount: number | undefined }) {
   return (
     <PageBand id="members" className="flex flex-col gap-10">
       <div className="flex flex-col gap-3">
-        <BandHeading>Members</BandHeading>
+        <BandHeading size={BandHeadingSize.Section}>Members</BandHeading>
         {memberCount !== undefined && (
-          <SectionSubtitle>
+          <SiteSubtitle>
             {`The Alliance has ${memberCount} ${memberCount === 1 ? "member" : "members"}. Membership is currently by invitation only.`}
-          </SectionSubtitle>
+          </SiteSubtitle>
         )}
       </div>
       {isPending ? (
@@ -240,7 +247,11 @@ export default function PeoplePage() {
   const memberCount = useLoaderData<typeof loader>();
 
   return (
-    <PageShell title={PEOPLE_TITLE}>
+    <PageShell
+      title={PEOPLE_TITLE}
+      subtitle={PEOPLE_LEDE}
+      headerTone={BandTone.Primary}
+    >
       <Office />
       <ExpertGroup />
       <MemberDirectory memberCount={memberCount} />

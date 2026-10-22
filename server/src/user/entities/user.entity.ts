@@ -1,26 +1,23 @@
+/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 /* eslint-disable @darraghor/nestjs-typed/all-properties-have-explicit-defined */
 /* eslint-disable @darraghor/nestjs-typed/all-properties-are-whitelisted */
 import { Temporal } from "@js-temporal/polyfill";
+import { BadRequestException } from "@nestjs/common";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import bcrypt from "bcryptjs";
 import { Exclude, Expose, Type } from "class-transformer";
-import {
-  Allow,
-  IsDefined,
-  IsEmail,
-  IsEnum,
-  IsNotEmpty,
-  IsOptional,
-} from "class-validator";
+import { Allow, IsEmail, IsNotEmpty, IsOptional } from "class-validator";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { Action } from "src/actions/entities/action.entity";
 import { GeneralUpdateActivity } from "src/actions/entities/general-update-activity.entity";
+import { OAuthAccount } from "src/auth/oauth/oauth-account.entity";
 import { Campaign } from "src/campaign/entities/campaign.entity";
 import { Cluster } from "src/cluster/entities/cluster.entity";
 import { CommunityInvite } from "src/community/entities/community-invite.entity";
 import { Community } from "src/community/entities/community.entity";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { City } from "src/geo/city.entity";
@@ -30,7 +27,6 @@ import { Mms } from "src/mms/mms.entity";
 import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
 import { ShareUrl } from "src/share-urls/entities/share-url.entity";
 import { StoredInviteAssignmentKind } from "src/share-urls/invite-assignment-kind";
-import { findLeast } from "src/utils/filter";
 import { phoneNumberTransformer } from "src/utils/phone";
 import { plainTimeTransformer } from "src/utils/plain-time";
 import type { Relation } from "src/utils/Repository";
@@ -51,30 +47,16 @@ import {
 } from "typeorm";
 import { Notification } from "../../notifs/entities/notification.entity";
 import {
-  compareContractEventsNewestFirst,
   ContractEvent,
   ContractEventType,
   getEffectiveContractEventsInRange,
+  isContractActiveAt,
 } from "./contract-event.entity";
-import { Friend, FriendStatus } from "./friend.entity";
+import { Friend } from "./friend.entity";
 import { OnetimeInvite } from "./onetime-invite.entity";
 import { Tag } from "./tag.entity";
 import { UserAwayRange } from "./user-away-range.entity";
 import { UserDevice } from "./user-device.entity";
-
-export const DEFAULT_TIME_ZONE = "America/Los_Angeles";
-
-export enum NotificationPreference {
-  All = "all",
-  Digest = "digest",
-  None = "none",
-}
-
-export enum ForumDigestPreference {
-  Off = "off",
-  Daily = "daily",
-  Weekly = "weekly",
-}
 
 export enum PublicFormResponseDefault {
   Public = "public",
@@ -103,6 +85,7 @@ export enum ReferralSource {
    OR "inviteAssignmentKind" IS NOT DISTINCT FROM 'community'`,
 )
 @Index(["referredByShareUrl"])
+@Index(["id"], { where: '"deletedAt" IS NOT NULL' })
 @Entity()
 export class User {
   // Fields
@@ -116,10 +99,16 @@ export class User {
   @IsNotEmpty()
   name: string;
 
-  @Column({ unique: true })
+  @Index({ unique: true, where: '"deletedAt" IS NULL' })
+  @Column({ type: "citext" })
   @IsNotEmpty()
   @IsEmail()
   email: string;
+
+  /** Session tokens carry this; deleting the account bumps it, so sessions
+   * issued before the deletion stay invalid even after a restore. */
+  @Column({ type: "int", default: 0 })
+  sessionGeneration: number;
 
   @Column({
     type: "varchar",
@@ -146,9 +135,8 @@ export class User {
   preferredReminderTime: Temporal.PlainTime | null;
 
   @Column({ type: "text", nullable: true })
-  @ApiPropertyOptional({ type: "string" })
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  timeZone?: Temporal.TimeZoneLike;
+  @ApiProperty({ type: String, nullable: true })
+  timeZone: Temporal.TimeZoneLike | null;
 
   // @Column({
   //   type: 'enum',
@@ -163,23 +151,21 @@ export class User {
   // @IsEnum(NotificationChannel)
   // primaryNotificationChannel: NotificationChannel;
 
-  @Column({
-    default: true,
-  })
+  @Column({ default: true })
   @ApiProperty()
-  emailNotifsForActions: boolean;
+  inAppByDefault: boolean;
 
-  @Column({
-    default: true,
-  })
+  @Column({ default: true })
   @ApiProperty()
-  textNotifsForActions: boolean;
+  pushByDefault: boolean;
 
-  @Column({
-    default: true,
-  })
+  @Column({ default: true })
   @ApiProperty()
-  pushNotifsForActions: boolean;
+  textByDefault: boolean;
+
+  @Column({ default: true })
+  @ApiProperty()
+  emailByDefault: boolean;
 
   @Column({
     default: true,
@@ -193,41 +179,84 @@ export class User {
   @ApiProperty()
   sharePhoneNumberWithCommunityLead: boolean;
 
+  // TODO: drop these columns and fields in a deploy after this one. Until
+  // then the previous release, which selects them, is what a rollback restores.
   @Column({
+    name: "forumDigestPreference",
     type: "enum",
-    enum: NotificationPreference,
-    default: NotificationPreference.All,
+    enum: ["off", "daily", "weekly"],
+    default: "off",
+    select: false,
   })
-  @ApiProperty({
-    enum: NotificationPreference,
-    enumName: "NotificationPreference",
-  })
-  @IsOptional()
-  @IsEnum(NotificationPreference)
-  socialNotifsPreference: NotificationPreference;
-
-  @Column({ default: false })
-  @ApiProperty()
-  turnedOffAllNotifs: boolean;
+  legacyForumDigestPreference: string;
 
   @Column({
+    name: "socialNotifsPreference",
     type: "enum",
-    enum: ForumDigestPreference,
-    default: ForumDigestPreference.Off,
+    enum: ["all", "digest", "none"],
+    default: "all",
+    select: false,
   })
-  @ApiProperty({
-    enum: ForumDigestPreference,
-    enumName: "ForumDigestPreference",
+  legacySocialNotifsPreference: string;
+
+  @Column({ name: "emailNotifsForActions", default: true, select: false })
+  legacyEmailNotifsForActions: boolean;
+
+  @Column({ name: "textNotifsForActions", default: true, select: false })
+  legacyTextNotifsForActions: boolean;
+
+  @Column({ name: "pushNotifsForActions", default: true, select: false })
+  legacyPushNotifsForActions: boolean;
+
+  @Column({ name: "turnedOffAllNotifs", default: false, select: false })
+  legacyTurnedOffAllNotifs: boolean;
+
+  @Column({ name: "pushesForLikes", default: true, select: false })
+  legacyPushesForLikes: boolean;
+
+  @Column({ name: "pushesForComments", default: true, select: false })
+  legacyPushesForComments: boolean;
+
+  @Column({ name: "pushesForFriendRequests", default: true, select: false })
+  legacyPushesForFriendRequests: boolean;
+
+  @Column({ name: "pushesForMessages", default: true, select: false })
+  legacyPushesForMessages: boolean;
+
+  @Column({ name: "pushesForActionUpdates", default: true, select: false })
+  legacyPushesForActionUpdates: boolean;
+
+  @Column({ name: "pushesForNewGroupMembers", default: true, select: false })
+  legacyPushesForNewGroupMembers: boolean;
+
+  @Column({ name: "textsForNewGroupMembers", default: false, select: false })
+  legacyTextsForNewGroupMembers: boolean;
+
+  @Column({
+    name: "remindAboutUncompletedGroupMembers",
+    default: true,
+    select: false,
   })
-  forumDigestPreference: ForumDigestPreference;
+  legacyRemindAboutUncompletedGroupMembers: boolean;
+
+  @Column({ name: "receiveReplyNotifications", default: true, select: false })
+  legacyReceiveReplyNotifications: boolean;
 
   @Column({ type: "timestamptz", nullable: true })
   @ApiProperty({ type: Date, nullable: true })
   switchedDomainAt: Date | null;
 
-  @Column()
-  @IsNotEmpty()
-  password: string;
+  @Column({ type: "timestamptz", nullable: true })
+  contractReminderSentAt: Date | null;
+
+  @Column({ type: "varchar", nullable: true })
+  @IsOptional()
+  password: string | null;
+
+  @OneToMany(() => OAuthAccount, (account) => account.user, {
+    cascade: ["insert"],
+  })
+  oauthAccounts?: Relation<OAuthAccount>[];
 
   @CreateDateColumnTz()
   createdAt: Date;
@@ -238,6 +267,11 @@ export class User {
   @Column({ default: false })
   @ApiProperty()
   admin: boolean;
+
+  /** An app-store review account, which production refuses a session. Set by
+   * hand in the database only. */
+  @Column({ default: false })
+  isTestUser: boolean;
 
   @Column({ default: false })
   @ApiProperty()
@@ -271,16 +305,6 @@ export class User {
   @ApiProperty()
   referralCode: string;
 
-  @Column({ type: "varchar", nullable: true, unique: true })
-  @ApiProperty({ nullable: true })
-  @Allow()
-  stripeCustomerId: string | null;
-
-  @Column({ default: false })
-  @ApiProperty()
-  @Allow()
-  isNotSignedUpPartialProfile: boolean;
-
   @Column({ type: "varchar", nullable: true })
   @ApiProperty({ nullable: true })
   @Allow()
@@ -312,45 +336,10 @@ export class User {
   })
   formDataPreference: PublicFormResponseDefault;
 
-  @Column({ default: true })
-  @ApiProperty()
-  @Allow()
-  pushesForLikes: boolean;
-
-  @Column({ default: true })
-  @ApiProperty()
-  @Allow()
-  pushesForComments: boolean;
-
-  @Column({ default: true })
-  @ApiProperty()
-  @Allow()
-  pushesForFriendRequests: boolean;
-
-  @Column({ default: true })
-  @ApiProperty()
-  @Allow()
-  pushesForMessages: boolean;
-
-  @Column({ default: true })
-  @ApiProperty()
-  @Allow()
-  pushesForActionUpdates: boolean;
-
   @Column({ default: false })
   @ApiProperty()
   @Allow()
   undergoingGroupAssignment: boolean;
-
-  @Column({ default: true })
-  @ApiProperty()
-  @Allow()
-  remindAboutUncompletedGroupMembers: boolean;
-
-  @Column({ default: true })
-  @ApiProperty()
-  @Allow()
-  receiveReplyNotifications: boolean;
 
   // Relations
 
@@ -371,8 +360,7 @@ export class User {
   receivedFriendRequests?: Relation<Friend>[];
 
   @OneToMany(() => Notification, (notification) => notification.user)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  notifications: Relation<Notification>[];
+  notifications?: Relation<Notification>[];
 
   @Column({ nullable: true })
   @ApiProperty({ type: Number, nullable: true })
@@ -386,23 +374,22 @@ export class User {
   referredBy?: Relation<User> | null;
 
   @OneToOne(() => OnetimeInvite, (invite) => invite.invitedUser)
-  @ApiProperty({
+  @ApiPropertyOptional({
     type: () => OnetimeInvite,
     nullable: true,
   })
   @JoinColumn()
   @Type(() => OnetimeInvite)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  referredByInvite: Relation<OnetimeInvite> | null;
+  referredByInvite?: Relation<OnetimeInvite> | null;
 
   @ManyToOne(() => ShareUrl, { nullable: true, onDelete: "SET NULL" })
   @JoinColumn({ name: "referredByShareUrlId" })
   referredByShareUrl?: Relation<ShareUrl> | null;
 
   /**
-   * Group placement copied off the invite link at registration. Deleting the
-   * link nulls `referredByShareUrlId`, which can happen before this user signs
-   * their contract, so placement must not be read back off the link.
+   * Group placement copied off the invite link at registration. Reads hide a
+   * deleted link, which can happen before this user signs their contract, so
+   * placement must not be read back off the link.
    */
   @Column({
     type: "enum",
@@ -450,23 +437,20 @@ export class User {
   city?: Relation<City> | null;
 
   @OneToMany(() => ActionEventNotif, (notif) => notif.user)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  actionEventNotifs: Relation<ActionEventNotif>[];
+  actionEventNotifs?: Relation<ActionEventNotif>[];
 
   @OneToMany(() => UserAwayRange, (awayRange) => awayRange.user)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  awayRanges: Relation<UserAwayRange>[];
+  awayRanges?: Relation<UserAwayRange>[];
 
   @OneToOne(() => Mail, { nullable: true, onDelete: "SET NULL" })
   @JoinColumn({ name: "welcomeMailId" })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  welcomeMail: Relation<Mail> | null;
+  welcomeMail?: Relation<Mail> | null;
 
   @ManyToMany(() => Tag, (tag) => tag.users, { onDelete: "CASCADE" })
-  @ApiProperty({ type: () => Tag, isArray: true })
+  @ApiPropertyOptional({ type: () => Tag, isArray: true })
   @Type(() => Tag)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  tags: Relation<Tag>[];
+  @IsOptional()
+  tags?: Relation<Tag>[];
 
   @ManyToOne(() => Community, (community) => community.pendingUsers)
   @ApiPropertyOptional({
@@ -482,34 +466,31 @@ export class User {
   @ManyToMany(() => Community, (community) => community.users, {
     onDelete: "CASCADE",
   })
-  @ApiProperty({ type: () => Community, isArray: true })
+  @ApiPropertyOptional({ type: () => Community, isArray: true })
   @Type(() => Community)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  communities: Relation<Community>[];
+  @IsOptional()
+  communities?: Relation<Community>[];
 
   @ManyToMany(() => Community, (community) => community.leaders, {
     onDelete: "CASCADE",
   })
   @Type(() => Community)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  leaderOf: Relation<Community>[];
+  leaderOf?: Relation<Community>[];
 
   @RelationId((user: User) => user.leaderOf)
   @ApiProperty({ type: Number, isArray: true })
   leaderOfIds: number[];
 
   @OneToMany(() => CommunityInvite, (invite) => invite.invitedUser)
-  @ApiProperty({ type: () => CommunityInvite, isArray: true })
+  @ApiPropertyOptional({ type: () => CommunityInvite, isArray: true })
   @Type(() => CommunityInvite)
-  @IsDefined()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  invitedCommunities: Relation<CommunityInvite>[];
+  @IsOptional()
+  invitedCommunities?: Relation<CommunityInvite>[];
 
   @OneToMany(() => Participant, (participant) => participant.user)
-  @ApiProperty({ type: () => Participant, isArray: true })
+  @ApiPropertyOptional({ type: () => Participant, isArray: true })
   @Type(() => Participant)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  participants: Relation<Participant>[];
+  participants?: Relation<Participant>[];
 
   @ManyToMany(() => Action, (action) => action.authors, {
     onDelete: "CASCADE",
@@ -519,8 +500,7 @@ export class User {
   authoredActions?: Relation<Action>[];
 
   @OneToMany(() => UserDevice, (device) => device.user)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  devices: Relation<UserDevice>[];
+  devices?: Relation<UserDevice>[];
 
   @ManyToOne(() => Cluster, (cluster) => cluster.members, {
     nullable: true,
@@ -543,30 +523,6 @@ export class User {
     return this.hasActiveContractAt(new Date());
   }
 
-  get friends(): User[] {
-    const sentAccepted =
-      this.sentFriendRequests
-        ?.filter(
-          (
-            f,
-          ): f is typeof f & {
-            addressee: User;
-          } => f.status === FriendStatus.Accepted && !!f.addressee,
-        )
-        .map((f) => f.addressee) || [];
-    const receivedAccepted =
-      this.receivedFriendRequests
-        ?.filter(
-          (
-            f,
-          ): f is typeof f & {
-            requester: User;
-          } => f.status === FriendStatus.Accepted && !!f.requester,
-        )
-        .map((f) => f.requester) || [];
-    return [...sentAccepted, ...receivedAccepted];
-  }
-
   constructor(data: Partial<User> = {}) {
     Object.assign(this, data);
   }
@@ -574,6 +530,9 @@ export class User {
   @BeforeInsert()
   @BeforeUpdate()
   async hashPassword(): Promise<void> {
+    if (this.password === null) {
+      return;
+    }
     const salt = await bcrypt.genSalt();
     if (!/^\$2[abxy]?\$\d+\$/.test(this.password)) {
       this.password = await bcrypt.hash(this.password, salt);
@@ -586,6 +545,9 @@ export class User {
   }
 
   async checkPassword(plainPassword: string): Promise<boolean> {
+    if (this.password === null) {
+      return false;
+    }
     return await bcrypt.compare(plainPassword, this.password);
   }
 
@@ -608,15 +570,7 @@ export class User {
     let hasActiveContract = this._hasActiveContractAt.get(key);
 
     if (hasActiveContract === undefined) {
-      const latestContractEvent = this.contractEvents
-        ? findLeast(
-            this.contractEvents,
-            compareContractEventsNewestFirst,
-            (event) => event.date <= date,
-          )
-        : null;
-      hasActiveContract =
-        latestContractEvent?.type === ContractEventType.SIGNED;
+      hasActiveContract = isContractActiveAt(this.contractEvents ?? [], date);
 
       this._hasActiveContractAt.set(key, hasActiveContract);
     }
@@ -636,14 +590,10 @@ export class User {
     let hasActiveContract = this._hasActiveContractInFullRange.get(key);
 
     populateCache: if (hasActiveContract === undefined) {
-      const latestContractEventBeforeStart = this.contractEvents
-        ? findLeast(
-            this.contractEvents,
-            compareContractEventsNewestFirst,
-            (event) => event.date.getTime() <= startTime,
-          )
-        : null;
-      if (latestContractEventBeforeStart?.type !== ContractEventType.SIGNED) {
+      if (
+        !startDate ||
+        !isContractActiveAt(this.contractEvents ?? [], startDate)
+      ) {
         hasActiveContract = false;
         break populateCache;
       }
@@ -657,22 +607,6 @@ export class User {
       this._hasActiveContractInFullRange.set(key, hasActiveContract);
     }
     return hasActiveContract;
-  }
-
-  @Exclude()
-  private _isAwayAt = new Map<number, boolean>();
-  isAwayAt(date: Date): boolean {
-    const key = date.getTime();
-    let isAway = this._isAwayAt.get(key);
-
-    if (isAway === undefined) {
-      isAway = !!this.awayRanges?.some(
-        (awayRange) => awayRange.startDate <= date && date <= awayRange.endDate,
-      );
-
-      this._isAwayAt.set(key, isAway);
-    }
-    return isAway;
   }
 
   @Exclude()
@@ -707,10 +641,13 @@ export class User {
     }
     return this._leaderOfIdSet;
   }
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }
 
 /**
- * SQL equivalent of {@link User.hasActiveContractAt}; keep date/id ordering in sync.
+ * SQL equivalent of {@link isContractActiveAt}; keep date/id ordering in sync.
  *
  * @param userIdExpr User-id SQL, e.g. `'u.id'` or `'signed_event."userId"'`.
  * @param contractAtExpr Instant SQL, e.g. `':contractAt'`, `'$4'`, or `'NOW()'`.
@@ -721,8 +658,57 @@ export function sqlUserHasActiveContractAt(
 ): string {
   return `(
     SELECT ce."type" FROM "contract_event" ce
-    WHERE ce."userId" = ${userIdExpr} AND ce."date" <= ${contractAtExpr}
+    WHERE ce."userId" = ${userIdExpr} AND ce."deletedAt" IS NULL
+      AND ce."date" <= ${contractAtExpr}
     ORDER BY ce."date" DESC, ce."id" DESC
     LIMIT 1
   ) = '${ContractEventType.SIGNED}'`;
+}
+
+export function sqlUserHasEverSigned(userIdExpr: string): string {
+  return `EXISTS (
+    SELECT 1 FROM "contract_event" ce
+    WHERE ce."userId" = ${userIdExpr} AND ce."deletedAt" IS NULL
+      AND ce."type" = '${ContractEventType.SIGNED}'
+  )`;
+}
+
+export function canManageCommunity(
+  user: Pick<User, "admin" | "leaderOfIdSet">,
+  communityId: number | null,
+): boolean {
+  return (
+    user.admin || (communityId !== null && user.leaderOfIdSet.has(communityId))
+  );
+}
+
+export function assertCanManageCommunity(
+  user: Pick<User, "admin" | "leaderOfIdSet">,
+  communityId: number,
+): void {
+  if (!canManageCommunity(user, communityId)) {
+    throw new BadRequestException(
+      `User is not a leader of community ${communityId}`,
+    );
+  }
+}
+
+export function hasPassword(user: Pick<User, "password">): boolean {
+  return Boolean(user.password);
+}
+
+export function loadedUserTags(
+  user: Pick<User, "id" | "tags">,
+): Relation<Tag>[] {
+  if (!user.tags) {
+    throw new Error(`tags of user ${user.id} not loaded`);
+  }
+  return user.tags;
+}
+
+export function loadedUserCommunities(user: User): Relation<Community>[] {
+  if (!user.communities) {
+    throw new Error(`communities of user ${user.id} not loaded`);
+  }
+  return user.communities;
 }

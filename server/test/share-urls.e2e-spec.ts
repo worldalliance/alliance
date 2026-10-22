@@ -1,3 +1,5 @@
+import { DEFAULT_INVITE_MESSAGE_TEMPLATE } from "@alliance/common/inviteMessage";
+import { milliseconds } from "date-fns";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import {
@@ -8,14 +10,20 @@ import { Action, VisibilityMode } from "../src/actions/entities/action.entity";
 import { Campaign } from "../src/campaign/entities/campaign.entity";
 import { Community } from "../src/community/entities/community.entity";
 import { ExternalShareTarget } from "../src/share-urls/entities/external-share-target.entity";
+import { InviteMessageTemplate } from "../src/share-urls/entities/invite-message-template.entity";
 import {
   ShareUrl,
   ShareUrlKind,
 } from "../src/share-urls/entities/share-url.entity";
 import { StoredInviteAssignmentKind } from "../src/share-urls/invite-assignment";
+import { InviteShareUrlsService } from "../src/share-urls/invite-share-urls.service";
 import { ShareUrlsService } from "../src/share-urls/share-urls.service";
 import { ReferralSource, User } from "../src/user/entities/user.entity";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import {
+  createTestApp,
+  TestContext,
+  writeDuringDeletion,
+} from "./e2e-test-utils";
 
 describe("Share URLs (e2e)", () => {
   let ctx: TestContext;
@@ -23,10 +31,12 @@ describe("Share URLs (e2e)", () => {
   let eventRepo: Repository<ActionEvent>;
   let targetRepo: Repository<ExternalShareTarget>;
   let shareUrlRepo: Repository<ShareUrl>;
+  let inviteMessageTemplateRepo: Repository<InviteMessageTemplate>;
   let campaignRepo: Repository<Campaign>;
   let communityRepo: Repository<Community>;
   let userRepo: Repository<User>;
   let shareUrlsService: ShareUrlsService;
+  let inviteShareUrlsService: InviteShareUrlsService;
   let action: Action;
   let target: ExternalShareTarget;
 
@@ -36,17 +46,20 @@ describe("Share URLs (e2e)", () => {
     eventRepo = ctx.dataSource.getRepository(ActionEvent);
     targetRepo = ctx.dataSource.getRepository(ExternalShareTarget);
     shareUrlRepo = ctx.dataSource.getRepository(ShareUrl);
+    inviteMessageTemplateRepo = ctx.dataSource.getRepository(
+      InviteMessageTemplate,
+    );
     campaignRepo = ctx.dataSource.getRepository(Campaign);
     communityRepo = ctx.dataSource.getRepository(Community);
     userRepo = ctx.dataSource.getRepository(User);
     shareUrlsService = ctx.app.get(ShareUrlsService);
+    inviteShareUrlsService = ctx.app.get(InviteShareUrlsService);
 
     action = await actionRepo.save(
       actionRepo.create({
         name: "Share URL Test Action",
-        category: "Test",
+        category: [],
         body: "body",
-        taskContents: "task",
         shortDescription: "short",
         visibilityMode: VisibilityMode.Public,
         cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
@@ -57,7 +70,7 @@ describe("Share URLs (e2e)", () => {
         title: "launch",
         description: "live",
         newStatus: ActionStatus.MemberAction,
-        date: new Date(Date.now() - 1000),
+        date: new Date(Date.now() - milliseconds({ seconds: 1 })),
         action,
       }),
     );
@@ -67,6 +80,7 @@ describe("Share URLs (e2e)", () => {
     await shareUrlRepo.query("DELETE FROM share_url");
     await targetRepo.query("DELETE FROM external_share_target");
     await campaignRepo.query("DELETE FROM campaign");
+    await inviteMessageTemplateRepo.clear();
     target = await targetRepo.save(
       targetRepo.create({
         name: "Test target",
@@ -76,17 +90,81 @@ describe("Share URLs (e2e)", () => {
     );
   });
 
+  describe("invite message template", () => {
+    it("returns the default and lets an admin replace it", async () => {
+      const initial = await request(ctx.app.getHttpServer())
+        .get("/share-urls/invite-message-template")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      expect(initial.body.template).toBe(DEFAULT_INVITE_MESSAGE_TEMPLATE);
+
+      await request(ctx.app.getHttpServer())
+        .patch("/share-urls/invite-message-template")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ template: "Join us here: {invite_link}" })
+        .expect(200)
+        .expect({ template: "Join us here: {invite_link}" });
+
+      const updated = await request(ctx.app.getHttpServer())
+        .get("/share-urls/invite-message-template")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      expect(updated.body.template).toBe("Join us here: {invite_link}");
+    });
+
+    it("brings back a deleted template when an admin replaces it", async () => {
+      const templates = ctx.dataSource.getRepository(InviteMessageTemplate);
+      await request(ctx.app.getHttpServer())
+        .patch("/share-urls/invite-message-template")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ template: "Old: {invite_link}" })
+        .expect(200);
+      await templates.softDelete({ id: "default" });
+
+      await request(ctx.app.getHttpServer())
+        .patch("/share-urls/invite-message-template")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ template: "New: {invite_link}" })
+        .expect(200);
+
+      const served = await request(ctx.app.getHttpServer())
+        .get("/share-urls/invite-message-template")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      expect(served.body.template).toBe("New: {invite_link}");
+    });
+
+    it("rejects a template without an invite link token", async () => {
+      await request(ctx.app.getHttpServer())
+        .patch("/share-urls/invite-message-template")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ template: "Join us" })
+        .expect(400);
+    });
+
+    it("does not let a regular member update the template", async () => {
+      await request(ctx.app.getHttpServer())
+        .patch("/share-urls/invite-message-template")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ template: "Join us here: {invite_link}" })
+        .expect(401);
+    });
+  });
+
   describe("GET /share-urls/mine/invites", () => {
     it("returns the number of accounts created with each invite link", async () => {
       const canonical = await shareUrlsService.getOrCreateForInvite({
         type: "user",
         userId: ctx.testUserId,
       });
-      const duplicate = await shareUrlsService.createDuplicateInviteForUser(
-        ctx.testUserId,
-        "Unused duplicate",
-        null,
-      );
+      const duplicate =
+        await inviteShareUrlsService.createDuplicateInviteForUser(
+          ctx.testUserId,
+          "Unused duplicate",
+          null,
+        );
       await userRepo.save(
         userRepo.create({
           name: "Reusable Invite Recruit",
@@ -151,7 +229,7 @@ describe("Share URLs (e2e)", () => {
           maxCapacity: 10,
         }),
       );
-      const invite = await shareUrlsService.createDuplicateInviteForUser(
+      const invite = await inviteShareUrlsService.createDuplicateInviteForUser(
         ctx.testUserId,
         "Doomed group invite",
         community.id,
@@ -186,7 +264,7 @@ describe("Share URLs (e2e)", () => {
           maxCapacity: 10,
         }),
       );
-      const invite = await shareUrlsService.createDuplicateInviteForUser(
+      const invite = await inviteShareUrlsService.createDuplicateInviteForUser(
         ctx.testUserId,
         "Open invite",
         null,
@@ -217,6 +295,25 @@ describe("Share URLs (e2e)", () => {
         .send({ label: "Invalid group invite", communityId: community.id })
         .expect(400);
     });
+
+    it("rejects a community an admin does not lead", async () => {
+      const leader = await userRepo.findOneByOrFail({ id: ctx.testUserId });
+      const community = await communityRepo.save(
+        communityRepo.create({
+          name: "Admin Non-Led Reusable Destination",
+          description: "Not led by the admin",
+          leaders: [leader],
+          users: [leader],
+          maxCapacity: 10,
+        }),
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post("/share-urls/mine/invite-duplicate")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ label: "Admin group invite", communityId: community.id })
+        .expect(400);
+    });
   });
 
   describe("PATCH /share-urls/mine/invites/:id", () => {
@@ -242,7 +339,7 @@ describe("Share URLs (e2e)", () => {
     it("retargets an invite at another group the owner leads", async () => {
       const first = await ledCommunity("Retarget Origin");
       const second = await ledCommunity("Retarget Destination");
-      const invite = await shareUrlsService.createDuplicateInviteForUser(
+      const invite = await inviteShareUrlsService.createDuplicateInviteForUser(
         ctx.testUserId,
         "Retargeted invite",
         first.id,
@@ -261,7 +358,7 @@ describe("Share URLs (e2e)", () => {
 
     it("points an invite at any open group", async () => {
       const community = await ledCommunity("Open Retarget Origin");
-      const invite = await shareUrlsService.createDuplicateInviteForUser(
+      const invite = await inviteShareUrlsService.createDuplicateInviteForUser(
         ctx.testUserId,
         "Open retarget",
         community.id,
@@ -275,7 +372,7 @@ describe("Share URLs (e2e)", () => {
 
     it("renames without disturbing the destination", async () => {
       const community = await ledCommunity("Rename Destination");
-      const invite = await shareUrlsService.createDuplicateInviteForUser(
+      const invite = await inviteShareUrlsService.createDuplicateInviteForUser(
         ctx.testUserId,
         "Before",
         community.id,
@@ -289,7 +386,7 @@ describe("Share URLs (e2e)", () => {
     });
 
     it("clears the label when sent an empty one", async () => {
-      const invite = await shareUrlsService.createDuplicateInviteForUser(
+      const invite = await inviteShareUrlsService.createDuplicateInviteForUser(
         ctx.testUserId,
         "Labelled",
         null,
@@ -301,7 +398,7 @@ describe("Share URLs (e2e)", () => {
     });
 
     it("rejects a null label rather than choking on it", async () => {
-      const invite = await shareUrlsService.createDuplicateInviteForUser(
+      const invite = await inviteShareUrlsService.createDuplicateInviteForUser(
         ctx.testUserId,
         "Labelled",
         null,
@@ -321,7 +418,7 @@ describe("Share URLs (e2e)", () => {
           maxCapacity: 10,
         }),
       );
-      const invite = await shareUrlsService.createDuplicateInviteForUser(
+      const invite = await inviteShareUrlsService.createDuplicateInviteForUser(
         ctx.testUserId,
         "Unretargetable",
         null,
@@ -335,7 +432,7 @@ describe("Share URLs (e2e)", () => {
     });
 
     it("refuses to edit someone else's invite", async () => {
-      const invite = await shareUrlsService.createDuplicateInviteForUser(
+      const invite = await inviteShareUrlsService.createDuplicateInviteForUser(
         ctx.adminUserId,
         "Admin's invite",
         null,
@@ -347,7 +444,7 @@ describe("Share URLs (e2e)", () => {
     it("leaves people who already signed up where the link sent them", async () => {
       const original = await ledCommunity("Snapshot Origin");
       const retargeted = await ledCommunity("Snapshot Destination");
-      const invite = await shareUrlsService.createDuplicateInviteForUser(
+      const invite = await inviteShareUrlsService.createDuplicateInviteForUser(
         ctx.testUserId,
         "Snapshot invite",
         original.id,
@@ -399,7 +496,7 @@ describe("Share URLs (e2e)", () => {
         .expect(201);
 
       expect(res.body.url).toMatch(
-        /^https:\/\/example\.com\/route\?code=share-[a-f0-9]{10}$/,
+        /^https:\/\/example\.com\/route\?code=[a-f0-9]{10}$/,
       );
     });
 
@@ -436,7 +533,7 @@ describe("Share URLs (e2e)", () => {
         .expect(201);
 
       expect(res.body.url).toMatch(
-        /^https:\/\/example\.com\/route\?existing=1&code=share-[a-f0-9]{10}$/,
+        /^https:\/\/example\.com\/route\?existing=1&code=[a-f0-9]{10}$/,
       );
     });
 
@@ -455,7 +552,7 @@ describe("Share URLs (e2e)", () => {
         .expect(201);
 
       expect(res.body.url).toMatch(
-        /^https:\/\/example\.com\/route\?my\+code=share-[a-f0-9]{10}$/,
+        /^https:\/\/example\.com\/route\?my\+code=[a-f0-9]{10}$/,
       );
     });
 
@@ -506,7 +603,7 @@ describe("Share URLs (e2e)", () => {
     };
 
     const sidOf = (url: string): string => {
-      const match = /share-[a-f0-9]{10}/.exec(url);
+      const match = /[a-f0-9]{10}$/.exec(url);
       if (!match) throw new Error(`No sid in url: ${url}`);
       return match[0];
     };
@@ -608,7 +705,7 @@ describe("Share URLs (e2e)", () => {
 
   describe("POST /share-urls/create-duplicate", () => {
     const sidOf = (url: string): string => {
-      const match = /share-[a-f0-9]{10}/.exec(url);
+      const match = /[a-f0-9]{10}$/.exec(url);
       if (!match) throw new Error(`No sid in url: ${url}`);
       return match[0];
     };
@@ -746,7 +843,7 @@ describe("Share URLs (e2e)", () => {
 
       expect(sidOf(dup.body.url)).not.toBe(sidOf(first.body.url));
       expect(dup.body.url).toMatch(
-        /^https:\/\/example\.com\/route\?code=share-[a-f0-9]{10}$/,
+        /^https:\/\/example\.com\/route\?code=[a-f0-9]{10}$/,
       );
     });
 
@@ -820,6 +917,58 @@ describe("Share URLs (e2e)", () => {
         .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({ userId: ctx.testUserId, externalTargetId: 999999 })
         .expect(404);
+    });
+
+    it("names the missing campaign, not the target, when the owner is gone", async () => {
+      const res = await request(ctx.app.getHttpServer())
+        .post("/share-urls/create-duplicate")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ campaignId: 999999, externalTargetId: target.id })
+        .expect(404);
+      expect(res.body.message).toBe("specified campaign not found");
+    });
+
+    it("names the missing user, not the action, when the owner is gone", async () => {
+      const res = await request(ctx.app.getHttpServer())
+        .post("/share-urls/create-duplicate")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ userId: 999999, actionId: action.id })
+        .expect(404);
+      expect(res.body.message).toBe("specified user not found");
+    });
+
+    it("names the action when it is deleted", async () => {
+      const deleted = await actionRepo.save(
+        actionRepo.create({ name: "Deleted", category: [], body: "body" }),
+      );
+      await actionRepo.softDelete(deleted.id);
+      const res = await request(ctx.app.getHttpServer())
+        .post("/share-urls/create-duplicate")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ userId: ctx.testUserId, actionId: deleted.id })
+        .expect(404);
+      expect(res.body.message).toBe("specified action not found");
+    });
+
+    it("names the action when it is deleted during the save", async () => {
+      const raced = await actionRepo.save(
+        actionRepo.create({ name: "Raced", category: [], body: "body" }),
+      );
+      expect(
+        await writeDuringDeletion({
+          dataSource: ctx.dataSource,
+          target: Action,
+          id: raced.id,
+          write: () =>
+            request(ctx.app.getHttpServer())
+              .post("/share-urls/create-duplicate")
+              .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+              .send({ userId: ctx.testUserId, actionId: raced.id }),
+        }),
+      ).toMatchObject({
+        status: 404,
+        body: { message: "specified action not found" },
+      });
     });
   });
 

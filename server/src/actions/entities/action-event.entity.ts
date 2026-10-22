@@ -1,7 +1,10 @@
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsDefined, IsNotEmpty } from "class-validator";
-import { UpdateDateColumnTz } from "src/datasources/basecolumns";
+import { Allow, IsEmpty, IsNotEmpty, IsOptional } from "class-validator";
+import {
+  DeleteDateColumnTz,
+  UpdateDateColumnTz,
+} from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
 import {
   Column,
@@ -48,7 +51,7 @@ export const readableActionStatus: Record<ActionStatus, string> = {
 @Index(["action", "newStatus", "date"])
 @Index("UQ_action_event_one_member_action", ["action"], {
   unique: true,
-  where: `"newStatus" = 'member_action'`,
+  where: `"newStatus" = 'member_action' AND "deletedAt" IS NULL`,
 })
 export class ActionEvent {
   @PrimaryGeneratedColumn()
@@ -92,26 +95,36 @@ export class ActionEvent {
     onDelete: "CASCADE",
   })
   @JoinColumn({ name: "actionId" })
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: "The action associated with this event",
     type: () => Action,
-    nullable: false,
   })
-  @IsDefined()
-  @Allow()
+  @IsOptional()
   @Type(() => Action)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  action: Relation<Action>;
+  action?: Relation<Action>;
 
   @OneToMany(() => ActionUpdate, (update) => update.associatedEvent)
-  @ApiProperty({ type: () => ActionUpdate, isArray: true })
+  @ApiPropertyOptional({ type: () => ActionUpdate, isArray: true })
   @Type(() => ActionUpdate)
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  updates: Relation<ActionUpdate>[];
+  @IsOptional()
+  updates?: Relation<ActionUpdate>[];
 
   @ApiProperty()
   @Column({ default: false })
   @Allow()
   suiteManaged: boolean;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
+}
+
+export function loadedActionEventAction(
+  event: Pick<ActionEvent, "id" | "action">,
+): Relation<Action> {
+  if (!event.action) {
+    throw new Error(`action of action event ${event.id} not loaded`);
+  }
+  return event.action;
 }

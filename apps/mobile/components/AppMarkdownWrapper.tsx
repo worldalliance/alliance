@@ -1,4 +1,5 @@
 import { RelativePathString, router } from "expo-router";
+import type MarkdownIt from "markdown-it";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   Image,
@@ -6,18 +7,19 @@ import {
   StyleProp,
   TextStyle,
   TouchableOpacity,
-  useWindowDimensions,
   View,
   ViewStyle,
 } from "react-native";
 import Markdown, { ASTNode, RenderRules } from "react-native-markdown-display";
-import { getApiUrl } from "../lib/config";
+import { getApiUrl, getSitePageUrl } from "../lib/config";
 import {
   extractPathFromInternalUrl,
   getInternalRoute,
 } from "../lib/internalLinks";
+import { useFontScale } from "../lib/style/useFontScale";
 import { ImageLightboxModal } from "./ImageLightbox";
 import { renderListItem } from "./markdownListItem";
+import { markdownParser } from "./markdownParser";
 import {
   MARKDOWN_FILL_WIDTH_STYLE,
   MARKDOWN_PALETTES,
@@ -62,10 +64,7 @@ function useHandleLinkPress() {
     }
 
     // For relative URLs that don't match internal routes, open on web
-    const webUrl = `https://worldalliance.org${
-      url.startsWith("/") ? "" : "/"
-    }${url}`;
-    Linking.openURL(webUrl).catch((err) => {
+    Linking.openURL(getSitePageUrl(url)).catch((err) => {
       console.error("Failed to open URL:", err);
     });
     return false;
@@ -160,6 +159,7 @@ interface AppMarkdownWrapperProps {
   truncated?: boolean;
   small?: boolean;
   tone?: MarkdownTone;
+  markdownit?: MarkdownIt;
 }
 
 const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
@@ -169,12 +169,13 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
   truncated = false,
   small = false,
   tone = MarkdownTone.Default,
+  markdownit = markdownParser,
 }) => {
   const markdownSource = markdownContent ?? children ?? "";
   const handleLinkPress = useHandleLinkPress();
   const textStyles = useMarkdownTextStyles();
   const palette = MARKDOWN_PALETTES[tone];
-  const { fontScale } = useWindowDimensions();
+  const fontScale = useFontScale();
   const [lightboxUri, setLightboxUri] = useState<string | null>(null);
 
   const wrapImage = useCallback(
@@ -473,10 +474,12 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
     [style, textStyles, bodyStyle, palette],
   );
 
-  // Undefined until the theme resolves, which leaves the preview unclamped for a
-  // frame rather than collapsing it to zero height.
+  // A View's height is unscaled points while the text renders at `lineHeight *
+  // fontScale`, so the clamp scales by hand. Undefined until the theme resolves,
+  // which leaves the preview unclamped for a frame rather than collapsing it to
+  // zero height.
   const truncatedMaxHeight = bodyStyle.lineHeight
-    ? bodyStyle.lineHeight * TRUNCATED_PREVIEW_LINES
+    ? bodyStyle.lineHeight * fontScale * TRUNCATED_PREVIEW_LINES
     : undefined;
 
   return (
@@ -486,12 +489,22 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
           className="overflow-hidden"
           style={{ maxHeight: truncatedMaxHeight }}
         >
-          <Markdown style={markdownStyles} rules={rules} mergeStyle>
+          <Markdown
+            style={markdownStyles}
+            rules={rules}
+            markdownit={markdownit}
+            mergeStyle
+          >
             {markdownSource}
           </Markdown>
         </View>
       ) : (
-        <Markdown style={markdownStyles} rules={rules} mergeStyle>
+        <Markdown
+          style={markdownStyles}
+          rules={rules}
+          markdownit={markdownit}
+          mergeStyle
+        >
           {markdownSource}
         </Markdown>
       )}

@@ -1,6 +1,7 @@
 import type { PreviousAnswerBlock } from "@alliance/common/forms/display-blocks";
 import { fieldPickerLabel } from "@alliance/common/forms/element-descriptors";
 import type { ListField } from "@alliance/common/forms/form-schema";
+import { DEFAULT_PREVIOUS_ANSWER_EMPTY_TEXT } from "@alliance/shared/lib/previousAnswers";
 import { useFormQuestionFields } from "@alliance/shared/lib/useFormSchema";
 import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
 import {
@@ -15,11 +16,13 @@ import type { BaseDisplayBlockProps } from "./types";
 export function EditablePreviousAnswerBlock({
   block,
   onUpdate,
+  updateCurrent,
   onRemove,
   onDragStart,
   onDragEnd,
   isDragging,
   previousFields,
+  laterFields,
 }: BaseDisplayBlockProps<PreviousAnswerBlock>) {
   const { options: forms, isError: formListFailed } = useFormOptions();
   const { fields: sourceFields, status: sourceStatus } = useFormQuestionFields(
@@ -39,7 +42,9 @@ export function EditablePreviousAnswerBlock({
       isDragging={isDragging}
       block={block}
       onUpdate={onUpdate}
+      updateCurrent={updateCurrent}
       previousFields={previousFields}
+      laterFields={laterFields}
     >
       {({ block: activeBlock, onUpdate: handleUpdate }) => (
         <div className="space-y-3">
@@ -65,7 +70,7 @@ export function EditablePreviousAnswerBlock({
               value={activeBlock.emptyText ?? ""}
               onChange={(emptyText) => handleUpdate({ emptyText })}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="No previous answer available"
+              placeholder={DEFAULT_PREVIOUS_ANSWER_EMPTY_TEXT}
             />
           </div>
 

@@ -11,11 +11,17 @@ import { ForumModule } from "src/forum/forum.module";
 import { FacepileModule } from "src/likes/facepile.module";
 import { MailModule } from "src/mail/mail.module";
 import { MmsModule } from "src/mms/mms.module";
+import { NotificationSettingsModule } from "src/notification-settings/notification-settings.module";
+import { ActionEventNotifDeliveryService } from "src/notifs/action-event-notif-delivery.service";
 import { ActionEventNotifWorker } from "src/notifs/action-event-notif.worker";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
 import { ActionEventReminderService } from "src/notifs/action-event-reminder.service";
 import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
+import { ExperimentAssignment } from "src/notifs/entities/experiment-assignment.entity";
+import { MissedSuitePlanService } from "src/notifs/missed-suite-plans.service";
 import { NotifsModule } from "src/notifs/notifs.module";
+import { ReminderGroupService } from "src/notifs/reminder-group.service";
+import { ReminderPreviewService } from "src/notifs/reminder-preview.service";
 import { PushModule } from "src/push/push.module";
 import { ShareUrlsModule } from "src/share-urls/share-urls.module";
 import { CustomValidator } from "src/tasks/entities/customvalidator.entity";
@@ -23,31 +29,57 @@ import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { FormSnapshotModule } from "src/tasks/formsnapshot.module";
 import { OnetimeInvite } from "src/user/entities/onetime-invite.entity";
+import { UserDevice } from "src/user/entities/user-device.entity";
 import { ContractEvent } from "../user/entities/contract-event.entity";
 import { Tag } from "../user/entities/tag.entity";
 import { User } from "../user/entities/user.entity";
 import { UserModule } from "../user/user.module";
+import { ActionFeedController } from "./action-feed.controller";
 import { ActionFormVariantService } from "./action-form-variant.service";
+import { ActionFormsController } from "./action-forms.controller";
+import { ActionParticipantsService } from "./action-participants.service";
+import { ActionRemindersController } from "./action-reminders.controller";
 import { ActionStatsService } from "./action-stats.service";
+import { ActionSuitesController } from "./action-suites.controller";
+import { ActionUpdateRecognitionPreviewService } from "./action-update-recognition-preview.service";
+import { ActionUpdateRecognitionService } from "./action-update-recognition.service";
+import { ActionUpdateRecognitionWorker } from "./action-update-recognition.worker";
+import { ActionUpdatesController } from "./action-updates.controller";
+import { ActionVisibilityModule } from "./action-visibility.module";
 import { ActionsController } from "./actions.controller";
 import { ActionsGateway } from "./actions.gateway";
 import { ActionsService } from "./actions.service";
+import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
+import { CohortDecisionListener } from "./cohort-decision.listener";
+import { CohortDecisionService } from "./cohort-decision.service";
+import { CohortDecisionWorker } from "./cohort-decision.worker";
+import { CohortDecisionsController } from "./cohort-decisions.controller";
+import { CohortDivergenceService } from "./cohort-divergence.service";
+import { CohortResolverService } from "./cohort-resolver.service";
 import { ContractReminderWorker } from "./contract-reminder.worker";
 import { ContractSuspenderWorker } from "./contract-suspender.worker";
 import { ActionActivity } from "./entities/action-activity.entity";
+import { ActionCohortDecisionCorrection } from "./entities/action-cohort-decision-correction.entity";
+import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
 import { ActionEvent } from "./entities/action-event.entity";
 import { ActionFormAssignment } from "./entities/action-form-assignment.entity";
 import { ActionFormVariant } from "./entities/action-form-variant.entity";
 import { ActionReviewer } from "./entities/action-reviewer.entity";
 import { ActionSuite } from "./entities/action-suite.entity";
+import { ActionUpdateExposure } from "./entities/action-update-exposure.entity";
 import { ActionUpdate } from "./entities/action-update.entity";
 import { Action } from "./entities/action.entity";
 import { FollowUpForm } from "./entities/follow-up-form.entity";
 import { GeneralUpdateActivity } from "./entities/general-update-activity.entity";
 import { GeneralUpdate } from "./entities/general-update.entity";
+import { Project } from "./entities/project.entity";
 import { ReminderGroup } from "./entities/reminder-group.entity";
 import { ForumActionCompleterWorker } from "./forum-action-completer.worker";
+import { GeneralUpdatesController } from "./general-updates.controller";
+import { ProjectsController } from "./projects.controller";
+import { ProjectsService } from "./projects.service";
 import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
+import { TaskBadgeService } from "./task-badge.service";
 
 @Module({
   imports: [
@@ -55,6 +87,8 @@ import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
       User,
       Action,
       ActionActivity,
+      ActionCohortDecision,
+      ActionCohortDecisionCorrection,
       ActionEvent,
       ActionEventNotif,
       ActionFormAssignment,
@@ -62,10 +96,12 @@ import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
       ActionReviewer,
       ActionSuite,
       ActionUpdate,
+      ActionUpdateExposure,
       Comment,
       ContractEvent,
       CustomValidator,
       EditableContent,
+      ExperimentAssignment,
       Form,
       FormResponse,
       FollowUpForm,
@@ -73,14 +109,18 @@ import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
       GeneralUpdateActivity,
       OnetimeInvite,
       Post,
+      Project,
       ReminderGroup,
       Tag,
       Community,
+      UserDevice,
     ]),
     ContractModule,
     UserModule,
     CommunityModule,
     NotifsModule,
+    NotificationSettingsModule,
+    ActionVisibilityModule,
     MailModule,
     MmsModule,
     PushModule,
@@ -90,24 +130,52 @@ import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
     FormSnapshotModule,
     forwardRef(() => ShareUrlsModule),
   ],
-  controllers: [ActionsController],
+  controllers: [
+    ActionsController,
+    GeneralUpdatesController,
+    ActionUpdatesController,
+    ActionRemindersController,
+    ActionSuitesController,
+    ActionFeedController,
+    ActionFormsController,
+    CohortDecisionsController,
+    ProjectsController,
+  ],
   providers: [
     ActionsService,
+    ProjectsService,
     ActionFormVariantService,
     ActionsGateway,
     ActionEventNotifWorker,
+    ActionEventNotifDeliveryService,
+    ActionParticipantsService,
+    ActionUpdateRecognitionService,
+    ActionUpdateRecognitionPreviewService,
+    ActionUpdateRecognitionWorker,
     ActionEventRecipientService,
     ActionEventReminderService,
+    ReminderGroupService,
+    ReminderPreviewService,
+    MissedSuitePlanService,
     ReloadUsersJoinedWorker,
     ContractReminderWorker,
     ContractSuspenderWorker,
     ForumActionCompleterWorker,
     ActionStatsService,
+    CohortDecisionListener,
+    CohortDecisionService,
+    CohortDecisionStaffService,
+    CohortDecisionWorker,
+    TaskBadgeService,
+    CohortDivergenceService,
+    CohortResolverService,
   ],
   exports: [
     ActionsService,
+    ActionVisibilityModule,
     ActionFormVariantService,
     ActionEventRecipientService,
+    CohortResolverService,
   ],
 })
 export class ActionsModule {}

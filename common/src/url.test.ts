@@ -1,4 +1,26 @@
-import { isAllianceAppHostname, siteHref, urlMatchesDomain } from "./url";
+import {
+  isAllianceAppHostname,
+  isLegacyAllianceHost,
+  siteHref,
+  urlMatchesDomain,
+  withOrigin,
+} from "./url";
+
+describe("isLegacyAllianceHost", () => {
+  it("accepts the legacy domain, its subdomains and a host with a port", () => {
+    expect(isLegacyAllianceHost("worldalliance.org")).toBe(true);
+    expect(isLegacyAllianceHost("www.worldalliance.org")).toBe(true);
+    expect(isLegacyAllianceHost("staging.worldalliance.org")).toBe(true);
+    expect(isLegacyAllianceHost("worldalliance.org:3000")).toBe(true);
+  });
+
+  it("rejects the new domain, lookalikes and local hosts", () => {
+    expect(isLegacyAllianceHost("thealliance.org")).toBe(false);
+    expect(isLegacyAllianceHost("notworldalliance.org")).toBe(false);
+    expect(isLegacyAllianceHost("worldalliance.org.evil.com")).toBe(false);
+    expect(isLegacyAllianceHost("localhost:3005")).toBe(false);
+  });
+});
 
 describe("urlMatchesDomain", () => {
   it("matches the domain itself and its subdomains", () => {
@@ -99,5 +121,22 @@ describe("siteHref", () => {
     expect(siteHref("mailto:contact@worldalliance.org")).toBe(
       "mailto:contact@worldalliance.org",
     );
+  });
+});
+
+describe("withOrigin", () => {
+  it("puts a site path on the origin", () => {
+    expect(
+      withOrigin({ url: "/actions/5", origin: "https://thealliance.org" }),
+    ).toBe("https://thealliance.org/actions/5");
+  });
+
+  it.each([
+    "https://example.org/p",
+    "//example.org/p",
+    "#top",
+    "mailto:someone@example.org",
+  ])("leaves %s alone", (url) => {
+    expect(withOrigin({ url, origin: "https://thealliance.org" })).toBe(url);
   });
 });

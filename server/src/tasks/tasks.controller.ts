@@ -1,3 +1,4 @@
+import { GUEST_HEADER } from "@alliance/common/guest";
 import {
   BadRequestException,
   Body,
@@ -9,6 +10,7 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   Request,
   Res,
   UseGuards,
@@ -18,13 +20,10 @@ import type { Request as ExpressRequest, Response } from "express";
 import { ActionActivityDto, OptOutActionDto } from "src/actions/dto/action.dto";
 import { AuthService } from "src/auth/auth.service";
 import { AdminGuard } from "src/auth/guards/admin.guard";
-import {
-  AuthGuard,
-  extractGuestTokenFromCookie,
-  extractGuestTokenFromHeader,
-} from "src/auth/guards/auth.guard";
-import type { JwtRequest } from "src/auth/guards/jwtreq";
+import { AuthGuard } from "src/auth/guards/auth.guard";
+import { AuthOptionalGuard } from "src/auth/guards/authoptional.guard";
 import { Public } from "src/auth/public.decorator";
+import { extractGuestToken, type JwtRequest } from "src/auth/tokens";
 import {
   CreateCustomValidatorDto,
   CreateCustomValidatorResponseDto,
@@ -35,9 +34,11 @@ import {
   TestCustomExpressionDto,
   TestCustomExpressionResponseDto,
 } from "./customvalidator.dto";
+import { FormResponseHistoryDto } from "./form-response-history.dto";
 import {
   CreateFormDto,
   FormAggregateViewsDto,
+  FormDraftDto,
   FormDto,
   FormResponseCountDto,
   FormResponseDto,
@@ -46,15 +47,25 @@ import {
   FormSummaryDto,
   GuestFormResponseDto,
   LinkedGuestDraftDto,
+  MaybeFormDraftDto,
   MigrateResponseSnapshotsDto,
   MigrateResponseSnapshotsResultDto,
+  SaveFormDraftDto,
   SubmitFollowUpFormDto,
   SubmitFormDto,
   UpdateFormDto,
 } from "./form.dto";
 import { TasksService } from "./tasks.service";
+import {
+  CountVariableAggregatesDto,
+  VariableAggregatesDto,
+} from "./variable-aggregates.dto";
 
-const GUEST_TOKEN_RESPONSE_HEADER = "X-Guest-Token";
+const formulaSourcesChangedResponse = {
+  status: 409,
+  description:
+    "The member's answers to a form an options formula reads changed since the form loaded them.",
+} as const;
 
 @Controller("tasks")
 export class TasksController {
@@ -66,6 +77,7 @@ export class TasksController {
   @Post("submitForm/:id")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: FormResponseDto })
+  @ApiResponse(formulaSourcesChangedResponse)
   async submitForm(
     @Request() req: JwtRequest,
     @Param("id", ParseIntPipe) id: number,
@@ -92,12 +104,11 @@ export class TasksController {
         "Authenticated users must use /tasks/submitForm/:id",
       );
     }
-    const incomingToken =
-      extractGuestTokenFromHeader(req) ?? extractGuestTokenFromCookie(req);
+    const incomingToken = extractGuestToken(req);
     const { guestId, guestToken } =
       await this.authService.createGuestSession(incomingToken);
     this.authService.setGuestCookie(res, guestToken);
-    res.setHeader(GUEST_TOKEN_RESPONSE_HEADER, guestToken);
+    res.setHeader(GUEST_HEADER, guestToken);
     return new FormResponseDto({
       response: await this.tasksService.submitFormPublic({
         formId: +id,
@@ -110,6 +121,7 @@ export class TasksController {
   @Post("submitFollowUpForm/:followUpFormId")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: FormResponseDto })
+  @ApiResponse(formulaSourcesChangedResponse)
   async submitFollowUpForm(
     @Request() req: JwtRequest,
     @Param("followUpFormId", ParseIntPipe) followUpFormId: number,
@@ -213,6 +225,61 @@ export class TasksController {
     });
   }
 
+  @Get("myResponseHistory/:id")
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: FormResponseHistoryDto })
+  async getMyFormResponseHistory(
+    @Param("id", ParseIntPipe) id: number,
+    @Request() req: JwtRequest,
+  ): Promise<FormResponseHistoryDto> {
+    return new FormResponseHistoryDto(
+      await this.tasksService.getFormResponseHistory({
+        userId: req.user.sub,
+        formId: id,
+      }),
+    );
+  }
+
+  @Get("responseHistory/:formId/user/:userId")
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: FormResponseHistoryDto })
+  async getMemberFormResponseHistoryAdmin(
+    @Param("formId", ParseIntPipe) formId: number,
+    @Param("userId", ParseIntPipe) userId: number,
+  ): Promise<FormResponseHistoryDto> {
+    return new FormResponseHistoryDto(
+      await this.tasksService.getFormResponseHistory({ userId, formId }),
+    );
+  }
+
+  /** Anyone who can open the form, guests included, gets the same counts. */
+  @Get("variableAggregates/:formId/snapshot/:formSnapshotId")
+  @UseGuards(AuthOptionalGuard)
+  @ApiOkResponse({ type: VariableAggregatesDto })
+  async getVariableAggregates(
+    @Param("formId", ParseIntPipe) formId: number,
+    @Param("formSnapshotId", ParseIntPipe) formSnapshotId: number,
+  ): Promise<VariableAggregatesDto> {
+    return new VariableAggregatesDto({
+      aggregates: await this.tasksService.countFormVersionAggregates({
+        formId,
+        formSnapshotId,
+      }),
+    });
+  }
+
+  /** Counts any questions, for previewing a form not yet saved. */
+  @Post("variableAggregates")
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: VariableAggregatesDto })
+  async countVariableAggregatesAdmin(
+    @Body() body: CountVariableAggregatesDto,
+  ): Promise<VariableAggregatesDto> {
+    return new VariableAggregatesDto({
+      aggregates: await this.tasksService.countVariableAggregates(body.sources),
+    });
+  }
+
   @Get("guestResponse/:id")
   @Public()
   @ApiOkResponse({ type: GuestFormResponseDto })
@@ -220,8 +287,7 @@ export class TasksController {
     @Request() req: ExpressRequest,
     @Param("id", ParseIntPipe) id: number,
   ): Promise<GuestFormResponseDto> {
-    const token =
-      extractGuestTokenFromHeader(req) ?? extractGuestTokenFromCookie(req);
+    const token = extractGuestToken(req);
     const guestPayload = token
       ? await this.authService.verifyGuestToken(token)
       : null;
@@ -238,16 +304,66 @@ export class TasksController {
   @ApiOkResponse({ type: LinkedGuestDraftDto })
   async getLinkedGuestDraft(
     @Param("id", ParseIntPipe) id: number,
+    @Query("actionId", ParseIntPipe) actionId: number,
     @Request() req: JwtRequest,
   ): Promise<LinkedGuestDraftDto> {
     return new LinkedGuestDraftDto(
-      await this.tasksService.getLinkedGuestDraftFormResponse(req.user.sub, id),
+      await this.tasksService.getLinkedGuestDraftFormResponse({
+        userId: req.user.sub,
+        formId: id,
+        actionId,
+      }),
+    );
+  }
+
+  @Put("formDraft/:id")
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: FormDraftDto })
+  async saveFormDraft(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() body: SaveFormDraftDto,
+    @Request() req: JwtRequest,
+  ): Promise<FormDraftDto> {
+    return new FormDraftDto(
+      await this.tasksService.saveFormDraft({
+        userId: req.user.sub,
+        formId: id,
+        dto: body,
+      }),
+    );
+  }
+
+  @Get("formDraft/:id")
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: MaybeFormDraftDto })
+  async getFormDraft(
+    @Param("id", ParseIntPipe) id: number,
+    @Request() req: JwtRequest,
+  ): Promise<MaybeFormDraftDto> {
+    return new MaybeFormDraftDto(
+      await this.tasksService.getFormDraft(req.user.sub, id),
     );
   }
 
   @Get("slug/:id")
   @ApiOkResponse({ type: FormDto })
-  async getForm(@Param("id", ParseIntPipe) id: number): Promise<FormDto> {
+  async getForm(
+    @Param("id", ParseIntPipe) id: number,
+    @Request() req: ExpressRequest,
+  ): Promise<FormDto> {
+    return new FormDto(
+      await this.tasksService.getMemberForm(
+        id,
+        await this.authService.getAuthenticatedUserId(req),
+      ),
+    );
+  }
+
+  /** The stored form, unfilled: what the builder edits and clones. */
+  @Get("adminForm/:id")
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: FormDto })
+  async getFormAdmin(@Param("id", ParseIntPipe) id: number): Promise<FormDto> {
     return new FormDto(await this.tasksService.getForm(id));
   }
 
@@ -280,6 +396,11 @@ export class TasksController {
   @Delete(":id")
   @UseGuards(AdminGuard)
   @ApiOkResponse()
+  @ApiResponse({
+    status: 409,
+    description:
+      "Another form's current version has a variable or options formula reading this form's answers.",
+  })
   async deleteFormAdmin(@Param("id", ParseIntPipe) id: number): Promise<void> {
     return this.tasksService.deleteForm(id);
   }

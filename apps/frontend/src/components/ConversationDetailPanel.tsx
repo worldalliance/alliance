@@ -1,17 +1,21 @@
-import type { MessageDto } from "@alliance/shared/client";
-import {
+import type {
   ConversationDto,
-  CreateMessageDto,
-  messageSendMessage,
+  MessageDto,
   ProfileDto,
 } from "@alliance/shared/client";
+import { getParticipantState } from "@alliance/shared/lib/conversations";
+import type { UseLiveConvoMessagesResult } from "@alliance/shared/lib/messages";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
+import { milliseconds } from "date-fns";
 import { ChevronLeft, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useImageDropZone } from "../hooks/useImageDropZone";
 import { useAuth } from "../lib/AuthContext";
+import { attachImageFiles } from "../lib/imageAttachments";
 import ConversationInfoPanel from "./ConversationInfoPanel";
+import LoadFailed from "./LoadFailed";
 import Message from "./Message";
 import MessageInput from "./MessageInput";
 import MessageRecipientSelect from "./MessageRecipientSelect";
@@ -23,16 +27,9 @@ type ConversationDetailPanelProps = {
   onClose: () => void;
   onLeave: () => void;
   friends: ProfileDto[] | null;
+  friendsFailure: { onRetry: () => void; retrying: boolean } | null;
   handleConversationUpdated: (conversation: ConversationDto) => void;
-  onOptimisticMessage?: (message: MessageDto) => void;
-  onOptimisticMessageFailed?: (
-    tempId: string,
-    draft: {
-      message: string;
-      attachments: string[];
-      replyingTo: string | null;
-    },
-  ) => void;
+  sendMessage: UseLiveConvoMessagesResult["sendMessage"];
 } & (
   | {
       mode: "existing";
@@ -72,8 +69,8 @@ const ConversationDetailPanel = ({
   sendingNewMessageToIds,
   setSendingNewMessageToIds,
   handleCreateConversation,
-  onOptimisticMessage,
-  onOptimisticMessageFailed,
+  friendsFailure,
+  sendMessage,
 }: ConversationDetailPanelProps) => {
   const { user } = useAuth();
 
@@ -81,20 +78,25 @@ const ConversationDetailPanel = ({
   const [attachments, setAttachments] = useState<string[]>([]);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [groupInfoOpen, setGroupInfoOpen] = useState(false);
-  const [isDraggingPanel, setIsDraggingPanel] = useState(false);
   const [focusedMessageId, setFocusedMessageId] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
-  const panelDragCounterRef = useRef(0);
 
   const focusedMessageRef = useRef<HTMLDivElement | null>(null);
 
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
+  const { isDragging: isDraggingPanel, dropZoneProps } = useImageDropZone(
+    (files) => attachImageFiles(files, setAttachments),
+  );
+
   useEffect(() => {
     if (focusedMessageId) {
-      setTimeout(() => {
-        setFocusedMessageId(null);
-      }, 1000);
+      setTimeout(
+        () => {
+          setFocusedMessageId(null);
+        },
+        milliseconds({ seconds: 1 }),
+      );
     }
   }, [focusedMessageId, convoMessages]);
 
@@ -103,88 +105,6 @@ const ConversationDetailPanel = ({
       focusedMessageRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [focusedMessageId]);
-
-  const readImagesFromFiles = useCallback(async (files: File[]) => {
-    const readers: Promise<string>[] = [];
-    for (const file of files) {
-      if (!file.type.startsWith("image/")) continue;
-      readers.push(
-        new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        }),
-      );
-    }
-    return Promise.all(readers);
-  }, []);
-
-  const handleFilesSelected = useCallback(
-    async (files: FileList | File[] | null) => {
-      if (!files || files.length === 0) return;
-      try {
-        const base64s = await readImagesFromFiles(Array.from(files));
-        if (base64s.length > 0) {
-          setAttachments((prev) => [...prev, ...base64s]);
-        }
-      } catch (err) {
-        console.error("Failed reading image file(s)", err);
-      }
-    },
-    [readImagesFromFiles],
-  );
-
-  function isDraggingImage(e: React.DragEvent) {
-    const items = e.dataTransfer?.items;
-    if (!items) return false;
-
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-
-      if (item.kind === "file" && item.type.startsWith("image/")) {
-        return true;
-      }
-
-      if (item.type.startsWith("image/")) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  const onDragEnterCapture = (e: React.DragEvent) => {
-    if (!isDraggingImage(e)) return;
-    e.preventDefault();
-    e.stopPropagation();
-    panelDragCounterRef.current += 1;
-    setIsDraggingPanel(true);
-  };
-
-  const onDragOverCapture = (e: React.DragEvent) => {
-    if (!isDraggingImage(e)) return;
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const onDragLeaveCapture = (e: React.DragEvent) => {
-    if (!isDraggingImage(e)) return;
-    e.preventDefault();
-    e.stopPropagation();
-    panelDragCounterRef.current -= 1;
-    if (panelDragCounterRef.current <= 0) {
-      setIsDraggingPanel(false);
-    }
-  };
-
-  const onDropCapture = async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    panelDragCounterRef.current = 0;
-    setIsDraggingPanel(false);
-    await handleFilesSelected(e.dataTransfer?.files ?? null);
-  };
 
   const handleSetReplyingTo = useCallback((messageId: string) => {
     setReplyingTo(messageId);
@@ -205,10 +125,7 @@ const ConversationDetailPanel = ({
 
   const amInvited = useMemo(() => {
     if (mode === "new") return false;
-    return selectedConvo.participants.some(
-      (participant) =>
-        participant.user.id === user?.id && participant.state === "invited",
-    );
+    return getParticipantState(selectedConvo, user?.id) === "invited";
   }, [mode, selectedConvo, user]);
 
   const handleFocusReply = useCallback((messageId: string) => {
@@ -238,81 +155,42 @@ const ConversationDetailPanel = ({
     const draftAttachments = [...attachments];
     const draftReplyingTo = replyingTo;
 
-    const tempId = `temp-${Date.now()}-${Math.random()
-      .toString(36)
-      .substr(2, 9)}`;
-
-    if (onOptimisticMessage && user) {
-      const optimisticMessage: MessageDto = {
-        id: tempId,
-        body: draftMessage,
-        attachments: draftAttachments,
-        createdAt: new Date().toISOString(),
-        deletedAt: null,
-        author: {
-          ...user,
-          displayName: user.name,
-          profileDescription: "",
-          isCommunityLeader: false,
-        },
-        conversationId: activeConvo.id,
-        replyTo: replyingToMessage,
-      };
-      onOptimisticMessage(optimisticMessage);
-    }
-
     setMessage("");
     setAttachments([]);
     setReplyingTo(null);
 
     setIsSendingMessage(true);
-    try {
-      const payload: CreateMessageDto & { attachments?: string[] } = {
+    const sent = await sendMessage({
+      message: {
         conversationId: activeConvo.id,
         body: draftMessage,
         attachments: draftAttachments,
         replyToId: draftReplyingTo ?? undefined,
-      };
-      const response = await messageSendMessage({
-        body: payload,
-      });
-      if (!response.data) {
-        if (onOptimisticMessageFailed) {
-          onOptimisticMessageFailed(tempId, {
-            message: draftMessage,
-            attachments: draftAttachments,
-            replyingTo: draftReplyingTo,
-          });
-        }
-        setMessage(draftMessage);
-        setAttachments(draftAttachments);
-        setReplyingTo(draftReplyingTo);
-      }
-      if (amInvited) {
-        handleConversationUpdated({
-          ...activeConvo,
-          participants: activeConvo.participants.map((participant) => {
-            if (participant.user.id === user?.id) {
-              return { ...participant, state: "joined" };
-            }
-            return participant;
-          }),
-        });
-      }
-    } catch (err) {
-      console.error("Failed to send message", err);
-      if (onOptimisticMessageFailed) {
-        onOptimisticMessageFailed(tempId, {
-          message: draftMessage,
-          attachments: draftAttachments,
-          replyingTo: draftReplyingTo,
-        });
-      }
+      },
+      author: user && {
+        ...user,
+        displayName: user.name,
+        profileDescription: "",
+        isCommunityLeader: false,
+      },
+    });
+    setIsSendingMessage(false);
+    if (!sent.ok) {
       setMessage(draftMessage);
       setAttachments(draftAttachments);
       setReplyingTo(draftReplyingTo);
-    } finally {
-      setIsSendingMessage(false);
+      return;
+    }
+    if (amInvited) {
+      handleConversationUpdated({
+        ...activeConvo,
+        participants: activeConvo.participants.map((participant) => {
+          if (participant.user.id === user?.id) {
+            return { ...participant, state: "joined" };
+          }
+          return participant;
+        }),
+      });
     }
   }, [
     amInvited,
@@ -320,14 +198,12 @@ const ConversationDetailPanel = ({
     handleConversationUpdated,
     isSendingMessage,
     replyingTo,
-    replyingToMessage,
     message,
     mode,
     handleCreateConversation,
     selectedConvo,
     user,
-    onOptimisticMessage,
-    onOptimisticMessageFailed,
+    sendMessage,
   ]);
 
   useEffect(() => {
@@ -350,31 +226,10 @@ const ConversationDetailPanel = ({
     };
   }, []);
 
-  const isAdmin = useMemo(() => {
-    if (mode === "new") return false;
-    return selectedConvo.participants.some(
-      (participant) =>
-        (participant.user.id === user?.id && participant.role === "admin") ||
-        participant.role === "owner",
-    );
-  }, [mode, selectedConvo, user]);
-
-  const isInvited = useMemo(
-    () =>
-      selectedConvo?.participants.some(
-        (participant) =>
-          participant.user.id === user?.id && participant.state === "invited",
-      ),
-    [selectedConvo, user],
-  );
-
   return (
     <div
       className="flex flex-col h-full overflow-hidden relative bg-white"
-      onDragEnterCapture={onDragEnterCapture}
-      onDragOverCapture={onDragOverCapture}
-      onDragLeaveCapture={onDragLeaveCapture}
-      onDropCapture={onDropCapture}
+      {...dropZoneProps}
     >
       {isDraggingPanel && (
         <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/40 text-white font-medium pointer-events-none">
@@ -384,9 +239,8 @@ const ConversationDetailPanel = ({
       {groupInfoOpen && mode === "existing" ? (
         <ConversationInfoPanel
           selectedConvo={selectedConvo}
-          isAdmin={isAdmin}
-          handleConversationUpdated={handleConversationUpdated}
           friends={friends}
+          friendsFailure={friendsFailure}
           onLeave={onLeave}
           onClose={() => setGroupInfoOpen(false)}
         />
@@ -437,11 +291,18 @@ const ConversationDetailPanel = ({
                   <p className="font-semibold text-lg">New message</p>
                   <div className="flex flex-row items-center gap-x-2">
                     <p className="font-medium">To:</p>
-                    <MessageRecipientSelect
-                      users={friends ?? []}
-                      selectedUserIds={sendingNewMessageToIds}
-                      onChange={setSendingNewMessageToIds}
-                    />
+                    {friendsFailure ? (
+                      <LoadFailed
+                        message="Couldn't load the people you can message."
+                        {...friendsFailure}
+                      />
+                    ) : (
+                      <MessageRecipientSelect
+                        users={friends ?? []}
+                        selectedUserIds={sendingNewMessageToIds}
+                        onChange={setSendingNewMessageToIds}
+                      />
+                    )}
                   </div>
                 </div>
               )}
@@ -493,8 +354,7 @@ const ConversationDetailPanel = ({
                       Math.abs(
                         new Date(message.createdAt).getTime() -
                           new Date(arr[idx - 1].createdAt).getTime(),
-                      ) >
-                        1000 * 60 * 60 * 3 // 3 hours
+                      ) > milliseconds({ hours: 3 })
                     }
                     isFirstInReplyGroup={
                       idx === 0 ||
@@ -506,7 +366,7 @@ const ConversationDetailPanel = ({
                 <div ref={bottomRef} />
               </div>
             ) : null}
-            {mode === "existing" && isInvited && (
+            {mode === "existing" && amInvited && (
               <div className="flex flex-row items-center gap-x-2 w-full p-5">
                 <div className="flex flex-col lg:flex-row items-center mx-auto gap-3">
                   <p className="text-zinc-800">

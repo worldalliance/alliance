@@ -1,3 +1,4 @@
+import { milliseconds } from "date-fns";
 import { TIMED_OUT, withTimeout } from "./timeout";
 
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -26,7 +27,9 @@ describe("withTimeout", () => {
   });
 
   it("gives the promise its value when it lands first", async () => {
-    expect(await withTimeout(Promise.resolve("sent"), 1000)).toBe("sent");
+    expect(
+      await withTimeout(Promise.resolve("sent"), milliseconds({ seconds: 1 })),
+    ).toBe("sent");
   });
 
   it("gives up at the deadline rather than waiting on the promise", async () => {
@@ -48,7 +51,9 @@ describe("withTimeout", () => {
   it("passes a rejection through to the caller", async () => {
     const error = new Error("network down");
 
-    await expect(withTimeout(Promise.reject(error), 1000)).rejects.toBe(error);
+    await expect(
+      withTimeout(Promise.reject(error), milliseconds({ seconds: 1 })),
+    ).rejects.toBe(error);
   });
 
   it("keeps a rejection that lands after the deadline from going unhandled", async () => {
@@ -106,20 +111,24 @@ describe("withTimeout", () => {
   it("clears the timer the promise beat, so nothing holds the runtime open", async () => {
     const timers = trackTimers();
 
-    await withTimeout(Promise.resolve("sent"), 60_000);
+    await withTimeout(Promise.resolve("sent"), milliseconds({ minutes: 1 }));
 
-    expect(timers.clearing).toHaveBeenCalledWith(timers.handleFor(60_000));
+    expect(timers.clearing).toHaveBeenCalledWith(
+      timers.handleFor(milliseconds({ minutes: 1 })),
+    );
   });
 
   it("clears the timer a rejection beat, on the path that leaks the longest", async () => {
     const timers = trackTimers();
     const failing = withTimeout(
       Promise.reject(new Error("network down")),
-      50_000,
+      milliseconds({ seconds: 50 }),
     );
 
     await expect(failing).rejects.toThrow("network down");
 
-    expect(timers.clearing).toHaveBeenCalledWith(timers.handleFor(50_000));
+    expect(timers.clearing).toHaveBeenCalledWith(
+      timers.handleFor(milliseconds({ seconds: 50 })),
+    );
   });
 });

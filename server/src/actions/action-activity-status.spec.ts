@@ -1,20 +1,28 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { CachedFilter } from "../utils/cached-filter";
-import { resolveUserActionRelation } from "./action-activity-status";
+import {
+  findLatestCompletions,
+  resolveUserActionRelation,
+} from "./action-activity-status";
 import { UserActionRelation } from "./dto/action.dto";
 
 const USER_ID = 123;
 const ACTION_ID = 456;
 
 type Activity = {
+  id: number;
   type: ActionActivityType;
   createdAt: Date;
   userId: number;
   actionId: number;
 };
 
+// Ascending, as the database assigns them.
+let nextId = 1;
+
 function at(type: ActionActivityType, iso: string): Activity {
   return {
+    id: nextId++,
     type,
     createdAt: new Date(iso),
     userId: USER_ID,
@@ -64,6 +72,7 @@ describe("resolveUserActionRelation", () => {
 
   it("only considers activities for the requested user and action", () => {
     const completed = (userId: number, actionId: number): Activity => ({
+      id: nextId++,
       type: ActionActivityType.USER_COMPLETED,
       createdAt: new Date("2026-01-01"),
       userId,
@@ -119,5 +128,46 @@ describe("resolveUserActionRelation", () => {
         ]),
       ).toBe(UserActionRelation.Declined);
     });
+
+    it("takes the later-saved of two in the same millisecond, in either order", () => {
+      const completed = at(ActionActivityType.USER_COMPLETED, "2026-01-01");
+      const withdrawn = at(ActionActivityType.USER_WONT_COMPLETE, "2026-01-01");
+
+      expect(resolve([completed, withdrawn])).toBe(UserActionRelation.Declined);
+      expect(resolve([withdrawn, completed])).toBe(UserActionRelation.Declined);
+    });
+  });
+});
+
+describe("findLatestCompletions", () => {
+  const activity = (
+    userId: number,
+    actionId: number,
+    type: ActionActivityType,
+    iso: string,
+  ): Activity => ({
+    id: nextId++,
+    type,
+    createdAt: new Date(iso),
+    userId,
+    actionId,
+  });
+
+  it("decides each (user, action) pair by its own latest terminal activity", () => {
+    const kept = activity(
+      1,
+      10,
+      ActionActivityType.USER_COMPLETED,
+      "2026-01-01",
+    );
+    const completions = findLatestCompletions([
+      kept,
+      activity(1, 20, ActionActivityType.USER_COMPLETED, "2026-01-01"),
+      activity(1, 20, ActionActivityType.USER_WONT_COMPLETE, "2026-01-03"),
+      activity(2, 10, ActionActivityType.USER_COMPLETED, "2026-01-01"),
+      activity(2, 10, ActionActivityType.USER_WONT_COMPLETE, "2026-01-02"),
+    ]);
+
+    expect(completions).toEqual([kept]);
   });
 });

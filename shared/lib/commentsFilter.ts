@@ -1,8 +1,16 @@
-import { CommentDto, userListFriends } from "@alliance/shared/client";
-import { hashStringToSeed } from "@alliance/shared/forms/randomutils";
+import { hashStringToSeed } from "@alliance/common/random";
+import { CommentDto, PostTagDto, UserDto } from "@alliance/shared/client";
+import {
+  countCommentsByTag,
+  matchesTagFilter,
+  type TagFilter,
+} from "@alliance/shared/lib/commentTags";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
-import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import {
+  selectFriendIds,
+  useUserFriendsQuery,
+} from "@alliance/shared/lib/user";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 export enum CommentFilter {
   All = "all",
@@ -58,6 +66,13 @@ export function countAllReplies(replies: CommentDto[]): number {
     }
   }
   return count;
+}
+
+export function latestActivityAt(comment: CommentDto): number {
+  return (comment.children ?? []).reduce(
+    (latest, child) => Math.max(latest, latestActivityAt(child)),
+    new Date(comment.createdAt).getTime(),
+  );
 }
 
 export function hasExpertReply(
@@ -167,6 +182,7 @@ export function sortComments(
     case CommentSort.Newest:
       return [...comments].sort((a, b) => {
         if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+        if (a.pinned) return latestActivityAt(b) - latestActivityAt(a);
         return (
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
@@ -204,13 +220,9 @@ export function useCommentFilterData({
   enabled: boolean;
   userId: number | undefined;
 }) {
-  const { data: friendIds = [] } = useQuery({
-    queryKey: ["userListFriends", userId],
-    queryFn: () =>
-      userListFriends({ path: { id: userId! } }).then((res) =>
-        (res.data ?? []).map((friend) => friend.id),
-      ),
-    enabled: enabled && userId != null,
+  const { data: friendIds = [] } = useUserFriendsQuery(userId, {
+    select: selectFriendIds,
+    enabled,
   });
 
   const { communities } = useMyCommunities({
@@ -229,4 +241,162 @@ export function useCommentFilterData({
   }, [communities]);
 
   return { friendIdSet, groupMemberIdSet };
+}
+
+// A deleted comment the member is replying to stays, so the refusal and their
+// draft stay on screen under it.
+export function isCommentShown(
+  comment: CommentDto,
+  replyingTo: number | null,
+): boolean {
+  return (
+    !comment.deleted ||
+    (comment.children?.length ?? 0) > 0 ||
+    comment.id === replyingTo
+  );
+}
+
+export function useCommentFiltering({
+  comments,
+  user,
+  showClusterTags,
+  isPostComments,
+  activeQaMode,
+  expertIds,
+  tags,
+  tagFilter,
+  replyingTo,
+}: {
+  comments: CommentDto[] | null;
+  user: UserDto | undefined;
+  showClusterTags: boolean;
+  isPostComments: boolean;
+  activeQaMode: boolean;
+  expertIds: number[];
+  tags: readonly PostTagDto[];
+  tagFilter: TagFilter;
+  replyingTo: number | null;
+}) {
+  const hasSameGroup = showClusterTags && user?.clusterId != null;
+  const [commentFilter, setCommentFilter] = useState(CommentFilter.All);
+  // `user` is usually hydrated when the caller mounts, so the initializer picks
+  // the right default without an effect for late-arriving user data.
+  const [commentSort, setCommentSort] = useState(
+    hasSameGroup ? CommentSort.SameCluster : CommentSort.Newest,
+  );
+  const [randomSeed, setRandomSeed] = useState(() => String(Math.random()));
+  const changeSort = useCallback((sort: CommentSort) => {
+    setCommentSort(sort);
+    if (sort === CommentSort.Random) setRandomSeed(String(Math.random()));
+  }, []);
+
+  const { friendIdSet, groupMemberIdSet } = useCommentFilterData({
+    enabled: !!user && isPostComments,
+    userId: user?.id,
+  });
+
+  const topLevelComments = useMemo(
+    () =>
+      (comments ?? []).filter((comment) => isCommentShown(comment, replyingTo)),
+    [comments, replyingTo],
+  );
+
+  const hasMineComments = useMemo(
+    () =>
+      !!user &&
+      topLevelComments.some((comment) => comment.author.id === user.id),
+    [topLevelComments, user],
+  );
+
+  const filterOptions = useMemo(
+    () =>
+      getCommentFilterOptions({
+        activeQaMode,
+        hasMineComments,
+        hasSameGroup,
+      }),
+    [activeQaMode, hasMineComments, hasSameGroup],
+  );
+
+  const sortOptions = useMemo(
+    () => getSortOptions({ hasSameGroup }),
+    [hasSameGroup],
+  );
+
+  useEffect(() => {
+    if (!filterOptions.includes(commentFilter)) {
+      setCommentFilter(CommentFilter.All);
+    }
+  }, [filterOptions, commentFilter]);
+
+  useEffect(() => {
+    if (!sortOptions.includes(commentSort)) {
+      setCommentSort(CommentSort.Newest);
+    }
+  }, [sortOptions, commentSort]);
+
+  const filterContext = useMemo(
+    () => ({
+      userId: user?.id,
+      userClusterId: user?.clusterId,
+      expertIds,
+      friendIdSet,
+      groupMemberIdSet,
+    }),
+    [user?.id, user?.clusterId, expertIds, friendIdSet, groupMemberIdSet],
+  );
+
+  const commentCounts = useMemo(() => {
+    const counts = {} as Record<CommentFilter, number>;
+    for (const filter of filterOptions) {
+      counts[filter] = topLevelComments.filter((comment) =>
+        matchesCommentFilter(comment, filter, filterContext),
+      ).length;
+    }
+    return counts;
+  }, [filterOptions, topLevelComments, filterContext]);
+
+  const filterMatchedComments = useMemo(
+    () =>
+      topLevelComments.filter((comment) =>
+        matchesCommentFilter(comment, commentFilter, filterContext),
+      ),
+    [topLevelComments, commentFilter, filterContext],
+  );
+
+  const tagCounts = useMemo(
+    () => countCommentsByTag(filterMatchedComments, tags),
+    [filterMatchedComments, tags],
+  );
+
+  const filteredComments = useMemo(
+    () =>
+      sortComments(
+        filterMatchedComments.filter((comment) =>
+          matchesTagFilter(comment, tagFilter),
+        ),
+        commentSort,
+        { randomSeed, userClusterId: user?.clusterId },
+      ),
+    [
+      filterMatchedComments,
+      commentSort,
+      randomSeed,
+      tagFilter,
+      user?.clusterId,
+    ],
+  );
+
+  return {
+    topLevelComments,
+    filteredComments,
+    filterOptions,
+    commentFilter,
+    setCommentFilter,
+    commentCounts,
+    sortOptions,
+    commentSort,
+    changeSort,
+    tagCounts,
+  };
 }

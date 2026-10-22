@@ -2,77 +2,44 @@ import {
   displayOnlyToFormSchema,
   readDisplayOnlySchema,
 } from "@alliance/common/forms/display-only-schema";
-import { run } from "@alliance/common/run";
+import { R } from "@alliance/common/result";
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
   actionsFindOneAdmin,
-  actionsFindOneUpdateAdmin,
-  actionsNotifyUpdateAdmin,
-  actionsPublishUpdateNowAdmin,
-  actionsUnpublishUpdateAdmin,
-  actionsUpdateUpdateAdmin,
-  ActionUpdateDto,
-  ActionUpdateNotifyType,
   type ActionEventDto,
-  type UpdateActionUpdateDto,
+  type AdminActionUpdateDto,
 } from "@alliance/shared/client";
-import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
+import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import { cn } from "@alliance/shared/styles/util";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
-import { Eye, EyeOff } from "lucide-react";
-import React, { useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router";
+import { NotificationAudienceFields } from "../components/ActionUpdateNotificationAudience";
+import { COLLECTIVE_RESULT_DESCRIPTION } from "../components/ActionUpdateRecognition";
+import {
+  HiddenFromMembersBanner,
+  VisibilityControls,
+} from "../components/ActionUpdateVisibility";
+import { AudienceUpdatePreview } from "../components/AudienceUpdatePreview";
+import { CollectiveResultSplitFields } from "../components/CollectiveResultSplitFields";
 import { FormBuilder } from "../components/FormBuilder";
 import FormSection from "../components/FormSection";
+import { UPDATE_PREVIEW_DESCRIPTION } from "../components/UpdatePreview";
 import {
-  ACTION_UPDATE_NOTIFY_TYPE_LABELS,
-  ACTION_UPDATE_NOTIFY_TYPES,
-} from "../lib/actionUpdateNotifyTypes";
-import {
-  useDisplayOnlySchemaSave,
-  type DisplayOnlySchemaSaveBody,
-} from "../lib/useDisplayOnlySchemaSave";
+  detailsBody,
+  formOf,
+  notifyBlockedReasonOf,
+  usesRecognition,
+  type ActionUpdateForm,
+} from "../lib/actionUpdateDetails";
+import { adminRefusalMessage } from "../lib/adminRefusal";
+import { useActionUpdateAdmin } from "../lib/useActionUpdateAdmin";
+import { useSearchParamTab } from "../lib/useSearchParamTab";
 
-type Tab = "details" | "content";
+const tabs = ["details", "content"] as const;
 
-type ActionUpdateForm = {
-  title: string;
-  shortNotifString: string;
-  notifyType: ActionUpdateNotifyType;
-  tagId: string;
-  date: string;
-  associatedEventId: string;
-};
-
-enum VisibilityState {
-  Unpublished = "unpublished",
-  Scheduled = "scheduled",
-  Published = "published",
-}
-
-type Visibility =
-  | { state: VisibilityState.Unpublished }
-  | { state: VisibilityState.Scheduled; visibleAt: Date }
-  | { state: VisibilityState.Published; visibleAt: Date };
-
-const visibilityOf = (update: ActionUpdateDto, now: number): Visibility => {
-  if (!update.visibleAt) return { state: VisibilityState.Unpublished };
-
-  const visibleAt = new Date(update.visibleAt);
-  return visibleAt.getTime() > now
-    ? { state: VisibilityState.Scheduled, visibleAt }
-    : { state: VisibilityState.Published, visibleAt };
-};
-
-const formOf = (update: ActionUpdateDto): ActionUpdateForm => ({
-  title: update.title,
-  shortNotifString: update.shortNotifString,
-  notifyType: update.notifyType,
-  tagId: update.tag?.id ?? "",
-  date: update.date,
-  associatedEventId: update.associatedEventId
-    ? String(update.associatedEventId)
-    : "",
-});
+const TEXT_INPUT_CLASS =
+  "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm";
 
 const ActionUpdatePage: React.FC = () => {
   const { actionId: actionIdParam, updateId: updateIdParam } = useParams<{
@@ -80,78 +47,65 @@ const ActionUpdatePage: React.FC = () => {
     updateId: string;
   }>();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const selectedTab = (searchParams.get("tab") as Tab) ?? "content";
+  const [selectedTab, onTabChange] = useSearchParamTab(tabs, "content");
 
   const actionId = Number(actionIdParam);
-  const updateId = Number(updateIdParam);
+  const parsedUpdateId = Number(updateIdParam);
+  const updateId = isNaN(parsedUpdateId) ? null : parsedUpdateId;
 
-  const [update, setUpdate] = useState<ActionUpdateDto | null>(null);
+  const {
+    query,
+    update: updateMutation,
+    notify,
+    publishNow,
+    unpublish,
+    saveSchema,
+  } = useActionUpdateAdmin(updateId);
+  const update = query.data;
   const [events, setEvents] = useState<ActionEventDto[]>([]);
   const [form, setForm] = useState<ActionUpdateForm | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [notifying, setNotifying] = useState(false);
-  const [changingVisibility, setChangingVisibility] = useState(false);
+  const [formSource, setFormSource] = useState<AdminActionUpdateDto | null>(
+    null,
+  );
+  const fillForm = useCallback((source: AdminActionUpdateDto) => {
+    setFormSource(source);
+    setForm(formOf(source));
+  }, []);
+  const saving = updateMutation.isPending;
+  const notifying = notify.isPending;
+  const changingVisibility = publishNow.isPending || unpublish.isPending;
   const [error, setError] = useState<string | null>(null);
 
-  const { tags: availableTags } = useTagsAdmin();
+  // A copy cached by an earlier visit may be stale, and saving a form filled
+  // from it would write those stale details back. A newer copy refills a form
+  // with no edits, so someone else's change never reads as an unsaved edit.
+  const formEdited =
+    formSource !== null &&
+    JSON.stringify(form) !== JSON.stringify(formOf(formSource));
+  if (
+    update &&
+    query.isFetchedAfterMount &&
+    !query.isError &&
+    update !== formSource &&
+    (formSource?.id !== update.id || !formEdited)
+  ) {
+    fillForm(update);
+  }
 
-  const onTabChange = useCallback(
-    (tab: Tab) => {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.set("tab", tab);
-        return next;
-      });
-    },
-    [setSearchParams],
-  );
-
-  useEffect(() => {
-    if (isNaN(updateId)) {
-      setError("Invalid update id");
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const response = await actionsFindOneUpdateAdmin({
-          path: { id: updateId },
-        });
-        if (cancelled) return;
-        if (!response.data) {
-          setError("Update not found");
-          return;
-        }
-        setUpdate(response.data);
-        setForm(formOf(response.data));
-      } catch (err) {
-        if (!cancelled) {
-          setError("Failed to load update");
-          console.error(err);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [updateId]);
+  const savedForm = useMemo(() => update && formOf(update), [update]);
 
   useEffect(() => {
     if (isNaN(actionId)) return;
     let cancelled = false;
     const load = async () => {
-      try {
-        const response = await actionsFindOneAdmin({ path: { id: actionId } });
-        if (!cancelled && response.data) setEvents(response.data.events ?? []);
-      } catch (err) {
-        console.error("Failed to load action events:", err);
+      const action = await R.fromPromise(
+        actionsFindOneAdmin({ path: { id: actionId } }),
+      );
+      if (cancelled) return;
+      if (!action.ok) {
+        console.error("Failed to load the action:", action.error);
       }
+      setEvents((action.ok && action.value.data?.events) || []);
     };
     load();
     return () => {
@@ -159,38 +113,33 @@ const ActionUpdatePage: React.FC = () => {
     };
   }, [actionId]);
 
+  const saveDetails = updateMutation.mutateAsync;
   const handleSubmitDetails = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
       if (!form) return;
-      setSaving(true);
       setError(null);
       try {
-        const body: UpdateActionUpdateDto = {
-          title: form.title,
-          shortNotifString: form.shortNotifString,
-          notifyType: form.notifyType,
-          date: form.date,
-          tagId: form.notifyType === "tag" ? form.tagId || null : null,
-          associatedEventId: form.associatedEventId
-            ? Number(form.associatedEventId)
-            : null,
-        };
-        const response = await actionsUpdateUpdateAdmin({
-          path: { id: updateId },
-          body,
-        });
-        if (!response.data) throw new Error("Update failed");
-        setUpdate(response.data);
-        setForm(formOf(response.data));
+        fillForm(await saveDetails(detailsBody(form)));
       } catch (err) {
         setError("Failed to save update");
         console.error(err);
-      } finally {
-        setSaving(false);
       }
     },
-    [form, updateId],
+    [form, saveDetails, fillForm],
+  );
+
+  const writeAndRefill = useCallback(
+    async (write: () => Promise<AdminActionUpdateDto>, fallback: string) => {
+      setError(null);
+      try {
+        fillForm(await write());
+      } catch (err) {
+        setError(adminRefusalMessage(err, fallback));
+        console.error(err);
+      }
+    },
+    [fillForm],
   );
 
   const handleNotify = useCallback(
@@ -202,100 +151,29 @@ const ActionUpdatePage: React.FC = () => {
       ) {
         return;
       }
-      setNotifying(true);
-      setError(null);
-      try {
-        const response = await actionsNotifyUpdateAdmin({
-          path: { id: updateId },
-        });
-        if (!response.data) {
-          const message = response.error?.message;
-          throw new Error(
-            (Array.isArray(message) ? message.join("; ") : message) ??
-              "Failed to send the notification",
-          );
-        }
-        setUpdate(response.data);
-        setForm(formOf(response.data));
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to send the notification",
-        );
-        console.error(err);
-      } finally {
-        setNotifying(false);
-      }
+      await writeAndRefill(
+        notify.mutateAsync,
+        "Failed to send the notification",
+      );
     },
-    [updateId],
-  );
-
-  const changeVisibility = useCallback(
-    async (
-      call: () => ReturnType<typeof actionsUnpublishUpdateAdmin>,
-      fallbackError: string,
-    ) => {
-      setChangingVisibility(true);
-      setError(null);
-      try {
-        const response = await call();
-        if (!response.data) {
-          const message = response.error?.message;
-          throw new Error(
-            (Array.isArray(message) ? message.join("; ") : message) ??
-              fallbackError,
-          );
-        }
-        setUpdate(response.data);
-        setForm(formOf(response.data));
-      } catch (err) {
-        setError(err instanceof Error ? err.message : fallbackError);
-        console.error(err);
-      } finally {
-        setChangingVisibility(false);
-      }
-    },
-    [],
+    [writeAndRefill, notify.mutateAsync],
   );
 
   const handleUnpublish = useCallback(
     () =>
-      changeVisibility(
-        () => actionsUnpublishUpdateAdmin({ path: { id: updateId } }),
-        "Failed to unpublish the update",
-      ),
-    [changeVisibility, updateId],
+      writeAndRefill(unpublish.mutateAsync, "Failed to unpublish the update"),
+    [writeAndRefill, unpublish.mutateAsync],
   );
 
   const handlePublishNow = useCallback(
     () =>
-      changeVisibility(
-        () => actionsPublishUpdateNowAdmin({ path: { id: updateId } }),
-        "Failed to publish the update",
-      ),
-    [changeVisibility, updateId],
+      writeAndRefill(publishNow.mutateAsync, "Failed to publish the update"),
+    [writeAndRefill, publishNow.mutateAsync],
   );
 
-  const saveSchema = useCallback(
-    (body: DisplayOnlySchemaSaveBody) =>
-      actionsUpdateUpdateAdmin({ path: { id: updateId }, body }),
-    [updateId],
-  );
+  const formFilled = updateId !== null && formSource?.id === updateId;
 
-  const refetchUpdate = useCallback(
-    () => actionsFindOneUpdateAdmin({ path: { id: updateId } }),
-    [updateId],
-  );
-
-  const handleSaveSchema = useDisplayOnlySchemaSave({
-    ownerLabel: "Updates",
-    save: saveSchema,
-    refetch: refetchUpdate,
-    onSaved: setUpdate,
-  });
-
-  if (loading) {
+  if (updateId !== null && !formFilled && !query.isError) {
     return (
       <div className="p-8">
         <title>Action Update - Admin</title>
@@ -304,11 +182,17 @@ const ActionUpdatePage: React.FC = () => {
     );
   }
 
-  if (!update || !form) {
+  if (!formFilled || !update || !form || !savedForm) {
     return (
       <div className="p-8">
         <title>Action Update - Admin</title>
-        <p className="text-red-500">{error ?? "Update not found"}</p>
+        <p className="text-red-500">
+          {updateId === null
+            ? "Invalid update id"
+            : thrownStatus(query.error) === 404
+              ? "Update not found"
+              : "Failed to load update"}
+        </p>
         <button
           onClick={() => navigate(`/actions/${actionId}?tab=updates`)}
           className="mt-4 px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
@@ -320,114 +204,13 @@ const ActionUpdatePage: React.FC = () => {
   }
 
   const storedSchema = readDisplayOnlySchema(update.schema);
-  const hasUnsavedDetails =
-    JSON.stringify(form) !== JSON.stringify(formOf(update));
+  const recognition = usesRecognition(form.notificationMode);
+  const hasUnsavedDetails = JSON.stringify(form) !== JSON.stringify(savedForm);
 
-  const now = Date.now();
-  const visibility = visibilityOf(update, now);
-  const displayDate = new Date(update.date);
-
-  // The notification carries `shortNotifString` and goes to the saved audience,
-  // so an unsaved edit to either would send something other than what's on
-  // screen.
-  const notifyBlockedReason = run(() => {
-    if (update.notifyType === "none") {
-      return "Pick an audience and save to enable sending.";
-    }
-    if (hasUnsavedDetails) {
-      return "Save your changes before sending.";
-    }
-    if (!storedSchema || storedSchema.blocks.length === 0) {
-      return "Write the update body on the Content tab first.";
-    }
-    return null;
-  });
-
-  // Unpublishing moves `visibleAt` to the saved date, so an unsaved edit to the
-  // picker would schedule the update for a different time than the one shown.
-  const unpublishBlockedReason = run(() => {
-    if (hasUnsavedDetails) {
-      return "Save your changes first.";
-    }
-    if (displayDate.getTime() <= now) {
-      return "The displayed date has already passed, so there's nothing to wait for.";
-    }
-    return null;
-  });
-
-  const hiddenBanner = run(() => {
-    switch (visibility.state) {
-      case VisibilityState.Unpublished:
-        return "Not visible to members yet — this update publishes the first time you save content on the Content tab.";
-      case VisibilityState.Scheduled:
-        return `Not visible to members yet — this update publishes ${visibility.visibleAt.toLocaleString()}.`;
-      case VisibilityState.Published:
-        return null;
-      default:
-        throw new Error(`unknown visibility: ${visibility satisfies never}`);
-    }
-  });
-
-  const visibilitySection = run(() => {
-    switch (visibility.state) {
-      case VisibilityState.Unpublished:
-        return (
-          <p className="text-sm text-gray-700">
-            Not published yet — this update publishes the first time you save
-            content on the Content tab.
-          </p>
-        );
-      case VisibilityState.Scheduled:
-        return (
-          <>
-            <p className="text-sm text-gray-700">
-              Hidden from members until {visibility.visibleAt.toLocaleString()},
-              when it publishes on its own.
-            </p>
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={handlePublishNow}
-                disabled={changingVisibility}
-                className="flex items-center gap-2 px-4 py-2 bg-green text-white rounded-md hover:scale-102 transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:hover:scale-100"
-              >
-                <Eye className="w-4 h-4" aria-hidden />
-                {changingVisibility ? "Publishing..." : "Publish now"}
-              </button>
-              <p className="text-xs text-gray-500">
-                Makes the update visible to members immediately.
-              </p>
-            </div>
-          </>
-        );
-      case VisibilityState.Published:
-        return (
-          <>
-            <p className="text-sm text-gray-700">
-              Visible to members since {visibility.visibleAt.toLocaleString()}.
-            </p>
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={handleUnpublish}
-                disabled={changingVisibility || unpublishBlockedReason !== null}
-                className="flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-md hover:bg-gray-50 transition-colors text-sm font-medium disabled:opacity-50 disabled:hover:bg-white"
-              >
-                <EyeOff className="w-4 h-4" aria-hidden />
-                {changingVisibility
-                  ? "Unpublishing..."
-                  : "Unpublish until displayed date"}
-              </button>
-              <p className="text-xs text-gray-500">
-                {unpublishBlockedReason ??
-                  `Hides it from members until ${displayDate.toLocaleString()}.`}
-              </p>
-            </div>
-          </>
-        );
-      default:
-        throw new Error(`unknown visibility: ${visibility satisfies never}`);
-    }
+  const notifyBlockedReason = notifyBlockedReasonOf({
+    notifyType: update.notifyType,
+    hasUnsavedDetails,
+    hasBody: !!storedSchema && storedSchema.blocks.length > 0,
   });
 
   const detailsTab = (
@@ -446,8 +229,12 @@ const ActionUpdatePage: React.FC = () => {
       </FormSection>
 
       <FormSection
-        title="Short notification text"
-        description={'An automatic "Update: " prefix is added to this text.'}
+        title={recognition ? "Collective result" : "Short notification text"}
+        description={
+          recognition
+            ? COLLECTIVE_RESULT_DESCRIPTION
+            : 'An automatic "Update: " prefix is added to this text.'
+        }
       >
         <input
           type="text"
@@ -455,82 +242,33 @@ const ActionUpdatePage: React.FC = () => {
           onChange={(e) =>
             setForm({ ...form, shortNotifString: e.target.value })
           }
-          required
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+          required={!(recognition && form.splitCollectiveResult)}
+          className={TEXT_INPUT_CLASS}
         />
+        {recognition &&
+          (update.recognitionPreparedAt ? (
+            <p className="mt-2 text-sm text-gray-700">
+              Each member&apos;s copy was frozen when this update came due, so
+              changing the collective result no longer reaches anyone.
+            </p>
+          ) : (
+            <CollectiveResultSplitFields
+              texts={form}
+              onChange={(texts) => setForm({ ...form, ...texts })}
+              inputClassName={TEXT_INPUT_CLASS}
+            />
+          ))}
       </FormSection>
 
       <FormSection title="Notification audience">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-gray-700">Audience</span>
-            <select
-              value={form.notifyType}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  notifyType: e.target.value as ActionUpdateNotifyType,
-                })
-              }
-              className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
-            >
-              {ACTION_UPDATE_NOTIFY_TYPES.map((option) => (
-                <option key={option} value={option}>
-                  {ACTION_UPDATE_NOTIFY_TYPE_LABELS[option]}
-                </option>
-              ))}
-            </select>
-          </label>
-          {form.notifyType === "tag" && (
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="font-medium text-gray-700">Target tag</span>
-              <select
-                value={form.tagId}
-                onChange={(e) => setForm({ ...form, tagId: e.target.value })}
-                className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
-              >
-                <option value="">Select a tag</option>
-                {availableTags.map((tag) => (
-                  <option key={tag.id} value={tag.id}>
-                    {tag.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-        </div>
-        <div className="mt-4 pt-4 border-t border-gray-200">
-          {update.notifiedAt ? (
-            <p className="text-sm text-gray-700">
-              Sent {new Date(update.notifiedAt).toLocaleString()} to{" "}
-              {ACTION_UPDATE_NOTIFY_TYPE_LABELS[
-                update.notifyType
-              ].toLowerCase()}
-              . An update can only be notified about once.
-            </p>
-          ) : (
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={() =>
-                  handleNotify(
-                    ACTION_UPDATE_NOTIFY_TYPE_LABELS[
-                      update.notifyType
-                    ].toLowerCase(),
-                  )
-                }
-                disabled={notifying || notifyBlockedReason !== null}
-                className="px-4 py-2 bg-green text-white rounded-md hover:scale-102 transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:hover:scale-100"
-              >
-                {notifying ? "Sending..." : "Send notification"}
-              </button>
-              <p className="text-xs text-gray-500">
-                {notifyBlockedReason ??
-                  "Nothing has been sent yet. Members are notified when you send it."}
-              </p>
-            </div>
-          )}
-        </div>
+        <NotificationAudienceFields
+          form={form}
+          onChange={setForm}
+          update={update}
+          notifying={notifying}
+          notifyBlockedReason={notifyBlockedReason}
+          onNotify={handleNotify}
+        />
       </FormSection>
 
       <FormSection
@@ -543,7 +281,15 @@ const ActionUpdatePage: React.FC = () => {
         />
       </FormSection>
 
-      <FormSection title="Member visibility">{visibilitySection}</FormSection>
+      <FormSection title="Member visibility">
+        <VisibilityControls
+          update={update}
+          hasUnsavedDetails={hasUnsavedDetails}
+          changing={changingVisibility}
+          onPublishNow={handlePublishNow}
+          onUnpublish={handleUnpublish}
+        />
+      </FormSection>
 
       {events.length > 0 && (
         <FormSection
@@ -567,6 +313,15 @@ const ActionUpdatePage: React.FC = () => {
         </FormSection>
       )}
 
+      {recognition && !update.recognitionPreparedAt && (
+        <FormSection
+          title="Preview Update"
+          description={UPDATE_PREVIEW_DESCRIPTION}
+        >
+          <AudienceUpdatePreview updateId={update.id} form={form} />
+        </FormSection>
+      )}
+
       <div className="flex justify-end gap-3 pt-2">
         <button
           type="submit"
@@ -586,7 +341,7 @@ const ActionUpdatePage: React.FC = () => {
       initialSnapshotId={update.schemaSnapshotId}
       title={update.title}
       setFormId={() => {}}
-      onSave={handleSaveSchema}
+      onSave={saveSchema}
     />
   ) : (
     // Editing content this build can't parse would save back whatever the
@@ -616,12 +371,7 @@ const ActionUpdatePage: React.FC = () => {
         </button>
       </div>
 
-      {hiddenBanner && (
-        <div className="mx-5 mt-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800">
-          <EyeOff className="w-4 h-4 mt-0.5 shrink-0" aria-hidden />
-          <p className="text-sm">{hiddenBanner}</p>
-        </div>
-      )}
+      <HiddenFromMembersBanner update={update} />
 
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 mx-5 mt-4">

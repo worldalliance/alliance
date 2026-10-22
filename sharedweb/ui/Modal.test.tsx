@@ -5,6 +5,7 @@ import {
   render,
   screen,
 } from "@testing-library/react";
+import { milliseconds } from "date-fns";
 import { useState, type ReactElement } from "react";
 import Modal, {
   MODAL_CLOSE_GUTTER,
@@ -14,8 +15,6 @@ import Modal, {
   ModalHeader,
   ModalTitle,
 } from "./Modal";
-
-afterEach(cleanup);
 
 function outsideDialog(): HTMLElement {
   const dialog = screen.getByRole("dialog");
@@ -29,7 +28,7 @@ function outsideDialog(): HTMLElement {
 // leaking act() warnings.
 async function waitForCondition(
   check: () => boolean,
-  timeoutMs = 2_000,
+  timeoutMs = milliseconds({ seconds: 2 }),
 ): Promise<void> {
   const deadline = performance.now() + timeoutMs;
   while (!check()) {

@@ -23,7 +23,12 @@ Download plus restore in one step. This is the one you usually want.
 Pulls a `pg_dump` of staging over SSH into `./db_dumps`. Override `SSH_HOST_ALIAS`, `REMOTE_ENV_FILE`, `DUMP_DIR`.
 
 `restore_staging_data.sh <dump-file>`
-Drops and recreates the local db named by `server/.env`, then restores the dump. `RESET_LOCAL_DB=0` skips the drop; `LOCAL_DB_NAME` and the `LOCAL_PG*` vars override the target.
+Drops and recreates the local db named by `server/.env`, then restores the dump and clears push tokens. `RESET_LOCAL_DB=0` skips the drop; `LOCAL_DB_NAME` and the `LOCAL_PG*` vars override the target.
+
+## Deploy
+
+`deploy_backend.sh`
+Run by `deploy.yaml` on the backend host, not locally. Swaps `~/nest-build.zip` in as `~/nest-backend`, migrates, and rolls back to the old release on failure. A release that applies RemoveStreakRecognition stops the backend first and reverts the removal if the new backend fails; if that revert fails, the backend is left stopped and the job fails with an `::error::`.
 
 `bun list-actions.ts`
 Prints every released action with a participation rate, ordered by release date. Reads the local db.
@@ -41,6 +46,15 @@ Prints action ids from most to least popular, one per line, excluding onboarding
 Writes one YAML file per action into `misc/action-exports` (override with `--out`), holding the attributes the admin panel's create form assigns. `action-export.schema.yml` is the JSON Schema those files match.
 
 ## Other
+
+`check-gitignore.sh`
+Two checks, both run by `bun run gitignore:check` and by CI. A tracked file matched by a .gitignore rule is one that anything re-applying those rules then drops. A rule like `android/` or `**/android/` matches at every depth, so it has to be anchored or listed in `gitignore-any-depth.txt`, whose every entry has to match a rule. The header says what each one costs when it slips.
+
+`dupcheck.ts [--base <ref>]`
+Lists duplicated code, and text of five or more words repeated verbatim, that the working tree has and its merge-base with `<ref>` (default `origin/main`) doesn't. Some matches are code that should stay separate, so it exits 0 either way and 2 only when the scan fails. `.jscpd.json` at the repo root sets the scanned paths for both and the minimum clone size. Prefer `bun run dupcheck`.
+
+`covercheck.ts [--base <ref>]`
+Runs `bun test --coverage` in each package of `test-all.sh`'s `PACKAGES` that owns a changed file, or in all of them when a changed file is in `common`, `shared`, or `sharedweb`, then lists the lines the working tree changed since its merge-base with `<ref>` (default `origin/main`) that no unit test ran, and changed files no test loaded. Scans the paths `.jscpd.json` scans, skipping test files. Exits 0 either way and 2 only when the run fails. Prefer `bun run covercheck`.
 
 `test-all.sh [package...]`
 Runs unit tests from inside each workspace so its `bunfig.toml` applies. No arguments runs every package. Prefer `bun run test`, which calls this; CI calls it per package.

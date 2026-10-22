@@ -7,6 +7,7 @@ import { cn } from "@alliance/shared/styles/util";
 import React, { useCallback, useEffect, useRef } from "react";
 
 export interface CityAutosuggestProps {
+  labelId?: string;
   value?: string;
   onSelect(city: CitySearchDto | string): void;
   placeholder?: string;
@@ -19,6 +20,7 @@ export interface CityAutosuggestProps {
 }
 
 const CityAutosuggest: React.FC<CityAutosuggestProps> = ({
+  labelId,
   value = "",
   onSelect,
   placeholder = "Search for a city …",
@@ -86,6 +88,7 @@ const CityAutosuggest: React.FC<CityAutosuggestProps> = ({
   return (
     <div ref={wrapperRef} className={cn("relative", className)}>
       <input
+        aria-labelledby={labelId}
         type="text"
         value={query}
         placeholder={placeholder}

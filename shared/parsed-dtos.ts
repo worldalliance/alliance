@@ -23,6 +23,14 @@ import {
   type CohortExpression,
 } from "@alliance/common/cohort-expression";
 import {
+  readFormulaChoices,
+  type FormulaChoices,
+} from "@alliance/common/forms/formula-choices";
+import {
+  assignedRowSchema,
+  type AssignedRow,
+} from "@alliance/common/forms/row-list-schema";
+import {
   readVisibilityValidatorResults,
   type VisibilityValidatorResults,
 } from "@alliance/common/forms/visibility";
@@ -112,4 +120,22 @@ export function parseVisibilityValidatorResults(
   }
 
   return R.success(verdicts);
+}
+
+/**
+ * A form response's saved `formulaChoices`. One that won't read counts as
+ * saving none.
+ */
+export function parseFormulaChoices(value: unknown): FormulaChoices {
+  const read = readFormulaChoices(value);
+  if (R.isFailure(read)) {
+    console.error("Saved formula choices are unreadable", read.error, value);
+    return {};
+  }
+  return read.value;
+}
+
+/** The row a response was submitted with; the server writes it validated. */
+export function parseAssignedRow(value: unknown): AssignedRow | null {
+  return assignedRowSchema.nullable().parse(value);
 }

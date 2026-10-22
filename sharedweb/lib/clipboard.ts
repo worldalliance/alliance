@@ -1,4 +1,12 @@
+import type { ClipboardContent } from "@alliance/shared/lib/clipboard";
+
 const TEXT_PLAIN = "text/plain";
+const TEXT_HTML = "text/html";
+
+export enum CopyOutcome {
+  Copied = "copied",
+  Failed = "failed",
+}
 
 /**
  * Copy text to the clipboard, reporting whether it landed.
@@ -35,4 +43,35 @@ export async function copyToClipboard(
   } catch {
     return false;
   }
+}
+
+async function copyHtmlToClipboard({
+  text,
+  html,
+}: Required<ClipboardContent>): Promise<boolean> {
+  if (typeof ClipboardItem !== "undefined") {
+    const item = new ClipboardItem({
+      [TEXT_PLAIN]: new Blob([text], { type: TEXT_PLAIN }),
+      [TEXT_HTML]: new Blob([html], { type: TEXT_HTML }),
+    });
+    try {
+      await navigator.clipboard.write([item]);
+      return true;
+    } catch {
+      // Browsers that refuse an html item still take the plain text.
+    }
+  }
+  return copyToClipboard(text);
+}
+
+export async function copyOutcome(
+  content: string | ClipboardContent,
+): Promise<CopyOutcome> {
+  const { text, html } =
+    typeof content === "string" ? { text: content, html: undefined } : content;
+  const copied =
+    html === undefined
+      ? await copyToClipboard(text)
+      : await copyHtmlToClipboard({ text, html });
+  return copied ? CopyOutcome.Copied : CopyOutcome.Failed;
 }

@@ -1,6 +1,6 @@
 import { Meta, StoryObj } from "@storybook/react";
 import ActionItemCard from "../components/ActionItemCard";
-import { testActions } from "./testData";
+import { testActions, testActivities } from "./testData";
 
 const meta = {
   title: "Alliance/ActionItemCard",
@@ -18,3 +18,24 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const WithFriends: Story = {
+  args: {
+    friendCommitmentActivities: Array.from({ length: 7 }, (_, i) => ({
+      ...testActivities[0],
+      id: i,
+      user: { ...testActivities[0].user, id: i },
+    })),
+  },
+};
+
+export const WithFriendsCompleted: Story = {
+  args: {
+    ...WithFriends.args,
+    action: { ...testActions[0], userRelation: "completed" },
+  },
+};
+
+export const Closed: Story = {
+  args: { action: { ...testActions[0], status: "completed" } },
+};

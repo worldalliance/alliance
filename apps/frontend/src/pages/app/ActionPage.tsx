@@ -1,3 +1,4 @@
+// eslint-disable-next-line api-client/named-hooks-only -- the route loader runs on the server, outside any query cache
 import {
   actionsFindOne,
   actionsGetSharePreview,
@@ -30,12 +31,13 @@ import { ActionActivityDetailContext } from "../../components/ActionActivityDeta
 import ActionActivityList from "../../components/ActionActivityList";
 import { TaskPanelContext } from "../../components/ActionPageTaskPanel";
 import AllianceSignupPitch from "../../components/AllianceSignupPitch";
-import PrelaunchNavbar from "../../components/PrelaunchNavbar";
 import { useAuth } from "../../lib/AuthContext";
 import { useNavbarOptions } from "../../lib/NavbarOptionsContext";
 import { isNonmemberOnPublicActionReferral } from "../../lib/publicActionReferral";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
-import { useCIDFromParams } from "../../lib/utils";
+import { useSidFromParams } from "../../lib/utils";
+import { NAV_HEIGHT, Navbar } from "../../site/Navbar";
+import { MissingRecordPage } from "../../site/NotFoundPage";
 import ActionCompletedBarWithInfo from "./ActionCompletedBarWithInfo";
 
 export async function loader({
@@ -110,7 +112,7 @@ export default function ActionPage() {
   const [showReferralTaskPanel, setShowReferralTaskPanel] = useState(false);
   const [guestCompleted, setGuestCompleted] = useState(false);
 
-  useCIDFromParams(actionId);
+  useSidFromParams(actionId);
 
   const { activities, handleLikeActivity } = useActivities({
     list: ActivityList.Action,
@@ -141,8 +143,14 @@ export default function ActionPage() {
     }
   }, []);
 
-  const { action, loading, onCompleteAction, onOptOutAction } =
-    useActionHandlers(actionId, isAuthenticated, reloadTasks);
+  const {
+    action,
+    loading,
+    notFound,
+    onCompleteAction,
+    onOptOutAction,
+    onDeadlinePassed,
+  } = useActionHandlers(actionId, isAuthenticated, reloadTasks);
 
   const publicMode = !isAuthenticated;
 
@@ -170,6 +178,8 @@ export default function ActionPage() {
       </div>
     );
   }
+
+  if (!action && !loading && notFound) return <MissingRecordPage />;
 
   if (!action) {
     return (
@@ -201,12 +211,13 @@ export default function ActionPage() {
   return (
     <>
       {publicMode && (
-        <PrelaunchNavbar
-          transparent={false}
-          absolute={false}
-          showSignupButton={showHeaderSignupButton}
-          signupHref={signupHref}
-        />
+        <>
+          <Navbar
+            signupHref={showHeaderSignupButton ? signupHref : undefined}
+          />
+          {/* Reserves the height the fixed site bar covers. */}
+          <div className="bg-white" style={{ height: NAV_HEIGHT }} />
+        </>
       )}
       {showInvitePopup && (
         <Modal
@@ -262,6 +273,7 @@ export default function ActionPage() {
                 onCompleteAction,
                 publicMode,
                 onOptOutAction,
+                onDeadlinePassed,
                 activities,
                 handleLikeActivity,
               } satisfies TaskPanelContext & ActionActivityDetailContext

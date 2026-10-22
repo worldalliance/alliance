@@ -126,7 +126,7 @@ export default function TextareaWithHighlight({
       ov.style.bottom = `${bb}px`;
 
       // Typography/layout parity
-      const propsToCopy: Array<keyof CSSStyleDeclaration> = [
+      const propsToCopy = [
         "fontFamily",
         "fontSize",
         "fontWeight",
@@ -142,11 +142,10 @@ export default function TextareaWithHighlight({
         "wordWrap",
         "overflowWrap",
         "textRendering",
-      ];
+      ] as const satisfies ReadonlyArray<keyof CSSStyleDeclaration>;
 
       propsToCopy.forEach((p) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (ov.style as any)[p] = (cs as any)[p];
+        ov.style[p] = cs[p];
       });
 
       ov.style.paddingTop = cs.paddingTop;

@@ -1,16 +1,15 @@
 import { cn } from "@alliance/shared/styles/util";
 import React from "react";
-import { useLoaderData } from "react-router";
+import { data, useLoaderData } from "react-router";
 import { getProgressProject } from "../../content/projects";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
+import { NotFoundSource } from "../../site/NotFoundPage";
 import { PageShell } from "../../site/PageShell";
 import { SITE_COL } from "../../site/ui";
 
 export async function loader({ params }: { params: { slug: string } }) {
   const project = getProgressProject(params.slug);
-  if (!project) {
-    return { slug: null as string | null, title: null as string | null };
-  }
+  if (!project) throw data(NotFoundSource.MissingRecord, { status: 404 });
   return {
     slug: project.slug,
     title: project.headline,
@@ -19,17 +18,14 @@ export async function loader({ params }: { params: { slug: string } }) {
 
 export function meta({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
   return socialPreviewMeta({
-    title: data.title ?? "Project not found",
+    title: data.title,
   });
 }
 
 const ProgressProjectPage: React.FC = () => {
   const data = useLoaderData<typeof loader>();
-  const project = data.slug ? getProgressProject(data.slug) : undefined;
-
-  if (!project) {
-    return <PageShell title="Project not found">{null}</PageShell>;
-  }
+  const project = getProgressProject(data.slug);
+  if (!project) throw new Error(`Unknown progress project: ${data.slug}`);
 
   const { Content } = project;
 

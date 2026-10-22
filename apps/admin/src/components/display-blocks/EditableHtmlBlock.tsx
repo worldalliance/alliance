@@ -1,6 +1,6 @@
 import type { HtmlBlock } from "@alliance/common/forms/display-blocks";
-import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
 import FormTextarea from "../FormTextarea";
+import { BlockPreview } from "./BlockPreview";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
 
@@ -17,10 +17,7 @@ export function EditableHtmlBlock(props: BaseDisplayBlockProps<HtmlBlock>) {
             placeholder="Enter HTML content"
             rows={Math.max(2, activeBlock.html.split("\n").length)}
           />
-          {/* Preview */}
-          <div className="pt-2 border-t border-gray-200">
-            <RenderDisplayBlock block={activeBlock} />
-          </div>
+          <BlockPreview block={activeBlock} />
         </div>
       )}
     </DisplayBlockWrapper>

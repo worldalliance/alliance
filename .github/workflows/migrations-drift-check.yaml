@@ -33,12 +33,14 @@ jobs:
         working-directory: ./server
 
       - run: |
-          echo "DB_HOST=localhost" >> $GITHUB_ENV
-          echo "DB_PORT=5432" >> $GITHUB_ENV
-          echo "DB_USERNAME=postgres" >> $GITHUB_ENV
-          echo "DB_PASSWORD=postgres" >> $GITHUB_ENV
-          echo "DB_NAME=postgres" >> $GITHUB_ENV
-          echo "NODE_ENV=test" >> $GITHUB_ENV
+          {
+            echo "DB_HOST=localhost"
+            echo "DB_PORT=5432"
+            echo "DB_USERNAME=postgres"
+            echo "DB_PASSWORD=postgres"
+            echo "DB_NAME=postgres"
+            echo "NODE_ENV=test"
+          } >> "$GITHUB_ENV"
 
       - name: Run migrations on blank DB
         run: bunx typeorm-ts-node-commonjs --dataSource src/datasources/dataSource.ts migration:run

@@ -1,7 +1,34 @@
+import {
+  hasAwayRangeEnded,
+  isAwayRangeNoteMissing,
+  isAwayRangeNoteRequired,
+  isAwayRangeStartLocked,
+} from "@alliance/common/awayRange";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { UserAwayRangeDto, UserAwayRangeReason } from "@alliance/shared/client";
-import { awayRangesDescription } from "@alliance/shared/lib/copy";
+import {
+  AWAY_RANGE_REMOVAL_CONFIRMS,
+  AWAY_RANGE_REMOVAL_ERRORS,
+  AWAY_RANGE_REMOVAL_LABELS,
+  AWAY_RANGE_REMOVAL_SESSION_EXPIRED,
+  AWAY_REASON_LABELS,
+  AwayRangeRemoval,
+  awayRangeRemoval,
+  AwayRangeStatus,
+  awayRangeStatus,
+  changedAwayRangeDays,
+  formatAwayReason,
+} from "@alliance/shared/lib/awayRangesFormatters";
+import {
+  awayRangesDescription,
+  membershipAgreement,
+} from "@alliance/shared/lib/copy";
 import { formatLongDate } from "@alliance/shared/lib/dateFormatters";
+import {
+  dateToInputValue,
+  todayDateInputValue,
+} from "@alliance/shared/lib/dateInput";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { useMyAwayRanges } from "@alliance/shared/lib/useMyAwayRanges";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -10,57 +37,10 @@ import FormInput from "@alliance/sharedweb/ui/FormInput";
 import { Pencil, X } from "lucide-react";
 import React, { useState } from "react";
 
-enum ReasonDropdownOption {
-  UNSELECTED = "Select a reason",
-  VACATION = "Vacation",
-  EMERGENCY = "Emergency",
-  OTHER = "Other",
-}
-
-const REASON_DROPDOWN_OPTION_TO_REASON_DTO = {
-  [ReasonDropdownOption.UNSELECTED]: null,
-  [ReasonDropdownOption.VACATION]: "vacation" as const,
-  [ReasonDropdownOption.EMERGENCY]: "emergency" as const,
-  [ReasonDropdownOption.OTHER]: "other" as const,
-} satisfies Record<ReasonDropdownOption, UserAwayRangeReason | null>;
-
-function reasonDisplayName(reason: UserAwayRangeReason): string {
-  switch (reason) {
-    case "vacation":
-      return ReasonDropdownOption.VACATION;
-    case "emergency":
-      return ReasonDropdownOption.EMERGENCY;
-    case "other":
-      return ReasonDropdownOption.OTHER;
-    default:
-      const x: never = reason;
-      throw new Error(`Unknown reason: ${x}`);
-  }
-}
-
-function reasonToDropdownOption(
-  reason: UserAwayRangeReason,
-): ReasonDropdownOption {
-  switch (reason) {
-    case "vacation":
-      return ReasonDropdownOption.VACATION;
-    case "emergency":
-      return ReasonDropdownOption.EMERGENCY;
-    case "other":
-      return ReasonDropdownOption.OTHER;
-    default:
-      const x: never = reason;
-      throw new Error(`Unknown reason: ${x}`);
-  }
-}
-
-function formatDateForInput(date: Date | string): string {
-  const d = new Date(date);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
+const REASON_DROPDOWN_OPTIONS = {
+  UNSELECTED: "Select a reason",
+  ...AWAY_REASON_LABELS,
+};
 
 const AwayRangesSection: React.FC = () => {
   const {
@@ -78,21 +58,22 @@ const AwayRangesSection: React.FC = () => {
   const [noteInput, setNoteInput] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const [selectedReason, setSelectedReason] = useState<ReasonDropdownOption>(
-    ReasonDropdownOption.UNSELECTED,
-  );
-  const selectedReasonIsOther = selectedReason === "Other";
+  const [selectedReason, setSelectedReason] =
+    useState<UserAwayRangeReason | null>(null);
+  const selectedReasonIsOther = selectedReason === "other";
+  const noteRequired = isAwayRangeNoteRequired(selectedReason);
 
   // Edit state
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editStartDate, setEditStartDate] = useState("");
   const [editEndDate, setEditEndDate] = useState("");
+  const [editOpenedDays, setEditOpenedDays] = useState({ start: "", end: "" });
   const [editNote, setEditNote] = useState("");
-  const [editReason, setEditReason] = useState<ReasonDropdownOption>(
-    ReasonDropdownOption.UNSELECTED,
+  const [editReason, setEditReason] = useState<UserAwayRangeReason | null>(
+    null,
   );
   const [editError, setEditError] = useState<string | null>(null);
-  const editReasonIsOther = editReason === "Other";
+  const editNoteRequired = isAwayRangeNoteRequired(editReason);
 
   const handleCreate = async () => {
     setError(null);
@@ -111,8 +92,7 @@ const AwayRangesSection: React.FC = () => {
     //   return;
     // }
 
-    const reason = REASON_DROPDOWN_OPTION_TO_REASON_DTO[selectedReason];
-    if (!reason) {
+    if (!selectedReason) {
       // Should not be possible, since button is disabled if no reason is selected
       alert("Select a reason for your away period.");
       return;
@@ -122,12 +102,12 @@ const AwayRangesSection: React.FC = () => {
       await createAwayRange.mutateAsync({
         startDay: startDateInput,
         endDay: endDateInput,
-        reason,
+        reason: selectedReason,
         note: noteInput.trim() || null,
       });
       setStartDateInput("");
       setEndDateInput("");
-      setSelectedReason(ReasonDropdownOption.UNSELECTED);
+      setSelectedReason(null);
       setNoteInput("");
     } catch (error) {
       setError(
@@ -139,21 +119,58 @@ const AwayRangesSection: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (range: UserAwayRangeDto) => {
+    // Decided again at click time: a range's start can lock while its row is
+    // on screen. When removal is refused, the server says why below.
+    const removal = awayRangeRemoval(range) ?? AwayRangeRemoval.Delete;
+    if (
+      removal === AwayRangeRemoval.EndNow &&
+      !confirm(AWAY_RANGE_REMOVAL_CONFIRMS[AwayRangeRemoval.EndNow])
+    ) {
+      return;
+    }
     try {
-      await deleteAwayRange.mutateAsync(id);
+      await deleteAwayRange.mutateAsync(range.id);
     } catch (error) {
-      console.error("Error deleting away range:", error);
-      alert("There was an error deleting your away period. Please try again.");
+      console.error("Error removing away range:", error);
+      const fallback = AWAY_RANGE_REMOVAL_ERRORS[removal];
+      alert(
+        thrownRefusalMessage({
+          error,
+          fallback,
+          sessionExpired: AWAY_RANGE_REMOVAL_SESSION_EXPIRED,
+        }),
+      );
     }
   };
 
+  const removeControl = (range: UserAwayRangeDto) => {
+    const removal = awayRangeRemoval(range);
+    return (
+      removal && (
+        <Button
+          onClick={() => handleDelete(range)}
+          color={ButtonColor.Transparent}
+          className="!py-2 !px-1 text-sm text-red-500"
+          title={AWAY_RANGE_REMOVAL_LABELS[removal]}
+        >
+          <X size="20" />
+        </Button>
+      )
+    );
+  };
+
   const startEditing = (range: UserAwayRangeDto) => {
+    const opened = {
+      start: dateToInputValue(range.startDate),
+      end: dateToInputValue(range.endDate),
+    };
     setEditingId(range.id);
-    setEditStartDate(formatDateForInput(range.startDate));
-    setEditEndDate(formatDateForInput(range.endDate));
+    setEditStartDate(opened.start);
+    setEditEndDate(opened.end);
+    setEditOpenedDays(opened);
     setEditNote(range.note ?? "");
-    setEditReason(reasonToDropdownOption(range.reason));
+    setEditReason(range.reason);
     setEditError(null);
   };
 
@@ -161,8 +178,9 @@ const AwayRangesSection: React.FC = () => {
     setEditingId(null);
     setEditStartDate("");
     setEditEndDate("");
+    setEditOpenedDays({ start: "", end: "" });
     setEditNote("");
-    setEditReason(ReasonDropdownOption.UNSELECTED);
+    setEditReason(null);
     setEditError(null);
   };
 
@@ -175,8 +193,7 @@ const AwayRangesSection: React.FC = () => {
       return;
     }
 
-    const reason = REASON_DROPDOWN_OPTION_TO_REASON_DTO[editReason];
-    if (!reason) {
+    if (!editReason) {
       alert("Select a reason for your away period.");
       return;
     }
@@ -185,9 +202,11 @@ const AwayRangesSection: React.FC = () => {
       await updateAwayRange.mutateAsync({
         id: editingId,
         body: {
-          startDay: editStartDate,
-          endDay: editEndDate,
-          reason,
+          ...changedAwayRangeDays({
+            edited: { start: editStartDate, end: editEndDate },
+            opened: editOpenedDays,
+          }),
+          reason: editReason,
           note: editNote.trim() || null,
         },
       });
@@ -200,15 +219,6 @@ const AwayRangesSection: React.FC = () => {
         }),
       );
     }
-  };
-
-  const isCurrentlyAway = (range: UserAwayRangeDto) => {
-    const now = new Date();
-    return new Date(range.startDate) <= now && new Date(range.endDate) >= now;
-  };
-
-  const isFutureRange = (range: UserAwayRangeDto) => {
-    return new Date(range.startDate) > new Date();
   };
 
   if (loading) {
@@ -232,7 +242,7 @@ const AwayRangesSection: React.FC = () => {
               key={range.id}
               className={cn(
                 "p-4 rounded-lg border",
-                isCurrentlyAway(range)
+                awayRangeStatus(range) === AwayRangeStatus.Current
                   ? "bg-yellow-50 border-yellow-200"
                   : "bg-gray-50 border-gray-200",
               )}
@@ -252,6 +262,8 @@ const AwayRangesSection: React.FC = () => {
                         type="date"
                         value={editStartDate}
                         onChange={(e) => setEditStartDate(e.target.value)}
+                        min={todayDateInputValue()}
+                        disabled={isAwayRangeStartLocked(range)}
                       />
                     </div>
                     <div className="flex-1">
@@ -263,21 +275,38 @@ const AwayRangesSection: React.FC = () => {
                         type="date"
                         value={editEndDate}
                         onChange={(e) => setEditEndDate(e.target.value)}
-                        min={editStartDate}
+                        min={
+                          isAwayRangeStartLocked(range)
+                            ? todayDateInputValue()
+                            : editStartDate
+                        }
+                        disabled={
+                          isAwayRangeStartLocked(range) &&
+                          hasAwayRangeEnded(range)
+                        }
                       />
                     </div>
                   </div>
+                  {isAwayRangeStartLocked(range) && (
+                    <p className="text-sm text-zinc-500">
+                      {"Days that have already begun can't be changed."}
+                    </p>
+                  )}
                   <div className="flex flex-col gap-1">
                     <label className="text-sm font-medium">Reason</label>
                     <DropdownSelect
-                      options={ReasonDropdownOption}
-                      value={editReason}
-                      onChange={([, reason]) => setEditReason(reason)}
+                      options={REASON_DROPDOWN_OPTIONS}
+                      value={
+                        REASON_DROPDOWN_OPTIONS[editReason ?? "UNSELECTED"]
+                      }
+                      onChange={([reason]) =>
+                        setEditReason(reason === "UNSELECTED" ? null : reason)
+                      }
                     />
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="block text-sm font-medium">
-                      Note{!editReasonIsOther && " (optional)"}
+                      Note{!editNoteRequired && " (optional)"}
                     </label>
                     <FormInput
                       name="editNote"
@@ -285,7 +314,7 @@ const AwayRangesSection: React.FC = () => {
                       value={editNote}
                       onChange={(e) => setEditNote(e.target.value)}
                       placeholder={
-                        editReasonIsOther
+                        editNoteRequired
                           ? "Please provide more details"
                           : undefined
                       }
@@ -299,8 +328,11 @@ const AwayRangesSection: React.FC = () => {
                         updating ||
                         !editStartDate ||
                         !editEndDate ||
-                        editReason === "Select a reason" ||
-                        (editReasonIsOther && !editNote.trim())
+                        !editReason ||
+                        isAwayRangeNoteMissing({
+                          reason: editReason,
+                          note: editNote,
+                        })
                       }
                     >
                       {updating ? "Saving..." : "Save"}
@@ -318,12 +350,12 @@ const AwayRangesSection: React.FC = () => {
               ) : (
                 <div className="flex justify-between items-center">
                   <div className="flex-1">
-                    {isCurrentlyAway(range) && (
+                    {awayRangeStatus(range) === AwayRangeStatus.Current && (
                       <p className="text-xs font-semibold text-yellow-800 mb-1">
                         Currently away
                       </p>
                     )}
-                    {isFutureRange(range) && (
+                    {awayRangeStatus(range) === AwayRangeStatus.Upcoming && (
                       <p className="text-xs font-semibold text-green mb-1">
                         Scheduled
                       </p>
@@ -334,7 +366,7 @@ const AwayRangesSection: React.FC = () => {
                       {formatLongDate(new Date(range.endDate))}
                     </p>
                     <p className="text-sm mt-1">
-                      {reasonDisplayName(range.reason)}
+                      {formatAwayReason(range.reason)}
                       {range.note && ": " + range.note}
                     </p>
                   </div>
@@ -346,13 +378,7 @@ const AwayRangesSection: React.FC = () => {
                     >
                       <Pencil size="17" />
                     </Button>
-                    <Button
-                      onClick={() => handleDelete(range.id)}
-                      color={ButtonColor.Transparent}
-                      className="!py-2 !px-1 text-sm text-red-500"
-                    >
-                      <X size="20" />
-                    </Button>
+                    {removeControl(range)}
                   </div>
                 </div>
               )}
@@ -374,7 +400,7 @@ const AwayRangesSection: React.FC = () => {
                 type="date"
                 value={startDateInput}
                 onChange={(e) => setStartDateInput(e.target.value)}
-                min={new Date().toISOString().slice(0, 16)}
+                min={todayDateInputValue()}
               />
             </div>
             <div className="flex-1">
@@ -384,21 +410,23 @@ const AwayRangesSection: React.FC = () => {
                 type="date"
                 value={endDateInput}
                 onChange={(e) => setEndDateInput(e.target.value)}
-                min={startDateInput || new Date().toISOString().slice(0, 16)}
+                min={startDateInput || todayDateInputValue()}
               />
             </div>
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium">Reason</label>
             <DropdownSelect
-              options={ReasonDropdownOption}
-              value={selectedReason}
-              onChange={([, reason]) => setSelectedReason(reason)}
+              options={REASON_DROPDOWN_OPTIONS}
+              value={REASON_DROPDOWN_OPTIONS[selectedReason ?? "UNSELECTED"]}
+              onChange={([reason]) =>
+                setSelectedReason(reason === "UNSELECTED" ? null : reason)
+              }
             />
           </div>
           <div className="flex flex-col gap-1">
             <label className="block text-sm font-medium">
-              Note{!selectedReasonIsOther && " (optional)"}
+              Note{!noteRequired && " (optional)"}
             </label>
             <FormInput
               name="note"
@@ -406,15 +434,12 @@ const AwayRangesSection: React.FC = () => {
               value={noteInput}
               onChange={(e) => setNoteInput(e.target.value)}
               placeholder={
-                selectedReasonIsOther
-                  ? "Please provide more details"
-                  : undefined
+                noteRequired ? "Please provide more details" : undefined
               }
             />
             {selectedReasonIsOther && (
               <p className="text-sm text-zinc-500 mb-2 mt-1">
-                See your contract above for guidelines on extenuating
-                circumstances.
+                {membershipAgreement.awayOtherReasonHint}
               </p>
             )}
           </div>
@@ -426,8 +451,11 @@ const AwayRangesSection: React.FC = () => {
                 creating ||
                 !startDateInput ||
                 !endDateInput ||
-                selectedReason === "Select a reason" ||
-                (selectedReasonIsOther && !noteInput.trim())
+                !selectedReason ||
+                isAwayRangeNoteMissing({
+                  reason: selectedReason,
+                  note: noteInput,
+                })
               }
               className="w-full md:w-auto"
             >

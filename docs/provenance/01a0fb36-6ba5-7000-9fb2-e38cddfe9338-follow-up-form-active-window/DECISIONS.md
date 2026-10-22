@@ -1,0 +1,4 @@
+- The predicate lives in `common/src/followUpForm.ts` because the server cannot import `shared/`. It accepts `Date | string` dates so the server entity and the client DTOs both pass their own shapes.
+- Clients keep the existing rule (inactive before `startDate`, inactive after `endDate`, both bounds inclusive). The server adopts it, so it now refuses submissions before the start date with the existing 400 "Follow-up form is not active".
+- Callers import from common directly; `shared/lib/actionUtils.ts` doesn't re-export.
+- The regression test goes in `server/test/tasks.e2e-spec.ts`, the suite that mounts `TasksModule`.

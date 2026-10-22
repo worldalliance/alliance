@@ -1,8 +1,8 @@
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
   ActionDto,
   ActionEventDto,
   actionsAddEventAdmin,
-  actionsAddSuiteEventAdmin,
   ActionStatus,
   ActionSuiteDto,
   AdminActionDto,
@@ -12,7 +12,14 @@ import { cn } from "@alliance/shared/styles/util";
 import DateTimePicker, {
   DateTimePickerChange,
 } from "@alliance/sharedweb/ui/DateTimePicker";
+import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { milliseconds } from "date-fns";
 import { useState } from "react";
+import { ACTION_STATUS_LABELS } from "../lib/actionStatusDisplay";
+import { sendConfirmingDeadlineShortening } from "../lib/confirmDeadlineShortening";
+
+const DEADLINE_DECLINED_MESSAGE =
+  "Added the launch event without its deadline event. Add the deadline separately.";
 
 export type CreateEventFormProps = {
   creatingEvent: boolean;
@@ -28,21 +35,12 @@ export type CreateEventFormProps = {
   | {
       suiteMode: true;
       action: ActionDto;
-      suiteId: number;
-      setSuite: (suite: ActionSuiteDto) => void;
+      /** Resolves `null` when staff decline to move the deadline earlier. */
+      addToSuite: (
+        body: CreateActionEventDto,
+      ) => Promise<ActionSuiteDto | null>;
     }
 );
-
-const statusOptions: Record<ActionStatus, string> = {
-  draft: "Draft",
-  planned: "Planned",
-  office_action: "Office Action",
-  member_action: "Member Action",
-  resolution: "Resolution",
-  completed: "Completed",
-  failed: "Failed",
-  abandoned: "Abandoned",
-};
 
 const defaultEventNames: Record<ActionStatus, string> = {
   draft: "Draft",
@@ -64,6 +62,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
     setEventCreatedSuccess,
     eventCreatedSuccess,
   } = props;
+  const { confirm } = useToast();
   const [useCustomName, setUseCustomName] = useState<boolean>(false);
   const [launchNow, setLaunchNow] = useState<boolean>(true);
   const [useDeadlineEvent, setUseDeadlineEvent] = useState<boolean>(false);
@@ -118,12 +117,19 @@ const CreateEventForm = (props: CreateEventFormProps) => {
     setDeadlineEventDate(change.utcValue);
   };
 
+  const addToAction = (body: CreateActionEventDto) =>
+    sendConfirmingDeadlineShortening({
+      send: (query) =>
+        actionsAddEventAdmin({ path: { id: action.id }, body, query }),
+      confirm,
+    });
+
   const handleAddEvent = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    setError(null);
     setCreatingEvent(true);
 
-    let updatedSuite: ActionSuiteDto | null = null;
     try {
       const eventData = {
         ...eventForm,
@@ -138,21 +144,17 @@ const CreateEventForm = (props: CreateEventFormProps) => {
       let response;
 
       if (suiteMode) {
-        response = await actionsAddSuiteEventAdmin({
-          path: { suiteId: props.suiteId },
-          body: eventData,
-        });
-        if (response.data) {
-          updatedSuite = response.data;
-        }
+        const added = await props.addToSuite(eventData);
+        if (!added) return;
+        response = { data: added, error: undefined };
       } else {
-        response = await actionsAddEventAdmin({
-          path: { id: action.id },
-          body: eventData,
-        });
+        const sent = await addToAction(eventData);
+        if (!sent) return;
+        response = sent;
       }
       const addedEvent = response.data;
       let addedOfficeActionEvent = null;
+      let deadlineDeclined = false;
 
       if (
         useDeadlineEvent &&
@@ -166,29 +168,25 @@ const CreateEventForm = (props: CreateEventFormProps) => {
           description: "",
         } satisfies CreateActionEventDto;
 
-        let officeActionEventResponse;
+        let officeActionEventResponse: { error?: unknown } | null;
         if (suiteMode) {
-          officeActionEventResponse = await actionsAddSuiteEventAdmin({
-            path: { suiteId: props.suiteId },
-            body: officeActionEvent,
-          });
-          if (officeActionEventResponse.data) {
-            updatedSuite = officeActionEventResponse.data;
-          }
-          if (officeActionEventResponse.error) {
-            setError("Failed to add office action event");
-            console.error(officeActionEventResponse.error);
-          }
+          officeActionEventResponse = await props
+            .addToSuite(officeActionEvent)
+            .then(
+              (added) => added && {},
+              (error: unknown) => ({ error }),
+            );
         } else {
-          officeActionEventResponse = await actionsAddEventAdmin({
-            path: { id: action.id },
-            body: officeActionEvent,
-          });
-          addedOfficeActionEvent = officeActionEventResponse.data;
-          if (officeActionEventResponse.error) {
-            setError("Failed to add office action event");
-            console.error(officeActionEventResponse.error);
-          }
+          const sent = await addToAction(officeActionEvent);
+          addedOfficeActionEvent = sent?.data;
+          officeActionEventResponse = sent;
+        }
+        if (!officeActionEventResponse) {
+          deadlineDeclined = true;
+          setError(DEADLINE_DECLINED_MESSAGE);
+        } else if (officeActionEventResponse.error) {
+          setError("Failed to add office action event");
+          console.error(officeActionEventResponse.error);
         }
       }
 
@@ -205,13 +203,14 @@ const CreateEventForm = (props: CreateEventFormProps) => {
               : [...action.events, addedEvent as ActionEventDto],
           });
         }
-        if (suiteMode && updatedSuite) {
-          props.setSuite(updatedSuite);
-        }
 
-        // Show success feedback
-        setEventCreatedSuccess(true);
-        setTimeout(() => setEventCreatedSuccess(false), 3000);
+        if (!deadlineDeclined) {
+          setEventCreatedSuccess(true);
+          setTimeout(
+            () => setEventCreatedSuccess(false),
+            milliseconds({ seconds: 3 }),
+          );
+        }
 
         // Reset form
         setEventForm({
@@ -248,7 +247,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
           required
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          {Object.entries(statusOptions).map(([key, label]) => {
+          {Object.entries(ACTION_STATUS_LABELS).map(([key, label]) => {
             return (
               <option key={key} value={key}>
                 {label}
@@ -421,8 +420,12 @@ const CreateEventForm = (props: CreateEventFormProps) => {
                   }
                   className="w-full max-w-80 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="office_action">Office Action</option>
-                  <option value="completed">Completed</option>
+                  <option value="office_action">
+                    {ACTION_STATUS_LABELS.office_action}
+                  </option>
+                  <option value="completed">
+                    {ACTION_STATUS_LABELS.completed}
+                  </option>
                 </select>
               </div>
             </div>

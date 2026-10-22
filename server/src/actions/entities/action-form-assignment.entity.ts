@@ -1,7 +1,10 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsInt, IsOptional } from "class-validator";
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import { Allow, IsEmpty, IsInt, IsOptional } from "class-validator";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
 import { User } from "src/user/entities/user.entity";
 import type { Relation } from "src/utils/Repository";
 import {
@@ -11,17 +14,21 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  Unique,
 } from "typeorm";
 import { ActionFormVariant } from "./action-form-variant.entity";
 import { Action } from "./action.entity";
 
 // Records which form variant a user has been assigned to for an action.
 // `variantId = null` means the user is on the action's default form
-// (`action.taskFormId`). Sticky: once a row exists, it never changes.
+// (`action.taskFormId`). Sticky: once a row exists, it never changes, though
+// deleting its variant before launch deletes the row.
 @Entity()
-@Unique("UQ_action_form_assignment_actionId_userId", ["actionId", "userId"])
+@Index("UQ_action_form_assignment_actionId_userId", ["actionId", "userId"], {
+  unique: true,
+  where: '"deletedAt" IS NULL',
+})
 @Index("IDX_action_form_assignment_variantId", ["variantId"])
+@Index("IDX_action_form_assignment_actionId", ["actionId"])
 export class ActionFormAssignment {
   @PrimaryGeneratedColumn()
   @ApiProperty()
@@ -36,9 +43,8 @@ export class ActionFormAssignment {
   @ManyToOne(() => Action, { onDelete: "CASCADE" })
   @JoinColumn({ name: "actionId" })
   @Type(() => Action)
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  action: Relation<Action>;
+  @IsOptional()
+  action?: Relation<Action>;
 
   @Column()
   @ApiProperty()
@@ -48,9 +54,8 @@ export class ActionFormAssignment {
   @ManyToOne(() => User, { onDelete: "CASCADE" })
   @JoinColumn({ name: "userId" })
   @Type(() => User)
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  user: Relation<User>;
+  @IsOptional()
+  user?: Relation<User>;
 
   @Column({ type: "int", nullable: true })
   @ApiProperty({ nullable: true, type: Number })
@@ -61,12 +66,16 @@ export class ActionFormAssignment {
   @JoinColumn({ name: "variantId" })
   @Type(() => ActionFormVariant)
   @IsOptional()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  variant: Relation<ActionFormVariant> | null;
+  variant?: Relation<ActionFormVariant> | null;
 
   @CreateDateColumnTz()
   @ApiProperty()
   @Allow()
   @Type(() => Date)
   assignedAt: Date;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }

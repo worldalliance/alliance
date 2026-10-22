@@ -1,23 +1,33 @@
-import { ActionActivityType } from "@alliance/common/actionActivity";
+import {
+  ActionActivityType,
+  FORM_ALREADY_SUBMITTED,
+  MEMBER_ACTION_DEADLINE_PASSED,
+} from "@alliance/common/actionActivity";
+import { AnalyticsEvent, ExceptionEvent } from "@alliance/common/analytics";
 import { devPorts, PortCaller } from "@alliance/common/dev-ports";
-import { FORM_RESPONSES_BY_FORMS_MAX_BATCH } from "@alliance/common/forms/form-responses";
+import {
+  FORM_DRAFT_MAX_ANSWER_BYTES,
+  FORM_RESPONSES_BY_FORMS_MAX_BATCH,
+} from "@alliance/common/forms/form-responses";
 import type {
   FormSchema,
+  RangeField,
   RankingField,
 } from "@alliance/common/forms/form-schema";
 import type { Condition } from "@alliance/common/forms/visible-if-formula";
+import { milliseconds } from "date-fns";
+import { ActionsService } from "src/actions/actions.service";
 import { CreateActionDto } from "src/actions/dto/action.dto";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   ActionEvent,
   ActionStatus,
 } from "src/actions/entities/action-event.entity";
+import { ActionFormAssignment } from "src/actions/entities/action-form-assignment.entity";
 import { ActionFormVariant } from "src/actions/entities/action-form-variant.entity";
-import {
-  Action,
-  ActionTaskType,
-  VisibilityMode,
-} from "src/actions/entities/action.entity";
+import { Action, VisibilityMode } from "src/actions/entities/action.entity";
+import { FollowUpForm } from "src/actions/entities/follow-up-form.entity";
+import { Guest } from "src/auth/entities/guest.entity";
 import { Community } from "src/community/entities/community.entity";
 import {
   Comment,
@@ -25,6 +35,8 @@ import {
 } from "src/forum/entities/comment.entity";
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
 import { Post } from "src/forum/entities/post.entity";
+import { MmsService } from "src/mms/mms.service";
+import { PosthogService } from "src/posthog/posthog.service";
 import { CustomValidatorTypeDto } from "src/tasks/customvalidator.dto";
 import {
   CustomValidator,
@@ -32,10 +44,13 @@ import {
   typeUsableForVisibility,
   typeUsesIdArgument,
 } from "src/tasks/entities/customvalidator.entity";
-import { Form } from "src/tasks/entities/form.entity";
+import { Form, loadedFormSnapshot } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
+import { FormResponseDraft } from "src/tasks/entities/formresponsedraft.entity";
+import { formSchemaOf } from "src/tasks/form-snapshot-schema";
 import type { FormSummaryDto } from "src/tasks/form.dto";
 import { TasksModule } from "src/tasks/tasks.module";
+import { TasksService } from "src/tasks/tasks.service";
 import {
   ContractEvent,
   ContractEventType,
@@ -91,6 +106,7 @@ describe("Tasks (e2e)", () => {
   let ctx: TestContext;
   let formRepo: Repository<Form>;
   let formResponseRepo: Repository<FormResponse>;
+  let formResponseDraftRepo: Repository<FormResponseDraft>;
   let actionRepo: Repository<Action>;
   let variantRepo: Repository<ActionFormVariant>;
   let eventRepo: Repository<ActionEvent>;
@@ -108,6 +124,7 @@ describe("Tasks (e2e)", () => {
     ctx = await createTestApp([TasksModule]);
     formRepo = ctx.dataSource.getRepository(Form);
     formResponseRepo = ctx.dataSource.getRepository(FormResponse);
+    formResponseDraftRepo = ctx.dataSource.getRepository(FormResponseDraft);
     actionRepo = ctx.dataSource.getRepository(Action);
     variantRepo = ctx.dataSource.getRepository(ActionFormVariant);
     eventRepo = ctx.dataSource.getRepository(ActionEvent);
@@ -122,7 +139,11 @@ describe("Tasks (e2e)", () => {
   }, 50000);
 
   afterEach(async () => {
+    jest.restoreAllMocks();
+    await formResponseDraftRepo.query("DELETE FROM form_response_draft");
     await formResponseRepo.query("DELETE FROM form_response");
+    await formResponseRepo.query("DELETE FROM guest");
+    await variantRepo.query("DELETE FROM action_form_assignment");
     // Before the forms it points at; the variant -> form FK is RESTRICT.
     await variantRepo.query("DELETE FROM action_form_variant");
     await formRepo.query("DELETE FROM form");
@@ -139,7 +160,7 @@ describe("Tasks (e2e)", () => {
       phoneNumber: null,
       profilePicture: null,
       profileDescription: null,
-      timeZone: null as unknown as string,
+      timeZone: null,
       customCityString: null,
       shareInfoPublicly: false,
       preferredReminderTime: null,
@@ -155,10 +176,9 @@ describe("Tasks (e2e)", () => {
     const action = await actionRepo.save(
       actionRepo.create({
         name,
-        category: "Community",
+        category: [],
         body: "Body copy",
         shortDescription: "Short copy",
-        type: ActionTaskType.Activity,
         isForumParticipationAction: false,
         shouldCompleteAfterDeadline: false,
         visibilityMode: VisibilityMode.Public,
@@ -179,7 +199,7 @@ describe("Tasks (e2e)", () => {
         title: `${name} Event`,
         description: `${name} Event`,
         newStatus: ActionStatus.MemberAction,
-        date: new Date(Date.now() - 1000),
+        date: new Date(Date.now() - milliseconds({ seconds: 1 })),
         action,
       }),
     );
@@ -203,11 +223,10 @@ describe("Tasks (e2e)", () => {
     const testAction = await actionRepo.save(
       actionRepo.create({
         name: "Form Linked Action",
-        category: "Community",
+        category: [],
         body: "Body copy",
         shortDescription: "Short copy",
         taskFormId: formId,
-        type: ActionTaskType.Activity,
         isForumParticipationAction: false,
         shouldCompleteAfterDeadline: false,
         visibilityMode: VisibilityMode.Public,
@@ -228,7 +247,7 @@ describe("Tasks (e2e)", () => {
         title: "Form Linked Action",
         description: "Make non-draft",
         newStatus: ActionStatus.MemberAction,
-        date: new Date(Date.now() - 1000),
+        date: new Date(Date.now() - milliseconds({ seconds: 1 })),
         action: testAction,
       }),
     );
@@ -274,6 +293,9 @@ describe("Tasks (e2e)", () => {
       .expect(201);
 
     expect(submitResponse.body.formId).toBe(formId);
+    expect(submitResponse.body.sid).toBeNull();
+    expect(submitResponse.body.phDistinctId).toBeNull();
+    expect(submitResponse.body.sessionReplayUrl).toBeNull();
 
     const meResponse = await request(ctx.app.getHttpServer())
       .get(`/tasks/myResponse/${formId}`)
@@ -534,6 +556,50 @@ describe("Tasks (e2e)", () => {
     });
   });
 
+  it("serves an uploaded video saved as a storage url by its key", async () => {
+    const { body } = await request(ctx.app.getHttpServer())
+      .post("/tasks/createForm")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({
+        title: "Video form",
+        schema: {
+          pages: [
+            {
+              id: "page-1",
+              fields: [
+                {
+                  id: "uploaded",
+                  type: "display",
+                  kind: "video",
+                  src: "https://dj92mxbdjuclo.cloudfront.net/videos/1777426220647",
+                  videoId: 7,
+                },
+                {
+                  id: "external",
+                  type: "display",
+                  kind: "video",
+                  src: "https://elsewhere.test/videos/1777426220647",
+                },
+              ],
+            },
+          ],
+          outputViews: [],
+        } satisfies FormSchema,
+      })
+      .expect(201);
+
+    const form = await ctx.app.get(TasksService).getForm(body.id);
+
+    expect(
+      formSchemaOf(loadedFormSnapshot(form)).pages[0].fields.map((field) =>
+        field.kind === "video" ? field.src : null,
+      ),
+    ).toEqual([
+      "videos/1777426220647",
+      "https://elsewhere.test/videos/1777426220647",
+    ]);
+  });
+
   it("rejects a stale form update that would clobber another edit", async () => {
     const createResponse = await request(ctx.app.getHttpServer())
       .post("/tasks/createForm")
@@ -592,6 +658,305 @@ describe("Tasks (e2e)", () => {
       .expect(200);
   });
 
+  it("groups responses to older versions against the form's current version", async () => {
+    const createResponse = await request(ctx.app.getHttpServer())
+      .post("/tasks/createForm")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({ title: "Versioned Signup", schema: sampleSchema })
+      .expect(201);
+    const versionedFormId = createResponse.body.id as number;
+    const firstSnapshotId = createResponse.body.formSnapshotId as number;
+    const updateTo = async (description: string): Promise<number> => {
+      const schema = structuredClone(sampleSchema);
+      schema.description = description;
+      const response = await request(ctx.app.getHttpServer())
+        .put(`/tasks/updateForm/${versionedFormId}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: "Versioned Signup", schema })
+        .expect(200);
+      return response.body.formSnapshotId as number;
+    };
+    const saveResponse = async (formSnapshotId: number): Promise<number> => {
+      const response = await formResponseRepo.save(
+        formResponseRepo.create({
+          formId: versionedFormId,
+          formSnapshotId,
+          answers: { "full-name": "Member Example" },
+          user: { id: ctx.testUserId },
+        }),
+      );
+      return response.id;
+    };
+
+    const secondSnapshotId = await updateTo("Second version");
+    const secondResponseId = await saveResponse(secondSnapshotId);
+    const firstResponseIds = [
+      await saveResponse(firstSnapshotId),
+      await saveResponse(firstSnapshotId),
+    ];
+    const currentSnapshotId = await updateTo("Current version");
+    await saveResponse(currentSnapshotId);
+
+    const migration = await request(ctx.app.getHttpServer())
+      .get(`/tasks/forms/${versionedFormId}/snapshotMigration`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .expect(200);
+
+    expect(migration.body.latestSnapshot.id).toBe(currentSnapshotId);
+    expect(migration.body.latestSnapshot.schema.description).toBe(
+      "Current version",
+    );
+    expect(
+      migration.body.groups.map(
+        (group: { snapshot: { id: number }; responses: { id: number }[] }) => ({
+          snapshotId: group.snapshot.id,
+          responseIds: group.responses.map((response) => response.id),
+        }),
+      ),
+    ).toEqual([
+      { snapshotId: firstSnapshotId, responseIds: firstResponseIds },
+      { snapshotId: secondSnapshotId, responseIds: [secondResponseId] },
+    ]);
+  });
+
+  it("turns away a non-admin from a form's snapshot migration", async () => {
+    await request(ctx.app.getHttpServer())
+      .get("/tasks/forms/1/snapshotMigration")
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
+      .expect(401);
+  });
+
+  describe("Submission after the deadline", () => {
+    const createDeadlineFormAction = async (name: string, deadline: Date) => {
+      const action = await actionRepo.save(
+        actionRepo.create({
+          name,
+          category: [],
+          body: "Body copy",
+          shortDescription: "Short copy",
+          isForumParticipationAction: false,
+          shouldCompleteAfterDeadline: false,
+          visibilityMode: VisibilityMode.Public,
+          preventCompletion: false,
+          optional: false,
+          publicOnly: false,
+          onboarding: false,
+          isContractSigningAction: false,
+          cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
+        } satisfies CreateActionDto),
+      );
+      const [, deadlineEvent] = await eventRepo.save([
+        eventRepo.create({
+          title: name,
+          description: "Member phase",
+          newStatus: ActionStatus.MemberAction,
+          date: new Date(Date.now() - milliseconds({ days: 7 })),
+          action,
+        }),
+        eventRepo.create({
+          title: `${name} deadline`,
+          description: "Office phase",
+          newStatus: ActionStatus.OfficeAction,
+          date: deadline,
+          action,
+        }),
+      ]);
+      const form = await request(ctx.app.getHttpServer())
+        .post("/tasks/createForm")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          title: `${name} Form`,
+          schema: {
+            pages: [
+              {
+                id: "page-1",
+                fields: [
+                  { id: "note", type: "input", kind: "text", label: "Note" },
+                ],
+              },
+            ],
+            outputViews: [],
+            aggregateViews: [],
+          },
+        })
+        .expect(201);
+      await actionRepo.update(action.id, { taskFormId: form.body.id });
+      const submit = () =>
+        request(ctx.app.getHttpServer())
+          .post(`/tasks/submitForm/${form.body.id}`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send({
+            answers: { note: "opened before the deadline" },
+            formSnapshotId: form.body.formSnapshotId as number,
+            actionId: action.id,
+            deviceType: "desktop" as const,
+          });
+      return {
+        formId: form.body.id as number,
+        actionId: action.id,
+        deadlineEvent,
+        submit,
+      };
+    };
+
+    it("refuses the form as past its deadline without saving it", async () => {
+      const { formId, submit } = await createDeadlineFormAction(
+        "Late Form Action",
+        new Date(Date.now() - milliseconds({ minutes: 1 })),
+      );
+
+      const refused = await submit().expect(403);
+
+      expect(refused.body.message).toBe(MEMBER_ACTION_DEADLINE_PASSED);
+      expect(await formResponseRepo.countBy({ formId })).toBe(0);
+    });
+
+    it("reports a retry of a form submitted in time as already submitted", async () => {
+      const { deadlineEvent, submit } = await createDeadlineFormAction(
+        "Retried Form Action",
+        new Date(Date.now() + milliseconds({ hours: 1 })),
+      );
+      await submit().expect(201);
+      await eventRepo.update(deadlineEvent.id, {
+        date: new Date(Date.now() - milliseconds({ minutes: 1 })),
+      });
+
+      const retried = await submit().expect(400);
+
+      expect(retried.body.message).toBe(FORM_ALREADY_SUBMITTED);
+    });
+
+    it("reports only a member's own completion to PostHog", async () => {
+      const capture = jest.spyOn(ctx.app.get(PosthogService), "capture");
+      const onTime = await createDeadlineFormAction(
+        "Tracked Form Action",
+        new Date(Date.now() + milliseconds({ hours: 1 })),
+      );
+      const late = await createDeadlineFormAction(
+        "Untracked Form Action",
+        new Date(Date.now() - milliseconds({ minutes: 1 })),
+      );
+
+      await onTime.submit().expect(201);
+      await late.submit().expect(403);
+      await ctx.app
+        .get(ActionsService)
+        .completeAction(late.actionId, ctx.testUserId, { adminCreated: true });
+
+      const completions = capture.mock.calls
+        .map(([params]) => params)
+        .filter(({ event }) => event === AnalyticsEvent.ActionCompleted);
+      expect(completions).toEqual([
+        {
+          event: AnalyticsEvent.ActionCompleted,
+          distinctId: String(ctx.testUserId),
+          properties: {
+            actionId: onTime.actionId,
+            actionName: "Tracked Form Action",
+          },
+        },
+      ]);
+    });
+  });
+
+  it("refuses a follow-up form before its start date", async () => {
+    const action = await createAction("Unstarted Follow-up Action");
+    const form = await request(ctx.app.getHttpServer())
+      .post("/tasks/createForm")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({
+        title: "Unstarted Follow-up Form",
+        schema: { pages: [], outputViews: [], aggregateViews: [] },
+      })
+      .expect(201);
+    await actionActivityRepo.save(
+      actionActivityRepo.create({
+        actionId: action.id,
+        userId: ctx.testUserId,
+        type: ActionActivityType.USER_COMPLETED,
+      }),
+    );
+    const followUp = await ctx.dataSource.getRepository(FollowUpForm).save({
+      actionId: action.id,
+      formId: form.body.id as number,
+      startDate: new Date(Date.now() + milliseconds({ days: 1 })),
+      cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
+    });
+
+    const refused = await request(ctx.app.getHttpServer())
+      .post(`/tasks/submitFollowUpForm/${followUp.id}`)
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
+      .send({
+        answers: {},
+        formSnapshotId: form.body.formSnapshotId as number,
+        deviceType: "desktop",
+      })
+      .expect(400);
+
+    expect(refused.body.message).toBe("Follow-up form is not active");
+    expect(await formResponseRepo.countBy({ formId: form.body.id })).toBe(0);
+  });
+
+  it.each([
+    {
+      order: "completed then withdrew",
+      types: [
+        ActionActivityType.USER_COMPLETED,
+        ActionActivityType.USER_WONT_COMPLETE,
+      ],
+      status: 404,
+    },
+    {
+      order: "withdrew then completed",
+      types: [
+        ActionActivityType.USER_WONT_COMPLETE,
+        ActionActivityType.USER_COMPLETED,
+      ],
+      status: 201,
+    },
+  ])(
+    "answers $status to a follow-up form from a member who $order",
+    async ({ types, status }) => {
+      const action = await createAction(`Follow-up Action ${status}`);
+      const form = await request(ctx.app.getHttpServer())
+        .post("/tasks/createForm")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          title: `Follow-up Form ${status}`,
+          schema: { pages: [], outputViews: [], aggregateViews: [] },
+        })
+        .expect(201);
+      await actionActivityRepo.save(
+        types.map((type, index) =>
+          actionActivityRepo.create({
+            actionId: action.id,
+            userId: ctx.testUserId,
+            type,
+            createdAt: new Date(
+              Date.now() - milliseconds({ hours: 2 - index }),
+            ),
+          }),
+        ),
+      );
+      const followUp = await ctx.dataSource.getRepository(FollowUpForm).save({
+        actionId: action.id,
+        formId: form.body.id as number,
+        startDate: new Date(Date.now() - milliseconds({ days: 1 })),
+        cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
+      });
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitFollowUpForm/${followUp.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: {},
+          formSnapshotId: form.body.formSnapshotId as number,
+          deviceType: "desktop",
+        })
+        .expect(status);
+    },
+  );
+
   it("sums number field answers into aggregate views", async () => {
     const aggregateSchema: FormSchema = {
       pages: [
@@ -625,10 +990,9 @@ describe("Tasks (e2e)", () => {
     const testAction = await actionRepo.save(
       actionRepo.create({
         name: "Aggregate Number Action",
-        category: "Community",
+        category: [],
         body: "Body copy",
         shortDescription: "Short copy",
-        type: ActionTaskType.Activity,
         isForumParticipationAction: false,
         shouldCompleteAfterDeadline: false,
         visibilityMode: VisibilityMode.Public,
@@ -649,7 +1013,7 @@ describe("Tasks (e2e)", () => {
         title: "Aggregate Number Action",
         description: "Make non-draft",
         newStatus: ActionStatus.MemberAction,
-        date: new Date(Date.now() - 1000),
+        date: new Date(Date.now() - milliseconds({ seconds: 1 })),
         action: testAction,
       }),
     );
@@ -691,7 +1055,97 @@ describe("Tasks (e2e)", () => {
     ).toBe(1000);
   });
 
-  it("hides privateByDefault output fields in public output while keeping normal output fields visible", async () => {
+  const completedActivityOutput = async ({
+    schema,
+    submission,
+    afterSubmit,
+  }: {
+    schema: FormSchema;
+    submission: {
+      answers: Record<string, unknown>;
+      publicAnswers: Record<string, boolean>;
+    };
+    afterSubmit?: () => Promise<void>;
+  }) => {
+    const action = await actionRepo.save(
+      actionRepo.create({
+        name: "Output Visibility Action",
+        category: [],
+        body: "Body copy",
+        shortDescription: "Short copy",
+        isForumParticipationAction: false,
+        shouldCompleteAfterDeadline: false,
+        visibilityMode: VisibilityMode.Public,
+        preventCompletion: false,
+        optional: false,
+        publicOnly: false,
+        onboarding: false,
+        isContractSigningAction: false,
+        cohortExpression: {
+          type: "Tag",
+          tagId: ctx.defaultTag.id,
+        },
+      } satisfies CreateActionDto),
+    );
+
+    await eventRepo.save(
+      eventRepo.create({
+        title: "Output Visibility Event",
+        description: "Test Action",
+        newStatus: ActionStatus.MemberAction,
+        date: new Date(Date.now() - milliseconds({ seconds: 1 })),
+        action,
+      }),
+    );
+
+    const createFormResponse = await request(ctx.app.getHttpServer())
+      .post("/tasks/createForm")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({
+        title: "Output Visibility",
+        schema,
+      })
+      .expect(201);
+
+    const createdFormId = createFormResponse.body.id as number;
+    await actionRepo.update(action.id, { taskFormId: createdFormId });
+
+    await request(ctx.app.getHttpServer())
+      .post(`/tasks/submitForm/${createdFormId}`)
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
+      .send({
+        ...submission,
+        formSnapshotId: createFormResponse.body.formSnapshotId as number,
+        actionId: action.id,
+        deviceType: "desktop" as const,
+      })
+      .expect(201);
+
+    await afterSubmit?.();
+
+    const activitiesResponse = await request(ctx.app.getHttpServer())
+      .get(`/actions/${action.id}/activities`)
+      .query({ comments: true })
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .expect(200);
+
+    const completionActivity = activitiesResponse.body.find(
+      (activity: { type: ActionActivityType }) =>
+        activity.type === ActionActivityType.USER_COMPLETED,
+    ) as
+      | {
+          formResponseOutput?: {
+            answers?: Record<string, unknown>;
+            publicAnswers?: Record<string, boolean>;
+          };
+        }
+      | undefined;
+
+    expect(completionActivity).toBeDefined();
+    return completionActivity?.formResponseOutput;
+  };
+
+  it("sends an activity only the answers its output view shows", async () => {
     const outputSchema: FormSchema = {
       pages: [
         {
@@ -727,111 +1181,753 @@ describe("Tasks (e2e)", () => {
           ],
         },
       ],
-      outputViews: [],
+      outputViews: [
+        {
+          id: "view-1",
+          type: "default",
+          blocks: [
+            { id: "block-private", fieldId: "private-output" },
+            {
+              id: "block-public",
+              fieldId: "public-output",
+              visibleIfFormula: {
+                conditions: {
+                  c1: {
+                    kind: "equals",
+                    when: "non-output",
+                    equals: "not-an-output-field",
+                  },
+                },
+                formula: "c1",
+              },
+            },
+          ],
+        },
+      ],
       aggregateViews: [],
     };
 
-    const action = await actionRepo.save(
-      actionRepo.create({
-        name: "Output Visibility Action",
-        category: "Community",
-        body: "Body copy",
-        shortDescription: "Short copy",
-        type: ActionTaskType.Activity,
-        isForumParticipationAction: false,
-        shouldCompleteAfterDeadline: false,
-        visibilityMode: VisibilityMode.Public,
-        preventCompletion: false,
-        optional: false,
-        publicOnly: false,
-        onboarding: false,
-        isContractSigningAction: false,
-        cohortExpression: {
-          type: "Tag",
-          tagId: ctx.defaultTag.id,
-        },
-      } satisfies CreateActionDto),
-    );
-
-    await eventRepo.save(
-      eventRepo.create({
-        title: "Output Visibility Event",
-        description: "Test Action",
-        newStatus: ActionStatus.MemberAction,
-        date: new Date(Date.now() - 1000),
-        action,
-      }),
-    );
-
-    const createFormResponse = await request(ctx.app.getHttpServer())
-      .post("/tasks/createForm")
-      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-      .send({
-        title: "Output Visibility",
-        schema: outputSchema,
-      })
-      .expect(201);
-
-    const createdFormId = createFormResponse.body.id as number;
-    await actionRepo.update(action.id, { taskFormId: createdFormId });
-
-    await request(ctx.app.getHttpServer())
-      .post(`/tasks/submitForm/${createdFormId}`)
-      .set("Authorization", `Bearer ${ctx.accessToken}`)
-      .send({
+    const output = await completedActivityOutput({
+      schema: outputSchema,
+      submission: {
         answers: {
           "private-output": "should-be-hidden-by-default",
           "public-output": "should-be-visible-by-default",
           "non-output": "not-an-output-field",
         },
-        formSnapshotId: createFormResponse.body.formSnapshotId as number,
-        actionId: action.id,
         publicAnswers: {
           "private-output": false,
           "public-output": true,
         },
-        deviceType: "desktop" as const,
-      })
-      .expect(201);
+      },
+    });
+    expect(output?.publicAnswers).toEqual({
+      "view-1": true,
+      "public-output": true,
+    });
+    expect(output?.answers).toEqual({
+      "public-output": "should-be-visible-by-default",
+    });
+    const payload = JSON.stringify(output);
+    expect(payload).not.toContain("should-be-hidden-by-default");
+    expect(payload).not.toContain("not-an-output-field");
+  });
 
-    const activitiesResponse = await request(ctx.app.getHttpServer())
-      .get(`/actions/${action.id}/activities`)
-      .query({ comments: true })
-      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-      .expect(200);
+  it("sends an activity the labels of only the formula choices its output shows", async () => {
+    const shownLabels = {
+      inputs: { input1: { kind: "field" as const, fieldId: "tags" } },
+      formula:
+        '(input1 ?? []).map(t => ({ label: "Shown " + t.label, value: t.value }))',
+    };
+    const output = await completedActivityOutput({
+      schema: {
+        pages: [
+          {
+            id: "page-1",
+            fields: [
+              {
+                id: "tags",
+                type: "input",
+                kind: "multiselect",
+                label: "Tags",
+                options: [
+                  { label: "Alpha", value: "a" },
+                  { label: "Beta", value: "b" },
+                  { label: "Gamma", value: "c" },
+                ],
+              },
+              {
+                id: "public-pick",
+                type: "input",
+                kind: "multiselect",
+                label: "Public pick",
+                options: [],
+                optionsFormula: shownLabels,
+                output: { output: true },
+              },
+              {
+                id: "private-pick",
+                type: "input",
+                kind: "select",
+                label: "Private pick",
+                options: [],
+                optionsFormula: shownLabels,
+                output: { output: true, privateByDefault: true },
+              },
+            ],
+          },
+        ],
+        outputViews: [
+          {
+            id: "view-1",
+            type: "default",
+            blocks: [
+              { id: "block-public", fieldId: "public-pick" },
+              { id: "block-private", fieldId: "private-pick" },
+            ],
+          },
+        ],
+      },
+      submission: {
+        answers: {
+          tags: ["a", "b", "c"],
+          "public-pick": ["a"],
+          "private-pick": "b",
+        },
+        publicAnswers: { "public-pick": true, "private-pick": false },
+      },
+      afterSubmit: async () => {
+        await ctx.dataSource.query(
+          `UPDATE form_response SET "formulaChoices" = jsonb_set("formulaChoices", '{public-pick}', "formulaChoices"->'public-pick' || $1::jsonb) WHERE id = (SELECT max(id) FROM form_response)`,
+          [JSON.stringify([{ label: "Shown Gamma", value: "c" }])],
+        );
+      },
+    });
+    const payload = JSON.stringify(output);
+    expect(payload).toContain("Shown Alpha");
+    expect(payload).not.toContain("Shown Beta");
+    expect(payload).not.toContain("Shown Gamma");
+    expect(payload).not.toContain("optionsFormula");
 
-    const completionActivity = activitiesResponse.body.find(
-      (activity: { type: ActionActivityType }) =>
-        activity.type === ActionActivityType.USER_COMPLETED,
-    ) as
-      | {
-          formResponseOutput?: {
-            answers?: Record<string, unknown>;
-            publicAnswers?: Record<string, boolean>;
-          };
-        }
-      | undefined;
+    const activity = await ctx.dataSource
+      .getRepository(ActionActivity)
+      .findOneOrFail({
+        where: { type: ActionActivityType.USER_COMPLETED },
+        order: { id: "DESC" },
+        relations: { taskFormResponse: { formSnapshot: true } },
+      });
+    expect(
+      ctx.app.get(ActionsService).buildOutputFormResponse(activity)
+        ?.formulaChoices,
+    ).toEqual({ "public-pick": [{ label: "Shown Alpha", value: "a" }] });
+  });
 
-    expect(completionActivity).toBeDefined();
-    expect(completionActivity?.formResponseOutput).toBeDefined();
+  it("sends an activity the labels of only the list formula choices its output shows", async () => {
+    const output = await completedActivityOutput({
+      schema: {
+        pages: [
+          {
+            id: "page-1",
+            fields: [
+              {
+                id: "rows",
+                type: "input",
+                kind: "list",
+                label: "Rows",
+                output: { output: true },
+                outputViewHiddenFieldIds: ["secret"],
+                fields: [
+                  {
+                    id: "cell",
+                    type: "input",
+                    kind: "multiselect",
+                    label: "Cell",
+                    options: [],
+                    optionsFormula: {
+                      inputs: {},
+                      formula:
+                        "[{ label: 'Shown Alpha', value: 'a' }, { label: 'Shown Beta', value: 'b' }, { label: 'Shown Gamma', value: 'c' }]",
+                    },
+                  },
+                  {
+                    id: "secret",
+                    type: "input",
+                    kind: "select",
+                    label: "Secret",
+                    options: [],
+                    optionsFormula: {
+                      inputs: {},
+                      formula: "[{ label: 'Secret Delta', value: 'd' }]",
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+        outputViews: [
+          {
+            id: "view-1",
+            type: "default",
+            blocks: [{ id: "block-rows", fieldId: "rows" }],
+          },
+        ],
+      },
+      submission: {
+        answers: {
+          rows: [
+            { cell: ["a"], secret: "d" },
+            { cell: ["b"], secret: "d" },
+          ],
+        },
+        publicAnswers: { rows: true },
+      },
+      afterSubmit: async () => {
+        await ctx.dataSource.query(
+          `UPDATE form_response SET "formulaChoices" = jsonb_set("formulaChoices", '{cell}', "formulaChoices"->'cell' || $1::jsonb) WHERE id = (SELECT max(id) FROM form_response)`,
+          [JSON.stringify([{ label: "Shown Gamma", value: "c" }])],
+        );
+      },
+    });
 
-    const publicAnswers = completionActivity?.formResponseOutput?.publicAnswers;
-    const answers = completionActivity?.formResponseOutput?.answers ?? {};
-    expect(publicAnswers?.["private-output"]).toBe(false);
-    expect(publicAnswers?.["public-output"]).toBe(true);
+    const payload = JSON.stringify(output);
+    expect(payload).toContain("Shown Alpha");
+    expect(payload).toContain("Shown Beta");
+    expect(payload).not.toContain("Shown Gamma");
+    expect(payload).not.toContain("Secret Delta");
+  });
 
-    const outputFieldIds = new Set(["private-output", "public-output"]);
-    const publicOutputAnswers = Object.fromEntries(
-      Object.entries(answers).filter(([fieldId]) => {
-        if (!outputFieldIds.has(fieldId)) {
-          return false;
-        }
-        return publicAnswers?.[fieldId] !== false;
+  it("reads a formula choice's saved label in an output's variables", async () => {
+    const output = await completedActivityOutput({
+      schema: {
+        pages: [
+          {
+            id: "page-1",
+            fields: [
+              {
+                id: "published",
+                type: "input",
+                kind: "text",
+                label: "Published",
+                output: { output: true },
+              },
+              {
+                id: "pick",
+                type: "input",
+                kind: "select",
+                label: "Pick",
+                options: [],
+                optionsFormula: {
+                  inputs: {},
+                  formula: "[{ label: 'Alpha', value: 'a' }]",
+                },
+              },
+            ],
+          },
+        ],
+        variables: [
+          {
+            name: "picked",
+            inputs: { input1: { kind: "field", fieldId: "pick" } },
+            formula: "input1.label",
+          },
+        ],
+        outputViews: [
+          {
+            id: "view-1",
+            type: "default",
+            blocks: [
+              {
+                id: "block-text",
+                type: "display",
+                kind: "text",
+                text: "You picked #{picked}",
+              },
+            ],
+          },
+        ],
+      },
+      submission: {
+        answers: { published: "Ada", pick: "a" },
+        publicAnswers: { published: true },
+      },
+    });
+
+    expect(JSON.stringify(output)).toContain("You picked Alpha");
+  });
+
+  const displayOnlySchema = (textVisibleIf?: string): FormSchema => ({
+    pages: [
+      {
+        id: "page-1",
+        fields: [
+          {
+            id: "published",
+            type: "input",
+            kind: "text",
+            label: "Published",
+            output: { output: true },
+          },
+          { id: "score", type: "input", kind: "number", label: "Score" },
+        ],
+      },
+    ],
+    variables: [
+      {
+        name: "total",
+        inputs: { input1: { kind: "field", fieldId: "score" } },
+        formula: "input1",
+      },
+    ],
+    outputViews: [
+      {
+        id: "view-1",
+        type: "default",
+        blocks: [
+          {
+            id: "block-text",
+            type: "display",
+            kind: "text",
+            text: "You scored #{total}",
+            ...(textVisibleIf && {
+              visibleIfFormula: {
+                conditions: {
+                  c1: {
+                    kind: "equals",
+                    when: "published",
+                    equals: textVisibleIf,
+                  },
+                },
+                formula: "c1",
+              },
+            }),
+          },
+        ],
+      },
+    ],
+    aggregateViews: [],
+  });
+
+  it("sends an output whose view shows only display blocks", async () => {
+    const output = await completedActivityOutput({
+      schema: displayOnlySchema(),
+      submission: {
+        answers: { published: "Ada", score: 7 },
+        publicAnswers: { published: true },
+      },
+    });
+
+    expect(output?.answers).toEqual({});
+    expect(output?.publicAnswers).toEqual({ "view-1": true });
+    expect(JSON.stringify(output)).toContain("You scored 7");
+  });
+
+  it("sends no output when its view shows nothing", async () => {
+    const output = await completedActivityOutput({
+      schema: displayOnlySchema("never"),
+      submission: {
+        answers: { published: "Ada", score: 7 },
+        publicAnswers: { published: true },
+      },
+    });
+
+    expect(output).toBeUndefined();
+  });
+
+  it("reports a stored list answer that isn't a list of rows", async () => {
+    const captureException = jest.spyOn(
+      ctx.app.get(PosthogService),
+      "captureException",
+    );
+    const listSchema: FormSchema = {
+      pages: [
+        {
+          id: "page-1",
+          fields: [
+            {
+              id: "items",
+              type: "input",
+              kind: "list",
+              label: "Items",
+              output: { output: true },
+              fields: [
+                { id: "name", type: "input", kind: "text", label: "Name" },
+              ],
+            },
+          ],
+        },
+      ],
+      outputViews: [
+        {
+          id: "view-1",
+          type: "default",
+          blocks: [{ id: "block-items", fieldId: "items" }],
+        },
+      ],
+      aggregateViews: [],
+    };
+
+    const output = await completedActivityOutput({
+      schema: listSchema,
+      submission: {
+        answers: { items: [{ name: "Ada" }] },
+        publicAnswers: { items: true },
+      },
+      afterSubmit: async () => {
+        await ctx.dataSource.query(
+          "UPDATE form_response SET answers = $1 WHERE id = (SELECT max(id) FROM form_response)",
+          [JSON.stringify({ items: "not rows" })],
+        );
+      },
+    });
+
+    expect(output).toBeUndefined();
+    expect(captureException).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: ExceptionEvent.MalformedListAnswer,
+        properties: expect.objectContaining({ fieldId: "items" }),
       }),
     );
+  });
 
-    expect(publicOutputAnswers).toEqual({
-      "public-output": "should-be-visible-by-default",
+  describe("Form drafts", () => {
+    let draftFormId: number;
+    let draftSnapshotId: number;
+    let draftActionId: number;
+
+    const draftBody = (answers: Record<string, unknown>) => ({
+      actionId: draftActionId,
+      formSnapshotId: draftSnapshotId,
+      answers,
+    });
+
+    const saveDraft = (answers: Record<string, unknown>) =>
+      request(ctx.app.getHttpServer())
+        .put(`/tasks/formDraft/${draftFormId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send(draftBody(answers));
+
+    const formOnSchema = async (title: string, schema: FormSchema) => {
+      const created = await request(ctx.app.getHttpServer())
+        .post("/tasks/createForm")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ title, schema })
+        .expect(201);
+      const action = await createAction(`${title} Action`);
+      await actionRepo.update(action.id, { taskFormId: created.body.id });
+      return {
+        save: (body: Record<string, unknown>) =>
+          request(ctx.app.getHttpServer())
+            .put(`/tasks/formDraft/${created.body.id}`)
+            .set("Authorization", `Bearer ${ctx.accessToken}`)
+            .send({
+              actionId: action.id,
+              formSnapshotId: created.body.formSnapshotId,
+              ...body,
+            }),
+      };
+    };
+
+    beforeEach(async () => {
+      const created = await request(ctx.app.getHttpServer())
+        .post("/tasks/createForm")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: "Draftable", schema: sampleSchema })
+        .expect(201);
+      draftFormId = created.body.id;
+      draftSnapshotId = created.body.formSnapshotId;
+      const action = await createAction("Draftable Action");
+      draftActionId = action.id;
+      await actionRepo.update(draftActionId, { taskFormId: draftFormId });
+    });
+
+    it("stores partial answers without completing the action", async () => {
+      const saved = await saveDraft({ "full-name": "Half Typed" }).expect(200);
+
+      expect(saved.body.answers).toEqual({ "full-name": "Half Typed" });
+      expect(saved.body.currentPageIndex).toBe(0);
+      expect(
+        await actionActivityRepo.count({ where: { actionId: draftActionId } }),
+      ).toBe(0);
+      expect(
+        await formResponseRepo.count({ where: { formId: draftFormId } }),
+      ).toBe(0);
+
+      const fetched = await request(ctx.app.getHttpServer())
+        .get(`/tasks/formDraft/${draftFormId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      expect(fetched.body.draft.answers).toEqual({ "full-name": "Half Typed" });
+      expect(fetched.body.draft.formSnapshotId).toBe(draftSnapshotId);
+    });
+
+    it("keeps one row per member and form, holding the latest answers", async () => {
+      await saveDraft({ "full-name": "First" }).expect(200);
+      await saveDraft({ "full-name": "Second" }).expect(200);
+
+      const drafts = await formResponseDraftRepo.find({
+        where: { formId: draftFormId },
+      });
+      expect(drafts).toHaveLength(1);
+      expect(drafts[0].answers).toEqual({ "full-name": "Second" });
+    });
+
+    it("drops answers for fields the schema doesn't have", async () => {
+      const saved = await saveDraft({
+        "full-name": "Kept",
+        "not-a-field": "dropped",
+      }).expect(200);
+
+      expect(saved.body.answers).toEqual({ "full-name": "Kept" });
+    });
+
+    it("turns away publicAnswers that aren't booleans", async () => {
+      await saveDraft({ "full-name": "Typed" }).expect(200);
+
+      await request(ctx.app.getHttpServer())
+        .put(`/tasks/formDraft/${draftFormId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          ...draftBody({ "full-name": "Typed" }),
+          publicAnswers: { junk: { nested: "arbitrary jsonb" } },
+        })
+        .expect(400);
+    });
+
+    it("drops publicAnswers for fields that don't publish an answer", async () => {
+      const form = await formOnSchema("Output fields", {
+        ...sampleSchema,
+        pages: [
+          {
+            id: "output-page",
+            fields: [
+              {
+                id: "published",
+                type: "input",
+                kind: "text",
+                label: "Published",
+                output: { output: true },
+              },
+              {
+                id: "unpublished",
+                type: "input",
+                kind: "text",
+                label: "Unpublished",
+              },
+            ],
+          },
+        ],
+      });
+
+      const saved = await form
+        .save({
+          answers: { published: "Shown", unpublished: "Hidden" },
+          publicAnswers: {
+            published: true,
+            unpublished: true,
+            "not-a-field": true,
+          },
+        })
+        .expect(200);
+
+      expect(saved.body.publicAnswers).toEqual({ published: true });
+    });
+
+    it("turns away answers over the byte limit", async () => {
+      await saveDraft({
+        "full-name": "x".repeat(FORM_DRAFT_MAX_ANSWER_BYTES + 1),
+      }).expect(400);
+    });
+
+    it("stays out of the admin response list and counts", async () => {
+      await saveDraft({ "full-name": "Half Typed" }).expect(200);
+
+      const responses = await request(ctx.app.getHttpServer())
+        .get(`/tasks/responses/${draftFormId}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+      expect(responses.body).toHaveLength(0);
+
+      const counts = await request(ctx.app.getHttpServer())
+        .post("/tasks/responses/counts")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ formIds: [draftFormId] })
+        .expect(201);
+      expect(counts.body).toEqual([{ formId: draftFormId, count: 0 }]);
+    });
+
+    it("starts a fresh draft once the last one was cleared", async () => {
+      await saveDraft({ "full-name": "Cleared" }).expect(200);
+      await ctx.app
+        .get(TasksService)
+        .deleteFormDraft(ctx.testUserId, draftFormId);
+
+      await Promise.all([
+        saveDraft({ "full-name": "Fresh" }).expect(200),
+        saveDraft({ "full-name": "Fresh" }).expect(200),
+      ]);
+
+      const drafts = await formResponseDraftRepo.find({
+        where: { formId: draftFormId },
+        withDeleted: true,
+        order: { id: "ASC" },
+      });
+      expect(drafts.map((draft) => [draft.answers, draft.deletedAt])).toEqual([
+        [{ "full-name": "Cleared" }, expect.any(Date)],
+        [{ "full-name": "Fresh" }, null],
+      ]);
+    });
+
+    it("is deleted by the submission it was a draft of", async () => {
+      await saveDraft({ "full-name": "Half Typed" }).expect(200);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${draftFormId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { "full-name": "All Typed" },
+          formSnapshotId: draftSnapshotId,
+          actionId: draftActionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(201);
+
+      expect(
+        await formResponseDraftRepo.count({ where: { formId: draftFormId } }),
+      ).toBe(0);
+
+      const fetched = await request(ctx.app.getHttpServer())
+        .get(`/tasks/formDraft/${draftFormId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      expect(fetched.body.draft).toBeUndefined();
+
+      await saveDraft({ "full-name": "Too Late" }).expect(400);
+    });
+
+    const assignVariant = async () => {
+      const variantForm = await request(ctx.app.getHttpServer())
+        .post("/tasks/createForm")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: "Variant", schema: sampleSchema })
+        .expect(201);
+      const variant = await variantRepo.save(
+        variantRepo.create({
+          actionId: draftActionId,
+          formId: variantForm.body.id,
+          name: "B",
+          splitValue: 1,
+        }),
+      );
+      await ctx.dataSource.getRepository(ActionFormAssignment).insert({
+        actionId: draftActionId,
+        userId: ctx.testUserId,
+        variantId: variant.id,
+      });
+      return {
+        formId: variantForm.body.id as number,
+        formSnapshotId: variantForm.body.formSnapshotId as number,
+      };
+    };
+
+    const submit = (form: { formId: number; formSnapshotId: number }) =>
+      request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${form.formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { "full-name": "Submitted" },
+          formSnapshotId: form.formSnapshotId,
+          actionId: draftActionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(201);
+
+    it("turns away a member who submitted another of the action's forms", async () => {
+      await submit({ formId: draftFormId, formSnapshotId: draftSnapshotId });
+      const variantForm = await assignVariant();
+
+      const refused = await request(ctx.app.getHttpServer())
+        .put(`/tasks/formDraft/${variantForm.formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          actionId: draftActionId,
+          formSnapshotId: variantForm.formSnapshotId,
+          answers: { "full-name": "Second try" },
+        })
+        .expect(400);
+
+      expect(refused.body.message).toBe(FORM_ALREADY_SUBMITTED);
+    });
+
+    it("offers no linked guest draft once the member submitted another of the action's forms", async () => {
+      const guest = await ctx.dataSource
+        .getRepository(Guest)
+        .save({ linkedUser: { id: ctx.testUserId } });
+      await formResponseRepo.save({
+        formId: draftFormId,
+        formSnapshotId: draftSnapshotId,
+        answers: { "full-name": "Guest typed" },
+        guest,
+      });
+      const getLinkedGuestDraft = () =>
+        request(ctx.app.getHttpServer())
+          .get(`/tasks/draft/${draftFormId}`)
+          .query({ actionId: draftActionId })
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .expect(200);
+
+      const offered = await getLinkedGuestDraft();
+      expect(offered.body.draft.answers).toEqual({
+        "full-name": "Guest typed",
+      });
+
+      await submit(await assignVariant());
+
+      const withdrawn = await getLinkedGuestDraft();
+      expect(withdrawn.body.draft).toBeUndefined();
+    });
+
+    it("turns away a linked guest draft asked for under another action", async () => {
+      const other = await createAction("Other Action");
+
+      await request(ctx.app.getHttpServer())
+        .get(`/tasks/draft/${draftFormId}`)
+        .query({ actionId: other.id })
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(403);
+    });
+
+    it("requires the action of a linked guest draft", async () => {
+      await request(ctx.app.getHttpServer())
+        .get(`/tasks/draft/${draftFormId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(400);
+    });
+
+    it("turns away a form that isn't the action's", async () => {
+      const other = await request(ctx.app.getHttpServer())
+        .post("/tasks/createForm")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: "Unlinked", schema: sampleSchema })
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .put(`/tasks/formDraft/${other.body.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          actionId: draftActionId,
+          formSnapshotId: other.body.formSnapshotId,
+          answers: { "full-name": "Wrong form" },
+        })
+        .expect(403);
+    });
+
+    it("turns away a signed-out caller", async () => {
+      await request(ctx.app.getHttpServer())
+        .put(`/tasks/formDraft/${draftFormId}`)
+        .send(draftBody({ "full-name": "Anonymous" }))
+        .expect(401);
     });
   });
 
@@ -874,10 +1970,9 @@ describe("Tasks (e2e)", () => {
       const action = await actionRepo.save(
         actionRepo.create({
           name,
-          category: "Community",
+          category: [],
           body: "Body copy",
           shortDescription: "Short copy",
-          type: ActionTaskType.Activity,
           shouldCompleteAfterDeadline: false,
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
@@ -898,7 +1993,7 @@ describe("Tasks (e2e)", () => {
           title: `${name} Event`,
           description: `${name} Event`,
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000),
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
           action,
         }),
       );
@@ -959,6 +2054,10 @@ describe("Tasks (e2e)", () => {
       expect(result.isValid).toBe(false);
       expect(result.message).toContain("profile picture");
 
+      await userRepo.update(ctx.testUserId, { profilePicture: " " });
+      result = await runValidator(photoValidatorId);
+      expect(result.isValid).toBe(false);
+
       await userRepo.update(ctx.testUserId, { profilePicture: "pic-key" });
       result = await runValidator(photoValidatorId);
       expect(result.isValid).toBe(true);
@@ -976,7 +2075,7 @@ describe("Tasks (e2e)", () => {
       await contractEventRepo.save(
         contractEventRepo.create({
           type: ContractEventType.SIGNED,
-          date: new Date(Date.now() - 1000),
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
           user,
           contractId: ctx.defaultContractId,
         }),
@@ -1762,6 +2861,165 @@ describe("Tasks (e2e)", () => {
       );
     });
 
+    it("rejects a list answer holding a row that isn't an object", async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "RequiredIf List Junk Row",
+        listRequiredIfSchema,
+      );
+
+      const response = await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: {
+            people: ["Ada", "Lin"],
+          },
+          formSnapshotId,
+          actionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(400);
+
+      expect(response.body.message).toBe(
+        "Field People (item 1) is not a list item.",
+      );
+    });
+
+    it("rejects a list answer that isn't an array", async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "RequiredIf List Not Array",
+        listRequiredIfSchema,
+      );
+
+      const response = await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { people: "junk" },
+          formSnapshotId,
+          actionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(400);
+
+      expect(response.body.message).toBe("Field People is not a list.");
+    });
+
+    it("reads a null list answer as unanswered", async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "RequiredIf List Null",
+        listRequiredIfSchema,
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { people: null },
+          formSnapshotId,
+          actionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(201);
+    });
+
+    it.each([
+      ["a row that isn't an object", [{ name: "Ada" }, "junk"]],
+      ["a cell that isn't an answer", [{ name: "Ada", notes: { deep: 1 } }]],
+    ])("rejects a list answer holding %s", async (_, people) => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "RequiredIf List Invalid Answer",
+        listRequiredIfSchema,
+      );
+
+      const response = await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { people },
+          formSnapshotId,
+          actionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(400);
+
+      expect(response.body.message).toBe("Answers are not a valid answer map");
+    });
+
+    it("guest submit rejects a list answer that isn't a list", async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "RequiredIf List Guest Junk",
+        listRequiredIfSchema,
+      );
+
+      const response = await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitPublicForm/${formId}`)
+        .send({
+          answers: { people: "junk" },
+          formSnapshotId,
+          actionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(400);
+
+      expect(response.body.message).toBe("Field People is not a list.");
+    });
+
+    it("opt-out rejects a list cell that isn't an answer", async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "RequiredIf List Opt-out Junk",
+        listRequiredIfSchema,
+      );
+
+      const response = await request(ctx.app.getHttpServer())
+        .post(`/tasks/optout/${formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          actionId,
+          reason: "",
+          outOfTime: true,
+          isMoral: false,
+          partialFormData: {
+            answers: { people: [{ name: "Ada", notes: { deep: 1 } }] },
+            formSnapshotId,
+            actionId,
+            deviceType: "desktop" as const,
+          },
+        })
+        .expect(400);
+
+      expect(response.body.message).toBe("Answers are not a valid answer map");
+    });
+
+    it("opt-out drops a null answer instead of storing it", async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "RequiredIf List Opt-out Null",
+        listRequiredIfSchema,
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/optout/${formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          actionId,
+          reason: "",
+          outOfTime: true,
+          isMoral: false,
+          partialFormData: {
+            answers: { people: [{ name: "Ada" }], skipped: null },
+            formSnapshotId,
+            actionId,
+            deviceType: "desktop" as const,
+          },
+        })
+        .expect(201);
+
+      const stored = await formResponseRepo.findOneOrFail({
+        where: { formId },
+      });
+      expect(stored.answers).toEqual({ people: [{ name: "Ada" }] });
+    });
+
     it("accepts list items that satisfy or do not trigger the sub-field requiredIfFormula", async () => {
       const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
         "RequiredIf List Answered",
@@ -1787,6 +3045,151 @@ describe("Tasks (e2e)", () => {
           deviceType: "desktop" as const,
         })
         .expect(201);
+    });
+
+    it("skips a list sub-field whose condition reads a sibling hidden for its row", async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "List Hidden Sibling",
+        {
+          pages: [
+            {
+              id: "page-1",
+              fields: [
+                {
+                  id: "attending",
+                  type: "input",
+                  kind: "radio",
+                  label: "Attending?",
+                  options: [
+                    { label: "Yes", value: "yes" },
+                    { label: "No", value: "no" },
+                  ],
+                },
+                {
+                  id: "people",
+                  type: "input",
+                  kind: "list",
+                  label: "People",
+                  fields: [
+                    {
+                      id: "has-restrictions",
+                      type: "input",
+                      kind: "radio",
+                      label: "Dietary restrictions?",
+                      options: [
+                        { label: "Yes", value: "yes" },
+                        { label: "No", value: "no" },
+                      ],
+                      visibleIfFormula: {
+                        conditions: {
+                          c1: {
+                            kind: "equals",
+                            when: "attending",
+                            equals: "yes",
+                          },
+                        },
+                        formula: "c1",
+                      },
+                    },
+                    {
+                      id: "dietary-notes",
+                      type: "input",
+                      kind: "text",
+                      label: "Dietary notes",
+                      required: true,
+                      visibleIfFormula: {
+                        conditions: {
+                          c1: {
+                            kind: "equals",
+                            when: "has-restrictions",
+                            equals: "yes",
+                          },
+                        },
+                        formula: "c1",
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+          outputViews: [],
+        },
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: {
+            attending: "no",
+            people: [{ "has-restrictions": "yes" }],
+          },
+          formSnapshotId,
+          actionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(201);
+    });
+
+    it("stores a list row without the cells hidden for it", async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "List Hidden Cell Stored",
+        {
+          pages: [
+            {
+              id: "page-1",
+              fields: [
+                {
+                  id: "people",
+                  type: "input",
+                  kind: "list",
+                  label: "People",
+                  fields: [
+                    { id: "name", type: "input", kind: "text", label: "Name" },
+                    {
+                      id: "note",
+                      type: "input",
+                      kind: "text",
+                      label: "Note",
+                      visibleIfFormula: {
+                        conditions: {
+                          c1: { kind: "equals", when: "name", equals: "Ada" },
+                        },
+                        formula: "c1",
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+          outputViews: [],
+        },
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: {
+            people: [
+              { name: "Ada", note: "shown" },
+              { name: "Lin", note: "stale" },
+            ],
+          },
+          formSnapshotId,
+          actionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(201);
+
+      const stored = await formResponseRepo.findOneOrFail({
+        where: { formId },
+      });
+      expect(stored.answers).toEqual({
+        people: [{ name: "Ada", note: "shown" }, { name: "Lin" }],
+      });
     });
 
     it("does not enforce list/ranking requiredness when requiredIfFormula is false", async () => {
@@ -2375,6 +3778,45 @@ describe("Tasks (e2e)", () => {
     });
   });
 
+  const setupForm = async (
+    title: string,
+    fields: FormSchema["pages"][number]["fields"],
+  ) => {
+    const action = await createAction(`${title} Action`);
+    const formRes = await request(ctx.app.getHttpServer())
+      .post("/tasks/createForm")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({
+        title,
+        schema: {
+          pages: [{ id: "page-1", fields }],
+          outputViews: [],
+        } satisfies FormSchema,
+      })
+      .expect(201);
+    const formId = formRes.body.id as number;
+    await actionRepo.update(action.id, { taskFormId: formId });
+    return {
+      formId,
+      formSnapshotId: formRes.body.formSnapshotId as number,
+      actionId: action.id,
+    };
+  };
+
+  const submit = (
+    form: Awaited<ReturnType<typeof setupForm>>,
+    answers: Record<string, unknown>,
+  ) =>
+    request(ctx.app.getHttpServer())
+      .post(`/tasks/submitForm/${form.formId}`)
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
+      .send({
+        answers,
+        formSnapshotId: form.formSnapshotId,
+        actionId: form.actionId,
+        deviceType: "desktop" as const,
+      });
+
   describe("Ranking field validation", () => {
     const rankingOptions = [
       { label: "A", value: "a" },
@@ -2390,45 +3832,6 @@ describe("Tasks (e2e)", () => {
       label: "Rank these",
       options: rankingOptions,
     };
-
-    const setupForm = async (
-      title: string,
-      fields: FormSchema["pages"][number]["fields"],
-    ) => {
-      const action = await createAction(`${title} Action`);
-      const formRes = await request(ctx.app.getHttpServer())
-        .post("/tasks/createForm")
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({
-          title,
-          schema: {
-            pages: [{ id: "page-1", fields }],
-            outputViews: [],
-          } satisfies FormSchema,
-        })
-        .expect(201);
-      const formId = formRes.body.id as number;
-      await actionRepo.update(action.id, { taskFormId: formId });
-      return {
-        formId,
-        formSnapshotId: formRes.body.formSnapshotId as number,
-        actionId: action.id,
-      };
-    };
-
-    const submit = (
-      form: Awaited<ReturnType<typeof setupForm>>,
-      answers: Record<string, unknown>,
-    ) =>
-      request(ctx.app.getHttpServer())
-        .post(`/tasks/submitForm/${form.formId}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .send({
-          answers,
-          formSnapshotId: form.formSnapshotId,
-          actionId: form.actionId,
-          deviceType: "desktop" as const,
-        });
 
     it("rejects invalid and incomplete rankings for a required field", async () => {
       const form = await setupForm("Required Ranking", [
@@ -2514,6 +3917,69 @@ describe("Tasks (e2e)", () => {
     });
   });
 
+  describe("Range field validation", () => {
+    const optionalRangeField: RangeField = {
+      id: "scale",
+      type: "input",
+      kind: "range",
+      label: "Rate it",
+      optionCount: 5,
+    };
+
+    it("rejects an optional answer outside the options", async () => {
+      const form = await setupForm("Optional Range", [optionalRangeField]);
+
+      for (const answer of [8, 0, 2.5, "3"]) {
+        const res = await submit(form, { scale: answer }).expect(400);
+        expect(res.body.message).toContain("has an answer outside its options");
+      }
+
+      for (const [title, answers] of [
+        ["Optional Range Omitted", {}],
+        ["Optional Range Null", { scale: null }],
+        ["Optional Range Cleared", { scale: "" }],
+        ["Optional Range Valid", { scale: 5 }],
+      ] as const) {
+        await submit(
+          await setupForm(title, [optionalRangeField]),
+          answers,
+        ).expect(201);
+      }
+    });
+
+    it("rejects a required answer outside the options", async () => {
+      const form = await setupForm("Required Range", [
+        { ...optionalRangeField, required: true },
+      ]);
+
+      await submit(form, { scale: 8 }).expect(400);
+      await submit(form, { scale: 1 }).expect(201);
+    });
+
+    it("rejects an optional list sub-field answer outside the options", async () => {
+      const form = await setupForm("Range In List", [
+        {
+          id: "rows",
+          type: "input",
+          kind: "list",
+          label: "Rows",
+          fields: [optionalRangeField],
+        },
+      ]);
+
+      const res = await submit(form, {
+        rows: [{ scale: 2 }, { scale: 8 }],
+      }).expect(400);
+      expect(res.body.message).toContain(
+        "(item 2): Rate it has an answer outside its options",
+      );
+
+      await submit(form, { rows: [{ scale: 2 }, { scale: "" }, {}] }).expect(
+        201,
+      );
+    });
+  });
+
   describe("User field extraction from form submission", () => {
     it("extracts and saves user fields", async () => {
       // Set up initial user state with a profileDescription
@@ -2522,7 +3988,7 @@ describe("Tasks (e2e)", () => {
       await userRepo.update(ctx.testUserId, {
         profileDescription: initialDescription,
         phoneNumber: null,
-        timeZone: null as unknown as string,
+        timeZone: null,
         customCityString: null,
         shareInfoPublicly: false,
       });
@@ -2605,6 +4071,69 @@ describe("Tasks (e2e)", () => {
       expect(updatedUser?.customCityString).toBe("Custom City Name");
       expect(updatedUser?.shareInfoPublicly).toBe(true);
       expect(updatedUser?.profileDescription).toBe(initialDescription);
+    });
+
+    it("refuses a submission whose extracted time zone is invalid", async () => {
+      await userRepo.update(ctx.testUserId, {
+        phoneNumber: null,
+        timeZone: "Europe/Berlin",
+      });
+      const sendMms = jest.spyOn(ctx.app.get(MmsService), "sendMms");
+
+      const schema: FormSchema = {
+        pages: [
+          {
+            id: "page-1",
+            fields: [
+              {
+                id: "phone-field",
+                type: "input",
+                kind: "phone",
+                label: "Phone Number",
+                autoExtractUserData: true,
+              },
+              {
+                id: "timezone-field",
+                type: "input",
+                kind: "timezone",
+                label: "Time Zone",
+                autoExtractUserData: true,
+              },
+            ],
+          },
+        ],
+        outputViews: [],
+        aggregateViews: [],
+      };
+
+      const action = await createAction("Invalid Time Zone Action");
+      const form = await request(ctx.app.getHttpServer())
+        .post("/tasks/createForm")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: "Invalid Time Zone Form", schema })
+        .expect(201);
+      await actionRepo.update(action.id, {
+        taskFormId: form.body.id as number,
+      });
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${form.body.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: {
+            "phone-field": "+14155551234",
+            "timezone-field": "-08:00",
+          },
+          formSnapshotId: form.body.formSnapshotId as number,
+          actionId: action.id,
+          deviceType: "desktop" as const,
+        })
+        .expect(400);
+
+      const user = await userRepo.findOneByOrFail({ id: ctx.testUserId });
+      expect(user.timeZone).toBe("Europe/Berlin");
+      expect(user.phoneNumber).toBeNull();
+      expect(sendMms).not.toHaveBeenCalled();
     });
 
     it("extracts a non-US number, which is what the picker unblocks", async () => {
@@ -2720,6 +4249,61 @@ describe("Tasks (e2e)", () => {
         expect(updatedUser?.profileDescription).toBe(initialDescription);
       },
     );
+
+    it("does not extract city when autoExtractUserData is off", async () => {
+      const initialCity = "Existing City";
+      await userRepo.update(ctx.testUserId, {
+        customCityString: initialCity,
+        city: null,
+      });
+
+      const schema: FormSchema = {
+        pages: [
+          {
+            id: "page-1",
+            fields: [
+              {
+                id: "city-field",
+                type: "input",
+                kind: "city",
+                label: "City",
+              },
+            ],
+          },
+        ],
+        outputViews: [],
+        aggregateViews: [],
+      };
+
+      const action = await createAction("City No Extraction Action");
+      const formResponse = await request(ctx.app.getHttpServer())
+        .post("/tasks/createForm")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: "City No Extraction Form", schema })
+        .expect(201);
+      await actionRepo.update(action.id, {
+        taskFormId: formResponse.body.id as number,
+      });
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formResponse.body.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: {
+            "city-field": "Should Not Extract",
+          },
+          formSnapshotId: formResponse.body.formSnapshotId as number,
+          actionId: action.id,
+          deviceType: "desktop" as const,
+        })
+        .expect(201);
+
+      const updatedUser = await userRepo.findOne({
+        where: { id: ctx.testUserId },
+      });
+
+      expect(updatedUser?.customCityString).toBe(initialCity);
+    });
 
     it("does not update user fields when form has no auto-extract fields", async () => {
       const initialDescription = "Description that must not change";

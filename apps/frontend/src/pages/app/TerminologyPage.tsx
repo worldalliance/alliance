@@ -47,8 +47,8 @@ const TerminologyPage: React.FC = () => {
           <Link to={href("/membership")} className="text-link hover:underline">
             membership page
           </Link>
-          . If a member misses all assigned non-optional actions for 3 weeks in
-          a row, their contract is automatically suspended.
+          . If a member misses any assigned non-optional task for 3 weeks in a
+          row, their contract is automatically suspended.
         </p>
 
         <p>
@@ -118,10 +118,7 @@ const TerminologyPage: React.FC = () => {
           the members (usually, but not always, staff members) that developed
           the action. The authors of an action are displayed in a fixed random
           order on the action’s detail page (
-          <Link
-            to={"https://worldalliance.org/actions/75"}
-            className="text-link hover:underline"
-          >
+          <Link to={"/actions/75"} className="text-link hover:underline">
             example
           </Link>
           ).

@@ -1,9 +1,7 @@
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import TopLevelComposer from "./TopLevelComposer";
-
-afterEach(cleanup);
 
 beforeEach(() => {
   sessionStorage.clear();

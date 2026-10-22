@@ -1,14 +1,10 @@
-import { Action, ActionEventDto, ActionStatus } from "@alliance/shared/client";
+import { Action } from "@alliance/shared/client";
+import { startOfDay } from "date-fns";
+import { millisecondsInDay } from "date-fns/constants";
 import React from "react";
-
-interface PhaseSegment {
-  status: ActionStatus;
-  startDate: Date;
-  endDate: Date;
-  duration: number;
-  event?: ActionEventDto;
-  isActive: boolean;
-}
+import { useNavigate } from "react-router";
+import { ACTION_STATUS_LABELS } from "../lib/actionStatusDisplay";
+import type { PhaseSegment } from "../lib/actionTimelineData";
 
 interface ActionTimelineBarProps {
   action: Pick<Action, "id" | "name" | "status">;
@@ -21,17 +17,6 @@ interface ActionTimelineBarProps {
   containerWidth?: number;
 }
 
-const STATUS_LABELS: Record<ActionStatus, string> = {
-  draft: "Draft",
-  planned: "Planned",
-  office_action: "Office Action",
-  member_action: "Member Action",
-  resolution: "Resolution",
-  completed: "Completed",
-  failed: "Failed",
-  abandoned: "Abandoned",
-};
-
 const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
   action,
   phases,
@@ -42,6 +27,7 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
   scrollLeft = 0,
   containerWidth = 800,
 }) => {
+  const navigate = useNavigate();
   const calculateStickyLabelPosition = (
     barLeft: number,
     barWidth: number,
@@ -97,7 +83,8 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
 
   return (
     <div
-      className="absolute border-b border-gray-100 hover:bg-gray-50"
+      className="absolute border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+      onClick={() => navigate(`/actions/${action.id}`)}
       style={{
         height: "64px",
         top: `${50 + rowIndex * 64}px`,
@@ -106,20 +93,23 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
       }}
     >
       {phases.map((phase, phaseIndex) => {
-        const millisecondsPerDay = 24 * 60 * 60 * 1000;
-        const pixelsPerMillisecond = pixelsPerDay / millisecondsPerDay;
+        const pixelsPerMillisecond = pixelsPerDay / millisecondsInDay;
+
+        // A week-wide column can't show the time of day an event fires, so
+        // bars span whole days and start on the gridline for their first one.
+        const barStart = startOfDay(phase.startDate);
+        const barEnd = startOfDay(phase.endDate);
 
         const millisecondsSinceStart =
-          phase.startDate.getTime() - globalStartDate.getTime();
-        const phaseDurationMs =
-          phase.endDate.getTime() - phase.startDate.getTime();
+          barStart.getTime() - globalStartDate.getTime();
+        const phaseDurationMs = barEnd.getTime() - barStart.getTime();
 
-        const barLeft = millisecondsSinceStart * pixelsPerMillisecond + 4;
+        const barLeft = millisecondsSinceStart * pixelsPerMillisecond;
         const barWidth = Math.max(
           2,
           phaseDurationMs * pixelsPerMillisecond - 2,
         ); // Min 2px width, reduced spacing
-        const labelText = STATUS_LABELS[phase.status];
+        const labelText = ACTION_STATUS_LABELS[phase.status];
         const stickyLabel = calculateStickyLabelPosition(
           barLeft,
           barWidth,
@@ -140,10 +130,9 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
         let backgroundStyle = {};
         if (shouldFade) {
           // Calculate fade-out gradient starting from current time
-          const millisecondsPerDay = 24 * 60 * 60 * 1000;
-          const pixelsPerMillisecond = pixelsPerDay / millisecondsPerDay;
+          const pixelsPerMillisecond = pixelsPerDay / millisecondsInDay;
           const currentTimeOffsetFromStart =
-            currentTime.getTime() - phase.startDate.getTime();
+            currentTime.getTime() - barStart.getTime();
           const currentTimePositionInBar =
             currentTimeOffsetFromStart * pixelsPerMillisecond;
           const fadeDistancePx = 2 * pixelsPerDay; // 1 day of fade
@@ -181,7 +170,7 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
               ...backgroundStyle,
             }}
             title={`${action.name}: ${
-              STATUS_LABELS[phase.status]
+              ACTION_STATUS_LABELS[phase.status]
             } (${phase.startDate.toLocaleDateString()} - ${phase.endDate.toLocaleDateString()})`}
           >
             {stickyLabel && (

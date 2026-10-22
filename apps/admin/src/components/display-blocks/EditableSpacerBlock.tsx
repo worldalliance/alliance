@@ -1,5 +1,5 @@
 import type { SpacerBlock } from "@alliance/common/forms/display-blocks";
-import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
+import { BlockPreview } from "./BlockPreview";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
 
@@ -27,9 +27,7 @@ export function EditableSpacerBlock(props: BaseDisplayBlockProps<SpacerBlock>) {
               <option value="xl">XL</option>
             </select>
           </div>
-          <div className="pt-2 border-t border-gray-200">
-            <RenderDisplayBlock block={activeBlock} />
-          </div>
+          <BlockPreview block={activeBlock} />
         </div>
       )}
     </DisplayBlockWrapper>

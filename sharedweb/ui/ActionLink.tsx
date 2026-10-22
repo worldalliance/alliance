@@ -2,14 +2,14 @@ import {
   ActionDto,
   ActionEventDto,
   ActionStatus,
-  actionsFindOne,
 } from "@alliance/shared/client";
+import { hasViewerCompletedAction } from "@alliance/shared/lib/actionUtils";
 import { formatNextTaskDue } from "@alliance/shared/lib/formatNextTaskDue";
 import { getNextEvent } from "@alliance/shared/lib/largeActionCard";
 import { deadlineColor } from "@alliance/shared/lib/taskTimeInfo";
+import { useAction } from "@alliance/shared/lib/useAction";
 import { cn } from "@alliance/shared/styles/util";
-import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Clock, Coins, Flag, Users } from "lucide-react";
+import { CheckCircle2, Clock, Flag, Users } from "lucide-react";
 import React, { useState } from "react";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "./HoverCard";
 
@@ -81,20 +81,9 @@ export default function ActionLink({
   const actionId = getActionIdFromHref(href);
   const [open, setOpen] = useState(false);
 
-  const { data, isError } = useQuery({
-    queryKey: ["actionLinkPreview", actionId],
-    queryFn: async () => {
-      const res = await actionsFindOne({ path: { id: actionId! } });
-      if (!res.data) {
-        throw new Error("Failed to load action preview");
-      }
-      return res.data;
-    },
-    // Only fetch once the user actually hovers, so a page full of action
-    // links doesn't fan out into a request per link on mount.
-    enabled: open && actionId != null,
-    staleTime: 5 * 60 * 1000,
-  });
+  // Only fetch once the user actually hovers, so a page full of action
+  // links doesn't fan out into a request per link on mount.
+  const { data, isError } = useAction(actionId, { enabled: open }).query;
 
   if (actionId == null) {
     return (
@@ -165,7 +154,7 @@ function ActionPreviewBody({
 function ActionPreviewCard({ action }: { action: ActionDto }) {
   const status = STATUS_META[action.status];
   const nextEvent = getNextEvent(action);
-  const completed = action.userRelation === "completed";
+  const completed = hasViewerCompletedAction(action);
 
   return (
     <div className="flex w-72 flex-col gap-y-1 p-3 text-left">
@@ -218,14 +207,7 @@ function ActionPreviewMeta({
     );
   }
 
-  if (action.type === "Funding" && action.donationAmount) {
-    items.push(
-      <span key="donation" className="flex items-center gap-x-1">
-        <Coins size={12} className="shrink-0" />$
-        {(action.donationAmount / 100).toFixed(0)} suggested
-      </span>,
-    );
-  } else if (nextEvent) {
+  if (nextEvent) {
     items.push(
       <span
         key="deadline"

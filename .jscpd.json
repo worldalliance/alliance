@@ -1,0 +1,27 @@
+{
+  "path": [
+    "server/src",
+    "apps/frontend/src",
+    "apps/admin/src",
+    "apps/mobile",
+    "sharedweb",
+    "shared",
+    "common/src",
+    "citesting/src",
+    "citesting/scripts",
+    "scripts"
+  ],
+  "format": ["typescript", "tsx", "javascript", "jsx"],
+  "ignore": [
+    "**/node_modules/**",
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/migrations/**",
+    "shared/client/**",
+    "apps/mobile/e2e/**",
+    "apps/mobile/*.config.js",
+    "**/*.gen.ts"
+  ],
+  "minTokens": 50,
+  "minLines": 10
+}

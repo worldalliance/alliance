@@ -1,18 +1,12 @@
 import { actionActivityTransitiveVerb } from "@alliance/common/actionActivity";
+import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import {
-  ActionActivityDto,
-  actionsGetActivity,
-  actionsLikeActivity,
-  actionsUnlikeActivity,
-} from "@alliance/shared/client";
-import {
-  InfiniteActivityData,
-  mapInfiniteActivities,
+  useActivity,
+  useLikeActivity,
 } from "@alliance/shared/lib/useActivities";
 import { formatTime } from "@alliance/shared/lib/utils";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
@@ -39,51 +33,24 @@ export default function ActivityDetailScreen() {
     activityId: string;
   }>();
 
-  const [activity, setActivity] = useState<ActionActivityDto | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: activity,
+    isPending,
+    fetchStatus,
+    error,
+    refetch,
+  } = useActivity(parseInt(activityId));
 
-  const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
-
-  const fetchActivity = useCallback(
-    async (options?: { silent?: boolean }) => {
-      if (!activityId) return;
-      const silent = options?.silent ?? false;
-      try {
-        if (!silent) {
-          setLoading(true);
-          setError(null);
-        }
-        const resp = await actionsGetActivity({
-          path: { id: parseInt(activityId) },
-        });
-        if (resp.data) {
-          setActivity(resp.data);
-        } else {
-          setError("Activity not found");
-        }
-      } catch {
-        if (!silent) setError("Failed to load activity");
-      } finally {
-        if (!silent) setLoading(false);
-      }
-    },
-    [activityId],
-  );
-
-  useEffect(() => {
-    fetchActivity();
-  }, [fetchActivity]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await fetchActivity({ silent: true });
+      await refetch();
     } finally {
       setRefreshing(false);
     }
-  }, [fetchActivity]);
+  }, [refetch]);
 
   const handleBack = useCallback(() => {
     router.dismissTo(`/actions/${id}`);
@@ -95,123 +62,19 @@ export default function ActivityDetailScreen() {
     }
   }, [activity?.user.id]);
 
-  const actionId = Number(id);
-
-  const likeMutation = useMutation({
-    mutationFn: async (isLiked: boolean) => {
-      if (!activity) throw new Error("No activity");
-      const response = isLiked
-        ? await actionsUnlikeActivity({ path: { id: activity.id } })
-        : await actionsLikeActivity({ path: { id: activity.id } });
-      if (response.response.ok && response.data) return response.data;
-      throw new Error("Like request failed");
-    },
-    onMutate: async (isLiked: boolean) => {
-      const previousActivity = activity;
-
-      setActivity((prev: ActionActivityDto | null) =>
-        prev
-          ? {
-              ...prev,
-              likedByMe: !isLiked,
-              likesCount: isLiked ? prev.likesCount - 1 : prev.likesCount + 1,
-            }
-          : prev,
-      );
-
-      await queryClient.cancelQueries({
-        queryKey: ["actionActivities", actionId],
-      });
-      const previousActionActivities = queryClient.getQueryData([
-        "actionActivities",
-        actionId,
-      ]);
-      queryClient.setQueryData(
-        ["actionActivities", actionId],
-        (oldData: { data?: ActionActivityDto[] } | undefined) => {
-          if (!oldData?.data) return oldData;
-          return {
-            ...oldData,
-            data: oldData.data.map((a) =>
-              a.id === activity?.id
-                ? {
-                    ...a,
-                    likedByMe: !isLiked,
-                    likesCount: isLiked ? a.likesCount - 1 : a.likesCount + 1,
-                  }
-                : a,
-            ),
-          };
-        },
-      );
-
-      await queryClient.cancelQueries({ queryKey: ["useActivities"] });
-      const previousFeedQueries =
-        queryClient.getQueriesData<InfiniteActivityData>({
-          queryKey: ["useActivities"],
-        });
-      queryClient.setQueriesData<InfiniteActivityData>(
-        { queryKey: ["useActivities"] },
-        (old) =>
-          mapInfiniteActivities(old, (a) =>
-            a.id === activity?.id
-              ? {
-                  ...a,
-                  likedByMe: !isLiked,
-                  likesCount: isLiked ? a.likesCount - 1 : a.likesCount + 1,
-                }
-              : a,
-          ),
-      );
-
-      return {
-        previousActivity,
-        previousActionActivities,
-        previousFeedQueries,
-      };
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previousActivity) {
-        setActivity(context.previousActivity);
-      }
-      if (context?.previousActionActivities) {
-        queryClient.setQueryData(
-          ["actionActivities", actionId],
-          context.previousActionActivities,
-        );
-      }
-      context?.previousFeedQueries?.forEach(([key, data]) => {
-        queryClient.setQueryData(key, data);
-      });
-    },
-    onSuccess: (data) => {
-      setActivity((prev: ActionActivityDto | null) =>
-        prev
-          ? {
-              ...prev,
-              likes: data.likes,
-              likesCount: data.likesCount,
-              likedByMe: data.likedByMe,
-            }
-          : prev,
-      );
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["actionActivities", actionId],
-      });
-      queryClient.invalidateQueries({ queryKey: ["useActivities"] });
-    },
-  });
+  const likeActivity = useLikeActivity();
 
   const handleLike = useCallback(async () => {
     if (!activity) return;
-    await likeMutation.mutateAsync(activity.likedByMe ?? false);
-  }, [activity, likeMutation]);
+    await likeActivity.mutateAsync({
+      activityId: activity.id,
+      isLiked: activity.likedByMe ?? false,
+    });
+  }, [activity, likeActivity]);
 
   const verb = activity && actionActivityTransitiveVerb[activity.type];
 
-  if (loading) {
+  if (isPending && fetchStatus !== "idle") {
     return (
       <View className="flex-1 bg-white items-center justify-center">
         <ActivityIndicator size="large" color={colors.green} />
@@ -219,11 +82,13 @@ export default function ActivityDetailScreen() {
     );
   }
 
-  if (error || !activity) {
+  if (!activity) {
     return (
       <View className="flex-1 bg-white items-center justify-center p-4">
         <Text className="text-red-500 text-center">
-          {error || "Activity not found"}
+          {!error || thrownStatus(error) === 404
+            ? "Activity not found"
+            : "Failed to load activity"}
         </Text>
         <TouchableOpacity onPress={handleBack} className="mt-4">
           <Text className="text-green">Go back</Text>
@@ -280,7 +145,10 @@ export default function ActivityDetailScreen() {
             Object.keys(activity.formResponseOutput.publicAnswers ?? {})
               .length > 0 && (
               <View className="my-3">
-                <OutputRenderer submission={activity.formResponseOutput} />
+                <OutputRenderer
+                  submission={activity.formResponseOutput}
+                  submitterId={activity.user.id}
+                />
               </View>
             )}
 

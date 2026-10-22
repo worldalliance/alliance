@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import pixelmatch from "pixelmatch";
 import { PNG } from "pngjs";
+import { fileExists } from "./file-exists";
 
 const logPrefix = "[citesting:compare]";
 
@@ -49,10 +50,7 @@ const main = async () => {
     const baselinePath = path.join(baselineDir, file);
     const currentPath = path.join(currentDir, file);
 
-    const baselineExists = await fs
-      .access(baselinePath)
-      .then(() => true)
-      .catch(() => false);
+    const baselineExists = await fileExists(baselinePath);
 
     if (!baselineExists) {
       console.log(`${logPrefix} [NEW] ${file} — no baseline, skipping`);

@@ -1,24 +1,21 @@
+// eslint-disable-next-line api-client/named-hooks-only -- one-off request whose result no query cache holds
 import {
   NotificationDto,
   NotificationSourceType,
-  notifsSetRead,
   pushMarkOpened,
 } from "@alliance/shared/client";
-import {
-  getNotificationIdentityKey,
-  getNotificationReadRequest,
-} from "@alliance/shared/lib/notificationIdentity";
-import { QueryClient } from "@tanstack/react-query";
+import { useNotificationsCache } from "@alliance/shared/lib/useNotificationsCache";
 import {
   addNotificationResponseReceivedListener,
   getLastNotificationResponse,
   type EventSubscription,
   type NotificationResponse,
 } from "expo-notifications";
-import { RelativePathString, router } from "expo-router";
+import { router } from "expo-router";
 import { useCallback, useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import { useAuth } from "../lib/AuthContext";
+import { notificationRoute } from "../lib/notificationRoute";
 import { isVisualTestMode } from "../lib/visualTest";
 
 type PushData = {
@@ -35,73 +32,9 @@ type PendingNotificationAction = {
   screen?: string;
 };
 
-function getPushRoute(screen: string | undefined): RelativePathString | null {
-  if (typeof screen !== "string" || screen.length === 0) {
-    return null;
-  }
-
-  const normalized = screen.startsWith("/") ? screen : `/${screen}`;
-  return normalized as RelativePathString;
-}
-
-function setNotificationReadOptimistically(
-  notificationToMark: Pick<NotificationDto, "id" | "sourceType">,
-  queryClient: QueryClient,
-) {
-  const existingData = queryClient.getQueryData<NotificationDto[]>([
-    "notifications",
-  ]);
-
-  if (!existingData) {
-    void queryClient.invalidateQueries({ queryKey: ["notifications"] });
-    void queryClient.invalidateQueries({
-      queryKey: ["notifications", "unreadCount"],
-    });
-    return;
-  }
-
-  const readAt = new Date().toISOString();
-  let foundNotification = false;
-  let markedUnreadCount = 0;
-  const nextData = existingData.map((notification) => {
-    if (
-      getNotificationIdentityKey(notification) !==
-      getNotificationIdentityKey(notificationToMark)
-    ) {
-      return notification;
-    }
-
-    foundNotification = true;
-    if (!notification.readAt) {
-      markedUnreadCount += 1;
-    }
-    return { ...notification, readAt };
-  });
-
-  if (!foundNotification) {
-    void queryClient.invalidateQueries({ queryKey: ["notifications"] });
-    void queryClient.invalidateQueries({
-      queryKey: ["notifications", "unreadCount"],
-    });
-    return;
-  }
-
-  queryClient.setQueryData<NotificationDto[]>(["notifications"], nextData);
-  queryClient.setQueryData<number>(["notifications", "unreadCount"], (prev) => {
-    if (prev === undefined) {
-      return nextData.filter((notification) => !notification.readAt).length;
-    }
-
-    return Math.max(prev - markedUnreadCount, 0);
-  });
-}
-
-export default function PushNotificationResponseHandler({
-  queryClient,
-}: {
-  queryClient: QueryClient;
-}) {
+export default function PushNotificationResponseHandler() {
   const { isAuthenticated, isLoading } = useAuth();
+  const { markRead } = useNotificationsCache();
   const pendingNotificationActionRef = useRef<PendingNotificationAction | null>(
     null,
   );
@@ -111,18 +44,14 @@ export default function PushNotificationResponseHandler({
 
   const markNotificationReadFromTap = useCallback(
     (notification: Pick<NotificationDto, "id" | "sourceType">) => {
-      setNotificationReadOptimistically(notification, queryClient);
-
-      void notifsSetRead(getNotificationReadRequest(notification)).catch(
-        (error) => {
-          console.error(
-            "failed to mark notification as read from push tap",
-            error,
-          );
-        },
-      );
+      void markRead([notification]).catch((error) => {
+        console.error(
+          "failed to mark notification as read from push tap",
+          error,
+        );
+      });
     },
-    [queryClient],
+    [markRead],
   );
 
   const handlePendingNotificationAction = useCallback(
@@ -145,7 +74,7 @@ export default function PushNotificationResponseHandler({
         });
       }
 
-      const route = getPushRoute(pendingAction.screen);
+      const route = notificationRoute(pendingAction.screen);
       if (route) {
         router.push(route);
       }

@@ -1,14 +1,12 @@
 import { withCount } from "@alliance/common/plural";
 import {
-  conversationAcceptInvite,
-  conversationDeclineInvite,
   ConversationDto,
-  conversationMarkRead,
   MessageDto,
-  messageSendMessage,
   ProfileDto,
 } from "@alliance/shared/client";
+import { getParticipantState } from "@alliance/shared/lib/conversations";
 import { LegendList, LegendListRef } from "@legendapp/list";
+import { milliseconds } from "date-fns";
 import { router, useLocalSearchParams } from "expo-router";
 import { Info, Users } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -48,8 +46,14 @@ export default function ConversationScreen() {
   }
 
   const { user } = useAuth();
-  const { conversations, setConversations, loading } =
-    useConversations(convoId);
+  const {
+    conversations,
+    setConversations,
+    loading,
+    acceptInvite,
+    declineInvite,
+    markRead,
+  } = useConversations(convoId);
 
   const selectedConvo = useMemo(
     () =>
@@ -76,14 +80,13 @@ export default function ConversationScreen() {
     [setConversations],
   );
 
-  const {
-    messages: convoMessages,
-    addOptimisticMessage,
-    removeOptimisticMessage,
-  } = useLiveConvoMessages(convoId, {
-    onIncomingMessage: handleIncomingMessage,
-    onConversationUpdated: handleConversationUpdated,
-  });
+  const { messages: convoMessages, sendMessage } = useLiveConvoMessages(
+    convoId,
+    {
+      onIncomingMessage: handleIncomingMessage,
+      onConversationUpdated: handleConversationUpdated,
+    },
+  );
 
   const [message, setMessage] = useState("");
   const [attachments, setAttachments] = useState<string[]>([]);
@@ -94,8 +97,8 @@ export default function ConversationScreen() {
   const listRef = useRef<LegendListRef>(null);
 
   useEffect(() => {
-    conversationMarkRead({ path: { conversationId: convoId } });
-  }, [convoId]);
+    void markRead(convoId);
+  }, [convoId, markRead]);
 
   useEffect(() => {
     if (focusedMessageId) {
@@ -109,13 +112,10 @@ export default function ConversationScreen() {
     [convoMessages, replyingTo],
   );
 
-  const amInvited = useMemo(() => {
-    if (!selectedConvo || !user) return false;
-    return selectedConvo.participants.some(
-      (participant) =>
-        participant.user.id === user.id && participant.state === "invited",
-    );
-  }, [selectedConvo, user]);
+  const amInvited = useMemo(
+    () => getParticipantState(selectedConvo, user?.id) === "invited",
+    [selectedConvo, user],
+  );
 
   const otherParticipantInvited = useMemo(() => {
     if (!selectedConvo || !user) return null;
@@ -151,108 +151,73 @@ export default function ConversationScreen() {
     const draftAttachments = [...attachments];
     const draftReplyingTo = replyingTo;
 
-    const tempId = `temp-${Date.now()}-${Math.random()
-      .toString(36)
-      .slice(2, 9)}`;
-
-    if (user) {
-      const optimisticAuthor: ProfileDto = {
-        id: user.id,
-        anonymous: false,
-        admin: user.admin,
-        staff: user.staff,
-        ambassador: user.ambassador,
-        profilePicture: user.profilePicture,
-        profileDescription: user.profileDescription ?? null,
-        displayName: user.name,
-        hasActiveContract: user.hasActiveContract,
-        isCommunityLeader: false,
-      };
-      const optimisticMessage: MessageDto = {
-        id: tempId,
-        body: draftMessage,
-        attachments: draftAttachments,
-        createdAt: new Date().toISOString(),
-        deletedAt: null,
-        author: optimisticAuthor,
-        conversationId: selectedConvo.id,
-        replyTo: replyingToMessage ?? undefined,
-      };
-      addOptimisticMessage(optimisticMessage);
-    }
+    const author: ProfileDto | undefined = user && {
+      id: user.id,
+      anonymous: false,
+      admin: user.admin,
+      staff: user.staff,
+      ambassador: user.ambassador,
+      profilePicture: user.profilePicture,
+      profileDescription: user.profileDescription ?? null,
+      displayName: user.name,
+      hasActiveContract: user.hasActiveContract,
+      isCommunityLeader: false,
+    };
 
     setMessage("");
     setAttachments([]);
     setReplyingTo(null);
 
     setIsSending(true);
-    try {
-      const response = await messageSendMessage({
-        body: {
-          conversationId: selectedConvo.id,
-          body: draftMessage,
-          attachments: draftAttachments,
-          replyToId: draftReplyingTo ?? undefined,
-        },
-      });
-      if (!response.data) {
-        throw new Error("Message send failed");
-      }
-      if (amInvited) {
-        handleConversationUpdated({
-          ...selectedConvo,
-          participants: selectedConvo.participants.map((participant) =>
-            participant.user.id === user?.id
-              ? { ...participant, state: "joined" }
-              : participant,
-          ),
-        });
-      }
-    } catch (error) {
-      console.error("Failed to send message", error);
-      removeOptimisticMessage(tempId);
+    const sent = await sendMessage({
+      message: {
+        conversationId: selectedConvo.id,
+        body: draftMessage,
+        attachments: draftAttachments,
+        replyToId: draftReplyingTo ?? undefined,
+      },
+      author,
+    });
+    setIsSending(false);
+    if (!sent.ok) {
       setMessage(draftMessage);
       setAttachments(draftAttachments);
       setReplyingTo(draftReplyingTo);
-    } finally {
-      setIsSending(false);
+      return;
+    }
+    if (amInvited) {
+      handleConversationUpdated({
+        ...selectedConvo,
+        participants: selectedConvo.participants.map((participant) =>
+          participant.user.id === user?.id
+            ? { ...participant, state: "joined" }
+            : participant,
+        ),
+      });
     }
   }, [
-    addOptimisticMessage,
     amInvited,
     attachments,
     handleConversationUpdated,
     isSending,
     message,
-    removeOptimisticMessage,
     replyingTo,
-    replyingToMessage,
     selectedConvo,
+    sendMessage,
     user,
   ]);
 
   const handleAcceptInvite = useCallback(() => {
     if (!selectedConvo) return;
-    conversationAcceptInvite({
-      path: { conversationId: selectedConvo.id },
-    }).then((response) => {
-      if (response.data) {
-        handleConversationUpdated(response.data);
-      }
-    });
-  }, [selectedConvo, handleConversationUpdated]);
+    void acceptInvite(selectedConvo.id);
+  }, [selectedConvo, acceptInvite]);
 
   const handleDeclineInvite = useCallback(() => {
     if (!selectedConvo) return;
-    conversationDeclineInvite({
-      path: { conversationId: selectedConvo.id },
-    }).then((response) => {
-      if (response.data) {
-        handleConversationUpdated(response.data);
-        router.back();
-      }
+    void declineInvite(selectedConvo.id).then((declined) => {
+      if (declined.ok) router.back();
     });
-  }, [selectedConvo, handleConversationUpdated]);
+  }, [selectedConvo, declineInvite]);
 
   const inputRef = useRef<TextInput | null>(null);
 
@@ -359,8 +324,7 @@ export default function ConversationScreen() {
                   Math.abs(
                     new Date(item.createdAt).getTime() -
                       new Date(prev.createdAt).getTime(),
-                  ) >
-                    1000 * 60 * 60 * 3;
+                  ) > milliseconds({ hours: 3 });
                 const isFirstInReplyGroup =
                   index === 0 || prev.replyTo?.id !== item.replyTo?.id;
 

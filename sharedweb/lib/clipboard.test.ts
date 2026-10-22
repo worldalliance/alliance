@@ -1,4 +1,4 @@
-import { copyToClipboard } from "./clipboard";
+import { copyOutcome, CopyOutcome, copyToClipboard } from "./clipboard";
 
 type Deferred = {
   promise: Promise<string>;
@@ -106,5 +106,26 @@ describe("copyToClipboard", () => {
   it("reports failure when the clipboard refuses", async () => {
     writeText.mockImplementation(() => Promise.reject(new Error("denied")));
     expect(await copyToClipboard("https://example.com/d")).toBe(false);
+  });
+
+  it("writes html and its plain text as one item", async () => {
+    expect(
+      await copyOutcome({ text: "Hi there", html: "<p>Hi <b>there</b></p>" }),
+    ).toBe(CopyOutcome.Copied);
+
+    const item: FakeClipboardItem = write.mock.calls[0][0][0];
+    expect(await (await item.items["text/html"]).text()).toBe(
+      "<p>Hi <b>there</b></p>",
+    );
+    expect(await itemText(item)).toBe("Hi there");
+  });
+
+  it("falls back to the plain text where html is refused", async () => {
+    write.mockImplementation(() => Promise.reject(new Error("not allowed")));
+
+    expect(await copyOutcome({ text: "Hi there", html: "<p>Hi</p>" })).toBe(
+      CopyOutcome.Copied,
+    );
+    expect(writeText).toHaveBeenCalledWith("Hi there");
   });
 });

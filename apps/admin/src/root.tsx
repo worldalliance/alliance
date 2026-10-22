@@ -1,8 +1,14 @@
 import { client } from "@alliance/shared/client/client.gen";
+import { registerErrorStatus } from "@alliance/shared/lib/hey-api";
+import {
+  ShareLinkViewer,
+  ShareLinkViewerProvider,
+} from "@alliance/sharedweb/forms/BigLinkDisplay";
 import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInputScrollGuard";
-import { AuthoredLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
+import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import {
   isRouteErrorResponse,
   Links,
@@ -13,20 +19,22 @@ import {
 } from "react-router";
 import { Route } from "../.react-router/types/src/+types/root";
 import { AuthProvider } from "./lib/AuthContext";
-import { getApiUrl } from "./lib/config";
-import { GroupAssignmentProvider } from "./lib/GroupAssignmentContext";
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      gcTime: 1000 * 60 * 60 * 24, // 24 hours
-    },
-  },
-});
+import { getApiUrl, getSiteUrl } from "./lib/config";
+import { queryClient } from "./lib/queryClient";
 
 client.setConfig({
   baseUrl: getApiUrl(),
 });
+
+registerErrorStatus(client);
+
+export function HydrateFallback() {
+  return (
+    <div className="flex items-center justify-center h-screen">
+      <Spinner size="large" />
+    </div>
+  );
+}
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   if (!import.meta.env.PROD) {
@@ -79,15 +87,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        <AuthoredLinkProvider>
+        <SiteOriginLinkProvider origin={getSiteUrl()}>
           <QueryClientProvider client={queryClient}>
             <AuthProvider>
-              <GroupAssignmentProvider>
+              <ShareLinkViewerProvider value={ShareLinkViewer.Anonymous}>
                 <ToastProvider>{children}</ToastProvider>
-              </GroupAssignmentProvider>
+              </ShareLinkViewerProvider>
             </AuthProvider>
           </QueryClientProvider>
-        </AuthoredLinkProvider>
+        </SiteOriginLinkProvider>
         <ScrollRestoration />
         <Scripts />
       </body>

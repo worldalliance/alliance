@@ -1,8 +1,43 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { CommunityDto, communityGetMyCommunities } from "../client";
+import {
+  type QueryClient,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { useCallback, useMemo } from "react";
+import {
+  communityCreateCommunity,
+  communityDelete,
+  CommunityDto,
+  communityGetMyCommunities,
+  communityJoinPublicCommunity,
+  communityLeave,
+  communityRemoveMember,
+  communityUpdate,
+  CreateCommunityDto,
+  UpdateCommunityDto,
+} from "../client";
+import { failedToLoad } from "./failedToLoad";
+import { queryKeys } from "./queryKeys";
 
-const QUERY_KEY = ["communityGetMyCommunities"] as const;
+const QUERY_KEY = queryKeys.myCommunities();
+
+export const CREATE_GROUP_SESSION_EXPIRED =
+  "Your session has expired. Sign in again to create a group.";
+export const UPDATE_GROUP_SESSION_EXPIRED =
+  "Your session has expired. Sign in again to save the group's settings.";
+export const DELETE_GROUP_SESSION_EXPIRED =
+  "Your session has expired. Sign in again to delete the group.";
+export const REMOVE_MEMBER_SESSION_EXPIRED =
+  "Your session has expired. Sign in again to remove a member.";
+
+/** Refetches every list a change to the user's group membership alters: their
+ * groups, and the public groups' member counts. */
+export const refreshMemberships = (queryClient: QueryClient) =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.publicCommunities() }),
+  ]);
 
 function findCommunityById(
   communities: CommunityDto[],
@@ -16,10 +51,16 @@ function findCommunityById(
 
 /**
  * Single source of truth for the current user's communities. Wraps
- * `communityGetMyCommunities` in react-query and exposes cache-aware helpers
- * (refresh, remove, member removal, upsert) plus optional prop-driven selection.
+ * `communityGetMyCommunities` in react-query and exposes a refresh, the group
+ * writes below, and optional prop-driven selection.
  * Consume this instead of calling the generated client directly, so the request
  * is de-duplicated and cache mutations stay consistent across screens.
+ *
+ * Creating, saving, deleting, leaving, or joining a group, and removing a
+ * member, throw when refused. Creating or saving puts the group in the cache at
+ * once, deleting or leaving drops it, and removing a member drops them from it.
+ * Joining resolves only once the user's groups have been refetched, since the
+ * server also removes the user from every group they don't lead.
  */
 export function useMyCommunities(params?: {
   selectedCommunityId?: number | null;
@@ -28,17 +69,21 @@ export function useMyCommunities(params?: {
   const { selectedCommunityId = null, enabled = true } = params ?? {};
   const queryClient = useQueryClient();
 
+  const query = useQuery({
+    queryKey: QUERY_KEY,
+    queryFn: () =>
+      communityGetMyCommunities({ throwOnError: true }).then(
+        (response) => response.data,
+      ),
+    enabled,
+  });
   const {
     data: communities = [],
     isLoading,
     isFetching,
+    isError,
     refetch,
-  } = useQuery({
-    queryKey: QUERY_KEY,
-    queryFn: () =>
-      communityGetMyCommunities().then((response) => response.data ?? []),
-    enabled,
-  });
+  } = query;
 
   const communityIds = useMemo(
     () => new Set(communities.map((community) => community.id)),
@@ -78,7 +123,7 @@ export function useMyCommunities(params?: {
     [queryClient],
   );
 
-  /** Upsert a single community into the cached list (does not touch selection). */
+  /** Upsert a single community into the cached list. */
   const updateCommunity = useCallback(
     (community: CommunityDto) => {
       queryClient.setQueryData<CommunityDto[]>(QUERY_KEY, (old) => {
@@ -91,20 +136,83 @@ export function useMyCommunities(params?: {
     [queryClient],
   );
 
-  const [selectedCommunity, setSelectedCommunity] =
-    useState<CommunityDto | null>(() =>
-      findCommunityById(communities, selectedCommunityId),
-    );
-  useEffect(() => {
-    setSelectedCommunity(findCommunityById(communities, selectedCommunityId));
-  }, [communities, selectedCommunityId]);
-
-  const updateSelectedCommunity = useCallback(
-    (community: CommunityDto) => {
+  const { mutateAsync: createCommunity } = useMutation({
+    mutationFn: (body: CreateCommunityDto) =>
+      communityCreateCommunity({ body, throwOnError: true }).then(
+        (response) => response.data,
+      ),
+    // Offline, the create fails its form at once instead of pausing.
+    networkMode: "always",
+    onSuccess: (community) => {
       updateCommunity(community);
-      setSelectedCommunity(findCommunityById(communities, community.id));
+      void refreshMemberships(queryClient);
     },
-    [updateCommunity, communities],
+  });
+
+  const { mutateAsync: saveCommunity } = useMutation({
+    mutationFn: ({
+      communityId,
+      body,
+    }: {
+      communityId: number;
+      body: UpdateCommunityDto;
+    }) =>
+      communityUpdate({ path: { communityId }, body, throwOnError: true }).then(
+        (response) => response.data,
+      ),
+    networkMode: "always",
+    onSuccess: updateCommunity,
+  });
+
+  const { mutateAsync: deleteCommunity } = useMutation({
+    mutationFn: (communityId: number) =>
+      communityDelete({ path: { communityId }, throwOnError: true }),
+    networkMode: "always",
+    onSuccess: (_, communityId) => {
+      removeCommunity(communityId);
+      void refreshMemberships(queryClient);
+    },
+  });
+
+  const { mutateAsync: removeMember } = useMutation({
+    mutationFn: ({
+      communityId,
+      memberId,
+    }: {
+      communityId: number;
+      memberId: number;
+    }) =>
+      communityRemoveMember({
+        path: { communityId },
+        body: { userId: memberId },
+        throwOnError: true,
+      }),
+    networkMode: "always",
+    onSuccess: (_, { communityId, memberId }) =>
+      removeMemberFromCommunity(communityId, memberId),
+  });
+
+  const { mutateAsync: leaveCommunity, isPending: isLeaving } = useMutation({
+    mutationFn: (communityId: number) =>
+      communityLeave({ path: { communityId }, throwOnError: true }),
+    onSuccess: (_, communityId) => {
+      removeCommunity(communityId);
+      void refreshMemberships(queryClient);
+    },
+  });
+
+  const { mutateAsync: joinPublicCommunity } = useMutation({
+    mutationFn: (communityId: number) =>
+      communityJoinPublicCommunity({
+        path: { communityId },
+        throwOnError: true,
+      }).then((response) => response.data),
+    onSuccess: () => refreshMemberships(queryClient),
+  });
+
+  const selectedCommunity = useMemo(
+    () => findCommunityById(communities, selectedCommunityId),
+    [communities, selectedCommunityId],
   );
 
   return {
@@ -112,12 +220,17 @@ export function useMyCommunities(params?: {
     communityIds,
     isLoading,
     isFetching,
+    isError,
+    didFail: failedToLoad(query),
     refetch,
     refreshCommunities,
-    removeCommunity,
-    removeMemberFromCommunity,
-    updateCommunity,
+    createCommunity,
+    saveCommunity,
+    deleteCommunity,
+    removeMember,
+    leaveCommunity,
+    isLeaving,
+    joinPublicCommunity,
     selectedCommunity,
-    updateSelectedCommunity,
   };
 }

@@ -7,12 +7,13 @@ import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
-import { generateCIDForNotif } from "src/notifs/notif-utils";
+import { NotificationKind } from "src/notification-settings/notification-kind";
+import { NotificationPreferencesService } from "src/notification-settings/notification-preferences.service";
+import { NotificationChannel } from "src/notifs/notif-utils";
 import { suspensionMessage } from "src/notifs/textnotifcontents";
-import {
-  userActionNotifsEnabled_email,
-  userActionNotifsEnabled_text,
-} from "src/user/user.utils";
+import { PushService } from "src/push/push.service";
+import { textReachable } from "src/user/user.utils";
+import { notifDeliveryEnabled } from "src/utils/notif-delivery";
 import { DataSource } from "typeorm";
 import { LOCK_KEYS } from "../notifs/lock-keys";
 import { withPgAdvisoryLock } from "../notifs/lock-utils";
@@ -30,16 +31,13 @@ export class ContractSuspenderWorker {
     private readonly actionsService: ActionsService,
     private readonly contractService: ContractService,
     private readonly eventLogService: EventLogService,
+    private readonly pushService: PushService,
+    private readonly preferences: NotificationPreferencesService,
   ) {}
 
   @Cron("*/10 * * * *")
   async processSuspensions() {
-    if (
-      !(
-        process.env.NODE_ENV === "production" ||
-        process.env.SEND_DEV_NOTIFS === "1"
-      )
-    ) {
+    if (!notifDeliveryEnabled()) {
       return;
     }
 
@@ -53,11 +51,14 @@ export class ContractSuspenderWorker {
         const candidates = await this.actionsService.findUsersToSuspend(now);
 
         if (candidates.length > 0) {
-          console.log(
-            "suspending users for action failure: ",
-            candidates.map(({ user }) => user.name),
+          this.logger.log(
+            `Suspending contracts for user(s) ${candidates.map(({ user }) => user.id).join(", ")}`,
           );
         }
+        const preferences = await this.preferences.load({
+          userIds: candidates.map(({ user }) => user.id),
+          kinds: [NotificationKind.ContractSuspended],
+        });
 
         for (const { user, reasonKey } of candidates) {
           const suspension = await R.fromPromiseFn(() =>
@@ -69,7 +70,7 @@ export class ContractSuspenderWorker {
           );
           if (R.isFailure(suspension)) {
             this.logger.error(
-              `Failed to suspend contract for ${user.name} (${user.id}), failure code ${reasonKey}`,
+              `Failed to suspend contract for user ${user.id}, failure code ${reasonKey}`,
               suspension.error,
             );
             continue;
@@ -88,20 +89,40 @@ export class ContractSuspenderWorker {
                 },
               }),
           );
-          const cid = generateCIDForNotif();
-          if (userActionNotifsEnabled_text(user)) {
+          const wants = (channel: NotificationChannel) =>
+            preferences.wants({
+              userId: user.id,
+              kind: NotificationKind.ContractSuspended,
+              channel,
+            });
+          if (wants(NotificationChannel.Text) && textReachable(user)) {
             await this.sendBestEffort(
               `suspension text to user ${user.id}`,
               () =>
                 this.mmsService.sendMms({
-                  to: user.phoneNumber!,
+                  to: user.phoneNumber,
+                  userId: user.id,
                   body: suspensionMessage,
                   mediaUrls: [],
-                  cid,
+                  tracking: null,
                 }),
             );
           }
-          if (userActionNotifsEnabled_email(user)) {
+          if (wants(NotificationChannel.Push)) {
+            await this.sendBestEffort(
+              `suspension push to user ${user.id}`,
+              async () =>
+                this.pushService.sendMessages(
+                  await this.pushService.getPushForAllUserDevices(user.id, {
+                    userId: user.id,
+                    body: suspensionMessage.trim(),
+                    screen: "/membership",
+                    idempotencyKey: `suspension-${user.id}-${reasonKey}`,
+                  }),
+                ),
+            );
+          }
+          if (wants(NotificationChannel.Email)) {
             await this.sendBestEffort(
               `suspension email to user ${user.id}`,
               () =>

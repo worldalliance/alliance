@@ -1,8 +1,9 @@
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow } from "class-validator";
+import { Allow, IsEmpty, IsOptional } from "class-validator";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
@@ -51,11 +52,10 @@ export class AmbassadorProgramMember {
 
   @ManyToOne(() => User, { nullable: false, onDelete: "CASCADE" })
   @JoinColumn({ name: "userId" })
-  @ApiProperty({ type: () => User })
+  @ApiPropertyOptional({ type: () => User })
   @Type(() => User)
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  user: Relation<User>;
+  @IsOptional()
+  user?: Relation<User>;
 
   @RelationId((member: AmbassadorProgramMember) => member.user)
   @ApiProperty()
@@ -67,9 +67,16 @@ export class AmbassadorProgramMember {
     () => AmbassadorProgramInteraction,
     (interaction) => interaction.programMember,
   )
-  @ApiProperty({ type: () => AmbassadorProgramInteraction, isArray: true })
+  @ApiPropertyOptional({
+    type: () => AmbassadorProgramInteraction,
+    isArray: true,
+  })
   @Type(() => AmbassadorProgramInteraction)
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  interactions: Relation<AmbassadorProgramInteraction>[];
+  @IsOptional()
+  interactions?: Relation<AmbassadorProgramInteraction>[];
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }

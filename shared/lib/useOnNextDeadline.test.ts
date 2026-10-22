@@ -1,3 +1,4 @@
+import { milliseconds } from "date-fns";
 import {
   actionEventRefetchTimestamps,
   actionStatusReflectsPastEvents,
@@ -35,12 +36,12 @@ describe("actionEventRefetchTimestamps", () => {
     const action = {
       events: [
         { date: new Date(NOW).toISOString() },
-        { date: new Date(NOW + 5_000).toISOString() },
+        { date: new Date(NOW + milliseconds({ seconds: 5 })).toISOString() },
       ],
     };
     expect(actionEventRefetchTimestamps(action)).toEqual([
       NOW + EVENT_REFETCH_SKEW_MS,
-      NOW + 5_000 + EVENT_REFETCH_SKEW_MS,
+      NOW + milliseconds({ seconds: 5 }) + EVENT_REFETCH_SKEW_MS,
     ]);
   });
 
@@ -61,8 +62,8 @@ describe("actionEventRefetchTimestamps", () => {
 });
 
 describe("actionStatusReflectsPastEvents", () => {
-  const PAST = NOW - 10_000;
-  const FUTURE = NOW + 10_000;
+  const PAST = NOW - milliseconds({ seconds: 10 });
+  const FUTURE = NOW + milliseconds({ seconds: 10 });
 
   function event(
     date: number,
@@ -78,7 +79,10 @@ describe("actionStatusReflectsPastEvents", () => {
     const action = {
       status: "member_action",
       // Unsorted on purpose — the server returns events in storage order.
-      events: [event(PAST, "member_action"), event(PAST - 5_000, "gathering")],
+      events: [
+        event(PAST, "member_action"),
+        event(PAST - milliseconds({ seconds: 5 }), "gathering"),
+      ],
     };
     expect(actionStatusReflectsPastEvents(action, NOW)).toBe(true);
   });
@@ -86,7 +90,10 @@ describe("actionStatusReflectsPastEvents", () => {
   it("flags a payload still on the old side of a passed boundary", () => {
     const action = {
       status: "gathering",
-      events: [event(PAST - 5_000, "gathering"), event(PAST, "member_action")],
+      events: [
+        event(PAST - milliseconds({ seconds: 5 }), "gathering"),
+        event(PAST, "member_action"),
+      ],
     };
     expect(actionStatusReflectsPastEvents(action, NOW)).toBe(false);
   });
@@ -130,8 +137,8 @@ describe("actionStatusReflectsPastEvents", () => {
     const action = {
       status: "member_action",
       events: [
-        event(PAST - 10_000, "member_action"),
-        event(PAST - 5_000, "resolution"),
+        event(PAST - milliseconds({ seconds: 10 }), "member_action"),
+        event(PAST - milliseconds({ seconds: 5 }), "resolution"),
         event(PAST, "member_action"),
       ],
     };

@@ -23,7 +23,7 @@ const AllianceSignupPitch = ({ signupHref }: { signupHref: string }) => {
       <p className="mt-3 text-sm font-normal text-zinc-700 sm:text-base sm:leading-7">
         We&apos;re guided by an{" "}
         <a
-          href="https://worldalliance.org/people#expert-group"
+          href="/people#expert-group"
           target="_blank"
           rel="noreferrer"
           className="font-semibold text-green underline decoration-green/30 underline-offset-2 hover:decoration-green"

@@ -1,6 +1,14 @@
 // src/forms/form-response.entity.ts
 import type { DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import {
+  readFormulaChoices,
+  type FormulaChoices,
+} from "@alliance/common/forms/formula-choices";
+import {
+  assignedRowSchema,
+  type AssignedRow,
+} from "@alliance/common/forms/row-list-schema";
+import {
   readVisibilityValidatorResults,
   type VisibilityValidatorResults,
 } from "@alliance/common/forms/visibility";
@@ -8,9 +16,12 @@ import { R } from "@alliance/common/result";
 import { Logger } from "@nestjs/common";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsDefined, IsOptional } from "class-validator";
+import { Allow, IsDefined, IsEmpty, IsOptional } from "class-validator";
 import { Guest } from "src/auth/entities/guest.entity";
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
 import { User } from "src/user/entities/user.entity";
 import type { Relation } from "src/utils/Repository";
 import {
@@ -42,10 +53,9 @@ export class FormResponse {
   formId: number;
 
   @ManyToOne(() => Form, (f) => f.responses, { onDelete: "CASCADE" })
-  @IsDefined()
+  @IsOptional()
   @Type(() => Form)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  form: Relation<Form>;
+  form?: Relation<Form>;
 
   @Column({ type: "jsonb" })
   @ApiProperty()
@@ -65,12 +75,17 @@ export class FormResponse {
   @Type(() => Object)
   publicAnswers: Record<string, boolean>;
 
+  /** Read with `readFormulaChoices`. */
+  @Column({ type: "jsonb", default: () => "'{}'" })
+  @ApiProperty({ type: Object })
+  @IsOptional()
+  formulaChoices: unknown;
+
   @Column({ type: "text", nullable: true })
-  @ApiPropertyOptional({ type: "string" })
+  @ApiProperty({ type: String, nullable: true })
   @IsOptional()
   @Type(() => String)
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  deviceType?: DeviceVisibilityTarget;
+  deviceType: DeviceVisibilityTarget | null;
 
   @ApiPropertyOptional({ type: () => User })
   @ManyToOne(() => User, { onDelete: "CASCADE", nullable: true })
@@ -85,11 +100,10 @@ export class FormResponse {
   guest?: Relation<Guest>;
 
   @Column({ type: "text", nullable: true })
-  @ApiPropertyOptional()
+  @ApiProperty({ type: String, nullable: true })
   @IsOptional()
   @Type(() => String)
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  sessionReplayUrl?: string;
+  sessionReplayUrl: string | null;
 
   @CreateDateColumnTz()
   @ApiProperty()
@@ -97,11 +111,10 @@ export class FormResponse {
   @Type(() => Date)
   createdAt: Date;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
+  @Column({ type: "varchar", nullable: true })
+  @ApiProperty({ type: String, nullable: true })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  phDistinctId?: string;
+  phDistinctId: string | null;
 
   @Column()
   @ApiProperty()
@@ -111,16 +124,24 @@ export class FormResponse {
   @ManyToOne(() => FormSnapshot, { onDelete: "RESTRICT" })
   @JoinColumn({ name: "formSnapshotId" })
   @Type(() => FormSnapshot)
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  formSnapshot: Relation<FormSnapshot>;
+  @IsOptional()
+  formSnapshot?: Relation<FormSnapshot>;
 
   @Column({ type: "text", nullable: true })
-  @ApiPropertyOptional({ type: "string" })
+  @ApiProperty({ type: String, nullable: true })
   @IsOptional()
   @Type(() => String)
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  sid?: string;
+  sid: string | null;
+
+  /** The member's row, for a form with a row list; set by the server on submit. */
+  @Column({ type: "jsonb", nullable: true })
+  @IsOptional()
+  assignedRow: unknown | null;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }
 
 /**
@@ -130,6 +151,17 @@ export class FormResponse {
  */
 export interface ParsedFormResponse extends FormResponse {
   visibilityValidatorResults: VisibilityValidatorResults;
+  formulaChoices: FormulaChoices;
+  assignedRow: AssignedRow | null;
+}
+
+export function loadedFormResponseSnapshot(
+  response: FormResponse,
+): Relation<FormSnapshot> {
+  if (!response.formSnapshot) {
+    throw new Error(`formSnapshot of form response ${response.id} not loaded`);
+  }
+  return response.formSnapshot;
 }
 
 export function parseFormResponse(response: FormResponse): ParsedFormResponse {
@@ -155,7 +187,21 @@ export function parseFormResponse(response: FormResponse): ParsedFormResponse {
     },
   );
   response.visibilityValidatorResults = verdicts;
+  response.formulaChoices = R.unwrapOrElse(
+    readFormulaChoices(response.formulaChoices),
+    () => {
+      logger.error(
+        `Form response ${response.id}: formula choices are unreadable`,
+      );
+      return {};
+    },
+  );
+  // Undefined where a query selected only some columns.
+  response.assignedRow =
+    response.assignedRow === null || response.assignedRow === undefined
+      ? null
+      : assignedRowSchema.parse(response.assignedRow);
   // Mutate-and-cast (rather than spread) to keep the entity's prototype; the
-  // assignment above set the only field the cast narrows.
+  // assignments above set the only fields the cast narrows.
   return response as ParsedFormResponse;
 }

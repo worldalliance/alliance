@@ -1,6 +1,7 @@
 import {
   ActionDto,
   ActionSuiteDto,
+  CreateActionEventDto,
   UpdateActionEventDto,
 } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
@@ -16,8 +17,7 @@ export type SuiteEventListProps = {
   onEdit: (eventId: number, body: UpdateActionEventDto) => void;
   onDelete: (eventId: number) => void;
   className?: string;
-  suiteId: number;
-  setSuite: (suite: ActionSuiteDto) => void;
+  addToSuite: (body: CreateActionEventDto) => Promise<ActionSuiteDto | null>;
 };
 
 const SuiteEventList = ({
@@ -26,8 +26,7 @@ const SuiteEventList = ({
   onEdit,
   onDelete,
   className,
-  suiteId,
-  setSuite,
+  addToSuite,
 }: SuiteEventListProps) => {
   const [creatingEvent, setCreatingEvent] = useState<boolean>(false);
   const [eventFormOpen, setEventFormOpen] = useState<boolean>(false);
@@ -62,8 +61,7 @@ const SuiteEventList = ({
             setEventCreatedSuccess={() => {}}
             eventCreatedSuccess={false}
             suiteMode={true}
-            suiteId={suiteId}
-            setSuite={setSuite}
+            addToSuite={addToSuite}
           />
         </Card>
       )}

@@ -6,6 +6,7 @@ import {
   VIDEO_RETRY_LABEL,
   VideoLoadState,
 } from "@alliance/shared/lib/useVideoSource";
+import { milliseconds } from "date-fns";
 import Hls from "hls.js";
 import { RotateCcw } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -145,17 +146,17 @@ const attachHls = ({
   const hls = new Hls({
     fragLoadPolicy: {
       default: {
-        maxTimeToFirstByteMs: 10000,
-        maxLoadTimeMs: 10000,
+        maxTimeToFirstByteMs: milliseconds({ seconds: 10 }),
+        maxLoadTimeMs: milliseconds({ seconds: 10 }),
         timeoutRetry: {
           maxNumRetry: 3,
-          retryDelayMs: 1000,
-          maxRetryDelayMs: 1000,
+          retryDelayMs: milliseconds({ seconds: 1 }),
+          maxRetryDelayMs: milliseconds({ seconds: 1 }),
         },
         errorRetry: {
           maxNumRetry: 3,
-          retryDelayMs: 1000,
-          maxRetryDelayMs: 1000,
+          retryDelayMs: milliseconds({ seconds: 1 }),
+          maxRetryDelayMs: milliseconds({ seconds: 1 }),
         },
       },
     },

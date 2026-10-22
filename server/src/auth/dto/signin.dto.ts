@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
 import { Transform } from "class-transformer";
 import {
   IsDefined,
@@ -8,12 +8,15 @@ import {
   IsOptional,
   IsString,
 } from "class-validator";
-export type TokenMode = "cookie" | "header";
+export enum TokenMode {
+  Cookie = "cookie",
+  Header = "header",
+}
 
 export class SignInDto {
-  @ApiProperty({ enum: ["cookie", "header"] })
+  @ApiProperty({ enum: TokenMode, enumName: "TokenMode" })
   @IsDefined()
-  @IsEnum(["cookie", "header"])
+  @IsEnum(TokenMode)
   mode: TokenMode;
 
   @ApiProperty()
@@ -31,6 +34,11 @@ export class SignInDto {
   @IsString()
   guestToken?: string;
 }
+
+export class ReviewSignInDto extends PickType(SignInDto, [
+  "email",
+  "password",
+]) {}
 
 export class SignInResponseDto {
   @ApiProperty()

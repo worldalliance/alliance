@@ -1,5 +1,6 @@
 import { cn } from "@alliance/shared/styles/util";
 import type { ReactNode } from "react";
+import { FitStage } from "../../components/FitStage";
 import {
   DETAIL_HEIGHT,
   DETAIL_WIDTH,
@@ -10,6 +11,14 @@ import {
 } from "./ProductScreens";
 
 /**
+ * The stage is padded past the pair's own bounding box, and both cards sit
+ * inset from its edges by that same margin, so the composition has room to
+ * breathe rather than pinning the feed to the stage's exact top-left corner
+ * and the opened post to its exact bottom-right.
+ */
+const STAGE_MARGIN = 28;
+
+/**
  * Where each card sits on the stage, in the cards' own pixels. The opened post
  * starts past the middle of the feed and well below it, so the two read as one
  * screen opening out of the other rather than a pair set side by side.
@@ -17,8 +26,8 @@ import {
 const DETAIL_X = 318;
 const DETAIL_Y = 172;
 
-const STAGE_WIDTH = DETAIL_X + DETAIL_WIDTH;
-const STAGE_HEIGHT = DETAIL_Y + DETAIL_HEIGHT;
+const STAGE_WIDTH = DETAIL_X + DETAIL_WIDTH + STAGE_MARGIN * 2;
+const STAGE_HEIGHT = DETAIL_Y + DETAIL_HEIGHT + STAGE_MARGIN * 2;
 
 /**
  * Phone column: the opened post overlaps most of the feed. The wide offset
@@ -27,8 +36,9 @@ const STAGE_HEIGHT = DETAIL_Y + DETAIL_HEIGHT;
 const COMPACT_DETAIL_X = 80;
 const COMPACT_DETAIL_Y = 84;
 
-const COMPACT_STAGE_WIDTH = COMPACT_DETAIL_X + DETAIL_WIDTH;
-const COMPACT_STAGE_HEIGHT = COMPACT_DETAIL_Y + DETAIL_HEIGHT;
+const COMPACT_STAGE_WIDTH = COMPACT_DETAIL_X + DETAIL_WIDTH + STAGE_MARGIN * 2;
+const COMPACT_STAGE_HEIGHT =
+  COMPACT_DETAIL_Y + DETAIL_HEIGHT + STAGE_MARGIN * 2;
 
 function ScaledStage({
   width,
@@ -40,20 +50,10 @@ function ScaledStage({
   children: ReactNode;
 }) {
   return (
-    <div
-      className="relative"
-      style={{ height: `calc(100cqi * ${height} / ${width})` }}
-    >
-      <div
-        className="absolute top-0 left-0 origin-top-left"
-        style={{
-          width,
-          height,
-          transform: `scale(calc(100cqi / ${width}px))`,
-        }}
-      >
+    <div className="w-full" style={{ aspectRatio: `${width} / ${height}` }}>
+      <FitStage width={width} height={height} className="h-full w-full">
         {children}
-      </div>
+      </FitStage>
     </div>
   );
 }
@@ -62,16 +62,21 @@ function Pair({ offsetX, offsetY }: { offsetX: number; offsetY: number }) {
   return (
     <>
       <div
-        className="absolute top-0 left-0"
-        style={{ width: FEED_WIDTH, height: FEED_HEIGHT }}
+        className="absolute"
+        style={{
+          left: STAGE_MARGIN,
+          top: STAGE_MARGIN,
+          width: FEED_WIDTH,
+          height: FEED_HEIGHT,
+        }}
       >
         <FeedCard />
       </div>
       <div
         className="absolute"
         style={{
-          left: offsetX,
-          top: offsetY,
+          left: STAGE_MARGIN + offsetX,
+          top: STAGE_MARGIN + offsetY,
           width: DETAIL_WIDTH,
           height: DETAIL_HEIGHT,
         }}
@@ -92,16 +97,13 @@ export function ProductPair({ className }: { className?: string }) {
       className={cn("min-w-0 w-full", className)}
       aria-label="Recent member activity"
     >
-      <div
-        className="hidden w-full @container md:block"
-        style={{ maxWidth: STAGE_WIDTH }}
-      >
+      <div className="hidden w-full md:block" style={{ maxWidth: STAGE_WIDTH }}>
         <ScaledStage width={STAGE_WIDTH} height={STAGE_HEIGHT}>
           <Pair offsetX={DETAIL_X} offsetY={DETAIL_Y} />
         </ScaledStage>
       </div>
       <div
-        className="w-full @container md:hidden"
+        className="w-full md:hidden"
         style={{ maxWidth: COMPACT_STAGE_WIDTH }}
       >
         <ScaledStage width={COMPACT_STAGE_WIDTH} height={COMPACT_STAGE_HEIGHT}>

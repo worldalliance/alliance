@@ -1,3 +1,4 @@
+import { publicDisplayName } from "@alliance/common/displayName";
 import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
 import { IsNotEmpty, IsString } from "class-validator";
 import { getImageSource } from "src/images/images.service";
@@ -30,7 +31,7 @@ export class ClusterMemberDto {
     user: Pick<User, "id" | "name" | "anonymous" | "profilePicture">,
   ) {
     this.id = user.id;
-    this.displayName = user.anonymous ? "Someone" : user.name;
+    this.displayName = publicDisplayName(user);
     if (user.profilePicture) {
       this.profilePicture = getImageSource(user.profilePicture);
     }

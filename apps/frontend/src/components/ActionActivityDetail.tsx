@@ -1,15 +1,12 @@
 import { actionActivityTransitiveVerb } from "@alliance/common/actionActivity";
-import {
-  ActionActivityDto,
-  ActionDto,
-  actionsGetActivity,
-} from "@alliance/shared/client";
+import { ActionActivityDto, ActionDto } from "@alliance/shared/client";
+import { useActivity } from "@alliance/shared/lib/useActivities";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { OutputRenderer } from "@alliance/sharedweb/forms/OutputRenderer";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import EditableContentRenderer from "@alliance/sharedweb/ui/EditableContentRenderer";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
 import UserDisplayName from "@alliance/sharedweb/ui/UserDisplayName";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { Link, href, useOutletContext, useParams } from "react-router";
 import chevronLeft from "../assets/icons8-expand-arrow-96.png";
@@ -48,14 +45,7 @@ const ActionActivityDetail = () => {
 
   const origactivity = activities.find((a) => a.id === activityId) || null;
 
-  const { data: fetchedActivity } = useQuery({
-    queryKey: ["actionsGetActivity", activityId],
-    queryFn: () =>
-      actionsGetActivity({ path: { id: activityId } }).then(
-        (res) => res.data ?? null,
-      ),
-    enabled: !!activityId,
-  });
+  const { data: fetchedActivity, isLoading } = useActivity(activityId);
 
   const activity = useMemo(() => {
     const base = fetchedActivity ?? origactivity;
@@ -70,49 +60,23 @@ const ActionActivityDetail = () => {
 
   const verb = activity ? actionActivityTransitiveVerb[activity.type] : null;
 
-  const queryClient = useQueryClient();
-  const detailQueryKey = ["actionsGetActivity", activityId];
-
-  const likeMutation = useMutation({
-    mutationFn: (isLiked: boolean) =>
-      handleLikeActivity(activityId, {
-        isLiked,
-        activityType: activity?.type ?? "",
-      }),
-    onMutate: async (isLiked: boolean) => {
-      await queryClient.cancelQueries({ queryKey: detailQueryKey });
-      const previous = queryClient.getQueryData<ActionActivityDto | null>(
-        detailQueryKey,
-      );
-      queryClient.setQueryData(
-        detailQueryKey,
-        (old: ActionActivityDto | null) =>
-          old
-            ? {
-                ...old,
-                likedByMe: !isLiked,
-                likesCount: isLiked ? old.likesCount - 1 : old.likesCount + 1,
-              }
-            : old,
-      );
-      return { previous };
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(detailQueryKey, context.previous);
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: detailQueryKey });
-    },
-  });
-
   const handleLike = async () => {
     if (!user || !activity) return;
-    await likeMutation.mutateAsync(activity.likedByMe ?? false);
+    await handleLikeActivity(activityId, {
+      isLiked: activity.likedByMe ?? false,
+      activityType: activity.type,
+    });
   };
 
   const isLiked = activity?.likedByMe ?? false;
+
+  if (!activity && isLoading) {
+    return (
+      <div className="flex justify-center py-8">
+        <Spinner size="medium" />
+      </div>
+    );
+  }
 
   if (activity?.actionId !== action.id) {
     return <BasicErrorMessage>Activity not found</BasicErrorMessage>;
@@ -181,7 +145,10 @@ const ActionActivityDetail = () => {
             )}
             {activity.formResponseOutput && (
               <div className="my-3">
-                <OutputRenderer submission={activity.formResponseOutput} />
+                <OutputRenderer
+                  submission={activity.formResponseOutput}
+                  submitterId={activity.user.id}
+                />
               </div>
             )}
             <LikeFooter

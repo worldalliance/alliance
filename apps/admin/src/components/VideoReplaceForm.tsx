@@ -1,23 +1,38 @@
-import { errorMessage } from "@alliance/common/errorMessage";
 import { withCount } from "@alliance/common/plural";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React, { useCallback, useRef, useState } from "react";
-import { getApiUrl } from "../lib/config";
+import { uploadSessionExpiredMessage } from "../lib/sessionExpired";
+import { useReplaceVideoAdmin } from "../lib/useVideosAdmin";
 
 interface VideoReplaceFormProps {
   videoId: number;
-  onComplete: () => void;
 }
 
-const VideoReplaceForm: React.FC<VideoReplaceFormProps> = ({
-  videoId,
-  onComplete,
-}) => {
+const VideoReplaceForm: React.FC<VideoReplaceFormProps> = ({ videoId }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [uploading, setUploading] = useState(false);
   const { success, error: pushError } = useToast();
+
+  const { mutate: replace, isPending: uploading } = useReplaceVideoAdmin({
+    videoId,
+    onSuccess: () => {
+      success("Video content replaced successfully");
+      setSelectedFiles([]);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    },
+    onError: (err) => {
+      console.error("Failed to replace video", err);
+      pushError(
+        thrownRefusalMessage({
+          error: err,
+          fallback: "Failed to replace video content",
+          sessionExpired: uploadSessionExpiredMessage,
+        }),
+      );
+    },
+  });
 
   const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -27,7 +42,7 @@ const VideoReplaceForm: React.FC<VideoReplaceFormProps> = ({
     [],
   );
 
-  const handleUpload = useCallback(async () => {
+  const handleUpload = useCallback(() => {
     if (selectedFiles.length === 0) return;
 
     const hasPlaylist = selectedFiles.some((f) => f.name.endsWith(".m3u8"));
@@ -36,45 +51,8 @@ const VideoReplaceForm: React.FC<VideoReplaceFormProps> = ({
       return;
     }
 
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      for (const file of selectedFiles) {
-        formData.append("files", file);
-      }
-
-      const res = await fetch(`${getApiUrl()}/videos/${videoId}/replace`, {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(
-          errorMessage({
-            error: body,
-            fallback: `Upload failed: ${res.status}`,
-          }),
-        );
-      }
-
-      success("Video content replaced successfully");
-      setSelectedFiles([]);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      onComplete();
-    } catch (err) {
-      console.error("Failed to replace video", err);
-      pushError(
-        errorMessage({
-          error: err,
-          fallback: "Failed to replace video content",
-        }),
-      );
-    } finally {
-      setUploading(false);
-    }
-  }, [selectedFiles, videoId, onComplete, success, pushError]);
+    replace(selectedFiles);
+  }, [selectedFiles, replace, pushError]);
 
   return (
     <div className="flex flex-col gap-3">

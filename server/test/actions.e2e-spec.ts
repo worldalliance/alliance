@@ -1,9 +1,25 @@
-import { ActionActivityType } from "@alliance/common/actionActivity";
-import { ActionsService } from "src/actions/actions.service";
+import {
+  ActionActivityType,
+  MEMBER_ACTION_DEADLINE_PASSED,
+} from "@alliance/common/actionActivity";
+import type { CohortExpression } from "@alliance/common/cohort-expression";
+import { milliseconds } from "date-fns";
+import { ActionCategory } from "src/actions/action-category";
+import {
+  ActionsService,
+  GLOBAL_FEED_FACEPILE_LIMIT,
+} from "src/actions/actions.service";
+import { CohortResolverService } from "src/actions/cohort-resolver.service";
 import type { ActionActivity } from "src/actions/entities/action-activity.entity";
+import { SingleMemberCohortService } from "src/actions/single-member-cohort.service";
 import { ContractService } from "src/contract/contract.service";
+import {
+  Comment,
+  CommentParentObject,
+} from "src/forum/entities/comment.entity";
 import { City } from "src/geo/city.entity";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
+import { ActionEventNotifType } from "src/notifs/entities/action-event-notif.entity";
 import {
   Notification,
   NotificationCategory,
@@ -15,11 +31,15 @@ import {
 import { NotifsService } from "src/notifs/notifs.service";
 import type { Form } from "src/tasks/entities/form.entity";
 import type { FormResponse } from "src/tasks/entities/formresponse.entity";
-import { ContractEventType } from "src/user/entities/contract-event.entity";
+import {
+  ContractEvent,
+  ContractEventType,
+} from "src/user/entities/contract-event.entity";
 import {
   UserAwayRange,
   UserAwayRangeReason,
 } from "src/user/entities/user-away-range.entity";
+import { FriendService } from "src/user/friend.service";
 import { UserService } from "src/user/user.service";
 import request from "supertest";
 import type { Repository } from "typeorm";
@@ -29,6 +49,8 @@ import {
   CreateActionDto,
   CreateActionEventDto,
   GlobalFeedItemType,
+  TimelineFeedItemType,
+  WelcomeQueueDto,
 } from "../src/actions/dto/action.dto";
 import {
   ActionEvent,
@@ -39,18 +61,27 @@ import {
   ActionReviewerIcon,
 } from "../src/actions/entities/action-reviewer.entity";
 import {
-  Action,
-  ActionTaskType,
-  VisibilityMode,
-} from "../src/actions/entities/action.entity";
+  ActionUpdate,
+  ActionUpdateNotificationMode,
+} from "../src/actions/entities/action-update.entity";
+import { Action, VisibilityMode } from "../src/actions/entities/action.entity";
 import { FollowUpForm } from "../src/actions/entities/follow-up-form.entity";
+import { Project } from "../src/actions/entities/project.entity";
+import {
+  ReminderCohortType,
+  ReminderGroup,
+  ReminderGroupTimingMode,
+} from "../src/actions/entities/reminder-group.entity";
 import type { Community } from "../src/community/entities/community.entity";
 import { getImageSource } from "../src/images/images.service";
 import { User } from "../src/user/entities/user.entity";
+import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
 import {
   createFormWithSnapshot,
   createTestApp,
+  signAccessToken,
   TestContext,
+  waitForLockWait,
 } from "./e2e-test-utils";
 
 describe("Actions (e2e)", () => {
@@ -60,6 +91,7 @@ describe("Actions (e2e)", () => {
   let actionRepo: Repository<Action>;
   let eventRepo: Repository<ActionEvent>;
   let userService: UserService;
+  let friendService: FriendService;
   let contractService: ContractService;
   let userRepo: Repository<User>;
   let notifRepo: Repository<Notification>;
@@ -80,9 +112,8 @@ describe("Actions (e2e)", () => {
     const action = await actionRepo.save(
       actionRepo.create({
         name,
-        category: "Test",
+        category: [],
         body: "Body copy",
-        taskContents: "Task copy",
         shortDescription: `${name} short description`,
         visibilityMode: VisibilityMode.Public,
         cohortExpression: {
@@ -98,7 +129,7 @@ describe("Actions (e2e)", () => {
         title: `${name} launch`,
         description: "Action live",
         newStatus: options.status ?? ActionStatus.MemberAction,
-        date: new Date(Date.now() - 1000),
+        date: new Date(Date.now() - milliseconds({ seconds: 1 })),
         action,
       }),
     );
@@ -111,6 +142,7 @@ describe("Actions (e2e)", () => {
     actionRepo = ctx.dataSource.getRepository(Action);
     eventRepo = ctx.dataSource.getRepository(ActionEvent);
     userService = ctx.app.get(UserService);
+    friendService = ctx.app.get(FriendService);
     contractService = ctx.app.get(ContractService);
     userRepo = ctx.dataSource.getRepository(User);
     notifRepo = ctx.dataSource.getRepository(Notification);
@@ -129,9 +161,8 @@ describe("Actions (e2e)", () => {
     // Create test action with MemberAction status
     testAction = actionRepo.create({
       name: "Test Action",
-      category: "Test",
+      category: [],
       body: "Test action for forum tests",
-      taskContents: "Test action for forum tests",
       visibilityMode: VisibilityMode.Public,
       cohortExpression: {
         type: "Tag",
@@ -141,7 +172,7 @@ describe("Actions (e2e)", () => {
 
     testDraftAction = actionRepo.create({
       name: "Test Draft Action",
-      category: "Test",
+      category: [],
       body: "Test action for forum tests",
       visibilityMode: VisibilityMode.Public,
       cohortExpression: {
@@ -158,7 +189,7 @@ describe("Actions (e2e)", () => {
       title: "Action Started",
       description: "Action is now in gathering commitments phase",
       newStatus: ActionStatus.MemberAction,
-      date: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago
+      date: new Date(Date.now() - milliseconds({ hours: 1 })),
       action: testAction,
     });
     await eventRepo.save(gatheringEvent);
@@ -171,6 +202,7 @@ describe("Actions (e2e)", () => {
     await contractService.signContract({
       userId: defaultUser.id,
       signedName: "Test Name",
+      viaTaskForm: false,
       contractId: ctx.defaultContractId,
     });
 
@@ -182,10 +214,7 @@ describe("Actions (e2e)", () => {
       }),
     );
 
-    outsiderToken = ctx.jwtService.sign(
-      { sub: outsider.id, email: outsider.email, name: outsider.name },
-      { secret: process.env.JWT_SECRET },
-    );
+    outsiderToken = signAccessToken(ctx.jwtService, outsider);
 
     await createPublishedAction("Group Restricted Action", {
       status: ActionStatus.MemberAction,
@@ -215,12 +244,11 @@ describe("Actions (e2e)", () => {
       const newAction: CreateActionDto = {
         name: "Test Action",
         body: "Do something important",
-        category: "category",
+        category: [],
         image: "",
         timeEstimate: 5,
         shortDescription: "Do something important",
         visibilityMode: VisibilityMode.Public,
-        type: ActionTaskType.Activity,
         isContractSigningAction: false,
         shouldCompleteAfterDeadline: false,
         isForumParticipationAction: false,
@@ -241,6 +269,44 @@ describe("Actions (e2e)", () => {
       await actionRepo.query("DELETE FROM action WHERE id = $1", [res.body.id]);
     });
 
+    it("admin sets an action's category, rejecting unknown or repeated values", async () => {
+      const action = await actionRepo.save({
+        name: "Categorized Action",
+        category: [ActionCategory.Environment],
+        body: "Test",
+      });
+      const patch = (category: unknown) =>
+        request(ctx.app.getHttpServer())
+          .patch(`/actions/${action.id}`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .send({ category });
+      const stored = async () =>
+        (await actionRepo.findOneByOrFail({ id: action.id })).category;
+
+      expect(
+        (await patch([ActionCategory.Democracy, ActionCategory.Meta])).status,
+      ).toBe(200);
+      expect(await stored()).toEqual([
+        ActionCategory.Democracy,
+        ActionCategory.Meta,
+      ]);
+
+      expect((await patch(["climate"])).status).toBe(400);
+      expect(
+        (await patch([ActionCategory.Meta, ActionCategory.Meta])).status,
+      ).toBe(400);
+      expect((await patch("meta")).status).toBe(400);
+      expect(await stored()).toEqual([
+        ActionCategory.Democracy,
+        ActionCategory.Meta,
+      ]);
+
+      expect((await patch([])).status).toBe(200);
+      expect(await stored()).toEqual([]);
+
+      await actionRepo.query("DELETE FROM action WHERE id = $1", [action.id]);
+    });
+
     it("action creation with missing data rejected", async () => {
       const res = await request(ctx.app.getHttpServer())
         .post("/actions/create")
@@ -257,12 +323,11 @@ describe("Actions (e2e)", () => {
       const base: CreateActionDto = {
         name: "Bad Cohort Action",
         body: "Body",
-        category: "category",
+        category: [],
         image: "",
         timeEstimate: 5,
         shortDescription: "Short",
         visibilityMode: VisibilityMode.Public,
-        type: ActionTaskType.Activity,
         isContractSigningAction: false,
         shouldCompleteAfterDeadline: false,
         isForumParticipationAction: false,
@@ -309,12 +374,11 @@ describe("Actions (e2e)", () => {
         .send({
           name: "Clearable Cohort Action",
           body: "Body",
-          category: "category",
+          category: [],
           image: "",
           timeEstimate: 5,
           shortDescription: "Short",
           visibilityMode: VisibilityMode.Public,
-          type: ActionTaskType.Activity,
           isContractSigningAction: false,
           shouldCompleteAfterDeadline: false,
           isForumParticipationAction: false,
@@ -364,10 +428,9 @@ describe("Actions (e2e)", () => {
     it("can see completed actions for a user", async () => {
       const action = await actionRepo.findOneBy({ name: "Test Action" });
 
-      await request(ctx.app.getHttpServer())
-        .post(`/actions/complete/${action!.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(201);
+      await ctx.app
+        .get(ActionsService)
+        .completeAction(action!.id, ctx.testUserId);
 
       const res = await request(ctx.app.getHttpServer())
         .get(`/actions/completed/${ctx.testUserId}`)
@@ -431,6 +494,38 @@ describe("Actions (e2e)", () => {
       expect(res.body.name).toBe("Test Draft Action");
     });
 
+    it("action page returns the action's project as { id, name }", async () => {
+      const project = await ctx.dataSource
+        .getRepository(Project)
+        .save({ name: "Test Project" });
+      const action = await actionRepo.save({
+        name: "Project Step Action",
+        category: [],
+        body: "Test",
+        project,
+      });
+
+      const res = await request(ctx.app.getHttpServer())
+        .get(`/actions/slug/${action.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.project).toEqual({
+        id: project.id,
+        name: "Test Project",
+        category: [],
+      });
+    });
+
+    it("action page returns a null project for an action without one", async () => {
+      const res = await request(ctx.app.getHttpServer())
+        .get(`/actions/slug/${testDraftAction.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.project).toBeNull();
+    });
+
     it("shows actions to outsider if showToNonparticipating is true", async () => {
       const res = await request(ctx.app.getHttpServer())
         .get("/actions/loggedIn")
@@ -474,14 +569,12 @@ describe("Actions (e2e)", () => {
       const manualAction = await actionRepo.save(
         actionRepo.create({
           name: `Manual Cohort Action ${Date.now()}`,
-          category: "Test",
+          category: [],
           body: "Manual cohort body",
           shortDescription: "Manual cohort short description",
-          taskContents: "Manual cohort task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
-          type: ActionTaskType.Activity,
           cohortExpression: {
             type: "Manual",
             userIds: [cohortMember.id],
@@ -494,28 +587,14 @@ describe("Actions (e2e)", () => {
           title: "Manual cohort launch",
           description: "Manual cohort action live",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000),
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
           action: manualAction,
         }),
       );
 
-      const cohortToken = ctx.jwtService.sign(
-        {
-          sub: cohortMember.id,
-          email: cohortMember.email,
-          name: cohortMember.name,
-        },
-        { secret: process.env.JWT_SECRET },
-      );
+      const cohortToken = signAccessToken(ctx.jwtService, cohortMember);
 
-      const nonCohortToken = ctx.jwtService.sign(
-        {
-          sub: nonCohortUser.id,
-          email: nonCohortUser.email,
-          name: nonCohortUser.name,
-        },
-        { secret: process.env.JWT_SECRET },
-      );
+      const nonCohortToken = signAccessToken(ctx.jwtService, nonCohortUser);
 
       const [cohortRes, nonCohortRes] = await Promise.all([
         request(ctx.app.getHttpServer())
@@ -567,22 +646,20 @@ describe("Actions (e2e)", () => {
       });
       await ctx.dataSource.getRepository(UserAwayRange).save({
         userId: awayMember.id,
-        startDate: new Date(Date.now() - 60 * 60 * 1000),
-        endDate: new Date(Date.now() + 60 * 60 * 1000),
+        startDate: new Date(Date.now() - milliseconds({ hours: 1 })),
+        endDate: new Date(Date.now() + milliseconds({ hours: 1 })),
         reason: UserAwayRangeReason.VACATION,
       });
 
       const manualAction = await actionRepo.save(
         actionRepo.create({
           name: `Single Manual Cohort Action ${Date.now()}`,
-          category: "Test",
+          category: [],
           body: "Manual cohort body",
           shortDescription: "Manual cohort short description",
-          taskContents: "Manual cohort task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
-          type: ActionTaskType.Activity,
           cohortExpression: {
             type: "Manual",
             userIds: [cohortMember.id, awayMember.id],
@@ -595,16 +672,13 @@ describe("Actions (e2e)", () => {
           title: "Manual cohort launch",
           description: "Manual cohort action live",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000),
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
           action: manualAction,
         }),
       );
 
       const signToken = (user: { id: number; email: string; name: string }) =>
-        ctx.jwtService.sign(
-          { sub: user.id, email: user.email, name: user.name },
-          { secret: process.env.JWT_SECRET },
-        );
+        signAccessToken(ctx.jwtService, user);
 
       const [cohortRes, nonCohortRes, awayRes] = await Promise.all([
         request(ctx.app.getHttpServer())
@@ -665,14 +739,12 @@ describe("Actions (e2e)", () => {
       const plannedAction = await actionRepo.save(
         actionRepo.create({
           name: `Phaseless Action ${Date.now()}`,
-          category: "Test",
+          category: [],
           body: "Phaseless body",
           shortDescription: "Phaseless short description",
-          taskContents: "Phaseless task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: false,
-          type: ActionTaskType.Activity,
           cohortExpression: {
             type: "Manual",
             userIds: [cohortMember.id],
@@ -685,19 +757,12 @@ describe("Actions (e2e)", () => {
           title: "Planned",
           description: "Member action not scheduled yet",
           newStatus: ActionStatus.Planned,
-          date: new Date(Date.now() - 1000),
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
           action: plannedAction,
         }),
       );
 
-      const token = ctx.jwtService.sign(
-        {
-          sub: cohortMember.id,
-          email: cohortMember.email,
-          name: cohortMember.name,
-        },
-        { secret: process.env.JWT_SECRET },
-      );
+      const token = signAccessToken(ctx.jwtService, cohortMember);
 
       const res = await request(ctx.app.getHttpServer())
         .get(`/actions/slug/${plannedAction.id}`)
@@ -721,9 +786,8 @@ describe("Actions (e2e)", () => {
       const prerequisiteAction = await actionRepo.save(
         actionRepo.create({
           name: `Prerequisite Action ${Date.now()}`,
-          category: "Test",
+          category: [],
           body: "Prerequisite body",
-          taskContents: "Prerequisite task",
           visibilityMode: VisibilityMode.Public,
         }),
       );
@@ -754,13 +818,11 @@ describe("Actions (e2e)", () => {
       const targetAction = await actionRepo.save(
         actionRepo.create({
           name: `CompletedAction Cohort ${Date.now()}`,
-          category: "Test",
+          category: [],
           body: "Body",
-          taskContents: "Task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
-          type: ActionTaskType.Activity,
           cohortExpression: {
             type: "CompletedAction",
             actionId: prerequisiteAction.id,
@@ -773,27 +835,13 @@ describe("Actions (e2e)", () => {
           title: "Launch",
           description: "Go",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000),
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
           action: targetAction,
         }),
       );
 
-      const completedToken = ctx.jwtService.sign(
-        {
-          sub: completedUser.id,
-          email: completedUser.email,
-          name: completedUser.name,
-        },
-        { secret: process.env.JWT_SECRET },
-      );
-      const incompleteToken = ctx.jwtService.sign(
-        {
-          sub: incompleteUser.id,
-          email: incompleteUser.email,
-          name: incompleteUser.name,
-        },
-        { secret: process.env.JWT_SECRET },
-      );
+      const completedToken = signAccessToken(ctx.jwtService, completedUser);
+      const incompleteToken = signAccessToken(ctx.jwtService, incompleteUser);
 
       const [completedRes, incompleteRes] = await Promise.all([
         request(ctx.app.getHttpServer())
@@ -823,129 +871,138 @@ describe("Actions (e2e)", () => {
       await userRepo.delete(incompleteUser.id);
     });
 
-    it("evaluates InProgressAction cohort expression against real activity data", async () => {
-      const prerequisiteAction = await actionRepo.save(
+    it("resolves MissedActionDeadline the same on the single-user and population paths", async () => {
+      const cohortResolverService = ctx.app.get(CohortResolverService);
+      const singleMemberCohortService = ctx.app.get(SingleMemberCohortService);
+      const stamp = Date.now();
+      const hoursFromNow = (hours: number) =>
+        new Date(stamp + milliseconds({ hours }));
+
+      const upstream = await actionRepo.save(
         actionRepo.create({
-          name: `InProgress Prereq ${Date.now()}`,
-          category: "Test",
+          name: `Missed Deadline Upstream ${stamp}`,
+          category: [],
           body: "Body",
-          taskContents: "Task",
           visibilityMode: VisibilityMode.Public,
-          cohortExpression: {
-            type: "Tag",
-            tagId: ctx.defaultTag.id,
-          },
+          cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
         }),
       );
-      await eventRepo.save(
-        eventRepo.create({
-          title: "Prerequisite Launch",
-          description: "Prerequisite",
-          newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000),
-          action: prerequisiteAction,
-        }),
-      );
-
-      const inProgressUser = await userService.create({
-        email: `inprogress-${Date.now()}@example.com`,
-        password: "Password123!",
-        name: "In Progress User",
-        tags: [ctx.defaultTag],
-      });
-
-      const doneUser = await userService.create({
-        email: `done-${Date.now()}@example.com`,
-        password: "Password123!",
-        name: "Done User",
-        tags: [ctx.defaultTag],
-      });
-
-      const neverJoinedUser = await userService.create({
-        email: `neverjoined-${Date.now()}@example.com`,
-        password: "Password123!",
-        name: "Never Joined User",
-      });
-
-      // inProgressUser is in the cohort (has defaultTag) but has NOT completed
-      // (no activity record needed - being in cohort without completion = in progress)
-
-      // doneUser completed the prerequisite
-      await activityRepo.save(
-        activityRepo.create({
-          userId: doneUser.id,
-          actionId: prerequisiteAction.id,
-          type: ActionActivityType.USER_COMPLETED,
-        }),
-      );
-
-      const targetAction = await actionRepo.save(
-        actionRepo.create({
-          name: `InProgressAction Cohort ${Date.now()}`,
-          category: "Test",
-          body: "Body",
-          taskContents: "Task",
-          visibilityMode: VisibilityMode.Public,
-          preventCompletion: false,
-          onboarding: true,
-          type: ActionTaskType.Activity,
-          cohortExpression: {
-            type: "InProgressAction",
-            actionId: prerequisiteAction.id,
-          },
-        }),
-      );
-
-      const targetEvent = await eventRepo.save(
+      await eventRepo.save([
         eventRepo.create({
           title: "Launch",
           description: "Go",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000),
-          action: targetAction,
+          date: hoursFromNow(-3),
+          action: upstream,
         }),
-      );
-
-      const makeToken = (u: User) =>
-        ctx.jwtService.sign(
-          { sub: u.id, email: u.email, name: u.name },
-          { secret: process.env.JWT_SECRET },
-        );
-
-      const [inProgressRes, doneRes, neverJoinedRes] = await Promise.all([
-        request(ctx.app.getHttpServer())
-          .get("/actions/loggedIn")
-          .set("Authorization", `Bearer ${makeToken(inProgressUser)}`)
-          .expect(200),
-        request(ctx.app.getHttpServer())
-          .get("/actions/loggedIn")
-          .set("Authorization", `Bearer ${makeToken(doneUser)}`)
-          .expect(200),
-        request(ctx.app.getHttpServer())
-          .get("/actions/loggedIn")
-          .set("Authorization", `Bearer ${makeToken(neverJoinedUser)}`)
-          .expect(200),
+        eventRepo.create({
+          title: "Deadline",
+          description: "Done",
+          newStatus: ActionStatus.Resolution,
+          date: hoursFromNow(-1),
+          action: upstream,
+        }),
       ]);
 
-      const findTarget = (res: request.Response) =>
-        res.body.find((a: ActionDto) => a.id === targetAction.id);
+      const makeMember = async (label: string, signedAt: Date) => {
+        const created = await userService.create({
+          email: `missed-${label}-${stamp}@example.com`,
+          password: "Password123!",
+          name: label,
+          contractEvents: [
+            {
+              type: ContractEventType.SIGNED,
+              date: signedAt,
+              automatic: false,
+              contractId: ctx.defaultContractId,
+            },
+          ],
+          tags: [ctx.defaultTag],
+        });
+        return created.id;
+      };
+      const missedId = await makeMember("missed", hoursFromNow(-4));
+      const dismissedId = await makeMember("dismissed", hoursFromNow(-4));
+      const completedId = await makeMember("completed", hoursFromNow(-4));
+      const withdrawnId = await makeMember("withdrawn", hoursFromNow(-4));
+      const awayId = await makeMember("away", hoursFromNow(-4));
+      const lateSignerId = await makeMember("late", hoursFromNow(-2));
 
-      // In-progress user should be in cohort
-      expect(findTarget(inProgressRes)?.canParticipate).toBe(true);
-      expect(findTarget(inProgressRes)?.shouldParticipate).toBe(true);
-      // Completed user should NOT be in cohort (no longer in progress)
-      expect(findTarget(doneRes)?.canParticipate).toBe(false);
-      // Never joined user should NOT be in cohort
-      expect(findTarget(neverJoinedRes)?.canParticipate).toBe(false);
+      await activityRepo.save([
+        activityRepo.create({
+          userId: dismissedId,
+          actionId: upstream.id,
+          type: ActionActivityType.USER_DISMISSED,
+        }),
+        activityRepo.create({
+          userId: completedId,
+          actionId: upstream.id,
+          type: ActionActivityType.USER_COMPLETED,
+        }),
+        activityRepo.create({
+          userId: withdrawnId,
+          actionId: upstream.id,
+          type: ActionActivityType.USER_WONT_COMPLETE,
+        }),
+      ]);
+      await ctx.dataSource.getRepository(UserAwayRange).save({
+        userId: awayId,
+        startDate: hoursFromNow(-2.5),
+        endDate: hoursFromNow(-2),
+        reason: UserAwayRangeReason.VACATION,
+      });
 
-      // Cleanup
-      await activityRepo.delete({ actionId: prerequisiteAction.id });
-      await eventRepo.delete(targetEvent.id);
-      await actionRepo.delete(targetAction.id);
-      await actionRepo.delete(prerequisiteAction.id);
-      await userRepo.delete(inProgressUser.id);
-      await userRepo.delete(doneUser.id);
-      await userRepo.delete(neverJoinedUser.id);
+      const expected = new Map([
+        [missedId, true],
+        [dismissedId, true],
+        [completedId, false],
+        [withdrawnId, false],
+        [awayId, false],
+        [lateSignerId, false],
+      ]);
+      const missed = {
+        type: "MissedActionDeadline",
+        actionId: upstream.id,
+      } satisfies CohortExpression;
+      const notMissed = {
+        type: "NOT",
+        child: missed,
+      } satisfies CohortExpression;
+
+      const [population, notPopulation] = await Promise.all([
+        cohortResolverService.resolveCohortMemberIds(missed),
+        cohortResolverService.resolveCohortMemberIds(notMissed),
+      ]);
+      for (const [userId, isMissed] of expected) {
+        const user = await userRepo.findOneOrFail({
+          where: { id: userId },
+          relations: { tags: true, contractEvents: true, awayRanges: true },
+        });
+        const [single, notSingle] = await Promise.all([
+          singleMemberCohortService.computeIsInCohortExpression({
+            user,
+            cohortExpression: missed,
+          }),
+          singleMemberCohortService.computeIsInCohortExpression({
+            user,
+            cohortExpression: notMissed,
+          }),
+        ]);
+        expect({ userId, population: population.has(userId), single }).toEqual({
+          userId,
+          population: isMissed,
+          single: isMissed,
+        });
+        expect({
+          userId,
+          population: notPopulation.has(userId),
+          single: notSingle,
+        }).toEqual({ userId, population: !isMissed, single: !isMissed });
+      }
+
+      await activityRepo.delete({ actionId: upstream.id });
+      await actionRepo.delete(upstream.id);
+      await userRepo.delete([...expected.keys()]);
     });
 
     it("evaluates GroupLead cohort expression against real community data", async () => {
@@ -972,13 +1029,11 @@ describe("Actions (e2e)", () => {
       const targetAction = await actionRepo.save(
         actionRepo.create({
           name: `GroupLead Cohort ${Date.now()}`,
-          category: "Test",
+          category: [],
           body: "Body",
-          taskContents: "Task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
-          type: ActionTaskType.Activity,
           cohortExpression: {
             type: "GroupLead",
           },
@@ -990,16 +1045,12 @@ describe("Actions (e2e)", () => {
           title: "Launch",
           description: "Go",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000),
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
           action: targetAction,
         }),
       );
 
-      const makeToken = (u: User) =>
-        ctx.jwtService.sign(
-          { sub: u.id, email: u.email, name: u.name },
-          { secret: process.env.JWT_SECRET },
-        );
+      const makeToken = (u: User) => signAccessToken(ctx.jwtService, u);
 
       const [leaderRes, nonLeaderRes] = await Promise.all([
         request(ctx.app.getHttpServer())
@@ -1030,8 +1081,8 @@ describe("Actions (e2e)", () => {
 
     it("splits members into US and non-US by city, falling back to time zone", async () => {
       const cityRepo = ctx.dataSource.getRepository(City);
-      const recipientService = ctx.app.get(ActionEventRecipientService);
-      const actionsService = ctx.app.get(ActionsService);
+      const cohortResolverService = ctx.app.get(CohortResolverService);
+      const singleMemberCohortService = ctx.app.get(SingleMemberCohortService);
       const stamp = Date.now();
 
       const [usCity, frenchCity] = await cityRepo.save([
@@ -1074,7 +1125,7 @@ describe("Actions (e2e)", () => {
           where: { id: created.id },
         });
         user.city = location.city ?? null;
-        user.timeZone = location.timeZone;
+        user.timeZone = location.timeZone ?? null;
         return await userRepo.save(user);
       };
 
@@ -1094,8 +1145,8 @@ describe("Actions (e2e)", () => {
       const unplaceableUser = await makeUser("unplaceable", {});
 
       const [inUs, outsideUs] = await Promise.all([
-        recipientService.resolveCohortMemberIds({ type: "USMember" }),
-        recipientService.resolveCohortMemberIds({ type: "NonUSMember" }),
+        cohortResolverService.resolveCohortMemberIds({ type: "USMember" }),
+        cohortResolverService.resolveCohortMemberIds({ type: "NonUSMember" }),
       ]);
 
       expect(inUs.has(usCityUser.id)).toBe(true);
@@ -1112,7 +1163,7 @@ describe("Actions (e2e)", () => {
 
       // NOT(USMember) keeps the members we can't place, so it is wider than
       // NonUSMember.
-      const notUs = await recipientService.resolveCohortMemberIds({
+      const notUs = await cohortResolverService.resolveCohortMemberIds({
         type: "NOT",
         child: { type: "USMember" },
       });
@@ -1121,11 +1172,11 @@ describe("Actions (e2e)", () => {
 
       // The per-user path has to agree with the batch one.
       const perUser = async (user: User) => ({
-        us: await actionsService.computeIsInCohortExpression({
+        us: await singleMemberCohortService.computeIsInCohortExpression({
           user,
           cohortExpression: { type: "USMember" },
         }),
-        nonUs: await actionsService.computeIsInCohortExpression({
+        nonUs: await singleMemberCohortService.computeIsInCohortExpression({
           user,
           cohortExpression: { type: "NonUSMember" },
         }),
@@ -1147,6 +1198,56 @@ describe("Actions (e2e)", () => {
         unplaceableUser.id,
       ]);
       await cityRepo.delete([usCity.id, frenchCity.id]);
+    });
+
+    it("selects every user on AllMembers and staff users on Staff, on both paths", async () => {
+      const cohortResolverService = ctx.app.get(CohortResolverService);
+      const singleMemberCohortService = ctx.app.get(SingleMemberCohortService);
+      const stamp = Date.now();
+      const member = await userService.create({
+        email: `computed-member-${stamp}@example.com`,
+        password: "Password123!",
+        name: "Member",
+      });
+      const staffCreated = await userService.create({
+        email: `computed-staff-${stamp}@example.com`,
+        password: "Password123!",
+        name: "Staffer",
+      });
+      await userRepo.update(staffCreated.id, { staff: true });
+      const [memberUser, staffUser] = await Promise.all([
+        userRepo.findOneOrFail({ where: { id: member.id } }),
+        userRepo.findOneOrFail({ where: { id: staffCreated.id } }),
+      ]);
+
+      const [allMembers, staff] = await Promise.all([
+        cohortResolverService.resolveCohortMemberIds({ type: "AllMembers" }),
+        cohortResolverService.resolveCohortMemberIds({ type: "Staff" }),
+      ]);
+      expect(allMembers.has(memberUser.id)).toBe(true);
+      expect(allMembers.has(staffUser.id)).toBe(true);
+      expect(staff.has(staffUser.id)).toBe(true);
+      expect(staff.has(memberUser.id)).toBe(false);
+
+      const perUser = async (user: User) => ({
+        allMembers: await singleMemberCohortService.computeIsInCohortExpression(
+          { user, cohortExpression: { type: "AllMembers" } },
+        ),
+        staff: await singleMemberCohortService.computeIsInCohortExpression({
+          user,
+          cohortExpression: { type: "Staff" },
+        }),
+      });
+      expect(await perUser(memberUser)).toEqual({
+        allMembers: true,
+        staff: false,
+      });
+      expect(await perUser(staffUser)).toEqual({
+        allMembers: true,
+        staff: true,
+      });
+
+      await userRepo.delete([memberUser.id, staffUser.id]);
     });
 
     it("evaluates FormFieldValue cohort expression against real form response data", async () => {
@@ -1215,13 +1316,11 @@ describe("Actions (e2e)", () => {
       const targetAction = await actionRepo.save(
         actionRepo.create({
           name: `FormField Cohort ${Date.now()}`,
-          category: "Test",
+          category: [],
           body: "Body",
-          taskContents: "Task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
-          type: ActionTaskType.Activity,
           cohortExpression: {
             type: "FormFieldValue",
             formId: form.id,
@@ -1236,16 +1335,12 @@ describe("Actions (e2e)", () => {
           title: "Launch",
           description: "Go",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000),
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
           action: targetAction,
         }),
       );
 
-      const makeToken = (u: User) =>
-        ctx.jwtService.sign(
-          { sub: u.id, email: u.email, name: u.name },
-          { secret: process.env.JWT_SECRET },
-        );
+      const makeToken = (u: User) => signAccessToken(ctx.jwtService, u);
 
       const [respondedRes, wrongRes, noResponseRes] = await Promise.all([
         request(ctx.app.getHttpServer())
@@ -1333,13 +1428,11 @@ describe("Actions (e2e)", () => {
       const targetAction = await actionRepo.save(
         actionRepo.create({
           name: `FormField Any Cohort ${Date.now()}`,
-          category: "Test",
+          category: [],
           body: "Body",
-          taskContents: "Task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
-          type: ActionTaskType.Activity,
           cohortExpression: {
             type: "FormFieldValue",
             formId: form.id,
@@ -1354,16 +1447,12 @@ describe("Actions (e2e)", () => {
           title: "Launch",
           description: "Go",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000),
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
           action: targetAction,
         }),
       );
 
-      const makeToken = (u: User) =>
-        ctx.jwtService.sign(
-          { sub: u.id, email: u.email, name: u.name },
-          { secret: process.env.JWT_SECRET },
-        );
+      const makeToken = (u: User) => signAccessToken(ctx.jwtService, u);
 
       const [respondedRes, noResponseRes] = await Promise.all([
         request(ctx.app.getHttpServer())
@@ -1408,9 +1497,8 @@ describe("Actions (e2e)", () => {
       const prerequisiteAction = await actionRepo.save(
         actionRepo.create({
           name: `AND Prereq ${Date.now()}`,
-          category: "Test",
+          category: [],
           body: "Body",
-          taskContents: "Task",
           visibilityMode: VisibilityMode.Public,
         }),
       );
@@ -1436,13 +1524,11 @@ describe("Actions (e2e)", () => {
       const targetAction = await actionRepo.save(
         actionRepo.create({
           name: `AND Cohort ${Date.now()}`,
-          category: "Test",
+          category: [],
           body: "Body",
-          taskContents: "Task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
-          type: ActionTaskType.Activity,
           cohortExpression: {
             type: "AND",
             children: [
@@ -1458,16 +1544,12 @@ describe("Actions (e2e)", () => {
           title: "Launch",
           description: "Go",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000),
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
           action: targetAction,
         }),
       );
 
-      const makeToken = (u: User) =>
-        ctx.jwtService.sign(
-          { sub: u.id, email: u.email, name: u.name },
-          { secret: process.env.JWT_SECRET },
-        );
+      const makeToken = (u: User) => signAccessToken(ctx.jwtService, u);
 
       const [bothRes, leaderOnlyRes] = await Promise.all([
         request(ctx.app.getHttpServer())
@@ -1498,7 +1580,7 @@ describe("Actions (e2e)", () => {
       await userRepo.delete(leaderOnlyUser.id);
     });
 
-    it("excludes shouldComplete flag for users without eligible contracts when not an onboarding action", async () => {
+    it("excludes shouldComplete flag for users without a contract when not an onboarding action, and assigns a mid-window signer optionally", async () => {
       const { action, event } = await createPublishedAction(
         "Contract Restricted Action",
         {
@@ -1544,32 +1626,11 @@ describe("Actions (e2e)", () => {
         tags: [ctx.defaultTag],
       });
 
-      const unsignedToken = ctx.jwtService.sign(
-        {
-          sub: unsignedUser.id,
-          email: unsignedUser.email,
-          name: unsignedUser.name,
-        },
-        { secret: process.env.JWT_SECRET },
-      );
+      const unsignedToken = signAccessToken(ctx.jwtService, unsignedUser);
 
-      const lateToken = ctx.jwtService.sign(
-        {
-          sub: lateSigner.id,
-          email: lateSigner.email,
-          name: lateSigner.name,
-        },
-        { secret: process.env.JWT_SECRET },
-      );
+      const lateToken = signAccessToken(ctx.jwtService, lateSigner);
 
-      const eligibleToken = ctx.jwtService.sign(
-        {
-          sub: eligibleUser.id,
-          email: eligibleUser.email,
-          name: eligibleUser.name,
-        },
-        { secret: process.env.JWT_SECRET },
-      );
+      const eligibleToken = signAccessToken(ctx.jwtService, eligibleUser);
 
       const [unsignedRes, lateRes, eligibleRes] = await Promise.all([
         request(ctx.app.getHttpServer())
@@ -1596,14 +1657,112 @@ describe("Actions (e2e)", () => {
       expect(unsignedAction).toBeDefined();
       expect(unsignedAction!.shouldParticipate).toBe(false);
       expect(lateAction).toBeDefined();
-      expect(lateAction!.shouldParticipate).toBe(false);
+      expect(lateAction!.shouldParticipate).toBe(true);
+      expect(lateAction!.viewer?.optional).toBe(true);
+      expect(lateAction!.viewer?.optionalReason).toBe("contract_gap");
+      expect(lateAction!.viewer?.contractGap).toBe(true);
       expect(eligibleAction).toBeDefined();
       expect(eligibleAction!.shouldParticipate).toBe(true);
+      expect(eligibleAction!.viewer?.optional).toBe(false);
+      expect(eligibleAction!.viewer?.contractGap).toBe(false);
 
       await actionRepo.delete(action.id);
       await userRepo.delete(unsignedUser.id);
       await userRepo.delete(lateSigner.id);
       await userRepo.delete(eligibleUser.id);
+    });
+
+    it("leaves an action optional only for a mid-window signer out of their reminder task list", async () => {
+      const { action, event } = await createPublishedAction(
+        "Reminder Scope Action",
+        {
+          status: ActionStatus.MemberAction,
+          actionOverrides: {},
+        },
+      );
+
+      const signedAt = async (label: string, offsetMs: number) =>
+        userService.create({
+          email: `${label}-${Date.now()}@example.com`,
+          password: "Password123!",
+          name: label,
+          contractEvents: [
+            {
+              type: ContractEventType.SIGNED,
+              date: new Date(event.date.getTime() + offsetMs),
+              automatic: false,
+              contractId: ctx.defaultContractId,
+            },
+          ],
+          tags: [ctx.defaultTag],
+        });
+      const lateSigner = await signedAt("late", 1000);
+      const eligibleUser = await signedAt("eligible", -1000);
+
+      const actionsService = ctx.app.get(ActionsService);
+      const taskIds = async (userId: number) =>
+        (await actionsService.findUncompletedTasks(userId)).map((a) => a.id);
+
+      expect(await taskIds(lateSigner.id)).not.toContain(action.id);
+      expect(await taskIds(eligibleUser.id)).toContain(action.id);
+
+      await actionRepo.delete(action.id);
+      await userRepo.delete(lateSigner.id);
+      await userRepo.delete(eligibleUser.id);
+    });
+
+    it("keeps a dismissed action's member on its reminders", async () => {
+      const { action, event } = await createPublishedAction(
+        "Dismissed Reminder",
+        { status: ActionStatus.MemberAction, actionOverrides: {} },
+      );
+      const member = await userService.create({
+        email: `dismissed-reminder-${Date.now()}@example.com`,
+        password: "Password123!",
+        name: "Dismissed Reminder",
+        contractEvents: [
+          {
+            type: ContractEventType.SIGNED,
+            date: new Date(event.date.getTime() - 1000),
+            automatic: false,
+            contractId: ctx.defaultContractId,
+          },
+        ],
+        tags: [ctx.defaultTag],
+      });
+      await activityRepo.save(
+        activityRepo.create({
+          actionId: action.id,
+          userId: member.id,
+          type: ActionActivityType.USER_DISMISSED,
+        }),
+      );
+
+      try {
+        const tasks = await ctx.app
+          .get(ActionsService)
+          .findUncompletedTasks(member.id);
+        expect(tasks.map((task) => task.id)).toContain(action.id);
+
+        await saveLiveCohortDecisions(ctx, [action.id]);
+        const recipients = await ctx.app
+          .get(ActionEventRecipientService)
+          .findFilteredUsersForEvent(
+            {
+              ...event,
+              action: await actionRepo.findOneOrFail({
+                where: { id: action.id },
+                relations: { events: true },
+              }),
+            },
+            null,
+            ActionEventNotifType.PersonalReminder,
+          );
+        expect(recipients.map((user) => user.id)).toContain(member.id);
+      } finally {
+        await actionRepo.delete(action.id);
+        await userRepo.delete(member.id);
+      }
     });
 
     it("shows onboarding actions to users without contracts", async () => {
@@ -1621,13 +1780,9 @@ describe("Actions (e2e)", () => {
         tags: [ctx.defaultTag],
       });
 
-      const contractlessToken = ctx.jwtService.sign(
-        {
-          sub: contractlessUser.id,
-          email: contractlessUser.email,
-          name: contractlessUser.name,
-        },
-        { secret: process.env.JWT_SECRET },
+      const contractlessToken = signAccessToken(
+        ctx.jwtService,
+        contractlessUser,
       );
 
       const res = await request(ctx.app.getHttpServer())
@@ -1685,7 +1840,7 @@ describe("Actions (e2e)", () => {
       it("new action with no events should have Draft status", async () => {
         const newAction = actionRepo.create({
           name: "Status Test Action",
-          category: "Test",
+          category: [],
           body: "Test action for status computation",
         });
         await actionRepo.save(newAction);
@@ -1706,9 +1861,8 @@ describe("Actions (e2e)", () => {
       it("adding first event should change status from Draft to new status", async () => {
         const newAction = actionRepo.create({
           name: "Status Transition Test",
-          category: "Test",
+          category: [],
           body: "Test action for status transitions",
-          taskContents: "Test action for status transitions",
         });
         await actionRepo.save(newAction);
 
@@ -1724,7 +1878,7 @@ describe("Actions (e2e)", () => {
           title: "Launch Event",
           description: "Action is now gathering commitments",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000), // 1 second ago
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
         };
 
         res = await request(ctx.app.getHttpServer())
@@ -1747,9 +1901,8 @@ describe("Actions (e2e)", () => {
       it("status should reflect most recent past event when multiple events exist", async () => {
         const newAction = actionRepo.create({
           name: "Multi Event Test",
-          category: "Test",
+          category: [],
           body: "Test action for multiple events",
-          taskContents: "Test action for multiple events",
         });
         await actionRepo.save(newAction);
 
@@ -1758,7 +1911,7 @@ describe("Actions (e2e)", () => {
           title: "Launch",
           description: "Action launched",
           newStatus: ActionStatus.OfficeAction,
-          date: new Date(Date.now() - 3600000), // 1 hour ago
+          date: new Date(Date.now() - milliseconds({ hours: 1 })),
         };
 
         await request(ctx.app.getHttpServer())
@@ -1771,7 +1924,7 @@ describe("Actions (e2e)", () => {
           title: "Commitments Reached",
           description: "Action now in member action phase",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1800000), // 30 minutes ago
+          date: new Date(Date.now() - milliseconds({ minutes: 30 })),
         };
 
         await request(ctx.app.getHttpServer())
@@ -1794,9 +1947,8 @@ describe("Actions (e2e)", () => {
       it("future events should not affect current status", async () => {
         const newAction = actionRepo.create({
           name: "Future Event Test",
-          category: "Test",
+          category: [],
           body: "Test action for future events",
-          taskContents: "Test action for future events",
         });
         await actionRepo.save(newAction);
 
@@ -1805,7 +1957,7 @@ describe("Actions (e2e)", () => {
           title: "Launch",
           description: "Action launched",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 3600000), // 1 hour ago
+          date: new Date(Date.now() - milliseconds({ hours: 1 })),
         };
 
         await request(ctx.app.getHttpServer())
@@ -1818,7 +1970,7 @@ describe("Actions (e2e)", () => {
           title: "Future Completion",
           description: "Action will be completed",
           newStatus: ActionStatus.Completed,
-          date: new Date(Date.now() + 3600000), // 1 hour from now
+          date: new Date(Date.now() + milliseconds({ hours: 1 })),
         };
 
         await request(ctx.app.getHttpServer())
@@ -1888,7 +2040,7 @@ describe("Actions (e2e)", () => {
       it("status computation should handle complex timeline scenarios", async () => {
         const newAction = actionRepo.create({
           name: "Complex Timeline Test",
-          category: "Test",
+          category: [],
           body: "Test action for complex status timeline",
         });
         await actionRepo.save(newAction);
@@ -1900,22 +2052,22 @@ describe("Actions (e2e)", () => {
           {
             title: "Future Resolution",
             newStatus: ActionStatus.Resolution,
-            date: new Date(now + 7200000), // 2 hours from now
+            date: new Date(now + milliseconds({ hours: 2 })),
           },
           {
             title: "Launch",
             newStatus: ActionStatus.MemberAction,
-            date: new Date(now - 14400000), // 4 hours ago
+            date: new Date(now - milliseconds({ hours: 4 })),
           },
           {
             title: "Office Action Start",
             newStatus: ActionStatus.OfficeAction,
-            date: new Date(now - 3600000), // 1 hour ago (most recent past)
+            date: new Date(now - milliseconds({ hours: 1 })), // most recent past
           },
           {
             title: "Planned Phase",
             newStatus: ActionStatus.Planned,
-            date: new Date(now - 7200000), // 2 hours ago
+            date: new Date(now - milliseconds({ hours: 2 })),
           },
         ];
 
@@ -2062,6 +2214,30 @@ describe("Actions (e2e)", () => {
       expect(stored.name).toBeNull();
       expect(stored.instructions).toBe("Tell us how it went");
     });
+
+    it("admin update moves a follow-up form to another form", async () => {
+      const { action } = await createPublishedAction("Follow-up Move");
+      const form = await createTargetForm("Follow-up Move Form");
+      const otherForm = await createTargetForm("Follow-up Move Other Form");
+
+      const createRes = await request(ctx.app.getHttpServer())
+        .post(`/actions/${action.id}/follow-up-forms`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ actionId: action.id, formId: form.id });
+      expect(createRes.status).toBe(201);
+
+      const updateRes = await request(ctx.app.getHttpServer())
+        .patch(`/actions/follow-up-forms/${createRes.body.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ formId: otherForm.id });
+      expect(updateRes.status).toBe(200);
+      expect(updateRes.body.formId).toBe(otherForm.id);
+
+      const stored = await followUpFormRepo().findOneByOrFail({
+        id: createRes.body.id,
+      });
+      expect(stored.formId).toBe(otherForm.id);
+    });
   });
 
   describe("Additional endpoints", () => {
@@ -2070,23 +2246,191 @@ describe("Actions (e2e)", () => {
         status: ActionStatus.MemberAction,
       });
 
-      const complete = await request(ctx.app.getHttpServer())
-        .post(`/actions/complete/${action.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(201);
+      const complete = await ctx.app
+        .get(ActionsService)
+        .completeAction(action.id, ctx.testUserId);
 
-      expect(complete.body.type).toBe(ActionActivityType.USER_COMPLETED);
+      expect(complete).toMatchObject({
+        type: ActionActivityType.USER_COMPLETED,
+        isMoral: null,
+        outOfTime: null,
+      });
 
       const feed = await request(ctx.app.getHttpServer())
         .get("/actions/activities/feed")
         .query({ limit: 5 })
         .expect(200);
 
-      expect(
-        feed.body.some((activity) => activity.id === complete.body.id),
-      ).toBe(true);
+      expect(feed.body.some((activity) => activity.id === complete.id)).toBe(
+        true,
+      );
 
       await actionRepo.delete(action.id);
+    });
+
+    it("lists a form's withdrawals with their flags, null where none were given", async () => {
+      const { form } = await createFormWithSnapshot(ctx.dataSource, {
+        title: "Withdrawals Form",
+        schema: { title: "Withdrawals Form", pages: [], outputViews: [] },
+      });
+      const { action } = await createPublishedAction("Withdrawals Action", {
+        actionOverrides: { taskFormId: form.id },
+      });
+
+      try {
+        await ctx.app.get(ActionsService).createActionActivity({
+          actionId: action.id,
+          userId: ctx.testUserId,
+          type: ActionActivityType.USER_WONT_COMPLETE,
+          declineReason: "busy",
+          isOutOfTime: true,
+          isMoral: false,
+        });
+        await request(ctx.app.getHttpServer())
+          .post("/actions/createActivity")
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .send({
+            actionId: action.id,
+            userId: ctx.adminUserId,
+            type: ActionActivityType.USER_WONT_COMPLETE,
+          })
+          .expect(201);
+
+        const res = await request(ctx.app.getHttpServer())
+          .get(`/actions/withdrawals/byForm/${form.id}`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .expect(200);
+
+        expect(res.body).toHaveLength(2);
+        expect(res.body).toEqual(
+          expect.arrayContaining([
+            {
+              userId: ctx.testUserId,
+              declineReason: "busy",
+              isMoral: false,
+              outOfTime: true,
+            },
+            {
+              userId: ctx.adminUserId,
+              declineReason: null,
+              isMoral: null,
+              outOfTime: null,
+            },
+          ]),
+        );
+      } finally {
+        await actionRepo.delete(action.id);
+      }
+    });
+
+    it("shows a withdrawal's flags in a member's action relations, omitting absent ones", async () => {
+      const { action } = await createPublishedAction("Relations Withdrawal");
+
+      try {
+        await ctx.app.get(ActionsService).createActionActivity({
+          actionId: action.id,
+          userId: ctx.testUserId,
+          type: ActionActivityType.USER_WONT_COMPLETE,
+          isOutOfTime: false,
+          isMoral: true,
+        });
+        await ctx.app.get(ActionsService).createActionActivity({
+          actionId: action.id,
+          userId: ctx.adminUserId,
+          type: ActionActivityType.USER_WONT_COMPLETE,
+          adminCreated: true,
+        });
+
+        const relationOf = async (userId: number) => {
+          const res = await request(ctx.app.getHttpServer())
+            .get(`/actions/action-relations/${userId}`)
+            .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+            .expect(200);
+          return res.body.users
+            .find((user) => user.userId === userId)
+            ?.relations.find((relation) => relation.actionId === action.id);
+        };
+
+        expect(await relationOf(ctx.testUserId)).toMatchObject({
+          isMoral: true,
+          outOfTime: false,
+        });
+        const flagless = await relationOf(ctx.adminUserId);
+        expect(flagless).toBeDefined();
+        expect(flagless).not.toHaveProperty("isMoral");
+        expect(flagless).not.toHaveProperty("outOfTime");
+      } finally {
+        await actionRepo.delete(action.id);
+      }
+    });
+
+    it("closes ordinary completion at the deadline unless late completion is allowed", async () => {
+      const createClosedAction = async (
+        shouldCompleteAfterDeadline: boolean,
+      ) => {
+        const { action } = await createPublishedAction(
+          `Late Completion ${shouldCompleteAfterDeadline}`,
+          { actionOverrides: { shouldCompleteAfterDeadline } },
+        );
+        await eventRepo.save(
+          eventRepo.create({
+            title: "Deadline",
+            description: "Office phase",
+            newStatus: ActionStatus.OfficeAction,
+            date: new Date(Date.now() - milliseconds({ seconds: 0.5 })),
+            action,
+          }),
+        );
+        return action;
+      };
+      const viewOf = async (actionId: number) =>
+        (
+          await request(ctx.app.getHttpServer())
+            .get("/actions/loggedIn")
+            .set("Authorization", `Bearer ${ctx.accessToken}`)
+            .expect(200)
+        ).body.find((action: ActionDto) => action.id === actionId);
+      const closed = await createClosedAction(false);
+      const closedMidSubmit = await createClosedAction(false);
+      const lateAllowed = await createClosedAction(true);
+
+      try {
+        const closedView = await viewOf(closed.id);
+        expect(closedView.canParticipate).toBe(false);
+        expect(closedView.viewer.canComplete).toBe(false);
+        await expect(
+          ctx.app.get(ActionsService).completeAction(closed.id, ctx.testUserId),
+        ).rejects.toThrow(MEMBER_ACTION_DEADLINE_PASSED);
+
+        await request(ctx.app.getHttpServer())
+          .post("/actions/createActivity")
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .send({
+            actionId: closed.id,
+            userId: ctx.testUserId,
+            type: ActionActivityType.USER_COMPLETED,
+          })
+          .expect(201);
+
+        const lateView = await viewOf(lateAllowed.id);
+        expect(lateView.canParticipate).toBe(true);
+        expect(lateView.viewer.canComplete).toBe(true);
+        await ctx.app
+          .get(ActionsService)
+          .completeAction(lateAllowed.id, ctx.testUserId);
+
+        await ctx.app
+          .get(ActionsService)
+          .completeAction(closedMidSubmit.id, ctx.testUserId, {
+            now: new Date(Date.now() - milliseconds({ minutes: 1 })),
+          });
+      } finally {
+        await actionRepo.delete([
+          closed.id,
+          closedMidSubmit.id,
+          lateAllowed.id,
+        ]);
+      }
     });
 
     it("rejects invalid before cursor when fetching the activity feed", async () => {
@@ -2101,12 +2445,11 @@ describe("Actions (e2e)", () => {
         status: ActionStatus.MemberAction,
       });
 
-      const completion = await request(ctx.app.getHttpServer())
-        .post(`/actions/complete/${action.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(201);
+      const completion = await ctx.app
+        .get(ActionsService)
+        .completeAction(action.id, ctx.testUserId);
 
-      const activityId = completion.body.id;
+      const activityId = completion.id;
 
       const activities = await request(ctx.app.getHttpServer())
         .get(`/actions/${action.id}/activities`)
@@ -2149,18 +2492,9 @@ describe("Actions (e2e)", () => {
         tags: [ctx.defaultTag],
       });
 
-      await userService.makeFriendsAutomated(ctx.testUserId, friend.id);
+      await friendService.makeFriendsAutomated(ctx.testUserId, friend.id);
 
-      const friendToken = ctx.jwtService.sign({
-        sub: friend.id,
-        email: friend.email,
-        name: friend.name,
-      });
-
-      await request(ctx.app.getHttpServer())
-        .post(`/actions/complete/${action.id}`)
-        .set("Authorization", `Bearer ${friendToken}`)
-        .expect(201);
+      await ctx.app.get(ActionsService).completeAction(action.id, friend.id);
 
       const friendActivity = await request(ctx.app.getHttpServer())
         .get("/actions/friendActivity")
@@ -2179,12 +2513,11 @@ describe("Actions (e2e)", () => {
         { status: ActionStatus.MemberAction },
       );
 
-      const completion = await request(ctx.app.getHttpServer())
-        .post(`/actions/complete/${action.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(201);
+      const completion = await ctx.app
+        .get(ActionsService)
+        .completeAction(action.id, ctx.testUserId);
 
-      const activityId = completion.body.id;
+      const activityId = completion.id;
 
       const like = await request(ctx.app.getHttpServer())
         .post(`/actions/likeActivity/${activityId}`)
@@ -2203,17 +2536,89 @@ describe("Actions (e2e)", () => {
       await actionRepo.delete(action.id);
     });
 
+    it("reports an activity's likers and whether the requester liked it", async () => {
+      const { action } = await createPublishedAction("Activity Likers", {
+        status: ActionStatus.MemberAction,
+      });
+      const { id: activityId } = await ctx.app
+        .get(ActionsService)
+        .completeAction(action.id, ctx.testUserId);
+      const post = (path: string, token: string) =>
+        request(ctx.app.getHttpServer())
+          .post(`/actions/${path}/${activityId}`)
+          .set("Authorization", `Bearer ${token}`)
+          .expect(201);
+      const get = (token?: string) => {
+        const req = request(ctx.app.getHttpServer()).get(
+          `/actions/activities/${activityId}`,
+        );
+        return (token ? req.set("Authorization", `Bearer ${token}`) : req)
+          .expect(200)
+          .then((res) => res.body);
+      };
+      const likerIds = (body: { likes: { id: number }[] }) =>
+        body.likes.map((like) => like.id);
+
+      await post("likeActivity", ctx.adminAccessToken);
+      const relike = await post("likeActivity", ctx.adminAccessToken);
+      expect(relike.body.likesCount).toBe(1);
+      expect(likerIds(relike.body)).toEqual([ctx.adminUserId]);
+
+      const unlikeUnliked = await post("unlikeActivity", ctx.accessToken);
+      expect(unlikeUnliked.body.likesCount).toBe(1);
+      expect(likerIds(unlikeUnliked.body)).toEqual([ctx.adminUserId]);
+
+      const asLiker = await get(ctx.adminAccessToken);
+      expect(asLiker.likedByMe).toBe(true);
+      expect(asLiker.likesCount).toBe(1);
+      expect(likerIds(asLiker)).toEqual([ctx.adminUserId]);
+      expect((await get(ctx.accessToken)).likedByMe).toBe(false);
+      expect((await get()).likedByMe).toBeUndefined();
+
+      const unliked = await post("unlikeActivity", ctx.adminAccessToken);
+      expect(unliked.body.likesCount).toBe(0);
+      expect(unliked.body.likes).toEqual([]);
+      expect((await get(ctx.adminAccessToken)).likedByMe).toBe(false);
+
+      await actionRepo.delete(action.id);
+    });
+
+    it("rejects likes and group members for activity types hidden from feeds", async () => {
+      const { action } = await createPublishedAction("Hidden Activity Type", {
+        status: ActionStatus.MemberAction,
+      });
+      const dismissal = await activityRepo.save(
+        activityRepo.create({
+          userId: ctx.testUserId,
+          actionId: action.id,
+          type: ActionActivityType.USER_DISMISSED,
+        }),
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post(`/actions/likeActivity/${dismissal.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(400);
+
+      await request(ctx.app.getHttpServer())
+        .get("/actions/globalFeed/activityGroupMembers")
+        .query({ actionId: action.id, activityType: "user_dismissed" })
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(400);
+
+      await actionRepo.delete(action.id);
+    });
+
     it("notifies activity owners when their updates receive likes", async () => {
       const { action } = await createPublishedAction("Activity Like Notice", {
         status: ActionStatus.MemberAction,
       });
 
-      const completion = await request(ctx.app.getHttpServer())
-        .post(`/actions/complete/${action.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(201);
+      const completion = await ctx.app
+        .get(ActionsService)
+        .completeAction(action.id, ctx.testUserId);
 
-      const activityId = completion.body.id;
+      const activityId = completion.id;
 
       await request(ctx.app.getHttpServer())
         .post(`/actions/likeActivity/${activityId}`)
@@ -2244,12 +2649,11 @@ describe("Actions (e2e)", () => {
         status: ActionStatus.MemberAction,
       });
 
-      const completion = await request(ctx.app.getHttpServer())
-        .post(`/actions/complete/${action.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(201);
+      const completion = await ctx.app
+        .get(ActionsService)
+        .completeAction(action.id, ctx.testUserId);
 
-      const activityId = completion.body.id;
+      const activityId = completion.id;
 
       await request(ctx.app.getHttpServer())
         .post(`/actions/likeActivity/${activityId}`)
@@ -2280,12 +2684,11 @@ describe("Actions (e2e)", () => {
         { status: ActionStatus.MemberAction },
       );
 
-      const completion = await request(ctx.app.getHttpServer())
-        .post(`/actions/complete/${action.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(201);
+      const completion = await ctx.app
+        .get(ActionsService)
+        .completeAction(action.id, ctx.testUserId);
 
-      const activityId = completion.body.id;
+      const activityId = completion.id;
 
       const secondLiker = await userService.create({
         email: `second-liker-${Date.now()}@example.com`,
@@ -2293,14 +2696,7 @@ describe("Actions (e2e)", () => {
         name: "Second Liker",
         tags: [ctx.defaultTag],
       });
-      const secondLikerToken = ctx.jwtService.sign(
-        {
-          sub: secondLiker.id,
-          email: secondLiker.email,
-          name: secondLiker.name,
-        },
-        { secret: process.env.JWT_SECRET },
-      );
+      const secondLikerToken = signAccessToken(ctx.jwtService, secondLiker);
 
       await request(ctx.app.getHttpServer())
         .post(`/actions/likeActivity/${activityId}`)
@@ -2339,9 +2735,305 @@ describe("Actions (e2e)", () => {
     });
   });
 
+  describe("Notification plan previews", () => {
+    let reminderGroupRepo: Repository<ReminderGroup>;
+    let contractEventRepo: Repository<ContractEvent>;
+
+    beforeAll(() => {
+      reminderGroupRepo = ctx.dataSource.getRepository(ReminderGroup);
+      contractEventRepo = ctx.dataSource.getRepository(ContractEvent);
+    });
+
+    const signMemberContract = async (userId: number) => {
+      await contractEventRepo.delete({ user: { id: userId } });
+      await contractEventRepo.save(
+        contractEventRepo.create({
+          user: { id: userId },
+          type: ContractEventType.SIGNED,
+          date: new Date(Date.now() - milliseconds({ days: 1 })),
+          automatic: false,
+          contractId: ctx.defaultContractId,
+        }),
+      );
+    };
+
+    const createPlanSourceAction = () =>
+      createPublishedAction(`Notification Plan Preview ${Date.now()}`, {
+        status: ActionStatus.MemberAction,
+      });
+
+    const createCustomCohortGroup = (event: ActionEvent, users: User[]) =>
+      reminderGroupRepo.save(
+        reminderGroupRepo.create({
+          name: `plan-preview-${Date.now()}`,
+          memberActionEvent: event,
+          cohortType: ReminderCohortType.Custom,
+          users,
+          timingMode: ReminderGroupTimingMode.Absolute,
+          sendAtAbsolute: new Date(Date.now() + milliseconds({ days: 1 })),
+          emailMessage: "Reminder for #{firstname} on #{action}",
+          emailSubject: "Reminder: #{action}",
+          textMessage: "Hi #{firstname}, remember #{action}",
+        }),
+      );
+
+    const expectNoSensitiveUserFields = (user: Record<string, unknown>) => {
+      expect(user).not.toHaveProperty("password");
+      expect(user).not.toHaveProperty("emailVerified");
+      expect(user).not.toHaveProperty("phoneNumberUnsubscribed");
+    };
+
+    it("plansForGroup returns UserDto members without entity-only fields", async () => {
+      const { event } = await createPlanSourceAction();
+      await signMemberContract(ctx.testUserId);
+      const member = await userRepo.findOneOrFail({
+        where: { id: ctx.testUserId },
+      });
+      const group = await createCustomCohortGroup(event, [member]);
+
+      await saveLiveCohortDecisions(ctx);
+      const res = await request(ctx.app.getHttpServer())
+        .get(`/actions/plansForGroup/${group.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      expect(res.body.length).toBeGreaterThan(0);
+      const plan = res.body[0];
+      expect(plan.user.id).toBe(ctx.testUserId);
+      expectNoSensitiveUserFields(plan.user);
+    });
+
+    it("checkTentativePlans returns UserDto members without entity-only fields", async () => {
+      const { event } = await createPlanSourceAction();
+      await signMemberContract(ctx.testUserId);
+
+      await saveLiveCohortDecisions(ctx);
+      const res = await request(ctx.app.getHttpServer())
+        .post(`/actions/events/${event.id}/checkTentativePlans`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          name: `plan-preview-${Date.now()}`,
+          cohortType: ReminderCohortType.Custom,
+          timingMode: ReminderGroupTimingMode.Absolute,
+          sendAtAbsolute: new Date(Date.now() + milliseconds({ days: 1 })),
+          emailMessage: "Reminder for #{firstname} on #{action}",
+          emailSubject: "Reminder: #{action}",
+          textMessage: "Hi #{firstname}, remember #{action}",
+          pushMessage: "",
+          useSuiteTaskCount: false,
+          excludeOptionalActions: false,
+          excludePreviouslyNotified: false,
+          userIds: [ctx.testUserId],
+        });
+      expect(res.status).toBe(201);
+
+      expect(res.body.length).toBeGreaterThan(0);
+      const plan = res.body[0];
+      expect(plan.user.id).toBe(ctx.testUserId);
+      expectNoSensitiveUserFields(plan.user);
+    });
+  });
+
+  describe("Participating-groups visibility in activity surfaces", () => {
+    const activityGroupNames = (
+      body: {
+        type: string;
+        activityGroup?: { actionName: string };
+      }[],
+    ) =>
+      body
+        .filter((item) => item.type === GlobalFeedItemType.ActivityGroup)
+        .map((item) => item.activityGroup?.actionName);
+
+    it("hides associated activity from users outside the cohort", async () => {
+      const { action } = await createPublishedAction(
+        `Hidden Cohort Activity ${Date.now()}`,
+        {
+          status: ActionStatus.MemberAction,
+          actionOverrides: {
+            visibilityMode: VisibilityMode.ParticipatingGroups,
+            cohortExpression: {
+              type: "Tag",
+              tagId: ctx.defaultTag.id,
+            },
+          },
+        },
+      );
+
+      const complete = await ctx.app
+        .get(ActionsService)
+        .completeAction(action.id, ctx.testUserId);
+
+      const outsiderGlobal = await request(ctx.app.getHttpServer())
+        .get("/actions/globalFeed")
+        .query({ limit: 50 })
+        .set("Authorization", `Bearer ${outsiderToken}`)
+        .expect(200);
+      expect(activityGroupNames(outsiderGlobal.body)).not.toContain(
+        action.name,
+      );
+
+      const anonymousGlobal = await request(ctx.app.getHttpServer())
+        .get("/actions/globalFeed")
+        .query({ limit: 50 })
+        .expect(200);
+      expect(activityGroupNames(anonymousGlobal.body)).not.toContain(
+        action.name,
+      );
+
+      const memberGlobal = await request(ctx.app.getHttpServer())
+        .get("/actions/globalFeed")
+        .query({ limit: 50 })
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      expect(activityGroupNames(memberGlobal.body)).toContain(action.name);
+
+      const outsiderFeed = await request(ctx.app.getHttpServer())
+        .get("/actions/activities/feed")
+        .query({ limit: 50 })
+        .set("Authorization", `Bearer ${outsiderToken}`)
+        .expect(200);
+      expect(
+        outsiderFeed.body.some(
+          (activity: { actionName: string }) =>
+            activity.actionName === action.name,
+        ),
+      ).toBe(false);
+
+      const memberFeed = await request(ctx.app.getHttpServer())
+        .get("/actions/activities/feed")
+        .query({ limit: 50 })
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      expect(
+        memberFeed.body.some(
+          (activity: { actionName: string }) =>
+            activity.actionName === action.name,
+        ),
+      ).toBe(true);
+
+      const outsiderUserFeed = await request(ctx.app.getHttpServer())
+        .get(`/actions/userFeed/${ctx.testUserId}`)
+        .set("Authorization", `Bearer ${outsiderToken}`)
+        .expect(200);
+      expect(
+        outsiderUserFeed.body.some(
+          (item: { activity?: { actionName: string } }) =>
+            item.activity?.actionName === action.name,
+        ),
+      ).toBe(false);
+
+      const outsiderCompleted = await request(ctx.app.getHttpServer())
+        .get(`/actions/completed/${ctx.testUserId}`)
+        .set("Authorization", `Bearer ${outsiderToken}`)
+        .expect(200);
+      expect(
+        outsiderCompleted.body.some(
+          (activity: { actionName: string }) =>
+            activity.actionName === action.name,
+        ),
+      ).toBe(false);
+
+      await request(ctx.app.getHttpServer())
+        .get(`/actions/activities/${complete.id}`)
+        .set("Authorization", `Bearer ${outsiderToken}`)
+        .expect(404);
+
+      await request(ctx.app.getHttpServer())
+        .get(`/actions/${action.id}/activities`)
+        .set("Authorization", `Bearer ${outsiderToken}`)
+        .expect(404);
+
+      await request(ctx.app.getHttpServer())
+        .get("/actions/globalFeed/activityGroupMembers")
+        .query({ actionId: action.id, activityType: "user_completed" })
+        .set("Authorization", `Bearer ${outsiderToken}`)
+        .expect(404);
+
+      await actionRepo.delete(action.id);
+    });
+
+    it("hides action updates from users outside the cohort", async () => {
+      const { action } = await createPublishedAction(
+        `Hidden Cohort Update ${Date.now()}`,
+        {
+          status: ActionStatus.MemberAction,
+          actionOverrides: {
+            visibilityMode: VisibilityMode.ParticipatingGroups,
+            cohortExpression: {
+              type: "Tag",
+              tagId: ctx.defaultTag.id,
+            },
+          },
+        },
+      );
+
+      const created = await request(ctx.app.getHttpServer())
+        .post(`/actions/createUpdate/${action.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          title: "Restricted update",
+          shortNotifString: "something happened",
+          date: new Date().toISOString(),
+          notifyType: "none",
+          notificationMode: "normal",
+        })
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/actions/updateUpdate/${created.body.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          schema: {
+            blocks: [
+              { type: "display", kind: "header", id: "b1", text: "Body" },
+            ],
+          },
+          expectedSchemaSnapshotId: created.body.schemaSnapshotId,
+        })
+        .expect(200);
+
+      const outsiderUpdates = await request(ctx.app.getHttpServer())
+        .get("/actions/updates")
+        .set("Authorization", `Bearer ${outsiderToken}`)
+        .expect(200);
+      expect(
+        outsiderUpdates.body.some(
+          (update: { actionId: number }) => update.actionId === action.id,
+        ),
+      ).toBe(false);
+
+      const memberUpdates = await request(ctx.app.getHttpServer())
+        .get("/actions/updates")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      expect(
+        memberUpdates.body.some(
+          (update: { actionId: number }) => update.actionId === action.id,
+        ),
+      ).toBe(true);
+
+      const outsiderGlobal = await request(ctx.app.getHttpServer())
+        .get("/actions/globalFeed")
+        .query({ limit: 50 })
+        .set("Authorization", `Bearer ${outsiderToken}`)
+        .expect(200);
+      expect(
+        outsiderGlobal.body.some(
+          (item: { type: string; actionUpdate?: { actionId: number } }) =>
+            item.type === GlobalFeedItemType.ActionUpdate &&
+            item.actionUpdate?.actionId === action.id,
+        ),
+      ).toBe(false);
+
+      await actionRepo.delete(action.id);
+    });
+  });
+
   describe("Global feed", () => {
     let activeUser: User | null = null;
     let suspendedUser: User | null = null;
+    let facepileUsers: User[] = [];
 
     afterEach(async () => {
       if (activeUser) {
@@ -2352,6 +3044,10 @@ describe("Actions (e2e)", () => {
         await userRepo.delete(suspendedUser.id);
         suspendedUser = null;
       }
+      for (const user of facepileUsers) {
+        await userRepo.delete(user.id);
+      }
+      facepileUsers = [];
     });
 
     it("excludes suspended members from new member feed items", async () => {
@@ -2365,7 +3061,7 @@ describe("Actions (e2e)", () => {
         contractEvents: [
           {
             type: ContractEventType.SIGNED,
-            date: new Date(now - 60_000),
+            date: new Date(now - milliseconds({ minutes: 1 })),
             automatic: false,
             contractId: ctx.defaultContractId,
           },
@@ -2380,13 +3076,13 @@ describe("Actions (e2e)", () => {
         contractEvents: [
           {
             type: ContractEventType.SIGNED,
-            date: new Date(now - 120_000),
+            date: new Date(now - milliseconds({ minutes: 2 })),
             automatic: false,
             contractId: ctx.defaultContractId,
           },
           {
             type: ContractEventType.SUSPENDED,
-            date: new Date(now - 30_000),
+            date: new Date(now - milliseconds({ seconds: 30 })),
             automatic: false,
           },
         ],
@@ -2408,6 +3104,87 @@ describe("Actions (e2e)", () => {
 
       expect(newMemberIds).toContain(activeUser.id);
       expect(newMemberIds).not.toContain(suspendedUser.id);
+    });
+
+    it("keeps a member with a profile picture in the facepile past a full run of more recent ones without", async () => {
+      const now = Date.now();
+      const createMember = (label: string, joinedMinutesAgo: number) =>
+        userService.create({
+          email: `${label}-${now}@example.com`,
+          password: "Password123!",
+          name: label,
+          tags: [ctx.defaultTag],
+          contractEvents: [
+            {
+              type: ContractEventType.SIGNED,
+              date: new Date(now - milliseconds({ minutes: joinedMinutesAgo })),
+              automatic: false,
+              contractId: ctx.defaultContractId,
+            },
+          ],
+        });
+
+      const photoUser = await createMember("with-photo", 30);
+      facepileUsers.push(photoUser);
+      await userRepo.update(photoUser.id, {
+        profilePicture: "https://example.com/photo.jpg",
+      });
+      for (let i = 1; i <= 2 * GLOBAL_FEED_FACEPILE_LIMIT; i++) {
+        const member = await createMember(`no-photo-${i}`, i);
+        facepileUsers.push(member);
+        if (i % 2 === 0) {
+          await userRepo.update(member.id, { profilePicture: " " });
+        }
+      }
+
+      const res = await request(ctx.app.getHttpServer())
+        .get("/actions/globalFeed")
+        .query({ limit: 20 })
+        .expect(200);
+
+      const newMembersItem = res.body.find(
+        (item) => item.type === GlobalFeedItemType.NewMembers,
+      );
+
+      expect(newMembersItem).toBeDefined();
+      const newMemberIds: number[] = newMembersItem.newMembers.users.map(
+        (user) => user.id,
+      );
+
+      expect(newMemberIds).toContain(photoUser.id);
+      expect(newMembersItem.newMembers.count).toBeGreaterThan(
+        GLOBAL_FEED_FACEPILE_LIMIT,
+      );
+      expect(new Date(newMembersItem.date).getTime()).toBeGreaterThanOrEqual(
+        now - milliseconds({ minutes: 1 }),
+      );
+    });
+
+    it("names the action and lists its members in a global feed activity group", async () => {
+      const { action } = await createPublishedAction(
+        `Grouped Activity ${Date.now()}`,
+        { status: ActionStatus.MemberAction },
+      );
+      await ctx.app
+        .get(ActionsService)
+        .completeAction(action.id, ctx.testUserId);
+
+      const res = await request(ctx.app.getHttpServer())
+        .get("/actions/globalFeed")
+        .query({ limit: 50 })
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      const group = res.body.find(
+        (item: { activityGroup?: { actionId: number } }) =>
+          item.activityGroup?.actionId === action.id,
+      )?.activityGroup;
+      expect(group).toBeDefined();
+      expect(group.actionName).toBe(action.name);
+      expect(group.users.map((user: { id: number }) => user.id)).toEqual([
+        ctx.testUserId,
+      ]);
+
+      await actionRepo.delete(action.id);
     });
   });
 
@@ -2431,9 +3208,8 @@ describe("Actions (e2e)", () => {
       const action = await actionRepo.save(
         actionRepo.create({
           name,
-          category: "Test",
+          category: [],
           body: "Ordering test action",
-          taskContents: "Ordering test task",
           shortDescription: `${name} short description`,
           visibilityMode: VisibilityMode.Public,
           priority: options.priority ?? 0,
@@ -2472,15 +3248,24 @@ describe("Actions (e2e)", () => {
       // Action with no deadline (only past MemberAction, no event after it)
       const noDeadlineAction = await createOrderingAction("No Deadline", {
         events: [
-          { status: ActionStatus.MemberAction, date: new Date(now - 3600000) },
+          {
+            status: ActionStatus.MemberAction,
+            date: new Date(now - milliseconds({ hours: 1 })),
+          },
         ],
       });
 
       // Action with a deadline (MemberAction + Resolution event after it)
       const hasDeadlineAction = await createOrderingAction("Has Deadline", {
         events: [
-          { status: ActionStatus.MemberAction, date: new Date(now - 3600000) }, // past MemberAction
-          { status: ActionStatus.Resolution, date: new Date(now + 3600000) }, // future deadline
+          {
+            status: ActionStatus.MemberAction,
+            date: new Date(now - milliseconds({ hours: 1 })),
+          },
+          {
+            status: ActionStatus.Resolution,
+            date: new Date(now + milliseconds({ hours: 1 })),
+          },
         ],
       });
 
@@ -2507,8 +3292,14 @@ describe("Actions (e2e)", () => {
       // Action with later deadline
       const laterDeadlineAction = await createOrderingAction("Later Deadline", {
         events: [
-          { status: ActionStatus.MemberAction, date: new Date(now - 3600000) }, // past MemberAction
-          { status: ActionStatus.Resolution, date: new Date(now + 7200000) }, // deadline 2 hours from now
+          {
+            status: ActionStatus.MemberAction,
+            date: new Date(now - milliseconds({ hours: 1 })),
+          },
+          {
+            status: ActionStatus.Resolution,
+            date: new Date(now + milliseconds({ hours: 2 })),
+          },
         ],
       });
 
@@ -2519,9 +3310,12 @@ describe("Actions (e2e)", () => {
           events: [
             {
               status: ActionStatus.MemberAction,
-              date: new Date(now - 3600000),
-            }, // past MemberAction
-            { status: ActionStatus.Resolution, date: new Date(now + 1800000) }, // deadline 30 min from now
+              date: new Date(now - milliseconds({ hours: 1 })),
+            },
+            {
+              status: ActionStatus.Resolution,
+              date: new Date(now + milliseconds({ minutes: 30 })),
+            },
           ],
         },
       );
@@ -2553,7 +3347,7 @@ describe("Actions (e2e)", () => {
           events: [
             {
               status: ActionStatus.OfficeAction,
-              date: new Date(now - 3600000),
+              date: new Date(now - milliseconds({ hours: 1 })),
             },
           ],
         },
@@ -2566,7 +3360,7 @@ describe("Actions (e2e)", () => {
           events: [
             {
               status: ActionStatus.MemberAction,
-              date: new Date(now - 3600000),
+              date: new Date(now - milliseconds({ hours: 1 })),
             },
           ],
         },
@@ -2595,14 +3389,20 @@ describe("Actions (e2e)", () => {
       // Action with older member action event
       const olderAction = await createOrderingAction("Older Member Action", {
         events: [
-          { status: ActionStatus.MemberAction, date: new Date(now - 7200000) }, // 2 hours ago
+          {
+            status: ActionStatus.MemberAction,
+            date: new Date(now - milliseconds({ hours: 2 })),
+          },
         ],
       });
 
       // Action with more recent member action event
       const newerAction = await createOrderingAction("Newer Member Action", {
         events: [
-          { status: ActionStatus.MemberAction, date: new Date(now - 1800000) }, // 30 min ago
+          {
+            status: ActionStatus.MemberAction,
+            date: new Date(now - milliseconds({ minutes: 30 })),
+          },
         ],
       });
 
@@ -2625,7 +3425,7 @@ describe("Actions (e2e)", () => {
 
     it("uses priority as final tiebreaker (lower number = higher priority)", async () => {
       const now = Date.now();
-      const sameEventDate = new Date(now - 3600000);
+      const sameEventDate = new Date(now - milliseconds({ hours: 1 }));
 
       // Lower priority (higher number)
       const lowPriorityAction = await createOrderingAction("Low Priority", {
@@ -2662,8 +3462,14 @@ describe("Actions (e2e)", () => {
       // 1. Action with soonest deadline (should be first)
       const soonestDeadline = await createOrderingAction("Soonest Deadline", {
         events: [
-          { status: ActionStatus.MemberAction, date: new Date(now - 3600000) }, // past MemberAction
-          { status: ActionStatus.Resolution, date: new Date(now + 1800000) }, // deadline 30 min from now
+          {
+            status: ActionStatus.MemberAction,
+            date: new Date(now - milliseconds({ hours: 1 })),
+          },
+          {
+            status: ActionStatus.Resolution,
+            date: new Date(now + milliseconds({ minutes: 30 })),
+          },
         ],
         priority: 5,
       });
@@ -2671,8 +3477,14 @@ describe("Actions (e2e)", () => {
       // 2. Action with later deadline (should be second)
       const laterDeadline = await createOrderingAction("Later Deadline", {
         events: [
-          { status: ActionStatus.MemberAction, date: new Date(now - 3600000) }, // past MemberAction
-          { status: ActionStatus.Resolution, date: new Date(now + 3600000) }, // deadline 1 hour from now
+          {
+            status: ActionStatus.MemberAction,
+            date: new Date(now - milliseconds({ hours: 1 })),
+          },
+          {
+            status: ActionStatus.Resolution,
+            date: new Date(now + milliseconds({ hours: 1 })),
+          },
         ],
         priority: 1,
       });
@@ -2684,8 +3496,8 @@ describe("Actions (e2e)", () => {
           events: [
             {
               status: ActionStatus.MemberAction,
-              date: new Date(now - 1800000),
-            }, // 30 min ago
+              date: new Date(now - milliseconds({ minutes: 30 })),
+            },
           ],
           priority: 5,
         },
@@ -2698,8 +3510,8 @@ describe("Actions (e2e)", () => {
           events: [
             {
               status: ActionStatus.MemberAction,
-              date: new Date(now - 7200000),
-            }, // 2 hours ago
+              date: new Date(now - milliseconds({ hours: 2 })),
+            },
           ],
           priority: 1,
         },
@@ -2747,9 +3559,13 @@ describe("Actions (e2e)", () => {
           events: [
             {
               status: ActionStatus.MemberAction,
-              date: new Date(now - 10800000),
-            }, // 3h ago
-            { status: ActionStatus.Resolution, date: new Date(now - 1800000) }, // 30min ago (past, not a deadline)
+              date: new Date(now - milliseconds({ hours: 3 })),
+            },
+            // past, not a deadline
+            {
+              status: ActionStatus.Resolution,
+              date: new Date(now - milliseconds({ minutes: 30 })),
+            },
           ],
         },
       );
@@ -2761,8 +3577,8 @@ describe("Actions (e2e)", () => {
           events: [
             {
               status: ActionStatus.MemberAction,
-              date: new Date(now - 3600000),
-            }, // 1h ago
+              date: new Date(now - milliseconds({ hours: 1 })),
+            },
           ],
         },
       );
@@ -2793,19 +3609,17 @@ describe("Actions (e2e)", () => {
     let newUserToken: string;
 
     beforeAll(async () => {
-      const actionEventDate = new Date(Date.now() - 3600000); // 1 hour ago
+      const actionEventDate = new Date(Date.now() - milliseconds({ hours: 1 }));
 
       onboardingAction = await actionRepo.save(
         actionRepo.create({
           name: `Onboarding Eligibility Test ${Date.now()}`,
-          category: "Test",
+          category: [],
           body: "Onboarding action body",
           shortDescription: "Onboarding short desc",
-          taskContents: "Onboarding task",
           visibilityMode: VisibilityMode.Public,
           priority: 0,
           preventCompletion: false,
-          type: ActionTaskType.Activity,
           onboarding: true,
           cohortExpression: {
             type: "Tag",
@@ -2832,7 +3646,9 @@ describe("Actions (e2e)", () => {
         contractEvents: [
           {
             type: ContractEventType.SIGNED,
-            date: new Date(actionEventDate.getTime() - 86400000), // 1 day before action
+            date: new Date(
+              actionEventDate.getTime() - milliseconds({ days: 1 }),
+            ), // 1 day before action
             automatic: false,
             contractId: ctx.defaultContractId,
           },
@@ -2856,23 +3672,9 @@ describe("Actions (e2e)", () => {
         tags: [ctx.defaultTag],
       });
 
-      existingUserToken = ctx.jwtService.sign(
-        {
-          sub: existingUser.id,
-          email: existingUser.email,
-          name: existingUser.name,
-        },
-        { secret: process.env.JWT_SECRET },
-      );
+      existingUserToken = signAccessToken(ctx.jwtService, existingUser);
 
-      newUserToken = ctx.jwtService.sign(
-        {
-          sub: newUser.id,
-          email: newUser.email,
-          name: newUser.name,
-        },
-        { secret: process.env.JWT_SECRET },
-      );
+      newUserToken = signAccessToken(ctx.jwtService, newUser);
     });
 
     afterAll(async () => {
@@ -3069,19 +3871,27 @@ describe("Actions (e2e)", () => {
       blocks: [{ type: "display", kind: "header", id: "b1", text }],
     });
 
-    const createUpdate = async (body: Record<string, unknown>) => {
+    const createUpdate = async (
+      body: Record<string, unknown>,
+      actionId = testAction.id,
+    ) => {
       const now = new Date().toISOString();
       const created = await request(ctx.app.getHttpServer())
-        .post(`/actions/createUpdate/${testAction.id}`)
+        .post(`/actions/createUpdate/${actionId}`)
         .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({
           title: "Notify test",
           shortNotifString: "something happened",
           date: now,
           notifyType: "all_members",
+          notificationMode: "normal",
           ...body,
         })
         .expect(201);
+      // Covers the legacy path that updates from before recognition copy keep.
+      await ctx.dataSource.getRepository(ActionUpdate).update(created.body.id, {
+        notificationMode: ActionUpdateNotificationMode.Legacy,
+      });
       return created.body as {
         id: number;
         notifiedAt: string | null;
@@ -3140,6 +3950,133 @@ describe("Actions (e2e)", () => {
       expect(await unreadCountFor(update.id)).toBe(sent);
     });
 
+    it("refuses to notify while members can't see the action yet", async () => {
+      const update = await createUpdate({}, testDraftAction.id);
+      await writeContent(update.id, update.schemaSnapshotId);
+
+      await notify(update.id).expect(400);
+      expect(await unreadCountFor(update.id)).toBe(0);
+    });
+
+    it("notifies an update dated at the action's launch", async () => {
+      const launching = await actionRepo.save({
+        name: "Launching",
+        category: [],
+        body: "Body",
+        visibilityMode: VisibilityMode.Public,
+      });
+      const launch = new Date(Date.now() + milliseconds({ hours: 1 }));
+      await eventRepo.save({
+        title: "Launch",
+        description: "Members act",
+        newStatus: ActionStatus.MemberAction,
+        date: launch,
+        action: launching,
+      });
+      const update = await createUpdate(
+        { date: launch.toISOString() },
+        launching.id,
+      );
+      await writeContent(update.id, update.schemaSnapshotId);
+
+      await notify(update.id).expect(200);
+    });
+
+    it("notifies an update written before a launch that has since happened", async () => {
+      const { action: launched } = await createPublishedAction("Launched");
+      const written = new Date(Date.now() - milliseconds({ hours: 2 }));
+      const update = await createUpdate(
+        { date: written.toISOString() },
+        launched.id,
+      );
+      await writeContent(update.id, update.schemaSnapshotId);
+      await ctx.dataSource
+        .getRepository(ActionUpdate)
+        .update(update.id, { visibleAt: written });
+
+      await notify(update.id).expect(200);
+    });
+
+    it("refuses to notify about an archived action", async () => {
+      const { action: archived } = await createPublishedAction("Archived", {
+        actionOverrides: { archived: true },
+      });
+      const update = await createUpdate({}, archived.id);
+      await writeContent(update.id, update.schemaSnapshotId);
+
+      await notify(update.id).expect(400);
+      expect(await unreadCountFor(update.id)).toBe(0);
+    });
+
+    it("refuses to notify when the action is archived while the audience loads", async () => {
+      const update = await createUpdate({});
+      await writeContent(update.id, update.schemaSnapshotId);
+      const findAllUsers = userService.findAllUsers.bind(userService);
+      const audience = jest
+        .spyOn(userService, "findAllUsers")
+        .mockImplementation(async () => {
+          await actionRepo.update(testAction.id, { archived: true });
+          return findAllUsers();
+        });
+
+      try {
+        await notify(update.id).expect(400);
+      } finally {
+        audience.mockRestore();
+        await actionRepo.update(testAction.id, { archived: false });
+      }
+      expect(await unreadCountFor(update.id)).toBe(0);
+    });
+
+    it("holds an archive of the action until the notification's sends commit", async () => {
+      const { action } = await createPublishedAction("Archived mid-notify");
+      const update = await createUpdate({}, action.id);
+      await writeContent(update.id, update.schemaSnapshotId);
+      const notifs = ctx.app.get(NotifsService);
+      const createNotifs = notifs.createActionUpdateNotifs.bind(notifs);
+      let archived: Promise<unknown> | undefined;
+      const sends = jest
+        .spyOn(notifs, "createActionUpdateNotifs")
+        .mockImplementation(async (params) => {
+          archived = ctx.app.get(ActionsService).archive(action.id);
+          await waitForLockWait(ctx.dataSource);
+          return createNotifs(params);
+        });
+
+      try {
+        await notify(update.id).expect(200);
+      } finally {
+        sends.mockRestore();
+      }
+      await archived;
+      expect(await unreadCountFor(update.id)).toBeGreaterThan(0);
+      expect(await actionRepo.findOneByOrFail({ id: action.id })).toMatchObject(
+        { archived: true },
+      );
+    });
+
+    it("lets an action be deleted while one of its updates is being notified", async () => {
+      const { action: doomed } =
+        await createPublishedAction("Deleted mid-notify");
+      const update = await createUpdate({}, doomed.id);
+      await writeContent(update.id, update.schemaSnapshotId);
+
+      const runner = ctx.dataSource.createQueryRunner();
+      await runner.startTransaction();
+      try {
+        await runner.query("SELECT id FROM action WHERE id = $1 FOR UPDATE", [
+          doomed.id,
+        ]);
+        const sent = notify(update.id).then((res) => res);
+        await waitForLockWait(ctx.dataSource);
+        await runner.query("DELETE FROM action WHERE id = $1", [doomed.id]);
+        await runner.commitTransaction();
+        expect((await sent).status).toBe(404);
+      } finally {
+        await runner.release();
+      }
+    });
+
     it("refuses to notify an update with no audience", async () => {
       const update = await createUpdate({ notifyType: "none" });
       await writeContent(update.id, update.schemaSnapshotId);
@@ -3188,12 +4125,14 @@ describe("Actions (e2e)", () => {
           shortNotifString: "something happened",
           date: new Date().toISOString(),
           notifyType: "none",
+          notificationMode: "normal",
         })
         .expect(201);
       return created.body as {
         id: number;
         visibleAt: string | null;
         schemaSnapshotId: number;
+        associatedEventId: number | null;
       };
     };
 
@@ -3229,6 +4168,7 @@ describe("Actions (e2e)", () => {
       const update = await createUpdate("Still being written");
 
       expect(update.visibleAt).toBeNull();
+      expect(update.associatedEventId).toBeNull();
       expect(await memberUpdateIds()).not.toContain(update.id);
       expect(
         await updateIdsOnActionPage(ctx.accessToken, "slug"),
@@ -3288,7 +4228,8 @@ describe("Actions (e2e)", () => {
           .post(`/actions/updates/${id}/publish-now`)
           .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
 
-      const futureDate = () => new Date(Date.now() + 60 * 60 * 1000);
+      const futureDate = () =>
+        new Date(Date.now() + milliseconds({ hours: 1 }));
 
       const publishedWithFutureDate = async (title: string) => {
         const update = await createUpdate(title);
@@ -3382,12 +4323,11 @@ describe("Actions (e2e)", () => {
     ): CreateActionDto => ({
       name,
       body: "Body",
-      category: "category",
+      category: [],
       image: "",
       timeEstimate: 5,
       shortDescription: "Short",
       visibilityMode: VisibilityMode.Public,
-      type: ActionTaskType.Activity,
       isContractSigningAction: false,
       shouldCompleteAfterDeadline: false,
       isForumParticipationAction: false,
@@ -3466,6 +4406,36 @@ describe("Actions (e2e)", () => {
       expect(await reviewerRepo.countBy({ actionId: action.id })).toBe(1);
     });
 
+    it("keeps the rows of reviewers an update sends again", async () => {
+      const action = await createAction("Resent Reviewers", [
+        { name: "Jane" },
+        { name: "Bob" },
+      ]);
+      const before = await reviewerRepo.findBy({ actionId: action.id });
+
+      const res = await request(ctx.app.getHttpServer())
+        .patch(`/actions/${action.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ reviewers: [{ name: "Bob" }, { name: "Carol" }] })
+        .expect(200);
+
+      expect(res.body.reviewers).toEqual([{ name: "Bob" }, { name: "Carol" }]);
+      const rows = await reviewerRepo.find({
+        where: { actionId: action.id },
+        order: { position: "ASC", id: "ASC" },
+        withDeleted: true,
+      });
+      const bob = before.find((row) => row.name === "Bob");
+      expect(
+        rows.map((row) => [row.name, row.position, row.deletedAt === null]),
+      ).toEqual([
+        ["Jane", 0, false],
+        ["Bob", 0, true],
+        ["Carol", 1, true],
+      ]);
+      expect(rows.find((row) => row.name === "Bob")?.id).toBe(bob?.id);
+    });
+
     it("leaves reviewers alone when the update omits them", async () => {
       const action = await createAction("Kept Reviewers", [{ name: "Jane" }]);
 
@@ -3488,26 +4458,58 @@ describe("Actions (e2e)", () => {
           title: "Planned",
           description: "Planned",
           newStatus: ActionStatus.Planned,
-          date: new Date(Date.now() - 1000 * 60 * 60 * 2),
+          date: new Date(Date.now() - milliseconds({ hours: 2 })),
           action: entity,
         }),
         eventRepo.create({
           title: "Started",
           description: "Started",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000 * 60 * 60),
+          date: new Date(Date.now() - milliseconds({ hours: 1 })),
           action: entity,
         }),
       ]);
+      const update = await request(ctx.app.getHttpServer())
+        .post(`/actions/createUpdate/${action.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          title: "Published",
+          shortNotifString: "Published",
+          date: new Date().toISOString(),
+          notifyType: "none",
+          notificationMode: "normal",
+        })
+        .expect(201);
+      await request(ctx.app.getHttpServer())
+        .patch(`/actions/updateUpdate/${update.body.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          schema: {
+            blocks: [
+              { type: "display", kind: "header", id: "b1", text: "Body" },
+            ],
+          },
+          expectedSchemaSnapshotId: update.body.schemaSnapshotId,
+        })
+        .expect(200);
 
       const timelineRes = await request(ctx.app.getHttpServer())
         .get("/actions/timeline-feed")
         .expect(200);
+      const itemsForAction = timelineRes.body.filter(
+        (item: { action: ActionDto }) => item.action.id === action.id,
+      );
       expect(
-        timelineRes.body.find(
-          (item: { action: ActionDto }) => item.action.id === action.id,
-        )?.action.reviewers,
-      ).toEqual([{ name: "Jane" }]);
+        itemsForAction.map(
+          (item: { type: TimelineFeedItemType; action: ActionDto }) => [
+            item.type,
+            item.action.reviewers,
+          ],
+        ),
+      ).toEqual([
+        [TimelineFeedItemType.ActionUpdate, [{ name: "Jane" }]],
+        [TimelineFeedItemType.ActionEvent, [{ name: "Jane" }]],
+      ]);
     });
 
     it("loads reviewers for suite actions and for archive/unarchive", async () => {
@@ -3565,6 +4567,40 @@ describe("Actions (e2e)", () => {
         { name: "Bob" },
       ]);
     });
+
+    it("refuses to paste an action whose author is deleted", async () => {
+      const action = await createAction("Pasted Authors Action", []);
+      const [live, deleted] = await Promise.all(
+        ["live", "deleted"].map((name) =>
+          userRepo.save(
+            userRepo.create({
+              name: `Pasted ${name} author`,
+              email: `pasted-${name}-author@example.com`,
+              password: "Password123!",
+            }),
+          ),
+        ),
+      );
+      await userRepo.softDelete(deleted.id);
+      const exported = await request(ctx.app.getHttpServer())
+        .get(`/actions/export/${action.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      const before = await actionRepo.count();
+      await request(ctx.app.getHttpServer())
+        .post("/actions/pasteJson")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          body: JSON.stringify({
+            ...exported.body,
+            authors: [{ id: live.id }, { id: deleted.id }],
+          }),
+        })
+        .expect(404);
+
+      expect(await actionRepo.count()).toBe(before);
+    });
   });
 
   describe("Cohort expression exposure", () => {
@@ -3579,12 +4615,11 @@ describe("Actions (e2e)", () => {
         .send({
           name: "Targeted Action",
           body: "Body",
-          category: "category",
+          category: [],
           image: "",
           timeEstimate: 5,
           shortDescription: "Short",
           visibilityMode: VisibilityMode.Public,
-          type: ActionTaskType.Activity,
           isContractSigningAction: false,
           shouldCompleteAfterDeadline: false,
           isForumParticipationAction: false,
@@ -3616,7 +4651,7 @@ describe("Actions (e2e)", () => {
           title: "Started",
           description: "Started",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000 * 60 * 60),
+          date: new Date(Date.now() - milliseconds({ hours: 1 })),
           action: await actionRepo.findOneOrFail({
             where: { id: targetedActionId },
           }),
@@ -3728,9 +4763,9 @@ describe("Actions (e2e)", () => {
         .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({
           name: "Duplicated images",
-          category: "",
+          category: [],
           body: "",
-          type: ActionTaskType.Activity,
+          shortDescription: "",
           isContractSigningAction: false,
           visibilityMode: VisibilityMode.Public,
           image: getImageSource(coverKey),
@@ -3750,9 +4785,9 @@ describe("Actions (e2e)", () => {
         .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({
           name: "Typed thumbnail",
-          category: "",
+          category: [],
           body: "",
-          type: ActionTaskType.Activity,
+          shortDescription: "",
           isContractSigningAction: false,
           visibilityMode: VisibilityMode.Public,
           squareThumbnailImage: "https://example.com/promo.png",
@@ -3771,9 +4806,9 @@ describe("Actions (e2e)", () => {
         .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({
           name: "Key-shaped thumbnail",
-          category: "",
+          category: [],
           body: "",
-          type: ActionTaskType.Activity,
+          shortDescription: "",
           isContractSigningAction: false,
           visibilityMode: VisibilityMode.Public,
           squareThumbnailImage: typed,
@@ -3807,6 +4842,1074 @@ describe("Actions (e2e)", () => {
 
       expect(stored.image).toBe("1770253185000.webp");
       expect(stored.squareThumbnailImage).toBe("https://example.com/promo.png");
+    });
+  });
+
+  describe("Home feed filler users", () => {
+    const contentfulFormSchema = {
+      pages: [
+        {
+          id: "page-1",
+          fields: [
+            {
+              id: "published",
+              type: "input",
+              kind: "text",
+              label: "Published",
+              output: { output: true },
+            },
+          ],
+        },
+      ],
+      outputViews: [
+        {
+          id: "view-1",
+          type: "default",
+          blocks: [{ id: "block-published", fieldId: "published" }],
+        },
+      ],
+    };
+
+    const signedContract = () => [
+      {
+        type: ContractEventType.SIGNED,
+        date: new Date(Date.now() - milliseconds({ minutes: 1 })),
+        automatic: false,
+        contractId: ctx.defaultContractId,
+      },
+    ];
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    const homeFeed = async (viewer: User, before?: string) =>
+      (
+        await request(ctx.app.getHttpServer())
+          .get("/actions/homeFeed")
+          .query({ limit: "10", ...(before ? { before } : {}) })
+          .set(
+            "Authorization",
+            `Bearer ${signAccessToken(ctx.jwtService, viewer)}`,
+          )
+          .expect(200)
+      ).body as Array<{
+        date: string;
+        activity?: { id: number; actionName: string };
+      }>;
+
+    it("surfaces a filler user's completion to a viewer with no friends", async () => {
+      const now = Date.now();
+      const viewer = await userService.create({
+        email: `feed-viewer-${now}@example.com`,
+        password: "Password123!",
+        name: "Feed Viewer",
+        tags: [ctx.defaultTag],
+      });
+      const filler = await userService.create({
+        email: `feed-filler-${now}@example.com`,
+        password: "Password123!",
+        name: "Feed Filler",
+        tags: [ctx.defaultTag],
+      });
+
+      const { action } = await createPublishedAction("Home Feed Filler", {
+        status: ActionStatus.MemberAction,
+      });
+      const { form, snapshot } = await createFormWithSnapshot(ctx.dataSource, {
+        title: "Home Feed Filler Form",
+        schema: contentfulFormSchema,
+      });
+      await activityRepo.save(
+        activityRepo.create({
+          type: ActionActivityType.USER_COMPLETED,
+          actionId: action.id,
+          userId: filler.id,
+          taskFormResponse: formResponseRepo.create({
+            formId: form.id,
+            formSnapshotId: snapshot.id,
+            user: filler,
+            answers: { published: "Shown" },
+            publicAnswers: { published: true },
+          }),
+        }),
+      );
+
+      // Pin the cohort: the assertion is that filler activity reaches the feed,
+      // not which members get drawn.
+      jest
+        .spyOn(userService, "pickActiveUserIdsForSeed")
+        .mockResolvedValue([filler.id]);
+
+      const feed = await homeFeed(viewer);
+      expect(feed.some((i) => i.activity?.actionName === action.name)).toBe(
+        true,
+      );
+
+      await actionRepo.delete(action.id);
+      await formRepo.delete(form.id);
+      await userRepo.delete([viewer.id, filler.id]);
+    });
+
+    it("draws a viewer the same fillers on every page, and another viewer different ones", async () => {
+      const now = Date.now();
+      const viewer = await userService.create({
+        email: `feed-stable-${now}@example.com`,
+        password: "Password123!",
+        name: "Feed Stable",
+        tags: [ctx.defaultTag],
+      });
+      const otherViewer = await userService.create({
+        email: `feed-stable-other-${now}@example.com`,
+        password: "Password123!",
+        name: "Feed Stable Other",
+        tags: [ctx.defaultTag],
+      });
+
+      // More candidates than the fill needs, so drawing the same ten twice proves
+      // the order is seeded rather than that everyone got drawn.
+      const candidateIds: number[] = [];
+      for (let i = 0; i < 40; i++) {
+        const candidate = await userService.create({
+          email: `feed-stable-candidate-${now}-${i}@example.com`,
+          password: "Password123!",
+          name: `Feed Stable Candidate ${i}`,
+          tags: [ctx.defaultTag],
+          contractEvents: signedContract(),
+        });
+        candidateIds.push(candidate.id);
+      }
+
+      const pick = userService.pickActiveUserIdsForSeed.bind(userService);
+      const cohorts: number[][] = [];
+      jest
+        .spyOn(userService, "pickActiveUserIdsForSeed")
+        .mockImplementation(async (params) => {
+          const ids = await pick(params);
+          cohorts.push(ids);
+          return ids;
+        });
+
+      await homeFeed(viewer);
+      await homeFeed(
+        viewer,
+        new Date(now - milliseconds({ days: 1 })).toISOString(),
+      );
+
+      await homeFeed(otherViewer);
+
+      expect(cohorts).toHaveLength(3);
+      expect(cohorts[0]).toHaveLength(10);
+      expect(cohorts[1]).toEqual(cohorts[0]);
+      expect(cohorts[2]).not.toEqual(cohorts[0]);
+
+      await userRepo.delete([viewer.id, otherViewer.id, ...candidateIds]);
+    });
+
+    it("draws no fillers once active friends+group meet the minimum", async () => {
+      const viewer = await userService.create({
+        email: `feed-viewer-full-${Date.now()}@example.com`,
+        password: "Password123!",
+        name: "Feed Viewer Full",
+        tags: [ctx.defaultTag],
+      });
+
+      const friendIds: number[] = [];
+      for (let i = 0; i < 10; i++) {
+        const friend = await userService.create({
+          email: `feed-friend-${Date.now()}-${i}@example.com`,
+          password: "Password123!",
+          name: `Feed Friend ${i}`,
+          tags: [ctx.defaultTag],
+          contractEvents: signedContract(),
+        });
+        await friendService.makeFriendsAutomated(viewer.id, friend.id);
+        friendIds.push(friend.id);
+      }
+
+      const spy = jest.spyOn(userService, "pickActiveUserIdsForSeed");
+
+      await homeFeed(viewer);
+
+      expect(spy).toHaveBeenCalledWith(expect.objectContaining({ count: 0 }));
+
+      await userRepo.delete(viewer.id);
+      await userRepo.delete(friendIds);
+    });
+
+    it("does not count inactive friends toward the minimum", async () => {
+      const now = Date.now();
+      const viewer = await userService.create({
+        email: `feed-viewer-inactive-${now}@example.com`,
+        password: "Password123!",
+        name: "Feed Viewer Inactive",
+        tags: [ctx.defaultTag],
+      });
+
+      const friendIds: number[] = [];
+      for (let i = 0; i < 10; i++) {
+        const friend = await userService.create({
+          email: `feed-inactive-friend-${now}-${i}@example.com`,
+          password: "Password123!",
+          name: `Feed Inactive Friend ${i}`,
+          tags: [ctx.defaultTag],
+          ...(i < 2 ? { contractEvents: signedContract() } : {}),
+        });
+        await friendService.makeFriendsAutomated(viewer.id, friend.id);
+        friendIds.push(friend.id);
+      }
+
+      const spy = jest.spyOn(userService, "pickActiveUserIdsForSeed");
+
+      await homeFeed(viewer);
+
+      expect(spy).toHaveBeenCalledWith(expect.objectContaining({ count: 8 }));
+
+      await userRepo.delete([viewer.id, ...friendIds]);
+    });
+
+    it("does not count the viewer toward the minimum", async () => {
+      const now = Date.now();
+      const createMember = (i: number) =>
+        userService.create({
+          email: `feed-group-${now}-${i}@example.com`,
+          password: "Password123!",
+          name: `Feed Group ${i}`,
+          tags: [ctx.defaultTag],
+          contractEvents: signedContract(),
+        });
+      const viewer = await createMember(0);
+      const groupMates = await Promise.all(
+        Array.from({ length: 9 }, (_, i) => createMember(i + 1)),
+      );
+      const community = await communityRepo.save(
+        communityRepo.create({
+          name: `Feed Group ${now}`,
+          users: [viewer, ...groupMates],
+        }),
+      );
+
+      const spy = jest.spyOn(userService, "pickActiveUserIdsForSeed");
+
+      await homeFeed(viewer);
+
+      expect(spy).toHaveBeenCalledWith(expect.objectContaining({ count: 1 }));
+
+      await communityRepo.delete(community.id);
+      await userRepo.delete([viewer.id, ...groupMates.map((m) => m.id)]);
+    });
+
+    it("still surfaces a friend's contentful completion in the home feed", async () => {
+      const viewer = await userService.create({
+        email: `feed-regression-viewer-${Date.now()}@example.com`,
+        password: "Password123!",
+        name: "Feed Regression Viewer",
+        tags: [ctx.defaultTag],
+      });
+      const friend = await userService.create({
+        email: `feed-regression-friend-${Date.now()}@example.com`,
+        password: "Password123!",
+        name: "Feed Regression Friend",
+        tags: [ctx.defaultTag],
+      });
+      await friendService.makeFriendsAutomated(viewer.id, friend.id);
+
+      const { action } = await createPublishedAction("Home Feed Regression", {
+        status: ActionStatus.MemberAction,
+      });
+      const { form, snapshot } = await createFormWithSnapshot(ctx.dataSource, {
+        title: "Home Feed Regression Form",
+        schema: contentfulFormSchema,
+      });
+
+      await activityRepo.save(
+        activityRepo.create({
+          type: ActionActivityType.USER_COMPLETED,
+          actionId: action.id,
+          userId: friend.id,
+          taskFormResponse: formResponseRepo.create({
+            formId: form.id,
+            formSnapshotId: snapshot.id,
+            user: friend,
+            answers: { published: "Shown" },
+            publicAnswers: { published: true },
+          }),
+        }),
+      );
+
+      const feed = await homeFeed(viewer);
+      expect(feed.some((i) => i.activity?.actionName === action.name)).toBe(
+        true,
+      );
+
+      await actionRepo.delete(action.id);
+      await formRepo.delete(form.id);
+      await userRepo.delete([viewer.id, friend.id]);
+    });
+
+    it.each([
+      {
+        output: "no output view",
+        schema: { ...contentfulFormSchema, outputViews: [] },
+        publicAnswers: { published: true },
+      },
+      {
+        output: "no public flag on its only answer",
+        schema: contentfulFormSchema,
+        publicAnswers: {},
+      },
+      {
+        output: "only a display block beside an answer with no public flag",
+        schema: {
+          ...contentfulFormSchema,
+          outputViews: [
+            {
+              id: "view-1",
+              type: "default",
+              blocks: [
+                {
+                  id: "block-header",
+                  type: "display",
+                  kind: "header",
+                  text: "Done",
+                },
+                { id: "block-published", fieldId: "published" },
+              ],
+            },
+          ],
+        },
+        publicAnswers: {},
+      },
+      {
+        output: "only a display block beside a public answer left empty",
+        schema: {
+          ...contentfulFormSchema,
+          outputViews: [
+            {
+              id: "view-1",
+              type: "default",
+              blocks: [
+                {
+                  id: "block-header",
+                  type: "display",
+                  kind: "header",
+                  text: "Done",
+                },
+                { id: "block-published", fieldId: "published" },
+              ],
+            },
+          ],
+        },
+        answers: { published: "" },
+        publicAnswers: { published: true },
+      },
+      {
+        output: "only a display block beside a public list of blank rows",
+        schema: {
+          pages: [
+            {
+              id: "page-1",
+              fields: [
+                {
+                  id: "published",
+                  type: "input",
+                  kind: "list",
+                  label: "Published",
+                  output: { output: true },
+                  fields: [
+                    { id: "name", type: "input", kind: "text", label: "Name" },
+                  ],
+                },
+              ],
+            },
+          ],
+          outputViews: [
+            {
+              id: "view-1",
+              type: "default",
+              blocks: [
+                {
+                  id: "block-header",
+                  type: "display",
+                  kind: "header",
+                  text: "Done",
+                },
+                { id: "block-published", fieldId: "published" },
+              ],
+            },
+          ],
+        },
+        answers: { published: [{ name: "" }] },
+        publicAnswers: { published: true },
+      },
+      {
+        output:
+          "only a display block beside a public list whose filled cells the view hides",
+        schema: {
+          pages: [
+            {
+              id: "page-1",
+              fields: [
+                {
+                  id: "published",
+                  type: "input",
+                  kind: "list",
+                  label: "Published",
+                  output: { output: true },
+                  fields: [
+                    { id: "name", type: "input", kind: "text", label: "Name" },
+                  ],
+                  outputViewHiddenFieldIds: ["name"],
+                },
+              ],
+            },
+          ],
+          outputViews: [
+            {
+              id: "view-1",
+              type: "default",
+              blocks: [
+                {
+                  id: "block-header",
+                  type: "display",
+                  kind: "header",
+                  text: "Done",
+                },
+                { id: "block-published", fieldId: "published" },
+              ],
+            },
+          ],
+        },
+        answers: { published: [{ name: "Shown" }] },
+        publicAnswers: { published: true },
+      },
+      {
+        output:
+          "only a display block beside a public list that isn't a list of rows",
+        schema: {
+          pages: [
+            {
+              id: "page-1",
+              fields: [
+                {
+                  id: "published",
+                  type: "input",
+                  kind: "list",
+                  label: "Published",
+                  output: { output: true },
+                  fields: [
+                    { id: "name", type: "input", kind: "text", label: "Name" },
+                  ],
+                },
+              ],
+            },
+          ],
+          outputViews: [
+            {
+              id: "view-1",
+              type: "default",
+              blocks: [
+                {
+                  id: "block-header",
+                  type: "display",
+                  kind: "header",
+                  text: "Done",
+                },
+                { id: "block-published", fieldId: "published" },
+              ],
+            },
+          ],
+        },
+        answers: { published: "not rows" },
+        publicAnswers: { published: true },
+      },
+      {
+        output: "only a display block beside a public answer the form hides",
+        schema: {
+          pages: [
+            {
+              id: "page-1",
+              fields: [
+                { id: "gate", type: "input", kind: "text", label: "Gate" },
+                {
+                  id: "published",
+                  type: "input",
+                  kind: "text",
+                  label: "Published",
+                  output: { output: true },
+                  visibleIfFormula: {
+                    conditions: {
+                      c1: { kind: "equals", when: "gate", equals: "yes" },
+                    },
+                    formula: "c1",
+                  },
+                },
+              ],
+            },
+          ],
+          outputViews: [
+            {
+              id: "view-1",
+              type: "default",
+              blocks: [
+                {
+                  id: "block-header",
+                  type: "display",
+                  kind: "header",
+                  text: "Done",
+                },
+                { id: "block-published", fieldId: "published" },
+              ],
+            },
+          ],
+        },
+        answers: { gate: "no", published: "Shown" },
+        publicAnswers: { published: true },
+      },
+    ])(
+      "leaves out a friend's completion and its output with $output",
+      async ({ schema, answers, publicAnswers }) => {
+        const viewer = await userService.create({
+          email: `feed-empty-viewer-${Date.now()}@example.com`,
+          password: "Password123!",
+          name: "Feed Empty Viewer",
+          tags: [ctx.defaultTag],
+        });
+        const friend = await userService.create({
+          email: `feed-empty-friend-${Date.now()}@example.com`,
+          password: "Password123!",
+          name: "Feed Empty Friend",
+          tags: [ctx.defaultTag],
+        });
+        await friendService.makeFriendsAutomated(viewer.id, friend.id);
+
+        const { action } = await createPublishedAction("Home Feed Empty", {
+          status: ActionStatus.MemberAction,
+        });
+        const { form, snapshot } = await createFormWithSnapshot(
+          ctx.dataSource,
+          {
+            title: "Home Feed Empty Form",
+            schema,
+          },
+        );
+
+        const activity = await activityRepo.save(
+          activityRepo.create({
+            type: ActionActivityType.USER_COMPLETED,
+            actionId: action.id,
+            userId: friend.id,
+            taskFormResponse: formResponseRepo.create({
+              formId: form.id,
+              formSnapshotId: snapshot.id,
+              user: friend,
+              answers: answers ?? { published: "Shown" },
+              publicAnswers,
+            }),
+          }),
+        );
+
+        const feed = await homeFeed(viewer);
+        expect(feed.some((i) => i.activity?.actionName === action.name)).toBe(
+          false,
+        );
+        const page = await request(ctx.app.getHttpServer())
+          .get(`/actions/activities/${activity.id}`)
+          .set(
+            "Authorization",
+            `Bearer ${signAccessToken(ctx.jwtService, viewer)}`,
+          )
+          .expect(200);
+        expect(page.body.formResponseOutput).toBeUndefined();
+
+        await actionRepo.delete(action.id);
+        await formRepo.delete(form.id);
+        await userRepo.delete([viewer.id, friend.id]);
+      },
+    );
+
+    it("pickActiveUserIdsForSeed excludes given ids and users without a signed contract", async () => {
+      const now = Date.now();
+
+      const eligible = await userService.create({
+        email: `feed-random-eligible-${now}@example.com`,
+        password: "Password123!",
+        name: "Random Eligible",
+        tags: [ctx.defaultTag],
+        contractEvents: signedContract(),
+      });
+      const excludedExplicitly = await userService.create({
+        email: `feed-random-excluded-${now}@example.com`,
+        password: "Password123!",
+        name: "Random Excluded",
+        tags: [ctx.defaultTag],
+        contractEvents: signedContract(),
+      });
+      const unsigned = await userService.create({
+        email: `feed-random-unsigned-${now}@example.com`,
+        password: "Password123!",
+        name: "Random Unsigned",
+        tags: [ctx.defaultTag],
+      });
+
+      const result = await userService.pickActiveUserIdsForSeed({
+        count: await userRepo.count(),
+        excludeIds: [excludedExplicitly.id],
+        seed: String(now),
+      });
+      expect(result).toContain(eligible.id);
+      expect(result).not.toContain(excludedExplicitly.id);
+      expect(result).not.toContain(unsigned.id);
+
+      expect(
+        await userService.pickActiveUserIdsForSeed({
+          count: 0,
+          excludeIds: [],
+          seed: String(now),
+        }),
+      ).toEqual([]);
+
+      await userRepo.delete([eligible.id, excludedExplicitly.id, unsigned.id]);
+    });
+  });
+
+  describe("Welcome queue", () => {
+    const welcomeQueue = async () => {
+      await saveLiveCohortDecisions(ctx);
+      return request(ctx.app.getHttpServer())
+        .get("/actions/welcome-queue")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+    };
+
+    beforeEach(async () => {
+      await actionRepo.update({ onboarding: true }, { onboarding: false });
+    });
+
+    const createWelcomeAction = async (
+      name: string,
+      options: Parameters<typeof createPublishedAction>[1] = {},
+    ) => {
+      const result = await createPublishedAction(name, options);
+      await eventRepo.update(result.event.id, { date: new Date("2018-01-01") });
+      return result;
+    };
+
+    const member = ({
+      signed = true,
+      signedAt = "2019-01-01",
+    }: { signed?: boolean; signedAt?: string } = {}) =>
+      userRepo.save(
+        userRepo.create({
+          email: `welcome-${crypto.randomUUID()}@example.com`,
+          password: "Password123!",
+          name: "Welcome member",
+          tags: [ctx.defaultTag],
+          contractEvents: signed
+            ? [
+                {
+                  type: ContractEventType.SIGNED,
+                  date: new Date(signedAt),
+                  contractId: ctx.defaultContractId,
+                },
+              ]
+            : [],
+        }),
+      );
+
+    const complete = (input: {
+      userId: number;
+      actionId: number;
+      date: string;
+    }) =>
+      activityRepo.save(
+        activityRepo.create({
+          userId: input.userId,
+          actionId: input.actionId,
+          type: ActionActivityType.USER_COMPLETED,
+          createdAt: new Date(input.date),
+        }),
+      );
+
+    it("returns an empty queue when there are no active required onboarding tasks", async () => {
+      const response = await welcomeQueue();
+      expect(response.body).toEqual({ requiredActionCount: 0, members: [] });
+    });
+
+    it("keeps earlier members eligible when a new onboarding task starts", async () => {
+      const { action: first } = await createWelcomeAction("Existing task", {
+        actionOverrides: { onboarding: true },
+      });
+      const older = await member();
+      const newer = await member({ signedAt: "2020-01-01" });
+      const olderCompletion = await complete({
+        userId: older.id,
+        actionId: first.id,
+        date: "2019-01-02",
+      });
+      await complete({
+        userId: newer.id,
+        actionId: first.id,
+        date: "2020-01-02",
+      });
+      expect((await welcomeQueue()).body.members).toHaveLength(2);
+
+      const { action: next, event } = await createWelcomeAction("New task", {
+        actionOverrides: { onboarding: true },
+      });
+      await eventRepo.update(event.id, { date: new Date("2020-01-01") });
+      const queue: WelcomeQueueDto = (await welcomeQueue()).body;
+      expect(queue.members).toMatchObject([
+        { user: { id: older.id }, activityId: olderCompletion.id },
+      ]);
+      expect(queue.members).toHaveLength(1);
+      expect(queue.requiredActionCount).toBe(2);
+
+      const latest = await complete({
+        userId: newer.id,
+        actionId: next.id,
+        date: "2020-01-03",
+      });
+      expect((await welcomeQueue()).body.members).toMatchObject([
+        { user: { id: newer.id }, activityId: latest.id },
+        { user: { id: older.id }, activityId: olderCompletion.id },
+      ]);
+    });
+
+    it("requires targeted tasks only for members in their cohort", async () => {
+      const { action: first } = await createWelcomeAction("Shared task", {
+        actionOverrides: { onboarding: true },
+      });
+      const targeted = await member();
+      const outside = await member();
+      for (const user of [targeted, outside]) {
+        await complete({
+          userId: user.id,
+          actionId: first.id,
+          date: "2020-01-01",
+        });
+      }
+      const { action: targetedTask } = await createWelcomeAction(
+        "Targeted task",
+        {
+          actionOverrides: {
+            onboarding: true,
+            cohortExpression: { type: "Manual", userIds: [targeted.id] },
+          },
+        },
+      );
+      const queue: WelcomeQueueDto = (await welcomeQueue()).body;
+      expect(queue.members.map((entry) => entry.user.id)).toEqual([outside.id]);
+      const latest = await complete({
+        userId: targeted.id,
+        actionId: targetedTask.id,
+        date: "2020-01-02",
+      });
+      expect((await welcomeQueue()).body.members).toMatchObject([
+        { user: { id: targeted.id }, activityId: latest.id },
+        { user: { id: outside.id }, actionId: first.id },
+      ]);
+    });
+
+    it("links only applicable completions and excludes members with no applicable tasks", async () => {
+      const user = await member();
+      const beforeOnboarding = await member({ signedAt: "2017-01-01" });
+      const { action: required } = await createWelcomeAction("Required task", {
+        actionOverrides: { onboarding: true },
+      });
+      const { action: other } = await createWelcomeAction(
+        "Another cohort's task",
+        {
+          actionOverrides: {
+            onboarding: true,
+            cohortExpression: { type: "Manual", userIds: [] },
+          },
+        },
+      );
+      const completion = await complete({
+        userId: user.id,
+        actionId: required.id,
+        date: "2020-01-01",
+      });
+      for (const action of [required, other]) {
+        await complete({
+          userId: beforeOnboarding.id,
+          actionId: action.id,
+          date: "2020-01-02",
+        });
+      }
+      await complete({
+        userId: user.id,
+        actionId: other.id,
+        date: "2020-01-03",
+      });
+      const queue: WelcomeQueueDto = (await welcomeQueue()).body;
+      expect(queue.members).toHaveLength(1);
+      expect(queue.members[0]).toMatchObject({
+        user: { id: user.id },
+        activityId: completion.id,
+      });
+    });
+
+    it("requires a signing event and lists a member only once after repeated signatures or suspension", async () => {
+      const { action } = await createWelcomeAction("Onboarding task", {
+        actionOverrides: {
+          onboarding: true,
+          cohortExpression: {
+            type: "NOT",
+            child: { type: "Manual", userIds: [] },
+          },
+        },
+      });
+      const user = await member({ signed: false });
+      const completion = await complete({
+        userId: user.id,
+        actionId: action.id,
+        date: "2020-01-01",
+      });
+      expect((await welcomeQueue()).body.members).toEqual([]);
+      const events = ctx.dataSource.getRepository(ContractEvent);
+      await events.save(
+        events.create({
+          user,
+          type: ContractEventType.SUSPENDED,
+          date: new Date("2020-01-02"),
+        }),
+      );
+      expect((await welcomeQueue()).body.members).toEqual([]);
+      for (const date of ["2020-01-03", "2020-01-04"]) {
+        await events.save(
+          events.create({
+            user,
+            type: ContractEventType.SIGNED,
+            date: new Date(date),
+            contractId: ctx.defaultContractId,
+          }),
+        );
+      }
+      await events.save(
+        events.create({
+          user,
+          type: ContractEventType.SUSPENDED,
+          date: new Date("2020-01-05"),
+        }),
+      );
+      const queue: WelcomeQueueDto = (await welcomeQueue()).body;
+      expect(queue.members).toMatchObject([
+        { user: { id: user.id }, activityId: completion.id },
+      ]);
+      expect(queue.members).toHaveLength(1);
+    });
+
+    it("requires every active onboarding task and links each member's latest completion, newest first", async () => {
+      const { action: first } = await createWelcomeAction(
+        "First onboarding task",
+        {
+          actionOverrides: { onboarding: true },
+        },
+      );
+      const { action: second } = await createWelcomeAction(
+        "Second onboarding task",
+        {
+          actionOverrides: { onboarding: true },
+        },
+      );
+      for (const actionOverrides of [
+        { onboarding: true, optional: true },
+        { onboarding: true, archived: true },
+        { onboarding: true, preventCompletion: true },
+        { onboarding: false },
+      ]) {
+        await createWelcomeAction("Not required", { actionOverrides });
+      }
+      for (const status of [
+        ActionStatus.Draft,
+        ActionStatus.Planned,
+        ActionStatus.Completed,
+      ]) {
+        await createWelcomeAction("Not active", {
+          status,
+          actionOverrides: { onboarding: true },
+        });
+      }
+      const future = await createWelcomeAction("Future task", {
+        actionOverrides: { onboarding: true },
+      });
+      await eventRepo.update(future.event.id, {
+        date: new Date(Date.now() + 86_400_000),
+      });
+      const older = await member();
+      const newer = await member();
+      const incomplete = await member();
+      await complete({
+        userId: incomplete.id,
+        actionId: first.id,
+        date: "2020-01-01",
+      });
+      await complete({
+        userId: incomplete.id,
+        actionId: first.id,
+        date: "2020-01-02",
+      });
+      await complete({
+        userId: older.id,
+        actionId: first.id,
+        date: "2020-01-01",
+      });
+      const olderLast = await complete({
+        userId: older.id,
+        actionId: second.id,
+        date: "2020-01-02",
+      });
+      await complete({
+        userId: newer.id,
+        actionId: second.id,
+        date: "2020-01-01",
+      });
+      const newerLast = await complete({
+        userId: newer.id,
+        actionId: first.id,
+        date: "2020-01-03",
+      });
+      const staff = await userRepo.save({ ...(await member()), staff: true });
+      await activityRepo.save({ ...newerLast, likes: [staff, older] });
+
+      const queue: WelcomeQueueDto = (await welcomeQueue()).body;
+      expect(queue.members.map((entry) => entry.user.id)).toEqual([
+        newer.id,
+        older.id,
+      ]);
+      expect(queue.members).toMatchObject([
+        {
+          actionId: first.id,
+          activityId: newerLast.id,
+          completedAt: newerLast.createdAt.toISOString(),
+          staffLikeCount: 1,
+        },
+        {
+          actionId: second.id,
+          activityId: olderLast.id,
+          completedAt: olderLast.createdAt.toISOString(),
+          staffLikeCount: 0,
+        },
+      ]);
+    });
+
+    it("excludes a member who withdrew after completing and restores them after completing again", async () => {
+      const { action } = await createWelcomeAction("Withdrawable task", {
+        actionOverrides: { onboarding: true },
+      });
+      const user = await member();
+      await complete({
+        userId: user.id,
+        actionId: action.id,
+        date: "2020-01-01",
+      });
+      await activityRepo.save(
+        activityRepo.create({
+          userId: user.id,
+          actionId: action.id,
+          type: ActionActivityType.USER_WONT_COMPLETE,
+          createdAt: new Date("2020-01-02"),
+        }),
+      );
+      expect((await welcomeQueue()).body.members).toEqual([]);
+      const latest = await complete({
+        userId: user.id,
+        actionId: action.id,
+        date: "2020-01-03",
+      });
+      expect((await welcomeQueue()).body.members).toMatchObject([
+        { user: { id: user.id }, activityId: latest.id },
+      ]);
+    });
+
+    it("counts staff comments on any onboarding completion, including archived tasks", async () => {
+      const { action: current } = await createWelcomeAction(
+        "Current onboarding task",
+        {
+          actionOverrides: { onboarding: true },
+        },
+      );
+      const { action: archived } = await createWelcomeAction(
+        "Archived onboarding task",
+        {
+          actionOverrides: { onboarding: true, archived: true },
+        },
+      );
+      const { action: unrelated } = await createWelcomeAction("Unrelated task");
+      const staff = await userRepo.save({ ...(await member()), staff: true });
+      const expectedIds: number[] = [];
+      for (const scenario of [
+        {
+          action: current,
+          staff: true,
+          deleted: false,
+          type: ActionActivityType.USER_COMPLETED,
+          excluded: true,
+        },
+        {
+          action: archived,
+          staff: true,
+          deleted: false,
+          type: ActionActivityType.USER_COMPLETED,
+          excluded: true,
+        },
+        {
+          action: archived,
+          staff: true,
+          deleted: true,
+          type: ActionActivityType.USER_COMPLETED,
+          excluded: false,
+        },
+        {
+          action: archived,
+          staff: false,
+          deleted: false,
+          type: ActionActivityType.USER_COMPLETED,
+          excluded: false,
+        },
+        {
+          action: unrelated,
+          staff: true,
+          deleted: false,
+          type: ActionActivityType.USER_COMPLETED,
+          excluded: false,
+        },
+        {
+          action: archived,
+          staff: true,
+          deleted: false,
+          type: ActionActivityType.USER_SUBMITTED_FOLLOW_UP_FORM,
+          excluded: false,
+        },
+      ]) {
+        const user = await member();
+        await complete({
+          userId: user.id,
+          actionId: current.id,
+          date: "2020-01-01",
+        });
+        const activity = await activityRepo.save(
+          activityRepo.create({
+            actionId: scenario.action.id,
+            userId: user.id,
+            type: scenario.type,
+          }),
+        );
+        await ctx.dataSource.getRepository(Comment).save({
+          authorId: scenario.staff ? staff.id : ctx.testUserId,
+          parentObjectType: CommentParentObject.Activity,
+          parentObjectId: activity.id,
+          deletedAt: scenario.deleted ? new Date() : null,
+          editableContent: { body: "Hello", attachments: [] },
+        });
+        if (!scenario.excluded) expectedIds.push(user.id);
+      }
+      const queue: WelcomeQueueDto = (await welcomeQueue()).body;
+      expect(
+        queue.members.map((entry) => entry.user.id).sort((a, b) => a - b),
+      ).toEqual(expectedIds);
     });
   });
 

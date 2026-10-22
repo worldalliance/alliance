@@ -1,7 +1,7 @@
+import { useForumPost } from "@alliance/shared/lib/useForumPost";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Alert, View } from "react-native";
-import { forumCreatePost } from "../../../../../shared/client";
 import KeyboardAwareScrollView from "../../../components/KeyboardAwareScrollView";
 import Button, { ButtonColor } from "../../../components/system/Button";
 import Card, { CardStyle } from "../../../components/system/Card";
@@ -14,6 +14,7 @@ export default function CreatePostScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [titleError, setTitleError] = useState("");
   const [contentError, setContentError] = useState("");
+  const { create } = useForumPost(undefined);
 
   const validateForm = () => {
     let isValid = true;
@@ -40,21 +41,15 @@ export default function CreatePostScreen() {
 
     setSubmitting(true);
     try {
-      const response = await forumCreatePost({
-        body: {
-          title: title.trim(),
-          editableContent: { body: content.trim(), attachments: [] },
-        },
+      const created = await create({
+        title: title.trim(),
+        editableContent: { body: content.trim(), attachments: [] },
       });
-
-      if (response.error || !response.data) {
-        throw new Error("Failed to create post");
-      }
 
       Alert.alert("Success", "Post created", [
         {
           text: "OK",
-          onPress: () => router.replace(`/forum/post/${response.data.id}`),
+          onPress: () => router.replace(`/forum/post/${created.id}`),
         },
       ]);
     } catch (err) {

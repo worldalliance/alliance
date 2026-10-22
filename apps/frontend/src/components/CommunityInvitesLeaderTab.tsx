@@ -1,36 +1,30 @@
 import { errorMessage } from "@alliance/common/errorMessage";
-import {
-  communityCreateCommunityInvite,
-  communityDeleteCommunityInvite,
-  communityGetCommunityInvites,
-  CommunityInviteDto,
-  CreateOnetimeInviteDto,
-  ProfileDto,
-} from "@alliance/shared/client";
+import { CreateOnetimeInviteDto, ProfileDto } from "@alliance/shared/client";
 import {
   deleteInviteConfirmation,
   inviteBuckets,
   onetimeInviteCreation,
 } from "@alliance/shared/lib/copy";
-import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import {
   bucketCommunityInvitesByActionability,
   bucketOnetimeInvitesByActionability,
 } from "@alliance/shared/lib/inviteUtils";
+import { useCommunityInvites } from "@alliance/shared/lib/useCommunityInvites";
 import { useCommunityOnetimeInvites } from "@alliance/shared/lib/useCommunityOnetimeInvites";
 import { CardStyle } from "@alliance/shared/styles/card";
-import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
 import List from "@alliance/sharedweb/ui/List";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { ToastPlacement, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import UserSelect, {
   UserSelectUser,
-  useSelectableUserIds,
+  useSelectableUsers,
 } from "@alliance/sharedweb/ui/UserSelect";
+import { milliseconds } from "date-fns";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../lib/AuthContext";
+import { useCopyInviteLink } from "../lib/useCopyInviteLink";
 import CommunityInviteListItem from "./CommunityInviteListItem";
 import OnetimeInviteForm from "./OnetimeInviteForm";
 import OnetimeInviteListItem from "./OnetimeInviteListItem";
@@ -64,14 +58,24 @@ const CommunityInvitesLeaderTab = ({
     rejectInvite,
     deleteInvite,
   } = useCommunityOnetimeInvites(communityId);
-  const [communityInvites, setCommunityInvites] = useState<
-    CommunityInviteDto[]
-  >([]);
+  const {
+    invites: communityInvites,
+    didFail: communityInvitesDidFail,
+    createInvite: createCommunityInvite,
+    deleteInvite: deleteCommunityInvite,
+  } = useCommunityInvites(communityId);
+  const [deletingCommunityInviteIds, setDeletingCommunityInviteIds] = useState<
+    ReadonlySet<number>
+  >(new Set());
   const [copiedInviteId, setCopiedInviteId] = useState<number | null>(null);
   const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { error: errorToast, confirm } = useToast();
 
-  const allUsers = useSelectableUserIds();
+  const {
+    users: allUsers,
+    isLoading: usersLoading,
+    isLoadingError: usersError,
+  } = useSelectableUsers();
 
   const selectableUsers = useMemo(
     () =>
@@ -93,16 +97,6 @@ const CommunityInvitesLeaderTab = ({
 
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    communityGetCommunityInvites({ path: { communityId } }).then((response) => {
-      if (response.data) {
-        setCommunityInvites(response.data);
-      } else {
-        setError("Failed to load existing member invites");
-      }
-    });
-  }, [communityId]);
-
   const leaderCommunityIds = useMemo(() => {
     return new Set([communityId]);
   }, [communityId]);
@@ -112,59 +106,47 @@ const CommunityInvitesLeaderTab = ({
     unverifiableActionable: onetimeUnverifiableActionable,
     waitingForResponse: onetimeWaitingForResponse,
     settled: onetimeSettled,
-  } = useMemo(() => {
-    if (!user) {
-      return {
-        actionable: [],
-        unverifiableActionable: [],
-        waitingForResponse: [],
-        settled: [],
-      };
-    }
-    return bucketOnetimeInvitesByActionability({
-      invites: onetimeInvites,
-      leaderCommunityIds,
-      userId: user.id,
-    });
-  }, [onetimeInvites, leaderCommunityIds, user]);
+  } = useMemo(
+    () =>
+      bucketOnetimeInvitesByActionability({
+        invites: onetimeInvites,
+        leaderCommunityIds,
+        userId: user?.id,
+      }),
+    [onetimeInvites, leaderCommunityIds, user?.id],
+  );
 
   const {
     actionable: communityActionable,
     waitingForResponse: communityWaitingForResponse,
     settled: communitySettled,
-  } = useMemo(() => {
-    if (!user) {
-      return {
-        actionable: [],
-        waitingForResponse: [],
-        settled: [],
-      };
-    }
-    return bucketCommunityInvitesByActionability({
-      invites: communityInvites,
-      userId: user.id,
-    });
-  }, [communityInvites, user]);
+  } = useMemo(
+    () =>
+      bucketCommunityInvitesByActionability({
+        invites: communityInvites,
+        userId: user?.id,
+      }),
+    [communityInvites, user?.id],
+  );
 
   useEffect(() => {
     setInviteNotifCount(onetimeActionable.length);
   }, [onetimeActionable.length, setInviteNotifCount]);
 
-  const copyToClipboard = useCallback((text: string) => {
-    navigator.clipboard.writeText(
-      getOnetimeInviteSignupUrl(getInviteBaseUrl(), text),
-    );
-  }, []);
+  const copyInviteLink = useCopyInviteLink();
 
   const handleCopied = useCallback((inviteId: number) => {
     if (copiedTimeoutRef.current) {
       clearTimeout(copiedTimeoutRef.current);
     }
     setCopiedInviteId(inviteId);
-    copiedTimeoutRef.current = setTimeout(() => {
-      setCopiedInviteId(null);
-      copiedTimeoutRef.current = null;
-    }, 2000);
+    copiedTimeoutRef.current = setTimeout(
+      () => {
+        setCopiedInviteId(null);
+        copiedTimeoutRef.current = null;
+      },
+      milliseconds({ seconds: 2 }),
+    );
   }, []);
 
   const handleInvite = () => {
@@ -196,22 +178,13 @@ const CommunityInvitesLeaderTab = ({
       return;
     }
     setCreatingInvite(true);
-    communityCreateCommunityInvite({
-      body: { invitedUserId: selectedUser.id, communityId },
-    })
-      .then((response) => {
-        if (response.data) {
-          setCommunityInvites((prev) => [response.data, ...prev]);
-          setSelectedUser(null);
-          setError(null);
-        } else {
-          setError(
-            errorMessage({
-              error: response.error,
-              fallback: "Failed to invite user",
-            }),
-          );
-        }
+    createCommunityInvite(selectedUser.id)
+      .then(() => {
+        setSelectedUser(null);
+        setError(null);
+      })
+      .catch((error: unknown) => {
+        setError(errorMessage({ error, fallback: "Failed to invite user" }));
       })
       .finally(() => {
         setCreatingInvite(false);
@@ -240,7 +213,7 @@ const CommunityInvitesLeaderTab = ({
         confirmLabel: deleteInviteConfirmation.confirmLabel,
         cancelLabel: deleteInviteConfirmation.cancelLabel,
         anchorEl: event.currentTarget,
-        placement: "topleft",
+        placement: ToastPlacement.TopLeft,
       });
       if (!ok) {
         return;
@@ -253,13 +226,18 @@ const CommunityInvitesLeaderTab = ({
   };
 
   const handleDeleteCommunityInvite = (inviteId: number) => {
-    communityDeleteCommunityInvite({ path: { inviteId } }).then((response) => {
-      if (response.data) {
-        setCommunityInvites((prev) =>
-          prev.filter((invite) => invite.id !== inviteId),
-        );
-      }
-    });
+    setDeletingCommunityInviteIds((prev) => new Set(prev).add(inviteId));
+    deleteCommunityInvite(inviteId)
+      .catch(() => {
+        errorToast("Failed to delete invite");
+      })
+      .finally(() => {
+        setDeletingCommunityInviteIds((prev) => {
+          const next = new Set(prev);
+          next.delete(inviteId);
+          return next;
+        });
+      });
   };
 
   return (
@@ -309,6 +287,8 @@ const CommunityInvitesLeaderTab = ({
                         null,
                     )
                   }
+                  loading={usersLoading}
+                  loadFailed={usersError}
                   label={null}
                   single={true}
                 />
@@ -327,6 +307,11 @@ const CommunityInvitesLeaderTab = ({
         {onetimeInvitesError && (
           <p className="text-red-500 text-sm">
             Failed to load new member invites
+          </p>
+        )}
+        {communityInvitesDidFail && (
+          <p className="text-red-500 text-sm">
+            Failed to load existing member invites
           </p>
         )}
         {error && <p className="text-red-500 text-sm">{error}</p>}
@@ -362,6 +347,7 @@ const CommunityInvitesLeaderTab = ({
                 key={invite.id}
                 invite={invite}
                 selfInvited={!!(user && user.id === invite.invitingUser?.id)}
+                deleting={deletingCommunityInviteIds.has(invite.id)}
                 onDelete={handleDeleteCommunityInvite}
               />
             ))}
@@ -387,7 +373,7 @@ const CommunityInvitesLeaderTab = ({
                 selfInvited={!!(user && user.id === invite.invitingUser?.id)}
                 copied={copiedInviteId === invite.id}
                 onDelete={handleDeleteInvite}
-                onCopy={copyToClipboard}
+                onCopy={copyInviteLink}
                 onCopied={handleCopied}
               />
             ))}
@@ -420,6 +406,7 @@ const CommunityInvitesLeaderTab = ({
                 key={invite.id}
                 invite={invite}
                 selfInvited={!!(user && user.id === invite.invitingUser?.id)}
+                deleting={deletingCommunityInviteIds.has(invite.id)}
                 onDelete={handleDeleteCommunityInvite}
               />
             ))}
@@ -442,7 +429,7 @@ const CommunityInvitesLeaderTab = ({
                 invite={invite}
                 selfInvited={!!(user && user.id === invite.invitingUser?.id)}
                 copied={copiedInviteId === invite.id}
-                onCopy={copyToClipboard}
+                onCopy={copyInviteLink}
                 onCopied={handleCopied}
               />
             ))}

@@ -1,11 +1,6 @@
-import {
-  ActionDto,
-  ActionEventDto,
-  ActionStatus,
-  ReminderGroupDto,
-  ReminderGroupTimingMode,
-} from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
+import { getDayOfYear, milliseconds } from "date-fns";
+import { millisecondsInDay } from "date-fns/constants";
 import React, {
   useCallback,
   useEffect,
@@ -14,53 +9,43 @@ import React, {
   useState,
 } from "react";
 import { Link } from "react-router";
+import {
+  buildTimelineData,
+  firstRowActiveInWeek,
+  normalizeReminders,
+  parseReminderDate,
+  type TimelineAction,
+  type TimelineReminder,
+  weekTicks,
+} from "../lib/actionTimelineData";
+import type { CohortSegment } from "../lib/describeCohortExpression";
 import ActionTimelineBar from "./ActionTimelineBar";
+import ActionTimelineRowMeta from "./ActionTimelineRowMeta";
 
 interface ActionTimelineProps {
-  actions: ActionDto[];
+  actions: TimelineAction[];
   title?: string;
+  header?: React.ReactNode;
   className?: string;
-  reminders?: ReminderGroupDto[];
+  reminders?: TimelineReminder[];
   onReminderClick?: (reminderId: number) => void;
   focusOnDate?: Date | string | number | null;
+  mostRecentFirst?: boolean;
+  participantsById?: ReadonlyMap<number, CohortSegment[]>;
 }
 
-interface TimelineData {
-  action: Pick<ActionDto, "id" | "name" | "status">;
-  phases: PhaseSegment[];
-  totalDuration: number;
-  startDate: Date;
-  endDate: Date;
-}
-
-interface PhaseSegment {
-  status: ActionStatus;
-  startDate: Date;
-  endDate: Date;
-  duration: number;
-  event?: ActionEventDto;
-  isActive: boolean;
-}
-
-interface NormalizedReminder {
-  id: number;
-  label?: string | null;
-  startDate: Date;
-  endDate: Date;
-  isRange: boolean;
-  timingMode: ReminderGroupTimingMode;
-  original: ReminderGroupDto;
-}
-
-const EMPTY_REMINDERS: ReminderGroupDto[] = [];
+const EMPTY_REMINDERS: TimelineReminder[] = [];
 
 const ActionTimeline: React.FC<ActionTimelineProps> = ({
   actions,
   title,
+  header,
   className,
   reminders,
   onReminderClick,
   focusOnDate,
+  mostRecentFirst = false,
+  participantsById,
 }) => {
   const [scrollLeft, setScrollLeft] = useState(0);
   const [containerWidth, setContainerWidth] = useState(800);
@@ -70,28 +55,26 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
     id: number;
   } | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const namesContainerRef = useRef<HTMLDivElement>(null);
 
   const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
     const target = event.currentTarget;
     setScrollLeft(target.scrollLeft);
+    if (namesContainerRef.current) {
+      namesContainerRef.current.scrollTop = target.scrollTop;
+    }
   }, []);
 
-  const parseReminderDate = useCallback((value: unknown): Date | null => {
-    if (!value && value !== 0) {
-      return null;
-    }
-
-    if (value instanceof Date) {
-      return Number.isNaN(value.getTime()) ? null : value;
-    }
-
-    if (typeof value === "string" || typeof value === "number") {
-      const parsed = new Date(value);
-      return Number.isNaN(parsed.getTime()) ? null : parsed;
-    }
-
-    return null;
-  }, []);
+  // Setting a scrollTop that already matches fires no scroll event, so this
+  // two-way sync with the chart pane settles instead of looping.
+  const handleNamesScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = event.currentTarget.scrollTop;
+      }
+    },
+    [],
+  );
 
   const focusDate = useMemo(() => {
     if (focusOnDate === undefined || focusOnDate === null) {
@@ -99,244 +82,24 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
     }
 
     return parseReminderDate(focusOnDate);
-  }, [parseReminderDate, focusOnDate]);
+  }, [focusOnDate]);
 
   const reminderList = reminders ?? EMPTY_REMINDERS;
 
-  const nextEventById = useMemo(() => {
-    const nextEventMap = new Map<number, ActionEventDto>();
+  const normalizedReminders = useMemo(
+    () => normalizeReminders(reminderList, actions),
+    [reminderList, actions],
+  );
 
-    for (const action of actions) {
-      if (!action.events || action.events.length === 0) {
-        continue;
-      }
-
-      const sortedEvents = [...action.events].sort(
-        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-      );
-
-      sortedEvents.forEach((event, index) => {
-        const next = sortedEvents[index + 1];
-        if (next) {
-          nextEventMap.set(event.id, next);
-        }
-      });
-    }
-
-    return nextEventMap;
-  }, [actions]);
-
-  const normalizedReminders = useMemo<NormalizedReminder[]>(() => {
-    if (!reminderList || reminderList.length === 0) {
-      return [];
-    }
-
-    return reminderList
-      .map<NormalizedReminder | null>((reminder) => {
-        const timingMode = reminder.timingMode;
-
-        const rangeStart = parseReminderDate(reminder.send_range_start) ?? null;
-
-        const rangeEnd = parseReminderDate(reminder.send_range_end) ?? null;
-
-        let singleDate = parseReminderDate(reminder.sendAtAbsolute) ?? null;
-
-        const isRangeTiming = timingMode === "within_range";
-
-        if (!singleDate) {
-          const offsetSeconds = reminder.sendAtSecondsFromDeadline;
-
-          if (offsetSeconds != null && timingMode === "from_deadline") {
-            let deadlineDate: Date | null = null;
-
-            const memberEventId = reminder.memberActionEvent?.id;
-
-            if (!deadlineDate && memberEventId != null) {
-              const next = nextEventById.get(memberEventId);
-              if (next) {
-                deadlineDate = parseReminderDate(next.date);
-              }
-            }
-
-            if (deadlineDate) {
-              singleDate = new Date(
-                deadlineDate.getTime() - offsetSeconds * 1000,
-              );
-            }
-          } else if (timingMode === "event_launch") {
-            if (reminder.memberActionEvent) {
-              singleDate = parseReminderDate(reminder.memberActionEvent.date);
-            }
-          }
-        }
-
-        if (rangeStart && rangeEnd) {
-          const start =
-            rangeStart.getTime() <= rangeEnd.getTime() ? rangeStart : rangeEnd;
-          const end =
-            rangeStart.getTime() <= rangeEnd.getTime() ? rangeEnd : rangeStart;
-
-          return {
-            id: reminder.id,
-            label: reminder.name,
-            startDate: start,
-            endDate: end,
-            isRange: true,
-            timingMode,
-            original: reminder,
-          };
-        }
-
-        if (singleDate) {
-          return {
-            id: reminder.id,
-            label: reminder.name,
-            startDate: singleDate,
-            endDate: singleDate,
-            isRange: isRangeTiming,
-            timingMode,
-            original: reminder,
-          };
-        }
-
-        if (rangeStart || rangeEnd) {
-          const fallbackDate = rangeStart ?? rangeEnd;
-          if (!fallbackDate) {
-            return null;
-          }
-
-          return {
-            id: reminder.id,
-            label: reminder.name,
-            startDate: fallbackDate,
-            endDate: fallbackDate,
-            isRange: false,
-            timingMode,
-            original: reminder,
-          };
-        }
-
-        return null;
-      })
-      .filter((entry): entry is NormalizedReminder => entry !== null)
-      .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-  }, [parseReminderDate, reminderList, nextEventById]);
-
-  const { timelineData, globalStartDate, globalEndDate, totalDays } =
-    useMemo(() => {
-      const processedActions: TimelineData[] = [];
-
-      for (const action of actions) {
-        // Skip actions without events
-        if (!action.events || action.events.length === 0) {
-          continue;
-        }
-
-        // Sort events by date
-        const sortedEvents = [...action.events].sort(
-          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-        );
-
-        const phases: PhaseSegment[] = [];
-
-        // Create phase segments based on events
-        for (let i = 0; i < sortedEvents.length; i++) {
-          const event = sortedEvents[i];
-          const nextEvent = sortedEvents[i + 1];
-
-          const phaseStartDate = new Date(event.date);
-          const phaseEndDate = nextEvent
-            ? new Date(nextEvent.date)
-            : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // Default to 7 days if no next event
-
-          const duration = phaseEndDate.getTime() - phaseStartDate.getTime();
-
-          phases.push({
-            status: event.newStatus,
-            startDate: phaseStartDate,
-            endDate: phaseEndDate,
-            duration,
-            event,
-            isActive:
-              i === sortedEvents.length - 1 &&
-              action.status === event.newStatus,
-          });
-        }
-
-        if (phases.length > 0) {
-          const totalDuration =
-            phases[phases.length - 1].endDate.getTime() -
-            phases[0].startDate.getTime();
-
-          processedActions.push({
-            action,
-            phases,
-            totalDuration,
-            startDate: phases[0].startDate,
-            endDate: phases[phases.length - 1].endDate,
-          });
-        }
-      }
-
-      const sortedActions = processedActions.sort(
-        (a, b) => a.startDate.getTime() - b.startDate.getTime(),
-      );
-
-      const boundaryTimestamps: number[] = [];
-
-      sortedActions.forEach((item) => {
-        boundaryTimestamps.push(
-          item.startDate.getTime(),
-          item.endDate.getTime(),
-        );
-      });
-
-      normalizedReminders.forEach((reminder) => {
-        boundaryTimestamps.push(reminder.startDate.getTime());
-        if (reminder.isRange) {
-          boundaryTimestamps.push(reminder.endDate.getTime());
-        }
-      });
-      actions.forEach((action) => {
-        action.events.forEach((event) => {
-          boundaryTimestamps.push(new Date(event.date).getTime());
-        });
-      });
-
-      // Calculate global timeline bounds with some padding
-      const defaultPadding = 24 * 60 * 60 * 1000;
-      let minDate: Date;
-      let maxDate: Date;
-
-      if (boundaryTimestamps.length > 0) {
-        const minTime = Math.min(...boundaryTimestamps);
-        const maxTime = Math.max(...boundaryTimestamps);
-        minDate = new Date(minTime - defaultPadding);
-        maxDate = new Date(maxTime + defaultPadding);
-      } else {
-        const now = new Date();
-        minDate = new Date(now.getTime() - defaultPadding);
-        maxDate = new Date(now.getTime() + defaultPadding);
-      }
-
-      const globalStartDate = new Date(
-        Math.min(minDate.getTime(), Date.now() - 2 * 24 * 60 * 60 * 1000),
-      );
-
-      const span = maxDate.getTime() - globalStartDate.getTime();
-      const dayCount = Math.max(1, Math.ceil(span / (24 * 60 * 60 * 1000)));
-
-      return {
-        timelineData: sortedActions,
-        globalStartDate,
-        globalEndDate: maxDate,
-        totalDays: dayCount,
-      };
-    }, [actions, normalizedReminders]);
+  const { timelineData, globalStartDate, globalEndDate, totalDays } = useMemo(
+    () => buildTimelineData({ actions, normalizedReminders, mostRecentFirst }),
+    [actions, normalizedReminders, mostRecentFirst],
+  );
 
   const focusTimestamp = focusDate ? focusDate.getTime() : null;
   const scrollContainer = scrollContainerRef.current;
-  const pixelsPerDay = 80;
+  const pixelsPerDay = 16;
+  const pixelsPerWeek = pixelsPerDay * 7;
   const chartWidth = Math.max(totalDays, 1) * pixelsPerDay;
   const rowHeight = 64;
   const hasReminderOverlay = normalizedReminders.length > 0;
@@ -353,8 +116,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
       return;
     }
 
-    const millisecondsPerDay = 24 * 60 * 60 * 1000;
-    const pixelsPerMillisecond = pixelsPerDay / millisecondsPerDay;
+    const pixelsPerMillisecond = pixelsPerDay / millisecondsInDay;
     const startTime = globalStartDate.getTime();
     const endTime = globalEndDate.getTime();
     const clampedTime = Math.min(Math.max(focusTimestamp, startTime), endTime);
@@ -374,11 +136,14 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
       id: indicatorId,
     });
 
-    const timeout = window.setTimeout(() => {
-      setFocusIndicator((prev) =>
-        prev && prev.id === indicatorId ? { ...prev, visible: false } : prev,
-      );
-    }, 1000);
+    const timeout = window.setTimeout(
+      () => {
+        setFocusIndicator((prev) =>
+          prev && prev.id === indicatorId ? { ...prev, visible: false } : prev,
+        );
+      },
+      milliseconds({ seconds: 1 }),
+    );
 
     return () => {
       window.clearTimeout(timeout);
@@ -391,18 +156,10 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
     scrollContainer,
   ]);
 
-  // Generate date ticks for the timeline
-  const dateTicks = useMemo(() => {
-    const ticks: Date[] = [];
-    const current = new Date(globalStartDate);
-
-    while (current <= globalEndDate) {
-      ticks.push(new Date(current));
-      current.setDate(current.getDate() + 1);
-    }
-
-    return ticks;
-  }, [globalStartDate, globalEndDate]);
+  const ticks = useMemo(
+    () => weekTicks({ globalStartDate, globalEndDate, pixelsPerDay }),
+    [globalStartDate, globalEndDate, pixelsPerDay],
+  );
 
   // Effect to center current time on mount
   useEffect(() => {
@@ -410,8 +167,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
       const currentDate = new Date();
       if (currentDate >= globalStartDate && currentDate <= globalEndDate) {
         // Use precise timing for centering
-        const millisecondsPerDay = 24 * 60 * 60 * 1000;
-        const pixelsPerMillisecond = pixelsPerDay / millisecondsPerDay;
+        const pixelsPerMillisecond = pixelsPerDay / millisecondsInDay;
         const millisecondsSinceStart =
           currentDate.getTime() - globalStartDate.getTime();
         const currentTimePosition =
@@ -424,27 +180,48 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
     }
   }, [timelineData, globalStartDate, globalEndDate, pixelsPerDay]);
 
+  const scrollToWeek = (weekStart: Date) => {
+    const index = firstRowActiveInWeek(timelineData, weekStart);
+    if (index === -1) {
+      return;
+    }
+    // Smooth scrolling would be cut short by the names-pane scroll sync.
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = index * rowHeight;
+    }
+  };
+
   if (timelineData.length === 0 && normalizedReminders.length === 0) {
-    return (
+    const emptyMessage = "No actions with timeline events found.";
+    return header ? (
+      <div className={cn("bg-white rounded-lg", className)}>
+        <div className="w-80 h-[50px] bg-zinc-50 border-b border-r border-zinc-200 py-3 pr-4 text-xs">
+          {header}
+        </div>
+        <div className="p-8 text-center text-zinc-500">{emptyMessage}</div>
+      </div>
+    ) : (
       <div className={cn("p-8 text-center text-zinc-500", className)}>
-        No actions with timeline events found.
+        {emptyMessage}
       </div>
     );
   }
 
   return (
     <div className={cn("bg-white rounded-lg flex flex-col", className)}>
-      <div className="flex-shrink-0">
+      <div className="flex flex-col flex-1 min-h-0">
         {/* Gantt chart area with frozen action names */}
         <div className="flex flex-1 min-h-0">
           {/* Fixed action names column */}
-          <div className="w-80 flex-shrink-0 bg-white border-r border-zinc-200">
+          <div className="w-80 flex-shrink-0 flex flex-col min-h-0 bg-white border-r border-zinc-200">
             {/* Actions header - fixed */}
             <div
-              className="sticky top-0 bg-zinc-50 border-b border-zinc-200 py-3 pr-4 text-xs font-medium text-zinc-700 z-20"
+              className="flex-shrink-0 bg-zinc-50 border-b border-zinc-200 py-3 pr-4 text-xs font-medium text-zinc-700 z-20"
               style={{ height: "50px" }}
             >
-              {title ? (
+              {header ? (
+                <div className="h-full">{header}</div>
+              ) : title ? (
                 <div className="flex items-center h-full pl-4 font-bold text-black text-base">
                   {title}
                 </div>
@@ -454,25 +231,26 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
             </div>
             {/* Action names - scrollable vertically */}
             <div
-              className="overflow-y-auto"
-              style={{ height: `${timelineContentHeight}px` }}
+              className="flex-1 min-h-0 overflow-y-auto"
+              style={{ maxHeight: `${timelineContentHeight}px` }}
+              onScroll={handleNamesScroll}
+              ref={namesContainerRef}
             >
               {timelineData.map(({ action }) => (
-                <div
+                <Link
                   key={action.id}
-                  className="border-b border-zinc-100 py-3 pr-4 flex flex-col justify-center bg-white pl-5"
+                  to={`/actions/${action.id}`}
+                  className="border-b border-zinc-100 py-3 pr-4 flex flex-col justify-center bg-white hover:bg-zinc-50 pl-5"
                   style={{ height: "64px" }}
                 >
-                  <Link
-                    to={`/actions/${action.id}`}
-                    className="text-sm font-medium text-black truncate"
-                  >
+                  <div className="text-sm font-medium text-black truncate">
                     {action.name}
-                  </Link>
-                  <div className="text-xs text-zinc-500">
-                    <span>{action.status}</span>
                   </div>
-                </div>
+                  <ActionTimelineRowMeta
+                    status={action.status}
+                    participants={participantsById?.get(action.id)}
+                  />
+                </Link>
               ))}
             </div>
           </div>
@@ -500,25 +278,34 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                 className="bg-gray-50 border-b border-gray-200 sticky top-0 z-20 py-3"
                 style={{ width: `${chartWidth}px`, height: "50px" }}
               >
-                {dateTicks.map((date, index) => (
-                  <div
-                    key={index}
-                    className="absolute border-l border-gray-200 text-xs text-gray-500 px-1 flex flex-col justify-center"
-                    style={{
-                      left: `${index * pixelsPerDay}px`,
-                      width: `${pixelsPerDay}px`,
-                      top: 0,
-                      bottom: 0,
-                    }}
-                  >
-                    <div>
-                      <div className="font-medium">{date.getDate()}</div>
-                      <div>
-                        {date.toLocaleDateString("en-US", { month: "short" })}
+                {ticks.map(({ date, left }) => {
+                  const weekNumber = Math.ceil(getDayOfYear(date) / 7) + 1;
+                  return (
+                    <button
+                      type="button"
+                      key={date.getTime()}
+                      onClick={() => scrollToWeek(date)}
+                      aria-label={`Scroll to actions active in week ${weekNumber}`}
+                      className="absolute border-l border-gray-200 text-xs text-left text-gray-500 px-1 flex flex-col justify-center cursor-pointer hover:bg-gray-100"
+                      style={{
+                        left: `${left}px`,
+                        width: `${pixelsPerWeek}px`,
+                        top: 0,
+                        bottom: 0,
+                      }}
+                    >
+                      <div className="absolute inset-0 flex items-center justify-center text-[31.5px] leading-none text-gray-200">
+                        {weekNumber}
                       </div>
-                    </div>
-                  </div>
-                ))}
+                      <div>
+                        <div className="font-medium">{date.getDate()}</div>
+                        <div>
+                          {date.toLocaleDateString("en-US", { month: "short" })}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
 
               {/* Vertical grid lines */}
@@ -530,12 +317,12 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                   height: `${timelineContentHeight}px`,
                 }}
               >
-                {dateTicks.map((_, index) => (
+                {ticks.map(({ date, left }) => (
                   <div
-                    key={index}
+                    key={date.getTime()}
                     className="absolute border-l border-gray-100"
                     style={{
-                      left: `${index * pixelsPerDay}px`,
+                      left: `${left}px`,
                       top: 0,
                       height: `${timelineContentHeight}px`,
                     }}
@@ -553,9 +340,8 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                   }}
                 >
                   {normalizedReminders.map((reminder) => {
-                    const millisecondsPerDay = 24 * 60 * 60 * 1000;
                     const pixelsPerMillisecond =
-                      pixelsPerDay / millisecondsPerDay;
+                      pixelsPerDay / millisecondsInDay;
                     const startOffset =
                       reminder.startDate.getTime() - globalStartDate.getTime();
                     const left = startOffset * pixelsPerMillisecond;
@@ -632,9 +418,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                   currentDate <= globalEndDate
                 ) {
                   // Use precise timing for current time indicator
-                  const millisecondsPerDay = 24 * 60 * 60 * 1000;
-                  const pixelsPerMillisecond =
-                    pixelsPerDay / millisecondsPerDay;
+                  const pixelsPerMillisecond = pixelsPerDay / millisecondsInDay;
                   const millisecondsSinceStart =
                     currentDate.getTime() - globalStartDate.getTime();
 
@@ -660,9 +444,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
 
               {focusIndicator?.visible &&
                 (() => {
-                  const millisecondsPerDay = 24 * 60 * 60 * 1000;
-                  const pixelsPerMillisecond =
-                    pixelsPerDay / millisecondsPerDay;
+                  const pixelsPerMillisecond = pixelsPerDay / millisecondsInDay;
                   const offset =
                     focusIndicator.timestamp - globalStartDate.getTime();
 

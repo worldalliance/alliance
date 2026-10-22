@@ -1,3 +1,5 @@
+import { thrownMessage, thrownStack } from "@alliance/common/errorMessage";
+import { R } from "@alliance/common/result";
 import { TIMED_OUT, withTimeout } from "@alliance/common/timeout";
 import {
   BadRequestException,
@@ -6,15 +8,26 @@ import {
   Logger,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { milliseconds } from "date-fns";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
+import { MessageChannel } from "src/link-tracking/message-tracking.entity";
+import {
+  MessageTrackingService,
+  type TrackedMessage,
+} from "src/link-tracking/message-tracking.service";
+import { tagTextLinks } from "src/link-tracking/tag-links";
 import type { Repository } from "src/utils/Repository";
+import { notifDeliveryEnabled } from "src/utils/notif-delivery";
 import { isAnonymizedPhoneNumber } from "src/utils/phone";
 import Twilio from "twilio";
 import type { MessageStatus } from "twilio/lib/rest/api/v2010/account/message";
 import { Mms } from "./mms.entity";
 
-const SEND_TIMEOUT_MS = 10_000;
+/** Twilio delivers to UK numbers only from an alphanumeric sender. */
+const UK_SENDER_ID = "The Alliance";
+
+const SEND_TIMEOUT_MS = milliseconds({ seconds: 10 });
 
 /**
  * The parts of a twilio message an {@link Mms} row is built from. Twilio types
@@ -41,6 +54,7 @@ export class MmsService {
     @InjectRepository(Mms)
     private readonly mmsRepository: Repository<Mms>,
     private readonly eventLogService: EventLogService,
+    private readonly messageTracking: MessageTrackingService,
   ) {
     if (process.env.NODE_ENV === "test") {
       return;
@@ -51,7 +65,7 @@ export class MmsService {
 
     if (
       (!accountSid || !authToken || !this.twilioPhoneNumber) &&
-      (process.env.NODE_ENV !== "development" || !process.env.SEND_DEV_NOTIFS)
+      notifDeliveryEnabled()
     ) {
       this.logger.error(
         "Twilio configuration (Account SID, Auth Token, Phone Number) is missing or invalid.",
@@ -65,11 +79,10 @@ export class MmsService {
       this.twilioClient = Twilio(accountSid, authToken); // Initialize Twilio client
       this.logger.log("Twilio client initialized successfully.");
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage = thrownMessage(error);
       this.logger.error(
         `Failed to initialize Twilio client: ${errorMessage}`,
-        error instanceof Error ? error.stack : undefined,
+        thrownStack(error),
       );
       throw new InternalServerErrorException(
         `Failed to initialize Twilio client: ${errorMessage}`,
@@ -79,17 +92,30 @@ export class MmsService {
 
   async sendMms(params: {
     to: string;
+    userId: number;
     body: string;
     mediaUrls: string[];
-    cid: string | null;
+    tracking: TrackedMessage | null;
   }): Promise<Mms | null> {
-    const { to, body, mediaUrls, cid } = params;
+    const { to, userId, mediaUrls, tracking } = params;
+    let cid: string | null = null;
+    if (tracking) {
+      const tracked = await R.fromPromise(
+        this.messageTracking.track({
+          message: tracking,
+          channel: MessageChannel.Sms,
+        }),
+      );
+      if (!tracked.ok)
+        return this.reportFailure({ to, userId, error: tracked.error });
+      cid = tracked.value;
+    }
+    const body = cid
+      ? tagTextLinks({ text: params.body, trackingId: cid })
+      : params.body;
     if (
       process.env.NODE_ENV === "test" ||
-      !(
-        process.env.NODE_ENV === "production" ||
-        process.env.SEND_DEV_NOTIFS === "1"
-      ) ||
+      !notifDeliveryEnabled() ||
       isAnonymizedPhoneNumber(to)
     ) {
       const mms = this.mmsRepository.create({
@@ -105,7 +131,7 @@ export class MmsService {
       return this.mmsRepository.save(mms);
     }
     this.logger.log(
-      `Attempting to send MMS to ${to} with ${mediaUrls.length} media items.`,
+      `Attempting to send MMS to user ${userId} with ${mediaUrls.length} media items.`,
     );
 
     if (mediaUrls.length === 0) {
@@ -123,14 +149,19 @@ export class MmsService {
     try {
       const sending = this.twilioClient.messages.create({
         to: to,
-        from: this.twilioPhoneNumber,
+        from: this.senderFor(to),
         body: body,
         mediaUrl: mediaUrls,
       });
-      const message = await withTimeout(sending, this.sendTimeoutMs);
+      const message = await withTimeout(sending, this.sendTimeoutMs).catch(
+        async (error: unknown) => {
+          if (cid) await this.messageTracking.discard(cid);
+          throw error;
+        },
+      );
 
       if (message === TIMED_OUT) {
-        this.recordLateSend({ sending, to, body, cid });
+        this.recordLateSend({ sending, to, userId, body, cid });
         throw new Error(`sendMms timed out after ${this.sendTimeoutMs}ms`);
       }
 
@@ -138,22 +169,42 @@ export class MmsService {
 
       return this.saveSent({ message, to, body, cid });
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      this.logger.error(
-        `Failed to send MMS to ${to}: ${errorMessage}`,
-        error instanceof Error ? error.stack : undefined,
-      );
-      if (process.env.NODE_ENV === "production") {
-        this.eventLogService.sendMessage({
-          type: EventType.SmsFailure,
-          message: `Failed to send MMS to ${to}: ${errorMessage}`,
-          blob: { errorMessage, to, from: this.twilioPhoneNumber },
-          userId: null,
-        });
-      }
-      return null;
+      return this.reportFailure({ to, userId, error });
     }
+  }
+
+  private reportFailure(params: {
+    to: string;
+    userId: number;
+    error: unknown;
+  }): null {
+    const { to, userId, error } = params;
+    const errorMessage = thrownMessage(error);
+    this.logError({
+      to,
+      text: `Failed to send MMS to user ${userId}: ${errorMessage}`,
+      error,
+    });
+    if (process.env.NODE_ENV === "production") {
+      this.eventLogService.sendMessage({
+        type: EventType.SmsFailure,
+        message: `Failed to send MMS to ${to}: ${errorMessage}`,
+        blob: { errorMessage, to, from: this.senderFor(to) },
+        userId: null,
+      });
+    }
+    return null;
+  }
+
+  /** Twilio's error text quotes the number it rejected. */
+  private logError(params: { to: string; text: string; error: unknown }) {
+    const { to, text, error } = params;
+    const redact = (logged: string) => logged.replaceAll(to, "[redacted]");
+    this.logger.error(redact(text), redact(thrownStack(error)));
+  }
+
+  private senderFor(to: string): string {
+    return to.startsWith("+44") ? UK_SENDER_ID : this.twilioPhoneNumber;
   }
 
   private saveSent(params: {
@@ -166,7 +217,7 @@ export class MmsService {
     return this.mmsRepository.save(
       this.mmsRepository.create({
         to: to,
-        from: this.twilioPhoneNumber,
+        from: this.senderFor(to),
         body: body,
         twilioSid: message.sid,
         status: message.status,
@@ -187,22 +238,30 @@ export class MmsService {
   private recordLateSend(params: {
     sending: Promise<SentMessage>;
     to: string;
+    userId: number;
     body: string;
     cid: string | null;
   }): void {
-    const { sending, to, body, cid } = params;
+    const { sending, to, userId, body, cid } = params;
     void sending
-      .then(async (message) => {
-        const mms = await this.saveSent({ message, to, body, cid });
-        this.logger.warn(
-          `MMS to ${to} landed after ${this.sendTimeoutMs}ms and was recorded as ${mms.id} (SID ${message.sid})`,
-        );
-      })
+      .then(
+        async (message) => {
+          const mms = await this.saveSent({ message, to, body, cid });
+          this.logger.warn(
+            `MMS to user ${userId} landed after ${this.sendTimeoutMs}ms and was recorded as ${mms.id} (SID ${message.sid})`,
+          );
+        },
+        async (error: unknown) => {
+          if (cid) await this.messageTracking.discard(cid);
+          throw error;
+        },
+      )
       .catch((error: unknown) => {
-        this.logger.error(
-          `MMS to ${to} failed after ${this.sendTimeoutMs}ms: ${error instanceof Error ? error.message : String(error)}`,
-          error instanceof Error ? error.stack : undefined,
-        );
+        this.logError({
+          to,
+          text: `MMS to user ${userId} failed after ${this.sendTimeoutMs}ms: ${thrownMessage(error)}`,
+          error,
+        });
       });
   }
 

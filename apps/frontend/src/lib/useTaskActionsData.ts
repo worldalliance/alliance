@@ -1,75 +1,81 @@
-import { ActionDto, actionsDismissAction } from "@alliance/shared/client";
-import { useActionsQuery } from "@alliance/shared/lib/actionsListPage";
 import {
-  ActionWithAwayStatus,
-  withOptimisticDismissal,
-} from "@alliance/shared/lib/actionUtils";
+  useActionsQuery,
+  useDismissActionMutation,
+} from "@alliance/shared/lib/actionsListPage";
+import { ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
+import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import { type ParsedGeneralUpdate } from "@alliance/shared/lib/generalUpdates";
 import { useUnreadGeneralUpdates } from "@alliance/shared/lib/useGeneralUpdates";
-import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
+import { type LoadFailure } from "../components/LoadFailed";
 
-export function useTaskActionsData(options?: {
-  refetchInterval?: number | false;
-}): {
+export function useTaskActionsData(): {
   actions: ActionWithAwayStatus[] | null;
   generalUpdates: ParsedGeneralUpdate[] | null;
-  loading: boolean;
+  generalUpdatesFailure: LoadFailure | null;
+  actionsFailure: LoadFailure | null;
   handleDismissAction: (actionId: number) => Promise<void>;
   handleDismissGeneralUpdate: (generalUpdateId: number) => Promise<void>;
 } {
-  const queryClient = useQueryClient();
+  const { mutateAsync: dismissAction } = useDismissActionMutation();
+  const actionsQuery = useActionsQuery();
   const {
     data: actionsData,
     isLoading: actionsLoading,
-    isError: actionsError,
-  } = useActionsQuery({ refetchInterval: options?.refetchInterval });
+    isFetching: actionsFetching,
+    refetch: refetchActions,
+  } = actionsQuery;
+  const didActionsFail = failedToLoad(actionsQuery);
   const {
     generalUpdates: generalUpdatesData,
     isLoading: generalUpdatesLoading,
-    isError: generalUpdatesError,
+    isFetching: generalUpdatesFetching,
+    didFail: didGeneralUpdatesFail,
+    refetch: refetchGeneralUpdates,
     dismissGeneralUpdate,
   } = useUnreadGeneralUpdates();
 
-  const loading = actionsLoading || generalUpdatesLoading;
+  const loading =
+    (actionsLoading && !didActionsFail) ||
+    (generalUpdatesLoading && !didGeneralUpdatesFail);
 
   const actions = useMemo<ActionWithAwayStatus[] | null>(() => {
-    if (loading || actionsError) {
+    if (loading || !actionsData) {
       return null;
     }
 
-    return (actionsData ?? []).map((action) => ({
+    return actionsData.map((action) => ({
       ...action,
       awayStatus: action.awayStatus ?? "not_away",
     }));
-  }, [actionsData, loading, actionsError]);
+  }, [actionsData, loading]);
 
   const generalUpdates = useMemo<ParsedGeneralUpdate[] | null>(() => {
-    if (loading || generalUpdatesError) {
+    if (loading) {
       return null;
     }
     return generalUpdatesData;
-  }, [generalUpdatesData, loading, generalUpdatesError]);
+  }, [generalUpdatesData, loading]);
 
   const handleDismissAction = useCallback(
     async (actionId: number) => {
-      await actionsDismissAction({
-        path: { id: actionId },
-      });
-
-      queryClient.setQueryData<ActionDto[] | undefined>(["actions"], (prev) =>
-        prev?.map((action) =>
-          action.id === actionId ? withOptimisticDismissal(action) : action,
-        ),
-      );
+      await dismissAction(actionId);
     },
-    [queryClient],
+    [dismissAction],
   );
 
   return {
     actions,
     generalUpdates,
-    loading,
+    generalUpdatesFailure: didGeneralUpdatesFail
+      ? {
+          onRetry: () => void refetchGeneralUpdates(),
+          retrying: generalUpdatesFetching,
+        }
+      : null,
+    actionsFailure: didActionsFail
+      ? { onRetry: () => void refetchActions(), retrying: actionsFetching }
+      : null,
     handleDismissAction,
     handleDismissGeneralUpdate: dismissGeneralUpdate,
   };

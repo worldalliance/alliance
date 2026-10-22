@@ -4,7 +4,8 @@ import {
 } from "@alliance/common/cohort-expression";
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsOptional } from "class-validator";
+import { Allow, IsEmpty, IsOptional } from "class-validator";
+import { DeleteDateColumnTz } from "src/datasources/basecolumns";
 import { Form } from "src/tasks/entities/form.entity";
 import type { Relation } from "src/utils/Repository";
 import {
@@ -69,9 +70,8 @@ export class FollowUpForm {
   })
   @JoinColumn({ name: "actionId" })
   @Type(() => Action)
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  action: Relation<Action>;
+  @IsOptional()
+  action?: Relation<Action>;
 
   @Column()
   @ApiProperty()
@@ -81,9 +81,13 @@ export class FollowUpForm {
   @ManyToOne(() => Form, { onDelete: "CASCADE" })
   @JoinColumn({ name: "formId" })
   @Type(() => Form)
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  form: Relation<Form>;
+  @IsOptional()
+  form?: Relation<Form>;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }
 
 /**

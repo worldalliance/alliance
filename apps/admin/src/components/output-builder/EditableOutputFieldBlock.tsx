@@ -10,10 +10,9 @@ import { type VisibleIfFormula } from "@alliance/common/forms/visible-if-formula
 import { cn } from "@alliance/shared/styles/util";
 import { useEffect, useState } from "react";
 import { VariableTextField } from "../VariableTextField";
-import {
-  ConditionalVisibility,
-  type OutputBlockOption,
-} from "../form-fields/CommonControls";
+import { ConditionalVisibility } from "../form-fields/conditions/ConditionalVisibility";
+import type { OutputBlockOption } from "../form-fields/conditions/ContextRules";
+import { useTypedExpression } from "../form-fields/conditions/expressionBuffers";
 
 interface EditableOutputFieldBlockProps {
   block: OutputFieldBlock;
@@ -39,17 +38,13 @@ export function EditableOutputFieldBlock({
   const selectedField = availableFields.find(
     (field) => field.id === block.fieldId,
   );
-  const [showVisibilityControls, setShowVisibilityControls] = useState(() =>
-    block.visibleIfFormula?.conditions
-      ? Object.keys(block.visibleIfFormula.conditions).length > 0
-      : false,
+  const expression = useTypedExpression(block);
+  const [showVisibilityControls, setShowVisibilityControls] = useState(
+    () => expression.typed || block.visibleIfFormula !== undefined,
   );
 
   useEffect(() => {
-    const hasConditions = block.visibleIfFormula?.conditions
-      ? Object.keys(block.visibleIfFormula.conditions).length > 0
-      : false;
-    if (hasConditions) {
+    if (block.visibleIfFormula !== undefined) {
       setShowVisibilityControls(true);
     }
   }, [block.visibleIfFormula]);
@@ -64,6 +59,7 @@ export function EditableOutputFieldBlock({
     setShowVisibilityControls(enabled);
     if (!enabled) {
       onUpdate({ visibleIfFormula: undefined });
+      expression.clear();
     }
   };
 
@@ -206,7 +202,7 @@ export function EditableOutputFieldBlock({
       {showVisibilityControls && (
         <div className="border-t border-gray-200 p-4 pt-0">
           <ConditionalVisibility
-            field={block as unknown as AnyField}
+            field={block}
             previousFields={availableFields}
             outputBlocks={outputBlocks}
             onChange={handleVisibilityChange}

@@ -1,9 +1,15 @@
+import { FORMULA_SOURCES_CHANGED_REASON } from "@alliance/common/forms/formula-options";
 import { pickForCount } from "@alliance/common/plural";
 import type { AutomaticInviteReason } from "./inviteUtils";
 
 export const noTasksToDoRightNow = "No tasks to do right now";
 export const noTasksContractSuspended =
   "You will not be assigned tasks while you do not have a signed membership contract.";
+
+export interface TitledCopy {
+  title: string;
+  description: string;
+}
 
 export const taskHeaders = {
   actionPage: {
@@ -24,7 +30,22 @@ export const taskHeaders = {
       description:
         "You are not required to complete the task, but can if you would like.",
     },
+    optionalForViewer: {
+      title: "This action is optional for you.",
+      description:
+        "You do not need to complete this task, but you can if you would like.",
+    },
+    optionalForContractGap: {
+      title: "This action is optional for you.",
+      description:
+        "You haven't been a member for the whole time this task has been open. You do not need to complete it, but you can if you would like.",
+    },
     withdrew: "You withdrew from this action.",
+  },
+  staffPreview: {
+    title: "Staff preview",
+    description:
+      "This action hasn't gone out to members yet. Nothing you enter here is submitted.",
   },
   homePage: {
     away: {
@@ -47,11 +68,20 @@ export const taskHeaders = {
       title: "This action is optional.",
       description: "You can complete the task as usual or dismiss it.",
     },
+    optionalForViewer: {
+      title: "Optional for you",
+      description: "You can either complete this task or dismiss it.",
+    },
+    optionalForContractGap: {
+      title: "Optional for you",
+      description:
+        "You weren't a member for the whole time this task was open. You can either complete it or dismiss it.",
+    },
   },
 } as const;
 
 export const awayRangesDescription =
-  "You can schedule a period of time when you won't be able to complete Alliance actions. This will let the office know not to expect you to complete tasks while you're away.";
+  "You can schedule a period of time when you won't be able to complete Alliance tasks. This will let us know to plan around your absence.";
 
 export const leaveGroupConfirmation =
   "Are you sure you want to leave this group? You will not be able to rejoin unless you are invited again.";
@@ -158,14 +188,6 @@ export const inviteBuckets = {
   },
 } as const;
 
-/** Shared labels for onetime invite status; each app maps to its own style (e.g. Tailwind class). */
-export const onetimeInviteStatusLabels = {
-  request_pending: "Request pending",
-  request_rejected: "Rejected",
-  link_used: "Accepted",
-  link_unused: "Pending",
-} as const;
-
 /**
  * Shown when a multi-use link has no chosen group, keyed by why. A `Record` so
  * a new reason has to be given wording rather than silently rendering nothing.
@@ -209,6 +231,7 @@ export const referralQrCopy = {
 
 export const clipboardCopy = {
   share: "Share",
+  copyLink: "Copy link",
   copiedToClipboard: "Copied to clipboard",
   exportJson: "Export JSON",
   inClipboard: "in clipboard",
@@ -227,13 +250,90 @@ export const guestReferral = {
   createAccountToSubmit: "Create an account to submit",
 } as const;
 
+export const membershipAgreementLoadFailed =
+  "The membership agreement couldn't be loaded.";
+
+export const signedAgreementLoadFailed =
+  "The agreement you signed couldn't be loaded.";
+
 export const suspendContractConfirmation =
-  "Are you sure you want to suspend your contract? You will be removed from your groups.";
+  "Are you sure you want to suspend your agreement? You will be removed from your groups.";
+
+export const membershipAgreement = {
+  heading: "Agreement",
+  suspend: "Suspend agreement",
+  updateAvailable: "An updated agreement is available.",
+  signFailed: "There was an error signing the agreement. Please try again.",
+  signSessionExpired:
+    "Your session has expired. Sign in again to sign the agreement.",
+  suspendFailed:
+    "There was an error suspending the agreement. Please try again.",
+  suspendSessionExpired:
+    "Your session has expired. Sign in again to suspend your agreement.",
+  awayOtherReasonHint:
+    "See your agreement above for guidelines on extenuating circumstances.",
+} as const;
+
+interface FaqEntry {
+  question: string;
+  answer: string;
+  steps?: readonly string[];
+}
+
+export const membershipFaq: {
+  heading: string;
+  entries: readonly FaqEntry[];
+} = {
+  heading: "Questions about membership",
+  entries: [
+    {
+      question: "Why is there an agreement?",
+      answer:
+        "The membership agreement sets clear expectations for all members of the Alliance. It ensures that we can count on your participation, which allows us to plan actions precisely. By signing, you are also making a commitment to your peers to work together consistently.",
+    },
+    {
+      question: "What happens if I don't abide by the agreement?",
+      answer:
+        "If you miss any assigned non-optional task for 3 weeks in a row, your agreement will be suspended automatically. You can re-sign the agreement to re-join the Alliance.",
+    },
+    {
+      question: "Are there valid reasons to miss an action?",
+      answer:
+        "Yes. For our planning purposes, we ask that you inform us if you will be unable to complete an action with one of the following methods:",
+      steps: [
+        "You can withdraw from an action by tapping the three dots at the bottom right of an action, next to the Complete button. You can withdraw if the action is taking you longer than 15 minutes to complete, or if you have a moral objection to the action.",
+        "You can schedule an away period on this page if you won't be able to complete actions for a prolonged period, such as during a vacation.",
+      ],
+    },
+    {
+      question: "How do I end my membership?",
+      answer:
+        "You can end your membership at any time by suspending your agreement on this page.",
+    },
+  ],
+};
 
 export const waitingForImageUpload =
   "Waiting for your photo to finish uploading.";
 
+export const cancelImageUpload = "Stop uploading this photo";
+
+export const cancelAllImageUploads = "Stop uploading";
+
 export const imageUploadFailed = "Failed to upload image";
+
+export const draftSaveFailed =
+  "Couldn't save your progress to your account, so you won't be able to pick this up on another device. Your answers are still saved on this one.";
+
+export const sourceAnswersLoadFailed =
+  "Couldn't load the earlier answers this form uses.";
+
+export const formulaSourcesChangedRefreshed = `${FORMULA_SOURCES_CHANGED_REASON} We've reloaded its options, so check your answers and submit again.`;
+
+export const variableSourceDeleted =
+  "This form uses answers from a form or question that has been deleted, so it can't be shown.";
+
+export const noOptionsAvailable = "No options available";
 
 export const photoPickFailed = "Couldn't open your photo library.";
 
@@ -282,7 +382,62 @@ export const forgotPassword = {
   sendError: "Error sending password reset email.",
   sendSuccess: {
     title: "Check your email",
-    message:
-      "A link to reset your password has been sent to your email address.",
+    message: "If an account exists for this email, we've sent a reset link.",
   },
 } as const;
+
+export const passwordLink = {
+  hint: (params: { verb: string; email: string }) =>
+    `We'll send a link to ${params.verb} your password to ${params.email}.`,
+  sent: (params: { verb: string; email: string }) =>
+    `A link to ${params.verb} your password has been sent to ${params.email}.`,
+  failed: "Couldn't send the email. Please try again.",
+} as const;
+
+export const disconnectAccount = {
+  title: (label: string) => `Disconnect ${label}?`,
+  message: (label: string) =>
+    `You won't be able to log in with ${label} until you connect it again.`,
+  confirm: (label: string) => `Disconnect ${label}`,
+  done: (label: string) => `${label} disconnected.`,
+  onlyWayIn: (label: string) =>
+    `${label} is your only way to log in. Set a password or connect another account before disconnecting it.`,
+} as const;
+
+/** Follows the inviter's name, which each app styles itself, when there is one. */
+export const agreementEnteredCount = ({
+  afterInviter,
+  signedCount,
+}: {
+  afterInviter: boolean;
+  signedCount: number;
+}) =>
+  afterInviter
+    ? `and ${Math.max(signedCount - 1, 0).toLocaleString("en-US")} others have entered the agreement.`
+    : `${signedCount.toLocaleString("en-US")} members have entered the agreement.`;
+
+/**
+ * The 1,000-member milestone, named in four places: the onboarding Scale screen
+ * on web and mobile, and the milestone tracks on the site and redesign pages.
+ * One object so a change to the roadmap does not have to be made four times.
+ */
+export const nextMilestone = {
+  members: 1000,
+  action: "Democratically decide where to donate $100,000",
+  body: "An expert panel and a thousand members choose the recipients together, launching October 2026. If the process holds up, we can run it on much larger sums.",
+};
+
+// Arriving is all that answers a retry, so the name has to separate a thread
+// holding nothing from one a filter emptied.
+export const commentThreadLanding = ({
+  shown,
+  total,
+}: {
+  shown: number;
+  total: number;
+}) =>
+  shown > 0
+    ? "Comments"
+    : total > 0
+      ? "Comments, none match the filter"
+      : "Comments, none yet";

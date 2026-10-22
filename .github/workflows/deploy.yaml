@@ -20,15 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Abort if dirty.txt has content
-        if: ${{ github.ref_name == 'production' }}
-        run: |
-          if [ -f dirty.txt ] && [ -s dirty.txt ]; then
-            echo "dirty.txt has content. Aborting."
-            exit 1
-          else
-            echo "dirty.txt is empty or not found. Continuing."
-          fi
+      - uses: ./.github/actions/dirty-check
+        with:
+          check: ${{ github.ref_name == 'production' && 'empty' || 'exists' }}
 
   test-backend-e2e:
     uses: ./.github/workflows/test-backend-e2e.yaml
@@ -48,6 +42,8 @@ jobs:
             apps/frontend,
             apps/admin,
             apps/mobile,
+            scripts,
+            .github,
           ]
     uses: ./.github/workflows/test-unit.yaml
     with:
@@ -161,8 +157,14 @@ jobs:
           name: admin-build
           path: apps/admin/admin-build.zip
 
+  actionlint:
+    uses: ./.github/workflows/actionlint.yaml
+
   format-check:
     uses: ./.github/workflows/format-check.yaml
+
+  gitignore-check:
+    uses: ./.github/workflows/gitignore-check.yaml
 
   typecheck:
     strategy:
@@ -196,6 +198,8 @@ jobs:
       - migrations-drift-check
       - typecheck
       - format-check
+      - gitignore-check
+      - actionlint
       - visual-regression
     steps:
       - run: echo "all checks passed"
@@ -275,6 +279,9 @@ jobs:
             [ -n "$DOMAIN" ] || { echo "DOMAIN_NAME is unset for this environment"; exit 1; }
             [ -n "$ALT_DOMAIN" ] || { echo "ALT_DOMAIN_NAME is unset for this environment"; exit 1; }
             sudo mkdir -p /var/www/certbot
+            # nginx creates the video cache directory, owned by its workers,
+            # only inside a parent that exists.
+            sudo mkdir -p /var/cache/nginx
             # alliance.conf owns the port 80 default, so clearing the packaged
             # default.conf belongs with it, not with the admin panel.
             sudo rm -f /etc/nginx/conf.d/default.conf
@@ -604,7 +611,6 @@ jobs:
           fi
 
           SHA="${{ github.sha }}"
-          ENV_NAME="${{ env.env_name }}"
           BASELINE_DIR="${{ github.workspace }}/screenshots/baseline"
           CURRENT_DIR="${{ github.workspace }}/screenshots/current"
           TOKEN="${{ secrets.SLACK_BOT_TOKEN }}"
@@ -715,10 +721,14 @@ jobs:
             bunfig.toml \
             tsconfig.base.json \
             server/package.json \
+            server/bunfig.toml \
             server/tsconfig.json \
             server/src \
             server/migrations \
+            server/scripts \
+            scripts/deploy_backend.sh \
             scripts/sync_prod_to_staging.sh \
+            scripts/anonymize \
             common/package.json \
             common/tsconfig.json \
             common/src \
@@ -777,13 +787,20 @@ jobs:
             export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             export JWT_SECRET=${{ secrets.JWT_SECRET }}
             export JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}
+            export GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }}
+            export GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            export APPLE_TEAM_ID=${{ vars.APPLE_TEAM_ID }}
+            export APPLE_KEY_ID=${{ vars.APPLE_KEY_ID }}
+            export APPLE_SERVICES_ID=${{ vars.APPLE_SERVICES_ID }}
+            export APPLE_BUNDLE_ID=${{ vars.APPLE_BUNDLE_ID }}
+            export APPLE_PRIVATE_KEY_BASE64=${{ secrets.APPLE_PRIVATE_KEY_BASE64 }}
             export NODE_ENV=${{ github.ref_name == 'production' && 'production' || 'staging' }}
             export DB_NAME="alliance"
             export SMTP_HOST=${{ secrets.SMTP_HOST }}
             export SMTP_USER=${{ secrets.SMTP_USER }}
             export SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
-            export STRIPE_ENDPOINT_SECRET=${{ secrets.STRIPE_ENDPOINT_SECRET }}
-            export STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}
+            [ "${{ github.ref_name }}" != "production" ] || [ -n "${{ vars.MAIL_FROM }}" ] || { echo "MAIL_FROM is unset for this environment"; exit 1; }
+            export MAIL_FROM="${{ vars.MAIL_FROM }}"
             export ASSETS_BUCKET=${{ secrets.ASSETS_BUCKET_NAME }}
             export POSTHOG_KEY=${{ secrets.POSTHOG_KEY }}
             [ -n "${{ vars.ALT_DOMAIN_NAME }}" ] || { echo "ALT_DOMAIN_NAME is unset for this environment"; exit 1; }
@@ -797,6 +814,7 @@ jobs:
             export POSTHOG_QUERY_KEY=${{ secrets.POSTHOG_QUERY_KEY }}
             export POSTHOG_PROJECT_ID=${{ secrets.POSTHOG_PROJECT_ID }}
             export MAILGUN_SIGNING_KEY=${{ secrets.MAILGUN_SIGNING_KEY }}
+            export WAITLIST_PUBLIC_MAIL_DAILY_CAP=${{ vars.WAITLIST_PUBLIC_MAIL_DAILY_CAP }}
             export NOTIF_TEST_PHONE_NUMBER=${{ secrets.NOTIF_TEST_PHONE_NUMBER }}
             export NOTIF_TEST_EMAIL=${{ secrets.NOTIF_TEST_EMAIL }}
             export USE_CLOUDFRONT=${{ vars.USE_CLOUDFRONT }}
@@ -807,42 +825,9 @@ jobs:
             export PANGRAM_API_URL=https://text.api.pangram.com/v3
             export EXPO_ACCESS_TOKEN=${{ secrets.EXPO_ACCESS_TOKEN }}
 
-            rm -rf nest-backend-deploy-backup || true
-            mv nest-backend nest-backend-deploy-backup || true
-
-            rollback () {
-              trap - ERR
-              echo "Deployment failed - rolling back"
-              cd ~/
-              pm2 delete nest-app || true
-              if [ -d "nest-backend-deploy-backup" ]; then
-                rm -rf nest-backend
-                mv nest-backend-deploy-backup nest-backend
-                cd ~/nest-backend/server
-                pm2 start "bun src/main.ts" --name nest-app --interpreter none
-              fi
-              exit 1
-            }
-            trap rollback ERR
-
-            mkdir -p ~/nest-backend
-            unzip -o ~/nest-build.zip -d ~/nest-backend
-
-            cd ~/nest-backend
-            bun install --frozen-lockfile
-
-            cd ~/nest-backend/server
-            # Run migrations
-            bunx typeorm-ts-node-commonjs --dataSource src/datasources/dataSource.ts migration:run
-
-            pm2 delete nest-app || true
-            pm2 start "bun src/main.ts" --name nest-app --interpreter none
-            pm2 save
-
-            sleep 10
-            # The public /api/ path goes through the nginx vhost
-            # deploy-react-app owns, not this job; verify-api covers it.
-            curl --silent --fail --show-error --max-time 10 http://localhost:3005/ > /dev/null
+            # In memory, so a later deploy can't rewrite the file under a run still going.
+            deploy_backend=$(unzip -p ~/nest-build.zip scripts/deploy_backend.sh) || { echo "could not extract deploy_backend.sh"; exit 1; }
+            bash -c "$deploy_backend" || exit 1
 
             # The prod → staging sync runs from this box, outside the app, so
             # ship its script with the deploy. Staging only. Never fails the
@@ -853,6 +838,8 @@ jobs:
                 && mv -f ~/sync_prod_to_staging.sh.new ~/sync_prod_to_staging.sh \
                 && echo "installed ~/sync_prod_to_staging.sh" \
                 || echo "WARNING: could not install sync_prod_to_staging.sh"
+              printf '%s\n' "$DB_CA_CERT" > ~/db-ca.pem \
+                || echo "WARNING: could not write ~/db-ca.pem"
             fi
 
   verify-deployment:
@@ -900,6 +887,14 @@ jobs:
           curl --fail --silent --show-error https://${{vars.ALT_DOMAIN_NAME}} > /dev/null
           echo "alt domain https ok"
 
+      - name: Check Android app links file
+        run: |
+          for host in ${{vars.DOMAIN_NAME}} ${{vars.ALT_DOMAIN_NAME}}; do
+            echo "Checking assetlinks.json on $host..."
+            curl --fail --silent --show-error https://$host/.well-known/assetlinks.json > /dev/null
+          done
+          echo "assetlinks.json ok"
+
       - name: Check admin app
         run: |
           echo "Checking admin app..."
@@ -911,6 +906,14 @@ jobs:
           echo "Checking admin app on admin.${{vars.ALT_DOMAIN_NAME}}..."
           curl --fail --silent --show-error https://admin.${{vars.ALT_DOMAIN_NAME}} > /dev/null
           echo "admin alt domain https ok"
+
+      # nginx -t can pass while every /events/ request fails, e.g. on PostHog's
+      # certificate. Last, so a PostHog outage doesn't skip the checks above.
+      - name: Check PostHog proxy
+        run: |
+          echo "Checking PostHog proxy..."
+          curl --fail --silent --show-error --max-time 30 https://${{vars.DOMAIN_NAME}}/events/static/array.js > /dev/null
+          echo "PostHog proxy https ok"
 
   verify-api:
     needs:
@@ -933,6 +936,8 @@ jobs:
       - verify-deployment
       - verify-https
       - verify-api
+      - mobile-fingerprint-check
+      - publish-mobile-ota
     if: always()
     environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
     steps:
@@ -945,44 +950,34 @@ jobs:
         with:
           github-username: ${{ github.actor }}
 
-      - name: Post webhook if any upstream failed/cancelled
-        if: ${{ contains(join(needs.*.result, ','), 'failure') || contains(join(needs.*.result, ','), 'skipped') }}
+      - name: Post webhook if any upstream did not succeed
+        if: >-
+          ${{ always() && (needs.deploy-nest-backend.result != 'success'
+          || needs.verify-deployment.result != 'success'
+          || needs.verify-https.result != 'success'
+          || needs.verify-api.result != 'success'
+          || needs.mobile-fingerprint-check.result != 'success'
+          || needs.publish-mobile-ota.result != 'success') }}
+        env:
+          WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL_DEPLOYMENT }}
+          MENTION: ${{ steps.slack_mention.outputs.mention }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          NEEDS: ${{ toJSON(needs) }}
         run: |
-          curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"${{ steps.slack_mention.outputs.mention }} Deploy ${{ github.ref_name == 'production' && 'production' || 'staging' }} failed for ${{ github.event.head_commit.message }}. <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Open run>\"}" \
-            ${{ secrets.SLACK_WEBHOOK_URL_DEPLOYMENT }}
+          set -euo pipefail
+          . .github/scripts/slack.sh
+          SUBJECT=$(slack_commit_subject "$COMMIT_MESSAGE")
+          FAILED=$(jq -r '[to_entries[] | select(.value.result == "failure" or .value.result == "cancelled") | .key] | join(", ")' <<<"$NEEDS")
+          slack_post "$WEBHOOK" \
+            "${MENTION:+$MENTION }Deploy $env_name did not succeed for $SUBJECT${FAILED:+ ($FAILED)}. <$RUN_URL|Open run>"
 
-  # Publishes an over-the-air JS/asset update to the production EAS Update
-  # channel. Only JS/asset changes ship this way; native changes still require a
-  # store build (the fingerprint runtimeVersion guards compatibility). Runs only
-  # on the production branch, after the backend is live so the OTA bundle never
-  # talks to an API older than itself.
+  # Runs after the backend is live so the OTA bundle never talks to an API
+  # older than itself.
   publish-mobile-ota:
-    runs-on: ubuntu-latest
     needs:
       - deploy-nest-backend
-    if: ${{ github.ref_name == 'production' }}
-    environment: production
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.6
-
-      - name: Install Dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Publish EAS Update
-        run: bunx eas-cli@16.5.0 update --branch production --message "$COMMIT_MESSAGE" --non-interactive
-        working-directory: ./apps/mobile
-        env:
-          # `eas update` ignores eas.json build profiles, so pin the variant
-          # here. Must resolve the same app config as the production store build,
-          # or the fingerprint runtimeVersion won't match any installed build and
-          # the OTA never applies.
-          APP_VARIANT: production
-          EXPO_TOKEN: ${{ secrets.EXPO_ACCESS_TOKEN }}
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+    uses: ./.github/workflows/publish-mobile-ota.yaml
+    with:
+      environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
+    secrets: inherit

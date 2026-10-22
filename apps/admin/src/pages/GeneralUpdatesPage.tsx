@@ -1,36 +1,24 @@
 import { forCount } from "@alliance/common/plural";
-import {
-  actionsAllGeneralUpdatesAdmin,
-  GeneralUpdateAdminDto,
-} from "@alliance/shared/client";
+import { GeneralUpdateAdminDto } from "@alliance/shared/client";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { useNavigate } from "react-router";
 import GeneralUpdateCard from "../components/GeneralUpdateCard";
+import { sessionExpiredMessage } from "../lib/sessionExpired";
+import { useGeneralUpdatesAdmin } from "../lib/useGeneralUpdatesAdmin";
 
 const GeneralUpdatesPage: React.FC = () => {
-  const [updates, setUpdates] = useState<GeneralUpdateAdminDto[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const list = useGeneralUpdatesAdmin();
+  const updates = useMemo(() => list.data ?? [], [list.data]);
+  const error = list.isError
+    ? thrownRefusalMessage({
+        error: list.error,
+        fallback: "Failed to load general updates",
+        sessionExpired: sessionExpiredMessage,
+      })
+    : null;
   const navigate = useNavigate();
-
-  const loadUpdates = useCallback(async () => {
-    try {
-      const response = await actionsAllGeneralUpdatesAdmin();
-      if (response.data) {
-        setUpdates(response.data);
-      }
-      setLoading(false);
-    } catch (err) {
-      setError("Failed to load general updates");
-      setLoading(false);
-      console.error(err);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadUpdates();
-  }, [loadUpdates]);
 
   const { draftUpdates, activeUpdates, scheduledUpdates, expiredUpdates } =
     useMemo(() => {
@@ -55,11 +43,11 @@ const GeneralUpdatesPage: React.FC = () => {
       return { draftUpdates, activeUpdates, scheduledUpdates, expiredUpdates };
     }, [updates]);
 
-  if (loading) {
+  if (list.isPending) {
     return <p className="p-5">Loading general updates...</p>;
   }
 
-  if (error) {
+  if (error && !list.data) {
     return <p className="p-5 text-red-500">{error}</p>;
   }
 
@@ -86,6 +74,8 @@ const GeneralUpdatesPage: React.FC = () => {
       <p className="text-sm text-zinc-500">
         {updates.length} total {forCount(updates.length, "update")}
       </p>
+
+      {error && <p className="text-red-500">{error}</p>}
 
       {updates.length === 0 ? (
         <p className="text-zinc-500">No general updates found.</p>

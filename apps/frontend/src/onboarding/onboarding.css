@@ -1,0 +1,352 @@
+.ob-root {
+  --ob-gap: clamp(1rem, 6.4vh, 5rem);
+  /* The agreement's body is tall enough that the standard gap pushes it into
+     the footer buttons. */
+  --ob-gap-tight: clamp(0.5rem, 2.4vh, 1.6rem);
+  /* Separates the eyebrow from the headline and the footer from the body. */
+  --ob-band-gap: clamp(1.5rem, 3.4vh, 3rem);
+  --ob-pad-top: clamp(0.85rem, 3vh, 2.6rem);
+  --ob-pad-bottom: clamp(2.5rem, 6.7vh, 5.5rem);
+  --ob-progress-bottom: clamp(1rem, 3.1vh, 2.6rem);
+  font-family: var(--site-font-body);
+}
+
+/* On `:root` because the walkthrough overlay uses these after the flow's own
+   root has unmounted.
+
+   The type scale is six sizes and nothing outside them. Each is traced from
+   the 1728x1117 Figma frame: the vh term hits the design's pixel size at that
+   height, the vw term caps it on a phone. */
+:root {
+  --ob-eyebrow: clamp(0.8rem, min(1.8vh, 3.6vw), 1.4rem);
+  --ob-h1: clamp(1.15rem, min(3.55vh, 5.6vw), 2.75rem);
+  --ob-h2: clamp(0.95rem, min(2.5vh, 4.4vw), 2rem);
+  --ob-body: clamp(0.8rem, min(2.2vh, 3.9vw), 1.75rem);
+  --ob-ui: clamp(0.78rem, min(1.62vh, 3.2vw), 1.25rem);
+  --ob-caption: clamp(0.68rem, min(1.36vh, 2.7vw), 1.05rem);
+
+  --ob-margin: 0px;
+  --ob-radius: 0px;
+  --ob-intro-inset: 2.5rem;
+  --ob-navy: var(--site-primary);
+  --ob-green: #24491d;
+  --ob-swap: cubic-bezier(0.65, 0, 0.35, 1);
+  --ob-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* iOS Safari zooms the page in when a focused field's text is under 16px, and
+   never zooms back out. The root here is 15px, so even `text-base` is short of
+   it and the floor has to be explicit. */
+@media (pointer: coarse) {
+  .ob-root input {
+    font-size: max(16px, var(--ob-ui));
+  }
+}
+
+/* The flow owns the whole viewport, so nothing may put a scrollbar on html and
+   leave a gutter beside the panel. */
+html.ob-locked,
+html.ob-locked body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.ob-root .ob-priorities h3 {
+  font-size: var(--ob-h2);
+}
+
+/* Blends the flow's own caption-scaled size with the site's 1.1rem. 0 is the
+   size the flow used before, 1 is the site's; this is the midpoint. Cards here
+   are a fraction of the width the site gives one, so the site's size alone
+   overruns them. */
+.ob-root .ob-priorities {
+  --ob-priority-body: 0.5;
+}
+
+.ob-root .ob-priorities .site-priority-body p {
+  font-size: calc(
+    var(--ob-caption) * 1.1 + (1.1rem - var(--ob-caption) * 1.1) *
+      var(--ob-priority-body)
+  );
+  line-height: 1.4;
+}
+
+/* The compact hours block sizes itself off the height it is handed rather than
+   off its width alone, so all 168 squares fit the panel at every breakpoint.
+   The gaps and the two labels come out of the height before the aspect ratio
+   is applied and the gaps go back on after, which is what keeps the cells
+   square. `--hours-chrome` rounds the labels up: overshooting costs a few
+   pixels of grid, undershooting overruns the panel. */
+.ob-hours-fit {
+  container-type: size;
+}
+
+.ob-hours-block {
+  display: flex;
+  --hours-gap: clamp(2px, 0.6vh, 7px);
+  --hours-chrome: calc(var(--ob-caption) * 3.2 + 1.5rem);
+  /* The height term goes negative on a short enough viewport, and an unguarded
+     `width` resolves that to zero and paints nothing. Inside the `100%` cap,
+     so a crop is only ever vertical. */
+  --hours-floor: calc(var(--hours-columns) * 0.75rem);
+  width: min(
+    100%,
+    max(
+      var(--hours-floor),
+      calc(
+        (
+            100cqh - var(--hours-chrome) - (var(--hours-rows) - 1) *
+              var(--hours-gap)
+          ) *
+          var(--hours-columns) / var(--hours-rows) +
+          (var(--hours-columns) - 1) * var(--hours-gap)
+      )
+    )
+  );
+}
+
+/* Which arrangement. The screen decides, not the box: the headline, the note
+   and the footer take their height first, so the box is landscape-shaped on a
+   portrait tablet and says nothing about how the device is being held.
+
+   A day per row unless the screen is read vertically, where a screen within
+   4:5 of square counts as neither and keeps the day per row. The width is
+   separate, and off the box, because it asks whether 24 columns have the room
+   to stay legible at all. */
+.ob-hours-block--wide {
+  display: none;
+}
+
+@media (min-aspect-ratio: 4 / 5) {
+  @container (min-width: 28rem) {
+    .ob-hours-block--narrow {
+      display: none;
+    }
+
+    .ob-hours-block--wide {
+      display: flex;
+    }
+  }
+}
+
+.ob-hours-grid {
+  gap: var(--hours-gap);
+}
+
+/* The agreement card must fit whole and must not scroll, so the promise beside
+   it yields on any viewport too short to hold both. */
+.ob-promise {
+  display: none;
+}
+
+@media (min-width: 640px) and (min-height: 760px) {
+  .ob-promise {
+    display: flex;
+  }
+}
+
+/* The public site opens every description on touch. These cards are too short
+   for that, and the Figma shows titles alone. */
+@media (hover: none) {
+  .ob-root .ob-priorities .site-priority-body > .grid {
+    grid-template-rows: 0fr !important;
+  }
+
+  .ob-root .ob-priorities .site-priority-body p {
+    opacity: 0 !important;
+  }
+}
+
+@media (min-width: 640px) {
+  :root {
+    --ob-margin: 1.25rem;
+    --ob-radius: 1rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --ob-margin: 1.75rem;
+  }
+}
+
+/* The grid's two anchors are gone below this, so the block must stop reserving
+   a line of height for them. Written the way Tailwind writes `max-lg`, which is
+   what hides them, so the two cannot part company on a fractional width. */
+@media (width < 64rem) {
+  .ob-root .ob-hours-block {
+    --hours-chrome: calc(var(--ob-caption) * 2.2 + 0.85rem);
+  }
+}
+
+/* A phone held sideways. Roughly a third of the height a phone gives in
+   portrait, on a screen wide enough that the tablet rules above have already
+   fired, so each screen here gives up whatever it can spare and the rest is
+   drawn to the width instead of the height. */
+@media (orientation: landscape) and (max-height: 560px) {
+  :root {
+    --ob-margin: 0px;
+    --ob-radius: 0px;
+  }
+
+  .ob-root .ob-drop-landscape {
+    display: none;
+  }
+
+  .ob-root [data-ob-nav] > button {
+    min-width: 9rem;
+    min-height: 2.25rem;
+    padding-inline: 1rem;
+    font-size: var(--ob-ui);
+  }
+
+  /* One row: four cards across a wide screen beat two rows of two on a short
+     one, where the second row is what runs out of height. */
+  .ob-root .ob-priorities {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  /* All three mockups rather than the deck, drawn to the width the screen has
+     and cut off where the height runs out. */
+  .ob-root .ob-mocks__row {
+    display: flex;
+    max-width: none;
+  }
+
+  .ob-root .ob-mocks__deck {
+    display: none;
+  }
+
+  .ob-root .ob-mock-stage {
+    mask-image: linear-gradient(to bottom, #000 62%, transparent 100%);
+  }
+}
+
+.ob-root .ob-display {
+  font-family: var(--site-font-display);
+}
+
+/* The reused product miniatures set actions in the site's link blue. */
+.ob-mocks {
+  --site-link: var(--color-green);
+}
+
+/* Held in a variable so the phone-landscape rule above can lift the cap. */
+.ob-mocks__row {
+  max-width: var(--mocks-row-max);
+}
+
+/* One element carries the whole flow. It starts as the panel bleeding off the
+   right of the sign-up screen, then grows to hold every screen after it. */
+.ob-panel {
+  position: fixed;
+  overflow: hidden;
+  border-radius: var(--ob-radius);
+  transition:
+    top 900ms var(--ob-swap),
+    width 900ms var(--ob-swap),
+    bottom 900ms var(--ob-swap),
+    left 900ms var(--ob-swap),
+    border-radius 900ms var(--ob-swap),
+    background-color 800ms ease,
+    opacity var(--ob-leave, 300ms) var(--ob-swap);
+}
+
+/* Nothing to morph from when a provider hands the member back mid-flow. */
+.ob-panel--instant {
+  transition: none;
+}
+
+.ob-panel--leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Width and left off `vw` rather than `right`/`%`, because `vw` counts a
+   classic scrollbar and the alternatives stop short of it, leaving a strip of
+   page beside the panel.
+
+   Absolute, not fixed: the account screen scrolls, and the panel belongs to
+   its first viewport rather than following the site content down. Its offsets
+   resolve against the `h-dvh` hero, so at the top of the page this paints
+   exactly where the fixed `--full` state starts its morph. */
+.ob-panel--intro {
+  position: absolute;
+  top: 8.5rem;
+  bottom: 3.5rem;
+  left: 50vw;
+  /* Inset from the right rather than bled past it: the card carries its own
+     composition now, so anything running off the edge is just lost. */
+  width: calc(50vw - var(--ob-intro-inset));
+  border-radius: 1rem;
+}
+
+/* Padding rather than a shorter box: the morph above transitions `bottom` over
+   900ms, and the keyboard has to be answered in the frame it opens. */
+.ob-panel--full {
+  top: var(--ob-margin);
+  bottom: var(--ob-margin);
+  left: var(--ob-margin);
+  width: calc(100vw - 2 * var(--ob-margin));
+  padding-bottom: var(--ob-keyboard-inset, 0px);
+}
+
+@keyframes ob-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ob-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ob-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.ob-rise {
+  animation: ob-rise 720ms var(--ob-out) both;
+}
+
+.ob-fade {
+  animation: ob-fade 720ms var(--ob-out) both;
+}
+
+.ob-scale-in {
+  animation: ob-scale-in 760ms var(--ob-out) both;
+}
+
+/* `[data-ob-tour]` as well as `.ob-root`: the tour and its white intro mount
+   from the navbar on the platform, where there is no onboarding root above
+   them to match. */
+@media (prefers-reduced-motion: reduce) {
+  .ob-root *,
+  .ob-root *::before,
+  .ob-root *::after,
+  [data-ob-tour],
+  [data-ob-tour] *,
+  [data-ob-tour] *::before,
+  [data-ob-tour] *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+  }
+}

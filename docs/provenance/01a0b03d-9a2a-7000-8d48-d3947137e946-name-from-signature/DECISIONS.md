@@ -1,0 +1,8 @@
+- The rename happens server-side in `ContractService.signContract`, so it doesn't depend on a client sending a separate profile update. Only the web app has OAuth signup, so no mobile change is needed.
+- Only a member's first signing outside a task form sets the name. Re-signing after a suspension, or switching contracts, keeps whatever name the member or an admin has set since.
+- A signing that comes after a task-form signing still renames, even though the member's contract is already active and `signContract` takes the switching-contracts early return. The rename runs before that return.
+- `contract_event.viaTaskForm` marks task-form signings, because a null `signedName` can't tell them apart from signings made before the column existed. The migration backfills unnamed signings dated on or after 2026-09-10, when OAuth accounts appeared. Unnamed task-form signings before then stay unmarked, which only matters for accounts whose name didn't come from a typed signature, and none existed then.
+- `signContract` takes a name exactly when the signing isn't from a task form, enforced by its parameter type.
+- `SignContractDto` trims `signedName`, so a padded name doesn't become the account name and a blank one is rejected.
+- The provider's name still goes on the account at OAuth callback, because the account exists before the agreement is signed. The signature replaces it moments later.
+- Email signups also go through the rename. It's a no-op there, since registration already used the signed name.

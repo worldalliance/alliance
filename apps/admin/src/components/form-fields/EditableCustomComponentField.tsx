@@ -1,17 +1,17 @@
 import type { CustomComponentField } from "@alliance/common/forms/form-schema";
-import { externalShareTargetsFindAllAdmin } from "@alliance/shared/client";
 import type {
   CustomComponentConfigField,
   CustomComponentDefinition,
 } from "@alliance/sharedweb/forms/components";
 import {
+  CustomComponentId,
   customComponentRegistry,
   getCustomComponentById,
 } from "@alliance/sharedweb/forms/components";
-import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
+import { ExternalShareTargetSelect } from "../ExternalShareTargetSelect";
 import { RequiredToggle } from "./CommonControls";
+import { useDerivedWrite } from "./derivedWrite";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
 import type { BaseFieldProps } from "./types";
@@ -51,15 +51,13 @@ const buildDefaultConfig = (component?: CustomComponentDefinition) => {
 export function EditableCustomComponentField({
   field,
   onUpdate,
-  onRemove,
-  onDragStart,
-  onDragEnd,
-  isDragging,
   previousFields,
+  laterFields,
 }: BaseFieldProps<CustomComponentField>) {
   const [configDrafts, setConfigDrafts] = useState<Record<string, string>>({});
   const [configErrors, setConfigErrors] = useState<Record<string, string>>({});
   const fallbackComponent = customComponentRegistry[0];
+  const derivedWrite = useDerivedWrite();
 
   useEffect(() => {
     if (field.componentId) {
@@ -68,14 +66,16 @@ export function EditableCustomComponentField({
     if (!fallbackComponent) {
       return;
     }
-    onUpdate({
-      componentId: fallbackComponent.id,
-      componentConfig: buildDefaultConfig(fallbackComponent),
-      defaultValue: undefined,
-    } as Partial<CustomComponentField>);
+    derivedWrite(() =>
+      onUpdate({
+        componentId: fallbackComponent.id,
+        componentConfig: buildDefaultConfig(fallbackComponent),
+        defaultValue: undefined,
+      } as Partial<CustomComponentField>),
+    );
     setConfigDrafts({});
     setConfigErrors({});
-  }, [field.componentId, onUpdate, fallbackComponent]);
+  }, [derivedWrite, field.componentId, onUpdate, fallbackComponent]);
 
   const selectedComponent = useMemo(
     () => getCustomComponentById(field.componentId),
@@ -129,11 +129,13 @@ export function EditableCustomComponentField({
       }
     }
     if (changed) {
-      onUpdate({
-        componentConfig: normalizeComponentConfig(nextConfig),
-      } as Partial<CustomComponentField>);
+      derivedWrite(() =>
+        onUpdate({
+          componentConfig: normalizeComponentConfig(nextConfig),
+        } as Partial<CustomComponentField>),
+      );
     }
-  }, [selectedComponent, componentConfig, onUpdate]);
+  }, [derivedWrite, selectedComponent, componentConfig, onUpdate]);
 
   const handleComponentChange = (componentId: string) => {
     const nextComponent = getCustomComponentById(componentId);
@@ -224,7 +226,7 @@ export function EditableCustomComponentField({
     const draftValue = configDrafts[configField.name] ?? "";
 
     if (
-      field.componentId === "share-url" &&
+      field.componentId === CustomComponentId.ShareUrl &&
       configField.name === "externalTargetId"
     ) {
       return (
@@ -237,7 +239,9 @@ export function EditableCustomComponentField({
               ? (componentConfig[configField.name] as number)
               : null
           }
-          onChange={(id) => handleNumberChange(configField.name, String(id))}
+          onChange={(target) =>
+            handleNumberChange(configField.name, String(target.id))
+          }
           onClear={() => handleNumberChange(configField.name, "")}
           error={error}
         />
@@ -320,10 +324,7 @@ export function EditableCustomComponentField({
       field={field}
       onUpdate={onUpdate}
       previousFields={previousFields}
-      onRemove={onRemove}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      isDragging={isDragging}
+      laterFields={laterFields}
     >
       <FieldLabelEditor
         value={field.label}
@@ -377,90 +378,5 @@ export function EditableCustomComponentField({
         </div>
       )}
     </FieldWrapper>
-  );
-}
-
-interface ExternalShareTargetSelectProps {
-  label: string;
-  description?: string;
-  value: number | null;
-  onChange: (id: number) => void;
-  onClear: () => void;
-  error?: string;
-}
-
-function ExternalShareTargetSelect({
-  label,
-  description,
-  value,
-  onChange,
-  onClear,
-  error,
-}: ExternalShareTargetSelectProps) {
-  const { data: targets, isPending } = useQuery({
-    queryKey: ["externalShareTargetsFindAllAdmin"],
-    queryFn: async () => {
-      const res = await externalShareTargetsFindAllAdmin();
-      return res.data ?? [];
-    },
-  });
-
-  const hasTargets = !!targets && targets.length > 0;
-  const isOrphaned =
-    !isPending &&
-    value !== null &&
-    !!targets &&
-    !targets.some((t) => t.id === value);
-  const showSelect = hasTargets || isOrphaned;
-
-  return (
-    <div className="space-y-1">
-      <label className="block text-xs font-medium text-gray-700 mb-1">
-        {label}
-      </label>
-      {isPending ? (
-        <p className="text-xs text-gray-500">Loading targets…</p>
-      ) : showSelect ? (
-        <select
-          value={value ?? ""}
-          onChange={(event) => {
-            const next = event.target.value;
-            if (!next) {
-              onClear();
-            } else {
-              onChange(Number(next));
-            }
-          }}
-          className="bg-white w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-        >
-          <option value="">Select a target…</option>
-          {targets!.map((target) => (
-            <option key={target.id} value={target.id}>
-              {target.name}
-            </option>
-          ))}
-          {isOrphaned && (
-            <option value={value!}>Missing target #{value}</option>
-          )}
-        </select>
-      ) : (
-        <p className="text-xs text-gray-500">
-          No external share targets configured yet.
-        </p>
-      )}
-      <p className="text-xs text-gray-500">
-        {description}
-        {description ? " " : ""}
-        <Link to="/share-targets" className="text-blue-600 hover:underline">
-          Manage targets →
-        </Link>
-      </p>
-      {isOrphaned && (
-        <p className="text-xs text-amber-600">
-          Selected target #{value} no longer exists. Pick another.
-        </p>
-      )}
-      {error && <p className="text-xs text-red-600">{error}</p>}
-    </div>
   );
 }

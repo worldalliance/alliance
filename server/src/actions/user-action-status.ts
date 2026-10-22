@@ -3,19 +3,22 @@ import {
   WithdrawalOption,
   withdrawalOptionFromFlags,
 } from "@alliance/common/actionActivity";
+import { hasMemberActionStarted } from "@alliance/common/actionEvent";
 import type { User } from "src/user/entities/user.entity";
 import {
+  ActionAssignment,
+  computeActionAssignment,
   computeContractSignedAfterOnboardingStart,
-  computeIsAssignedToAction,
   computeIsAwayDuringWindow,
   computeMemberActionAwayStatus,
-  hasMemberActionStarted,
+  hasMemberActionDeadlinePassed,
   TaskAwayStatus,
 } from "src/utils/action-user";
 import { UserActionRelationPillStatus } from "../user/dto/user-action-relations.dto";
 import { findLatestTerminalActivity } from "./action-activity-status";
 import type { ActionActivity } from "./entities/action-activity.entity";
-import type { Action } from "./entities/action.entity";
+import { loadedActionEvents, type Action } from "./entities/action.entity";
+import { isStaffPreviewActiveFor } from "./staff-preview";
 import { resolveUserActionPillStatus } from "./user-action-pill-status";
 
 /**
@@ -37,18 +40,36 @@ export type UserActionStatus = {
   /**
    * Is the viewer assigned this action? Cohort membership plus the contract
    * rule (onboarding → first contract signed at/after phase start; otherwise →
-   * active contract across the member-action window).
+   * a contract held at the end of the member-action window, which is
+   * `optional` where it didn't cover the whole window).
    *
    * Unlike the legacy `shouldParticipate` field, dismissal does NOT revoke
    * assignment — it's a view-only overlay (see `dismissed`).
    */
   assigned: boolean;
   /**
+   * Is this action optional for the viewer? Viewer-facing copy reads this
+   * rather than `Action.optional`, which describes the action and its cohort.
+   */
+  optional: boolean;
+  /**
+   * Why `optional` is true where `Action.optional` is false; null otherwise.
+   * Viewer-facing copy names the reason, so widening `optional` for a new
+   * reason means adding a variant.
+   */
+  optionalReason: ViewerOptionalReason | null;
+  /**
+   * Assigned optionally because the viewer's contract misses part of the
+   * member-action window. Unlike
+   * `optionalReason`, also set where `Action.optional` is true.
+   */
+  contractGap: boolean;
+  /**
    * May the viewer complete this action? Deliberately looser than `assigned`:
    * members without an active contract may still complete regular actions —
    * they're just not expected to (no home-page listing, no reminders, no
    * suspension accounting). Decided 2026-07. See
-   * {@link computeCanCompleteAction} for the exact rule.
+   * {@link computeCompletionBlock} for the exact rule.
    */
   canComplete: boolean;
   /** Latest terminal activity: completed, withdrawn, or none. */
@@ -57,8 +78,8 @@ export type UserActionStatus = {
   withdrawal: UserActionWithdrawal | null;
   /**
    * View-only "mark as seen" overlay: the viewer hid this action's card from
-   * their home page (which also mutes their reminders). NOT a relation — a
-   * dismissed action is still assigned and completable. See the
+   * their home page. NOT a relation — a dismissed action is still assigned,
+   * reminded, completable, and counted for suspension. See the
    * `ActionActivityType.USER_DISMISSED` doc in `common/`.
    */
   dismissed: boolean;
@@ -73,12 +94,16 @@ export type UserActionStatus = {
   /** End of the member-action window, if one exists. */
   deadlineAt: Date | null;
   deadlinePassed: boolean;
+  staffPreview: boolean;
   /**
    * The single-enum collapse of the above for display (same value the
    * leader/admin member tables show as pills).
    */
   display: UserActionRelationPillStatus;
-};
+} & (
+  | { optionalReason: null }
+  | { optional: true; optionalReason: ViewerOptionalReason }
+);
 
 export enum ViewerActionRelation {
   Completed = "completed",
@@ -86,38 +111,73 @@ export enum ViewerActionRelation {
   None = "none",
 }
 
+export enum ViewerOptionalReason {
+  /** The viewer's contract missed part of the member-action window. */
+  ContractGap = "contract_gap",
+}
+
+/** Assigned as a pair, so the union's correlation survives the assignment. */
+type ViewerOptionality =
+  | { optional: boolean; optionalReason: null }
+  | { optional: true; optionalReason: ViewerOptionalReason };
+
 export type UserActionWithdrawal = {
   reason: WithdrawalOption;
   /** Free-text reason; required for `moral`/`other`, absent for `out_of_time`. */
   note: string | null;
 };
 
+export enum CompletionBlock {
+  PreventCompletion = "prevent_completion",
+  NotInCohort = "not_in_cohort",
+  DeadlinePassed = "deadline_passed",
+  OnboardingContractUnsigned = "onboarding_contract_unsigned",
+}
+
+type CompletionRuleParams = {
+  action: Pick<
+    Action,
+    | "preventCompletion"
+    | "onboarding"
+    | "memberActionPhase"
+    | "shouldCompleteAfterDeadline"
+  >;
+  user: Pick<User, "contractEvents">;
+  inCohort: boolean;
+  now: Date;
+};
+
 /**
  * Completion-permission rule — the pure core of
- * `ActionsService.isCompletionAllowed` (the `ActionDto.canParticipate` wire
+ * `ActionsService.findCompletionBlock` (the `ActionDto.canParticipate` wire
  * field and the server-side gate on the complete mutation).
  *
  * Policy (decided 2026-07): contract state is NOT a completion gate for
  * regular actions — a lapsed/suspended in-cohort member may still complete.
  * Onboarding actions keep the join-timing contract gate because the onboarding
  * sequence exists to get the contract signed. Dismissal and away never block
- * completion.
+ * completion. Past the deadline, only `shouldCompleteAfterDeadline` keeps it
+ * open; staff corrections bypass this rule entirely.
  */
-export function computeCanCompleteAction(params: {
-  action: Pick<
-    Action,
-    "preventCompletion" | "onboarding" | "memberActionPhase"
-  >;
-  user: Pick<User, "contractEvents">;
-  inCohort: boolean;
-}): boolean {
-  const { action, user, inCohort } = params;
+export function computeCompletionBlock(
+  params: CompletionRuleParams,
+): CompletionBlock | null {
+  const { action, user, inCohort, now } = params;
 
   if (action.preventCompletion) {
-    return false;
+    return CompletionBlock.PreventCompletion;
   }
   if (!inCohort) {
-    return false;
+    return CompletionBlock.NotInCohort;
+  }
+  if (
+    !action.shouldCompleteAfterDeadline &&
+    hasMemberActionDeadlinePassed(
+      action.memberActionPhase.deadlineEvent?.date,
+      now,
+    )
+  ) {
+    return CompletionBlock.DeadlinePassed;
   }
   if (
     action.onboarding &&
@@ -126,18 +186,37 @@ export function computeCanCompleteAction(params: {
       memberActionPhaseStart: action.memberActionPhase.event?.date ?? null,
     })
   ) {
-    return false;
+    return CompletionBlock.OnboardingContractUnsigned;
   }
-  return true;
+  return null;
+}
+
+export function computeCanCompleteAction(params: CompletionRuleParams) {
+  return computeCompletionBlock(params) === null;
 }
 
 /**
+ * The viewer's standing in an action's cohort, evaluated regardless of
+ * dismissal (an overlay, not an assignment input).
+ */
+export type ViewerCohort = {
+  /**
+   * The saved cohort decision admits them. The live cohort
+   * (`computeIsInActionCohort`) stands in before launch, on a public-only
+   * action, and for the actions `reconcileForUser` leaves undecided.
+   */
+  admitted: boolean;
+  /**
+   * Admitted, or in the live cohort: completion stays open to a member the
+   * decision left out, without assigning it to them.
+   */
+  eligible: boolean;
+};
+
+/**
  * Resolves the viewer's {@link UserActionStatus} for one action. Pure —
- * callers fetch, this computes:
- *
- * - `inCohort` must be the cohort-expression result evaluated regardless of
- *   dismissal (dismissal is an overlay here, not an assignment input).
- * - `activities` are the viewer's activities on this action, all types.
+ * callers fetch, this computes. `activities` are the viewer's activities on
+ * this action, all types.
  */
 export function resolveUserActionStatus(params: {
   action: Pick<
@@ -147,22 +226,27 @@ export function resolveUserActionStatus(params: {
     | "onboarding"
     | "optional"
     | "preventCompletion"
+    | "shouldCompleteAfterDeadline"
+    | "staffPreview"
+    | "archived"
   >;
   user: Pick<
     User,
     | "contractEvents"
     | "hasActiveContractInFullRange"
+    | "hasActiveContractAt"
     | "awayRanges"
     | "isAwayAtAnyPointInRange"
+    | "staff"
   >;
-  inCohort: boolean;
+  cohort: ViewerCohort;
   activities: Pick<
     ActionActivity,
-    "type" | "createdAt" | "declineReason" | "isMoral" | "outOfTime"
+    "id" | "type" | "createdAt" | "declineReason" | "isMoral" | "outOfTime"
   >[];
   now: Date;
 }): UserActionStatus {
-  const { action, user, inCohort, activities, now } = params;
+  const { action, user, cohort, activities, now } = params;
 
   const dismissed = activities.some(
     (activity) => activity.type === ActionActivityType.USER_DISMISSED,
@@ -182,11 +266,8 @@ export function resolveUserActionStatus(params: {
         relation = ViewerActionRelation.Withdrawn;
         activityStatus = UserActionRelationPillStatus.WontComplete;
         withdrawal = {
-          reason: withdrawalOptionFromFlags({
-            outOfTime: !!terminal.outOfTime,
-            isMoral: !!terminal.isMoral,
-          }),
-          note: terminal.declineReason ?? null,
+          reason: withdrawalOptionFromFlags(terminal),
+          note: terminal.declineReason,
         };
         break;
       default:
@@ -196,19 +277,26 @@ export function resolveUserActionStatus(params: {
     }
   }
 
-  const assigned = computeIsAssignedToAction({
+  const assignment = computeActionAssignment({
     action,
     user,
-    inCohort,
+    inCohort: cohort.admitted,
     // Dismissal is an overlay, not an assignment input (unlike the legacy
     // `shouldParticipate` field, which still folds it in).
     dismissed: false,
+    now,
   });
+  const assigned = assignment !== ActionAssignment.Unassigned;
+  const optionality: ViewerOptionality = action.optional
+    ? { optional: true, optionalReason: null }
+    : assignment === ActionAssignment.Optional
+      ? { optional: true, optionalReason: ViewerOptionalReason.ContractGap }
+      : { optional: false, optionalReason: null };
 
   const awayDuringWindow = computeIsAwayDuringWindow({ action, user });
 
   // Single-user equivalent of the participant roster
-  // (`findParticipantIdsForActions`, the `usersJoined` counter):
+  // (`findParticipantIdsForActions`) read from saved decisions:
   // "expected to act ∪ completed anyway".
   const isParticipant =
     relation === ViewerActionRelation.Completed ||
@@ -217,22 +305,33 @@ export function resolveUserActionStatus(params: {
       relation !== ViewerActionRelation.Withdrawn);
 
   const deadlineAt = action.memberActionPhase.deadlineEvent?.date ?? null;
-  const deadlinePassed = !!deadlineAt && deadlineAt <= now;
+  const deadlinePassed = hasMemberActionDeadlinePassed(deadlineAt, now);
 
   return {
     assigned,
-    canComplete: computeCanCompleteAction({ action, user, inCohort }),
+    ...optionality,
+    contractGap: assignment === ActionAssignment.Optional,
+    canComplete: computeCanCompleteAction({
+      action,
+      user,
+      inCohort: cohort.eligible,
+      now,
+    }),
     relation,
     withdrawal,
     dismissed,
     away: computeMemberActionAwayStatus({ action, user, now }),
-    memberActionStarted: hasMemberActionStarted(action.events, now),
+    memberActionStarted: hasMemberActionStarted(
+      loadedActionEvents(action),
+      now,
+    ),
     deadlineAt,
     deadlinePassed,
+    staffPreview: isStaffPreviewActiveFor({ user, action, now }),
     display: resolveUserActionPillStatus({
       isJoined: isParticipant,
-      isAway: inCohort && awayDuringWindow,
-      optional: action.optional,
+      isAway: cohort.admitted && awayDuringWindow,
+      optional: optionality.optional,
       deadlinePassed,
       activityStatus,
     }),

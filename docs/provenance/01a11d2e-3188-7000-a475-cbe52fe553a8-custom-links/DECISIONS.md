@@ -1,0 +1,11 @@
+- Reuse organization waitlist-link attribution without changing campaigns or waitlist entries. Admin supplies a destination containing the existing `link` parameter.
+- Store custom links separately from share URLs: these links have arbitrary destinations and no required referral owner.
+- Use a single lowercase path segment for custom paths. Reserve existing frontend route prefixes and static asset prefixes; a frontend test checks route coverage so new app routes cannot silently collide.
+- Preserve the saved destination, including its query and fragment; incoming query parameters cannot override its attribution.
+- Count resolutions atomically in the API, then issue an uncached HTTP 302 from the frontend loader. Counts represent arrivals, including automated requests, rather than unique people.
+- Allow HTTP(S) destinations and relative site paths. Internal destinations must point under an existing app prefix or the homepage, preventing aliases from redirecting to other aliases or themselves.
+- Rename the sidebar label while retaining its stored folder key so existing expansion preferences survive.
+- Keep entity timestamp decorators separate: the duplication checker matched TypeORM boilerplate shared by otherwise independent entities. Keep the clipboard failure text local to each screen; both reuse the shared clipboard implementation. Consolidate duplicate-path refusal wording within the custom-link service.
+- Verification: focused schema, frontend, and admin tests; database-backed API tests including concurrent arrivals and organization signup attribution; an isolated browser flow that creates `/100k`, checks its HTTP response and count, edits its destination, and deletes it. Synthetic browser records are removed afterward.
+- The generated migration creates only `custom_link` and its unique slug index. It is applied locally and a second schema generation reports no changes. No manual SQL edits are needed.
+- Mobile retains its existing link handling: Android's app-link filter only captures the OAuth callback and the iOS association file declares web credentials, so public custom paths reach the web redirect.

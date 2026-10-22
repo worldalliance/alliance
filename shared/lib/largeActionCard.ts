@@ -1,10 +1,18 @@
+import { eventInEffectAt } from "@alliance/common/actionEvent";
 import { ActionDto, ActionEventDto, type TaskAwayStatus } from "../client";
-import { ActionWithAwayStatus, deadlineHasPassed } from "./actionUtils";
-import { taskHeaders } from "./copy";
+import {
+  ActionWithAwayStatus,
+  deadlineHasPassed,
+  getViewerOnlyOptionalReason,
+  isActionOptional,
+  ViewerOnlyOptionalReason,
+} from "./actionUtils";
+import { taskHeaders, type TitledCopy } from "./copy";
 
 export interface LargeActionCardPropsShared {
   action: ActionWithAwayStatus;
   onUpdateActionState: () => void;
+  onDeadlinePassed: () => void;
   dismissProps?: {
     header: string;
     message: string;
@@ -18,6 +26,12 @@ const AWAY_STATUS_MESSAGES = {
   away_previously: taskHeaders.homePage.away.description.wasAway,
 } as const satisfies Record<Exclude<TaskAwayStatus, "not_away">, string>;
 
+const HOME_COPY_BY_VIEWER_ONLY_OPTIONAL_REASON = {
+  [ViewerOnlyOptionalReason.Unknown]: taskHeaders.homePage.optionalForViewer,
+  [ViewerOnlyOptionalReason.ContractGap]:
+    taskHeaders.homePage.optionalForContractGap,
+} as const satisfies Record<ViewerOnlyOptionalReason, TitledCopy>;
+
 /**
  * Pure data computation — returns the banner header/message for a task that can
  * be dismissed (away, deadline passed, or optional).  The caller is responsible
@@ -26,7 +40,7 @@ const AWAY_STATUS_MESSAGES = {
 export function getTaskDismissInfo(
   action: ActionWithAwayStatus,
 ): { header: string; message: string } | undefined {
-  if (action.onboarding) return undefined;
+  if (action.onboarding || action.viewer?.staffPreview) return undefined;
 
   // Viewer-first with the legacy flat-field fallback (see the note in
   // actionUtils.ts). Both carry the same 4-valued TaskAwayStatus.
@@ -46,6 +60,21 @@ export function getTaskDismissInfo(
       return undefined;
   }
 
+  // Ahead of the deadline branch, whose banner would tell the member they
+  // missed a deadline they were never held to.
+  const viewerOnlyReason = getViewerOnlyOptionalReason(action);
+  if (viewerOnlyReason) {
+    const copy = HOME_COPY_BY_VIEWER_ONLY_OPTIONAL_REASON[viewerOnlyReason];
+    return { header: copy.title, message: copy.description };
+  }
+
+  if (isActionOptional(action)) {
+    return {
+      header: taskHeaders.homePage.optional.title,
+      message: taskHeaders.homePage.optional.description,
+    };
+  }
+
   if (deadlineHasPassed(action)) {
     return {
       header: taskHeaders.homePage.deadline.title,
@@ -53,20 +82,9 @@ export function getTaskDismissInfo(
     };
   }
 
-  if (action.optional) {
-    return {
-      header: taskHeaders.homePage.optional.title,
-      message: taskHeaders.homePage.optional.description,
-    };
-  }
-
   return undefined;
 }
 
 export function getNextEvent(action: ActionDto): ActionEventDto | null {
-  const now = new Date();
-  const futureEvents = action.events.filter(
-    (event) => new Date(event.date) > now,
-  );
-  return futureEvents.length > 0 ? futureEvents[0] : null;
+  return eventInEffectAt(action.events, new Date()).nextEvent;
 }

@@ -1,4 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
+import { DeleteDateColumnTz } from "src/datasources/basecolumns";
 import { Column, Entity, PrimaryGeneratedColumn, Unique } from "typeorm";
 
 @Entity()
@@ -31,7 +32,7 @@ export class ActionStatsRecord {
   @Column({ default: 0 })
   @ApiProperty({
     description:
-      "Number of users who withdrew from this action (declined or wont_complete)",
+      "Number of users whose latest completion or withdrawal on this action is a withdrawal",
   })
   usersWithdrawn: number;
 
@@ -61,7 +62,7 @@ export class ActionStatsRecord {
   @Column({ default: true })
   @ApiProperty({
     description:
-      "Whether to show this action in the chart (false for publicOnly or actions without member_action event)",
+      "Whether to show this action in the chart (false for actions that don't count toward member analytics or have no member_action event)",
   })
   showInChart: boolean;
 
@@ -78,4 +79,7 @@ export class ActionStatsRecord {
     description: "When the member_action phase ended (next status event date)",
   })
   memberActionEndDate: Date | null;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

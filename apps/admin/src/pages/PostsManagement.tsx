@@ -1,19 +1,19 @@
 import { errorMessage } from "@alliance/common/errorMessage";
-import {
-  forumGetPostsForAdmin,
-  forumUpdatePostSettingsAdmin,
-  userListAdmin,
-} from "@alliance/shared/client";
+// eslint-disable-next-line api-client/named-hooks-only -- one-off request whose result no query cache holds
+import { forumExportPostAdmin } from "@alliance/shared/client";
 import type { PostDto } from "@alliance/shared/client/types.gen";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
-import { Plus, Trash2 } from "lucide-react";
+import { ConfirmMode, useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import UserSelect from "@alliance/sharedweb/ui/UserSelect";
+import { Download, Plus, Trash2 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { href, useNavigate, useParams } from "react-router";
+import { postsLoadError, usePostsAdmin } from "../lib/usePostsAdmin";
+import { useRefusalToast } from "../lib/useRefusalToast";
+import { useUsersAdmin } from "../lib/useUsersAdmin";
 
 type TagDraft = { id?: number; name: string };
 
@@ -44,12 +44,13 @@ const PostsManagementPage: React.FC = () => {
   const { postId } = useParams();
   const navigate = useNavigate();
 
-  const [posts, setPosts] = useState<PostDto[]>([]);
+  const { posts, updateSettings } = usePostsAdmin();
   const [selectedPost, setSelectedPost] = useState<PostDto | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [users, setUsers] = useState<UserSelectUser[]>([]);
-  const [usersLoading, setUsersLoading] = useState(false);
+  const {
+    data: users = [],
+    isLoading: usersLoading,
+    isLoadingError: usersLoadFailed,
+  } = useUsersAdmin();
   const [expertSelection, setExpertSelection] = useState<number[]>([]);
   const [authorSelection, setAuthorSelection] = useState<number[]>([]);
   const [qaMode, setQaMode] = useState(false);
@@ -57,27 +58,15 @@ const PostsManagementPage: React.FC = () => {
   const [notifyForReplies, setNotifyForReplies] = useState(false);
   const [showClusterTags, setShowClusterTags] = useState(false);
   const [tagDrafts, setTagDrafts] = useState<TagDraft[]>([]);
+  const [downloadingPostId, setDownloadingPostId] = useState<number | null>(
+    null,
+  );
   const { success, error: pushError, confirm } = useToast();
+  const refusalToast = useRefusalToast();
 
   useEffect(() => {
-    const loadPosts = async () => {
-      setLoading(true);
-      try {
-        const response = await forumGetPostsForAdmin();
-        setPosts(response.data ?? []);
-      } catch (err) {
-        console.error("Failed to load posts", err);
-        pushError("Failed to load posts");
-      } finally {
-        setLoading(false);
-      }
-    };
-    void loadPosts();
-  }, [pushError]);
-
-  useEffect(() => {
-    if (postId && posts.length > 0) {
-      const match = posts.find((p) => p.id === Number(postId));
+    if (postId && posts.data) {
+      const match = posts.data.find((p) => p.id === Number(postId));
       if (match && selectedPost?.id !== match.id) {
         setSelectedPost(match);
         setExpertSelection(match.expertIds ?? []);
@@ -89,26 +78,38 @@ const PostsManagementPage: React.FC = () => {
         setTagDrafts(toTagDrafts(match));
       }
     }
-  }, [postId, posts, selectedPost?.id]);
+  }, [postId, posts.data, selectedPost?.id]);
 
-  useEffect(() => {
-    setUsersLoading(true);
-    userListAdmin()
-      .then((response) => {
-        const rawUsers = response.data ?? [];
-        setUsers(
-          rawUsers.map((user) => ({
-            id: user.id,
-            name: user.name ?? `User #${user.id}`,
-            profilePicture: user.profilePicture ?? null,
-          })),
-        );
-      })
-      .catch((err) => {
-        console.error("Failed to load users", err);
-      })
-      .finally(() => setUsersLoading(false));
-  }, []);
+  const handleDownload = async (post: PostDto) => {
+    setDownloadingPostId(post.id);
+    try {
+      const { data, response } = await forumExportPostAdmin({
+        path: { id: post.id },
+        parseAs: "blob",
+      });
+      if (!(data instanceof Blob)) {
+        throw new Error(`Export failed: ${response.status}`);
+      }
+      const url = URL.createObjectURL(data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download =
+        /filename="([^"]+)"/.exec(
+          response.headers.get("content-disposition") ?? "",
+        )?.[1] ?? `post-${post.id}.html`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to download post", err);
+      pushError(
+        errorMessage({ error: err, fallback: "Failed to download post" }),
+      );
+    } finally {
+      setDownloadingPostId(null);
+    }
+  };
 
   const handleSelectPost = (post: PostDto) => {
     setSelectedPost(post);
@@ -150,14 +151,13 @@ const PostsManagementPage: React.FC = () => {
         } lose their label. This cannot be undone.`,
         confirmLabel: "Delete",
         cancelLabel: "Keep",
-        mode: "fullscreen",
+        mode: ConfirmMode.Fullscreen,
       });
       if (!confirmed) return;
     }
-    setSaving(true);
     try {
-      const { data: updatedPost, error } = await forumUpdatePostSettingsAdmin({
-        path: { id: selectedPost.id },
+      const updatedPost = await updateSettings.mutateAsync({
+        id: selectedPost.id,
         body: {
           expertIds: expertSelection,
           authorIds: authorSelection,
@@ -173,28 +173,23 @@ const PostsManagementPage: React.FC = () => {
             : undefined,
         },
       });
-      if (error) {
-        console.error("Failed to save", error);
-        pushError(errorMessage({ error, fallback: "Failed to save settings" }));
-        return;
-      }
-      if (updatedPost) {
-        setSelectedPost(updatedPost);
-        setPosts((prev) =>
-          prev.map((p) => (p.id === updatedPost.id ? updatedPost : p)),
-        );
-        setTagDrafts(toTagDrafts(updatedPost));
-      }
+      setSelectedPost(updatedPost);
+      setTagDrafts(toTagDrafts(updatedPost));
       success("Post updated", "Settings saved successfully");
     } catch (err) {
-      console.error("Failed to save", err);
-      pushError("Failed to save settings");
-    } finally {
-      setSaving(false);
+      refusalToast(err, "Failed to save settings");
     }
   };
 
-  if (loading) {
+  if (posts.isError && !posts.data) {
+    return (
+      <div className="p-6 pt-20">
+        <p className="text-sm text-red-500">{postsLoadError(posts.error)}</p>
+      </div>
+    );
+  }
+
+  if (posts.isPending) {
     return (
       <div className="p-6 pt-20">
         <p className="text-sm text-zinc-500">Loading posts...</p>
@@ -217,8 +212,8 @@ const PostsManagementPage: React.FC = () => {
             <div className="flex flex-col gap-4">
               <h2 className="font-semibold text-lg">Posts</h2>
               <div className="flex flex-col gap-2  overflow-y-auto">
-                {posts.length ? (
-                  posts.map((post) => (
+                {posts.data.length ? (
+                  posts.data.map((post) => (
                     <button
                       key={post.id}
                       type="button"
@@ -289,6 +284,7 @@ const PostsManagementPage: React.FC = () => {
                     selectedUserIds={authorSelection}
                     onChange={setAuthorSelection}
                     loading={usersLoading}
+                    loadFailed={usersLoadFailed}
                     label="Authors"
                   />
                   <p className="text-xs text-zinc-500 -mt-2">
@@ -328,6 +324,7 @@ const PostsManagementPage: React.FC = () => {
                         selectedUserIds={expertSelection}
                         onChange={setExpertSelection}
                         loading={usersLoading}
+                        loadFailed={usersLoadFailed}
                         label="Designated Experts"
                       />
                     </div>
@@ -408,12 +405,26 @@ const PostsManagementPage: React.FC = () => {
 
                   <Button
                     type="button"
+                    color={ButtonColor.White}
+                    onClick={() => void handleDownload(selectedPost)}
+                    disabled={downloadingPostId === selectedPost.id}
+                    title="The post, its comments and their attachments, as a single web page"
+                    className="self-start flex items-center gap-2"
+                  >
+                    <Download size={16} />
+                    {downloadingPostId === selectedPost.id
+                      ? "Preparing..."
+                      : "Download as .html"}
+                  </Button>
+
+                  <Button
+                    type="button"
                     color={ButtonColor.Blue}
                     onClick={handleSave}
-                    disabled={saving}
+                    disabled={updateSettings.isPending}
                     className="self-start"
                   >
-                    {saving ? "Saving..." : "Save Changes"}
+                    {updateSettings.isPending ? "Saving..." : "Save Changes"}
                   </Button>
                 </>
               ) : (

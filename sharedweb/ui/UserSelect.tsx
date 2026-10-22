@@ -1,5 +1,10 @@
-import { UserDto, userMembers } from "@alliance/shared/client";
-import React, { useEffect, useMemo, useState } from "react";
+import type { ProfileDto, UserDto } from "@alliance/shared/client";
+import { useMembers } from "@alliance/shared/lib/useMembers";
+import {
+  matchesName,
+  useUserSelection,
+} from "@alliance/shared/lib/useUserSelection";
+import React, { useMemo, useState } from "react";
 import { AvatarProfile } from "./Avatar";
 
 export type UserSelectUser = Pick<UserDto, "id" | "name" | "profilePicture">;
@@ -9,81 +14,53 @@ interface UserSelectProps {
   selectedUserIds: number[];
   onChange: (userIds: number[]) => void;
   loading?: boolean;
+  loadFailed?: boolean;
   label?: string | null;
   single?: boolean;
 }
 
-const MAX_RESULTS = 8;
+const nameOf = (user: UserSelectUser) => user.name;
+const missingUser = (id: number): UserSelectUser => ({
+  id,
+  name: `User #${id}`,
+  profilePicture: null,
+});
 
 const UserSelect: React.FC<UserSelectProps> = ({
   users,
   selectedUserIds,
   onChange,
   loading = false,
+  loadFailed = false,
   label = "Recipients",
   single = false,
 }) => {
-  const [query, setQuery] = useState<string>("");
   const [filterQuery, setFilterQuery] = useState<string>("");
   const [filterOpen, setFilterOpen] = useState(false);
-
-  const canSelectMore = !single || selectedUserIds.length === 0;
-
-  const selectedUsers = useMemo(() => {
-    const userMap = new Map(users.map((user) => [user.id, user]));
-    return selectedUserIds.map((userId) => userMap.get(userId)!);
-  }, [users, selectedUserIds]);
+  const {
+    query,
+    setQuery,
+    canSelectMore,
+    selectedUsers,
+    filteredUsers,
+    addUser,
+    removeUser,
+    inputDisabled,
+    placeholder,
+  } = useUserSelection({
+    users,
+    selectedUserIds,
+    onChange,
+    nameOf,
+    missingUser,
+    loading,
+    single,
+  });
 
   const displayedSelectedUsers = useMemo(() => {
-    const term = filterQuery.trim().toLowerCase();
-    if (!term) return selectedUsers;
-    return selectedUsers.filter((user) =>
-      `${user.name ?? ""}`.toLowerCase().includes(term),
-    );
+    if (!filterQuery.trim()) return selectedUsers;
+    return selectedUsers.filter((user) => matchesName(user.name, filterQuery));
   }, [selectedUsers, filterQuery]);
-
-  const filteredUsers = useMemo(() => {
-    if (!canSelectMore) {
-      return [];
-    }
-
-    const term = query.trim().toLowerCase();
-    if (!term) {
-      return [];
-    }
-
-    const selectedIds = new Set(selectedUserIds);
-    return users
-      .filter((user) => !selectedIds.has(user.id))
-      .filter((user) => {
-        const haystack = `${user.name ?? ""}`.toLowerCase();
-        return haystack.includes(term);
-      })
-      .slice(0, MAX_RESULTS);
-  }, [query, users, selectedUserIds, canSelectMore]);
-
-  const addUser = (userId: number) => {
-    if (selectedUserIds.includes(userId)) {
-      return;
-    }
-    if (single) {
-      onChange([userId]);
-    } else {
-      onChange([...selectedUserIds, userId]);
-    }
-    setQuery("");
-  };
-
-  const removeUser = (userId: number) => {
-    onChange(selectedUserIds.filter((id) => id !== userId));
-  };
-
-  const inputDisabled = loading || !canSelectMore;
-  const placeholder = loading
-    ? "Loading users…"
-    : canSelectMore
-      ? "Search by name"
-      : "Remove current selection to choose another";
 
   return (
     <div className="relative min-h-20">
@@ -119,7 +96,10 @@ const UserSelect: React.FC<UserSelectProps> = ({
           ))}
         </div>
       )}
-      {query && !filteredUsers.length && !loading && (
+      {loadFailed && (
+        <p className="mt-2 text-xs text-red-600">Failed to load users.</p>
+      )}
+      {query && !filteredUsers.length && !loading && !loadFailed && (
         <p className="mt-2 text-xs text-zinc-500">
           No users match that search.
         </p>
@@ -191,18 +171,14 @@ const UserSelect: React.FC<UserSelectProps> = ({
 
 export default UserSelect;
 
-export const useSelectableUserIds = () => {
-  const [users, setUsers] = useState<UserSelectUser[]>([]);
-  useEffect(() => {
-    userMembers().then((response) => {
-      setUsers(
-        response.data?.map((user) => ({
-          id: user.id,
-          name: user.displayName,
-          profilePicture: user.profilePicture,
-        })) ?? [],
-      );
-    });
-  }, []);
-  return users;
+const toUserSelectUser = (member: ProfileDto): UserSelectUser => ({
+  id: member.id,
+  name: member.displayName,
+  profilePicture: member.profilePicture,
+});
+
+export const useSelectableUsers = () => {
+  const { data, isLoading, isLoadingError } = useMembers();
+  const users = useMemo(() => data?.map(toUserSelectUser) ?? [], [data]);
+  return { users, isLoading, isLoadingError };
 };

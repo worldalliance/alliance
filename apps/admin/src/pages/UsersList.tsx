@@ -1,73 +1,48 @@
-import { phoneSearchDigits } from "@alliance/common/phone";
+import { phoneSearchDigits, phoneSearchTerm } from "@alliance/common/phone";
 import { withCount } from "@alliance/common/plural";
 import {
-  actionsActionRelationsAdmin,
-  analyticsGetTimeSpentPerUserAdmin,
-  analyticsGetTimeSpentPerUserTotalAdmin,
-  communityGetAllMemberContactInfoAdmin,
-  userListAdmin,
-} from "@alliance/shared/client";
-import {
-  CommunityMemberContactInfoDto,
   ProfileDto,
   UserActionRelationDetailDto,
 } from "@alliance/shared/client/types.gen";
 import { shuffleWithSeed } from "@alliance/shared/forms/randomutils";
-import { calculateCompletionData } from "@alliance/shared/lib/actionUtils";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { cn } from "@alliance/shared/styles/util";
-import { useOutsideClick } from "@alliance/sharedweb/lib/useOutsideClick";
 import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable";
 import Pagination from "@alliance/sharedweb/ui/Pagination";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
-import { useQuery } from "@tanstack/react-query";
 import { groupBy, mapValues } from "es-toolkit";
 import { LayoutGrid, List, Shuffle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { href, Link, useSearchParams } from "react-router";
+import MemberFilterDropdown from "../components/MemberFilterDropdown";
 import UserCard from "../components/UserCard";
+import { adminRefusalMessage } from "../lib/adminRefusal";
+import {
+  matchesSelectedRoles,
+  ROLE_FILTERS,
+  RoleFilter,
+} from "../lib/memberRoleFilter";
+import { useActionRelationsAdmin } from "../lib/useActionRelationsAdmin";
+import { useCompletedAllActiveActions } from "../lib/useCompletedAllActiveActions";
+import { useMemberContactInfoAdmin } from "../lib/useMemberContactInfoAdmin";
+import { useTimeSpentPerUserTotalAdmin } from "../lib/useTimeSpentPerUserTotalAdmin";
+import { useUsersAdmin } from "../lib/useUsersAdmin";
 
 type ViewMode = "cards" | "rows";
 
 const MEMBERS_PER_PAGE = 50;
+const NO_TIMES: Record<number, number> = {};
 
 const UsersList: React.FC = () => {
-  const { data: users = [] } = useQuery({
-    queryKey: queryKeys.usersAdmin(),
-    queryFn: () =>
-      userListAdmin({ throwOnError: true }).then((response) => response.data),
-  });
-  const { data: timeSpentPerUserLast7 = [] } = useQuery({
-    queryKey: queryKeys.timeSpentPerUserAdmin(),
-    queryFn: () =>
-      analyticsGetTimeSpentPerUserAdmin({ throwOnError: true }).then(
-        (response) => response.data,
-      ),
-  });
-  const { data: timeSpentPerUserTotal = [] } = useQuery({
-    queryKey: queryKeys.timeSpentPerUserTotalAdmin(),
-    queryFn: () =>
-      analyticsGetTimeSpentPerUserTotalAdmin({ throwOnError: true }).then(
-        (response) => response.data,
-      ),
-  });
+  const { data: users = [] } = useUsersAdmin();
+  const timeSpentTotal = useTimeSpentPerUserTotalAdmin();
+  const userToTimeSpentTotal = timeSpentTotal.data ?? NO_TIMES;
   const { tags, addUserToTag, removeUserFromTag } = useTagsAdmin();
-  const { data: relationsResponse } = useQuery({
-    queryKey: queryKeys.actionRelationsAdmin(),
-    queryFn: () =>
-      actionsActionRelationsAdmin({ throwOnError: true }).then(
-        (response) => response.data,
-      ),
-  });
+  const { data: relationsResponse } = useActionRelationsAdmin();
   // latest on the right
   const actionSummaries = useMemo(
     () => (relationsResponse?.actions ?? []).slice().reverse(),
     [relationsResponse],
-  );
-  const activeActions = useMemo(
-    () => actionSummaries.filter((action) => action.status === "member_action"),
-    [actionSummaries],
   );
   const userActionRelations = useMemo(() => {
     const relationMap: Record<number, UserActionRelationDetailDto[]> = {};
@@ -81,8 +56,7 @@ const UsersList: React.FC = () => {
     userActionRelations,
   });
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [isTagFilterOpen, setIsTagFilterOpen] = useState(false);
-  const tagDropdownRef = useOutsideClick(() => setIsTagFilterOpen(false));
+  const [selectedRoles, setSelectedRoles] = useState<RoleFilter[]>([]);
   const [pendingTagOps, setPendingTagOps] = useState<Set<string>>(
     () => new Set(),
   );
@@ -93,22 +67,6 @@ const UsersList: React.FC = () => {
   const viewMode = (params.get("viewMode") as ViewMode | undefined) ?? "rows";
 
   const [shuffledIds, setShuffledIds] = useState<number[] | null>(null);
-
-  const userToTimeSpent = useMemo(
-    () =>
-      Object.fromEntries(
-        timeSpentPerUserLast7.map((time) => [time.userId, time.timeSpent]),
-      ),
-    [timeSpentPerUserLast7],
-  );
-
-  const userToTimeSpentTotal = useMemo(
-    () =>
-      Object.fromEntries(
-        timeSpentPerUserTotal.map((time) => [time.userId, time.timeSpent]),
-      ),
-    [timeSpentPerUserTotal],
-  );
 
   const sortedUsers = useMemo(() => {
     return [...users].sort((a, b) => {
@@ -128,23 +86,32 @@ const UsersList: React.FC = () => {
     );
   }, [tags]);
 
-  const filteredByTags = useMemo(() => {
-    if (!selectedTagIds.length) {
+  const filteredByRoles = useMemo(() => {
+    if (!selectedRoles.length) {
       return sortedUsers;
     }
+    return sortedUsers.filter((user) =>
+      matchesSelectedRoles({ user, selectedRoles }),
+    );
+  }, [selectedRoles, sortedUsers]);
+
+  const filteredByTags = useMemo(() => {
+    if (!selectedTagIds.length) {
+      return filteredByRoles;
+    }
     const selected = new Set(selectedTagIds);
-    return sortedUsers.filter((user) => {
+    return filteredByRoles.filter((user) => {
       const userTags = userTagsMap[user.id] || [];
       return userTags.some((tag) => selected.has(tag.id));
     });
-  }, [selectedTagIds, sortedUsers, userTagsMap]);
+  }, [selectedTagIds, filteredByRoles, userTagsMap]);
 
   const filteredBySearch = useMemo(() => {
     if (!searchQuery.trim()) {
       return filteredByTags;
     }
     const query = searchQuery.toLowerCase().trim();
-    const phoneQuery = phoneSearchDigits(query);
+    const phoneQuery = phoneSearchTerm(query);
     return filteredByTags.filter((user) => {
       const name = user.name?.toLowerCase() ?? "";
       const email = user.email?.toLowerCase() ?? "";
@@ -171,52 +138,29 @@ const UsersList: React.FC = () => {
     );
   }, [filteredBySearch]);
 
-  const selectedTagNames = useMemo(() => {
-    if (!selectedTagIds.length) return [] as string[];
-    const selected = new Set(selectedTagIds);
-    return tags.filter((tag) => selected.has(tag.id)).map((tag) => tag.name);
-  }, [tags, selectedTagIds]);
-
   useEffect(() => {
     setShuffledIds(null);
-  }, [selectedTagIds, searchQuery]);
+  }, [selectedTagIds, selectedRoles, searchQuery]);
 
-  const groupFilterLabel = useMemo(() => {
-    if (!selectedTagIds.length) {
-      return "All tags";
-    }
-    return (
-      (selectedTagIds.length === 1 && selectedTagNames[0]) ||
-      withCount(selectedTagIds.length, "tag")
-    );
-  }, [selectedTagIds, selectedTagNames]);
-
-  const toggleTagSelection = (tagId: string) => {
-    setSelectedTagIds((prev) => {
-      if (prev.includes(tagId)) {
-        return prev.filter((id) => id !== tagId);
-      }
-      return [...prev, tagId];
-    });
-  };
-
-  const clearTagSelection = () => {
-    setSelectedTagIds([]);
-  };
+  const roleMemberCounts = useMemo(
+    () =>
+      mapValues(ROLE_FILTERS, (filter) => users.filter(filter.matches).length),
+    [users],
+  );
 
   const resetAllFilters = () => {
     setSearchQuery("");
     setSelectedTagIds([]);
+    setSelectedRoles([]);
   };
 
   const hasActiveFilters =
-    searchQuery.trim() !== "" || selectedTagIds.length > 0;
+    searchQuery.trim() !== "" ||
+    selectedTagIds.length > 0 ||
+    selectedRoles.length > 0;
 
   const usersAsProfiles = useMemo((): ProfileDto[] => {
     return filteredBySearch.map((user) => {
-      const lastEvent = [...(user.contractEvents ?? [])].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-      )[0];
       return {
         id: user.id,
         admin: user.admin,
@@ -225,32 +169,18 @@ const UsersList: React.FC = () => {
         profilePicture: user.profilePicture,
         profileDescription: user.profileDescription,
         displayName: user.name,
-        hasActiveContract: lastEvent?.type === "signed",
+        hasActiveContract: user.hasActiveContract,
         isCommunityLeader: false,
-        lastContractEvent: lastEvent,
+        lastContractEvent: user.lastContractEvent,
         anonymous: user.anonymous,
       };
     });
   }, [filteredBySearch]);
 
-  const { completedAllCurrentActions } = useMemo<{
-    completedAllCurrentActions: Record<number, boolean>;
-    nCompleted: number;
-    nTotal: number;
-  }>(() => {
-    if (!userActionRelations) {
-      return {
-        completedAllCurrentActions: {} as Record<number, boolean>,
-        nCompleted: 0,
-        nTotal: 0,
-      };
-    }
-
-    return calculateCompletionData({
-      filteredActionIds: activeActions.map((a) => a.id),
-      userActionRelations,
-    });
-  }, [activeActions, userActionRelations]);
+  const completedAllCurrentActions = useCompletedAllActiveActions({
+    actionSummaries,
+    userActionRelations,
+  });
 
   const displayedUsers = useMemo(() => {
     if (
@@ -300,24 +230,7 @@ const UsersList: React.FC = () => {
     return list;
   }, [usersAsProfiles, shuffledIds]);
 
-  const { data: contactInfoList } = useQuery({
-    queryKey: queryKeys.memberContactInfoAdmin(),
-    queryFn: () =>
-      communityGetAllMemberContactInfoAdmin({ throwOnError: true }).then(
-        (response) => response.data,
-      ),
-  });
-  const memberContactInfo = useMemo(
-    () =>
-      (contactInfoList ?? []).reduce(
-        (acc, contactInfo) => {
-          acc[contactInfo.id] = contactInfo;
-          return acc;
-        },
-        {} as Record<number, CommunityMemberContactInfoDto>,
-      ),
-    [contactInfoList],
-  );
+  const { data: memberContactInfo } = useMemberContactInfoAdmin();
 
   const handleUserTagToggle = useCallback(
     async (userId: number, tagId: string, nextChecked: boolean) => {
@@ -359,61 +272,28 @@ const UsersList: React.FC = () => {
           className="text-sm border border-gray-2 text-black bg-white px-3 rounded-sm py-2 w-64 focus:outline-none focus:border-black"
         />
         <div className="flex flex-row gap-3 items-center">
-          <div className="relative" ref={tagDropdownRef}>
-            <button
-              type="button"
-              className="text-sm border border-gray-2 text-black bg-white hover:bg-zinc-50 px-3 rounded-sm py-2 flex flex-row gap-x-2 items-center"
-              style={{ fontWeight: 450 }}
-              onClick={() => setIsTagFilterOpen((open) => !open)}
-            >
-              <span>{groupFilterLabel}</span>
-            </button>
-            {isTagFilterOpen && (
-              <div className="absolute z-10 top-[calc(100%+4px)] left-0 min-w-[220px] bg-white border border-zinc-200 rounded shadow">
-                <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-200">
-                  <p className="text-sm font-medium text-zinc-600">Tags</p>
-                  <button
-                    type="button"
-                    className="text-xs text-blue-600 hover:underline"
-                    onClick={clearTagSelection}
-                  >
-                    Clear
-                  </button>
-                </div>
-                <div className="max-h-60 overflow-y-auto">
-                  {tags.length ? (
-                    tags.map((tag) => {
-                      const checked = selectedTagIds.includes(tag.id);
-                      const memberCount = tag.users.length;
-                      return (
-                        <label
-                          key={tag.id}
-                          className="flex flex-row items-center gap-2 px-3 py-2 text-sm hover:bg-zinc-50 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            className="cursor-pointer"
-                            checked={checked}
-                            onChange={() => toggleTagSelection(tag.id)}
-                          />
-                          <div className="flex flex-col">
-                            <span className="font-medium">{tag.name}</span>
-                            <span className="text-xs text-zinc-500">
-                              {withCount(memberCount, "member")}
-                            </span>
-                          </div>
-                        </label>
-                      );
-                    })
-                  ) : (
-                    <p className="px-3 py-2 text-sm text-zinc-500">
-                      No tags yet
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+          <MemberFilterDropdown
+            title="Roles"
+            noun="role"
+            options={Object.values(RoleFilter).map((role) => ({
+              value: role,
+              label: ROLE_FILTERS[role].label,
+              memberCount: roleMemberCounts[role],
+            }))}
+            selected={selectedRoles}
+            onChange={setSelectedRoles}
+          />
+          <MemberFilterDropdown
+            title="Tags"
+            noun="tag"
+            options={tags.map((tag) => ({
+              value: tag.id,
+              label: tag.name,
+              memberCount: tag.users.length,
+            }))}
+            selected={selectedTagIds}
+            onChange={setSelectedTagIds}
+          />
         </div>
         <div className="flex items-center gap-3">
           {hasActiveFilters && (
@@ -465,6 +345,14 @@ const UsersList: React.FC = () => {
           </button>
         </div>
       </div>
+      {timeSpentTotal.isLoadingError && (
+        <p role="alert" className="w-full text-sm text-red-500">
+          {adminRefusalMessage(
+            timeSpentTotal.error,
+            "Unable to load time spent, so members aren't sorted by it.",
+          )}
+        </p>
+      )}
       {tagMutationError && (
         <div className="w-full">
           <p className="text-sm text-red-500">{tagMutationError}</p>
@@ -477,8 +365,6 @@ const UsersList: React.FC = () => {
               <UserCard
                 key={user.id}
                 user={user}
-                timeSpent={userToTimeSpent[user.id]}
-                timeSpentTotal={userToTimeSpentTotal[user.id]}
                 tags={userTagsMap[user.id] || []}
                 allTags={tags}
                 onToggleTag={(tagId, nextChecked) =>

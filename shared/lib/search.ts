@@ -1,10 +1,5 @@
-import {
-  searchAll,
-  SearchItemDto,
-  SearchItemType,
-} from "@alliance/shared/client";
+import { SearchItemDto, SearchItemType } from "@alliance/shared/client";
 import { groupBy } from "es-toolkit";
-import { useEffect, useState } from "react";
 
 export const SEARCH_CATEGORIES: SearchItemType[] = [
   "recent",
@@ -75,75 +70,4 @@ export const getSearchSecondaryText = (
     })
     .filter(Boolean)
     .join(", ");
-};
-
-type UseSearchResultsOptions = {
-  debounceMs?: number;
-  autoselectFirst?: boolean;
-};
-
-export const useSearchResults = (
-  query: string,
-  options?: UseSearchResultsOptions,
-) => {
-  const debounceMs = options?.debounceMs ?? 50;
-  const autoselectFirst = options?.autoselectFirst ?? true;
-  const [items, setItems] = useState<SearchItemDto[]>([]);
-  const [itemsByCategory, setItemsByCategory] = useState(
-    createEmptySearchCategories,
-  );
-  const [selectedItem, setSelectedItem] = useState<SearchItemDto | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<unknown>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!query.length) {
-      setItems([]);
-      setItemsByCategory(createEmptySearchCategories());
-      setSelectedItem(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
-    setLoading(true);
-    const timeout = setTimeout(() => {
-      setError(null);
-      searchAll({ query: { query } })
-        .then((response) => {
-          if (cancelled) return;
-          const { grouped, ordered } = groupSearchItems(response.data ?? []);
-
-          setItems(ordered);
-          setItemsByCategory(grouped);
-          setSelectedItem(autoselectFirst ? (ordered[0] ?? null) : null);
-        })
-        .catch((err) => {
-          if (cancelled) return;
-          setItems([]);
-          setItemsByCategory(createEmptySearchCategories());
-          setSelectedItem(null);
-          setError(err);
-        })
-        .finally(() => {
-          if (cancelled) return;
-          setLoading(false);
-        });
-    }, debounceMs);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timeout);
-    };
-  }, [autoselectFirst, debounceMs, query]);
-
-  return {
-    items,
-    itemsByCategory,
-    selectedItem,
-    setSelectedItem,
-    loading,
-    error,
-  };
 };

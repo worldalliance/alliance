@@ -2,37 +2,19 @@ import { cn } from "@alliance/shared/styles/util";
 import { Fragment } from "react";
 import { Link } from "react-router";
 import { CONTACT_EMAIL, FOOTER_TAGLINE } from "./content";
-import {
-  FOOTER_COLUMNS,
-  FOOTER_LEGAL_LINKS,
-  JOIN_HREF,
-  type SiteLink,
-} from "./links";
+import { useInviteSession } from "./invite/InviteSession";
+import { FOOTER_COLUMNS, FOOTER_LEGAL_LINKS, type SiteLink } from "./links";
 import { Logotype, SITE_COL, SiteArrow, TexturedFill } from "./ui";
 
-const JOIN_MAILTO = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("I'd like to join the Alliance")}`;
-
 function FooterAnchor({ link }: { link: SiteLink }) {
-  const className =
-    "-my-2.5 inline-flex items-center gap-1.5 py-2.5 text-white hover:underline";
-  const inner = (
-    <>
+  const { signupHref } = useInviteSession();
+  return (
+    <Link
+      to={(link.acceptsInvite && signupHref) || link.to}
+      className="-my-2.5 inline-flex items-center gap-1.5 py-2.5 text-white hover:underline"
+    >
       {link.label}
       {link.withArrow && <SiteArrow className="size-2.5" />}
-    </>
-  );
-
-  if (link.to === JOIN_HREF) {
-    return (
-      <a href={JOIN_MAILTO} className={className}>
-        {inner}
-      </a>
-    );
-  }
-
-  return (
-    <Link to={link.to} className={className}>
-      {inner}
     </Link>
   );
 }
@@ -42,7 +24,7 @@ function LegalRow() {
   return (
     <div className="mt-14 border-t border-white/15 pt-6">
       <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-white/60">
-        <span>{`© ${new Date().getFullYear()} Alliance Foundation`}</span>
+        <span>{`© ${new Date().getFullYear()} Alliance Foundation, a 501(c)(3) nonprofit organization`}</span>
         {FOOTER_LEGAL_LINKS.map((link) => (
           <Fragment key={link.to}>
             <span aria-hidden>·</span>

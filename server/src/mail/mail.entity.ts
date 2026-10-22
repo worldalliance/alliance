@@ -1,11 +1,13 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
+import { Column, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
 
 export enum EmailType {
   Verification = "verification",
   PasswordReset = "password_reset",
-  PartialSignup = "partial_signup",
   Welcome = "welcome",
   Other = "other",
   Commitment = "commitment",
@@ -19,6 +21,9 @@ export enum EmailType {
   CustomActionReminder = "custom_action_reminder",
   ContractSuspended = "contract_suspended",
   ContractReminder = "contract_reminder",
+  WaitlistConfirmation = "waitlist_confirmation",
+  WaitlistLink = "waitlist_link",
+  WaitlistStaff = "waitlist_staff",
 }
 
 export enum EmailStatus {
@@ -57,6 +62,7 @@ export class Mail {
   @CreateDateColumnTz()
   createdAt: Date;
 
+  @Index()
   @Column({ type: "varchar", nullable: true })
   @ApiProperty({ nullable: true })
   cid: string | null;
@@ -64,4 +70,7 @@ export class Mail {
   @Column({ default: false })
   @ApiProperty({ type: Boolean })
   clickedLink: boolean;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

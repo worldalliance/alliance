@@ -1,0 +1,9 @@
+# Missed-action rule
+
+**Shared rule.** `computeMissedRequiredAction` in `server/src/utils/action-user.ts` decides whether a member already counted as required and present missed an action: the action can be missed (`canMissActionDeadline`: not optional, deadline passed) and the member has no terminal activity (`TERMINAL_ACTIVITY_TYPES`: completion or withdrawal). `computeMissedActionDeadline` (the cohort leaf) adds the per-member assignment and away checks on top. Suspension and the admin stats already get assignment from their rosters (`computeIsAssignedAndPresent`, `findBaseUsersForEvents`), so they call the narrower function rather than recomputing assignment.
+
+**Kept outside the rule.** Suspension's re-sign exemption resets the missed-suite streak rather than defining a miss (missed-suite-notifications REQUIREMENTS: "reset on re-signing"), so it stays in `buildSuspendPlanContext`. The admin stats keep their own framing: the member's last two assigned actions, an active contract now, and excluding onboarding and public-only actions. Suspension keeps excluding onboarding actions too; the cohort leaf never did.
+
+**Admin stats change.** A withdrawal now clears a miss in "Missed last action / Missed last two actions", as it already did in reminders, cohorts, and suspension.
+
+**Window.** The agent told the user the admin stats took the window from the earliest member-action event while everything else uses the latest (`memberActionPhase`). That cannot occur: `UQ_action_event_one_member_action` allows one member-action event per action, so both pick the same event and the same next event as the deadline. The stats now read `memberActionPhase` so the window has one definition, with no change in output; the planned e2e test for a rescheduled action was dropped because the fixture violates the constraint.

@@ -1,8 +1,6 @@
 import {
   ActionEventDto,
   ActionEventNotifDto,
-  actionsPreviewEmailHtmlAdmin,
-  actionsPreviewTextMessageAdmin,
   PreviewNotificationPlanDto,
   ReminderAnchorCandidateDto,
   ReminderGroupDto,
@@ -14,13 +12,18 @@ import Card from "@alliance/sharedweb/ui/Card";
 import { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { formatDate, formatDistanceToNow } from "date-fns";
 import { ChevronDown } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
+import {
+  useReminderEmailPreviewAdmin,
+  useReminderTextPreviewAdmin,
+} from "../../lib/useReminderPreviewsAdmin";
 import TextareaWithHighlights from "../TextareaWithHighlights";
 import ActionReminderGroupForm, {
   ActionReminderGroupFormSubmitPayload,
 } from "./ActionReminderGroupForm";
 import { GroupScheduleLabels } from "./ActionRemindersTab";
+import MissedSuiteNote from "./MissedSuiteNote";
 
 interface ActionReminderCardProps {
   group: ReminderGroupDto;
@@ -40,6 +43,7 @@ interface ActionReminderCardProps {
   anchorCandidates: ReminderAnchorCandidateDto[];
   users: UserSelectUser[];
   loadingUsers: boolean;
+  usersLoadFailed: boolean;
   userTags: TagDto[];
   loadingUserTags: boolean;
   userTagsError: string | null;
@@ -51,6 +55,7 @@ interface ActionReminderCardProps {
   ) => (payload: ActionReminderGroupFormSubmitPayload) => Promise<void>;
   reminderPlans?: PreviewNotificationPlanDto[];
   sentReminders?: ActionEventNotifDto[];
+  suiteId: number;
   suiteTaskCount: number;
 }
 const ActionReminderCard = ({
@@ -68,6 +73,7 @@ const ActionReminderCard = ({
   anchorCandidates,
   users,
   loadingUsers,
+  usersLoadFailed,
   userTags,
   loadingUserTags,
   userTagsError,
@@ -77,91 +83,38 @@ const ActionReminderCard = ({
   handleEditGroupSubmit,
   reminderPlans,
   sentReminders,
+  suiteId,
   suiteTaskCount,
 }: ActionReminderCardProps) => {
   const [minified, setMinified] = useState(true);
   const [showPlans, setShowPlans] = useState(false);
   const [showSentReminders, setShowSentReminders] = useState(false);
 
-  const [emailPreview, setEmailPreview] = useState<{
-    subject: string;
-    html: string;
-  } | null>(null);
-  const [textPreview, setTextPreview] = useState<string | null>(null);
-  const [pushPreview, setPushPreview] = useState<string | null>(null);
-  const eventId = group.memberActionEvent?.id;
-
-  useEffect(() => {
-    if (editing || minified || eventId == null) {
-      setEmailPreview(null);
-      setTextPreview(null);
-      setPushPreview(null);
-      return;
-    }
-    let ignored = false;
-    actionsPreviewEmailHtmlAdmin({
-      path: { eventId },
-      body: {
-        emailMessage: group.emailMessage,
-        emailSubject: group.emailSubject,
-        taskCount: suiteTaskCount,
-        cohortType: group.cohortType,
-      },
-    }).then((res) => {
-      if (ignored) {
-        return;
-      }
-      if (!res.error && res.data) {
-        setEmailPreview({
-          subject: res.data.subject,
-          html: res.data.html,
-        });
-      }
-    });
-    actionsPreviewTextMessageAdmin({
-      path: { eventId },
-      body: {
-        textMessage: group.textMessage,
-        taskCount: suiteTaskCount,
-        cohortType: group.cohortType,
-      },
-    }).then((res) => {
-      if (ignored) {
-        return;
-      }
-      if (!res.error && res.data) {
-        setTextPreview(res.data.text);
-      }
-    });
-    actionsPreviewTextMessageAdmin({
-      path: { eventId },
-      body: {
-        textMessage: group.pushMessage,
-        taskCount: suiteTaskCount,
-        cohortType: group.cohortType,
-      },
-    }).then((res) => {
-      if (ignored) {
-        return;
-      }
-      if (!res.error && res.data) {
-        setPushPreview(res.data.text);
-      }
-    });
-    return () => {
-      ignored = true;
-    };
-  }, [
-    editing,
-    minified,
+  const previewing = !editing && !minified;
+  const eventId = group.memberActionEvent?.id ?? null;
+  const textPreviewOf = (textMessage: string) =>
+    previewing
+      ? { textMessage, taskCount: suiteTaskCount, cohortType: group.cohortType }
+      : null;
+  const { data: emailPreview } = useReminderEmailPreviewAdmin(
     eventId,
-    group.emailMessage,
-    group.emailSubject,
-    group.textMessage,
-    group.pushMessage,
-    group.cohortType,
-    suiteTaskCount,
-  ]);
+    previewing
+      ? {
+          emailMessage: group.emailMessage,
+          emailSubject: group.emailSubject,
+          taskCount: suiteTaskCount,
+          cohortType: group.cohortType,
+        }
+      : null,
+  );
+  const { data: textPreview } = useReminderTextPreviewAdmin(
+    eventId,
+    textPreviewOf(group.textMessage),
+  );
+  const { data: pushPreview } = useReminderTextPreviewAdmin(
+    eventId,
+    textPreviewOf(group.pushMessage),
+  );
 
   const handleEditGroup = () => {
     setMinified(false);
@@ -194,6 +147,7 @@ const ActionReminderCard = ({
             type="button"
             color={ButtonColor.Transparent}
             onClick={() => setMinified(!minified)}
+            title={minified ? "Expand reminder" : "Collapse reminder"}
             className={cn(
               "!p-2 -my-1 transition-transform duration-100",
               minified && "rotate-180",
@@ -286,10 +240,13 @@ const ActionReminderCard = ({
         <div className="flex flex-col gap-2 p-4">
           {editing && selectedEventId !== null ? (
             <ActionReminderGroupForm
+              suiteId={suiteId}
+              waitForRecipientCount={false}
               memberEvents={memberEvents}
               anchorCandidates={anchorCandidates}
               users={users}
               loadingUsers={loadingUsers}
+              usersLoadFailed={usersLoadFailed}
               userTags={userTags}
               loadingUserTags={loadingUserTags}
               userTagsError={userTagsError}
@@ -307,6 +264,9 @@ const ActionReminderCard = ({
             />
           ) : (
             <>
+              {group.isMissedSuite && (
+                <MissedSuiteNote hasSuite={Boolean(group.actionSuite)} />
+              )}
               <p className="text-sm font-semibold">Email message:</p>
               <Card className="flex flex-col gap-1 !p-2">
                 <p className="text-sm font-semibold text-gray-900">
@@ -402,6 +362,11 @@ const ActionReminderCard = ({
                   <p className="text-xs text-gray-500">
                     ({plan.channels.join(", ")})
                   </p>
+                  {plan.missNumber !== null && (
+                    <p className="text-xs text-gray-500">
+                      consecutive miss {plan.missNumber}
+                    </p>
+                  )}
                 </div>
               ))
             )}
@@ -429,6 +394,7 @@ const ActionReminderCard = ({
                       {notif.mms && "text "}
                       {notif.mail && "email "}
                       {notif.pushes?.length ? "push " : null}
+                      {notif.notificationId != null && "in-app "}
                     </p>
                     <Link to={`/member/${notif.user.id}`} target="_blank">
                       {notif.user.displayName}

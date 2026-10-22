@@ -5,23 +5,26 @@ import {
   getActionPageTaskPanelState,
   shouldLoadCompletedTaskFormByState,
 } from "@alliance/shared/lib/actionPageTaskPanel";
+import { useCompletedTaskForm } from "@alliance/shared/lib/actionTaskPanelCompleted";
 import {
-  useCompletedTaskForm,
-  useTaskForm,
-} from "@alliance/shared/lib/actionTaskPanelCompleted";
-import { clipboardCopy, taskHeaders } from "@alliance/shared/lib/copy";
+  clipboardCopy,
+  taskHeaders,
+  type TitledCopy,
+} from "@alliance/shared/lib/copy";
 import {
   buildActionShareUrl,
   buildShareText,
   getCompletedShareableTextTemplate,
 } from "@alliance/shared/lib/shareText";
-import * as Clipboard from "expo-clipboard";
+import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
+import { milliseconds } from "date-fns";
 import { Link } from "expo-router";
 import { ArrowRight, Link2 } from "lucide-react-native";
 import { ReactNode, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 import { useAuth } from "../lib/AuthContext";
-import { getBaseUrl } from "../lib/config";
+import { copyOrAlert } from "../lib/clipboard";
+import { getSiteUrl } from "../lib/config";
 import { colors } from "../lib/style/colors";
 import ActionTaskPanel from "./ActionTaskPanel";
 import CheckIcon from "./system/CheckIcon";
@@ -32,22 +35,33 @@ export interface ActionPageTaskPanelProps {
   action: ActionDto;
   onCompleteAction: () => void;
   onOptOutAction: () => void;
+  onDeadlinePassed: () => void;
+  onAlreadySubmitted: () => void;
   scrollPageTo: (y: number, animated?: boolean) => void;
   scrollToEnd: (animated?: boolean) => void;
 }
 
+const renderTitledHeader = (copy: TitledCopy, titleClassName?: string) => (
+  <View className="gap-y-1">
+    <Text className={titleClassName} weight={FontWeight.Medium}>
+      {copy.title}
+    </Text>
+    <Text className="text-zinc-500">{copy.description}</Text>
+  </View>
+);
+
 // Guest-completion states (GuestRef, GuestCompleted) are web-only; mobile
 // pins hasRefCode/hasGuestResponse to false below so they're never reached.
-const taskPanelTopByState: Partial<
-  Record<ActionPageTaskPanelState, ReactNode>
-> = {
+const taskPanelTopByState: Record<ActionPageTaskPanelState, ReactNode> = {
+  [ActionPageTaskPanelState.GuestRef]: null,
+  [ActionPageTaskPanelState.GuestCompleted]: null,
   [ActionPageTaskPanelState.PublicOnlyAuthenticated]: (
     <Text>{taskHeaders.actionPage.externalOnly}</Text>
   ),
   [ActionPageTaskPanelState.PublicOnly]: null,
   [ActionPageTaskPanelState.NotAuthenticated]: (
     <View className="flex-row flex-wrap items-center">
-      <Link href="/auth/login">
+      <Link href="/onboarding">
         <Text className="text-green">Log in</Text>
       </Link>
       <Text> to complete this task.</Text>
@@ -56,6 +70,14 @@ const taskPanelTopByState: Partial<
   [ActionPageTaskPanelState.NotAssigned]: (
     <Text>{taskHeaders.actionPage.notAssigned}</Text>
   ),
+  [ActionPageTaskPanelState.StaffPreview]: (
+    <View className="gap-y-1">
+      <Text weight={FontWeight.Medium}>{taskHeaders.staffPreview.title}</Text>
+      <Text className="text-zinc-500">
+        {taskHeaders.staffPreview.description}
+      </Text>
+    </View>
+  ),
   [ActionPageTaskPanelState.Completed]: null,
   [ActionPageTaskPanelState.Declined]: (
     <Text>{taskHeaders.actionPage.withdrew}</Text>
@@ -63,16 +85,12 @@ const taskPanelTopByState: Partial<
   [ActionPageTaskPanelState.MemberActionClosed]: (
     <Text>{taskHeaders.actionPage.memberActionClosed}</Text>
   ),
+  [ActionPageTaskPanelState.DeadlineMissed]: (
+    <Text>{taskHeaders.actionPage.deadlinePassed.title}</Text>
+  ),
   [ActionPageTaskPanelState.MissingDataOrNotActive]: null,
-  [ActionPageTaskPanelState.ShowTaskWithMissedDeadline]: (
-    <View className="gap-y-1">
-      <Text weight={FontWeight.Medium}>
-        {taskHeaders.actionPage.deadlinePassed.title}
-      </Text>
-      <Text className="text-zinc-500">
-        {taskHeaders.actionPage.deadlinePassed.description}
-      </Text>
-    </View>
+  [ActionPageTaskPanelState.ShowTaskWithMissedDeadline]: renderTitledHeader(
+    taskHeaders.actionPage.deadlinePassed,
   ),
   [ActionPageTaskPanelState.OnboardingSignContractFirst]: (
     <View className="flex-row items-center justify-between gap-x-2">
@@ -85,15 +103,17 @@ const taskPanelTopByState: Partial<
       </Link>
     </View>
   ),
-  [ActionPageTaskPanelState.Optional]: (
-    <View className="gap-y-1">
-      <Text className="text-sky-500" weight={FontWeight.Medium}>
-        {taskHeaders.actionPage.optional.title}
-      </Text>
-      <Text className="text-zinc-500">
-        {taskHeaders.actionPage.optional.description}
-      </Text>
-    </View>
+  [ActionPageTaskPanelState.Optional]: renderTitledHeader(
+    taskHeaders.actionPage.optional,
+    "text-sky-500",
+  ),
+  [ActionPageTaskPanelState.OptionalForViewer]: renderTitledHeader(
+    taskHeaders.actionPage.optionalForViewer,
+    "text-sky-500",
+  ),
+  [ActionPageTaskPanelState.OptionalForContractGap]: renderTitledHeader(
+    taskHeaders.actionPage.optionalForContractGap,
+    "text-sky-500",
   ),
   [ActionPageTaskPanelState.ShowTask]: null,
 };
@@ -102,6 +122,8 @@ const ActionPageTaskPanel = ({
   action,
   onCompleteAction,
   onOptOutAction,
+  onDeadlinePassed,
+  onAlreadySubmitted,
   scrollPageTo,
   scrollToEnd,
 }: ActionPageTaskPanelProps) => {
@@ -119,10 +141,9 @@ const ActionPageTaskPanel = ({
     action,
     shouldLoadCompletedTaskFormByState[state],
   );
-  const taskForm = useTaskForm(
-    action,
-    state === ActionPageTaskPanelState.Completed,
-  );
+  const { data: taskForm } = useTaskForm(action.taskFormId, {
+    enabled: state === ActionPageTaskPanelState.Completed,
+  });
   const shareTemplate = getCompletedShareableTextTemplate({
     schemaSnapshot: formResponse?.schemaSnapshot as
       | Record<string, unknown>
@@ -133,7 +154,7 @@ const ActionPageTaskPanel = ({
   const handleShareCopy = async () => {
     const url = await buildActionShareUrl({
       actionId: action.id,
-      baseUrl: getBaseUrl(),
+      baseUrl: getSiteUrl(),
       isAuthenticated,
     });
     const text = buildShareText({
@@ -142,13 +163,11 @@ const ActionPageTaskPanel = ({
       userName: user?.name,
       url,
     });
-    try {
-      await Clipboard.setStringAsync(text);
-    } catch {
+    if (!(await copyOrAlert(text))) {
       return;
     }
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), milliseconds({ seconds: 2 }));
   };
 
   const completedHeader = (
@@ -181,6 +200,8 @@ const ActionPageTaskPanel = ({
   const panelHandlers = {
     onCompleteAction,
     onOptOutAction,
+    onDeadlinePassed,
+    onAlreadySubmitted,
   };
 
   switch (state) {
@@ -190,6 +211,7 @@ const ActionPageTaskPanel = ({
     case ActionPageTaskPanelState.NotAuthenticated:
     case ActionPageTaskPanelState.NotAssigned:
     case ActionPageTaskPanelState.MemberActionClosed:
+    case ActionPageTaskPanelState.DeadlineMissed:
     case ActionPageTaskPanelState.OnboardingSignContractFirst:
     // Guest-completion states never occur on mobile (hasRefCode/hasGuestResponse
     // pinned false); fall through to the disabled rendering just in case.
@@ -212,9 +234,12 @@ const ActionPageTaskPanel = ({
           bottomCardStyle={bodyStyle}
         />
       );
+    case ActionPageTaskPanelState.StaffPreview:
     case ActionPageTaskPanelState.PublicOnly:
     case ActionPageTaskPanelState.ShowTaskWithMissedDeadline:
     case ActionPageTaskPanelState.Optional:
+    case ActionPageTaskPanelState.OptionalForViewer:
+    case ActionPageTaskPanelState.OptionalForContractGap:
     case ActionPageTaskPanelState.ShowTask:
       return (
         <StackedCard

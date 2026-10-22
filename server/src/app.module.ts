@@ -17,14 +17,16 @@ import { CampaignModule } from "./campaign/campaign.module";
 import { ClusterModule } from "./cluster/cluster.module";
 import { CommunityModule } from "./community/community.module";
 import { ContractModule } from "./contract/contract.module";
+import { CustomLinksModule } from "./custom-links/custom-links.module";
 import { connectionOptions } from "./datasources/dataSource";
 import { EventLogModule } from "./eventlog/eventlog.module";
 import { ForumModule } from "./forum/forum.module";
 import { GeoModule } from "./geo/geo.module";
+import { HostedDocsModule } from "./hosted-docs/hosted-docs.module";
 import { ImagesModule } from "./images/images.module";
-import { JoinRequestsModule } from "./join-requests/join-requests.module";
 import { LikesModule } from "./likes/likes.module";
 import { LinkPreviewModule } from "./link-preview/link-preview.module";
+import { LinkTrackingModule } from "./link-tracking/link-tracking.module";
 import { MailModule } from "./mail/mail.module";
 import { MessagingModule } from "./messaging/messaging.module";
 import { MmsModule } from "./mms/mms.module";
@@ -40,6 +42,13 @@ import { UserModule } from "./user/user.module";
 import { UserService } from "./user/user.service";
 import { ALL_THROTTLERS } from "./utils/throttle";
 import { VideosModule } from "./videos/videos.module";
+import { WaitlistModule } from "./waitlist/waitlist.module";
+
+if (!("polyfilled" in Intl.DateTimeFormat)) {
+  throw new Error(
+    "FormatJS isn't loaded. Preload src/intl-timezone.ts, as server/bunfig.toml and the repl script do.",
+  );
+}
 
 @Module({
   imports: [
@@ -87,9 +96,12 @@ import { VideosModule } from "./videos/videos.module";
     LinkPreviewModule,
     NotifsModule,
     GeoModule,
+    LinkTrackingModule,
     MailModule,
     SearchModule,
     ShareUrlsModule,
+    CustomLinksModule,
+    HostedDocsModule,
     CampaignModule,
     TasksModule,
     MmsModule,
@@ -97,7 +109,7 @@ import { VideosModule } from "./videos/videos.module";
     MessagingModule,
     PushModule,
     EventLogModule,
-    JoinRequestsModule,
+    WaitlistModule,
   ],
   controllers: [AppController],
 })

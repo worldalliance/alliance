@@ -1,0 +1,197 @@
+import type { AnyField } from "@alliance/common/forms/form-schema";
+import {
+  fieldWithSavedChoices,
+  type FormulaChoices,
+} from "@alliance/common/forms/formula-choices";
+import { rowValueText } from "@alliance/common/forms/row-list";
+import type {
+  ActionWithdrawalDto,
+  FormResponseDto,
+  ProfileDto,
+} from "@alliance/shared/client";
+import {
+  parseAssignedRow,
+  parseFormulaChoices,
+} from "@alliance/shared/parsed-dtos";
+import { respondentName } from "../../lib/respondent";
+import type { ResponseVariantOption } from "../FormResponsesView";
+import { IdentityChip } from "../IdentitySwatch";
+import { WithdrawalInfo } from "../WithdrawalInfo";
+import { EMPTY_CELL, renderCell, type CellContent } from "./cells";
+import type { QuestionColumn } from "./columns";
+import {
+  ColumnKind,
+  MetaColumnId,
+  type ResponseRow,
+  type TableColumn,
+} from "./types";
+
+const META_COLUMN_LABELS: Record<MetaColumnId, string> = {
+  [MetaColumnId.Respondent]: "Respondent",
+  [MetaColumnId.Submitted]: "Submitted",
+  [MetaColumnId.Variant]: "Variant",
+  [MetaColumnId.Withdrawal]: "Withdrawal",
+  [MetaColumnId.ResponseId]: "Response ID",
+  [MetaColumnId.UserId]: "User ID",
+};
+
+export const DEFAULT_HIDDEN_COLUMNS: string[] = [
+  MetaColumnId.ResponseId,
+  MetaColumnId.UserId,
+];
+
+export const formatSubmitted = (createdAt: string): string =>
+  new Date(createdAt).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
+export function buildTableColumns(params: {
+  questions: readonly QuestionColumn[];
+  rowFields: readonly string[];
+  hasVariants: boolean;
+}): TableColumn[] {
+  const metaIds = [
+    MetaColumnId.Respondent,
+    MetaColumnId.Submitted,
+    ...(params.hasVariants ? [MetaColumnId.Variant] : []),
+    MetaColumnId.Withdrawal,
+    MetaColumnId.ResponseId,
+    MetaColumnId.UserId,
+  ];
+
+  return [
+    ...metaIds.map((id) => ({
+      kind: ColumnKind.Meta as const,
+      id,
+      label: META_COLUMN_LABELS[id],
+    })),
+    ...params.rowFields.map((field) => ({
+      kind: ColumnKind.Row as const,
+      id: `row.${field}`,
+      label: `row.${field}`,
+      field,
+    })),
+    ...params.questions.map((question) => ({
+      kind: ColumnKind.Question as const,
+      id: question.id,
+      label: question.label,
+      question,
+    })),
+  ];
+}
+
+/**
+ * The field as the response's own snapshot worded it, with the choices it
+ * saved from an options formula, so option labels read the way they did when
+ * the answer was given. Falls back to the column's own definition when that
+ * snapshot is not loaded.
+ */
+const fieldForResponse = (params: {
+  response: FormResponseDto;
+  choices: FormulaChoices;
+  question: QuestionColumn;
+  fieldsBySnapshot: Map<number, Map<string, AnyField>>;
+}): AnyField => {
+  const { response, choices, question, fieldsBySnapshot } = params;
+  return fieldWithSavedChoices(
+    fieldsBySnapshot.get(response.formSnapshotId)?.get(question.fieldId) ??
+      question.field,
+    choices,
+  );
+};
+
+const metaCell = (params: {
+  id: MetaColumnId;
+  response: FormResponseDto;
+  sidsToUserMap: Record<string, ProfileDto>;
+  withdrawnUserMap: Map<number, ActionWithdrawalDto>;
+  variantByFormId: Map<number, ResponseVariantOption>;
+}): CellContent => {
+  const { id, response, sidsToUserMap, withdrawnUserMap, variantByFormId } =
+    params;
+
+  switch (id) {
+    case MetaColumnId.Respondent:
+      return { text: respondentName({ response, sidsToUserMap }) };
+    case MetaColumnId.Submitted:
+      return { text: formatSubmitted(response.createdAt) };
+    case MetaColumnId.Variant: {
+      const variant = variantByFormId.get(response.formId);
+      if (!variant) return EMPTY_CELL;
+      return {
+        text: variant.name,
+        node: <IdentityChip seed={variant.name} label={variant.name} />,
+      };
+    }
+    case MetaColumnId.Withdrawal: {
+      const withdrawal =
+        response.user?.id == null
+          ? undefined
+          : withdrawnUserMap.get(response.user.id);
+      if (!withdrawal) return EMPTY_CELL;
+      return {
+        text: "Withdrew",
+        node: <WithdrawalInfo withdrawal={withdrawal} />,
+      };
+    }
+    case MetaColumnId.ResponseId:
+      return { text: String(response.id) };
+    case MetaColumnId.UserId:
+      return response.user?.id == null
+        ? EMPTY_CELL
+        : { text: String(response.user.id) };
+    default:
+      throw new Error(`unknown meta column: ${id satisfies never}`);
+  }
+};
+
+export function buildRows(params: {
+  responses: readonly FormResponseDto[];
+  columns: readonly TableColumn[];
+  fieldsBySnapshot: Map<number, Map<string, AnyField>>;
+  sidsToUserMap: Record<string, ProfileDto>;
+  withdrawnUserMap: Map<number, ActionWithdrawalDto>;
+  variantByFormId: Map<number, ResponseVariantOption>;
+}): ResponseRow[] {
+  const {
+    responses,
+    columns,
+    fieldsBySnapshot,
+    sidsToUserMap,
+    withdrawnUserMap,
+    variantByFormId,
+  } = params;
+
+  return responses.map((response) => {
+    const choices = parseFormulaChoices(response.formulaChoices);
+    const row = parseAssignedRow(response.assignedRow);
+    const cells: Record<string, CellContent> = {};
+    for (const column of columns) {
+      if (column.kind === ColumnKind.Row) {
+        cells[column.id] = { text: rowValueText(row?.values[column.field]) };
+        continue;
+      }
+      if (column.kind === ColumnKind.Meta) {
+        cells[column.id] = metaCell({
+          id: column.id,
+          response,
+          sidsToUserMap,
+          withdrawnUserMap,
+          variantByFormId,
+        });
+        continue;
+      }
+      cells[column.id] = renderCell({
+        field: fieldForResponse({
+          response,
+          choices,
+          question: column.question,
+          fieldsBySnapshot,
+        }),
+        value: response.answers?.[column.question.fieldId],
+      });
+    }
+    return { response, cells };
+  });
+}

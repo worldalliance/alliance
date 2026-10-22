@@ -1,8 +1,11 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsEnum, IsOptional } from "class-validator";
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import { Allow, IsEmpty, IsEnum, IsOptional } from "class-validator";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import type { Relation } from "src/utils/Repository";
@@ -53,10 +56,9 @@ export class ActionActivity {
 
   @ManyToOne(() => Action, { onDelete: "CASCADE" })
   @JoinColumn({ name: "actionId" })
-  @Allow()
+  @IsOptional()
   @Type(() => Action)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  action: Relation<Action>;
+  action?: Relation<Action>;
 
   @Column()
   @ApiProperty()
@@ -65,10 +67,9 @@ export class ActionActivity {
 
   @ManyToOne(() => User, { onDelete: "CASCADE" })
   @JoinColumn({ name: "userId" })
-  @Allow()
+  @IsOptional()
   @Type(() => User)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  user: Relation<User>;
+  user?: Relation<User>;
 
   @Column()
   @Allow()
@@ -94,11 +95,10 @@ export class ActionActivity {
 
   @ManyToMany(() => User, { onDelete: "CASCADE" })
   @JoinTable()
-  @Allow()
-  @ApiProperty({ type: () => User, isArray: true })
+  @IsOptional()
+  @ApiPropertyOptional({ type: () => User, isArray: true })
   @Type(() => User)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  likes: Relation<User>[];
+  likes?: Relation<User>[];
 
   @Column({ default: 0 })
   @ApiProperty()
@@ -115,23 +115,20 @@ export class ActionActivity {
   @JoinColumn()
   taskFormResponse?: Relation<FormResponse>;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
+  @Column({ type: "varchar", nullable: true })
+  @ApiProperty({ type: String, nullable: true })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  declineReason?: string;
+  declineReason: string | null;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
+  @Column({ type: "boolean", nullable: true })
+  @ApiProperty({ type: Boolean, nullable: true })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  isMoral?: boolean; // for moral declines
+  isMoral: boolean | null; // for moral declines
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
+  @Column({ type: "boolean", nullable: true })
+  @ApiProperty({ type: Boolean, nullable: true })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  outOfTime?: boolean; // for opting out due to running out of time
+  outOfTime: boolean | null; // for opting out due to running out of time
 
   @Column({ type: "enum", enum: ActivitySource, default: ActivitySource.USER })
   @ApiProperty({
@@ -141,4 +138,36 @@ export class ActionActivity {
   })
   @Allow()
   source: ActivitySource;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
+}
+
+export function loadedActionActivityAction(
+  activity: Pick<ActionActivity, "id" | "action">,
+): Relation<Action> {
+  if (!activity.action) {
+    throw new Error(`action of action activity ${activity.id} not loaded`);
+  }
+  return activity.action;
+}
+
+export function loadedActionActivityUser(
+  activity: Pick<ActionActivity, "id" | "user">,
+): Relation<User> {
+  if (!activity.user) {
+    throw new Error(`user of action activity ${activity.id} not loaded`);
+  }
+  return activity.user;
+}
+
+export function loadedActionActivityLikes(
+  activity: ActionActivity,
+): Relation<User>[] {
+  if (!activity.likes) {
+    throw new Error(`likes of action activity ${activity.id} not loaded`);
+  }
+  return activity.likes;
 }

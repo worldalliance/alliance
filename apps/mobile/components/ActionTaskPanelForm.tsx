@@ -1,18 +1,27 @@
+import {
+  FORM_ALREADY_SUBMITTED,
+  MEMBER_ACTION_DEADLINE_PASSED,
+} from "@alliance/common/actionActivity";
 import { ExceptionEvent } from "@alliance/common/analytics";
-import { errorMessage } from "@alliance/common/errorMessage";
 import { FormSchema } from "@alliance/common/forms/form-schema";
+import { GUEST_HEADER } from "@alliance/common/guest";
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
   FormResponseDto,
   SubmitFormDto,
-  tasksGetForm,
   tasksSubmitForm,
   tasksSubmitPublicForm,
 } from "@alliance/shared/client";
-import type { ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
+import { useFormulaSourcesRefetch } from "@alliance/shared/forms/useFormulaSourcesRefetch";
+import { useRecordActionRelation } from "@alliance/shared/lib/actionsListPage";
+import {
+  formAlreadySubmitted,
+  memberActionDeadlinePassed,
+  type ActionWithdrawal,
+} from "@alliance/shared/lib/actionTaskPanel";
 import { captureException } from "@alliance/shared/lib/analytics";
-import { noop } from "@alliance/shared/lib/constants";
+import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import { useInvalidateVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
-import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { useAuth } from "../lib/AuthContext";
@@ -23,15 +32,18 @@ import Text from "./system/Text";
 
 interface ActionTaskPanelFormProps {
   taskFormId: number;
-  onCompleteAction: ((sendComplete: boolean) => void) | null;
+  onCompleteAction: (() => void) | null;
   onFormStarted: () => void;
   onAbandonAction?: (withdrawal: ActionWithdrawal) => void;
+  onDeadlinePassed: () => void;
+  onAlreadySubmitted: () => void;
   actionId: number;
   scrollPageTo: (y: number, animated?: boolean) => void;
   scrollToEnd: (animated?: boolean) => void;
-  onSubmitSuccess?: () => void;
   disabled?: boolean;
   formResponse?: FormResponseDto;
+  /** Editable but unsubmittable, and nothing typed outlives the screen. */
+  preview?: boolean;
 }
 
 const ActionTaskPanelForm = ({
@@ -39,41 +51,27 @@ const ActionTaskPanelForm = ({
   onCompleteAction,
   onFormStarted,
   onAbandonAction,
+  onDeadlinePassed,
+  onAlreadySubmitted,
   actionId,
   scrollPageTo,
   scrollToEnd,
-  onSubmitSuccess = noop,
   disabled,
   formResponse,
+  preview = false,
 }: ActionTaskPanelFormProps) => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading: userLoading } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const { reload: historiesReload, refetchIfSourcesChanged } =
+    useFormulaSourcesRefetch(setError);
   const invalidateVisibilityContext = useInvalidateVisibilityContext();
+  const recordRelation = useRecordActionRelation();
 
   const {
     data: form,
     error: formError,
     isPending,
-  } = useQuery({
-    queryKey: ["form", taskFormId],
-    queryFn: async () => {
-      const response = await tasksGetForm({
-        path: { id: taskFormId },
-      });
-
-      if (!response.data) {
-        throw new Error(
-          errorMessage({
-            error: response.error,
-            fallback: "Unable to load form. Please try again.",
-          }),
-        );
-      }
-
-      return response.data;
-    },
-    enabled: !formResponse,
-  });
+  } = useTaskForm(taskFormId, { enabled: !formResponse });
 
   const handleSubmitForm = onCompleteAction
     ? async (data: SubmitFormDto) => {
@@ -86,34 +84,50 @@ const ActionTaskPanelForm = ({
           ? await tasksSubmitForm({
               path: { id: taskFormId },
               body: data,
+              throwOnError: false,
             })
           : await tasksSubmitPublicForm({
               path: { id: taskFormId },
               body: data,
               headers: storedGuestToken
-                ? { "X-Guest-Token": storedGuestToken }
+                ? { [GUEST_HEADER]: storedGuestToken }
                 : undefined,
+              throwOnError: false,
             });
         if (response.response.ok) {
           if (isAuthenticated) {
             // Bumped `completedActionCount` (and `firstContractSignedAt` for a
             // contract-signing action).
             invalidateVisibilityContext();
+            recordRelation(actionId, "completed");
           } else {
             const issuedGuestToken =
-              response.response.headers.get("x-guest-token");
+              response.response.headers.get(GUEST_HEADER);
             if (issuedGuestToken && issuedGuestToken !== storedGuestToken) {
               await setStoredGuestToken(issuedGuestToken);
             }
           }
-          onSubmitSuccess();
+          onCompleteAction();
+          return true;
         } else {
+          if (formAlreadySubmitted(response)) {
+            setError(FORM_ALREADY_SUBMITTED);
+            onAlreadySubmitted();
+            return false;
+          }
+          if (memberActionDeadlinePassed(response)) {
+            setError(MEMBER_ACTION_DEADLINE_PASSED);
+            onDeadlinePassed();
+            return false;
+          }
+          if (refetchIfSourcesChanged(response)) return false;
           console.error(response.error);
           captureException(ExceptionEvent.FormSubmitError, response.error, {
             actionId,
             $exception_fingerprint: "FormSubmitError",
           });
           setError("Failed to submit action.");
+          return false;
         }
       }
     : null;
@@ -165,10 +179,13 @@ const ActionTaskPanelForm = ({
         onFormStarted={onFormStarted}
         onAbandonAction={onAbandonAction}
         actionId={actionId}
-        persistKey={String(taskFormId)}
+        persistKey={preview ? null : String(taskFormId)}
+        reloadSourceHistories={historiesReload}
         userId={user?.id}
         user={user}
+        userLoading={userLoading}
         loadCurrentUserLocation={!!user && isAuthenticated}
+        syncDraftToServer={isAuthenticated}
         scrollPageTo={scrollPageTo}
         scrollToEnd={scrollToEnd}
         renderFormAsCompleted={disabled}

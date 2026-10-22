@@ -13,8 +13,8 @@ import {
 import { ApiOkResponse } from "@nestjs/swagger";
 import { AdminGuard } from "src/auth/guards/admin.guard";
 import { AuthGuard } from "src/auth/guards/auth.guard";
-import type { JwtRequest } from "src/auth/guards/jwtreq";
 import { Public } from "src/auth/public.decorator";
+import type { JwtRequest } from "src/auth/tokens";
 import { PosthogService } from "src/posthog/posthog.service";
 import { ContractService } from "./contract.service";
 import {
@@ -79,7 +79,9 @@ export class ContractController {
       userId: req.user.sub,
       signedName: body.signedName,
       contractId,
+      viaTaskForm: false,
     });
+    this.contractService.announceSigned(req.user.sub);
     this.posthog.capture({
       event: AnalyticsEvent.ContractSigned,
       distinctId: String(req.user.sub),

@@ -1,8 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsDefined, IsOptional } from "class-validator";
+import { Allow, IsDefined, IsEmpty, IsOptional } from "class-validator";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import {
@@ -72,20 +73,18 @@ export class GeneralUpdate {
   updatedAt: Date;
 
   @Column({ type: "timestamptz", nullable: true })
-  @ApiPropertyOptional()
+  @ApiProperty({ type: Date, nullable: true })
   @Type(() => Date)
   @Allow()
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  startDate?: Date;
+  startDate: Date | null;
 
   @Column({ type: "timestamptz", nullable: true })
-  @ApiPropertyOptional()
+  @ApiProperty({ type: Date, nullable: true })
   @Type(() => Date)
   @Allow()
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  endDate?: Date;
+  endDate: Date | null;
 
   @Column({ default: false })
   @ApiProperty()
@@ -94,14 +93,13 @@ export class GeneralUpdate {
 
   @Column("int", { array: true, nullable: true })
   @Allow()
-  @ApiPropertyOptional({
+  @ApiProperty({
     description: "User IDs in the manual cohort",
     type: [Number],
     nullable: true,
   })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  manualCohortUserIds?: number[] | null;
+  manualCohortUserIds: number[] | null;
 
   @Column({ default: 0 })
   @ApiProperty()
@@ -118,12 +116,11 @@ export class GeneralUpdate {
   @ManyToMany(() => Tag, (tag) => tag.generalUpdates, {
     onDelete: "CASCADE",
   })
-  @ApiProperty({ type: () => Tag, isArray: true })
-  @Allow()
+  @ApiPropertyOptional({ type: () => Tag, isArray: true })
+  @IsOptional()
   @JoinTable()
   @Type(() => Tag)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  tags: Relation<Tag>[];
+  tags?: Relation<Tag>[];
 
   @ManyToMany(() => ActionSuite, (suite) => suite.generalUpdates, {
     nullable: true,
@@ -133,4 +130,18 @@ export class GeneralUpdate {
   @JoinTable()
   @IsOptional()
   suites?: Relation<ActionSuite>[];
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
+}
+
+export function loadedGeneralUpdateTags(
+  generalUpdate: GeneralUpdate,
+): Relation<Tag>[] {
+  if (!generalUpdate.tags) {
+    throw new Error(`tags of general update ${generalUpdate.id} not loaded`);
+  }
+  return generalUpdate.tags;
 }

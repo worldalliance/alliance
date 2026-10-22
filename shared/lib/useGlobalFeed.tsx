@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { actionsGetGlobalFeed, GlobalFeedItemDto } from "../client";
+import { actionFeedGetGlobalFeed, GlobalFeedItemDto } from "../client";
 
 const useGlobalFeed = ({ limit = 15 }) => {
   const [items, setItems] = useState<GlobalFeedItemDto[]>([]);
@@ -10,7 +10,7 @@ const useGlobalFeed = ({ limit = 15 }) => {
     setLoading(true);
     setError(null);
 
-    actionsGetGlobalFeed({
+    actionFeedGetGlobalFeed({
       query: { limit },
     })
       .then((response) => {

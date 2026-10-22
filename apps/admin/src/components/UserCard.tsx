@@ -17,11 +17,10 @@ import { keyBy } from "es-toolkit";
 import { ChevronDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
+import { WithdrawalDetails } from "./WithdrawalInfo";
 
 export interface UserCardProps {
   user: UserDto;
-  timeSpent: number;
-  timeSpentTotal: number;
   tags: TagDto[];
   allTags: TagDto[];
   onToggleTag: (tagId: string, nextChecked: boolean) => void | Promise<void>;
@@ -66,11 +65,7 @@ const UserCard = ({
 
   const tagIds = useMemo(() => new Set(tags.map((tag) => tag.id)), [tags]);
 
-  const latestEvent = user.contractEvents?.length
-    ? [...user.contractEvents].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-      )[0]
-    : null;
+  const latestEvent = user.lastContractEvent ?? null;
 
   const contractStatusColor =
     latestEvent === null
@@ -230,19 +225,7 @@ const UserCard = ({
                         {humanize(action.status) ?? action.status}
                       </span>
                       {isWontComplete && (
-                        <>
-                          {relation.declineReason && (
-                            <span>Reason: {relation.declineReason}</span>
-                          )}
-                          {relation.isMoral && (
-                            <span className="text-amber-600">
-                              Moral objection
-                            </span>
-                          )}
-                          {relation.outOfTime && (
-                            <span className="text-orange-600">Out of time</span>
-                          )}
-                        </>
+                        <WithdrawalDetails withdrawal={relation} />
                       )}
                     </div>
                   </div>

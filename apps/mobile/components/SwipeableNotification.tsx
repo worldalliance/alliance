@@ -1,6 +1,5 @@
 import { NotificationDto } from "@alliance/shared/client";
-import { getNotificationTime } from "@alliance/shared/lib/notificationBucketing";
-import { formatTime } from "@alliance/shared/lib/utils";
+import { formatNotificationTime } from "@alliance/shared/lib/notificationBucketing";
 import { cn } from "@alliance/shared/styles/util";
 import { Check, CheckCheck } from "lucide-react-native";
 import { Pressable, TouchableOpacity, View } from "react-native";
@@ -127,9 +126,7 @@ function SwipeableNotification({
               </View>
               <View className="flex-row items-center justify-between mt-1">
                 <Text className="text-xs text-zinc-500">
-                  {formatTime(getNotificationTime(notification), {
-                    addSuffix: true,
-                  })}
+                  {formatNotificationTime(notification)}
                 </Text>
                 {isUnread && (
                   <TouchableOpacity

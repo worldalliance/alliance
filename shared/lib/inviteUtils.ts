@@ -111,6 +111,7 @@ export type OnetimeInviteActions = {
   onReject?: (inviteId: number) => void;
   onDelete?: (inviteId: number, event: unknown) => void;
   onDeleteWithConfirm?: (inviteId: number, event: unknown) => void;
+  /** Given for invites whose link the viewer may share; shows the Share button. */
   onShared?: (inviteId: number) => void;
   /** Given for invites that can still be edited; makes the whole row open settings. */
   onOpenSettings?: (inviteId: number) => void;
@@ -121,10 +122,25 @@ const createdAtComparator = (
   b: { createdAt: string },
 ) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
 
+export function acceptedInviteCountLabel(params: {
+  onetimeInvites: OnetimeInviteDto[];
+  onetimeInvitesError: boolean;
+  reusableLinks: ShareUrlMineDto[];
+  reusableLinksPending: boolean;
+  reusableLinksError: boolean;
+}): string {
+  if (params.onetimeInvitesError || params.reusableLinksError) return "—";
+  if (params.reusableLinksPending) return "...";
+  return String(
+    params.onetimeInvites.filter((invite) => invite.accepted).length +
+      params.reusableLinks.reduce((sum, link) => sum + link.signupCount, 0),
+  );
+}
+
 export function bucketOnetimeInvitesByActionability(params: {
   invites: OnetimeInviteDto[];
   leaderCommunityIds: Set<number>;
-  userId: number;
+  userId: number | undefined;
 }): {
   actionable: OnetimeInviteDto[];
   unverifiableActionable: OnetimeInviteDto[];
@@ -137,6 +153,10 @@ export function bucketOnetimeInvitesByActionability(params: {
   const unverifiableActionable: OnetimeInviteDto[] = [];
   const waitingForResponse: OnetimeInviteDto[] = [];
   const settled: OnetimeInviteDto[] = [];
+
+  if (userId === undefined) {
+    return { actionable, unverifiableActionable, waitingForResponse, settled };
+  }
 
   for (const invite of invites) {
     switch (invite.status) {
@@ -178,7 +198,7 @@ export function bucketOnetimeInvitesByActionability(params: {
 
 export function bucketCommunityInvitesByActionability(params: {
   invites: CommunityInviteDto[];
-  userId: number;
+  userId: number | undefined;
 }): {
   actionable: CommunityInviteDto[];
   waitingForResponse: CommunityInviteDto[];
@@ -189,6 +209,10 @@ export function bucketCommunityInvitesByActionability(params: {
   const actionable: CommunityInviteDto[] = [];
   const waitingForResponse: CommunityInviteDto[] = [];
   const settled: CommunityInviteDto[] = [];
+
+  if (userId === undefined) {
+    return { actionable, waitingForResponse, settled };
+  }
 
   for (const invite of invites) {
     switch (invite.status) {

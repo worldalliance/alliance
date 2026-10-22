@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["RichClipboardModule"]
+  },
+  "android": {
+    "modules": ["com.alliance.richclipboard.RichClipboardModule"]
+  }
+}

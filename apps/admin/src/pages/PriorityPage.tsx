@@ -1,12 +1,11 @@
 import {
-  ActionDto,
-  actionsAllGeneralUpdatesAdmin,
-  actionsFindAllWithDraftsAdmin,
-  actionsSetPriorityAdmin,
   SetPriorityDto,
+  type AdminActionListItemDto,
   type GeneralUpdateAdminDto,
 } from "@alliance/shared/client";
 import { homePagePriorityComparator } from "@alliance/shared/lib/actionUtils";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
+import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
@@ -17,14 +16,19 @@ import {
   Minus,
   MoveUpIcon,
 } from "lucide-react";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router";
+import HomePlacementBadges from "../components/HomePlacementBadges";
+import PriorityFollowUps from "../components/PriorityFollowUps";
+import {
+  actionHomePlacement,
+  generalUpdateHomePlacement,
+  type HomePlacement,
+} from "../lib/homePlacement";
+import { sessionExpiredMessage } from "../lib/sessionExpired";
+import { DropPosition, useDragReorder } from "../lib/useDragReorder";
+import { useGeneralUpdatesAdmin } from "../lib/useGeneralUpdatesAdmin";
+import { useSetPrioritiesAdmin } from "../lib/useSetPrioritiesAdmin";
 
 type PriorityItem =
   | {
@@ -33,6 +37,7 @@ type PriorityItem =
       name: string;
       priority: number;
       suiteName?: string;
+      placement: HomePlacement;
     }
   | {
       type: "generalUpdate";
@@ -40,6 +45,7 @@ type PriorityItem =
       name: string;
       priority: number;
       suiteName?: string;
+      placement: HomePlacement;
     }
   | {
       type: "divider";
@@ -47,54 +53,45 @@ type PriorityItem =
       name?: undefined;
       priority?: undefined;
       suiteName?: undefined;
+      placement?: undefined;
     };
 
-function buildInitialList(
-  actions: ActionDto[],
-  generalUpdates: GeneralUpdateAdminDto[],
-  filterForIncomplete: boolean,
-): PriorityItem[] {
+function buildInitialList(params: {
+  actions: AdminActionListItemDto[];
+  generalUpdates: GeneralUpdateAdminDto[];
+  showAll: boolean;
+  now: Date;
+}): PriorityItem[] {
+  const { actions, generalUpdates, showAll, now } = params;
   const withRaw: {
     item: PriorityItem;
-    raw: ActionDto | GeneralUpdateAdminDto;
+    raw: AdminActionListItemDto | GeneralUpdateAdminDto;
   }[] = [
-    ...actions
-      .filter((a) =>
-        filterForIncomplete
-          ? a.status !== "completed" &&
-            a.status !== "office_action" &&
-            !a.archived
-          : true,
-      )
-      .map((a) => ({
-        item: {
-          type: "action" as const,
-          id: a.id,
-          name: a.name,
-          priority: a.priority,
-          suiteName: a.suite?.name,
-        },
-        raw: a,
-      })),
-    ...generalUpdates
-      .filter((gu) =>
-        filterForIncomplete
-          ? !gu.endDate || new Date(gu.endDate).getTime() > new Date().getTime()
-          : true,
-      )
-      .map((gu) => ({
-        item: {
-          type: "generalUpdate" as const,
-          id: gu.id,
-          name: gu.name,
-          priority: gu.priority,
-          suiteName: gu.suites?.length
-            ? gu.suites.map((s) => s.name).join(", ")
-            : undefined,
-        },
-        raw: gu,
-      })),
-  ];
+    ...actions.map((a) => ({
+      item: {
+        type: "action" as const,
+        id: a.id,
+        name: a.name,
+        priority: a.priority,
+        suiteName: a.suite?.name,
+        placement: actionHomePlacement({ action: a, now }),
+      },
+      raw: a,
+    })),
+    ...generalUpdates.map((gu) => ({
+      item: {
+        type: "generalUpdate" as const,
+        id: gu.id,
+        name: gu.name,
+        priority: gu.priority,
+        suiteName: gu.suites?.length
+          ? gu.suites.map((s) => s.name).join(", ")
+          : undefined,
+        placement: generalUpdateHomePlacement({ generalUpdate: gu, now }),
+      },
+      raw: gu,
+    })),
+  ].filter(({ item }) => showAll || item.placement.inactive === null);
   withRaw.sort((a, b) => homePagePriorityComparator(a.raw, b.raw));
   // Insert "new items" divider above all priority <= 0, below any priority > 0
   const dividerIndex = withRaw.findIndex(({ raw }) => {
@@ -107,182 +104,86 @@ function buildInitialList(
   return [...above, { type: "divider" as const }, ...below];
 }
 
+const NO_ITEMS: PriorityItem[] = [];
+
 const PriorityPage: React.FC = () => {
-  const [items, setItems] = useState<PriorityItem[]>([]);
-  const [originalActionIndices, setOriginalActionIndices] = useState<
-    Map<number, number>
-  >(new Map());
-  const [originalGeneralUpdateIndices, setOriginalGeneralUpdateIndices] =
-    useState<Map<number, number>>(new Map());
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const [dropPosition, setDropPosition] = useState<"before" | "after" | null>(
-    null,
+  const actions = useActionsAdmin();
+  const generalUpdates = useGeneralUpdatesAdmin();
+  const [showAll, setShowAll] = useState(false);
+  const startingItems = useMemo(
+    () =>
+      actions.data && generalUpdates.data
+        ? buildInitialList({
+            actions: actions.data,
+            generalUpdates: generalUpdates.data,
+            showAll,
+            now: new Date(),
+          })
+        : null,
+    [actions.data, generalUpdates.data, showAll],
   );
-  const [filterForIncomplete, setFilterForIncomplete] = useState(true);
-  const [rawActions, setRawActions] = useState<ActionDto[] | null>(null);
-  const [rawGeneralUpdates, setRawGeneralUpdates] = useState<
-    GeneralUpdateAdminDto[] | null
-  >(null);
-  const listRef = useRef<HTMLUListElement>(null);
+  // Held apart from startingItems, with the order it started from, so a
+  // background refetch neither drops an unsaved reorder nor shifts what it is
+  // compared against. A saved reorder stays until both lists reload after the
+  // save, so a failed reload doesn't show the order from before it.
+  const [reorder, setReorder] = useState<{
+    from: PriorityItem[];
+    items: PriorityItem[];
+    savedAt?: number;
+  } | null>(null);
+  const held =
+    reorder?.savedAt !== undefined &&
+    actions.dataUpdatedAt >= reorder.savedAt &&
+    generalUpdates.dataUpdatedAt >= reorder.savedAt
+      ? null
+      : reorder;
+  const baseline = held?.from ?? startingItems;
+  const items = held?.items ?? startingItems ?? NO_ITEMS;
+  const setItems = useCallback(
+    (next: PriorityItem[]) =>
+      setReorder({
+        from: held?.from ?? startingItems ?? NO_ITEMS,
+        items: next,
+      }),
+    [held, startingItems],
+  );
+  const { originalActionIndices, originalGeneralUpdateIndices } =
+    useMemo(() => {
+      const actionIndices = new Map<number, number>();
+      const generalUpdateIndices = new Map<number, number>();
+      baseline?.forEach((item, index) => {
+        if (item.type === "action") {
+          actionIndices.set(item.id, index);
+        } else if (item.type === "generalUpdate") {
+          generalUpdateIndices.set(item.id, index);
+        }
+      });
+      return {
+        originalActionIndices: actionIndices,
+        originalGeneralUpdateIndices: generalUpdateIndices,
+      };
+    }, [baseline]);
+  const loadError = actions.error ?? generalUpdates.error;
+  const error = loadError
+    ? thrownRefusalMessage({
+        error: loadError,
+        fallback: "Failed to load actions and general updates",
+        sessionExpired: sessionExpiredMessage,
+      })
+    : null;
   const { error: showError } = useToast();
-
-  /** Compute drop index and position from clientY when dropping on list (e.g. in gap between items). */
-  const getDropTargetFromClientY = useCallback(
-    (
-      clientY: number,
-    ): { index: number; position: "before" | "after" } | null => {
-      const ul = listRef.current;
-      if (!ul) return null;
-      const lis = Array.from(ul.querySelectorAll<HTMLElement>(":scope > li"));
-      if (lis.length === 0) return null;
-      const rects = lis.map((el) => el.getBoundingClientRect());
-      const firstTop = rects[0].top;
-      const lastBottom = rects[rects.length - 1].bottom;
-      if (clientY <= firstTop) return { index: 0, position: "before" };
-      if (clientY >= lastBottom)
-        return { index: rects.length - 1, position: "after" };
-      for (let i = 0; i < rects.length; i++) {
-        const r = rects[i];
-        if (clientY >= r.top && clientY <= r.bottom) {
-          const midpoint = r.top + r.height / 2;
-          return {
-            index: i,
-            position: clientY < midpoint ? "before" : "after",
-          };
-        }
-        if (
-          i < rects.length - 1 &&
-          clientY > r.bottom &&
-          clientY < rects[i + 1].top
-        ) {
-          return { index: i, position: "after" };
-        }
-      }
-      return null;
-    },
-    [],
-  );
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [actionsRes, updatesRes] = await Promise.all([
-        actionsFindAllWithDraftsAdmin(),
-        actionsAllGeneralUpdatesAdmin(),
-      ]);
-      setRawActions(actionsRes.data ?? []);
-      setRawGeneralUpdates(updatesRes.data ?? []);
-    } catch (err) {
-      setError("Failed to load actions and general updates");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  useEffect(() => {
-    if (rawActions === null || rawGeneralUpdates === null) return;
-    const startingItems = buildInitialList(
-      rawActions,
-      rawGeneralUpdates,
-      filterForIncomplete,
-    );
-    setItems(startingItems);
-    const actionIndices: [number, number][] = [];
-    const generalUpdateIndices: [number, number][] = [];
-    startingItems.forEach((item, index) => {
-      if (item.type === "action") {
-        actionIndices.push([item.id, index]);
-      } else if (item.type === "generalUpdate") {
-        generalUpdateIndices.push([item.id, index]);
-      }
-    });
-    setOriginalActionIndices(new Map(actionIndices));
-    setOriginalGeneralUpdateIndices(new Map(generalUpdateIndices));
-  }, [rawActions, rawGeneralUpdates, filterForIncomplete]);
-
-  const handleDragStart = (index: number) => (e: React.DragEvent) => {
-    setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = "move";
-  };
-
-  const handleDragEnd = () => {
-    setDraggedIndex(null);
-    setDragOverIndex(null);
-    setDropPosition(null);
-  };
-
-  const handleDragOver = (index: number) => (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    if (draggedIndex === null) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const midpoint = rect.top + rect.height / 2;
-    setDragOverIndex(index);
-    setDropPosition(e.clientY < midpoint ? "before" : "after");
-  };
-
-  const performDrop = useCallback(
-    (index: number, position: "before" | "after") => {
-      if (draggedIndex === null || draggedIndex === index) {
-        handleDragEnd();
-        return;
-      }
-      let insertionIndex = index;
-      if (position === "after") insertionIndex = index + 1;
-      if (draggedIndex < insertionIndex) insertionIndex -= 1;
-      if (draggedIndex === insertionIndex) {
-        handleDragEnd();
-        return;
-      }
-      const next = [...items];
-      const [moving] = next.splice(draggedIndex, 1);
-      next.splice(insertionIndex, 0, moving);
-      setItems(next);
-      handleDragEnd();
-    },
-    [draggedIndex, items],
-  );
-
-  const handleDrop = (index: number) => (e: React.DragEvent) => {
-    e.preventDefault();
-    if (draggedIndex === null || dropPosition === null) {
-      handleDragEnd();
-      return;
-    }
-    performDrop(index, dropPosition);
-  };
-
-  const handleListDragOver = useCallback(
-    (e: React.DragEvent<HTMLUListElement>) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = "move";
-    },
-    [],
-  );
-
-  const handleListDrop = useCallback(
-    (e: React.DragEvent<HTMLUListElement>) => {
-      e.preventDefault();
-      if (draggedIndex === null) {
-        handleDragEnd();
-        return;
-      }
-      const target = getDropTargetFromClientY(e.clientY);
-      if (target) performDrop(target.index, target.position);
-      else handleDragEnd();
-    },
-    [draggedIndex, getDropTargetFromClientY, performDrop],
-  );
+  const {
+    listRef,
+    draggedIndex,
+    dragOverIndex,
+    dropPosition,
+    handleDragStart,
+    handleDragEnd,
+    handleDragOver,
+    handleDrop,
+    handleListDragOver,
+    handleListDrop,
+  } = useDragReorder(items, setItems);
 
   const { newPriorities, anyChanged } = useMemo(() => {
     const newPriorities: SetPriorityDto = {
@@ -324,35 +225,30 @@ const PriorityPage: React.FC = () => {
     };
   }, [items, originalActionIndices, originalGeneralUpdateIndices]);
 
-  const handleSave = useCallback(async () => {
-    setSaving(true);
-    try {
-      await actionsSetPriorityAdmin({
-        body: newPriorities,
-      });
-      await load();
-    } catch (err) {
-      showError("Failed to save priorities");
+  const { mutate: savePriorities, isPending: saving } = useSetPrioritiesAdmin({
+    onSuccess: () => {
+      const savedAt = Date.now();
+      setReorder(
+        (prev) => prev && { from: prev.items, items: prev.items, savedAt },
+      );
+    },
+    onError: (err) => {
       console.error(err);
-    } finally {
-      setSaving(false);
-    }
-  }, [newPriorities, load, showError]);
+      showError(
+        thrownRefusalMessage({
+          error: err,
+          fallback: "Failed to save priorities",
+          sessionExpired: sessionExpiredMessage,
+        }),
+      );
+    },
+  });
 
-  if (loading) {
+  if (!startingItems) {
     return (
       <div className="p-5">
         <title>Priority - Admin</title>
-        <p>Loading...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-5">
-        <title>Priority - Admin</title>
-        <p className="text-red-500">{error}</p>
+        {error ? <p className="text-red-500">{error}</p> : <p>Loading...</p>}
       </div>
     );
   }
@@ -365,7 +261,7 @@ const PriorityPage: React.FC = () => {
         <Button
           color={ButtonColor.Green}
           className="text-white !px-4 !py-2 rounded-md"
-          onClick={handleSave}
+          onClick={() => savePriorities(newPriorities)}
           disabled={saving || !anyChanged}
         >
           {saving ? "Saving…" : anyChanged ? "Save" : "No changes to save"}
@@ -374,15 +270,32 @@ const PriorityPage: React.FC = () => {
       <label className="flex items-center gap-2 cursor-pointer">
         <input
           type="checkbox"
-          checked={!filterForIncomplete}
-          onChange={(e) => setFilterForIncomplete(!e.target.checked)}
+          checked={showAll}
+          onChange={(e) => {
+            setShowAll(e.target.checked);
+            setReorder(null);
+          }}
           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
         />
         <span className="text-sm font-medium text-gray-900">Show all</span>
       </label>
-      <p className="text-sm text-zinc-600">
-        Actions/general updates at the top are shown first on the home page.
-      </p>
+      {error && <p className="text-red-500">{error}</p>}
+      <div className="text-sm text-zinc-600 space-y-1">
+        <p>
+          Everything that can appear on a member&apos;s home page, now or later.
+          Items at the top are shown first. Badges say why an item can appear,
+          not that every member sees it.
+        </p>
+        <p>
+          A task that is optional for a member only because their contract
+          doesn&apos;t cover its whole window moves after that member&apos;s
+          other tasks, and on mobile after general updates too.
+        </p>
+        <p>
+          The mobile app mixes general updates into this order; the web shows
+          them separately from tasks.
+        </p>
+      </div>
       <ul
         ref={listRef}
         onDragOver={handleListDragOver}
@@ -414,7 +327,7 @@ const PriorityPage: React.FC = () => {
               key={isDivider ? "divider" : `${item.type}-${item.id}`}
               className="relative"
             >
-              {showBar && dropPosition === "before" && (
+              {showBar && dropPosition === DropPosition.Before && (
                 <div className="absolute left-0 right-0 top-0 h-0.5 bg-blue-500 rounded-full z-10" />
               )}
               <div
@@ -461,6 +374,7 @@ const PriorityPage: React.FC = () => {
                     <span className="font-medium text-zinc-800 min-w-0 truncate">
                       {item.name}
                     </span>
+                    <HomePlacementBadges placement={item.placement} />
                     {item.suiteName ? (
                       <span className="text-xs text-zinc-500 shrink-0">
                         {item.suiteName}
@@ -480,13 +394,16 @@ const PriorityPage: React.FC = () => {
                   </>
                 )}
               </div>
-              {showBar && dropPosition === "after" && (
+              {showBar && dropPosition === DropPosition.After && (
                 <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-blue-500 rounded-full z-10" />
               )}
             </li>
           );
         })}
       </ul>
+      {actions.data && (
+        <PriorityFollowUps actions={actions.data} showAll={showAll} />
+      )}
     </div>
   );
 };

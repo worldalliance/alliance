@@ -1,15 +1,13 @@
-import {
-  ApiProperty,
-  ApiPropertyOptional,
-  OmitType,
-  PickType,
-} from "@nestjs/swagger";
-import { Type } from "class-transformer";
+import { CONVERSATION_TITLE_MAX_LENGTH } from "@alliance/common/conversation";
+import { ConversationType } from "@alliance/common/conversationType";
+import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
+import { Transform, Type } from "class-transformer";
 import {
   ArrayNotEmpty,
   IsArray,
   IsInt,
   IsISO8601,
+  IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
@@ -20,12 +18,17 @@ import {
 import { CommunityDto } from "src/community/dto/community.dto";
 import { getImageSource } from "src/images/images.service";
 import { ProfileDto } from "src/user/dto/user.dto";
+import { trim } from "src/utils/transforms";
 import {
   Conversation,
-  ConversationType,
+  loadedConversationParticipants,
 } from "../entities/conversation.entity";
-import { Message } from "../entities/message.entity";
-import { Participant, ParticipantState } from "../entities/participant.entity";
+import { loadedMessageAuthor, Message } from "../entities/message.entity";
+import {
+  loadedParticipantUser,
+  Participant,
+  ParticipantState,
+} from "../entities/participant.entity";
 
 export class MessageReferenceDto extends PickType(Message, [
   "id",
@@ -39,7 +42,7 @@ export class MessageReferenceDto extends PickType(Message, [
   constructor(message: Message) {
     super();
     Object.assign(this, message);
-    this.author = new ProfileDto(message.author);
+    this.author = new ProfileDto(loadedMessageAuthor(message));
   }
 }
 
@@ -76,7 +79,7 @@ export class MessageDto extends PickType(Message, [
     );
     this.createdAt = message.createdAt;
     this.deletedAt = message.deletedAt;
-    this.author = new ProfileDto(message.author);
+    this.author = new ProfileDto(loadedMessageAuthor(message));
     this.conversationId = conversationId;
     this.replyTo = message.replyTo
       ? new MessageReferenceDto(message.replyTo)
@@ -84,10 +87,13 @@ export class MessageDto extends PickType(Message, [
   }
 }
 
-export class ParticipantDto extends OmitType(Participant, [
-  "conversation",
-  "user",
-  "lastReadMessage",
+export class ParticipantDto extends PickType(Participant, [
+  "id",
+  "role",
+  "state",
+  "joinedAt",
+  "createdAt",
+  "updatedAt",
 ]) {
   @ApiProperty({ type: () => ProfileDto })
   @Type(() => ProfileDto)
@@ -99,11 +105,17 @@ export class ParticipantDto extends OmitType(Participant, [
 
   constructor(participant: Participant) {
     super();
-    Object.assign(this, participant);
-    this.user = new ProfileDto(participant.user);
-    this.lastReadMessage = participant.lastReadMessage
-      ? new MessageReferenceDto(participant.lastReadMessage)
-      : undefined;
+    this.id = participant.id;
+    this.role = participant.role;
+    this.state = participant.state;
+    this.joinedAt = participant.joinedAt;
+    this.createdAt = participant.createdAt;
+    this.updatedAt = participant.updatedAt;
+    this.user = new ProfileDto(loadedParticipantUser(participant));
+    this.lastReadMessage =
+      participant.lastReadMessage?.deletedAt === null
+        ? new MessageReferenceDto(participant.lastReadMessage)
+        : undefined;
   }
 }
 
@@ -148,12 +160,13 @@ export class ConversationDto extends PickType(Conversation, [
   constructor(input: ConversationDtoArgs) {
     super();
     const { conversation, lastMessage, contextUserId, unreadCount } = input;
+    const participants = loadedConversationParticipants(conversation);
     this.id = conversation.id;
     this.createdAt = conversation.createdAt;
     this.updatedAt = conversation.updatedAt;
     this.type = conversation.type;
     this.title = conversation.title;
-    this.participants = (conversation.participants ?? []).map(
+    this.participants = participants.map(
       (participant) => new ParticipantDto(participant),
     );
     this.community = conversation.community
@@ -180,19 +193,16 @@ export class ConversationDto extends PickType(Conversation, [
         : undefined;
 
     if (contextUserId) {
-      const currentParticipant = conversation.participants?.find(
-        (participant) => participant.user.id === contextUserId,
+      const currentParticipant = participants.find(
+        (participant) =>
+          loadedParticipantUser(participant).id === contextUserId,
       );
       this.isMessageRequest =
         currentParticipant?.state === ParticipantState.Invited;
       this.hasUnread =
         this.unreadCount > 0 ||
         (this.lastMessage
-          ? this.isUnreadFromTimestamps(
-              currentParticipant
-                ? new ParticipantDto(currentParticipant)
-                : undefined,
-            )
+          ? this.isUnreadFromTimestamps(currentParticipant)
           : false);
     } else {
       this.isMessageRequest = false;
@@ -227,7 +237,7 @@ export class ConversationDto extends PickType(Conversation, [
     );
   }
 
-  private isUnreadFromTimestamps(currentParticipant?: ParticipantDto): boolean {
+  private isUnreadFromTimestamps(currentParticipant?: Participant): boolean {
     if (!this.lastMessage) {
       return false;
     }
@@ -266,14 +276,16 @@ export class CreateDirectConversationDto {
   @ApiPropertyOptional({ type: String })
   @IsOptional()
   @IsString()
-  @MaxLength(500)
+  @MaxLength(CONVERSATION_TITLE_MAX_LENGTH)
   title?: string;
 }
 
 export class CreateGroupConversationDto {
   @ApiProperty({ type: String })
+  @Transform(trim)
   @IsString()
-  @MaxLength(500)
+  @IsNotEmpty()
+  @MaxLength(CONVERSATION_TITLE_MAX_LENGTH)
   title: string;
 
   @ApiPropertyOptional({ type: String })
@@ -320,8 +332,10 @@ export class CreateMessageDto {
 export class UpdateConversationDto {
   @ApiPropertyOptional({ type: String })
   @IsOptional()
+  @Transform(trim)
   @IsString()
-  @MaxLength(500)
+  @IsNotEmpty()
+  @MaxLength(CONVERSATION_TITLE_MAX_LENGTH)
   title?: string;
 
   @ApiPropertyOptional({ type: String })

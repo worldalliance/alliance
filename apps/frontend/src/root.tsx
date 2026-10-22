@@ -1,31 +1,45 @@
+import { MOBILE_OAUTH_RETURN_PATH } from "@alliance/common/oauth";
 import { client } from "@alliance/shared/client/client.gen";
 import { registerAnalytics } from "@alliance/shared/lib/analytics";
+import { registerErrorStatus } from "@alliance/shared/lib/hey-api";
+import { registerPosthogRequestContext } from "@alliance/shared/lib/posthog-request";
+import { retryUnlessRefused } from "@alliance/shared/lib/retryQuery";
 import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInputScrollGuard";
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { milliseconds } from "date-fns";
 import posthog, { PostHogConfig } from "posthog-js";
 import "posthog-js/dist/exception-autocapture";
 import { PostHogProvider } from "posthog-js/react";
 import {
-  isRouteErrorResponse,
   Links,
   Meta,
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLocation,
 } from "react-router";
-import { Route } from "../.react-router/types/src/+types/root";
 import { HtmlBackgroundManager } from "./components/HtmlBackgroundManager";
+import {
+  isNotFound,
+  ErrorBoundary as RootErrorBoundary,
+} from "./ErrorBoundary";
 import { AuthProvider } from "./lib/AuthContext";
 import { getApiUrl, getPosthogHost } from "./lib/config";
+import { registerArrival, useLinkOpenings } from "./lib/linkOpenings";
 import PosthogBuildTag from "./lib/PosthogBuildTag";
+import { posthogRequestContext } from "./lib/posthogRequestContext";
+import { ShareLinkViewerFromAuth } from "./lib/ShareLinkViewerFromAuth";
 import { socialPreviewMeta } from "./lib/socialPreviewMeta";
+import { InviteSessionProvider } from "./site/invite/InviteSession";
+import { NOT_FOUND_TITLE } from "./site/NotFoundPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      gcTime: 1000 * 60 * 60 * 24, // 24 hours
+      gcTime: milliseconds({ days: 1 }),
+      retry: retryUnlessRefused(3),
     },
   },
 });
@@ -34,14 +48,23 @@ client.setConfig({
   baseUrl: getApiUrl(),
 });
 
-registerAnalytics(posthog);
+registerErrorStatus(client);
 
-export function meta() {
-  return socialPreviewMeta({ title: "Alliance" });
+registerAnalytics(posthog);
+registerPosthogRequestContext({
+  client,
+  getContext: () => posthogRequestContext(posthog),
+});
+
+export function meta({ error }: { error?: unknown }) {
+  return socialPreviewMeta({
+    title: isNotFound(error) ? NOT_FOUND_TITLE : "Alliance",
+  });
 }
 
 const options: Partial<PostHogConfig> = {
   api_host: getPosthogHost(),
+  loaded: registerArrival,
   defaults: "2025-05-24",
   capture_exceptions: {
     capture_unhandled_errors: true,
@@ -66,55 +89,28 @@ const options: Partial<PostHogConfig> = {
   },
 };
 
-export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  if (!import.meta.env.PROD) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen">
-        {error instanceof Error && (
-          <p className="text-red-500">{error.message}</p>
-        )}
-        {isRouteErrorResponse(error) ? (
-          <p>
-            {error.status} {error.statusText}
-          </p>
-        ) : (
-          <p>Please try again</p>
-        )}
-      </div>
-    );
-  }
-  if (isRouteErrorResponse(error)) {
-    return (
-      <>
-        <h1>
-          {error.status} {error.statusText}
-        </h1>
-        <p>{error.data}</p>
-      </>
-    );
-  } else if (error instanceof Error) {
-    return (
-      <div className="p-2">
-        <h3>Error</h3>
-        <p>{error.message}</p>
-        <pre className="text-red-500">{error.stack}</pre>
-      </div>
-    );
-  } else {
-    return <h1>Unknown Error</h1>;
-  }
-}
+// React Router passes `error` only to a declared export, not to a re-export.
+export const ErrorBoundary = RootErrorBoundary;
 
 export function Layout({ children }: { children: React.ReactNode }) {
   useNumberInputScrollGuard();
+  const { pathname } = useLocation();
+  const withPosthog =
+    import.meta.env.PROD && pathname !== MOBILE_OAUTH_RETURN_PATH;
+  // Here rather than in Root, so an arrival on an error page is sent too.
+  useLinkOpenings({ withPosthog });
 
   const inner = (
     <SiteAppProvider>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider queryClient={queryClient}>
-          <ToastProvider>
-            <HtmlBackgroundManager>{children}</HtmlBackgroundManager>
-          </ToastProvider>
+        <AuthProvider>
+          <InviteSessionProvider>
+            <ShareLinkViewerFromAuth>
+              <ToastProvider>
+                <HtmlBackgroundManager>{children}</HtmlBackgroundManager>
+              </ToastProvider>
+            </ShareLinkViewerFromAuth>
+          </InviteSessionProvider>
         </AuthProvider>
       </QueryClientProvider>
     </SiteAppProvider>
@@ -130,7 +126,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        {import.meta.env.PROD ? (
+        {/* PostHog records the full URL, and the mobile app's sign-in handoff
+            arrives in this page's query string. */}
+        {withPosthog ? (
           <PostHogProvider
             apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_KEY}
             options={options}

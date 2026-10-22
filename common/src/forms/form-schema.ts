@@ -5,15 +5,24 @@ import {
   displayBlockSchema,
   type ManualDisplayBlockContent,
 } from "./display-blocks";
+import { isListRow } from "./list-rows";
+import {
+  categorizedOptionsShape,
+  checkOptionCategories,
+  checkOptionsFormula,
+  optionListSchema,
+} from "./options-schema";
+import { rowConditionSchema, rowListSchema } from "./row-list-schema";
 import {
   formVariableSchema,
-  isFieldKindUsableAsVariableInput,
+  isFieldKindReadableByFieldInput,
+  optionsFormulaSchema,
   type VariableInputField,
 } from "./variables";
-import type { Condition, VisibleIfFormula } from "./visible-if-formula";
 import { visibleIfFormulaSchema } from "./visible-if-formula";
 
 export type { CityFieldValue } from "./city";
+export { isListRow } from "./list-rows";
 
 export type ListFieldValue = Record<string, FormValue>[];
 export type FormValue =
@@ -24,16 +33,30 @@ export type FormValue =
   | CityFieldValue
   | ListFieldValue;
 
-const formValueSchema: z.ZodType<FormValue> = z.lazy(() =>
-  z.union([
-    z.string(),
-    z.number(),
-    z.boolean(),
-    z.array(z.string()),
-    cityFieldValueSchema,
-    z.array(z.record(z.string(), formValueSchema)),
-  ]),
-);
+export function asCards(value: FormValue | undefined): ListFieldValue | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  return value.every(isListRow) ? value : null;
+}
+
+export function formValueSchemaWith(
+  citySchema: z.ZodType<CityFieldValue>,
+): z.ZodType<FormValue> {
+  const self: z.ZodType<FormValue> = z.lazy(() =>
+    z.union([
+      z.string(),
+      z.number(),
+      z.boolean(),
+      z.array(z.string()),
+      citySchema,
+      z.array(z.record(z.string(), self)),
+    ]),
+  );
+  return self;
+}
+
+export const formValueSchema = formValueSchemaWith(cityFieldValueSchema);
 
 const widthSchema = z.enum(["full", "1/2", "1/3"]);
 
@@ -55,22 +78,8 @@ const baseFieldSchema = z.object({
   requiredIfFormula: visibleIfFormulaSchema.optional(),
   width: widthSchema.optional(),
   output: fieldOutputConfigSchema.optional(),
+  rowCondition: rowConditionSchema.optional(),
 });
-
-const optionSchema = z.strictObject({
-  label: z.string(),
-  value: z.string(),
-});
-
-// An option's identity is its value (answer matching, ranking order, React
-// keys), so duplicate values would make answers ambiguous.
-const optionListSchema = z
-  .array(optionSchema)
-  .refine(
-    (options) =>
-      new Set(options.map((option) => option.value)).size === options.length,
-    "option values must be unique",
-  );
 
 const textFieldSchema = z.strictObject({
   ...baseFieldSchema.shape,
@@ -115,6 +124,9 @@ const numberFieldSchema = z.strictObject({
   decimalPlaces: z.number().optional(),
 });
 export type NumberField = z.infer<typeof numberFieldSchema>;
+
+export const MIN_RANGE_OPTION_COUNT = 2;
+export const MAX_RANGE_OPTION_COUNT = 50;
 
 const rangeFieldSchema = z.strictObject({
   ...baseFieldSchema.shape,
@@ -162,21 +174,36 @@ const radioFieldSchema = z.strictObject({
 });
 export type RadioField = z.infer<typeof radioFieldSchema>;
 
-const selectFieldSchema = z.strictObject({
-  ...baseFieldSchema.shape,
-  kind: z.literal("select"),
-  options: optionListSchema,
-  randomizeOptions: z.boolean().optional(),
-});
+const selectFieldSchema = z
+  .strictObject({
+    ...baseFieldSchema.shape,
+    kind: z.literal("select"),
+    searchable: z.boolean().optional(),
+    ...categorizedOptionsShape,
+    optionsFormula: optionsFormulaSchema.optional(),
+    randomizeOptions: z.boolean().optional(),
+  })
+  .superRefine(checkOptionCategories)
+  .superRefine(checkOptionsFormula);
 export type SelectField = z.infer<typeof selectFieldSchema>;
 
-const multiSelectFieldSchema = z.strictObject({
-  ...baseFieldSchema.shape,
-  kind: z.literal("multiselect"),
-  options: optionListSchema,
-  randomizeOptions: z.boolean().optional(),
-  maxSelections: z.number().optional(),
-});
+const multiSelectFieldSchema = z
+  .strictObject({
+    ...baseFieldSchema.shape,
+    kind: z.literal("multiselect"),
+    dropdown: z.boolean().optional(),
+    searchable: z.boolean().optional(),
+    ...categorizedOptionsShape,
+    optionsFormula: optionsFormulaSchema.optional(),
+    randomizeOptions: z.boolean().optional(),
+    maxSelections: z.number().optional(),
+  })
+  .refine((data) => !data.searchable || data.dropdown, {
+    message: "searchable requires dropdown",
+    path: ["searchable"],
+  })
+  .superRefine(checkOptionCategories)
+  .superRefine(checkOptionsFormula);
 export type MultiSelectField = z.infer<typeof multiSelectFieldSchema>;
 
 const dateFieldSchema = z.strictObject({
@@ -317,6 +344,8 @@ export const anyFieldSchema = z.discriminatedUnion("kind", [
 export type AnyField = z.infer<typeof anyFieldSchema>;
 export type FieldKind = AnyField["kind"];
 
+export type PageItem = AnyField | DisplayBlock;
+
 export const pageSchema = z.strictObject({
   id: z.string(),
   title: z.string().optional(),
@@ -398,13 +427,43 @@ export const formSchema = z.strictObject({
   aggregateViews: z.array(aggregateViewSchemaSchema).optional(),
   /** Computed values referenced as `#{name}` in display text and labels. */
   variables: z.array(formVariableSchema).optional(),
+  rowList: rowListSchema.optional(),
 });
 export type FormSchema = z.infer<typeof formSchema>;
 
-export function isQuestionField(
-  field: AnyField | DisplayBlock,
-): field is AnyField {
+export function isQuestionField(field: PageItem): field is AnyField {
   return field.type === "input";
+}
+
+export function isDisplayBlock(field: PageItem): field is DisplayBlock {
+  return field.type === "display";
+}
+
+export function collectPageByFieldId(pages: Page[]): Map<string, Page> {
+  const map = new Map<string, Page>();
+  for (const page of pages) {
+    for (const field of page.fields ?? []) {
+      if (isQuestionField(field)) map.set(field.id, page);
+    }
+  }
+  return map;
+}
+
+export function collectFieldLookup(pages: Page[]): Map<string, AnyField> {
+  const lookup = new Map<string, AnyField>();
+  for (const page of pages) {
+    for (const element of page.fields) {
+      if (!isQuestionField(element)) continue;
+      lookup.set(element.id, element);
+      // List sub-fields are looked up too, so a condition can reference one.
+      if (element.kind === "list") {
+        for (const sub of element.fields ?? []) {
+          lookup.set(sub.id, sub);
+        }
+      }
+    }
+  }
+  return lookup;
 }
 
 const OPTION_FIELD_KINDS = {
@@ -424,132 +483,49 @@ export function fieldHasOptions(field: AnyField): field is OptionField {
 }
 
 /**
- * Returns page-level fields with one formula-readable answer. List sub-fields
- * are excluded because each list answer contains one value per row.
+ * Returns page-level fields a formula can read: those with one readable answer,
+ * and lists, which a formula reads as one record per row. List sub-fields are
+ * read only through their list.
  */
 export function collectVariableInputFields(schema: FormSchema): AnyField[] {
-  const fields: AnyField[] = [];
-  for (const page of schema.pages ?? []) {
-    for (const element of page.fields ?? []) {
-      if (!isQuestionField(element)) continue;
-      if (!isFieldKindUsableAsVariableInput(element.kind)) continue;
-      fields.push(element);
-    }
+  return readableVariableInputFields(collectVariableResolutionFields(schema));
+}
+
+export function readableVariableInputFields(
+  fields: readonly AnyField[],
+): AnyField[] {
+  return fields.filter(
+    (field) =>
+      field.kind === "list" || isFieldKindReadableByFieldInput(field.kind),
+  );
+}
+
+/**
+ * Every page-level question field, readable or not, so a variable reading a
+ * kind this build doesn't know fails instead of reading nothing.
+ */
+export function collectVariableResolutionFields(
+  schema: FormSchema,
+): AnyField[] {
+  return (schema.pages ?? []).flatMap((page) =>
+    (page.fields ?? []).filter(isQuestionField),
+  );
+}
+
+function variableInputField(field: AnyField): VariableInputField {
+  if (fieldHasOptions(field)) {
+    return {
+      kind: field.kind,
+      options: field.options,
+      categories: "categories" in field ? field.categories : undefined,
+    };
   }
-  return fields;
+  if (field.kind === "list") return { kind: field.kind, fields: field.fields };
+  return { kind: field.kind };
 }
 
 export function variableInputFieldsById(
   fields: readonly AnyField[],
 ): ReadonlyMap<string, VariableInputField> {
-  return new Map(
-    fields.map((field) => [
-      field.id,
-      fieldHasOptions(field)
-        ? { kind: field.kind, options: field.options }
-        : { kind: field.kind },
-    ]),
-  );
-}
-
-/**
- * Every condition governing a form's input pages: `visibleIfFormula`
- * conditions on pages, elements and list sub-fields, plus `requiredIfFormula`
- * on question fields (only they carry one — see `baseFieldSchema`).
- *
- * Anything that reacts to which condition *kinds* a schema contains — which
- * values to fetch before evaluating, which source forms to load — should walk
- * with this instead of re-deriving the traversal, so a new place to hang a
- * condition only has to be taught about here.
- *
- * Output-view conditions are deliberately excluded: they're scoped to a view,
- * can't read answers or account state, and are validated separately in
- * `form-schema-validate.ts`.
- *
- * Return `true` from `visit` to stop the walk early; the return value says
- * whether it stopped — so passing a predicate that returns `true` on a match
- * doubles as `some`, short-circuiting on the first hit.
- */
-export function forEachCondition(
-  schema: FormSchema,
-  visit: (condition: Condition) => boolean | void,
-): boolean {
-  const visitFormula = (formula: VisibleIfFormula | undefined): boolean => {
-    for (const condition of Object.values(formula?.conditions ?? {})) {
-      if (visit(condition) === true) return true;
-    }
-    return false;
-  };
-  const visitElement = (element: AnyField | DisplayBlock): boolean => {
-    if (visitFormula(element.visibleIfFormula)) return true;
-    if (!isQuestionField(element)) return false;
-    return visitFormula(element.requiredIfFormula);
-  };
-  for (const page of schema.pages ?? []) {
-    if (visitFormula(page.visibleIfFormula)) return true;
-    for (const element of page.fields ?? []) {
-      if (visitElement(element)) return true;
-      if (isQuestionField(element) && element.kind === "list") {
-        for (const sub of element.fields ?? []) {
-          if (visitElement(sub)) return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
-/**
- * The conditions `forEachCondition` deliberately skips: those on output-view
- * blocks. Separate rather than a flag on the walk above, because the two
- * answer different questions — that one asks what governs the form being
- * filled out, this one what governs a rendered response.
- *
- * Same early-stop contract as `forEachCondition`.
- */
-export function forEachOutputViewCondition(
-  schema: FormSchema,
-  visit: (condition: Condition) => boolean | void,
-): boolean {
-  for (const view of schema.outputViews ?? []) {
-    for (const block of view.blocks ?? []) {
-      for (const condition of Object.values(
-        block.visibleIfFormula?.conditions ?? {},
-      )) {
-        if (visit(condition) === true) return true;
-      }
-    }
-  }
-  return false;
-}
-
-/** Scan a form schema for all sourceFormIds referenced in visibility conditions. */
-export function collectSourceFormIds(schema: FormSchema): number[] {
-  const ids = new Set<number>();
-  forEachCondition(schema, (c) => {
-    switch (c.kind) {
-      case "equals":
-      case "includesOption":
-      case "anySelected":
-      case "hasValue":
-        if (typeof c.sourceFormId === "number") {
-          ids.add(c.sourceFormId);
-        }
-        break;
-      case "validator":
-      case "deviceType":
-      case "outputBlockVisible":
-      case "userHasCity":
-      case "firstContractSigned":
-      case "completedActionCount":
-        break;
-      default:
-        // A kind added in a newer build: it may reference a source form we
-        // won't prefetch, but this runs during render, where throwing isn't an
-        // option. The renderers block such a schema outright.
-        c satisfies never;
-        break;
-    }
-  });
-  return Array.from(ids);
+  return new Map(fields.map((field) => [field.id, variableInputField(field)]));
 }

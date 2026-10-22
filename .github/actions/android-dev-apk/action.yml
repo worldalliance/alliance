@@ -1,0 +1,65 @@
+name: Android dev-client APK
+description: >-
+  Restore the x86_64 debug dev-client APK whose native code matches the
+  checkout, building and caching it on a miss. Needs bun and the root
+  dependencies installed. A cache saved from a pull request is invisible to
+  every other pull request, so the push to main is what makes a build reusable.
+
+outputs:
+  path:
+    description: The APK.
+    value: ${{ steps.fingerprint.outputs.apk }}
+
+runs:
+  using: composite
+  steps:
+    - name: Fingerprint Android app
+      id: fingerprint
+      shell: bash
+      working-directory: apps/mobile
+      env:
+        APP_VARIANT: development
+      run: |
+        hash="$(node --input-type=module -e "import { createFingerprintAsync } from '@expo/fingerprint'; console.log((await createFingerprintAsync('.', { platforms: ['android'] })).hash)")"
+        echo "hash=$hash" >> "$GITHUB_OUTPUT"
+        echo "apk=$RUNNER_TEMP/app-debug.apk" >> "$GITHUB_OUTPUT"
+
+    - name: Restore Android app
+      id: cache
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ steps.fingerprint.outputs.apk }}
+        key: pr-screenshots-apk-${{ steps.fingerprint.outputs.hash }}-${{ hashFiles('.github/actions/android-dev-apk/**') }}
+
+    - name: Setup Java
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: "17"
+        cache: gradle
+        cache-dependency-path: bun.lock
+
+    - name: Build Android app
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      working-directory: apps/mobile
+      env:
+        CI: "true"
+        APP_VARIANT: development
+        APK: ${{ steps.fingerprint.outputs.apk }}
+      run: |
+        bunx expo prebuild --platform android
+        # CI-only: expo-dev-client's plugin options would change the OTA fingerprint and hide the menu in every dev build.
+        sed -i 's#</application>#<meta-data android:name="EXDevMenuShowFloatingActionButton" android:value="false"/><meta-data android:name="EXDevMenuIsOnboardingFinished" android:value="true"/><meta-data android:name="EXDevMenuShowsAtLaunch" android:value="false"/></application>#' \
+          android/app/src/main/AndroidManifest.xml
+        grep -q EXDevMenuShowsAtLaunch android/app/src/main/AndroidManifest.xml
+        (cd android && ./gradlew app:assembleDebug -PreactNativeArchitectures=x86_64)
+        cp android/app/build/outputs/apk/debug/app-debug.apk "$APK"
+
+    - name: Save Android app
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ steps.fingerprint.outputs.apk }}
+        key: ${{ steps.cache.outputs.cache-primary-key }}

@@ -1,16 +1,25 @@
 import { forwardRef, Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { ActionVisibilityModule } from "src/actions/action-visibility.module";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { ActionUpdate } from "src/actions/entities/action-update.entity";
+import { Action } from "src/actions/entities/action.entity";
+import { Community } from "src/community/entities/community.entity";
 import { Comment } from "src/forum/entities/comment.entity";
+import { Post } from "src/forum/entities/post.entity";
+import { LinkTrackingModule } from "src/link-tracking/link-tracking.module";
 import { MailModule } from "src/mail/mail.module";
 import { MmsModule } from "src/mms/mms.module";
+import { NotificationSettingsModule } from "src/notification-settings/notification-settings.module";
 import { User } from "src/user/entities/user.entity";
 import { UserModule } from "src/user/user.module";
 import { ActionEventNotif } from "./entities/action-event-notif.entity";
 import { Notification } from "./entities/notification.entity";
 import { UnreadContent } from "./entities/unread-content.entity";
 import { LikeNotificationService } from "./like-notification.service";
+import { NotificationInboxService } from "./notification-inbox.service";
+import { NotificationReferencesService } from "./notification-references.service";
+import { NotificationRenderService } from "./notification-render.service";
 import { NotifsController } from "./notifs.controller";
 import { NotifsService } from "./notifs.service";
 
@@ -24,13 +33,25 @@ import { NotifsService } from "./notifs.service";
       ActionActivity,
       Comment,
       User,
+      Community,
+      Action,
+      Post,
     ]),
+    LinkTrackingModule,
     MailModule,
     forwardRef(() => MmsModule),
     forwardRef(() => UserModule),
+    ActionVisibilityModule,
+    NotificationSettingsModule,
   ],
   controllers: [NotifsController],
-  providers: [NotifsService, LikeNotificationService],
-  exports: [NotifsService, LikeNotificationService],
+  providers: [
+    NotifsService,
+    NotificationInboxService,
+    LikeNotificationService,
+    NotificationReferencesService,
+    NotificationRenderService,
+  ],
+  exports: [NotifsService, NotificationInboxService, LikeNotificationService],
 })
 export class NotifsModule {}

@@ -3,24 +3,23 @@ import type {
   ChatTranscriptMessage,
 } from "@alliance/common/forms/display-blocks";
 import { cn } from "@alliance/shared/styles/util";
-import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
 import { ArrowDown, ArrowUp, Plus, X } from "lucide-react";
-import { useState } from "react";
 import { VariableTextField } from "../VariableTextField";
+import { BlockPreview } from "./BlockPreview";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
 
 export function EditableChatTranscriptBlock({
   block,
   onUpdate,
+  updateCurrent,
   onRemove,
   onDragStart,
   onDragEnd,
   isDragging,
   previousFields,
+  laterFields,
 }: BaseDisplayBlockProps<ChatTranscriptBlock>) {
-  const [showPreview, setShowPreview] = useState(false);
-
   return (
     <DisplayBlockWrapper
       onRemove={onRemove}
@@ -29,7 +28,9 @@ export function EditableChatTranscriptBlock({
       isDragging={isDragging}
       block={block}
       onUpdate={onUpdate}
+      updateCurrent={updateCurrent}
       previousFields={previousFields}
+      laterFields={laterFields}
     >
       {({ block: activeBlock, onUpdate: handleUpdate }) => {
         const messages = activeBlock.messages;
@@ -160,34 +161,16 @@ export function EditableChatTranscriptBlock({
               </div>
             ))}
 
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                onClick={addMessage}
-                className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800"
-              >
-                <Plus size={14} />
-                Add message
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowPreview((prev) => !prev)}
-                className="text-xs font-medium text-green hover:text-emerald-700"
-              >
-                {showPreview ? "Hide preview" : "Show preview"}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={addMessage}
+              className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800"
+            >
+              <Plus size={14} />
+              Add message
+            </button>
 
-            {showPreview && (
-              <div className="border border-gray-200 rounded-md p-3 bg-white">
-                <RenderDisplayBlock
-                  block={{
-                    ...activeBlock,
-                    kind: "chatTranscript",
-                  }}
-                />
-              </div>
-            )}
+            <BlockPreview block={activeBlock} toggleable />
           </div>
         );
       }}

@@ -1,37 +1,24 @@
-import {
-  conversationAcceptInvite,
-  conversationCreateDirectConversation,
-  conversationCreateGroupConversation,
-  conversationDeclineInvite,
-  ConversationDto,
-  conversationMarkRead,
-  MessageDto,
-  ProfileDto,
-  userListMessageableUsers,
-} from "@alliance/shared/client";
+import { ConversationDto, MessageDto } from "@alliance/shared/client";
 import {
   buildGroupConversationTitle,
   findMatchingConversation,
-  getConversationPreview,
   getJoinedConversations,
-  getMessageRequestPreview,
   getPendingInvites,
   mergeConversationUpdate,
-  sortConversations,
   updateConversationsForLastMessage,
-} from "@alliance/shared/lib/messages";
+} from "@alliance/shared/lib/conversations";
+import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
+import { useMessageableUsersQuery } from "@alliance/shared/lib/user";
 import { cn } from "@alliance/shared/styles/util";
-import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import { useMediaQuery } from "@alliance/sharedweb/lib/useMediaQuery";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
-import { Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import ConversationDetailPanel from "../../components/ConversationDetailPanel";
 import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
+import MessagesSidebar from "../../components/MessagesSidebar";
 import { useAuth } from "../../lib/AuthContext";
 import { useNavbarOptions } from "../../lib/NavbarOptionsContext";
-import { useMediaQuery } from "../../lib/useMediaQuery";
 import useLiveConvoMessages, { useConversations } from "./messages";
 
 const MessagesPage = () => {
@@ -43,8 +30,18 @@ const MessagesPage = () => {
     return convoId ? parseInt(convoId) : null;
   }, [params]);
 
-  const { conversations, setConversations, loading } =
-    useConversations(selectedConvoId);
+  const {
+    conversations,
+    setConversations,
+    loading,
+    reloadFailed,
+    refreshConversations,
+    createDirectConversation,
+    createGroupConversation,
+    acceptInvite,
+    declineInvite,
+    markRead,
+  } = useConversations(selectedConvoId);
 
   const setSelectedConvoId = useCallback(
     (convoId: number | null) => {
@@ -82,31 +79,28 @@ const MessagesPage = () => {
     [setConversations],
   );
 
-  const {
-    messages: convoMessages,
-    addOptimisticMessage,
-    removeOptimisticMessage,
-  } = useLiveConvoMessages(selectedConvoId, {
-    onIncomingMessage: setConvoLastMessage,
-    onConversationUpdated: handleConversationUpdated,
-  });
-
-  const [messageableUsers, setMessageableUsers] = useState<ProfileDto[] | null>(
-    null,
+  const { messages: convoMessages, sendMessage } = useLiveConvoMessages(
+    selectedConvoId,
+    {
+      onIncomingMessage: setConvoLastMessage,
+      onConversationUpdated: handleConversationUpdated,
+    },
   );
+
+  const messageableUsersQuery = useMessageableUsersQuery({
+    enabled: !!user,
+  });
+  const messageableUsers = messageableUsersQuery.data ?? null;
+  const messageableUsersFailure = failedToLoad(messageableUsersQuery)
+    ? {
+        onRetry: () => void messageableUsersQuery.refetch(),
+        retrying: messageableUsersQuery.isFetching,
+      }
+    : null;
 
   const [messagesOpen, setMessagesOpen] = useState(!!selectedConvoId);
   const isSmall = useMediaQuery("(max-width: 768px)");
   const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!user) return;
-    userListMessageableUsers().then((response) => {
-      if (response.data) {
-        setMessageableUsers(response.data);
-      }
-    });
-  }, [user]);
 
   const [creatingNewConversation, setCreatingNewConversation] = useState(false);
 
@@ -129,15 +123,6 @@ const MessagesPage = () => {
       if (sendingNewMessageToIds.length === 0) return null;
 
       const onSuccess = (response: ConversationDto) => {
-        setConversations((prev) => {
-          const ids: Map<number, ConversationDto> = new Map();
-          for (const convo of prev ?? []) {
-            ids.set(convo.id, convo);
-          }
-          ids.set(response.id, response);
-          const updated = Array.from(ids.values()).sort(sortConversations);
-          return updated;
-        });
         setSelectedConvoId(response.id);
         setSendingNewMessageToIds([]);
         setCreatingNewConversation(false);
@@ -149,14 +134,12 @@ const MessagesPage = () => {
       }
 
       if (sendingNewMessageToIds.length === 1) {
-        const response = await conversationCreateDirectConversation({
-          body: {
-            targetUserId: sendingNewMessageToIds[0],
-          },
-        });
-        if (response.data) {
-          onSuccess(response.data);
-          return response.data;
+        const created = await createDirectConversation(
+          sendingNewMessageToIds[0],
+        );
+        if (created.ok) {
+          onSuccess(created.value);
+          return created.value;
         }
       } else {
         const names = sendingNewMessageToIds
@@ -170,22 +153,21 @@ const MessagesPage = () => {
         }
         const title = buildGroupConversationTitle(names);
 
-        const response = await conversationCreateGroupConversation({
-          body: {
-            participantIds: sendingNewMessageToIds,
-            title: title,
-          },
+        const created = await createGroupConversation({
+          participantIds: sendingNewMessageToIds,
+          title: title,
         });
-        if (response.data) {
-          onSuccess(response.data);
-          return response.data;
+        if (created.ok) {
+          onSuccess(created.value);
+          return created.value;
         }
       }
       return null;
     }, [
       sendingNewMessageToIds,
       setSelectedConvoId,
-      setConversations,
+      createDirectConversation,
+      createGroupConversation,
       selectedConvo,
       messageableUsers,
       user,
@@ -203,26 +185,15 @@ const MessagesPage = () => {
 
   const handleAcceptMessageRequest = useCallback(() => {
     if (!selectedConvo) return;
-    conversationAcceptInvite({
-      path: { conversationId: selectedConvo.id },
-    }).then((response) => {
-      if (response.data) {
-        handleConversationUpdated(response.data);
-      }
-    });
-  }, [selectedConvo, handleConversationUpdated]);
+    void acceptInvite(selectedConvo.id);
+  }, [selectedConvo, acceptInvite]);
 
   const handleDeclineMessageRequest = useCallback(() => {
     if (!selectedConvo) return;
-    conversationDeclineInvite({
-      path: { conversationId: selectedConvo.id },
-    }).then((response) => {
-      if (response.data) {
-        handleConversationUpdated(response.data);
-        setSelectedConvoId(null);
-      }
+    void declineInvite(selectedConvo.id).then((declined) => {
+      if (declined.ok) setSelectedConvoId(null);
     });
-  }, [selectedConvo, handleConversationUpdated, setSelectedConvoId]);
+  }, [selectedConvo, declineInvite, setSelectedConvoId]);
 
   const handleConversationClick = useCallback(
     (conversationId: number) => () => {
@@ -242,13 +213,9 @@ const MessagesPage = () => {
   }, [setSelectedConvoId]);
 
   const handleLeaveConversation = useCallback(() => {
-    setConversations((prev) => {
-      if (!prev) return null;
-      return prev.filter((convo) => convo.id !== selectedConvoId);
-    });
     setSelectedConvoId(null);
     setMessagesOpen(false);
-  }, [setSelectedConvoId, setConversations, selectedConvoId]);
+  }, [setSelectedConvoId]);
 
   const handleUpdateRecipientIds = useCallback(
     (ids: number[]) => {
@@ -260,7 +227,8 @@ const MessagesPage = () => {
   );
 
   useEffect(() => {
-    if (!conversations) return;
+    // A cached list may predate the conversation `to` names.
+    if (!conversations || loading || reloadFailed) return;
     const param = params.get("to");
     if (param) {
       const userId = parseInt(param);
@@ -281,21 +249,18 @@ const MessagesPage = () => {
         handleUpdateRecipientIds([userId]);
       }
     }
-  }, [params, handleUpdateRecipientIds, conversations, setSelectedConvoId]);
-
-  const filteredConversations = useMemo(() => {
-    return joinedConversations?.filter((convo) =>
-      convo.title.toLowerCase().includes(search.toLowerCase()),
-    );
-  }, [joinedConversations, search]);
+  }, [
+    params,
+    handleUpdateRecipientIds,
+    conversations,
+    loading,
+    reloadFailed,
+    setSelectedConvoId,
+  ]);
 
   useEffect(() => {
-    if (selectedConvoId) {
-      conversationMarkRead({
-        path: { conversationId: selectedConvoId },
-      });
-    }
-  }, [selectedConvoId]);
+    if (selectedConvoId) void markRead(selectedConvoId);
+  }, [selectedConvoId, markRead]);
 
   if (!conversations && loading) {
     return (
@@ -325,106 +290,24 @@ const MessagesPage = () => {
         )}
         style={{ flex: isSmall && messagesOpen ? 0 : 1 }}
       >
-        <div>
-          <div className="p-4">
-            <div className="flex flex-row items-center justify-between gap-x-2 mb-3">
-              <p className="text-2xl font-semibold">Chats</p>
-              <Button
-                color={ButtonColor.Transparent}
-                size="small"
-                onClick={handleCreateNewConversation}
-                className="!px-2"
-              >
-                <Plus size="18" />
-              </Button>
-            </div>
-            <input
-              placeholder="Search"
-              className="w-full rounded-md p-2 !bg-zinc-100 text-black focus:outline-none text-[16px]"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              autoFocus
-            />
-          </div>
-          <div>
-            {pendingInvites && pendingInvites.length > 0 && (
-              <div className="mt-2">
-                <p className="text-sm text-zinc-500 font-medium px-4">
-                  New message requests
-                </p>
-                <div className="flex flex-col mt-2">
-                  {pendingInvites?.map((conversation) => (
-                    <div
-                      key={conversation.id}
-                      className={cn(
-                        "p-4 hover:bg-zinc-50 cursor-pointer rounded-lg mx-2 flex flex-row justify-between items-center gap-x-3 transition-colors",
-                        selectedConvoId === conversation.id
-                          ? "bg-zinc-100"
-                          : "bg-white",
-                      )}
-                      onClick={handleConversationClick(conversation.id)}
-                    >
-                      <div className="flex flex-row items-center gap-x-3">
-                        <AvatarProfile
-                          pfp={conversation.photo ?? null}
-                          size="large"
-                        />
-                        <div className="flex flex-col">
-                          <span className="font-medium line-clamp-2">
-                            {conversation.title}
-                          </span>
-                          <span className="text-sm text-zinc-500 line-clamp-1">
-                            {getMessageRequestPreview(conversation)}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="font-semibold text-xs text-white bg-red-500 rounded-md flex justify-center items-center w-6 h-6 shrink-0">
-                        {conversation.unreadCount || 1}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-sm text-zinc-500 font-medium px-4 py-2">
-                  Conversations
-                </p>
-              </div>
-            )}
-            {filteredConversations?.map((conversation) => (
-              <div
-                key={conversation.id}
-                className={cn(
-                  "p-4 hover:bg-zinc-50 cursor-pointer rounded-lg mx-2 flex flex-row justify-between items-center gap-x-3 transition-colors",
-                  selectedConvoId === conversation.id
-                    ? "bg-zinc-100"
-                    : "bg-white",
-                )}
-                onClick={handleConversationClick(conversation.id)}
-              >
-                <div className="flex flex-row items-center gap-x-3">
-                  <AvatarProfile
-                    pfp={conversation.photo ?? null}
-                    size="large"
-                  />
-                  <div className="flex flex-col">
-                    <span className="font-medium line-clamp-1">
-                      {conversation.title}
-                    </span>
-                    <span className="text-sm text-zinc-500 line-clamp-1">
-                      {getConversationPreview(conversation, user?.id)}
-                    </span>
-                  </div>
-                </div>
-                <div>
-                  {conversation.unreadCount > 0 && (
-                    <div className="font-semibold text-xs text-white bg-red-500 rounded-md flex justify-center items-center w-6 h-6">
-                      {conversation.unreadCount}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <MessagesSidebar
+          conversations={joinedConversations ?? []}
+          pendingInvites={pendingInvites ?? []}
+          selectedConvoId={selectedConvoId}
+          currentUserId={user?.id}
+          search={search}
+          onSearchChange={setSearch}
+          onSelect={handleConversationClick}
+          onCreate={handleCreateNewConversation}
+          refreshFailure={
+            reloadFailed
+              ? {
+                  onRetry: () => void refreshConversations(),
+                  retrying: loading,
+                }
+              : null
+          }
+        />
       </div>
       <div
         className={cn(
@@ -449,10 +332,8 @@ const MessagesPage = () => {
               setSendingNewMessageToIds={null}
               handleCreateConversation={null}
               friends={messageableUsers}
-              onOptimisticMessage={addOptimisticMessage}
-              onOptimisticMessageFailed={(tempId) =>
-                removeOptimisticMessage(tempId)
-              }
+              friendsFailure={messageableUsersFailure}
+              sendMessage={sendMessage}
             />
           </div>
         )}
@@ -473,19 +354,21 @@ const MessagesPage = () => {
               handleAcceptMessageRequest={null}
               handleDeclineMessageRequest={null}
               friends={messageableUsers}
+              friendsFailure={messageableUsersFailure}
               sendingNewMessageToIds={sendingNewMessageToIds}
               setSendingNewMessageToIds={handleUpdateRecipientIds}
               handleCreateConversation={handleCreateConversation}
-              onOptimisticMessage={addOptimisticMessage}
-              onOptimisticMessageFailed={(tempId) =>
-                removeOptimisticMessage(tempId)
-              }
+              sendMessage={sendMessage}
             />
           </div>
         )}
         {!selectedConvo && !creatingNewConversation && (
           <div className="flex-1 min-w-0 flex flex-col bg-white rounded-xl overflow-hidden items-center justify-center">
-            <p className="text-zinc-500">No chat selected</p>
+            {loading && selectedConvoId !== null ? (
+              <Spinner size="large" />
+            ) : (
+              <p className="text-zinc-500">No chat selected</p>
+            )}
           </div>
         )}
       </div>

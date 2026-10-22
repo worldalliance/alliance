@@ -1,16 +1,18 @@
+import { milliseconds } from "date-fns";
 import {
   ActionEvent,
   ActionStatus,
 } from "src/actions/entities/action-event.entity";
-import { Action } from "src/actions/entities/action.entity";
+import { Action, VisibilityMode } from "src/actions/entities/action.entity";
 import { Post } from "src/forum/entities/post.entity";
 import { RecentSearch } from "src/search/recentsearch.entity";
 import { SearchModule } from "src/search/search.module";
 import { SearchItemType } from "src/search/searchitem.dto";
+import { Tag } from "src/user/entities/tag.entity";
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
 
 describe("Search (e2e)", () => {
   let ctx: TestContext;
@@ -44,10 +46,9 @@ describe("Search (e2e)", () => {
     targetAction = await actionRepo.save(
       actionRepo.create({
         name: "Targeted Cleanup Action",
-        category: "Environment",
+        category: [],
         body: "Clean the neighbourhood park",
         shortDescription: "Cleanup day",
-        taskContents: "Bring gloves",
       }),
     );
 
@@ -56,7 +57,7 @@ describe("Search (e2e)", () => {
         title: "Launch",
         description: "Action is live",
         newStatus: ActionStatus.MemberAction,
-        date: new Date(Date.now() - 1000),
+        date: new Date(Date.now() - milliseconds({ seconds: 1 })),
         action: targetAction,
       }),
     );
@@ -97,6 +98,80 @@ describe("Search (e2e)", () => {
     expect(ids).toContain(`p${targetPost.id}`);
   });
 
+  it("lists only the actions the searching user's feed would list", async () => {
+    const draft = await actionRepo.save(
+      actionRepo.create({
+        name: "Searchgate Draft",
+        category: [],
+        body: "Hidden",
+        shortDescription: "Hidden",
+      }),
+    );
+    const otherTag = await ctx.dataSource
+      .getRepository(Tag)
+      .save({ name: "Other Tag", description: "Other Tag" });
+    const saveLive = async (overrides: Partial<Action>) => {
+      const action = await actionRepo.save(
+        actionRepo.create({
+          category: [],
+          body: "Hidden",
+          shortDescription: "Hidden",
+          ...overrides,
+        }),
+      );
+      await eventRepo.save(
+        eventRepo.create({
+          title: "Launch",
+          description: "Action is live",
+          newStatus: ActionStatus.MemberAction,
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
+          action,
+        }),
+      );
+      return action;
+    };
+    const archived = await saveLive({
+      name: "Searchgate Archived",
+      archived: true,
+    });
+    const publicOnly = await saveLive({
+      name: "Searchgate Public Only",
+      publicOnly: true,
+    });
+    const outsideCohort = await saveLive({
+      name: "Searchgate Outside Cohort",
+      visibilityMode: VisibilityMode.ParticipatingGroups,
+      cohortExpression: { type: "Tag", tagId: otherTag.id },
+    });
+    const insideCohort = await saveLive({
+      name: "Searchgate Inside Cohort",
+      visibilityMode: VisibilityMode.ParticipatingGroups,
+      cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
+    });
+
+    const searchIds = async (token: string) =>
+      (
+        await request(ctx.app.getHttpServer())
+          .get("/search/all")
+          .query({ query: "Searchgate" })
+          .set("Authorization", `Bearer ${token}`)
+          .expect(200)
+      ).body.map((item) => item.id);
+
+    const memberIds = await searchIds(ctx.accessToken);
+    expect(memberIds).toContain(`a${insideCohort.id}`);
+    expect(memberIds).not.toContain(`a${draft.id}`);
+    expect(memberIds).not.toContain(`a${archived.id}`);
+    expect(memberIds).not.toContain(`a${publicOnly.id}`);
+    expect(memberIds).not.toContain(`a${outsideCohort.id}`);
+
+    const adminIds = await searchIds(ctx.adminAccessToken);
+    expect(adminIds).toContain(`a${draft.id}`);
+    expect(adminIds).toContain(`a${archived.id}`);
+    expect(adminIds).toContain(`a${outsideCohort.id}`);
+    expect(adminIds).not.toContain(`a${publicOnly.id}`);
+  });
+
   it("keeps a scheduled post out of search until it goes live", async () => {
     const scheduledPost = await postRepo.save(
       postRepo.create({
@@ -107,7 +182,7 @@ describe("Search (e2e)", () => {
         },
         author: targetUser,
         authorId: targetUser.id,
-        visibleAt: new Date(Date.now() + 1000 * 60 * 60),
+        visibleAt: new Date(Date.now() + milliseconds({ hours: 1 })),
       }),
     );
 
@@ -120,10 +195,7 @@ describe("Search (e2e)", () => {
       );
     };
 
-    const authorToken = ctx.jwtService.sign(
-      { sub: targetUser.id, email: targetUser.email },
-      { secret: process.env.JWT_SECRET },
-    );
+    const authorToken = signAccessToken(ctx.jwtService, targetUser);
 
     const visitorResponse = await search(ctx.accessToken);
     expect(visitorResponse.body.map((item) => item.id)).not.toContain(
@@ -162,6 +234,132 @@ describe("Search (e2e)", () => {
 
     expect(response.body.length).toBeGreaterThan(0);
     expect(response.body[0].id).toBe(`a${targetAction.id}`);
+  });
+
+  it.each([
+    {
+      label: "a deleted post",
+      type: SearchItemType.Post,
+      createGone: async () => {
+        const post = await postRepo.save(
+          postRepo.create({
+            title: "Post Deleted After Selection",
+            editableContent: { body: "Gone soon", attachments: [] },
+            author: targetUser,
+            authorId: targetUser.id,
+          }),
+        );
+        await postRepo.delete(post.id);
+        return `p${post.id}`;
+      },
+    },
+    {
+      label: "a deleted action",
+      type: SearchItemType.Action,
+      createGone: async () => {
+        const action = await actionRepo.save(
+          actionRepo.create({
+            name: "Action Deleted After Selection",
+            category: [],
+            body: "Gone soon",
+            shortDescription: "Gone soon",
+          }),
+        );
+        await actionRepo.delete(action.id);
+        return `a${action.id}`;
+      },
+    },
+    {
+      label: "an action the member can't open",
+      type: SearchItemType.Action,
+      createGone: async () => {
+        const action = await actionRepo.save(
+          actionRepo.create({
+            name: "Draft Action",
+            category: [],
+            body: "Not live",
+            shortDescription: "Not live",
+          }),
+        );
+        return `a${action.id}`;
+      },
+    },
+  ])("skips $label in recent selections", async ({ type, createGone }) => {
+    const save = (id: string, itemType: SearchItemType) =>
+      request(ctx.app.getHttpServer())
+        .post("/search/selected")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          id,
+          name: "Selection",
+          webAppLocation: "/",
+          secondaryData: [],
+          type: itemType,
+        })
+        .expect(201);
+
+    await save(`a${targetAction.id}`, SearchItemType.Action);
+    const goneId = await createGone();
+    await save(goneId, type);
+
+    const response = await request(ctx.app.getHttpServer())
+      .get("/search/all")
+      .query({ query: "" })
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
+      .expect(200);
+
+    expect(response.body.map((item) => item.id)).toEqual([
+      `a${targetAction.id}`,
+    ]);
+  });
+
+  it("fills five recent selections past one that no longer resolves", async () => {
+    const users = await userRepo.save(
+      Array.from({ length: 6 }, (_, i) =>
+        userRepo.create({
+          name: `Recent User ${i}`,
+          email: `recent-user-${i}@example.com`,
+          password: "Password123!",
+          anonymous: false,
+        }),
+      ),
+    );
+    const save = (id: string, type: SearchItemType) =>
+      request(ctx.app.getHttpServer())
+        .post("/search/selected")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          id,
+          name: "Selection",
+          webAppLocation: "/",
+          secondaryData: [],
+          type,
+        })
+        .expect(201);
+    for (const user of users) await save(`u${user.id}`, SearchItemType.User);
+    const post = await postRepo.save(
+      postRepo.create({
+        title: "Post Deleted After Selection",
+        editableContent: { body: "Gone soon", attachments: [] },
+        author: targetUser,
+        authorId: targetUser.id,
+      }),
+    );
+    await save(`p${post.id}`, SearchItemType.Post);
+    await postRepo.delete(post.id);
+
+    const response = await request(ctx.app.getHttpServer())
+      .get("/search/all")
+      .query({ query: "" })
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
+      .expect(200);
+
+    expect(response.body.map((item) => item.id)).toEqual(
+      users
+        .map((user) => `u${user.id}`)
+        .reverse()
+        .slice(0, 5),
+    );
   });
 
   it("deduplicates saved selections when the same item is stored again", async () => {

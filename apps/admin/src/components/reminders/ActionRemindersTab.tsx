@@ -1,25 +1,15 @@
-import { errorMessage } from "@alliance/common/errorMessage";
-import {
-  ActionEventNotifDto,
-  actionsCreateReminderGroupAdmin,
-  actionsDeleteReminderGroupAdmin,
-  actionsPlansForGroupAdmin,
-  actionsReminderAnchorCandidatesAdmin,
-  actionsReminderGroupsForEventAdmin,
-  actionsSentNotifsForGroupAdmin,
-  ActionSuiteDto,
-  actionsUpdateReminderGroupAdmin,
-  PreviewNotificationPlanDto,
-  ReminderAnchorCandidateDto,
-  ReminderGroupDto,
-  userListAdmin,
-} from "@alliance/shared/client";
+/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
+import { memberActionPhase } from "@alliance/common/actionEvent";
+import { ActionSuiteDto, ReminderGroupDto } from "@alliance/shared/client";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
+import {
+  ConfirmMode,
+  ToastPlacement,
+  useToast,
+} from "@alliance/sharedweb/ui/ToastProvider";
 import {
   format,
   formatDistanceStrict,
@@ -27,6 +17,7 @@ import {
   parseISO,
   subSeconds,
 } from "date-fns";
+import { millisecondsInSecond } from "date-fns/constants";
 import React, {
   useCallback,
   useEffect,
@@ -34,6 +25,10 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { adminRefusalMessage } from "../../lib/adminRefusal";
+import { useActionReminderGroupsAdmin } from "../../lib/useActionReminderGroupsAdmin";
+import { useReminderAnchorCandidatesAdmin } from "../../lib/useReminderAnchorCandidatesAdmin";
+import { useUsersAdmin } from "../../lib/useUsersAdmin";
 import ActionReminderCard from "./ActionReminderCard";
 import ActionReminderGroupForm, {
   ActionReminderGroupFormInitialValues,
@@ -59,6 +54,15 @@ export type GroupScheduleLabels = {
 
 const DISPLAY_DATETIME_FORMAT = "PP p";
 
+const defaultDeadlinePresets: ReminderPresetName[] = [
+  "Two Day Range",
+  "One Day Range",
+  "Three Hour",
+  "Missed Deadline",
+  "Group Leads 3 days",
+  "Group Leads 2 days",
+];
+
 const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
   suite,
   highlightedReminder,
@@ -71,152 +75,68 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
       ),
     [action.events],
   );
-  const sortedActionEvents = useMemo(() => {
-    return (action.events || [])
-      .slice()
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [action.events]);
-  const nextEventById = useMemo(() => {
-    const map = new Map<number, (typeof sortedActionEvents)[number]>();
-    sortedActionEvents.forEach((event, index) => {
-      const next = sortedActionEvents[index + 1];
-      if (next) {
-        map.set(event.id, next);
-      }
-    });
-    return map;
-  }, [sortedActionEvents]);
+  const phase = useMemo(
+    () => memberActionPhase(action.events || []),
+    [action.events],
+  );
+  const deadlineEventOf = useCallback(
+    (memberEventId: number | null) =>
+      memberEventId !== null && memberEventId === phase.event?.id
+        ? phase.deadlineEvent
+        : null,
+    [phase],
+  );
 
   const [selectedEventId, setSelectedEventId] = useState<number | null>(
     memberEvents.length > 0 ? memberEvents[0].id : null, //TODO: collate or move between events
   );
-  const [users, setUsers] = useState<UserSelectUser[]>([]);
   const {
     tags: userTags,
     isLoading: loadingUserTags,
     isError: userTagsLoadFailed,
   } = useTagsAdmin();
   const userTagsError = userTagsLoadFailed ? "Failed to load user tags." : null;
-  const [loadingUsers, setLoadingUsers] = useState<boolean>(false);
+  const {
+    data: users = [],
+    isLoading: loadingUsers,
+    isLoadingError: usersLoadFailed,
+  } = useUsersAdmin();
 
   const [createGroupExpanded, setCreateGroupExpanded] =
     useState<boolean>(false);
-  const [createSubmitting, setCreateSubmitting] = useState<boolean>(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [createSuccess, setCreateSuccess] = useState<string | null>(null);
   const [editingGroupId, setEditingGroupId] = useState<number | null>(null);
-  const [editSubmitting, setEditSubmitting] = useState<boolean>(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [editSuccess, setEditSuccess] = useState<string | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [reminderGroups, setReminderGroups] = useState<ReminderGroupDto[]>([]);
-  const [anchorCandidates, setAnchorCandidates] = useState<
-    ReminderAnchorCandidateDto[]
-  >([]);
-  const [anchorCandidatesError, setAnchorCandidatesError] = useState<
-    string | null
-  >(null);
+  const { data: anchorCandidates = [], isError: anchorCandidatesLoadFailed } =
+    useReminderAnchorCandidatesAdmin(selectedEventId);
 
-  useEffect(() => {
-    if (!selectedEventId) {
-      setAnchorCandidates([]);
-      setAnchorCandidatesError(null);
-      return;
-    }
-    let cancelled = false;
-    actionsReminderAnchorCandidatesAdmin({
-      path: { eventId: selectedEventId },
-    })
-      .then((response) => {
-        if (cancelled) return;
-        // an empty candidate list changes what the form offers (and shows a
-        // set anchor as stale), so a failed fetch must be surfaced instead of
-        // being treated as "no dependency deadlines"
-        if (response.error) {
-          setAnchorCandidates([]);
-          setAnchorCandidatesError(
-            "Failed to load dependency deadlines for timing anchors.",
-          );
-          return;
-        }
-        setAnchorCandidates(response.data ?? []);
-        setAnchorCandidatesError(null);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setAnchorCandidates([]);
-        setAnchorCandidatesError(
-          "Failed to load dependency deadlines for timing anchors.",
-        );
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedEventId]);
-
-  const [reminderPlansByGroup, setReminderPlansByGroup] = useState<
-    Partial<Record<number, PreviewNotificationPlanDto[]>>
-  >({});
-  const [sentRemindersByGroup, setSentRemindersByGroup] = useState<
-    Partial<Record<number, ActionEventNotifDto[]>>
-  >({});
   useEffect(() => {
     if (memberEvents.length && selectedEventId == null) {
       setSelectedEventId(memberEvents[0].id);
     }
   }, [memberEvents, selectedEventId]);
 
-  useEffect(() => {
-    setLoadingUsers(true);
-    userListAdmin()
-      .then((response) => {
-        const mappedUsers = (response.data ?? []).map<UserSelectUser>(
-          (user) => ({
-            id: user.id,
-            name: user.name ?? undefined,
-            displayName: user.name ?? undefined,
-            profilePicture: user.profilePicture ?? null,
-          }),
-        );
-        setUsers(mappedUsers);
-      })
-      .catch((err) => {
-        console.error(err);
-        setCreateError("Failed to load users.");
-      })
-      .finally(() => setLoadingUsers(false));
-  }, []);
-
-  const refreshReminderGroups = useCallback(async (eventId: number) => {
-    const response = await actionsReminderGroupsForEventAdmin({
-      path: { id: eventId },
-    });
-
-    if (response.error) {
-      throw new Error(
-        errorMessage({
-          error: response.error,
-          fallback: "Failed to load reminders.",
-        }),
-      );
-    }
-
-    if (!response.data) {
-      setLoadError("Failed to load reminders");
-      throw new Error("Failed to load reminders.");
-    }
-
-    setReminderGroups(response.data);
-    setReminderPlansByGroup({});
-    setSentRemindersByGroup({});
-  }, []);
-
-  useEffect(() => {
-    if (selectedEventId) {
-      refreshReminderGroups(selectedEventId);
-    }
-  }, [selectedEventId, refreshReminderGroups]);
+  const {
+    groups: reminderGroups,
+    groupsLoadFailed,
+    detailsByGroup,
+    detailsLoadFailed,
+    create: createGroups,
+    update: updateGroup,
+    remove: removeGroup,
+  } = useActionReminderGroupsAdmin(selectedEventId);
+  const selectEvent = (eventId: number) => {
+    if (eventId !== selectedEventId) removeGroup.reset();
+    setSelectedEventId(eventId);
+  };
+  const loadError = groupsLoadFailed
+    ? "Failed to load reminders."
+    : detailsLoadFailed
+      ? "Failed to load reminder details."
+      : null;
 
   const handleDeleteGroup = async (
     groupId: number,
@@ -228,19 +148,12 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
       confirmLabel: "Delete",
       cancelLabel: "Cancel",
       anchorEl: anchor,
-      placement: "topleft",
+      placement: ToastPlacement.TopLeft,
     });
     if (!ok) {
       return;
     }
-    const resp = await actionsDeleteReminderGroupAdmin({
-      path: { groupId },
-    });
-    if (resp.response.ok) {
-      if (selectedEventId) {
-        refreshReminderGroups(selectedEventId);
-      }
-    }
+    removeGroup.mutate(groupId);
   };
 
   const parseDate = useCallback((value?: string | Date | null) => {
@@ -260,121 +173,9 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
     group.memberActionEvent?.id ?? null;
 
   const findGroupDeadlineEvent = useCallback(
-    (group: ReminderGroupDto) => {
-      const memberEventId = getGroupMemberEventId(group);
-
-      if (!memberEventId) {
-        return undefined;
-      }
-      return nextEventById.get(memberEventId);
-    },
-    [nextEventById],
+    (group: ReminderGroupDto) => deadlineEventOf(getGroupMemberEventId(group)),
+    [deadlineEventOf],
   );
-
-  useEffect(() => {
-    if (reminderGroups.length === 0) {
-      setReminderPlansByGroup({});
-      setSentRemindersByGroup({});
-      return;
-    }
-
-    const groupIds = new Set(reminderGroups.map((group) => group.id));
-
-    setReminderPlansByGroup((prev) => {
-      const next: Partial<Record<number, PreviewNotificationPlanDto[]>> = {};
-      groupIds.forEach((id) => {
-        if (prev[id] !== undefined) {
-          next[id] = prev[id];
-        }
-      });
-      if (
-        Object.keys(next).length === Object.keys(prev).length &&
-        reminderGroups.every((group) => prev[group.id] !== undefined)
-      ) {
-        return prev;
-      }
-      return next;
-    });
-
-    setSentRemindersByGroup((prev) => {
-      const next: Partial<Record<number, ActionEventNotifDto[]>> = {};
-      groupIds.forEach((id) => {
-        if (prev[id] !== undefined) {
-          next[id] = prev[id];
-        }
-      });
-      if (
-        Object.keys(next).length === Object.keys(prev).length &&
-        reminderGroups.every((group) => prev[group.id] !== undefined)
-      ) {
-        return prev;
-      }
-      return next;
-    });
-  }, [reminderGroups]);
-
-  useEffect(() => {
-    if (!reminderGroups.length) {
-      return;
-    }
-
-    let cancelled = false;
-
-    const loadGroupDetails = async (groupId: number) => {
-      try {
-        const [plansResponse, sentResponse] = await Promise.all([
-          actionsPlansForGroupAdmin({
-            path: { groupId },
-          }),
-          actionsSentNotifsForGroupAdmin({
-            path: { groupId },
-          }),
-        ]);
-
-        if (cancelled) {
-          return;
-        }
-        setReminderPlansByGroup((prev) => ({
-          ...prev,
-          [groupId]: plansResponse.data ?? [],
-        }));
-
-        setSentRemindersByGroup((prev) => ({
-          ...prev,
-          [groupId]: sentResponse.data ?? [],
-        }));
-      } catch (err) {
-        console.error(err);
-        if (!cancelled) {
-          setLoadError(
-            err instanceof Error
-              ? err.message
-              : "Failed to load reminder details.",
-          );
-        }
-      }
-    };
-
-    const pendingGroups = reminderGroups.filter(
-      (group) =>
-        reminderPlansByGroup[group.id] === undefined ||
-        sentRemindersByGroup[group.id] === undefined,
-    );
-
-    if (!pendingGroups.length) {
-      return;
-    }
-
-    setLoadError(null);
-
-    pendingGroups.forEach((group) => {
-      void loadGroupDetails(group.id);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [reminderGroups, reminderPlansByGroup, sentRemindersByGroup]);
 
   const getGroupRange = (group: ReminderGroupDto) => {
     const start = group.send_range_start ?? null;
@@ -505,7 +306,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
         }
         const distance = formatDistanceStrict(
           new Date(0),
-          new Date(Math.abs(seconds) * 1000),
+          new Date(Math.abs(seconds) * millisecondsInSecond),
           { roundingMethod: "floor" },
         );
         return `${distance} ${seconds >= 0 ? "before" : "after"}`;
@@ -578,7 +379,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
         message: `This will send reminders to all members participating in this action`,
         confirmLabel: "Create",
         cancelLabel: "Cancel",
-        mode: "fullscreen",
+        mode: ConfirmMode.Fullscreen,
         requiredText: `I am going to notify many real members`,
       });
       if (!ok) {
@@ -586,114 +387,42 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
       }
     }
 
-    const reminders: Awaited<
-      ReturnType<typeof actionsCreateReminderGroupAdmin>
-    >[] = [];
-
-    reminders.push(
-      await actionsCreateReminderGroupAdmin({
-        path: { eventId: selectedEventId },
-        body: {
+    setCreateError(null);
+    setCreateSuccess(null);
+    const hasDeadline = deadlineEventOf(selectedEventId) !== null;
+    const presets: ReminderPresetName[] = [
+      "Announcement",
+      ...(hasDeadline ? defaultDeadlinePresets : []),
+    ];
+    try {
+      await createGroups.mutateAsync({
+        eventId: selectedEventId,
+        bodies: presets.map((preset) => ({
           suiteId: suite.id,
-          ...reminderPresets["Announcement"],
-        },
-      }),
-    );
-
-    const lengthBeforeDeadlineReminders = reminders.length;
-    const deadlineEvent = nextEventById.get(selectedEventId);
-    if (deadlineEvent) {
-      reminders.push(
-        await actionsCreateReminderGroupAdmin({
-          path: { eventId: selectedEventId },
-          body: {
-            suiteId: suite.id,
-            ...reminderPresets["Two Day Range"],
-          },
-        }),
-      );
-
-      reminders.push(
-        await actionsCreateReminderGroupAdmin({
-          path: { eventId: selectedEventId },
-          body: {
-            suiteId: suite.id,
-            ...reminderPresets["One Day Range"],
-          },
-        }),
-      );
-
-      reminders.push(
-        await actionsCreateReminderGroupAdmin({
-          path: { eventId: selectedEventId },
-          body: {
-            suiteId: suite.id,
-            ...reminderPresets["Three Hour"],
-          },
-        }),
-      );
-
-      reminders.push(
-        await actionsCreateReminderGroupAdmin({
-          path: { eventId: selectedEventId },
-          body: {
-            suiteId: suite.id,
-            ...reminderPresets["Missed Deadline"],
-          },
-        }),
-      );
-
-      reminders.push(
-        await actionsCreateReminderGroupAdmin({
-          path: { eventId: selectedEventId },
-          body: {
-            suiteId: suite.id,
-            ...reminderPresets["Group Leads 3 days"],
-          },
-        }),
-      );
-
-      reminders.push(
-        await actionsCreateReminderGroupAdmin({
-          path: { eventId: selectedEventId },
-          body: {
-            suiteId: suite.id,
-            ...reminderPresets["Group Leads 2 days"],
-          },
-        }),
-      );
+          ...reminderPresets[preset],
+        })),
+      });
+    } catch (err) {
+      console.error(err);
+      setCreateError(adminRefusalMessage(err, "Failed to create reminders."));
+      return;
     }
-    const error = reminders.some(
-      (reminder) =>
-        (reminder as unknown as { error: string | undefined }).error,
-    );
-    if (error) {
-      setCreateError("Failed to create reminders.");
-    }
-    if (
-      reminders.every((reminder) => reminder.data) &&
-      reminders.length > lengthBeforeDeadlineReminders
-    ) {
+    if (hasDeadline) {
       setCreateSuccess("Reminders created successfully.");
-    }
-    if (reminders.length === lengthBeforeDeadlineReminders) {
-      console.log("no deadline reminders created");
+    } else {
       setCreateError(
         "No deadline reminders created - does this event have a deadline?",
       );
     }
-    setReminderGroups((prev) => [
-      ...prev,
-      ...reminders
-        .filter((reminder) => reminder.data !== undefined)
-        .map((reminder) => reminder.data),
-    ]);
   };
 
   const handleCreateGroupSubmit = async (
     payload: ActionReminderGroupFormSubmitPayload,
-    recipientCount: number,
+    recipientCount: number | null,
   ) => {
+    if (recipientCount === null) {
+      throw new Error("create submitted before its recipient count arrived");
+    }
     const mode = import.meta.env.MODE;
 
     if (mode !== "development") {
@@ -702,7 +431,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
         message: `This will send emails or texts to ${recipientCount} members.`,
         confirmLabel: "Create",
         cancelLabel: "Cancel",
-        mode: "fullscreen",
+        mode: ConfirmMode.Fullscreen,
         requiredText: `I am going to notify ${recipientCount} real members`,
       });
       if (!ok) {
@@ -712,43 +441,24 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
 
     setCreateError(null);
     setCreateSuccess(null);
-    setCreateSubmitting(true);
 
+    const { memberActionEventId: eventId, ...body } = payload;
+    if (!eventId) {
+      setCreateError("Select a member action event first.");
+      return;
+    }
+
+    selectEvent(eventId);
     try {
-      const { memberActionEventId: eventId, ...body } = payload;
-      const updatedBody = {
-        ...body,
-        suiteId: suite.id,
-      };
-      if (!eventId) {
-        throw new Error("Select a member action event first.");
-      }
-
-      setSelectedEventId(eventId);
-      const response = await actionsCreateReminderGroupAdmin({
-        path: { eventId },
-        body: updatedBody,
+      await createGroups.mutateAsync({
+        eventId,
+        bodies: [{ ...body, suiteId: suite.id }],
       });
-
-      if (response.error || !response.data) {
-        throw new Error(
-          errorMessage({
-            error: response.error,
-            fallback: "Failed to create reminder.",
-          }),
-        );
-      }
-
-      await refreshReminderGroups(eventId);
       setCreateSuccess("Personal reminders group scheduled successfully.");
       setCreateGroupExpanded(false);
     } catch (err) {
       console.error(err);
-      setCreateError(
-        err instanceof Error ? err.message : "Failed to create reminder.",
-      );
-    } finally {
-      setCreateSubmitting(false);
+      setCreateError(adminRefusalMessage(err, "Failed to create reminder."));
     }
   };
 
@@ -757,41 +467,23 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
     async (payload: ActionReminderGroupFormSubmitPayload) => {
       setEditError(null);
       setEditSuccess(null);
-      setEditSubmitting(true);
+
+      const { memberActionEventId: eventId, ...body } = payload;
+      if (!eventId) {
+        setEditError("Select a member action event first.");
+        return;
+      }
+
       try {
-        const { memberActionEventId: eventId, ...body } = payload;
-        const updatedBody = {
-          ...body,
-          suiteId: suite.id,
-        };
-        if (!eventId) {
-          throw new Error("Select a member action event first.");
-        }
-
-        const response = await actionsUpdateReminderGroupAdmin({
-          path: { groupId },
-          body: updatedBody,
+        await updateGroup.mutateAsync({
+          groupId,
+          body: { ...body, suiteId: suite.id },
         });
-
-        if (!response.data) {
-          throw new Error(
-            errorMessage({
-              error: response.error,
-              fallback: "Failed to update reminder.",
-            }),
-          );
-        }
-
-        await refreshReminderGroups(eventId);
         setEditSuccess("Reminder group updated successfully.");
         setEditingGroupId(null);
       } catch (err) {
         console.error(err);
-        setEditError(
-          err instanceof Error ? err.message : "Failed to update reminder.",
-        );
-      } finally {
-        setEditSubmitting(false);
+        setEditError(adminRefusalMessage(err, "Failed to update reminder."));
       }
     };
 
@@ -845,7 +537,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
   };
 
   const sortedReminderGroups = useMemo(() => {
-    return reminderGroups
+    return (reminderGroups ?? [])
       .map((group) => {
         let sendStartDate: Date | null = null;
         if (group.timingMode === "absolute") {
@@ -912,8 +604,18 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
   return (
     <div className="space-y-4 mb-5">
       {loadError && <p className="text-sm text-red-600 mb-2">{loadError}</p>}
-      {anchorCandidatesError && (
-        <p className="text-sm text-red-600 mb-2">{anchorCandidatesError}</p>
+      {removeGroup.isError && (
+        <p className="text-sm text-red-600 mb-2">
+          {adminRefusalMessage(
+            removeGroup.error,
+            "Failed to delete reminder group.",
+          )}
+        </p>
+      )}
+      {anchorCandidatesLoadFailed && (
+        <p className="text-sm text-red-600 mb-2">
+          Failed to load dependency deadlines for timing anchors.
+        </p>
       )}
       <Card style={CardStyle.White}>
         <div className="flex flex-col gap-3">
@@ -970,7 +672,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
               >
                 {createGroupExpanded ? "Hide form" : "New reminder"}
               </Button>
-              {!createGroupExpanded && reminderGroups.length === 0 && (
+              {!createGroupExpanded && reminderGroups?.length === 0 && (
                 <Button
                   type="button"
                   color={ButtonColor.Green}
@@ -991,10 +693,13 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
           {createGroupExpanded && selectedEventId !== null && (
             <>
               <ActionReminderGroupForm
+                suiteId={suite.id}
+                waitForRecipientCount
                 memberEvents={memberEvents}
                 anchorCandidates={anchorCandidates}
                 users={users}
                 loadingUsers={loadingUsers}
+                usersLoadFailed={usersLoadFailed}
                 userTags={userTags}
                 loadingUserTags={loadingUserTags}
                 userTagsError={userTagsError}
@@ -1005,11 +710,11 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
                     : null,
                   users: [],
                 }}
-                submitting={createSubmitting}
+                submitting={createGroups.isPending}
                 serverError={createError}
                 serverSuccess={createSuccess}
                 onCancel={() => setCreateGroupExpanded(false)}
-                onEventChange={setSelectedEventId}
+                onEventChange={selectEvent}
                 onSubmit={handleCreateGroupSubmit}
               />
             </>
@@ -1035,15 +740,17 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
             anchorCandidates={anchorCandidates}
             users={users}
             loadingUsers={loadingUsers}
+            usersLoadFailed={usersLoadFailed}
             userTags={userTags}
             loadingUserTags={loadingUserTags}
             userTagsError={userTagsError}
-            editSubmitting={editSubmitting}
+            editSubmitting={updateGroup.isPending}
             editError={editError}
             editSuccess={editSuccess}
             handleEditGroupSubmit={handleEditGroupSubmit}
-            reminderPlans={reminderPlansByGroup[group.id]}
-            sentReminders={sentRemindersByGroup[group.id]}
+            reminderPlans={detailsByGroup.get(group.id)?.plans}
+            sentReminders={detailsByGroup.get(group.id)?.sent}
+            suiteId={suite.id}
             suiteTaskCount={suite.actions.length}
           />
         );

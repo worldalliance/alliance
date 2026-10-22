@@ -1,6 +1,8 @@
+import { ParticipantRole } from "@alliance/common/participantRole";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { User } from "src/user/entities/user.entity";
@@ -8,19 +10,13 @@ import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  Unique,
 } from "typeorm";
 import { Conversation } from "./conversation.entity";
 import { Message } from "./message.entity";
-
-export enum ParticipantRole {
-  Admin = "admin",
-  Member = "member",
-  Owner = "owner",
-}
 
 export enum ParticipantState {
   Invited = "invited",
@@ -28,7 +24,8 @@ export enum ParticipantState {
 }
 
 @Entity()
-@Unique(["conversation", "user"])
+@Index(["conversation", "user"], { unique: true, where: '"deletedAt" IS NULL' })
+@Index(["conversation"])
 export class Participant {
   @PrimaryGeneratedColumn()
   id: number;
@@ -37,16 +34,14 @@ export class Participant {
     nullable: false,
     onDelete: "CASCADE",
   })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  conversation: Relation<Conversation>;
+  conversation?: Relation<Conversation>;
 
   @ManyToOne(() => User, (user) => user.participants, {
     nullable: false,
     onDelete: "CASCADE",
   })
   @JoinColumn({ name: "userId" })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  user: Relation<User>;
+  user?: Relation<User>;
 
   @Column({ type: "enum", enum: ParticipantRole, enumName: "ParticipantRole" })
   @ApiProperty({ enum: ParticipantRole, enumName: "ParticipantRole" })
@@ -56,6 +51,9 @@ export class Participant {
   @JoinColumn({ name: "lastReadMessageId" })
   @ApiPropertyOptional({ type: () => Message })
   lastReadMessage?: Relation<Message>;
+
+  @Column({ type: "uuid", nullable: true })
+  lastReadMessageId: string | null;
 
   @Column({
     type: "enum",
@@ -74,4 +72,25 @@ export class Participant {
 
   @UpdateDateColumnTz()
   updatedAt: Date;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
+}
+
+export function loadedParticipantConversation(
+  participant: Participant,
+): Relation<Conversation> {
+  if (!participant.conversation) {
+    throw new Error(`conversation of participant ${participant.id} not loaded`);
+  }
+  return participant.conversation;
+}
+
+export function loadedParticipantUser(
+  participant: Participant,
+): Relation<User> {
+  if (!participant.user) {
+    throw new Error(`user of participant ${participant.id} not loaded`);
+  }
+  return participant.user;
 }

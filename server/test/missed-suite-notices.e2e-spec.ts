@@ -1,0 +1,895 @@
+import { ActionActivityType } from "@alliance/common/actionActivity";
+import { milliseconds } from "date-fns";
+import { ActionsService } from "src/actions/actions.service";
+import { ActionActivity } from "src/actions/entities/action-activity.entity";
+import {
+  ActionEvent,
+  ActionStatus,
+} from "src/actions/entities/action-event.entity";
+import { ActionSuite } from "src/actions/entities/action-suite.entity";
+import { Action } from "src/actions/entities/action.entity";
+import {
+  ReminderCohortType,
+  ReminderGroup,
+  ReminderGroupTimingMode,
+} from "src/actions/entities/reminder-group.entity";
+import {
+  MessageChannel,
+  MessageSource,
+  MessageTracking,
+} from "src/link-tracking/message-tracking.entity";
+import { MailService } from "src/mail/mail.service";
+import { MmsService } from "src/mms/mms.service";
+import { NotificationKind } from "src/notification-settings/notification-kind";
+import { ActionEventNotifWorker } from "src/notifs/action-event-notif.worker";
+import { ActionEventReminderService } from "src/notifs/action-event-reminder.service";
+import {
+  ActionEventNotif,
+  ActionEventNotifType,
+  MissedSuiteNoticeCopy,
+} from "src/notifs/entities/action-event-notif.entity";
+import {
+  Experiment,
+  ExperimentArm,
+  ExperimentAssignment,
+} from "src/notifs/entities/experiment-assignment.entity";
+import {
+  Notification,
+  NotificationCategory,
+} from "src/notifs/entities/notification.entity";
+import { NotificationChannel } from "src/notifs/notif-utils";
+import { ReminderGroupService } from "src/notifs/reminder-group.service";
+import {
+  ContractEvent,
+  ContractEventType,
+} from "src/user/entities/contract-event.entity";
+import { UserDevice } from "src/user/entities/user-device.entity";
+import { User } from "src/user/entities/user.entity";
+import request from "supertest";
+import type { Repository } from "typeorm";
+import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
+import {
+  createTestApp,
+  setPreference,
+  stubExpoClient,
+  TestContext,
+} from "./e2e-test-utils";
+
+describe("missed-suite notices (e2e)", () => {
+  let ctx: TestContext;
+  let worker: ActionEventNotifWorker;
+  let actionRepo: Repository<Action>;
+  let eventRepo: Repository<ActionEvent>;
+  let suiteRepo: Repository<ActionSuite>;
+  let groupRepo: Repository<ReminderGroup>;
+  let notifRepo: Repository<ActionEventNotif>;
+  let activityRepo: Repository<ActionActivity>;
+  let armRepo: Repository<ExperimentAssignment>;
+  let userRepo: Repository<User>;
+  let contractEventRepo: Repository<ContractEvent>;
+
+  const ago = (duration: Parameters<typeof milliseconds>[0]) =>
+    new Date(Date.now() - milliseconds(duration));
+
+  type ClosedSuite = {
+    suite: ActionSuite;
+    actions: Action[];
+    memberEvent: ActionEvent;
+    deadlineEvent: ActionEvent;
+  };
+
+  const createClosedSuite = async (
+    name: string,
+    deadline: Date,
+    actionNames: string[],
+  ): Promise<ClosedSuite> => {
+    const suite = await suiteRepo.save(suiteRepo.create({ name }));
+    const created = await Promise.all(
+      actionNames.map(async (actionName) => {
+        const action = await actionRepo.save(
+          actionRepo.create({
+            name: actionName,
+            category: [],
+            body: "Body",
+            shortDescription: "Short",
+            suite,
+            cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
+          }),
+        );
+        const [memberEvent, deadlineEvent] = await eventRepo.save([
+          eventRepo.create({
+            title: `${actionName} member`,
+            description: "Member phase",
+            newStatus: ActionStatus.MemberAction,
+            date: new Date(deadline.getTime() - milliseconds({ days: 7 })),
+            action,
+          }),
+          eventRepo.create({
+            title: `${actionName} deadline`,
+            description: "Office phase",
+            newStatus: ActionStatus.OfficeAction,
+            date: deadline,
+            action,
+          }),
+        ]);
+        return { action, memberEvent, deadlineEvent };
+      }),
+    );
+    return {
+      suite,
+      actions: created.map(({ action }) => action),
+      memberEvent: created[0].memberEvent,
+      deadlineEvent: created[0].deadlineEvent,
+    };
+  };
+
+  const createMissedSuiteGroup = (closed: ClosedSuite, index = 0) =>
+    groupRepo.save(
+      groupRepo.create({
+        name: `Missed deadline ${closed.suite.name} ${index}`,
+        memberActionEvent: closed.memberEvent,
+        deadlineEvent: closed.deadlineEvent,
+        actionSuite: closed.suite,
+        timingMode: ReminderGroupTimingMode.FromDeadline,
+        sendAtSecondsFromDeadline: 0,
+        cohortType: ReminderCohortType.AllUncompleted,
+        emailSubject: "You missed an Alliance task",
+        emailMessage: "Hi #{firstname}\n#{missedactioncontext}",
+        textMessage: "Control text",
+        pushMessage: "Control push",
+        useSuiteTaskCount: true,
+        excludeOptionalActions: true,
+        allSent: false,
+      }),
+    );
+
+  const record = (action: Action, type: ActionActivityType) =>
+    activityRepo.save(
+      activityRepo.create({
+        actionId: action.id,
+        userId: ctx.testUserId,
+        type,
+      }),
+    );
+
+  const setArm = (arm: ExperimentArm) =>
+    armRepo.save(
+      armRepo.create({
+        userId: ctx.testUserId,
+        experiment: Experiment.MissedSuiteFirstNotice,
+        arm,
+      }),
+    );
+
+  const dispatch = async () => {
+    await saveLiveCohortDecisions(ctx);
+    await worker.dispatchDueNotifs();
+  };
+
+  const previewTestUser = async (group: ReminderGroup) => {
+    await saveLiveCohortDecisions(ctx);
+    const res = await request(ctx.app.getHttpServer())
+      .get(`/actions/plansForGroup/${group.id}`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .expect(200);
+    return (res.body as { user: { id: number }; missNumber: number | null }[])
+      .filter((plan) => plan.user.id === ctx.testUserId)
+      .map((plan) => plan.missNumber);
+  };
+
+  const previewChannels = async (group: ReminderGroup) => {
+    await saveLiveCohortDecisions(ctx);
+    const res = await request(ctx.app.getHttpServer())
+      .get(`/actions/plansForGroup/${group.id}`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .expect(200);
+    return (
+      res.body as { user: { id: number }; channels: NotificationChannel[] }[]
+    )
+      .filter((plan) => plan.user.id === ctx.testUserId)
+      .map((plan) => plan.channels);
+  };
+
+  const findNotices = () =>
+    notifRepo.find({
+      where: { type: ActionEventNotifType.MissedDeadline },
+      relations: { actionSuite: true, notification: true, mms: true },
+    });
+
+  beforeAll(async () => {
+    process.env.SEND_DEV_NOTIFS = "1";
+    ctx = await createTestApp([]);
+    stubExpoClient(ctx);
+    worker = ctx.app.get(ActionEventNotifWorker);
+    actionRepo = ctx.dataSource.getRepository(Action);
+    eventRepo = ctx.dataSource.getRepository(ActionEvent);
+    suiteRepo = ctx.dataSource.getRepository(ActionSuite);
+    groupRepo = ctx.dataSource.getRepository(ReminderGroup);
+    notifRepo = ctx.dataSource.getRepository(ActionEventNotif);
+    activityRepo = ctx.dataSource.getRepository(ActionActivity);
+    armRepo = ctx.dataSource.getRepository(ExperimentAssignment);
+    userRepo = ctx.dataSource.getRepository(User);
+    contractEventRepo = ctx.dataSource.getRepository(ContractEvent);
+  });
+
+  afterAll(async () => {
+    await ctx.app.close();
+  });
+
+  beforeEach(async () => {
+    for (const table of [
+      "message_tracking",
+      "action_event_notif",
+      "notification",
+      "experiment_assignment",
+      "reminder_group",
+      "action_activity",
+      "action_event",
+      "action",
+      "action_suite",
+      "notification_preference",
+    ]) {
+      await ctx.dataSource.query(`DELETE FROM ${table}`);
+    }
+    await userRepo.update(ctx.testUserId, {
+      inAppByDefault: true,
+      emailByDefault: false,
+      textByDefault: true,
+      pushByDefault: false,
+      phoneNumber: "+14155550100",
+      name: "Missed Tester",
+    });
+    await contractEventRepo.delete({ user: { id: ctx.testUserId } });
+    await contractEventRepo.save(
+      contractEventRepo.create({
+        user: { id: ctx.testUserId },
+        type: ContractEventType.SIGNED,
+        date: ago({ days: 60 }),
+        automatic: false,
+        contractId: ctx.defaultContractId,
+      }),
+    );
+  });
+
+  it("sends one variant notice per suite naming only the missed tasks", async () => {
+    await setArm(ExperimentArm.Variant);
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Done task",
+      "Missed task",
+    ]);
+    await record(closed.actions[0], ActionActivityType.USER_COMPLETED);
+    await createMissedSuiteGroup(closed, 0);
+    await createMissedSuiteGroup(closed, 1);
+
+    await dispatch();
+    const loadSuites = jest.spyOn(
+      ctx.app.get(ActionsService),
+      "findClosedSuiteOutcomes",
+    );
+    await dispatch();
+    expect(loadSuites).not.toHaveBeenCalled();
+    loadSuites.mockRestore();
+
+    const notices = await findNotices();
+    expect(notices).toHaveLength(1);
+    const [notice] = notices;
+    expect(notice.actionSuite?.id).toBe(closed.suite.id);
+    expect(notice.missNumber).toBe(1);
+    expect(notice.missedSuiteCopy).toBe(
+      MissedSuiteNoticeCopy.FirstMissReportV1,
+    );
+    expect(notice.notifiedActionIds).toEqual([closed.actions[1].id]);
+    expect(notice.notification).toMatchObject({
+      category: NotificationCategory.ActionEvent,
+      message: "The deadline for Missed task passed without your completion.",
+      webAppLocation: "/tasks",
+      shouldPush: false,
+    });
+    expect(notice.mms?.body).toMatch(
+      /^The deadline for Missed task passed without your completion\. If you did complete it, contact us\. \S+\/tasks/,
+    );
+  });
+
+  it("sends no notice once its group is deleted after planning", async () => {
+    const closed = await createClosedSuite("Gone", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    const group = await createMissedSuiteGroup(closed);
+    const reminders = ctx.app.get(ActionEventReminderService);
+    const evaluate = reminders.evaluateNotifications.bind(reminders);
+    let plannedCount = 0;
+    const planned = jest
+      .spyOn(reminders, "evaluateNotifications")
+      .mockImplementation(async (...window) => {
+        const plans = await evaluate(...window);
+        plannedCount += plans.filter(
+          (plan) => plan.group.id === group.id,
+        ).length;
+        await groupRepo.softDelete(group.id);
+        return plans;
+      });
+
+    try {
+      await dispatch();
+    } finally {
+      planned.mockRestore();
+    }
+
+    expect(plannedCount).toBe(1);
+    expect(
+      await notifRepo.count({
+        where: { type: ActionEventNotifType.MissedDeadline },
+        withDeleted: true,
+      }),
+    ).toBe(0);
+  });
+
+  it("totals the missed tasks' time estimates for #{tasktime}", async () => {
+    await setArm(ExperimentArm.Control);
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "First task",
+      "Second task",
+    ]);
+    for (const [index, timeEstimate] of [15, 30].entries()) {
+      await actionRepo.update(closed.actions[index].id, { timeEstimate });
+    }
+    const group = await createMissedSuiteGroup(closed);
+    await groupRepo.update(group.id, { textMessage: "About #{tasktime}" });
+
+    await dispatch();
+
+    const [notice] = await findNotices();
+    expect(notice.mms?.body).toBe("About 45 minutes");
+  });
+
+  it("sends the control group its configured copy and keeps its arm", async () => {
+    await setArm(ExperimentArm.Control);
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    await createMissedSuiteGroup(closed);
+
+    await dispatch();
+
+    const [notice] = await findNotices();
+    expect(notice.missedSuiteCopy).toBe(MissedSuiteNoticeCopy.FirstMissControl);
+    expect(notice.notification?.message).toBe("Control push");
+    expect(notice.mms?.body).toBe("Control text");
+    expect(
+      await armRepo.findOneByOrFail({
+        userId: ctx.testUserId,
+        experiment: Experiment.MissedSuiteFirstNotice,
+      }),
+    ).toMatchObject({ arm: ExperimentArm.Control });
+  });
+
+  it("tracks the email and text apart, and an opening of either reads the notice", async () => {
+    await userRepo.update(ctx.testUserId, { emailByDefault: true });
+    await setArm(ExperimentArm.Control);
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    const group = await createMissedSuiteGroup(closed);
+
+    await dispatch();
+
+    const [notice] = await notifRepo.find({
+      where: { type: ActionEventNotifType.MissedDeadline },
+      relations: { notification: true, mail: true, mms: true },
+    });
+    const tracking = await ctx.dataSource
+      .getRepository(MessageTracking)
+      .find({ order: { channel: "ASC" } });
+    expect(tracking).toMatchObject([
+      { trackingId: notice.mail?.cid, channel: MessageChannel.Email },
+      { trackingId: notice.mms?.cid, channel: MessageChannel.Sms },
+    ]);
+    for (const row of tracking) {
+      expect(row).toMatchObject({
+        source: MessageSource.MissedSuiteNotice,
+        userId: ctx.testUserId,
+        actionEventNotifId: notice.id,
+        context: {
+          reminderGroupId: group.id,
+          actionId: closed.actions[0].id,
+          actionSuiteId: closed.suite.id,
+          notifiedActionIds: [closed.actions[0].id],
+          missNumber: 1,
+          missedSuiteCopy: MissedSuiteNoticeCopy.FirstMissControl,
+        },
+      });
+    }
+    expect(notice.notification?.readAt).toBeNull();
+
+    await request(ctx.app.getHttpServer())
+      .post("/notifs/linkClick")
+      .send({ cid: notice.mms?.cid })
+      .expect(201);
+
+    const read = await notifRepo.findOneOrFail({
+      where: { id: notice.id },
+      relations: { notification: true },
+    });
+    expect(read.notification?.readAt).not.toBeNull();
+  });
+
+  it("records a notice sent while its group is deleted, detached from the group", async () => {
+    await setArm(ExperimentArm.Control);
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    const group = await createMissedSuiteGroup(closed);
+    const mms = ctx.app.get(MmsService);
+    const send = mms.sendMms.bind(mms);
+    const sending = jest
+      .spyOn(mms, "sendMms")
+      .mockImplementationOnce(async (...args) => {
+        await ctx.app.get(ReminderGroupService).deleteReminderGroup(group.id);
+        return send(...args);
+      });
+
+    try {
+      await dispatch();
+    } finally {
+      sending.mockRestore();
+    }
+
+    expect(
+      await notifRepo.query(
+        `SELECT "reminderGroupId", "memberActionEventId", sent, "mmsId" IS NOT NULL AS "hasMms", "notificationId" IS NOT NULL AS "hasEntry" FROM action_event_notif WHERE type = $1`,
+        [ActionEventNotifType.MissedDeadline],
+      ),
+    ).toEqual([
+      {
+        reminderGroupId: null,
+        memberActionEventId: closed.memberEvent.id,
+        sent: true,
+        hasMms: true,
+        hasEntry: true,
+      },
+    ]);
+  });
+
+  it("reads the notice through its text when the email fails", async () => {
+    await userRepo.update(ctx.testUserId, { emailByDefault: true });
+    await setArm(ExperimentArm.Control);
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    await createMissedSuiteGroup(closed);
+    const sendEmail = jest
+      .spyOn(ctx.app.get(MailService), "sendActionEventNotificationEmail")
+      .mockRejectedValue(new Error("mailgun down"));
+
+    await expect(dispatch()).rejects.toThrow("mailgun down");
+    sendEmail.mockRestore();
+
+    const text = await ctx.dataSource
+      .getRepository(MessageTracking)
+      .findOneByOrFail({ channel: MessageChannel.Sms });
+    await request(ctx.app.getHttpServer())
+      .post("/notifs/linkClick")
+      .send({ cid: text.trackingId })
+      .expect(201);
+
+    expect(
+      await ctx.dataSource.getRepository(Notification).find(),
+    ).toMatchObject([{ readAt: expect.any(Date) }]);
+  });
+
+  it("draws an arm once and reuses it for later first misses", async () => {
+    const first = await createClosedSuite("First", ago({ hours: 2 }), [
+      "First missed task",
+    ]);
+    const satisfied = await createClosedSuite("Between", ago({ hours: 1 }), [
+      "Done task",
+    ]);
+    await record(satisfied.actions[0], ActionActivityType.USER_COMPLETED);
+    const later = await createClosedSuite("Later", ago({ minutes: 10 }), [
+      "Later missed task",
+    ]);
+    await createMissedSuiteGroup(first);
+    await createMissedSuiteGroup(later);
+
+    await dispatch();
+
+    const [assignment, ...otherArms] = await armRepo.find();
+    expect(otherArms).toHaveLength(0);
+    const notices = await findNotices();
+    expect(notices.map((notice) => notice.missNumber)).toEqual([1, 1]);
+    expect(new Set(notices.map((notice) => notice.missedSuiteCopy))).toEqual(
+      new Set([
+        assignment.arm === ExperimentArm.Control
+          ? MissedSuiteNoticeCopy.FirstMissControl
+          : MissedSuiteNoticeCopy.FirstMissReportV1,
+      ]),
+    );
+  });
+
+  it("names dismissed tasks and pluralizes for several missed tasks", async () => {
+    await setArm(ExperimentArm.Variant);
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "First task",
+      "Second task",
+    ]);
+    await record(closed.actions[1], ActionActivityType.USER_DISMISSED);
+    await createMissedSuiteGroup(closed);
+
+    await dispatch();
+
+    const [notice] = await findNotices();
+    expect(new Set(notice.notifiedActionIds)).toEqual(
+      new Set(closed.actions.map((action) => action.id)),
+    );
+    expect(notice.mms?.body).toMatch(
+      /^The deadline for (First task, Second task|Second task, First task) passed without your completion\. If you did complete them, contact us\./,
+    );
+  });
+
+  it("gives the in-app entry to a member with every channel off", async () => {
+    await userRepo.update(ctx.testUserId, { textByDefault: false });
+    await setArm(ExperimentArm.Control);
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    const group = await createMissedSuiteGroup(closed);
+
+    await dispatch();
+
+    const [notice] = await findNotices();
+    expect(notice).toMatchObject({ sent: true, mms: null });
+    expect(notice.notification?.message).toBe("Control push");
+
+    const res = await request(ctx.app.getHttpServer())
+      .get(`/actions/sentNotifsForGroup/${group.id}`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .expect(200);
+    expect(res.body).toEqual([
+      expect.objectContaining({ notificationId: notice.notification?.id }),
+    ]);
+  });
+
+  it.each([
+    [NotificationKind.MissedDeadline, null],
+    [NotificationKind.ActionReminders, "Control text"],
+  ])(
+    "texts by the missed deadline setting with %p text off",
+    async (kind, text) => {
+      await setPreference(ctx, {
+        userId: ctx.testUserId,
+        kind,
+        channel: NotificationChannel.Text,
+        enabled: false,
+      });
+      await setArm(ExperimentArm.Control);
+      const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+        "Missed task",
+      ]);
+      await createMissedSuiteGroup(closed);
+
+      await dispatch();
+
+      const [notice] = await findNotices();
+      expect(notice.mms?.body ?? null).toBe(text);
+    },
+  );
+
+  it("records the notice unsent when its in-app entry is hidden too", async () => {
+    await userRepo.update(ctx.testUserId, {
+      inAppByDefault: false,
+      textByDefault: false,
+    });
+    await setArm(ExperimentArm.Control);
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    await createMissedSuiteGroup(closed);
+
+    await dispatch();
+
+    const [notice] = await findNotices();
+    expect(notice).toMatchObject({ sent: false, mms: null });
+    expect(notice.notification?.visible).toBe(false);
+  });
+
+  it("links the push to the in-app entry", async () => {
+    await userRepo.update(ctx.testUserId, { pushByDefault: true });
+    const deviceRepo = ctx.dataSource.getRepository(UserDevice);
+    await deviceRepo.save(
+      deviceRepo.create({
+        user: { id: ctx.testUserId },
+        deviceType: "iOS",
+        expoPushToken: `ExponentPushToken[missed_suite_${Date.now()}]`,
+      }),
+    );
+    await setArm(ExperimentArm.Control);
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    await createMissedSuiteGroup(closed);
+
+    try {
+      await dispatch();
+
+      const [notice] = await notifRepo.find({
+        where: { type: ActionEventNotifType.MissedDeadline },
+        relations: { notification: true, pushes: { notification: true } },
+      });
+      expect(notice.pushes).toHaveLength(1);
+      expect(notice.pushes?.[0].notification?.id).toBe(notice.notification?.id);
+    } finally {
+      await deviceRepo.delete({ user: { id: ctx.testUserId } });
+    }
+  });
+
+  it("skips the in-app entry when the group's push copy is blank", async () => {
+    await setArm(ExperimentArm.Control);
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    const group = await createMissedSuiteGroup(closed);
+    await groupRepo.update(group.id, { pushMessage: "" });
+
+    await dispatch();
+
+    const [notice] = await findNotices();
+    expect(notice.notification).toBeNull();
+    expect(notice.mms?.body).toBe("Control text");
+  });
+
+  it("sends everyone the second-miss copy on a second consecutive miss", async () => {
+    await setArm(ExperimentArm.Control);
+    await createClosedSuite("Earlier", ago({ days: 7 }), ["Earlier task"]);
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    await createMissedSuiteGroup(closed);
+
+    await dispatch();
+
+    const [notice] = await findNotices();
+    expect(notice.missNumber).toBe(2);
+    expect(notice.missedSuiteCopy).toBe(
+      MissedSuiteNoticeCopy.SecondMissReportV1,
+    );
+    expect(notice.mms?.body).toMatch(
+      /^You have missed two consecutive weeks of tasks\. /,
+    );
+    expect(notice.notification?.message).toBe(
+      "You have missed two consecutive weeks. One more pauses your agreement automatically.",
+    );
+  });
+
+  it("waits for the suite to close before sending", async () => {
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    const later = await actionRepo.save(
+      actionRepo.create({
+        name: "Later task",
+        category: [],
+        body: "Body",
+        shortDescription: "Short",
+        suite: closed.suite,
+        cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
+      }),
+    );
+    const [, laterDeadline] = await eventRepo.save([
+      eventRepo.create({
+        title: "Later task member",
+        description: "Member phase",
+        newStatus: ActionStatus.MemberAction,
+        date: ago({ days: 7 }),
+        action: later,
+      }),
+      eventRepo.create({
+        title: "Later task deadline",
+        description: "Office phase",
+        newStatus: ActionStatus.OfficeAction,
+        date: new Date(Date.now() + milliseconds({ days: 1 })),
+        action: later,
+      }),
+    ]);
+    await createMissedSuiteGroup(closed);
+
+    await dispatch();
+    expect(await findNotices()).toHaveLength(0);
+
+    await eventRepo.update(laterDeadline.id, { date: ago({ minutes: 5 }) });
+    await dispatch();
+    const notices = await findNotices();
+    expect(notices.map((notice) => notice.missNumber)).toEqual([1]);
+  });
+
+  it("leaves a third consecutive miss to the suspension notice", async () => {
+    await createClosedSuite("First", ago({ days: 14 }), ["First task"]);
+    await createClosedSuite("Second", ago({ days: 7 }), ["Second task"]);
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    await createMissedSuiteGroup(closed);
+
+    await dispatch();
+
+    const [claim, ...rest] = await findNotices();
+    expect(rest).toHaveLength(0);
+    expect(claim).toMatchObject({
+      sent: false,
+      missNumber: 3,
+      missedSuiteCopy: null,
+      mms: null,
+    });
+  });
+
+  it("counts a sent notice toward a later catch-up on the same event", async () => {
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    await createMissedSuiteGroup(closed);
+    await dispatch();
+    const catchUp = await createMissedSuiteGroup(closed, 1);
+    await groupRepo.update(catchUp.id, {
+      emailMessage: "Hi #{firstname}",
+      textMessage: "Catch-up text",
+      excludePreviouslyNotified: true,
+    });
+
+    await dispatch();
+
+    expect(
+      await notifRepo.countBy({
+        reminderGroup: { id: catchUp.id },
+        sent: true,
+      }),
+    ).toBe(0);
+  });
+
+  it("lists a missed-suite group with its suite for the admin card", async () => {
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    const group = await createMissedSuiteGroup(closed);
+    const server = ctx.app.getHttpServer();
+    const auth = `Bearer ${ctx.adminAccessToken}`;
+
+    const listed = await request(server)
+      .get(`/actions/reminderGroupsForEvent/${closed.memberEvent.id}`)
+      .set("Authorization", auth)
+      .expect(200);
+    expect(listed.body).toEqual([
+      expect.objectContaining({
+        isMissedSuite: true,
+        actionSuite: expect.objectContaining({ id: closed.suite.id }),
+      }),
+    ]);
+
+    const updated = await request(server)
+      .patch(`/actions/remindergroups/${group.id}`)
+      .set("Authorization", auth)
+      .send({
+        name: group.name,
+        timingMode: group.timingMode,
+        sendAtSecondsFromDeadline: 0,
+        cohortType: group.cohortType,
+        emailSubject: group.emailSubject,
+        emailMessage: "Hi #{firstname}",
+        textMessage: group.textMessage,
+        pushMessage: group.pushMessage,
+        suiteId: closed.suite.id,
+        useSuiteTaskCount: true,
+        excludeOptionalActions: true,
+        excludePreviouslyNotified: false,
+      })
+      .expect(200);
+    expect(updated.body).toMatchObject({
+      isMissedSuite: false,
+      actionSuite: { id: closed.suite.id },
+    });
+  });
+
+  it("previews a closed suite's notice with the member's miss number", async () => {
+    await createClosedSuite("Earlier", ago({ days: 7 }), ["Earlier task"]);
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    const group = await createMissedSuiteGroup(closed);
+
+    expect(await previewTestUser(group)).toEqual([2]);
+  });
+
+  it("previews the channels the member's missed deadline setting allows", async () => {
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    const group = await createMissedSuiteGroup(closed);
+
+    expect(await previewChannels(group)).toEqual([[NotificationChannel.Text]]);
+
+    await setPreference(ctx, {
+      userId: ctx.testUserId,
+      kind: NotificationKind.MissedDeadline,
+      channel: NotificationChannel.Text,
+      enabled: false,
+    });
+
+    expect(await previewChannels(group)).toEqual([[]]);
+  });
+
+  it("leaves a third consecutive miss out of the preview", async () => {
+    await createClosedSuite("First", ago({ days: 14 }), ["First task"]);
+    await createClosedSuite("Second", ago({ days: 7 }), ["Second task"]);
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    const group = await createMissedSuiteGroup(closed);
+
+    expect(await previewTestUser(group)).toEqual([]);
+  });
+
+  it("leaves a third consecutive miss out of the form's tentative preview", async () => {
+    await createClosedSuite("First", ago({ days: 14 }), ["First task"]);
+    await createClosedSuite("Second", ago({ days: 7 }), ["Second task"]);
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    await saveLiveCohortDecisions(ctx);
+
+    const res = await request(ctx.app.getHttpServer())
+      .post(`/actions/events/${closed.memberEvent.id}/checkTentativePlans`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({
+        name: "Missed deadline",
+        timingMode: ReminderGroupTimingMode.FromDeadline,
+        sendAtSecondsFromDeadline: 0,
+        cohortType: ReminderCohortType.AllUncompleted,
+        emailSubject: "You missed an Alliance task",
+        emailMessage: "Hi #{firstname}\n#{missedactioncontext}",
+        textMessage: "Control text",
+        pushMessage: "Control push",
+        suiteId: closed.suite.id,
+        useSuiteTaskCount: true,
+        excludeOptionalActions: true,
+        excludePreviouslyNotified: false,
+      })
+      .expect(201);
+    expect(
+      (res.body as { user: { id: number } }[]).map((plan) => plan.user.id),
+    ).not.toContain(ctx.testUserId);
+  });
+
+  it("leaves a member another group already noticed out of the preview", async () => {
+    await setArm(ExperimentArm.Control);
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    await createMissedSuiteGroup(closed, 0);
+    await dispatch();
+    const sibling = await createMissedSuiteGroup(closed, 1);
+
+    expect(await previewTestUser(sibling)).toEqual([]);
+  });
+
+  it("previews nobody for a missed-suite group with no suite", async () => {
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    const group = await createMissedSuiteGroup(closed);
+    await ctx.dataSource.query(
+      `UPDATE reminder_group SET "actionSuiteId" = NULL WHERE id = $1`,
+      [group.id],
+    );
+
+    expect(await previewTestUser(group)).toEqual([]);
+  });
+
+  it("previews every member without a miss number before the suite closes", async () => {
+    const closed = await createClosedSuite(
+      "Week",
+      new Date(Date.now() + milliseconds({ minutes: 10 })),
+      ["Open task"],
+    );
+    const group = await createMissedSuiteGroup(closed);
+
+    expect(await previewTestUser(group)).toEqual([null]);
+  });
+});

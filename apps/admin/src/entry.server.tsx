@@ -1,3 +1,4 @@
+import { milliseconds } from "date-fns";
 import { PassThrough } from "node:stream";
 
 import { createReadableStreamFromReadable } from "@react-router/node";
@@ -7,7 +8,7 @@ import { renderToPipeableStream } from "react-dom/server";
 import type { EntryContext } from "react-router";
 import { ServerRouter } from "react-router";
 
-export const streamTimeout = 5_000;
+export const streamTimeout = milliseconds({ seconds: 5 });
 
 export default function handleRequest(
   request: Request,
@@ -64,6 +65,6 @@ export default function handleRequest(
 
     // Abort the rendering stream after the `streamTimeout` so it has time to
     // flush down the rejected boundaries
-    setTimeout(abort, streamTimeout + 1000);
+    setTimeout(abort, streamTimeout + milliseconds({ seconds: 1 }));
   });
 }

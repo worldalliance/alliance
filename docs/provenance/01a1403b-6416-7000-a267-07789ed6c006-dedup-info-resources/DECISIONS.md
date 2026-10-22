@@ -1,0 +1,7 @@
+- The shared list lives in `shared/lib/informationPage.ts`, as `INFO_CONTACTS`, `visibleInfoResources(isFeatureEnabled)`, and the `InfoEntryId` enum that keys both platforms' `Record<InfoEntryId, Icon>` maps. Each platform passes its own flag check (web `isFeatureEnabled`, mobile `isEnabled` with its release env), since those differ per platform.
+- Resource paths are literal types, so the web passes each through React Router's `href`. A path with no matching web route fails the web typecheck, which would have caught the stale mobile `/ambassador-program` link.
+- The web copy wins every wording difference. Git history shows each web wording as the later deliberate edit; mobile still had the text from when its entries were copied:
+  - "About groups" over "How groups work", and "About ambassadors" with "How ambassadors help introduce the Alliance to new members." over "Ambassador Program": 9d2cf7aaa "update info page descs" (2026-07-08). That commit also moved the ambassadors entry above "How to design actions", and the shared order follows it.
+  - Governance "Members participate in a regular oversight process.": c1e29c41e "edits to selina copy" (2026-05-11).
+  - `/ambassadors`: 439885ac2 renamed the route (2026-07-01); mobile kept the old path, added in 5f75fa9ab (2026-06-26).
+- Section headings ("Contact" on web, "Contact the office" on mobile) are page chrome, not entry data, and stay per platform. A follow-up tracks the divergence.

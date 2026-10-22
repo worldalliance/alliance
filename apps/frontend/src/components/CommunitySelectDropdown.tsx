@@ -1,4 +1,5 @@
 import type { CommunityDto } from "@alliance/shared/client";
+import { isLedBy } from "@alliance/shared/lib/communityUtils";
 import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
 import { Settings } from "lucide-react";
 import { useMemo } from "react";
@@ -29,12 +30,8 @@ const CommunitySelectDropdown = ({
 
   const { options, value, buttonOptionKeys } = useMemo(() => {
     const list = communities ?? [];
-    const leaderCommunities = list.filter((c) =>
-      c.leaders.some((leader) => leader.id === user?.id),
-    );
-    const nonLeaderCommunities = list.filter(
-      (c) => !c.leaders.some((leader) => leader.id === user?.id),
-    );
+    const leaderCommunities = list.filter((c) => isLedBy(c, user?.id));
+    const nonLeaderCommunities = list.filter((c) => !isLedBy(c, user?.id));
     const ordered = [...leaderCommunities, ...nonLeaderCommunities];
 
     const options: Record<string, string> = {};

@@ -1,9 +1,9 @@
+import { nameParts } from "@alliance/common/nameParts";
 import { withCount } from "@alliance/common/plural";
 import { type ProfileDto } from "@alliance/shared/client";
 import { joinNames } from "./nameList";
 
-const firstName = (u: ProfileDto) =>
-  u.displayName.split(" ")[0] ?? u.displayName;
+const firstName = (u: ProfileDto) => nameParts(u.displayName).firstname;
 
 export interface LikeSummaryParts {
   /** Excludes the current user's separate "You" slot. */

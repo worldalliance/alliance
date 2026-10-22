@@ -210,6 +210,51 @@ resource "aws_cloudfront_response_headers_policy" "staging_cors" {
     origin_override            = true
     access_control_allow_credentials = false
   }
+
+  custom_headers_config {
+    items {
+      header   = "Timing-Allow-Origin"
+      value    = "*"
+      override = true
+    }
+  }
+}
+
+resource "aws_cloudfront_response_headers_policy" "staging_images_immutable" {
+  name = "alliance-staging-images-immutable-policy"
+
+  cors_config {
+    access_control_allow_origins {
+      items = [
+        "https://staging.thealliance.org",
+        "https://admin.staging.thealliance.org",
+        "https://staging.worldalliance.org",
+        "https://admin.staging.worldalliance.org",
+      ]
+    }
+    access_control_allow_methods {
+      items = ["GET", "HEAD", "OPTIONS"]
+    }
+    access_control_allow_headers {
+      items = ["*"]
+    }
+    access_control_max_age_sec = 3000
+    origin_override            = true
+    access_control_allow_credentials = false
+  }
+
+  custom_headers_config {
+    items {
+      header   = "Cache-Control"
+      value    = "public, max-age=31536000, immutable"
+      override = true
+    }
+    items {
+      header   = "Timing-Allow-Origin"
+      value    = "*"
+      override = true
+    }
+  }
 }
 
 
@@ -241,6 +286,18 @@ resource "aws_cloudfront_distribution" "staging_assets" {
     cache_policy_id          = "658327ea-f89d-4fab-a63d-7e88639e58f6"
     origin_request_policy_id = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf"
     response_headers_policy_id = aws_cloudfront_response_headers_policy.staging_cors.id
+    compress                 = true
+  }
+
+  ordered_cache_behavior {
+    path_pattern             = "*.webp"
+    allowed_methods          = ["GET", "HEAD", "OPTIONS"]
+    cached_methods           = ["GET", "HEAD"]
+    target_origin_id         = "S3-staging-assets"
+    viewer_protocol_policy   = "redirect-to-https"
+    cache_policy_id          = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+    origin_request_policy_id = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf"
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.staging_images_immutable.id
     compress                 = true
   }
 

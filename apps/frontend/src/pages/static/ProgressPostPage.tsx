@@ -2,9 +2,10 @@ import { formatLongDateEnUS } from "@alliance/shared/lib/dateFormatters";
 import { cn } from "@alliance/shared/styles/util";
 import matter from "gray-matter";
 import React from "react";
-import { useLoaderData } from "react-router";
+import { data, useLoaderData } from "react-router";
 import MarkdownWrapper from "../../components/MarkdownWrapper";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
+import { NotFoundSource } from "../../site/NotFoundPage";
 import { PageShell } from "../../site/PageShell";
 import { SITE_COL } from "../../site/ui";
 
@@ -19,20 +20,14 @@ export async function loader({ params }: { params: { slug: string } }) {
     return postSlug === slug;
   });
 
-  if (!post) {
-    return {
-      content: "Post not found",
-      frontmatter: { title: "Post not found" },
-    };
-  } else {
-    const data = await post[1]();
-    const { content, data: frontmatter } = matter(data);
+  if (!post) throw data(NotFoundSource.MissingRecord, { status: 404 });
+  const raw = await post[1]();
+  const { content, data: frontmatter } = matter(raw);
 
-    return {
-      content,
-      frontmatter,
-    };
-  }
+  return {
+    content,
+    frontmatter,
+  };
 }
 
 export function meta({ data }: { data: Awaited<ReturnType<typeof loader>> }) {

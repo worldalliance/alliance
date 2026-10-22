@@ -7,7 +7,7 @@ import EditableContentForm, {
   clearDraft,
   useDraftStorageKey,
 } from "@alliance/sharedweb/ui/EditableContentForm";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { ToastPlacement, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React, {
   useCallback,
   useRef,
@@ -138,7 +138,7 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
             confirmLabel: "Discard",
             cancelLabel: "Keep writing",
             anchorEl: cancelRef.current,
-            placement: "topleft",
+            placement: ToastPlacement.TopLeft,
           });
     if (!ok || isPostingRef.current) return;
     onDismissError?.();

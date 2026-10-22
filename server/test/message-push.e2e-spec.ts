@@ -1,12 +1,20 @@
 import { Expo } from "expo-server-sdk";
 import { MessagingModule } from "src/messaging/messaging.module";
+import { NotificationKind } from "src/notification-settings/notification-kind";
+import { NotificationChannel } from "src/notifs/notif-utils";
 import { Push } from "src/push/push.entity";
 import { EXPO_CLIENT } from "src/push/push.service";
 import { UserDevice } from "src/user/entities/user-device.entity";
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import {
+  createTestApp,
+  eventually,
+  setPreference,
+  signAccessToken,
+  TestContext,
+} from "./e2e-test-utils";
 
 describe("Message Push Notifications (e2e)", () => {
   let ctx: TestContext;
@@ -28,10 +36,7 @@ describe("Message Push Notifications (e2e)", () => {
       ...overrides,
     });
     await userRepo.save(user);
-    const token = ctx.jwtService.sign(
-      { sub: user.id, email: user.email, name: user.name },
-      { secret: process.env.JWT_SECRET },
-    );
+    const token = signAccessToken(ctx.jwtService, user);
     return { user, token };
   };
 
@@ -50,7 +55,12 @@ describe("Message Push Notifications (e2e)", () => {
     return { user, token, expoPushToken };
   };
 
-  /** Send a message and wait briefly for the async EventEmitter listener. */
+  /**
+   * Sends the message and waits, because an async EventEmitter listener writes
+   * the push. Tests asserting a push exists poll with `pushesFor`; this fixed
+   * wait is only for the tests asserting none exists, which have nothing to
+   * poll for.
+   */
   const sendMessage = async (
     senderToken: string,
     conversationId: number,
@@ -61,10 +71,16 @@ describe("Message Push Notifications (e2e)", () => {
       .set("Authorization", `Bearer ${senderToken}`)
       .send({ conversationId, body })
       .expect(201);
-    // Give the async event listener time to process
     await new Promise((resolve) => setTimeout(resolve, 200));
     return res;
   };
+
+  const pushesFor = (expoPushToken: string) =>
+    eventually(
+      () => pushRepo.find({ where: { expoPushToken } }),
+      (pushes) => pushes.length > 0,
+      `a push for ${expoPushToken}`,
+    );
 
   const createDirectConversation = async (
     initiatorToken: string,
@@ -128,9 +144,7 @@ describe("Message Push Notifications (e2e)", () => {
 
       await sendMessage(senderToken, conversationId, "Hey, are you free?");
 
-      const pushes = await pushRepo.find({
-        where: { expoPushToken },
-      });
+      const pushes = await pushesFor(expoPushToken);
       expect(pushes).toHaveLength(1);
       expect(pushes[0].body).toContain("Hey, are you free?");
       expect(pushes[0].screen).toBe(`/messages/${conversationId}`);
@@ -157,10 +171,14 @@ describe("Message Push Notifications (e2e)", () => {
   });
 
   describe("user preferences", () => {
-    it("does not push when pushesForMessages is false", async () => {
+    it("does not push when message pushes are off", async () => {
       const { token: senderToken } = await createUserWithDevice();
-      const { user: recipient, expoPushToken } = await createUserWithDevice({
-        pushesForMessages: false,
+      const { user: recipient, expoPushToken } = await createUserWithDevice();
+      await setPreference(ctx, {
+        userId: recipient.id,
+        kind: NotificationKind.Messages,
+        channel: NotificationChannel.Push,
+        enabled: false,
       });
 
       const conversationId = await createDirectConversation(
@@ -170,16 +188,14 @@ describe("Message Push Notifications (e2e)", () => {
 
       await sendMessage(senderToken, conversationId, "Will you see this?");
 
-      const pushes = await pushRepo.find({
-        where: { expoPushToken },
-      });
+      const pushes = await pushRepo.find({ where: { expoPushToken } });
       expect(pushes).toHaveLength(0);
     });
 
-    it("does not push when turnedOffAllNotifs is true", async () => {
+    it("does not push when push is off by default", async () => {
       const { token: senderToken } = await createUserWithDevice();
       const { user: recipient, expoPushToken } = await createUserWithDevice({
-        turnedOffAllNotifs: true,
+        pushByDefault: false,
       });
 
       const conversationId = await createDirectConversation(
@@ -189,10 +205,30 @@ describe("Message Push Notifications (e2e)", () => {
 
       await sendMessage(senderToken, conversationId, "No notifs please");
 
-      const pushes = await pushRepo.find({
-        where: { expoPushToken },
-      });
+      const pushes = await pushRepo.find({ where: { expoPushToken } });
       expect(pushes).toHaveLength(0);
+    });
+
+    it("pushes when message pushes are on and push is off by default", async () => {
+      const { token: senderToken } = await createUserWithDevice();
+      const { user: recipient, expoPushToken } = await createUserWithDevice({
+        pushByDefault: false,
+      });
+      await setPreference(ctx, {
+        userId: recipient.id,
+        kind: NotificationKind.Messages,
+        channel: NotificationChannel.Push,
+        enabled: true,
+      });
+
+      const conversationId = await createDirectConversation(
+        senderToken,
+        recipient.id,
+      );
+
+      await sendMessage(senderToken, conversationId, "Override on");
+
+      expect(await pushesFor(expoPushToken)).toHaveLength(1);
     });
   });
 
@@ -211,14 +247,8 @@ describe("Message Push Notifications (e2e)", () => {
       );
 
       // Members need to accept
-      const memberAToken = ctx.jwtService.sign(
-        { sub: memberA.id, email: memberA.email, name: memberA.name },
-        { secret: process.env.JWT_SECRET },
-      );
-      const memberBToken = ctx.jwtService.sign(
-        { sub: memberB.id, email: memberB.email, name: memberB.name },
-        { secret: process.env.JWT_SECRET },
-      );
+      const memberAToken = signAccessToken(ctx.jwtService, memberA);
+      const memberBToken = signAccessToken(ctx.jwtService, memberB);
       await request(ctx.app.getHttpServer())
         .post(`/messaging/conversations/${conversationId}/accept`)
         .set("Authorization", `Bearer ${memberAToken}`)
@@ -230,8 +260,8 @@ describe("Message Push Notifications (e2e)", () => {
 
       await sendMessage(ownerToken, conversationId, "Hey everyone");
 
-      const pushesA = await pushRepo.find({ where: { expoPushToken: tokenA } });
-      const pushesB = await pushRepo.find({ where: { expoPushToken: tokenB } });
+      const pushesA = await pushesFor(tokenA);
+      const pushesB = await pushesFor(tokenB);
 
       expect(pushesA).toHaveLength(1);
       expect(pushesB).toHaveLength(1);
@@ -259,9 +289,7 @@ describe("Message Push Notifications (e2e)", () => {
         "Unique message",
       );
 
-      const pushes = await pushRepo.find({
-        where: { expoPushToken },
-      });
+      const pushes = await pushesFor(expoPushToken);
       expect(pushes).toHaveLength(1);
       expect(pushes[0].idempotencyKey).toContain(`msg-${msgRes.body.id}`);
     });
@@ -294,12 +322,8 @@ describe("Message Push Notifications (e2e)", () => {
 
       await sendMessage(senderToken, conversationId, "Multi-device test");
 
-      const pushes1 = await pushRepo.find({
-        where: { expoPushToken: token1 },
-      });
-      const pushes2 = await pushRepo.find({
-        where: { expoPushToken: token2 },
-      });
+      const pushes1 = await pushesFor(token1);
+      const pushes2 = await pushesFor(token2);
       expect(pushes1).toHaveLength(1);
       expect(pushes2).toHaveLength(1);
     });

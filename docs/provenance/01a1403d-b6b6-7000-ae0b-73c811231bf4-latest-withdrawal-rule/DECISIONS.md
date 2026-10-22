@@ -1,0 +1,6 @@
+## Decisions
+
+- `sqlIsLatestWithdrawal(alias)` renders the rule for withdrawals beside `sqlIsLatestCompletion(alias)`; both call one private `sqlIsLatestTerminalActivity(alias, type)`, so the supersession predicate exists once.
+- The daily action stats' `usersWithdrawn` counts members whose latest terminal activity is a withdrawal. The admin stats page adds it to `usersJoined`, which already drops members whose latest is a withdrawal, so it is the current-status count; an "ever withdrew" count double-counts a member who withdrew and then completed. Its API description states the rule. Stored records catch up at the next daily `calculateActionStats` run, which recomputes every action, so no data migration is needed.
+- `getWithdrawalsForForm` (the admin form-responses "Withdrew" badge) returns members whose latest terminal activity is a withdrawal. The endpoint replaced a check of each member's `wont_complete` relation status, a current status.
+- `ContractAnalyticsService`'s days-to-churn keeps every completion row: it measures the last time a churned member acted, and a later withdrawal does not undo that they were active then (as decided in `01a12b37-…-latest-completion-everywhere`).

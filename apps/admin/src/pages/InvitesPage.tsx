@@ -1,29 +1,29 @@
-import {
-  CreateOnetimeInviteDto,
-  userCreateOnetimeInvite,
-  userGetOnetimeInviteMemberStatsAdmin,
-  userGetOnetimeInvitesAdmin,
-  userListAdmin,
-} from "@alliance/shared/client";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { usePaginatedQuery } from "@alliance/shared/lib/usePaginatedQuery";
+import { CreateOnetimeInviteDto } from "@alliance/shared/client";
+import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
+import { onetimeInviteStatusDisplay } from "@alliance/shared/styles/inviteStatus";
 import { cn } from "@alliance/shared/styles/util";
-import { getBaseUrl } from "@alliance/sharedweb/lib/config";
+import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
+import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import List from "@alliance/sharedweb/ui/List";
 import Pagination from "@alliance/sharedweb/ui/Pagination";
-import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import { Copy } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router";
-
-const INVITES_PER_PAGE = 50;
+import { memberProfileUrl } from "../lib/config";
+import {
+  useCreateOnetimeInviteAdmin,
+  useOnetimeInviteMemberStatsAdmin,
+  useOnetimeInvitesAdmin,
+} from "../lib/useOnetimeInvitesAdmin";
+import { useUsersAdmin } from "../lib/useUsersAdmin";
 
 const InvitesPage = () => {
-  const queryClient = useQueryClient();
+  const { error: pushError, success: pushSuccess } = useToast();
 
   const {
     data,
@@ -33,16 +33,11 @@ const InvitesPage = () => {
     isError,
     isPlaceholderData,
     refetch,
-  } = usePaginatedQuery({
-    queryKey: (page) => queryKeys.onetimeInvitesAdmin(page, INVITES_PER_PAGE),
-    queryFn: (page) =>
-      userGetOnetimeInvitesAdmin({
-        query: { page, limit: INVITES_PER_PAGE },
-        throwOnError: true,
-      }).then((response) => response.data),
-  });
+  } = useOnetimeInvitesAdmin();
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const createInvite = useCreateOnetimeInviteAdmin();
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedUser) {
       return;
@@ -52,45 +47,31 @@ const InvitesPage = () => {
       invitingUserId: selectedUser,
       invitee: formData.get("invitee")?.toString() ?? "",
     } satisfies CreateOnetimeInviteDto;
-    const response = await userCreateOnetimeInvite({
-      body,
+    createInvite.mutate(body, {
+      onSuccess: () => {
+        setSelectedUser(null);
+        setPage(1);
+      },
     });
-    if (response.data) {
-      setSelectedUser(null);
-      setPage(1);
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.onetimeInvitesAdminAll(),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.onetimeInviteMemberStatsAdmin(),
-      });
-    }
   };
 
-  const [users, setUsers] = useState<UserSelectUser[]>([]);
+  const { data: users = [] } = useUsersAdmin();
   const [selectedUser, setSelectedUser] = useState<number | null>(null);
-  useEffect(() => {
-    userListAdmin().then((response) => {
-      setUsers(response.data ?? []);
-    });
-  }, []);
 
   const {
     data: invitesPerMember = [],
     isError: isStatsError,
     refetch: refetchStats,
-  } = useQuery({
-    queryKey: queryKeys.onetimeInviteMemberStatsAdmin(),
-    queryFn: () =>
-      userGetOnetimeInviteMemberStatsAdmin({ throwOnError: true }).then(
-        (response) => response.data,
-      ),
-  });
+  } = useOnetimeInviteMemberStatsAdmin();
 
-  const copyToClipboard = (text: string) => {
-    const baseUrl = getBaseUrl();
-    const url = `${baseUrl}/signup?ref=${text}`;
-    navigator.clipboard.writeText(url);
+  const copyInviteLink = async (code: string) => {
+    if (
+      await copyToClipboard(getOnetimeInviteSignupUrl(getInviteBaseUrl(), code))
+    ) {
+      pushSuccess("Invite link copied");
+    } else {
+      pushError("Could not copy the invite link to the clipboard");
+    }
   };
 
   return (
@@ -123,7 +104,11 @@ const InvitesPage = () => {
               />
             </div>
             <div className="flex flex-row gap-2 justify-end">
-              <Button color={ButtonColor.Black} type="submit">
+              <Button
+                color={ButtonColor.Black}
+                type="submit"
+                disabled={createInvite.isPending}
+              >
                 Create Invite
               </Button>
             </div>
@@ -222,9 +207,7 @@ const InvitesPage = () => {
                       <span className="text-gray-500"> inviting </span>{" "}
                       {invite.invitedUserId ? (
                         <a
-                          href={
-                            getBaseUrl() + `/member/${invite.invitedUserId}`
-                          }
+                          href={memberProfileUrl(invite.invitedUserId)}
                           className="underline"
                         >
                           {" "}
@@ -237,17 +220,22 @@ const InvitesPage = () => {
                   </div>
                   <div className="flex flex-row gap-3 items-center">
                     <p className="text-gray-500">{invite.code}</p>
-                    {invite.status === "link_unused" ? (
-                      <p className="text-green">Active</p>
-                    ) : (
-                      <p className="text-gray-500">used</p>
-                    )}
-                    <div
+                    <p
+                      className={
+                        onetimeInviteStatusDisplay[invite.status].textClass
+                      }
+                    >
+                      {onetimeInviteStatusDisplay[invite.status].label}
+                    </p>
+                    <button
+                      type="button"
+                      aria-label={`Copy invite link ${invite.code}`}
+                      title="Copy invite link"
                       className="cursor-pointer active:scale-85 transition-all duration-100"
-                      onClick={() => copyToClipboard(invite.code)}
+                      onClick={() => void copyInviteLink(invite.code)}
                     >
                       <Copy className="h-4 w-4 text-gray-500" />
-                    </div>
+                    </button>
                   </div>
                 </div>
                 <div className="flex flex-row gap-2 items-center justify-between mt-1">

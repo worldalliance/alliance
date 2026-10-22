@@ -2,40 +2,32 @@ import {
   COMMUNITY_DESCRIPTION_MAX_LENGTH,
   COMMUNITY_NAME_MAX_LENGTH,
 } from "@alliance/common/community";
-import { errorMessage } from "@alliance/common/errorMessage";
 import { withCount } from "@alliance/common/plural";
-import type { CommunityDto, ShareUrlMineDto } from "@alliance/shared/client";
-import { communityCreateCommunity } from "@alliance/shared/client";
-import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
+import type { ShareUrlMineDto } from "@alliance/shared/client";
+import { NEW_COMMUNITY_SETTINGS } from "@alliance/shared/lib/constants";
+import { onetimeInviteCreation } from "@alliance/shared/lib/copy";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import {
-  inviteDestination,
-  onetimeInviteCreation,
-} from "@alliance/shared/lib/copy";
+  reusableInviteSettings,
+  type InviteSettingsTarget,
+} from "@alliance/shared/lib/inviteSettings";
+import { inviteDestinationLabel } from "@alliance/shared/lib/inviteUtils";
+import { useInvitePlacement } from "@alliance/shared/lib/useInvitePlacement";
 import {
-  inviteDestinationLabel,
-  inviteDestinationSelection,
-  reusableInviteNotes,
-} from "@alliance/shared/lib/inviteUtils";
-import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
+  CREATE_GROUP_SESSION_EXPIRED,
+  useMyCommunities,
+} from "@alliance/shared/lib/useMyCommunities";
 import { useReusableInvites } from "@alliance/shared/lib/useReusableInvites";
 import { cn } from "@alliance/shared/styles/util";
-import { setStringAsync as setClipboardStringAsync } from "expo-clipboard";
-import { ChevronDown, ChevronRight } from "lucide-react-native";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Alert,
-  Platform,
-  ScrollView,
-  Share,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ChevronRight } from "lucide-react-native";
+import { useCallback, useState } from "react";
+import { Alert, Platform, Share, TouchableOpacity, View } from "react-native";
 import { useAuth } from "../lib/AuthContext";
+import { copyToClipboard } from "../lib/clipboard";
 import { colors } from "../lib/style/colors";
 import FormModal from "./forms/FormModal";
-import InviteSettingsModal, {
-  type InviteSettingsTarget,
-} from "./InviteSettingsModal";
+import InviteGroupSelect from "./InviteGroupSelect";
+import InviteSettingsModal from "./InviteSettingsModal";
 import Button, { ButtonColor, ButtonSize } from "./system/Button";
 import Card, { CardStyle } from "./system/Card";
 import CharacterLimitNotice from "./system/CharacterLimitNotice";
@@ -43,11 +35,6 @@ import Input from "./system/Input";
 import Text, { FontWeight } from "./system/Text";
 
 const REQUIRED_DELETE_TEXT = "DELETE";
-
-type PlacementSelection =
-  | { kind: "community"; id: number }
-  | { kind: "assign" }
-  | { kind: "new" };
 
 export default function InviteShareLink() {
   const { user } = useAuth();
@@ -60,12 +47,10 @@ export default function InviteShareLink() {
     updateInvite,
     deleteInvite,
   } = useReusableInvites();
-  const { communities, refreshCommunities } = useMyCommunities({});
+  const { communities, createCommunity } = useMyCommunities({});
+  const { placement, setPlacement, leaderCommunities, selectedCommunity } =
+    useInvitePlacement(communities, user?.id);
   const [labelDraft, setLabelDraft] = useState("");
-  const [placement, setPlacement] = useState<PlacementSelection>({
-    kind: "new",
-  });
-  const [groupSelectModalOpen, setGroupSelectModalOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupDescription, setNewGroupDescription] = useState("");
   const [creatingGroup, setCreatingGroup] = useState(false);
@@ -73,73 +58,17 @@ export default function InviteShareLink() {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
-  const leaderCommunities = useMemo(() => {
-    if (!user) return [] as CommunityDto[];
-    return communities.filter((community) =>
-      community.leaders.some((leader) => leader.id === user.id),
-    );
-  }, [communities, user]);
-
-  const leaderCommunitiesById = useMemo(
-    () =>
-      new Map(leaderCommunities.map((community) => [community.id, community])),
-    [leaderCommunities],
-  );
-
-  const selectedCommunity = useMemo(() => {
-    if (placement.kind !== "community") return null;
-    return leaderCommunitiesById.get(placement.id) ?? null;
-  }, [leaderCommunitiesById, placement]);
-
-  const didInitPlacement = useRef(false);
-  useEffect(() => {
-    if (didInitPlacement.current || communities.length === 0 || !user) return;
-    didInitPlacement.current = true;
-    const led = leaderCommunities[0];
-    setPlacement(led ? { kind: "community", id: led.id } : { kind: "new" });
-  }, [communities.length, leaderCommunities, user]);
-
-  useEffect(() => {
-    if (
-      placement.kind === "community" &&
-      !leaderCommunitiesById.has(placement.id)
-    ) {
-      const firstLedCommunity = leaderCommunities[0];
-      setPlacement(
-        firstLedCommunity
-          ? { kind: "community", id: firstLedCommunity.id }
-          : { kind: "new" },
-      );
-    }
-  }, [leaderCommunities, leaderCommunitiesById, placement]);
-
-  const groupSelectLabel = useMemo(() => {
-    switch (placement.kind) {
-      case "assign":
-        return onetimeInviteCreation.assignToOpenGroup;
-      case "new":
-        return onetimeInviteCreation.createNewGroupOption;
-      case "community":
-        return selectedCommunity?.name ?? "Select a group";
-      default:
-        throw new Error(
-          `unknown invite placement: ${placement satisfies never}`,
-        );
-    }
-  }, [placement, selectedCommunity]);
-
   const handleCreate = useCallback(
     async (communityId: number | null) => {
       try {
         const link = await createInvite({ label: labelDraft, communityId });
         setLabelDraft("");
-        try {
-          await setClipboardStringAsync(link.url);
+        if (await copyToClipboard(link.url)) {
           Alert.alert(
             "Success",
             "Invite link created and copied to clipboard.",
           );
-        } catch {
+        } else {
           Alert.alert(
             "Invite created",
             "The invite link could not be copied to the clipboard.",
@@ -160,37 +89,34 @@ export default function InviteShareLink() {
     }
     setCreatingGroup(true);
     try {
-      const response = await communityCreateCommunity({
-        body: {
-          name,
-          description: newGroupDescription.trim(),
-          public: false,
-          allowMemberInvites: true,
-          allowStaffAssignments: true,
-          maxCapacity: GROUP_MAX_CAPACITY_DEFAULT,
-        },
+      const community = await createCommunity({
+        name,
+        description: newGroupDescription.trim(),
+        ...NEW_COMMUNITY_SETTINGS,
       });
-      if (!response.data) {
-        Alert.alert(
-          "Error",
-          errorMessage({
-            error: response.error,
-            fallback: "Failed to create group.",
-          }),
-        );
-        return;
-      }
       setNewGroupName("");
       setNewGroupDescription("");
-      await refreshCommunities();
-      setPlacement({ kind: "community", id: response.data.id });
-      await handleCreate(response.data.id);
-    } catch {
-      Alert.alert("Error", "Failed to create group.");
+      setPlacement({ kind: "community", id: community.id });
+      await handleCreate(community.id);
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        thrownRefusalMessage({
+          error,
+          fallback: "Failed to create group.",
+          sessionExpired: CREATE_GROUP_SESSION_EXPIRED,
+        }),
+      );
     } finally {
       setCreatingGroup(false);
     }
-  }, [handleCreate, newGroupDescription, newGroupName, refreshCommunities]);
+  }, [
+    createCommunity,
+    handleCreate,
+    newGroupDescription,
+    newGroupName,
+    setPlacement,
+  ]);
 
   const handleShare = useCallback((link: ShareUrlMineDto) => {
     void Share.share(
@@ -202,34 +128,7 @@ export default function InviteShareLink() {
 
   const openLink = links.find((link) => link.id === openLinkId) ?? null;
   const settingsTarget: InviteSettingsTarget | null = openLink && {
-    title:
-      openLink.label ||
-      (openLink.duplicate ? "Untitled link" : "Primary invite"),
-    meta: `${withCount(openLink.signupCount, "signup")} so far`,
-    url: openLink.url,
-    name: {
-      label: "Label",
-      value: openLink.label ?? "",
-      placeholder: "e.g. Instagram bio",
-      helper:
-        "Only you can see this — it is a reminder of where you shared the link.",
-    },
-    destination: {
-      current: inviteDestinationSelection(openLink),
-      openLabel: inviteDestination.reusable.openLabel,
-      openDetail: inviteDestination.reusable.openDetail,
-      notes: reusableInviteNotes(openLink),
-    },
-    delete: {
-      enabled: openLink.duplicate,
-      disabledReason: "Your primary link cannot be deleted",
-    },
-    onSave: ({ name, communityId }) =>
-      updateInvite({
-        id: openLink.id,
-        ...(name !== undefined && { label: name }),
-        ...(communityId !== undefined && { communityId }),
-      }),
+    ...reusableInviteSettings({ link: openLink, updateInvite }),
     // Closes settings first so the typed-DELETE modal is not stacked on it.
     onDelete: async () => {
       setOpenLinkId(null);
@@ -281,31 +180,12 @@ export default function InviteShareLink() {
             editable={!isCreating && !creatingGroup}
             containerClassName="gap-0"
           />
-          <View className="gap-2">
-            <Text
-              className="text-base text-zinc-900"
-              weight={FontWeight.Semibold}
-            >
-              {onetimeInviteCreation.responsible.leader.title}
-            </Text>
-            <Text className="text-sm text-zinc-500">
-              {onetimeInviteCreation.groupContext}
-            </Text>
-            <TouchableOpacity
-              onPress={() => setGroupSelectModalOpen(true)}
-              activeOpacity={0.85}
-              disabled={isCreating || creatingGroup}
-              className="w-full rounded-lg border border-zinc-200 bg-white flex-row items-center justify-between px-3 py-3"
-            >
-              <Text
-                className="text-base text-zinc-900 flex-1"
-                numberOfLines={1}
-              >
-                {groupSelectLabel}
-              </Text>
-              <ChevronDown size={18} color={colors.text.icon} />
-            </TouchableOpacity>
-          </View>
+          <InviteGroupSelect
+            placement={placement}
+            onChange={setPlacement}
+            leaderCommunities={leaderCommunities}
+            disabled={isCreating || creatingGroup}
+          />
 
           {placement.kind === "assign" && (
             <Button
@@ -380,65 +260,6 @@ export default function InviteShareLink() {
           )}
         </View>
       </Card>
-
-      <FormModal
-        visible={groupSelectModalOpen}
-        onClose={() => setGroupSelectModalOpen(false)}
-      >
-        <View className="flex-row items-center justify-between mb-3">
-          <Text className="text-lg text-zinc-900" weight={FontWeight.Semibold}>
-            {onetimeInviteCreation.responsible.leader.title}
-          </Text>
-          <TouchableOpacity onPress={() => setGroupSelectModalOpen(false)}>
-            <Text className="text-blue-600" weight={FontWeight.Medium}>
-              Close
-            </Text>
-          </TouchableOpacity>
-        </View>
-        <ScrollView className="max-h-72">
-          <View>
-            {leaderCommunities.map((community) => (
-              <TouchableOpacity
-                key={community.id}
-                onPress={() => {
-                  setPlacement({ kind: "community", id: community.id });
-                  setGroupSelectModalOpen(false);
-                }}
-                className="py-3 border-b border-zinc-100"
-                activeOpacity={0.7}
-              >
-                <Text className="text-base text-zinc-900">
-                  {community.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-            <TouchableOpacity
-              onPress={() => {
-                setPlacement({ kind: "assign" });
-                setGroupSelectModalOpen(false);
-              }}
-              className="py-3 border-b border-zinc-100"
-              activeOpacity={0.7}
-            >
-              <Text className="text-base text-zinc-900">
-                {onetimeInviteCreation.assignToOpenGroup}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => {
-                setPlacement({ kind: "new" });
-                setGroupSelectModalOpen(false);
-              }}
-              className="py-3"
-              activeOpacity={0.7}
-            >
-              <Text className="text-base text-zinc-900">
-                {onetimeInviteCreation.createNewGroupOption}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </FormModal>
 
       {isError ? (
         <Text className="text-sm text-red-500">

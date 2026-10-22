@@ -1,21 +1,28 @@
-import { CreateActionDto, UserDto } from "@alliance/shared/client";
+import {
+  ContractEventDto,
+  CreateActionDto,
+  UserDto,
+} from "@alliance/shared/client";
+import { milliseconds } from "date-fns";
+
+const previewSigning: ContractEventDto = {
+  type: "signed",
+  date: new Date(Date.now() - milliseconds({ days: 30 })).toISOString(),
+  automatic: false,
+  contractId: 1,
+};
 
 export const FORM_BUILDER_PREVIEW_USER: UserDto = {
   id: 0,
   name: "Preview User",
   phoneNumber: null,
   preferredReminderTime: null,
+  timeZone: null,
   customCityString: null,
-  emailNotifsForActions: false,
-  textNotifsForActions: false,
-  pushNotifsForActions: false,
-  turnedOffAllNotifs: false,
-  forumDigestPreference: "off",
   switchedDomainAt: null,
   admin: false,
   staff: false,
   ambassador: false,
-  pushesForMessages: true,
   referralSource: "onetime_invite",
   referredById: null,
   referredByCampaignId: null,
@@ -23,8 +30,6 @@ export const FORM_BUILDER_PREVIEW_USER: UserDto = {
   sharePhoneNumberWithCommunityLead: true,
   profileDescription: "I am a preview user",
   shareInfoPublicly: true,
-  pushesForLikes: true,
-  pushesForComments: true,
   profilePicture: null,
   communities: [],
   tags: [],
@@ -33,28 +38,18 @@ export const FORM_BUILDER_PREVIEW_USER: UserDto = {
   referralCode: "preview-referral-code",
   anonymous: false,
   email: "preview@example.com",
-  contractEvents: [
-    {
-      type: "signed",
-      date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString(),
-      automatic: false,
-      contractId: 1,
-    },
-  ],
-  pushesForFriendRequests: false,
+  contractEvents: [previewSigning],
+  lastContractEvent: previewSigning,
   undergoingGroupAssignment: false,
-  remindAboutUncompletedGroupMembers: false,
   leaderOfIds: [],
-  receiveReplyNotifications: false,
-  pushesForActionUpdates: false,
   clusterId: null,
+  hasPassword: true,
 };
 
 export const testActions: CreateActionDto[] = [
-  // Funding Action 1
   {
     name: "Save 2,500 acres of Ecuador cloud forest",
-    category: "Climate Change",
+    category: ["environment"],
     body: `Protect Ecuador's Biodiversity Hotspot
 
 ## The Crisis
@@ -78,65 +73,7 @@ We can outpace these mining companies by purchasing the land directly and placin
 This is our chance to take direct action against environmental destruction. Every contribution makes a difference.`,
     shortDescription:
       "Gold mining companies are expressing interest in a highly biodiverse area. We can outpace them by purchasing the land.",
-    type: "Funding",
-    donationAmount: 1000,
     timeEstimate: 5,
-    preventCompletion: false,
-    visibilityMode: "public",
-    onboarding: false,
-    optional: false,
-    publicOnly: false,
-    shouldCompleteAfterDeadline: false,
-    isContractSigningAction: false,
-    isForumParticipationAction: false,
-  },
-  {
-    name: "Use public transportation instead of driving",
-    category: "Climate Change",
-    body: `Transform Your Daily Commute
-
-## The Transportation Crisis
-Transportation accounts for **28% of US greenhouse gas emissions**, with personal vehicles being the largest contributor. The average American car emits **4.6 tons of CO2** annually.
-
-## The Public Transit Solution
-Public transportation is:
-- **45% more fuel efficient** than private vehicles
-- **Reduces CO2 emissions** by 37 million tons annually
-- **Saves individuals** an average of $10,000 per year
-- **Reduces traffic congestion** for everyone
-
-## Health Benefits
-Regular public transit use means:
-- **More walking** to and from stations
-- **Reduced stress** from driving in traffic
-- **Better air quality** in communities
-- **Lower accident risk** compared to driving
-
-## Economic Impact
-When you use public transit:
-- **$10,000+ saved** annually on car expenses
-- **Local economy boosted** through transit-oriented development
-- **Job creation** in the transit sector
-- **Reduced infrastructure costs** for road maintenance
-
-## Building Better Communities
-Public transit creates:
-- **More walkable neighborhoods**
-- **Increased property values** near transit stations
-- **Greater social equity** in transportation access
-- **Reduced urban sprawl**
-
-## Overcoming Common Concerns
-- **"It takes too long"** - Use travel time for reading, work, or relaxation
-- **"It's unreliable"** - Most systems have real-time tracking apps
-- **"It's uncomfortable"** - Bring headphones, books, or work to do
-- **"It's not convenient"** - Plan routes in advance and build habits
-
-Your commitment to public transit is an investment in a sustainable future.`,
-    shortDescription:
-      "Reduce your carbon footprint by using public transportation for daily commutes.",
-    type: "Ongoing",
-
     preventCompletion: false,
     visibilityMode: "public",
     onboarding: false,

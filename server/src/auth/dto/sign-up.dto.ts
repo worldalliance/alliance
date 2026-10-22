@@ -1,20 +1,23 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform } from "class-transformer";
 import {
-  Allow,
   IsDefined,
   IsEmail,
   IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsTimeZone,
+  ValidateIf,
 } from "class-validator";
-import type { TokenMode } from "./signin.dto";
+import { IsTimeZoneIdentifier } from "src/utils/timezone";
+import { trim } from "src/utils/transforms";
+import { TokenMode } from "./signin.dto";
 
 export class SignUpDto {
   @IsDefined()
+  @IsString()
   @IsNotEmpty()
+  @Transform(trim)
   @ApiProperty()
   readonly name: string;
 
@@ -30,15 +33,16 @@ export class SignUpDto {
   @ApiProperty()
   readonly password: string;
 
-  @Allow()
-  @IsEnum(["cookie", "header"])
-  @ApiProperty({ enum: ["cookie", "header"], enumName: "TokenMode" })
+  @IsDefined()
+  @IsEnum(TokenMode)
+  @ApiProperty({ enum: TokenMode, enumName: "TokenMode" })
   mode: TokenMode;
 
+  @ValidateIf((_object, value) => value !== null)
   @IsDefined()
-  @IsTimeZone()
-  @ApiProperty()
-  readonly timeZone: string;
+  @IsTimeZoneIdentifier()
+  @ApiProperty({ type: String, nullable: true })
+  readonly timeZone: string | null;
 
   @IsOptional()
   @ApiPropertyOptional()

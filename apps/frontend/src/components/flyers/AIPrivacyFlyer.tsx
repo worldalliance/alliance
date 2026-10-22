@@ -2,6 +2,8 @@ import {
   ShareLinkTargetKind,
   useShareLink,
 } from "@alliance/shared/forms/useShareLink";
+import { useAppOrigin } from "@alliance/sharedweb/lib/appOrigin";
+import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import { Clock } from "lucide-react";
 import { generateBarcodeUrl } from "../../lib/utils";
 
@@ -11,6 +13,7 @@ const AIPrivacyFlyer: React.FC = () => {
     kind: ShareLinkTargetKind.Action,
     actionId: publicActionId,
   });
+  const origin = useAppOrigin(getBaseUrl());
   const qrCodeUrl = shareUrl ? generateBarcodeUrl(shareUrl, 200) : "";
 
   return (
@@ -61,9 +64,7 @@ const AIPrivacyFlyer: React.FC = () => {
           "Loading QR code..."
         )}
 
-        <p className="text-[0.2in] text-zinc-500 text-center">
-          https://worldalliance.org/
-        </p>
+        <p className="text-[0.2in] text-zinc-500 text-center">{origin}/</p>
       </div>
 
       <p className="text-[0.2in] text-zinc-500">

@@ -1,3 +1,4 @@
+import { thrownMessage } from "@alliance/common/errorMessage";
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import type { Repository } from "src/utils/Repository";
@@ -79,8 +80,7 @@ export class AiDetectionProcessor {
           },
         );
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
+        const errorMessage = thrownMessage(error);
         await this.detectionResultRepository.update(
           {
             entityType,

@@ -15,7 +15,8 @@ import {
 } from "../../content/projects";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
 import { ImpactCard, ProgressLinkCard } from "../../site/PageCards";
-import { PageBand, PageShell } from "../../site/PageShell";
+import { BandTone, PageBand, PageShell } from "../../site/PageShell";
+import { matchesPriorities } from "./matchesPriorities";
 
 export function meta() {
   return socialPreviewMeta({
@@ -81,13 +82,6 @@ function itemKey(item: ProgressItem) {
     default:
       throw new Error(`unknown kind: ${item satisfies never}`);
   }
-}
-
-function matchesPriorities(
-  item: ProgressItem,
-  selected: readonly ActionPriority[],
-): boolean {
-  return itemTags(item).some((tag) => selected.includes(tag));
 }
 
 function PriorityFilter({
@@ -187,11 +181,9 @@ function ProgressCard({ item }: { item: ProgressItem }) {
  * column running hundreds of pixels past the other.
  */
 function Projects() {
-  const [selected, setSelected] = useState<ActionPriority[]>([
-    ...ACTION_PRIORITIES,
-  ]);
+  const [selected, setSelected] = useState<ActionPriority[]>([]);
   const shown = ALL_PROJECTS.filter((item) =>
-    matchesPriorities(item, selected),
+    matchesPriorities(itemTags(item), selected),
   );
 
   function toggle(priority: ActionPriority) {
@@ -220,7 +212,11 @@ function Projects() {
 
 export default function ProgressListPage() {
   return (
-    <PageShell title={PROGRESS_TITLE} subtitle={PROGRESS_LEDE}>
+    <PageShell
+      title={PROGRESS_TITLE}
+      subtitle={PROGRESS_LEDE}
+      headerTone={BandTone.Primary}
+    >
       {/* <Statistics /> */}
       <Projects />
     </PageShell>

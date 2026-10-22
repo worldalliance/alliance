@@ -4,6 +4,7 @@ import {
   useActionsQuery,
 } from "@alliance/shared/lib/actionsListPage";
 import { FilterMode } from "@alliance/shared/lib/actionUtils";
+import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
@@ -11,9 +12,12 @@ import { useMemo, useState } from "react";
 import { href, Link } from "react-router";
 import ActionItemCard from "../../components/ActionItemCard";
 import { useGrayBackground } from "../../components/HtmlBackgroundManager";
+import LoadFailed from "../../components/LoadFailed";
 
 const ActionsListPage = () => {
-  const { data: actions, isPending } = useActionsQuery();
+  const actionsQuery = useActionsQuery();
+  const { data: actions, isPending, isFetching, refetch } = actionsQuery;
+  const didFail = failedToLoad(actionsQuery);
 
   const [userFilterMode, setUserFilterMode] = useState<FilterMode | null>(null);
 
@@ -47,7 +51,9 @@ const ActionsListPage = () => {
           <p>Filter by:</p>
           <DropdownSelect
             options={FilterMode}
-            secondaryLabel={([, mode]) => modeToActions[mode].length.toString()}
+            secondaryLabel={([, mode]) =>
+              didFail ? undefined : modeToActions[mode].length.toString()
+            }
             value={filterMode}
             onChange={([, mode]) => setUserFilterMode(mode)}
           />
@@ -66,7 +72,13 @@ const ActionsListPage = () => {
         ))}
         {filteredActions.length === 0 && (
           <>
-            {isPending ? (
+            {didFail ? (
+              <LoadFailed
+                message="Couldn't load actions."
+                onRetry={() => void refetch()}
+                retrying={isFetching}
+              />
+            ) : isPending ? (
               <div className="flex items-center justify-center py-5">
                 <Spinner size="large" />
               </div>

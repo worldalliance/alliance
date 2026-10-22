@@ -1,14 +1,22 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsNotEmpty, IsOptional } from "class-validator";
+import {
+  Allow,
+  IsBoolean,
+  IsEmpty,
+  IsNotEmpty,
+  IsOptional,
+} from "class-validator";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   JoinTable,
   ManyToMany,
@@ -29,6 +37,8 @@ export enum CommentParentObject {
 }
 
 @Entity()
+@Index(["authorId"])
+@Index(["parentId"])
 export class Comment {
   @PrimaryGeneratedColumn()
   @ApiProperty()
@@ -48,11 +58,10 @@ export class Comment {
 
   @ManyToOne(() => User, { onDelete: "CASCADE" })
   @JoinColumn()
-  @ApiProperty()
-  @Allow()
+  @ApiPropertyOptional()
+  @IsOptional()
   @Type(() => User)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  author: Relation<User>;
+  author?: Relation<User>;
 
   @Column()
   @ApiProperty()
@@ -72,10 +81,16 @@ export class Comment {
   @IsNotEmpty()
   parentObjectId: number;
 
-  @Column({ default: false })
-  @ApiProperty()
-  @Allow()
-  deleted: boolean;
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
+
+  // Dropped with LegacyDeletedFlagService's trigger; see its TODO.
+  // Write-only: `select: false` leaves it undefined on a loaded row.
+  @Column({ name: "deleted", default: false, select: false })
+  @IsBoolean()
+  legacyDeleted: boolean;
 
   @CreateDateColumnTz()
   @ApiProperty()
@@ -94,30 +109,26 @@ export class Comment {
     onDelete: "CASCADE",
   })
   @JoinColumn()
-  @ApiProperty({ type: () => Comment, required: false })
+  @ApiPropertyOptional({ type: () => Comment })
   @Allow()
   @IsOptional()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  parent: Relation<Comment> | null;
+  parent?: Relation<Comment> | null;
 
-  @Column({ nullable: true })
+  @Column({ type: "int", nullable: true })
   @IsOptional()
-  @ApiPropertyOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  parentId?: number;
+  @ApiProperty({ type: Number, nullable: true })
+  parentId: number | null;
 
   @OneToMany(() => Comment, (comment) => comment.parent)
-  @ApiProperty({ type: () => Comment, required: false, isArray: true })
-  @Allow()
+  @ApiPropertyOptional({ type: () => Comment, isArray: true })
+  @IsOptional()
   @Type(() => Comment)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  children: Relation<Comment>[];
+  children?: Relation<Comment>[];
 
   @OneToMany(() => Notification, (notification) => notification.comment)
-  @Allow()
+  @IsOptional()
   @Type(() => Notification)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  notifications: Relation<Notification>[];
+  notifications?: Relation<Notification>[];
 
   @Column({ default: false })
   @ApiProperty()
@@ -125,12 +136,11 @@ export class Comment {
   pinned: boolean;
 
   @ManyToMany(() => User, { onDelete: "CASCADE" })
-  @ApiProperty({ type: () => User, isArray: true })
+  @ApiPropertyOptional({ type: () => User, isArray: true })
   @JoinTable()
-  @Allow()
+  @IsOptional()
   @Type(() => User)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  likes: Relation<User>[];
+  likes?: Relation<User>[];
 
   @Column({ default: 0 })
   @ApiProperty()
@@ -148,4 +158,11 @@ export class Comment {
   @ApiProperty({ type: Number, nullable: true })
   @IsOptional()
   tagId: number | null;
+}
+
+export function loadedCommentAuthor(comment: Comment): Relation<User> {
+  if (!comment.author) {
+    throw new Error(`author of comment ${comment.id} not loaded`);
+  }
+  return comment.author;
 }

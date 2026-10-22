@@ -7,12 +7,16 @@ interface FormModalProps {
   visible: boolean;
   onClose: () => void;
   animationType?: "none" | "fade" | "slide";
+  /** Off for a child that scrolls itself, such as a `FlatList`, which React
+   * Native warns against nesting in a `ScrollView`. */
+  scrollable?: boolean;
 }
 
 function FormModal({
   visible,
   onClose,
   animationType = "fade",
+  scrollable = true,
   children,
 }: PropsWithChildren<FormModalProps>) {
   const insets = useSafeAreaInsets();
@@ -29,13 +33,17 @@ function FormModal({
           {/* Prevent backdrop press from closing when tapping content */}
           <Pressable onPress={(e) => e.stopPropagation()}>
             <View className="bg-white rounded-t-2xl px-5 pt-5 pb-15">
-              <ScrollView
-                keyboardShouldPersistTaps="handled"
-                bounces={false}
-                showsVerticalScrollIndicator={false}
-              >
-                {children}
-              </ScrollView>
+              {scrollable ? (
+                <ScrollView
+                  keyboardShouldPersistTaps="handled"
+                  bounces={false}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {children}
+                </ScrollView>
+              ) : (
+                children
+              )}
             </View>
           </Pressable>
         </KeyboardAvoidingView>

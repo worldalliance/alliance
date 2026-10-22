@@ -1,11 +1,16 @@
-import { eventLogFindAllAdmin } from "@alliance/shared/client";
+import { hoursInDay } from "@alliance/common/duration";
 import type { EventLogDto, EventType } from "@alliance/shared/client/types.gen";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { usePaginatedQuery } from "@alliance/shared/lib/usePaginatedQuery";
 import { cn } from "@alliance/shared/styles/util";
 import Pagination from "@alliance/sharedweb/ui/Pagination";
+import { milliseconds } from "date-fns";
+import {
+  millisecondsInSecond,
+  minutesInHour,
+  secondsInMinute,
+} from "date-fns/constants";
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
+import { useEventLogAdmin } from "../lib/useEventLogAdmin";
 import {
   useEventLogWebSocket,
   type EventLogWsEvent,
@@ -20,6 +25,7 @@ const EVENT_TYPES: EventType[] = [
   "sms_failure",
   "forum_action_autocomplete",
   "action_comment",
+  "admin_role_changed",
 ];
 
 const EVENT_TYPE_COLORS: Record<string, string> = {
@@ -31,6 +37,7 @@ const EVENT_TYPE_COLORS: Record<string, string> = {
   sms_failure: "bg-red-100 text-red-700",
   forum_action_autocomplete: "bg-yellow-100 text-yellow-800",
   action_comment: "bg-indigo-100 text-indigo-800",
+  admin_role_changed: "bg-pink-100 text-pink-800",
 };
 
 function formatEventType(type: string): string {
@@ -41,17 +48,17 @@ function formatEventType(type: string): string {
 }
 
 function timeAgo(dateStr: string): string {
-  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-  if (seconds < 60) return `${seconds}s ago`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
+  const seconds = Math.floor(
+    (Date.now() - new Date(dateStr).getTime()) / millisecondsInSecond,
+  );
+  if (seconds < secondsInMinute) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / secondsInMinute);
+  if (minutes < minutesInHour) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / minutesInHour);
+  if (hours < hoursInDay) return `${hours}h ago`;
+  const days = Math.floor(hours / hoursInDay);
   return `${days}d ago`;
 }
-
-const EVENTS_PER_PAGE = 50;
 
 const EventLogPage: React.FC = () => {
   const [eventTypeFilter, setEventTypeFilter] = useState<EventType | "">("");
@@ -69,19 +76,7 @@ const EventLogPage: React.FC = () => {
     isError,
     isPlaceholderData,
     refetch,
-  } = usePaginatedQuery({
-    queryKey: (page) =>
-      queryKeys.eventLogAdmin(page, EVENTS_PER_PAGE, eventTypeFilter),
-    queryFn: (page) =>
-      eventLogFindAllAdmin({
-        query: {
-          page,
-          limit: EVENTS_PER_PAGE,
-          ...(eventTypeFilter ? { eventType: eventTypeFilter } : {}),
-        },
-        throwOnError: true,
-      }).then((response) => response.data),
-  });
+  } = useEventLogAdmin(eventTypeFilter);
 
   // Track timeout refs for highlight cleanup
   const highlightTimeoutsRef = useRef<
@@ -94,13 +89,16 @@ const EventLogPage: React.FC = () => {
       if (page === 1 && !eventTypeFilter) {
         setLiveEvents((prev) => [event, ...prev]);
         setHighlightedIds((prev) => new Set(prev).add(event.id));
-        const timeout = setTimeout(() => {
-          setHighlightedIds((prev) => {
-            const next = new Set(prev);
-            next.delete(event.id);
-            return next;
-          });
-        }, 5000);
+        const timeout = setTimeout(
+          () => {
+            setHighlightedIds((prev) => {
+              const next = new Set(prev);
+              next.delete(event.id);
+              return next;
+            });
+          },
+          milliseconds({ seconds: 5 }),
+        );
         highlightTimeoutsRef.current.set(event.id, timeout);
       }
     });

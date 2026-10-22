@@ -16,8 +16,13 @@ import { useActiveSection } from "../../site/hooks";
 import { FAQ_HREF, FOUNDATION_HREF, GOVERNANCE_HREF } from "../../site/links";
 import { NAV_HEIGHT } from "../../site/Navbar";
 import { ContractCard, ImpactCard } from "../../site/PageCards";
-import { PageShell } from "../../site/PageShell";
-import { SITE_COL, SiteArrow } from "../../site/ui";
+import {
+  BandHeading,
+  BandHeadingSize,
+  BandTone,
+  PageShell,
+} from "../../site/PageShell";
+import { SITE_COL, SiteArrow, SitePicture } from "../../site/ui";
 
 export function meta() {
   return socialPreviewMeta({
@@ -64,10 +69,10 @@ function PriorityGrid() {
               index % 2 === 0 ? "var(--site-primary)" : "var(--site-panel)",
           }}
         >
-          <img
-            src={priority.image}
+          <SitePicture
+            image={priority.image}
             alt=""
-            aria-hidden
+            sizes="(min-width: 640px) 50vw, 100vw"
             className="absolute inset-0 -z-10 size-full object-cover"
             style={{
               mixBlendMode: "screen",
@@ -148,7 +153,7 @@ const guideExtras: Record<GuideSectionKind, ReactNode> = {
       <ContractCard caption={GUIDE_CONTRACT_CAPTION} terms />
     </div>
   ),
-  [GuideSectionKind.Actions]: (
+  [GuideSectionKind.Projects]: (
     <div className="flex flex-col gap-6">
       {/* The two screens a member sees: the action, then what came of it. */}
       <div className="grid gap-3 sm:grid-cols-3">
@@ -175,7 +180,11 @@ export default function GuidePage() {
   const active = useActiveSection(GUIDE_SECTION_ORDER);
 
   return (
-    <PageShell title={GUIDE_TITLE} subtitle={GUIDE_LEDE}>
+    <PageShell
+      title={GUIDE_TITLE}
+      subtitle={GUIDE_LEDE}
+      headerTone={BandTone.Primary}
+    >
       <div className={cn(SITE_COL, "pt-16 pb-20 lg:pt-20 lg:pb-28")}>
         <div className="grid gap-12 lg:grid-cols-[minmax(0,46rem)_minmax(0,18rem)] lg:justify-between lg:gap-16">
           <div className="flex flex-col gap-16">
@@ -187,9 +196,9 @@ export default function GuidePage() {
                   id={kind}
                   className="flex scroll-mt-32 flex-col gap-6"
                 >
-                  <h2 className="site-display text-3xl sm:text-4xl font-medium leading-tight text-black ">
+                  <BandHeading size={BandHeadingSize.Section}>
                     {section.label}
-                  </h2>
+                  </BandHeading>
                   {section.markdown.trim() && (
                     <DocProse markdown={section.markdown} />
                   )}
@@ -203,7 +212,7 @@ export default function GuidePage() {
           </div>
 
           <nav
-            className="hidden self-start bg-zinc-50 px-6 py-20 lg:block"
+            className="hidden self-start bg-zinc-50 px-6 py-7 lg:block"
             style={{
               position: "sticky",
               top: NAV_HEIGHT + 32,

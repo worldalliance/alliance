@@ -1,12 +1,8 @@
-import {
-  ConversationDto,
-  conversationGetCommunityConversations,
-  conversationMarkRead,
-} from "@alliance/shared/client";
+import { useCommunityConversation } from "@alliance/shared/lib/useCommunityConversation";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { Expand, Minus } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { href, Link } from "react-router";
 import useLiveConvoMessages from "../pages/app/messages";
 import ConversationDetailPanel from "./ConversationDetailPanel";
@@ -18,44 +14,25 @@ const FloatingChatPanel = ({
   communityId: number;
   onClose: () => void;
 }) => {
-  const [conversation, setConversation] = useState<ConversationDto | null>(
-    null,
-  );
-  const [loading, setLoading] = useState(true);
+  const { conversation, isPending, storeConversation, markRead } =
+    useCommunityConversation(communityId);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
-  const {
-    messages: convoMessages,
-    addOptimisticMessage,
-    removeOptimisticMessage,
-  } = useLiveConvoMessages(conversation?.id ?? null, {
-    onIncomingMessage: () => {},
-    onConversationUpdated: (conversation: ConversationDto) => {
-      setConversation(conversation);
+  const { messages: convoMessages, sendMessage } = useLiveConvoMessages(
+    conversation?.id ?? null,
+    {
+      onIncomingMessage: () => {},
+      onConversationUpdated: storeConversation,
     },
-  });
-
-  useEffect(() => {
-    conversationGetCommunityConversations({ path: { communityId } })
-      .then((response) => {
-        if (response.data) {
-          setConversation(response.data);
-        }
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [communityId]);
+  );
 
   useEffect(() => {
     if (conversation?.id) {
-      conversationMarkRead({
-        path: { conversationId: conversation.id },
-      });
+      markRead(conversation.id);
     }
-  }, [conversation?.id]);
+  }, [conversation?.id, markRead]);
 
-  if (loading) {
+  if (isPending) {
     return <Spinner />;
   }
 
@@ -71,17 +48,15 @@ const FloatingChatPanel = ({
           onClose={() => {}}
           onLeave={() => {}}
           friends={[]}
-          handleConversationUpdated={setConversation}
+          friendsFailure={null}
+          handleConversationUpdated={storeConversation}
           handleAcceptMessageRequest={() => {}}
           handleDeclineMessageRequest={() => {}}
           sendingNewMessageToIds={null}
           setSendingNewMessageToIds={null}
           handleCreateConversation={null}
           compact={true}
-          onOptimisticMessage={addOptimisticMessage}
-          onOptimisticMessageFailed={(tempId) =>
-            removeOptimisticMessage(tempId)
-          }
+          sendMessage={sendMessage}
         />
       ) : (
         <p>Could not load conversation</p>

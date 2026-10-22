@@ -7,8 +7,9 @@ import {
   useQueryClient,
   type UseQueryResult,
 } from "@tanstack/react-query";
+import { milliseconds } from "date-fns";
 import { useMemo } from "react";
-import { tasksGetForm } from "../client";
+import { tasksGetFormAdmin } from "../client";
 import { queryKeys } from "./queryKeys";
 
 type FormQuestionFields = {
@@ -19,7 +20,7 @@ type FormQuestionFields = {
 // A form's fields only move when someone saves that form, and every save
 // invalidates this key through useInvalidateFormsAdmin. The window is what a
 // save in another tab costs us, not what staleness costs the builder.
-const FORM_FIELDS_STALE_TIME = 5 * 60 * 1000;
+const FORM_FIELDS_STALE_TIME = milliseconds({ minutes: 5 });
 
 const NO_FIELDS: readonly AnyField[] = [];
 
@@ -35,7 +36,7 @@ function formQuestionFieldsQuery(formId: number) {
   return {
     queryKey: queryKeys.formQuestionFieldsAdmin(formId),
     queryFn: async (): Promise<FormQuestionFields> => {
-      const response = await tasksGetForm({
+      const response = await tasksGetFormAdmin({
         path: { id: formId },
         throwOnError: true,
       });
@@ -57,6 +58,7 @@ function formQuestionFieldsQuery(formId: number) {
 export function useFormQuestionFields(formId: number | undefined): {
   fields: readonly AnyField[];
   status: FormFieldsStatus;
+  refetch: () => void;
 } {
   // 0 is the builder's "no form picked yet" sentinel, and asking the server
   // for form 0 only 404s.
@@ -68,7 +70,11 @@ export function useFormQuestionFields(formId: number | undefined): {
           queryFn: skipToken,
         },
   );
-  return { fields: result.data?.fields ?? NO_FIELDS, status: statusOf(result) };
+  return {
+    fields: result.data?.fields ?? NO_FIELDS,
+    status: statusOf(result),
+    refetch: () => void result.refetch(),
+  };
 }
 
 /** Both failures leave the picker with no fields; they differ only in what it
@@ -84,6 +90,14 @@ type FormQuestionFieldsMap = {
   byForm: Record<number, readonly AnyField[]>;
   /** Per form, so a caller showing one form at a time names the right one. */
   statusByForm: Record<number, FormFieldsStatus>;
+  retryFailed: () => void;
+};
+
+const STATUS_IS_FAILURE: Record<FormFieldsStatus, boolean> = {
+  [FormFieldsStatus.Pending]: false,
+  [FormFieldsStatus.LoadFailed]: true,
+  [FormFieldsStatus.SchemaUnreadable]: true,
+  [FormFieldsStatus.Ready]: false,
 };
 
 // Only a failure with nothing cached behind it is worth reporting. A refetch
@@ -109,13 +123,19 @@ function fieldsCombiner(formIds: readonly number[]) {
   ): FormQuestionFieldsMap => {
     const byForm: Record<number, readonly AnyField[]> = {};
     const statusByForm: Record<number, FormFieldsStatus> = {};
+    const failed: UseQueryResult<FormQuestionFields>[] = [];
     results.forEach((result, index) => {
       const formId = formIds[index];
       if (formId === undefined) return;
       if (result.data) byForm[formId] = result.data.fields;
-      statusByForm[formId] = statusOf(result);
+      const status = statusOf(result);
+      statusByForm[formId] = status;
+      if (STATUS_IS_FAILURE[status]) failed.push(result);
     });
-    return { byForm, statusByForm };
+    const retryFailed = () => {
+      for (const result of failed) void result.refetch();
+    };
+    return { byForm, statusByForm, retryFailed };
   };
 }
 

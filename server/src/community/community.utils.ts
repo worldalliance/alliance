@@ -1,70 +1,89 @@
-import { Community } from "./entities/community.entity";
-
-/**
- * Non-leader member count (users minus leaders). Safe when relations are unloaded.
- */
-export function getMemberCount(c: Community): number {
-  return (c.users?.length ?? 0) - (c.leaders?.length ?? 0);
-}
-
-/**
- * Placement splits in two, and only one half is capacity-bound:
- *
- * - Consensual — a leader named this group (invite link, one-time invite,
- *   community invite). `maxCapacity` does not apply: the leader asked for this
- *   person, so call neither predicate below and just place them.
- * - Non-consensual — the automated referral system or staff picked the group on
- *   the leader's behalf. `maxCapacity` is the ceiling on those, gated by the
- *   matching opt-in flag.
- *
- * `maxCapacity` is null exactly when a group takes nothing non-consensual, so
- * the flag-gated predicates below already return false for it via their flag
- * check (see the check constraint on {@link Community}).
- */
-function freeSlots(c: Community): number {
-  return (c.maxCapacity ?? 0) - getMemberCount(c);
-}
-
-/** Room for one more member placed by the automated referral system. */
-export function acceptsAutomatedMember(c: Community): boolean {
-  return c.allowMemberInvites && freeSlots(c) > 0;
-}
-
-/** Room for one more member assigned by Alliance staff. */
-export function acceptsStaffAssignment(c: Community): boolean {
-  return c.allowStaffAssignments && freeSlots(c) > 0;
-}
-
-/** Room for one more member who found the group themselves and joined it. */
-export function acceptsPublicJoin(c: Community): boolean {
-  return c.public && freeSlots(c) > 0;
-}
-
-/**
- * Room to re-admit a member who left only because their contract lapsed.
- *
- * Neither of the two buckets fits: the leader already accepted this person, but
- * the seat may have been refilled during the suspension. Deliberately gated on
- * capacity alone — a leader's cap reads as "this many people, whoever they
- * are", so a full group turns them away, while an uncapped group has no number
- * to exceed and always takes them back. The opt-in flags do not apply; nobody
- * is inviting or assigning anyone here.
- */
-export function hasRoomForReturningMember(c: Community): boolean {
-  return c.maxCapacity === null || freeSlots(c) > 0;
-}
-
-/**
- * Free seats for staff assignment, for reporting how many more will fit.
- * Meaningless unless {@link acceptsStaffAssignment} is true.
- */
-export function getStaffAssignableSlots(c: Community): number {
-  return freeSlots(c);
-}
+import { NotificationCategory } from "src/notifs/entities/notification.entity";
+import {
+  communityDestination,
+  group,
+  member,
+  type NotifMessage,
+  notifMessage,
+} from "src/notifs/notification-content";
+import type { CreateNotifParams } from "src/notifs/notifs.service";
+import { groupUrl } from "src/search/approutes";
+import type { User } from "src/user/entities/user.entity";
+import { Community, loadedCommunityUsers } from "./entities/community.entity";
 
 /**
  * True when the given user is a leader of the community. Safe when leaders relation is unloaded.
  */
 export function isCommunityLedBy(c: Community, userId: number): boolean {
   return c.leaders?.some((leader) => leader.id === userId) ?? false;
+}
+
+export function groupJoinAudience(community: Community): User[] {
+  const { leaders } = community;
+  if (!leaders) {
+    throw new Error(`leaders of community ${community.id} not loaded`);
+  }
+  const leaderIds = new Set(leaders.map((leader) => leader.id));
+  return loadedCommunityUsers(community).filter(
+    (user) => !leaderIds.has(user.id),
+  );
+}
+
+export function memberJoinedCommunityNotif({
+  leader,
+  joiner,
+  community,
+  message,
+  associatedUsers = [joiner],
+}: {
+  leader: User;
+  joiner: User;
+  community: Community;
+  message: NotifMessage;
+  associatedUsers?: User[];
+}): CreateNotifParams {
+  return {
+    user: leader,
+    category: NotificationCategory.MemberJoinedCommunity,
+    message,
+    destination: communityDestination(community.id),
+    webAppLocation: groupUrl({ tab: "members", communityId: community.id }),
+    associatedUsers,
+  };
+}
+
+export function staffAddedMemberNotif({
+  leader,
+  joiner,
+  community,
+}: {
+  leader: User;
+  joiner: User;
+  community: Community;
+}): CreateNotifParams {
+  return memberJoinedCommunityNotif({
+    leader,
+    joiner,
+    community,
+    message: notifMessage`Staff added ${member(joiner)} to your group (${group(community)})`,
+  });
+}
+
+export function memberLeftCommunityNotif({
+  leader,
+  leaver,
+  community,
+}: {
+  leader: User;
+  leaver: User;
+  community: Community;
+}): CreateNotifParams {
+  return {
+    user: leader,
+    category: NotificationCategory.MemberLeftCommunity,
+    message: notifMessage`${member(leaver)} left your group (${group(community)})`,
+    destination: communityDestination(community.id),
+    webAppLocation: groupUrl({ tab: "members", communityId: community.id }),
+    associatedUsers: [leaver],
+  };
 }

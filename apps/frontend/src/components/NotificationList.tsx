@@ -1,14 +1,12 @@
 import { forCount, withCount } from "@alliance/common/plural";
-import { NotificationDto, notifsSetRead } from "@alliance/shared/client";
+import { NotificationDto } from "@alliance/shared/client";
 import {
   buildNotificationRenderItems,
   getUnreadLikesCount,
   LikesBucket,
 } from "@alliance/shared/lib/notificationBucketing";
-import {
-  getNotificationIdentityKey,
-  getNotificationReadRequest,
-} from "@alliance/shared/lib/notificationIdentity";
+import { getNotificationIdentityKey } from "@alliance/shared/lib/notificationIdentity";
+import { useNotificationsCache } from "@alliance/shared/lib/useNotificationsCache";
 import { cn } from "@alliance/shared/styles/util";
 import { CheckCheck, ChevronDown, ChevronUp, Heart } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -99,7 +97,6 @@ export interface NotificationListProps {
   notifications: NotificationDto[];
   handleNotifClick: (notification: NotificationDto) => () => void;
   handleMarkAsRead?: (notification: NotificationDto) => () => void;
-  refreshNotifications: () => void;
   itemClassName?: string;
   listClassName?: string;
   inset?: boolean;
@@ -109,17 +106,16 @@ const NotificationList = ({
   notifications,
   handleNotifClick,
   handleMarkAsRead,
-  refreshNotifications,
   itemClassName,
   listClassName,
   inset = true,
 }: NotificationListProps) => {
-  const handleMarkBucketAsRead = (bucket: LikesBucket) => async () => {
-    const unreadLikes = bucket.likes.filter((n) => !n.readAt);
-    await Promise.all(
-      unreadLikes.map((n) => notifsSetRead(getNotificationReadRequest(n))),
-    );
-    refreshNotifications();
+  const { markRead } = useNotificationsCache();
+
+  const handleMarkBucketAsRead = (bucket: LikesBucket) => () => {
+    void markRead(bucket.likes.filter((n) => !n.readAt)).catch((error) => {
+      console.error("failed to mark likes as read", error);
+    });
   };
 
   const renderItems = useMemo(

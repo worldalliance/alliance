@@ -1,5 +1,6 @@
 import { ApiProperty, PickType } from "@nestjs/swagger";
 import { ProfileDto } from "src/user/dto/user.dto";
+import type { WithRelations } from "src/utils/Repository";
 import { ActionEventNotif } from "./action-event-notif.entity";
 
 export class ActionEventNotifDto extends PickType(ActionEventNotif, [
@@ -8,6 +9,7 @@ export class ActionEventNotifDto extends PickType(ActionEventNotif, [
   "mail",
   "mms",
   "pushes",
+  "notificationId",
   "reminderGroup",
   "sent",
   "idempotency_key",
@@ -16,13 +18,16 @@ export class ActionEventNotifDto extends PickType(ActionEventNotif, [
   @ApiProperty({ type: ProfileDto })
   user: ProfileDto;
 
-  constructor(actionEventNotif: ActionEventNotif) {
+  constructor(
+    actionEventNotif: WithRelations<ActionEventNotif, { user: true }>,
+  ) {
     super();
     this.id = actionEventNotif.id;
     this.type = actionEventNotif.type;
     this.mail = actionEventNotif.mail;
     this.mms = actionEventNotif.mms;
     this.pushes = actionEventNotif.pushes;
+    this.notificationId = actionEventNotif.notificationId;
     this.reminderGroup = actionEventNotif.reminderGroup;
     this.sent = actionEventNotif.sent;
     this.idempotency_key = actionEventNotif.idempotency_key;

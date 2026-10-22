@@ -2,10 +2,15 @@ import { Module, forwardRef } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { Community } from "src/community/entities/community.entity";
 import { ImagesModule } from "src/images/images.module";
+import { NotificationSettingsModule } from "src/notification-settings/notification-settings.module";
 import { PushModule } from "src/push/push.module";
 import { Friend } from "src/user/entities/friend.entity";
 import { User } from "src/user/entities/user.entity";
 import { UserModule } from "src/user/user.module";
+import { CommunityConversationService } from "./community-conversation.service";
+import { ConversationCreationService } from "./conversation-creation.service";
+import { ConversationMembershipService } from "./conversation-membership.service";
+import { ConversationUnreadService } from "./conversation-unread.service";
 import { ConversationController } from "./conversation.controller";
 import { ConversationService } from "./conversation.service";
 import { Conversation } from "./entities/conversation.entity";
@@ -30,15 +35,20 @@ import { MessagingOverviewGateway } from "./messaging.overview.gateway";
     forwardRef(() => UserModule),
     ImagesModule,
     PushModule,
+    NotificationSettingsModule,
   ],
   controllers: [ConversationController, MessageController],
   providers: [
+    CommunityConversationService,
+    ConversationCreationService,
+    ConversationMembershipService,
     ConversationService,
+    ConversationUnreadService,
     MessageService,
     MessagingGateway,
     MessagingOverviewGateway,
     MessagePushListener,
   ],
-  exports: [ConversationService],
+  exports: [CommunityConversationService],
 })
 export class MessagingModule {}

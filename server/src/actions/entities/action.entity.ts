@@ -1,37 +1,49 @@
 import {
+  eventInEffectAt,
+  memberActionPhase,
+  type MemberActionPhase,
+} from "@alliance/common/actionEvent";
+import {
   cohortExpressionSchema,
   type CohortExpression,
 } from "@alliance/common/cohort-expression";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { Expose, Type } from "class-transformer";
+import { Expose, Transform, Type } from "class-transformer";
 import {
   Allow,
+  ArrayUnique,
   IsArray,
+  IsDate,
   IsDefined,
+  IsEmpty,
+  IsEnum,
+  IsInt,
   IsNotEmpty,
   IsOptional,
+  IsString,
+  Max,
+  Min,
 } from "class-validator";
+import { millisecondsInWeek } from "date-fns/constants";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { User } from "src/user/entities/user.entity";
-import { findLeast } from "src/utils/filter";
 import type { Relation } from "src/utils/Repository";
+import { toDateTime, trimToNull } from "src/utils/transforms";
 import {
   Column,
   Entity,
+  Index,
   JoinTable,
   ManyToMany,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
-  Unique,
 } from "typeorm";
-import {
-  memberActionPhase,
-  type MemberActionPhase,
-} from "../utils/action-event";
+import { ActionCategory } from "../action-category";
 import { ActionActivity } from "./action-activity.entity";
 import { ActionEvent, ActionStatus } from "./action-event.entity";
 import { ActionFormVariant } from "./action-form-variant.entity";
@@ -43,16 +55,11 @@ import {
   parseFollowUpForm,
   type ParsedFollowUpForm,
 } from "./follow-up-form.entity";
+import { Project } from "./project.entity";
 
 export enum CustomActionStat {
   NONE = "none",
   USERS_INVITED = "users_invited",
-}
-
-export enum ActionTaskType {
-  Funding = "Funding", //giving money to a particular cause
-  Activity = "Activity", // one-time action taking a limited amount of time
-  Ongoing = "Ongoing", // ongoing or recurring behavior change
 }
 
 export enum VisibilityMode {
@@ -61,10 +68,16 @@ export enum VisibilityMode {
   ParticipatingGroups = "participating_groups",
 }
 
-const MS_IN_WEEK = 7 * 24 * 60 * 60 * 1000;
+/** The event in effect at `at` sets the status; with none, it's Draft. */
+export function actionStatusAt(
+  events: Pick<ActionEvent, "date" | "newStatus">[],
+  at: Date,
+): ActionStatus {
+  return eventInEffectAt(events, at).event?.newStatus ?? ActionStatus.Draft;
+}
 
 @Entity()
-@Unique(["taskFormId"])
+@Index(["taskFormId"], { unique: true, where: '"deletedAt" IS NULL' })
 export class Action {
   // Fields
 
@@ -78,10 +91,22 @@ export class Action {
   @IsNotEmpty()
   name: string;
 
-  @Column()
-  @ApiProperty({ description: "Category of the action", default: "" })
-  @Allow()
-  category: string;
+  @Column({
+    type: "enum",
+    enum: ActionCategory,
+    array: true,
+    default: [],
+  })
+  @ApiProperty({
+    enum: ActionCategory,
+    enumName: "ActionCategory",
+    isArray: true,
+    description: "Alliance goals the action works towards, or meta",
+  })
+  @IsArray()
+  @ArrayUnique()
+  @IsEnum(ActionCategory, { each: true })
+  category: ActionCategory[];
 
   @Column({ nullable: true })
   @ApiPropertyOptional({ description: "Image URL for the action" })
@@ -97,59 +122,38 @@ export class Action {
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   squareThumbnailImage?: string;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional({
+  @Column({ type: "varchar", nullable: true })
+  @ApiProperty({
+    type: String,
+    nullable: true,
     description: "Square thumbnail image alt for the action",
   })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  squareThumbnailImageAlt?: string;
-
-  @Column({ default: 500, nullable: true })
-  @ApiPropertyOptional({
-    description: "Suggested donation amount (cents)",
-  })
-  @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  donationAmount?: number;
+  @IsString()
+  @Transform(trimToNull)
+  squareThumbnailImageAlt: string | null;
 
   @Column()
   @ApiProperty({ description: "markdown page body" })
   @Allow()
   body: string;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional({
-    description: "markdown contents for activity task card (instructions)",
-  })
-  @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  taskContents?: string;
-
-  @Column({ nullable: true })
+  @Column({ default: "" })
   @ApiProperty({ description: "Short description shown in cards" })
-  @Allow()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
+  @IsString()
   shortDescription: string;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional({ description: "Time estimate in minutes" })
-  @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  timeEstimate?: number;
-
-  @Column({
-    type: "enum",
-    enum: ActionTaskType,
-    default: ActionTaskType.Activity,
-  })
+  @Column({ type: "int", nullable: true })
   @ApiProperty({
-    description: "Type of the action",
-    enum: ActionTaskType,
-    enumName: "ActionTaskType",
+    type: Number,
+    nullable: true,
+    description: "Time estimate in minutes",
   })
-  @IsNotEmpty()
-  type: ActionTaskType;
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(2_147_483_647)
+  timeEstimate: number | null;
 
   @Column({ nullable: true })
   @ApiPropertyOptional({ description: "Form associated with the action" })
@@ -178,6 +182,16 @@ export class Action {
   @Type(() => Object)
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   cohortExpression?: unknown;
+
+  /**
+   * Actions whose outcome a member waits for before this action's cohort
+   * decides them. The cohort expression still does the selecting.
+   */
+  @Column({ type: "integer", array: true, default: [] })
+  @IsArray()
+  @ArrayUnique()
+  @IsInt({ each: true })
+  prerequisiteActionIds: number[];
 
   @Column({ default: false })
   @ApiProperty({
@@ -244,6 +258,14 @@ export class Action {
   @Column({ default: false })
   @ApiProperty({
     description:
+      "Show the action to all staff until its member_action event starts, refusing participation writes until then",
+  })
+  @Allow()
+  staffPreview: boolean;
+
+  @Column({ default: false })
+  @ApiProperty({
+    description:
       "Whether the action is visible to and supposed to only be completed by non-members",
   })
   @Allow()
@@ -265,32 +287,37 @@ export class Action {
   isForumParticipationAction: boolean;
 
   @Column({ type: "int", nullable: true })
-  @ApiPropertyOptional({
+  @ApiProperty({
+    type: Number,
+    nullable: true,
     description:
       "Manual override: forum post id whose repliers should be autocompleted. " +
       "When set, takes precedence over any forum validator on the task form.",
   })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  forumParticipationPostId?: number;
+  @IsInt()
+  @Min(1)
+  @Max(2_147_483_647)
+  forumParticipationPostId: number | null;
 
   @Column({ default: false })
-  @ApiPropertyOptional({
+  @ApiProperty({
     description:
       "When using forumParticipationPostId, also count replies to nested child posts",
   })
-  @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  forumParticipationIncludeChildren?: boolean;
+  @Allow()
+  forumParticipationIncludeChildren: boolean;
 
   @Column({ type: "timestamptz", nullable: true })
-  @ApiPropertyOptional({
+  @ApiProperty({
+    type: Date,
+    nullable: true,
     description: "Date and time when the action was computed for autocomplete",
   })
   @IsOptional()
-  @Type(() => Date)
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  computedAutocompleteAt?: Date;
+  @Transform(toDateTime)
+  @IsDate()
+  computedAutocompleteAt: Date | null;
 
   @Column({ type: "enum", enum: CustomActionStat, nullable: true })
   @Type(() => String)
@@ -320,58 +347,53 @@ export class Action {
   // Relations
 
   @OneToMany(() => ActionEvent, (event) => event.action)
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: "Events associated with the action",
     type: () => ActionEvent,
     isArray: true,
   })
-  @Allow()
+  @IsOptional()
   @IsArray()
   @Type(() => ActionEvent)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  events: Relation<ActionEvent>[];
+  events?: Relation<ActionEvent>[];
 
   @OneToMany(() => ActionActivity, (activity) => activity.action)
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: "Activities associated with the action",
-    type: () => [ActionActivity],
+    type: () => ActionActivity,
     isArray: true,
   })
-  @Allow()
+  @IsOptional()
   @IsArray()
   @Type(() => ActionActivity)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  activities: Relation<ActionActivity>[];
+  activities?: Relation<ActionActivity>[];
 
   @OneToMany(() => ActionUpdate, (update) => update.action)
-  @ApiProperty({
+  @ApiPropertyOptional({
     type: () => ActionUpdate,
     isArray: true,
   })
-  @Allow()
+  @IsOptional()
   @Type(() => ActionUpdate)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  updates: Relation<ActionUpdate>[];
+  updates?: Relation<ActionUpdate>[];
 
   @OneToMany(() => FollowUpForm, (followUpForm) => followUpForm.action)
-  @ApiProperty({
+  @ApiPropertyOptional({
     type: () => FollowUpForm,
     isArray: true,
   })
-  @Allow()
+  @IsOptional()
   @Type(() => FollowUpForm)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  followUpForms: Relation<FollowUpForm>[];
+  followUpForms?: Relation<FollowUpForm>[];
 
   @OneToMany(() => ActionFormVariant, (variant) => variant.action)
-  @ApiProperty({
+  @ApiPropertyOptional({
     type: () => ActionFormVariant,
     isArray: true,
   })
-  @Allow()
+  @IsOptional()
   @Type(() => ActionFormVariant)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  formVariants: Relation<ActionFormVariant>[];
+  formVariants?: Relation<ActionFormVariant>[];
 
   @ManyToOne(() => ActionSuite, (suite) => suite.actions, { nullable: true })
   @ApiPropertyOptional({ type: () => ActionSuite })
@@ -379,7 +401,13 @@ export class Action {
   @IsOptional()
   suite?: Relation<ActionSuite> | null;
 
-  @ManyToMany(() => User, (user) => user.authoredActions, { cascade: true })
+  @ManyToOne(() => Project, (project) => project.actions, { nullable: true })
+  @ApiPropertyOptional({ type: () => Project })
+  @Type(() => Project)
+  @IsOptional()
+  project?: Relation<Project> | null;
+
+  @ManyToMany(() => User, (user) => user.authoredActions)
   @JoinTable()
   @ApiPropertyOptional({ type: () => User, isArray: true })
   @Type(() => User)
@@ -408,29 +436,17 @@ export class Action {
   @Expose()
   @ApiProperty({ enum: ActionStatus, enumName: "ActionStatus" })
   get status(): ActionStatus {
-    if (!this.events) {
-      throw new Error("`events` relation is not loaded");
-    }
     if (this._status === null) {
-      const latestPastEvent = findLeast(
-        this.events,
-        (a, b) => b.date.getTime() - a.date.getTime(), // reverse order
-        (event) => event.date < new Date(),
-      );
-      this._status = latestPastEvent
-        ? latestPastEvent.newStatus
-        : ActionStatus.Draft;
+      this._status = actionStatusAt(loadedActionEvents(this), new Date());
     }
     return this._status;
   }
 
   @IsOptional()
-  private _memberActionPhase: MemberActionPhase | null = null;
-  get memberActionPhase(): MemberActionPhase {
+  private _memberActionPhase: MemberActionPhase<ActionEvent> | null = null;
+  get memberActionPhase(): MemberActionPhase<ActionEvent> {
     if (!this._memberActionPhase) {
-      this._memberActionPhase = this.events
-        ? memberActionPhase(this.events)
-        : { event: null, deadlineEvent: null };
+      this._memberActionPhase = memberActionPhase(loadedActionEvents(this));
     }
     return this._memberActionPhase;
   }
@@ -441,9 +457,14 @@ export class Action {
     if (!deadline) {
       return null;
     } else {
-      return Math.floor(deadline.getTime() / MS_IN_WEEK);
+      return Math.floor(deadline.getTime() / millisecondsInWeek);
     }
   }
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }
 
 /**
@@ -455,7 +476,7 @@ export class Action {
  */
 export interface ParsedAction extends Action {
   cohortExpression: CohortExpression | null;
-  followUpForms: ParsedFollowUpForm[];
+  followUpForms?: ParsedFollowUpForm[];
 }
 
 export function parseAction(action: Action): ParsedAction {
@@ -467,4 +488,31 @@ export function parseAction(action: Action): ParsedAction {
   // Mutate-and-cast (rather than spread) to keep the entity's getters; the
   // assignments above just validated the only fields the cast narrows.
   return action as ParsedAction;
+}
+
+export function loadedActionFollowUpForms(
+  action: ParsedAction,
+): ParsedFollowUpForm[] {
+  if (!action.followUpForms) {
+    throw new Error(`followUpForms of action ${action.id} not loaded`);
+  }
+  return action.followUpForms;
+}
+
+export function loadedActionEvents(
+  action: Pick<Action, "events">,
+): Relation<ActionEvent>[] {
+  if (!action.events) {
+    throw new Error("`events` relation is not loaded");
+  }
+  return action.events;
+}
+
+export function loadedActionFormVariants(
+  action: Pick<Action, "id" | "formVariants">,
+): Relation<ActionFormVariant>[] {
+  if (!action.formVariants) {
+    throw new Error(`formVariants of action ${action.id} not loaded`);
+  }
+  return action.formVariants;
 }

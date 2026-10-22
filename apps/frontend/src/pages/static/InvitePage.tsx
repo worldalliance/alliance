@@ -1,8 +1,9 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
   ReferrerProfileDto,
-  userOnetimeInvite,
-  userReferrerProfile,
+  userOnetimeInviteOnetimeInvite,
+  userReferralReferrerProfile,
 } from "@alliance/shared/client";
 import { captureEvent } from "@alliance/shared/lib/analytics";
 import { cn } from "@alliance/shared/styles/util";
@@ -20,9 +21,10 @@ import { SiteRoot } from "../../site/PageShell";
 import { LandingBody } from "../../site/sections/LandingBody";
 import {
   DisplayHeading,
-  DisplaySubtitle,
   SITE_COL,
   SiteButton,
+  SiteSubtitle,
+  SubtitleSize,
 } from "../../site/ui";
 
 export function meta() {
@@ -46,16 +48,20 @@ const InvitePage: React.FC = () => {
 
   useEffect(() => {
     if (!referralCode) return;
-    userReferrerProfile({ path: { code: referralCode } }).then((response) => {
-      setInviterProfile(response.data ?? null);
-    });
+    userReferralReferrerProfile({ path: { code: referralCode } }).then(
+      (response) => {
+        setInviterProfile(response.data ?? null);
+      },
+    );
 
-    userOnetimeInvite({ path: { code: referralCode } }).then((response) => {
-      if (response.data) {
-        setInviteeName(response.data.invitee);
-        setCommunityId(response.data.community?.id ?? null);
-      }
-    });
+    userOnetimeInviteOnetimeInvite({ path: { code: referralCode } }).then(
+      (response) => {
+        if (response.data) {
+          setInviteeName(response.data.invitee);
+          setCommunityId(response.data.community?.id ?? null);
+        }
+      },
+    );
 
     posthog.register_once({
       referral_code: referralCode,
@@ -85,9 +91,12 @@ const InvitePage: React.FC = () => {
             >
               Invalid invite
             </DisplayHeading>
-            <DisplaySubtitle className="mx-auto text-center">
+            <SiteSubtitle
+              size={SubtitleSize.Display}
+              className="mx-auto text-center"
+            >
               This invite link is missing a code.
-            </DisplaySubtitle>
+            </SiteSubtitle>
           </div>
         </section>
         <SiteFooter />
@@ -144,9 +153,12 @@ const InvitePage: React.FC = () => {
             >
               Invitation to the Alliance
             </DisplayHeading>
-            <DisplaySubtitle className="mx-auto text-center">
+            <SiteSubtitle
+              size={SubtitleSize.Display}
+              className="mx-auto text-center"
+            >
               {HERO_SUBHEAD}
-            </DisplaySubtitle>
+            </SiteSubtitle>
           </div>
           <p className="max-w-xl text-lg leading-snug text-[var(--site-ink)]/80 sm:text-xl">
             {inviteeName ? `Hi ${inviteeName}, ` : ""}I invite you to join me as

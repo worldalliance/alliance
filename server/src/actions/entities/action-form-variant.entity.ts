@@ -1,8 +1,18 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsInt, IsNumber, IsString, Max, Min } from "class-validator";
+import {
+  Allow,
+  IsEmpty,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from "class-validator";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { Form } from "src/tasks/entities/form.entity";
@@ -14,13 +24,16 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  Unique,
 } from "typeorm";
 import { Action } from "./action.entity";
 
 @Entity()
 @Index("IDX_action_form_variant_actionId", ["actionId"])
-@Unique("UQ_action_form_variant_formId", ["formId"])
+@Index("IDX_action_form_variant_formId", ["formId"])
+@Index("UQ_action_form_variant_formId", ["formId"], {
+  unique: true,
+  where: '"deletedAt" IS NULL',
+})
 export class ActionFormVariant {
   @PrimaryGeneratedColumn()
   @ApiProperty()
@@ -35,9 +48,8 @@ export class ActionFormVariant {
   @ManyToOne(() => Action, { onDelete: "CASCADE" })
   @JoinColumn({ name: "actionId" })
   @Type(() => Action)
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  action: Relation<Action>;
+  @IsOptional()
+  action?: Relation<Action>;
 
   @Column()
   @ApiProperty()
@@ -47,9 +59,8 @@ export class ActionFormVariant {
   @ManyToOne(() => Form, { onDelete: "RESTRICT" })
   @JoinColumn({ name: "formId" })
   @Type(() => Form)
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  form: Relation<Form>;
+  @IsOptional()
+  form?: Relation<Form>;
 
   @Column({ type: "text" })
   @ApiProperty()
@@ -74,4 +85,9 @@ export class ActionFormVariant {
   @Allow()
   @Type(() => Date)
   updatedAt: Date;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }

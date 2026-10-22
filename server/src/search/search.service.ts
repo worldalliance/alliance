@@ -1,6 +1,7 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { formatDistanceToNow } from "date-fns";
+import { uniqBy } from "es-toolkit";
 import { ActionsService } from "src/actions/actions.service";
 import { readableActionStatus } from "src/actions/entities/action-event.entity";
 import { Action } from "src/actions/entities/action.entity";
@@ -8,6 +9,7 @@ import { Post } from "src/forum/entities/post.entity";
 import { ForumService } from "src/forum/forum.service";
 import { ProfileDto } from "src/user/dto/user.dto";
 import { User } from "src/user/entities/user.entity";
+import { FriendService } from "src/user/friend.service";
 import { UserService } from "src/user/user.service";
 import type { Repository } from "src/utils/Repository";
 import { actionUrl, postUrl, profileUrl } from "./approutes";
@@ -19,10 +21,19 @@ import {
   SearchItemType,
 } from "./searchitem.dto";
 
+const nullIfNotFound = <T>(lookup: Promise<T>): Promise<T | null> =>
+  lookup.catch((error: unknown) => {
+    if (error instanceof NotFoundException) return null;
+    throw error;
+  });
+
+const maxRecentSearchesScanned = 50;
+
 @Injectable()
 export class SearchService {
   constructor(
     private usersService: UserService,
+    private readonly friendService: FriendService,
     private actionsService: ActionsService,
     private forumService: ForumService,
     @InjectRepository(RecentSearch)
@@ -36,53 +47,32 @@ export class SearchService {
       const recentSearches = await this.searchRepository.find({
         where: { userId },
         order: { createdAt: "DESC" },
-        take: maxItemsPerType,
+        take: maxRecentSearchesScanned,
       });
 
-      for (let i = recentSearches.length - 1; i >= 0; i--) {
-        if (
-          recentSearches
-            .slice(0, i)
-            .some(
-              (search) =>
-                search?.objectId === recentSearches[i].objectId &&
-                search?.objectType === recentSearches[i].objectType,
-            )
-        ) {
-          recentSearches.splice(i, 1);
-        }
-      }
-
-      const recentSearchesItems = await Promise.all(
-        recentSearches.map(async (search): Promise<SearchItem | null> => {
-          if (search.objectType === SearchItemType.User) {
-            const user = await this.usersService.findOne(search.objectId);
-            if (!user) {
-              return null;
-            }
-            return this.userToSearchItem(user, false, false);
-          } else if (search.objectType === SearchItemType.Action) {
-            const action = await this.actionsService.findOneOrFail({
-              id: search.objectId,
-              userId,
-            });
-            return this.actionToSearchItem(action);
-          } else if (search.objectType === SearchItemType.Post) {
-            const post = await this.forumService.findOnePostFull(
-              search.objectId,
-              userId,
-            );
-            return this.postToSearchItem(post);
-          }
-          return null;
-        }),
+      const unique = uniqBy(
+        recentSearches,
+        (search) => `${search.objectType}${search.objectId}`,
       );
 
-      return recentSearchesItems.filter((item) => item !== null);
+      const items: SearchItem[] = [];
+      for (
+        let i = 0;
+        i < unique.length && items.length < maxItemsPerType;
+        i += maxItemsPerType
+      ) {
+        const resolved = await Promise.all(
+          unique
+            .slice(i, i + maxItemsPerType)
+            .map((search) => this.recentSearchToItem(search, userId)),
+        );
+        items.push(...resolved.filter((item) => item !== null));
+      }
+      return items.slice(0, maxItemsPerType);
     }
 
     const users = await this.usersService.findByUsername(query);
-    const friends = await this.usersService.findFriends(userId);
+    const friends = await this.friendService.findFriends(userId);
     const userItems = users.slice(0, maxItemsPerType).map((user) =>
       this.userToSearchItem(
         user,
@@ -91,7 +81,7 @@ export class SearchService {
       ),
     );
 
-    const actions = await this.actionsService.findByName(query);
+    const actions = await this.actionsService.findByName(query, userId);
     const actionItems = actions
       .slice(0, maxItemsPerType)
       .map((action) => this.actionToSearchItem(action));
@@ -109,6 +99,43 @@ export class SearchService {
       .slice(0, maxItemsPerType);
 
     return [...userItems, ...actionItems, ...postItems, ...infoPageItems];
+  }
+
+  private async recentSearchToItem(
+    search: RecentSearch,
+    userId: number,
+  ): Promise<SearchItem | null> {
+    switch (search.objectType) {
+      case SearchItemType.User: {
+        const user = await this.usersService.findOne(search.objectId);
+        if (!user) {
+          return null;
+        }
+        return this.userToSearchItem(user, false, false);
+      }
+      case SearchItemType.Action: {
+        const action = await nullIfNotFound(
+          this.actionsService.findOneOrFail({
+            id: search.objectId,
+            userId,
+          }),
+        );
+        return action && this.actionToSearchItem(action);
+      }
+      case SearchItemType.Post: {
+        const post = await nullIfNotFound(
+          this.forumService.findOnePostFull(search.objectId, userId),
+        );
+        return post && this.postToSearchItem(post);
+      }
+      case SearchItemType.Recent:
+      case SearchItemType.Page:
+      case SearchItemType.Other:
+        return null;
+      default:
+        search.objectType satisfies never;
+        return null;
+    }
   }
 
   userToSearchItem(user: User, friends: boolean, self: boolean): SearchItem {

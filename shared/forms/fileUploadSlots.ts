@@ -18,6 +18,8 @@ export type FileUploadSlot =
 
 export type FileUploadSlots = {
   onFileSelected: (slot: FileUploadSlot, dataUri: string) => Promise<void>;
+  /** Drops the uploads in flight for the slot and keeps its stored answer. */
+  cancelUpload: (slot: FileUploadSlot) => void;
   uploadingSlotIds: Set<string>;
   uploadErrors: Record<string, string>;
 };
@@ -46,6 +48,24 @@ export function resolveUploadSlot(params: {
     uploading: fileUpload?.uploadingSlotIds.has(slotId) ?? false,
     uploadError: fileUpload?.uploadErrors[slotId] ?? null,
   };
+}
+
+export type FilePick = { uri: string; replaces: FormValue | undefined };
+
+/**
+ * The pick stands in until the answer catches up with it, so a cancelled or
+ * failed upload cannot leave a photo on screen that nothing stored. Null means
+ * show the stored answer.
+ */
+export function resolvePickedPreview(params: {
+  pick: FilePick | null;
+  value: FormValue | undefined;
+  uploading: boolean;
+}): string | null {
+  const { pick, value, uploading } = params;
+  if (!pick) return null;
+  const pickLanded = !!value && value !== pick.replaces;
+  return uploading || pickLanded ? pick.uri : null;
 }
 
 /**

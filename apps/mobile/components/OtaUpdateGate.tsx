@@ -1,5 +1,6 @@
 import { ExceptionEvent } from "@alliance/common/analytics";
 import { captureException } from "@alliance/shared/lib/analytics";
+import { milliseconds } from "date-fns";
 import { StatusBar } from "expo-status-bar";
 import {
   Component,
@@ -24,7 +25,7 @@ import Text, { TextStyle } from "./system/Text";
 
 // A fast download finishes before anyone reads a button. Holding the skip
 // control back keeps it from flashing on screen for users who never needed it.
-const SKIP_VISIBLE_AFTER_MS = 4_000;
+const SKIP_VISIBLE_AFTER_MS = milliseconds({ seconds: 4 });
 
 // Whether the gate draws something of its own in this phase. The splash comes
 // down as soon as it does. The phases that draw nothing leave it up, one until

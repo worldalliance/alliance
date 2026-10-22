@@ -25,13 +25,18 @@
     "worktree:new": "./scripts/new-worktree.sh",
     "worktree:rm": "./scripts/rm-worktree.sh",
     "test": "./scripts/test-all.sh",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format": "./scripts/format.sh",
+    "format:check": "./scripts/format.sh --check",
+    "gitignore:check": "./scripts/check-gitignore.sh",
+    "dupcheck": "bun scripts/dupcheck.ts",
+    "covercheck": "bun scripts/covercheck.ts",
     "eas-build-pre-install": "bun install --frozen-lockfile"
   },
   "devDependencies": {
     "@eslint/js": "^9.28.0",
+    "entities": "^7.0.1",
     "eslint": "^9.28.0",
+    "jscpd": "^5.3.2",
     "prettier": "^3.4.2",
     "prettier-plugin-organize-imports": "^4.3.0",
     "typescript": "^5.8.3",
@@ -40,17 +45,18 @@
   "dependencies": {
     "@tanstack/react-query": "^5.90.20",
     "lucide-react": "^0.563.0",
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
     "react-markdown": "^10.1.0",
-    "react-native-reanimated": "4.2.2",
+    "react-native-reanimated": "4.5.1",
     "socket.io-client": "^4.8.1"
   },
   "overrides": {
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
-    "react-test-renderer": "19.2.0",
-    "react-native-renderer": "19.2.0",
-    "@types/react": "19.2.10"
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-test-renderer": "19.2.3",
+    "react-native-renderer": "19.2.3",
+    "@types/react": "19.2.10",
+    "@types/linkify-it": "2.1.0"
   }
 }

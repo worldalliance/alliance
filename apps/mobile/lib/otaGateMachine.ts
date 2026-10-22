@@ -1,4 +1,5 @@
 import { OtaGateOutcome } from "@alliance/common/analytics";
+import { milliseconds } from "date-fns";
 
 export enum OtaGatePhase {
   Checking = "checking",
@@ -98,19 +99,19 @@ export interface PhaseDeadline {
 
 export const PHASE_DEADLINES: Record<WaitingPhase, PhaseDeadline> = {
   [OtaGatePhase.Checking]: {
-    ms: 2_000,
+    ms: milliseconds({ seconds: 2 }),
     outcome: OtaGateOutcome.CheckTimedOut,
     supersedes: null,
   },
   // More than the check gets, because this phase shows progress and a skip control.
   [OtaGatePhase.Downloading]: {
-    ms: 20_000,
+    ms: milliseconds({ seconds: 20 }),
     outcome: OtaGateOutcome.DownloadTimedOut,
     supersedes: null,
   },
   // reloadAsync resolves before the reload lands, so nothing else can end this phase.
   [OtaGatePhase.Applying]: {
-    ms: 5_000,
+    ms: milliseconds({ seconds: 5 }),
     outcome: OtaGateOutcome.ReloadStalled,
     supersedes: OtaGateOutcome.Applied,
   },

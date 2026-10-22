@@ -1,14 +1,20 @@
+/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import {
   ACTION_ACTIVITY_FEED_VISIBLE_TYPES,
+  actionActivityIsVisibleInFeed,
   ActionActivityType,
+  MEMBER_ACTION_DEADLINE_PASSED,
   WITHDRAWAL_OPTION_LABELS,
   withdrawalOptionFromFlags,
+  type FeedActionActivity,
 } from "@alliance/common/actionActivity";
+import { AnalyticsEvent, ExceptionEvent } from "@alliance/common/analytics";
 import {
   cohortExpressionSchema,
-  expressionReferencesTag,
+  expressionHasLeaf,
   type CohortExpression,
 } from "@alliance/common/cohort-expression";
+import { ANONYMOUS_DISPLAY_NAME } from "@alliance/common/displayName";
 import {
   displayOnlySchema,
   displayOnlySchemaError,
@@ -16,11 +22,29 @@ import {
   emptyDisplayOnlySchema,
   type DisplayOnlySchema,
 } from "@alliance/common/forms/display-only-schema";
-import type { FormSchema } from "@alliance/common/forms/form-schema";
+import { type FormSchema } from "@alliance/common/forms/form-schema";
 import { validateFormSchema } from "@alliance/common/forms/form-schema-validate";
+import {
+  schemaWithSavedChoices,
+  selectedFormulaChoices,
+} from "@alliance/common/forms/formula-choices";
+import {
+  schemaWithResolvedOptions,
+  type ResolvedOptions,
+} from "@alliance/common/forms/formula-options";
+import {
+  collectOutputFieldMap,
+  isMalformedListAnswer,
+  isOutputAnswerShown,
+  redactToOutput,
+  savedOutputAnswers,
+  type OutputAnswer,
+} from "@alliance/common/forms/output-resolution";
 import { echoesStoredKey } from "@alliance/common/image-src";
+import { nameParts } from "@alliance/common/nameParts";
 import { run } from "@alliance/common/run";
 import { Assert } from "@alliance/common/types";
+import { describeSchemaIssues } from "@alliance/common/zod-issues";
 import {
   BadRequestException,
   ConflictException,
@@ -33,31 +57,46 @@ import {
 } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
+import { milliseconds } from "date-fns";
+import { groupBy } from "es-toolkit";
 import { CommunityService } from "src/community/community.service";
-import { Community } from "src/community/entities/community.entity";
+import {
+  Community,
+  loadedCommunityUsers,
+} from "src/community/entities/community.entity";
+import {
+  assertLive,
+  softDeleteCascade,
+  softDeleteWhere,
+  updateLive,
+  writeUnderLive,
+} from "src/datasources/soft-delete";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import {
   Comment,
   CommentParentObject,
+  loadedCommentAuthor,
 } from "src/forum/entities/comment.entity";
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
 import { Post } from "src/forum/entities/post.entity";
+import { ForumCommentQueryService } from "src/forum/forum-comment-query.service";
 import { ForumService } from "src/forum/forum.service";
-import { resolveUsMembership, UsMembership } from "src/geo/us-membership";
+import {
+  hiddenCommentIds,
+  withoutHiddenComments,
+} from "src/forum/hidden-comments";
 import { renderedImageKey } from "src/images/images.service";
 import { FacepileService } from "src/likes/facepile.service";
-import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
 import {
   ActionEventReminderService,
-  assertExcludePreviouslyNotifiedAllowed,
   NOTIFICATION_LOOKBACK_WINDOW_MS,
 } from "src/notifs/action-event-reminder.service";
-import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
-import { PreviewNotificationPlanDto } from "src/notifs/dto/notification-plan.dto";
+import { NotificationPlan } from "src/notifs/dto/notification-plan.dto";
 import { LikeNotificationService } from "src/notifs/like-notification.service";
-import { NotificationChannel } from "src/notifs/notif-utils";
 import { NotifsService } from "src/notifs/notifs.service";
+import { ReminderGroupService } from "src/notifs/reminder-group.service";
+import { PosthogService } from "src/posthog/posthog.service";
 import { actionActivityUrl } from "src/search/approutes";
 import { ShareUrl } from "src/share-urls/entities/share-url.entity";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
@@ -65,10 +104,12 @@ import { displayOnlySchemaOf } from "src/tasks/display-only-snapshot";
 import { Form } from "src/tasks/entities/form.entity";
 import {
   FormResponse,
+  loadedFormResponseSnapshot,
   parseFormResponse,
   type ParsedFormResponse,
 } from "src/tasks/entities/formresponse.entity";
 import { SnapshotHistoryOwner } from "src/tasks/entities/formsnapshot.entity";
+import { formSchemaOf } from "src/tasks/form-snapshot-schema";
 import { FormSnapshotService } from "src/tasks/formsnapshot.service";
 import {
   UserActionRelationDetail,
@@ -79,25 +120,27 @@ import {
 } from "src/user/dto/user-action-relations.dto";
 import { ProfileDto } from "src/user/dto/user.dto";
 import { ContractEventType } from "src/user/entities/contract-event.entity";
-import { Tag } from "src/user/entities/tag.entity";
+import { loadedTagUsers, Tag } from "src/user/entities/tag.entity";
 import {
+  loadedUserCommunities,
   sqlUserHasActiveContractAt,
+  sqlUserHasEverSigned,
   User,
 } from "src/user/entities/user.entity";
+import { sqlUserHasProfilePicture } from "src/user/profile-picture";
 import {
-  userActionNotifsEnabled_email,
-  userActionNotifsEnabled_push,
-  userActionNotifsEnabled_text,
-} from "src/user/user.utils";
-import {
+  ActionAssignment,
+  computeActionAssignment,
   computeIsAssignedAndPresent,
-  computeIsAssignedToAction,
   computeIsAwayDuringWindow,
   computeIsTaggedOrInManualCohort,
   computeMemberActionAwayStatus,
+  computeMissedRequiredAction,
+  hasMemberActionDeadlinePassed,
 } from "src/utils/action-user";
 import { CachedFilter } from "src/utils/cached-filter";
 import { yieldToEventLoop } from "src/utils/event-loop";
+import { findLeast } from "src/utils/filter";
 import { startDatePriorityComparator } from "src/utils/general-update";
 import type {
   IsRelation,
@@ -116,21 +159,43 @@ import {
   Or,
   type Repository,
 } from "typeorm";
+import { FriendService } from "../user/friend.service";
+import { TagService } from "../user/tag.service";
 import { UserService } from "../user/user.service";
 import {
   findLatestTerminalActivity,
+  isTerminalActivity,
   resolveUserActionRelation,
+  sqlIsLatestCompletion,
+  sqlIsLatestWithdrawal,
+  TERMINAL_ACTIVITY_TYPES,
 } from "./action-activity-status";
 import { ActionFormVariantService } from "./action-form-variant.service";
+import { ActionParticipantsService } from "./action-participants.service";
+import { replaceReviewers } from "./action-reviewers";
 import {
+  readRecognitionConfig,
+  usesRecognition,
+  type RecognitionPreviewCounts,
+} from "./action-update-recognition";
+import { ActionUpdateRecognitionPreviewService } from "./action-update-recognition-preview.service";
+import { ActionUpdateRecognitionService } from "./action-update-recognition.service";
+import {
+  checkActionShowsWhenEntriesArrive,
   isActionUpdatePublished,
   publishedActionUpdateWhere,
 } from "./action-update-visibility";
+import { ActionVisibilityService } from "./action-visibility.service";
+import { CohortAdmissionService } from "./cohort-admission.service";
+import { readsSavedDecisions } from "./cohort-decision";
+import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
+import { CohortDecisionService } from "./cohort-decision.service";
 import {
-  answerMatchesFormField,
-  evaluateCohortExpression,
-  singleUserCohortContext,
-} from "./cohort-expression.evaluator";
+  assertNotInACohort,
+  assertTagsExist,
+} from "./cohort-reference-validation";
+import { CohortResolutionSession } from "./cohort-resolution-session";
+import { CohortResolverService } from "./cohort-resolver.service";
 import {
   ActionActivityDto,
   ActionDto,
@@ -145,8 +210,6 @@ import {
   ExportActionDto,
   GlobalFeedActionUpdateDto,
   GlobalFeedActivityGroupDto,
-  GlobalFeedActivityType,
-  GlobalFeedActivityTypes,
   GlobalFeedForumCommentsDto,
   GlobalFeedItemDto,
   GlobalFeedItemType,
@@ -154,16 +217,15 @@ import {
   HomeFeedItem,
   HomeFeedItemDto,
   HomeFeedItemType,
-  ReminderAnchorCandidate,
   SetPriorityDto,
   SuspensionPlan,
   TimelineFeedItemDto,
   TimelineFeedItemType,
-  UnwelcomedSignedContractMember,
   UpdateActionDto,
   UpdateActionEventDto,
   UpdateActionUpdateDto,
   UserActionRelation,
+  WelcomeQueue,
 } from "./dto/action.dto";
 import {
   CreateFollowUpFormDto,
@@ -178,24 +240,34 @@ import {
   ActionActivity,
   ActivitySource,
   ALLOW_DUPLICATE,
+  loadedActionActivityAction,
+  loadedActionActivityLikes,
+  loadedActionActivityUser,
 } from "./entities/action-activity.entity";
-import { ActionEvent, ActionStatus } from "./entities/action-event.entity";
+import {
+  ActionEvent,
+  ActionStatus,
+  loadedActionEventAction,
+} from "./entities/action-event.entity";
 import { ActionFormVariant } from "./entities/action-form-variant.entity";
 import { ActionReviewer } from "./entities/action-reviewer.entity";
 import {
   ActionSuite,
+  loadedActionSuiteActions,
   parseActionSuite,
   type ParsedActionSuite,
 } from "./entities/action-suite.entity";
 import {
   ActionUpdate,
+  ActionUpdateNotificationMode,
   ActionUpdateNotifyType,
+  lockActionUpdateRow,
 } from "./entities/action-update.entity";
 import {
   Action,
-  ActionTaskType,
+  loadedActionEvents,
+  loadedActionFollowUpForms,
   parseAction,
-  VisibilityMode,
   type ParsedAction,
 } from "./entities/action.entity";
 import {
@@ -207,24 +279,39 @@ import {
   GeneralUpdateActivity,
   GeneralUpdateActivityType,
 } from "./entities/general-update-activity.entity";
-import { GeneralUpdate } from "./entities/general-update.entity";
 import {
-  ReminderGroup,
-  ReminderGroupTimingMode,
-} from "./entities/reminder-group.entity";
+  GeneralUpdate,
+  loadedGeneralUpdateTags,
+} from "./entities/general-update.entity";
+import { ReminderGroup } from "./entities/reminder-group.entity";
+import { lockLiveTagsAndSuites } from "./general-update-locks";
+import {
+  SUSPENSION_MISSED_SUITE_COUNT,
+  suspensionReasonKey,
+  trailingMissedSuiteIds,
+  type SuiteOutcome,
+} from "./missed-suite-streak";
+import { PrerequisiteProgressService } from "./prerequisite-progress.service";
+import {
+  assertNotAPrerequisite,
+  assertPrerequisitesValid,
+} from "./prerequisite-validation";
 import { SCHEMA_WRITE_TARGETS } from "./schema-write-target";
+import { SingleMemberCohortService } from "./single-member-cohort.service";
+import { assertNotInStaffPreview } from "./staff-preview";
 import { resolveUserActionPillStatus } from "./user-action-pill-status";
 import {
+  CompletionBlock,
   computeCanCompleteAction,
+  computeCompletionBlock,
   resolveUserActionStatus,
+  type ViewerCohort,
 } from "./user-action-status";
 
 type SuspendPlanContext = {
-  orderedSuites: Array<{ suiteId: number; pastDate: Date | null }>;
-  expectedBySuite: Map<number, Set<number>>;
-  failedBySuite: Map<number, Set<number>>;
+  /** In close order. */
+  suites: SuiteOutcome[];
   idToUser: Map<number, User>;
-  allExpectedUsers: number[];
 };
 
 /**
@@ -241,13 +328,8 @@ export type SuspensionCandidate = { user: User; reasonKey: string };
  */
 export type LinkedAction = Pick<Action, "id" | "name">;
 
-export type MissedActionReminderContext = {
-  isFirstAssignedSuite: boolean;
-  consecutiveMissedSuiteCount: number;
-};
-
 /** Facepile preview size; member-list endpoints paginate full lists. */
-const GLOBAL_FEED_FACEPILE_LIMIT = 8;
+export const GLOBAL_FEED_FACEPILE_LIMIT = 8;
 
 /** Feed/member-list rolling window. */
 const GLOBAL_FEED_WINDOW_DAYS = 8;
@@ -258,6 +340,29 @@ const GLOBAL_FEED_WINDOW_DAYS = 8;
  * the activity row and in the event's blob.
  */
 const OPT_OUT_REASON_PREVIEW_LENGTH = 300;
+
+const COMPLETION_UNAVAILABLE = "This action is not available to you";
+
+const ACTION_PARENT_GONE = "That suite, author or form is gone";
+
+const COMPLETION_BLOCK_MESSAGE: Record<CompletionBlock, string> = {
+  [CompletionBlock.PreventCompletion]: COMPLETION_UNAVAILABLE,
+  [CompletionBlock.NotInCohort]: COMPLETION_UNAVAILABLE,
+  [CompletionBlock.DeadlinePassed]: MEMBER_ACTION_DEADLINE_PASSED,
+  [CompletionBlock.OnboardingContractUnsigned]: COMPLETION_UNAVAILABLE,
+};
+
+/**
+ * Below this many active friends + group members, the feed is topped up with other
+ * active members so a thin network still has something to read.
+ */
+const MIN_HOME_FEED_SOURCE_USERS = 10;
+
+const MEMBER_FEED_RELATIONS = {
+  events: true,
+  followUpForms: true,
+  reviewers: true,
+} satisfies Omit<Relations<Action>, "usersCompleted" | "status">;
 
 type FeedMemberPageRow = {
   userId: number | string;
@@ -272,6 +377,7 @@ type FeedMemberRankedQuery = {
 
 type FeedMemberSummaryRow = FeedMemberPageRow & {
   totalCount: number | string;
+  windowLatestAt: Date | string;
 };
 
 @Injectable()
@@ -318,18 +424,32 @@ export class ActionsService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private userService: UserService,
+    private readonly friendService: FriendService,
+    private readonly tagService: TagService,
     public eventEmitter: EventEmitter2,
     private readonly communityService: CommunityService,
     private readonly notifsService: NotifsService,
-    private readonly actionEventRecipientService: ActionEventRecipientService,
+    private readonly recognitionService: ActionUpdateRecognitionService,
+    private readonly cohortResolverService: CohortResolverService,
     private readonly actionEventReminderService: ActionEventReminderService,
+    private readonly reminderGroupService: ReminderGroupService,
     private readonly likeNotificationService: LikeNotificationService,
     private readonly forumService: ForumService,
+    private readonly forumCommentQueryService: ForumCommentQueryService,
     private readonly eventLogService: EventLogService,
     @Inject(forwardRef(() => ActionFormVariantService))
     private readonly actionFormVariantService: ActionFormVariantService,
     private readonly facepileService: FacepileService,
     private readonly formSnapshotService: FormSnapshotService,
+    private readonly posthogService: PosthogService,
+    private readonly cohortDecisionStaffService: CohortDecisionStaffService,
+    private readonly singleMemberCohortService: SingleMemberCohortService,
+    private readonly cohortDecisionService: CohortDecisionService,
+    private readonly cohortAdmissionService: CohortAdmissionService,
+    private readonly actionVisibility: ActionVisibilityService,
+    private readonly prerequisiteProgressService: PrerequisiteProgressService,
+    private readonly participants: ActionParticipantsService,
+    private readonly recognitionPreview: ActionUpdateRecognitionPreviewService,
   ) {}
 
   async applyAssignedFormIds(
@@ -445,12 +565,23 @@ export class ActionsService {
   private parseCohortExpressionOrThrow(value: unknown): CohortExpression {
     const parsed = cohortExpressionSchema.safeParse(value);
     if (!parsed.success) {
-      const issues = parsed.error.issues
-        .map((issue) => `${issue.path.join(".") || "<root>"}: ${issue.message}`)
-        .join("; ");
+      const issues = describeSchemaIssues(parsed.error).join("; ");
       throw new BadRequestException(`Invalid cohort expression: ${issues}`);
     }
     return parsed.data;
+  }
+
+  private async parseCohortExpressionForSaveOrThrow(
+    value: unknown,
+    stored?: unknown,
+  ): Promise<CohortExpression> {
+    const expression = this.parseCohortExpressionOrThrow(value);
+    await assertTagsExist({
+      em: this.actionRepository.manager,
+      expression,
+      previous: cohortExpressionSchema.safeParse(stored).data,
+    });
+    return expression;
   }
 
   /** Reviewers are ordered by the position the admin sent them in. */
@@ -493,7 +624,7 @@ export class ActionsService {
     const { suiteId, authorIds, reviewers, ...rest } = createActionDto;
     this.rewriteRenderedImages(rest);
     if (rest.cohortExpression != null) {
-      rest.cohortExpression = this.parseCohortExpressionOrThrow(
+      rest.cohortExpression = await this.parseCohortExpressionForSaveOrThrow(
         rest.cohortExpression,
       );
     }
@@ -502,6 +633,8 @@ export class ActionsService {
     }
     const action = this.actionRepository.create(rest);
     action.reviewers = this.reviewerRows(reviewers ?? []);
+    action.followUpForms = [];
+    action.events = [];
 
     if (suiteId) {
       const suite = await this.actionSuiteRepository.findOneOrFail({
@@ -516,7 +649,21 @@ export class ActionsService {
         : [];
     }
 
-    const saved = await this.actionRepository.save(action);
+    const saved = await writeUnderLive(this.actionRepository.manager, {
+      parents: [
+        ...(action.suite ? [{ target: ActionSuite, id: action.suite.id }] : []),
+        ...(action.authors ?? []).map(({ id }) => ({ target: User, id })),
+        ...(rest.taskFormId == null
+          ? []
+          : [{ target: Form, id: rest.taskFormId }]),
+      ],
+      notFound: ACTION_PARENT_GONE,
+      write: async (em) => {
+        const inserted = await em.save(Action, action);
+        await assertPrerequisitesValid({ em, actionIds: [inserted.id] });
+        return inserted;
+      },
+    });
     await this.shiftPrioritiesAfterInsertion();
     await this.syncGeneralUpdateDatesForSuites([saved.suite?.id]);
     return parseAction(saved);
@@ -546,6 +693,7 @@ export class ActionsService {
 
     const qb = this.actionRepository
       .createQueryBuilder("a")
+      .select("a.id", "id")
       .leftJoin("a.events", "e")
       .addSelect(
         `
@@ -578,13 +726,14 @@ export class ActionsService {
     if (limit) {
       qb.limit(limit);
     }
-    const sortedActions = await qb.getMany();
+    const actionIds = (await qb.getRawMany<{ id: number }>()).map(
+      (row) => row.id,
+    );
 
-    if (!relations || sortedActions.length === 0) {
-      return sortedActions.map(parseAction);
+    if (actionIds.length === 0) {
+      return [];
     }
 
-    const actionIds = sortedActions.map((a) => a.id);
     const actionsWithRelations = await this.actionRepository.find({
       where: { id: In(actionIds) },
       relations,
@@ -596,12 +745,10 @@ export class ActionsService {
   }
 
   async findUsersCompletedForAction(actionId: number): Promise<number> {
-    return this.actionActivityRepository.count({
-      where: {
-        actionId,
-        type: ActionActivityType.USER_COMPLETED,
-      },
+    const completions = await this.prerequisiteProgressService.loadCompletions({
+      actionId,
     });
+    return completions.length;
   }
 
   async reloadUsersCompletedForAction(actionId: number): Promise<void> {
@@ -617,134 +764,10 @@ export class ActionsService {
   }
 
   async reloadUsersJoinedForAction(actionId: number): Promise<void> {
-    const usersJoined = (await this.findParticipantIdsForActionById(actionId))
-      .length;
+    const usersJoined = (
+      await this.participants.findParticipantIdsForActionById(actionId)
+    ).length;
     await this.actionRepository.update(actionId, { usersJoined });
-  }
-
-  async findParticipantIdsForActionById(actionId: number): Promise<number[]> {
-    const action = parseAction(
-      await this.actionRepository.findOneOrFail({
-        where: { id: actionId },
-        relations: {
-          events: true,
-          activities: true,
-        },
-      }),
-    );
-
-    return this.findParticipantIdsForAction(action);
-  }
-
-  async findParticipantIdsForAction(action: ParsedAction): Promise<number[]> {
-    const result = await this.findParticipantIdsForActions([action]);
-    return result.get(action.id) ?? [];
-  }
-
-  /**
-   * The "participants" of an action — source of the persisted
-   * `Action.usersJoined` counter (which keeps its legacy wire/DB name for now).
-   * The formula:
-   *
-   *   base recipients (assigned, INCLUDING dismissed)
-   *   − away at any point during the member-action window
-   *   − withdrawn (USER_WONT_COMPLETE)
-   *   + everyone with a USER_COMPLETED activity
-   *
-   * i.e. "could this user have done it at all?" — note this is NOT the same
-   * set as the reminder/suspension roster (computeIsAssignedAndPresent), which
-   * excludes dismissed users.
-   *
-   * Batched: fetches the shared data in a handful of bulk queries instead of
-   * per-action. Returns a map of actionId -> participant userIds.
-   */
-  async findParticipantIdsForActions(
-    actions: ParsedAction[],
-    session: CohortResolutionSession = new CohortResolutionSession(),
-  ): Promise<Map<number, number[]>> {
-    // Build entries for actions that have a MemberAction event
-    const entries: Array<{ action: ParsedAction; event: ActionEvent }> = [];
-    for (const action of actions) {
-      const event = action.events.find(
-        (e) => e.newStatus === ActionStatus.MemberAction,
-      );
-      if (event) {
-        entries.push({ action, event });
-      }
-    }
-
-    if (entries.length === 0) {
-      return new Map(actions.map((a) => [a.id, []]));
-    }
-
-    const actionIds = entries.map((e) => e.action.id);
-
-    // 1. Batched base users (1 user query, 1 dismissed query, deduplicated cohorts)
-    const baseUsersByAction =
-      await this.actionEventRecipientService.findBaseUsersForEvents({
-        entries: entries.map((e) => ({
-          action: e.action,
-          eventId: e.event.id,
-        })),
-        includeDismissed: true,
-        session,
-      });
-
-    // 2. One query: all completion + withdrawal activities for these actions
-    const allActivities = await this.actionActivityRepository.find({
-      where: {
-        actionId: In(actionIds),
-        type: In([
-          ActionActivityType.USER_COMPLETED,
-          ActionActivityType.USER_WONT_COMPLETE,
-        ]),
-      },
-    });
-    const completionsByAction = new Map<number, number[]>();
-    const withdrawalsByAction = new Map<number, Set<number>>();
-    for (const act of allActivities) {
-      if (act.type === ActionActivityType.USER_COMPLETED) {
-        if (!completionsByAction.has(act.actionId)) {
-          completionsByAction.set(act.actionId, []);
-        }
-        completionsByAction.get(act.actionId)!.push(act.userId);
-      } else {
-        if (!withdrawalsByAction.has(act.actionId)) {
-          withdrawalsByAction.set(act.actionId, new Set());
-        }
-        withdrawalsByAction.get(act.actionId)!.add(act.userId);
-      }
-    }
-
-    // 3. Per-action assembly
-    const result = new Map<number, number[]>();
-    for (const action of actions) {
-      const baseUsers = baseUsersByAction.get(action.id);
-      if (!baseUsers) {
-        result.set(action.id, []);
-        continue;
-      }
-
-      const notAwayDuringMemberActionPhase = baseUsers.filter(
-        (user) => !computeIsAwayDuringWindow({ action, user }),
-      );
-
-      const withdrawals = withdrawalsByAction.get(action.id) ?? new Set();
-      const completions = completionsByAction.get(action.id) ?? [];
-
-      const notAwayUsersMinusWithdrawals =
-        notAwayDuringMemberActionPhase.filter(
-          (user) => !withdrawals.has(user.id),
-        );
-      const set = new Set([
-        ...notAwayUsersMinusWithdrawals.map((user) => user.id),
-        ...completions,
-      ]);
-
-      result.set(action.id, Array.from(set));
-    }
-
-    return result;
   }
 
   async findIncompleteUsersForAction(actionId: number): Promise<User[]> {
@@ -758,16 +781,13 @@ export class ActionsService {
       }),
     );
 
-    const joinedUserIds = await this.findParticipantIdsForAction(action);
+    const joinedUserIds =
+      await this.participants.findParticipantIdsForAction(action);
 
-    const completedActivities = await this.actionActivityRepository.find({
-      where: {
-        actionId,
-        type: ActionActivityType.USER_COMPLETED,
-      },
-      select: { userId: true },
+    const completions = await this.prerequisiteProgressService.loadCompletions({
+      actionId,
     });
-    const completedUserIds = new Set(completedActivities.map((a) => a.userId));
+    const completedUserIds = new Set(completions.map((a) => a.userId));
 
     const incompleteUserIds = joinedUserIds.filter(
       (id) => !completedUserIds.has(id),
@@ -780,118 +800,205 @@ export class ActionsService {
     return this.userService.findByIds(incompleteUserIds);
   }
 
-  async findUnwelcomedSignedContractMembers(): Promise<
-    UnwelcomedSignedContractMember[]
-  > {
+  async findWelcomeQueue(): Promise<WelcomeQueue> {
+    const onboardingActions = await this.actionRepository.find({
+      where: {
+        onboarding: true,
+        optional: false,
+        archived: false,
+        preventCompletion: false,
+      },
+      relations: { events: true },
+    });
+    const requiredActions = onboardingActions
+      .filter((action) => action.status === ActionStatus.MemberAction)
+      .map(parseAction);
+    const actionIds = requiredActions.map((action) => action.id);
+    const requiredActionCount = actionIds.length;
+    if (!requiredActionCount) return { requiredActionCount, members: [] };
+
     const rows = await this.actionActivityRepository.query<
       {
-        userId: number | string;
-        actionId: number | string;
-        activityId: number | string;
-        completedAt: Date | string;
-        signedAt: Date | string;
-        staffLikeCount: number | string;
+        userId: number;
+        actionId: number;
+        activityId: number;
+        completedAt: Date;
+        staffLikeCount: string;
       }[]
     >(
       `
-        SELECT
-          activity."userId" AS "userId",
-          action.id AS "actionId",
-          activity.id AS "activityId",
-          activity."createdAt" AS "completedAt",
-          MAX(contract_event.date) AS "signedAt",
-          COUNT(DISTINCT staff_liker.id) AS "staffLikeCount"
+        SELECT activity."userId", activity."actionId", activity.id AS "activityId",
+          activity."createdAt" AS "completedAt", COUNT(staff_liker.id) AS "staffLikeCount"
         FROM action_activity activity
-        INNER JOIN action
-          ON action.id = activity."actionId"
-          AND action."isContractSigningAction" = true
-        INNER JOIN contract_event
-          ON contract_event."userId" = activity."userId"
-          AND contract_event.type = $1
-        LEFT JOIN comment staff_comment
-          ON staff_comment."parentObjectType" = $2
-          AND staff_comment."parentObjectId" = activity.id
-          AND staff_comment.deleted = false
-        LEFT JOIN "user" staff_comment_author
-          ON staff_comment_author.id = staff_comment."authorId"
-          AND staff_comment_author.staff = true
         LEFT JOIN action_activity_likes_user activity_like
           ON activity_like."actionActivityId" = activity.id
         LEFT JOIN "user" staff_liker
-          ON staff_liker.id = activity_like."userId"
-          AND staff_liker.staff = true
-        WHERE activity.type = $3
-        GROUP BY activity.id, activity."userId", action.id
-        HAVING COUNT(staff_comment_author.id) = 0
-        ORDER BY MAX(contract_event.date) DESC
+          ON staff_liker.id = activity_like."userId" AND staff_liker.staff = true
+          AND staff_liker."deletedAt" IS NULL
+        WHERE activity."actionId" = ANY($1::int[])
+        AND ${sqlIsLatestCompletion("activity")}
+        AND ${sqlUserHasEverSigned('activity."userId"')}
+        AND NOT EXISTS (
+          SELECT 1
+          FROM action_activity completion
+          INNER JOIN action ON action.id = completion."actionId" AND action.onboarding = true
+            AND action."deletedAt" IS NULL
+          INNER JOIN comment ON comment."parentObjectType" = $3
+            AND comment."parentObjectId" = completion.id AND comment."deletedAt" IS NULL
+          INNER JOIN "user" author ON author.id = comment."authorId" AND author.staff = true
+            AND author."deletedAt" IS NULL
+          WHERE completion."userId" = activity."userId" AND completion.type = $2
+            AND completion."deletedAt" IS NULL
+        )
+        GROUP BY activity.id, activity."userId", activity."actionId", activity."createdAt"
+        ORDER BY activity."createdAt" DESC, activity.id DESC
       `,
       [
-        ContractEventType.SIGNED,
-        CommentParentObject.Activity,
+        actionIds,
         ActionActivityType.USER_COMPLETED,
+        CommentParentObject.Activity,
       ],
     );
-
+    const rowsByUser = groupBy(rows, (row) => row.userId);
     const users = await this.userService.findByIds(
-      rows.map((row) => Number(row.userId)),
+      Object.keys(rowsByUser).map(Number),
       { contractEvents: true },
     );
-    const usersById = new Map(users.map((user) => [user.id, user]));
+    const session = new CohortResolutionSession();
+    session.candidateUserIds = Promise.resolve(
+      new Set(users.map((user) => user.id)),
+    );
+    const cohorts = await Promise.all(
+      requiredActions.map((action) =>
+        this.cohortResolverService.resolveDecidedCohort({
+          action,
+          session,
+        }),
+      ),
+    );
 
-    return rows.flatMap((row) => {
-      const user = usersById.get(Number(row.userId));
-      if (!user) return [];
-      return {
-        user,
-        actionId: Number(row.actionId),
-        activityId: Number(row.activityId),
-        signedAt: new Date(row.signedAt),
-        completedAt: new Date(row.completedAt),
-        staffLikeCount: Number(row.staffLikeCount),
-      };
-    });
+    const now = new Date();
+    return {
+      requiredActionCount,
+      members: users
+        .flatMap((user) => {
+          const applicableActions = requiredActions.filter((action, index) =>
+            computeCanCompleteAction({
+              action,
+              user,
+              inCohort: cohorts[index].has(user.id),
+              now,
+            }),
+          );
+          const applicableIds = new Set(
+            applicableActions.map((action) => action.id),
+          );
+          const completions = rowsByUser[user.id].filter((row) =>
+            applicableIds.has(row.actionId),
+          );
+          const latest = completions[0];
+          if (!latest || completions.length !== applicableIds.size) return [];
+          return [
+            {
+              user,
+              actionId: latest.actionId,
+              activityId: latest.activityId,
+              completedAt: latest.completedAt,
+              staffLikeCount: Number(latest.staffLikeCount),
+            },
+          ];
+        })
+        .sort(
+          (a, b) =>
+            b.completedAt.getTime() - a.completedAt.getTime() ||
+            b.activityId - a.activityId,
+        ),
+    };
   }
 
   /**
-   * Cohort-expression result for the viewer on one action — the single
-   * evaluation feeding `canParticipate`/`viewer.canComplete`,
-   * `shouldParticipate`, and `viewer`. No member-action-phase gate: the
-   * completion rule (unlike assignment) applies to actions whose phase isn't
-   * scheduled yet, and gating here made `viewer.canComplete` disagree with
-   * `isCompletionAllowed` (which the complete mutation enforces). Dismissal
-   * deliberately does not skip it either: `viewer.assigned` treats dismissal
-   * as an overlay, so it needs the real cohort result.
+   * The viewer's {@link ViewerCohort} on one action — the single evaluation
+   * feeding `canParticipate`/`viewer.canComplete`, `shouldParticipate`, and
+   * `viewer`. No member-action-phase gate: the completion rule (unlike
+   * assignment) applies to actions whose phase isn't scheduled yet, and
+   * gating here made `viewer.canComplete` disagree with `findCompletionBlock`
+   * (which the complete mutation enforces).
    */
-  private async computeViewerInCohort(params: {
+  private async computeViewerCohort(params: {
     action: ParsedAction;
     user: User | null;
-    session?: CohortResolutionSession;
-  }): Promise<boolean> {
-    const { action, user, session } = params;
-    return user
-      ? await this.computeIsInCohortExpression({
-          user,
-          cohortExpression: action.cohortExpression,
-          session,
-        })
-      : false;
+    session: CohortResolutionSession;
+    now: Date;
+    /** Actions to read from the live cohort; see `reconcileForUser`. */
+    undecidedActionIds: ReadonlySet<number>;
+  }): Promise<ViewerCohort> {
+    const { action, user, session, now, undecidedActionIds } = params;
+    if (!user) {
+      return { admitted: false, eligible: false };
+    }
+    const [live, admittedActionIds] = await Promise.all([
+      this.singleMemberCohortService.computeIsInActionCohort({
+        user,
+        action,
+        session,
+      }),
+      this.cohortAdmissionService.loadAdmittedActionIds(user.id, session),
+    ]);
+    const admitted =
+      readsSavedDecisions(action, now) && !undecidedActionIds.has(action.id)
+        ? admittedActionIds.has(action.id)
+        : live;
+    return { admitted, eligible: admitted || live };
   }
 
   async findMemberPublic(
     userId?: number,
     sorted?: boolean,
   ): Promise<ActionDto[]> {
-    const relations: Omit<Relations<Action>, "usersCompleted" | "status"> = {
-      events: true,
-      followUpForms: true,
-      reviewers: true,
-    };
     const actions = sorted
-      ? await this.findAllSorted(relations)
+      ? await this.findAllSorted(MEMBER_FEED_RELATIONS)
       : await this.actionRepository
-          .find({ relations, relationLoadStrategy: "query" })
+          .find({
+            relations: MEMBER_FEED_RELATIONS,
+            relationLoadStrategy: "query",
+          })
           .then((rows) => rows.map(parseAction));
+    return this.buildMemberFeed(actions, userId);
+  }
 
+  /** The actions in their member-action phase, the only ones the task badge counts. */
+  async findOpenActionIds(): Promise<number[]> {
+    const actions = await this.actionRepository.find({
+      select: { id: true, events: { id: true, date: true, newStatus: true } },
+      relations: { events: true },
+    });
+    return actions
+      .filter((action) => action.status === ActionStatus.MemberAction)
+      .map((action) => action.id);
+  }
+
+  /** The member feed for the given actions, keeping those still open. */
+  async findMemberOpen(params: {
+    userId: number;
+    openActionIds: number[];
+  }): Promise<ActionDto[]> {
+    const actions = await this.actionRepository
+      .find({
+        where: { id: In(params.openActionIds) },
+        relations: MEMBER_FEED_RELATIONS,
+        relationLoadStrategy: "query",
+      })
+      .then((rows) => rows.map(parseAction));
+    return this.buildMemberFeed(
+      actions.filter((action) => action.status === ActionStatus.MemberAction),
+      params.userId,
+    );
+  }
+
+  private async buildMemberFeed(
+    actions: ParsedAction[],
+    userId?: number,
+  ): Promise<ActionDto[]> {
     const user = userId
       ? await this.userService.findOne(userId, {
           tags: true,
@@ -901,19 +1008,24 @@ export class ActionsService {
         })
       : null;
 
+    const now = new Date();
+    const undecidedActionIds = user
+      ? await this.cohortDecisionService.reconcileForUser({
+          user,
+          actions,
+          now,
+        })
+      : new Set<number>();
+
     // One session for the whole feed: every action re-asks the same per-user
     // leaf questions, and the answers can't change mid-request.
     const session = new CohortResolutionSession();
 
-    const filtered: ParsedAction[] = [];
-    for (const action of actions) {
-      if (
-        (await this.userCanSeeAction({ action, user, session })) &&
-        !action.publicOnly
-      ) {
-        filtered.push(action);
-      }
-    }
+    const filtered = await this.actionVisibility.listableActions({
+      actions,
+      user,
+      session,
+    });
 
     await this.applyAssignedFormIds(filtered, user?.id);
 
@@ -932,33 +1044,38 @@ export class ActionsService {
     // Index viewer's activities once, rather than rescanning per action.
     const userActivities = user ? new CachedFilter(user.activities!) : null;
 
-    const now = new Date();
-
     return await Promise.all(
       filtered.map(async (action) => {
-        const inCohort = await this.computeViewerInCohort({
+        const cohort = await this.computeViewerCohort({
           action,
           user,
           session,
+          now,
+          undecidedActionIds,
         });
-        const shouldParticipate = computeIsAssignedToAction({
-          action,
-          user,
-          inCohort,
-          dismissed: actionsDismissed.has(action.id),
-        });
-
-        if (action.followUpForms) {
-          action.followUpForms = await this.filterFollowUpFormsByCohort({
-            followUpForms: action.followUpForms,
+        const shouldParticipate =
+          computeActionAssignment({
+            action,
             user,
-            session,
-          });
-        }
+            inCohort: cohort.admitted,
+            dismissed: actionsDismissed.has(action.id),
+            now,
+          }) !== ActionAssignment.Unassigned;
+
+        action.followUpForms = await this.filterFollowUpFormsByCohort({
+          followUpForms: loadedActionFollowUpForms(action),
+          user,
+          session,
+        });
 
         return new ActionDto(action, {
           canParticipate: user
-            ? computeCanCompleteAction({ action, user, inCohort })
+            ? computeCanCompleteAction({
+                action,
+                user,
+                inCohort: cohort.eligible,
+                now,
+              })
             : false,
           shouldParticipate,
           userRelation:
@@ -977,7 +1094,7 @@ export class ActionsService {
               ? resolveUserActionStatus({
                   action,
                   user,
-                  inCohort,
+                  cohort,
                   activities: userActivities.filtered({
                     userId: user.id,
                     actionId: action.id,
@@ -991,40 +1108,6 @@ export class ActionsService {
     );
   }
 
-  async userCanSeeAction(params: {
-    action: ParsedAction;
-    user: User | null;
-    session?: CohortResolutionSession;
-  }): Promise<boolean> {
-    const { action, user, session } = params;
-    if (user?.admin) {
-      return true;
-    }
-    if (action.status === ActionStatus.Draft || action.archived) {
-      return false;
-    }
-    if (action.visibilityMode === VisibilityMode.Public) {
-      return true;
-    }
-
-    if (!user) {
-      return false;
-    }
-    if (action.visibilityMode === VisibilityMode.AllMembers) {
-      return true;
-    }
-
-    if (!action.cohortExpression) {
-      return false;
-    }
-
-    return this.computeIsInCohortExpression({
-      user,
-      cohortExpression: action.cohortExpression,
-      session,
-    });
-  }
-
   async findOneOrFail(params: {
     id: number;
     userId?: number;
@@ -1035,7 +1118,7 @@ export class ActionsService {
      * default rather than by remembering to filter.
      */
     includeUnpublishedUpdates?: boolean;
-    /** Share per-user leaf lookups; see computeIsInCohortExpression. */
+    /** Share per-user leaf lookups; see SingleMemberCohortService.computeIsInCohortExpression. */
     session?: CohortResolutionSession;
   }): Promise<ParsedAction> {
     const {
@@ -1060,6 +1143,7 @@ export class ActionsService {
         activities: true,
         updates: { schemaSnapshot: true },
         suite: true,
+        project: true,
         authors: true,
         followUpForms: { form: true },
         reviewers: true,
@@ -1075,13 +1159,15 @@ export class ActionsService {
       );
     }
 
-    if (action?.publicOnly) {
-      return action;
-    }
-
     if (
       !action ||
-      !((await this.userCanSeeAction({ action, user, session })) || serverSide)
+      !(
+        (await this.actionVisibility.userCanOpenAction({
+          action,
+          user,
+          session,
+        })) || serverSide
+      )
     ) {
       throw new NotFoundException("Action not found");
     }
@@ -1093,13 +1179,6 @@ export class ActionsService {
     userId?: number,
     serverSide = false,
   ): Promise<ActionDto> {
-    const session = new CohortResolutionSession();
-    const action = await this.findOneOrFail({
-      id,
-      userId,
-      serverSide,
-      session,
-    });
     const user = userId
       ? await this.userService.findOne(userId, {
           tags: true,
@@ -1107,13 +1186,33 @@ export class ActionsService {
           awayRanges: true,
         })
       : null;
-    if (action.followUpForms) {
-      action.followUpForms = await this.filterFollowUpFormsByCohort({
-        followUpForms: action.followUpForms,
-        user,
-        session,
-      });
-    }
+    const now = new Date();
+    const target = user
+      ? await this.actionRepository.findOne({
+          where: { id },
+          relations: { events: true },
+        })
+      : null;
+    const undecidedActionIds =
+      user && target
+        ? await this.cohortDecisionService.reconcileForUser({
+            user,
+            actions: [parseAction(target)],
+            now,
+          })
+        : new Set<number>();
+    const session = new CohortResolutionSession();
+    const action = await this.findOneOrFail({
+      id,
+      userId,
+      serverSide,
+      session,
+    });
+    action.followUpForms = await this.filterFollowUpFormsByCohort({
+      followUpForms: loadedActionFollowUpForms(action),
+      user,
+      session,
+    });
     if (userId) {
       await this.applyAssignedFormIds([action], userId);
     }
@@ -1126,23 +1225,31 @@ export class ActionsService {
     const dismissed = activities.some(
       (activity) => activity.type === ActionActivityType.USER_DISMISSED,
     );
-    const inCohort = await this.computeViewerInCohort({
+    const cohort = await this.computeViewerCohort({
       action,
       user,
       session,
+      now,
+      undecidedActionIds,
     });
-    const now = new Date();
 
     return new ActionDto(action, {
       canParticipate: user
-        ? computeCanCompleteAction({ action, user, inCohort })
+        ? computeCanCompleteAction({
+            action,
+            user,
+            inCohort: cohort.eligible,
+            now,
+          })
         : false,
-      shouldParticipate: computeIsAssignedToAction({
-        action,
-        user,
-        inCohort,
-        dismissed,
-      }),
+      shouldParticipate:
+        computeActionAssignment({
+          action,
+          user,
+          inCohort: cohort.admitted,
+          dismissed,
+          now,
+        }) !== ActionAssignment.Unassigned,
       userRelation: user
         ? resolveUserActionRelation({
             activities: new CachedFilter(activities),
@@ -1154,7 +1261,7 @@ export class ActionsService {
         ? computeMemberActionAwayStatus({ action, user, now })
         : undefined,
       viewer: user
-        ? resolveUserActionStatus({ action, user, inCohort, activities, now })
+        ? resolveUserActionStatus({ action, user, cohort, activities, now })
         : undefined,
       reqAuthenticated: !!user,
     });
@@ -1219,11 +1326,9 @@ export class ActionsService {
   private getFirstNameForSharePreview(
     user: Pick<User, "anonymous" | "name">,
   ): string {
-    if (user.anonymous) {
-      return "Someone";
-    }
-
-    return user.name.trim().split(/\s+/)[0] || "Someone";
+    return user.anonymous
+      ? ANONYMOUS_DISPLAY_NAME
+      : nameParts(user.name).firstname || ANONYMOUS_DISPLAY_NAME;
   }
 
   async findAllGeneralUpdates(): Promise<GeneralUpdate[]> {
@@ -1339,7 +1444,12 @@ export class ActionsService {
       });
     }
 
-    const saved = await this.generalUpdateRepository.save(generalUpdate);
+    const saved = await this.generalUpdateRepository.manager.transaction(
+      async (em) => {
+        await lockLiveTagsAndSuites(em, generalUpdate);
+        return em.save(generalUpdate);
+      },
+    );
 
     await this.formSnapshotService.recordHistorical({
       owner: SnapshotHistoryOwner.GeneralUpdate,
@@ -1419,6 +1529,7 @@ export class ActionsService {
               : [];
         }
 
+        await lockLiveTagsAndSuites(em, generalUpdate);
         await em.save(generalUpdate);
 
         return generalUpdate.suites?.map((suite) => suite.id) ?? [];
@@ -1450,7 +1561,10 @@ export class ActionsService {
   }
 
   async deleteGeneralUpdate(id: number): Promise<void> {
-    await this.generalUpdateRepository.delete(id);
+    await softDeleteWhere(this.generalUpdateRepository.manager, {
+      target: GeneralUpdate,
+      where: { id },
+    });
   }
 
   async syncGeneralUpdateDatesForSuites(
@@ -1476,11 +1590,12 @@ export class ActionsService {
       },
     });
 
-    const isDateChanged = (current?: Date, next?: Date): boolean =>
+    const isDateChanged = (current: Date | null, next?: Date): boolean =>
       next !== undefined && current?.getTime() !== next.getTime();
 
     const dateUpdates = generalUpdates.flatMap((generalUpdate) => {
-      const action = generalUpdate.suites![0]?.actions![0];
+      const suite = generalUpdate.suites![0];
+      const action = suite && loadedActionSuiteActions(suite)[0];
       if (!action) {
         return [];
       }
@@ -1544,7 +1659,9 @@ export class ActionsService {
           user,
           useManualCohort: update.useManualCohort,
           manualCohortUserIdSet: new Set(update.manualCohortUserIds),
-          participatingTagIdSet: new Set(update.tags.map((tag) => tag.id)),
+          participatingTagIdSet: new Set(
+            loadedGeneralUpdateTags(update).map((tag) => tag.id),
+          ),
           onboarding: false,
           memberActionEventDate: update.startDate,
           memberActionEventDeadline: update.endDate,
@@ -1572,14 +1689,21 @@ export class ActionsService {
       );
     }
 
-    await this.generalUpdateActivityRepository.save(
-      this.generalUpdateActivityRepository.create({
-        generalUpdate: { id: generalUpdateId },
-        user: { id: userId },
-        type: GeneralUpdateActivityType.DISMISSED,
-        createdAt: new Date(),
-      }),
-    );
+    await writeUnderLive(this.generalUpdateActivityRepository.manager, {
+      parents: [
+        { target: User, id: userId },
+        { target: GeneralUpdate, id: generalUpdateId },
+      ],
+      write: (em) =>
+        em.save(
+          em.create(GeneralUpdateActivity, {
+            generalUpdate: { id: generalUpdateId },
+            user: { id: userId },
+            type: GeneralUpdateActivityType.DISMISSED,
+            createdAt: new Date(),
+          }),
+        ),
+    });
   }
 
   async getActionRelation(
@@ -1616,6 +1740,7 @@ export class ActionsService {
     isOutOfTime?: boolean;
     isMoral?: boolean;
     adminCreated?: boolean;
+    now?: Date;
   }): Promise<ActionActivity> {
     const {
       actionId,
@@ -1626,8 +1751,13 @@ export class ActionsService {
       isOutOfTime,
       isMoral,
       adminCreated,
+      now = new Date(),
     } = options;
     const action = await this.findOneOrFail({ id: actionId, userId });
+
+    if (!adminCreated) {
+      assertNotInStaffPreview(action);
+    }
 
     if (
       type === ActionActivityType.USER_WONT_COMPLETE &&
@@ -1640,7 +1770,7 @@ export class ActionsService {
     }
 
     if (type === ActionActivityType.USER_COMPLETED && !adminCreated) {
-      await this.ensureCompletionAllowed(action, userId);
+      await this.ensureCompletionAllowed({ action, userId, now });
     }
 
     const user = await this.userService.findOneOrFail(userId);
@@ -1661,19 +1791,41 @@ export class ActionsService {
       action: action,
       user: user,
       taskFormResponse,
-      declineReason,
+      declineReason: declineReason ?? null,
       outOfTime: isOutOfTime,
       isMoral,
       source: adminCreated
         ? ActivitySource.ADMIN_OVERRIDE
         : ActivitySource.USER,
     });
-    const savedActivity = await this.actionActivityRepository.save(activity);
+    const savedActivity = await writeUnderLive(
+      this.actionActivityRepository.manager,
+      {
+        parents: [
+          {
+            target: Action,
+            id: actionId,
+            notFound: "That action is no longer here",
+          },
+          { target: User, id: userId },
+          ...(taskFormResponse
+            ? [
+                {
+                  target: FormResponse,
+                  id: taskFormResponse.id,
+                  notFound: "That form response is no longer here",
+                },
+              ]
+            : []),
+        ],
+        write: (manager) => manager.save(activity),
+      },
+    );
 
     if (type === ActionActivityType.USER_WONT_COMPLETE) {
       const option = withdrawalOptionFromFlags({
-        outOfTime: isOutOfTime ?? false,
-        isMoral: isMoral ?? false,
+        outOfTime: isOutOfTime,
+        isMoral,
       });
       const trimmedReason = declineReason?.trim();
       // Spread to code points so truncation can't split a surrogate pair
@@ -1707,8 +1859,17 @@ export class ActionsService {
     });
 
     await this.reloadUsersJoinedForAction(actionId);
-    if (type === ActionActivityType.USER_COMPLETED) {
+    if (isTerminalActivity(savedActivity)) {
       await this.reloadUsersCompletedForAction(actionId);
+    }
+    if (type === ActionActivityType.USER_COMPLETED) {
+      if (!adminCreated) {
+        this.posthogService.capture({
+          event: AnalyticsEvent.ActionCompleted,
+          distinctId: String(userId),
+          properties: { actionId, actionName: action.name },
+        });
+      }
     }
 
     return savedActivity;
@@ -1720,6 +1881,7 @@ export class ActionsService {
     options: {
       taskFormResponse?: FormResponse;
       adminCreated?: boolean;
+      now?: Date;
     } = {},
   ): Promise<ActionActivity> {
     return this.createActionActivity({
@@ -1728,6 +1890,7 @@ export class ActionsService {
       type: ActionActivityType.USER_COMPLETED,
       taskFormResponse: options.taskFormResponse,
       adminCreated: options.adminCreated,
+      now: options.now,
     });
   }
 
@@ -1777,8 +1940,19 @@ export class ActionsService {
     const { suiteId, authorIds, reviewers, ...rest } = updateActionDto;
     this.dropEchoedImages(rest, action);
     if (rest.cohortExpression != null) {
-      rest.cohortExpression = this.parseCohortExpressionOrThrow(
+      rest.cohortExpression = await this.parseCohortExpressionForSaveOrThrow(
         rest.cohortExpression,
+        action.cohortExpression,
+      );
+    }
+
+    if (
+      rest.optional !== undefined &&
+      rest.optional !== action.optional &&
+      (await this.cohortDecisionStaffService.hasDecisions(id))
+    ) {
+      throw new BadRequestException(
+        "Optional can't change once members have cohort decisions for this action.",
       );
     }
 
@@ -1799,16 +1973,40 @@ export class ActionsService {
         : [];
     }
 
+    const previousTaskFormId = action.taskFormId;
     Object.assign(action, rest);
 
-    // Replacing reviewers is a delete plus a cascading insert; without one
-    // transaction a failed save leaves the action with none.
-    await this.actionRepository.manager.transaction(async (em) => {
-      if (reviewers !== undefined) {
-        await em.delete(ActionReviewer, { actionId: id });
-        action.reviewers = this.reviewerRows(reviewers);
-      }
-      await em.save(Action, action);
+    // Replacing reviewers soft-deletes the dropped ones before the save;
+    // without one transaction a failed save still drops them.
+    await writeUnderLive(this.actionRepository.manager, {
+      parents: [
+        ...(suiteId == null ? [] : [{ target: ActionSuite, id: suiteId }]),
+        ...(action.authors ?? []).flatMap((author) =>
+          author.id === undefined ? [] : [{ target: User, id: author.id }],
+        ),
+        ...(rest.taskFormId == null || rest.taskFormId === previousTaskFormId
+          ? []
+          : [{ target: Form, id: rest.taskFormId }]),
+      ],
+      notFound: ACTION_PARENT_GONE,
+      saved: {
+        target: Action,
+        id,
+        notFound: "Action not found",
+      },
+      write: async (em) => {
+        if (reviewers !== undefined) {
+          action.reviewers = await replaceReviewers({
+            em,
+            actionId: id,
+            rows: this.reviewerRows(reviewers),
+          });
+        }
+        await em.save(Action, action);
+        if (rest.prerequisiteActionIds !== undefined) {
+          await assertPrerequisitesValid({ em, actionIds: [id] });
+        }
+      },
     });
     const newSuiteId = action.suite?.id;
     await this.syncGeneralUpdateDatesForSuites([oldSuiteId, newSuiteId]);
@@ -1816,15 +2014,18 @@ export class ActionsService {
     return this.findOneOrFail({ id, userId });
   }
 
-  async addEvent(
-    actionId: number,
-    actionEventDto: CreateActionEventDto,
-    userId?: number,
-  ): Promise<ActionEvent> {
+  async addEvent(params: {
+    actionId: number;
+    event: CreateActionEventDto;
+    userId?: number;
+    acknowledgeDeadlineShortening: boolean;
+  }): Promise<ActionEvent> {
+    const { actionId, event, userId, acknowledgeDeadlineShortening } = params;
     const action = await this.findOneOrFail({ id: actionId, userId });
     const [savedEvent] = await this.addEventToActions({
       actions: [action],
-      event: actionEventDto,
+      event,
+      acknowledgeDeadlineShortening,
     });
     return savedEvent;
   }
@@ -1834,12 +2035,19 @@ export class ActionsService {
     event: CreateActionEventDto;
     overrides?: Partial<ActionEvent>;
     suiteIds?: number[];
+    acknowledgeDeadlineShortening: boolean;
   }): Promise<ActionEvent[]> {
     const { actions, event, overrides, suiteIds } = params;
     let saved: ActionEvent[];
     try {
-      saved = await this.actionEventRepository.manager.transaction(
-        async (manager) => {
+      saved = await this.cohortDecisionStaffService.guardDeadlineShortening({
+        actionIds: actions.map((action) => action.id),
+        acknowledged: params.acknowledgeDeadlineShortening,
+        change: async (manager) => {
+          await assertLive(manager, {
+            rows: actions.map((action) => ({ target: Action, id: action.id })),
+            gone: () => new NotFoundException("Action not found"),
+          });
           const events: ActionEvent[] = [];
           for (const action of actions) {
             const newEvent = manager.create(ActionEvent, {
@@ -1849,9 +2057,13 @@ export class ActionsService {
             });
             events.push(await manager.save(newEvent));
           }
+          await assertPrerequisitesValid({
+            em: manager,
+            actionIds: actions.map((action) => action.id),
+          });
           return events;
         },
-      );
+      });
     } catch (err) {
       if (
         err?.code === "23505" &&
@@ -1884,7 +2096,11 @@ export class ActionsService {
       where: { id },
       relations: { suite: true },
     });
-    await this.actionRepository.delete(id);
+    await this.actionRepository.manager.transaction(async (em) => {
+      await softDeleteWhere(em, { target: Action, where: { id } });
+      await assertNotAPrerequisite({ em, actionId: id });
+      await assertNotInACohort({ em, actionId: id });
+    });
     await this.syncGeneralUpdateDatesForSuites([action?.suite?.id]);
   }
 
@@ -1893,7 +2109,7 @@ export class ActionsService {
     dto: CreateFollowUpFormDto,
   ): Promise<ParsedFollowUpForm> {
     if (dto.cohortExpression != null) {
-      dto.cohortExpression = this.parseCohortExpressionOrThrow(
+      dto.cohortExpression = await this.parseCohortExpressionForSaveOrThrow(
         dto.cohortExpression,
       );
     }
@@ -1907,28 +2123,40 @@ export class ActionsService {
       ...dto,
       actionId,
     });
-    return parseFollowUpForm(
-      await this.followUpFormRepository.save(followUpForm),
-    );
+    return writeUnderLive(this.followUpFormRepository.manager, {
+      parents: [
+        { target: Action, id: actionId },
+        { target: Form, id: form.id },
+      ],
+      notFound: "Action or form not found",
+      write: async (em) => parseFollowUpForm(await em.save(followUpForm)),
+    });
   }
 
   async updateFollowUpForm(
     followUpFormId: number,
     dto: UpdateFollowUpFormDto,
   ): Promise<ParsedFollowUpForm> {
+    const followUpForm = await this.followUpFormRepository.findOneByOrFail({
+      id: followUpFormId,
+    });
     if (dto.cohortExpression != null) {
-      dto.cohortExpression = this.parseCohortExpressionOrThrow(
+      dto.cohortExpression = await this.parseCohortExpressionForSaveOrThrow(
         dto.cohortExpression,
+        followUpForm.cohortExpression,
       );
     }
-    const followUpForm = await this.followUpFormRepository.findOneOrFail({
-      where: { id: followUpFormId },
-      relations: { form: true, action: true },
-    });
     Object.assign(followUpForm, dto);
-    return parseFollowUpForm(
-      await this.followUpFormRepository.save(followUpForm),
-    );
+    return writeUnderLive(this.followUpFormRepository.manager, {
+      parents:
+        dto.formId === undefined ? [] : [{ target: Form, id: dto.formId }],
+      saved: {
+        target: FollowUpForm,
+        id: followUpFormId,
+        notFound: "Follow-up form not found",
+      },
+      write: async (em) => parseFollowUpForm(await em.save(followUpForm)),
+    });
   }
 
   async deleteFollowUpForm(followUpFormId: number): Promise<void> {
@@ -1936,7 +2164,10 @@ export class ActionsService {
       where: { id: followUpFormId },
     });
     if (followUpForm) {
-      await this.followUpFormRepository.remove(followUpForm);
+      await softDeleteCascade(this.followUpFormRepository.manager, {
+        target: FollowUpForm,
+        ids: [followUpForm.id],
+      });
     }
   }
 
@@ -1966,10 +2197,7 @@ export class ActionsService {
     const activities = await this.actionActivityRepository.find({
       where: {
         userId,
-        type: In([
-          ActionActivityType.USER_COMPLETED,
-          ActionActivityType.USER_SUBMITTED_FOLLOW_UP_FORM,
-        ]),
+        type: In(ACTION_ACTIVITY_FEED_VISIBLE_TYPES),
       },
       relations: {
         action: true,
@@ -1979,7 +2207,40 @@ export class ActionsService {
       },
     });
 
-    return this.toActivityDtos({ activities, requestingUserId, comments });
+    const visibleIds = await this.actionVisibility.visibleActionIdsForUser({
+      actionIds: activities.map((activity) => activity.actionId),
+      userId: requestingUserId,
+    });
+    return this.toActivityDtos({
+      activities: activities.filter((activity) =>
+        visibleIds.has(activity.actionId),
+      ),
+      requestingUserId,
+      comments,
+    });
+  }
+
+  private outputAnswers(
+    schema: FormSchema,
+    response: ParsedFormResponse,
+  ): OutputAnswer[] {
+    const fieldLookup = collectOutputFieldMap(schema);
+
+    const { visibleAnswers: answers } = savedOutputAnswers({
+      schema,
+      answers: response.answers,
+      validatorResults: response.visibilityValidatorResults,
+      deviceType: response.deviceType ?? undefined,
+    });
+    const publicAnswers = response.publicAnswers ?? {};
+
+    return Object.entries(answers)
+      .map(([key, value]) => ({
+        isPublic: publicAnswers[key],
+        field: fieldLookup.get(key),
+        value,
+      }))
+      .filter((answer) => answer.field?.output?.output === true);
   }
 
   buildOutputFormResponse(
@@ -1989,47 +2250,74 @@ export class ActionsService {
       return undefined;
     }
 
-    const schema = activity.taskFormResponse.formSnapshot
-      .schema as unknown as FormSchema;
-
-    const answerToIsPublic = (
-      answer: string,
-      selections: Record<string, boolean>,
-    ) => {
-      if (selections?.[answer] === false) {
-        return false;
-      }
-      return schema.pages.some((page) =>
-        page.fields.some(
-          (field) =>
-            field.id === answer &&
-            "label" in field &&
-            field.output?.output === true,
-        ),
-      );
-    };
-
     const answers = activity.taskFormResponse.answers;
     const publicAnswers = activity.taskFormResponse.publicAnswers ?? {};
-
-    //TODO: for now we dont use pruned so that we can use non-output fields
-    // to evaluate the conditional visibility of output fields - maybe just cache?
-    const answersPrunedObj = Object.fromEntries(
-      Object.entries(answers).filter(([key]) =>
-        answerToIsPublic(key, publicAnswers),
-      ),
-    );
-
-    if (!Object.keys(answersPrunedObj).length) {
-      return undefined;
-    }
-
-    return parseFormResponse(
+    const response = parseFormResponse(
       Object.assign(new FormResponse(), {
         ...activity.taskFormResponse,
         answers,
       }),
     );
+    const savedChoices: ResolvedOptions = new Map(
+      Object.entries(response.formulaChoices),
+    );
+    const snapshot = loadedFormResponseSnapshot(activity.taskFormResponse);
+    const schema = schemaWithResolvedOptions(
+      formSchemaOf(snapshot),
+      savedChoices,
+    );
+    const outputAnswers = this.outputAnswers(schema, response);
+    const isAnswerShown = outputAnswers.some(isOutputAnswerShown);
+    // A malformed list alone still builds the output, so it gets reported.
+    if (!isAnswerShown && !outputAnswers.some(isMalformedListAnswer)) {
+      return undefined;
+    }
+    const output = redactToOutput({
+      schema,
+      answers: response.answers,
+      validatorResults: response.visibilityValidatorResults,
+      deviceType: response.deviceType ?? undefined,
+      publicAnswers,
+    });
+    for (const fieldId of output.malformedListFieldIds) {
+      const message = `Form response ${response.id}: stored answer for list field ${fieldId} is not a list of rows`;
+      this.logger.error(message);
+      this.posthogService.captureException({
+        event: ExceptionEvent.MalformedListAnswer,
+        error: new Error(message),
+        properties: { formResponseId: response.id, fieldId },
+      });
+    }
+    if (!isAnswerShown) {
+      return undefined;
+    }
+    const [view] = output.schema.outputViews;
+    if (!view?.blocks.length) {
+      return undefined;
+    }
+    const shownChoices = selectedFormulaChoices({
+      schema: output.schema,
+      answers: output.answers,
+      options: savedChoices,
+    });
+    return Object.assign(response, {
+      answers: output.answers,
+      // The web and mobile cards, released app builds included, draw the
+      // output only when publicAnswers has an entry. The view id gives it one
+      // when only display blocks show, without naming any answer.
+      publicAnswers: {
+        [view.id]: true,
+        ...Object.fromEntries(
+          Object.keys(output.answers).map((fieldId) => [fieldId, true]),
+        ),
+      },
+      visibilityValidatorResults: {},
+      formulaChoices: shownChoices,
+      formSnapshot: {
+        ...snapshot,
+        schema: schemaWithSavedChoices(output.schema, shownChoices),
+      },
+    });
   }
 
   async getActionActivities(
@@ -2039,6 +2327,7 @@ export class ActionsService {
     requestingUserId?: number,
     before?: Date,
   ): Promise<ActionActivityDto[]> {
+    await this.findOneOrFail({ id: actionId, userId: requestingUserId });
     const activities = await this.fetchActivityFeed({
       limit: limit ?? 20,
       actionId,
@@ -2057,8 +2346,14 @@ export class ActionsService {
     activities: ActionActivity[];
     requestingUserId?: number;
     comments: boolean;
+    outputs?: Map<number, ParsedFormResponse>;
   }): Promise<ActionActivityDto[]> {
-    const { activities, requestingUserId, comments: includeComments } = params;
+    const {
+      activities,
+      requestingUserId,
+      comments: includeComments,
+      outputs,
+    } = params;
     const activityIds = activities.map((activity) => activity.id);
     const likedIds = requestingUserId
       ? await this.getLikedActivityIds(activityIds, requestingUserId)
@@ -2069,16 +2364,17 @@ export class ActionsService {
     );
 
     const commentsByActivity = includeComments
-      ? await this.forumService.findCommentsForActivities(activityIds)
+      ? await this.forumCommentQueryService.findCommentsForActivities(
+          activityIds,
+        )
       : null;
 
     return activities.map((activity) => {
       const comments = commentsByActivity?.get(activity.id) ?? [];
       return new ActionActivityDto(activity, {
         comments,
-        formResponseOutput: activity.taskFormResponse
-          ? this.buildOutputFormResponse(activity)
-          : undefined,
+        formResponseOutput:
+          outputs?.get(activity.id) ?? this.buildOutputFormResponse(activity),
         likedByMe: likedIds.has(activity.id),
         requestingUserId,
         facepile: facepiles(activity.id),
@@ -2166,6 +2462,7 @@ export class ActionsService {
         "taskFormResponse.publicAnswers",
         "taskFormResponse.formSnapshotId",
         "taskFormResponse.visibilityValidatorResults",
+        "taskFormResponse.formulaChoices",
         "taskFormResponse.deviceType",
         "taskFormSnapshot.id",
         "taskFormSnapshot.schema",
@@ -2207,46 +2504,122 @@ export class ActionsService {
     return qb.getMany();
   }
 
+  private async fetchVisibleActivityFeed(options: {
+    limit: number;
+    before?: Date;
+    userIds?: number[];
+    actionId?: number;
+    communityId?: number;
+    requireFormResponse?: boolean;
+    requestingUserId?: number;
+    user?: User | null;
+    session?: CohortResolutionSession;
+  }): Promise<ActionActivity[]> {
+    const session = options.session ?? new CohortResolutionSession();
+    const user =
+      options.user !== undefined
+        ? options.user
+        : await this.actionVisibility.loadUserForActionVisibility(
+            options.requestingUserId,
+          );
+
+    const collected: ActionActivity[] = [];
+    let cursor = options.before;
+    const batchSize = Math.max(options.limit * 3, 20);
+
+    while (collected.length < options.limit) {
+      const batch = await this.fetchActivityFeed({
+        limit: batchSize,
+        before: cursor,
+        userIds: options.userIds,
+        actionId: options.actionId,
+        communityId: options.communityId,
+        requireFormResponse: options.requireFormResponse,
+      });
+      if (batch.length === 0) {
+        break;
+      }
+
+      const visibleIds = await this.actionVisibility.visibleActionIdsForUser({
+        actionIds: batch.map((activity) => activity.actionId),
+        user,
+        session,
+      });
+      for (const activity of batch) {
+        if (visibleIds.has(activity.actionId)) {
+          collected.push(activity);
+          if (collected.length >= options.limit) {
+            break;
+          }
+        }
+      }
+
+      if (batch.length < batchSize) {
+        break;
+      }
+      cursor = batch[batch.length - 1].createdAt;
+    }
+
+    return collected;
+  }
+
   async getActivityFeed(
     limit: number = 20,
     before?: Date,
     comments?: boolean,
     requestingUserId?: number,
   ): Promise<ActionActivityDto[]> {
-    const activities = await this.fetchActivityFeed({
+    const activities = await this.fetchVisibleActivityFeed({
       limit,
       before,
+      requestingUserId,
     });
 
     return this.toActivityDtos({ activities, requestingUserId, comments });
   }
 
-  async isCompletionAllowed(
-    action: ParsedAction,
-    user: User,
-  ): Promise<boolean> {
+  async findCompletionBlock(params: {
+    action: ParsedAction;
+    user: User;
+    now: Date;
+  }): Promise<CompletionBlock | null> {
+    const { action, user, now } = params;
     // preventCompletion short-circuits before the DB-hitting cohort
-    // evaluation; the rule itself lives in computeCanCompleteAction.
+    // evaluation; the rule itself lives in computeCompletionBlock.
     if (action.preventCompletion) {
-      return false;
+      return CompletionBlock.PreventCompletion;
     }
 
-    const inCohort = await this.computeIsInCohortExpression({
+    const cohort = await this.computeViewerCohort({
+      action,
       user,
-      cohortExpression: action.cohortExpression,
+      session: new CohortResolutionSession(),
+      now,
+      undecidedActionIds: new Set(),
     });
 
-    return computeCanCompleteAction({ action, user, inCohort });
+    return computeCompletionBlock({
+      action,
+      user,
+      inCohort: cohort.eligible,
+      now,
+    });
   }
 
-  async ensureCompletionAllowed(action: ParsedAction, userId: number) {
+  async ensureCompletionAllowed(params: {
+    action: ParsedAction;
+    userId: number;
+    now: Date;
+  }) {
+    const { action, userId, now } = params;
     const user = await this.userService.findOneOrFail(userId, {
       tags: true,
       contractEvents: true,
       awayRanges: true,
     });
-    if (!(await this.isCompletionAllowed(action, user))) {
-      throw new ForbiddenException("This action is not available to you");
+    const block = await this.findCompletionBlock({ action, user, now });
+    if (block !== null) {
+      throw new ForbiddenException(COMPLETION_BLOCK_MESSAGE[block]);
     }
   }
 
@@ -2263,16 +2636,17 @@ export class ActionsService {
     if (!user) {
       throw new NotFoundException("User not found");
     }
-    const friends = await this.userService.findFriends(userId);
+    const friends = await this.friendService.findFriends(userId);
 
     if (friends.length === 0) {
       return [];
     }
 
-    const friendActivities = await this.fetchActivityFeed({
+    const friendActivities = await this.fetchVisibleActivityFeed({
       limit: limit ?? 20,
       before,
       userIds: friends.map((f) => f.id),
+      requestingUserId: userId,
     });
 
     return this.toActivityDtos({
@@ -2288,7 +2662,8 @@ export class ActionsService {
     comments?: boolean,
     limit?: number,
   ): Promise<ActionActivityDto[]> {
-    const friends = await this.userService.findFriends(userId);
+    await this.findOneOrFail({ id: actionId, userId });
+    const friends = await this.friendService.findFriends(userId);
 
     if (friends.length === 0) {
       return [];
@@ -2322,10 +2697,11 @@ export class ActionsService {
       return [];
     }
 
-    const memberActivities = await this.fetchActivityFeed({
+    const memberActivities = await this.fetchVisibleActivityFeed({
       limit: limitNum,
       before: beforeDate,
       userIds: members.map((m) => m.id),
+      requestingUserId,
     });
 
     return this.toActivityDtos({
@@ -2367,9 +2743,7 @@ export class ActionsService {
         'cuu."userId" = activity.userId AND cuu."communityId" = :communityId',
         { communityId },
       )
-      .where("activity.type = :type", {
-        type: ActionActivityType.USER_COMPLETED,
-      })
+      .where(sqlIsLatestCompletion("activity"))
       .getCount();
   }
 
@@ -2380,13 +2754,13 @@ export class ActionsService {
     comments?: boolean,
   ): Promise<HomeFeedItemDto[]> {
     const [friends, user] = await Promise.all([
-      this.userService.findFriends(userId),
+      this.friendService.findFriends(userId),
       this.userService.findOne(userId, { communities: true }),
     ]);
     if (!user) throw new NotFoundException("User not found");
 
     const friendIds = friends.map((f) => f.id);
-    const communityIds = (user.communities ?? []).map((c) => c.id);
+    const communityIds = loadedUserCommunities(user).map((c) => c.id);
     const userClusterId = user.clusterId;
 
     // Get community member IDs in batch
@@ -2402,17 +2776,32 @@ export class ActionsService {
       }
     }
 
-    const allUserIds = [
-      ...new Set([...friendIds, ...communityMemberIds, userId]),
-    ];
-
-    const forumComments = await this.forumService.findForumCommentsForFeed({
-      userId,
-      userClusterId,
-      friendAndGroupMemberIds: allUserIds,
-      limit,
-      before,
+    const knownIds = new Set([...friendIds, ...communityMemberIds]);
+    knownIds.delete(userId);
+    const activeKnownCount = await this.userService.countActiveUsers([
+      ...knownIds,
+    ]);
+    // Seeded by viewer, so the fillers stay the same across pages and visits.
+    const fillerIds = await this.userService.pickActiveUserIdsForSeed({
+      count: MIN_HOME_FEED_SOURCE_USERS - activeKnownCount,
+      excludeIds: [...knownIds, userId],
+      seed: String(userId),
     });
+
+    const allUserIds = [...knownIds, ...fillerIds, userId];
+
+    const visibilityUser =
+      await this.actionVisibility.loadUserForActionVisibility(userId);
+    const visibilitySession = new CohortResolutionSession();
+
+    const forumComments =
+      await this.forumCommentQueryService.findForumCommentsForFeed({
+        userId,
+        userClusterId,
+        sourceUserIds: allUserIds,
+        limit,
+        before,
+      });
     const forumCommentItems: HomeFeedItem[] = forumComments.map((fc) => ({
       type: HomeFeedItemType.ForumComment,
       date: fc.comment.createdAt,
@@ -2424,6 +2813,7 @@ export class ActionsService {
 
     const batchSize = limit * 2;
     const contentful: ActionActivity[] = [];
+    const outputs = new Map<number, ParsedFormResponse>();
     let cursor = before;
 
     while (contentful.length < limit && allUserIds.length > 0) {
@@ -2434,9 +2824,20 @@ export class ActionsService {
         requireFormResponse: true,
       });
 
+      const visibleIds = await this.actionVisibility.visibleActionIdsForUser({
+        actionIds: batch.map((activity) => activity.actionId),
+        user: visibilityUser,
+        session: visibilitySession,
+      });
+
       for (const a of batch) {
-        if (this.buildOutputFormResponse(a) !== undefined) {
+        if (!visibleIds.has(a.actionId)) {
+          continue;
+        }
+        const output = this.buildOutputFormResponse(a);
+        if (output) {
           contentful.push(a);
+          outputs.set(a.id, output);
           if (contentful.length >= limit) break;
         }
       }
@@ -2456,6 +2857,7 @@ export class ActionsService {
       activities: contentful,
       requestingUserId: userId,
       comments: !!comments,
+      outputs,
     });
 
     const activityItems = activityDtos.map(
@@ -2479,14 +2881,11 @@ export class ActionsService {
     before?: Date,
     comments?: boolean,
   ): Promise<HomeFeedItemDto[]> {
-    const [activities, forumComments] = await Promise.all([
+    const [rawActivities, forumComments] = await Promise.all([
       this.actionActivityRepository.find({
         where: {
           userId,
-          type: In([
-            ActionActivityType.USER_COMPLETED,
-            ActionActivityType.USER_SUBMITTED_FOLLOW_UP_FORM,
-          ]),
+          type: In(ACTION_ACTIVITY_FEED_VISIBLE_TYPES),
           ...(before ? { createdAt: LessThan(before) } : {}),
         },
         relations: {
@@ -2495,15 +2894,23 @@ export class ActionsService {
           taskFormResponse: { formSnapshot: true },
         },
         order: { createdAt: "DESC" },
-        take: limit,
+        take: limit * 3,
       }),
-      this.forumService.findForumCommentsByUserForFeed({
+      this.forumCommentQueryService.findForumCommentsByUserForFeed({
         authorId: userId,
         requestingUserId,
         limit,
         before,
       }),
     ]);
+
+    const visibleIds = await this.actionVisibility.visibleActionIdsForUser({
+      actionIds: rawActivities.map((activity) => activity.actionId),
+      userId: requestingUserId,
+    });
+    const activities = rawActivities
+      .filter((activity) => visibleIds.has(activity.actionId))
+      .slice(0, limit);
 
     const activityDtos = await this.toDetailedActivityDtos({
       activities,
@@ -2530,12 +2937,21 @@ export class ActionsService {
     return merged.slice(0, limit).map((item) => new HomeFeedItemDto(item));
   }
 
-  async findByName(name: string): Promise<Action[]> {
-    const actions = await this.actionRepository.find({
-      where: { name: ILike(`%${name}%`) },
-      relations: { events: true },
+  async findByName(
+    name: string,
+    requestingUserId: number,
+  ): Promise<ParsedAction[]> {
+    const [actions, user] = await Promise.all([
+      this.actionRepository.find({
+        where: { name: ILike(`%${name}%`) },
+        relations: { events: true },
+      }),
+      this.actionVisibility.loadUserForActionVisibility(requestingUserId),
+    ]);
+    return this.actionVisibility.listableActions({
+      actions: actions.map(parseAction),
+      user,
     });
-    return actions.filter((action) => action.status !== ActionStatus.Draft);
   }
 
   async getActivity(
@@ -2555,10 +2971,16 @@ export class ActionsService {
     if (!activity) {
       throw new NotFoundException("Activity not found");
     }
+    await this.findOneOrFail({
+      id: activity.actionId,
+      userId: requestingUserId,
+    });
     return new ActionActivityDto(activity, {
       formResponseOutput: this.buildOutputFormResponse(activity),
       likedByMe: requestingUserId
-        ? activity.likes?.some((like) => like.id === requestingUserId)
+        ? loadedActionActivityLikes(activity).some(
+            (like) => like.id === requestingUserId,
+          )
         : undefined,
     });
   }
@@ -2580,9 +3002,10 @@ export class ActionsService {
     if (!activity) {
       throw new NotFoundException("Activity not found");
     }
-    if (
-      !GlobalFeedActivityTypes.includes(activity.type as GlobalFeedActivityType)
-    ) {
+    assertNotInStaffPreview(
+      await this.findOneOrFail({ id: activity.actionId, userId }),
+    );
+    if (!actionActivityIsVisibleInFeed(activity.type)) {
       throw new BadRequestException("Activity type is not supported");
     }
     const user = await this.userService.findOneOrFail(userId);
@@ -2592,14 +3015,17 @@ export class ActionsService {
       .relation(ActionActivity, "likes")
       .of(activity);
 
+    const liked = loadedActionActivityLikes(activity).some(
+      (like) => like.id === user.id,
+    );
     let createdLike = false;
     let removedLike = false;
     if (unlike) {
-      if (activity.likes.some((like) => like.id === user.id)) {
+      if (liked) {
         await qb.remove(user);
         removedLike = true;
       }
-    } else if (!activity.likes.some((like) => like.id === user.id)) {
+    } else if (!liked) {
       await qb.add(user);
       createdLike = true;
     }
@@ -2624,25 +3050,27 @@ export class ActionsService {
       throw new NotFoundException("Activity not found");
     }
 
-    if (createdLike && updatedActivity.user) {
+    if (createdLike) {
+      const likedAction = loadedActionActivityAction(updatedActivity);
       await this.likeNotificationService.createOrUpdate({
-        owner: updatedActivity.user,
+        owner: loadedActionActivityUser(updatedActivity),
         liker: user,
-        targetType: `activity:${updatedActivity.type as GlobalFeedActivityType}`,
-        targetContent: updatedActivity.action.name,
+        targetType: `activity:${activity.type}`,
+        targetContent: likedAction.name,
+        targetAction: likedAction,
         targetId: updatedActivity.id,
         webAppLocation: actionActivityUrl(
-          updatedActivity.action?.id ?? updatedActivity.actionId,
+          updatedActivity.actionId,
           updatedActivity.id,
         ),
       });
     }
 
-    if (removedLike && updatedActivity.user) {
+    if (removedLike) {
       await this.likeNotificationService.removeOnUnlike({
-        ownerId: updatedActivity.user.id,
+        ownerId: updatedActivity.userId,
         unlikerId: user.id,
-        targetType: `activity:${updatedActivity.type as GlobalFeedActivityType}`,
+        targetType: `activity:${activity.type}`,
         targetId: updatedActivity.id,
       });
     }
@@ -2650,17 +3078,6 @@ export class ActionsService {
     return new ActionActivityDto(updatedActivity, {
       likedByMe: !unlike,
     });
-  }
-
-  async getPaymentAmountForAction(id: number): Promise<number> {
-    const action = await this.findOneOrFail({ id, serverSide: true });
-    if (action.type !== ActionTaskType.Funding) {
-      throw new BadRequestException("Action is not a funding action");
-    }
-    if (!action.donationAmount) {
-      throw new BadRequestException("Action has no funding amount");
-    }
-    return action.donationAmount;
   }
 
   async adminCreateActivity(
@@ -2674,22 +3091,33 @@ export class ActionsService {
     });
   }
 
-  async archive(id: number): Promise<ParsedAction> {
-    const action = await this.actionRepository.findOneOrFail({
-      where: { id },
-      relations: { reviewers: true },
-    });
-    action.archived = true;
-    return parseAction(await this.actionRepository.save(action));
+  archive(id: number): Promise<ParsedAction> {
+    return this.setArchived({ id, archived: true });
   }
 
-  async unarchive(id: number): Promise<ParsedAction> {
-    const action = await this.actionRepository.findOneOrFail({
-      where: { id },
-      relations: { reviewers: true },
+  unarchive(id: number): Promise<ParsedAction> {
+    return this.setArchived({ id, archived: false });
+  }
+
+  // updateLive() rather than save(): saving the loaded action would also diff
+  // its relations, unlinking any follow-up form added since the load.
+  private async setArchived(params: {
+    id: number;
+    archived: boolean;
+  }): Promise<ParsedAction> {
+    const { id, archived } = params;
+    await updateLive(this.actionRepository.manager, {
+      target: Action,
+      id,
+      changes: { archived },
+      notFound: "Action not found",
     });
-    action.archived = false;
-    return parseAction(await this.actionRepository.save(action));
+    return parseAction(
+      await this.actionRepository.findOneOrFail({
+        where: { id },
+        relations: { reviewers: true, events: true, followUpForms: true },
+      }),
+    );
   }
 
   async createActionUpdate(
@@ -2717,15 +3145,29 @@ export class ActionsService {
       });
     }
 
-    const actionUpdate = await this.actionUpdateRepository.save(
-      this.actionUpdateRepository.create({
-        ...createActionUpdateDto,
-        schemaSnapshotId: emptySnapshot.id,
-        visibleAt: null,
-        action,
-        tag,
-        associatedEvent,
-      }),
+    const actionUpdate = await writeUnderLive(
+      this.actionUpdateRepository.manager,
+      {
+        parents: [
+          { target: Action, id: action.id, notFound: "Action not found" },
+          ...(tag ? [{ target: Tag, id: tag.id }] : []),
+          ...(associatedEvent
+            ? [{ target: ActionEvent, id: associatedEvent.id }]
+            : []),
+        ],
+        write: (em) =>
+          em.save(
+            em.create(ActionUpdate, {
+              ...createActionUpdateDto,
+              notificationMode: ActionUpdateNotificationMode.Normal,
+              schemaSnapshotId: emptySnapshot.id,
+              visibleAt: null,
+              action,
+              tag,
+              associatedEvent,
+            }),
+          ),
+      },
     );
 
     await this.formSnapshotService.recordHistorical({
@@ -2769,10 +3211,16 @@ export class ActionsService {
         "This update has already been notified about.",
       );
     }
+    await this.assertActionShowsWhenEntriesArrive(actionUpdate);
 
     // Resolve the audience before claiming: a failure here (a deleted tag, say)
     // has sent nothing, and leaving the claim unset keeps the retry open.
     const recipients = await this.findActionUpdateNotifRecipients(actionUpdate);
+    const recognition = usesRecognition(actionUpdate.notificationMode);
+    if (recognition) {
+      const config = readRecognitionConfig(actionUpdate);
+      if (!config.ok) throw new BadRequestException(config.error);
+    }
 
     // The claim and the sends commit together. The claim is the only thing
     // standing between a retry and a second notification, so committing it
@@ -2780,6 +3228,16 @@ export class ActionsService {
     // audience unnotified and unreachable: the retry would see the claim and
     // conflict.
     await this.actionUpdateRepository.manager.transaction(async (em) => {
+      // An archive of the action waits until the sends commit. Locking the
+      // action before the update matches the order deleting an action takes.
+      const lockedActions: unknown[] = await em.query(
+        'SELECT id FROM action WHERE id = $1 AND "deletedAt" IS NULL FOR SHARE',
+        [actionUpdate.actionId],
+      );
+      if (lockedActions.length === 0) {
+        throw new NotFoundException("This update's action has been deleted.");
+      }
+
       const claimed = await em
         .createQueryBuilder()
         .update(ActionUpdate)
@@ -2794,14 +3252,64 @@ export class ActionsService {
         );
       }
 
-      await this.notifsService.createActionUpdateNotifs({
-        actionUpdate,
-        users: recipients,
-        em,
-      });
+      // The claim holds the row lock, so this reads the update as of any
+      // edit or unpublish that committed first.
+      const claimedUpdate = await em.findOneBy(ActionUpdate, { id });
+      if (!claimedUpdate) {
+        throw new NotFoundException("This update has been deleted.");
+      }
+      await this.assertActionShowsWhenEntriesArrive(claimedUpdate, em);
+      if (recognition) {
+        await this.recognitionService.recordAudience({
+          em,
+          actionUpdateId: id,
+          userIds: recipients.map((user) => user.id),
+        });
+      } else {
+        await this.notifsService.createActionUpdateNotifs({
+          actionUpdate: claimedUpdate,
+          users: recipients,
+          em,
+        });
+      }
     });
 
+    if (recognition) {
+      // The send is already claimed and the cron retries preparing it, so a
+      // failure here mustn't report the send itself as failed.
+      await this.recognitionService
+        .prepare(id, new Date())
+        .catch((error: unknown) =>
+          this.logger.error(`preparing action update ${id} failed`, error),
+        );
+    }
     return this.findOneActionUpdate(id);
+  }
+
+  private async assertActionShowsWhenEntriesArrive(
+    actionUpdate: ActionUpdate,
+    em: EntityManager = this.actionUpdateRepository.manager,
+  ) {
+    const action = await em.findOneOrFail(Action, {
+      where: { id: actionUpdate.actionId },
+      relations: { events: true },
+    });
+    const check = checkActionShowsWhenEntriesArrive({
+      action: { archived: action.archived, events: loadedActionEvents(action) },
+      actionUpdate,
+      now: new Date(),
+    });
+    if (!check.ok) {
+      throw new BadRequestException(check.error);
+    }
+  }
+
+  private async lockActionUpdate(
+    id: number,
+    em: EntityManager,
+  ): Promise<ActionUpdate> {
+    await lockActionUpdateRow(em, id);
+    return this.findOneActionUpdate(id, em);
   }
 
   async findOneActionUpdate(
@@ -2843,14 +3351,35 @@ export class ActionsService {
       return { schema, expectedSchemaSnapshotId };
     });
 
+    // The freeze takes its own pool connections, so it runs before the
+    // transaction rather than while holding one.
+    if (
+      rest.shortNotifString !== undefined &&
+      rest.shortNotifString !==
+        (await this.actionUpdateRepository.findOneByOrFail({ id }))
+          .shortNotifString
+    ) {
+      await this.notifsService.freezeActionUpdateCopy(id);
+    }
+
     // Same locking rationale as `updateGeneralUpdate`: `save` writes back every
     // column that differs from the entity read here, so an unlocked
     // read-modify-write would revert a concurrent schema save.
     await this.actionUpdateRepository.manager.transaction(async (em) => {
-      await em.query("SELECT id FROM action_update WHERE id = $1 FOR UPDATE", [
-        id,
-      ]);
-      const actionUpdate = await this.findOneActionUpdate(id, em);
+      // The action first: deleting it locks the action before any of its
+      // cascades reach the update or event, whichever order those fire in.
+      const { actionId } = await em.findOneByOrFail(ActionUpdate, { id });
+      await assertLive(em, {
+        rows: [
+          { target: Action, id: actionId },
+          ...(tagId == null ? [] : [{ target: Tag, id: tagId }]),
+          ...(associatedEventId == null
+            ? []
+            : [{ target: ActionEvent, id: associatedEventId }]),
+        ],
+        gone: () => new NotFoundException("Action, tag or event not found"),
+      });
+      const actionUpdate = await this.lockActionUpdate(id, em);
 
       if (schemaWrite) {
         const written = await this.writeSchemaOrThrow({
@@ -2902,28 +3431,38 @@ export class ActionsService {
    * lets the `visibleAt <= now` gate republish it when that date arrives.
    */
   async unpublishActionUpdateUntilDate(id: number): Promise<ActionUpdate> {
-    const actionUpdate = await this.findOneActionUpdate(id);
-    const now = new Date();
+    // Before the transaction, as in `updateActionUpdate`.
+    await this.notifsService.freezeActionUpdateCopy(id);
+    await this.actionUpdateRepository.manager.transaction(async (em) => {
+      const actionUpdate = await this.lockActionUpdate(id, em);
+      const now = new Date();
 
-    if (actionUpdate.visibleAt === null) {
-      throw new BadRequestException("This update has not been published yet.");
-    }
-    if (actionUpdate.date <= now) {
-      throw new BadRequestException(
-        "The displayed date has already passed, so hiding the update until then would leave it visible.",
-      );
-    }
+      if (actionUpdate.visibleAt === null) {
+        throw new BadRequestException(
+          "This update has not been published yet.",
+        );
+      }
+      if (actionUpdate.date <= now) {
+        throw new BadRequestException(
+          "The displayed date has already passed, so hiding the update until then would leave it visible.",
+        );
+      }
 
-    // A targeted column write rather than a `save` of the entity read above,
-    // so a concurrent schema save isn't written back over.
-    await this.actionUpdateRepository.update(id, {
-      visibleAt: actionUpdate.date,
+      await em.update(ActionUpdate, id, { visibleAt: actionUpdate.date });
+      await this.notifsService.deferActionUpdateEntries({
+        em,
+        actionUpdateId: id,
+        until: actionUpdate.date,
+      });
     });
 
     return this.findOneActionUpdate(id);
   }
 
-  /** Undoes `unpublishActionUpdateUntilDate` before the date it waits for. */
+  /**
+   * Undoes `unpublishActionUpdateUntilDate` before the date it waits for. The
+   * entries it moved to that date stay there.
+   */
   async publishActionUpdateNow(id: number): Promise<ActionUpdate> {
     const actionUpdate = await this.findOneActionUpdate(id);
     const now = new Date();
@@ -2943,13 +3482,18 @@ export class ActionsService {
     const actionUpdate = await this.actionUpdateRepository.findOneOrFail({
       where: { id },
     });
-    await this.actionUpdateRepository.delete(id);
+    await softDeleteCascade(this.actionUpdateRepository.manager, {
+      target: ActionUpdate,
+      ids: [actionUpdate.id],
+    });
     return actionUpdate;
   }
 
-  async getActionUpdates(limit?: number): Promise<ActionUpdate[]> {
-    return this.actionUpdateRepository.find({
-      take: limit,
+  async getActionUpdates(
+    limit?: number,
+    userId?: number,
+  ): Promise<ActionUpdate[]> {
+    const updates = await this.actionUpdateRepository.find({
       where: publishedActionUpdateWhere(new Date()),
       order: { date: "DESC" },
       relations: { action: true, schemaSnapshot: true },
@@ -2959,39 +3503,77 @@ export class ActionsService {
         },
       },
     });
+    const visibleIds = await this.actionVisibility.visibleActionIdsForUser({
+      actionIds: updates.map((update) => update.actionId),
+      userId,
+    });
+    const visible = updates.filter((update) => visibleIds.has(update.actionId));
+    return limit != null ? visible.slice(0, limit) : visible;
   }
 
   private async findActionUpdateNotifRecipients(
     actionUpdate: ActionUpdate,
   ): Promise<User[]> {
-    switch (actionUpdate.notifyType) {
+    return this.findActionUpdateAudience({
+      actionId: actionUpdate.actionId,
+      notifyType: actionUpdate.notifyType,
+      tagId: actionUpdate.tag?.id ?? null,
+      decideCohort: true,
+    });
+  }
+
+  /** Without `decideCohort`, reads only saved cohort decisions and writes nothing. */
+  private async findActionUpdateAudience(params: {
+    actionId: number;
+    notifyType: ActionUpdateNotifyType;
+    tagId: string | null;
+    decideCohort: boolean;
+  }): Promise<User[]> {
+    const { actionId, notifyType, tagId } = params;
+    switch (notifyType) {
       case ActionUpdateNotifyType.None:
         return [];
       case ActionUpdateNotifyType.ActionCohort: {
-        const userIds = await this.findParticipantIdsForActionById(
-          actionUpdate.actionId,
-        );
+        const action = await this.participants.findParticipantAction(actionId);
+        if (params.decideCohort) {
+          // One send and no retry, so it cannot wait for the pass.
+          await this.cohortDecisionService.decideOpenAction(action, new Date());
+        }
+        const userIds =
+          await this.participants.findParticipantIdsForAction(action);
         return this.userService.findByIds(userIds);
       }
       case ActionUpdateNotifyType.Tag: {
-        if (!actionUpdate.tag) {
+        if (!tagId) {
           throw new BadRequestException("Tag is required");
         }
-        return (await this.userService.findTagOrFail(actionUpdate.tag.id))
-          .users;
+        return loadedTagUsers(await this.tagService.findTagOrFail(tagId));
       }
       case ActionUpdateNotifyType.AllMembers:
         return this.userService.findAllUsers();
       default:
-        throw new Error(
-          `unknown notifyType: ${actionUpdate.notifyType satisfies never}`,
-        );
+        throw new Error(`unknown notifyType: ${notifyType satisfies never}`);
     }
   }
 
-  async findSuites(): Promise<ParsedActionSuite[]> {
-    const suites = await this.actionSuiteRepository.find();
-    return suites.map(parseActionSuite);
+  async previewActionUpdateRecognitionCounts(
+    id: number,
+    audience: { notifyType: ActionUpdateNotifyType; tagId: string | null },
+  ): Promise<RecognitionPreviewCounts> {
+    const { actionId } = await this.findOneActionUpdate(id);
+    const recipients = await this.findActionUpdateAudience({
+      actionId,
+      ...audience,
+      decideCohort: false,
+    });
+    return this.recognitionPreview.counts({
+      actionId,
+      userIds: recipients.map((user) => user.id),
+    });
+  }
+
+  async findSuites(): Promise<ActionSuite[]> {
+    return this.actionSuiteRepository.find();
   }
 
   async findSuite(id: number): Promise<ParsedActionSuite> {
@@ -3009,18 +3591,20 @@ export class ActionsService {
 
   async createSuite(
     createActionSuiteDto: CreateActionSuiteDto,
-  ): Promise<ParsedActionSuite> {
+  ): Promise<ActionSuite> {
     const suite = this.actionSuiteRepository.create(createActionSuiteDto);
     const saved = await this.actionSuiteRepository.save(suite);
     await this.syncGeneralUpdateDatesForSuites([suite.id]);
-    return parseActionSuite(saved);
+    return saved;
   }
 
-  async batchUpdateSuiteEvents(
-    suiteId: number,
-    eventId: number,
-    body: UpdateActionEventDto,
-  ) {
+  async batchUpdateSuiteEvents(params: {
+    suiteId: number;
+    eventId: number;
+    body: UpdateActionEventDto;
+    acknowledgeDeadlineShortening: boolean;
+  }) {
+    const { suiteId, eventId, body } = params;
     const event = await this.actionEventRepository.findOneOrFail({
       where: { id: eventId },
       relations: { action: { events: true } },
@@ -3029,18 +3613,21 @@ export class ActionsService {
       where: { id: suiteId },
       relations: { actions: { events: true } },
     });
-    const eventIdx = event.action.events
+    const eventAction = loadedActionEventAction(event);
+    const eventIdx = loadedActionEvents(eventAction)
       .sort((a, b) => a.date.getTime() - b.date.getTime())
       .findIndex((event) => event.id === eventId);
     const eventsToUpdate = new Set<number>([eventId]);
 
-    for (const action of suite.actions) {
-      if (action.events.length <= eventIdx) {
+    const suiteActions = loadedActionSuiteActions(suite);
+    for (const action of suiteActions) {
+      const events = loadedActionEvents(action);
+      if (events.length <= eventIdx) {
         throw new BadRequestException(
           "Events do not have equivalent events to edit",
         );
       }
-      const possibleEvent = action.events.sort(
+      const possibleEvent = events.sort(
         (a, b) => a.date.getTime() - b.date.getTime(),
       )[eventIdx];
       if (
@@ -3051,24 +3638,41 @@ export class ActionsService {
       }
     }
 
-    for (const id of eventsToUpdate) {
-      await this.actionEventRepository.update(id, body);
-    }
+    const actionIds = [
+      eventAction.id,
+      ...suiteActions.map((action) => action.id),
+    ];
+    await this.cohortDecisionStaffService.guardDeadlineShortening({
+      actionIds,
+      acknowledged: params.acknowledgeDeadlineShortening,
+      change: async (em) => {
+        for (const id of eventsToUpdate) {
+          await em.update(ActionEvent, id, body);
+        }
+        await assertPrerequisitesValid({ em, actionIds });
+      },
+    });
     await this.syncGeneralUpdateDatesForSuites([suiteId]);
     return this.findSuite(suiteId);
   }
 
-  async addSuiteEvent(suiteId: number, actionEventDto: CreateActionEventDto) {
+  async addSuiteEvent(params: {
+    suiteId: number;
+    event: CreateActionEventDto;
+    acknowledgeDeadlineShortening: boolean;
+  }) {
+    const { suiteId, event, acknowledgeDeadlineShortening } = params;
     const suite = await this.actionSuiteRepository.findOneOrFail({
       where: { id: suiteId },
       relations: { actions: true },
     });
 
     await this.addEventToActions({
-      actions: suite.actions,
-      event: actionEventDto,
+      actions: loadedActionSuiteActions(suite),
+      event,
       overrides: { suiteManaged: true },
       suiteIds: [suiteId],
+      acknowledgeDeadlineShortening,
     });
     return this.findSuite(suiteId);
   }
@@ -3082,27 +3686,38 @@ export class ActionsService {
       where: { id: suiteId },
       relations: { actions: { events: true } },
     });
-    const eventIdx = event.action.events
+    const eventIdx = loadedActionEvents(loadedActionEventAction(event))
       .sort((a, b) => a.date.getTime() - b.date.getTime())
       .findIndex((event) => event.id === eventId);
 
-    for (const action of suite.actions) {
-      if (action.events.length <= eventIdx) {
-        throw new BadRequestException(
-          "Events do not have equivalent events to delete",
-        );
+    const suiteActions = loadedActionSuiteActions(suite);
+    await this.actionEventRepository.manager.transaction(async (em) => {
+      for (const action of suiteActions) {
+        const events = loadedActionEvents(action);
+        if (events.length <= eventIdx) {
+          throw new BadRequestException(
+            "Events do not have equivalent events to delete",
+          );
+        }
+        const possibleEvent = events.sort(
+          (a, b) => a.date.getTime() - b.date.getTime(),
+        )[eventIdx];
+        if (
+          possibleEvent.newStatus === event.newStatus &&
+          possibleEvent.suiteManaged
+        ) {
+          console.log("deleting event", possibleEvent.id);
+          await softDeleteCascade(em, {
+            target: ActionEvent,
+            ids: [possibleEvent.id],
+          });
+        }
       }
-      const possibleEvent = action.events.sort(
-        (a, b) => a.date.getTime() - b.date.getTime(),
-      )[eventIdx];
-      if (
-        possibleEvent.newStatus === event.newStatus &&
-        possibleEvent.suiteManaged
-      ) {
-        console.log("deleting event", possibleEvent.id);
-        await this.actionEventRepository.delete(possibleEvent.id);
-      }
-    }
+      await assertPrerequisitesValid({
+        em,
+        actionIds: suiteActions.map((action) => action.id),
+      });
+    });
     await this.syncGeneralUpdateDatesForSuites([suiteId]);
     return this.findSuite(suiteId);
   }
@@ -3110,8 +3725,7 @@ export class ActionsService {
   async tentativePlansForGroup(
     eventId: number,
     body: CreateReminderGroupDto,
-  ): Promise<PreviewNotificationPlanDto[]> {
-    assertExcludePreviouslyNotifiedAllowed(body);
+  ): Promise<NotificationPlan[]> {
     const event = await this.actionEventRepository.findOneOrFail({
       where: { id: eventId },
       relations: {
@@ -3120,24 +3734,11 @@ export class ActionsService {
         },
       },
     });
+    const fields = await this.reminderGroupService.reminderGroupFieldsFromDto(
+      body,
+      event,
+    );
 
-    let tag: Tag | undefined = undefined;
-    if (body.userTagId) {
-      tag = await this.tagRepository.findOneOrFail({
-        where: { id: body.userTagId },
-      });
-    }
-
-    let users: User[] = [];
-    if (body.userIds) {
-      users = await this.userService.findByIds(body.userIds);
-    }
-
-    // Loaded with actions so the tentative group previews with the real suite
-    // scope: cohort selection and the excludePreviouslyNotified coverage check
-    // (groupTaskScopeActionIds) otherwise fall back to the single member
-    // action and over-exclude — showing no recipients for a suite catch-up
-    // group whose real send would notify.
     let actionSuite: ActionSuite | undefined = undefined;
     if (body.suiteId) {
       actionSuite = await this.actionSuiteRepository.findOneOrFail({
@@ -3146,78 +3747,22 @@ export class ActionsService {
       });
     }
 
-    const timingAnchorEvent =
-      await this.actionEventReminderService.resolveTimingAnchorEvent(
-        body,
-        event,
-      );
-
-    const { timingAnchorEventId: _timingAnchorEventId, ...bodyRest } = body;
-    const fakeGroup = {
-      ...bodyRest,
-      id: 0,
-      name: "Tentative Reminder Group",
-      memberActionEvent: event,
-      notifications: [],
-      users,
-      userTag: tag,
-      allSent: false,
-      actionSuite,
-      timingAnchorEvent,
-    } satisfies ReminderGroup;
-
     const withDeadlineEvent =
-      await this.actionEventReminderService.attachDeadlineEvent(fakeGroup);
+      await this.reminderGroupService.attachSendableDeadlineEvent({
+        ...fields,
+        id: 0,
+        name: "Tentative Reminder Group",
+        memberActionEvent: event,
+        notifications: [],
+        allSent: false,
+        actionSuite,
+        deletedAt: null,
+      } satisfies ReminderGroup);
 
-    if (
-      fakeGroup.timingMode === ReminderGroupTimingMode.FromDeadline ||
-      fakeGroup.timingMode === ReminderGroupTimingMode.WithinRelativeRange
-    ) {
-      if (
-        !withDeadlineEvent.deadlineEvent &&
-        !withDeadlineEvent.timingAnchorEvent
-      ) {
-        throw new BadRequestException(
-          "Deadline or anchor event is required for relative timing modes",
-        );
-      }
-    }
-    if (fakeGroup.timingMode === ReminderGroupTimingMode.WithinRange) {
-      if (
-        fakeGroup.send_range_start &&
-        fakeGroup.send_range_end &&
-        new Date(fakeGroup.send_range_start).getTime() >
-          new Date(fakeGroup.send_range_end).getTime()
-      ) {
-        throw new BadRequestException(
-          "Send range start must be before the end",
-        );
-      }
-    }
-
-    const plans = await this.actionEventReminderService.findPlansForGroup(
+    return this.actionEventReminderService.findPlansForGroup(
       withDeadlineEvent,
       new Date(Date.now() - NOTIFICATION_LOOKBACK_WINDOW_MS),
-      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-    );
-
-    return plans.map((plan) => {
-      const channels: NotificationChannel[] = [];
-      if (userActionNotifsEnabled_push(plan.user))
-        channels.push(NotificationChannel.Push);
-      if (userActionNotifsEnabled_text(plan.user))
-        channels.push(NotificationChannel.Text);
-      if (userActionNotifsEnabled_email(plan.user))
-        channels.push(NotificationChannel.Email);
-      return new PreviewNotificationPlanDto(plan, channels);
-    });
-  }
-
-  async findReminderAnchorCandidates(
-    eventId: number,
-  ): Promise<ReminderAnchorCandidate[]> {
-    return this.actionEventReminderService.findReminderAnchorCandidates(
-      eventId,
+      new Date(Date.now() + milliseconds({ days: 30 })),
     );
   }
 
@@ -3228,7 +3773,11 @@ export class ActionsService {
     const actions = (await this.findMemberPublic(userId))
       .filter(
         (action) =>
-          action.shouldParticipate &&
+          action.status !== ActionStatus.Draft &&
+          action.viewer?.assigned &&
+          // Action-wide optional tasks stay; reminder groups drop those
+          // through `excludeOptionalActions`.
+          !(action.viewer?.optional && !action.optional) &&
           action.userRelation !== UserActionRelation.Completed,
       )
       .sort((a, b) => b.priority - a.priority);
@@ -3241,8 +3790,9 @@ export class ActionsService {
       relations: { actions: true },
     });
 
+    const suiteActions = loadedActionSuiteActions(suite);
     return actions.filter((action) =>
-      suite.actions.some((a) => a.id === action.id),
+      suiteActions.some((a) => a.id === action.id),
     );
   }
 
@@ -3273,9 +3823,7 @@ export class ActionsService {
       : undefined;
 
     const reminderGroups = reminders
-      ? await this.actionEventReminderService.getReminderGroupsForEvent(
-          action.id,
-        )
+      ? await this.reminderGroupService.getReminderGroupsForEvent(action.id)
       : undefined;
 
     return new ExportActionDto(action, {
@@ -3297,6 +3845,9 @@ export class ActionsService {
       updates: _updates,
       followUpForms: _followUpForms,
       reviewers,
+      project: _project,
+      // Action ids name different actions in another environment.
+      prerequisiteActionIds: _prerequisiteActionIds,
       ...actionCols
     } = importaction;
 
@@ -3312,6 +3863,13 @@ export class ActionsService {
       _actionCols_relations extends undefined ? true : false
     >;
 
+    const cohortExpression =
+      actionCols.cohortExpression == null
+        ? undefined
+        : await this.parseCohortExpressionForSaveOrThrow(
+            actionCols.cohortExpression,
+          );
+
     let suiteIdToSync: number | undefined;
     const result = await this.actionRepository.manager.transaction(
       async (em) => {
@@ -3322,10 +3880,7 @@ export class ActionsService {
 
         const inserted = await actionRepo.insert({
           ...actionCols,
-          cohortExpression:
-            actionCols.cohortExpression == null
-              ? undefined
-              : this.parseCohortExpressionOrThrow(actionCols.cohortExpression),
+          cohortExpression,
           id: undefined,
         });
 
@@ -3348,6 +3903,7 @@ export class ActionsService {
         if (suite) {
           let foundSuite = await suiteRepo.findOne({
             where: { name: suite.name },
+            lock: { mode: "for_key_share" },
           });
           if (!foundSuite) {
             foundSuite = await suiteRepo.save(
@@ -3359,11 +3915,16 @@ export class ActionsService {
         }
 
         if (authors?.length) {
-          await actionRepo
-            .createQueryBuilder()
-            .relation(Action, "authors")
-            .of(actionId)
-            .add(authors.map((a) => ({ id: a.id })));
+          await writeUnderLive(em, {
+            parents: authors.map((a) => ({ target: User, id: a.id })),
+            notFound: "That author is gone",
+            write: () =>
+              actionRepo
+                .createQueryBuilder()
+                .relation(Action, "authors")
+                .of(actionId)
+                .add(authors.map((a) => ({ id: a.id }))),
+          });
         }
 
         if (taskForm) {
@@ -3386,7 +3947,7 @@ export class ActionsService {
 
         return actionRepo.findOneOrFail({
           where: { id: actionId },
-          relations: { reviewers: true },
+          relations: { reviewers: true, events: true, followUpForms: true },
         });
       },
     );
@@ -3419,10 +3980,10 @@ export class ActionsService {
 
     const joinedUsersP: Promise<Record<number, number[]>> = run(async () => {
       const actions = await actionsP;
-      const joinedUsersMap = await this.findParticipantIdsForActions(
-        actions,
-        session,
-      );
+      const joinedUsersMap =
+        await this.participants.findParticipantIdsForActions(actions, {
+          session,
+        });
 
       const userIdsSet = await userIdsSetP;
       const joinedUsers: Record<number, number[]> = {};
@@ -3451,11 +4012,6 @@ export class ActionsService {
       });
     });
 
-    const allMembersTagIdP: Promise<string | null> = run(async () => {
-      const tag = await this.userService.findAllMembersTag();
-      return tag?.id ?? null;
-    });
-
     // --- end of promise defs ---
 
     const now = new Date();
@@ -3463,16 +4019,16 @@ export class ActionsService {
     const userById = new Map(users.map((user) => [user.id, user]));
     const actions = await actionsP;
 
-    const allMembersTagId = await allMembersTagIdP;
     const actionSummaries: UserActionSummary[] = actions.map((action) => {
       return {
         id: action.id,
         name: action.name,
         status: action.status,
         weekNumber: action.deadlineWeekNumber,
-        allMembersParticipating:
-          allMembersTagId !== null &&
-          expressionReferencesTag(action.cohortExpression, allMembersTagId),
+        allMembersParticipating: expressionHasLeaf(
+          action.cohortExpression,
+          (leaf) => leaf.type === "AllMembers",
+        ),
         suiteId: action.suite?.id,
         memberActionDeadline:
           action.memberActionPhase?.deadlineEvent?.date?.getTime() ?? null,
@@ -3527,13 +4083,12 @@ export class ActionsService {
         getDetail({ userId, actionId: action.id }).isJoined = true;
       }
       // Set-based membership from the shared session (already resolved for
-      // this expression by findParticipantIdsForActions) instead of the
+      // this action by findParticipantIdsForActions) instead of the
       // per-user expression walk, whose action leaves each hit the DB.
-      const cohortMemberIds =
-        await this.actionEventRecipientService.resolveCohortMemberIds(
-          action.cohortExpression,
-          session,
-        );
+      const cohortMemberIds = await this.cohortResolverService.resolveCohort({
+        action,
+        session,
+      });
       for (const userId of userIds) {
         const detail = getDetail({ userId, actionId: action.id });
         if (
@@ -3574,9 +4129,9 @@ export class ActionsService {
             case ActionActivityType.USER_WONT_COMPLETE:
               activityStatus = UserActionRelationPillStatus.WontComplete;
               // Surface withdrawal reason for the leader view.
-              detail.declineReason = terminal.declineReason;
-              detail.isMoral = terminal.isMoral;
-              detail.outOfTime = terminal.outOfTime;
+              detail.declineReason = terminal.declineReason ?? undefined;
+              detail.isMoral = terminal.isMoral ?? undefined;
+              detail.outOfTime = terminal.outOfTime ?? undefined;
               break;
             default:
               throw new Error(
@@ -3589,9 +4144,10 @@ export class ActionsService {
           isJoined: detail.isJoined,
           isAway: detail.isAway,
           optional: action.optional,
-          deadlinePassed:
-            !!action.memberActionPhase?.deadlineEvent?.date &&
-            action.memberActionPhase.deadlineEvent.date <= now,
+          deadlinePassed: hasMemberActionDeadlinePassed(
+            action.memberActionPhase?.deadlineEvent?.date,
+            now,
+          ),
           activityStatus,
         });
       }
@@ -3636,23 +4192,12 @@ export class ActionsService {
     if (!action) {
       return [];
     }
-    const activities = await this.actionActivityRepository.find({
-      where: {
-        actionId: action.id,
-        type: ActionActivityType.USER_WONT_COMPLETE,
-      },
-      order: { createdAt: "DESC" },
-    });
-    const seen = new Set<number>();
-    const results: ActionActivity[] = [];
-    for (const a of activities) {
-      if (seen.has(a.userId)) {
-        continue;
-      }
-      seen.add(a.userId);
-      results.push(a);
-    }
-    return results;
+    return this.actionActivityRepository
+      .createQueryBuilder("activity")
+      .where("activity.actionId = :actionId", { actionId: action.id })
+      .andWhere(sqlIsLatestWithdrawal("activity"))
+      .orderBy("activity.createdAt", "DESC")
+      .getMany();
   }
 
   async findUserActionRelations(): Promise<UserActionRelations> {
@@ -3661,7 +4206,7 @@ export class ActionsService {
     // findParticipantIdsForActions reuses it instead of re-hydrating every
     // user. The relations matrix only reads what the projection carries.
     const session = new CohortResolutionSession();
-    const usersPromise = this.actionEventRecipientService.primeActiveUsers(
+    const usersPromise = this.cohortResolverService.primeActiveUsers(
       session,
       () => this.userService.findActiveUsersForRoster(),
     );
@@ -3688,7 +4233,7 @@ export class ActionsService {
       .findOneOrFail(communityId, {
         users: { awayRanges: true, contractEvents: true, tags: true },
       })
-      .then((community) => community.users);
+      .then(loadedCommunityUsers);
     return this.findActionRelationsForUsers(usersPromise);
   }
 
@@ -3696,350 +4241,164 @@ export class ActionsService {
     userId: number,
     communityId: number,
   ): Promise<UserActionRelations> {
-    const usersPromise = run(async () => {
-      const community = await this.communityService.findOneOrFail(communityId, {
-        users: { awayRanges: true, contractEvents: true, tags: true },
-      });
-      if (!community.users.some((user) => user.id === userId)) {
-        throw new NotFoundException("User is not a member of this community");
-      }
-
-      return community.users;
+    const community = await this.communityService.findOneOrFail(communityId, {
+      users: { awayRanges: true, contractEvents: true, tags: true },
     });
+    const members = loadedCommunityUsers(community);
+    if (!members.some((user) => user.id === userId)) {
+      throw new NotFoundException("User is not a member of this community");
+    }
 
-    return this.findActionRelationsForUsers(usersPromise);
+    return this.findActionRelationsForUsers(Promise.resolve(members));
   }
 
   private async buildSuspendPlanContext(
     actions: ParsedAction[],
-    maxPastDate?: Date,
+    maxPastDate: Date,
   ): Promise<SuspendPlanContext> {
-    const suiteMap = new Map<
-      number,
-      {
-        suite: ActionSuite;
-        actions: ParsedAction[];
-        orderIndex: number;
-      }
-    >();
-
-    for (let i = 0; i < actions.length; i++) {
-      const action = actions[i];
-      if (!action.suite) continue;
-      if (action.onboarding) continue;
-      if (action.optional) continue;
-
-      const suiteId = action.suite.id;
-      if (!suiteMap.has(suiteId)) {
-        suiteMap.set(suiteId, {
-          suite: action.suite,
-          actions: [],
-          orderIndex: i,
-        });
-      }
-      suiteMap.get(suiteId)!.actions.push(action);
+    const actionsBySuite = new Map<number, ParsedAction[]>();
+    for (const action of actions) {
+      if (!action.suite || action.onboarding || action.optional) continue;
+      const suiteActions = actionsBySuite.get(action.suite.id) ?? [];
+      suiteActions.push(action);
+      actionsBySuite.set(action.suite.id, suiteActions);
     }
 
-    const orderedSuites = Array.from(suiteMap.values()).sort(
-      (a, b) => a.orderIndex - b.orderIndex,
+    const closedSuites = [...actionsBySuite].flatMap(
+      ([suiteId, suiteActions]) => {
+        let closedAt: Date | null = null;
+        for (const action of suiteActions) {
+          const deadline = action.memberActionPhase.deadlineEvent?.date;
+          if (!deadline) return [];
+          if (!closedAt || deadline > closedAt) closedAt = deadline;
+        }
+        if (!closedAt || closedAt > maxPastDate) return [];
+        return [{ suiteId, closedAt, actions: suiteActions }];
+      },
+    );
+    closedSuites.sort(
+      (a, b) =>
+        a.closedAt.getTime() - b.closedAt.getTime() || a.suiteId - b.suiteId,
     );
 
-    if (orderedSuites.length === 0) {
-      return {
-        orderedSuites: [],
-        expectedBySuite: new Map(),
-        failedBySuite: new Map(),
-        idToUser: new Map(),
-        allExpectedUsers: [],
-      };
+    if (closedSuites.length === 0) {
+      return { suites: [], idToUser: new Map() };
     }
 
-    const memberActionEventByActionId = new Map<number, ActionEvent>();
-    const memberActionMinDateByActionId = new Map<number, Date>();
-    const deadlineDateByActionId = new Map<number, Date>();
-    for (const suite of orderedSuites) {
-      for (const action of suite.actions) {
-        let minDate: Date | null = null;
-        for (const event of action.events) {
-          if (event.newStatus !== ActionStatus.MemberAction) continue;
-          if (!memberActionEventByActionId.has(action.id)) {
-            memberActionEventByActionId.set(action.id, event);
-          }
-          if (!minDate || event.date < minDate) {
-            minDate = event.date;
-          }
-        }
-        if (minDate) {
-          memberActionMinDateByActionId.set(action.id, minDate);
-        }
-        const memberEvent = memberActionEventByActionId.get(action.id);
-        if (memberEvent) {
-          const deadlineDate = action.memberActionPhase.deadlineEvent?.date;
-          if (deadlineDate) {
-            deadlineDateByActionId.set(action.id, deadlineDate);
-          }
-        }
-      }
-    }
-
-    const maxPastMs = maxPastDate?.getTime();
-    const orderedSuiteMeta = orderedSuites.map((suite) => {
-      let pastDate: Date | null = null;
-      for (const action of suite.actions) {
-        const deadline = deadlineDateByActionId.get(action.id);
-        if (!deadline) {
-          pastDate = null;
-          break;
-        }
-        if (!pastDate || deadline > pastDate) {
-          pastDate = deadline;
-        }
-      }
-      return { suiteId: suite.suite.id, pastDate };
+    const actionIds = closedSuites.flatMap((suite) =>
+      suite.actions.map((action) => action.id),
+    );
+    const satisfyingActivities = await this.actionActivityRepository.find({
+      where: {
+        actionId: In(actionIds),
+        type: In(TERMINAL_ACTIVITY_TYPES),
+      },
+      select: { actionId: true, userId: true },
     });
-
-    const suitesToProcess = orderedSuites.filter((_, index) => {
-      const pastDate = orderedSuiteMeta[index].pastDate;
-      if (!pastDate) return false;
-      if (maxPastMs !== undefined && pastDate.getTime() > maxPastMs) {
-        return false;
-      }
-      return true;
-    });
-
-    const orderedSuitesForContext = orderedSuiteMeta.filter((_, index) => {
-      const pastDate = orderedSuiteMeta[index].pastDate;
-      if (!pastDate) return false;
-      if (maxPastMs !== undefined && pastDate.getTime() > maxPastMs) {
-        return false;
-      }
-      return true;
-    });
-
-    if (suitesToProcess.length === 0) {
-      return {
-        orderedSuites: orderedSuitesForContext,
-        expectedBySuite: new Map(),
-        failedBySuite: new Map(),
-        idToUser: new Map(),
-        allExpectedUsers: [],
-      };
-    }
-
-    const actionIds: number[] = [];
-    for (const suite of suitesToProcess) {
-      for (const action of suite.actions) {
-        actionIds.push(action.id);
-      }
-    }
-
-    const [dismissedActivities, completionActivities] = await Promise.all([
-      this.actionActivityRepository.find({
-        where: {
-          actionId: In(actionIds),
-          type: ActionActivityType.USER_DISMISSED,
-        },
-      }),
-      this.actionActivityRepository.find({
-        where: {
-          actionId: In(actionIds),
-          type: In([
-            ActionActivityType.USER_COMPLETED,
-            ActionActivityType.USER_WONT_COMPLETE,
-          ]),
-        },
-      }),
-    ]);
+    const satisfied = new Set(
+      satisfyingActivities.map(
+        (activity) => `${activity.userId}:${activity.actionId}`,
+      ),
+    );
 
     // Share the active-user load and per-leaf cohort queries across every
     // action in the batch (see CohortResolutionSession).
     const session = new CohortResolutionSession();
     const activeUsers =
-      await this.actionEventRecipientService.getActiveUsers(session);
-    const activeUsersById = new Map(activeUsers.map((user) => [user.id, user]));
-
-    const dismissedByAction = new Map<number, Set<number>>();
-    for (const activity of dismissedActivities) {
-      if (!dismissedByAction.has(activity.actionId)) {
-        dismissedByAction.set(activity.actionId, new Set());
-      }
-      dismissedByAction.get(activity.actionId)!.add(activity.userId);
-    }
-
-    const completedByAction = new Map<number, Set<number>>();
-    for (const activity of completionActivities) {
-      if (!completedByAction.has(activity.actionId)) {
-        completedByAction.set(activity.actionId, new Set());
-      }
-      completedByAction.get(activity.actionId)!.add(activity.userId);
-    }
-
-    const cohortByAction = new Map<number, Promise<Set<number>>>();
-    for (const suite of suitesToProcess) {
-      for (const action of suite.actions) {
-        if (!memberActionEventByActionId.has(action.id)) continue;
-        cohortByAction.set(
-          action.id,
-          this.actionEventRecipientService.resolveCohortMemberIds(
-            action.cohortExpression,
-            session,
+      await this.cohortResolverService.getActiveUsers(session);
+    const cohortByAction = new Map(
+      await Promise.all(
+        closedSuites.flatMap((suite) =>
+          suite.actions.map(
+            async (action) =>
+              [
+                action.id,
+                await this.cohortResolverService.resolveCohort({
+                  action,
+                  session,
+                }),
+              ] as const,
           ),
-        );
-      }
-    }
-    await Promise.all(cohortByAction.values());
+        ),
+      ),
+    );
 
-    const baseUsersByAction = new Map<number, User[]>();
-    for (const suite of suitesToProcess) {
-      for (const action of suite.actions) {
-        const event = memberActionEventByActionId.get(action.id);
-        if (!event) continue;
+    const lastSignedDateByUser = new Map(
+      activeUsers.map((user) => [
+        user.id,
+        findLeast(
+          (user.contractEvents ?? []).filter(
+            (event) => event.type === ContractEventType.SIGNED,
+          ),
+          (a, b) => b.date.getTime() - a.date.getTime(),
+        )?.date ?? new Date(0),
+      ]),
+    );
 
-        const dismissedSet = dismissedByAction.get(action.id) ?? new Set();
-        const deadlineDate =
-          action.memberActionPhase.deadlineEvent?.date ?? null;
-
-        const baseCandidates = activeUsers;
-
-        const cohortMemberIds = await cohortByAction.get(action.id)!;
-
-        const baseUsers = baseCandidates.filter((user) =>
-          computeIsAssignedAndPresent({
-            eventDate: event.date,
-            deadlineDate: deadlineDate,
-            cohortMemberIds,
-            user,
-            userDismissed: dismissedSet.has(user.id),
-            onboarding: action.onboarding,
-          }),
-        );
-
-        baseUsersByAction.set(action.id, baseUsers);
-      }
-    }
-
-    const expectedBySuite = new Map<number, Set<number>>();
-    const failedBySuite = new Map<number, Set<number>>();
     const idToUser = new Map<number, User>();
-
-    const lastSignedDateByUser = new Map<number, Date>();
-    const getLastSignedDate = (user: User) => {
-      const cached = lastSignedDateByUser.get(user.id);
-      if (cached) {
-        return cached;
-      }
-      const lastSignedDate =
-        user.contractEvents
-          ?.filter((event) => event.type === ContractEventType.SIGNED)
-          ?.sort((a, b) => b.date.getTime() - a.date.getTime())[0]?.date ??
-        new Date(0);
-      lastSignedDateByUser.set(user.id, lastSignedDate);
-      return lastSignedDate;
-    };
-
-    for (const suite of suitesToProcess) {
-      // A user fails a suite only when every non-optional action assigned to
-      // them in that suite is missed. Each action can have a different cohort.
-      const expectedUserIds = new Set<number>();
-      const usersWhoCompletedAnAssignedAction = new Set<number>();
-      const usersWithAnAssignmentSinceLastSigning = new Set<number>();
-
+    const suites: SuiteOutcome[] = [];
+    for (const suite of closedSuites) {
+      const missedActionIdsByUser = new Map<number, number[]>();
       for (const action of suite.actions) {
-        const event = memberActionEventByActionId.get(action.id);
-        if (!event) {
-          continue;
-        }
-
-        const baseUsers = baseUsersByAction.get(action.id) ?? [];
-        const completedSet = completedByAction.get(action.id) ?? new Set();
-
-        for (const user of baseUsers) {
-          expectedUserIds.add(user.id);
-          if (completedSet.has(user.id)) {
-            usersWhoCompletedAnAssignedAction.add(user.id);
+        const { event, deadlineEvent } = action.memberActionPhase;
+        if (!event) continue;
+        const cohortMemberIds = cohortByAction.get(action.id)!;
+        for (const user of activeUsers) {
+          if (
+            lastSignedDateByUser.get(user.id)! >= event.date ||
+            !computeIsAssignedAndPresent({
+              eventDate: event.date,
+              deadlineDate: deadlineEvent?.date ?? null,
+              cohortMemberIds,
+              user,
+              onboarding: action.onboarding,
+            })
+          ) {
+            continue;
           }
-          if (getLastSignedDate(user) < event.date) {
-            usersWithAnAssignmentSinceLastSigning.add(user.id);
+          const missed = missedActionIdsByUser.get(user.id) ?? [];
+          if (
+            computeMissedRequiredAction({
+              action,
+              hasTerminalActivity: satisfied.has(`${user.id}:${action.id}`),
+              now: maxPastDate,
+            })
+          ) {
+            missed.push(action.id);
           }
-        }
-      }
-
-      expectedBySuite.set(suite.suite.id, expectedUserIds);
-
-      const suiteFailed = new Set<number>();
-      for (const userId of expectedUserIds) {
-        if (
-          !usersWhoCompletedAnAssignedAction.has(userId) &&
-          usersWithAnAssignmentSinceLastSigning.has(userId)
-        ) {
-          const user = activeUsersById.get(userId)!;
-          if (user.hasActiveContract) {
-            suiteFailed.add(userId);
-            idToUser.set(user.id, user);
-          }
+          missedActionIdsByUser.set(user.id, missed);
+          idToUser.set(user.id, user);
         }
       }
-      failedBySuite.set(suite.suite.id, suiteFailed);
+      suites.push({
+        suiteId: suite.suiteId,
+        closedAt: suite.closedAt,
+        actions: suite.actions.map(({ id, name, timeEstimate }) => ({
+          id,
+          name,
+          timeEstimate,
+        })),
+        missedActionIdsByUser,
+      });
     }
 
-    const allExpectedUsers = new Set<number>();
-    for (const s of expectedBySuite.values()) {
-      for (const id of s) allExpectedUsers.add(id);
-    }
-
-    return {
-      orderedSuites: orderedSuitesForContext,
-      expectedBySuite,
-      failedBySuite,
-      idToUser,
-      allExpectedUsers: Array.from(allExpectedUsers),
-    };
+    return { suites, idToUser };
   }
 
   private computeUsersToSuspendFromContext(
     now: Date,
     context: SuspendPlanContext,
   ): SuspensionCandidate[] {
-    const pastSuites = context.orderedSuites.filter(
-      (suite) => suite.pastDate && suite.pastDate < now,
+    const closedSuites = context.suites.filter((suite) =>
+      hasMemberActionDeadlinePassed(suite.closedAt, now),
     );
-
-    const candidates: SuspensionCandidate[] = [];
-
-    for (const userId of context.allExpectedUsers) {
-      let streak = 0;
-      const lastThreeSuiteIds: number[] = [];
-
-      for (const suite of pastSuites) {
-        const expectedSet = context.expectedBySuite.get(suite.suiteId);
-        if (!expectedSet?.has(userId)) {
-          continue; // skip suites they were not expected to complete
-        }
-
-        const failedSet =
-          context.failedBySuite.get(suite.suiteId) ?? new Set<number>();
-        const failed = failedSet.has(userId);
-
-        if (failed) {
-          streak += 1;
-          lastThreeSuiteIds.push(suite.suiteId);
-          if (lastThreeSuiteIds.length > 3) lastThreeSuiteIds.shift();
-          if (streak >= 3) {
-            candidates.push({
-              user: context.idToUser.get(userId)!,
-              reasonKey: `s-${lastThreeSuiteIds.join("-")}`,
-            });
-            break;
-          }
-        } else {
-          // they were expected and did not fail => streak broken
-          streak = 0;
-          lastThreeSuiteIds.length = 0;
-        }
-      }
-    }
-
-    return candidates;
+    return [...context.idToUser.values()].flatMap((user) => {
+      if (!user.hasActiveContract) return [];
+      const run = trailingMissedSuiteIds(closedSuites, user.id);
+      return run.length >= SUSPENSION_MISSED_SUITE_COUNT
+        ? [{ user, reasonKey: suspensionReasonKey(run) }]
+        : [];
+    });
   }
 
   async findUsersToSuspend(now: Date, preloadedActions?: ParsedAction[]) {
@@ -4054,46 +4413,10 @@ export class ActionsService {
     return this.computeUsersToSuspendFromContext(now, context);
   }
 
-  async getMissedActionReminderContexts(
-    userIds: number[],
-    now: Date,
-  ): Promise<Map<number, MissedActionReminderContext>> {
-    const uniqueUserIds = [...new Set(userIds)];
-    if (uniqueUserIds.length === 0) {
-      return new Map();
-    }
-
+  /** Suites closed by `now`, in close order. */
+  async findClosedSuiteOutcomes(now: Date): Promise<SuiteOutcome[]> {
     const actions = await this.findAllSorted({ events: true, suite: true });
-    const context = await this.buildSuspendPlanContext(actions, now);
-
-    return new Map(
-      uniqueUserIds.map((userId) => {
-        let consecutiveMissedSuiteCount = 0;
-        let assignedSuiteCount = 0;
-        for (const suite of context.orderedSuites) {
-          if (!suite.pastDate || suite.pastDate >= now) {
-            continue;
-          }
-          if (!context.expectedBySuite.get(suite.suiteId)?.has(userId)) {
-            continue;
-          }
-          assignedSuiteCount += 1;
-          if (context.failedBySuite.get(suite.suiteId)?.has(userId)) {
-            consecutiveMissedSuiteCount += 1;
-          } else {
-            consecutiveMissedSuiteCount = 0;
-          }
-        }
-
-        return [
-          userId,
-          {
-            isFirstAssignedSuite: assignedSuiteCount === 1,
-            consecutiveMissedSuiteCount,
-          },
-        ] as const;
-      }),
-    );
+    return (await this.buildSuspendPlanContext(actions, now)).suites;
   }
 
   async getSuspendPlans(
@@ -4111,7 +4434,7 @@ export class ActionsService {
     let date = rangeStart;
     const suspendedUsers = new Set<number>();
     const rangeEndMs = rangeEnd.getTime();
-    const stepMs = stepHours * 60 * 60 * 1000;
+    const stepMs = milliseconds({ hours: stepHours });
 
     while (date.getTime() <= rangeEndMs) {
       const notAlreadySuspended = this.computeUsersToSuspendFromContext(
@@ -4212,10 +4535,16 @@ export class ActionsService {
   }
 
   /** Unified feed of recent activity groups, action updates, joins, and comments. */
-  async getGlobalFeed(limit: number = 15): Promise<GlobalFeedItemDto[]> {
+  async getGlobalFeed(
+    limit: number = 15,
+    userId?: number,
+  ): Promise<GlobalFeedItemDto[]> {
     const feedItems: GlobalFeedItemDto[] = [];
     const now = new Date();
     const oneWeekAgo = this.globalFeedWindowStart();
+    const session = new CohortResolutionSession();
+    const user =
+      await this.actionVisibility.loadUserForActionVisibility(userId);
 
     const recentActivities = (await this.actionActivityRepository
       .createQueryBuilder("activity")
@@ -4239,14 +4568,35 @@ export class ActionsService {
       ])
       .loadRelationIdAndMap("user.leaderOfIds", "user.leaderOf")
       .where("activity.type IN (:...types)", {
-        types: GlobalFeedActivityTypes,
+        types: ACTION_ACTIVITY_FEED_VISIBLE_TYPES,
       })
       .andWhere("action.onboarding = false")
       .andWhere("activity.createdAt > :oneWeekAgo", { oneWeekAgo })
       .orderBy("activity.createdAt", "DESC")
       .getMany()) as (ActionActivity & {
-      type: GlobalFeedActivityType;
+      type: FeedActionActivity;
     })[];
+
+    // The recency window runs on `visibleAt`, not `date`: an update backdated to
+    // when its subject happened would fall outside a one-week window on the day
+    // it was published.
+    const actionUpdates = await this.actionUpdateRepository.find({
+      where: {
+        visibleAt: MoreThan(oneWeekAgo),
+      },
+      relations: { action: true, schemaSnapshot: true },
+      order: { date: "DESC" },
+    });
+
+    const visibleActionIds =
+      await this.actionVisibility.visibleActionIdsForUser({
+        actionIds: [
+          ...recentActivities.map((activity) => activity.actionId),
+          ...actionUpdates.map((update) => update.actionId),
+        ],
+        user,
+        session,
+      });
 
     // Activity groups are action + type, not day buckets.
     const activityGroups = new Map<
@@ -4255,19 +4605,22 @@ export class ActionsService {
         activities: ActionActivity[];
         actionId: number;
         actionName: string;
-        type: GlobalFeedActivityType;
+        type: FeedActionActivity;
         latestDate: Date;
       }
     >();
 
     for (const activity of recentActivities) {
+      if (!visibleActionIds.has(activity.actionId)) {
+        continue;
+      }
       const key = `${activity.actionId}-${activity.type}`;
 
       if (!activityGroups.has(key)) {
         activityGroups.set(key, {
           activities: [],
           actionId: activity.actionId,
-          actionName: activity.action?.name || "Unknown Action",
+          actionName: loadedActionActivityAction(activity).name,
           type: activity.type,
           latestDate: activity.createdAt,
         });
@@ -4282,8 +4635,9 @@ export class ActionsService {
     for (const group of activityGroups.values()) {
       const uniqueUsers = new Map<number, ProfileDto>();
       for (const activity of group.activities) {
-        if (activity.user && !uniqueUsers.has(activity.user.id)) {
-          uniqueUsers.set(activity.user.id, new ProfileDto(activity.user));
+        const activityUser = loadedActionActivityUser(activity);
+        if (!uniqueUsers.has(activityUser.id)) {
+          uniqueUsers.set(activityUser.id, new ProfileDto(activityUser));
         }
       }
       const users = Array.from(uniqueUsers.values());
@@ -4305,19 +4659,10 @@ export class ActionsService {
       );
     }
 
-    // The recency window runs on `visibleAt`, not `date`: an update backdated to
-    // when its subject happened would fall outside a one-week window on the day
-    // it was published.
-    const actionUpdates = await this.actionUpdateRepository.find({
-      where: {
-        visibleAt: MoreThan(oneWeekAgo),
-      },
-      relations: { action: true, schemaSnapshot: true },
-      order: { date: "DESC" },
-      take: 10,
-    });
-
     for (const update of actionUpdates) {
+      if (!visibleActionIds.has(update.actionId)) {
+        continue;
+      }
       if (isActionUpdatePublished(update, now) && update.schemaSnapshot) {
         const actionUpdateDto: GlobalFeedActionUpdateDto = {
           id: update.id,
@@ -4363,30 +4708,32 @@ export class ActionsService {
       );
     }
 
-    const recentComments = await this.commentRepository
-      .createQueryBuilder("comment")
-      .leftJoinAndSelect("comment.author", "author")
-      .select([
-        "comment.id",
-        "comment.parentObjectId",
-        "comment.parentObjectType",
-        "comment.createdAt",
-        "author.id",
-        "author.name",
-        "author.profilePicture",
-        "author.anonymous",
-        "author.admin",
-        "author.staff",
-        "author.profileDescription",
-      ])
-      .loadRelationIdAndMap("author.leaderOfIds", "author.leaderOf")
-      .where("comment.parentObjectType = :postType", {
-        postType: CommentParentObject.Post,
-      })
-      .andWhere("comment.createdAt > :oneWeekAgo", { oneWeekAgo })
-      .andWhere("comment.deleted = false")
-      .orderBy("comment.createdAt", "DESC")
-      .getMany();
+    const recentComments = await withoutHiddenComments(
+      this.commentRepository.manager,
+      await this.commentRepository
+        .createQueryBuilder("comment")
+        .leftJoinAndSelect("comment.author", "author")
+        .select([
+          "comment.id",
+          "comment.parentObjectId",
+          "comment.parentObjectType",
+          "comment.createdAt",
+          "author.id",
+          "author.name",
+          "author.profilePicture",
+          "author.anonymous",
+          "author.admin",
+          "author.staff",
+          "author.profileDescription",
+        ])
+        .loadRelationIdAndMap("author.leaderOfIds", "author.leaderOf")
+        .where("comment.parentObjectType = :postType", {
+          postType: CommentParentObject.Post,
+        })
+        .andWhere("comment.createdAt > :oneWeekAgo", { oneWeekAgo })
+        .orderBy("comment.createdAt", "DESC")
+        .getMany(),
+    );
 
     const commentGroups = new Map<
       number,
@@ -4408,9 +4755,10 @@ export class ActionsService {
         });
       }
       const group = commentGroups.get(postId)!;
-      if (comment.author && !group.users.has(comment.author.id)) {
-        group.users.set(comment.author.id, {
-          profile: new ProfileDto(comment.author),
+      const author = loadedCommentAuthor(comment);
+      if (!group.users.has(author.id)) {
+        group.users.set(author.id, {
+          profile: new ProfileDto(author),
           commentId: comment.id,
         });
       }
@@ -4465,7 +4813,9 @@ export class ActionsService {
   }
 
   private globalFeedWindowStart(): Date {
-    return new Date(Date.now() - GLOBAL_FEED_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+    return new Date(
+      Date.now() - milliseconds({ days: GLOBAL_FEED_WINDOW_DAYS }),
+    );
   }
 
   private buildRecentNewMembersRankedQuery(
@@ -4485,6 +4835,7 @@ export class ActionsService {
             SELECT previous_event.type
             FROM "contract_event" previous_event
             WHERE previous_event."userId" = signed_event."userId"
+              AND previous_event."deletedAt" IS NULL
               AND (
                 previous_event.date < signed_event.date
                 OR (
@@ -4496,6 +4847,7 @@ export class ActionsService {
             LIMIT 1
           ) previous_event ON true
           WHERE signed_event.type = $1
+            AND signed_event."deletedAt" IS NULL
             AND signed_event.date > $2
             AND (
               previous_event.type IS NULL
@@ -4596,6 +4948,12 @@ export class ActionsService {
       .map((user) => new ProfileDto(user));
   }
 
+  /**
+   * Orders the facepile preview by profile picture first, then recency, so
+   * recent photo-less joins don't crowd out photos from earlier in the
+   * window. `windowLatestAt` is a window-wide MAX because the first row is
+   * photo-first, not the most recent.
+   */
   private async queryFeedMemberSummary({
     rankedSql,
     params,
@@ -4607,9 +4965,12 @@ export class ActionsService {
   }): Promise<{ users: ProfileDto[]; count: number; latestDate: Date | null }> {
     const limitParam = params.length + 1;
     const rows = await this.userRepository.query<FeedMemberSummaryRow[]>(
-      `SELECT "userId", "latestAt", "latestId", COUNT(*) OVER() AS "totalCount"
+      `SELECT feed_members."userId", feed_members."latestAt", feed_members."latestId",
+        COUNT(*) OVER() AS "totalCount",
+        MAX(feed_members."latestAt") OVER() AS "windowLatestAt"
       FROM (${rankedSql}) feed_members
-      ORDER BY "latestAt" DESC, "latestId" DESC
+      INNER JOIN "user" ON "user".id = feed_members."userId" AND "user"."deletedAt" IS NULL
+      ORDER BY ${sqlUserHasProfilePicture('"user"."profilePicture"')} DESC, feed_members."latestAt" DESC, feed_members."latestId" DESC
       LIMIT $${limitParam}`,
       [...params, limit],
     );
@@ -4621,16 +4982,20 @@ export class ActionsService {
     return {
       users,
       count: rows.length === 0 ? 0 : Number(rows[0].totalCount),
-      latestDate: rows[0]?.latestAt ? new Date(rows[0].latestAt) : null,
+      latestDate: rows[0]?.windowLatestAt
+        ? new Date(rows[0].windowLatestAt)
+        : null,
     };
   }
 
   async getActivityGroupMembers(
     actionId: number,
-    activityType: GlobalFeedActivityType,
+    activityType: FeedActionActivity,
     limit: number,
     afterId?: number,
+    requestingUserId?: number,
   ): Promise<ProfileDto[]> {
+    await this.findOneOrFail({ id: actionId, userId: requestingUserId });
     const oneWeekAgo = this.globalFeedWindowStart();
     const rankedSql = `
       SELECT "userId", "latestAt", "latestId"
@@ -4645,6 +5010,8 @@ export class ActionsService {
           AND activity.type = $2
           AND action_entity.onboarding = false
           AND activity."createdAt" > $3
+          AND activity."deletedAt" IS NULL
+          AND action_entity."deletedAt" IS NULL
         ORDER BY activity."userId" ASC, activity."createdAt" DESC, activity.id DESC
       ) ranked`;
 
@@ -4692,20 +5059,29 @@ export class ActionsService {
         WHERE comment."parentObjectType" = $1
           AND comment."parentObjectId" = $2
           AND comment."createdAt" > $3
-          AND comment.deleted = false
+          AND comment."deletedAt" IS NULL
+          AND NOT (comment.id = ANY($4))
         ORDER BY comment."authorId" ASC, comment."createdAt" DESC, comment.id DESC
       ) ranked`;
 
     const pageIds = await this.queryFeedMemberPageIds({
       rankedSql,
-      params: [CommentParentObject.Post, postId, oneWeekAgo],
+      params: [
+        CommentParentObject.Post,
+        postId,
+        oneWeekAgo,
+        await hiddenCommentIds(this.commentRepository.manager, [postId]),
+      ],
       limit,
       afterId,
     });
     return this.hydrateFeedMemberProfiles(pageIds);
   }
 
-  async getTimelineFeed(limit: number = 15): Promise<TimelineFeedItemDto[]> {
+  async getTimelineFeed(
+    limit: number = 15,
+    userId?: number,
+  ): Promise<TimelineFeedItemDto[]> {
     const feedItems: TimelineFeedItemDto[] = [];
 
     const now = new Date();
@@ -4729,18 +5105,39 @@ export class ActionsService {
       actionUpdatesQuery,
     ]);
 
+    const visibleActionIds =
+      await this.actionVisibility.visibleActionIdsForUser({
+        actionIds: [
+          ...events.map((event) => loadedActionEventAction(event).id),
+          ...actionUpdates.map((update) => update.actionId),
+        ],
+        userId,
+      });
+
     for (const event of events) {
+      const action = loadedActionEventAction(event);
+      if (!visibleActionIds.has(action.id)) {
+        continue;
+      }
       feedItems.push(
         new TimelineFeedItemDto({
           type: TimelineFeedItemType.ActionEvent,
           date: event.date,
-          action: parseAction(event.action),
+          action: parseAction(action),
           actionEvent: event,
         }),
       );
     }
 
     for (const actionUpdate of actionUpdates) {
+      if (!visibleActionIds.has(actionUpdate.actionId)) {
+        continue;
+      }
+      if (!actionUpdate.action) {
+        throw new Error(
+          `action of action update ${actionUpdate.id} not loaded`,
+        );
+      }
       feedItems.push(
         new TimelineFeedItemDto({
           type: TimelineFeedItemType.ActionUpdate,
@@ -4759,7 +5156,7 @@ export class ActionsService {
   async evaluateCohortExpressionBatch(expression: unknown): Promise<number[]> {
     const parsed = this.parseCohortExpressionOrThrow(expression);
     const result =
-      await this.actionEventRecipientService.resolveCohortMemberIds(parsed);
+      await this.cohortResolverService.resolveCohortMemberIds(parsed);
     return Array.from(result);
   }
 
@@ -4780,7 +5177,7 @@ export class ActionsService {
     }
     const results = await Promise.all(
       followUpForms.map((form) =>
-        this.computeIsInCohortExpression({
+        this.singleMemberCohortService.computeIsInCohortExpression({
           user,
           cohortExpression: form.cohortExpression,
           session,
@@ -4788,199 +5185,5 @@ export class ActionsService {
       ),
     );
     return followUpForms.filter((_, i) => results[i]);
-  }
-
-  /**
-   * Check if a user is in a cohort expression's target set.
-   */
-  async computeIsInCohortExpression(params: {
-    user: User;
-    cohortExpression: CohortExpression | null | undefined;
-    visitedActionIds?: Set<number>;
-    /** Share per-user leaf lookups across the expressions of one request. */
-    session?: CohortResolutionSession;
-  }): Promise<boolean> {
-    const { user, cohortExpression } = params;
-    const visitedActionIds = params.visitedActionIds ?? new Set<number>();
-    const session = params.session ?? new CohortResolutionSession();
-
-    if (!cohortExpression) {
-      return false;
-    }
-
-    const ctx = singleUserCohortContext({
-      userId: user.id,
-      // Mirror findActiveUsersWithTags' universe filter so NOT() agrees across both paths.
-      isCandidate: !user.isNotSignedUpPartialProfile,
-      hasTag: (tagId: string) =>
-        (user.tags || []).some((tag) => tag.id === tagId),
-      completedAction: async (actionId: number) => {
-        const activity = await this.actionActivityRepository.findOne({
-          where: {
-            userId: user.id,
-            actionId,
-            type: ActionActivityType.USER_COMPLETED,
-          },
-        });
-        return !!activity;
-      },
-      inProgressAction: async (actionId: number) => {
-        if (visitedActionIds.has(actionId)) return false;
-        const fetched = await this.actionRepository.findOne({
-          where: { id: actionId },
-          relations: { events: true },
-        });
-        if (!fetched) return false;
-        const action = parseAction(fetched);
-
-        const inCohort = await this.computeIsInCohortExpression({
-          user,
-          cohortExpression: action.cohortExpression,
-          visitedActionIds: new Set(visitedActionIds).add(actionId),
-          session,
-        });
-        if (action.status !== ActionStatus.MemberAction) return false;
-
-        if (!inCohort) return false;
-        const terminal = await this.actionActivityRepository.findOne({
-          where: [
-            {
-              userId: user.id,
-              actionId,
-              type: ActionActivityType.USER_COMPLETED,
-            },
-            {
-              userId: user.id,
-              actionId,
-              type: ActionActivityType.USER_WONT_COMPLETE,
-            },
-          ],
-        });
-        return !terminal;
-      },
-      missedActionDeadline: async (actionId: number) => {
-        if (visitedActionIds.has(actionId)) return false;
-        const fetched = await this.actionRepository.findOne({
-          where: { id: actionId },
-          relations: { events: true },
-        });
-        if (!fetched) return false;
-        const action = parseAction(fetched);
-
-        // Mirror the missed_deadline pill: optional actions show
-        // optional_task and away users show away, so neither can miss a
-        // deadline. The batch path gets both via `loadMissedActionDeadlineUserIds`
-        // and the roster's `computeIsAssignedAndPresent` filter.
-        if (action.optional) return false;
-        if (computeIsAwayDuringWindow({ action, user })) return false;
-
-        const deadline = action.memberActionPhase.deadlineEvent?.date ?? null;
-        if (!deadline || deadline >= new Date()) return false;
-
-        // A completion or withdrawal means the deadline wasn't missed.
-        // Dismissal deliberately does NOT disqualify: it's a view-only
-        // "mark as seen" overlay (see ActionActivityType.USER_DISMISSED)
-        // offered on past-deadline cards, so dismissed users are still in
-        // this set.
-        const terminal = await this.actionActivityRepository.findOne({
-          where: [
-            {
-              userId: user.id,
-              actionId,
-              type: ActionActivityType.USER_COMPLETED,
-            },
-            {
-              userId: user.id,
-              actionId,
-              type: ActionActivityType.USER_WONT_COMPLETE,
-            },
-          ],
-        });
-        if (terminal) return false;
-
-        const inCohort = await this.computeIsInCohortExpression({
-          user,
-          cohortExpression: action.cohortExpression,
-          visitedActionIds: new Set(visitedActionIds).add(actionId),
-          session,
-        });
-        // Shared assignment rule (cohort membership + contract requirement),
-        // so this agrees with the batch roster. `user` must have
-        // `contractEvents` and `awayRanges` loaded — both degrade silently
-        // to wrong answers when absent (hasActiveContractInFullRange -> false,
-        // isAwayAtAnyPointInRange -> false), so every
-        // computeIsInCohortExpression caller has to load them. `dismissed:
-        // false` because dismissal is an overlay, not an assignment input
-        // (same as resolveUserActionStatus).
-        return computeIsAssignedToAction({
-          action,
-          user,
-          inCohort,
-          dismissed: false,
-        });
-      },
-      matchesFormField: async (fieldParams: {
-        formId: number;
-        fieldId: string;
-        responseEqualTo?: string;
-        responseAny?: boolean;
-      }) => {
-        const responses = await this.formResponseRepository.find({
-          where: {
-            formId: fieldParams.formId,
-            user: { id: user.id },
-          },
-        });
-        return responses.some((r) =>
-          answerMatchesFormField(
-            r.answers as Record<string, unknown>,
-            fieldParams,
-          ),
-        );
-      },
-      isGroupLead: async () => {
-        const count = await this.communityRepository
-          .createQueryBuilder("community")
-          .innerJoin("community.leaders", "leader")
-          .where("leader.id = :userId", { userId: user.id })
-          .getCount();
-        return count > 0;
-      },
-      usMembership: () => {
-        let pending = session.usMembershipByUserId.get(user.id);
-        if (!pending) {
-          pending = this.loadUsMembership(user.id);
-          session.usMembershipByUserId.set(user.id, pending);
-        }
-        return pending;
-      },
-    });
-
-    const memberIds = await evaluateCohortExpression(
-      cohortExpression,
-      ctx,
-      visitedActionIds,
-    );
-    return memberIds.has(user.id);
-  }
-
-  /**
-   * Read city and time zone back from the db rather than off `user`: the city
-   * relation is absent on most callers' users, and an unloaded relation would
-   * silently read as "no location". Memoize on the session, since a member's
-   * feed evaluates one expression per action against the same user.
-   */
-  private async loadUsMembership(userId: number): Promise<UsMembership> {
-    const row = await this.userRepository
-      .createQueryBuilder("user")
-      .leftJoin("user.city", "city")
-      .select("user.timeZone", "timeZone")
-      .addSelect("city.countryCode", "countryCode")
-      .where("user.id = :userId", { userId })
-      .getRawOne<{ timeZone: string | null; countryCode: string | null }>();
-    return resolveUsMembership({
-      countryCode: row?.countryCode,
-      timeZone: row?.timeZone,
-    });
   }
 }

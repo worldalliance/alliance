@@ -3,11 +3,14 @@ import { ActionDto, FollowUpFormDto } from "../client";
 import {
   ActionWithAwayStatus,
   homePagePriorityComparator,
+  isActionOptional,
   isCurrentlyCompletedAction,
-  isFollowUpFormActive,
+  isDeferredForViewer,
   shouldCompleteAction,
   showActionInSidebarList,
 } from "./actionUtils";
+import { getActiveFollowUpForms } from "./followUpForm";
+import type { ParsedGeneralUpdate } from "./generalUpdates";
 
 export type ActiveFollowUpFormEntry = {
   followUpForm: FollowUpFormDto;
@@ -15,12 +18,16 @@ export type ActiveFollowUpFormEntry = {
 };
 
 export function useHomePageActions(actions: ActionWithAwayStatus[] | null) {
-  const todoActions = useMemo(() => {
-    return (
-      actions?.filter(shouldCompleteAction).sort(homePagePriorityComparator) ??
-      []
-    );
-  }, [actions]);
+  const todoActions = useMemo(
+    () =>
+      withDeferredLast(
+        actions
+          ?.filter(shouldCompleteAction)
+          .sort(homePagePriorityComparator) ?? [],
+        isDeferredForViewer,
+      ),
+    [actions],
+  );
 
   const isActionDeadlineWithinDays = useCallback(
     (action: ActionDto, days: number) => {
@@ -69,11 +76,7 @@ export function useHomePageActions(actions: ActionWithAwayStatus[] | null) {
 
   const remainingTasksEstimatedTimeCurrentWeek = currentWeekTodoActions.reduce(
     (sum, action) => {
-      if (
-        showActionInSidebarList(action) &&
-        !action.optional &&
-        action.timeEstimate
-      ) {
+      if (!isActionOptional(action) && action.timeEstimate) {
         return sum + action.timeEstimate;
       }
       return sum;
@@ -93,11 +96,8 @@ export function useHomePageActions(actions: ActionWithAwayStatus[] | null) {
     if (!actions) return [];
     const list: ActiveFollowUpFormEntry[] = [];
     for (const action of actions) {
-      if (action.userRelation !== "completed") continue;
-      for (const f of action.followUpForms) {
-        if (isFollowUpFormActive(f)) {
-          list.push({ followUpForm: f, actionId: action.id });
-        }
+      for (const followUpForm of getActiveFollowUpForms(action)) {
+        list.push({ followUpForm, actionId: action.id });
       }
     }
     return list.sort(
@@ -126,4 +126,55 @@ export function compareFollowUpFormsByStartDateDesc(
   b: FollowUpFormDto,
 ): number {
   return followUpStartTimeMs(b) - followUpStartTimeMs(a);
+}
+
+export type HomeSequenceItem =
+  | { kind: "action"; action: ActionWithAwayStatus }
+  | { kind: "generalUpdate"; generalUpdate: ParsedGeneralUpdate };
+
+export function homeItemKey(
+  item:
+    | HomeSequenceItem
+    | { kind: "followUpForm"; followUpForm: Pick<FollowUpFormDto, "id"> },
+): string {
+  switch (item.kind) {
+    case "action":
+      return `action-${item.action.id}`;
+    case "generalUpdate":
+      return `generalUpdate-${item.generalUpdate.id}`;
+    case "followUpForm":
+      return `followUpForm-${item.followUpForm.id}`;
+    default:
+      throw new Error(`unknown kind: ${item satisfies never}`);
+  }
+}
+
+export function interleaveActionsAndUpdates(params: {
+  todoActions: ActionWithAwayStatus[];
+  generalUpdates: ParsedGeneralUpdate[];
+}): HomeSequenceItem[] {
+  const sorted = [
+    ...params.todoActions.map(
+      (action) => ({ kind: "action", action }) as const,
+    ),
+    ...params.generalUpdates.map(
+      (generalUpdate) => ({ kind: "generalUpdate", generalUpdate }) as const,
+    ),
+  ].sort((a, b) =>
+    homePagePriorityComparator(
+      a.kind === "action" ? a.action : a.generalUpdate,
+      b.kind === "action" ? b.action : b.generalUpdate,
+    ),
+  );
+  return withDeferredLast(
+    sorted,
+    (item) => item.kind === "action" && isDeferredForViewer(item.action),
+  );
+}
+
+function withDeferredLast<T>(sorted: T[], isDeferred: (item: T) => boolean) {
+  return [
+    ...sorted.filter((item) => !isDeferred(item)),
+    ...sorted.filter(isDeferred),
+  ];
 }

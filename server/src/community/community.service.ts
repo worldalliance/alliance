@@ -1,4 +1,11 @@
+/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
+import {
+  acceptsPublicJoin,
+  acceptsStaffAssignment,
+  checkCommunityAccessRules,
+} from "@alliance/common/community";
 import { run } from "@alliance/common/run";
+import { DEFAULT_TIME_ZONE } from "@alliance/common/timezone";
 import {
   BadRequestException,
   Injectable,
@@ -7,33 +14,71 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import {
+  lockLiveIds,
+  softDeleteWhere,
+  updateLive,
+  writeUnderLive,
+} from "src/datasources/soft-delete";
 import { ImagesService } from "src/images/images.service";
-import { ConversationService } from "src/messaging/conversation.service";
+import { CommunityConversationService } from "src/messaging/community-conversation.service";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
+import {
+  groupInviteAcceptedMessage,
+  groupInviteDeclinedMessage,
+  groupInviteMessage,
+  groupInviteRequestApprovedMessage,
+  groupInviteRequestMessage,
+  groupInviteRequestRejectedMessage,
+  memberJoinedYourGroupMessage,
+  memberRemovedFromYourGroupMessage,
+  removedFromGroupMessage,
+} from "src/notifs/notif-copy";
+import {
+  communityDestination,
+  group,
+  member,
+  notifMessage,
+} from "src/notifs/notification-content";
+import { NotificationInboxService } from "src/notifs/notification-inbox.service";
 import {
   type CreateNotifParams,
   NotifsService,
 } from "src/notifs/notifs.service";
 import { groupUrl } from "src/search/approutes";
-import {
-  CreateCommunityInviteDto,
-  RequestCommunityInviteDto,
-} from "src/user/dto/invite.dto";
 import { CommunityMemberContactInfo } from "src/user/dto/user-action-relations.dto";
 import {
-  DEFAULT_TIME_ZONE,
+  assertCanManageCommunity,
+  canManageCommunity,
+  loadedUserCommunities,
   sqlUserHasActiveContractAt,
   User,
 } from "src/user/entities/user.entity";
 import type { Relations } from "src/utils/Repository";
 import { DeepPartial, In, IsNull, type Repository } from "typeorm";
-import { acceptsPublicJoin, acceptsStaffAssignment } from "./community.utils";
+import { changeMembers } from "./change-members";
+import {
+  groupJoinAudience,
+  isCommunityLedBy,
+  memberJoinedCommunityNotif,
+  memberLeftCommunityNotif,
+  staffAddedMemberNotif,
+} from "./community.utils";
+import {
+  CreateCommunityInviteDto,
+  RequestCommunityInviteDto,
+} from "./dto/community-invite.dto";
 import { CreateCommunityDto, UpdateCommunityDto } from "./dto/community.dto";
 import {
   CommunityInvite,
   CommunityInviteStatus,
+  loadedCommunityInviteCommunity,
+  loadedCommunityInviteInvitedUser,
 } from "./entities/community-invite.entity";
-import { Community } from "./entities/community.entity";
+import { Community, loadedCommunityUsers } from "./entities/community.entity";
+import { GroupJoinNotifsService } from "./group-join-notifs.service";
+import { canModifyInvite } from "./invite-permissions";
+import { saveInviteOfLiveParents, setLiveInviteStatus } from "./invite-writes";
 
 /**
  * The check constraints on {@link Community}, applied before the write so a row
@@ -45,23 +90,9 @@ function assertCommunityAccessRules(
     "public" | "allowMemberInvites" | "allowStaffAssignments" | "maxCapacity"
   >,
 ): void {
-  if (
-    community.maxCapacity === null &&
-    (community.public ||
-      community.allowMemberInvites ||
-      community.allowStaffAssignments)
-  ) {
-    throw new BadRequestException(
-      "Capacity is required when the group is public or allows member invites or staff assignments",
-    );
-  }
-  if (
-    community.public &&
-    !(community.allowMemberInvites && community.allowStaffAssignments)
-  ) {
-    throw new BadRequestException(
-      "A public group must allow member invites and staff assignments",
-    );
+  const checked = checkCommunityAccessRules(community);
+  if (!checked.ok) {
+    throw new BadRequestException(checked.error);
   }
 }
 
@@ -102,9 +133,11 @@ export class CommunityService {
     private readonly communityRepository: Repository<Community>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    private readonly conversationService: ConversationService,
+    private readonly communityConversationService: CommunityConversationService,
     private readonly imagesService: ImagesService,
     private readonly notifsService: NotifsService,
+    private readonly groupJoinNotifsService: GroupJoinNotifsService,
+    private readonly inbox: NotificationInboxService,
   ) {}
 
   async findOneOrFail(
@@ -132,7 +165,7 @@ export class CommunityService {
     const community = this.communityRepository.create({ ...body, photo });
     assertCommunityAccessRules(community);
     const savedCommunity = await this.communityRepository.save(community);
-    await this.conversationService.syncCommunityConversationMembers(
+    await this.communityConversationService.syncCommunityConversationMembers(
       savedCommunity.id,
     );
     return savedCommunity;
@@ -155,8 +188,14 @@ export class CommunityService {
       users: [user],
     });
     assertCommunityAccessRules(community);
-    const savedCommunity = await this.communityRepository.save(community);
-    await this.conversationService.syncCommunityConversationMembers(
+    const savedCommunity = await writeUnderLive(
+      this.communityRepository.manager,
+      {
+        parents: [{ target: User, id: userId }],
+        write: (manager) => manager.save(community),
+      },
+    );
+    await this.communityConversationService.syncCommunityConversationMembers(
       savedCommunity.id,
     );
     return savedCommunity;
@@ -194,9 +233,10 @@ export class CommunityService {
    * never hold a plain member with none.
    *
    * `contractBeingSigned` exempts the callers inside
-   * `ContractService.signContract`: they place the member while that member's
-   * SIGNED event is still being written, so neither the loaded entity nor the
-   * database can see it yet.
+   * `ContractService.signContract`, which place the member right after writing
+   * their SIGNED event. The event is dated by the app's clock and the check
+   * compares it with the database's `NOW()`, so a clock running ahead would
+   * refuse the member who just signed.
    */
   async addUsersToCommunityAndRefreshConversation(
     params: {
@@ -205,17 +245,20 @@ export class CommunityService {
       contractBeingSigned?: boolean;
       /** Defaults to staff; the self-service joins add the requester. */
       contractRefusalAudience?: ContractRefusalAudience;
+      /** Defaults to the group's members who don't lead it, as loaded. */
+      groupJoinAudience?: User[];
     } & (
       | {
-          user: Pick<User, "id" | "name"> & DeepPartial<User>;
+          user: Pick<User, "id" | "name" | "anonymous"> & DeepPartial<User>;
           users?: undefined;
         }
       | {
           user?: undefined;
-          users: (Pick<User, "id" | "name"> & DeepPartial<User>)[];
+          users: (Pick<User, "id" | "name" | "anonymous"> &
+            DeepPartial<User>)[];
         }
     ),
-  ): Promise<Community> {
+  ): Promise<void> {
     const {
       user,
       users: usersParam,
@@ -223,11 +266,13 @@ export class CommunityService {
       notifForLeader,
       contractBeingSigned = false,
       contractRefusalAudience = ContractRefusalAudience.Staff,
+      groupJoinAudience: audience = groupJoinAudience(community),
     } = params;
     const users = usersParam ?? [user];
 
+    const members = loadedCommunityUsers(community);
     const userIdSet = new Set(users.map((user) => user.id));
-    if (community.users.some((existing) => userIdSet.has(existing.id))) {
+    if (members.some((existing) => userIdSet.has(existing.id))) {
       throw new BadRequestException(
         `One or more users are already a member of community ${community.id}`,
       );
@@ -240,31 +285,44 @@ export class CommunityService {
       .leaders!.map((leader) => notifForLeader({ leader }))
       .filter((notif) => !!notif);
 
-    const updatedCommunityP = run(async () => {
-      const updates = await this.communityRepository.save({
-        id: community.id,
-        users: [...community.users, ...users],
-      });
+    const savedP = writeUnderLive(this.communityRepository.manager, {
+      parents: [
+        ...users.map((added) => ({ target: User, id: added.id })),
+        { target: Community, id: community.id },
+      ],
+      write: (em) =>
+        changeMembers({
+          manager: em,
+          communityId: community.id,
+          relation: "users",
+          add: users.map((added) => added.id),
+        }),
+    });
+    const membershipP = run(async () => {
+      await savedP;
 
-      await this.conversationService.syncCommunityConversationMembers(
+      await this.communityConversationService.syncCommunityConversationMembers(
         community.id,
       );
-
-      return { ...community, ...updates };
     });
-    const [updated] = await Promise.all([
-      updatedCommunityP,
+    await Promise.all([
+      membershipP,
+      savedP.then(async (addedIds) => {
+        const joiners = users.filter((joiner) => addedIds.includes(joiner.id));
+        if (joiners.length) {
+          await this.groupJoinNotifsService.notify({
+            community,
+            joiners,
+            audience,
+          });
+        }
+      }),
       this.notifsService.sendNotifs(notifs),
-      this.userRepository.save(
-        users.map((user) => ({
-          id: user.id,
-          undergoingGroupAssignment: false,
-          pendingCommunity: null,
-        })),
+      this.userRepository.update(
+        { id: In(users.map((user) => user.id)), deletedAt: IsNull() },
+        { undergoingGroupAssignment: false, pendingCommunity: null },
       ),
     ]);
-
-    return updated;
   }
 
   /**
@@ -330,10 +388,11 @@ export class CommunityService {
     const toKeepSet = removeAsLeader
       ? new Set()
       : new Set(community.leaders!.map((l) => l.id));
-    const newMembers = community.users.filter(
+    const members = loadedCommunityUsers(community);
+    const newMembers = members.filter(
       (u) => !userIdSet.has(u.id) || toKeepSet.has(u.id),
     );
-    if (newMembers.length === community.users.length) {
+    if (newMembers.length === members.length) {
       // users are not removed, no further action needed
       return community;
     }
@@ -343,32 +402,76 @@ export class CommunityService {
       .filter((notif) => !!notif);
 
     const updatedCommunityP = run(async () => {
-      const updates = await this.communityRepository.save({
-        id: community.id,
-        users: newMembers,
-        leaders: newLeaders,
+      await this.communityRepository.manager.transaction(async (manager) => {
+        // Accounts first: admin placement locks them before the group, and
+        // deleting one locks it before its cascade reaches the membership rows.
+        if (saveAsPendingCommunity) {
+          await lockLiveIds(manager, { target: User, ids: [...userIdSet] });
+        }
+        await writeUnderLive(manager, {
+          parents: [{ target: Community, id: community.id }],
+          write: async (em) => {
+            await changeMembers({
+              manager: em,
+              communityId: community.id,
+              relation: "users",
+              remove: members
+                .filter((member) => !newMembers.includes(member))
+                .map((member) => member.id),
+            });
+            await changeMembers({
+              manager: em,
+              communityId: community.id,
+              relation: "leaders",
+              remove: community
+                .leaders!.filter((leader) => !newLeaders.includes(leader))
+                .map((leader) => leader.id),
+            });
+            if (saveAsPendingCommunity) {
+              await em.update(
+                User,
+                { id: In(users.map((user) => user.id)), deletedAt: IsNull() },
+                { pendingCommunity: { id: community.id } },
+              );
+            }
+          },
+        });
       });
-      await this.conversationService.syncCommunityConversationMembers(
+      await this.communityConversationService.syncCommunityConversationMembers(
         community.id,
       );
 
-      return { ...community, ...updates };
+      return { ...community, users: newMembers, leaders: newLeaders };
     });
 
     const [updatedCommunity] = await Promise.all([
       updatedCommunityP,
       this.notifsService.sendNotifs(notifs),
-      saveAsPendingCommunity
-        ? this.userRepository.save([
-            ...users.map((user) => ({
-              id: user.id,
-              pendingCommunity: { id: community.id },
-            })),
-          ])
-        : null,
     ]);
 
     return updatedCommunity;
+  }
+
+  /**
+   * A member who joins a group leaves every other group they belong to,
+   * except the ones they lead. `user.communities` must be loaded with
+   * `leaders` and `users`.
+   */
+  async leaveOtherCommunitiesOnJoin(user: User): Promise<void> {
+    await Promise.all(
+      loadedUserCommunities(user)
+        .filter((community) => !isCommunityLedBy(community, user.id))
+        .map((community) =>
+          this.removeUserFromCommunityAndRefreshConversation({
+            user,
+            community,
+            removeAsLeader: false,
+            notifForLeader: ({ leader }) =>
+              memberLeftCommunityNotif({ leader, leaver: user, community }),
+            saveAsPendingCommunity: false,
+          }),
+        ),
+    );
   }
 
   async joinPublicCommunity(
@@ -393,7 +496,9 @@ export class CommunityService {
       },
     });
 
-    if (community.users.some((existing) => existing.id === userId)) {
+    if (
+      loadedCommunityUsers(community).some((existing) => existing.id === userId)
+    ) {
       throw new BadRequestException(
         "User is already a member of this community",
       );
@@ -403,43 +508,23 @@ export class CommunityService {
       throw new BadRequestException("Community is full");
     }
 
-    const [addedCommunity] = await Promise.all([
+    await Promise.all([
       this.addUsersToCommunityAndRefreshConversation({
         user,
         community,
         contractRefusalAudience: ContractRefusalAudience.Self,
-        notifForLeader: ({ leader }) => ({
-          user: leader,
-          category: NotificationCategory.MemberJoinedCommunity,
-          message: `${user.name} joined your public group (${community.name})`,
-          webAppLocation: groupUrl({
-            tab: "members",
-            communityId: community.id,
+        notifForLeader: ({ leader }) =>
+          memberJoinedCommunityNotif({
+            leader,
+            joiner: user,
+            community,
+            message: notifMessage`${member(user)} joined your public group (${group(community)})`,
           }),
-          associatedUsers: [user],
-        }),
       }),
-      ...user.communities.map((community) =>
-        this.removeUserFromCommunityAndRefreshConversation({
-          user,
-          community,
-          removeAsLeader: false,
-          notifForLeader: ({ leader }) => ({
-            user: leader,
-            category: NotificationCategory.MemberLeftCommunity,
-            message: `${user.name} left your group (${community.name})`,
-            webAppLocation: groupUrl({
-              tab: "members",
-              communityId: community.id,
-            }),
-            associatedUsers: [user],
-          }),
-          saveAsPendingCommunity: false,
-        }),
-      ),
+      this.leaveOtherCommunitiesOnJoin(user),
     ]);
 
-    return addedCommunity;
+    return { ...community, users: [...loadedCommunityUsers(community), user] };
   }
 
   async updateCommunity(
@@ -450,7 +535,7 @@ export class CommunityService {
     const user = await this.userRepository.findOneOrFail({
       where: { id: userId },
     });
-    if (!user.leaderOfIds.some((cid) => cid === communityId) && !user.admin) {
+    if (!canManageCommunity(user, communityId)) {
       throw new BadRequestException();
     }
 
@@ -469,9 +554,26 @@ export class CommunityService {
 
     assertCommunityAccessRules(community);
 
-    const updated = await this.communityRepository.save(community);
-    await this.conversationService.syncCommunityConversationMembers(updated.id);
-    return updated;
+    // The access rules go together, as validated, so concurrent edits cannot
+    // combine into a set that breaks them.
+    await updateLive(this.communityRepository.manager, {
+      target: Community,
+      id: communityId,
+      changes: {
+        name: community.name,
+        description: community.description,
+        photo: community.photo,
+        public: community.public,
+        allowMemberInvites: community.allowMemberInvites,
+        allowStaffAssignments: community.allowStaffAssignments,
+        maxCapacity: community.maxCapacity,
+      } satisfies Record<keyof UpdateCommunityDto, unknown>,
+      notFound: "Community not found",
+    });
+    await this.communityConversationService.syncCommunityConversationMembers(
+      communityId,
+    );
+    return community;
   }
 
   async removeUserFromCommunity(params: {
@@ -514,7 +616,12 @@ export class CommunityService {
           return {
             user: leader,
             category: NotificationCategory.RemovedFromCommunityForLeader,
-            message: `${user.name} removed ${removee.name} from your group (${community.name})`,
+            message: memberRemovedFromYourGroupMessage({
+              remover: user,
+              removee,
+              community,
+            }),
+            destination: communityDestination(community.id),
             webAppLocation: groupUrl({
               tab: "members",
               communityId: community.id,
@@ -528,7 +635,8 @@ export class CommunityService {
     const notif: CreateNotifParams = {
       user: removee,
       category: NotificationCategory.RemovedFromCommunity,
-      message: `${user.name} removed you from their group (${community.name})`,
+      message: removedFromGroupMessage(user, community),
+      destination: null,
       webAppLocation: groupUrl({
         tab: "groups",
       }),
@@ -560,7 +668,8 @@ export class CommunityService {
           return {
             user: leader,
             category: NotificationCategory.RemovedFromCommunityForLeader,
-            message: `Alliance staff removed ${user.name} from your group (${community.name})`,
+            message: notifMessage`Alliance staff removed ${member(user)} from your group (${group(community)})`,
+            destination: communityDestination(community.id),
             webAppLocation: groupUrl({
               tab: "members",
               communityId: community.id,
@@ -574,7 +683,8 @@ export class CommunityService {
     const notifP = this.notifsService.sendNotif({
       user,
       category: NotificationCategory.RemovedFromCommunity,
-      message: `Alliance staff removed you from your group (${community.name})`,
+      message: notifMessage`Alliance staff removed you from your group (${group(community)})`,
+      destination: null,
       webAppLocation: groupUrl({
         tab: "groups",
       }),
@@ -595,7 +705,9 @@ export class CommunityService {
         leaders: true,
       },
     });
-    const user = community.users.find((user) => user.id === userId);
+    const user = loadedCommunityUsers(community).find(
+      (user) => user.id === userId,
+    );
     if (!user) {
       throw new BadRequestException("User not found in community");
     }
@@ -612,16 +724,8 @@ export class CommunityService {
       user,
       community,
       removeAsLeader: true,
-      notifForLeader: ({ leader }) => ({
-        user: leader,
-        category: NotificationCategory.MemberLeftCommunity,
-        message: `${user.name} left your group (${community.name})`,
-        webAppLocation: groupUrl({
-          tab: "members",
-          communityId: community.id,
-        }),
-        associatedUsers: [user],
-      }),
+      notifForLeader: ({ leader }) =>
+        memberLeftCommunityNotif({ leader, leaver: user, community }),
       saveAsPendingCommunity: false,
     });
   }
@@ -634,23 +738,31 @@ export class CommunityService {
     if (!user.leaderOfIds.some((cid) => cid === communityId)) {
       throw new BadRequestException();
     }
-    if (!user.communities.length) {
+    const communities = loadedUserCommunities(user);
+    if (!communities.length) {
       throw new NotFoundException();
     }
-    if (user.communities.length !== 1) {
+    if (communities.length !== 1) {
       throw new InternalServerErrorException("Multiple communities found");
     }
-    const community = user.communities[0];
-    if (community.users.some((user) => user.id !== userId)) {
+    const community = communities[0];
+    if (loadedCommunityUsers(community).some((user) => user.id !== userId)) {
       throw new BadRequestException(
         "User cannot delete community with other members",
       );
     }
-    await this.communityRepository.delete(communityId);
+    await this.softDeleteCommunity(communityId);
   }
 
   async deleteCommunityAdmin(communityId: number): Promise<void> {
-    await this.communityRepository.delete(communityId);
+    await this.softDeleteCommunity(communityId);
+  }
+
+  private async softDeleteCommunity(communityId: number): Promise<void> {
+    await softDeleteWhere(this.communityRepository.manager, {
+      target: Community,
+      where: { id: communityId },
+    });
   }
 
   async addUserToCommunityAdmin(params: {
@@ -725,7 +837,9 @@ export class CommunityService {
 
         if (
           sourceCommunity &&
-          !sourceCommunity.users.some((member) => member.id === userId)
+          !loadedCommunityUsers(sourceCommunity).some(
+            (member) => member.id === userId,
+          )
         ) {
           throw new BadRequestException(
             `${user.name} is not a member of ${sourceCommunity.name}`,
@@ -736,7 +850,8 @@ export class CommunityService {
             "Group leaders cannot be moved without first removing their leader role",
           );
         }
-        if (destinationCommunity.users.some((member) => member.id === userId)) {
+        const destinationMembers = loadedCommunityUsers(destinationCommunity);
+        if (destinationMembers.some((member) => member.id === userId)) {
           throw new BadRequestException(
             `${user.name} is already a member of ${destinationCommunity.name}`,
           );
@@ -748,30 +863,33 @@ export class CommunityService {
         }
 
         await this.assertUsersHaveActiveContracts([user]);
-        const destinationUsers = [...destinationCommunity.users, user];
-        const communityUpdates: DeepPartial<Community>[] = [
-          { id: destinationCommunity.id, users: destinationUsers },
-        ];
+        const destinationUsers = [...destinationMembers, user];
         if (sourceCommunity) {
-          communityUpdates.unshift({
-            id: sourceCommunity.id,
-            users: sourceCommunity.users.filter(
-              (member) => member.id !== userId,
-            ),
+          await changeMembers({
+            manager,
+            communityId: sourceCommunity.id,
+            relation: "users",
+            remove: [userId],
           });
         }
-        await communityRepository.save(communityUpdates);
-        await userRepository.save({
-          id: user.id,
-          undergoingGroupAssignment: false,
-          pendingCommunity: null,
-        });
-        await this.conversationService.placeCommunityConversationParticipant({
+        await changeMembers({
           manager,
-          user,
-          sourceCommunity,
-          destinationCommunity,
+          communityId: destinationCommunity.id,
+          relation: "users",
+          add: [userId],
         });
+        await userRepository.update(
+          { id: user.id, deletedAt: IsNull() },
+          { undergoingGroupAssignment: false, pendingCommunity: null },
+        );
+        await this.communityConversationService.placeCommunityConversationParticipant(
+          {
+            manager,
+            user,
+            sourceCommunity,
+            destinationCommunity,
+          },
+        );
 
         return {
           sourceCommunity,
@@ -783,21 +901,19 @@ export class CommunityService {
 
     const destinationLeaderNotifs: CreateNotifParams[] = (
       destinationCommunity.leaders ?? []
-    ).map((leader) => ({
-      user: leader,
-      category: NotificationCategory.MemberJoinedCommunity,
-      message: `Staff added ${user.name} to your group (${destinationCommunity.name})`,
-      webAppLocation: groupUrl({
-        tab: "members",
-        communityId: destinationCommunity.id,
+    ).map((leader) =>
+      staffAddedMemberNotif({
+        leader,
+        joiner: user,
+        community: destinationCommunity,
       }),
-      associatedUsers: [user],
-    }));
+    );
     const sourceLeaderNotifs: CreateNotifParams[] = sourceCommunity
       ? (sourceCommunity.leaders ?? []).map((leader) => ({
           user: leader,
           category: NotificationCategory.RemovedFromCommunityForLeader,
-          message: `Alliance staff removed ${user.name} from your group (${sourceCommunity.name})`,
+          message: notifMessage`Alliance staff removed ${member(user)} from your group (${group(sourceCommunity)})`,
+          destination: communityDestination(sourceCommunity.id),
           webAppLocation: groupUrl({
             tab: "members",
             communityId: sourceCommunity.id,
@@ -809,8 +925,9 @@ export class CommunityService {
       user,
       category: NotificationCategory.CommunityAssigned,
       message: sourceCommunity
-        ? `Alliance staff moved you from ${sourceCommunity.name} to ${destinationCommunity.name}`
-        : `Alliance staff assigned you to ${destinationCommunity.name}`,
+        ? notifMessage`Alliance staff moved you from ${group(sourceCommunity)} to ${group(destinationCommunity)}`
+        : notifMessage`Alliance staff assigned you to ${group(destinationCommunity)}`,
+      destination: communityDestination(destinationCommunity.id),
       webAppLocation: groupUrl({ communityId: destinationCommunity.id }),
       associatedUsers: [],
     };
@@ -822,7 +939,7 @@ export class CommunityService {
       ...affectedCommunityIds.map((communityId) => ({
         description: `sync community conversation ${communityId}`,
         run: () =>
-          this.conversationService.syncCommunityConversationMembers(
+          this.communityConversationService.syncCommunityConversationMembers(
             communityId,
           ),
       })),
@@ -834,6 +951,15 @@ export class CommunityService {
             ...sourceLeaderNotifs,
             memberNotif,
           ]),
+      },
+      {
+        description: `send group join notifications for user ${user.id}`,
+        run: () =>
+          this.groupJoinNotifsService.notify({
+            community: destinationCommunity,
+            joiners: [user],
+            audience: groupJoinAudience(destinationCommunity),
+          }),
       },
     ]);
 
@@ -871,17 +997,71 @@ export class CommunityService {
       this.userRepository.findOneOrFail({ where: { id: userId } }),
     ]);
 
-    if (!community.users.some((existing) => existing.id === userId)) {
-      community.users.push(user);
-    }
+    const audience = groupJoinAudience(community);
+    const existingLeaders = community.leaders!.filter(
+      (leader) => leader.id !== userId,
+    );
+    const members = loadedCommunityUsers(community);
+    const isMember = members.some((existing) => existing.id === userId);
+    const isLeader = community.leaders!.some(
+      (existing) => existing.id === userId,
+    );
+    const joined = await writeUnderLive(this.communityRepository.manager, {
+      parents: [
+        { target: User, id: userId },
+        { target: Community, id: communityId },
+      ],
+      write: async (manager) => {
+        const added = await changeMembers({
+          manager,
+          communityId,
+          relation: "users",
+          add: [userId],
+        });
+        await changeMembers({
+          manager,
+          communityId,
+          relation: "leaders",
+          add: [userId],
+        });
+        return added.includes(userId);
+      },
+    });
+    if (!isMember) members.push(user);
+    if (!isLeader) community.leaders!.push(user);
 
-    if (!community.leaders!.some((existing) => existing.id === userId)) {
-      community.leaders!.push(user);
-    }
-
-    const updated = await this.communityRepository.save(community);
-    await this.conversationService.syncCommunityConversationMembers(updated.id);
-    return updated;
+    await this.settlePostCommitMembershipEffects([
+      ...(joined
+        ? [
+            {
+              description: `send group join notifications for user ${user.id}`,
+              run: () =>
+                this.groupJoinNotifsService.notify({
+                  community,
+                  joiners: [user],
+                  audience,
+                }),
+            },
+            {
+              description: `send leader notifications for user ${user.id}`,
+              run: () =>
+                this.notifsService.sendNotifs(
+                  existingLeaders.map((leader) =>
+                    staffAddedMemberNotif({ leader, joiner: user, community }),
+                  ),
+                ),
+            },
+          ]
+        : []),
+      {
+        description: `sync community conversation ${communityId}`,
+        run: () =>
+          this.communityConversationService.syncCommunityConversationMembers(
+            communityId,
+          ),
+      },
+    ]);
+    return community;
   }
 
   async removeLeaderAdmin(
@@ -890,13 +1070,24 @@ export class CommunityService {
   ): Promise<Community> {
     const community = await this.findOneOrFail(communityId);
 
+    await writeUnderLive(this.communityRepository.manager, {
+      parents: [{ target: Community, id: communityId }],
+      write: (manager) =>
+        changeMembers({
+          manager,
+          communityId,
+          relation: "leaders",
+          remove: [userId],
+        }),
+    });
     community.leaders = (community.leaders ?? []).filter(
       (leader) => leader.id !== userId,
     );
 
-    const updated = await this.communityRepository.save(community);
-    await this.conversationService.syncCommunityConversationMembers(updated.id);
-    return updated;
+    await this.communityConversationService.syncCommunityConversationMembers(
+      communityId,
+    );
+    return community;
   }
 
   async findUserCommunities(userId: number): Promise<Community[]> {
@@ -919,7 +1110,9 @@ export class CommunityService {
         ? 0
         : 1;
     }
-    return user.communities.sort((a, b) => leaderKey(a) - leaderKey(b));
+    return loadedUserCommunities(user).sort(
+      (a, b) => leaderKey(a) - leaderKey(b),
+    );
   }
 
   async getAllMemberContactInfoAdmin(): Promise<CommunityMemberContactInfo[]> {
@@ -958,7 +1151,7 @@ export class CommunityService {
 
     const leader = await leaderP;
     const timeZone = leader?.timeZone ?? DEFAULT_TIME_ZONE;
-    return community.users.map((user) => ({ user, timeZone }));
+    return loadedCommunityUsers(community).map((user) => ({ user, timeZone }));
   }
 
   async createCommunityInvite(
@@ -974,7 +1167,7 @@ export class CommunityService {
     const invitingUser = await this.userRepository.findOneOrFail({
       where: { id: userId },
     });
-    if (!invitingUser.admin && !invitingUser.leaderOfIdSet.has(communityId)) {
+    if (!canManageCommunity(invitingUser, communityId)) {
       throw new BadRequestException("User is not a leader of this community");
     }
 
@@ -995,7 +1188,8 @@ export class CommunityService {
       );
     }
 
-    const invite = await this.communityInviteRepository.save(
+    const invite = await saveInviteOfLiveParents(
+      this.communityInviteRepository.manager,
       this.communityInviteRepository.create({
         invitedUser,
         community,
@@ -1006,7 +1200,8 @@ export class CommunityService {
     const notif: CreateNotifParams = {
       user: invitedUser,
       category: NotificationCategory.CommunityInviteCreated,
-      message: `${invitingUser.name} invited you to join their group (${community.name})`,
+      message: groupInviteMessage(invitingUser, community),
+      destination: null,
       webAppLocation: groupUrl({
         tab: "groups",
       }),
@@ -1025,15 +1220,13 @@ export class CommunityService {
     });
     const user = await this.userRepository.findOneOrFail({
       where: { id: userId },
-      relations: { leaderOf: true },
     });
 
     if (
-      !(
-        invite.invitingUser?.id === userId ||
-        user.leaderOf.some((leader) => leader.id === invite.community?.id) ||
-        user.admin
-      )
+      !canModifyInvite(user, {
+        invitingUserId: invite.invitingUser?.id ?? null,
+        communityId: loadedCommunityInviteCommunity(invite).id,
+      })
     ) {
       throw new BadRequestException();
     }
@@ -1084,7 +1277,7 @@ export class CommunityService {
     if (!invitedUser) {
       throw new BadRequestException("Invited user not found");
     }
-    if (invitedUser.communities.some((c) => c.id === communityId)) {
+    if (loadedUserCommunities(invitedUser).some((c) => c.id === communityId)) {
       throw new BadRequestException(
         "Invited user is already a member of the community",
       );
@@ -1105,7 +1298,10 @@ export class CommunityService {
       invitingUser,
       status: CommunityInviteStatus.RequestPending,
     });
-    const savedInvite = await this.communityInviteRepository.save(invite);
+    const savedInvite = await saveInviteOfLiveParents(
+      this.communityInviteRepository.manager,
+      invite,
+    );
 
     sendNotificationToLeaders: {
       const communityWithLeaders = await this.communityRepository.findOne({
@@ -1121,7 +1317,12 @@ export class CommunityService {
             ({
               user: leader,
               category: NotificationCategory.CommunityInviteRequestCreated,
-              message: `${invitingUser.name} requested an invite for ${invitedUser.name} (${community.name})`,
+              message: groupInviteRequestMessage({
+                requester: invitingUser,
+                invitee: invitedUser,
+                community,
+              }),
+              destination: communityDestination(community.id),
               webAppLocation: groupUrl({
                 tab: "invites",
                 communityId: community.id,
@@ -1136,10 +1337,10 @@ export class CommunityService {
     return savedInvite;
   }
 
-  async approveCommunityInviteRequest(
+  private async findPendingInviteRequestForManager(
     inviteId: number,
     userId: number,
-  ): Promise<CommunityInvite> {
+  ): Promise<{ invite: CommunityInvite; user: User }> {
     const userP = this.userRepository.findOne({ where: { id: userId } });
     const invite = await this.communityInviteRepository.findOneOrFail({
       where: { id: inviteId, deletedAt: IsNull() },
@@ -1158,20 +1359,31 @@ export class CommunityService {
     if (!user) {
       throw new BadRequestException("User not found");
     }
-    if (!user.leaderOfIds.some((cid) => cid === invite.community.id)) {
-      throw new BadRequestException(
-        `User is not a leader of community ${invite.community.id}`,
-      );
-    }
+    assertCanManageCommunity(user, loadedCommunityInviteCommunity(invite).id);
 
+    return { invite, user };
+  }
+
+  async approveCommunityInviteRequest(
+    inviteId: number,
+    userId: number,
+  ): Promise<CommunityInvite> {
+    const { invite, user } = await this.findPendingInviteRequestForManager(
+      inviteId,
+      userId,
+    );
+
+    const invitedUser = loadedCommunityInviteInvitedUser(invite);
+    const community = loadedCommunityInviteCommunity(invite);
     invite.status = CommunityInviteStatus.InviteePending;
-    const savedInvite = await this.communityInviteRepository.save(invite);
+    await setLiveInviteStatus(this.communityInviteRepository.manager, invite);
 
     await this.notifsService.sendNotifs([
       {
-        user: invite.invitedUser,
+        user: invitedUser,
         category: NotificationCategory.CommunityInviteCreated,
-        message: `${invite.invitingUser?.name ?? user.name} invited you to join their group (${invite.community.name})`,
+        message: groupInviteMessage(invite.invitingUser ?? user, community),
+        destination: null,
         webAppLocation: groupUrl({
           tab: "groups",
         }),
@@ -1182,11 +1394,12 @@ export class CommunityService {
         ? [
             {
               user: invite.invitingUser,
-              category: NotificationCategory.CommunityInviteCreated,
-              message: `Your request to invite ${invite.invitedUser.name} was approved`,
+              category: NotificationCategory.CommunityInviteRequestApproved,
+              message: groupInviteRequestApprovedMessage(invitedUser),
+              destination: communityDestination(community.id),
               webAppLocation: groupUrl({
                 tab: "groups",
-                communityId: invite.community.id,
+                communityId: community.id,
               }),
               associatedUsers: [],
               communityInvite: invite,
@@ -1195,45 +1408,28 @@ export class CommunityService {
         : []),
     ]);
 
-    return savedInvite;
+    return invite;
   }
 
   async rejectCommunityInviteRequest(
     inviteId: number,
     userId: number,
   ): Promise<void> {
-    const userP = this.userRepository.findOne({ where: { id: userId } });
-    const invite = await this.communityInviteRepository.findOneOrFail({
-      where: { id: inviteId, deletedAt: IsNull() },
-      relations: { invitedUser: true, invitingUser: true, community: true },
-    });
+    const { invite, user } = await this.findPendingInviteRequestForManager(
+      inviteId,
+      userId,
+    );
 
-    if (invite.status !== CommunityInviteStatus.RequestPending) {
-      throw new BadRequestException(
-        `Invite is not a pending request. Status: ${JSON.stringify(
-          invite.status,
-        )}`,
-      );
-    }
-
-    const user = await userP;
-    if (!user) {
-      throw new BadRequestException("User not found");
-    }
-    if (!user.leaderOfIds.some((cid) => cid === invite.community.id)) {
-      throw new BadRequestException(
-        `User is not a leader of community ${invite.community.id}`,
-      );
-    }
-
+    const invitedUser = loadedCommunityInviteInvitedUser(invite);
     invite.status = CommunityInviteStatus.RequestRejected;
-    await this.communityInviteRepository.save(invite);
+    await setLiveInviteStatus(this.communityInviteRepository.manager, invite);
 
     if (invite.invitingUser) {
       await this.notifsService.sendNotif({
         user: invite.invitingUser,
         category: NotificationCategory.CommunityInviteRequestRejected,
-        message: `Your request to invite ${invite.invitedUser.name} was rejected`,
+        message: groupInviteRequestRejectedMessage(invitedUser),
+        destination: null,
         webAppLocation: groupUrl({
           tab: "groups",
         }),
@@ -1247,14 +1443,10 @@ export class CommunityService {
     userId: number,
     communityId: number,
   ): Promise<CommunityInvite[]> {
-    await this.communityRepository.findOneOrFail({
-      where: {
-        id: communityId,
-        leaders: {
-          id: userId,
-        },
-      },
+    const user = await this.userRepository.findOneOrFail({
+      where: { id: userId },
     });
+    assertCanManageCommunity(user, communityId);
     const invites = await this.communityInviteRepository.find({
       where: { community: { id: communityId }, deletedAt: IsNull() },
       relations: { invitedUser: true, invitingUser: true, community: true },
@@ -1290,75 +1482,61 @@ export class CommunityService {
         notifs: true,
       },
     });
-    if (invite.invitedUser.id !== userId) {
+    const invitedUser = loadedCommunityInviteInvitedUser(invite);
+    if (invitedUser.id !== userId) {
       throw new BadRequestException();
     }
     if (invite.status !== CommunityInviteStatus.InviteePending) {
       throw new BadRequestException();
     }
 
-    invite.status = CommunityInviteStatus.InviteeAccepted;
+    const community = await this.findOneOrFail(
+      loadedCommunityInviteCommunity(invite).id,
+    );
 
-    const community = await this.findOneOrFail(invite.community.id);
-
-    if (community.users.some((user) => user.id === invite.invitedUser.id)) {
+    if (
+      loadedCommunityUsers(community).some((user) => user.id === invitedUser.id)
+    ) {
       throw new BadRequestException();
     }
+    // Before any write, so a refused join leaves the invite and the
+    // invitee's current groups untouched.
+    await this.assertUsersHaveActiveContracts(
+      [invitedUser],
+      ContractRefusalAudience.Self,
+    );
 
+    invite.status = CommunityInviteStatus.InviteeAccepted;
+    await setLiveInviteStatus(this.communityInviteRepository.manager, invite);
     await Promise.all([
-      this.communityInviteRepository.save(invite),
       this.addUsersToCommunityAndRefreshConversation({
-        user: invite.invitedUser,
+        user: invitedUser,
         community,
         contractRefusalAudience: ContractRefusalAudience.Self,
         notifForLeader: ({ leader }) => {
           if (leader.id === invite.invitingUser?.id) {
             return null;
           }
-          return {
-            user: leader,
-            category: NotificationCategory.MemberJoinedCommunity,
-            message: `${invite.invitedUser.name} joined your group (${community.name})`,
-            webAppLocation: groupUrl({
-              tab: "members",
-              communityId: community.id,
-            }),
-            associatedUsers: [invite.invitedUser],
-          };
+          return memberJoinedCommunityNotif({
+            leader,
+            joiner: invitedUser,
+            community,
+            message: memberJoinedYourGroupMessage(invitedUser, community),
+          });
         },
       }),
-      ...invite.invitedUser.communities
-        .filter((c) => !c.leaders!.some((l) => l.id === invite.invitedUser.id))
-        .map((c) =>
-          this.removeUserFromCommunityAndRefreshConversation({
-            user: invite.invitedUser,
-            community: c,
-            removeAsLeader: false,
-            notifForLeader: ({ leader }) => ({
-              user: leader,
-              category: NotificationCategory.MemberLeftCommunity,
-              message: `${invite.invitedUser.name} left your group (${c.name})`,
-              webAppLocation: groupUrl({
-                tab: "members",
-                communityId: c.id,
-              }),
-              associatedUsers: [invite.invitedUser],
-            }),
-            saveAsPendingCommunity: false,
-          }),
-        ),
-      ...invite.notifs!.map((notif) =>
-        this.notifsService.setRead(notif.id, userId),
-      ),
+      this.leaveOtherCommunitiesOnJoin(invitedUser),
+      ...invite.notifs!.map((notif) => this.inbox.setRead(notif.id, userId)),
       this.notifsService.sendNotif({
         user: invite.invitingUser!,
         category: NotificationCategory.CommunityInviteAccepted,
-        message: `${invite.invitedUser.name} accepted your invitation to join your group (${community.name})`,
+        message: groupInviteAcceptedMessage(invitedUser, community),
+        destination: communityDestination(community.id),
         webAppLocation: groupUrl({
           tab: "members",
           communityId: community.id,
         }),
-        associatedUsers: [invite.invitedUser],
+        associatedUsers: [invitedUser],
         communityInvite: invite,
       }),
     ]);
@@ -1376,29 +1554,30 @@ export class CommunityService {
         notifs: true,
       },
     });
-    if (invite.invitedUser.id !== userId) {
+    const invitedUser = loadedCommunityInviteInvitedUser(invite);
+    const community = loadedCommunityInviteCommunity(invite);
+    if (invitedUser.id !== userId) {
       throw new BadRequestException();
     }
     if (invite.status !== CommunityInviteStatus.InviteePending) {
       throw new BadRequestException();
     }
     invite.status = CommunityInviteStatus.InviteeRejected;
+    await setLiveInviteStatus(this.communityInviteRepository.manager, invite);
     await Promise.all([
-      this.communityInviteRepository.save(invite),
-      ...invite.notifs!.map((notif) =>
-        this.notifsService.setRead(notif.id, userId),
-      ),
+      ...invite.notifs!.map((notif) => this.inbox.setRead(notif.id, userId)),
     ]);
 
     await this.notifsService.sendNotif({
       user: invite.invitingUser!,
       category: NotificationCategory.CommunityInviteRejected,
-      message: `${invite.invitedUser?.name} declined your invitation to join your group (${invite.community.name})`,
+      message: groupInviteDeclinedMessage(invitedUser, community),
+      destination: communityDestination(community.id),
       webAppLocation: groupUrl({
         tab: "invites",
-        communityId: invite.community.id,
+        communityId: community.id,
       }),
-      associatedUsers: [invite.invitedUser],
+      associatedUsers: [invitedUser],
       communityInvite: invite,
     });
   }
@@ -1428,7 +1607,9 @@ export class CommunityService {
       communities.flatMap((community) =>
         community
           .leaders!.filter((leader) =>
-            community.users.some((user) => user.id !== leader.id),
+            loadedCommunityUsers(community).some(
+              (user) => user.id !== leader.id,
+            ),
           )
           .map((leader) => leader.id),
       ),

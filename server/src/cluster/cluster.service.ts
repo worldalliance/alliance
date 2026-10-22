@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { sqlUserHasActiveContractAt } from "src/user/entities/user.entity";
+import { acceptedFriendshipSql } from "src/user/friendship";
 import type { Repository } from "src/utils/Repository";
 import { DataSource, EntityManager } from "typeorm";
 import { bulkAssign, type ClusterUser } from "./cluster.algorithm";
@@ -57,7 +58,8 @@ export class ClusterService {
       const eligibleRows = await manager.query<{ id: number }[]>(`
         SELECT u.id
         FROM "user" u
-        WHERE ${sqlUserHasActiveContractAt("u.id", "NOW()")}
+        WHERE u."deletedAt" IS NULL
+          AND ${sqlUserHasActiveContractAt("u.id", "NOW()")}
       `);
       const eligibleIds = eligibleRows.map((r) => r.id);
 
@@ -98,7 +100,7 @@ export class ClusterService {
   }
 }
 
-async function loadClusterUsers(
+export async function loadClusterUsers(
   manager: EntityManager,
   ids: number[],
 ): Promise<Map<number, ClusterUser>> {
@@ -110,14 +112,16 @@ async function loadClusterUsers(
   const memberships = await manager.query<
     { userId: number; communityId: number }[]
   >(
-    'SELECT "userId", "communityId" FROM community_users_user WHERE "userId" = ANY($1::int[])',
+    `SELECT cu."userId", cu."communityId" FROM community_users_user cu
+     JOIN community c ON c.id = cu."communityId" AND c."deletedAt" IS NULL
+     WHERE cu."userId" = ANY($1::int[])`,
     [ids],
   );
   const friendsRows = await manager.query<
     { requesterId: number; addresseeId: number }[]
   >(
     `SELECT "requesterId", "addresseeId" FROM friend
-     WHERE status = 'accepted'
+     WHERE ${acceptedFriendshipSql("friend")}
      AND "requesterId" = ANY($1::int[]) AND "addresseeId" = ANY($1::int[])`,
     [ids],
   );

@@ -1,5 +1,5 @@
 import type { DividerBlock } from "@alliance/common/forms/display-blocks";
-import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
+import { BlockPreview } from "./BlockPreview";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
 
@@ -33,10 +33,7 @@ export function EditableDividerBlock(
             </select>
           </div>
 
-          {/* Preview */}
-          <div className="pt-2 border-t border-gray-200">
-            <RenderDisplayBlock block={activeBlock} />
-          </div>
+          <BlockPreview block={activeBlock} />
         </div>
       )}
     </DisplayBlockWrapper>

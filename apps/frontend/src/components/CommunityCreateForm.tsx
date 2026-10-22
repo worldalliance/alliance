@@ -1,15 +1,18 @@
 import {
   COMMUNITY_DESCRIPTION_MAX_LENGTH,
   COMMUNITY_NAME_MAX_LENGTH,
+  isMaxCapacityRequired,
+  validateCommunitySettings,
 } from "@alliance/common/community";
-import { errorMessage } from "@alliance/common/errorMessage";
-import {
-  CommunityDto,
-  CreateCommunityDto,
-  communityCreateCommunity,
-} from "@alliance/shared/client";
-import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
+import { nameParts } from "@alliance/common/nameParts";
+import { CommunityDto, CreateCommunityDto } from "@alliance/shared/client";
+import { NEW_COMMUNITY_SETTINGS } from "@alliance/shared/lib/constants";
 import { groupSettings } from "@alliance/shared/lib/copy";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
+import {
+  CREATE_GROUP_SESSION_EXPIRED,
+  useMyCommunities,
+} from "@alliance/shared/lib/useMyCommunities";
 import { cn } from "@alliance/shared/styles/util";
 import { sharp_allowed_mime_types } from "@alliance/sharedweb/lib/config";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -47,17 +50,15 @@ const CommunityCreateForm = ({
   onCancel,
   onSuccess,
 }: CommunityCreateFormProps) => {
+  const { createCommunity } = useMyCommunities();
   const initialFormValues = useMemo<CreateCommunityDto>(() => {
-    const firstName = name?.split(" ")[0];
+    const firstName = name && nameParts(name).firstname;
     return {
       name: firstName ? `${firstName}'s Group` : "",
       description: firstName
         ? `Reminder and discussion group for ${firstName}'s friends`
         : "",
-      public: false,
-      maxCapacity: GROUP_MAX_CAPACITY_DEFAULT,
-      allowMemberInvites: true,
-      allowStaffAssignments: true,
+      ...NEW_COMMUNITY_SETTINGS,
     };
   }, [name]);
 
@@ -65,54 +66,42 @@ const CommunityCreateForm = ({
     useState<CreateCommunityDto>(initialFormValues);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const useMaxCapacity =
-    formValues.public ||
-    formValues.allowMemberInvites ||
-    formValues.allowStaffAssignments;
+  const useMaxCapacity = isMaxCapacityRequired(formValues);
 
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = useCallback(async () => {
-    if (!formValues.name.trim()) {
-      setError("Name is required");
+    const validated = validateCommunitySettings({
+      settings: formValues,
+      memberCount: 0,
+    });
+    if (!validated.ok) {
+      setError(validated.error);
       return;
-    }
-    let normalizedMaxCapacity: number | null = null;
-    if (useMaxCapacity) {
-      if (!formValues.maxCapacity || formValues.maxCapacity <= 0) {
-        setError("Capacity is required");
-        return;
-      }
-      normalizedMaxCapacity = formValues.maxCapacity;
     }
 
     setIsSubmitting(true);
     setError(null);
     try {
-      const response = await communityCreateCommunity({
-        body: {
-          ...formValues,
-          photo: photoUrl ?? undefined,
-          maxCapacity: normalizedMaxCapacity,
-        },
+      const community = await createCommunity({
+        ...formValues,
+        photo: photoUrl ?? undefined,
+        maxCapacity: validated.value.maxCapacity,
       });
-      if (response.data) {
-        await onSuccess(response.data);
-      } else {
-        setError(
-          errorMessage({
-            error: response.error,
-            fallback: "Failed to create community",
-          }),
-        );
-      }
+      await onSuccess(community);
     } catch (err) {
       console.error("Failed to create community:", err);
-      setError("Failed to create community");
+      setError(
+        thrownRefusalMessage({
+          error: err,
+          fallback: "Failed to create community",
+          sessionExpired: CREATE_GROUP_SESSION_EXPIRED,
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }
-  }, [useMaxCapacity, formValues, photoUrl, onSuccess]);
+  }, [createCommunity, formValues, photoUrl, onSuccess]);
 
   useEffect(() => {
     if (!submitRef) {

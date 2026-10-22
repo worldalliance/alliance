@@ -2,11 +2,15 @@ import {
   asCountryCode,
   formatPhoneNumberForDisplay,
   formatPhoneNumberNational,
+  hasPhoneExtension,
+  internationalPhoneCountry,
   isCanonicalE164,
+  looksLikePhoneNumber,
   normalizePhoneNumber,
   phoneNumberCountry,
   phoneNumberForEditing,
   phoneSearchDigits,
+  phoneSearchTerm,
   stripPhoneNumberFormatting,
   toE164,
 } from "./phone";
@@ -132,11 +136,102 @@ describe("asCountryCode", () => {
   });
 });
 
+describe("looksLikePhoneNumber", () => {
+  it("accepts digits with phone punctuation", () => {
+    for (const typed of [
+      "4",
+      "(415) 555-2671",
+      "+44 20 7946 0958",
+      "415.555",
+      "415-555-2671 x3",
+      "415-555-2671 Ext. 3",
+      "415-555-2671 #3",
+      "030/1234567",
+      "030\u20131234567",
+      "030\u20141234567",
+      "030\u20101234567",
+      "030\u20111234567",
+      "030\u22121234567",
+      "\uff10\uff13\uff10 \uff11\uff12\uff13\uff14",
+    ]) {
+      expect(looksLikePhoneNumber(typed)).toBe(true);
+    }
+  });
+
+  it("rejects empty, email, and worded input", () => {
+    for (const typed of [
+      "",
+      "  ",
+      "+",
+      "()-",
+      "12@example.com",
+      "Bob 2",
+      "x3",
+      "415 x",
+    ]) {
+      expect(looksLikePhoneNumber(typed)).toBe(false);
+    }
+  });
+});
+
+describe("looksLikePhoneNumber on long input", () => {
+  it("rejects digits then spaces then text without backtracking", () => {
+    expect(
+      looksLikePhoneNumber(`${"1".repeat(100_000)}${" ".repeat(100_000)}!`),
+    ).toBe(false);
+  });
+});
+
+describe("hasPhoneExtension", () => {
+  it("tells a number with an extension from one without", () => {
+    expect(hasPhoneExtension("415-555-2671 ext. 12")).toBe(true);
+    expect(hasPhoneExtension("415-555-2671 x12")).toBe(true);
+    expect(hasPhoneExtension("415-555-2671")).toBe(false);
+    expect(hasPhoneExtension("#4155")).toBe(false);
+  });
+});
+
+describe("phoneSearchDigits on long input", () => {
+  it("reads digits then separators then text without backtracking", () => {
+    expect(phoneSearchDigits(`1${" ".repeat(100_000)}a`)).toBe("1");
+    expect(phoneSearchDigits(`1${" ".repeat(100_000)}x`)).toBe("1");
+  });
+});
+
+describe("phoneSearchTerm", () => {
+  it("drops a trunk or international prefix", () => {
+    expect(phoneSearchTerm("020 7946 0958")).toBe("2079460958");
+    expect(phoneSearchTerm("0044 20 7946 0958")).toBe("442079460958");
+    expect(phoneSearchTerm("020 7946")).toBe("207946");
+    expect(phoneSearchTerm("0 1234")).toBe("1234");
+  });
+
+  it("keeps leading zeros when too few digits follow", () => {
+    expect(phoneSearchTerm("0042")).toBe("0042");
+    expect(phoneSearchTerm("0 123")).toBe("0123");
+    expect(phoneSearchTerm("0000")).toBe("0000");
+  });
+
+  it("is the digits alone without leading zeros, and empty without digits", () => {
+    expect(phoneSearchTerm("(415) 555-2671")).toBe("4155552671");
+    expect(phoneSearchTerm("ada")).toBe("");
+  });
+});
+
 describe("phoneSearchDigits", () => {
   it("reduces a query and a stored number to the same shape", () => {
     expect(phoneSearchDigits("(415) 555-2671")).toBe("4155552671");
     expect(phoneSearchDigits("+14155552671")).toBe("14155552671");
     expect(phoneSearchDigits("4155")).toBe("4155");
+    expect(phoneSearchDigits("020 7946 0958")).toBe("02079460958");
+    expect(phoneSearchDigits("+44 (0)20 7946 0958")).toBe("442079460958");
+    expect(phoneSearchDigits("415-555-2671 x12")).toBe("4155552671");
+    expect(phoneSearchDigits("415-555-2671 Ext. 12")).toBe("4155552671");
+    expect(phoneSearchDigits("#4155")).toBe("4155");
+    expect(phoneSearchDigits("alex 4155")).toBe("4155");
+    expect(phoneSearchDigits("\uff14\uff11\uff15 \uff15\uff15\uff15")).toBe(
+      "415555",
+    );
   });
 
   it("is empty for a query with no digits in it", () => {
@@ -194,6 +289,14 @@ describe("phoneNumberCountry", () => {
     expect(phoneNumberCountry("0751181445")).toBeNull();
     expect(phoneNumberCountry(null)).toBeNull();
     expect(phoneNumberCountry("")).toBeNull();
+  });
+});
+
+describe("internationalPhoneCountry", () => {
+  it("names the country of a +-prefixed number only", () => {
+    expect(internationalPhoneCountry(" +447578497969")).toBe("GB");
+    expect(internationalPhoneCountry("07578497969")).toBeNull();
+    expect(internationalPhoneCountry("4155552671")).toBeNull();
   });
 });
 

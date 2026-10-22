@@ -1,8 +1,10 @@
+import { commentPath } from "@alliance/common/commentPath";
 import { appendQueryParam } from "@alliance/common/url";
 import {
-  Comment,
-  CommentParentObject,
-} from "src/forum/entities/comment.entity";
+  waitlistShareUrl,
+  waitlistUnsubscribeUrl,
+} from "@alliance/common/waitlist";
+import { Comment } from "src/forum/entities/comment.entity";
 
 export function profileUrl(userId: number) {
   return `/member/${userId}`;
@@ -10,15 +12,31 @@ export function profileUrl(userId: number) {
 
 export function actionUrl(actionId: number, full = false) {
   const path = `/actions/${actionId}`;
-  return full ? `${process.env.APP_URL}${path}` : path;
+  return full ? `${siteBaseUrl()}${path}` : path;
+}
+
+function waitlistBaseUrl() {
+  const baseUrl = siteBaseUrl();
+  if (!baseUrl) {
+    throw new Error("APP_URL is not set, so a waitlist link has no host");
+  }
+  return baseUrl;
+}
+
+export function waitlistShareLink(code: string) {
+  return waitlistShareUrl(waitlistBaseUrl(), code);
+}
+
+export function waitlistUnsubscribeLink(token: string) {
+  return waitlistUnsubscribeUrl(waitlistBaseUrl(), token);
 }
 
 export function signupUrl(full = false) {
   const path = `/signup`;
-  return full ? `${inviteBaseUrl()}${path}` : path;
+  return full ? `${siteBaseUrl()}${path}` : path;
 }
 
-function inviteBaseUrl() {
+export function siteBaseUrl() {
   return process.env.ALT_APP_URL || process.env.APP_URL;
 }
 
@@ -40,17 +58,22 @@ export function actionActivityUrl(
   full = false,
 ) {
   const path = `/actions/${actionId}/activity/${activityId}`;
-  return full ? `${process.env.APP_URL}${path}` : path;
+  return full ? `${siteBaseUrl()}${path}` : path;
 }
 
 export function tasksUrl(full = false) {
   const path = `/tasks`;
-  return full ? `${process.env.APP_URL}${path}` : path;
+  return full ? `${siteBaseUrl()}${path}` : path;
+}
+
+export function membershipUrl(full = false) {
+  const path = `/membership`;
+  return full ? `${siteBaseUrl()}${path}` : path;
 }
 
 export function groupMembersListUrl(full = false) {
   const path = `/groups?tab=members`; //TODO: multiple groups
-  return full ? `${process.env.APP_URL}${path}` : path;
+  return full ? `${siteBaseUrl()}${path}` : path;
 }
 
 export function postUrl(postId: number) {
@@ -62,31 +85,12 @@ export function commentUrl(
   actionId?: number,
   full = false,
 ) {
-  let path = "";
-  switch (comment.parentObjectType) {
-    case CommentParentObject.Post:
-      path = `/forum/post/${comment.parentObjectId}?replyId=${comment.id}`;
-      break;
-    case CommentParentObject.Action:
-      path = `/actions/${comment.parentObjectId}?replyId=${comment.id}`;
-      break;
-    case CommentParentObject.Activity:
-      path = `/actions/${actionId}/activity/${comment.parentObjectId}?replyId=${comment.id}`;
-      break;
-    default:
-      throw new Error(
-        `Invalid parent object type: ${comment.parentObjectType satisfies never}`,
-      );
-  }
-  return full ? `${process.env.APP_URL}${path}` : path;
+  const path = commentPath(comment, actionId);
+  return full ? `${siteBaseUrl()}${path}` : path;
 }
 
 export function conversationUrl(conversationId: number) {
   return `/messages/${conversationId}`;
-}
-
-export function withCid(url: string, cid: string) {
-  return appendQueryParam(url, "cid", cid);
 }
 
 export function withSid(url: string, sid: string) {

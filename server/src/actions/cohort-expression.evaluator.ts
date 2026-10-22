@@ -10,7 +10,6 @@ import { UsMembership } from "src/geo/us-membership";
 export type CohortEvaluationContext = {
   getUserIdsForTag(tagId: string): Promise<Set<number>>;
   getUserIdsCompletedAction(actionId: number): Promise<Set<number>>;
-  getUserIdsInProgressAction(actionId: number): Promise<Set<number>>;
   getUserIdsMissedActionDeadline(actionId: number): Promise<Set<number>>;
   getUserIdsForFormField(params: {
     formId: number;
@@ -23,27 +22,26 @@ export type CohortEvaluationContext = {
     membership: UsMembership.Us | UsMembership.NonUs,
   ): Promise<Set<number>>;
   getAllCandidateUserIds(): Promise<Set<number>>;
+  getStaffUserIds(): Promise<Set<number>>;
   targetUserId?: number;
 };
 
 /**
  * Resolves a CohortExpression to the Set of user IDs it targets.
  *
- * `NOT(X)` is `getAllCandidateUserIds()` minus `X`'s set, so the candidate set
- * is the universe a negation is taken against: all candidate users for the
- * population context, or `{userId}` iff the user is a candidate for a
- * single-user context — so `NOT(X)` excludes non-candidates from both.
+ * `NOT(X)` is `getAllCandidateUserIds()` minus `X`'s set: every user for the
+ * population context, `{userId}` for a single-user context.
  *
  * When `ctx.targetUserId` is set, the evaluator only cares about that one
  * user's membership, so every leaf set is `{targetUserId}` or `{}`. This lets
  * AND/OR short-circuit (stop once the target drops out / matches) instead of
- * fanning out every branch's DB work and `InProgressAction` recursion. Set by
+ * fanning out every branch's DB work and `MissedActionDeadline` recursion. Set by
  * {@link singleUserCohortContext}; population contexts omit it and need full
  * sets, so they evaluate children in parallel.
  *
  * @param expr The expression to evaluate
  * @param ctx Data-fetching context
- * @param visitedActionIds Cycle detection guard for InProgressAction
+ * @param visitedActionIds Cycle detection guard for MissedActionDeadline
  */
 export async function evaluateCohortExpression(
   expr: CohortExpression,
@@ -57,15 +55,9 @@ export async function evaluateCohortExpression(
       return new Set(expr.userIds);
     case "CompletedAction":
       return ctx.getUserIdsCompletedAction(expr.actionId);
-    case "InProgressAction": {
-      if (visitedActionIds.has(expr.actionId)) {
-        return new Set();
-      }
-      return ctx.getUserIdsInProgressAction(expr.actionId);
-    }
     case "MissedActionDeadline": {
       // Resolving the referenced action's roster recurses into its cohort
-      // expression, so it needs the same cycle guard as InProgressAction.
+      // expression.
       if (visitedActionIds.has(expr.actionId)) {
         return new Set();
       }
@@ -84,6 +76,10 @@ export async function evaluateCohortExpression(
       return ctx.getUserIdsByUsMembership(UsMembership.Us);
     case "NonUSMember":
       return ctx.getUserIdsByUsMembership(UsMembership.NonUs);
+    case "AllMembers":
+      return ctx.getAllCandidateUserIds();
+    case "Staff":
+      return ctx.getStaffUserIds();
     case "AND": {
       if (expr.children.length === 0) return new Set();
       const { targetUserId } = ctx;
@@ -144,51 +140,6 @@ export async function evaluateCohortExpression(
   }
 }
 
-/**
- * Collect the "dependency" references in an expression: actions the cohort
- * keys off directly (CompletedAction/InProgressAction) and forms whose
- * responses gate membership (FormFieldValue). Used to offer those actions'
- * deadlines as reminder timing anchors.
- */
-export function collectCohortDependencies(
-  expr: CohortExpression | null | undefined,
-): { actionIds: Set<number>; formIds: Set<number> } {
-  const actionIds = new Set<number>();
-  const formIds = new Set<number>();
-
-  const walk = (node: CohortExpression): void => {
-    switch (node.type) {
-      case "CompletedAction":
-      case "InProgressAction":
-      case "MissedActionDeadline":
-        actionIds.add(node.actionId);
-        break;
-      case "FormFieldValue":
-        formIds.add(node.formId);
-        break;
-      case "Tag":
-      case "Manual":
-      case "GroupLead":
-      case "USMember":
-      case "NonUSMember":
-        break;
-      case "AND":
-      case "OR":
-        node.children.forEach(walk);
-        break;
-      case "NOT":
-        walk(node.child);
-        break;
-      default:
-        node satisfies never;
-        break;
-    }
-  };
-
-  if (expr) walk(expr);
-  return { actionIds, formIds };
-}
-
 // --- Single-user scoping ---
 
 /**
@@ -198,10 +149,8 @@ export function collectCohortDependencies(
  */
 export type SingleUserCohortPredicates = {
   userId: number;
-  isCandidate: boolean;
   hasTag(tagId: string): boolean;
   completedAction(actionId: number): Promise<boolean>;
-  inProgressAction(actionId: number): Promise<boolean>;
   missedActionDeadline(actionId: number): Promise<boolean>;
   matchesFormField(params: {
     formId: number;
@@ -211,6 +160,7 @@ export type SingleUserCohortPredicates = {
   }): Promise<boolean>;
   isGroupLead(): Promise<boolean>;
   usMembership(): Promise<UsMembership>;
+  isStaff(): boolean;
 };
 
 /**
@@ -221,11 +171,6 @@ export type SingleUserCohortPredicates = {
  * AND/OR/NOT/difference all distribute over the singleton. Setting
  * `targetUserId` also lets AND/OR short-circuit rather than fan out every
  * branch's DB work.
- *
- * `isCandidate` becomes the `NOT` universe (`{userId}` iff a candidate —
- * mirroring `findActiveUsersWithTags`, a fully signed-up, non-partial profile),
- * so a non-candidate is in no `NOT(...)` result, exactly as in the population
- * evaluator.
  */
 export function singleUserCohortContext(
   p: SingleUserCohortPredicates,
@@ -239,15 +184,14 @@ export function singleUserCohortContext(
     getUserIdsForTag: async (tagId) => just(p.hasTag(tagId)),
     getUserIdsCompletedAction: (actionId) =>
       justAsync(p.completedAction(actionId)),
-    getUserIdsInProgressAction: (actionId) =>
-      justAsync(p.inProgressAction(actionId)),
     getUserIdsMissedActionDeadline: (actionId) =>
       justAsync(p.missedActionDeadline(actionId)),
     getUserIdsForFormField: (params) => justAsync(p.matchesFormField(params)),
     getGroupLeadUserIds: () => justAsync(p.isGroupLead()),
     getUserIdsByUsMembership: async (membership) =>
       just((await p.usMembership()) === membership),
-    getAllCandidateUserIds: async () => just(p.isCandidate),
+    getAllCandidateUserIds: async () => just(true),
+    getStaffUserIds: async () => just(p.isStaff()),
     targetUserId: p.userId,
   };
 }

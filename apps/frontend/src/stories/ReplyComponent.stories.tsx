@@ -6,6 +6,7 @@ import {
 } from "@alliance/shared/client";
 import { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
+import { milliseconds } from "date-fns";
 import React from "react";
 import { CommentsProvider } from "../components/forum/CommentsContext";
 import ReplyComponent from "../components/forum/ReplyComponent";
@@ -33,8 +34,13 @@ const makeReply = (overrides: Partial<CommentDto> = {}): CommentDto => {
     parentObjectType: "post",
     parentObjectId: 1,
     deleted: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-    updatedAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+    createdAt: new Date(
+      Date.now() - milliseconds({ minutes: 30 }),
+    ).toISOString(),
+    updatedAt: new Date(
+      Date.now() - milliseconds({ minutes: 30 }),
+    ).toISOString(),
+    parentId: null,
     pinned: false,
     tagId: null,
     author: makeAuthor(),
@@ -67,6 +73,8 @@ const defaultCtx = {
   ) => Promise<Result<void, string>>,
   submitErrorFor: fn() as (parentId: number | null) => string | null,
   clearSubmitError: fn() as () => void,
+  deleteErrorFor: fn() as (replyId: number) => string | null,
+  clearDeleteError: fn() as (replyId: number) => void,
   onLikeReply: fn() as (id: number, unlike?: boolean) => Promise<void>,
   onPinReply: fn() as (id: number) => Promise<void>,
   newlyAddedReplies: new Set<number>(),
@@ -120,7 +128,9 @@ export const WithChildren: Story = {
             body: "Great point! I completely agree with your take on this.",
             attachments: [],
           },
-          createdAt: new Date(Date.now() - 1000 * 60 * 20).toISOString(),
+          createdAt: new Date(
+            Date.now() - milliseconds({ minutes: 20 }),
+          ).toISOString(),
         }),
         makeReply({
           id: 102,
@@ -129,7 +139,9 @@ export const WithChildren: Story = {
             body: "I have a different perspective. Let me explain why I think we should go another direction.",
             attachments: [],
           },
-          createdAt: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
+          createdAt: new Date(
+            Date.now() - milliseconds({ minutes: 10 }),
+          ).toISOString(),
           likes: [makeAuthor({ id: 2, displayName: "Alex Johnson" })],
         }),
       ],
@@ -301,7 +313,9 @@ export const FullThread: Story = {
             makeAuthor({ id: 1, displayName: "Jane Smith" }),
             makeAuthor({ id: 3, displayName: "Sam Lee" }),
           ],
-          createdAt: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
+          createdAt: new Date(
+            Date.now() - milliseconds({ minutes: 25 }),
+          ).toISOString(),
         }),
         makeReply({
           id: 102,
@@ -314,7 +328,9 @@ export const FullThread: Story = {
             body: "As a staff member, I can confirm this approach has been discussed internally.",
             attachments: [],
           },
-          createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
+          createdAt: new Date(
+            Date.now() - milliseconds({ minutes: 15 }),
+          ).toISOString(),
           children: [
             makeReply({
               id: 103,
@@ -323,7 +339,9 @@ export const FullThread: Story = {
                 body: "That's great to hear! When can we expect an update?",
                 attachments: [],
               },
-              createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
+              createdAt: new Date(
+                Date.now() - milliseconds({ minutes: 5 }),
+              ).toISOString(),
             }),
           ],
         }),

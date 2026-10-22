@@ -2,12 +2,14 @@ import type { ActionDto } from "../client/types.gen";
 import {
   ActionPageTaskPanelState,
   getActionPageTaskPanelState,
+  showActionPageTaskSection,
 } from "./actionPageTaskPanel";
 import {
   makeAction,
   makeEvent,
   makeLegacyAction,
   makeViewer,
+  makeViewerWithUnknownOptionalReason,
 } from "./testFixtures";
 
 type StateParams = Parameters<typeof getActionPageTaskPanelState>[0];
@@ -47,6 +49,22 @@ describe("getActionPageTaskPanelState", () => {
     ).toBe(ActionPageTaskPanelState.GuestRef);
   });
 
+  it("shows the staff preview state ahead of the cannot-complete check", () => {
+    expect(
+      stateOf(
+        makeAction({
+          status: "draft",
+          viewer: makeViewer({
+            assigned: false,
+            canComplete: false,
+            memberActionStarted: false,
+            staffPreview: true,
+          }),
+        }),
+      ),
+    ).toBe(ActionPageTaskPanelState.StaffPreview);
+  });
+
   it("shows the task for a plain assigned todo on both paths", () => {
     expect(stateOf(makeAction())).toBe(ActionPageTaskPanelState.ShowTask);
     expect(stateOf(makeLegacyAction())).toBe(ActionPageTaskPanelState.ShowTask);
@@ -65,6 +83,51 @@ describe("getActionPageTaskPanelState", () => {
         makeAction({
           preventCompletion: true,
           viewer: makeViewer({ canComplete: false }),
+        }),
+      ),
+    ).toBe(ActionPageTaskPanelState.MemberActionClosed);
+  });
+
+  it("keeps a viewer's relation when completion closes", () => {
+    const closed = (params: {
+      relation: "none" | "completed" | "withdrawn";
+      assigned: boolean;
+      deadlinePassed: boolean;
+    }) =>
+      stateOf(
+        makeAction({
+          status: params.deadlinePassed ? "resolution" : "member_action",
+          viewer: makeViewer({ canComplete: false, ...params }),
+        }),
+      );
+    for (const [assigned, deadlinePassed] of [
+      [true, true],
+      [false, true],
+      [false, false],
+    ]) {
+      expect(closed({ relation: "completed", assigned, deadlinePassed })).toBe(
+        ActionPageTaskPanelState.Completed,
+      );
+      expect(closed({ relation: "withdrawn", assigned, deadlinePassed })).toBe(
+        ActionPageTaskPanelState.Declined,
+      );
+    }
+    expect(
+      closed({ relation: "none", assigned: true, deadlinePassed: true }),
+    ).toBe(ActionPageTaskPanelState.DeadlineMissed);
+    expect(
+      closed({ relation: "none", assigned: false, deadlinePassed: true }),
+    ).toBe(ActionPageTaskPanelState.NotAssigned);
+    expect(
+      stateOf(
+        makeAction({
+          status: "resolution",
+          preventCompletion: true,
+          viewer: makeViewer({
+            canComplete: false,
+            assigned: true,
+            deadlinePassed: true,
+          }),
         }),
       ),
     ).toBe(ActionPageTaskPanelState.MemberActionClosed);
@@ -139,5 +202,72 @@ describe("getActionPageTaskPanelState", () => {
     expect(stateOf(makeAction({ optional: true }))).toBe(
       ActionPageTaskPanelState.Optional,
     );
+    expect(stateOf(makeLegacyAction({ optional: true }))).toBe(
+      ActionPageTaskPanelState.Optional,
+    );
+  });
+
+  it("separates an action optional to this viewer alone", () => {
+    expect(
+      stateOf(
+        makeAction({ optional: false, viewer: makeViewer({ optional: true }) }),
+      ),
+    ).toBe(ActionPageTaskPanelState.OptionalForViewer);
+    expect(
+      stateOf(
+        makeAction({
+          optional: false,
+          viewer: makeViewer({
+            optional: true,
+            optionalReason: "contract_gap",
+          }),
+        }),
+      ),
+    ).toBe(ActionPageTaskPanelState.OptionalForContractGap);
+    expect(
+      stateOf(
+        makeAction({
+          optional: false,
+          viewer: makeViewerWithUnknownOptionalReason(),
+        }),
+      ),
+    ).toBe(ActionPageTaskPanelState.OptionalForViewer);
+  });
+
+  it("shows the missed deadline over optional for you", () => {
+    expect(
+      stateOf(
+        makeAction({
+          optional: false,
+          status: "resolution",
+          viewer: makeViewer({
+            optional: true,
+            optionalReason: "contract_gap",
+          }),
+        }),
+      ),
+    ).toBe(ActionPageTaskPanelState.ShowTaskWithMissedDeadline);
+  });
+});
+
+describe("showActionPageTaskSection", () => {
+  it("hides the task section while an action is planned", () => {
+    expect(showActionPageTaskSection(makeAction({ status: "planned" }))).toBe(
+      false,
+    );
+  });
+
+  it("shows the task section for a planned action in staff preview", () => {
+    expect(
+      showActionPageTaskSection(
+        makeAction({
+          status: "planned",
+          viewer: makeViewer({
+            memberActionStarted: false,
+            staffPreview: true,
+          }),
+        }),
+      ),
+    ).toBe(true);
   });
 });

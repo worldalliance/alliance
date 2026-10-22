@@ -7,7 +7,7 @@ import { Transform, Type } from "class-transformer";
 import {
   Allow,
   IsBoolean,
-  IsDefined,
+  IsEmpty,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -19,6 +19,7 @@ import {
 } from "class-validator";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { OnetimeInvite } from "src/user/entities/onetime-invite.entity";
@@ -112,12 +113,11 @@ export class Community {
   // Relations
 
   @ManyToMany(() => User, (user) => user.communities)
-  @ApiProperty({ type: () => User, isArray: true })
+  @ApiPropertyOptional({ type: () => User, isArray: true })
   @JoinTable()
   @Type(() => User)
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  users: Relation<User>[];
+  @IsOptional()
+  users?: Relation<User>[];
 
   @ManyToMany(() => User, (user) => user.leaderOf)
   @ApiPropertyOptional({ type: () => User, isArray: true })
@@ -139,9 +139,20 @@ export class Community {
   invites?: Relation<OnetimeInvite>[];
 
   @OneToMany(() => CommunityInvite, (invite) => invite.community)
-  @ApiProperty({ type: () => CommunityInvite, isArray: true })
+  @ApiPropertyOptional({ type: () => CommunityInvite, isArray: true })
   @Type(() => CommunityInvite)
-  @IsDefined()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  internalInvites: Relation<CommunityInvite>[];
+  @IsOptional()
+  internalInvites?: Relation<CommunityInvite>[];
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
+}
+
+export function loadedCommunityUsers(community: Community): Relation<User>[] {
+  if (!community.users) {
+    throw new Error(`users of community ${community.id} not loaded`);
+  }
+  return community.users;
 }

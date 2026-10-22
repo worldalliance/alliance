@@ -1,0 +1,100 @@
+import {
+  OAuthIntent,
+  OAuthProvider,
+  oauthErrorMessage,
+  oauthErrorParam,
+  oauthOutcomeMessage,
+  oauthOutcomeParam,
+  parseOAuthError,
+  parseOAuthOutcome,
+  type OAuthError,
+  type OAuthOutcome,
+} from "@alliance/common/oauth";
+import type { PosthogContext } from "@alliance/common/posthog";
+import { deviceTimeZone, signupTimeZone } from "@alliance/shared/lib/timeZone";
+import { useState } from "react";
+import { useSearchParams } from "react-router";
+import { useStripSearchParams } from "./useStripSearchParams";
+
+/**
+ * For a top-level navigation, not a fetch. The server answers with a redirect
+ * to the provider, which will not render inside an XHR.
+ */
+export function oauthStartUrl(params: {
+  apiUrl: string;
+  provider: OAuthProvider;
+  intent: OAuthIntent;
+  returnTo: string;
+  referralCode?: string | null;
+  posthog?: PosthogContext;
+}): string {
+  const url = new URL(`${params.apiUrl}/auth/${params.provider}/start`);
+  url.searchParams.set("intent", params.intent);
+  url.searchParams.set("returnTo", params.returnTo);
+  const timeZone = signupTimeZone(deviceTimeZone());
+  if (timeZone) {
+    url.searchParams.set("timeZone", timeZone);
+  }
+  if (params.referralCode) {
+    url.searchParams.set("referralCode", params.referralCode);
+  }
+  if (params.posthog?.sessionId) {
+    url.searchParams.set("posthogSessionId", params.posthog.sessionId);
+  }
+  if (params.posthog?.distinctId) {
+    url.searchParams.set("posthogDistinctId", params.posthog.distinctId);
+  }
+  return url.toString();
+}
+
+export type OAuthNotice =
+  | { kind: "outcome"; provider: OAuthProvider; outcome: OAuthOutcome }
+  | { kind: "error"; provider: OAuthProvider; error: OAuthError };
+
+export function oauthNoticeMessage(notice: OAuthNotice): string | null {
+  switch (notice.kind) {
+    case "outcome":
+      return oauthOutcomeMessage(notice.provider, notice.outcome);
+    case "error":
+      return oauthErrorMessage(notice.provider, notice.error);
+    default:
+      throw new Error(`unknown notice: ${notice satisfies never}`);
+  }
+}
+
+const OAUTH_PARAMS = Object.values(OAuthProvider).flatMap((provider) => [
+  oauthOutcomeParam(provider),
+  oauthErrorParam(provider),
+]);
+
+/** Drops what the callback appended, so a later navigation cannot replay it. */
+export function clearOAuthParams(params: URLSearchParams) {
+  for (const name of OAUTH_PARAMS) params.delete(name);
+}
+
+function readNotice(params: URLSearchParams): OAuthNotice | null {
+  for (const provider of Object.values(OAuthProvider)) {
+    const error = parseOAuthError(params.get(oauthErrorParam(provider)));
+    if (error) {
+      return { kind: "error", provider, error };
+    }
+    const outcome = parseOAuthOutcome(params.get(oauthOutcomeParam(provider)));
+    if (outcome) {
+      return { kind: "outcome", provider, outcome };
+    }
+  }
+  return null;
+}
+
+/**
+ * Reads what the callback appended, then strips it so a reload does not replay
+ * the message. Read once, synchronously, so an effect that navigates on the
+ * outcome sees it on its first run.
+ */
+export function useOAuthNotice(): OAuthNotice | null {
+  const [searchParams] = useSearchParams();
+  const [notice] = useState(() => readNotice(searchParams));
+  useStripSearchParams(OAUTH_PARAMS);
+
+  return notice;
+}

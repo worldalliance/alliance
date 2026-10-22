@@ -1,23 +1,14 @@
-import { ExceptionEvent } from "@alliance/common/analytics";
-import { errorMessage } from "@alliance/common/errorMessage";
-import { R, type Result } from "@alliance/common/result";
+import { type Result } from "@alliance/common/result";
 import {
   CommentDto,
   CommentParentObject,
-  CreateCommentDto,
   CreateEditableContentDto,
-  forumCreateComment,
-  forumDeleteComment,
-  forumPinCommentAdmin,
-  forumUpdateComment,
   PostTagDto,
   UserDto,
 } from "@alliance/shared/client";
-import { captureException } from "@alliance/shared/lib/analytics";
 import { TagFilter } from "@alliance/shared/lib/commentTags";
-import { updateCommentInTree } from "@alliance/shared/lib/commentTree";
-import { useCommentLikeMutation } from "@alliance/shared/lib/useCommentLikeMutation";
-import { useLoadComments } from "@alliance/shared/lib/useLoadComments";
+import { useCommentThread } from "@alliance/shared/lib/useCommentThread";
+import { milliseconds } from "date-fns";
 import {
   createContext,
   useCallback,
@@ -43,6 +34,8 @@ interface CommentsContextValue {
   ) => Promise<Result<void, string>>;
   submitErrorFor: (parentId: number | null) => string | null;
   clearSubmitError: () => void;
+  deleteErrorFor: (replyId: number) => string | null;
+  clearDeleteError: (replyId: number) => void;
   onLikeReply: (id: number, unlike?: boolean) => Promise<unknown>;
   onPinReply: (id: number) => Promise<void>;
   newlyAddedReplies: Set<number>;
@@ -70,7 +63,14 @@ export function useCommentsContext(): CommentsContextValue {
 export interface UseCommentTreeResult {
   comments: CommentDto[] | null;
   error: string | null;
+  canRetry: boolean;
+  spinning: boolean;
+  status: string | null;
+  movesReader: boolean;
+  deleteErrorFor: (replyId: number) => string | null;
+  clearDeleteError: (replyId: number) => void;
   fetchComments: () => Promise<void>;
+  retry: () => void;
   handleSubmitReply: (
     content: CreateEditableContentDto,
     onSuccess?: () => void,
@@ -100,8 +100,24 @@ export function useCommentTree(
   type: CommentParentObject,
   initialComments?: CommentDto[],
 ): UseCommentTreeResult {
-  const { comments, setComments, error, setError, fetchComments } =
-    useLoadComments({ objectId, type, initialComments });
+  const { user } = useAuth();
+  const {
+    comments,
+    error,
+    canRetry,
+    spinning,
+    status,
+    movesReader,
+    fetchComments,
+    retry,
+    createComment,
+    updateComment,
+    pinComment,
+    likeComment,
+    deleteReply,
+    deleteErrorFor,
+    clearDeleteError,
+  } = useCommentThread({ objectId, type, initialComments, userId: user?.id });
   // Keyed by the form that produced it, so a nested reply's rejection shows
   // under that reply rather than at the top of the thread.
   const [submitError, setSubmitError] = useState<{
@@ -109,6 +125,13 @@ export function useCommentTree(
     message: string;
   } | null>(null);
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  // A rejection shows only under the form that produced it, so opening any
+  // other form drops it. One that landed while its form was closed waits for
+  // that form to open again.
+  const openReplyForm = useCallback((id: number | null) => {
+    setSubmitError((prev) => (prev?.parentId === id ? prev : null));
+    setReplyingTo(id);
+  }, []);
   // The composer takes the caret when the user asked for it, not when it comes
   // back after a reply posted further down the thread.
   const [focusComposer, setFocusComposer] = useState(true);
@@ -149,9 +172,12 @@ export function useCommentTree(
           }
         }, 500);
 
-        setTimeout(() => {
-          setHighlightedReplyId(null);
-        }, 5000);
+        setTimeout(
+          () => {
+            setHighlightedReplyId(null);
+          },
+          milliseconds({ seconds: 5 }),
+        );
       }
     }
   }, [searchParams, setSearchParams]);
@@ -171,128 +197,56 @@ export function useCommentTree(
 
   const handleSubmitReply = useCallback(
     async (contentDto: CreateEditableContentDto, onSuccess?: () => void) => {
-      try {
-        setSubmitError(null);
-        const commentDto: CreateCommentDto = {
-          parentObjectId: Number(objectId),
-          parentId: replyingTo ?? undefined,
-          parentObjectType: type,
-          editableContent: contentDto,
-          tagId: replyingTo ? undefined : selectedTagId,
-        };
+      setSubmitError(null);
+      const created = await createComment({
+        content: contentDto,
+        parentId: replyingTo,
+        tagId: selectedTagId,
+      });
 
-        const response = await forumCreateComment({ body: commentDto });
+      if (!created.ok) {
+        setSubmitError({ parentId: replyingTo, message: created.error });
+        return;
+      }
 
-        if (response.error) {
-          setSubmitError({
-            parentId: replyingTo,
-            message: errorMessage({
-              error: response.error,
-              fallback: "Failed to submit reply",
-            }),
+      const newReplyId = created.value.id;
+
+      setNewlyAddedReplies((prev) => new Set(prev).add(newReplyId));
+      setLastAddedReplyId(newReplyId);
+
+      setTimeout(
+        () => {
+          setNewlyAddedReplies((prev) => {
+            const newSet = new Set(prev);
+            newSet.delete(newReplyId);
+            return newSet;
           });
-          return;
-        }
+        },
+        milliseconds({ seconds: 3 }),
+      );
 
-        if (response.data) {
-          const newReplyId = response.data.id;
+      onSuccess?.();
 
-          setNewlyAddedReplies((prev) => new Set(prev).add(newReplyId));
-          setLastAddedReplyId(newReplyId);
-
-          setTimeout(() => {
-            setNewlyAddedReplies((prev) => {
-              const newSet = new Set(prev);
-              newSet.delete(newReplyId);
-              return newSet;
-            });
-          }, 3000);
-
-          fetchComments();
-          onSuccess?.();
-        }
-
-        if (replyingTo) {
-          setFocusComposer(false);
-        } else {
-          setTagFilter(selectedTagId);
-        }
-      } catch (err) {
-        console.error("Error posting reply:", err);
-        captureException(ExceptionEvent.PostReplyError, err);
-        setSubmitError({
-          parentId: replyingTo,
-          message: "Failed to submit reply",
-        });
+      if (replyingTo) {
+        setFocusComposer(false);
+      } else {
+        setTagFilter(selectedTagId);
       }
     },
-    [objectId, type, replyingTo, selectedTagId, fetchComments],
+    [createComment, replyingTo, selectedTagId],
   );
 
   const handleDeleteReply = useCallback(
     async (replyId: number) => {
-      if (window.confirm("Are you sure you want to delete this reply?")) {
-        try {
-          await forumDeleteComment({ path: { id: replyId } });
-          fetchComments();
-        } catch (err) {
-          console.error("Error deleting reply:", err);
-          setError("Failed to delete reply");
-        }
+      if (
+        window.confirm("Are you sure you want to delete this reply?") &&
+        (await deleteReply(replyId))
+      ) {
+        setReplyingTo((id) => (id === replyId ? null : id));
       }
     },
-    [fetchComments, setError],
+    [deleteReply],
   );
-
-  const handleUpdateReply = useCallback(
-    async (
-      replyId: number,
-      content: CreateEditableContentDto,
-    ): Promise<Result<void, string>> => {
-      const response = await R.fromPromise(
-        forumUpdateComment({
-          path: { id: replyId },
-          body: { editableContent: content },
-        }),
-      );
-
-      if (!response.ok) {
-        console.error("Failed to update comment:", response.error);
-        return R.failure("Failed to save your edit");
-      }
-
-      if (response.value.error) {
-        return R.failure(
-          errorMessage({
-            error: response.value.error,
-            fallback: "Failed to save your edit",
-          }),
-        );
-      }
-
-      setComments((prevComments) =>
-        updateCommentInTree({
-          comments: prevComments,
-          id: replyId,
-          update: (comment) => ({
-            ...comment,
-            editableContent: { ...content, id: -1 },
-          }),
-        }),
-      );
-
-      return R.success(undefined);
-    },
-    [setComments],
-  );
-
-  const { user } = useAuth();
-
-  const handleLikeReply = useCommentLikeMutation({
-    userId: user?.id,
-    setComments,
-    fetchComments,
-  });
 
   const submitErrorFor = useCallback(
     (parentId: number | null) =>
@@ -302,27 +256,26 @@ export function useCommentTree(
 
   const clearSubmitError = useCallback(() => setSubmitError(null), []);
 
-  const handlePinReply = useCallback(
-    async (replyId: number) => {
-      await forumPinCommentAdmin({ path: { id: replyId } });
-      fetchComments();
-    },
-    [fetchComments],
-  );
-
   return {
     comments,
     error,
+    canRetry,
+    spinning,
+    status,
+    movesReader,
+    deleteErrorFor,
+    clearDeleteError,
     fetchComments,
+    retry,
     handleSubmitReply,
     handleDeleteReply,
-    handleUpdateReply,
+    handleUpdateReply: updateComment,
     submitErrorFor,
     clearSubmitError,
-    handleLikeReply,
-    handlePinReply,
+    handleLikeReply: likeComment,
+    handlePinReply: pinComment,
     replyingTo,
-    setReplyingTo,
+    setReplyingTo: openReplyForm,
     focusComposer,
     newlyAddedReplies,
     highlightedReplyId,

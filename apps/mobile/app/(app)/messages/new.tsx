@@ -1,15 +1,13 @@
-import {
-  conversationCreateDirectConversation,
-  conversationCreateGroupConversation,
-  ConversationDto,
-  messageSendMessage,
-  ProfileDto,
-} from "@alliance/shared/client";
+import { R } from "@alliance/common/result";
+import { ProfileDto } from "@alliance/shared/client";
+import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
+import { useConversationMessages } from "@alliance/shared/lib/useConversationMessages";
 import { useMessageableUsersQuery } from "@alliance/shared/lib/user";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import LoadFailed from "../../../components/LoadFailed";
 import MessageComposer from "../../../components/messages/MessageComposer";
 import MessageRecipientSelect from "../../../components/messages/MessageRecipientSelect";
 import BackButton from "../../../components/system/BackButton";
@@ -18,7 +16,6 @@ import { useAuth } from "../../../lib/AuthContext";
 import {
   buildGroupConversationTitle,
   findMatchingConversation,
-  sortConversations,
   useConversations,
 } from "../../../lib/messages";
 import { colors } from "../../../lib/style/colors";
@@ -26,10 +23,13 @@ import { colors } from "../../../lib/style/colors";
 export default function NewMessageScreen() {
   const { user } = useAuth();
   const { to } = useLocalSearchParams<{ to?: string }>();
-  const { conversations, setConversations } = useConversations(null);
+  const { conversations, createDirectConversation, createGroupConversation } =
+    useConversations(null);
+  const { sendMessage } = useConversationMessages(null);
 
+  const messageableUsersQuery = useMessageableUsersQuery();
   const { data: messageableUsers = [], isLoading: loadingUsers } =
-    useMessageableUsersQuery();
+    messageableUsersQuery;
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
   const [message, setMessage] = useState("");
   const [attachments, setAttachments] = useState<string[]>([]);
@@ -61,52 +61,30 @@ export default function NewMessageScreen() {
   );
 
   const ensureConversation = useCallback(async () => {
-    if (selectedUserIds.length === 0) return null;
     const existing = findMatchingConversation(
       conversations,
       user?.id,
       selectedUserIds,
     );
-    if (existing) return existing;
+    if (existing) return R.success(existing);
 
     if (selectedUserIds.length === 1) {
-      const response = await conversationCreateDirectConversation({
-        body: { targetUserId: selectedUserIds[0] },
-      });
-      if (response.data) {
-        setConversations((prev) => {
-          const ids = new Map<number, ConversationDto>();
-          for (const convo of prev ?? []) {
-            ids.set(convo.id, convo);
-          }
-          ids.set(response.data!.id, response.data!);
-          return Array.from(ids.values()).sort(sortConversations);
-        });
-        return response.data;
-      }
-    } else {
-      const names = recipients.map((recipient) => recipient.displayName);
-      if (user && !user.anonymous) {
-        names.push(user.name);
-      }
-      const title = buildGroupConversationTitle(names);
-      const response = await conversationCreateGroupConversation({
-        body: { participantIds: selectedUserIds, title },
-      });
-      if (response.data) {
-        setConversations((prev) => {
-          const ids = new Map<number, ConversationDto>();
-          for (const convo of prev ?? []) {
-            ids.set(convo.id, convo);
-          }
-          ids.set(response.data!.id, response.data!);
-          return Array.from(ids.values()).sort(sortConversations);
-        });
-        return response.data;
-      }
+      return createDirectConversation(selectedUserIds[0]);
     }
-    return null;
-  }, [conversations, recipients, selectedUserIds, setConversations, user]);
+    const names = recipients.map((recipient) => recipient.displayName);
+    if (user && !user.anonymous) {
+      names.push(user.name);
+    }
+    const title = buildGroupConversationTitle(names);
+    return createGroupConversation({ participantIds: selectedUserIds, title });
+  }, [
+    conversations,
+    createDirectConversation,
+    createGroupConversation,
+    recipients,
+    selectedUserIds,
+    user,
+  ]);
 
   const handleSend = useCallback(async () => {
     if (isSending) return;
@@ -125,30 +103,34 @@ export default function NewMessageScreen() {
     }
 
     setIsSending(true);
-    try {
-      const conversation = await ensureConversation();
-      if (!conversation) {
-        Alert.alert("Error", "Could not create conversation.");
-        return;
-      }
-      const response = await messageSendMessage({
-        body: {
-          conversationId: conversation.id,
-          body: trimmed || message,
-          attachments,
-        },
-      });
-      if (!response.data) {
-        throw new Error("Failed to send message");
-      }
-      router.replace(`/messages/${conversation.id}`);
-    } catch (error) {
-      console.error("Failed to send message", error);
-      Alert.alert("Error", "Failed to send message.");
-    } finally {
+    const ensured = await ensureConversation();
+    if (!ensured.ok) {
       setIsSending(false);
+      Alert.alert(ensured.error.title, ensured.error.message);
+      return;
     }
-  }, [attachments, ensureConversation, isSending, message, selectedUserIds]);
+    const conversation = ensured.value;
+    const sent = await sendMessage({
+      message: {
+        conversationId: conversation.id,
+        body: trimmed || message,
+        attachments,
+      },
+    });
+    setIsSending(false);
+    if (!sent.ok) {
+      Alert.alert(sent.error.title, sent.error.message);
+      return;
+    }
+    router.replace(`/messages/${conversation.id}`);
+  }, [
+    attachments,
+    ensureConversation,
+    isSending,
+    message,
+    selectedUserIds,
+    sendMessage,
+  ]);
 
   return (
     <View className="flex-1 bg-white">
@@ -166,7 +148,15 @@ export default function NewMessageScreen() {
       >
         <View className="border border-zinc-200 rounded bg-white px-4 flex flex-row items-center">
           <Text className="text-sm text-zinc-600 mr-2">To:</Text>
-          {loadingUsers ? (
+          {failedToLoad(messageableUsersQuery) ? (
+            <View className="flex-1">
+              <LoadFailed
+                message="Couldn't load the people you can message."
+                onRetry={() => void messageableUsersQuery.refetch()}
+                retrying={messageableUsersQuery.isFetching}
+              />
+            </View>
+          ) : loadingUsers ? (
             <ActivityIndicator size="small" color={colors.green} />
           ) : (
             <MessageRecipientSelect

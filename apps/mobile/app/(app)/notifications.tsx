@@ -1,24 +1,17 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
-import {
-  NotificationDto,
-  notifsFindAll,
-  notifsSetRead,
-  notifsSetReadAll,
-} from "@alliance/shared/client";
+import { NotificationDto } from "@alliance/shared/client";
 import { captureEvent } from "@alliance/shared/lib/analytics";
 import {
   buildNotificationRenderItems,
-  getNotificationTime,
   LikesBucket,
   NotificationRenderItem,
 } from "@alliance/shared/lib/notificationBucketing";
 import {
-  getNotificationIdentityKey,
-  getNotificationReadRequest,
-} from "@alliance/shared/lib/notificationIdentity";
+  useNotificationsCache,
+  useNotificationsList,
+} from "@alliance/shared/lib/useNotificationsCache";
 import { LegendList } from "@legendapp/list";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { RelativePathString, router } from "expo-router";
+import { router } from "expo-router";
 import { Ellipsis } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
 import {
@@ -35,24 +28,10 @@ import SwipeableNotification from "../../components/SwipeableNotification";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
 import Text from "../../components/system/Text";
 import { useAuth } from "../../lib/AuthContext";
+import { notificationRoute } from "../../lib/notificationRoute";
 import { colors } from "../../lib/style/colors";
 
-const normalizeLocation = (location: string | null) => {
-  if (!location) return null;
-  const normalized = location.startsWith("/") ? location : `/${location}`;
-  const [path, query] = normalized.split("?");
-  const segments = path.split("/").filter(Boolean);
-
-  if (segments[0] === "tasks") {
-    return "/";
-  }
-
-  return query ? `${path}?${query}` : path;
-};
-
 export default function NotificationsScreen() {
-  const queryClient = useQueryClient();
-
   const { user } = useAuth();
 
   const [overflowOpen, setOverflowOpen] = useState(false);
@@ -62,31 +41,23 @@ export default function NotificationsScreen() {
     isPending,
     isRefetching,
     error,
-    refetch,
-  } = useQuery({
-    queryKey: ["notifications"],
-    queryFn: () =>
-      notifsFindAll().then((res) => {
-        return res.data;
-      }),
-  });
+  } = useNotificationsList();
+  const {
+    markAllRead,
+    markRead,
+    refresh: refreshNotifications,
+  } = useNotificationsCache();
 
-  const refreshNotifications = useCallback(() => {
-    refetch();
-    queryClient.invalidateQueries({
-      queryKey: ["notifications", "unreadCount"],
-    });
-  }, [refetch, queryClient]);
+  const markNotificationsRead = useCallback(
+    (notificationsToMark: NotificationDto[]) => {
+      void markRead(notificationsToMark).catch((error) => {
+        console.error("failed to mark notifications as read", error);
+      });
+    },
+    [markRead],
+  );
 
-  const notifications = useMemo(() => {
-    if (!response) return [];
-    return response
-      .sort(
-        (a, b) =>
-          getNotificationTime(b).getTime() - getNotificationTime(a).getTime(),
-      )
-      .filter((notif) => getNotificationTime(notif).getTime() <= Date.now());
-  }, [response]);
+  const notifications = useMemo(() => response ?? [], [response]);
 
   const unreadTotal = useMemo(() => {
     return response?.filter((n) => !n.readAt).length ?? 0;
@@ -100,59 +71,10 @@ export default function NotificationsScreen() {
   const handleMarkAllAsRead = useCallback(async () => {
     if (unreadTotal === 0) return;
 
-    await queryClient.cancelQueries({ queryKey: ["notifications"] });
-    await queryClient.cancelQueries({
-      queryKey: ["notifications", "unreadCount"],
-    });
-
-    // Backend marks everything read; we also update cached list for snappy UX.
-    const prevNotifications = queryClient.getQueryData<NotificationDto[]>([
-      "notifications",
-    ]);
-    const prevUnreadCount = queryClient.getQueryData<number>([
-      "notifications",
-      "unreadCount",
-    ]);
-
-    const readAt = new Date().toISOString();
-    queryClient.setQueryData(
-      ["notifications"],
-      (oldData: NotificationDto[] | undefined) => {
-        if (!oldData) return oldData;
-        return oldData.map((notification) => ({
-          ...notification,
-          readAt,
-        }));
-      },
-    );
-    queryClient.setQueryData<number>(["notifications", "unreadCount"], 0);
-
-    try {
-      const res = await notifsSetReadAll();
-      if (res && typeof res === "object" && "error" in res && res.error) {
-        throw (res as { error: unknown }).error;
-      }
-    } catch {
-      if (prevNotifications !== undefined) {
-        queryClient.setQueryData(["notifications"], prevNotifications);
-      } else {
-        queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      }
-
-      if (prevUnreadCount !== undefined) {
-        queryClient.setQueryData(
-          ["notifications", "unreadCount"],
-          prevUnreadCount,
-        );
-      } else {
-        queryClient.invalidateQueries({
-          queryKey: ["notifications", "unreadCount"],
-        });
-      }
-    }
+    await markAllRead();
 
     captureEvent(AnalyticsEvent.NotificationsMarkedAllAsRead);
-  }, [queryClient, unreadTotal]);
+  }, [markAllRead, unreadTotal]);
 
   const markAllOverflow = (() => {
     if (unreadTotal === 0) return null;
@@ -198,46 +120,8 @@ export default function NotificationsScreen() {
     );
   })();
 
-  const markNotificationsRead = useCallback(
-    (notificationsToMark: Pick<NotificationDto, "id" | "sourceType">[]) => {
-      if (notificationsToMark.length === 0) {
-        return;
-      }
-
-      const keys = new Set(
-        notificationsToMark.map((notification) =>
-          getNotificationIdentityKey(notification),
-        ),
-      );
-      const readAt = new Date().toISOString();
-      queryClient.setQueryData(
-        ["notifications"],
-        (oldData: typeof response) => {
-          if (!oldData) return oldData;
-          return oldData.map((notification) =>
-            keys.has(getNotificationIdentityKey(notification))
-              ? { ...notification, readAt }
-              : notification,
-          );
-        },
-      );
-      queryClient.setQueryData<number>(
-        ["notifications", "unreadCount"],
-        (prev) =>
-          Math.max(
-            (prev ??
-              notifications.filter((notification) => !notification.readAt)
-                .length) - notificationsToMark.length,
-            0,
-          ),
-      );
-    },
-    [notifications, queryClient],
-  );
-
   const handleMarkAsRead = useCallback(
     (notification: NotificationDto) => {
-      notifsSetRead(getNotificationReadRequest(notification));
       markNotificationsRead([notification]);
       captureEvent(AnalyticsEvent.NotificationMarkedRead, {
         notificationId: notification.id,
@@ -256,9 +140,6 @@ export default function NotificationsScreen() {
         return;
       }
 
-      unreadLikes.forEach((notification) => {
-        notifsSetRead(getNotificationReadRequest(notification));
-      });
       markNotificationsRead(unreadLikes);
     },
     [markNotificationsRead],
@@ -267,11 +148,10 @@ export default function NotificationsScreen() {
   const handleNotificationPress = useCallback(
     (notification: NotificationDto) => {
       if (!notification.readAt) {
-        notifsSetRead(getNotificationReadRequest(notification));
         markNotificationsRead([notification]);
       }
 
-      const destination = normalizeLocation(
+      const destination = notificationRoute(
         notification.mobileAppLocation ?? notification.webAppLocation ?? null,
       );
 
@@ -283,7 +163,7 @@ export default function NotificationsScreen() {
       });
 
       if (destination) {
-        router.push(destination as RelativePathString);
+        router.push(destination);
       }
     },
     [markNotificationsRead],

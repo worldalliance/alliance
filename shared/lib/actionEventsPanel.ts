@@ -65,7 +65,6 @@ export function associateUpdatesWithEvents(
     ...event,
     updates: updates.filter(
       (update) =>
-        update.associatedEventId !== undefined &&
         update.associatedEventId === event.id &&
         new Date(update.date).getTime() <= now, // don't show future updates
     ),

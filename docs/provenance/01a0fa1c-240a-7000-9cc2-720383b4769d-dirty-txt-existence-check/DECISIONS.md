@@ -1,0 +1,6 @@
+- Both rules live in the existing `.github/actions/dirty-check` composite action, selected by a required `check` input: `exists` fails on a missing file, `empty` fails on content and tolerates a missing file. Each caller names its rule, so the two cannot drift apart.
+- `deploy.yaml` runs the action on every push: `empty` on `production`, `exists` on `main`. This keeps the earlier production-only content gate and catches a deletion on `main`.
+- `ci.yaml` gains a `dirty-check` job running `exists` on PRs into `main` only, so a PR deleting the file fails before merge while a PR that fills the file (to freeze production) still passes.
+- Dispatched OTA publishes run `empty` only. `origin/production` has no `dirty.txt` (deleted in `619d5fd61`), and the dispatch only accepts commits in the live production deploy, so an existence check there would reject every eligible commit. A review raised this.
+- The `ci.yaml` job skips PRs into `production`, which has no `dirty.txt` yet; a hotfix PR there would otherwise get a red check telling its author to add a file production lacks. A review raised this.
+- The check logic lives in `.github/actions/dirty-check/check.sh`, called from `action.yml` like the sibling actions' scripts, so `check.test.ts` can run it across every check/file-state pair. A review raised the missing test.

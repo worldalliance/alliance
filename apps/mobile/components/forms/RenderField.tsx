@@ -1,3 +1,4 @@
+/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { formatCityValue, parseCityValue } from "@alliance/common/forms/city";
 import type {
   AnyField,
@@ -5,31 +6,45 @@ import type {
   FormValue,
   ListField,
   PhoneField,
-  RangeField,
   TimeField,
 } from "@alliance/common/forms/form-schema";
+import { getMaxSelections } from "@alliance/common/forms/multiselect";
+import { getRangeValues } from "@alliance/common/forms/range";
 import { withCount } from "@alliance/common/plural";
 import type { UserDto } from "@alliance/shared/client";
 import {
+  resolvePickedPreview,
   resolveUploadSlot,
+  type FilePick,
   type FileUploadSlot,
   type FileUploadSlots,
 } from "@alliance/shared/forms/fileUploadSlots";
+import { offersNoOptions } from "@alliance/shared/forms/formulaChoices";
 import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
 import {
   CARD_ID_KEY,
+  cardSubFields,
   defaultCardCount,
+  listCardLimits,
   listCardWriters,
   resolveCards,
 } from "@alliance/shared/forms/listCards";
-import { shuffleWithSeed } from "@alliance/shared/forms/randomutils";
+import { markdownPlainText } from "@alliance/shared/forms/optionSearch";
 import {
+  buildTimeOfDayOptions,
+  commitTimeInput,
   formatTimeForDisplay,
   parseTimeInput,
 } from "@alliance/shared/forms/timeUtils";
+import { useFieldOptionSections } from "@alliance/shared/forms/useFieldOptionSections";
+import {
+  cancelImageUpload,
+  noOptionsAvailable,
+} from "@alliance/shared/lib/copy";
 import { usePhoneFieldCountry } from "@alliance/shared/lib/usePhoneNumberField";
 import { cn } from "@alliance/shared/styles/util";
-import { ChevronDown } from "lucide-react-native";
+import type { FieldConditionContext } from "@alliance/shared/useFormRenderer";
+import { ChevronDown, X } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Image,
@@ -43,7 +58,10 @@ import { getImageSource } from "../../lib/config";
 import { pickImageDataUri } from "../../lib/pickImageDataUri";
 import { colors } from "../../lib/style/colors";
 import AppMarkdownWrapper from "../AppMarkdownWrapper";
-import BottomSheetOptionPicker from "../BottomSheetOptionPicker";
+import BottomSheetOptionPicker, {
+  BottomSheetMultiOptionPicker,
+  sectionedRows,
+} from "../BottomSheetOptionPicker";
 import InlineLabelMarkdownWrapper from "../InlineLabelMarkdownWrapper";
 import Button, { ButtonColor, ButtonSize } from "../system/Button";
 import Card, { CardStyle } from "../system/Card";
@@ -52,6 +70,7 @@ import Checkbox, { CheckboxSize } from "../system/Checkbox";
 import Text, { FontWeight } from "../system/Text";
 import CityAutosuggest from "./CityAutosuggest";
 import { getCustomComponentById } from "./customComponentRegistry";
+import { fieldAccessibilityLabel } from "./fieldAccessibilityLabel";
 import FormModal from "./FormModal";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
 import PhoneNumberInput from "./PhoneNumberInput";
@@ -74,33 +93,14 @@ export type RenderFieldProps = {
   isOutputView?: boolean;
   user?: Omit<UserDto, "email">;
   hideLabel?: boolean;
-  formData?: Record<string, FormValue>;
-  isFieldRequired?: (
-    field: AnyField,
-    data?: Record<string, FormValue>,
-  ) => boolean;
+  fieldContext: FieldConditionContext;
 };
 
 const sharedInputClasses =
   "w-full rounded-lg border bg-white px-3 py-3 text-base text-zinc-900";
 const TEXTAREA_LINE_HEIGHT = 24;
 const TEXTAREA_VERTICAL_PADDING = 12;
-const DEFAULT_RANGE_OPTION_COUNT = 10;
-const MIN_RANGE_OPTION_COUNT = 2;
-const MAX_RANGE_OPTION_COUNT = 50;
 type ChoiceOption = { label: string; value: string };
-
-const getRangeValues = (field: RangeField): number[] => {
-  const desired = field.optionCount ?? DEFAULT_RANGE_OPTION_COUNT;
-  const normalized = Number.isFinite(desired)
-    ? Math.floor(desired)
-    : DEFAULT_RANGE_OPTION_COUNT;
-  const optionCount = Math.min(
-    MAX_RANGE_OPTION_COUNT,
-    Math.max(MIN_RANGE_OPTION_COUNT, normalized),
-  );
-  return Array.from({ length: optionCount }, (_, index) => index + 1);
-};
 
 const renderValidationMessage = (message: string | null) =>
   message ? (
@@ -149,11 +149,10 @@ export function RenderField({
   isOutputView,
   user,
   hideLabel,
-  formData,
-  isFieldRequired,
+  fieldContext,
 }: RenderFieldProps) {
   const [selectOpen, setSelectOpen] = useState(false);
-  const required = isFieldRequired ? isFieldRequired(field) : !!field.required;
+  const required = fieldContext.isFieldRequired(field);
   const errorMessage =
     typeof error === "string" && error.trim().length > 0 ? error : null;
   const hasError = Boolean(errorMessage);
@@ -161,30 +160,13 @@ export function RenderField({
     hasError ? "border-red-500" : "border-zinc-200"
   } ${disabled ? "opacity-60" : ""}`;
 
-  const randomizationSeedBase =
-    randomizationKey && randomizationKey.length > 0
-      ? `${randomizationKey}:${field.id}`
-      : field.id;
-  const randomizedOptions = useMemo(() => {
-    if (
-      field.kind !== "radio" &&
-      field.kind !== "multiselect" &&
-      field.kind !== "select"
-    ) {
-      return null;
-    }
-    const options = field.options ?? [];
-    if (
-      disableOptionRandomization ||
-      !field.randomizeOptions ||
-      options.length <= 1
-    ) {
-      return options;
-    }
-    return shuffleWithSeed(options, randomizationSeedBase);
-  }, [field, randomizationSeedBase, disableOptionRandomization]);
+  const { sections, randomizedOptions } = useFieldOptionSections({
+    field,
+    randomizationKey,
+    disableOptionRandomization,
+  });
 
-  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [filePreview, setFilePreview] = useState<FilePick | null>(null);
   const [pickerError, setPickerError] = useState<string | null>(null);
   // The library sheet is open across an await, before any upload has started,
   // so `uploading` cannot keep a second tap out.
@@ -196,11 +178,22 @@ export function RenderField({
     uploadError,
   } = resolveUploadSlot({ fileUpload, fileUploadSlot, fieldId: field.id });
 
-  useEffect(() => {
-    if (uploadError) {
-      setFilePreview(null);
-    }
-  }, [uploadError]);
+  if (onChange !== undefined && !disabled && offersNoOptions(field)) {
+    return (
+      <View>
+        <RenderLabel
+          field={field}
+          isOutputView={isOutputView}
+          hideLabel={hideLabel}
+          required={required}
+        />
+        <View className={cn(inputBase, "opacity-60")}>
+          <Text className="text-base text-zinc-400">{noOptionsAvailable}</Text>
+        </View>
+        {renderValidationMessage(errorMessage)}
+      </View>
+    );
+  }
 
   switch (field.kind) {
     case "text":
@@ -213,6 +206,7 @@ export function RenderField({
             required={required}
           />
           <TextInput
+            accessibilityLabel={fieldAccessibilityLabel(field)}
             className={inputBase}
             value={(value as string) ?? ""}
             onChangeText={(text) => onChange?.(text)}
@@ -236,6 +230,7 @@ export function RenderField({
             required={required}
           />
           <TextInput
+            accessibilityLabel={fieldAccessibilityLabel(field)}
             className={cn(inputBase, "text-base")}
             style={{
               lineHeight: TEXTAREA_LINE_HEIGHT,
@@ -276,6 +271,7 @@ export function RenderField({
             required={required}
           />
           <TextInput
+            accessibilityLabel={fieldAccessibilityLabel(field)}
             className={inputBase}
             value={(value as string) ?? ""}
             onChangeText={(text) => onChange?.(text)}
@@ -318,6 +314,7 @@ export function RenderField({
             required={required}
           />
           <TextInput
+            accessibilityLabel={fieldAccessibilityLabel(field)}
             className={inputBase}
             value={value === undefined || value === null ? "" : String(value)}
             onChangeText={(text) => {
@@ -399,6 +396,8 @@ export function RenderField({
                         }
                   }
                   disabled={disabled}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked, disabled }}
                 >
                   <Text
                     className={cn(
@@ -450,9 +449,11 @@ export function RenderField({
                 <TouchableOpacity
                   key={optIndex}
                   className="flex-row items-start py-2"
-                  onPress={() => onChange?.(option.value)}
+                  onPress={() => onChange?.(selected ? "" : option.value)}
                   disabled={disabled}
                   activeOpacity={0.7}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: selected, disabled }}
                 >
                   <View
                     className={cn(
@@ -495,27 +496,58 @@ export function RenderField({
             hideLabel={hideLabel}
             required={required}
           />
-          <TouchableOpacity
-            className={cn(inputBase, "flex-row items-center justify-between")}
-            onPress={() => setSelectOpen(true)}
-            disabled={disabled}
-            activeOpacity={0.8}
-          >
-            <Text
-              className={cn(
-                "text-base",
-                selectedLabel ? "text-zinc-900" : "text-zinc-400",
-              )}
+          <View>
+            <TouchableOpacity
+              className={cn(inputBase, "pr-20")}
+              onPress={() => setSelectOpen(true)}
+              disabled={disabled}
+              activeOpacity={0.8}
             >
-              {selectedLabel || "Select an option"}
-            </Text>
-            <ChevronDown size={18} color={colors.text.icon} />
-          </TouchableOpacity>
+              <Text
+                className={cn(
+                  "text-base",
+                  selectedLabel ? "text-zinc-900" : "text-zinc-400",
+                )}
+              >
+                {selectedLabel || "Select an option"}
+              </Text>
+            </TouchableOpacity>
+            <View
+              className={cn(
+                "absolute inset-y-0 right-3 flex-row items-center",
+                disabled && "opacity-60",
+              )}
+              pointerEvents="box-none"
+            >
+              {!disabled &&
+                onChange &&
+                typeof value === "string" &&
+                value !== "" && (
+                  <TouchableOpacity
+                    className="p-2"
+                    onPress={() => onChange("")}
+                    hitSlop={{ top: 8, bottom: 8, left: 8 }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Clear selection"
+                  >
+                    <X size={18} color={colors.text.icon} />
+                  </TouchableOpacity>
+                )}
+              <View pointerEvents="none">
+                <ChevronDown
+                  size={18}
+                  color={selectedLabel ? colors.text.icon : colors.text.light}
+                />
+              </View>
+            </View>
+          </View>
           <BottomSheetOptionPicker
             visible={selectOpen}
             onClose={() => setSelectOpen(false)}
             title="Select"
+            searchable={field.searchable}
             options={options}
+            categories={field.categories}
             value={value as string | undefined}
             onSelect={(v) => onChange?.(v)}
           />
@@ -533,9 +565,24 @@ export function RenderField({
         field.options ??
         []) as ChoiceOption[];
 
+      const maxSelections = getMaxSelections(field);
       const maxReached =
-        field.maxSelections !== undefined &&
-        selectedCount >= field.maxSelections;
+        maxSelections !== undefined && selectedCount >= maxSelections;
+      const setSelected = ({
+        value: optionValue,
+        selected,
+      }: {
+        value: string;
+        selected: boolean;
+      }) =>
+        onChange?.(
+          selected
+            ? [...selections, optionValue]
+            : selections.filter((v) => v !== optionValue),
+        );
+      const selectedOptions = options.filter((option) =>
+        selections.includes(option.value),
+      );
 
       return (
         <View>
@@ -545,39 +592,98 @@ export function RenderField({
             hideLabel={hideLabel}
             required={required}
           />
-          <View className={cn(hasError && "border-l-2 border-red-500 pl-3")}>
-            {options.map((option: ChoiceOption, optIndex: number) => {
-              const checked = selections.includes(option.value);
-              const disabledOption = disabled || (!checked && maxReached);
-              return (
-                <Checkbox
-                  key={optIndex}
-                  checked={checked}
-                  disabled={disabledOption}
-                  error={hasError}
-                  label={option.label}
-                  size={CheckboxSize.Small}
-                  className="py-2"
-                  onChange={(next) => {
-                    if (!onChange) return;
-                    const currentValues = Array.isArray(value)
-                      ? value.filter(
-                          (item): item is string => typeof item === "string",
-                        )
-                      : [];
-                    onChange(
-                      next
-                        ? [...currentValues, option.value]
-                        : currentValues.filter((v) => v !== option.value),
-                    );
-                  }}
-                />
-              );
-            })}
-          </View>
-          {field.maxSelections !== undefined && (
+          {field.dropdown ? (
+            <>
+              <TouchableOpacity
+                className={cn(
+                  inputBase,
+                  "flex-row items-center justify-between",
+                )}
+                onPress={() => setSelectOpen(true)}
+                disabled={disabled}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+              >
+                <Text
+                  className={cn(
+                    "text-base",
+                    selectedCount > 0 ? "text-zinc-900" : "text-zinc-400",
+                  )}
+                >
+                  {selectedCount > 0
+                    ? `${selectedCount} selected`
+                    : "Select options…"}
+                </Text>
+                <ChevronDown size={18} color={colors.text.icon} />
+              </TouchableOpacity>
+              {selectedOptions.length > 0 && (
+                <View className="mt-2 flex-row flex-wrap gap-2">
+                  {selectedOptions.map((option) => (
+                    <View
+                      key={option.value}
+                      className="max-w-full flex-row items-center gap-1 rounded-full bg-zinc-100 px-3 py-1"
+                    >
+                      <View className="shrink">
+                        <InlineLabelMarkdownWrapper>
+                          {option.label}
+                        </InlineLabelMarkdownWrapper>
+                      </View>
+                      {!disabled && onChange && (
+                        <TouchableOpacity
+                          onPress={() =>
+                            setSelected({
+                              value: option.value,
+                              selected: false,
+                            })
+                          }
+                          hitSlop={15}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Remove ${markdownPlainText(option.label)}`}
+                        >
+                          <X size={14} color={colors.text.icon} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ))}
+                </View>
+              )}
+              <BottomSheetMultiOptionPicker
+                visible={selectOpen}
+                onClose={() => setSelectOpen(false)}
+                title="Select"
+                searchable={field.searchable}
+                options={options}
+                categories={field.categories}
+                values={selections}
+                maxReached={maxReached}
+                onToggle={setSelected}
+              />
+            </>
+          ) : (
+            <View className={cn(hasError && "border-l-2 border-red-500 pl-3")}>
+              {sectionedRows(sections ?? [], (option) => {
+                const checked = selections.includes(option.value);
+                const disabledOption = disabled || (!checked && maxReached);
+                return (
+                  <Checkbox
+                    key={option.value}
+                    checked={checked}
+                    disabled={disabledOption}
+                    error={hasError}
+                    label={option.label}
+                    size={CheckboxSize.Small}
+                    className="py-2"
+                    onChange={(selected) =>
+                      setSelected({ value: option.value, selected })
+                    }
+                  />
+                );
+              })}
+            </View>
+          )}
+          {maxSelections !== undefined && (
             <Text className="text-xs text-gray-500">
-              Select up to {withCount(field.maxSelections, "option")}
+              Select up to {withCount(maxSelections, "option")}
             </Text>
           )}
           {renderValidationMessage(errorMessage)}
@@ -595,6 +701,7 @@ export function RenderField({
             required={required}
           />
           <TextInput
+            accessibilityLabel={fieldAccessibilityLabel(field)}
             className={inputBase}
             value={(value as string) ?? ""}
             onChangeText={(text) => onChange?.(text)}
@@ -663,6 +770,7 @@ export function RenderField({
             debounceMs={(field as CityField).debounceMs}
             disabled={disabled}
             allowCustomValue
+            accessibilityLabel={fieldAccessibilityLabel(field)}
             onSelect={(city) => onChange?.(city)}
           />
           {renderValidationMessage(errorMessage)}
@@ -672,7 +780,7 @@ export function RenderField({
 
     case "file": {
       const currentPreview =
-        filePreview ||
+        resolvePickedPreview({ pick: filePreview, value, uploading }) ??
         (typeof value === "string" && value ? getImageSource(value) : null);
 
       const pickImage = async () => {
@@ -690,7 +798,7 @@ export function RenderField({
           if (!picked.value) {
             return;
           }
-          setFilePreview(picked.value.uri);
+          setFilePreview({ uri: picked.value.uri, replaces: value });
           void fileUpload.onFileSelected(uploadSlot, picked.value.dataUri);
         } finally {
           pickingRef.current = false;
@@ -724,6 +832,16 @@ export function RenderField({
                 <Text className="text-base">Choose photo</Text>
               )}
             </TouchableOpacity>
+            {uploading && (
+              <TouchableOpacity
+                onPress={() => fileUpload?.cancelUpload(uploadSlot)}
+                accessibilityLabel={cancelImageUpload}
+                hitSlop={8}
+                className="p-2"
+              >
+                <X size={20} color="#71717a" />
+              </TouchableOpacity>
+            )}
           </View>
           {pickerError || uploadError ? (
             <Text className="text-xs text-red-500 mt-2">
@@ -737,20 +855,9 @@ export function RenderField({
 
     case "list": {
       const listField = field as ListField;
-      const subFields = listField.fields ?? [];
       const defaultCount = defaultCardCount(listField);
-      const minCards = Math.max(0, Math.floor(Number(listField.min || 0)));
-      const maxCards =
-        typeof listField.max === "number" && listField.max >= 0
-          ? Math.floor(listField.max)
-          : Infinity;
+      const { minCards, maxCards } = listCardLimits(listField);
       const cards = resolveCards({ value, defaultCardCount: defaultCount });
-      const hiddenInOutputIds = new Set(
-        isOutputView ? (listField.outputViewHiddenFieldIds ?? []) : [],
-      );
-      const visibleSubFields = subFields.filter(
-        (subField) => !hiddenInOutputIds.has(subField.id),
-      );
       const canDelete = cards.length > minCards;
       const { addCard, removeCard, updateCard } = listCardWriters({
         onChange,
@@ -769,13 +876,23 @@ export function RenderField({
           <View className="gap-3">
             {cards.map((card, cardIndex) => {
               const cardId = card[CARD_ID_KEY];
+              const row = fieldContext.forRow(card);
+              const subFields = cardSubFields({
+                listField,
+                card,
+                row,
+                isOutputView,
+              });
+              if (isOutputView && subFields.length === 0) {
+                return null;
+              }
               return (
                 <Card
                   key={cardId}
                   cardStyle={CardStyle.White}
                   className="border border-zinc-200 gap-4"
                 >
-                  {visibleSubFields.map((subField) => (
+                  {subFields.map((subField) => (
                     <RenderField
                       key={subField.id}
                       field={subField}
@@ -809,14 +926,7 @@ export function RenderField({
                       disableOptionRandomization={disableOptionRandomization}
                       isOutputView={isOutputView}
                       user={user}
-                      // A sub-field's requiredIfFormula can reference either the
-                      // surrounding answers or its own card.
-                      isFieldRequired={
-                        isFieldRequired
-                          ? (sub: AnyField) =>
-                              isFieldRequired(sub, { ...formData, ...card })
-                          : undefined
-                      }
+                      fieldContext={row}
                     />
                   ))}
                   {!disabled && (
@@ -1029,6 +1139,7 @@ export function PhoneInputField({
           }
         }}
         disabled={disabled || !onChange}
+        accessibilityLabel={fieldAccessibilityLabel(field)}
         placeholder={field.placeholder || "Enter phone number"}
         error={baseError}
       />
@@ -1072,35 +1183,18 @@ export function TimeInputField({
   }, [normalizedValue]);
 
   const commitValue = () => {
-    const raw = inputValue.trim();
-    if (!raw) {
-      setLocalError(required ? "Enter a time such as 7:30 PM" : null);
-      onChange?.("");
-      return;
-    }
-    const parsed = parseTimeInput(raw);
-    if (!parsed) {
-      setLocalError("Enter a time such as 7:30 PM");
-      return;
-    }
-    setLocalError(null);
-    const normalized = parsed.normalized;
-    onChange?.(normalized);
-    setInputValue(formatTimeForDisplay(normalized));
+    const { answer, error } = commitTimeInput({ raw: inputValue, required });
+    setLocalError(error);
+    if (answer === null) return;
+    onChange?.(answer);
+    if (answer) setInputValue(formatTimeForDisplay(answer));
   };
 
   const effectiveError = localError ?? baseError ?? null;
   const hasError = Boolean(effectiveError);
 
   const timeOptions = useMemo(
-    () =>
-      Array.from({ length: 24 * 2 }, (_, i) => {
-        const hours = Math.floor(i / 2);
-        const minutes = i % 2 === 0 ? "00" : "30";
-        const ampm = hours < 12 ? "AM" : "PM";
-        const displayHours = hours % 12 === 0 ? 12 : hours % 12;
-        return `${displayHours}:${minutes} ${ampm}`;
-      }),
+    () => buildTimeOfDayOptions(30).map((option) => option.label),
     [],
   );
 
@@ -1124,6 +1218,7 @@ export function TimeInputField({
           )}
         >
           <TextInput
+            accessibilityLabel={fieldAccessibilityLabel(field)}
             className="flex-1 text-base text-zinc-900"
             value={inputValue}
             onChangeText={(text) => {

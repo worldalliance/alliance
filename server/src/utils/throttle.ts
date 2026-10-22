@@ -7,10 +7,14 @@ import {
 } from "@nestjs/throttler";
 import {
   ACTION_PARTNERSHIP_RESPONSE_THROTTLE,
-  JOIN_REQUEST_THROTTLE,
+  OAUTH_THROTTLE,
   SIGNUP_THROTTLE,
+  WAITLIST_ENTRY_THROTTLE,
+  WAITLIST_LINK_THROTTLE,
 } from "src/auth/signup-throttle.config";
 import { LINK_PREVIEW_THROTTLE } from "src/link-preview/link-preview-throttle.config";
+import { LINK_OPENING_THROTTLE } from "src/link-tracking/link-opening-throttle.config";
+import { DEVICE_UNLINK_THROTTLE } from "src/user/device-unlink-throttle.config";
 
 /**
  * Every named throttler in the app. `ThrottlerModule.forRoot` must be fed
@@ -19,15 +23,31 @@ import { LINK_PREVIEW_THROTTLE } from "src/link-preview/link-preview-throttle.co
  */
 export const ALL_THROTTLES: Record<string, ThrottlerOptions> = {
   ...SIGNUP_THROTTLE,
+  ...OAUTH_THROTTLE,
   ...ACTION_PARTNERSHIP_RESPONSE_THROTTLE,
-  ...JOIN_REQUEST_THROTTLE,
+  ...WAITLIST_ENTRY_THROTTLE,
+  ...WAITLIST_LINK_THROTTLE,
   ...LINK_PREVIEW_THROTTLE,
+  ...LINK_OPENING_THROTTLE,
+  ...DEVICE_UNLINK_THROTTLE,
 };
 
-/** Array form expected by `ThrottlerModule.forRoot()`. */
-export const ALL_THROTTLERS = Object.entries(ALL_THROTTLES).map(
-  ([name, options]) => ({ name, ...options }),
-);
+/**
+ * What a rate-limited caller is told. `ThrottlerGuard`'s own message is
+ * "ThrottlerException: Too Many Requests", which reaches the member verbatim:
+ * every client renders the server's `message` through `errorMessage`.
+ */
+export const THROTTLE_MESSAGE =
+  "Too many attempts from this connection. Please wait a few minutes and try again.";
+
+/** Options form expected by `ThrottlerModule.forRoot()`. */
+export const ALL_THROTTLERS = {
+  errorMessage: THROTTLE_MESSAGE,
+  throttlers: Object.entries(ALL_THROTTLES).map(([name, options]) => ({
+    name,
+    ...options,
+  })),
+};
 
 /**
  * Applies one throttle group to a route and skips every other registered

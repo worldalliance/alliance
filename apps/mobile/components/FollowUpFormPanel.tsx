@@ -1,15 +1,17 @@
-import { ExceptionEvent } from "@alliance/common/analytics";
 import { FormSchema } from "@alliance/common/forms/form-schema";
-import { tasksGetForm, tasksSubmitFollowUpForm } from "@alliance/shared/client";
 import type {
   FollowUpFormDto,
-  SubmitFollowUpFormDto,
   SubmitFormDto,
 } from "@alliance/shared/client/types.gen";
-import { computeFormStorageKey } from "@alliance/shared/formrenderer";
-import { captureException } from "@alliance/shared/lib/analytics";
+import { useFormulaSourcesRefetch } from "@alliance/shared/forms/useFormulaSourcesRefetch";
+import {
+  followUpDraftStorageKey,
+  followUpFormIntro,
+  followUpPersistKey,
+  submitFollowUpForm,
+} from "@alliance/shared/lib/followUpForm";
+import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useQuery } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Alert, View } from "react-native";
 import { useAuth } from "../lib/AuthContext";
@@ -34,64 +36,45 @@ export default function FollowUpFormPanel({
   scrollToEnd,
   onSubmitted,
 }: FollowUpFormPanelProps) {
-  const { user } = useAuth();
+  const { user, isLoading: userLoading } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [formInstanceKey, setFormInstanceKey] = useState(0);
+  const { reload: historiesReload, refetchIfSourcesChanged } =
+    useFormulaSourcesRefetch(setError);
 
   const {
     data: form,
     error: formError,
     isPending,
-  } = useQuery({
-    queryKey: ["form", followUpForm.formId],
-    queryFn: () =>
-      tasksGetForm({ path: { id: followUpForm.formId } }).then(
-        (response) => response.data,
-      ),
-  });
+  } = useTaskForm(followUpForm.formId);
 
   const handleSubmit = useCallback(
     async (data: SubmitFormDto) => {
       setError(null);
-      const body: SubmitFollowUpFormDto = {
-        answers: data.answers,
-        formSnapshotId: data.formSnapshotId,
-        visibilityValidatorResults: data.visibilityValidatorResults,
-        deviceType: data.deviceType,
-        publicAnswers: data.publicAnswers,
-        phDistinctId: data.phDistinctId,
-        sessionReplayUrl: data.sessionReplayUrl,
-        sid: data.sid,
-      };
-      const response = await tasksSubmitFollowUpForm({
-        path: { followUpFormId: followUpForm.id },
-        body,
+      const submitted = await submitFollowUpForm({
+        followUpFormId: followUpForm.id,
+        actionId,
+        data,
       });
-      if (response.response.ok) {
-        if (form) {
-          const storageKey = computeFormStorageKey({
-            formId: form.id,
-            instanceId: `follow-up-${followUpForm.id}`,
-          });
-          await AsyncStorage.removeItem(storageKey);
-        }
-        Alert.alert("Response submitted", "Thank you!");
-        setFormInstanceKey((k) => k + 1);
-        onSubmitted?.();
-      } else {
-        console.error(response.error);
-        captureException(
-          ExceptionEvent.FollowUpFormSubmitError,
-          response.error,
-          {
-            actionId,
-            followUpFormId: followUpForm.id,
-          },
-        );
+      if (!submitted.ok) {
+        if (refetchIfSourcesChanged(submitted.error)) return false;
         setError("Failed to submit. Please try again.");
+        return false;
       }
+      if (form) {
+        await AsyncStorage.removeItem(
+          followUpDraftStorageKey({
+            formId: form.id,
+            followUpFormId: followUpForm.id,
+          }),
+        );
+      }
+      Alert.alert("Response submitted", "Thank you!");
+      setFormInstanceKey((k) => k + 1);
+      onSubmitted?.();
+      return true;
     },
-    [followUpForm.id, form, actionId, onSubmitted],
+    [followUpForm.id, form, actionId, onSubmitted, refetchIfSourcesChanged],
   );
 
   if (isPending) {
@@ -112,18 +95,14 @@ export default function FollowUpFormPanel({
     );
   }
 
-  const formTitle = followUpForm.name ?? form.title;
-  const hasInstructions =
-    followUpForm.instructions != null &&
-    followUpForm.instructions.trim() !== "";
-  const showIntroCard = hasInstructions || !!formTitle;
+  const intro = followUpFormIntro(followUpForm, form.title);
 
   return (
     <Card cardStyle={CardStyle.White} className="p-4">
-      {showIntroCard && (
+      {intro.shown && (
         <Card cardStyle={CardStyle.Alert} className="mb-3 border-0 rounded-lg">
-          <Text weight={FontWeight.Semibold}>{formTitle}</Text>
-          {hasInstructions && (
+          <Text weight={FontWeight.Semibold}>{intro.title}</Text>
+          {intro.hasInstructions && (
             <View className="mt-1">
               <AppMarkdownWrapper
                 markdownContent={followUpForm.instructions ?? ""}
@@ -140,9 +119,11 @@ export default function FollowUpFormPanel({
           formSnapshotId={form.formSnapshotId}
           actionId={actionId}
           onSubmit={handleSubmit}
-          persistKey={`follow-up-${followUpForm.id}`}
+          persistKey={followUpPersistKey(followUpForm.id)}
+          reloadSourceHistories={historiesReload}
           userId={user?.id}
           user={user}
+          userLoading={userLoading}
           loadCurrentUserLocation={!!user}
           onFormStarted={() => {}}
           renderFormAsCompleted={false}

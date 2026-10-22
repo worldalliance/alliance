@@ -1,6 +1,8 @@
+/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import {
-  ActionActivityType,
+  ACTION_ACTIVITY_FEED_VISIBLE_TYPES,
   WITHDRAWAL_OPTIONS,
+  type FeedActionActivity,
   type WithdrawalOption,
 } from "@alliance/common/actionActivity";
 import { type CohortExpression } from "@alliance/common/cohort-expression";
@@ -20,6 +22,7 @@ import { Type } from "class-transformer";
 import {
   Allow,
   ArrayMaxSize,
+  ArrayUnique,
   IsArray,
   IsBoolean,
   IsDefined,
@@ -38,21 +41,28 @@ import {
 import { CommentDto } from "src/forum/dto/comment.dto";
 import { EditableContentDto } from "src/forum/dto/editablecontent.dto";
 import type { Comment } from "src/forum/entities/comment.entity";
-import type { ForumFeedComment } from "src/forum/forum.service";
+import type { ForumFeedComment } from "src/forum/forum-comment-query.service";
 import { getImageSource } from "src/images/images.service";
+import { isMissedSuiteReminderGroup } from "src/notifs/missed-suite-notice";
 import { displayOnlySchemaOf } from "src/tasks/display-only-snapshot";
 import { Form } from "src/tasks/entities/form.entity";
 import {
   FormResponse,
+  loadedFormResponseSnapshot,
   type ParsedFormResponse,
 } from "src/tasks/entities/formresponse.entity";
+import { memberSnapshotSchema } from "src/tasks/form-snapshot-schema";
 import { SubmitFormDto } from "src/tasks/form.dto";
 import { UserActionRelationPillStatus } from "src/user/dto/user-action-relations.dto";
 import { ProfileDto } from "src/user/dto/user.dto";
 import { User } from "src/user/entities/user.entity";
 import { TaskAwayStatus } from "src/utils/action-user";
 import { UserActionRelation } from "../action-activity-status";
-import { ActionActivity } from "../entities/action-activity.entity";
+import {
+  ActionActivity,
+  loadedActionActivityAction,
+  loadedActionActivityUser,
+} from "../entities/action-activity.entity";
 import { ActionEvent, ActionStatus } from "../entities/action-event.entity";
 import {
   ACTION_REVIEWERS_MAX,
@@ -61,43 +71,55 @@ import {
   REVIEWER_NAME_MAX_LENGTH,
   REVIEWER_URL_MAX_LENGTH,
 } from "../entities/action-reviewer.entity";
-import {
-  ActionSuite,
-  type ParsedActionSuite,
-} from "../entities/action-suite.entity";
+import { ActionSuite } from "../entities/action-suite.entity";
 import { ActionUpdate } from "../entities/action-update.entity";
-import { Action, type ParsedAction } from "../entities/action.entity";
+import {
+  Action,
+  loadedActionEvents,
+  loadedActionFollowUpForms,
+  loadedActionFormVariants,
+  type ParsedAction,
+} from "../entities/action.entity";
 import { GeneralUpdate } from "../entities/general-update.entity";
 import {
+  loadedReminderGroupMemberActionEvent,
   ReminderCohortType,
   ReminderGroup,
 } from "../entities/reminder-group.entity";
 import {
   ViewerActionRelation,
+  ViewerOptionalReason,
   type UserActionStatus,
   type UserActionWithdrawal,
 } from "../user-action-status";
 import { AdminFollowUpFormDto, FollowUpFormDto } from "./follow-up-form.dto";
 import { GeneralUpdateDto } from "./general-update.dto";
+import { ProjectDto } from "./project.dto";
 
-export class CreateReminderGroupDto extends PickType(ReminderGroup, [
-  "name",
-  "emailMessage",
-  "cohortType",
-  "timingMode",
-  "emailSubject",
-  "textMessage",
-  "pushMessage",
-  "sendAtAbsolute",
-  "sendAtSecondsFromDeadline",
-  "send_range_start",
-  "send_range_end",
-  "relative_range_start_seconds_from_deadline",
-  "relative_range_end_seconds_from_deadline",
-  "useSuiteTaskCount",
-  "excludeOptionalActions",
-  "excludePreviouslyNotified",
-]) {
+export class CreateReminderGroupDto extends IntersectionType(
+  PickType(ReminderGroup, [
+    "name",
+    "emailMessage",
+    "cohortType",
+    "timingMode",
+    "emailSubject",
+    "textMessage",
+    "pushMessage",
+    "useSuiteTaskCount",
+    "excludeOptionalActions",
+    "excludePreviouslyNotified",
+  ]),
+  PartialType(
+    PickType(ReminderGroup, [
+      "sendAtAbsolute",
+      "sendAtSecondsFromDeadline",
+      "send_range_start",
+      "send_range_end",
+      "relative_range_start_seconds_from_deadline",
+      "relative_range_end_seconds_from_deadline",
+    ]),
+  ),
+) {
   @ApiPropertyOptional({ type: Number, isArray: true })
   @IsOptional()
   userIds?: number[];
@@ -116,10 +138,7 @@ export class CreateReminderGroupDto extends PickType(ReminderGroup, [
   timingAnchorEventId?: number;
 }
 
-export class PreviewEmailHtmlDto extends PickType(CreateReminderGroupDto, [
-  "emailMessage",
-  "emailSubject",
-]) {
+export class ReminderPreviewContextDto {
   @ApiProperty({ type: Number })
   @IsDefined()
   @IsNumber()
@@ -136,24 +155,15 @@ export class PreviewEmailHtmlDto extends PickType(CreateReminderGroupDto, [
   uncompletedMembersInGroupCount?: number;
 }
 
-export class PreviewTextDto extends PickType(CreateReminderGroupDto, [
-  "textMessage",
-]) {
-  @ApiProperty({ type: Number })
-  @IsDefined()
-  @IsNumber()
-  taskCount: number;
+export class PreviewEmailHtmlDto extends IntersectionType(
+  PickType(CreateReminderGroupDto, ["emailMessage", "emailSubject"]),
+  ReminderPreviewContextDto,
+) {}
 
-  @ApiPropertyOptional({ enum: ReminderCohortType })
-  @IsOptional()
-  @IsEnum(ReminderCohortType)
-  cohortType?: ReminderCohortType;
-
-  @ApiPropertyOptional({ type: Number })
-  @IsOptional()
-  @IsNumber()
-  uncompletedMembersInGroupCount?: number;
-}
+export class PreviewTextDto extends IntersectionType(
+  PickType(CreateReminderGroupDto, ["textMessage"]),
+  ReminderPreviewContextDto,
+) {}
 
 export class PreviewTextMessageResponseDto {
   @ApiProperty({ type: String })
@@ -274,6 +284,19 @@ export class UserActionStatusDto {
   assigned: boolean;
 
   @ApiProperty()
+  optional: boolean;
+
+  @ApiProperty({
+    enum: ViewerOptionalReason,
+    enumName: "ViewerOptionalReason",
+    nullable: true,
+  })
+  optionalReason: ViewerOptionalReason | null;
+
+  @ApiProperty()
+  contractGap: boolean;
+
+  @ApiProperty()
   canComplete: boolean;
 
   @ApiProperty({
@@ -300,6 +323,9 @@ export class UserActionStatusDto {
   @ApiProperty()
   deadlinePassed: boolean;
 
+  @ApiProperty()
+  staffPreview: boolean;
+
   @ApiProperty({
     enum: UserActionRelationPillStatus,
     enumName: "UserActionRelationPillStatus",
@@ -308,6 +334,9 @@ export class UserActionStatusDto {
 
   constructor(input: UserActionStatus) {
     this.assigned = input.assigned;
+    this.optional = input.optional;
+    this.optionalReason = input.optionalReason;
+    this.contractGap = input.contractGap;
     this.canComplete = input.canComplete;
     this.relation = input.relation;
     this.withdrawal = input.withdrawal
@@ -318,6 +347,7 @@ export class UserActionStatusDto {
     this.memberActionStarted = input.memberActionStarted;
     this.deadlineAt = input.deadlineAt;
     this.deadlinePassed = input.deadlinePassed;
+    this.staffPreview = input.staffPreview;
     this.display = input.display;
   }
 }
@@ -381,12 +411,9 @@ export class ActionDto extends PickType(Action, [
   "image",
   "squareThumbnailImage",
   "squareThumbnailImageAlt",
-  "donationAmount",
   "body",
-  "taskContents",
   "shortDescription",
   "timeEstimate",
-  "type",
   "taskFormId",
   "createdAt",
   "updatedAt",
@@ -418,9 +445,9 @@ export class ActionDto extends PickType(Action, [
   })
   reviewers: ActionReviewerResponseDto[];
 
-  @ApiProperty({ type: () => FollowUpFormDto, isArray: true })
+  @ApiPropertyOptional({ type: () => FollowUpFormDto, isArray: true })
   @Type(() => FollowUpFormDto)
-  followUpForms: FollowUpFormDto[];
+  followUpForms?: FollowUpFormDto[];
 
   @ApiProperty()
   usersCompleted: number;
@@ -461,6 +488,10 @@ export class ActionDto extends PickType(Action, [
   @Type(() => ProfileDto)
   authors?: ProfileDto[];
 
+  @ApiPropertyOptional({ type: () => ProjectDto, nullable: true })
+  @Type(() => ProjectDto)
+  project?: ProjectDto | null;
+
   constructor(action: ParsedAction, extra?: ActionDtoExtra) {
     super();
     this.id = action.id;
@@ -470,13 +501,10 @@ export class ActionDto extends PickType(Action, [
     this.squareThumbnailImage = action.squareThumbnailImage
       ? getImageSource(action.squareThumbnailImage)
       : undefined;
-    this.squareThumbnailImageAlt = action.squareThumbnailImageAlt || undefined;
-    this.donationAmount = action.donationAmount;
+    this.squareThumbnailImageAlt = action.squareThumbnailImageAlt;
     this.body = action.body;
-    this.taskContents = action.taskContents;
     this.shortDescription = action.shortDescription;
     this.timeEstimate = action.timeEstimate;
-    this.type = action.type;
     this.taskFormId = action.taskFormId;
     this.createdAt = action.createdAt;
     this.updatedAt = action.updatedAt;
@@ -500,8 +528,9 @@ export class ActionDto extends PickType(Action, [
     this.customStatLabel = action.customStatLabel;
     this.customStatValue = action.customStatValue;
     this.customStatGoal = action.customStatGoal;
-    this.followUpForms =
-      action.followUpForms?.map((form) => new FollowUpFormDto(form)) ?? [];
+    this.followUpForms = action.followUpForms?.map(
+      (form) => new FollowUpFormDto(form),
+    );
     if (!action.reviewers) {
       throw new Error("`reviewers` relation is not loaded");
     }
@@ -509,6 +538,7 @@ export class ActionDto extends PickType(Action, [
       .sort((a, b) => a.position - b.position)
       .map((reviewer) => new ActionReviewerResponseDto(reviewer));
     this.suite = action.suite;
+    this.project = action.project && new ProjectDto(action.project);
     this.status = (action.events && action.status) ?? ActionStatus.Draft;
     this.events =
       action.events?.map((event) => new ActionEventDto(event)) || [];
@@ -541,7 +571,12 @@ export class AdminActionDto extends ActionDto {
   @Type(() => Object)
   cohortExpression?: CohortExpression | null;
 
-  @ApiProperty({ type: () => AdminFollowUpFormDto, isArray: true })
+  // eslint-disable-next-line @darraghor/nestjs-typed/api-property-matches-property-optionality -- without it, @ApiProperty keeps ActionDto's inherited required: false
+  @ApiProperty({
+    type: () => AdminFollowUpFormDto,
+    isArray: true,
+    required: true,
+  })
   @Allow()
   @Type(() => AdminFollowUpFormDto)
   followUpForms: AdminFollowUpFormDto[];
@@ -559,13 +594,61 @@ export class AdminActionDto extends ActionDto {
   @IsOptional()
   storedSquareThumbnailImage?: string;
 
+  @ApiProperty()
+  @IsDefined()
+  staffPreview: boolean;
+
+  @ApiProperty({ type: Number, isArray: true })
+  @IsDefined()
+  prerequisiteActionIds: number[];
+
+  @ApiProperty({
+    type: Date,
+    nullable: true,
+    description:
+      "The latest member_action event, when the action opens to members.",
+  })
+  @IsOptional()
+  memberActionStart: Date | null;
+
+  @ApiProperty({
+    type: Date,
+    nullable: true,
+    description: "The first event after memberActionStart.",
+  })
+  @IsOptional()
+  memberActionDeadline: Date | null;
+
   constructor(action: ParsedAction, extra?: ActionDtoExtra) {
     super(action, extra);
     this.cohortExpression = action.cohortExpression;
-    this.followUpForms =
-      action.followUpForms?.map((form) => new AdminFollowUpFormDto(form)) ?? [];
+    this.prerequisiteActionIds = action.prerequisiteActionIds;
+    this.memberActionStart = action.memberActionPhase.event?.date ?? null;
+    this.memberActionDeadline =
+      action.memberActionPhase.deadlineEvent?.date ?? null;
+    this.staffPreview = action.staffPreview;
+    this.followUpForms = loadedActionFollowUpForms(action).map(
+      (form) => new AdminFollowUpFormDto(form),
+    );
     this.storedImage = action.image ?? undefined;
     this.storedSquareThumbnailImage = action.squareThumbnailImage ?? undefined;
+  }
+}
+
+export class AdminActionListItemDto extends AdminActionDto {
+  @ApiProperty({
+    type: Number,
+    isArray: true,
+    description: "Forms of the action's variants, besides its task form.",
+  })
+  @IsDefined()
+  variantFormIds: number[];
+
+  constructor(action: ParsedAction, extra?: ActionDtoExtra) {
+    super(action, extra);
+    this.variantFormIds = loadedActionFormVariants(action).map(
+      (variant) => variant.formId,
+    );
   }
 }
 
@@ -576,12 +659,8 @@ export class CreateActionDto extends IntersectionType(
     "category",
     "image",
     "squareThumbnailImage",
-    "squareThumbnailImageAlt",
-    "donationAmount",
     "body",
     "shortDescription",
-    "timeEstimate",
-    "type",
     "taskFormId",
     "isContractSigningAction",
     "visibilityMode",
@@ -591,14 +670,20 @@ export class CreateActionDto extends IntersectionType(
     "publicOnly",
     "shouldCompleteAfterDeadline",
     "isForumParticipationAction",
-    "forumParticipationPostId",
-    "forumParticipationIncludeChildren",
-    "computedAutocompleteAt",
     "customStatType",
     "customStatLabel",
     "customStatValue",
     "customStatGoal",
   ]),
+  PartialType(
+    PickType(ActionDto, [
+      "squareThumbnailImageAlt",
+      "timeEstimate",
+      "forumParticipationPostId",
+      "forumParticipationIncludeChildren",
+      "computedAutocompleteAt",
+    ]),
+  ),
 ) {
   @ApiPropertyOptional({
     type: Number,
@@ -606,6 +691,11 @@ export class CreateActionDto extends IntersectionType(
   })
   @IsOptional()
   suiteId?: number | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  staffPreview?: boolean;
 
   @ApiPropertyOptional({
     type: () => ActionReviewerDto,
@@ -625,9 +715,23 @@ export class CreateActionDto extends IntersectionType(
   })
   @IsOptional()
   authorIds?: number[];
+
+  @ApiPropertyOptional({
+    type: Number,
+    isArray: true,
+    description:
+      "Actions each member waits for before this action's cohort decides them",
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsInt({ each: true })
+  prerequisiteActionIds?: number[];
 }
 
-export class UpdateActionDto extends PartialType(CreateActionDto) {}
+export class UpdateActionDto extends PartialType(CreateActionDto, {
+  skipNullProperties: false,
+}) {}
 
 export class SetActionPriorityDto extends PickType(Action, [
   "id",
@@ -706,7 +810,10 @@ export class FormResponseOutputDto extends PickType(FormResponse, [
     this.visibilityValidatorResults = formResponse.visibilityValidatorResults;
     this.deviceType = formResponse.deviceType;
     this.publicAnswers = formResponse.publicAnswers;
-    this.schemaSnapshot = formResponse.formSnapshot.schema;
+    this.schemaSnapshot = memberSnapshotSchema(
+      loadedFormResponseSnapshot(formResponse),
+      formResponse.assignedRow,
+    );
   }
 }
 
@@ -766,8 +873,8 @@ export class ActionActivityDto extends PickType(ActionActivity, [
     this.createdAt = actionActivity.createdAt;
     this.actionId = actionActivity.actionId;
     this.likesCount = actionActivity.likesCount;
-    this.actionName = actionActivity.action?.name;
-    this.user = new ProfileDto(actionActivity.user);
+    this.actionName = loadedActionActivityAction(actionActivity).name;
+    this.user = new ProfileDto(loadedActionActivityUser(actionActivity));
     const likers = extra?.facepile ?? actionActivity.likes;
     if (likers !== undefined) {
       this.likes = likers
@@ -792,16 +899,20 @@ export class ActionActivityDto extends PickType(ActionActivity, [
   }
 }
 
-export type UnwelcomedSignedContractMember = {
+export type WelcomeQueueMember = {
   user: User;
   actionId: number;
   activityId: number;
-  signedAt: Date;
   completedAt: Date;
   staffLikeCount: number;
 };
 
-export class UnwelcomedSignedContractMemberDto {
+export type WelcomeQueue = {
+  requiredActionCount: number;
+  members: WelcomeQueueMember[];
+};
+
+export class WelcomeQueueMemberDto {
   @ApiProperty({ type: () => ProfileDto })
   @Type(() => ProfileDto)
   user: ProfileDto;
@@ -813,21 +924,33 @@ export class UnwelcomedSignedContractMemberDto {
   activityId: number;
 
   @ApiProperty()
-  signedAt: Date;
-
-  @ApiProperty()
   completedAt: Date;
 
   @ApiProperty()
   staffLikeCount: number;
 
-  constructor(input: UnwelcomedSignedContractMember) {
+  constructor(input: WelcomeQueueMember) {
     this.user = new ProfileDto(input.user);
     this.actionId = input.actionId;
     this.activityId = input.activityId;
-    this.signedAt = input.signedAt;
     this.completedAt = input.completedAt;
     this.staffLikeCount = input.staffLikeCount;
+  }
+}
+
+export class WelcomeQueueDto {
+  @ApiProperty()
+  requiredActionCount: number;
+
+  @ApiProperty({ type: () => WelcomeQueueMemberDto, isArray: true })
+  @Type(() => WelcomeQueueMemberDto)
+  members: WelcomeQueueMemberDto[];
+
+  constructor(input: WelcomeQueue) {
+    this.requiredActionCount = input.requiredActionCount;
+    this.members = input.members.map(
+      (member) => new WelcomeQueueMemberDto(member),
+    );
   }
 }
 
@@ -905,12 +1028,16 @@ export class ActionUpdateDto extends PickType(ActionUpdate, [
   }
 }
 
-export class CreateActionUpdateDto extends PickType(ActionUpdate, [
-  "title",
-  "date",
-  "notifyType",
-  "shortNotifString",
-]) {
+export class CreateActionUpdateDto extends IntersectionType(
+  PickType(ActionUpdate, ["title", "date", "notifyType", "shortNotifString"]),
+  PartialType(
+    PickType(ActionUpdate, [
+      "splitCollectiveResult",
+      "nonCompleterResult",
+      "uninvolvedResult",
+    ]),
+  ),
+) {
   @ApiPropertyOptional({ type: Number })
   @IsOptional()
   associatedEventId?: number;
@@ -921,7 +1048,15 @@ export class CreateActionUpdateDto extends PickType(ActionUpdate, [
 }
 
 export class UpdateActionUpdateDto extends PartialType(
-  PickType(ActionUpdate, ["title", "date", "notifyType", "shortNotifString"]),
+  PickType(ActionUpdate, [
+    "title",
+    "date",
+    "notifyType",
+    "shortNotifString",
+    "splitCollectiveResult",
+    "nonCompleterResult",
+    "uninvolvedResult",
+  ]),
 ) {
   @ApiPropertyOptional({ type: Number, nullable: true })
   @IsOptional()
@@ -950,7 +1085,6 @@ export class ReminderGroupDto extends PickType(ReminderGroup, [
   "name",
   "timingMode",
   "actionSuite",
-  "memberActionEvent",
   "cohortType",
   "userTag",
   "users",
@@ -971,13 +1105,23 @@ export class ReminderGroupDto extends PickType(ReminderGroup, [
   "excludeOptionalActions",
   "excludePreviouslyNotified",
 ]) {
+  @ApiProperty({ type: () => ActionEvent })
+  @Type(() => ActionEvent)
+  memberActionEvent: ActionEvent;
+
+  @ApiProperty({
+    description:
+      "Whether the group's email uses a missed-suite keyword, so dispatch sends it as a missed-suite notice",
+  })
+  isMissedSuite: boolean;
+
   constructor(group: ReminderGroup) {
     super();
     this.id = group.id;
     this.name = group.name;
     this.timingMode = group.timingMode;
     this.actionSuite = group.actionSuite;
-    this.memberActionEvent = group.memberActionEvent;
+    this.memberActionEvent = loadedReminderGroupMemberActionEvent(group);
     this.cohortType = group.cohortType;
     this.userTag = group.userTag;
     this.users = group.users;
@@ -999,13 +1143,14 @@ export class ReminderGroupDto extends PickType(ReminderGroup, [
     this.allSent = group.allSent;
     this.excludeOptionalActions = group.excludeOptionalActions;
     this.excludePreviouslyNotified = group.excludePreviouslyNotified;
+    this.isMissedSuite = isMissedSuiteReminderGroup(group);
   }
 }
 
 /**
  * A dependency action's deadline event, offered as a reminder-group timing
  * anchor (`ReminderGroup.timingAnchorEvent`). Dependencies are derived from
- * the action's cohort expression (form-response and completed/in-progress
+ * the action's cohort expression (form-response and completed/missed
  * action conditions).
  */
 export type ReminderAnchorCandidate = {
@@ -1057,21 +1202,18 @@ export class ActionSuiteDto extends PickType(ActionSuite, ["id", "name"]) {
   @Allow()
   generalUpdates: GeneralUpdateDto[];
 
-  constructor(suite: ParsedActionSuite, actions?: ParsedAction[]) {
+  constructor(suite: ActionSuite, actions: ParsedAction[]) {
     super();
     this.id = suite.id;
     this.name = suite.name;
-    this.actions =
-      actions?.map((action) => new ActionDto(action)) ??
-      suite.actions?.map((action) => new ActionDto(action)) ??
-      [];
+    this.actions = actions.map((action) => new ActionDto(action));
     // Suite events are stored as per-action duplicate rows tagged suiteManaged;
     // we surface actions[0]'s copies as canonical. Brittle if actions drift —
     // any divergence (extra/missing rows, reordering) is invisible here.
-    this.events = suite.actions?.length
-      ? (suite.actions[0].events
-          ?.filter((event) => event.suiteManaged)
-          .map((event) => new ActionEventDto(event)) ?? [])
+    this.events = actions.length
+      ? loadedActionEvents(actions[0])
+          .filter((event) => event.suiteManaged)
+          .map((event) => new ActionEventDto(event))
       : [];
     this.reminderGroups =
       suite.reminderGroups?.map((group) => new ReminderGroupDto(group)) ?? [];
@@ -1196,12 +1338,6 @@ export enum GlobalFeedItemType {
   ForumComments = "forum_comments",
 }
 
-export const GlobalFeedActivityTypes = [
-  ActionActivityType.USER_COMPLETED,
-  ActionActivityType.USER_SUBMITTED_FOLLOW_UP_FORM,
-] as const satisfies ActionActivityType[];
-export type GlobalFeedActivityType = (typeof GlobalFeedActivityTypes)[number];
-
 export class GlobalFeedActivityGroupDto {
   @ApiProperty({ type: () => ProfileDto, isArray: true })
   @Type(() => ProfileDto)
@@ -1214,10 +1350,10 @@ export class GlobalFeedActivityGroupDto {
   actionName: string;
 
   @ApiProperty({
-    enum: GlobalFeedActivityTypes,
+    enum: ACTION_ACTIVITY_FEED_VISIBLE_TYPES,
     enumName: "GlobalFeedActivityTypes",
   })
-  activityType: GlobalFeedActivityType;
+  activityType: FeedActionActivity;
 
   @ApiProperty()
   count: number;

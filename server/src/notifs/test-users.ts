@@ -1,7 +1,5 @@
 import { ContractEventType } from "src/user/entities/contract-event.entity";
 import {
-  ForumDigestPreference,
-  NotificationPreference,
   PublicFormResponseDefault,
   ReferralSource,
   User,
@@ -23,23 +21,37 @@ export const testUser = new User({
       automatic: false,
       autoSuspendKey: null,
       signedName: null,
+      viaTaskForm: false,
       contractId: null,
+      deletedAt: null,
       user: { id: -1 } as User,
     },
   ],
   shareInfoPublicly: false,
-  emailNotifsForActions: false,
-  textNotifsForActions: true,
-  pushNotifsForActions: false,
-  socialNotifsPreference: NotificationPreference.All,
-  pushesForLikes: false,
-  pushesForComments: false,
-  pushesForFriendRequests: false,
-  turnedOffAllNotifs: false,
-  forumDigestPreference: ForumDigestPreference.Off,
+  inAppByDefault: true,
+  pushByDefault: false,
+  textByDefault: true,
+  emailByDefault: false,
+  legacyForumDigestPreference: "off",
+  legacyEmailNotifsForActions: false,
+  legacyTextNotifsForActions: true,
+  legacyPushNotifsForActions: false,
+  legacySocialNotifsPreference: "all",
+  legacyTurnedOffAllNotifs: false,
+  legacyPushesForLikes: false,
+  legacyPushesForComments: false,
+  legacyPushesForFriendRequests: false,
+  legacyPushesForMessages: true,
+  legacyPushesForActionUpdates: true,
+  legacyPushesForNewGroupMembers: true,
+  legacyTextsForNewGroupMembers: false,
+  legacyRemindAboutUncompletedGroupMembers: true,
+  legacyReceiveReplyNotifications: true,
   switchedDomainAt: null,
+  contractReminderSentAt: null,
   password: "",
   admin: false,
+  isTestUser: false,
   staff: false,
   staffTitle: null,
   staffLink: null,
@@ -77,8 +89,6 @@ export const testUser = new User({
   checkPassword: function (): Promise<boolean> {
     throw new Error("Function not implemented.");
   },
-  stripeCustomerId: "",
-  isNotSignedUpPartialProfile: false,
   over18: false,
   awayRanges: [],
   anonymous: false,
@@ -90,12 +100,11 @@ export const testUser = new User({
   invitedCommunities: [],
   participants: [],
   phoneNumberUnsubscribed: false,
-  remindAboutUncompletedGroupMembers: true,
-  receiveReplyNotifications: true,
-  pushesForMessages: true,
-  pushesForActionUpdates: true,
   clusterId: null,
   preferredReminderTime: null,
+  timeZone: null,
+  sessionGeneration: 0,
+  deletedAt: null,
 } satisfies Omit<
   User,
   | "friends"
@@ -105,8 +114,6 @@ export const testUser = new User({
   | "hasActiveContractAt"
   | "_hasActiveContractInFullRange"
   | "hasActiveContractInFullRange"
-  | "_isAwayAt"
-  | "isAwayAt"
   | "_isAwayAtAnyPointInRange"
   | "isAwayAtAnyPointInRange"
   | "_leaderOfIdSet"

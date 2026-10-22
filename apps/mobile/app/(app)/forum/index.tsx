@@ -1,8 +1,13 @@
-import { PostDto, forumFindAllPosts } from "@alliance/shared/client";
+import { postBylineAuthors } from "@alliance/common/postAuthors";
+import {
+  isScheduledPost,
+  scheduledPostNotice,
+} from "@alliance/shared/lib/scheduledPost";
+import { useForumPosts } from "@alliance/shared/lib/useForumPosts";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
 import { router } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useState } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
@@ -17,36 +22,14 @@ import Text, { FontWeight } from "../../../components/system/Text";
 import { colors } from "../../../lib/style/colors";
 
 export default function ForumScreen() {
-  const [posts, setPosts] = useState<PostDto[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { posts, isLoading, isError, refetch } = useForumPosts();
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchPosts = useCallback(async () => {
-    try {
-      const response = await forumFindAllPosts();
-      if (response.error) {
-        throw new Error("Failed to fetch posts");
-      }
-      setPosts(response.data || []);
-      setError(null);
-    } catch (err) {
-      setError("Failed to load forum posts");
-      console.error("Error fetching posts:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchPosts();
+    await refetch();
     setRefreshing(false);
-  }, [fetchPosts]);
+  }, [refetch]);
 
   const navigateToPost = useCallback((postId: number) => {
     router.push(`/forum/post/${postId}`);
@@ -55,14 +38,6 @@ export default function ForumScreen() {
   const navigateToCreatePost = useCallback(() => {
     router.push("/forum/create");
   }, []);
-
-  const sortedPosts = useMemo(() => {
-    return [...posts].sort((a, b) => {
-      if (a.pinned && !b.pinned) return -1;
-      if (!a.pinned && b.pinned) return 1;
-      return 0;
-    });
-  }, [posts]);
 
   return (
     <View className="flex-1 bg-white">
@@ -83,28 +58,27 @@ export default function ForumScreen() {
             <Text className="text-zinc-500">Create a new thread...</Text>
           </TouchableOpacity>
 
-          {loading ? (
+          {isLoading ? (
             <ActivityIndicator size="large" color={colors.green} />
-          ) : error ? (
+          ) : isError ? (
             <View className="bg-red-50 border border-red-200 rounded p-4">
-              <Text className="text-red-600">{error}</Text>
+              <Text className="text-red-600">Failed to load forum posts</Text>
               <TouchableOpacity
                 className="mt-3 px-3 py-2 rounded bg-white border border-zinc-200 self-start"
-                onPress={fetchPosts}
+                onPress={() => void refetch()}
                 activeOpacity={0.8}
               >
                 <Text className="text-zinc-700">Retry</Text>
               </TouchableOpacity>
             </View>
-          ) : sortedPosts.length === 0 ? (
+          ) : posts.length === 0 ? (
             <View className="items-center py-12">
               <Text className="text-zinc-500">No posts yet.</Text>
             </View>
           ) : (
             <View className="overflow-hidden bg-white">
-              {sortedPosts.map((post, index) => {
-                const isPrivateFuturePost =
-                  post.visibleAt && new Date(post.visibleAt) > new Date();
+              {posts.map((post, index) => {
+                const isPrivateFuturePost = isScheduledPost(post);
 
                 return (
                   <TouchableOpacity
@@ -128,25 +102,26 @@ export default function ForumScreen() {
                             {post.title}
                           </Text>
                         </View>
-                        {isPrivateFuturePost && post.visibleAt && (
+                        {isPrivateFuturePost && (
                           <Text className="text-sm text-blue-600 mt-1">
-                            Not visible to members yet - will be posted{" "}
-                            {formatTime(new Date(post.visibleAt), {
-                              addSuffix: true,
-                            })}
+                            {scheduledPostNotice.list(post.visibleAt)}
                           </Text>
                         )}
                       </View>
                       <View className="flex-row items-center flex-wrap gap-x-2">
-                        <View className="inline flex-row items-center w-full overflow-hidden">
-                          <ProfileImage
-                            pfp={post.author.profilePicture}
-                            size="small"
-                            className="mr-1 inline"
-                          />
-                          <Text className="text-sm">
-                            {post.author.displayName}
-                          </Text>
+                        <View className="inline flex-row flex-wrap items-center w-full">
+                          {postBylineAuthors(post).map((author, i) => (
+                            <Fragment key={author.id}>
+                              <ProfileImage
+                                pfp={author.profilePicture}
+                                size="small"
+                                className={cn("mr-1 inline", i > 0 && "ml-2")}
+                              />
+                              <Text className="text-sm">
+                                {author.displayName}
+                              </Text>
+                            </Fragment>
+                          ))}
                           <Text className="text-sm text-zinc-500">
                             {` posted ${formatTime(new Date(post.createdAt), {
                               addSuffix: true,

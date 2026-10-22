@@ -1,19 +1,26 @@
-import {
-  authForgotPassword,
-  authMe,
-  City,
-  UpdateProfileDto,
-  userMyLocation,
-} from "@alliance/shared/client";
+import { City } from "@alliance/shared/client";
+import { useNotificationSettings } from "@alliance/shared/lib/useNotificationSettings";
+import { useSeedSettingsForm } from "@alliance/shared/lib/useSeedSettingsForm";
 import { useSettingsAutosave } from "@alliance/shared/lib/useSettingsAutosave";
 import { cn } from "@alliance/shared/styles/util";
-import { useMutation } from "@tanstack/react-query";
-import { useCallback, useEffect, useState } from "react";
-import { Alert, Switch, TextInput, TouchableOpacity, View } from "react-native";
+import { useCallback, useRef, useState } from "react";
+import {
+  Alert,
+  Pressable,
+  Switch,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
+import BuildInfoCard from "../../components/BuildInfoCard";
 import PhoneNumberInput from "../../components/forms/PhoneNumberInput";
 import ReminderTimeSelect from "../../components/forms/ReminderTimeSelect";
 import TimeZoneSelect from "../../components/forms/TimeZoneSelect";
 import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
+import AccountSection from "../../components/settings/AccountSection";
+import DeviceTimeZoneOffer from "../../components/settings/DeviceTimeZoneOffer";
+import NotificationDefaults from "../../components/settings/NotificationDefaults";
 import Button, {
   ButtonColor,
   ButtonSize,
@@ -23,6 +30,8 @@ import { SimplePageTitle } from "../../components/system/SimplePageTitle";
 import Text, { FontWeight } from "../../components/system/Text";
 import { useAuth } from "../../lib/AuthContext";
 import { colors } from "../../lib/style/colors";
+
+const BUILD_INFO_TAPS = 5;
 
 type SettingsToggleRowProps = {
   label: string;
@@ -81,11 +90,9 @@ export default function SettingsPage() {
     retrySave,
   } = useSettingsAutosave(user?.id, location?.countryCode);
 
-  const [loading, setLoading] = useState(true);
-
-  const [passwordResetMessage, setPasswordResetMessage] = useState<
-    string | null
-  >(null);
+  const notificationSettings = useNotificationSettings();
+  const [statusTaps, setStatusTaps] = useState(0);
+  const scrollViewRef = useRef<KeyboardAwareScrollViewRef>(null);
 
   const handleLogout = useCallback(async () => {
     Alert.alert("Log Out", "Are you sure you want to log out?", [
@@ -100,42 +107,7 @@ export default function SettingsPage() {
     ]);
   }, [logout]);
 
-  const forgotPassword = useMutation({
-    mutationFn: (email: string) => authForgotPassword({ body: { email } }),
-  });
-
-  const handlePasswordReset = useCallback(async () => {
-    setPasswordResetMessage(null);
-    if (!user?.email) {
-      return;
-    }
-    forgotPassword.mutate(user.email);
-  }, [user?.email, forgotPassword]);
-
-  useEffect(() => {
-    if (!user) return;
-
-    authMe()
-      .then((response: { data?: { user: UpdateProfileDto } }) => {
-        if (response.data) {
-          setSavedProfile(response.data.user);
-        }
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-
-    userMyLocation().then((locationResponse) => {
-      const city = locationResponse.data?.city;
-      if (city) {
-        setLocation(city);
-        const cityId = city.id;
-        setSavedProfile((prev: UpdateProfileDto | null) =>
-          prev ? { ...prev, cityId } : { ...user, cityId },
-        );
-      }
-    });
-  }, [user, setSavedProfile]);
+  const loading = useSeedSettingsForm({ user, setSavedProfile, setLocation });
 
   if (loading) {
     return (
@@ -150,10 +122,17 @@ export default function SettingsPage() {
     );
   }
 
-  if (!user || !editableUser) {
+  // Logout clears the user before the page goes away.
+  if (!user) {
+    return null;
+  }
+
+  if (!editableUser) {
     return (
       <View className="flex-1 bg-white p-4">
-        <Text className="text-center text-zinc-500">Not found</Text>
+        <Text className="text-center text-zinc-500">
+          Couldn&apos;t load your settings.
+        </Text>
       </View>
     );
   }
@@ -162,18 +141,27 @@ export default function SettingsPage() {
     "border border-zinc-200 rounded-lg bg-white px-3 py-3 text-base";
 
   return (
-    <View className="flex-1" testID="vr-settings-ready">
+    <View
+      className="flex-1"
+      testID={
+        notificationSettings.settings || notificationSettings.loadFailed
+          ? "vr-settings-ready"
+          : undefined
+      }
+    >
       <SimplePageTitle title="Settings">
-        <Text
-          className={cn(
-            "text-sm mr-4",
-            saveStatus === "failed" ? "text-red-600" : "text-zinc-500",
-          )}
-        >
-          {saveStatusText}
-        </Text>
+        <Pressable onPress={() => setStatusTaps((taps) => taps + 1)}>
+          <Text
+            className={cn(
+              "text-sm mr-4",
+              saveStatus === "failed" ? "text-red-600" : "text-zinc-500",
+            )}
+          >
+            {saveStatusText}
+          </Text>
+        </Pressable>
       </SimplePageTitle>
-      <KeyboardAwareScrollView className="flex-1">
+      <KeyboardAwareScrollView ref={scrollViewRef} className="flex-1">
         <View className=" px-2 pb-8 pt-2 flex flex-col gap-2">
           {saveError && (
             <View className="flex-row items-center justify-between gap-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3">
@@ -265,107 +253,8 @@ export default function SettingsPage() {
               Notifications
             </Text>
 
-            <Text className="mb-2" weight={FontWeight.Medium}>
-              Receive action announcements / reminders via:
-            </Text>
-            {!(
-              editableUser.emailNotifsForActions ||
-              editableUser.textNotifsForActions ||
-              editableUser.pushNotifsForActions
-            ) && (
-              <Text className="text-sm text-zinc-500 mb-2">
-                You will not receive any notifications. Please keep a
-                notification channel enabled if you need reminders to complete
-                actions on time.
-              </Text>
-            )}
-
-            <View className="gap-3 mb-4">
-              <SettingsToggleRow
-                label="Email"
-                value={!!editableUser.emailNotifsForActions}
-                onChange={(value) =>
-                  updateEditableUser({ emailNotifsForActions: value })
-                }
-              />
-              <SettingsToggleRow
-                label="Text/SMS"
-                value={!!editableUser.textNotifsForActions}
-                onChange={(value) =>
-                  updateEditableUser({ textNotifsForActions: value })
-                }
-              />
-              <SettingsToggleRow
-                label="Push"
-                value={!!editableUser.pushNotifsForActions}
-                onChange={(value) =>
-                  updateEditableUser({ pushNotifsForActions: value })
-                }
-              />
-            </View>
-
-            <View className="gap-3 mb-4">
-              {user.leaderOfIds.length > 0 ? (
-                <SettingsToggleRow
-                  label="Receive reminders for group members with uncompleted tasks?"
-                  value={!!editableUser.remindAboutUncompletedGroupMembers}
-                  onChange={(value) =>
-                    updateEditableUser({
-                      remindAboutUncompletedGroupMembers: value,
-                    })
-                  }
-                />
-              ) : null}
-              <SettingsToggleRow
-                label="Allow notifications when you receive a reply in an ongoing action discussion?"
-                value={!!editableUser.receiveReplyNotifications}
-                onChange={(value) =>
-                  updateEditableUser({
-                    receiveReplyNotifications: value,
-                  })
-                }
-              />
-            </View>
-
-            <Text className="mb-2 mt-4" weight={FontWeight.Medium}>
-              Receive push notifications for:
-            </Text>
-            <View className="gap-3 mb-4">
-              <SettingsToggleRow
-                label="Likes"
-                value={editableUser.pushesForLikes ?? false}
-                onChange={(value) =>
-                  updateEditableUser({ pushesForLikes: value })
-                }
-              />
-              <SettingsToggleRow
-                label="Comments"
-                value={editableUser.pushesForComments ?? false}
-                onChange={(value) =>
-                  updateEditableUser({ pushesForComments: value })
-                }
-              />
-              <SettingsToggleRow
-                label="Friend requests"
-                value={editableUser.pushesForFriendRequests ?? false}
-                onChange={(value) =>
-                  updateEditableUser({ pushesForFriendRequests: value })
-                }
-              />
-              <SettingsToggleRow
-                label="Messages"
-                value={editableUser.pushesForMessages ?? false}
-                onChange={(value) =>
-                  updateEditableUser({ pushesForMessages: value })
-                }
-              />
-              <SettingsToggleRow
-                label="Action updates"
-                value={editableUser.pushesForActionUpdates ?? false}
-                onChange={(value) =>
-                  updateEditableUser({ pushesForActionUpdates: value })
-                }
-              />
+            <View className="mb-6">
+              <NotificationDefaults />
             </View>
 
             <View className="mb-4">
@@ -385,8 +274,12 @@ export default function SettingsPage() {
                 Your time zone for reminders:
               </Text>
               <TimeZoneSelect
-                value={editableUser.timeZone}
+                value={editableUser.timeZone ?? undefined}
                 onChange={(tz) => updateEditableUser({ timeZone: tz })}
+              />
+              <DeviceTimeZoneOffer
+                saved={editableUser.timeZone ?? undefined}
+                onUse={(tz) => updateEditableUser({ timeZone: tz })}
               />
             </View>
           </Card>
@@ -447,36 +340,14 @@ export default function SettingsPage() {
             <Text className="text-sm text-zinc-500 mt-2">
               You will still be able to control visibility for specific tasks.
             </Text>
-
-            <View className="mt-6">
-              <Button
-                color={ButtonColor.Black}
-                onPress={handlePasswordReset}
-                disabled={forgotPassword.isPending}
-                title={
-                  forgotPassword.isPending
-                    ? "Sending reset link..."
-                    : "Reset password"
-                }
-              />
-              {!passwordResetMessage && (
-                <Text className="text-sm text-zinc-500 mt-2">
-                  We&apos;ll send the reset link to{" "}
-                  {user.email || "your account email"}.
-                </Text>
-              )}
-              {passwordResetMessage && (
-                <Text className="text-sm text-green-600 mt-2">
-                  {passwordResetMessage}
-                </Text>
-              )}
-              {forgotPassword.isError && (
-                <Text className="text-sm text-red-700 mt-2">
-                  {forgotPassword.error?.message}
-                </Text>
-              )}
-            </View>
           </Card>
+
+          <AccountSection
+            user={user}
+            scrollTo={(y) => scrollViewRef.current?.scrollTo({ y })}
+          />
+
+          {statusTaps >= BUILD_INFO_TAPS && <BuildInfoCard />}
 
           {/* Logout */}
           <Button

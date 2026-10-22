@@ -47,7 +47,11 @@ export type TerminalActivityType = {
     : never;
 }[ActionActivityType];
 
-function isTerminalActivity<T extends Pick<ActionActivity, "type">>(
+export const TERMINAL_ACTIVITY_TYPES = Object.values(ActionActivityType).filter(
+  (type): type is TerminalActivityType => IS_TERMINAL_ACTIVITY_TYPE[type],
+);
+
+export function isTerminalActivity<T extends Pick<ActionActivity, "type">>(
   activity: T,
 ): activity is T & { type: TerminalActivityType } {
   return IS_TERMINAL_ACTIVITY_TYPE[activity.type];
@@ -65,14 +69,74 @@ function isTerminalActivity<T extends Pick<ActionActivity, "type">>(
  * Assumes `activities` are pre-filtered to one user + one action.
  */
 export function findLatestTerminalActivity<
-  T extends Pick<ActionActivity, "type" | "createdAt">,
+  T extends Pick<ActionActivity, "id" | "type" | "createdAt">,
 >(activities: T[]): (T & { type: TerminalActivityType }) | null {
   return findLeast(
     activities,
-    // most-recent-first, so "least" terminal is most recent.
-    (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+    // most-recent-first, so "least" terminal is most recent. Date drops the
+    // microseconds Postgres keeps, so a same-millisecond tie falls to the
+    // higher id, sqlIsLatestTerminalActivity's own tiebreak.
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id - a.id,
     isTerminalActivity,
   );
+}
+
+/** Each (user, action) pair's latest terminal activity. */
+export function findLatestTerminalActivities<
+  T extends Pick<
+    ActionActivity,
+    "id" | "type" | "createdAt" | "userId" | "actionId"
+  >,
+>(activities: T[]): (T & { type: TerminalActivityType })[] {
+  return [
+    ...Map.groupBy(activities, (a) => `${a.userId}:${a.actionId}`).values(),
+  ].flatMap((pair) => findLatestTerminalActivity(pair) ?? []);
+}
+
+/**
+ * Each (user, action) pair's latest terminal activity, kept only where it is a
+ * completion.
+ */
+export function findLatestCompletions<
+  T extends Pick<
+    ActionActivity,
+    "id" | "type" | "createdAt" | "userId" | "actionId"
+  >,
+>(activities: T[]): T[] {
+  return findLatestTerminalActivities(activities).filter(
+    (latest) => latest.type === ActionActivityType.USER_COMPLETED,
+  );
+}
+
+/**
+ * SQL rendering of {@link findLatestCompletions}: whether the `action_activity`
+ * row aliased `alias` is a completion that no later completion or withdrawal by
+ * the same member on the same action supersedes. At most one row per (member,
+ * action) pair passes.
+ */
+export function sqlIsLatestCompletion(alias: string): string {
+  return sqlIsLatestTerminalActivity(alias, ActionActivityType.USER_COMPLETED);
+}
+
+/** {@link sqlIsLatestCompletion}, for withdrawals. */
+export function sqlIsLatestWithdrawal(alias: string): string {
+  return sqlIsLatestTerminalActivity(
+    alias,
+    ActionActivityType.USER_WONT_COMPLETE,
+  );
+}
+
+function sqlIsLatestTerminalActivity(
+  alias: string,
+  type: TerminalActivityType,
+): string {
+  return `(${alias}.type = '${type}' AND ${alias}."deletedAt" IS NULL AND NOT EXISTS (
+    SELECT 1 FROM action_activity later
+    WHERE later."userId" = ${alias}."userId" AND later."actionId" = ${alias}."actionId"
+      AND later.type IN (${TERMINAL_ACTIVITY_TYPES.map((type) => `'${type}'`).join(", ")})
+      AND (later."createdAt", later.id) > (${alias}."createdAt", ${alias}.id)
+      AND later."deletedAt" IS NULL
+  ))`;
 }
 
 /**
@@ -87,7 +151,7 @@ export function findLatestTerminalActivity<
  */
 export function resolveUserActionRelation(params: {
   activities: CachedFilter<
-    Pick<ActionActivity, "type" | "createdAt" | "userId" | "actionId">
+    Pick<ActionActivity, "id" | "type" | "createdAt" | "userId" | "actionId">
   >;
   userId: number;
   actionId: number;

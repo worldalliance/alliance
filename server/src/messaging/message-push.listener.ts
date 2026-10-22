@@ -1,13 +1,21 @@
+import { ConversationType } from "@alliance/common/conversationType";
+import { thrownMessage, thrownStack } from "@alliance/common/errorMessage";
 import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
+import { NotificationKind } from "src/notification-settings/notification-kind";
+import { NotificationPreferencesService } from "src/notification-settings/notification-preferences.service";
+import { NotificationChannel } from "src/notifs/notif-utils";
 import { CreatePushMessage, PushService } from "src/push/push.service";
 import { conversationUrl } from "src/search/approutes";
 import { DetachedWorkTracker } from "src/utils/detached-work";
 import { Repository } from "typeorm";
 import { MessageDto } from "./dto/messaging.dto";
-import { Conversation, ConversationType } from "./entities/conversation.entity";
-import { Participant } from "./entities/participant.entity";
+import { Conversation } from "./entities/conversation.entity";
+import {
+  loadedParticipantUser,
+  Participant,
+} from "./entities/participant.entity";
 import { MessagingEvents } from "./messaging.events";
 import { MessagingGateway } from "./messaging.gateway";
 
@@ -32,6 +40,7 @@ export class MessagePushListener implements OnModuleDestroy {
     private readonly conversationRepository: Repository<Conversation>,
     private readonly pushService: PushService,
     private readonly messagingGateway: MessagingGateway,
+    private readonly preferences: NotificationPreferencesService,
   ) {
     this.eventEmitter.on(MessagingEvents.MessageCreated, this.onMessageCreated);
   }
@@ -67,31 +76,47 @@ export class MessagePushListener implements OnModuleDestroy {
 
       const activeViewers =
         await this.messagingGateway.getUsersViewingConversation(conversationId);
+      const preferences = await this.preferences.load({
+        userIds: participants.map((p) => loadedParticipantUser(p).id),
+        kinds: [NotificationKind.Messages],
+      });
 
       const eligibleParticipants = participants.filter((p) => {
-        const user = p.user;
+        const user = loadedParticipantUser(p);
         if (user.id === message.author.id) return false;
-        if (user.pushesForMessages === false) return false;
-        if (user.turnedOffAllNotifs === true) return false;
+        if (
+          !preferences.wants({
+            userId: user.id,
+            kind: NotificationKind.Messages,
+            channel: NotificationChannel.Push,
+          })
+        )
+          return false;
         if (activeViewers.has(user.id)) return false;
         return true;
       });
 
       if (!eligibleParticipants.length) return;
 
-      const body = this.buildPushBody(message, conversation);
+      const body = messagePushBody({
+        senderName: message.author.displayName,
+        body: message.body,
+        hasAttachments: !!message.attachments?.length,
+        conversation,
+      });
       const screen = conversationUrl(conversationId);
 
       const allMessages: CreatePushMessage[] = [];
 
       for (const participant of eligibleParticipants) {
+        const userId = loadedParticipantUser(participant).id;
         const messages = await this.pushService.getPushForAllUserDevices(
-          participant.user.id,
+          userId,
           {
-            userId: participant.user.id,
+            userId,
             body,
             screen,
-            idempotencyKey: `msg-${message.id}-${participant.user.id}`,
+            idempotencyKey: `msg-${message.id}-${userId}`,
           },
         );
         allMessages.push(...messages);
@@ -102,37 +127,37 @@ export class MessagePushListener implements OnModuleDestroy {
       }
     } catch (error) {
       this.logger.error(
-        `Failed to send message push notifications: ${error.message}`,
-        error.stack,
+        `Failed to send message push notifications: ${thrownMessage(error)}`,
+        thrownStack(error),
       );
     }
   }
+}
 
-  private buildPushBody(
-    message: MessageDto,
-    conversation: Conversation,
-  ): string {
-    const senderName = message.author.displayName;
-    const hasAttachments =
-      message.attachments && message.attachments.length > 0;
-    const messagePreview = message.body?.trim()
-      ? message.body.trim()
-      : hasAttachments
-        ? "Sent an image"
-        : "";
+export function messagePushBody(params: {
+  senderName: string;
+  body: string | null | undefined;
+  hasAttachments: boolean;
+  conversation: Pick<Conversation, "type" | "title">;
+}): string {
+  const { senderName, body, hasAttachments, conversation } = params;
+  const messagePreview = body?.trim()
+    ? body.trim()
+    : hasAttachments
+      ? "Sent an image"
+      : "";
 
-    if (conversation.type === ConversationType.Direct) {
-      return this.truncate(`${senderName}: ${messagePreview}`, 100);
-    }
-
-    return this.truncate(
-      `${senderName} in ${conversation.title}: ${messagePreview}`,
-      100,
-    );
+  if (conversation.type === ConversationType.Direct) {
+    return truncate(`${senderName}: ${messagePreview}`, 100);
   }
 
-  private truncate(text: string, maxLength: number): string {
-    if (text.length <= maxLength) return text;
-    return text.slice(0, maxLength - 1) + "…";
-  }
+  return truncate(
+    `${senderName} in ${conversation.title}: ${messagePreview}`,
+    100,
+  );
+}
+
+function truncate(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  return text.slice(0, maxLength - 1) + "…";
 }

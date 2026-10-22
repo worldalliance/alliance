@@ -1,4 +1,3 @@
-import { run } from "@alliance/common/run";
 import { appendQueryParam } from "@alliance/common/url";
 import {
   BadRequestException,
@@ -7,98 +6,23 @@ import {
 } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Action } from "src/actions/entities/action.entity";
-import { Community } from "src/community/entities/community.entity";
+import { softDeleteCascade, updateLive } from "src/datasources/soft-delete";
 import { InviteFeedEvents } from "src/invite-feed.events";
-import { generateCIDForShareUrl } from "src/notifs/notif-utils";
-import { actionUrl, signupUrl, withRef, withSid } from "src/search/approutes";
 import { User } from "src/user/entities/user.entity";
-import {
-  EntityManager,
-  type FindOptionsWhere,
-  In,
-  IsNull,
-  MoreThanOrEqual,
-  Not,
-  QueryFailedError,
-  Repository,
-} from "typeorm";
+import { EntityManager, IsNull, Not, Repository } from "typeorm";
 import { ExternalShareTarget } from "./entities/external-share-target.entity";
 import { ShareUrl, ShareUrlKind } from "./entities/share-url.entity";
-import {
-  inviteAssignmentColumns,
-  inviteAssignmentFromColumns,
-  type StoredInviteAssignment,
-  StoredInviteAssignmentKind,
-} from "./invite-assignment";
+import type { StoredInviteAssignment } from "./invite-assignment";
+import { normalizeShareUrlLabel } from "./share-url-label";
+import { updateLiveShareUrl } from "./share-url-locks";
+import { ownerWhere, type ShareUrlOwner } from "./share-url-owner";
 import { shareUrlPublicUrl } from "./share-url-public-url";
-import type {
-  ReusableInviteFeedItem,
-  ShareUrlMine,
-  ShareUrlWithSignupCount,
-} from "./share-url-views";
-
-const NOT_FOUND_MESSAGE: Record<ShareUrlKind, string> = {
-  [ShareUrlKind.Action]: "specified action not found",
-  [ShareUrlKind.ExternalTarget]: "specified share target not found",
-  [ShareUrlKind.Invite]: "invite share link could not be created",
-} as const;
-
-export type ShareUrlOwner =
-  | { type: "user"; userId: number }
-  | { type: "campaign"; campaignId: number };
-
-function ownerWhere(owner: ShareUrlOwner): FindOptionsWhere<ShareUrl> {
-  switch (owner.type) {
-    case "user":
-      return { user: { id: owner.userId } };
-    case "campaign":
-      return { campaign: { id: owner.campaignId } };
-    default:
-      throw new Error(`unknown share url owner: ${owner satisfies never}`);
-  }
-}
-
-function ownerColumns(owner: ShareUrlOwner): {
-  userId: number | null;
-  campaignId: number | null;
-} {
-  switch (owner.type) {
-    case "user":
-      return { userId: owner.userId, campaignId: null };
-    case "campaign":
-      return { userId: null, campaignId: owner.campaignId };
-    default:
-      throw new Error(`unknown share url owner: ${owner satisfies never}`);
-  }
-}
-
-type GetOrCreateInput =
-  | { kind: ShareUrlKind.Action; actionId: number; owner: ShareUrlOwner }
-  | {
-      kind: ShareUrlKind.ExternalTarget;
-      externalTarget: ExternalShareTarget;
-      owner: ShareUrlOwner;
-    }
-  | {
-      kind: ShareUrlKind.Invite;
-      owner: ShareUrlOwner;
-      inviteAssignment?: StoredInviteAssignment;
-    };
-
-type BuildRowInput = GetOrCreateInput & {
-  duplicate: boolean;
-  label?: string | null;
-};
-
-/** A chosen group, or no group at all, as the link stores it. */
-function inviteAssignmentFor(
-  communityId: number | null,
-): StoredInviteAssignment {
-  return communityId !== null
-    ? { kind: StoredInviteAssignmentKind.Community, communityId }
-    : { kind: StoredInviteAssignmentKind.Open };
-}
+import {
+  buildAndSaveShareUrl,
+  getOrCreateShareUrl,
+  lockExternalTarget,
+} from "./share-url-rows";
+import type { ShareUrlWithSignupCount } from "./share-url-views";
 
 /** Which target a share-url request points at, before the owner is attached. */
 export type ShareTarget =
@@ -141,12 +65,8 @@ export class ShareUrlsService {
   constructor(
     @InjectRepository(ShareUrl)
     private readonly shareUrlRepository: Repository<ShareUrl>,
-    @InjectRepository(Action)
-    private readonly actionRepository: Repository<Action>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    @InjectRepository(Community)
-    private readonly communityRepository: Repository<Community>,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
@@ -191,8 +111,7 @@ export class ShareUrlsService {
   }): Promise<ShareUrl> {
     const { owner, actionId, externalTargetId, invite, label } = params;
     const target = resolveTarget({ actionId, externalTargetId, invite });
-    const trimmedLabel = label?.trim();
-    const labelValue = trimmedLabel ? trimmedLabel : null;
+    const labelValue = normalizeShareUrlLabel(label);
     switch (target.kind) {
       case ShareUrlKind.Action:
         return this.createDuplicateForAction(
@@ -213,12 +132,12 @@ export class ShareUrlsService {
     }
   }
 
-  private async createDuplicateForInvite(
+  async createDuplicateForInvite(
     owner: ShareUrlOwner,
     label: string | null,
     inviteAssignment?: StoredInviteAssignment,
   ): Promise<ShareUrl> {
-    const shareUrl = await this.buildAndSaveRow(
+    const shareUrl = await buildAndSaveShareUrl(
       this.shareUrlRepository.manager,
       {
         kind: ShareUrlKind.Invite,
@@ -233,7 +152,7 @@ export class ShareUrlsService {
   }
 
   async getOrCreateForInvite(owner: ShareUrlOwner): Promise<ShareUrl> {
-    return this.getOrCreate(this.shareUrlRepository.manager, {
+    return getOrCreateShareUrl(this.shareUrlRepository.manager, {
       kind: ShareUrlKind.Invite,
       owner,
     });
@@ -245,14 +164,8 @@ export class ShareUrlsService {
     label: string | null,
   ): Promise<ShareUrl> {
     return this.shareUrlRepository.manager.transaction(async (m) => {
-      const target = await m.findOne(ExternalShareTarget, {
-        where: { id: externalTargetId },
-        lock: { mode: "pessimistic_read" },
-      });
-      if (!target) {
-        throw new NotFoundException("specified share target not found");
-      }
-      return this.buildAndSaveRow(m, {
+      const target = await lockExternalTarget(m, externalTargetId);
+      return buildAndSaveShareUrl(m, {
         kind: ShareUrlKind.ExternalTarget,
         externalTarget: target,
         owner,
@@ -267,7 +180,7 @@ export class ShareUrlsService {
     owner: ShareUrlOwner,
     label: string | null,
   ): Promise<ShareUrl> {
-    return this.buildAndSaveRow(this.shareUrlRepository.manager, {
+    return buildAndSaveShareUrl(this.shareUrlRepository.manager, {
       kind: ShareUrlKind.Action,
       actionId,
       owner,
@@ -313,177 +226,15 @@ export class ShareUrlsService {
     return this.findForOwner({ type: "user", userId });
   }
 
-  /** Signup counts plus the destination group resolved by name, for display. */
-  async withInviteDestinations(shareUrls: ShareUrl[]): Promise<ShareUrlMine[]> {
-    const withCounts = await this.withSignupCounts(shareUrls);
-    const assignments = withCounts.map((row) =>
-      inviteAssignmentFromColumns(row.shareUrl),
-    );
-    const communityIds = assignments.flatMap((assignment) =>
-      assignment?.kind === StoredInviteAssignmentKind.Community &&
-      assignment.communityId !== null
-        ? [assignment.communityId]
-        : [],
-    );
-    const communities = communityIds.length
-      ? await this.communityRepository.find({
-          where: { id: In(communityIds) },
-          select: { id: true, name: true },
-        })
-      : [];
-    const nameById = new Map(
-      communities.map((community) => [community.id, community.name]),
-    );
-
-    return withCounts.map((row, index) => {
-      const assignment = assignments[index] ?? null;
-      return {
-        ...row,
-        assignment,
-        assignmentCommunityName:
-          assignment?.kind === StoredInviteAssignmentKind.Community &&
-          assignment.communityId !== null
-            ? (nameById.get(assignment.communityId) ?? null)
-            : null,
-      };
-    });
-  }
-
-  async findInvitesForUser(userId: number): Promise<ShareUrlMine[]> {
-    const shareUrls = await this.shareUrlRepository.find({
-      where: { user: { id: userId }, kind: ShareUrlKind.Invite },
-      order: { duplicate: "ASC", createdAt: "DESC" },
-    });
-    return this.withInviteDestinations(shareUrls);
-  }
-
-  async findReusableInviteFeed(
-    startAt: Date,
-  ): Promise<ReusableInviteFeedItem[]> {
-    const shareUrls = await this.shareUrlRepository.find({
-      where: {
-        kind: ShareUrlKind.Invite,
-        duplicate: true,
-        userId: Not(IsNull()),
-        createdAt: MoreThanOrEqual(startAt),
-      },
-      relations: { user: true },
-      order: { createdAt: "DESC", id: "DESC" },
-    });
-
-    return shareUrls.flatMap((shareUrl) => {
-      if (!shareUrl.user) return [];
-      return {
-        id: shareUrl.id,
-        createdAt: shareUrl.createdAt,
-        invitingUserDisplayName: shareUrl.user.anonymous
-          ? "Someone"
-          : shareUrl.user.name,
-        communityId:
-          shareUrl.inviteAssignmentKind === StoredInviteAssignmentKind.Community
-            ? shareUrl.inviteAssignmentCommunityId
-            : null,
-      };
-    });
-  }
-
-  private async assertLeadsCommunity(
-    userId: number,
-    communityId: number,
-  ): Promise<void> {
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-      relations: { leaderOf: true },
-    });
-    if (!user) {
-      throw new NotFoundException("user not found");
-    }
-    if (!user.leaderOfIdSet.has(communityId)) {
-      throw new BadRequestException(
-        `User is not a leader of community ${communityId}`,
-      );
-    }
-  }
-
-  /**
-   * `communityId` is required rather than optional: a missing one would fall
-   * through to an `open` assignment, which places signups anywhere *except*
-   * this user's groups. Callers must say which they mean.
-   */
-  async createDuplicateInviteForUser(
-    userId: number,
-    label: string | undefined,
-    communityId: number | null,
-  ): Promise<ShareUrl> {
-    if (communityId !== null) {
-      await this.assertLeadsCommunity(userId, communityId);
-    }
-
-    const trimmedLabel = label?.trim();
-    return this.createDuplicateForInvite(
-      { type: "user", userId },
-      trimmedLabel ? trimmedLabel : null,
-      inviteAssignmentFor(communityId),
-    );
-  }
-
-  /**
-   * Edit what the owner chose when the link was made. Each field is left alone
-   * when omitted, so the caller can send only what changed.
-   *
-   * Retargeting moves future signups only: everyone who registered already
-   * carries their own copy of the destination.
-   */
-  async updateInviteForUser(params: {
-    id: string;
-    userId: number;
-    label?: string;
-    communityId?: number | null;
-  }): Promise<ShareUrl> {
-    const { id, userId, label, communityId } = params;
-    const row = await this.shareUrlRepository.findOne({
-      where: { id, kind: ShareUrlKind.Invite },
-    });
-    if (!row || row.userId !== userId) {
-      throw new NotFoundException("share url not found");
-    }
-    if (communityId !== undefined && communityId !== null) {
-      await this.assertLeadsCommunity(userId, communityId);
-    }
-
-    if (label !== undefined) {
-      const trimmed = label.trim();
-      row.label = trimmed ? trimmed : null;
-    }
-    if (communityId !== undefined) {
-      const columns = inviteAssignmentColumns(inviteAssignmentFor(communityId));
-      row.inviteAssignmentKind = columns.inviteAssignmentKind;
-      row.inviteAssignmentCommunityId = columns.inviteAssignmentCommunityId;
-    }
-    return this.shareUrlRepository.save(row);
-  }
-
-  async deleteInviteForUser(id: string, userId: number): Promise<void> {
-    const row = await this.shareUrlRepository.findOne({
-      where: { id, kind: ShareUrlKind.Invite },
-    });
-    if (!row || row.userId !== userId) {
-      throw new NotFoundException("share url not found");
-    }
-    if (!row.duplicate) {
-      throw new BadRequestException(
-        "Your primary invite link cannot be deleted.",
-      );
-    }
-    await this.shareUrlRepository.remove(row);
-  }
-
   async deleteById(id: string): Promise<void> {
     const row = await this.shareUrlRepository.findOne({ where: { id } });
     if (!row) {
       throw new NotFoundException("share url not found");
     }
-    await this.shareUrlRepository.remove(row);
+    await softDeleteCascade(this.shareUrlRepository.manager, {
+      target: ShareUrl,
+      ids: [row.id],
+    });
   }
 
   async findForCampaign(
@@ -496,17 +247,11 @@ export class ShareUrlsService {
     id: string,
     rawLabel: string | undefined,
   ): Promise<ShareUrl> {
-    const trimmed = rawLabel?.trim();
-    const nextLabel = trimmed ? trimmed : null;
-    const row = await this.shareUrlRepository.findOne({
-      where: { id },
+    return updateLiveShareUrl(this.shareUrlRepository.manager, {
+      id,
+      changes: { label: normalizeShareUrlLabel(rawLabel) },
       relations: { action: true, externalTarget: true },
     });
-    if (!row) {
-      throw new NotFoundException("share url not found");
-    }
-    row.label = nextLabel;
-    return this.shareUrlRepository.save(row);
   }
 
   private async getOrCreateForExternalTargetId(
@@ -514,14 +259,8 @@ export class ShareUrlsService {
     owner: ShareUrlOwner,
   ): Promise<ShareUrl> {
     return this.shareUrlRepository.manager.transaction(async (m) => {
-      const target = await m.findOne(ExternalShareTarget, {
-        where: { id: externalTargetId },
-        lock: { mode: "pessimistic_read" },
-      });
-      if (!target) {
-        throw new NotFoundException("specified share target not found");
-      }
-      return this.getOrCreate(m, {
+      const target = await lockExternalTarget(m, externalTargetId);
+      return getOrCreateShareUrl(m, {
         kind: ShareUrlKind.ExternalTarget,
         externalTarget: target,
         owner,
@@ -533,7 +272,7 @@ export class ShareUrlsService {
     actionId: number,
     owner: ShareUrlOwner,
   ): Promise<ShareUrl> {
-    return this.getOrCreate(this.shareUrlRepository.manager, {
+    return getOrCreateShareUrl(this.shareUrlRepository.manager, {
       kind: ShareUrlKind.Action,
       actionId,
       owner,
@@ -600,144 +339,13 @@ export class ShareUrlsService {
     });
     for (const row of rows) {
       if (!row.sid) continue;
-      row.url = appendQueryParam(target.url, target.paramName, row.sid);
-    }
-    if (rows.length > 0) {
-      await repo.save(rows);
-    }
-  }
-
-  private async getOrCreate(
-    manager: EntityManager,
-    input: GetOrCreateInput,
-  ): Promise<ShareUrl> {
-    const repo = manager.getRepository(ShareUrl);
-    const where = run((): FindOptionsWhere<ShareUrl> => {
-      switch (input.kind) {
-        case ShareUrlKind.Action:
-          return {
-            ...ownerWhere(input.owner),
-            action: { id: input.actionId },
-            duplicate: false,
-          };
-        case ShareUrlKind.ExternalTarget:
-          return {
-            ...ownerWhere(input.owner),
-            externalTarget: { id: input.externalTarget.id },
-            duplicate: false,
-          };
-        case ShareUrlKind.Invite:
-          return {
-            ...ownerWhere(input.owner),
-            kind: ShareUrlKind.Invite,
-            duplicate: false,
-          };
-        default:
-          throw new Error(
-            `getOrCreate: unknown share url kind: ${input satisfies never}`,
-          );
-      }
-    });
-    const existing = await repo.findOne({ where });
-    if (existing) {
-      return existing;
-    }
-
-    try {
-      return await this.buildAndSaveRow(manager, {
-        ...input,
-        duplicate: false,
+      await updateLive(repo.manager, {
+        target: ShareUrl,
+        id: row.id,
+        changes: {
+          url: appendQueryParam(target.url, target.paramName, row.sid),
+        },
       });
-    } catch (err) {
-      if (err instanceof QueryFailedError) {
-        const code = (err as { code?: string }).code;
-        if (code === "23505") {
-          const winner = await repo.findOne({ where });
-          if (winner) {
-            return winner;
-          }
-        }
-      }
-      throw err;
-    }
-  }
-
-  private async buildAndSaveRow(
-    manager: EntityManager,
-    input: BuildRowInput,
-  ): Promise<ShareUrl> {
-    const repo = manager.getRepository(ShareUrl);
-    const sid = generateCIDForShareUrl();
-    const built = await run(
-      async (): Promise<{
-        url: string;
-        action: Action | null;
-        externalTarget: ExternalShareTarget | null;
-      }> => {
-        switch (input.kind) {
-          case ShareUrlKind.Action: {
-            const action = await this.actionRepository.findOne({
-              where: { id: input.actionId },
-            });
-            if (!action) {
-              throw new NotFoundException(NOT_FOUND_MESSAGE[input.kind]);
-            }
-            return {
-              url: withSid(actionUrl(input.actionId, true), sid),
-              action,
-              externalTarget: null,
-            };
-          }
-          case ShareUrlKind.ExternalTarget:
-            return {
-              url: appendQueryParam(
-                input.externalTarget.url,
-                input.externalTarget.paramName,
-                sid,
-              ),
-              action: null,
-              externalTarget: input.externalTarget,
-            };
-          case ShareUrlKind.Invite:
-            return {
-              url: withRef(signupUrl(true), sid),
-              action: null,
-              externalTarget: null,
-            };
-          default:
-            throw new Error(
-              `buildAndSaveRow: unknown share url kind: ${input satisfies never}`,
-            );
-        }
-      },
-    );
-
-    const shareUrl = repo.create({
-      url: built.url,
-      kind: input.kind,
-      ...ownerColumns(input.owner),
-      action: built.action,
-      externalTarget: built.externalTarget,
-      sid,
-      ...inviteAssignmentColumns(
-        input.kind === ShareUrlKind.Invite
-          ? (input.inviteAssignment ?? null)
-          : null,
-      ),
-      duplicate: input.duplicate,
-      label: input.label ?? null,
-    });
-
-    try {
-      return await repo.save(shareUrl);
-    } catch (err) {
-      if (
-        err instanceof QueryFailedError &&
-        (err as { code?: string }).code === "23503"
-      ) {
-        throw new NotFoundException(NOT_FOUND_MESSAGE[input.kind]);
-      }
-      throw err;
     }
   }
 }

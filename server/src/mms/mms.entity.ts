@@ -1,6 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
+import { DeleteDateColumnTz } from "src/datasources/basecolumns";
 import type { MessageStatus } from "twilio/lib/rest/api/v2010/account/message";
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
@@ -54,6 +55,7 @@ export class Mms {
   @ApiProperty()
   updatedAt: Date;
 
+  @Index()
   @Column({ type: "varchar", nullable: true })
   @ApiProperty({ nullable: true })
   cid: string | null;
@@ -61,4 +63,7 @@ export class Mms {
   @Column({ default: false })
   @ApiProperty({ type: Boolean })
   clickedLink: boolean;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

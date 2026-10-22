@@ -1,4 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
+import { DeleteDateColumnTz } from "src/datasources/basecolumns";
 import { Column, Entity, Index, PrimaryColumn } from "typeorm";
 
 @Entity()
@@ -12,10 +13,9 @@ export class City {
   @Index("idx_city_name_trgm", { synchronize: false })
   name: string;
 
-  @Column({ nullable: true })
-  @ApiProperty()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  asciiName: string;
+  @Column({ type: "varchar", nullable: true })
+  @ApiProperty({ type: String, nullable: true })
+  asciiName: string | null;
 
   @Column({ type: "varchar", nullable: true })
   @Index("idx_city_english_name_trgm", { synchronize: false })
@@ -45,4 +45,7 @@ export class City {
   @Column({ type: "float" })
   @ApiProperty()
   longitude: number;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

@@ -1,3 +1,4 @@
+/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import {
   canSubmitWithdrawal,
   WITHDRAWAL_OPTION_LABELS,
@@ -10,7 +11,6 @@ import {
   CHAT_TRANSCRIPT_SIZE_UNIT_PX,
   groupChatTranscriptMessages,
   type AccordionBlock,
-  type BigLinkIcon,
   type ChatTranscriptMessage,
   type DisplayBlock,
   type ImagesItem,
@@ -21,6 +21,7 @@ import {
   type FormSchema,
   type FormValue,
 } from "@alliance/common/forms/form-schema";
+import { withResolvedOptions } from "@alliance/common/forms/formula-options";
 import {
   interpolateDisplayBlock,
   interpolateFieldText,
@@ -31,32 +32,52 @@ import {
   type UserDto,
 } from "@alliance/shared/client";
 import {
-  applyDefaultValues,
   computeActiveUserKey,
-  computeFormStorageKey,
-  filterAnswersByFieldIds,
   formatUserLocationDisplayValue,
   resolveDisplayBlockForUser,
-  restorableAnswers,
   type UserLocationDisplayValue,
 } from "@alliance/shared/formrenderer";
 import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
+import {
+  applyDefaultValues,
+  computeFormStorageKey,
+  filterAnswersByFieldIds,
+  restorableAnswers,
+  restorablePublicAnswers,
+} from "@alliance/shared/forms/formDrafts";
+import {
+  completedFormSchema,
+  formulaSourcesFor,
+} from "@alliance/shared/forms/formulaChoices";
 import {
   resolveFormValue,
   type SetFieldValue,
 } from "@alliance/shared/forms/formValueUpdater";
 import { stripCardIds } from "@alliance/shared/forms/listCards";
+import {
+  aggregateTarget,
+  useVariableAggregates,
+} from "@alliance/shared/forms/useVariableAggregates";
+import {
+  historySubject,
+  useVariableSourceHistories,
+} from "@alliance/shared/forms/useVariableSourceHistories";
+import { variableInputsGate } from "@alliance/shared/forms/variableInputsGate";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import {
+  cancelAllImageUploads,
+  draftSaveFailed,
   outputFieldPublicToggle,
   waitingForImageUpload,
 } from "@alliance/shared/lib/copy";
+import { formTimeZoneDefault } from "@alliance/shared/lib/timeZone";
 import { useImageUpload } from "@alliance/shared/lib/useImageUpload";
 import { useVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
 import { cn } from "@alliance/shared/styles/util";
 import {
   useCurrentUserLocation,
   useFieldErrors,
+  useFormDraftSync,
   useFormSchemaMaps,
   useFormValidation,
   useFormVisibility,
@@ -65,21 +86,9 @@ import {
   useVisibilityValidatorResults,
 } from "@alliance/shared/useFormRenderer";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { setStringAsync as setClipboardStringAsync } from "expo-clipboard";
 import { DeviceType, deviceType as expoDeviceType } from "expo-device";
 import { router } from "expo-router";
-import {
-  Check,
-  ChevronDown,
-  CircleCheck,
-  Copy,
-  Ellipsis,
-  File,
-  FileCheck,
-  FileText,
-  MessagesSquare,
-  Signature,
-} from "lucide-react-native";
+import { ChevronDown, CircleCheck, Ellipsis, X } from "lucide-react-native";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -92,17 +101,21 @@ import {
 import { resolveImageSource } from "../../lib/config";
 import { getImageLoadSize } from "../../lib/imageLoadSize";
 import { colors } from "../../lib/style/colors";
-import AppMarkdownWrapper, { useHandleLinkPress } from "../AppMarkdownWrapper";
+import { getDeviceTimeZone } from "../../lib/timeZone";
+import AppMarkdownWrapper from "../AppMarkdownWrapper";
 import { ImageGalleryModal } from "../ImageLightbox";
 import { MARKDOWN_HUG_WIDTH_STYLE, MarkdownTone } from "../markdownStyles";
 import ProfileImage from "../ProfileImage";
 import Button, { ButtonColor, ButtonSize } from "../system/Button";
 import Checkbox from "../system/Checkbox";
 import Text, { FontWeight } from "../system/Text";
+import BigLinkDisplay from "./BigLinkDisplay";
+import CopyTextDisplay from "./CopyTextDisplay";
 import FormModal from "./FormModal";
 import HtmlBlock from "./HtmlBlock";
 import { RenderField } from "./RenderField";
 import RenderPreviousAnswer from "./RenderPreviousAnswer";
+import { variableInputsGateView } from "./variableInputsGateView";
 import VideoPlayer from "./VideoPlayer";
 
 type FormRendererProps = {
@@ -112,18 +125,28 @@ type FormRendererProps = {
   publicAction?: boolean;
   actionId: number;
   persistKey?: string | null;
+  /** Changing it refetches the answers from other forms the form reads. */
+  reloadSourceHistories?: number;
   initialPageIndex?: number;
   userId?: string | number;
   phDistinctId?: string;
   sessionReplayUrl?: string;
   user?: Omit<UserDto, "email">;
+  /**
+   * Whether `user` is still being fetched. Formulas reading other forms wait
+   * for it.
+   */
+  userLoading?: boolean;
   disableOptionRandomization?: boolean;
   loadCurrentUserLocation?: boolean;
   onFormStarted?: () => void;
   onAbandonAction?: (withdrawal: ActionWithdrawal) => void;
   renderFormAsCompleted?: boolean;
   completedFormResponse?: FormResponseDto;
-  onSubmit: ((data: SubmitFormDto) => Promise<void>) | null;
+  /** Save progress to the member's account as well as this device, so the form can be finished elsewhere. */
+  syncDraftToServer?: boolean;
+  /** `null` without `renderFormAsCompleted` is a preview: editable, never submitted. */
+  onSubmit: ((data: SubmitFormDto) => Promise<boolean>) | null;
   scrollPageTo: (y: number, animated?: boolean) => void;
   scrollToEnd: (animated?: boolean) => void;
 };
@@ -146,57 +169,6 @@ const detectDeviceType = (): DeviceVisibilityTarget => {
 };
 
 const DEVICE_TYPE: DeviceVisibilityTarget = detectDeviceType();
-
-function CopyTextDisplayMobile({
-  text,
-  title,
-}: {
-  text: string;
-  title?: string;
-}) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async () => {
-    await setClipboardStringAsync(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <View>
-      {title ? (
-        <Text className="text-sm text-zinc-500 mb-1">{title}</Text>
-      ) : null}
-      <TouchableOpacity
-        className="relative rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-3"
-        onPress={handleCopy}
-        activeOpacity={0.7}
-      >
-        <Text>{text}</Text>
-        <View className="absolute top-1.5 right-1.5 flex-row items-center gap-1 bg-zinc-50 border border-zinc-200 px-1.5 py-0.5 rounded">
-          {copied ? (
-            <>
-              <Text className="text-sm text-green" weight={FontWeight.Medium}>
-                Copied!
-              </Text>
-              <Check size={14} className="text-green" />
-            </>
-          ) : (
-            <Copy size={14} className="text-gray-400" />
-          )}
-        </View>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-const bigLinkIcons: Record<BigLinkIcon, React.FC<{ size?: number }>> = {
-  "messages-square": MessagesSquare,
-  file: File,
-  "file-text": FileText,
-  "file-check": FileCheck,
-  signature: Signature,
-};
 
 const CHAT_BUBBLE_TONE: Record<ChatTranscriptMessage["side"], MarkdownTone> = {
   left: MarkdownTone.Default,
@@ -410,7 +382,6 @@ export function RenderDisplayBlockMobile({
   userLocation,
   userLocationLoading = false,
 }: RenderDisplayBlockMobileProps) {
-  const handleLinkPress = useHandleLinkPress();
   switch (block.kind) {
     case "header":
       const headerClass = {
@@ -474,29 +445,9 @@ export function RenderDisplayBlockMobile({
       if (block.images.length === 0) return null;
       return <ImagesDisplay images={block.images} />;
     case "biglink":
-      const IconComponent = bigLinkIcons[block.icon || "messages-square"];
-      return (
-        <TouchableOpacity
-          className="flex-row items-center gap-3 rounded-lg border border-zinc-200 bg-white px-5 py-4 mr-3"
-          onPress={() => handleLinkPress(block.url)}
-        >
-          <IconComponent size={20} />
-          <View className="flex-1">
-            <Text className="text-base text-black" weight={FontWeight.Medium}>
-              {block.text}
-            </Text>
-            <Text
-              className="mt-1 text-sm text-green"
-              weight={FontWeight.Medium}
-              numberOfLines={1}
-            >
-              {block.url}
-            </Text>
-          </View>
-        </TouchableOpacity>
-      );
+      return <BigLinkDisplay block={block} />;
     case "copytext":
-      return <CopyTextDisplayMobile text={block.text} title={block.title} />;
+      return <CopyTextDisplay block={block} />;
     case "accordion":
       if (block.sections.length === 0) return null;
       return <AccordionDisplayMobile block={block} />;
@@ -618,14 +569,17 @@ const FormRenderer = ({
   formSnapshotId,
   onSubmit,
   persistKey,
+  reloadSourceHistories,
   userId,
   user,
+  userLoading = false,
   disableOptionRandomization,
   loadCurrentUserLocation,
   onFormStarted,
   onAbandonAction,
   renderFormAsCompleted,
   completedFormResponse,
+  syncDraftToServer,
   actionId,
   initialPageIndex,
   phDistinctId,
@@ -633,8 +587,12 @@ const FormRenderer = ({
   scrollPageTo,
   scrollToEnd,
 }: FormRendererProps) => {
-  const schema = form as unknown as FormSchema;
-  const readOnly = !!renderFormAsCompleted || !onSubmit;
+  const readOnly = !!renderFormAsCompleted;
+  const schema = useMemo(
+    () =>
+      completedFormSchema(form, readOnly ? completedFormResponse : undefined),
+    [form, readOnly, completedFormResponse],
+  );
 
   const storageKey = useMemo(
     () =>
@@ -657,17 +615,37 @@ const FormRenderer = ({
   });
 
   const userDefaultPublic = user?.formDataPreference === "public";
+  const timeZone = formTimeZoneDefault({
+    saved: user?.timeZone,
+    device: getDeviceTimeZone(),
+  });
   const {
     fieldLookup,
     defaultValueMap,
     unknownKind,
     hasUserLocationDisplayBlock,
     outputFieldDefaultPublic,
+    outputFieldIds,
     maxPageIndex,
-  } = useFormSchemaMaps({ schema, userDefaultPublic });
+  } = useFormSchemaMaps({ schema, userDefaultPublic, timeZone });
 
-  const { previousAnswerSchemas, previousAnswerData } =
-    usePreviousAnswerSources({ schema });
+  const { previousAnswerSchemas, previousAnswerData, previousAnswersPending } =
+    usePreviousAnswerSources({ schema, signedIn: !!user });
+
+  const sourceHistories = useVariableSourceHistories({
+    schema,
+    subject: historySubject({
+      adminPreviewUserId: undefined,
+      signedIn: !!user,
+      userLoading,
+    }),
+    reload: reloadSourceHistories,
+  });
+
+  const variableAggregates = useVariableAggregates({
+    schema,
+    target: aggregateTarget({ admin: false, formId: id, formSnapshotId }),
+  });
 
   const clampPageIndex = (idx: number): number => {
     if (!Number.isFinite(idx)) return 0;
@@ -704,10 +682,14 @@ const FormRenderer = ({
       return defaults;
     },
   );
-  const visibilityValidatorResults = useVisibilityValidatorResults({
+  const {
+    results: visibilityValidatorResults,
+    failed: visibilityValidatorsFailed,
+  } = useVisibilityValidatorResults({
     schema,
     readOnly,
     savedResults: completedFormResponse?.visibilityValidatorResults,
+    signedIn: !!user,
   });
   const { fieldErrors, applyFieldErrorUpdates } = useFieldErrors();
   const [submitting, setSubmitting] = useState(false);
@@ -724,9 +706,11 @@ const FormRenderer = ({
 
   const {
     userHasCity,
+    userPropertyHasValue,
     firstContractSignedAt,
     completedActionCount,
     isLoading: visibilityContextLoading,
+    failed: visibilityContextFailed,
   } = useVisibilityContext(schema, {
     enabled: !!user,
   });
@@ -734,11 +718,16 @@ const FormRenderer = ({
   // Draft persistence: tracks whether we've loaded a stored draft so the save
   // effect doesn't overwrite stored data with initial defaults.
   const draftLoaded = useRef(false);
+  // The stored-draft apply below waits on `localDraftRead`, because a device
+  // that has never synced and one whose read hasn't finished both read null.
+  const [localDraftRead, setLocalDraftRead] = useState(false);
+  const [syncedUpdatedAt, setSyncedUpdatedAt] = useState<string | null>(null);
 
   // Restore draft from AsyncStorage on mount
   useEffect(() => {
     if (readOnly || !persistKey) {
       draftLoaded.current = true;
+      setLocalDraftRead(true);
       return;
     }
 
@@ -748,9 +737,13 @@ const FormRenderer = ({
         const raw = await AsyncStorage.getItem(storageKey);
         if (cancelled || !raw) {
           draftLoaded.current = true;
+          setLocalDraftRead(true);
           return;
         }
         const parsed = JSON.parse(raw);
+        if (typeof parsed?.syncedUpdatedAt === "string") {
+          setSyncedUpdatedAt(parsed.syncedUpdatedAt);
+        }
         if (parsed?.formData && typeof parsed.formData === "object") {
           const filtered = restorableAnswers(
             parsed.formData as Record<string, FormValue>,
@@ -759,17 +752,10 @@ const FormRenderer = ({
           setFormData(applyDefaultValues(filtered, defaultValueMap));
         }
         if (parsed?.publicAnswers && typeof parsed.publicAnswers === "object") {
-          const overrides: Record<string, boolean> = {};
-          for (const [fieldId, value] of Object.entries(
+          const overrides = restorablePublicAnswers(
             parsed.publicAnswers as Record<string, unknown>,
-          )) {
-            if (
-              outputFieldDefaultPublic.has(fieldId) &&
-              typeof value === "boolean"
-            ) {
-              overrides[fieldId] = value;
-            }
-          }
+            outputFieldIds,
+          );
           if (Object.keys(overrides).length > 0) {
             setPublicAnswers((prev) => ({ ...prev, ...overrides }));
           }
@@ -781,6 +767,7 @@ const FormRenderer = ({
         // Corrupt or missing draft — ignore.
       }
       draftLoaded.current = true;
+      setLocalDraftRead(true);
     })();
 
     return () => {
@@ -789,6 +776,54 @@ const FormRenderer = ({
     // Only run once on mount for a given storageKey
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey]);
+
+  const draftSyncEnabled =
+    !!syncDraftToServer && !readOnly && !!persistKey && formSnapshotId !== null;
+
+  const { serverDraft, saveFailed, pauseSyncing, resumeSyncing } =
+    useFormDraftSync({
+      enabled: draftSyncEnabled,
+      formId: id,
+      actionId,
+      formSnapshotId,
+      answers: formData,
+      publicAnswers,
+      currentPageIndex,
+      edited: hasEmittedStart,
+      onSaved: setSyncedUpdatedAt,
+    });
+
+  useEffect(() => {
+    if (!draftSyncEnabled || hasEmittedStart || !serverDraft) return;
+    if (!localDraftRead) return;
+    // Equal means the stored draft is this device's own last save. Both sides
+    // are server-issued, so nothing here depends on the device's clock.
+    if (serverDraft.updatedAt === syncedUpdatedAt) {
+      return;
+    }
+    const answers = restorableAnswers(
+      serverDraft.answers as Record<string, FormValue>,
+      fieldLookup,
+    );
+    setFormData((prev) =>
+      applyDefaultValues({ ...prev, ...answers }, defaultValueMap),
+    );
+    setPublicAnswers((prev) => ({
+      ...prev,
+      ...restorablePublicAnswers(serverDraft.publicAnswers, outputFieldIds),
+    }));
+    setCurrentPageIndex(clampPageIndex(serverDraft.currentPageIndex));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    serverDraft,
+    draftSyncEnabled,
+    hasEmittedStart,
+    localDraftRead,
+    syncedUpdatedAt,
+    fieldLookup,
+    defaultValueMap,
+    outputFieldIds,
+  ]);
 
   // Save draft to AsyncStorage when form state changes
   useEffect(() => {
@@ -802,6 +837,7 @@ const FormRenderer = ({
           publicAnswers,
           currentPageIndex,
           updatedAt: Date.now(),
+          syncedUpdatedAt,
         }),
       ).catch((e) => {
         // Storage write failed — non-critical.
@@ -817,6 +853,7 @@ const FormRenderer = ({
     persistKey,
     storageKey,
     readOnly,
+    syncedUpdatedAt,
   ]);
 
   useEffect(() => {
@@ -853,15 +890,19 @@ const FormRenderer = ({
     visibilityExtras,
     effectiveFormData,
     variableValues,
+    variablesError,
+    resolvedOptions,
     isElementCurrentlyVisible,
-    isFieldCurrentlyRequired,
+    fieldContext,
     visiblePageIndices,
     nextVisiblePageIndex,
     previousVisiblePageIndex,
+    visibilitySettled,
     validateFieldValue,
   } = useFormVisibility({
     schema,
     formData,
+    setFormData,
     readOnly,
     currentPageIndex,
     setCurrentPageIndex,
@@ -869,9 +910,20 @@ const FormRenderer = ({
     visibilityValidatorResults,
     fieldLookup,
     previousAnswerData,
+    sourceHistories,
+    variableAggregates,
+    randomizationKey,
     userHasCity,
+    userPropertyHasValue,
     firstContractSignedAt,
     completedActionCount,
+    visibilityInputs: {
+      visibilityContextLoading,
+      visibilityContextFailed,
+      visibilityValidatorsFailed,
+      userLoading,
+      previousAnswersPending,
+    },
   });
 
   const { validatePage, validateAllPages } = useFormValidation({
@@ -941,7 +993,7 @@ const FormRenderer = ({
   };
 
   const handleNextPage = async () => {
-    if (nextVisiblePageIndex === null) {
+    if (nextVisiblePageIndex === null || !visibilitySettled) {
       return;
     }
     const result = await validatePage(currentPageIndex, true);
@@ -960,10 +1012,10 @@ const FormRenderer = ({
   };
 
   const handleSubmit = async () => {
-    if (submitting || readOnly || !onSubmit || imageUpload.uploadingAny) {
+    if (submitting || readOnly || imageUpload.uploadingAny) {
       return;
     }
-    if (formSnapshotId === null) {
+    if (onSubmit && formSnapshotId === null) {
       throw new Error(
         "FormRenderer: formSnapshotId is required when onSubmit is set",
       );
@@ -993,6 +1045,11 @@ const FormRenderer = ({
       return;
     }
 
+    if (!onSubmit || formSnapshotId === null) {
+      setSubmitting(false);
+      return;
+    }
+
     const sanitizedAnswers = stripCardIds(
       filterAnswersByFieldIds(effectiveFormData, fieldLookup),
     );
@@ -1000,6 +1057,7 @@ const FormRenderer = ({
       answers: sanitizedAnswers,
       formSnapshotId,
       actionId,
+      formulaSources: formulaSourcesFor(schema, sourceHistories),
       visibilityValidatorResults,
       deviceType: DEVICE_TYPE,
       publicAnswers,
@@ -1007,12 +1065,18 @@ const FormRenderer = ({
       sessionReplayUrl,
     };
 
+    pauseSyncing();
     onSubmit(submissionPayload)
-      .then(() => {
+      .then((submitted) => {
+        if (!submitted) {
+          resumeSyncing();
+          return;
+        }
         if (persistKey) {
           AsyncStorage.removeItem(storageKey).catch(() => {});
         }
       })
+      .catch(() => resumeSyncing())
       .finally(() => {
         setSubmitting(false);
       });
@@ -1028,11 +1092,13 @@ const FormRenderer = ({
       answers: stripCardIds(formData),
       formSnapshotId,
       actionId,
+      formulaSources: formulaSourcesFor(schema, sourceHistories),
       visibilityValidatorResults,
       deviceType: DEVICE_TYPE,
       publicAnswers,
     };
 
+    pauseSyncing();
     onAbandonAction?.({
       ...withdrawalFlagsFromOption(option),
       reason: customReason.trim(),
@@ -1052,7 +1118,7 @@ const FormRenderer = ({
     visiblePageIndices.indexOf(currentPageIndex) + 1,
   );
 
-  const pageFields = currentPage?.fields;
+  const pageFields = currentPage ? currentPage.fields : undefined;
   const resolvedPageElements = useMemo(
     () =>
       (pageFields ?? []).map((element) =>
@@ -1080,7 +1146,13 @@ const FormRenderer = ({
     return false;
   };
 
-  if (unknownKind) {
+  const gate = variableInputsGateView({
+    gate: variableInputsGate(sourceHistories, variableAggregates),
+    readOnly,
+  });
+  if (gate !== null) return gate;
+
+  if (unknownKind || variablesError !== null) {
     return (
       <View className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
         <Text weight={FontWeight.Medium} className="text-amber-800">
@@ -1105,7 +1177,7 @@ const FormRenderer = ({
   return (
     <View className="flex flex-col gap-y-8">
       <View className="gap-y-4">
-        {currentPage?.fields.map((element, idx) => {
+        {pageFields?.map((element, idx) => {
           if (!pageElementVisible[idx]) {
             return null;
           }
@@ -1130,7 +1202,10 @@ const FormRenderer = ({
           return (
             <View key={field.id}>
               <RenderField
-                field={interpolateFieldText(field, variableValues)}
+                field={withResolvedOptions(
+                  interpolateFieldText(field, variableValues),
+                  resolvedOptions,
+                )}
                 value={effectiveFormData[field.id]}
                 onChange={(value) => handleFieldChange(field.id, value)}
                 fileUpload={readOnly ? undefined : imageUpload}
@@ -1140,8 +1215,7 @@ const FormRenderer = ({
                 randomizationKey={randomizationKey}
                 disableOptionRandomization={disableOptionRandomization}
                 user={user}
-                formData={effectiveFormData}
-                isFieldRequired={isFieldCurrentlyRequired}
+                fieldContext={fieldContext}
               />
               {renderPublicToggle(field)}
             </View>
@@ -1209,7 +1283,11 @@ const FormRenderer = ({
                 color={ButtonColor.Black}
                 size={ButtonSize.Medium}
                 className="flex-2 py-4! gap-x-1"
-                disabled={submitting || imageUpload.uploadingAny}
+                disabled={
+                  submitting ||
+                  imageUpload.uploadingAny ||
+                  (!isLastPage && !visibilitySettled)
+                }
               >
                 {submitting ? (
                   <ActivityIndicator size="small" color="#fff" />
@@ -1222,7 +1300,11 @@ const FormRenderer = ({
                       className="text-white text-base"
                       weight={FontWeight.Medium}
                     >
-                      {isLastPage ? "Complete" : "Next"}
+                      {isLastPage
+                        ? onSubmit
+                          ? "Complete"
+                          : "Complete (Preview Mode)"
+                        : "Next"}
                     </Text>
                   </>
                 )}
@@ -1239,8 +1321,23 @@ const FormRenderer = ({
             </View>
           </View>
           {imageUpload.uploadingAny && (
-            <Text className="text-zinc-500 text-base p-2">
-              {waitingForImageUpload}
+            <View className="flex-row items-center gap-1 p-2">
+              <Text className="text-zinc-500 text-base">
+                {waitingForImageUpload}
+              </Text>
+              <TouchableOpacity
+                onPress={imageUpload.cancelAll}
+                accessibilityLabel={cancelAllImageUploads}
+                hitSlop={8}
+                className="p-1"
+              >
+                <X size={20} color={colors.text.icon} />
+              </TouchableOpacity>
+            </View>
+          )}
+          {saveFailed && !readOnly && (
+            <Text className="text-amber-600 text-base p-2">
+              {draftSaveFailed}
             </Text>
           )}
           {Object.keys(fieldErrors).length > 0 && (

@@ -7,7 +7,7 @@ import { MmsService } from "src/mms/mms.service";
 import { ReferralSource, User } from "src/user/entities/user.entity";
 import supertest from "supertest";
 import type { Repository } from "typeorm";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { createTestApp, eventually, TestContext } from "./e2e-test-utils";
 
 let ctx: TestContext;
 const pendingEventLogs = new Set<ReturnType<EventLogService["sendMessage"]>>();
@@ -39,20 +39,6 @@ afterAll(async () => {
   await drainEventLogs();
   await ctx.app.close();
 });
-
-const eventually = async <T>(
-  get: () => Promise<T>,
-  ready: (value: T) => boolean,
-): Promise<T> => {
-  for (let attempt = 0; attempt < 100; attempt++) {
-    const value = await get();
-    if (ready(value)) {
-      return value;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 20));
-  }
-  throw new Error("timed out waiting for the expected event log row");
-};
 
 describe("Mms Twilio address columns (e2e)", () => {
   let mmsRepo: Repository<Mms>;
@@ -237,7 +223,7 @@ describe("Inbound MMS keywords (e2e)", () => {
       order: { createdAt: "DESC" },
       relations: { user: true },
     });
-    expect(logged.user.id).toBe(memberId);
+    expect(logged.user?.id).toBe(memberId);
     expect(logged.reason).toBe("stop_keyword");
     expect(logged.rawBody).toBe("stop");
   });
@@ -357,6 +343,25 @@ describe("Inbound MMS keywords (e2e)", () => {
     );
     expect(logged!.user).toBeNull();
     expect(logged!.message).toContain("+14155559999");
+  });
+
+  it("records STOP on a deleted account that alone holds the number", async () => {
+    const deleted = await userRepo.save(
+      userRepo.create({
+        email: "deleted-stopper@example.com",
+        password: "pass",
+        name: "Deleted Stopper",
+        referralSource: ReferralSource.None,
+        phoneNumber: "(415) 555-9002",
+      }),
+    );
+    await userRepo.softDelete(deleted.id);
+
+    await inbound("+14155559002", "STOP").expect(201);
+
+    expect(
+      await userRepo.findOne({ where: { id: deleted.id }, withDeleted: true }),
+    ).toMatchObject({ phoneNumberUnsubscribed: true });
   });
 
   it("matches the member when STOP arrives in another format", async () => {
@@ -483,7 +488,7 @@ describe("Inbound MMS keywords for a shared number (e2e)", () => {
       where: { phoneNumber: SHARED },
       relations: { user: true },
     });
-    expect(logged.map((row) => row.user.id).sort(byId)).toEqual(
+    expect(logged.map((row) => row.user?.id).sort(byId)).toEqual(
       [...memberIds].sort(byId),
     );
   });

@@ -1,26 +1,25 @@
-import { ExceptionEvent } from "@alliance/common/analytics";
 import { FormSchema } from "@alliance/common/forms/form-schema";
-import {
-  FormDto,
-  tasksGetForm,
-  tasksSubmitFollowUpForm,
-} from "@alliance/shared/client";
+import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options";
 import type {
   FollowUpFormDto,
-  SubmitFollowUpFormDto,
   SubmitFormDto,
 } from "@alliance/shared/client/types.gen";
-import { captureException } from "@alliance/shared/lib/analytics";
+import { formulaSourcesChanged } from "@alliance/shared/forms/formulaChoices";
+import {
+  followUpDraftStorageKey,
+  followUpFormIntro,
+  followUpPersistKey,
+  submitFollowUpForm,
+} from "@alliance/shared/lib/followUpForm";
+import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import { CardStyle } from "@alliance/shared/styles/card";
-import FormRenderer, {
-  computeFormStorageKey,
-} from "@alliance/sharedweb/forms/FormRenderer";
+import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
 import Card from "@alliance/sharedweb/ui/Card";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import posthog from "posthog-js";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useAuth } from "../lib/AuthContext";
 
 interface FollowUpFormPanelProps {
@@ -36,65 +35,45 @@ export default function FollowUpFormPanel({
   border = false,
   onSubmitted,
 }: FollowUpFormPanelProps) {
-  const [form, setForm] = useState<FormDto | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [formInstanceKey, setFormInstanceKey] = useState(0);
-  const { user } = useAuth();
+  const { user, loading: userLoading } = useAuth();
   const { success } = useToast();
 
-  useEffect(() => {
-    const fetchForm = async () => {
-      const res = await tasksGetForm({
-        path: { id: followUpForm.formId },
-      });
-      setLoading(false);
-      if (!res.data) {
-        setError("Unable to load form – please reload");
-        return;
-      }
-      setForm(res.data);
-    };
-    fetchForm();
-  }, [followUpForm.formId]);
+  const {
+    data: form,
+    error: formError,
+    isPending,
+  } = useTaskForm(followUpForm.formId);
 
   const handleSubmit = useCallback(
     async (data: SubmitFormDto): Promise<boolean> => {
       setError(null);
-      const body: SubmitFollowUpFormDto = {
-        answers: data.answers,
-        formSnapshotId: data.formSnapshotId,
-        visibilityValidatorResults: data.visibilityValidatorResults,
-        deviceType: data.deviceType,
-        publicAnswers: data.publicAnswers,
-        phDistinctId: data.phDistinctId,
-        sessionReplayUrl: data.sessionReplayUrl,
-        sid: data.sid,
-      };
-      const response = await tasksSubmitFollowUpForm({
-        path: { followUpFormId: followUpForm.id },
-        body,
-      });
-      if (response.response.ok) {
-        if (form) {
-          const storageKey = computeFormStorageKey({
-            formId: form.id,
-            instanceId: `follow-up-${followUpForm.id}`,
-          });
-          window.localStorage.removeItem(storageKey);
-        }
-        success("Response submitted!");
-        setFormInstanceKey((k) => k + 1);
-        onSubmitted?.();
-        return true;
-      }
-      console.error(response.error);
-      captureException(ExceptionEvent.FollowUpFormSubmitError, response.error, {
-        actionId,
+      const submitted = await submitFollowUpForm({
         followUpFormId: followUpForm.id,
+        actionId,
+        data,
       });
-      setError("Failed to submit. Please try again.");
-      return false;
+      if (!submitted.ok) {
+        setError(
+          formulaSourcesChanged(submitted.error)
+            ? FORMULA_SOURCES_CHANGED
+            : "Failed to submit. Please try again.",
+        );
+        return false;
+      }
+      if (form) {
+        window.localStorage.removeItem(
+          followUpDraftStorageKey({
+            formId: form.id,
+            followUpFormId: followUpForm.id,
+          }),
+        );
+      }
+      success("Response submitted!");
+      setFormInstanceKey((k) => k + 1);
+      onSubmitted?.();
+      return true;
     },
     [followUpForm.id, form, actionId, onSubmitted, success],
   );
@@ -107,33 +86,29 @@ export default function FollowUpFormPanel({
     [],
   );
 
-  if (loading || !form) {
+  if (isPending || !form) {
     return (
       <div className="flex flex-col justify-center items-center p-6 border border-zinc-200 rounded-md">
-        {loading ? (
+        {isPending ? (
           <Spinner />
         ) : (
-          <p className="text-red-500">{error ?? "Error loading form"}</p>
+          <p className="text-red-500">{formError?.message}</p>
         )}
       </div>
     );
   }
 
-  const formTitle = followUpForm.name ?? form.title;
-  const hasInstructions =
-    followUpForm.instructions != null &&
-    followUpForm.instructions.trim() !== "";
-  const showIntroCard = hasInstructions || !!formTitle;
+  const intro = followUpFormIntro(followUpForm, form.title);
 
   return (
     <Card
       style={border ? CardStyle.WhiteBorder : CardStyle.White}
       className="p-4 sm:p-6"
     >
-      {showIntroCard && (
+      {intro.shown && (
         <Card style={CardStyle.Alert} className="mb-3 border-none rounded-md">
-          <p className="font-semibold">{formTitle}</p>
-          {hasInstructions && (
+          <p className="font-semibold">{intro.title}</p>
+          {intro.hasInstructions && (
             <div className="mt-1">
               <AppMarkdownWrapper
                 markdownContent={followUpForm.instructions ?? ""}
@@ -150,9 +125,10 @@ export default function FollowUpFormPanel({
           formSnapshotId={form.formSnapshotId}
           actionId={actionId}
           onSubmit={handleSubmit}
-          persistKey={`follow-up-${followUpForm.id}`}
+          persistKey={followUpPersistKey(followUpForm.id)}
           userId={user?.id}
           user={user}
+          userLoading={userLoading}
           loadCurrentUserLocation={!!user}
           onFormStarted={() => {}}
           renderFormAsCompleted={false}

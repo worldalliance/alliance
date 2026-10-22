@@ -2,15 +2,16 @@ import {
   ActionItemCardPropsShared,
   showCompletedBar,
 } from "@alliance/shared/lib/actionItemCard";
+import { hasViewerCompletedAction } from "@alliance/shared/lib/actionUtils";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
-import { buildActionShareUrl } from "@alliance/shared/lib/shareText";
 import { cn } from "@alliance/shared/styles/util";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
-import { ExternalLinkIcon } from "lucide-react";
+import { zIndex } from "@alliance/sharedweb/ui/zIndex";
+import { Link2Icon } from "lucide-react";
 import React, { useCallback } from "react";
 import { Link, href } from "react-router";
+import { actionShareUrl } from "../lib/actionShare";
 import ActionCompletedBarWithInfo from "../pages/app/ActionCompletedBarWithInfo";
 import ShareButton from "./ShareButton";
 
@@ -26,66 +27,62 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
   const shouldShowCompletedBar = showCompletedBar(action);
 
   const handleShareAction = useCallback(async () => {
-    const url = await buildActionShareUrl({
+    const url = await actionShareUrl({
       actionId: action.id,
-      baseUrl: getBaseUrl(),
       isAuthenticated: true,
     });
     return copyToClipboard(url);
   }, [action.id]);
 
   return (
-    <div className={cn("relative p-3 md:p-4 hover:bg-zinc-50", className)}>
-      <Link
-        to={href("/actions/:id", { id: action.id.toString() })}
-        className="block"
-      >
-        <div className="flex flex-row gap-x-3 md:gap-x-4">
-          <div className="flex flex-col justify-between flex-1">
-            <div className="flex flex-row items-start gap-x-8">
-              <div className="flex-1 flex flex-col">
-                <div className="flex flex-row items-center justify-between gap-x-2">
-                  <p className="font-medium text-black">{action.name}</p>
-                  {action.userRelation === "completed" && (
-                    <CheckIcon size={20} />
-                  )}
+    <div
+      className={cn(
+        "group/card relative p-3 md:p-4 border-1 border-zinc-200 rounded-[7px] hover:bg-white/50",
+        className,
+      )}
+    >
+      <div className="flex flex-row gap-x-3 md:gap-x-4">
+        <div className="flex flex-col justify-between flex-1">
+          <div className="flex flex-row items-start gap-x-8">
+            <div className="flex-1 flex flex-col">
+              <div className="flex flex-row items-center justify-between gap-x-2">
+                <Link
+                  to={href("/actions/:id", { id: action.id.toString() })}
+                  className="font-medium text-black after:absolute after:inset-0"
+                >
+                  {action.name}
+                </Link>
+                <div className="flex flex-row items-center gap-x-2">
+                  <ShareButton
+                    onClick={handleShareAction}
+                    icon={Link2Icon}
+                    label={clipboardCopy.copyLink}
+                    copiedLabel={clipboardCopy.copiedToClipboard}
+                    className={cn(
+                      "relative text-zinc-500 hover:text-zinc-700",
+                      zIndex.raised,
+                    )}
+                    iconClassName="h-4 w-4 shrink-0"
+                    iconOnly
+                  />
+                  {hasViewerCompletedAction(action) && <CheckIcon size={20} />}
                 </div>
-                <p className="text-zinc-500">{action.shortDescription}</p>
               </div>
+              <p className="text-zinc-500">{action.shortDescription}</p>
             </div>
           </div>
         </div>
-      </Link>
+      </div>
       {shouldShowCompletedBar && (
         <ActionCompletedBarWithInfo
           action={action}
           friendActivities={friendCommitmentActivities ?? null}
           className="mt-4"
-          labelAction={
-            <ShareButton
-              onClick={handleShareAction}
-              icon={ExternalLinkIcon}
-              label={clipboardCopy.share}
-              copiedLabel={clipboardCopy.copiedToClipboard}
-              className="rounded text-zinc-500 hover:text-zinc-700"
-              iconClassName="h-3.5 w-3.5 shrink-0"
-              labelClassName="text-sm"
-            />
-          }
+          barRounded="rounded-[3px]"
+          barClassName="inset-shadow-sm"
+          barFillClassName="shadow-[0_0_4px] shadow-green/50 transition-shadow group-hover/card:shadow-[0_0_7px] group-hover/card:shadow-green/40"
+          dark
         />
-      )}
-      {!shouldShowCompletedBar && (
-        <div className="mt-4 flex justify-start">
-          <ShareButton
-            onClick={handleShareAction}
-            icon={ExternalLinkIcon}
-            label={clipboardCopy.share}
-            copiedLabel={clipboardCopy.copiedToClipboard}
-            className="rounded text-zinc-500 hover:text-zinc-700"
-            iconClassName="h-3.5 w-3.5 shrink-0"
-            labelClassName="text-sm"
-          />
-        </div>
       )}
     </div>
   );

@@ -1,6 +1,10 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
+import { NotificationFormat } from "src/notifs/notification-content";
 import type { Relation } from "src/utils/Repository";
 import {
   Column,
@@ -25,8 +29,7 @@ export class UnreadContent {
 
   @ManyToOne(() => User, { nullable: false, onDelete: "CASCADE" })
   @JoinColumn({ name: "userId" })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  user: Relation<User>;
+  user?: Relation<User>;
 
   @Column({ type: "enum", enum: UnreadContentType })
   @ApiProperty({ enum: UnreadContentType, enumName: "UnreadContentType" })
@@ -35,6 +38,17 @@ export class UnreadContent {
   @Column()
   @ApiProperty()
   contentId: number;
+
+  @Column({
+    type: "enum",
+    enum: NotificationFormat,
+    default: NotificationFormat.Legacy,
+  })
+  format: NotificationFormat;
+
+  /** `NotificationContent`; null on legacy rows. */
+  @Column({ type: "jsonb", nullable: true })
+  content: unknown | null;
 
   @Column({ type: "varchar", nullable: true })
   @ApiProperty({ nullable: true })
@@ -55,6 +69,10 @@ export class UnreadContent {
   @Type(() => Date)
   readAt: Date | null;
 
+  /** The member's in-app setting for its kind, rechecked on a settings change until `sendTime`. */
+  @Column({ default: true })
+  visible: boolean;
+
   @Column({ default: true })
   @ApiProperty()
   shouldPush: boolean;
@@ -71,4 +89,7 @@ export class UnreadContent {
   @Column({ type: "timestamptz", nullable: true })
   @ApiProperty({ type: Date, nullable: true })
   pushClaimedAt: Date | null;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

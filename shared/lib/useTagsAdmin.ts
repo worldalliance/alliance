@@ -2,19 +2,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AddUserToTagDto,
   CreateTagDto,
-  userAddUserToTagAdmin,
-  userCreateTagAdmin,
-  userDeleteTagAdmin,
-  userGetTagsAdmin,
-  userRemoveUserFromTagAdmin,
-  userUpdateTagAdmin,
+  userTagAddUserToTagAdmin,
+  userTagCreateTagAdmin,
+  userTagDeleteTagAdmin,
+  userTagGetTagsAdmin,
+  userTagRemoveUserFromTagAdmin,
+  userTagUpdateTagAdmin,
 } from "../client";
 import { queryKeys } from "./queryKeys";
 
 const QUERY_KEY = queryKeys.tagsAdmin();
 
 /**
- * Single source of truth for tags — wraps `userGetTagsAdmin` and the
+ * Single source of truth for tags — wraps `userTagGetTagsAdmin` and the
  * create/update/delete/membership endpoints in react-query, sharing one cache
  * key that every mutation invalidates.
  */
@@ -27,11 +27,12 @@ export function useTagsAdmin(params?: { enabled?: boolean }) {
     // a disabled query is permanently pending
     isLoading,
     isError,
+    isLoadingError,
     refetch,
   } = useQuery({
     queryKey: QUERY_KEY,
     queryFn: () =>
-      userGetTagsAdmin({ throwOnError: true }).then(
+      userTagGetTagsAdmin({ throwOnError: true }).then(
         (response) => response.data,
       ),
     enabled,
@@ -42,13 +43,13 @@ export function useTagsAdmin(params?: { enabled?: boolean }) {
 
   const createTag = useMutation({
     mutationFn: (body: CreateTagDto) =>
-      userCreateTagAdmin({ body, throwOnError: true }).then((r) => r.data),
+      userTagCreateTagAdmin({ body, throwOnError: true }).then((r) => r.data),
     onSuccess: invalidate,
   });
 
   const updateTag = useMutation({
     mutationFn: ({ tagId, body }: { tagId: string; body: CreateTagDto }) =>
-      userUpdateTagAdmin({ path: { tagId }, body, throwOnError: true }).then(
+      userTagUpdateTagAdmin({ path: { tagId }, body, throwOnError: true }).then(
         (r) => r.data,
       ),
     onSuccess: invalidate,
@@ -56,7 +57,7 @@ export function useTagsAdmin(params?: { enabled?: boolean }) {
 
   const deleteTag = useMutation({
     mutationFn: (tagId: string) =>
-      userDeleteTagAdmin({ path: { tagId }, throwOnError: true }).then(
+      userTagDeleteTagAdmin({ path: { tagId }, throwOnError: true }).then(
         (r) => r.data,
       ),
     onSuccess: invalidate,
@@ -64,15 +65,17 @@ export function useTagsAdmin(params?: { enabled?: boolean }) {
 
   const addUserToTag = useMutation({
     mutationFn: ({ tagId, body }: { tagId: string; body: AddUserToTagDto }) =>
-      userAddUserToTagAdmin({ path: { tagId }, body, throwOnError: true }).then(
-        (r) => r.data,
-      ),
+      userTagAddUserToTagAdmin({
+        path: { tagId },
+        body,
+        throwOnError: true,
+      }).then((r) => r.data),
     onSuccess: invalidate,
   });
 
   const removeUserFromTag = useMutation({
     mutationFn: ({ tagId, body }: { tagId: string; body: AddUserToTagDto }) =>
-      userRemoveUserFromTagAdmin({
+      userTagRemoveUserFromTagAdmin({
         path: { tagId },
         body,
         throwOnError: true,
@@ -84,6 +87,7 @@ export function useTagsAdmin(params?: { enabled?: boolean }) {
     tags,
     isLoading,
     isError,
+    isLoadingError,
     refetch,
     createTag,
     updateTag,

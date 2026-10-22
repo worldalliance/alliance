@@ -1,4 +1,5 @@
 import type { CitySearchDto } from "@alliance/shared/client";
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import { geoSearchCity } from "@alliance/shared/client";
 import {
   Dispatch,
@@ -42,6 +43,7 @@ export async function fetchApproximateGeo(): Promise<CityGeo | null> {
   if (cachedGeoFetched) return cachedGeo;
   cachedGeoFetched = true;
   try {
+    // eslint-disable-next-line no-restricted-globals
     const res = await fetch("https://ipapi.co/json/");
     const data = await res.json();
     if (data?.latitude && data?.longitude) {

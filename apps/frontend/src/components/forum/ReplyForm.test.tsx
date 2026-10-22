@@ -1,36 +1,23 @@
 import { CreateEditableContentDto, PostTagDto } from "@alliance/shared/client";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 
 import {
   deferUpload,
   failUploads,
-  resetUploads,
-  uploadImageDataUri,
+  serveUploads,
   uploads,
-} from "../../testing/uploadImageDataUriMock";
-
-jest.mock("@alliance/shared/lib/uploadImageDataUri", () => ({
-  uploadImageDataUri,
-}));
-
+} from "../../testing/serveUploads";
 import ReplyForm from "./ReplyForm";
 
 // happy-dom leaves `location` where it is on `history.pushState`.
 declare const happyDOM: { setURL: (url: string) => void };
 const setUrl = (url: string) => happyDOM.setURL(url);
 
-afterEach(cleanup);
+serveUploads();
 
 beforeEach(() => {
-  resetUploads();
   sessionStorage.clear();
 });
 
@@ -469,7 +456,7 @@ describe("ReplyForm", () => {
   });
 
   it("shows the upload failure over the rejection before it", async () => {
-    failUploads("Failed to upload image");
+    failUploads("The image was too large");
     render(
       <Harness
         onSubmit={() => {}}
@@ -483,14 +470,17 @@ describe("ReplyForm", () => {
 
     await post();
 
-    expect(screen.getByRole("alert").textContent).toBe(
-      "Failed to upload image",
-    );
+    expect(
+      screen.getByText("The image was too large").getAttribute("role"),
+    ).toBe("alert");
+    expect(screen.queryByText("Reply cannot be empty")).toBeNull();
   });
 
   it("shows the rejection next to the field it came from", () => {
     render(<Harness onSubmit={() => {}} error="Reply cannot be empty" />);
 
-    expect(screen.getByRole("alert").textContent).toBe("Reply cannot be empty");
+    expect(screen.getByText("Reply cannot be empty").getAttribute("role")).toBe(
+      "alert",
+    );
   });
 });

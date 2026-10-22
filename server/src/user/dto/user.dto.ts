@@ -1,3 +1,6 @@
+/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
+import { publicDisplayName } from "@alliance/common/displayName";
+import { type UserPropertyPresence } from "@alliance/common/forms/user-properties";
 import { Temporal } from "@js-temporal/polyfill";
 import {
   ApiProperty,
@@ -16,9 +19,11 @@ import {
   IsString,
   ValidateNested,
 } from "class-validator";
+import { OAuthAccount } from "src/auth/oauth/oauth-account.entity";
 import { getImageSource } from "src/images/images.service";
 import { IsE164 } from "src/utils/phone";
 import { IsPlainTime, trimToPlainTime } from "src/utils/plain-time";
+import { IsTimeZoneIdentifier } from "src/utils/timezone";
 import { trim, trimToNull } from "src/utils/transforms";
 import { Campaign } from "../../campaign/entities/campaign.entity";
 import { ClusterSummaryDto } from "../../cluster/dto/cluster.dto";
@@ -26,14 +31,23 @@ import { Cluster } from "../../cluster/entities/cluster.entity";
 import { City } from "../../geo/city.entity";
 import { ShareUrl } from "../../share-urls/entities/share-url.entity";
 import {
-  compareContractEventsNewestFirst,
   ContractEvent,
   ContractEventType,
+  findLastContractEvent,
 } from "../entities/contract-event.entity";
 import { FriendStatus } from "../entities/friend.entity";
-import { OnetimeInvite } from "../entities/onetime-invite.entity";
-import { ReferralSource, User } from "../entities/user.entity";
-import type { ReferrerResolution } from "../user.service";
+import {
+  loadedOnetimeInviteInvitingUser,
+  OnetimeInvite,
+} from "../entities/onetime-invite.entity";
+import { Tag } from "../entities/tag.entity";
+import {
+  hasPassword,
+  loadedUserTags,
+  ReferralSource,
+  User,
+} from "../entities/user.entity";
+import type { ReferrerResolution } from "../referral.service";
 
 export type FriendStatusDtoArgs = {
   status: FriendStatus;
@@ -74,6 +88,13 @@ export class ContractEventDto {
     this.automatic = input.automatic;
     this.contractId = input.contractId;
   }
+}
+
+function toLastContractEventDto(
+  events: ContractEvent[] | undefined,
+): ContractEventDto | undefined {
+  const last = findLastContractEvent(events ?? []);
+  return last ? new ContractEventDto(last) : undefined;
 }
 
 export class ProfileDto extends PickType(User, [
@@ -126,17 +147,8 @@ export class ProfileDto extends PickType(User, [
     this.hasActiveContract = user.hasActiveContract;
     this.isCommunityLeader = user.isCommunityLeader;
     this.anonymous = user.anonymous;
-    const lastContractEvent = user.contractEvents?.length
-      ? user.contractEvents.sort(compareContractEventsNewestFirst)[0]
-      : undefined;
-    this.lastContractEvent = lastContractEvent
-      ? new ContractEventDto(lastContractEvent)
-      : undefined;
-    if (user.anonymous) {
-      this.displayName = "Someone";
-    } else {
-      this.displayName = user.name;
-    }
+    this.lastContractEvent = toLastContractEventDto(user.contractEvents);
+    this.displayName = publicDisplayName(user);
 
     this.profilePicture = user.profilePicture
       ? getImageSource(user.profilePicture)
@@ -167,7 +179,7 @@ export class ReferrerProfileDto {
     switch (input.kind) {
       case "user":
         this.kind = "user";
-        this.displayName = input.user.anonymous ? "Someone" : input.user.name;
+        this.displayName = publicDisplayName(input.user);
         this.profilePicture = input.user.profilePicture
           ? getImageSource(input.user.profilePicture)
           : null;
@@ -205,29 +217,30 @@ export class SignupSocialProofDto {
   }
 }
 
+export class OAuthAccountDto extends PickType(OAuthAccount, [
+  "provider",
+  "email",
+]) {
+  constructor(input: OAuthAccount) {
+    super();
+    this.provider = input.provider;
+    this.email = input.email;
+  }
+}
+
 export class UserDto extends PickType(User, [
   "name",
   "admin",
   "staff",
   "ambassador",
   "id",
-  "emailNotifsForActions",
-  "pushNotifsForActions",
-  "textNotifsForActions",
   "profileDescription",
-  "forumDigestPreference",
   "switchedDomainAt",
-  "turnedOffAllNotifs",
   "referralCode",
   "referralSource",
   "referredById",
   "referredByCampaignId",
   "anonymous",
-  "pushesForLikes",
-  "pushesForComments",
-  "pushesForFriendRequests",
-  "pushesForMessages",
-  "pushesForActionUpdates",
   "phoneNumber",
   "communities",
   "profilePicture",
@@ -236,13 +249,11 @@ export class UserDto extends PickType(User, [
   "shareEmailWithCommunityLead",
   "sharePhoneNumberWithCommunityLead",
   "preferredReminderTime",
-  "remindAboutUncompletedGroupMembers",
   "timeZone",
   "formDataPreference",
   "shareInfoPublicly",
   "customCityString",
   "undergoingGroupAssignment",
-  "receiveReplyNotifications",
   "tags",
   "clusterId",
 ]) {
@@ -263,6 +274,20 @@ export class UserDto extends PickType(User, [
   @Type(() => ContractEventDto)
   contractEvents?: ContractEventDto[];
 
+  @ApiPropertyOptional({ type: ContractEventDto })
+  @IsOptional()
+  @Type(() => ContractEventDto)
+  lastContractEvent?: ContractEventDto;
+
+  @ApiPropertyOptional({ type: () => OAuthAccountDto, isArray: true })
+  @IsOptional()
+  @Type(() => OAuthAccountDto)
+  oauthAccounts?: OAuthAccountDto[];
+
+  @ApiProperty()
+  @Allow()
+  hasPassword: boolean;
+
   constructor(user: User) {
     super();
     this.id = user.id;
@@ -271,14 +296,9 @@ export class UserDto extends PickType(User, [
     this.phoneNumber = user.phoneNumber;
     this.preferredReminderTime = user.preferredReminderTime;
     this.timeZone = user.timeZone;
-    this.emailNotifsForActions = user.emailNotifsForActions;
-    this.textNotifsForActions = user.textNotifsForActions;
-    this.pushNotifsForActions = user.pushNotifsForActions;
     this.shareEmailWithCommunityLead = user.shareEmailWithCommunityLead;
     this.sharePhoneNumberWithCommunityLead =
       user.sharePhoneNumberWithCommunityLead;
-    this.turnedOffAllNotifs = user.turnedOffAllNotifs;
-    this.forumDigestPreference = user.forumDigestPreference;
     this.switchedDomainAt = user.switchedDomainAt;
     this.admin = user.admin;
     this.staff = user.staff;
@@ -290,18 +310,11 @@ export class UserDto extends PickType(User, [
     this.anonymous = user.anonymous;
     this.shareInfoPublicly = user.shareInfoPublicly;
     this.formDataPreference = user.formDataPreference;
-    this.pushesForLikes = user.pushesForLikes;
-    this.pushesForComments = user.pushesForComments;
-    this.pushesForFriendRequests = user.pushesForFriendRequests;
-    this.pushesForMessages = user.pushesForMessages;
-    this.pushesForActionUpdates = user.pushesForActionUpdates;
     this.undergoingGroupAssignment = user.undergoingGroupAssignment;
-    this.remindAboutUncompletedGroupMembers =
-      user.remindAboutUncompletedGroupMembers;
-    this.receiveReplyNotifications = user.receiveReplyNotifications;
     this.contractEvents = user.contractEvents?.map(
       (event) => new ContractEventDto(event),
     );
+    this.lastContractEvent = toLastContractEventDto(user.contractEvents);
     this.activities = user.activities;
     this.tags = user.tags;
     this.communities = user.communities;
@@ -313,6 +326,10 @@ export class UserDto extends PickType(User, [
     this.referredById = user.referredById;
     this.referredByCampaignId = user.referredByCampaignId;
     this.clusterId = user.clusterId;
+    this.oauthAccounts = user.oauthAccounts?.map(
+      (account) => new OAuthAccountDto(account),
+    );
+    this.hasPassword = hasPassword(user);
   }
 }
 
@@ -403,7 +420,7 @@ export type UserAdminDetail = User & {
   city?: City | null;
   referredBy?: User | null;
   referredByCampaign?: Campaign | null;
-  referredByInvite?: (OnetimeInvite & { invitingUser?: User | null }) | null;
+  referredByInvite?: OnetimeInvite | null;
   referredByShareUrl?: ShareUrl | null;
 };
 
@@ -414,8 +431,14 @@ export class UserAdminDetailDto extends UserDto {
   @ApiProperty({ type: () => UserAdminInvitedByDto, nullable: true })
   invitedBy: UserAdminInvitedByDto | null;
 
+  // eslint-disable-next-line @darraghor/nestjs-typed/api-property-matches-property-optionality -- without it, @ApiProperty keeps UserDto's inherited required: false
+  @ApiProperty({ type: () => Tag, isArray: true, required: true })
+  @Type(() => Tag)
+  tags: Tag[];
+
   constructor(user: UserAdminDetail) {
     super(user);
+    this.tags = loadedUserTags(user);
     this.location = new UserAdminLocationDto({
       city: user.city,
       customCityString: user.customCityString,
@@ -439,10 +462,13 @@ function userAdminInvitedBy(user: UserAdminDetail) {
       campaign: user.referredByCampaign,
     });
   }
-  if (user.referredByInvite?.invitingUser) {
+  const inviter =
+    user.referredByInvite &&
+    loadedOnetimeInviteInvitingUser(user.referredByInvite);
+  if (inviter) {
     return new UserAdminInvitedByDto({
       kind: "user",
-      user: user.referredByInvite.invitingUser,
+      user: inviter,
       referralSource: user.referralSource,
     });
   }
@@ -478,27 +504,20 @@ function humanizeReferralSource(source: ReferralSource) {
 
 export class UpdateProfileDto extends PartialType(
   PickType(User, [
-    "name",
     "anonymous",
-    "emailNotifsForActions",
-    "pushNotifsForActions",
-    "textNotifsForActions",
     "shareEmailWithCommunityLead",
-    "remindAboutUncompletedGroupMembers",
-    "receiveReplyNotifications",
     "sharePhoneNumberWithCommunityLead",
-    "forumDigestPreference",
     "formDataPreference",
-    "timeZone",
-    "isNotSignedUpPartialProfile",
     "shareInfoPublicly",
-    "pushesForLikes",
-    "pushesForComments",
-    "pushesForFriendRequests",
-    "pushesForMessages",
-    "pushesForActionUpdates",
   ]),
 ) {
+  @IsOptional()
+  @ApiPropertyOptional({ type: String })
+  @IsString()
+  @IsNotEmpty()
+  @Transform(trim)
+  name?: string;
+
   @ApiPropertyOptional({ type: Number, nullable: true })
   @IsOptional()
   cityId?: number | null;
@@ -531,10 +550,21 @@ export class UpdateProfileDto extends PartialType(
   @IsString()
   @Transform(trimToNull)
   customCityString?: string | null;
+
+  @IsOptional()
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description: "null leaves the saved zone unchanged",
+  })
+  @IsTimeZoneIdentifier()
+  // Older mobile builds send back /auth/me's null.
+  @Transform(({ value }) => value ?? undefined)
+  timeZone?: string;
 }
 
 export class UpdateUserRolesAdminDto extends PartialType(
-  PickType(User, ["ambassador", "staff"]),
+  PickType(User, ["ambassador", "staff", "admin"]),
 ) {
   @ApiPropertyOptional()
   @IsOptional()
@@ -545,6 +575,11 @@ export class UpdateUserRolesAdminDto extends PartialType(
   @IsOptional()
   @IsBoolean()
   staff?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  admin?: boolean;
 }
 
 export class DeleteUserAdminDto {
@@ -604,7 +639,7 @@ export class StaffDirectoryEntryDto {
     >,
   ) {
     this.id = user.id;
-    this.displayName = user.anonymous ? "Someone" : user.name;
+    this.displayName = publicDisplayName(user);
     this.profilePicture = user.profilePicture
       ? getImageSource(user.profilePicture)
       : null;
@@ -723,21 +758,62 @@ export class NMembersResponseDto {
   }
 }
 
+export class UserPropertyPresenceDto implements UserPropertyPresence {
+  @ApiProperty() name: boolean;
+  @ApiProperty() email: boolean;
+  @ApiProperty() phoneNumber: boolean;
+  @ApiProperty() preferredReminderTime: boolean;
+  @ApiProperty() timeZone: boolean;
+  @ApiProperty() profilePicture: boolean;
+  @ApiProperty() profileDescription: boolean;
+  @ApiProperty() city: boolean;
+  @ApiProperty() customCityString: boolean;
+  @ApiProperty() over18: boolean;
+  @ApiProperty() clusterId: boolean;
+  @ApiProperty() staffTitle: boolean;
+  @ApiProperty() switchedDomainAt: boolean;
+  @ApiProperty() referredById: boolean;
+  @ApiProperty() shareInfoPublicly: boolean;
+
+  constructor(input: UserPropertyPresence) {
+    this.name = input.name;
+    this.email = input.email;
+    this.phoneNumber = input.phoneNumber;
+    this.preferredReminderTime = input.preferredReminderTime;
+    this.timeZone = input.timeZone;
+    this.profilePicture = input.profilePicture;
+    this.profileDescription = input.profileDescription;
+    this.city = input.city;
+    this.customCityString = input.customCityString;
+    this.over18 = input.over18;
+    this.clusterId = input.clusterId;
+    this.staffTitle = input.staffTitle;
+    this.switchedDomainAt = input.switchedDomainAt;
+    this.referredById = input.referredById;
+    this.shareInfoPublicly = input.shareInfoPublicly;
+  }
+}
+
 export type MyVisibilityContext = {
   userHasCity: boolean;
+  userPropertyHasValue: UserPropertyPresence;
   firstContractSignedAt: Date | null;
   completedActionCount: number;
 };
 
 /**
  * User-account-derived values consumed by form visibility conditions
- * (`userHasCity`, `firstContractSigned`, `completedActionCount`). Mirrors the
- * server-side extras used when stripping hidden answers at submission, so
- * clients preview the same visibility the server enforces.
+ * (`userHasCity`, `userPropertyHasValue`, `firstContractSigned`,
+ * `completedActionCount`). Mirrors the server-side extras used when stripping
+ * hidden answers at submission, so clients preview the same visibility the
+ * server enforces.
  */
 export class MyVisibilityContextDto {
   @ApiProperty()
   userHasCity: boolean;
+
+  @ApiProperty({ type: () => UserPropertyPresenceDto })
+  userPropertyHasValue: UserPropertyPresenceDto;
 
   @ApiPropertyOptional({ type: Date })
   firstContractSignedAt?: Date;
@@ -747,6 +823,9 @@ export class MyVisibilityContextDto {
 
   constructor(input: MyVisibilityContext) {
     this.userHasCity = input.userHasCity;
+    this.userPropertyHasValue = new UserPropertyPresenceDto(
+      input.userPropertyHasValue,
+    );
     this.firstContractSignedAt = input.firstContractSignedAt ?? undefined;
     this.completedActionCount = input.completedActionCount;
   }

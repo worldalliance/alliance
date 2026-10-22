@@ -13,11 +13,8 @@ import type { BaseFieldProps } from "./types";
 export function EditableRankingField({
   field,
   onUpdate,
-  onRemove,
-  onDragStart,
-  onDragEnd,
-  isDragging,
   previousFields,
+  laterFields,
 }: BaseFieldProps<RankingField>) {
   const duplicates = duplicateOptionValues(field.options);
 
@@ -77,10 +74,7 @@ export function EditableRankingField({
       field={field}
       onUpdate={onUpdate}
       previousFields={previousFields}
-      onRemove={onRemove}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      isDragging={isDragging}
+      laterFields={laterFields}
     >
       <FieldLabelEditor
         value={field.label}

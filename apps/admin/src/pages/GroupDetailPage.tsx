@@ -1,454 +1,66 @@
-import {
-  COMMUNITY_DESCRIPTION_MAX_LENGTH,
-  COMMUNITY_NAME_MAX_LENGTH,
-} from "@alliance/common/community";
-import { errorMessage } from "@alliance/common/errorMessage";
-import { withCount } from "@alliance/common/plural";
-import {
-  actionsGetCommunityMemberInfoAdmin,
-  communityAddLeaderAdmin,
-  communityAddMemberAdmin,
-  communityDeleteAdmin,
-  communityGetCommunitiesAdmin,
-  communityGetMemberContactInfoAdmin,
-  communityRemoveLeaderAdmin,
-  communityRemoveMemberAdmin,
-  communityUpdate,
-  userListAdmin,
-} from "@alliance/shared/client";
-import type {
-  CommunityDto,
-  CommunityMemberContactInfoDto,
-  CreateCommunityDto,
-  HeyApiError,
-  UpdateCommunityDto,
-  UserActionRelationDetailDto,
-  UserActionSummaryDto,
-} from "@alliance/shared/client/types.gen";
-import { calculateCompletionData } from "@alliance/shared/lib/actionUtils";
-import { getMemberCount } from "@alliance/shared/lib/communityUtils";
-import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
-import { groupSettings } from "@alliance/shared/lib/copy";
-import { CardStyle } from "@alliance/shared/styles/card";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
-import CharacterLimitNotice from "@alliance/sharedweb/ui/CharacterLimitNotice";
-import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
-import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
-import { keyBy } from "es-toolkit";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { ConfirmMode, useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import React, { useCallback, useState } from "react";
 import { href, Link, useNavigate, useParams } from "react-router";
+import GroupMembership from "../components/group-detail/GroupMembership";
+import GroupSettingsForm from "../components/group-detail/GroupSettingsForm";
+import { adminRefusalMessage } from "../lib/adminRefusal";
+import {
+  useCommunitiesAdmin,
+  useDeleteCommunityAdmin,
+} from "../lib/useCommunitiesAdmin";
+import { useCommunityMemberInfoAdmin } from "../lib/useCommunityMemberInfoAdmin";
+import { useRefusalToast } from "../lib/useRefusalToast";
+import { useUsersAdmin } from "../lib/useUsersAdmin";
 
 const CommunityDetailPage: React.FC = () => {
   const { id } = useParams();
   const communityId = Number(id);
   const navigate = useNavigate();
 
-  const [community, setCommunity] = useState<CommunityDto | null>(null);
-  const [loading, setLoading] = useState(true);
+  const communities = useCommunitiesAdmin();
+  const community =
+    communities.data?.find((candidate) => candidate.id === communityId) ?? null;
+  const loading =
+    !Number.isNaN(communityId) &&
+    (communities.isPending ||
+      (!community && communities.fetchStatus !== "idle"));
+  const loadError = Number.isNaN(communityId)
+    ? "Invalid community id."
+    : communities.isError
+      ? adminRefusalMessage(
+          communities.error,
+          "Unable to load community. Please try again.",
+        )
+      : null;
   const [error, setError] = useState<string | null>(null);
-  const [savingDetails, setSavingDetails] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [formValues, setFormValues] = useState<CreateCommunityDto>({
-    name: "",
-    description: "",
-    public: false,
-    maxCapacity: GROUP_MAX_CAPACITY_DEFAULT,
-    allowMemberInvites: true,
-    allowStaffAssignments: true,
-  });
-  const [users, setUsers] = useState<UserSelectUser[]>([]);
-  const [usersLoading, setUsersLoading] = useState(false);
-  const [memberSelection, setMemberSelection] = useState<number[]>([]);
-  const [leaderSelection, setLeaderSelection] = useState<number[]>([]);
-  const [addingMember, setAddingMember] = useState(false);
-  const [addingLeader, setAddingLeader] = useState(false);
-  const [pendingMemberIds, setPendingMemberIds] = useState<Set<number>>(
-    () => new Set<number>(),
+  const memberInfo = useCommunityMemberInfoAdmin(
+    Number.isNaN(communityId) ? null : communityId,
   );
-  const [pendingLeaderIds, setPendingLeaderIds] = useState<Set<number>>(
-    () => new Set<number>(),
-  );
-  const { confirm, success, error: pushError } = useToast();
-  const requiresMaxCapacity =
-    formValues.public ||
-    formValues.allowStaffAssignments ||
-    formValues.allowMemberInvites;
+  const usersQuery = useUsersAdmin();
+  const { confirm, success } = useToast();
 
-  const memberCount = community ? getMemberCount(community) : 0;
-
-  const loadCommunity = useCallback(async () => {
-    if (Number.isNaN(communityId)) {
-      setError("Invalid community id.");
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await communityGetCommunitiesAdmin();
-      if (!response.data) {
-        setError(
-          errorMessage({
-            error: response.error,
-            fallback: "Unable to load community. Please try again.",
-          }),
-        );
-        return;
-      }
-      const match =
-        response.data.find((candidate) => candidate.id === communityId) ?? null;
-      if (!match) {
-        setError("Community not found.");
-      }
-      setCommunity(match);
-    } catch (err) {
-      console.error("Failed to load community", err);
-      setError("Unable to load community. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }, [communityId]);
-
-  useEffect(() => {
-    void loadCommunity();
-  }, [loadCommunity]);
-
-  const [userActionRelations, setUserActionRelations] = useState<Record<
-    number,
-    UserActionRelationDetailDto[]
-  > | null>(null);
-
-  const [actionSummaries, setActionSummaries] = useState<
-    UserActionSummaryDto[]
-  >([]);
-  const maxActionsPerWeek = useMaxActionsPerWeek({
-    actionSummaries: actionSummaries,
-    userActionRelations,
-  });
-  const [activeActions, setActiveActions] = useState<UserActionSummaryDto[]>(
-    [],
-  );
-
-  const [memberContactInfo, setMemberContactInfo] = useState<Record<
-    number,
-    CommunityMemberContactInfoDto
-  > | null>(null);
-
-  const refreshUserActionRelations = useCallback(() => {
-    actionsGetCommunityMemberInfoAdmin({ path: { communityId } }).then(
-      (resp) => {
-        if (resp.data) {
-          // Most recent actions first
-          resp.data.actions.reverse();
-
-          setActionSummaries(resp.data.actions);
-          setActiveActions(
-            resp.data.actions.filter(
-              (action) => action.status === "member_action",
-            ),
-          );
-          const relationMap: Record<number, UserActionRelationDetailDto[]> =
-            Object.fromEntries(
-              resp.data.users.map((user) => [user.userId, user.relations]),
-            );
-          setUserActionRelations(relationMap);
-        }
-      },
-    );
-    communityGetMemberContactInfoAdmin({ path: { communityId } }).then(
-      (resp) => {
-        if (resp.data) {
-          setMemberContactInfo(
-            keyBy(resp.data, (contactInfo) => contactInfo.id),
-          );
-        }
-      },
-    );
-  }, [communityId]);
-
-  useEffect(() => refreshUserActionRelations(), [refreshUserActionRelations]);
-
-  useEffect(() => {
-    setUsersLoading(true);
-    userListAdmin()
-      .then((response) => {
-        const rawUsers = response.data ?? [];
-        setUsers(
-          rawUsers.map((user) => ({
-            id: user.id,
-            name: user.name ?? `User #${user.id}`,
-            profilePicture: user.profilePicture ?? null,
-          })),
-        );
-      })
-      .catch((err) => {
-        console.error("Failed to load users", err);
-      })
-      .finally(() => setUsersLoading(false));
-  }, []);
-
-  useEffect(() => {
-    if (community) {
-      setFormValues({
-        name: community.name,
-        description: community.description,
-        public: community.public,
-        maxCapacity: community.maxCapacity,
-        allowMemberInvites: community.allowMemberInvites,
-        allowStaffAssignments: community.allowStaffAssignments,
-      });
-    }
-  }, [community]);
-
-  const { completedAllCurrentActions } = useMemo<{
-    completedAllCurrentActions: Record<number, boolean>;
-    nCompleted: number;
-    nTotal: number;
-  }>(() => {
-    if (!userActionRelations) {
-      return {
-        completedAllCurrentActions: {} as Record<number, boolean>,
-        nCompleted: 0,
-        nTotal: 0,
-      };
-    }
-
-    return calculateCompletionData({
-      filteredActionIds: activeActions.map((a) => a.id),
-      userActionRelations,
-    });
-  }, [activeActions, userActionRelations]);
-
-  const handleUpdateDetails = useCallback(
-    async (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      if (!community) {
-        return;
-      }
-      let normalizedMaxCapacity: number | null = null;
-      if (requiresMaxCapacity) {
-        if (!formValues.maxCapacity || formValues.maxCapacity <= 0) {
-          setError("Member capacity is required.");
-          return;
-        }
-        normalizedMaxCapacity = formValues.maxCapacity;
-      }
-      const payload: UpdateCommunityDto = {
-        name: formValues.name.trim(),
-        description: formValues.description.trim(),
-        public: formValues.public,
-        maxCapacity: normalizedMaxCapacity,
-        allowMemberInvites: formValues.allowMemberInvites,
-        allowStaffAssignments: formValues.allowStaffAssignments,
-      };
-      if (!payload.name || !payload.description) {
-        setError("Name and description are required.");
-        return;
-      }
-      setSavingDetails(true);
-      setError(null);
-      try {
-        const response = await communityUpdate({
-          path: { communityId },
-          body: payload,
-        });
-        if (response.data) {
-          setCommunity(response.data);
-          success("Group updated", response.data.name);
-        } else {
-          const message = errorMessage({
-            error: response.error,
-            fallback: "Unable to update group. Please try again.",
-          });
-          setError(message);
-          pushError(message);
-        }
-      } catch (err) {
-        console.error("Failed to update group", err);
-        setError("Unable to update group. Please try again.");
-        pushError("Unable to update group. Please try again.");
-      } finally {
-        setSavingDetails(false);
-      }
+  const refusalToast = useRefusalToast();
+  const reportError = useCallback(
+    (err: unknown, fallback: string) => {
+      setError(adminRefusalMessage(err, fallback));
+      refusalToast(err, fallback);
     },
-    [
-      community,
-      communityId,
-      formValues,
-      requiresMaxCapacity,
-      pushError,
-      setCommunity,
-      success,
-      setError,
-    ],
+    [refusalToast],
   );
 
-  const mutateMembers = useCallback(
-    async (
-      action:
-        | "add"
-        | "remove"
-        | "add-leader"
-        | "remove-leader"
-        | "promote-leader",
-      userId?: number,
-    ) => {
-      if (!community) {
-        return;
-      }
-      const applyCommunity = (
-        response: { data?: CommunityDto; error?: HeyApiError },
-        fallback: string,
-      ): boolean => {
-        if (response.data) {
-          setCommunity(response.data);
-          setError(null);
-          return true;
-        }
-        const message = errorMessage({ error: response.error, fallback });
-        setError(message);
-        pushError(message);
-        return false;
-      };
-      try {
-        switch (action) {
-          case "add": {
-            if (!memberSelection.length) return;
-            setAddingMember(true);
-            const response = await communityAddMemberAdmin({
-              path: { communityId },
-              body: { userId: memberSelection[0] },
-            });
-            if (
-              applyCommunity(
-                response,
-                "Unable to add member. Please try again.",
-              )
-            ) {
-              setMemberSelection([]);
-            }
-            setAddingMember(false);
-            break;
-          }
-          case "remove": {
-            if (!userId) return;
-            setPendingMemberIds((prev) => {
-              const next = new Set(prev);
-              next.add(userId);
-              return next;
-            });
-            const response = await communityRemoveMemberAdmin({
-              path: { communityId },
-              body: { userId },
-            });
-            applyCommunity(
-              response,
-              "Unable to remove member. Please try again.",
-            );
-            setPendingMemberIds((prev) => {
-              const next = new Set(prev);
-              next.delete(userId);
-              return next;
-            });
-            break;
-          }
-          case "add-leader": {
-            if (!leaderSelection.length) return;
-            setAddingLeader(true);
-            const response = await communityAddLeaderAdmin({
-              path: { communityId },
-              body: { userId: leaderSelection[0] },
-            });
-            if (
-              applyCommunity(
-                response,
-                "Unable to add leader. Please try again.",
-              )
-            ) {
-              setLeaderSelection([]);
-            }
-            setAddingLeader(false);
-            break;
-          }
-          case "promote-leader": {
-            if (!userId) return;
-            setPendingLeaderIds((prev) => {
-              const next = new Set(prev);
-              next.add(userId);
-              return next;
-            });
-            const response = await communityAddLeaderAdmin({
-              path: { communityId },
-              body: { userId },
-            });
-            applyCommunity(
-              response,
-              "Unable to promote leader. Please try again.",
-            );
-            setPendingLeaderIds((prev) => {
-              const next = new Set(prev);
-              next.delete(userId);
-              return next;
-            });
-            break;
-          }
-          case "remove-leader": {
-            if (!userId) return;
-            setPendingLeaderIds((prev) => {
-              const next = new Set(prev);
-              next.add(userId);
-              return next;
-            });
-            const response = await communityRemoveLeaderAdmin({
-              path: { communityId },
-              body: { userId },
-            });
-            applyCommunity(
-              response,
-              "Unable to remove leader. Please try again.",
-            );
-            setPendingLeaderIds((prev) => {
-              const next = new Set(prev);
-              next.delete(userId);
-              return next;
-            });
-            break;
-          }
-        }
-        void refreshUserActionRelations();
-      } catch (err) {
-        console.error("Community mutation failed", err);
-        setError("Operation failed. Please try again.");
-        setAddingMember(false);
-        setAddingLeader(false);
-        pushError("Community update failed. Please try again.");
-        if (userId) {
-          setPendingMemberIds((prev) => {
-            const next = new Set(prev);
-            next.delete(userId);
-            return next;
-          });
-          setPendingLeaderIds((prev) => {
-            const next = new Set(prev);
-            next.delete(userId);
-            return next;
-          });
-        }
-      }
+  const {
+    mutate: deleteCommunity,
+    isPending: deleting,
+    isSuccess: deleted,
+  } = useDeleteCommunityAdmin({
+    onSuccess: () => {
+      if (community) success("Community deleted", community.name);
+      navigate(href("/groups"));
     },
-    [
-      communityId,
-      leaderSelection,
-      memberSelection,
-      community,
-      pushError,
-      setAddingLeader,
-      refreshUserActionRelations,
-    ],
-  );
+    onError: (err) =>
+      reportError(err, "Unable to delete community. Please try again."),
+  });
 
   const handleDelete = useCallback(async () => {
     if (!community) return;
@@ -458,90 +70,16 @@ const CommunityDetailPage: React.FC = () => {
         "All members and leaders will lose this community assignment. This action cannot be undone.",
       confirmLabel: "Delete community",
       cancelLabel: "Cancel",
-      mode: "fullscreen",
+      mode: ConfirmMode.Fullscreen,
     });
     if (!confirmed) {
       return;
     }
-    setDeleting(true);
     setError(null);
-    try {
-      const response = await communityDeleteAdmin({ path: { communityId } });
-      if (response.error) {
-        const message = errorMessage({
-          error: response.error,
-          fallback: "Unable to delete community. Please try again.",
-        });
-        setError(message);
-        pushError(message);
-        return;
-      }
-      success("Community deleted", community.name);
-      navigate(href("/groups"));
-    } catch (err) {
-      console.error("Failed to delete community", err);
-      setError("Unable to delete community. Please try again.");
-      pushError("Unable to delete community. Please try again.");
-    } finally {
-      setDeleting(false);
-    }
-  }, [
-    community,
-    communityId,
-    confirm,
-    success,
-    navigate,
-    pushError,
-    setError,
-    setDeleting,
-  ]);
+    deleteCommunity(communityId);
+  }, [community, communityId, confirm, deleteCommunity, setError]);
 
-  const leaderIds = useMemo(() => {
-    return new Set(community?.leaders.map((leader) => leader.id) ?? []);
-  }, [community]);
-
-  const sortedMembers = useMemo(() => {
-    return [...(community?.users ?? [])].sort((a, b) =>
-      (a.displayName ?? "").localeCompare(b.displayName ?? "", undefined, {
-        sensitivity: "base",
-      }),
-    );
-  }, [community]);
-
-  const sortedLeaders = useMemo(() => {
-    return [...(community?.leaders ?? [])].sort((a, b) =>
-      (a.displayName ?? "").localeCompare(b.displayName ?? "", undefined, {
-        sensitivity: "base",
-      }),
-    );
-  }, [community]);
-
-  const confirmLeaderPromotion = useCallback(
-    async (
-      event: React.MouseEvent<HTMLElement>,
-      userId: number,
-      displayName?: string | null,
-    ) => {
-      if (!community) return;
-      const anchorEl = event.currentTarget;
-      const ok = await confirm({
-        title: "Make leader?",
-        message: `Promote ${displayName ?? "this member"} to a leader of ${
-          community.name
-        }?`,
-        confirmLabel: "Make leader",
-        cancelLabel: "Cancel",
-        anchorEl,
-        placement: "top",
-        mode: "popover",
-      });
-      if (!ok) {
-        return;
-      }
-      await mutateMembers("promote-leader", userId);
-    },
-    [community, confirm, mutateMembers],
-  );
+  if (deleted) return null;
 
   if (loading) {
     return (
@@ -560,8 +98,8 @@ const CommunityDetailPage: React.FC = () => {
   if (!community) {
     return (
       <div className="p-6 pt-20">
-        {error ? (
-          <p className="text-sm text-red-500">{error}</p>
+        {loadError ? (
+          <p className="text-sm text-red-500">{loadError}</p>
         ) : (
           <p className="text-sm text-zinc-500">Community not found.</p>
         )}
@@ -597,340 +135,18 @@ const CommunityDetailPage: React.FC = () => {
           </p>
         )}
 
-        <Card style={CardStyle.White}>
-          <form className="flex flex-col gap-4" onSubmit={handleUpdateDetails}>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-zinc-700">Name</label>
-              <input
-                type="text"
-                className="border border-zinc-300 rounded px-3 py-2 text-sm"
-                value={formValues.name}
-                maxLength={COMMUNITY_NAME_MAX_LENGTH}
-                onChange={(event) =>
-                  setFormValues((prev) => ({
-                    ...prev,
-                    name: event.target.value,
-                  }))
-                }
-              />
-              <CharacterLimitNotice
-                value={formValues.name}
-                max={COMMUNITY_NAME_MAX_LENGTH}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-zinc-700">
-                Description
-              </label>
-              <textarea
-                className="border border-zinc-300 rounded px-3 py-2 text-sm min-h-[80px]"
-                value={formValues.description}
-                maxLength={COMMUNITY_DESCRIPTION_MAX_LENGTH}
-                onChange={(event) =>
-                  setFormValues((prev) => ({
-                    ...prev,
-                    description: event.target.value,
-                  }))
-                }
-              />
-              <CharacterLimitNotice
-                value={formValues.description}
-                max={COMMUNITY_DESCRIPTION_MAX_LENGTH}
-              />
-            </div>
-            <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
-              <div className="flex flex-col gap-y-3">
-                <label className="flex items-start gap-x-2 text-sm font-medium text-zinc-700">
-                  <input
-                    type="checkbox"
-                    checked={formValues.public}
-                    onChange={(event) => {
-                      setFormValues((prev) => ({
-                        ...prev,
-                        public: event.target.checked,
-                        allowStaffAssignments: true,
-                        allowMemberInvites: true,
-                      }));
-                    }}
-                    className="mt-1"
-                  />
-                  <div>
-                    <p className="text-base font-medium">
-                      {groupSettings.public.name}
-                    </p>
-                    <p className="text-sm text-zinc-500 font-normal">
-                      {groupSettings.public.explanation}
-                    </p>
-                  </div>
-                </label>
-                <label className="flex items-start gap-x-2 text-sm font-medium text-zinc-700">
-                  <input
-                    type="checkbox"
-                    checked={formValues.allowMemberInvites}
-                    onChange={(event) =>
-                      setFormValues((prev) => ({
-                        ...prev,
-                        allowMemberInvites: event.target.checked,
-                      }))
-                    }
-                    disabled={formValues.public}
-                    className="mt-1"
-                  />
-                  <div>
-                    <p className="text-base font-medium">
-                      {groupSettings.allowMemberInvites.name}
-                    </p>
-                    <p className="text-sm text-zinc-500 font-normal">
-                      {groupSettings.allowMemberInvites.explanation}
-                    </p>
-                  </div>
-                </label>
-                <label className="flex items-start gap-x-2 text-sm font-medium text-zinc-700">
-                  <input
-                    type="checkbox"
-                    checked={formValues.allowStaffAssignments}
-                    onChange={(event) =>
-                      setFormValues((prev) => ({
-                        ...prev,
-                        allowStaffAssignments: event.target.checked,
-                      }))
-                    }
-                    disabled={formValues.public}
-                    className="mt-1"
-                  />
-                  <div>
-                    <p className="text-base font-medium">
-                      {groupSettings.allowStaffAssignments.name}
-                    </p>
-                    <p className="text-sm text-zinc-500 font-normal">
-                      {groupSettings.allowStaffAssignments.explanation}
-                    </p>
-                  </div>
-                </label>
-              </div>
-              {requiresMaxCapacity && (
-                <div className="mt-4">
-                  <label
-                    className="text-black font-medium"
-                    htmlFor="maxCapacity"
-                  >
-                    <p className="text-base font-medium">
-                      {groupSettings.maxCapacity.name}
-                    </p>
-                    <p className="text-sm text-zinc-500 font-normal">
-                      {groupSettings.maxCapacity.explanation}
-                    </p>
-                  </label>
-                  <input
-                    id="maxCapacity"
-                    type="number"
-                    min={1}
-                    className="mt-2 border border-zinc-300 rounded px-3 py-2 text-sm w-full bg-white"
-                    value={formValues.maxCapacity ?? ""}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      const parsed = Number(value);
-                      setFormValues((prev) => ({
-                        ...prev,
-                        maxCapacity:
-                          value === "" || Number.isNaN(parsed) ? null : parsed,
-                      }));
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-            <Button
-              type="submit"
-              color={ButtonColor.Blue}
-              className="self-start"
-              disabled={savingDetails}
-            >
-              {savingDetails ? "Saving…" : "Save changes"}
-            </Button>
-          </form>
-        </Card>
+        <GroupSettingsForm
+          community={community}
+          setError={setError}
+          reportError={reportError}
+        />
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <Card style={CardStyle.White}>
-            <div className="flex flex-col gap-4">
-              <div>
-                <h2 className="font-semibold text-lg">Members</h2>
-                <p className="text-sm text-zinc-500">
-                  {withCount(memberCount, "member")}
-                </p>
-              </div>
-              <form
-                className="flex flex-col gap-3"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void mutateMembers("add");
-                }}
-              >
-                <UserSelect
-                  users={users}
-                  selectedUserIds={memberSelection}
-                  onChange={setMemberSelection}
-                  loading={usersLoading}
-                  label="Add member"
-                  single
-                />
-                <Button
-                  type="submit"
-                  color={ButtonColor.Blue}
-                  className="self-start"
-                  disabled={addingMember || memberSelection.length === 0}
-                >
-                  {addingMember ? "Adding…" : "Add member"}
-                </Button>
-              </form>
-              <div className="flex flex-col gap-2 max-h-[320px] overflow-y-auto">
-                {sortedMembers.length ? (
-                  sortedMembers.map((member) => {
-                    const isLeader = leaderIds.has(member.id);
-                    const memberPending = pendingMemberIds.has(member.id);
-                    const leaderPending = pendingLeaderIds.has(member.id);
-                    return (
-                      <div
-                        key={member.id}
-                        className="flex flex-row items-center justify-between border border-zinc-200 rounded px-3 py-2"
-                      >
-                        <div className="flex flex-col gap-0.5">
-                          <span className="font-medium text-sm">
-                            {member.displayName ?? `User #${member.id}`}
-                          </span>
-                          {isLeader && (
-                            <span className="text-xs text-zinc-500">
-                              Leader
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex flex-row gap-2">
-                          {!isLeader && (
-                            <Button
-                              type="button"
-                              color={ButtonColor.Light}
-                              className="text-xs"
-                              onClick={(event) =>
-                                void confirmLeaderPromotion(
-                                  event,
-                                  member.id,
-                                  member.displayName,
-                                )
-                              }
-                              disabled={leaderPending}
-                            >
-                              {leaderPending ? "Updating…" : "Make leader"}
-                            </Button>
-                          )}
-                          <Button
-                            type="button"
-                            color={ButtonColor.Red}
-                            className="text-xs"
-                            onClick={() =>
-                              void mutateMembers("remove", member.id)
-                            }
-                            disabled={memberPending}
-                          >
-                            {memberPending ? "Removing…" : "Remove"}
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <p className="text-sm text-zinc-500">
-                    No members yet. Add someone above.
-                  </p>
-                )}
-              </div>
-            </div>
-          </Card>
-
-          <Card style={CardStyle.White}>
-            <div className="flex flex-col gap-4">
-              <div>
-                <h2 className="font-semibold text-lg">Leaders</h2>
-                <p className="text-sm text-zinc-500">
-                  {community.leaders.length} total leaders
-                </p>
-              </div>
-              <form
-                className="flex flex-col gap-3"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void mutateMembers("add-leader");
-                }}
-              >
-                <UserSelect
-                  users={users}
-                  selectedUserIds={leaderSelection}
-                  onChange={setLeaderSelection}
-                  loading={usersLoading}
-                  label="Add leader"
-                  single
-                />
-                <Button
-                  type="submit"
-                  color={ButtonColor.Blue}
-                  className="self-start"
-                  disabled={addingLeader || leaderSelection.length === 0}
-                >
-                  {addingLeader ? "Adding…" : "Add leader"}
-                </Button>
-              </form>
-              <div className="flex flex-col gap-2 max-h-[320px] overflow-y-auto">
-                {sortedLeaders.length ? (
-                  sortedLeaders.map((leader) => {
-                    const leaderPending = pendingLeaderIds.has(leader.id);
-                    return (
-                      <div
-                        key={leader.id}
-                        className="flex flex-row items-center justify-between border border-zinc-200 rounded px-3 py-2"
-                      >
-                        <div className="flex flex-col">
-                          <span className="font-medium text-sm">
-                            {leader.displayName ?? `User #${leader.id}`}
-                          </span>
-                        </div>
-                        <Button
-                          type="button"
-                          color={ButtonColor.Light}
-                          className="text-xs"
-                          onClick={() =>
-                            void mutateMembers("remove-leader", leader.id)
-                          }
-                          disabled={leaderPending}
-                        >
-                          {leaderPending ? "Updating…" : "Remove leader"}
-                        </Button>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <p className="text-sm text-zinc-500">
-                    No leaders yet. Promote a member or add directly.
-                  </p>
-                )}
-              </div>
-            </div>
-          </Card>
-        </div>
-        <CommunityMembersTable
-          leaders={sortedLeaders}
-          members={sortedMembers}
-          amLeader={true}
-          communityId={community.id}
-          memberHref={(id) =>
-            href("/member/:userId", { userId: id.toString() })
-          }
-          userActionRelations={userActionRelations ?? undefined}
-          actions={actionSummaries}
-          maxActionsPerWeek={maxActionsPerWeek}
-          memberContactInfo={memberContactInfo ?? undefined}
-          completedAllCurrentActions={completedAllCurrentActions}
-          showInfoTooltip
-          showContractFilter
+        <GroupMembership
+          community={community}
+          memberInfo={memberInfo}
+          usersQuery={usersQuery}
+          setError={setError}
+          reportError={reportError}
         />
       </div>
     </div>

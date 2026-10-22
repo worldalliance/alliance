@@ -1,0 +1,20 @@
+name: Dirty check
+description: Check dirty.txt, whose content freezes production releases.
+
+inputs:
+  working-directory:
+    description: Checkout to check.
+    default: .
+  check:
+    description: "`exists` fails when dirty.txt is missing; `empty` fails when it has content."
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Check dirty.txt
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        CHECK: ${{ inputs.check }}
+      run: $GITHUB_ACTION_PATH/check.sh

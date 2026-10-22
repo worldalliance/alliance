@@ -1,9 +1,23 @@
+/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import {
   ActionActivityType,
+  FORM_ALREADY_SUBMITTED,
   withdrawalHasRequiredReason,
 } from "@alliance/common/actionActivity";
+import { thrownMessage } from "@alliance/common/errorMessage";
+import { isFollowUpFormActive } from "@alliance/common/followUpForm";
 import type { DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import { elementInternalDescriptor } from "@alliance/common/forms/element-descriptors";
+import {
+  collectSourceFormIds,
+  forEachCondition,
+} from "@alliance/common/forms/form-conditions";
+import {
+  FORM_DRAFT_MAX_ANSWER_BYTES,
+  type FormAnswers,
+  readFormAnswers,
+  readPublicFormAnswers,
+} from "@alliance/common/forms/form-responses";
 import {
   type AggregateViewSchema,
   type AggregateViewValue,
@@ -11,32 +25,46 @@ import {
   type CheckboxExtractionTarget,
   type CheckboxField,
   type CityFieldValue,
-  collectSourceFormIds,
+  collectFieldLookup,
   type CustomComponentField,
-  forEachCondition,
   formSchema,
   FormSchema,
   type FormValue,
   isQuestionField,
   type ListField,
-  Page,
+  type ListFieldValue,
 } from "@alliance/common/forms/form-schema";
 import {
   type FormSchemaValidationError,
   validateFormSchema,
 } from "@alliance/common/forms/form-schema-validate";
+import { type FormulaChoices } from "@alliance/common/forms/formula-choices";
+import { getMaxSelections } from "@alliance/common/forms/multiselect";
+import {
+  isEmptyRangeAnswer,
+  isValidRangeSelection,
+} from "@alliance/common/forms/range";
 import {
   getRankingSlotCount,
   isValidRankingSelection,
 } from "@alliance/common/forms/ranking";
+import { memberSchema } from "@alliance/common/forms/row-list";
+import type { AssignedRow } from "@alliance/common/forms/row-list-schema";
+import {
+  type VariableAggregateSource,
+  variableAggregateSources,
+} from "@alliance/common/forms/variable-aggregates";
+import type { VariableSourceHistory } from "@alliance/common/forms/variable-evaluation";
 import {
   type ConditionExtras,
   isElementCurrentlyVisible,
   isFieldConditionallyRequired,
   isPageCurrentlyVisible,
+  listRowData,
   stripHiddenAnswers,
   type VisibilityValidatorResults,
   visibilityValidatorResultsSchema,
+  visibleListSubFields,
 } from "@alliance/common/forms/visibility";
 import {
   type AccountDerivedConditionKind,
@@ -45,8 +73,10 @@ import {
 } from "@alliance/common/forms/visible-if-formula";
 import { toE164 } from "@alliance/common/phone";
 import { withCount } from "@alliance/common/plural";
+import { hasProfilePicture } from "@alliance/common/profilePicture";
 import { R, type Result } from "@alliance/common/result";
-import { Temporal } from "@js-temporal/polyfill";
+import { isTimeZoneIdentifier } from "@alliance/common/timezone";
+import { describeSchemaIssues, issuePath } from "@alliance/common/zod-issues";
 import {
   BadRequestException,
   ConflictException,
@@ -57,30 +87,44 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { isNull, omitBy } from "es-toolkit";
 import { ActionFormVariantService } from "src/actions/action-form-variant.service";
 import { ActionsService } from "src/actions/actions.service";
-import { Action } from "src/actions/entities/action.entity";
+import { Action, parseAction } from "src/actions/entities/action.entity";
 import {
   FollowUpForm,
   parseFollowUpForm,
 } from "src/actions/entities/follow-up-form.entity";
+import { PrerequisiteProgressService } from "src/actions/prerequisite-progress.service";
+import { SingleMemberCohortService } from "src/actions/single-member-cohort.service";
+import { assertNotInStaffPreview } from "src/actions/staff-preview";
 import { AiDetectionQueryService } from "src/ai-detection/ai-detection-query.service";
 import { AiDetectionQueueService } from "src/ai-detection/ai-detection-queue.service";
 import { DetectableEntity } from "src/ai-detection/entities/ai-detection-result.entity";
+import { Guest } from "src/auth/entities/guest.entity";
 import { ContractService } from "src/contract/contract.service";
 import { ContractDto } from "src/contract/dto/contract.dto";
+import {
+  softDeleteCascade,
+  softDeleteWhere,
+  writeUnderLive,
+} from "src/datasources/soft-delete";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
-import { ForumService } from "src/forum/forum.service";
-import { getImageSource } from "src/images/images.service";
+import { ForumCommentQueryService } from "src/forum/forum-comment-query.service";
 import { MmsService } from "src/mms/mms.service";
 import { welcomeMessage } from "src/notifs/textnotifcontents";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
 import { UpdateProfileDto } from "src/user/dto/user.dto";
-import { User } from "src/user/entities/user.entity";
+import {
+  loadedUserCommunities,
+  loadedUserTags,
+  User,
+} from "src/user/entities/user.entity";
+import { UserVisibilityContextService } from "src/user/user-visibility-context.service";
 import { UserService } from "src/user/user.service";
 import { toPlainTime } from "src/utils/plain-time";
-import { getVideoSource } from "src/videos/videos.service";
+import type { Repository as TypedRepository } from "src/utils/Repository";
 import { In, IsNull, type Repository } from "typeorm";
 import {
   CustomValidatorResponse,
@@ -94,28 +138,57 @@ import {
   typeUsableForVisibility,
   typeUsesIdArgument,
 } from "./entities/customvalidator.entity";
-import { Form } from "./entities/form.entity";
+import { Form, loadedFormSnapshot } from "./entities/form.entity";
 import {
   FormResponse,
+  loadedFormResponseSnapshot,
   type ParsedFormResponse,
   parseFormResponse,
 } from "./entities/formresponse.entity";
 import {
+  FormResponseDraft,
+  type ParsedFormResponseDraft,
+  parseFormResponseDraft,
+} from "./entities/formresponsedraft.entity";
+import {
   FormSnapshot,
   SnapshotHistoryOwner,
 } from "./entities/formsnapshot.entity";
+import { type FormResponseHistory } from "./form-response-history.dto";
+import { FormRowAssignmentService } from "./form-row-assignment.service";
+import { formSchemaOf } from "./form-snapshot-schema";
 import {
   CreateFormDto,
+  type FormDraft,
   type FormResponseCount,
   FormResponseDto,
   type FormSnapshotMigration,
   type FormSummary,
+  type FormulaSourceDto,
+  SaveFormDraftDto,
   type SnapshotResponseGroup,
   SubmitFollowUpFormDto,
   SubmitFormDto,
   UpdateFormDto,
 } from "./form.dto";
-import { FormSnapshotService } from "./formsnapshot.service";
+import { FormSnapshotService, hashFormSchema } from "./formsnapshot.service";
+import {
+  findFormsReadingForm,
+  loadFormulaSourceForms,
+} from "./formula-source-forms";
+import {
+  checkedFormulaChoices,
+  formulaSourcesOrThrow,
+  guestFormulaSources,
+  loadFormulaSources,
+  withdrawalFormulaSources,
+  withdrawnFormulaChoices,
+} from "./formula-sources";
+import { servedSchema, withServedVideoSources } from "./served-schema";
+import {
+  countVariableAggregates,
+  type VariableAggregate,
+} from "./variable-aggregates";
 
 /**
  * Validator verdicts arrive from HTTP as arbitrary JSON — class-validator
@@ -127,12 +200,62 @@ function parseSubmittedValidatorResults(
   const parsed = visibilityValidatorResultsSchema.safeParse(value);
   if (!parsed.success) {
     throw new BadRequestException(
-      `Invalid visibility validator results: ${parsed.error.issues
-        .map((issue) => `${issue.path.join(".") || "<root>"}: ${issue.message}`)
-        .join("; ")}`,
+      `Invalid visibility validator results: ${describeSchemaIssues(parsed.error).join("; ")}`,
     );
   }
   return parsed.data;
+}
+
+function parseSubmittedAnswers(value: Record<string, unknown>): FormAnswers {
+  const answers = readFormAnswers(omitBy(value, isNull));
+  if (R.isFailure(answers)) {
+    throw new BadRequestException("Answers are not a valid answer map");
+  }
+  return answers.value;
+}
+
+function readListAnswer(
+  field: ListField,
+  value: FormValue | undefined,
+): ListFieldValue {
+  if (value === undefined) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    throw new BadRequestException(
+      `Field ${elementInternalDescriptor(field)} is not a list.`,
+    );
+  }
+  return value.map((item, i) => {
+    if (typeof item !== "object") {
+      throw new BadRequestException(
+        `Field ${elementInternalDescriptor(field)} (item ${i + 1}) is not a list item.`,
+      );
+    }
+    return item;
+  });
+}
+
+function assertListAnswersAreLists(
+  schema: FormSchema,
+  answers: FormAnswers,
+): void {
+  for (const page of schema.pages) {
+    for (const field of page.fields) {
+      if (field.kind === "list") {
+        readListAnswer(field, answers[field.id]);
+      }
+    }
+  }
+}
+
+function pickKeys<T>(
+  values: Record<string, T>,
+  allowed: Set<string>,
+): Record<string, T> {
+  return Object.fromEntries(
+    Object.entries(values).filter(([key]) => allowed.has(key)),
+  );
 }
 
 const STORED_PAGES = `snapshot.schema -> 'pages'`;
@@ -163,16 +286,20 @@ type FormIndexRow = {
 export class TasksService {
   private readonly logger = new Logger(TasksService.name);
   constructor(
+    private readonly formRowAssignmentService: FormRowAssignmentService,
     @InjectRepository(Form)
     private formRepository: Repository<Form>,
     @InjectRepository(FormResponse)
     private formResponseRepository: Repository<FormResponse>,
+    @InjectRepository(FormResponseDraft)
+    private formResponseDraftRepository: Repository<FormResponseDraft>,
     @InjectRepository(Action)
     private actionRepository: Repository<Action>,
     @InjectRepository(FollowUpForm)
-    private followUpFormRepository: Repository<FollowUpForm>,
+    private followUpFormRepository: TypedRepository<FollowUpForm>,
     private userService: UserService,
-    private forumService: ForumService,
+    private readonly userVisibilityContextService: UserVisibilityContextService,
+    private forumCommentQueryService: ForumCommentQueryService,
     private actionsService: ActionsService,
     private mmsService: MmsService,
     @InjectRepository(CustomValidator)
@@ -184,6 +311,8 @@ export class TasksService {
     private aiDetectionQueryService: AiDetectionQueryService,
     private formSnapshotService: FormSnapshotService,
     private actionFormVariantService: ActionFormVariantService,
+    private singleMemberCohortService: SingleMemberCohortService,
+    private prerequisiteProgressService: PrerequisiteProgressService,
   ) {}
 
   /** Returns true if value satisfies required validation for the field. Used for both top-level and list sub-field validation. */
@@ -209,8 +338,19 @@ export class TasksService {
     return true;
   }
 
+  private hasInvalidRangeAnswer(field: AnyField, value: unknown): boolean {
+    return (
+      field.kind === "range" &&
+      !isEmptyRangeAnswer(value) &&
+      !isValidRangeSelection(field, value)
+    );
+  }
+
   async createForm(createFormDto: CreateFormDto): Promise<Form> {
-    const schema = this.parseSchemaOrThrow(createFormDto.schema);
+    const schema = await this.parseSchemaOrThrow(
+      createFormDto.schema,
+      undefined,
+    );
     const snapshot = await this.formSnapshotService.findOrCreate(schema);
     const form = await this.formRepository.save({
       title: createFormDto.title,
@@ -225,27 +365,37 @@ export class TasksService {
     return form;
   }
 
-  private validateSchema(
+  private async validateSchema(
     schema: unknown,
-  ): Result<FormSchema, FormSchemaValidationError[]> {
+    formId: number | undefined,
+  ): Promise<Result<FormSchema, FormSchemaValidationError[]>> {
     const parsed = formSchema.safeParse(schema);
     if (!parsed.success) {
       return R.failure(
         parsed.error.issues.map((issue) => ({
-          blockId: issue.path.join(".") || "<root>",
+          blockId: issuePath(issue),
           message: issue.message,
         })),
       );
     }
-    const errors = validateFormSchema(parsed.data);
+    const errors = validateFormSchema(parsed.data, {
+      formId,
+      sourceForms: await loadFormulaSourceForms({
+        formRepository: this.formRepository,
+        schema: parsed.data,
+      }),
+    });
     if (errors.length > 0) {
       return R.failure(errors);
     }
     return R.success(parsed.data);
   }
 
-  private parseSchemaOrThrow(schema: unknown): FormSchema {
-    const validated = this.validateSchema(schema);
+  private async parseSchemaOrThrow(
+    schema: unknown,
+    formId: number | undefined,
+  ): Promise<FormSchema> {
+    const validated = await this.validateSchema(schema, formId);
     if (!validated.ok) {
       throw new BadRequestException({
         message: "Invalid form schema",
@@ -267,6 +417,48 @@ export class TasksService {
     return this.transformImageUrls(await this.transformContractFields(form));
   }
 
+  /**
+   * The form as `userId` is served it: for a form with a row list, filled from
+   * their row, which is assigned on their first fetch. Members only.
+   */
+  async getMemberForm(formId: number, userId: number | null): Promise<Form> {
+    const form = await this.getForm(formId);
+    if (formSchemaOf(loadedFormSnapshot(form)).rowList === undefined) {
+      return form;
+    }
+    if (userId === null) {
+      throw new ForbiddenException("Sign in to open this form");
+    }
+    const row = await this.memberRow(form, userId);
+    form.formSnapshot = this.snapshotForRow(loadedFormSnapshot(form), row);
+    return form;
+  }
+
+  /** The member's row of the form's current list; null without a list. */
+  private async memberRow(
+    form: Form,
+    userId: number,
+  ): Promise<AssignedRow | null> {
+    const list = formSchemaOf(loadedFormSnapshot(form)).rowList;
+    return list === undefined
+      ? null
+      : this.formRowAssignmentService.rowFor({
+          formId: form.id,
+          userId,
+          list,
+        });
+  }
+
+  private snapshotForRow(
+    snapshot: FormSnapshot,
+    row: AssignedRow | null,
+  ): FormSnapshot {
+    return this.cloneFormSnapshotWithSchema(
+      snapshot,
+      memberSchema(formSchemaOf(snapshot), row),
+    );
+  }
+
   private resolveAggregateValue(
     value: AggregateViewValue,
     totalsByFieldId: Map<string, number>,
@@ -284,7 +476,7 @@ export class TasksService {
     });
 
     const aggregateViews =
-      (form.formSnapshot.schema as unknown as FormSchema).aggregateViews ?? [];
+      formSchemaOf(loadedFormSnapshot(form)).aggregateViews ?? [];
     if (aggregateViews.length === 0) {
       return [];
     }
@@ -328,37 +520,18 @@ export class TasksService {
   }
 
   async transformImageUrls(form: Form): Promise<Form> {
-    const schema = structuredClone(form.formSnapshot.schema);
-    const pages = schema.pages as Page[];
-    const transformElement = (field: Page["fields"][number]): void => {
-      if (field.kind === "images") {
-        field.images = field.images.map((image) => ({
-          ...image,
-          src: getImageSource(image.src),
-        }));
-      }
-      if (field.kind === "video") {
-        field.src = getVideoSource(field.src);
-      }
-      if (field.kind === "accordion") {
-        for (const section of field.sections) {
-          section.blocks.forEach(transformElement);
-        }
-      }
-    };
-    for (const page of pages) {
-      page.fields.forEach(transformElement);
-    }
+    const snapshot = loadedFormSnapshot(form);
     form.formSnapshot = this.cloneFormSnapshotWithSchema(
-      form.formSnapshot,
-      schema,
+      snapshot,
+      servedSchema(snapshot),
     );
     return form;
   }
 
   async transformContractFields(form: Form): Promise<Form> {
-    const schema = structuredClone(form.formSnapshot.schema);
-    const pages = schema.pages as Page[];
+    const snapshot = loadedFormSnapshot(form);
+    const schema = structuredClone(formSchemaOf(snapshot));
+    const pages = schema.pages;
     for (const page of pages) {
       for (const field of page.fields) {
         if (field.kind === "contract" && field.contractId) {
@@ -368,10 +541,7 @@ export class TasksService {
         }
       }
     }
-    form.formSnapshot = this.cloneFormSnapshotWithSchema(
-      form.formSnapshot,
-      schema,
-    );
+    form.formSnapshot = this.cloneFormSnapshotWithSchema(snapshot, schema);
     return form;
   }
 
@@ -409,7 +579,10 @@ export class TasksService {
      * against, extract from, and persist these, never the raw dto answers.
      */
     effectiveAnswers: Record<string, FormValue>;
+    formulaChoices: FormulaChoices;
   }> {
+    const answers = parseSubmittedAnswers(submitFormDto.answers);
+
     const validatorIds = new Set<number>();
     const accountConditionKinds = new Set<AccountDerivedConditionKind>();
 
@@ -473,19 +646,13 @@ export class TasksService {
     }
     // Fetches only the values this schema's conditions actually read; an empty
     // set costs no queries and yields the same defaults as before.
-    const visibilityContext = await this.userService.getVisibilityContext(
-      userId,
-      accountConditionKinds,
-    );
+    const visibilityContext =
+      await this.userVisibilityContextService.getVisibilityContext(
+        userId,
+        accountConditionKinds,
+      );
 
-    const fieldLookup = new Map<string, AnyField>();
-    for (const page of schema.pages) {
-      for (const element of page.fields) {
-        if (isQuestionField(element)) {
-          fieldLookup.set(element.id, element);
-        }
-      }
-    }
+    const fieldLookup = collectFieldLookup(schema.pages);
 
     const visibilityExtras: ConditionExtras = {
       deviceType: submitFormDto.deviceType,
@@ -496,6 +663,7 @@ export class TasksService {
           ? previousAnswerData
           : undefined,
       userHasCity: visibilityContext.userHasCity,
+      userPropertyHasValue: visibilityContext.userPropertyHasValue,
       firstContractSignedAt:
         visibilityContext.firstContractSignedAt?.toISOString() ?? null,
       completedActionCount: visibilityContext.completedActionCount,
@@ -503,7 +671,7 @@ export class TasksService {
 
     const effectiveAnswers = stripHiddenAnswers(
       schema.pages,
-      submitFormDto.answers,
+      answers,
       visibilityExtras,
     );
 
@@ -530,18 +698,26 @@ export class TasksService {
               );
             }
           }
+          const maxSelections =
+            field.kind === "multiselect" ? getMaxSelections(field) : undefined;
           if (
-            field.kind === "multiselect" &&
-            typeof field.maxSelections === "number" &&
-            field.maxSelections > 0 &&
+            maxSelections !== undefined &&
             isElementCurrentlyVisible(field, effectiveAnswers, visibilityExtras)
           ) {
             const answer = effectiveAnswers[field.id];
-            if (Array.isArray(answer) && answer.length > field.maxSelections) {
+            if (Array.isArray(answer) && answer.length > maxSelections) {
               throw new BadRequestException(
-                `Field ${elementInternalDescriptor(field)} allows selecting up to ${field.maxSelections} options.`,
+                `Field ${elementInternalDescriptor(field)} allows selecting up to ${withCount(maxSelections, "option")}.`,
               );
             }
+          }
+          if (
+            this.hasInvalidRangeAnswer(field, effectiveAnswers[field.id]) &&
+            isElementCurrentlyVisible(field, effectiveAnswers, visibilityExtras)
+          ) {
+            throw new BadRequestException(
+              `Field ${elementInternalDescriptor(field)} has an answer outside its options.`,
+            );
           }
           if (
             field.kind === "ranking" &&
@@ -578,17 +754,10 @@ export class TasksService {
             ) {
               continue;
             }
-            const rawList = effectiveAnswers[listField.id];
-            const listValue: Record<string, FormValue>[] = Array.isArray(
-              rawList,
-            )
-              ? (rawList as unknown[]).filter(
-                  (item): item is Record<string, FormValue> =>
-                    item !== null &&
-                    typeof item === "object" &&
-                    !Array.isArray(item),
-                )
-              : [];
+            const listValue = readListAnswer(
+              listField,
+              effectiveAnswers[listField.id],
+            );
             const minCards = Math.max(
               0,
               Math.floor(Number(listField.min ?? 0)),
@@ -615,23 +784,34 @@ export class TasksService {
             const subFields = listField.fields ?? [];
             for (let i = 0; i < listValue.length; i += 1) {
               const card = listValue[i] ?? {};
-              const mergedData = {
-                ...effectiveAnswers,
-                ...card,
-              } as Record<string, FormValue>;
-              for (const sub of subFields) {
+              const mergedData = listRowData({
+                data: effectiveAnswers,
+                row: card,
+              });
+              for (const sub of visibleListSubFields({
+                subFields,
+                data: effectiveAnswers,
+                row: card,
+                extras: visibilityExtras,
+              })) {
+                if (!isQuestionField(sub)) {
+                  continue;
+                }
+                const subValue = card[sub.id];
+                if (this.hasInvalidRangeAnswer(sub, subValue)) {
+                  throw new BadRequestException(
+                    `Field ${elementInternalDescriptor(listField)} (item ${i + 1}): ${elementInternalDescriptor(sub)} has an answer outside its options.`,
+                  );
+                }
                 if (
-                  !isQuestionField(sub) ||
                   !isFieldConditionallyRequired(
                     sub,
                     mergedData,
                     visibilityExtras,
-                  ) ||
-                  !isElementCurrentlyVisible(sub, mergedData, visibilityExtras)
+                  )
                 ) {
                   continue;
                 }
-                const subValue = card[sub.id];
                 if (!this.hasRequiredValue(sub, subValue)) {
                   throw new BadRequestException(
                     `Field ${elementInternalDescriptor(listField)} (item ${i + 1}): ${elementInternalDescriptor(sub)} is required.`,
@@ -644,7 +824,48 @@ export class TasksService {
       }
     }
 
-    return { validatorResults, effectiveAnswers };
+    const formulaChoices = await checkedFormulaChoices({
+      schema,
+      answers: effectiveAnswers,
+      loadSources: () =>
+        this.submittedFormulaSources({
+          schema,
+          userId,
+          sent: submitFormDto.formulaSources,
+        }),
+    });
+
+    return { validatorResults, effectiveAnswers, formulaChoices };
+  }
+
+  /**
+   * The histories the submitting form's options formulas read, as it read
+   * them.
+   */
+  private async submittedFormulaSources(params: {
+    schema: FormSchema;
+    userId: number;
+    sent: FormulaSourceDto[] | undefined;
+  }): Promise<ReadonlyMap<number, VariableSourceHistory>> {
+    return formulaSourcesOrThrow(
+      await loadFormulaSources({
+        schema: params.schema,
+        sent: params.sent,
+        loadHistory: this.formulaSourceHistoryLoader(params.userId),
+      }),
+    );
+  }
+
+  private formulaSourceHistoryLoader(
+    userId: number,
+  ): (formId: number) => Promise<FormResponseHistory | undefined> {
+    return (formId) =>
+      this.getFormResponseHistory({ userId, formId }).catch(
+        (error: unknown) => {
+          if (error instanceof NotFoundException) return undefined;
+          throw error;
+        },
+      );
   }
 
   async updateForm(
@@ -659,7 +880,10 @@ export class TasksService {
     let nextSnapshotId = form.formSnapshotId;
     let snapshotChanged = false;
     if (updateFormDto.schema) {
-      const schema = this.parseSchemaOrThrow(updateFormDto.schema);
+      const schema = await this.parseSchemaOrThrow(
+        updateFormDto.schema,
+        formId,
+      );
       this.stripContractFromSchema(schema);
       const snapshot = await this.formSnapshotService.findOrCreate(schema);
       if (snapshot.id !== form.formSnapshotId) {
@@ -668,32 +892,40 @@ export class TasksService {
       }
     }
 
-    // Conditional UPDATE rejects stale saves atomically.
+    // Conditional UPDATE rejects stale saves atomically, and its row lock
+    // holds off a deletion until the history row is in.
     const expected = updateFormDto.expectedFormSnapshotId;
-    const result = await this.formRepository
-      .createQueryBuilder()
-      .update(Form)
-      .set({ title: nextTitle, formSnapshotId: nextSnapshotId })
-      .where("id = :formId", { formId })
-      .andWhere(
-        expected === undefined ? "1 = 1" : '"formSnapshotId" = :expected',
-        expected === undefined ? {} : { expected },
-      )
-      .execute();
+    await this.formRepository.manager.transaction(async (em) => {
+      const result = await em
+        .createQueryBuilder()
+        .update(Form)
+        .set({ title: nextTitle, formSnapshotId: nextSnapshotId })
+        .where("id = :formId", { formId })
+        .andWhere('"deletedAt" IS NULL')
+        .andWhere(
+          expected === undefined ? "1 = 1" : '"formSnapshotId" = :expected',
+          expected === undefined ? {} : { expected },
+        )
+        .execute();
 
-    if (result.affected === 0) {
-      throw new ConflictException(
-        "This form was changed by someone else since you opened it.",
-      );
-    }
+      if (result.affected === 0) {
+        if (!(await em.exists(Form, { where: { id: formId } }))) {
+          throw new NotFoundException("Form not found");
+        }
+        throw new ConflictException(
+          "This form was changed by someone else since you opened it.",
+        );
+      }
 
-    if (snapshotChanged) {
-      await this.formSnapshotService.recordHistorical({
-        owner: SnapshotHistoryOwner.Form,
-        ownerId: formId,
-        snapshotId: nextSnapshotId,
-      });
-    }
+      if (snapshotChanged) {
+        await this.formSnapshotService.recordHistorical({
+          owner: SnapshotHistoryOwner.Form,
+          ownerId: formId,
+          snapshotId: nextSnapshotId,
+          em,
+        });
+      }
+    });
 
     return this.getForm(formId);
   }
@@ -737,31 +969,40 @@ export class TasksService {
 
     const action = await this.actionRepository.findOne({
       where: { id: submitFormDto.actionId },
+      relations: { events: true },
     });
-    const variants = await this.actionFormVariantService.listForAction(
-      submitFormDto.actionId,
-    );
-    const actionFormIds = new Set<number>([formId]);
-    if (action?.taskFormId != null) actionFormIds.add(action.taskFormId);
-    for (const v of variants) actionFormIds.add(v.formId);
+    if (action) {
+      assertNotInStaffPreview(action);
+    }
+    await this.assertActionNotSubmitted({
+      actionId: submitFormDto.actionId,
+      userId,
+    });
 
-    const existingFormResponse = await this.formResponseRepository.findOne({
-      where: {
-        formId: In([...actionFormIds]),
-        user: { id: userId },
-      },
-    });
-    if (existingFormResponse) {
-      throw new BadRequestException("Form already submitted");
+    // One instant for both completion checks, so a deadline passing
+    // mid-submission cannot reject the completion after the answers applied.
+    const submittedAt = new Date();
+    if (action) {
+      // Before any answer side effects (contract signing, profile updates).
+      await this.actionsService.ensureCompletionAllowed({
+        action: parseAction(action),
+        userId,
+        now: submittedAt,
+      });
     }
 
-    const submittedSnapshot = await this.resolveSubmissionSnapshot(
-      form,
-      submitFormDto,
+    const assignedRow = await this.memberRow(form, userId);
+    const submittedSnapshot = this.snapshotForRow(
+      await this.resolveSubmissionSnapshot({
+        form,
+        dto: submitFormDto,
+        assignedRow,
+      }),
+      assignedRow,
     );
-    const submittedSchema = submittedSnapshot.schema as unknown as FormSchema;
+    const submittedSchema = formSchemaOf(submittedSnapshot);
 
-    const { validatorResults, effectiveAnswers } =
+    const { validatorResults, effectiveAnswers, formulaChoices } =
       await this.validateFormSubmission({
         schema: submittedSchema,
         submitFormDto,
@@ -783,6 +1024,10 @@ export class TasksService {
       effectiveAnswers,
       "timezone",
     );
+    // Before the phone number, whose opt-in MMS a rejection cannot take back.
+    if (timeZone && !isTimeZoneIdentifier(timeZone)) {
+      throw new BadRequestException(`Invalid time zone: ${timeZone}`);
+    }
 
     const city = this.getFirstAutoExtractAnswer(
       submittedSchema,
@@ -806,9 +1051,10 @@ export class TasksService {
         if (!user.optInMms) {
           const mms = await this.mmsService.sendMms({
             to: normalized,
+            userId: user.id,
             body: welcomeMessage,
             mediaUrls: [],
-            cid: null,
+            tracking: null,
           });
           if (mms) {
             await this.userService.setOptInMms(user.id, mms.id);
@@ -847,24 +1093,8 @@ export class TasksService {
       }
     }
 
-    function isTimeZoneValid(timeZoneIdentifier: string): boolean {
-      try {
-        Temporal.Now.instant().toZonedDateTimeISO(timeZoneIdentifier);
-        return true;
-      } catch (error) {
-        if (error instanceof RangeError) {
-          return false;
-        }
-        throw error;
-      }
-    }
-
     if (timeZone) {
-      if (isTimeZoneValid(timeZone)) {
-        userUpdates.timeZone = timeZone;
-      } else {
-        this.logger.warn(`Invalid time zone: ${timeZone}`);
-      }
+      userUpdates.timeZone = timeZone;
     }
 
     const shareInfoPublicly = this.getCheckboxExtractionValue(
@@ -889,6 +1119,7 @@ export class TasksService {
         userId: user.id,
         signedName: null,
         contractId,
+        viaTaskForm: true,
       });
     }
 
@@ -898,12 +1129,19 @@ export class TasksService {
       dto: { ...submitFormDto, answers: effectiveAnswers },
       snapshot: submittedSnapshot,
       validatorResults,
+      formulaChoices,
+      assignedRow,
       user,
     });
 
     await this.actionsService.completeAction(submitFormDto.actionId, userId, {
       taskFormResponse: savedForm,
+      now: submittedAt,
     });
+    if (contractIdsSigned.length > 0) {
+      this.contractService.announceSigned(user.id);
+    }
+    await this.deleteFormDraft(userId, formId);
 
     return savedForm;
   }
@@ -915,32 +1153,25 @@ export class TasksService {
     submitFollowUpFormDto: SubmitFollowUpFormDto,
   ): Promise<ParsedFormResponse> {
     const fetchedFollowUpForm = await this.followUpFormRepository.findOne({
-      where: {
-        id: followUpFormId,
-        action: {
-          activities: {
-            type: ActionActivityType.USER_COMPLETED,
-            user: { id: userId },
-          },
-        },
-      },
-      relations: {
-        form: { formSnapshot: true },
-      },
+      where: { id: followUpFormId },
     });
-    if (!fetchedFollowUpForm?.form) {
+    const completions = fetchedFollowUpForm
+      ? await this.prerequisiteProgressService.loadCompletions({
+          actionId: fetchedFollowUpForm.actionId,
+          userId,
+        })
+      : [];
+    if (!fetchedFollowUpForm || completions.length === 0) {
       throw new NotFoundException("Follow-up form not found");
     }
+    const form = await this.getForm(fetchedFollowUpForm.formId);
     const followUpForm = parseFollowUpForm(fetchedFollowUpForm);
-    if (
-      !followUpForm.startDate ||
-      (followUpForm.endDate && followUpForm.endDate < new Date())
-    ) {
+    if (!isFollowUpFormActive(followUpForm)) {
       throw new BadRequestException("Follow-up form is not active");
     }
     const inCohort =
       !!followUpForm.cohortExpression &&
-      (await this.actionsService.computeIsInCohortExpression({
+      (await this.singleMemberCohortService.computeIsInCohortExpression({
         user: await this.userService.findOneOrFail(userId, {
           tags: true,
           contractEvents: true,
@@ -953,16 +1184,20 @@ export class TasksService {
         "User is not in the target cohort for this follow-up form",
       );
     }
-    const form = followUpForm.form;
     const user = await this.userService.findOneOrFail(userId);
 
-    const submittedSnapshot = await this.resolveSubmissionSnapshot(
-      form,
-      submitFollowUpFormDto,
+    const assignedRow = await this.memberRow(form, userId);
+    const submittedSnapshot = this.snapshotForRow(
+      await this.resolveSubmissionSnapshot({
+        form,
+        dto: submitFollowUpFormDto,
+        assignedRow,
+      }),
+      assignedRow,
     );
-    const { validatorResults, effectiveAnswers } =
+    const { validatorResults, effectiveAnswers, formulaChoices } =
       await this.validateFormSubmission({
-        schema: submittedSnapshot.schema as unknown as FormSchema,
+        schema: formSchemaOf(submittedSnapshot),
         submitFormDto: submitFollowUpFormDto as SubmitFormDto,
         userId,
       });
@@ -973,6 +1208,8 @@ export class TasksService {
       dto: { ...submitFollowUpFormDto, answers: effectiveAnswers },
       snapshot: submittedSnapshot,
       validatorResults,
+      formulaChoices,
+      assignedRow,
       user,
     });
 
@@ -996,23 +1233,48 @@ export class TasksService {
     guestId?: string;
   }): Promise<ParsedFormResponse> {
     const form = await this.getForm(formId);
+    if (formSchemaOf(loadedFormSnapshot(form)).rowList !== undefined) {
+      throw new ForbiddenException("Sign in to submit this form");
+    }
 
     if (guestId) {
       const existing = await this.formResponseRepository.findOne({
         where: { formId, guest: { id: guestId } },
       });
       if (existing) {
-        throw new BadRequestException("Form already submitted");
+        throw new BadRequestException(FORM_ALREADY_SUBMITTED);
       }
     }
 
+    const snapshot = await this.resolveSubmissionSnapshot({
+      form,
+      dto: submitFormDto,
+      assignedRow: null,
+    });
+    const schema = formSchemaOf(snapshot);
+    const validatorResults = parseSubmittedValidatorResults(
+      submitFormDto.visibilityValidatorResults ?? {},
+    );
+    const answers = stripHiddenAnswers(
+      schema.pages,
+      parseSubmittedAnswers(submitFormDto.answers),
+      {
+        deviceType: submitFormDto.deviceType,
+        visibilityValidatorResults: validatorResults,
+      },
+    );
     return this.createAndSaveFormResponse({
       form,
       formId,
       dto: submitFormDto,
-      validatorResults: parseSubmittedValidatorResults(
-        submitFormDto.visibilityValidatorResults ?? {},
-      ),
+      snapshot,
+      validatorResults,
+      formulaChoices: await checkedFormulaChoices({
+        schema,
+        answers,
+        loadSources: async () => guestFormulaSources(schema),
+      }),
+      assignedRow: null,
       guestId,
     });
   }
@@ -1029,16 +1291,47 @@ export class TasksService {
     }
     const form = await this.getForm(formId);
     const user = await this.userService.findOneOrFail(userId);
+    const action = await this.actionRepository.findOne({
+      where: { id: actionId },
+      relations: { events: true },
+    });
+    if (action) {
+      assertNotInStaffPreview(action);
+    }
 
+    const assignedRow = await this.memberRow(form, userId);
+    const snapshot = this.snapshotForRow(
+      await this.resolveSubmissionSnapshot({
+        form,
+        dto: partialFormData,
+        assignedRow,
+      }),
+      assignedRow,
+    );
+    const schema = formSchemaOf(snapshot);
     const savedForm = await this.createAndSaveFormResponse({
       form,
       formId,
       dto: partialFormData,
+      snapshot,
       validatorResults: parseSubmittedValidatorResults(
         partialFormData.visibilityValidatorResults ?? {},
       ),
+      formulaChoices: await withdrawnFormulaChoices({
+        schema,
+        answers: parseSubmittedAnswers(partialFormData.answers),
+        loadSources: () =>
+          withdrawalFormulaSources({
+            schema,
+            sent: partialFormData.formulaSources,
+            loadHistory: this.formulaSourceHistoryLoader(userId),
+          }),
+      }),
+      assignedRow,
       user,
     });
+
+    await this.deleteFormDraft(userId, formId);
 
     return this.actionsService.createActionActivity({
       actionId,
@@ -1051,12 +1344,27 @@ export class TasksService {
     });
   }
 
+  private async assertActionNotSubmitted(params: {
+    actionId: number;
+    userId: number;
+  }): Promise<void> {
+    const submitted = await this.actionFormVariantService.findSubmittedFormIds({
+      actionIds: [params.actionId],
+      userId: params.userId,
+    });
+    if (submitted.has(params.actionId)) {
+      throw new BadRequestException(FORM_ALREADY_SUBMITTED);
+    }
+  }
+
   private async createAndSaveFormResponse({
     form,
     formId,
     dto,
-    snapshot: preResolvedSnapshot,
+    snapshot,
     validatorResults,
+    formulaChoices,
+    assignedRow,
     user,
     guestId,
   }: {
@@ -1064,35 +1372,33 @@ export class TasksService {
     formId: number;
     dto: {
       answers: Record<string, unknown>;
-      // BACKCOMPAT(form-snapshot): change this from optional to required.
-      formSnapshotId?: number;
-      // BACKCOMPAT(form-snapshot): legacy payload from pre-cutover mobile
-      // clients. Resolved to a snapshot row below. Remove once the floor
-      // mobile version sends formSnapshotId.
-      schemaSnapshot?: Record<string, unknown>;
       deviceType: DeviceVisibilityTarget;
       publicAnswers?: Record<string, boolean>;
       phDistinctId?: string;
       sessionReplayUrl?: string;
       sid?: string;
     };
-    snapshot?: FormSnapshot;
+    snapshot: FormSnapshot;
     /**
      * The verdicts to store. A path that runs the validators itself passes
      * its own; only one that can't — a guest submission, an opt-out draft —
      * falls back to the blob the client sent.
      */
     validatorResults: VisibilityValidatorResults;
+    formulaChoices: FormulaChoices;
+    assignedRow: AssignedRow | null;
     user?: User;
     guestId?: string;
   }): Promise<ParsedFormResponse> {
-    const snapshot =
-      preResolvedSnapshot ?? (await this.resolveSubmissionSnapshot(form, dto));
+    const answers = parseSubmittedAnswers(dto.answers);
+    assertListAnswersAreLists(formSchemaOf(snapshot), answers);
     const formResponse = this.formResponseRepository.create({
-      answers: dto.answers,
+      answers,
       formSnapshotId: snapshot.id,
       formSnapshot: snapshot,
       visibilityValidatorResults: validatorResults,
+      formulaChoices,
+      assignedRow,
       deviceType: dto.deviceType,
       publicAnswers: dto.publicAnswers ?? {},
       phDistinctId: dto.phDistinctId,
@@ -1103,10 +1409,19 @@ export class TasksService {
       user,
       guest: guestId ? { id: guestId } : undefined,
     });
-    const savedForm: ParsedFormResponse = Object.assign(
-      await this.formResponseRepository.save(formResponse),
-      { visibilityValidatorResults: validatorResults },
-    );
+    const saved = await writeUnderLive(this.formResponseRepository.manager, {
+      parents: [
+        { target: Form, id: formId },
+        ...(user ? [{ target: User, id: user.id }] : []),
+        ...(guestId ? [{ target: Guest, id: guestId }] : []),
+      ],
+      write: (manager) => manager.save(formResponse),
+    });
+    const savedForm: ParsedFormResponse = Object.assign(saved, {
+      visibilityValidatorResults: validatorResults,
+      formulaChoices,
+      assignedRow,
+    });
     await this.aiDetectionQueueService.addDetectJob({
       entityType: DetectableEntity.FormResponse,
       entityId: savedForm.id,
@@ -1119,15 +1434,20 @@ export class TasksService {
   // it to a historical snapshot for this form by hash — never accept the
   // bytes as authoritative, since the resolved schema feeds validation,
   // contract-signing extraction, and auto-extract. Once the minimum mobile
-  // version is past the cutover, delete this helper and inline the
-  // formSnapshotId branch back into createAndSaveFormResponse.
-  private async resolveSubmissionSnapshot(
-    form: Form,
-    dto: { formSnapshotId?: number; schemaSnapshot?: Record<string, unknown> },
-  ) {
+  // version is past the cutover, delete the schemaSnapshot branch.
+  private async resolveSubmissionSnapshot({
+    form,
+    dto,
+    assignedRow,
+  }: {
+    form: Form;
+    dto: { formSnapshotId?: number; schemaSnapshot?: Record<string, unknown> };
+    /** The member's row; they were served the schema filled from it. */
+    assignedRow: AssignedRow | null;
+  }) {
     if (dto.formSnapshotId !== undefined) {
-      return dto.formSnapshotId === form.formSnapshotId && form.formSnapshot
-        ? form.formSnapshot
+      return dto.formSnapshotId === form.formSnapshotId
+        ? loadedFormSnapshot(form)
         : this.formSnapshotService.findHistoricalOrThrow(
             form.id,
             dto.formSnapshotId,
@@ -1138,9 +1458,21 @@ export class TasksService {
         "Form submission missing both formSnapshotId and schemaSnapshot",
       );
     }
+    const echoed = withServedVideoSources(dto.schemaSnapshot);
+    const served = loadedFormSnapshot(form);
+    // getForm fills in contracts as well, which the history fallback does not rebuild.
+    const echoedHash = hashFormSchema(echoed);
+    if (
+      echoedHash === hashFormSchema(served.schema) ||
+      (assignedRow !== null &&
+        echoedHash ===
+          hashFormSchema(this.snapshotForRow(served, assignedRow).schema))
+    ) {
+      return served;
+    }
     return this.formSnapshotService.findHistoricalBySchemaOrThrow(
       form.id,
-      dto.schemaSnapshot,
+      echoed,
     );
   }
 
@@ -1155,6 +1487,9 @@ export class TasksService {
       }
       for (const field of page.fields) {
         if (kind === "city" && field.kind === "city") {
+          if (!field.autoExtractUserData) {
+            continue;
+          }
           const answer = answers[field.id];
           if (
             answer &&
@@ -1165,7 +1500,13 @@ export class TasksService {
           ) {
             return (answer as CityFieldValue).id.toString();
           }
-          return answer as string;
+          if (typeof answer === "string") {
+            const value = answer.trim();
+            if (value) {
+              return value;
+            }
+          }
+          continue;
         }
         if (
           field.kind === kind &&
@@ -1277,7 +1618,22 @@ export class TasksService {
 
   async deleteForm(formId: number): Promise<void> {
     const form = await this.getForm(formId);
-    await this.formRepository.remove(form);
+    const readers = await findFormsReadingForm({
+      formRepository: this.formRepository,
+      formId,
+    });
+    if (readers.length > 0) {
+      const names = readers
+        .map((reader) => `"${reader.title || "Untitled"}" (#${reader.id})`)
+        .join(", ");
+      throw new ConflictException(
+        `Variables or options formulas in ${names} read this form's answers. Change them to stop reading it, then delete it`,
+      );
+    }
+    await softDeleteCascade(this.formRepository.manager, {
+      target: Form,
+      ids: [form.id],
+    });
   }
 
   async getFormResponses(formId: number): Promise<FormResponseDto[]> {
@@ -1357,7 +1713,7 @@ export class TasksService {
         existing.responses.push(response);
       } else {
         groupsBySnapshotId.set(response.formSnapshotId, {
-          snapshot: response.formSnapshot,
+          snapshot: loadedFormResponseSnapshot(response),
           responses: [response],
         });
       }
@@ -1417,6 +1773,51 @@ export class TasksService {
     return parseFormResponse(response);
   }
 
+  async getFormResponseHistory(params: {
+    userId: number;
+    formId: number;
+  }): Promise<FormResponseHistory> {
+    const { userId, formId } = params;
+    const form = await this.formRepository.findOne({
+      where: { id: formId },
+      relations: { formSnapshot: true },
+    });
+    if (!form) throw new NotFoundException("Form not found");
+    const responses = await this.formResponseRepository.find({
+      where: { formId, user: { id: userId } },
+      relations: { formSnapshot: true },
+      order: { createdAt: "ASC", id: "ASC" },
+    });
+    return { form, responses };
+  }
+
+  /**
+   * Counts the aggregate inputs of one version of a form. The version, not the
+   * caller, decides which questions are counted.
+   */
+  async countFormVersionAggregates(params: {
+    formId: number;
+    formSnapshotId: number;
+  }): Promise<VariableAggregate[]> {
+    const snapshot = await this.formSnapshotService.findHistoricalOrThrow(
+      params.formId,
+      params.formSnapshotId,
+    );
+    return countVariableAggregates({
+      em: this.formRepository.manager,
+      sources: variableAggregateSources(formSchemaOf(snapshot).variables),
+    });
+  }
+
+  countVariableAggregates(
+    sources: readonly VariableAggregateSource[],
+  ): Promise<VariableAggregate[]> {
+    return countVariableAggregates({
+      em: this.formRepository.manager,
+      sources,
+    });
+  }
+
   async getGuestFormResponse(
     guestId: string,
     formId: number,
@@ -1429,16 +1830,150 @@ export class TasksService {
     return response && parseFormResponse(response);
   }
 
-  async getLinkedGuestDraftFormResponse(
+  /**
+   * Upserts the caller's in-progress answers for a task form. A draft leaves
+   * no trace in feeds, counts or reminders, so it deliberately skips what
+   * {@link submitForm} does around the save: required-field validation,
+   * hidden-answer stripping, profile auto-extraction, contract signing, AI
+   * detection, and the completion activity.
+   */
+  async saveFormDraft(params: {
+    userId: number;
+    formId: number;
+    dto: SaveFormDraftDto;
+  }): Promise<FormDraft> {
+    const { userId, formId, dto } = params;
+    const form = await this.getForm(formId);
+
+    const valid = await this.actionFormVariantService.validateFormIdForUser({
+      actionId: dto.actionId,
+      userId,
+      formId,
+    });
+    if (!valid) {
+      throw new ForbiddenException(
+        "This form is not the variant assigned to you for this action",
+      );
+    }
+
+    await this.assertActionNotSubmitted({ actionId: dto.actionId, userId });
+
+    const snapshot = await this.resolveSubmissionSnapshot({
+      form,
+      dto,
+      assignedRow: await this.memberRow(form, userId),
+    });
+    const answers = readFormAnswers(dto.answers);
+    if (R.isFailure(answers)) {
+      throw new BadRequestException("Draft answers are not a valid answer map");
+    }
+    const publicAnswers = readPublicFormAnswers(dto.publicAnswers ?? {});
+    if (R.isFailure(publicAnswers)) {
+      throw new BadRequestException(
+        "Draft public answers are not a map of booleans",
+      );
+    }
+
+    const fieldIds = this.draftableFieldIds(formSchemaOf(snapshot));
+    const storedAnswers = pickKeys(answers.value, fieldIds.answered);
+    const storedPublicAnswers = pickKeys(publicAnswers.value, fieldIds.output);
+    const size = Buffer.byteLength(
+      JSON.stringify([storedAnswers, storedPublicAnswers]),
+    );
+    if (size > FORM_DRAFT_MAX_ANSWER_BYTES) {
+      throw new BadRequestException(
+        `Draft answers are ${size} bytes, over the ${FORM_DRAFT_MAX_ANSWER_BYTES} byte limit`,
+      );
+    }
+
+    const draft = {
+      userId,
+      formId,
+      actionId: dto.actionId,
+      formSnapshotId: snapshot.id,
+      answers: storedAnswers,
+      publicAnswers: storedPublicAnswers,
+      currentPageIndex: dto.currentPageIndex ?? 0,
+      updatedAt: new Date(),
+    };
+    await writeUnderLive(this.formResponseDraftRepository.manager, {
+      parents: [
+        { target: Action, id: dto.actionId },
+        { target: Form, id: formId },
+        { target: User, id: userId },
+      ],
+      write: (manager) =>
+        manager.getRepository(FormResponseDraft).upsert(draft, {
+          conflictPaths: ["userId", "formId"],
+          indexPredicate: '"deletedAt" IS NULL',
+        }),
+    });
+    return draft;
+  }
+
+  async getFormDraft(
     userId: number,
     formId: number,
-  ): Promise<ParsedFormResponse | null> {
-    // If the user has already submitted this form as an authenticated user,
-    // any linked-guest draft is stale and shouldn't be surfaced as a prefill.
-    const userResponse = await this.formResponseRepository.findOne({
-      where: { formId, user: { id: userId } },
+  ): Promise<ParsedFormResponseDraft | null> {
+    const draft = await this.formResponseDraftRepository.findOne({
+      where: { userId, formId },
     });
-    if (userResponse) {
+    return draft && parseFormResponseDraft(draft);
+  }
+
+  async deleteFormDraft(userId: number, formId: number): Promise<void> {
+    await softDeleteWhere(this.formResponseDraftRepository.manager, {
+      target: FormResponseDraft,
+      where: { userId, formId },
+    });
+  }
+
+  /**
+   * Ids a draft may carry, and the subset whose answers a member can publish.
+   * A field the schema no longer has is dropped rather than rejected, so a
+   * client still on the old schema keeps autosaving instead of 400ing.
+   */
+  private draftableFieldIds(schema: FormSchema): {
+    answered: Set<string>;
+    output: Set<string>;
+  } {
+    const answered = new Set<string>();
+    const output = new Set<string>();
+    for (const page of schema.pages ?? []) {
+      for (const element of page.fields ?? []) {
+        if (!isQuestionField(element)) {
+          continue;
+        }
+        answered.add(element.id);
+        if (element.output?.output) {
+          output.add(element.id);
+        }
+      }
+    }
+    return { answered, output };
+  }
+
+  async getLinkedGuestDraftFormResponse(params: {
+    userId: number;
+    formId: number;
+    actionId: number;
+  }): Promise<ParsedFormResponse | null> {
+    const { userId, formId, actionId } = params;
+    const owners = await this.actionFormVariantService.findActionIdByFormId([
+      actionId,
+    ]);
+    if (owners.get(formId) !== actionId) {
+      throw new ForbiddenException(
+        "This form is not one of the action's forms",
+      );
+    }
+    // If the user has already submitted this action as an authenticated user,
+    // any linked-guest draft is stale and shouldn't be surfaced as a prefill.
+    const submitted = await this.actionFormVariantService.findSubmittedFormIds({
+      actionIds: [actionId],
+      userId,
+    });
+    if (submitted.has(actionId)) {
       return null;
     }
     const draft = await this.formResponseRepository.findOne({
@@ -1500,7 +2035,7 @@ export class TasksService {
       expressionFn = eval(expression) as (user: User) => unknown;
     } catch (error) {
       throw new BadRequestException(
-        `Failed to evaluate expression: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to evaluate expression: ${thrownMessage(error)}`,
       );
     }
 
@@ -1514,7 +2049,7 @@ export class TasksService {
         result = expressionFn(user);
       } catch (error) {
         throw new BadRequestException(
-          `Expression failed for user ${user.id}: ${error instanceof Error ? error.message : String(error)}`,
+          `Expression failed for user ${user.id}: ${thrownMessage(error)}`,
         );
       }
       if (typeof result !== "boolean") {
@@ -1590,7 +2125,7 @@ export class TasksService {
 
     switch (validator.type) {
       case CustomValidatorType.UploadedPhoto:
-        if (!user.profilePicture) {
+        if (!hasProfilePicture(user)) {
           return {
             isValid: false,
             message: "You have not uploaded a profile picture yet",
@@ -1617,7 +2152,7 @@ export class TasksService {
         if (!validator.idArgument) {
           throw new BadRequestException("Validator has no id argument");
         }
-        const replies = await this.forumService.findCommentsForPost(
+        const replies = await this.forumCommentQueryService.findCommentsForPost(
           Number(validator.idArgument),
         );
         if (
@@ -1634,9 +2169,10 @@ export class TasksService {
         if (!validator.idArgument) {
           throw new BadRequestException("Validator has no id argument");
         }
-        const replies2 = await this.forumService.findCommentsForPostRaw(
-          Number(validator.idArgument),
-        );
+        const replies2 =
+          await this.forumCommentQueryService.findCommentsForPostRaw(
+            Number(validator.idArgument),
+          );
         if (!replies2.some((reply) => reply.authorId === user.id)) {
           return {
             isValid: false,
@@ -1674,7 +2210,9 @@ export class TasksService {
         if (!validator.idArgument) {
           throw new BadRequestException("Validator has no id argument");
         }
-        if (user.tags.some((tag) => tag.id === validator.idArgument)) {
+        if (
+          loadedUserTags(user).some((tag) => tag.id === validator.idArgument)
+        ) {
           return {
             isValid: true,
           };
@@ -1686,7 +2224,7 @@ export class TasksService {
           throw new BadRequestException("Validator has no id argument");
         }
         if (
-          user.communities.some(
+          loadedUserCommunities(user).some(
             (community) => community.id === Number(validator.idArgument),
           )
         ) {
@@ -1695,7 +2233,7 @@ export class TasksService {
           return { isValid: false };
         }
       case CustomValidatorType.AnyCommunity:
-        if (user.communities.length === 0) {
+        if (loadedUserCommunities(user).length === 0) {
           return { isValid: false };
         }
         return { isValid: true };

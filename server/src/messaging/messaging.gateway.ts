@@ -12,12 +12,16 @@ import {
   WebSocketServer,
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
-import type { JwtPayload } from "src/auth/guards/jwtreq";
+import { SessionService } from "src/auth/session.service";
+import { UserEvents, type AccountDeletedPayload } from "src/user/user.events";
 import { DetachedWorkTracker } from "src/utils/detached-work";
 import { ConversationService } from "./conversation.service";
 import { MessageDto } from "./dto/messaging.dto";
-import { extractTokenFromSocket } from "./gateway.utils";
-import { MessagingEvents } from "./messaging.events";
+import { disconnectUserSockets, socketAuthMiddleware } from "./gateway.utils";
+import {
+  MessagingEvents,
+  type ConversationUpdatedPayload,
+} from "./messaging.events";
 
 @WebSocketGateway({
   cors: {
@@ -42,9 +46,9 @@ export class MessagingGateway
   private readonly detachedWork = new DetachedWorkTracker();
 
   private readonly onMessageCreated = this.handleMessageCreated.bind(this);
-  private readonly onConversationUpdated = (payload: {
-    conversationId: number;
-  }) => {
+  private readonly onConversationUpdated = (
+    payload: ConversationUpdatedPayload,
+  ) => {
     this.detachedWork.track(
       this.handleConversationUpdated(payload).catch((error: Error) =>
         this.logger.warn(
@@ -54,12 +58,24 @@ export class MessagingGateway
     );
   };
 
+  private readonly onAccountDeleted = ({ userId }: AccountDeletedPayload) => {
+    this.detachedWork.track(
+      disconnectUserSockets({
+        server: this.server,
+        userId,
+        logger: this.logger,
+      }),
+    );
+  };
+
   constructor(
     private readonly jwtService: JwtService,
+    private readonly sessionService: SessionService,
     private readonly eventEmitter: EventEmitter2,
     private readonly conversationService: ConversationService,
   ) {
     this.eventEmitter.on(MessagingEvents.MessageCreated, this.onMessageCreated);
+    this.eventEmitter.on(UserEvents.AccountDeleted, this.onAccountDeleted);
     this.eventEmitter.on(
       MessagingEvents.ConversationUpdated,
       this.onConversationUpdated,
@@ -67,6 +83,7 @@ export class MessagingGateway
   }
 
   async onModuleDestroy() {
+    this.eventEmitter.off(UserEvents.AccountDeleted, this.onAccountDeleted);
     this.eventEmitter.off(
       MessagingEvents.MessageCreated,
       this.onMessageCreated,
@@ -79,24 +96,13 @@ export class MessagingGateway
   }
 
   afterInit(server: Server) {
-    server.use(async (socket, next) => {
-      try {
-        const token = extractTokenFromSocket(socket);
-        if (!token) {
-          return next(new Error("Unauthorized"));
-        }
-        const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
-          secret: process.env.JWT_SECRET,
-        });
-        socket.data.userId = payload.sub;
-        next();
-      } catch (error) {
-        this.logger.warn(
-          `Messaging gateway auth failed: ${(error as Error).message}`,
-        );
-        next(new Error((error as Error).message));
-      }
-    });
+    server.use(
+      socketAuthMiddleware({
+        jwtService: this.jwtService,
+        sessionService: this.sessionService,
+        logger: this.logger,
+      }),
+    );
   }
 
   handleConnection(client: Socket) {
@@ -167,7 +173,7 @@ export class MessagingGateway
       .emit("message:new", payload.message);
   }
 
-  private async handleConversationUpdated(payload: { conversationId: number }) {
+  private async handleConversationUpdated(payload: ConversationUpdatedPayload) {
     const room = this.roomName(payload.conversationId);
     const sockets = await this.server.in(room).fetchSockets();
     for (const socket of sockets) {

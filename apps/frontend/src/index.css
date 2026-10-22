@@ -1,12 +1,7 @@
 @import "tailwindcss";
+@import "./site/fonts.css";
 @source "../../../shared/";
 @source "../../../sharedweb/";
-
-@font-face {
-  font-family: "Berlingske";
-  font-display: swap;
-  src: url("/assets/fonts/BerlingskeSerif-Blk.woff2") format("woff2");
-}
 
 @font-face {
   font-family: "Source Sans 3";
@@ -49,14 +44,8 @@
   src: url("/assets/fonts/source-sans-3-v19-latin-italic.woff2") format("woff2");
 }
 
-@font-face {
-  font-family: "Literata";
-  font-display: swap;
-  src: url("/assets/fonts/Literata-VariableFont_opsz,wght.ttf")
-    format("truetype");
-}
-
 @theme {
+  --font-sans: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Literata", "Georgia", serif;
   --color-blue: #399ee6;
   --color-page: oklch(98% 0 0);
@@ -67,8 +56,8 @@
   --color-grey-3: oklch(90.5% 0 0);
 
   --color-green: rgb(98, 161, 36);
-  --color-green-bg: rgb(35, 74, 27);
-  --color-green-bg-card: rgb(48, 96, 40);
+  --color-green-bg: #081e40;
+  --color-green-bg-card: #0d2c5c;
   --color-navy: rgb(7, 30, 64);
   --color-staff: #399ee6;
   --color-ambassador: #bf5f45;
@@ -81,6 +70,8 @@
 }
 
 :root {
+  --navbar-top-bar-height: 0px;
+  --nav-width: 0px;
   --site-primary: #081e40;
   --site-primary-hover: #0d2c5c;
   --site-panel: #11301f;
@@ -89,7 +80,8 @@
   --site-surface-alt: #e4e5e3;
   --site-ink: #14181d;
   --site-font-body: "TT Neoris", system-ui, sans-serif;
-  --site-font-display: "Libre Caslon Text", Georgia, serif;
+  --site-font-display: "Libre Caslon Condensed", Georgia, serif;
+  --site-font-logotype: "Libre Caslon Text", Georgia, serif;
   --site-radius-button: 0.375rem;
   --site-radius-card: 0.5rem;
   --site-radius-input: 0.375rem;
@@ -182,8 +174,14 @@ select {
   @apply font-serif font-semibold;
 }
 
-.font-berlingske {
-  font-family: "Berlingske";
+/*
+ * The wordmark is the only place set in Libre Caslon Text. Every other serif on
+ * the site and the platform takes the condensed cut.
+ */
+.font-logotype {
+  font-family: var(--site-font-logotype);
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .goob {

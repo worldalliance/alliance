@@ -1,5 +1,6 @@
 import z from "zod";
 import type { Assert, Equal } from "../types";
+import { rowConditionSchema } from "./row-list-schema";
 import { visibleIfFormulaSchema } from "./visible-if-formula";
 
 const baseContentFields = {
@@ -91,17 +92,32 @@ const bigLinkIconSchema = z.enum([
 ]);
 export type BigLinkIcon = z.infer<typeof bigLinkIconSchema>;
 
+/** Any icon this build does not know, e.g. one a newer admin saved, renders as the default. */
+export function bigLinkIconOrDefault(icon: string | undefined): BigLinkIcon {
+  const parsed = bigLinkIconSchema.safeParse(icon);
+  return parsed.success ? parsed.data : "messages-square";
+}
+
 const bigLinkContentSchema = z.strictObject({
   ...baseContentFields,
   text: z.string(),
+  /** With `externalTargetId`, the target's base URL: where viewers without a code go. */
   url: z.string(),
   icon: bigLinkIconSchema.optional(),
+  /** Links each signed-in member to this external share target with their own code appended. */
+  externalTargetId: z.number().int().positive().optional(),
 });
+
+export enum CopyTextFormat {
+  Plain = "plain",
+  Markdown = "markdown",
+}
 
 const copyTextContentSchema = z.strictObject({
   ...baseContentFields,
   text: z.string(),
   title: z.string().optional(),
+  format: z.enum(CopyTextFormat).optional(),
 });
 
 const previousAnswerContentSchema = z.strictObject({
@@ -185,6 +201,7 @@ const baseBlockFields = {
   manualUserContent: z
     .record(z.string(), manualDisplayBlockContentSchema)
     .optional(),
+  rowCondition: rowConditionSchema.optional(),
 };
 
 export const headerBlockSchema = z.strictObject({
@@ -291,6 +308,7 @@ const NESTED_OMITTED_FIELDS = {
   visibleIfFormula: true,
   manualPerUser: true,
   manualUserContent: true,
+  rowCondition: true,
 } as const;
 
 export const nestedDisplayBlockSchema = z.discriminatedUnion("kind", [

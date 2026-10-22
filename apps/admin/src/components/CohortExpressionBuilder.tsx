@@ -1,35 +1,18 @@
-/* eslint-disable react/prop-types */
 import {
   cohortExpressionSchema,
   isBooleanOperator,
   isLeafCondition,
-  type BooleanOperator,
   type CohortExpression,
-  type CompletedActionCondition,
-  type FormFieldValueCondition,
-  type InProgressActionCondition,
-  type LeafCondition,
-  type ManualCondition,
-  type MissedActionDeadlineCondition,
-  type TagCondition,
 } from "@alliance/common/cohort-expression";
-import { fieldPickerLabel } from "@alliance/common/forms/element-descriptors";
-import { fieldHasOptions } from "@alliance/common/forms/form-schema";
-import type { TagDto } from "@alliance/shared/client";
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
-import { useFormQuestionFields } from "@alliance/shared/lib/useFormSchema";
-import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
-import { cn } from "@alliance/shared/styles/util";
+import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
-import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import {
   ClipboardPaste,
   Copy,
   CopyMinus,
   EllipsisVertical,
   Plus,
-  Trash2,
 } from "lucide-react";
 import React, {
   useCallback,
@@ -38,552 +21,16 @@ import React, {
   useRef,
   useState,
 } from "react";
+import type { CohortLeafEditorSources } from "./CohortLeafEditors";
 import CohortVisualization from "./CohortVisualization";
-import {
-  formFieldsErrorReason,
-  FormPickerError,
-  FormPickerErrorReason,
-} from "./FormPickerError";
+import ExpressionNodeEditor from "./ExpressionNodeEditor";
 
-interface CohortExpressionBuilderProps {
+interface CohortExpressionBuilderProps extends CohortLeafEditorSources {
   value: CohortExpression | null | undefined;
   onChange: (value: CohortExpression | null) => void;
-  availableTags: TagDto[];
-  availableActions: { id: number; name: string }[];
-  availableUsers: UserSelectUser[];
-  usersLoading?: boolean;
   activeContractUserIds?: Set<number>;
   onboarding?: boolean;
-  /** @internal used to thread selected expression to nested editors */
-  _selectedExpr?: CohortExpression | null;
 }
-
-const LEAF_TYPES = [
-  { value: "Tag", label: "Tag" },
-  { value: "Manual", label: "Manual Users" },
-  { value: "CompletedAction", label: "Completed Action" },
-  { value: "InProgressAction", label: "In-Progress Action" },
-  { value: "MissedActionDeadline", label: "Missed Action Deadline" },
-  { value: "FormFieldValue", label: "Form Field Value" },
-  { value: "GroupLead", label: "Group Lead" },
-  { value: "USMember", label: "US Member" },
-  { value: "NonUSMember", label: "Non-US Member" },
-] as const;
-
-const OPERATOR_TYPES = [
-  { value: "AND", label: "AND" },
-  { value: "OR", label: "OR" },
-  { value: "NOT", label: "NOT" },
-] as const;
-
-function operatorChildren(expr: BooleanOperator): CohortExpression[] {
-  switch (expr.type) {
-    case "AND":
-    case "OR":
-      return expr.children;
-    case "NOT":
-      return [expr.child];
-    default:
-      throw new Error(
-        `unknown operator: ${JSON.stringify(expr satisfies never)}`,
-      );
-  }
-}
-
-function createDefaultLeaf(type: LeafCondition["type"]): LeafCondition {
-  switch (type) {
-    case "Tag":
-      return { type: "Tag", tagId: "" };
-    case "Manual":
-      return { type: "Manual", userIds: [] };
-    case "CompletedAction":
-      return { type: "CompletedAction", actionId: 0 };
-    case "InProgressAction":
-      return { type: "InProgressAction", actionId: 0 };
-    case "MissedActionDeadline":
-      return { type: "MissedActionDeadline", actionId: 0 };
-    case "FormFieldValue":
-      return { type: "FormFieldValue", formId: 0, fieldId: "" };
-    case "GroupLead":
-      return { type: "GroupLead" };
-    case "USMember":
-      return { type: "USMember" };
-    case "NonUSMember":
-      return { type: "NonUSMember" };
-  }
-}
-
-// --- Leaf Editors ---
-
-const TagEditor: React.FC<{
-  value: TagCondition;
-  onChange: (v: TagCondition) => void;
-  availableTags: TagDto[];
-}> = ({ value, onChange, availableTags }) => (
-  <select
-    value={value.tagId}
-    onChange={(e) => onChange({ ...value, tagId: e.target.value })}
-    className="w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-  >
-    <option value="">Select tag...</option>
-    {availableTags.map((tag) => (
-      <option key={tag.id} value={tag.id}>
-        {tag.name}
-      </option>
-    ))}
-  </select>
-);
-
-const ManualEditor: React.FC<{
-  value: ManualCondition;
-  onChange: (v: ManualCondition) => void;
-  availableUsers: UserSelectUser[];
-  usersLoading?: boolean;
-}> = ({ value, onChange, availableUsers, usersLoading }) => (
-  <UserSelect
-    users={availableUsers}
-    selectedUserIds={value.userIds}
-    onChange={(ids) => onChange({ ...value, userIds: ids })}
-    loading={usersLoading}
-    label="Select users"
-  />
-);
-
-type ActionSelectCondition =
-  | CompletedActionCondition
-  | InProgressActionCondition
-  | MissedActionDeadlineCondition;
-
-const ActionSelectEditor: React.FC<{
-  value: ActionSelectCondition;
-  onChange: (v: ActionSelectCondition) => void;
-  availableActions: { id: number; name: string }[];
-}> = ({ value, onChange, availableActions }) => (
-  <select
-    value={value.actionId || ""}
-    onChange={(e) => onChange({ ...value, actionId: parseInt(e.target.value) })}
-    className="w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-  >
-    <option value="">Select action...</option>
-    {availableActions.map((a) => (
-      <option key={a.id} value={a.id}>
-        {a.name}
-      </option>
-    ))}
-  </select>
-);
-
-const FormFieldEditor: React.FC<{
-  value: FormFieldValueCondition;
-  onChange: (v: FormFieldValueCondition) => void;
-}> = ({ value, onChange }) => {
-  const { options: availableForms, isError: formListFailed } = useFormOptions();
-  const { fields: sourceFields, status: sourceStatus } = useFormQuestionFields(
-    value.formId,
-  );
-  const sourceFormError = formFieldsErrorReason(sourceStatus);
-
-  const selectedField = sourceFields.find((f) => f.id === value.fieldId);
-  // TODO: multiselect and ranking are excluded because the server matches
-  // responseEqualTo via String(answer) on the array, so only single-selection
-  // answers match. Drop the exclusion once that matching is sorted out.
-  const fieldOptions =
-    selectedField &&
-    fieldHasOptions(selectedField) &&
-    selectedField.kind !== "multiselect" &&
-    selectedField.kind !== "ranking"
-      ? selectedField.options
-      : null;
-
-  return (
-    <div className="space-y-2">
-      <select
-        value={value.formId || ""}
-        onChange={(e) =>
-          onChange({
-            ...value,
-            formId: parseInt(e.target.value) || 0,
-            fieldId: "",
-            responseEqualTo: undefined,
-          })
-        }
-        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-      >
-        <option value="">Select form...</option>
-        {availableForms.map((f) => (
-          <option key={f.id} value={f.id}>
-            {f.title} (#{f.id})
-          </option>
-        ))}
-      </select>
-      <select
-        value={value.fieldId}
-        onChange={(e) =>
-          onChange({
-            ...value,
-            fieldId: e.target.value,
-            responseEqualTo: undefined,
-          })
-        }
-        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-        disabled={!value.formId}
-      >
-        <option value="">Select field...</option>
-        {sourceFields.map((f) => (
-          <option key={f.id} value={f.id}>
-            {fieldPickerLabel(f)}
-          </option>
-        ))}
-      </select>
-      {formListFailed && (
-        <FormPickerError reason={FormPickerErrorReason.FormList} />
-      )}
-      {sourceFormError && <FormPickerError reason={sourceFormError} />}
-      {!value.responseAny ? (
-        fieldOptions ? (
-          <select
-            value={value.responseEqualTo ?? ""}
-            onChange={(e) =>
-              onChange({
-                ...value,
-                responseEqualTo: e.target.value || undefined,
-              })
-            }
-            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-          >
-            <option value="">Response equals (optional)...</option>
-            {value.responseEqualTo &&
-              !fieldOptions.some((o) => o.value === value.responseEqualTo) && (
-                <option value={value.responseEqualTo}>
-                  {value.responseEqualTo} (not in options)
-                </option>
-              )}
-            {fieldOptions.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-                {o.value !== o.label ? ` (${o.value})` : ""}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <input
-            type="text"
-            placeholder="Response equals (optional)"
-            value={value.responseEqualTo ?? ""}
-            onChange={(e) =>
-              onChange({
-                ...value,
-                responseEqualTo: e.target.value || undefined,
-              })
-            }
-            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-          />
-        )
-      ) : null}
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={value.responseAny ?? false}
-          onChange={(e) =>
-            onChange({
-              ...value,
-              responseAny: e.target.checked || undefined,
-              responseEqualTo: e.target.checked
-                ? undefined
-                : value.responseEqualTo,
-            })
-          }
-          className="h-4 w-4 rounded border-gray-300"
-        />
-        Any response (ignore value)
-      </label>
-    </div>
-  );
-};
-
-// --- Expression Node Editor ---
-
-const ExpressionNodeEditor: React.FC<{
-  expr: CohortExpression;
-  onChange: (expr: CohortExpression) => void;
-  onRemove?: () => void;
-  onSelect?: (expr: CohortExpression) => void;
-  isSelected?: boolean;
-  depth: number;
-  props: CohortExpressionBuilderProps;
-}> = ({ expr, onChange, onRemove, onSelect, isSelected, depth, props }) => {
-  const handleTypeChange = (newType: string) => {
-    const leafTypes = LEAF_TYPES.map((t) => t.value as string);
-    if (leafTypes.includes(newType)) {
-      onChange(createDefaultLeaf(newType as LeafCondition["type"]));
-    } else {
-      const op = newType as BooleanOperator["type"];
-      // Preserve children when switching between operator types
-      const existingChildren: CohortExpression[] = isLeafCondition(expr)
-        ? []
-        : operatorChildren(expr);
-
-      switch (op) {
-        case "NOT":
-          onChange({
-            type: "NOT",
-            child: existingChildren[0] ?? createDefaultLeaf("Tag"),
-          });
-          break;
-        case "AND":
-        case "OR":
-          onChange({ type: op, children: existingChildren });
-          break;
-        default:
-          throw new Error(`unknown operator: ${op satisfies never}`);
-      }
-    }
-  };
-
-  const bigEditors: LeafCondition["type"][] = [
-    "Manual",
-    "FormFieldValue",
-  ] as const;
-
-  return (
-    <div
-      className={cn(
-        "border rounded-md transition-colors",
-        isSelected
-          ? "border-blue-400 ring-1 ring-blue-200"
-          : depth === 0
-            ? "border-gray-300"
-            : "border-gray-200",
-        depth > 0 && "ml-4",
-      )}
-    >
-      <div
-        className={cn(
-          "flex items-center gap-2 px-3 py-2 rounded-t-md",
-          isSelected ? "bg-blue-50" : "bg-gray-50",
-          onSelect && "cursor-pointer",
-        )}
-        onClick={(e) => {
-          if (onSelect && !(e.target instanceof HTMLSelectElement)) {
-            e.stopPropagation();
-            onSelect(expr);
-          }
-        }}
-      >
-        <select
-          value={expr.type}
-          onChange={(e) => handleTypeChange(e.target.value)}
-          className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 bg-white"
-        >
-          <optgroup label="Conditions">
-            {LEAF_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </optgroup>
-          <optgroup label="Operators">
-            {OPERATOR_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </optgroup>
-        </select>
-        {isLeafCondition(expr) && !bigEditors.includes(expr.type) && (
-          <LeafConditionEditor
-            expr={expr}
-            onChange={onChange as (v: LeafCondition) => void}
-            props={props}
-          />
-        )}
-        {onRemove && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemove();
-            }}
-            className="ml-auto p-1 text-gray-600 hover:text-red-500"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        )}
-      </div>
-
-      {isLeafCondition(expr) && bigEditors.includes(expr.type) && (
-        <div className="p-3">
-          <LeafConditionEditor
-            expr={expr}
-            onChange={onChange as (v: LeafCondition) => void}
-            props={props}
-          />
-        </div>
-      )}
-      {!isLeafCondition(expr) && (
-        <div className="p-3">
-          <BooleanOperatorEditor
-            expr={expr}
-            onChange={onChange as (v: BooleanOperator) => void}
-            onSelect={onSelect}
-            selectedExpr={props._selectedExpr}
-            depth={depth}
-            props={props}
-          />
-        </div>
-      )}
-    </div>
-  );
-};
-
-const LeafConditionEditor: React.FC<{
-  expr: LeafCondition;
-  onChange: (expr: LeafCondition) => void;
-  props: CohortExpressionBuilderProps;
-}> = ({ expr, onChange, props }) => {
-  switch (expr.type) {
-    case "Tag":
-      return (
-        <TagEditor
-          value={expr}
-          onChange={onChange}
-          availableTags={props.availableTags}
-        />
-      );
-    case "Manual":
-      return (
-        <ManualEditor
-          value={expr}
-          onChange={onChange}
-          availableUsers={props.availableUsers}
-          usersLoading={props.usersLoading}
-        />
-      );
-    case "CompletedAction":
-    case "InProgressAction":
-    case "MissedActionDeadline":
-      return (
-        <ActionSelectEditor
-          value={expr}
-          onChange={onChange}
-          availableActions={props.availableActions}
-        />
-      );
-    case "FormFieldValue":
-      return <FormFieldEditor value={expr} onChange={onChange} />;
-    case "GroupLead":
-      return (
-        <p className="text-sm text-gray-500 italic">
-          All community group leaders
-        </p>
-      );
-    case "USMember":
-      return (
-        <p className="text-sm text-gray-500 italic">
-          City in the US, or time zone if no city is set.
-        </p>
-      );
-    case "NonUSMember":
-      return (
-        <p className="text-sm text-gray-500 italic">
-          City outside the US, or time zone if no city is set.
-        </p>
-      );
-  }
-};
-
-const BooleanOperatorEditor: React.FC<{
-  expr: BooleanOperator;
-  onChange: (expr: BooleanOperator) => void;
-  onSelect?: (expr: CohortExpression) => void;
-  selectedExpr?: CohortExpression | null;
-  depth: number;
-  props: CohortExpressionBuilderProps;
-}> = ({ expr, onChange, onSelect, selectedExpr, depth, props }) => {
-  switch (expr.type) {
-    case "NOT":
-      return (
-        <div>
-          <p className="text-xs text-gray-500 mb-2">Exclude users matching:</p>
-          <ExpressionNodeEditor
-            expr={expr.child}
-            onChange={(child) => onChange({ ...expr, child })}
-            onSelect={onSelect}
-            isSelected={selectedExpr === expr.child}
-            depth={depth + 1}
-            props={props}
-          />
-        </div>
-      );
-    case "AND":
-    case "OR":
-      break;
-    default:
-      throw new Error(
-        `unknown operator: ${JSON.stringify(expr satisfies never)}`,
-      );
-  }
-
-  const children = expr.children;
-
-  const addChild = () => {
-    onChange({
-      ...expr,
-      children: [...children, createDefaultLeaf("Tag")],
-    });
-  };
-
-  const removeChild = (index: number) => {
-    onChange({
-      ...expr,
-      children: children.filter((_, i) => i !== index),
-    });
-  };
-
-  const updateChild = (index: number, child: CohortExpression) => {
-    const newChildren = [...children];
-    newChildren[index] = child;
-    onChange({ ...expr, children: newChildren });
-  };
-
-  return (
-    <div className="space-y-2">
-      {children.length === 0 && (
-        <p className="text-sm text-gray-400 italic">No conditions yet</p>
-      )}
-      {children.map((child, i) => (
-        <div key={i}>
-          {i > 0 && (
-            <div className="flex items-center justify-center pb-2">
-              <span className="text-xs font-medium text-zinc-500">
-                {expr.type}
-              </span>
-            </div>
-          )}
-          <ExpressionNodeEditor
-            expr={child}
-            onChange={(c) => updateChild(i, c)}
-            onRemove={() => removeChild(i)}
-            onSelect={onSelect}
-            isSelected={selectedExpr === child}
-            depth={depth + 1}
-            props={props}
-          />
-        </div>
-      ))}
-      <button
-        type="button"
-        onClick={addChild}
-        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
-      >
-        <Plus className="h-3 w-3" />
-        Add condition
-      </button>
-    </div>
-  );
-};
-
-// --- Main Component ---
 
 const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
   props,
@@ -623,20 +70,24 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
     return () => document.removeEventListener("mousedown", handler);
   }, [menuOpen]);
 
+  const copyJson = useCallback(
+    async (json: unknown) => {
+      if (!(await copyToClipboard(JSON.stringify(json, null, 2)))) {
+        pushError("Could not copy to the clipboard");
+      }
+    },
+    [pushError],
+  );
+
   const handleCopyExpression = useCallback(() => {
-    if (value) {
-      navigator.clipboard.writeText(JSON.stringify(value, null, 2));
-    }
+    if (value) void copyJson(value);
     setMenuOpen(false);
-  }, [value]);
+  }, [value, copyJson]);
 
   const handleCopyComplement = useCallback(() => {
-    if (value) {
-      const complement = { type: "NOT", child: value };
-      navigator.clipboard.writeText(JSON.stringify(complement, null, 2));
-    }
+    if (value) void copyJson({ type: "NOT", child: value });
     setMenuOpen(false);
-  }, [value]);
+  }, [value, copyJson]);
 
   const handlePasteExpression = useCallback(async () => {
     try {
@@ -715,7 +166,7 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
   const isCompound = value && isBooleanOperator(value);
 
   // Thread selectedExpr through props for nested components
-  const propsWithSelection = { ...props, _selectedExpr: selectedSubExpr };
+  const propsWithSelection = { ...props, selectedExpr: selectedSubExpr };
 
   return (
     <div className="space-y-3 relative">
@@ -783,7 +234,7 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
             onSelect={isCompound ? handleSelectNode : undefined}
             isSelected={false}
             depth={0}
-            props={propsWithSelection}
+            context={propsWithSelection}
           />
           <div className="flex gap-2">
             <button
@@ -822,6 +273,7 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
         {compareEnabled && (
           <select
             value={compareActionId ?? ""}
+            disabled={props.actionsLoading}
             onChange={(e) => {
               setCompareActionId(
                 e.target.value ? parseInt(e.target.value) : null,
@@ -830,7 +282,13 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
             }}
             className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
           >
-            <option value="">Select action to compare...</option>
+            <option value="">
+              {props.actionsLoading
+                ? "Loading actions…"
+                : props.actionsError
+                  ? "Couldn't load actions"
+                  : "Select action to compare..."}
+            </option>
             {props.availableActions.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}

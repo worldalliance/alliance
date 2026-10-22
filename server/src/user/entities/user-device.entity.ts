@@ -1,21 +1,22 @@
 import { ApiProperty } from "@nestjs/swagger";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  Unique,
 } from "typeorm";
 import { User } from "./user.entity";
 
 @Entity()
-@Unique(["expoPushToken"])
+@Index(["expoPushToken"], { unique: true, where: '"deletedAt" IS NULL' })
 export class UserDevice {
   @PrimaryGeneratedColumn("uuid")
   @ApiProperty()
@@ -26,8 +27,7 @@ export class UserDevice {
     onDelete: "CASCADE",
   })
   @JoinColumn({ name: "userId" })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  user: Relation<User>;
+  user?: Relation<User>;
 
   @Column({ type: "varchar", nullable: true })
   deviceType: string | null;
@@ -35,9 +35,28 @@ export class UserDevice {
   @Column({ type: "varchar", nullable: true })
   expoPushToken: string | null;
 
+  /** The task badge count last sent; null when the device may lack the current one, so the next sync resends. */
+  @Column({ type: "int", nullable: true })
+  badgeCount: number | null;
+
+  /**
+   * When the computation behind `badgeCount` began. A send claims the device
+   * only with a later start, so a slower, older computation can't overwrite
+   * a newer count.
+   */
+  @Column({ type: "timestamptz", nullable: true })
+  badgeCountComputedAt: Date | null;
+
+  /** The installed build handles badge-only pushes quietly; older builds would show them. */
+  @Column({ default: false })
+  taskBadgePushes: boolean;
+
   @UpdateDateColumnTz()
   updatedAt: Date;
 
   @CreateDateColumnTz()
   createdAt: Date;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

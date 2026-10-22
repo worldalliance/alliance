@@ -1,16 +1,22 @@
+import { AuthService } from "src/auth/auth.service";
 import { SignUpDto } from "src/auth/dto/sign-up.dto";
+import { ACCESS_COOKIE, JWTTokenType, REFRESH_COOKIE } from "src/auth/tokens";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { RefreshTokensResponseDto } from "../src/auth/dto/authtokens.dto";
-import { SignInResponseDto } from "../src/auth/dto/signin.dto";
+import {
+  AuthMeResponseDto,
+  RefreshTokensResponseDto,
+} from "../src/auth/dto/authtokens.dto";
+import { SignInResponseDto, TokenMode } from "../src/auth/dto/signin.dto";
 import { Community } from "../src/community/entities/community.entity";
 import { Friend } from "../src/user/entities/friend.entity";
 import {
   OnetimeInvite,
   OnetimeInviteStatus,
 } from "../src/user/entities/onetime-invite.entity";
+import { Tag } from "../src/user/entities/tag.entity";
 import { User } from "../src/user/entities/user.entity";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
 
 describe("Auth (e2e)", () => {
   let userRepository: Repository<User>;
@@ -23,24 +29,133 @@ describe("Auth (e2e)", () => {
     inviteRepo = ctx.dataSource.getRepository(OnetimeInvite);
   }, 50000);
 
-  it("returns 401 for invalid login", () => {
-    return request(ctx.app.getHttpServer())
+  it("returns 401 for invalid login", async () => {
+    await request(ctx.app.getHttpServer())
       .post("/auth/login")
-      .send({ email: "baduser@test.com", password: "password", mode: "header" })
+      .send({
+        email: "baduser@test.com",
+        password: "password",
+        mode: TokenMode.Header,
+      })
       .expect(401);
   });
 
-  it("registers a new user", () => {
-    return request(ctx.app.getHttpServer())
+  it.each([["bogus"], [undefined]])(
+    "names the accepted modes when the login mode is %p",
+    async (mode) => {
+      const res = await request(ctx.app.getHttpServer())
+        .post("/auth/login")
+        .send({ email: "baduser@test.com", password: "password", mode });
+      expect(res.status).toBe(400);
+      expect(JSON.stringify(res.body.message)).toContain(
+        "mode must be one of the following values: cookie, header",
+      );
+    },
+  );
+
+  it("returns 401 for an account with no password", async () => {
+    const user = await userRepository.save(
+      userRepository.create({
+        email: "nopasswordtest@test.com",
+        password: null,
+        name: "Test User",
+      }),
+    );
+    expect(user.password).toBeNull();
+
+    await request(ctx.app.getHttpServer())
+      .post("/auth/login")
+      .send({
+        email: "nopasswordtest@test.com",
+        password: "password",
+        mode: TokenMode.Header,
+      })
+      .expect(401);
+  });
+
+  it("registers a new user without tagging them", async () => {
+    const tagRepo = ctx.dataSource.getRepository(Tag);
+    await tagRepo.save(
+      tagRepo.create({ name: "All Members", description: "" }),
+    );
+    const referrer = await userRepository.save(
+      userRepository.create({
+        email: "referrer@test.com",
+        password: "password",
+        name: "Referrer",
+      }),
+    );
+
+    await request(ctx.app.getHttpServer())
       .post("/auth/register")
       .send({
         email: "newusertest@test.com",
         password: "password",
         name: "Test User",
-        mode: "header",
+        mode: TokenMode.Header,
         timeZone: "America/Los_Angeles",
+        referralCode: referrer.referralCode,
       } satisfies SignUpDto)
       .expect(201);
+
+    const user = await userRepository.findOneOrFail({
+      where: { email: "newusertest@test.com" },
+      relations: { tags: true },
+    });
+    expect(user.tags).toEqual([]);
+  });
+
+  it("trims surrounding whitespace from the registered name", async () => {
+    const referrer = await userRepository.save(
+      userRepository.create({
+        email: "trimreferrer@test.com",
+        password: "password",
+        name: "Referrer",
+      }),
+    );
+
+    await request(ctx.app.getHttpServer())
+      .post("/auth/register")
+      .send({
+        email: "trimmednametest@test.com",
+        password: "password",
+        name: "  Ada Lovelace  ",
+        mode: TokenMode.Header,
+        timeZone: "America/Los_Angeles",
+        referralCode: referrer.referralCode,
+      } satisfies SignUpDto)
+      .expect(201);
+
+    const user = await userRepository.findOneOrFail({
+      where: { email: "trimmednametest@test.com" },
+    });
+    expect(user.name).toBe("Ada Lovelace");
+  });
+
+  it("rejects a registered name that is blank after trimming", async () => {
+    const referrer = await userRepository.save(
+      userRepository.create({
+        email: "blankreferrer@test.com",
+        password: "password",
+        name: "Referrer",
+      }),
+    );
+
+    await request(ctx.app.getHttpServer())
+      .post("/auth/register")
+      .send({
+        email: "blanknametest@test.com",
+        password: "password",
+        name: "   ",
+        mode: TokenMode.Header,
+        timeZone: "America/Los_Angeles",
+        referralCode: referrer.referralCode,
+      } satisfies SignUpDto)
+      .expect(400);
+
+    expect(
+      await userRepository.existsBy({ email: "blanknametest@test.com" }),
+    ).toBe(false);
   });
 
   it("returns a token for a valid login", async () => {
@@ -56,7 +171,7 @@ describe("Auth (e2e)", () => {
       .send({
         email: "newusertest@test.com",
         password: "password",
-        mode: "header",
+        mode: TokenMode.Header,
       })
       .expect(200);
 
@@ -66,42 +181,250 @@ describe("Auth (e2e)", () => {
     expect(body.refresh_token).toBeDefined();
   });
 
+  const cookieSession = async (email: string) => {
+    await userRepository.save(
+      userRepository.create({ email, password: "password", name: "No Cookie" }),
+    );
+    const agent = request.agent(ctx.app.getHttpServer());
+    await agent
+      .post("/auth/login")
+      .send({ email, password: "password", mode: TokenMode.Cookie })
+      .expect(200);
+    await agent.get("/auth/me").expect(200);
+    return agent;
+  };
+
+  it("sets no cookie session on a header-mode register", async () => {
+    const referrer = await userRepository.save(
+      userRepository.create({
+        email: "nocookie-referrer@test.com",
+        password: "password",
+        name: "No Cookie Referrer",
+      }),
+    );
+    const agent = request.agent(ctx.app.getHttpServer());
+
+    await agent
+      .post("/auth/register")
+      .send({
+        email: "nocookie-register@test.com",
+        password: "password",
+        name: "No Cookie",
+        mode: TokenMode.Header,
+        timeZone: "America/Los_Angeles",
+        referralCode: referrer.referralCode,
+      } satisfies SignUpDto)
+      .expect(201);
+    await agent.get("/auth/me").expect(401);
+  });
+
+  it("clears the cookie session on a header-mode login", async () => {
+    const email = "nocookie-login@test.com";
+    const agent = await cookieSession(email);
+
+    await agent
+      .post("/auth/login")
+      .send({ email, password: "password", mode: TokenMode.Header })
+      .expect(200);
+    await agent.get("/auth/me").expect(401);
+  });
+
+  it("clears the cookie session on a rejected header-mode login", async () => {
+    const email = "nocookie-rejected-login@test.com";
+    const agent = await cookieSession(email);
+
+    await agent
+      .post("/auth/login")
+      .send({ email, password: "wrong", mode: TokenMode.Header })
+      .expect(401);
+    await agent.get("/auth/me").expect(401);
+  });
+
+  it("clears the cookie session on a rejected header-mode register", async () => {
+    const email = "nocookie-rejected-register@test.com";
+    const agent = await cookieSession(email);
+    const referrer = await userRepository.save(
+      userRepository.create({
+        email: "nocookie-rejected-referrer@test.com",
+        password: "password",
+        name: "No Cookie Referrer",
+      }),
+    );
+
+    await agent
+      .post("/auth/register")
+      .send({
+        email,
+        password: "password",
+        name: "No Cookie",
+        mode: TokenMode.Header,
+        timeZone: "America/Los_Angeles",
+        referralCode: referrer.referralCode,
+      } satisfies SignUpDto)
+      .expect(400);
+    await agent.get("/auth/me").expect(401);
+  });
+
+  it("clears the cookie session on a header-mode login that merges a guest", async () => {
+    const email = "nocookie-guest@test.com";
+    const agent = await cookieSession(email);
+    const { guestToken } = await ctx.app.get(AuthService).createGuestSession();
+
+    await agent
+      .post("/auth/login")
+      .send({ email, password: "password", mode: TokenMode.Header, guestToken })
+      .expect(200);
+    await agent.get("/auth/me").expect(401);
+  });
+
+  it("refuses a guest token with no sub", async () => {
+    const authService = ctx.app.get(AuthService);
+    await authService.createGuestSession();
+    const noSub = ctx.jwtService.sign(
+      { tokenType: JWTTokenType.guest },
+      { secret: process.env.JWT_SECRET },
+    );
+
+    expect(await authService.verifyGuestToken(noSub)).toBeNull();
+    const { guestToken } = await authService.createGuestSession(noSub);
+    expect(guestToken).not.toBe(noSub);
+  });
+
+  it("clears the cookie session on a header-mode refresh", async () => {
+    const email = "nocookie-refresh@test.com";
+    const agent = await cookieSession(email);
+
+    const stranded = await request(ctx.app.getHttpServer())
+      .post("/auth/login")
+      .send({ email, password: "password", mode: TokenMode.Header })
+      .expect(200);
+
+    await agent
+      .post("/auth/refresh?mode=header")
+      .set(
+        "Authorization",
+        `Bearer ${(stranded.body as SignInResponseDto).refresh_token}`,
+      )
+      .expect(200);
+    await agent.get("/auth/me").expect(401);
+  });
+
+  it("sends no ETag for a client to revalidate", async () => {
+    const user = await userRepository.save(
+      userRepository.create({
+        email: "revalidate@test.com",
+        password: "password",
+        name: "Revalidate",
+      }),
+    );
+
+    const response = await request(ctx.app.getHttpServer())
+      .get("/auth/me")
+      .set("Authorization", `Bearer ${signAccessToken(ctx.jwtService, user)}`)
+      .expect(200);
+
+    expect(response.headers.etag).toBeUndefined();
+  });
+
   describe("token refresh", () => {
-    it("returns 401 for invalid refresh token", () => {
-      return request(ctx.app.getHttpServer())
+    const login = async (
+      email = "newusertest@test.com",
+    ): Promise<SignInResponseDto> => {
+      await userRepository.save(
+        userRepository.create({
+          email,
+          password: "password",
+          name: "Test User",
+        }),
+      );
+
+      const response = await request(ctx.app.getHttpServer())
+        .post("/auth/login")
+        .send({ email, password: "password", mode: TokenMode.Header })
+        .expect(200);
+
+      return response.body as SignInResponseDto;
+    };
+
+    it("returns 401 for an invalid refresh token", async () => {
+      await request(ctx.app.getHttpServer())
         .post("/auth/refresh")
-        .send({ refresh_token: "invalid" })
+        .set("Authorization", "Bearer invalid")
+        .expect(401);
+    });
+
+    it("refuses a refresh token with no sub", async () => {
+      await login();
+      const noSub = ctx.jwtService.sign(
+        { tokenType: JWTTokenType.refresh, email: "nobody@test.com" },
+        { secret: process.env.JWT_REFRESH_SECRET, expiresIn: "14d" },
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post("/auth/refresh?mode=header")
+        .set("Authorization", `Bearer ${noSub}`)
         .expect(401);
     });
 
     it("returns a new access token for a valid refresh token", async () => {
-      const user = userRepository.create({
-        email: "newusertest@test.com",
-        password: "password",
-        name: "Test User",
-      });
-      await userRepository.save(user);
-
-      const loginResponse = await request(ctx.app.getHttpServer())
-        .post("/auth/login")
-        .send({
-          email: "newusertest@test.com",
-          password: "password",
-          mode: "header",
-        })
-        .expect(200);
-
-      const loginBody = loginResponse.body as SignInResponseDto;
+      const { refresh_token } = await login();
 
       const refreshResponse = await request(ctx.app.getHttpServer())
         .post("/auth/refresh")
-        .set("Authorization", `Bearer ${loginBody.refresh_token}`)
+        .set("Authorization", `Bearer ${refresh_token}`)
         .expect(200);
 
       const refreshBody = refreshResponse.body as RefreshTokensResponseDto;
 
       expect(refreshBody.access_token).toBeDefined();
     });
+
+    it("delivers the pair as cookies when ?mode=cookie is asked for", async () => {
+      const { refresh_token } = await login("explicit-cookie@test.com");
+      const agent = request.agent(ctx.app.getHttpServer());
+
+      const refreshResponse = await agent
+        .post("/auth/refresh?mode=cookie")
+        .set("Authorization", `Bearer ${refresh_token}`)
+        .expect(200);
+
+      expect(refreshResponse.body).toEqual({});
+      await agent.get("/auth/me").expect(200);
+    });
+
+    it("refreshes the session the Bearer header names, not the cookie's", async () => {
+      const stale = await login("stale-cookie@test.com");
+      const current = await login("current-header@test.com");
+
+      const refreshResponse = await request(ctx.app.getHttpServer())
+        .post("/auth/refresh?mode=header")
+        .set("Cookie", [`${REFRESH_COOKIE}=${stale.refresh_token}`])
+        .set("Authorization", `Bearer ${current.refresh_token}`)
+        .expect(200);
+
+      const { access_token } = refreshResponse.body as RefreshTokensResponseDto;
+
+      const meResponse = await request(ctx.app.getHttpServer())
+        .get("/auth/me")
+        .set("Authorization", `Bearer ${access_token}`)
+        .expect(200);
+
+      expect((meResponse.body as AuthMeResponseDto).user.email).toBe(
+        "current-header@test.com",
+      );
+    });
+
+    it.each(["Basic", "bearer"])(
+      "refuses a refresh token sent as %p",
+      async (scheme) => {
+        const { refresh_token } = await login();
+
+        await request(ctx.app.getHttpServer())
+          .post("/auth/refresh")
+          .set("Authorization", `${scheme} ${refresh_token}`)
+          .expect(401);
+      },
+    );
   });
 
   describe("signUp with invite codes", () => {
@@ -151,7 +474,7 @@ describe("Auth (e2e)", () => {
           password: "password",
           name: "Invited User",
           referralCode: "TEST-INVITE-CODE",
-          mode: "header",
+          mode: TokenMode.Header,
           timeZone: "America/Los_Angeles",
         } satisfies SignUpDto)
         .expect(201);
@@ -171,6 +494,7 @@ describe("Auth (e2e)", () => {
         where: { id: invite.id },
       });
       expect(updatedInvite?.status).toBe(OnetimeInviteStatus.LINK_USED);
+      expect(updatedInvite?.invitedUserId).toBe(newUser?.id);
     });
 
     it("creates friendship between inviting user and new user when registering with invite", async () => {
@@ -190,7 +514,7 @@ describe("Auth (e2e)", () => {
           password: "password",
           name: "Friend Invited User",
           referralCode: "FRIEND-INVITE-CODE",
-          mode: "header",
+          mode: TokenMode.Header,
           timeZone: "America/Los_Angeles",
         } satisfies SignUpDto)
         .expect(201);
@@ -244,7 +568,7 @@ describe("Auth (e2e)", () => {
           password: "password",
           name: "No Join User",
           referralCode: "NO-JOIN-CODE",
-          mode: "header",
+          mode: TokenMode.Header,
           timeZone: "America/Los_Angeles",
         } satisfies SignUpDto)
         .expect(201);
@@ -267,7 +591,7 @@ describe("Auth (e2e)", () => {
           password: "password",
           name: "No Invite User",
           referralCode: "INVALID-CODE",
-          mode: "header",
+          mode: TokenMode.Header,
           timeZone: "America/Los_Angeles",
         } satisfies SignUpDto)
         .expect(201);
@@ -305,7 +629,7 @@ describe("Auth (e2e)", () => {
           password: "password",
           name: "Referred User",
           referralCode: referringUser.referralCode,
-          mode: "header",
+          mode: TokenMode.Header,
           timeZone: "America/Los_Angeles",
         } satisfies SignUpDto)
         .expect(201);
@@ -337,11 +661,178 @@ describe("Auth (e2e)", () => {
 
       expect(friendship).not.toBeNull();
     });
+
+    const registerWithInvite = (email: string, referralCode: string) =>
+      request(ctx.app.getHttpServer())
+        .post("/auth/register")
+        .send({
+          email,
+          password: "password",
+          name: "Invited User",
+          referralCode,
+          mode: TokenMode.Header,
+          timeZone: "America/Los_Angeles",
+        } satisfies SignUpDto);
+
+    it("leaves the invite unused when creating the account fails", async () => {
+      const invite = await inviteRepo.save(
+        inviteRepo.create({
+          invitee: "failed-signup@test.com",
+          code: "FAILED-SIGNUP-CODE",
+          status: OnetimeInviteStatus.LINK_UNUSED,
+          invitingUser,
+        }),
+      );
+      const insertFailure = jest
+        .spyOn(User.prototype, "hashPassword")
+        .mockRejectedValueOnce(new Error("insert failed"));
+
+      try {
+        await registerWithInvite("failed-signup@test.com", invite.code).expect(
+          500,
+        );
+      } finally {
+        insertFailure.mockRestore();
+      }
+
+      const afterFailure = await inviteRepo.findOneByOrFail({ id: invite.id });
+      expect(afterFailure.status).toBe(OnetimeInviteStatus.LINK_UNUSED);
+      expect(afterFailure.usedAt).toBeNull();
+
+      await registerWithInvite("failed-signup@test.com", invite.code).expect(
+        201,
+      );
+      const claimed = await inviteRepo.findOneOrFail({
+        where: { id: invite.id },
+        relations: { invitedUser: true },
+      });
+      expect(claimed.status).toBe(OnetimeInviteStatus.LINK_USED);
+      expect(claimed.usedAt).not.toBeNull();
+      expect(claimed.invitedUser?.email).toBe("failed-signup@test.com");
+    });
+
+    it("lets a signup claim an invite whose claimant is deleted", async () => {
+      const invite = await inviteRepo.save(
+        inviteRepo.create({
+          invitee: "deleted-claimant@test.com",
+          code: "DELETED-CLAIMANT-CODE",
+          status: OnetimeInviteStatus.LINK_UNUSED,
+          invitingUser,
+        }),
+      );
+      await registerWithInvite("deleted-claimant@test.com", invite.code).expect(
+        201,
+      );
+      const deleted = await userRepository.findOneByOrFail({
+        email: "deleted-claimant@test.com",
+      });
+      await userRepository.softDelete(deleted.id);
+
+      await registerWithInvite("next-claimant@test.com", invite.code).expect(
+        201,
+      );
+
+      const claimants = await userRepository.find({
+        where: { referredByInvite: { id: invite.id } },
+        withDeleted: true,
+      });
+      expect(claimants.map((user) => user.email)).toEqual([
+        "next-claimant@test.com",
+      ]);
+    });
+
+    it("lets only one of two concurrent signups claim an invite", async () => {
+      const invite = await inviteRepo.save(
+        inviteRepo.create({
+          invitee: "concurrent@test.com",
+          code: "CONCURRENT-CODE",
+          status: OnetimeInviteStatus.LINK_UNUSED,
+          invitingUser,
+        }),
+      );
+
+      const responses = await Promise.all(
+        ["concurrent-a@test.com", "concurrent-b@test.com"].map((email) =>
+          registerWithInvite(email, invite.code),
+        ),
+      );
+
+      expect(responses.map((res) => res.status).sort()).toEqual([201, 400]);
+      expect(
+        await userRepository.countBy({ referredByInvite: { id: invite.id } }),
+      ).toBe(1);
+    });
+
+    it("refuses an invite someone has already claimed", async () => {
+      const invite = await inviteRepo.save(
+        inviteRepo.create({
+          invitee: "claimed@test.com",
+          code: "CLAIMED-CODE",
+          status: OnetimeInviteStatus.LINK_UNUSED,
+          invitingUser,
+        }),
+      );
+      await registerWithInvite("claimed-first@test.com", invite.code).expect(
+        201,
+      );
+
+      await registerWithInvite("claimed-second@test.com", invite.code).expect(
+        400,
+      );
+      expect(
+        await userRepository.existsBy({ email: "claimed-second@test.com" }),
+      ).toBe(false);
+    });
+
+    it("lets someone claim a used invite that no account references", async () => {
+      const invite = await inviteRepo.save(
+        inviteRepo.create({
+          invitee: "orphaned@test.com",
+          code: "ORPHANED-CODE",
+          status: OnetimeInviteStatus.LINK_USED,
+          usedAt: new Date(),
+          invitingUser,
+        }),
+      );
+
+      await registerWithInvite("orphaned@test.com", invite.code).expect(201);
+
+      const claimed = await inviteRepo.findOneOrFail({
+        where: { id: invite.id },
+        relations: { invitedUser: true },
+      });
+      expect(claimed.invitedUser?.email).toBe("orphaned@test.com");
+    });
+
+    it.each([
+      OnetimeInviteStatus.REQUEST_PENDING,
+      OnetimeInviteStatus.REQUEST_REJECTED,
+    ])("refuses the code of a %s invite request", async (status) => {
+      const invite = await inviteRepo.save(
+        inviteRepo.create({
+          invitee: `${status}@test.com`,
+          code: `${status}-CODE`,
+          status,
+          invitingUser,
+        }),
+      );
+
+      await registerWithInvite(`${status}@test.com`, invite.code).expect(400);
+
+      expect(
+        await userRepository.existsBy({ email: `${status}@test.com` }),
+      ).toBe(false);
+      const unchanged = await inviteRepo.findOneByOrFail({ id: invite.id });
+      expect(unchanged.status).toBe(status);
+      expect(unchanged.usedAt).toBeNull();
+    });
   });
 
   describe("time zone", () => {
-    it("stores the time zone the client signed up with", async () => {
-      const referringUser = await userRepository.save(
+    let referringUser: User;
+
+    beforeAll(async () => {
+      referringUser = await userRepository.save(
         userRepository.create({
           email: "tz-referrer@test.com",
           password: "password",
@@ -352,7 +843,9 @@ describe("Auth (e2e)", () => {
         await referringUser.generateReferralCode();
         await userRepository.save(referringUser);
       }
+    });
 
+    it("stores the time zone the client signed up with", async () => {
       await request(ctx.app.getHttpServer())
         .post("/auth/register")
         .send({
@@ -360,7 +853,7 @@ describe("Auth (e2e)", () => {
           password: "password",
           name: "TZ Member",
           referralCode: referringUser.referralCode,
-          mode: "header",
+          mode: TokenMode.Header,
           timeZone: "Europe/Berlin",
         } satisfies SignUpDto)
         .expect(201);
@@ -371,7 +864,26 @@ describe("Auth (e2e)", () => {
       expect(newUser.timeZone).toBe("Europe/Berlin");
     });
 
-    it.each([["not-a-zone"], [""], [undefined]])(
+    it("stores no time zone for a signup carrying null", async () => {
+      await request(ctx.app.getHttpServer())
+        .post("/auth/register")
+        .send({
+          email: "no-tz-member@test.com",
+          password: "password",
+          name: "No TZ Member",
+          referralCode: referringUser.referralCode,
+          mode: TokenMode.Header,
+          timeZone: null,
+        } satisfies SignUpDto)
+        .expect(201);
+
+      const newUser = await userRepository.findOneOrFail({
+        where: { email: "no-tz-member@test.com" },
+      });
+      expect(newUser.timeZone).toBeNull();
+    });
+
+    it.each([["not-a-zone"], ["-08:00"], [""], [undefined]])(
       "rejects a signup carrying %p as its time zone",
       async (timeZone) => {
         const res = await request(ctx.app.getHttpServer())
@@ -381,7 +893,7 @@ describe("Auth (e2e)", () => {
             password: "password",
             name: "Bad TZ",
             referralCode: "ANY-CODE",
-            mode: "header",
+            mode: TokenMode.Header,
             timeZone,
           });
         expect(res.status).toBe(400);
@@ -391,6 +903,257 @@ describe("Auth (e2e)", () => {
             email: `bad-tz-${String(timeZone)}@test.com`,
           }),
         ).toBeNull();
+      },
+    );
+  });
+
+  describe("token type", () => {
+    const authenticatedRoutes = [
+      "/auth/me",
+      "/user/list",
+      "/user/onetimeInvites/1",
+      "/actions/activities/feed",
+    ];
+
+    it("refuses a mailed password-reset token wherever a session is read", async () => {
+      const admin = await userRepository.save(
+        userRepository.create({
+          email: "reset-admin@test.com",
+          password: "password",
+          name: "Reset Admin",
+          admin: true,
+        }),
+      );
+      const resetToken = await ctx.app
+        .get(AuthService)
+        .generatePasswordResetToken(admin.id);
+      const accessToken = signAccessToken(ctx.jwtService, admin);
+
+      for (const route of authenticatedRoutes) {
+        const refused = await request(ctx.app.getHttpServer())
+          .get(route)
+          .set("Authorization", `Bearer ${resetToken}`);
+        expect([route, refused.status]).toEqual([route, 401]);
+
+        const allowed = await request(ctx.app.getHttpServer())
+          .get(route)
+          .set("Authorization", `Bearer ${accessToken}`);
+        expect([route, allowed.status]).toEqual([route, 200]);
+      }
+    });
+
+    it.each(
+      Object.values(JWTTokenType).filter(
+        (type) => type !== JWTTokenType.access,
+      ),
+    )("refuses a %s token on an authenticated route", async (tokenType) => {
+      const user = await userRepository.save(
+        userRepository.create({
+          email: `${tokenType}-token@test.com`,
+          password: "password",
+          name: "Typed Token",
+        }),
+      );
+      const token = ctx.jwtService.sign(
+        { sub: user.id, email: user.email, tokenType },
+        { secret: process.env.JWT_SECRET },
+      );
+
+      await request(ctx.app.getHttpServer())
+        .get("/auth/me")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(401);
+    });
+
+    it("refuses a mailed password-reset token in the access_token cookie", async () => {
+      const admin = await userRepository.save(
+        userRepository.create({
+          email: "reset-cookie@test.com",
+          password: "password",
+          name: "Reset Cookie",
+          admin: true,
+        }),
+      );
+      const resetToken = await ctx.app
+        .get(AuthService)
+        .generatePasswordResetToken(admin.id);
+      const accessToken = signAccessToken(ctx.jwtService, admin);
+
+      for (const route of authenticatedRoutes) {
+        const refused = await request(ctx.app.getHttpServer())
+          .get(route)
+          .set("Cookie", [`${ACCESS_COOKIE}=${resetToken}`]);
+        expect([route, refused.status]).toEqual([route, 401]);
+
+        const allowed = await request(ctx.app.getHttpServer())
+          .get(route)
+          .set("Cookie", [`${ACCESS_COOKIE}=${accessToken}`]);
+        expect([route, allowed.status]).toEqual([route, 200]);
+      }
+    });
+
+    it("takes the Bearer header over the cookie when a request carries both", async () => {
+      const admin = await userRepository.save(
+        userRepository.create({
+          email: "both-tokens@test.com",
+          password: "password",
+          name: "Both Tokens",
+          admin: true,
+        }),
+      );
+      const accessToken = signAccessToken(ctx.jwtService, admin);
+      const guestToken = ctx.jwtService.sign(
+        { sub: "guest-id", tokenType: JWTTokenType.guest },
+        { secret: process.env.JWT_SECRET },
+      );
+
+      for (const route of authenticatedRoutes) {
+        const badHeader = await request(ctx.app.getHttpServer())
+          .get(route)
+          .set("Authorization", `Bearer ${guestToken}`)
+          .set("Cookie", [`${ACCESS_COOKIE}=${accessToken}`]);
+        expect([route, badHeader.status]).toEqual([route, 401]);
+
+        const badCookie = await request(ctx.app.getHttpServer())
+          .get(route)
+          .set("Authorization", `Bearer ${accessToken}`)
+          .set("Cookie", [`${ACCESS_COOKIE}=${guestToken}`]);
+        expect([route, badCookie.status]).toEqual([route, 200]);
+
+        const otherScheme = await request(ctx.app.getHttpServer())
+          .get(route)
+          .set("Authorization", "Basic dXNlcjpwYXNz")
+          .set("Cookie", [`${ACCESS_COOKIE}=${accessToken}`]);
+        expect([route, otherScheme.status]).toEqual([route, 200]);
+      }
+    });
+
+    it.each([{ tokenType: "toString" }, {}])(
+      "refuses a token whose tokenType we never issue (%o)",
+      async (claims) => {
+        const user = await userRepository.save(
+          userRepository.create({
+            email: "untyped-token@test.com",
+            password: "password",
+            name: "Untyped Token",
+          }),
+        );
+        const token = ctx.jwtService.sign(
+          { sub: user.id, email: user.email, ...claims },
+          { secret: process.env.JWT_SECRET },
+        );
+
+        await request(ctx.app.getHttpServer())
+          .get("/auth/me")
+          .set("Authorization", `Bearer ${token}`)
+          .expect(401);
+      },
+    );
+  });
+
+  describe("email case and exact matching", () => {
+    const signIn = (email: string) =>
+      request(ctx.app.getHttpServer())
+        .post("/auth/login")
+        .send({ email, password: "password", mode: "header" });
+
+    const register = async (params: {
+      email: string;
+      name: string;
+      status: number;
+    }) => {
+      const referrer = await userRepository.save(
+        userRepository.create({
+          email: `referrer-${params.name}@test.com`,
+          password: "password",
+          name: "Referrer",
+        }),
+      );
+
+      return request(ctx.app.getHttpServer())
+        .post("/auth/register")
+        .send({
+          email: params.email,
+          password: "password",
+          name: params.name,
+          mode: TokenMode.Header,
+          timeZone: "America/Los_Angeles",
+          referralCode: referrer.referralCode,
+        } satisfies SignUpDto)
+        .expect(params.status);
+    };
+
+    it("keeps the address as typed", async () => {
+      await register({
+        email: "Shouty@Test.COM",
+        name: "Shouty",
+        status: 201,
+      });
+
+      const shouty = await userRepository.findOneByOrFail({ name: "Shouty" });
+      expect(shouty.email).toBe("Shouty@Test.COM");
+    });
+
+    it("rejects a second row whose address differs only in case", async () => {
+      await userRepository.save(
+        userRepository.create({
+          email: "taken@test.com",
+          password: "password",
+          name: "Taken",
+        }),
+      );
+
+      await expect(
+        userRepository.save(
+          userRepository.create({
+            email: "TAKEN@test.com",
+            password: "password",
+            name: "Impostor",
+          }),
+        ),
+      ).rejects.toThrow(/duplicate key value violates unique constraint/);
+    });
+
+    it("signs in a member who typed their address in a different case", async () => {
+      await userRepository.save(
+        userRepository.create({
+          email: "mixedcase@test.com",
+          password: "password",
+          name: "Mixed Case",
+        }),
+      );
+
+      await signIn("MixedCase@Test.COM").expect(200);
+    });
+
+    it("refuses a second account differing only in case", async () => {
+      await userRepository.save(
+        userRepository.create({
+          email: "taken@test.com",
+          password: "password",
+          name: "Taken",
+        }),
+      );
+
+      await register({
+        email: "TAKEN@test.com",
+        name: "Impostor",
+        status: 400,
+      });
+    });
+
+    it.each(["a_b@test.com", "a%@test.com"])(
+      "treats %p as an address, not a pattern",
+      async (email) => {
+        await userRepository.save(
+          userRepository.create({
+            email: "axb@test.com",
+            password: "password",
+            name: "Wildcard Bait",
+          }),
+        );
+
+        await signIn(email).expect(401);
       },
     );
   });

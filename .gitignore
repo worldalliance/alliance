@@ -7,14 +7,17 @@ node_modules
 coverage
 
 # production
-build
+/apps/admin/build/
+/apps/frontend/build/
 
 # misc
 .DS_Store
+*.sw[a-p]
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env.devtools
 
 npm-debug.log*
 yarn-debug.log*
@@ -22,8 +25,8 @@ yarn-error.log*
 
 *storybook.log
 
-.terraform
-.terraform.lock.hcl
+/terraform/.terraform/
+/terraform/.terraform.lock.hcl
 
 terraform/terraform.tfstate
 terraform/terraform.tfstate.backup
@@ -32,7 +35,7 @@ terraform/terraform.tfstate.backup
 
 secret.tfvars
 
-nginx-confs/
+/nginx-confs/
 
 server/uploads/
 **/CLAUDE.local.md
@@ -43,7 +46,7 @@ uploads/
 
 .yarn/*
 **/tsconfig.tsbuildinfo
-db_dumps/
+/db_dumps/
 
 citesting/screenshots/
 terraform/.terraform.tfstate.lock.info
@@ -52,16 +55,22 @@ shared/tsconfig.tsbuildinfo
 # Worktrees
 .worktree/
 common/.tmp-test/
+scripts/.tmp-test/
 
-<<<<<<< HEAD
 # Captured migration output — carries row values from the database it ran against
 migration_log.txt
 prod_migration_*.txt
-=======
+
 # Redesign working files: source comps/fonts and screenshot output
-design/
-scratch/
+/design/
+/scratch/
 
 # Agent working output
 .scratch/
->>>>>>> publicsite-redesign
+
+
+# Onboarding design exports: comps referenced by nothing, 9.4MB
+apps/frontend/src/assets/redesign/onboarding/
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/

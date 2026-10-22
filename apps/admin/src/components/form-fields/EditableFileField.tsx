@@ -7,21 +7,15 @@ import type { BaseFieldProps } from "./types";
 export function EditableFileField({
   field,
   onUpdate,
-  onRemove,
-  onDragStart,
-  onDragEnd,
-  isDragging,
   previousFields,
+  laterFields,
 }: BaseFieldProps<FileField>) {
   return (
     <FieldWrapper
       field={field}
       onUpdate={onUpdate}
       previousFields={previousFields}
-      onRemove={onRemove}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      isDragging={isDragging}
+      laterFields={laterFields}
     >
       <FieldLabelEditor
         value={field.label}

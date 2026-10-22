@@ -1,79 +1,151 @@
-import { cleanup, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { UpdateProfileDto } from "../client";
-
-const mutate = jest.fn();
-
-jest.mock("./user", () => ({
-  useUpdateProfileMutation: () => ({ mutate }),
-}));
-
+import { queryWrapper } from "./testing/queryWrapper";
+import { routes, serveApi } from "./testing/serveApi";
 import { deviceTimeZone } from "./timeZone";
 import { useBackfillTimeZone } from "./useBackfillTimeZone";
 
-afterEach(() => {
-  mutate.mockReset();
-  cleanup();
+let payloads: UpdateProfileDto[] = [];
+let refused = false;
+
+serveApi(
+  routes({
+    "POST /user/update": async ({ request }) => {
+      payloads.push((await request.json()) as UpdateProfileDto);
+      return refused
+        ? Response.json({ message: "offline" }, { status: 500 })
+        : Response.json({ id: 7 });
+    },
+  }),
+);
+
+beforeEach(() => {
+  payloads = [];
+  refused = false;
 });
 
-const payloads = (): UpdateProfileDto[] => mutate.mock.calls.map(([p]) => p);
+const settle = () => act(async () => {});
+
+const backfill = (
+  user: Parameters<typeof useBackfillTimeZone>[0],
+  options?: Partial<Parameters<typeof useBackfillTimeZone>[1]>,
+) => useBackfillTimeZone(user, { detect: deviceTimeZone, ...options });
 
 describe("useBackfillTimeZone", () => {
-  it("sends the device zone for a member who has none", () => {
-    renderHook(() => useBackfillTimeZone({ id: 7 }));
-    expect(payloads()).toEqual([{ timeZone: deviceTimeZone() }]);
-  });
-
-  it("leaves a member who already has one alone", () => {
-    renderHook(() => useBackfillTimeZone({ id: 7, timeZone: "Europe/Berlin" }));
-    expect(payloads()).toEqual([]);
-  });
-
-  it("does nothing before the user loads", () => {
-    const view = renderHook(({ user }) => useBackfillTimeZone(user), {
-      initialProps: { user: undefined as { id: number } | undefined },
+  it("sends the device zone for a member who has none", async () => {
+    renderHook(() => backfill({ id: 7, timeZone: null }), {
+      wrapper: queryWrapper().wrapper,
     });
-    expect(payloads()).toEqual([]);
 
-    view.rerender({ user: { id: 7 } });
-    expect(payloads()).toHaveLength(1);
-  });
-
-  it("sends once, however often the user object is replaced", () => {
-    const view = renderHook(({ user }) => useBackfillTimeZone(user), {
-      initialProps: { user: { id: 7 } },
-    });
-    view.rerender({ user: { id: 7 } });
-    view.rerender({ user: { id: 7 } });
-    expect(payloads()).toHaveLength(1);
-  });
-
-  it("sends again for a different member on the same mount", () => {
-    const view = renderHook(({ user }) => useBackfillTimeZone(user), {
-      initialProps: { user: { id: 7 } },
-    });
-    view.rerender({ user: { id: 8 } });
-    expect(payloads()).toHaveLength(2);
-  });
-
-  it("writes nothing while disabled, and sends once enabled", () => {
-    const view = renderHook(
-      ({ enabled }) => useBackfillTimeZone({ id: 7 }, { enabled }),
-      { initialProps: { enabled: false } },
+    await waitFor(() =>
+      expect(payloads).toEqual([{ timeZone: deviceTimeZone() }]),
     );
-    expect(payloads()).toEqual([]);
+  });
+
+  it("sends a valid alias as detected", async () => {
+    renderHook(
+      () => backfill({ id: 7, timeZone: null }, { detect: () => "US/Pacific" }),
+      {
+        wrapper: queryWrapper().wrapper,
+      },
+    );
+
+    await waitFor(() => expect(payloads).toEqual([{ timeZone: "US/Pacific" }]));
+  });
+
+  it.each([
+    undefined,
+    "",
+    "-08:00",
+    "america/los_angeles",
+    "Mars/Olympus_Mons",
+  ])("writes nothing when detection gives %p", async (detected) => {
+    renderHook(
+      () => backfill({ id: 7, timeZone: null }, { detect: () => detected }),
+      {
+        wrapper: queryWrapper().wrapper,
+      },
+    );
+
+    await settle();
+    expect(payloads).toEqual([]);
+  });
+
+  it("leaves a member who already has one alone", async () => {
+    renderHook(() => backfill({ id: 7, timeZone: "Europe/Berlin" }), {
+      wrapper: queryWrapper().wrapper,
+    });
+
+    await settle();
+    expect(payloads).toEqual([]);
+  });
+
+  it("does nothing before the user loads", async () => {
+    const view = renderHook(({ user }) => backfill(user), {
+      initialProps: {
+        user: undefined as { id: number; timeZone: null } | undefined,
+      },
+      wrapper: queryWrapper().wrapper,
+    });
+    await settle();
+    expect(payloads).toEqual([]);
+
+    view.rerender({ user: { id: 7, timeZone: null } });
+    await waitFor(() => expect(payloads).toHaveLength(1));
+  });
+
+  it("sends once, however often the user object is replaced", async () => {
+    const view = renderHook(({ user }) => backfill(user), {
+      initialProps: { user: { id: 7, timeZone: null } },
+      wrapper: queryWrapper().wrapper,
+    });
+    view.rerender({ user: { id: 7, timeZone: null } });
+    view.rerender({ user: { id: 7, timeZone: null } });
+
+    await settle();
+    expect(payloads).toHaveLength(1);
+  });
+
+  it("sends again for a different member on the same mount", async () => {
+    const view = renderHook(({ user }) => backfill(user), {
+      initialProps: { user: { id: 7, timeZone: null } },
+      wrapper: queryWrapper().wrapper,
+    });
+    view.rerender({ user: { id: 8, timeZone: null } });
+
+    await waitFor(() => expect(payloads).toHaveLength(2));
+  });
+
+  it("writes nothing while disabled, and sends once enabled", async () => {
+    const view = renderHook(
+      ({ enabled }) => backfill({ id: 7, timeZone: null }, { enabled }),
+      {
+        initialProps: { enabled: false },
+        wrapper: queryWrapper().wrapper,
+      },
+    );
+    await settle();
+    expect(payloads).toEqual([]);
 
     view.rerender({ enabled: true });
-    expect(payloads()).toEqual([{ timeZone: deviceTimeZone() }]);
+    await waitFor(() =>
+      expect(payloads).toEqual([{ timeZone: deviceTimeZone() }]),
+    );
   });
 
-  it("logs a failed write", () => {
-    const failure = new Error("offline");
-    mutate.mockImplementation((_payload, options) => options.onError(failure));
+  it("logs a failed write", async () => {
+    refused = true;
     const logged = jest.spyOn(console, "error").mockImplementation(() => {});
 
-    renderHook(() => useBackfillTimeZone({ id: 7 }));
+    renderHook(() => backfill({ id: 7, timeZone: null }), {
+      wrapper: queryWrapper().wrapper,
+    });
 
-    expect(logged).toHaveBeenCalledWith(expect.any(String), failure);
-    logged.mockRestore();
+    await waitFor(() =>
+      expect(logged).toHaveBeenCalledWith(expect.any(String), {
+        message: "offline",
+        statusCode: 500,
+      }),
+    );
   });
 });

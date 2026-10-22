@@ -1,11 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
-import {
-  OnetimeInvite,
-  OnetimeInviteStatus,
-} from "src/user/entities/onetime-invite.entity";
-import { And, Between, IsNull, Not, type Repository } from "typeorm";
+import { OnetimeInvite } from "src/user/entities/onetime-invite.entity";
+import { inviteAcceptedSql } from "src/user/invite-claim";
+import { And, IsNull, Not, type Repository } from "typeorm";
 import { ActionStatus } from "./entities/action-event.entity";
 import { Action, CustomActionStat } from "./entities/action.entity";
 
@@ -64,12 +62,13 @@ export class ActionStatsService {
     if (!rangeStart || !rangeEnd) {
       return undefined;
     }
-    const usersInvited = await this.onetimeInviteRepository.find({
-      where: {
-        createdAt: Between(rangeStart, rangeEnd),
-        status: OnetimeInviteStatus.LINK_USED,
-      },
-    });
-    return usersInvited.length;
+    return this.onetimeInviteRepository
+      .createQueryBuilder("invite")
+      .where(inviteAcceptedSql("invite"))
+      .andWhere("invite.createdAt BETWEEN :rangeStart AND :rangeEnd", {
+        rangeStart,
+        rangeEnd,
+      })
+      .getCount();
   }
 }

@@ -1,10 +1,64 @@
+import { thumbnailSrc } from "@alliance/common/image-src";
 import { cn } from "@alliance/shared/styles/util";
-import type { ReactNode } from "react";
+import {
+  useState,
+  type ComponentProps,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { Link } from "react-router";
-import texture from "../assets/redesign/priority-environment.jpg";
+import type { Picture } from "vite-imagetools";
+import texture from "../assets/redesign/drought-image.png?w=800;1600;2400&format=avif;webp;jpg&as=picture";
 
 export const SITE_COL =
-  "mx-auto w-full max-w-[1600px] px-5 sm:px-8 lg:px-[68px]";
+  "mx-auto w-full max-w-[1750px] px-5 sm:px-8 lg:px-[68px]";
+
+/**
+ * `display: contents` on the wrapper so the img stays a direct visual child of
+ * the card it is absolutely positioned against.
+ */
+export function SitePicture({
+  image,
+  alt,
+  sizes,
+  className,
+  style,
+  loading = "lazy",
+  fetchPriority,
+}: {
+  image: Picture;
+  alt: string;
+  sizes: string;
+  className?: string;
+  style?: CSSProperties;
+  loading?: "eager" | "lazy";
+  fetchPriority?: "high" | "low" | "auto";
+}) {
+  return (
+    <picture className="contents">
+      {Object.entries(image.sources).map(([format, srcset]) => (
+        <source
+          key={format}
+          type={`image/${format}`}
+          srcSet={srcset}
+          sizes={sizes}
+        />
+      ))}
+      <img
+        src={image.img.src}
+        width={image.img.w}
+        height={image.img.h}
+        alt={alt}
+        sizes={sizes}
+        loading={loading}
+        fetchPriority={fetchPriority}
+        decoding="async"
+        className={className}
+        style={style}
+      />
+    </picture>
+  );
+}
 
 /**
  * The h1 size, shared by the hero and every page header behind the nav. Steps
@@ -15,17 +69,35 @@ export const SITE_COL =
 export const SITE_SUBMIT =
   "inline-flex min-h-12 w-fit items-center gap-2 px-5 text-base font-medium transition-colors disabled:opacity-60";
 
-export function TexturedFill() {
+/**
+ * A member photo at thumbnail size, falling back to the full-size upload when
+ * no thumbnail exists. Needs `key={src}` so the fallback resets per photo.
+ */
+export function ThumbnailImg({
+  src,
+  ...props
+}: Omit<ComponentProps<"img">, "src"> & { src: string }) {
+  const [missing, setMissing] = useState(false);
   return (
     <img
-      src={texture}
+      {...props}
+      src={missing ? src : thumbnailSrc(src)}
+      onError={() => setMissing(true)}
+    />
+  );
+}
+
+export function TexturedFill() {
+  return (
+    <SitePicture
+      image={texture}
       alt=""
-      aria-hidden
+      sizes="100vw"
       className="absolute inset-0 size-full object-cover"
       style={{
         mixBlendMode: "screen",
         filter: "grayscale(1) contrast(1.05)",
-        opacity: 0.62,
+        opacity: 0.2,
       }}
     />
   );
@@ -125,11 +197,10 @@ export function Logotype({
   return (
     <span
       className={cn(
-        "site-display leading-none whitespace-nowrap",
+        "font-logotype leading-none whitespace-nowrap",
         onDark ? "text-white" : "text-black",
         className,
       )}
-      style={{ fontWeight: 500, letterSpacing: "0.02em" }}
     >
       The Alliance
     </span>
@@ -153,7 +224,10 @@ const toneClasses: Record<ButtonTone, string> = {
  * A control that either navigates or does something in place, so a call to
  * action can be either without its caller knowing which.
  */
-export type LinkTarget = { to: string } | { onClick: () => void };
+export type LinkTarget =
+  | { to: string }
+  | { href: string }
+  | { onClick: () => void };
 
 export function SiteButton({
   children,
@@ -161,6 +235,7 @@ export function SiteButton({
   className,
   size = "base",
   withArrow = false,
+  lift = true,
   ...target
 }: {
   children: ReactNode;
@@ -168,11 +243,14 @@ export function SiteButton({
   className?: string;
   size?: "sm" | "base";
   withArrow?: boolean;
+  /** Off where the button wraps to several lines and the hop reads as jitter. */
+  lift?: boolean;
 } & LinkTarget) {
   const classes = cn(
     "group/btn inline-flex items-center gap-2 font-medium",
     "transition-[background-color,border-color,transform,box-shadow] duration-300 ease-out",
-    "hover:-translate-y-0.5 hover:shadow-[0_10px_22px_-12px_rgba(0,0,0,0.55)]",
+    lift &&
+      "hover:-translate-y-0.5 hover:shadow-[0_10px_22px_-12px_rgba(0,0,0,0.55)]",
     size === "sm"
       ? "min-h-11 px-4 py-2 text-sm"
       : "min-h-12 px-5 py-2.5 text-base",
@@ -183,17 +261,41 @@ export function SiteButton({
     <>
       {children}
       {withArrow && (
-        <SiteArrow className="size-2.5 transition-transform duration-300 ease-out group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5" />
+        <SiteArrow
+          className={cn(
+            "size-2.5",
+            lift &&
+              "transition-transform duration-300 ease-out group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5",
+          )}
+        />
       )}
     </>
   );
   const style = { borderRadius: "var(--site-radius-button)" };
 
-  return "to" in target ? (
-    <Link to={target.to} className={classes} style={style}>
-      {body}
-    </Link>
-  ) : (
+  if ("to" in target) {
+    return (
+      <Link to={target.to} className={classes} style={style}>
+        {body}
+      </Link>
+    );
+  }
+
+  if ("href" in target) {
+    return (
+      <a
+        href={target.href}
+        target="_blank"
+        rel="noreferrer"
+        className={classes}
+        style={style}
+      >
+        {body}
+      </a>
+    );
+  }
+
+  return (
     <button
       type="button"
       onClick={target.onClick}
@@ -250,45 +352,37 @@ export function SiteField({
   );
 }
 
-/** Section h2. Body face at regular weight, matching the priority titles. */
-export function SectionHeading({
-  children,
-  className,
-  onDark = false,
-}: {
-  children: ReactNode;
-  className?: string;
-  onDark?: boolean;
-}) {
-  return (
-    <h2
-      className={cn(
-        "text-[1.7rem] leading-tight font-normal sm:text-[2rem]",
-        onDark ? "text-white" : "text-[var(--site-primary)]",
-        className,
-      )}
-    >
-      {children}
-    </h2>
-  );
-}
-
 /** The oversized display heading, which every page uses as its h1. */
 export function DisplayHeading({
   children,
   className,
   as: Tag = "h2",
+  onDark = false,
+  leading = 1.35,
 }: {
   children: ReactNode;
   className?: string;
   as?: "h1" | "h2";
+  onDark?: boolean;
+  /**
+   * Unitless line height. Below the 1.35 default, descenders for this face
+   * start catching the line underneath, so anything tighter wants checking at
+   * the narrow widths where the heading wraps most.
+   */
+  leading?: number;
 }) {
   return (
     <Tag
       className={cn(
-        "site-display font-medium text-black leading-[1.06]",
+        "site-display font-medium text-balance",
+        onDark ? "text-white" : "text-black",
         className,
       )}
+      /**
+       * `leading-*` is a Tailwind "font-size" utility as far as tailwind-merge is
+       * concerned, so any caller-supplied text-size className silently strips it.
+       */
+      style={{ lineHeight: leading }}
     >
       {children}
     </Tag>
@@ -296,62 +390,49 @@ export function DisplayHeading({
 }
 
 /** Companion to the hero's DisplayHeading. Landing page only. */
-export function DisplaySubtitle({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <p
-      className={cn(
-        "max-w-xl text-lg leading-snug text-(--site-ink) sm:text-2xl",
-        className,
-      )}
-    >
-      {children}
-    </p>
-  );
+/** Section sits under a BandHeading, Page under a page's h1, Display under a hero. */
+export enum SubtitleSize {
+  Section = "section",
+  Page = "page",
+  Display = "display",
 }
 
-/** Under a BandHeading on landing, people, partner, and similar sections. */
-export function SectionSubtitle({
+const subtitleClasses: Record<
+  SubtitleSize,
+  { base: string; onLight: string; onDark: string }
+> = {
+  [SubtitleSize.Section]: {
+    base: "max-w-[50.4rem] text-xl leading-snug sm:text-2xl",
+    onLight: "text-(--site-ink)/90",
+    onDark: "text-white/75",
+  },
+  [SubtitleSize.Page]: {
+    base: "max-w-2xl text-lg sm:text-xl md:text-2xl",
+    onLight: "text-(--site-ink)/90",
+    onDark: "text-white/90",
+  },
+  [SubtitleSize.Display]: {
+    base: "max-w-xl text-lg leading-snug sm:text-2xl",
+    onLight: "text-(--site-ink)",
+    onDark: "text-white",
+  },
+};
+
+export function SiteSubtitle({
   children,
   className,
   onDark = false,
+  size = SubtitleSize.Section,
 }: {
   children: ReactNode;
   className?: string;
   onDark?: boolean;
+  size?: SubtitleSize;
 }) {
+  const tone = subtitleClasses[size];
   return (
     <p
-      className={cn(
-        "max-w-2xl text-xl leading-snug sm:text-2xl",
-        onDark ? "text-white/75" : "text-(--site-ink)/90",
-        className,
-      )}
-    >
-      {children}
-    </p>
-  );
-}
-
-/** The line under a page's DisplayHeading h1. */
-export function PageShellSubtitle({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <p
-      className={cn(
-        "max-w-2xl text-lg sm:text-xl md:text-2xl text-(--site-ink)/90 ",
-        className,
-      )}
+      className={cn(tone.base, onDark ? tone.onDark : tone.onLight, className)}
     >
       {children}
     </p>

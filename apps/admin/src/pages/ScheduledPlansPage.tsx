@@ -1,61 +1,19 @@
 import { withCount } from "@alliance/common/plural";
-import {
-  actionsScheduledPlansAdmin,
-  ScheduledPlansOverviewDto,
-} from "@alliance/shared/client";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Card from "@alliance/sharedweb/ui/Card";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { ChevronDown, Users } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router";
+import { sessionExpiredMessage } from "../lib/sessionExpired";
+import { useScheduledPlansAdmin } from "../lib/useScheduledPlansAdmin";
 
 const ScheduledPlansPage = () => {
-  const [plans, setPlans] = useState<ScheduledPlansOverviewDto | null>(null);
   const [expandedPlans, setExpandedPlans] = useState<Set<string>>(new Set());
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadPlans = async () => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const response = await actionsScheduledPlansAdmin({
-          query: {
-            rangeStart: new Date(Date.now()).toISOString(),
-            rangeEnd: new Date(
-              Date.now() + 1000 * 60 * 60 * 24 * 7,
-            ).toISOString(),
-          },
-        });
-
-        if (!cancelled) {
-          setPlans(response.data ?? null);
-        }
-      } catch (err) {
-        console.error("Failed to load scheduled plans", err);
-        if (!cancelled) {
-          setError("Unable to load scheduled plans.");
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    void loadPlans();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { data: plans, isPending: isLoading, error } = useScheduledPlansAdmin();
 
   const timelineItems = useMemo(() => {
     const suspensionItems = (plans?.suspensionPlans ?? []).map(
@@ -131,15 +89,23 @@ const ScheduledPlansPage = () => {
           </div>
         )}
 
-        {!isLoading && error && <p className="text-red-600">{error}</p>}
+        {error && (
+          <p className="text-red-600">
+            {thrownRefusalMessage({
+              error,
+              fallback: "Unable to load scheduled plans.",
+              sessionExpired: sessionExpiredMessage,
+            })}
+          </p>
+        )}
 
-        {!isLoading && !error && timelineItems.length === 0 && (
+        {plans && timelineItems.length === 0 && (
           <p className="text-gray-500">
             No planned automated actions in this window.
           </p>
         )}
 
-        {!isLoading && !error && timelineItems.length > 0 && (
+        {plans && timelineItems.length > 0 && (
           <div className="relative">
             <ul className="space-y-6">
               {timelineItems.map((item) => {

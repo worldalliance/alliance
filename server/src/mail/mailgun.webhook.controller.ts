@@ -3,7 +3,9 @@ import { BadRequestException, Body, Controller, Post } from "@nestjs/common";
 import { ApiOkResponse } from "@nestjs/swagger";
 import { InjectRepository } from "@nestjs/typeorm";
 import crypto from "crypto";
+import { millisecondsInSecond, secondsInMinute } from "date-fns/constants";
 import { PostHog } from "posthog-node";
+import { newPosthogClient } from "src/posthog/posthog-client";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
 import { captureEvent } from "../utils/posthog";
@@ -20,7 +22,8 @@ function verifyMailgunSignature(sig: {
     .digest("hex");
 
   const withinWindow =
-    Math.abs(Date.now() / 1000 - Number(sig.timestamp)) < 600; // 10 minutes
+    Math.abs(Date.now() / millisecondsInSecond - Number(sig.timestamp)) <
+    10 * secondsInMinute;
   return (
     withinWindow &&
     crypto.timingSafeEqual(Buffer.from(hmac), Buffer.from(sig.signature))
@@ -54,9 +57,9 @@ export class MailgunWebhookController {
     private userRepository: Repository<User>,
   ) {
     if (process.env.NODE_ENV === "test") return;
-    this.posthog = new PostHog(process.env.POSTHOG_KEY!, {
-      host: "https://us.i.posthog.com",
-    });
+    // Not posthogClientIfEnabled: Mailgun may deliver production mail events
+    // to a non-production server, so the mail's `production` tag decides.
+    this.posthog = newPosthogClient();
   }
 
   @Post("/handle-event")
@@ -71,7 +74,9 @@ export class MailgunWebhookController {
     const e = body["event-data"];
     const event = toPostHogEvent(e.event);
     const email = e.recipient ?? "unknown";
-    const phTimestamp = e.timestamp ? new Date(e.timestamp * 1000) : undefined;
+    const phTimestamp = e.timestamp
+      ? new Date(e.timestamp * millisecondsInSecond)
+      : undefined;
 
     const user = await this.userRepository.findOneBy({ email });
     const distinctId = user?.id.toString() ?? email;

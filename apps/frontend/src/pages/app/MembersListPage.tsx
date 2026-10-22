@@ -1,15 +1,14 @@
-import {
-  ProfileDtoWithFriends,
-  userListFriends,
-  userListSentRequests,
-  userMembersWithFriends,
-} from "@alliance/shared/client";
+import { ProfileDtoWithFriends } from "@alliance/shared/client";
 
+import { useMembersWithFriends } from "@alliance/shared/lib/useMembersWithFriends";
+import {
+  useUserFriendsQuery,
+  useUserSentFriendRequestsQuery,
+} from "@alliance/shared/lib/user";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
 import List from "@alliance/sharedweb/ui/List";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
-import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import BasicErrorMessage from "../../components/BasicErrorMessage";
@@ -30,13 +29,7 @@ const MembersListPage = () => {
     data: members = [],
     isLoading: isLoadingMembers,
     error: membersError,
-  } = useQuery({
-    queryKey: ["userMembersWithFriends", { requireSignedContract: true }],
-    queryFn: () =>
-      userMembersWithFriends({ query: { requireSignedContract: true } }).then(
-        (res) => res.data ?? [],
-      ),
-  });
+  } = useMembersWithFriends();
 
   const visibleMembers = useMemo(
     () => members.filter((m) => !m.anonymous),
@@ -44,17 +37,10 @@ const MembersListPage = () => {
   );
 
   const { data: sentRequests = [], isLoading: isLoadingSentRequests } =
-    useQuery({
-      queryKey: ["userListSentRequests"],
-      queryFn: () => userListSentRequests().then((res) => res.data ?? []),
-    });
+    useUserSentFriendRequestsQuery();
 
-  const { data: friendsData = [], isPending: isPendingFriends } = useQuery({
-    queryKey: ["userListFriends", user?.id],
-    queryFn: () =>
-      userListFriends({ path: { id: user!.id } }).then((res) => res.data ?? []),
-    enabled: !!user,
-  });
+  const { data: friendsData = [], isPending: isPendingFriends } =
+    useUserFriendsQuery(user?.id);
 
   const sentRequestIds = useMemo(
     () => new Set(sentRequests.map((req) => req.id)),

@@ -1,17 +1,15 @@
-import { contractGetCurrent } from "@alliance/shared/client";
+import type { ContractDto } from "@alliance/shared/client";
 import { PLACEHOLDER_CONTRACT_MARKDOWN } from "@alliance/shared/lib/contract";
-import { useQuery } from "@tanstack/react-query";
+import { useCurrentContract } from "@alliance/shared/lib/useCurrentContract";
+
+const placeholderContract: ContractDto = {
+  id: 1,
+  markdown: PLACEHOLDER_CONTRACT_MARKDOWN,
+  description: [],
+};
 
 export function useContract() {
-  const { data: latestContract } = useQuery({
-    queryKey: ["contractGetCurrent"],
-    queryFn: () => contractGetCurrent().then((res) => res.data ?? null),
-    initialData: {
-      id: 1,
-      markdown: PLACEHOLDER_CONTRACT_MARKDOWN,
-      description: [],
-    },
-  });
+  const { data } = useCurrentContract();
 
-  return { latestContract };
+  return { latestContract: data === undefined ? placeholderContract : data };
 }

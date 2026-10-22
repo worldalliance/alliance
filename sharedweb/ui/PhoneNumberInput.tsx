@@ -1,13 +1,11 @@
 import { type CountryCode } from "@alliance/common/phone";
-import {
-  PHONE_COUNTRIES,
-  phoneCountryInfo,
-} from "@alliance/common/phone-countries";
 import { usePhoneNumberField } from "@alliance/shared/lib/usePhoneNumberField";
 import { cn } from "@alliance/shared/styles/util";
 import React from "react";
+import PhoneCountrySelect from "./PhoneCountrySelect";
 
 type PhoneNumberInputProps = {
+  labelId?: string;
   value: string;
   onChange: (value: string) => void;
   country: CountryCode;
@@ -22,6 +20,7 @@ type PhoneNumberInputProps = {
 };
 
 const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({
+  labelId,
   value,
   onChange,
   country,
@@ -34,7 +33,6 @@ const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({
   disabled,
   required,
 }) => {
-  const selected = phoneCountryInfo(country);
   const { displayValue, beginEditing, endEditing, changeText, changeCountry } =
     usePhoneNumberField({
       value,
@@ -55,39 +53,14 @@ const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({
             : "border-zinc-200",
         )}
       >
-        <div className="relative flex items-center">
-          {/* Native select preserves keyboard and type-ahead behavior. */}
-          <span
-            aria-hidden
-            className="pointer-events-none flex items-center gap-x-1 pl-3 pr-2 text-[11pt] whitespace-nowrap"
-          >
-            <span className="text-lg leading-none">{selected.flag}</span>
-            <span className="text-zinc-600">+{selected.callingCode}</span>
-            <span className="text-zinc-400">▾</span>
-          </span>
-          <select
-            aria-label="Country"
-            className="absolute inset-0 cursor-pointer opacity-0"
-            value={country}
-            disabled={disabled}
-            onChange={(event) => {
-              const picked = PHONE_COUNTRIES.find(
-                (option) => option.country === event.target.value,
-              );
-              if (picked) {
-                changeCountry(picked.country);
-              }
-            }}
-          >
-            {PHONE_COUNTRIES.map((option) => (
-              <option key={option.country} value={option.country}>
-                {option.flag} {option.name} +{option.callingCode}
-              </option>
-            ))}
-          </select>
-        </div>
+        <PhoneCountrySelect
+          country={country}
+          onChange={changeCountry}
+          disabled={disabled}
+        />
         <span className="my-2 w-px shrink-0 bg-zinc-200" aria-hidden />
         <input
+          aria-labelledby={labelId}
           id={name}
           name={name}
           type="tel"

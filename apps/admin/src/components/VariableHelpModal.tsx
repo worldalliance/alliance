@@ -4,7 +4,7 @@ import {
   MATH_OBJECT_NAME,
   NUMBER_METHOD_NAMES,
   STRING_METHOD_NAMES,
-} from "@alliance/common/forms/variable-expression";
+} from "@alliance/common/forms/formula-allowlist";
 import {
   FIELD_KIND_VARIABLE_INPUT_MODE,
   VARIABLE_INPUT_TYPE,
@@ -17,6 +17,8 @@ import Modal, {
   ModalTitle,
 } from "@alliance/sharedweb/ui/Modal";
 import { Fragment, type ReactNode } from "react";
+import { FormulaResult } from "./formulaResult";
+import type { OptionsRecipe } from "./variableInputHelp";
 
 const MDN = "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference";
 
@@ -70,6 +72,39 @@ export const INPUT_MODE_HELP: Record<VariableInputMode, InputModeHelp> = {
   },
 };
 
+export const LIST_INPUT_HELP = {
+  notes:
+    "One record per row, in the order answered. Name a property for each sub-field; each reads like that field kind. Files and custom components are left out.",
+  example: (input: string, property: string | undefined) =>
+    property === undefined
+      ? `${input}.length`
+      : `${input}.map(row => row.${property}).join(', ')`,
+};
+
+export const SOURCE_INPUT_HELP = {
+  notes:
+    "One entry per time the member submitted that form, oldest first; no submissions reads as []. A submission that skipped the question holds undefined, or [] for a list, so inputs from the same form line up by position. Use ?? to skip or replace it.",
+  example: ({
+    input,
+    each,
+    holdsArray,
+  }: {
+    input: string;
+    each: string;
+    holdsArray: boolean;
+  }) =>
+    each === ""
+      ? `${input}.length`
+      : `${input}.filter(answer => ${holdsArray ? "(answer ?? []).length > 0" : "(answer ?? '') !== ''"}).map(answer => ${each}).join(', ')`,
+};
+
+export const AGGREGATE_INPUT_HELP = {
+  notes:
+    "How many members chose each option, keyed by the option's .value; an option no one chose reads 0. Each member counts once, from their latest submission. Guests and withdrawals don't count. The counts stay put while the form is open.",
+  example: (input: string, value: string | undefined) =>
+    `${input}[${JSON.stringify(value ?? "option-value")}] ?? 0`,
+};
+
 const MODE_IS_DOCUMENTED: Record<VariableInputMode, boolean> = {
   [VariableInputMode.Number]: true,
   [VariableInputMode.Text]: true,
@@ -89,7 +124,7 @@ const kindsForMode = (mode: VariableInputMode): string[] =>
     each === mode ? [kind] : [],
   );
 
-export const inputModeType = (mode: VariableInputMode): string =>
+const inputModeType = (mode: VariableInputMode): string =>
   mode === VariableInputMode.None
     ? VARIABLE_INPUT_TYPE[mode]
     : `${VARIABLE_INPUT_TYPE[mode]} | undefined`;
@@ -156,6 +191,25 @@ function ReferenceRow({
   );
 }
 
+function SnippetButton({
+  snippet,
+  onInsert,
+}: {
+  snippet: string;
+  onInsert: (snippet: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onInsert(snippet)}
+      title="Insert into the formula"
+      className="rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-left font-mono text-gray-600 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-900"
+    >
+      {snippet}
+    </button>
+  );
+}
+
 export type FormulaHelpInput = {
   name: string;
   type: string;
@@ -164,12 +218,39 @@ export type FormulaHelpInput = {
 
 type VariableHelpModalProps = {
   inputs: FormulaHelpInput[];
+  result: FormulaResult;
+  recipes: OptionsRecipe[];
   onInsert: (snippet: string) => void;
   onClose: () => void;
 };
 
+const RESULT_DESCRIPTION: Record<FormulaResult, string> = {
+  [FormulaResult.Text]:
+    "A formula is one JavaScript expression. It reads the inputs you pick, and whatever it returns is written wherever the variable is referenced.",
+  [FormulaResult.Options]:
+    "A formula is one JavaScript expression. It reads the inputs you pick and returns a list of { label, value } records, the choices the field offers. A record's optional category groups it under that heading; choices read from a question with categories carry theirs. Choices with the same value are merged, keeping the first. Add ?? [] where an answer can be missing.",
+};
+
+const UNANSWERED_ADVICE: Record<FormulaResult, ReactNode> = {
+  [FormulaResult.Text]: (
+    <>
+      , and a formula with no value to show renders as nothing. To show
+      something else, say so in the formula:{" "}
+      <Code>input1 ?? &apos;n/a&apos;</Code>.
+    </>
+  ),
+  [FormulaResult.Options]: (
+    <>
+      , and a formula that gives no list fails. To offer no choices instead, say
+      so in the formula: <Code>input1 ?? []</Code>.
+    </>
+  ),
+};
+
 export function VariableHelpModal({
   inputs,
+  result,
+  recipes,
   onInsert,
   onClose,
 }: VariableHelpModalProps) {
@@ -180,16 +261,14 @@ export function VariableHelpModal({
           Writing formulas
         </ModalTitle>
         <ModalDescription className="text-sm text-zinc-600">
-          A formula is one JavaScript expression. It reads the inputs you pick,
-          and whatever it returns is written wherever the variable is
-          referenced.
+          {RESULT_DESCRIPTION[result]}
         </ModalDescription>
       </ModalHeader>
       <ModalBody className="max-h-[70vh] space-y-5 overflow-y-auto text-sm text-gray-700">
         <Section title="Your inputs">
           {inputs.length === 0 ? (
             <p className="text-xs text-gray-500">
-              This variable reads no inputs yet.
+              This formula reads no inputs yet.
             </p>
           ) : (
             <table className="w-full border-collapse text-left align-top text-xs">
@@ -204,14 +283,7 @@ export function VariableHelpModal({
                     </td>
                     <td className="w-64 py-1.5 align-top">
                       {example && (
-                        <button
-                          type="button"
-                          onClick={() => onInsert(example)}
-                          title="Insert into the formula"
-                          className="rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-left font-mono text-gray-600 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-900"
-                        >
-                          {example}
-                        </button>
+                        <SnippetButton snippet={example} onInsert={onInsert} />
                       )}
                     </td>
                   </tr>
@@ -220,6 +292,23 @@ export function VariableHelpModal({
             </table>
           )}
         </Section>
+
+        {recipes.length > 0 && (
+          <Section title="Choices">
+            <table className="w-full border-collapse text-left align-top text-xs">
+              <tbody>
+                {recipes.map(({ purpose, snippet }) => (
+                  <tr key={snippet} className="border-t border-gray-100">
+                    <td className="py-1.5 pr-3 align-top">{purpose}</td>
+                    <td className="w-64 py-1.5 align-top">
+                      <SnippetButton snippet={snippet} onInsert={onInsert} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Section>
+        )}
 
         <Section title="Reference">
           <div className="space-y-1.5 text-xs leading-5">
@@ -289,8 +378,37 @@ export function VariableHelpModal({
                   </tr>
                 );
               })}
+              <tr className="border-t border-gray-100 text-xs">
+                <td className="w-32 py-2 pr-4 align-top font-mono text-gray-600">
+                  list
+                </td>
+                <td className="py-2 align-top text-gray-600">
+                  <p className="font-mono text-gray-900">
+                    {"{ name: string | undefined; … }[]"}
+                  </p>
+                  <p>{LIST_INPUT_HELP.notes}</p>
+                  <p className="font-mono text-gray-500">
+                    {LIST_INPUT_HELP.example("input1", "name")}
+                  </p>
+                </td>
+              </tr>
             </tbody>
           </table>
+        </Section>
+
+        <Section title="Answers from another form">
+          <p>
+            An input reading another form wraps that question&apos;s type in a
+            list: <Code>number | undefined</Code> becomes{" "}
+            <Code>(number | undefined)[]</Code>. {SOURCE_INPUT_HELP.notes}
+          </p>
+          <p className="font-mono text-xs text-gray-500">
+            {SOURCE_INPUT_HELP.example({
+              input: "input1",
+              each: "answer * 2",
+              holdsArray: false,
+            })}
+          </p>
         </Section>
 
         <Section title="Unanswered fields">
@@ -301,9 +419,7 @@ export function VariableHelpModal({
                 undefined
               </DocLink>
             </Code>
-            , and a formula with no value to show renders as nothing. To show
-            something else, say so in the formula:{" "}
-            <Code>input1 ?? &apos;n/a&apos;</Code>.
+            {UNANSWERED_ADVICE[result]}
           </p>
         </Section>
       </ModalBody>

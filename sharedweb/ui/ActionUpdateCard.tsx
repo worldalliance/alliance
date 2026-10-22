@@ -1,6 +1,6 @@
 import { readDisplayOnlySchema } from "@alliance/common/forms/display-only-schema";
 import { ActionUpdateDto } from "@alliance/shared/client";
-import { useOptionalNotifications } from "@alliance/shared/lib/useNotifications";
+import { useNotificationsCache } from "@alliance/shared/lib/useNotificationsCache";
 import { useMarkUnreadContentRead } from "@alliance/shared/lib/useUnreadContentRead";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
@@ -15,6 +15,7 @@ export interface ActionUpdateCardProps {
   actions?: React.ReactNode;
   onActionPageTimeline?: boolean;
   border?: boolean;
+  marksNotificationsRead?: boolean;
 }
 
 const ActionUpdateCard = ({
@@ -23,8 +24,9 @@ const ActionUpdateCard = ({
   actions,
   onActionPageTimeline = true, // if not on action page timeline, need to have action title and link
   border = false,
+  marksNotificationsRead = true,
 }: ActionUpdateCardProps) => {
-  const notifications = useOptionalNotifications();
+  const { markCachedReadByContent } = useNotificationsCache();
   const schema = useMemo(
     () => readDisplayOnlySchema(update.schema),
     [update.schema],
@@ -33,10 +35,8 @@ const ActionUpdateCard = ({
   useMarkUnreadContentRead({
     contentType: "action_update",
     contentIds: [update.id],
-    enabled: !!notifications,
-    onMarked: (contentType, contentIds) => {
-      notifications?.applyNotificationsReadByContent(contentType, contentIds);
-    },
+    enabled: marksNotificationsRead,
+    onMarked: markCachedReadByContent,
   });
 
   return (

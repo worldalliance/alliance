@@ -1,3 +1,4 @@
+/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import {
   canSubmitWithdrawal,
   WITHDRAWAL_OPTION_LABELS,
@@ -5,7 +6,10 @@ import {
   withdrawalFlagsFromOption,
   type WithdrawalOption,
 } from "@alliance/common/actionActivity";
-import { type DeviceVisibilityTarget } from "@alliance/common/forms/device";
+import {
+  deviceVisibilityTargetSchema,
+  type DeviceVisibilityTarget,
+} from "@alliance/common/forms/device";
 import { type DisplayBlock } from "@alliance/common/forms/display-blocks";
 import {
   isQuestionField,
@@ -13,6 +17,7 @@ import {
   type FormSchema,
   type FormValue,
 } from "@alliance/common/forms/form-schema";
+import { withResolvedOptions } from "@alliance/common/forms/formula-options";
 import {
   interpolateDisplayBlock,
   interpolateFieldText,
@@ -23,31 +28,54 @@ import {
   type UserDto,
 } from "@alliance/shared/client";
 import {
-  applyDefaultValues,
   computeActiveUserKey,
-  computeFormStorageKey,
-  filterAnswersByFieldIds,
   resolveDisplayBlockForUser,
-  restorableAnswers,
 } from "@alliance/shared/formrenderer";
 import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
+import {
+  applyDefaultValues,
+  computeFormStorageKey,
+  filterAnswersByFieldIds,
+  restorableAnswers,
+  restorablePublicAnswers,
+} from "@alliance/shared/forms/formDrafts";
+import {
+  completedFormSchema,
+  formulaSourcesFor,
+} from "@alliance/shared/forms/formulaChoices";
 import {
   resolveFormValue,
   type SetFieldValue,
 } from "@alliance/shared/forms/formValueUpdater";
 import { stripCardIds } from "@alliance/shared/forms/listCards";
+import {
+  aggregateTarget,
+  useVariableAggregates,
+} from "@alliance/shared/forms/useVariableAggregates";
+import {
+  historySubject,
+  useVariableSourceHistories,
+} from "@alliance/shared/forms/useVariableSourceHistories";
+import { variableInputsGate } from "@alliance/shared/forms/variableInputsGate";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import {
+  cancelAllImageUploads,
+  draftSaveFailed,
   guestReferral,
   outputFieldPublicToggle,
   waitingForImageUpload,
 } from "@alliance/shared/lib/copy";
+import {
+  deviceTimeZone,
+  formTimeZoneDefault,
+} from "@alliance/shared/lib/timeZone";
 import { useImageUpload } from "@alliance/shared/lib/useImageUpload";
 import { useVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
 import { cn } from "@alliance/shared/styles/util";
 import {
   useCurrentUserLocation,
   useFieldErrors,
+  useFormDraftSync,
   useFormSchemaMaps,
   useFormValidation,
   useFormVisibility,
@@ -55,6 +83,7 @@ import {
   useRandomizationKey,
   useVisibilityValidatorResults,
 } from "@alliance/shared/useFormRenderer";
+import UploadingWithCancel from "@alliance/sharedweb/ui/UploadingWithCancel";
 import {
   CircleDashed,
   Clock,
@@ -85,6 +114,7 @@ import {
 } from "./formAnalytics";
 import RenderDisplayBlock from "./RenderDisplayBlock";
 import RenderField from "./RenderField";
+import { variableInputsGateView } from "./variableInputsGateView";
 
 const WITHDRAWAL_OPTION_ICONS: Record<WithdrawalOption, LucideIcon> = {
   out_of_time: Clock,
@@ -105,6 +135,11 @@ type FormRendererProps = {
   phDistinctId?: string;
   sessionReplayUrl?: string;
   user?: Omit<UserDto, "email">;
+  /**
+   * Whether `user` is still being fetched. Formulas reading other forms wait
+   * for it.
+   */
+  userLoading?: boolean;
   disableOptionRandomization?: boolean;
   onFormStarted?: () => void;
   onAbandonAction?: (withdrawal: ActionWithdrawal) => void;
@@ -113,9 +148,13 @@ type FormRendererProps = {
   completedFormResponse?: FormResponseDto;
   /** Prefill form with these answers when there is no locally-persisted draft. Used to restore a guest's answers after signup. */
   draftFormResponse?: FormResponseDto | null;
+  /** Save progress to the member's account as well as this device, so the form can be finished elsewhere. */
+  syncDraftToServer?: boolean;
   fieldLabelRightContent?: Record<string, React.ReactNode>;
   /** When set, previousAnswer blocks fetch this user's responses via the admin all-responses endpoint. */
   adminPreviewUserId?: string | number;
+  /** For admins: name the variable that blocks the form in place of the refresh advice. */
+  showVariableError?: boolean;
   /** When true, fetch the logged-in viewer's saved city for userLocation display blocks. */
   loadCurrentUserLocation?: boolean;
   onSubmit: ((data: SubmitFormDto) => Promise<boolean>) | null; // null for admin preview
@@ -150,6 +189,7 @@ const FormRenderer = ({
   persistKey,
   userId,
   user,
+  userLoading = false,
   disableOptionRandomization,
   onFormStarted,
   phDistinctId,
@@ -158,8 +198,10 @@ const FormRenderer = ({
   followUp,
   completedFormResponse,
   draftFormResponse,
+  syncDraftToServer,
   fieldLabelRightContent,
   adminPreviewUserId,
+  showVariableError,
   loadCurrentUserLocation,
   actionId,
   initialPageIndex,
@@ -167,8 +209,12 @@ const FormRenderer = ({
   scrollContainerRef,
 }: FormRendererProps) => {
   // Compute schema and a namespaced storage key for persistence (if enabled)
-  const schema = form as unknown as FormSchema;
   const readOnly = !!renderFormAsCompleted;
+  const schema = useMemo(
+    () =>
+      completedFormSchema(form, readOnly ? completedFormResponse : undefined),
+    [form, readOnly, completedFormResponse],
+  );
   const baseStorageKey = computeFormStorageKey({
     formId: id,
   });
@@ -189,6 +235,11 @@ const FormRenderer = ({
   const [searchParams] = useSearchParams();
 
   const userDefaultPublic = user?.formDataPreference === "public";
+  const [detectedTimeZone] = useState(deviceTimeZone);
+  const timeZone = formTimeZoneDefault({
+    saved: user?.timeZone,
+    device: detectedTimeZone,
+  });
   const {
     fieldLookup,
     defaultValueMap,
@@ -198,7 +249,7 @@ const FormRenderer = ({
     outputFieldIds,
     pageCount,
     maxPageIndex,
-  } = useFormSchemaMaps({ schema, userDefaultPublic });
+  } = useFormSchemaMaps({ schema, userDefaultPublic, timeZone });
 
   const clampPageIndex = (idx: number): number => {
     if (!Number.isFinite(idx)) return 0;
@@ -228,6 +279,13 @@ const FormRenderer = ({
     }
   });
   const formTopRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const fieldElements = useRef(new Map<string, HTMLDivElement>());
+  // A fresh object per failed attempt, so submitting twice on the same bad
+  // field re-runs the focus effect instead of being skipped as unchanged.
+  const [invalidFieldFocus, setInvalidFieldFocus] = useState<{
+    fieldId?: string;
+  } | null>(null);
   // Precedence: localStorage (active local edits) > draft (guest prefill, may
   // arrive after mount) > empty. Once either localStorage or a draft is applied,
   // we lock out later draft applies so we never stomp user edits.
@@ -307,6 +365,68 @@ const FormRenderer = ({
   );
   const [submitting, setSubmitting] = useState(false);
 
+  // Seeded during the first render, before the persist effect below rewrites
+  // the entry.
+  const [syncedUpdatedAt, setSyncedUpdatedAt] = useState<string | null>(() => {
+    if (readOnly || typeof window === "undefined" || !persistKey) return null;
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return typeof parsed?.syncedUpdatedAt === "string"
+        ? parsed.syncedUpdatedAt
+        : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const draftSyncEnabled =
+    !!syncDraftToServer && !readOnly && !!persistKey && formSnapshotId !== null;
+
+  const { serverDraft, saveFailed, pauseSyncing, resumeSyncing } =
+    useFormDraftSync({
+      enabled: draftSyncEnabled,
+      formId: id,
+      actionId,
+      formSnapshotId,
+      answers: formData,
+      publicAnswers: resolvedPublicAnswers,
+      currentPageIndex,
+      edited: hasEmittedStart,
+      onSaved: setSyncedUpdatedAt,
+    });
+
+  useEffect(() => {
+    if (!draftSyncEnabled || hasEmittedStart || !serverDraft) return;
+    // Equal means the stored draft is this device's own last save. Both sides
+    // are server-issued, so nothing here depends on the device's clock.
+    if (serverDraft.updatedAt === syncedUpdatedAt) {
+      return;
+    }
+    const answers = restorableAnswers(
+      serverDraft.answers as Record<string, FormValue>,
+      fieldLookup,
+    );
+    draftLockedRef.current = true;
+    setFormData((prev) =>
+      applyDefaultValues({ ...prev, ...answers }, defaultValueMap),
+    );
+    setPublicAnswerOverrides((prev) => ({
+      ...prev,
+      ...restorablePublicAnswers(serverDraft.publicAnswers, outputFieldIds),
+    }));
+    setCurrentPageIndex(clampPageIndex(serverDraft.currentPageIndex));
+  }, [
+    serverDraft,
+    draftSyncEnabled,
+    hasEmittedStart,
+    syncedUpdatedAt,
+    fieldLookup,
+    defaultValueMap,
+    outputFieldIds,
+  ]);
+
   // Dropdown state for "decline to participate" options
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [withdrawalOption, setWithdrawalOption] =
@@ -322,9 +442,11 @@ const FormRenderer = ({
 
   const {
     userHasCity,
+    userPropertyHasValue,
     firstContractSignedAt,
     completedActionCount,
     isLoading: visibilityContextLoading,
+    failed: visibilityContextFailed,
   } = useVisibilityContext(schema, {
     enabled: !!user,
   });
@@ -343,22 +465,48 @@ const FormRenderer = ({
     };
   }, [readOnly]);
 
-  const savedDeviceType = completedFormResponse?.deviceType as
-    | DeviceVisibilityTarget
-    | undefined;
+  const savedDeviceType = deviceVisibilityTargetSchema.safeParse(
+    completedFormResponse?.deviceType,
+  ).data;
 
   const effectiveDeviceType = readOnly
     ? (savedDeviceType ?? deviceType)
     : deviceType;
 
-  const visibilityValidatorResults = useVisibilityValidatorResults({
+  const {
+    results: visibilityValidatorResults,
+    failed: visibilityValidatorsFailed,
+  } = useVisibilityValidatorResults({
     schema,
     readOnly,
     savedResults: completedFormResponse?.visibilityValidatorResults,
+    signedIn: !!user || adminPreviewUserId !== undefined,
   });
 
-  const { previousAnswerSchemas, previousAnswerData } =
-    usePreviousAnswerSources({ schema, previewUserId: adminPreviewUserId });
+  const { previousAnswerSchemas, previousAnswerData, previousAnswersPending } =
+    usePreviousAnswerSources({
+      schema,
+      previewUserId: adminPreviewUserId,
+      signedIn: !!user,
+    });
+
+  const sourceHistories = useVariableSourceHistories({
+    schema,
+    subject: historySubject({
+      adminPreviewUserId,
+      signedIn: !!user,
+      userLoading,
+    }),
+  });
+
+  const variableAggregates = useVariableAggregates({
+    schema,
+    target: aggregateTarget({
+      admin: adminPreviewUserId !== undefined,
+      formId: id,
+      formSnapshotId,
+    }),
+  });
 
   // --- Apply guest draft answers when they arrive after mount ---
   // The draft query is fired in parallel with the form render so we don't
@@ -441,15 +589,19 @@ const FormRenderer = ({
     visibilityExtras,
     effectiveFormData,
     variableValues,
+    variablesError,
+    resolvedOptions,
     isElementCurrentlyVisible,
-    isFieldCurrentlyRequired,
+    fieldContext,
     visiblePageIndices,
     nextVisiblePageIndex,
     previousVisiblePageIndex,
+    visibilitySettled,
     validateFieldValue,
   } = useFormVisibility({
     schema,
     formData,
+    setFormData,
     readOnly,
     currentPageIndex,
     setCurrentPageIndex,
@@ -457,9 +609,20 @@ const FormRenderer = ({
     visibilityValidatorResults,
     fieldLookup,
     previousAnswerData,
+    sourceHistories,
+    variableAggregates,
+    randomizationKey,
     userHasCity,
+    userPropertyHasValue,
     firstContractSignedAt,
     completedActionCount,
+    visibilityInputs: {
+      visibilityContextLoading,
+      visibilityContextFailed,
+      visibilityValidatorsFailed,
+      userLoading,
+      previousAnswersPending,
+    },
   });
 
   const { validatePage, validateAllPages } = useFormValidation({
@@ -541,6 +704,13 @@ const FormRenderer = ({
   });
   const { uploadingAny } = imageUpload;
 
+  // The form is `noValidate` so its own errors come first, in field order;
+  // the browser then checks what they don't cover, such as email syntax.
+  const reportNativeValidity = useCallback(
+    () => formRef.current?.reportValidity() !== false,
+    [],
+  );
+
   const handleNext = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -554,14 +724,16 @@ const FormRenderer = ({
 
     // File fields receive their stored answer only after the upload finishes,
     // so validation must wait too.
-    if (uploadingAny) return;
+    if (uploadingAny || !visibilitySettled) return;
 
     if (nextVisiblePageIndex !== null) {
       const result = await validatePage(currentPageIndex, true);
       if (!result.isValid) {
+        setInvalidFieldFocus({ fieldId: result.firstInvalidFieldId });
         trackValidationError(result.firstInvalidFieldId);
         return;
       }
+      if (!reportNativeValidity()) return;
       setCurrentPageIndex(nextVisiblePageIndex);
     }
   };
@@ -585,6 +757,15 @@ const FormRenderer = ({
   useFormPageDurationTracking(formTrackingParams);
   const trackValidationError =
     useFormValidationErrorTracking(formTrackingParams);
+
+  const validateAllPagesAndShowFirstInvalid = useCallback(async () => {
+    const result = await validateAllPages();
+    if (!result.isValid && typeof result.firstInvalidPageIndex === "number") {
+      setCurrentPageIndex(result.firstInvalidPageIndex);
+      setInvalidFieldFocus({ fieldId: result.firstInvalidFieldId });
+    }
+    return result;
+  }, [validateAllPages]);
 
   const submitCurrentPage = useCallback(async (): Promise<boolean> => {
     if (submittingRef.current) {
@@ -610,25 +791,24 @@ const FormRenderer = ({
     }
 
     if (nextVisiblePageIndex !== null) {
+      if (!visibilitySettled) return finishSubmit(false);
       const result = await validatePage(currentPageIndex, true);
-      if (result.isValid) {
-        setCurrentPageIndex(nextVisiblePageIndex);
-      } else {
+      if (!result.isValid) {
+        setInvalidFieldFocus({ fieldId: result.firstInvalidFieldId });
         trackValidationError(result.firstInvalidFieldId);
+      } else if (reportNativeValidity()) {
+        setCurrentPageIndex(nextVisiblePageIndex);
       }
       return finishSubmit(false);
     }
 
-    const { isValid, firstInvalidPageIndex, firstInvalidFieldId } =
-      await validateAllPages();
+    const { isValid, firstInvalidFieldId } =
+      await validateAllPagesAndShowFirstInvalid();
     if (!isValid) {
       trackValidationError(firstInvalidFieldId);
-      if (
-        typeof firstInvalidPageIndex === "number" &&
-        firstInvalidPageIndex !== currentPageIndex
-      ) {
-        setCurrentPageIndex(firstInvalidPageIndex);
-      }
+      return finishSubmit(false);
+    }
+    if (!reportNativeValidity()) {
       return finishSubmit(false);
     }
 
@@ -642,6 +822,7 @@ const FormRenderer = ({
       answers: sanitizedAnswers,
       formSnapshotId,
       actionId,
+      formulaSources: formulaSourcesFor(schema, sourceHistories),
       visibilityValidatorResults,
       deviceType,
       publicAnswers: resolvedPublicAnswers,
@@ -650,9 +831,15 @@ const FormRenderer = ({
       sid: sid ?? undefined,
     };
 
+    pauseSyncing();
     try {
-      return await onSubmit(submissionPayload);
+      const submitted = await onSubmit(submissionPayload);
+      if (!submitted) {
+        resumeSyncing();
+      }
+      return submitted;
     } catch {
+      resumeSyncing();
       return false;
     } finally {
       submittingRef.current = false;
@@ -670,14 +857,20 @@ const FormRenderer = ({
     onSubmit,
     phDistinctId,
     readOnly,
+    reportNativeValidity,
     resolvedPublicAnswers,
+    schema,
     searchParams,
+    sourceHistories,
     sessionReplayUrl,
     trackValidationError,
     uploadingAny,
-    validateAllPages,
+    validateAllPagesAndShowFirstInvalid,
     validatePage,
+    visibilitySettled,
     visibilityValidatorResults,
+    pauseSyncing,
+    resumeSyncing,
   ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -686,10 +879,6 @@ const FormRenderer = ({
 
     await submitCurrentPage();
   };
-
-  const validateForPreview = useCallback(async () => {
-    await validatePage(currentPageIndex, true);
-  }, [formData, form, onSubmit]);
 
   const toggleWithdrawalOption = (option: WithdrawalOption) => {
     setWithdrawalOption((previous) => (previous === option ? null : option));
@@ -705,11 +894,13 @@ const FormRenderer = ({
       answers: stripCardIds(formData),
       formSnapshotId,
       actionId,
+      formulaSources: formulaSourcesFor(schema, sourceHistories),
       visibilityValidatorResults,
       deviceType,
       publicAnswers: resolvedPublicAnswers,
     };
 
+    pauseSyncing();
     onAbandonAction?.({
       ...withdrawalFlagsFromOption(option),
       reason: customReason.trim(),
@@ -729,6 +920,7 @@ const FormRenderer = ({
         publicAnswers: publicAnswerOverrides,
         currentPageIndex,
         updatedAt: Date.now(),
+        syncedUpdatedAt,
       }),
     );
   }, [
@@ -738,6 +930,7 @@ const FormRenderer = ({
     persistKey,
     storageKey,
     readOnly,
+    syncedUpdatedAt,
   ]);
 
   useEffect(() => {
@@ -754,14 +947,10 @@ const FormRenderer = ({
       setFormData(applyDefaultValues(filtered, defaultValueMap));
     }
     if (parsed?.publicAnswers && typeof parsed.publicAnswers === "object") {
-      const overrides: Record<string, boolean> = {};
-      for (const [fieldId, value] of Object.entries(
+      const overrides = restorablePublicAnswers(
         parsed.publicAnswers as Record<string, unknown>,
-      )) {
-        if (outputFieldIds.has(fieldId) && typeof value === "boolean") {
-          overrides[fieldId] = value;
-        }
-      }
+        outputFieldIds,
+      );
       if (Object.keys(overrides).length > 0) {
         setPublicAnswerOverrides((prev) => ({
           ...prev,
@@ -813,37 +1002,55 @@ const FormRenderer = ({
     setCurrentPageIndex(clamped);
   }, [initialPageIndex, persistKey, readOnly, pageCount]);
 
+  // `scrollIntoView` moves every scrollable ancestor, the document included,
+  // so a caller-supplied container is scrolled on its own instead.
+  const scrollElementIntoView = useCallback(
+    (element: HTMLElement) => {
+      const container = scrollContainerRef?.current;
+      if (!container) {
+        element.scrollIntoView({ behavior: "instant", block: "start" });
+        return;
+      }
+      const rawScrollMarginTop = parseFloat(
+        getComputedStyle(element).scrollMarginTop,
+      );
+      const scrollMarginTop = Number.isFinite(rawScrollMarginTop)
+        ? rawScrollMarginTop
+        : 0;
+      const targetTop =
+        element.getBoundingClientRect().top -
+        container.getBoundingClientRect().top +
+        container.scrollTop -
+        scrollMarginTop;
+      container.scrollTo({ top: Math.max(0, targetTop), behavior: "instant" });
+    },
+    [scrollContainerRef],
+  );
+
   const prevPageIndexRef = useRef(currentPageIndex);
   useEffect(() => {
     if (prevPageIndexRef.current === currentPageIndex) {
       return;
     }
     prevPageIndexRef.current = currentPageIndex;
-    const container = scrollContainerRef?.current;
     const top = formTopRef.current;
-    if (container && top) {
-      const rawScrollMarginTop = parseFloat(
-        getComputedStyle(top).scrollMarginTop,
-      );
-      const scrollMarginTop = Number.isFinite(rawScrollMarginTop)
-        ? rawScrollMarginTop
-        : 0;
-      const targetTop =
-        top.getBoundingClientRect().top -
-        container.getBoundingClientRect().top +
-        container.scrollTop -
-        scrollMarginTop;
-      container.scrollTo({
-        top: Math.max(0, targetTop),
-        behavior: "instant",
-      });
-    } else {
-      top?.scrollIntoView({
-        behavior: "instant",
-        block: "start",
-      });
-    }
+    if (top) scrollElementIntoView(top);
   }, [currentPageIndex]);
+
+  useEffect(() => {
+    if (!invalidFieldFocus?.fieldId) return;
+    const field = fieldElements.current.get(invalidFieldFocus.fieldId);
+    if (!field) return;
+    const invalid =
+      field.querySelector<HTMLElement>('[aria-invalid="true"]') ?? field;
+    const selector =
+      'input:not([type="hidden"]):not(:disabled), select:not(:disabled), textarea:not(:disabled), button:not(:disabled), [tabindex="0"]:not(:disabled)';
+    const control = invalid.matches(selector)
+      ? invalid
+      : invalid.querySelector<HTMLElement>(selector);
+    scrollElementIntoView(field);
+    (control ?? field).focus();
+  }, [invalidFieldFocus]);
 
   useEffect(() => {
     clearFieldErrors();
@@ -889,9 +1096,20 @@ const FormRenderer = ({
       : outputFieldPublicToggle.hidePublicly;
     const toggleChecked = useMakePublicToggle ? sharePublicly : !sharePublicly;
     return (
-      <div key={field.id || index}>
+      <div
+        key={field.id || index}
+        ref={(element) => {
+          if (element) fieldElements.current.set(field.id, element);
+          else fieldElements.current.delete(field.id);
+        }}
+        tabIndex={-1}
+        className="scroll-mt-24"
+      >
         <RenderField
-          field={interpolateFieldText(field, variableValues)}
+          field={withResolvedOptions(
+            interpolateFieldText(field, variableValues),
+            resolvedOptions,
+          )}
           value={effectiveFormData[field.id]}
           onChange={readOnly ? undefined : (val) => updateField(field.id, val)}
           fileUpload={readOnly ? undefined : imageUpload}
@@ -903,9 +1121,7 @@ const FormRenderer = ({
           disableOptionRandomization={disableOptionRandomization}
           user={user}
           labelRightAddon={fieldLabelRightContent?.[field.id]}
-          formData={effectiveFormData}
-          isElementVisible={isElementCurrentlyVisible}
-          isFieldRequired={isFieldCurrentlyRequired}
+          fieldContext={fieldContext}
           fieldErrors={fieldErrors}
           responseHiddenFromOthers={isOutputField && !sharePublicly}
         />
@@ -957,14 +1173,24 @@ const FormRenderer = ({
     );
   };
 
-  if (unknownKind) {
+  const gate = variableInputsGateView({
+    gate: variableInputsGate(sourceHistories, variableAggregates),
+    readOnly,
+  });
+  if (gate !== null) return gate;
+
+  if (unknownKind || variablesError !== null) {
     return (
       <div
         className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800"
         role="alert"
       >
         <p className="font-medium">This form can&apos;t be displayed</p>
-        <p className="mt-1 text-sm">Refreshing the page may fix the issue.</p>
+        <p className="mt-1 text-sm">
+          {showVariableError && variablesError !== null
+            ? variablesError
+            : "Refreshing the page may fix the issue."}
+        </p>
       </div>
     );
   }
@@ -979,7 +1205,12 @@ const FormRenderer = ({
 
   return (
     <div ref={formTopRef} className="mx-auto scroll-mt-24">
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form
+        ref={formRef}
+        onSubmit={handleSubmit}
+        noValidate
+        className="space-y-6"
+      >
         {/* Page Content */}
         <div
           className={cn(
@@ -1021,7 +1252,7 @@ const FormRenderer = ({
                     variant={BaseButtonVariant.Black}
                     size={BaseButtonSize.MediumDynamic}
                     onClick={handleNext}
-                    disabled={uploadingAny}
+                    disabled={uploadingAny || !visibilitySettled}
                   >
                     Next
                   </BaseButton>
@@ -1078,7 +1309,8 @@ const FormRenderer = ({
                     <BaseButton
                       variant={BaseButtonVariant.Black}
                       className="!cursor-not-allowed w-full"
-                      onClick={validateForPreview}
+                      disabled={uploadingAny}
+                      onClick={validateAllPagesAndShowFirstInvalid}
                     >
                       {schema.submit?.label ||
                         (followUp ? "Submit" : "Complete")}
@@ -1089,7 +1321,15 @@ const FormRenderer = ({
               </>
             )}
             {uploadingAny && !readOnly && (
-              <p className="text-zinc-500">{waitingForImageUpload}</p>
+              <UploadingWithCancel
+                label={waitingForImageUpload}
+                cancelLabel={cancelAllImageUploads}
+                onCancel={imageUpload.cancelAll}
+                className="text-zinc-500"
+              />
+            )}
+            {saveFailed && !readOnly && (
+              <p className="text-amber-600">{draftSaveFailed}</p>
             )}
           </div>
 

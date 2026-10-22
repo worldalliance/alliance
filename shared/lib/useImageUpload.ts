@@ -7,7 +7,11 @@ import {
 import { imageUploadFailed } from "./copy";
 import { uploadImageDataUri } from "./uploadImageDataUri";
 
-export type ImageUpload = FileUploadSlots & { uploadingAny: boolean };
+export type ImageUpload = FileUploadSlots & {
+  uploadingAny: boolean;
+  /** Drops every upload in flight and keeps each slot's stored answer. */
+  cancelAll: () => void;
+};
 
 export function useImageUpload(params: {
   onUploaded: (slot: FileUploadSlot, imageKey: string) => void;
@@ -19,18 +23,51 @@ export function useImageUpload(params: {
   );
   const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
   // A slot can have more than one upload running at once, so the set of slots
-  // the UI gates on is derived from these counts rather than from arrival and
-  // completion: the first upload to settle must not clear the gate on a later
-  // one. Tokens then decide which of them owns the outcome.
-  const inFlightPerSlot = useRef<Record<string, number>>({});
+  // the UI gates on is derived from these, not from arrival and completion: the
+  // first upload to settle must not clear the gate on a later one. Each upload
+  // is keyed by its own token rather than counted, so one cancelled before a
+  // later pick cannot clear the gate that pick is holding.
+  const inFlightPerSlot = useRef<Record<string, Map<number, AbortController>>>(
+    {},
+  );
   const latestTokenPerSlot = useRef<Record<string, number>>({});
+
+  const releaseSlot = (slotId: string) =>
+    setUploadingSlotIds((prev) => {
+      if (!prev.has(slotId)) return prev;
+      const next = new Set(prev);
+      next.delete(slotId);
+      return next;
+    });
+
+  // Bumping the token drops the results; the aborts stop the requests still
+  // sending them.
+  const cancelSlot = (slotId: string) => {
+    latestTokenPerSlot.current[slotId] =
+      (latestTokenPerSlot.current[slotId] ?? 0) + 1;
+    for (const upload of inFlightPerSlot.current[slotId]?.values() ?? []) {
+      upload.abort();
+    }
+    delete inFlightPerSlot.current[slotId];
+    releaseSlot(slotId);
+  };
+
+  const cancelUpload = (slot: FileUploadSlot) =>
+    cancelSlot(fileUploadSlotId(slot));
+
+  const cancelAll = () =>
+    Object.keys(inFlightPerSlot.current).forEach(cancelSlot);
 
   const onFileSelected = async (slot: FileUploadSlot, dataUri: string) => {
     const slotId = fileUploadSlotId(slot);
     const token = (latestTokenPerSlot.current[slotId] ?? 0) + 1;
     latestTokenPerSlot.current[slotId] = token;
-    inFlightPerSlot.current[slotId] =
-      (inFlightPerSlot.current[slotId] ?? 0) + 1;
+    const upload = new AbortController();
+    const inFlight = (inFlightPerSlot.current[slotId] ??= new Map());
+    // The token already drops the earlier picks' results; the abort stops them
+    // spending the uplink this one needs.
+    for (const earlier of inFlight.values()) earlier.abort();
+    inFlight.set(token, upload);
 
     onStart?.();
     setUploadingSlotIds((prev) =>
@@ -50,7 +87,7 @@ export function useImageUpload(params: {
     };
 
     try {
-      const uploaded = await uploadImageDataUri(dataUri);
+      const uploaded = await uploadImageDataUri(dataUri, upload.signal);
       if (superseded()) {
         return;
       }
@@ -65,23 +102,18 @@ export function useImageUpload(params: {
       console.error("Failed to apply uploaded image:", error);
       fail(imageUploadFailed);
     } finally {
-      const remaining = (inFlightPerSlot.current[slotId] ?? 1) - 1;
-      if (remaining > 0) {
-        inFlightPerSlot.current[slotId] = remaining;
-      } else {
+      const running = inFlightPerSlot.current[slotId];
+      if (running?.delete(token) && running.size === 0) {
         delete inFlightPerSlot.current[slotId];
-        setUploadingSlotIds((prev) => {
-          if (!prev.has(slotId)) return prev;
-          const next = new Set(prev);
-          next.delete(slotId);
-          return next;
-        });
+        releaseSlot(slotId);
       }
     }
   };
 
   return {
     onFileSelected,
+    cancelUpload,
+    cancelAll,
     uploadingSlotIds,
     uploadErrors,
     uploadingAny: uploadingSlotIds.size > 0,

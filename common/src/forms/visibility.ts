@@ -5,14 +5,23 @@ import type { DisplayBlock } from "./display-blocks";
 import {
   type AnyField,
   type FormValue,
+  type ListSubField,
   type OutputFieldBlock,
   type Page,
+  asCards,
+  collectFieldLookup,
   isQuestionField,
 } from "./form-schema";
 import {
+  type UserPropertyPresence,
+  emptyUserPropertyPresence,
+} from "./user-properties";
+import {
   type Condition,
+  SelectedCountComparison,
   type VisibleIfFormula,
   evaluateVisibilityFormula,
+  evaluateVisibilityFormulaWithUnknowns,
 } from "./visible-if-formula";
 
 /** The verdict each visibility validator returned, keyed by validator id. */
@@ -93,6 +102,8 @@ export type ConditionExtras = {
   previousAnswerData?: Record<number, Record<string, unknown>>;
   outputBlockVisibility?: Map<string, boolean>;
   userHasCity?: boolean;
+  userPropertyHasValue?: UserPropertyPresence;
+  pageByFieldId?: Map<string, Page>;
   /**
    * ISO datetime of the user's earliest `signed` contract event;
    * null/undefined when they have never signed.
@@ -107,7 +118,14 @@ export type ConditionExtras = {
 
 type ValueBasedCondition = Extract<
   Condition,
-  { kind: "equals" | "includesOption" | "anySelected" | "hasValue" }
+  {
+    kind:
+      | "equals"
+      | "includesOption"
+      | "anySelected"
+      | "selectedCount"
+      | "hasValue";
+  }
 >;
 
 function resolveConditionValue(
@@ -134,6 +152,25 @@ const evaluateValueBasedCondition = (
   if (cond.kind === "anySelected") {
     const selections = Array.isArray(val) ? val : [];
     return cond.anySelected ? selections.length > 0 : selections.length === 0;
+  }
+  if (cond.kind === "selectedCount") {
+    const selected = Array.isArray(val) ? val.length : 0;
+    const { comparison } = cond;
+    switch (comparison) {
+      case SelectedCountComparison.GreaterThan:
+        return selected > cond.count;
+      case SelectedCountComparison.AtLeast:
+        return selected >= cond.count;
+      case SelectedCountComparison.LessThan:
+        return selected < cond.count;
+      case SelectedCountComparison.AtMost:
+        return selected <= cond.count;
+      case SelectedCountComparison.Equals:
+        return selected === cond.count;
+      default:
+        comparison satisfies never;
+        return false;
+    }
   }
   if (cond.kind === "includesOption") {
     if (!cond.includesOption) {
@@ -204,6 +241,12 @@ export function evaluateCondition(
       const present = extras.userHasCity ?? false;
       return cond.userHasCity ? present : !present;
     }
+    case "userPropertyHasValue": {
+      const presence =
+        extras.userPropertyHasValue ?? emptyUserPropertyPresence();
+      const present = presence[cond.property] ?? false;
+      return cond.hasValue ? present : !present;
+    }
     case "firstContractSigned": {
       if (!extras.firstContractSignedAt) {
         return false;
@@ -213,13 +256,14 @@ export function evaluateCondition(
       if (Number.isNaN(signedAt) || Number.isNaN(threshold)) {
         return false;
       }
-      switch (cond.comparison) {
+      const { comparison } = cond;
+      switch (comparison) {
         case "before":
           return signedAt < threshold;
         case "onOrAfter":
           return signedAt >= threshold;
         default:
-          cond.comparison satisfies never;
+          comparison satisfies never;
           return false;
       }
     }
@@ -228,6 +272,7 @@ export function evaluateCondition(
     case "equals":
     case "includesOption":
     case "anySelected":
+    case "selectedCount":
     case "hasValue": {
       const val = resolveConditionValue(cond, data, extras);
       return evaluateValueBasedCondition(cond, val);
@@ -239,6 +284,121 @@ export function evaluateCondition(
       cond satisfies never;
       return false;
   }
+}
+
+type SavedResponseContext = {
+  deviceType: DeviceVisibilityTarget | undefined;
+  visibilityValidatorResults: VisibilityValidatorResults;
+  fieldLookup: Map<string, AnyField>;
+  pageByFieldId: Map<string, Page>;
+};
+
+function savedResponseReplay(
+  context: SavedResponseContext & { data: Record<string, FormValue> },
+): (cond: Condition) => boolean {
+  const {
+    deviceType,
+    visibilityValidatorResults,
+    fieldLookup,
+    pageByFieldId,
+    data,
+  } = context;
+  const visiting = new Set<string>();
+
+  const conditionReplays = (cond: Condition): boolean => {
+    switch (cond.kind) {
+      case "equals":
+      case "includesOption":
+      case "anySelected":
+      case "selectedCount":
+      case "hasValue": {
+        if (cond.sourceFormId != null) return false;
+        const referenced = fieldLookup.get(cond.when);
+        if (!referenced || elementReplays(referenced)) return true;
+        return (
+          evaluateValueBasedCondition(cond, data[cond.when]) ===
+          evaluateValueBasedCondition(cond, undefined)
+        );
+      }
+      case "deviceType":
+        return deviceType !== undefined;
+      case "validator":
+        return cond.validatorId in visibilityValidatorResults;
+      // `outputBlockVisible` never reaches a form field: the schema check
+      // rejects it outside an output view.
+      case "outputBlockVisible":
+      case "userHasCity":
+      case "userPropertyHasValue":
+      case "firstContractSigned":
+      case "completedActionCount":
+        return false;
+      default:
+        cond satisfies never;
+        return false;
+    }
+  };
+
+  const formulaReplays = (formula: VisibleIfFormula | undefined): boolean =>
+    Object.values(formula?.conditions ?? {}).every(conditionReplays);
+
+  const elementReplays = (element: AnyField | ListSubField): boolean => {
+    // Evaluation reads a field inside a reference cycle by its value alone,
+    // which the response has.
+    if (visiting.has(element.id)) return true;
+    visiting.add(element.id);
+    const replays =
+      formulaReplays(element.visibleIfFormula) &&
+      formulaReplays(pageByFieldId.get(element.id)?.visibleIfFormula);
+    visiting.delete(element.id);
+    return replays;
+  };
+
+  return conditionReplays;
+}
+
+/**
+ * Whether `element` showed when the response was saved, as far as the response
+ * can tell. A response records its own answers, and may record the device it
+ * came from and the verdict each visibility validator returned; one saved by an
+ * older client records neither. It never records the respondent's account
+ * state or another form's answers. A condition on something it doesn't record,
+ * or on a field whose own visibility reads such a thing, can't be replayed and
+ * could have gone either way, so the element counts as hidden only where the
+ * conditions it can replay rule it out on their own. A condition on a field
+ * that doesn't replay still counts where that field's answer and no answer
+ * give the same verdict, since a hidden field reads as unanswered.
+ */
+export function isVisibleInSavedResponse(
+  params: SavedResponseContext & {
+    element: AnyField | ListSubField;
+    data: Record<string, FormValue>;
+  },
+): boolean {
+  const { element, data, pageByFieldId } = params;
+  const conditionReplays = savedResponseReplay(params);
+  const extras: ConditionExtras = {
+    deviceType: params.deviceType ?? "desktop",
+    visibilityValidatorResults: params.visibilityValidatorResults,
+    fieldLookup: params.fieldLookup,
+    pageByFieldId,
+  };
+  const mayHold = (formula: VisibleIfFormula | undefined): boolean => {
+    if (!hasEvaluableFormula(formula)) return true;
+    const results = evaluateConditionResults(formula, data, extras);
+    const known = Object.fromEntries(
+      Object.entries(formula.conditions).map(([name, cond]) => [
+        name,
+        conditionReplays(cond) ? results[name] : undefined,
+      ]),
+    );
+    return (
+      evaluateVisibilityFormulaWithUnknowns(formula.formula, known) !== false
+    );
+  };
+  return (
+    mayHold(element.visibleIfFormula) &&
+    mayHold(pageByFieldId.get(element.id)?.visibleIfFormula)
+  );
 }
 
 /**
@@ -278,6 +438,17 @@ export function isElementCurrentlyVisible(
   data: Record<string, FormValue>,
   extras: ConditionExtras & { readOnly?: boolean },
 ): boolean {
+  const own = isOwnElementCurrentlyVisible(element, data, extras);
+  if (!own) return false;
+  const page = element.id ? extras.pageByFieldId?.get(element.id) : undefined;
+  return !page || isPageCurrentlyVisible(page, data, extras);
+}
+
+function isOwnElementCurrentlyVisible(
+  element: AnyField | DisplayBlock | OutputFieldBlock,
+  data: Record<string, FormValue>,
+  extras: ConditionExtras & { readOnly?: boolean },
+): boolean {
   const formula = element.visibleIfFormula;
   if (!hasEvaluableFormula(formula)) {
     return true;
@@ -289,6 +460,30 @@ export function isElementCurrentlyVisible(
     }
   }
   return evaluateVisibleIfFormula(formula, data, extras);
+}
+
+export function listRowData(params: {
+  data: Record<string, FormValue>;
+  row: Record<string, FormValue>;
+}): Record<string, FormValue> {
+  return { ...params.data, ...params.row };
+}
+
+/**
+ * The sub-fields a list row shows: those whose conditions hold against the
+ * form's answers with the row's own cells on top.
+ */
+export function visibleListSubFields(params: {
+  subFields: ListSubField[];
+  data: Record<string, FormValue>;
+  row: Record<string, FormValue>;
+  extras: ConditionExtras & { readOnly?: boolean };
+}): ListSubField[] {
+  const { subFields, data, row, extras } = params;
+  const rowData = listRowData({ data, row });
+  return subFields.filter((subField) =>
+    isElementCurrentlyVisible(subField, rowData, extras),
+  );
 }
 
 /**
@@ -322,8 +517,9 @@ export function isPageCurrentlyVisible(
 /**
  * Returns `answers` without the entries for question fields the user cannot
  * currently see — because the field's own formula is false or because its page
- * is hidden. An answer that isn't visible is treated as never given: it must
- * not drive visibility conditions, satisfy validation, or be persisted.
+ * is hidden — and without list cells whose sub-field is hidden for their row.
+ * An answer that isn't visible is treated as never given: it must not drive
+ * visibility conditions, satisfy validation, or be persisted.
  *
  * Runs to a fixpoint, since removing a stale answer can hide further pages and
  * fields (or, with negated conditions, reveal fields — those stay stripped,
@@ -336,15 +532,7 @@ export function stripHiddenAnswers(
   answers: Record<string, FormValue>,
   extras: ConditionExtras & { readOnly?: boolean },
 ): Record<string, FormValue> {
-  const fieldLookup =
-    extras.fieldLookup ??
-    new Map(
-      pages.flatMap((page) =>
-        page.fields
-          .filter(isQuestionField)
-          .map((field) => [field.id, field] as const),
-      ),
-    );
+  const fieldLookup = extras.fieldLookup ?? collectFieldLookup(pages);
 
   let data = answers;
   for (;;) {
@@ -367,14 +555,90 @@ export function stripHiddenAnswers(
         )
         .map((field) => field.id);
     });
-    if (hiddenAnsweredIds.length === 0) {
+    if (hiddenAnsweredIds.length > 0) {
+      data = { ...data };
+      for (const id of hiddenAnsweredIds) {
+        delete data[id];
+      }
+      continue;
+    }
+    const withoutHiddenCells = stripHiddenListCells({
+      pages,
+      answers: data,
+      isVisible: (subField, rowData) =>
+        isElementCurrentlyVisible(subField, rowData, {
+          ...extras,
+          fieldLookup,
+        }),
+    });
+    if (withoutHiddenCells === data) {
       return data;
     }
-    data = { ...data };
-    for (const id of hiddenAnsweredIds) {
-      delete data[id];
+    data = withoutHiddenCells;
+  }
+}
+
+/**
+ * `answers` without the list cells whose sub-field is hidden for their own row.
+ * Returns `answers` itself when nothing is stripped.
+ */
+export function stripHiddenListCells(params: {
+  pages: Page[];
+  answers: Record<string, FormValue>;
+  /**
+   * Whether a row shows `subField`, given the form's answers with the row's
+   * cells on top.
+   */
+  isVisible: (
+    subField: ListSubField,
+    rowData: Record<string, FormValue>,
+  ) => boolean;
+}): Record<string, FormValue> {
+  const { pages, answers, isVisible } = params;
+  let stripped = answers;
+  for (const page of pages) {
+    for (const field of page.fields) {
+      if (!isQuestionField(field) || field.kind !== "list") continue;
+      const rows = asCards(answers[field.id]);
+      if (!rows) continue;
+      const subFields = field.fields ?? [];
+      let changed = false;
+      const nextRows = rows.map((row) => {
+        const nextRow = stripHiddenRowCells({
+          subFields,
+          row,
+          data: answers,
+          isVisible,
+        });
+        if (nextRow !== row) changed = true;
+        return nextRow;
+      });
+      if (changed) stripped = { ...stripped, [field.id]: nextRows };
     }
   }
+  return stripped;
+}
+
+function stripHiddenRowCells(params: {
+  subFields: ListSubField[];
+  row: Record<string, FormValue>;
+  data: Record<string, FormValue>;
+  isVisible: (
+    subField: ListSubField,
+    rowData: Record<string, FormValue>,
+  ) => boolean;
+}): Record<string, FormValue> {
+  const { subFields, row, data, isVisible } = params;
+  const rowData = listRowData({ data, row });
+  const hiddenIds = subFields
+    .filter((sub) => sub.id in row && !isVisible(sub, rowData))
+    .map((sub) => sub.id);
+  if (hiddenIds.length === 0) return row;
+  const next = { ...row };
+  for (const id of hiddenIds) {
+    delete next[id];
+  }
+  return next;
 }
 
 function evaluateVisibleIfFormula(
@@ -382,6 +646,17 @@ function evaluateVisibleIfFormula(
   data: Record<string, FormValue>,
   extras: ConditionExtras & { readOnly?: boolean },
 ): boolean {
+  return evaluateVisibilityFormula(
+    formula.formula,
+    evaluateConditionResults(formula, data, extras),
+  );
+}
+
+function evaluateConditionResults(
+  formula: VisibleIfFormula,
+  data: Record<string, FormValue>,
+  extras: ConditionExtras & { readOnly?: boolean },
+): Record<string, boolean> {
   const visibilityMemo = extras.visibilityMemo ?? new Map<string, boolean>();
   const visibilityEvaluationStack =
     extras.visibilityEvaluationStack ?? new Set<string>();
@@ -434,6 +709,7 @@ function evaluateVisibleIfFormula(
       case "validator":
       case "outputBlockVisible":
       case "userHasCity":
+      case "userPropertyHasValue":
       case "firstContractSigned":
       case "completedActionCount":
         results[name] = evaluateCondition(cond, data, extras);
@@ -441,6 +717,7 @@ function evaluateVisibleIfFormula(
       case "equals":
       case "includesOption":
       case "anySelected":
+      case "selectedCount":
       case "hasValue": {
         const value = resolveValue(cond);
         results[name] = evaluateValueBasedCondition(cond, value);
@@ -454,5 +731,5 @@ function evaluateVisibleIfFormula(
         break;
     }
   }
-  return evaluateVisibilityFormula(formula.formula, results);
+  return results;
 }

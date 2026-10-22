@@ -1,6 +1,7 @@
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { User } from "src/user/entities/user.entity";
@@ -35,17 +36,15 @@ export class Message {
 
   @ManyToOne(() => User, { nullable: false, onDelete: "CASCADE" })
   @JoinColumn()
-  @ApiProperty({ type: () => User })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  author: Relation<User>;
+  @ApiPropertyOptional({ type: () => User })
+  author?: Relation<User>;
 
   @ManyToOne(() => Conversation, (conversation) => conversation.messages, {
     nullable: false,
     onDelete: "CASCADE",
   })
   @JoinColumn({ name: "conversationId" })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  conversation: Relation<Conversation>;
+  conversation?: Relation<Conversation>;
 
   @CreateDateColumnTz()
   @ApiProperty({ type: Date })
@@ -54,7 +53,7 @@ export class Message {
   @UpdateDateColumnTz()
   updatedAt: Date;
 
-  @Column({ type: "timestamptz", nullable: true })
+  @DeleteDateColumnTz()
   @ApiProperty({ type: Date, nullable: true })
   deletedAt: Date | null;
 
@@ -62,11 +61,16 @@ export class Message {
     onDelete: "SET NULL",
   })
   @JoinColumn({ name: "replyToId" })
-  @ApiProperty({ type: () => Message, required: false })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  replyTo: Relation<Message>;
+  @ApiPropertyOptional({ type: () => Message, nullable: true })
+  replyTo?: Relation<Message> | null;
 
   @OneToMany(() => Message, (message) => message.replyTo)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  replies: Relation<Message>[];
+  replies?: Relation<Message>[];
+}
+
+export function loadedMessageAuthor(message: Message): Relation<User> {
+  if (!message.author) {
+    throw new Error(`author of message ${message.id} not loaded`);
+  }
+  return message.author;
 }

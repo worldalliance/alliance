@@ -1,0 +1,39 @@
+appId: ${APP_ID}
+---
+- tapOn: Show categorized fields
+- assertVisible: Grouped selected 38
+- assertVisible: "(?i)fruit"
+- assertVisible: "(?i)vegetables"
+- assertNotVisible: "(?i)empty"
+- tapOn: Kale
+- assertVisible: Produce kale
+- tapOn: Option 38
+- assertVisible: Search options
+- assertVisible: Option 38
+- assertNotVisible: "(?i)charlie"
+- scrollUntilVisible:
+    element:
+      text: "(?i)charlie"
+    direction: UP
+- assertVisible: Option 26
+- tapOn: Search options
+- inputText: brav
+- assertVisible: "(?i)bravo"
+- assertVisible: Option 16
+- assertNotVisible: "(?i)alpha"
+- assertNotVisible: Option 38
+- tapOn: Option 16
+- assertVisible: Grouped selected 16
+- tapOn:
+    text: Select options…
+    below: Grouped multiselect
+- assertVisible: Option 01
+- tapOn: Search options
+- inputText: charl
+- assertVisible: "(?i)charlie"
+- assertVisible: Option 26
+- assertNotVisible: Option 16
+- tapOn: Option 26
+- tapOn: Close
+- assertVisible: Grouped multi 26
+- assertVisible: Remove Option 26

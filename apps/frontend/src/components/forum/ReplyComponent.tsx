@@ -1,14 +1,19 @@
 import { withCount } from "@alliance/common/plural";
 import { CommentDto } from "@alliance/shared/client";
-import { countAllReplies } from "@alliance/shared/lib/commentsFilter";
+import {
+  countAllReplies,
+  isCommentShown,
+} from "@alliance/shared/lib/commentsFilter";
+import { canReplyAtDepth } from "@alliance/shared/lib/commentTree";
+import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import ClusterTag from "@alliance/sharedweb/ui/ClusterTag";
 import EditableContentForm from "@alliance/sharedweb/ui/EditableContentForm";
 import EditableContentRenderer from "@alliance/sharedweb/ui/EditableContentRenderer";
+import InlineError from "@alliance/sharedweb/ui/InlineError";
 import UserDisplayName from "@alliance/sharedweb/ui/UserDisplayName";
-import { formatDistanceToNow } from "date-fns";
-import { ChevronDown, Pin } from "lucide-react";
+import { ChevronDown, Pin, X } from "lucide-react";
 import { memo, useState } from "react";
 import { Link, href } from "react-router";
 import { useCommentEditing } from "../../hooks/useCommentEditing";
@@ -55,6 +60,7 @@ const ReplyContent = ({
     showClusterTags = false,
   } = ctx;
   const isExpert = expertIds.includes(reply.author.id);
+  const deleteError = ctx.deleteErrorFor(reply.id);
   const tag = ctx.tags.find((candidate) => candidate.id === reply.tagId);
   const editing = useCommentEditing(reply, ctx.onUpdateReply);
 
@@ -100,9 +106,7 @@ const ReplyContent = ({
                 )}
               </Link>
               <span className="text-zinc-500 text-sm">
-                {formatDistanceToNow(new Date(reply.createdAt), {
-                  addSuffix: true,
-                })}
+                {formatTime(new Date(reply.createdAt), { addSuffix: true })}
               </span>
               {tag && (
                 <span className="text-xs bg-zinc-200 text-zinc-700 rounded-full px-2 py-0.5">
@@ -187,24 +191,28 @@ const ReplyContent = ({
           </div>
         ) : (
           <div className="text-sm">
-            <LikeSummary
-              likeTargetType="comment"
-              likeTargetId={reply.id}
-              liked={reply.likedByMe ?? false}
-              likesCount={reply.likesCount}
-              likers={reply.likes}
-              className="mb-1.5"
-            />
+            {!reply.deleted && (
+              <LikeSummary
+                likeTargetType="comment"
+                likeTargetId={reply.id}
+                liked={reply.likedByMe ?? false}
+                likesCount={reply.likesCount}
+                likers={reply.likes}
+                className="mb-1.5"
+              />
+            )}
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
-                <LikeActionButton
-                  compact
-                  liked={reply.likedByMe ?? false}
-                  onLike={() =>
-                    ctx.onLikeReply(reply.id, reply.likedByMe ?? false)
-                  }
-                />
-                {user && canNest && (
+                {!reply.deleted && (
+                  <LikeActionButton
+                    compact
+                    liked={reply.likedByMe ?? false}
+                    onLike={() =>
+                      ctx.onLikeReply(reply.id, reply.likedByMe ?? false)
+                    }
+                  />
+                )}
+                {user && canNest && !reply.deleted && (
                   <button
                     onClick={() => {
                       ctx.setReplyingTo(reply.id);
@@ -232,6 +240,18 @@ const ReplyContent = ({
             </div>
           </div>
         )}
+
+        <InlineError message={deleteError} className="mt-2">
+          <button
+            type="button"
+            onClick={() => ctx.clearDeleteError(reply.id)}
+            aria-label="Dismiss this message"
+            title="Dismiss this message"
+            className="p-1 hover:text-red-700"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </InlineError>
       </div>
     </div>
   );
@@ -239,8 +259,7 @@ const ReplyContent = ({
 
 const ReplyComponent = memo(({ reply, depth = 0 }: ReplyComponentProps) => {
   const ctx = useCommentsContext();
-  const maxDepth = 10;
-  const canNest = depth < maxDepth;
+  const canNest = canReplyAtDepth(depth);
   const isReplyingToThis = ctx.replyingTo === reply.id;
   const hasChildren = reply.children ? reply.children.length > 0 : false;
   const isNewlyAdded = ctx.newlyAddedReplies.has(reply.id);
@@ -255,8 +274,8 @@ const ReplyComponent = memo(({ reply, depth = 0 }: ReplyComponentProps) => {
 
   const newReplyClass = isNewlyAdded ? "!bg-green/10" : "";
 
-  const filteredChildren = (reply.children ?? []).filter(
-    (child) => !child.deleted || child.children?.length,
+  const filteredChildren = (reply.children ?? []).filter((child) =>
+    isCommentShown(child, ctx.replyingTo),
   );
 
   const renderChildren = () => {

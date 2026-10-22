@@ -1,0 +1,3 @@
+- The helper is `getMaxSelections` in `common/src/forms/multiselect.ts`, following `getRangeOptionCount` in `common/src/forms/range.ts`; the server cannot import `shared/`.
+- Mobile adopts the existing web and server rule (a cap only when positive) rather than the schema being tightened to positive integers, which would make stored forms with `maxSelections: 0` fail to parse.
+- `multiselect.ts` is on `RENDER_PATH_ENTRIES` in `common/src/forms/render-path-imports.test.ts`, as `range.ts` is, because both form renderers import it.

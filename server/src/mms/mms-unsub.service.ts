@@ -25,6 +25,11 @@ export class MmsUnsubService {
         const userRepository = manager.getRepository(User);
         const mmsOptoutRepository = manager.getRepository(MmsOptout);
         const matchingUsers = await userRepository.findBy({ phoneNumber });
+        // Includes deleted accounts, so a restored one keeps the opt-out.
+        await userRepository.update(
+          { phoneNumber },
+          { phoneNumberUnsubscribed: true },
+        );
 
         if (matchingUsers.length === 0) {
           return matchingUsers;
@@ -39,10 +44,6 @@ export class MmsUnsubService {
               user: { id: user.id },
             }),
           ),
-        );
-        await userRepository.update(
-          { phoneNumber },
-          { phoneNumberUnsubscribed: true },
         );
         return matchingUsers;
       },
@@ -73,16 +74,11 @@ export class MmsUnsubService {
     { rawBody }: { rawBody: string },
   ): Promise<void> {
     // Read and write in one transaction, then log after commit so audits match
-    // changed rows and failed writes never announce a resubscribe.
+    // the live members changed and failed writes never announce a resubscribe.
     const users = await this.userRepository.manager.transaction(
       async (manager) => {
         const userRepository = manager.getRepository(User);
         const matchingUsers = await userRepository.findBy({ phoneNumber });
-
-        if (matchingUsers.length === 0) {
-          return matchingUsers;
-        }
-
         await userRepository.update(
           { phoneNumber },
           { phoneNumberUnsubscribed: false },

@@ -8,14 +8,17 @@ import {
 } from "@nestjs/swagger";
 import { Transform, Type } from "class-transformer";
 import {
+  Allow,
   IsArray,
   IsBoolean,
+  IsDate,
   IsDefined,
   IsInt,
   IsObject,
   IsOptional,
   IsString,
   MaxLength,
+  ValidateIf,
   ValidateNested,
 } from "class-validator";
 import { ActionDto } from "src/actions/dto/action.dto";
@@ -39,13 +42,15 @@ export class PostDto extends PickType(Post, [
   "updatedAt",
   "pinned",
   "qaMode",
-  "deleted",
   "expertIds",
   "expertLabel",
   "authorIds",
   "notifyForReplies",
   "showClusterTags",
 ]) {
+  @ApiProperty()
+  deleted: boolean;
+
   @ApiPropertyOptional({ type: () => ActionDto })
   action: ActionDto | undefined;
 
@@ -106,7 +111,7 @@ export class PostDto extends PickType(Post, [
     this.updatedAt = post.updatedAt;
     this.pinned = post.pinned;
     this.qaMode = post.qaMode;
-    this.deleted = post.deleted;
+    this.deleted = post.deletedAt !== null;
     this.expertIds = post.expertIds;
     this.expertLabel = post.expertLabel;
     this.authorIds = post.authorIds;
@@ -152,11 +157,18 @@ export type PostDtoArgs = {
   requestingUserId?: number;
 };
 
-export class CreatePostDto extends PickType(Post, [
-  "title",
-  "actionId",
-  "visibleAt",
-]) {
+export class CreatePostDto extends PickType(Post, ["title"]) {
+  @ApiPropertyOptional({ type: Number })
+  @IsOptional()
+  @Allow()
+  actionId?: number;
+
+  @ApiPropertyOptional({ type: Date })
+  @ValidateIf((_, value) => value !== undefined)
+  @Type(() => Date)
+  @IsDate()
+  visibleAt?: Date;
+
   @ApiProperty({ type: CreateEditableContentDto })
   @ValidateNested()
   @Type(() => CreateEditableContentDto)
@@ -164,7 +176,9 @@ export class CreatePostDto extends PickType(Post, [
   editableContent: CreateEditableContentDto;
 }
 
-export class UpdatePostDto extends PartialType(CreatePostDto) {}
+export class UpdatePostDto extends PartialType(CreatePostDto, {
+  skipNullProperties: false,
+}) {}
 
 export class UpdatePostExpertsDto {
   @ApiProperty({ type: Number, isArray: true })

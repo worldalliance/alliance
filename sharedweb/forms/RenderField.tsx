@@ -1,3 +1,4 @@
+/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { formatCityValue, parseCityValue } from "@alliance/common/forms/city";
 import type {
   AnyField,
@@ -5,9 +6,10 @@ import type {
   FormValue,
   ListField,
   PhoneField,
-  RangeField,
   TimeField,
 } from "@alliance/common/forms/form-schema";
+import { getMaxSelections } from "@alliance/common/forms/multiselect";
+import { getRangeValues } from "@alliance/common/forms/range";
 import { withCount } from "@alliance/common/plural";
 import type { UserDto } from "@alliance/shared/client";
 import {
@@ -15,26 +17,37 @@ import {
   type FileUploadSlot,
   type FileUploadSlots,
 } from "@alliance/shared/forms/fileUploadSlots";
+import { offersNoOptions } from "@alliance/shared/forms/formulaChoices";
 import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
 import {
   CARD_ID_KEY,
+  cardSubFields,
   defaultCardCount,
+  listCardLimits,
   listCardWriters,
   resolveCards,
 } from "@alliance/shared/forms/listCards";
 import {
+  buildTimeOfDayOptions,
+  commitTimeInput,
   formatTimeForDisplay,
   parseTimeInput,
 } from "@alliance/shared/forms/timeUtils";
+import { useFieldOptionSections } from "@alliance/shared/forms/useFieldOptionSections";
+import {
+  cancelImageUpload,
+  noOptionsAvailable,
+} from "@alliance/shared/lib/copy";
 import { usePhoneFieldCountry } from "@alliance/shared/lib/usePhoneNumberField";
-import { isOutputValueMissing } from "@alliance/shared/outputrenderer";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
-import { ChevronDown, Plus, X } from "lucide-react";
+import type { FieldConditionContext } from "@alliance/shared/useFormRenderer";
+import UploadingWithCancel from "@alliance/sharedweb/ui/UploadingWithCancel";
+import { ChevronDown } from "lucide-react";
 import {
+  Fragment,
   useEffect,
   useId,
-  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -47,14 +60,27 @@ import Card from "../ui/Card";
 import CharacterLimitNotice from "../ui/CharacterLimitNotice";
 import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
 import ImageLightbox from "../ui/ImageLightbox";
-import NewButton, { ButtonColor, ButtonSize } from "../ui/NewButton";
 import PhoneNumberInput from "../ui/PhoneNumberInput";
 import YesNoToggle from "../ui/YesNoToggle";
 import CityAutosuggest from "./CityAutosuggest";
+import {
+  ClearSelectionButton,
+  DropdownIcons,
+  dropdownIconsPadding,
+} from "./ClearSelection";
 import { getCustomComponentById } from "./components";
+import {
+  ListAddButton,
+  ListCard,
+  ListHiddenNote,
+  ListRemoveButton,
+} from "./ListCard";
+import MultiSelectDropdown from "./MultiSelectDropdown";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
-import { shuffleWithSeed } from "./randomutils";
+import { CheckboxSection } from "./optionPicker";
 import { RankingFieldInput } from "./RankingFieldInput";
+import SearchableSelect from "./SearchableSelect";
+import { textareaMinRows } from "./textareaMinRows";
 import TimeZoneSelect from "./TimeZoneSelect";
 
 export type RenderFieldProps = {
@@ -69,45 +95,25 @@ export type RenderFieldProps = {
   disableOptionRandomization?: boolean;
   user?: Omit<UserDto, "email">;
   labelRightAddon?: ReactNode;
-  formData?: Record<string, FormValue>;
-  isElementVisible?: (
-    element: AnyField,
-    data?: Record<string, FormValue>,
-  ) => boolean;
-  /**
-   * Effective requiredness, honoring `requiredIfFormula` (which replaces the
-   * static `required` flag in both directions). Falls back to `field.required`
-   * when omitted, so callers with no answer/visibility context still render.
-   */
-  isFieldRequired?: (
-    field: AnyField,
-    data?: Record<string, FormValue>,
-  ) => boolean;
+  fieldContext: FieldConditionContext;
   fieldErrors?: Record<string, string | null>;
   responseHiddenFromOthers?: boolean;
   isOutputView?: boolean;
+  isPreview?: boolean;
   hideLabel?: boolean;
 };
 
 const sharedInputClasses =
   "w-full px-3 py-2 rounded-md focus:outline-none bg-white disabled:!bg-transparent";
-const DEFAULT_RANGE_OPTION_COUNT = 10;
-const MIN_RANGE_OPTION_COUNT = 2;
-const MAX_RANGE_OPTION_COUNT = 50;
-const getRangeValues = (field: RangeField): number[] => {
-  const desired = field.optionCount ?? DEFAULT_RANGE_OPTION_COUNT;
-  const normalized = Number.isFinite(desired)
-    ? Math.floor(desired)
-    : DEFAULT_RANGE_OPTION_COUNT;
-  const optionCount = Math.min(
-    MAX_RANGE_OPTION_COUNT,
-    Math.max(MIN_RANGE_OPTION_COUNT, normalized),
-  );
-  return Array.from({ length: optionCount }, (_, index) => index + 1);
-};
+
+function useQuestionLabelId(field: AnyField): string | undefined {
+  const instanceId = useId();
+  return field.label?.trim() ? `${field.id}-${instanceId}-label` : undefined;
+}
 
 export function RenderLabel({
   field,
+  labelId,
   error,
   labelRightAddon,
   isOutputView,
@@ -115,6 +121,7 @@ export function RenderLabel({
   required,
 }: {
   field: AnyField;
+  labelId?: string;
   error?: string | null;
   labelRightAddon?: ReactNode;
   isOutputView?: boolean;
@@ -122,25 +129,25 @@ export function RenderLabel({
   /** Effective requiredness; defaults to the field's static `required` flag. */
   required?: boolean;
 }) {
-  if (hideLabel) return null;
+  if (hideLabel && !labelId) return null;
   const hasError = Boolean(error);
   const isRequired = required ?? !!field.required;
   return (
     <>
-      {!isRequired && !isOutputView && <OptionalLabelPrefix />}
+      {!hideLabel && !isRequired && !isOutputView && <OptionalLabelPrefix />}
       <label
         className={cn(
-          "block",
+          hideLabel ? "sr-only" : "block",
           hasError ? "text-red-600" : "text-zinc-700",
           labelRightAddon && "flex items-start justify-between gap-3",
         )}
       >
-        <span>
+        <span id={labelId}>
           {field.label !== null && (
             <FormMarkdownWrapper markdownContent={field.label} inline />
           )}
         </span>
-        {labelRightAddon ? (
+        {!hideLabel && labelRightAddon ? (
           <span className="shrink-0">{labelRightAddon}</span>
         ) : null}
       </label>
@@ -160,48 +167,33 @@ export function RenderField({
   disableOptionRandomization,
   user,
   labelRightAddon,
-  formData,
-  isElementVisible,
-  isFieldRequired,
+  fieldContext,
   fieldErrors,
   responseHiddenFromOthers,
   isOutputView,
+  isPreview,
   hideLabel,
 }: RenderFieldProps) {
   const instanceId = useId();
   const fieldName = `${field.id}-${instanceId}`;
+  const labelId = useQuestionLabelId(field);
   const {
     slot: uploadSlot,
     uploading,
     uploadError,
   } = resolveUploadSlot({ fileUpload, fileUploadSlot, fieldId: field.id });
   const [fileReadError, setFileReadError] = useState<string | null>(null);
-  const required = isFieldRequired ? isFieldRequired(field) : !!field.required;
+  const radioGroupRef = useRef<HTMLDivElement>(null);
+  const selectRef = useRef<HTMLSelectElement>(null);
+  const required = fieldContext.isFieldRequired(field);
   const errorMessage =
     typeof error === "string" && error.trim().length > 0 ? error : null;
   const hasError = Boolean(errorMessage);
-  const randomizationSeedBase =
-    randomizationKey && randomizationKey.length > 0
-      ? `${randomizationKey}:${field.id}`
-      : field.id;
-  const randomizedOptions = useMemo(() => {
-    if (
-      field.kind !== "radio" &&
-      field.kind !== "multiselect" &&
-      field.kind !== "select"
-    ) {
-      return null;
-    }
-    const options = field.options ?? [];
-    if (
-      disableOptionRandomization ||
-      !field.randomizeOptions ||
-      options.length <= 1
-    ) {
-      return options;
-    }
-    return shuffleWithSeed(options, randomizationSeedBase);
-  }, [field, randomizationSeedBase, disableOptionRandomization]);
+  const { sections, randomizedOptions } = useFieldOptionSections({
+    field,
+    randomizationKey,
+    disableOptionRandomization,
+  });
 
   const composeClassName = (
     base: string,
@@ -218,6 +210,40 @@ export function RenderField({
 
   const renderValidationMessage = () =>
     hasError ? <p className="text-sm text-red-600">{errorMessage}</p> : null;
+  const onClear = !disabled && onChange ? () => onChange("") : undefined;
+  const clearRadios = onClear
+    ? () => {
+        onClear();
+        radioGroupRef.current?.querySelector("input")?.focus();
+      }
+    : undefined;
+
+  if (onChange !== undefined && offersNoOptions(field)) {
+    return (
+      <div className="space-y-1">
+        <RenderLabel
+          field={field}
+          labelId={labelId}
+          error={errorMessage}
+          labelRightAddon={labelRightAddon}
+          isOutputView={isOutputView}
+          hideLabel={hideLabel}
+          required={required}
+        />
+        <select
+          aria-labelledby={labelId}
+          disabled
+          required={required}
+          aria-invalid={hasError}
+          value=""
+          className={composeClassName(sharedInputClasses)}
+        >
+          <option value="">{noOptionsAvailable}</option>
+        </select>
+        {renderValidationMessage()}
+      </div>
+    );
+  }
 
   switch (field.kind) {
     case "text":
@@ -225,6 +251,7 @@ export function RenderField({
         <div className="space-y-1">
           <RenderLabel
             field={field}
+            labelId={labelId}
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
@@ -232,6 +259,7 @@ export function RenderField({
             required={required}
           />
           <input
+            aria-labelledby={labelId}
             type="text"
             value={(value as string) ?? ""}
             onChange={onChange ? (e) => onChange(e.target.value) : undefined}
@@ -255,6 +283,7 @@ export function RenderField({
         <div className="space-y-1">
           <RenderLabel
             field={field}
+            labelId={labelId}
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
@@ -262,7 +291,12 @@ export function RenderField({
             required={required}
           />
           <TextareaAutosize
-            minRows={disabled ? 1 : field.rows || 3}
+            aria-labelledby={labelId}
+            minRows={textareaMinRows({
+              rows: field.rows,
+              disabled,
+              isPreview,
+            })}
             translate="no"
             maxLength={field.maxLength}
             value={(value as string) ?? ""}
@@ -291,6 +325,7 @@ export function RenderField({
         <div className="space-y-1">
           <RenderLabel
             field={field}
+            labelId={labelId}
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
@@ -298,6 +333,7 @@ export function RenderField({
             required={required}
           />
           <input
+            aria-labelledby={labelId}
             type="email"
             value={(value as string) ?? ""}
             onChange={onChange ? (e) => onChange(e.target.value) : undefined}
@@ -335,6 +371,7 @@ export function RenderField({
         <div className="space-y-1">
           <RenderLabel
             field={field}
+            labelId={labelId}
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
@@ -342,6 +379,7 @@ export function RenderField({
             required={required}
           />
           <input
+            aria-labelledby={labelId}
             type="number"
             value={
               value === undefined || value === null
@@ -391,9 +429,10 @@ export function RenderField({
         : undefined;
 
       return (
-        <div className="relative pb-6">
+        <div className={cn("relative", clearRadios && "pb-6")}>
           <RenderLabel
             field={field}
+            labelId={labelId}
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
@@ -404,7 +443,12 @@ export function RenderField({
             <span className="text-black">{field.startLabel}</span>
             <span className="text-black">{field.endLabel}</span>
           </div>
-          <div className="flex w-full divide-x divide-zinc-300 border-x border-zinc-300">
+          <div
+            ref={radioGroupRef}
+            role="radiogroup"
+            aria-labelledby={labelId}
+            className="flex w-full divide-x divide-zinc-300 border-x border-zinc-300"
+          >
             {values.map((optionValue) => {
               const checked = normalizedValue === optionValue;
               return (
@@ -448,14 +492,11 @@ export function RenderField({
             })}
           </div>
           {renderValidationMessage()}
-          {!required && normalizedValue !== undefined && onChange && (
-            <button
-              type="button"
-              onClick={() => onChange("")}
-              className="text-xs text-zinc-600 hover:text-zinc-800 absolute bottom-0 right-0"
-            >
-              Clear selection
-            </button>
+          {clearRadios && normalizedValue !== undefined && (
+            <ClearSelectionButton
+              onClear={clearRadios}
+              className="absolute bottom-0 right-0"
+            />
           )}
         </div>
       );
@@ -515,89 +556,143 @@ export function RenderField({
     case "radio": {
       const options = randomizedOptions ?? field.options;
       return (
-        <div className="space-y-2">
-          <RenderLabel
-            field={field}
-            error={errorMessage}
-            labelRightAddon={labelRightAddon}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <div
-            className={cn(
-              "space-y-2",
-              hasError && "border-l-2 border-red-500 pl-3",
-            )}
-          >
-            {options.map((option, optIndex) => (
-              <label key={optIndex} className="flex items-start">
-                <input
-                  type="radio"
-                  name={fieldName}
-                  value={option.value}
-                  checked={value === option.value}
-                  onChange={
-                    onChange ? (e) => onChange(e.target.value) : undefined
-                  }
-                  required={required}
-                  disabled={disabled}
-                  aria-invalid={hasError}
-                  className={composeClassName(
-                    `shrink-0 mt-1 mr-2 h-4 w-4 ${
-                      hasError ? "text-red-600" : "text-blue-600"
-                    } focus:outline-none`,
-                    {
-                      normal:
-                        "border border-zinc-300 focus:ring-blue-500 focus:ring-2",
-                      error:
-                        "border border-red-500 focus:ring-red-500 focus:ring-2",
-                    },
-                  )}
-                />
-                <span className={hasError ? "text-red-600" : "text-zinc-700"}>
-                  <FormMarkdownWrapper markdownContent={option.label} inline />
-                </span>
-              </label>
-            ))}
+        <div className={cn("relative", clearRadios && "pb-6")}>
+          <div className="space-y-2">
+            <RenderLabel
+              field={field}
+              labelId={labelId}
+              error={errorMessage}
+              labelRightAddon={labelRightAddon}
+              isOutputView={isOutputView}
+              hideLabel={hideLabel}
+              required={required}
+            />
+            <div
+              ref={radioGroupRef}
+              role="radiogroup"
+              aria-labelledby={labelId}
+              className={cn(
+                "space-y-2",
+                hasError && "border-l-2 border-red-500 pl-3",
+              )}
+            >
+              {options.map((option, optIndex) => (
+                <label key={optIndex} className="flex items-start">
+                  <input
+                    type="radio"
+                    name={fieldName}
+                    value={option.value}
+                    checked={value === option.value}
+                    onChange={
+                      onChange ? (e) => onChange(e.target.value) : undefined
+                    }
+                    required={required}
+                    disabled={disabled}
+                    aria-invalid={hasError}
+                    className={composeClassName(
+                      `shrink-0 mt-1 mr-2 h-4 w-4 ${
+                        hasError ? "text-red-600" : "text-blue-600"
+                      } focus:outline-none`,
+                      {
+                        normal:
+                          "border border-zinc-300 focus:ring-blue-500 focus:ring-2",
+                        error:
+                          "border border-red-500 focus:ring-red-500 focus:ring-2",
+                      },
+                    )}
+                  />
+                  <span className={hasError ? "text-red-600" : "text-zinc-700"}>
+                    <FormMarkdownWrapper
+                      markdownContent={option.label}
+                      inline
+                    />
+                  </span>
+                </label>
+              ))}
+            </div>
+            {renderValidationMessage()}
           </div>
-          {renderValidationMessage()}
+          {clearRadios && typeof value === "string" && value !== "" && (
+            <ClearSelectionButton
+              onClear={clearRadios}
+              className="absolute bottom-0 left-0"
+            />
+          )}
         </div>
       );
     }
 
     case "select": {
-      const options = randomizedOptions ?? field.options;
       return (
         <div className="space-y-1">
           <RenderLabel
             field={field}
+            labelId={labelId}
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
             required={required}
           />
-          <select
-            value={(value as string) ?? ""}
-            onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-            required={required}
-            disabled={disabled}
-            aria-invalid={hasError}
-            className={composeClassName(
-              sharedInputClasses +
-                " has-[option.placeholder:checked]:text-zinc-400",
-            )}
-          >
-            <option value="" className="placeholder" disabled>
-              Select an option
-            </option>
-            {options.map((option, optIndex) => (
-              <option key={optIndex} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+          {field.searchable ? (
+            <SearchableSelect
+              sections={sections ?? []}
+              value={typeof value === "string" ? value : undefined}
+              onChange={onChange}
+              onClear={onClear}
+              labelId={labelId}
+              required={required}
+              disabled={disabled}
+              invalid={hasError}
+              className={composeClassName(sharedInputClasses)}
+            />
+          ) : (
+            <div className="relative">
+              <select
+                ref={selectRef}
+                aria-labelledby={labelId}
+                value={(value as string) ?? ""}
+                onChange={
+                  onChange ? (e) => onChange(e.target.value) : undefined
+                }
+                aria-required={required}
+                disabled={disabled}
+                aria-invalid={hasError}
+                className={composeClassName(
+                  `${sharedInputClasses} appearance-none ${dropdownIconsPadding} has-[option.placeholder:checked]:text-zinc-400`,
+                )}
+              >
+                <option value="" className="placeholder" disabled>
+                  Select an option
+                </option>
+                {(sections ?? []).map(({ category, items }) => {
+                  const rendered = items.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ));
+                  return category ? (
+                    <optgroup key={category.id} label={category.name}>
+                      {rendered}
+                    </optgroup>
+                  ) : (
+                    <Fragment key="">{rendered}</Fragment>
+                  );
+                })}
+              </select>
+              <DropdownIcons
+                onClear={
+                  onClear && typeof value === "string" && value !== ""
+                    ? () => {
+                        onClear();
+                        selectRef.current?.focus();
+                      }
+                    : undefined
+                }
+                placeholder={!value}
+              />
+            </div>
+          )}
           {renderValidationMessage()}
         </div>
       );
@@ -609,11 +704,7 @@ export function RenderField({
           ? (value as string[])
           : [];
       const selectedCount = selections.length;
-      const options = randomizedOptions ?? field.options ?? [];
-      const maxSelections =
-        typeof field.maxSelections === "number" && field.maxSelections > 0
-          ? field.maxSelections
-          : undefined;
+      const maxSelections = getMaxSelections(field);
       const maxReached =
         maxSelections !== undefined && selectedCount >= maxSelections;
 
@@ -621,67 +712,105 @@ export function RenderField({
         <div className="space-y-2">
           <RenderLabel
             field={field}
+            labelId={labelId}
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
             required={required}
           />
-          <div
-            className={cn(
-              "space-y-2",
-              hasError && "border-l-2 border-red-500 pl-3",
-            )}
-          >
-            {options.map((option, optIndex) => (
-              <label key={optIndex} className="flex">
-                <input
-                  type="checkbox"
-                  name={fieldName}
-                  checked={selections.includes(option.value)}
-                  onChange={
-                    onChange
-                      ? (e) => {
-                          const currentValues: string[] =
-                            Array.isArray(value) &&
-                            value.every((e) => typeof e === "string")
-                              ? (value as string[])
-                              : [];
-                          if (e.target.checked) {
-                            onChange([...currentValues, option.value]);
-                          } else {
-                            onChange(
-                              currentValues.filter((v) => v !== option.value),
-                            );
-                          }
+          {field.dropdown ? (
+            <MultiSelectDropdown
+              sections={sections ?? []}
+              value={selections}
+              onChange={onChange}
+              searchable={field.searchable}
+              maxReached={maxReached}
+              labelId={labelId}
+              required={required}
+              disabled={disabled}
+              invalid={hasError}
+              className={composeClassName(sharedInputClasses)}
+            />
+          ) : (
+            <div
+              role="group"
+              aria-labelledby={labelId}
+              className={cn(
+                "space-y-2",
+                hasError && "border-l-2 border-red-500 pl-3",
+              )}
+            >
+              {(sections ?? []).map(({ category, items }, sectionIndex) => (
+                <CheckboxSection
+                  key={category?.id ?? ""}
+                  category={category}
+                  headingId={`${fieldName}-category-${sectionIndex}`}
+                >
+                  {items.map((option, itemIndex) => (
+                    <label key={option.value} className="flex">
+                      <input
+                        type="checkbox"
+                        name={fieldName}
+                        checked={selections.includes(option.value)}
+                        onChange={
+                          onChange
+                            ? (e) => {
+                                const currentValues: string[] =
+                                  Array.isArray(value) &&
+                                  value.every((e) => typeof e === "string")
+                                    ? (value as string[])
+                                    : [];
+                                if (e.target.checked) {
+                                  onChange([...currentValues, option.value]);
+                                } else {
+                                  onChange(
+                                    currentValues.filter(
+                                      (v) => v !== option.value,
+                                    ),
+                                  );
+                                }
+                              }
+                            : undefined
                         }
-                      : undefined
-                  }
-                  required={required && selectedCount === 0 && optIndex === 0}
-                  disabled={
-                    disabled ||
-                    (!selections.includes(option.value) && maxReached)
-                  }
-                  aria-invalid={hasError}
-                  style={{ marginTop: "4px" }}
-                  className={composeClassName(
-                    `shrink-0 mr-2 h-4 w-4 disabled:ring-1 disabled:ring-zinc-400 ${
-                      hasError ? "text-red-600" : "text-blue-600"
-                    } focus:outline-none rounded`,
-                    {
-                      normal:
-                        "border border-zinc-300 focus:ring-blue-500 focus:ring-2",
-                      error:
-                        "border border-red-500 focus:ring-red-500 focus:ring-2",
-                    },
-                  )}
-                />
-                <span className={hasError ? "text-red-600" : "text-zinc-700"}>
-                  <FormMarkdownWrapper markdownContent={option.label} inline />
-                </span>
-              </label>
-            ))}
-          </div>
+                        required={
+                          required &&
+                          selectedCount === 0 &&
+                          sectionIndex === 0 &&
+                          itemIndex === 0
+                        }
+                        disabled={
+                          disabled ||
+                          (!selections.includes(option.value) && maxReached)
+                        }
+                        aria-invalid={hasError}
+                        style={{ marginTop: "4px" }}
+                        className={composeClassName(
+                          `shrink-0 mr-2 h-4 w-4 disabled:ring-1 disabled:ring-zinc-400 ${
+                            hasError ? "text-red-600" : "text-blue-600"
+                          } focus:outline-none rounded`,
+                          {
+                            normal:
+                              "border border-zinc-300 focus:ring-blue-500 focus:ring-2",
+                            error:
+                              "border border-red-500 focus:ring-red-500 focus:ring-2",
+                          },
+                        )}
+                      />
+                      <span
+                        className={hasError ? "text-red-600" : "text-zinc-700"}
+                      >
+                        <FormMarkdownWrapper
+                          markdownContent={option.label}
+                          inline
+                        />
+                      </span>
+                    </label>
+                  ))}
+                </CheckboxSection>
+              ))}
+            </div>
+          )}
           {maxSelections !== undefined && (
             <p className="text-xs text-gray-500">
               Select up to {withCount(maxSelections, "option")}
@@ -697,6 +826,7 @@ export function RenderField({
         <div className="space-y-1">
           <RenderLabel
             field={field}
+            labelId={labelId}
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
@@ -704,6 +834,7 @@ export function RenderField({
             required={required}
           />
           <input
+            aria-labelledby={labelId}
             type="date"
             value={(value as string) ?? ""}
             onChange={onChange ? (e) => onChange(e.target.value) : undefined}
@@ -736,6 +867,7 @@ export function RenderField({
         <div className="space-y-1">
           <RenderLabel
             field={field}
+            labelId={labelId}
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
@@ -743,7 +875,8 @@ export function RenderField({
             required={required}
           />
           <TimeZoneSelect
-            value={(value as string) ?? "America/Los_Angeles"}
+            labelId={labelId}
+            value={typeof value === "string" ? value : undefined}
             onChange={onChange ? (tz) => onChange(tz) : undefined}
             disabled={disabled}
             aria-invalid={hasError}
@@ -765,12 +898,14 @@ export function RenderField({
         <div className="space-y-1">
           <RenderLabel
             field={field as CityField}
+            labelId={labelId}
             error={errorMessage}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
             required={required}
           />
           <CityAutosuggest
+            labelId={labelId}
             key={`city-${cityValue?.id ?? field.id}`}
             value={displayValue}
             placeholder={(field as CityField).placeholder}
@@ -800,6 +935,7 @@ export function RenderField({
         <div className="space-y-2">
           <RenderLabel
             field={field}
+            labelId={labelId}
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
@@ -832,6 +968,7 @@ export function RenderField({
           {!(disabled && fileValue) && (
             <div className="flex items-center space-x-2">
               <input
+                aria-labelledby={labelId}
                 type="file"
                 accept="image/*"
                 onChange={async (e) => {
@@ -857,7 +994,12 @@ export function RenderField({
                 )}
               />
               {uploading && (
-                <span className=" text-blue-600">Uploading...</span>
+                <UploadingWithCancel
+                  label="Uploading..."
+                  cancelLabel={cancelImageUpload}
+                  onCancel={() => fileUpload?.cancelUpload(uploadSlot)}
+                  className="text-blue-600"
+                />
               )}
             </div>
           )}
@@ -873,13 +1015,8 @@ export function RenderField({
 
     case "list": {
       const listField = field as ListField;
-      const subFields = listField.fields ?? [];
       const defaultCount = defaultCardCount(listField);
-      const minCards = Math.max(0, Math.floor(Number(listField.min || 0)));
-      const maxCards =
-        typeof listField.max === "number" && listField.max >= 0
-          ? Math.floor(listField.max)
-          : Infinity;
+      const { minCards, maxCards } = listCardLimits(listField);
 
       const cards = resolveCards({ value, defaultCardCount: defaultCount });
       const canDelete = cards.length > minCards;
@@ -888,35 +1025,14 @@ export function RenderField({
         defaultCardCount: defaultCount,
         maxCards,
       });
-      const visibleSubFieldsForCard = (card: Record<string, FormValue>) => {
-        if (!isElementVisible || !formData) return subFields;
-        const mergedData = { ...formData, ...card };
-        return subFields.filter((sub) => isElementVisible(sub, mergedData));
-      };
-      // A sub-field's requiredIfFormula can reference either the surrounding
-      // answers or its own card, so resolve it against the same merged data
-      // the visibility filter above uses.
-      const subFieldRequiredForCard = (card: Record<string, FormValue>) =>
-        isFieldRequired
-          ? (sub: AnyField) => isFieldRequired(sub, { ...formData, ...card })
-          : undefined;
       const hiddenInOutputIds = new Set(
         listField.outputViewHiddenFieldIds ?? [],
       );
-      const subFieldsForCard = (card: Record<string, FormValue>) => {
-        let fields = visibleSubFieldsForCard(card);
-        if (isOutputView) {
-          if (hiddenInOutputIds.size > 0) {
-            fields = fields.filter((sub) => !hiddenInOutputIds.has(sub.id));
-          }
-          fields = fields.filter((sub) => !isOutputValueMissing(card[sub.id]));
-        }
-        return fields;
-      };
       return (
-        <div className="space-y-3">
+        <div role="group" aria-labelledby={labelId} className="space-y-3">
           <RenderLabel
             field={field}
+            labelId={labelId}
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
@@ -926,89 +1042,79 @@ export function RenderField({
           <div className="space-y-3">
             {cards.map((card, cardIndex) => {
               const cardId = card[CARD_ID_KEY];
+              const row = fieldContext.forRow(card);
+              const fields = cardSubFields({
+                listField,
+                card,
+                row,
+                isOutputView,
+              });
+              if (isOutputView && fields.length === 0) {
+                return null;
+              }
               return (
-                <Card
+                <ListCard
                   key={cardId}
-                  style={CardStyle.WhiteBorder}
-                  className="gap-4"
-                >
-                  <div className="flex flex-row gap-x-4 justify-between">
-                    <div className="w-full space-y-6">
-                      {subFieldsForCard(card).map((sub) => {
-                        const isHiddenInOutput = hiddenInOutputIds.has(sub.id);
-                        return (
-                          <div key={sub.id}>
-                            <RenderField
-                              field={sub}
-                              value={card[sub.id]}
-                              onChange={
-                                onChange
-                                  ? (val) =>
-                                      updateCard({
-                                        cardId,
-                                        subFieldId: sub.id,
-                                        value: val,
-                                      })
-                                  : undefined
-                              }
-                              disabled={disabled}
-                              isOutputView={isOutputView}
-                              fileUpload={fileUpload}
-                              fileUploadSlot={{
-                                kind: "listCard",
-                                fieldId: field.id,
-                                cardId,
-                                subFieldId: sub.id,
-                                defaultCardCount: defaultCount,
-                              }}
-                              error={
-                                fieldErrors?.[
-                                  `${field.id}:${cardIndex}:${sub.id}`
-                                ] ?? null
-                              }
-                              randomizationKey={randomizationKey}
-                              disableOptionRandomization={
-                                disableOptionRandomization
-                              }
-                              user={user}
-                              isFieldRequired={subFieldRequiredForCard(card)}
-                            />
-                            {!disabled &&
-                              isHiddenInOutput &&
-                              !responseHiddenFromOthers && (
-                                <p className="text-xs text-gray-500">
-                                  This will not be shown to other members.
-                                </p>
-                              )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {!disabled && (
-                      <NewButton
+                  remove={
+                    !disabled && (
+                      <ListRemoveButton
                         onClick={() => removeCard(cardId)}
-                        disabled={disabled || !canDelete}
-                        color={ButtonColor.Red}
-                        size={ButtonSize.Small}
-                        iconLeft={X}
+                        disabled={!canDelete}
                       />
-                    )}
-                  </div>
-                </Card>
+                    )
+                  }
+                >
+                  {fields.map((sub) => {
+                    const isHiddenInOutput = hiddenInOutputIds.has(sub.id);
+                    return (
+                      <div key={sub.id}>
+                        <RenderField
+                          field={sub}
+                          value={card[sub.id]}
+                          onChange={
+                            onChange
+                              ? (val) =>
+                                  updateCard({
+                                    cardId,
+                                    subFieldId: sub.id,
+                                    value: val,
+                                  })
+                              : undefined
+                          }
+                          disabled={disabled}
+                          isOutputView={isOutputView}
+                          isPreview={isPreview}
+                          fileUpload={fileUpload}
+                          fileUploadSlot={{
+                            kind: "listCard",
+                            fieldId: field.id,
+                            cardId,
+                            subFieldId: sub.id,
+                            defaultCardCount: defaultCount,
+                          }}
+                          error={
+                            fieldErrors?.[
+                              `${field.id}:${cardIndex}:${sub.id}`
+                            ] ?? null
+                          }
+                          randomizationKey={randomizationKey}
+                          disableOptionRandomization={
+                            disableOptionRandomization
+                          }
+                          user={user}
+                          fieldContext={row}
+                        />
+                        {!disabled &&
+                          isHiddenInOutput &&
+                          !responseHiddenFromOthers && <ListHiddenNote />}
+                      </div>
+                    );
+                  })}
+                </ListCard>
               );
             })}
             {!disabled && cards.length < maxCards && (
-              <NewButton
-                type="button"
-                onClick={addCard}
-                disabled={disabled}
-                color={ButtonColor.LightHover}
-                iconLeft={Plus}
-                centerIcon
-                className="w-full"
-              >
-                {listField.addButtonLabel?.trim() ?? "Add item"}
-              </NewButton>
+              <ListAddButton listField={listField} onClick={addCard} />
             )}
           </div>
           {renderValidationMessage()}
@@ -1093,9 +1199,10 @@ export function RenderField({
 
     case "ranking":
       return (
-        <div className="space-y-2">
+        <div role="group" aria-labelledby={labelId} className="space-y-2">
           <RenderLabel
             field={field}
+            labelId={labelId}
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
@@ -1144,6 +1251,7 @@ export function PhoneInputField({
   hideLabel,
   required = !!field.required,
 }: PhoneInputFieldProps) {
+  const labelId = useQuestionLabelId(field);
   const answer = typeof value === "string" ? value : "";
   const [country, setCountry] = usePhoneFieldCountry(answer);
 
@@ -1151,6 +1259,7 @@ export function PhoneInputField({
     <div className="space-y-1">
       <RenderLabel
         field={field}
+        labelId={labelId}
         error={baseError}
         labelRightAddon={labelRightAddon}
         isOutputView={isOutputView}
@@ -1158,6 +1267,7 @@ export function PhoneInputField({
         required={required}
       />
       <PhoneNumberInput
+        labelId={labelId}
         name={field.id}
         value={answer}
         onChange={(next) => onChange?.(next)}
@@ -1196,6 +1306,7 @@ export function TimeInputField({
   hideLabel,
   required = !!field.required,
 }: TimeInputFieldProps) {
+  const labelId = useQuestionLabelId(field);
   const normalizedValue = typeof value === "string" && value ? value : "";
   const [inputValue, setInputValue] = useState<string>(() =>
     formatTimeForDisplay(normalizedValue),
@@ -1230,34 +1341,17 @@ export function TimeInputField({
   }, []);
 
   const commitValue = () => {
-    const raw = inputValue.trim();
-    if (!raw) {
-      setLocalError(required ? "Enter a time such as 7:30 PM" : null);
-      onChange?.("");
-      return;
-    }
-    const parsed = parseTimeInput(raw);
-    if (!parsed) {
-      setLocalError("Enter a time such as 7:30 PM");
-      return;
-    }
-    setLocalError(null);
-    const normalized = parsed.normalized;
-    onChange?.(normalized);
-    setInputValue(formatTimeForDisplay(normalized));
+    const { answer, error } = commitTimeInput({ raw: inputValue, required });
+    setLocalError(error);
+    if (answer === null) return;
+    onChange?.(answer);
+    if (answer) setInputValue(formatTimeForDisplay(answer));
   };
 
   const effectiveError = localError ?? baseError ?? null;
   const hasError = Boolean(effectiveError);
 
-  // --- Generate dropdown time options (every 30 minutes) ---
-  const timeOptions = Array.from({ length: 24 * 2 }, (_, i) => {
-    const hours = Math.floor(i / 2);
-    const minutes = i % 2 === 0 ? "00" : "30";
-    const ampm = hours < 12 ? "AM" : "PM";
-    const displayHours = hours % 12 === 0 ? 12 : hours % 12;
-    return `${displayHours}:${minutes} ${ampm}`;
-  });
+  const timeOptions = buildTimeOfDayOptions(30).map((option) => option.label);
 
   const handleSelectTime = (time: string) => {
     setInputValue(time);
@@ -1272,6 +1366,7 @@ export function TimeInputField({
     <div className="space-y-1 relative">
       <RenderLabel
         field={field}
+        labelId={labelId}
         error={effectiveError}
         labelRightAddon={labelRightAddon}
         isOutputView={isOutputView}
@@ -1281,6 +1376,7 @@ export function TimeInputField({
       <div className="relative">
         <input
           ref={inputRef}
+          aria-labelledby={labelId}
           type="text"
           value={inputValue}
           onFocus={() => {

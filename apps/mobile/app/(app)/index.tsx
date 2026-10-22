@@ -1,25 +1,35 @@
-import type { FollowUpFormDto } from "@alliance/shared/client";
-import { actionsDismissAction } from "@alliance/shared/client";
-import { useActionsQuery } from "@alliance/shared/lib/actionsListPage";
 import {
-  ActionWithAwayStatus,
-  homePagePriorityComparator,
-} from "@alliance/shared/lib/actionUtils";
-import { noTasksToDoRightNow } from "@alliance/shared/lib/copy";
+  FORM_ALREADY_SUBMITTED,
+  MEMBER_ACTION_DEADLINE_PASSED,
+} from "@alliance/common/actionActivity";
+import type { FollowUpFormDto } from "@alliance/shared/client";
+import {
+  dismissActionErrorMessage,
+  useActionsQuery,
+  useDismissActionMutation,
+  useInvalidateActions,
+} from "@alliance/shared/lib/actionsListPage";
+import { type ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
+import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import { ParsedHomeFeedItemDto } from "@alliance/shared/lib/feedHelpers";
-import { type ParsedGeneralUpdate } from "@alliance/shared/lib/generalUpdates";
-import { useHomePageActions } from "@alliance/shared/lib/homePage";
+import {
+  homeItemKey,
+  type HomeSequenceItem,
+  interleaveActionsAndUpdates,
+  useHomePageActions,
+} from "@alliance/shared/lib/homePage";
 import { getTaskDismissInfo } from "@alliance/shared/lib/largeActionCard";
 import { useBoundedIndex } from "@alliance/shared/lib/useBoundedIndex";
 import { useUnreadGeneralUpdates } from "@alliance/shared/lib/useGeneralUpdates";
 import useHomeFeed, { resetHomeFeed } from "@alliance/shared/lib/useHomeFeed";
+import { useInvalidateTaskForms } from "@alliance/shared/lib/useTaskForm";
 import { LegendList, type LegendListRef } from "@legendapp/list";
 import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { Check } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   type LayoutChangeEvent,
   RefreshControl,
   type ScrollViewProps,
@@ -28,22 +38,27 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import FollowUpFormPanel from "../../components/FollowUpFormPanel";
-import ForumCommentCard from "../../components/ForumCommentCard";
+import HomeFeedItem from "../../components/HomeFeedItem";
 import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
 import LargeActionCard from "../../components/LargeActionCard";
 import LargeGeneralUpdateCard from "../../components/LargeGeneralUpdateCard";
+import LoadFailed from "../../components/LoadFailed";
+import NoTasksNotice from "../../components/NoTasksNotice";
 import ProfileImage from "../../components/ProfileImage";
 import SuccessOverlay from "../../components/SuccessOverlay";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
 import { TaskNavigatorStepper } from "../../components/system/TaskNavigatorStepper";
 import Text from "../../components/system/Text";
-import UserActivityCard from "../../components/UserActivityCard";
 import { useAuth } from "../../lib/AuthContext";
+import {
+  Anchor,
+  useWalkthroughScroll,
+  WalkthroughAnchor,
+} from "../../lib/onboarding/walkthrough";
 import { colors } from "../../lib/style/colors";
 
 type HomeScreenItem =
-  | { kind: "action"; action: ActionWithAwayStatus }
-  | { kind: "generalUpdate"; generalUpdate: ParsedGeneralUpdate }
+  | HomeSequenceItem
   | { kind: "followUpForm"; followUpForm: FollowUpFormDto; actionId: number };
 
 // Stable identity — LegendList remounts its scroll view whenever this prop changes.
@@ -53,9 +68,10 @@ const renderKeyboardAwareScrollComponent = (props: ScrollViewProps) => (
 
 export default function HomeScreen() {
   const queryClient = useQueryClient();
+  const invalidateTaskForms = useInvalidateTaskForms();
+  const invalidateActions = useInvalidateActions();
   const [refreshing, setRefreshing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const hasNoTasks = useRef(true);
 
   const handleSubmitSuccess = useCallback(() => {
     setShowSuccess(true);
@@ -64,13 +80,14 @@ export default function HomeScreen() {
   const handleSuccessComplete = useCallback(() => {
     setShowSuccess(false);
   }, []);
+  const actionsQuery = useActionsQuery();
   const {
     data: actions,
     isPending,
+    isFetching: isFetchingActions,
     refetch,
-  } = useActionsQuery({
-    refetchInterval: hasNoTasks.current ? 60_000 : false,
-  });
+  } = actionsQuery;
+  const didActionsFail = failedToLoad(actionsQuery);
 
   const { user } = useAuth();
   const {
@@ -89,27 +106,25 @@ export default function HomeScreen() {
   const {
     generalUpdates,
     isPending: generalUpdatesPending,
+    didFail: didGeneralUpdatesFail,
+    isFetching: isFetchingGeneralUpdates,
     refetch: refetchGeneralUpdates,
     dismissGeneralUpdate: handleDismissGeneralUpdate,
   } = useUnreadGeneralUpdates();
 
+  const { mutate: dismissAction } = useDismissActionMutation();
   const handleDismissAction = useCallback(
-    async (actionId: number) => {
-      const action = actions?.find((a) => a.id === actionId);
-      if (!action) {
-        return;
-      }
-
-      await actionsDismissAction({
-        path: { id: action.id },
-      });
-
-      refetch();
-    },
-    [actions, refetch],
+    (actionId: number) =>
+      dismissAction(actionId, {
+        onError: (error) =>
+          Alert.alert("Error", dismissActionErrorMessage(error)),
+      }),
+    [dismissAction],
   );
 
-  const loading = isPending || generalUpdatesPending;
+  const loading =
+    (isPending && !didActionsFail) ||
+    (generalUpdatesPending && !didGeneralUpdatesFail);
 
   const actionsWithAwayStatus = useMemo((): ActionWithAwayStatus[] => {
     if (!actions) return [];
@@ -125,15 +140,9 @@ export default function HomeScreen() {
   );
 
   const allItems = useMemo<HomeScreenItem[]>(() => {
-    const actionAndUpdateItems: HomeScreenItem[] = [
-      ...todoActions.map((action) => ({ kind: "action", action }) as const),
-      ...generalUpdates.map(
-        (generalUpdate) => ({ kind: "generalUpdate", generalUpdate }) as const,
-      ),
-    ].sort((a, b) => {
-      const aVal = a.kind === "action" ? a.action : a.generalUpdate;
-      const bVal = b.kind === "action" ? b.action : b.generalUpdate;
-      return homePagePriorityComparator(aVal, bVal);
+    const actionAndUpdateItems = interleaveActionsAndUpdates({
+      todoActions,
+      generalUpdates,
     });
 
     const followUpItems: HomeScreenItem[] = activeCompletableFollowUpForms.map(
@@ -143,8 +152,7 @@ export default function HomeScreen() {
 
     return [...actionAndUpdateItems, ...followUpItems];
   }, [todoActions, generalUpdates, activeCompletableFollowUpForms]);
-
-  hasNoTasks.current = allItems.length === 0;
+  const allItemKeys = useMemo(() => allItems.map(homeItemKey), [allItems]);
 
   const {
     index: safeIndex,
@@ -153,11 +161,12 @@ export default function HomeScreen() {
     canGoNext,
     canGoPrev,
     hasMultiple: showTaskNavigator,
-  } = useBoundedIndex(allItems.length);
+  } = useBoundedIndex(allItemKeys);
   const currentItem = allItems[safeIndex] ?? null;
 
   const scrollViewRef = useRef<KeyboardAwareScrollViewRef>(null);
   const legendListRef = useRef<LegendListRef>(null);
+  const walkthroughScroll = useWalkthroughScroll();
   const legendListHeightRef = useRef(0);
   const homeBodyHeightRef = useRef(0);
 
@@ -167,12 +176,12 @@ export default function HomeScreen() {
       await Promise.all([
         refetch(),
         refetchGeneralUpdates(),
-        queryClient.invalidateQueries({ queryKey: ["form"] }),
+        invalidateTaskForms(),
       ]);
     } finally {
       setRefreshing(false);
     }
-  }, [refetch, refetchGeneralUpdates, queryClient]);
+  }, [refetch, refetchGeneralUpdates, invalidateTaskForms]);
 
   const scrollPageTo = useCallback((y: number, animated = true) => {
     scrollViewRef.current?.scrollTo({ y, animated });
@@ -186,8 +195,9 @@ export default function HomeScreen() {
 
   const handleOverlayFadeIn = useCallback(() => {
     refetch();
+    resetHomeFeed(queryClient);
     scrollToTop();
-  }, [refetch, scrollToTop]);
+  }, [refetch, queryClient, scrollToTop]);
 
   const scrollToEnd = useCallback((animated = true) => {
     scrollViewRef.current?.scrollToEnd({ animated });
@@ -209,13 +219,6 @@ export default function HomeScreen() {
     homeBodyHeightRef.current = event.nativeEvent.layout.height;
   }, []);
 
-  const handleHomeFeedLike = useCallback(
-    (activityId: number) => {
-      return handleLikeHomeFeedActivity(activityId);
-    },
-    [handleLikeHomeFeedActivity],
-  );
-
   const onHomeFeedEndReached = useCallback(() => {
     if (homeFeedHasNextPage && !homeFeedFetchingNextPage) {
       void fetchNextHomeFeedPage();
@@ -223,50 +226,14 @@ export default function HomeScreen() {
   }, [homeFeedHasNextPage, homeFeedFetchingNextPage, fetchNextHomeFeedPage]);
 
   const renderHomeFeedItem = useCallback(
-    ({ item }: { item: ParsedHomeFeedItemDto }) => {
-      switch (item.type) {
-        case "activity": {
-          if (!item.activity) return null;
-          const activity = item.activity;
-          return (
-            <View
-              className={`border-b-3`}
-              style={{ borderColor: colors.grey[1] }}
-            >
-              <UserActivityCard
-                activity={activity}
-                handleLike={() => handleHomeFeedLike(activity.id)}
-              />
-            </View>
-          );
-        }
-        case "forum_comment": {
-          const fc = item.forumComment;
-          if (!fc) return null;
-          const { comment, postId, postTitle, likedByMe, likesCount } = fc;
-          return (
-            <View
-              className={`border-b-3`}
-              style={{ borderColor: colors.grey[1] }}
-            >
-              <ForumCommentCard
-                comment={comment}
-                postId={postId}
-                postTitle={postTitle}
-                likedByMe={likedByMe}
-                likesCount={likesCount}
-                handleLike={() => handleLikeForumComment(comment.id)}
-              />
-            </View>
-          );
-        }
-        default: {
-          item.type satisfies never;
-          return null;
-        }
-      }
-    },
-    [handleHomeFeedLike, handleLikeForumComment],
+    ({ item }: { item: ParsedHomeFeedItemDto }) => (
+      <HomeFeedItem
+        item={item}
+        onLikeActivity={handleLikeHomeFeedActivity}
+        onLikeForumComment={handleLikeForumComment}
+      />
+    ),
+    [handleLikeHomeFeedActivity, handleLikeForumComment],
   );
 
   useEffect(() => {
@@ -300,21 +267,7 @@ export default function HomeScreen() {
     if (!currentItem) {
       return {
         title: "Alliance",
-        body: (
-          <View>
-            <View
-              className="items-center justify-center py-10 px-5"
-              style={{ backgroundColor: colors.grey[0] }}
-            >
-              <View className="w-8 h-8 rounded-full bg-green items-center justify-center mb-4">
-                <Check size={20} color="#fff" strokeWidth={3} />
-              </View>
-              <Text className="text-zinc-500 text-base text-center">
-                {noTasksToDoRightNow}
-              </Text>
-            </View>
-          </View>
-        ),
+        body: <NoTasksNotice />,
         fullScreen: false,
       };
     }
@@ -349,7 +302,7 @@ export default function HomeScreen() {
               scrollPageTo={scrollPageTo}
               scrollToEnd={scrollToEnd}
               onSubmitted={() => {
-                queryClient.invalidateQueries({ queryKey: ["actions"] });
+                invalidateActions();
                 resetHomeFeed(queryClient);
               }}
             />
@@ -362,23 +315,32 @@ export default function HomeScreen() {
     return {
       title: "Current task",
       body: (
-        <View className="bg-white py-2 px-1">
+        <Anchor
+          name={WalkthroughAnchor.CurrentTask}
+          className="bg-white py-2 px-1"
+        >
           <LargeActionCard
             action={currentItem.action}
             dismissProps={dismissProps}
             onUpdateActionState={() => {
               refetch();
             }}
-            onCompleteAction={() => {
+            onDeadlinePassed={() => {
+              Alert.alert(
+                currentItem.action.name,
+                MEMBER_ACTION_DEADLINE_PASSED,
+              );
               refetch();
-              resetHomeFeed(queryClient);
-              scrollToTop();
             }}
+            onAlreadySubmitted={() => {
+              Alert.alert(currentItem.action.name, FORM_ALREADY_SUBMITTED);
+              refetch();
+            }}
+            onCompleteAction={handleSubmitSuccess}
             scrollPageTo={scrollPageTo}
             scrollToEnd={scrollToEnd}
-            onSubmitSuccess={handleSubmitSuccess}
           />
-        </View>
+        </Anchor>
       ),
       fullScreen: false,
     };
@@ -386,15 +348,44 @@ export default function HomeScreen() {
     currentItem,
     dismissProps,
     handleDismissGeneralUpdate,
+    invalidateActions,
     queryClient,
     refetch,
     scrollPageTo,
     scrollToEnd,
-    scrollToTop,
     handleSubmitSuccess,
   ]);
 
   const showHomeFeedList = !homeFeedLoading && homeFeedItems.length > 0;
+
+  const generalUpdatesNotice = didGeneralUpdatesFail && (
+    <LoadFailed
+      message="Couldn't load general updates."
+      onRetry={() => void refetchGeneralUpdates()}
+      retrying={isFetchingGeneralUpdates}
+    />
+  );
+  const actionsNotice = didActionsFail && (
+    <LoadFailed
+      message="Couldn't load your tasks."
+      onRetry={() => void refetch()}
+      retrying={isFetchingActions}
+    />
+  );
+  const notices = (generalUpdatesNotice || actionsNotice) && (
+    <>
+      {generalUpdatesNotice}
+      {actionsNotice}
+    </>
+  );
+  const homeBody = currentItem ? (
+    <>
+      {notices}
+      {body}
+    </>
+  ) : (
+    notices || body
+  );
 
   const header = (
     <SimplePageTitle title={title}>
@@ -433,61 +424,72 @@ export default function HomeScreen() {
   return (
     <View className="flex-1" style={{ backgroundColor: colors.grey[0] }}>
       {header}
-      {showHomeFeedList ? (
-        <LegendList
-          ref={legendListRef}
-          className="flex-1"
-          onLayout={handleHomeFeedLayout}
-          data={homeFeedItems}
-          keyExtractor={(item) =>
-            item.type === "activity"
-              ? `activity-${item.activity?.id}`
-              : `comment-${item.forumComment?.comment.id}`
-          }
-          renderItem={renderHomeFeedItem}
-          onEndReached={onHomeFeedEndReached}
-          onEndReachedThreshold={0.3}
-          renderScrollComponent={renderKeyboardAwareScrollComponent}
-          recycleItems
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          contentContainerStyle={{
-            backgroundColor: "white",
-            paddingBottom: 40,
-          }}
-          ListHeaderComponent={
-            <>
-              <View onLayout={handleHomeBodyLayout}>{body}</View>
-              <View className="px-4 pt-4 pb-2 bg-white">
-                <Text className="text-xl">Activity</Text>
-              </View>
-            </>
-          }
-          ListFooterComponent={
-            homeFeedFetchingNextPage ? (
-              <View className="py-4 items-center">
-                <ActivityIndicator size="small" color={colors.green} />
-                <Text className="text-zinc-400 text-sm mt-2">
-                  Loading more...
-                </Text>
-              </View>
-            ) : null
-          }
-        />
-      ) : (
-        <KeyboardAwareScrollView
-          key={fullScreen ? "fullscreen" : "scroll"}
-          ref={scrollViewRef}
-          contentContainerStyle={fullScreen ? { flex: 1 } : undefined}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          testID="vr-home-ready"
-        >
-          {body}
-        </KeyboardAwareScrollView>
-      )}
+      <Anchor name={WalkthroughAnchor.TaskList} className="min-h-0 flex-1">
+        {showHomeFeedList ? (
+          <LegendList
+            ref={(node) => {
+              legendListRef.current = node;
+              walkthroughScroll.ref(node);
+            }}
+            className="flex-1"
+            onScroll={walkthroughScroll.onScroll}
+            onLayout={handleHomeFeedLayout}
+            data={homeFeedItems}
+            keyExtractor={(item) =>
+              item.type === "activity"
+                ? `activity-${item.activity?.id}`
+                : `comment-${item.forumComment?.comment.id}`
+            }
+            renderItem={renderHomeFeedItem}
+            onEndReached={onHomeFeedEndReached}
+            onEndReachedThreshold={0.3}
+            renderScrollComponent={renderKeyboardAwareScrollComponent}
+            recycleItems
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+            contentContainerStyle={{
+              backgroundColor: "white",
+              paddingBottom: 40,
+            }}
+            ListHeaderComponent={
+              <>
+                <View onLayout={handleHomeBodyLayout}>{homeBody}</View>
+                <View className="px-4 pt-4 pb-2 bg-white">
+                  <Text className="text-xl">Activity</Text>
+                </View>
+              </>
+            }
+            ListFooterComponent={
+              homeFeedFetchingNextPage ? (
+                <View className="py-4 items-center">
+                  <ActivityIndicator size="small" color={colors.green} />
+                  <Text className="text-zinc-400 text-sm mt-2">
+                    Loading more...
+                  </Text>
+                </View>
+              ) : null
+            }
+          />
+        ) : (
+          <KeyboardAwareScrollView
+            key={fullScreen ? "fullscreen" : "scroll"}
+            ref={(node) => {
+              scrollViewRef.current = node;
+              walkthroughScroll.ref(node);
+            }}
+            onScroll={walkthroughScroll.onScroll}
+            scrollEventThrottle={walkthroughScroll.scrollEventThrottle}
+            contentContainerStyle={fullScreen ? { flex: 1 } : undefined}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+            testID="vr-home-ready"
+          >
+            {homeBody}
+          </KeyboardAwareScrollView>
+        )}
+      </Anchor>
       <SuccessOverlay
         visible={showSuccess}
         onFadeInComplete={handleOverlayFadeIn}

@@ -1,17 +1,25 @@
+import {
+  FORM_ALREADY_SUBMITTED,
+  MEMBER_ACTION_DEADLINE_PASSED,
+} from "@alliance/common/actionActivity";
 import { useCallback, useState } from "react";
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
   ActionDto,
-  actionsComplete,
   FormResponseDto,
   SubmitFormDto,
   tasksOptout,
 } from "../client";
+import type { SubmitResult } from "../forms/formulaChoices";
+import { useRecordActionRelation } from "./actionsListPage";
 import { useInvalidateVisibilityContext } from "./useVisibilityContext";
 
 export interface ActionTaskPanelPropsShared {
   action: ActionDto;
   onCompleteAction: () => boolean | void | Promise<boolean | void>;
   onOptOutAction: () => void;
+  /** Called when the server refuses completion because the action's deadline passed. */
+  onDeadlinePassed: () => void;
   disabled?: boolean;
   formResponse?: FormResponseDto;
   guestMode?: boolean;
@@ -25,36 +33,35 @@ export type ActionWithdrawal = {
   partialFormData: SubmitFormDto;
 };
 
+export function memberActionDeadlinePassed(result: SubmitResult): boolean {
+  return (
+    result.response.status === 403 &&
+    result.error?.message === MEMBER_ACTION_DEADLINE_PASSED
+  );
+}
+
+export function formAlreadySubmitted(result: SubmitResult): boolean {
+  return (
+    result.response.status === 400 &&
+    result.error?.message === FORM_ALREADY_SUBMITTED
+  );
+}
+
 export const useTaskFormHandlers = ({
   action,
   onCompleteAction,
   onOptOutAction,
-  guestMode = false,
-}: Pick<
-  ActionTaskPanelPropsShared,
-  "action" | "onCompleteAction" | "onOptOutAction" | "guestMode"
->) => {
+}: Pick<ActionTaskPanelPropsShared, "onCompleteAction" | "onOptOutAction"> & {
+  action: Pick<ActionDto, "id" | "taskFormId">;
+}) => {
   const [actionError, setActionError] = useState<string | null>(null);
+  const recordRelation = useRecordActionRelation();
   const invalidateVisibilityContext = useInvalidateVisibilityContext();
 
-  const handleComplete = useCallback(
-    async (sendComplete: boolean = true) => {
-      if (sendComplete && !guestMode) {
-        const req = await actionsComplete({
-          path: { id: action.id },
-        });
-        if (req.error) {
-          setActionError("Something went wrong. Please try again.");
-          return false;
-        }
-        // Bumped `completedActionCount`.
-        invalidateVisibilityContext();
-      }
-      setActionError(null);
-      return onCompleteAction();
-    },
-    [action, guestMode, onCompleteAction, invalidateVisibilityContext],
-  );
+  const handleComplete = useCallback(() => {
+    setActionError(null);
+    return onCompleteAction();
+  }, [onCompleteAction]);
 
   const handleAbandonAction = useCallback(
     async (withdrawal: ActionWithdrawal) => {
@@ -74,13 +81,15 @@ export const useTaskFormHandlers = ({
         return;
       }
       setActionError(null);
+      recordRelation(action.id, "declined");
+      invalidateVisibilityContext();
       onOptOutAction();
     },
-    [action, onOptOutAction],
+    [action, onOptOutAction, recordRelation, invalidateVisibilityContext],
   );
 
   return {
-    handleCompleteWithTracking: handleComplete,
+    handleComplete,
     handleAbandonAction,
     actionError,
   };

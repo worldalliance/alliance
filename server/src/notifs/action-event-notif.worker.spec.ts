@@ -1,4 +1,5 @@
 import { Temporal } from "@js-temporal/polyfill";
+import { secondsInDay, secondsInHour } from "date-fns/constants";
 import { ActionsService } from "src/actions/actions.service";
 import { ActionDto } from "src/actions/dto/action.dto";
 import {
@@ -12,21 +13,22 @@ import {
   ReminderGroupTimingMode,
   getGroupSendTimeForUser,
 } from "src/actions/entities/reminder-group.entity";
-import { MailService } from "src/mail/mail.service";
-import { MmsService } from "src/mms/mms.service";
-import { PushService } from "src/push/push.service";
+import { NotificationPreferencesService } from "src/notification-settings/notification-preferences.service";
 import { User } from "src/user/entities/user.entity";
 import { DataSource, type Repository } from "typeorm";
+import { ActionEventNotifDeliveryService } from "./action-event-notif-delivery.service";
 import { ActionEventNotifWorker } from "./action-event-notif.worker";
 import {
   ActionEventReminderService,
-  assertExcludePreviouslyNotifiedAllowed,
   comparePlansForDispatch,
   dropPlansPreemptedInSameCycle,
   tasksNotYetNotified,
 } from "./action-event-reminder.service";
 import { NotificationPlan } from "./dto/notification-plan.dto";
 import { ActionEventNotif } from "./entities/action-event-notif.entity";
+import { ExperimentAssignment } from "./entities/experiment-assignment.entity";
+import { MissedSuitePlanService } from "./missed-suite-plans.service";
+import { NotifsService } from "./notifs.service";
 
 describe("ActionEventNotifWorker.processCustomReminderText", () => {
   let worker: ActionEventNotifWorker;
@@ -49,12 +51,14 @@ describe("ActionEventNotifWorker.processCustomReminderText", () => {
 
     worker = new ActionEventNotifWorker(
       {} as DataSource,
-      {} as MailService,
-      {} as MmsService,
       actionsService,
       {} as Repository<ActionEventNotif>,
       {} as ActionEventReminderService,
-      {} as PushService,
+      {} as MissedSuitePlanService,
+      {} as ActionEventNotifDeliveryService,
+      {} as NotifsService,
+      {} as NotificationPreferencesService,
+      {} as Repository<ExperimentAssignment>,
     );
   });
 
@@ -107,12 +111,11 @@ describe("ActionEventNotifWorker.processCustomReminderText", () => {
       const result = await worker.processCustomReminderText(
         template,
         plan,
-        "cid-123",
         uncompletedTasks,
       );
 
       expect(result).toBe(
-        "Hi Alex Example (Alex Example), action Test Action has 3 tasks due in 2 days and 6 hours. Link: https://app.example.org/tasks?cid=cid-123",
+        "Hi Alex Example (Alex Example), action Test Action has 3 tasks due in 2 days and 6 hours. Link: https://app.example.org/tasks",
       );
     } finally {
       jest.useRealTimers();
@@ -158,16 +161,13 @@ describe("ActionEventNotifWorker.processCustomReminderText", () => {
       const result = await worker.processCustomReminderText(
         template,
         plan,
-        "cid-456",
         uncompletedTasks,
       );
 
       expect(result).toBe(
-        "Hello Cher! Deadline in [err] / [err]. Tasks left: 1. Visit https://app.example.org/tasks?cid=cid-456",
+        "Hello Cher! Deadline in [err] / [err]. Tasks left: 1. Visit https://app.example.org/tasks",
       );
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "User name has less than 2 parts: Cher",
-      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith("User 9 has no last name");
     } finally {
       consoleErrorSpy.mockRestore();
     }
@@ -185,12 +185,14 @@ describe("ActionEventNotifWorker.findUncompletedTasksForPlan", () => {
 
     worker = new ActionEventNotifWorker(
       {} as DataSource,
-      {} as MailService,
-      {} as MmsService,
       actionsService,
       {} as Repository<ActionEventNotif>,
       {} as ActionEventReminderService,
-      {} as PushService,
+      {} as MissedSuitePlanService,
+      {} as ActionEventNotifDeliveryService,
+      {} as NotifsService,
+      {} as NotificationPreferencesService,
+      {} as Repository<ExperimentAssignment>,
     );
   });
 
@@ -300,8 +302,8 @@ describe("getGroupSendTimeForUser (relative range)", () => {
       user,
       buildGroup({
         deadlineEvent,
-        relative_range_start_seconds_from_deadline: 3 * 24 * 60 * 60,
-        relative_range_end_seconds_from_deadline: 1 * 24 * 60 * 60,
+        relative_range_start_seconds_from_deadline: 3 * secondsInDay,
+        relative_range_end_seconds_from_deadline: secondsInDay,
       }),
     );
 
@@ -326,8 +328,8 @@ describe("getGroupSendTimeForUser (relative range)", () => {
       user,
       buildGroup({
         deadlineEvent,
-        relative_range_start_seconds_from_deadline: 6 * 60 * 60,
-        relative_range_end_seconds_from_deadline: 4 * 60 * 60,
+        relative_range_start_seconds_from_deadline: 6 * secondsInHour,
+        relative_range_end_seconds_from_deadline: 4 * secondsInHour,
       }),
     );
 
@@ -347,8 +349,8 @@ describe("getGroupSendTimeForUser (relative range)", () => {
         user,
         buildGroup({
           deadlineEvent: undefined,
-          relative_range_start_seconds_from_deadline: 2 * 24 * 60 * 60,
-          relative_range_end_seconds_from_deadline: 24 * 60 * 60,
+          relative_range_start_seconds_from_deadline: 2 * secondsInDay,
+          relative_range_end_seconds_from_deadline: secondsInDay,
         }),
       ),
     ).toThrow(
@@ -380,8 +382,8 @@ describe("getGroupSendTimeForUser (relative range)", () => {
       buildGroup({
         deadlineEvent,
         timingAnchorEvent,
-        relative_range_start_seconds_from_deadline: 3 * 24 * 60 * 60,
-        relative_range_end_seconds_from_deadline: 1 * 24 * 60 * 60,
+        relative_range_start_seconds_from_deadline: 3 * secondsInDay,
+        relative_range_end_seconds_from_deadline: secondsInDay,
       }),
     );
 
@@ -440,7 +442,7 @@ describe("getGroupSendTimeForUser (from deadline)", () => {
       buildGroup({
         deadlineEvent,
         timingAnchorEvent,
-        sendAtSecondsFromDeadline: 3600,
+        sendAtSecondsFromDeadline: secondsInHour,
       }),
     );
 
@@ -450,7 +452,7 @@ describe("getGroupSendTimeForUser (from deadline)", () => {
   it("falls back to deadlineEvent when timingAnchorEvent is unset", () => {
     const sendTime = getGroupSendTimeForUser(
       user,
-      buildGroup({ deadlineEvent, sendAtSecondsFromDeadline: 3600 }),
+      buildGroup({ deadlineEvent, sendAtSecondsFromDeadline: secondsInHour }),
     );
 
     expect(sendTime?.toISOString()).toBe("2024-04-15T17:00:00.000Z");
@@ -726,40 +728,5 @@ describe("tasksNotYetNotified", () => {
 
   it("ignores covered actions that are no longer among the tasks", () => {
     expect(tasksNotYetNotified(tasks, [[99]])).toEqual(tasks);
-  });
-});
-
-describe("assertExcludePreviouslyNotifiedAllowed", () => {
-  it("rejects excludePreviouslyNotified on a group-leads cohort", () => {
-    expect(() =>
-      assertExcludePreviouslyNotifiedAllowed({
-        cohortType: ReminderCohortType.GroupLeadsWithUncompleted,
-        excludePreviouslyNotified: true,
-      }),
-    ).toThrow(
-      "excludePreviouslyNotified is not supported for group-leads cohorts",
-    );
-  });
-
-  it("allows a group-leads cohort without the flag", () => {
-    expect(() =>
-      assertExcludePreviouslyNotifiedAllowed({
-        cohortType: ReminderCohortType.GroupLeadsWithUncompleted,
-        excludePreviouslyNotified: false,
-      }),
-    ).not.toThrow();
-  });
-
-  it.each([
-    ReminderCohortType.AllUncompleted,
-    ReminderCohortType.Tag,
-    ReminderCohortType.Custom,
-  ])("allows the flag on the personally-notifying %s cohort", (cohortType) => {
-    expect(() =>
-      assertExcludePreviouslyNotifiedAllowed({
-        cohortType,
-        excludePreviouslyNotified: true,
-      }),
-    ).not.toThrow();
   });
 });

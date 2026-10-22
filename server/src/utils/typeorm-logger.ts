@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { AnalyticsEvent } from "@alliance/common/analytics";
 import { Logger as NestLogger } from "@nestjs/common";
-import { PostHog } from "posthog-node";
+import { millisecondsInSecond } from "date-fns/constants";
 import client from "prom-client";
 import { Logger as TypeOrmLogger } from "typeorm";
 import { register } from "../metrics";
+import { posthogClientIfEnabled } from "../posthog/posthog-client";
 import { captureEvent } from "./posthog";
 import { requestContext } from "./request-context";
 
@@ -38,16 +39,7 @@ function getQueryType(query: string): string {
 
 export class AppTypeOrmLogger implements TypeOrmLogger {
   private readonly logger = new NestLogger("TypeORM");
-  private readonly client?: PostHog;
-
-  constructor() {
-    if (!process.env.POSTHOG_KEY) {
-      return;
-    }
-    this.client = new PostHog(process.env.POSTHOG_KEY!, {
-      host: "https://us.i.posthog.com",
-    });
-  }
+  private readonly client = posthogClientIfEnabled();
 
   logQuery(query: string) {
     const type = getQueryType(query);
@@ -59,7 +51,7 @@ export class AppTypeOrmLogger implements TypeOrmLogger {
     this.logger.error({
       event: "db.query_error",
       sql: query,
-      params: this.safeParams(parameters),
+      params: parameters?.map((p) => (p === null ? "null" : typeof p)),
       error: error instanceof Error ? error.message : error,
       handler: ctx?.handler,
       request_id: ctx?.requestId,
@@ -76,14 +68,15 @@ export class AppTypeOrmLogger implements TypeOrmLogger {
     const source = ctx ? (ctx.route ?? "http") : "background";
 
     const type = getQueryType(query);
-    dbSlowQueryDurationSeconds.labels(type, source).observe(time / 1000);
+    dbSlowQueryDurationSeconds
+      .labels(type, source)
+      .observe(time / millisecondsInSecond);
 
     if (!this.client) return;
     if (time < POSTHOG_SLOW_QUERY_MS) return;
 
     captureEvent({
       client: this.client,
-      distinctId: ctx?.userId ? `user:${ctx.userId}` : "server",
       event: AnalyticsEvent.DbSlowQuery,
       properties: {
         $process_person_profile: false,
@@ -110,13 +103,5 @@ export class AppTypeOrmLogger implements TypeOrmLogger {
   log(level: "log" | "info" | "warn", message: any) {
     if (level === "warn") this.logger.warn(message);
     else this.logger.log(message);
-  }
-
-  private safeParams(params?: any[]) {
-    if (!params) return undefined;
-    return params.map((p) => {
-      if (typeof p === "string" && p.length > 256) return "[long-string]";
-      return p;
-    });
   }
 }

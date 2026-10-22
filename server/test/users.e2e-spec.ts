@@ -1,32 +1,57 @@
+import { AnalyticsEvent } from "@alliance/common/analytics";
+import { publicDisplayName } from "@alliance/common/displayName";
 import { toE164 } from "@alliance/common/phone";
 import { R } from "@alliance/common/result";
 import { Temporal } from "@js-temporal/polyfill";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { milliseconds } from "date-fns";
 import { AuthService } from "src/auth/auth.service";
+import { TokenMode } from "src/auth/dto/signin.dto";
+import { JWTTokenType } from "src/auth/tokens";
 import { ContractService } from "src/contract/contract.service";
+import { softDeleteCascade } from "src/datasources/soft-delete";
 import {
   Notification,
   NotificationCategory,
 } from "src/notifs/entities/notification.entity";
-import { ShareUrl } from "src/share-urls/entities/share-url.entity";
+import { PosthogService } from "src/posthog/posthog.service";
+import {
+  ShareUrl,
+  ShareUrlKind,
+} from "src/share-urls/entities/share-url.entity";
 import { StoredInviteAssignmentKind } from "src/share-urls/invite-assignment";
+import { InviteShareUrlsService } from "src/share-urls/invite-share-urls.service";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
+import { AccountEmailService } from "src/user/account-email.service";
+import { AmbassadorInviteGoalService } from "src/user/ambassador-invite-goal.service";
+import { AmbassadorProgramService } from "src/user/ambassador-program.service";
+import { AmbassadorInviteGoal } from "src/user/entities/ambassador-invite-goal.entity";
+import {
+  ContractEvent,
+  ContractEventType,
+} from "src/user/entities/contract-event.entity";
 import {
   OnetimeInvite,
   OnetimeInviteStatus,
 } from "src/user/entities/onetime-invite.entity";
-import { UserService } from "src/user/user.service";
+import { FriendService } from "src/user/friend.service";
 import request from "supertest";
-import type { Repository } from "typeorm";
-import { Community } from "../src/community/entities/community.entity";
+import { IsNull, type Repository } from "typeorm";
+import {
+  Community,
+  loadedCommunityUsers,
+} from "../src/community/entities/community.entity";
 import { City } from "../src/geo/city.entity";
 import { GeoModule } from "../src/geo/geo.module";
 import { getImageSource } from "../src/images/images.service";
-import { FriendStatus } from "../src/user/entities/friend.entity";
+import { Friend, FriendStatus } from "../src/user/entities/friend.entity";
 import { ReferralSource, User } from "../src/user/entities/user.entity";
 import {
   createTestApp,
   giveActiveContract,
+  signAccessToken,
   TestContext,
+  waitForLockWait,
 } from "./e2e-test-utils";
 
 describe("Users (e2e)", () => {
@@ -35,9 +60,13 @@ describe("Users (e2e)", () => {
   let cityRepo: Repository<City>;
   let communityRepo: Repository<Community>;
   let onetimeInviteRepo: Repository<OnetimeInvite>;
-  let userService: UserService;
+  let accountEmailService: AccountEmailService;
+  let ambassadorProgramService: AmbassadorProgramService;
+  let ambassadorInviteGoalService: AmbassadorInviteGoalService;
+  let friendService: FriendService;
   let contractService: ContractService;
   let shareUrlsService: ShareUrlsService;
+  let inviteShareUrlsService: InviteShareUrlsService;
   let authService: AuthService;
 
   let userAId: number;
@@ -55,9 +84,13 @@ describe("Users (e2e)", () => {
     cityRepo = ctx.dataSource.getRepository(City);
     communityRepo = ctx.dataSource.getRepository(Community);
     onetimeInviteRepo = ctx.dataSource.getRepository(OnetimeInvite);
-    userService = ctx.app.get(UserService);
+    accountEmailService = ctx.app.get(AccountEmailService);
+    ambassadorProgramService = ctx.app.get(AmbassadorProgramService);
+    ambassadorInviteGoalService = ctx.app.get(AmbassadorInviteGoalService);
+    friendService = ctx.app.get(FriendService);
     contractService = ctx.app.get(ContractService);
     shareUrlsService = ctx.app.get(ShareUrlsService);
+    inviteShareUrlsService = ctx.app.get(InviteShareUrlsService);
     authService = ctx.app.get(AuthService);
     const userA = userRepo.create({
       name: "Friend A",
@@ -66,10 +99,7 @@ describe("Users (e2e)", () => {
     });
     await userRepo.save(userA);
     userAId = userA.id;
-    userAToken = ctx.jwtService.sign(
-      { sub: userAId, email: userA.email, name: userA.name },
-      { secret: process.env.JWT_SECRET },
-    );
+    userAToken = signAccessToken(ctx.jwtService, userA);
 
     const userB = userRepo.create({
       name: "Friend B",
@@ -79,10 +109,7 @@ describe("Users (e2e)", () => {
 
     await userRepo.save(userB);
     userBId = userB.id;
-    userBToken = ctx.jwtService.sign(
-      { sub: userBId, email: userB.email, name: userB.name },
-      { secret: process.env.JWT_SECRET },
-    );
+    userBToken = signAccessToken(ctx.jwtService, userB);
 
     communityLedByUserA = await communityRepo.save(
       communityRepo.create({
@@ -102,14 +129,7 @@ describe("Users (e2e)", () => {
       }),
     );
     communityMemberId = communityMember.id;
-    communityMemberToken = ctx.jwtService.sign(
-      {
-        sub: communityMemberId,
-        email: communityMember.email,
-        name: communityMember.name,
-      },
-      { secret: process.env.JWT_SECRET },
-    );
+    communityMemberToken = signAccessToken(ctx.jwtService, communityMember);
 
     communityLedByUserB = await communityRepo.save(
       communityRepo.create({
@@ -131,6 +151,79 @@ describe("Users (e2e)", () => {
       .set("Authorization", `Bearer ${userAToken}`);
 
     expect(res.status).toBe(201);
+  });
+
+  it("lists a community's members as messageable to its leader, and the leader to its members", async () => {
+    const messageableIds = async (token: string) =>
+      (
+        await request(ctx.app.getHttpServer())
+          .get("/user/listMessageableUsers")
+          .set("Authorization", `Bearer ${token}`)
+          .expect(200)
+      ).body.map((user: { id: number }) => user.id);
+
+    expect(await messageableIds(userAToken)).toContain(communityMemberId);
+    expect(await messageableIds(communityMemberToken)).toContain(userAId);
+    expect(await messageableIds(userBToken)).not.toContain(communityMemberId);
+  });
+
+  it("returns the caller's groups from /auth/me", async () => {
+    const res = await request(ctx.app.getHttpServer())
+      .get("/auth/me")
+      .set("Authorization", `Bearer ${communityMemberToken}`)
+      .expect(200);
+
+    expect(res.body.user.communities.map((c: { id: number }) => c.id)).toEqual([
+      communityLedByUserA.id,
+    ]);
+  });
+
+  it("lists every member's groups on the admin graph", async () => {
+    const res = await request(ctx.app.getHttpServer())
+      .get("/user/list-graph")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .expect(200);
+
+    const member = res.body.find(
+      (user: { id: number }) => user.id === communityMemberId,
+    );
+    expect(member.communities.map((c: { id: number }) => c.id)).toEqual([
+      communityLedByUserA.id,
+    ]);
+  });
+
+  it("lists a group assignment member's groups with their leaders", async () => {
+    const queued = await userRepo.save(
+      userRepo.create({
+        name: "Queued Member",
+        email: "queued.member@example.com",
+        password: "Password123!",
+        communities: [communityLedByUserA],
+        undergoingGroupAssignment: true,
+      }),
+    );
+    await giveActiveContract(ctx, queued.id);
+
+    try {
+      const res = await request(ctx.app.getHttpServer())
+        .post("/user/groupAssignment/members")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(201);
+
+      const member = res.body.find(
+        (user: { id: number }) => user.id === queued.id,
+      );
+      expect(
+        member.communities.map(
+          (c: { id: number; leaders: { id: number }[] }) => ({
+            id: c.id,
+            leaderIds: c.leaders.map((leader) => leader.id),
+          }),
+        ),
+      ).toEqual([{ id: communityLedByUserA.id, leaderIds: [userAId] }]);
+    } finally {
+      await userRepo.delete(queued.id);
+    }
   });
 
   describe("phone number on /user/update", () => {
@@ -351,6 +444,109 @@ describe("Users (e2e)", () => {
     );
   });
 
+  describe("name on /user/update", () => {
+    const update = (body: Record<string, unknown>) =>
+      request(ctx.app.getHttpServer())
+        .post("/user/update")
+        .send(body)
+        .set("Authorization", `Bearer ${userAToken}`);
+
+    it("trims surrounding whitespace from a new name", async () => {
+      const res = await update({ name: "  Ada Lovelace  " });
+
+      expect(res.status).toBe(201);
+      expect((await userRepo.findOneByOrFail({ id: userAId })).name).toBe(
+        "Ada Lovelace",
+      );
+    });
+
+    it("rejects a name that is blank after trimming", async () => {
+      await update({ name: "Original Name" });
+
+      const res = await update({ name: "   " });
+
+      expect(res.status).toBe(400);
+      expect((await userRepo.findOneByOrFail({ id: userAId })).name).toBe(
+        "Original Name",
+      );
+    });
+  });
+
+  describe("time zone on /user/update", () => {
+    const timeZoneOf = async (id: number) =>
+      (await userRepo.findOneByOrFail({ id })).timeZone;
+
+    const update = (body: Record<string, unknown>) =>
+      request(ctx.app.getHttpServer())
+        .post("/user/update")
+        .send(body)
+        .set("Authorization", `Bearer ${userAToken}`);
+
+    it.each(["Europe/Berlin", "US/Pacific", "Etc/GMT+8", "GMT"])(
+      "stores %p as given",
+      async (timeZone) => {
+        const res = await update({ timeZone });
+
+        expect(res.status).toBe(201);
+        expect(await timeZoneOf(userAId)).toBe(timeZone);
+      },
+    );
+
+    it("keeps the saved value for null and saves the rest", async () => {
+      await update({ timeZone: "Europe/Berlin", anonymous: true });
+
+      const res = await update({ timeZone: null, anonymous: false });
+
+      expect(res.status).toBe(201);
+      expect(await timeZoneOf(userAId)).toBe("Europe/Berlin");
+      expect((await userRepo.findOneByOrFail({ id: userAId })).anonymous).toBe(
+        false,
+      );
+    });
+
+    it.each(["not-a-zone", "-08:00", "america/new_york", "", 42])(
+      "rejects %p and keeps the saved value",
+      async (invalid) => {
+        await update({ timeZone: "Europe/Berlin" });
+
+        const res = await update({ timeZone: invalid });
+
+        expect(res.status).toBe(400);
+        expect(await timeZoneOf(userAId)).toBe("Europe/Berlin");
+      },
+    );
+  });
+
+  describe("retired notification settings on /user/update", () => {
+    const update = (body: Record<string, unknown>) =>
+      request(ctx.app.getHttpServer())
+        .post("/user/update")
+        .send(body)
+        .set("Authorization", `Bearer ${userAToken}`);
+
+    it("ignores them", async () => {
+      const res = await update({
+        pushesForLikes: false,
+        textNotifsForActions: false,
+      });
+
+      expect(res.status).toBe(201);
+      expect(
+        await userRepo.findOneOrFail({
+          where: { id: userAId },
+          select: {
+            id: true,
+            legacyPushesForLikes: true,
+            legacyTextNotifsForActions: true,
+          },
+        }),
+      ).toMatchObject({
+        legacyPushesForLikes: true,
+        legacyTextNotifsForActions: true,
+      });
+    });
+  });
+
   describe("preferred reminder time on /user/update", () => {
     const reminderTimeOf = async (id: number) =>
       (
@@ -477,6 +673,10 @@ describe("Users (e2e)", () => {
       .set("Authorization", `Bearer ${userAToken}`);
 
     expect([200, 201]).toContain(res.status);
+    expect(res.body).toEqual({
+      status: FriendStatus.Pending,
+      didReceiveRequest: false,
+    });
 
     const status = await request(ctx.app.getHttpServer())
       .get(`/user/myfriendrelationship/${userBId}`)
@@ -565,6 +765,110 @@ describe("Users (e2e)", () => {
     expect(res.body.status).toBe(FriendStatus.Accepted);
   });
 
+  it("Re-sending a request to a friend leaves the friendship accepted", async () => {
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(409);
+
+    const status = await request(ctx.app.getHttpServer())
+      .get(`/user/myfriendrelationship/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`);
+    expect(status.body.status).toBe(FriendStatus.Accepted);
+  });
+
+  it("A request from the friend who accepted leaves the friendship accepted", async () => {
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userAId}`)
+      .set("Authorization", `Bearer ${userBToken}`)
+      .expect(409);
+
+    const status = await request(ctx.app.getHttpServer())
+      .get(`/user/myfriendrelationship/${userAId}`)
+      .set("Authorization", `Bearer ${userBToken}`);
+    expect(status.body.status).toBe(FriendStatus.Accepted);
+  });
+
+  it("User A can send again after User B declines", async () => {
+    await request(ctx.app.getHttpServer())
+      .delete(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(200);
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(201);
+    await request(ctx.app.getHttpServer())
+      .patch(`/user/friends/${userAId}/decline`)
+      .set("Authorization", `Bearer ${userBToken}`)
+      .expect(200);
+
+    const capture = jest.spyOn(ctx.app.get(PosthogService), "capture");
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(201);
+    expect(capture.mock.calls.map(([{ event }]) => event)).toEqual([
+      AnalyticsEvent.FriendRequestSent,
+    ]);
+    capture.mockRestore();
+
+    const status = await request(ctx.app.getHttpServer())
+      .get(`/user/myfriendrelationship/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`);
+    expect(status.body.status).toBe(FriendStatus.Pending);
+
+    const recv = await request(ctx.app.getHttpServer())
+      .get("/user/friends/requests/received")
+      .set("Authorization", `Bearer ${userBToken}`);
+    expect(recv.body.map((u) => u.id)).toEqual([userAId]);
+
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(201);
+
+    const unread = await ctx.dataSource.getRepository(Notification).count({
+      where: {
+        user: { id: userBId },
+        category: NotificationCategory.FriendRequest,
+        readAt: IsNull(),
+      },
+    });
+    expect(unread).toBe(1);
+  });
+
+  it("User B sending a request back accepts User A's pending one", async () => {
+    const capture = jest.spyOn(ctx.app.get(PosthogService), "capture");
+    const res = await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userAId}`)
+      .set("Authorization", `Bearer ${userBToken}`)
+      .expect(201);
+    expect(res.body).toEqual({
+      status: FriendStatus.Accepted,
+      didReceiveRequest: false,
+    });
+    expect(capture.mock.calls.map(([{ event }]) => event)).toEqual([
+      AnalyticsEvent.FriendRequestAccepted,
+    ]);
+    capture.mockRestore();
+
+    for (const [token, otherId] of [
+      [userAToken, userBId],
+      [userBToken, userAId],
+    ] as const) {
+      const status = await request(ctx.app.getHttpServer())
+        .get(`/user/myfriendrelationship/${otherId}`)
+        .set("Authorization", `Bearer ${token}`);
+      expect(status.body.status).toBe(FriendStatus.Accepted);
+    }
+
+    const aFriends = await request(ctx.app.getHttpServer())
+      .get(`/user/listfriends/${userAId}`)
+      .set("Authorization", `Bearer ${userAToken}`);
+    expect(aFriends.body.map((u) => u.id)).toEqual([userBId]);
+  });
+
   it("Either user can un-friend the other", async () => {
     const res = await request(ctx.app.getHttpServer())
       .delete(`/user/friends/${userAId}`)
@@ -601,6 +905,134 @@ describe("Users (e2e)", () => {
     expect(status.body.status).toBe(FriendStatus.Declined);
   });
 
+  it("User B can send a request to User A after declining theirs", async () => {
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userAId}`)
+      .set("Authorization", `Bearer ${userBToken}`)
+      .expect(201);
+
+    const status = await request(ctx.app.getHttpServer())
+      .get(`/user/myfriendrelationship/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`);
+    expect(status.body).toEqual({
+      status: FriendStatus.Pending,
+      didReceiveRequest: true,
+    });
+
+    await request(ctx.app.getHttpServer())
+      .patch(`/user/friends/${userBId}/accept`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(200);
+
+    for (const [token, otherId] of [
+      [userAToken, userBId],
+      [userBToken, userAId],
+    ] as const) {
+      const after = await request(ctx.app.getHttpServer())
+        .get(`/user/myfriendrelationship/${otherId}`)
+        .set("Authorization", `Bearer ${token}`);
+      expect(after.body.status).toBe(FriendStatus.Accepted);
+    }
+  });
+
+  it("A request that crosses the other user's accepts it", async () => {
+    await request(ctx.app.getHttpServer())
+      .delete(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(200);
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(201);
+
+    // B's two lookups miss A's row, as if A's insert committed right after them.
+    const findOne = jest
+      .spyOn(
+        ctx.app.get<Repository<Friend>>(getRepositoryToken(Friend)),
+        "findOne",
+      )
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userAId}`)
+      .set("Authorization", `Bearer ${userBToken}`)
+      .expect(201);
+    findOne.mockRestore();
+
+    const rows = await ctx.dataSource.getRepository(Friend).find({
+      where: [
+        { requester: { id: userAId }, addressee: { id: userBId } },
+        { requester: { id: userBId }, addressee: { id: userAId } },
+      ],
+    });
+    expect(rows.map((row) => row.status)).toEqual([FriendStatus.Accepted]);
+  });
+
+  const expectRemovalMarksRequestRead = async (
+    removerToken: string,
+    removedUserId: number,
+  ) => {
+    const countUnreadRequests = () =>
+      ctx.dataSource.getRepository(Notification).count({
+        where: {
+          user: { id: userBId },
+          category: NotificationCategory.FriendRequest,
+          readAt: IsNull(),
+        },
+      });
+    await request(ctx.app.getHttpServer())
+      .delete(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(200);
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(201);
+    expect(await countUnreadRequests()).toBe(1);
+
+    await request(ctx.app.getHttpServer())
+      .delete(`/user/friends/${removedUserId}`)
+      .set("Authorization", `Bearer ${removerToken}`)
+      .expect(200);
+
+    expect(await countUnreadRequests()).toBe(0);
+  };
+
+  it("Cancelling a request marks its notification read", async () => {
+    await expectRemovalMarksRequestRead(userAToken, userBId);
+  });
+
+  it("Removing a received request marks its notification read", async () => {
+    await expectRemovalMarksRequestRead(userBToken, userAId);
+  });
+
+  it("Un-friending marks the accepted notification read", async () => {
+    const countUnreadAccepted = () =>
+      ctx.dataSource.getRepository(Notification).count({
+        where: {
+          user: { id: userAId },
+          category: NotificationCategory.FriendRequestAccepted,
+          readAt: IsNull(),
+        },
+      });
+    const unreadBefore = await countUnreadAccepted();
+
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(201);
+    await request(ctx.app.getHttpServer())
+      .patch(`/user/friends/${userAId}/accept`)
+      .set("Authorization", `Bearer ${userBToken}`)
+      .expect(200);
+    await request(ctx.app.getHttpServer())
+      .delete(`/user/friends/${userAId}`)
+      .set("Authorization", `Bearer ${userBToken}`)
+      .expect(200);
+
+    expect(await countUnreadAccepted()).toBe(unreadBefore);
+  });
+
   /* ────────────────────────────────────────────────────────────
    *  Auth guard checks
    * ──────────────────────────────────────────────────────────── */
@@ -620,6 +1052,12 @@ describe("Users (e2e)", () => {
     expect(res.status).toBe(400);
   });
 
+  it("User cannot be made friends with themself automatically", async () => {
+    await expect(
+      friendService.makeFriendsAutomated(userAId, userAId),
+    ).rejects.toThrow(/violates check constraint/);
+  });
+
   /* ──────────────────────────────────────────────────────────── */
 
   it("user can sign and suspend the contract", async () => {
@@ -637,6 +1075,28 @@ describe("Users (e2e)", () => {
       .expect(201);
 
     expect(typeof suspend.text === "string" || suspend.body).toBeTruthy();
+  });
+
+  it("trims the signed name and rejects a blank one", async () => {
+    const member = await userRepo.save(
+      userRepo.create({
+        name: "Untrimmed Member",
+        email: "untrimmed.member@example.com",
+        password: "Password123!",
+      }),
+    );
+    const token = signAccessToken(ctx.jwtService, member);
+    const sign = (signedName: string) =>
+      request(ctx.app.getHttpServer())
+        .post(`/contract/sign/${ctx.defaultContractId}`)
+        .send({ signedName })
+        .set("Authorization", `Bearer ${token}`);
+
+    await sign("   ").expect(400);
+    await sign("  Jane Doe  ").expect(201);
+    expect((await userRepo.findOneByOrFail({ id: member.id })).name).toBe(
+      "Jane Doe",
+    );
   });
 
   it("counts one-time, reusable invite, and referral-link recruits after they sign the contract", async () => {
@@ -690,18 +1150,21 @@ describe("Users (e2e)", () => {
       }),
     );
     const now = new Date();
-    const goal = await userService.createAmbassadorInviteGoal(
+    const goal = await ambassadorInviteGoalService.createAmbassadorInviteGoal(
       {
         targetSuccessfulRecruits: 3,
         startAt: now.toISOString(),
-        dueAt: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+        dueAt: new Date(
+          now.getTime() + milliseconds({ days: 1 }),
+        ).toISOString(),
       },
       ambassador.id,
     );
 
-    const beforeSigning = await userService.getAmbassadorInviteDashboard(
-      ambassador.id,
-    );
+    const beforeSigning =
+      await ambassadorInviteGoalService.getAmbassadorInviteDashboard(
+        ambassador.id,
+      );
     expect(beforeSigning.stats.totalSuccessfulRecruits).toBe(0);
     expect(
       beforeSigning.goals.find(
@@ -712,22 +1175,26 @@ describe("Users (e2e)", () => {
     await contractService.signContract({
       userId: recruit.id,
       signedName: recruit.name,
+      viaTaskForm: false,
       contractId: ctx.defaultContractId,
     });
     await contractService.signContract({
       userId: reusableInviteRecruit.id,
       signedName: reusableInviteRecruit.name,
+      viaTaskForm: false,
       contractId: ctx.defaultContractId,
     });
     await contractService.signContract({
       userId: referralLinkRecruit.id,
       signedName: referralLinkRecruit.name,
+      viaTaskForm: false,
       contractId: ctx.defaultContractId,
     });
 
-    const afterSigning = await userService.getAmbassadorInviteDashboard(
-      ambassador.id,
-    );
+    const afterSigning =
+      await ambassadorInviteGoalService.getAmbassadorInviteDashboard(
+        ambassador.id,
+      );
     expect(afterSigning.stats.totalSuccessfulRecruits).toBe(3);
     expect(
       afterSigning.goals.find(
@@ -735,17 +1202,287 @@ describe("Users (e2e)", () => {
       )?.stats.goalSuccessfulRecruits,
     ).toBe(3);
 
-    await userService.upsertAmbassadorProgramMember({
+    await ambassadorProgramService.upsertAmbassadorProgramMember({
       userId: ambassador.id,
       activeParticipant: true,
     });
     const programMember = (
-      await userService.getAmbassadorProgramDashboard()
+      await ambassadorProgramService.getAmbassadorProgramDashboard()
     ).members.find((member) => member.userId === ambassador.id);
     expect(programMember?.inviteStats?.totals.totalSuccessfulRecruits).toBe(3);
     expect(
       programMember?.inviteStats?.currentGoal?.stats.goalSuccessfulRecruits,
     ).toBe(3);
+  });
+
+  it("counts invites and recruits the same way for all-time totals and a goal's window", async () => {
+    const day = milliseconds({ days: 1 });
+    const now = Date.now();
+    const startAt = new Date(now - 10 * day);
+    const dueAt = new Date(now - milliseconds({ minutes: 1 }));
+    const inside = new Date(now - 7 * day);
+    const before = new Date(now - 12 * day);
+
+    const ambassador = await userRepo.save(
+      userRepo.create({
+        name: "Window Ambassador",
+        email: "window.ambassador@example.com",
+        password: "Password123!",
+        ambassador: true,
+      }),
+    );
+    const goalRepo = ctx.dataSource.getRepository(AmbassadorInviteGoal);
+    const goal = await goalRepo.save({
+      ambassador,
+      targetSuccessfulRecruits: 5,
+      startAt,
+      dueAt,
+    });
+    const earlierGoal = await goalRepo.save({
+      ambassador,
+      targetSuccessfulRecruits: 5,
+      startAt: new Date(now - 14 * day),
+      dueAt: new Date(now - 11 * day),
+    });
+
+    const saveInvite = async (params: {
+      code: string;
+      createdAt: Date;
+      used: boolean;
+      deleted?: boolean;
+    }) => {
+      const invite = await onetimeInviteRepo.save(
+        onetimeInviteRepo.create({
+          invitee: params.code,
+          code: params.code,
+          invitingUser: ambassador,
+          status: params.used
+            ? OnetimeInviteStatus.LINK_USED
+            : OnetimeInviteStatus.LINK_UNUSED,
+        }),
+      );
+      await onetimeInviteRepo.update(invite.id, {
+        createdAt: params.createdAt,
+        deletedAt: params.deleted ? params.createdAt : null,
+      });
+      if (!params.used) return;
+      await userRepo.save(
+        userRepo.create({
+          name: "Window Invitee",
+          email: `${params.code.toLowerCase()}@example.com`,
+          password: "Password123!",
+          referredByInvite: invite,
+          referralSource: ReferralSource.OnetimeInvite,
+        }),
+      );
+    };
+    await saveInvite({ code: "WINDOW-USED", createdAt: inside, used: true });
+    await saveInvite({ code: "WINDOW-OPEN", createdAt: inside, used: false });
+    await saveInvite({ code: "WINDOW-AT-DUE", createdAt: dueAt, used: false });
+    await saveInvite({
+      code: "WINDOW-AT-START",
+      createdAt: startAt,
+      used: false,
+    });
+    await saveInvite({ code: "WINDOW-BEFORE", createdAt: before, used: true });
+    await saveInvite({
+      code: "WINDOW-DELETED",
+      createdAt: inside,
+      used: true,
+      deleted: true,
+    });
+
+    const shareUrlRepo = ctx.dataSource.getRepository(ShareUrl);
+    const saveShareUrl = async (duplicate: boolean, createdAt: Date) => {
+      const shareUrl = await shareUrlRepo.save({
+        url: "https://example.com/invite",
+        kind: ShareUrlKind.Invite,
+        userId: ambassador.id,
+        duplicate,
+      });
+      await shareUrlRepo.update(shareUrl.id, { createdAt });
+    };
+    await saveShareUrl(true, inside);
+    await saveShareUrl(true, startAt);
+    await saveShareUrl(true, dueAt);
+    await saveShareUrl(true, before);
+    await saveShareUrl(false, inside);
+
+    const saveRecruit = async (params: {
+      email: string;
+      referralSource: ReferralSource;
+      signedAt: Date | null;
+    }) => {
+      const recruit = await userRepo.save(
+        userRepo.create({
+          name: "Window Recruit",
+          email: params.email,
+          password: "Password123!",
+          referredBy: ambassador,
+          referralSource: params.referralSource,
+        }),
+      );
+      if (!params.signedAt) return;
+      await contractService.signContract({
+        userId: recruit.id,
+        signedName: recruit.name,
+        viaTaskForm: false,
+        contractId: ctx.defaultContractId,
+      });
+      await ctx.dataSource.query(
+        `UPDATE "contract_event" SET "date" = $1 WHERE "userId" = $2`,
+        [params.signedAt, recruit.id],
+      );
+    };
+    await saveRecruit({
+      email: "window.inside@example.com",
+      referralSource: ReferralSource.OnetimeInvite,
+      signedAt: inside,
+    });
+    await saveRecruit({
+      email: "window.at.start@example.com",
+      referralSource: ReferralSource.InviteShareLink,
+      signedAt: startAt,
+    });
+    await saveRecruit({
+      email: "window.at.due@example.com",
+      referralSource: ReferralSource.ReferralLink,
+      signedAt: dueAt,
+    });
+    await saveRecruit({
+      email: "window.before@example.com",
+      referralSource: ReferralSource.OnetimeInvite,
+      signedAt: before,
+    });
+    await saveRecruit({
+      email: "window.after@example.com",
+      referralSource: ReferralSource.ReferralLink,
+      signedAt: new Date(now),
+    });
+    await saveRecruit({
+      email: "window.ineligible@example.com",
+      referralSource: ReferralSource.ActionShareLink,
+      signedAt: inside,
+    });
+    await saveRecruit({
+      email: "window.unsigned@example.com",
+      referralSource: ReferralSource.InviteShareLink,
+      signedAt: null,
+    });
+
+    const allTime = {
+      totalInvitesSent: 9,
+      totalAcceptedInvites: 2,
+      totalSuccessfulRecruits: 5,
+      goalSuccessfulRecruits: 0,
+    };
+    const dashboard =
+      await ambassadorInviteGoalService.getAmbassadorInviteDashboard(
+        ambassador.id,
+      );
+    expect(dashboard.stats).toEqual(allTime);
+    const goalStats = (goalId: number) =>
+      dashboard.goals.find(({ goal: { id } }) => id === goalId)?.stats;
+    expect(goalStats(goal.id)).toEqual({
+      totalInvitesSent: 7,
+      totalAcceptedInvites: 1,
+      totalSuccessfulRecruits: 3,
+      goalSuccessfulRecruits: 3,
+    });
+    expect(goalStats(earlierGoal.id)).toEqual({
+      totalInvitesSent: 2,
+      totalAcceptedInvites: 1,
+      totalSuccessfulRecruits: 1,
+      goalSuccessfulRecruits: 1,
+    });
+
+    const otherAmbassador = await userRepo.save(
+      userRepo.create({
+        name: "Other Window Ambassador",
+        email: "other.window.ambassador@example.com",
+        password: "Password123!",
+        ambassador: true,
+      }),
+    );
+    await onetimeInviteRepo.save(
+      onetimeInviteRepo.create({
+        invitee: "OTHER-WINDOW",
+        code: "OTHER-WINDOW",
+        status: OnetimeInviteStatus.LINK_UNUSED,
+        invitingUser: otherAmbassador,
+      }),
+    );
+    for (const { id } of [ambassador, otherAmbassador]) {
+      await ambassadorProgramService.upsertAmbassadorProgramMember({
+        userId: id,
+        activeParticipant: true,
+      });
+    }
+    const { members } =
+      await ambassadorProgramService.getAmbassadorProgramDashboard();
+    const totalsOf = (userId: number) =>
+      members.find((member) => member.userId === userId)?.inviteStats?.totals;
+    expect(totalsOf(ambassador.id)).toEqual(allTime);
+    expect(totalsOf(otherAmbassador.id)).toEqual({
+      totalInvitesSent: 1,
+      totalAcceptedInvites: 0,
+      totalSuccessfulRecruits: 0,
+      goalSuccessfulRecruits: 0,
+    });
+
+    await ambassadorInviteGoalService.sendDueAmbassadorInviteGoalNotifications();
+    const notifications = await ctx.dataSource
+      .getRepository(Notification)
+      .findBy({ user: { id: ambassador.id } });
+    expect(notifications.map(({ message }) => message)).toContain(
+      "Your recruiting goal ended. You reached 60% of your goal (3/5 successful recruits).",
+    );
+  });
+
+  it("sends an ambassador's halfway goal notification once, at its halfway time", async () => {
+    const now = Date.now();
+    const ambassador = await userRepo.save(
+      userRepo.create({
+        name: "Halfway Ambassador",
+        email: "halfway.ambassador@example.com",
+        password: "Password123!",
+        ambassador: true,
+        timeZone: "UTC",
+        // Outside the goal window, so the midpoint is the send time.
+        preferredReminderTime: Temporal.Instant.fromEpochMilliseconds(
+          now + milliseconds({ hours: 12 }),
+        )
+          .toZonedDateTimeISO("UTC")
+          .toPlainTime(),
+      }),
+    );
+    const goal = await ctx.dataSource.getRepository(AmbassadorInviteGoal).save({
+      ambassador,
+      targetSuccessfulRecruits: 4,
+      startAt: new Date(now - milliseconds({ minutes: 2 })),
+      dueAt: new Date(now + milliseconds({ minutes: 1 })),
+    });
+
+    await ambassadorInviteGoalService.sendDueAmbassadorInviteGoalNotifications();
+    await ambassadorInviteGoalService.sendDueAmbassadorInviteGoalNotifications();
+
+    const notifications = await ctx.dataSource
+      .getRepository(Notification)
+      .findBy({ groupingKey: `ambassador-invite-goal:${goal.id}:halfway` });
+    expect(
+      notifications.map(({ message, sendTime, category }) => ({
+        message,
+        sendTime,
+        category,
+      })),
+    ).toEqual([
+      {
+        message:
+          "You have 1 day left to successfully invite 4 more people and reach your goal of 4.",
+        sendTime: new Date(now - milliseconds({ seconds: 30 })),
+        category: NotificationCategory.AmbassadorInviteGoal,
+      },
+    ]);
   });
 
   describe("signContract behavior", () => {
@@ -764,11 +1501,45 @@ describe("Users (e2e)", () => {
         name: params.name,
         email: params.email,
         password: "Password123!",
-        mode: "header",
+        mode: TokenMode.Header,
         timeZone: "America/Los_Angeles",
         referralCode: sid,
       });
     };
+
+    it("names the member after their first signing outside a task form", async () => {
+      const member = await userRepo.save(
+        userRepo.create({
+          name: "Provider Name",
+          email: "signature.name@example.com",
+          password: null,
+        }),
+      );
+      const nameOf = async () =>
+        (await userRepo.findOneByOrFail({ id: member.id })).name;
+      const sign = (signedName: string) =>
+        contractService.signContract({
+          userId: member.id,
+          signedName,
+          contractId: ctx.defaultContractId,
+          viaTaskForm: false,
+        });
+
+      await contractService.signContract({
+        userId: member.id,
+        signedName: null,
+        contractId: ctx.defaultContractId,
+        viaTaskForm: true,
+      });
+      expect(await nameOf()).toBe("Provider Name");
+
+      await sign("Signed Name");
+      expect(await nameOf()).toBe("Signed Name");
+
+      await contractService.suspendContract({ userId: member.id });
+      await sign("Later Name");
+      expect(await nameOf()).toBe("Signed Name");
+    });
 
     it("joins community from referredByInvite when signing contract for first time", async () => {
       // Create a new user with an invite
@@ -816,6 +1587,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: newUser.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -826,7 +1598,7 @@ describe("Users (e2e)", () => {
       });
 
       expect(
-        updatedUser?.communities.some((c) => c.id === inviteCommunity.id),
+        updatedUser?.communities?.some((c) => c.id === inviteCommunity.id),
       ).toBe(true);
 
       // Verify notifications were sent to community leaders
@@ -843,6 +1615,107 @@ describe("Users (e2e)", () => {
             n.message.includes("joined the Alliance"),
         ),
       ).toBe(true);
+    });
+
+    it("keeps a deleted invite's group placement", async () => {
+      const inviter = await userRepo.save(
+        userRepo.create({
+          name: "Placing Inviter",
+          email: "placing.inviter@example.com",
+          password: "Password123!",
+        }),
+      );
+      const community = await communityRepo.save(
+        communityRepo.create({
+          name: "Placing Group",
+          description: "Placing",
+          leaders: [inviter],
+          users: [inviter],
+        }),
+      );
+      const invite = await onetimeInviteRepo.save(
+        onetimeInviteRepo.create({
+          invitee: "Placed",
+          code: "PLACED-CODE",
+          status: OnetimeInviteStatus.LINK_UNUSED,
+          invitingUser: inviter,
+          community,
+        }),
+      );
+      const placed = await authService.register({
+        name: "Placed Member",
+        email: "placed.member@example.com",
+        password: "Password123!",
+        mode: TokenMode.Header,
+        timeZone: "America/Los_Angeles",
+        referralCode: invite.code,
+      });
+
+      await request(ctx.app.getHttpServer())
+        .delete(`/user/onetimeInvites/${invite.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+      await contractService.signContract({
+        userId: placed.id,
+        signedName: "Placed Member",
+        viaTaskForm: false,
+        contractId: ctx.defaultContractId,
+      });
+
+      expect(
+        await userRepo.findOneOrFail({
+          where: { id: placed.id },
+          relations: { communities: true },
+        }),
+      ).toMatchObject({
+        communities: [expect.objectContaining({ id: community.id })],
+      });
+    });
+
+    it("shows a deleted invite's live inviter in the admin user detail", async () => {
+      const inviter = await userRepo.save(
+        userRepo.create({
+          name: "Detail Inviter",
+          email: "detail.inviter@example.com",
+          password: "Password123!",
+        }),
+      );
+      const invite = await onetimeInviteRepo.save(
+        onetimeInviteRepo.create({
+          invitee: "Detail",
+          code: "DETAIL-CODE",
+          status: OnetimeInviteStatus.LINK_USED,
+          invitingUser: inviter,
+        }),
+      );
+      const invited = await userRepo.save(
+        userRepo.create({
+          name: "Detail Invited",
+          email: "detail.invited@example.com",
+          password: "Password123!",
+          referredByInvite: invite,
+          referralSource: ReferralSource.OnetimeInvite,
+        }),
+      );
+      const invitedBy = async () =>
+        (
+          await request(ctx.app.getHttpServer())
+            .get(`/user/userdetail/${invited.id}`)
+            .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+            .expect(200)
+        ).body.invitedBy;
+
+      await request(ctx.app.getHttpServer())
+        .delete(`/user/onetimeInvites/${invite.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+      expect(await invitedBy()).toMatchObject({
+        kind: "user",
+        userId: inviter.id,
+      });
+
+      await userRepo.softDelete(inviter.id);
+      expect(await invitedBy()).toMatchObject({ kind: "unknown" });
     });
 
     it("joins the community selected by a reusable invite link", async () => {
@@ -863,7 +1736,7 @@ describe("Users (e2e)", () => {
         }),
       );
       const reusableInvite =
-        await shareUrlsService.createDuplicateInviteForUser(
+        await inviteShareUrlsService.createDuplicateInviteForUser(
           inviter.id,
           "Reusable community invite",
           inviteCommunity.id,
@@ -881,6 +1754,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: newUser.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -889,7 +1763,7 @@ describe("Users (e2e)", () => {
         relations: { communities: true },
       });
       expect(
-        updatedUser?.communities.some(
+        updatedUser?.communities?.some(
           (community) => community.id === inviteCommunity.id,
         ),
       ).toBe(true);
@@ -913,7 +1787,7 @@ describe("Users (e2e)", () => {
         }),
       );
       const reusableInvite =
-        await shareUrlsService.createDuplicateInviteForUser(
+        await inviteShareUrlsService.createDuplicateInviteForUser(
           inviter.id,
           "Since-deleted community invite",
           inviteCommunity.id,
@@ -924,11 +1798,15 @@ describe("Users (e2e)", () => {
         invite: reusableInvite,
       });
 
-      await shareUrlsService.deleteInviteForUser(reusableInvite.id, inviter.id);
+      await inviteShareUrlsService.deleteInviteForUser(
+        reusableInvite.id,
+        inviter.id,
+      );
 
       await contractService.signContract({
         userId: newUser.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -937,8 +1815,13 @@ describe("Users (e2e)", () => {
         relations: { communities: true, referredByShareUrl: true },
       });
       expect(updatedUser?.referredByShareUrl).toBeNull();
+      const [stored] = await ctx.dataSource.query(
+        `SELECT "referredByShareUrlId" FROM "user" WHERE id = $1`,
+        [newUser.id],
+      );
+      expect(stored.referredByShareUrlId).toBe(reusableInvite.id);
       expect(
-        updatedUser?.communities.some(
+        updatedUser?.communities?.some(
           (community) => community.id === inviteCommunity.id,
         ),
       ).toBe(true);
@@ -987,12 +1870,15 @@ describe("Users (e2e)", () => {
         name: "Deleted Group",
       });
       const reusableInvite =
-        await shareUrlsService.createDuplicateInviteForUser(
+        await inviteShareUrlsService.createDuplicateInviteForUser(
           inviter.id,
           "Doomed community invite",
           doomed.id,
         );
-      await communityRepo.delete(doomed.id);
+      await softDeleteCascade(ctx.dataSource.manager, {
+        target: Community,
+        ids: [doomed.id],
+      });
 
       const newUser = await signUpThroughInvite({
         name: "Deleted Group Invitee",
@@ -1007,6 +1893,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: newUser.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1024,7 +1911,7 @@ describe("Users (e2e)", () => {
         name: "Later Deleted Group",
       });
       const reusableInvite =
-        await shareUrlsService.createDuplicateInviteForUser(
+        await inviteShareUrlsService.createDuplicateInviteForUser(
           inviter.id,
           "Later-deleted community invite",
           doomed.id,
@@ -1036,11 +1923,15 @@ describe("Users (e2e)", () => {
       });
       expect(newUser.inviteAssignmentCommunityId).toBe(doomed.id);
 
-      await communityRepo.delete(doomed.id);
+      await softDeleteCascade(ctx.dataSource.manager, {
+        target: Community,
+        ids: [doomed.id],
+      });
 
       await contractService.signContract({
         userId: newUser.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1056,43 +1947,42 @@ describe("Users (e2e)", () => {
       expect(updatedUser?.undergoingGroupAssignment).toBe(true);
     });
 
-    it("recovers when the reusable invite group is deleted mid-signup", async () => {
+    it("drops the group a deletion commits while the signup waits on it", async () => {
       const { inviter, doomed } = await inviterWithSpareGroup({
         slug: "raced.deleted.group",
         name: "Raced Deleted Group",
       });
       const reusableInvite =
-        await shareUrlsService.createDuplicateInviteForUser(
+        await inviteShareUrlsService.createDuplicateInviteForUser(
           inviter.id,
           "Raced community invite",
           doomed.id,
         );
-      await communityRepo.delete(doomed.id);
-      // Stands in for the group being deleted after the snapshot's existence
-      // check passed but before the insert: the stale id trips the foreign key.
-      const staleSnapshot = jest
-        .spyOn(userService, "inviteAssignmentSnapshot")
-        .mockResolvedValueOnce({
-          inviteAssignmentKind: StoredInviteAssignmentKind.Community,
-          inviteAssignmentCommunityId: doomed.id,
-        });
-
+      const deletion = ctx.dataSource.createQueryRunner();
+      await deletion.startTransaction();
       let newUser: User;
-      let snapshotCalls = 0;
       try {
-        newUser = await signUpThroughInvite({
+        await softDeleteCascade(deletion.manager, {
+          target: Community,
+          ids: [doomed.id],
+        });
+        const signup = signUpThroughInvite({
           name: "Raced Deleted Group Invitee",
           email: "raced.deleted.group.invitee@example.com",
           invite: reusableInvite,
         });
+        await waitForLockWait(ctx.dataSource);
+        const [waiting]: { query: string }[] = await ctx.dataSource.query(
+          `SELECT query FROM pg_stat_activity
+           WHERE datname = current_database() AND wait_event_type = 'Lock'`,
+        );
+        expect(waiting.query).toContain("FOR KEY SHARE");
+        await deletion.commitTransaction();
+        newUser = await signup;
       } finally {
-        snapshotCalls = staleSnapshot.mock.calls.length;
-        staleSnapshot.mockRestore();
+        await deletion.release();
       }
 
-      // Without this the real check would return a null id and the assertions
-      // below would pass without the recovery path ever running.
-      expect(snapshotCalls).toBe(1);
       expect(newUser.inviteAssignmentKind).toBe(
         StoredInviteAssignmentKind.Community,
       );
@@ -1101,6 +1991,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: newUser.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1141,7 +2032,7 @@ describe("Users (e2e)", () => {
         }),
       );
       const reusableInvite =
-        await shareUrlsService.createDuplicateInviteForUser(
+        await inviteShareUrlsService.createDuplicateInviteForUser(
           inviter.id,
           "Full reusable community invite",
           fullCommunity.id,
@@ -1155,6 +2046,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: newUser.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1163,7 +2055,7 @@ describe("Users (e2e)", () => {
         relations: { communities: true },
       });
       expect(
-        updatedUser?.communities.some(
+        updatedUser?.communities?.some(
           (community) => community.id === fullCommunity.id,
         ),
       ).toBe(true);
@@ -1193,7 +2085,7 @@ describe("Users (e2e)", () => {
         }),
       );
       const reusableInvite =
-        await shareUrlsService.createDuplicateInviteForUser(
+        await inviteShareUrlsService.createDuplicateInviteForUser(
           inviter.id,
           "Uncapped community invite",
           uncappedCommunity.id,
@@ -1207,6 +2099,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: newUser.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1215,7 +2108,7 @@ describe("Users (e2e)", () => {
         relations: { communities: true },
       });
       expect(
-        updatedUser?.communities.some(
+        updatedUser?.communities?.some(
           (community) => community.id === uncappedCommunity.id,
         ),
       ).toBe(true);
@@ -1287,6 +2180,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: newUser.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1306,11 +2200,12 @@ describe("Users (e2e)", () => {
         slug: "open.invite.link",
         name: "Open Invite Link",
       });
-      const openInvite = await shareUrlsService.createDuplicateInviteForUser(
-        inviter.id,
-        "Any open group invite",
-        null,
-      );
+      const openInvite =
+        await inviteShareUrlsService.createDuplicateInviteForUser(
+          inviter.id,
+          "Any open group invite",
+          null,
+        );
       const newUser = await signUpThroughInvite({
         name: "Open Invite Link Invitee",
         email: "open.invite.link.invitee@example.com",
@@ -1323,6 +2218,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: newUser.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1381,6 +2277,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: newUser.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1391,7 +2288,7 @@ describe("Users (e2e)", () => {
       });
 
       expect(
-        updatedUser?.communities.some((c) => c.id === referrerCommunity.id),
+        updatedUser?.communities?.some((c) => c.id === referrerCommunity.id),
       ).toBe(true);
     });
 
@@ -1417,6 +2314,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: newUser.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1458,6 +2356,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: user.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1478,6 +2377,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: user.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1487,7 +2387,7 @@ describe("Users (e2e)", () => {
       });
 
       expect(
-        updatedUser?.communities.some((c) => c.id === pendingComm.id),
+        updatedUser?.communities?.some((c) => c.id === pendingComm.id),
       ).toBe(true);
       expect(updatedUser?.pendingCommunity).toBeNull();
     });
@@ -1534,6 +2434,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: user.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
       await contractService.suspendContract({ userId: user.id });
@@ -1549,6 +2450,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: user.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1557,7 +2459,7 @@ describe("Users (e2e)", () => {
         relations: { communities: true, pendingCommunity: true },
       });
 
-      expect(updatedUser?.communities.some((c) => c.id === fullComm.id)).toBe(
+      expect(updatedUser?.communities?.some((c) => c.id === fullComm.id)).toBe(
         false,
       );
       expect(updatedUser?.pendingCommunity).toBeNull();
@@ -1599,6 +2501,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: member.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1612,7 +2515,7 @@ describe("Users (e2e)", () => {
 
       // Should be removed from community
       expect(
-        updatedMember?.communities.some((c) => c.id === community.id),
+        updatedMember?.communities?.some((c) => c.id === community.id),
       ).toBe(false);
       // Should have pendingCommunity set
       expect(updatedMember?.pendingCommunity?.id).toBe(community.id);
@@ -1640,6 +2543,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: leader.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1653,10 +2557,10 @@ describe("Users (e2e)", () => {
 
       // Should still be in their own community
       expect(
-        updatedLeader?.communities.some((c) => c.id === ownCommunity.id),
+        updatedLeader?.communities?.some((c) => c.id === ownCommunity.id),
       ).toBe(true);
       expect(
-        updatedLeader?.leaderOf.some((c) => c.id === ownCommunity.id),
+        updatedLeader?.leaderOf?.some((c) => c.id === ownCommunity.id),
       ).toBe(true);
     });
 
@@ -1698,6 +2602,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: member.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
       await contractService.suspendContract({ userId: member.id });
@@ -1777,6 +2682,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: member.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
       await contractService.suspendContract({ userId: member.id });
@@ -1811,6 +2717,61 @@ describe("Users (e2e)", () => {
     expect(members.body.length).toBeGreaterThan(0);
   });
 
+  it("excludes staff from /user/members-public", async () => {
+    const staffUser = await userRepo.save(
+      userRepo.create({
+        name: "Staff Member",
+        email: `staff.member.${Date.now()}@example.com`,
+        password: "Password123!",
+        staff: true,
+        shareInfoPublicly: true,
+        profilePicture: "https://example.com/staff.png",
+      }),
+    );
+    await giveActiveContract(ctx, staffUser.id);
+
+    const nonStaffUser = await userRepo.save(
+      userRepo.create({
+        name: "Public Member",
+        email: `public.member.${Date.now()}@example.com`,
+        password: "Password123!",
+        staff: false,
+        shareInfoPublicly: true,
+        profilePicture: "https://example.com/member.png",
+      }),
+    );
+    await giveActiveContract(ctx, nonStaffUser.id);
+
+    const res = await request(ctx.app.getHttpServer())
+      .get("/user/members-public")
+      .expect(200);
+
+    const ids = res.body.map((u: { id: number }) => u.id);
+    expect(ids).not.toContain(staffUser.id);
+    expect(ids).toContain(nonStaffUser.id);
+  });
+
+  it("excludes members with a blank profile picture from /user/members-public", async () => {
+    const blankPictureUser = await userRepo.save(
+      userRepo.create({
+        name: "Blank Picture Member",
+        email: `blank.picture.${Date.now()}@example.com`,
+        password: "Password123!",
+        staff: false,
+        shareInfoPublicly: true,
+        profilePicture: " ",
+      }),
+    );
+    await giveActiveContract(ctx, blankPictureUser.id);
+
+    const res = await request(ctx.app.getHttpServer())
+      .get("/user/members-public")
+      .expect(200);
+
+    const ids = res.body.map((u: { id: number }) => u.id);
+    expect(ids).not.toContain(blankPictureUser.id);
+  });
+
   it("allows admins to list all users", async () => {
     const list = await request(ctx.app.getHttpServer())
       .get("/user/list")
@@ -1821,8 +2782,42 @@ describe("Users (e2e)", () => {
     expect(list.body.length).toBeGreaterThanOrEqual(2);
   });
 
+  it("lists a same-instant suspension over a signing as the latest event", async () => {
+    const member = await userRepo.save(
+      userRepo.create({
+        name: "Tied Member",
+        email: `tied.member.${Date.now()}@example.com`,
+        password: "Password123!",
+      }),
+    );
+    const date = new Date();
+    const contractEventRepo = ctx.dataSource.getRepository(ContractEvent);
+    await contractEventRepo.save({
+      user: { id: member.id },
+      type: ContractEventType.SIGNED,
+      date,
+      contract: { id: ctx.defaultContractId },
+    });
+    await contractEventRepo.save({
+      user: { id: member.id },
+      type: ContractEventType.SUSPENDED,
+      date,
+    });
+
+    const list = await request(ctx.app.getHttpServer())
+      .get("/user/list")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .expect(200);
+
+    const listed = list.body.find((u: { id: number }) => u.id === member.id);
+    expect(listed.hasActiveContract).toBe(false);
+    expect(listed.contractEvents).toEqual([
+      expect.objectContaining({ type: ContractEventType.SUSPENDED }),
+    ]);
+  });
+
   it("verifies email tokens via the public endpoint", async () => {
-    const token = await userService.getVerifyEmailToken(userAId);
+    const token = await accountEmailService.getVerifyEmailToken(userAId);
 
     await request(ctx.app.getHttpServer())
       .post("/user/verifyEmail")
@@ -1831,6 +2826,69 @@ describe("Users (e2e)", () => {
 
     const refreshed = await userRepo.findOne({ where: { id: userAId } });
     expect(refreshed?.emailVerified).toBe(true);
+  });
+
+  describe("GET /user/referrerProfile/:code (onetime invite)", () => {
+    it("names the invite's inviter, and nobody for an invite without one", async () => {
+      const inviter = await userRepo.findOneByOrFail({ id: userAId });
+      await onetimeInviteRepo.save([
+        onetimeInviteRepo.create({
+          invitee: "Named",
+          code: "REFERRER-WITH-INVITER",
+          status: OnetimeInviteStatus.LINK_UNUSED,
+          invitingUser: inviter,
+        }),
+        onetimeInviteRepo.create({
+          invitee: "Unnamed",
+          code: "REFERRER-NO-INVITER",
+          status: OnetimeInviteStatus.LINK_UNUSED,
+          invitingUser: null,
+        }),
+      ]);
+
+      const named = await request(ctx.app.getHttpServer())
+        .get("/user/referrerProfile/REFERRER-WITH-INVITER")
+        .expect(200);
+      expect(named.body).toMatchObject({
+        kind: "user",
+        displayName: publicDisplayName(inviter),
+      });
+      await request(ctx.app.getHttpServer())
+        .get("/user/referrerProfile/REFERRER-NO-INVITER")
+        .expect(404);
+    });
+  });
+
+  describe("GET /user/userdetail/:id (invited by onetime invite)", () => {
+    it("names the inviter of the invite a user signed up through", async () => {
+      const invite = await onetimeInviteRepo.save(
+        onetimeInviteRepo.create({
+          invitee: "Invite-only referral",
+          code: "ADMIN-DETAIL-INVITE",
+          status: OnetimeInviteStatus.LINK_USED,
+          invitingUser: { id: userAId },
+        }),
+      );
+      const invited = await userRepo.save(
+        userRepo.create({
+          name: "Invite Only Referral",
+          email: "invite.only.referral@example.com",
+          password: "Password123!",
+          referredByInvite: invite,
+          referralSource: ReferralSource.OnetimeInvite,
+        }),
+      );
+
+      const res = await request(ctx.app.getHttpServer())
+        .get(`/user/userdetail/${invited.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+      expect(res.body.invitedBy).toMatchObject({
+        kind: "user",
+        userId: userAId,
+        referralSource: ReferralSource.OnetimeInvite,
+      });
+    });
   });
 
   describe("community invite permissions", () => {
@@ -1903,6 +2961,7 @@ describe("Users (e2e)", () => {
           expect(res.status).toBe(201);
           expect(res.body.community.id).toBe(communityLedByUserA.id);
           expect(res.body.status).toBe(OnetimeInviteStatus.LINK_UNUSED);
+          expect(res.body.info).toBeNull();
         });
 
         it("allows admins to create onetime invites for any community", async () => {
@@ -1931,9 +2990,34 @@ describe("Users (e2e)", () => {
             });
 
           expect(res.status).toBe(201);
-          expect(res.body.community).toBeUndefined();
+          expect(res.body.community).toBeNull();
+          expect(res.body.invitedUserId).toBeNull();
           expect(res.body.invitingUser.id).toBe(userAId);
           expect(res.body.status).toBe(OnetimeInviteStatus.LINK_UNUSED);
+
+          const fetched = await request(ctx.app.getHttpServer())
+            .get(`/user/onetimeInvite/${res.body.code}`)
+            .expect(200);
+          expect(fetched.body.invitedUserId).toBeNull();
+        });
+
+        it("reports the invite's group to analytics, or null for none", async () => {
+          const capture = jest.spyOn(ctx.app.get(PosthogService), "capture");
+          for (const communityId of [communityLedByUserA.id, undefined]) {
+            await request(ctx.app.getHttpServer())
+              .post("/user/onetimeInvite/create")
+              .set("Authorization", `Bearer ${userAToken}`)
+              .send({ invitee: "analytics@example.com", communityId })
+              .expect(201);
+          }
+          expect(
+            capture.mock.calls
+              .filter(
+                ([{ event }]) => event === AnalyticsEvent.OnetimeInviteCreated,
+              )
+              .map(([{ properties }]) => properties?.communityId),
+          ).toEqual([communityLedByUserA.id, null]);
+          capture.mockRestore();
         });
 
         it("returns not found when admins reference communities that do not exist", async () => {
@@ -2012,6 +3096,59 @@ describe("Users (e2e)", () => {
             .expect(400);
         });
 
+        const saveMemberInvite = () =>
+          onetimeInviteRepo.save(
+            onetimeInviteRepo.create({
+              invitee: "Member's invitee",
+              code: `MEMBER-EDIT-${Math.random().toString(36).slice(2)}`,
+              status: OnetimeInviteStatus.LINK_UNUSED,
+              invitingUser: { id: communityMemberId },
+              community: communityLedByUserA,
+            }),
+          );
+
+        it("lets the group's leader edit a member's invite", async () => {
+          const invite = await saveMemberInvite();
+
+          const res = await patch(invite.id, { invitee: "Leader edit" }).expect(
+            200,
+          );
+
+          expect(res.body.invitee).toBe("Leader edit");
+        });
+
+        it("lets an admin who leads no community edit a member's invite", async () => {
+          const invite = await saveMemberInvite();
+
+          const res = await request(ctx.app.getHttpServer())
+            .patch(`/user/onetimeInvites/${invite.id}`)
+            .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+            .send({ invitee: "Admin edit" })
+            .expect(200);
+
+          expect(res.body.invitee).toBe("Admin edit");
+        });
+
+        it("refuses a deleted group", async () => {
+          const invite = await createInvite(communityLedByUserA.id);
+          const deleted = await communityRepo.save(
+            communityRepo.create({ name: "Deleted invite group" }),
+          );
+          await communityRepo.softDelete(deleted.id);
+
+          await request(ctx.app.getHttpServer())
+            .patch(`/user/onetimeInvites/${invite.id}`)
+            .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+            .send({ communityId: deleted.id })
+            .expect(404);
+          expect(
+            await onetimeInviteRepo.findOneOrFail({
+              where: { id: invite.id },
+              relations: { community: true },
+            }),
+          ).toMatchObject({ community: { id: communityLedByUserA.id } });
+        });
+
         it("refuses once the invite has been used", async () => {
           const invite = await createInvite(communityLedByUserA.id);
           await onetimeInviteRepo.update(invite.id, {
@@ -2019,6 +3156,122 @@ describe("Users (e2e)", () => {
           });
 
           await patch(invite.id, { invitee: "Too late" }).expect(400);
+        });
+      });
+
+      describe("deleteOnetimeInvite", () => {
+        it("lets an admin delete an invite with no inviting user", async () => {
+          const invite = await onetimeInviteRepo.save(
+            onetimeInviteRepo.create({
+              invitee: "No inviter",
+              code: "NO-INVITER-DELETE",
+              status: OnetimeInviteStatus.LINK_UNUSED,
+              invitingUser: null,
+            }),
+          );
+
+          await request(ctx.app.getHttpServer())
+            .delete(`/user/onetimeInvites/${invite.id}`)
+            .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+            .expect(200);
+
+          const deleted = await onetimeInviteRepo.findOneOrFail({
+            where: { id: invite.id },
+            withDeleted: true,
+          });
+          expect(deleted.deletedAt).not.toBeNull();
+        });
+
+        const saveMemberInviteToCommunityA = (code: string) =>
+          onetimeInviteRepo.save(
+            onetimeInviteRepo.create({
+              invitee: "Member's invitee",
+              code,
+              status: OnetimeInviteStatus.LINK_UNUSED,
+              invitingUser: { id: communityMemberId },
+              community: communityLedByUserA,
+            }),
+          );
+
+        it("lets the community's leader delete a member's invite", async () => {
+          const invite = await saveMemberInviteToCommunityA("LEADER-DELETE");
+
+          await request(ctx.app.getHttpServer())
+            .delete(`/user/onetimeInvites/${invite.id}`)
+            .set("Authorization", `Bearer ${userAToken}`)
+            .expect(200);
+
+          const deleted = await onetimeInviteRepo.findOneOrFail({
+            where: { id: invite.id },
+            withDeleted: true,
+          });
+          expect(deleted.deletedAt).not.toBeNull();
+        });
+
+        it("refuses a leader of another community", async () => {
+          const invite = await saveMemberInviteToCommunityA(
+            "OTHER-LEADER-DELETE",
+          );
+
+          await request(ctx.app.getHttpServer())
+            .delete(`/user/onetimeInvites/${invite.id}`)
+            .set("Authorization", `Bearer ${userBToken}`)
+            .expect(400);
+
+          const kept = await onetimeInviteRepo.findOneByOrFail({
+            id: invite.id,
+          });
+          expect(kept.deletedAt).toBeNull();
+        });
+      });
+
+      describe("findOnetimeInvites", () => {
+        const list = (token: string) =>
+          request(ctx.app.getHttpServer())
+            .get(`/user/onetimeInvites/${communityLedByUserA.id}`)
+            .set("Authorization", `Bearer ${token}`);
+
+        it("lists the group's invites for its leader", async () => {
+          const pendingInvite = await createPendingInviteRequest();
+
+          const res = await list(userAToken).expect(200);
+
+          expect(res.body.map((invite: { id: number }) => invite.id)).toContain(
+            pendingInvite.id,
+          );
+        });
+
+        it("names the group on each invite", async () => {
+          const pendingInvite = await createPendingInviteRequest();
+
+          const res = await list(userAToken).expect(200);
+
+          expect(res.body).toContainEqual(
+            expect.objectContaining({
+              id: pendingInvite.id,
+              community: expect.objectContaining({
+                id: communityLedByUserA.id,
+              }),
+            }),
+          );
+        });
+
+        it("lists the group's invites for an admin who leads no community", async () => {
+          const pendingInvite = await createPendingInviteRequest();
+
+          const res = await list(ctx.adminAccessToken).expect(200);
+
+          expect(res.body.map((invite: { id: number }) => invite.id)).toContain(
+            pendingInvite.id,
+          );
+        });
+
+        it("refuses a leader of another community", async () => {
+          await createPendingInviteRequest();
+
+          const res = await list(userBToken).expect(400);
+
+          expect(res.body.message).toContain("not a leader");
         });
       });
 
@@ -2054,12 +3307,49 @@ describe("Users (e2e)", () => {
           expect(res.body.inviteeDescription).toBe(
             "Member request for manual review",
           );
+          expect(res.body.invitedUserId).toBeNull();
+        });
+
+        it("saves a request without a description as null", async () => {
+          const res = await request(ctx.app.getHttpServer())
+            .post("/user/onetimeInvite/request")
+            .set("Authorization", `Bearer ${communityMemberToken}`)
+            .send({
+              invitee: "undescribed-request@example.com",
+              communityId: communityLedByUserA.id,
+            });
+
+          expect(res.status).toBe(201);
+          expect(res.body.inviteeDescription).toBeNull();
+        });
+
+        it("reports the requested group to analytics", async () => {
+          const capture = jest.spyOn(ctx.app.get(PosthogService), "capture");
+          await createPendingInviteRequest();
+          expect(
+            capture.mock.calls
+              .filter(
+                ([{ event }]) =>
+                  event === AnalyticsEvent.OnetimeInviteRequested,
+              )
+              .map(([{ properties }]) => properties?.communityId),
+          ).toEqual([communityLedByUserA.id]);
+          capture.mockRestore();
         });
       });
 
+      const outcomeMessages = async (category: NotificationCategory) =>
+        (
+          await ctx.dataSource
+            .getRepository(Notification)
+            .findBy({ user: { id: communityMemberId }, category })
+        ).map(({ message }) => message);
+
       describe("approveOnetimeInvite", () => {
         it("allows community leaders to approve pending requests", async () => {
-          const pendingInvite = await createPendingInviteRequest();
+          const pendingInvite = await createPendingInviteRequest({
+            invitee: "approved$&@example.com",
+          });
 
           const res = await request(ctx.app.getHttpServer())
             .post(`/user/onetimeInvite/${pendingInvite.id}/approve`)
@@ -2070,6 +3360,55 @@ describe("Users (e2e)", () => {
           expect(res.body.id).toBe(pendingInvite.id);
           expect(res.body.status).toBe(OnetimeInviteStatus.LINK_UNUSED);
           expect(res.body.invitingUser.id).toBe(communityMemberId);
+          expect(res.body.invitedUserId).toBeNull();
+          expect(
+            await outcomeMessages(
+              NotificationCategory.OnetimeInviteRequestApproved,
+            ),
+          ).toContain(
+            "Your request to invite approved$&@example.com was approved",
+          );
+        });
+
+        it("approves a request whose requester is gone", async () => {
+          const pendingInvite = await createPendingInviteRequest();
+          await onetimeInviteRepo.update(pendingInvite.id, {
+            invitingUser: null,
+          });
+
+          const res = await request(ctx.app.getHttpServer())
+            .post(`/user/onetimeInvite/${pendingInvite.id}/approve`)
+            .set("Authorization", `Bearer ${userAToken}`)
+            .send()
+            .expect(201);
+
+          expect(res.body.status).toBe(OnetimeInviteStatus.LINK_UNUSED);
+          expect(res.body.invitingUser ?? null).toBeNull();
+        });
+
+        it("allows an admin who leads no community to approve pending requests", async () => {
+          const pendingInvite = await createPendingInviteRequest();
+
+          const res = await request(ctx.app.getHttpServer())
+            .post(`/user/onetimeInvite/${pendingInvite.id}/approve`)
+            .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+            .send()
+            .expect(201);
+
+          expect(res.body.status).toBe(OnetimeInviteStatus.LINK_UNUSED);
+        });
+
+        it("refuses even an admin once the request's group is gone", async () => {
+          const pendingInvite = await createPendingInviteRequest();
+          await onetimeInviteRepo.update(pendingInvite.id, { community: null });
+
+          const res = await request(ctx.app.getHttpServer())
+            .post(`/user/onetimeInvite/${pendingInvite.id}/approve`)
+            .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+            .send()
+            .expect(400);
+
+          expect(res.body.message).toBe("Invite request has no group");
         });
 
         it("rejects approval attempts from non-leaders", async () => {
@@ -2098,7 +3437,9 @@ describe("Users (e2e)", () => {
 
       describe("rejectOnetimeInvite", () => {
         it("allows community leaders to reject pending requests", async () => {
-          const pendingInvite = await createPendingInviteRequest();
+          const pendingInvite = await createPendingInviteRequest({
+            invitee: "rejected$&@example.com",
+          });
 
           const res = await request(ctx.app.getHttpServer())
             .post(`/user/onetimeInvite/${pendingInvite.id}/reject`)
@@ -2110,6 +3451,28 @@ describe("Users (e2e)", () => {
             where: { id: pendingInvite.id },
           });
           expect(refreshed?.status).toBe(OnetimeInviteStatus.REQUEST_REJECTED);
+          expect(
+            await outcomeMessages(
+              NotificationCategory.OnetimeInviteRequestRejected,
+            ),
+          ).toContain(
+            "Your request to invite rejected$&@example.com was rejected",
+          );
+        });
+
+        it("allows an admin who leads no community to reject pending requests", async () => {
+          const pendingInvite = await createPendingInviteRequest();
+
+          await request(ctx.app.getHttpServer())
+            .post(`/user/onetimeInvite/${pendingInvite.id}/reject`)
+            .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+            .send()
+            .expect(201);
+
+          const refreshed = await onetimeInviteRepo.findOneByOrFail({
+            id: pendingInvite.id,
+          });
+          expect(refreshed.status).toBe(OnetimeInviteStatus.REQUEST_REJECTED);
         });
 
         it("rejects rejection attempts from leaders of other communities", async () => {
@@ -2210,7 +3573,7 @@ describe("Users (e2e)", () => {
         relations: { users: true },
       });
 
-      const memberIds = updatedCommunity.users.map((u) => u.id);
+      const memberIds = loadedCommunityUsers(updatedCommunity).map((u) => u.id);
       expect(memberIds).toContain(batchUser1.id);
       expect(memberIds).toContain(batchUser2.id);
       expect(memberIds).toContain(leader.id);
@@ -2333,7 +3696,7 @@ describe("Users (e2e)", () => {
         }),
       ]);
       // Untouched: still in the group they started in, still queued.
-      expect(updatedSigned.communities.map((c) => c.id)).toEqual([origin.id]);
+      expect(updatedSigned.communities?.map((c) => c.id)).toEqual([origin.id]);
       expect(updatedSigned.undergoingGroupAssignment).toBe(true);
       expect(updatedLapsed.communities).toHaveLength(0);
       expect(updatedLapsed.undergoingGroupAssignment).toBe(true);
@@ -2390,9 +3753,201 @@ describe("Users (e2e)", () => {
         relations: { users: true },
       });
 
-      const memberIds = updatedCommunity.users.map((u) => u.id);
+      const memberIds = loadedCommunityUsers(updatedCommunity).map((u) => u.id);
       expect(memberIds).toContain(reassignUser.id);
       expect(memberIds).toContain(leader.id);
+    });
+  });
+
+  describe("mailed tokens", () => {
+    const isVerified = async (userId: number) =>
+      (await userRepo.findOneByOrFail({ id: userId })).emailVerified;
+
+    it("refuses an access token as a verify-email token", async () => {
+      await request(ctx.app.getHttpServer())
+        .post("/user/verifyEmail")
+        .send({ token: userBToken })
+        .expect(400);
+
+      expect(await isVerified(userBId)).toBe(false);
+    });
+
+    it("refuses an expired verify-email token with 400", async () => {
+      const expired = ctx.jwtService.sign(
+        { sub: userBId, tokenType: JWTTokenType.verifyEmail },
+        { secret: process.env.JWT_SECRET, expiresIn: "-1s" },
+      );
+      await request(ctx.app.getHttpServer())
+        .post("/user/verifyEmail")
+        .send({ token: expired })
+        .expect(400);
+    });
+
+    it("refuses a malformed verify-email token with 400", async () => {
+      await request(ctx.app.getHttpServer())
+        .post("/user/verifyEmail")
+        .send({ token: "not-a-jwt" })
+        .expect(400);
+    });
+
+    it("refuses a verify-email token for a deleted user with 400", async () => {
+      const token = await accountEmailService.getVerifyEmailToken(999_999_999);
+      await request(ctx.app.getHttpServer())
+        .post("/user/verifyEmail")
+        .send({ token })
+        .expect(400);
+    });
+
+    it("accepts a verify-email token, minted before or after the type landed", async () => {
+      const legacyToken = ctx.jwtService.sign(
+        { sub: userBId, type: "verify-email" },
+        { secret: process.env.JWT_SECRET },
+      );
+      await request(ctx.app.getHttpServer())
+        .post("/user/verifyEmail")
+        .send({ token: legacyToken })
+        .expect(201);
+      expect(await isVerified(userBId)).toBe(true);
+
+      await userRepo.update(userBId, { emailVerified: false });
+      const token = await accountEmailService.getVerifyEmailToken(userBId);
+      await request(ctx.app.getHttpServer())
+        .post("/user/verifyEmail")
+        .send({ token })
+        .expect(201);
+      expect(await isVerified(userBId)).toBe(true);
+    });
+
+    it("resets the password with a reset token, minted before or after the type landed", async () => {
+      const token = await authService.generatePasswordResetToken(userBId);
+      await request(ctx.app.getHttpServer())
+        .post("/auth/reset-password")
+        .send({ token, password: "FreshPassword123!" })
+        .expect(200);
+      expect(
+        await (
+          await userRepo.findOneByOrFail({ id: userBId })
+        ).checkPassword("FreshPassword123!"),
+      ).toBe(true);
+
+      const legacyToken = ctx.jwtService.sign(
+        { sub: userBId, type: "password-reset" },
+        { secret: process.env.JWT_SECRET },
+      );
+      await request(ctx.app.getHttpServer())
+        .post("/auth/reset-password")
+        .send({ token: legacyToken, password: "SecondPassword123!" })
+        .expect(200);
+      expect(
+        await (
+          await userRepo.findOneByOrFail({ id: userBId })
+        ).checkPassword("SecondPassword123!"),
+      ).toBe(true);
+    });
+
+    it("refuses a verify-email token as a password reset", async () => {
+      const token = await accountEmailService.getVerifyEmailToken(userBId);
+
+      await request(ctx.app.getHttpServer())
+        .post("/auth/reset-password")
+        .send({ token, password: "NotTheirPassword123!" })
+        .expect(401);
+    });
+
+    it("refuses a mailed token with no sub", async () => {
+      const noSub = ctx.jwtService.sign(
+        { tokenType: JWTTokenType.verifyEmail },
+        { secret: process.env.JWT_SECRET },
+      );
+      await request(ctx.app.getHttpServer())
+        .post("/user/verifyEmail")
+        .send({ token: noSub })
+        .expect(400);
+
+      const noSubReset = ctx.jwtService.sign(
+        { tokenType: JWTTokenType.passwordReset },
+        { secret: process.env.JWT_SECRET },
+      );
+      await request(ctx.app.getHttpServer())
+        .post("/auth/reset-password")
+        .send({ token: noSubReset, password: "NotTheirPassword123!" })
+        .expect(401);
+    });
+  });
+
+  describe("friend graph edges (admin)", () => {
+    const saveGraphUser = (label: string) =>
+      userRepo.save(
+        userRepo.create({
+          name: `Graph ${label}`,
+          email: `graph.${label.toLowerCase().replace(/ /g, ".")}.${Date.now()}@example.com`,
+          password: "Password123!",
+        }),
+      );
+
+    const fetchHasEdge = async (userAId: number, userBId: number) => {
+      const res = await request(ctx.app.getHttpServer())
+        .get("/user/friends/graphEdges")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+      return res.body.some(
+        (edge: { userAId: number; userBId: number }) =>
+          (edge.userAId === userAId && edge.userBId === userBId) ||
+          (edge.userAId === userBId && edge.userBId === userAId),
+      );
+    };
+
+    it("includes an accepted friendship between two active-contract users", async () => {
+      const userA = await saveGraphUser("Active A");
+      const userB = await saveGraphUser("Active B");
+      await giveActiveContract(ctx, userA.id);
+      await giveActiveContract(ctx, userB.id);
+      await friendService.makeFriendsAutomated(userA.id, userB.id);
+
+      expect(await fetchHasEdge(userA.id, userB.id)).toBe(true);
+
+      await userRepo.delete([userA.id, userB.id]);
+    });
+
+    it("excludes a friendship where the addressee lacks an active contract", async () => {
+      const requester = await saveGraphUser("Active Requester");
+      const addressee = await saveGraphUser("Inactive Addressee");
+      await giveActiveContract(ctx, requester.id);
+      await friendService.makeFriendsAutomated(requester.id, addressee.id);
+
+      expect(await fetchHasEdge(requester.id, addressee.id)).toBe(false);
+
+      await userRepo.delete([requester.id, addressee.id]);
+    });
+
+    it("excludes a friendship where the requester lacks an active contract", async () => {
+      const requester = await saveGraphUser("Inactive Requester");
+      const addressee = await saveGraphUser("Active Addressee");
+      await giveActiveContract(ctx, addressee.id);
+      await friendService.makeFriendsAutomated(requester.id, addressee.id);
+
+      expect(await fetchHasEdge(requester.id, addressee.id)).toBe(false);
+
+      await userRepo.delete([requester.id, addressee.id]);
+    });
+
+    it("excludes a pending friend request between active-contract users", async () => {
+      const requester = await saveGraphUser("Pending Requester");
+      const addressee = await saveGraphUser("Pending Addressee");
+      await giveActiveContract(ctx, requester.id);
+      await giveActiveContract(ctx, addressee.id);
+      await friendService.createFriendRequest(requester.id, addressee.id);
+
+      expect(await fetchHasEdge(requester.id, addressee.id)).toBe(false);
+
+      await userRepo.delete([requester.id, addressee.id]);
+    });
+
+    it("rejects non-admins", async () => {
+      await request(ctx.app.getHttpServer())
+        .get("/user/friends/graphEdges")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(401);
     });
   });
 

@@ -1,10 +1,11 @@
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { Action } from "src/actions/entities/action.entity";
 import { Campaign } from "src/campaign/entities/campaign.entity";
 import { Community } from "src/community/entities/community.entity";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { User } from "src/user/entities/user.entity";
@@ -54,16 +55,18 @@ export enum ShareUrlKind {
 )
 @Index("UQ_share_url_user_action", ["user", "action"], {
   unique: true,
-  where: '"actionId" IS NOT NULL AND "duplicate" = false',
+  where:
+    '"actionId" IS NOT NULL AND "duplicate" = false AND "deletedAt" IS NULL',
 })
 @Index("UQ_share_url_user_external_target", ["user", "externalTarget"], {
   unique: true,
-  where: '"externalTargetId" IS NOT NULL AND "duplicate" = false',
+  where:
+    '"externalTargetId" IS NOT NULL AND "duplicate" = false AND "deletedAt" IS NULL',
 })
 @Index("UQ_share_url_campaign_action", ["campaign", "action"], {
   unique: true,
   where:
-    '"actionId" IS NOT NULL AND "campaignId" IS NOT NULL AND "duplicate" = false',
+    '"actionId" IS NOT NULL AND "campaignId" IS NOT NULL AND "duplicate" = false AND "deletedAt" IS NULL',
 })
 @Index(
   "UQ_share_url_campaign_external_target",
@@ -71,16 +74,16 @@ export enum ShareUrlKind {
   {
     unique: true,
     where:
-      '"externalTargetId" IS NOT NULL AND "campaignId" IS NOT NULL AND "duplicate" = false',
+      '"externalTargetId" IS NOT NULL AND "campaignId" IS NOT NULL AND "duplicate" = false AND "deletedAt" IS NULL',
   },
 )
 @Index("UQ_share_url_user_invite", ["user"], {
   unique: true,
-  where: `"kind" = 'invite' AND "userId" IS NOT NULL AND "duplicate" = false`,
+  where: `"kind" = 'invite' AND "userId" IS NOT NULL AND "duplicate" = false AND "deletedAt" IS NULL`,
 })
 @Index("UQ_share_url_campaign_invite", ["campaign"], {
   unique: true,
-  where: `"kind" = 'invite' AND "campaignId" IS NOT NULL AND "duplicate" = false`,
+  where: `"kind" = 'invite' AND "campaignId" IS NOT NULL AND "duplicate" = false AND "deletedAt" IS NULL`,
 })
 export class ShareUrl {
   @PrimaryGeneratedColumn("uuid")
@@ -126,10 +129,9 @@ export class ShareUrl {
   @Type(() => ExternalShareTarget)
   externalTarget?: Relation<ExternalShareTarget> | null;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  sid?: string;
+  @Column({ type: "varchar", nullable: true })
+  @ApiProperty({ type: String, nullable: true })
+  sid: string | null;
 
   @Column({ default: false })
   @ApiProperty({
@@ -173,4 +175,7 @@ export class ShareUrl {
   @ManyToOne(() => Community, { nullable: true, onDelete: "SET NULL" })
   @JoinColumn({ name: "inviteAssignmentCommunityId" })
   inviteAssignmentCommunity?: Relation<Community> | null;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

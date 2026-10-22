@@ -2,6 +2,7 @@ import {
   ActionItemCardPropsShared,
   showCompletedBar,
 } from "@alliance/shared/lib/actionItemCard";
+import { hasViewerCompletedAction } from "@alliance/shared/lib/actionUtils";
 import { Check } from "lucide-react-native";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
@@ -29,7 +30,7 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
             >
               {action.name}
             </Text>
-            {action.userRelation === "completed" && (
+            {hasViewerCompletedAction(action) && (
               <View className="w-5 h-5 bg-green rounded-full items-center justify-center">
                 <Check size={12} strokeWidth={3} color="white" />
               </View>

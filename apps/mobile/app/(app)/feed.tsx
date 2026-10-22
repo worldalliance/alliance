@@ -1,7 +1,8 @@
 import { FeedActionActivityDto } from "@alliance/shared/lib/actionActivity";
-import useActivities, {
-  ActivityList,
-} from "@alliance/shared/lib/useActivities";
+import useActivityFeeds, {
+  FEED_EMPTY_MESSAGE,
+  FeedMode,
+} from "@alliance/shared/lib/useActivityFeeds";
 import { cn } from "@alliance/shared/styles/util";
 import { LegendList } from "@legendapp/list";
 import { useCallback, useRef, useState } from "react";
@@ -17,80 +18,19 @@ import Text, { FontWeight } from "../../components/system/Text";
 import UserActivityCard from "../../components/UserActivityCard";
 import { colors } from "../../lib/style/colors";
 
-type Mode = "friends" | "everyone";
-
 export default function FeedScreen() {
-  const [mode, setMode] = useState<Mode>("friends");
-
-  const {
-    activities: globalActivities,
-    handleLikeActivity: handleGlobalLikeActivity,
-    loading: loadingGlobal,
-    fetchNextPage: fetchNextGlobal,
-    hasNextPage: hasNextGlobal,
-    isFetchingNextPage: isFetchingNextGlobal,
-  } = useActivities({
-    list: ActivityList.Global,
-    comments: true,
-    limit: 30,
-  });
-
-  const {
-    activities: friendActivities,
-    handleLikeActivity: handleLikeFriendActivity,
-    loading: loadingFriend,
-    fetchNextPage: fetchNextFriends,
-    hasNextPage: hasNextFriends,
-    isFetchingNextPage: isFetchingNextFriends,
-  } = useActivities({
-    list: ActivityList.Friends,
-    comments: true,
-    limit: 30,
-  });
-
-  const handleLikeActivity = useCallback(
-    (activityId: number, activityMode: Mode) => {
-      if (activityMode === "friends") {
-        return handleLikeFriendActivity(activityId);
-      } else {
-        return handleGlobalLikeActivity(activityId);
-      }
-    },
-    [handleLikeFriendActivity, handleGlobalLikeActivity],
-  );
-
-  const activities = mode === "friends" ? friendActivities : globalActivities;
-  const loading = mode === "friends" ? loadingFriend : loadingGlobal;
-  const isFetchingNext =
-    mode === "friends" ? isFetchingNextFriends : isFetchingNextGlobal;
+  const [mode, setMode] = useState(FeedMode.Friends);
+  const feeds = useActivityFeeds();
+  const { activities, handleLikeActivity, loading, isFetchingNextPage } =
+    feeds[mode];
 
   // Stable ref for onEndReached so the callback doesn't need volatile deps (per frontend pattern)
-  const paginationRef = useRef({
-    fetchNextFriends,
-    fetchNextGlobal,
-    hasNextFriends,
-    hasNextGlobal,
-    isFetchingNextFriends,
-    isFetchingNextGlobal,
-    mode,
-  });
-  paginationRef.current = {
-    fetchNextFriends,
-    fetchNextGlobal,
-    hasNextFriends,
-    hasNextGlobal,
-    isFetchingNextFriends,
-    isFetchingNextGlobal,
-    mode,
-  };
+  const paginationRef = useRef(feeds[mode]);
+  paginationRef.current = feeds[mode];
 
   const onEndReached = useCallback(() => {
     const p = paginationRef.current;
-    if (p.mode === "friends") {
-      if (p.hasNextFriends && !p.isFetchingNextFriends) p.fetchNextFriends();
-    } else {
-      if (p.hasNextGlobal && !p.isFetchingNextGlobal) p.fetchNextGlobal();
-    }
+    if (p.hasNextPage && !p.isFetchingNextPage) p.fetchNextPage();
   }, []);
 
   const renderActivity = useCallback(
@@ -98,28 +38,28 @@ export default function FeedScreen() {
       <View className="border-b-3 border-zinc-100">
         <UserActivityCard
           activity={activity}
-          handleLike={() => handleLikeActivity(activity.id, mode)}
+          handleLike={() => handleLikeActivity(activity.id)}
         />
       </View>
     ),
-    [handleLikeActivity, mode],
+    [handleLikeActivity],
   );
 
   const listHeader = (
     <SimplePageTitle title="Activity">
       <View className="flex-row bg-white/20 rounded-lg p-1">
         <TouchableOpacity
-          onPress={() => setMode("friends")}
+          onPress={() => setMode(FeedMode.Friends)}
           activeOpacity={0.7}
           className={cn(
             "px-3 py-1.5 rounded-md",
-            mode === "friends" && "bg-white",
+            mode === FeedMode.Friends && "bg-white",
           )}
         >
           <Text
             className={cn(
               "text-sm",
-              mode === "friends" ? "text-green" : "text-black",
+              mode === FeedMode.Friends ? "text-green" : "text-black",
             )}
             weight={FontWeight.Medium}
           >
@@ -127,17 +67,17 @@ export default function FeedScreen() {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => setMode("everyone")}
+          onPress={() => setMode(FeedMode.Everyone)}
           activeOpacity={0.7}
           className={cn(
             "px-3 py-1.5 rounded-md",
-            mode === "everyone" && "bg-white",
+            mode === FeedMode.Everyone && "bg-white",
           )}
         >
           <Text
             className={cn(
               "text-sm",
-              mode === "everyone" ? "text-green" : "text-black",
+              mode === FeedMode.Everyone ? "text-green" : "text-black",
             )}
             weight={FontWeight.Medium}
           >
@@ -161,11 +101,7 @@ export default function FeedScreen() {
         <>
           {listHeader}
           <View className="flex-1 items-center justify-center bg-white">
-            <Text className="text-zinc-500">
-              {mode === "friends"
-                ? "No friend activity yet"
-                : "No activity yet"}
-            </Text>
+            <Text className="text-zinc-500">{FEED_EMPTY_MESSAGE[mode]}</Text>
           </View>
         </>
       ) : (
@@ -194,7 +130,7 @@ export default function FeedScreen() {
               backgroundColor: "white",
             }}
             ListFooterComponent={
-              isFetchingNext ? (
+              isFetchingNextPage ? (
                 <View className="py-4 items-center">
                   <ActivityIndicator size="small" color={colors.green} />
                   <Text className="text-zinc-400 text-sm mt-2">

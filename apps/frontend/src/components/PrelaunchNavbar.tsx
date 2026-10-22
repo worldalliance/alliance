@@ -26,8 +26,6 @@ interface PrelaunchNavbarProps {
   absolute?: boolean;
   showLogo?: boolean;
   ref?: React.RefObject<HTMLDivElement | null>;
-  showSignupButton?: boolean;
-  signupHref?: string;
 }
 
 const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
@@ -35,8 +33,6 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
   absolute = true,
   showLogo = true,
   ref,
-  showSignupButton = false,
-  signupHref = href("/signup"),
 }: PrelaunchNavbarProps) => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
@@ -117,7 +113,7 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
       >
         {isAuthenticated ? "My tasks" : "Log in"}
       </Link>
-      {isAuthenticated && user ? (
+      {isAuthenticated && user && (
         <Link
           to={profileUrl}
           aria-label="Go to profile"
@@ -130,6 +126,7 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
           <AvatarProfile
             pfp={user.profilePicture ?? null}
             size="override"
+            thumbnail
             className={cn(
               "rounded-md transition-[width,height] duration-300",
               opts.condensedStyle
@@ -140,22 +137,6 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
             )}
           />
         </Link>
-      ) : (
-        showSignupButton && (
-          <Link
-            to={signupHref}
-            className={cn(
-              "rounded-md whitespace-nowrap font-medium bg-green text-white hover:bg-[#4d8c1d] transition-[padding,font-size] duration-300",
-              opts.stacked && "text-center",
-              opts.condensedStyle
-                ? "py-1.5 px-2.5 text-sm sm:py-2 sm:px-3.5 sm:text-base"
-                : "py-2 sm:py-2.5 px-3 sm:px-5",
-            )}
-            onClick={() => setMenuOpen(false)}
-          >
-            Sign up
-          </Link>
-        )
       )}
     </div>
   );
@@ -178,7 +159,7 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
       {showLogo && (
         <h1
           className={cn(
-            "font-bold font-berlingske text-lg sm:text-xl md:text-2xl cursor-pointer text-nowrap",
+            "font-logotype text-lg sm:text-xl md:text-2xl cursor-pointer text-nowrap",
             transparent && "text-white",
           )}
           onClick={() => {
@@ -186,7 +167,7 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
             navigate(href("/"));
           }}
         >
-          THE ALLIANCE
+          The Alliance
         </h1>
       )}
 
@@ -244,13 +225,13 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
           >
             {showLogo && (
               <h1
-                className="font-bold font-berlingske text-lg sm:text-xl cursor-pointer text-nowrap text-zinc-900"
+                className="font-logotype text-lg sm:text-xl cursor-pointer text-nowrap text-zinc-900"
                 onClick={() => {
                   setMenuOpen(false);
                   navigate(href("/"));
                 }}
               >
-                THE ALLIANCE
+                The Alliance
               </h1>
             )}
             <button

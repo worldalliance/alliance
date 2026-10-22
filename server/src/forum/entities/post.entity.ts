@@ -1,8 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsNotEmpty, IsOptional } from "class-validator";
+import {
+  Allow,
+  IsBoolean,
+  IsEmpty,
+  IsNotEmpty,
+  IsOptional,
+} from "class-validator";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
@@ -69,12 +76,11 @@ export class Post {
   @Type(() => Action)
   action?: Relation<Action> | null;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional({ required: false })
+  @Column({ type: "int", nullable: true })
+  @ApiProperty({ type: Number, nullable: true })
   @IsOptional()
   @Allow()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  actionId?: number;
+  actionId: number | null;
 
   @CreateDateColumnTz()
   @ApiProperty()
@@ -94,17 +100,22 @@ export class Post {
   updatedAt: Date;
 
   @Column({ type: "timestamptz", nullable: true })
-  @ApiPropertyOptional()
+  @ApiProperty({ type: Date, nullable: true })
   @IsOptional()
   @Type(() => Date)
   @Allow()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  visibleAt?: Date;
+  visibleAt: Date | null;
 
-  @Column({ default: false })
-  @ApiProperty()
-  @Allow()
-  deleted: boolean;
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
+
+  // Dropped with LegacyDeletedFlagService's trigger; see its TODO.
+  // Write-only: `select: false` leaves it undefined on a loaded row.
+  @Column({ name: "deleted", default: false, select: false })
+  @IsBoolean()
+  legacyDeleted: boolean;
 
   @ManyToMany(() => User, { onDelete: "CASCADE" })
   @ApiPropertyOptional({ type: () => User, isArray: true })

@@ -3,9 +3,11 @@ html(lang="en")
   head
     meta(charset="UTF-8")
     meta(name="viewport" content="width=device-width, initial-scale=1.0")
-    title Sign your membership contract to participate in actions
+    title= subject
 
   body
+    - const videoUrl = "https://www.youtube.com/watch?v=fR7Upo0DlYs&t=125s"
+    if copy === "control"
       p Dear #{name},
 
       p You signed up for the Alliance platform, but did not sign the membership contract. Please note that until you do, you will be unable to participate in Alliance actions.
@@ -18,10 +20,29 @@ html(lang="en")
 
       p
         | If you’d like to learn more about the Alliance and why reliability matters before signing, you can watch 
-        a(href="https://www.youtube.com/watch?v=fR7Upo0DlYs&t=125s") this video
+        a(href=videoUrl) this video
         | .
 
       p Thank you for your interest in the Alliance.
 
       p Best,
       p The Alliance Team
+    else if copy === "agreement_v1"
+      p Hi #{name},
+
+      p You signed up for the Alliance, but did not enter into our membership agreement. Our project planning relies upon accurate participation expectations. Until you enter into the agreement, we cannot assign you tasks.
+
+      p By signing, you are letting other members know they can count on you, just like you can count on them.
+
+      p
+        | You can enter into the agreement here: 
+        a(href=link)= link
+
+      p
+        | If you would like to learn more about the Alliance and why reliability matters before signing, you can watch this video: 
+        a(href=videoUrl)= videoUrl
+
+      p Best,
+      p The Alliance Team
+    else
+      - throw new Error(`unknown contract reminder copy: ${copy}`)

@@ -2,12 +2,18 @@ import {
   ArgumentsHost,
   Catch,
   HttpException,
+  type INestApplication,
   NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
-import { AbstractHttpAdapter, BaseExceptionFilter } from "@nestjs/core";
+import {
+  AbstractHttpAdapter,
+  BaseExceptionFilter,
+  HttpAdapterHost,
+} from "@nestjs/core";
 import type { Request } from "express";
 import { PostHog } from "posthog-node";
+import { captureException } from "./utils/posthog";
 
 @Catch()
 export class PosthogExceptionFilter extends BaseExceptionFilter {
@@ -23,7 +29,11 @@ export class PosthogExceptionFilter extends BaseExceptionFilter {
     const req = ctx.getRequest<Request>();
 
     const status =
-      exception instanceof HttpException ? exception.getStatus() : 500;
+      exception instanceof HttpException
+        ? exception.getStatus()
+        : this.isHttpError(exception)
+          ? exception.statusCode
+          : 500;
 
     if (
       exception instanceof NotFoundException ||
@@ -32,12 +42,9 @@ export class PosthogExceptionFilter extends BaseExceptionFilter {
       return super.catch(exception, host);
     }
 
-    const posthogSessionId = req.headers["x-posthog-session-id"] ?? undefined;
-
-    // Bypasses the typed `captureEvent` wrapper `captureException` is only
-    // ever called here on the backend.
-    this.posthog.captureException(exception, "server", {
-      event: "$exception",
+    captureException({
+      client: this.posthog,
+      error: exception,
       properties: {
         message:
           exception instanceof Error ? exception.message : "Unknown error",
@@ -47,11 +54,19 @@ export class PosthogExceptionFilter extends BaseExceptionFilter {
         method: req?.method,
         status,
         env: process.env.NODE_ENV,
-        $session_id: posthogSessionId,
         server: true,
       },
     });
 
     return super.catch(exception, host);
   }
+}
+
+/** The filter also sees body-parser errors, so an Express error handler beside it would capture those twice. */
+export function capturePosthogExceptions(
+  app: INestApplication,
+  client: PostHog,
+): void {
+  const { httpAdapter } = app.get(HttpAdapterHost);
+  app.useGlobalFilters(new PosthogExceptionFilter(client, httpAdapter));
 }

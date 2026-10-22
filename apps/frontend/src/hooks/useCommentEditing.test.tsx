@@ -2,17 +2,10 @@ import { R } from "@alliance/common/result";
 import { CommentDto } from "@alliance/shared/client";
 import { act, renderHook } from "@testing-library/react";
 
-import {
-  resetUploads,
-  uploadImageDataUri,
-  uploads,
-} from "../testing/uploadImageDataUriMock";
-
-jest.mock("@alliance/shared/lib/uploadImageDataUri", () => ({
-  uploadImageDataUri,
-}));
-
+import { serveUploads, uploads } from "../testing/serveUploads";
 import { useCommentEditing } from "./useCommentEditing";
+
+serveUploads();
 
 const reply: CommentDto = {
   id: 100,
@@ -21,6 +14,7 @@ const reply: CommentDto = {
   deleted: false,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
+  parentId: null,
   pinned: false,
   tagId: null,
   author: {
@@ -65,7 +59,6 @@ describe("useCommentEditing", () => {
   });
 
   it("retries a rejected edit with the keys, not the base64 it uploaded", async () => {
-    resetUploads();
     const result = await editWith(
       async () => R.failure("Try again"),
       ["data:image/png;base64,AAAA"],

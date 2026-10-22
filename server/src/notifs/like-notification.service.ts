@@ -1,19 +1,38 @@
+import type { FeedActionActivity } from "@alliance/common/actionActivity";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import type { GlobalFeedActivityType } from "src/actions/dto/action.dto";
+import { lockForSave, softDeleteCascade } from "src/datasources/soft-delete";
+import { NotificationKind } from "src/notification-settings/notification-kind";
 import { ProfileDto } from "src/user/dto/user.dto";
 import { User } from "src/user/entities/user.entity";
-import { In, IsNull, type EntityManager, type Repository } from "typeorm";
+import {
+  In,
+  IsNull,
+  type EntityManager,
+  type FindOptionsWhere,
+  type Repository,
+} from "typeorm";
 import {
   Notification,
   NotificationCategory,
 } from "./entities/notification.entity";
+import {
+  action,
+  ContentTargetType,
+  joinMessage,
+  NotificationFormat,
+  parseNotificationContent,
+  renderNotificationContent,
+  SegmentType,
+  type Labeled,
+} from "./notification-content";
+import { NotificationReferencesService } from "./notification-references.service";
 import { NotifsService } from "./notifs.service";
 
 export type LikeNotificationTarget =
   | "post"
   | "comment"
-  | `activity:${GlobalFeedActivityType}`;
+  | `activity:${FeedActionActivity}`;
 
 type LegacyGroupingKey =
   | `activity_like:${number}`
@@ -22,12 +41,26 @@ type LegacyGroupingKey =
 
 export type GroupingKey = `like:${LikeNotificationTarget}:${number}`;
 
+const likedBy = (liker: string | Labeled, target: (string | Labeled)[]) =>
+  joinMessage([liker, " liked your ", ...target]);
+
+const likedByCount = (count: string | Labeled, target: (string | Labeled)[]) =>
+  joinMessage([count, " people liked your ", ...target]);
+
+const likeContentTargetType = {
+  post: ContentTargetType.Post,
+  comment: ContentTargetType.Comment,
+  "activity:user_completed": ContentTargetType.Activity,
+  "activity:user_submitted_follow_up_form": ContentTargetType.Activity,
+} satisfies Record<LikeNotificationTarget, ContentTargetType>;
+
 @Injectable()
 export class LikeNotificationService {
   constructor(
     @InjectRepository(Notification)
     private readonly notifRepository: Repository<Notification>,
     private readonly notifsService: NotifsService,
+    private readonly references: NotificationReferencesService,
   ) {}
 
   async createOrUpdate(params: {
@@ -37,6 +70,8 @@ export class LikeNotificationService {
     targetId: number;
     webAppLocation: string;
     targetContent: string | null;
+    /** An activity's action, referenced so its name stays current. */
+    targetAction?: { id: number; name: string };
   }): Promise<void> {
     const {
       owner,
@@ -45,6 +80,7 @@ export class LikeNotificationService {
       targetId,
       webAppLocation,
       targetContent,
+      targetAction,
     } = params;
 
     if (!owner || owner.id === liker.id) {
@@ -64,15 +100,15 @@ export class LikeNotificationService {
     await this.notifRepository.manager.transaction(async (manager) => {
       await this.acquireGroupingKeyLocks(manager, compatibleGroupingKeys);
       const notifRepo = manager.getRepository(Notification);
-      const existingNotif = await notifRepo.findOne({
-        where: {
-          user: { id: owner.id },
-          groupingKey: In(compatibleGroupingKeys),
-          category: NotificationCategory.Likes,
-          readAt: IsNull(),
-        },
-        relations: { associatedUsers: true },
-        order: { createdAt: "ASC", id: "ASC" },
+      const [visible] = await this.notifsService.inInbox(
+        [{ userId: owner.id, kind: NotificationKind.Likes }],
+        manager,
+      );
+      // `visible` is fixed when an entry is written, so a like joining an entry of the other visibility would show or hide it against the owner's current setting.
+      const existingNotif = await this.findUnreadLocked(manager, {
+        ownerId: owner.id,
+        groupingKeys: compatibleGroupingKeys,
+        visible,
       });
 
       if (existingNotif) {
@@ -98,35 +134,45 @@ export class LikeNotificationService {
         existingNotif.pushClaimedBy = null;
         existingNotif.pushClaimedAt = null;
         existingNotif.pushDispatchedAt = null;
-        existingNotif.message = this.buildMessage({
+        existingNotif.message = await this.storedMessage({
+          manager,
+          notif: existingNotif,
           targetType,
-          count: updatedUsers.length,
-          targetContent: existingNotif.targetContent,
-          likerName:
-            updatedUsers.length === 1
-              ? new ProfileDto(updatedUsers[0]).displayName
-              : undefined,
         });
         await notifRepo.save(existingNotif);
         return;
       }
 
-      const likerProfile = new ProfileDto(liker);
-      const newNotif = this.notifsService.createNotif({
-        user: owner,
-        associatedUsers: [liker],
-        category: NotificationCategory.Likes,
-        message: this.buildMessage({
-          targetType,
-          count: 1,
-          targetContent,
-          likerName: likerProfile.displayName,
-        }),
+      const label = targetLabel({
+        targetType,
         targetContent,
-        webAppLocation,
-        groupingKey,
-        groupingCount: 1,
+        targetAction,
       });
+      const newNotif = this.notifsService.buildNotif(
+        {
+          user: owner,
+          associatedUsers: [liker],
+          category: NotificationCategory.Likes,
+          message: likedBy(
+            {
+              segment: { type: SegmentType.Participant },
+              label: new ProfileDto(liker).displayName,
+            },
+            label,
+          ),
+          pluralMessage: likedByCount(
+            { segment: { type: SegmentType.Count }, label: "1" },
+            label,
+          ),
+          target: { type: likeContentTargetType[targetType], id: targetId },
+          destination: null,
+          targetContent,
+          webAppLocation,
+          groupingKey,
+          groupingCount: 1,
+        },
+        visible,
+      );
       await notifRepo.save(newNotif);
     });
   }
@@ -159,15 +205,10 @@ export class LikeNotificationService {
     await this.notifRepository.manager.transaction(async (manager) => {
       await this.acquireGroupingKeyLocks(manager, compatibleGroupingKeys);
       const notifRepo = manager.getRepository(Notification);
-      const notif = await notifRepo.findOne({
-        where: {
-          user: { id: ownerId },
-          groupingKey: In(compatibleGroupingKeys),
-          category: NotificationCategory.Likes,
-          readAt: IsNull(),
-        },
-        relations: { associatedUsers: true },
-        order: { createdAt: "ASC", id: "ASC" },
+      const notif = await this.findUnreadLocked(manager, {
+        ownerId,
+        groupingKeys: compatibleGroupingKeys,
+        likerId: unlikerId,
       });
 
       if (!notif) {
@@ -179,24 +220,61 @@ export class LikeNotificationService {
       );
 
       if (updatedUsers.length === 0) {
-        await notifRepo.remove(notif);
+        await softDeleteCascade(manager, {
+          target: Notification,
+          ids: [notif.id],
+        });
         return;
       }
 
       notif.groupingKey = groupingKey;
       notif.associatedUsers = updatedUsers;
       notif.groupingCount = updatedUsers.length;
-      notif.message = this.buildMessage({
+      notif.message = await this.storedMessage({
+        manager,
+        notif,
         targetType,
-        count: updatedUsers.length,
-        targetContent: notif.targetContent,
-        likerName:
-          updatedUsers.length === 1
-            ? new ProfileDto(updatedUsers[0]).displayName
-            : undefined,
       });
       // Intentionally don't reset shouldPush/sendTime/pushClaimed* — an unlike shouldn't trigger a new push.
       await notifRepo.save(notif);
+    });
+  }
+
+  /** Re-read under {@link lockForSave}, which the caller's save needs. */
+  private async findUnreadLocked(
+    manager: EntityManager,
+    params: {
+      ownerId: number;
+      groupingKeys: string[];
+      visible?: boolean;
+      likerId?: number;
+    },
+  ): Promise<Notification | null> {
+    const notifRepo = manager.getRepository(Notification);
+    const where: FindOptionsWhere<Notification> = {
+      user: { id: params.ownerId },
+      groupingKey: In(params.groupingKeys),
+      category: NotificationCategory.Likes,
+      readAt: IsNull(),
+      visible: params.visible,
+    };
+    // Entries can split by visibility, so an unlike targets the one its liker joined.
+    const found = await notifRepo.findOne({
+      select: { id: true, createdAt: true },
+      where: {
+        ...where,
+        associatedUsers:
+          params.likerId === undefined ? undefined : { id: params.likerId },
+      },
+      order: { createdAt: "ASC", id: "ASC" },
+    });
+    if (!found) return null;
+    if (!(await lockForSave(manager, { target: Notification, id: found.id }))) {
+      return null;
+    }
+    return notifRepo.findOne({
+      where: { ...where, id: found.id },
+      relations: { associatedUsers: true },
     });
   }
 
@@ -235,40 +313,101 @@ export class LikeNotificationService {
     }
   }
 
-  private buildMessage(params: {
+  /** Reads render referenced rows from `content`; this keeps the column current. */
+  private async storedMessage(params: {
+    manager: EntityManager;
+    notif: Notification;
     targetType: LikeNotificationTarget;
-    count: number;
-    targetContent: string | null;
-    likerName?: string;
-  }): string {
-    const { targetType, count, targetContent, likerName } = params;
-
-    let label;
-    switch (targetType) {
-      case "post":
-        label = targetContent ? `post: ${targetContent}` : "post";
-        break;
-      case "comment":
-        label = targetContent ? `comment: ${targetContent}` : "comment";
-        break;
-      case "activity:user_completed":
-        label = targetContent
-          ? `completion of: ${targetContent}`
-          : "action activity";
-        break;
-      case "activity:user_submitted_follow_up_form":
-        label = targetContent
-          ? `follow-up to: ${targetContent}`
-          : "follow-up response";
-        break;
+  }): Promise<string> {
+    const { manager, notif, targetType } = params;
+    const users = notif.associatedUsers ?? [];
+    switch (notif.format) {
+      case NotificationFormat.Legacy:
+        return likeMessage({
+          targetType,
+          count: users.length,
+          targetContent: notif.targetContent,
+          likerName:
+            users.length === 1
+              ? new ProfileDto(users[0]).displayName
+              : undefined,
+        });
+      case NotificationFormat.Referenced: {
+        const content = parseNotificationContent(notif.content);
+        const rendered = renderNotificationContent({
+          content,
+          references: await this.references.resolve({
+            contents: [content],
+            targetsByRecipient: new Map(),
+            manager,
+          }),
+          count: users.length,
+          participant: users[0],
+        });
+        // Its action is gone, so the row is hidden and its text is moot.
+        return rendered?.message ?? notif.message;
+      }
       default:
-        targetType satisfies never;
+        // A format from newer code, after a rollback: its text is that code's.
+        notif.format satisfies never;
+        return notif.message;
     }
-
-    if (count === 1 && likerName) {
-      return `${likerName} liked your ${label}`;
-    }
-
-    return `${count} people liked your ${label}`;
   }
+}
+
+function targetLabel(params: {
+  targetType: LikeNotificationTarget;
+  targetContent: string | null;
+  targetAction?: { id: number; name: string };
+}): (string | Labeled)[] {
+  const { targetType, targetContent, targetAction } = params;
+  const label = (parts: {
+    prefix: string;
+    fallback: string;
+    name: string | Labeled | null;
+  }) => (parts.name ? [parts.prefix, parts.name] : [parts.fallback]);
+  const activityName = targetAction ? action(targetAction) : targetContent;
+  switch (targetType) {
+    case "post":
+      return label({
+        prefix: "post: ",
+        fallback: "post",
+        name: targetContent,
+      });
+    case "comment":
+      return label({
+        prefix: "comment: ",
+        fallback: "comment",
+        name: targetContent,
+      });
+    case "activity:user_completed":
+      return label({
+        prefix: "completion of: ",
+        fallback: "action activity",
+        name: activityName,
+      });
+    case "activity:user_submitted_follow_up_form":
+      return label({
+        prefix: "follow-up to: ",
+        fallback: "follow-up response",
+        name: activityName,
+      });
+    default:
+      throw new Error(
+        `Unknown like notification target: ${targetType satisfies never}`,
+      );
+  }
+}
+
+export function likeMessage(params: {
+  targetType: LikeNotificationTarget;
+  count: number;
+  targetContent: string | null;
+  likerName?: string;
+}): string {
+  const { targetType, count, targetContent, likerName } = params;
+  const target = targetLabel({ targetType, targetContent });
+  return count === 1 && likerName
+    ? likedBy(likerName, target).text
+    : likedByCount(String(count), target).text;
 }

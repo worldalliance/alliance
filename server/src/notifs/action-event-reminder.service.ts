@@ -1,54 +1,30 @@
+import { DEFAULT_TIME_ZONE } from "@alliance/common/timezone";
 import { Temporal } from "@js-temporal/polyfill";
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { collectCohortDependencies } from "src/actions/cohort-expression.evaluator";
-import {
-  CreateReminderGroupDto,
-  PreviewEmailHtmlDto,
-  PreviewEmailHtmlResponse,
-  PreviewTextDto,
-  ReminderAnchorCandidate,
-} from "src/actions/dto/action.dto";
+import { milliseconds } from "date-fns";
 import { NotificationScheduleEntryDto } from "src/actions/dto/notification-schedule.dto";
-import { ActionFormVariant } from "src/actions/entities/action-form-variant.entity";
-import { ActionSuite } from "src/actions/entities/action-suite.entity";
-import { Action, parseAction } from "src/actions/entities/action.entity";
-import { FollowUpForm } from "src/actions/entities/follow-up-form.entity";
+import { loadedActionSuiteActions } from "src/actions/entities/action-suite.entity";
 import {
   cohortNotifiesRecipientPersonally,
   getGroupSendTimeForUser,
-  ReminderCohortType,
+  loadedReminderGroupMemberActionEvent,
   ReminderGroup,
   ReminderGroupTimingMode,
 } from "src/actions/entities/reminder-group.entity";
-import { EmailType } from "src/mail/mail.entity";
-import { MailService, processKeywordReplacements } from "src/mail/mail.service";
-import { Tag } from "src/user/entities/tag.entity";
+import { UserAwayRangeService } from "src/user/user-away-range.service";
 import { UserService } from "src/user/user.service";
-import {
-  userActionNotifsEnabled_email,
-  userActionNotifsEnabled_push,
-  userActionNotifsEnabled_text,
-} from "src/user/user.utils";
-import { Brackets, In, type Repository } from "typeorm";
-import {
-  ActionEvent,
-  ActionStatus,
-} from "../actions/entities/action-event.entity";
-import { memberActionPhase } from "../actions/utils/action-event";
-import { DEFAULT_TIME_ZONE, User } from "../user/entities/user.entity";
+import type { Repository as TypedRepository } from "src/utils/Repository";
+import { Brackets, type Repository } from "typeorm";
+import { loadedActionEventAction } from "../actions/entities/action-event.entity";
+import { loadedUserCommunities, User } from "../user/entities/user.entity";
 import { ActionEventRecipientService } from "./action-event-recipient.service";
-import {
-  NotificationPlan,
-  PreviewNotificationPlanDto,
-} from "./dto/notification-plan.dto";
+import { NotificationPlan } from "./dto/notification-plan.dto";
 import { ActionEventNotifDto } from "./entities/action-event-notif.dto";
 import {
   ActionEventNotif,
   ActionEventNotifType,
 } from "./entities/action-event-notif.entity";
-import { generateCIDForNotif, NotificationChannel } from "./notif-utils";
-import { testUser } from "./test-users";
 
 export interface MissedDeadlineCandidate {
   actionId: number;
@@ -59,28 +35,18 @@ export interface MissedDeadlineCandidate {
   resolutionDate: Date;
 }
 
-export const NOTIFICATION_LOOKBACK_WINDOW_MS = 3 * 60 * 60 * 1000; // 3 hours
+export const NOTIFICATION_LOOKBACK_WINDOW_MS = milliseconds({ hours: 3 });
 
 @Injectable()
 export class ActionEventReminderService {
   constructor(
-    @InjectRepository(ActionEvent)
-    private readonly eventRepository: Repository<ActionEvent>,
     @InjectRepository(ReminderGroup)
     private readonly reminderGroupRepository: Repository<ReminderGroup>,
-    @InjectRepository(ActionSuite)
-    private readonly actionSuiteRepository: Repository<ActionSuite>,
     @InjectRepository(ActionEventNotif)
-    private readonly actionEventNotifRepository: Repository<ActionEventNotif>,
-    @InjectRepository(Action)
-    private readonly actionRepository: Repository<Action>,
-    @InjectRepository(FollowUpForm)
-    private readonly followUpFormRepository: Repository<FollowUpForm>,
-    @InjectRepository(ActionFormVariant)
-    private readonly actionFormVariantRepository: Repository<ActionFormVariant>,
+    private readonly actionEventNotifRepository: TypedRepository<ActionEventNotif>,
     private readonly recipientService: ActionEventRecipientService,
     private readonly userService: UserService,
-    private readonly mailService: MailService,
+    private readonly userAwayRangeService: UserAwayRangeService,
   ) {}
 
   async findPlansForGroup(
@@ -101,7 +67,9 @@ export class ActionEventReminderService {
 
       if (alreadyNotifiedUserIds.has(user.id)) continue;
 
-      if (await this.userService.isUserIdAway(user.id, reminderSendTime))
+      if (
+        await this.userAwayRangeService.isUserIdAway(user.id, reminderSendTime)
+      )
         continue;
 
       if (reminderSendTime >= windowStart && reminderSendTime <= windowEnd) {
@@ -148,7 +116,7 @@ export class ActionEventReminderService {
       .createQueryBuilder("notif")
       .where("notif.sent = true")
       .andWhere('notif."memberActionEventId" = :eventId', {
-        eventId: group.memberActionEvent.id,
+        eventId: loadedReminderGroupMemberActionEvent(group).id,
       })
       .select('notif."userId"', "userId")
       .addSelect('notif."notifiedActionIds"', "notifiedActionIds")
@@ -199,20 +167,6 @@ export class ActionEventReminderService {
     return notifs.map((notif) => notif.notifiedActionIds);
   }
 
-  async attachDeadlineEvent(group: ReminderGroup): Promise<ReminderGroup> {
-    if (group.deadlineEvent || !group.memberActionEvent) {
-      return group;
-    }
-    const events = await this.eventRepository.find({
-      where: { action: { id: group.memberActionEvent.action.id } },
-    });
-    const { deadlineEvent } = memberActionPhase(events);
-    if (!deadlineEvent) {
-      return group;
-    }
-    return { ...group, deadlineEvent };
-  }
-
   async evaluateNotifications(
     windowStart: Date,
     windowEnd: Date,
@@ -261,11 +215,12 @@ export class ActionEventReminderService {
 
     return Promise.all(
       plans.map(async (plan) => {
-        const event = plan.group.memberActionEvent!;
+        const event = loadedReminderGroupMemberActionEvent(plan.group);
+        const action = loadedActionEventAction(event);
         return {
           scheduledFor: plan.scheduledFor,
-          actionId: event.action!.id,
-          actionName: event.action!.name,
+          actionId: action.id,
+          actionName: action.name,
           actionStatus: event.newStatus,
           eventId: event.id,
           type: ActionEventNotifType.Reminder,
@@ -372,7 +327,7 @@ export class ActionEventReminderService {
 
   async findNotificationPlansForGroup(
     groupId: number,
-  ): Promise<PreviewNotificationPlanDto[]> {
+  ): Promise<NotificationPlan[]> {
     const group = await this.reminderGroupRepository.findOneOrFail({
       where: { id: groupId },
       relations: {
@@ -387,21 +342,11 @@ export class ActionEventReminderService {
       },
     });
 
-    const plans = await this.findPlansForGroup(
+    return this.findPlansForGroup(
       group,
       new Date(Date.now() - NOTIFICATION_LOOKBACK_WINDOW_MS),
-      new Date(Date.now() + 28 * 24 * 60 * 60 * 1000),
+      new Date(Date.now() + milliseconds({ days: 28 })),
     );
-    return plans.map((plan) => {
-      const channels: NotificationChannel[] = [];
-      if (userActionNotifsEnabled_push(plan.user))
-        channels.push(NotificationChannel.Push);
-      if (userActionNotifsEnabled_text(plan.user))
-        channels.push(NotificationChannel.Text);
-      if (userActionNotifsEnabled_email(plan.user))
-        channels.push(NotificationChannel.Email);
-      return new PreviewNotificationPlanDto(plan, channels);
-    });
   }
 
   async getSentNotifsForGroup(groupId: number): Promise<ActionEventNotifDto[]> {
@@ -412,249 +357,12 @@ export class ActionEventReminderService {
     return notifs.map((notif) => new ActionEventNotifDto(notif));
   }
 
-  /**
-   * Dependency actions of the event's action — and, when that action belongs
-   * to a suite, of every action in the suite — referenced by their cohort
-   * expressions via form-response or completed/in-progress conditions, that
-   * have a member-action deadline. Offered as reminder timing anchors so a
-   * group can fire when a dependency's deadline passes and catch users who
-   * joined a cohort late. Actions in the suite itself are never candidates
-   * (anchoring to them is just the suite's own deadline). Sorted by deadline
-   * date so the first candidate is the next deadline.
-   */
-  async findReminderAnchorCandidates(
-    eventId: number,
-  ): Promise<ReminderAnchorCandidate[]> {
-    const event = await this.eventRepository.findOneOrFail({
-      where: { id: eventId },
-      relations: { action: true },
-    });
-    return this.findAnchorCandidatesForAction(event.action);
-  }
-
-  private async findAnchorCandidatesForAction(
-    action: Action,
-  ): Promise<ReminderAnchorCandidate[]> {
-    const { suite } = await this.actionRepository.findOneOrFail({
-      where: { id: action.id },
-      relations: { suite: { actions: true } },
-    });
-    // Parse the jsonb cohortExpressions right at the fetch.
-    const scopeActions = (
-      suite?.actions?.length ? suite.actions : [action]
-    ).map(parseAction);
-
-    const actionIds = new Set<number>();
-    const formIds = new Set<number>();
-    for (const scopeAction of scopeActions) {
-      const dependencies = collectCohortDependencies(
-        scopeAction.cohortExpression,
-      );
-      for (const id of dependencies.actionIds) actionIds.add(id);
-      for (const id of dependencies.formIds) formIds.add(id);
-    }
-
-    const [taskFormActions, followUpForms, formVariants] = await Promise.all([
-      formIds.size > 0
-        ? this.actionRepository.find({
-            where: { taskFormId: In([...formIds]) },
-            select: { id: true },
-          })
-        : [],
-      formIds.size > 0
-        ? this.followUpFormRepository.find({
-            where: { formId: In([...formIds]) },
-            select: { actionId: true },
-          })
-        : [],
-      formIds.size > 0
-        ? this.actionFormVariantRepository.find({
-            where: { formId: In([...formIds]) },
-            select: { actionId: true },
-          })
-        : [],
-    ]);
-    for (const taskFormAction of taskFormActions)
-      actionIds.add(taskFormAction.id);
-    for (const followUpForm of followUpForms)
-      actionIds.add(followUpForm.actionId);
-    for (const variant of formVariants) actionIds.add(variant.actionId);
-    for (const scopeAction of scopeActions) actionIds.delete(scopeAction.id);
-
-    if (actionIds.size === 0) return [];
-    const dependencyActions = await this.actionRepository.find({
-      where: { id: In([...actionIds]) },
-      relations: { events: true },
-    });
-
-    return dependencyActions
-      .flatMap((dependencyAction) => {
-        const deadlineEvent = dependencyAction.memberActionPhase.deadlineEvent;
-        if (!deadlineEvent) return [];
-        return [
-          {
-            actionId: dependencyAction.id,
-            actionName: dependencyAction.name,
-            deadlineEventId: deadlineEvent.id,
-            deadlineEventDate: deadlineEvent.date,
-          },
-        ];
-      })
-      .sort(
-        (a, b) => a.deadlineEventDate.getTime() - b.deadlineEventDate.getTime(),
-      );
-  }
-
-  /**
-   * Load the timing anchor event referenced by the dto, or `null` when the
-   * dto doesn't set one — `null`, not `undefined`, so assigning the result
-   * onto a group clears a previously set anchor (TypeORM skips `undefined`
-   * properties on save). Anchors only make sense for the deadline-relative
-   * timing modes, and must be one of the member event's anchor candidates (a
-   * dependency action's deadline) — reject anything else so a stale or
-   * unrelated anchor can't sit on the group.
-   */
-  async resolveTimingAnchorEvent(
-    dto: CreateReminderGroupDto,
-    memberActionEvent: ActionEvent,
-  ): Promise<ActionEvent | null> {
-    if (dto.timingAnchorEventId == null) {
-      return null;
-    }
-    if (
-      dto.timingMode !== ReminderGroupTimingMode.FromDeadline &&
-      dto.timingMode !== ReminderGroupTimingMode.WithinRelativeRange
-    ) {
-      throw new BadRequestException(
-        "timingAnchorEventId is only valid for from_deadline and within_relative_range timing modes",
-      );
-    }
-    const candidates = await this.findAnchorCandidatesForAction(
-      memberActionEvent.action,
-    );
-    if (
-      !candidates.some(
-        (candidate) => candidate.deadlineEventId === dto.timingAnchorEventId,
-      )
-    ) {
-      throw new BadRequestException(
-        "Timing anchor event must be the deadline of a cohort dependency of the action or its suite",
-      );
-    }
-    return this.eventRepository.findOneOrFail({
-      where: { id: dto.timingAnchorEventId },
-    });
-  }
-
-  async createReminderGroup(
-    eventId: number,
-    dto: CreateReminderGroupDto,
-  ): Promise<ReminderGroup> {
-    assertExcludePreviouslyNotifiedAllowed(dto);
-    const event = await this.eventRepository.findOneOrFail({
-      where: { id: eventId },
-      relations: { action: true },
-    });
-    if (event.newStatus !== ActionStatus.MemberAction) {
-      throw new BadRequestException("Event is not a member action event");
-    }
-
-    let userTag: Tag | undefined = undefined;
-    if (dto.cohortType === ReminderCohortType.Tag && dto.userTagId) {
-      userTag = await this.userService.findTagOrFail(dto.userTagId);
-    }
-
-    let users: User[] | undefined = undefined;
-    if (dto.cohortType === ReminderCohortType.Custom && dto.userIds) {
-      users = await this.userService.findByIds(dto.userIds);
-    }
-
-    let actionSuite: ActionSuite | undefined = undefined;
-    if (dto.suiteId) {
-      actionSuite = await this.actionSuiteRepository.findOneOrFail({
-        where: { id: dto.suiteId },
-      });
-    }
-
-    const timingAnchorEvent = await this.resolveTimingAnchorEvent(dto, event);
-
-    const { timingAnchorEventId: _timingAnchorEventId, ...dtoRest } = dto;
-    const group = await this.reminderGroupRepository.create({
-      ...dtoRest,
-      memberActionEvent: event,
-      actionSuite,
-      userTag,
-      users,
-      timingAnchorEvent,
-    });
-
-    const withDeadline = await this.attachDeadlineEvent(group);
-
-    return this.reminderGroupRepository.save(withDeadline);
-  }
-
-  async updateReminderGroup(
-    groupId: number,
-    dto: CreateReminderGroupDto,
-  ): Promise<ReminderGroup> {
-    assertExcludePreviouslyNotifiedAllowed(dto);
-    const group = await this.reminderGroupRepository.findOneOrFail({
-      where: { id: groupId },
-      relations: { memberActionEvent: { action: true } },
-    });
-
-    let userTag: Tag | undefined = undefined;
-    if (dto.cohortType === ReminderCohortType.Tag && dto.userTagId) {
-      userTag = await this.userService.findTagOrFail(dto.userTagId);
-    }
-
-    let users: User[] | undefined = undefined;
-    if (dto.cohortType === ReminderCohortType.Custom && dto.userIds) {
-      users = await this.userService.findByIds(dto.userIds);
-    }
-
-    const timingAnchorEvent = await this.resolveTimingAnchorEvent(
-      dto,
-      group.memberActionEvent,
-    );
-
-    const { timingAnchorEventId: _timingAnchorEventId, ...dtoRest } = dto;
-    Object.assign(group, dtoRest);
-    group.userTag = userTag;
-    group.users = users;
-    // null (never undefined) when the dto omits the anchor, so the save
-    // clears a previously set anchor instead of silently keeping it.
-    group.timingAnchorEvent = timingAnchorEvent;
-
-    const withDeadline = await this.attachDeadlineEvent(group);
-
-    return this.reminderGroupRepository.save(withDeadline);
-  }
-
-  async deleteReminderGroup(groupId: number): Promise<void> {
-    await this.reminderGroupRepository.delete({
-      id: groupId,
-    });
-  }
-
-  async getReminderGroupsForEvent(id: number): Promise<ReminderGroup[]> {
-    return this.reminderGroupRepository.find({
-      where: { memberActionEvent: { id } },
-      relations: {
-        memberActionEvent: true,
-        userTag: true,
-        users: true,
-        timingAnchorEvent: true,
-      },
-    });
-  }
-
   async findUncompletedMembersInCommunities(
     group: ReminderGroup,
     leader: User,
   ): Promise<User[]> {
     const baseUsers = await this.recipientService.findFilteredUsersForEvent(
-      group.memberActionEvent,
+      loadedReminderGroupMemberActionEvent(group),
       group.deadlineEvent ?? null,
       ActionEventNotifType.PersonalReminder,
       group.actionSuite,
@@ -671,117 +379,11 @@ export class ActionEventReminderService {
     );
 
     const inCommunities = usersWithCommunities.filter((user) =>
-      user.communities.some((community) =>
+      loadedUserCommunities(user).some((community) =>
         leaderCommunityIds.has(community.id),
       ),
     );
     return inCommunities.filter((user) => user.id !== leader.id);
-  }
-
-  async loadEventsForPreview(
-    eventId: number,
-  ): Promise<{ deadlineEvent: ActionEvent | undefined; event: ActionEvent }> {
-    const event = await this.eventRepository.findOneOrFail({
-      where: { id: eventId },
-      relations: { action: true },
-    });
-    const events = await this.eventRepository.find({
-      where: { action: { id: event.action.id } },
-    });
-    return {
-      event,
-      deadlineEvent: memberActionPhase(events).deadlineEvent ?? undefined,
-    };
-  }
-
-  async getKeywordContextForPreview(
-    eventId: number,
-    dto: PreviewEmailHtmlDto | PreviewTextDto,
-    sendTime?: Date,
-  ) {
-    const { event, deadlineEvent } = await this.loadEventsForPreview(eventId);
-
-    return {
-      action: event.action,
-      deadlineEvent,
-      user: testUser,
-      cid: await generateCIDForNotif(),
-      uncompletedTasksCount: dto.taskCount,
-      uncompletedTasksTime: dto.taskCount * 5 + " minutes",
-      uncompletedTasksNames: ["Task 1", "Task 2", "Task 3"].slice(
-        0,
-        dto.taskCount,
-      ),
-      dateNow: sendTime,
-      uncompletedMembersInGroupCount: dto.uncompletedMembersInGroupCount,
-    };
-  }
-
-  async previewEmailHtml(
-    eventId: number,
-    dto: PreviewEmailHtmlDto,
-    sendTime?: Date,
-  ): Promise<PreviewEmailHtmlResponse> {
-    const context = await this.getKeywordContextForPreview(
-      eventId,
-      dto,
-      sendTime,
-    );
-
-    const replacedMessage = processKeywordReplacements(
-      dto.emailMessage,
-      context,
-    );
-    const replacedSubject = processKeywordReplacements(
-      dto.emailSubject,
-      context,
-    );
-
-    const html = await this.mailService.renderHtml(
-      EmailType.CustomActionReminder,
-      {
-        customMessage: replacedMessage.replace(/\n/g, "<br>"),
-      },
-    );
-
-    return {
-      subject: replacedSubject,
-      html,
-    };
-  }
-
-  async previewTextMessage(
-    eventId: number,
-    dto: PreviewTextDto,
-    sendTime?: Date,
-  ): Promise<string> {
-    const context = await this.getKeywordContextForPreview(
-      eventId,
-      dto,
-      sendTime,
-    );
-
-    return processKeywordReplacements(dto.textMessage, context);
-  }
-}
-
-/**
- * `excludePreviouslyNotified` only makes sense for cohorts whose notifs are
- * about the recipient's own tasks: exclusion matches on notifs that
- * *personally* notified the user about the event, and group-leads nudges
- * neither write that stamp nor should be suppressed by it (a leader who was
- * notified about their own task still needs nudges about other members').
- */
-export function assertExcludePreviouslyNotifiedAllowed(
-  dto: Pick<CreateReminderGroupDto, "cohortType" | "excludePreviouslyNotified">,
-): void {
-  if (
-    dto.excludePreviouslyNotified &&
-    !cohortNotifiesRecipientPersonally(dto.cohortType)
-  ) {
-    throw new BadRequestException(
-      "excludePreviouslyNotified is not supported for group-leads cohorts",
-    );
   }
 }
 
@@ -790,18 +392,16 @@ export function assertExcludePreviouslyNotifiedAllowed(
  * actions for suite-count groups, else the member event's own action. A user
  * whose prior notifs cover this whole scope has nothing new to hear from the
  * group — even if their (possibly global) message task list would not be
- * empty. Falls back to the single action when the suite's actions aren't
- * loaded (e.g. the preview's tentative group), which can only over-exclude
- * relative to the suite scope, never notify someone twice.
+ * empty.
  */
 export function groupTaskScopeActionIds(group: ReminderGroup): number[] {
   const suiteActions =
-    group.useSuiteTaskCount && group.actionSuite?.actions?.length
-      ? group.actionSuite.actions
-      : null;
-  return suiteActions
+    group.useSuiteTaskCount && group.actionSuite
+      ? loadedActionSuiteActions(group.actionSuite)
+      : [];
+  return suiteActions.length
     ? suiteActions.map((action) => action.id)
-    : [group.memberActionEvent.action.id];
+    : [loadedActionEventAction(loadedReminderGroupMemberActionEvent(group)).id];
 }
 
 /**
@@ -857,7 +457,7 @@ export function dropPlansPreemptedInSameCycle(
   const notifiedThisCycle = new Set<string>();
   const kept: NotificationPlan[] = [];
   for (const plan of plans) {
-    const key = `${plan.user.id}:${plan.group.memberActionEvent.id}`;
+    const key = `${plan.user.id}:${loadedReminderGroupMemberActionEvent(plan.group).id}`;
     if (plan.group.excludePreviouslyNotified && notifiedThisCycle.has(key)) {
       continue;
     }

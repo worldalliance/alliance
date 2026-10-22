@@ -9,15 +9,23 @@ import {
   CommunityInvite,
   CommunityInviteStatus,
 } from "../src/community/entities/community-invite.entity";
-import { Community } from "../src/community/entities/community.entity";
+import {
+  Community,
+  loadedCommunityUsers,
+} from "../src/community/entities/community.entity";
 import { getImageSource } from "../src/images/images.service";
-import { ConversationService } from "../src/messaging/conversation.service";
+import { CommunityConversationService } from "../src/messaging/community-conversation.service";
 import { Conversation } from "../src/messaging/entities/conversation.entity";
 import { Participant } from "../src/messaging/entities/participant.entity";
+import {
+  Notification,
+  NotificationCategory,
+} from "../src/notifs/entities/notification.entity";
 import { User } from "../src/user/entities/user.entity";
 import {
   createTestApp,
   giveActiveContract,
+  signAccessToken,
   TestContext,
 } from "./e2e-test-utils";
 
@@ -43,7 +51,7 @@ describe("Community (e2e)", () => {
   let communityRepo: Repository<Community>;
   let communityInviteRepo: Repository<CommunityInvite>;
   let communityService: CommunityService;
-  let conversationService: ConversationService;
+  let communityConversationService: CommunityConversationService;
   let conversationRepo: Repository<Conversation>;
   let participantRepo: Repository<Participant>;
   let testUser: User;
@@ -57,7 +65,7 @@ describe("Community (e2e)", () => {
     communityRepo = ctx.dataSource.getRepository(Community);
     communityInviteRepo = ctx.dataSource.getRepository(CommunityInvite);
     communityService = ctx.app.get(CommunityService);
-    conversationService = ctx.app.get(ConversationService);
+    communityConversationService = ctx.app.get(CommunityConversationService);
     conversationRepo = ctx.dataSource.getRepository(Conversation);
     participantRepo = ctx.dataSource.getRepository(Participant);
   }, 50000);
@@ -70,10 +78,7 @@ describe("Community (e2e)", () => {
         password: "Password123!",
       }),
     );
-    testUserToken = ctx.jwtService.sign(
-      { sub: testUser.id, email: testUser.email, name: testUser.name },
-      { secret: process.env.JWT_SECRET },
-    );
+    testUserToken = signAccessToken(ctx.jwtService, testUser);
 
     secondUser = await userRepo.save(
       userRepo.create({
@@ -82,10 +87,7 @@ describe("Community (e2e)", () => {
         password: "Password123!",
       }),
     );
-    secondUserToken = ctx.jwtService.sign(
-      { sub: secondUser.id, email: secondUser.email, name: secondUser.name },
-      { secret: process.env.JWT_SECRET },
-    );
+    secondUserToken = signAccessToken(ctx.jwtService, secondUser);
     // Both stand in for real members, who can only be in a group by way of a
     // signed contract.
     await Promise.all([
@@ -105,6 +107,14 @@ describe("Community (e2e)", () => {
   afterAll(async () => {
     await ctx.app.close();
   });
+
+  const communityIdsOf = async (userId: number) =>
+    (
+      await userRepo.findOneOrFail({
+        where: { id: userId },
+        relations: { communities: true },
+      })
+    ).communities?.map((community) => community.id);
 
   it("POST /community/create creates community when authenticated", async () => {
     const res = await request(ctx.app.getHttpServer())
@@ -517,6 +527,60 @@ describe("Community (e2e)", () => {
     expect(res.status).toBe(400);
   });
 
+  it("POST /community/:communityId/join moves the joiner out of their previous group", async () => {
+    const publicGroup = (name: string, users: User[]) =>
+      communityRepo.save(
+        communityRepo.create({
+          name,
+          public: true,
+          allowMemberInvites: true,
+          allowStaffAssignments: true,
+          maxCapacity: 10,
+          leaders: [testUser],
+          users,
+        }),
+      );
+    await publicGroup("E2E HTTP Join Previous", [testUser, secondUser]);
+    const joined = await publicGroup("E2E HTTP Join Next", [testUser]);
+
+    await request(ctx.app.getHttpServer())
+      .post(`/community/${joined.id}/join`)
+      .set("Authorization", `Bearer ${secondUserToken}`)
+      .expect(201);
+
+    expect(await communityIdsOf(secondUser.id)).toEqual([joined.id]);
+  });
+
+  it("POST /community/:communityId/join keeps the joiner in the group they lead", async () => {
+    const led = await communityRepo.save(
+      communityRepo.create({
+        name: "E2E HTTP Join Led",
+        leaders: [secondUser],
+        users: [secondUser],
+      }),
+    );
+    const joined = await communityRepo.save(
+      communityRepo.create({
+        name: "E2E HTTP Join Public",
+        public: true,
+        allowMemberInvites: true,
+        allowStaffAssignments: true,
+        maxCapacity: 10,
+        leaders: [testUser],
+        users: [testUser],
+      }),
+    );
+
+    await request(ctx.app.getHttpServer())
+      .post(`/community/${joined.id}/join`)
+      .set("Authorization", `Bearer ${secondUserToken}`)
+      .expect(201);
+
+    expect((await communityIdsOf(secondUser.id))?.sort()).toEqual(
+      [led.id, joined.id].sort(),
+    );
+  });
+
   it("PATCH /community/:communityId updates community when authenticated as leader", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
@@ -742,7 +806,7 @@ describe("Community (e2e)", () => {
       where: { id: community.id },
       relations: { users: true },
     });
-    const memberIds = refreshed.users.map((u: User) => u.id);
+    const memberIds = loadedCommunityUsers(refreshed).map((u: User) => u.id);
     expect(memberIds).not.toContain(secondUser.id);
   });
 
@@ -816,7 +880,7 @@ describe("Community (e2e)", () => {
       where: { id: community.id },
       relations: { users: true },
     });
-    const memberIds = refreshed.users.map((u: User) => u.id);
+    const memberIds = loadedCommunityUsers(refreshed).map((u: User) => u.id);
     expect(memberIds).not.toContain(secondUser.id);
   });
 
@@ -871,7 +935,7 @@ describe("Community (e2e)", () => {
       where: { id: community.id },
       relations: { users: true },
     });
-    const memberIds = refreshed.users.map((u: User) => u.id);
+    const memberIds = loadedCommunityUsers(refreshed).map((u: User) => u.id);
     expect(memberIds).not.toContain(secondUser.id);
     expect(memberIds).toContain(testUser.id);
   });
@@ -942,7 +1006,7 @@ describe("Community (e2e)", () => {
       where: { id: community.id },
       relations: { users: true, leaders: true },
     });
-    const memberIds = refreshed.users.map((u: User) => u.id);
+    const memberIds = loadedCommunityUsers(refreshed).map((u: User) => u.id);
     expect(memberIds).not.toContain(testUser.id);
     expect(memberIds).toContain(secondUser.id);
     const leaderIds = refreshed.leaders!.map((u: User) => u.id);
@@ -1109,7 +1173,7 @@ describe("Community (e2e)", () => {
       where: { id: community.id },
       relations: { users: true },
     });
-    const memberIds = refreshed.users.map((u: User) => u.id);
+    const memberIds = loadedCommunityUsers(refreshed).map((u: User) => u.id);
     expect(memberIds).toContain(secondUser.id);
   });
 
@@ -1166,7 +1230,7 @@ describe("Community (e2e)", () => {
       where: { id: community.id },
       relations: { users: true, leaders: true },
     });
-    const memberIds = refreshed.users.map((u: User) => u.id);
+    const memberIds = loadedCommunityUsers(refreshed).map((u: User) => u.id);
     const leaderIds = refreshed.leaders!.map((u: User) => u.id);
     expect(memberIds).toContain(secondUser.id);
     expect(leaderIds).toContain(secondUser.id);
@@ -1228,7 +1292,7 @@ describe("Community (e2e)", () => {
     const leaderIds = refreshed.leaders!.map((u: User) => u.id);
     expect(leaderIds).not.toContain(secondUser.id);
     // User should still be a member
-    const memberIds = refreshed.users.map((u: User) => u.id);
+    const memberIds = loadedCommunityUsers(refreshed).map((u: User) => u.id);
     expect(memberIds).toContain(secondUser.id);
   });
 
@@ -1402,6 +1466,7 @@ describe("Community (e2e)", () => {
     expect(res.status).toBe(200);
     const found = await communityInviteRepo.findOneOrFail({
       where: { id: invite.id },
+      withDeleted: true,
     });
     expect(found.deletedAt).not.toBeNull();
   });
@@ -1430,6 +1495,36 @@ describe("Community (e2e)", () => {
     expect(res.status).toBe(200);
     const found = await communityInviteRepo.findOneOrFail({
       where: { id: invite.id },
+      withDeleted: true,
+    });
+    expect(found.deletedAt).not.toBeNull();
+  });
+
+  it("DELETE /community/communityInvites/:inviteId deletes another member's invite when authenticated as leader", async () => {
+    const community = await communityRepo.save(
+      communityRepo.create({
+        name: "E2E HTTP DeleteInvite LeaderNotInviter",
+        leaders: [testUser],
+        users: [testUser, secondUser],
+      }),
+    );
+    const invite = await communityInviteRepo.save(
+      communityInviteRepo.create({
+        status: CommunityInviteStatus.InviteePending,
+        invitingUser: secondUser,
+        invitedUser: { id: ctx.testUserId },
+        community,
+      }),
+    );
+
+    const res = await request(ctx.app.getHttpServer())
+      .delete(`/community/communityInvites/${invite.id}`)
+      .set("Authorization", `Bearer ${testUserToken}`);
+
+    expect(res.status).toBe(200);
+    const found = await communityInviteRepo.findOneOrFail({
+      where: { id: invite.id },
+      withDeleted: true,
     });
     expect(found.deletedAt).not.toBeNull();
   });
@@ -1655,6 +1750,39 @@ describe("Community (e2e)", () => {
     expect(res.status).toBe(201);
     expect(res.body.status).toBe(CommunityInviteStatus.InviteePending);
     expect(res.body.id).toBe(invite.id);
+    const notifs = await ctx.dataSource.getRepository(Notification).find({
+      where: { communityInvite: { id: invite.id } },
+      order: { category: "ASC" },
+    });
+    expect(notifs.map((notif) => notif.category)).toEqual([
+      NotificationCategory.CommunityInviteCreated,
+      NotificationCategory.CommunityInviteRequestApproved,
+    ]);
+  });
+
+  it("POST /community/communityInvites/:inviteId/approveRequest approves request when authenticated as admin", async () => {
+    const community = await communityRepo.save(
+      communityRepo.create({
+        name: "E2E HTTP ApproveRequest Admin",
+        leaders: [testUser],
+        users: [testUser],
+      }),
+    );
+    const invite = await communityInviteRepo.save(
+      communityInviteRepo.create({
+        status: CommunityInviteStatus.RequestPending,
+        invitingUser: secondUser,
+        invitedUser: secondUser,
+        community,
+      }),
+    );
+
+    const res = await request(ctx.app.getHttpServer())
+      .post(`/community/communityInvites/${invite.id}/approveRequest`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
+
+    expect(res.status).toBe(201);
+    expect(res.body.status).toBe(CommunityInviteStatus.InviteePending);
   });
 
   it("POST /community/communityInvites/:inviteId/approveRequest returns 401 when unauthenticated", async () => {
@@ -1750,6 +1878,34 @@ describe("Community (e2e)", () => {
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/communityInvites/${invite.id}/rejectRequest`)
       .set("Authorization", `Bearer ${testUserToken}`);
+
+    expect(res.status).toBe(201);
+    const updated = await communityInviteRepo.findOneOrFail({
+      where: { id: invite.id },
+    });
+    expect(updated.status).toBe(CommunityInviteStatus.RequestRejected);
+  });
+
+  it("POST /community/communityInvites/:inviteId/rejectRequest rejects request when authenticated as admin", async () => {
+    const community = await communityRepo.save(
+      communityRepo.create({
+        name: "E2E HTTP RejectRequest Admin",
+        leaders: [testUser],
+        users: [testUser],
+      }),
+    );
+    const invite = await communityInviteRepo.save(
+      communityInviteRepo.create({
+        status: CommunityInviteStatus.RequestPending,
+        invitingUser: secondUser,
+        invitedUser: secondUser,
+        community,
+      }),
+    );
+
+    const res = await request(ctx.app.getHttpServer())
+      .post(`/community/communityInvites/${invite.id}/rejectRequest`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
 
     expect(res.status).toBe(201);
     const updated = await communityInviteRepo.findOneOrFail({
@@ -1882,6 +2038,52 @@ describe("Community (e2e)", () => {
     expect(res.body.length).toBe(1);
     expect(res.body[0].invitedUser.id).toBe(secondUser.id);
     expect(res.body[0].community.id).toBe(community.id);
+  });
+
+  it("GET /community/communityInvites/community/:communityId returns invites when authenticated as admin", async () => {
+    const community = await communityRepo.save(
+      communityRepo.create({
+        name: "E2E HTTP GetCommunityInvites Admin",
+        leaders: [testUser],
+        users: [testUser],
+      }),
+    );
+    await communityInviteRepo.save(
+      communityInviteRepo.create({
+        status: CommunityInviteStatus.InviteePending,
+        invitingUser: testUser,
+        invitedUser: secondUser,
+        community,
+      }),
+    );
+
+    const res = await request(ctx.app.getHttpServer())
+      .get(`/community/communityInvites/community/${community.id}`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.length).toBe(1);
+  });
+
+  it("GET /community/communityInvites/community/:communityId returns 400 for a leader of another community", async () => {
+    const [community] = await communityRepo.save([
+      communityRepo.create({
+        name: "E2E HTTP GetCommunityInvites Target",
+        leaders: [testUser],
+        users: [testUser],
+      }),
+      communityRepo.create({
+        name: "E2E HTTP GetCommunityInvites OtherLeader",
+        leaders: [secondUser],
+        users: [secondUser],
+      }),
+    ]);
+
+    const res = await request(ctx.app.getHttpServer())
+      .get(`/community/communityInvites/community/${community.id}`)
+      .set("Authorization", `Bearer ${secondUserToken}`);
+
+    expect(res.status).toBe(400);
   });
 
   it("GET /community/communityInvites/community/:communityId excludes deleted invites", async () => {
@@ -2065,7 +2267,7 @@ describe("Community (e2e)", () => {
       where: { id: community.id },
       relations: { users: true },
     });
-    const memberIds = refreshed.users.map((u: User) => u.id);
+    const memberIds = loadedCommunityUsers(refreshed).map((u: User) => u.id);
     expect(memberIds).toContain(secondUser.id);
   });
 
@@ -2165,7 +2367,14 @@ describe("Community (e2e)", () => {
     expect(res.status).toBe(400);
   });
 
-  it("POST /community/communityInvites/:inviteId/accept removes user from non-leader communities", async () => {
+  it("POST /community/communityInvites/:inviteId/accept removes user from non-leader communities and keeps the ones they lead", async () => {
+    const ledCommunity = await communityRepo.save(
+      communityRepo.create({
+        name: "E2E HTTP AcceptInvite LedGroup",
+        leaders: [secondUser],
+        users: [secondUser],
+      }),
+    );
     const oldCommunity = await communityRepo.save(
       communityRepo.create({
         name: "E2E HTTP AcceptInvite OldGroup",
@@ -2199,15 +2408,18 @@ describe("Community (e2e)", () => {
       where: { id: newCommunity.id },
       relations: { users: true },
     });
-    expect(refreshedNew.users.map((u: User) => u.id)).toContain(secondUser.id);
+    expect(loadedCommunityUsers(refreshedNew).map((u: User) => u.id)).toContain(
+      secondUser.id,
+    );
     // User should be removed from old community (not a leader there)
     const refreshedOld = await communityRepo.findOneOrFail({
       where: { id: oldCommunity.id },
       relations: { users: true },
     });
-    expect(refreshedOld.users.map((u: User) => u.id)).not.toContain(
-      secondUser.id,
-    );
+    expect(
+      loadedCommunityUsers(refreshedOld).map((u: User) => u.id),
+    ).not.toContain(secondUser.id);
+    expect(await communityIdsOf(secondUser.id)).toContain(ledCommunity.id);
   });
 
   it("POST /community/communityInvites/:inviteId/reject rejects invite when authenticated as invited user", async () => {
@@ -2334,7 +2546,9 @@ describe("Community (e2e)", () => {
         where: { id: community.id },
         relations: { users: true },
       });
-      expect(updated.users.map((u) => u.id)).toContain(secondUser.id);
+      expect(loadedCommunityUsers(updated).map((u) => u.id)).toContain(
+        secondUser.id,
+      );
     });
 
     it("refuses a group that has opted out of staff assignments", async () => {
@@ -2356,7 +2570,9 @@ describe("Community (e2e)", () => {
         where: { id: community.id },
         relations: { users: true },
       });
-      expect(updated.users.map((u) => u.id)).not.toContain(secondUser.id);
+      expect(loadedCommunityUsers(updated).map((u) => u.id)).not.toContain(
+        secondUser.id,
+      );
     });
 
     it("refuses a group that is already at capacity", async () => {
@@ -2383,7 +2599,9 @@ describe("Community (e2e)", () => {
         where: { id: community.id },
         relations: { users: true },
       });
-      expect(updated.users.map((u) => u.id)).not.toContain(secondUser.id);
+      expect(loadedCommunityUsers(updated).map((u) => u.id)).not.toContain(
+        secondUser.id,
+      );
     });
 
     it("allows only one concurrent assignment into the final available slot", async () => {
@@ -2417,7 +2635,9 @@ describe("Community (e2e)", () => {
         where: { id: community.id },
         relations: { users: true, leaders: true },
       });
-      expect(updated.users.length - updated.leaders!.length).toBe(1);
+      expect(
+        loadedCommunityUsers(updated).length - updated.leaders!.length,
+      ).toBe(1);
     });
   });
 
@@ -2474,7 +2694,7 @@ describe("Community (e2e)", () => {
         where: { id: community.id },
         relations: { users: true },
       });
-      return refreshed.users.map((member) => member.id);
+      return loadedCommunityUsers(refreshed).map((member) => member.id);
     };
 
     it("moves the member out of the source group and into the destination", async () => {
@@ -2493,8 +2713,12 @@ describe("Community (e2e)", () => {
     it("updates participant authorization even when post-commit sync fails", async () => {
       const { source, destination } = await setUpGroups();
       await Promise.all([
-        conversationService.syncCommunityConversationMembers(source.id),
-        conversationService.syncCommunityConversationMembers(destination.id),
+        communityConversationService.syncCommunityConversationMembers(
+          source.id,
+        ),
+        communityConversationService.syncCommunityConversationMembers(
+          destination.id,
+        ),
       ]);
       const [sourceConversation, destinationConversation] = await Promise.all([
         conversationRepo.findOneOrFail({
@@ -2505,7 +2729,7 @@ describe("Community (e2e)", () => {
         }),
       ]);
       const sync = jest
-        .spyOn(conversationService, "syncCommunityConversationMembers")
+        .spyOn(communityConversationService, "syncCommunityConversationMembers")
         .mockRejectedValue(new Error("sync failed"));
 
       try {

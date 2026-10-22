@@ -1,3 +1,4 @@
+import { WAITLIST_UNSUBSCRIBE_PATH } from "@alliance/common/waitlist";
 import {
   type RouteConfig,
   index,
@@ -9,11 +10,11 @@ import {
 export default [
   route("/", "pages/static/PrelaunchLandingPage.tsx"),
   route("/people", "pages/static/PeoplePage.tsx"),
-  route("/join", "pages/static/JoinPage.tsx"),
+  route("/join", "pages/static/JoinRedirect.tsx"),
   route("/guide", "pages/static/GuidePage.tsx"),
   route("/foundation", "pages/static/FoundationPage.tsx"),
   route("/governance", "pages/static/GovernancePage.tsx"),
-  route("/description", "pages/static/ExpertDescriptionPage.tsx"),
+  route("/description", "pages/static/ExpertDescriptionRedirect.tsx"),
   route("/faq", "pages/static/FAQPage.tsx"),
   route("/invite", "pages/static/InvitePage.tsx"),
   route("/outreach-partner", "pages/static/OutreachPartnerPage.tsx"),
@@ -24,7 +25,12 @@ export default [
   route("/progress", "pages/static/ProgressListPage.tsx"),
   route("/progress/projects/:slug", "pages/static/ProgressProjectRedirect.tsx"),
   route("/progress/:slug", "pages/static/ProgressPostPage.tsx"),
+  route(
+    "/projects/democratic-grantmaking-26",
+    "components/projects/democratic-grantmaking-26/DemocraticGrantmaking26.tsx",
+  ),
   route("/projects/:slug", "pages/static/ProgressProjectPage.tsx"),
+  route(WAITLIST_UNSUBSCRIBE_PATH, "pages/static/WaitlistUnsubscribePage.tsx"),
 
   route("/utensilinitiative", "pages/static/oneoff/UtensilWastePage.tsx"),
   route("/restaurantguide", "pages/static/oneoff/RestaurantGuidePage.tsx"),
@@ -32,6 +38,7 @@ export default [
   route("/memberquotes", "pages/static/oneoff/MemberQuotesPage.tsx"),
 
   route("/actions/completed", "pages/app/PublicActionCompletedPage.tsx"),
+  route("/mobile/oauth-callback", "pages/app/MobileOAuthCallbackPage.tsx"),
   layout("applayout.tsx", [
     layout("navbar.tsx", [
       ...prefix("/actions", [
@@ -58,6 +65,10 @@ export default [
 
       route("/tasks", "pages/app/HomePage.tsx"),
       route("/groups", "pages/app/CommunityRoute.tsx"),
+      route(
+        "/platform-walkthrough",
+        "onboarding/walkthrough/WalkthroughEntry.tsx",
+      ),
 
       // Info pages
       route("/groups-guide", "pages/app/GroupsGuidePage.tsx"),
@@ -72,6 +83,10 @@ export default [
       route("/notifications", "pages/app/NotificationsPage.tsx"),
       route("/search", "pages/app/SearchPage.tsx"),
       route("/settings", "pages/app/SettingsPage.tsx"),
+      route(
+        "/settings/notifications/:section",
+        "pages/app/NotificationSectionPage.tsx",
+      ),
       route("/membership", "pages/app/MembershipPage.tsx"),
       route("/contract", "pages/app/ContractPage.tsx"),
       route("/deleteaccount", "pages/app/DeleteAccountPage.tsx"),
@@ -84,8 +99,10 @@ export default [
     ]),
   ]),
   layout("loggedoutonly.tsx", [
-    route("/login", "pages/app/LoginPage.tsx"),
-    route("/signup", "pages/app/SignupPage.tsx"),
+    route("/onboarding", "onboarding/OnboardingPage.tsx"),
+    route("/login", "onboarding/OnboardingPage.tsx", { id: "login" }),
+    route("/signup", "onboarding/OnboardingPage.tsx", { id: "signup" }),
     route("/resetpassword", "pages/app/ResetPasswordPage.tsx"),
   ]),
+  route("/:customLinkSlug", "pages/static/CustomLinkRedirect.tsx"),
 ] satisfies RouteConfig;

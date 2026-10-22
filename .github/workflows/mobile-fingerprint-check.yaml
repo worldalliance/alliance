@@ -1,8 +1,8 @@
 name: Mobile Fingerprint Check
 
 # Checks current EAS runtime fingerprint against live baselines in
-# common/src/mobileFingerprints.gen.ts. Drift needs a store build; Slack notifies
-# without failing PRs.
+# common/src/mobileFingerprints.gen.ts. Drift needs a store build and notifies
+# Slack without failing PRs; a failed Slack post fails the check.
 
 on:
   workflow_call:
@@ -67,12 +67,14 @@ jobs:
           DETAILS: ${{ steps.fp.outputs.details }}
           NEEDS_CAPTURE: ${{ steps.fp.outputs.needs_capture }}
         run: |
+          . .github/scripts/slack.sh
           if [ -z "$WEBHOOK" ]; then
             echo "No Slack webhook configured; skipping notification."
             exit 0
           fi
           # Choose copy by whether a matching build was captured.
           # $'...' emits newlines.
+          # shellcheck disable=SC2016
           if [ "$NEEDS_CAPTURE" = "true" ]; then
             HEADLINE=$':iphone: *Mobile native fingerprint changed* — a new App Store / Play Store build is required.\nThese changes cannot reach existing installs over OTA.'
             FOOTER='At build time run `bun run fingerprint:capture <.ipa> <.aab>` (pass both platform artifacts; then they can be deleted). Once the build is live in the store, run `bun run fingerprint:promote` and commit/deploy promptly to clear this.'
@@ -80,16 +82,12 @@ jobs:
             HEADLINE=$':iphone: *Mobile build captured — awaiting store release.*\nThe native fingerprint is already recorded in `fingerprint-pending.gen.json`; existing installs just need this build to go live in the store.'
             FOOTER='Once the build is live in the store, run `bun run fingerprint:promote` and commit/deploy promptly to clear this.'
           fi
-          # An unescaped > closes a Slack <url|label> link early, and subjects
-          # routinely name components like <Button>.
-          esc() { printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
           if [ -n "$PR_NUMBER" ]; then
-            SOURCE=$(printf '*PR:* <%s|#%s %s>' "$PR_URL" "$PR_NUMBER" "$(esc "$PR_TITLE")")
+            SOURCE=$(printf '*PR:* <%s|#%s %s>' "$PR_URL" "$PR_NUMBER" "$(slack_escape "$PR_TITLE")")
           else
-            # Commit messages are multi-line; Slack links get the subject only.
-            SOURCE=$(printf '*Commit:* <%s|%s %s>' "$COMMIT_URL" "${SHA:0:7}" "$(esc "${COMMIT_MESSAGE%%$'\n'*}")")
+            SOURCE=$(printf '*Commit:* <%s|%s %s>' "$COMMIT_URL" "${SHA:0:7}" "$(slack_commit_subject "$COMMIT_MESSAGE")")
           fi
+          # shellcheck disable=SC2016
           MSG=$(printf '%s\n\n%s\n*Branch:* `%s`\n```\n%s\n```\n%s' \
             "$HEADLINE" "$SOURCE" "$BRANCH" "$DETAILS" "$FOOTER")
-          PAYLOAD=$(jq -n --arg text "$MSG" '{text: $text}')
-          curl -sS -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$WEBHOOK"
+          slack_post "$WEBHOOK" "$MSG"

@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
   resolveMarkdownImageSrc,
-  transformMarkdownUrl,
+  useMarkdownUrlTransform,
 } from "../lib/markdownUrl";
 import ActionLink, { getActionIdFromHref } from "./ActionLink";
 import ExternalLinkPreview from "./ExternalLinkPreview";
@@ -29,6 +29,7 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
   distinguishActionLinks = true,
 }) => {
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const urlTransform = useMarkdownUrlTransform();
 
   const openLightbox = (src: string | undefined, e: React.MouseEvent) => {
     if (!src) return;
@@ -136,7 +137,7 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
             );
           },
         }}
-        urlTransform={transformMarkdownUrl}
+        urlTransform={urlTransform}
       >
         {markdownContent}
       </ReactMarkdown>

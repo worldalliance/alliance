@@ -1,14 +1,15 @@
 import type { AccordionBlock, ImagesBlock, LabelBlock } from "./display-blocks";
 import type {
-  AnyField,
   FormSchema,
   ListField,
   OutputBlock,
   OutputFieldBlock,
   Page,
+  PageItem,
+  RangeField,
   TextField,
 } from "./form-schema";
-import { validateFormSchema } from "./form-schema-validate";
+import { ValidatedFormula, validateFormSchema } from "./form-schema-validate";
 import type { Condition, VisibleIfFormula } from "./visible-if-formula";
 
 const formula = (conditions: Record<string, Condition>): VisibleIfFormula => ({
@@ -54,10 +55,7 @@ const fieldBlock = (
   overrides: Partial<OutputFieldBlock> = {},
 ): OutputFieldBlock => ({ id, fieldId, ...overrides });
 
-const page = (
-  id: string,
-  fields: Array<AnyField | LabelBlock | ImagesBlock | AccordionBlock>,
-): Page => ({
+const page = (id: string, fields: PageItem[]): Page => ({
   id,
   fields,
 });
@@ -124,6 +122,7 @@ describe("validateFormSchema", () => {
       {
         viewId: "v1",
         blockId: "blk-label",
+        formula: ValidatedFormula.Visibility,
         message: 'References missing output block "does-not-exist"',
       },
     ]);
@@ -208,6 +207,7 @@ describe("validateFormSchema", () => {
       {
         viewId: "v1",
         blockId: "blk-a",
+        formula: ValidatedFormula.Visibility,
         message:
           "Cycle in outputBlockVisible references: blk-a -> blk-b -> blk-a",
       },
@@ -231,6 +231,7 @@ describe("validateFormSchema", () => {
       {
         viewId: "v1",
         blockId: "blk-a",
+        formula: ValidatedFormula.Visibility,
         message: "Cycle in outputBlockVisible references: blk-a -> blk-a",
       },
     ]);
@@ -263,6 +264,7 @@ describe("validateFormSchema", () => {
       {
         viewId: "v1",
         blockId: "blk-a",
+        formula: ValidatedFormula.Visibility,
         message:
           "Cycle in outputBlockVisible references: blk-a -> blk-b -> blk-c -> blk-a",
       },
@@ -307,6 +309,7 @@ describe("validateFormSchema", () => {
       {
         viewId: "v1",
         blockId: "blk",
+        formula: ValidatedFormula.Visibility,
         message: 'References missing output block ""',
       },
     ]);
@@ -330,6 +333,7 @@ describe("validateFormSchema", () => {
     expect(validateFormSchema(schema)).toEqual([
       {
         blockId: "f1",
+        formula: ValidatedFormula.Visibility,
         message:
           '"outputBlockVisible" condition is only valid on output-view blocks',
       },
@@ -354,6 +358,7 @@ describe("validateFormSchema", () => {
     expect(validateFormSchema(schema)).toEqual([
       {
         blockId: "f1",
+        formula: ValidatedFormula.RequiredIf,
         message:
           '"outputBlockVisible" condition is only valid on output-view blocks',
       },
@@ -375,6 +380,7 @@ describe("validateFormSchema", () => {
     expect(validateFormSchema(schema)).toEqual([
       {
         blockId: "disp",
+        formula: ValidatedFormula.Visibility,
         message:
           '"outputBlockVisible" condition is only valid on output-view blocks',
       },
@@ -452,6 +458,7 @@ describe("validateFormSchema", () => {
     expect(validateFormSchema(schema)).toEqual([
       {
         blockId: "p1",
+        formula: ValidatedFormula.Visibility,
         message:
           'Page visibility references field "f1", which must be on an earlier page',
       },
@@ -473,6 +480,7 @@ describe("validateFormSchema", () => {
     expect(validateFormSchema(schema)).toEqual([
       {
         blockId: "p1",
+        formula: ValidatedFormula.Visibility,
         message:
           'Page visibility references field "f2", which must be on an earlier page',
       },
@@ -494,6 +502,7 @@ describe("validateFormSchema", () => {
     expect(validateFormSchema(schema)).toEqual([
       {
         blockId: "p2",
+        formula: ValidatedFormula.Visibility,
         message:
           'Page visibility references field "missing", which must be on an earlier page',
       },
@@ -514,6 +523,7 @@ describe("validateFormSchema", () => {
     expect(validateFormSchema(schema)).toEqual([
       {
         blockId: "p1",
+        formula: ValidatedFormula.Visibility,
         message:
           '"outputBlockVisible" condition is only valid on output-view blocks',
       },
@@ -540,6 +550,7 @@ describe("validateFormSchema", () => {
     expect(validateFormSchema(schema)).toEqual([
       {
         blockId: "inner",
+        formula: ValidatedFormula.Visibility,
         message:
           '"outputBlockVisible" condition is only valid on output-view blocks',
       },
@@ -574,6 +585,134 @@ describe("validateFormSchema", () => {
     expect(validateFormSchema(schema)).toEqual([]);
   });
 
+  it("allows a field to reference a later field on the same page", () => {
+    const schema = baseSchema({
+      pages: [
+        page("p1", [
+          textField("f1", {
+            visibleIfFormula: formula({
+              c1: { kind: "hasValue", when: "f2", hasValue: true },
+            }),
+          }),
+          textField("f2"),
+        ]),
+      ],
+    });
+    expect(validateFormSchema(schema)).toEqual([]);
+  });
+
+  it("flags a direct visibility cycle between two fields", () => {
+    const schema = baseSchema({
+      pages: [
+        page("p1", [
+          textField("f1", {
+            visibleIfFormula: formula({
+              c1: { kind: "hasValue", when: "f2", hasValue: true },
+            }),
+          }),
+          textField("f2", {
+            visibleIfFormula: formula({
+              c1: { kind: "hasValue", when: "f1", hasValue: true },
+            }),
+          }),
+        ]),
+      ],
+    });
+    expect(validateFormSchema(schema)).toEqual([
+      {
+        blockId: "f1",
+        formula: ValidatedFormula.Visibility,
+        message: "Visibility conditions form a cycle: f1 -> f2 -> f1",
+      },
+    ]);
+  });
+
+  it("flags a chained visibility cycle through a list sub-field", () => {
+    const list: ListField = {
+      id: "list",
+      type: "input",
+      kind: "list",
+      label: "list",
+      fields: [
+        textField("sub", {
+          visibleIfFormula: formula({
+            c1: { kind: "hasValue", when: "f1", hasValue: true },
+          }),
+        }),
+      ],
+    };
+    const schema = baseSchema({
+      pages: [
+        page("p1", [
+          textField("f1", {
+            visibleIfFormula: formula({
+              c1: { kind: "hasValue", when: "f2", hasValue: true },
+            }),
+          }),
+          textField("f2", {
+            visibleIfFormula: formula({
+              c1: { kind: "hasValue", when: "sub", hasValue: true },
+            }),
+          }),
+          list,
+        ]),
+      ],
+    });
+    expect(validateFormSchema(schema)).toEqual([
+      {
+        blockId: "f1",
+        formula: ValidatedFormula.Visibility,
+        message: "Visibility conditions form a cycle: f1 -> f2 -> sub -> f1",
+      },
+    ]);
+  });
+
+  it("flags an element whose visibility reads its own field", () => {
+    const schema = baseSchema({
+      pages: [
+        page("p1", [
+          textField("f1", {
+            visibleIfFormula: formula({
+              c1: { kind: "hasValue", when: "f1", hasValue: true },
+            }),
+          }),
+        ]),
+      ],
+    });
+    expect(validateFormSchema(schema)).toEqual([
+      {
+        blockId: "f1",
+        formula: ValidatedFormula.Visibility,
+        message: 'Visibility of "f1" depends on its own answer',
+      },
+    ]);
+  });
+
+  it("ignores cross-form references when looking for visibility cycles", () => {
+    const schema = baseSchema({
+      pages: [
+        page("p1", [
+          textField("f1", {
+            visibleIfFormula: formula({
+              c1: {
+                kind: "hasValue",
+                when: "f2",
+                hasValue: true,
+                sourceFormId: 7,
+              },
+            }),
+          }),
+          textField("f2", {
+            visibleIfFormula: formula({
+              c1: { kind: "hasValue", when: "f1", hasValue: true },
+            }),
+          }),
+        ]),
+      ],
+    });
+    expect(validateFormSchema(schema)).toEqual([]);
+  });
+
   it("reports multiple errors across pages and output views", () => {
     const schema = baseSchema({
       pages: [
@@ -599,12 +738,14 @@ describe("validateFormSchema", () => {
     expect(errors).toHaveLength(2);
     expect(errors).toContainEqual({
       blockId: "f1",
+      formula: ValidatedFormula.Visibility,
       message:
         '"outputBlockVisible" condition is only valid on output-view blocks',
     });
     expect(errors).toContainEqual({
       viewId: "v1",
       blockId: "blk",
+      formula: ValidatedFormula.Visibility,
       message: 'References missing output block "missing"',
     });
   });
@@ -628,6 +769,7 @@ describe("validateFormSchema", () => {
       {
         viewId: "v1",
         blockId: "<unnamed>",
+        formula: ValidatedFormula.Visibility,
         message: 'References missing output block "missing"',
       },
     ]);
@@ -769,5 +911,84 @@ describe("validateFormSchema", () => {
       ],
     });
     expect(validateFormSchema(schema)).toEqual([]);
+  });
+});
+
+describe("range option count", () => {
+  const rangeField = (optionCount?: number): RangeField => ({
+    id: "scale",
+    type: "input",
+    kind: "range",
+    label: "Scale",
+    optionCount,
+  });
+  const error = {
+    blockId: "scale",
+    message: "Number of options must be a whole number from 2 to 50",
+  };
+
+  it.each([undefined, 2, 10, 50])("accepts optionCount=%p", (optionCount) => {
+    const schema = baseSchema({
+      pages: [page("p1", [rangeField(optionCount)])],
+    });
+    expect(validateFormSchema(schema)).toEqual([]);
+  });
+
+  it.each([0, 1, 2.5, 51, 80])("flags optionCount=%p", (optionCount) => {
+    const schema = baseSchema({
+      pages: [page("p1", [rangeField(optionCount)])],
+    });
+    expect(validateFormSchema(schema)).toEqual([error]);
+  });
+
+  it("flags a range sub-field of a list", () => {
+    const list: ListField = {
+      id: "list1",
+      type: "input",
+      kind: "list",
+      label: "list",
+      fields: [rangeField(80)],
+    };
+    const schema = baseSchema({ pages: [page("p1", [list])] });
+    expect(validateFormSchema(schema)).toEqual([error]);
+  });
+});
+
+describe("range default selection", () => {
+  const rangeField = (
+    defaultValue: RangeField["defaultValue"],
+  ): RangeField => ({
+    id: "scale",
+    type: "input",
+    kind: "range",
+    label: "Scale",
+    optionCount: 5,
+    defaultValue,
+  });
+  const error = {
+    blockId: "scale",
+    message: "Default selection must be a whole number from 1 to 5",
+  };
+
+  it.each([undefined, null, 1, 5])("accepts defaultValue=%p", (value) => {
+    const schema = baseSchema({ pages: [page("p1", [rangeField(value)])] });
+    expect(validateFormSchema(schema)).toEqual([]);
+  });
+
+  it.each([0, 6, 8, 2.5])("flags defaultValue=%p", (value) => {
+    const schema = baseSchema({ pages: [page("p1", [rangeField(value)])] });
+    expect(validateFormSchema(schema)).toEqual([error]);
+  });
+
+  it("flags a range sub-field of a list", () => {
+    const list: ListField = {
+      id: "list1",
+      type: "input",
+      kind: "list",
+      label: "list",
+      fields: [rangeField(8)],
+    };
+    const schema = baseSchema({ pages: [page("p1", [list])] });
+    expect(validateFormSchema(schema)).toEqual([error]);
   });
 });

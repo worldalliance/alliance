@@ -89,9 +89,9 @@ DB_NAME="$(cd "$REPO_ROOT" && bun scripts/ports.ts reseed-database)"
 export PGPASSWORD="$DB_PASSWORD"
 PSQL_BASE=(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USERNAME")
 
-# Tables populated by migrations, not seed data. Excluding them avoids
-# duplicate-key conflicts when the seed loads on a freshly-migrated DB.
-EXCLUDE_TABLE_DATA=(migrations contract)
+# Tables populated by migrations, not seed data. Their rows would conflict
+# with or duplicate the ones a freshly-migrated DB already has.
+EXCLUDE_TABLE_DATA=(migrations contract typeorm_metadata)
 
 run_migration() {
   local cmd="$1" # run | revert
@@ -120,6 +120,10 @@ echo "==> Loading existing seed (FKs disabled via session_replication_role)"
   # (matches the stripping the screenshot runner does at load time).
   sed -E '/^SET[[:space:]]+transaction_timeout[[:space:]]*=/d; /^\\restrict([[:space:]]|$)/d; /^\\unrestrict([[:space:]]|$)/d' "$SEED_FILE"
   echo "SET session_replication_role = 'origin';"
+  # The dump excludes migrations rows but still sets their id sequence, which
+  # falls behind the rows left after the revert when a migration merges with
+  # a timestamp older than the seed's.
+  echo "SELECT setval('public.migrations_id_seq', (SELECT max(id) FROM public.migrations));"
 } | "${PSQL_BASE[@]}" -d "$DB_NAME" -v ON_ERROR_STOP=1 >/dev/null
 
 echo "==> Re-running migrations to apply schema changes on top of seed data"

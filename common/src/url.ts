@@ -66,6 +66,19 @@ export function appendQueryParam(
 export const ALLIANCE_LEGACY_DOMAIN = "worldalliance.org";
 export const ALLIANCE_DOMAIN = "thealliance.org";
 
+export const STAGING_SITE_URL = `https://staging.${ALLIANCE_DOMAIN}`;
+
+/** `host` may be a `Host` header, which carries a port in local runs. */
+export const isLegacyAllianceHost = (host: string): boolean =>
+  hostnameMatchesDomain(host.split(":")[0], ALLIANCE_LEGACY_DOMAIN);
+
+/**
+ * What `POST /auth/login` refuses a migrated member with when they sign in on
+ * {@link ALLIANCE_LEGACY_DOMAIN} for a cookie session. The web login matches on
+ * it to send them to {@link ALLIANCE_DOMAIN} instead.
+ */
+export const ACCOUNT_MOVED_MESSAGE = `this account has moved to ${ALLIANCE_DOMAIN}`;
+
 /**
  * The hosts the web app answers on, per deploy/nginx/alliance.conf. A host
  * outside this list — `admin.`, or one added later — is not the web app.
@@ -102,3 +115,13 @@ export const siteHref = (url: string): string => {
   // resolve it against the host that follows, not the current one.
   return path.startsWith("//") ? url : path;
 };
+
+/** `url` on `origin` when it is a site path; anything else as it came. */
+export const withOrigin = ({
+  url,
+  origin,
+}: {
+  url: string;
+  origin: string;
+}): string =>
+  url.startsWith("/") && !url.startsWith("//") ? `${origin}${url}` : url;

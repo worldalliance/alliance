@@ -1,11 +1,9 @@
-import {
-  videosDeleteVideoAdmin,
-  videosListVideosAdmin,
-} from "@alliance/shared/client";
-import type { VideoListItemDto } from "@alliance/shared/client/types.gen";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback } from "react";
 import { useNavigate } from "react-router";
+import { sessionExpiredMessage } from "../lib/sessionExpired";
+import { useDeleteVideoAdmin, useVideosAdmin } from "../lib/useVideosAdmin";
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -16,30 +14,30 @@ function formatSize(bytes: number): string {
 }
 
 const VideoManagement: React.FC = () => {
-  const [videos, setVideos] = useState<VideoListItemDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { error: pushError } = useToast();
+  const { confirm, error: pushError } = useToast();
+  const list = useVideosAdmin();
+  const videos = list.data ?? [];
+  const error = list.isError
+    ? thrownRefusalMessage({
+        error: list.error,
+        fallback: "Failed to load videos",
+        sessionExpired: sessionExpiredMessage,
+      })
+    : null;
 
-  const loadVideos = useCallback(async () => {
-    try {
-      const response = await videosListVideosAdmin();
-      setVideos(response.data?.videos ?? []);
-    } catch (err) {
-      console.error("Failed to load videos", err);
-      setError("Failed to load videos");
-      pushError("Failed to load videos");
-    } finally {
-      setLoading(false);
-    }
-  }, [pushError]);
-
-  useEffect(() => {
-    void loadVideos();
-  }, [loadVideos]);
-
-  const { confirm } = useToast();
+  const { mutate: deleteVideo } = useDeleteVideoAdmin({
+    onError: (err) => {
+      console.error("Failed to delete video", err);
+      pushError(
+        thrownRefusalMessage({
+          error: err,
+          fallback: "Failed to delete video",
+          sessionExpired: sessionExpiredMessage,
+        }),
+      );
+    },
+  });
 
   const handleDelete = useCallback(
     async (e: React.MouseEvent, id: number) => {
@@ -47,18 +45,17 @@ const VideoManagement: React.FC = () => {
       if (
         !(await confirm({
           title: "Confirm Delete",
-          message: `Are you sure you want to delete video ${id}?`,
+          message: `Delete video ${id}? It disappears from the app, but its files stay in storage, so a direct link someone already copied keeps playing it.`,
           confirmLabel: "Delete",
         }))
       )
         return;
-      await videosDeleteVideoAdmin({ path: { id } });
-      setVideos((prev) => prev.filter((v) => v.id !== id));
+      deleteVideo(id);
     },
-    [confirm],
+    [confirm, deleteVideo],
   );
 
-  if (loading) {
+  if (list.isPending) {
     return (
       <div className="p-6 pt-20">
         <p className="text-sm text-zinc-500">Loading videos...</p>
@@ -66,7 +63,7 @@ const VideoManagement: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (error && !list.data) {
     return (
       <div className="p-6 pt-20">
         <p className="text-sm text-red-500">{error}</p>
@@ -83,6 +80,8 @@ const VideoManagement: React.FC = () => {
             Manage uploaded videos and inspect processing details
           </p>
         </div>
+
+        {error && <p className="text-sm text-red-500">{error}</p>}
 
         {videos.length === 0 ? (
           <p className="text-sm text-zinc-500">No videos found.</p>

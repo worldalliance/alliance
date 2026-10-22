@@ -1,0 +1,378 @@
+import type { FormSchema } from "@alliance/common/forms/form-schema";
+import type { FormVariable } from "@alliance/common/forms/variables";
+import { Form } from "src/tasks/entities/form.entity";
+import { TasksModule } from "src/tasks/tasks.module";
+import request from "supertest";
+import type { Repository } from "typeorm";
+import {
+  createFormWithSnapshot,
+  createTestApp,
+  type TestContext,
+} from "./e2e-test-utils";
+
+const sourceSchema: FormSchema = {
+  pages: [
+    {
+      id: "p1",
+      fields: [
+        { id: "score", type: "input", kind: "number", label: "Score" },
+        {
+          id: "colors",
+          type: "input",
+          kind: "multiselect",
+          label: "Colors",
+          options: [{ label: "Red", value: "red" }],
+        },
+      ],
+    },
+  ],
+  outputViews: [],
+};
+
+const surveySchema: FormSchema = {
+  pages: [
+    {
+      id: "p1",
+      fields: [
+        {
+          id: "employers",
+          type: "input",
+          kind: "multiselect",
+          label: "Employers",
+          options: [{ label: "Company A", value: "a" }],
+        },
+      ],
+    },
+  ],
+  outputViews: [],
+};
+
+const readsScore = (sourceFormId: number): FormVariable => ({
+  name: "scores",
+  inputs: { input1: { kind: "sourceField", fieldId: "score", sourceFormId } },
+  formula: 'input1.map(n => n ?? "-").join(",")',
+});
+
+const picksColor = (sourceFormId: number): FormSchema => ({
+  pages: [
+    {
+      id: "p1",
+      fields: [
+        {
+          id: "pick",
+          type: "input",
+          kind: "select",
+          label: "Pick",
+          options: [],
+          optionsFormula: {
+            inputs: {
+              input1: { kind: "sourceField", sourceFormId, fieldId: "colors" },
+            },
+            formula: "input1.at(-1) ?? []",
+          },
+        },
+      ],
+    },
+  ],
+  outputViews: [],
+});
+
+const destinationSchema = (
+  variable: FormVariable,
+  overrides: Partial<FormSchema> = {},
+): FormSchema => ({
+  pages: [
+    {
+      id: "p1",
+      fields: [{ id: "intro", type: "display", kind: "text", text: "Hi" }],
+    },
+  ],
+  outputViews: [],
+  variables: [variable],
+  ...overrides,
+});
+
+describe("Formulas reading another form (e2e)", () => {
+  let ctx: TestContext;
+  let formRepo: Repository<Form>;
+
+  beforeAll(async () => {
+    ctx = await createTestApp([TasksModule]);
+    formRepo = ctx.dataSource.getRepository(Form);
+  }, 50000);
+
+  afterEach(async () => {
+    await formRepo.query("DELETE FROM form");
+  });
+
+  afterAll(async () => {
+    await ctx.app.close();
+  });
+
+  const createSource = async () => {
+    const { form } = await createFormWithSnapshot(ctx.dataSource, {
+      title: "Source",
+      schema: sourceSchema,
+    });
+    return form;
+  };
+
+  const create = (schema: FormSchema) =>
+    request(ctx.app.getHttpServer())
+      .post("/tasks/createForm")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({ title: "Destination", schema });
+
+  describe("saving a form whose formula reads another form", () => {
+    it("accepts a reference to a question the source form has", async () => {
+      const form = await createSource();
+      await create(destinationSchema(readsScore(form.id))).expect(201);
+    });
+
+    it("rejects a source form that doesn't exist", async () => {
+      const form = await createSource();
+      await formRepo.delete(form.id);
+      const response = await create(
+        destinationSchema(readsScore(form.id)),
+      ).expect(400);
+      expect(response.body.errors).toEqual([
+        {
+          blockId: "variable:scores",
+          variable: "scores",
+          message: `Input "input1" reads form ${form.id}, which doesn't exist or couldn't be loaded`,
+        },
+      ]);
+    });
+
+    it("rejects a form id too large for a Postgres integer", async () => {
+      await create(destinationSchema(readsScore(3_000_000_000))).expect(400);
+    });
+
+    it("rejects a question the source form doesn't have", async () => {
+      const form = await createSource();
+      const variable = readsScore(form.id);
+      const response = await create(
+        destinationSchema({
+          ...variable,
+          inputs: {
+            input1: {
+              kind: "sourceField",
+              sourceFormId: form.id,
+              fieldId: "missing",
+            },
+          },
+        }),
+      ).expect(400);
+      expect(response.body.errors[0].message).toBe(
+        `Input "input1" references field "missing", which form ${form.id} no longer has`,
+      );
+    });
+
+    it("rejects a form reading itself as a source", async () => {
+      const form = await createSource();
+      const created = await create(destinationSchema(readsScore(form.id)));
+      const ownId: number = created.body.id;
+      const response = await request(ctx.app.getHttpServer())
+        .put(`/tasks/updateForm/${ownId}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ schema: destinationSchema(readsScore(ownId)) })
+        .expect(400);
+      expect(response.body.errors[0].message).toBe(
+        `Input "input1" reads this form as another form. Pick "This form" instead`,
+      );
+    });
+
+    it("accepts an options formula reading another form", async () => {
+      const form = await createSource();
+      await create(picksColor(form.id)).expect(201);
+    });
+
+    it("rejects a form reading itself through an options formula", async () => {
+      const form = await createSource();
+      const response = await request(ctx.app.getHttpServer())
+        .put(`/tasks/updateForm/${form.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ schema: picksColor(form.id) })
+        .expect(400);
+      expect(response.body.errors[0].message).toBe(
+        `Options formula: Input "input1" reads this form as another form. Pick "This form" instead`,
+      );
+    });
+
+    it("rejects the variable in an output view", async () => {
+      const form = await createSource();
+      const response = await create(
+        destinationSchema(readsScore(form.id), {
+          outputViews: [
+            {
+              id: "view",
+              type: "default",
+              blocks: [
+                {
+                  id: "summary",
+                  type: "display",
+                  kind: "text",
+                  text: "Scores: #{scores}",
+                },
+              ],
+            },
+          ],
+        }),
+      ).expect(400);
+      expect(response.body.errors).toEqual([
+        {
+          viewId: "view",
+          blockId: "summary.text",
+          message:
+            "Output views can't show #{scores}, which reads submitted answers",
+        },
+      ]);
+    });
+  });
+
+  describe("deleting a form another form reads", () => {
+    const remove = (formId: number) =>
+      request(ctx.app.getHttpServer())
+        .delete(`/tasks/${formId}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
+
+    it("refuses while a form's current version reads it, naming that form", async () => {
+      const source = await createSource();
+      const created = await create(
+        destinationSchema(readsScore(source.id)),
+      ).expect(201);
+      const destinationId: number = created.body.id;
+
+      const refused = await remove(source.id).expect(409);
+      expect(refused.body.message).toBe(
+        `Variables or options formulas in "Destination" (#${destinationId}) read this form's answers. Change them to stop reading it, then delete it`,
+      );
+      expect(await formRepo.findOneBy({ id: source.id })).not.toBeNull();
+
+      await request(ctx.app.getHttpServer())
+        .put(`/tasks/updateForm/${destinationId}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ schema: { ...sourceSchema, variables: undefined } })
+        .expect(200);
+      await remove(source.id).expect(200);
+    });
+
+    it("refuses while a form's options formula reads it", async () => {
+      const source = await createSource();
+      const created = await create(picksColor(source.id)).expect(201);
+
+      const refused = await remove(source.id).expect(409);
+      expect(refused.body.message).toBe(
+        `Variables or options formulas in "Destination" (#${created.body.id}) read this form's answers. Change them to stop reading it, then delete it`,
+      );
+    });
+
+    it("refuses while an options formula on a list's sub-field reads it", async () => {
+      const source = await createSource();
+      await create({
+        pages: [
+          {
+            id: "p1",
+            fields: [
+              {
+                id: "rows",
+                type: "input",
+                kind: "list",
+                label: "Rows",
+                fields: [
+                  {
+                    id: "pick",
+                    type: "input",
+                    kind: "select",
+                    label: "Pick",
+                    options: [],
+                    optionsFormula: {
+                      inputs: {
+                        input1: {
+                          kind: "sourceField",
+                          sourceFormId: source.id,
+                          fieldId: "colors",
+                        },
+                      },
+                      formula: "input1.at(-1) ?? []",
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+        outputViews: [],
+      }).expect(201);
+
+      await remove(source.id).expect(409);
+    });
+
+    it("allows deleting a form while variables read only a different form", async () => {
+      const source = await createSource();
+      const other = await createSource();
+      await create(destinationSchema(readsScore(other.id))).expect(201);
+
+      await remove(source.id).expect(200);
+    });
+
+    it("allows deleting a form while options formulas read only a different form", async () => {
+      const source = await createSource();
+      const other = await createSource();
+      await create(picksColor(other.id)).expect(201);
+
+      await remove(source.id).expect(200);
+    });
+
+    it("allows deleting a form whose aggregate counts its own answers", async () => {
+      const created = await create(surveySchema).expect(201);
+      const ownId: number = created.body.id;
+      await request(ctx.app.getHttpServer())
+        .put(`/tasks/updateForm/${ownId}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          schema: {
+            ...surveySchema,
+            variables: [
+              {
+                name: "count",
+                inputs: {
+                  counts: {
+                    kind: "aggregate",
+                    sourceFormId: ownId,
+                    fieldId: "employers",
+                  },
+                },
+                formula: "counts.a ?? 0",
+              },
+            ],
+          },
+        })
+        .expect(200);
+
+      await remove(ownId).expect(200);
+    });
+
+    it("refuses while another form's aggregate counts it", async () => {
+      const { form: survey } = await createFormWithSnapshot(ctx.dataSource, {
+        title: "Survey",
+        schema: surveySchema,
+      });
+      await create(
+        destinationSchema({
+          name: "count",
+          inputs: {
+            counts: {
+              kind: "aggregate",
+              sourceFormId: survey.id,
+              fieldId: "employers",
+            },
+          },
+          formula: "counts.a ?? 0",
+        }),
+      ).expect(201);
+
+      await remove(survey.id).expect(409);
+    });
+  });
+});

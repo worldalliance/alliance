@@ -1,0 +1,84 @@
+import { PlaceKind } from "@alliance/common/forms/form-conditions";
+import {
+  isQuestionField,
+  type PageItem,
+} from "@alliance/common/forms/form-schema";
+import { Copy, FileJson, Trash2 } from "lucide-react";
+import type { ReactNode } from "react";
+import { describeHeading } from "./canvasSelection";
+import {
+  SettingsAction,
+  SettingsActions,
+  SettingsMoveActions,
+} from "./SettingsActions";
+import { SettingsSidebar } from "./SettingsSidebar";
+import {
+  ALL_SECTIONS,
+  SidebarSection,
+  UNCONDITIONAL_SECTIONS,
+} from "./sidebarSections";
+import { DELETION } from "./useGuardedDeletion";
+
+/** The selected element's settings, around its editor. */
+export function ElementSettings({
+  element,
+  displayOnly,
+  section,
+  onSection,
+  focusPending,
+  onFocused,
+  onMoveUp,
+  onMoveDown,
+  onEditJson,
+  onDuplicate,
+  onDelete,
+  dependencies,
+  children,
+}: {
+  element: PageItem;
+  displayOnly: boolean;
+  section: SidebarSection;
+  onSection: (section: SidebarSection) => void;
+  focusPending: boolean;
+  onFocused: () => void;
+  /** Null where the element can't move that way. */
+  onMoveUp: (() => void) | null;
+  onMoveDown: (() => void) | null;
+  onEditJson: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+  dependencies: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <SettingsSidebar
+      heading={describeHeading(element)}
+      headingActions={
+        <SettingsMoveActions onMoveUp={onMoveUp} onMoveDown={onMoveDown} />
+      }
+      sections={displayOnly ? UNCONDITIONAL_SECTIONS : ALL_SECTIONS}
+      section={section}
+      onSection={onSection}
+      focusPending={focusPending}
+      onFocused={onFocused}
+      dependencies={dependencies}
+      actions={
+        <SettingsActions idLabel="Element ID" id={element.id}>
+          <SettingsAction Icon={FileJson} onClick={onEditJson}>
+            Edit element JSON
+          </SettingsAction>
+          <SettingsAction Icon={Copy} onClick={onDuplicate}>
+            Duplicate
+          </SettingsAction>
+          <SettingsAction Icon={Trash2} destructive onClick={onDelete}>
+            {isQuestionField(element)
+              ? DELETION[PlaceKind.Element].action
+              : "Delete block"}
+          </SettingsAction>
+        </SettingsActions>
+      }
+    >
+      {children}
+    </SettingsSidebar>
+  );
+}

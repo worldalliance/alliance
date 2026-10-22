@@ -1,9 +1,10 @@
+import { commentPath } from "@alliance/common/commentPath";
 import { UserCommentDto } from "@alliance/shared/client";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import EditableContentRenderer from "@alliance/sharedweb/ui/EditableContentRenderer";
 import UserDisplayName from "@alliance/sharedweb/ui/UserDisplayName";
-import { Link, href, useNavigate } from "react-router";
+import { Link } from "react-router";
 
 export interface ForumActivityCommentCardProps {
   comment: UserCommentDto;
@@ -12,26 +13,9 @@ export interface ForumActivityCommentCardProps {
 const ForumActivityCommentCard = ({
   comment,
 }: ForumActivityCommentCardProps) => {
-  const url =
-    comment.parentObjectType === "post"
-      ? `${href("/forum/post/:id", {
-          id: comment.parentObjectId.toString(),
-        })}?replyId=${comment.id}`
-      : comment.parentObjectType === "action"
-        ? `${href("/actions/:id", {
-            id: comment.parentObjectId.toString(),
-          })}?replyId=${comment.id}`
-        : null;
-
-  const navigate = useNavigate();
-
-  if (!url) {
-    return null;
-  }
-
   return (
     <Link
-      to={url}
+      to={commentPath(comment)}
       className="w-full mb-0 p-4 hover:bg-zinc-50 bg-white space-y-2"
     >
       <EditableContentRenderer content={comment.editableContent} truncated />
@@ -48,18 +32,7 @@ const ForumActivityCommentCard = ({
           {`commented ${formatTime(new Date(comment.createdAt), {
             addSuffix: true,
           })} in `}
-          <span
-            className="!text-green font-medium"
-            onClick={() => {
-              navigate(
-                href("/forum/post/:id", {
-                  id: comment.parentObjectId.toString(),
-                }),
-              );
-            }}
-          >
-            {comment.parentTitle}
-          </span>
+          <span className="!text-green font-medium">{comment.parentTitle}</span>
         </span>
       </div>
     </Link>

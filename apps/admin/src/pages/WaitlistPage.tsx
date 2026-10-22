@@ -1,0 +1,305 @@
+import { pickForCount, withCount } from "@alliance/common/plural";
+import type {
+  AdminWaitlistEntryDto,
+  WaitlistEntryFilterDto,
+  WaitlistEntrySort,
+} from "@alliance/shared/client/types.gen";
+import { cn } from "@alliance/shared/styles/util";
+import Pagination from "@alliance/sharedweb/ui/Pagination";
+import { ChartColumn, Mail, X } from "lucide-react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useLocation, useNavigate } from "react-router";
+import CohortControls from "../components/waitlist/CohortControls";
+import {
+  BORDERED_ICON_BUTTON_CLASS,
+  ICON_BUTTON_CLASS,
+} from "../components/waitlist/controlClasses";
+import EmailComposer from "../components/waitlist/email/EmailComposer";
+import EntryActions from "../components/waitlist/EntryActions";
+import { InvitationDialog } from "../components/waitlist/EntryContactActions";
+import TagActions from "../components/waitlist/TagActions";
+import TagManager from "../components/waitlist/TagManager";
+import WaitlistFilters from "../components/waitlist/WaitlistFilters";
+import WaitlistMetrics from "../components/waitlist/WaitlistMetrics";
+import WaitlistTable from "../components/waitlist/WaitlistTable";
+import { adminRefusalMessage } from "../lib/adminRefusal";
+import { isOrganization } from "../lib/isOrganization";
+import {
+  campaignsLoadFailed,
+  useCampaignsAdmin,
+} from "../lib/useCampaignsAdmin";
+import { useRefusalToast } from "../lib/useRefusalToast";
+import { useWaitlistCohortsAdmin } from "../lib/useWaitlistCohortsAdmin";
+import {
+  useFindWaitlistEntryIdsAdmin,
+  useWaitlistEntriesAdmin,
+} from "../lib/useWaitlistEntriesAdmin";
+import {
+  useWaitlistLinksAdmin,
+  waitlistLinksLoadFailed,
+} from "../lib/useWaitlistLinksAdmin";
+import { useWaitlistTagsAdmin } from "../lib/useWaitlistTagsAdmin";
+import { type EmailDraft, emailDraftFromState } from "../lib/waitlistEmail";
+import {
+  INITIAL_WAITLIST_FILTER,
+  withFilterField,
+} from "../lib/waitlistFilter";
+
+const PAGE_SIZE = 50;
+
+const WaitlistPage: React.FC = () => {
+  const refusalToast = useRefusalToast();
+  const [filter, setFilter] = useState<WaitlistEntryFilterDto>(
+    INITIAL_WAITLIST_FILTER,
+  );
+  const [sort, setSort] = useState<WaitlistEntrySort>("joined_desc");
+  const [page, setPage] = useState(1);
+  // Remounting the filters on a cohort drops a search still being typed.
+  const [filtersKey, setFiltersKey] = useState(0);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showMetrics, setShowMetrics] = useState(false);
+  const [inviting, setInviting] = useState<AdminWaitlistEntryDto | null>(null);
+  const selectionVersion = useRef(0);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [draft, setDraft] = useState<EmailDraft | null>(() =>
+    emailDraftFromState(location.state),
+  );
+  // Clearing the passed draft keeps Back or a reload from reopening it.
+  useEffect(() => {
+    if (emailDraftFromState(location.state)) {
+      navigate(
+        { pathname: location.pathname, search: location.search },
+        { replace: true, state: null },
+      );
+    }
+  }, [location, navigate]);
+
+  const changeSelection = useCallback((next: Set<number>) => {
+    selectionVersion.current += 1;
+    setSelectedIds(next);
+  }, []);
+
+  const deselect = useCallback((id: number) => {
+    selectionVersion.current += 1;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const changeFilter = useCallback(
+    (next: WaitlistEntryFilterDto) => {
+      setFilter(next);
+      setPage(1);
+      changeSelection(new Set());
+    },
+    [changeSelection],
+  );
+
+  const searchDto = {
+    filter,
+    sort,
+    offset: (page - 1) * PAGE_SIZE,
+    limit: PAGE_SIZE,
+  };
+  const entries = useWaitlistEntriesAdmin(searchDto);
+  const campaigns = useCampaignsAdmin();
+  const links = useWaitlistLinksAdmin();
+  const tags = useWaitlistTagsAdmin();
+  const cohorts = useWaitlistCohortsAdmin();
+
+  const organizations = useMemo(
+    () => campaigns.data?.filter(isOrganization),
+    [campaigns.data],
+  );
+
+  const selectAllMatching = useFindWaitlistEntryIdsAdmin({
+    onError: (err) => refusalToast(err, "Could not select every entry."),
+  });
+
+  const total = entries.data?.total ?? 0;
+  const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  useEffect(() => {
+    if (entries.data && page > lastPage) setPage(lastPage);
+  }, [entries.data, page, lastPage]);
+  const loadError =
+    (entries.error &&
+      adminRefusalMessage(entries.error, "Unable to load the waitlist.")) ||
+    (campaigns.error &&
+      adminRefusalMessage(campaigns.error, campaignsLoadFailed)) ||
+    (links.error &&
+      adminRefusalMessage(links.error, waitlistLinksLoadFailed)) ||
+    (tags.error && adminRefusalMessage(tags.error, "Unable to load tags.")) ||
+    (cohorts.error &&
+      adminRefusalMessage(cohorts.error, "Unable to load cohorts."));
+
+  return (
+    <div className="p-5 space-y-4">
+      <title>Waitlist - Admin</title>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-lg font-bold text-zinc-900">Waitlist</h1>
+        <CohortControls
+          cohorts={cohorts.data ?? []}
+          filter={filter}
+          onApply={(next) => {
+            setFiltersKey((key) => key + 1);
+            changeFilter(next);
+          }}
+        />
+      </div>
+
+      <WaitlistFilters
+        key={filtersKey}
+        filter={filter}
+        onChange={changeFilter}
+        organizations={organizations}
+        links={links.data}
+        tags={tags.data}
+      />
+
+      <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-700">
+        <span>
+          {entries.data
+            ? withCount(total, "entry")
+            : entries.isPending && "Loading…"}
+        </span>
+        {selectedIds.size > 0 && (
+          <span className="font-medium">
+            {withCount(selectedIds.size, "entry")}{" "}
+            {pickForCount(selectedIds.size, "is", "are")} selected
+          </span>
+        )}
+        {total > 0 && selectedIds.size < total && (
+          <button
+            type="button"
+            className="text-blue-600 hover:underline disabled:opacity-50"
+            disabled={selectAllMatching.isPending || entries.isPlaceholderData}
+            onClick={() => {
+              const version = selectionVersion.current;
+              selectAllMatching.mutate(filter, {
+                onSuccess: (ids) => {
+                  if (version === selectionVersion.current) {
+                    changeSelection(new Set(ids));
+                  }
+                },
+              });
+            }}
+          >
+            Select all {total} matching
+          </button>
+        )}
+        {selectedIds.size > 0 && (
+          <button
+            type="button"
+            aria-label="Clear selection"
+            title="Clear selection"
+            className={ICON_BUTTON_CLASS}
+            onClick={() => changeSelection(new Set())}
+          >
+            <X size={16} />
+          </button>
+        )}
+        <div className="flex gap-2 ml-auto">
+          <TagActions
+            selectedIds={selectedIds}
+            tags={tags.data ?? []}
+            onChanged={() => changeSelection(new Set())}
+          />
+          <TagManager tags={tags.data} />
+          <EntryActions
+            selectedIds={selectedIds}
+            onChanged={() => changeSelection(new Set())}
+          />
+          <button
+            type="button"
+            aria-label="Metrics"
+            title="Metrics"
+            aria-pressed={showMetrics}
+            className={cn(
+              BORDERED_ICON_BUTTON_CLASS,
+              showMetrics && "bg-zinc-100",
+            )}
+            onClick={() => setShowMetrics((shown) => !shown)}
+          >
+            <ChartColumn size={16} />
+          </button>
+          <button
+            type="button"
+            aria-label="Compose email"
+            title="Compose email"
+            className={BORDERED_ICON_BUTTON_CLASS}
+            disabled={draft !== null}
+            onClick={() => setDraft({ subject: "", body: "" })}
+          >
+            <Mail size={16} />
+          </button>
+        </div>
+      </div>
+
+      {showMetrics && <WaitlistMetrics filter={filter} />}
+
+      {draft && (
+        <EmailComposer
+          selectedIds={selectedIds}
+          initialDraft={draft}
+          onClose={() => setDraft(null)}
+          onSent={() => {
+            setDraft(null);
+            changeSelection(new Set());
+          }}
+        />
+      )}
+
+      {inviting && (
+        <InvitationDialog entry={inviting} onClose={() => setInviting(null)} />
+      )}
+
+      {loadError && <p className="text-sm text-red-500">{loadError}</p>}
+
+      {entries.data &&
+        (entries.data.entries.length === 0 ? (
+          <p className="text-sm text-zinc-500">No entries match.</p>
+        ) : (
+          <div
+            className={cn(
+              "border border-zinc-200 rounded-lg bg-white overflow-hidden",
+              entries.isPlaceholderData && "opacity-60",
+            )}
+          >
+            <WaitlistTable
+              entries={entries.data.entries}
+              selectedIds={selectedIds}
+              onSelectedIdsChange={changeSelection}
+              onDeselect={deselect}
+              selectable={!entries.isPlaceholderData}
+              sort={sort}
+              onSortChange={(next) => {
+                setSort(next);
+                setPage(1);
+              }}
+              onFilterReferrer={(id) =>
+                changeFilter(
+                  withFilterField({ filter, key: "referrerIds", value: [id] }),
+                )
+              }
+              onInvite={setInviting}
+            />
+          </div>
+        ))}
+
+      {total > PAGE_SIZE && (
+        <Pagination page={page} totalPages={lastPage} onPageChange={setPage} />
+      )}
+    </div>
+  );
+};
+
+export default WaitlistPage;

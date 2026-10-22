@@ -1,30 +1,26 @@
-import { errorMessage } from "@alliance/common/errorMessage";
-import { tasksGetForm } from "@alliance/shared/client";
 import type {
   ActionReviewerIcon,
   ProfileDto,
 } from "@alliance/shared/client/types.gen";
 import { shuffleWithSeed } from "@alliance/shared/forms/randomutils";
+import { showActionPageTaskSection } from "@alliance/shared/lib/actionPageTaskPanel";
 import { useCompletedTaskForm } from "@alliance/shared/lib/actionTaskPanelCompleted";
-import { isFollowUpFormActive } from "@alliance/shared/lib/actionUtils";
+import { hasViewerCompletedAction } from "@alliance/shared/lib/actionUtils";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
+import { getActiveFollowUpForms } from "@alliance/shared/lib/followUpForm";
 import { getNextEvent } from "@alliance/shared/lib/largeActionCard";
 import { nameListSeparator } from "@alliance/shared/lib/nameList";
 import {
-  buildActionShareUrl,
-  buildShareText,
   getCompletedShareableTextTemplate,
   getDefaultShareableTextTemplate,
 } from "@alliance/shared/lib/shareText";
-import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { getBaseUrl } from "@alliance/sharedweb/lib/config";
+import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import AggregateProgressBarBlock from "@alliance/sharedweb/ui/AggregateProgressBarBlock";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import ExternalLinkPreview from "@alliance/sharedweb/ui/ExternalLinkPreview";
 import LinkedInIcon from "@alliance/sharedweb/ui/icons/LinkedInIcon";
-import { useQuery } from "@tanstack/react-query";
-import { ExternalLinkIcon } from "lucide-react";
+import { Link2Icon } from "lucide-react";
 import { Fragment, useEffect, useMemo, type ReactNode } from "react";
 import {
   Link,
@@ -35,6 +31,7 @@ import {
 } from "react-router";
 import chevronLeft from "../assets/icons8-expand-arrow-96.png";
 import { useAuth } from "../lib/AuthContext";
+import { copyActionShareText } from "../lib/actionShare";
 import { useLiveTaskFormAggregateViews } from "../lib/useLiveTaskFormAggregateViews";
 import ActionCompletedBarWithInfo from "../pages/app/ActionCompletedBarWithInfo";
 import TaskTimeInfo from "../pages/app/TaskTimeInfo";
@@ -77,35 +74,18 @@ const ActionContents = () => {
 
   const action = context.action;
 
+  const isCompleted = hasViewerCompletedAction(action);
   const aggregateViews = useLiveTaskFormAggregateViews(
     action.taskFormId,
     action.usersCompleted,
-    context.userRelation,
+    isCompleted,
   );
 
   const { user, isAuthenticated } = useAuth();
   const loggedInMode = !action.publicOnly;
-  const isCompleted = context.userRelation === "completed";
   const formResponse = useCompletedTaskForm(action, isCompleted);
-  const { data: taskForm } = useQuery({
-    queryKey: ["form", action.taskFormId],
-    queryFn: async () => {
-      const response = await tasksGetForm({
-        path: { id: action.taskFormId! },
-      });
-
-      if (!response.data) {
-        throw new Error(
-          errorMessage({
-            error: response.error,
-            fallback: "Unable to load form",
-          }),
-        );
-      }
-
-      return response.data;
-    },
-    enabled: !isCompleted && action.taskFormId != null,
+  const { data: taskForm } = useTaskForm(action.taskFormId, {
+    enabled: !isCompleted,
   });
   const shareTemplate = isCompleted
     ? getCompletedShareableTextTemplate({
@@ -135,11 +115,7 @@ const ActionContents = () => {
   }, [action.authors, action.id]);
 
   const activeFollowUpForms = useMemo(() => {
-    if (context.userRelation !== "completed") {
-      return [];
-    }
-    const list = action.followUpForms;
-    return list.filter(isFollowUpFormActive);
+    return getActiveFollowUpForms(action);
     // dont want to show follow up before cohort recomputed
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [action.followUpForms]);
@@ -155,20 +131,14 @@ const ActionContents = () => {
 
   const nextEvent = getNextEvent(action);
 
-  const handleShareAction = async () => {
-    const url = await buildActionShareUrl({
+  const handleShareAction = () =>
+    copyActionShareText({
       actionId: action.id,
-      baseUrl: getBaseUrl(),
       isAuthenticated,
-    });
-    const text = buildShareText({
       template: shareTemplate,
       formResponse,
       userName: user?.name,
-      url,
     });
-    return copyToClipboard(text);
-  };
 
   return (
     <div className="flex flex-col gap-y-3 flex-2 w-full">
@@ -181,17 +151,24 @@ const ActionContents = () => {
 
       <div className="flex flex-row justify-between items-start mb-6">
         {action !== undefined && (
-          <div className="flex flex-col gap-y-3">
-            <ShareButton
-              onClick={handleShareAction}
-              icon={ExternalLinkIcon}
-              label={clipboardCopy.share}
-              copiedLabel={clipboardCopy.copiedToClipboard}
-              className="self-start text-zinc-500 hover:text-zinc-700"
-              iconClassName="w-3.5 h-3.5 shrink-0"
-              labelClassName="text-sm order-first"
-            />
-            <p className="text-title">{action.name}</p>
+          <div className="flex flex-col gap-y-3 w-full">
+            {action.project && (
+              <p className="text-lg font-semibold text-green-800">
+                {action.project.name}
+              </p>
+            )}
+            <div className="flex flex-row justify-between items-start gap-x-4">
+              <p className="text-title">{action.name}</p>
+              <ShareButton
+                onClick={handleShareAction}
+                icon={Link2Icon}
+                label={clipboardCopy.copyLink}
+                copiedLabel={clipboardCopy.copiedToClipboard}
+                className="mt-2 text-zinc-500 hover:text-zinc-700"
+                iconClassName="w-5 h-5 shrink-0"
+                iconOnly
+              />
+            </div>
             {loggedInMode ? (
               <p className="text-base md:text-lg">{action.shortDescription}</p>
             ) : (
@@ -241,7 +218,7 @@ const ActionContents = () => {
             </Link>
           </div>
         )}
-        {action.status !== "planned" && (
+        {showActionPageTaskSection(action) && (
           <div className="flex flex-col">
             {loggedInMode && activeFollowUpForms.length > 0 && (
               <div className="flex flex-col gap-y-4 mb-6">
@@ -296,6 +273,7 @@ const ActionContents = () => {
                           <AvatarProfile
                             pfp={author.profilePicture}
                             size="override"
+                            thumbnail
                             className="w-5 h-5 rounded"
                           />
                           <span>{author.displayName}</span>

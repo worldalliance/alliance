@@ -1,3 +1,4 @@
+import { thrownStack } from "@alliance/common/errorMessage";
 import { Injectable, Logger } from "@nestjs/common";
 import { AiDetectionProcessor } from "./ai-detection.processor";
 import { AiDetectionJobData } from "./ai-detection.types";
@@ -22,7 +23,7 @@ export class AiDetectionQueueService {
       void this.detectionProcessor.handleDetection(job).catch((error) => {
         this.logger.error(
           `Failed AI detection job for ${job.entityType}:${job.entityId}`,
-          error instanceof Error ? error.stack : String(error),
+          thrownStack(error),
         );
       });
     });

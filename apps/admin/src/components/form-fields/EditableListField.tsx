@@ -3,31 +3,24 @@ import {
   fieldPickerLabel,
 } from "@alliance/common/forms/element-descriptors";
 import type {
-  AnyField,
   FieldKind,
   ListField,
   ListSubField,
 } from "@alliance/common/forms/form-schema";
-import { useFormQuestionFields } from "@alliance/shared/lib/useFormSchema";
 import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
+import { useFormQuestionFields } from "@alliance/shared/lib/useFormSchema";
+import { describeElement, subFieldChild } from "../form-canvas/canvasSelection";
+import {
+  ChildRow,
+  ChildRows,
+  neighborMoves,
+  useSelectChild,
+} from "../form-canvas/ChildRows";
 import {
   formFieldsErrorReason,
   FormPickerError,
   FormPickerErrorReason,
 } from "../FormPickerError";
-import { EditableCheckboxField } from "./EditableCheckboxField";
-import { EditableChoiceField } from "./EditableChoiceField";
-import { EditableCityField } from "./EditableCityField";
-import { EditableDateField } from "./EditableDateField";
-import { EditableEmailField } from "./EditableEmailField";
-import { EditableFileField } from "./EditableFileField";
-import { EditableNumberField } from "./EditableNumberField";
-import { EditablePhoneField } from "./EditablePhoneField";
-import { EditableRangeField } from "./EditableRangeField";
-import { EditableTextField } from "./EditableTextField";
-import { EditableTextareaField } from "./EditableTextareaField";
-import { EditableTimeField } from "./EditableTimeField";
-import { EditableTimezoneField } from "./EditableTimezoneField";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
 import type { BaseFieldProps } from "./types";
@@ -103,11 +96,7 @@ function createDefaultSubField(
     case "time":
       return { ...base, kind: "time" };
     case "timezone":
-      return {
-        ...base,
-        kind: "timezone",
-        defaultValue: "America/Los_Angeles",
-      };
+      return { ...base, kind: "timezone" };
     case "city":
       return { ...base, kind: "city", placeholder: "Search for a city" };
     case "file":
@@ -126,64 +115,11 @@ function createDefaultSubField(
   }
 }
 
-function renderEditableSubField(
-  sub: AnyField,
-  index: number,
-  updateSubField: (index: number, updates: Partial<AnyField>) => void,
-  removeSubField: (index: number) => void,
-  previousFields: AnyField[],
-) {
-  const commonProps = {
-    field: sub as never,
-    onUpdate: (updates: Partial<AnyField>) => updateSubField(index, updates),
-    onRemove: () => removeSubField(index),
-    previousFields,
-    onDragStart: undefined,
-    onDragEnd: undefined,
-    isDragging: false,
-  };
-  switch (sub.kind) {
-    case "text":
-      return <EditableTextField {...commonProps} />;
-    case "textarea":
-      return <EditableTextareaField {...commonProps} />;
-    case "email":
-      return <EditableEmailField {...commonProps} />;
-    case "phone":
-      return <EditablePhoneField {...commonProps} />;
-    case "number":
-      return <EditableNumberField {...commonProps} />;
-    case "range":
-      return <EditableRangeField {...commonProps} />;
-    case "checkbox":
-      return <EditableCheckboxField {...commonProps} />;
-    case "radio":
-    case "select":
-    case "multiselect":
-      return <EditableChoiceField {...commonProps} />;
-    case "date":
-      return <EditableDateField {...commonProps} />;
-    case "time":
-      return <EditableTimeField {...commonProps} />;
-    case "timezone":
-      return <EditableTimezoneField {...commonProps} />;
-    case "city":
-      return <EditableCityField {...commonProps} />;
-    case "file":
-      return <EditableFileField {...commonProps} />;
-    default:
-      return null;
-  }
-}
-
 export function EditableListField({
   field,
   onUpdate,
-  onRemove,
-  onDragStart,
-  onDragEnd,
-  isDragging,
   previousFields,
+  laterFields,
 }: BaseFieldProps<ListField>) {
   // --- Prefill from previous answer state ---
   const { options: prefillForms, isError: formListFailed } = useFormOptions();
@@ -199,25 +135,15 @@ export function EditableListField({
     (f) => f.id === field.prefillFromPreviousAnswer?.sourceFieldId,
   );
   const sourceSubFields = selectedSourceListField?.fields ?? [];
-
-  const addSubField = (kind: (typeof SUB_FIELD_KINDS)[number]) => {
-    const sub = createDefaultSubField(field.id, kind);
-    onUpdate({ fields: [...(field.fields ?? []), sub] });
-  };
-
-  const updateSubField = (index: number, updates: Partial<AnyField>) => {
-    const next = [...(field.fields ?? [])];
-    next[index] = { ...next[index], ...updates } as ListSubField;
-    onUpdate({ fields: next });
-  };
-
-  const removeSubField = (index: number) => {
-    const next = (field.fields ?? []).filter((_, i) => i !== index);
-    onUpdate({ fields: next });
-  };
+  const selectChild = useSelectChild();
 
   const subFields = field.fields ?? [];
-  const previousFieldsFor = (index: number) => subFields.slice(0, index);
+  const addSubField = (kind: (typeof SUB_FIELD_KINDS)[number]) => {
+    const sub = createDefaultSubField(field.id, kind);
+    onUpdate({ fields: [...subFields, sub] });
+    selectChild(subFieldChild(sub, subFields.length), { focus: true });
+  };
+
   const hiddenIds = field.outputViewHiddenFieldIds ?? [];
 
   return (
@@ -225,10 +151,7 @@ export function EditableListField({
       field={field}
       onUpdate={onUpdate}
       previousFields={previousFields}
-      onRemove={onRemove}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      isDragging={isDragging}
+      laterFields={laterFields}
     >
       <FieldLabelEditor
         value={field.label}
@@ -305,18 +228,21 @@ export function EditableListField({
         <label className="block text-xs font-medium text-gray-700 mb-1">
           Fields in each card
         </label>
-        <div className="space-y-3">
-          {subFields.map((sub, index) => (
-            <div key={sub.id}>
-              {renderEditableSubField(
-                sub,
-                index,
-                updateSubField,
-                removeSubField,
-                previousFieldsFor(index),
-              )}
-            </div>
-          ))}
+        <div className="space-y-2">
+          {subFields.length > 0 && (
+            <ChildRows>
+              {subFields.map((sub, index) => (
+                <ChildRow
+                  key={sub.id || index}
+                  label={describeElement(sub)}
+                  onSelect={() => selectChild(subFieldChild(sub, index))}
+                  {...neighborMoves(subFields, index, (fields) =>
+                    onUpdate({ fields }),
+                  )}
+                />
+              ))}
+            </ChildRows>
+          )}
           <div className="relative">
             <select
               value=""

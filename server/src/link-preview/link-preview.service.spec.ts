@@ -1,266 +1,16 @@
 import { R } from "@alliance/common/result";
 import * as cheerio from "cheerio";
+import { milliseconds } from "date-fns";
 import { gzipSync } from "node:zlib";
 import { UnfetchableUrl } from "src/utils/safe-http";
+import { sniffImageMime } from "./link-preview-favicon";
 import {
   makeTransport,
   PAGE_HTML,
   PNG_BYTES,
   response,
 } from "./link-preview.fixtures";
-import {
-  charsetFromContentType,
-  decodeHtmlBody,
-  extractFaviconUrls,
-  isSvgDocument,
-  LinkPreviewService,
-  PreviewUnavailable,
-  sniffImageMime,
-} from "./link-preview.service";
-
-describe("charsetFromContentType", () => {
-  it("extracts the charset parameter, ignoring case and quotes", () => {
-    expect(charsetFromContentType("text/html; charset=UTF-8")).toBe("utf-8");
-    expect(charsetFromContentType('text/html; charset="windows-1251"')).toBe(
-      "windows-1251",
-    );
-    expect(charsetFromContentType("text/html;charset=Shift_JIS")).toBe(
-      "shift_jis",
-    );
-  });
-
-  it("returns null when no charset is declared", () => {
-    expect(charsetFromContentType("text/html")).toBe(null);
-    expect(charsetFromContentType(null)).toBe(null);
-  });
-});
-
-describe("decodeHtmlBody", () => {
-  // "Привет" in windows-1251
-  const win1251 = Buffer.from([0xcf, 0xf0, 0xe8, 0xe2, 0xe5, 0xf2]);
-
-  it("decodes using the header-declared charset", () => {
-    expect(decodeHtmlBody(win1251, "text/html; charset=windows-1251")).toBe(
-      "Привет",
-    );
-  });
-
-  // Legacy non-UTF-8 pages usually declare their charset only in the markup;
-  // the WHATWG prescan of the first 1024 bytes must pick it up.
-  it("sniffs <meta charset> when the header declares none", () => {
-    const html = Buffer.concat([
-      Buffer.from('<html><head><meta charset="windows-1251"><title>'),
-      win1251,
-      Buffer.from("</title></head></html>"),
-    ]);
-    expect(decodeHtmlBody(html, "text/html")).toContain("Привет");
-    expect(decodeHtmlBody(html, null)).toContain("Привет");
-  });
-
-  it("prefers the header charset over <meta charset>", () => {
-    // The meta lies (claims UTF-8); the transport-layer label wins per spec.
-    const html = Buffer.concat([
-      Buffer.from('<meta charset="utf-8">'),
-      win1251,
-    ]);
-    expect(decodeHtmlBody(html, "text/html; charset=windows-1251")).toContain(
-      "Привет",
-    );
-  });
-
-  it("prefers a BOM over everything else", () => {
-    const bom = Buffer.from([0xef, 0xbb, 0xbf]);
-    const html = Buffer.concat([bom, Buffer.from("héllo", "utf-8")]);
-    expect(decodeHtmlBody(html, "text/html; charset=windows-1251")).toBe(
-      "héllo",
-    );
-  });
-
-  it("falls back to UTF-8 for missing or unknown charsets", () => {
-    const utf8 = Buffer.from("héllo", "utf-8");
-    expect(decodeHtmlBody(utf8, "text/html")).toBe("héllo");
-    expect(decodeHtmlBody(utf8, "text/html; charset=not-a-charset")).toBe(
-      "héllo",
-    );
-    expect(decodeHtmlBody(utf8, null)).toBe("héllo");
-  });
-});
-
-describe("extractFaviconUrls", () => {
-  const base = new URL("https://example.com/blog/post");
-  // The real pipeline parses once and shares the DOM; here each case
-  // parses its own snippet.
-  const extract = (html: string, baseUrl: URL) =>
-    extractFaviconUrls(cheerio.load(html), baseUrl).map((url) => url.href);
-
-  it('resolves a relative rel="icon" href against the final page URL', () => {
-    const html =
-      '<html><head><link rel="icon" href="/static/fav.png"></head></html>';
-    expect(extract(html, base)).toEqual([
-      "https://example.com/static/fav.png",
-      "https://example.com/favicon.ico",
-    ]);
-  });
-
-  it('accepts absolute and legacy rel="shortcut icon" hrefs', () => {
-    const html =
-      '<link rel="shortcut icon" href="https://cdn.example.net/fav.ico">';
-    expect(extract(html, base)).toEqual([
-      "https://cdn.example.net/fav.ico",
-      "https://example.com/favicon.ico",
-    ]);
-  });
-
-  it('orders rel="icon" before apple-touch-icon', () => {
-    const html = `
-      <link rel="apple-touch-icon" href="/touch.png">
-      <link rel="icon" href="/fav.ico">`;
-    expect(extract(html, base)).toEqual([
-      "https://example.com/fav.ico",
-      "https://example.com/touch.png",
-      "https://example.com/favicon.ico",
-    ]);
-  });
-
-  it("falls back to apple-touch-icon, then /favicon.ico", () => {
-    expect(
-      extract('<link rel="apple-touch-icon" href="/t.png">', base),
-    ).toEqual(["https://example.com/t.png", "https://example.com/favicon.ico"]);
-    expect(extract("<html></html>", base)).toEqual([
-      "https://example.com/favicon.ico",
-    ]);
-  });
-
-  // SVG icons are usable candidates — the fetch path rasterizes them to
-  // PNG — so they keep their declared position in the candidate order.
-  it("keeps declared SVG icons as candidates", () => {
-    const html = `
-      <link rel="icon" type="image/svg+xml" href="/fav.svg">
-      <link rel="alternate icon" href="/fav.png">`;
-    expect(extract(html, base)).toEqual([
-      "https://example.com/fav.svg",
-      "https://example.com/fav.png",
-      "https://example.com/favicon.ico",
-    ]);
-  });
-
-  // Declared icons go through parseHttpUrl like any fetched URL, so the
-  // scheme/port rules apply; unusable candidates fall through to the default.
-  it("skips candidates the fetcher would refuse", () => {
-    const dataUri = '<link rel="icon" href="data:image/png;base64,iVBORw0=">';
-    expect(extract(dataUri, base)).toEqual(["https://example.com/favicon.ico"]);
-    const oddPort = '<link rel="icon" href="https://example.com:8443/f.ico">';
-    expect(extract(oddPort, base)).toEqual(["https://example.com/favicon.ico"]);
-  });
-
-  // Every candidate can cost a fetch within the page's shared deadline, so
-  // the declared list is capped and duplicates collapse.
-  it("caps declared candidates and dedupes repeated hrefs", () => {
-    const manyIcons = `
-      <link rel="icon" href="/a.png">
-      <link rel="icon" href="/b.png">
-      <link rel="icon" href="/c.png">`;
-    expect(extract(manyIcons, base)).toEqual([
-      "https://example.com/a.png",
-      "https://example.com/b.png",
-      "https://example.com/favicon.ico",
-    ]);
-
-    const duplicated = `
-      <link rel="icon" href="/favicon.ico">
-      <link rel="shortcut icon" href="/favicon.ico">`;
-    expect(extract(duplicated, base)).toEqual([
-      "https://example.com/favicon.ico",
-    ]);
-  });
-});
-
-// The favicon bytes are attacker-controlled and end up in a data: URI handed
-// to browsers, so only allow-listed raster magic bytes may pass — never the
-// declared Content-Type, and never SVG (it can carry scripts).
-describe("sniffImageMime", () => {
-  const cases: ReadonlyArray<[string, Buffer, string]> = [
-    ["ICO", Buffer.from([0x00, 0x00, 0x01, 0x00, 0x01, 0x00]), "image/x-icon"],
-    [
-      "PNG",
-      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-      "image/png",
-    ],
-    ["GIF", Buffer.from("GIF89a"), "image/gif"],
-    ["JPEG", Buffer.from([0xff, 0xd8, 0xff, 0xe0]), "image/jpeg"],
-    [
-      "WebP",
-      Buffer.concat([
-        Buffer.from("RIFF"),
-        Buffer.alloc(4),
-        Buffer.from("WEBP"),
-      ]),
-      "image/webp",
-    ],
-  ];
-
-  for (const [label, bytes, mime] of cases) {
-    it(`detects ${label}`, () => {
-      expect(sniffImageMime(bytes)).toBe(mime);
-    });
-  }
-
-  const rejected: ReadonlyArray<[string, Buffer]> = [
-    ["SVG", Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"></svg>')],
-    ["HTML error page", Buffer.from("<!doctype html><html>404</html>")],
-    ["CUR (ICO sibling)", Buffer.from([0x00, 0x00, 0x02, 0x00])],
-    ["empty", Buffer.alloc(0)],
-    ["truncated magic", Buffer.from([0x89, 0x50])],
-  ];
-
-  for (const [label, bytes] of rejected) {
-    it(`rejects ${label}`, () => {
-      expect(sniffImageMime(bytes)).toBe(null);
-    });
-  }
-});
-
-// Gate to the rasterization path: only documents whose root element is <svg
-// reach sharp. Doctypes with an internal subset are refused outright — the
-// subset is where entity definitions (billion laughs) live.
-describe("isSvgDocument", () => {
-  const accepted: ReadonlyArray<[string, string]> = [
-    ["bare svg", '<svg xmlns="http://www.w3.org/2000/svg"></svg>'],
-    ["self-closing svg", "<svg/>"],
-    [
-      "full prolog (BOM, XML declaration, comment, doctype)",
-      '\uFEFF <?xml version="1.0"?> <!-- logo --> ' +
-        '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" ' +
-        '"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"> <svg></svg>',
-    ],
-  ];
-
-  for (const [label, text] of accepted) {
-    it(`accepts ${label}`, () => {
-      expect(isSvgDocument(Buffer.from(text))).toBe(true);
-    });
-  }
-
-  const rejected: ReadonlyArray<[string, string]> = [
-    ["HTML", "<!doctype html><html><svg></svg></html>"],
-    [
-      "doctype with entity subset (billion laughs)",
-      '<!DOCTYPE svg [ <!ENTITY a "aaaa"> ]><svg>&a;</svg>',
-    ],
-    ["plain text", "not markup"],
-    ["empty", ""],
-  ];
-
-  for (const [label, text] of rejected) {
-    it(`rejects ${label}`, () => {
-      expect(isSvgDocument(Buffer.from(text))).toBe(false);
-    });
-  }
-
-  it("rejects raster bytes", () => {
-    expect(isSvgDocument(PNG_BYTES)).toBe(false);
-  });
-});
+import { LinkPreviewService, PreviewUnavailable } from "./link-preview.service";
 
 // Full-pipeline tests: a fake transport stands in for DNS + HTTP so the
 // service's real fetch path — redirect following, per-hop SSRF re-checks,
@@ -448,7 +198,7 @@ describe("LinkPreviewService (pipeline)", () => {
     await getPreview(service, "https://example.com/flaky");
 
     // Past the short empty-preview TTL but inside the full preview TTL.
-    service["sweepExpired"](Date.now() + 30 * 60 * 1000);
+    service["sweepExpired"](Date.now() + milliseconds({ minutes: 30 }));
 
     await getPreview(service, "https://example.com/doc.pdf"); // still cached
     await getPreview(service, "https://example.com/flaky"); // re-fetched
@@ -495,7 +245,7 @@ describe("LinkPreviewService (pipeline)", () => {
     expect(service["faviconCache"].size).toBe(1);
 
     // Past every TTL (favicons keep the longest one), all entries go.
-    service["sweepExpired"](Date.now() + 25 * 60 * 60 * 1000);
+    service["sweepExpired"](Date.now() + milliseconds({ hours: 25 }));
     expect(service["cache"].size).toBe(0);
     expect(service["faviconCache"].size).toBe(0);
 

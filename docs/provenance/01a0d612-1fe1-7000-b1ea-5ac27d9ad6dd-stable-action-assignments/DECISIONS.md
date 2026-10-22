@@ -1,0 +1,287 @@
+# Implementation specification
+
+These are agent-authored choices and interpretations implementing REQUIREMENTS. They are not evidence of independent user-authored storage or architecture requirements. No application implementation is included in this task.
+
+## Final decisions, derived readiness
+
+Persist final action/member decisions and their resolution time. Distinguish an included member from a decided exclusion; absence of a decision means evaluation is still needed, not exclusion. Derive prerequisite readiness from saved upstream decisions, activities, and member-action deadlines. A persistent Pending enum or copied location/answer snapshot is unnecessary.
+
+The saved decision fixes cohort admission and nothing else. It replaces the `inCohort` input to the existing pure rules (`computeAssignmentCore`, `computeActionAssignment`); obligation stays derived at read time from contract events, away ranges, and the action. Required status cannot be known at decision time anyway, because `computeAssignmentCore` requires an active contract across the whole window, which ends in the future. Those rules already make a mid-window signer optional (`ContractGap` with a contract at the deadline) and a post-deadline signer unassigned, and they keep a prerequisite-delayed member who was signed at launch required. Storing an admission kind would duplicate them. An interruption can excuse a saved assignment without erasing the fact that it was issued. Deadlines are not copied, because extensions apply to existing assignments; explicit schedule changes follow the staff policies in REQUIREMENTS.
+
+Cohort expressions carry no contract term; the one in `computeIsTaggedOrInManualCohort` belongs to general updates. The resolver therefore reuses the population cohort path unchanged, contract changes keep flowing through `computeAssignmentCore` at read time, and a contract-less member gets no row instead of a permanent exclusion.
+
+The action's `optional` flag stays live, and the server rejects edits to it once the action has decisions. Staff edits are not expected in ordinary use, so failing loudly is cheaper than a snapshot column plus a correction flow.
+
+Finalize at launch for members ready then, or when the last prerequisite resolves for a member ready later. Use live profile, tag, leadership, manual-cohort, and answer information in that evaluation. Save both admissions and exclusions before exposing the result. Decisions are issued independently of a member actually opening the app; the home page reads the result, rather than becoming the first place membership is decided.
+
+Regular-action enrollment remains available to people who sign or re-sign while the window is open. A lack of active contract before that admission is not by itself a permanent cohort exclusion. Onboarding may enter enrollment before signing. Draft/future actions do not issue final decisions merely because staff preview them.
+
+The resolver skips a member it cannot yet admit, such as a regular action's unsigned account, and writes no row for them. Signing triggers their evaluation. Readers treat a missing row for such a member as unassigned without reconciling it. Missing decisions therefore needing work are limited to admissible members, so the catch-up job and task-list reconciliation do not re-evaluate every unsigned account against every open action.
+
+A regular action's enrollment cutoff is its member-action deadline, matching the existing `hasActiveContractAt(deadline)` test. Onboarding has no cutoff, because `computeAssignmentCore` still assigns it to members who join after its deadline; an onboarding member is admissible when `computeContractSignedAfterOnboardingStart` holds, so unsigned accounts get decisions and members whose first contract predates the start get none. At the cutoff, stop issuing new ordinary assignments; keep waiting distinguishable from a decided cohort exclusion so an explicit reopening can resume unresolved work. Completion permission after the deadline is a separate policy. Member-action start and deadline boundaries use a shared comparison throughout readers and processing.
+
+## Explicit prerequisite configuration
+
+Represent explicitly configured prerequisites as a set of action IDs, separate from the existing cohort expression. A prerequisite only says what to wait for. Outcome selection stays in the cohort expression, through the existing CompletedAction and NOT CompletedAction leaves, so there is one place that selects and no second outcome field to contradict it. Both outcome branches retain the prerequisite gate, and the expression is evaluated only after all configured prerequisites resolve.
+
+A reference inside the general cohort expression does not automatically add a prerequisite. Existing definitions retain their expression semantics, and backfill does not infer new prerequisite gates from those references. Form-answer targeting can use an explicit prerequisite when its answer should be awaited.
+
+Prerequisites replace `InProgressAction`, so the cohort builder stops offering it. All five production uses (#81, #83, #87, #128, #142) launch the evening their upstream action is due. The leaf only told apart members still working on X during those few hours, which is what waiting for X expresses. Existing expressions keep the leaf and evaluate unchanged; the builder renders it read-only, and the server rejects newly added `InProgressAction` leaves. Validate dependency cycles rather than silently producing permanently waiting assignments.
+
+Validation also enforces timing, because a delayed member keeps required status and the original deadline:
+
+- A prerequisite must have a deadline. Otherwise a member who never completes or withdraws waits forever.
+- A prerequisite's deadline must precede the downstream action's deadline. Otherwise readiness can arrive after the downstream deadline and issue an already-missed required assignment.
+- Editing either deadline re-runs this check. A violating edit is blocked with a message naming both actions.
+
+The downstream enrollment cutoff does not end waiting for a member who was in the population at launch; this is a prerequisite delay, not late membership.
+
+Without a configured prerequisite, a cohort expression is evaluated once, at decision time. Some expressions previously relied on live recomputation to admit members later: `CompletedAction(X)`, `MissedActionDeadline(X)`, or `FormFieldValue` on a still-open X. Under saved decisions, those expressions freeze an early exclusion. The editor warns when an expression references an action that will still be open at this action's launch and has no matching prerequisite. No open action had such a reference at specification time; before readers switch, a report confirms that is still so.
+
+A configured prerequisite is ready for a member when any of these holds:
+
+- A completion or withdrawal activity exists for that member and action.
+- Its member-action deadline has been reached.
+- Its saved cohort decision is a finalized exclusion, using the inexpensive early exit the user accepted.
+
+An unresolved upstream decision does not count as exclusion. Dismissal does not resolve a prerequisite. Optionality or an away exemption alone does not resolve it. If there is no deadline, the deadline branch stays unresolved; completion, withdrawal, or finalized exclusion can still resolve it.
+
+Readiness is derived afresh until the downstream decision exists. If one prerequisite ends Tuesday and the member completes it Wednesday while another keeps the downstream action waiting until Thursday, Thursday's evaluation sees that completion. No Tuesday outcome needs storing. Subsequent activity leaves Thursday's decision fixed.
+
+## Existing predicate semantics and reconciliation
+
+The source at specification time is `ActionsService.computeIsInCohortExpression` and `ActionEventRecipientService`:
+
+- CompletedAction asks whether a USER_COMPLETED activity exists, not whether the latest terminal activity is completion.
+- NOT CompletedAction is the Boolean complement within the candidate population. A withdrawal alone is not a completion.
+- MissedActionDeadline requires a passed deadline, required participation, no completion or withdrawal, and no away overlap. Optional actions yield no missed members. Dismissal does not exclude a member from this condition.
+- FormFieldValue matches any stored response satisfying the condition, rather than automatically selecting only the latest response.
+- City country determines US membership when available; time zone is its fallback. Preserve the unknown-location behavior specified by the user.
+
+Use those existing meanings for outcome selection. Preserve the separate latest-terminal-activity rule for displaying completion/withdrawal status; this change does not redefine the activity taxonomy.
+
+The single-member and population paths disagree on `InProgressAction`: the single-member path skips the population path's required-and-present roster check. For `MissedActionDeadline`, both paths already checked optionality, contract, away, and terminal activity. Both treated the deadline instant as not yet passed while the pill treated it as passed; the shared `hasMemberActionDeadlinePassed` comparison fixes that. Otherwise the two paths agreed: the population path found its window start with `events.find` rather than `memberActionPhase`, but `UQ_action_event_one_member_action` allows one member-action event per action, so both pick the same event. `computeMissedActionDeadline` in `server/src/utils/action-user.ts` now holds the rule for both.
+
+The `InProgressAction` split needs no fix. The leaf is false on both paths once its upstream action leaves member action, every existing use's upstream has, and no new use can be added.
+
+`MissedActionDeadline` stays in the builder. Its one existing use (#142) sits beside `NOT FormFieldValue` on the upstream action's own form, which already includes every member who missed, so #142 does not depend on which meaning applies. Use one shared predicate with the population meaning, because it already drives reminders, participation, and missed-action accounting. Explicitly test the late-signer and away cases.
+
+## Away, contract, and voluntary participation
+
+Use the current pure contract and away rules against saved cohort admission. Continue deriving away overlap from the user's current saved ranges, including retrospective edits and deletions. A separate historical away-snapshot table or staff-only editing policy would change the accepted behavior without solving cohort drift.
+
+The initial assignment classification is not a replacement for exemption checks. A member away for any part of the window remains selected but is excluded from required participation accounting. Contract gaps retain current optional/unassigned behavior, including re-signing, while the issued decision remains inspectable. There is no resignation event: `ContractEventType` has only `SIGNED` and `SUSPENDED`, so the contract behavior to preserve is suspension and re-signing. How a resignation is recorded outside contract events is not established. Dismissal continues to hide the card and mute reminders without rewriting the decision.
+
+Keep completion authorization distinct from obligation. A saved admission preserves the assigned route after a profile change; action-level completion restrictions still apply. For an unassigned action, existing live voluntary-completion rules can still authorize a submission. Such a completion produces activity, not a new required assignment. This permits voluntarily completing an alternative without switching the action originally assigned.
+
+Preserve onboarding's earliest-contract-event rule and unsigned-member behavior. Preserve regular late-signing optionality and the closed-window cutoff. These behaviors are implemented in `server/src/utils/action-user.ts`; use that code as the compatibility baseline rather than interpreting account creation as membership start.
+
+## Processing and failures
+
+Resolve assignments through a common service used by launch processing, membership changes, prerequisite activities, and deadline processing. Include catch-up for missed work and reconciliation before returning a supposedly complete task list. Retries and concurrent requests must produce one final decision per member/action. A task form's answers commit before its completion activity, so a resolver never reads part of a submission. Dependents resolve outside the member's request: readiness is derived and the resolver is idempotent, so a resolver failure leaves work for catch-up instead of rejecting the member's completion.
+
+Evaluate alternative actions against consistent inputs so one location edit cannot cause both country branches to be selected during a single decision batch. Keep this scoped to assignment evaluation rather than storing general profile history.
+
+Ordinary waiting prerequisites stay off the home page until resolved. Processing failures return a temporary loading/error state instead of a successfully empty list or exclusion, and processing retries automatically. Operational failure lives in logs and an alert on catch-up backlog, not in a table. A processing failure that first exposes an action after closure must not create a fresh missed obligation: catch-up that decides after the member-action deadline writes an exclusion whose reason names the late resolution. Existing voluntary-completion rules still let that member complete if they are otherwise eligible. This exception concerns processing failure, not intentional prerequisite timing, which retains the original deadline and obligation.
+
+## Staff edits
+
+Apply cohort edits to undecided/new enrollments. Store the issued decision's reason and preserve prior values and the staff-supplied reason when correcting it. The admin view exposes assignment/exclusion, resolution time, reason, and explicit correction. Use existing staff authorization; a new permission hierarchy or bulk reassignment product is unnecessary.
+
+Changing optionality for an issued action is rejected, per "Final decisions, derived readiness". Deadline shortening warns before it affects existing assignments. Reopening preserves finalized exclusions as well as admissions, resumes unresolved work, and admits later members optionally under the accepted policy. Moving a start event retains the original decision history.
+
+## Backfill and integration
+
+Backfill launched actions from their calculated cohort/assignment state at migration time, using the user's explicit historical-stability assumption. Preserve actual activities, exemptions, and voluntary completions separately. Future/draft actions remain undecided; onboarding remains open to subsequent members. Existing contract-ineligible accounts must retain their ability to enter an open regular action if they sign later. Existing `InProgressAction` expressions backfill with their current evaluation, which is false for the leaf because every upstream action has left member action.
+
+The existing source has different single-user and roster results for some cases, so migration must report those discrepancies and apply the shared rule above deliberately. Compare the computed pre-cutover decisions with saved post-cutover results; investigate differences beyond that named reconciliation before switching consumers. Unknown historical profile reconstruction and a separate legacy-confidence model are unnecessary under the user's assumption.
+
+Replace cohort recomputation as the assignment source for feeds/details, status tables, reminder recipients and embedded task lists, prerequisite assignment checks, welcome queues, counts, analytics, and suspension plans. Preserve each consumer's existing additional filters, such as exemption, dismissal, completion, and optional-reminder settings. Keep wire compatibility for installed clients' legacy participation fields. Follow-up-form eligibility, public guest actions, and form-variant selection keep their separate policies.
+
+## Acceptance checks
+
+Implementation is complete when focused tests and cross-consumer integration checks establish all of the following:
+
+1. US/non-US membership changes before readiness affect the selected branch; changes after decision affect neither selection nor exclusion, including after the deadline.
+2. Completion and withdrawal resolve prerequisites early; no terminal activity waits for the member-action deadline. Multiple prerequisites all resolve before selection, and an inexpensive finalized-exclusion early exit works.
+3. Both completed and noncompleted branches wait for their configured prerequisite. Late completions and answer changes before the decision are considered; changes after it do not reroute.
+4. Existing `InProgressAction` cohorts evaluate unchanged, the builder offers no new `InProgressAction` leaf, and the server rejects one. `MissedActionDeadline` uses the population meaning on both paths. Negated conditions and completed/not-completed/missed semantics retain their distinct meanings.
+5. Unknown location obeys ordinary Boolean country predicates, without a special pending-location state.
+6. Mid-window signing is optional, after-deadline joining adds no old obligation, pre-existing unsigned accounts can still enroll, and onboarding retains its unsigned/new-member timing rules.
+7. Away creation/edit/deletion, contract interruption/re-signing, dismissal, withdrawal, and voluntary completion preserve their separate effects without changing saved cohort admission.
+8. Assigned submission access survives a location edit. Voluntary completion of an unassigned action does not manufacture a required assignment.
+9. Staff corrections are explicit and attributable; deadline/start changes and reopening follow the accepted policies without automatic reselection.
+10. Backfilled decisions match the chosen migration-time calculation. Member, admin/leader, reminder, analytics, and suspension consumers agree on the saved decision while retaining their documented filters.
+11. Retries, concurrent evaluation, and processing failures neither issue conflicting decisions nor silently substitute exclusion for an unfinished calculation.
+12. If stage 9 runs: each converted action's saved decisions and live cohort are identical before and after conversion.
+13. After stage 10, no cohort expression references the All Members or Staff tag, and each rewritten action's live cohort matches its old one.
+14. After stage 11, signing up adds no tag, the All Members, Staff, and EU tags are gone, and `allMembersParticipating` reports what it did before.
+
+## Delivery stages
+
+Each stage deploys alone and leaves production correct. The order puts the saved decision in place before anything reads it. Writers ship first and run in shadow. Staff tooling and prerequisites ship before consumers stop recomputing, so admins can express "wait for X" before decisions freeze. Rolling back a reader stage is safe because the writer keeps recording decisions underneath it.
+
+### 1. One predicate, one boundary
+
+Extract one `MissedActionDeadline` predicate used by the single-member path (`ActionsService.computeIsInCohortExpression`) and the population path (`ActionEventRecipientService.resolveCohortMemberIds`), with the population meaning as its baseline. Extract one member-action start/deadline comparison and route every reader and worker through it. Tests cover the late-signer and away cases for `MissedActionDeadline` and confirm positive and negated forms keep their structure.
+
+Ships alone: the only behavior change is the deadline instant, which now counts as passed on both `MissedActionDeadline` paths. Everything else is a refactor with the suite green before and after.
+
+### 2. Decisions table and resolver, shadow mode
+
+Add the decision table with these columns:
+
+- user and action
+- included or excluded
+- reason: launch, signing, or resolved after deadline
+- resolution time
+
+A unique constraint on user and action makes retries and concurrent evaluation converge on one row. The reason enum holds only the values a shipped writer produces; stages 3–5 add backfill, staff correction, and prerequisites resolved alongside their writers.
+
+Add the common resolver. It decides at launch for members ready then, on signing or re-signing inside an open window, and from a catch-up job for missed work. It loads each member's profile once per batch so alternative country branches see the same inputs. It stops issuing ordinary assignments at the enrollment cutoff. It records the processing-failure exception as an exclusion with the resolved-after-deadline reason. It evaluates membership without the tag path's contract term. Draft and future actions get no decisions.
+
+Launch processing and catch-up are one scheduled pass, every five minutes under an advisory lock. It decides admissible, undecided members of every started action whose enrollment is open, so it also decides actions already open at deploy, the same migration-time calculation the backfill would apply. A member admissible at the member-action start gets the launch reason; one who became admissible later, by signing or re-signing, gets the signing reason whichever writer reaches them first. A closed regular action stays in the pass for seven days after its deadline, where it writes resolved-after-deadline exclusions for members who held a contract at the deadline but have no row. A member without a contract across the whole window, such as one who signed or re-signed mid-window, is instead decided against the cohort with their usual reason: they were only ever optional, so a late decision creates no missed obligation, and excluding them would drop the optional entry existing rules give them. The same holds for every member of an action marked optional for everyone. The pass skips members who signed within the last ten minutes, longer than any signing request, because a task-form signer holds a contract before the form's answers and completion are saved.
+
+The cutover is the earliest launch or signing decision in the table, which is the resolver's first pass; no settings table records a deploy time. A closed action with no decisions that launched before it belongs to the stage 3 backfill, since catch-up would otherwise apply the processing-failure exception to historical actions. One the resolver already decided, or that launched after the cutover, gets catch-up even if no pass succeeded during its window.
+
+Each resolved-after-deadline batch logs a warning; it only occurs when earlier processing failed, so it is the catch-up backlog alert. The pass resolves and writes each action separately, so an action whose cohort fails to resolve logs an error without holding back the others. A signing is announced only after the request's other writes, so a member signing through the onboarding task form is decided with the answers and completion that form submitted. The signing writer runs the pass's population evaluator over a population of one, so both writers apply the same cohort rules. A failed signing decision logs an error and leaves the member to the next pass.
+
+Nothing reads the table yet. An hourly check, under its own advisory lock so it cannot delay the decision pass, logs per action in the pass how many members' saved decisions disagree with the live population cohort, with a sample of their ids. No leaf results are stored, so the log cannot name the leaf that changed; it labels the expression instead. One without action or form references (`collectCohortDependencies`) can only diverge through profile changes or a staff edit to the expression; one with them can also diverge through activity after the decision, which is investigated. Contract state is not part of cohort membership, so it cannot cause a divergence here. Resolved-after-deadline exclusions are skipped, since they deliberately ignore the cohort.
+
+Ships alone: additive table and writes; members see no change.
+
+### 3. Backfill and discrepancy report
+
+The scheduled pass writes decisions for actions launched before the cutover from the migration-time calculation, preserving activities, exemptions, and voluntary completions untouched. It leaves future and draft actions undecided and leaves contract-ineligible accounts free to enroll in open regular actions later. Every difference between pre-cutover computation and saved results is investigated before stage 6.
+
+The backfill runs inside the pass rather than as a script, so deploying is the whole rollout: a manual run would need production credentials on a workstation, where booting the app context with a non-production `NODE_ENV` also grants `ADMIN_USER` admin. It owns exactly the closed actions ordinary catch-up would otherwise skip: no decisions, and launched before the cutover or with no cutover yet, however long ago they closed. Open and onboarding actions get ordinary decisions, and so does a closed action the resolver has decided. Within each, the backfill decides the members some pass would have admitted while the action was open, those holding a contract at any point in the member-action window, against the roster cohort as it evaluates at that pass, with a `backfill` reason. A deadline-only test would drop members suspended mid-window, whom a live-decided action keeps and participation analytics count. While any member it would decide signed within the signing grace period, it defers the whole action to a later pass rather than decide the others without them, since no later pass revisits a backfilled action. The first pass after deploy backfills every historical action while holding the pass's lock, so passes skip until it ends and a launch in that time is decided late. It runs ordinary decisions first, and staging data, a pruned copy of production, puts it well under the five-minute interval, so it is not capped per pass. Nobody is excluded for late resolution; these actions were processed live before the table existed. Once an action has rows it leaves the backfill, and catch-up finds no admissible member missing. An action nobody held a contract for gets no rows and stays in the backfill; each pass reaches it again but skips evaluating its cohort, rather than recording that the backfill ran.
+
+After deciding a backfilled action, the pass re-evaluates each decided member through the single-member path (`computeIsInCohortExpression`) and logs a warning naming how many it places differently, with sample ids. That is the stage's single-member versus roster report, read from server logs. A failed comparison logs an error and never holds back the backfill. The pass runs ordinary decisions before backfill, so the comparison cannot delay launches. The comparison shares the pass's session, so each member's single-member lookups run once per pass. Against staging data the first pass backfilled 77 actions in about 3 seconds with no disagreements.
+
+Ships alone: each action's rows are written in one transaction, so a failed pass leaves the action for the next, and the unique constraint absorbs a concurrent writer.
+
+### 4. Staff tooling
+
+Admin view of each member's decision: assignment or exclusion, resolution time, reason. Explicit correction with a required reason that keeps the prior values, under existing staff authorization. The server rejects optionality edits on an action with decisions. Shortening a deadline shows a warning naming the existing assignments it affects. Reopening preserves decided admissions and exclusions, resumes undecided work, and admits later members as optional. Moving a start event keeps decision history.
+
+The admin view is a Cohort Decisions tab on the action dashboard, behind the existing `AdminGuard`. It lists members with a row; a member without one is undecided, which the tab says rather than listing every account. A correction flips `included` on an existing row, sets its reason to `staff_correction` and its resolution time to the correction, and appends an `action_cohort_decision_correction` row holding the replaced included value, reason, and resolution time, the staff note, and who corrected it. A history table rather than columns on the decision, because a decision can be corrected more than once. A correction that would not change `included` is rejected, and so is one for a member without a row: the resolver owns first decisions. The divergence check skips corrected rows as it skips resolved-after-deadline exclusions, since both deliberately depart from the cohort. The cutover still counts a corrected decision's replaced launch or signing time, so correcting the resolver's first decisions cannot send later closed actions into the backfill. The correction's reason column has its own enum type, because TypeORM regenerates a shared enum on every `migration:generate`; a new reason is added to both.
+
+The server enforces the shortening warning, since an action's schedule changes through several endpoints (adding an event, adding a suite event, editing a suite event). Each runs in a transaction that compares the member-action phase before and after. If the deadline moves earlier, or a phase without a deadline gets one, on an action with included decisions, the server answers 409 with the affected actions and their assigned counts and rolls back, unless the request passes `acknowledgeDeadlineShortening`. The admin shows that message in a confirm and resends acknowledged. Extending a deadline, reopening a closed action, and moving the start need no guard: decisions store no deadline, the resolver never replaces a row, and reopening returns the action to the open catch-up path, where members who signed since are decided with the signing reason and the read-time rules make them optional.
+
+Ships alone: staff can inspect and correct decisions before anything depends on them, so the first reader stage never strands a mistake without a fix.
+
+### 5. Explicit prerequisites
+
+Add prerequisite configuration to the action, separate from the cohort expression: a set of upstream action IDs. Outcome selection stays in the expression. Admin validation rejects:
+
+- cycles
+- prerequisites without a deadline
+- prerequisite deadlines not before the downstream deadline
+
+The server checks these inside the transaction of every write that can break them, so a violation rolls the write back with a message naming both actions: creating or updating an action, adding an event, and editing or deleting a suite event. A cycle is reported before the deadline rules, which it would also break. A downstream action without a deadline yet passes; adding its deadline re-runs the check. Deleting an action other actions wait for is rejected, rather than leaving them waiting on nothing.
+
+The cohort builder stops offering `InProgressAction` and renders existing leaves read-only; the server rejects new ones. The builder warns on references to still-open actions without a prerequisite. The open-action report from "Explicit prerequisite configuration" runs here, before stage 6.
+
+Both use `findUnawaitedOpenReferences` in common: an action the expression reads directly or through one of its forms, the task form or a variant's, not a prerequisite, whose deadline is missing or falls after this action's member-action start. An onboarding action counts whatever its deadline or prerequisites: it keeps admitting members who join later, and a prerequisite stops waiting at its deadline, so the builder never suggests one on it. The builder measures from the saved start, or from now for an unscheduled action. The report runs hourly beside the divergence check, under its lock, and logs a warning per scheduled action still deciding members: not yet closed, or closed within its seven-day catch-up. A clean hour before stage 6 ships is the confirmation. A leaf the stored expression already has counts as existing wherever it moves in the tree, so reshaping one of the five expressions around it still saves.
+
+The resolver derives readiness (completion or withdrawal activity, deadline reached, or finalized upstream exclusion) and decides once every prerequisite is ready, using live data at that moment. A member still waiting gets no row. The five-minute pass is the only trigger. Nothing reads decisions before stage 6, and its task-list reconciliation decides a member whose prerequisite just resolved, so triggers on activities, deadlines, and upstream exclusions would only shorten a wait no reader sees. A task form saves its response before the completion activity, so a pass that sees the completion also sees the answers. A member admissible at launch on an action with prerequisites gets the `prerequisites_resolved` reason; a signer keeps `signing`. Delayed existing members keep required status and the original deadline, because obligation stays derived at read time.
+
+Prerequisites are an integer array on the action rather than a join table: the set is small, read whole, and never queried from the upstream side except by validation. Importing an exported action drops them, since action ids name different actions in another environment.
+
+The live recomputation path treats a member whose prerequisites are not ready as outside the cohort. The configuration then takes effect for members immediately, and shadow comparisons stay meaningful. Every read of an action's live cohort goes through that rule. The rosters `InProgressAction` and `MissedActionDeadline` leaves read take the upstream action's saved decision for each member it has decided (stage 7) and this rule for the rest. The divergence check keeps comparing decisions with the expression alone, since a decided member's prerequisites had resolved; follow-up forms and the admin's expression preview have no prerequisites.
+
+Ships alone: existing actions have no prerequisites, so nothing waits until staff configure one.
+
+### 6. Member-affecting consumers read decisions
+
+Switch every surface a member feels to the saved decision:
+
+- feeds and action details
+- task lists
+- completion permission
+- reminder recipients and the task lists embedded in reminders
+- suspension plans
+- the forum-action completer
+
+Each consumer keeps its existing filters (exemption, dismissal, completion, optional-reminder settings). Completion keeps the assigned route after a location change and keeps live voluntary-completion rules for unassigned actions, recording an activity and leaving the decision untouched. Before returning a task list, the server reconciles missing decisions for admissible members. An unfinished calculation returns an error instead of an empty list. Legacy participation fields stay on the wire.
+
+These consumers move together so a member never gets a reminder for an action their home page no longer shows. Before this ships, confirm the web and mobile clients render a server error on the task list as a retryable state; if mobile needs a change, it ships and reaches users first.
+
+Neither client did: the shared actions query read a failed response as an empty list, so both showed "nothing to do". Both now show the failure with a retry, in commits ahead of the server change. The mobile build carrying it must reach users before the server change deploys.
+
+A member's own reads (feed, action detail, completion permission) take the saved decision as the `inCohort` input to assignment, and accept the live cohort as well for completion and visibility. A member who moves keeps seeing, being assigned, and completing the branch they were decided into, and live voluntary-completion rules still reach the other branch without assigning it. Before the member-action start nothing is decided, so the live cohort previews assignment on a planned action; a public-only action is never decided, so it keeps the live cohort throughout. The saved decision applies the population meaning, so a live `InProgressAction` on a still-open upstream no longer admits a member outside that upstream's required-and-present roster; every existing use's upstream is closed.
+
+The feed and the action detail reconcile first, running the signing writer's per-member resolution over the actions the request already loaded: every open action for the feed, the one action for the detail. A link from a launch notification lands on the detail, which is why it reconciles too. A member who signed within the signing grace period is left to the signing writer, since their task form may still be saving; until it runs, their open actions without a decision read from the live cohort, so a new signer's first home page already shows onboarding. An action whose cohort fails to evaluate is logged and read from the live cohort for that request, so one broken expression cannot empty or fail every member's feed; a failure to save the decisions fails the request. The resolver checks admissibility before loading prerequisite progress, so the unsigned accounts and pending members it will not decide cost no readiness queries per read. Reconciling needs the resolver in `ActionsService`, and the resolver's backfill comparison needs the single-member path, so that path moves to `SingleMemberCohortService` rather than the two services importing each other.
+
+Reminder recipients, the reminder's suite and completion checks, the forum-action completer, and suspension plans take each action's cohort from the members its saved decisions admit. A reminder can be scheduled before launch, and the admin's week-ahead suspension preview counts suites that have not launched, when no decision exists; so these readers use the live cohort until the member-action start, the same rule as the member's own views. They do not reconcile. A reminder dispatch that runs before the pass has decided a launch finds nobody for it, and a later dispatch inside the three-hour lookback reaches those members once they are decided. The forum completer runs near the deadline, long after launch, and actual suspensions count only closed suites. Action-update notices sent to an action's cohort reach the participants (`findParticipantIdsForActions`) its saved decisions admit. A notice is sent once, so it first decides an open action's undecided members as the pass would, and a failure there fails the send, leaving it to retry. That participant roster's staff-facing callers (the `usersJoined` counter, status tables, incomplete-member lists), analytics, and the cohort leaves that read another action's roster keep the live cohort until stage 7, so both rosters take an explicit `CohortSource`.
+
+Ships alone: stages 2–5 already populated and verified the data.
+
+### 7. Staff, leader, and analytics consumers read decisions
+
+Switch admin and leader status tables, participation counts, analytics, and welcome queues. Follow-up-form eligibility, public guest actions, and form-variant selection keep their own policies.
+
+These readers take the cohort from saved decisions by the stage 6 rule: from the member-action start, with the live cohort before it and on a public-only action. None of them reconcile. The participant roster's staff callers (the `usersJoined` counter, the admin and leader status tables, and the incomplete-member list) switch first. Until the pass decides a just-launched action, at most five minutes unless it fails, these readers show its members as unassigned. That window is preferred to having a staff read write decisions. The counter refreshes on activity and on its ten-minute cron, so after a launch it trails the pass by up to one refresh (ALL-1254 tracks refreshing it from the pass).
+
+The welcome queue counts the onboarding actions each member's saved decisions assign, and takes the live cohort for an action that has not decided that member yet. Welcoming is permanent, since a staff comment removes the member from the queue, so an undecided action must still count against them. That covers a dependent onboarding action waiting on its prerequisite and a signer the signing writer has not reached.
+
+Dependent cohorts are in the user's scope, so the `InProgressAction` and `MissedActionDeadline` leaves read the upstream action's roster from its saved decision for each member it has decided, on both the population and single-member paths. A downstream decision therefore sees who was assigned the upstream action, not whom its expression would select now. A member the upstream has not decided yet reads from its live cohort, because the resolver evaluates these leaves and its decisions are final: reading them as outside would permanently exclude a member whose upstream decision had not been written yet, such as one signing while both actions are open, or one the pass reached downstream first. A `MissedActionDeadline` upstream that closed while its pass failed gets resolved-after-deadline exclusions, and a member excluded that way did not miss it, matching that no missed obligation is created.
+
+Analytics follows: retention by signing cohort, missed actions, and tenure cohorts read their rosters from saved decisions, so a member who moves after a decision counts toward the action they were assigned.
+
+With no reader left on the live roster, the `CohortSource` switch stage 6 added goes: the participant and base-user rosters always read saved decisions, with the live cohort before launch and on public-only actions.
+
+Ships alone: staff-facing reads only; stage 6 already made the member experience consistent.
+
+### 8. Remove recomputation
+
+Delete the stage 2 divergence logging. Stage 7 already removed the live roster source. The live cohort remains for readers before launch, public-only actions, voluntary completion of an unassigned action, the resolver, and follow-up-form targeting.
+
+Ships alone: dead-code removal, after stages 6 and 7 have run in production long enough to trust.
+
+### 9. Optional: convert existing `InProgressAction` uses
+
+Rewrite #81, #83, #87, #128, and #142 as prerequisites and drop the leaf, then delete `InProgressAction` from the evaluator. Each rewrite must leave the cohort unchanged:
+
+- #81: prerequisite #80; not manual users 154 or 111, and answered form 73.
+- #83: prerequisite #80; manual users 154 or 111, or no answer on form 73.
+- #87: prerequisite #84; completed #84 and did not answer "0" on form 78.
+- #128: prerequisite #126; completed #126.
+- #142: prerequisite #141; did not answer "Yes" on form 126, or missed #141.
+
+A migration rewrites each action only while its stored expression and empty prerequisites match exactly, and fails if an `InProgressAction` leaf remains on any action or follow-up form, since the schema no longer parses one. Each upstream action has left member action, so the dropped leaf was false for everyone. Against staging data, each action's live cohort, its readers' cohort, and every member's single-member result are identical before and after. With the leaf gone, so do the builder's read-only rendering and the server's added-leaf rejection; the schema rejects the type.
+
+Ships alone: decisions for these closed actions are already saved and the migration leaves them untouched. It needs nothing from stage 8: these actions closed long before the divergence check's seven-day window.
+
+### 10. Computed All Members and Staff options
+
+Add two cohort leaves: `AllMembers`, every user, the same universe `NOT` evaluates against (`findActiveUserIds`), and `Staff`, users with the `staff` flag that staff preview already reads. A migration rewrites every `Tag` leaf naming the All Members tag to `AllMembers` and every one naming the Staff tag to `Staff`, closed and archived actions included, so no expression references either tag afterwards. The builder offers both leaves.
+
+In staging, All Members is the whole cohort of 60 actions and is ANDed with a `NOT Manual` exclusion on #11 and #133. Staff appears only on archived #82, which has no events and no decisions. Signup adds every new account to All Members (`AuthService.createReferredUser`), so the tag differs from every user only for accounts created some other way or removed by hand. In staging that is one admin account. Before this ships, count production users without the tag; a real member among them would join those cohorts. The Staff tag's seven members are a subset of the eight `staff` users, which no live action can notice.
+
+`allMembersParticipating` counts an `AllMembers` leaf as well as the tag, since the rewrite would otherwise turn it false on every action. The migration finds both tags by name and reverts by rewriting both leaves back to them. Against staging data it rewrote 63 expressions, left none naming either tag, and moved only the one admin account without the tag into the 62 All Members cohorts.
+
+Ships alone: after stage 3, so every closed action's decisions are saved before its expression changes. The hourly divergence check reports any member the rewrite moved. The migration ships in the same deploy as the leaves, which the user accepted: a deploy runs migrations while the previous build still serves, and that build's schema rejects both leaves, so it fails to read the rewritten actions until the restart, and after a failed deploy's rollback until the migration is reverted by hand. The migration only has to handle staging data, so it guards no shape staging lacks.
+
+### 11. Retire the All Members, Staff, and EU tags
+
+Signup stops adding the All Members tag, `UserModule.onModuleInit` stops creating it, and `allMembersParticipating` stops checking for the tag; the field stays on the wire. A migration repeats the stage 10 rewrite, since the builder still offers both tags until they are gone, then deletes the All Members, Staff, and EU tags; EU has no references in staging, and the migration fails rather than deletes a tag a cohort expression still names. Their `tag_users_user` rows cascade. Action updates, reminder groups, and general updates also reference tags without cascading; staging has no such reference to the three, so a production one fails the migration rather than being guessed at. Reverting recreates the three by name, All Members holding every user and Staff the `staff` users, so reverting stage 10 finds them; EU's members are not restored. Against staging data it deleted the three tags and changed no expression, since stage 10 had already rewritten them. The builder shows a `Tag` leaf whose tag no longer exists as a deleted tag, where it used to look unset, for the non-US deletion below; staging's #55 already names such a tag. The server rejects saving or importing an action, or saving a follow-up form, whose cohort has a `Tag` leaf naming no existing tag, since it would silently match nobody; an admin tab loaded before the tags are deleted still offers them. An update checks only the tag ids its saved cohort did not already name, so a tag deleted under a cohort, as staff will do for non-US, does not block unrelated edits to that action or form. The expression preview is not checked.
+
+The non-US tag stays until stage 7 has shipped. #149 (`NOT non-US`) and #152 (`non-US`), both closed, still reference it, so deleting it earlier would make #149 everyone and #152 no one wherever cohorts are recomputed live: suspension plans until stage 6, and staff status tables and analytics until stage 7. After stage 7 staff delete it by hand from the admin; until stage 8 removes the divergence check, it logs both actions as diverged.
+
+Ships alone: after stage 10, since new members must keep getting the All Members tag while any expression references it.
+
+### Acceptance checks by stage
+
+| Stage | Checks                          |
+| ----- | ------------------------------- |
+| 1     | 4 (`MissedActionDeadline`)      |
+| 2     | 1, 5, 6, 11 (shadow table)      |
+| 3     | 10 (backfill)                   |
+| 4     | 9                               |
+| 5     | 2, 3, 4 (`InProgressAction`)    |
+| 6     | 7, 8, 10 (member consumers), 11 |
+| 7     | 10 (staff consumers)            |
+| 9     | 12                              |
+| 10    | 13                              |
+| 11    | 14                              |

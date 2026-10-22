@@ -1,20 +1,21 @@
 import { errorMessage } from "@alliance/common/errorMessage";
-import {
-  userListAdmin,
-  userSendPushNotificationAdmin,
-} from "@alliance/shared/client";
+// eslint-disable-next-line api-client/named-hooks-only -- one-off request whose result no query cache holds
+import { userDeviceSendPushNotificationAdmin } from "@alliance/shared/client";
 import type {
   PushDto,
   TestPushNotificationDto,
-  UserDto,
 } from "@alliance/shared/client/types.gen";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
+import { useUsersAdmin } from "../lib/useUsersAdmin";
 
 const TestPushNotification: React.FC = () => {
-  const [users, setUsers] = useState<UserDto[]>([]);
-  const [usersLoading, setUsersLoading] = useState(false);
+  const {
+    data: users = [],
+    isLoading: usersLoading,
+    isLoadingError: usersLoadFailed,
+  } = useUsersAdmin();
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
   const [message, setMessage] = useState("hi");
   const [sending, setSending] = useState(false);
@@ -34,31 +35,6 @@ const TestPushNotification: React.FC = () => {
     [users],
   );
 
-  const loadUsers = useCallback(() => {
-    setUsersLoading(true);
-    userListAdmin()
-      .then((response) => {
-        if (response.error) {
-          throw new Error(
-            errorMessage({
-              error: response.error,
-              fallback: "Failed to load users.",
-            }),
-          );
-        }
-        setUsers(response.data ?? []);
-      })
-      .catch((err) => {
-        console.error("Failed to load users", err);
-        setError("Failed to load users.");
-      })
-      .finally(() => setUsersLoading(false));
-  }, []);
-
-  useEffect(() => {
-    loadUsers();
-  }, [loadUsers]);
-
   const handleSend = useCallback(async () => {
     const userId = selectedUserIds[0];
     const trimmed = message.trim();
@@ -77,7 +53,9 @@ const TestPushNotification: React.FC = () => {
         userId,
         message: trimmed,
       };
-      const response = await userSendPushNotificationAdmin({ body: payload });
+      const response = await userDeviceSendPushNotificationAdmin({
+        body: payload,
+      });
       if (response.error || !response.response.ok) {
         setError(
           errorMessage({
@@ -113,6 +91,7 @@ const TestPushNotification: React.FC = () => {
         selectedUserIds={selectedUserIds}
         onChange={setSelectedUserIds}
         loading={usersLoading}
+        loadFailed={usersLoadFailed}
         label="Recipient"
         single
       />

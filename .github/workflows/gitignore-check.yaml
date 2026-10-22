@@ -1,0 +1,14 @@
+name: Gitignore Check
+
+on:
+  workflow_call:
+
+jobs:
+  gitignore-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Check .gitignore rules
+        run: scripts/check-gitignore.sh

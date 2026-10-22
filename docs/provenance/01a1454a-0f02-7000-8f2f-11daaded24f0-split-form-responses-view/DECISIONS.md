@@ -1,0 +1,16 @@
+# Split FormResponsesView under the 500-line limit
+
+[REQUIREMENTS.md](./REQUIREMENTS.md) defines the task. The choices below are agent-authored.
+
+- The fix is splitting the file along its tabs and its pure computations, with no behavior change. Layout, adapted from the first of the options `codex exec` proposed per the repo's file-size rule:
+  - `apps/admin/src/lib/responseFilter.ts` gains the filter-op guard, the filterable field kinds and `matchesResponseFilter`, beside `filterDescription`.
+  - `apps/admin/src/lib/responsesCsvExport.ts`: CSV rows, header naming and escaping. `formatAnswerValue`, which the CSV cells and the questions tab share, goes in `apps/admin/src/lib/answerValues.ts` rather than the CSV module. `apps/admin/src/lib/downloadBlob.ts` holds the object-URL download the CSV and HTML exports both repeated.
+  - `apps/admin/src/lib/responseFields.ts`: the answer-field kinds and the schema's answer-field labels. The question fields by id come from common's existing `collectOutputFieldMap`, which walks the schema the same way. This last step is not needed to pass the limit; it leaves the component well under it.
+  - `apps/admin/src/lib/aiScore.ts`: the AI-score field kinds and formatter the questions tab and the replay labels share.
+  - `apps/admin/src/components/form-responses/`: `FormResponsesHeader.tsx` (title, tabs, variant select, refresh, snapshot and export buttons), `ResponseReplayNavigator.tsx` (filter summary, pagination, respondent search, current respondent), `ResponseReplay.tsx` (replay body and inline AI labels) and `QuestionResponses.tsx` (questions tab).
+  - `FormResponsesView.tsx` keeps URL params, variant scoping, filtering, paging, the snapshot picker, the export handlers, and composition.
+- Codex's separate module for the exported types is not taken: every importer keeps importing `FormWithSchema`, `ResponseVariantOption`, `REFRESH_ERROR` and `REFERRALS_LOAD_ERROR` from `FormResponsesView.tsx`, and the new components import the types from it the way `responses-table/` already does.
+- The respondent search state lives in `useRespondentSearch`, called from `FormResponsesView`, not inside the navigator. The navigator unmounts on a tab switch, a refresh or an empty filter, and the search text and dropdown state survived those before the split.
+- Function bodies move unchanged, except: the current respondent's name uses the existing `respondentName` helper the inline copy duplicated, and the pointless `as FormResponseDto | undefined` cast in the AI-label memo goes now that the prop is typed that way.
+- Pre-existing problems the moved code carries are left to follow-up issues rather than this split: `responses-table/ResponseDrawer.tsx` keeping its own AI-score rules, field map and PostHog URL (ALL-1756), `PostsManagement.tsx` repeating the download `downloadBlob` holds (ALL-1757), the hand-listed field-kind sets, filter ops and `Tab` union (ALL-1758), the unvalidated `schemaSnapshot` cast in the replay (ALL-1171), `formatAnswerValue`'s unchecked object cast (ALL-1760), and the CSV's response-ID fallback in User Name (ALL-1761).
+- One commit per extraction, so each is reviewable and passes its checks on its own. The waiver goes in the commit that brings the file under the limit, since `reportUnusedDisableDirectives` fails lint on a waiver the file no longer needs.

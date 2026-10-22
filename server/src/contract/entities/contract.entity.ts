@@ -2,16 +2,20 @@ import {
   contractDescriptionSchema,
   type ContractDescription,
 } from "@alliance/common/contract";
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
   Allow,
   IsArray,
   IsDefined,
+  IsEmpty,
   IsOptional,
   IsString,
 } from "class-validator";
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
 import { ContractEvent } from "src/user/entities/contract-event.entity";
 import type { Relation } from "src/utils/Repository";
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
@@ -64,15 +68,19 @@ export class Contract {
   // Relations
 
   @OneToMany(() => ContractEvent, (event) => event.contract)
-  @ApiProperty({
+  @ApiPropertyOptional({
     type: () => ContractEvent,
     isArray: true,
   })
-  @Allow()
+  @IsOptional()
   @IsArray()
   @Type(() => ContractEvent)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  events: Relation<ContractEvent>[];
+  events?: Relation<ContractEvent>[];
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }
 
 export type ParsedContract = Omit<Contract, "description"> & {

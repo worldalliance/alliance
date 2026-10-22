@@ -1,10 +1,11 @@
 import { fieldPickerLabel } from "@alliance/common/forms/element-descriptors";
-import type {
-  AggregateViewDisplayType,
-  AggregateViewSchema,
-  AggregateViewValue,
-  AnyField,
-  FormSchema,
+import {
+  isQuestionField,
+  type AggregateViewDisplayType,
+  type AggregateViewSchema,
+  type AggregateViewValue,
+  type AnyField,
+  type FormSchema,
 } from "@alliance/common/forms/form-schema";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -20,8 +21,8 @@ const collectFields = (schema: FormSchema): AnyField[] => {
   const result: AnyField[] = [];
   schema.pages.forEach((page) => {
     page.fields.forEach((field) => {
-      if ("kind" in field && (field as AnyField).label !== undefined) {
-        result.push(field as AnyField);
+      if (isQuestionField(field)) {
+        result.push(field);
       }
     });
   });

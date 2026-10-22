@@ -17,6 +17,7 @@ type Props = {
   debounceMs?: number;
   disabled?: boolean;
   allowCustomValue?: boolean;
+  accessibilityLabel?: string;
 };
 
 export default function CityAutosuggestMobile({
@@ -27,6 +28,7 @@ export default function CityAutosuggestMobile({
   debounceMs = 150,
   disabled = false,
   allowCustomValue = true,
+  accessibilityLabel,
 }: Props) {
   const {
     query,
@@ -59,6 +61,11 @@ export default function CityAutosuggestMobile({
           setOpen(true);
         }}
         disabled={disabled}
+        {...(accessibilityLabel !== undefined && {
+          accessibilityRole: "button",
+          accessibilityLabel,
+          accessibilityValue: query ? { text: query } : undefined,
+        })}
         className={cn(
           "w-full rounded-lg border border-zinc-200 px-3 py-3 bg-white",
           disabled && "opacity-60",
@@ -76,6 +83,7 @@ export default function CityAutosuggestMobile({
 
       <FormModal visible={open} onClose={() => setOpen(false)}>
         <TextInput
+          accessibilityLabel={accessibilityLabel}
           value={query}
           onChangeText={(text) => setQuery(text)}
           placeholder="Search cities..."

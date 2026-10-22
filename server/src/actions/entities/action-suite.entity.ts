@@ -1,8 +1,9 @@
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
-import { Allow } from "class-validator";
+import { Allow, IsEmpty, IsOptional } from "class-validator";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
@@ -14,7 +15,12 @@ import {
   PrimaryGeneratedColumn,
 } from "typeorm";
 import { ActionEvent } from "./action-event.entity";
-import { Action, parseAction, type ParsedAction } from "./action.entity";
+import {
+  Action,
+  loadedActionEvents,
+  parseAction,
+  type ParsedAction,
+} from "./action.entity";
 import { GeneralUpdate } from "./general-update.entity";
 import { ReminderGroup } from "./reminder-group.entity";
 
@@ -47,25 +53,22 @@ export class ActionSuite {
   // Relations
 
   @OneToMany(() => Action, (action) => action.suite)
-  @ApiProperty({ type: () => Action, isArray: true })
-  @Allow()
+  @ApiPropertyOptional({ type: () => Action, isArray: true })
+  @IsOptional()
   @Type(() => Action)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  actions: Relation<Action>[];
+  actions?: Relation<Action>[];
 
   @ManyToMany(() => GeneralUpdate, (generalUpdate) => generalUpdate.suites)
-  @ApiProperty({ type: () => GeneralUpdate, isArray: true })
-  @Allow()
+  @ApiPropertyOptional({ type: () => GeneralUpdate, isArray: true })
+  @IsOptional()
   @Type(() => GeneralUpdate)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  generalUpdates: Relation<GeneralUpdate>[];
+  generalUpdates?: Relation<GeneralUpdate>[];
 
   @OneToMany(() => ReminderGroup, (reminderGroup) => reminderGroup.actionSuite)
-  @ApiProperty({ type: () => ReminderGroup, isArray: true })
-  @Allow()
+  @ApiPropertyOptional({ type: () => ReminderGroup, isArray: true })
+  @IsOptional()
   @Type(() => ReminderGroup)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  reminderGroups: Relation<ReminderGroup>[];
+  reminderGroups?: Relation<ReminderGroup>[];
 
   // Methods
 
@@ -73,9 +76,16 @@ export class ActionSuite {
   @ApiProperty({ type: () => ActionEvent, isArray: true })
   get events(): ActionEvent[] {
     return this.actions?.length
-      ? this.actions[0].events.filter((event) => event.suiteManaged)
+      ? loadedActionEvents(this.actions[0]).filter(
+          (event) => event.suiteManaged,
+        )
       : [];
   }
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }
 
 /**
@@ -89,6 +99,16 @@ export interface ParsedActionSuite extends ActionSuite {
 }
 
 export function parseActionSuite(suite: ActionSuite): ParsedActionSuite {
-  suite.actions = suite.actions?.map(parseAction);
-  return suite as ParsedActionSuite;
+  return Object.assign(suite, {
+    actions: loadedActionSuiteActions(suite).map(parseAction),
+  });
+}
+
+export function loadedActionSuiteActions(
+  suite: ActionSuite,
+): Relation<Action>[] {
+  if (!suite.actions) {
+    throw new Error(`actions of action suite ${suite.id} not loaded`);
+  }
+  return suite.actions;
 }

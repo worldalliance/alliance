@@ -1,8 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsOptional } from "class-validator";
+import { Allow, IsEmpty, IsOptional } from "class-validator";
 import { Contract } from "src/contract/entities/contract.entity";
-import { UpdateDateColumnTz } from "src/datasources/basecolumns";
+import {
+  DeleteDateColumnTz,
+  UpdateDateColumnTz,
+} from "src/datasources/basecolumns";
+import { findLeast } from "src/utils/filter";
 import type { Relation } from "src/utils/Repository";
 import {
   Check,
@@ -27,6 +31,25 @@ export function compareContractEventsNewestFirst<
   T extends ContractEventOrderFields,
 >(a: T, b: T): number {
   return b.date.getTime() - a.date.getTime() || b.id - a.id;
+}
+
+export function findLastContractEvent<T extends ContractEventOrderFields>(
+  events: T[],
+): T | null {
+  return findLeast(events, compareContractEventsNewestFirst);
+}
+
+export function isContractActiveAt(
+  events: Pick<ContractEvent, "date" | "id" | "type">[],
+  at: Date,
+): boolean {
+  return (
+    findLeast(
+      events,
+      compareContractEventsNewestFirst,
+      (event) => event.date <= at,
+    )?.type === ContractEventType.SIGNED
+  );
 }
 
 export function getEffectiveContractEventsInRange<
@@ -89,6 +112,11 @@ export class ContractEvent {
   @IsOptional()
   signedName: string | null;
 
+  @Column({ default: false })
+  @ApiProperty()
+  @Allow()
+  viaTaskForm: boolean;
+
   @Column({ type: "int", nullable: true })
   @ApiProperty({ nullable: true })
   @IsOptional()
@@ -100,10 +128,9 @@ export class ContractEvent {
     nullable: false,
     onDelete: "CASCADE",
   })
-  @Allow()
+  @IsOptional()
   @Type(() => User)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  user: Relation<User>;
+  user?: Relation<User>;
 
   @ManyToOne(() => Contract, (contract) => contract.events, {
     onDelete: "CASCADE",
@@ -116,4 +143,9 @@ export class ContractEvent {
   @Type(() => Contract)
   @IsOptional()
   contract?: Relation<Contract>;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }

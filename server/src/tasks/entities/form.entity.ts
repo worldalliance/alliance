@@ -1,9 +1,16 @@
 // src/forms/form.entity.ts
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsArray, IsDefined } from "class-validator";
+import {
+  Allow,
+  IsArray,
+  IsDefined,
+  IsEmpty,
+  IsOptional,
+} from "class-validator";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
@@ -43,9 +50,8 @@ export class Form {
   @ManyToOne(() => FormSnapshot, { onDelete: "RESTRICT" })
   @JoinColumn({ name: "formSnapshotId" })
   @Type(() => FormSnapshot)
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  formSnapshot: Relation<FormSnapshot>;
+  @IsOptional()
+  formSnapshot?: Relation<FormSnapshot>;
 
   @ManyToMany(() => FormSnapshot)
   @JoinTable({
@@ -54,9 +60,8 @@ export class Form {
     inverseJoinColumn: { name: "formSnapshotId", referencedColumnName: "id" },
   })
   @Type(() => FormSnapshot)
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  historicalFormSnapshots: Relation<FormSnapshot>[];
+  @IsOptional()
+  historicalFormSnapshots?: Relation<FormSnapshot>[];
 
   @CreateDateColumnTz()
   @ApiProperty()
@@ -73,6 +78,18 @@ export class Form {
   @OneToMany(() => FormResponse, (r: FormResponse) => r.form)
   @Type(() => FormResponse)
   @IsArray()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  responses: Relation<FormResponse>[];
+  @IsOptional()
+  responses?: Relation<FormResponse>[];
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
+}
+
+export function loadedFormSnapshot(form: Form): Relation<FormSnapshot> {
+  if (!form.formSnapshot) {
+    throw new Error(`formSnapshot of form ${form.id} not loaded`);
+  }
+  return form.formSnapshot;
 }

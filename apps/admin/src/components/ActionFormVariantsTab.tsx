@@ -1,26 +1,25 @@
-import { errorMessage } from "@alliance/common/errorMessage";
 import { forCount, withCount } from "@alliance/common/plural";
 import type { ActionDto } from "@alliance/shared/client";
-import {
-  actionsCreateFormVariantAdmin,
-  actionsDeleteFormVariantAdmin,
-  actionsListFormVariantsAdmin,
-  actionsUpdateFormVariantAdmin,
-} from "@alliance/shared/client";
 import type {
   ActionFormVariantDto,
-  ActionFormVariantStatsDto,
+  ActionFormVariantsListDto,
 } from "@alliance/shared/client/types.gen";
-import { useInvalidateFormsIndex } from "@alliance/shared/lib/useFormsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
 import BaseButton, {
   BaseButtonVariant,
 } from "@alliance/sharedweb/ui/BaseButton";
 import Card from "@alliance/sharedweb/ui/Card";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
+import { formatPct } from "../lib/formatPct";
 import { makeTempId } from "../lib/tempId";
+import {
+  formVariantsLoadError,
+  useFormVariantsAdmin,
+} from "../lib/useFormVariantsAdmin";
+import { useRefusalToast } from "../lib/useRefusalToast";
+import ActionFormVariantCoverage from "./ActionFormVariantCoverage";
 
 export interface ActionFormVariantsTabProps {
   action: ActionDto;
@@ -37,66 +36,40 @@ interface StagedVariant {
   splitValue: number;
 }
 
-function formatPct(value: number): string {
-  return `${+value.toFixed(2)}%`;
-}
+const asPercentages = (list: ActionFormVariantsListDto) => ({
+  variants: list.variants.map((v) => ({
+    ...v,
+    splitValue: v.splitValue * 100,
+  })),
+  stats: list.stats.map((s) => ({
+    ...s,
+    splitValue: s.splitValue == null ? null : s.splitValue * 100,
+  })),
+});
+
+const NO_VARIANTS: ActionFormVariantDto[] = [];
 
 export default function ActionFormVariantsTab({
   action,
 }: ActionFormVariantsTabProps) {
   const navigate = useNavigate();
   const toast = useToast();
-  const invalidateFormsIndex = useInvalidateFormsIndex();
-  const [variants, setVariants] = useState<ActionFormVariantDto[]>([]);
-  const [stats, setStats] = useState<ActionFormVariantStatsDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [publishing, setPublishing] = useState(false);
+  const toastRefusal = useRefusalToast();
+  const {
+    variants: variantsQuery,
+    publishVariants,
+    updateVariant,
+    deleteVariant,
+  } = useFormVariantsAdmin(action.id, asPercentages);
   const [edits, setEdits] = useState<Record<number, EditState>>({});
   const [staged, setStaged] = useState<StagedVariant[]>([]);
   const [savingIds, setSavingIds] = useState<Set<number>>(new Set());
   const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
+  const publishing = publishVariants.isPending;
 
-  const refresh = useCallback(async () => {
-    const res = await actionsListFormVariantsAdmin({ path: { id: action.id } });
-    if (res.data) {
-      const variantsAsPct = res.data.variants.map((v) => ({
-        ...v,
-        splitValue: v.splitValue * 100,
-      }));
-      const statsAsPct = res.data.stats.map((s) => ({
-        ...s,
-        splitValue: s.splitValue == null ? null : s.splitValue * 100,
-      }));
-      setVariants(variantsAsPct);
-      setStats(statsAsPct);
-      setEdits((prev) => {
-        const next: Record<number, EditState> = {};
-        for (const v of variantsAsPct) {
-          next[v.id] =
-            prev[v.id] ??
-            ({
-              name: v.name,
-              splitValue: v.splitValue,
-            } satisfies EditState);
-        }
-        return next;
-      });
-    }
-    setLoading(false);
-  }, [action.id]);
+  const variants = variantsQuery.data?.variants ?? NO_VARIANTS;
+  const stats = variantsQuery.data?.stats ?? [];
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  const totalAssigned = useMemo(
-    () => stats.reduce((sum, s) => sum + s.assigned, 0),
-    [stats],
-  );
-  const totalSubmitted = useMemo(
-    () => stats.reduce((sum, s) => sum + s.submitted, 0),
-    [stats],
-  );
   const percentageSum = useMemo(
     () =>
       [
@@ -147,9 +120,10 @@ export default function ActionFormVariantsTab({
     setStaged((s) => s.filter((d) => d.tempId !== tempId));
   }, []);
 
-  const handlePublishStaged = useCallback(async () => {
+  const handlePublishStaged = async () => {
     if (staged.length === 0) return;
-    if (!action.taskFormId) {
+    const sourceFormId = action.taskFormId;
+    if (!sourceFormId) {
       toast.error("Set the action's task form first.");
       return;
     }
@@ -159,132 +133,89 @@ export default function ActionFormVariantsTab({
       );
       return;
     }
-    setPublishing(true);
-    try {
-      let succeeded = 0;
-      let stopAt = staged.length;
-      for (let i = 0; i < staged.length; i++) {
-        const draft = staged[i];
-        const res = await actionsCreateFormVariantAdmin({
-          path: { id: action.id },
-          body: {
-            name: draft.name,
-            splitValue: draft.splitValue / 100,
-            sourceFormId: action.taskFormId,
-          },
-        });
-        if (res.error) {
-          toast.error(
-            errorMessage({
-              error: res.error,
-              fallback: `Failed to publish "${draft.name}"`,
-            }),
-          );
-          stopAt = i;
-          break;
-        }
-        succeeded++;
-      }
-      if (succeeded > 0) {
-        toast.success(`Published ${withCount(succeeded, "variant")}`);
-        // Each published variant clones the task form into a new form row.
-        await invalidateFormsIndex();
-      }
-      // Drop everything we successfully wrote; keep the failed one and any after it.
-      setStaged((s) => s.slice(stopAt));
-      await refresh();
-    } finally {
-      setPublishing(false);
+    const { published, refusal } = await publishVariants.mutateAsync(
+      staged.map((draft) => ({
+        name: draft.name,
+        splitValue: draft.splitValue / 100,
+        sourceFormId,
+      })),
+    );
+    if (refusal) {
+      toastRefusal(refusal, `Failed to publish "${staged[published].name}"`);
     }
-  }, [
-    action.id,
-    action.taskFormId,
-    invalidateFormsIndex,
-    percentageSum,
-    refresh,
-    staged,
-    toast,
-  ]);
+    if (published > 0) {
+      toast.success(`Published ${withCount(published, "variant")}`);
+    }
+    // Keep the refused draft and any after it.
+    setStaged((s) => s.slice(published));
+  };
 
-  const updateEdit = useCallback(
-    (variantId: number, patch: Partial<EditState>) => {
-      setEdits((d) => ({
-        ...d,
-        [variantId]: { ...d[variantId], ...patch },
-      }));
-    },
-    [],
-  );
+  const editOf = (v: ActionFormVariantDto, all = edits): EditState =>
+    all[v.id] ?? { name: v.name, splitValue: v.splitValue };
 
-  const handleSaveVariant = useCallback(
-    async (variantId: number) => {
-      const edit = edits[variantId];
-      if (!edit) return;
-      setSavingIds((s) => new Set(s).add(variantId));
-      try {
-        const res = await actionsUpdateFormVariantAdmin({
-          path: { variantId },
-          body: {
-            name: edit.name,
-            splitValue: edit.splitValue / 100,
-          },
-        });
-        if (res.error) {
-          toast.error(
-            errorMessage({ error: res.error, fallback: "Failed to save" }),
-          );
-        } else {
-          await refresh();
-        }
-      } finally {
-        setSavingIds((s) => {
-          const next = new Set(s);
-          next.delete(variantId);
-          return next;
-        });
-      }
-    },
-    [edits, refresh, toast],
-  );
+  const updateEdit = (v: ActionFormVariantDto, patch: Partial<EditState>) => {
+    setEdits((d) => ({ ...d, [v.id]: { ...editOf(v, d), ...patch } }));
+  };
 
-  const handleDeleteVariant = useCallback(
-    async (variantId: number) => {
-      if (
-        !window.confirm(
-          "Delete this variant? This is hard-blocked if any users are already assigned to it.",
-        )
+  const handleSaveVariant = async (v: ActionFormVariantDto) => {
+    const edit = editOf(v);
+    setSavingIds((s) => new Set(s).add(v.id));
+    try {
+      await updateVariant.mutateAsync({
+        variantId: v.id,
+        body: { name: edit.name, splitValue: edit.splitValue / 100 },
+      });
+    } catch (error) {
+      toastRefusal(error, "Failed to save");
+    } finally {
+      setSavingIds((s) => {
+        const next = new Set(s);
+        next.delete(v.id);
+        return next;
+      });
+    }
+  };
+
+  const handleDeleteVariant = async (variantId: number) => {
+    if (
+      !window.confirm(
+        "Delete this variant? Before launch, this also removes users' assignments to it. After launch, it's blocked if any users are assigned.",
       )
-        return;
-      setDeletingIds((s) => new Set(s).add(variantId));
-      try {
-        const res = await actionsDeleteFormVariantAdmin({
-          path: { variantId },
-        });
-        if (res.error) {
-          toast.error(
-            errorMessage({ error: res.error, fallback: "Failed to delete" }),
-          );
-        } else {
-          // The cloned form outlives the variant, but nothing points at it now.
-          await Promise.all([refresh(), invalidateFormsIndex()]);
-        }
-      } finally {
-        setDeletingIds((s) => {
-          const next = new Set(s);
-          next.delete(variantId);
-          return next;
-        });
-      }
-    },
-    [invalidateFormsIndex, refresh, toast],
-  );
+    )
+      return;
+    setDeletingIds((s) => new Set(s).add(variantId));
+    try {
+      await deleteVariant.mutateAsync(variantId);
+    } catch (error) {
+      toastRefusal(error, "Failed to delete");
+    } finally {
+      setDeletingIds((s) => {
+        const next = new Set(s);
+        next.delete(variantId);
+        return next;
+      });
+    }
+  };
 
-  if (loading) {
+  if (variantsQuery.isPending) {
     return <div className="text-zinc-500">Loading variants…</div>;
+  }
+  // A failed refetch keeps the list and the staged drafts on screen.
+  if (!variantsQuery.data) {
+    return (
+      <div className="text-red-500">
+        {formVariantsLoadError(variantsQuery.error)}
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
+      {variantsQuery.isError && (
+        <div className="text-red-500">
+          {formVariantsLoadError(variantsQuery.error)}
+        </div>
+      )}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-lg font-semibold">Form variants (A/B testing)</h2>
@@ -340,85 +271,11 @@ export default function ActionFormVariantsTab({
         </Card>
       )}
 
-      <Card style={CardStyle.White} className="p-4">
-        <div className="text-sm text-zinc-600 mb-3">
-          Coverage:{" "}
-          <span className="font-medium text-zinc-900">
-            {totalAssigned} users assigned
-          </span>{" "}
-          across {withCount(stats.length, "group")}.{" "}
-          {percentageSum > 100 ? (
-            <span className="text-red-600">
-              Percentage total {formatPct(percentageSum)} exceeds 100% — fix
-              splits before publishing.
-            </span>
-          ) : variants.length === 0 && !hasUnpublished ? (
-            <span className="text-zinc-500">
-              No variants — all users see the default form.
-            </span>
-          ) : (
-            <span>
-              Users are assigned the first time they load the action. Default
-              form covers the remaining {formatPct(100 - percentageSum)}.
-            </span>
-          )}
-        </div>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-zinc-500 border-b">
-              <th className="py-2 pr-3">Group</th>
-              <th className="py-2 pr-3">Form</th>
-              <th className="py-2 pr-3">Split</th>
-              <th className="py-2 pr-3 text-right">Assigned</th>
-              <th className="py-2 pr-3 text-right">Submitted</th>
-            </tr>
-          </thead>
-          <tbody>
-            {stats.map((s) => (
-              <tr key={s.variantId ?? "default"} className="border-b">
-                <td className="py-2 pr-3 font-medium">
-                  {s.variantId === null ? (
-                    <span className="text-zinc-500">Default ·</span>
-                  ) : null}{" "}
-                  {s.name}
-                </td>
-                <td className="py-2 pr-3">
-                  {s.formId != null ? (
-                    <button
-                      className="text-blue-600 hover:underline"
-                      onClick={() => navigate(`/forms/${s.formId}`)}
-                    >
-                      Form #{s.formId}
-                    </button>
-                  ) : (
-                    <span className="text-zinc-400">—</span>
-                  )}
-                </td>
-                <td className="py-2 pr-3 text-zinc-700">
-                  {s.splitValue != null ? formatPct(s.splitValue) : "remainder"}
-                </td>
-                <td className="py-2 pr-3 text-right tabular-nums">
-                  {s.assigned}
-                </td>
-                <td className="py-2 pr-3 text-right tabular-nums">
-                  {s.submitted}
-                </td>
-              </tr>
-            ))}
-            <tr>
-              <td colSpan={3} className="py-2 pr-3 text-right text-zinc-500">
-                Total
-              </td>
-              <td className="py-2 pr-3 text-right tabular-nums font-medium">
-                {totalAssigned}
-              </td>
-              <td className="py-2 pr-3 text-right tabular-nums font-medium">
-                {totalSubmitted}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </Card>
+      <ActionFormVariantCoverage
+        stats={stats}
+        percentageSum={percentageSum}
+        hasVariants={variants.length > 0 || hasUnpublished}
+      />
 
       {(staged.length > 0 || variants.length > 0) && (
         <Card style={CardStyle.White} className="p-4">
@@ -467,8 +324,7 @@ export default function ActionFormVariantsTab({
               </div>
             ))}
             {variants.map((v) => {
-              const edit = edits[v.id];
-              if (!edit) return null;
+              const edit = editOf(v);
               const dirty =
                 edit.name !== v.name || edit.splitValue !== v.splitValue;
               return (
@@ -479,7 +335,7 @@ export default function ActionFormVariantsTab({
                   <input
                     className="border border-zinc-300 rounded-md px-2 py-1 w-40"
                     value={edit.name}
-                    onChange={(e) => updateEdit(v.id, { name: e.target.value })}
+                    onChange={(e) => updateEdit(v, { name: e.target.value })}
                   />
                   <input
                     type="number"
@@ -489,7 +345,7 @@ export default function ActionFormVariantsTab({
                     className="border border-zinc-300 rounded-md px-2 py-1 w-24"
                     value={edit.splitValue}
                     onChange={(e) =>
-                      updateEdit(v.id, {
+                      updateEdit(v, {
                         splitValue: Number(e.target.value),
                       })
                     }
@@ -505,7 +361,7 @@ export default function ActionFormVariantsTab({
                   </BaseButton>
                   <BaseButton
                     variant={BaseButtonVariant.Blue}
-                    onClick={() => handleSaveVariant(v.id)}
+                    onClick={() => handleSaveVariant(v)}
                     disabled={!dirty || savingIds.has(v.id)}
                   >
                     {savingIds.has(v.id) ? "Saving…" : "Save"}

@@ -1,10 +1,22 @@
+import type {
+  GetObjectCommand,
+  GetObjectCommandOutput,
+} from "@aws-sdk/client-s3";
+import { sdkStreamMixin } from "@smithy/util-stream";
+import { milliseconds } from "date-fns";
+import { ActionsService } from "src/actions/actions.service";
+import { GlobalFeedItemType } from "src/actions/dto/action.dto";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   ActionEvent,
   ActionStatus,
 } from "src/actions/entities/action-event.entity";
 import { CreateCommentDto, UpdateCommentDto } from "src/forum/dto/comment.dto";
-import { CommentParentObject } from "src/forum/entities/comment.entity";
+import {
+  Comment,
+  CommentParentObject,
+} from "src/forum/entities/comment.entity";
+import { Post } from "src/forum/entities/post.entity";
 import {
   Notification,
   NotificationCategory,
@@ -14,6 +26,7 @@ import {
   UnreadContentType,
 } from "src/notifs/entities/unread-content.entity";
 import { User } from "src/user/entities/user.entity";
+import { Readable } from "stream";
 import request from "supertest";
 import { In, type Repository } from "typeorm";
 import { Action } from "../src/actions/entities/action.entity";
@@ -22,7 +35,7 @@ import {
   UpdatePostDto,
   UpdatePostSettingsDto,
 } from "../src/forum/dto/post.dto";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
 
 describe("Forum (e2e)", () => {
   let ctx: TestContext;
@@ -44,16 +57,7 @@ describe("Forum (e2e)", () => {
       tags: [ctx.defaultTag],
     });
     await userRepo.save(extraUser);
-    const token = ctx.jwtService.sign(
-      {
-        sub: extraUser.id,
-        email: extraUser.email,
-        name: extraUser.name,
-      },
-      {
-        secret: process.env.JWT_SECRET,
-      },
-    );
+    const token = signAccessToken(ctx.jwtService, extraUser);
     return { user: extraUser, token };
   };
 
@@ -121,7 +125,7 @@ describe("Forum (e2e)", () => {
     // Create test action
     testAction = actionRepo.create({
       name: "Test Action",
-      category: "Test",
+      category: [],
       body: "Test action for forum tests",
       status: ActionStatus.MemberAction,
       cohortExpression: {
@@ -135,7 +139,7 @@ describe("Forum (e2e)", () => {
       title: "Action Started",
       description: "Action is now in member action phase",
       newStatus: ActionStatus.MemberAction,
-      date: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago
+      date: new Date(Date.now() - milliseconds({ hours: 1 })),
       action: testAction,
     });
     await eventRepo.save(event);
@@ -159,6 +163,70 @@ describe("Forum (e2e)", () => {
       expect(response.body.title).toBe("Test Post");
       expect(response.body.editableContent.body).toBe("This is a test post");
       expect(response.body.authorId).toBe(ctx.testUserId);
+      expect(response.body.actionId).toBeNull();
+    });
+
+    it("publishes a post created without visibleAt immediately", async () => {
+      const before = new Date();
+      const response = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Unscheduled Post",
+          editableContent: { body: "Posted right away", attachments: [] },
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      expect(
+        new Date(response.body.visibleAt).getTime(),
+      ).toBeGreaterThanOrEqual(before.getTime());
+      expect(new Date(response.body.visibleAt).getTime()).toBeLessThanOrEqual(
+        Date.now(),
+      );
+    });
+
+    it("rejects a null title or editableContent on update", async () => {
+      const created = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Edited Post",
+          editableContent: { body: "Before the edit", attachments: [] },
+        } satisfies CreatePostDto)
+        .expect(201);
+      for (const body of [{ title: null }, { editableContent: null }]) {
+        await request(ctx.app.getHttpServer())
+          .patch(`/forum/posts/${created.body.id}`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send(body)
+          .expect(400);
+      }
+    });
+
+    it("rejects a null or unparseable visibleAt on create and update", async () => {
+      const post = {
+        title: "Scheduled Post",
+        editableContent: { body: "Posted later", attachments: [] },
+      };
+      const visibleAt = new Date(Date.now() + milliseconds({ days: 1 }));
+      const created = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ ...post, visibleAt } satisfies CreatePostDto)
+        .expect(201);
+
+      for (const invalid of [null, "not a date"]) {
+        await request(ctx.app.getHttpServer())
+          .post("/forum/posts")
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send({ ...post, visibleAt: invalid })
+          .expect(400);
+        await request(ctx.app.getHttpServer())
+          .patch(`/forum/posts/${created.body.id}`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send({ visibleAt: invalid })
+          .expect(400);
+      }
     });
 
     it("should create a post with action association", async () => {
@@ -180,8 +248,8 @@ describe("Forum (e2e)", () => {
       expect(response.body.actionId).toBe(testAction.id);
     });
 
-    const addTestPost = async () => {
-      await request(ctx.app.getHttpServer())
+    const addTestPost = async (): Promise<number> => {
+      const { body } = await request(ctx.app.getHttpServer())
         .post("/forum/posts")
         .set("Authorization", `Bearer ${ctx.accessToken}`)
         .send({
@@ -193,6 +261,7 @@ describe("Forum (e2e)", () => {
           visibleAt: new Date(),
         } satisfies CreatePostDto)
         .expect(201);
+      return body.id;
     };
 
     it("should get all posts", async () => {
@@ -206,6 +275,41 @@ describe("Forum (e2e)", () => {
 
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("lists pinned posts first, then by latest comment or update", async () => {
+      const commentedId = await addTestPost();
+      const updatedId = await addTestPost();
+      const pinnedId = await addTestPost();
+      const daysAgo = (days: number) =>
+        new Date(Date.now() - milliseconds({ days }));
+      const setPost = (id: number, updatedAt: Date, pinned: boolean) =>
+        ctx.dataSource.query(
+          `update post set "updatedAt" = $2, pinned = $3 where id = $1`,
+          [id, updatedAt, pinned],
+        );
+      await setPost(commentedId, daysAgo(3), false);
+      await setPost(updatedId, daysAgo(2), false);
+      await setPost(pinnedId, daysAgo(4), true);
+      await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: "Bump", attachments: [] },
+          parentObjectId: commentedId,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(201);
+
+      const response = await request(ctx.app.getHttpServer())
+        .get("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      const ids = [pinnedId, commentedId, updatedId];
+      expect(
+        response.body.map(({ id }) => id).filter((id) => ids.includes(id)),
+      ).toEqual(ids);
     });
 
     it("should get posts by action", async () => {
@@ -234,7 +338,7 @@ describe("Forum (e2e)", () => {
     });
 
     it("should show authors their own scheduled posts on an action", async () => {
-      const futureVisibleAt = new Date(Date.now() + 1000 * 60 * 60);
+      const futureVisibleAt = new Date(Date.now() + milliseconds({ hours: 1 }));
       const createResponse = await request(ctx.app.getHttpServer())
         .post("/forum/posts")
         .set("Authorization", `Bearer ${ctx.accessToken}`)
@@ -289,7 +393,7 @@ describe("Forum (e2e)", () => {
     });
 
     it("should hide future-scheduled posts created by other users", async () => {
-      const futureVisibleAt = new Date(Date.now() + 1000 * 60 * 60); // 1 hour from now
+      const futureVisibleAt = new Date(Date.now() + milliseconds({ hours: 1 }));
       const createResponse = await request(ctx.app.getHttpServer())
         .post("/forum/posts")
         .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
@@ -319,8 +423,98 @@ describe("Forum (e2e)", () => {
         .expect(404);
     });
 
+    it("refuses likes, comments, and comment reads on a post scheduled for later", async () => {
+      const { body: post } = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          title: "Scheduled Post With A Comment",
+          editableContent: { body: "Scheduled in the future", attachments: [] },
+          visibleAt: new Date(Date.now() + milliseconds({ days: 1 })),
+        } satisfies CreatePostDto)
+        .expect(201);
+      const { body: comment } = await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          editableContent: { body: "Early comment", attachments: [] },
+          parentObjectId: post.id,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(201);
+      const server = ctx.app.getHttpServer();
+      const asMember = (req: request.Test) =>
+        req.set("Authorization", `Bearer ${ctx.accessToken}`);
+
+      await asMember(
+        request(server).post(`/forum/posts/${post.id}/like`),
+      ).expect(404);
+      const { body: commentLike } = await asMember(
+        request(server).post(`/forum/comments/${comment.id}/like`),
+      ).expect(404);
+      expect(commentLike.message).toBe(
+        `comment with ID "${comment.id}" not found`,
+      );
+      await asMember(
+        request(server).get(`/forum/posts/${post.id}/comments`),
+      ).expect(404);
+      await request(server).get(`/forum/posts/${post.id}/comments`).expect(404);
+      await asMember(request(server).post("/forum/comments"))
+        .send({
+          editableContent: { body: "Too early", attachments: [] },
+          parentObjectId: post.id,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(404);
+
+      const { body: adminComments } = await request(server)
+        .get(`/forum/posts/${post.id}/comments`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+      expect(adminComments.map((c) => c.id)).toEqual([comment.id]);
+    });
+
+    it("refuses comments and comment reads on a deleted post", async () => {
+      const server = ctx.app.getHttpServer();
+      const { body: post } = await request(server)
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Deleted After A Comment",
+          editableContent: { body: "Soon gone", attachments: [] },
+        } satisfies CreatePostDto)
+        .expect(201);
+      await request(server)
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: {
+            body: "Comment on a doomed post",
+            attachments: [],
+          },
+          parentObjectId: post.id,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(201);
+      await request(server)
+        .delete(`/forum/posts/${post.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      await request(server).get(`/forum/posts/${post.id}/comments`).expect(404);
+      await request(server)
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: "Comment after deletion", attachments: [] },
+          parentObjectId: post.id,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(404);
+    });
+
     it("should let admins see future-scheduled posts by other users", async () => {
-      const futureVisibleAt = new Date(Date.now() + 1000 * 60 * 60);
+      const futureVisibleAt = new Date(Date.now() + milliseconds({ hours: 1 }));
       const createResponse = await request(ctx.app.getHttpServer())
         .post("/forum/posts")
         .set("Authorization", `Bearer ${ctx.accessToken}`)
@@ -376,7 +570,7 @@ describe("Forum (e2e)", () => {
     });
 
     it("should hide a member's future-scheduled posts from profile visitors", async () => {
-      const futureVisibleAt = new Date(Date.now() + 1000 * 60 * 60);
+      const futureVisibleAt = new Date(Date.now() + milliseconds({ hours: 1 }));
       const createResponse = await request(ctx.app.getHttpServer())
         .post("/forum/posts")
         .set("Authorization", `Bearer ${ctx.accessToken}`)
@@ -414,7 +608,7 @@ describe("Forum (e2e)", () => {
     });
 
     it("should allow authors to see their own future-scheduled posts", async () => {
-      const futureVisibleAt = new Date(Date.now() + 1000 * 60 * 60); // 1 hour from now
+      const futureVisibleAt = new Date(Date.now() + milliseconds({ hours: 1 }));
       const createResponse = await request(ctx.app.getHttpServer())
         .post("/forum/posts")
         .set("Authorization", `Bearer ${ctx.accessToken}`)
@@ -444,6 +638,64 @@ describe("Forum (e2e)", () => {
         .get(`/forum/posts/${createResponse.body.id}`)
         .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(200);
+    });
+
+    it("should allow co-authors to see a future-scheduled post", async () => {
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          title: "Future Post With Co-author",
+          editableContent: { body: "Scheduled by an admin", attachments: [] },
+          visibleAt: new Date(Date.now() + milliseconds({ hours: 1 })),
+        } satisfies CreatePostDto)
+        .expect(201);
+      const getAsTestUser = () =>
+        request(ctx.app.getHttpServer())
+          .get(`/forum/posts/${createResponse.body.id}`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`);
+
+      await getAsTestUser().expect(404);
+
+      await ctx.dataSource.getRepository(Post).save({
+        id: createResponse.body.id,
+        authors: [{ id: ctx.testUserId }],
+      });
+
+      await getAsTestUser().expect(200);
+    });
+
+    it("lets the creator and co-authors edit and delete a post, and no one else", async () => {
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          title: "Co-authored Post",
+          editableContent: { body: "Written together", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+      const postId = createResponse.body.id;
+      await ctx.dataSource.getRepository(Post).save({
+        id: postId,
+        authors: [{ id: ctx.testUserId }],
+      });
+      const { token: visitorToken } = await createExtraUserAndToken();
+      const patchAs = (token: string) =>
+        request(ctx.app.getHttpServer())
+          .patch(`/forum/posts/${postId}`)
+          .set("Authorization", `Bearer ${token}`)
+          .send({ title: "Retitled" });
+      const deleteAs = (token: string) =>
+        request(ctx.app.getHttpServer())
+          .delete(`/forum/posts/${postId}`)
+          .set("Authorization", `Bearer ${token}`);
+
+      await patchAs(visitorToken).expect(404);
+      await deleteAs(visitorToken).expect(404);
+      await patchAs(ctx.accessToken).expect(200);
+      await patchAs(ctx.adminAccessToken).expect(200);
+      await deleteAs(ctx.accessToken).expect(200);
     });
 
     it("should update a post", async () => {
@@ -539,6 +791,23 @@ describe("Forum (e2e)", () => {
       testPostId = createResponse.body.id;
     });
 
+    const createReply = async (
+      body: string,
+      parentId?: number,
+    ): Promise<number> => {
+      const response = await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body, attachments: [] },
+          parentObjectId: testPostId,
+          parentId,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(201);
+      return response.body.id;
+    };
+
     it("should create a reply", async () => {
       const response = await request(ctx.app.getHttpServer())
         .post("/forum/comments")
@@ -556,6 +825,20 @@ describe("Forum (e2e)", () => {
       expect(response.body.editableContent.body).toBe("This is a test reply");
       expect(response.body.parentObjectId).toBe(testPostId);
       expect(response.body.author.id).toBe(ctx.testUserId);
+    });
+
+    it("refuses a reply with only whitespace and no attachments", async () => {
+      const response = await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: " \n\t ", attachments: [] },
+          parentObjectId: testPostId,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(400);
+
+      expect(response.body.message).toBe("Reply cannot be empty");
     });
 
     it("should update a reply", async () => {
@@ -629,15 +912,41 @@ describe("Forum (e2e)", () => {
         .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(200);
 
-      // Verify reply is deleted by trying to update it (should fail)
-      const reply = await request(ctx.app.getHttpServer())
+      await request(ctx.app.getHttpServer())
         .patch(`/forum/comments/${replyId}`)
         .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .send({
-          content: "This should fail",
-        });
+        .send({ editableContent: { body: "Too late", attachments: [] } })
+        .expect(404);
+    });
 
-      expect(reply.body.deleted).toBe(true);
+    it("deletes only the deleted reply's notifications", async () => {
+      const replyId = await createReply("Reply with notifications");
+      const keptReplyId = await createReply("Reply that stays");
+      const notifyAbout = (commentId: number) =>
+        notifRepo.save(
+          notifRepo.create({
+            user: { id: ctx.adminUserId },
+            category: NotificationCategory.ForumReply,
+            message: "Someone replied",
+            webAppLocation: `/forum/post/${testPostId}`,
+            comment: { id: commentId },
+          }),
+        );
+      const deleted = await Promise.all([
+        notifyAbout(replyId),
+        notifyAbout(replyId),
+      ]);
+      const kept = await notifyAbout(keptReplyId);
+
+      await request(ctx.app.getHttpServer())
+        .delete(`/forum/comments/${replyId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      const remaining = await notifRepo.findBy({
+        id: In([...deleted, kept].map((notif) => notif.id)),
+      });
+      expect(remaining.map((notif) => notif.id)).toEqual([kept.id]);
     });
 
     it("should say a missing reply is gone", async () => {
@@ -659,16 +968,7 @@ describe("Forum (e2e)", () => {
       await userRepo.save(anotherUser);
 
       // Create token for another user
-      const anotherToken = ctx.jwtService.sign(
-        {
-          sub: anotherUser.id,
-          email: anotherUser.email,
-          name: anotherUser.name,
-        },
-        {
-          secret: process.env.JWT_SECRET,
-        },
-      );
+      const anotherToken = signAccessToken(ctx.jwtService, anotherUser);
 
       // Create a reply as the first user
       const createResponse = await request(ctx.app.getHttpServer())
@@ -711,6 +1011,7 @@ describe("Forum (e2e)", () => {
         } satisfies CreateCommentDto)
         .expect(201);
 
+      expect(parentResponse.body.parentId).toBeNull();
       const parentReplyId = parentResponse.body.id;
 
       // Create a nested reply
@@ -823,6 +1124,33 @@ describe("Forum (e2e)", () => {
       });
     });
 
+    it("nests grandchildren and orders each level pinned first, then oldest", async () => {
+      const rootId = await createReply("Thread root");
+      const olderChildId = await createReply("Older child", rootId);
+      const pinnedChildId = await createReply("Pinned child", rootId);
+      const youngerChildId = await createReply("Younger child", rootId);
+      const grandchildId = await createReply("Grandchild", olderChildId);
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/comments/${pinnedChildId}/pin`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      const response = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/${testPostId}/comments`)
+        .expect(200);
+
+      const root = response.body.find(({ id }) => id === rootId);
+      expect(root.children.map(({ id }) => id)).toEqual([
+        pinnedChildId,
+        olderChildId,
+        youngerChildId,
+      ]);
+      expect(root.children[1].children.map(({ id }) => id)).toEqual([
+        grandchildId,
+      ]);
+      expect(root.children[1].children[0].children).toEqual([]);
+    });
+
     it("does not notify parent author when they reply to their own post", async () => {
       const response = await request(ctx.app.getHttpServer())
         .post("/forum/comments")
@@ -859,6 +1187,32 @@ describe("Forum (e2e)", () => {
           parentObjectType: CommentParentObject.Post,
         } satisfies CreateCommentDto)
         .expect(404);
+    });
+
+    it("refuses a reply to a deleted comment without saving it", async () => {
+      const parentId = await createReply("Deleted parent");
+      await request(ctx.app.getHttpServer())
+        .delete(`/forum/comments/${parentId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      const response = await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: "Reply to deleted", attachments: [] },
+          parentObjectId: testPostId,
+          parentId,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(404);
+
+      expect(response.body.message).toBe(
+        "The reply you're answering is no longer here",
+      );
+      expect(
+        await ctx.dataSource.getRepository(Comment).countBy({ parentId }),
+      ).toBe(0);
     });
 
     it("should fail to create nested reply with parentId from different post", async () => {
@@ -1055,12 +1409,11 @@ describe("Forum (e2e)", () => {
     });
 
     it("provides activity and action level comment listings", async () => {
-      const actionComplete = await request(ctx.app.getHttpServer())
-        .post(`/actions/complete/${testAction.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(201);
+      const actionComplete = await ctx.app
+        .get(ActionsService)
+        .completeAction(testAction.id, ctx.testUserId);
 
-      const activityId = actionComplete.body.id;
+      const activityId = actionComplete.id;
 
       await request(ctx.app.getHttpServer())
         .post("/forum/comments")
@@ -1093,6 +1446,105 @@ describe("Forum (e2e)", () => {
         .expect(200);
 
       expect(actionComments.body.length).toBeGreaterThan(0);
+    });
+
+    it("notifies an activity's owner of a comment on it", async () => {
+      await activityRepo.delete({
+        user: { id: ctx.testUserId },
+        actionId: testAction.id,
+      });
+      const { id: activityId } = await ctx.app
+        .get(ActionsService)
+        .completeAction(testAction.id, ctx.testUserId);
+
+      const commentResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          editableContent: { body: "Comment for the owner", attachments: [] },
+          parentObjectId: activityId,
+          parentObjectType: CommentParentObject.Activity,
+        } satisfies CreateCommentDto)
+        .expect(201);
+
+      const ownerNotifs = await unreadContentRepo.find({
+        where: {
+          user: { id: ctx.testUserId },
+          contentType: UnreadContentType.ForumReply,
+          contentId: commentResponse.body.id,
+        },
+      });
+      expect(ownerNotifs).toHaveLength(1);
+    });
+
+    const createActionAndPostSharingId = async () => {
+      await ctx.dataSource.query(
+        `SELECT setval(pg_get_serial_sequence('post', 'id'), next), setval(pg_get_serial_sequence('action', 'id'), next)
+         FROM (SELECT GREATEST((SELECT MAX(id) FROM post), (SELECT MAX(id) FROM action)) AS next) ids`,
+      );
+      const action = await actionRepo.save({
+        name: "Shared Id Action",
+        category: [],
+        body: "An action whose id a post shares",
+        status: ActionStatus.MemberAction,
+      });
+      await eventRepo.save({
+        title: "Action Started",
+        description: "Action is now in member action phase",
+        newStatus: ActionStatus.MemberAction,
+        date: new Date(Date.now() - milliseconds({ hours: 1 })),
+        action,
+      });
+      const post = await ctx.dataSource.getRepository(Post).save({
+        title: "Shared Id Post",
+        authorId: ctx.testUserId,
+        editableContent: { body: "Body", attachments: [] },
+      });
+      expect(post.id).toBe(action.id);
+      return { action, post };
+    };
+
+    it("leaves a post sharing a commented action's id unbumped", async () => {
+      const postRepo = ctx.dataSource.getRepository(Post);
+      const { action, post } = await createActionAndPostSharingId();
+
+      await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: "On the action", attachments: [] },
+          parentObjectId: action.id,
+          parentObjectType: CommentParentObject.Action,
+        } satisfies CreateCommentDto)
+        .expect(201);
+
+      expect(
+        (await postRepo.findOneByOrFail({ id: post.id })).updatedAt,
+      ).toEqual(post.updatedAt);
+    });
+
+    it("refuses a post reply whose parent comment is on an action sharing the post's id", async () => {
+      const { action, post } = await createActionAndPostSharingId();
+      const actionComment = await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: "On the action", attachments: [] },
+          parentObjectId: action.id,
+          parentObjectType: CommentParentObject.Action,
+        } satisfies CreateCommentDto)
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: "On the post", attachments: [] },
+          parentObjectId: post.id,
+          parentId: actionComment.body.id,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(404);
     });
 
     it("supports liking and unliking posts and comments", async () => {
@@ -1541,6 +1993,34 @@ describe("Forum (e2e)", () => {
         expect.arrayContaining([ctx.testUserId, coAuthor.id]),
       );
       expect(updateResponse.body.authorIds).toHaveLength(2);
+    });
+
+    it("credits a co-authored post's co-authors on their profile", async () => {
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Co-authored Profile Post",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+      const postId = postResponse.body.id;
+      const { user: coAuthor } = await createExtraUserAndToken();
+      const { user: otherCoAuthor } = await createExtraUserAndToken();
+      await saveSettings(postId, {
+        authorIds: [coAuthor.id, otherCoAuthor.id],
+      }).expect(200);
+
+      const profilePosts = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/user/${coAuthor.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      const post = profilePosts.body.find((p) => p.id === postId);
+      expect(post.authors.map((a) => a.id).sort()).toEqual(
+        [coAuthor.id, otherCoAuthor.id].sort(),
+      );
     });
 
     it("notifies all authors when a comment is posted", async () => {
@@ -2380,12 +2860,11 @@ describe("Forum (e2e)", () => {
         actionId: testAction.id,
       });
 
-      const completeResponse = await request(ctx.app.getHttpServer())
-        .post(`/actions/complete/${testAction.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(201);
+      const completeResponse = await ctx.app
+        .get(ActionsService)
+        .completeAction(testAction.id, ctx.testUserId);
 
-      const activityId = completeResponse.body.id;
+      const activityId = completeResponse.id;
 
       const commentResponse = await request(ctx.app.getHttpServer())
         .post("/forum/comments")
@@ -2419,6 +2898,88 @@ describe("Forum (e2e)", () => {
       expect(activityCommentNotifs[0].webAppLocation).toBe(
         `/actions/${testAction.id}/activity/${activityId}?replyId=${commentId}`,
       );
+    });
+
+    it("groups a post's recent comments by commenter in the global feed", async () => {
+      const createPost = async (title: string): Promise<number> => {
+        const response = await request(ctx.app.getHttpServer())
+          .post("/forum/posts")
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send({
+            title,
+            editableContent: { body: "Body", attachments: [] },
+            visibleAt: new Date(),
+          } satisfies CreatePostDto)
+          .expect(201);
+        return response.body.id;
+      };
+      const commentAs = async (params: {
+        token: string;
+        postId: number;
+        body: string;
+      }): Promise<number> => {
+        const response = await request(ctx.app.getHttpServer())
+          .post("/forum/comments")
+          .set("Authorization", `Bearer ${params.token}`)
+          .send({
+            editableContent: { body: params.body, attachments: [] },
+            parentObjectId: params.postId,
+            parentObjectType: CommentParentObject.Post,
+          } satisfies CreateCommentDto)
+          .expect(201);
+        return response.body.id;
+      };
+      const sharedPostId = await createPost("Post With Two Commenters");
+      await commentAs({
+        token: ctx.accessToken,
+        postId: sharedPostId,
+        body: "First",
+      });
+      await commentAs({
+        token: ctx.accessToken,
+        postId: sharedPostId,
+        body: "Second",
+      });
+      await commentAs({
+        token: ctx.adminAccessToken,
+        postId: sharedPostId,
+        body: "Third",
+      });
+      const soloPostId = await createPost("Post With One Commenter");
+      await commentAs({
+        token: ctx.accessToken,
+        postId: soloPostId,
+        body: "Older",
+      });
+      const newestSoloCommentId = await commentAs({
+        token: ctx.accessToken,
+        postId: soloPostId,
+        body: "Newer",
+      });
+
+      const feed = await request(ctx.app.getHttpServer())
+        .get("/actions/globalFeed")
+        .query({ limit: 50 })
+        .expect(200);
+
+      const forumCommentsFor = (postId: number) =>
+        feed.body.find(
+          ({ type, forumComments }) =>
+            type === GlobalFeedItemType.ForumComments &&
+            forumComments.postId === postId,
+        )?.forumComments;
+      const shared = forumCommentsFor(sharedPostId);
+      expect(shared).toBeDefined();
+      expect(shared.count).toBe(2);
+      expect(shared.users.map(({ id }) => id)).toEqual([
+        ctx.adminUserId,
+        ctx.testUserId,
+      ]);
+      expect(shared.commentId).toBeUndefined();
+      const solo = forumCommentsFor(soloPostId);
+      expect(solo).toBeDefined();
+      expect(solo.count).toBe(1);
+      expect(solo.commentId).toBe(newestSoloCommentId);
     });
   });
 
@@ -2519,6 +3080,30 @@ describe("Forum (e2e)", () => {
       ]);
       expect(await commentTagId(postId, keptCommentId)).toBe(tags[0].id);
       expect(await commentTagId(postId, droppedCommentId)).toBeNull();
+    });
+
+    it("re-adds a dropped tag's name, in a later save or the same one", async () => {
+      const { postId, tags } = await createTaggedPost(["A", "B"]);
+
+      const dropped = await saveTags({
+        postId,
+        tags: [{ id: tags[0].id, name: "A" }],
+        knownTagIds: tagIds(tags),
+      }).expect(200);
+      const readded = await saveTags({
+        postId,
+        tags: [{ id: tags[0].id, name: "A" }, { name: "B" }],
+        knownTagIds: tagIds(dropped.body.tags),
+      }).expect(200);
+      expect(readded.body.tags.map((tag) => tag.name)).toEqual(["A", "B"]);
+
+      const replaced = await saveTags({
+        postId,
+        tags: [{ id: readded.body.tags[0].id, name: "A" }, { name: "B" }],
+        knownTagIds: tagIds(readded.body.tags),
+      }).expect(200);
+      expect(replaced.body.tags.map((tag) => tag.name)).toEqual(["A", "B"]);
+      expect(replaced.body.tags[1].id).not.toBe(readded.body.tags[1].id);
     });
 
     it("keeps every tag when a save fails partway", async () => {
@@ -2699,6 +3284,177 @@ describe("Forum (e2e)", () => {
 
       const created = await postComment(post.body.id, {}).expect(201);
       expect(created.body.tagId).toBeNull();
+    });
+  });
+
+  describe("Post export", () => {
+    const createPostWithThread = async () => {
+      const post = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Archived Post",
+          editableContent: {
+            body: "A post with **bold** text",
+            attachments: [],
+          },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const comment = await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: "Top level comment", attachments: [] },
+          parentObjectId: post.body.id,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: "Nested reply", attachments: [] },
+          parentObjectId: post.body.id,
+          parentId: comment.body.id,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(201);
+
+      return post.body.id as number;
+    };
+
+    const exportPage = async (postId: number) => {
+      const response = await request(ctx.app.getHttpServer())
+        .get(`/forum/admin/posts/${postId}/export`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      expect(response.headers["content-type"]).toBe("text/html; charset=utf-8");
+      expect(response.headers["content-disposition"]).toContain(
+        `filename="post-${postId}-archived-post.html"`,
+      );
+      return response.text;
+    };
+
+    it("puts the post and its comment thread on the page", async () => {
+      const postId = await createPostWithThread();
+
+      const page = await exportPage(postId);
+
+      expect(page).toContain("Archived Post");
+      expect(page).toContain("<strong>bold</strong>");
+      expect(page).toContain("2 comments");
+      expect(page).toContain("Top level comment");
+      expect(page).toContain("Nested reply");
+      expect(
+        page.indexOf("Nested reply") > page.indexOf("Top level comment"),
+      ).toBe(true);
+      expect(page).toContain("The Alliance");
+      expect(page).toContain("shared with Alliance members only");
+    });
+
+    it("shows a like count as a heart", async () => {
+      const postId = await createPostWithThread();
+      const comments = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/${postId}/comments`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      await request(ctx.app.getHttpServer())
+        .post(`/forum/comments/${comments.body[0].id}/like`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(201);
+
+      const page = await exportPage(postId);
+
+      expect(page).toContain(`<span class="likes" title="1 like"><svg`);
+    });
+
+    it("marks a deleted comment that still has replies", async () => {
+      const postId = await createPostWithThread();
+      const comments = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/${postId}/comments`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      await request(ctx.app.getHttpServer())
+        .delete(`/forum/comments/${comments.body[0].id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      const page = await exportPage(postId);
+
+      expect(page).toContain("Content has been deleted");
+      expect(page).not.toContain("Top level comment");
+      expect(page).toContain("Nested reply");
+    });
+
+    it("exports a post its author deleted", async () => {
+      const postId = await createPostWithThread();
+      await request(ctx.app.getHttpServer())
+        .delete(`/forum/posts/${postId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      const page = await exportPage(postId);
+
+      expect(page).toContain("Archived Post");
+      expect(page).toContain("Top level comment");
+    });
+
+    it("embeds an attachment in the page", async () => {
+      const s3 = ctx.app.get<{
+        send: (command: GetObjectCommand) => Promise<GetObjectCommandOutput>;
+      }>("S3_CLIENT");
+      const send = jest.spyOn(s3, "send").mockResolvedValue({
+        $metadata: {},
+        Body: sdkStreamMixin(Readable.from(Buffer.from("image-bytes"))),
+      });
+      try {
+        const post = await request(ctx.app.getHttpServer())
+          .post("/forum/posts")
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send({
+            title: "Archived Post",
+            editableContent: {
+              body: "Look at this",
+              attachments: ["archived.webp"],
+            },
+            visibleAt: new Date(),
+          } satisfies CreatePostDto)
+          .expect(201);
+
+        const response = await request(ctx.app.getHttpServer())
+          .get(`/forum/admin/posts/${post.body.id}/export`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .expect(200);
+
+        const encoded = Buffer.from("image-bytes").toString("base64");
+        expect(response.text).toContain(
+          `src="data:image/webp;base64,${encoded}"`,
+        );
+      } finally {
+        send.mockRestore();
+      }
+    });
+
+    it("ends with the edit-mode script", async () => {
+      const postId = await createPostWithThread();
+
+      const page = await exportPage(postId);
+
+      expect(page).toContain("Admin edit mode");
+      expect(page.trimEnd().endsWith("</script>\n</body>\n</html>")).toBe(true);
+    });
+
+    it("refuses a non-admin", async () => {
+      const postId = await createPostWithThread();
+
+      await request(ctx.app.getHttpServer())
+        .get(`/forum/admin/posts/${postId}/export`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(401);
     });
   });
 });

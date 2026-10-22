@@ -1,219 +1,147 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { toString as mdastToString } from "mdast-util-to-string";
-import { remark } from "remark";
-import { ActionActivity } from "src/actions/entities/action-activity.entity";
+import { chunk } from "es-toolkit";
+import { actionUpdateEntrySendTime } from "src/actions/action-update-visibility";
 import { ActionUpdate } from "src/actions/entities/action-update.entity";
-import {
-  Comment,
-  CommentParentObject,
-} from "src/forum/entities/comment.entity";
+import { Comment } from "src/forum/entities/comment.entity";
+import { MessageTrackingService } from "src/link-tracking/message-tracking.service";
 import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
-import { actionUrl, commentUrl } from "src/search/approutes";
-import { ProfileDto } from "src/user/dto/user.dto";
+import {
+  CATEGORY_KIND,
+  NotificationKind,
+  UNREAD_CONTENT_KIND,
+} from "src/notification-settings/notification-kind";
+import { NotificationPreferencesService } from "src/notification-settings/notification-preferences.service";
 import { User } from "src/user/entities/user.entity";
-import {
-  DeepPartial,
-  EntityManager,
-  In,
-  IsNull,
-  LessThan,
-  type Repository,
-} from "typeorm";
+import type {
+  Repository as TypedRepository,
+  WithRelations,
+} from "src/utils/Repository";
+import { DeepPartial, EntityManager, In, IsNull, Raw } from "typeorm";
 import { NotifClickDto } from "./dto/notifclick.dto";
-import {
-  NotificationDto,
-  NotificationSourceType,
-} from "./dto/notification.dto";
-import { MarkUnreadContentReadDto } from "./dto/unread-content.dto";
+import { NotificationDto } from "./dto/notification.dto";
 import { ActionEventNotif } from "./entities/action-event-notif.entity";
 import {
-  NOTIFICATION_CATEGORY_PRIORITIES,
   Notification,
-  NotificationCategory,
+  NOTIFICATION_CATEGORY_PRIORITIES,
 } from "./entities/notification.entity";
 import {
   UnreadContent,
   UnreadContentType,
 } from "./entities/unread-content.entity";
+import { NotificationChannel } from "./notif-utils";
+import {
+  actionCommentContent,
+  type ContentTarget,
+  type Destination,
+  FORMATS_RENDERING_FROM_CONTENT,
+  forumReplyContent,
+  LIVE_ACTION_UPDATE_TEXT,
+  type NotificationContent,
+  NotificationFormat,
+  type NotifMessage,
+} from "./notification-content";
+import {
+  followsLiveActionUpdateText,
+  NotificationRenderService,
+} from "./notification-render.service";
 
 export type CreateNotifParams = Required<
   Pick<
     DeepPartial<Notification>,
-    "user" | "category" | "message" | "webAppLocation" | "associatedUsers"
+    "user" | "category" | "webAppLocation" | "associatedUsers"
   >
 > &
-  DeepPartial<Notification>;
+  Omit<DeepPartial<Notification>, "message" | "format" | "content"> & {
+    message: NotifMessage;
+    /** Null when the location doesn't open a member or group. */
+    destination: Destination | null;
+    pluralMessage?: NotifMessage;
+    target?: ContentTarget;
+  };
+
+type UnreadContentSource =
+  | {
+      contentType: UnreadContentType.ForumReply;
+      authorId: number;
+      /** Set when the recipient authored the action or a post linked to it, so the copy names the action. */
+      actionId?: number;
+    }
+  | {
+      contentType: UnreadContentType.ActionUpdate;
+      /** Unset to follow the update's live text. */
+      fixedText?: string;
+    };
 
 export type CreateUnreadContentParams = Required<
-  Pick<DeepPartial<UnreadContent>, "user" | "contentType" | "contentId">
+  Pick<DeepPartial<UnreadContent>, "user" | "contentId">
 > &
-  DeepPartial<UnreadContent>;
+  Omit<DeepPartial<UnreadContent>, "format" | "content" | "contentType"> &
+  UnreadContentSource;
+
+function unreadContentFor(source: UnreadContentSource): NotificationContent {
+  switch (source.contentType) {
+    case UnreadContentType.ForumReply:
+      return source.actionId === undefined
+        ? forumReplyContent(source.authorId)
+        : actionCommentContent({
+            authorId: source.authorId,
+            actionId: source.actionId,
+          });
+    case UnreadContentType.ActionUpdate:
+      return source.fixedText === undefined
+        ? LIVE_ACTION_UPDATE_TEXT
+        : { message: [source.fixedText] };
+    default:
+      throw new Error(
+        `unknown unread content source: ${source satisfies never}`,
+      );
+  }
+}
 
 // TypeORM bulk-inserts a saved array as one statement, and Postgres caps a
-// statement at 65535 bind parameters. `UnreadContent` writes ~11 columns per
+// statement at 65535 bind parameters. `UnreadContent` writes ~13 columns per
 // row, so an unchunked "notify all members" send would start failing outright
-// somewhere under 6k recipients.
+// somewhere around 5k recipients.
 const UNREAD_CONTENT_INSERT_CHUNK = 1000;
 
-function getPreviewText(body: string) {
-  const tree = remark().parse(body);
-  const plainText = mdastToString(tree).replace(/\s+/g, " ").trim();
+export type UnreadContentWithUser = WithRelations<
+  UnreadContent,
+  { user: true }
+>;
+export type NotificationWithUser = WithRelations<Notification, { user: true }>;
 
-  return plainText.length > 140
-    ? `${plainText.slice(0, 137).trimEnd()}...`
-    : plainText;
+const byRecipient = <T extends { user: User }>(rows: T[]) =>
+  Map.groupBy(rows, (row) => row.user.id);
+
+function recipientId(user: DeepPartial<User>): number {
+  if (user.id === undefined) {
+    throw new Error("a notification needs its recipient's id");
+  }
+  return user.id;
 }
 
 @Injectable()
 export class NotifsService {
   constructor(
     @InjectRepository(Notification)
-    private readonly notifsRepository: Repository<Notification>,
+    private readonly notifsRepository: TypedRepository<Notification>,
     @InjectRepository(UnreadContent)
-    private readonly unreadContentRepository: Repository<UnreadContent>,
+    private readonly unreadContentRepository: TypedRepository<UnreadContent>,
     @InjectRepository(ActionEventNotif)
-    private readonly actionEventNotifsRepository: Repository<ActionEventNotif>,
-    @InjectRepository(ActionUpdate)
-    private readonly actionUpdateRepository: Repository<ActionUpdate>,
-    @InjectRepository(Comment)
-    private readonly commentRepository: Repository<Comment>,
-    @InjectRepository(ActionActivity)
-    private readonly actionActivityRepository: Repository<ActionActivity>,
+    private readonly actionEventNotifsRepository: TypedRepository<ActionEventNotif>,
     private readonly mailService: MailService,
     private readonly mmsService: MmsService,
+    private readonly renderService: NotificationRenderService,
+    private readonly messageTracking: MessageTrackingService,
+    private readonly preferences: NotificationPreferencesService,
   ) {}
-
-  async findAll(userId: number, limit?: number): Promise<NotificationDto[]> {
-    const [notifs, unreadContents] = await Promise.all([
-      this.notifsRepository.find({
-        where: { user: { id: userId }, sendTime: LessThan(new Date()) },
-        relations: { associatedUsers: true, actionUpdate: true, comment: true },
-      }),
-      this.unreadContentRepository.find({
-        where: { user: { id: userId }, sendTime: LessThan(new Date()) },
-        order: { sendTime: "DESC", createdAt: "DESC" },
-      }),
-    ]);
-
-    const merged = [
-      ...notifs.map((notif) => NotificationDto.fromNotification(notif)),
-      ...(await this.hydrateUnreadContentDtos(unreadContents)),
-    ].sort(
-      (a, b) =>
-        new Date(b.sendTime || b.createdAt).getTime() -
-        new Date(a.sendTime || a.createdAt).getTime(),
-    );
-
-    const filtered = merged.filter(
-      (n) => new Date(n.sendTime).getTime() <= new Date().getTime(),
-    );
-
-    return limit !== undefined ? filtered.slice(0, limit) : filtered;
-  }
-
-  async getUnreadCount(userId: number): Promise<number> {
-    const [notifCount, unreadContentCount] = await Promise.all([
-      this.notifsRepository.count({
-        where: {
-          user: { id: userId },
-          sendTime: LessThan(new Date()),
-          readAt: IsNull(),
-        },
-      }),
-      this.unreadContentRepository.count({
-        where: {
-          user: { id: userId },
-          sendTime: LessThan(new Date()),
-          readAt: IsNull(),
-        },
-      }),
-    ]);
-    return notifCount + unreadContentCount;
-  }
 
   findOne(id: number) {
     return this.notifsRepository.findOne({
       where: { id },
     });
-  }
-
-  async setRead(
-    id: number,
-    userId: number,
-    sourceType?: NotificationSourceType,
-  ) {
-    if (sourceType !== NotificationSourceType.UnreadContent) {
-      const notif = await this.notifsRepository.findOne({
-        where: { id, user: { id: userId } },
-        relations: { user: true },
-      });
-      if (notif) {
-        if (notif.user.id !== userId) {
-          throw new BadRequestException();
-        }
-        return this.notifsRepository.update(
-          { id, readAt: IsNull() },
-          { readAt: new Date() },
-        );
-      }
-    }
-
-    if (sourceType === NotificationSourceType.Notification) {
-      throw new NotFoundException("Notif not found");
-    }
-
-    const unreadContent = await this.unreadContentRepository.findOne({
-      where: { id, user: { id: userId } },
-      relations: { user: true },
-    });
-    if (!unreadContent) {
-      throw new NotFoundException("Notif not found");
-    }
-    if (unreadContent.user.id !== userId) {
-      throw new BadRequestException();
-    }
-    return this.unreadContentRepository.update(
-      { id, readAt: IsNull() },
-      { readAt: new Date() },
-    );
-  }
-
-  async setReadAll(userId: number) {
-    await Promise.all([
-      this.notifsRepository.update(
-        { user: { id: userId }, readAt: IsNull() },
-        { readAt: new Date() },
-      ),
-      this.unreadContentRepository.update(
-        { user: { id: userId }, readAt: IsNull() },
-        { readAt: new Date() },
-      ),
-    ]);
-  }
-
-  async setUnreadContentReadByContent(
-    userId: number,
-    dto: MarkUnreadContentReadDto,
-  ) {
-    if (!dto.contentIds.length) {
-      return;
-    }
-
-    await this.unreadContentRepository.update(
-      {
-        user: { id: userId },
-        contentType: dto.contentType,
-        contentId: In(dto.contentIds),
-        readAt: IsNull(),
-      },
-      { readAt: new Date() },
-    );
   }
 
   async notifsForUser(id: number) {
@@ -232,8 +160,12 @@ export class NotifsService {
     const notif = await this.notifsRepository.findOne({
       where: { cid: body.cid },
     });
-    if (notif) {
-      await this.notifsRepository.update(notif.id, { readAt: new Date() });
+    const notificationId =
+      notif?.id ?? (await this.messageTracking.notificationIdFor(body.cid));
+    if (notificationId !== null) {
+      await this.notifsRepository.update(notificationId, {
+        readAt: new Date(),
+      });
     }
 
     const mms = await this.mmsService.setClickedLinkByCid(body.cid);
@@ -255,15 +187,79 @@ export class NotifsService {
     em?: EntityManager;
   }) {
     const { actionUpdate, users, em } = params;
+    const sendTime = actionUpdateEntrySendTime(actionUpdate);
     return this.sendUnreadContents(
       users.map((user) => ({
         user,
         contentType: UnreadContentType.ActionUpdate,
         contentId: actionUpdate.id,
-        sendTime: actionUpdate.date,
+        sendTime,
       })),
       em,
     );
+  }
+
+  /**
+   * Moves an update's entries that aren't due yet to `until`, so entries kept
+   * back while it is unpublished arrive, and push, when it shows. Entries
+   * already due were delivered and stay put.
+   */
+  async deferActionUpdateEntries(params: {
+    actionUpdateId: number;
+    until: Date;
+    em: EntityManager;
+  }) {
+    const { actionUpdateId, until, em } = params;
+    await em.update(
+      UnreadContent,
+      {
+        contentType: UnreadContentType.ActionUpdate,
+        contentId: actionUpdateId,
+        pushClaimedBy: IsNull(),
+        sendTime: Raw(
+          (sendTime) => `${sendTime} > now() AND ${sendTime} < :until`,
+          {
+            until,
+          },
+        ),
+      },
+      { sendTime: until },
+    );
+  }
+
+  /**
+   * Renders the update's due entries that still follow its text, which keeps
+   * that text in every one its recipient can see. Call before members stop
+   * seeing the text: before an edit replaces it or unpublishing hides it. It
+   * takes its own pool connections, so call it outside a transaction. An entry
+   * that never rendered and that its recipient can't see right now keeps
+   * following edits.
+   */
+  async freezeActionUpdateCopy(actionUpdateId: number) {
+    const due = await this.unreadContentRepository.find({
+      where: {
+        contentType: UnreadContentType.ActionUpdate,
+        contentId: actionUpdateId,
+        format: In(FORMATS_RENDERING_FROM_CONTENT),
+        sendTime: Raw((sendTime) => `${sendTime} <= clock_timestamp()`),
+        content: followsLiveActionUpdateText(),
+      },
+      relations: { user: true },
+      select: {
+        id: true,
+        format: true,
+        content: true,
+        contentType: true,
+        contentId: true,
+        readAt: true,
+        createdAt: true,
+        sendTime: true,
+        user: { id: true },
+      },
+    });
+    for (const rows of chunk(due, UNREAD_CONTENT_INSERT_CHUNK)) {
+      await this.renderService.renderUnreadContents(byRecipient(rows));
+    }
   }
 
   async createForumReplyNotif(comment: Comment, user: User) {
@@ -272,22 +268,71 @@ export class NotifsService {
       contentType: UnreadContentType.ForumReply,
       contentId: comment.id,
       sendTime: comment.createdAt,
+      authorId: comment.authorId,
     });
   }
 
-  createNotif(notif: CreateNotifParams) {
-    if (!notif.priority) {
-      notif.priority = NOTIFICATION_CATEGORY_PRIORITIES[notif.category];
-    }
-    return this.notifsRepository.create(notif);
+  async createNotif(notif: CreateNotifParams) {
+    return (await this.createNotifs([notif]))[0];
+  }
+
+  async createNotifs(notifs: CreateNotifParams[]) {
+    const inInbox = await this.inInbox(
+      notifs.map(({ user, category }) => ({
+        userId: recipientId(user),
+        kind: CATEGORY_KIND[category],
+      })),
+    );
+    return notifs.map((notif, index) => this.buildNotif(notif, inInbox[index]));
+  }
+
+  buildNotif(
+    {
+      message,
+      destination,
+      pluralMessage,
+      target,
+      ...notif
+    }: CreateNotifParams,
+    visible: boolean,
+  ) {
+    return this.notifsRepository.create({
+      ...notif,
+      visible,
+      priority:
+        notif.priority ?? NOTIFICATION_CATEGORY_PRIORITIES[notif.category],
+      format: NotificationFormat.Referenced,
+      message: message.text,
+      content: {
+        message: message.segments,
+        ...(pluralMessage && { pluralMessage: pluralMessage.segments }),
+        ...(destination && { destination }),
+        ...(target && { target }),
+      } satisfies NotificationContent,
+    });
   }
 
   async sendNotif(notif: CreateNotifParams) {
-    return this.notifsRepository.save(this.createNotif(notif));
+    return this.notifsRepository.save(await this.createNotif(notif));
   }
 
   async sendNotifs(notifs: CreateNotifParams[]) {
-    return this.notifsRepository.save(notifs.map((n) => this.createNotif(n)));
+    return this.notifsRepository.save(await this.createNotifs(notifs));
+  }
+
+  /** Each recipient's in-app setting for a row's kind, in order. */
+  async inInbox(
+    rows: { userId: number; kind: NotificationKind }[],
+    em?: EntityManager,
+  ): Promise<boolean[]> {
+    const preferences = await this.preferences.load({
+      userIds: rows.map((row) => row.userId),
+      kinds: rows.map((row) => row.kind),
+      em,
+    });
+    return rows.map((row) =>
+      preferences.wants({ ...row, channel: NotificationChannel.InApp }),
+    );
   }
 
   async hasNotifWithGroupingKey(
@@ -301,17 +346,21 @@ export class NotifsService {
     );
   }
 
-  createUnreadContent(unreadContent: CreateUnreadContentParams) {
+  private buildUnreadContent(
+    unreadContent: CreateUnreadContentParams,
+    visible: boolean,
+  ) {
     return this.unreadContentRepository.create({
       ...unreadContent,
+      visible,
+      format: NotificationFormat.Referenced,
+      content: unreadContentFor(unreadContent),
       sendTime: unreadContent.sendTime ?? new Date(),
     });
   }
 
   async sendUnreadContent(unreadContent: CreateUnreadContentParams) {
-    return this.unreadContentRepository.save(
-      this.createUnreadContent(unreadContent),
-    );
+    return (await this.sendUnreadContents([unreadContent]))[0];
   }
 
   async sendUnreadContents(
@@ -319,151 +368,47 @@ export class NotifsService {
     em?: EntityManager,
   ) {
     const manager = em ?? this.unreadContentRepository.manager;
+    const inInbox = await this.inInbox(
+      unreadContents.map(({ user, contentType }) => ({
+        userId: recipientId(user),
+        kind: UNREAD_CONTENT_KIND[contentType],
+      })),
+      em,
+    );
     return manager.save(
       UnreadContent,
-      unreadContents.map((content) => this.createUnreadContent(content)),
+      unreadContents.map((content, index) =>
+        this.buildUnreadContent(content, inInbox[index]),
+      ),
       { chunk: UNREAD_CONTENT_INSERT_CHUNK },
     );
   }
 
   async getUnreadContentsForPush(ids: number[]) {
-    const unreadContents = await this.unreadContentRepository.find({
-      where: { id: In(ids) },
-      relations: { user: true },
-      order: { sendTime: "ASC" },
-    });
+    const unreadContents: UnreadContentWithUser[] =
+      await this.unreadContentRepository.find({
+        where: { id: In(ids) },
+        relations: { user: true },
+        order: { sendTime: "ASC" },
+      });
 
-    const dtos = await this.hydrateUnreadContentDtos(unreadContents);
+    const dtos = await this.renderService.renderUnreadContents(
+      byRecipient(unreadContents),
+    );
     const dtoById = new Map(dtos.map((dto) => [dto.id, dto]));
 
-    return unreadContents
-      .map((unreadContent) => {
-        const dto = dtoById.get(unreadContent.id);
-        if (!dto) {
-          return null;
-        }
-        return { unreadContent, dto };
-      })
-      .filter(
-        (
-          item,
-        ): item is { unreadContent: UnreadContent; dto: NotificationDto } =>
-          item !== null,
-      );
+    return unreadContents.flatMap((unreadContent) => {
+      const dto = dtoById.get(unreadContent.id);
+      return dto ? [{ unreadContent, dto }] : [];
+    });
   }
 
-  private async hydrateUnreadContentDtos(
-    unreadContents: UnreadContent[],
-  ): Promise<NotificationDto[]> {
-    const forumReplyIds = unreadContents
-      .filter((content) => content.contentType === UnreadContentType.ForumReply)
-      .map((content) => content.contentId);
-    const actionUpdateIds = unreadContents
-      .filter(
-        (content) => content.contentType === UnreadContentType.ActionUpdate,
-      )
-      .map((content) => content.contentId);
-
-    const [comments, actionUpdates] = await Promise.all([
-      forumReplyIds.length
-        ? this.commentRepository.find({
-            where: { id: In(forumReplyIds), deleted: false },
-            relations: { author: true, editableContent: true },
-          })
-        : Promise.resolve([]),
-      actionUpdateIds.length
-        ? this.actionUpdateRepository.find({
-            where: { id: In(actionUpdateIds) },
-            relations: { action: true },
-          })
-        : Promise.resolve([]),
-    ]);
-
-    const activityActionMap = new Map<number, number>();
-    const activityIds = comments
-      .filter(
-        (comment) => comment.parentObjectType === CommentParentObject.Activity,
-      )
-      .map((comment) => comment.parentObjectId);
-    if (activityIds.length) {
-      const activities = await this.actionActivityRepository.find({
-        where: { id: In(activityIds) },
-        relations: { action: true },
-      });
-      for (const activity of activities) {
-        activityActionMap.set(activity.id, activity.action.id);
-      }
-    }
-
-    const commentById = new Map(
-      comments.map((comment) => [comment.id, comment]),
+  async renderNotificationsForPush(
+    notifs: NotificationWithUser[],
+  ): Promise<Map<number, NotificationDto>> {
+    const dtos = await this.renderService.renderNotifications(
+      byRecipient(notifs),
     );
-    const actionUpdateById = new Map(
-      actionUpdates.map((update) => [update.id, update]),
-    );
-
-    return unreadContents.flatMap((unreadContent) => {
-      if (unreadContent.contentType === UnreadContentType.ForumReply) {
-        const comment = commentById.get(unreadContent.contentId);
-        if (!comment?.editableContent) {
-          return [];
-        }
-
-        return [
-          NotificationDto.fromUnreadContent({
-            id: unreadContent.id,
-            category: NotificationCategory.ForumReply,
-            message: `${new ProfileDto(comment.author).displayName}: ${getPreviewText(
-              comment.editableContent.body,
-            )}`,
-            webAppLocation: commentUrl(
-              comment,
-              comment.parentObjectType === CommentParentObject.Activity
-                ? activityActionMap.get(comment.parentObjectId)
-                : undefined,
-            ),
-            mobileAppLocation: commentUrl(
-              comment,
-              comment.parentObjectType === CommentParentObject.Activity
-                ? activityActionMap.get(comment.parentObjectId)
-                : undefined,
-            ),
-            readAt: unreadContent.readAt,
-            createdAt: unreadContent.createdAt,
-            updatedAt: unreadContent.readAt ?? unreadContent.createdAt,
-            sendTime: unreadContent.sendTime,
-            associatedUsers: [comment.author],
-            contentType: unreadContent.contentType,
-            contentId: unreadContent.contentId,
-          }),
-        ];
-      }
-
-      if (unreadContent.contentType === UnreadContentType.ActionUpdate) {
-        const actionUpdate = actionUpdateById.get(unreadContent.contentId);
-        if (!actionUpdate) {
-          return [];
-        }
-
-        return [
-          NotificationDto.fromUnreadContent({
-            id: unreadContent.id,
-            category: NotificationCategory.ActionUpdate,
-            message: getPreviewText(actionUpdate.shortNotifString),
-            webAppLocation: actionUrl(actionUpdate.actionId),
-            mobileAppLocation: actionUrl(actionUpdate.actionId),
-            readAt: unreadContent.readAt,
-            createdAt: unreadContent.createdAt,
-            updatedAt: unreadContent.readAt ?? unreadContent.createdAt,
-            sendTime: unreadContent.sendTime,
-            associatedUsers: [],
-            contentType: unreadContent.contentType,
-            contentId: unreadContent.contentId,
-          }),
-        ];
-      }
-
-      return [];
-    });
+    return new Map(dtos.map((dto) => [dto.id, dto]));
   }
 }

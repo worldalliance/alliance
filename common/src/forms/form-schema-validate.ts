@@ -1,38 +1,59 @@
 import type { DisplayBlock } from "./display-blocks";
 import {
-  collectVariableInputFields,
+  collectFieldLookup,
   isQuestionField,
-  variableInputFieldsById,
+  MAX_RANGE_OPTION_COUNT,
+  MIN_RANGE_OPTION_COUNT,
   type AnyField,
   type FormSchema,
   type ListField,
   type OutputFieldBlock,
   type OutputViewSchema,
+  type PageItem,
 } from "./form-schema";
-import { compileVariableExpression } from "./variable-expression";
-import { checkVariableFormulaType } from "./variable-formula-check";
-import {
-  isFieldKindUsableAsVariableInput,
-  VARIABLE_NAME_REGEX,
-  variableTypeEnv,
-  type FormVariable,
-} from "./variables";
+import { getRangeOptionCount, isValidRangeSelection } from "./range";
+import { rowListErrors } from "./row-list";
+import { sourceVariablesInSharedOutput } from "./variable-interpolation";
+import type { SourceFormFields } from "./variable-scope";
+import { collectVariableErrors } from "./variable-validate";
 import {
   CONDITION_KIND_IS_ACCOUNT_DERIVED,
+  conditionFieldReference,
   type Condition,
   type VisibleIfFormula,
 } from "./visible-if-formula";
 
+export enum ValidatedFormula {
+  Visibility = "visibility",
+  RequiredIf = "requiredIf",
+}
+
 export type FormSchemaValidationError = {
   viewId?: string;
   blockId: string;
+  /** Set when the error is in one of the block's formulas. */
+  formula?: ValidatedFormula;
+  /** Set when the error is in this variable rather than in a block. */
+  variable?: string;
   message: string;
 };
 
 type ContextKind = "input" | "output";
 
+export type FormSchemaValidationContext = {
+  /** Unset while the form is being created. */
+  formId?: number;
+  /** Must hold every form a variable or options formula input reads, except
+   * those in `pendingSourceForms`. */
+  sourceForms: SourceFormFields;
+  /** Forms whose fields are still loading. A formula reading one skips the
+   * checks that need its fields instead of reporting it missing. */
+  pendingSourceForms?: ReadonlySet<number>;
+};
+
 export function validateFormSchema(
   schema: FormSchema,
+  context: FormSchemaValidationContext = { sourceForms: new Map() },
 ): FormSchemaValidationError[] {
   const errors: FormSchemaValidationError[] = [];
 
@@ -45,7 +66,7 @@ export function validateFormSchema(
     const blockId = page.id ?? "<unnamed>";
     checkConditions(
       page.visibleIfFormula,
-      { context: "input", blockId },
+      { context: "input", blockId, formula: ValidatedFormula.Visibility },
       errors,
     );
     for (const cond of Object.values(page.visibleIfFormula?.conditions ?? {})) {
@@ -53,6 +74,7 @@ export function validateFormSchema(
       if (fieldId !== null && !earlierFieldIds.has(fieldId)) {
         errors.push({
           blockId,
+          formula: ValidatedFormula.Visibility,
           message: `Page visibility references field "${fieldId}", which must be on an earlier page`,
         });
       }
@@ -63,8 +85,19 @@ export function validateFormSchema(
       collectQuestionFieldIds(item, earlierFieldIds);
     }
   }
+  collectVisibilityCycleErrors(schema, errors);
 
-  collectVariableErrors(schema, errors);
+  collectVariableErrors(schema, context, errors);
+  errors.push(...rowListErrors(schema));
+  for (const { name, location, viewId } of sourceVariablesInSharedOutput(
+    schema,
+  )) {
+    errors.push({
+      viewId,
+      blockId: location,
+      message: `Output views can't show #{${name}}, which reads submitted answers`,
+    });
+  }
 
   for (const view of schema.outputViews ?? []) {
     const outputBlockIds = new Set<string>();
@@ -81,6 +114,7 @@ export function validateFormSchema(
           allowedOutputBlockIds: outputBlockIds,
           viewId: view.id,
           blockId,
+          formula: ValidatedFormula.Visibility,
         },
         errors,
       );
@@ -91,110 +125,6 @@ export function validateFormSchema(
   }
 
   return errors;
-}
-
-type CollectedField = {
-  kind: AnyField["kind"];
-  // List sub-fields are collected so references to them are rejected as
-  // unsupported rather than missing.
-  insideList: boolean;
-};
-
-function collectFieldKinds(schema: FormSchema): Map<string, CollectedField> {
-  const fields = new Map<string, CollectedField>();
-  for (const page of schema.pages ?? []) {
-    for (const item of page.fields ?? []) {
-      if (!isQuestionField(item)) continue;
-      fields.set(item.id, { kind: item.kind, insideList: false });
-      if (item.kind === "list") {
-        for (const sub of (item as ListField).fields ?? []) {
-          fields.set(sub.id, { kind: sub.kind, insideList: true });
-        }
-      }
-    }
-  }
-  return fields;
-}
-
-function collectVariableErrors(
-  schema: FormSchema,
-  errors: FormSchemaValidationError[],
-): void {
-  const variables = schema.variables ?? [];
-  const fieldKinds = collectFieldKinds(schema);
-  const declared = new Set<string>();
-
-  // An input the picker could never have offered is absent here rather than
-  // wrongly typed, which leaves it `any` so `checkVariableInputs` reports one
-  // focused error instead of the type checker adding one per use.
-  const readableFields = variableInputFieldsById(
-    collectVariableInputFields(schema),
-  );
-
-  for (const variable of variables) {
-    const blockId = `variable:${variable.name}`;
-    const push = (message: string) => errors.push({ blockId, message });
-
-    if (!VARIABLE_NAME_REGEX.test(variable.name)) {
-      push(
-        `Variable name "${variable.name}" may use only letters, numbers, underscores and dashes`,
-      );
-    }
-    if (declared.has(variable.name)) {
-      push(`Duplicate variable name "${variable.name}"`);
-    }
-    declared.add(variable.name);
-
-    checkVariableInputs(variable, fieldKinds, push);
-
-    const compiled = compileVariableExpression(
-      variable.formula,
-      new Set(Object.keys(variable.inputs)),
-    );
-    if (!compiled.ok) {
-      push(`Formula for "${variable.name}": ${compiled.error}`);
-      continue;
-    }
-
-    const typed = checkVariableFormulaType(
-      variable.formula,
-      variableTypeEnv(variable, readableFields),
-    );
-    if (!typed.ok) {
-      push(`Formula for "${variable.name}": ${typed.error}`);
-    }
-  }
-}
-
-function checkVariableInputs(
-  variable: FormVariable,
-  fields: Map<string, CollectedField>,
-  push: (message: string) => void,
-): void {
-  for (const [inputName, input] of Object.entries(variable.inputs)) {
-    // `field` is the only input kind today, so there is nothing for a
-    // `satisfies never` default to narrow. The resolver table in `variables.ts`
-    // is what makes adding a kind a compile error, at the point it has to be
-    // turned into a value; a kind unknown here is simply left unchecked.
-    if (input.kind !== "field") continue;
-
-    const field = fields.get(input.fieldId);
-    if (field === undefined) {
-      push(`Input "${inputName}" references missing field "${input.fieldId}"`);
-      continue;
-    }
-    if (field.insideList) {
-      push(
-        `Input "${inputName}" reads field "${input.fieldId}", which is inside a list — a list has one answer per row, so variables can't read it`,
-      );
-      continue;
-    }
-    if (!isFieldKindUsableAsVariableInput(field.kind)) {
-      push(
-        `Input "${inputName}" reads field "${input.fieldId}", whose kind (${field.kind}) has no value a formula can read`,
-      );
-    }
-  }
 }
 
 function collectCycleErrors(
@@ -219,11 +149,65 @@ function collectCycleErrors(
     deps.set(block.id, edges);
   }
 
+  for (const cycle of findCycles(deps)) {
+    errors.push({
+      viewId: view.id,
+      blockId: cycle[0],
+      formula: ValidatedFormula.Visibility,
+      message: `Cycle in outputBlockVisible references: ${[
+        ...cycle,
+        cycle[0],
+      ].join(" -> ")}`,
+    });
+  }
+}
+
+/**
+ * Each field's id, with the in-form fields its own visibility formula reads.
+ * Loops through a page's formula are not followed.
+ */
+export function visibilityDependencies(
+  schema: FormSchema,
+): Map<string, string[]> {
+  const deps = new Map<string, string[]>();
+  for (const field of collectFieldLookup(schema.pages ?? []).values()) {
+    deps.set(
+      field.id,
+      Object.values(field.visibleIfFormula?.conditions ?? {}).flatMap(
+        (cond) => getLocalFieldReference(cond) ?? [],
+      ),
+    );
+  }
+  return deps;
+}
+
+/** As validation reports it: the field ids along the cycle, from any of them. */
+export const describeVisibilityCycle = (cycle: string[]): string =>
+  cycle.length === 1
+    ? `Visibility of "${cycle[0]}" depends on its own answer`
+    : `Visibility conditions form a cycle: ${[...cycle, cycle[0]].join(" -> ")}`;
+
+function collectVisibilityCycleErrors(
+  schema: FormSchema,
+  errors: FormSchemaValidationError[],
+): void {
+  for (const cycle of findCycles(visibilityDependencies(schema))) {
+    errors.push({
+      blockId: cycle[0],
+      formula: ValidatedFormula.Visibility,
+      message: describeVisibilityCycle(cycle),
+    });
+  }
+}
+
+/** Each distinct cycle in `deps`, as the node ids along it. */
+function findCycles(deps: Map<string, string[]>): string[][] {
   const GRAY = 1;
   const BLACK = 2;
   const color = new Map<string, number>();
   const path: string[] = [];
   const reported = new Set<string>();
+  const cycles: string[][] = [];
 
   const visit = (nodeId: string): void => {
     if (color.get(nodeId) === BLACK) return;
@@ -236,14 +220,7 @@ function collectCycleErrors(
         const key = [...cycle].sort().join("|");
         if (!reported.has(key)) {
           reported.add(key);
-          errors.push({
-            viewId: view.id,
-            blockId: cycle[0],
-            message: `Cycle in outputBlockVisible references: ${[
-              ...cycle,
-              cycle[0],
-            ].join(" -> ")}`,
-          });
+          cycles.push(cycle);
         }
       } else {
         visit(dep);
@@ -256,37 +233,16 @@ function collectCycleErrors(
   for (const id of deps.keys()) {
     visit(id);
   }
+  return cycles;
 }
 
-/**
- * The id of the in-form field a condition reads, or null when it reads none
- * (validator/device/etc.) or resolves against another form's answers
- * (`sourceFormId`).
- */
+/** The id of the field on this form a condition reads, if any. */
 function getLocalFieldReference(cond: Condition): string | null {
-  switch (cond.kind) {
-    case "equals":
-    case "includesOption":
-    case "anySelected":
-    case "hasValue":
-      return cond.sourceFormId == null ? cond.when : null;
-    case "validator":
-    case "deviceType":
-    case "outputBlockVisible":
-    case "userHasCity":
-    case "firstContractSigned":
-    case "completedActionCount":
-      return null;
-    default:
-      cond satisfies never;
-      return null;
-  }
+  const reference = conditionFieldReference(cond);
+  return reference?.sourceFormId === null ? reference.fieldId : null;
 }
 
-function collectQuestionFieldIds(
-  item: AnyField | DisplayBlock,
-  into: Set<string>,
-): void {
+function collectQuestionFieldIds(item: PageItem, into: Set<string>): void {
   if (!isQuestionField(item)) return;
   into.add(item.id);
   if (item.kind === "list") {
@@ -347,13 +303,41 @@ function collectInputErrors(
   errors: FormSchemaValidationError[],
 ): void {
   const blockId = item.id ?? "<unnamed>";
-  checkConditions(item.visibleIfFormula, { context: "input", blockId }, errors);
+  checkConditions(
+    item.visibleIfFormula,
+    { context: "input", blockId, formula: ValidatedFormula.Visibility },
+    errors,
+  );
   if (!isQuestionField(item)) return;
   checkConditions(
     item.requiredIfFormula,
-    { context: "input", blockId },
+    { context: "input", blockId, formula: ValidatedFormula.RequiredIf },
     errors,
   );
+  if (
+    item.kind === "range" &&
+    item.optionCount !== undefined &&
+    !(
+      Number.isInteger(item.optionCount) &&
+      item.optionCount >= MIN_RANGE_OPTION_COUNT &&
+      item.optionCount <= MAX_RANGE_OPTION_COUNT
+    )
+  ) {
+    errors.push({
+      blockId,
+      message: `Number of options must be a whole number from ${MIN_RANGE_OPTION_COUNT} to ${MAX_RANGE_OPTION_COUNT}`,
+    });
+  }
+  if (
+    item.kind === "range" &&
+    item.defaultValue != null &&
+    !isValidRangeSelection(item, item.defaultValue)
+  ) {
+    errors.push({
+      blockId,
+      message: `Default selection must be a whole number from 1 to ${getRangeOptionCount(item)}`,
+    });
+  }
   if (item.kind === "list") {
     for (const subField of item.fields ?? []) {
       collectInputErrors(subField, errors);
@@ -366,6 +350,7 @@ type CheckCtx = {
   allowedOutputBlockIds?: Set<string>;
   viewId?: string;
   blockId: string;
+  formula: ValidatedFormula;
 };
 
 function checkConditions(
@@ -390,6 +375,7 @@ function checkCondition(
       errors.push({
         viewId: ctx.viewId,
         blockId: ctx.blockId,
+        formula: ctx.formula,
         message: `"${cond.kind}" condition is only valid on input fields`,
       });
     }
@@ -400,6 +386,7 @@ function checkCondition(
       errors.push({
         viewId: ctx.viewId,
         blockId: ctx.blockId,
+        formula: ctx.formula,
         message: `"firstContractSigned" condition has an invalid datetime: "${cond.date}"`,
       });
     }
@@ -410,6 +397,7 @@ function checkCondition(
       errors.push({
         viewId: ctx.viewId,
         blockId: ctx.blockId,
+        formula: ctx.formula,
         message: `"completedActionCount" condition has an invalid count: ${cond.atLeast}`,
       });
     }
@@ -420,6 +408,7 @@ function checkCondition(
     errors.push({
       viewId: ctx.viewId,
       blockId: ctx.blockId,
+      formula: ctx.formula,
       message:
         '"outputBlockVisible" condition is only valid on output-view blocks',
     });
@@ -429,6 +418,7 @@ function checkCondition(
     errors.push({
       viewId: ctx.viewId,
       blockId: ctx.blockId,
+      formula: ctx.formula,
       message: `References missing output block "${cond.outputBlockVisible}"`,
     });
   }

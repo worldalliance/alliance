@@ -1,7 +1,7 @@
+import { readGroupResults } from "@alliance/common/action-update-copy";
+import { R } from "@alliance/common/result";
 import {
   ActionEventDto,
-  actionsCreateUpdateAdmin,
-  actionsDeleteUpdateAdmin,
   ActionUpdateDto,
   ActionUpdateNotifyType,
   CreateActionUpdateDto,
@@ -18,11 +18,16 @@ import {
   ACTION_UPDATE_NOTIFY_TYPE_LABELS,
   ACTION_UPDATE_NOTIFY_TYPES,
 } from "../lib/actionUpdateNotifyTypes";
+import { adminRefusalMessage } from "../lib/adminRefusal";
+import type { CollectiveResultTexts } from "../lib/updatePreview";
+import { useActionUpdateAdmin } from "../lib/useActionUpdateAdmin";
+import { COLLECTIVE_RESULT_DESCRIPTION } from "./ActionUpdateRecognition";
+import { CollectiveResultSplitFields } from "./CollectiveResultSplitFields";
+import { UPDATE_PREVIEW_DESCRIPTION, UpdatePreview } from "./UpdatePreview";
 
 interface ActionUpdatesTabProps {
   actionId: number;
   updates: ActionUpdateDto[];
-  setUpdates: (updates: ActionUpdateDto[]) => unknown;
   events: ActionEventDto[];
   availableTags: TagDto[];
 }
@@ -32,23 +37,48 @@ const defaultNewUpdate: CreateActionUpdateDto = {
   date: new Date().toISOString(),
   notifyType: "none",
   shortNotifString: "",
+  splitCollectiveResult: false,
 };
 
 const ActionUpdatesTab = ({
   actionId,
   updates,
-  setUpdates,
   events,
   availableTags,
 }: ActionUpdatesTabProps) => {
   const navigate = useNavigate();
   const [newUpdate, setNewUpdate] =
     useState<CreateActionUpdateDto>(defaultNewUpdate);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletingIds, setDeletingIds] = useState<ReadonlySet<number>>(
+    new Set(),
+  );
+  const { create, remove } = useActionUpdateAdmin(null);
+  const creating = create.isPending;
 
-  const shortNotifString = newUpdate.shortNotifString ?? "";
+  const texts: CollectiveResultTexts = {
+    shortNotifString: newUpdate.shortNotifString ?? "",
+    splitCollectiveResult: newUpdate.splitCollectiveResult ?? false,
+    nonCompleterResult: newUpdate.nonCompleterResult ?? "",
+    uninvolvedResult: newUpdate.uninvolvedResult ?? "",
+  };
+  const setTexts = (next: CollectiveResultTexts) =>
+    setNewUpdate({
+      ...newUpdate,
+      ...next,
+      nonCompleterResult: next.nonCompleterResult || null,
+      uninvolvedResult: next.uninvolvedResult || null,
+    });
   const isSubmitDisabled =
+    creating ||
     !newUpdate.title.trim() ||
-    !shortNotifString.trim() ||
+    !readGroupResults({
+      split: texts.splitCollectiveResult,
+      completed: texts.shortNotifString,
+      didNotComplete: texts.nonCompleterResult,
+      uninvolved: texts.uninvolvedResult,
+    }).ok ||
     (newUpdate.notifyType === "tag" && !newUpdate.tagId);
 
   const handleSubmit = async () => {
@@ -56,25 +86,38 @@ const ActionUpdatesTab = ({
       return;
     }
 
-    const response = await actionsCreateUpdateAdmin({
-      path: { id: actionId },
-      body: newUpdate,
-    });
-
-    if (response.response.ok && response.data) {
-      setUpdates([...updates, response.data]);
-      setNewUpdate(defaultNewUpdate);
-      navigate(`/actions/${actionId}/updates/${response.data.id}`);
+    setCreateError(null);
+    const created = await R.fromPromise(
+      create.mutateAsync({ actionId, body: newUpdate }),
+      (thrown) => {
+        console.error(thrown);
+        return adminRefusalMessage(thrown, "Couldn't create the update.");
+      },
+    );
+    if (!created.ok) {
+      setCreateError(created.error);
+      return;
     }
+    setNewUpdate(defaultNewUpdate);
+    navigate(`/actions/${actionId}/updates/${created.value.id}`);
   };
 
-  const handleDelete = async (id: number) => {
-    const response = await actionsDeleteUpdateAdmin({
-      path: { id },
+  const handleDelete = async (update: ActionUpdateDto) => {
+    setDeleteError(null);
+    setDeletingIds((ids) => new Set(ids).add(update.id));
+    const deleted = await R.fromPromise(
+      remove.mutateAsync(update),
+      (thrown) => {
+        console.error(thrown);
+        return adminRefusalMessage(thrown, "Couldn't delete the update.");
+      },
+    );
+    setDeletingIds((ids) => {
+      const next = new Set(ids);
+      next.delete(update.id);
+      return next;
     });
-    if (response.response.ok) {
-      setUpdates(updates.filter((update) => update.id !== id));
-    }
+    if (!deleted.ok) setDeleteError(deleted.error);
   };
 
   return (
@@ -113,10 +156,9 @@ const ActionUpdatesTab = ({
             />
           </label>
           <label className="flex flex-col text-sm gap-1">
-            <span className="font-bold">Short notification text</span>
+            <span className="font-bold">Collective result</span>
             <span className="text-xs text-zinc-600">
-              An automatic &quot;Update: &quot; prefix will be added to this
-              text.
+              What the action achieved. {COLLECTIVE_RESULT_DESCRIPTION}
             </span>
             <input
               type="text"
@@ -129,9 +171,14 @@ const ActionUpdatesTab = ({
                   shortNotifString: e.target.value,
                 })
               }
-              required
+              required={!texts.splitCollectiveResult}
             />
           </label>
+          <CollectiveResultSplitFields
+            texts={texts}
+            onChange={setTexts}
+            inputClassName="p-2 rounded-md bg-white text-base"
+          />
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2 mt-3">
             <label className="flex flex-col text-sm gap-1">
               <span className="font-bold">Notification audience</span>
@@ -230,9 +277,21 @@ const ActionUpdatesTab = ({
               </label>
             )}
           </div>
+          <div className="flex flex-col gap-1 text-sm">
+            <span className="font-bold">Preview Update</span>
+            <span className="text-xs text-zinc-600">
+              {UPDATE_PREVIEW_DESCRIPTION}
+            </span>
+            <UpdatePreview texts={texts} />
+          </div>
         </div>
       </Card>
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-3">
+        {createError && (
+          <p className="text-sm text-red-700" role="alert">
+            {createError}
+          </p>
+        )}
         <Button
           onClick={handleSubmit}
           color={ButtonColor.Black}
@@ -243,13 +302,23 @@ const ActionUpdatesTab = ({
       </div>
       <div className="flex flex-col gap-2">
         <h2 className="font-bold">Existing updates</h2>
+        {deleteError && (
+          <p className="text-sm text-red-700" role="alert">
+            {deleteError}
+          </p>
+        )}
       </div>
       <div className="space-y-2 bg-white pb-5">
         {updates.map((update) => (
           <ActionUpdateCard
             key={update.id}
             update={update}
-            onDelete={() => handleDelete(update.id)}
+            marksNotificationsRead={false}
+            onDelete={
+              deletingIds.has(update.id)
+                ? undefined
+                : () => handleDelete(update)
+            }
             actions={
               <>
                 {!update.visibleAt && (

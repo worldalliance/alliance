@@ -1,13 +1,4 @@
-import type { DisplayBlock } from "./display-blocks";
-import {
-  type AnyField,
-  anyFieldSchema,
-  collectSourceFormIds,
-  forEachCondition,
-  type FormSchema,
-  type TextField,
-} from "./form-schema";
-import type { Condition } from "./visible-if-formula";
+import { anyFieldSchema, pageSchema } from "./form-schema";
 
 const optionField = (
   kind: "radio" | "select" | "multiselect" | "ranking",
@@ -36,208 +27,171 @@ describe("option value uniqueness", () => {
   });
 });
 
-describe("forEachCondition", () => {
-  /** A condition tagged with the slot it was hung on, so order is checkable. */
-  const marker = (when: string): Condition => ({
-    kind: "equals",
-    when,
-    equals: "yes",
-  });
-
-  const textField = (
-    id: string,
-    overrides: Partial<TextField> = {},
-  ): TextField => ({
-    id,
-    type: "input",
-    kind: "text",
-    label: id,
-    ...overrides,
-  });
-
-  const divider = (slot?: string): DisplayBlock => ({
-    type: "display",
-    kind: "divider",
-    visibleIfFormula: slot
-      ? { conditions: { c1: marker(slot) }, formula: "c1" }
-      : undefined,
-  });
-
-  /** Every slot a condition can hang on across an input schema. */
-  const kitchenSink: FormSchema = {
-    pages: [
-      {
-        id: "p1",
-        visibleIfFormula: {
-          conditions: { c1: marker("page-formula") },
-          formula: "c1",
-        },
-        fields: [
-          divider("display-formula"),
-          textField("f1", {
-            visibleIfFormula: {
-              conditions: { c1: marker("field-formula") },
-              formula: "c1",
-            },
-            requiredIfFormula: {
-              conditions: { c1: marker("field-requiredIf") },
-              formula: "c1",
-            },
-          }),
-          {
-            id: "l1",
-            type: "input",
-            kind: "list",
-            label: "l1",
-            fields: [
-              textField("s1", {
-                visibleIfFormula: {
-                  conditions: { c1: marker("sub-formula") },
-                  formula: "c1",
-                },
-                requiredIfFormula: {
-                  conditions: { c1: marker("sub-requiredIf") },
-                  formula: "c1",
-                },
-              }),
-            ],
-          },
-        ],
-      },
-    ],
-    outputViews: [
-      { id: "v1", type: "default", blocks: [divider("output-formula")] },
-    ],
-  };
-
-  const visitedSlots = (schema: FormSchema): string[] => {
-    const slots: string[] = [];
-    forEachCondition(schema, (condition) => {
-      if (condition.kind === "equals") slots.push(condition.when);
-    });
-    return slots;
-  };
-
-  it("visits every condition slot on the input pages", () => {
-    expect(visitedSlots(kitchenSink)).toEqual([
-      "page-formula",
-      "display-formula",
-      "field-formula",
-      "field-requiredIf",
-      "sub-formula",
-      "sub-requiredIf",
-    ]);
-  });
-
-  it("does not visit output-view conditions", () => {
-    expect(visitedSlots(kitchenSink)).not.toContain("output-formula");
-  });
-
-  it("stops early when the visitor returns true", () => {
-    const seen: string[] = [];
-    const stopped = forEachCondition(kitchenSink, (condition) => {
-      if (condition.kind !== "equals") return;
-      seen.push(condition.when);
-      return condition.when === "field-formula";
-    });
-    expect(stopped).toBe(true);
-    expect(seen).toEqual(["page-formula", "display-formula", "field-formula"]);
-  });
-
-  it("reports not-stopped for a full walk", () => {
-    expect(forEachCondition(kitchenSink, () => undefined)).toBe(false);
-  });
-
-  it("tolerates a schema with no conditions", () => {
-    const bare: FormSchema = {
-      pages: [{ id: "p1", fields: [textField("f1")] }],
-      outputViews: [],
+describe("page elements", () => {
+  it("rejects a group", () => {
+    const group = {
+      id: "g1",
+      type: "group",
+      kind: "group",
+      fields: [{ id: "a", type: "input", kind: "text", label: "A" }],
     };
-    expect(visitedSlots(bare)).toEqual([]);
-    expect(forEachCondition(bare, () => true)).toBe(false);
+    expect(pageSchema.safeParse({ id: "p1", fields: [group] }).success).toBe(
+      false,
+    );
+  });
+
+  it.each([
+    [7, true],
+    [0, false],
+    [1.5, false],
+    ["7", false],
+  ])("big link externalTargetId %p is valid: %p", (externalTargetId, valid) => {
+    const link = {
+      type: "display",
+      kind: "biglink",
+      text: "Take the survey",
+      url: "https://example.com/survey",
+      externalTargetId,
+    };
+    expect(pageSchema.safeParse({ id: "p1", fields: [link] }).success).toBe(
+      valid,
+    );
   });
 });
 
-/**
- * A predicate that returns `true` on a match makes `forEachCondition` a
- * short-circuiting `some` — the idiom `schemaNeedsVisibilityContext` relies on.
- */
-describe("forEachCondition as a predicate", () => {
-  const schemaWith = (field: AnyField): FormSchema => ({
-    pages: [{ id: "p1", fields: [field] }],
-    outputViews: [],
-  });
-
-  const requiredIfField: AnyField = {
-    id: "f1",
-    type: "input",
-    kind: "text",
-    label: "f1",
-    requiredIfFormula: {
-      conditions: { c1: { kind: "userHasCity", userHasCity: true } },
-      formula: "c1",
-    },
-  };
-
-  it("matches a condition reachable only through requiredIfFormula", () => {
+describe("searchable dropdowns", () => {
+  it.each([true, false, undefined])("accepts searchable=%s", (searchable) => {
     expect(
-      forEachCondition(
-        schemaWith(requiredIfField),
-        (condition) => condition.kind === "userHasCity",
-      ),
+      anyFieldSchema.safeParse({ ...optionField("select", ["a"]), searchable })
+        .success,
     ).toBe(true);
   });
 
-  it("is false when nothing matches", () => {
+  it.each(["yes", 1, null])("rejects invalid searchable=%s", (searchable) => {
     expect(
-      forEachCondition(
-        schemaWith(requiredIfField),
-        (condition) => condition.kind === "deviceType",
-      ),
+      anyFieldSchema.safeParse({ ...optionField("select", ["a"]), searchable })
+        .success,
     ).toBe(false);
   });
 });
 
-describe("collectSourceFormIds", () => {
-  it("collects ids from visibleIfFormula and requiredIfFormula alike", () => {
-    const schema: FormSchema = {
-      pages: [
-        {
-          id: "p1",
-          fields: [
-            {
-              id: "f1",
-              type: "input",
-              kind: "text",
-              label: "f1",
-              visibleIfFormula: {
-                conditions: {
-                  c1: {
-                    kind: "hasValue",
-                    when: "x",
-                    hasValue: true,
-                    sourceFormId: 7,
-                  },
-                },
-                formula: "c1",
-              },
-              requiredIfFormula: {
-                conditions: {
-                  c1: {
-                    kind: "equals",
-                    when: "y",
-                    equals: "yes",
-                    sourceFormId: 9,
-                  },
-                },
-                formula: "c1",
-              },
-            },
-          ],
-        },
+describe("multiselect display", () => {
+  it.each([
+    {},
+    { dropdown: false, searchable: false },
+    { dropdown: true },
+    { dropdown: true, searchable: false },
+    { dropdown: true, searchable: true },
+  ])("accepts %o", (flags) => {
+    expect(
+      anyFieldSchema.safeParse({
+        ...optionField("multiselect", ["a"]),
+        ...flags,
+      }).success,
+    ).toBe(true);
+  });
+
+  it.each([{ searchable: true }, { dropdown: false, searchable: true }])(
+    "rejects search without dropdown: %o",
+    (flags) => {
+      expect(
+        anyFieldSchema.safeParse({
+          ...optionField("multiselect", ["a"]),
+          ...flags,
+        }).success,
+      ).toBe(false);
+    },
+  );
+});
+
+describe("option categories", () => {
+  const categorized = (
+    kind: "select" | "multiselect",
+    overrides: Record<string, unknown> = {},
+  ) =>
+    anyFieldSchema.safeParse({
+      ...optionField(kind, []),
+      categories: [
+        { id: "fruit", name: "Fruit" },
+        { id: "veg", name: "Vegetables" },
+        { id: "empty", name: "Empty" },
       ],
-      outputViews: [],
-    };
-    expect(collectSourceFormIds(schema).sort()).toEqual([7, 9]);
+      options: [
+        { label: "Apple", value: "apple", category: "fruit" },
+        { label: "Other", value: "other" },
+        { label: "Kale", value: "kale", category: "veg" },
+      ],
+      ...overrides,
+    });
+
+  const kinds = ["select", "multiselect"] as const;
+
+  it.each(kinds)(
+    "accepts mixed categorized options and empty categories for %s",
+    (kind) => {
+      expect(categorized(kind).success).toBe(true);
+    },
+  );
+
+  it.each([
+    ["a blank name", [{ id: "a", name: "  " }]],
+    [
+      "names differing only by case and spaces",
+      [
+        { id: "a", name: "Fruit" },
+        { id: "b", name: " fruit " },
+      ],
+    ],
+    [
+      "duplicate ids",
+      [
+        { id: "a", name: "Fruit" },
+        { id: "a", name: "Vegetables" },
+      ],
+    ],
+    ["an empty id", [{ id: "", name: "Fruit" }]],
+  ])("rejects %s", (_, categories) => {
+    for (const kind of kinds) {
+      expect(categorized(kind, { categories, options: [] }).success).toBe(
+        false,
+      );
+    }
+  });
+
+  it.each(kinds)("rejects a reference to a missing category for %s", (kind) => {
+    expect(
+      categorized(kind, {
+        options: [{ label: "Apple", value: "apple", category: "missing" }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it.each(kinds)(
+    "rejects duplicate option values across categories for %s",
+    (kind) => {
+      expect(
+        categorized(kind, {
+          options: [
+            { label: "Apple", value: "a", category: "fruit" },
+            { label: "Artichoke", value: "a", category: "veg" },
+          ],
+        }).success,
+      ).toBe(false);
+    },
+  );
+
+  it.each(["radio", "ranking"] as const)("rejects categories on %s", (kind) => {
+    expect(
+      anyFieldSchema.safeParse({
+        ...optionField(kind, ["a"]),
+        categories: [{ id: "c", name: "C" }],
+      }).success,
+    ).toBe(false);
+    expect(
+      anyFieldSchema.safeParse({
+        ...optionField(kind, []),
+        options: [{ label: "A", value: "a", category: "c" }],
+      }).success,
+    ).toBe(false);
   });
 });

@@ -1,20 +1,21 @@
 import { ActionDto } from "@alliance/shared/client";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
 import { Meta, StoryObj } from "@storybook/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { millisecondsInDay } from "date-fns/constants";
 import { Flag, Layers, Megaphone, Target } from "lucide-react";
 import React from "react";
 import { testActions } from "./testData";
 
 const inDays = (n: number) =>
-  new Date(Date.now() + n * 86_400_000).toISOString();
+  new Date(Date.now() + n * millisecondsInDay).toISOString();
 
 /** Actions tailored to exercise the preview: thumbnail, live deadline, completed state. */
 const previewActions: ActionDto[] = [
   {
     ...testActions[0],
     id: 1,
-    type: "Activity",
     status: "member_action",
     usersCompleted: 157,
     events: [
@@ -31,9 +32,7 @@ const previewActions: ActionDto[] = [
   {
     ...testActions[1],
     id: 2,
-    type: "Funding",
     status: "member_action",
-    donationAmount: 1000,
     usersCompleted: 57,
     userRelation: "completed",
     events: [],
@@ -42,14 +41,14 @@ const previewActions: ActionDto[] = [
 
 /**
  * Seed the query cache so the hover preview renders the example actions
- * without a live backend. The key must match `ActionLink`'s queryKey.
+ * without a live backend.
  */
 function makeSeededClient() {
   const client = new QueryClient({
     defaultOptions: { queries: { staleTime: Infinity, retry: false } },
   });
   for (const action of previewActions) {
-    client.setQueryData(["actionLinkPreview", action.id], action);
+    client.setQueryData(queryKeys.action(action.id), action);
   }
   return client;
 }

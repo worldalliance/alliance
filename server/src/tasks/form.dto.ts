@@ -3,8 +3,13 @@ import {
   DEVICE_VISIBILITY_TARGETS,
   type DeviceVisibilityTarget,
 } from "@alliance/common/forms/device";
-import { FORM_RESPONSES_BY_FORMS_MAX_BATCH } from "@alliance/common/forms/form-responses";
+import {
+  FORM_RESPONSES_BY_FORMS_MAX_BATCH,
+  type FormAnswers,
+} from "@alliance/common/forms/form-responses";
 import type { AggregateViewSchema } from "@alliance/common/forms/form-schema";
+import type { FormulaChoices } from "@alliance/common/forms/formula-choices";
+import type { AssignedRow } from "@alliance/common/forms/row-list-schema";
 import { MIGRATE_RESPONSE_SNAPSHOTS_MAX_BATCH } from "@alliance/common/forms/snapshot-migration";
 import type { VisibilityValidatorResults } from "@alliance/common/forms/visibility";
 import {
@@ -23,18 +28,25 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  ValidateNested,
 } from "class-validator";
 import type { LinkedAction } from "src/actions/actions.service";
 import { Action } from "src/actions/entities/action.entity";
 import { AiDetectionResultDto } from "src/ai-detection/dto/ai-detection-result.dto";
 import { AiDetectionResult } from "src/ai-detection/entities/ai-detection-result.entity";
 import { UserDto } from "src/user/dto/user.dto";
-import { Form } from "./entities/form.entity";
+import { Form, loadedFormSnapshot } from "./entities/form.entity";
 import {
   FormResponse,
+  loadedFormResponseSnapshot,
   type ParsedFormResponse,
 } from "./entities/formresponse.entity";
+import {
+  FormResponseDraft,
+  type ParsedFormResponseDraft,
+} from "./entities/formresponsedraft.entity";
 import { FormSnapshot } from "./entities/formsnapshot.entity";
+import { memberSnapshotSchema } from "./form-snapshot-schema";
 
 export class CreateFormDto extends PickType(Form, ["title"]) {
   @ApiProperty()
@@ -56,11 +68,28 @@ export class UpdateFormDto extends PickType(CreateFormDto, ["schema"]) {
   expectedFormSnapshotId?: number;
 }
 
-export class SubmitFormDto extends PickType(FormResponse, [
-  "answers",
-  "phDistinctId",
-  "sessionReplayUrl",
-]) {
+export class FormulaSourceDto {
+  @ApiProperty()
+  @IsInt()
+  formId: number;
+
+  /** Oldest first. */
+  @ApiProperty({ type: Number, isArray: true })
+  @IsArray()
+  @IsInt({ each: true })
+  responseIds: number[];
+}
+
+export class SubmitFormDto extends PickType(FormResponse, ["answers"]) {
+  @ApiPropertyOptional({ type: String })
+  @IsOptional()
+  phDistinctId?: string;
+
+  @ApiPropertyOptional({ type: String })
+  @IsOptional()
+  @Type(() => String)
+  sessionReplayUrl?: string;
+
   // BACKCOMPAT(form-snapshot): formSnapshotId is the canonical field for
   // newer clients. Old mobile builds (pre-snapshot-cutover) still post
   // `schemaSnapshot` instead. Once the minimum supported mobile version is
@@ -83,6 +112,17 @@ export class SubmitFormDto extends PickType(FormResponse, [
   @ApiProperty()
   @IsInt()
   actionId: number;
+
+  /**
+   * The submitted responses each options formula read, per source form, as
+   * the form loaded them.
+   */
+  @ApiPropertyOptional({ type: () => FormulaSourceDto, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => FormulaSourceDto)
+  formulaSources?: FormulaSourceDto[];
 
   // class-validator can't express the id-keyed record; the service parses it.
   @ApiPropertyOptional({ type: Object })
@@ -121,7 +161,7 @@ export class FormDto extends PickType(Form, ["id", "title", "formSnapshotId"]) {
     this.id = form.id;
     this.title = form.title;
     this.formSnapshotId = form.formSnapshotId;
-    this.schema = form.formSnapshot.schema;
+    this.schema = loadedFormSnapshot(form).schema;
   }
 }
 
@@ -229,6 +269,18 @@ export class FormResponseDto extends PickType(FormResponse, [
   @Type(() => Object)
   visibilityValidatorResults: VisibilityValidatorResults;
 
+  /** The labels of the choices selected from each options formula. */
+  @ApiProperty({ type: Object })
+  @IsDefined()
+  @Type(() => Object)
+  formulaChoices: FormulaChoices;
+
+  /** The row of the form's row list the response was submitted with. */
+  @ApiProperty({ type: Object, nullable: true })
+  @IsOptional()
+  @Type(() => Object)
+  assignedRow: AssignedRow | null;
+
   @ApiPropertyOptional({ type: () => UserDto })
   @IsOptional()
   @Type(() => UserDto)
@@ -246,15 +298,20 @@ export class FormResponseDto extends PickType(FormResponse, [
     this.formId = response.formId;
     this.formSnapshotId = response.formSnapshotId;
     this.answers = response.answers;
-    this.schemaSnapshot = response.formSnapshot.schema;
+    this.schemaSnapshot = memberSnapshotSchema(
+      loadedFormResponseSnapshot(response),
+      response.assignedRow,
+    );
     this.visibilityValidatorResults = response.visibilityValidatorResults;
+    this.formulaChoices = response.formulaChoices;
+    this.assignedRow = response.assignedRow;
     this.publicAnswers = response.publicAnswers;
     this.deviceType = response.deviceType;
     this.sessionReplayUrl = response.sessionReplayUrl;
     this.sid = response.sid;
     this.phDistinctId = response.phDistinctId;
     this.createdAt = response.createdAt;
-    this.user = response.user;
+    this.user = response.user ? new UserDto(response.user) : undefined;
     this.aiDetectionResults = aiDetectionResults?.map(
       (result) => new AiDetectionResultDto(result),
     );
@@ -269,6 +326,73 @@ export class LinkedGuestDraftDto {
 
   constructor(draft?: ParsedFormResponse | null) {
     this.draft = draft ? new FormResponseDto({ response: draft }) : undefined;
+  }
+}
+
+export class SaveFormDraftDto extends PickType(FormResponseDraft, [
+  "actionId",
+  "formSnapshotId",
+]) {
+  @ApiProperty({ type: Object })
+  @IsDefined()
+  @Type(() => Object)
+  answers: Record<string, unknown>;
+
+  @ApiPropertyOptional({ type: Object })
+  @IsOptional()
+  @Type(() => Object)
+  publicAnswers?: Record<string, unknown>;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  currentPageIndex?: number;
+}
+
+export type FormDraft = Pick<
+  ParsedFormResponseDraft,
+  | "formId"
+  | "actionId"
+  | "formSnapshotId"
+  | "answers"
+  | "publicAnswers"
+  | "currentPageIndex"
+  | "updatedAt"
+>;
+
+export class FormDraftDto extends PickType(FormResponseDraft, [
+  "formId",
+  "actionId",
+  "formSnapshotId",
+  "publicAnswers",
+  "currentPageIndex",
+  "updatedAt",
+]) {
+  @ApiProperty({ type: Object })
+  @IsDefined()
+  @Type(() => Object)
+  answers: FormAnswers;
+
+  constructor(draft: FormDraft) {
+    super();
+    this.formId = draft.formId;
+    this.actionId = draft.actionId;
+    this.formSnapshotId = draft.formSnapshotId;
+    this.answers = draft.answers;
+    this.publicAnswers = draft.publicAnswers;
+    this.currentPageIndex = draft.currentPageIndex;
+    this.updatedAt = draft.updatedAt;
+  }
+}
+
+export class MaybeFormDraftDto {
+  @ApiPropertyOptional({ type: () => FormDraftDto })
+  @IsOptional()
+  @Type(() => FormDraftDto)
+  draft?: FormDraftDto;
+
+  constructor(draft: FormDraft | null) {
+    this.draft = draft ? new FormDraftDto(draft) : undefined;
   }
 }
 
@@ -358,7 +482,7 @@ export class FormSnapshotMigrationDto {
 
   constructor(input: FormSnapshotMigration) {
     this.formTitle = input.form.title;
-    this.latestSnapshot = new FormSnapshotDto(input.form.formSnapshot);
+    this.latestSnapshot = new FormSnapshotDto(loadedFormSnapshot(input.form));
     this.groups = input.groups.map((g) => new SnapshotResponseGroupDto(g));
   }
 }

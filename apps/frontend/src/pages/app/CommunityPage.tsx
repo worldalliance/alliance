@@ -1,55 +1,41 @@
-import {
-  COMMUNITY_DESCRIPTION_MAX_LENGTH,
-  COMMUNITY_NAME_MAX_LENGTH,
-} from "@alliance/common/community";
-import { errorMessage } from "@alliance/common/errorMessage";
-import { changedPhoto } from "@alliance/common/image-src";
-import {
-  actionsCommunityCompletedActionsCount,
-  actionsGetCommunityMemberInfo,
-  communityDelete,
-  communityGetMemberContactInfo,
-  CommunityMemberContactInfoDto,
-  communityUpdate,
-  conversationGetCommunityConversations,
-} from "@alliance/shared/client";
+import { getMemberCount } from "@alliance/common/community";
 import {
   calculateAllCompletionData,
   CompletionData,
 } from "@alliance/shared/lib/actionUtils";
-import { getMemberCount } from "@alliance/shared/lib/communityUtils";
-import { groupSettings } from "@alliance/shared/lib/copy";
+import { isLedBy } from "@alliance/shared/lib/communityUtils";
 import { Features } from "@alliance/shared/lib/features";
-import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
+import { useCommunityCompletedActionsCount } from "@alliance/shared/lib/useCommunityCompletedActionsCount";
+import { useCommunityConversation } from "@alliance/shared/lib/useCommunityConversation";
+import { useCommunityMemberContactInfo } from "@alliance/shared/lib/useCommunityMemberContactInfo";
+import { useCommunityMemberInfo } from "@alliance/shared/lib/useCommunityMemberInfo";
+import { useIncomingCommunityInvites } from "@alliance/shared/lib/useIncomingCommunityInvites";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
-import { useOnNextDeadline } from "@alliance/shared/lib/useOnNextDeadline";
 import { cn } from "@alliance/shared/styles/util";
-import { sharp_allowed_mime_types } from "@alliance/sharedweb/lib/config";
-import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
-import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
+import { useMediaQuery } from "@alliance/sharedweb/lib/useMediaQuery";
 import BottomSpacer from "@alliance/sharedweb/ui/BottomSpacer";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import CharacterLimitNotice from "@alliance/sharedweb/ui/CharacterLimitNotice";
 import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable";
 import CompletedBar from "@alliance/sharedweb/ui/CompletedBar";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { keyBy } from "es-toolkit";
+import { milliseconds } from "date-fns";
 import { MessageSquare } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { href, Link, useSearchParams } from "react-router";
 import CommunityActivityTab from "../../components/CommunityActivityTab";
 import CommunityInvitesLeaderTab from "../../components/CommunityInvitesLeaderTab";
+import CommunityProfile from "../../components/CommunityProfile";
 import CommunitySelectDropdown from "../../components/CommunitySelectDropdown";
 import FloatingChatPanel from "../../components/FloatingChatpanel";
-import ImageEditor from "../../components/ImageEditor";
 import PillTab from "../../components/PillTab";
 import TwoColumnLayout from "../../components/TwoColumnLayout";
 import { useAuth } from "../../lib/AuthContext";
 import { isFeatureEnabled } from "../../lib/config";
-import { useMediaQuery } from "../../lib/useMediaQuery";
+import { useCommunityEditor } from "../../lib/useCommunityEditor";
+import { WalkthroughAnchor } from "../../onboarding/walkthrough/steps";
 import MyGroupsPage from "./MyGroupsPage";
+import PageSpinner from "./PageSpinner";
 
 export type Tab = "activity" | "members" | "groups" | "invites";
 
@@ -67,13 +53,9 @@ const SHOWN_TABS = {
   (keyof typeof TAB_DISPLAY_NAMES)[]
 >;
 
-const CURRENT_ACTION_WINDOW_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+const CURRENT_ACTION_WINDOW_MS = milliseconds({ days: 3 });
 
 const CommunityPage = () => {
-  const [memberContactInfo, setMemberContactInfo] = useState<Record<
-    number,
-    CommunityMemberContactInfoDto
-  > | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const tab = (searchParams.get("tab") as Tab | undefined) ?? "activity";
@@ -81,11 +63,11 @@ const CommunityPage = () => {
   const {
     communities,
     communityIds,
+    isLoading: areGroupsLoading,
+    didFail: didGroupsFail,
     refreshCommunities,
-    removeCommunity,
     selectedCommunity: community,
-    removeMemberFromCommunity,
-    updateSelectedCommunity,
+    removeMember,
   } = useMyCommunities({
     selectedCommunityId: communityId ? Number(communityId) : null,
   });
@@ -94,105 +76,50 @@ const CommunityPage = () => {
   const { pendingCommunityInvites } = useIncomingCommunityInvites();
   const memberCount = community ? getMemberCount(community) : 0;
 
-  // Edit mode state
-  const [isEditing, setIsEditing] = useState(false);
-  const [editName, setEditName] = useState<string>("");
-  const [editDescription, setEditDescription] = useState<string>("");
-  const [editPublic, setEditPublic] = useState<boolean>(false);
-  const [editAllowMemberInvites, setEditAllowMemberInvites] =
-    useState<boolean>(true);
-  const [editAllowStaffAssignments, setEditAllowStaffAssignments] =
-    useState<boolean>(true);
-  const [editMaxCapacity, setEditMaxCapacity] = useState<number | null>(null);
-  const [editPhotoUrl, setEditPhotoUrl] = useState<string | null>(null);
-  const [photoEditorKey, setPhotoEditorKey] = useState(0);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const currentPhoto = community?.photo ?? null;
-  const isPhotoUploadPending = isSaving && editPhotoUrl !== currentPhoto;
-  const useMaxCapacity =
-    editPublic || editAllowMemberInvites || editAllowStaffAssignments;
-
+  const { conversation: communityConversation } = useCommunityConversation(
+    community?.id ?? null,
+  );
+  // Decide once per group, so a later update can't reopen a closed chat.
+  const chatAutoOpenedForRef = useRef<number | null>(null);
   useEffect(() => {
-    if (!community?.id) {
+    if (
+      !community ||
+      !communityConversation ||
+      chatAutoOpenedForRef.current === community.id
+    ) {
       return;
     }
-    conversationGetCommunityConversations({
-      path: { communityId: community.id },
-    }).then((response) => {
-      if (response.data?.lastMessage) {
-        setChatOpen(true);
-      }
-    });
-  }, [community?.id]);
+    chatAutoOpenedForRef.current = community.id;
+    if (communityConversation.lastMessage) {
+      setChatOpen(true);
+    }
+  }, [community, communityConversation]);
 
   const { user, refreshUser } = useAuth();
-
-  // Initialize edit values when community changes and reset editing state
-  useEffect(() => {
-    if (community) {
-      setEditName(community.name);
-      setEditDescription(community.description);
-      setEditPublic(community.public);
-      setEditAllowMemberInvites(community.allowMemberInvites ?? true);
-      setEditAllowStaffAssignments(community.allowStaffAssignments ?? true);
-      setEditMaxCapacity(
-        community.maxCapacity === null
-          ? null
-          : Math.max(community.maxCapacity, memberCount),
-      );
-      setEditPhotoUrl(community.photo ?? null);
-      setIsEditing(false);
-      setError(null);
-    }
-  }, [community, memberCount]);
 
   const messagingEnabled = useMemo(() => {
     return isFeatureEnabled(Features.Messaging);
   }, []);
 
   const amLeader = useMemo(() => {
-    return community?.leaders.some((leader) => leader.id === user?.id);
+    return community && isLedBy(community, user?.id);
   }, [community, user]);
 
-  const { data: communityMemberInfo } = useQuery({
-    queryKey: ["communityMemberInfo", community?.id ?? null, user?.id ?? null],
-    queryFn: () =>
-      community
-        ? actionsGetCommunityMemberInfo({
-            path: {
-              communityId: community.id,
-            },
-          }).then((resp) => resp.data)
-        : null,
-    enabled: !!community,
+  const { data: communityMemberInfo } = useCommunityMemberInfo({
+    communityId: community?.id,
+    userId: user?.id,
   });
 
-  const { data: communityCompletedActionsCount = 0 } = useQuery({
-    queryKey: ["communityCompletedActionsCount", community?.id ?? null],
-    queryFn: () =>
-      community
-        ? actionsCommunityCompletedActionsCount({
-            query: { communityId: community.id },
-          }).then((resp) => resp.data?.completedCount ?? 0)
-        : 0,
-    enabled: !!community,
+  const { data: memberContactInfo } = useCommunityMemberContactInfo({
+    communityId: community?.id,
+    amLeader: amLeader ?? false,
   });
 
-  const queryClient = useQueryClient();
-
-  useOnNextDeadline(
-    communityMemberInfo?.actions,
-    useCallback(() => {
-      if (community?.id == null) return;
-      void queryClient.invalidateQueries({
-        queryKey: ["communityMemberInfo", community.id, user?.id ?? null],
-      });
-      void queryClient.invalidateQueries({
-        queryKey: ["communityCompletedActionsCount", community.id],
-      });
-    }, [queryClient, community?.id, user?.id]),
-  );
+  const { data: communityCompletedActionsCount = 0 } =
+    useCommunityCompletedActionsCount({
+      communityId: community?.id,
+      actions: communityMemberInfo?.actions,
+    });
 
   const userActionRelations = useMemo(
     () =>
@@ -230,22 +157,6 @@ const CommunityPage = () => {
     userActionRelations,
   });
 
-  useEffect(() => {
-    if (amLeader && community?.id !== undefined) {
-      communityGetMemberContactInfo({
-        path: {
-          communityId: community.id,
-        },
-      }).then((resp) => {
-        if (resp.data) {
-          setMemberContactInfo(
-            keyBy(resp.data, (contactInfo) => contactInfo.id),
-          );
-        }
-      });
-    }
-  }, [amLeader, community?.id]);
-
   const setParams = useCallback(
     (params: { tab?: Tab | null; communityId?: number | null }) => {
       void (async () => {
@@ -271,129 +182,16 @@ const CommunityPage = () => {
     [setSearchParams, communityIds, refreshCommunities],
   );
 
-  const handleSave = useCallback(async () => {
-    setError(null);
-    if (!community || isSaving) return;
+  const handleDeleted = useCallback(
+    () => setParams({ communityId: null, tab: null }),
+    [setParams],
+  );
 
-    // Validation
-    if (!editName.trim()) {
-      setError("Name is required");
-      return;
-    }
-
-    let normalizedMaxCapacity: number | null = null;
-    if (useMaxCapacity) {
-      if (!editMaxCapacity || editMaxCapacity <= 0) {
-        setError("Capacity is required");
-        return;
-      }
-      normalizedMaxCapacity = editMaxCapacity;
-    }
-    if (normalizedMaxCapacity !== null && normalizedMaxCapacity < memberCount) {
-      setError(
-        `Capacity cannot be less than the current number of members (${memberCount})`,
-      );
-      return;
-    }
-
-    setIsSaving(true);
-    setError(null);
-    try {
-      const response = await communityUpdate({
-        path: { communityId: community.id },
-        body: {
-          name: editName,
-          description: editDescription,
-          photo: changedPhoto({ current: currentPhoto, next: editPhotoUrl }),
-          public: editPublic,
-          maxCapacity: normalizedMaxCapacity,
-          allowMemberInvites: editAllowMemberInvites,
-          allowStaffAssignments: editAllowStaffAssignments,
-        },
-      });
-
-      if (response.data) {
-        updateSelectedCommunity(response.data);
-        setIsEditing(false);
-      } else {
-        setError(
-          errorMessage({
-            error: response.error,
-            fallback: "Failed to update group",
-          }),
-        );
-      }
-    } catch (err) {
-      console.error("Failed to update group:", err);
-      setError("Failed to update group");
-    } finally {
-      setIsSaving(false);
-    }
-  }, [
+  const editor = useCommunityEditor({
     community,
-    editName,
-    editDescription,
-    editPublic,
-    editAllowMemberInvites,
-    editAllowStaffAssignments,
-    editMaxCapacity,
-    editPhotoUrl,
-    currentPhoto,
-    isSaving,
-    useMaxCapacity,
     memberCount,
-    updateSelectedCommunity,
-  ]);
-
-  const handleCancel = useCallback(() => {
-    if (community) {
-      setEditName(community.name);
-      setEditDescription(community.description);
-      setEditPublic(community.public);
-      setEditAllowStaffAssignments(community.allowStaffAssignments ?? true);
-      setEditAllowMemberInvites(community.allowMemberInvites ?? true);
-      setEditMaxCapacity(
-        community.maxCapacity === null
-          ? null
-          : Math.max(
-              community.maxCapacity,
-              community.users.length - community.leaders.length,
-            ),
-      );
-      setEditPhotoUrl(community.photo ?? null);
-    }
-    setPhotoEditorKey((prev) => prev + 1);
-    setError(null);
-    setIsEditing(false);
-  }, [community]);
-
-  const handleDelete = useCallback(async () => {
-    if (!community || isSaving) return;
-
-    setIsSaving(true);
-    setError(null);
-    try {
-      const response = await communityDelete({
-        path: { communityId: community.id },
-      });
-      if (response.error) {
-        setError(
-          errorMessage({
-            error: response.error,
-            fallback: "Failed to delete community",
-          }),
-        );
-      } else {
-        removeCommunity(community.id);
-        setParams({ communityId: null, tab: null });
-      }
-    } catch (err) {
-      console.error("Failed to delete community:", err);
-      setError("Failed to delete community");
-    } finally {
-      setIsSaving(false);
-    }
-  }, [community, isSaving, removeCommunity, setParams]);
+    onDeleted: handleDeleted,
+  });
 
   const tabs = SHOWN_TABS[amLeader ? "leader" : "member"];
 
@@ -439,6 +237,10 @@ const CommunityPage = () => {
     />
   );
 
+  if (areGroupsLoading && !didGroupsFail) {
+    return <PageSpinner />;
+  }
+
   if (!community) {
     return (
       <div className="p-5 xl:p-10 xl:pr-5 max-w-[900px] mx-auto px-0 md:px-3">
@@ -460,9 +262,8 @@ const CommunityPage = () => {
 
   const leaders = community.leaders;
   const nonLeaderMembers = community.users.filter(
-    (user) => !leaders.some((leader) => leader.id === user.id),
+    (user) => !isLedBy(community, user.id),
   );
-  const canDelete = (amLeader && community.users.length === 1) ?? false;
 
   return (
     <TwoColumnLayout
@@ -488,224 +289,16 @@ const CommunityPage = () => {
           </div>
           <div className="mx-2 space-y-2 mt-8">
             {tab !== "groups" && (
-              <Card className="relative z-0 px-4 md:px-8 pb-6 gap-y-2">
-                {isEditing ? (
-                  <ImageEditor
-                    key={photoEditorKey}
-                    className="mt-[-55px]"
-                    initialImageUrl={editPhotoUrl}
-                    onChange={setEditPhotoUrl}
-                    canRemove
-                    allowedMimeTypes={sharp_allowed_mime_types}
-                    isUploading={isPhotoUploadPending}
-                  />
-                ) : (
-                  <AvatarProfile
-                    pfp={community.photo ?? null}
-                    size="huge"
-                    className="mt-[-55px]"
-                  />
-                )}
-                <div className="absolute right-0 top-0 z-10 flex flex-row flex-wrap items-start justify-end gap-2 p-5">
-                  {amLeader && (
-                    <>
-                      {isEditing ? (
-                        <div className="flex flex-row flex-wrap justify-end gap-x-1 gap-y-1">
-                          {canDelete && (
-                            <Button
-                              color={ButtonColor.Red}
-                              onClick={handleDelete}
-                              disabled={isSaving}
-                            >
-                              Delete
-                            </Button>
-                          )}
-                          <Button
-                            color={ButtonColor.Light}
-                            onClick={handleCancel}
-                            disabled={isSaving}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            color={ButtonColor.Blue}
-                            onClick={handleSave}
-                            disabled={isSaving || !editName.trim()}
-                          >
-                            {isSaving ? "Saving..." : "Save"}
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button
-                          color={ButtonColor.White}
-                          onClick={() => setIsEditing(true)}
-                        >
-                          Edit
-                        </Button>
-                      )}
-                    </>
-                  )}
-                </div>
-                <div className="flex flex-col gap-y-4 mb-2 mt-3">
-                  {isEditing ? (
-                    <div className="flex flex-col gap-y-4">
-                      <div className="flex flex-col gap-1">
-                        <input
-                          type="text"
-                          value={editName}
-                          maxLength={COMMUNITY_NAME_MAX_LENGTH}
-                          onChange={(e) => setEditName(e.target.value)}
-                          className="text-title-small w-full border-none !bg-zinc-100 px-2 -mx-2 rounded focus:outline-none"
-                          placeholder="Enter group name"
-                        />
-                        <CharacterLimitNotice
-                          value={editName}
-                          max={COMMUNITY_NAME_MAX_LENGTH}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <textarea
-                          value={editDescription}
-                          maxLength={COMMUNITY_DESCRIPTION_MAX_LENGTH}
-                          onChange={(e) => setEditDescription(e.target.value)}
-                          rows={6}
-                          className="w-full border-none !bg-zinc-100 px-2 -mx-2 rounded focus:outline-none p-2"
-                          placeholder="Enter group description..."
-                        />
-                        <CharacterLimitNotice
-                          value={editDescription}
-                          max={COMMUNITY_DESCRIPTION_MAX_LENGTH}
-                        />
-                      </div>
-                      <div className="mt-3 rounded border border-zinc-200 bg-zinc-50 p-3">
-                        <div className="flex flex-col gap-y-3">
-                          <label
-                            className="flex items-start gap-x-2 text-black text-sm font-semibold"
-                            htmlFor="public"
-                          >
-                            <input
-                              id="public"
-                              type="checkbox"
-                              checked={editPublic}
-                              onChange={(e) => {
-                                const checked = e.target.checked;
-                                setEditPublic(checked);
-                                if (checked) {
-                                  setEditAllowMemberInvites(true);
-                                  setEditAllowStaffAssignments(true);
-                                }
-                              }}
-                              className="mt-1"
-                            />
-                            <div>
-                              <p className="text-base font-medium">
-                                {groupSettings.public.name}
-                              </p>
-                              <p className="text-sm text-zinc-500 font-normal">
-                                {groupSettings.public.explanation}
-                              </p>
-                            </div>
-                          </label>
-                          <label
-                            className="flex items-start gap-x-2 text-black text-sm font-semibold"
-                            htmlFor="allowMemberInvites"
-                          >
-                            <input
-                              id="allowMemberInvites"
-                              type="checkbox"
-                              checked={editAllowMemberInvites}
-                              onChange={(e) => {
-                                const checked = e.target.checked;
-                                setEditAllowMemberInvites(checked);
-                              }}
-                              disabled={editPublic}
-                              className="mt-1"
-                            />
-                            <div>
-                              <p className="text-base font-medium">
-                                {groupSettings.allowMemberInvites.name}
-                              </p>
-                              <p className="text-sm text-zinc-500 font-normal">
-                                {groupSettings.allowMemberInvites.explanation}
-                              </p>
-                            </div>
-                          </label>
-                          <label
-                            className="flex items-start gap-x-2 text-black text-sm font-semibold"
-                            htmlFor="allowStaffAssignments"
-                          >
-                            <input
-                              id="allowStaffAssignments"
-                              type="checkbox"
-                              checked={editAllowStaffAssignments}
-                              onChange={(e) =>
-                                setEditAllowStaffAssignments(e.target.checked)
-                              }
-                              disabled={editPublic}
-                              className="mt-1"
-                            />
-                            <div>
-                              <p className="text-base font-medium">
-                                {groupSettings.allowStaffAssignments.name}
-                              </p>
-                              <p className="text-sm text-zinc-500 font-normal">
-                                {
-                                  groupSettings.allowStaffAssignments
-                                    .explanation
-                                }
-                              </p>
-                            </div>
-                          </label>
-                        </div>
-                        {useMaxCapacity && (
-                          <div className="mt-4">
-                            <label
-                              className="text-black font-medium"
-                              htmlFor="maxCapacity"
-                            >
-                              <p className="text-base font-medium">
-                                {groupSettings.maxCapacity.name}
-                                {` (${memberCount} members)`}
-                              </p>
-                              <p className="text-sm text-zinc-500 font-normal">
-                                {groupSettings.maxCapacity.explanation}
-                              </p>
-                            </label>
-                            <input
-                              id="maxCapacity"
-                              type="number"
-                              min={Math.max(memberCount, 1)}
-                              value={editMaxCapacity ?? ""}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                const parsed = Number(value);
-                                setEditMaxCapacity(
-                                  value === "" || Number.isNaN(parsed)
-                                    ? null
-                                    : parsed,
-                                );
-                              }}
-                              className="mt-2 border border-zinc-300 rounded px-3 py-2 w-full bg-white"
-                            />
-                          </div>
-                        )}
-                      </div>
-                      {error && (
-                        <p className="text-red-500 text-sm mt-1">{error}</p>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-y-2">
-                      <div className="flex gap-2">
-                        <h1 className="text-title-small">{community.name}</h1>
-                      </div>
-                      <AppMarkdownWrapper
-                        markdownContent={community.description}
-                        className="mb-2 text-base"
-                      />
-                    </div>
-                  )}
-                </div>
+              <Card
+                className="relative z-0 px-4 md:px-8 pb-6 gap-y-2"
+                data-walkthrough={WalkthroughAnchor.Group}
+              >
+                <CommunityProfile
+                  community={community}
+                  amLeader={amLeader ?? false}
+                  memberCount={memberCount}
+                  editor={editor}
+                />
 
                 <div
                   className={cn(
@@ -783,10 +376,10 @@ const CommunityPage = () => {
                     href("/member/:id", { id: id.toString() })
                   }
                   onRemoveMember={(memberId) =>
-                    removeMemberFromCommunity(community.id, memberId)
+                    removeMember({ communityId: community.id, memberId })
                   }
                   amLeader={amLeader ?? false}
-                  memberContactInfo={memberContactInfo ?? undefined}
+                  memberContactInfo={memberContactInfo}
                   userActionRelations={userActionRelations ?? undefined}
                   actions={actionSummaries}
                   maxActionsPerWeek={maxActionsPerWeek}
@@ -812,6 +405,7 @@ const CommunityPage = () => {
                   color={ButtonColor.Outline}
                   onClick={() => setChatOpen(true)}
                   className="!px-3 !py-3"
+                  title="Open Chat"
                 >
                   <MessageSquare size="20" />
                 </Button>

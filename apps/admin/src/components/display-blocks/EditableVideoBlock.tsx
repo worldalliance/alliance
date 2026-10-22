@@ -1,21 +1,25 @@
-import { errorMessage } from "@alliance/common/errorMessage";
+import { refusalMessage } from "@alliance/common/errorMessage";
 import type { VideoBlock } from "@alliance/common/forms/display-blocks";
-import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
+// eslint-disable-next-line api-client/named-hooks-only -- file upload; its result is used once, not cached
+import { videosUploadVideoAdmin } from "@alliance/shared/client";
 import React, { useState } from "react";
 import { Link, href } from "react-router";
-import { getApiUrl } from "../../lib/config";
+import { uploadSessionExpiredMessage } from "../../lib/sessionExpired";
 import { VariableTextField } from "../VariableTextField";
+import { BlockPreview } from "./BlockPreview";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
 
 export function EditableVideoBlock({
   block,
   onUpdate,
+  updateCurrent,
   onRemove,
   onDragStart,
   onDragEnd,
   isDragging,
   previousFields,
+  laterFields,
 }: BaseDisplayBlockProps<VideoBlock>) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -25,6 +29,8 @@ export function EditableVideoBlock({
     update: (updates: Partial<VideoBlock>) => void,
   ) => {
     const files = Array.from(e.target.files ?? []);
+    // Picking the same files again fires no change event unless this is cleared.
+    e.target.value = "";
     if (files.length === 0) return;
 
     const hasPlaylist = files.some((f) => f.name.endsWith(".m3u8"));
@@ -37,30 +43,23 @@ export function EditableVideoBlock({
     setUploadError(null);
 
     try {
-      const formData = new FormData();
-      for (const file of files) {
-        formData.append("files", file);
-      }
-
-      const res = await fetch(`${getApiUrl()}/videos/upload`, {
-        method: "POST",
-        credentials: "include",
-        body: formData,
+      const { data, error, response } = await videosUploadVideoAdmin({
+        body: { files },
       });
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
+      if (data === undefined) {
         setUploadError(
-          errorMessage({
-            error: body,
-            fallback: `Upload failed with status ${res.status}`,
+          refusalMessage({
+            status: response.status,
+            error,
+            fallback: `Upload failed with status ${response.status}`,
+            sessionExpired: uploadSessionExpiredMessage,
           }),
         );
         setIsUploading(false);
         return;
       }
 
-      const data = await res.json();
       update({ src: data.key, videoId: data.id });
     } catch {
       setUploadError("Upload failed");
@@ -76,7 +75,9 @@ export function EditableVideoBlock({
       isDragging={isDragging}
       block={block}
       onUpdate={onUpdate}
+      updateCurrent={updateCurrent}
       previousFields={previousFields}
+      laterFields={laterFields}
     >
       {({ block: activeBlock, onUpdate: handleUpdate }) => (
         <div className="space-y-2">
@@ -123,11 +124,7 @@ export function EditableVideoBlock({
             />
           </div>
 
-          {activeBlock.src && (
-            <div className="pt-2 border-t border-gray-200">
-              <RenderDisplayBlock block={activeBlock} />
-            </div>
-          )}
+          {activeBlock.src && <BlockPreview block={activeBlock} />}
         </div>
       )}
     </DisplayBlockWrapper>

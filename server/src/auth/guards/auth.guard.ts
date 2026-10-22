@@ -7,85 +7,37 @@ import {
 import { Reflector } from "@nestjs/core";
 import { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
-import { requestContext } from "src/utils/request-context";
-import { IS_PUBLIC_KEY } from "../public.decorator";
-import { JWTTokenType, type JwtPayload } from "./jwtreq";
+import { isPublicRoute } from "../public.decorator";
+import { SessionService } from "../session.service";
+import { extractAccessToken } from "../tokens";
+import { attachAccessSession } from "./attach-session";
 
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(
     private jwtService: JwtService,
     private reflector: Reflector,
+    private sessionService: SessionService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-
-    if (isPublic) {
+    if (isPublicRoute(this.reflector, context)) {
       return true;
     }
 
     const request = context.switchToHttp().getRequest<Request>();
 
-    let token = extractTokenFromHeader(request);
-
+    const token = extractAccessToken(request);
     if (!token) {
-      token = extractAccessTokenFromCookie(request);
-      if (!token) {
-        throw new UnauthorizedException();
-      }
-    }
-
-    try {
-      const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
-        secret: process.env.JWT_SECRET,
-      });
-      if (payload.tokenType === JWTTokenType.guest) {
-        throw new UnauthorizedException();
-      }
-      request["user"] = payload;
-      const ctx = requestContext.getStore();
-      if (ctx) {
-        ctx.userId = payload.sub;
-      }
-    } catch {
       throw new UnauthorizedException();
     }
+
+    await attachAccessSession({
+      jwtService: this.jwtService,
+      sessionService: this.sessionService,
+      request,
+      token,
+    });
     return true;
   }
-}
-export function extractAccessTokenFromCookie(
-  request: Request,
-): string | undefined {
-  return request.cookies?.access_token;
-}
-
-export function extractRefreshTokenFromCookie(
-  request: Request,
-): string | undefined {
-  return request.cookies?.refresh_token;
-}
-
-export function extractGuestTokenFromCookie(
-  request: Request,
-): string | undefined {
-  return request.cookies?.guest_token;
-}
-
-export function extractGuestTokenFromHeader(
-  request: Request,
-): string | undefined {
-  const header = request.headers["x-guest-token"];
-  if (typeof header !== "string" || header.length === 0) {
-    return undefined;
-  }
-  return header;
-}
-
-export function extractTokenFromHeader(request: Request): string | undefined {
-  const [type, token] = request.headers.authorization?.split(" ") ?? [];
-  return type === "Bearer" ? token : undefined;
 }

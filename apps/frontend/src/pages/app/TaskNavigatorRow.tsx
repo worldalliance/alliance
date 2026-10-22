@@ -1,23 +1,30 @@
 import { type ActionDto, type FollowUpFormDto } from "@alliance/shared/client";
+import { useCompletedTaskForm } from "@alliance/shared/lib/actionTaskPanelCompleted";
 import {
-  useCompletedTaskForm,
-  useTaskForm,
-} from "@alliance/shared/lib/actionTaskPanelCompleted";
-import type { ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
-import { clipboardCopy } from "@alliance/shared/lib/copy";
-import {
-  buildActionShareUrl,
-  buildShareText,
-  getCompletedShareableTextTemplate,
-} from "@alliance/shared/lib/shareText";
+  isActionOptional,
+  type ActionWithAwayStatus,
+} from "@alliance/shared/lib/actionUtils";
+import { clipboardCopy, taskHeaders } from "@alliance/shared/lib/copy";
+import { getCompletedShareableTextTemplate } from "@alliance/shared/lib/shareText";
+import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import { cn } from "@alliance/shared/styles/util";
-import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
-import { ArrowRight, Circle, CircleChevronRight, Link2 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@alliance/sharedweb/ui/Tooltip";
+import {
+  ArrowRight,
+  Circle,
+  CircleChevronRight,
+  Eye,
+  Link2,
+} from "lucide-react";
 import { type ReactNode } from "react";
 import { Link, href } from "react-router";
 import ShareButton from "../../components/ShareButton";
+import { copyActionShareText } from "../../lib/actionShare";
 import { useAuth } from "../../lib/AuthContext";
 
 const ICON_SIZE = 16;
@@ -92,10 +99,11 @@ export function TaskNavigatorTodoActionRow({
   onSelect: () => void;
   showOptionalPrefix: boolean;
 }) {
+  const optional = isActionOptional(action);
   return (
     <TaskNavigatorRow
       isActive={isActive}
-      activeBg={action.optional ? "bg-sky-100" : "bg-green/10"}
+      activeBg={optional ? "bg-sky-100" : "bg-green/10"}
       onClick={onSelect}
       icon={
         <Circle
@@ -103,7 +111,7 @@ export function TaskNavigatorTodoActionRow({
           className={cn(
             "shrink-0",
             isActive
-              ? action.optional
+              ? optional
                 ? "text-blue-400"
                 : "text-green"
               : "text-zinc-300",
@@ -112,8 +120,25 @@ export function TaskNavigatorTodoActionRow({
       }
       label={
         <>
-          {showOptionalPrefix && action.optional && "(Optional) "}
+          {showOptionalPrefix && optional && "(Optional) "}
           {action.name}
+          {action.viewer?.staffPreview && (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <span
+                    className="inline-flex ml-1.5 align-text-bottom text-zinc-400"
+                    aria-label={taskHeaders.staffPreview.title}
+                  />
+                }
+              >
+                <Eye size={ICON_SIZE} aria-hidden />
+              </TooltipTrigger>
+              <TooltipContent sideOffset={4}>
+                {taskHeaders.staffPreview.title}
+              </TooltipContent>
+            </Tooltip>
+          )}
         </>
       }
     />
@@ -164,7 +189,7 @@ export function TaskNavigatorCompletedRow({
 }) {
   const { user, isAuthenticated } = useAuth();
   const formResponse = useCompletedTaskForm(action, true);
-  const taskForm = useTaskForm(action, true);
+  const { data: taskForm } = useTaskForm(action.taskFormId);
   const shareTemplate = getCompletedShareableTextTemplate({
     schemaSnapshot: formResponse?.schemaSnapshot as
       | Record<string, unknown>
@@ -172,20 +197,14 @@ export function TaskNavigatorCompletedRow({
     currentSchema: taskForm?.schema as Record<string, unknown> | undefined,
   });
 
-  const handleShare = async () => {
-    const url = await buildActionShareUrl({
+  const handleShare = () =>
+    copyActionShareText({
       actionId: action.id,
-      baseUrl: getBaseUrl(),
       isAuthenticated,
-    });
-    const text = buildShareText({
       template: shareTemplate,
       formResponse,
       userName: user?.name,
-      url,
     });
-    return copyToClipboard(text);
-  };
   return (
     <div className="flex flex-col gap-y-1">
       <div className="flex items-center gap-x-2 rounded-lg py-1 px-2 w-full hover:bg-grey-2">
@@ -194,7 +213,7 @@ export function TaskNavigatorCompletedRow({
           to={href("/actions/:id", { id: action.id.toString() })}
           className="text-zinc-400 line-through grow hover:text-zinc-500"
         >
-          {action.optional && "(Optional) "}
+          {isActionOptional(action) && "(Optional) "}
           {action.name}
         </Link>
         <ShareButton

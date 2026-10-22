@@ -2,6 +2,12 @@ import { Injectable } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import {
+  CATEGORY_KIND,
+  UNREAD_CONTENT_KIND,
+} from "src/notification-settings/notification-kind";
+import { NotificationPreferencesService } from "src/notification-settings/notification-preferences.service";
+import type { NotificationDto } from "src/notifs/dto/notification.dto";
+import {
   Notification,
   NotificationCategory,
 } from "src/notifs/entities/notification.entity";
@@ -9,32 +15,77 @@ import {
   UnreadContent,
   UnreadContentType,
 } from "src/notifs/entities/unread-content.entity";
-import { NotifsService } from "src/notifs/notifs.service";
-import type { Repository } from "typeorm";
+import { NotificationChannel } from "src/notifs/notif-utils";
+import {
+  type NotificationWithUser,
+  NotifsService,
+} from "src/notifs/notifs.service";
+import { notifDeliveryEnabled } from "src/utils/notif-delivery";
+import type { Repository as TypedRepository } from "src/utils/Repository";
+import { In, type Repository } from "typeorm";
 import { v4 } from "uuid";
 import { CreatePushMessage, PushService } from "./push.service";
 
 const actionUpdatePushBody = (message: string) => `Update: ${message}`;
 
+// A rendered row without a destination carries an empty `webAppLocation`.
+const pushScreen = (dto: NotificationDto) =>
+  dto.mobileAppLocation || dto.webAppLocation || undefined;
+
+async function claimDuePushes(
+  repository: TypedRepository<Notification> | Repository<UnreadContent>,
+  dispatchID: string,
+): Promise<number[]> {
+  const table = repository.metadata.tableName;
+  const claimed: { id: number }[] = (
+    await repository.query(
+      `
+      WITH cte AS (
+        SELECT t.id
+        FROM "${table}" t
+        WHERE t."sendTime" <= NOW()
+          AND t."deletedAt" IS NULL
+          AND EXISTS (
+            SELECT 1 FROM "user" u
+            WHERE u.id = t."userId" AND u."deletedAt" IS NULL
+          )
+          AND t."shouldPush" = true
+          AND t."pushClaimedBy" IS NULL
+          AND t."pushDispatchedAt" IS NULL
+          -- A row read before it came due (e.g. an action update seen on its page) still pushes.
+          AND (t."readAt" IS NULL OR t."readAt" < t."sendTime")
+        ORDER BY t."sendTime" ASC
+        LIMIT 500
+        FOR UPDATE SKIP LOCKED
+      )
+      UPDATE "${table}" t
+      SET "pushClaimedBy" = $1,
+          "pushClaimedAt" = NOW()
+      FROM cte
+      WHERE t.id = cte.id
+      RETURNING t.id;
+      `,
+      [dispatchID],
+    )
+  )[0];
+  return claimed.map(({ id }) => id);
+}
+
 @Injectable()
 export class NotifPushDispatcherWorker {
   constructor(
     @InjectRepository(Notification)
-    private readonly notificationRepository: Repository<Notification>,
+    private readonly notificationRepository: TypedRepository<Notification>,
     @InjectRepository(UnreadContent)
     private readonly unreadContentRepository: Repository<UnreadContent>,
     private readonly notifsService: NotifsService,
     private readonly pushService: PushService,
+    private readonly preferences: NotificationPreferencesService,
   ) {}
 
   @Cron(CronExpression.EVERY_10_SECONDS)
   async dispatchPushes() {
-    if (
-      !(
-        process.env.NODE_ENV === "production" ||
-        process.env.SEND_DEV_NOTIFS === "1"
-      )
-    ) {
+    if (!notifDeliveryEnabled()) {
       return;
     }
     const dispatchID = v4().replace(/-/g, "");
@@ -53,76 +104,44 @@ export class NotifPushDispatcherWorker {
   async findNotificationPushes(
     dispatchID: string,
   ): Promise<CreatePushMessage[]> {
-    const claimed: { id: number }[] = (
-      await this.notificationRepository.query(
-        `
-        WITH cte AS (
-          SELECT n.id
-          FROM notification n
-          WHERE n."sendTime" <= NOW()
-            AND n."shouldPush" = true
-            AND n."pushClaimedBy" IS NULL
-            AND n."pushDispatchedAt" IS NULL
-          ORDER BY n."sendTime" ASC
-          LIMIT 500
-          FOR UPDATE SKIP LOCKED
-        )
-        UPDATE notification n
-        SET "pushClaimedBy" = $1,
-            "pushClaimedAt" = NOW()
-        FROM cte
-        WHERE n.id = cte.id
-        RETURNING n.id;
-        `,
-        [dispatchID],
-      )
-    )[0];
+    const claimed = await claimDuePushes(
+      this.notificationRepository,
+      dispatchID,
+    );
 
     if (!claimed.length) {
       return [];
     }
 
-    const toSend = await this.notificationRepository
-      .createQueryBuilder("n")
-      .leftJoinAndSelect("n.user", "u")
-      .where("n.id IN (:...ids)", { ids: claimed.map((c) => c.id) })
-      .orderBy('n."sendTime"', "ASC")
-      .getMany();
+    const toSend: NotificationWithUser[] =
+      await this.notificationRepository.find({
+        where: { id: In(claimed) },
+        relations: { user: true, associatedUsers: true },
+        order: { sendTime: "ASC" },
+      });
 
     if (toSend.length === 0) {
       return [];
     }
 
     console.log(`found ${toSend.length} notifs to send pushes for`);
+    const dtoById = await this.notifsService.renderNotificationsForPush(toSend);
+    const preferences = await this.preferences.load({
+      userIds: toSend.map((notif) => notif.user.id),
+      kinds: toSend.map((notif) => CATEGORY_KIND[notif.category]),
+    });
 
     const messages: CreatePushMessage[] = [];
     for (const notif of toSend) {
-      const notifTypeToSendable: Record<NotificationCategory, boolean> = {
-        [NotificationCategory.ActionEvent]: true,
-        [NotificationCategory.ActionUpdate]: notif.user.pushesForActionUpdates,
-        [NotificationCategory.ForumReply]: notif.user.pushesForComments,
-        [NotificationCategory.FriendRequest]:
-          notif.user.pushesForFriendRequests,
-        [NotificationCategory.FriendRequestAccepted]:
-          notif.user.pushesForFriendRequests,
-        [NotificationCategory.Likes]: notif.user.pushesForLikes,
-        [NotificationCategory.CommunityInviteCreated]: true,
-        [NotificationCategory.CommunityInviteRejected]: true,
-        [NotificationCategory.CommunityInviteAccepted]: true,
-        [NotificationCategory.RemovedFromCommunity]: true,
-        [NotificationCategory.RemovedFromCommunityForLeader]: true,
-        [NotificationCategory.MemberLeftCommunity]: true,
-        [NotificationCategory.MemberJoinedCommunity]: true,
-        [NotificationCategory.MemberSuspendedRemovedFromCommunity]: true,
-        [NotificationCategory.CommunityAssigned]: true,
-        [NotificationCategory.NewMemberReferred]: true,
-        [NotificationCategory.OnetimeInviteRequestCreated]: true,
-        [NotificationCategory.OnetimeInviteRequestApproved]: true,
-        [NotificationCategory.OnetimeInviteRequestRejected]: true,
-        [NotificationCategory.CommunityInviteRequestCreated]: true,
-        [NotificationCategory.CommunityInviteRequestRejected]: true,
-      };
-      if (!notifTypeToSendable[notif.category]) {
+      const dto = dtoById.get(notif.id);
+      if (
+        !dto ||
+        !preferences.wants({
+          userId: notif.user.id,
+          kind: CATEGORY_KIND[notif.category],
+          channel: NotificationChannel.Push,
+        })
+      ) {
         await this.notificationRepository.update(notif.id, {
           shouldPush: false,
         });
@@ -135,9 +154,9 @@ export class NotifPushDispatcherWorker {
             userId: notif.user.id,
             body:
               notif.category === NotificationCategory.ActionUpdate
-                ? actionUpdatePushBody(notif.message)
-                : notif.message,
-            screen: notif.mobileAppLocation || notif.webAppLocation,
+                ? actionUpdatePushBody(dto.message)
+                : dto.message,
+            screen: pushScreen(dto),
             notification: notif,
             idempotencyKey: `${notif.id}-${notif.updatedAt.getTime()}`,
           },
@@ -148,55 +167,49 @@ export class NotifPushDispatcherWorker {
     return messages;
   }
 
-  private async findUnreadContentPushes(
+  async findUnreadContentPushes(
     dispatchID: string,
   ): Promise<CreatePushMessage[]> {
-    const claimed: { id: number }[] = (
-      await this.unreadContentRepository.query(
-        `
-        WITH cte AS (
-          SELECT uc.id
-          FROM unread_content uc
-          WHERE uc."sendTime" <= NOW()
-            AND uc."shouldPush" = true
-            AND uc."pushClaimedBy" IS NULL
-            AND uc."pushDispatchedAt" IS NULL
-          ORDER BY uc."sendTime" ASC
-          LIMIT 500
-          FOR UPDATE SKIP LOCKED
-        )
-        UPDATE unread_content uc
-        SET "pushClaimedBy" = $1,
-            "pushClaimedAt" = NOW()
-        FROM cte
-        WHERE uc.id = cte.id
-        RETURNING uc.id;
-        `,
-        [dispatchID],
-      )
-    )[0];
+    const claimed = await claimDuePushes(
+      this.unreadContentRepository,
+      dispatchID,
+    );
 
     if (!claimed.length) {
       return [];
     }
 
-    const hydrated = await this.notifsService.getUnreadContentsForPush(
-      claimed.map((content) => content.id),
+    const hydrated = await this.notifsService.getUnreadContentsForPush(claimed);
+    const shown = new Set(
+      hydrated.map(({ unreadContent }) => unreadContent.id),
     );
+    const hidden = claimed.filter((id) => !shown.has(id));
+    if (hidden.length) {
+      await this.unreadContentRepository.update(
+        { id: In(hidden) },
+        { shouldPush: false },
+      );
+    }
 
     if (hydrated.length === 0) {
       return [];
     }
 
+    const preferences = await this.preferences.load({
+      userIds: hydrated.map(({ unreadContent }) => unreadContent.user.id),
+      kinds: hydrated.map(
+        ({ unreadContent }) => UNREAD_CONTENT_KIND[unreadContent.contentType],
+      ),
+    });
     const messages: CreatePushMessage[] = [];
     for (const { unreadContent, dto } of hydrated) {
-      const contentTypeToSendable: Record<UnreadContentType, boolean> = {
-        [UnreadContentType.ActionEvent]: true,
-        [UnreadContentType.ActionUpdate]:
-          unreadContent.user.pushesForActionUpdates,
-        [UnreadContentType.ForumReply]: unreadContent.user.pushesForComments,
-      };
-      if (!contentTypeToSendable[unreadContent.contentType]) {
+      if (
+        !preferences.wants({
+          userId: unreadContent.user.id,
+          kind: UNREAD_CONTENT_KIND[unreadContent.contentType],
+          channel: NotificationChannel.Push,
+        })
+      ) {
         await this.unreadContentRepository.update(unreadContent.id, {
           shouldPush: false,
         });
@@ -211,7 +224,7 @@ export class NotifPushDispatcherWorker {
               unreadContent.contentType === UnreadContentType.ActionUpdate
                 ? actionUpdatePushBody(dto.message)
                 : dto.message,
-            screen: dto.mobileAppLocation ?? dto.webAppLocation ?? undefined,
+            screen: pushScreen(dto),
             unreadContent,
             idempotencyKey: `uc-${unreadContent.id}`,
           },

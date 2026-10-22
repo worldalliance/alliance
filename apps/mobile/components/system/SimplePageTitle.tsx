@@ -1,3 +1,4 @@
+import type { Href } from "expo-router";
 import { Menu } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import { useAppDrawer } from "../../lib/AppDrawerContext";
@@ -9,10 +10,12 @@ export const SimplePageTitle = ({
   title,
   children,
   backButton = false,
+  fallbackRoute,
 }: {
   title: string;
   children?: React.ReactNode;
   backButton?: boolean;
+  fallbackRoute?: Href;
 }) => {
   const { openDrawer, isPermanent } = useAppDrawer();
 
@@ -21,7 +24,7 @@ export const SimplePageTitle = ({
       <Pressable onPress={openDrawer} className="p-2 px-2">
         <View className="flex-row items-center gap-2">
           {backButton ? (
-            <BackButton />
+            <BackButton fallbackRoute={fallbackRoute} />
           ) : (
             <>
               {!isPermanent && (

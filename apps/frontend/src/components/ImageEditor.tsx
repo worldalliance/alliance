@@ -1,14 +1,6 @@
 import { cn } from "@alliance/shared/styles/util";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Modal, {
-  ModalActions,
-  ModalBody,
-  ModalFooter,
-  ModalHeader,
-  ModalTitle,
-} from "@alliance/sharedweb/ui/Modal";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
-import { RotateCcw, RotateCw, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -18,12 +10,18 @@ import {
   type ChangeEventHandler,
   type FC,
 } from "react";
-import ReactCrop, {
-  centerCrop,
-  makeAspectCrop,
-  type PercentCrop,
-} from "react-image-crop";
-import "react-image-crop/dist/ReactCrop.css";
+import { centerCrop, makeAspectCrop, type PercentCrop } from "react-image-crop";
+import ImageCropModal from "./ImageCropModal";
+import {
+  createImage,
+  createPreviewImage,
+  getCroppedImage,
+  rotateImageData,
+  ROTATION_DEGREES,
+  RotationDirection,
+  toSourcePixels,
+  type Dimensions,
+} from "./imageEditorCanvas";
 
 type ImageEditorProps = {
   initialImageUrl: string | null;
@@ -36,18 +34,6 @@ type ImageEditorProps = {
   canRemove?: boolean;
 };
 
-type Dimensions = {
-  width: number;
-  height: number;
-};
-
-type SourcePixels = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-};
-
 type AppliedState = {
   imageSrc: string | null;
   previewSrc: string | null;
@@ -56,126 +42,12 @@ type AppliedState = {
 };
 
 const DEFAULT_MAX_FILE_SIZE_MB = 20;
-const MIN_CROP_SIZE = 80;
-const MAX_PREVIEW_SIZE = 1200;
-const MAX_CROP_HEIGHT = "60vh";
 const CROPPED_IMAGE_STRING_MAX_LENGTH = 50_000_000;
-
-const getRadianAngle = (degreeValue: number) => (degreeValue * Math.PI) / 180;
-
-const createImage = (url: string) =>
-  new Promise<HTMLImageElement>((resolve, reject) => {
-    const image = new Image();
-    image.addEventListener("load", () => resolve(image));
-    image.addEventListener("error", (error) => reject(error));
-    image.setAttribute("crossOrigin", "anonymous");
-    image.src = url;
-  });
-
-const getCroppedImage = async (
-  imageSrc: string,
-  pixelCrop: SourcePixels,
-  rotation: number,
-) => {
-  const image = await createImage(imageSrc);
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-
-  if (!ctx) {
-    throw new Error("Failed to create canvas context");
-  }
-
-  const rotRad = getRadianAngle(rotation);
-  const { width: imgWidth, height: imgHeight } = image;
-
-  const boundWidth =
-    Math.abs(Math.cos(rotRad) * imgWidth) +
-    Math.abs(Math.sin(rotRad) * imgHeight);
-  const boundHeight =
-    Math.abs(Math.sin(rotRad) * imgWidth) +
-    Math.abs(Math.cos(rotRad) * imgHeight);
-
-  canvas.width = boundWidth;
-  canvas.height = boundHeight;
-
-  ctx.translate(boundWidth / 2, boundHeight / 2);
-  ctx.rotate(rotRad);
-  ctx.translate(-imgWidth / 2, -imgHeight / 2);
-  ctx.drawImage(image, 0, 0);
-
-  const cropX = Math.round(pixelCrop.x);
-  const cropY = Math.round(pixelCrop.y);
-  const cropWidth = Math.round(pixelCrop.width);
-  const cropHeight = Math.round(pixelCrop.height);
-
-  const data = ctx.getImageData(cropX, cropY, cropWidth, cropHeight);
-
-  canvas.width = cropWidth;
-  canvas.height = cropHeight;
-
-  ctx.putImageData(data, 0, 0);
-
-  return canvas.toDataURL("image/png");
-};
-
-const createPreviewImage = async (image: HTMLImageElement) => {
-  const maxDimension = Math.max(image.width, image.height);
-  if (maxDimension <= MAX_PREVIEW_SIZE) {
-    return image.src;
-  }
-  const scale = MAX_PREVIEW_SIZE / maxDimension;
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(image.width * scale);
-  canvas.height = Math.round(image.height * scale);
-  const ctx = canvas.getContext("2d");
-  if (!ctx) {
-    throw new Error("Failed to create canvas context");
-  }
-  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL("image/png");
-};
-
-const rotateImageData = async (
-  imageSrc: string,
-  direction: "left" | "right",
-) => {
-  const image = await createImage(imageSrc);
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-
-  if (!ctx) {
-    throw new Error("Failed to create canvas context");
-  }
-
-  const angle = direction === "left" ? -90 : 90;
-  const rotRad = getRadianAngle(angle);
-  const width = image.width;
-  const height = image.height;
-
-  canvas.width = height;
-  canvas.height = width;
-
-  ctx.translate(canvas.width / 2, canvas.height / 2);
-  ctx.rotate(rotRad);
-  ctx.drawImage(image, -width / 2, -height / 2);
-
-  return canvas.toDataURL("image/png");
-};
 
 // ReactCrop hands back a zero-size crop for a click that never became a drag,
 // and then refuses to start another one while `keepSelection` holds it.
 const withSize = (crop: PercentCrop | undefined) =>
   crop && crop.width > 0 && crop.height > 0 ? crop : null;
-
-const toSourcePixels = (
-  percentCrop: PercentCrop,
-  dimensions: Dimensions,
-): SourcePixels => ({
-  x: (percentCrop.x / 100) * dimensions.width,
-  y: (percentCrop.y / 100) * dimensions.height,
-  width: (percentCrop.width / 100) * dimensions.width,
-  height: (percentCrop.height / 100) * dimensions.height,
-});
 
 const ImageEditor: FC<ImageEditorProps> = ({
   initialImageUrl,
@@ -235,13 +107,6 @@ const ImageEditor: FC<ImageEditorProps> = ({
     }
     return { width: height, height: width };
   }, [sourceDimensions, rotation]);
-
-  // A definite width, rather than max-width plus max-height, is what scales a
-  // small image up to the crop box: max-* only ever shrinks, and pairing a
-  // full width with a capped height stretches the image instead of fitting it.
-  const cropWidth = rotatedDimensions
-    ? `min(100%, calc(${MAX_CROP_HEIGHT} * ${rotatedDimensions.width / rotatedDimensions.height}))`
-    : undefined;
 
   useEffect(() => {
     if (hasCustomImage) return;
@@ -470,7 +335,7 @@ const ImageEditor: FC<ImageEditorProps> = ({
   }, [dropRotation, imageSrc]);
 
   const handleRotate = useCallback(
-    async (direction: "left" | "right") => {
+    async (direction: RotationDirection) => {
       if (
         !hasCustomImage ||
         isUploading ||
@@ -487,9 +352,10 @@ const ImageEditor: FC<ImageEditorProps> = ({
         if (previewGenerationRef.current !== generation) return;
         // The crop is mapped onto the source at `rotation`, so the angle and
         // the preview it was drawn on have to move together or not at all.
-        const delta = direction === "left" ? -90 : 90;
         setPreviewSrc(rotated);
-        setRotation((((rotation + delta) % 360) + 360) % 360);
+        setRotation(
+          (((rotation + ROTATION_DEGREES[direction]) % 360) + 360) % 360,
+        );
         setCrop(undefined);
       } catch {
         if (previewGenerationRef.current === generation) {
@@ -582,109 +448,23 @@ const ImageEditor: FC<ImageEditorProps> = ({
       )}
 
       {hasCustomImage && isCropModalOpen && imageSrc && (
-        <Modal
-          onClose={dismissCrop}
-          // Dismissing throws away the pick and every adjustment, so it needs
-          // a press the user meant, not a click that landed beside the panel.
-          dismissOnBackdrop={false}
-          dismissDisabled={isUploading || isCropping}
-          panelClassName="max-w-[640px] shadow-2xl"
-        >
-          <ModalHeader>
-            <ModalTitle className="text-lg font-semibold text-zinc-900">
-              Adjust your photo
-            </ModalTitle>
-          </ModalHeader>
-
-          <ModalBody>
-            <div className="relative flex min-h-40 w-full items-center justify-center overflow-hidden rounded-xl bg-zinc-900 p-3">
-              {(isPreviewProcessing || isCropping) && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40">
-                  <Spinner />
-                </div>
-              )}
-              {previewSrc ? (
-                <ReactCrop
-                  crop={crop}
-                  onChange={(_, percentCrop) => setCrop(percentCrop)}
-                  aspect={1}
-                  minWidth={MIN_CROP_SIZE}
-                  minHeight={MIN_CROP_SIZE}
-                  keepSelection
-                  disabled={isUploading || isCropping}
-                  style={{ maxHeight: MAX_CROP_HEIGHT, width: cropWidth }}
-                >
-                  <img
-                    ref={previewImageRef}
-                    src={previewSrc}
-                    alt="Profile to crop"
-                    className="w-full"
-                    onLoad={(event) => centerSquareCrop(event.currentTarget)}
-                  />
-                </ReactCrop>
-              ) : (
-                <div className="p-8 text-zinc-300">Loading preview...</div>
-              )}
-            </div>
-
-            <div className="mt-4 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  aria-label="Rotate left"
-                  title="Rotate left"
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 disabled:opacity-40 disabled:hover:bg-transparent"
-                  onClick={() => handleRotate("left")}
-                  disabled={isPreviewProcessing || isUploading || isCropping}
-                >
-                  <RotateCcw className="h-5 w-5" />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Rotate right"
-                  title="Rotate right"
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 disabled:opacity-40 disabled:hover:bg-transparent"
-                  onClick={() => handleRotate("right")}
-                  disabled={isPreviewProcessing || isUploading || isCropping}
-                >
-                  <RotateCw className="h-5 w-5" />
-                </button>
-              </div>
-              <p className="hidden text-sm text-zinc-500 sm:block">
-                Drag the corners or move the square to crop your picture.
-              </p>
-            </div>
-
-            {error && <p className="mt-4 text-sm text-red-500">{error}</p>}
-          </ModalBody>
-
-          <ModalFooter className="flex items-center justify-between gap-3">
-            <button
-              type="button"
-              className="font-medium text-green hover:opacity-80 disabled:opacity-40"
-              onClick={triggerFileSelect}
-              disabled={isUploading || isCropping}
-            >
-              Choose another photo
-            </button>
-            <ModalActions>
-              <Button
-                onClick={dismissCrop}
-                disabled={isUploading || isCropping}
-                color={ButtonColor.White}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={applyCropAndClose}
-                disabled={isUploading || isCropping || !isCropReady}
-                color={ButtonColor.Black}
-              >
-                Done
-              </Button>
-            </ModalActions>
-          </ModalFooter>
-        </Modal>
+        <ImageCropModal
+          previewSrc={previewSrc}
+          previewImageRef={previewImageRef}
+          rotatedDimensions={rotatedDimensions}
+          crop={crop}
+          onCropChange={setCrop}
+          onPreviewLoad={centerSquareCrop}
+          onRotate={handleRotate}
+          onChooseAnother={triggerFileSelect}
+          onDismiss={dismissCrop}
+          onApply={applyCropAndClose}
+          error={error}
+          isPreviewProcessing={isPreviewProcessing}
+          isCropping={isCropping}
+          isUploading={isUploading}
+          isCropReady={isCropReady}
+        />
       )}
     </div>
   );

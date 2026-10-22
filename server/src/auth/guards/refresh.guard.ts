@@ -1,3 +1,4 @@
+import { R } from "@alliance/common/result";
 import {
   CanActivate,
   ExecutionContext,
@@ -6,54 +7,34 @@ import {
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
-import { AuthService } from "../auth.service";
-import { type JwtPayload, JWTTokenType } from "./jwtreq";
+import { SessionService } from "../session.service";
+import { extractRefreshToken, verifyRefreshToken } from "../tokens";
+import { attachSession } from "./attach-session";
 
 @Injectable()
 export class RefreshTokenGuard implements CanActivate {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly sessionService: SessionService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
 
-    const token =
-      this.extractTokenFromCookie(request) ??
-      this.extractTokenFromHeader(request);
+    const token = extractRefreshToken(request);
 
     if (!token) {
       throw new UnauthorizedException("Missing refresh token");
     }
 
-    try {
-      const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
-        secret: process.env.JWT_REFRESH_SECRET,
-      });
-
-      if (payload.tokenType !== JWTTokenType.refresh) {
-        console.log("invalid token type");
-        throw new UnauthorizedException("Invalid token type");
-      }
-
-      // Attach user info to request for later use
-      request["user"] = payload;
-      request["refreshToken"] = token;
-
-      return true;
-    } catch (err) {
-      console.log("refresh token guard error: ", err);
+    const session = await R.fromPromise(
+      verifyRefreshToken(this.jwtService, token),
+    );
+    if (!session.ok) {
       throw new UnauthorizedException("Invalid or expired refresh token");
     }
-  }
-
-  private extractTokenFromCookie(request: Request): string | undefined {
-    return request.cookies?.[AuthService.REFRESH_COOKIE];
-  }
-
-  private extractTokenFromHeader(request: Request): string | undefined {
-    const authHeader = request.headers["authorization"] as string | undefined;
-    if (!authHeader) {
-      return undefined;
-    }
-    return authHeader.split(" ")[1];
+    await this.sessionService.assertCurrent(session.value);
+    attachSession(request, session.value);
+    return true;
   }
 }

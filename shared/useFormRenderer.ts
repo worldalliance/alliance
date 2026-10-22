@@ -1,3 +1,4 @@
+/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 /**
  * The headless half of the form renderer, shared by the web and native
  * renderers. Everything here is state, derivation and IO; anything that reads
@@ -8,44 +9,86 @@ import { type DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import { type DisplayBlock } from "@alliance/common/forms/display-blocks";
 import {
   collectSourceFormIds,
-  collectVariableInputFields,
+  forEachCondition,
+} from "@alliance/common/forms/form-conditions";
+import {
+  collectFieldLookup,
+  collectVariableResolutionFields,
+  isDisplayBlock,
   isQuestionField,
   variableInputFieldsById,
   type AnyField,
   type CityFieldValue,
   type FormSchema,
   type FormValue,
+  type ListSubField,
 } from "@alliance/common/forms/form-schema";
-import { resolveVariableValues } from "@alliance/common/forms/variables";
+import {
+  NO_OPTIONS,
+  schemaWithResolvedOptions,
+  type ResolvedOptions,
+} from "@alliance/common/forms/formula-options";
+import {
+  emptyUserPropertyPresence,
+  type UserPropertyPresence,
+} from "@alliance/common/forms/user-properties";
+import {
+  aggregateSourceKey,
+  variableAggregateSources,
+} from "@alliance/common/forms/variable-aggregates";
+import { resolveVariableValues } from "@alliance/common/forms/variable-evaluation";
+import { EMPTY_HISTORY } from "@alliance/common/forms/variable-source-history";
+import { variableHistoryFormIds } from "@alliance/common/forms/variables";
 import {
   isElementCurrentlyVisible as isElementCurrentlyVisibleShared,
   isFieldConditionallyRequired,
-  stripHiddenAnswers,
+  listRowData,
+  visibleListSubFields,
   type ConditionExtras,
 } from "@alliance/common/forms/visibility";
-import { type VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { R } from "@alliance/common/result";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   tasksGetForm,
+  tasksGetFormDraft,
   tasksGetFormResponsesAdmin,
   tasksGetMyFormResponse,
   tasksRunValidator,
+  tasksSaveFormDraft,
   userMyLocation,
+  type FormDraftDto,
   type UserDto,
 } from "./client";
 import {
   collectManualSourceFormIds,
   findUnknownConditionKind,
   findUnknownFormElementKind,
+  formRandomizationKey,
   getFallbackVisiblePageIndex,
-  getListSubFieldErrors,
   getNextVisiblePageIndex,
   getPreviousVisiblePageIndex,
   getVisiblePageIndices,
-  resolveFieldDefaultValue,
-  validateFieldValue as validateFieldValueShared,
+  type RandomizationKeyArgs,
 } from "./formrenderer";
+import {
+  getListSubFieldErrors,
+  validateFieldValue as validateFieldValueShared,
+} from "./forms/fieldValidation";
+import { resolveFieldDefaultValue } from "./forms/formDrafts";
+import {
+  completedFormSchema,
+  useDropUnofferedChoices,
+  useOfferedChoicesFor,
+  visibleOfferedAnswers,
+} from "./forms/formulaChoices";
+import {
+  evaluatedAggregates,
+  type VariableAggregates,
+} from "./forms/useVariableAggregates";
+import {
+  evaluatedSources,
+  type SourceHistories,
+} from "./forms/useVariableSourceHistories";
 import { parseVisibilityValidatorResults } from "./parsed-dtos";
 
 export type FieldErrorUpdater = (
@@ -117,32 +160,19 @@ export function useFieldErrors(): {
   return { fieldErrors, clearFieldErrors, applyFieldErrorUpdates };
 }
 
-/**
- * Seed for per-user answer randomization. Keyed on the acting user where there
- * is one so a member sees a stable order across devices, and on the persist key
- * otherwise so an anonymous draft stays stable across a reload.
- */
-export function useRandomizationKey(args: {
-  formId: number;
-  activeUserKey: string | null | undefined;
-  persistKey?: string | number | null;
-}): string {
+export function useRandomizationKey(args: RandomizationKeyArgs): string {
   const { formId, activeUserKey, persistKey } = args;
-  return useMemo(() => {
-    const base = `form:${formId}`;
-    if (activeUserKey) {
-      return `${base}:user:${activeUserKey}`;
-    }
-    if (persistKey !== undefined && persistKey !== null && persistKey !== "") {
-      return `${base}:persist:${String(persistKey)}`;
-    }
-    return base;
-  }, [formId, activeUserKey, persistKey]);
+  return useMemo(
+    () => formRandomizationKey({ formId, activeUserKey, persistKey }),
+    [formId, activeUserKey, persistKey],
+  );
 }
 
 export function useFormSchemaMaps(args: {
   schema: FormSchema;
   userDefaultPublic: boolean;
+  /** Seeds every timezone field, whatever default the field names. */
+  timeZone: string | undefined;
 }): {
   fieldLookup: Map<string, AnyField>;
   defaultValueMap: Map<string, FormValue>;
@@ -153,32 +183,27 @@ export function useFormSchemaMaps(args: {
   pageCount: number;
   maxPageIndex: number;
 } {
-  const { schema, userDefaultPublic } = args;
+  const { schema, userDefaultPublic, timeZone } = args;
 
   const { fieldLookup, defaultValueMap } = useMemo(() => {
-    const lookup = new Map<string, AnyField>();
     const defaults = new Map<string, FormValue>();
 
     for (const page of schema.pages) {
       for (const element of page.fields) {
         if (isQuestionField(element)) {
-          lookup.set(element.id, element);
-          const defaultValue = resolveFieldDefaultValue(element);
+          const defaultValue = resolveFieldDefaultValue(element, timeZone);
           if (defaultValue !== undefined) {
             defaults.set(element.id, defaultValue);
-          }
-          // List sub-fields are looked up too, so a condition can reference one.
-          if (element.kind === "list" && Array.isArray(element.fields)) {
-            for (const sub of element.fields) {
-              lookup.set(sub.id, sub);
-            }
           }
         }
       }
     }
 
-    return { fieldLookup: lookup, defaultValueMap: defaults };
-  }, [schema]);
+    return {
+      fieldLookup: collectFieldLookup(schema.pages),
+      defaultValueMap: defaults,
+    };
+  }, [schema, timeZone]);
 
   const unknownKind = useMemo(
     () =>
@@ -189,9 +214,9 @@ export function useFormSchemaMaps(args: {
   const hasUserLocationDisplayBlock = useMemo(
     () =>
       schema.pages?.some((page) =>
-        page.fields?.some(
+        (page.fields ?? []).some(
           (element) =>
-            !isQuestionField(element) && element.kind === "userLocation",
+            isDisplayBlock(element) && element.kind === "userLocation",
         ),
       ) ?? false,
     [schema],
@@ -291,17 +316,21 @@ export function usePreviousAnswerSources(args: {
   schema: FormSchema;
   /** Admin preview: read this user's responses rather than the caller's. */
   previewUserId?: string | number | null;
+  /** A guest has no responses to read. */
+  signedIn: boolean;
 }): {
   previousAnswerSchemas: Record<number, FormSchema>;
   previousAnswerData: Record<number, Record<string, unknown>>;
+  /** Stays set after a fetch fails, so nothing is judged by answers it lacks. */
+  previousAnswersPending: boolean;
 } {
-  const { schema, previewUserId } = args;
+  const { schema, previewUserId, signedIn } = args;
 
   const sourceFormIds = useMemo(() => {
     const ids = new Set<number>();
     for (const page of schema.pages) {
       for (const element of page.fields) {
-        if (!isQuestionField(element) && element.kind === "previousAnswer") {
+        if (isDisplayBlock(element) && element.kind === "previousAnswer") {
           if (element.sourceFormId) {
             ids.add(element.sourceFormId);
           }
@@ -330,11 +359,14 @@ export function usePreviousAnswerSources(args: {
   const [previousAnswerData, setPreviousAnswerData] = useState<
     Record<number, Record<string, unknown>>
   >({});
+  const loadKey = `${sourceFormIds.join(",")}|${previewUserId ?? ""}|${signedIn}`;
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (sourceFormIds.length === 0) {
       setPreviousAnswerSchemas({});
       setPreviousAnswerData({});
+      setLoadedKey(null);
       return;
     }
 
@@ -367,49 +399,76 @@ export function usePreviousAnswerSources(args: {
           schemas[entry[0]] = entry[1];
         }
       }
-      setPreviousAnswerSchemas(schemas);
 
       const dataEntries = await Promise.all(
         sourceFormIds.map(async (formId) => {
-          try {
-            if (previewId !== null) {
-              const response = await tasksGetFormResponsesAdmin({
+          if (previewId !== null) {
+            const sent = await R.fromPromise(
+              tasksGetFormResponsesAdmin({
                 path: { id: formId },
-              });
-              const match = (response.data ?? []).find(
-                (candidate) => String(candidate.user?.id) === previewId,
-              );
-              return match ? ([formId, match.answers ?? {}] as const) : null;
-            }
-            const response = await tasksGetMyFormResponse({
-              path: { id: formId },
-            });
-            return response.data
-              ? ([formId, response.data.answers ?? {}] as const)
-              : null;
-          } catch {
-            // The user has not submitted the source form.
-            return null;
+                throwOnError: false,
+              }),
+            );
+            if (!sent.ok || sent.value.error) return R.failure(formId);
+            const match = sent.value.data.find(
+              (candidate) => String(candidate.user?.id) === previewId,
+            );
+            return R.success(match ? ([formId, match] as const) : null);
           }
+          if (!signedIn) return R.success(null);
+          const sent = await R.fromPromise(
+            tasksGetMyFormResponse({
+              path: { id: formId },
+              throwOnError: false,
+            }),
+          );
+          if (!sent.ok) return R.failure(formId);
+          const { data: response, error } = sent.value;
+          // A 404 is a member who hasn't submitted the source form.
+          if (error && sent.value.response.status !== 404) {
+            return R.failure(formId);
+          }
+          return R.success(response ? ([formId, response] as const) : null);
         }),
       );
       if (cancelled) return;
 
       const data: Record<number, Record<string, unknown>> = {};
-      for (const entry of dataEntries) {
+      for (const loaded of dataEntries) {
+        const entry = loaded.ok ? loaded.value : null;
         if (entry) {
-          data[entry[0]] = entry[1];
+          data[entry[0]] = entry[1].answers ?? {};
+          const sourceSchema = schemas[entry[0]];
+          if (sourceSchema) {
+            schemas[entry[0]] = completedFormSchema(sourceSchema, entry[1]);
+          }
         }
       }
+      setPreviousAnswerSchemas(schemas);
       setPreviousAnswerData(data);
+      if (dataEntries.every((loaded) => loaded.ok)) setLoadedKey(loadKey);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [sourceFormIds, previewUserId]);
+  }, [sourceFormIds, previewUserId, signedIn, loadKey]);
 
-  return { previousAnswerSchemas, previousAnswerData };
+  return {
+    previousAnswerSchemas,
+    previousAnswerData,
+    previousAnswersPending: sourceFormIds.length > 0 && loadedKey !== loadKey,
+  };
+}
+
+function referencedValidatorIds(schema: FormSchema): number[] {
+  const ids = new Set<number>();
+  forEachCondition(schema, (condition) => {
+    if (condition.kind === "validator") {
+      ids.add(condition.validatorId);
+    }
+  });
+  return Array.from(ids);
 }
 
 /**
@@ -422,42 +481,22 @@ export function useVisibilityValidatorResults(args: {
   readOnly: boolean;
   /** The response's raw jsonb blob, validated here rather than by the caller. */
   savedResults?: Record<string, unknown> | null;
-}): Record<number, boolean> {
-  const { schema, readOnly, savedResults } = args;
+  /** Whether anyone, a member or a previewing admin, can run a validator. A guest fails them all. */
+  signedIn: boolean;
+}): {
+  results: Record<number, boolean>;
+  /** A run failed, so its verdict reads as hidden without being known. */
+  failed: boolean;
+} {
+  const { schema, readOnly, savedResults, signedIn } = args;
 
-  const visibilityValidatorIds = useMemo(() => {
-    const ids = new Set<number>();
-    const collectFromVisibleIfFormula = (
-      visibleIfFormula: VisibleIfFormula | undefined,
-    ) => {
-      if (!visibleIfFormula?.conditions) {
-        return;
-      }
-      for (const condition of Object.values(visibleIfFormula.conditions)) {
-        if (condition.kind === "validator") {
-          ids.add(condition.validatorId);
-        }
-      }
-    };
-    for (const page of schema.pages) {
-      collectFromVisibleIfFormula(page.visibleIfFormula);
-      for (const element of page.fields) {
-        collectFromVisibleIfFormula(element.visibleIfFormula);
-        if (
-          isQuestionField(element) &&
-          element.kind === "list" &&
-          Array.isArray(element.fields)
-        ) {
-          for (const sub of element.fields) {
-            collectFromVisibleIfFormula(sub.visibleIfFormula);
-          }
-        }
-      }
-    }
-    return Array.from(ids);
-  }, [schema]);
+  const visibilityValidatorIds = useMemo(
+    () => referencedValidatorIds(schema),
+    [schema],
+  );
 
   const [results, setResults] = useState<Record<number, boolean>>({});
+  const [failedIds, setFailedIds] = useState<ReadonlySet<number>>(new Set());
 
   // A response saved before a validator was added has no verdict for it, and a
   // missing verdict reads as hidden, so default to passing.
@@ -491,8 +530,13 @@ export function useVisibilityValidatorResults(args: {
     });
   }, [visibilityValidatorIds, readOnly]);
 
+  const guestResults = useMemo(
+    () => Object.fromEntries(visibilityValidatorIds.map((id) => [id, false])),
+    [visibilityValidatorIds],
+  );
+
   useEffect(() => {
-    if (readOnly) {
+    if (readOnly || !signedIn) {
       return;
     }
     const missingIds = visibilityValidatorIds.filter((id) => !(id in results));
@@ -512,21 +556,29 @@ export function useVisibilityValidatorResults(args: {
             if (!response.data || response.error) {
               throw response.error ?? new Error("Missing validator response");
             }
-            return [validatorId, response.data.isValid] as const;
+            return { validatorId, isValid: response.data.isValid, ok: true };
           } catch (error) {
             console.error(
               `Failed to evaluate visibility validator ${validatorId}`,
               error,
             );
-            return [validatorId, false] as const;
+            return { validatorId, isValid: false, ok: false };
           }
         }),
       );
       if (cancelled) return;
       setResults((prev) => {
         const next = { ...prev };
-        for (const [id, value] of entries) {
-          next[id] = value;
+        for (const { validatorId, isValid } of entries) {
+          next[validatorId] = isValid;
+        }
+        return next;
+      });
+      setFailedIds((prev) => {
+        const next = new Set(prev);
+        for (const { validatorId, ok } of entries) {
+          if (ok) next.delete(validatorId);
+          else next.add(validatorId);
         }
         return next;
       });
@@ -535,26 +587,91 @@ export function useVisibilityValidatorResults(args: {
     return () => {
       cancelled = true;
     };
-  }, [visibilityValidatorIds, results, readOnly]);
+  }, [visibilityValidatorIds, results, readOnly, signedIn]);
 
-  return readOnly ? readOnlyResults : results;
+  const failed =
+    !readOnly &&
+    signedIn &&
+    visibilityValidatorIds.some((id) => failedIds.has(id));
+  return useMemo(
+    () => ({
+      results: readOnly ? readOnlyResults : signedIn ? results : guestResults,
+      failed,
+    }),
+    [readOnly, readOnlyResults, signedIn, results, guestResults, failed],
+  );
 }
+
+export type FieldConditionContext = {
+  isFieldRequired: (field: AnyField) => boolean;
+  forRow: (cells: Record<string, FormValue>) => ListRowContext;
+};
+
+/** A row's cells shadow the form's answers. */
+export type ListRowContext = FieldConditionContext & {
+  visibleSubFields: (subFields: ListSubField[]) => ListSubField[];
+};
+
+/** For a renderer with no answers to read. */
+export const staticFieldContext: ListRowContext = {
+  isFieldRequired: (field) => !!field.required,
+  visibleSubFields: (subFields) => subFields,
+  forRow: () => staticFieldContext,
+};
+
+function fieldContextFor(params: {
+  data: Record<string, FormValue>;
+  extras: ConditionExtras & { readOnly?: boolean };
+}): FieldConditionContext {
+  const { data, extras } = params;
+  return {
+    // Reads the same answers as `validateFieldValue`, so a required marker on
+    // the label agrees with what blocks submission and with the server's check.
+    isFieldRequired: (field) =>
+      isFieldConditionallyRequired(field, data, extras),
+    forRow: (cells) => ({
+      ...fieldContextFor({
+        data: listRowData({ data, row: cells }),
+        extras,
+      }),
+      visibleSubFields: (subFields) =>
+        visibleListSubFields({
+          subFields,
+          data,
+          row: cells,
+          extras,
+        }),
+    }),
+  };
+}
+
+/** Each input visibility reads, set while it loads or after it fails. */
+export type VisibilityInputsPending = {
+  visibilityContextLoading: boolean;
+  visibilityContextFailed: boolean;
+  visibilityValidatorsFailed: boolean;
+  userLoading: boolean;
+  previousAnswersPending: boolean;
+};
 
 export type FormVisibility = {
   visibilityExtras: ConditionExtras;
   effectiveFormData: Record<string, FormValue>;
-  variableValues: ReturnType<typeof resolveVariableValues>;
-  isElementCurrentlyVisible: (
-    element: AnyField | DisplayBlock,
-    data?: Record<string, FormValue>,
-  ) => boolean;
-  isFieldCurrentlyRequired: (
-    field: AnyField,
-    data?: Record<string, FormValue>,
-  ) => boolean;
+  variableValues: ReadonlyMap<string, string>;
+  /** Set when any variable or options formula fails, which blocks the whole form. */
+  variablesError: string | null;
+  /** Apply to a field with `withResolvedOptions` before rendering it. */
+  resolvedOptions: ResolvedOptions;
+  isElementCurrentlyVisible: (element: AnyField | DisplayBlock) => boolean;
+  fieldContext: FieldConditionContext;
   visiblePageIndices: number[];
   nextVisiblePageIndex: number | null;
   previousVisiblePageIndex: number | null;
+  /**
+   * False while an input a condition reads is loading or failed, so which
+   * pages are visible, and where Next goes, may still change.
+   */
+  visibilitySettled: boolean;
   validateFieldValue: (
     field: AnyField,
     fieldValue: FormValue | undefined,
@@ -564,18 +681,24 @@ export type FormVisibility = {
 
 /**
  * Everything downstream of "which answers count right now". Answers to fields
- * the user cannot currently see are stripped before visibility, validation,
- * rendering and submission read them, so what the user sees is exactly what
- * submits. Raw `formData` keeps the hidden values, so re-showing a field
- * restores what was typed.
+ * the user cannot currently see, and selections an options formula doesn't
+ * offer, are stripped before visibility, validation, rendering and submission
+ * read them, so what the user sees is exactly what submits. Raw `formData`
+ * keeps hidden answers, so re-showing a field restores what was typed, and
+ * loses a selection only once its options formula stops offering it.
  *
  * Also nudges `currentPageIndex` to the nearest visible page when an answer
- * hides the page the user is on, so `setCurrentPageIndex` must be referentially
- * stable. Pass a `useState` setter, or a `useCallback`.
+ * hides the page the user is on, once `visibilitySettled`, and drops
+ * unoffered selections from `formData`, so `setCurrentPageIndex` and
+ * `setFormData` must be referentially stable. Pass `useState` setters, or
+ * `useCallback`s.
  */
 export function useFormVisibility(args: {
   schema: FormSchema;
   formData: Record<string, FormValue>;
+  setFormData: (
+    update: (prev: Record<string, FormValue>) => Record<string, FormValue>,
+  ) => void;
   readOnly: boolean;
   currentPageIndex: number;
   setCurrentPageIndex: (index: number) => void;
@@ -583,13 +706,24 @@ export function useFormVisibility(args: {
   visibilityValidatorResults: Record<number, boolean>;
   fieldLookup: Map<string, AnyField>;
   previousAnswerData: ConditionExtras["previousAnswerData"];
+  sourceHistories: SourceHistories;
+  variableAggregates: VariableAggregates;
+  /** From `useRandomizationKey`; seeds the variables' `random` inputs. */
+  randomizationKey: string;
   userHasCity: boolean;
+  userPropertyHasValue?: UserPropertyPresence;
   firstContractSignedAt: string | null;
   completedActionCount: number;
+  /**
+   * Selections drop only once none of these is set. Verdicts not yet requested
+   * are read from `visibilityValidatorResults`.
+   */
+  visibilityInputs: VisibilityInputsPending;
 }): FormVisibility {
   const {
     schema,
     formData,
+    setFormData,
     readOnly,
     currentPageIndex,
     setCurrentPageIndex,
@@ -597,9 +731,14 @@ export function useFormVisibility(args: {
     visibilityValidatorResults,
     fieldLookup,
     previousAnswerData,
+    sourceHistories,
+    variableAggregates,
+    randomizationKey,
     userHasCity,
+    userPropertyHasValue,
     firstContractSignedAt,
     completedActionCount,
+    visibilityInputs,
   } = args;
 
   // The single source of the account/device/validator state every visibility
@@ -613,6 +752,7 @@ export function useFormVisibility(args: {
       fieldLookup,
       previousAnswerData,
       userHasCity,
+      userPropertyHasValue: userPropertyHasValue ?? emptyUserPropertyPresence(),
       firstContractSignedAt,
       completedActionCount,
     }),
@@ -622,6 +762,7 @@ export function useFormVisibility(args: {
       fieldLookup,
       previousAnswerData,
       userHasCity,
+      userPropertyHasValue,
       firstContractSignedAt,
       completedActionCount,
     ],
@@ -634,53 +775,115 @@ export function useFormVisibility(args: {
     [visibilityExtras, readOnly],
   );
 
-  const effectiveFormData = useMemo(
+  // Only a read-only form draws past a deleted source form. A formula reading
+  // one resolves as if it had no submissions, which the builder's save already
+  // requires every options formula to handle.
+  const optionsSources = useMemo(() => {
+    const { sources, deletedFormIds } = evaluatedSources(sourceHistories);
+    return deletedFormIds.size === 0
+      ? sources
+      : new Map([
+          ...sources,
+          ...[...deletedFormIds].map((id) => [id, EMPTY_HISTORY] as const),
+        ]);
+  }, [sourceHistories]);
+  const visibleOffered = useMemo(
     () =>
-      stripHiddenAnswers(
-        schema.pages ?? [],
-        formData,
-        visibilityExtrasReadOnly,
-      ),
-    [schema.pages, formData, visibilityExtrasReadOnly],
+      visibleOfferedAnswers({
+        schema,
+        answers: formData,
+        extras: visibilityExtrasReadOnly,
+        sources: optionsSources,
+      }),
+    [schema, formData, visibilityExtrasReadOnly, optionsSources],
   );
+  const formulaOptions = visibleOffered.resolved;
+  const resolvedOptions = formulaOptions.ok
+    ? formulaOptions.value.options
+    : NO_OPTIONS;
+  const verdictsPending = useMemo(
+    () =>
+      referencedValidatorIds(schema).some(
+        (id) => !(id in visibilityValidatorResults),
+      ),
+    [schema, visibilityValidatorResults],
+  );
+  const visibilitySettled =
+    !Object.values(visibilityInputs).some(Boolean) && !verdictsPending;
+  const offeredChoicesFor = useOfferedChoicesFor({
+    schema,
+    extras: visibilityExtrasReadOnly,
+    historiesStatus: sourceHistories.status,
+    sources: optionsSources,
+    inputsSettled: visibilitySettled,
+  });
+  useDropUnofferedChoices({
+    schema,
+    readOnly,
+    formData,
+    offeredChoicesFor,
+    setFormData,
+  });
+  const effectiveFormData = visibleOffered.answers;
 
   const variableInputFields = useMemo(
-    () => variableInputFieldsById(collectVariableInputFields(schema)),
-    [schema],
+    () =>
+      variableInputFieldsById(
+        collectVariableResolutionFields(
+          schemaWithResolvedOptions(schema, resolvedOptions),
+        ),
+      ),
+    [schema, resolvedOptions],
   );
 
-  const variableValues = useMemo(
-    () =>
-      resolveVariableValues(schema.variables, {
-        answers: effectiveFormData,
-        fields: variableInputFields,
-      }),
-    [schema.variables, effectiveFormData, variableInputFields],
-  );
+  const variables = useMemo(() => {
+    const { sources, deletedFormIds } = evaluatedSources(sourceHistories);
+    const aggregates = evaluatedAggregates(variableAggregates);
+    // A variable reading a deleted form or question stays out, so its
+    // `#{name}` shows as written, the way shared output leaves a variable it
+    // can't resolve.
+    const resolvable = schema.variables?.filter(
+      (variable) =>
+        variableHistoryFormIds([variable]).every(
+          (id) => !deletedFormIds.has(id),
+        ) &&
+        variableAggregateSources([variable]).every((source) =>
+          aggregates.has(aggregateSourceKey(source)),
+        ),
+    );
+    return resolveVariableValues(resolvable, {
+      answers: effectiveFormData,
+      fields: variableInputFields,
+      sources,
+      aggregates,
+      randomizationKey,
+    });
+  }, [
+    schema.variables,
+    effectiveFormData,
+    variableInputFields,
+    sourceHistories,
+    variableAggregates,
+    randomizationKey,
+  ]);
 
   const isElementCurrentlyVisible = useCallback(
-    (
-      element: AnyField | DisplayBlock,
-      data?: Record<string, FormValue>,
-    ): boolean =>
+    (element: AnyField | DisplayBlock): boolean =>
       isElementCurrentlyVisibleShared(
         element,
-        data ?? effectiveFormData,
+        effectiveFormData,
         visibilityExtrasReadOnly,
       ),
     [effectiveFormData, visibilityExtrasReadOnly],
   );
 
-  // Reads the same answers as `validateFieldValue`, so a required marker on the
-  // label agrees with what blocks submission and with the server's check.
-  const isFieldCurrentlyRequired = useCallback(
-    (field: AnyField, data?: Record<string, FormValue>): boolean =>
-      isFieldConditionallyRequired(
-        field,
-        data ?? effectiveFormData,
-        visibilityExtras,
-      ),
-    [effectiveFormData, visibilityExtras],
+  const fieldContext = useMemo(
+    () =>
+      fieldContextFor({
+        data: effectiveFormData,
+        extras: visibilityExtrasReadOnly,
+      }),
+    [effectiveFormData, visibilityExtrasReadOnly],
   );
 
   const visiblePageIndices = useMemo(
@@ -704,6 +907,7 @@ export function useFormVisibility(args: {
   );
 
   useEffect(() => {
+    if (!visibilitySettled) return;
     const fallback = getFallbackVisiblePageIndex(
       visiblePageIndices,
       currentPageIndex,
@@ -711,7 +915,12 @@ export function useFormVisibility(args: {
     if (fallback !== null) {
       setCurrentPageIndex(fallback);
     }
-  }, [visiblePageIndices, currentPageIndex, setCurrentPageIndex]);
+  }, [
+    visibilitySettled,
+    visiblePageIndices,
+    currentPageIndex,
+    setCurrentPageIndex,
+  ]);
 
   const validateFieldValue = useCallback(
     (
@@ -731,12 +940,19 @@ export function useFormVisibility(args: {
   return {
     visibilityExtras,
     effectiveFormData,
-    variableValues,
+    variableValues: variables.ok ? variables.value : new Map(),
+    variablesError: formulaOptions.ok
+      ? variables.ok
+        ? null
+        : variables.error
+      : formulaOptions.error,
+    resolvedOptions,
     isElementCurrentlyVisible,
-    isFieldCurrentlyRequired,
+    fieldContext,
     visiblePageIndices,
     nextVisiblePageIndex,
     previousVisiblePageIndex,
+    visibilitySettled,
     validateFieldValue,
   };
 }
@@ -886,25 +1102,15 @@ export function useFormValidation(args: {
         listFieldIds.length > 0 ? listFieldIds : undefined,
       );
 
-      const hasAnyError = Object.values(updates).some(
-        (msg) => msg && msg.trim().length > 0,
-      );
-      const firstInvalid = visibleFields.find((field) => {
-        const message = updates[field.id];
-        return !!(message && message.trim().length > 0);
-      });
-      // A list sub-field error has no field of its own to scroll to, so fall
-      // back to the `parentId` head of its `parentId:cardIndex:subId` key.
-      const firstInvalidFieldId =
-        firstInvalid?.id ??
-        (hasAnyError
-          ? (() => {
-              const key = Object.keys(updates).find(
-                (k) => updates[k] && updates[k]!.trim().length > 0,
-              );
-              return key?.includes(":") ? key.split(":")[0] : key;
-            })()
-          : undefined);
+      const hasError = (key: string) => !!updates[key]?.trim();
+      const invalidKeys = Object.keys(updates).filter(hasError);
+      const hasAnyError = invalidKeys.length > 0;
+      // A list sub-field error is keyed `parentId:cardIndex:subId`.
+      const firstInvalidFieldId = visibleFields.find(
+        (field) =>
+          hasError(field.id) ||
+          invalidKeys.some((key) => key.startsWith(`${field.id}:`)),
+      )?.id;
 
       return { isValid: !hasAnyError, firstInvalidFieldId };
     },
@@ -941,4 +1147,123 @@ export function useFormValidation(args: {
   }, [schema.pages.length, validatePage]);
 
   return { validatePage, validateAllPages };
+}
+
+const DRAFT_SAVE_DEBOUNCE_MS = 1500;
+
+/**
+ * Keeps a member's in-progress answers on the server so they can finish the
+ * form on another device. The saved draft is not a submission: it creates no
+ * action activity, so nothing about it reaches feeds, counts or reminders.
+ *
+ * The local (localStorage / AsyncStorage) copy stays the fast path. This is
+ * the slow, cross-device one, so a failed save costs the member nothing on
+ * the device they are typing on.
+ */
+export function useFormDraftSync(args: {
+  enabled: boolean;
+  formId: number;
+  actionId: number;
+  formSnapshotId: number | null;
+  answers: Record<string, FormValue>;
+  publicAnswers: Record<string, boolean>;
+  currentPageIndex: number;
+  /** Saving starts once the member has edited something, so opening a form leaves no draft. */
+  edited: boolean;
+  /**
+   * Called with the server's `updatedAt` each time a save lands. Persist it
+   * beside the local draft: a stored draft carrying a different one was
+   * written somewhere else, and is the thing worth restoring.
+   */
+  onSaved: (updatedAt: string) => void;
+}): {
+  /** The stored draft, or null until the fetch lands. */
+  serverDraft: FormDraftDto | null;
+  saveFailed: boolean;
+  /** Call before submitting or withdrawing: the server deletes the draft, and a save queued behind the request would write it back. */
+  pauseSyncing: () => void;
+  /** Call when a submission the caller paused for didn't go through. */
+  resumeSyncing: () => void;
+} {
+  const {
+    enabled,
+    formId,
+    actionId,
+    formSnapshotId,
+    answers,
+    publicAnswers,
+    currentPageIndex,
+    edited,
+    onSaved,
+  } = args;
+  const [serverDraft, setServerDraft] = useState<FormDraftDto | null>(null);
+  const [fetched, setFetched] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    if (!enabled) return;
+    // A renderer whose form changes under it keeps this hook mounted, and the
+    // previous form's draft and open save path would both carry over.
+    setServerDraft(null);
+    setFetched(false);
+    let cancelled = false;
+    tasksGetFormDraft({ path: { id: formId } })
+      .then((response) => {
+        if (cancelled || !response.response.ok) return;
+        setServerDraft(response.data?.draft ?? null);
+        setFetched(true);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, formId]);
+
+  useEffect(() => {
+    // A save before the fetch lands overwrites another device's draft with
+    // this one's near-empty state. A failed fetch reads as no draft, so only
+    // a successful one opens the save path.
+    if (!enabled || !edited || !fetched || paused || formSnapshotId === null)
+      return;
+    const timer = setTimeout(() => {
+      tasksSaveFormDraft({
+        path: { id: formId },
+        body: {
+          actionId,
+          formSnapshotId,
+          answers,
+          publicAnswers,
+          currentPageIndex,
+        },
+      })
+        .then((response) => {
+          setSaveFailed(!response.response.ok);
+          if (response.data) {
+            onSaved(response.data.updatedAt);
+          }
+        })
+        .catch(() => {
+          setSaveFailed(true);
+        });
+    }, DRAFT_SAVE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [
+    enabled,
+    edited,
+    fetched,
+    paused,
+    formId,
+    actionId,
+    formSnapshotId,
+    answers,
+    publicAnswers,
+    currentPageIndex,
+    onSaved,
+  ]);
+
+  const pauseSyncing = useCallback(() => setPaused(true), []);
+  const resumeSyncing = useCallback(() => setPaused(false), []);
+
+  return { serverDraft, saveFailed, pauseSyncing, resumeSyncing };
 }

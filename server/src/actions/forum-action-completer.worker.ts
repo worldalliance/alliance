@@ -1,14 +1,17 @@
-import { ActionActivityType } from "@alliance/common/actionActivity";
+import { hasTakenEffect } from "@alliance/common/actionEvent";
+import { forEachCondition } from "@alliance/common/forms/form-conditions";
 import {
-  forEachCondition,
+  isQuestionField,
   type FormSchema,
 } from "@alliance/common/forms/form-schema";
-import { Injectable, Logger } from "@nestjs/common";
+import { R } from "@alliance/common/result";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
+import { milliseconds } from "date-fns";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
-import { ForumService } from "src/forum/forum.service";
+import { ForumCommentQueryService } from "src/forum/forum-comment-query.service";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
 import { LOCK_KEYS } from "src/notifs/lock-keys";
 import { withPgAdvisoryLock } from "src/notifs/lock-utils";
@@ -16,9 +19,11 @@ import {
   CustomValidator,
   CustomValidatorType,
 } from "src/tasks/entities/customvalidator.entity";
-import { Form } from "src/tasks/entities/form.entity";
+import { Form, loadedFormSnapshot } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
+import { formSchemaOf } from "src/tasks/form-snapshot-schema";
 import { User } from "src/user/entities/user.entity";
+import { hasMemberActionDeadlinePassed } from "src/utils/action-user";
 import {
   DataSource,
   In,
@@ -26,7 +31,9 @@ import {
   QueryFailedError,
   type Repository,
 } from "typeorm";
+import { TERMINAL_ACTIVITY_TYPES } from "./action-activity-status";
 import { ActionsService } from "./actions.service";
+import { CohortDecisionService } from "./cohort-decision.service";
 import { ForumAutocompletePlan } from "./dto/action.dto";
 import { ActionActivity } from "./entities/action-activity.entity";
 import { ActionEvent } from "./entities/action-event.entity";
@@ -38,8 +45,8 @@ import {
 
 const [PROCESS_ONE_LOCK_KEY1, PROCESS_ONE_LOCK_KEY2] =
   LOCK_KEYS.forumActionCompleter;
-const AUTOCOMPLETE_TARGET_OFFSET_MS = 5 * 60 * 1000;
-const AUTOCOMPLETE_WINDOW_MS = 5 * 60 * 1000;
+const AUTOCOMPLETE_TARGET_OFFSET_MS = milliseconds({ minutes: 5 });
+const AUTOCOMPLETE_WINDOW_MS = milliseconds({ minutes: 5 });
 
 @Injectable()
 export class ForumActionCompleterWorker {
@@ -57,9 +64,10 @@ export class ForumActionCompleterWorker {
     private readonly formResponseRepository: Repository<FormResponse>,
     @InjectRepository(CustomValidator)
     private readonly customValidatorRepository: Repository<CustomValidator>,
-    private readonly forumService: ForumService,
+    private readonly forumCommentQueryService: ForumCommentQueryService,
     private readonly actionsService: ActionsService,
     private readonly actionEventRecipientService: ActionEventRecipientService,
+    private readonly cohortDecisionService: CohortDecisionService,
     private readonly eventLogService: EventLogService,
   ) {}
 
@@ -93,9 +101,9 @@ export class ForumActionCompleterWorker {
           // started and its closing event hasn't happened yet.
           if (
             !memberActionEvent ||
-            memberActionEvent.date > now ||
+            !hasTakenEffect(memberActionEvent.date, now) ||
             !deadlineEvent ||
-            deadlineEvent.date <= now
+            hasMemberActionDeadlinePassed(deadlineEvent.date, now)
           ) {
             continue;
           }
@@ -207,6 +215,21 @@ export class ForumActionCompleterWorker {
       return [];
     }
 
+    if (shouldWrite) {
+      // The deadline window allows about two runs, too few to wait for the
+      // decision pass, and an undecided member reads as outside the cohort.
+      const decided = await R.fromPromise(
+        this.cohortDecisionService.decideOpenAction(action, runAt),
+      );
+      if (R.isFailure(decided)) {
+        this.logger.error(
+          `Failed to decide cohort for forum autocomplete of action ${action.id}`,
+          decided.error,
+        );
+        return [];
+      }
+    }
+
     const baseUsers =
       await this.actionEventRecipientService.findBaseUsersForEvent({
         action,
@@ -228,10 +251,7 @@ export class ForumActionCompleterWorker {
       where: {
         actionId: action.id,
         userId: In(eligibleResponderIds),
-        type: In([
-          ActionActivityType.USER_COMPLETED,
-          ActionActivityType.USER_WONT_COMPLETE,
-        ]),
+        type: In(TERMINAL_ACTIVITY_TYPES),
       },
     });
 
@@ -280,6 +300,26 @@ export class ForumActionCompleterWorker {
             );
             continue;
           }
+          // completeAction also 404s for a live action the user cannot open,
+          // such as an archived one, which must not be marked computed.
+          if (error instanceof NotFoundException) {
+            if (!(await this.actionRepository.existsBy({ id: action.id }))) {
+              this.logger.warn(
+                `Stopping completions for action ${action.id}, deleted since the run loaded it`,
+              );
+              return plannedUsers;
+            }
+            if (
+              !(await this.dataSource
+                .getRepository(User)
+                .existsBy({ id: userId }))
+            ) {
+              this.logger.warn(
+                `Skipping completion for action ${action.id} user ${userId}, deleted since the run loaded them`,
+              );
+              continue;
+            }
+          }
           throw error;
         }
       }
@@ -302,7 +342,7 @@ export class ForumActionCompleterWorker {
     // so they aren't part of the condition walk.
     for (const page of schema.pages ?? []) {
       for (const element of page.fields ?? []) {
-        if ("customValidatorId" in element && element.customValidatorId) {
+        if (isQuestionField(element) && element.customValidatorId) {
           validatorIds.add(element.customValidatorId);
         }
       }
@@ -364,7 +404,7 @@ export class ForumActionCompleterWorker {
   private async findForumValidator(
     form: Form,
   ): Promise<CustomValidator | null> {
-    const schema = form.formSnapshot.schema as unknown as FormSchema;
+    const schema = formSchemaOf(loadedFormSnapshot(form));
     const validatorIds = this.collectValidatorIds(schema);
     if (validatorIds.length === 0) {
       return null;
@@ -388,12 +428,14 @@ export class ForumActionCompleterWorker {
     type: CustomValidatorType,
   ): Promise<Set<number>> {
     if (type === CustomValidatorType.RepliedToForumPost) {
-      const replies = await this.forumService.findCommentsForPost(postId);
+      const replies =
+        await this.forumCommentQueryService.findCommentsForPost(postId);
       return new Set(replies.map((reply) => reply.authorId));
     }
 
     if (type === CustomValidatorType.RepliedToForumPostOrChild) {
-      const replies = await this.forumService.findCommentsForPostRaw(postId);
+      const replies =
+        await this.forumCommentQueryService.findCommentsForPostRaw(postId);
       return new Set(replies.map((reply) => reply.authorId));
     }
 
