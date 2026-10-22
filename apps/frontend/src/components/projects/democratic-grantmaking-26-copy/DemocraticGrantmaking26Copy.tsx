@@ -12,13 +12,14 @@ import {
   SiteRoot,
 } from "../../../site/PageShell";
 import { DisplayHeading, SITE_COL } from "../../../site/ui";
-import { ExpertGrid } from "../democratic-grantmaking-26/ExpertGrid";
 import { MEMBER_GOAL_LABEL } from "../democratic-grantmaking-26/GrantmakingMemberProgress";
 import { MemberWaitlistBar } from "../democratic-grantmaking-26/MemberWaitlistBar";
-import { ProjectTimeline } from "../democratic-grantmaking-26/ProjectTimeline";
 import { useWaitlistCount } from "../democratic-grantmaking-26/useWaitlist";
-import { WaitlistSignupForm } from "../democratic-grantmaking-26/WaitlistSignupForm";
 import { ABOUT_SECTIONS } from "./copy";
+import { ExpertGrid } from "./ExpertGrid";
+import { NewsCollage } from "./NewsCollage";
+import { ProjectTimeline } from "./ProjectTimeline";
+import { SignupInfo } from "./SignupInfo";
 
 export function loader() {
   if (import.meta.env.MODE === "production") throw data(null, { status: 404 });
@@ -58,41 +59,64 @@ export default function DemocraticGrantmaking26Copy() {
       <Navbar />
       <main>
         <div
-          className="bg-white pb-10 lg:flex lg:min-h-svh lg:flex-col lg:pb-0"
+          className="bg-white lg:flex lg:min-h-svh lg:flex-col lg:pb-0"
           style={{ paddingTop: NAV_HEIGHT }}
         >
           <div
-            className="flex flex-col justify-center pb-[clamp(1.5rem,10svh,6rem)] max-lg:[@media(max-aspect-ratio:1/2)_and_(min-height:901px)]:min-h-0! max-lg:[@media(max-aspect-ratio:1/2)_and_(min-height:901px)]:pb-6 md:pb-22 lg:min-h-0! lg:flex-1 lg:pb-0"
+            className="flex flex-col justify-center max-lg:[@media(max-aspect-ratio:1/2)_and_(min-height:901px)]:min-h-0! lg:min-h-0! lg:flex-1"
             style={{ minHeight: `calc(100svh - ${NAV_HEIGHT}px)` }}
           >
             <div
               className={cn(
                 PROJECT_COL,
-                "grid grid-cols-1 gap-y-6 pt-16 [@media(max-width:480px)_and_(max-height:700px)]:pt-8 lg:grid-cols-[minmax(0,1fr)_max(24rem,34%)] lg:items-center lg:gap-x-[10%] lg:pt-[clamp(4rem,10svh,8rem)]",
+                "grid grid-cols-1 gap-y-6 pt-16 [@media(max-width:480px)_and_(max-height:700px)]:pt-8 lg:grid-cols-[minmax(0,1fr)_max(24rem,34%)] lg:items-start lg:gap-x-[4%] lg:pt-[clamp(4rem,10svh,8rem)]",
               )}
             >
-              <div className="flex flex-col gap-4 lg:gap-[clamp(1rem,2.5vh,2rem)]">
-                <p className="text-left text-[1.05rem] text-[var(--site-ink)]/70 sm:text-[1.2rem] lg:-mb-2">
-                  An Alliance project / Fall 2026
-                </p>
+              <p className="-mb-2 text-left text-[1.05rem] text-[var(--site-ink)]/70 sm:text-[1.2rem]">
+                An Alliance project / Winter 2026
+              </p>
+              <div className="flex flex-col gap-4 lg:col-start-1 lg:row-start-2 lg:gap-[clamp(1rem,2.5vh,2rem)]">
                 <DisplayHeading
-                  as="h1"
+                  as="h2"
                   leading={1.2}
-                  className="text-5xl sm:text-6xl lg:text-[clamp(3rem,min(5vw,8vh),6rem)]"
+                  className="text-4xl sm:text-5xl lg:text-[clamp(2.25rem,min(3.75vw,6vh),4.5rem)]"
                 >
-                  Decide where to donate{" "}
-                  <span className="site-display">$100,000</span>
+                  A generation is growing up with AI chatbots. It’s time for a
+                  public review of their safety.{" "}
                 </DisplayHeading>
                 {/* <SiteSubtitle size={SubtitleSize.Page}>
                   Once the Alliance reaches 1,000 members, we will nominate and
                   vote on non-profits together.
                 </SiteSubtitle> */}
                 <p className="text-left text-2xl sm:text-3xl">
-                  Once the Alliance reaches 1,000 members, we will nominate and
-                  vote on non-profits together.
+                  Join our project with{" "}
+                  <a
+                    href="https://korabench.ai"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline"
+                  >
+                    KORA,
+                  </a>{" "}
+                  a European nonprofit research initiative, to improve tests
+                  measuring the safety of chatbots for children and teens
+                  worldwide.
                 </p>
               </div>
-              <WaitlistSignupForm className="w-full" />
+              <div className="lg:relative lg:col-start-2 lg:row-start-2 lg:self-stretch">
+                <NewsCollage className="lg:absolute lg:inset-0" />
+              </div>
+            </div>
+            <div className={cn(PROJECT_COL, "pt-12 md:pt-16")}>
+              <ProjectTimeline currentIdx={0} />
+            </div>
+            <div
+              className={cn(
+                PROJECT_COL,
+                "pt-8 lg:pt-[clamp(1.5rem,4svh,4rem)]",
+              )}
+            >
+              <SignupInfo className="w-full" />
             </div>
             <div
               className={cn(
@@ -103,21 +127,25 @@ export default function DemocraticGrantmaking26Copy() {
               <ProjectProgress />
             </div>
           </div>
-          <div className={cn(PROJECT_COL, "mt-12 lg:mt-24 lg:pb-24")}>
+          <div
+            className={cn(
+              PROJECT_COL,
+              "mt-12 flex flex-col gap-12 md:mt-16 md:gap-16",
+            )}
+          >
             <div className="flex flex-col items-center gap-8 rounded-lg bg-zinc-100 px-8 py-10 sm:px-12 sm:py-12">
               <p className="text-center text-lg text-[var(--site-ink)]/70 sm:text-xl">
-                Experts will provide comments that help you vote.
+                Safer Chatbots for Children is an ongoing project run by KORA, a
+                leading AI safety evaluation nonprofit, and the Alliance, an
+                online community of volunteers dedicated to tackling serious
+                global issues. This project is advised by.
               </p>
               <ExpertGrid />
             </div>
-            <ProjectTimeline currentIdx={0} className="mt-14 lg:mt-20" />
           </div>
         </div>
         <div
-          className={cn(
-            PROJECT_COL,
-            "pt-6 pb-20 md:pt-[1.05rem] md:pb-24 lg:pt-12 lg:pb-32",
-          )}
+          className={cn(PROJECT_COL, "pt-12 pb-20 md:pt-16 md:pb-24 lg:pb-32")}
         >
           <div className="mx-auto flex max-w-4xl flex-col gap-12 md:gap-16">
             {ABOUT_SECTIONS.map(({ heading, body }) => (
