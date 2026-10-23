@@ -31,7 +31,7 @@ export default [
   ),
   route(
     "/projects/safer-chatbots-for-children",
-    "components/projects/democratic-grantmaking-26-copy/DemocraticGrantmaking26Copy.tsx",
+    "components/projects/safer-chatbots-for-children-26/SaferChatbotsForChildren26.tsx",
   ),
   route("/projects/:slug", "pages/static/ProgressProjectPage.tsx"),
   route(WAITLIST_UNSUBSCRIBE_PATH, "pages/static/WaitlistUnsubscribePage.tsx"),

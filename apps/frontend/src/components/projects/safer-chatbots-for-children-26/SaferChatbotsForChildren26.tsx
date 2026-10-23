@@ -23,6 +23,7 @@ import {
   WAITLIST_GOAL,
 } from "./copy";
 import { ExpertGrid } from "./ExpertGrid";
+import { FactBlocks } from "./FactBlocks";
 import { NewsCollage } from "./NewsCollage";
 import { ProjectTimeline } from "./ProjectTimeline";
 
@@ -62,7 +63,7 @@ function ProjectProgress() {
   );
 }
 
-export default function DemocraticGrantmaking26Copy() {
+export default function SaferChatbotsForChildren26() {
   return (
     <SiteRoot className="bg-white">
       <Navbar />
@@ -107,9 +108,8 @@ export default function DemocraticGrantmaking26Copy() {
                   >
                     KORA,
                   </a>{" "}
-                  a European nonprofit research initiative, to improve tests
-                  measuring the safety of chatbots for children and teens
-                  worldwide.
+                  a European research nonprofit, to improve tests measuring the
+                  safety of chatbots for children worldwide.
                 </p>
               </div>
               <WaitlistSignupForm
@@ -125,6 +125,9 @@ export default function DemocraticGrantmaking26Copy() {
               )}
             >
               <ProjectProgress />
+            </div>
+            <div className={cn(PROJECT_COL, "pt-12 md:pt-16")}>
+              <FactBlocks />
             </div>
             <div className={cn(PROJECT_COL, "pt-12 md:pt-16")}>
               <NewsCollage />
