@@ -94,9 +94,17 @@ const OnboardingPage = () => {
   const { fetch: fetchMe } = useMe();
   const { latestContract } = useContract();
   const [searchParams, setSearchParams] = useSearchParams();
+  const oauthNotice = useOAuthNotice();
 
   const stepParam = searchParams.get("step");
-  const step = isOnboardingStep(stepParam) ? stepParam : OnboardingStep.Account;
+  // The provider lands here before `onLogin` resolves; defaulting to Account
+  // and waiting for the effect below to redirect away lets its sign-up copy,
+  // including the invite-only heading, flash for a frame first.
+  const step = isOnboardingStep(stepParam)
+    ? stepParam
+    : oauthNotice?.kind === "outcome"
+      ? OnboardingStep.Community
+      : OnboardingStep.Account;
   const referralCode = searchParams.get("ref");
   const isAccount = step === OnboardingStep.Account;
   // const mobileWeb = useMediaQuery(MOBILE_WEB_QUERY);
@@ -165,7 +173,6 @@ const OnboardingPage = () => {
     if (draft && draft.step !== step) goTo(draft.step);
   }, [draft, step, goTo]);
 
-  const oauthNotice = useOAuthNotice();
   const oauthError =
     oauthNotice?.kind === "error" ? oauthNoticeMessage(oauthNotice) : null;
 
