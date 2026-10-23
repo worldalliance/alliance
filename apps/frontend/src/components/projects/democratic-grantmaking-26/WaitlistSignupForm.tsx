@@ -75,10 +75,12 @@ export function WaitlistSignupForm({
   className,
   submitLabel = "Join the Alliance waitlist",
   note = "When we're ready, we'll send you an invite link.",
+  closedMessage,
 }: {
   className?: string;
   submitLabel?: string;
   note?: string;
+  closedMessage?: string;
 }) {
   const {
     codes,
@@ -89,6 +91,7 @@ export function WaitlistSignupForm({
   const mailEnabled = useWaitlistMailEnabled();
   const { query: browser, forget, join: submit } = useWaitlistBrowser();
   const { signupHref: inviteSignupHref } = useInviteSession();
+  const [closedShown, setClosedShown] = useState(false);
   const [contact, setContact] = useState("");
   const [country, setCountry] = useState<CountryCode>(DEFAULT_PHONE_COUNTRY);
   const [contactError, setContactError] = useState<string | null>(null);
@@ -126,6 +129,10 @@ export function WaitlistSignupForm({
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (closedMessage) {
+      setClosedShown(true);
+      return;
+    }
     const form = new FormData(event.currentTarget);
     const parsed = parseWaitlistContact(contact, country);
     if (R.isFailure(parsed)) {
@@ -243,10 +250,25 @@ export function WaitlistSignupForm({
       <Button
         type="submit"
         color={ButtonColor.Black}
-        disabled={restoring || submit.isPending || !referralKnown || linkFailed}
+        onClick={(event) => {
+          if (!closedMessage) return;
+          event.preventDefault();
+          setClosedShown(true);
+        }}
+        disabled={
+          closedShown ||
+          restoring ||
+          submit.isPending ||
+          !referralKnown ||
+          linkFailed
+        }
         className={cn(ACCOUNT_BUTTON, "p-4 text-base sm:text-lg")}
       >
-        {submit.isPending ? "Joining…" : submitLabel}
+        {closedShown
+          ? closedMessage
+          : submit.isPending
+            ? "Joining…"
+            : submitLabel}
       </Button>
       {submit.isError && !linkFailed && (
         <p className="text-sm text-red-700" role="alert">

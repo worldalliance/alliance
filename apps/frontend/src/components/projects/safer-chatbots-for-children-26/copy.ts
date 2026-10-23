@@ -17,7 +17,7 @@ export const ABOUT_SECTIONS = [
   },
   {
     heading: "How will this work?",
-    body: `1,000 Alliance members and an expert panel will decide how to donate the $100,000. This will happen in a four-step process:
+    body: `This will happen in a three-step process:
 
 1. Each participant will: Read short scenarios of children interacting with an AI chatbot, then rate each scenario as “safe”, “unsafe”, or “undetermined”
 
@@ -32,6 +32,9 @@ export const WAITLIST_GOAL = 500;
 export const SIGNUP_BUTTON = "Join the waitlist for this project";
 
 export const SIGNUP_NOTE = "The project will begin November 17th";
+
+export const SIGNUP_CLOSED =
+  "Waitlist is not live yet, please come back next week.";
 
 export interface Expert {
   name: string;
@@ -59,17 +62,20 @@ export interface Fact {
 export const FACTS: Fact[] = [
   {
     headline: "Most teens in the US use chatbots.",
-    subtitle: "2 in 3 US teens have used chatbots, and 3 in 10 use them daily [Pew Research]",
+    subtitle:
+      "2 in 3 US teens have used chatbots, and 3 in 10 use them daily [Pew Research]",
     href: "https://www.pewresearch.org/internet/2025/12/09/teens-social-media-and-ai-chatbots-2025/",
   },
   {
     headline: "Half of teens have had a harmful interaction with chatbots.",
-    subtitle: "1 in 2 teens had a harmful interaction involving one or more specific risks or harms with the chatbot [Journal of Adolescence]",
+    subtitle:
+      "1 in 2 teens had a harmful interaction involving one or more specific risks or harms with the chatbot [Journal of Adolescence]",
     href: "https://onlinelibrary.wiley.com/doi/10.1002/jad.70164",
   },
   {
     headline: "Most teens don't trust big tech to self-regulate.",
-    subtitle: "6 in 10 are skeptical that [Common Sense Media]",
+    subtitle:
+      "6 in 10 say big tech cannot be trusted to prioritize their mental health, safety, and well-being. [Common Sense Media]",
     href: "https://www.commonsensemedia.org/press-releases/nearly-3-in-4-teens-have-used-ai-companions-new-national-survey-finds",
   },
 ];
