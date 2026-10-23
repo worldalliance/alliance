@@ -11,7 +11,6 @@ import {
   SiteRoot,
 } from "../../../site/PageShell";
 import { DisplayHeading, SITE_COL } from "../../../site/ui";
-import { MEMBER_GOAL_LABEL } from "../democratic-grantmaking-26/GrantmakingMemberProgress";
 import { MemberWaitlistBar } from "../democratic-grantmaking-26/MemberWaitlistBar";
 import { useWaitlistCount } from "../democratic-grantmaking-26/useWaitlist";
 import { WaitlistSignupForm } from "../democratic-grantmaking-26/WaitlistSignupForm";
@@ -19,6 +18,7 @@ import {
   ABOUT_SECTIONS,
   SHOW_TIMELINE,
   SIGNUP_BUTTON,
+  SIGNUP_CLOSED,
   SIGNUP_NOTE,
   WAITLIST_GOAL,
 } from "./copy";
@@ -34,8 +34,9 @@ export function loader() {
 
 export function meta() {
   return socialPreviewMeta({
-    title: "Democratic Grantmaking '26 — The Alliance",
-    description: `We're planning a project in which an expert panel and ${MEMBER_GOAL_LABEL} members will work together to make a significant grant.`,
+    title: "Safer Chatbots for Children — The Alliance",
+    description:
+      "Join our project with KORA, a European research nonprofit, to improve tests measuring the safety of chatbots for children worldwide.",
     url: "/projects/safer-chatbots-for-children",
   });
 }
@@ -83,7 +84,7 @@ export default function SaferChatbotsForChildren26() {
               )}
             >
               <p className="-mb-2 text-left text-[1.05rem] text-[var(--site-ink)]/70 sm:text-[1.2rem]">
-                Safer Chatbots for Children project / Winter 2026
+                Safer Chatbots for Children / Winter 2026
               </p>
               <div className="flex flex-col gap-4 lg:col-start-1 lg:row-start-2 lg:gap-[clamp(1rem,2.5vh,2rem)]">
                 <DisplayHeading
@@ -94,10 +95,6 @@ export default function SaferChatbotsForChildren26() {
                   A generation is growing up with AI chatbots. It’s time the
                   public had a say.{" "}
                 </DisplayHeading>
-                {/* <SiteSubtitle size={SubtitleSize.Page}>
-                  Once the Alliance reaches 1,000 members, we will nominate and
-                  vote on non-profits together.
-                </SiteSubtitle> */}
                 <p className="text-left text-2xl sm:text-3xl">
                   Join our project with{" "}
                   <a
@@ -116,6 +113,7 @@ export default function SaferChatbotsForChildren26() {
                 className="w-full lg:col-start-2 lg:row-start-2 lg:self-center"
                 submitLabel={SIGNUP_BUTTON}
                 note={SIGNUP_NOTE}
+                closedMessage={SIGNUP_CLOSED}
               />
             </div>
             <div
