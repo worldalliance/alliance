@@ -12,7 +12,6 @@ import {
 } from "../../../site/PageShell";
 import { DisplayHeading, SITE_COL } from "../../../site/ui";
 import { ExpertGrid } from "./ExpertGrid";
-import { MEMBER_GOAL_LABEL } from "./GrantmakingMemberProgress";
 import { MemberWaitlistBar } from "./MemberWaitlistBar";
 import { ABOUT_SECTIONS } from "./placeholders";
 import { ProjectTimeline } from "./ProjectTimeline";
@@ -21,9 +20,10 @@ import { WaitlistSignupForm } from "./WaitlistSignupForm";
 
 export function meta() {
   return socialPreviewMeta({
-    title: "Democratic Grantmaking '26 — The Alliance",
-    description: `We're planning a project in which an expert panel and ${MEMBER_GOAL_LABEL} members will work together to make a significant grant.`,
+    title: "Alliance Democratic Grantmaking",
+    description: `We're planning a project in which members and experts will work together to make a significant grant.`,
     url: WAITLIST_HREF,
+    image: "/grantmaking-link-thumbnail.png",
   });
 }
 
