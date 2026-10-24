@@ -67,7 +67,7 @@ export class OnetimeInviteDto extends PickType(OnetimeInvite, [
   "createdAt",
   "invitedUserId",
 ]) {
-  @ApiPropertyOptional({ type: CommunityDto })
+  @ApiPropertyOptional({ type: CommunityDto, nullable: true })
   @Type(() => CommunityDto)
   community?: CommunityDto | null;
 
