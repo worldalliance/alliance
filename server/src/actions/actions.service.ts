@@ -206,7 +206,6 @@ import {
   CreateActionEventDto,
   CreateActionSuiteDto,
   CreateActionUpdateDto,
-  CreateReminderGroupDto,
   ExportActionDto,
   GlobalFeedActionUpdateDto,
   GlobalFeedActivityGroupDto,
@@ -235,6 +234,7 @@ import {
   CreateGeneralUpdateDto,
   UpdateGeneralUpdateDto,
 } from "./dto/general-update.dto";
+import { CreateReminderGroupDto } from "./dto/reminder-group.dto";
 import { ShareUrlStats } from "./dto/share-url.dto";
 import {
   ActionActivity,

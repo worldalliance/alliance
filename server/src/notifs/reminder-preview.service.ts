@@ -6,7 +6,7 @@ import {
   PreviewEmailHtmlResponse,
   PreviewTextDto,
   ReminderPreviewContextDto,
-} from "src/actions/dto/action.dto";
+} from "src/actions/dto/reminder-group.dto";
 import { EmailType } from "src/mail/mail.entity";
 import { MailService, processKeywordReplacements } from "src/mail/mail.service";
 import { type Repository } from "typeorm";
