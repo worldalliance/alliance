@@ -21,5 +21,6 @@ Each piece of the form that owns its own rendering moves into a component, with 
 - `ReminderKeywordHelp.tsx`: the keyword table, its expanded state, and the `keywords` list the editors highlight, which tracks the table.
 - `ReminderMessageFields.tsx`: the email subject, email, text, and push editors, their previews, and the preview task counts.
 - `ReminderScheduleFields.tsx`: the inputs for each timing mode and the "Relative to" anchor selector.
+- `TentativePlanSummary.tsx`: the recipient count, its first send time, and the count's loading and retryable error states. The form keeps fetching the count, because its submit waits on it.
 
 The components take the draft fields they show and an `onChange` patch, so the draft keeps a single owner. The name, timing-mode select, and recipient fields stay in the form, beside the draft and the requests that read them.

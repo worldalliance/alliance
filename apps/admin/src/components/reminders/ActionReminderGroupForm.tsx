@@ -10,15 +10,14 @@ import {
   type ReminderCohortType,
   type ReminderGroupTimingMode,
 } from "@alliance/shared/client";
-import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import LargeCheckbox from "@alliance/sharedweb/ui/LargeCheckbox";
 import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
-import { RotateCw } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ReminderKeywordHelp from "./ReminderKeywordHelp";
 import ReminderMessageFields from "./ReminderMessageFields";
 import ReminderScheduleFields from "./ReminderScheduleFields";
+import TentativePlanSummary from "./TentativePlanSummary";
 import {
   ActionReminderGroupFormInitialValues,
   draftFromInitialValues,
@@ -269,16 +268,6 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
 
   const combinedError = localError ?? serverError ?? null;
 
-  const sortedPlans = [...(tentativePlans ?? [])].sort(
-    (a, b) =>
-      new Date(a.scheduledFor).getTime() - new Date(b.scheduledFor).getTime(),
-  );
-  const firstTentativePlan = sortedPlans[0];
-
-  const isProd = !(
-    typeof window !== "undefined" && window.location.href.includes("localhost")
-  );
-
   return (
     <form onSubmit={handleSubmit} className="space-y-4 w-full">
       {combinedError && (
@@ -447,49 +436,11 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
       )}
 
       <div className="flex justify-end gap-3">
-        {tentativePlans === null &&
-          (previewError ? (
-            <div className="px-4 py-2 self-start flex items-center gap-2 text-sm text-red-600">
-              <p>{previewError}</p>
-              <button
-                type="button"
-                onClick={() => setPreviewAttempt((attempt) => attempt + 1)}
-                aria-label="Retry recipient count"
-                title="Retry recipient count"
-                className="shrink-0 rounded p-1 hover:bg-red-50"
-              >
-                <RotateCw className="h-4 w-4" />
-              </button>
-            </div>
-          ) : (
-            <p className="px-4 py-2 self-start text-sm text-zinc-500">
-              Counting recipients…
-            </p>
-          ))}
-        {tentativePlans !== null && tentativePlans.length > 0 && (
-          <p
-            className={cn(
-              "px-4 py-2 rounded self-start",
-              tentativePlans.length > 0 && isProd
-                ? "bg-yellow-600 text-white"
-                : "border border-gray-200",
-            )}
-          >
-            {isProd && "⚠️"} This will send <b>{tentativePlans.length}</b>{" "}
-            reminders
-            {firstTentativePlan && (
-              <span>
-                , starting at{" "}
-                {new Date(firstTentativePlan.scheduledFor).toLocaleString()}
-              </span>
-            )}
-            {firstTentativePlan &&
-              Date.now() >
-                new Date(firstTentativePlan.scheduledFor).getTime() && (
-                <span className="text-red-500"> (immediately)</span>
-              )}
-          </p>
-        )}
+        <TentativePlanSummary
+          tentativePlans={tentativePlans}
+          previewError={previewError}
+          onRetry={() => setPreviewAttempt((attempt) => attempt + 1)}
+        />
         {onCancel && (
           <Button
             type="button"
