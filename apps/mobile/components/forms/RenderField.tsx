@@ -1,4 +1,3 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { formatCityValue, parseCityValue } from "@alliance/common/forms/city";
 import type {
   AnyField,
@@ -7,12 +6,9 @@ import type {
   ListField,
 } from "@alliance/common/forms/form-schema";
 import type { UserDto } from "@alliance/shared/client";
-import {
-  resolvePickedPreview,
-  resolveUploadSlot,
-  type FilePick,
-  type FileUploadSlot,
-  type FileUploadSlots,
+import type {
+  FileUploadSlot,
+  FileUploadSlots,
 } from "@alliance/shared/forms/fileUploadSlots";
 import { offersNoOptions } from "@alliance/shared/forms/formulaChoices";
 import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
@@ -24,22 +20,14 @@ import {
   listCardWriters,
   resolveCards,
 } from "@alliance/shared/forms/listCards";
-import {
-  cancelImageUpload,
-  noOptionsAvailable,
-} from "@alliance/shared/lib/copy";
+import { noOptionsAvailable } from "@alliance/shared/lib/copy";
 import { cn } from "@alliance/shared/styles/util";
 import type { FieldConditionContext } from "@alliance/shared/useFormRenderer";
-import { X } from "lucide-react-native";
-import { useRef, useState } from "react";
-import { Image, TouchableOpacity, View } from "react-native";
-import { getImageSource } from "../../lib/config";
-import { pickImageDataUri } from "../../lib/pickImageDataUri";
-import AppMarkdownWrapper from "../AppMarkdownWrapper";
+import { View } from "react-native";
 import Button, { ButtonColor, ButtonSize } from "../system/Button";
 import Card, { CardStyle } from "../system/Card";
 import Checkbox from "../system/Checkbox";
-import Text, { FontWeight } from "../system/Text";
+import Text from "../system/Text";
 import {
   MultiSelectInputField,
   RadioInputField,
@@ -47,6 +35,7 @@ import {
   SelectInputField,
 } from "./ChoiceFields";
 import CityAutosuggest from "./CityAutosuggest";
+import { ContractInputField } from "./ContractInputField";
 import { getCustomComponentById } from "./customComponentRegistry";
 import { fieldAccessibilityLabel } from "./fieldAccessibilityLabel";
 import {
@@ -54,6 +43,7 @@ import {
   RenderLabel,
   renderValidationMessage,
 } from "./fieldParts";
+import { FileInputField } from "./FileInputField";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
 import { PhoneInputField } from "./PhoneInputField";
 import { RankingFieldInput } from "./RankingFieldInput";
@@ -116,18 +106,6 @@ export function RenderField({
     hideLabel,
     required,
   };
-
-  const [filePreview, setFilePreview] = useState<FilePick | null>(null);
-  const [pickerError, setPickerError] = useState<string | null>(null);
-  // The library sheet is open across an await, before any upload has started,
-  // so `uploading` cannot keep a second tap out.
-  const pickingRef = useRef(false);
-
-  const {
-    slot: uploadSlot,
-    uploading,
-    uploadError,
-  } = resolveUploadSlot({ fileUpload, fileUploadSlot, fieldId: field.id });
 
   if (onChange !== undefined && !disabled && offersNoOptions(field)) {
     return (
@@ -261,80 +239,15 @@ export function RenderField({
       );
     }
 
-    case "file": {
-      const currentPreview =
-        resolvePickedPreview({ pick: filePreview, value, uploading }) ??
-        (typeof value === "string" && value ? getImageSource(value) : null);
-
-      const pickImage = async () => {
-        if (disabled || uploading || !fileUpload) return;
-        if (pickingRef.current) return;
-        pickingRef.current = true;
-        setPickerError(null);
-        try {
-          const picked = await pickImageDataUri({ allowsEditing: true });
-          if (!picked.ok) {
-            console.error("Failed to pick image", picked.error);
-            setPickerError("Unable to read that photo. Try another one.");
-            return;
-          }
-          if (!picked.value) {
-            return;
-          }
-          setFilePreview({ uri: picked.value.uri, replaces: value });
-          void fileUpload.onFileSelected(uploadSlot, picked.value.dataUri);
-        } finally {
-          pickingRef.current = false;
-        }
-      };
-
+    case "file":
       return (
-        <View>
-          <RenderLabel
-            field={field}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          {currentPreview && (
-            <Image
-              source={{ uri: currentPreview }}
-              className="w-full h-48 rounded-lg mb-3 bg-zinc-200"
-              resizeMode="cover"
-            />
-          )}
-          <View className="flex-row items-center gap-3">
-            <TouchableOpacity
-              onPress={pickImage}
-              disabled={disabled || uploading}
-              className="flex-1 justify-start border border-zinc-200 rounded-lg p-3"
-            >
-              {uploading ? (
-                <Text className="text-sm text-blue-600">Uploading...</Text>
-              ) : (
-                <Text className="text-base">Choose photo</Text>
-              )}
-            </TouchableOpacity>
-            {uploading && (
-              <TouchableOpacity
-                onPress={() => fileUpload?.cancelUpload(uploadSlot)}
-                accessibilityLabel={cancelImageUpload}
-                hitSlop={8}
-                className="p-2"
-              >
-                <X size={20} color="#71717a" />
-              </TouchableOpacity>
-            )}
-          </View>
-          {pickerError || uploadError ? (
-            <Text className="text-xs text-red-500 mt-2">
-              {uploadError || pickerError}
-            </Text>
-          ) : null}
-          {renderValidationMessage(errorMessage)}
-        </View>
+        <FileInputField
+          {...inputProps}
+          field={field}
+          fileUpload={fileUpload}
+          fileUploadSlot={fileUploadSlot}
+        />
       );
-    }
 
     case "list": {
       const listField = field as ListField;
@@ -438,80 +351,8 @@ export function RenderField({
       );
     }
 
-    case "contract": {
-      const contract = field.contract;
-      const signedValue = typeof value === "boolean" ? value : undefined;
-      return (
-        <View className="gap-3">
-          {contract?.markdown ? (
-            <>
-              <View className="rounded-lg border border-zinc-200 bg-white p-4">
-                <AppMarkdownWrapper>{contract.markdown}</AppMarkdownWrapper>
-              </View>
-              <Card cardStyle={CardStyle.White} className="p-4">
-                {!required && !isOutputView && <OptionalLabelPrefix />}
-                <Text className="text-zinc-900 mb-3" weight={FontWeight.Medium}>
-                  {field.signQuestion.trim()}
-                </Text>
-                <View className="flex-row gap-3">
-                  <TouchableOpacity
-                    onPress={() => onChange?.(true)}
-                    disabled={disabled}
-                    className={cn(
-                      "flex-1 py-3 rounded-lg border items-center",
-                      signedValue === true
-                        ? "border-green-600 bg-green-50"
-                        : "border-zinc-200 bg-white",
-                    )}
-                  >
-                    <Text
-                      className={cn(
-                        "",
-                        signedValue === true
-                          ? "text-green-700"
-                          : "text-zinc-700",
-                      )}
-                      weight={FontWeight.Medium}
-                    >
-                      {field.yesLabel.trim()}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => onChange?.(false)}
-                    disabled={disabled}
-                    className={cn(
-                      "flex-1 py-3 rounded-lg border items-center",
-                      signedValue === false
-                        ? "border-red-600 bg-red-50"
-                        : "border-zinc-200 bg-white",
-                    )}
-                  >
-                    <Text
-                      className={cn(
-                        "",
-                        signedValue === false
-                          ? "text-red-700"
-                          : "text-zinc-700",
-                      )}
-                      weight={FontWeight.Medium}
-                    >
-                      {field.noLabel.trim()}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </Card>
-            </>
-          ) : (
-            <View className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
-              <Text className="text-sm text-zinc-500 italic">
-                Select a contract in the form builder to preview.
-              </Text>
-            </View>
-          )}
-          {renderValidationMessage(errorMessage)}
-        </View>
-      );
-    }
+    case "contract":
+      return <ContractInputField {...inputProps} field={field} />;
 
     case "custom": {
       const definition = getCustomComponentById(field.componentId);
