@@ -675,7 +675,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
 
   const [keywordsHelpExpanded, setKeywordsHelpExpanded] = useState(false);
 
-  const sortedPlans = (tentativePlans ?? []).sort(
+  const sortedPlans = [...(tentativePlans ?? [])].sort(
     (a, b) =>
       new Date(a.scheduledFor).getTime() - new Date(b.scheduledFor).getTime(),
   );

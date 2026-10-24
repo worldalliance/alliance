@@ -135,6 +135,24 @@ it("holds submit until the recipient count is current", async () => {
   await waitFor(() => expect(submit).toHaveProperty("disabled", false));
 });
 
+it("starts at the earliest plan without reordering the previewed plans", async () => {
+  const later = { scheduledFor: new Date(2030, 0, 2).toISOString() };
+  const plans = Object.freeze([later, plan]);
+  mockFetch(async () => {
+    const response = Response.json(plans, { status: 201 });
+    // Keeps the frozen array as state, so sorting it in place throws.
+    jest.spyOn(response, "json").mockResolvedValue(plans);
+    return response;
+  });
+  renderForm(formElement(7));
+
+  expect(
+    await screen.findByText(new Date(plan.scheduledFor).toLocaleString(), {
+      exact: false,
+    }),
+  ).toBeTruthy();
+});
+
 it("holds submit after a failed preview until a retry succeeds", async () => {
   let failing = true;
   mockFetch(async (request) => {
