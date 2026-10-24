@@ -23,17 +23,17 @@ import React, {
 import ActionCompletionCurveChart from "../components/ActionCompletionCurveChart";
 import ActionCompletionBarsChart from "../components/stats/ActionCompletionBarsChart";
 import AggregateStatsCard from "../components/stats/AggregateStatsCard";
+import CompletionRateCharts from "../components/stats/CompletionRateCharts";
 import { type ParsedContractStatusPoint } from "../components/stats/contractStatusHistory";
 import InviteFunnelCard from "../components/stats/InviteFunnelCard";
 import MemberReliabilityCard from "../components/stats/MemberReliabilityCard";
 import MembersOverTimeChart from "../components/stats/MembersOverTimeChart";
 import MissedActionsCard from "../components/stats/MissedActionsCard";
+import { parseIsoDate } from "../components/stats/parseIsoDate";
 import PlatformTenureCohortCard from "../components/stats/PlatformTenureCohortCard";
 import {
   TimeSeriesChart,
   fullDateFormatter,
-  type ChartSeries,
-  type DataPoint,
   type MultiLineSeries,
 } from "../components/TimeSeriesChart";
 import { adminRefusalMessage } from "../lib/adminRefusal";
@@ -115,49 +115,6 @@ const invalidRangeMessage = (range: {
   return null;
 };
 
-const parseIsoDate = (value?: string | null): Date | null => {
-  if (!value) return null;
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-};
-
-const parseLocalDateInput = (
-  value?: string | null,
-  endOfDay = false,
-): Date | null => {
-  if (!value) return null;
-  const [yearRaw, monthRaw, dayRaw] = value.split("-");
-  const year = Number(yearRaw);
-  const month = Number(monthRaw);
-  const day = Number(dayRaw);
-  if (
-    !Number.isInteger(year) ||
-    !Number.isInteger(month) ||
-    !Number.isInteger(day)
-  ) {
-    return null;
-  }
-  const parsed = new Date(
-    year,
-    month - 1,
-    day,
-    endOfDay ? 23 : 0,
-    endOfDay ? 59 : 0,
-    endOfDay ? 59 : 0,
-    endOfDay ? 999 : 0,
-  );
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-};
-
-const getWeekStartDate = (value: Date): Date => {
-  const date = new Date(value);
-  date.setHours(0, 0, 0, 0);
-  const dayOfWeek = date.getDay();
-  const daysFromMonday = (dayOfWeek + 6) % 7;
-  date.setDate(date.getDate() - daysFromMonday);
-  return date;
-};
-
 const StatsPage: React.FC = () => {
   const defaultRange = useMemo(() => getDefaultRange(), []);
   const [startInput, setStartInput] = useState<string>(defaultRange.start);
@@ -177,17 +134,6 @@ const StatsPage: React.FC = () => {
   const [dailyStatsTableOpen, setDailyStatsTableOpen] = useState(false);
   const [actionStatsTableOpen, setActionStatsTableOpen] = useState(false);
   const [weekRange, setWeekRange] = useState({ min: 0, max: 20 });
-  const [completionRateAbsolute, setCompletionRateAbsolute] =
-    useState<boolean>(false);
-  const [completionRateRange, setCompletionRateRange] = useState(() => {
-    const end = new Date();
-    const start = new Date();
-    start.setMonth(start.getMonth() - 5);
-    return {
-      start: dateToInputValue(start),
-      end: dateToInputValue(end),
-    };
-  });
   const [reminderClickRateRange, setReminderClickRateRange] = useState(() => {
     const end = new Date();
     const start = new Date();
@@ -290,239 +236,6 @@ const StatsPage: React.FC = () => {
       }))
       .filter((record) => !Number.isNaN(record.parsedDate.getTime()));
   }, [stats]);
-
-  // Cumulative average completion rate data.
-  const cumulativeCompletionData = useMemo(() => {
-    const now = new Date();
-    const completedActions = actionStats
-      .filter(
-        (a) =>
-          a.memberActionEndDate &&
-          a.showInChart &&
-          !a.onboarding &&
-          !a.optional,
-      )
-      .map((a) => ({
-        ...a,
-        endDate: new Date(a.memberActionEndDate!),
-      }))
-      .filter((a) => a.endDate <= now)
-      .sort((a, b) => a.endDate.getTime() - b.endDate.getTime());
-
-    if (completedActions.length === 0) return [];
-
-    const rangeStart = parseLocalDateInput(completionRateRange.start);
-    const rangeEnd = parseLocalDateInput(completionRateRange.end, true);
-    if (!rangeStart || !rangeEnd || rangeStart > rangeEnd) {
-      return [];
-    }
-
-    const dataPoints: {
-      date: Date;
-      avgRate: number;
-      actionCount: number;
-      actionNames: string[];
-      dayKey: string;
-    }[] = [];
-    let runningSum = 0;
-    let count = 0;
-
-    for (const action of completedActions) {
-      if (action.endDate < rangeStart) {
-        runningSum += action.completionRate;
-        count += 1;
-        continue;
-      }
-      if (action.endDate > rangeEnd) break;
-
-      runningSum += action.completionRate;
-      count += 1;
-      const dayKey = dateToInputValue(action.endDate);
-      const existingPoint = dataPoints[dataPoints.length - 1];
-
-      if (existingPoint && existingPoint.dayKey === dayKey) {
-        // Keep one visual point per day, but preserve cumulative value
-        // after all same-day actions have been included.
-        existingPoint.date = action.endDate;
-        existingPoint.avgRate = runningSum / count;
-        existingPoint.actionCount = count;
-        existingPoint.actionNames.push(action.actionName);
-        continue;
-      }
-
-      dataPoints.push({
-        date: action.endDate,
-        avgRate: runningSum / count,
-        actionCount: count,
-        actionNames: [action.actionName],
-        dayKey,
-      });
-    }
-
-    return dataPoints.map(({ dayKey: _dayKey, ...point }) => point);
-  }, [actionStats, completionRateRange]);
-
-  const cumulativeCompletionChartData: DataPoint[] = useMemo(() => {
-    return cumulativeCompletionData.map((d) => ({
-      date: d.date,
-      avgRate: d.avgRate,
-      actionCount: d.actionCount,
-      actionNames: d.actionNames,
-    }));
-  }, [cumulativeCompletionData]);
-
-  const cumulativeCompletionYDomain = useMemo(() => {
-    if (completionRateAbsolute) {
-      return [0, 1] as [number, number];
-    }
-    const values = cumulativeCompletionChartData
-      .map((d) => d.avgRate)
-      .filter((value): value is number => typeof value === "number")
-      .filter((value) => Number.isFinite(value));
-    if (values.length === 0) {
-      return undefined;
-    }
-    const minValue = Math.min(...values);
-    const maxValue = Math.max(...values);
-    const range = Math.max(0, maxValue - minValue);
-    const padding = Math.max(0.01, range * 0.1);
-    let paddedMin = Math.max(0, minValue - padding);
-    let paddedMax = Math.min(1, maxValue + padding);
-    if (paddedMax === paddedMin) {
-      const bump = Math.min(0.05, Math.max(0.01, paddedMax * 0.1));
-      paddedMin = Math.max(0, paddedMin - bump);
-      paddedMax = Math.min(1, paddedMax + bump);
-    }
-    return [paddedMin, paddedMax] as [number, number];
-  }, [completionRateAbsolute, cumulativeCompletionChartData]);
-
-  const cumulativeCompletionSeries: ChartSeries[] = useMemo(
-    () => [
-      {
-        key: "avgRate",
-        label: "Avg Rate",
-        color: "#15803d",
-        getValue: (d) => (d.avgRate as number) ?? 0,
-      },
-    ],
-    [],
-  );
-
-  // Weekly (non-cumulative) completion rate data.
-  const weeklyCompletionData = useMemo(() => {
-    const now = new Date();
-    const rangeStart = parseLocalDateInput(completionRateRange.start);
-    const rangeEnd = parseLocalDateInput(completionRateRange.end, true);
-    if (!rangeStart || !rangeEnd || rangeStart > rangeEnd) {
-      return [];
-    }
-
-    const weeklyBuckets = new Map<
-      string,
-      {
-        date: Date;
-        actionCount: number;
-        completedCount: number;
-        joinedCount: number;
-        actionNames: string[];
-      }
-    >();
-    for (const action of actionStats) {
-      if (
-        !action.memberActionEndDate ||
-        !action.showInChart ||
-        action.onboarding ||
-        action.optional
-      ) {
-        continue;
-      }
-      const endDate = parseIsoDate(action.memberActionEndDate);
-      if (!endDate || endDate < rangeStart || endDate > rangeEnd) {
-        continue;
-      }
-
-      const weekStart = getWeekStartDate(endDate);
-      const bucketKey = dateToInputValue(weekStart);
-      const existingBucket = weeklyBuckets.get(bucketKey) ?? {
-        date: weekStart,
-        actionCount: 0,
-        completedCount: 0,
-        joinedCount: 0,
-        actionNames: [],
-      };
-      if (endDate > now) {
-        continue;
-      }
-
-      existingBucket.actionCount += 1;
-      existingBucket.completedCount += Math.max(0, action.usersCompleted);
-      existingBucket.joinedCount += Math.max(0, action.usersJoined);
-      existingBucket.actionNames.push(action.actionName);
-      weeklyBuckets.set(bucketKey, existingBucket);
-    }
-
-    return Array.from(weeklyBuckets.values())
-      .sort((a, b) => a.date.getTime() - b.date.getTime())
-      .map((bucket) => ({
-        date: bucket.date,
-        weekRate:
-          bucket.joinedCount > 0
-            ? bucket.completedCount / bucket.joinedCount
-            : 0,
-        actionCount: bucket.actionCount,
-        completedCount: bucket.completedCount,
-        joinedCount: bucket.joinedCount,
-        actionNames: bucket.actionNames.sort((a, b) => a.localeCompare(b)),
-      }));
-  }, [actionStats, completionRateRange]);
-
-  const completionRateChartData: DataPoint[] = useMemo(() => {
-    return weeklyCompletionData.map((d) => ({
-      date: d.date,
-      weekRate: d.weekRate,
-      actionCount: d.actionCount,
-      completedCount: d.completedCount,
-      joinedCount: d.joinedCount,
-      actionNames: d.actionNames,
-    }));
-  }, [weeklyCompletionData]);
-
-  const completionRateYDomain = useMemo(() => {
-    if (completionRateAbsolute) {
-      return [0, 1] as [number, number];
-    }
-    const values = completionRateChartData
-      .map((d) => d.weekRate)
-      .filter((value): value is number => typeof value === "number")
-      .filter((value) => Number.isFinite(value));
-    if (values.length === 0) {
-      return undefined;
-    }
-    const minValue = Math.min(...values);
-    const maxValue = Math.max(...values);
-    const range = Math.max(0, maxValue - minValue);
-    const padding = Math.max(0.01, range * 0.1);
-    let paddedMin = Math.max(0, minValue - padding);
-    let paddedMax = Math.min(1, maxValue + padding);
-    if (paddedMax === paddedMin) {
-      const bump = Math.min(0.05, Math.max(0.01, paddedMax * 0.1));
-      paddedMin = Math.max(0, paddedMin - bump);
-      paddedMax = Math.min(1, paddedMax + bump);
-    }
-    return [paddedMin, paddedMax] as [number, number];
-  }, [completionRateAbsolute, completionRateChartData]);
-
-  const completionRateSeries: ChartSeries[] = useMemo(
-    () => [
-      {
-        key: "weekRate",
-        label: "Weekly Rate",
-        color: "#16a34a",
-        getValue: (d) => (d.weekRate as number) ?? 0,
-      },
-    ],
-    [],
-  );
 
   const filteredReminderGroupClickRatePoints = useMemo(() => {
     const start = parseIsoDate(reminderClickRateRange.start);
@@ -1009,116 +722,9 @@ const StatsPage: React.FC = () => {
       {/* Action Completion Curves */}
       <ActionCompletionCurveChart />
 
-      <TimeSeriesChart
-        title="Cumulative Completion Rate"
-        data={cumulativeCompletionChartData}
-        series={cumulativeCompletionSeries}
-        loading={actionStatsLoading}
-        emptyMessage="No completed actions in this date range."
-        showArea
-        areaSeriesKey="avgRate"
-        areaColor="rgba(21, 128, 61, 0.14)"
-        yDomain={cumulativeCompletionYDomain}
-        yAxisFormat={(v) => `${Math.round(v * 100)}%`}
-        showHoverOnlyOnHover
-        yTickLabelDedup
-        dateRange={completionRateRange}
-        onDateRangeChange={setCompletionRateRange}
-        headerContent={
-          <label className="flex items-center gap-2 text-xs font-semibold text-gray-600 md:ml-auto">
-            <input
-              type="checkbox"
-              checked={completionRateAbsolute}
-              onChange={(event) =>
-                setCompletionRateAbsolute(event.target.checked)
-              }
-              className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-400"
-            />
-            Absolute
-          </label>
-        }
-        getHoverContent={(point) => ({
-          title: fullDateFormatter.format(point.date),
-          items: (() => {
-            const actionNames =
-              (point.actionNames as string[] | undefined) ?? [];
-            const actionItems = actionNames.map((name, index) => ({
-              label: `Action ${index + 1}`,
-              value:
-                name.length > 40 ? `${name.slice(0, 40).trimEnd()}...` : name,
-            }));
-            return [
-              {
-                label: "Avg Rate",
-                value: `${((point.avgRate as number) * 100).toFixed(2)}%`,
-                color: "#15803d",
-              },
-              {
-                label: "Total Actions",
-                value: point.actionCount as number,
-              },
-              ...actionItems,
-            ];
-          })(),
-        })}
-      />
-
-      {/* Weekly (non-cumulative) completion rate chart */}
-      <TimeSeriesChart
-        title="Non-Cumulative Completion Rate (Weekly)"
-        data={completionRateChartData}
-        series={completionRateSeries}
-        loading={actionStatsLoading}
-        emptyMessage="No completed actions in this date range."
-        yDomain={completionRateYDomain}
-        yAxisFormat={(v) => `${Math.round(v * 100)}%`}
-        showHoverOnlyOnHover
-        yTickLabelDedup
-        dateRange={completionRateRange}
-        onDateRangeChange={setCompletionRateRange}
-        headerContent={
-          <label className="flex items-center gap-2 text-xs font-semibold text-gray-600 md:ml-auto">
-            <input
-              type="checkbox"
-              checked={completionRateAbsolute}
-              onChange={(event) =>
-                setCompletionRateAbsolute(event.target.checked)
-              }
-              className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-400"
-            />
-            Absolute
-          </label>
-        }
-        getHoverContent={(point) => ({
-          title: `Week of ${fullDateFormatter.format(point.date)}`,
-          items: (() => {
-            const actionNames =
-              (point.actionNames as string[] | undefined) ?? [];
-            const actionItems = actionNames.map((name, index) => ({
-              label: `Action ${index + 1}`,
-              value:
-                name.length > 40 ? `${name.slice(0, 40).trimEnd()}...` : name,
-            }));
-            return [
-              {
-                label: "Weekly Rate",
-                value: `${((point.weekRate as number) * 100).toFixed(2)}%`,
-                color: "#16a34a",
-              },
-              {
-                label: "Actions",
-                value: point.actionCount as number,
-              },
-              {
-                label: "Completed / Joined",
-                value: `${point.completedCount as number}/${
-                  point.joinedCount as number
-                }`,
-              },
-              ...actionItems,
-            ];
-          })(),
-        })}
+      <CompletionRateCharts
+        actionStats={actionStats}
+        actionStatsLoading={actionStatsLoading}
       />
 
       <div className="relative overflow-hidden rounded border border-gray-200 bg-white">
