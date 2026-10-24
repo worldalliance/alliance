@@ -98,12 +98,26 @@ export function bigLinkIconOrDefault(icon: string | undefined): BigLinkIcon {
   return parsed.success ? parsed.data : "messages-square";
 }
 
+export enum BigLinkColor {
+  Grey = "grey",
+  Green = "green",
+}
+
+export enum BigLinkAction {
+  Open = "open",
+  Copy = "copy",
+}
+
 const bigLinkContentSchema = z.strictObject({
   ...baseContentFields,
   text: z.string(),
+  body: z.string().optional(),
   /** With `externalTargetId`, the target's base URL: where viewers without a code go. */
   url: z.string(),
+  showUrl: z.boolean().optional(),
   icon: bigLinkIconSchema.optional(),
+  color: z.enum(BigLinkColor).optional(),
+  action: z.enum(BigLinkAction).optional(),
   /** Links each signed-in member to this external share target with their own code appended. */
   externalTargetId: z.number().int().positive().optional(),
 });

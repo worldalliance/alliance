@@ -6,11 +6,11 @@ import {
   copyTextClipboardContent,
   copyTextFormat,
 } from "@alliance/shared/forms/copyText";
-import { milliseconds } from "date-fns";
 import { Check, Copy } from "lucide-react";
-import React, { useEffect, useState } from "react";
-import { copyOutcome, CopyOutcome } from "../lib/clipboard";
+import React from "react";
+import { CopyOutcome } from "../lib/clipboard";
 import { getApiUrl, getInviteBaseUrl } from "../lib/config";
+import { useCopyOutcome } from "../lib/useCopyOutcome";
 import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
 
 const copyBadges: Record<CopyOutcome, React.ReactNode> = {
@@ -42,24 +42,15 @@ function CopyTextBody({ block }: { block: CopyTextBlock }) {
 }
 
 export default function CopyTextDisplay({ block }: { block: CopyTextBlock }) {
-  const [outcome, setOutcome] = useState<CopyOutcome | null>(null);
+  const [outcome, copy] = useCopyOutcome();
 
-  useEffect(() => {
-    if (!outcome) return;
-    const timer = setTimeout(
-      () => setOutcome(null),
-      milliseconds({ seconds: 2 }),
+  const handleCopy = () =>
+    copy(
+      copyTextClipboardContent(block, {
+        apiUrl: getApiUrl(),
+        origin: getInviteBaseUrl(),
+      }),
     );
-    return () => clearTimeout(timer);
-  }, [outcome]);
-
-  const handleCopy = async () => {
-    const content = copyTextClipboardContent(block, {
-      apiUrl: getApiUrl(),
-      origin: getInviteBaseUrl(),
-    });
-    setOutcome(await copyOutcome(content));
-  };
 
   return (
     <div>

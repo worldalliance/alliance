@@ -29,6 +29,10 @@ export default [
     "/projects/democratic-grantmaking-26",
     "components/projects/democratic-grantmaking-26/DemocraticGrantmaking26.tsx",
   ),
+  route(
+    "/projects/safer-chatbots-for-children",
+    "components/projects/safer-chatbots-for-children-26/SaferChatbotsForChildren26.tsx",
+  ),
   route("/projects/:slug", "pages/static/ProgressProjectPage.tsx"),
   route(WAITLIST_UNSUBSCRIBE_PATH, "pages/static/WaitlistUnsubscribePage.tsx"),
 
