@@ -47,8 +47,6 @@ import {
   ActionDto,
   ActionReferralCodeDto,
   ActionSharePreviewDto,
-  AdminActionDto,
-  AdminActionListItemDto,
   CreateActionDto,
   EvaluateCohortExpressionDto,
   EvaluateCohortExpressionResponseDto,
@@ -57,6 +55,7 @@ import {
   SetPriorityDto,
   UpdateActionDto,
 } from "./dto/action.dto";
+import { AdminActionDto, AdminActionListItemDto } from "./dto/admin-action.dto";
 import { CommunityCompletedActionsCountDto } from "./dto/community-completed-actions-count.dto";
 import { ScheduledPlansOverviewDto } from "./dto/scheduled-plans.dto";
 import { ShareUrlDto, ShareUrlStatsDto } from "./dto/share-url.dto";
