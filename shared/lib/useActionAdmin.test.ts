@@ -48,22 +48,6 @@ beforeEach(() => {
 });
 
 describe("useActionAdmin", () => {
-  it("refetches after a child writes the action, so server-derived fields catch up", async () => {
-    memberActionStart = "2026-01-01T00:00:00.000Z";
-    const { result } = renderHook(() => useActionAdmin(1), queryWrapper());
-    await waitFor(() => expect(result.current.action).toBeDefined());
-    const action = result.current.action;
-    if (!action) throw new Error("action not loaded");
-
-    memberActionStart = "2026-02-01T00:00:00.000Z";
-    act(() => result.current.setActionFromDto({ ...action, events: [] }));
-
-    await waitFor(() =>
-      expect(result.current.action?.memberActionStart).toBe(memberActionStart),
-    );
-    expect(fetches).toBe(2);
-  });
-
   it("refetches the action and marks the all-actions list stale after an event is added", async () => {
     memberActionStart = "2026-01-01T00:00:00.000Z";
     addEventResponse = () => Response.json({ id: 2 }, { status: 201 });

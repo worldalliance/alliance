@@ -5,7 +5,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import {
   actionFormsCreateFollowUpFormAdmin,
   actionFormsDeleteFollowUpFormAdmin,
@@ -17,7 +17,6 @@ import {
   actionsRemoveAdmin,
   actionsUnarchiveAdmin,
   actionsUpdateAdmin,
-  AdminActionDto,
   CreateActionDto,
   CreateActionEventDto,
   CreateFollowUpFormDto,
@@ -125,26 +124,6 @@ export function useActionAdmin(
   // forms index.
   const invalidateActionAndActionsList = () =>
     Promise.all([invalidate(), invalidateActionsList()]);
-
-  /**
-   * For child flows that hand back a raw AdminActionDto: validate the
-   * cohortExpression at the boundary and write the result into the query
-   * cache, so `action` is always parsed. The cache is then refetched, because
-   * a child that patches `events` leaves the server-derived phase fields
-   * (`memberActionStart`, `memberActionDeadline`) stale.
-   */
-  const setActionFromDto = useCallback(
-    (dto: AdminActionDto) => {
-      queryClient.setQueryData(
-        queryKeys.actionAdmin(dto.id),
-        parseActionDto(dto),
-      );
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.actionAdmin(dto.id),
-      });
-    },
-    [queryClient],
-  );
 
   const createActionMutation = useMutation({
     // No per-action invalidation: the new action has its own (not-yet-fetched)
@@ -272,7 +251,6 @@ export function useActionAdmin(
     isPending: query.isPending,
     isFetching: query.isFetching,
     isError: query.isError,
-    setActionFromDto,
     createAction: createActionMutation.mutateAsync,
     isCreating: createActionMutation.isPending,
     updateAction: updateActionMutation.mutateAsync,

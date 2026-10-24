@@ -9,16 +9,16 @@ import {
   ACTION_STATUS_COLORS,
   ACTION_STATUS_LABELS,
 } from "../lib/actionStatusDisplay";
-import CreateEventForm from "./CreateEventForm";
+import CreateEventForm, { type AddActionEvent } from "./CreateEventForm";
 
 // Status options for event creation
 
 export interface EventManagementTabProps {
   action: AdminActionDto;
-  setAction: (action: AdminActionDto) => unknown;
+  addEvent: AddActionEvent;
 }
 
-const EventManagementTab = ({ action, setAction }: EventManagementTabProps) => {
+const EventManagementTab = ({ action, addEvent }: EventManagementTabProps) => {
   const [creatingEvent, setCreatingEvent] = useState<boolean>(false);
   const [eventCreatedSuccess, setEventCreatedSuccess] =
     useState<boolean>(false);
@@ -41,8 +41,7 @@ const EventManagementTab = ({ action, setAction }: EventManagementTabProps) => {
         </div>
         {addEventExpanded && (
           <CreateEventForm
-            action={action}
-            setAction={setAction}
+            addToAction={addEvent}
             setEventCreatedSuccess={setEventCreatedSuccess}
             eventCreatedSuccess={eventCreatedSuccess}
             creatingEvent={creatingEvent}

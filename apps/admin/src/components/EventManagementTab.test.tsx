@@ -11,7 +11,7 @@ it("labels an event's status pill with spaces between words", () => {
         action={adminActionListItem(1, "Action", {
           events: [makeEvent({ newStatus: "office_action" })],
         })}
-        setAction={() => {}}
+        addEvent={jest.fn()}
       />
     </ToastProvider>,
   );
@@ -28,7 +28,7 @@ it("lists events newest first without reordering the action's events", () => {
     <ToastProvider>
       <EventManagementTab
         action={adminActionListItem(1, "Action", { events })}
-        setAction={() => {}}
+        addEvent={jest.fn()}
       />
     </ToastProvider>,
   );

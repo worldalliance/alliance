@@ -101,7 +101,6 @@ const ActionSuitePage = () => {
         onReminderClick={handleHighlightReminder}
       />
       <SuiteEventList
-        referenceAction={suite.actions[0]}
         addToSuite={addEvent.mutateAsync}
         events={suite.events}
         onEdit={handleEditEvent}

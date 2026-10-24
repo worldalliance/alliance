@@ -2,7 +2,6 @@ import type {
   ActionSuiteDto,
   CreateActionEventDto,
 } from "@alliance/shared/client";
-import { client } from "@alliance/shared/client/client.gen";
 import { makeEvent } from "@alliance/shared/lib/testFixtures";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
@@ -12,48 +11,85 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { adminActionListItem } from "../lib/testing/adminActionListItem";
-import CreateEventForm from "./CreateEventForm";
-
-const { baseUrl, fetch } = client.getConfig();
+import CreateEventForm, { type AddActionEvent } from "./CreateEventForm";
 
 afterEach(() => {
   cleanup();
   jest.restoreAllMocks();
-  client.setConfig({ baseUrl, fetch });
 });
 
-const action = adminActionListItem(1, "Action");
-
-it("clears a failed add's error once a later add succeeds", async () => {
-  const fetchMock = jest
-    .fn()
-    .mockResolvedValueOnce(Response.json({ message: "boom" }, { status: 500 }))
-    .mockResolvedValueOnce(
-      Response.json(makeEvent({ id: 2 }), { status: 201 }),
-    );
-  client.setConfig({ baseUrl: "http://localhost", fetch: fetchMock });
-  const setAction = jest.fn();
+const renderActionForm = (params: {
+  addToAction: AddActionEvent;
+  setEventCreatedSuccess?: (eventCreatedSuccess: boolean) => void;
+}) =>
   render(
     <ToastProvider>
       <CreateEventForm
         suiteMode={false}
-        action={action}
-        setAction={setAction}
+        addToAction={params.addToAction}
         creatingEvent={false}
         setCreatingEvent={() => {}}
         eventCreatedSuccess={false}
-        setEventCreatedSuccess={() => {}}
+        setEventCreatedSuccess={params.setEventCreatedSuccess ?? (() => {})}
       />
     </ToastProvider>,
   );
+
+const sent = (status: number, body: object) => ({
+  [status < 400 ? "data" : "error"]: body,
+  response: Response.json(body, { status }),
+});
+
+it("clears a failed add's error once a later add succeeds", async () => {
+  const addToAction = jest
+    .fn()
+    .mockResolvedValueOnce(sent(500, { message: "boom" }))
+    .mockResolvedValueOnce(sent(201, makeEvent({ id: 2 })));
+  const setEventCreatedSuccess = jest.fn();
+  renderActionForm({ addToAction, setEventCreatedSuccess });
 
   fireEvent.click(screen.getByRole("button", { name: "Add Event" }));
   expect(await screen.findByText("Failed to add event")).toBeTruthy();
 
   fireEvent.click(screen.getByRole("button", { name: "Add Event" }));
-  await waitFor(() => expect(setAction).toHaveBeenCalled());
+  await waitFor(() =>
+    expect(setEventCreatedSuccess).toHaveBeenCalledWith(true),
+  );
   expect(screen.queryByText("Failed to add event")).toBeNull();
+});
+
+it("resends an action's event acknowledged once staff confirm moving the deadline earlier", async () => {
+  const addToAction = jest
+    .fn()
+    .mockResolvedValueOnce(sent(409, { message: "Moves the deadline" }))
+    .mockResolvedValueOnce(sent(201, makeEvent({ id: 2 })));
+  renderActionForm({ addToAction });
+
+  fireEvent.click(screen.getByRole("button", { name: "Add Event" }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Move deadline earlier" }),
+  );
+
+  await waitFor(() => expect(addToAction).toHaveBeenCalledTimes(2));
+  expect(addToAction.mock.calls[1][0]).toMatchObject({
+    acknowledgeDeadlineShortening: true,
+    body: { newStatus: "member_action" },
+  });
+});
+
+it("adds an action's deadline event after its launch", async () => {
+  const addToAction = jest
+    .fn()
+    .mockResolvedValue(sent(201, makeEvent({ id: 2 })));
+  renderActionForm({ addToAction });
+
+  fireEvent.click(screen.getByLabelText("Automatically create deadline event"));
+  fireEvent.click(screen.getByRole("button", { name: "Add Event" }));
+
+  await waitFor(() => expect(addToAction).toHaveBeenCalledTimes(2));
+  expect(addToAction.mock.calls[1][0]).toMatchObject({
+    body: { newStatus: "office_action" },
+  });
 });
 
 const renderSuiteForm = (
@@ -63,7 +99,6 @@ const renderSuiteForm = (
     <ToastProvider>
       <CreateEventForm
         suiteMode={true}
-        action={action}
         addToSuite={addToSuite}
         creatingEvent={false}
         setCreatingEvent={() => {}}

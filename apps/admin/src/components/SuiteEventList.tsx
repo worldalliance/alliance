@@ -1,5 +1,4 @@
 import {
-  ActionDto,
   ActionSuiteDto,
   CreateActionEventDto,
   UpdateActionEventDto,
@@ -12,7 +11,6 @@ import CreateEventForm from "./CreateEventForm";
 import SuiteEventCard from "./SuiteEventCard";
 
 export type SuiteEventListProps = {
-  referenceAction: ActionDto;
   events: ActionSuiteDto["events"];
   onEdit: (eventId: number, body: UpdateActionEventDto) => void;
   onDelete: (eventId: number) => void;
@@ -21,7 +19,6 @@ export type SuiteEventListProps = {
 };
 
 const SuiteEventList = ({
-  referenceAction,
   events,
   onEdit,
   onDelete,
@@ -55,7 +52,6 @@ const SuiteEventList = ({
       {eventFormOpen && (
         <Card className="my-4">
           <CreateEventForm
-            action={referenceAction}
             creatingEvent={creatingEvent}
             setCreatingEvent={setCreatingEvent}
             setEventCreatedSuccess={() => {}}
