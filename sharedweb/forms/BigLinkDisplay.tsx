@@ -1,15 +1,21 @@
 import {
+  BigLinkAction,
+  BigLinkColor,
   bigLinkIconOrDefault,
   type BigLinkBlock,
   type BigLinkIcon,
 } from "@alliance/common/forms/display-blocks";
+import { withOrigin } from "@alliance/common/url";
 import {
   ShareLinkTargetKind,
   useShareLink,
 } from "@alliance/shared/forms/useShareLink";
 import { CardStyle } from "@alliance/shared/styles/card";
+import { cn } from "@alliance/shared/styles/util";
 import {
   ArrowUpRight,
+  Check,
+  Copy,
   File,
   FileCheck,
   FileText,
@@ -18,6 +24,9 @@ import {
 } from "lucide-react";
 import React, { createContext, useContext } from "react";
 import { Link } from "react-router";
+import { CopyOutcome } from "../lib/clipboard";
+import { getInviteBaseUrl } from "../lib/config";
+import { useCopyOutcome } from "../lib/useCopyOutcome";
 import Card from "../ui/Card";
 import { useSiteHref } from "../ui/SiteAppProvider";
 
@@ -27,6 +36,32 @@ const bigLinkIcons: Record<BigLinkIcon, React.FC<{ size?: number }>> = {
   "file-text": FileText,
   "file-check": FileCheck,
   signature: Signature,
+};
+
+const bigLinkColors: Record<
+  BigLinkColor,
+  { style: CardStyle; hover: string; muted: string }
+> = {
+  [BigLinkColor.Grey]: {
+    style: CardStyle.Grey,
+    hover: "hover:bg-zinc-100",
+    muted: "text-zinc-500",
+  },
+  [BigLinkColor.Green]: {
+    style: CardStyle.LightGreen,
+    hover: "hover:bg-green/20",
+    muted: "text-zinc-600",
+  },
+};
+
+const colorOf = (block: BigLinkBlock) =>
+  bigLinkColors[block.color ?? BigLinkColor.Grey];
+
+const copyIcons: Record<CopyOutcome, React.ReactNode> = {
+  [CopyOutcome.Copied]: (
+    <Check size={20} className="text-green" aria-label="Copied" />
+  ),
+  [CopyOutcome.Failed]: <p className="text-sm text-red-600">Copy failed</p>,
 };
 
 /** Whose code a share-target link carries for the person looking at it. */
@@ -102,9 +137,21 @@ function ShareTargetBigLink({
 }
 
 function BigLinkCard({ block, url }: { block: BigLinkBlock; url: string }) {
+  const action = block.action ?? BigLinkAction.Open;
+  switch (action) {
+    case BigLinkAction.Open:
+      return <OpenBigLink block={block} url={url} />;
+    case BigLinkAction.Copy:
+      return <CopyBigLink block={block} url={url} />;
+    default:
+      throw new Error(`unknown big link action: ${action satisfies never}`);
+  }
+}
+
+function OpenBigLink({ block, url }: { block: BigLinkBlock; url: string }) {
   const siteHref = useSiteHref();
-  const IconComponent = bigLinkIcons[bigLinkIconOrDefault(block.icon)];
   const href = siteHref(url);
+  const color = colorOf(block);
 
   return (
     <Link
@@ -114,16 +161,71 @@ function BigLinkCard({ block, url }: { block: BigLinkBlock; url: string }) {
       className="block group text-black "
     >
       <Card
-        className="flex flex-row items-center gap-3 hover:bg-zinc-100"
-        style={CardStyle.Grey}
+        className={cn("flex flex-row items-center gap-3", color.hover)}
+        style={color.style}
       >
-        <IconComponent size={20} />
-        <p className="flex-1 text-base" style={{ fontWeight: 450 }}>
-          {block.text}
-        </p>
+        <BigLinkContent block={block} url={url} />
         <ArrowUpRight size={20} aria-hidden />
       </Card>
     </Link>
+  );
+}
+
+function CopyBigLink({ block, url }: { block: BigLinkBlock; url: string }) {
+  const [outcome, copy] = useCopyOutcome();
+  const absoluteUrl = withOrigin({ url, origin: getInviteBaseUrl() });
+  const color = colorOf(block);
+
+  return (
+    <button
+      type="button"
+      onClick={() => copy(absoluteUrl)}
+      className="block w-full text-left text-black"
+    >
+      <Card
+        className={cn("flex flex-row items-center gap-3", color.hover)}
+        style={color.style}
+      >
+        <BigLinkContent block={block} url={absoluteUrl} />
+        {outcome ? (
+          copyIcons[outcome]
+        ) : (
+          <Copy size={20} aria-label="Copy link" />
+        )}
+      </Card>
+    </button>
+  );
+}
+
+function BigLinkContent({
+  block,
+  url,
+  message,
+}: {
+  block: BigLinkBlock;
+  url?: string;
+  message?: string;
+}) {
+  const IconComponent = bigLinkIcons[bigLinkIconOrDefault(block.icon)];
+  const muted = colorOf(block).muted;
+  return (
+    <>
+      <IconComponent size={20} />
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <p className="text-base" style={{ fontWeight: 450 }}>
+          {block.text}
+        </p>
+        {block.body && (
+          <p className="text-sm whitespace-pre-wrap">{block.body}</p>
+        )}
+        {block.showUrl && url !== undefined && (
+          <p className={cn("text-sm break-all", muted)}>{url}</p>
+        )}
+        {message !== undefined && (
+          <p className={cn("text-sm", muted)}>{message}</p>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -134,19 +236,12 @@ function BigLinkStatus({
   block: BigLinkBlock;
   message: string;
 }) {
-  const IconComponent = bigLinkIcons[bigLinkIconOrDefault(block.icon)];
   return (
     <Card
       className="flex flex-row items-center gap-3 text-black"
-      style={CardStyle.Grey}
+      style={colorOf(block).style}
     >
-      <IconComponent size={20} />
-      <div>
-        <p className="text-base" style={{ fontWeight: 450 }}>
-          {block.text}
-        </p>
-        <p className="text-sm text-zinc-500">{message}</p>
-      </div>
+      <BigLinkContent block={block} message={message} />
     </Card>
   );
 }

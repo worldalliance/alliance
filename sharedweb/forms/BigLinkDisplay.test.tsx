@@ -1,8 +1,12 @@
-import type { BigLinkBlock } from "@alliance/common/forms/display-blocks";
+import {
+  BigLinkAction,
+  type BigLinkBlock,
+} from "@alliance/common/forms/display-blocks";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
+import * as config from "../lib/config";
 import { SiteAppProvider } from "../ui/SiteAppProvider";
 import BigLinkDisplay, {
   ShareLinkViewer,
@@ -101,6 +105,61 @@ it("follows a plain URL without needing a viewer", async () => {
   );
 
   expect(await hrefOf("Take the survey")).toBe(BASE_URL);
+});
+
+it("copies a member's coded link instead of following it", async () => {
+  const writeText = jest
+    .spyOn(navigator.clipboard, "writeText")
+    .mockResolvedValue();
+  renderAs(ShareLinkViewer.Member, block({ action: BigLinkAction.Copy }));
+
+  fireEvent.click(await screen.findByRole("button", { name: /Copy link/ }));
+
+  await waitFor(() => expect(writeText).toHaveBeenCalledWith(CODED_URL));
+  expect(await screen.findByLabelText("Copied")).toBeTruthy();
+  expect(screen.queryByRole("link")).toBeNull();
+});
+
+it("says so when the copy fails", async () => {
+  jest
+    .spyOn(navigator.clipboard, "writeText")
+    .mockRejectedValue(new DOMException("denied"));
+  renderAs(ShareLinkViewer.Anonymous, block({ action: BigLinkAction.Copy }));
+
+  fireEvent.click(screen.getByRole("button", { name: /Copy link/ }));
+
+  expect(await screen.findByText("Copy failed")).toBeTruthy();
+});
+
+it("copies a site path as a full URL", async () => {
+  jest.spyOn(config, "getInviteBaseUrl").mockReturnValue("https://site.test");
+  const writeText = jest
+    .spyOn(navigator.clipboard, "writeText")
+    .mockResolvedValue();
+  renderAs(
+    ShareLinkViewer.Anonymous,
+    block({
+      url: "/projects",
+      externalTargetId: undefined,
+      action: BigLinkAction.Copy,
+    }),
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: /Copy link/ }));
+
+  await waitFor(() =>
+    expect(writeText).toHaveBeenCalledWith("https://site.test/projects"),
+  );
+});
+
+it("lists the link and the body when asked to", async () => {
+  renderAs(
+    ShareLinkViewer.Member,
+    block({ body: "Share it with a friend", showUrl: true }),
+  );
+
+  expect(await screen.findByText(CODED_URL)).toBeTruthy();
+  expect(screen.getByText("Share it with a friend")).toBeTruthy();
 });
 
 it("renders an icon this build does not know as the default", async () => {

@@ -25,7 +25,7 @@ const INTERPOLATED_DISPLAY_FIELDS: Record<DisplayKind, readonly string[]> = {
   label: ["text"],
   quote: ["text", "userName"],
   copytext: ["text", "title"],
-  biglink: ["text"],
+  biglink: ["text", "body"],
   images: [],
   video: ["caption"],
   chatTranscript: ["leftName", "rightName"],
