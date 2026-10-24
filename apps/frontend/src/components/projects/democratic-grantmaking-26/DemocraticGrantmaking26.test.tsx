@@ -38,7 +38,7 @@ const renderPage = () =>
     </QueryClientProvider>,
   );
 
-test("shows each expert once in a six-column grid between the waitlist bar and the timeline", async () => {
+test("shows each expert once in a five-column grid between the waitlist bar and the timeline", async () => {
   renderPage();
 
   const bar = await screen.findByRole("img", {
@@ -60,9 +60,26 @@ test("shows each expert once in a six-column grid between the waitlist bar and t
   ).not.toBe(0);
   expect(timeline.contains(grid)).toBe(false);
   expect(grid.className).toContain("grid-cols-3");
-  expect(grid.className).toContain("sm:grid-cols-6");
+  expect(grid.className).toContain("sm:grid-cols-5");
   const cards = [...grid.querySelectorAll(":scope > li")];
-  expect(cards).toHaveLength(FEATURED_PEOPLE.length);
+  expect(cards).toHaveLength(15);
+  expect(screen.queryByText("To be announced")).toBeNull();
+  expect(screen.getByText("Julia Paxton")).toBeTruthy();
+  expect(
+    screen.getByText("Professor of Economics, Ohio University"),
+  ).toBeTruthy();
+  expect(screen.getByText("Andrea Vernon")).toBeTruthy();
+  expect(
+    screen.getByText(
+      "Executive Director of Experiential Learning and Clinical Professor, University of Montana",
+    ),
+  ).toBeTruthy();
+  expect(screen.getByText("Danielle McDonald")).toBeTruthy();
+  expect(
+    screen.getByText(
+      "Professor of Criminal Justice, Northern Kentucky University",
+    ),
+  ).toBeTruthy();
   FEATURED_PEOPLE.forEach((person, index) => {
     const card = cards[index];
     expect(card?.textContent).toContain(person.name);

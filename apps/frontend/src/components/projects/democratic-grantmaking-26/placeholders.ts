@@ -1,7 +1,7 @@
 export interface ProjectPerson {
   name: string;
   role: string;
-  href: string;
+  href?: string;
   imageSrc: string;
 }
 
@@ -77,6 +77,21 @@ export const FEATURED_PEOPLE: ProjectPerson[] = [
     imageSrc: "/assets/democratic-grantmaking-26/jan-maly.jpg",
     role: "Online Decision-Making, WU Wien",
     href: "https://janmaly.de/",
+  },
+  {
+    name: "Andrea Vernon",
+    imageSrc: "/assets/democratic-grantmaking-26/andrea-vernon.png",
+    role: "Executive Director of Experiential Learning and Clinical Professor, University of Montana",
+  },
+  {
+    name: "Danielle McDonald",
+    imageSrc: "/assets/democratic-grantmaking-26/danielle-mcdonald.png",
+    role: "Professor of Criminal Justice, Northern Kentucky University",
+  },
+  {
+    name: "Julia Paxton",
+    imageSrc: "/assets/democratic-grantmaking-26/julia-paxton.png",
+    role: "Professor of Economics, Ohio University",
   },
 ];
 
