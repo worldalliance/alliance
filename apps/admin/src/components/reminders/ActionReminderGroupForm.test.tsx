@@ -393,3 +393,24 @@ it("reloads the push message and suite task count from new initial values", asyn
     screen.getByRole("checkbox", { name: "Use suite task count" }),
   ).toHaveProperty("checked", false);
 });
+
+it("shows why it refuses to submit", async () => {
+  mockFetch();
+  const onSubmit = jest.fn();
+  renderForm(
+    <ActionReminderGroupForm
+      {...formElement(7, false).props}
+      onSubmit={onSubmit}
+    />,
+  );
+
+  fireEvent.change(screen.getByDisplayValue("All uncompleted"), {
+    target: { value: "custom" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Create Reminders" }));
+
+  expect((await screen.findByRole("alert")).textContent).toBe(
+    "Select at least one user.",
+  );
+  expect(onSubmit).not.toHaveBeenCalled();
+});

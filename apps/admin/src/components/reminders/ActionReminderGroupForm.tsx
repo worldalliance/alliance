@@ -6,11 +6,9 @@ import {
   actionRemindersTentativePlansForGroupAdmin,
   TagDto,
   type ActionEventDto,
-  type CreateReminderGroupDto,
   type PreviewNotificationPlanDto,
   type ReminderAnchorCandidateDto,
   type ReminderCohortType,
-  type ReminderGroupDto,
   type ReminderGroupTimingMode,
 } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
@@ -19,7 +17,6 @@ import Card from "@alliance/sharedweb/ui/Card";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
 import LargeCheckbox from "@alliance/sharedweb/ui/LargeCheckbox";
 import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
-import { secondsInHour } from "date-fns/constants";
 import { RotateCw } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -33,41 +30,14 @@ import {
   draftFromInitialValues,
   ReminderGroupDraft,
 } from "./reminderGroupDraft";
-
-type ReminderGroupContentFields = Pick<
-  ReminderGroupDto,
-  | "name"
-  | "cohortType"
-  | "timingMode"
-  | "emailSubject"
-  | "emailMessage"
-  | "textMessage"
-  | "pushMessage"
-  | "useSuiteTaskCount"
-  | "excludeOptionalActions"
-  | "excludePreviouslyNotified"
->;
-
-type ReminderGroupScheduleFields = Pick<
-  CreateReminderGroupDto,
-  | "sendAtAbsolute"
-  | "sendAtSecondsFromDeadline"
-  | "send_range_start"
-  | "send_range_end"
-  | "relative_range_start_seconds_from_deadline"
-  | "relative_range_end_seconds_from_deadline"
->;
-
-type ReminderGroupUserFields = Pick<
-  CreateReminderGroupDto,
-  "userIds" | "userTagId" | "timingAnchorEventId"
->;
-
-export type ActionReminderGroupFormSubmitPayload = ReminderGroupContentFields &
-  ReminderGroupScheduleFields &
-  ReminderGroupUserFields & {
-    memberActionEventId: number;
-  };
+import {
+  ActionReminderGroupFormSubmitPayload,
+  anchorApplies,
+  excludePreviouslyNotifiedApplies,
+  relativeRangeIsValid,
+  reminderGroupRequestFields,
+  reminderGroupSubmitPayload,
+} from "./reminderGroupRequest";
 
 export const keywords = [
   "#{fullname}",
@@ -195,15 +165,6 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     excludePreviouslyNotified,
   } = draft;
 
-  const anchorSelectableModes: ReminderGroupTimingMode[] = [
-    "from_deadline",
-    "within_relative_range",
-  ];
-  const anchorApplies = anchorSelectableModes.includes(timingMode);
-  const effectiveTimingAnchorEventId = anchorApplies
-    ? (timingAnchorEventId ?? undefined)
-    : undefined;
-
   useEffect(() => {
     if (timingMode === "within_relative_range") {
       if (relativeRangeStartHours < relativeRangeEndHours) {
@@ -217,13 +178,6 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
   >(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewAttempt, setPreviewAttempt] = useState(0);
-
-  // Group-leads nudges are about *other* users' tasks, so "already notified
-  // for this event" doesn't apply to them (the server rejects the combination).
-  const excludePreviouslyNotifiedApplies =
-    cohortType !== "group_leads_with_uncompleted";
-  const effectiveExcludePreviouslyNotified =
-    excludePreviouslyNotifiedApplies && excludePreviouslyNotified;
 
   const [localError, setLocalError] = useState<string | null>(null);
   const initialSnapshotRef = useRef<string>("");
@@ -270,23 +224,17 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
       setTentativePlans(null);
       return;
     }
-    if (cohortType === "tag" && !selectedTagId) {
+    if (draft.cohortType === "tag" && !draft.userTagId) {
       setTentativePlans([]);
       return;
     }
     if (
-      timingMode === "within_relative_range" &&
-      (Number.isNaN(relativeRangeStartHours) ||
-        Number.isNaN(relativeRangeEndHours) ||
-        relativeRangeStartHours < relativeRangeEndHours)
+      draft.timingMode === "within_relative_range" &&
+      !relativeRangeIsValid(draft)
     ) {
       setTentativePlans([]);
       return;
     }
-
-    const sendAtSecondsFromDeadline = sendAtHoursFromDeadline * secondsInHour;
-    const relativeRangeStartSeconds = relativeRangeStartHours * secondsInHour;
-    const relativeRangeEndSeconds = relativeRangeEndHours * secondsInHour;
 
     setTentativePlans(null);
     setPreviewError(null);
@@ -297,41 +245,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           path: {
             eventId: selectedEventId,
           },
-          body: {
-            name,
-            cohortType,
-            emailSubject,
-            emailMessage,
-            textMessage,
-            pushMessage,
-            timingMode,
-            useSuiteTaskCount,
-            suiteId,
-            userTagId:
-              cohortType === "tag" ? (selectedTagId ?? undefined) : undefined,
-            userIds: cohortType === "custom" ? selectedUserIds : undefined,
-            sendAtAbsolute:
-              timingMode === "absolute" ? sendAtAbsolute : undefined,
-            sendAtSecondsFromDeadline:
-              timingMode === "from_deadline"
-                ? (sendAtSecondsFromDeadline ?? 0)
-                : undefined,
-            send_range_start:
-              timingMode === "within_range" ? sendRangeStart : undefined,
-            send_range_end:
-              timingMode === "within_range" ? sendRangeEnd : undefined,
-            relative_range_start_seconds_from_deadline:
-              timingMode === "within_relative_range"
-                ? relativeRangeStartSeconds
-                : undefined,
-            relative_range_end_seconds_from_deadline:
-              timingMode === "within_relative_range"
-                ? relativeRangeEndSeconds
-                : undefined,
-            excludeOptionalActions,
-            excludePreviouslyNotified: effectiveExcludePreviouslyNotified,
-            timingAnchorEventId: effectiveTimingAnchorEventId,
-          },
+          body: { ...reminderGroupRequestFields(draft), suiteId },
         }),
       ).then((result) => {
         if (cancelled) return;
@@ -352,30 +266,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [
-    suiteId,
-    selectedEventId,
-    name,
-    cohortType,
-    emailSubject,
-    emailMessage,
-    textMessage,
-    pushMessage,
-    timingMode,
-    excludeOptionalActions,
-    effectiveExcludePreviouslyNotified,
-    effectiveTimingAnchorEventId,
-    sendAtAbsolute,
-    sendAtHoursFromDeadline,
-    sendRangeStart,
-    sendRangeEnd,
-    selectedTagId,
-    selectedUserIds,
-    relativeRangeStartHours,
-    relativeRangeEndHours,
-    useSuiteTaskCount,
-    previewAttempt,
-  ]);
+  }, [suiteId, selectedEventId, draft, previewAttempt]);
 
   const emailPreview = useReminderEmailPreviewAdmin(
     selectedEventId,
@@ -428,129 +319,18 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     event.preventDefault();
     setLocalError(null);
 
-    if (!selectedEventId) {
-      setLocalError("Select a member action event first.");
-      return;
-    }
-
-    if (cohortType === "custom" && selectedUserIds.length === 0) {
-      setLocalError("Select at least one user.");
-      return;
-    }
-
-    if (cohortType === "tag" && !selectedTagId) {
-      setLocalError("Select a user group.");
-      return;
-    }
-
-    let normalizedSendAtAbsolute: string | undefined;
-    let normalizedRangeStart: string | undefined;
-    let normalizedRangeEnd: string | undefined;
-
-    if (timingMode === "absolute") {
-      if (!sendAtAbsolute) {
-        setLocalError("Select a send time.");
-        return;
-      }
-      const parsed = new Date(sendAtAbsolute);
-      if (Number.isNaN(parsed.getTime())) {
-        setLocalError("Invalid send time.");
-        return;
-      }
-      normalizedSendAtAbsolute = parsed.toISOString();
-    }
-
-    if (timingMode === "from_deadline") {
-      if (
-        sendAtHoursFromDeadline === null ||
-        Number.isNaN(sendAtHoursFromDeadline)
-      ) {
-        setLocalError("Enter the number of hours relative to the deadline.");
-        return;
-      }
-    }
-
-    if (timingMode === "within_range") {
-      if (!sendRangeStart || !sendRangeEnd) {
-        setLocalError("Select both the start and end of the send range.");
-        return;
-      }
-      const start = new Date(sendRangeStart);
-      const end = new Date(sendRangeEnd);
-      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-        setLocalError("Invalid range selection.");
-        return;
-      }
-      if (start.getTime() > end.getTime()) {
-        setLocalError("Send range start must be before the end.");
-        return;
-      }
-      normalizedRangeStart = start.toISOString();
-      normalizedRangeEnd = end.toISOString();
-    }
-
-    if (timingMode === "within_relative_range") {
-      if (
-        Number.isNaN(relativeRangeStartHours) ||
-        Number.isNaN(relativeRangeEndHours)
-      ) {
-        setLocalError(
-          "Enter both the start and end hours before the deadline.",
-        );
-        return;
-      }
-      if (relativeRangeStartHours < relativeRangeEndHours) {
-        setLocalError(
-          "Window start must be greater than or equal to the window end.",
-        );
-        return;
-      }
-    }
-
-    const userIds = cohortType === "custom" ? selectedUserIds : undefined;
-
-    const sendAtSecondsFromDeadline = sendAtHoursFromDeadline * secondsInHour;
-    const relativeRangeStartSeconds = relativeRangeStartHours * secondsInHour;
-    const relativeRangeEndSeconds = relativeRangeEndHours * secondsInHour;
-    const payload = {
-      name,
-      cohortType,
-      emailSubject,
-      emailMessage,
-      textMessage,
-      pushMessage,
-      timingMode,
+    const payload = reminderGroupSubmitPayload({
+      draft,
       memberActionEventId: selectedEventId,
-      userIds,
-      userTagId:
-        cohortType === "tag" ? (selectedTagId ?? undefined) : undefined,
-      sendAtAbsolute:
-        timingMode === "absolute" ? normalizedSendAtAbsolute : undefined,
-      sendAtSecondsFromDeadline:
-        timingMode === "from_deadline"
-          ? (sendAtSecondsFromDeadline ?? 0)
-          : undefined,
-      send_range_start:
-        timingMode === "within_range" ? normalizedRangeStart : undefined,
-      send_range_end:
-        timingMode === "within_range" ? normalizedRangeEnd : undefined,
-      relative_range_start_seconds_from_deadline:
-        timingMode === "within_relative_range"
-          ? relativeRangeStartSeconds
-          : undefined,
-      relative_range_end_seconds_from_deadline:
-        timingMode === "within_relative_range"
-          ? relativeRangeEndSeconds
-          : undefined,
-      useSuiteTaskCount,
-      excludeOptionalActions,
-      excludePreviouslyNotified: effectiveExcludePreviouslyNotified,
-      timingAnchorEventId: effectiveTimingAnchorEventId,
-    } satisfies ActionReminderGroupFormSubmitPayload;
+    });
+    if (!payload.ok) {
+      setLocalError(payload.error);
+      return;
+    }
 
-    console.log(payload);
+    console.log(payload.value);
 
-    await onSubmit(payload, tentativePlans?.length ?? null);
+    await onSubmit(payload.value, tentativePlans?.length ?? null);
   };
 
   const combinedError = localError ?? serverError ?? null;
@@ -594,7 +374,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     !anchorCandidates.some(
       (candidate) => candidate.deadlineEventId === timingAnchorEventId,
     );
-  const anchorSelector = anchorApplies &&
+  const anchorSelector = anchorApplies(timingMode) &&
     (anchorCandidates.length > 0 || timingAnchorEventId !== null) && (
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1046,7 +826,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
             updateDraft({ excludeOptionalActions: checked })
           }
         />
-        {excludePreviouslyNotifiedApplies && (
+        {excludePreviouslyNotifiedApplies(cohortType) && (
           <LargeCheckbox
             label="Only notify about tasks not yet notified (skip users with nothing new)"
             checked={excludePreviouslyNotified}
