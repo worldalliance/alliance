@@ -22,12 +22,12 @@ import { useReminderAnchorCandidatesAdmin } from "../../lib/useReminderAnchorCan
 import { useUsersAdmin } from "../../lib/useUsersAdmin";
 import ActionReminderCard from "./ActionReminderCard";
 import ActionReminderGroupForm, {
-  ActionReminderGroupFormInitialValues,
   ActionReminderGroupFormSubmitPayload,
 } from "./ActionReminderGroupForm";
 import { describeGroupSchedule, groupSendStart } from "./groupSchedule";
 import PresetPicker from "./PresetPicker";
 import { ReminderPreset, ReminderPresetName, reminderPresets } from "./presets";
+import { ActionReminderGroupFormInitialValues } from "./reminderGroupDraft";
 
 interface ActionRemindersTabProps {
   suite: ActionSuiteDto;

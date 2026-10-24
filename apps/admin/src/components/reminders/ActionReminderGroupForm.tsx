@@ -1,16 +1,9 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { errorMessage } from "@alliance/common/errorMessage";
-import {
-  defaultEmailContents,
-  defaultEmailSubject,
-  defaultPushMessage,
-  defaultTextMessage,
-} from "@alliance/common/reminderPresetCopy";
 import { R } from "@alliance/common/result";
 // eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
   actionRemindersTentativePlansForGroupAdmin,
-  Tag,
   TagDto,
   type ActionEventDto,
   type CreateReminderGroupDto,
@@ -19,7 +12,6 @@ import {
   type ReminderCohortType,
   type ReminderGroupDto,
   type ReminderGroupTimingMode,
-  type User,
 } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -27,7 +19,6 @@ import Card from "@alliance/sharedweb/ui/Card";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
 import LargeCheckbox from "@alliance/sharedweb/ui/LargeCheckbox";
 import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
-import { milliseconds } from "date-fns";
 import { secondsInHour } from "date-fns/constants";
 import { RotateCw } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -37,6 +28,11 @@ import {
 } from "../../lib/useReminderPreviewsAdmin";
 import TextareaWithHighlights from "../TextareaWithHighlights";
 import ReminderPreviewError from "./ReminderPreviewError";
+import {
+  ActionReminderGroupFormInitialValues,
+  draftFromInitialValues,
+  ReminderGroupDraft,
+} from "./reminderGroupDraft";
 
 type ReminderGroupContentFields = Pick<
   ReminderGroupDto,
@@ -72,17 +68,6 @@ export type ActionReminderGroupFormSubmitPayload = ReminderGroupContentFields &
   ReminderGroupUserFields & {
     memberActionEventId: number;
   };
-
-export type ActionReminderGroupFormInitialValues = {
-  memberActionEventId: number;
-  reminderGroup:
-    | (CreateReminderGroupDto & {
-        userTag?: Tag;
-        timingAnchorEvent?: { id: number };
-      })
-    | null;
-  users: User[];
-};
 
 export const keywords = [
   "#{fullname}",
@@ -183,67 +168,32 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
   const [selectedEventId, setSelectedEventId] = useState<number | null>(
     initialValues.memberActionEventId ?? null,
   );
-  const initialGroup = initialValues.reminderGroup;
-  const initialTimingMode: ReminderGroupTimingMode =
-    initialGroup?.timingMode ?? "within_range";
-  const initialSendAtAbsolute =
-    initialGroup?.sendAtAbsolute ?? new Date().toISOString();
-  const initialSendAtHours =
-    initialGroup?.sendAtSecondsFromDeadline != null
-      ? initialGroup.sendAtSecondsFromDeadline / secondsInHour
-      : 0;
-  const initialRelativeRangeStartHours =
-    initialGroup?.relative_range_start_seconds_from_deadline != null
-      ? initialGroup.relative_range_start_seconds_from_deadline / secondsInHour
-      : 0;
-  const initialRelativeRangeEndHours =
-    initialGroup?.relative_range_end_seconds_from_deadline != null
-      ? initialGroup.relative_range_end_seconds_from_deadline / secondsInHour
-      : 0;
-  const initialRangeStart =
-    initialGroup?.send_range_start ?? new Date().toISOString();
-  const initialRangeEnd =
-    initialGroup?.send_range_end ??
-    new Date(Date.now() + milliseconds({ hours: 1 })).toISOString();
-  const [timingMode, setTimingMode] =
-    useState<ReminderGroupTimingMode>(initialTimingMode);
-  const [sendAtAbsolute, setSendAtAbsolute] = useState<string>(
-    initialSendAtAbsolute,
+  const [draft, setDraft] = useState(() =>
+    draftFromInitialValues(initialValues),
   );
-  const [sendAtHoursFromDeadline, setSendAtHoursFromDeadline] =
-    useState<number>(initialSendAtHours);
-  const [relativeRangeStartHours, setRelativeRangeStartHours] =
-    useState<number>(initialRelativeRangeStartHours);
-  const [relativeRangeEndHours, setRelativeRangeEndHours] = useState<number>(
-    initialRelativeRangeEndHours,
-  );
-  const [sendRangeStart, setSendRangeStart] =
-    useState<string>(initialRangeStart);
-  const [sendRangeEnd, setSendRangeEnd] = useState<string>(initialRangeEnd);
-  const [name, setName] = useState<string>(
-    initialValues.reminderGroup?.name ?? "",
-  );
-
-  const [useSuiteTaskCount, setUseSuiteTaskCount] = useState<boolean>(
-    initialValues.reminderGroup?.useSuiteTaskCount ?? true,
-  );
-
-  const [excludeOptionalActions, setExcludeOptionalActions] = useState<boolean>(
-    initialValues.reminderGroup?.excludeOptionalActions ?? false,
-  );
-
-  const [excludePreviouslyNotified, setExcludePreviouslyNotified] =
-    useState<boolean>(
-      initialValues.reminderGroup?.excludePreviouslyNotified ?? false,
-    );
-
-  const initialTimingAnchorEventId =
-    initialGroup?.timingAnchorEvent?.id ??
-    initialGroup?.timingAnchorEventId ??
-    null;
-  const [timingAnchorEventId, setTimingAnchorEventId] = useState<number | null>(
-    initialTimingAnchorEventId,
-  );
+  const updateDraft = (patch: Partial<ReminderGroupDraft>) =>
+    setDraft((current) => ({ ...current, ...patch }));
+  const {
+    name,
+    cohortType,
+    timingMode,
+    sendAtAbsolute,
+    sendAtHoursFromDeadline,
+    sendRangeStart,
+    sendRangeEnd,
+    relativeRangeStartHours,
+    relativeRangeEndHours,
+    timingAnchorEventId,
+    emailSubject,
+    emailMessage,
+    textMessage,
+    pushMessage,
+    userIds: selectedUserIds,
+    userTagId: selectedTagId,
+    useSuiteTaskCount,
+    excludeOptionalActions,
+    excludePreviouslyNotified,
+  } = draft;
 
   const anchorSelectableModes: ReminderGroupTimingMode[] = [
     "from_deadline",
@@ -267,28 +217,6 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
   >(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewAttempt, setPreviewAttempt] = useState(0);
-
-  const [emailSubject, setEmailSubject] = useState<string>(
-    initialValues.reminderGroup?.emailSubject ?? defaultEmailSubject,
-  );
-  const [emailMessage, setEmailMessage] = useState<string>(
-    initialValues.reminderGroup?.emailMessage ?? defaultEmailContents,
-  );
-  const [textMessage, setTextMessage] = useState<string>(
-    initialValues.reminderGroup?.textMessage ?? defaultTextMessage,
-  );
-  const [pushMessage, setPushMessage] = useState<string>(
-    initialValues.reminderGroup?.pushMessage ?? defaultPushMessage,
-  );
-  const [cohortType, setCohortType] = useState<ReminderCohortType>(
-    initialValues.reminderGroup?.cohortType ?? "all_uncompleted",
-  );
-  const [selectedUserIds, setSelectedUserIds] = useState<number[]>(
-    initialValues.users.map((user) => user.id),
-  );
-  const [selectedTagId, setSelectedTagId] = useState<string | null>(
-    initialValues.reminderGroup?.userTag?.id ?? null,
-  );
 
   // Group-leads nudges are about *other* users' tasks, so "already notified
   // for this event" doesn't apply to them (the server rejects the combination).
@@ -476,59 +404,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
 
     setSelectedEventId(initialValues.memberActionEventId);
     onEventChange?.(initialValues.memberActionEventId);
-    const nextGroup = initialValues.reminderGroup;
-    setTimingMode(nextGroup?.timingMode ?? "within_range");
-    setSendAtAbsolute(nextGroup?.sendAtAbsolute ?? new Date().toISOString());
-    setSendAtHoursFromDeadline(
-      nextGroup?.sendAtSecondsFromDeadline != null
-        ? nextGroup.sendAtSecondsFromDeadline / secondsInHour
-        : 0,
-    );
-    setSendRangeStart(nextGroup?.send_range_start ?? new Date().toISOString());
-    setSendRangeEnd(
-      nextGroup?.send_range_end ??
-        new Date(Date.now() + milliseconds({ hours: 1 })).toISOString(),
-    );
-    setRelativeRangeStartHours(
-      nextGroup?.relative_range_start_seconds_from_deadline != null
-        ? nextGroup.relative_range_start_seconds_from_deadline / secondsInHour
-        : 0,
-    );
-    setRelativeRangeEndHours(
-      nextGroup?.relative_range_end_seconds_from_deadline != null
-        ? nextGroup.relative_range_end_seconds_from_deadline / secondsInHour
-        : 0,
-    );
-    setName(initialValues.reminderGroup?.name ?? "");
-    setEmailSubject(
-      initialValues.reminderGroup?.emailSubject ?? defaultEmailSubject,
-    );
-    setEmailMessage(
-      initialValues.reminderGroup?.emailMessage ?? defaultEmailContents,
-    );
-    setTextMessage(
-      initialValues.reminderGroup?.textMessage ?? defaultTextMessage,
-    );
-    setPushMessage(
-      initialValues.reminderGroup?.pushMessage ?? defaultPushMessage,
-    );
-    setCohortType(initialValues.reminderGroup?.cohortType ?? "all_uncompleted");
-    setSelectedUserIds(initialValues.users.map((user) => user.id));
-    setSelectedTagId(initialValues.reminderGroup?.userTag?.id ?? null);
-    setUseSuiteTaskCount(
-      initialValues.reminderGroup?.useSuiteTaskCount ?? true,
-    );
-    setExcludeOptionalActions(
-      initialValues.reminderGroup?.excludeOptionalActions ?? false,
-    );
-    setExcludePreviouslyNotified(
-      initialValues.reminderGroup?.excludePreviouslyNotified ?? false,
-    );
-    setTimingAnchorEventId(
-      nextGroup?.timingAnchorEvent?.id ??
-        nextGroup?.timingAnchorEventId ??
-        null,
-    );
+    setDraft(draftFromInitialValues(initialValues));
     setLocalError(null);
   }, [
     computedInitialSnapshot,
@@ -727,9 +603,11 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
         <select
           value={timingAnchorEventId ?? ""}
           onChange={(event) =>
-            setTimingAnchorEventId(
-              event.target.value ? Number(event.target.value) : null,
-            )
+            updateDraft({
+              timingAnchorEventId: event.target.value
+                ? Number(event.target.value)
+                : null,
+            })
           }
           className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
         >
@@ -795,7 +673,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           <input
             type="text"
             value={name}
-            onChange={(event) => setName(event.target.value)}
+            onChange={(event) => updateDraft({ name: event.target.value })}
             className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
             placeholder="admin-only identifier"
           />
@@ -807,7 +685,9 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           <select
             value={timingMode}
             onChange={(event) =>
-              setTimingMode(event.target.value as ReminderGroupTimingMode)
+              updateDraft({
+                timingMode: event.target.value as ReminderGroupTimingMode,
+              })
             }
             className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
           >
@@ -827,7 +707,9 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           </label>
           <DateTimePicker
             value={sendAtAbsolute}
-            onChange={(change) => setSendAtAbsolute(change.utcValue ?? "")}
+            onChange={(change) =>
+              updateDraft({ sendAtAbsolute: change.utcValue ?? "" })
+            }
             className="w-full !py-1"
             required
           />
@@ -845,7 +727,9 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
               value={sendAtHoursFromDeadline}
               onChange={(event) => {
                 const value = event.target.value;
-                setSendAtHoursFromDeadline(value === "" ? NaN : Number(value));
+                updateDraft({
+                  sendAtHoursFromDeadline: value === "" ? NaN : Number(value),
+                });
               }}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
             />
@@ -862,7 +746,9 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
             </label>
             <DateTimePicker
               value={sendRangeStart}
-              onChange={(change) => setSendRangeStart(change.utcValue ?? "")}
+              onChange={(change) =>
+                updateDraft({ sendRangeStart: change.utcValue ?? "" })
+              }
               className="w-full !py-1"
               required
             />
@@ -873,7 +759,9 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
             </label>
             <DateTimePicker
               value={sendRangeEnd}
-              onChange={(change) => setSendRangeEnd(change.utcValue ?? "")}
+              onChange={(change) =>
+                updateDraft({ sendRangeEnd: change.utcValue ?? "" })
+              }
               className="w-full !py-1"
               required
             />
@@ -896,7 +784,9 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
               min={0}
               onChange={(event) => {
                 const value = event.target.value;
-                setRelativeRangeStartHours(value === "" ? NaN : Number(value));
+                updateDraft({
+                  relativeRangeStartHours: value === "" ? NaN : Number(value),
+                });
               }}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
             />
@@ -911,7 +801,9 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
               min={0}
               onChange={(event) => {
                 const value = event.target.value;
-                setRelativeRangeEndHours(value === "" ? NaN : Number(value));
+                updateDraft({
+                  relativeRangeEndHours: value === "" ? NaN : Number(value),
+                });
               }}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
             />
@@ -932,7 +824,9 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
         <select
           value={cohortType}
           onChange={(event) =>
-            setCohortType(event.target.value as ReminderCohortType)
+            updateDraft({
+              cohortType: event.target.value as ReminderCohortType,
+            })
           }
           className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
         >
@@ -951,7 +845,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           </label>
           <select
             value={selectedTagId ?? ""}
-            onChange={(event) => setSelectedTagId(event.target.value)}
+            onChange={(event) => updateDraft({ userTagId: event.target.value })}
             disabled={loadingUserTags}
             className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-500"
           >
@@ -979,7 +873,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
         <UserSelect
           users={users}
           selectedUserIds={selectedUserIds}
-          onChange={setSelectedUserIds}
+          onChange={(userIds) => updateDraft({ userIds })}
           loading={loadingUsers}
           loadFailed={usersLoadFailed}
         />
@@ -992,7 +886,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
         <TextareaWithHighlights
           keywords={keywords}
           value={emailSubject}
-          onChange={setEmailSubject}
+          onChange={(value) => updateDraft({ emailSubject: value })}
           rows={1}
           highlightHashPipeSyntax
         />
@@ -1042,7 +936,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           <TextareaWithHighlights
             keywords={keywords}
             value={emailMessage}
-            onChange={setEmailMessage}
+            onChange={(value) => updateDraft({ emailMessage: value })}
             rows={5}
             highlightHashPipeSyntax
           />
@@ -1088,7 +982,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           <TextareaWithHighlights
             keywords={keywords}
             value={textMessage}
-            onChange={setTextMessage}
+            onChange={(value) => updateDraft({ textMessage: value })}
             rows={2}
             highlightHashPipeSyntax
           />
@@ -1133,7 +1027,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           <TextareaWithHighlights
             keywords={keywords}
             value={pushMessage}
-            onChange={setPushMessage}
+            onChange={(value) => updateDraft({ pushMessage: value })}
             rows={2}
             highlightHashPipeSyntax
           />
@@ -1143,18 +1037,22 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
         <LargeCheckbox
           label="Use suite task count"
           checked={useSuiteTaskCount}
-          onChange={(checked) => setUseSuiteTaskCount(checked)}
+          onChange={(checked) => updateDraft({ useSuiteTaskCount: checked })}
         />
         <LargeCheckbox
           label="Exclude optional actions"
           checked={excludeOptionalActions}
-          onChange={(checked) => setExcludeOptionalActions(checked)}
+          onChange={(checked) =>
+            updateDraft({ excludeOptionalActions: checked })
+          }
         />
         {excludePreviouslyNotifiedApplies && (
           <LargeCheckbox
             label="Only notify about tasks not yet notified (skip users with nothing new)"
             checked={excludePreviouslyNotified}
-            onChange={(checked) => setExcludePreviouslyNotified(checked)}
+            onChange={(checked) =>
+              updateDraft({ excludePreviouslyNotified: checked })
+            }
           />
         )}
       </div>
