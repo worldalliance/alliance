@@ -5,7 +5,6 @@ import type {
   CityField,
   FormValue,
   ListField,
-  PhoneField,
   TimeField,
 } from "@alliance/common/forms/form-schema";
 import { getMaxSelections } from "@alliance/common/forms/multiselect";
@@ -30,30 +29,16 @@ import {
   resolveCards,
 } from "@alliance/shared/forms/listCards";
 import { markdownPlainText } from "@alliance/shared/forms/optionSearch";
-import {
-  buildTimeOfDayOptions,
-  commitTimeInput,
-  formatTimeForDisplay,
-  parseTimeInput,
-} from "@alliance/shared/forms/timeUtils";
 import { useFieldOptionSections } from "@alliance/shared/forms/useFieldOptionSections";
 import {
   cancelImageUpload,
   noOptionsAvailable,
 } from "@alliance/shared/lib/copy";
-import { usePhoneFieldCountry } from "@alliance/shared/lib/usePhoneNumberField";
 import { cn } from "@alliance/shared/styles/util";
 import type { FieldConditionContext } from "@alliance/shared/useFormRenderer";
 import { ChevronDown, X } from "lucide-react-native";
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Image,
-  Pressable,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { useRef, useState } from "react";
+import { Image, TextInput, TouchableOpacity, View } from "react-native";
 import { getImageSource } from "../../lib/config";
 import { pickImageDataUri } from "../../lib/pickImageDataUri";
 import { colors } from "../../lib/style/colors";
@@ -76,10 +61,10 @@ import {
   renderValidationMessage,
   sharedInputClasses,
 } from "./fieldParts";
-import FormModal from "./FormModal";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
-import PhoneNumberInput from "./PhoneNumberInput";
+import { PhoneInputField } from "./PhoneInputField";
 import { RankingFieldInput } from "./RankingFieldInput";
+import { TimeInputField } from "./TimeInputField";
 import TimeZoneSelect from "./TimeZoneSelect";
 
 export type RenderFieldProps = {
@@ -1063,197 +1048,4 @@ export function RenderField({
     default:
       return null;
   }
-}
-
-type PhoneInputFieldProps = {
-  field: PhoneField;
-  value: FormValue | undefined;
-  onChange?: (value: FormValueUpdater) => void;
-  onFocus?: () => void;
-  disabled?: boolean;
-  baseError: string | null;
-  isOutputView?: boolean;
-  hideLabel?: boolean;
-  required?: boolean;
-};
-
-export function PhoneInputField({
-  field,
-  value,
-  onChange,
-  onFocus,
-  disabled,
-  baseError,
-  isOutputView,
-  hideLabel,
-  required = !!field.required,
-}: PhoneInputFieldProps) {
-  const answer = typeof value === "string" ? value : "";
-  const [country, setCountry] = usePhoneFieldCountry(answer);
-
-  return (
-    <View>
-      <RenderLabel
-        field={field}
-        isOutputView={isOutputView}
-        hideLabel={hideLabel}
-        required={required}
-      />
-      <PhoneNumberInput
-        value={answer}
-        onChange={(next) => onChange?.(next)}
-        country={country}
-        onCountryChange={setCountry}
-        onEditingChange={(editing) => {
-          if (editing) {
-            onFocus?.();
-          }
-        }}
-        disabled={disabled || !onChange}
-        accessibilityLabel={fieldAccessibilityLabel(field)}
-        placeholder={field.placeholder || "Enter phone number"}
-        error={baseError}
-      />
-    </View>
-  );
-}
-
-type TimeInputFieldProps = {
-  field: TimeField;
-  value: FormValue | undefined;
-  onChange?: (value: FormValueUpdater) => void;
-  onFocus?: () => void;
-  disabled?: boolean;
-  baseError: string | null;
-  isOutputView?: boolean;
-  hideLabel?: boolean;
-  /** Effective requiredness; defaults to the field's static `required` flag. */
-  required?: boolean;
-};
-
-export function TimeInputField({
-  field,
-  value,
-  onChange,
-  onFocus,
-  disabled,
-  baseError,
-  isOutputView,
-  hideLabel,
-  required = !!field.required,
-}: TimeInputFieldProps) {
-  const normalizedValue = typeof value === "string" && value ? value : "";
-  const [inputValue, setInputValue] = useState<string>(() =>
-    formatTimeForDisplay(normalizedValue),
-  );
-  const [localError, setLocalError] = useState<string | null>(null);
-  const [showDropdown, setShowDropdown] = useState(false);
-
-  useEffect(() => {
-    setInputValue(formatTimeForDisplay(normalizedValue));
-  }, [normalizedValue]);
-
-  const commitValue = () => {
-    const { answer, error } = commitTimeInput({ raw: inputValue, required });
-    setLocalError(error);
-    if (answer === null) return;
-    onChange?.(answer);
-    if (answer) setInputValue(formatTimeForDisplay(answer));
-  };
-
-  const effectiveError = localError ?? baseError ?? null;
-  const hasError = Boolean(effectiveError);
-
-  const timeOptions = useMemo(
-    () => buildTimeOfDayOptions(30).map((option) => option.label),
-    [],
-  );
-
-  return (
-    <View>
-      <RenderLabel
-        field={field}
-        isOutputView={isOutputView}
-        hideLabel={hideLabel}
-        required={required}
-      />
-      <View className="relative">
-        <Pressable
-          onPress={() => setShowDropdown((prev) => !prev)}
-          disabled={disabled}
-          className={cn(
-            "flex-row items-center justify-between",
-            sharedInputClasses,
-            hasError ? "border-red-500" : "border-zinc-200",
-            disabled && "opacity-60",
-          )}
-        >
-          <TextInput
-            accessibilityLabel={fieldAccessibilityLabel(field)}
-            className="flex-1 text-base text-zinc-900"
-            value={inputValue}
-            onChangeText={(text) => {
-              setInputValue(text);
-              setLocalError(null);
-            }}
-            onFocus={onFocus}
-            onBlur={commitValue}
-            placeholder="7:30 PM"
-            placeholderTextColor="#9ca3af"
-            editable={!disabled}
-            onSubmitEditing={commitValue}
-          />
-          <ChevronDown size={18} color={colors.text.icon} />
-        </Pressable>
-
-        <FormModal
-          visible={showDropdown}
-          onClose={() => setShowDropdown(false)}
-        >
-          <View className="flex-row justify-between items-center mb-3">
-            <Text
-              className="text-lg text-zinc-900"
-              weight={FontWeight.Semibold}
-            >
-              Pick a time
-            </Text>
-            <TouchableOpacity onPress={() => setShowDropdown(false)}>
-              <Text className="text-blue-600" weight={FontWeight.Medium}>
-                Close
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView className="max-h-[300px]">
-            {timeOptions.map((t) => (
-              <TouchableOpacity
-                key={t}
-                className="py-3"
-                onPress={() => {
-                  setInputValue(t);
-                  setLocalError(null);
-                  setShowDropdown(false);
-                  const parsed = parseTimeInput(t);
-                  if (parsed) onChange?.(parsed.normalized);
-                }}
-              >
-                <Text
-                  className={cn(
-                    "text-base",
-                    t === inputValue ? "text-green-700" : "text-zinc-800",
-                  )}
-                  weight={t === inputValue ? FontWeight.Semibold : undefined}
-                >
-                  {t}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </FormModal>
-      </View>
-
-      {hasError && (
-        <Text className="text-xs text-red-500 mt-1">{effectiveError}</Text>
-      )}
-    </View>
-  );
 }
