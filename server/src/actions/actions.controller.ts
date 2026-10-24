@@ -54,11 +54,11 @@ import {
   EvaluateCohortExpressionResponseDto,
   ExportActionDto,
   PasteJsonDto,
-  ScheduledPlansOverviewDto,
   SetPriorityDto,
   UpdateActionDto,
 } from "./dto/action.dto";
 import { CommunityCompletedActionsCountDto } from "./dto/community-completed-actions-count.dto";
+import { ScheduledPlansOverviewDto } from "./dto/scheduled-plans.dto";
 import { ShareUrlDto, ShareUrlStatsDto } from "./dto/share-url.dto";
 import { UserCompletedActionsCountDto } from "./dto/user-completed-actions-count.dto";
 import { ForumActionCompleterWorker } from "./forum-action-completer.worker";

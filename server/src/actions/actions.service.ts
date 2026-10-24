@@ -230,7 +230,6 @@ import {
   CreateActionDto,
   ExportActionDto,
   SetPriorityDto,
-  SuspensionPlan,
   UpdateActionDto,
   UserActionRelation,
 } from "./dto/action.dto";
@@ -243,6 +242,7 @@ import {
   UpdateGeneralUpdateDto,
 } from "./dto/general-update.dto";
 import { CreateReminderGroupDto } from "./dto/reminder-group.dto";
+import { SuspensionPlan } from "./dto/scheduled-plans.dto";
 import { ShareUrlStats } from "./dto/share-url.dto";
 import {
   ActionActivity,
