@@ -46,8 +46,8 @@ import {
   UpdateUserRolesAdminDto,
   UserAdminDetailDto,
 } from "./dto/user-admin.dto";
+import { MyVisibilityContextDto } from "./dto/user-visibility-context.dto";
 import {
-  MyVisibilityContextDto,
   NMembersResponseDto,
   ProfileDto,
   ProfileDtoWithFriends,

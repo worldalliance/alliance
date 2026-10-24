@@ -8,7 +8,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { PrerequisiteProgressService } from "src/actions/prerequisite-progress.service";
 import { type Repository } from "typeorm";
-import { MyVisibilityContext } from "./dto/user.dto";
+import { MyVisibilityContext } from "./dto/user-visibility-context.dto";
 import {
   ContractEvent,
   ContractEventType,
