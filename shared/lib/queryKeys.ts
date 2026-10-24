@@ -59,6 +59,8 @@ export const queryKeys = {
   activitiesAll,
   activity: (activityId: number) =>
     ["actionFeedGetActivity", activityId] as const,
+  globalFeedAll: () => ["actionFeedGetGlobalFeed"] as const,
+  globalFeed: (limit: number) => ["actionFeedGetGlobalFeed", limit] as const,
   activities: ({
     list,
     objectId,

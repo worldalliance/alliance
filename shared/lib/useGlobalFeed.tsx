@@ -1,35 +1,24 @@
-import { useEffect, useState } from "react";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { actionFeedGetGlobalFeed, GlobalFeedItemDto } from "../client";
+import { queryKeys } from "./queryKeys";
+
+const NO_ITEMS: GlobalFeedItemDto[] = [];
+
+export const globalFeedQuery = (limit: number) =>
+  queryOptions({
+    queryKey: queryKeys.globalFeed(limit),
+    queryFn: () =>
+      actionFeedGetGlobalFeed({ query: { limit }, throwOnError: true }).then(
+        (response) => response.data,
+      ),
+  });
 
 const useGlobalFeed = ({ limit = 15 }) => {
-  const [items, setItems] = useState<GlobalFeedItemDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-
-    actionFeedGetGlobalFeed({
-      query: { limit },
-    })
-      .then((response) => {
-        if (response.data) {
-          setItems(response.data);
-        }
-      })
-      .catch((err) => {
-        setError(err);
-        console.error("Error fetching global feed:", err);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [limit]);
+  const { data, isPending, error } = useQuery(globalFeedQuery(limit));
 
   return {
-    items,
-    loading,
+    items: data ?? NO_ITEMS,
+    loading: isPending,
     error,
   };
 };

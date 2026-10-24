@@ -1,5 +1,6 @@
 import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
 import {
+  actionsQuery,
   dismissActionErrorMessage,
   useInvalidateActions,
 } from "@alliance/shared/lib/actionsListPage";
@@ -10,7 +11,10 @@ import {
 import { homeItemKey, useHomePageActions } from "@alliance/shared/lib/homePage";
 import { getTaskDismissInfo } from "@alliance/shared/lib/largeActionCard";
 import { useBoundedIndex } from "@alliance/shared/lib/useBoundedIndex";
-import useGlobalFeed from "@alliance/shared/lib/useGlobalFeed";
+import { unreadGeneralUpdatesQuery } from "@alliance/shared/lib/useGeneralUpdates";
+import useGlobalFeed, {
+  globalFeedQuery,
+} from "@alliance/shared/lib/useGlobalFeed";
 import { resetHomeFeed } from "@alliance/shared/lib/useHomeFeed";
 import { useMediaQuery } from "@alliance/sharedweb/lib/useMediaQuery";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
@@ -27,6 +31,7 @@ import LoadFailed from "../../components/LoadFailed";
 import SidebarProgressBars from "../../components/SidebarProgressBars";
 import TwoColumnLayout from "../../components/TwoColumnLayout";
 import { useAuth } from "../../lib/AuthContext";
+import { queryClient } from "../../lib/queryClient";
 import { useSidebarProgressBarEntries } from "../../lib/useSidebarProgressBarEntries";
 import { useTaskActionsData } from "../../lib/useTaskActionsData";
 import { useSidFromParams } from "../../lib/utils";
@@ -35,6 +40,19 @@ import { useMockTasks } from "../../onboarding/useMockTasks";
 import { WalkthroughAnchor } from "../../onboarding/walkthrough/steps";
 import LargeActionCard from "./LargeActionCard";
 import TaskNavigatorList, { type TaskNavigatorItem } from "./TaskNavigatorList";
+
+const GLOBAL_FEED_LIMIT = 10;
+
+// AppLayout mounts this page only once /auth/me answers; starting the queries
+// here runs them alongside it instead. The home feed is left to HomeFeed:
+// served alongside the tasks, it roughly doubles their response time.
+export function clientLoader() {
+  void queryClient.prefetchQuery(actionsQuery);
+  void queryClient.prefetchQuery(unreadGeneralUpdatesQuery);
+  void queryClient.prefetchQuery(globalFeedQuery(GLOBAL_FEED_LIMIT));
+  return null;
+}
+clientLoader.hydrate = true as const;
 
 const HomePage = () => {
   const queryClient = useQueryClient();
@@ -65,7 +83,7 @@ const HomePage = () => {
   const mainScrollRef = useRef<HTMLDivElement | null>(null);
 
   const { items: globalFeedItems, loading: globalFeedLoading } = useGlobalFeed({
-    limit: 10,
+    limit: GLOBAL_FEED_LIMIT,
   });
 
   useSidFromParams();
