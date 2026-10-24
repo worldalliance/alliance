@@ -30,12 +30,10 @@ import {
   IsInt,
   IsNotEmpty,
   IsNumber,
-  IsObject,
   IsOptional,
   IsString,
   IsUrl,
   MaxLength,
-  ValidateIf,
   ValidateNested,
 } from "class-validator";
 import { CommentDto } from "src/forum/dto/comment.dto";
@@ -43,7 +41,6 @@ import { EditableContentDto } from "src/forum/dto/editablecontent.dto";
 import type { Comment } from "src/forum/entities/comment.entity";
 import type { ForumFeedComment } from "src/forum/forum-comment-query.service";
 import { getImageSource } from "src/images/images.service";
-import { displayOnlySchemaOf } from "src/tasks/display-only-snapshot";
 import { Form } from "src/tasks/entities/form.entity";
 import {
   FormResponse,
@@ -87,6 +84,7 @@ import {
   type UserActionStatus,
   type UserActionWithdrawal,
 } from "../user-action-status";
+import { ActionUpdateDto } from "./action-update.dto";
 import { AdminFollowUpFormDto, FollowUpFormDto } from "./follow-up-form.dto";
 import { GeneralUpdateDto } from "./general-update.dto";
 import { ProjectDto } from "./project.dto";
@@ -873,103 +871,6 @@ export class UpdateActionActivityDto extends PickType(ActionActivityDto, [
 export class ActionRelationsDto {
   @ApiProperty({ type: () => Map<number, UserActionRelation> })
   relations: Map<number, UserActionRelation>;
-}
-
-export class ActionUpdateDto extends PickType(ActionUpdate, [
-  "id",
-  "title",
-  "date",
-  "actionId",
-  "visibleAt",
-  "notifyType",
-  "notifiedAt",
-  "shortNotifString",
-  "associatedEvent",
-  "associatedEventId",
-  "schemaSnapshotId",
-  "tag",
-]) {
-  @ApiProperty()
-  @Type(() => Object)
-  @Allow()
-  schema: DisplayOnlySchema;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @Allow()
-  actionName?: string;
-
-  constructor(actionUpdate: ActionUpdate) {
-    super();
-    this.id = actionUpdate.id;
-    this.title = actionUpdate.title;
-    this.date = actionUpdate.date;
-    this.actionId = actionUpdate.actionId;
-    this.visibleAt = actionUpdate.visibleAt;
-    this.notifyType = actionUpdate.notifyType;
-    this.notifiedAt = actionUpdate.notifiedAt;
-    this.shortNotifString = actionUpdate.shortNotifString;
-    this.associatedEvent = actionUpdate.associatedEvent;
-    this.associatedEventId = actionUpdate.associatedEventId;
-    this.tag = actionUpdate.tag;
-    this.schema = displayOnlySchemaOf({
-      owner: "ActionUpdate",
-      ownerId: actionUpdate.id,
-      snapshot: actionUpdate.schemaSnapshot,
-    });
-    this.schemaSnapshotId = actionUpdate.schemaSnapshotId;
-    this.actionName = actionUpdate.action?.name;
-  }
-}
-
-export class CreateActionUpdateDto extends IntersectionType(
-  PickType(ActionUpdate, ["title", "date", "notifyType", "shortNotifString"]),
-  PartialType(
-    PickType(ActionUpdate, [
-      "splitCollectiveResult",
-      "nonCompleterResult",
-      "uninvolvedResult",
-    ]),
-  ),
-) {
-  @ApiPropertyOptional({ type: Number })
-  @IsOptional()
-  associatedEventId?: number;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  tagId?: string;
-}
-
-export class UpdateActionUpdateDto extends PartialType(
-  PickType(ActionUpdate, [
-    "title",
-    "date",
-    "notifyType",
-    "shortNotifString",
-    "splitCollectiveResult",
-    "nonCompleterResult",
-    "uninvolvedResult",
-  ]),
-) {
-  @ApiPropertyOptional({ type: Number, nullable: true })
-  @IsOptional()
-  associatedEventId?: number | null;
-
-  @ApiPropertyOptional({ type: String, nullable: true })
-  @IsOptional()
-  tagId?: string | null;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsObject()
-  @Type(() => Object)
-  schema?: Record<string, unknown>;
-
-  @ApiPropertyOptional({ type: Number })
-  @ValidateIf((dto: UpdateActionUpdateDto) => dto.schema !== undefined)
-  @IsInt()
-  expectedSchemaSnapshotId?: number;
 }
 
 export class CreateActionSuiteDto extends PickType(ActionSuite, ["name"]) {}
