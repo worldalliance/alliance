@@ -71,6 +71,7 @@ describe("useTaskFormHandlers", () => {
     const action = makeAction({ id: 1, taskFormId: 7 });
     client.setQueryData(queryKeys.actions(), [action]);
     client.setQueryData(queryKeys.myVisibilityContext(), {});
+    client.setQueryData(queryKeys.taskFormAggregateViews(7), []);
     const onOptOutAction = jest.fn();
     const view = renderHook(
       () =>
@@ -86,28 +87,48 @@ describe("useTaskFormHandlers", () => {
         ?.relation;
     const visibilityInvalidated = () =>
       client.getQueryState(queryKeys.myVisibilityContext())?.isInvalidated;
-    return { view, onOptOutAction, cachedRelation, visibilityInvalidated };
+    const aggregateViewsInvalidated = () =>
+      client.getQueryState(queryKeys.taskFormAggregateViews(7))?.isInvalidated;
+    return {
+      view,
+      onOptOutAction,
+      cachedRelation,
+      visibilityInvalidated,
+      aggregateViewsInvalidated,
+    };
   };
 
   it("marks the cached action withdrawn once the server confirms", async () => {
-    const { view, onOptOutAction, cachedRelation, visibilityInvalidated } =
-      renderHandlers(201);
+    const {
+      view,
+      onOptOutAction,
+      cachedRelation,
+      visibilityInvalidated,
+      aggregateViewsInvalidated,
+    } = renderHandlers(201);
 
     await act(() => view.result.current.handleAbandonAction(withdrawal));
 
     expect(cachedRelation()).toBe("withdrawn");
     expect(onOptOutAction).toHaveBeenCalled();
     expect(visibilityInvalidated()).toBe(true);
+    expect(aggregateViewsInvalidated()).toBe(true);
   });
 
   it("leaves the cached action alone when the withdrawal fails", async () => {
-    const { view, onOptOutAction, cachedRelation, visibilityInvalidated } =
-      renderHandlers(500);
+    const {
+      view,
+      onOptOutAction,
+      cachedRelation,
+      visibilityInvalidated,
+      aggregateViewsInvalidated,
+    } = renderHandlers(500);
 
     await act(() => view.result.current.handleAbandonAction(withdrawal));
 
     expect(cachedRelation()).toBe("none");
     expect(onOptOutAction).not.toHaveBeenCalled();
     expect(visibilityInvalidated()).toBe(false);
+    expect(aggregateViewsInvalidated()).toBe(false);
   });
 });
