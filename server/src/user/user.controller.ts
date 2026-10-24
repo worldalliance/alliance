@@ -42,6 +42,10 @@ import {
   UpsertAmbassadorProgramMemberDto,
 } from "./dto/ambassador-program.dto";
 import {
+  StaffDirectoryEntryDto,
+  UpdateStaffDirectoryDto,
+} from "./dto/staff-directory.dto";
+import {
   DeleteUserAdminDto,
   UpdateUserRolesAdminDto,
   UserAdminDetailDto,
@@ -51,9 +55,7 @@ import {
   NMembersResponseDto,
   ProfileDto,
   ProfileDtoWithFriends,
-  StaffDirectoryEntryDto,
   UpdateProfileDto,
-  UpdateStaffDirectoryDto,
   UserCityCountDto,
   UserDto,
 } from "./dto/user.dto";
