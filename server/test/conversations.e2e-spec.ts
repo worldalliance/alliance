@@ -1031,6 +1031,52 @@ describe("ConversationController (e2e)", () => {
       return conversationResponse.body.id;
     };
 
+    it("reports unread messages when reopening an existing direct conversation", async () => {
+      const { token: readerToken } = await createUserAndToken();
+      const { user: sender, token: senderToken } = await createUserAndToken();
+      await createDirectConversationWithUnread(
+        readerToken,
+        sender.id,
+        senderToken,
+      );
+
+      const reopened = await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/direct")
+        .set("Authorization", `Bearer ${readerToken}`)
+        .send({ targetUserId: sender.id })
+        .expect(201);
+
+      expect(reopened.body.unreadCount).toBe(1);
+    });
+
+    it("reports unread messages when reopening an existing group conversation", async () => {
+      const { token: readerToken } = await createUserAndToken();
+      const { user: sender, token: senderToken } = await createUserAndToken();
+      const { user: other } = await createUserAndToken();
+      const created = await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${readerToken}`)
+        .send({ title: "Reopened", participantIds: [sender.id, other.id] })
+        .expect(201);
+      await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${created.body.id}/accept`)
+        .set("Authorization", `Bearer ${senderToken}`)
+        .expect(201);
+      await request(ctx.app.getHttpServer())
+        .post("/messaging/messages")
+        .set("Authorization", `Bearer ${senderToken}`)
+        .send({ conversationId: created.body.id, body: "Unread in group" })
+        .expect(201);
+
+      const reopened = await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${readerToken}`)
+        .send({ title: "Reopened", participantIds: [sender.id, other.id] })
+        .expect(201);
+
+      expect(reopened.body.unreadCount).toBe(1);
+    });
+
     it("returns zero when the user has no conversations or unread messages", async () => {
       const { token } = await createUserAndToken();
       const unreadCount = await getUnreadCount(token);

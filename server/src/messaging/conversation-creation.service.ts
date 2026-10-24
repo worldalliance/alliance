@@ -12,6 +12,7 @@ import { Friend } from "src/user/entities/friend.entity";
 import { User } from "src/user/entities/user.entity";
 import { acceptedFriendship, friendshipBetween } from "src/user/friendship";
 import { In, type Repository } from "typeorm";
+import { ConversationService } from "./conversation.service";
 import { createConversationWithMembers } from "./create-conversation-with-members";
 import {
   ConversationDto,
@@ -19,9 +20,8 @@ import {
   CreateGroupConversationDto,
 } from "./dto/messaging.dto";
 import { Conversation } from "./entities/conversation.entity";
-import { Message } from "./entities/message.entity";
 import { ParticipantState } from "./entities/participant.entity";
-import { findLastMessage, loadConversation } from "./load-conversation";
+import { loadConversation } from "./load-conversation";
 import { emitConversationUpdated } from "./messaging.events";
 
 const PARTICIPANTS_MISSING = "One or more participants were not found.";
@@ -31,14 +31,13 @@ export class ConversationCreationService {
   constructor(
     @InjectRepository(Conversation)
     private readonly conversationRepository: Repository<Conversation>,
-    @InjectRepository(Message)
-    private readonly messageRepository: Repository<Message>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(Friend)
     private readonly friendRepository: Repository<Friend>,
     private readonly eventEmitter: EventEmitter2,
     private readonly imagesService: ImagesService,
+    private readonly conversationService: ConversationService,
   ) {}
 
   /** Whether two users have an accepted friendship in either direction. */
@@ -92,19 +91,10 @@ export class ConversationCreationService {
       .getOne();
 
     if (existingConversation) {
-      const hydrated = await loadConversation(
-        this.conversationRepository,
+      return this.conversationService.getConversationForUser(
         existingConversation.id,
+        userId,
       );
-      const lastMessage = await findLastMessage(
-        this.messageRepository,
-        existingConversation.id,
-      );
-      return new ConversationDto({
-        conversation: hydrated,
-        contextUserId: userId,
-        lastMessage,
-      });
     }
 
     const areFriends = await this.queryAreUsersFriends(
@@ -193,19 +183,10 @@ export class ConversationCreationService {
       .getOne();
 
     if (existingConversation) {
-      const hydrated = await loadConversation(
-        this.conversationRepository,
+      return this.conversationService.getConversationForUser(
         existingConversation.id,
+        userId,
       );
-      const lastMessage = await findLastMessage(
-        this.messageRepository,
-        existingConversation.id,
-      );
-      return new ConversationDto({
-        conversation: hydrated,
-        contextUserId: userId,
-        lastMessage,
-      });
     }
 
     const [owner, participants] = await Promise.all([
