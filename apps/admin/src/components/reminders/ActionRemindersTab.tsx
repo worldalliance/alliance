@@ -1,7 +1,6 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { memberActionPhase } from "@alliance/common/actionEvent";
 import { ActionSuiteDto, ReminderGroupDto } from "@alliance/shared/client";
-import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
@@ -28,6 +27,7 @@ import React, {
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { useActionReminderGroupsAdmin } from "../../lib/useActionReminderGroupsAdmin";
 import { useReminderAnchorCandidatesAdmin } from "../../lib/useReminderAnchorCandidatesAdmin";
+import { useTagsAdmin } from "../../lib/useTagsAdmin";
 import { useUsersAdmin } from "../../lib/useUsersAdmin";
 import ActionReminderCard from "./ActionReminderCard";
 import ActionReminderGroupForm, {

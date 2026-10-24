@@ -1,7 +1,6 @@
 import { eventInEffectAt } from "@alliance/common/actionEvent";
 import { ActionDto, AdminActionListItemDto } from "@alliance/shared/client";
 import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
-import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { parseActionDto } from "@alliance/shared/parsed-dtos";
 import React, { useMemo, useState } from "react";
 import { Link } from "react-router";
@@ -15,6 +14,7 @@ import {
 } from "../lib/actionStatusBucket";
 import { actionsLoadError } from "../lib/actionsLoadError";
 import { describeCohortExpression } from "../lib/describeCohortExpression";
+import { useTagsAdmin } from "../lib/useTagsAdmin";
 
 export const getLastPastEventDate = (
   action: Pick<ActionDto, "events">,

@@ -1,4 +1,3 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AddUserToTagDto,
   CreateTagDto,
@@ -8,8 +7,9 @@ import {
   userTagGetTagsAdmin,
   userTagRemoveUserFromTagAdmin,
   userTagUpdateTagAdmin,
-} from "../client";
-import { queryKeys } from "./queryKeys";
+} from "@alliance/shared/client";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 const QUERY_KEY = queryKeys.tagsAdmin();
 

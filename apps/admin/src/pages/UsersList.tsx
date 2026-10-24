@@ -5,7 +5,6 @@ import {
   UserActionRelationDetailDto,
 } from "@alliance/shared/client/types.gen";
 import { shuffleWithSeed } from "@alliance/shared/forms/randomutils";
-import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable";
 import Pagination from "@alliance/sharedweb/ui/Pagination";
@@ -25,6 +24,7 @@ import {
 import { useActionRelationsAdmin } from "../lib/useActionRelationsAdmin";
 import { useCompletedAllActiveActions } from "../lib/useCompletedAllActiveActions";
 import { useMemberContactInfoAdmin } from "../lib/useMemberContactInfoAdmin";
+import { useTagsAdmin } from "../lib/useTagsAdmin";
 import { useTimeSpentPerUserTotalAdmin } from "../lib/useTimeSpentPerUserTotalAdmin";
 import { useUsersAdmin } from "../lib/useUsersAdmin";
 
