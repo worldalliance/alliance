@@ -28,7 +28,7 @@ import {
   GlobalFeedItemDto,
   HomeFeedItemDto,
   TimelineFeedItemDto,
-} from "./dto/action.dto";
+} from "./dto/action-feed.dto";
 import { parseFeedPage } from "./feed-page";
 
 const GLOBAL_FEED_MEMBERS_DEFAULT_LIMIT = 30;

@@ -2,7 +2,7 @@ import { NotFoundException } from "@nestjs/common";
 import {
   GlobalFeedItemDto,
   GlobalFeedItemType,
-} from "src/actions/dto/action.dto";
+} from "src/actions/dto/action-feed.dto";
 import { ActionStatus } from "src/actions/entities/action-event.entity";
 import { Action } from "src/actions/entities/action.entity";
 import { Cluster } from "src/cluster/entities/cluster.entity";

@@ -49,11 +49,10 @@ import {
   CreateActionEventDto,
 } from "../src/actions/dto/action-event.dto";
 import {
-  ActionDto,
-  CreateActionDto,
   GlobalFeedItemType,
   TimelineFeedItemType,
-} from "../src/actions/dto/action.dto";
+} from "../src/actions/dto/action-feed.dto";
+import { ActionDto, CreateActionDto } from "../src/actions/dto/action.dto";
 import {
   ActionEvent,
   ActionStatus,

@@ -206,6 +206,19 @@ import {
   UpdateActionEventDto,
 } from "./dto/action-event.dto";
 import {
+  GlobalFeedActionUpdateDto,
+  GlobalFeedActivityGroupDto,
+  GlobalFeedForumCommentsDto,
+  GlobalFeedItemDto,
+  GlobalFeedItemType,
+  GlobalFeedNewMembersDto,
+  HomeFeedItem,
+  HomeFeedItemDto,
+  HomeFeedItemType,
+  TimelineFeedItemDto,
+  TimelineFeedItemType,
+} from "./dto/action-feed.dto";
+import {
   CreateActionUpdateDto,
   UpdateActionUpdateDto,
 } from "./dto/action-update.dto";
@@ -216,19 +229,8 @@ import {
   CreateActionDto,
   CreateActionSuiteDto,
   ExportActionDto,
-  GlobalFeedActionUpdateDto,
-  GlobalFeedActivityGroupDto,
-  GlobalFeedForumCommentsDto,
-  GlobalFeedItemDto,
-  GlobalFeedItemType,
-  GlobalFeedNewMembersDto,
-  HomeFeedItem,
-  HomeFeedItemDto,
-  HomeFeedItemType,
   SetPriorityDto,
   SuspensionPlan,
-  TimelineFeedItemDto,
-  TimelineFeedItemType,
   UpdateActionDto,
   UserActionRelation,
 } from "./dto/action.dto";
