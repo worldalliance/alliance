@@ -4,7 +4,7 @@ import {
 } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
-import z from "zod";
+import { z } from "zod";
 import { openSection, selectElement } from "../lib/testing/formCanvas";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
 import { resetCustomValidatorsCache } from "./form-fields/useCustomValidators";

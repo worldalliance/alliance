@@ -1,4 +1,4 @@
-import z from "zod";
+import { z } from "zod";
 
 /**
  * Input names are written verbatim into the formula, so unlike variable names

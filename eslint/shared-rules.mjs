@@ -19,11 +19,25 @@ export default [
   { linterOptions: { reportUnusedDisableDirectives: "error" } },
   {
     files: ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],
+    plugins: {
+      zod: {
+        rules: { "named-import": builtinRules.get("no-restricted-syntax") },
+      },
+    },
     rules: {
       "no-restricted-properties": [
         "error",
         { object: "jest", property: "mock", message: moduleMockMessage },
         { object: "mock", property: "module", message: moduleMockMessage },
+      ],
+      "zod/named-import": [
+        "error",
+        {
+          selector:
+            "ImportDeclaration[source.value=/^zod(\\/|$)/] > :matches(ImportDefaultSpecifier, ImportSpecifier[imported.name='default'])",
+          message:
+            'Import `{ z }` from "zod". The default export defeats tree-shaking and ships every zod locale to the browser.',
+        },
       ],
       "prefer-const": "warn",
       "no-constant-binary-expression": "error",

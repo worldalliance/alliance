@@ -7,7 +7,7 @@
  * wherever one is pulled from an untyped source (db row, HTTP body, …).
  */
 
-import z from "zod";
+import { z } from "zod";
 
 // --- Leaf Conditions ---
 
