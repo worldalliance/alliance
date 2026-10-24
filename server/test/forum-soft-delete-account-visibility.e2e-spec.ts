@@ -1,6 +1,8 @@
 import {
   GlobalFeedItemDto,
   GlobalFeedItemType,
+  HomeFeedItemDto,
+  HomeFeedItemType,
 } from "src/actions/dto/action-feed.dto";
 import { Cluster } from "src/cluster/entities/cluster.entity";
 import { CommentDto } from "src/forum/dto/comment.dto";
@@ -164,6 +166,35 @@ describe("Forum account visibility (e2e)", () => {
       .set("Authorization", `Bearer ${replier.token}`)
       .expect(200);
     expect(members.body).toEqual([]);
+  });
+
+  it("leaves replies under a soft-deleted account's comment out of the home feed", async () => {
+    const departing = await member();
+    const replier = await member();
+    const postId = await createPost(ctx.accessToken);
+    const parent = (await comment({ ...departing, postId }).expect(201)).body;
+    const reply = (
+      await comment({ ...replier, postId, parentId: parent.id }).expect(201)
+    ).body;
+    const grandchild = (
+      await comment({ ...replier, postId, parentId: reply.id }).expect(201)
+    ).body;
+    const kept = (await comment({ ...replier, postId }).expect(201)).body;
+
+    await userRepo.softDelete(departing.user.id);
+
+    const feed = await request(server())
+      .get("/actions/homeFeed?limit=100")
+      .set("Authorization", `Bearer ${replier.token}`)
+      .expect(200);
+    const commentIds = feed.body
+      .filter(
+        (item: HomeFeedItemDto) => item.type === HomeFeedItemType.ForumComment,
+      )
+      .map((item: HomeFeedItemDto) => item.forumComment?.comment.id);
+    expect(commentIds).toContain(kept.id);
+    expect(commentIds).not.toContain(reply.id);
+    expect(commentIds).not.toContain(grandchild.id);
   });
 
   it("drops a soft-deleted account's activity and action comments and the replies under them", async () => {
