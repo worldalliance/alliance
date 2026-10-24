@@ -1,4 +1,8 @@
-import type { BigLinkBlock } from "@alliance/common/forms/display-blocks";
+import {
+  BigLinkAction,
+  BigLinkColor,
+  type BigLinkBlock,
+} from "@alliance/common/forms/display-blocks";
 import type { ExternalShareTargetDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
@@ -82,6 +86,25 @@ it("drops the target when switched back to a URL", () => {
   fireEvent.click(screen.getByRole("radio", { name: "URL" }));
 
   expect(onUpdate).toHaveBeenLastCalledWith({ externalTargetId: undefined });
+});
+
+it.each([
+  ["Green", { color: BigLinkColor.Green }],
+  ["Copy the link", { action: BigLinkAction.Copy }],
+])("stores the %s option", (name, update) => {
+  const onUpdate = renderEditor(urlLink);
+
+  fireEvent.click(screen.getByRole("button", { name }));
+
+  expect(onUpdate).toHaveBeenLastCalledWith(update);
+});
+
+it("stores showing the link, and drops it when unchecked", () => {
+  const onUpdate = renderEditor({ ...urlLink, showUrl: true });
+
+  fireEvent.click(screen.getByRole("checkbox", { name: "Show the link" }));
+
+  expect(onUpdate).toHaveBeenLastCalledWith({ showUrl: undefined });
 });
 
 it("keeps the target picker open while none is chosen", async () => {
