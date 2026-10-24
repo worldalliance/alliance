@@ -38,7 +38,7 @@ import { cn } from "@alliance/shared/styles/util";
 import type { FieldConditionContext } from "@alliance/shared/useFormRenderer";
 import { ChevronDown, X } from "lucide-react-native";
 import { useRef, useState } from "react";
-import { Image, TextInput, TouchableOpacity, View } from "react-native";
+import { Image, TouchableOpacity, View } from "react-native";
 import { getImageSource } from "../../lib/config";
 import { pickImageDataUri } from "../../lib/pickImageDataUri";
 import { colors } from "../../lib/style/colors";
@@ -50,20 +50,24 @@ import BottomSheetOptionPicker, {
 import InlineLabelMarkdownWrapper from "../InlineLabelMarkdownWrapper";
 import Button, { ButtonColor, ButtonSize } from "../system/Button";
 import Card, { CardStyle } from "../system/Card";
-import CharacterLimitNotice from "../system/CharacterLimitNotice";
 import Checkbox, { CheckboxSize } from "../system/Checkbox";
 import Text, { FontWeight } from "../system/Text";
 import CityAutosuggest from "./CityAutosuggest";
 import { getCustomComponentById } from "./customComponentRegistry";
 import { fieldAccessibilityLabel } from "./fieldAccessibilityLabel";
 import {
+  inputClasses,
   RenderLabel,
   renderValidationMessage,
-  sharedInputClasses,
 } from "./fieldParts";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
 import { PhoneInputField } from "./PhoneInputField";
 import { RankingFieldInput } from "./RankingFieldInput";
+import {
+  NumberInputField,
+  SingleLineInputField,
+  TextareaInputField,
+} from "./TextFields";
 import { TimeInputField } from "./TimeInputField";
 import TimeZoneSelect from "./TimeZoneSelect";
 
@@ -86,8 +90,6 @@ export type RenderFieldProps = {
   fieldContext: FieldConditionContext;
 };
 
-const TEXTAREA_LINE_HEIGHT = 24;
-const TEXTAREA_VERTICAL_PADDING = 12;
 type ChoiceOption = { label: string; value: string };
 
 export function RenderField({
@@ -112,9 +114,17 @@ export function RenderField({
   const errorMessage =
     typeof error === "string" && error.trim().length > 0 ? error : null;
   const hasError = Boolean(errorMessage);
-  const inputBase = `${sharedInputClasses} ${
-    hasError ? "border-red-500" : "border-zinc-200"
-  } ${disabled ? "opacity-60" : ""}`;
+  const inputBase = inputClasses({ hasError, disabled });
+  const inputProps = {
+    value,
+    onChange,
+    onFocus,
+    disabled,
+    errorMessage,
+    isOutputView,
+    hideLabel,
+    required,
+  };
 
   const { sections, randomizedOptions } = useFieldOptionSections({
     field,
@@ -153,94 +163,12 @@ export function RenderField({
 
   switch (field.kind) {
     case "text":
-      return (
-        <View>
-          <RenderLabel
-            field={field}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <TextInput
-            accessibilityLabel={fieldAccessibilityLabel(field)}
-            className={inputBase}
-            value={(value as string) ?? ""}
-            onChangeText={(text) => onChange?.(text)}
-            onFocus={onFocus}
-            placeholder={field.placeholder}
-            placeholderTextColor="#9ca3af"
-            editable={!disabled}
-          />
-          {renderValidationMessage(errorMessage)}
-        </View>
-      );
-
-    case "textarea": {
-      const rows = disabled ? 1 : field.rows || 3;
-      return (
-        <View>
-          <RenderLabel
-            field={field}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <TextInput
-            accessibilityLabel={fieldAccessibilityLabel(field)}
-            className={cn(inputBase, "text-base")}
-            style={{
-              lineHeight: TEXTAREA_LINE_HEIGHT,
-              paddingVertical: TEXTAREA_VERTICAL_PADDING,
-              minHeight:
-                rows * TEXTAREA_LINE_HEIGHT + TEXTAREA_VERTICAL_PADDING * 2,
-            }}
-            value={(value as string) ?? ""}
-            onChangeText={(text) => onChange?.(text)}
-            onFocus={onFocus}
-            placeholder={field.placeholder}
-            placeholderTextColor="#9ca3af"
-            editable={!disabled}
-            multiline
-            textAlignVertical="top"
-            scrollEnabled={false}
-            maxLength={field.maxLength}
-          />
-          {field.maxLength && (
-            <CharacterLimitNotice
-              value={(value as string) ?? ""}
-              max={field.maxLength}
-              readOnly={disabled}
-            />
-          )}
-          {renderValidationMessage(errorMessage)}
-        </View>
-      );
-    }
-
     case "email":
-      return (
-        <View>
-          <RenderLabel
-            field={field}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <TextInput
-            accessibilityLabel={fieldAccessibilityLabel(field)}
-            className={inputBase}
-            value={(value as string) ?? ""}
-            onChangeText={(text) => onChange?.(text)}
-            onFocus={onFocus}
-            placeholder="example@email.com"
-            placeholderTextColor="#9ca3af"
-            autoCapitalize="none"
-            keyboardType="email-address"
-            editable={!disabled}
-          />
-          {renderValidationMessage(errorMessage)}
-        </View>
-      );
+    case "date":
+      return <SingleLineInputField {...inputProps} field={field} />;
+
+    case "textarea":
+      return <TextareaInputField {...inputProps} field={field} />;
 
     case "phone":
       return (
@@ -257,50 +185,8 @@ export function RenderField({
         />
       );
 
-    case "number": {
-      const numberDecimalPlaces = field.allowDecimals
-        ? (field.decimalPlaces ?? undefined)
-        : undefined;
-      return (
-        <View>
-          <RenderLabel
-            field={field}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <TextInput
-            accessibilityLabel={fieldAccessibilityLabel(field)}
-            className={inputBase}
-            value={value === undefined || value === null ? "" : String(value)}
-            onChangeText={(text) => {
-              if (text.trim() === "") {
-                onChange?.("");
-                return;
-              }
-              if (field.allowDecimals && /^-?\d*\.?\d*$/.test(text)) {
-                const next = parseFloat(text);
-                if (Number.isNaN(next)) {
-                  onChange?.("");
-                } else if (numberDecimalPlaces !== undefined) {
-                  const factor = Math.pow(10, numberDecimalPlaces);
-                  onChange?.(Math.round(next * factor) / factor);
-                } else {
-                  onChange?.(next);
-                }
-                return;
-              }
-              const next = parseFloat(text);
-              onChange?.(Number.isNaN(next) ? "" : next);
-            }}
-            onFocus={onFocus}
-            keyboardType={field.allowDecimals ? "decimal-pad" : "numeric"}
-            editable={!disabled}
-          />
-          {renderValidationMessage(errorMessage)}
-        </View>
-      );
-    }
+    case "number":
+      return <NumberInputField {...inputProps} field={field} />;
 
     case "range": {
       const values = getRangeValues(field);
@@ -646,29 +532,6 @@ export function RenderField({
         </View>
       );
     }
-
-    case "date":
-      return (
-        <View>
-          <RenderLabel
-            field={field}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <TextInput
-            accessibilityLabel={fieldAccessibilityLabel(field)}
-            className={inputBase}
-            value={(value as string) ?? ""}
-            onChangeText={(text) => onChange?.(text)}
-            onFocus={onFocus}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor="#9ca3af"
-            editable={!disabled}
-          />
-          {renderValidationMessage(errorMessage)}
-        </View>
-      );
 
     case "time":
       return (
