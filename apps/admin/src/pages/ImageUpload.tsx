@@ -2,10 +2,12 @@
 import { imagesUploadImage } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import React, { useState } from "react";
+import { adminRefusalMessage } from "../lib/adminRefusal";
 
 const ImageUpload: React.FC = () => {
   const [file, setFile] = useState<string | null>(null);
   const [key, setKey] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -22,12 +24,17 @@ const ImageUpload: React.FC = () => {
 
   const handleUpload = async () => {
     if (file) {
-      const { data } = await imagesUploadImage({
-        body: { file },
-      });
-      if (data) {
+      setError(null);
+      try {
+        const { data } = await imagesUploadImage({
+          body: { file },
+          throwOnError: true,
+        });
         console.log(data);
         setKey(data.url);
+      } catch (uploadError) {
+        console.error("Failed to upload image", uploadError);
+        setError(adminRefusalMessage(uploadError, "Failed to upload image."));
       }
     }
   };
@@ -42,6 +49,7 @@ const ImageUpload: React.FC = () => {
       <Button color={ButtonColor.Black} onClick={handleUpload}>
         Upload
       </Button>
+      {error && <p className="text-sm text-red-500">{error}</p>}
       {key && (
         <div className="flex flex-col gap-2">
           <img

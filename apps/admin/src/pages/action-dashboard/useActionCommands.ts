@@ -25,6 +25,18 @@ export const useNavigateToCreatedAction = () => {
 
 type ActionAdmin = ReturnType<typeof useActionAdmin>;
 
+const copyTaskForm = async (id: number): Promise<number> => {
+  const { data: taskForm } = await tasksGetFormAdmin({
+    path: { id },
+    throwOnError: true,
+  });
+  const { data: copy } = await tasksCreateFormAdmin({
+    body: { title: taskForm.title + " (Copy)", schema: taskForm.schema },
+    throwOnError: true,
+  });
+  return copy.id;
+};
+
 export function useActionCommands(params: {
   admin: Pick<
     ActionAdmin,
@@ -66,21 +78,18 @@ export function useActionCommands(params: {
 
     let taskFormId = form.taskFormId;
     if (taskFormId) {
-      const taskForm = await tasksGetFormAdmin({
-        path: { id: taskFormId },
-      });
-      if (taskForm.data) {
-        const newTaskForm = await tasksCreateFormAdmin({
-          body: {
-            title: taskForm.data.title + " (Copy)",
-            schema: taskForm.data.schema,
-          },
-        });
-        taskFormId = newTaskForm.data?.id;
-        // The clone is a form row from here on, whether or not the action it
-        // was made for gets created.
-        if (taskFormId !== undefined) await invalidateFormsIndex();
+      const copied = await R.fromPromise(
+        copyTaskForm(taskFormId),
+        logActionError("Failed to copy the action's task form"),
+      );
+      if (!copied.ok) {
+        setError(copied.error);
+        return;
       }
+      taskFormId = copied.value;
+      // The clone is a form row from here on, whether or not the action it
+      // was made for gets created.
+      await invalidateFormsIndex();
     }
 
     const duplicateForm = {

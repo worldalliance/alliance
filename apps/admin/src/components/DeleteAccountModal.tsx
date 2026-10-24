@@ -1,4 +1,3 @@
-import { errorMessage } from "@alliance/common/errorMessage";
 // eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
   imagesUploadImage,
@@ -16,6 +15,7 @@ import Modal, {
 } from "@alliance/sharedweb/ui/Modal";
 import { AlertTriangle, Paperclip, X } from "lucide-react";
 import React, { useCallback, useState } from "react";
+import { adminRefusalMessage } from "../lib/adminRefusal";
 
 interface DeleteAccountModalProps {
   userId: number;
@@ -63,14 +63,18 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
         try {
           const { data } = await imagesUploadImage({
             body: { file: reader.result },
+            throwOnError: true,
           });
-          if (data) {
-            setScreenshotKey(data.key);
-            setScreenshotName(file.name);
-          }
+          setScreenshotKey(data.key);
+          setScreenshotName(file.name);
         } catch (uploadError) {
           console.error("Failed to upload screenshot", uploadError);
-          setError("Failed to upload the screenshot. Try again.");
+          setError(
+            adminRefusalMessage(
+              uploadError,
+              "Failed to upload the screenshot. Try again.",
+            ),
+          );
         } finally {
           setIsUploading(false);
         }
@@ -103,10 +107,7 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
     } catch (deleteError) {
       console.error("Failed to delete account", deleteError);
       setError(
-        errorMessage({
-          error: deleteError,
-          fallback: "Failed to delete the account.",
-        }),
+        adminRefusalMessage(deleteError, "Failed to delete the account."),
       );
       setIsDeleting(false);
     }
