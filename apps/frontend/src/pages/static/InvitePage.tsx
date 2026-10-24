@@ -1,15 +1,10 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import {
-  ReferrerProfileDto,
-  userOnetimeInviteOnetimeInvite,
-  userReferralReferrerProfile,
-} from "@alliance/shared/client";
 import { captureEvent } from "@alliance/shared/lib/analytics";
+import { useInvite } from "@alliance/shared/lib/useInvite";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import posthog from "posthog-js";
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { href, Link, useSearchParams } from "react-router";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
 import { HERO_SUBHEAD } from "../../site/content";
@@ -41,28 +36,11 @@ const InvitePage: React.FC = () => {
 
   const referralCode = searchParams.get("ref");
 
-  const [inviterProfile, setInviterProfile] =
-    useState<ReferrerProfileDto | null>(null);
-  const [inviteeName, setInviteeName] = useState<string | null>(null);
-  const [communityId, setCommunityId] = useState<number | null>(null);
+  const { inviter, onetimeInvite, pending } = useInvite(referralCode);
+  const inviteeName = onetimeInvite?.invitee;
 
   useEffect(() => {
     if (!referralCode) return;
-    userReferralReferrerProfile({ path: { code: referralCode } }).then(
-      (response) => {
-        setInviterProfile(response.data ?? null);
-      },
-    );
-
-    userOnetimeInviteOnetimeInvite({ path: { code: referralCode } }).then(
-      (response) => {
-        if (response.data) {
-          setInviteeName(response.data.invitee);
-          setCommunityId(response.data.community?.id ?? null);
-        }
-      },
-    );
-
     posthog.register_once({
       referral_code: referralCode,
     });
@@ -106,28 +84,6 @@ const InvitePage: React.FC = () => {
 
   const signupTo = `${href("/signup")}?ref=${referralCode}`;
 
-  let inviterLine: React.ReactNode = null;
-  if (inviterProfile) {
-    switch (inviterProfile.kind) {
-      case "campaign":
-        break;
-      case "user":
-        inviterLine = (
-          <span className="inline-flex items-center justify-center gap-2">
-            From
-            <AvatarProfile
-              pfp={inviterProfile.profilePicture ?? null}
-              size="small"
-            />
-            {inviterProfile.displayName}
-          </span>
-        );
-        break;
-      default:
-        inviterProfile.kind satisfies never;
-    }
-  }
-
   return (
     <SiteRoot>
       <Navbar />
@@ -141,9 +97,16 @@ const InvitePage: React.FC = () => {
             "flex flex-col items-center gap-8 pt-16 pb-16 text-center lg:pt-24 lg:pb-20",
           )}
         >
-          {inviterLine && (
+          {!pending && inviter && (
             <div className="text-lg text-[var(--site-ink)]/70">
-              {inviterLine}
+              <span className="inline-flex items-center justify-center gap-2">
+                From
+                <AvatarProfile
+                  pfp={inviter.profilePicture ?? null}
+                  size="small"
+                />
+                {inviter.displayName}
+              </span>
             </div>
           )}
           <div className="flex flex-col items-center gap-4">
@@ -187,7 +150,7 @@ const InvitePage: React.FC = () => {
                 personal sign-up link
               </Link>
               . We will be added as friends automatically.
-              {communityId
+              {onetimeInvite?.community
                 ? " You will also be added to my smaller Alliance group."
                 : ""}
             </li>
