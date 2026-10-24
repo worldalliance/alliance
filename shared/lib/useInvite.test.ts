@@ -83,6 +83,7 @@ describe("useInvite", () => {
     const invite = await settle();
     expect(invite.refusal).toBeNull();
     expect(invite.inviter?.displayName).toBe("Jane Smith");
+    expect(invite.onetimeInvite?.code).toBe("CODE");
     expect(invite.availability).toBe(InviteAvailability.Available);
   });
 
@@ -157,6 +158,7 @@ describe("useInvite", () => {
     const invite = await settle();
     expect(invite.refusal).toBe(refusal);
     expect(invite.inviter).toBeNull();
+    expect(invite.onetimeInvite).toBeNull();
     expect(invite.availability).toBe(InviteAvailability.Unavailable);
   });
 });
