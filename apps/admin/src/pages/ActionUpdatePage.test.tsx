@@ -152,6 +152,31 @@ describe("ActionUpdatePage", () => {
     expect(screen.queryByRole("button", { name: "Update Details" })).toBeNull();
   });
 
+  it("offers the action's events to link the update to", async () => {
+    await renderDetails();
+
+    expect(
+      await screen.findByRole("option", { name: /^Launch – / }),
+    ).toBeTruthy();
+  });
+
+  it("says the action's events failed to load in place of the picker", async () => {
+    api.alsoServing({
+      "GET /actions/adminslug/:id": () =>
+        Response.json({ statusCode: 500 }, { status: 500 }),
+    });
+
+    await renderDetails();
+
+    expect(
+      await screen.findByText("Couldn't load the action's events."),
+    ).toBeTruthy();
+    expect(screen.queryByRole("option", { name: /^Launch/ })).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Send notification" }),
+    ).toBeTruthy();
+  });
+
   it("says why the server refused a notification", async () => {
     jest.spyOn(window, "confirm").mockReturnValue(true);
     jest.spyOn(console, "error").mockImplementation(() => {});
