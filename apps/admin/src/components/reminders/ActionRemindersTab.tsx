@@ -1,4 +1,3 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { memberActionPhase } from "@alliance/common/actionEvent";
 import { ActionSuiteDto, ReminderGroupDto } from "@alliance/shared/client";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
@@ -27,12 +26,8 @@ import ActionReminderGroupForm, {
   ActionReminderGroupFormSubmitPayload,
 } from "./ActionReminderGroupForm";
 import { describeGroupSchedule, groupSendStart } from "./groupSchedule";
-import {
-  presetNames,
-  ReminderPreset,
-  ReminderPresetName,
-  reminderPresets,
-} from "./presets";
+import PresetPicker from "./PresetPicker";
+import { ReminderPreset, ReminderPresetName, reminderPresets } from "./presets";
 
 interface ActionRemindersTabProps {
   suite: ActionSuiteDto;
@@ -313,7 +308,6 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
     }
   }, [highlightedReminder]);
 
-  const [selectingPreset, setSelectingPreset] = useState<boolean>(false);
   const [selectedPreset, setSelectedPreset] =
     useState<ReminderPresetName | null>(null);
 
@@ -399,46 +393,10 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
             <h3 className="text-base font-semibold">Schedule a notification</h3>
             <div className="flex flex-row gap-2">
               {createGroupExpanded && (
-                <div className="relative">
-                  <Button
-                    type="button"
-                    color={ButtonColor.Light}
-                    className="px-3 py-1 text-sm"
-                    onClick={() => setSelectingPreset((prev) => !prev)}
-                  >
-                    {createGroupExpanded ? "Load preset..." : ""}
-                  </Button>
-                  {selectingPreset && (
-                    <div className="absolute top-full right-0 p-2 bg-white shadow-md rounded-md">
-                      {presetNames.map((preset) => {
-                        const needsAnchor =
-                          !!reminderPresets[preset].anchorToDependencyDeadline;
-                        const anchorUnavailable =
-                          needsAnchor && !upcomingAnchorCandidate;
-                        return (
-                          <Button
-                            key={preset}
-                            type="button"
-                            color={ButtonColor.Light}
-                            disabled={anchorUnavailable}
-                            title={
-                              anchorUnavailable
-                                ? "Needs an upcoming dependency deadline to anchor to; this action's cohort has none"
-                                : undefined
-                            }
-                            onClick={() => {
-                              setSelectedPreset(preset);
-                              setSelectingPreset(false);
-                            }}
-                            className="w-full rounded-none bg-transparent! hover:bg-zinc-200/60! text-nowrap justify-start"
-                          >
-                            {preset}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                <PresetPicker
+                  dependencyDeadlineAvailable={!!upcomingAnchorCandidate}
+                  onSelect={setSelectedPreset}
+                />
               )}
               <Button
                 type="button"
