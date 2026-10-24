@@ -6,6 +6,7 @@ import { AuthContext } from "../../../lib/AuthContext";
 import { InviteSessionProvider } from "../../../site/invite/InviteSession";
 import { authValue } from "../../../testing/authValue";
 import DemocraticGrantmaking26 from "./DemocraticGrantmaking26";
+import { ExpertGrid } from "./ExpertGrid";
 import { FEATURED_PEOPLE } from "./placeholders";
 
 let membersReply: () => Response;
@@ -88,6 +89,25 @@ test("shows each expert once in a five-column grid between the waitlist bar and 
     expect(face?.getAttribute("src")).toBe(person.imageSrc);
     expect(face?.className).toContain("aspect-square");
   });
+});
+
+test("only experts with profile URLs have links and link styling", () => {
+  render(<ExpertGrid />);
+
+  for (const person of FEATURED_PEOPLE) {
+    const name = screen.getByText(person.name);
+    const link = name.closest("a");
+    if (person.href) {
+      expect(link?.getAttribute("href")).toBe(person.href);
+      expect(link?.getAttribute("target")).toBe("_blank");
+      expect(link?.getAttribute("rel")).toBe("noreferrer");
+      expect(name.className).toContain("group-hover:");
+    } else {
+      expect(link).toBeNull();
+      expect(name.className).not.toContain("underline");
+      expect(name.closest("[target], [role=link], [tabindex]")).toBeNull();
+    }
+  }
 });
 
 test("marks preparation as the current phase", () => {
