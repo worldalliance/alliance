@@ -92,14 +92,7 @@ const NavbarVertical: React.FC<{
 
   const { pendingCommunityInvites } = useIncomingCommunityInvites();
 
-  const {
-    unread: unreadMessages,
-    hasUpdates,
-    updateTick,
-    setUnread,
-    setHasUpdates,
-    refreshUnreadCount,
-  } = useMessagingUnread();
+  const unreadMessages = useMessagingUnread();
 
   const navRef = useRef<HTMLDivElement | null>(null);
 
@@ -175,19 +168,6 @@ const NavbarVertical: React.FC<{
   const currentLocation: NavbarPage | null =
     navItems.find((item) => item.destination === location.pathname)?.page ||
     null;
-
-  useEffect(() => {
-    if (currentLocation !== NavbarPage.Messages && hasUpdates) {
-      refreshUnreadCount();
-    }
-  }, [hasUpdates, updateTick, refreshUnreadCount, currentLocation]);
-
-  useEffect(() => {
-    if (currentLocation === NavbarPage.Messages) {
-      setUnread(0);
-      setHasUpdates(true);
-    }
-  }, [currentLocation, setUnread, setHasUpdates]);
 
   const unreadNotifsForPage = useMemo((): Record<NavbarPage, number> => {
     return {

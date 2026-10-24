@@ -1,10 +1,5 @@
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import {
-  ConversationDto,
-  conversationGetUnreadSummary,
-  MessageDto,
-} from "@alliance/shared/client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import type { ConversationDto, MessageDto } from "@alliance/shared/client";
+import { useEffect, useRef } from "react";
 import { Socket } from "socket.io-client";
 import {
   type ConversationUnreadPayload,
@@ -16,6 +11,7 @@ import {
 } from "./messagingSocket";
 import { useConversationMessages } from "./useConversationMessages";
 import { useMyConversations } from "./useMyConversations";
+import { useUnreadMessageCount } from "./useUnreadMessageCount";
 
 export interface UseLiveConvoMessagesOptions {
   onIncomingMessage?: (message: MessageDto) => void;
@@ -198,68 +194,7 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
     return { messages, sendMessage };
   };
 
-  const useMessagingUnread = () => {
-    const [unread, setUnread] = useState<number>(0);
-    const [hasUpdates, setHasUpdates] = useState<boolean>(false);
-    const [updateTick, setUpdateTick] = useState(0);
-    const socketRef = useRef<Socket | null>(null);
-
-    const refreshUnreadCount = useCallback(() => {
-      conversationGetUnreadSummary()
-        .then((res) => {
-          if (res.data) {
-            setUnread(res.data.totalCount);
-            setHasUpdates(false);
-          }
-        })
-        .catch((err) => {
-          console.error("Failed to load unread messages count", err);
-        });
-    }, []);
-
-    useEffect(() => {
-      refreshUnreadCount();
-    }, [refreshUnreadCount]);
-
-    useEffect(() => {
-      let cancelled = false;
-      let socket: Socket | null = null;
-      let close: (() => void) | undefined;
-
-      (async () => {
-        if (cancelled) return;
-        ({ socket, close } = connectMessagingSocket(
-          "/messaging/overview",
-          config,
-        ));
-        socketRef.current = socket;
-
-        socket.on("conversation:unread", () => {
-          setHasUpdates(true);
-          setUpdateTick((tick) => tick + 1);
-        });
-
-        socket.on("messaging:error", (error) => {
-          console.error("Messaging overview socket error", error);
-        });
-      })();
-
-      return () => {
-        cancelled = true;
-        close?.();
-        socketRef.current = null;
-      };
-    }, [config]);
-
-    return {
-      unread,
-      refreshUnreadCount,
-      hasUpdates,
-      updateTick,
-      setUnread,
-      setHasUpdates,
-    };
-  };
+  const useMessagingUnread = () => useUnreadMessageCount(config);
 
   return { useConversations, useLiveConvoMessages, useMessagingUnread };
 };
