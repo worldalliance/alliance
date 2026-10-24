@@ -218,6 +218,7 @@ import {
   TimelineFeedItemDto,
   TimelineFeedItemType,
 } from "./dto/action-feed.dto";
+import { CreateActionSuiteDto } from "./dto/action-suite.dto";
 import {
   CreateActionUpdateDto,
   UpdateActionUpdateDto,
@@ -227,7 +228,6 @@ import {
   ActionReviewerDto,
   ActionSharePreview,
   CreateActionDto,
-  CreateActionSuiteDto,
   ExportActionDto,
   SetPriorityDto,
   SuspensionPlan,

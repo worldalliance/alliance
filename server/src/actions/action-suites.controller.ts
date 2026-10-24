@@ -20,7 +20,7 @@ import {
   CreateActionEventDto,
   UpdateActionEventDto,
 } from "./dto/action-event.dto";
-import { ActionSuiteDto, CreateActionSuiteDto } from "./dto/action.dto";
+import { ActionSuiteDto, CreateActionSuiteDto } from "./dto/action-suite.dto";
 
 @Controller("actions")
 export class ActionSuitesController {

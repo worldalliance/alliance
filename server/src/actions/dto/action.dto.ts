@@ -45,10 +45,8 @@ import {
   REVIEWER_NAME_MAX_LENGTH,
   REVIEWER_URL_MAX_LENGTH,
 } from "../entities/action-reviewer.entity";
-import { ActionSuite } from "../entities/action-suite.entity";
 import {
   Action,
-  loadedActionEvents,
   loadedActionFollowUpForms,
   loadedActionFormVariants,
   type ParsedAction,
@@ -64,9 +62,7 @@ import {
 import { ActionEventDto } from "./action-event.dto";
 import { ActionUpdateDto } from "./action-update.dto";
 import { AdminFollowUpFormDto, FollowUpFormDto } from "./follow-up-form.dto";
-import { GeneralUpdateDto } from "./general-update.dto";
 import { ProjectDto } from "./project.dto";
-import { ReminderGroupDto } from "./reminder-group.dto";
 
 export interface ActionSharePreview {
   firstName?: string;
@@ -619,49 +615,6 @@ export class UserActionRelationDto {
 export class ActionRelationsDto {
   @ApiProperty({ type: () => Map<number, UserActionRelation> })
   relations: Map<number, UserActionRelation>;
-}
-
-export class CreateActionSuiteDto extends PickType(ActionSuite, ["name"]) {}
-
-export class ActionSuiteDto extends PickType(ActionSuite, ["id", "name"]) {
-  @ApiProperty({ type: () => ActionDto, isArray: true })
-  @Type(() => ActionDto)
-  @Allow()
-  actions: ActionDto[];
-
-  @ApiProperty({ type: () => ActionEventDto, isArray: true })
-  @Type(() => ActionEventDto)
-  @Allow()
-  events: ActionEventDto[];
-
-  @ApiProperty({ type: () => ReminderGroupDto, isArray: true })
-  @Type(() => ReminderGroupDto)
-  @Allow()
-  reminderGroups: ReminderGroupDto[];
-
-  @ApiProperty({ type: () => GeneralUpdateDto, isArray: true })
-  @Type(() => GeneralUpdateDto)
-  @Allow()
-  generalUpdates: GeneralUpdateDto[];
-
-  constructor(suite: ActionSuite, actions: ParsedAction[]) {
-    super();
-    this.id = suite.id;
-    this.name = suite.name;
-    this.actions = actions.map((action) => new ActionDto(action));
-    // Suite events are stored as per-action duplicate rows tagged suiteManaged;
-    // we surface actions[0]'s copies as canonical. Brittle if actions drift —
-    // any divergence (extra/missing rows, reordering) is invisible here.
-    this.events = actions.length
-      ? loadedActionEvents(actions[0])
-          .filter((event) => event.suiteManaged)
-          .map((event) => new ActionEventDto(event))
-      : [];
-    this.reminderGroups =
-      suite.reminderGroups?.map((group) => new ReminderGroupDto(group)) ?? [];
-    this.generalUpdates =
-      suite.generalUpdates?.map((update) => new GeneralUpdateDto(update)) ?? [];
-  }
 }
 
 export class ExportActionDto extends OmitType(Action, [
