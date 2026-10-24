@@ -13,19 +13,13 @@ import {
 } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
 import LargeCheckbox from "@alliance/sharedweb/ui/LargeCheckbox";
 import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { RotateCw } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  useReminderEmailPreviewAdmin,
-  useReminderTextPreviewAdmin,
-} from "../../lib/useReminderPreviewsAdmin";
-import TextareaWithHighlights from "../TextareaWithHighlights";
-import ReminderKeywordHelp, { keywords } from "./ReminderKeywordHelp";
-import ReminderPreviewError from "./ReminderPreviewError";
+import ReminderKeywordHelp from "./ReminderKeywordHelp";
+import ReminderMessageFields from "./ReminderMessageFields";
 import {
   ActionReminderGroupFormInitialValues,
   draftFromInitialValues,
@@ -91,12 +85,6 @@ interface ActionReminderFormProps {
   ) => Promise<void> | void;
 }
 
-type PreviewTaskCount = 1 | 2;
-
-const toggleTaskCount =
-  (count: PreviewTaskCount) => (current: PreviewTaskCount | null) =>
-    current === count ? null : count;
-
 const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
   suiteId,
   waitForRecipientCount,
@@ -137,10 +125,6 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     relativeRangeStartHours,
     relativeRangeEndHours,
     timingAnchorEventId,
-    emailSubject,
-    emailMessage,
-    textMessage,
-    pushMessage,
     userIds: selectedUserIds,
     userTagId: selectedTagId,
     useSuiteTaskCount,
@@ -164,13 +148,6 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
 
   const [localError, setLocalError] = useState<string | null>(null);
   const initialSnapshotRef = useRef<string>("");
-
-  const [emailPreviewTaskCount, setEmailPreviewTaskCount] =
-    useState<PreviewTaskCount | null>(null);
-  const [textPreviewTaskCount, setTextPreviewTaskCount] =
-    useState<PreviewTaskCount | null>(null);
-  const [pushPreviewTaskCount, setPushPreviewTaskCount] =
-    useState<PreviewTaskCount | null>(null);
 
   const computedInitialSnapshot = useMemo(() => {
     const userIds = [...initialValues.users.map((user) => user.id)].sort(
@@ -251,25 +228,6 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     };
   }, [suiteId, selectedEventId, draft, previewAttempt]);
 
-  const emailPreview = useReminderEmailPreviewAdmin(
-    selectedEventId,
-    emailPreviewTaskCount === null
-      ? null
-      : { emailMessage, emailSubject, taskCount: emailPreviewTaskCount },
-  );
-  const textPreview = useReminderTextPreviewAdmin(
-    selectedEventId,
-    textPreviewTaskCount === null
-      ? null
-      : { textMessage, taskCount: textPreviewTaskCount },
-  );
-  const pushPreview = useReminderTextPreviewAdmin(
-    selectedEventId,
-    pushPreviewTaskCount === null
-      ? null
-      : { textMessage: pushMessage, taskCount: pushPreviewTaskCount },
-  );
-
   useEffect(() => {
     if (computedInitialSnapshot === initialSnapshotRef.current) {
       return;
@@ -327,24 +285,6 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
   const isProd = !(
     typeof window !== "undefined" && window.location.href.includes("localhost")
   );
-
-  const handlePreviewEmail2Task = () =>
-    setEmailPreviewTaskCount(toggleTaskCount(2));
-
-  const handlePreviewEmail1Task = () =>
-    setEmailPreviewTaskCount(toggleTaskCount(1));
-
-  const handlePreviewText1Task = () =>
-    setTextPreviewTaskCount(toggleTaskCount(1));
-
-  const handlePreviewText2Task = () =>
-    setTextPreviewTaskCount(toggleTaskCount(2));
-
-  const handlePreviewPushTask = () =>
-    setPushPreviewTaskCount(toggleTaskCount(1));
-
-  const handlePreviewPush2Task = () =>
-    setPushPreviewTaskCount(toggleTaskCount(2));
 
   // A set anchor that is no longer among the candidates (the dependency was
   // removed from the cohort expression, or the fetch failed) would otherwise
@@ -640,160 +580,11 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
         />
       )}
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Email Subject
-        </label>
-        <TextareaWithHighlights
-          keywords={keywords}
-          value={emailSubject}
-          onChange={(value) => updateDraft({ emailSubject: value })}
-          rows={1}
-          highlightHashPipeSyntax
-        />
-      </div>
-
-      <div>
-        <div className="flex items-center gap-2 mb-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Email Message
-          </label>
-          <Button
-            onClick={handlePreviewEmail1Task}
-            size={"small"}
-            color={
-              emailPreviewTaskCount === 1
-                ? ButtonColor.Stone
-                : ButtonColor.Light
-            }
-            className="!px-2 !py-1"
-          >
-            Preview Email (1 task)
-          </Button>
-          <Button
-            onClick={handlePreviewEmail2Task}
-            size={"small"}
-            color={
-              emailPreviewTaskCount === 2
-                ? ButtonColor.Stone
-                : ButtonColor.Light
-            }
-            className="!px-2 !py-1"
-          >
-            Preview Email (2 tasks)
-          </Button>
-        </div>
-        {emailPreviewTaskCount !== null ? (
-          <Card className="p-4">
-            <ReminderPreviewError error={emailPreview.error} />
-            <p className="font-bold mb-4">{emailPreview.data?.subject}</p>
-            <div
-              dangerouslySetInnerHTML={{
-                __html: emailPreview.data?.html ?? "",
-              }}
-            />
-          </Card>
-        ) : (
-          <TextareaWithHighlights
-            keywords={keywords}
-            value={emailMessage}
-            onChange={(value) => updateDraft({ emailMessage: value })}
-            rows={5}
-            highlightHashPipeSyntax
-          />
-        )}
-      </div>
-
-      <div>
-        <div className="flex items-center gap-2 mb-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Text Message
-          </label>
-          <Button
-            onClick={handlePreviewText1Task}
-            size={"small"}
-            color={
-              textPreviewTaskCount === 1 ? ButtonColor.Stone : ButtonColor.Light
-            }
-            className="!px-2 !py-1"
-          >
-            Preview Text (1 task)
-          </Button>
-          <Button
-            onClick={handlePreviewText2Task}
-            size={"small"}
-            color={
-              textPreviewTaskCount === 2 ? ButtonColor.Stone : ButtonColor.Light
-            }
-            className="!px-2 !py-1"
-          >
-            Preview Text (2 tasks)
-          </Button>
-        </div>
-        {textPreviewTaskCount !== null ? (
-          <Card className="p-4">
-            <ReminderPreviewError error={textPreview.error} />
-            <p
-              dangerouslySetInnerHTML={{
-                __html: textPreview.data?.replace(/\n/g, "<br>") ?? "",
-              }}
-            />
-          </Card>
-        ) : (
-          <TextareaWithHighlights
-            keywords={keywords}
-            value={textMessage}
-            onChange={(value) => updateDraft({ textMessage: value })}
-            rows={2}
-            highlightHashPipeSyntax
-          />
-        )}
-      </div>
-      <div>
-        <div className="flex items-center gap-2 mb-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Push Message
-          </label>
-          <Button
-            onClick={handlePreviewPushTask}
-            size={"small"}
-            color={
-              pushPreviewTaskCount === 1 ? ButtonColor.Stone : ButtonColor.Light
-            }
-            className="!px-2 !py-1"
-          >
-            Preview Push (1 task)
-          </Button>
-          <Button
-            onClick={handlePreviewPush2Task}
-            size={"small"}
-            color={
-              pushPreviewTaskCount === 2 ? ButtonColor.Stone : ButtonColor.Light
-            }
-            className="!px-2 !py-1"
-          >
-            Preview Push (2 tasks)
-          </Button>
-        </div>
-        {pushPreviewTaskCount !== null ? (
-          <Card className="p-4">
-            <ReminderPreviewError error={pushPreview.error} />
-            <p
-              dangerouslySetInnerHTML={{
-                __html: pushPreview.data?.replace(/\n/g, "<br>") ?? "",
-              }}
-            />
-          </Card>
-        ) : (
-          <TextareaWithHighlights
-            keywords={keywords}
-            value={pushMessage}
-            onChange={(value) => updateDraft({ pushMessage: value })}
-            rows={2}
-            highlightHashPipeSyntax
-          />
-        )}
-      </div>
+      <ReminderMessageFields
+        eventId={selectedEventId}
+        draft={draft}
+        onChange={updateDraft}
+      />
       <div className="flex items-center gap-4">
         <LargeCheckbox
           label="Use suite task count"
