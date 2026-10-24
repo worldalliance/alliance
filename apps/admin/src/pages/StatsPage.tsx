@@ -12,7 +12,7 @@ import {
 import { dateToInputValue } from "@alliance/shared/lib/dateInput";
 import { cn } from "@alliance/shared/styles/util";
 import chroma from "chroma-js";
-import { bin, max, min, range, scaleBand, scaleLinear } from "d3";
+import { bin, max, min, range, scaleLinear } from "d3";
 import React, {
   useCallback,
   useEffect,
@@ -29,8 +29,8 @@ import InviteFunnelCard from "../components/stats/InviteFunnelCard";
 import MemberReliabilityCard from "../components/stats/MemberReliabilityCard";
 import MembersOverTimeChart from "../components/stats/MembersOverTimeChart";
 import MissedActionsCard from "../components/stats/MissedActionsCard";
-import { parseIsoDate } from "../components/stats/parseIsoDate";
 import PlatformTenureCohortCard from "../components/stats/PlatformTenureCohortCard";
+import ReminderClickRateCard from "../components/stats/ReminderClickRateCard";
 import {
   TimeSeriesChart,
   fullDateFormatter,
@@ -40,7 +40,6 @@ import { adminRefusalMessage } from "../lib/adminRefusal";
 import { useActionStats } from "../lib/useActionStats";
 import { useContractStatusHistoryAdmin } from "../lib/useContractStatusHistoryAdmin";
 import { useDailyStatsAdmin } from "../lib/useDailyStatsAdmin";
-import { useReminderGroupClickRatesAdmin } from "../lib/useReminderGroupClickRatesAdmin";
 
 type ParsedDailyStats = DailyStatsDto & { parsedDate: Date };
 type RetentionGridRow = {
@@ -70,18 +69,6 @@ type HoveredRetentionCell = {
     actionName: string;
     memberCount: number;
   }>;
-};
-type ReminderActionChannelBar = {
-  actionId: number;
-  actionName: string;
-  averageRate: number;
-  reminderGroupCount: number;
-  sentCount: number;
-  clickedCount: number;
-};
-type HoveredReminderActionBar = {
-  bar: ReminderActionChannelBar;
-  channel: "email" | "text";
 };
 
 const getDefaultRange = () => {
@@ -125,8 +112,6 @@ const StatsPage: React.FC = () => {
     MemberCompletionRetentionCohortDto[]
   >([]);
   const [retentionLoading, setRetentionLoading] = useState<boolean>(false);
-  const [hoveredReminderActionBar, setHoveredReminderActionBar] =
-    useState<HoveredReminderActionBar | null>(null);
   const [timeToChurnSamples, setTimeToChurnSamples] = useState<
     TimeToChurnSampleDto[]
   >([]);
@@ -134,15 +119,6 @@ const StatsPage: React.FC = () => {
   const [dailyStatsTableOpen, setDailyStatsTableOpen] = useState(false);
   const [actionStatsTableOpen, setActionStatsTableOpen] = useState(false);
   const [weekRange, setWeekRange] = useState({ min: 0, max: 20 });
-  const [reminderClickRateRange, setReminderClickRateRange] = useState(() => {
-    const end = new Date();
-    const start = new Date();
-    start.setMonth(start.getMonth() - 5);
-    return {
-      start: dateToInputValue(start),
-      end: dateToInputValue(end),
-    };
-  });
   const [contractStatusRange, setContractStatusRange] = useState(() => {
     const end = new Date();
     const start = new Date();
@@ -180,12 +156,6 @@ const StatsPage: React.FC = () => {
   } = useActionStats();
   const actionStatsLoading =
     actionStatsPending || recalculateActionStats.isPending;
-
-  const {
-    data: reminderGroupClickRatePoints = [],
-    isPending: reminderGroupClickRatesLoading,
-    isError: reminderGroupClickRatesLoadFailed,
-  } = useReminderGroupClickRatesAdmin();
 
   const {
     data: contractStatusHistory = [],
@@ -236,168 +206,6 @@ const StatsPage: React.FC = () => {
       }))
       .filter((record) => !Number.isNaN(record.parsedDate.getTime()));
   }, [stats]);
-
-  const filteredReminderGroupClickRatePoints = useMemo(() => {
-    const start = parseIsoDate(reminderClickRateRange.start);
-    const end = parseIsoDate(reminderClickRateRange.end);
-    if (!start || !end) {
-      return reminderGroupClickRatePoints;
-    }
-    if (start > end) {
-      return [];
-    }
-    const rangeStart = new Date(start);
-    rangeStart.setHours(0, 0, 0, 0);
-    const rangeEnd = new Date(end);
-    rangeEnd.setHours(23, 59, 59, 999);
-
-    return reminderGroupClickRatePoints.filter(
-      (point) => point.date >= rangeStart && point.date <= rangeEnd,
-    );
-  }, [reminderGroupClickRatePoints, reminderClickRateRange]);
-
-  const reminderActionAggregates = useMemo(() => {
-    const byAction = new Map<
-      number,
-      {
-        actionId: number;
-        actionName: string;
-        mostRecentDateMs: number;
-        emailGroupCount: number;
-        emailSentCount: number;
-        emailClickedCount: number;
-        textGroupCount: number;
-        textSentCount: number;
-        textClickedCount: number;
-      }
-    >();
-
-    for (const point of filteredReminderGroupClickRatePoints) {
-      const existing = byAction.get(point.actionId) ?? {
-        actionId: point.actionId,
-        actionName: point.actionName,
-        mostRecentDateMs: point.date.getTime(),
-        emailGroupCount: 0,
-        emailSentCount: 0,
-        emailClickedCount: 0,
-        textGroupCount: 0,
-        textSentCount: 0,
-        textClickedCount: 0,
-      };
-
-      existing.mostRecentDateMs = Math.max(
-        existing.mostRecentDateMs,
-        point.date.getTime(),
-      );
-
-      if (point.emailSentCount > 0) {
-        existing.emailGroupCount += 1;
-        existing.emailSentCount += point.emailSentCount;
-        existing.emailClickedCount += point.emailClickedCount;
-      }
-      if (point.textSentCount > 0) {
-        existing.textGroupCount += 1;
-        existing.textSentCount += point.textSentCount;
-        existing.textClickedCount += point.textClickedCount;
-      }
-
-      byAction.set(point.actionId, existing);
-    }
-
-    return Array.from(byAction.values()).sort((a, b) => {
-      if (a.mostRecentDateMs !== b.mostRecentDateMs) {
-        return a.mostRecentDateMs - b.mostRecentDateMs;
-      }
-      return a.actionName.localeCompare(b.actionName);
-    });
-  }, [filteredReminderGroupClickRatePoints]);
-
-  const emailReminderActionBars = useMemo<ReminderActionChannelBar[]>(
-    () =>
-      reminderActionAggregates
-        .filter((aggregate) => aggregate.emailGroupCount > 0)
-        .map((aggregate) => ({
-          actionId: aggregate.actionId,
-          actionName: aggregate.actionName,
-          averageRate:
-            aggregate.emailSentCount > 0
-              ? aggregate.emailClickedCount / aggregate.emailSentCount
-              : 0,
-          reminderGroupCount: aggregate.emailGroupCount,
-          sentCount: aggregate.emailSentCount,
-          clickedCount: aggregate.emailClickedCount,
-        })),
-    [reminderActionAggregates],
-  );
-
-  const textReminderActionBars = useMemo<ReminderActionChannelBar[]>(
-    () =>
-      reminderActionAggregates
-        .filter((aggregate) => aggregate.textGroupCount > 0)
-        .map((aggregate) => ({
-          actionId: aggregate.actionId,
-          actionName: aggregate.actionName,
-          averageRate:
-            aggregate.textSentCount > 0
-              ? aggregate.textClickedCount / aggregate.textSentCount
-              : 0,
-          reminderGroupCount: aggregate.textGroupCount,
-          sentCount: aggregate.textSentCount,
-          clickedCount: aggregate.textClickedCount,
-        })),
-    [reminderActionAggregates],
-  );
-
-  const buildReminderActionBarGeometry = useCallback(
-    (bars: ReminderActionChannelBar[]) => {
-      if (bars.length === 0) return null;
-
-      const width = Math.max(900, bars.length * 88 + 120);
-      const height = 420;
-      const margin = { top: 20, right: 24, bottom: 86, left: 64 };
-
-      const xScale = scaleBand<string>()
-        .domain(bars.map((_, index) => String(index)))
-        .range([margin.left, width - margin.right])
-        .paddingInner(0.2)
-        .paddingOuter(0.08);
-
-      const yScale = scaleLinear()
-        .domain([0, 1])
-        .nice()
-        .range([height - margin.bottom, margin.top]);
-
-      const yTicks = yScale.ticks(5);
-      const maxXTicks = 10;
-      const xTickStep = Math.max(1, Math.ceil(bars.length / maxXTicks));
-      const xTickIndexes = bars
-        .map((_, index) => index)
-        .filter(
-          (index) => index % xTickStep === 0 || index === bars.length - 1,
-        );
-
-      return {
-        width,
-        height,
-        margin,
-        xScale,
-        yScale,
-        yTicks,
-        xTickIndexes,
-      };
-    },
-    [],
-  );
-
-  const emailReminderBarGeometry = useMemo(
-    () => buildReminderActionBarGeometry(emailReminderActionBars),
-    [buildReminderActionBarGeometry, emailReminderActionBars],
-  );
-
-  const textReminderBarGeometry = useMemo(
-    () => buildReminderActionBarGeometry(textReminderActionBars),
-    [buildReminderActionBarGeometry, textReminderActionBars],
-  );
 
   const sortedRetentionCohorts = useMemo(() => {
     return retentionCohorts
@@ -727,343 +535,7 @@ const StatsPage: React.FC = () => {
         actionStatsLoading={actionStatsLoading}
       />
 
-      <div className="relative overflow-hidden rounded border border-gray-200 bg-white">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-4 py-3 border-b border-gray-200">
-          <h3 className="font-semibold text-gray-900">
-            Reminder Link Click Rate by Action
-          </h3>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-semibold text-gray-600">
-                From
-              </label>
-              <input
-                type="date"
-                value={reminderClickRateRange.start}
-                onChange={(event) =>
-                  setReminderClickRateRange((prev) => ({
-                    ...prev,
-                    start: event.target.value,
-                  }))
-                }
-                className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-semibold text-gray-600">To</label>
-              <input
-                type="date"
-                value={reminderClickRateRange.end}
-                onChange={(event) =>
-                  setReminderClickRateRange((prev) => ({
-                    ...prev,
-                    end: event.target.value,
-                  }))
-                }
-                className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
-              />
-            </div>
-          </div>
-        </div>
-        <div className="relative p-4">
-          {reminderGroupClickRatesLoading &&
-            filteredReminderGroupClickRatePoints.length === 0 && (
-              <p className="text-sm text-gray-600">Loading...</p>
-            )}
-          {reminderGroupClickRatesLoadFailed && (
-            <p className="text-sm text-red-600">
-              Unable to load reminder click rates.
-            </p>
-          )}
-          {!reminderGroupClickRatesLoading &&
-            !reminderGroupClickRatesLoadFailed &&
-            filteredReminderGroupClickRatePoints.length === 0 && (
-              <p className="text-sm text-gray-600">
-                No sent reminder groups with email/text link clicks in this date
-                range.
-              </p>
-            )}
-          {filteredReminderGroupClickRatePoints.length > 0 && (
-            <div className="flex flex-col gap-4">
-              <div className="rounded border border-gray-200 bg-white">
-                <div className="px-3 py-2 border-b border-gray-200">
-                  <h4 className="text-sm font-semibold text-gray-900">
-                    Email Click Rate (Avg by Action)
-                  </h4>
-                </div>
-                <div className="p-3">
-                  {!emailReminderBarGeometry ||
-                  emailReminderActionBars.length === 0 ? (
-                    <p className="text-sm text-gray-600">
-                      No emailed reminder data in this range.
-                    </p>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <svg
-                        viewBox={`0 0 ${emailReminderBarGeometry.width} ${emailReminderBarGeometry.height}`}
-                        className="w-full min-w-[900px]"
-                        onMouseLeave={() => setHoveredReminderActionBar(null)}
-                      >
-                        <g>
-                          {emailReminderBarGeometry.yTicks.map((tick) => (
-                            <g key={`email-action-y-${tick}`}>
-                              <line
-                                x1={emailReminderBarGeometry.margin.left}
-                                x2={
-                                  emailReminderBarGeometry.width -
-                                  emailReminderBarGeometry.margin.right
-                                }
-                                y1={emailReminderBarGeometry.yScale(tick)}
-                                y2={emailReminderBarGeometry.yScale(tick)}
-                                stroke="#e5e7eb"
-                                strokeDasharray="4 6"
-                              />
-                              <text
-                                x={emailReminderBarGeometry.margin.left - 12}
-                                y={emailReminderBarGeometry.yScale(tick)}
-                                textAnchor="end"
-                                dominantBaseline="middle"
-                                className="fill-gray-500 text-base"
-                              >
-                                {Math.round(tick * 100)}%
-                              </text>
-                            </g>
-                          ))}
-                          {emailReminderBarGeometry.xTickIndexes.map(
-                            (index) => {
-                              const x = emailReminderBarGeometry.xScale(
-                                String(index),
-                              );
-                              if (x === undefined) return null;
-                              const action = emailReminderActionBars[index];
-                              const label =
-                                action.actionName.length > 16
-                                  ? `${action.actionName.slice(0, 16)}...`
-                                  : action.actionName;
-                              return (
-                                <text
-                                  key={`email-action-x-${action.actionId}`}
-                                  x={
-                                    x +
-                                    emailReminderBarGeometry.xScale.bandwidth() /
-                                      2
-                                  }
-                                  y={
-                                    emailReminderBarGeometry.height -
-                                    emailReminderBarGeometry.margin.bottom +
-                                    24
-                                  }
-                                  textAnchor="middle"
-                                  className="fill-gray-600 text-xs"
-                                >
-                                  {label}
-                                </text>
-                              );
-                            },
-                          )}
-                        </g>
-
-                        {emailReminderActionBars.map((bar, index) => {
-                          const x = emailReminderBarGeometry.xScale(
-                            String(index),
-                          );
-                          if (x === undefined) return null;
-                          const y = emailReminderBarGeometry.yScale(
-                            Math.max(0, Math.min(1, bar.averageRate)),
-                          );
-                          const barBottom =
-                            emailReminderBarGeometry.height -
-                            emailReminderBarGeometry.margin.bottom;
-                          return (
-                            <rect
-                              key={`email-action-bar-${bar.actionId}`}
-                              x={x}
-                              y={y}
-                              width={emailReminderBarGeometry.xScale.bandwidth()}
-                              height={Math.max(0, barBottom - y)}
-                              fill="#2563eb"
-                              rx={3}
-                              className="cursor-pointer"
-                              onMouseEnter={() =>
-                                setHoveredReminderActionBar({
-                                  bar,
-                                  channel: "email",
-                                })
-                              }
-                            />
-                          );
-                        })}
-                      </svg>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded border border-gray-200 bg-white">
-                <div className="px-3 py-2 border-b border-gray-200">
-                  <h4 className="text-sm font-semibold text-gray-900">
-                    Text Click Rate (Avg by Action)
-                  </h4>
-                </div>
-                <div className="p-3">
-                  {!textReminderBarGeometry ||
-                  textReminderActionBars.length === 0 ? (
-                    <p className="text-sm text-gray-600">
-                      No texted reminder data in this range.
-                    </p>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <svg
-                        viewBox={`0 0 ${textReminderBarGeometry.width} ${textReminderBarGeometry.height}`}
-                        className="w-full min-w-[900px]"
-                        onMouseLeave={() => setHoveredReminderActionBar(null)}
-                      >
-                        <g>
-                          {textReminderBarGeometry.yTicks.map((tick) => (
-                            <g key={`text-action-y-${tick}`}>
-                              <line
-                                x1={textReminderBarGeometry.margin.left}
-                                x2={
-                                  textReminderBarGeometry.width -
-                                  textReminderBarGeometry.margin.right
-                                }
-                                y1={textReminderBarGeometry.yScale(tick)}
-                                y2={textReminderBarGeometry.yScale(tick)}
-                                stroke="#e5e7eb"
-                                strokeDasharray="4 6"
-                              />
-                              <text
-                                x={textReminderBarGeometry.margin.left - 12}
-                                y={textReminderBarGeometry.yScale(tick)}
-                                textAnchor="end"
-                                dominantBaseline="middle"
-                                className="fill-gray-500 text-base"
-                              >
-                                {Math.round(tick * 100)}%
-                              </text>
-                            </g>
-                          ))}
-                          {textReminderBarGeometry.xTickIndexes.map((index) => {
-                            const x = textReminderBarGeometry.xScale(
-                              String(index),
-                            );
-                            if (x === undefined) return null;
-                            const action = textReminderActionBars[index];
-                            const label =
-                              action.actionName.length > 16
-                                ? `${action.actionName.slice(0, 16)}...`
-                                : action.actionName;
-                            return (
-                              <text
-                                key={`text-action-x-${action.actionId}`}
-                                x={
-                                  x +
-                                  textReminderBarGeometry.xScale.bandwidth() / 2
-                                }
-                                y={
-                                  textReminderBarGeometry.height -
-                                  textReminderBarGeometry.margin.bottom +
-                                  24
-                                }
-                                textAnchor="middle"
-                                className="fill-gray-600 text-xs"
-                              >
-                                {label}
-                              </text>
-                            );
-                          })}
-                        </g>
-
-                        {textReminderActionBars.map((bar, index) => {
-                          const x = textReminderBarGeometry.xScale(
-                            String(index),
-                          );
-                          if (x === undefined) return null;
-                          const y = textReminderBarGeometry.yScale(
-                            Math.max(0, Math.min(1, bar.averageRate)),
-                          );
-                          const barBottom =
-                            textReminderBarGeometry.height -
-                            textReminderBarGeometry.margin.bottom;
-                          return (
-                            <rect
-                              key={`text-action-bar-${bar.actionId}`}
-                              x={x}
-                              y={y}
-                              width={textReminderBarGeometry.xScale.bandwidth()}
-                              height={Math.max(0, barBottom - y)}
-                              fill="#ea580c"
-                              rx={3}
-                              className="cursor-pointer"
-                              onMouseEnter={() =>
-                                setHoveredReminderActionBar({
-                                  bar,
-                                  channel: "text",
-                                })
-                              }
-                            />
-                          );
-                        })}
-                      </svg>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {hoveredReminderActionBar && (
-            <div className="absolute right-4 top-4 z-20 bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-[250px] pointer-events-none">
-              <p className="font-semibold text-gray-900 max-w-[260px]">
-                {hoveredReminderActionBar.bar.actionName}
-              </p>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between gap-4">
-                  <span className="text-gray-600">Channel</span>
-                  <span className="font-medium text-gray-900 capitalize">
-                    {hoveredReminderActionBar.channel}
-                  </span>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <span className="text-gray-600">Click rate</span>
-                  <span
-                    className={cn(
-                      "font-medium",
-                      hoveredReminderActionBar.channel === "email"
-                        ? "text-blue-600"
-                        : "text-orange-600",
-                    )}
-                  >
-                    {Math.round(hoveredReminderActionBar.bar.averageRate * 100)}
-                    %
-                  </span>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <span className="text-gray-600">
-                    Reminder groups averaged
-                  </span>
-                  <span className="font-medium text-gray-900">
-                    {hoveredReminderActionBar.bar.reminderGroupCount}
-                  </span>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <span className="text-gray-600">Clicked / Sent</span>
-                  <span className="font-medium text-gray-900">
-                    {hoveredReminderActionBar.bar.clickedCount}/
-                    {hoveredReminderActionBar.bar.sentCount}
-                  </span>
-                </div>
-                <div className="flex justify-between gap-4 border-t border-gray-100 pt-1 mt-1">
-                  <span className="text-gray-600">Action ID</span>
-                  <span className="font-medium text-gray-900">
-                    {hoveredReminderActionBar.bar.actionId}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      <ReminderClickRateCard />
 
       {/* Cohort Completion Retention Chart */}
       <TimeSeriesChart
