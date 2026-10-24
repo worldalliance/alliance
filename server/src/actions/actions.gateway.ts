@@ -11,7 +11,7 @@ import {
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
 import { ActionsService } from "./actions.service";
-import { ActionActivityDto } from "./dto/action.dto";
+import { ActionActivityDto } from "./dto/action-activity.dto";
 
 @WebSocketGateway({
   cors: {

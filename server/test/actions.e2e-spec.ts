@@ -43,6 +43,7 @@ import { FriendService } from "src/user/friend.service";
 import { UserService } from "src/user/user.service";
 import request from "supertest";
 import type { Repository } from "typeorm";
+import { WelcomeQueueDto } from "../src/actions/dto/action-activity.dto";
 import {
   ActionEventDto,
   CreateActionEventDto,
@@ -52,7 +53,6 @@ import {
   CreateActionDto,
   GlobalFeedItemType,
   TimelineFeedItemType,
-  WelcomeQueueDto,
 } from "../src/actions/dto/action.dto";
 import {
   ActionEvent,

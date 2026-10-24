@@ -24,7 +24,7 @@ import {
 } from "typeorm";
 import { z } from "zod";
 import { ActionsService } from "./actions.service";
-import type { ActionActivityDto } from "./dto/action.dto";
+import type { ActionActivityDto } from "./dto/action-activity.dto";
 
 const [LOCK_KEY1, LOCK_KEY2] = LOCK_KEYS.taskBadgeSweep;
 const SWEEP_INTERVAL_MS = milliseconds({ minutes: 1 });
