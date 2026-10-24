@@ -218,6 +218,7 @@ import {
   TimelineFeedItemDto,
   TimelineFeedItemType,
 } from "./dto/action-feed.dto";
+import { ActionReviewerDto } from "./dto/action-reviewer.dto";
 import { CreateActionSuiteDto } from "./dto/action-suite.dto";
 import {
   CreateActionUpdateDto,
@@ -225,7 +226,6 @@ import {
 } from "./dto/action-update.dto";
 import {
   ActionDto,
-  ActionReviewerDto,
   ActionSharePreview,
   CreateActionDto,
   ExportActionDto,

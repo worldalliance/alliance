@@ -1,6 +1,4 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { type CohortExpression } from "@alliance/common/cohort-expression";
-import { HTTP_URL_VALIDATOR_OPTIONS } from "@alliance/common/url";
 import {
   ApiProperty,
   ApiPropertyOptional,
@@ -17,13 +15,9 @@ import {
   IsArray,
   IsBoolean,
   IsDefined,
-  IsEnum,
   IsInt,
-  IsNotEmpty,
   IsOptional,
   IsString,
-  IsUrl,
-  MaxLength,
   ValidateNested,
 } from "class-validator";
 import { getImageSource } from "src/images/images.service";
@@ -32,13 +26,7 @@ import { ProfileDto } from "src/user/dto/user.dto";
 import { TaskAwayStatus } from "src/utils/action-user";
 import { UserActionRelation } from "../action-activity-status";
 import { ActionStatus } from "../entities/action-event.entity";
-import {
-  ACTION_REVIEWERS_MAX,
-  ActionReviewer,
-  ActionReviewerIcon,
-  REVIEWER_NAME_MAX_LENGTH,
-  REVIEWER_URL_MAX_LENGTH,
-} from "../entities/action-reviewer.entity";
+import { ACTION_REVIEWERS_MAX } from "../entities/action-reviewer.entity";
 import {
   Action,
   loadedActionFollowUpForms,
@@ -49,6 +37,10 @@ import { GeneralUpdate } from "../entities/general-update.entity";
 import { ReminderGroup } from "../entities/reminder-group.entity";
 import { type UserActionStatus } from "../user-action-status";
 import { ActionEventDto } from "./action-event.dto";
+import {
+  ActionReviewerDto,
+  ActionReviewerResponseDto,
+} from "./action-reviewer.dto";
 import { ActionUpdateDto } from "./action-update.dto";
 import { AdminFollowUpFormDto, FollowUpFormDto } from "./follow-up-form.dto";
 import { ProjectDto } from "./project.dto";
@@ -89,49 +81,6 @@ export class ActionReferralCodeDto {
 }
 
 export { UserActionRelation } from "../action-activity-status";
-
-/**
- * The wire shape of a reviewer: the display fields only. Ids and ordering are
- * server-owned, and an update replaces the whole list rather than patching
- * rows, so neither is meaningful to a client.
- *
- * class-transformer instantiates this one with no arguments to validate a
- * request body, so it must stay constructor-less; the outbound half is
- * {@link ActionReviewerResponseDto}.
- */
-export class ActionReviewerDto {
-  @ApiProperty({ description: "Display name of the reviewer" })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(REVIEWER_NAME_MAX_LENGTH)
-  name: string;
-
-  @ApiPropertyOptional({
-    description: "Link to the reviewer's website, LinkedIn, etc.",
-  })
-  @IsOptional()
-  @IsUrl(HTTP_URL_VALIDATOR_OPTIONS)
-  @MaxLength(REVIEWER_URL_MAX_LENGTH)
-  url?: string;
-
-  @ApiPropertyOptional({
-    enum: ActionReviewerIcon,
-    enumName: "ActionReviewerIcon",
-    description: "Icon shown next to the reviewer name",
-  })
-  @IsOptional()
-  @IsEnum(ActionReviewerIcon)
-  icon?: ActionReviewerIcon;
-}
-
-export class ActionReviewerResponseDto extends ActionReviewerDto {
-  constructor(input: ActionReviewer) {
-    super();
-    this.name = input.name;
-    this.url = input.url ?? undefined;
-    this.icon = input.icon ?? undefined;
-  }
-}
 
 export type ActionDtoExtra = {
   canParticipate?: boolean;
