@@ -22,7 +22,7 @@ const ActionActivityList = ({
   const [showAll, setShowAll] = useState(false);
   const { user } = useAuth();
 
-  const allActivities = activities.sort(
+  const allActivities = [...activities].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
 
