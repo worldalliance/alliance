@@ -4,7 +4,6 @@ import {
   notifsNotifsForUserAdmin,
   tasksGetFormsForUserSidAdmin,
   userFriendListFriends,
-  userTagGetTagSummariesAdmin,
 } from "@alliance/shared/client";
 import {
   ProfileDto,
@@ -30,6 +29,7 @@ import UserRolesSection from "../components/user-detail/UserRolesSection";
 import UserTagsSection from "../components/user-detail/UserTagsSection";
 import { getApiUrl } from "../lib/config";
 import { prefetchFromLoader } from "../lib/queryClient";
+import { tagSummariesQuery } from "../lib/useTagsAdmin";
 import { userActionRelationsQuery } from "../lib/useUserActionRelationsAdmin";
 import { useUserAwayRangesAdmin } from "../lib/useUserAwayRangesAdmin";
 import { useUserDetailAdmin, userDetailQuery } from "../lib/useUserDetailAdmin";
@@ -46,8 +46,8 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
 
   prefetchFromLoader(userDetailQuery(userId));
   prefetchFromLoader(userActionRelationsQuery(userId));
-  const [tagsRes, notifRes, formResponsesRes, friendsRes] = await Promise.all([
-    userTagGetTagSummariesAdmin(),
+  prefetchFromLoader(tagSummariesQuery());
+  const [notifRes, formResponsesRes, friendsRes] = await Promise.all([
     notifsNotifsForUserAdmin({ path: { id: userId } }),
     tasksGetFormsForUserSidAdmin({ path: { userId } }).catch(() => ({
       data: [],
@@ -57,7 +57,6 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
 
   return {
     userId,
-    allTags: tagsRes.data ?? [],
     notifs: notifRes.data ?? [],
     formResponses: formResponsesRes.data ?? [],
     friends: friendsRes.data ?? [],
@@ -101,8 +100,8 @@ const UserDetail = ({
   user: UserAdminDetailDto;
   userDetail: ReturnType<typeof useUserDetailAdmin>;
 }) => {
-  const loaderData = useLoaderData<typeof clientLoader>();
-  const { notifs, formResponses, friends } = loaderData;
+  const { notifs, formResponses, friends } =
+    useLoaderData<typeof clientLoader>();
 
   const [isSuspendPending, setIsSuspendPending] = useState(false);
   const [suspendMutationError, setSuspendMutationError] = useState<
@@ -263,11 +262,7 @@ const UserDetail = ({
 
           <UserRolesSection user={user} updateRoles={updateRoles} />
 
-          <UserTagsSection
-            user={user}
-            loadedTags={loaderData.allTags}
-            setTagMembership={setTagMembership}
-          />
+          <UserTagsSection user={user} setTagMembership={setTagMembership} />
 
           {/* Away Periods */}
           <UserAwayPeriodsSection user={user} />

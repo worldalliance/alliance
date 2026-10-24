@@ -5,21 +5,42 @@ import {
   userTagCreateTagAdmin,
   userTagDeleteTagAdmin,
   userTagGetTagsAdmin,
+  userTagGetTagSummariesAdmin,
   userTagRemoveUserFromTagAdmin,
   userTagUpdateTagAdmin,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { loaderPrefetchStaleTime } from "./queryClient";
 
 const QUERY_KEY = queryKeys.tagsAdmin();
 
+/** Every tag without its members, for a route loader to start before the
+ * page mounts. */
+export const tagSummariesQuery = () =>
+  queryOptions({
+    queryKey: queryKeys.tagSummariesAdmin(),
+    queryFn: () =>
+      userTagGetTagSummariesAdmin({ throwOnError: true }).then((r) => r.data),
+    staleTime: loaderPrefetchStaleTime,
+  });
+
 /**
- * Single source of truth for tags — wraps `userTagGetTagsAdmin` and the
- * create/update/delete/membership endpoints in react-query, sharing one cache
- * key that every mutation invalidates.
+ * Single source of truth for tags — wraps `userTagGetTagsAdmin`,
+ * `userTagGetTagSummariesAdmin` and the create/update/delete/membership
+ * endpoints in react-query. Every mutation invalidates the tag list; those
+ * that change a tag itself invalidate the summaries too.
  */
-export function useTagsAdmin(params?: { enabled?: boolean }) {
-  const { enabled = true } = params ?? {};
+export function useTagsAdmin(params?: {
+  enabled?: boolean;
+  summariesEnabled?: boolean;
+}) {
+  const { enabled = true, summariesEnabled = false } = params ?? {};
   const queryClient = useQueryClient();
 
   const {
@@ -38,13 +59,25 @@ export function useTagsAdmin(params?: { enabled?: boolean }) {
     enabled,
   });
 
+  const summaries = useQuery({
+    ...tagSummariesQuery(),
+    enabled: summariesEnabled,
+  });
+
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+  const invalidateWithSummaries = () =>
+    Promise.all([
+      invalidate(),
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.tagSummariesAdmin(),
+      }),
+    ]);
 
   const createTag = useMutation({
     mutationFn: (body: CreateTagDto) =>
       userTagCreateTagAdmin({ body, throwOnError: true }).then((r) => r.data),
-    onSuccess: invalidate,
+    onSuccess: invalidateWithSummaries,
   });
 
   const updateTag = useMutation({
@@ -52,7 +85,7 @@ export function useTagsAdmin(params?: { enabled?: boolean }) {
       userTagUpdateTagAdmin({ path: { tagId }, body, throwOnError: true }).then(
         (r) => r.data,
       ),
-    onSuccess: invalidate,
+    onSuccess: invalidateWithSummaries,
   });
 
   const deleteTag = useMutation({
@@ -60,7 +93,7 @@ export function useTagsAdmin(params?: { enabled?: boolean }) {
       userTagDeleteTagAdmin({ path: { tagId }, throwOnError: true }).then(
         (r) => r.data,
       ),
-    onSuccess: invalidate,
+    onSuccess: invalidateWithSummaries,
   });
 
   const addUserToTag = useMutation({
@@ -89,6 +122,7 @@ export function useTagsAdmin(params?: { enabled?: boolean }) {
     isError,
     isLoadingError,
     refetch,
+    summaries,
     createTag,
     updateTag,
     deleteTag,
