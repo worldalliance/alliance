@@ -13,3 +13,13 @@ The form's fields live in one `ReminderGroupDraft` state. `reminderGroupDraft.ts
 ## Request
 
 `reminderGroupRequest.ts` maps a draft to request fields, sending each timing field only for its timing mode and each recipient field only for its cohort. The recipient-count preview and the save request both use that mapping, so they can't drift apart. The preview also skips an invalid relative window through the same `relativeRangeIsValid` check the save uses. `reminderGroupSubmitPayload` holds the submit validation as a pure function returning a `Result`, with the same checks, order, and messages as before. On success it returns the absolute send time and the range normalized to ISO strings. Being pure, it gets a unit test for each refusal.
+
+## Components
+
+Each piece of the form that owns its own rendering moves into a component, with any state only it reads:
+
+- `ReminderKeywordHelp.tsx`: the keyword table, its expanded state, and the `keywords` list the editors highlight, which tracks the table.
+- `ReminderMessageFields.tsx`: the email subject, email, text, and push editors, their previews, and the preview task counts.
+- `ReminderScheduleFields.tsx`: the inputs for each timing mode and the "Relative to" anchor selector.
+
+The components take the draft fields they show and an `onChange` patch, so the draft keeps a single owner. The name, timing-mode select, and recipient fields stay in the form, beside the draft and the requests that read them.
