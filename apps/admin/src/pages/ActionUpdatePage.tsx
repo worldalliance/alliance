@@ -2,17 +2,12 @@ import {
   displayOnlyToFormSchema,
   readDisplayOnlySchema,
 } from "@alliance/common/forms/display-only-schema";
-import { R } from "@alliance/common/result";
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import {
-  actionsFindOneAdmin,
-  type ActionEventDto,
-  type AdminActionUpdateDto,
-} from "@alliance/shared/client";
+import type { AdminActionUpdateDto } from "@alliance/shared/client";
 import { thrownStatus } from "@alliance/shared/lib/hey-api";
+import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { NotificationAudienceFields } from "../components/ActionUpdateNotificationAudience";
 import { COLLECTIVE_RESULT_DESCRIPTION } from "../components/ActionUpdateRecognition";
@@ -62,7 +57,10 @@ const ActionUpdatePage: React.FC = () => {
     saveSchema,
   } = useActionUpdateAdmin(updateId);
   const update = query.data;
-  const [events, setEvents] = useState<ActionEventDto[]>([]);
+  const { action, isError: actionFailed } = useActionAdmin(
+    isNaN(actionId) ? null : actionId,
+  );
+  const events = action?.events ?? [];
   const [form, setForm] = useState<ActionUpdateForm | null>(null);
   const [formSource, setFormSource] = useState<AdminActionUpdateDto | null>(
     null,
@@ -93,25 +91,6 @@ const ActionUpdatePage: React.FC = () => {
   }
 
   const savedForm = useMemo(() => update && formOf(update), [update]);
-
-  useEffect(() => {
-    if (isNaN(actionId)) return;
-    let cancelled = false;
-    const load = async () => {
-      const action = await R.fromPromise(
-        actionsFindOneAdmin({ path: { id: actionId } }),
-      );
-      if (cancelled) return;
-      if (!action.ok) {
-        console.error("Failed to load the action:", action.error);
-      }
-      setEvents((action.ok && action.value.data?.events) || []);
-    };
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [actionId]);
 
   const saveDetails = updateMutation.mutateAsync;
   const handleSubmitDetails = useCallback(
@@ -290,6 +269,14 @@ const ActionUpdatePage: React.FC = () => {
           onUnpublish={handleUnpublish}
         />
       </FormSection>
+
+      {!action && actionFailed && (
+        <FormSection title="Associated event">
+          <p className="text-sm text-red-500">
+            Couldn&apos;t load the action&apos;s events.
+          </p>
+        </FormSection>
+      )}
 
       {events.length > 0 && (
         <FormSection
