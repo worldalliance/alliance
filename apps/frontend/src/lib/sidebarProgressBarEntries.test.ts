@@ -1,19 +1,17 @@
 import { makeAction, makeViewer } from "@alliance/shared/lib/testFixtures";
 import {
   buildSidebarProgressBarEntries,
-  sidebarProgressActionCandidates,
-} from "./fetchTaskFormProgressViews";
+  sidebarProgressFormIds,
+} from "./sidebarProgressBarEntries";
 
-describe("sidebarProgressActionCandidates", () => {
+describe("sidebarProgressFormIds", () => {
   it("follows viewer.assigned past a false shouldParticipate", () => {
     const action = makeAction({
       taskFormId: 7,
       shouldParticipate: false,
     });
 
-    expect(sidebarProgressActionCandidates([action])).toEqual([
-      { actionId: action.id, formId: 7 },
-    ]);
+    expect(sidebarProgressFormIds([action])).toEqual([7]);
   });
 
   it("drops an action the viewer is not assigned", () => {
@@ -22,7 +20,13 @@ describe("sidebarProgressActionCandidates", () => {
       viewer: makeViewer({ assigned: false }),
     });
 
-    expect(sidebarProgressActionCandidates([action])).toEqual([]);
+    expect(sidebarProgressFormIds([action])).toEqual([]);
+  });
+
+  it("drops an action without a task form", () => {
+    expect(
+      sidebarProgressFormIds([makeAction({ taskFormId: undefined })]),
+    ).toStrictEqual([]);
   });
 });
 
@@ -41,16 +45,14 @@ describe("buildSidebarProgressBarEntries", () => {
     const action = makeAction({ taskFormId: 7 });
 
     expect(
-      buildSidebarProgressBarEntries([action], { [action.id]: [progressBar] }),
+      buildSidebarProgressBarEntries([action], { 7: [progressBar] }),
     ).toEqual([{ action, progressBars: [progressBar] }]);
   });
 
   it("drops an action whose form resolved no views", () => {
     const action = makeAction({ taskFormId: 7 });
 
-    expect(
-      buildSidebarProgressBarEntries([action], { [action.id]: [] }),
-    ).toEqual([]);
+    expect(buildSidebarProgressBarEntries([action], { 7: [] })).toEqual([]);
   });
 
   it("drops an action the viewer is not assigned", () => {
@@ -60,15 +62,7 @@ describe("buildSidebarProgressBarEntries", () => {
     });
 
     expect(
-      buildSidebarProgressBarEntries([action], { [action.id]: [progressBar] }),
-    ).toEqual([]);
-  });
-
-  it("drops a formless action carrying a stale view entry", () => {
-    const action = makeAction({ taskFormId: undefined });
-
-    expect(
-      buildSidebarProgressBarEntries([action], { [action.id]: [progressBar] }),
+      buildSidebarProgressBarEntries([action], { 7: [progressBar] }),
     ).toEqual([]);
   });
 });
