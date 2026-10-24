@@ -28,7 +28,7 @@ import {
   InternalServerErrorException,
 } from "@nestjs/common";
 import { isEqual } from "es-toolkit";
-import z from "zod";
+import { z } from "zod";
 import { loadedFormSnapshot } from "./entities/form.entity";
 import { loadedFormResponseSnapshot } from "./entities/formresponse.entity";
 import type { FormResponseHistory } from "./form-response-history.dto";

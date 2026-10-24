@@ -1,4 +1,4 @@
-import z from "zod";
+import { z } from "zod";
 import { deviceVisibilityTargetSchema } from "./device";
 import { UserValueProperty } from "./user-properties";
 

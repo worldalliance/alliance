@@ -69,21 +69,22 @@ export async function countThreadComments(
 }
 
 /**
- * Leaves out comments a deleted account wrote or that sit under one, checking
- * each row's ancestors, for readers spanning every thread, where the hidden
- * set grows with each deleted account.
+ * Leaves out comments a deleted account wrote or that sit under one, for
+ * readers spanning every thread.
  */
 export function excludeCommentsUnderDeletedAuthors<T extends ObjectLiteral>(
   qb: SelectQueryBuilder<T>,
 ): SelectQueryBuilder<T> {
+  // Uncorrelated so Postgres evaluates it once; a per-row check runs for every
+  // candidate before ORDER BY/LIMIT.
   return qb.andWhere(
-    `NOT EXISTS (
-      WITH RECURSIVE ancestry AS (
-        SELECT c.id, c."parentId", c."authorId" FROM comment c WHERE c.id = ${qb.alias}.id
+    `${qb.alias}.id NOT IN (
+      WITH RECURSIVE hidden AS (
+        SELECT c.id FROM comment c JOIN "user" u ON u.id = c."authorId" WHERE u."deletedAt" IS NOT NULL
         UNION ALL
-        SELECT p.id, p."parentId", p."authorId" FROM comment p JOIN ancestry a ON p.id = a."parentId"
+        SELECT c.id FROM comment c JOIN hidden h ON c."parentId" = h.id
       )
-      SELECT 1 FROM ancestry a JOIN "user" u ON u.id = a."authorId" WHERE u."deletedAt" IS NOT NULL
+      SELECT id FROM hidden
     )`,
   );
 }

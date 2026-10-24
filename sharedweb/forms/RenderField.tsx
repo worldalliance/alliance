@@ -38,7 +38,6 @@ import {
   cancelImageUpload,
   noOptionsAvailable,
 } from "@alliance/shared/lib/copy";
-import { usePhoneFieldCountry } from "@alliance/shared/lib/usePhoneNumberField";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import type { FieldConditionContext } from "@alliance/shared/useFormRenderer";
@@ -46,6 +45,8 @@ import UploadingWithCancel from "@alliance/sharedweb/ui/UploadingWithCancel";
 import { ChevronDown } from "lucide-react";
 import {
   Fragment,
+  lazy,
+  Suspense,
   useEffect,
   useId,
   useRef,
@@ -60,7 +61,6 @@ import Card from "../ui/Card";
 import CharacterLimitNotice from "../ui/CharacterLimitNotice";
 import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
 import ImageLightbox from "../ui/ImageLightbox";
-import PhoneNumberInput from "../ui/PhoneNumberInput";
 import YesNoToggle from "../ui/YesNoToggle";
 import CityAutosuggest from "./CityAutosuggest";
 import {
@@ -78,10 +78,16 @@ import {
 import MultiSelectDropdown from "./MultiSelectDropdown";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
 import { CheckboxSection } from "./optionPicker";
-import { RankingFieldInput } from "./RankingFieldInput";
 import SearchableSelect from "./SearchableSelect";
 import { textareaMinRows } from "./textareaMinRows";
 import TimeZoneSelect from "./TimeZoneSelect";
+
+const PhoneFieldInput = lazy(() => import("./PhoneFieldInput"));
+const RankingFieldInput = lazy(() =>
+  import("./RankingFieldInput").then((module) => ({
+    default: module.RankingFieldInput,
+  })),
+);
 
 export type RenderFieldProps = {
   field: AnyField;
@@ -1209,14 +1215,16 @@ export function RenderField({
             hideLabel={hideLabel}
             required={required}
           />
-          <RankingFieldInput
-            field={field}
-            value={value}
-            onChange={onChange}
-            disabled={disabled}
-            hasError={hasError}
-            isOutputView={isOutputView}
-          />
+          <Suspense fallback={null}>
+            <RankingFieldInput
+              field={field}
+              value={value}
+              onChange={onChange}
+              disabled={disabled}
+              hasError={hasError}
+              isOutputView={isOutputView}
+            />
+          </Suspense>
           {renderValidationMessage()}
         </div>
       );
@@ -1253,7 +1261,6 @@ export function PhoneInputField({
 }: PhoneInputFieldProps) {
   const labelId = useQuestionLabelId(field);
   const answer = typeof value === "string" ? value : "";
-  const [country, setCountry] = usePhoneFieldCountry(answer);
 
   return (
     <div className="space-y-1">
@@ -1266,18 +1273,18 @@ export function PhoneInputField({
         hideLabel={hideLabel}
         required={required}
       />
-      <PhoneNumberInput
-        labelId={labelId}
-        name={field.id}
-        value={answer}
-        onChange={(next) => onChange?.(next)}
-        country={country}
-        onCountryChange={setCountry}
-        disabled={disabled || !onChange}
-        required={required}
-        placeholder={field.placeholder || "Enter phone number"}
-        error={baseError ?? undefined}
-      />
+      <Suspense fallback={null}>
+        <PhoneFieldInput
+          labelId={labelId}
+          name={field.id}
+          value={answer}
+          onChange={(next) => onChange?.(next)}
+          disabled={disabled || !onChange}
+          required={required}
+          placeholder={field.placeholder || "Enter phone number"}
+          error={baseError ?? undefined}
+        />
+      </Suspense>
     </div>
   );
 }

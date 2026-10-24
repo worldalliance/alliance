@@ -1,4 +1,4 @@
-import type z from "zod";
+import type { z } from "zod";
 
 export function issuePath(issue: z.core.$ZodIssue): string {
   return issue.path.join(".") || "<root>";

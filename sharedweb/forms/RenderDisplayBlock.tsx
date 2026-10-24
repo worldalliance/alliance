@@ -14,7 +14,7 @@ import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import { Accordion } from "@base-ui/react/accordion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import React, { useRef, useState } from "react";
+import React, { lazy, Suspense, useRef, useState } from "react";
 import { resolveImageSrc } from "../lib/imageSrc";
 import { AvatarProfile } from "../ui/Avatar";
 import Card from "../ui/Card";
@@ -30,7 +30,8 @@ import BigLinkDisplay from "./BigLinkDisplay";
 import CopyTextDisplay from "./CopyTextDisplay";
 import { headerClassName, headerLevel } from "./headerStyles";
 import RenderPreviousAnswer from "./RenderPreviousAnswer";
-import VideoPlayer from "./VideoPlayer";
+
+const VideoPlayer = lazy(() => import("./VideoPlayer"));
 
 function ImageFigure({
   resolvedSrc,
@@ -271,11 +272,13 @@ export default function RenderDisplayBlock({
 
     case "video":
       return (
-        <VideoPlayer
-          src={block.src}
-          videoId={block.videoId}
-          caption={block.caption}
-        />
+        <Suspense fallback={null}>
+          <VideoPlayer
+            src={block.src}
+            videoId={block.videoId}
+            caption={block.caption}
+          />
+        </Suspense>
       );
 
     case "quote":

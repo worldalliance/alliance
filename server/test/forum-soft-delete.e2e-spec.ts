@@ -2,6 +2,8 @@ import { NotFoundException } from "@nestjs/common";
 import {
   GlobalFeedItemDto,
   GlobalFeedItemType,
+  HomeFeedItemDto,
+  HomeFeedItemType,
 } from "src/actions/dto/action.dto";
 import { ActionStatus } from "src/actions/entities/action-event.entity";
 import { Action } from "src/actions/entities/action.entity";
@@ -413,6 +415,31 @@ describe("Forum soft deletion (e2e)", () => {
       .set("Authorization", `Bearer ${replier.token}`)
       .expect(200);
     expect(members.body).toEqual([]);
+  });
+
+  it("leaves replies under a soft-deleted account's comment out of the home feed", async () => {
+    const departing = await member();
+    const replier = await member();
+    const postId = await createPost(ctx.accessToken);
+    const parent = (await comment({ ...departing, postId }).expect(201)).body;
+    const reply = (
+      await comment({ ...replier, postId, parentId: parent.id }).expect(201)
+    ).body;
+    const kept = (await comment({ ...replier, postId }).expect(201)).body;
+
+    await userRepo.softDelete(departing.user.id);
+
+    const feed = await request(server())
+      .get("/actions/homeFeed?limit=100")
+      .set("Authorization", `Bearer ${replier.token}`)
+      .expect(200);
+    const commentIds = feed.body
+      .filter(
+        (item: HomeFeedItemDto) => item.type === HomeFeedItemType.ForumComment,
+      )
+      .map((item: HomeFeedItemDto) => item.forumComment?.comment.id);
+    expect(commentIds).toContain(kept.id);
+    expect(commentIds).not.toContain(reply.id);
   });
 
   it("drops a soft-deleted account's activity and action comments and the replies under them", async () => {

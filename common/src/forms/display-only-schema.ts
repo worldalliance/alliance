@@ -1,4 +1,4 @@
-import z from "zod";
+import { z } from "zod";
 import { R, type Result } from "../result";
 import type { Assert, Equal } from "../types";
 import { describeSchemaIssues } from "../zod-issues";
