@@ -56,22 +56,18 @@ serveApi(
       const id = Number(params.inviteId);
       serverInvites = serverInvites.map((invite) => {
         if (invite.id !== id) return invite;
-        const { community, ...rest } = invite;
         return {
-          ...rest,
+          ...invite,
           invitee: body.invitee ?? invite.invitee,
-          ...(body.communityId === undefined
-            ? { community }
-            : body.communityId !== null && {
-                community: makeCommunity({ id: body.communityId }),
-              }),
+          community:
+            body.communityId === undefined
+              ? invite.community
+              : body.communityId === null
+                ? null
+                : makeCommunity({ id: body.communityId }),
         };
       });
-      const updated = serverInvites.find((invite) => invite.id === id);
-      return Response.json({
-        ...updated,
-        ...(body.communityId === null && { community: null }),
-      });
+      return Response.json(serverInvites.find((invite) => invite.id === id));
     },
     "POST /user/onetimeInvite/:inviteId/approve": ({ params }) => {
       serverInvites = serverInvites.map((invite) =>
