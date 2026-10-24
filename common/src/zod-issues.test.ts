@@ -1,4 +1,4 @@
-import z from "zod";
+import { z } from "zod";
 import { describeSchemaIssues } from "./zod-issues";
 
 function issuesOf(schema: z.ZodType, value: unknown): string[] {

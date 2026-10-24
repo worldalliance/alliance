@@ -1,4 +1,4 @@
-import z from "zod";
+import { z } from "zod";
 import type { Assert, Equal } from "../types";
 import { rowConditionSchema } from "./row-list-schema";
 import { visibleIfFormulaSchema } from "./visible-if-formula";

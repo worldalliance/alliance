@@ -1,4 +1,4 @@
-import z from "zod";
+import { z } from "zod";
 import { cityFieldValueSchema, type CityFieldValue } from "./city";
 import type { DisplayBlock } from "./display-blocks";
 import {

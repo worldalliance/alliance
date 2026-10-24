@@ -10,7 +10,7 @@ import {
 import { R, type Result } from "@alliance/common/result";
 import { describeSchemaIssues } from "@alliance/common/zod-issues";
 import { isEqual } from "es-toolkit";
-import type z from "zod";
+import type { z } from "zod";
 import { isDraftValidatorId } from "../components/form-fields/customValidatorDrafts";
 import { customValidatorIds } from "./customValidatorIds";
 
