@@ -43,6 +43,10 @@ import {
 } from "./dto/ambassador-program.dto";
 import {
   DeleteUserAdminDto,
+  UpdateUserRolesAdminDto,
+  UserAdminDetailDto,
+} from "./dto/user-admin.dto";
+import {
   MyVisibilityContextDto,
   NMembersResponseDto,
   ProfileDto,
@@ -50,8 +54,6 @@ import {
   StaffDirectoryEntryDto,
   UpdateProfileDto,
   UpdateStaffDirectoryDto,
-  UpdateUserRolesAdminDto,
-  UserAdminDetailDto,
   UserCityCountDto,
   UserDto,
 } from "./dto/user.dto";
