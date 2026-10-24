@@ -1,13 +1,11 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 // eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
-  analyticsGetAggregateStatsAdmin,
   analyticsGetMemberCompletionRetentionAdmin,
   analyticsGetTimeToChurnSamplesAdmin,
 } from "@alliance/shared/client";
 import {
   ActionStatsWithOnboardingDto,
-  AggregateStatsDto,
   ContractStatusPointDto,
   DailyStatsDto,
   MemberCompletionRetentionCohortDto,
@@ -28,7 +26,6 @@ import {
   scaleLinear,
   scaleTime,
 } from "d3";
-import { millisecondsInDay, minutesInHour } from "date-fns/constants";
 import React, {
   useCallback,
   useEffect,
@@ -37,6 +34,8 @@ import React, {
   useState,
 } from "react";
 import ActionCompletionCurveChart from "../components/ActionCompletionCurveChart";
+import AggregateStatsCard from "../components/stats/AggregateStatsCard";
+import { type ParsedContractStatusPoint } from "../components/stats/contractStatusHistory";
 import InviteFunnelCard from "../components/stats/InviteFunnelCard";
 import MemberReliabilityCard from "../components/stats/MemberReliabilityCard";
 import MissedActionsCard from "../components/stats/MissedActionsCard";
@@ -186,37 +185,6 @@ const parseIsoDate = (value?: string | null): Date | null => {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
-type ParsedContractStatusPoint = ContractStatusPointDto & {
-  parsedDate: Date;
-};
-
-const findContractStatusPointDaysAgo = (
-  history: ParsedContractStatusPoint[],
-  daysAgo: number,
-): ParsedContractStatusPoint | null => {
-  if (history.length === 0) return null;
-
-  const latest = history[history.length - 1];
-  const targetDate = new Date(latest.parsedDate);
-  targetDate.setDate(targetDate.getDate() - daysAgo);
-
-  let closest = history[0];
-  for (const point of history) {
-    if (point.parsedDate <= targetDate) {
-      closest = point;
-    } else {
-      break;
-    }
-  }
-
-  const daysBetween =
-    (latest.parsedDate.getTime() - closest.parsedDate.getTime()) /
-    millisecondsInDay;
-  if (daysBetween < daysAgo - 2) return null;
-
-  return closest;
-};
-
 const parseLocalDateInput = (
   value?: string | null,
   endOfDay = false,
@@ -260,10 +228,6 @@ const StatsPage: React.FC = () => {
   const [endInput, setEndInput] = useState<string>(defaultRange.end);
   const [queryRange, setQueryRange] = useState(defaultRange);
   const [rangeError, setRangeError] = useState<string | null>(null);
-  const [aggregateStats, setAggregateStats] =
-    useState<AggregateStatsDto | null>(null);
-  const [aggregateStatsLoading, setAggregateStatsLoading] =
-    useState<boolean>(false);
   const [retentionCohorts, setRetentionCohorts] = useState<
     MemberCompletionRetentionCohortDto[]
   >([]);
@@ -302,7 +266,6 @@ const StatsPage: React.FC = () => {
       end: dateToInputValue(end),
     };
   });
-  const [assumedHourlyRate, setAssumedHourlyRate] = useState<number>(15);
   const [contractStatusRange, setContractStatusRange] = useState(() => {
     const end = new Date();
     const start = new Date();
@@ -369,18 +332,6 @@ const StatsPage: React.FC = () => {
     }
   }, []);
 
-  const loadAggregateStats = useCallback(async () => {
-    setAggregateStatsLoading(true);
-    try {
-      const response = await analyticsGetAggregateStatsAdmin();
-      setAggregateStats(response.data ?? null);
-    } catch (err) {
-      console.error("Failed to load aggregate stats", err);
-    } finally {
-      setAggregateStatsLoading(false);
-    }
-  }, []);
-
   const loadTimeToChurnSamples = useCallback(async () => {
     setTimeToChurnLoading(true);
     try {
@@ -396,10 +347,6 @@ const StatsPage: React.FC = () => {
   useEffect(() => {
     void loadRetentionCohorts();
   }, [loadRetentionCohorts]);
-
-  useEffect(() => {
-    void loadAggregateStats();
-  }, [loadAggregateStats]);
 
   useEffect(() => {
     void loadTimeToChurnSamples();
@@ -1033,24 +980,6 @@ const StatsPage: React.FC = () => {
     }));
   }, [contractStatusHistory]);
 
-  const monthlyChurnRate = useMemo(() => {
-    const latest =
-      parsedContractStatusHistory[parsedContractStatusHistory.length - 1];
-    if (!latest) return null;
-
-    const monthAgo = findContractStatusPointDaysAgo(
-      parsedContractStatusHistory,
-      30,
-    );
-    if (!monthAgo || monthAgo.activeCount <= 0) return null;
-
-    const churnedInPeriod = Math.max(
-      0,
-      latest.churnedCount - monthAgo.churnedCount,
-    );
-    return (churnedInPeriod / monthAgo.activeCount) * 100;
-  }, [parsedContractStatusHistory]);
-
   const contractStatusChartGeometry = useMemo(() => {
     if (parsedContractStatusHistory.length === 0) return null;
 
@@ -1206,110 +1135,10 @@ const StatsPage: React.FC = () => {
 
   return (
     <div className="p-6 md:p-8 space-y-6 text-gray-900 mx-auto">
-      {aggregateStatsLoading ? (
-        <div className="text-sm text-gray-600">Loading aggregate stats…</div>
-      ) : aggregateStats ? (
-        <div className="bg-white rounded-xl border border-gray-200 px-4 py-3 flex items-center justify-between">
-          <div className="flex flex-col gap-2">
-            <div className="flex flex-row gap-6">
-              <div className="flex flex-col">
-                <div className="text-sm text-gray-600">Total members</div>
-                <div className="text-3xl font-bold text-gray-900">
-                  {aggregateStats.signedUsers}
-                </div>
-              </div>
-              <div className="flex flex-col">
-                <div className="text-sm text-gray-600">
-                  Completion reliability
-                </div>
-                <div className="text-3xl font-bold text-gray-900">
-                  {(() => {
-                    const filtered = actionStats.filter(
-                      (a) => !a.onboarding && !a.optional,
-                    );
-                    const totalCompleted = filtered.reduce(
-                      (sum, a) => sum + a.usersCompleted,
-                      0,
-                    );
-                    const totalAssigned = filtered.reduce(
-                      (sum, a) => sum + a.usersJoined,
-                      0,
-                    );
-                    return totalAssigned > 0
-                      ? ((totalCompleted / totalAssigned) * 100).toFixed(2)
-                      : "[No data]";
-                  })()}
-                  %
-                </div>
-              </div>
-              <div className="flex flex-col">
-                <div className="text-sm text-gray-600">All-time churn</div>
-                <div className="text-3xl font-bold text-gray-900">
-                  {parsedContractStatusHistory.length > 0
-                    ? (() => {
-                        const latest =
-                          parsedContractStatusHistory[
-                            parsedContractStatusHistory.length - 1
-                          ];
-                        return latest.totalEverSigned > 0
-                          ? (
-                              (latest.churnedCount / latest.totalEverSigned) *
-                              100
-                            ).toFixed(1)
-                          : "0";
-                      })()
-                    : "[No data]"}
-                  %
-                </div>
-              </div>
-              <div className="flex flex-col">
-                <div className="text-sm text-gray-600">Last month churn</div>
-                <div className="text-3xl font-bold text-gray-900">
-                  {monthlyChurnRate !== null
-                    ? monthlyChurnRate.toFixed(1)
-                    : "[No data]"}
-                  %
-                </div>
-              </div>
-            </div>
-            <div className="flex flex-row gap-6 items-end">
-              <div className="flex flex-col gap-y-1">
-                <div className="text-sm text-gray-600">
-                  Total expected weekly member time
-                </div>
-                <div className="text-base font-semibold text-gray-900">
-                  {((aggregateStats.signedUsers * 15) / minutesInHour).toFixed(
-                    2,
-                  )}{" "}
-                  hours / week
-                </div>
-              </div>
-              <div className="flex flex-col">
-                <div className="text-sm text-gray-600">
-                  Annual expected value of member time (assuming{" "}
-                  <input
-                    type="number"
-                    value={assumedHourlyRate}
-                    onChange={(e) =>
-                      setAssumedHourlyRate(Number(e.target.value))
-                    }
-                    className="rounded-md border border-gray-300 px-2 py-1 text-sm bg-white w-16"
-                  />{" "}
-                  / hour)
-                </div>
-                <div className="text-base font-semibold text-gray-900">
-                  $
-                  {(
-                    ((aggregateStats.signedUsers * 15) / minutesInHour) *
-                    assumedHourlyRate *
-                    52
-                  ).toFixed(2)}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <AggregateStatsCard
+        actionStats={actionStats}
+        parsedContractStatusHistory={parsedContractStatusHistory}
+      />
 
       <MissedActionsCard />
 
