@@ -509,9 +509,15 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     setTextMessage(
       initialValues.reminderGroup?.textMessage ?? defaultTextMessage,
     );
+    setPushMessage(
+      initialValues.reminderGroup?.pushMessage ?? defaultPushMessage,
+    );
     setCohortType(initialValues.reminderGroup?.cohortType ?? "all_uncompleted");
     setSelectedUserIds(initialValues.users.map((user) => user.id));
     setSelectedTagId(initialValues.reminderGroup?.userTag?.id ?? null);
+    setUseSuiteTaskCount(
+      initialValues.reminderGroup?.useSuiteTaskCount ?? true,
+    );
     setExcludeOptionalActions(
       initialValues.reminderGroup?.excludeOptionalActions ?? false,
     );

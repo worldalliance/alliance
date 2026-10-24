@@ -362,3 +362,34 @@ it("switches the previewed task count and closes the preview", async () => {
   expect(screen.queryByText("Rendered for 2")).toBeNull();
   expect(screen.getByDisplayValue(defaultTextMessage)).toBeTruthy();
 });
+
+it("reloads the push message and suite task count from new initial values", async () => {
+  mockFetch();
+  const { rerender } = renderForm(formElement(7));
+
+  rerender(
+    <ActionReminderGroupForm
+      {...formElement(7).props}
+      initialValues={{
+        ...initialValues,
+        reminderGroup: {
+          name: "Preset",
+          cohortType: "all_uncompleted",
+          timingMode: "event_launch",
+          emailSubject: "Subject",
+          emailMessage: "Message",
+          textMessage: "Text",
+          pushMessage: "Preset push",
+          useSuiteTaskCount: false,
+          excludeOptionalActions: false,
+          excludePreviouslyNotified: false,
+        },
+      }}
+    />,
+  );
+
+  expect(screen.getByDisplayValue("Preset push")).toBeTruthy();
+  expect(
+    screen.getByRole("checkbox", { name: "Use suite task count" }),
+  ).toHaveProperty("checked", false);
+});
