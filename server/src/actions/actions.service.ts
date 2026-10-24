@@ -197,6 +197,10 @@ import {
 import { CohortResolutionSession } from "./cohort-resolution-session";
 import { CohortResolverService } from "./cohort-resolver.service";
 import {
+  CreateActionEventDto,
+  UpdateActionEventDto,
+} from "./dto/action-event.dto";
+import {
   CreateActionUpdateDto,
   UpdateActionUpdateDto,
 } from "./dto/action-update.dto";
@@ -207,7 +211,6 @@ import {
   ActionSharePreview,
   CreateActionActivityDto,
   CreateActionDto,
-  CreateActionEventDto,
   CreateActionSuiteDto,
   ExportActionDto,
   GlobalFeedActionUpdateDto,
@@ -224,7 +227,6 @@ import {
   TimelineFeedItemDto,
   TimelineFeedItemType,
   UpdateActionDto,
-  UpdateActionEventDto,
   UserActionRelation,
   WelcomeQueue,
 } from "./dto/action.dto";

@@ -17,11 +17,10 @@ import {
 } from "./acknowledge-deadline-shortening";
 import { ActionsService } from "./actions.service";
 import {
-  ActionSuiteDto,
   CreateActionEventDto,
-  CreateActionSuiteDto,
   UpdateActionEventDto,
-} from "./dto/action.dto";
+} from "./dto/action-event.dto";
+import { ActionSuiteDto, CreateActionSuiteDto } from "./dto/action.dto";
 
 @Controller("actions")
 export class ActionSuitesController {

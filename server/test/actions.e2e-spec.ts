@@ -44,10 +44,12 @@ import { UserService } from "src/user/user.service";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import {
-  ActionDto,
   ActionEventDto,
-  CreateActionDto,
   CreateActionEventDto,
+} from "../src/actions/dto/action-event.dto";
+import {
+  ActionDto,
+  CreateActionDto,
   GlobalFeedItemType,
   TimelineFeedItemType,
   WelcomeQueueDto,

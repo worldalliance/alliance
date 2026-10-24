@@ -36,10 +36,10 @@ import {
   ApiAcknowledgeDeadlineShortening,
 } from "./acknowledge-deadline-shortening";
 import { ActionsService } from "./actions.service";
+import { ActionEventDto, CreateActionEventDto } from "./dto/action-event.dto";
 import {
   ActionActivityDto,
   ActionDto,
-  ActionEventDto,
   ActionReferralCodeDto,
   ActionSharePreviewDto,
   ActionWithdrawalDto,
@@ -47,7 +47,6 @@ import {
   AdminActionListItemDto,
   CreateActionActivityDto,
   CreateActionDto,
-  CreateActionEventDto,
   EvaluateCohortExpressionDto,
   EvaluateCohortExpressionResponseDto,
   ExportActionDto,

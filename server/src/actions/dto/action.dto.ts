@@ -84,6 +84,7 @@ import {
   type UserActionStatus,
   type UserActionWithdrawal,
 } from "../user-action-status";
+import { ActionEventDto } from "./action-event.dto";
 import { ActionUpdateDto } from "./action-update.dto";
 import { AdminFollowUpFormDto, FollowUpFormDto } from "./follow-up-form.dto";
 import { GeneralUpdateDto } from "./general-update.dto";
@@ -123,32 +124,6 @@ export class ActionReferralCodeDto {
     this.referralCode = referralCode;
   }
 }
-
-export class ActionEventDto extends PickType(ActionEvent, [
-  "id",
-  "title",
-  "description",
-  "newStatus",
-  "suiteManaged",
-  "date",
-]) {
-  constructor(event: ActionEvent) {
-    super();
-    this.id = event.id;
-    this.title = event.title;
-    this.description = event.description;
-    this.newStatus = event.newStatus;
-    this.suiteManaged = event.suiteManaged;
-    this.date = event.date;
-  }
-}
-
-export class CreateActionEventDto extends OmitType(ActionEventDto, [
-  "id",
-  "suiteManaged",
-]) {}
-
-export class UpdateActionEventDto extends PartialType(CreateActionEventDto) {}
 
 export { UserActionRelation } from "../action-activity-status";
 
