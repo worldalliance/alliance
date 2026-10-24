@@ -2,7 +2,6 @@
 import {
   ConversationDto,
   conversationGetUnreadSummary,
-  conversationMarkRead,
   MessageDto,
 } from "@alliance/shared/client";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -95,6 +94,7 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
   ): UseLiveConvoMessagesResult => {
     const { messages, receiveMessage, sendMessage } =
       useConversationMessages(conversationId);
+    const { markRead } = useMyConversations({ load: false });
     const socketRef = useRef<Socket | null>(null);
     const joinedConversationRef = useRef<number | null>(null);
     const activeConversationRef = useRef<number | null>(conversationId);
@@ -128,9 +128,7 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
 
           handlersRef.current?.onIncomingMessage?.(incoming);
 
-          conversationMarkRead({
-            path: { conversationId: incoming.conversationId },
-          });
+          void markRead(incoming.conversationId);
         });
 
         socket.on("conversation:updated", (conversation: ConversationDto) => {
@@ -157,7 +155,7 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
         socketRef.current = null;
         joinedConversationRef.current = null;
       };
-    }, [config, receiveMessage]);
+    }, [config, receiveMessage, markRead]);
 
     useEffect(() => {
       activeConversationRef.current = conversationId;
