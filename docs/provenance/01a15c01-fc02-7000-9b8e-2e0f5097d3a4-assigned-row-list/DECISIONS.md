@@ -38,6 +38,7 @@ So nothing in the served schema may be new to old builds. The server resolves th
 
 - The submit paths (`submitForm`, `submitFollowUpForm`, `optoutForm`) resolve the member's row against the form's current list, the same row the member was served. They then fill and filter whichever snapshot the submission names. Validation, contract extraction and the saved response all use that member-filtered snapshot, so a dropped required field isn't required.
 - The saved `assignedRow` holds the row's values from the current list at submit time.
+- Mobile builds from before the form-snapshot cutover (around 2026-04-27) submit `schemaSnapshot`, the schema they were served, instead of `formSnapshotId`. `resolveSubmissionSnapshot` matches it by hash, so for a form with a list it also accepts the hash of the member-filled schema (`snapshotForRow` of the current snapshot with the member's row) and returns the unfilled snapshot for the caller to fill. `saveFormDraft` passes the member's row the same way.
 - Prefilled values become ordinary answers once submitted. The server doesn't compare them to the row.
 
 ## Output views

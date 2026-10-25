@@ -1,12 +1,12 @@
 import { withCount } from "@alliance/common/plural";
 import { CreateTagDto, TagDto } from "@alliance/shared/client/types.gen";
-import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
 import Badge from "@alliance/sharedweb/ui/Badge";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
+import { useTagsAdmin } from "../lib/useTagsAdmin";
 
 type TagFormValues = Record<keyof CreateTagDto, string>;
 

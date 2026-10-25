@@ -14,8 +14,8 @@ import {
   type ProgressProject,
 } from "../../content/projects";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
-import { ImpactCard, ProgressLinkCard } from "../../site/PageCards";
-import { BandTone, PageBand, PageShell } from "../../site/PageShell";
+import { ProgressLinkCard } from "../../site/PageCards";
+import { PageBand, PageShell } from "../../site/PageShell";
 import { matchesPriorities } from "./matchesPriorities";
 
 export function meta() {
@@ -29,6 +29,7 @@ export function meta() {
 const PROGRESS_TITLE = "Progress";
 const PROGRESS_LEDE =
   "Examples of projects that members have completed so far.";
+const PROGRESS_COLUMN = "max-w-7xl";
 
 // type ImpactStat = { value: string; label: string };
 
@@ -86,10 +87,10 @@ function itemKey(item: ProgressItem) {
 
 function PriorityFilter({
   selected,
-  onToggle,
+  onSelect,
 }: {
-  selected: readonly ActionPriority[];
-  onToggle: (priority: ActionPriority) => void;
+  selected: ActionPriority | null;
+  onSelect: (priority: ActionPriority | null) => void;
 }) {
   return (
     <div
@@ -97,23 +98,23 @@ function PriorityFilter({
       aria-label="Filter by priority"
       className="flex flex-wrap gap-2"
     >
-      {ACTION_PRIORITIES.map((priority) => {
-        const pressed = selected.includes(priority);
+      {[null, ...ACTION_PRIORITIES].map((priority) => {
+        const pressed = selected === priority;
         return (
           <button
-            key={priority}
+            key={priority ?? "all"}
             type="button"
             aria-pressed={pressed}
-            onClick={() => onToggle(priority)}
+            onClick={() => onSelect(priority)}
             className={cn(
-              "border px-3 py-2 text-sm transition-colors font-medium",
+              "border px-3 py-2 text-sm font-medium",
               pressed
                 ? "border-(--site-primary) bg-(--site-primary) text-white"
                 : "border-(--site-ink)/15 text-(--site-ink)/70 hover:border-(--site-ink)/35",
             )}
             style={{ borderRadius: "var(--site-radius-input)" }}
           >
-            {ACTION_PRIORITY_LABELS[priority]}
+            {priority === null ? "All" : ACTION_PRIORITY_LABELS[priority]}
           </button>
         );
       })}
@@ -131,11 +132,23 @@ function ProgressCard({ item }: { item: ProgressItem }) {
           description={item.project.summary}
           tags={item.project.tags}
           to={href("/projects/:slug", { slug: item.project.slug })}
+          arrow
           className={className}
         />
       );
     case ProgressItemKind.Action:
-      return <ImpactCard action={item.action} className={className} />;
+      return (
+        <ProgressLinkCard
+          title={item.action.emphasis}
+          description={item.action.rest}
+          tags={item.action.tags}
+          to={item.action.customLink}
+          arrow
+          imageSrc={item.action.imageSrc}
+          imageAlt={item.action.imageAlt}
+          className={className}
+        />
+      );
     default:
       throw new Error(`unknown kind: ${item satisfies never}`);
   }
@@ -181,22 +194,16 @@ function ProgressCard({ item }: { item: ProgressItem }) {
  * column running hundreds of pixels past the other.
  */
 function Projects() {
-  const [selected, setSelected] = useState<ActionPriority[]>([]);
+  const [selected, setSelected] = useState<ActionPriority | null>(null);
   const shown = ALL_PROJECTS.filter((item) =>
-    matchesPriorities(itemTags(item), selected),
+    matchesPriorities(itemTags(item), selected === null ? [] : [selected]),
   );
 
-  function toggle(priority: ActionPriority) {
-    setSelected((prev) =>
-      prev.includes(priority)
-        ? prev.filter((item) => item !== priority)
-        : [...prev, priority],
-    );
-  }
-
   return (
-    <PageBand className="flex flex-col gap-8">
-      <PriorityFilter selected={selected} onToggle={toggle} />
+    <PageBand
+      className={cn("flex flex-col gap-8 pt-8 lg:pt-12", PROGRESS_COLUMN)}
+    >
+      <PriorityFilter selected={selected} onSelect={setSelected} />
       {shown.length === 0 ? (
         <p className="text-base text-(--site-ink)/90">No matching projects.</p>
       ) : (
@@ -215,7 +222,7 @@ export default function ProgressListPage() {
     <PageShell
       title={PROGRESS_TITLE}
       subtitle={PROGRESS_LEDE}
-      headerTone={BandTone.Primary}
+      columnClassName={PROGRESS_COLUMN}
     >
       {/* <Statistics /> */}
       <Projects />

@@ -1,6 +1,7 @@
 import type {
   PreviewEmailHtmlDto,
   PreviewTextDto,
+  ReminderAnchorCandidateDto,
 } from "@alliance/shared/client/types.gen";
 import { makeAction, makeEvent } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
@@ -21,6 +22,7 @@ let groupsStatus = 200;
 let deleteStatus = 200;
 let createStatus = 200;
 let anchorCandidatesStatus = 200;
+let anchorCandidates: ReminderAnchorCandidateDto[] = [];
 const previewRequests: unknown[] = [];
 
 serveApi(
@@ -30,7 +32,7 @@ serveApi(
     "GET /actions/reminderGroupsForEvent/:id": () =>
       Response.json(groups, { status: groupsStatus }),
     "GET /actions/reminderAnchorCandidates/:id": () =>
-      Response.json([], { status: anchorCandidatesStatus }),
+      Response.json(anchorCandidates, { status: anchorCandidatesStatus }),
     "GET /actions/plansForGroup/:groupId": () => Response.json([]),
     "GET /actions/sentNotifsForGroup/:groupId": () => Response.json([]),
     "POST /actions/events/:eventId/createremindergroup": async ({
@@ -85,6 +87,7 @@ afterEach(() => {
   deleteStatus = 200;
   createStatus = 200;
   anchorCandidatesStatus = 200;
+  anchorCandidates = [];
   previewRequests.length = 0;
 });
 
@@ -317,9 +320,13 @@ it("says why an edit was refused and keeps the form open", async () => {
   expect(screen.getByRole("button", { name: "Update Reminders" })).toBeTruthy();
 });
 
-const createFromAnnouncementPreset = async () => {
+const openPresets = async () => {
   fireEvent.click(await screen.findByRole("button", { name: "New reminder" }));
   fireEvent.click(screen.getByRole("button", { name: "Load preset..." }));
+};
+
+const createFromAnnouncementPreset = async () => {
+  await openPresets();
   fireEvent.click(screen.getByRole("button", { name: "Announcement" }));
   const submit = screen.getByRole("button", { name: "Create Reminders" });
   await waitFor(() => expect(submit).toHaveProperty("disabled", false));
@@ -330,6 +337,62 @@ const createFromAnnouncementPreset = async () => {
   );
   fireEvent.click(screen.getByRole("button", { name: "Create" }));
 };
+
+const anchorCandidate = (deadlineEventId: number, offsetMs: number) => ({
+  actionId: deadlineEventId,
+  actionName: `Dependency ${deadlineEventId}`,
+  deadlineEventId,
+  deadlineEventDate: new Date(Date.now() + offsetMs).toISOString(),
+});
+
+it("anchors a dependency-deadline preset to the next upcoming deadline", async () => {
+  anchorCandidates = [
+    anchorCandidate(10, -60_000),
+    anchorCandidate(11, 60_000),
+    anchorCandidate(12, 120_000),
+  ];
+  renderTab();
+  await openPresets();
+
+  const preset = await screen.findByRole("button", {
+    name: "Catch-up late joiners",
+  });
+  await waitFor(() => expect(preset).toHaveProperty("disabled", false));
+  fireEvent.click(preset);
+
+  expect(
+    await screen.findByDisplayValue(
+      "Catch-up announcement for late cohort joiners",
+    ),
+  ).toBeTruthy();
+  expect(
+    screen
+      .getByRole("option", { name: "This action's deadline" })
+      .closest("select"),
+  ).toHaveProperty("value", "11");
+  expect(screen.queryByRole("button", { name: "Announcement" })).toBeNull();
+});
+
+it("disables a dependency-deadline preset without an upcoming deadline", async () => {
+  anchorCandidates = [anchorCandidate(10, -60_000)];
+  renderTab();
+  await openPresets();
+  // The preset is also disabled before the candidates load, so wait for them.
+  fireEvent.click(screen.getByRole("button", { name: "Two Day Range" }));
+  await screen.findByRole("option", { name: /^Dependency 10 deadline/ });
+  fireEvent.click(screen.getByRole("button", { name: "Load preset..." }));
+
+  const preset = screen.getByRole("button", { name: "Catch-up late joiners" });
+
+  expect(preset).toHaveProperty("disabled", true);
+  expect(preset.getAttribute("title")).toBe(
+    "Needs an upcoming dependency deadline to anchor to; this action's cohort has none",
+  );
+  expect(screen.getByRole("button", { name: "Announcement" })).toHaveProperty(
+    "disabled",
+    false,
+  );
+});
 
 it("creates a group from the form and closes it", async () => {
   renderTab();

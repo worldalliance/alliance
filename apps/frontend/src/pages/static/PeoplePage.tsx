@@ -35,6 +35,7 @@ export async function loader() {
 }
 
 const PEOPLE_TITLE = "People";
+const PEOPLE_COLUMN = "max-w-7xl";
 const PEOPLE_LEDE = "Every member broadens the scope of what we can do.";
 
 const OFFICE_PHOTO_CAPTION = "The office in San Francisco, California";
@@ -59,7 +60,7 @@ function ExpertGroup() {
     <PageBand
       id="expert-group"
       tone={BandTone.Primary}
-      className="flex flex-col gap-10"
+      className={cn("flex flex-col gap-10", PEOPLE_COLUMN)}
     >
       <div className="flex flex-col gap-3">
         <BandHeading onDark size={BandHeadingSize.Section}>
@@ -133,7 +134,10 @@ function Office() {
   const { data: staff, isPending } = useStaffDirectory();
 
   return (
-    <PageBand id="office" className="flex flex-col gap-10">
+    <PageBand
+      id="office"
+      className={cn("flex flex-col gap-10 pt-8 lg:pt-12", PEOPLE_COLUMN)}
+    >
       <div className="flex flex-col gap-3">
         <BandHeading size={BandHeadingSize.Section}>Office</BandHeading>
         <SiteSubtitle>
@@ -196,7 +200,10 @@ function MemberDirectory({ memberCount }: { memberCount: number | undefined }) {
   const visible = shuffled.slice(0, cols * MEMBER_ROWS);
 
   return (
-    <PageBand id="members" className="flex flex-col gap-10">
+    <PageBand
+      id="members"
+      className={cn("flex flex-col gap-10", PEOPLE_COLUMN)}
+    >
       <div className="flex flex-col gap-3">
         <BandHeading size={BandHeadingSize.Section}>Members</BandHeading>
         {memberCount !== undefined && (
@@ -250,7 +257,7 @@ export default function PeoplePage() {
     <PageShell
       title={PEOPLE_TITLE}
       subtitle={PEOPLE_LEDE}
-      headerTone={BandTone.Primary}
+      columnClassName={PEOPLE_COLUMN}
     >
       <Office />
       <ExpertGroup />

@@ -1,5 +1,6 @@
 import { PLACEHOLDER_CONTRACT_MARKDOWN } from "@alliance/shared/lib/contract";
 import { cn } from "@alliance/shared/styles/util";
+import { ArrowRight } from "lucide-react";
 import type { ReactNode } from "react";
 import { href, Link } from "react-router";
 import {
@@ -18,7 +19,7 @@ function PriorityTags({ tags }: { tags: ActionPriorityTags }) {
       {tags.map((tag) => (
         <li
           key={tag}
-          className="text-[0.75rem] tracking-wide text-[var(--site-ink)]/45 uppercase"
+          className="text-xs font-medium bg-green px-2.5 py-1 rounded-md text-white tracking-wide"
         >
           {ACTION_PRIORITY_LABELS[tag]}
         </li>
@@ -32,16 +33,23 @@ function ProgressCardLink({
   className,
   children,
 }: {
-  to: string;
+  to?: string;
   className?: string;
   children: ReactNode;
 }) {
   const classes = cn(
     "flex flex-col gap-1.5 bg-[var(--site-surface)] p-5",
-    "inset-ring-1 inset-ring-transparent hover:inset-ring-[var(--color-green)]",
-    "transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-0.5",
+    to &&
+      "inset-ring-1 inset-ring-transparent hover:inset-ring-[var(--color-green)]",
     className,
   );
+  if (!to) {
+    return (
+      <div className={classes} style={progressCardStyle}>
+        {children}
+      </div>
+    );
+  }
   const external = to.startsWith("http");
   return external ? (
     <a
@@ -90,26 +98,39 @@ export function ProgressLinkCard({
   className,
   imageSrc,
   imageAlt,
+  arrow = false,
 }: {
   title: string;
   description: string;
   tags: ActionPriorityTags;
-  to: string;
+  to?: string;
   className?: string;
   imageSrc?: string;
   imageAlt?: string;
+  arrow?: boolean;
 }) {
   return (
     <ProgressCardLink to={to} className={className}>
-      {imageSrc && (
-        <img
-          src={imageSrc}
-          alt={imageAlt ?? ""}
-          aria-hidden={imageAlt ? undefined : true}
-          className="aspect-16/10 w-full object-cover"
-        />
-      )}
-      <ProgressCardCopy title={title} description={description} tags={tags} />
+      <div className="flex items-center gap-4">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <ProgressCardCopy
+            title={title}
+            description={description}
+            tags={tags}
+          />
+          {imageSrc && (
+            <img
+              src={imageSrc}
+              alt={imageAlt ?? ""}
+              aria-hidden={imageAlt ? undefined : true}
+              className="aspect-16/10 w-full object-cover mt-2 sm:mt-4"
+            />
+          )}
+        </div>
+        {to && arrow && (
+          <ArrowRight className="size-5 shrink-0 text-green" aria-hidden />
+        )}
+      </div>
     </ProgressCardLink>
   );
 }

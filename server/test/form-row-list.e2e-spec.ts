@@ -217,6 +217,22 @@ describe("Forms with a row list (e2e)", () => {
       expect(mine.body.schemaSnapshot.rowList).toBeUndefined();
     });
 
+    it("accepts a build that echoes the schema it was served", async () => {
+      const created = await createAction(schemaWithRows([emailRow]));
+      const served = await fetchAs(created.formId, ctx.accessToken).expect(200);
+      const response = await request(server())
+        .post(`/tasks/submitForm/${created.formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { sentTo: "records@county.example.gov", note: "Filed" },
+          schemaSnapshot: served.body.schema,
+          actionId: created.actionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(201);
+      expect(response.body.assignedRow.values).toEqual(emailRow);
+    });
+
     it("requires a field the row shows", async () => {
       const created = await createAction(schemaWithRows([emailRow]));
       await submit({ ...created, answers: { note: "Filed" } }).expect(400);

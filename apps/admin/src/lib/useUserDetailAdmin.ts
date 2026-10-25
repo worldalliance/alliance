@@ -5,10 +5,10 @@ import {
   userUserDetailAdmin,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { queryOptions, useMutation, useQuery } from "@tanstack/react-query";
 import { loaderPrefetchStaleTime } from "./queryClient";
 import { useStoreQueryData } from "./usePatchQueryData";
+import { useTagsAdmin } from "./useTagsAdmin";
 
 /** The member query, for a route loader to start before the page mounts. */
 export const userDetailQuery = (userId: number) =>

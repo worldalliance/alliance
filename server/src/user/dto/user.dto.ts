@@ -1,6 +1,4 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { publicDisplayName } from "@alliance/common/displayName";
-import { type UserPropertyPresence } from "@alliance/common/forms/user-properties";
 import { Temporal } from "@js-temporal/polyfill";
 import {
   ApiProperty,
@@ -12,7 +10,6 @@ import { Transform, Type } from "class-transformer";
 import {
   Allow,
   IsArray,
-  IsBoolean,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -25,28 +22,15 @@ import { IsE164 } from "src/utils/phone";
 import { IsPlainTime, trimToPlainTime } from "src/utils/plain-time";
 import { IsTimeZoneIdentifier } from "src/utils/timezone";
 import { trim, trimToNull } from "src/utils/transforms";
-import { Campaign } from "../../campaign/entities/campaign.entity";
 import { ClusterSummaryDto } from "../../cluster/dto/cluster.dto";
 import { Cluster } from "../../cluster/entities/cluster.entity";
-import { City } from "../../geo/city.entity";
-import { ShareUrl } from "../../share-urls/entities/share-url.entity";
 import {
   ContractEvent,
   ContractEventType,
   findLastContractEvent,
 } from "../entities/contract-event.entity";
 import { FriendStatus } from "../entities/friend.entity";
-import {
-  loadedOnetimeInviteInvitingUser,
-  OnetimeInvite,
-} from "../entities/onetime-invite.entity";
-import { Tag } from "../entities/tag.entity";
-import {
-  hasPassword,
-  loadedUserTags,
-  ReferralSource,
-  User,
-} from "../entities/user.entity";
+import { hasPassword, User } from "../entities/user.entity";
 import type { ReferrerResolution } from "../referral.service";
 
 export type FriendStatusDtoArgs = {
@@ -333,175 +317,6 @@ export class UserDto extends PickType(User, [
   }
 }
 
-export type UserAdminInvitedBy =
-  | {
-      kind: "user";
-      user: User;
-      referralSource: ReferralSource;
-      shareUrl?: ShareUrl | null;
-    }
-  | { kind: "campaign"; campaign: Campaign }
-  | { kind: "unknown"; referralSource: ReferralSource };
-
-export class UserAdminInvitedByDto {
-  @ApiProperty({
-    enum: ["user", "campaign", "unknown"],
-    enumName: "UserAdminInvitedByKind",
-  })
-  kind: "user" | "campaign" | "unknown";
-
-  @ApiProperty()
-  label: string;
-
-  @ApiPropertyOptional({ type: Number, nullable: true })
-  userId?: number | null;
-
-  @ApiPropertyOptional({ type: Number, nullable: true })
-  campaignId?: number | null;
-
-  @ApiPropertyOptional({ enum: ReferralSource, enumName: "ReferralSource" })
-  referralSource?: ReferralSource;
-
-  @ApiPropertyOptional({ type: String, nullable: true })
-  inviteLinkLabel?: string | null;
-
-  constructor(input: UserAdminInvitedBy) {
-    switch (input.kind) {
-      case "user":
-        this.kind = "user";
-        this.label = input.user.name;
-        this.userId = input.user.id;
-        this.referralSource = input.referralSource;
-        this.inviteLinkLabel = input.shareUrl?.label ?? null;
-        break;
-      case "campaign":
-        this.kind = "campaign";
-        this.label = input.campaign.name;
-        this.campaignId = input.campaign.id;
-        this.referralSource = ReferralSource.Campaign;
-        break;
-      case "unknown":
-        this.kind = "unknown";
-        this.label = humanizeReferralSource(input.referralSource);
-        this.referralSource = input.referralSource;
-        break;
-      default:
-        throw new Error(`unknown invited by kind: ${input satisfies never}`);
-    }
-  }
-}
-
-export class UserAdminLocationDto {
-  @ApiPropertyOptional({ type: Number, nullable: true })
-  cityId?: number | null;
-
-  @ApiPropertyOptional({ type: String, nullable: true })
-  cityName?: string | null;
-
-  @ApiPropertyOptional({ type: String, nullable: true })
-  countryName?: string | null;
-
-  @ApiPropertyOptional({ type: String, nullable: true })
-  countryCode?: string | null;
-
-  @ApiPropertyOptional({ type: String, nullable: true })
-  customCityString?: string | null;
-
-  constructor(input: { city?: City | null; customCityString?: string | null }) {
-    this.cityId = input.city?.id ?? null;
-    this.cityName = input.city?.englishName ?? input.city?.name ?? null;
-    this.countryName = input.city?.countryName ?? null;
-    this.countryCode = input.city?.countryCode ?? null;
-    this.customCityString = input.customCityString ?? null;
-  }
-}
-
-export type UserAdminDetail = User & {
-  city?: City | null;
-  referredBy?: User | null;
-  referredByCampaign?: Campaign | null;
-  referredByInvite?: OnetimeInvite | null;
-  referredByShareUrl?: ShareUrl | null;
-};
-
-export class UserAdminDetailDto extends UserDto {
-  @ApiProperty({ type: () => UserAdminLocationDto })
-  location: UserAdminLocationDto;
-
-  @ApiProperty({ type: () => UserAdminInvitedByDto, nullable: true })
-  invitedBy: UserAdminInvitedByDto | null;
-
-  // eslint-disable-next-line @darraghor/nestjs-typed/api-property-matches-property-optionality -- without it, @ApiProperty keeps UserDto's inherited required: false
-  @ApiProperty({ type: () => Tag, isArray: true, required: true })
-  @Type(() => Tag)
-  tags: Tag[];
-
-  constructor(user: UserAdminDetail) {
-    super(user);
-    this.tags = loadedUserTags(user);
-    this.location = new UserAdminLocationDto({
-      city: user.city,
-      customCityString: user.customCityString,
-    });
-    this.invitedBy = userAdminInvitedBy(user);
-  }
-}
-
-function userAdminInvitedBy(user: UserAdminDetail) {
-  if (user.referredBy) {
-    return new UserAdminInvitedByDto({
-      kind: "user",
-      user: user.referredBy,
-      referralSource: user.referralSource,
-      shareUrl: user.referredByShareUrl,
-    });
-  }
-  if (user.referredByCampaign) {
-    return new UserAdminInvitedByDto({
-      kind: "campaign",
-      campaign: user.referredByCampaign,
-    });
-  }
-  const inviter =
-    user.referredByInvite &&
-    loadedOnetimeInviteInvitingUser(user.referredByInvite);
-  if (inviter) {
-    return new UserAdminInvitedByDto({
-      kind: "user",
-      user: inviter,
-      referralSource: user.referralSource,
-    });
-  }
-  if (user.referralSource !== ReferralSource.None) {
-    return new UserAdminInvitedByDto({
-      kind: "unknown",
-      referralSource: user.referralSource,
-    });
-  }
-  return null;
-}
-
-function humanizeReferralSource(source: ReferralSource) {
-  switch (source) {
-    case ReferralSource.ReferralLink:
-      return "Referral link";
-    case ReferralSource.OnetimeInvite:
-      return "One-time invite";
-    case ReferralSource.ActionShareLink:
-      return "Action share link";
-    case ReferralSource.ExternalShareLink:
-      return "External share link";
-    case ReferralSource.InviteShareLink:
-      return "Invite share link";
-    case ReferralSource.Campaign:
-      return "Campaign";
-    case ReferralSource.None:
-      return "No invite";
-    default:
-      throw new Error(`unknown referral source: ${source satisfies never}`);
-  }
-}
-
 export class UpdateProfileDto extends PartialType(
   PickType(User, [
     "anonymous",
@@ -561,122 +376,6 @@ export class UpdateProfileDto extends PartialType(
   // Older mobile builds send back /auth/me's null.
   @Transform(({ value }) => value ?? undefined)
   timeZone?: string;
-}
-
-export class UpdateUserRolesAdminDto extends PartialType(
-  PickType(User, ["ambassador", "staff", "admin"]),
-) {
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
-  ambassador?: boolean;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
-  staff?: boolean;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
-  admin?: boolean;
-}
-
-export class DeleteUserAdminDto {
-  @ApiProperty({ description: "Posted to Slack; not stored on the account" })
-  @IsString()
-  @IsNotEmpty()
-  @Transform(trim)
-  reason: string;
-
-  /**
-   * Typed by the admin and checked against the account being deleted, so the
-   * gesture names its own target — a fixed phrase would confirm equally well
-   * on whichever profile happened to be open.
-   */
-  @ApiProperty({ description: "Must match the member's email address" })
-  @IsString()
-  @IsNotEmpty()
-  @Transform(trim)
-  confirmationEmail: string;
-
-  @ApiPropertyOptional({ type: String, nullable: true })
-  @IsOptional()
-  @IsString()
-  @Transform(trimToNull)
-  screenshotKey?: string | null;
-}
-
-export class StaffDirectoryEntryDto {
-  @ApiProperty()
-  id: number;
-
-  @ApiProperty()
-  displayName: string;
-
-  @ApiProperty({ type: String, nullable: true })
-  profilePicture: string | null;
-
-  @ApiProperty({ type: String, nullable: true })
-  staffTitle: string | null;
-
-  @ApiProperty({ type: String, nullable: true })
-  staffLink: string | null;
-
-  @ApiProperty()
-  staffDisplayOrder: number;
-
-  constructor(
-    user: Pick<
-      User,
-      | "id"
-      | "name"
-      | "anonymous"
-      | "profilePicture"
-      | "staffTitle"
-      | "staffLink"
-      | "staffDisplayOrder"
-    >,
-  ) {
-    this.id = user.id;
-    this.displayName = publicDisplayName(user);
-    this.profilePicture = user.profilePicture
-      ? getImageSource(user.profilePicture)
-      : null;
-    this.staffTitle = user.staffTitle;
-    this.staffLink = user.staffLink;
-    this.staffDisplayOrder = user.staffDisplayOrder;
-  }
-}
-
-export class StaffDirectoryItemUpdateDto {
-  @ApiProperty()
-  @IsInt()
-  id: number;
-
-  @ApiPropertyOptional({ type: String, nullable: true })
-  @IsOptional()
-  @IsString()
-  @Transform(trimToNull)
-  staffTitle?: string | null;
-
-  @ApiPropertyOptional({ type: String, nullable: true })
-  @IsOptional()
-  @IsString()
-  @Transform(trimToNull)
-  staffLink?: string | null;
-
-  @ApiProperty()
-  @IsInt()
-  staffDisplayOrder: number;
-}
-
-export class UpdateStaffDirectoryDto {
-  @ApiProperty({ type: () => StaffDirectoryItemUpdateDto, isArray: true })
-  @Type(() => StaffDirectoryItemUpdateDto)
-  @IsArray()
-  @ValidateNested({ each: true })
-  items: StaffDirectoryItemUpdateDto[];
 }
 
 export class ReferralDto {
@@ -755,78 +454,5 @@ export class NMembersResponseDto {
 
   constructor(count: number) {
     this.count = count;
-  }
-}
-
-export class UserPropertyPresenceDto implements UserPropertyPresence {
-  @ApiProperty() name: boolean;
-  @ApiProperty() email: boolean;
-  @ApiProperty() phoneNumber: boolean;
-  @ApiProperty() preferredReminderTime: boolean;
-  @ApiProperty() timeZone: boolean;
-  @ApiProperty() profilePicture: boolean;
-  @ApiProperty() profileDescription: boolean;
-  @ApiProperty() city: boolean;
-  @ApiProperty() customCityString: boolean;
-  @ApiProperty() over18: boolean;
-  @ApiProperty() clusterId: boolean;
-  @ApiProperty() staffTitle: boolean;
-  @ApiProperty() switchedDomainAt: boolean;
-  @ApiProperty() referredById: boolean;
-  @ApiProperty() shareInfoPublicly: boolean;
-
-  constructor(input: UserPropertyPresence) {
-    this.name = input.name;
-    this.email = input.email;
-    this.phoneNumber = input.phoneNumber;
-    this.preferredReminderTime = input.preferredReminderTime;
-    this.timeZone = input.timeZone;
-    this.profilePicture = input.profilePicture;
-    this.profileDescription = input.profileDescription;
-    this.city = input.city;
-    this.customCityString = input.customCityString;
-    this.over18 = input.over18;
-    this.clusterId = input.clusterId;
-    this.staffTitle = input.staffTitle;
-    this.switchedDomainAt = input.switchedDomainAt;
-    this.referredById = input.referredById;
-    this.shareInfoPublicly = input.shareInfoPublicly;
-  }
-}
-
-export type MyVisibilityContext = {
-  userHasCity: boolean;
-  userPropertyHasValue: UserPropertyPresence;
-  firstContractSignedAt: Date | null;
-  completedActionCount: number;
-};
-
-/**
- * User-account-derived values consumed by form visibility conditions
- * (`userHasCity`, `userPropertyHasValue`, `firstContractSigned`,
- * `completedActionCount`). Mirrors the server-side extras used when stripping
- * hidden answers at submission, so clients preview the same visibility the
- * server enforces.
- */
-export class MyVisibilityContextDto {
-  @ApiProperty()
-  userHasCity: boolean;
-
-  @ApiProperty({ type: () => UserPropertyPresenceDto })
-  userPropertyHasValue: UserPropertyPresenceDto;
-
-  @ApiPropertyOptional({ type: Date })
-  firstContractSignedAt?: Date;
-
-  @ApiProperty()
-  completedActionCount: number;
-
-  constructor(input: MyVisibilityContext) {
-    this.userHasCity = input.userHasCity;
-    this.userPropertyHasValue = new UserPropertyPresenceDto(
-      input.userPropertyHasValue,
-    );
-    this.firstContractSignedAt = input.firstContractSignedAt ?? undefined;
-    this.completedActionCount = input.completedActionCount;
   }
 }

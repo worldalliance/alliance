@@ -1360,7 +1360,7 @@ export type OnetimeInviteDto = {
     createdAt: string;
     status: OnetimeInviteStatus;
     invitedUserId: number | null;
-    community?: CommunityDto;
+    community?: CommunityDto | null;
     invitingUser?: ProfileDto;
     invitedUser?: ProfileDto;
     accepted: boolean;

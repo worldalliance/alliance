@@ -22,7 +22,7 @@ import TextareaWithHighlights from "../TextareaWithHighlights";
 import ActionReminderGroupForm, {
   ActionReminderGroupFormSubmitPayload,
 } from "./ActionReminderGroupForm";
-import { GroupScheduleLabels } from "./ActionRemindersTab";
+import { GroupScheduleLabels } from "./groupSchedule";
 import MissedSuiteNote from "./MissedSuiteNote";
 
 interface ActionReminderCardProps {

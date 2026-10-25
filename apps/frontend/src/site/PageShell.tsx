@@ -105,11 +105,13 @@ function PageHeader({
   subtitle,
   titleClassName,
   tone = BandTone.Surface,
+  columnClassName,
 }: {
   title: string;
   subtitle?: ReactNode;
   titleClassName?: string;
   tone?: BandTone;
+  columnClassName?: string;
 }) {
   const onDark = tone === BandTone.Primary;
   return (
@@ -119,6 +121,7 @@ function PageHeader({
           SITE_COL,
           "flex flex-col gap-4",
           onDark && "pb-16 lg:pb-24",
+          columnClassName,
         )}
         style={{ paddingTop: NAV_HEIGHT + 64 }}
       >
@@ -154,6 +157,7 @@ export function PageShell({
   showJoinCta = true,
   titleClassName,
   headerTone = BandTone.Surface,
+  columnClassName,
 }: {
   title?: string;
   subtitle?: ReactNode;
@@ -161,6 +165,7 @@ export function PageShell({
   showJoinCta?: boolean;
   titleClassName?: string;
   headerTone?: BandTone;
+  columnClassName?: string;
 }) {
   return (
     <SiteRoot>
@@ -171,6 +176,7 @@ export function PageShell({
           subtitle={subtitle}
           titleClassName={titleClassName}
           tone={headerTone}
+          columnClassName={columnClassName}
         />
       )}
       <main style={title ? undefined : { paddingTop: NAV_HEIGHT }}>
