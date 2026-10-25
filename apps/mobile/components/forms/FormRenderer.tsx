@@ -42,8 +42,10 @@ import {
   applyDefaultValues,
   computeFormStorageKey,
   filterAnswersByFieldIds,
+  readStoredFormDraft,
   restorableAnswers,
   restorablePublicAnswers,
+  serializeStoredFormDraft,
 } from "@alliance/shared/forms/formDrafts";
 import {
   completedFormSchema,
@@ -740,31 +742,29 @@ const FormRenderer = ({
           setLocalDraftRead(true);
           return;
         }
-        const parsed = JSON.parse(raw);
-        if (typeof parsed?.syncedUpdatedAt === "string") {
-          setSyncedUpdatedAt(parsed.syncedUpdatedAt);
-        }
-        if (parsed?.formData && typeof parsed.formData === "object") {
-          const filtered = restorableAnswers(
-            parsed.formData as Record<string, FormValue>,
-            fieldLookup,
-          );
-          setFormData(applyDefaultValues(filtered, defaultValueMap));
-        }
-        if (parsed?.publicAnswers && typeof parsed.publicAnswers === "object") {
-          const overrides = restorablePublicAnswers(
-            parsed.publicAnswers as Record<string, unknown>,
-            outputFieldIds,
-          );
-          if (Object.keys(overrides).length > 0) {
-            setPublicAnswers((prev) => ({ ...prev, ...overrides }));
+        const stored = readStoredFormDraft({
+          raw,
+          fieldLookup,
+          outputFieldIds,
+        });
+        if (stored.ok) {
+          const { answers, publicAnswers, currentPageIndex, syncedUpdatedAt } =
+            stored.value;
+          if (syncedUpdatedAt !== undefined) {
+            setSyncedUpdatedAt(syncedUpdatedAt);
+          }
+          if (answers) {
+            setFormData(applyDefaultValues(answers, defaultValueMap));
+          }
+          if (Object.keys(publicAnswers).length > 0) {
+            setPublicAnswers((prev) => ({ ...prev, ...publicAnswers }));
+          }
+          if (currentPageIndex !== undefined) {
+            setCurrentPageIndex(clampPageIndex(currentPageIndex));
           }
         }
-        if (typeof parsed?.currentPageIndex === "number") {
-          setCurrentPageIndex(clampPageIndex(parsed.currentPageIndex));
-        }
       } catch {
-        // Corrupt or missing draft — ignore.
+        // A storage read that throws starts the form without a draft.
       }
       draftLoaded.current = true;
       setLocalDraftRead(true);
@@ -832,11 +832,10 @@ const FormRenderer = ({
     const timeout = setTimeout(() => {
       AsyncStorage.setItem(
         storageKey,
-        JSON.stringify({
+        serializeStoredFormDraft({
           formData,
           publicAnswers,
           currentPageIndex,
-          updatedAt: Date.now(),
           syncedUpdatedAt,
         }),
       ).catch((e) => {

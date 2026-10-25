@@ -36,8 +36,10 @@ import {
   applyDefaultValues,
   computeFormStorageKey,
   filterAnswersByFieldIds,
+  readStoredFormDraft,
   restorableAnswers,
   restorablePublicAnswers,
+  serializeStoredFormDraft,
 } from "@alliance/shared/forms/formDrafts";
 import {
   completedFormSchema,
@@ -265,18 +267,10 @@ const FormRenderer = ({
     }
     if (readOnly) return 0;
     if (typeof window === "undefined" || !persistKey) return 0;
-    try {
-      const raw = window.localStorage.getItem(storageKey);
-      if (!raw) return 0;
-      const parsed = JSON.parse(raw);
-      const idx =
-        typeof parsed?.currentPageIndex === "number"
-          ? parsed.currentPageIndex
-          : 0;
-      return clampPageIndex(idx);
-    } catch {
-      return 0;
-    }
+    const raw = window.localStorage.getItem(storageKey);
+    if (!raw) return 0;
+    const stored = readStoredFormDraft({ raw, fieldLookup, outputFieldIds });
+    return stored.ok ? clampPageIndex(stored.value.currentPageIndex ?? 0) : 0;
   });
   const formTopRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -302,20 +296,11 @@ const FormRenderer = ({
 
     const readLocalStorageAnswers = (): Record<string, FormValue> | null => {
       if (typeof window === "undefined" || !persistKey) return null;
-      try {
-        const raw = window.localStorage.getItem(storageKey);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        const storedFormData =
-          parsed?.formData && typeof parsed.formData === "object"
-            ? (parsed.formData as Record<string, FormValue>)
-            : null;
-        if (!storedFormData) return null;
-        const filtered = restorableAnswers(storedFormData, fieldLookup);
-        return Object.keys(filtered).length > 0 ? filtered : null;
-      } catch {
-        return null;
-      }
+      const raw = window.localStorage.getItem(storageKey);
+      if (!raw) return null;
+      const stored = readStoredFormDraft({ raw, fieldLookup, outputFieldIds });
+      const answers = stored.ok ? stored.value.answers : undefined;
+      return answers && Object.keys(answers).length > 0 ? answers : null;
     };
 
     const localAnswers = readLocalStorageAnswers();
@@ -369,16 +354,10 @@ const FormRenderer = ({
   // the entry.
   const [syncedUpdatedAt, setSyncedUpdatedAt] = useState<string | null>(() => {
     if (readOnly || typeof window === "undefined" || !persistKey) return null;
-    try {
-      const raw = window.localStorage.getItem(storageKey);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      return typeof parsed?.syncedUpdatedAt === "string"
-        ? parsed.syncedUpdatedAt
-        : null;
-    } catch {
-      return null;
-    }
+    const raw = window.localStorage.getItem(storageKey);
+    if (!raw) return null;
+    const stored = readStoredFormDraft({ raw, fieldLookup, outputFieldIds });
+    return (stored.ok && stored.value.syncedUpdatedAt) || null;
   });
 
   const draftSyncEnabled =
@@ -915,11 +894,10 @@ const FormRenderer = ({
     if (!persistKey || typeof window === "undefined") return;
     window.localStorage.setItem(
       storageKey,
-      JSON.stringify({
+      serializeStoredFormDraft({
         formData,
         publicAnswers: publicAnswerOverrides,
         currentPageIndex,
-        updatedAt: Date.now(),
         syncedUpdatedAt,
       }),
     );
@@ -938,29 +916,21 @@ const FormRenderer = ({
     if (!persistKey || typeof window === "undefined") return;
     const raw = window.localStorage.getItem(storageKey);
     if (!raw) return;
-    const parsed = JSON.parse(raw);
-    if (parsed?.formData && typeof parsed.formData === "object") {
-      const filtered = restorableAnswers(
-        parsed.formData as Record<string, FormValue>,
-        fieldLookup,
-      );
-      setFormData(applyDefaultValues(filtered, defaultValueMap));
+    const stored = readStoredFormDraft({ raw, fieldLookup, outputFieldIds });
+    if (!stored.ok) return;
+    const { answers, publicAnswers, currentPageIndex } = stored.value;
+    if (answers) {
+      setFormData(applyDefaultValues(answers, defaultValueMap));
     }
-    if (parsed?.publicAnswers && typeof parsed.publicAnswers === "object") {
-      const overrides = restorablePublicAnswers(
-        parsed.publicAnswers as Record<string, unknown>,
-        outputFieldIds,
-      );
-      if (Object.keys(overrides).length > 0) {
-        setPublicAnswerOverrides((prev) => ({
-          ...prev,
-          ...overrides,
-        }));
-      }
+    if (Object.keys(publicAnswers).length > 0) {
+      setPublicAnswerOverrides((prev) => ({
+        ...prev,
+        ...publicAnswers,
+      }));
     }
-    if (typeof parsed?.currentPageIndex === "number") {
+    if (currentPageIndex !== undefined) {
       const maxIdx = Math.max(0, (pageCount || 1) - 1);
-      const idx = Math.min(Math.max(0, parsed.currentPageIndex), maxIdx);
+      const idx = Math.min(Math.max(0, currentPageIndex), maxIdx);
       setCurrentPageIndex(idx);
     }
   }, [
