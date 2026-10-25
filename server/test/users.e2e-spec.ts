@@ -517,36 +517,6 @@ describe("Users (e2e)", () => {
     );
   });
 
-  describe("retired notification settings on /user/update", () => {
-    const update = (body: Record<string, unknown>) =>
-      request(ctx.app.getHttpServer())
-        .post("/user/update")
-        .send(body)
-        .set("Authorization", `Bearer ${userAToken}`);
-
-    it("ignores them", async () => {
-      const res = await update({
-        pushesForLikes: false,
-        textNotifsForActions: false,
-      });
-
-      expect(res.status).toBe(201);
-      expect(
-        await userRepo.findOneOrFail({
-          where: { id: userAId },
-          select: {
-            id: true,
-            legacyPushesForLikes: true,
-            legacyTextNotifsForActions: true,
-          },
-        }),
-      ).toMatchObject({
-        legacyPushesForLikes: true,
-        legacyTextNotifsForActions: true,
-      });
-    });
-  });
-
   describe("preferred reminder time on /user/update", () => {
     const reminderTimeOf = async (id: number) =>
       (

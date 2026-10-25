@@ -30,6 +30,7 @@ import { StoredInviteAssignmentKind } from "src/share-urls/invite-assignment-kin
 import { phoneNumberTransformer } from "src/utils/phone";
 import { plainTimeTransformer } from "src/utils/plain-time";
 import type { Relation } from "src/utils/Repository";
+import { RetiredColumn } from "src/utils/retired-column";
 import {
   BeforeInsert,
   BeforeUpdate,
@@ -180,67 +181,62 @@ export class User {
   sharePhoneNumberWithCommunityLead: boolean;
 
   // TODO: drop these columns and fields in a deploy after this one. Until
-  // then the previous release, which selects them, is what a rollback restores.
-  @Column({
+  // then a rollback restores the previous release, which inserts them.
+  @RetiredColumn({
     name: "forumDigestPreference",
     type: "enum",
     enum: ["off", "daily", "weekly"],
-    default: "off",
-    select: false,
   })
-  legacyForumDigestPreference: string;
+  legacyForumDigestPreference: string | null;
 
-  @Column({
+  @RetiredColumn({
     name: "socialNotifsPreference",
     type: "enum",
     enum: ["all", "digest", "none"],
-    default: "all",
-    select: false,
   })
-  legacySocialNotifsPreference: string;
+  legacySocialNotifsPreference: string | null;
 
-  @Column({ name: "emailNotifsForActions", default: true, select: false })
-  legacyEmailNotifsForActions: boolean;
+  @RetiredColumn({ name: "emailNotifsForActions", type: "boolean" })
+  legacyEmailNotifsForActions: boolean | null;
 
-  @Column({ name: "textNotifsForActions", default: true, select: false })
-  legacyTextNotifsForActions: boolean;
+  @RetiredColumn({ name: "textNotifsForActions", type: "boolean" })
+  legacyTextNotifsForActions: boolean | null;
 
-  @Column({ name: "pushNotifsForActions", default: true, select: false })
-  legacyPushNotifsForActions: boolean;
+  @RetiredColumn({ name: "pushNotifsForActions", type: "boolean" })
+  legacyPushNotifsForActions: boolean | null;
 
-  @Column({ name: "turnedOffAllNotifs", default: false, select: false })
-  legacyTurnedOffAllNotifs: boolean;
+  @RetiredColumn({ name: "turnedOffAllNotifs", type: "boolean" })
+  legacyTurnedOffAllNotifs: boolean | null;
 
-  @Column({ name: "pushesForLikes", default: true, select: false })
-  legacyPushesForLikes: boolean;
+  @RetiredColumn({ name: "pushesForLikes", type: "boolean" })
+  legacyPushesForLikes: boolean | null;
 
-  @Column({ name: "pushesForComments", default: true, select: false })
-  legacyPushesForComments: boolean;
+  @RetiredColumn({ name: "pushesForComments", type: "boolean" })
+  legacyPushesForComments: boolean | null;
 
-  @Column({ name: "pushesForFriendRequests", default: true, select: false })
-  legacyPushesForFriendRequests: boolean;
+  @RetiredColumn({ name: "pushesForFriendRequests", type: "boolean" })
+  legacyPushesForFriendRequests: boolean | null;
 
-  @Column({ name: "pushesForMessages", default: true, select: false })
-  legacyPushesForMessages: boolean;
+  @RetiredColumn({ name: "pushesForMessages", type: "boolean" })
+  legacyPushesForMessages: boolean | null;
 
-  @Column({ name: "pushesForActionUpdates", default: true, select: false })
-  legacyPushesForActionUpdates: boolean;
+  @RetiredColumn({ name: "pushesForActionUpdates", type: "boolean" })
+  legacyPushesForActionUpdates: boolean | null;
 
-  @Column({ name: "pushesForNewGroupMembers", default: true, select: false })
-  legacyPushesForNewGroupMembers: boolean;
+  @RetiredColumn({ name: "pushesForNewGroupMembers", type: "boolean" })
+  legacyPushesForNewGroupMembers: boolean | null;
 
-  @Column({ name: "textsForNewGroupMembers", default: false, select: false })
-  legacyTextsForNewGroupMembers: boolean;
+  @RetiredColumn({ name: "textsForNewGroupMembers", type: "boolean" })
+  legacyTextsForNewGroupMembers: boolean | null;
 
-  @Column({
+  @RetiredColumn({
     name: "remindAboutUncompletedGroupMembers",
-    default: true,
-    select: false,
+    type: "boolean",
   })
-  legacyRemindAboutUncompletedGroupMembers: boolean;
+  legacyRemindAboutUncompletedGroupMembers: boolean | null;
 
-  @Column({ name: "receiveReplyNotifications", default: true, select: false })
-  legacyReceiveReplyNotifications: boolean;
+  @RetiredColumn({ name: "receiveReplyNotifications", type: "boolean" })
+  legacyReceiveReplyNotifications: boolean | null;
 
   @Column({ type: "timestamptz", nullable: true })
   @ApiProperty({ type: Date, nullable: true })
