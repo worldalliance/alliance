@@ -2,7 +2,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { isStaging } from "@alliance/sharedweb/lib/config";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { href, Outlet, useNavigate, useNavigation } from "react-router";
 import DomainMigrationModal from "./components/DomainMigrationModal";
 import { useAuth } from "./lib/AuthContext";
@@ -39,6 +39,9 @@ export default function AppLayout() {
 
   const navigate = useNavigate();
   const navigation = useNavigation();
+  // Each request refused after a failed refresh settles, or refused again on
+  // retry, reports the session ended.
+  const loggingOut = useRef(false);
 
   const isNavigating = Boolean(navigation.location);
 
@@ -53,8 +56,10 @@ export default function AppLayout() {
       if (
         !window.location.pathname.includes("/login") &&
         !isNavigating &&
-        (isAuthOnly() || wasLoggedIn)
+        (isAuthOnly() || wasLoggedIn) &&
+        !loggingOut.current
       ) {
+        loggingOut.current = true;
         console.log("unauthorized, logging out");
         logout();
         navigate(`${href("/login")}?redirect=${window.location.pathname}`);

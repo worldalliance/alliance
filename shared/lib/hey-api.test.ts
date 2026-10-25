@@ -128,6 +128,86 @@ describe("a request refused for an expired session", () => {
     expect(sent).toEqual(["{}", "{}"]);
   });
 
+  it("shares one refresh with the requests refused alongside it", async () => {
+    const refused = new Set<string>();
+    const { fetch } = createClientConfig({
+      fetch: async (request: Request) => {
+        const firstTry = !refused.has(request.url);
+        refused.add(request.url);
+        return new Response(null, { status: firstTry ? 401 : 200 });
+      },
+    });
+
+    const statuses = await Promise.all(
+      ["tasks", "updates", "feed"].map((path) =>
+        fetch!(new Request(`http://api.test/${path}`)).then(
+          (res) => res.status,
+        ),
+      ),
+    );
+
+    expect(statuses).toEqual([200, 200, 200]);
+    expect(refreshes).toBe(1);
+  });
+
+  it("refreshes again for a request refused after the last refresh settled", async () => {
+    const { fetch } = createClientConfig({ fetch: expiredOnce });
+    await fetch!(
+      new Request("http://api.test/goal", { method: "POST", body: "{}" }),
+    );
+    sent = [];
+
+    await fetch!(
+      new Request("http://api.test/goal", { method: "POST", body: "{}" }),
+    );
+
+    expect(refreshes).toBe(2);
+  });
+
+  it("reports one signed-out session for the requests refused together", async () => {
+    api.alsoServing({
+      "POST /auth/refresh": () => {
+        refreshes++;
+        return new Response(null, { status: 401 });
+      },
+    });
+    let signedOut = 0;
+    const onSignedOut = () => signedOut++;
+    window.addEventListener("auth:unauthorized", onSignedOut);
+    const { fetch } = createClientConfig({
+      fetch: async () => new Response(null, { status: 401 }),
+    });
+
+    const statuses = await Promise.all(
+      ["tasks", "updates", "feed"].map((path) =>
+        fetch!(new Request(`http://api.test/${path}`)).then(
+          (res) => res.status,
+        ),
+      ),
+    );
+    window.removeEventListener("auth:unauthorized", onSignedOut);
+
+    expect(statuses).toEqual([401, 401, 401]);
+    expect(refreshes).toBe(1);
+    expect(signedOut).toBe(1);
+  });
+
+  it("reports the signed-out session when it is refused again after the refresh", async () => {
+    let signedOut = 0;
+    const onSignedOut = () => signedOut++;
+    window.addEventListener("auth:unauthorized", onSignedOut);
+    const { fetch } = createClientConfig({
+      fetch: async () => new Response(null, { status: 401 }),
+    });
+
+    const res = await fetch!(new Request("http://api.test/tasks"));
+    window.removeEventListener("auth:unauthorized", onSignedOut);
+
+    expect(res.status).toBe(401);
+    expect(refreshes).toBe(1);
+    expect(signedOut).toBe(1);
+  });
+
   it("is not sent again when it carries a multipart body", async () => {
     const { fetch } = createClientConfig({ fetch: expiredOnce });
     const body = new FormData();
