@@ -1,22 +1,9 @@
-import type { FormValue, PhoneField } from "@alliance/common/forms/form-schema";
-import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
+import type { PhoneField } from "@alliance/common/forms/form-schema";
 import { usePhoneFieldCountry } from "@alliance/shared/lib/usePhoneNumberField";
 import { View } from "react-native";
 import { fieldAccessibilityLabel } from "./fieldAccessibilityLabel";
-import { RenderLabel } from "./fieldParts";
+import { type FieldInputProps, RenderLabel } from "./fieldParts";
 import PhoneNumberInput from "./PhoneNumberInput";
-
-type PhoneInputFieldProps = {
-  field: PhoneField;
-  value: FormValue | undefined;
-  onChange?: (value: FormValueUpdater) => void;
-  onFocus?: () => void;
-  disabled?: boolean;
-  baseError: string | null;
-  isOutputView?: boolean;
-  hideLabel?: boolean;
-  required?: boolean;
-};
 
 export function PhoneInputField({
   field,
@@ -24,11 +11,11 @@ export function PhoneInputField({
   onChange,
   onFocus,
   disabled,
-  baseError,
+  errorMessage,
   isOutputView,
   hideLabel,
-  required = !!field.required,
-}: PhoneInputFieldProps) {
+  required,
+}: FieldInputProps<PhoneField>) {
   const answer = typeof value === "string" ? value : "";
   const [country, setCountry] = usePhoneFieldCountry(answer);
 
@@ -53,7 +40,7 @@ export function PhoneInputField({
         disabled={disabled || !onChange}
         accessibilityLabel={fieldAccessibilityLabel(field)}
         placeholder={field.placeholder || "Enter phone number"}
-        error={baseError}
+        error={errorMessage}
       />
     </View>
   );

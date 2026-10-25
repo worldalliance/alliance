@@ -1,5 +1,4 @@
-import type { FormValue, TimeField } from "@alliance/common/forms/form-schema";
-import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
+import type { TimeField } from "@alliance/common/forms/form-schema";
 import {
   buildTimeOfDayOptions,
   commitTimeInput,
@@ -19,21 +18,12 @@ import {
 import { colors } from "../../lib/style/colors";
 import Text, { FontWeight } from "../system/Text";
 import { fieldAccessibilityLabel } from "./fieldAccessibilityLabel";
-import { RenderLabel, sharedInputClasses } from "./fieldParts";
+import {
+  type FieldInputProps,
+  RenderLabel,
+  sharedInputClasses,
+} from "./fieldParts";
 import FormModal from "./FormModal";
-
-type TimeInputFieldProps = {
-  field: TimeField;
-  value: FormValue | undefined;
-  onChange?: (value: FormValueUpdater) => void;
-  onFocus?: () => void;
-  disabled?: boolean;
-  baseError: string | null;
-  isOutputView?: boolean;
-  hideLabel?: boolean;
-  /** Effective requiredness; defaults to the field's static `required` flag. */
-  required?: boolean;
-};
 
 export function TimeInputField({
   field,
@@ -41,11 +31,11 @@ export function TimeInputField({
   onChange,
   onFocus,
   disabled,
-  baseError,
+  errorMessage,
   isOutputView,
   hideLabel,
-  required = !!field.required,
-}: TimeInputFieldProps) {
+  required,
+}: FieldInputProps<TimeField>) {
   const normalizedValue = typeof value === "string" && value ? value : "";
   const [inputValue, setInputValue] = useState<string>(() =>
     formatTimeForDisplay(normalizedValue),
@@ -65,7 +55,7 @@ export function TimeInputField({
     if (answer) setInputValue(formatTimeForDisplay(answer));
   };
 
-  const effectiveError = localError ?? baseError ?? null;
+  const effectiveError = localError ?? errorMessage ?? null;
   const hasError = Boolean(effectiveError);
 
   const timeOptions = useMemo(

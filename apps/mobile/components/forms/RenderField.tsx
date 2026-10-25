@@ -5,7 +5,6 @@ import type {
   CityField,
   FormValue,
   ListField,
-  TimeField,
 } from "@alliance/common/forms/form-schema";
 import { getMaxSelections } from "@alliance/common/forms/multiselect";
 import { getRangeValues } from "@alliance/common/forms/range";
@@ -171,19 +170,7 @@ export function RenderField({
       return <TextareaInputField {...inputProps} field={field} />;
 
     case "phone":
-      return (
-        <PhoneInputField
-          field={field}
-          value={value}
-          onChange={onChange}
-          onFocus={onFocus}
-          disabled={disabled}
-          baseError={errorMessage}
-          isOutputView={isOutputView}
-          hideLabel={hideLabel}
-          required={required}
-        />
-      );
+      return <PhoneInputField {...inputProps} field={field} />;
 
     case "number":
       return <NumberInputField {...inputProps} field={field} />;
@@ -534,19 +521,7 @@ export function RenderField({
     }
 
     case "time":
-      return (
-        <TimeInputField
-          field={field as TimeField}
-          value={value}
-          onChange={onChange}
-          onFocus={onFocus}
-          disabled={disabled}
-          baseError={errorMessage}
-          isOutputView={isOutputView}
-          hideLabel={hideLabel}
-          required={required}
-        />
-      );
+      return <TimeInputField {...inputProps} field={field} />;
 
     case "timezone":
       return (
