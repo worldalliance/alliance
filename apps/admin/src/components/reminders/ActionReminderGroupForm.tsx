@@ -1,106 +1,35 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { errorMessage } from "@alliance/common/errorMessage";
-import {
-  defaultEmailContents,
-  defaultEmailSubject,
-  defaultPushMessage,
-  defaultTextMessage,
-} from "@alliance/common/reminderPresetCopy";
 import { R } from "@alliance/common/result";
 // eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
   actionRemindersTentativePlansForGroupAdmin,
-  Tag,
   TagDto,
   type ActionEventDto,
-  type CreateReminderGroupDto,
   type PreviewNotificationPlanDto,
   type ReminderAnchorCandidateDto,
   type ReminderCohortType,
-  type ReminderGroupDto,
   type ReminderGroupTimingMode,
-  type User,
 } from "@alliance/shared/client";
-import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
-import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
 import LargeCheckbox from "@alliance/sharedweb/ui/LargeCheckbox";
 import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
-import { milliseconds } from "date-fns";
-import { secondsInHour } from "date-fns/constants";
-import { RotateCw } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import ReminderKeywordHelp from "./ReminderKeywordHelp";
+import ReminderMessageFields from "./ReminderMessageFields";
+import ReminderScheduleFields from "./ReminderScheduleFields";
+import TentativePlanSummary from "./TentativePlanSummary";
 import {
-  useReminderEmailPreviewAdmin,
-  useReminderTextPreviewAdmin,
-} from "../../lib/useReminderPreviewsAdmin";
-import TextareaWithHighlights from "../TextareaWithHighlights";
-import ReminderPreviewError from "./ReminderPreviewError";
-
-type ReminderGroupContentFields = Pick<
-  ReminderGroupDto,
-  | "name"
-  | "cohortType"
-  | "timingMode"
-  | "emailSubject"
-  | "emailMessage"
-  | "textMessage"
-  | "pushMessage"
-  | "useSuiteTaskCount"
-  | "excludeOptionalActions"
-  | "excludePreviouslyNotified"
->;
-
-type ReminderGroupScheduleFields = Pick<
-  CreateReminderGroupDto,
-  | "sendAtAbsolute"
-  | "sendAtSecondsFromDeadline"
-  | "send_range_start"
-  | "send_range_end"
-  | "relative_range_start_seconds_from_deadline"
-  | "relative_range_end_seconds_from_deadline"
->;
-
-type ReminderGroupUserFields = Pick<
-  CreateReminderGroupDto,
-  "userIds" | "userTagId" | "timingAnchorEventId"
->;
-
-export type ActionReminderGroupFormSubmitPayload = ReminderGroupContentFields &
-  ReminderGroupScheduleFields &
-  ReminderGroupUserFields & {
-    memberActionEventId: number;
-  };
-
-export type ActionReminderGroupFormInitialValues = {
-  memberActionEventId: number;
-  reminderGroup:
-    | (CreateReminderGroupDto & {
-        userTag?: Tag;
-        timingAnchorEvent?: { id: number };
-      })
-    | null;
-  users: User[];
-};
-
-export const keywords = [
-  "#{fullname}",
-  "#{firstname}",
-  "#{lastname}",
-  "#{action}",
-  "#{days}",
-  "#{hours}",
-  "#{link}",
-  "#{n}",
-  "#{s}",
-  "#{timeremaining}",
-  "#{tasktime}",
-  "#{tasknames}",
-  "#{nmembers}",
-  "#{grouplink}",
-  "#{formattedtasklist}",
-];
+  ActionReminderGroupFormInitialValues,
+  draftFromInitialValues,
+  ReminderGroupDraft,
+} from "./reminderGroupDraft";
+import {
+  ActionReminderGroupFormSubmitPayload,
+  excludePreviouslyNotifiedApplies,
+  relativeRangeIsValid,
+  reminderGroupRequestFields,
+  reminderGroupSubmitPayload,
+} from "./reminderGroupRequest";
 
 const TIMING_MODE_OPTIONS: Array<{
   value: ReminderGroupTimingMode;
@@ -153,12 +82,6 @@ interface ActionReminderFormProps {
   ) => Promise<void> | void;
 }
 
-type PreviewTaskCount = 1 | 2;
-
-const toggleTaskCount =
-  (count: PreviewTaskCount) => (current: PreviewTaskCount | null) =>
-    current === count ? null : count;
-
 const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
   suiteId,
   waitForRecipientCount,
@@ -183,76 +106,23 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
   const [selectedEventId, setSelectedEventId] = useState<number | null>(
     initialValues.memberActionEventId ?? null,
   );
-  const initialGroup = initialValues.reminderGroup;
-  const initialTimingMode: ReminderGroupTimingMode =
-    initialGroup?.timingMode ?? "within_range";
-  const initialSendAtAbsolute =
-    initialGroup?.sendAtAbsolute ?? new Date().toISOString();
-  const initialSendAtHours =
-    initialGroup?.sendAtSecondsFromDeadline != null
-      ? initialGroup.sendAtSecondsFromDeadline / secondsInHour
-      : 0;
-  const initialRelativeRangeStartHours =
-    initialGroup?.relative_range_start_seconds_from_deadline != null
-      ? initialGroup.relative_range_start_seconds_from_deadline / secondsInHour
-      : 0;
-  const initialRelativeRangeEndHours =
-    initialGroup?.relative_range_end_seconds_from_deadline != null
-      ? initialGroup.relative_range_end_seconds_from_deadline / secondsInHour
-      : 0;
-  const initialRangeStart =
-    initialGroup?.send_range_start ?? new Date().toISOString();
-  const initialRangeEnd =
-    initialGroup?.send_range_end ??
-    new Date(Date.now() + milliseconds({ hours: 1 })).toISOString();
-  const [timingMode, setTimingMode] =
-    useState<ReminderGroupTimingMode>(initialTimingMode);
-  const [sendAtAbsolute, setSendAtAbsolute] = useState<string>(
-    initialSendAtAbsolute,
+  const [draft, setDraft] = useState(() =>
+    draftFromInitialValues(initialValues),
   );
-  const [sendAtHoursFromDeadline, setSendAtHoursFromDeadline] =
-    useState<number>(initialSendAtHours);
-  const [relativeRangeStartHours, setRelativeRangeStartHours] =
-    useState<number>(initialRelativeRangeStartHours);
-  const [relativeRangeEndHours, setRelativeRangeEndHours] = useState<number>(
-    initialRelativeRangeEndHours,
-  );
-  const [sendRangeStart, setSendRangeStart] =
-    useState<string>(initialRangeStart);
-  const [sendRangeEnd, setSendRangeEnd] = useState<string>(initialRangeEnd);
-  const [name, setName] = useState<string>(
-    initialValues.reminderGroup?.name ?? "",
-  );
-
-  const [useSuiteTaskCount, setUseSuiteTaskCount] = useState<boolean>(
-    initialValues.reminderGroup?.useSuiteTaskCount ?? true,
-  );
-
-  const [excludeOptionalActions, setExcludeOptionalActions] = useState<boolean>(
-    initialValues.reminderGroup?.excludeOptionalActions ?? false,
-  );
-
-  const [excludePreviouslyNotified, setExcludePreviouslyNotified] =
-    useState<boolean>(
-      initialValues.reminderGroup?.excludePreviouslyNotified ?? false,
-    );
-
-  const initialTimingAnchorEventId =
-    initialGroup?.timingAnchorEvent?.id ??
-    initialGroup?.timingAnchorEventId ??
-    null;
-  const [timingAnchorEventId, setTimingAnchorEventId] = useState<number | null>(
-    initialTimingAnchorEventId,
-  );
-
-  const anchorSelectableModes: ReminderGroupTimingMode[] = [
-    "from_deadline",
-    "within_relative_range",
-  ];
-  const anchorApplies = anchorSelectableModes.includes(timingMode);
-  const effectiveTimingAnchorEventId = anchorApplies
-    ? (timingAnchorEventId ?? undefined)
-    : undefined;
+  const updateDraft = (patch: Partial<ReminderGroupDraft>) =>
+    setDraft((current) => ({ ...current, ...patch }));
+  const {
+    name,
+    cohortType,
+    timingMode,
+    relativeRangeStartHours,
+    relativeRangeEndHours,
+    userIds: selectedUserIds,
+    userTagId: selectedTagId,
+    useSuiteTaskCount,
+    excludeOptionalActions,
+    excludePreviouslyNotified,
+  } = draft;
 
   useEffect(() => {
     if (timingMode === "within_relative_range") {
@@ -268,44 +138,8 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewAttempt, setPreviewAttempt] = useState(0);
 
-  const [emailSubject, setEmailSubject] = useState<string>(
-    initialValues.reminderGroup?.emailSubject ?? defaultEmailSubject,
-  );
-  const [emailMessage, setEmailMessage] = useState<string>(
-    initialValues.reminderGroup?.emailMessage ?? defaultEmailContents,
-  );
-  const [textMessage, setTextMessage] = useState<string>(
-    initialValues.reminderGroup?.textMessage ?? defaultTextMessage,
-  );
-  const [pushMessage, setPushMessage] = useState<string>(
-    initialValues.reminderGroup?.pushMessage ?? defaultPushMessage,
-  );
-  const [cohortType, setCohortType] = useState<ReminderCohortType>(
-    initialValues.reminderGroup?.cohortType ?? "all_uncompleted",
-  );
-  const [selectedUserIds, setSelectedUserIds] = useState<number[]>(
-    initialValues.users.map((user) => user.id),
-  );
-  const [selectedTagId, setSelectedTagId] = useState<string | null>(
-    initialValues.reminderGroup?.userTag?.id ?? null,
-  );
-
-  // Group-leads nudges are about *other* users' tasks, so "already notified
-  // for this event" doesn't apply to them (the server rejects the combination).
-  const excludePreviouslyNotifiedApplies =
-    cohortType !== "group_leads_with_uncompleted";
-  const effectiveExcludePreviouslyNotified =
-    excludePreviouslyNotifiedApplies && excludePreviouslyNotified;
-
   const [localError, setLocalError] = useState<string | null>(null);
   const initialSnapshotRef = useRef<string>("");
-
-  const [emailPreviewTaskCount, setEmailPreviewTaskCount] =
-    useState<PreviewTaskCount | null>(null);
-  const [textPreviewTaskCount, setTextPreviewTaskCount] =
-    useState<PreviewTaskCount | null>(null);
-  const [pushPreviewTaskCount, setPushPreviewTaskCount] =
-    useState<PreviewTaskCount | null>(null);
 
   const computedInitialSnapshot = useMemo(() => {
     const userIds = [...initialValues.users.map((user) => user.id)].sort(
@@ -342,23 +176,17 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
       setTentativePlans(null);
       return;
     }
-    if (cohortType === "tag" && !selectedTagId) {
+    if (draft.cohortType === "tag" && !draft.userTagId) {
       setTentativePlans([]);
       return;
     }
     if (
-      timingMode === "within_relative_range" &&
-      (Number.isNaN(relativeRangeStartHours) ||
-        Number.isNaN(relativeRangeEndHours) ||
-        relativeRangeStartHours < relativeRangeEndHours)
+      draft.timingMode === "within_relative_range" &&
+      !relativeRangeIsValid(draft)
     ) {
       setTentativePlans([]);
       return;
     }
-
-    const sendAtSecondsFromDeadline = sendAtHoursFromDeadline * secondsInHour;
-    const relativeRangeStartSeconds = relativeRangeStartHours * secondsInHour;
-    const relativeRangeEndSeconds = relativeRangeEndHours * secondsInHour;
 
     setTentativePlans(null);
     setPreviewError(null);
@@ -369,41 +197,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           path: {
             eventId: selectedEventId,
           },
-          body: {
-            name,
-            cohortType,
-            emailSubject,
-            emailMessage,
-            textMessage,
-            pushMessage,
-            timingMode,
-            useSuiteTaskCount,
-            suiteId,
-            userTagId:
-              cohortType === "tag" ? (selectedTagId ?? undefined) : undefined,
-            userIds: cohortType === "custom" ? selectedUserIds : undefined,
-            sendAtAbsolute:
-              timingMode === "absolute" ? sendAtAbsolute : undefined,
-            sendAtSecondsFromDeadline:
-              timingMode === "from_deadline"
-                ? (sendAtSecondsFromDeadline ?? 0)
-                : undefined,
-            send_range_start:
-              timingMode === "within_range" ? sendRangeStart : undefined,
-            send_range_end:
-              timingMode === "within_range" ? sendRangeEnd : undefined,
-            relative_range_start_seconds_from_deadline:
-              timingMode === "within_relative_range"
-                ? relativeRangeStartSeconds
-                : undefined,
-            relative_range_end_seconds_from_deadline:
-              timingMode === "within_relative_range"
-                ? relativeRangeEndSeconds
-                : undefined,
-            excludeOptionalActions,
-            excludePreviouslyNotified: effectiveExcludePreviouslyNotified,
-            timingAnchorEventId: effectiveTimingAnchorEventId,
-          },
+          body: { ...reminderGroupRequestFields(draft), suiteId },
         }),
       ).then((result) => {
         if (cancelled) return;
@@ -424,49 +218,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [
-    suiteId,
-    selectedEventId,
-    name,
-    cohortType,
-    emailSubject,
-    emailMessage,
-    textMessage,
-    pushMessage,
-    timingMode,
-    excludeOptionalActions,
-    effectiveExcludePreviouslyNotified,
-    effectiveTimingAnchorEventId,
-    sendAtAbsolute,
-    sendAtHoursFromDeadline,
-    sendRangeStart,
-    sendRangeEnd,
-    selectedTagId,
-    selectedUserIds,
-    relativeRangeStartHours,
-    relativeRangeEndHours,
-    useSuiteTaskCount,
-    previewAttempt,
-  ]);
-
-  const emailPreview = useReminderEmailPreviewAdmin(
-    selectedEventId,
-    emailPreviewTaskCount === null
-      ? null
-      : { emailMessage, emailSubject, taskCount: emailPreviewTaskCount },
-  );
-  const textPreview = useReminderTextPreviewAdmin(
-    selectedEventId,
-    textPreviewTaskCount === null
-      ? null
-      : { textMessage, taskCount: textPreviewTaskCount },
-  );
-  const pushPreview = useReminderTextPreviewAdmin(
-    selectedEventId,
-    pushPreviewTaskCount === null
-      ? null
-      : { textMessage: pushMessage, taskCount: pushPreviewTaskCount },
-  );
+  }, [suiteId, selectedEventId, draft, previewAttempt]);
 
   useEffect(() => {
     if (computedInitialSnapshot === initialSnapshotRef.current) {
@@ -476,53 +228,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
 
     setSelectedEventId(initialValues.memberActionEventId);
     onEventChange?.(initialValues.memberActionEventId);
-    const nextGroup = initialValues.reminderGroup;
-    setTimingMode(nextGroup?.timingMode ?? "within_range");
-    setSendAtAbsolute(nextGroup?.sendAtAbsolute ?? new Date().toISOString());
-    setSendAtHoursFromDeadline(
-      nextGroup?.sendAtSecondsFromDeadline != null
-        ? nextGroup.sendAtSecondsFromDeadline / secondsInHour
-        : 0,
-    );
-    setSendRangeStart(nextGroup?.send_range_start ?? new Date().toISOString());
-    setSendRangeEnd(
-      nextGroup?.send_range_end ??
-        new Date(Date.now() + milliseconds({ hours: 1 })).toISOString(),
-    );
-    setRelativeRangeStartHours(
-      nextGroup?.relative_range_start_seconds_from_deadline != null
-        ? nextGroup.relative_range_start_seconds_from_deadline / secondsInHour
-        : 0,
-    );
-    setRelativeRangeEndHours(
-      nextGroup?.relative_range_end_seconds_from_deadline != null
-        ? nextGroup.relative_range_end_seconds_from_deadline / secondsInHour
-        : 0,
-    );
-    setName(initialValues.reminderGroup?.name ?? "");
-    setEmailSubject(
-      initialValues.reminderGroup?.emailSubject ?? defaultEmailSubject,
-    );
-    setEmailMessage(
-      initialValues.reminderGroup?.emailMessage ?? defaultEmailContents,
-    );
-    setTextMessage(
-      initialValues.reminderGroup?.textMessage ?? defaultTextMessage,
-    );
-    setCohortType(initialValues.reminderGroup?.cohortType ?? "all_uncompleted");
-    setSelectedUserIds(initialValues.users.map((user) => user.id));
-    setSelectedTagId(initialValues.reminderGroup?.userTag?.id ?? null);
-    setExcludeOptionalActions(
-      initialValues.reminderGroup?.excludeOptionalActions ?? false,
-    );
-    setExcludePreviouslyNotified(
-      initialValues.reminderGroup?.excludePreviouslyNotified ?? false,
-    );
-    setTimingAnchorEventId(
-      nextGroup?.timingAnchorEvent?.id ??
-        nextGroup?.timingAnchorEventId ??
-        null,
-    );
+    setDraft(draftFromInitialValues(initialValues));
     setLocalError(null);
   }, [
     computedInitialSnapshot,
@@ -546,211 +252,21 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     event.preventDefault();
     setLocalError(null);
 
-    if (!selectedEventId) {
-      setLocalError("Select a member action event first.");
-      return;
-    }
-
-    if (cohortType === "custom" && selectedUserIds.length === 0) {
-      setLocalError("Select at least one user.");
-      return;
-    }
-
-    if (cohortType === "tag" && !selectedTagId) {
-      setLocalError("Select a user group.");
-      return;
-    }
-
-    let normalizedSendAtAbsolute: string | undefined;
-    let normalizedRangeStart: string | undefined;
-    let normalizedRangeEnd: string | undefined;
-
-    if (timingMode === "absolute") {
-      if (!sendAtAbsolute) {
-        setLocalError("Select a send time.");
-        return;
-      }
-      const parsed = new Date(sendAtAbsolute);
-      if (Number.isNaN(parsed.getTime())) {
-        setLocalError("Invalid send time.");
-        return;
-      }
-      normalizedSendAtAbsolute = parsed.toISOString();
-    }
-
-    if (timingMode === "from_deadline") {
-      if (
-        sendAtHoursFromDeadline === null ||
-        Number.isNaN(sendAtHoursFromDeadline)
-      ) {
-        setLocalError("Enter the number of hours relative to the deadline.");
-        return;
-      }
-    }
-
-    if (timingMode === "within_range") {
-      if (!sendRangeStart || !sendRangeEnd) {
-        setLocalError("Select both the start and end of the send range.");
-        return;
-      }
-      const start = new Date(sendRangeStart);
-      const end = new Date(sendRangeEnd);
-      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-        setLocalError("Invalid range selection.");
-        return;
-      }
-      if (start.getTime() > end.getTime()) {
-        setLocalError("Send range start must be before the end.");
-        return;
-      }
-      normalizedRangeStart = start.toISOString();
-      normalizedRangeEnd = end.toISOString();
-    }
-
-    if (timingMode === "within_relative_range") {
-      if (
-        Number.isNaN(relativeRangeStartHours) ||
-        Number.isNaN(relativeRangeEndHours)
-      ) {
-        setLocalError(
-          "Enter both the start and end hours before the deadline.",
-        );
-        return;
-      }
-      if (relativeRangeStartHours < relativeRangeEndHours) {
-        setLocalError(
-          "Window start must be greater than or equal to the window end.",
-        );
-        return;
-      }
-    }
-
-    const userIds = cohortType === "custom" ? selectedUserIds : undefined;
-
-    const sendAtSecondsFromDeadline = sendAtHoursFromDeadline * secondsInHour;
-    const relativeRangeStartSeconds = relativeRangeStartHours * secondsInHour;
-    const relativeRangeEndSeconds = relativeRangeEndHours * secondsInHour;
-    const payload = {
-      name,
-      cohortType,
-      emailSubject,
-      emailMessage,
-      textMessage,
-      pushMessage,
-      timingMode,
+    const payload = reminderGroupSubmitPayload({
+      draft,
       memberActionEventId: selectedEventId,
-      userIds,
-      userTagId:
-        cohortType === "tag" ? (selectedTagId ?? undefined) : undefined,
-      sendAtAbsolute:
-        timingMode === "absolute" ? normalizedSendAtAbsolute : undefined,
-      sendAtSecondsFromDeadline:
-        timingMode === "from_deadline"
-          ? (sendAtSecondsFromDeadline ?? 0)
-          : undefined,
-      send_range_start:
-        timingMode === "within_range" ? normalizedRangeStart : undefined,
-      send_range_end:
-        timingMode === "within_range" ? normalizedRangeEnd : undefined,
-      relative_range_start_seconds_from_deadline:
-        timingMode === "within_relative_range"
-          ? relativeRangeStartSeconds
-          : undefined,
-      relative_range_end_seconds_from_deadline:
-        timingMode === "within_relative_range"
-          ? relativeRangeEndSeconds
-          : undefined,
-      useSuiteTaskCount,
-      excludeOptionalActions,
-      excludePreviouslyNotified: effectiveExcludePreviouslyNotified,
-      timingAnchorEventId: effectiveTimingAnchorEventId,
-    } satisfies ActionReminderGroupFormSubmitPayload;
+    });
+    if (!payload.ok) {
+      setLocalError(payload.error);
+      return;
+    }
 
-    console.log(payload);
+    console.log(payload.value);
 
-    await onSubmit(payload, tentativePlans?.length ?? null);
+    await onSubmit(payload.value, tentativePlans?.length ?? null);
   };
 
   const combinedError = localError ?? serverError ?? null;
-
-  const [keywordsHelpExpanded, setKeywordsHelpExpanded] = useState(false);
-
-  const sortedPlans = [...(tentativePlans ?? [])].sort(
-    (a, b) =>
-      new Date(a.scheduledFor).getTime() - new Date(b.scheduledFor).getTime(),
-  );
-  const firstTentativePlan = sortedPlans[0];
-
-  const isProd = !(
-    typeof window !== "undefined" && window.location.href.includes("localhost")
-  );
-
-  const handlePreviewEmail2Task = () =>
-    setEmailPreviewTaskCount(toggleTaskCount(2));
-
-  const handlePreviewEmail1Task = () =>
-    setEmailPreviewTaskCount(toggleTaskCount(1));
-
-  const handlePreviewText1Task = () =>
-    setTextPreviewTaskCount(toggleTaskCount(1));
-
-  const handlePreviewText2Task = () =>
-    setTextPreviewTaskCount(toggleTaskCount(2));
-
-  const handlePreviewPushTask = () =>
-    setPushPreviewTaskCount(toggleTaskCount(1));
-
-  const handlePreviewPush2Task = () =>
-    setPushPreviewTaskCount(toggleTaskCount(2));
-
-  // A set anchor that is no longer among the candidates (the dependency was
-  // removed from the cohort expression, or the fetch failed) would otherwise
-  // be submitted invisibly and rejected by the server with no way to clear
-  // it — always show the selector then, with an explicit stale option.
-  const anchorIsStale =
-    timingAnchorEventId !== null &&
-    !anchorCandidates.some(
-      (candidate) => candidate.deadlineEventId === timingAnchorEventId,
-    );
-  const anchorSelector = anchorApplies &&
-    (anchorCandidates.length > 0 || timingAnchorEventId !== null) && (
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Relative to
-        </label>
-        <select
-          value={timingAnchorEventId ?? ""}
-          onChange={(event) =>
-            setTimingAnchorEventId(
-              event.target.value ? Number(event.target.value) : null,
-            )
-          }
-          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-        >
-          <option value="">This action&apos;s deadline</option>
-          {anchorIsStale && (
-            <option value={timingAnchorEventId}>
-              Current anchor (no longer a dependency deadline)
-            </option>
-          )}
-          {anchorCandidates.map((candidate) => (
-            <option
-              key={candidate.deadlineEventId}
-              value={candidate.deadlineEventId}
-            >
-              {candidate.actionName} deadline —{" "}
-              {new Date(candidate.deadlineEventDate).toLocaleString()}
-            </option>
-          ))}
-        </select>
-        {anchorIsStale && (
-          <p className="text-xs text-amber-600 mt-1">
-            The current anchor is no longer a dependency deadline of this
-            action; saving with it will fail. Pick another option.
-          </p>
-        )}
-      </div>
-    );
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 w-full">
@@ -789,7 +305,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           <input
             type="text"
             value={name}
-            onChange={(event) => setName(event.target.value)}
+            onChange={(event) => updateDraft({ name: event.target.value })}
             className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
             placeholder="admin-only identifier"
           />
@@ -801,7 +317,9 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           <select
             value={timingMode}
             onChange={(event) =>
-              setTimingMode(event.target.value as ReminderGroupTimingMode)
+              updateDraft({
+                timingMode: event.target.value as ReminderGroupTimingMode,
+              })
             }
             className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
           >
@@ -814,110 +332,11 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
         </div>
       </div>
 
-      {timingMode === "absolute" && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Send at
-          </label>
-          <DateTimePicker
-            value={sendAtAbsolute}
-            onChange={(change) => setSendAtAbsolute(change.utcValue ?? "")}
-            className="w-full !py-1"
-            required
-          />
-        </div>
-      )}
-
-      {timingMode === "from_deadline" && (
-        <>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              hours to deadline
-            </label>
-            <input
-              type="number"
-              value={sendAtHoursFromDeadline}
-              onChange={(event) => {
-                const value = event.target.value;
-                setSendAtHoursFromDeadline(value === "" ? NaN : Number(value));
-              }}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-            />
-          </div>
-          {anchorSelector}
-        </>
-      )}
-
-      {timingMode === "within_range" && (
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Send range start
-            </label>
-            <DateTimePicker
-              value={sendRangeStart}
-              onChange={(change) => setSendRangeStart(change.utcValue ?? "")}
-              className="w-full !py-1"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Send range end
-            </label>
-            <DateTimePicker
-              value={sendRangeEnd}
-              onChange={(change) => setSendRangeEnd(change.utcValue ?? "")}
-              className="w-full !py-1"
-              required
-            />
-          </div>
-        </div>
-      )}
-
-      {timingMode === "within_relative_range" && (
-        <div className="grid gap-4 md:grid-cols-2">
-          {anchorSelector && (
-            <div className="md:col-span-2">{anchorSelector}</div>
-          )}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Window starts (hours before deadline)
-            </label>
-            <input
-              type="number"
-              value={relativeRangeStartHours}
-              min={0}
-              onChange={(event) => {
-                const value = event.target.value;
-                setRelativeRangeStartHours(value === "" ? NaN : Number(value));
-              }}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Window ends (hours before deadline)
-            </label>
-            <input
-              type="number"
-              value={relativeRangeEndHours}
-              min={0}
-              onChange={(event) => {
-                const value = event.target.value;
-                setRelativeRangeEndHours(value === "" ? NaN : Number(value));
-              }}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-            />
-          </div>
-        </div>
-      )}
-
-      {timingMode === "event_launch" && (
-        <p className="text-sm text-gray-600">
-          Reminders send when the member action event begins (i.e. announcement)
-        </p>
-      )}
+      <ReminderScheduleFields
+        draft={draft}
+        anchorCandidates={anchorCandidates}
+        onChange={updateDraft}
+      />
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -926,7 +345,9 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
         <select
           value={cohortType}
           onChange={(event) =>
-            setCohortType(event.target.value as ReminderCohortType)
+            updateDraft({
+              cohortType: event.target.value as ReminderCohortType,
+            })
           }
           className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
         >
@@ -945,7 +366,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           </label>
           <select
             value={selectedTagId ?? ""}
-            onChange={(event) => setSelectedTagId(event.target.value)}
+            onChange={(event) => updateDraft({ userTagId: event.target.value })}
             disabled={loadingUserTags}
             className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-500"
           >
@@ -973,385 +394,53 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
         <UserSelect
           users={users}
           selectedUserIds={selectedUserIds}
-          onChange={setSelectedUserIds}
+          onChange={(userIds) => updateDraft({ userIds })}
           loading={loadingUsers}
           loadFailed={usersLoadFailed}
         />
       )}
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Email Subject
-        </label>
-        <TextareaWithHighlights
-          keywords={keywords}
-          value={emailSubject}
-          onChange={setEmailSubject}
-          rows={1}
-          highlightHashPipeSyntax
-        />
-      </div>
-
-      <div>
-        <div className="flex items-center gap-2 mb-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Email Message
-          </label>
-          <Button
-            onClick={handlePreviewEmail1Task}
-            size={"small"}
-            color={
-              emailPreviewTaskCount === 1
-                ? ButtonColor.Stone
-                : ButtonColor.Light
-            }
-            className="!px-2 !py-1"
-          >
-            Preview Email (1 task)
-          </Button>
-          <Button
-            onClick={handlePreviewEmail2Task}
-            size={"small"}
-            color={
-              emailPreviewTaskCount === 2
-                ? ButtonColor.Stone
-                : ButtonColor.Light
-            }
-            className="!px-2 !py-1"
-          >
-            Preview Email (2 tasks)
-          </Button>
-        </div>
-        {emailPreviewTaskCount !== null ? (
-          <Card className="p-4">
-            <ReminderPreviewError error={emailPreview.error} />
-            <p className="font-bold mb-4">{emailPreview.data?.subject}</p>
-            <div
-              dangerouslySetInnerHTML={{
-                __html: emailPreview.data?.html ?? "",
-              }}
-            />
-          </Card>
-        ) : (
-          <TextareaWithHighlights
-            keywords={keywords}
-            value={emailMessage}
-            onChange={setEmailMessage}
-            rows={5}
-            highlightHashPipeSyntax
-          />
-        )}
-      </div>
-
-      <div>
-        <div className="flex items-center gap-2 mb-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Text Message
-          </label>
-          <Button
-            onClick={handlePreviewText1Task}
-            size={"small"}
-            color={
-              textPreviewTaskCount === 1 ? ButtonColor.Stone : ButtonColor.Light
-            }
-            className="!px-2 !py-1"
-          >
-            Preview Text (1 task)
-          </Button>
-          <Button
-            onClick={handlePreviewText2Task}
-            size={"small"}
-            color={
-              textPreviewTaskCount === 2 ? ButtonColor.Stone : ButtonColor.Light
-            }
-            className="!px-2 !py-1"
-          >
-            Preview Text (2 tasks)
-          </Button>
-        </div>
-        {textPreviewTaskCount !== null ? (
-          <Card className="p-4">
-            <ReminderPreviewError error={textPreview.error} />
-            <p
-              dangerouslySetInnerHTML={{
-                __html: textPreview.data?.replace(/\n/g, "<br>") ?? "",
-              }}
-            />
-          </Card>
-        ) : (
-          <TextareaWithHighlights
-            keywords={keywords}
-            value={textMessage}
-            onChange={setTextMessage}
-            rows={2}
-            highlightHashPipeSyntax
-          />
-        )}
-      </div>
-      <div>
-        <div className="flex items-center gap-2 mb-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Push Message
-          </label>
-          <Button
-            onClick={handlePreviewPushTask}
-            size={"small"}
-            color={
-              pushPreviewTaskCount === 1 ? ButtonColor.Stone : ButtonColor.Light
-            }
-            className="!px-2 !py-1"
-          >
-            Preview Push (1 task)
-          </Button>
-          <Button
-            onClick={handlePreviewPush2Task}
-            size={"small"}
-            color={
-              pushPreviewTaskCount === 2 ? ButtonColor.Stone : ButtonColor.Light
-            }
-            className="!px-2 !py-1"
-          >
-            Preview Push (2 tasks)
-          </Button>
-        </div>
-        {pushPreviewTaskCount !== null ? (
-          <Card className="p-4">
-            <ReminderPreviewError error={pushPreview.error} />
-            <p
-              dangerouslySetInnerHTML={{
-                __html: pushPreview.data?.replace(/\n/g, "<br>") ?? "",
-              }}
-            />
-          </Card>
-        ) : (
-          <TextareaWithHighlights
-            keywords={keywords}
-            value={pushMessage}
-            onChange={setPushMessage}
-            rows={2}
-            highlightHashPipeSyntax
-          />
-        )}
-      </div>
+      <ReminderMessageFields
+        eventId={selectedEventId}
+        draft={draft}
+        onChange={updateDraft}
+      />
       <div className="flex items-center gap-4">
         <LargeCheckbox
           label="Use suite task count"
           checked={useSuiteTaskCount}
-          onChange={(checked) => setUseSuiteTaskCount(checked)}
+          onChange={(checked) => updateDraft({ useSuiteTaskCount: checked })}
         />
         <LargeCheckbox
           label="Exclude optional actions"
           checked={excludeOptionalActions}
-          onChange={(checked) => setExcludeOptionalActions(checked)}
+          onChange={(checked) =>
+            updateDraft({ excludeOptionalActions: checked })
+          }
         />
-        {excludePreviouslyNotifiedApplies && (
+        {excludePreviouslyNotifiedApplies(cohortType) && (
           <LargeCheckbox
             label="Only notify about tasks not yet notified (skip users with nothing new)"
             checked={excludePreviouslyNotified}
-            onChange={(checked) => setExcludePreviouslyNotified(checked)}
+            onChange={(checked) =>
+              updateDraft({ excludePreviouslyNotified: checked })
+            }
           />
         )}
       </div>
 
-      <div
-        className={cn(
-          "border border-gray-200 rounded-md bg-zinc-100",
-          !keywordsHelpExpanded && "hover:border-gray-300",
-        )}
-      >
-        <button
-          type="button"
-          onClick={() => setKeywordsHelpExpanded(!keywordsHelpExpanded)}
-          className="text-sm w-full text-left p-3"
-        >
-          Keyword replacement syntax{keywordsHelpExpanded ? " " : "..."}
-        </button>
-        {keywordsHelpExpanded && (
-          <div className="mt-2 text-sm">
-            <table id="keywordstable" style={{ width: "100%" }}>
-              <thead>
-                <tr>
-                  <th>Keyword</th>
-                  <th>Example Value</th>
-                  <th>Description</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>{"#{fullname}"}</td>
-                  <td>John Fitzgerald Doe</td>
-                  <td>Member&apos;s full name</td>
-                </tr>
-                <tr>
-                  <td>{"#{firstname}"}</td>
-                  <td>John</td>
-                  <td>Member&apos;s first name</td>
-                </tr>
-                <tr>
-                  <td>{"#{lastname}"}</td>
-                  <td>Doe</td>
-                  <td>Member&apos;s last name</td>
-                </tr>
-                <tr>
-                  <td>{"#{action}"}</td>
-                  <td>Sign a petition to use less cups</td>
-                  <td>The name of the action</td>
-                </tr>
-                <tr>
-                  <td>{"#{days}"}</td>
-                  <td>2 days</td>
-                  <td>
-                    The number of days until the action is due, with
-                    &apos;days&apos; attached
-                  </td>
-                </tr>
-                <tr>
-                  <td>{"#{n}"}</td>
-                  <td>2</td>
-                  <td>Total uncompleted tasks for this user</td>
-                </tr>
-                <tr>
-                  <td>{"#{hours}"}</td>
-                  <td>1 hour</td>
-                  <td>
-                    The number of hours until the action is due, with
-                    &apos;hours&apos; attached. Note: assumes usage with days,
-                    so will not show more than 24 hours. (ie an action due in 25
-                    hours will show &quot;1 hour&quot;) to allow rendering
-                    &quot;1 day 1 hour remaining&quot;
-                  </td>
-                </tr>
-                <tr>
-                  <td>{"#{timeremaining}"}</td>
-                  <td>2 days, 3 hours</td>
-                  <td>
-                    The number of days and hours until the action is due. In
-                    most cases equivalent to {`#{days}, #{hours}`}, but will
-                    trim &quot;0 days&quot; or &quot;0 hours&quot; from the
-                    message. (days is floored, hours is rounded)
-                  </td>
-                </tr>
-                <tr>
-                  <td>{"#{tasktime}"}</td>
-                  <td>15 minutes</td>
-                  <td>
-                    The total estimated minutes it will take for the user to
-                    finish all uncompleted tasks.
-                  </td>
-                </tr>
-                <tr>
-                  <td>{"#{tasknames}"}</td>
-                  <td>Task 1, Task 2, Task 3</td>
-                  <td>
-                    The names of the uncompleted actions for this user,
-                    separated by commas. Based on the &quot;use suite task
-                    count&quot; flag, will either include all actions, or only
-                    actions in this suite.
-                  </td>
-                </tr>
-                <tr>
-                  <td>{"#{link}"}</td>
-                  <td>https://worldalliance.org/tasks?cid=123</td>
-                  <td>
-                    The link to the user&apos;s tasks page, with tracking CID
-                    included
-                  </td>
-                </tr>
-                <tr>
-                  <td>{"#{s}"}</td>
-                  <td>s</td>
-                  <td>
-                    Conditionally inserts an s if {`#{n}`} is a value other than
-                    1, or an empty string if {`#{n}`} is 1
-                  </td>
-                </tr>
-                <tr>
-                  <td>{"#{formattedtasklist}"}</td>
-                  <td>
-                    1. Task 1<br />
-                    2. Task 2<br />
-                    3. Task 3<br />
-                    <br />
-                    or
-                    <br />
-                    <br />
-                    Task 1
-                  </td>
-                  <td>
-                    The list of uncompleted tasks for this user, formatted as a
-                    numbered list. If there is a single task, it will be
-                    displayed without a number.
-                  </td>
-                </tr>
-                <tr>
-                  <td>{"#{str1|str2}"}</td>
-                  <td>str1</td>
-                  <td>
-                    Inserts the string before the bar if {`#{n}`} is 1,
-                    otherwise inserts the string after the bar
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            <p className="text-sm text-zinc-600 m-3">
-              If you are using the suite task count, all task count related
-              values will be based on the number of uncompleted tasks only in
-              this action suite. If the reminder group is not associated with an
-              action suite, the flag has no effect (global count will always be
-              used).
-            </p>
-          </div>
-        )}
-      </div>
+      <ReminderKeywordHelp />
 
       {serverSuccess && (
         <p className="text-green-600 text-sm">{serverSuccess}</p>
       )}
 
       <div className="flex justify-end gap-3">
-        {tentativePlans === null &&
-          (previewError ? (
-            <div className="px-4 py-2 self-start flex items-center gap-2 text-sm text-red-600">
-              <p>{previewError}</p>
-              <button
-                type="button"
-                onClick={() => setPreviewAttempt((attempt) => attempt + 1)}
-                aria-label="Retry recipient count"
-                title="Retry recipient count"
-                className="shrink-0 rounded p-1 hover:bg-red-50"
-              >
-                <RotateCw className="h-4 w-4" />
-              </button>
-            </div>
-          ) : (
-            <p className="px-4 py-2 self-start text-sm text-zinc-500">
-              Counting recipients…
-            </p>
-          ))}
-        {tentativePlans !== null && tentativePlans.length > 0 && (
-          <p
-            className={cn(
-              "px-4 py-2 rounded self-start",
-              tentativePlans.length > 0 && isProd
-                ? "bg-yellow-600 text-white"
-                : "border border-gray-200",
-            )}
-          >
-            {isProd && "⚠️"} This will send <b>{tentativePlans.length}</b>{" "}
-            reminders
-            {firstTentativePlan && (
-              <span>
-                , starting at{" "}
-                {new Date(firstTentativePlan.scheduledFor).toLocaleString()}
-              </span>
-            )}
-            {firstTentativePlan &&
-              Date.now() >
-                new Date(firstTentativePlan.scheduledFor).getTime() && (
-                <span className="text-red-500"> (immediately)</span>
-              )}
-          </p>
-        )}
+        <TentativePlanSummary
+          tentativePlans={tentativePlans}
+          previewError={previewError}
+          onRetry={() => setPreviewAttempt((attempt) => attempt + 1)}
+        />
         {onCancel && (
           <Button
             type="button"
