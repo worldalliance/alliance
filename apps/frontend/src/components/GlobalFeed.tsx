@@ -10,6 +10,7 @@ import { formatTime } from "@alliance/shared/lib/utils";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, href } from "react-router";
+import LoadFailed, { type LoadFailure } from "./LoadFailed";
 import MemberFacepile, { MemberFacepileButton } from "./MemberFacepile";
 
 interface ActivityGroupItemProps {
@@ -190,12 +191,14 @@ const ForumCommentsItem = ({ item, date }: ForumCommentsItemProps) => {
 interface GlobalFeedProps {
   items: GlobalFeedItemDto[];
   loading?: boolean;
+  failure?: LoadFailure | null;
   fitToHeight?: boolean;
 }
 
 const GlobalFeed = ({
   items,
   loading,
+  failure,
   fitToHeight = false,
 }: GlobalFeedProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -272,6 +275,10 @@ const GlobalFeed = ({
         <Spinner size="medium" />
       </div>
     );
+  }
+
+  if (failure) {
+    return <LoadFailed message="Couldn't load recent activity." {...failure} />;
   }
 
   if (items.length === 0) {

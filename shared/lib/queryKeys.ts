@@ -101,6 +101,7 @@ export const queryKeys = {
   forumPosts: () => ["forumFindAllPosts"] as const,
   generalUpdatesAll: () => ["generalUpdatesAllGeneralUpdates"] as const,
   generalUpdatesUnread: () => ["actions", "generalUpdates", "unread"] as const,
+  globalFeed: (limit: number) => ["actionFeedGetGlobalFeed", limit] as const,
   incomingCommunityInvites: () =>
     ["communityGetIncomingCommunityInvitesForUser"] as const,
   linkedGuestDraft: (taskFormId: number) =>

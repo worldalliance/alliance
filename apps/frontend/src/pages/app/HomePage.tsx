@@ -64,9 +64,11 @@ const HomePage = () => {
 
   const mainScrollRef = useRef<HTMLDivElement | null>(null);
 
-  const { items: globalFeedItems, loading: globalFeedLoading } = useGlobalFeed({
-    limit: 10,
-  });
+  const {
+    items: globalFeedItems,
+    loading: globalFeedLoading,
+    failure: globalFeedFailure,
+  } = useGlobalFeed({ limit: 10 });
 
   useSidFromParams();
 
@@ -306,12 +308,18 @@ const HomePage = () => {
           <GlobalFeed
             items={globalFeedItems}
             loading={globalFeedLoading}
+            failure={globalFeedFailure}
             fitToHeight
           />
         </div>
       </div>
     );
-  }, [globalFeedItems, globalFeedLoading, sidebarProgressBarEntries]);
+  }, [
+    globalFeedItems,
+    globalFeedLoading,
+    globalFeedFailure,
+    sidebarProgressBarEntries,
+  ]);
 
   useWhiteBackground();
 
