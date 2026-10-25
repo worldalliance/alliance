@@ -8,7 +8,6 @@ import {
   UpdateGeneralUpdateDto,
 } from "@alliance/shared/client";
 import { thrownStatus } from "@alliance/shared/lib/hey-api";
-import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import {
   formatLocalDateTime,
@@ -29,6 +28,7 @@ import GeneralUpdateScheduleFields from "../components/general-update/GeneralUpd
 import { useActionSuitesAdmin } from "../lib/useActionSuitesAdmin";
 import { useGeneralUpdateAdmin } from "../lib/useGeneralUpdateAdmin";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
+import { useTagsAdmin } from "../lib/useTagsAdmin";
 
 const tabs = ["details", "content"] as const;
 

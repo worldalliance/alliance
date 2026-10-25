@@ -2,9 +2,9 @@ import {
   CustomValidatorType,
   CustomValidatorTypeDto,
 } from "@alliance/shared/client";
-import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import { useMemo, type ChangeEvent } from "react";
+import { useTagsAdmin } from "../../lib/useTagsAdmin";
 import { CustomExpressionEditor } from "./CustomExpressionEditor";
 import { useCustomValidators } from "./useCustomValidators";
 

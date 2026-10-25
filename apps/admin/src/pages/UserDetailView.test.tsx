@@ -40,6 +40,7 @@ let detailStatus: number;
 let addTagStatus: number;
 let relations: UserActionRelationsResponseDto;
 let relationsStatus: number;
+let tagSummariesStatus: number;
 let createdActivities: CreateActionActivityDto[];
 let memberRequested: () => void;
 let memberRequest: Promise<void>;
@@ -67,12 +68,10 @@ serveApi(
           { message: "Member does not have an active contract." },
           { status: 400 },
         ),
-      // Answers only once the member is requested, so a member fetch that
-      // waits for the loader never starts.
-      "GET /user/tag-summaries": async () => {
-        await memberRequest;
-        return Response.json([volunteers]);
-      },
+      "GET /user/tag-summaries": () =>
+        tagSummariesStatus === 200
+          ? Response.json([volunteers])
+          : Response.json({}, { status: tagSummariesStatus }),
       "POST /user/tags/:tagId/addUser": () => {
         if (addTagStatus !== 200) {
           return Response.json({}, { status: addTagStatus });
@@ -90,7 +89,12 @@ serveApi(
         relations = relationsFor("completed");
         return Response.json({});
       },
-      "GET /notifs/for-user/:id": () => Response.json([]),
+      // Answers only once the member is requested, so a member fetch that
+      // waits for the loader never starts.
+      "GET /notifs/for-user/:id": async () => {
+        await memberRequest;
+        return Response.json([]);
+      },
       "POST /tasks/formsForUserSID/:userId": () => Response.json([]),
       "GET /user/listfriends/:id": () => Response.json([]),
     },
@@ -108,6 +112,7 @@ beforeEach(() => {
   addTagStatus = 200;
   relations = { actions: [], suites: [], users: [] };
   relationsStatus = 200;
+  tagSummariesStatus = 200;
   createdActivities = [];
   memberRequest = new Promise((resolve) => {
     memberRequested = resolve;
@@ -372,6 +377,28 @@ it("says it could not refresh the member after a tag change", async () => {
       "Could not refresh this member. Reload to see their latest details.",
     ),
   ).toBeTruthy();
+});
+
+it("says when the tags fail to load", async () => {
+  detailStatus = 200;
+  tagSummariesStatus = 500;
+  renderPage();
+
+  expect(await screen.findByText("Failed to load tags")).toBeTruthy();
+});
+
+it("keeps cached tags it could not refresh and says so", async () => {
+  detailStatus = 200;
+  tagSummariesStatus = 500;
+  queryClient.setQueryData(queryKeys.tagSummariesAdmin(), [volunteers]);
+  renderPage();
+
+  expect(
+    await screen.findByText(
+      "Could not refresh tags. Reload to see the latest.",
+    ),
+  ).toBeTruthy();
+  expect(volunteersBox()).toBeTruthy();
 });
 
 it("says when the member's actions fail to load", async () => {

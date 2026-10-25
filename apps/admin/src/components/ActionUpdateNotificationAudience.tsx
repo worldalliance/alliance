@@ -2,7 +2,6 @@ import type {
   ActionUpdateNotifyType,
   AdminActionUpdateDto,
 } from "@alliance/shared/client";
-import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import {
   type ActionUpdateForm,
   usesRecognition,
@@ -11,6 +10,7 @@ import {
   ACTION_UPDATE_NOTIFY_TYPE_LABELS,
   ACTION_UPDATE_NOTIFY_TYPES,
 } from "../lib/actionUpdateNotifyTypes";
+import { useTagsAdmin } from "../lib/useTagsAdmin";
 import { NotificationHeldBanner } from "./ActionUpdateRecognition";
 
 export function NotificationAudienceFields({

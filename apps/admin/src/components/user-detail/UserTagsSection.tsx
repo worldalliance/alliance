@@ -1,31 +1,28 @@
-import {
-  TagDto,
-  TagSummaryDto,
-  UserAdminDetailDto,
-} from "@alliance/shared/client/types.gen";
+import { TagDto, UserAdminDetailDto } from "@alliance/shared/client/types.gen";
 import { cn } from "@alliance/shared/styles/util";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useTagsAdmin } from "../../lib/useTagsAdmin";
 
 export default function UserTagsSection({
   user,
-  loadedTags,
   setTagMembership,
 }: {
   user: UserAdminDetailDto;
-  loadedTags: TagSummaryDto[];
   setTagMembership: (input: {
     tagId: string;
     member: boolean;
   }) => Promise<TagDto>;
 }) {
-  const [allTags, setAllTags] = useState<TagSummaryDto[]>(loadedTags);
+  const {
+    summaries: { data: allTags, isError, isRefetchError },
+  } = useTagsAdmin({ enabled: false, summariesEnabled: true });
   const [pendingTagOps, setPendingTagOps] = useState<Set<string>>(
     () => new Set(),
   );
   const [tagMutationError, setTagMutationError] = useState<string | null>(null);
 
   const sortedAllTags = useMemo(() => {
-    return [...allTags].sort((a, b) => a.name.localeCompare(b.name));
+    return [...(allTags ?? [])].sort((a, b) => a.name.localeCompare(b.name));
   }, [allTags]);
 
   const userTagIds = useMemo(
@@ -33,36 +30,14 @@ export default function UserTagsSection({
     [user.tags],
   );
 
-  useEffect(() => {
-    setAllTags(loadedTags);
-  }, [loadedTags]);
-
   const userTags = useMemo(() => {
-    return allTags.filter((tag) => userTagIds.has(tag.id));
-  }, [allTags, userTagIds]);
+    return sortedAllTags.filter((tag) => userTagIds.has(tag.id));
+  }, [sortedAllTags, userTagIds]);
 
   const tagKey = useCallback(
     (tagId: string) => `${user.id}-${tagId}`,
     [user.id],
   );
-
-  const updateTagInState = useCallback((updatedTag: TagDto) => {
-    const summary: TagSummaryDto = {
-      id: updatedTag.id,
-      name: updatedTag.name,
-      description: updatedTag.description,
-      publicDisplayName: updatedTag.publicDisplayName,
-      createdAt: updatedTag.createdAt,
-      updatedAt: updatedTag.updatedAt,
-    };
-    setAllTags((prev) => {
-      const exists = prev.some((tag) => tag.id === summary.id);
-      if (exists) {
-        return prev.map((tag) => (tag.id === summary.id ? summary : tag));
-      }
-      return [...prev, summary];
-    });
-  }, []);
 
   const handleTagToggle = useCallback(
     async (tagId: string, nextChecked: boolean) => {
@@ -74,9 +49,7 @@ export default function UserTagsSection({
       });
       setTagMutationError(null);
       try {
-        updateTagInState(
-          await setTagMembership({ tagId, member: nextChecked }),
-        );
+        await setTagMembership({ tagId, member: nextChecked });
       } catch (error) {
         console.error("Failed to update tag membership", error);
         setTagMutationError("Failed to update tag membership. Try again.");
@@ -88,14 +61,27 @@ export default function UserTagsSection({
         });
       }
     },
-    [setTagMembership, tagKey, updateTagInState],
+    [setTagMembership, tagKey],
   );
+
+  if (!allTags) {
+    return (
+      <p className={cn("text-sm", isError ? "text-red-500" : "text-zinc-500")}>
+        {isError ? "Failed to load tags" : "Loading tags..."}
+      </p>
+    );
+  }
 
   return (
     <section className="border border-zinc-200 rounded p-3">
       <h2 className="text-sm font-semibold text-zinc-700 mb-2">
         Tags ({userTags.length})
       </h2>
+      {isRefetchError && (
+        <p className="text-xs text-red-500 mb-2">
+          Could not refresh tags. Reload to see the latest.
+        </p>
+      )}
       {tagMutationError && (
         <p className="text-xs text-red-500 mb-2">{tagMutationError}</p>
       )}
