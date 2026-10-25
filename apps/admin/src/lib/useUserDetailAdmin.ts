@@ -7,13 +7,13 @@ import {
   userUserDetailAdmin,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { loaderPrefetchStaleTime } from "@alliance/sharedweb/lib/queryClient";
 import {
   queryOptions,
   useMutation,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { loaderPrefetchStaleTime } from "./queryClient";
 import { useStoreQueryData } from "./usePatchQueryData";
 import { useTagsAdmin } from "./useTagsAdmin";
 

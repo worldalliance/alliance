@@ -3,12 +3,11 @@ import { client } from "@alliance/shared/client/client.gen";
 import { registerAnalytics } from "@alliance/shared/lib/analytics";
 import { registerErrorStatus } from "@alliance/shared/lib/hey-api";
 import { registerPosthogRequestContext } from "@alliance/shared/lib/posthog-request";
-import { retryUnlessRefused } from "@alliance/shared/lib/retryQuery";
+import { queryClient } from "@alliance/sharedweb/lib/queryClient";
 import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInputScrollGuard";
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { milliseconds } from "date-fns";
+import { QueryClientProvider } from "@tanstack/react-query";
 import posthog, { PostHogConfig } from "posthog-js";
 import "posthog-js/dist/exception-autocapture";
 import { PostHogProvider } from "posthog-js/react";
@@ -34,15 +33,6 @@ import { ShareLinkViewerFromAuth } from "./lib/ShareLinkViewerFromAuth";
 import { socialPreviewMeta } from "./lib/socialPreviewMeta";
 import { InviteSessionProvider } from "./site/invite/InviteSession";
 import { NOT_FOUND_TITLE } from "./site/NotFoundPage";
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      gcTime: milliseconds({ days: 1 }),
-      retry: retryUnlessRefused(3),
-    },
-  },
-});
 
 client.setConfig({
   baseUrl: getApiUrl(),

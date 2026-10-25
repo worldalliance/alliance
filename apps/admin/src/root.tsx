@@ -4,6 +4,7 @@ import {
   ShareLinkViewer,
   ShareLinkViewerProvider,
 } from "@alliance/sharedweb/forms/BigLinkDisplay";
+import { queryClient } from "@alliance/sharedweb/lib/queryClient";
 import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInputScrollGuard";
 import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
@@ -20,7 +21,6 @@ import {
 import { Route } from "../.react-router/types/src/+types/root";
 import { AuthProvider } from "./lib/AuthContext";
 import { getApiUrl, getSiteUrl } from "./lib/config";
-import { queryClient } from "./lib/queryClient";
 
 client.setConfig({
   baseUrl: getApiUrl(),
