@@ -19,6 +19,7 @@ import {
 import { captureException } from "@alliance/shared/lib/analytics";
 import { useLinkedGuestDraft } from "@alliance/shared/lib/useLinkedGuestDraft";
 import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
+import { useInvalidateTaskFormAggregateViews } from "@alliance/shared/lib/useTaskFormAggregateViews";
 import { useInvalidateVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
@@ -73,6 +74,7 @@ const ActionTaskPanelForm = ({
     loading: authLoading,
   } = useAuth();
   const invalidateVisibilityContext = useInvalidateVisibilityContext();
+  const invalidateAggregateViews = useInvalidateTaskFormAggregateViews();
   const recordRelation = useRecordActionRelation();
   const {
     data: form,
@@ -102,6 +104,7 @@ const ActionTaskPanelForm = ({
               body: data,
             });
         if (response.response.ok) {
+          invalidateAggregateViews(taskFormId);
           if (isAuthenticated) {
             // Bumped `completedActionCount` (and `firstContractSignedAt` for a
             // contract-signing action).

@@ -15,6 +15,7 @@ import {
   getDefaultShareableTextTemplate,
 } from "@alliance/shared/lib/shareText";
 import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
+import { useTaskFormAggregateViews } from "@alliance/shared/lib/useTaskFormAggregateViews";
 import AggregateProgressBarBlock from "@alliance/sharedweb/ui/AggregateProgressBarBlock";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
@@ -32,7 +33,6 @@ import {
 import chevronLeft from "../assets/icons8-expand-arrow-96.png";
 import { useAuth } from "../lib/AuthContext";
 import { copyActionShareText } from "../lib/actionShare";
-import { useLiveTaskFormAggregateViews } from "../lib/useLiveTaskFormAggregateViews";
 import ActionCompletedBarWithInfo from "../pages/app/ActionCompletedBarWithInfo";
 import TaskTimeInfo from "../pages/app/TaskTimeInfo";
 import ActionEventsPanel from "./ActionEventsPanel";
@@ -75,13 +75,10 @@ const ActionContents = () => {
   const action = context.action;
 
   const isCompleted = hasViewerCompletedAction(action);
-  const aggregateViews = useLiveTaskFormAggregateViews(
-    action.taskFormId,
-    action.usersCompleted,
-    isCompleted,
-  );
-
   const { user, isAuthenticated } = useAuth();
+  const aggregateViews = useTaskFormAggregateViews(
+    isAuthenticated ? action.taskFormId : null,
+  );
   const loggedInMode = !action.publicOnly;
   const formResponse = useCompletedTaskForm(action, isCompleted);
   const { data: taskForm } = useTaskForm(action.taskFormId, {

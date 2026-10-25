@@ -12,6 +12,7 @@ import {
 } from "../client";
 import type { SubmitResult } from "../forms/formulaChoices";
 import { useRecordActionRelation } from "./actionsListPage";
+import { useInvalidateTaskFormAggregateViews } from "./useTaskFormAggregateViews";
 import { useInvalidateVisibilityContext } from "./useVisibilityContext";
 
 export interface ActionTaskPanelPropsShared {
@@ -57,6 +58,7 @@ export const useTaskFormHandlers = ({
   const [actionError, setActionError] = useState<string | null>(null);
   const recordRelation = useRecordActionRelation();
   const invalidateVisibilityContext = useInvalidateVisibilityContext();
+  const invalidateAggregateViews = useInvalidateTaskFormAggregateViews();
 
   const handleComplete = useCallback(() => {
     setActionError(null);
@@ -83,9 +85,16 @@ export const useTaskFormHandlers = ({
       setActionError(null);
       recordRelation(action.id, "declined");
       invalidateVisibilityContext();
+      invalidateAggregateViews(action.taskFormId!);
       onOptOutAction();
     },
-    [action, onOptOutAction, recordRelation, invalidateVisibilityContext],
+    [
+      action,
+      onOptOutAction,
+      recordRelation,
+      invalidateVisibilityContext,
+      invalidateAggregateViews,
+    ],
   );
 
   return {

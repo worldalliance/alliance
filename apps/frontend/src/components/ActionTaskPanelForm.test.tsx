@@ -252,6 +252,27 @@ it("marks the cached action completed once the server accepts the submission", a
   );
 });
 
+it("invalidates the form's aggregate views once the server accepts the submission", async () => {
+  const queryClient = new QueryClient();
+  queryClient.setQueryData(queryKeys.taskFormAggregateViews(5), []);
+  renderMemberNoteForm({
+    serving: {
+      "POST /tasks/submitForm/:id": () =>
+        Response.json(makeFormResponse(), { status: 201 }),
+    },
+    queryClient,
+  });
+
+  fireEvent.click(await screen.findByRole("button", { name: "Complete" }));
+
+  await waitFor(() =>
+    expect(
+      queryClient.getQueryState(queryKeys.taskFormAggregateViews(5))
+        ?.isInvalidated,
+    ).toBe(true),
+  );
+});
+
 it("prefills a member's form with the draft they left as a guest", async () => {
   renderMemberNoteForm({
     serving: {

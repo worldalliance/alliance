@@ -8,6 +8,7 @@ import {
   makeViewer,
 } from "@alliance/shared/lib/testFixtures";
 import * as globalFeedModule from "@alliance/shared/lib/useGlobalFeed";
+import * as aggregateViewsModule from "@alliance/shared/lib/useTaskFormAggregateViews";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
@@ -18,7 +19,6 @@ import * as homeFeedModule from "../../components/HomeFeed";
 import * as homeUpdatesRowModule from "../../components/HomeUpdatesRow";
 import { type LoadFailure } from "../../components/LoadFailed";
 import { AuthContext } from "../../lib/AuthContext";
-import * as progressViewsModule from "../../lib/fetchTaskFormProgressViews";
 import * as taskActionsDataModule from "../../lib/useTaskActionsData";
 import * as utilsModule from "../../lib/utils";
 import { testAuthUser } from "../../stories/testData";
@@ -53,8 +53,8 @@ beforeEach(() => {
     .spyOn(largeActionCardModule, "default")
     .mockImplementation(() => <div />);
   jest
-    .spyOn(progressViewsModule, "fetchTaskFormProgressViewsByFormId")
-    .mockResolvedValue({});
+    .spyOn(aggregateViewsModule, "useTaskFormsAggregateViews")
+    .mockReturnValue({});
 });
 
 afterEach(() => {
@@ -222,8 +222,8 @@ describe("HomePage task progress", () => {
   it("shows the progress of an open task form, linked to its task", async () => {
     actions = [makeAction({ id: 8, name: "Petition", taskFormId: 70 })];
     jest
-      .spyOn(progressViewsModule, "fetchTaskFormProgressViewsByFormId")
-      .mockResolvedValue({
+      .spyOn(aggregateViewsModule, "useTaskFormsAggregateViews")
+      .mockReturnValue({
         70: [
           {
             kind: "progressbar",

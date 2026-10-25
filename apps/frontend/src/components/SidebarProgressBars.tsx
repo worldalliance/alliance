@@ -1,6 +1,6 @@
 import AggregateProgressBarBlock from "@alliance/sharedweb/ui/AggregateProgressBarBlock";
 import { href, Link } from "react-router";
-import { type SidebarProgressBarEntry } from "../lib/fetchTaskFormProgressViews";
+import { type SidebarProgressBarEntry } from "../lib/sidebarProgressBarEntries";
 
 export default function SidebarProgressBars({
   entries,
