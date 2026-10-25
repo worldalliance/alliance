@@ -1,23 +1,14 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { formatCityValue, parseCityValue } from "@alliance/common/forms/city";
 import type {
   AnyField,
   CityField,
   FormValue,
   ListField,
-  PhoneField,
-  TimeField,
 } from "@alliance/common/forms/form-schema";
-import { getMaxSelections } from "@alliance/common/forms/multiselect";
-import { getRangeValues } from "@alliance/common/forms/range";
-import { withCount } from "@alliance/common/plural";
 import type { UserDto } from "@alliance/shared/client";
-import {
-  resolvePickedPreview,
-  resolveUploadSlot,
-  type FilePick,
-  type FileUploadSlot,
-  type FileUploadSlots,
+import type {
+  FileUploadSlot,
+  FileUploadSlots,
 } from "@alliance/shared/forms/fileUploadSlots";
 import { offersNoOptions } from "@alliance/shared/forms/formulaChoices";
 import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
@@ -29,52 +20,39 @@ import {
   listCardWriters,
   resolveCards,
 } from "@alliance/shared/forms/listCards";
-import { markdownPlainText } from "@alliance/shared/forms/optionSearch";
-import {
-  buildTimeOfDayOptions,
-  commitTimeInput,
-  formatTimeForDisplay,
-  parseTimeInput,
-} from "@alliance/shared/forms/timeUtils";
-import { useFieldOptionSections } from "@alliance/shared/forms/useFieldOptionSections";
-import {
-  cancelImageUpload,
-  noOptionsAvailable,
-} from "@alliance/shared/lib/copy";
-import { usePhoneFieldCountry } from "@alliance/shared/lib/usePhoneNumberField";
+import { noOptionsAvailable } from "@alliance/shared/lib/copy";
 import { cn } from "@alliance/shared/styles/util";
 import type { FieldConditionContext } from "@alliance/shared/useFormRenderer";
-import { ChevronDown, X } from "lucide-react-native";
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Image,
-  Pressable,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { getImageSource } from "../../lib/config";
-import { pickImageDataUri } from "../../lib/pickImageDataUri";
-import { colors } from "../../lib/style/colors";
-import AppMarkdownWrapper from "../AppMarkdownWrapper";
-import BottomSheetOptionPicker, {
-  BottomSheetMultiOptionPicker,
-  sectionedRows,
-} from "../BottomSheetOptionPicker";
-import InlineLabelMarkdownWrapper from "../InlineLabelMarkdownWrapper";
+import { View } from "react-native";
 import Button, { ButtonColor, ButtonSize } from "../system/Button";
 import Card, { CardStyle } from "../system/Card";
-import CharacterLimitNotice from "../system/CharacterLimitNotice";
-import Checkbox, { CheckboxSize } from "../system/Checkbox";
-import Text, { FontWeight } from "../system/Text";
+import Checkbox from "../system/Checkbox";
+import Text from "../system/Text";
+import {
+  MultiSelectInputField,
+  RadioInputField,
+  RangeInputField,
+  SelectInputField,
+} from "./ChoiceFields";
 import CityAutosuggest from "./CityAutosuggest";
+import { ContractInputField } from "./ContractInputField";
 import { getCustomComponentById } from "./customComponentRegistry";
 import { fieldAccessibilityLabel } from "./fieldAccessibilityLabel";
-import FormModal from "./FormModal";
+import {
+  inputClasses,
+  RenderLabel,
+  renderValidationMessage,
+} from "./fieldParts";
+import { FileInputField } from "./FileInputField";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
-import PhoneNumberInput from "./PhoneNumberInput";
+import { PhoneInputField } from "./PhoneInputField";
 import { RankingFieldInput } from "./RankingFieldInput";
+import {
+  NumberInputField,
+  SingleLineInputField,
+  TextareaInputField,
+} from "./TextFields";
+import { TimeInputField } from "./TimeInputField";
 import TimeZoneSelect from "./TimeZoneSelect";
 
 export type RenderFieldProps = {
@@ -96,44 +74,6 @@ export type RenderFieldProps = {
   fieldContext: FieldConditionContext;
 };
 
-const sharedInputClasses =
-  "w-full rounded-lg border bg-white px-3 py-3 text-base text-zinc-900";
-const TEXTAREA_LINE_HEIGHT = 24;
-const TEXTAREA_VERTICAL_PADDING = 12;
-type ChoiceOption = { label: string; value: string };
-
-const renderValidationMessage = (message: string | null) =>
-  message ? (
-    <Text className="text-base text-red-500 mt-1">{message}</Text>
-  ) : null;
-
-export function RenderLabel({
-  field,
-  isOutputView,
-  hideLabel,
-  required,
-}: {
-  field: AnyField;
-  isOutputView?: boolean;
-  hideLabel?: boolean;
-  /** Effective requiredness; defaults to the field's static `required` flag. */
-  required?: boolean;
-}) {
-  if (hideLabel) return null;
-  const isRequired = required ?? !!field.required;
-  if (field.label === null && isRequired) return null;
-  return (
-    <View className="mb-1">
-      {!isRequired && !isOutputView && <OptionalLabelPrefix />}
-      {field.label !== null && (
-        <View>
-          <InlineLabelMarkdownWrapper>{field.label}</InlineLabelMarkdownWrapper>
-        </View>
-      )}
-    </View>
-  );
-}
-
 export function RenderField({
   field,
   value,
@@ -151,32 +91,21 @@ export function RenderField({
   hideLabel,
   fieldContext,
 }: RenderFieldProps) {
-  const [selectOpen, setSelectOpen] = useState(false);
   const required = fieldContext.isFieldRequired(field);
   const errorMessage =
     typeof error === "string" && error.trim().length > 0 ? error : null;
   const hasError = Boolean(errorMessage);
-  const inputBase = `${sharedInputClasses} ${
-    hasError ? "border-red-500" : "border-zinc-200"
-  } ${disabled ? "opacity-60" : ""}`;
-
-  const { sections, randomizedOptions } = useFieldOptionSections({
-    field,
-    randomizationKey,
-    disableOptionRandomization,
-  });
-
-  const [filePreview, setFilePreview] = useState<FilePick | null>(null);
-  const [pickerError, setPickerError] = useState<string | null>(null);
-  // The library sheet is open across an await, before any upload has started,
-  // so `uploading` cannot keep a second tap out.
-  const pickingRef = useRef(false);
-
-  const {
-    slot: uploadSlot,
-    uploading,
-    uploadError,
-  } = resolveUploadSlot({ fileUpload, fileUploadSlot, fieldId: field.id });
+  const inputBase = inputClasses({ hasError, disabled });
+  const inputProps = {
+    value,
+    onChange,
+    onFocus,
+    disabled,
+    errorMessage,
+    isOutputView,
+    hideLabel,
+    required,
+  };
 
   if (onChange !== undefined && !disabled && offersNoOptions(field)) {
     return (
@@ -197,225 +126,21 @@ export function RenderField({
 
   switch (field.kind) {
     case "text":
-      return (
-        <View>
-          <RenderLabel
-            field={field}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <TextInput
-            accessibilityLabel={fieldAccessibilityLabel(field)}
-            className={inputBase}
-            value={(value as string) ?? ""}
-            onChangeText={(text) => onChange?.(text)}
-            onFocus={onFocus}
-            placeholder={field.placeholder}
-            placeholderTextColor="#9ca3af"
-            editable={!disabled}
-          />
-          {renderValidationMessage(errorMessage)}
-        </View>
-      );
-
-    case "textarea": {
-      const rows = disabled ? 1 : field.rows || 3;
-      return (
-        <View>
-          <RenderLabel
-            field={field}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <TextInput
-            accessibilityLabel={fieldAccessibilityLabel(field)}
-            className={cn(inputBase, "text-base")}
-            style={{
-              lineHeight: TEXTAREA_LINE_HEIGHT,
-              paddingVertical: TEXTAREA_VERTICAL_PADDING,
-              minHeight:
-                rows * TEXTAREA_LINE_HEIGHT + TEXTAREA_VERTICAL_PADDING * 2,
-            }}
-            value={(value as string) ?? ""}
-            onChangeText={(text) => onChange?.(text)}
-            onFocus={onFocus}
-            placeholder={field.placeholder}
-            placeholderTextColor="#9ca3af"
-            editable={!disabled}
-            multiline
-            textAlignVertical="top"
-            scrollEnabled={false}
-            maxLength={field.maxLength}
-          />
-          {field.maxLength && (
-            <CharacterLimitNotice
-              value={(value as string) ?? ""}
-              max={field.maxLength}
-              readOnly={disabled}
-            />
-          )}
-          {renderValidationMessage(errorMessage)}
-        </View>
-      );
-    }
-
     case "email":
-      return (
-        <View>
-          <RenderLabel
-            field={field}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <TextInput
-            accessibilityLabel={fieldAccessibilityLabel(field)}
-            className={inputBase}
-            value={(value as string) ?? ""}
-            onChangeText={(text) => onChange?.(text)}
-            onFocus={onFocus}
-            placeholder="example@email.com"
-            placeholderTextColor="#9ca3af"
-            autoCapitalize="none"
-            keyboardType="email-address"
-            editable={!disabled}
-          />
-          {renderValidationMessage(errorMessage)}
-        </View>
-      );
+    case "date":
+      return <SingleLineInputField {...inputProps} field={field} />;
+
+    case "textarea":
+      return <TextareaInputField {...inputProps} field={field} />;
 
     case "phone":
-      return (
-        <PhoneInputField
-          field={field}
-          value={value}
-          onChange={onChange}
-          onFocus={onFocus}
-          disabled={disabled}
-          baseError={errorMessage}
-          isOutputView={isOutputView}
-          hideLabel={hideLabel}
-          required={required}
-        />
-      );
+      return <PhoneInputField {...inputProps} field={field} />;
 
-    case "number": {
-      const numberDecimalPlaces = field.allowDecimals
-        ? (field.decimalPlaces ?? undefined)
-        : undefined;
-      return (
-        <View>
-          <RenderLabel
-            field={field}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <TextInput
-            accessibilityLabel={fieldAccessibilityLabel(field)}
-            className={inputBase}
-            value={value === undefined || value === null ? "" : String(value)}
-            onChangeText={(text) => {
-              if (text.trim() === "") {
-                onChange?.("");
-                return;
-              }
-              if (field.allowDecimals && /^-?\d*\.?\d*$/.test(text)) {
-                const next = parseFloat(text);
-                if (Number.isNaN(next)) {
-                  onChange?.("");
-                } else if (numberDecimalPlaces !== undefined) {
-                  const factor = Math.pow(10, numberDecimalPlaces);
-                  onChange?.(Math.round(next * factor) / factor);
-                } else {
-                  onChange?.(next);
-                }
-                return;
-              }
-              const next = parseFloat(text);
-              onChange?.(Number.isNaN(next) ? "" : next);
-            }}
-            onFocus={onFocus}
-            keyboardType={field.allowDecimals ? "decimal-pad" : "numeric"}
-            editable={!disabled}
-          />
-          {renderValidationMessage(errorMessage)}
-        </View>
-      );
-    }
+    case "number":
+      return <NumberInputField {...inputProps} field={field} />;
 
-    case "range": {
-      const values = getRangeValues(field);
-      const numericValue =
-        typeof value === "number"
-          ? value
-          : typeof value === "string" && value.trim().length > 0
-            ? Number(value)
-            : undefined;
-      const normalizedValue = Number.isFinite(numericValue)
-        ? Number(numericValue)
-        : undefined;
-
-      return (
-        <View>
-          <RenderLabel
-            field={field}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <View className="flex-row justify-between mb-2">
-            <Text className="text-xs text-zinc-500">{field.startLabel}</Text>
-            <Text className="text-xs text-zinc-500">{field.endLabel}</Text>
-          </View>
-          <View className="flex-row flex-wrap">
-            {values.map((optionValue) => {
-              const checked = normalizedValue === optionValue;
-              return (
-                <TouchableOpacity
-                  key={optionValue}
-                  className={cn(
-                    "flex-1 items-center border py-2",
-                    checked
-                      ? "bg-green border-green"
-                      : hasError
-                        ? "border-red-500"
-                        : "border-zinc-200",
-                  )}
-                  onPress={
-                    disabled
-                      ? undefined
-                      : () => {
-                          if (checked) {
-                            onChange?.("");
-                          } else {
-                            onChange?.(optionValue);
-                          }
-                        }
-                  }
-                  disabled={disabled}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked, disabled }}
-                >
-                  <Text
-                    className={cn(
-                      "text-sm",
-                      checked ? "text-white" : "text-zinc-700",
-                    )}
-                    weight={checked ? FontWeight.Semibold : undefined}
-                  >
-                    {optionValue}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-          {renderValidationMessage(errorMessage)}
-        </View>
-      );
-    }
+    case "range":
+      return <RangeInputField {...inputProps} field={field} />;
 
     case "checkbox":
       return (
@@ -432,302 +157,38 @@ export function RenderField({
         </View>
       );
 
-    case "radio": {
-      const options = (randomizedOptions ?? field.options) as ChoiceOption[];
+    case "radio":
       return (
-        <View>
-          <RenderLabel
-            field={field}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <View className={cn(hasError && "border-l-2 border-red-500 pl-3")}>
-            {options.map((option: ChoiceOption, optIndex: number) => {
-              const selected = value === option.value;
-              return (
-                <TouchableOpacity
-                  key={optIndex}
-                  className="flex-row items-start py-2"
-                  onPress={() => onChange?.(selected ? "" : option.value)}
-                  disabled={disabled}
-                  activeOpacity={0.7}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: selected, disabled }}
-                >
-                  <View
-                    className={cn(
-                      "w-5 h-5 mt-0.5 rounded-full border items-center justify-center mr-3",
-                      selected
-                        ? "border-green"
-                        : hasError
-                          ? "border-red-500"
-                          : "border-zinc-400",
-                    )}
-                  >
-                    {selected && (
-                      <View className="w-2.5 h-2.5 rounded-full bg-green" />
-                    )}
-                  </View>
-                  <View className="flex-1">
-                    <InlineLabelMarkdownWrapper>
-                      {option.label}
-                    </InlineLabelMarkdownWrapper>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-          {renderValidationMessage(errorMessage)}
-        </View>
-      );
-    }
-
-    case "select": {
-      const options = (randomizedOptions ?? field.options) as ChoiceOption[];
-      const selectedLabel =
-        options.find((opt: ChoiceOption) => opt.value === value)?.label || null;
-
-      return (
-        <View>
-          <RenderLabel
-            field={field}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <View>
-            <TouchableOpacity
-              className={cn(inputBase, "pr-20")}
-              onPress={() => setSelectOpen(true)}
-              disabled={disabled}
-              activeOpacity={0.8}
-            >
-              <Text
-                className={cn(
-                  "text-base",
-                  selectedLabel ? "text-zinc-900" : "text-zinc-400",
-                )}
-              >
-                {selectedLabel || "Select an option"}
-              </Text>
-            </TouchableOpacity>
-            <View
-              className={cn(
-                "absolute inset-y-0 right-3 flex-row items-center",
-                disabled && "opacity-60",
-              )}
-              pointerEvents="box-none"
-            >
-              {!disabled &&
-                onChange &&
-                typeof value === "string" &&
-                value !== "" && (
-                  <TouchableOpacity
-                    className="p-2"
-                    onPress={() => onChange("")}
-                    hitSlop={{ top: 8, bottom: 8, left: 8 }}
-                    accessibilityRole="button"
-                    accessibilityLabel="Clear selection"
-                  >
-                    <X size={18} color={colors.text.icon} />
-                  </TouchableOpacity>
-                )}
-              <View pointerEvents="none">
-                <ChevronDown
-                  size={18}
-                  color={selectedLabel ? colors.text.icon : colors.text.light}
-                />
-              </View>
-            </View>
-          </View>
-          <BottomSheetOptionPicker
-            visible={selectOpen}
-            onClose={() => setSelectOpen(false)}
-            title="Select"
-            searchable={field.searchable}
-            options={options}
-            categories={field.categories}
-            value={value as string | undefined}
-            onSelect={(v) => onChange?.(v)}
-          />
-          {renderValidationMessage(errorMessage)}
-        </View>
-      );
-    }
-
-    case "multiselect": {
-      const selections = Array.isArray(value)
-        ? value.filter((item): item is string => typeof item === "string")
-        : [];
-      const selectedCount = selections.length;
-      const options = (randomizedOptions ??
-        field.options ??
-        []) as ChoiceOption[];
-
-      const maxSelections = getMaxSelections(field);
-      const maxReached =
-        maxSelections !== undefined && selectedCount >= maxSelections;
-      const setSelected = ({
-        value: optionValue,
-        selected,
-      }: {
-        value: string;
-        selected: boolean;
-      }) =>
-        onChange?.(
-          selected
-            ? [...selections, optionValue]
-            : selections.filter((v) => v !== optionValue),
-        );
-      const selectedOptions = options.filter((option) =>
-        selections.includes(option.value),
+        <RadioInputField
+          {...inputProps}
+          field={field}
+          randomizationKey={randomizationKey}
+          disableOptionRandomization={disableOptionRandomization}
+        />
       );
 
+    case "select":
       return (
-        <View>
-          <RenderLabel
-            field={field}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          {field.dropdown ? (
-            <>
-              <TouchableOpacity
-                className={cn(
-                  inputBase,
-                  "flex-row items-center justify-between",
-                )}
-                onPress={() => setSelectOpen(true)}
-                disabled={disabled}
-                activeOpacity={0.8}
-                accessibilityRole="button"
-              >
-                <Text
-                  className={cn(
-                    "text-base",
-                    selectedCount > 0 ? "text-zinc-900" : "text-zinc-400",
-                  )}
-                >
-                  {selectedCount > 0
-                    ? `${selectedCount} selected`
-                    : "Select options…"}
-                </Text>
-                <ChevronDown size={18} color={colors.text.icon} />
-              </TouchableOpacity>
-              {selectedOptions.length > 0 && (
-                <View className="mt-2 flex-row flex-wrap gap-2">
-                  {selectedOptions.map((option) => (
-                    <View
-                      key={option.value}
-                      className="max-w-full flex-row items-center gap-1 rounded-full bg-zinc-100 px-3 py-1"
-                    >
-                      <View className="shrink">
-                        <InlineLabelMarkdownWrapper>
-                          {option.label}
-                        </InlineLabelMarkdownWrapper>
-                      </View>
-                      {!disabled && onChange && (
-                        <TouchableOpacity
-                          onPress={() =>
-                            setSelected({
-                              value: option.value,
-                              selected: false,
-                            })
-                          }
-                          hitSlop={15}
-                          accessibilityRole="button"
-                          accessibilityLabel={`Remove ${markdownPlainText(option.label)}`}
-                        >
-                          <X size={14} color={colors.text.icon} />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  ))}
-                </View>
-              )}
-              <BottomSheetMultiOptionPicker
-                visible={selectOpen}
-                onClose={() => setSelectOpen(false)}
-                title="Select"
-                searchable={field.searchable}
-                options={options}
-                categories={field.categories}
-                values={selections}
-                maxReached={maxReached}
-                onToggle={setSelected}
-              />
-            </>
-          ) : (
-            <View className={cn(hasError && "border-l-2 border-red-500 pl-3")}>
-              {sectionedRows(sections ?? [], (option) => {
-                const checked = selections.includes(option.value);
-                const disabledOption = disabled || (!checked && maxReached);
-                return (
-                  <Checkbox
-                    key={option.value}
-                    checked={checked}
-                    disabled={disabledOption}
-                    error={hasError}
-                    label={option.label}
-                    size={CheckboxSize.Small}
-                    className="py-2"
-                    onChange={(selected) =>
-                      setSelected({ value: option.value, selected })
-                    }
-                  />
-                );
-              })}
-            </View>
-          )}
-          {maxSelections !== undefined && (
-            <Text className="text-xs text-gray-500">
-              Select up to {withCount(maxSelections, "option")}
-            </Text>
-          )}
-          {renderValidationMessage(errorMessage)}
-        </View>
+        <SelectInputField
+          {...inputProps}
+          field={field}
+          randomizationKey={randomizationKey}
+          disableOptionRandomization={disableOptionRandomization}
+        />
       );
-    }
 
-    case "date":
+    case "multiselect":
       return (
-        <View>
-          <RenderLabel
-            field={field}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <TextInput
-            accessibilityLabel={fieldAccessibilityLabel(field)}
-            className={inputBase}
-            value={(value as string) ?? ""}
-            onChangeText={(text) => onChange?.(text)}
-            onFocus={onFocus}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor="#9ca3af"
-            editable={!disabled}
-          />
-          {renderValidationMessage(errorMessage)}
-        </View>
+        <MultiSelectInputField
+          {...inputProps}
+          field={field}
+          randomizationKey={randomizationKey}
+          disableOptionRandomization={disableOptionRandomization}
+        />
       );
 
     case "time":
-      return (
-        <TimeInputField
-          field={field as TimeField}
-          value={value}
-          onChange={onChange}
-          onFocus={onFocus}
-          disabled={disabled}
-          baseError={errorMessage}
-          isOutputView={isOutputView}
-          hideLabel={hideLabel}
-          required={required}
-        />
-      );
+      return <TimeInputField {...inputProps} field={field} />;
 
     case "timezone":
       return (
@@ -778,80 +239,15 @@ export function RenderField({
       );
     }
 
-    case "file": {
-      const currentPreview =
-        resolvePickedPreview({ pick: filePreview, value, uploading }) ??
-        (typeof value === "string" && value ? getImageSource(value) : null);
-
-      const pickImage = async () => {
-        if (disabled || uploading || !fileUpload) return;
-        if (pickingRef.current) return;
-        pickingRef.current = true;
-        setPickerError(null);
-        try {
-          const picked = await pickImageDataUri({ allowsEditing: true });
-          if (!picked.ok) {
-            console.error("Failed to pick image", picked.error);
-            setPickerError("Unable to read that photo. Try another one.");
-            return;
-          }
-          if (!picked.value) {
-            return;
-          }
-          setFilePreview({ uri: picked.value.uri, replaces: value });
-          void fileUpload.onFileSelected(uploadSlot, picked.value.dataUri);
-        } finally {
-          pickingRef.current = false;
-        }
-      };
-
+    case "file":
       return (
-        <View>
-          <RenderLabel
-            field={field}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          {currentPreview && (
-            <Image
-              source={{ uri: currentPreview }}
-              className="w-full h-48 rounded-lg mb-3 bg-zinc-200"
-              resizeMode="cover"
-            />
-          )}
-          <View className="flex-row items-center gap-3">
-            <TouchableOpacity
-              onPress={pickImage}
-              disabled={disabled || uploading}
-              className="flex-1 justify-start border border-zinc-200 rounded-lg p-3"
-            >
-              {uploading ? (
-                <Text className="text-sm text-blue-600">Uploading...</Text>
-              ) : (
-                <Text className="text-base">Choose photo</Text>
-              )}
-            </TouchableOpacity>
-            {uploading && (
-              <TouchableOpacity
-                onPress={() => fileUpload?.cancelUpload(uploadSlot)}
-                accessibilityLabel={cancelImageUpload}
-                hitSlop={8}
-                className="p-2"
-              >
-                <X size={20} color="#71717a" />
-              </TouchableOpacity>
-            )}
-          </View>
-          {pickerError || uploadError ? (
-            <Text className="text-xs text-red-500 mt-2">
-              {uploadError || pickerError}
-            </Text>
-          ) : null}
-          {renderValidationMessage(errorMessage)}
-        </View>
+        <FileInputField
+          {...inputProps}
+          field={field}
+          fileUpload={fileUpload}
+          fileUploadSlot={fileUploadSlot}
+        />
       );
-    }
 
     case "list": {
       const listField = field as ListField;
@@ -955,80 +351,8 @@ export function RenderField({
       );
     }
 
-    case "contract": {
-      const contract = field.contract;
-      const signedValue = typeof value === "boolean" ? value : undefined;
-      return (
-        <View className="gap-3">
-          {contract?.markdown ? (
-            <>
-              <View className="rounded-lg border border-zinc-200 bg-white p-4">
-                <AppMarkdownWrapper>{contract.markdown}</AppMarkdownWrapper>
-              </View>
-              <Card cardStyle={CardStyle.White} className="p-4">
-                {!required && !isOutputView && <OptionalLabelPrefix />}
-                <Text className="text-zinc-900 mb-3" weight={FontWeight.Medium}>
-                  {field.signQuestion.trim()}
-                </Text>
-                <View className="flex-row gap-3">
-                  <TouchableOpacity
-                    onPress={() => onChange?.(true)}
-                    disabled={disabled}
-                    className={cn(
-                      "flex-1 py-3 rounded-lg border items-center",
-                      signedValue === true
-                        ? "border-green-600 bg-green-50"
-                        : "border-zinc-200 bg-white",
-                    )}
-                  >
-                    <Text
-                      className={cn(
-                        "",
-                        signedValue === true
-                          ? "text-green-700"
-                          : "text-zinc-700",
-                      )}
-                      weight={FontWeight.Medium}
-                    >
-                      {field.yesLabel.trim()}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => onChange?.(false)}
-                    disabled={disabled}
-                    className={cn(
-                      "flex-1 py-3 rounded-lg border items-center",
-                      signedValue === false
-                        ? "border-red-600 bg-red-50"
-                        : "border-zinc-200 bg-white",
-                    )}
-                  >
-                    <Text
-                      className={cn(
-                        "",
-                        signedValue === false
-                          ? "text-red-700"
-                          : "text-zinc-700",
-                      )}
-                      weight={FontWeight.Medium}
-                    >
-                      {field.noLabel.trim()}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </Card>
-            </>
-          ) : (
-            <View className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
-              <Text className="text-sm text-zinc-500 italic">
-                Select a contract in the form builder to preview.
-              </Text>
-            </View>
-          )}
-          {renderValidationMessage(errorMessage)}
-        </View>
-      );
-    }
+    case "contract":
+      return <ContractInputField {...inputProps} field={field} />;
 
     case "custom": {
       const definition = getCustomComponentById(field.componentId);
@@ -1092,197 +416,4 @@ export function RenderField({
     default:
       return null;
   }
-}
-
-type PhoneInputFieldProps = {
-  field: PhoneField;
-  value: FormValue | undefined;
-  onChange?: (value: FormValueUpdater) => void;
-  onFocus?: () => void;
-  disabled?: boolean;
-  baseError: string | null;
-  isOutputView?: boolean;
-  hideLabel?: boolean;
-  required?: boolean;
-};
-
-export function PhoneInputField({
-  field,
-  value,
-  onChange,
-  onFocus,
-  disabled,
-  baseError,
-  isOutputView,
-  hideLabel,
-  required = !!field.required,
-}: PhoneInputFieldProps) {
-  const answer = typeof value === "string" ? value : "";
-  const [country, setCountry] = usePhoneFieldCountry(answer);
-
-  return (
-    <View>
-      <RenderLabel
-        field={field}
-        isOutputView={isOutputView}
-        hideLabel={hideLabel}
-        required={required}
-      />
-      <PhoneNumberInput
-        value={answer}
-        onChange={(next) => onChange?.(next)}
-        country={country}
-        onCountryChange={setCountry}
-        onEditingChange={(editing) => {
-          if (editing) {
-            onFocus?.();
-          }
-        }}
-        disabled={disabled || !onChange}
-        accessibilityLabel={fieldAccessibilityLabel(field)}
-        placeholder={field.placeholder || "Enter phone number"}
-        error={baseError}
-      />
-    </View>
-  );
-}
-
-type TimeInputFieldProps = {
-  field: TimeField;
-  value: FormValue | undefined;
-  onChange?: (value: FormValueUpdater) => void;
-  onFocus?: () => void;
-  disabled?: boolean;
-  baseError: string | null;
-  isOutputView?: boolean;
-  hideLabel?: boolean;
-  /** Effective requiredness; defaults to the field's static `required` flag. */
-  required?: boolean;
-};
-
-export function TimeInputField({
-  field,
-  value,
-  onChange,
-  onFocus,
-  disabled,
-  baseError,
-  isOutputView,
-  hideLabel,
-  required = !!field.required,
-}: TimeInputFieldProps) {
-  const normalizedValue = typeof value === "string" && value ? value : "";
-  const [inputValue, setInputValue] = useState<string>(() =>
-    formatTimeForDisplay(normalizedValue),
-  );
-  const [localError, setLocalError] = useState<string | null>(null);
-  const [showDropdown, setShowDropdown] = useState(false);
-
-  useEffect(() => {
-    setInputValue(formatTimeForDisplay(normalizedValue));
-  }, [normalizedValue]);
-
-  const commitValue = () => {
-    const { answer, error } = commitTimeInput({ raw: inputValue, required });
-    setLocalError(error);
-    if (answer === null) return;
-    onChange?.(answer);
-    if (answer) setInputValue(formatTimeForDisplay(answer));
-  };
-
-  const effectiveError = localError ?? baseError ?? null;
-  const hasError = Boolean(effectiveError);
-
-  const timeOptions = useMemo(
-    () => buildTimeOfDayOptions(30).map((option) => option.label),
-    [],
-  );
-
-  return (
-    <View>
-      <RenderLabel
-        field={field}
-        isOutputView={isOutputView}
-        hideLabel={hideLabel}
-        required={required}
-      />
-      <View className="relative">
-        <Pressable
-          onPress={() => setShowDropdown((prev) => !prev)}
-          disabled={disabled}
-          className={cn(
-            "flex-row items-center justify-between",
-            sharedInputClasses,
-            hasError ? "border-red-500" : "border-zinc-200",
-            disabled && "opacity-60",
-          )}
-        >
-          <TextInput
-            accessibilityLabel={fieldAccessibilityLabel(field)}
-            className="flex-1 text-base text-zinc-900"
-            value={inputValue}
-            onChangeText={(text) => {
-              setInputValue(text);
-              setLocalError(null);
-            }}
-            onFocus={onFocus}
-            onBlur={commitValue}
-            placeholder="7:30 PM"
-            placeholderTextColor="#9ca3af"
-            editable={!disabled}
-            onSubmitEditing={commitValue}
-          />
-          <ChevronDown size={18} color={colors.text.icon} />
-        </Pressable>
-
-        <FormModal
-          visible={showDropdown}
-          onClose={() => setShowDropdown(false)}
-        >
-          <View className="flex-row justify-between items-center mb-3">
-            <Text
-              className="text-lg text-zinc-900"
-              weight={FontWeight.Semibold}
-            >
-              Pick a time
-            </Text>
-            <TouchableOpacity onPress={() => setShowDropdown(false)}>
-              <Text className="text-blue-600" weight={FontWeight.Medium}>
-                Close
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView className="max-h-[300px]">
-            {timeOptions.map((t) => (
-              <TouchableOpacity
-                key={t}
-                className="py-3"
-                onPress={() => {
-                  setInputValue(t);
-                  setLocalError(null);
-                  setShowDropdown(false);
-                  const parsed = parseTimeInput(t);
-                  if (parsed) onChange?.(parsed.normalized);
-                }}
-              >
-                <Text
-                  className={cn(
-                    "text-base",
-                    t === inputValue ? "text-green-700" : "text-zinc-800",
-                  )}
-                  weight={t === inputValue ? FontWeight.Semibold : undefined}
-                >
-                  {t}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </FormModal>
-      </View>
-
-      {hasError && (
-        <Text className="text-xs text-red-500 mt-1">{effectiveError}</Text>
-      )}
-    </View>
-  );
 }
