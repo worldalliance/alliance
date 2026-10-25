@@ -98,6 +98,7 @@ export function useInvite(referralCode: string | null) {
     unresolved,
     availability,
     inviter: refusal ? null : namedInviter(referrer ?? null),
+    onetimeInvite: refusal ? null : (invite ?? null),
   };
 }
 
