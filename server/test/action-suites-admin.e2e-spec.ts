@@ -1,6 +1,6 @@
 import { milliseconds } from "date-fns";
 import request from "supertest";
-import type { CreateActionEventDto } from "../src/actions/dto/action.dto";
+import type { CreateActionEventDto } from "../src/actions/dto/action-event.dto";
 import { ActionStatus } from "../src/actions/entities/action-event.entity";
 import { ActionSuite } from "../src/actions/entities/action-suite.entity";
 import { Action } from "../src/actions/entities/action.entity";

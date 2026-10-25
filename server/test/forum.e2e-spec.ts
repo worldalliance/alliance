@@ -5,7 +5,7 @@ import type {
 import { sdkStreamMixin } from "@smithy/util-stream";
 import { milliseconds } from "date-fns";
 import { ActionsService } from "src/actions/actions.service";
-import { GlobalFeedItemType } from "src/actions/dto/action.dto";
+import { GlobalFeedItemType } from "src/actions/dto/action-feed.dto";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   ActionEvent,

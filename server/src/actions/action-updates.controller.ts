@@ -27,7 +27,7 @@ import {
   ActionUpdateDto,
   CreateActionUpdateDto,
   UpdateActionUpdateDto,
-} from "./dto/action.dto";
+} from "./dto/action-update.dto";
 
 @Controller("actions")
 export class ActionUpdatesController {

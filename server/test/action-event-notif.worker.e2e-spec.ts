@@ -4,7 +4,7 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { millisecondsInSecond, secondsInHour } from "date-fns/constants";
 import { ActionsService } from "src/actions/actions.service";
-import { CreateReminderGroupDto } from "src/actions/dto/action.dto";
+import { CreateReminderGroupDto } from "src/actions/dto/reminder-group.dto";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   ActionEvent,
