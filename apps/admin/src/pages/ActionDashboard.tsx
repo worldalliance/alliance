@@ -55,7 +55,7 @@ const ActionDashboard: React.FC = () => {
     cohortExpressionError,
     isPending: actionPending,
     isError: actionLoadFailed,
-    setActionFromDto,
+    addEvent,
     isCreating,
     isUpdating,
     isRemoving,
@@ -320,10 +320,7 @@ const ActionDashboard: React.FC = () => {
             )}
 
             {activeTab === "events" && action && (
-              <EventManagementTab
-                action={action}
-                setAction={setActionFromDto}
-              />
+              <EventManagementTab action={action} addEvent={addEvent} />
             )}
 
             {activeTab === "updates" && action && (

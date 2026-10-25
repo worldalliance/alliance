@@ -1,13 +1,9 @@
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
-  ActionDto,
-  ActionEventDto,
-  actionsAddEventAdmin,
   ActionStatus,
   ActionSuiteDto,
-  AdminActionDto,
   CreateActionEventDto,
 } from "@alliance/shared/client";
+import type { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import DateTimePicker, {
   DateTimePickerChange,
@@ -17,6 +13,8 @@ import { milliseconds } from "date-fns";
 import { useState } from "react";
 import { ACTION_STATUS_LABELS } from "../lib/actionStatusDisplay";
 import { sendConfirmingDeadlineShortening } from "../lib/confirmDeadlineShortening";
+
+export type AddActionEvent = ReturnType<typeof useActionAdmin>["addEvent"];
 
 const DEADLINE_DECLINED_MESSAGE =
   "Added the launch event without its deadline event. Add the deadline separately.";
@@ -29,12 +27,10 @@ export type CreateEventFormProps = {
 } & (
   | {
       suiteMode: false;
-      action: AdminActionDto;
-      setAction: (action: AdminActionDto) => void;
+      addToAction: AddActionEvent;
     }
   | {
       suiteMode: true;
-      action: ActionDto;
       /** Resolves `null` when staff decline to move the deadline earlier. */
       addToSuite: (
         body: CreateActionEventDto,
@@ -55,7 +51,6 @@ const defaultEventNames: Record<ActionStatus, string> = {
 
 const CreateEventForm = (props: CreateEventFormProps) => {
   const {
-    action,
     creatingEvent,
     suiteMode,
     setCreatingEvent,
@@ -117,10 +112,9 @@ const CreateEventForm = (props: CreateEventFormProps) => {
     setDeadlineEventDate(change.utcValue);
   };
 
-  const addToAction = (body: CreateActionEventDto) =>
+  const sendToAction = (add: AddActionEvent, body: CreateActionEventDto) =>
     sendConfirmingDeadlineShortening({
-      send: (query) =>
-        actionsAddEventAdmin({ path: { id: action.id }, body, query }),
+      send: (query) => add({ body, ...query }),
       confirm,
     });
 
@@ -148,12 +142,11 @@ const CreateEventForm = (props: CreateEventFormProps) => {
         if (!added) return;
         response = { data: added, error: undefined };
       } else {
-        const sent = await addToAction(eventData);
+        const sent = await sendToAction(props.addToAction, eventData);
         if (!sent) return;
         response = sent;
       }
       const addedEvent = response.data;
-      let addedOfficeActionEvent = null;
       let deadlineDeclined = false;
 
       if (
@@ -177,9 +170,10 @@ const CreateEventForm = (props: CreateEventFormProps) => {
               (error: unknown) => ({ error }),
             );
         } else {
-          const sent = await addToAction(officeActionEvent);
-          addedOfficeActionEvent = sent?.data;
-          officeActionEventResponse = sent;
+          officeActionEventResponse = await sendToAction(
+            props.addToAction,
+            officeActionEvent,
+          );
         }
         if (!officeActionEventResponse) {
           deadlineDeclined = true;
@@ -191,19 +185,6 @@ const CreateEventForm = (props: CreateEventFormProps) => {
       }
 
       if (addedEvent) {
-        if (!suiteMode) {
-          props.setAction({
-            ...action,
-            events: !!addedOfficeActionEvent
-              ? [
-                  ...action.events,
-                  addedOfficeActionEvent,
-                  addedEvent as ActionEventDto,
-                ]
-              : [...action.events, addedEvent as ActionEventDto],
-          });
-        }
-
         if (!deadlineDeclined) {
           setEventCreatedSuccess(true);
           setTimeout(
