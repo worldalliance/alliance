@@ -162,4 +162,5 @@ it("shows a message from the socket once, however many screens hear it", async (
   );
   expect(heard).toEqual([incoming]);
   await waitFor(() => expect(markedRead).toBe(1));
+  expect(fetches).toBe(0);
 });

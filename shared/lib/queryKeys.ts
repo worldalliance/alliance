@@ -94,6 +94,7 @@ export const queryKeys = {
     ["contractGetById", contractId] as const,
   conversationMessages: (conversationId: number | null) =>
     ["messageGetMessages", conversationId] as const,
+  conversationUnreadSummary: () => ["conversationGetUnreadSummary"] as const,
   currentContract: () => ["contractGetCurrent"] as const,
   forumPost: (postId: string | undefined) =>
     ["forumFindOnePost", postId] as const,
