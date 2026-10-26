@@ -1189,8 +1189,7 @@ describe("useFormDraftSync", () => {
   };
 
   beforeEach(() => {
-    // Collapses the save debounce to nothing. Not `jest.useFakeTimers`, which
-    // in bun leaves `waitFor` broken for every later test file in the process.
+    // Collapses the save debounce to nothing.
     globalThis.setTimeout = ((handler: TimerHandler) =>
       realSetTimeout(handler, 0)) as typeof setTimeout;
     fetchDraft = async () => json({});

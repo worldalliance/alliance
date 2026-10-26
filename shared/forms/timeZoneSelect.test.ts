@@ -22,7 +22,6 @@ beforeEach(() => {
   resetTimeZoneCaches();
   resetClock();
 });
-afterEach(() => jest.useRealTimers());
 
 const hidingDayPeriod = (body: () => void) => {
   const real = Intl.DateTimeFormat;

@@ -1,4 +1,4 @@
-import { renderHook } from "@testing-library/react/pure";
+import { renderHook, waitFor } from "@testing-library/react/pure";
 import { useEffect } from "react";
 
 it("prints a DOM node in a failed expectation as its markup", () => {
@@ -57,5 +57,19 @@ describe("a clipboard stub", () => {
 
   it("is gone in the next test", () => {
     expect(navigator.clipboard.writeText).toBeInstanceOf(Function);
+  });
+});
+
+describe("fake timers", () => {
+  it("are switched on and back off", () => {
+    jest.useFakeTimers();
+    jest.useRealTimers();
+  });
+
+  it("leave waitFor polling real time in the next test", async () => {
+    let ready = false;
+    setTimeout(() => (ready = true), 10);
+
+    await waitFor(() => expect(ready).toBe(true));
   });
 });
