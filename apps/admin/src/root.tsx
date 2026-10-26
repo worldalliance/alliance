@@ -4,6 +4,7 @@ import {
   ShareLinkViewer,
   ShareLinkViewerProvider,
 } from "@alliance/sharedweb/forms/BigLinkDisplay";
+import { holdChunkReloads } from "@alliance/sharedweb/lib/lazyOrReload";
 import { queryClient } from "@alliance/sharedweb/lib/queryClient";
 import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInputScrollGuard";
 import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
@@ -27,6 +28,10 @@ client.setConfig({
 });
 
 registerErrorStatus(client);
+
+// Admin pages keep unsaved work in memory, much of it without an unload prompt,
+// so a chunk that fails to load shows its boundary's reload advice instead.
+holdChunkReloads();
 
 export function HydrateFallback() {
   return (
