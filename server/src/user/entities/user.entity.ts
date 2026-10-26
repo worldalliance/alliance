@@ -48,9 +48,8 @@ import {
 import { Notification } from "../../notifs/entities/notification.entity";
 import {
   ContractEvent,
-  ContractEventType,
-  getEffectiveContractEventsInRange,
   isContractActiveAt,
+  isContractActiveThroughout,
 } from "./contract-event.entity";
 import { Friend } from "./friend.entity";
 import { OnetimeInvite } from "./onetime-invite.entity";
@@ -584,20 +583,11 @@ export class User {
     const key = `${startTime}_${endTime}`;
     let hasActiveContract = this._hasActiveContractInFullRange.get(key);
 
-    populateCache: if (hasActiveContract === undefined) {
-      if (
-        !startDate ||
-        !isContractActiveAt(this.contractEvents ?? [], startDate)
-      ) {
-        hasActiveContract = false;
-        break populateCache;
-      }
-
-      hasActiveContract = !getEffectiveContractEventsInRange(
+    if (hasActiveContract === undefined) {
+      hasActiveContract = isContractActiveThroughout(
         this.contractEvents ?? [],
-        startTime,
-        endTime,
-      ).some((event) => event.type !== ContractEventType.SIGNED);
+        range,
+      );
 
       this._hasActiveContractInFullRange.set(key, hasActiveContract);
     }

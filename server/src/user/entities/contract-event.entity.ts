@@ -97,6 +97,21 @@ export function getEffectiveContractEventsInRange<
   return Array.from(effectiveByTime.values());
 }
 
+export function isContractActiveThroughout(
+  events: Pick<ContractEvent, "date" | "id" | "type">[],
+  range: { startDate?: Date | null; endDate?: Date | null },
+): boolean {
+  const { startDate, endDate } = range;
+  if (!startDate || !isContractActiveAt(events, startDate)) {
+    return false;
+  }
+  return !getEffectiveContractEventsInRange(
+    events,
+    startDate.getTime(),
+    endDate?.getTime() ?? Infinity,
+  ).some((event) => event.type !== ContractEventType.SIGNED);
+}
+
 @Entity()
 @Index(["user", "date"])
 @Unique(["user", "autoSuspendKey"])
