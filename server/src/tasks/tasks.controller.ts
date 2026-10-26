@@ -29,6 +29,7 @@ import { Public } from "src/auth/public.decorator";
 import { extractGuestToken, type JwtRequest } from "src/auth/tokens";
 import { FormResponseHistoryDto } from "./form-response-history.dto";
 import { FormResponseQueryService } from "./form-response-query.service";
+import { FormSubmissionService } from "./form-submission.service";
 import {
   CreateFormDto,
   FormAggregateViewsDto,
@@ -66,6 +67,7 @@ export class TasksController {
   constructor(
     private readonly tasksService: TasksService,
     private readonly formResponseQueryService: FormResponseQueryService,
+    private readonly formSubmissionService: FormSubmissionService,
     private readonly authService: AuthService,
   ) {}
 
@@ -79,7 +81,11 @@ export class TasksController {
     @Body() body: SubmitFormDto,
   ): Promise<FormResponseDto> {
     return new FormResponseDto({
-      response: await this.tasksService.submitForm(+id, req.user.sub, body),
+      response: await this.formSubmissionService.submitForm(
+        +id,
+        req.user.sub,
+        body,
+      ),
     });
   }
 
@@ -105,7 +111,7 @@ export class TasksController {
     this.authService.setGuestCookie(res, guestToken);
     res.setHeader(GUEST_HEADER, guestToken);
     return new FormResponseDto({
-      response: await this.tasksService.submitFormPublic({
+      response: await this.formSubmissionService.submitFormPublic({
         formId: +id,
         submitFormDto: body,
         guestId,
@@ -123,7 +129,7 @@ export class TasksController {
     @Body() body: SubmitFollowUpFormDto,
   ): Promise<FormResponseDto> {
     return new FormResponseDto({
-      response: await this.tasksService.submitFollowUpForm(
+      response: await this.formSubmissionService.submitFollowUpForm(
         followUpFormId,
         req.user.sub,
         body,
@@ -425,7 +431,7 @@ export class TasksController {
       throw new BadRequestException("Partial form data is required");
     }
     return new ActionActivityDto(
-      await this.tasksService.optoutForm(
+      await this.formSubmissionService.optoutForm(
         id,
         body.actionId,
         req.user.sub,

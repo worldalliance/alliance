@@ -41,6 +41,7 @@ import { ReminderGroupService } from "src/notifs/reminder-group.service";
 import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { FormResponseDraft } from "src/tasks/entities/formresponsedraft.entity";
+import { FormSubmissionService } from "src/tasks/form-submission.service";
 import { FormSnapshotService } from "src/tasks/formsnapshot.service";
 import { TasksModule } from "src/tasks/tasks.module";
 import { TasksService } from "src/tasks/tasks.service";
@@ -206,7 +207,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
       );
 
     await expect(
-      tasks.submitFormPublic({
+      ctx.app.get(FormSubmissionService).submitFormPublic({
         formId: parent.id,
         submitFormDto: {
           answers: {},
@@ -1165,7 +1166,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
       );
 
       await expect(
-        tasks.submitFormPublic({
+        ctx.app.get(FormSubmissionService).submitFormPublic({
           formId: parent.id,
           guestId,
           submitFormDto: {

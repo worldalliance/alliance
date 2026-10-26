@@ -22,8 +22,10 @@ import { FormResponse } from "./entities/formresponse.entity";
 import { FormResponseDraft } from "./entities/formresponsedraft.entity";
 import { FormProfileAnswersService } from "./form-profile-answers.service";
 import { FormResponseQueryService } from "./form-response-query.service";
+import { FormResponseWriterService } from "./form-response-writer.service";
 import { FormRowAssignmentService } from "./form-row-assignment.service";
 import { FormSubmissionValidationService } from "./form-submission-validation.service";
+import { FormSubmissionService } from "./form-submission.service";
 import { FormSnapshotModule } from "./formsnapshot.module";
 import { TasksController } from "./tasks.controller";
 import { TasksService } from "./tasks.service";
@@ -60,6 +62,8 @@ import { TasksService } from "./tasks.service";
     FormResponseQueryService,
     FormProfileAnswersService,
     FormSubmissionValidationService,
+    FormResponseWriterService,
+    FormSubmissionService,
   ],
 })
 export class TasksModule {}
