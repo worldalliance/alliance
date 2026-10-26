@@ -4,7 +4,6 @@ import { Type } from "class-transformer";
 import { Allow, IsDefined, IsOptional } from "class-validator";
 import {
   loadedActionFollowUpForms,
-  loadedActionFormVariants,
   type ParsedAction,
 } from "../entities/action.entity";
 import { ActionDto, type ActionDtoExtra } from "./action.dto";
@@ -94,22 +93,5 @@ export class AdminActionDto extends ActionDto {
     );
     this.storedImage = action.image;
     this.storedSquareThumbnailImage = action.squareThumbnailImage;
-  }
-}
-
-export class AdminActionListItemDto extends AdminActionDto {
-  @ApiProperty({
-    type: Number,
-    isArray: true,
-    description: "Forms of the action's variants, besides its task form.",
-  })
-  @IsDefined()
-  variantFormIds: number[];
-
-  constructor(action: ParsedAction, extra?: ActionDtoExtra) {
-    super(action, extra);
-    this.variantFormIds = loadedActionFormVariants(action).map(
-      (variant) => variant.formId,
-    );
   }
 }

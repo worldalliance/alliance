@@ -44,6 +44,7 @@ import { ActionImportExportService } from "./action-import-export.service";
 import { ActionParticipantsService } from "./action-participants.service";
 import { ActionRelationsService } from "./action-relations.service";
 import { ActionRemindersController } from "./action-reminders.controller";
+import { ActionResponseCountsService } from "./action-response-counts.service";
 import { ActionShareService } from "./action-share.service";
 import { ActionStatsService } from "./action-stats.service";
 import { ActionSuitesController } from "./action-suites.controller";
@@ -166,6 +167,7 @@ import { WelcomeQueueService } from "./welcome-queue.service";
   ],
   providers: [
     ActionsService,
+    ActionResponseCountsService,
     ProjectsService,
     ActionFormVariantService,
     ActionsGateway,

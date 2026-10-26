@@ -10,7 +10,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 import {
   useAssignActionProjectAdmin,
-  useCreateActionProjectAdmin,
+  useCreateProjectAdmin,
   useDeleteProjectAdmin,
   useProjectAdmin,
   useProjectsAdmin,
@@ -132,12 +132,15 @@ describe("useAssignActionProjectAdmin", () => {
     const query = queryWrapper();
     const view = renderProjects(query);
     const assign = renderHook(
-      () => useAssignActionProjectAdmin({ actionId: ACTION_ID, onError }),
+      () => useAssignActionProjectAdmin({ onError }),
       query,
     );
     await loaded(view);
 
-    await assign.result.current.mutateAsync(2);
+    await assign.result.current.mutateAsync({
+      actionId: ACTION_ID,
+      projectId: 2,
+    });
 
     expect(
       query.client.getQueryData<ProjectWithStepsDto>(queryKeys.projectAdmin(1))
@@ -147,7 +150,7 @@ describe("useAssignActionProjectAdmin", () => {
   });
 });
 
-describe("useCreateActionProjectAdmin", () => {
+describe("useCreateProjectAdmin", () => {
   it("creates the project, assigns the action to it, and reports success once the list has it", async () => {
     const query = queryWrapper();
     const view = renderProjects(query);
@@ -157,17 +160,15 @@ describe("useCreateActionProjectAdmin", () => {
         ?.map((p) => p.name),
     );
     const create = renderHook(
-      () =>
-        useCreateActionProjectAdmin({
-          actionId: ACTION_ID,
-          onSuccess,
-          onError,
-        }),
+      () => useCreateProjectAdmin({ onSuccess, onError }),
       query,
     );
     await loaded(view);
 
-    await create.result.current.mutateAsync("Clean soil");
+    await create.result.current.mutateAsync({
+      name: "Clean soil",
+      actionId: ACTION_ID,
+    });
 
     expect(requests).toEqual([
       "create Clean soil",
@@ -177,6 +178,28 @@ describe("useCreateActionProjectAdmin", () => {
       { type: "return", value: ["Clean air", "Clean water", "Clean soil"] },
     ]);
     expect(actionInvalidated(query)).toBe(true);
+  });
+
+  it("creates a project without assigning an action and refetches the action list", async () => {
+    const query = queryWrapper();
+    const view = renderProjects(query);
+    query.client.setQueryData(queryKeys.actionsAllAdmin(), []);
+    const onSuccess = mock((created: AdminProjectDto) => created.name);
+    const create = renderHook(
+      () => useCreateProjectAdmin({ onSuccess, onError }),
+      query,
+    );
+    await loaded(view);
+
+    await create.result.current.mutateAsync({ name: "Clean soil" });
+
+    expect(requests).toEqual(["create Clean soil"]);
+    expect(onSuccess.mock.results).toEqual([
+      { type: "return", value: "Clean soil" },
+    ]);
+    expect(
+      query.client.getQueryState(queryKeys.actionsAllAdmin())?.isInvalidated,
+    ).toBe(true);
   });
 });
 
@@ -192,7 +215,7 @@ describe("useUpdateProjectAdmin", () => {
         ?.name,
     ]);
     const update = renderHook(
-      () => useUpdateProjectAdmin({ actionId: ACTION_ID, onSuccess, onError }),
+      () => useUpdateProjectAdmin({ onSuccess, onError }),
       query,
     );
     await loaded(view);
@@ -216,7 +239,6 @@ describe("useDeleteProjectAdmin", () => {
     const remove = renderHook(
       () =>
         useDeleteProjectAdmin({
-          actionId: ACTION_ID,
           onSuccess: () => {},
           onError,
         }),

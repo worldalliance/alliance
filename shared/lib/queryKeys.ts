@@ -31,6 +31,8 @@ const formsAdminAll = () => ["formsAdmin"] as const;
 
 const projectsAdminAll = () => ["projectsAdmin"] as const;
 
+const actionAdminAll = () => ["actionsFindOneAdmin"] as const;
+
 /** Prefix over a group's member progress and contact info, so a membership
  * change refreshes both. */
 const communityMemberInfoAdminAll = (communityId: number | null) =>
@@ -180,8 +182,9 @@ export const queryKeys = {
     ["waitlistFindReferral", codes] as const,
 
   // Admin
+  actionAdminAll,
   actionAdmin: (actionId: number | null) =>
-    ["actionsFindOneAdmin", actionId] as const,
+    [...actionAdminAll(), actionId] as const,
   actionCompletionCurvesAdminAll,
   actionCompletionCurvesAdmin: (granularity: string) =>
     [...actionCompletionCurvesAdminAll(), granularity] as const,

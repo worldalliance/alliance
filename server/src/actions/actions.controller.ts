@@ -40,6 +40,10 @@ import { ActionFormLinksService } from "./action-form-links.service";
 import { ActionImportExportService } from "./action-import-export.service";
 import { ActionParticipantsService } from "./action-participants.service";
 import { ActionRelationsService } from "./action-relations.service";
+import {
+  ActionResponseCountsService,
+  NO_RESPONSES,
+} from "./action-response-counts.service";
 import { ActionShareService } from "./action-share.service";
 import { ActionSuitesService } from "./action-suites.service";
 import { ActionSuspensionService } from "./action-suspension.service";
@@ -63,7 +67,8 @@ import {
   SetPriorityDto,
   UpdateActionDto,
 } from "./dto/action.dto";
-import { AdminActionDto, AdminActionListItemDto } from "./dto/admin-action.dto";
+import { AdminActionListItemDto } from "./dto/admin-action-list-item.dto";
+import { AdminActionDto } from "./dto/admin-action.dto";
 import { CommunityCompletedActionsCountDto } from "./dto/community-completed-actions-count.dto";
 import { ScheduledPlansOverviewDto } from "./dto/scheduled-plans.dto";
 import { ShareUrlDto, ShareUrlStatsDto } from "./dto/share-url.dto";
@@ -76,6 +81,7 @@ import { WelcomeQueueService } from "./welcome-queue.service";
 export class ActionsController {
   constructor(
     private readonly actionsService: ActionsService,
+    private readonly actionResponseCountsService: ActionResponseCountsService,
     private readonly actionActivityService: ActionActivityService,
     private readonly memberActions: MemberActionsService,
     private readonly participants: ActionParticipantsService,
@@ -123,14 +129,24 @@ export class ActionsController {
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [AdminActionListItemDto] })
   async findAllWithDraftsAdmin(): Promise<AdminActionListItemDto[]> {
-    const actions = await this.actionsService.findAllSorted({
-      events: true,
-      suite: true,
-      reviewers: true,
-      formVariants: true,
-      followUpForms: true,
-    });
-    return actions.map((action) => new AdminActionListItemDto(action));
+    const [actions, responseCounts] = await Promise.all([
+      this.actionsService.findAllSorted({
+        events: true,
+        suite: true,
+        reviewers: true,
+        formVariants: true,
+        followUpForms: true,
+        project: true,
+      }),
+      this.actionResponseCountsService.countByAction(),
+    ]);
+    return actions.map(
+      (action) =>
+        new AdminActionListItemDto({
+          action,
+          responseCounts: responseCounts.get(action.id) ?? NO_RESPONSES,
+        }),
+    );
   }
 
   @Get("communityCompletedActionsCount")
