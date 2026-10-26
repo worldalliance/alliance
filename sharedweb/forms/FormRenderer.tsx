@@ -1,12 +1,5 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import {
-  canSubmitWithdrawal,
-  WITHDRAWAL_OPTION_LABELS,
-  WITHDRAWAL_OPTIONS,
-  withdrawalFlagsFromOption,
-  type WithdrawalOption,
-} from "@alliance/common/actionActivity";
-import {
   deviceVisibilityTargetSchema,
   type DeviceVisibilityTarget,
 } from "@alliance/common/forms/device";
@@ -86,14 +79,6 @@ import {
   useVisibilityValidatorResults,
 } from "@alliance/shared/useFormRenderer";
 import UploadingWithCancel from "@alliance/sharedweb/ui/UploadingWithCancel";
-import {
-  CircleDashed,
-  Clock,
-  Ellipsis,
-  Scale,
-  TreePalm,
-  type LucideIcon,
-} from "lucide-react";
 import React, {
   useCallback,
   useEffect,
@@ -101,14 +86,12 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useNavigate, useSearchParams } from "react-router";
-import { useOutsideClick } from "../../sharedweb/lib/useOutsideClick";
+import { useSearchParams } from "react-router";
 import BaseButton, {
   BaseButtonSize,
   BaseButtonVariant,
 } from "../ui/BaseButton";
 import ConfettiWrapper from "../ui/ConfettiWrapper";
-import Dropdown from "../ui/Dropdown";
 import Spinner from "../ui/Spinner";
 import {
   useFormPageDurationTracking,
@@ -117,12 +100,7 @@ import {
 import RenderDisplayBlock from "./RenderDisplayBlock";
 import RenderField from "./RenderField";
 import { variableInputsGateView } from "./variableInputsGateView";
-
-const WITHDRAWAL_OPTION_ICONS: Record<WithdrawalOption, LucideIcon> = {
-  out_of_time: Clock,
-  moral: Scale,
-  other: CircleDashed,
-};
+import WithdrawalMenu from "./WithdrawalMenu";
 
 type FormRendererProps = {
   form: FormSchema;
@@ -406,13 +384,6 @@ const FormRenderer = ({
     outputFieldIds,
   ]);
 
-  // Dropdown state for "decline to participate" options
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [withdrawalOption, setWithdrawalOption] =
-    useState<WithdrawalOption | null>(null);
-  const [customReason, setCustomReason] = useState("");
-  const ref = useOutsideClick(() => setDropdownOpen(false));
-  const navigate = useNavigate();
   const { currentUserLocationLoading, userLocationDisplayValue } =
     useCurrentUserLocation({
       enabled: !!loadCurrentUserLocation && hasUserLocationDisplayBlock,
@@ -859,11 +830,7 @@ const FormRenderer = ({
     await submitCurrentPage();
   };
 
-  const toggleWithdrawalOption = (option: WithdrawalOption) => {
-    setWithdrawalOption((previous) => (previous === option ? null : option));
-  };
-
-  const handleAbandon = (option: WithdrawalOption) => {
+  const handleAbandon = (choice: Omit<ActionWithdrawal, "partialFormData">) => {
     if (formSnapshotId === null) {
       throw new Error(
         "FormRenderer: formSnapshotId is required to abandon a form",
@@ -880,12 +847,7 @@ const FormRenderer = ({
     };
 
     pauseSyncing();
-    onAbandonAction?.({
-      ...withdrawalFlagsFromOption(option),
-      reason: customReason.trim(),
-      partialFormData: submissionPayload,
-    });
-    setDropdownOpen(false);
+    onAbandonAction?.({ ...choice, partialFormData: submissionPayload });
   };
 
   // Persist progress when enabled
@@ -1304,61 +1266,7 @@ const FormRenderer = ({
           </div>
 
           {onAbandonAction && !readOnly && !publicAction && !followUp && (
-            <div className="relative">
-              <BaseButton onClick={() => setDropdownOpen(!dropdownOpen)}>
-                <Ellipsis size={15} />
-              </BaseButton>
-              <Dropdown
-                isOpen={dropdownOpen}
-                className="absolute top-[100%] right-0 gap-y-2 *:w-full w-[300px]"
-                ref={ref}
-              >
-                <p className="mb-1 text-center">Withdrawal options</p>
-                {WITHDRAWAL_OPTIONS.map((option) => (
-                  <React.Fragment key={option}>
-                    <BaseButton
-                      className={cn(
-                        "justify-start",
-                        withdrawalOption === option && "bg-zinc-100",
-                      )}
-                      iconLeft={WITHDRAWAL_OPTION_ICONS[option]}
-                      onClick={() => toggleWithdrawalOption(option)}
-                    >
-                      {WITHDRAWAL_OPTION_LABELS[option]}
-                    </BaseButton>
-                    {option === "moral" && (
-                      <BaseButton
-                        className="justify-start"
-                        iconLeft={TreePalm}
-                        onClick={() => navigate("/membership#away-periods")}
-                      >
-                        On vacation
-                      </BaseButton>
-                    )}
-                  </React.Fragment>
-                ))}
-                {withdrawalOption !== null && (
-                  <>
-                    <textarea
-                      className="w-full h-20 border border-gray-300 rounded-md px-3 py-2 bg-white"
-                      value={customReason}
-                      onChange={(e) => setCustomReason(e.target.value)}
-                      placeholder="Explain in more detail..."
-                    />
-                    <BaseButton
-                      variant={BaseButtonVariant.Black}
-                      onClick={() => handleAbandon(withdrawalOption)}
-                      disabled={
-                        submitting ||
-                        !canSubmitWithdrawal(withdrawalOption, customReason)
-                      }
-                    >
-                      Withdraw
-                    </BaseButton>
-                  </>
-                )}
-              </Dropdown>
-            </div>
+            <WithdrawalMenu disabled={submitting} onWithdraw={handleAbandon} />
           )}
         </div>
       </form>
