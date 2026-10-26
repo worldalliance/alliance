@@ -1,10 +1,19 @@
 import { milliseconds } from "date-fns";
+import { ActionUpdateRecognitionService } from "src/actions/action-update-recognition.service";
 import {
   ActionEvent,
   ActionStatus,
 } from "src/actions/entities/action-event.entity";
+import {
+  ActionUpdate,
+  ActionUpdateNotificationMode,
+} from "src/actions/entities/action-update.entity";
 import { Action, VisibilityMode } from "src/actions/entities/action.entity";
 import { ContractService } from "src/contract/contract.service";
+import {
+  UnreadContent,
+  UnreadContentType,
+} from "src/notifs/entities/unread-content.entity";
 import request from "supertest";
 import { createTestApp, TestContext } from "./e2e-test-utils";
 
@@ -261,6 +270,80 @@ describe("Action update visibility (e2e)", () => {
         .expect(200);
 
       expect(rewritten.body.visibleAt).toBe(update.date);
+    });
+
+    it("moves a scheduled update's publish time with its date", async () => {
+      const update = await createUpdate("Re-dated", futureDate());
+      await writeContent(update.id, update.schemaSnapshotId);
+
+      const later = new Date(Date.now() + milliseconds({ hours: 2 }));
+      expect((await setDate(update.id, later)).body.visibleAt).toBe(
+        later.toISOString(),
+      );
+
+      const past = new Date(Date.now() - milliseconds({ hours: 1 }));
+      const moved = await setDate(update.id, past);
+      expect(new Date(moved.body.visibleAt).getTime()).toBeLessThanOrEqual(
+        Date.now(),
+      );
+      expect(await memberUpdateIds()).toContain(update.id);
+    });
+
+    const notifiedAhead = async (mode: ActionUpdateNotificationMode) => {
+      const created = await request(ctx.app.getHttpServer())
+        .post(`/actions/createUpdate/${testAction.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          title: "Notified ahead",
+          shortNotifString: "something happened",
+          date: futureDate().toISOString(),
+          notifyType: "all_members",
+        })
+        .expect(201);
+      const id: number = created.body.id;
+      await ctx.dataSource
+        .getRepository(ActionUpdate)
+        .update(id, { notificationMode: mode });
+      await writeContent(id, created.body.schemaSnapshotId);
+      await request(ctx.app.getHttpServer())
+        .post(`/actions/updates/${id}/notify`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+      return id;
+    };
+
+    const sendTimesOf = async (id: number) =>
+      (
+        await ctx.dataSource.getRepository(UnreadContent).findBy({
+          contentType: UnreadContentType.ActionUpdate,
+          contentId: id,
+        })
+      ).map((entry) => entry.sendTime.getTime());
+
+    it("moves the queued notifications with the date", async () => {
+      const id = await notifiedAhead(ActionUpdateNotificationMode.Legacy);
+      expect((await sendTimesOf(id)).length).toBeGreaterThan(0);
+
+      const later = new Date(Date.now() + milliseconds({ hours: 2 }));
+      await setDate(id, later);
+      expect(new Set(await sendTimesOf(id))).toEqual(
+        new Set([later.getTime()]),
+      );
+
+      await setDate(id, new Date(Date.now() - milliseconds({ hours: 1 })));
+      for (const sendTime of await sendTimesOf(id)) {
+        expect(sendTime).toBeLessThanOrEqual(Date.now());
+      }
+    });
+
+    it("sends a recognition update once its date moves into the past", async () => {
+      const id = await notifiedAhead(ActionUpdateNotificationMode.Normal);
+      expect(await sendTimesOf(id)).toEqual([]);
+
+      await setDate(id, new Date(Date.now() - milliseconds({ hours: 1 })));
+      await ctx.app.get(ActionUpdateRecognitionService).prepareDue(new Date());
+
+      expect((await sendTimesOf(id)).length).toBeGreaterThan(0);
     });
   });
 });

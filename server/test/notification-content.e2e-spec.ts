@@ -702,7 +702,6 @@ describe("Notification content stability (e2e)", () => {
       const update = await createUpdate(shows, "Sent while hidden");
       const actions = ctx.app.get(ActionsService);
       await actions.unpublishActionUpdateUntilDate(update.id);
-      await actions.updateActionUpdate(update.id, { date: new Date() });
 
       const row = await send(
         await ctx.dataSource
