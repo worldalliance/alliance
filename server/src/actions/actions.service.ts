@@ -11,14 +11,7 @@ import {
   expressionHasLeaf,
   type CohortExpression,
 } from "@alliance/common/cohort-expression";
-import {
-  displayOnlySchema,
-  displayOnlySchemaError,
-  displayOnlyToFormSchema,
-  emptyDisplayOnlySchema,
-  type DisplayOnlySchema,
-} from "@alliance/common/forms/display-only-schema";
-import { validateFormSchema } from "@alliance/common/forms/form-schema-validate";
+import { emptyDisplayOnlySchema } from "@alliance/common/forms/display-only-schema";
 import { echoesStoredKey } from "@alliance/common/image-src";
 import { run } from "@alliance/common/run";
 import { Assert } from "@alliance/common/types";
@@ -223,7 +216,7 @@ import {
   assertNotAPrerequisite,
   assertPrerequisitesValid,
 } from "./prerequisite-validation";
-import { SCHEMA_WRITE_TARGETS } from "./schema-write-target";
+import { SchemaWriteService } from "./schema-write.service";
 import { SingleMemberCohortService } from "./single-member-cohort.service";
 import { assertNotInStaffPreview } from "./staff-preview";
 import { resolveUserActionPillStatus } from "./user-action-pill-status";
@@ -321,6 +314,7 @@ export class ActionsService {
     private readonly prerequisiteProgressService: PrerequisiteProgressService,
     private readonly participants: ActionParticipantsService,
     private readonly recognitionPreview: ActionUpdateRecognitionPreviewService,
+    private readonly schemaWrite: SchemaWriteService,
   ) {}
 
   async applyAssignedFormIds(
@@ -1169,64 +1163,6 @@ export class ActionsService {
     });
   }
 
-  private parseDisplayOnlySchemaOrThrow(schema: unknown): DisplayOnlySchema {
-    const parsed = displayOnlySchema.safeParse(schema);
-    if (!parsed.success) {
-      throw new BadRequestException(displayOnlySchemaError(parsed.error));
-    }
-    // displayOnlySchema accepts empty images blocks; semantic validation rejects
-    // them before updates are saved.
-    const errors = validateFormSchema(displayOnlyToFormSchema(parsed.data));
-    if (errors.length > 0) {
-      throw new BadRequestException({
-        message: "Invalid form schema",
-        errors,
-      });
-    }
-    return parsed.data;
-  }
-
-  // The expected snapshot id is required, not optional: an unguarded schema
-  // write is exactly the silent overwrite this path exists to reject.
-  private async writeSchemaOrThrow(params: {
-    owner: SnapshotHistoryOwner;
-    id: number;
-    schema: unknown;
-    expectedSchemaSnapshotId: number;
-    em: EntityManager;
-  }): Promise<{ snapshotId: number; schema: DisplayOnlySchema }> {
-    const { owner, id, expectedSchemaSnapshotId, em } = params;
-    const target = SCHEMA_WRITE_TARGETS[owner];
-    if (!target) {
-      throw new Error(`${owner} has no editable display-only schema`);
-    }
-    const schema = this.parseDisplayOnlySchemaOrThrow(params.schema);
-    const snapshot = await this.formSnapshotService.findOrCreate(schema, em);
-
-    const result = await em
-      .createQueryBuilder()
-      .update(target.entity)
-      .set({ schemaSnapshotId: snapshot.id })
-      .where("id = :id", { id })
-      .andWhere('"schemaSnapshotId" = :expectedSchemaSnapshotId', {
-        expectedSchemaSnapshotId,
-      })
-      .execute();
-
-    if (result.affected === 0) {
-      throw new ConflictException(target.conflictMessage);
-    }
-
-    await this.formSnapshotService.recordHistorical({
-      owner,
-      ownerId: id,
-      snapshotId: snapshot.id,
-      em,
-    });
-
-    return { snapshotId: snapshot.id, schema };
-  }
-
   async createGeneralUpdate(
     dto: CreateGeneralUpdateDto,
   ): Promise<GeneralUpdate> {
@@ -1308,7 +1244,7 @@ export class ActionsService {
         const generalUpdate = await this.findOneGeneralUpdate(id, em);
 
         if (schemaWrite) {
-          const written = await this.writeSchemaOrThrow({
+          const written = await this.schemaWrite.writeSchemaOrThrow({
             owner: SnapshotHistoryOwner.GeneralUpdate,
             id,
             ...schemaWrite,
@@ -2374,7 +2310,7 @@ export class ActionsService {
       }
 
       if (schemaWrite) {
-        const written = await this.writeSchemaOrThrow({
+        const written = await this.schemaWrite.writeSchemaOrThrow({
           owner: SnapshotHistoryOwner.ActionUpdate,
           id,
           ...schemaWrite,

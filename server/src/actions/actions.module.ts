@@ -89,6 +89,7 @@ import { HomeFeedService } from "./home-feed.service";
 import { ProjectsController } from "./projects.controller";
 import { ProjectsService } from "./projects.service";
 import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
+import { SchemaWriteService } from "./schema-write.service";
 import { TaskBadgeService } from "./task-badge.service";
 
 @Module({
@@ -189,6 +190,7 @@ import { TaskBadgeService } from "./task-badge.service";
     ActivityLikeService,
     ActionSuspensionService,
     ActionShareService,
+    SchemaWriteService,
   ],
   exports: [
     ActionsService,
