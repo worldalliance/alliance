@@ -1,5 +1,6 @@
 import { type FormSchema } from "@alliance/common/forms/form-schema";
 import { type FormResponseDto, type UserDto } from "@alliance/shared/client";
+import { usePreviousAnswerSources } from "@alliance/shared/forms/usePreviousAnswerSources";
 import {
   aggregateTarget,
   useVariableAggregates,
@@ -11,7 +12,6 @@ import {
 import { useVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
 import {
   useCurrentUserLocation,
-  usePreviousAnswerSources,
   useVisibilityValidatorResults,
 } from "@alliance/shared/useFormRenderer";
 

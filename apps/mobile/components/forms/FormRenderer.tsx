@@ -13,6 +13,7 @@ import {
   resolveFormValue,
   type SetFieldValue,
 } from "@alliance/shared/forms/formValueUpdater";
+import { usePreviousAnswerSources } from "@alliance/shared/forms/usePreviousAnswerSources";
 import {
   aggregateTarget,
   useVariableAggregates,
@@ -32,7 +33,6 @@ import {
   useFormSchemaMaps,
   useFormValidation,
   useFormVisibility,
-  usePreviousAnswerSources,
   useRandomizationKey,
   useVisibilityValidatorResults,
 } from "@alliance/shared/useFormRenderer";
