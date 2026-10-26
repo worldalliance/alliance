@@ -5,8 +5,13 @@ import type {
   UserAdminDetailDto,
 } from "@alliance/shared/client/types.gen";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { makeTag, makeUser } from "@alliance/shared/lib/testFixtures";
+import {
+  makeProfile,
+  makeTag,
+  makeUser,
+} from "@alliance/shared/lib/testFixtures";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import { userQueryKeys } from "@alliance/shared/lib/user";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -31,6 +36,8 @@ const sam: UserAdminDetailDto = {
   invitedBy: null,
 };
 
+const alex = { ...makeProfile(8), displayName: "Alex", ambassador: true };
+
 const tagDto = makeTag();
 const volunteers = omit(tagDto, ["users"]);
 
@@ -41,6 +48,7 @@ let addTagStatus: number;
 let relations: UserActionRelationsResponseDto;
 let relationsStatus: number;
 let tagSummariesStatus: number;
+let friendsStatus: number;
 let createdActivities: CreateActionActivityDto[];
 let memberRequested: () => void;
 let memberRequest: Promise<void>;
@@ -96,7 +104,10 @@ serveApi(
         return Response.json([]);
       },
       "POST /tasks/formsForUserSID/:userId": () => Response.json([]),
-      "GET /user/listfriends/:id": () => Response.json([]),
+      "GET /user/listfriends/:id": () =>
+        friendsStatus === 200
+          ? Response.json([alex])
+          : Response.json({}, { status: friendsStatus }),
     },
     // The sections a loaded member renders load their own data.
     () => Response.json({}, { status: 404 }),
@@ -113,6 +124,7 @@ beforeEach(() => {
   relations = { actions: [], suites: [], users: [] };
   relationsStatus = 200;
   tagSummariesStatus = 200;
+  friendsStatus = 200;
   createdActivities = [];
   memberRequest = new Promise((resolve) => {
     memberRequested = resolve;
@@ -399,6 +411,39 @@ it("keeps cached tags it could not refresh and says so", async () => {
     ),
   ).toBeTruthy();
   expect(volunteersBox()).toBeTruthy();
+});
+
+it("lists the member's friends with their status", async () => {
+  detailStatus = 200;
+  renderPage();
+
+  expect(await screen.findByText("Friends (1)")).toBeTruthy();
+  expect(screen.getByRole("link", { name: /Alex/ }).getAttribute("href")).toBe(
+    "/member/8",
+  );
+  expect(screen.getByText("Signed · Ambassador")).toBeTruthy();
+});
+
+it("says when the friends fail to load", async () => {
+  detailStatus = 200;
+  friendsStatus = 500;
+  renderPage();
+
+  expect(await screen.findByText("Failed to load friends")).toBeTruthy();
+});
+
+it("keeps cached friends it could not refresh and says so", async () => {
+  detailStatus = 200;
+  friendsStatus = 500;
+  queryClient.setQueryData(userQueryKeys.friends(7), [alex]);
+  renderPage();
+
+  expect(
+    await screen.findByText(
+      "Could not refresh friends. Reload to see the latest.",
+    ),
+  ).toBeTruthy();
+  expect(screen.getByText("Friends (1)")).toBeTruthy();
 });
 
 it("says when the member's actions fail to load", async () => {
