@@ -44,10 +44,12 @@ import { ActionShareService } from "./action-share.service";
 import { ActionStatsService } from "./action-stats.service";
 import { ActionSuitesController } from "./action-suites.controller";
 import { ActionSuspensionService } from "./action-suspension.service";
+import { ActionUpdateNotifyService } from "./action-update-notify.service";
 import { ActionUpdateRecognitionPreviewService } from "./action-update-recognition-preview.service";
 import { ActionUpdateRecognitionService } from "./action-update-recognition.service";
 import { ActionUpdateRecognitionWorker } from "./action-update-recognition.worker";
 import { ActionUpdatesController } from "./action-updates.controller";
+import { ActionUpdatesService } from "./action-updates.service";
 import { ActionVisibilityModule } from "./action-visibility.module";
 import { ActionsController } from "./actions.controller";
 import { ActionsGateway } from "./actions.gateway";
@@ -193,6 +195,8 @@ import { TaskBadgeService } from "./task-badge.service";
     ActionShareService,
     SchemaWriteService,
     GeneralUpdatesService,
+    ActionUpdatesService,
+    ActionUpdateNotifyService,
   ],
   exports: [
     ActionsService,

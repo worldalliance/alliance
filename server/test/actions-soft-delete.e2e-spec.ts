@@ -5,6 +5,7 @@ import { ActionPartnershipsModule } from "src/action-partnerships/action-partner
 import { ActionPartnershipsService } from "src/action-partnerships/action-partnerships.service";
 import { ActionPartnershipResponse } from "src/action-partnerships/entities/action-partnership-response.entity";
 import { ActionFormVariantService } from "src/actions/action-form-variant.service";
+import { ActionUpdatesService } from "src/actions/action-updates.service";
 import { ActionsService } from "src/actions/actions.service";
 import { CreateActionDto } from "src/actions/dto/action.dto";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
@@ -70,6 +71,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
   let ctx: TestContext;
   let actions: ActionsService;
   let generalUpdates: GeneralUpdatesService;
+  let actionUpdates: ActionUpdatesService;
   let actionRepo: Repository<Action>;
 
   const createAction = (name = "Parent action") =>
@@ -114,6 +116,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
     ctx = await createTestApp([TasksModule, ActionPartnershipsModule]);
     actions = ctx.app.get(ActionsService);
     generalUpdates = ctx.app.get(GeneralUpdatesService);
+    actionUpdates = ctx.app.get(ActionUpdatesService);
     actionRepo = ctx.dataSource.getRepository(Action);
   });
 
@@ -166,7 +169,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
       );
 
     await expect(
-      actions.createActionUpdate(action.id, {
+      actionUpdates.createActionUpdate(action.id, {
         title: "News",
         date: new Date(),
         notifyType: ActionUpdateNotifyType.None,
@@ -936,7 +939,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
 
   it("refuses to point an update at a deleted tag", async () => {
     const action = await createAction();
-    const update = await actions.createActionUpdate(action.id, {
+    const update = await actionUpdates.createActionUpdate(action.id, {
       title: "News",
       date: new Date(),
       notifyType: ActionUpdateNotifyType.None,
@@ -950,7 +953,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
     await tags.softDelete(tag.id);
 
     await expect(
-      actions.updateActionUpdate(update.id, { tagId: tag.id }),
+      actionUpdates.updateActionUpdate(update.id, { tagId: tag.id }),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(
       await ctx.dataSource.getRepository(ActionUpdate).findOneOrFail({
@@ -969,7 +972,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
       date: new Date(),
       action,
     });
-    const update = await actions.createActionUpdate(action.id, {
+    const update = await actionUpdates.createActionUpdate(action.id, {
       title: "News",
       date: new Date(),
       notifyType: ActionUpdateNotifyType.None,
@@ -982,7 +985,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
       await runner.query(`SELECT 1 FROM action WHERE id = $1 FOR UPDATE`, [
         action.id,
       ]);
-      const saved = actions.updateActionUpdate(update.id, {
+      const saved = actionUpdates.updateActionUpdate(update.id, {
         associatedEventId: event.id,
       });
       await waitForLockWait(ctx.dataSource);

@@ -1,6 +1,7 @@
 import { Logger } from "@nestjs/common";
 import request from "supertest";
 import { Like, type Repository } from "typeorm";
+import { ActionUpdateNotifyService } from "../src/actions/action-update-notify.service";
 import { ActionsService } from "../src/actions/actions.service";
 import { CohortDecisionService } from "../src/actions/cohort-decision.service";
 import type { ActionDto } from "../src/actions/dto/action.dto";
@@ -256,7 +257,9 @@ describe("Member-facing reads of cohort decisions (e2e)", () => {
         notificationMode: ActionUpdateNotificationMode.Legacy,
         schemaSnapshotId: snapshot.id,
       });
-      await ctx.app.get(ActionsService).notifyActionUpdate(update.id);
+      await ctx.app
+        .get(ActionUpdateNotifyService)
+        .notifyActionUpdate(update.id);
       return (
         await ctx.dataSource.getRepository(UnreadContent).find({
           where: {

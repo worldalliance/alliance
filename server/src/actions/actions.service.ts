@@ -11,14 +11,12 @@ import {
   expressionHasLeaf,
   type CohortExpression,
 } from "@alliance/common/cohort-expression";
-import { emptyDisplayOnlySchema } from "@alliance/common/forms/display-only-schema";
 import { echoesStoredKey } from "@alliance/common/image-src";
 import { run } from "@alliance/common/run";
 import { Assert } from "@alliance/common/types";
 import { describeSchemaIssues } from "@alliance/common/zod-issues";
 import {
   BadRequestException,
-  ConflictException,
   ForbiddenException,
   forwardRef,
   Inject,
@@ -28,7 +26,7 @@ import {
 } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
-import { max, milliseconds } from "date-fns";
+import { milliseconds } from "date-fns";
 import { groupBy } from "es-toolkit";
 import { CommunityService } from "src/community/community.service";
 import {
@@ -52,14 +50,10 @@ import {
   NOTIFICATION_LOOKBACK_WINDOW_MS,
 } from "src/notifs/action-event-reminder.service";
 import { NotificationPlan } from "src/notifs/dto/notification-plan.dto";
-import { NotifsService } from "src/notifs/notifs.service";
 import { ReminderGroupService } from "src/notifs/reminder-group.service";
 import { PosthogService } from "src/posthog/posthog.service";
-import { displayOnlySchemaOf } from "src/tasks/display-only-snapshot";
 import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
-import { SnapshotHistoryOwner } from "src/tasks/entities/formsnapshot.entity";
-import { FormSnapshotService } from "src/tasks/formsnapshot.service";
 import {
   UserActionRelationDetail,
   UserActionRelationPillStatus,
@@ -68,7 +62,6 @@ import {
   UserActionSummary,
 } from "src/user/dto/user-action-relations.dto";
 import { sqlUserHasEverSigned } from "src/user/entities/contract-event.entity";
-import { loadedTagUsers, Tag } from "src/user/entities/tag.entity";
 import { User } from "src/user/entities/user.entity";
 import {
   ActionAssignment,
@@ -84,14 +77,7 @@ import type {
   Relations,
   Repository as TypedRepository,
 } from "src/utils/Repository";
-import {
-  DeepPartial,
-  EntityManager,
-  ILike,
-  In,
-  type Repository,
-} from "typeorm";
-import { TagService } from "../user/tag.service";
+import { DeepPartial, ILike, In, type Repository } from "typeorm";
 import { UserService } from "../user/user.service";
 import {
   findLatestTerminalActivity,
@@ -103,19 +89,7 @@ import {
 import { ActionFormVariantService } from "./action-form-variant.service";
 import { ActionParticipantsService } from "./action-participants.service";
 import { replaceReviewers } from "./action-reviewers";
-import {
-  readRecognitionConfig,
-  usesRecognition,
-  type RecognitionPreviewCounts,
-} from "./action-update-recognition";
-import { ActionUpdateRecognitionPreviewService } from "./action-update-recognition-preview.service";
-import { ActionUpdateRecognitionService } from "./action-update-recognition.service";
-import {
-  actionUpdateEntrySendTime,
-  checkActionShowsWhenEntriesArrive,
-  isActionUpdatePublished,
-  publishedActionUpdateWhere,
-} from "./action-update-visibility";
+import { isActionUpdatePublished } from "./action-update-visibility";
 import { ActionVisibilityService } from "./action-visibility.service";
 import { CohortAdmissionService } from "./cohort-admission.service";
 import { readsSavedDecisions } from "./cohort-decision";
@@ -138,10 +112,6 @@ import {
 } from "./dto/action-event.dto";
 import { ActionReviewerDto } from "./dto/action-reviewer.dto";
 import { CreateActionSuiteDto } from "./dto/action-suite.dto";
-import {
-  CreateActionUpdateDto,
-  UpdateActionUpdateDto,
-} from "./dto/action-update.dto";
 import {
   ActionDto,
   CreateActionDto,
@@ -174,12 +144,6 @@ import {
   type ParsedActionSuite,
 } from "./entities/action-suite.entity";
 import {
-  ActionUpdate,
-  ActionUpdateNotificationMode,
-  ActionUpdateNotifyType,
-  lockActionUpdateRow,
-} from "./entities/action-update.entity";
-import {
   Action,
   loadedActionEvents,
   loadedActionFollowUpForms,
@@ -200,7 +164,6 @@ import {
   assertPrerequisitesValid,
 } from "./prerequisite-validation";
 import { shiftPrioritiesAfterInsertion } from "./priority-order";
-import { SchemaWriteService } from "./schema-write.service";
 import { SingleMemberCohortService } from "./single-member-cohort.service";
 import { assertNotInStaffPreview } from "./staff-preview";
 import { resolveUserActionPillStatus } from "./user-action-pill-status";
@@ -260,10 +223,6 @@ export class ActionsService {
     private readonly editableContentRepository: TypedRepository<EditableContent>,
     @InjectRepository(GeneralUpdate)
     private readonly generalUpdateRepository: Repository<GeneralUpdate>,
-    @InjectRepository(Tag)
-    private readonly tagRepository: Repository<Tag>,
-    @InjectRepository(ActionUpdate)
-    private readonly actionUpdateRepository: Repository<ActionUpdate>,
     @InjectRepository(ActionSuite)
     private readonly actionSuiteRepository: Repository<ActionSuite>,
     @InjectRepository(Form)
@@ -275,18 +234,14 @@ export class ActionsService {
     @InjectRepository(ActionFormVariant)
     private readonly actionFormVariantRepository: Repository<ActionFormVariant>,
     private userService: UserService,
-    private readonly tagService: TagService,
     public eventEmitter: EventEmitter2,
     private readonly communityService: CommunityService,
-    private readonly notifsService: NotifsService,
-    private readonly recognitionService: ActionUpdateRecognitionService,
     private readonly cohortResolverService: CohortResolverService,
     private readonly actionEventReminderService: ActionEventReminderService,
     private readonly reminderGroupService: ReminderGroupService,
     private readonly eventLogService: EventLogService,
     @Inject(forwardRef(() => ActionFormVariantService))
     private readonly actionFormVariantService: ActionFormVariantService,
-    private readonly formSnapshotService: FormSnapshotService,
     private readonly posthogService: PosthogService,
     private readonly cohortDecisionStaffService: CohortDecisionStaffService,
     private readonly singleMemberCohortService: SingleMemberCohortService,
@@ -295,8 +250,6 @@ export class ActionsService {
     private readonly actionVisibility: ActionVisibilityService,
     private readonly prerequisiteProgressService: PrerequisiteProgressService,
     private readonly participants: ActionParticipantsService,
-    private readonly recognitionPreview: ActionUpdateRecognitionPreviewService,
-    private readonly schemaWrite: SchemaWriteService,
     private readonly generalUpdates: GeneralUpdatesService,
   ) {}
 
@@ -1707,472 +1660,6 @@ export class ActionsService {
         relations: { reviewers: true, events: true, followUpForms: true },
       }),
     );
-  }
-
-  async createActionUpdate(
-    id: number,
-    createActionUpdateDto: CreateActionUpdateDto,
-  ): Promise<ActionUpdate> {
-    const action = await this.actionRepository.findOneOrFail({
-      where: { id },
-    });
-    const emptySnapshot = await this.formSnapshotService.findOrCreate(
-      emptyDisplayOnlySchema(),
-    );
-
-    let tag: Tag | undefined = undefined;
-    if (createActionUpdateDto.tagId) {
-      tag = await this.tagRepository.findOneOrFail({
-        where: { id: createActionUpdateDto.tagId },
-      });
-    }
-
-    let associatedEvent: ActionEvent | undefined = undefined;
-    if (createActionUpdateDto.associatedEventId) {
-      associatedEvent = await this.actionEventRepository.findOneOrFail({
-        where: { id: createActionUpdateDto.associatedEventId },
-      });
-    }
-
-    const actionUpdate = await writeUnderLive(
-      this.actionUpdateRepository.manager,
-      {
-        parents: [
-          { target: Action, id: action.id, notFound: "Action not found" },
-          ...(tag ? [{ target: Tag, id: tag.id }] : []),
-          ...(associatedEvent
-            ? [{ target: ActionEvent, id: associatedEvent.id }]
-            : []),
-        ],
-        write: (em) =>
-          em.save(
-            em.create(ActionUpdate, {
-              ...createActionUpdateDto,
-              notificationMode: ActionUpdateNotificationMode.Normal,
-              schemaSnapshotId: emptySnapshot.id,
-              visibleAt: null,
-              action,
-              tag,
-              associatedEvent,
-            }),
-          ),
-      },
-    );
-
-    await this.formSnapshotService.recordHistorical({
-      owner: SnapshotHistoryOwner.ActionUpdate,
-      ownerId: actionUpdate.id,
-      snapshotId: emptySnapshot.id,
-    });
-
-    // `notifyType` is only the plan here — the update is created empty, so
-    // dispatching now would notify members about a body nobody has written yet.
-    // It stays unpublished (`visibleAt` null) until the body is written, and
-    // `notifyActionUpdate` sends it from the editor after that.
-    return this.findOneActionUpdate(actionUpdate.id);
-  }
-
-  /**
-   * Sends the notification an update was created with, after its body exists.
-   * Once-only: the claim on `notifiedAt` is what makes a double-click, or two
-   * admins on the same update, send one notification rather than two.
-   */
-  async notifyActionUpdate(id: number): Promise<ActionUpdate> {
-    const actionUpdate = await this.findOneActionUpdate(id);
-    const schema = displayOnlySchemaOf({
-      owner: "ActionUpdate",
-      ownerId: actionUpdate.id,
-      snapshot: actionUpdate.schemaSnapshot,
-    });
-
-    if (actionUpdate.notifyType === ActionUpdateNotifyType.None) {
-      throw new BadRequestException(
-        "This update has no notification audience set.",
-      );
-    }
-    if (schema.blocks.length === 0) {
-      throw new BadRequestException(
-        "Write the update body before sending the notification.",
-      );
-    }
-    if (actionUpdate.notifiedAt) {
-      throw new ConflictException(
-        "This update has already been notified about.",
-      );
-    }
-    await this.assertActionShowsWhenEntriesArrive(actionUpdate);
-
-    // Resolve the audience before claiming: a failure here (a deleted tag, say)
-    // has sent nothing, and leaving the claim unset keeps the retry open.
-    const recipients = await this.findActionUpdateNotifRecipients(actionUpdate);
-    const recognition = usesRecognition(actionUpdate.notificationMode);
-    if (recognition) {
-      const config = readRecognitionConfig(actionUpdate);
-      if (!config.ok) throw new BadRequestException(config.error);
-    }
-
-    // The claim and the sends commit together. The claim is the only thing
-    // standing between a retry and a second notification, so committing it
-    // before the rows exist would let a crash partway through leave most of the
-    // audience unnotified and unreachable: the retry would see the claim and
-    // conflict.
-    await this.actionUpdateRepository.manager.transaction(async (em) => {
-      // An archive of the action waits until the sends commit. Locking the
-      // action before the update matches the order deleting an action takes.
-      const lockedActions: unknown[] = await em.query(
-        'SELECT id FROM action WHERE id = $1 AND "deletedAt" IS NULL FOR SHARE',
-        [actionUpdate.actionId],
-      );
-      if (lockedActions.length === 0) {
-        throw new NotFoundException("This update's action has been deleted.");
-      }
-
-      const claimed = await em
-        .createQueryBuilder()
-        .update(ActionUpdate)
-        .set({ notifiedAt: new Date() })
-        .where("id = :id", { id })
-        .andWhere('"notifiedAt" IS NULL')
-        .execute();
-
-      if (claimed.affected === 0) {
-        throw new ConflictException(
-          "This update has already been notified about.",
-        );
-      }
-
-      // The claim holds the row lock, so this reads the update as of any
-      // edit or unpublish that committed first.
-      const claimedUpdate = await em.findOneBy(ActionUpdate, { id });
-      if (!claimedUpdate) {
-        throw new NotFoundException("This update has been deleted.");
-      }
-      await this.assertActionShowsWhenEntriesArrive(claimedUpdate, em);
-      if (recognition) {
-        await this.recognitionService.recordAudience({
-          em,
-          actionUpdateId: id,
-          userIds: recipients.map((user) => user.id),
-        });
-      } else {
-        await this.notifsService.createActionUpdateNotifs({
-          actionUpdate: claimedUpdate,
-          users: recipients,
-          em,
-        });
-      }
-    });
-
-    if (recognition) {
-      // The send is already claimed and the cron retries preparing it, so a
-      // failure here mustn't report the send itself as failed.
-      await this.recognitionService
-        .prepare(id, new Date())
-        .catch((error: unknown) =>
-          this.logger.error(`preparing action update ${id} failed`, error),
-        );
-    }
-    return this.findOneActionUpdate(id);
-  }
-
-  private async assertActionShowsWhenEntriesArrive(
-    actionUpdate: ActionUpdate,
-    em: EntityManager = this.actionUpdateRepository.manager,
-  ) {
-    const action = await em.findOneOrFail(Action, {
-      where: { id: actionUpdate.actionId },
-      relations: { events: true },
-    });
-    const check = checkActionShowsWhenEntriesArrive({
-      action: { archived: action.archived, events: loadedActionEvents(action) },
-      actionUpdate,
-      now: new Date(),
-    });
-    if (!check.ok) {
-      throw new BadRequestException(check.error);
-    }
-  }
-
-  private async lockActionUpdate(
-    id: number,
-    em: EntityManager,
-  ): Promise<ActionUpdate> {
-    await lockActionUpdateRow(em, id);
-    return this.findOneActionUpdate(id, em);
-  }
-
-  async findOneActionUpdate(
-    id: number,
-    em?: EntityManager,
-  ): Promise<ActionUpdate> {
-    const manager = em ?? this.actionUpdateRepository.manager;
-    return manager.findOneOrFail(ActionUpdate, {
-      where: { id },
-      relations: {
-        schemaSnapshot: true,
-        action: true,
-        tag: true,
-        associatedEvent: true,
-      },
-    });
-  }
-
-  async updateActionUpdate(
-    id: number,
-    dto: UpdateActionUpdateDto,
-  ): Promise<ActionUpdate> {
-    const {
-      schema,
-      expectedSchemaSnapshotId,
-      tagId,
-      associatedEventId,
-      ...rest
-    } = dto;
-
-    // Guards non-HTTP callers too, where the DTO's `@ValidateIf` never runs.
-    const schemaWrite = run(() => {
-      if (schema === undefined) return null;
-      if (expectedSchemaSnapshotId === undefined) {
-        throw new BadRequestException(
-          "expectedSchemaSnapshotId is required when writing schema",
-        );
-      }
-      return { schema, expectedSchemaSnapshotId };
-    });
-
-    // The freeze takes its own pool connections, so it runs before the
-    // transaction rather than while holding one.
-    if (
-      rest.shortNotifString !== undefined &&
-      rest.shortNotifString !==
-        (await this.actionUpdateRepository.findOneByOrFail({ id }))
-          .shortNotifString
-    ) {
-      await this.notifsService.freezeActionUpdateCopy(id);
-    }
-
-    // Same locking rationale as `updateGeneralUpdate`: `save` writes back every
-    // column that differs from the entity read here, so an unlocked
-    // read-modify-write would revert a concurrent schema save.
-    await this.actionUpdateRepository.manager.transaction(async (em) => {
-      // The action first: deleting it locks the action before any of its
-      // cascades reach the update or event, whichever order those fire in.
-      const { actionId } = await em.findOneByOrFail(ActionUpdate, { id });
-      await assertLive(em, {
-        rows: [
-          { target: Action, id: actionId },
-          ...(tagId == null ? [] : [{ target: Tag, id: tagId }]),
-          ...(associatedEventId == null
-            ? []
-            : [{ target: ActionEvent, id: associatedEventId }]),
-        ],
-        gone: () => new NotFoundException("Action, tag or event not found"),
-      });
-      const actionUpdate = await this.lockActionUpdate(id, em);
-      // Before the schema write, so publishing sees the `date` this request sets.
-      Object.assign(actionUpdate, rest);
-      const now = new Date();
-      if (
-        rest.date !== undefined &&
-        actionUpdate.visibleAt !== null &&
-        actionUpdate.visibleAt > now
-      ) {
-        actionUpdate.visibleAt = max([now, actionUpdate.date]);
-      }
-
-      if (schemaWrite) {
-        const written = await this.schemaWrite.writeSchemaOrThrow({
-          owner: SnapshotHistoryOwner.ActionUpdate,
-          id,
-          ...schemaWrite,
-          em,
-        });
-        actionUpdate.schemaSnapshotId = written.snapshotId;
-        // The loaded relation still holds the previous snapshot, and TypeORM
-        // lets a relation object win over the FK column — leaving it set would
-        // make the `save` below write the old id straight back over the one
-        // just written.
-        actionUpdate.schemaSnapshot = undefined;
-
-        // Writing a body is what publishes the update. Emptying one again
-        // deliberately does not retract it: members may already have seen or
-        // been notified about it, so unpublishing is an explicit act, not a
-        // side effect of clearing the editor.
-        if (actionUpdate.visibleAt === null && written.schema.blocks.length) {
-          actionUpdate.visibleAt = max([now, actionUpdate.date]);
-        }
-      }
-
-      if (tagId !== undefined) {
-        actionUpdate.tag =
-          tagId === null ? null : await em.findOneByOrFail(Tag, { id: tagId });
-      }
-
-      if (associatedEventId !== undefined) {
-        actionUpdate.associatedEvent =
-          associatedEventId === null
-            ? null
-            : await em.findOneByOrFail(ActionEvent, { id: associatedEventId });
-      }
-
-      await em.save(actionUpdate);
-      if (rest.date !== undefined) {
-        await this.notifsService.retimeActionUpdateEntries({
-          em,
-          actionUpdateId: id,
-          sendTime: actionUpdateEntrySendTime(actionUpdate),
-        });
-      }
-    });
-
-    return this.findOneActionUpdate(id);
-  }
-
-  /**
-   * Hides a published update again until its displayed date, for one whose
-   * date was moved later after it published. Moving `visibleAt` up to `date`
-   * lets the `visibleAt <= now` gate republish it when that date arrives.
-   */
-  async unpublishActionUpdateUntilDate(id: number): Promise<ActionUpdate> {
-    // Before the transaction, as in `updateActionUpdate`.
-    await this.notifsService.freezeActionUpdateCopy(id);
-    await this.actionUpdateRepository.manager.transaction(async (em) => {
-      const actionUpdate = await this.lockActionUpdate(id, em);
-      const now = new Date();
-
-      if (actionUpdate.visibleAt === null) {
-        throw new BadRequestException(
-          "This update has not been published yet.",
-        );
-      }
-      if (actionUpdate.date <= now) {
-        throw new BadRequestException(
-          "The displayed date has already passed, so hiding the update until then would leave it visible.",
-        );
-      }
-
-      await em.update(ActionUpdate, id, { visibleAt: actionUpdate.date });
-      await this.notifsService.retimeActionUpdateEntries({
-        em,
-        actionUpdateId: id,
-        sendTime: actionUpdate.date,
-      });
-    });
-
-    return this.findOneActionUpdate(id);
-  }
-
-  /**
-   * Undoes `unpublishActionUpdateUntilDate` before the date it waits for. The
-   * entries it moved to that date stay there.
-   */
-  async publishActionUpdateNow(id: number): Promise<ActionUpdate> {
-    const actionUpdate = await this.findOneActionUpdate(id);
-    const now = new Date();
-
-    if (actionUpdate.visibleAt === null || actionUpdate.visibleAt <= now) {
-      throw new BadRequestException(
-        "This update is not waiting on a future date.",
-      );
-    }
-
-    await this.actionUpdateRepository.update(id, { visibleAt: now });
-
-    return this.findOneActionUpdate(id);
-  }
-
-  async deleteActionUpdate(id: number) {
-    const actionUpdate = await this.actionUpdateRepository.findOneOrFail({
-      where: { id },
-    });
-    await softDeleteCascade(this.actionUpdateRepository.manager, {
-      target: ActionUpdate,
-      ids: [actionUpdate.id],
-    });
-    return actionUpdate;
-  }
-
-  async getActionUpdates(
-    limit?: number,
-    userId?: number,
-  ): Promise<ActionUpdate[]> {
-    const updates = await this.actionUpdateRepository.find({
-      where: publishedActionUpdateWhere(new Date()),
-      order: { date: "DESC" },
-      relations: { action: true, schemaSnapshot: true },
-      select: {
-        action: {
-          name: true,
-        },
-      },
-    });
-    const visibleIds = await this.actionVisibility.visibleActionIdsForUser({
-      actionIds: updates.map((update) => update.actionId),
-      userId,
-    });
-    const visible = updates.filter((update) => visibleIds.has(update.actionId));
-    return limit != null ? visible.slice(0, limit) : visible;
-  }
-
-  private async findActionUpdateNotifRecipients(
-    actionUpdate: ActionUpdate,
-  ): Promise<User[]> {
-    return this.findActionUpdateAudience({
-      actionId: actionUpdate.actionId,
-      notifyType: actionUpdate.notifyType,
-      tagId: actionUpdate.tag?.id ?? null,
-      decideCohort: true,
-    });
-  }
-
-  /** Without `decideCohort`, reads only saved cohort decisions and writes nothing. */
-  private async findActionUpdateAudience(params: {
-    actionId: number;
-    notifyType: ActionUpdateNotifyType;
-    tagId: string | null;
-    decideCohort: boolean;
-  }): Promise<User[]> {
-    const { actionId, notifyType, tagId } = params;
-    switch (notifyType) {
-      case ActionUpdateNotifyType.None:
-        return [];
-      case ActionUpdateNotifyType.ActionCohort: {
-        const action = await this.participants.findParticipantAction(actionId);
-        if (params.decideCohort) {
-          // One send and no retry, so it cannot wait for the pass.
-          await this.cohortDecisionService.decideOpenAction(action, new Date());
-        }
-        const userIds =
-          await this.participants.findParticipantIdsForAction(action);
-        return this.userService.findByIds(userIds);
-      }
-      case ActionUpdateNotifyType.Tag: {
-        if (!tagId) {
-          throw new BadRequestException("Tag is required");
-        }
-        return loadedTagUsers(await this.tagService.findTagOrFail(tagId));
-      }
-      case ActionUpdateNotifyType.AllMembers:
-        return this.userService.findUsersWithActiveContract();
-      default:
-        throw new Error(`unknown notifyType: ${notifyType satisfies never}`);
-    }
-  }
-
-  async previewActionUpdateRecognitionCounts(
-    id: number,
-    audience: { notifyType: ActionUpdateNotifyType; tagId: string | null },
-  ): Promise<RecognitionPreviewCounts> {
-    const { actionId } = await this.findOneActionUpdate(id);
-    const recipients = await this.findActionUpdateAudience({
-      actionId,
-      ...audience,
-      decideCohort: false,
-    });
-    return this.recognitionPreview.counts({
-      actionId,
-      userIds: recipients.map((user) => user.id),
-    });
   }
 
   async findSuites(): Promise<ActionSuite[]> {
