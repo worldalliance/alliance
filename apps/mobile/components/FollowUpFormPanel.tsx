@@ -8,9 +8,9 @@ import {
   followUpDraftStorageKey,
   followUpFormIntro,
   followUpPersistKey,
-  submitFollowUpForm,
 } from "@alliance/shared/lib/followUpForm";
 import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
+import { useTaskFormSubmission } from "@alliance/shared/lib/useTaskFormSubmission";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Alert, View } from "react-native";
@@ -26,7 +26,6 @@ interface FollowUpFormPanelProps {
   actionId: number;
   scrollPageTo: (y: number, animated?: boolean) => void;
   scrollToEnd: (animated?: boolean) => void;
-  onSubmitted?: () => void;
 }
 
 export default function FollowUpFormPanel({
@@ -34,7 +33,6 @@ export default function FollowUpFormPanel({
   actionId,
   scrollPageTo,
   scrollToEnd,
-  onSubmitted,
 }: FollowUpFormPanelProps) {
   const { user, isLoading: userLoading } = useAuth();
   const [error, setError] = useState<string | null>(null);
@@ -47,15 +45,12 @@ export default function FollowUpFormPanel({
     error: formError,
     isPending,
   } = useTaskForm(followUpForm.formId);
+  const { submitFollowUp } = useTaskFormSubmission();
 
   const handleSubmit = useCallback(
     async (data: SubmitFormDto) => {
       setError(null);
-      const submitted = await submitFollowUpForm({
-        followUpFormId: followUpForm.id,
-        actionId,
-        data,
-      });
+      const submitted = await submitFollowUp({ followUpForm, data });
       if (!submitted.ok) {
         if (refetchIfSourcesChanged(submitted.error)) return false;
         setError("Failed to submit. Please try again.");
@@ -71,10 +66,9 @@ export default function FollowUpFormPanel({
       }
       Alert.alert("Response submitted", "Thank you!");
       setFormInstanceKey((k) => k + 1);
-      onSubmitted?.();
       return true;
     },
-    [followUpForm.id, form, actionId, onSubmitted, refetchIfSourcesChanged],
+    [followUpForm, form, submitFollowUp, refetchIfSourcesChanged],
   );
 
   if (isPending) {

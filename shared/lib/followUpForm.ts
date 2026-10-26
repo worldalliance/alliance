@@ -1,20 +1,7 @@
-import { ExceptionEvent } from "@alliance/common/analytics";
 import { isFollowUpFormActive } from "@alliance/common/followUpForm";
-import { R, type Result } from "@alliance/common/result";
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import {
-  tasksSubmitFollowUpForm,
-  type ActionDto,
-  type FollowUpFormDto,
-  type SubmitFormDto,
-} from "../client";
+import type { ActionDto, FollowUpFormDto } from "../client";
 import { computeFormStorageKey } from "../forms/formDrafts";
-import {
-  formulaSourcesChanged,
-  type SubmitResult,
-} from "../forms/formulaChoices";
 import { hasViewerCompletedAction } from "./actionUtils";
-import { captureException } from "./analytics";
 
 export const followUpPersistKey = (followUpFormId: number): string =>
   `follow-up-${followUpFormId}`;
@@ -47,30 +34,4 @@ export function followUpFormIntro(
     followUpForm.instructions != null &&
     followUpForm.instructions.trim() !== "";
   return { title, hasInstructions, shown: hasInstructions || !!title };
-}
-
-export async function submitFollowUpForm({
-  followUpFormId,
-  actionId,
-  data,
-}: {
-  followUpFormId: number;
-  actionId: number;
-  data: SubmitFormDto;
-}): Promise<Result<void, SubmitResult>> {
-  const { actionId: _actionId, ...body } = data;
-  const response = await tasksSubmitFollowUpForm({
-    path: { followUpFormId },
-    body,
-    throwOnError: false,
-  });
-  if (response.response.ok) return R.success(undefined);
-  if (!formulaSourcesChanged(response)) {
-    console.error(response.error);
-    captureException(ExceptionEvent.FollowUpFormSubmitError, response.error, {
-      actionId,
-      followUpFormId,
-    });
-  }
-  return R.failure(response);
 }
