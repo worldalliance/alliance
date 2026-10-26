@@ -6,6 +6,7 @@ import {
   type WithdrawalOption,
 } from "@alliance/common/actionActivity";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
+import { withdrawFromAction } from "@alliance/shared/lib/copy";
 import { cn } from "@alliance/shared/styles/util";
 import { router } from "expo-router";
 import { Fragment, useState } from "react";
@@ -32,7 +33,7 @@ export default function WithdrawalModal({
   return (
     <FormModal visible={visible} onClose={onClose}>
       <Text className="text-lg text-zinc-900 mb-3" weight={FontWeight.Semibold}>
-        Withdraw from action
+        {withdrawFromAction}
       </Text>
       <View className="gap-2 mb-3">
         {WITHDRAWAL_OPTIONS.map((option) => (

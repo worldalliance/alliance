@@ -2,6 +2,7 @@ import {
   cancelAllImageUploads,
   draftSaveFailed,
   waitingForImageUpload,
+  withdrawFromAction,
 } from "@alliance/shared/lib/copy";
 import { CircleCheck, Ellipsis, X } from "lucide-react-native";
 import { ActivityIndicator, TouchableOpacity, View } from "react-native";
@@ -131,6 +132,7 @@ export function FormNavigation({
               onPress={onWithdraw}
               color={ButtonColor.Outline}
               size={ButtonSize.Medium}
+              accessibilityLabel={withdrawFromAction}
             >
               <Ellipsis size={15} />
             </Button>
