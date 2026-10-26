@@ -1,7 +1,7 @@
 import {
   QueryClient,
-  UseQueryOptions,
   UseQueryResult,
+  queryOptions,
   useMutation,
   useQuery,
   useQueryClient,
@@ -22,23 +22,24 @@ import {
 import { thrownRefusalMessage } from "./hey-api";
 import { queryKeys } from "./queryKeys";
 
-export const useActionsQuery = (options?: {
-  refetchInterval?: UseQueryOptions<ActionDto[], Error>["refetchInterval"];
-}): UseQueryResult<ActionDto[], Error> =>
-  useQuery({
-    queryKey: queryKeys.actions(),
-    queryFn: ({ signal }) =>
-      actionsFindAllLoggedIn({
-        query: { sorted: true },
-        throwOnError: true,
-        signal,
-      }).then((response) =>
-        response.data.filter(
-          (action) => action.status !== "draft" || action.viewer?.staffPreview,
-        ),
+export const actionsQuery = queryOptions({
+  queryKey: queryKeys.actions(),
+  queryFn: ({ signal }) =>
+    actionsFindAllLoggedIn({
+      query: { sorted: true },
+      throwOnError: true,
+      signal,
+    }).then((response) =>
+      response.data.filter(
+        (action) => action.status !== "draft" || action.viewer?.staffPreview,
       ),
-    refetchInterval: options?.refetchInterval,
-  });
+    ),
+});
+
+export const useActionsQuery = (options?: {
+  refetchInterval?: (typeof actionsQuery)["refetchInterval"];
+}): UseQueryResult<ActionDto[], Error> =>
+  useQuery({ ...actionsQuery, refetchInterval: options?.refetchInterval });
 
 export const invalidateActions = (queryClient: QueryClient): void =>
   void queryClient.invalidateQueries({ queryKey: queryKeys.actions() });

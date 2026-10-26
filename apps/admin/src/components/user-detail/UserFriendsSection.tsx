@@ -1,8 +1,8 @@
 import { ProfileDto } from "@alliance/shared/client/types.gen";
 import { useUserFriendsQuery } from "@alliance/shared/lib/user";
+import { loaderPrefetchStaleTime } from "@alliance/sharedweb/lib/queryClient";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { Link } from "react-router";
-import { loaderPrefetchStaleTime } from "../../lib/queryClient";
 import { SectionLoadState, SectionRefreshError } from "./SectionQueryState";
 
 export default function UserFriendsSection({ userId }: { userId: number }) {

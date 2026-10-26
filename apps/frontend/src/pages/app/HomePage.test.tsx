@@ -46,7 +46,7 @@ beforeEach(() => {
   jest.spyOn(utilsModule, "useSidFromParams").mockImplementation(() => {});
   jest
     .spyOn(globalFeedModule, "default")
-    .mockReturnValue({ items: [], loading: false, error: null });
+    .mockReturnValue({ items: [], loading: false, failure: null });
   jest.spyOn(homeFeedModule, "default").mockImplementation(() => <div />);
   jest.spyOn(homeUpdatesRowModule, "default").mockImplementation(() => <div />);
   jest

@@ -1,7 +1,7 @@
 // Formula inputs use aliases because field IDs are not guaranteed to be valid identifiers.
 
 import { camelCase, deburr, isEqual } from "es-toolkit";
-import z from "zod";
+import { z } from "zod";
 import { formatCityValue, parseCityValue } from "./city";
 import type { FieldKind, ListSubField } from "./form-schema";
 import { FORBIDDEN_PROPERTIES } from "./formula-allowlist";

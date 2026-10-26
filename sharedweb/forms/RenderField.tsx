@@ -41,6 +41,7 @@ import {
   ValidationMessage,
 } from "./fieldParts";
 import { FileInputField } from "./FileInputField";
+import { LazyRankingFieldInput } from "./lazyFieldInputs";
 import {
   ListAddButton,
   ListCard,
@@ -48,7 +49,6 @@ import {
   ListRemoveButton,
 } from "./ListCard";
 import { PhoneInputField } from "./PhoneInputField";
-import { RankingFieldInput } from "./RankingFieldInput";
 import {
   NumberInputField,
   SingleLineInputField,
@@ -437,7 +437,7 @@ export function RenderField({
             hideLabel={hideLabel}
             required={required}
           />
-          <RankingFieldInput
+          <LazyRankingFieldInput
             field={field}
             value={value}
             onChange={onChange}

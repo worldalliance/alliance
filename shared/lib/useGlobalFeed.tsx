@@ -1,36 +1,31 @@
-import { useEffect, useState } from "react";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { actionFeedGetGlobalFeed, GlobalFeedItemDto } from "../client";
+import { failedToLoad } from "./failedToLoad";
+import { queryKeys } from "./queryKeys";
+
+const NO_ITEMS: GlobalFeedItemDto[] = [];
+
+export const globalFeedQuery = (limit: number) =>
+  queryOptions({
+    queryKey: queryKeys.globalFeed(limit),
+    queryFn: ({ signal }) =>
+      actionFeedGetGlobalFeed({
+        query: { limit },
+        throwOnError: true,
+        signal,
+      }).then((response) => response.data),
+  });
 
 const useGlobalFeed = ({ limit = 15 }) => {
-  const [items, setItems] = useState<GlobalFeedItemDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-
-    actionFeedGetGlobalFeed({
-      query: { limit },
-    })
-      .then((response) => {
-        if (response.data) {
-          setItems(response.data);
-        }
-      })
-      .catch((err) => {
-        setError(err);
-        console.error("Error fetching global feed:", err);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [limit]);
+  const query = useQuery(globalFeedQuery(limit));
+  const didFail = failedToLoad(query);
 
   return {
-    items,
-    loading,
-    error,
+    items: query.data ?? NO_ITEMS,
+    loading: query.isPending && !didFail,
+    failure: didFail
+      ? { onRetry: () => void query.refetch(), retrying: query.isFetching }
+      : null,
   };
 };
 

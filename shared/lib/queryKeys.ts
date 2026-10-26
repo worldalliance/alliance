@@ -12,6 +12,7 @@ import type {
 import type { UseActivitiesProps } from "./useActivities";
 
 const activitiesAll = () => ["useActivities"] as const;
+const globalFeedAll = () => ["actionFeedGetGlobalFeed"] as const;
 
 const communityOnetimeInvitesAll = () =>
   ["userOnetimeInviteGetOnetimeInvitesByCommunity"] as const;
@@ -101,6 +102,8 @@ export const queryKeys = {
   forumPosts: () => ["forumFindAllPosts"] as const,
   generalUpdatesAll: () => ["generalUpdatesAllGeneralUpdates"] as const,
   generalUpdatesUnread: () => ["actions", "generalUpdates", "unread"] as const,
+  globalFeedAll,
+  globalFeed: (limit: number) => [...globalFeedAll(), limit] as const,
   incomingCommunityInvites: () =>
     ["communityGetIncomingCommunityInvitesForUser"] as const,
   linkedGuestDraft: (taskFormId: number) =>

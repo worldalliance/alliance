@@ -69,23 +69,29 @@ export async function countThreadComments(
 }
 
 /**
- * Leaves out comments a deleted account wrote or that sit under one, checking
- * each row's ancestors, for readers spanning every thread, where the hidden
- * set grows with each deleted account.
+ * Leaves out comments a deleted account wrote or that sit under one, for
+ * readers spanning every thread.
  */
 export function excludeCommentsUnderDeletedAuthors<T extends ObjectLiteral>(
   qb: SelectQueryBuilder<T>,
 ): SelectQueryBuilder<T> {
-  return qb.andWhere(
-    `NOT EXISTS (
-      WITH RECURSIVE ancestry AS (
-        SELECT c.id, c."parentId", c."authorId" FROM comment c WHERE c.id = ${qb.alias}.id
-        UNION ALL
-        SELECT p.id, p."parentId", p."authorId" FROM comment p JOIN ancestry a ON p.id = a."parentId"
-      )
-      SELECT 1 FROM ancestry a JOIN "user" u ON u.id = a."authorId" WHERE u."deletedAt" IS NOT NULL
-    )`,
-  );
+  // An anti-join, so Postgres builds the hidden set once. A subquery in WHERE
+  // (NOT IN, NOT EXISTS) is rechecked per candidate before ORDER BY/LIMIT
+  // whenever the recursive estimate outgrows work_mem.
+  return qb
+    .leftJoin(
+      `(
+        WITH RECURSIVE hidden AS (
+          SELECT c.id FROM comment c JOIN "user" u ON u.id = c."authorId" WHERE u."deletedAt" IS NOT NULL
+          UNION
+          SELECT c.id FROM comment c JOIN hidden h ON c."parentId" = h.id
+        )
+        SELECT id FROM hidden
+      )`,
+      "hidden_comment",
+      `hidden_comment.id = ${qb.alias}.id`,
+    )
+    .andWhere("hidden_comment.id IS NULL");
 }
 
 /** Whether a deleted account wrote the comment or any comment above it. */

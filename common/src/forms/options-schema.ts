@@ -1,4 +1,4 @@
-import z from "zod";
+import { z } from "zod";
 import type { OptionsFormula } from "./variables";
 
 const optionSchema = z.strictObject({

@@ -4,7 +4,7 @@ import { cn } from "@alliance/shared/styles/util";
 import React from "react";
 import PhoneCountrySelect from "./PhoneCountrySelect";
 
-type PhoneNumberInputProps = {
+export type PhoneNumberInputProps = {
   labelId?: string;
   value: string;
   onChange: (value: string) => void;

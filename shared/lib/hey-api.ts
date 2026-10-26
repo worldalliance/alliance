@@ -17,6 +17,21 @@ export const AuthEvents = {
   },
 };
 
+let refreshing: Promise<boolean> | null = null;
+
+const refreshSession = (): Promise<boolean> => {
+  refreshing ??= import("../client/sdk.gen")
+    .then(({ authRefreshTokens }) => authRefreshTokens())
+    .then((refreshRes) => {
+      if (!refreshRes.response.ok) AuthEvents.onUnauthorized();
+      return refreshRes.response.ok;
+    })
+    .finally(() => {
+      refreshing = null;
+    });
+  return refreshing;
+};
+
 export const createClientConfig: CreateClientConfig = (config) => {
   // eslint-disable-next-line no-restricted-globals -- the generated client's transport
   const originalFetch = (config?.fetch ?? fetch).bind(globalThis);
@@ -43,17 +58,12 @@ export const createClientConfig: CreateClientConfig = (config) => {
       return res;
     }
 
-    const { authRefreshTokens } = await import("../client/sdk.gen");
-    const refreshRes = await authRefreshTokens();
-
-    if (refreshRes.response.ok) {
-      if (retryReq === null) return res;
-      const retryRes = await originalFetch(retryReq);
-      if (retryRes.status !== 401) {
-        return retryRes;
-      } else {
-        console.error(retryRes);
-      }
+    if (!(await refreshSession()) || retryReq === null) return res;
+    const retryRes = await originalFetch(retryReq);
+    if (retryRes.status !== 401) {
+      return retryRes;
+    } else {
+      console.error(retryRes);
     }
     AuthEvents.onUnauthorized();
 

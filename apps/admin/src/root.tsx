@@ -4,6 +4,8 @@ import {
   ShareLinkViewer,
   ShareLinkViewerProvider,
 } from "@alliance/sharedweb/forms/BigLinkDisplay";
+import { holdChunkReloads } from "@alliance/sharedweb/lib/lazyOrReload";
+import { queryClient } from "@alliance/sharedweb/lib/queryClient";
 import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInputScrollGuard";
 import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
@@ -20,13 +22,16 @@ import {
 import { Route } from "../.react-router/types/src/+types/root";
 import { AuthProvider } from "./lib/AuthContext";
 import { getApiUrl, getSiteUrl } from "./lib/config";
-import { queryClient } from "./lib/queryClient";
 
 client.setConfig({
   baseUrl: getApiUrl(),
 });
 
 registerErrorStatus(client);
+
+// Admin pages keep unsaved work in memory, much of it without an unload prompt,
+// so a chunk that fails to load shows its boundary's reload advice instead.
+holdChunkReloads();
 
 export function HydrateFallback() {
   return (

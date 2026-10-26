@@ -1,13 +1,37 @@
 import type { AnyField } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { staticFieldContext } from "@alliance/shared/useFormRenderer";
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { SiteAppProvider } from "../ui/SiteAppProvider";
 import { RenderField } from "./RenderField";
 import { base, options, singleInputs } from "./RenderField.fixtures";
 
 serveApi(routes({}));
+
+const renderField = (field: AnyField, error?: string) =>
+  render(
+    <MemoryRouter>
+      <SiteAppProvider>
+        <RenderField
+          fieldContext={staticFieldContext}
+          field={field}
+          onChange={() => {}}
+          error={error}
+        />
+      </SiteAppProvider>
+    </MemoryRouter>,
+  );
+
+// Each render below then shows the lazy inputs rather than their fallback.
+beforeAll(async () => {
+  renderField({ ...base, kind: "phone" });
+  await screen.findByLabelText("Question");
+  cleanup();
+  renderField({ ...base, kind: "ranking", options });
+  await screen.findByText("First choice");
+  cleanup();
+});
 
 describe.each([
   ...singleInputs,
@@ -34,19 +58,7 @@ describe.each([
   { ...base, kind: "ranking", options },
   { ...base, kind: "custom", componentId: "example-contract" },
 ] satisfies AnyField[])("validation message for a $kind field", (field) => {
-  const renderWithError = (error?: string) =>
-    render(
-      <MemoryRouter>
-        <SiteAppProvider>
-          <RenderField
-            fieldContext={staticFieldContext}
-            field={field}
-            onChange={() => {}}
-            error={error}
-          />
-        </SiteAppProvider>
-      </MemoryRouter>,
-    );
+  const renderWithError = (error?: string) => renderField(field, error);
 
   it("shows the error", () => {
     renderWithError("Answer this question");

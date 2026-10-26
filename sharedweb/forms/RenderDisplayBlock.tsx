@@ -29,8 +29,10 @@ import {
 import BigLinkDisplay from "./BigLinkDisplay";
 import CopyTextDisplay from "./CopyTextDisplay";
 import { headerClassName, headerLevel } from "./headerStyles";
+import { lazyFormPart } from "./lazyFormPart";
 import RenderPreviousAnswer from "./RenderPreviousAnswer";
-import VideoPlayer from "./VideoPlayer";
+
+const VideoPlayer = lazyFormPart(() => import("./VideoPlayer"));
 
 function ImageFigure({
   resolvedSrc,

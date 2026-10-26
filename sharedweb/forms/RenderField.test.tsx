@@ -49,22 +49,25 @@ it.each([false, true])(
 describe.each([{ hideLabel: false }, { hideLabel: true }])(
   "hideLabel: $hideLabel",
   ({ hideLabel }) => {
-    it.each(singleInputs)("names a $kind field from its question", (field) => {
-      render(
-        <MemoryRouter>
-          <SiteAppProvider>
-            <RenderField
-              fieldContext={staticFieldContext}
-              field={field}
-              hideLabel={hideLabel}
-            />
-          </SiteAppProvider>
-        </MemoryRouter>,
-      );
+    it.each(singleInputs)(
+      "names a $kind field from its question",
+      async (field) => {
+        render(
+          <MemoryRouter>
+            <SiteAppProvider>
+              <RenderField
+                fieldContext={staticFieldContext}
+                field={field}
+                hideLabel={hideLabel}
+              />
+            </SiteAppProvider>
+          </MemoryRouter>,
+        );
 
-      expect(screen.getByLabelText("Question")).toBeTruthy();
-      if (hideLabel) expect(screen.queryByText("Optional")).toBeNull();
-    });
+        expect(await screen.findByLabelText("Question")).toBeTruthy();
+        if (hideLabel) expect(screen.queryByText("Optional")).toBeNull();
+      },
+    );
   },
 );
 
