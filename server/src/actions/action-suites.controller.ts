@@ -15,7 +15,7 @@ import {
   AcknowledgeDeadlineShortening,
   ApiAcknowledgeDeadlineShortening,
 } from "./acknowledge-deadline-shortening";
-import { ActionsService } from "./actions.service";
+import { ActionSuitesService } from "./action-suites.service";
 import {
   CreateActionEventDto,
   UpdateActionEventDto,
@@ -24,13 +24,13 @@ import { ActionSuiteDto, CreateActionSuiteDto } from "./dto/action-suite.dto";
 
 @Controller("actions")
 export class ActionSuitesController {
-  constructor(private readonly actionsService: ActionsService) {}
+  constructor(private readonly actionSuites: ActionSuitesService) {}
 
   @Get("suites")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: ActionSuiteDto, isArray: true })
   async suitesAdmin(): Promise<ActionSuiteDto[]> {
-    const suites = await this.actionsService.findSuites();
+    const suites = await this.actionSuites.findSuites();
     return suites.map((suite) => new ActionSuiteDto(suite, []));
   }
 
@@ -40,7 +40,7 @@ export class ActionSuitesController {
   async suiteAdmin(
     @Param("id", ParseIntPipe) id: number,
   ): Promise<ActionSuiteDto> {
-    const suite = await this.actionsService.findSuite(id);
+    const suite = await this.actionSuites.findSuite(id);
     return new ActionSuiteDto(suite, suite.actions);
   }
 
@@ -50,7 +50,7 @@ export class ActionSuitesController {
   async createSuiteAdmin(
     @Body() createActionSuiteDto: CreateActionSuiteDto,
   ): Promise<ActionSuiteDto> {
-    const suite = await this.actionsService.createSuite(createActionSuiteDto);
+    const suite = await this.actionSuites.createSuite(createActionSuiteDto);
     return new ActionSuiteDto(suite, []);
   }
 
@@ -65,7 +65,7 @@ export class ActionSuitesController {
     @AcknowledgeDeadlineShortening()
     acknowledgeDeadlineShortening: boolean,
   ): Promise<ActionSuiteDto> {
-    const suite = await this.actionsService.batchUpdateSuiteEvents({
+    const suite = await this.actionSuites.batchUpdateSuiteEvents({
       suiteId,
       eventId,
       body,
@@ -84,7 +84,7 @@ export class ActionSuitesController {
     @AcknowledgeDeadlineShortening()
     acknowledgeDeadlineShortening: boolean,
   ): Promise<ActionSuiteDto> {
-    const suite = await this.actionsService.addSuiteEvent({
+    const suite = await this.actionSuites.addSuiteEvent({
       suiteId,
       event: actionEventDto,
       acknowledgeDeadlineShortening,
@@ -99,7 +99,7 @@ export class ActionSuitesController {
     @Param("suiteId", ParseIntPipe) suiteId: number,
     @Param("eventId", ParseIntPipe) eventId: number,
   ): Promise<ActionSuiteDto> {
-    const suite = await this.actionsService.deleteSuiteEvent(suiteId, eventId);
+    const suite = await this.actionSuites.deleteSuiteEvent(suiteId, eventId);
     return new ActionSuiteDto(suite, suite.actions);
   }
 }

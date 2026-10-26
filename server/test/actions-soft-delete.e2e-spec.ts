@@ -5,6 +5,7 @@ import { ActionPartnershipsModule } from "src/action-partnerships/action-partner
 import { ActionPartnershipsService } from "src/action-partnerships/action-partnerships.service";
 import { ActionPartnershipResponse } from "src/action-partnerships/entities/action-partnership-response.entity";
 import { ActionFormVariantService } from "src/actions/action-form-variant.service";
+import { ActionSuitesService } from "src/actions/action-suites.service";
 import { ActionUpdatesService } from "src/actions/action-updates.service";
 import { ActionsService } from "src/actions/actions.service";
 import { CreateActionDto } from "src/actions/dto/action.dto";
@@ -72,6 +73,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
   let actions: ActionsService;
   let generalUpdates: GeneralUpdatesService;
   let actionUpdates: ActionUpdatesService;
+  let actionSuites: ActionSuitesService;
   let actionRepo: Repository<Action>;
 
   const createAction = (name = "Parent action") =>
@@ -117,6 +119,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
     actions = ctx.app.get(ActionsService);
     generalUpdates = ctx.app.get(GeneralUpdatesService);
     actionUpdates = ctx.app.get(ActionUpdatesService);
+    actionSuites = ctx.app.get(ActionSuitesService);
     actionRepo = ctx.dataSource.getRepository(Action);
   });
 
@@ -138,7 +141,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
       );
 
     await expect(
-      actions.addEvent({
+      actionSuites.addEvent({
         actionId: action.id,
         userId: ctx.adminUserId,
         event: {

@@ -43,6 +43,7 @@ import { ActionRemindersController } from "./action-reminders.controller";
 import { ActionShareService } from "./action-share.service";
 import { ActionStatsService } from "./action-stats.service";
 import { ActionSuitesController } from "./action-suites.controller";
+import { ActionSuitesService } from "./action-suites.service";
 import { ActionSuspensionService } from "./action-suspension.service";
 import { ActionUpdateNotifyService } from "./action-update-notify.service";
 import { ActionUpdateRecognitionPreviewService } from "./action-update-recognition-preview.service";
@@ -197,6 +198,7 @@ import { TaskBadgeService } from "./task-badge.service";
     GeneralUpdatesService,
     ActionUpdatesService,
     ActionUpdateNotifyService,
+    ActionSuitesService,
   ],
   exports: [
     ActionsService,

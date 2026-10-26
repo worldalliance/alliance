@@ -36,6 +36,7 @@ import {
   ApiAcknowledgeDeadlineShortening,
 } from "./acknowledge-deadline-shortening";
 import { ActionShareService } from "./action-share.service";
+import { ActionSuitesService } from "./action-suites.service";
 import { ActionSuspensionService } from "./action-suspension.service";
 import { ActionsService } from "./actions.service";
 import {
@@ -68,6 +69,7 @@ import { ForumActionCompleterWorker } from "./forum-action-completer.worker";
 export class ActionsController {
   constructor(
     private readonly actionsService: ActionsService,
+    private readonly actionSuites: ActionSuitesService,
     private readonly shareService: ActionShareService,
     private readonly suspensionService: ActionSuspensionService,
     private readonly eventEmitter: EventEmitter2,
@@ -285,7 +287,7 @@ export class ActionsController {
     acknowledgeDeadlineShortening: boolean,
   ): Promise<ActionEventDto> {
     return new ActionEventDto(
-      await this.actionsService.addEvent({
+      await this.actionSuites.addEvent({
         actionId: id,
         event: actionEventDto,
         userId: req.user?.sub,
