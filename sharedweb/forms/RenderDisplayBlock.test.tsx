@@ -51,6 +51,22 @@ describe("the header display block", () => {
   });
 });
 
+describe("the video display block", () => {
+  it("loads the player", async () => {
+    render(
+      <RenderDisplayBlock
+        block={{
+          type: "display",
+          kind: "video",
+          src: "https://cdn.test/v/abc",
+          caption: "Welcome video",
+        }}
+      />,
+    );
+    expect(await screen.findByText("Welcome video")).toBeTruthy();
+  });
+});
+
 describe("the accordion display block", () => {
   it("reveals a section's blocks when its trigger is pressed", () => {
     render(<RenderDisplayBlock block={accordion()} />);

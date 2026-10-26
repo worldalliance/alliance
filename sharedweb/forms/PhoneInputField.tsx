@@ -1,11 +1,10 @@
 import type { PhoneField } from "@alliance/common/forms/form-schema";
-import { usePhoneFieldCountry } from "@alliance/shared/lib/usePhoneNumberField";
-import PhoneNumberInput from "../ui/PhoneNumberInput";
 import {
   type FieldInputProps,
   RenderLabel,
   useQuestionLabelId,
 } from "./fieldParts";
+import { LazyPhoneNumberInput } from "./lazyFieldInputs";
 
 export function PhoneInputField({
   field,
@@ -20,7 +19,6 @@ export function PhoneInputField({
 }: FieldInputProps<PhoneField>) {
   const labelId = useQuestionLabelId(field);
   const answer = typeof value === "string" ? value : "";
-  const [country, setCountry] = usePhoneFieldCountry(answer);
 
   return (
     <div className="space-y-1">
@@ -33,13 +31,11 @@ export function PhoneInputField({
         hideLabel={hideLabel}
         required={required}
       />
-      <PhoneNumberInput
+      <LazyPhoneNumberInput
         labelId={labelId}
         name={field.id}
         value={answer}
         onChange={(next) => onChange?.(next)}
-        country={country}
-        onCountryChange={setCountry}
         disabled={disabled || !onChange}
         required={required}
         placeholder={field.placeholder || "Enter phone number"}
