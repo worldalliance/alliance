@@ -35,12 +35,10 @@ import { cn } from "@alliance/shared/styles/util";
 import type { FieldConditionContext } from "@alliance/shared/useFormRenderer";
 import UploadingWithCancel from "@alliance/sharedweb/ui/UploadingWithCancel";
 import { Fragment, useId, useRef, useState, type ReactNode } from "react";
-import TextareaAutosize from "react-textarea-autosize";
 import { getApiUrl } from "../lib/config";
 import { readFileDataUri } from "../lib/readFileDataUri";
 import AppMarkdownWrapper from "../ui/AppMarkdownWrapper";
 import Card from "../ui/Card";
-import CharacterLimitNotice from "../ui/CharacterLimitNotice";
 import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
 import ImageLightbox from "../ui/ImageLightbox";
 import YesNoToggle from "../ui/YesNoToggle";
@@ -70,7 +68,11 @@ import { CheckboxSection } from "./optionPicker";
 import { PhoneInputField } from "./PhoneInputField";
 import { RankingFieldInput } from "./RankingFieldInput";
 import SearchableSelect from "./SearchableSelect";
-import { textareaMinRows } from "./textareaMinRows";
+import {
+  NumberInputField,
+  SingleLineInputField,
+  TextareaInputField,
+} from "./TextFields";
 import { TimeInputField } from "./TimeInputField";
 import TimeZoneSelect from "./TimeZoneSelect";
 
@@ -139,6 +141,16 @@ export function RenderField({
     overrides: { normal?: string; error?: string } = {},
   ) => fieldInputClassName({ base, hasError, ...overrides });
 
+  const inputProps = {
+    value,
+    onChange,
+    disabled,
+    errorMessage,
+    labelRightAddon,
+    isOutputView,
+    hideLabel,
+    required,
+  };
   const onClear = !disabled && onChange ? () => onChange("") : undefined;
   const clearRadios = onClear
     ? () => {
@@ -176,174 +188,24 @@ export function RenderField({
 
   switch (field.kind) {
     case "text":
-      return (
-        <div className="space-y-1">
-          <RenderLabel
-            field={field}
-            labelId={labelId}
-            error={errorMessage}
-            labelRightAddon={labelRightAddon}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <input
-            aria-labelledby={labelId}
-            type="text"
-            value={(value as string) ?? ""}
-            onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-            required={required}
-            disabled={disabled}
-            aria-invalid={hasError}
-            className={composeClassName(sharedInputClasses, {
-              normal:
-                "border border-zinc-300 focus:ring-1 focus:ring-green focus:border-transparent",
-              error:
-                "border border-red-500 focus:ring-1 focus:ring-red-500 focus:border-transparent",
-            })}
-            placeholder={field.placeholder}
-          />
-          <ValidationMessage message={errorMessage} />
-        </div>
-      );
+    case "email":
+    case "date":
+      return <SingleLineInputField {...inputProps} field={field} />;
 
     case "textarea":
       return (
-        <div className="space-y-1">
-          <RenderLabel
-            field={field}
-            labelId={labelId}
-            error={errorMessage}
-            labelRightAddon={labelRightAddon}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <TextareaAutosize
-            aria-labelledby={labelId}
-            minRows={textareaMinRows({
-              rows: field.rows,
-              disabled,
-              isPreview,
-            })}
-            translate="no"
-            maxLength={field.maxLength}
-            value={(value as string) ?? ""}
-            onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-            required={required}
-            disabled={disabled}
-            aria-invalid={hasError}
-            className={composeClassName(
-              sharedInputClasses + " resize-none overflow-hidden notranslate",
-            )}
-            placeholder={field.placeholder}
-          />
-          <ValidationMessage message={errorMessage} />
-          {field.maxLength && (
-            <CharacterLimitNotice
-              value={(value as string) ?? ""}
-              max={field.maxLength}
-              readOnly={disabled}
-            />
-          )}
-        </div>
-      );
-
-    case "email":
-      return (
-        <div className="space-y-1">
-          <RenderLabel
-            field={field}
-            labelId={labelId}
-            error={errorMessage}
-            labelRightAddon={labelRightAddon}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <input
-            aria-labelledby={labelId}
-            type="email"
-            value={(value as string) ?? ""}
-            onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-            required={required}
-            disabled={disabled}
-            aria-invalid={hasError}
-            className={composeClassName(sharedInputClasses)}
-            placeholder="example@email.com"
-          />
-          <ValidationMessage message={errorMessage} />
-        </div>
-      );
-
-    case "phone":
-      return (
-        <PhoneInputField
+        <TextareaInputField
+          {...inputProps}
           field={field}
-          value={value}
-          onChange={onChange}
-          disabled={disabled}
-          errorMessage={errorMessage}
-          labelRightAddon={labelRightAddon}
-          isOutputView={isOutputView}
-          hideLabel={hideLabel}
-          required={required}
+          isPreview={isPreview}
         />
       );
 
-    case "number": {
-      const numberStep = field.allowDecimals ? "any" : (field.step ?? 1);
-      const numberDecimalPlaces = field.allowDecimals
-        ? (field.decimalPlaces ?? undefined)
-        : undefined;
-      return (
-        <div className="space-y-1">
-          <RenderLabel
-            field={field}
-            labelId={labelId}
-            error={errorMessage}
-            labelRightAddon={labelRightAddon}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <input
-            aria-labelledby={labelId}
-            type="number"
-            value={
-              value === undefined || value === null
-                ? ""
-                : (value as number | string)
-            }
-            onChange={
-              onChange
-                ? (e) => {
-                    if (e.target.value === "") {
-                      onChange("");
-                      return;
-                    }
-                    const parsed = parseFloat(e.target.value);
-                    if (numberDecimalPlaces !== undefined) {
-                      const factor = Math.pow(10, numberDecimalPlaces);
-                      onChange(Math.round(parsed * factor) / factor);
-                    } else {
-                      onChange(parsed);
-                    }
-                  }
-                : undefined
-            }
-            required={required}
-            disabled={disabled}
-            min={field.min}
-            max={field.max}
-            step={numberStep}
-            aria-invalid={hasError}
-            className={composeClassName(sharedInputClasses)}
-          />
-          <ValidationMessage message={errorMessage} />
-        </div>
-      );
-    }
+    case "phone":
+      return <PhoneInputField {...inputProps} field={field} />;
+
+    case "number":
+      return <NumberInputField {...inputProps} field={field} />;
 
     case "range": {
       const values = getRangeValues(field);
@@ -750,46 +612,8 @@ export function RenderField({
       );
     }
 
-    case "date":
-      return (
-        <div className="space-y-1">
-          <RenderLabel
-            field={field}
-            labelId={labelId}
-            error={errorMessage}
-            labelRightAddon={labelRightAddon}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <input
-            aria-labelledby={labelId}
-            type="date"
-            value={(value as string) ?? ""}
-            onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-            required={required}
-            disabled={disabled}
-            aria-invalid={hasError}
-            className={composeClassName(sharedInputClasses)}
-          />
-          <ValidationMessage message={errorMessage} />
-        </div>
-      );
-
     case "time":
-      return (
-        <TimeInputField
-          field={field}
-          value={value}
-          onChange={onChange}
-          disabled={disabled}
-          errorMessage={errorMessage}
-          labelRightAddon={labelRightAddon}
-          isOutputView={isOutputView}
-          hideLabel={hideLabel}
-          required={required}
-        />
-      );
+      return <TimeInputField {...inputProps} field={field} />;
 
     case "timezone": {
       return (
