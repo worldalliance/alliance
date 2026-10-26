@@ -1,9 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  contractSignContract,
-  contractSuspendContract,
-  type ContractEventDto,
-} from "../client";
+import type { ContractEventDto } from "../client";
 import {
   canSignAgreement,
   signedContractEvent,
@@ -15,18 +11,17 @@ import { membershipAgreement } from "./copy";
 import { failedToLoad } from "./failedToLoad";
 import { thrownRefusalMessage } from "./hey-api";
 import { useContractById } from "./useContractById";
+import { useContractSignature } from "./useContractSignature";
 import { useCurrentContract } from "./useCurrentContract";
-import { useInvalidateVisibilityContext } from "./useVisibilityContext";
 
 export function useMembershipAgreement(params: {
   user: { lastContractEvent?: ContractEventDto } | null | undefined;
-  refreshUser: () => Promise<void>;
   showError: (message: string) => void;
 }) {
-  const { user, refreshUser, showError } = params;
+  const { user, showError } = params;
   const currentContract = useCurrentContract();
   const latestContract = currentContract.data;
-  const invalidateVisibilityContext = useInvalidateVisibilityContext();
+  const contractSignature = useContractSignature();
   const [signedName, setSignedName] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [lastContractEvent, setLastContractEvent] =
@@ -56,51 +51,48 @@ export function useMembershipAgreement(params: {
   const sign = async () => {
     if (!latestContract || !canSign) return;
     setIsSubmitting(true);
-    try {
-      const { data } = await contractSignContract({
-        path: { id: latestContract.id },
-        body: { signedName },
-        throwOnError: true,
-      });
+    const signed = await contractSignature.sign({
+      contractId: latestContract.id,
+      signedName,
+    });
+    if (signed.ok) {
       setLastContractEvent(
-        signedContractEvent({ contractId: latestContract.id, date: data.date }),
+        signedContractEvent({
+          contractId: latestContract.id,
+          date: signed.value.date,
+        }),
       );
       setConfirmation("");
-      invalidateVisibilityContext();
-      await refreshUser();
-    } catch (error) {
-      console.error("Error signing contract:", error);
+    } else {
+      console.error("Error signing contract:", signed.error);
       showError(
         thrownRefusalMessage({
-          error,
+          error: signed.error,
           fallback: membershipAgreement.signFailed,
           sessionExpired: membershipAgreement.signSessionExpired,
         }),
       );
-    } finally {
-      setIsSubmitting(false);
     }
+    setIsSubmitting(false);
   };
 
   /** Call once the member has confirmed. */
   const suspend = async () => {
     setIsSubmitting(true);
-    try {
-      const { data } = await contractSuspendContract({ throwOnError: true });
-      setLastContractEvent(suspendedContractEvent(data.date));
-      await refreshUser();
-    } catch (error) {
-      console.error("Error suspending contract:", error);
+    const suspended = await contractSignature.suspend();
+    if (suspended.ok) {
+      setLastContractEvent(suspendedContractEvent(suspended.value.date));
+    } else {
+      console.error("Error suspending contract:", suspended.error);
       showError(
         thrownRefusalMessage({
-          error,
+          error: suspended.error,
           fallback: membershipAgreement.suspendFailed,
           sessionExpired: membershipAgreement.suspendSessionExpired,
         }),
       );
-    } finally {
-      setIsSubmitting(false);
     }
+    setIsSubmitting(false);
   };
 
   return {

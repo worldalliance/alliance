@@ -120,7 +120,7 @@ function SignedContractActions({
 }
 
 export default function MembershipScreen() {
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
   const walkthroughScroll = useWalkthroughScroll();
   const {
     latestContract,
@@ -144,7 +144,6 @@ export default function MembershipScreen() {
     updateAvailable,
   } = useMembershipAgreement({
     user,
-    refreshUser,
     showError: (message) => Alert.alert("Error", message),
   });
 

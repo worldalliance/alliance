@@ -2,16 +2,13 @@ import { AnalyticsEvent, ExceptionEvent } from "@alliance/common/analytics";
 import { errorMessage } from "@alliance/common/errorMessage";
 import type { OAuthProvider } from "@alliance/common/oauth";
 import { run } from "@alliance/common/run";
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import {
-  authForgotPassword,
-  authRegister,
-  contractSignContract,
-} from "@alliance/shared/client";
+// eslint-disable-next-line api-client/named-hooks-only -- registration and password reset touch no cache
+import { authForgotPassword, authRegister } from "@alliance/shared/client";
 import { captureEvent, captureException } from "@alliance/shared/lib/analytics";
 import { forgotPassword as forgotPasswordCopy } from "@alliance/shared/lib/copy";
 import { signupTimeZone } from "@alliance/shared/lib/timeZone";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
+import { useContractSignature } from "@alliance/shared/lib/useContractSignature";
 import { useCurrentContract } from "@alliance/shared/lib/useCurrentContract";
 import { useInvite } from "@alliance/shared/lib/useInvite";
 import { useSignupFaces } from "@alliance/shared/lib/useSignupFaces";
@@ -128,6 +125,7 @@ const OnboardingScreen = () => {
     useCurrentContract();
 
   const { refusal: inviteRefusal, inviter } = useInvite(referralCode ?? null);
+  const contractSignature = useContractSignature();
 
   // A signed-in member opens a browser session only to connect an account, so
   // their cut-off return link belongs to settings. The param is cleared once
@@ -265,10 +263,11 @@ const OnboardingScreen = () => {
       // The signature is the account's own, so the session has to exist first.
       await login({ email, password, navigateOnSuccess: false });
 
-      await contractSignContract({
-        path: { id: latestContract.id },
-        body: { signedName: signedName.trim() },
+      const signature = await contractSignature.sign({
+        contractId: latestContract.id,
+        signedName: signedName.trim(),
       });
+      if (!signature.ok) throw signature.error;
     } catch (cause) {
       setError(
         errorMessage({
@@ -292,6 +291,7 @@ const OnboardingScreen = () => {
     referralCode,
     login,
     enterPlatform,
+    contractSignature,
   ]);
 
   const agreementSigned =

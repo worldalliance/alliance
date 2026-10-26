@@ -144,7 +144,6 @@ const MembershipPage: React.FC = () => {
     updateAvailable,
   } = useMembershipAgreement({
     user,
-    refreshUser,
     showError: (message) => alert(message),
   });
 
