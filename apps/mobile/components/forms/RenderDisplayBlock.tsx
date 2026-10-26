@@ -32,7 +32,7 @@ const CHAT_BUBBLE_TONE: Record<ChatTranscriptMessage["side"], MarkdownTone> = {
   right: MarkdownTone.Inverted,
 };
 
-type RenderDisplayBlockMobileProps = {
+export type RenderDisplayBlockMobileProps = {
   block: DisplayBlock;
   previousAnswerData?: Record<number, Record<string, unknown>>;
   previousAnswerSchemas?: Record<number, FormSchema>;

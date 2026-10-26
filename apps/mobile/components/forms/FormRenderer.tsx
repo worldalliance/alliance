@@ -1,25 +1,14 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { type DeviceVisibilityTarget } from "@alliance/common/forms/device";
-import { type DisplayBlock } from "@alliance/common/forms/display-blocks";
-import {
-  isQuestionField,
-  type AnyField,
-  type FormSchema,
-} from "@alliance/common/forms/form-schema";
+import { type FormSchema } from "@alliance/common/forms/form-schema";
 import { withResolvedOptions } from "@alliance/common/forms/formula-options";
-import {
-  interpolateDisplayBlock,
-  interpolateFieldText,
-} from "@alliance/common/forms/variable-interpolation";
+import { interpolateFieldText } from "@alliance/common/forms/variable-interpolation";
 import {
   FormResponseDto,
   SubmitFormDto,
   type UserDto,
 } from "@alliance/shared/client";
-import {
-  computeActiveUserKey,
-  resolveDisplayBlockForUser,
-} from "@alliance/shared/formrenderer";
+import { computeActiveUserKey } from "@alliance/shared/formrenderer";
 import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
 import { filterAnswersByFieldIds } from "@alliance/shared/forms/formDrafts";
 import {
@@ -61,9 +50,9 @@ import { colors } from "../../lib/style/colors";
 import { getDeviceTimeZone } from "../../lib/timeZone";
 import Text, { FontWeight } from "../system/Text";
 import { FormNavigation, ReadOnlyPageNavigation } from "./FormNavigation";
+import FormPage from "./FormPage";
 import OutputPublicToggle from "./OutputPublicToggle";
 import { pageNavigation } from "./pageNavigation";
-import { RenderDisplayBlockMobile } from "./RenderDisplayBlock";
 import { RenderField } from "./RenderField";
 import { useFormDraftState } from "./useFormDraftState";
 import { variableInputsGateView } from "./variableInputsGateView";
@@ -430,34 +419,6 @@ const FormRenderer = ({
     visiblePageIndices.indexOf(currentPageIndex) + 1,
   );
 
-  const pageFields = currentPage ? currentPage.fields : undefined;
-  const resolvedPageElements = useMemo(
-    () =>
-      (pageFields ?? []).map((element) =>
-        isQuestionField(element)
-          ? element
-          : resolveDisplayBlockForUser(element, activeUserKey),
-      ),
-    [pageFields, activeUserKey],
-  );
-  const pageElementVisible = useMemo(
-    () =>
-      resolvedPageElements.map((element) => isElementCurrentlyVisible(element)),
-    [resolvedPageElements, isElementCurrentlyVisible],
-  );
-  const hasRenderedNeighborAbove = (idx: number): boolean => {
-    for (let j = idx - 1; j >= 0; j--) {
-      if (pageElementVisible[j]) return true;
-    }
-    return false;
-  };
-  const hasRenderedNeighborBelow = (idx: number): boolean => {
-    for (let j = idx + 1; j < pageElementVisible.length; j++) {
-      if (pageElementVisible[j]) return true;
-    }
-    return false;
-  };
-
   const gate = variableInputsGateView({
     gate: variableInputsGate(sourceHistories, variableAggregates),
     readOnly,
@@ -488,63 +449,51 @@ const FormRenderer = ({
 
   return (
     <View className="flex flex-col gap-y-8">
-      <View className="gap-y-4">
-        {pageFields?.map((element, idx) => {
-          if (!pageElementVisible[idx]) {
-            return null;
-          }
-          if (!isQuestionField(element)) {
-            const resolvedBlock = resolvedPageElements[idx] as DisplayBlock;
-            return (
-              <View key={resolvedBlock.id ?? `block-${idx}`}>
-                <RenderDisplayBlockMobile
-                  block={interpolateDisplayBlock(resolvedBlock, variableValues)}
-                  previousAnswerData={previousAnswerData}
-                  previousAnswerSchemas={previousAnswerSchemas}
-                  hasRenderedNeighborAbove={hasRenderedNeighborAbove(idx)}
-                  hasRenderedNeighborBelow={hasRenderedNeighborBelow(idx)}
-                  user={user}
-                  userLocation={userLocationDisplayValue}
-                  userLocationLoading={currentUserLocationLoading}
-                />
-              </View>
-            );
-          }
-          const field = element as AnyField;
-          return (
-            <View key={field.id}>
-              <RenderField
-                field={withResolvedOptions(
-                  interpolateFieldText(field, variableValues),
-                  resolvedOptions,
-                )}
-                value={effectiveFormData[field.id]}
-                onChange={(value) => handleFieldChange(field.id, value)}
-                fileUpload={readOnly ? undefined : imageUpload}
-                disabled={readOnly}
-                error={fieldErrors[field.id]}
-                fieldErrors={fieldErrors}
-                randomizationKey={randomizationKey}
-                disableOptionRandomization={disableOptionRandomization}
-                user={user}
-                fieldContext={fieldContext}
-              />
-              <OutputPublicToggle
-                field={field}
-                sharePublicly={
-                  publicAnswers[field.id] ??
-                  outputFieldDefaultPublic.get(field.id) ??
-                  userDefaultPublic
-                }
-                disabled={readOnly}
-                onChange={(sharePublicly) =>
-                  handlePublicToggleChange(field.id, sharePublicly)
-                }
-              />
-            </View>
-          );
-        })}
-      </View>
+      <FormPage
+        elements={currentPage?.fields ?? []}
+        activeUserKey={activeUserKey}
+        isElementCurrentlyVisible={isElementCurrentlyVisible}
+        variableValues={variableValues}
+        blockProps={{
+          previousAnswerData,
+          previousAnswerSchemas,
+          user,
+          userLocation: userLocationDisplayValue,
+          userLocationLoading: currentUserLocationLoading,
+        }}
+        renderField={(field) => (
+          <>
+            <RenderField
+              field={withResolvedOptions(
+                interpolateFieldText(field, variableValues),
+                resolvedOptions,
+              )}
+              value={effectiveFormData[field.id]}
+              onChange={(value) => handleFieldChange(field.id, value)}
+              fileUpload={readOnly ? undefined : imageUpload}
+              disabled={readOnly}
+              error={fieldErrors[field.id]}
+              fieldErrors={fieldErrors}
+              randomizationKey={randomizationKey}
+              disableOptionRandomization={disableOptionRandomization}
+              user={user}
+              fieldContext={fieldContext}
+            />
+            <OutputPublicToggle
+              field={field}
+              sharePublicly={
+                publicAnswers[field.id] ??
+                outputFieldDefaultPublic.get(field.id) ??
+                userDefaultPublic
+              }
+              disabled={readOnly}
+              onChange={(sharePublicly) =>
+                handlePublicToggleChange(field.id, sharePublicly)
+              }
+            />
+          </>
+        )}
+      />
 
       {readOnly && visiblePageCount > 1 && (
         <ReadOnlyPageNavigation
