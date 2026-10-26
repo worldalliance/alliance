@@ -13,6 +13,7 @@ import {
   resolveFormValue,
   type SetFieldValue,
 } from "@alliance/shared/forms/formValueUpdater";
+import { useCurrentUserLocation } from "@alliance/shared/forms/useCurrentUserLocation";
 import { usePreviousAnswerSources } from "@alliance/shared/forms/usePreviousAnswerSources";
 import {
   aggregateTarget,
@@ -29,7 +30,6 @@ import { formTimeZoneDefault } from "@alliance/shared/lib/timeZone";
 import { useImageUpload } from "@alliance/shared/lib/useImageUpload";
 import { useVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
 import {
-  useCurrentUserLocation,
   useFieldErrors,
   useFormSchemaMaps,
   useFormValidation,
