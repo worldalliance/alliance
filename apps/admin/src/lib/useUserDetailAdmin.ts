@@ -1,11 +1,18 @@
 import {
   contractSuspendContractAdmin,
+  type DeleteUserAdminDto,
   type UpdateUserRolesAdminDto,
+  userDeleteUserAdmin,
   userUpdateUserRolesAdmin,
   userUserDetailAdmin,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { queryOptions, useMutation, useQuery } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { loaderPrefetchStaleTime } from "./queryClient";
 import { useStoreQueryData } from "./usePatchQueryData";
 import { useTagsAdmin } from "./useTagsAdmin";
@@ -25,6 +32,7 @@ export const userDetailQuery = (userId: number) =>
  * rejects when the refetch fails, so a caller that just wrote elsewhere can
  * say the page is stale. */
 export function useUserDetailAdmin(userId: number) {
+  const queryClient = useQueryClient();
   const storeQueryData = useStoreQueryData();
   const options = userDetailQuery(userId);
   const { queryKey } = options;
@@ -61,5 +69,24 @@ export function useUserDetailAdmin(userId: number) {
     onSuccess: () => query.refetch(),
   });
 
-  return { query, refresh, updateRoles, suspendContract, setTagMembership };
+  const deleteAccount = useMutation({
+    mutationFn: (body: DeleteUserAdminDto) =>
+      userDeleteUserAdmin({ path: { id: userId }, body, throwOnError: true }),
+    // The deletion hides the member's posts, activity and messages and drops
+    // their memberships, which nearly every admin list and stat counts. Not
+    // awaited, so the caller can leave the member's page before it reloads
+    // as a 404.
+    onSuccess: () => {
+      void queryClient.invalidateQueries();
+    },
+  });
+
+  return {
+    query,
+    refresh,
+    updateRoles,
+    suspendContract,
+    setTagMembership,
+    deleteAccount,
+  };
 }
