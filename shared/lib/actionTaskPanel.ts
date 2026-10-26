@@ -3,17 +3,9 @@ import {
   MEMBER_ACTION_DEADLINE_PASSED,
 } from "@alliance/common/actionActivity";
 import { useCallback, useState } from "react";
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import {
-  ActionDto,
-  FormResponseDto,
-  SubmitFormDto,
-  tasksOptout,
-} from "../client";
+import type { ActionDto, FormResponseDto, SubmitFormDto } from "../client";
 import type { SubmitResult } from "../forms/formulaChoices";
-import { useRecordActionRelation } from "./actionsListPage";
-import { useInvalidateTaskFormAggregateViews } from "./useTaskFormAggregateViews";
-import { useInvalidateVisibilityContext } from "./useVisibilityContext";
+import { useTaskFormSubmission } from "./useTaskFormSubmission";
 
 export interface ActionTaskPanelPropsShared {
   action: ActionDto;
@@ -56,9 +48,7 @@ export const useTaskFormHandlers = ({
   action: Pick<ActionDto, "id" | "taskFormId">;
 }) => {
   const [actionError, setActionError] = useState<string | null>(null);
-  const recordRelation = useRecordActionRelation();
-  const invalidateVisibilityContext = useInvalidateVisibilityContext();
-  const invalidateAggregateViews = useInvalidateTaskFormAggregateViews();
+  const { optOut } = useTaskFormSubmission();
 
   const handleComplete = useCallback(() => {
     setActionError(null);
@@ -68,33 +58,21 @@ export const useTaskFormHandlers = ({
   const handleAbandonAction = useCallback(
     async (withdrawal: ActionWithdrawal) => {
       const { outOfTime, isMoral, reason, partialFormData } = withdrawal;
-      const req = await tasksOptout({
-        path: { id: action.taskFormId! },
-        body: {
-          actionId: action.id,
-          reason,
-          outOfTime,
-          isMoral,
-          partialFormData,
-        },
+      const req = await optOut(action.taskFormId!, {
+        actionId: action.id,
+        reason,
+        outOfTime,
+        isMoral,
+        partialFormData,
       });
       if (req.error) {
         setActionError("Something went wrong. Please try again.");
         return;
       }
       setActionError(null);
-      recordRelation(action.id, "declined");
-      invalidateVisibilityContext();
-      invalidateAggregateViews(action.taskFormId!);
       onOptOutAction();
     },
-    [
-      action,
-      onOptOutAction,
-      recordRelation,
-      invalidateVisibilityContext,
-      invalidateAggregateViews,
-    ],
+    [action, onOptOutAction, optOut],
   );
 
   return {
