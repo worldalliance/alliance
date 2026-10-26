@@ -1,4 +1,5 @@
-import type { AnyField } from "@alliance/common/forms/form-schema";
+import type { AnyField, FormValue } from "@alliance/common/forms/form-schema";
+import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
 import { cn } from "@alliance/shared/styles/util";
 import { useId, type ReactNode } from "react";
 import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
@@ -20,6 +21,19 @@ export function fieldInputClassName({
 }) {
   return `${base} ${hasError ? error : normal}`;
 }
+
+export type FieldInputProps<F extends AnyField> = {
+  field: F;
+  value: FormValue | undefined;
+  onChange?: (value: FormValueUpdater) => void;
+  disabled?: boolean;
+  /** Null, or a non-blank message. */
+  errorMessage: string | null;
+  labelRightAddon?: ReactNode;
+  isOutputView?: boolean;
+  hideLabel?: boolean;
+  required: boolean;
+};
 
 export function useQuestionLabelId(field: AnyField): string | undefined {
   const instanceId = useId();
