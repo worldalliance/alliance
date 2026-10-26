@@ -35,6 +35,7 @@ import {
   AcknowledgeDeadlineShortening,
   ApiAcknowledgeDeadlineShortening,
 } from "./acknowledge-deadline-shortening";
+import { ActionRelationsService } from "./action-relations.service";
 import { ActionShareService } from "./action-share.service";
 import { ActionSuitesService } from "./action-suites.service";
 import { ActionSuspensionService } from "./action-suspension.service";
@@ -69,6 +70,7 @@ import { ForumActionCompleterWorker } from "./forum-action-completer.worker";
 export class ActionsController {
   constructor(
     private readonly actionsService: ActionsService,
+    private readonly actionRelations: ActionRelationsService,
     private readonly actionSuites: ActionSuitesService,
     private readonly shareService: ActionShareService,
     private readonly suspensionService: ActionSuspensionService,
@@ -418,7 +420,7 @@ export class ActionsController {
   @ApiOkResponse({ type: UserActionRelationsResponseDto })
   async actionRelationsAdmin(): Promise<UserActionRelationsResponseDto> {
     return new UserActionRelationsResponseDto(
-      await this.actionsService.findUserActionRelations(),
+      await this.actionRelations.findUserActionRelations(),
     );
   }
 
@@ -429,7 +431,7 @@ export class ActionsController {
     @Param("userId", ParseIntPipe) userId: number,
   ): Promise<UserActionRelationsResponseDto> {
     return new UserActionRelationsResponseDto(
-      await this.actionsService.findUserActionRelationsForUser(userId),
+      await this.actionRelations.findUserActionRelationsForUser(userId),
     );
   }
 
@@ -440,7 +442,7 @@ export class ActionsController {
     @Param("communityId", ParseIntPipe) communityId: number,
   ): Promise<CommunityUserInfoDto> {
     return new CommunityUserInfoDto(
-      await this.actionsService.findMemberInfoByCommunityId(communityId),
+      await this.actionRelations.findMemberInfoByCommunityId(communityId),
     );
   }
 
@@ -452,7 +454,7 @@ export class ActionsController {
     @Param("communityId", ParseIntPipe) communityId: number,
   ): Promise<CommunityUserInfoDto> {
     return new CommunityUserInfoDto(
-      await this.actionsService.findMemberInfo(req.user.sub, communityId),
+      await this.actionRelations.findMemberInfo(req.user.sub, communityId),
     );
   }
 }

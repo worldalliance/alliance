@@ -39,6 +39,7 @@ import { ActionFeedController } from "./action-feed.controller";
 import { ActionFormVariantService } from "./action-form-variant.service";
 import { ActionFormsController } from "./action-forms.controller";
 import { ActionParticipantsService } from "./action-participants.service";
+import { ActionRelationsService } from "./action-relations.service";
 import { ActionRemindersController } from "./action-reminders.controller";
 import { ActionShareService } from "./action-share.service";
 import { ActionStatsService } from "./action-stats.service";
@@ -201,6 +202,7 @@ import { TaskBadgeService } from "./task-badge.service";
     ActionUpdateNotifyService,
     ActionSuitesService,
     FollowUpFormsService,
+    ActionRelationsService,
   ],
   exports: [
     ActionsService,
