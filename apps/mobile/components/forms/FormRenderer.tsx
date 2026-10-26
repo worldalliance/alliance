@@ -5,7 +5,6 @@ import {
   isQuestionField,
   type AnyField,
   type FormSchema,
-  type FormValue,
 } from "@alliance/common/forms/form-schema";
 import { withResolvedOptions } from "@alliance/common/forms/formula-options";
 import {
@@ -22,15 +21,7 @@ import {
   resolveDisplayBlockForUser,
 } from "@alliance/shared/formrenderer";
 import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
-import {
-  applyDefaultValues,
-  computeFormStorageKey,
-  filterAnswersByFieldIds,
-  readStoredFormDraft,
-  restorableAnswers,
-  restorablePublicAnswers,
-  serializeStoredFormDraft,
-} from "@alliance/shared/forms/formDrafts";
+import { filterAnswersByFieldIds } from "@alliance/shared/forms/formDrafts";
 import {
   completedFormSchema,
   formulaSourcesFor,
@@ -62,7 +53,6 @@ import { useVisibilityContext } from "@alliance/shared/lib/useVisibilityContext"
 import {
   useCurrentUserLocation,
   useFieldErrors,
-  useFormDraftSync,
   useFormSchemaMaps,
   useFormValidation,
   useFormVisibility,
@@ -70,10 +60,9 @@ import {
   useRandomizationKey,
   useVisibilityValidatorResults,
 } from "@alliance/shared/useFormRenderer";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DeviceType, deviceType as expoDeviceType } from "expo-device";
 import { CircleCheck, Ellipsis, X } from "lucide-react-native";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 import { colors } from "../../lib/style/colors";
 import { getDeviceTimeZone } from "../../lib/timeZone";
@@ -82,6 +71,7 @@ import Checkbox from "../system/Checkbox";
 import Text, { FontWeight } from "../system/Text";
 import { RenderDisplayBlockMobile } from "./RenderDisplayBlock";
 import { RenderField } from "./RenderField";
+import { useFormDraftState } from "./useFormDraftState";
 import { variableInputsGateView } from "./variableInputsGateView";
 import WithdrawalModal from "./WithdrawalModal";
 
@@ -168,15 +158,6 @@ const FormRenderer = ({
     [form, readOnly, completedFormResponse],
   );
 
-  const storageKey = useMemo(
-    () =>
-      computeFormStorageKey({
-        formId: id,
-        instanceId: persistKey ?? undefined,
-      }),
-    [id, persistKey],
-  );
-
   const activeUserKey = useMemo(
     () => computeActiveUserKey(user?.id, userId),
     [user?.id, userId],
@@ -221,41 +202,6 @@ const FormRenderer = ({
     target: aggregateTarget({ admin: false, formId: id, formSnapshotId }),
   });
 
-  const clampPageIndex = (idx: number): number => {
-    if (!Number.isFinite(idx)) return 0;
-    const normalized = Math.floor(idx);
-    if (normalized < 0) return 0;
-    if (normalized > maxPageIndex) return maxPageIndex;
-    return normalized;
-  };
-
-  const [currentPageIndex, setCurrentPageIndex] = useState<number>(() =>
-    clampPageIndex(initialPageIndex ?? 0),
-  );
-  const [formData, setFormData] = useState<Record<string, FormValue>>(() => {
-    if (readOnly) {
-      const answers =
-        (completedFormResponse?.answers as Record<string, FormValue>) || {};
-      return filterAnswersByFieldIds(answers, fieldLookup);
-    }
-    return applyDefaultValues({}, defaultValueMap);
-  });
-  const [publicAnswers, setPublicAnswers] = useState<Record<string, boolean>>(
-    () => {
-      const completedPublicAnswers = completedFormResponse?.publicAnswers as
-        | Record<string, unknown>
-        | undefined;
-      const defaults: Record<string, boolean> = {};
-      for (const [fieldId, defaultIsPublic] of outputFieldDefaultPublic) {
-        const completedValue = completedPublicAnswers?.[fieldId];
-        defaults[fieldId] =
-          typeof completedValue === "boolean"
-            ? completedValue
-            : defaultIsPublic;
-      }
-      return defaults;
-    },
-  );
   const {
     results: visibilityValidatorResults,
     failed: visibilityValidatorsFailed,
@@ -286,173 +232,33 @@ const FormRenderer = ({
     enabled: !!user,
   });
 
-  // Draft persistence: tracks whether we've loaded a stored draft so the save
-  // effect doesn't overwrite stored data with initial defaults.
-  const draftLoaded = useRef(false);
-  // The stored-draft apply below waits on `localDraftRead`, because a device
-  // that has never synced and one whose read hasn't finished both read null.
-  const [localDraftRead, setLocalDraftRead] = useState(false);
-  const [syncedUpdatedAt, setSyncedUpdatedAt] = useState<string | null>(null);
-
-  // Restore draft from AsyncStorage on mount
-  useEffect(() => {
-    if (readOnly || !persistKey) {
-      draftLoaded.current = true;
-      setLocalDraftRead(true);
-      return;
-    }
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(storageKey);
-        if (cancelled || !raw) {
-          draftLoaded.current = true;
-          setLocalDraftRead(true);
-          return;
-        }
-        const stored = readStoredFormDraft({
-          raw,
-          fieldLookup,
-          outputFieldIds,
-        });
-        if (stored.ok) {
-          const { answers, publicAnswers, currentPageIndex, syncedUpdatedAt } =
-            stored.value;
-          if (syncedUpdatedAt !== undefined) {
-            setSyncedUpdatedAt(syncedUpdatedAt);
-          }
-          if (answers) {
-            setFormData(applyDefaultValues(answers, defaultValueMap));
-          }
-          if (Object.keys(publicAnswers).length > 0) {
-            setPublicAnswers((prev) => ({ ...prev, ...publicAnswers }));
-          }
-          if (currentPageIndex !== undefined) {
-            setCurrentPageIndex(clampPageIndex(currentPageIndex));
-          }
-        }
-      } catch {
-        // A storage read that throws starts the form without a draft.
-      }
-      draftLoaded.current = true;
-      setLocalDraftRead(true);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-    // Only run once on mount for a given storageKey
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storageKey]);
-
-  const draftSyncEnabled =
-    !!syncDraftToServer && !readOnly && !!persistKey && formSnapshotId !== null;
-
-  const { serverDraft, saveFailed, pauseSyncing, resumeSyncing } =
-    useFormDraftSync({
-      enabled: draftSyncEnabled,
-      formId: id,
-      actionId,
-      formSnapshotId,
-      answers: formData,
-      publicAnswers,
-      currentPageIndex,
-      edited: hasEmittedStart,
-      onSaved: setSyncedUpdatedAt,
-    });
-
-  useEffect(() => {
-    if (!draftSyncEnabled || hasEmittedStart || !serverDraft) return;
-    if (!localDraftRead) return;
-    // Equal means the stored draft is this device's own last save. Both sides
-    // are server-issued, so nothing here depends on the device's clock.
-    if (serverDraft.updatedAt === syncedUpdatedAt) {
-      return;
-    }
-    const answers = restorableAnswers(
-      serverDraft.answers as Record<string, FormValue>,
-      fieldLookup,
-    );
-    setFormData((prev) =>
-      applyDefaultValues({ ...prev, ...answers }, defaultValueMap),
-    );
-    setPublicAnswers((prev) => ({
-      ...prev,
-      ...restorablePublicAnswers(serverDraft.publicAnswers, outputFieldIds),
-    }));
-    setCurrentPageIndex(clampPageIndex(serverDraft.currentPageIndex));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    serverDraft,
-    draftSyncEnabled,
-    hasEmittedStart,
-    localDraftRead,
-    syncedUpdatedAt,
+  const {
+    formData,
+    setFormData,
+    publicAnswers,
+    setPublicAnswers,
+    currentPageIndex,
+    setCurrentPageIndex,
+    saveFailed,
+    pauseSyncing,
+    resumeSyncing,
+    clearStoredDraft,
+  } = useFormDraftState({
+    formId: id,
+    actionId,
+    formSnapshotId,
+    persistKey,
+    syncDraftToServer,
+    readOnly,
+    completedFormResponse,
+    initialPageIndex,
+    edited: hasEmittedStart,
     fieldLookup,
     defaultValueMap,
+    outputFieldDefaultPublic,
     outputFieldIds,
-  ]);
-
-  // Save draft to AsyncStorage when form state changes
-  useEffect(() => {
-    if (readOnly || !persistKey || !draftLoaded.current) return;
-
-    const timeout = setTimeout(() => {
-      AsyncStorage.setItem(
-        storageKey,
-        serializeStoredFormDraft({
-          formData,
-          publicAnswers,
-          currentPageIndex,
-          syncedUpdatedAt,
-        }),
-      ).catch((e) => {
-        // Storage write failed — non-critical.
-        console.error("Failed to save draft", e);
-      });
-    }, 300);
-
-    return () => clearTimeout(timeout);
-  }, [
-    formData,
-    publicAnswers,
-    currentPageIndex,
-    persistKey,
-    storageKey,
-    readOnly,
-    syncedUpdatedAt,
-  ]);
-
-  useEffect(() => {
-    const completedPublicAnswers = completedFormResponse?.publicAnswers as
-      | Record<string, unknown>
-      | undefined;
-
-    setPublicAnswers((prev) => {
-      const next: Record<string, boolean> = {};
-      for (const [fieldId, defaultIsPublic] of outputFieldDefaultPublic) {
-        const completedValue = completedPublicAnswers?.[fieldId];
-        const fallbackValue =
-          typeof completedValue === "boolean"
-            ? completedValue
-            : (prev[fieldId] ?? defaultIsPublic);
-        next[fieldId] = fallbackValue;
-      }
-
-      const prevKeys = Object.keys(prev);
-      const nextKeys = Object.keys(next);
-      if (prevKeys.length !== nextKeys.length) {
-        return next;
-      }
-      for (const key of nextKeys) {
-        if (prev[key] !== next[key]) {
-          return next;
-        }
-      }
-      return prev;
-    });
-  }, [completedFormResponse?.publicAnswers, outputFieldDefaultPublic]);
+    maxPageIndex,
+  });
 
   const {
     visibilityExtras,
@@ -640,9 +446,7 @@ const FormRenderer = ({
           resumeSyncing();
           return;
         }
-        if (persistKey) {
-          AsyncStorage.removeItem(storageKey).catch(() => {});
-        }
+        clearStoredDraft();
       })
       .catch(() => resumeSyncing())
       .finally(() => {
