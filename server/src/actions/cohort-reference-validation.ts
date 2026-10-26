@@ -1,7 +1,9 @@
 import {
+  cohortExpressionSchema,
   collectCohortDependencies,
   type CohortExpression,
 } from "@alliance/common/cohort-expression";
+import { describeSchemaIssues } from "@alliance/common/zod-issues";
 import { BadRequestException } from "@nestjs/common";
 import { isUUID } from "class-validator";
 import { In, type EntityManager } from "typeorm";
@@ -80,4 +82,33 @@ export async function assertTagsExist(params: {
       `No tag has id ${missing.map((id) => `"${id}"`).join(", ")}. Every Tag condition in the cohort must name an existing tag.`,
     );
   }
+}
+
+/**
+ * The jsonb-backed cohortExpression arrives from HTTP as arbitrary JSON —
+ * class-validator can't express its recursive shape, so every handler that
+ * accepts one must parse it here before it reaches the db.
+ */
+export function parseCohortExpressionOrThrow(value: unknown): CohortExpression {
+  const parsed = cohortExpressionSchema.safeParse(value);
+  if (!parsed.success) {
+    const issues = describeSchemaIssues(parsed.error).join("; ");
+    throw new BadRequestException(`Invalid cohort expression: ${issues}`);
+  }
+  return parsed.data;
+}
+
+export async function parseCohortExpressionForSaveOrThrow(params: {
+  em: EntityManager;
+  value: unknown;
+  stored?: unknown;
+}): Promise<CohortExpression> {
+  const { em, value, stored } = params;
+  const expression = parseCohortExpressionOrThrow(value);
+  await assertTagsExist({
+    em,
+    expression,
+    previous: cohortExpressionSchema.safeParse(stored).data,
+  });
+  return expression;
 }

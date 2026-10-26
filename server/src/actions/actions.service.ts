@@ -6,15 +6,10 @@ import {
   withdrawalOptionFromFlags,
 } from "@alliance/common/actionActivity";
 import { AnalyticsEvent } from "@alliance/common/analytics";
-import {
-  cohortExpressionSchema,
-  expressionHasLeaf,
-  type CohortExpression,
-} from "@alliance/common/cohort-expression";
+import { expressionHasLeaf } from "@alliance/common/cohort-expression";
 import { echoesStoredKey } from "@alliance/common/image-src";
 import { run } from "@alliance/common/run";
 import { Assert } from "@alliance/common/types";
-import { describeSchemaIssues } from "@alliance/common/zod-issues";
 import {
   BadRequestException,
   ForbiddenException,
@@ -96,7 +91,8 @@ import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
 import { CohortDecisionService } from "./cohort-decision.service";
 import {
   assertNotInACohort,
-  assertTagsExist,
+  parseCohortExpressionForSaveOrThrow,
+  parseCohortExpressionOrThrow,
 } from "./cohort-reference-validation";
 import { CohortResolutionSession } from "./cohort-resolution-session";
 import { CohortResolverService } from "./cohort-resolver.service";
@@ -328,33 +324,6 @@ export class ActionsService {
     }
   }
 
-  /**
-   * The jsonb-backed cohortExpression arrives from HTTP as arbitrary JSON —
-   * class-validator can't express its recursive shape, so every handler that
-   * accepts one must parse it here before it reaches the db.
-   */
-  private parseCohortExpressionOrThrow(value: unknown): CohortExpression {
-    const parsed = cohortExpressionSchema.safeParse(value);
-    if (!parsed.success) {
-      const issues = describeSchemaIssues(parsed.error).join("; ");
-      throw new BadRequestException(`Invalid cohort expression: ${issues}`);
-    }
-    return parsed.data;
-  }
-
-  private async parseCohortExpressionForSaveOrThrow(
-    value: unknown,
-    stored?: unknown,
-  ): Promise<CohortExpression> {
-    const expression = this.parseCohortExpressionOrThrow(value);
-    await assertTagsExist({
-      em: this.actionRepository.manager,
-      expression,
-      previous: cohortExpressionSchema.safeParse(stored).data,
-    });
-    return expression;
-  }
-
   /** Reviewers are ordered by the position the admin sent them in. */
   private reviewerRows(reviewers: ActionReviewerDto[]): ActionReviewer[] {
     return reviewers.map((reviewer, position) =>
@@ -395,9 +364,10 @@ export class ActionsService {
     const { suiteId, authorIds, reviewers, ...rest } = createActionDto;
     this.rewriteRenderedImages(rest);
     if (rest.cohortExpression != null) {
-      rest.cohortExpression = await this.parseCohortExpressionForSaveOrThrow(
-        rest.cohortExpression,
-      );
+      rest.cohortExpression = await parseCohortExpressionForSaveOrThrow({
+        em: this.actionRepository.manager,
+        value: rest.cohortExpression,
+      });
     }
     if (rest.taskFormId !== undefined) {
       await this.assertFormIdNotUsedAsVariant(rest.taskFormId);
@@ -1275,10 +1245,11 @@ export class ActionsService {
     const { suiteId, authorIds, reviewers, ...rest } = updateActionDto;
     this.dropEchoedImages(rest, action);
     if (rest.cohortExpression != null) {
-      rest.cohortExpression = await this.parseCohortExpressionForSaveOrThrow(
-        rest.cohortExpression,
-        action.cohortExpression,
-      );
+      rest.cohortExpression = await parseCohortExpressionForSaveOrThrow({
+        em: this.actionRepository.manager,
+        value: rest.cohortExpression,
+        stored: action.cohortExpression,
+      });
     }
 
     if (
@@ -1372,9 +1343,10 @@ export class ActionsService {
     dto: CreateFollowUpFormDto,
   ): Promise<ParsedFollowUpForm> {
     if (dto.cohortExpression != null) {
-      dto.cohortExpression = await this.parseCohortExpressionForSaveOrThrow(
-        dto.cohortExpression,
-      );
+      dto.cohortExpression = await parseCohortExpressionForSaveOrThrow({
+        em: this.actionRepository.manager,
+        value: dto.cohortExpression,
+      });
     }
     const action = await this.findOneOrFail({ id: actionId, serverSide: true });
     const form = await this.formRepository.findOneOrFail({
@@ -1404,10 +1376,11 @@ export class ActionsService {
       id: followUpFormId,
     });
     if (dto.cohortExpression != null) {
-      dto.cohortExpression = await this.parseCohortExpressionForSaveOrThrow(
-        dto.cohortExpression,
-        followUpForm.cohortExpression,
-      );
+      dto.cohortExpression = await parseCohortExpressionForSaveOrThrow({
+        em: this.actionRepository.manager,
+        value: dto.cohortExpression,
+        stored: followUpForm.cohortExpression,
+      });
     }
     Object.assign(followUpForm, dto);
     return writeUnderLive(this.followUpFormRepository.manager, {
@@ -1716,9 +1689,10 @@ export class ActionsService {
     const cohortExpression =
       actionCols.cohortExpression == null
         ? undefined
-        : await this.parseCohortExpressionForSaveOrThrow(
-            actionCols.cohortExpression,
-          );
+        : await parseCohortExpressionForSaveOrThrow({
+            em: this.actionRepository.manager,
+            value: actionCols.cohortExpression,
+          });
 
     let suiteIdToSync: number | undefined;
     const result = await this.actionRepository.manager.transaction(
@@ -2103,7 +2077,7 @@ export class ActionsService {
   }
 
   async evaluateCohortExpressionBatch(expression: unknown): Promise<number[]> {
-    const parsed = this.parseCohortExpressionOrThrow(expression);
+    const parsed = parseCohortExpressionOrThrow(expression);
     const result =
       await this.cohortResolverService.resolveCohortMemberIds(parsed);
     return Array.from(result);
