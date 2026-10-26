@@ -1,4 +1,5 @@
 import type { AnyField } from "@alliance/common/forms/form-schema";
+import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { staticFieldContext } from "@alliance/shared/useFormRenderer";
 import { cleanup, render, screen } from "@testing-library/react";
@@ -21,6 +22,7 @@ const renderField = (field: AnyField, error?: string) =>
         />
       </SiteAppProvider>
     </MemoryRouter>,
+    queryWrapper(),
   );
 
 // Each render below then shows the lazy inputs rather than their fallback.

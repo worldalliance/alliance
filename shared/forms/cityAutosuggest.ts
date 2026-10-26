@@ -1,6 +1,4 @@
 import type { CitySearchDto } from "@alliance/shared/client";
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import { geoSearchCity } from "@alliance/shared/client";
 import {
   Dispatch,
   SetStateAction,
@@ -9,11 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-
-export type CityGeo = {
-  latitude?: number;
-  longitude?: number;
-};
+import { type CityGeo, useCitySearch } from "./useCitySearch";
 
 export type CityAutosuggestParams = {
   value?: string;
@@ -36,6 +30,13 @@ export type CityAutosuggestState = {
   fetchGeolocation: () => Promise<void>;
 };
 
+type CitySearch = {
+  id: number;
+  name: string;
+  geo: CityGeo | null;
+  at: number;
+};
+
 let cachedGeo: CityGeo | null = null;
 let cachedGeoFetched = false;
 
@@ -55,31 +56,6 @@ export async function fetchApproximateGeo(): Promise<CityGeo | null> {
   return cachedGeo;
 }
 
-export async function fetchCitySuggestions(
-  name: string,
-  opts: { minLength?: number; geo?: CityGeo; signal?: AbortSignal } = {},
-): Promise<CitySearchDto[]> {
-  const minLength = opts.minLength ?? 1;
-  if (name.trim().length < minLength) {
-    return [];
-  }
-  console.log("name", name);
-  console.log(name.split(",")[0]);
-  const res = await geoSearchCity({
-    query: {
-      query: name.includes(",") ? name.split(",")[0].trim() : name.trim(),
-      latitude: opts.geo?.latitude,
-      longitude: opts.geo?.longitude,
-    },
-    signal: opts.signal,
-  });
-  if (!res.data) {
-    console.error("Geo search failed", res.error);
-    return [];
-  }
-  return res.data;
-}
-
 export function useCityAutosuggest({
   value = "",
   minLength = 1,
@@ -93,7 +69,9 @@ export function useCityAutosuggest({
   const [highlighted, setHighlighted] = useState(-1);
   const [didSelect, setDidSelect] = useState(false);
   const [geo, setGeo] = useState<CityGeo | null>(cachedGeo);
-  const ctrl = useRef<AbortController | null>(null);
+  const [search, setSearch] = useState<CitySearch | null>(null);
+  const [shownSearchId, setShownSearchId] = useState<number | null>(null);
+  const nextSearchId = useRef(0);
 
   useEffect(() => {
     setQuery(value);
@@ -108,45 +86,57 @@ export function useCityAutosuggest({
     if (found) setGeo(found);
   }, [geo]);
 
-  const fetchCities = useCallback(
-    async (name: string) => {
-      if (name.trim().length < minLength) {
-        setResults([]);
-        return;
-      }
-      ctrl.current?.abort();
-      ctrl.current = new AbortController();
-      try {
-        const data = await fetchCitySuggestions(name, {
-          minLength,
-          geo: geo ?? undefined,
-          signal: ctrl.current.signal,
-        });
-        setResults(data);
-        setOpen(true);
-        setHighlighted(-1);
-      } catch (err) {
-        if ((err as Error)?.name !== "AbortError") {
-          console.error(err);
-        }
-      }
-    },
-    [minLength, geo],
-  );
-
   useEffect(() => {
     if (didSelect) return;
     const id = setTimeout(() => {
-      fetchCities(query);
+      setSearch({
+        id: nextSearchId.current++,
+        name: query,
+        geo,
+        at: Date.now(),
+      });
     }, debounceMs);
     return () => clearTimeout(id);
-  }, [query, fetchCities, debounceMs, didSelect]);
+  }, [query, geo, debounceMs, didSelect]);
+
+  const searchable = search !== null && search.name.trim().length >= minLength;
+  const cities = useCitySearch({
+    text: search ? citySearchText(search.name) : "",
+    geo: search?.geo ?? null,
+    enabled: searchable,
+  });
+
+  // A search landing on a text whose cached answer is a failure from before it
+  // asks again rather than showing that failure.
+  const failedBefore =
+    searchable && cities.isError && cities.errorUpdatedAt < search.at;
+  const { refetch } = cities;
+  useEffect(() => {
+    if (failedBefore) void refetch();
+  }, [failedBefore, refetch]);
+
+  useEffect(() => {
+    if (cities.error) console.error("Geo search failed", cities.error);
+  }, [cities.error]);
+
+  if (search && search.id !== shownSearchId) {
+    if (!searchable) {
+      setShownSearchId(search.id);
+      setResults([]);
+    } else if (!cities.isPending && !failedBefore) {
+      setShownSearchId(search.id);
+      setResults(cities.data ?? []);
+      setOpen(true);
+      setHighlighted(-1);
+    }
+  }
 
   const commitCustomValue = useCallback(() => {
     if (!allowCustomValue || didSelect) return;
     const trimmed = query.trim();
     onSelect(trimmed);
     setDidSelect(true);
+    setSearch(null);
     setResults([]);
     setOpen(false);
     setHighlighted(-1);
@@ -157,6 +147,7 @@ export function useCityAutosuggest({
     (city: CitySearchDto) => {
       onSelect(city);
       setDidSelect(true);
+      setSearch(null);
       const label = formatCityDisplay(city);
       setQuery(label);
       setResults([]);
@@ -180,6 +171,10 @@ export function useCityAutosuggest({
     commitCustomValue,
     fetchGeolocation,
   };
+}
+
+function citySearchText(name: string): string {
+  return name.includes(",") ? name.split(",")[0].trim() : name.trim();
 }
 
 export function formatCityDisplay(city: CitySearchDto): string {

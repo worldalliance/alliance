@@ -1,5 +1,6 @@
 import type { AnyField, FormValue } from "@alliance/common/forms/form-schema";
 import { resolveFormValue } from "@alliance/shared/forms/formValueUpdater";
+import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { staticFieldContext } from "@alliance/shared/useFormRenderer";
 import {
@@ -62,6 +63,7 @@ describe.each([{ hideLabel: false }, { hideLabel: true }])(
               />
             </SiteAppProvider>
           </MemoryRouter>,
+          queryWrapper(),
         );
 
         expect(await screen.findByLabelText("Question")).toBeTruthy();
