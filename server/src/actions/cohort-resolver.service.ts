@@ -12,6 +12,11 @@ import {
   computeMissedActionDeadline,
 } from "src/utils/action-user";
 import type { Repository } from "typeorm";
+import { ActionBranchService } from "./action-branch.service";
+import {
+  firstMatchingBranchIds,
+  routedCohortExpression,
+} from "./action-branches";
 import { CohortAdmissionService } from "./cohort-admission.service";
 import { readsSavedDecisions } from "./cohort-decision";
 import {
@@ -30,6 +35,12 @@ import {
 } from "./entities/action.entity";
 import { PrerequisiteProgressService } from "./prerequisite-progress.service";
 
+export type RoutedCohort = {
+  cohort: Set<number>;
+  /** null unless the action routes by rule branches. */
+  branchIdByUser: Map<number, number> | null;
+};
+
 @Injectable()
 export class CohortResolverService {
   constructor(
@@ -46,6 +57,7 @@ export class CohortResolverService {
     private readonly userService: UserService,
     private readonly prerequisiteProgressService: PrerequisiteProgressService,
     private readonly cohortAdmissionService: CohortAdmissionService,
+    private readonly actionBranchService: ActionBranchService,
   ) {}
 
   /**
@@ -81,22 +93,66 @@ export class CohortResolverService {
     return pending;
   }
 
+  async resolveRoutedCohort(
+    action: Pick<ParsedAction, "id" | "cohortExpression">,
+    session: CohortResolutionSession,
+  ): Promise<RoutedCohort> {
+    const branches = await this.actionBranchService.loadBranches(
+      action.id,
+      session,
+    );
+    const cohort = await this.resolveCohortMemberIds(
+      routedCohortExpression(action.cohortExpression, branches),
+      session,
+    );
+    if (branches.length === 0) return { cohort, branchIdByUser: null };
+    const matches = await Promise.all(
+      branches.map((branch) =>
+        this.resolveCohortMemberIds(branch.rule, session),
+      ),
+    );
+    return {
+      cohort,
+      branchIdByUser: firstMatchingBranchIds({
+        branches,
+        matches,
+        userIds: cohort,
+      }),
+    };
+  }
+
   /**
    * An action's live cohort: the members its expression selects whose
    * prerequisites have all resolved.
    */
   async resolveActionCohortMemberIds(params: {
-    action: Pick<ParsedAction, "cohortExpression" | "prerequisiteActionIds">;
+    action: Pick<
+      ParsedAction,
+      "id" | "cohortExpression" | "prerequisiteActionIds"
+    >;
     session: CohortResolutionSession;
     resolvingActionIds?: ReadonlySet<number>;
   }): Promise<Set<number>> {
-    const { action, session, resolvingActionIds } = params;
-    const [cohort, isReady] = await Promise.all([
-      this.resolveCohortMemberIds(
-        action.cohortExpression,
+    const { action, session } = params;
+    return this.resolveReadyMemberIds({
+      ...params,
+      expression: await this.actionBranchService.loadRoutedCohortExpression(
+        action,
         session,
-        resolvingActionIds,
       ),
+    });
+  }
+
+  /** The members `expression` selects whose prerequisites of `action` have all resolved. */
+  async resolveReadyMemberIds(params: {
+    action: Pick<ParsedAction, "id" | "prerequisiteActionIds">;
+    expression: CohortExpression | null;
+    session: CohortResolutionSession;
+    resolvingActionIds?: ReadonlySet<number>;
+  }): Promise<Set<number>> {
+    const { action, expression, session, resolvingActionIds } = params;
+    const [cohort, isReady] = await Promise.all([
+      this.resolveCohortMemberIds(expression, session, resolvingActionIds),
       this.prerequisiteProgressService.loadReadiness({
         action,
         session,

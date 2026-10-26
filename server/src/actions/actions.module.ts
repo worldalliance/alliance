@@ -35,6 +35,8 @@ import { Tag } from "../user/entities/tag.entity";
 import { User } from "../user/entities/user.entity";
 import { UserModule } from "../user/user.module";
 import { ActionFeedController } from "./action-feed.controller";
+import { ActionFormAssignmentService } from "./action-form-assignment.service";
+import { ActionFormRoutingService } from "./action-form-routing.service";
 import { ActionFormVariantService } from "./action-form-variant.service";
 import { ActionFormsController } from "./action-forms.controller";
 import { ActionParticipantsService } from "./action-participants.service";
@@ -146,6 +148,8 @@ import { TaskBadgeService } from "./task-badge.service";
     ActionsService,
     ActionResponseCountsService,
     ProjectsService,
+    ActionFormAssignmentService,
+    ActionFormRoutingService,
     ActionFormVariantService,
     ActionsGateway,
     ActionEventNotifWorker,
@@ -175,6 +179,7 @@ import { TaskBadgeService } from "./task-badge.service";
   exports: [
     ActionsService,
     ActionVisibilityModule,
+    ActionFormAssignmentService,
     ActionFormVariantService,
     ActionEventRecipientService,
     CohortResolverService,

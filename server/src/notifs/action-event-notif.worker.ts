@@ -2,6 +2,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
+import { ActionFormAssignmentService } from "src/actions/action-form-assignment.service";
 import { ActionsService } from "src/actions/actions.service";
 import { loadedActionEventAction } from "src/actions/entities/action-event.entity";
 import type { ActionSuite } from "src/actions/entities/action-suite.entity";
@@ -97,6 +98,7 @@ export class ActionEventNotifWorker {
   constructor(
     private readonly dataSource: DataSource,
     private readonly actionsService: ActionsService,
+    private readonly actionFormAssignmentService: ActionFormAssignmentService,
     @InjectRepository(ActionEventNotif)
     private readonly actionEventNotifsRepository: Repository<ActionEventNotif>,
     private readonly reminderService: ActionEventReminderService,
@@ -216,11 +218,16 @@ export class ActionEventNotifWorker {
       ).length;
     }
 
+    const action = loadedActionEventAction(
+      loadedReminderGroupMemberActionEvent(plan.group),
+    );
+    const variant = await this.actionFormAssignmentService.findAssignedVariant({
+      actionId: action.id,
+      userId: plan.user.id,
+    });
     return processKeywordReplacements(text, {
       user: plan.user,
-      action: loadedActionEventAction(
-        loadedReminderGroupMemberActionEvent(plan.group),
-      ),
+      action: { name: variant?.nameOverride ?? action.name },
       deadlineEvent: plan.group.deadlineEvent,
       uncompletedTasksCount: uncompletedTasks.length,
       uncompletedMembersInGroupCount,

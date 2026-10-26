@@ -326,7 +326,21 @@ const ActionDashboard: React.FC = () => {
             )}
 
             {activeTab === "form-variants" && action && (
-              <ActionFormVariantsTab action={action} />
+              <ActionFormVariantsTab
+                action={action}
+                activeContractUserIds={activeContractUserIds}
+                sources={{
+                  availableTags,
+                  tagsLoading,
+                  tagsError,
+                  availableActions: allActions,
+                  actionsLoading: allActionsLoading,
+                  actionsError: allActionsLoadFailed,
+                  availableUsers,
+                  usersLoading,
+                  usersError,
+                }}
+              />
             )}
 
             {activeTab === "events" && action && (

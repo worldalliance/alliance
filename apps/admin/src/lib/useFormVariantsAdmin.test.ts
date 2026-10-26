@@ -4,21 +4,15 @@ import type {
   CreateActionFormVariantDto,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { makeFormVariant } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "bun:test";
 import { useFormVariantsAdmin } from "./useFormVariantsAdmin";
 
-const variant = (id: number, name: string): ActionFormVariantDto => ({
-  id,
-  actionId: 2,
-  formId: id + 10,
-  name,
-  splitValue: 0.5,
-  createdAt: "2026-10-01T00:00:00.000Z",
-  updatedAt: "2026-10-01T00:00:00.000Z",
-});
+const variant = (id: number, name: string): ActionFormVariantDto =>
+  makeFormVariant({ id, formId: id + 10, name });
 
 let stored: ActionFormVariantDto[] = [];
 let loadStatus = 200;

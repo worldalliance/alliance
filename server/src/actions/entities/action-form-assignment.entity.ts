@@ -20,8 +20,9 @@ import { Action } from "./action.entity";
 
 // Records which form variant a user has been assigned to for an action.
 // `variantId = null` means the user is on the action's default form
-// (`action.taskFormId`). Sticky: once a row exists, it never changes, though
-// deleting its variant before launch deletes the row.
+// (`action.taskFormId`). Sticky: once a row exists, only staff change it (a
+// move or a re-route), though deleting its variant before launch deletes the
+// row.
 @Entity()
 @Index("UQ_action_form_assignment_actionId_userId", ["actionId", "userId"], {
   unique: true,
@@ -73,6 +74,23 @@ export class ActionFormAssignment {
   @Allow()
   @Type(() => Date)
   assignedAt: Date;
+
+  /** Set when staff moved the member by hand; a re-route skips them. */
+  @Column({ type: "timestamptz", nullable: true })
+  @ApiProperty({ type: Date, nullable: true })
+  @IsOptional()
+  overriddenAt: Date | null;
+
+  @Column({ type: "int", nullable: true })
+  @ApiProperty({ type: Number, nullable: true })
+  @IsOptional()
+  overriddenById: number | null;
+
+  @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "overriddenById" })
+  @Type(() => User)
+  @IsOptional()
+  overriddenBy?: Relation<User> | null;
 
   @DeleteDateColumnTz()
   @IsOptional()

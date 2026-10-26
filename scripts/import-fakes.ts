@@ -25,7 +25,7 @@ async function createFakeAction(params: {
     route: "/tasks/createForm",
     body: fake.action.form,
   });
-  const { form: _, ...fields } = fake.action;
+  const { form: _, branches = [], ...fields } = fake.action;
   const action = await api<{ id: number }>({
     as: admin,
     method: "POST",
@@ -44,6 +44,20 @@ async function createFakeAction(params: {
   });
   if (fake.project) {
     await assignProject({ admin, actionId: action.id, project: fake.project });
+  }
+  for (const { form: branchForm, ...branch } of branches) {
+    const source = await api<{ id: number }>({
+      as: admin,
+      method: "POST",
+      route: "/tasks/createForm",
+      body: branchForm,
+    });
+    await api({
+      as: admin,
+      method: "POST",
+      route: `/actions/${action.id}/form-variants`,
+      body: { ...branch, sourceFormId: source.id },
+    });
   }
   return action.id;
 }
@@ -351,6 +365,11 @@ async function importFake(params: {
   await addEvents({ admin, actionId, events: before, shift });
 
   if (fake.participants.length > 0) {
+    if (fake.kind === FakeKind.Fake && fake.action.branches?.length) {
+      throw new Error(
+        "replaying participants on a branched action isn't supported: each member submits their branch's form",
+      );
+    }
     const context = await actionContext({ admin, actionId });
     const ordered = fake.participants.toSorted(
       (a, b) => Date.parse(a.at) - Date.parse(b.at),

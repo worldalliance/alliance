@@ -5,11 +5,17 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { UserService } from "src/user/user.service";
 import { In, type EntityManager, type Repository } from "typeorm";
+import { ActionBranchService } from "./action-branch.service";
+import { CohortResolutionSession } from "./cohort-resolution-session";
 import { ActionCohortDecisionCorrection } from "./entities/action-cohort-decision-correction.entity";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
+import { ActionFormAssignment } from "./entities/action-form-assignment.entity";
 import { Action } from "./entities/action.entity";
 import { CohortDecisionReason } from "./entities/cohort-decision-reason";
+import { liveAssignments } from "./new-assignment";
+import { SingleMemberCohortService } from "./single-member-cohort.service";
 import { shortensMemberActionDeadline } from "./utils/action-event";
 
 const DECISION_DETAIL_RELATIONS = {
@@ -27,6 +33,9 @@ export class CohortDecisionStaffService {
   constructor(
     @InjectRepository(ActionCohortDecision)
     private readonly decisionRepository: Repository<ActionCohortDecision>,
+    private readonly actionBranchService: ActionBranchService,
+    private readonly singleMemberCohortService: SingleMemberCohortService,
+    private readonly userService: UserService,
   ) {}
 
   hasDecisions(actionId: number): Promise<boolean> {
@@ -54,6 +63,9 @@ export class CohortDecisionStaffService {
     now: Date;
   }): Promise<ActionCohortDecision> {
     const { actionId, userId, included, note, staffUserId, now } = params;
+    const branchId = included
+      ? await this.findBranchForCorrection({ actionId, userId })
+      : null;
     await this.decisionRepository.manager.transaction(async (em) => {
       const decision = await em.findOne(ActionCohortDecision, {
         where: { actionId, userId },
@@ -82,12 +94,60 @@ export class CohortDecisionStaffService {
         reason: CohortDecisionReason.StaffCorrection,
         resolvedAt: now,
       });
+      if (branchId === null) return;
+      const assignments = await liveAssignments(em, [
+        { actionId, userId, variantId: branchId },
+      ]);
+      await em
+        .createQueryBuilder()
+        .insert()
+        .into(ActionFormAssignment)
+        .values(assignments)
+        .orIgnore()
+        .execute();
     });
     return this.decisionRepository.findOneOrFail({
       where: { actionId, userId },
       relations: DECISION_DETAIL_RELATIONS,
       order: DECISION_DETAIL_ORDER,
     });
+  }
+
+  /**
+   * A member staff include on a branched action gets their first matching
+   * branch, or the first branch when none matches, unless already routed.
+   */
+  private async findBranchForCorrection(params: {
+    actionId: number;
+    userId: number;
+  }): Promise<number | null> {
+    const { actionId, userId } = params;
+    const session = new CohortResolutionSession();
+    const [branches, routed, [user]] = await Promise.all([
+      this.actionBranchService.loadBranches(actionId, session),
+      this.decisionRepository.manager.exists(ActionFormAssignment, {
+        where: { actionId, userId },
+      }),
+      this.userService.findByIds([userId], {
+        tags: true,
+        contractEvents: true,
+        awayRanges: true,
+      }),
+    ]);
+    if (branches.length === 0 || routed) return null;
+    if (!user) throw new NotFoundException("Member not found");
+    for (const branch of branches) {
+      if (
+        await this.singleMemberCohortService.computeIsInCohortExpression({
+          user,
+          cohortExpression: branch.rule,
+          session,
+        })
+      ) {
+        return branch.id;
+      }
+    }
+    return branches[0].id;
   }
 
   /**

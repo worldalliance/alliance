@@ -1,5 +1,5 @@
 import { NotFoundException } from "@nestjs/common";
-import { ActionFormVariantService } from "src/actions/action-form-variant.service";
+import { ActionFormAssignmentService } from "src/actions/action-form-assignment.service";
 import { ActionsService } from "src/actions/actions.service";
 import { ActionFormAssignment } from "src/actions/entities/action-form-assignment.entity";
 import { ActionFormVariant } from "src/actions/entities/action-form-variant.entity";
@@ -249,7 +249,7 @@ describe("softDeleteCascade (e2e)", () => {
         ids: [variant.id],
       });
       const assigned = ctx.app
-        .get(ActionFormVariantService)
+        .get(ActionFormAssignmentService)
         .getOrCreateAssignedFormId(variant.actionId, ctx.testUserId);
       await waitForLockWait(ctx.dataSource);
       await deletion.commitTransaction();

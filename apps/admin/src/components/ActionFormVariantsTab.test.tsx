@@ -1,5 +1,4 @@
-import type { ActionFormVariantDto } from "@alliance/shared/client";
-import { makeAction } from "@alliance/shared/lib/testFixtures";
+import { makeAction, makeFormVariant } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
@@ -8,14 +7,18 @@ import { beforeEach, expect, it, spyOn } from "bun:test";
 import { MemoryRouter } from "react-router";
 import ActionFormVariantsTab from "./ActionFormVariantsTab";
 
-const variant: ActionFormVariantDto = {
-  id: 1,
-  actionId: 2,
-  formId: 11,
-  name: "Variant A",
-  splitValue: 0.3,
-  createdAt: "2026-10-01T00:00:00.000Z",
-  updatedAt: "2026-10-01T00:00:00.000Z",
+const variant = makeFormVariant({ splitValue: 0.3 });
+
+const NO_SOURCES = {
+  availableTags: [],
+  tagsLoading: false,
+  tagsError: false,
+  availableActions: [],
+  actionsLoading: false,
+  actionsError: false,
+  availableUsers: [],
+  usersLoading: false,
+  usersError: false,
 };
 
 let loadStatus = 200;
@@ -39,6 +42,7 @@ serveApi(
       created.push(body.name);
       return Response.json({ ...variant, id: 2, name: body.name });
     },
+    "GET /actions/:id/form-assignments": () => Response.json([]),
     "PATCH /actions/form-variants/:variantId": () =>
       Response.json({ message: "Variant is locked" }, { status: writeStatus }),
     "DELETE /actions/form-variants/:variantId": () =>
@@ -56,7 +60,10 @@ const renderTab = () =>
   render(
     <ToastProvider>
       <MemoryRouter>
-        <ActionFormVariantsTab action={makeAction({ id: 2, taskFormId: 9 })} />
+        <ActionFormVariantsTab
+          action={makeAction({ id: 2, taskFormId: 9 })}
+          sources={NO_SOURCES}
+        />
       </MemoryRouter>
     </ToastProvider>,
     queryWrapper(),

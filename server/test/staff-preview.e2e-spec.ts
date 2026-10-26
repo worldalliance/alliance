@@ -305,7 +305,7 @@ describe("Staff preview (e2e)", () => {
       expect(await findInList(staffToken, action.id)).toBeUndefined();
     });
 
-    it("does not mark an archived action as a preview for admins who are staff", async () => {
+    it("leaves an archived action out of the list for admins who are staff", async () => {
       const action = await createAction({
         name: "Archived preview admin staff",
         staffPreview: true,
@@ -323,12 +323,12 @@ describe("Staff preview (e2e)", () => {
         }),
       );
 
-      const listed = await findInList(
-        signAccessToken(ctx.jwtService, adminStaff),
-        action.id,
-      );
-
-      expect(listed?.viewer?.staffPreview).toBe(false);
+      expect(
+        await findInList(
+          signAccessToken(ctx.jwtService, adminStaff),
+          action.id,
+        ),
+      ).toBeUndefined();
     });
 
     it("leaves a draft in preview out of reminder task lists for staff in the cohort", async () => {

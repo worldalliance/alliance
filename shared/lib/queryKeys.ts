@@ -222,6 +222,14 @@ export const queryKeys = {
   formsAdmin: () => [...formsAdminAll(), "index"] as const,
   formVariantsAdmin: (actionId: number) =>
     ["actionFormsListFormVariantsAdmin", actionId] as const,
+  formAssignmentsAdmin: (actionId: number) =>
+    ["actionFormsListFormAssignmentsAdmin", actionId] as const,
+  formRerouteAdmin: (actionId: number) =>
+    ["actionFormsPreviewRerouteAdmin", actionId] as const,
+  branchRoutingPreviewAdmin: (
+    actionId: number,
+    rules: readonly CohortExpression[],
+  ) => ["actionFormsPreviewBranchRoutingAdmin", actionId, rules] as const,
   formQuestionFieldsAdmin: (formId: number | null) =>
     [...formsAdminAll(), "questionFields", formId] as const,
   formResponseCountsAdmin: (formIds: readonly number[]) =>

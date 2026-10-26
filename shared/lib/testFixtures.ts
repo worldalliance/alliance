@@ -2,6 +2,7 @@ import { milliseconds } from "date-fns";
 import type {
   ActionActivityDto,
   ActionEventDto,
+  ActionFormVariantDto,
   CommunityDto,
   CommunityInviteDto,
   ConversationDto,
@@ -140,6 +141,30 @@ export function makeProfile(id: number): ProfileDto {
     displayName: `User ${id}`,
     hasActiveContract: true,
     isCommunityLeader: false,
+  };
+}
+
+export function makeFormVariant(
+  overrides: Partial<ActionFormVariantDto> = {},
+): ActionFormVariantDto {
+  return {
+    id: 1,
+    actionId: 2,
+    formId: 11,
+    name: "Variant A",
+    splitValue: 0.5,
+    rule: null,
+    position: 0,
+    nameOverride: null,
+    shortDescriptionOverride: null,
+    bodyOverride: null,
+    timeEstimateOverride: null,
+    imageOverride: null,
+    squareThumbnailImageOverride: null,
+    squareThumbnailImageAltOverride: null,
+    createdAt: "2026-10-01T00:00:00.000Z",
+    updatedAt: "2026-10-01T00:00:00.000Z",
+    ...overrides,
   };
 }
 

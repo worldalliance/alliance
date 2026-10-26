@@ -1,11 +1,13 @@
 import { Temporal } from "@js-temporal/polyfill";
 import { secondsInDay, secondsInHour } from "date-fns/constants";
+import { ActionFormAssignmentService } from "src/actions/action-form-assignment.service";
 import { ActionsService } from "src/actions/actions.service";
 import { ActionDto } from "src/actions/dto/action.dto";
 import {
   ActionEvent,
   ActionStatus,
 } from "src/actions/entities/action-event.entity";
+import { ActionFormVariant } from "src/actions/entities/action-form-variant.entity";
 import { Action } from "src/actions/entities/action.entity";
 import {
   ReminderCohortType,
@@ -33,6 +35,7 @@ import { NotifsService } from "./notifs.service";
 describe("ActionEventNotifWorker.processCustomReminderText", () => {
   let worker: ActionEventNotifWorker;
   let actionsService: jest.Mocked<ActionsService>;
+  let actionFormAssignmentService: jest.Mocked<ActionFormAssignmentService>;
   let originalAppUrl: string | undefined;
 
   beforeAll(() => {
@@ -48,10 +51,14 @@ describe("ActionEventNotifWorker.processCustomReminderText", () => {
     actionsService = {
       findUncompletedTasks: jest.fn(),
     } as unknown as jest.Mocked<ActionsService>;
+    actionFormAssignmentService = {
+      findAssignedVariant: jest.fn().mockResolvedValue(null),
+    } as unknown as jest.Mocked<ActionFormAssignmentService>;
 
     worker = new ActionEventNotifWorker(
       {} as DataSource,
       actionsService,
+      actionFormAssignmentService,
       {} as Repository<ActionEventNotif>,
       {} as ActionEventReminderService,
       {} as MissedSuitePlanService,
@@ -122,6 +129,42 @@ describe("ActionEventNotifWorker.processCustomReminderText", () => {
     }
   });
 
+  it("names the action as the member's branch does", async () => {
+    actionFormAssignmentService.findAssignedVariant.mockResolvedValue({
+      nameOverride: "Join your county's standby list",
+    } as ActionFormVariant);
+    const action = { id: 12, name: "Poll workers" } as Action;
+    const plan: NotificationPlan = {
+      scheduledFor: new Date("2024-02-11T12:00:00Z"),
+      user: { id: 9, name: "Sam Example" } as User,
+      group: {
+        id: 6,
+        name: "Reminder",
+        timingMode: ReminderGroupTimingMode.WithinRange,
+        cohortType: ReminderCohortType.AllUncompleted,
+        emailMessage: "",
+        emailSubject: "",
+        textMessage: "",
+        memberActionEvent: {
+          id: 303,
+          action,
+          date: new Date("2024-02-10T10:00:00Z"),
+          newStatus: ActionStatus.MemberAction,
+        } as ActionEvent,
+      } as ReminderGroup,
+    };
+
+    expect(
+      await worker.processCustomReminderText("Do #{action}", plan, []),
+    ).toBe("Do Join your county's standby list");
+    expect(
+      actionFormAssignmentService.findAssignedVariant,
+    ).toHaveBeenCalledWith({
+      actionId: 12,
+      userId: 9,
+    });
+  });
+
   it("falls back gracefully when user has a single name and no deadline event", async () => {
     const uncompletedTasks = [{ id: 1, name: "Task 1", timeEstimate: 15 }];
     const consoleErrorSpy = jest
@@ -186,6 +229,7 @@ describe("ActionEventNotifWorker.findUncompletedTasksForPlan", () => {
     worker = new ActionEventNotifWorker(
       {} as DataSource,
       actionsService,
+      {} as ActionFormAssignmentService,
       {} as Repository<ActionEventNotif>,
       {} as ActionEventReminderService,
       {} as MissedSuitePlanService,

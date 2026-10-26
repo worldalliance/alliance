@@ -1,11 +1,17 @@
 import {
+  cohortExpressionSchema,
   collectCohortDependencies,
   type CohortExpression,
 } from "@alliance/common/cohort-expression";
+import { describeSchemaIssues } from "@alliance/common/zod-issues";
 import { BadRequestException } from "@nestjs/common";
 import { isUUID } from "class-validator";
 import { In, type EntityManager } from "typeorm";
 import { Tag } from "../user/entities/tag.entity";
+import {
+  ActionFormVariant,
+  parseActionFormVariant,
+} from "./entities/action-form-variant.entity";
 import {
   Action,
   loadedActionFollowUpForms,
@@ -34,6 +40,9 @@ export async function assertNotInACohort(params: {
       order: { id: "ASC" },
     })
   ).map(parseAction);
+  const branches = (await em.find(ActionFormVariant)).map(
+    parseActionFormVariant,
+  );
   const names = (expression: CohortExpression | null) =>
     collectCohortDependencies(expression).actionIds.has(actionId);
   const referrers = actions.flatMap((action) => [
@@ -43,12 +52,41 @@ export async function assertNotInACohort(params: {
     )
       ? [`a follow-up form of "${action.name}"`]
       : []),
+    ...(branches.some(
+      (branch) => branch.actionId === action.id && names(branch.rule),
+    )
+      ? [`a branch of "${action.name}"`]
+      : []),
   ]);
   if (referrers.length > 0) {
     throw new BadRequestException(
       `This action is named in the cohort of ${referrers.join(", ")}. Remove it from there first.`,
     );
   }
+}
+
+export function parseCohortExpressionOrThrow(value: unknown): CohortExpression {
+  const parsed = cohortExpressionSchema.safeParse(value);
+  if (!parsed.success) {
+    const issues = describeSchemaIssues(parsed.error).join("; ");
+    throw new BadRequestException(`Invalid cohort expression: ${issues}`);
+  }
+  return parsed.data;
+}
+
+export async function parseCohortExpressionForSaveOrThrow(params: {
+  em: EntityManager;
+  value: unknown;
+  stored?: unknown;
+}): Promise<CohortExpression> {
+  const { em, value, stored } = params;
+  const expression = parseCohortExpressionOrThrow(value);
+  await assertTagsExist({
+    em,
+    expression,
+    previous: cohortExpressionSchema.safeParse(stored).data,
+  });
+  return expression;
 }
 
 /**

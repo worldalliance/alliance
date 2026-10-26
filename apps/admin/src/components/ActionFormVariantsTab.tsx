@@ -19,10 +19,20 @@ import {
   useFormVariantsAdmin,
 } from "../lib/useFormVariantsAdmin";
 import { useRefusalToast } from "../lib/useRefusalToast";
+import ActionBranchesSection from "./ActionBranchesSection";
+import ActionFormMembersPanel from "./ActionFormMembersPanel";
 import ActionFormVariantCoverage from "./ActionFormVariantCoverage";
+import type { CohortLeafEditorSources } from "./CohortLeafEditors";
 
 export interface ActionFormVariantsTabProps {
   action: ActionDto;
+  sources: CohortLeafEditorSources;
+  activeContractUserIds?: Set<number>;
+}
+
+enum FormRouting {
+  Split = "split",
+  Rules = "rules",
 }
 
 interface EditState {
@@ -39,7 +49,7 @@ interface StagedVariant {
 const asPercentages = (list: ActionFormVariantsListDto) => ({
   variants: list.variants.map((v) => ({
     ...v,
-    splitValue: v.splitValue * 100,
+    splitValue: (v.splitValue ?? 0) * 100,
   })),
   stats: list.stats.map((s) => ({
     ...s,
@@ -47,10 +57,12 @@ const asPercentages = (list: ActionFormVariantsListDto) => ({
   })),
 });
 
-const NO_VARIANTS: ActionFormVariantDto[] = [];
+const NO_VARIANTS: ReturnType<typeof asPercentages>["variants"] = [];
 
 export default function ActionFormVariantsTab({
   action,
+  sources,
+  activeContractUserIds,
 }: ActionFormVariantsTabProps) {
   const navigate = useNavigate();
   const toast = useToast();
@@ -65,6 +77,7 @@ export default function ActionFormVariantsTab({
   const [staged, setStaged] = useState<StagedVariant[]>([]);
   const [savingIds, setSavingIds] = useState<Set<number>>(new Set());
   const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
+  const [chosenRouting, setChosenRouting] = useState(FormRouting.Split);
   const publishing = publishVariants.isPending;
 
   const variants = variantsQuery.data?.variants ?? NO_VARIANTS;
@@ -209,8 +222,79 @@ export default function ActionFormVariantsTab({
     );
   }
 
+  const routing =
+    variants.length === 0 && !hasUnpublished
+      ? chosenRouting
+      : variants.some((v) => v.rule != null)
+        ? FormRouting.Rules
+        : FormRouting.Split;
+
+  const routingChoice = variants.length === 0 && !hasUnpublished && (
+    <div
+      role="radiogroup"
+      aria-label="How members get a form"
+      className="flex gap-2"
+    >
+      {(
+        [
+          [FormRouting.Split, "Random split (A/B test)"],
+          [FormRouting.Rules, "Route by rules"],
+        ] as const
+      ).map(([value, label]) => (
+        <BaseButton
+          key={value}
+          role="radio"
+          aria-checked={routing === value}
+          variant={
+            routing === value ? BaseButtonVariant.Blue : BaseButtonVariant.White
+          }
+          onClick={() => setChosenRouting(value)}
+        >
+          {label}
+        </BaseButton>
+      ))}
+    </div>
+  );
+
+  const membersPanel = variants.length > 0 && (
+    <Card style={CardStyle.White} className="p-4">
+      <ActionFormMembersPanel
+        actionId={action.id}
+        variants={variants}
+        defaultLabel={routing === FormRouting.Split ? "Default form" : null}
+      />
+    </Card>
+  );
+
+  if (routing === FormRouting.Rules) {
+    return (
+      <div className="space-y-6">
+        {variantsQuery.isError && (
+          <div className="text-red-500">
+            {formVariantsLoadError(variantsQuery.error)}
+          </div>
+        )}
+        <h2 className="text-lg font-semibold">Form branches</h2>
+        {routingChoice}
+        {!action.taskFormId && (
+          <Card style={CardStyle.Alert} className="p-4 text-sm">
+            Set the action&apos;s task form (in the &quot;Task Form&quot; tab)
+            before adding branches. Each branch starts as a copy of it.
+          </Card>
+        )}
+        <ActionBranchesSection
+          action={action}
+          sources={sources}
+          activeContractUserIds={activeContractUserIds}
+        />
+        {membersPanel}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {routingChoice}
       {variantsQuery.isError && (
         <div className="text-red-500">
           {formVariantsLoadError(variantsQuery.error)}
@@ -379,6 +463,7 @@ export default function ActionFormVariantsTab({
           </div>
         </Card>
       )}
+      {membersPanel}
     </div>
   );
 }

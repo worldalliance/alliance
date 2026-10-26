@@ -52,6 +52,21 @@ const update = z.strictObject({
   blocks: z.array(z.unknown()),
 });
 
+const form = z.strictObject({
+  title: z.string(),
+  schema: z.record(z.string(), z.unknown()),
+});
+
+const branch = z.strictObject({
+  name: z.string(),
+  rule: z.unknown(),
+  nameOverride: z.string().nullable(),
+  shortDescriptionOverride: z.string().nullable(),
+  bodyOverride: z.string().nullable(),
+  timeEstimateOverride: z.int().nullable(),
+  form,
+});
+
 const engagement = {
   recordedAt: date,
   events: z.array(event),
@@ -73,10 +88,8 @@ export const fakeFileSchema = z
         timeEstimate: z.int(),
         cohortExpression: z.unknown(),
         visibilityMode: z.string(),
-        form: z.strictObject({
-          title: z.string(),
-          schema: z.record(z.string(), z.unknown()),
-        }),
+        form,
+        branches: z.array(branch).optional(),
       }),
       project: z
         .strictObject({ name: z.string(), category: z.array(z.string()) })

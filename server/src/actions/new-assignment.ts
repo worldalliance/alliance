@@ -51,6 +51,9 @@ function pickVariantForNewUser(variants: ActionFormVariant[]): number | null {
   const r = Math.random();
   let acc = 0;
   for (const v of variants) {
+    if (v.splitValue === null) {
+      throw new Error(`variant ${v.id} has no splitValue to draw from`);
+    }
     acc += v.splitValue;
     if (r < acc) return v.id;
   }

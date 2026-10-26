@@ -57,7 +57,7 @@ export type OnetimeInviteStatus = 'request_pending' | 'request_rejected' | 'link
 
 export type CommunityInviteStatus = 'request_pending' | 'request_rejected' | 'invitee_pending' | 'invitee_accepted' | 'invitee_rejected' | 'cancelled';
 
-export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_request' | 'friend_request_accepted' | 'action_update' | 'likes' | 'removed_from_community' | 'removed_from_community_for_leader' | 'member_left_community' | 'member_suspended_removed_from_community' | 'member_joined_community' | 'community_assigned' | 'new_member_referred' | 'group_member_joined' | 'community_invite_created' | 'community_invite_rejected' | 'community_invite_accepted' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected' | 'community_invite_request_created' | 'community_invite_request_approved' | 'community_invite_request_rejected' | 'ambassador_invite_goal';
+export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_request' | 'friend_request_accepted' | 'action_update' | 'likes' | 'removed_from_community' | 'removed_from_community_for_leader' | 'member_left_community' | 'member_suspended_removed_from_community' | 'member_joined_community' | 'community_assigned' | 'new_member_referred' | 'group_member_joined' | 'action_branch_moved' | 'community_invite_created' | 'community_invite_rejected' | 'community_invite_accepted' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected' | 'community_invite_request_created' | 'community_invite_request_approved' | 'community_invite_request_rejected' | 'ambassador_invite_goal';
 
 export type NotifPriority = 'low' | 'high';
 
@@ -200,7 +200,18 @@ export type ActionFormVariant = {
     actionId: number;
     formId: number;
     name: string;
-    splitValue: number;
+    splitValue: number | null;
+    rule: {
+        [key: string]: unknown;
+    } | null;
+    position: number;
+    nameOverride: string | null;
+    shortDescriptionOverride: string | null;
+    bodyOverride: string | null;
+    timeEstimateOverride: number | null;
+    imageOverride: string | null;
+    squareThumbnailImageOverride: string | null;
+    squareThumbnailImageAltOverride: string | null;
     createdAt: string;
     updatedAt: string;
 };
@@ -338,6 +349,10 @@ export type Project = {
     id: number;
     name: string;
     /**
+     * Stable, human-readable identifier for tooling
+     */
+    slug: string;
+    /**
      * Alliance goals the project works towards, or meta
      */
     category: Array<ActionCategory>;
@@ -358,10 +373,6 @@ export type ActionReviewer = {
      * Display name of the reviewer
      */
     name: string;
-    /**
-     * Stable, human-readable identifier for tooling
-     */
-    slug: string;
     /**
      * Link to the reviewer's website, LinkedIn, etc.
      */
@@ -3598,7 +3609,18 @@ export type ActionFormVariantDto = {
     actionId: number;
     formId: number;
     name: string;
-    splitValue: number;
+    splitValue: number | null;
+    rule: {
+        [key: string]: unknown;
+    } | null;
+    position: number;
+    nameOverride: string | null;
+    shortDescriptionOverride: string | null;
+    bodyOverride: string | null;
+    timeEstimateOverride: number | null;
+    imageOverride: string | null;
+    squareThumbnailImageOverride: string | null;
+    squareThumbnailImageAltOverride: string | null;
     createdAt: string;
     updatedAt: string;
 };
@@ -3621,11 +3643,24 @@ export type ActionFormVariantsListDto = {
 };
 
 export type CreateActionFormVariantDto = {
+    nameOverride?: string | null;
+    shortDescriptionOverride?: string | null;
+    bodyOverride?: string | null;
+    timeEstimateOverride?: number | null;
+    imageOverride?: string | null;
+    squareThumbnailImageOverride?: string | null;
+    squareThumbnailImageAltOverride?: string | null;
     name: string;
     /**
-     * Fraction of new joiners (0-1).
+     * Fraction of new joiners (0-1), for a random split. Set either this or rule.
      */
-    splitValue: number;
+    splitValue?: number | null;
+    /**
+     * Cohort expression routing members to this branch. Set either this or splitValue.
+     */
+    rule?: {
+        [key: string]: unknown;
+    } | null;
     /**
      * Form to clone for this variant. Defaults to the action's current taskFormId.
      */
@@ -3633,11 +3668,74 @@ export type CreateActionFormVariantDto = {
 };
 
 export type UpdateActionFormVariantDto = {
+    nameOverride?: string | null;
+    shortDescriptionOverride?: string | null;
+    bodyOverride?: string | null;
+    timeEstimateOverride?: number | null;
+    imageOverride?: string | null;
+    squareThumbnailImageOverride?: string | null;
+    squareThumbnailImageAltOverride?: string | null;
     name?: string;
+    rule?: {
+        [key: string]: unknown;
+    };
     /**
      * Fraction of new joiners (0-1).
      */
     splitValue?: number;
+};
+
+export type PreviewBranchRoutingDto = {
+    /**
+     * Branch rules in routing order.
+     */
+    rules: Array<{
+        [key: string]: unknown;
+    }>;
+};
+
+export type BranchRoutingPreviewItemDto = {
+    userIds: Array<number>;
+};
+
+export type BranchRoutingPreviewDto = {
+    /**
+     * The members each rule would get, in the order sent.
+     */
+    branches: Array<BranchRoutingPreviewItemDto>;
+};
+
+export type ReorderActionBranchesDto = {
+    variantIds: Array<number>;
+};
+
+export type ActionFormAssignmentDto = {
+    userId: number;
+    variantId: number | null;
+    assignedAt: string;
+    overriddenAt: string | null;
+    userName: string;
+    overriddenByName: string | null;
+};
+
+export type MoveActionFormMemberDto = {
+    userId: number;
+    variantId: number;
+    notify: boolean;
+};
+
+export type RerouteMoveDto = {
+    userId: number;
+    fromVariantId: number;
+    toVariantId: number;
+};
+
+export type RerouteMovesDto = {
+    moves: Array<RerouteMoveDto>;
+};
+
+export type RerouteActionBranchesDto = {
+    notify: boolean;
 };
 
 export type CohortDecisionReason = 'launch' | 'signing' | 'resolved_after_deadline' | 'backfill' | 'staff_correction' | 'prerequisites_resolved';
@@ -11981,6 +12079,154 @@ export type ActionFormsUpdateFormVariantAdminResponses = {
 };
 
 export type ActionFormsUpdateFormVariantAdminResponse = ActionFormsUpdateFormVariantAdminResponses[keyof ActionFormsUpdateFormVariantAdminResponses];
+
+export type ActionFormsPreviewBranchRoutingAdminData = {
+    body: PreviewBranchRoutingDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/{id}/form-variants/routing-preview';
+};
+
+export type ActionFormsPreviewBranchRoutingAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFormsPreviewBranchRoutingAdminError = ActionFormsPreviewBranchRoutingAdminErrors[keyof ActionFormsPreviewBranchRoutingAdminErrors];
+
+export type ActionFormsPreviewBranchRoutingAdminResponses = {
+    200: BranchRoutingPreviewDto;
+};
+
+export type ActionFormsPreviewBranchRoutingAdminResponse = ActionFormsPreviewBranchRoutingAdminResponses[keyof ActionFormsPreviewBranchRoutingAdminResponses];
+
+export type ActionFormsReorderBranchesAdminData = {
+    body: ReorderActionBranchesDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/{id}/form-variants/order';
+};
+
+export type ActionFormsReorderBranchesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFormsReorderBranchesAdminError = ActionFormsReorderBranchesAdminErrors[keyof ActionFormsReorderBranchesAdminErrors];
+
+export type ActionFormsReorderBranchesAdminResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type ActionFormsReorderBranchesAdminResponse = ActionFormsReorderBranchesAdminResponses[keyof ActionFormsReorderBranchesAdminResponses];
+
+export type ActionFormsListFormAssignmentsAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/{id}/form-assignments';
+};
+
+export type ActionFormsListFormAssignmentsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFormsListFormAssignmentsAdminError = ActionFormsListFormAssignmentsAdminErrors[keyof ActionFormsListFormAssignmentsAdminErrors];
+
+export type ActionFormsListFormAssignmentsAdminResponses = {
+    200: Array<ActionFormAssignmentDto>;
+};
+
+export type ActionFormsListFormAssignmentsAdminResponse = ActionFormsListFormAssignmentsAdminResponses[keyof ActionFormsListFormAssignmentsAdminResponses];
+
+export type ActionFormsMoveFormMemberAdminData = {
+    body: MoveActionFormMemberDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/{id}/form-assignments/move';
+};
+
+export type ActionFormsMoveFormMemberAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFormsMoveFormMemberAdminError = ActionFormsMoveFormMemberAdminErrors[keyof ActionFormsMoveFormMemberAdminErrors];
+
+export type ActionFormsMoveFormMemberAdminResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type ActionFormsMoveFormMemberAdminResponse = ActionFormsMoveFormMemberAdminResponses[keyof ActionFormsMoveFormMemberAdminResponses];
+
+export type ActionFormsPreviewRerouteAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/{id}/form-assignments/reroute';
+};
+
+export type ActionFormsPreviewRerouteAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFormsPreviewRerouteAdminError = ActionFormsPreviewRerouteAdminErrors[keyof ActionFormsPreviewRerouteAdminErrors];
+
+export type ActionFormsPreviewRerouteAdminResponses = {
+    200: RerouteMovesDto;
+};
+
+export type ActionFormsPreviewRerouteAdminResponse = ActionFormsPreviewRerouteAdminResponses[keyof ActionFormsPreviewRerouteAdminResponses];
+
+export type ActionFormsRerouteAdminData = {
+    body: RerouteActionBranchesDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/{id}/form-assignments/reroute';
+};
+
+export type ActionFormsRerouteAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFormsRerouteAdminError = ActionFormsRerouteAdminErrors[keyof ActionFormsRerouteAdminErrors];
+
+export type ActionFormsRerouteAdminResponses = {
+    200: RerouteMovesDto;
+};
+
+export type ActionFormsRerouteAdminResponse = ActionFormsRerouteAdminResponses[keyof ActionFormsRerouteAdminResponses];
 
 export type CohortDecisionsListForActionAdminData = {
     body?: never;

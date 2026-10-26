@@ -88,7 +88,7 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { isNull, omitBy } from "es-toolkit";
-import { ActionFormVariantService } from "src/actions/action-form-variant.service";
+import { ActionFormAssignmentService } from "src/actions/action-form-assignment.service";
 import { ActionsService } from "src/actions/actions.service";
 import { Action, parseAction } from "src/actions/entities/action.entity";
 import {
@@ -310,7 +310,7 @@ export class TasksService {
     private aiDetectionQueueService: AiDetectionQueueService,
     private aiDetectionQueryService: AiDetectionQueryService,
     private formSnapshotService: FormSnapshotService,
-    private actionFormVariantService: ActionFormVariantService,
+    private actionFormAssignmentService: ActionFormAssignmentService,
     private singleMemberCohortService: SingleMemberCohortService,
     private prerequisiteProgressService: PrerequisiteProgressService,
   ) {}
@@ -956,7 +956,7 @@ export class TasksService {
       optInMms: true,
     });
 
-    const valid = await this.actionFormVariantService.validateFormIdForUser({
+    const valid = await this.actionFormAssignmentService.validateFormIdForUser({
       actionId: submitFormDto.actionId,
       userId,
       formId,
@@ -1348,11 +1348,9 @@ export class TasksService {
     actionId: number;
     userId: number;
   }): Promise<void> {
-    const submitted = await this.actionFormVariantService.findSubmittedFormIds({
-      actionIds: [params.actionId],
-      userId: params.userId,
-    });
-    if (submitted.has(params.actionId)) {
+    if (
+      await this.actionFormAssignmentService.hasSubmittedAssignedForm(params)
+    ) {
       throw new BadRequestException(FORM_ALREADY_SUBMITTED);
     }
   }
@@ -1845,7 +1843,7 @@ export class TasksService {
     const { userId, formId, dto } = params;
     const form = await this.getForm(formId);
 
-    const valid = await this.actionFormVariantService.validateFormIdForUser({
+    const valid = await this.actionFormAssignmentService.validateFormIdForUser({
       actionId: dto.actionId,
       userId,
       formId,
@@ -1959,7 +1957,7 @@ export class TasksService {
     actionId: number;
   }): Promise<ParsedFormResponse | null> {
     const { userId, formId, actionId } = params;
-    const owners = await this.actionFormVariantService.findActionIdByFormId([
+    const owners = await this.actionFormAssignmentService.findActionIdByFormId([
       actionId,
     ]);
     if (owners.get(formId) !== actionId) {
@@ -1969,10 +1967,11 @@ export class TasksService {
     }
     // If the user has already submitted this action as an authenticated user,
     // any linked-guest draft is stale and shouldn't be surfaced as a prefill.
-    const submitted = await this.actionFormVariantService.findSubmittedFormIds({
-      actionIds: [actionId],
-      userId,
-    });
+    const submitted =
+      await this.actionFormAssignmentService.findSubmittedFormIds({
+        actionIds: [actionId],
+        userId,
+      });
     if (submitted.has(actionId)) {
       return null;
     }

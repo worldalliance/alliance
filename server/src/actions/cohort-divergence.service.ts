@@ -65,11 +65,14 @@ export class CohortDivergenceService {
     for (const { action } of actions) {
       const decisions = rowsByAction[action.id];
       if (!decisions) continue;
-      const result = await R.fromPromiseFn(() =>
-        this.cohortResolverService.resolveCohortMemberIds(
-          action.cohortExpression,
-          session,
-        ),
+      const result = await R.fromPromiseFn(
+        async () =>
+          (
+            await this.cohortResolverService.resolveRoutedCohort(
+              action,
+              session,
+            )
+          ).cohort,
       );
       if (R.isFailure(result)) {
         this.logger.error(

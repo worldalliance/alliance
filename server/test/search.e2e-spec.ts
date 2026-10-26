@@ -167,7 +167,7 @@ describe("Search (e2e)", () => {
 
     const adminIds = await searchIds(ctx.adminAccessToken);
     expect(adminIds).toContain(`a${draft.id}`);
-    expect(adminIds).toContain(`a${archived.id}`);
+    expect(adminIds).not.toContain(`a${archived.id}`);
     expect(adminIds).toContain(`a${outsideCohort.id}`);
     expect(adminIds).not.toContain(`a${publicOnly.id}`);
   });

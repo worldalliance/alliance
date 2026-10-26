@@ -1,15 +1,40 @@
-import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+  PartialType,
+  PickType,
+} from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
+  ArrayUnique,
+  IsArray,
+  IsBoolean,
   IsInt,
   IsNumber,
+  IsObject,
   IsOptional,
   IsString,
   Max,
   Min,
 } from "class-validator";
+import type { RerouteMove } from "../action-form-routing.service";
 import { VariantStats } from "../action-form-variant.service";
+import { ActionFormAssignment } from "../entities/action-form-assignment.entity";
 import { ActionFormVariant } from "../entities/action-form-variant.entity";
+
+const COPY_OVERRIDE_FIELDS = [
+  "nameOverride",
+  "shortDescriptionOverride",
+  "bodyOverride",
+  "timeEstimateOverride",
+  "imageOverride",
+  "squareThumbnailImageOverride",
+  "squareThumbnailImageAltOverride",
+] as const;
+
+class VariantCopyOverridesDto extends PartialType(
+  PickType(ActionFormVariant, COPY_OVERRIDE_FIELDS),
+) {}
 
 export class ActionFormVariantDto extends PickType(ActionFormVariant, [
   "id",
@@ -17,6 +42,9 @@ export class ActionFormVariantDto extends PickType(ActionFormVariant, [
   "formId",
   "name",
   "splitValue",
+  "rule",
+  "position",
+  ...COPY_OVERRIDE_FIELDS,
   "createdAt",
   "updatedAt",
 ]) {
@@ -27,21 +55,47 @@ export class ActionFormVariantDto extends PickType(ActionFormVariant, [
     this.formId = variant.formId;
     this.name = variant.name;
     this.splitValue = variant.splitValue;
+    this.rule = variant.rule;
+    this.position = variant.position;
+    this.nameOverride = variant.nameOverride;
+    this.shortDescriptionOverride = variant.shortDescriptionOverride;
+    this.bodyOverride = variant.bodyOverride;
+    this.timeEstimateOverride = variant.timeEstimateOverride;
+    this.imageOverride = variant.imageOverride;
+    this.squareThumbnailImageOverride = variant.squareThumbnailImageOverride;
+    this.squareThumbnailImageAltOverride =
+      variant.squareThumbnailImageAltOverride;
     this.createdAt = variant.createdAt;
     this.updatedAt = variant.updatedAt;
   }
 }
 
-export class CreateActionFormVariantDto {
+export class CreateActionFormVariantDto extends VariantCopyOverridesDto {
   @ApiProperty()
   @IsString()
   name: string;
 
-  @ApiProperty({ description: "Fraction of new joiners (0-1)." })
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    description:
+      "Fraction of new joiners (0-1), for a random split. Set either this or rule.",
+  })
+  @IsOptional()
   @IsNumber()
   @Min(0)
   @Max(1)
-  splitValue: number;
+  splitValue?: number | null;
+
+  @ApiPropertyOptional({
+    type: Object,
+    nullable: true,
+    description:
+      "Cohort expression routing members to this branch. Set either this or splitValue.",
+  })
+  @IsOptional()
+  @IsObject()
+  rule?: Record<string, unknown> | null;
 
   @ApiPropertyOptional({
     description:
@@ -53,11 +107,16 @@ export class CreateActionFormVariantDto {
   sourceFormId?: number | null;
 }
 
-export class UpdateActionFormVariantDto {
+export class UpdateActionFormVariantDto extends VariantCopyOverridesDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   name?: string;
+
+  @ApiPropertyOptional({ type: Object })
+  @IsOptional()
+  @IsObject()
+  rule?: Record<string, unknown>;
 
   @ApiPropertyOptional({ description: "Fraction of new joiners (0-1)." })
   @IsOptional()
@@ -112,5 +171,118 @@ export class ActionFormVariantsListDto {
   constructor(variants: ActionFormVariant[], stats: VariantStats[]) {
     this.variants = variants.map((v) => new ActionFormVariantDto(v));
     this.stats = stats.map((s) => new ActionFormVariantStatsDto(s));
+  }
+}
+
+export class PreviewBranchRoutingDto {
+  @ApiProperty({
+    type: Object,
+    isArray: true,
+    description: "Branch rules in routing order.",
+  })
+  @IsArray()
+  @IsObject({ each: true })
+  rules: Record<string, unknown>[];
+}
+
+export class BranchRoutingPreviewItemDto {
+  @ApiProperty({ type: Number, isArray: true })
+  userIds: number[];
+
+  constructor(userIds: number[]) {
+    this.userIds = userIds;
+  }
+}
+
+export class BranchRoutingPreviewDto {
+  @ApiProperty({
+    type: () => BranchRoutingPreviewItemDto,
+    isArray: true,
+    description: "The members each rule would get, in the order sent.",
+  })
+  branches: BranchRoutingPreviewItemDto[];
+
+  constructor(branches: number[][]) {
+    this.branches = branches.map((ids) => new BranchRoutingPreviewItemDto(ids));
+  }
+}
+
+export class ReorderActionBranchesDto {
+  @ApiProperty({ type: Number, isArray: true })
+  @IsArray()
+  @ArrayUnique()
+  @IsInt({ each: true })
+  variantIds: number[];
+}
+
+export class MoveActionFormMemberDto {
+  @ApiProperty()
+  @IsInt()
+  userId: number;
+
+  @ApiProperty()
+  @IsInt()
+  variantId: number;
+
+  @ApiProperty()
+  @IsBoolean()
+  notify: boolean;
+}
+
+export class RerouteActionBranchesDto {
+  @ApiProperty()
+  @IsBoolean()
+  notify: boolean;
+}
+
+export class RerouteMoveDto {
+  @ApiProperty()
+  userId: number;
+
+  @ApiProperty()
+  fromVariantId: number;
+
+  @ApiProperty()
+  toVariantId: number;
+
+  constructor(input: RerouteMove) {
+    this.userId = input.userId;
+    this.fromVariantId = input.fromVariantId;
+    this.toVariantId = input.toVariantId;
+  }
+}
+
+export class RerouteMovesDto {
+  @ApiProperty({ type: () => RerouteMoveDto, isArray: true })
+  moves: RerouteMoveDto[];
+
+  constructor(moves: RerouteMove[]) {
+    this.moves = moves.map((move) => new RerouteMoveDto(move));
+  }
+}
+
+export class ActionFormAssignmentDto extends PickType(ActionFormAssignment, [
+  "userId",
+  "variantId",
+  "assignedAt",
+  "overriddenAt",
+]) {
+  @ApiProperty()
+  userName: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  overriddenByName: string | null;
+
+  constructor(input: ActionFormAssignment) {
+    super();
+    if (!input.user) {
+      throw new Error("ActionFormAssignmentDto requires user");
+    }
+    this.userId = input.userId;
+    this.userName = input.user.name;
+    this.variantId = input.variantId;
+    this.assignedAt = input.assignedAt;
+    this.overriddenAt = input.overriddenAt;
+    this.overriddenByName = input.overriddenBy?.name ?? null;
   }
 }

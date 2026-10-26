@@ -91,7 +91,7 @@ export class ActionVisibilityService {
     });
   }
 
-  /** The actions the user's action feed and search list: the ones they can see, less public-only ones. */
+  /** The actions the user's action feed and search list: the ones they can see, less public-only and archived ones. */
   async listableActions(params: {
     actions: ParsedAction[];
     user: User | null;
@@ -102,7 +102,9 @@ export class ActionVisibilityService {
       user: params.user,
       session: params.session ?? new CohortResolutionSession(),
       allows: async (access) =>
-        !access.action.publicOnly && (await this.userCanSeeAction(access)),
+        !access.action.publicOnly &&
+        !access.action.archived &&
+        (await this.userCanSeeAction(access)),
     });
     return params.actions.filter((action) => listable.has(action.id));
   }

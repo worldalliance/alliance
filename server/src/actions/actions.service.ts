@@ -10,7 +10,6 @@ import {
 } from "@alliance/common/actionActivity";
 import { AnalyticsEvent, ExceptionEvent } from "@alliance/common/analytics";
 import {
-  cohortExpressionSchema,
   expressionHasLeaf,
   type CohortExpression,
 } from "@alliance/common/cohort-expression";
@@ -44,7 +43,6 @@ import { echoesStoredKey } from "@alliance/common/image-src";
 import { nameParts } from "@alliance/common/nameParts";
 import { run } from "@alliance/common/run";
 import { Assert } from "@alliance/common/types";
-import { describeSchemaIssues } from "@alliance/common/zod-issues";
 import {
   BadRequestException,
   ConflictException,
@@ -171,7 +169,8 @@ import {
   sqlIsLatestWithdrawal,
   TERMINAL_ACTIVITY_TYPES,
 } from "./action-activity-status";
-import { ActionFormVariantService } from "./action-form-variant.service";
+import { applyVariantToAction } from "./action-branches";
+import { ActionFormAssignmentService } from "./action-form-assignment.service";
 import { ActionParticipantsService } from "./action-participants.service";
 import { replaceReviewers } from "./action-reviewers";
 import {
@@ -193,7 +192,8 @@ import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
 import { CohortDecisionService } from "./cohort-decision.service";
 import {
   assertNotInACohort,
-  assertTagsExist,
+  parseCohortExpressionForSaveOrThrow,
+  parseCohortExpressionOrThrow,
 } from "./cohort-reference-validation";
 import { CohortResolutionSession } from "./cohort-resolution-session";
 import { CohortResolverService } from "./cohort-resolver.service";
@@ -439,8 +439,7 @@ export class ActionsService {
     private readonly forumService: ForumService,
     private readonly forumCommentQueryService: ForumCommentQueryService,
     private readonly eventLogService: EventLogService,
-    @Inject(forwardRef(() => ActionFormVariantService))
-    private readonly actionFormVariantService: ActionFormVariantService,
+    private readonly actionFormAssignmentService: ActionFormAssignmentService,
     private readonly facepileService: FacepileService,
     private readonly formSnapshotService: FormSnapshotService,
     private readonly posthogService: PosthogService,
@@ -454,22 +453,19 @@ export class ActionsService {
     private readonly recognitionPreview: ActionUpdateRecognitionPreviewService,
   ) {}
 
-  async applyAssignedFormIds(
+  async applyAssignedVariants(
     actions: Action[],
     userId: number | undefined,
   ): Promise<void> {
     if (!userId || actions.length === 0) return;
-    const overrides =
-      await this.actionFormVariantService.getOrCreateAssignedFormIdsForActions(
+    const assigned =
+      await this.actionFormAssignmentService.getOrCreateAssignedVariantsForActions(
         actions.map((a) => a.id),
         userId,
       );
-    if (overrides.size === 0) return;
     for (const action of actions) {
-      const formId = overrides.get(action.id);
-      if (formId !== undefined) {
-        action.taskFormId = formId;
-      }
+      const variant = assigned.get(action.id);
+      if (variant) applyVariantToAction(action, variant);
     }
   }
 
@@ -564,26 +560,15 @@ export class ActionsService {
    * class-validator can't express its recursive shape, so every handler that
    * accepts one must parse it here before it reaches the db.
    */
-  private parseCohortExpressionOrThrow(value: unknown): CohortExpression {
-    const parsed = cohortExpressionSchema.safeParse(value);
-    if (!parsed.success) {
-      const issues = describeSchemaIssues(parsed.error).join("; ");
-      throw new BadRequestException(`Invalid cohort expression: ${issues}`);
-    }
-    return parsed.data;
-  }
-
-  private async parseCohortExpressionForSaveOrThrow(
+  private parseCohortExpressionForSaveOrThrow(
     value: unknown,
     stored?: unknown,
   ): Promise<CohortExpression> {
-    const expression = this.parseCohortExpressionOrThrow(value);
-    await assertTagsExist({
+    return parseCohortExpressionForSaveOrThrow({
       em: this.actionRepository.manager,
-      expression,
-      previous: cohortExpressionSchema.safeParse(stored).data,
+      value,
+      stored,
     });
-    return expression;
   }
 
   /** Reviewers are ordered by the position the admin sent them in. */
@@ -1036,7 +1021,7 @@ export class ActionsService {
       session,
     });
 
-    await this.applyAssignedFormIds(filtered, user?.id);
+    await this.applyAssignedVariants(filtered, user?.id);
 
     const actionsDismissed = new Set(
       (
@@ -1232,7 +1217,7 @@ export class ActionsService {
       session,
     });
     if (userId) {
-      await this.applyAssignedFormIds([action], userId);
+      await this.applyAssignedVariants([action], userId);
     }
 
     const activities = user
@@ -5140,6 +5125,13 @@ export class ActionsService {
         ],
         userId,
       });
+    await this.applyAssignedVariants(
+      [
+        ...events.map(loadedActionEventAction),
+        ...actionUpdates.flatMap((update) => update.action ?? []),
+      ].filter((action) => visibleActionIds.has(action.id)),
+      userId,
+    );
 
     for (const event of events) {
       const action = loadedActionEventAction(event);
@@ -5181,7 +5173,7 @@ export class ActionsService {
   }
 
   async evaluateCohortExpressionBatch(expression: unknown): Promise<number[]> {
-    const parsed = this.parseCohortExpressionOrThrow(expression);
+    const parsed = parseCohortExpressionOrThrow(expression);
     const result =
       await this.cohortResolverService.resolveCohortMemberIds(parsed);
     return Array.from(result);

@@ -36,7 +36,11 @@ import {
 } from "@alliance/common/forms/visibility";
 import { R, type Result } from "@alliance/common/result";
 import type { ZodError } from "zod";
-import type { AdminActionDto, AdminFollowUpFormDto } from "./client/types.gen";
+import type {
+  ActionFormVariantDto,
+  AdminActionDto,
+  AdminFollowUpFormDto,
+} from "./client/types.gen";
 
 export type ParsedActionDto = Omit<AdminActionDto, "cohortExpression"> & {
   cohortExpression?: CohortExpression;
@@ -76,6 +80,21 @@ export function parseActionDto(dto: AdminActionDto): {
     action: { ...dto, cohortExpression: expression },
     cohortExpressionError: error,
   };
+}
+
+export type ParsedActionFormVariantDto = Omit<ActionFormVariantDto, "rule"> & {
+  rule?: CohortExpression;
+};
+
+export function parseActionFormVariantDto(dto: ActionFormVariantDto): {
+  variant: ParsedActionFormVariantDto;
+  ruleError: ZodError | null;
+} {
+  const { expression, error } = parseCohortExpressionField(
+    dto.rule,
+    `form variant ${dto.id}`,
+  );
+  return { variant: { ...dto, rule: expression }, ruleError: error };
 }
 
 export function parseFollowUpFormDto(dto: AdminFollowUpFormDto): {

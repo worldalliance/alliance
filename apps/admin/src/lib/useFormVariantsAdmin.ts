@@ -2,6 +2,7 @@ import {
   actionFormsCreateFormVariantAdmin,
   actionFormsDeleteFormVariantAdmin,
   actionFormsListFormVariantsAdmin,
+  actionFormsReorderBranchesAdmin,
   actionFormsUpdateFormVariantAdmin,
   type ActionFormVariantsListDto,
   type CreateActionFormVariantDto,
@@ -69,7 +70,13 @@ export function useFormVariantsAdmin<T>(
         body,
         throwOnError: true,
       }),
-    onSuccess: invalidate,
+    onSuccess: () =>
+      Promise.all([
+        invalidate(),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.formRerouteAdmin(actionId),
+        }),
+      ]),
   });
 
   const deleteVariant = useMutation({
@@ -82,5 +89,27 @@ export function useFormVariantsAdmin<T>(
     onSuccess: () => Promise.all([invalidate(), invalidateFormsIndex()]),
   });
 
-  return { variants, publishVariants, updateVariant, deleteVariant };
+  const reorderBranches = useMutation({
+    mutationFn: (variantIds: number[]) =>
+      actionFormsReorderBranchesAdmin({
+        path: { id: actionId },
+        body: { variantIds },
+        throwOnError: true,
+      }),
+    onSuccess: () =>
+      Promise.all([
+        invalidate(),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.formRerouteAdmin(actionId),
+        }),
+      ]),
+  });
+
+  return {
+    variants,
+    publishVariants,
+    updateVariant,
+    deleteVariant,
+    reorderBranches,
+  };
 }
