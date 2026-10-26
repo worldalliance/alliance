@@ -1,11 +1,13 @@
 import type {
   CreateActionActivityDto,
+  FormResponseDto,
   NotificationSettingsAdminDto,
   UserActionRelationsResponseDto,
   UserAdminDetailDto,
 } from "@alliance/shared/client/types.gen";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import {
+  makeFormResponse,
   makeProfile,
   makeTag,
   makeUser,
@@ -49,6 +51,7 @@ let relations: UserActionRelationsResponseDto;
 let relationsStatus: number;
 let tagSummariesStatus: number;
 let friendsStatus: number;
+let formResponses: FormResponseDto[];
 let createdActivities: CreateActionActivityDto[];
 let memberRequested: () => void;
 let memberRequest: Promise<void>;
@@ -106,7 +109,7 @@ serveApi(
         await memberRequest;
         return Response.json([]);
       },
-      "POST /tasks/formsForUserSID/:userId": () => Response.json([]),
+      "POST /tasks/formsForUserSID/:userId": () => Response.json(formResponses),
       "GET /user/listfriends/:id": () =>
         friendsStatus === 200
           ? Response.json([alex])
@@ -128,6 +131,7 @@ beforeEach(() => {
   relationsStatus = 200;
   tagSummariesStatus = 200;
   friendsStatus = 200;
+  formResponses = [];
   createdActivities = [];
   memberRequest = new Promise((resolve) => {
     memberRequested = resolve;
@@ -456,6 +460,38 @@ it("keeps cached friends it could not refresh and says so", async () => {
     ),
   ).toBeTruthy();
   expect(screen.getByText("Friends (1)")).toBeTruthy();
+});
+
+it("lists the member's form submissions newest first", async () => {
+  detailStatus = 200;
+  formResponses = [
+    makeFormResponse({ id: 1, formId: 4, createdAt: "2026-03-01T12:00:00Z" }),
+    makeFormResponse({
+      id: 2,
+      formId: 9,
+      createdAt: "2026-05-01T12:00:00Z",
+      deviceType: "ios",
+    }),
+  ];
+  renderPage();
+
+  expect(await screen.findByText("Invited Submissions (2)")).toBeTruthy();
+  expect(
+    screen
+      .getAllByRole("link", { name: /^Form #/ })
+      .map((link) => [link.textContent, link.getAttribute("href")]),
+  ).toEqual([
+    ["Form #9", "/forms/9/responses"],
+    ["Form #4", "/forms/4/responses"],
+  ]);
+  expect(screen.getByText("ios")).toBeTruthy();
+});
+
+it("says when the member has no form submissions", async () => {
+  detailStatus = 200;
+  renderPage();
+
+  expect(await screen.findByText("No form submissions.")).toBeTruthy();
 });
 
 it("says when the member's actions fail to load", async () => {

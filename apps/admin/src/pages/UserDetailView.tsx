@@ -12,13 +12,14 @@ import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Mail, Phone, Trash2 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
-import { Link, useLoaderData, useNavigate } from "react-router";
+import { useCallback, useState } from "react";
+import { useLoaderData, useNavigate } from "react-router";
 import { Route } from "../../.react-router/types/src/pages/+types/UserDetailView";
 import DeleteAccountModal from "../components/DeleteAccountModal";
 import MemberGroupMoveSection from "../components/MemberGroupMoveSection";
 import UserAwayPeriodsSection from "../components/UserAwayPeriodsSection";
 import UserActionsSection from "../components/user-detail/UserActionsSection";
+import UserFormSubmissionsSection from "../components/user-detail/UserFormSubmissionsSection";
 import UserFriendsSection from "../components/user-detail/UserFriendsSection";
 import UserMemberInfoSection from "../components/user-detail/UserMemberInfoSection";
 import UserNotificationSettingsSection from "../components/user-detail/UserNotificationSettingsSection";
@@ -113,13 +114,6 @@ const UserDetail = ({
   const { currentAwayRange } = useUserAwayRangesAdmin(user.id);
 
   const latestEvent = user.lastContractEvent ?? null;
-
-  const sortedFormResponses = useMemo(() => {
-    return [...formResponses].sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
-  }, [formResponses]);
 
   const contractStatusColor =
     latestEvent === null
@@ -296,41 +290,7 @@ const UserDetail = ({
             )}
           </section>
 
-          {/* Form Submissions */}
-          <section className="border border-zinc-200 rounded p-3">
-            <h2 className="text-sm font-semibold text-zinc-700 mb-2">
-              Invited Submissions ({sortedFormResponses.length})
-            </h2>
-            {sortedFormResponses.length > 0 ? (
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {sortedFormResponses.map((response) => (
-                  <div
-                    key={response.id}
-                    className="text-xs p-2 rounded bg-zinc-50 border border-zinc-100"
-                  >
-                    <div className="flex items-center justify-between">
-                      <Link
-                        to={`/forms/${response.formId}/responses`}
-                        className="font-medium text-blue-600 hover:underline"
-                      >
-                        Form #{response.formId}
-                      </Link>
-                      <span className="text-zinc-400">
-                        {new Date(response.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    {response.deviceType && (
-                      <p className="text-zinc-500 mt-0.5">
-                        {response.deviceType}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-zinc-500">No form submissions.</p>
-            )}
-          </section>
+          <UserFormSubmissionsSection formResponses={formResponses} />
         </div>
       </div>
       {isDeleteModalOpen && (
