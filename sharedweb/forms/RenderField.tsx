@@ -1,4 +1,3 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { formatCityValue, parseCityValue } from "@alliance/common/forms/city";
 import type {
   AnyField,
@@ -7,10 +6,9 @@ import type {
   ListField,
 } from "@alliance/common/forms/form-schema";
 import type { UserDto } from "@alliance/shared/client";
-import {
-  resolveUploadSlot,
-  type FileUploadSlot,
-  type FileUploadSlots,
+import type {
+  FileUploadSlot,
+  FileUploadSlots,
 } from "@alliance/shared/forms/fileUploadSlots";
 import { offersNoOptions } from "@alliance/shared/forms/formulaChoices";
 import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
@@ -22,22 +20,10 @@ import {
   listCardWriters,
   resolveCards,
 } from "@alliance/shared/forms/listCards";
-import {
-  cancelImageUpload,
-  noOptionsAvailable,
-} from "@alliance/shared/lib/copy";
-import { CardStyle } from "@alliance/shared/styles/card";
-import { cn } from "@alliance/shared/styles/util";
+import { noOptionsAvailable } from "@alliance/shared/lib/copy";
 import type { FieldConditionContext } from "@alliance/shared/useFormRenderer";
-import UploadingWithCancel from "@alliance/sharedweb/ui/UploadingWithCancel";
-import { useState, type ReactNode } from "react";
-import { getApiUrl } from "../lib/config";
-import { readFileDataUri } from "../lib/readFileDataUri";
-import AppMarkdownWrapper from "../ui/AppMarkdownWrapper";
-import Card from "../ui/Card";
-import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
-import ImageLightbox from "../ui/ImageLightbox";
-import YesNoToggle from "../ui/YesNoToggle";
+import type { ReactNode } from "react";
+import { CheckboxInputField } from "./CheckboxInputField";
 import {
   MultiSelectInputField,
   RadioInputField,
@@ -46,6 +32,7 @@ import {
 } from "./ChoiceFields";
 import CityAutosuggest from "./CityAutosuggest";
 import { getCustomComponentById } from "./components";
+import { ContractInputField } from "./ContractInputField";
 import {
   fieldInputClassName,
   RenderLabel,
@@ -53,13 +40,13 @@ import {
   useQuestionLabelId,
   ValidationMessage,
 } from "./fieldParts";
+import { FileInputField } from "./FileInputField";
 import {
   ListAddButton,
   ListCard,
   ListHiddenNote,
   ListRemoveButton,
 } from "./ListCard";
-import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
 import { PhoneInputField } from "./PhoneInputField";
 import { RankingFieldInput } from "./RankingFieldInput";
 import {
@@ -110,21 +97,10 @@ export function RenderField({
   hideLabel,
 }: RenderFieldProps) {
   const labelId = useQuestionLabelId(field);
-  const {
-    slot: uploadSlot,
-    uploading,
-    uploadError,
-  } = resolveUploadSlot({ fileUpload, fileUploadSlot, fieldId: field.id });
-  const [fileReadError, setFileReadError] = useState<string | null>(null);
   const required = fieldContext.isFieldRequired(field);
   const errorMessage =
     typeof error === "string" && error.trim().length > 0 ? error : null;
   const hasError = Boolean(errorMessage);
-
-  const composeClassName = (
-    base: string,
-    overrides: { normal?: string; error?: string } = {},
-  ) => fieldInputClassName({ base, hasError, ...overrides });
 
   const inputProps = {
     value,
@@ -155,7 +131,10 @@ export function RenderField({
           required={required}
           aria-invalid={hasError}
           value=""
-          className={composeClassName(sharedInputClasses)}
+          className={fieldInputClassName({
+            base: sharedInputClasses,
+            hasError,
+          })}
         >
           <option value="">{noOptionsAvailable}</option>
         </select>
@@ -188,56 +167,8 @@ export function RenderField({
     case "range":
       return <RangeInputField {...inputProps} field={field} />;
 
-    case "checkbox": {
-      const checkboxPosition = field.checkboxPosition ?? "left";
-      const checkboxInput = (
-        <input
-          type="checkbox"
-          checked={!!value}
-          onChange={onChange ? (e) => onChange(e.target.checked) : undefined}
-          required={required}
-          disabled={disabled}
-          aria-invalid={hasError}
-          className={composeClassName(
-            `shrink-0 mt-px h-5 w-5 cursor-pointer ${
-              checkboxPosition === "right" ? "ml-2 pr-5" : "mr-2"
-            } ${
-              hasError ? "text-red-600" : "text-blue-600"
-            } focus:outline-none rounded`,
-            {
-              normal: "border border-zinc-300 focus:ring-blue-500 focus:ring-2",
-              error: "border border-red-500 focus:ring-red-500 focus:ring-2",
-            },
-          )}
-        />
-      );
-      const checkboxLabel = (
-        <span className={hasError ? "text-red-600" : "text-zinc-700"}>
-          {field.label !== null && (
-            <FormMarkdownWrapper markdownContent={field.label} inline />
-          )}
-        </span>
-      );
-      return (
-        <div className="space-y-1 pr-5">
-          {!required && !isOutputView && <OptionalLabelPrefix />}
-          <label className="flex items-start">
-            {checkboxPosition === "right" ? (
-              <>
-                {checkboxLabel}
-                {checkboxInput}
-              </>
-            ) : (
-              <>
-                {checkboxInput}
-                {checkboxLabel}
-              </>
-            )}
-          </label>
-          <ValidationMessage message={errorMessage} />
-        </div>
-      );
-    }
+    case "checkbox":
+      return <CheckboxInputField {...inputProps} field={field} />;
 
     case "radio":
       return (
@@ -335,93 +266,15 @@ export function RenderField({
       );
     }
 
-    case "file": {
-      const fileValue = value;
-      const imageUrl =
-        typeof fileValue === "string" && fileValue
-          ? getApiUrl() + "/images/" + fileValue
-          : null;
+    case "file":
       return (
-        <div className="space-y-2">
-          <RenderLabel
-            field={field}
-            labelId={labelId}
-            error={errorMessage}
-            labelRightAddon={labelRightAddon}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          {imageUrl && (
-            <div className="mb-2">
-              <ImageLightbox
-                images={[imageUrl]}
-                renderPreview={(openLightbox) => (
-                  <button
-                    type="button"
-                    className="focus:outline-none cursor-zoom-in"
-                    onClick={(e) => openLightbox(0, e)}
-                  >
-                    <img
-                      src={imageUrl}
-                      alt="Uploaded file"
-                      className={cn(
-                        "max-w-full h-auto rounded",
-                        isOutputView ? "max-h-48" : "max-h-32",
-                      )}
-                    />
-                  </button>
-                )}
-              />
-            </div>
-          )}
-          {!(disabled && fileValue) && (
-            <div className="flex items-center space-x-2">
-              <input
-                aria-labelledby={labelId}
-                type="file"
-                accept="image/*"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  // Clear the input so re-picking the same file after a failed
-                  // read still fires a change event.
-                  e.target.value = "";
-                  if (!file || disabled || !fileUpload) return;
-                  const dataUri = await readFileDataUri(file);
-                  if (!dataUri.ok) {
-                    setFileReadError(dataUri.error.message);
-                    return;
-                  }
-                  setFileReadError(null);
-                  void fileUpload.onFileSelected(uploadSlot, dataUri.value);
-                }}
-                required={required && !fileValue}
-                disabled={disabled || uploading}
-                aria-invalid={hasError}
-                className={composeClassName(
-                  sharedInputClasses +
-                    " max-w-full flex-1 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 file:cursor-pointer disabled:opacity-50 disabled:pointer-events-none",
-                )}
-              />
-              {uploading && (
-                <UploadingWithCancel
-                  label="Uploading..."
-                  cancelLabel={cancelImageUpload}
-                  onCancel={() => fileUpload?.cancelUpload(uploadSlot)}
-                  className="text-blue-600"
-                />
-              )}
-            </div>
-          )}
-
-          <ValidationMessage message={errorMessage} />
-
-          {(uploadError ?? fileReadError) && (
-            <p className=" text-red-600">{uploadError ?? fileReadError}</p>
-          )}
-        </div>
+        <FileInputField
+          {...inputProps}
+          field={field}
+          fileUpload={fileUpload}
+          fileUploadSlot={fileUploadSlot}
+        />
       );
-    }
 
     case "list": {
       const listField = field as ListField;
@@ -532,43 +385,8 @@ export function RenderField({
       );
     }
 
-    case "contract": {
-      const contract = field.contract;
-      const signedValue = typeof value === "boolean" ? value : undefined;
-      return (
-        <div className="space-y-3">
-          {contract?.markdown ? (
-            <>
-              <div className="prose prose-sm max-w-none text-zinc-800 rounded border border-zinc-200 p-4 bg-white">
-                <AppMarkdownWrapper markdownContent={contract.markdown} />
-              </div>
-              <Card
-                style={CardStyle.White}
-                className="flex flex-row gap-x-4 items-center justify-between"
-              >
-                <div>
-                  {!required && !isOutputView && <OptionalLabelPrefix />}
-                  <p className="font-medium">{field.signQuestion.trim()}</p>
-                </div>
-                <YesNoToggle
-                  value={signedValue}
-                  onChange={(next) => onChange?.(next)}
-                  disabled={disabled}
-                  yesLabel={field.yesLabel.trim()}
-                  noLabel={field.noLabel.trim()}
-                  ariaLabel={field.signQuestion.trim()}
-                />
-              </Card>
-            </>
-          ) : (
-            <p className="text-sm text-zinc-500 italic">
-              Select a contract in the form builder to preview.
-            </p>
-          )}
-          <ValidationMessage message={errorMessage} />
-        </div>
-      );
-    }
+    case "contract":
+      return <ContractInputField {...inputProps} field={field} />;
 
     case "custom": {
       const definition = getCustomComponentById(field.componentId);
