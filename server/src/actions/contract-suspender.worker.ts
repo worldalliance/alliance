@@ -10,6 +10,7 @@ import { MmsService } from "src/mms/mms.service";
 import { NotificationKind } from "src/notification-settings/notification-kind";
 import { NotificationPreferencesService } from "src/notification-settings/notification-preferences.service";
 import { NotificationChannel } from "src/notifs/notif-utils";
+import { sendBestEffort } from "src/notifs/send-best-effort";
 import { suspensionMessage } from "src/notifs/textnotifcontents";
 import { PushService } from "src/push/push.service";
 import { textReachable } from "src/user/user.utils";
@@ -76,9 +77,12 @@ export class ContractSuspenderWorker {
             continue;
           }
 
-          await this.sendBestEffort(
-            `suspension event log for user ${user.id}`,
-            () =>
+          // The user drops out of the next run's candidates once suspended, so
+          // nothing sent from here on is ever retried.
+          await sendBestEffort({
+            logger: this.logger,
+            what: `suspension event log for user ${user.id}`,
+            send: () =>
               this.eventLogService.sendMessage({
                 type: EventType.ContractSuspended,
                 message: `[${process.env.NODE_ENV}]: Suspending contract for ${user.name}. failure code ${reasonKey}`,
@@ -88,7 +92,7 @@ export class ContractSuspenderWorker {
                   automatic: true,
                 },
               }),
-          );
+          });
           const wants = (channel: NotificationChannel) =>
             preferences.wants({
               userId: user.id,
@@ -96,9 +100,10 @@ export class ContractSuspenderWorker {
               channel,
             });
           if (wants(NotificationChannel.Text) && textReachable(user)) {
-            await this.sendBestEffort(
-              `suspension text to user ${user.id}`,
-              () =>
+            await sendBestEffort({
+              logger: this.logger,
+              what: `suspension text to user ${user.id}`,
+              send: () =>
                 this.mmsService.sendMms({
                   to: user.phoneNumber,
                   userId: user.id,
@@ -106,12 +111,13 @@ export class ContractSuspenderWorker {
                   mediaUrls: [],
                   tracking: null,
                 }),
-            );
+            });
           }
           if (wants(NotificationChannel.Push)) {
-            await this.sendBestEffort(
-              `suspension push to user ${user.id}`,
-              async () =>
+            await sendBestEffort({
+              logger: this.logger,
+              what: `suspension push to user ${user.id}`,
+              send: async () =>
                 this.pushService.sendMessages(
                   await this.pushService.getPushForAllUserDevices(user.id, {
                     userId: user.id,
@@ -120,17 +126,18 @@ export class ContractSuspenderWorker {
                     idempotencyKey: `suspension-${user.id}-${reasonKey}`,
                   }),
                 ),
-            );
+            });
           }
           if (wants(NotificationChannel.Email)) {
-            await this.sendBestEffort(
-              `suspension email to user ${user.id}`,
-              () =>
+            await sendBestEffort({
+              logger: this.logger,
+              what: `suspension email to user ${user.id}`,
+              send: () =>
                 this.mailService.sendContractSuspendedEmail(
                   user.email,
                   user.name,
                 ),
-            );
+            });
           }
         }
       },
@@ -138,21 +145,6 @@ export class ContractSuspenderWorker {
 
     if (ran === null) {
       this.logger.log("suspender processOne skipped bc of lock");
-    }
-  }
-
-  /**
-   * The contract is already suspended by this point and the user drops out of
-   * the next run's candidates, so nothing sent after it is ever retried — log
-   * the failure and keep going rather than losing the rest of the batch.
-   */
-  private async sendBestEffort(
-    what: string,
-    send: () => Promise<unknown>,
-  ): Promise<void> {
-    const sent = await R.fromPromiseFn(send);
-    if (R.isFailure(sent)) {
-      this.logger.error(`Failed to send ${what}`, sent.error);
     }
   }
 }

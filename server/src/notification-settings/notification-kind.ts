@@ -9,6 +9,7 @@ export enum NotificationKind {
   ActionUpdates = "action_updates",
   GroupMembersWithUncompletedTasks = "group_members_with_uncompleted_tasks",
   ContractSuspended = "contract_suspended",
+  ContractReinstated = "contract_reinstated",
   CommentsAndReplies = "comments_and_replies",
   Messages = "messages",
   FriendRequests = "friend_requests",
@@ -112,6 +113,14 @@ export const KIND_POLICY: Record<NotificationKind, KindPolicy> = {
     section: NotificationSection.Actions,
     channels: [Push, Text, Email],
     required: true,
+    leaderOnly: false,
+    sent: true,
+  },
+  [NotificationKind.ContractReinstated]: {
+    label: "Agreement reinstated",
+    section: NotificationSection.Actions,
+    channels: [InApp, Push, Text, Email],
+    required: false,
     leaderOnly: false,
     sent: true,
   },
@@ -252,6 +261,8 @@ export const CATEGORY_KIND: Record<NotificationCategory, NotificationKind> = {
   [NotificationCategory.NewMemberReferred]: NotificationKind.NewMemberReferred,
   [NotificationCategory.AmbassadorInviteGoal]: NotificationKind.RecruitingGoals,
   [NotificationCategory.GroupMemberJoined]: NotificationKind.GroupMemberJoined,
+  [NotificationCategory.ContractReinstated]:
+    NotificationKind.ContractReinstated,
   [NotificationCategory.CommunityInviteCreated]:
     NotificationKind.CommunityInviteCreated,
   [NotificationCategory.CommunityInviteRejected]:

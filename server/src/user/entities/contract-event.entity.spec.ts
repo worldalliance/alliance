@@ -1,8 +1,10 @@
 import {
   ContractEventType,
   findLastContractEvent,
+  findSuspensionEndedBy,
   isContractActiveAt,
   isContractActiveThroughout,
+  isLatestSuspension,
 } from "./contract-event.entity";
 
 const at = new Date("2026-03-01T00:00:00Z");
@@ -114,6 +116,40 @@ describe("isContractActiveThroughout", () => {
     };
     expect(
       isContractActiveThroughout([signedBefore, suspended], { startDate: at }),
+    ).toBe(false);
+  });
+});
+
+describe("findSuspensionEndedBy", () => {
+  const signed = { id: 1, date: before, type: ContractEventType.SIGNED };
+  const suspended = { id: 2, date: before, type: ContractEventType.SUSPENDED };
+
+  it.each([
+    { label: "a first signing", events: [], ended: null },
+    { label: "a signing while active", events: [signed], ended: null },
+    {
+      label: "a signing while suspended",
+      events: [signed, suspended],
+      ended: suspended,
+    },
+  ])("ends $ended for $label", ({ events, ended }) => {
+    expect(findSuspensionEndedBy(events, at)).toBe(ended);
+  });
+});
+
+describe("isLatestSuspension", () => {
+  const events = [
+    { id: 1, date: before, type: ContractEventType.SUSPENDED },
+    { id: 2, date: at, type: ContractEventType.SIGNED },
+  ];
+
+  it("holds until a later pause", () => {
+    expect(isLatestSuspension(events, 1)).toBe(true);
+    expect(
+      isLatestSuspension(
+        [...events, { id: 3, date: after, type: ContractEventType.SUSPENDED }],
+        1,
+      ),
     ).toBe(false);
   });
 });

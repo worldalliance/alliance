@@ -37,7 +37,10 @@ import {
   NO_REFERENCES,
   renderNotificationContent,
 } from "src/notifs/notification-content";
-import { suspensionMessage } from "src/notifs/textnotifcontents";
+import {
+  reinstatementMessage,
+  suspensionMessage,
+} from "src/notifs/textnotifcontents";
 import { getAmbassadorGoalHalfwayNotificationMessage } from "src/user/ambassador-invite-goal-notification.utils";
 import { User } from "src/user/entities/user.entity";
 import { NotificationKind } from "./notification-kind";
@@ -93,6 +96,7 @@ export const KIND_EXAMPLE: Record<NotificationKind, () => string> = {
   [NotificationKind.GroupMembersWithUncompletedTasks]: () =>
     reminder(defaultGroupLeadsTextMessage),
   [NotificationKind.ContractSuspended]: () => suspensionMessage.trim(),
+  [NotificationKind.ContractReinstated]: () => reinstatementMessage,
   [NotificationKind.CommentsAndReplies]: () =>
     rendered({
       content: forumReplyContent(jordan.id),
