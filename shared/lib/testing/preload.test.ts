@@ -46,3 +46,16 @@ describe("a spy and an unmount effect", () => {
     expect(readOnUnmount).toBe("spied");
   });
 });
+
+describe("a clipboard stub", () => {
+  it("replaces the clipboard", () => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {},
+    });
+  });
+
+  it("is gone in the next test", () => {
+    expect(navigator.clipboard.writeText).toBeInstanceOf(Function);
+  });
+});

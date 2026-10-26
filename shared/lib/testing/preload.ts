@@ -39,5 +39,9 @@ afterEach(cleanup);
 // `beforeAll` or at file scope is gone after the file's first test.
 afterEach(() => {
   jest.restoreAllMocks();
-  Reflect.deleteProperty(navigator, "clipboard");
+  if (!Reflect.deleteProperty(navigator, "clipboard")) {
+    throw new Error(
+      "navigator.clipboard was stubbed without configurable: true",
+    );
+  }
 });
