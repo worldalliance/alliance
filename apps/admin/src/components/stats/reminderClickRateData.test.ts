@@ -23,6 +23,11 @@ const point = (
   ...overrides,
 });
 
+const hostZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+afterEach(() => {
+  process.env.TZ = hostZone;
+});
+
 describe("pointsInRange", () => {
   const points = [
     point({ reminderGroupId: 1, date: new Date(2026, 0, 7, 12) }),
@@ -33,6 +38,19 @@ describe("pointsInRange", () => {
   it("keeps the points sent within the range", () => {
     expect(
       pointsInRange(points, { start: "2026-01-10", end: "2026-01-20" }).map(
+        (p) => p.reminderGroupId,
+      ),
+    ).toEqual([2]);
+  });
+
+  it("reads the range as local calendar days west of UTC", () => {
+    process.env.TZ = "America/Los_Angeles";
+    const westPoints = [
+      point({ reminderGroupId: 1, date: new Date(2026, 0, 9, 12) }),
+      point({ reminderGroupId: 2, date: new Date(2026, 0, 20, 12) }),
+    ];
+    expect(
+      pointsInRange(westPoints, { start: "2026-01-10", end: "2026-01-20" }).map(
         (p) => p.reminderGroupId,
       ),
     ).toEqual([2]);

@@ -1,6 +1,7 @@
 import { R } from "@alliance/common/result";
 import {
   fromDateInput,
+  fromDateInputRange,
   fromEndDateInput,
   toDateInput,
   toEndDateInput,
@@ -40,5 +41,27 @@ describe("date inputs", () => {
     expect(fromEndDateInput("202600-01-05").ok).toBe(false);
     const lastDay = fromEndDateInput("9999-12-31");
     expect(lastDay.ok ? lastDay.value : "refused").not.toMatch(/^[+-]/);
+  });
+});
+
+describe("fromDateInputRange", () => {
+  it("spans the start of the first local day to the end of the last", () => {
+    expect(
+      fromDateInputRange({ start: "2026-01-10", end: "2026-01-20" }),
+    ).toEqual(
+      R.success({
+        start: new Date(2026, 0, 10),
+        end: new Date(2026, 0, 20, 23, 59, 59, 999),
+      }),
+    );
+  });
+
+  it("reads either side blank as no range, and fails on an invalid side", () => {
+    expect(fromDateInputRange({ start: "", end: "2026-01-20" })).toEqual(
+      R.success(null),
+    );
+    expect(
+      fromDateInputRange({ start: "2026-01-10", end: "20260-01-20" }).ok,
+    ).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
+import { fromDateInputRange } from "../../lib/dateInput";
 import type { ReminderGroupClickRatePoint } from "../../lib/useReminderGroupClickRatesAdmin";
-import { parseIsoDate } from "./parseIsoDate";
 
 export enum ReminderChannel {
   Email = "email",
@@ -21,22 +21,15 @@ export const pointsInRange = (
   points: ReminderGroupClickRatePoint[],
   range: { start: string; end: string },
 ): ReminderGroupClickRatePoint[] => {
-  const start = parseIsoDate(range.start);
-  const end = parseIsoDate(range.end);
-  if (!start || !end) {
-    return points;
-  }
-  if (start > end) {
+  const bounds = fromDateInputRange(range);
+  if (!bounds.ok) {
     return [];
   }
-  const rangeStart = new Date(start);
-  rangeStart.setHours(0, 0, 0, 0);
-  const rangeEnd = new Date(end);
-  rangeEnd.setHours(23, 59, 59, 999);
-
-  return points.filter(
-    (point) => point.date >= rangeStart && point.date <= rangeEnd,
-  );
+  if (!bounds.value) {
+    return points;
+  }
+  const { start, end } = bounds.value;
+  return points.filter((point) => point.date >= start && point.date <= end);
 };
 
 export const reminderActionAggregates = (
