@@ -1,11 +1,8 @@
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import { analyticsGetAggregateStatsAdmin } from "@alliance/shared/client";
-import {
-  ActionStatsWithOnboardingDto,
-  AggregateStatsDto,
-} from "@alliance/shared/client/types.gen";
+import { ActionStatsWithOnboardingDto } from "@alliance/shared/client/types.gen";
 import { minutesInHour } from "date-fns/constants";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
+import { adminRefusalMessage } from "../../lib/adminRefusal";
+import { useAggregateStatsAdmin } from "../../lib/useAggregateStatsAdmin";
 import {
   monthlyChurnRate as computeMonthlyChurnRate,
   type ParsedContractStatusPoint,
@@ -15,27 +12,12 @@ const AggregateStatsCard: React.FC<{
   actionStats: ActionStatsWithOnboardingDto[];
   parsedContractStatusHistory: ParsedContractStatusPoint[];
 }> = ({ actionStats, parsedContractStatusHistory }) => {
-  const [aggregateStats, setAggregateStats] =
-    useState<AggregateStatsDto | null>(null);
-  const [aggregateStatsLoading, setAggregateStatsLoading] =
-    useState<boolean>(false);
+  const {
+    data: aggregateStats,
+    isPending: aggregateStatsLoading,
+    error: aggregateStatsError,
+  } = useAggregateStatsAdmin();
   const [assumedHourlyRate, setAssumedHourlyRate] = useState<number>(15);
-
-  const loadAggregateStats = useCallback(async () => {
-    setAggregateStatsLoading(true);
-    try {
-      const response = await analyticsGetAggregateStatsAdmin();
-      setAggregateStats(response.data ?? null);
-    } catch (err) {
-      console.error("Failed to load aggregate stats", err);
-    } finally {
-      setAggregateStatsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadAggregateStats();
-  }, [loadAggregateStats]);
 
   const monthlyChurnRate = useMemo(
     () => computeMonthlyChurnRate(parsedContractStatusHistory),
@@ -44,6 +26,13 @@ const AggregateStatsCard: React.FC<{
 
   return aggregateStatsLoading ? (
     <div className="text-sm text-gray-600">Loading aggregate stats…</div>
+  ) : aggregateStatsError ? (
+    <div className="text-sm text-red-600">
+      {adminRefusalMessage(
+        aggregateStatsError,
+        "Unable to load aggregate stats.",
+      )}
+    </div>
   ) : aggregateStats ? (
     <div className="bg-white rounded-xl border border-gray-200 px-4 py-3 flex items-center justify-between">
       <div className="flex flex-col gap-2">

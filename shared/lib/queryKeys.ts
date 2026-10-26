@@ -162,6 +162,7 @@ export const queryKeys = {
   actionStatsAdmin: () => ["analyticsGetActionStatsAdmin"] as const,
   actionStatsByIdAdmin: (actionId: number | null) =>
     ["analyticsGetActionStatsByIdAdmin", actionId] as const,
+  aggregateStatsAdmin: () => ["analyticsGetAggregateStatsAdmin"] as const,
   actionUpdateAdmin: (id: number | null) =>
     ["actionUpdatesFindOneUpdateAdmin", id] as const,
   actionUpdateRecognitionPreviewCountsAdmin: (
