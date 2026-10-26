@@ -2,7 +2,13 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { useInvalidateActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { act, render, renderHook, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { adminActionListItem } from "../lib/testing/adminActionListItem";
@@ -106,4 +112,24 @@ it("offers the create menu when no actions are unarchived", async () => {
   renderPage();
   await screen.findByText("No actions found.");
   expect(screen.getByRole("button", { name: "Create" })).toBeTruthy();
+});
+
+it("shows a picked spotlight result even when its status is filtered out", async () => {
+  served = [
+    adminActionListItem(1, "Call your rep"),
+    adminActionListItem(3, "Finished drive", { status: "completed" }),
+  ];
+  renderPage();
+  await screen.findAllByText("Call your rep");
+  expect(screen.queryByText("Finished drive")).toBeNull();
+
+  fireEvent.keyDown(document.body, { key: "f" });
+  fireEvent.change(screen.getByRole("combobox"), {
+    target: { value: "finished" },
+  });
+  fireEvent.keyDown(screen.getByRole("combobox"), { key: "Enter" });
+
+  expect(
+    (await screen.findByText("Finished drive")).closest("a")?.dataset.flashed,
+  ).toBe("true");
 });

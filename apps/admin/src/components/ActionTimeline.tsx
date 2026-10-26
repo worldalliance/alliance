@@ -1,5 +1,5 @@
 import { cn } from "@alliance/shared/styles/util";
-import { getDayOfYear, milliseconds } from "date-fns";
+import { milliseconds } from "date-fns";
 import { millisecondsInDay } from "date-fns/constants";
 import React, {
   useCallback,
@@ -8,19 +8,22 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Link } from "react-router";
 import {
   buildTimelineData,
   firstRowActiveInWeek,
   normalizeReminders,
   parseReminderDate,
+  TIMELINE_ROW_HEIGHT,
   type TimelineAction,
   type TimelineReminder,
+  type TimelineRow,
   weekTicks,
 } from "../lib/actionTimelineData";
 import type { CohortSegment } from "../lib/describeCohortExpression";
 import ActionTimelineBar from "./ActionTimelineBar";
-import ActionTimelineRowMeta from "./ActionTimelineRowMeta";
+import ActionTimelineNameRow from "./ActionTimelineNameRow";
+import ActionTimelineReminderOverlay from "./ActionTimelineReminderOverlay";
+import ActionTimelineWeekHeader from "./ActionTimelineWeekHeader";
 
 interface ActionTimelineProps {
   actions: TimelineAction[];
@@ -30,11 +33,14 @@ interface ActionTimelineProps {
   reminders?: TimelineReminder[];
   onReminderClick?: (reminderId: number) => void;
   focusOnDate?: Date | string | number | null;
-  mostRecentFirst?: boolean;
+  latestLaunchFirst?: boolean;
   participantsById?: ReadonlyMap<number, CohortSegment[]>;
+  /** A new object scrolls to and flashes that action's row once. */
+  focusAction?: { id: number } | null;
 }
 
 const EMPTY_REMINDERS: TimelineReminder[] = [];
+const FOCUS_BAR_MARGIN = 40;
 
 const ActionTimeline: React.FC<ActionTimelineProps> = ({
   actions,
@@ -44,18 +50,24 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
   reminders,
   onReminderClick,
   focusOnDate,
-  mostRecentFirst = false,
+  latestLaunchFirst = false,
   participantsById,
+  focusAction,
 }) => {
   const [scrollLeft, setScrollLeft] = useState(0);
   const [containerWidth, setContainerWidth] = useState(800);
+  const [hoveredProjectId, setHoveredProjectId] = useState<number | null>(null);
+  const isProjectHovered = (action: TimelineRow["action"]) =>
+    action.project != null && action.project.id === hoveredProjectId;
   const [focusIndicator, setFocusIndicator] = useState<{
     timestamp: number;
     visible: boolean;
     id: number;
   } | null>(null);
+  const [flashedActionId, setFlashedActionId] = useState<number | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const namesContainerRef = useRef<HTMLDivElement>(null);
+  const handledFocusRef = useRef<{ id: number } | null>(null);
 
   const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
     const target = event.currentTarget;
@@ -92,8 +104,9 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
   );
 
   const { timelineData, globalStartDate, globalEndDate, totalDays } = useMemo(
-    () => buildTimelineData({ actions, normalizedReminders, mostRecentFirst }),
-    [actions, normalizedReminders, mostRecentFirst],
+    () =>
+      buildTimelineData({ actions, normalizedReminders, latestLaunchFirst }),
+    [actions, normalizedReminders, latestLaunchFirst],
   );
 
   const focusTimestamp = focusDate ? focusDate.getTime() : null;
@@ -101,10 +114,10 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
   const pixelsPerDay = 16;
   const pixelsPerWeek = pixelsPerDay * 7;
   const chartWidth = Math.max(totalDays, 1) * pixelsPerDay;
-  const rowHeight = 64;
   const hasReminderOverlay = normalizedReminders.length > 0;
   const timelineContentHeight =
-    Math.max(timelineData.length, hasReminderOverlay ? 1 : 0) * rowHeight;
+    Math.max(timelineData.length, hasReminderOverlay ? 1 : 0) *
+    TIMELINE_ROW_HEIGHT;
   const chartHeight = timelineContentHeight + 60;
 
   useEffect(() => {
@@ -180,6 +193,43 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
     }
   }, [timelineData, globalStartDate, globalEndDate, pixelsPerDay]);
 
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!focusAction || focusAction === handledFocusRef.current || !container) {
+      return;
+    }
+    const index = timelineData.findIndex(
+      ({ action }) => action.id === focusAction.id,
+    );
+    if (index === -1) {
+      return;
+    }
+    handledFocusRef.current = focusAction;
+    container.scrollTop = index * TIMELINE_ROW_HEIGHT;
+    const barStart = timelineData[index].phases[0]?.startDate;
+    if (barStart) {
+      const pixelsPerMillisecond = pixelsPerDay / millisecondsInDay;
+      container.scrollLeft = Math.max(
+        0,
+        (barStart.getTime() - globalStartDate.getTime()) *
+          pixelsPerMillisecond -
+          FOCUS_BAR_MARGIN,
+      );
+    }
+    setFlashedActionId(focusAction.id);
+  }, [focusAction, timelineData, globalStartDate, pixelsPerDay]);
+
+  useEffect(() => {
+    if (flashedActionId === null) {
+      return;
+    }
+    const timeout = window.setTimeout(
+      () => setFlashedActionId(null),
+      milliseconds({ seconds: 2 }),
+    );
+    return () => window.clearTimeout(timeout);
+  }, [flashedActionId]);
+
   const scrollToWeek = (weekStart: Date) => {
     const index = firstRowActiveInWeek(timelineData, weekStart);
     if (index === -1) {
@@ -187,7 +237,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
     }
     // Smooth scrolling would be cut short by the names-pane scroll sync.
     if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = index * rowHeight;
+      scrollContainerRef.current.scrollTop = index * TIMELINE_ROW_HEIGHT;
     }
   };
 
@@ -237,20 +287,14 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
               ref={namesContainerRef}
             >
               {timelineData.map(({ action }) => (
-                <Link
+                <ActionTimelineNameRow
                   key={action.id}
-                  to={`/actions/${action.id}`}
-                  className="border-b border-zinc-100 py-3 pr-4 flex flex-col justify-center bg-white hover:bg-zinc-50 pl-5"
-                  style={{ height: "64px" }}
-                >
-                  <div className="text-sm font-medium text-black truncate">
-                    {action.name}
-                  </div>
-                  <ActionTimelineRowMeta
-                    status={action.status}
-                    participants={participantsById?.get(action.id)}
-                  />
-                </Link>
+                  action={action}
+                  participants={participantsById?.get(action.id)}
+                  projectHovered={isProjectHovered(action)}
+                  onProjectHover={setHoveredProjectId}
+                  flashed={action.id === flashedActionId}
+                />
               ))}
             </div>
           </div>
@@ -273,40 +317,12 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                 height: `${chartHeight}px`,
               }}
             >
-              {/* Date grid header - sticky */}
-              <div
-                className="bg-gray-50 border-b border-gray-200 sticky top-0 z-20 py-3"
-                style={{ width: `${chartWidth}px`, height: "50px" }}
-              >
-                {ticks.map(({ date, left }) => {
-                  const weekNumber = Math.ceil(getDayOfYear(date) / 7) + 1;
-                  return (
-                    <button
-                      type="button"
-                      key={date.getTime()}
-                      onClick={() => scrollToWeek(date)}
-                      aria-label={`Scroll to actions active in week ${weekNumber}`}
-                      className="absolute border-l border-gray-200 text-xs text-left text-gray-500 px-1 flex flex-col justify-center cursor-pointer hover:bg-gray-100"
-                      style={{
-                        left: `${left}px`,
-                        width: `${pixelsPerWeek}px`,
-                        top: 0,
-                        bottom: 0,
-                      }}
-                    >
-                      <div className="absolute inset-0 flex items-center justify-center text-[31.5px] leading-none text-gray-200">
-                        {weekNumber}
-                      </div>
-                      <div>
-                        <div className="font-medium">{date.getDate()}</div>
-                        <div>
-                          {date.toLocaleDateString("en-US", { month: "short" })}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+              <ActionTimelineWeekHeader
+                ticks={ticks}
+                chartWidth={chartWidth}
+                pixelsPerWeek={pixelsPerWeek}
+                onWeekClick={scrollToWeek}
+              />
 
               {/* Vertical grid lines */}
               <div
@@ -332,82 +348,13 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
 
               {/* Reminder overlays */}
               {normalizedReminders.length > 0 && (
-                <div
-                  className="absolute left-0 right-0 z-30 pointer-events-none"
-                  style={{
-                    top: "50px",
-                    height: `${timelineContentHeight}px`,
-                  }}
-                >
-                  {normalizedReminders.map((reminder) => {
-                    const pixelsPerMillisecond =
-                      pixelsPerDay / millisecondsInDay;
-                    const startOffset =
-                      reminder.startDate.getTime() - globalStartDate.getTime();
-                    const left = startOffset * pixelsPerMillisecond;
-
-                    if (reminder.isRange) {
-                      const endOffset =
-                        reminder.endDate.getTime() - globalStartDate.getTime();
-                      const width = Math.max(
-                        2,
-                        (endOffset - startOffset) * pixelsPerMillisecond,
-                      );
-
-                      return (
-                        <div
-                          key={`reminder-range-${reminder.id}`}
-                          className="absolute cursor-pointer rounded-sm"
-                          style={{
-                            left: `${left}px`,
-                            width: `${width}px`,
-                            top: 0,
-                            height: "100%",
-                            backgroundColor: "rgba(220, 38, 38, 0.2)",
-                            borderLeft: "2px solid rgba(220, 38, 38, 0.6)",
-                            borderRight: "2px solid rgba(220, 38, 38, 0.6)",
-                            pointerEvents: "auto",
-                          }}
-                          title={
-                            reminder.label
-                              ? `Reminder window: ${reminder.label}`
-                              : "Reminder window"
-                          }
-                          onClick={() => {
-                            if (onReminderClick) {
-                              onReminderClick(reminder.original.id);
-                            }
-                          }}
-                        />
-                      );
-                    }
-
-                    return (
-                      <div
-                        key={`reminder-${reminder.id}`}
-                        className="absolute cursor-pointer"
-                        style={{
-                          left: `${left}px`,
-                          width: "2px",
-                          top: 0,
-                          height: "100%",
-                          backgroundColor: "rgba(220, 38, 38, 0.85)",
-                          pointerEvents: "auto",
-                        }}
-                        title={
-                          reminder.label
-                            ? `Reminder: ${reminder.label}`
-                            : "Reminder"
-                        }
-                        onClick={() => {
-                          if (onReminderClick) {
-                            onReminderClick(reminder.original.id);
-                          }
-                        }}
-                      />
-                    );
-                  })}
-                </div>
+                <ActionTimelineReminderOverlay
+                  reminders={normalizedReminders}
+                  globalStartDate={globalStartDate}
+                  pixelsPerDay={pixelsPerDay}
+                  height={timelineContentHeight}
+                  onReminderClick={onReminderClick}
+                />
               )}
 
               {/* Current time indicator */}
@@ -477,6 +424,8 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                   rowIndex={index}
                   scrollLeft={scrollLeft}
                   containerWidth={containerWidth}
+                  projectHovered={isProjectHovered(action)}
+                  onProjectHover={setHoveredProjectId}
                 />
               ))}
             </div>

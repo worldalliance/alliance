@@ -32,7 +32,7 @@ const ProjectMiniTimeline = ({
   const { timelineData } = buildTimelineData({
     actions: steps,
     normalizedReminders: [],
-    mostRecentFirst: false,
+    latestLaunchFirst: false,
   });
   const phasesById = new Map(
     timelineData.map((row) => [row.action.id, row.phases]),

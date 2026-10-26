@@ -1,13 +1,19 @@
-import { Action } from "@alliance/shared/client";
+import { cn } from "@alliance/shared/styles/util";
 import { startOfDay } from "date-fns";
 import { millisecondsInDay } from "date-fns/constants";
 import React from "react";
 import { useNavigate } from "react-router";
 import { ACTION_STATUS_LABELS } from "../lib/actionStatusDisplay";
-import type { PhaseSegment } from "../lib/actionTimelineData";
+import {
+  TIMELINE_ROW_HEIGHT,
+  timelineStripeCount,
+  type PhaseSegment,
+  type TimelineRow,
+} from "../lib/actionTimelineData";
+import { swatchColors } from "../lib/identitySwatch";
 
 interface ActionTimelineBarProps {
-  action: Pick<Action, "id" | "name" | "status">;
+  action: TimelineRow["action"];
   phases: PhaseSegment[];
   globalStartDate: Date;
   pixelsPerDay: number;
@@ -15,6 +21,8 @@ interface ActionTimelineBarProps {
   rowIndex: number;
   scrollLeft?: number;
   containerWidth?: number;
+  projectHovered: boolean;
+  onProjectHover: (projectId: number | null) => void;
 }
 
 const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
@@ -26,8 +34,14 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
   rowIndex,
   scrollLeft = 0,
   containerWidth = 800,
+  projectHovered,
+  onProjectHover,
 }) => {
   const navigate = useNavigate();
+  const memberActionColor = swatchColors(
+    action.project?.name ?? action.slug ?? action.name,
+  ).from;
+  const stripeCount = timelineStripeCount(action);
   const calculateStickyLabelPosition = (
     barLeft: number,
     barWidth: number,
@@ -83,11 +97,16 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
 
   return (
     <div
-      className="absolute border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+      className={cn(
+        "absolute border-b border-gray-100 hover:bg-gray-50 cursor-pointer",
+        projectHovered && "bg-gray-50",
+      )}
       onClick={() => navigate(`/actions/${action.id}`)}
+      onMouseEnter={() => onProjectHover(action.project?.id ?? null)}
+      onMouseLeave={() => onProjectHover(null)}
       style={{
-        height: "64px",
-        top: `${50 + rowIndex * 64}px`,
+        height: `${TIMELINE_ROW_HEIGHT}px`,
+        top: `${50 + rowIndex * TIMELINE_ROW_HEIGHT}px`,
         left: 0,
         width: `${chartWidth}px`,
       }}
@@ -117,7 +136,8 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
         );
 
         // Shared background color
-        const barColor = phase.status === "member_action" ? "#75ba30" : "#ddd"; // gray-100
+        const barColor =
+          phase.status === "member_action" ? memberActionColor : "#ddd"; // gray-100
 
         // Check if this is the last phase and if it extends beyond current time
         const isLastPhase = phaseIndex === phases.length - 1;
@@ -160,19 +180,25 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
         return (
           <div
             key={phaseIndex}
-            className="absolute rounded-sm"
+            className="absolute flex flex-col gap-0.5"
             style={{
               left: `${barLeft}px`,
               width: `${barWidth}px`,
               top: "12px",
               height: "40px",
               minWidth: "20px",
-              ...backgroundStyle,
             }}
             title={`${action.name}: ${
               ACTION_STATUS_LABELS[phase.status]
             } (${phase.startDate.toLocaleDateString()} - ${phase.endDate.toLocaleDateString()})`}
           >
+            {Array.from({ length: stripeCount }, (_, stripeIndex) => (
+              <div
+                key={stripeIndex}
+                className="flex-1 rounded-sm"
+                style={backgroundStyle}
+              />
+            ))}
             {stickyLabel && (
               <div
                 className="absolute flex items-center justify-start text-xs text-black font-medium px-1"

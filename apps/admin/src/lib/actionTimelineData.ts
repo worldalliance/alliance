@@ -3,6 +3,8 @@ import {
   ActionDto,
   ActionEventDto,
   ActionStatus,
+  AdminActionDto,
+  AdminActionListItemDto,
   ReminderGroupDto,
   ReminderGroupTimingMode,
 } from "@alliance/shared/client";
@@ -17,8 +19,18 @@ import { millisecondsInDay, millisecondsInSecond } from "date-fns/constants";
 
 export type TimelineAction = Pick<
   ActionDto,
-  "id" | "name" | "status" | "events"
->;
+  "id" | "name" | "status" | "events" | "project"
+> &
+  Partial<Pick<AdminActionDto, "slug">> &
+  Partial<Pick<AdminActionListItemDto, "variantFormIds">>;
+
+export const TIMELINE_ROW_HEIGHT = 80;
+
+const MAX_TIMELINE_STRIPES = 5;
+
+export const timelineStripeCount = (
+  action: Pick<TimelineAction, "variantFormIds">,
+) => Math.min(MAX_TIMELINE_STRIPES, 1 + (action.variantFormIds?.length ?? 0));
 
 export type TimelineReminder = Pick<
   ReminderGroupDto,
@@ -33,11 +45,15 @@ export type TimelineReminder = Pick<
 >;
 
 interface TimelineData {
-  action: Pick<ActionDto, "id" | "name" | "status">;
+  action: Pick<
+    TimelineAction,
+    "id" | "name" | "slug" | "status" | "project" | "variantFormIds"
+  >;
   phases: PhaseSegment[];
   totalDuration: number;
   startDate: Date;
   endDate: Date;
+  launchTime: number;
 }
 
 export type TimelineRow = Pick<TimelineData, "action" | "phases">;
@@ -72,8 +88,10 @@ const SHOWS_BAR: Record<ActionStatus, boolean> = {
   abandoned: true,
 };
 
-const lastEventTime = ({ phases }: TimelineData): number =>
-  phases[phases.length - 1].startDate.getTime();
+export const launchTime = (events: ActionEventDto[]): number => {
+  const { event } = memberActionPhase(events);
+  return event ? new Date(event.date).getTime() : -Infinity;
+};
 
 export const parseReminderDate = (value: unknown): Date | null => {
   if (!value && value !== 0) {
@@ -212,11 +230,11 @@ export const normalizeReminders = (
 export const buildTimelineData = ({
   actions,
   normalizedReminders,
-  mostRecentFirst,
+  latestLaunchFirst,
 }: {
   actions: TimelineAction[];
   normalizedReminders: NormalizedReminder[];
-  mostRecentFirst: boolean;
+  latestLaunchFirst: boolean;
 }) => {
   const processedActions: TimelineData[] = [];
 
@@ -262,13 +280,14 @@ export const buildTimelineData = ({
         totalDuration,
         startDate: phases[0].startDate,
         endDate: phases[phases.length - 1].endDate,
+        launchTime: launchTime(action.events),
       });
     }
   }
 
   const sortedActions = processedActions.sort((a, b) =>
-    mostRecentFirst
-      ? lastEventTime(b) - lastEventTime(a)
+    latestLaunchFirst
+      ? b.launchTime - a.launchTime
       : a.startDate.getTime() - b.startDate.getTime(),
   );
 
