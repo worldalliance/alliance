@@ -67,6 +67,7 @@ import { ScheduledPlansOverviewDto } from "./dto/scheduled-plans.dto";
 import { ShareUrlDto, ShareUrlStatsDto } from "./dto/share-url.dto";
 import { UserCompletedActionsCountDto } from "./dto/user-completed-actions-count.dto";
 import { ForumActionCompleterWorker } from "./forum-action-completer.worker";
+import { MemberActionsService } from "./member-actions.service";
 import { WelcomeQueueService } from "./welcome-queue.service";
 
 @Controller("actions")
@@ -74,6 +75,7 @@ export class ActionsController {
   constructor(
     private readonly actionsService: ActionsService,
     private readonly actionActivityService: ActionActivityService,
+    private readonly memberActions: MemberActionsService,
     private readonly importExport: ActionImportExportService,
     private readonly actionRelations: ActionRelationsService,
     private readonly actionSuites: ActionSuitesService,
@@ -93,7 +95,7 @@ export class ActionsController {
     @Request() req: JwtRequest,
     @Query("sorted", new ParseBoolPipe({ optional: true })) sorted?: boolean,
   ): Promise<ActionDto[]> {
-    return this.actionsService.findMemberPublic(req.user.sub, sorted);
+    return this.memberActions.findMemberPublic(req.user.sub, sorted);
   }
 
   @Get("withdrawals/byForm/:formId")
@@ -155,7 +157,7 @@ export class ActionsController {
     @Param("id", ParseIntPipe) id: number,
     @Request() req: JwtRequest,
   ): Promise<ActionDto> {
-    return this.actionsService.findOneDto(id, req.user?.sub);
+    return this.memberActions.findOneDto(id, req.user?.sub);
   }
 
   @Get(":id/sharePreview")

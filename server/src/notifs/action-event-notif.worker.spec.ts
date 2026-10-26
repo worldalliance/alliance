@@ -1,6 +1,5 @@
 import { Temporal } from "@js-temporal/polyfill";
 import { secondsInDay, secondsInHour } from "date-fns/constants";
-import { ActionsService } from "src/actions/actions.service";
 import { ActionDto } from "src/actions/dto/action.dto";
 import {
   ActionEvent,
@@ -13,6 +12,7 @@ import {
   ReminderGroupTimingMode,
   getGroupSendTimeForUser,
 } from "src/actions/entities/reminder-group.entity";
+import { MemberActionsService } from "src/actions/member-actions.service";
 import { NotificationPreferencesService } from "src/notification-settings/notification-preferences.service";
 import { User } from "src/user/entities/user.entity";
 import { DataSource, type Repository } from "typeorm";
@@ -32,7 +32,7 @@ import { NotifsService } from "./notifs.service";
 
 describe("ActionEventNotifWorker.processCustomReminderText", () => {
   let worker: ActionEventNotifWorker;
-  let actionsService: jest.Mocked<ActionsService>;
+  let memberActions: jest.Mocked<MemberActionsService>;
   let originalAppUrl: string | undefined;
 
   beforeAll(() => {
@@ -45,13 +45,13 @@ describe("ActionEventNotifWorker.processCustomReminderText", () => {
   });
 
   beforeEach(() => {
-    actionsService = {
+    memberActions = {
       findUncompletedTasks: jest.fn(),
-    } as unknown as jest.Mocked<ActionsService>;
+    } as unknown as jest.Mocked<MemberActionsService>;
 
     worker = new ActionEventNotifWorker(
       {} as DataSource,
-      actionsService,
+      memberActions,
       {} as Repository<ActionEventNotif>,
       {} as ActionEventReminderService,
       {} as MissedSuitePlanService,
@@ -176,16 +176,16 @@ describe("ActionEventNotifWorker.processCustomReminderText", () => {
 
 describe("ActionEventNotifWorker.findUncompletedTasksForPlan", () => {
   let worker: ActionEventNotifWorker;
-  let actionsService: jest.Mocked<ActionsService>;
+  let memberActions: jest.Mocked<MemberActionsService>;
 
   beforeEach(() => {
-    actionsService = {
+    memberActions = {
       findUncompletedTasks: jest.fn(),
-    } as unknown as jest.Mocked<ActionsService>;
+    } as unknown as jest.Mocked<MemberActionsService>;
 
     worker = new ActionEventNotifWorker(
       {} as DataSource,
-      actionsService,
+      memberActions,
       {} as Repository<ActionEventNotif>,
       {} as ActionEventReminderService,
       {} as MissedSuitePlanService,
@@ -197,7 +197,7 @@ describe("ActionEventNotifWorker.findUncompletedTasksForPlan", () => {
   });
 
   it("filters out optional tasks when excludeOptionalActions is set", async () => {
-    actionsService.findUncompletedTasks.mockResolvedValue([
+    memberActions.findUncompletedTasks.mockResolvedValue([
       {
         id: 1,
         name: "Required",
@@ -236,7 +236,7 @@ describe("ActionEventNotifWorker.findUncompletedTasksForPlan", () => {
   });
 
   it("returns all tasks when excludeOptionalActions is not set", async () => {
-    actionsService.findUncompletedTasks.mockResolvedValue([
+    memberActions.findUncompletedTasks.mockResolvedValue([
       { id: 1, name: "Required", optional: false } as unknown as ActionDto,
       { id: 2, name: "Optional", optional: true } as unknown as ActionDto,
     ]);

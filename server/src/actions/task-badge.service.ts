@@ -23,8 +23,8 @@ import {
   type Repository,
 } from "typeorm";
 import { z } from "zod";
-import { ActionsService } from "./actions.service";
 import type { ActionActivityDto } from "./dto/action-activity.dto";
+import { MemberActionsService } from "./member-actions.service";
 
 const [LOCK_KEY1, LOCK_KEY2] = LOCK_KEYS.taskBadgeSweep;
 const SWEEP_INTERVAL_MS = milliseconds({ minutes: 1 });
@@ -58,7 +58,7 @@ export class TaskBadgeService implements OnModuleDestroy {
   constructor(
     private readonly eventEmitter: EventEmitter2,
     private readonly dataSource: DataSource,
-    private readonly actionsService: ActionsService,
+    private readonly memberActions: MemberActionsService,
     private readonly pushService: PushService,
     @InjectRepository(UserDevice)
     private readonly userDeviceRepository: Repository<UserDevice>,
@@ -90,7 +90,7 @@ export class TaskBadgeService implements OnModuleDestroy {
       LOCK_KEY2,
       async () => {
         const startedAt = new Date();
-        const openActionIds = await this.actionsService.findOpenActionIds();
+        const openActionIds = await this.memberActions.findOpenActionIds();
         const userIds = await this.findUserIdsWithDevices();
         for (const userId of userIds) {
           await this.syncUserLoggingFailure(userId, {
@@ -147,11 +147,11 @@ export class TaskBadgeService implements OnModuleDestroy {
       return;
     }
     const count = countTaskBadge(
-      await this.actionsService.findMemberOpen({
+      await this.memberActions.findMemberOpen({
         userId,
         openActionIds:
           sweep?.openActionIds ??
-          (await this.actionsService.findOpenActionIds()),
+          (await this.memberActions.findOpenActionIds()),
       }),
       startedAt,
     );

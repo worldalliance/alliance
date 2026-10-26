@@ -10,6 +10,7 @@ import { ActionsService } from "src/actions/actions.service";
 import { CohortResolverService } from "src/actions/cohort-resolver.service";
 import type { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { GLOBAL_FEED_FACEPILE_LIMIT } from "src/actions/feed-members.service";
+import { MemberActionsService } from "src/actions/member-actions.service";
 import { SingleMemberCohortService } from "src/actions/single-member-cohort.service";
 import { ContractService } from "src/contract/contract.service";
 import {
@@ -1699,9 +1700,9 @@ describe("Actions (e2e)", () => {
       const lateSigner = await signedAt("late", 1000);
       const eligibleUser = await signedAt("eligible", -1000);
 
-      const actionsService = ctx.app.get(ActionsService);
+      const memberActions = ctx.app.get(MemberActionsService);
       const taskIds = async (userId: number) =>
-        (await actionsService.findUncompletedTasks(userId)).map((a) => a.id);
+        (await memberActions.findUncompletedTasks(userId)).map((a) => a.id);
 
       expect(await taskIds(lateSigner.id)).not.toContain(action.id);
       expect(await taskIds(eligibleUser.id)).toContain(action.id);
@@ -1740,7 +1741,7 @@ describe("Actions (e2e)", () => {
 
       try {
         const tasks = await ctx.app
-          .get(ActionsService)
+          .get(MemberActionsService)
           .findUncompletedTasks(member.id);
         expect(tasks.map((task) => task.id)).toContain(action.id);
 

@@ -2,7 +2,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
-import { ActionsService } from "src/actions/actions.service";
 import { loadedActionEventAction } from "src/actions/entities/action-event.entity";
 import type { ActionSuite } from "src/actions/entities/action-suite.entity";
 import {
@@ -10,6 +9,7 @@ import {
   loadedReminderGroupMemberActionEvent,
   ReminderCohortType,
 } from "src/actions/entities/reminder-group.entity";
+import { MemberActionsService } from "src/actions/member-actions.service";
 import { type MissedSuiteStanding } from "src/actions/missed-suite-streak";
 import {
   NOTIF_SOURCE,
@@ -96,7 +96,7 @@ export class ActionEventNotifWorker {
   private readonly logger = new Logger(ActionEventNotifWorker.name);
   constructor(
     private readonly dataSource: DataSource,
-    private readonly actionsService: ActionsService,
+    private readonly memberActions: MemberActionsService,
     @InjectRepository(ActionEventNotif)
     private readonly actionEventNotifsRepository: Repository<ActionEventNotif>,
     private readonly reminderService: ActionEventReminderService,
@@ -188,7 +188,7 @@ export class ActionEventNotifWorker {
   async findUncompletedTasksForPlan(
     plan: NotificationPlan,
   ): Promise<UncompletedTaskSummary[]> {
-    const tasks = await this.actionsService.findUncompletedTasks(
+    const tasks = await this.memberActions.findUncompletedTasks(
       plan.user.id,
       plan.group.useSuiteTaskCount ? plan.group.actionSuite?.id : undefined,
     );

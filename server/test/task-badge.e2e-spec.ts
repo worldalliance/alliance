@@ -6,12 +6,12 @@ import {
   type ExpoPushMessage,
 } from "expo-server-sdk";
 import { ActionActivityService } from "src/actions/action-activity.service";
-import { ActionsService } from "src/actions/actions.service";
 import {
   ActionEvent,
   ActionStatus,
 } from "src/actions/entities/action-event.entity";
 import { Action, VisibilityMode } from "src/actions/entities/action.entity";
+import { MemberActionsService } from "src/actions/member-actions.service";
 import { TaskBadgeService } from "src/actions/task-badge.service";
 import { EXPO_CLIENT } from "src/push/push.service";
 import {
@@ -447,11 +447,11 @@ describe("Task badge sync (e2e)", () => {
 
   it("lets a sync that started during a sweep keep its newer count", async () => {
     const { device, expoPushToken } = await createMemberWithDevice();
-    const actionsService = ctx.app.get(ActionsService);
+    const memberActions = ctx.app.get(MemberActionsService);
     const findOpenActionIds =
-      actionsService.findOpenActionIds.bind(actionsService);
+      memberActions.findOpenActionIds.bind(memberActions);
     jest
-      .spyOn(actionsService, "findOpenActionIds")
+      .spyOn(memberActions, "findOpenActionIds")
       .mockImplementationOnce(async () => {
         const ids = await findOpenActionIds();
         await deviceRepo.update(device.id, {

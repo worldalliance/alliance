@@ -32,6 +32,7 @@ import {
   ALLOW_DUPLICATE,
 } from "./entities/action-activity.entity";
 import { Action, type ParsedAction } from "./entities/action.entity";
+import { MemberActionsService } from "./member-actions.service";
 import { assertNotInStaffPreview } from "./staff-preview";
 import { CompletionBlock } from "./user-action-status";
 
@@ -57,6 +58,7 @@ export class ActionActivityService {
     @InjectRepository(ActionActivity)
     private readonly actionActivityRepository: Repository<ActionActivity>,
     private readonly actionsService: ActionsService,
+    private readonly memberActions: MemberActionsService,
     private readonly userService: UserService,
     private readonly eventLogService: EventLogService,
     private readonly eventEmitter: EventEmitter2,
@@ -251,7 +253,7 @@ export class ActionActivityService {
       contractEvents: true,
       awayRanges: true,
     });
-    const block = await this.actionsService.findCompletionBlock({
+    const block = await this.memberActions.findCompletionBlock({
       action,
       user,
       now,

@@ -94,6 +94,7 @@ import { GeneralUpdatesController } from "./general-updates.controller";
 import { GeneralUpdatesService } from "./general-updates.service";
 import { GlobalFeedService } from "./global-feed.service";
 import { HomeFeedService } from "./home-feed.service";
+import { MemberActionsService } from "./member-actions.service";
 import { ProjectsController } from "./projects.controller";
 import { ProjectsService } from "./projects.service";
 import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
@@ -209,6 +210,7 @@ import { WelcomeQueueService } from "./welcome-queue.service";
     ActionImportExportService,
     WelcomeQueueService,
     ActionActivityService,
+    MemberActionsService,
   ],
   exports: [
     ActionsService,

@@ -149,7 +149,7 @@ type CompletionRuleParams = {
 
 /**
  * Completion-permission rule — the pure core of
- * `ActionsService.findCompletionBlock` (the `ActionDto.canParticipate` wire
+ * `MemberActionsService.findCompletionBlock` (the `ActionDto.canParticipate` wire
  * field and the server-side gate on the complete mutation).
  *
  * Policy (decided 2026-07): contract state is NOT a completion gate for

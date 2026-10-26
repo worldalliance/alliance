@@ -18,6 +18,7 @@ import {
   ReminderGroup,
   ReminderGroupTimingMode,
 } from "src/actions/entities/reminder-group.entity";
+import { MemberActionsService } from "src/actions/member-actions.service";
 import { Community } from "src/community/entities/community.entity";
 import { softDeleteCascade } from "src/datasources/soft-delete";
 import {
@@ -2343,7 +2344,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
     });
 
     const tasks = await ctx.app
-      .get(ActionsService)
+      .get(MemberActionsService)
       .findUncompletedTasks(admin.id);
 
     expect(tasks.map((task) => task.id)).toEqual([launched.id]);
