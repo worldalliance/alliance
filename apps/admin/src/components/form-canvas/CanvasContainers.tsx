@@ -9,6 +9,7 @@ import {
   ACCORDION_TITLE,
   AccordionChevron,
 } from "@alliance/sharedweb/forms/accordionStyles";
+import { RenderLabel } from "@alliance/sharedweb/forms/fieldParts";
 import {
   ListAddButton,
   ListCard,
@@ -16,7 +17,6 @@ import {
   ListRemoveButton,
 } from "@alliance/sharedweb/forms/ListCard";
 import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
-import { RenderLabel } from "@alliance/sharedweb/forms/RenderField";
 import { useState, type ReactNode } from "react";
 import type { AddressedWrite } from "../../lib/displayBlockById";
 import { updateListSubField } from "../../lib/updateListSubField";

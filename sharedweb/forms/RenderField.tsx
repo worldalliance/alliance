@@ -70,6 +70,12 @@ import {
 } from "./ClearSelection";
 import { getCustomComponentById } from "./components";
 import {
+  fieldInputClassName,
+  RenderLabel,
+  sharedInputClasses,
+  useQuestionLabelId,
+} from "./fieldParts";
+import {
   ListAddButton,
   ListCard,
   ListHiddenNote,
@@ -102,58 +108,6 @@ export type RenderFieldProps = {
   isPreview?: boolean;
   hideLabel?: boolean;
 };
-
-const sharedInputClasses =
-  "w-full px-3 py-2 rounded-md focus:outline-none bg-white disabled:!bg-transparent";
-
-function useQuestionLabelId(field: AnyField): string | undefined {
-  const instanceId = useId();
-  return field.label?.trim() ? `${field.id}-${instanceId}-label` : undefined;
-}
-
-export function RenderLabel({
-  field,
-  labelId,
-  error,
-  labelRightAddon,
-  isOutputView,
-  hideLabel,
-  required,
-}: {
-  field: AnyField;
-  labelId?: string;
-  error?: string | null;
-  labelRightAddon?: ReactNode;
-  isOutputView?: boolean;
-  hideLabel?: boolean;
-  /** Effective requiredness; defaults to the field's static `required` flag. */
-  required?: boolean;
-}) {
-  if (hideLabel && !labelId) return null;
-  const hasError = Boolean(error);
-  const isRequired = required ?? !!field.required;
-  return (
-    <>
-      {!hideLabel && !isRequired && !isOutputView && <OptionalLabelPrefix />}
-      <label
-        className={cn(
-          hideLabel ? "sr-only" : "block",
-          hasError ? "text-red-600" : "text-zinc-700",
-          labelRightAddon && "flex items-start justify-between gap-3",
-        )}
-      >
-        <span id={labelId}>
-          {field.label !== null && (
-            <FormMarkdownWrapper markdownContent={field.label} inline />
-          )}
-        </span>
-        {!hideLabel && labelRightAddon ? (
-          <span className="shrink-0">{labelRightAddon}</span>
-        ) : null}
-      </label>
-    </>
-  );
-}
 
 export function RenderField({
   field,
@@ -198,15 +152,7 @@ export function RenderField({
   const composeClassName = (
     base: string,
     overrides: { normal?: string; error?: string } = {},
-  ) => {
-    const normal =
-      overrides.normal ??
-      "border border-zinc-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent";
-    const errorCls =
-      overrides.error ??
-      "border border-red-500 focus:ring-2 focus:ring-red-500 focus:border-transparent";
-    return `${base} ${hasError ? errorCls : normal}`;
-  };
+  ) => fieldInputClassName({ base, hasError, ...overrides });
 
   const renderValidationMessage = () =>
     hasError ? <p className="text-sm text-red-600">{errorMessage}</p> : null;
