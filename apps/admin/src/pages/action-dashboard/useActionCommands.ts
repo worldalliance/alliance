@@ -65,23 +65,20 @@ export function useActionCommands(params: {
 
     let taskFormId = form.taskFormId;
     if (taskFormId) {
-      const taskForm = await tasksGetFormAdmin({
-        path: { id: taskFormId },
-      });
-      if (taskForm.data) {
-        const newTaskForm = await R.fromPromise(
-          createForm({
-            title: taskForm.data.title + " (Copy)",
-            schema: taskForm.data.schema,
-          }),
-          logActionError("Failed to duplicate the action's task form"),
-        );
-        if (!newTaskForm.ok) {
-          setError(newTaskForm.error);
-          return;
-        }
-        taskFormId = newTaskForm.value.id;
+      const copied = await R.fromPromise(
+        tasksGetFormAdmin({
+          path: { id: taskFormId },
+          throwOnError: true,
+        }).then(({ data }) =>
+          createForm({ title: data.title + " (Copy)", schema: data.schema }),
+        ),
+        logActionError("Failed to duplicate the action's task form"),
+      );
+      if (!copied.ok) {
+        setError(copied.error);
+        return;
       }
+      taskFormId = copied.value.id;
     }
 
     const duplicateForm = {

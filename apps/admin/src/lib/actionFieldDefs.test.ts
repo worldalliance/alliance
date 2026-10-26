@@ -1,22 +1,10 @@
 import type { CreateActionDto } from "@alliance/shared/client";
 import { actionFieldDefs, type ActionFieldDef } from "./actionFieldDefs";
+import { createActionForm } from "./testing/createActionForm";
 
 type FieldName = ActionFieldDef["name"];
 
-const form: CreateActionDto = {
-  name: "Call your rep",
-  category: [],
-  body: "",
-  shortDescription: "",
-  isContractSigningAction: false,
-  visibilityMode: "all_members",
-  onboarding: false,
-  optional: false,
-  preventCompletion: false,
-  publicOnly: false,
-  shouldCompleteAfterDeadline: false,
-  isForumParticipationAction: false,
-};
+const form = createActionForm();
 
 const shows = (f: CreateActionDto, names: FieldName[]) => {
   const shown = actionFieldDefs({ suites: [], loading: false, failed: false })

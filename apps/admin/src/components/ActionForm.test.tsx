@@ -2,24 +2,15 @@ import type { CreateActionDto } from "@alliance/shared/client";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import { createActionForm } from "../lib/testing/createActionForm";
 import ActionForm from "./ActionForm";
 
-const baseForm: CreateActionDto = {
-  name: "Call your rep",
-  category: [],
+const baseForm = createActionForm({
   body: "Intro",
-  shortDescription: "",
-  isContractSigningAction: false,
-  visibilityMode: "all_members",
-  onboarding: false,
   optional: true,
-  preventCompletion: false,
-  publicOnly: false,
-  shouldCompleteAfterDeadline: false,
-  isForumParticipationAction: false,
   customStatType: "users_invited",
   timeEstimate: 10,
-};
+});
 
 type ActionFormProps = React.ComponentProps<typeof ActionForm>;
 

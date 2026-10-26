@@ -1,6 +1,7 @@
 import { TagDto, UserAdminDetailDto } from "@alliance/shared/client/types.gen";
 import { cn } from "@alliance/shared/styles/util";
 import { useCallback, useMemo, useState } from "react";
+import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { useTagsAdmin } from "../../lib/useTagsAdmin";
 import { SectionLoadState, SectionRefreshError } from "./SectionQueryState";
 
@@ -53,7 +54,12 @@ export default function UserTagsSection({
         await setTagMembership({ tagId, member: nextChecked });
       } catch (error) {
         console.error("Failed to update tag membership", error);
-        setTagMutationError("Failed to update tag membership. Try again.");
+        setTagMutationError(
+          adminRefusalMessage(
+            error,
+            "Failed to update tag membership. Try again.",
+          ),
+        );
       } finally {
         setPendingTagOps((prev) => {
           const next = new Set(prev);

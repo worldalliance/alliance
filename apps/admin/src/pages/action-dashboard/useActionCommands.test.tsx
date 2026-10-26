@@ -9,6 +9,7 @@ import { MemoryRouter } from "react-router";
 import { testActions } from "../../lib/testData";
 import { useActionCommands } from "./useActionCommands";
 
+let getFormStatus: number;
 let createFormStatus: number;
 let created: CreateActionDto[];
 let errors: (string | null)[];
@@ -16,7 +17,12 @@ let errors: (string | null)[];
 serveApi(
   routes({
     "GET /tasks/adminForm/:id": ({ params }) =>
-      Response.json({ id: Number(params.id), title: "Task", schema: {} }),
+      getFormStatus === 200
+        ? Response.json({ id: Number(params.id), title: "Task", schema: {} })
+        : Response.json(
+            { message: "Form 3 is gone" },
+            { status: getFormStatus },
+          ),
     "POST /tasks/createForm": () =>
       createFormStatus === 200
         ? Response.json({ id: 9, title: "Task (Copy)", formSnapshotId: 1 })
@@ -25,6 +31,7 @@ serveApi(
 );
 
 beforeEach(() => {
+  getFormStatus = 200;
   createFormStatus = 200;
   created = [];
   errors = [];
@@ -88,4 +95,12 @@ test("a task form that fails to clone stops the duplicate", async () => {
   await view.result.current.handleDuplicate();
   expect(created).toEqual([]);
   expect(errors).toHaveLength(1);
+});
+
+test("a task form that fails to load stops the duplicate", async () => {
+  getFormStatus = 404;
+  const view = renderCommands();
+  await view.result.current.handleDuplicate();
+  expect(created).toEqual([]);
+  expect(errors).toEqual(["Form 3 is gone"]);
 });
