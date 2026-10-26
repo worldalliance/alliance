@@ -1,13 +1,12 @@
-import { dateToInputValue } from "@alliance/shared/lib/dateInput";
 import { scaleLinear } from "d3";
 import React, { useMemo, useState } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
-import { defaultInviteFunnelRange } from "../../lib/defaultInviteFunnelRange";
+import { recentInviteFunnelRange } from "../../lib/recentInviteFunnelRange";
 import { useInviteFunnelAdmin } from "../../lib/useInviteFunnelAdmin";
 
 const InviteFunnelCard: React.FC = () => {
   const [inviteFunnelRange, setInviteFunnelRange] = useState(() =>
-    defaultInviteFunnelRange(new Date()),
+    recentInviteFunnelRange(new Date(), 14),
   );
 
   const {
@@ -108,15 +107,9 @@ const InviteFunnelCard: React.FC = () => {
             />
           </div>
           <button
-            onClick={() => {
-              const end = new Date();
-              const start = new Date();
-              start.setDate(end.getDate() - 7);
-              setInviteFunnelRange({
-                start: dateToInputValue(start),
-                end: dateToInputValue(end),
-              });
-            }}
+            onClick={() =>
+              setInviteFunnelRange(recentInviteFunnelRange(new Date(), 7))
+            }
             className="px-3 py-1 rounded-md text-xs border border-gray-300 bg-white hover:border-gray-400"
           >
             Last 7 days
