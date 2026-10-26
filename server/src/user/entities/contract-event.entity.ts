@@ -39,16 +39,42 @@ export function findLastContractEvent<T extends ContractEventOrderFields>(
   return findLeast(events, compareContractEventsNewestFirst);
 }
 
+type ContractEventStateFields = Pick<ContractEvent, "date" | "id" | "type">;
+
+function findContractEventAt<T extends ContractEventStateFields>(
+  events: T[],
+  at: Date,
+): T | null {
+  return findLeast(
+    events,
+    compareContractEventsNewestFirst,
+    (event) => event.date <= at,
+  );
+}
+
 export function isContractActiveAt(
-  events: Pick<ContractEvent, "date" | "id" | "type">[],
+  events: ContractEventStateFields[],
   at: Date,
 ): boolean {
+  return findContractEventAt(events, at)?.type === ContractEventType.SIGNED;
+}
+
+export function findSuspensionEndedBy<T extends ContractEventStateFields>(
+  events: T[],
+  at: Date,
+): T | null {
+  const prior = findContractEventAt(events, at);
+  return prior?.type === ContractEventType.SUSPENDED ? prior : null;
+}
+
+export function isLatestSuspension(
+  events: ContractEventStateFields[],
+  suspensionId: number,
+): boolean {
   return (
-    findLeast(
-      events,
-      compareContractEventsNewestFirst,
-      (event) => event.date <= at,
-    )?.type === ContractEventType.SIGNED
+    findLastContractEvent(
+      events.filter((event) => event.type === ContractEventType.SUSPENDED),
+    )?.id === suspensionId
   );
 }
 

@@ -29,6 +29,7 @@ const UNIQUE_ACROSS_DELETED = [
   "Friend.sentNotif",
   "LinkOpening.openingId",
   "MessageTracking.trackingId",
+  "Notification.reinstatedSuspensionId",
   "Post.editableContent",
   "Push.idempotencyKey",
   "User.optInMms",

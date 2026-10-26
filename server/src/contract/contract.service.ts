@@ -35,6 +35,7 @@ import {
 import {
   ContractEvent,
   ContractEventType,
+  findSuspensionEndedBy,
 } from "src/user/entities/contract-event.entity";
 import {
   ReferralSource,
@@ -45,7 +46,15 @@ import { findReferredByInvite } from "src/user/user-soft-delete";
 import { UserService } from "src/user/user.service";
 import { referralLabel } from "src/user/user.utils";
 import { IsNull, LessThanOrEqual, MoreThan, Or, Repository } from "typeorm";
-import { ContractEvents, type ContractSignedPayload } from "./contract.events";
+import {
+  claimReinstatement,
+  reinstatementNotif,
+} from "./contract-reinstatement";
+import {
+  ContractEvents,
+  type ContractReinstatedPayload,
+  type ContractSignedPayload,
+} from "./contract.events";
 import {
   REFERRAL_COMMUNITY_SELECTORS,
   buildNotifForLeaderWithReferrer,
@@ -188,10 +197,31 @@ export class ContractService {
       viaTaskForm,
       contract: { id: contractId },
     });
-    await writeUnderLive(this.userRepository.manager, {
-      parents: [{ target: User, id: userId }],
-      write: (em) => em.save(contractEvent),
-    });
+    const reinstatedSuspension = findSuspensionEndedBy(
+      user.contractEvents!,
+      contractEvent.date,
+    );
+    const reinstatement = reinstatedSuspension && {
+      suspensionId: reinstatedSuspension.id,
+      notif: await this.notifsService.createNotif(
+        reinstatementNotif({ userId, suspensionId: reinstatedSuspension.id }),
+      ),
+    };
+    const reinstatementNotifId = await writeUnderLive(
+      this.userRepository.manager,
+      {
+        parents: [{ target: User, id: userId }],
+        write: async (em) => {
+          await em.save(contractEvent);
+          return reinstatement ? claimReinstatement(em, reinstatement) : null;
+        },
+      },
+    );
+    if (reinstatementNotifId !== null) {
+      this.eventEmitter.emit(ContractEvents.Reinstated, {
+        notificationId: reinstatementNotifId,
+      } satisfies ContractReinstatedPayload);
+    }
 
     const signedOutsideTaskForm = user.contractEvents!.some(
       (event) => event.type === ContractEventType.SIGNED && !event.viaTaskForm,

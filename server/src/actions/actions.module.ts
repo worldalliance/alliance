@@ -18,6 +18,7 @@ import { ActionEventRecipientService } from "src/notifs/action-event-recipient.s
 import { ActionEventReminderService } from "src/notifs/action-event-reminder.service";
 import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
 import { ExperimentAssignment } from "src/notifs/entities/experiment-assignment.entity";
+import { Notification } from "src/notifs/entities/notification.entity";
 import { MissedSuitePlanService } from "src/notifs/missed-suite-plans.service";
 import { NotifsModule } from "src/notifs/notifs.module";
 import { ReminderGroupService } from "src/notifs/reminder-group.service";
@@ -56,6 +57,7 @@ import { CohortDecisionWorker } from "./cohort-decision.worker";
 import { CohortDecisionsController } from "./cohort-decisions.controller";
 import { CohortDivergenceService } from "./cohort-divergence.service";
 import { CohortResolverService } from "./cohort-resolver.service";
+import { ContractReinstatedListener } from "./contract-reinstated.listener";
 import { ContractReminderWorker } from "./contract-reminder.worker";
 import { ContractSuspenderWorker } from "./contract-suspender.worker";
 import { ActionActivity } from "./entities/action-activity.entity";
@@ -107,6 +109,7 @@ import { TaskBadgeService } from "./task-badge.service";
       FollowUpForm,
       GeneralUpdate,
       GeneralUpdateActivity,
+      Notification,
       OnetimeInvite,
       Post,
       Project,
@@ -160,6 +163,7 @@ import { TaskBadgeService } from "./task-badge.service";
     ReloadUsersJoinedWorker,
     ContractReminderWorker,
     ContractSuspenderWorker,
+    ContractReinstatedListener,
     ForumActionCompleterWorker,
     ActionStatsService,
     CohortDecisionListener,

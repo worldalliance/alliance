@@ -10,12 +10,14 @@ import {
 import { Comment } from "src/forum/entities/comment.entity";
 import { NotificationFormat } from "src/notifs/notification-content";
 import type { Push } from "src/push/push.entity";
+import { ContractEvent } from "src/user/entities/contract-event.entity";
 import { OnetimeInvite } from "src/user/entities/onetime-invite.entity";
 import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
   Index,
+  JoinColumn,
   JoinTable,
   ManyToMany,
   ManyToOne,
@@ -39,6 +41,7 @@ export enum NotificationCategory {
   CommunityAssigned = "community_assigned",
   NewMemberReferred = "new_member_referred",
   GroupMemberJoined = "group_member_joined",
+  ContractReinstated = "contract_reinstated",
 
   // Legacy
   CommunityInviteCreated = "community_invite_created",
@@ -74,6 +77,7 @@ export const NOTIFICATION_CATEGORY_PRIORITIES = {
   [NotificationCategory.CommunityAssigned]: NotifPriority.High,
   [NotificationCategory.NewMemberReferred]: NotifPriority.High,
   [NotificationCategory.GroupMemberJoined]: NotifPriority.High,
+  [NotificationCategory.ContractReinstated]: NotifPriority.High,
 
   // Legacy
   [NotificationCategory.CommunityInviteCreated]: NotifPriority.Low,
@@ -228,6 +232,15 @@ export class Notification {
     onDelete: "CASCADE",
   })
   communityInvite?: Relation<CommunityInvite>;
+
+  /** The suspension a contract-reinstated row announces the end of; unique, so each return is announced once. */
+  @Index({ unique: true, where: `"reinstatedSuspensionId" IS NOT NULL` })
+  @Column({ type: "int", nullable: true })
+  reinstatedSuspensionId: number | null;
+
+  @ManyToOne(() => ContractEvent, { nullable: true, onDelete: "CASCADE" })
+  @JoinColumn({ name: "reinstatedSuspensionId" })
+  reinstatedSuspension?: Relation<ContractEvent>;
 
   /** The shared tracking ID of a forum reply or missed-suite notice sent
    * before each message got its own; no longer written. */

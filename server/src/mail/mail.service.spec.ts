@@ -396,6 +396,32 @@ describe("sendMail", () => {
     },
   );
 
+  it("sends the reinstatement email to the member's first name", async () => {
+    process.env.APP_URL = "https://app.example.org";
+    const sent: ISendMailOptions[] = [];
+    const { service } = await harness((options) => {
+      sent.push(options);
+      return Promise.resolve({
+        accepted: ["member@example.org"],
+        messageId: "",
+      });
+    });
+
+    await service.sendContractReinstatedEmail({
+      email: "member@example.org",
+      name: "Jo Member",
+    });
+
+    expect(sent[0].subject).toBe("Your agreement has been reinstated.");
+    expect(
+      [...String(sent[0].html).matchAll(/<p>(.*?)<\/p>/g)].map((m) => m[1]),
+    ).toEqual([
+      "Hi Jo,",
+      "Your agreement has been reinstated. Task assignment resumes with the next action, and your participation is counted in action planning from this point.",
+      '<a href="https://app.example.org/tasks">https://app.example.org/tasks</a>',
+    ]);
+  });
+
   it("reports a failed tracking insert as unsent, without sending", async () => {
     const sendMail = jest.fn(() =>
       Promise.resolve({ accepted: ["member@example.org"], messageId: "" }),

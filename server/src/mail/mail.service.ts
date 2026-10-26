@@ -18,7 +18,10 @@ import {
   ActionListStyle,
   formatActionList,
 } from "src/notifs/notification-content";
-import { getTimeLeftString } from "src/notifs/textnotifcontents";
+import {
+  getTimeLeftString,
+  reinstatementMessage,
+} from "src/notifs/textnotifcontents";
 import {
   groupMembersListUrl,
   membershipUrl,
@@ -193,6 +196,7 @@ export class MailService {
     [EmailType.MissedSecondDeadline]: "missedseconddeadline",
     [EmailType.CustomActionReminder]: "customactionreminder",
     [EmailType.ContractSuspended]: "contractsuspended",
+    [EmailType.ContractReinstated]: "contractreinstated",
     [EmailType.ContractReminder]: "contractreminder",
     [EmailType.WaitlistConfirmation]: "waitlist-confirmation",
     [EmailType.WaitlistLink]: "waitlist-link",
@@ -351,6 +355,22 @@ export class MailService {
       subject: "Alliance contract suspended",
       context: {
         name,
+      },
+      tracking: null,
+    });
+  }
+
+  public async sendContractReinstatedEmail(params: {
+    email: string;
+    name: string;
+  }): Promise<Mail> {
+    return this.sendMail({
+      recipient: params.email,
+      emailType: EmailType.ContractReinstated,
+      subject: reinstatementMessage,
+      context: {
+        name: nameParts(params.name).firstname,
+        link: tasksUrl(true),
       },
       tracking: null,
     });

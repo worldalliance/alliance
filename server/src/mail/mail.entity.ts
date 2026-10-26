@@ -20,6 +20,7 @@ export enum EmailType {
   MissedSecondDeadline = "missed_second_deadline",
   CustomActionReminder = "custom_action_reminder",
   ContractSuspended = "contract_suspended",
+  ContractReinstated = "contract_reinstated",
   ContractReminder = "contract_reminder",
   WaitlistConfirmation = "waitlist_confirmation",
   WaitlistLink = "waitlist_link",
