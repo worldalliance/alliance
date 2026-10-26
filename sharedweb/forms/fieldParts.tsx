@@ -35,6 +35,10 @@ export type FieldInputProps<F extends AnyField> = {
   required: boolean;
 };
 
+export function ValidationMessage({ message }: { message: string | null }) {
+  return message ? <p className="text-sm text-red-600">{message}</p> : null;
+}
+
 export function useQuestionLabelId(field: AnyField): string | undefined {
   const instanceId = useId();
   return field.label?.trim() ? `${field.id}-${instanceId}-label` : undefined;

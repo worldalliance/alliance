@@ -56,6 +56,7 @@ import {
   RenderLabel,
   sharedInputClasses,
   useQuestionLabelId,
+  ValidationMessage,
 } from "./fieldParts";
 import {
   ListAddButton,
@@ -138,8 +139,6 @@ export function RenderField({
     overrides: { normal?: string; error?: string } = {},
   ) => fieldInputClassName({ base, hasError, ...overrides });
 
-  const renderValidationMessage = () =>
-    hasError ? <p className="text-sm text-red-600">{errorMessage}</p> : null;
   const onClear = !disabled && onChange ? () => onChange("") : undefined;
   const clearRadios = onClear
     ? () => {
@@ -170,7 +169,7 @@ export function RenderField({
         >
           <option value="">{noOptionsAvailable}</option>
         </select>
-        {renderValidationMessage()}
+        <ValidationMessage message={errorMessage} />
       </div>
     );
   }
@@ -204,7 +203,7 @@ export function RenderField({
             })}
             placeholder={field.placeholder}
           />
-          {renderValidationMessage()}
+          <ValidationMessage message={errorMessage} />
         </div>
       );
 
@@ -239,7 +238,7 @@ export function RenderField({
             )}
             placeholder={field.placeholder}
           />
-          {renderValidationMessage()}
+          <ValidationMessage message={errorMessage} />
           {field.maxLength && (
             <CharacterLimitNotice
               value={(value as string) ?? ""}
@@ -273,7 +272,7 @@ export function RenderField({
             className={composeClassName(sharedInputClasses)}
             placeholder="example@email.com"
           />
-          {renderValidationMessage()}
+          <ValidationMessage message={errorMessage} />
         </div>
       );
 
@@ -341,7 +340,7 @@ export function RenderField({
             aria-invalid={hasError}
             className={composeClassName(sharedInputClasses)}
           />
-          {renderValidationMessage()}
+          <ValidationMessage message={errorMessage} />
         </div>
       );
     }
@@ -421,7 +420,7 @@ export function RenderField({
               );
             })}
           </div>
-          {renderValidationMessage()}
+          <ValidationMessage message={errorMessage} />
           {clearRadios && normalizedValue !== undefined && (
             <ClearSelectionButton
               onClear={clearRadios}
@@ -478,7 +477,7 @@ export function RenderField({
               </>
             )}
           </label>
-          {renderValidationMessage()}
+          <ValidationMessage message={errorMessage} />
         </div>
       );
     }
@@ -540,7 +539,7 @@ export function RenderField({
                 </label>
               ))}
             </div>
-            {renderValidationMessage()}
+            <ValidationMessage message={errorMessage} />
           </div>
           {clearRadios && typeof value === "string" && value !== "" && (
             <ClearSelectionButton
@@ -623,7 +622,7 @@ export function RenderField({
               />
             </div>
           )}
-          {renderValidationMessage()}
+          <ValidationMessage message={errorMessage} />
         </div>
       );
     }
@@ -746,7 +745,7 @@ export function RenderField({
               Select up to {withCount(maxSelections, "option")}
             </p>
           )}
-          {renderValidationMessage()}
+          <ValidationMessage message={errorMessage} />
         </div>
       );
     }
@@ -773,7 +772,7 @@ export function RenderField({
             aria-invalid={hasError}
             className={composeClassName(sharedInputClasses)}
           />
-          {renderValidationMessage()}
+          <ValidationMessage message={errorMessage} />
         </div>
       );
 
@@ -811,7 +810,7 @@ export function RenderField({
             disabled={disabled}
             aria-invalid={hasError}
           />
-          {renderValidationMessage()}
+          <ValidationMessage message={errorMessage} />
         </div>
       );
     }
@@ -850,7 +849,7 @@ export function RenderField({
             allowCustomValue
             onSelect={(city) => onChange?.(city)}
           />
-          {renderValidationMessage()}
+          <ValidationMessage message={errorMessage} />
         </div>
       );
     }
@@ -934,7 +933,7 @@ export function RenderField({
             </div>
           )}
 
-          {renderValidationMessage()}
+          <ValidationMessage message={errorMessage} />
 
           {(uploadError ?? fileReadError) && (
             <p className=" text-red-600">{uploadError ?? fileReadError}</p>
@@ -1047,7 +1046,7 @@ export function RenderField({
               <ListAddButton listField={listField} onClick={addCard} />
             )}
           </div>
-          {renderValidationMessage()}
+          <ValidationMessage message={errorMessage} />
         </div>
       );
     }
@@ -1085,7 +1084,7 @@ export function RenderField({
               Select a contract in the form builder to preview.
             </p>
           )}
-          {renderValidationMessage()}
+          <ValidationMessage message={errorMessage} />
         </div>
       );
     }
@@ -1122,7 +1121,7 @@ export function RenderField({
             isOutputView={isOutputView}
             required={required}
           />
-          {renderValidationMessage()}
+          <ValidationMessage message={errorMessage} />
         </div>
       );
     }
@@ -1147,7 +1146,7 @@ export function RenderField({
             hasError={hasError}
             isOutputView={isOutputView}
           />
-          {renderValidationMessage()}
+          <ValidationMessage message={errorMessage} />
         </div>
       );
 

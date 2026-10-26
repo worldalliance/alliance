@@ -12,6 +12,7 @@ import {
   type FieldInputProps,
   RenderLabel,
   useQuestionLabelId,
+  ValidationMessage,
 } from "./fieldParts";
 
 export function TimeInputField({
@@ -161,7 +162,7 @@ export function TimeInputField({
         )}
       </div>
 
-      {hasError && <p className="text-sm text-red-600">{effectiveError}</p>}
+      <ValidationMessage message={effectiveError} />
     </div>
   );
 }
