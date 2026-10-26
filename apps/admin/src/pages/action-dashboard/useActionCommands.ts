@@ -2,11 +2,10 @@ import { R } from "@alliance/common/result";
 import {
   ActionDto,
   CreateActionDto,
-  tasksCreateFormAdmin,
   tasksGetFormAdmin,
 } from "@alliance/shared/client";
 import type { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
-import { useInvalidateFormsIndex } from "@alliance/shared/lib/useFormsAdmin";
+import { useCreateFormAdmin } from "@alliance/shared/lib/useFormsAdmin";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback } from "react";
 import { useNavigate } from "react-router";
@@ -55,7 +54,7 @@ export function useActionCommands(params: {
     setError,
   } = params;
   const navigate = useNavigate();
-  const invalidateFormsIndex = useInvalidateFormsIndex();
+  const { createForm } = useCreateFormAdmin();
   const handleActionCreated = useNavigateToCreatedAction();
 
   const handleDuplicate = useCallback(async () => {
@@ -70,16 +69,18 @@ export function useActionCommands(params: {
         path: { id: taskFormId },
       });
       if (taskForm.data) {
-        const newTaskForm = await tasksCreateFormAdmin({
-          body: {
+        const newTaskForm = await R.fromPromise(
+          createForm({
             title: taskForm.data.title + " (Copy)",
             schema: taskForm.data.schema,
-          },
-        });
-        taskFormId = newTaskForm.data?.id;
-        // The clone is a form row from here on, whether or not the action it
-        // was made for gets created.
-        if (taskFormId !== undefined) await invalidateFormsIndex();
+          }),
+          logActionError("Failed to duplicate the action's task form"),
+        );
+        if (!newTaskForm.ok) {
+          setError(newTaskForm.error);
+          return;
+        }
+        taskFormId = newTaskForm.value.id;
       }
     }
 
@@ -104,8 +105,8 @@ export function useActionCommands(params: {
     imageKey,
     imageUploading,
     createAction,
+    createForm,
     handleActionCreated,
-    invalidateFormsIndex,
     setError,
   ]);
 
