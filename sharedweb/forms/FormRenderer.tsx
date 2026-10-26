@@ -55,12 +55,6 @@ import {
 import { variableInputsGate } from "@alliance/shared/forms/variableInputsGate";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import {
-  cancelAllImageUploads,
-  draftSaveFailed,
-  guestReferral,
-  waitingForImageUpload,
-} from "@alliance/shared/lib/copy";
-import {
   deviceTimeZone,
   formTimeZoneDefault,
 } from "@alliance/shared/lib/timeZone";
@@ -78,7 +72,6 @@ import {
   useRandomizationKey,
   useVisibilityValidatorResults,
 } from "@alliance/shared/useFormRenderer";
-import UploadingWithCancel from "@alliance/sharedweb/ui/UploadingWithCancel";
 import React, {
   useCallback,
   useEffect,
@@ -87,16 +80,12 @@ import React, {
   useState,
 } from "react";
 import { useSearchParams } from "react-router";
-import BaseButton, {
-  BaseButtonSize,
-  BaseButtonVariant,
-} from "../ui/BaseButton";
-import ConfettiWrapper from "../ui/ConfettiWrapper";
 import Spinner from "../ui/Spinner";
 import {
   useFormPageDurationTracking,
   useFormValidationErrorTracking,
 } from "./formAnalytics";
+import FormNavigation from "./FormNavigation";
 import OutputPublicToggle from "./OutputPublicToggle";
 import RenderDisplayBlock from "./RenderDisplayBlock";
 import RenderField from "./RenderField";
@@ -1128,120 +1117,31 @@ const FormRenderer = ({
               renderElement(element, index),
             )}
         </div>
-        {/* Navigation */}
-        <div className="flex flex-row justify-between items-end gap-x-2">
-          <div className="flex flex-col gap-y-4 flex-1">
-            {visiblePageIndices.length > 1 && (
-              <div className="flex items-center space-x-3">
-                {!isFirstPage && (
-                  <BaseButton
-                    variant={BaseButtonVariant.LightHover}
-                    size={BaseButtonSize.MediumDynamic}
-                    onClick={handlePrevious}
-                  >
-                    Previous
-                  </BaseButton>
-                )}
-                <div>
-                  <span className="text-zinc-500 whitespace-nowrap">
-                    Page{" "}
-                    {Math.max(
-                      1,
-                      visiblePageIndices.indexOf(currentPageIndex) + 1,
-                    )}{" "}
-                    of {visiblePageIndices.length}
-                  </span>
-                </div>
-                {!isLastPage && (
-                  <BaseButton
-                    variant={BaseButtonVariant.Black}
-                    size={BaseButtonSize.MediumDynamic}
-                    onClick={handleNext}
-                    disabled={uploadingAny || !visibilitySettled}
-                  >
-                    Next
-                  </BaseButton>
-                )}
-              </div>
-            )}
-
-            {isLastPage && (
-              <>
-                {readOnly ? null : onSubmit ? (
-                  <div className="w-full">
-                    {createAccountHref ? (
-                      <a
-                        href={createAccountHref}
-                        className="flex w-full items-center justify-center rounded bg-green px-4 py-2 text-base font-medium text-white hover:bg-[#4d8c1d]"
-                        style={{ fontWeight: 450 }}
-                      >
-                        {guestReferral.createAccountToSubmit}
-                      </a>
-                    ) : (
-                      <div className="w-full">
-                        <ConfettiWrapper
-                          burstPlacement="local"
-                          onTrigger={submitCurrentPage}
-                          className="w-full"
-                        >
-                          {({
-                            disabled: confettiDisabled,
-                            onClick,
-                            onKeyDown,
-                            onPointerDown,
-                          }) => (
-                            <BaseButton
-                              variant={BaseButtonVariant.Black}
-                              className="w-full"
-                              disabled={
-                                submitting || confettiDisabled || uploadingAny
-                              }
-                              type="submit"
-                              onClick={onClick}
-                              onKeyDown={onKeyDown}
-                              onPointerDown={onPointerDown}
-                            >
-                              {schema.submit?.label ||
-                                (followUp ? "Submit" : "Complete")}
-                            </BaseButton>
-                          )}
-                        </ConfettiWrapper>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="w-full">
-                    <BaseButton
-                      variant={BaseButtonVariant.Black}
-                      className="!cursor-not-allowed w-full"
-                      disabled={uploadingAny}
-                      onClick={validateAllPagesAndShowFirstInvalid}
-                    >
-                      {schema.submit?.label ||
-                        (followUp ? "Submit" : "Complete")}
-                      {" (Preview Mode)"}
-                    </BaseButton>
-                  </div>
-                )}
-              </>
-            )}
-            {uploadingAny && !readOnly && (
-              <UploadingWithCancel
-                label={waitingForImageUpload}
-                cancelLabel={cancelAllImageUploads}
-                onCancel={imageUpload.cancelAll}
-                className="text-zinc-500"
-              />
-            )}
-            {saveFailed && !readOnly && (
-              <p className="text-amber-600">{draftSaveFailed}</p>
-            )}
-          </div>
-
+        <FormNavigation
+          pageNumber={Math.max(
+            1,
+            visiblePageIndices.indexOf(currentPageIndex) + 1,
+          )}
+          pageCount={visiblePageIndices.length}
+          onPrevious={isFirstPage ? null : handlePrevious}
+          onNext={isLastPage ? null : handleNext}
+          nextDisabled={uploadingAny || !visibilitySettled}
+          readOnly={readOnly}
+          createAccountHref={createAccountHref}
+          onSubmit={onSubmit ? submitCurrentPage : null}
+          onPreviewSubmit={validateAllPagesAndShowFirstInvalid}
+          submitting={submitting}
+          submitLabel={
+            schema.submit?.label || (followUp ? "Submit" : "Complete")
+          }
+          uploadingImages={uploadingAny}
+          onCancelUploads={imageUpload.cancelAll}
+          saveFailed={saveFailed}
+        >
           {onAbandonAction && !readOnly && !publicAction && !followUp && (
             <WithdrawalMenu disabled={submitting} onWithdraw={handleAbandon} />
           )}
-        </div>
+        </FormNavigation>
       </form>
     </div>
   );
