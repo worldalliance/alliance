@@ -1,4 +1,5 @@
 import {
+  queryOptions,
   useMutation,
   useQuery,
   useQueryClient,
@@ -108,7 +109,12 @@ type FriendStatusQueryOptions = Omit<
 > & { enabled?: boolean };
 
 type FriendsQueryOptions<TData> = Omit<
-  UseQueryOptions<ProfileDto[], unknown, TData>,
+  UseQueryOptions<
+    ProfileDto[],
+    unknown,
+    TData,
+    ReturnType<typeof userQueryKeys.friends>
+  >,
   "queryKey" | "queryFn" | "enabled"
 > & { enabled?: boolean };
 
@@ -231,12 +237,8 @@ export const useUserForumActivity = (userId: number) => {
 export const selectFriendIds = (friends: ProfileDto[]) =>
   friends.map((friend) => friend.id);
 
-export const useUserFriendsQuery = <TData = ProfileDto[]>(
-  userId: number | undefined,
-  options?: FriendsQueryOptions<TData>,
-) =>
-  useQuery({
-    ...options,
+export const userFriendsQuery = (userId: number | undefined) =>
+  queryOptions({
     queryKey: userQueryKeys.friends(userId),
     queryFn: async () => {
       if (!userId) return [];
@@ -246,8 +248,20 @@ export const useUserFriendsQuery = <TData = ProfileDto[]>(
       });
       return response.data;
     },
+  });
+
+export const useUserFriendsQuery = <TData = ProfileDto[]>(
+  userId: number | undefined,
+  options?: FriendsQueryOptions<TData>,
+) => {
+  const { queryKey, queryFn } = userFriendsQuery(userId);
+  return useQuery({
+    ...options,
+    queryKey,
+    queryFn,
     enabled: defaultQueryEnabled(userId, options?.enabled),
   });
+};
 
 export const useUserReceivedFriendRequestsQuery = (
   options?: FriendRequestsQueryOptions,

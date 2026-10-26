@@ -7,6 +7,7 @@ import { useUserActionRelationsAdmin } from "../../lib/useUserActionRelationsAdm
 import CreateActivityControls from "../CreateActivityControls";
 import { WithdrawalInfo } from "../WithdrawalInfo";
 import { humanize } from "./humanize";
+import { SectionLoadState, SectionRefreshError } from "./SectionQueryState";
 
 export default function UserActionsSection({ userId }: { userId: number }) {
   const {
@@ -20,21 +21,13 @@ export default function UserActionsSection({ userId }: { userId: number }) {
   );
 
   if (!data) {
-    return (
-      <p className={cn("text-sm", isError ? "text-red-500" : "text-zinc-500")}>
-        {isError ? "Failed to load actions" : "Loading actions..."}
-      </p>
-    );
+    return <SectionLoadState noun="actions" isError={isError} />;
   }
   const { actionSummaries } = data;
 
   return (
     <section className="max-h-128 overflow-y-auto">
-      {isRefetchError && (
-        <p className="text-xs text-red-500 mb-2">
-          Could not refresh actions. Reload to see the latest.
-        </p>
-      )}
+      {isRefetchError && <SectionRefreshError noun="actions" />}
       {actionSummaries.length ? (
         <div className="border border-zinc-200 rounded overflow-hidden">
           <table className="w-full text-sm">
