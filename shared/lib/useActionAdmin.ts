@@ -14,6 +14,7 @@ import {
   actionsArchiveAdmin,
   actionsCreateAdmin,
   actionsFindOneAdmin,
+  actionsPasteJsonAdmin,
   actionsRemoveAdmin,
   actionsUnarchiveAdmin,
   actionsUpdateAdmin,
@@ -130,6 +131,14 @@ export function useActionAdmin(
     // key and callers navigate to it.
     mutationFn: (body: CreateActionDto) =>
       actionsCreateAdmin({ body, throwOnError: true }).then((r) => r.data),
+    onSuccess: invalidateList,
+  });
+
+  const pasteActionJsonMutation = useMutation({
+    mutationFn: (json: string) =>
+      actionsPasteJsonAdmin({ body: { body: json }, throwOnError: true }).then(
+        (r) => r.data,
+      ),
     onSuccess: invalidateList,
   });
 
@@ -253,6 +262,7 @@ export function useActionAdmin(
     isError: query.isError,
     createAction: createActionMutation.mutateAsync,
     isCreating: createActionMutation.isPending,
+    pasteActionJson: pasteActionJsonMutation.mutateAsync,
     updateAction: updateActionMutation.mutateAsync,
     isUpdating: updateActionMutation.isPending,
     removeAction: removeActionMutation.mutateAsync,

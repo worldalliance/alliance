@@ -26,6 +26,7 @@ serveApi(
       );
     },
     "PATCH /actions/follow-up-forms/:followUpFormId": () => Response.json({}),
+    "POST /actions/pasteJson": () => Response.json({ id: 3 }),
     "POST /actions/:id/events": ({ request }) => {
       acknowledged.push(
         new URL(request.url).searchParams.get("acknowledgeDeadlineShortening"),
@@ -113,5 +114,22 @@ describe("useActionAdmin", () => {
     expect(
       query.client.getQueryState(queryKeys.actionsAllAdmin())?.isInvalidated,
     ).toBe(true);
+  });
+
+  it("marks the all-actions list and the forms index stale after a paste", async () => {
+    const query = queryWrapper();
+    query.client.setQueryData(queryKeys.actionsAllAdmin(), []);
+    query.client.setQueryData(queryKeys.formsAdmin(), []);
+    const { result } = renderHook(() => useActionAdmin(null), query);
+
+    const pasted = await act(() => result.current.pasteActionJson("{}"));
+
+    expect(pasted.id).toBe(3);
+    for (const queryKey of [
+      queryKeys.actionsAllAdmin(),
+      queryKeys.formsAdmin(),
+    ]) {
+      expect(query.client.getQueryState(queryKey)?.isInvalidated).toBe(true);
+    }
   });
 });
