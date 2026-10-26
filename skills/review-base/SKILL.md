@@ -20,7 +20,7 @@ Determine whether each problem exists in the parent; an old line newly made unsa
 
 The base commit should carry one purpose, and typecheck and pass tests on its own.
 
-Judge it against that as part of the review. A base commit holding more than one purpose gets its own `split` finding, naming the commits it should become and the files each one takes, ordered so every commit in the sequence is safe to deploy alone: the client that satisfies a new requirement lands before the change that switches the requirement on.
+Judge it against that as part of the review. A mechanism the commit introduces that other code could adopt (a helper, a failure or retry path, an error type to catch) is a purpose apart from the first change that uses it, even when written for it. A base commit holding more than one purpose gets its own `split` finding, naming the commits it should become and the files each one takes, ordered so every commit in the sequence is safe to deploy alone: the client that satisfies a new requirement lands before the change that switches the requirement on.
 
 # Output
 
