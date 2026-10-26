@@ -1,6 +1,6 @@
 import type { DisplayOnlySchema } from "@alliance/common/forms/display-only-schema";
 import { View } from "react-native";
-import { RenderDisplayBlockMobile } from "./forms/FormRenderer";
+import { RenderDisplayBlockMobile } from "./forms/RenderDisplayBlock";
 import Text from "./system/Text";
 
 export default function DisplayOnlyRenderer({

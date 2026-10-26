@@ -8,7 +8,7 @@ import {
 } from "@alliance/shared/useOutputItems";
 import { Image, View } from "react-native";
 import { getImageSource } from "../lib/config";
-import { RenderDisplayBlockMobile } from "./forms/FormRenderer";
+import { RenderDisplayBlockMobile } from "./forms/RenderDisplayBlock";
 import { RenderField } from "./forms/RenderField";
 import Card, { CardStyle } from "./system/Card";
 import Text, { FontWeight } from "./system/Text";
