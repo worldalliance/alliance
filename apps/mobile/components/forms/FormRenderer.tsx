@@ -1,11 +1,4 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import {
-  canSubmitWithdrawal,
-  WITHDRAWAL_OPTION_LABELS,
-  WITHDRAWAL_OPTIONS,
-  withdrawalFlagsFromOption,
-  type WithdrawalOption,
-} from "@alliance/common/actionActivity";
 import { type DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import { type DisplayBlock } from "@alliance/common/forms/display-blocks";
 import {
@@ -66,7 +59,6 @@ import {
 import { formTimeZoneDefault } from "@alliance/shared/lib/timeZone";
 import { useImageUpload } from "@alliance/shared/lib/useImageUpload";
 import { useVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
-import { cn } from "@alliance/shared/styles/util";
 import {
   useCurrentUserLocation,
   useFieldErrors,
@@ -80,24 +72,18 @@ import {
 } from "@alliance/shared/useFormRenderer";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DeviceType, deviceType as expoDeviceType } from "expo-device";
-import { router } from "expo-router";
 import { CircleCheck, Ellipsis, X } from "lucide-react-native";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 import { colors } from "../../lib/style/colors";
 import { getDeviceTimeZone } from "../../lib/timeZone";
 import Button, { ButtonColor, ButtonSize } from "../system/Button";
 import Checkbox from "../system/Checkbox";
 import Text, { FontWeight } from "../system/Text";
-import FormModal from "./FormModal";
 import { RenderDisplayBlockMobile } from "./RenderDisplayBlock";
 import { RenderField } from "./RenderField";
 import { variableInputsGateView } from "./variableInputsGateView";
+import WithdrawalModal from "./WithdrawalModal";
 
 type FormRendererProps = {
   form: FormSchema;
@@ -282,9 +268,6 @@ const FormRenderer = ({
   const { fieldErrors, applyFieldErrorUpdates } = useFieldErrors();
   const [submitting, setSubmitting] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
-  const [withdrawalOption, setWithdrawalOption] =
-    useState<WithdrawalOption | null>(null);
-  const [customReason, setCustomReason] = useState("");
   const [hasEmittedStart, setHasEmittedStart] = useState(false);
   const { currentUserLocationLoading, userLocationDisplayValue } =
     useCurrentUserLocation({
@@ -667,7 +650,7 @@ const FormRenderer = ({
       });
   };
 
-  const handleAbandon = (option: WithdrawalOption) => {
+  const handleAbandon = (choice: Omit<ActionWithdrawal, "partialFormData">) => {
     if (formSnapshotId === null) {
       throw new Error(
         "FormRenderer: formSnapshotId is required to abandon a form",
@@ -684,11 +667,7 @@ const FormRenderer = ({
     };
 
     pauseSyncing();
-    onAbandonAction?.({
-      ...withdrawalFlagsFromOption(option),
-      reason: customReason.trim(),
-      partialFormData: submissionPayload,
-    });
+    onAbandonAction?.({ ...choice, partialFormData: submissionPayload });
     setWithdrawOpen(false);
   };
 
@@ -934,78 +913,12 @@ const FormRenderer = ({
       )}
 
       {onAbandonAction && (
-        <FormModal
+        <WithdrawalModal
           visible={withdrawOpen}
           onClose={() => setWithdrawOpen(false)}
-        >
-          <Text
-            className="text-lg text-zinc-900 mb-3"
-            weight={FontWeight.Semibold}
-          >
-            Withdraw from action
-          </Text>
-          <View className="gap-2 mb-3">
-            {WITHDRAWAL_OPTIONS.map((option) => (
-              <Fragment key={option}>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  className={cn(
-                    "border rounded px-3 py-3",
-                    withdrawalOption === option
-                      ? "border-blue-600 bg-blue-100"
-                      : "border-zinc-200",
-                  )}
-                  onPress={() => {
-                    setWithdrawalOption((previous) =>
-                      previous === option ? null : option,
-                    );
-                  }}
-                >
-                  <Text className="text-base text-zinc-900">
-                    {WITHDRAWAL_OPTION_LABELS[option]}
-                  </Text>
-                </TouchableOpacity>
-                {option === "moral" && (
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    className="border border-zinc-200 rounded px-3 py-3"
-                    onPress={() => {
-                      setWithdrawOpen(false);
-                      router.push("/membership");
-                    }}
-                  >
-                    <Text className="text-base text-zinc-900">On vacation</Text>
-                  </TouchableOpacity>
-                )}
-              </Fragment>
-            ))}
-          </View>
-          {withdrawalOption !== null && (
-            <TextInput
-              value={customReason}
-              onChangeText={setCustomReason}
-              placeholder="Explain in more detail..."
-              placeholderTextColor="#9ca3af"
-              multiline
-              textAlignVertical="top"
-              className="border border-zinc-200 rounded px-3 py-2 h-24 text-base text-zinc-900 mb-3"
-            />
-          )}
-          <View className="w-full self-center">
-            <Button
-              onPress={() => {
-                if (withdrawalOption !== null) handleAbandon(withdrawalOption);
-              }}
-              color={ButtonColor.Black}
-              size={ButtonSize.Large}
-              disabled={
-                submitting ||
-                !canSubmitWithdrawal(withdrawalOption, customReason)
-              }
-              title="Withdraw"
-            />
-          </View>
-        </FormModal>
+          disabled={submitting}
+          onWithdraw={handleAbandon}
+        />
       )}
     </View>
   );
