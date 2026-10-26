@@ -13,6 +13,7 @@ import { useState } from "react";
 import { MemoryRouter } from "react-router";
 import { SiteAppProvider } from "../ui/SiteAppProvider";
 import { RenderField } from "./RenderField";
+import { base, options, singleInputs } from "./RenderField.fixtures";
 import * as textareaMinRowsModule from "./textareaMinRows";
 
 serveApi(routes({}));
@@ -44,28 +45,6 @@ it.each([false, true])(
     expect(screen.queryByText("Optional") !== null).toBe(!hideLabel);
   },
 );
-
-const base = { id: "question", type: "input", label: "**Question**" } as const;
-const options = [
-  { label: "First choice", value: "first" },
-  { label: "Second choice", value: "second" },
-];
-const singleInputs: AnyField[] = [
-  { ...base, kind: "text" },
-  { ...base, kind: "textarea" },
-  { ...base, kind: "email" },
-  { ...base, kind: "number" },
-  { ...base, kind: "date" },
-  { ...base, kind: "file" },
-  { ...base, kind: "phone" },
-  { ...base, kind: "time" },
-  { ...base, kind: "timezone" },
-  { ...base, kind: "city" },
-  { ...base, kind: "select", options },
-  { ...base, kind: "select", options, searchable: true },
-  { ...base, kind: "multiselect", options, dropdown: true },
-  { ...base, kind: "multiselect", options, dropdown: true, searchable: true },
-];
 
 describe.each([{ hideLabel: false }, { hideLabel: true }])(
   "hideLabel: $hideLabel",
