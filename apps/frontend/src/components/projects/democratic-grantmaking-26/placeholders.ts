@@ -96,7 +96,7 @@ export const FEATURED_PEOPLE: ProjectPerson[] = [
   {
     name: "Nir Eyal",
     imageSrc: "/assets/democratic-grantmaking-26/nir-eyal.png",
-    role: "Population-level bioethicist, UCL and Rutgers",
+    role: "Professor of Bioethics, UCL and Rutgers",
     href: "https://sph.rutgers.edu/directory/nir-eyal",
   },
 ];

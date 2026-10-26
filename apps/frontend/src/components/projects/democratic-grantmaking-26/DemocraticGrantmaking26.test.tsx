@@ -66,7 +66,7 @@ test("shows each expert once in an eight-column grid between the waitlist bar an
   expect(cards).toHaveLength(16);
   expect(screen.getByText("Nir Eyal")).toBeTruthy();
   expect(
-    screen.getByText("Population-level bioethicist, UCL and Rutgers"),
+    screen.getByText("Professor of Bioethics, UCL and Rutgers"),
   ).toBeTruthy();
   expect(screen.queryByText("To be announced")).toBeNull();
   expect(screen.getByText("Julia Paxton")).toBeTruthy();
