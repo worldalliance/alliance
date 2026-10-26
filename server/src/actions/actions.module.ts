@@ -51,6 +51,7 @@ import { ActionsController } from "./actions.controller";
 import { ActionsGateway } from "./actions.gateway";
 import { ActionsService } from "./actions.service";
 import { ActivityFeedService } from "./activity-feed.service";
+import { ActivityLikeService } from "./activity-like.service";
 import { ActivityOutputService } from "./activity-output.service";
 import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
 import { CohortDecisionListener } from "./cohort-decision.listener";
@@ -183,6 +184,7 @@ import { TaskBadgeService } from "./task-badge.service";
     ActivityOutputService,
     ActivityFeedService,
     HomeFeedService,
+    ActivityLikeService,
   ],
   exports: [
     ActionsService,

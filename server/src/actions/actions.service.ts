@@ -1,6 +1,5 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import {
-  actionActivityIsVisibleInFeed,
   ActionActivityType,
   MEMBER_ACTION_DEADLINE_PASSED,
   WITHDRAWAL_OPTION_LABELS,
@@ -62,11 +61,9 @@ import {
   NOTIFICATION_LOOKBACK_WINDOW_MS,
 } from "src/notifs/action-event-reminder.service";
 import { NotificationPlan } from "src/notifs/dto/notification-plan.dto";
-import { LikeNotificationService } from "src/notifs/like-notification.service";
 import { NotifsService } from "src/notifs/notifs.service";
 import { ReminderGroupService } from "src/notifs/reminder-group.service";
 import { PosthogService } from "src/posthog/posthog.service";
-import { actionActivityUrl } from "src/search/approutes";
 import { ShareUrl } from "src/share-urls/entities/share-url.entity";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
 import { displayOnlySchemaOf } from "src/tasks/display-only-snapshot";
@@ -193,9 +190,6 @@ import {
   ActionActivity,
   ActivitySource,
   ALLOW_DUPLICATE,
-  loadedActionActivityAction,
-  loadedActionActivityLikes,
-  loadedActionActivityUser,
 } from "./entities/action-activity.entity";
 import {
   ActionEvent,
@@ -351,7 +345,6 @@ export class ActionsService {
     private readonly cohortResolverService: CohortResolverService,
     private readonly actionEventReminderService: ActionEventReminderService,
     private readonly reminderGroupService: ReminderGroupService,
-    private readonly likeNotificationService: LikeNotificationService,
     private readonly eventLogService: EventLogService,
     @Inject(forwardRef(() => ActionFormVariantService))
     private readonly actionFormVariantService: ActionFormVariantService,
@@ -2181,101 +2174,6 @@ export class ActionsService {
     return this.actionVisibility.listableActions({
       actions: actions.map(parseAction),
       user,
-    });
-  }
-
-  async likeActivity(
-    id: number,
-    userId: number,
-    unlike = false,
-  ): Promise<ActionActivityDto> {
-    const activity = await this.actionActivityRepository.findOne({
-      where: { id },
-      relations: {
-        user: true,
-        action: true,
-        likes: true,
-        editableContent: true,
-      },
-    });
-    if (!activity) {
-      throw new NotFoundException("Activity not found");
-    }
-    assertNotInStaffPreview(
-      await this.findOneOrFail({ id: activity.actionId, userId }),
-    );
-    if (!actionActivityIsVisibleInFeed(activity.type)) {
-      throw new BadRequestException("Activity type is not supported");
-    }
-    const user = await this.userService.findOneOrFail(userId);
-
-    const qb = this.actionActivityRepository
-      .createQueryBuilder()
-      .relation(ActionActivity, "likes")
-      .of(activity);
-
-    const liked = loadedActionActivityLikes(activity).some(
-      (like) => like.id === user.id,
-    );
-    let createdLike = false;
-    let removedLike = false;
-    if (unlike) {
-      if (liked) {
-        await qb.remove(user);
-        removedLike = true;
-      }
-    } else if (!liked) {
-      await qb.add(user);
-      createdLike = true;
-    }
-
-    // Update likesCount
-    if (createdLike || removedLike) {
-      await this.actionActivityRepository.update(id, {
-        likesCount: () => `"likesCount" ${createdLike ? "+ 1" : "- 1"}`,
-      });
-    }
-
-    const updatedActivity = await this.actionActivityRepository.findOne({
-      where: { id },
-      relations: {
-        user: true,
-        action: true,
-        likes: true,
-        editableContent: true,
-      },
-    });
-    if (!updatedActivity) {
-      throw new NotFoundException("Activity not found");
-    }
-
-    if (createdLike) {
-      const likedAction = loadedActionActivityAction(updatedActivity);
-      await this.likeNotificationService.createOrUpdate({
-        owner: loadedActionActivityUser(updatedActivity),
-        liker: user,
-        targetType: `activity:${activity.type}`,
-        targetContent: likedAction.name,
-        targetAction: likedAction,
-        targetId: updatedActivity.id,
-        webAppLocation: actionActivityUrl(
-          updatedActivity.actionId,
-          updatedActivity.id,
-        ),
-      });
-    }
-
-    if (removedLike) {
-      await this.likeNotificationService.removeOnUnlike({
-        ownerId: updatedActivity.userId,
-        unlikerId: user.id,
-        targetType: `activity:${activity.type}`,
-        targetId: updatedActivity.id,
-      });
-    }
-
-    return new ActionActivityDto(updatedActivity, {
-      likedByMe: !unlike,
     });
   }
 

@@ -22,8 +22,8 @@ import type { JwtRequest } from "src/auth/tokens";
 import { PosthogService } from "src/posthog/posthog.service";
 import { ProfileDto } from "src/user/dto/user.dto";
 import { AuthGuard } from "../auth/guards/auth.guard";
-import { ActionsService } from "./actions.service";
 import { ActivityFeedService } from "./activity-feed.service";
+import { ActivityLikeService } from "./activity-like.service";
 import { ActionActivityDto } from "./dto/action-activity.dto";
 import {
   GlobalFeedItemDto,
@@ -53,8 +53,8 @@ function parseFeedActivityType(value: string): FeedActionActivity {
 @Controller("actions")
 export class ActionFeedController {
   constructor(
-    private readonly actionsService: ActionsService,
     private readonly activityFeed: ActivityFeedService,
+    private readonly activityLike: ActivityLikeService,
     private readonly homeFeedService: HomeFeedService,
     private readonly feedMembers: FeedMembersService,
     private readonly globalFeed: GlobalFeedService,
@@ -341,7 +341,7 @@ export class ActionFeedController {
     @Param("id", ParseIntPipe) id: number,
     @Request() req: JwtRequest,
   ): Promise<ActionActivityDto> {
-    const activity = await this.actionsService.likeActivity(id, req.user.sub);
+    const activity = await this.activityLike.likeActivity(id, req.user.sub);
     this.posthog.capture({
       event: AnalyticsEvent.ActivityLiked,
       distinctId: String(req.user.sub),
@@ -360,7 +360,7 @@ export class ActionFeedController {
     @Param("id", ParseIntPipe) id: number,
     @Request() req: JwtRequest,
   ): Promise<ActionActivityDto> {
-    const activity = await this.actionsService.likeActivity(
+    const activity = await this.activityLike.likeActivity(
       id,
       req.user.sub,
       true,
