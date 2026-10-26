@@ -1,0 +1,3 @@
+- Reuse `siteHref` to recognize the web app's current and legacy domains, then compare the resolved destination's origin with the request's origin. This keeps domain recognition consistent with existing redirects.
+- Incoming values replace saved values for matching parameter names so visit-specific attribution takes precedence. Preserve repeated incoming values, unrelated saved parameters, and the saved fragment.
+- Implement in the web route loader, which owns custom-link redirects; visit recording and the admin API remain unchanged. Mobile has no custom-link resolver route.

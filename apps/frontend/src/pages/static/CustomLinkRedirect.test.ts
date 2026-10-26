@@ -26,7 +26,57 @@ beforeEach(() => {
   arrivals = 0;
 });
 
-const follow = () => loader({ params: { customLinkSlug: "100k" } });
+const follow = (query = "") =>
+  loader({
+    params: { customLinkSlug: "100k" },
+    request: new Request(`https://thealliance.org/100k${query}`),
+  });
+
+test("preserves incoming parameters on a site redirect", async () => {
+  destination = "/projects/democratic-grantmaking-26";
+  expect((await follow("?link=BLABBITY")).headers.get("Location")).toBe(
+    `${destination}?link=BLABBITY`,
+  );
+  expect(arrivals).toBe(1);
+});
+
+test("merges parameters with incoming values taking precedence", async () => {
+  destination = "/projects/democratic-grantmaking-26?link=saved&tab=about#join";
+  const response = await follow(
+    "?link=BLABBITY&tag=one&tag=two&empty=&q=a%26b",
+  );
+  expect(response.headers.get("Location")).toBe(
+    "/projects/democratic-grantmaking-26?tab=about&link=BLABBITY&tag=one&tag=two&empty=&q=a%26b#join",
+  );
+});
+
+test.each([
+  "https://thealliance.org",
+  "https://www.thealliance.org",
+  "https://worldalliance.org",
+  "https://staging.thealliance.org",
+])("preserves parameters for an absolute site URL on %s", async (origin) => {
+  destination = `${origin}/projects/democratic-grantmaking-26#join`;
+  expect((await follow("?link=BLABBITY")).headers.get("Location")).toBe(
+    "/projects/democratic-grantmaking-26?link=BLABBITY#join",
+  );
+});
+
+test.each([
+  "https://example.com/page?ref=saved#join",
+  "https://thealliance.org.example.com/page",
+  "https://admin.thealliance.org/page",
+])("does not forward parameters to %s", async (url) => {
+  destination = url;
+  expect((await follow("?link=BLABBITY")).headers.get("Location")).toBe(url);
+});
+
+test("keeps a normalized double-slash path on our origin", async () => {
+  destination = "/projects/..//example.com/page";
+  expect((await follow("?link=BLABBITY")).headers.get("Location")).toBe(
+    "https://thealliance.org//example.com/page?link=BLABBITY",
+  );
+});
 
 test("returns an uncached HTTP redirect with saved attribution", async () => {
   const response = await follow();
