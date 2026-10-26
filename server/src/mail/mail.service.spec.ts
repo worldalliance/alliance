@@ -327,6 +327,19 @@ describe("sendMail", () => {
     expect(html).toContain("https://app.example.org/tasks?cid=track-1");
   });
 
+  it("places a custom email's block HTML in the body without a paragraph around it", async () => {
+    const { service } = await harness(() =>
+      Promise.reject(new Error("unused")),
+    );
+    const message = "<h2>Update</h2>\n<p>Body</p>\n";
+
+    const html = await service.renderHtml(EmailType.CustomActionReminder, {
+      customMessage: message,
+    });
+
+    expect(html).toContain(`<body><div>${message}</div></body>`);
+  });
+
   const contractReminders: Record<
     ContractReminderCopy,
     { subject: string; paragraphs: string[] }
