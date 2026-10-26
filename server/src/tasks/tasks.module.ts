@@ -20,6 +20,7 @@ import { FormRowAssignment } from "./entities/form-row-assignment.entity";
 import { Form } from "./entities/form.entity";
 import { FormResponse } from "./entities/formresponse.entity";
 import { FormResponseDraft } from "./entities/formresponsedraft.entity";
+import { FormResponseQueryService } from "./form-response-query.service";
 import { FormRowAssignmentService } from "./form-row-assignment.service";
 import { FormSnapshotModule } from "./formsnapshot.module";
 import { TasksController } from "./tasks.controller";
@@ -50,6 +51,11 @@ import { TasksService } from "./tasks.service";
     ShareUrlsModule,
   ],
   controllers: [TasksController, CustomValidatorController],
-  providers: [TasksService, FormRowAssignmentService, CustomValidatorService],
+  providers: [
+    TasksService,
+    FormRowAssignmentService,
+    CustomValidatorService,
+    FormResponseQueryService,
+  ],
 })
 export class TasksModule {}

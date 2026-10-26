@@ -12,8 +12,8 @@ import { Action, VisibilityMode } from "src/actions/entities/action.entity";
 import { FollowUpForm } from "src/actions/entities/follow-up-form.entity";
 import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
+import { FormResponseQueryService } from "src/tasks/form-response-query.service";
 import { TasksModule } from "src/tasks/tasks.module";
-import { TasksService } from "src/tasks/tasks.service";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import {
@@ -486,7 +486,7 @@ describe("Options formulas (e2e)", () => {
     const { source, destination, withdraw } = await setUp(pickSchema);
     const first = await respondToSource(source, ["red"]);
     const loadHistory = jest.spyOn(
-      ctx.app.get(TasksService),
+      ctx.app.get(FormResponseQueryService),
       "getFormResponseHistory",
     );
 

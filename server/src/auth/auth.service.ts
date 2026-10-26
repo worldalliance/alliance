@@ -193,7 +193,7 @@ export class AuthService {
   async mergeGuestIntoUser(guestId: string, userId: number): Promise<void> {
     // Claim the guest atomically; only the first merger succeeds. Guest form
     // responses stay attached to the guest and are surfaced to the user as
-    // drafts via TasksService.getLinkedGuestDraftFormResponse.
+    // drafts via FormResponseQueryService.getLinkedGuestDraftFormResponse.
     await this.guestRepository.manager.transaction(async (manager) => {
       if (!(await lockLive(manager, [{ target: User, id: userId }]))) return;
       await manager
