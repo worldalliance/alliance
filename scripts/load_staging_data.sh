@@ -11,4 +11,5 @@ source "$SCRIPT_DIR/download_staging_data.sh"
 
 if compgen -G "$SCRIPT_DIR/../.scratch/fakes/*.yml" > /dev/null; then
   echo "    .scratch/fakes/ has recorded fakes: run /import-fakes (bun scripts/import-fakes.ts) with the server up to restore them."
+  echo "    also you can 'bun .scratch/prune-unused-actions.ts'"
 fi
