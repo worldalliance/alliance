@@ -1,4 +1,5 @@
 import type { ContractDto, UserDto } from "@alliance/shared/client";
+import { membershipAgreement } from "@alliance/shared/lib/copy";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import * as configModule from "@alliance/sharedweb/lib/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -12,13 +13,23 @@ import OnboardingPage from "./OnboardingPage";
 import { OnboardingStep } from "./flow";
 
 let contract: ContractDto | null;
+let signRefusal: { status: number; message: string } | null;
+let signUnreachable: boolean;
 
 serveApi(
   routes({
     "GET /contract/current": () => Response.json(contract),
     "POST /auth/register": () => Response.json({}),
     "GET /auth/me": () => Response.json({ user: testAuthUser }),
-    "POST /contract/sign/:id": () => Response.json({}),
+    "POST /contract/sign/:id": () => {
+      if (signUnreachable) throw new TypeError("Failed to fetch");
+      return signRefusal === null
+        ? Response.json({ date: "2026-03-10T12:00:00.000Z" })
+        : Response.json(
+            { statusCode: signRefusal.status, message: signRefusal.message },
+            { status: signRefusal.status },
+          );
+    },
     "GET /user/referrerProfile/:code": () =>
       Response.json({
         kind: "user",
@@ -41,6 +52,8 @@ const member = (hasActiveContract: boolean): UserDto => ({
 
 beforeEach(() => {
   contract = null;
+  signRefusal = null;
+  signUnreachable = false;
   // The landing body's player reaches for a YouTube thumbnail on render.
   jest.spyOn(ytEmbedModule, "default").mockImplementation(() => <></>);
   // The OAuth return URL the account step builds needs a real origin.
@@ -181,6 +194,41 @@ test("forgets the tab's invitation once email signup has used it", async () => {
   await waitFor(() =>
     expect(sessionStorage.getItem("alliance:invite")).toBeNull(),
   );
+});
+
+const failToSign = async (expected: string) => {
+  contract = {
+    id: 1,
+    markdown: "",
+    description: [{ point: "Act together", subtext: "" }],
+  };
+  visit(`/onboarding?step=${OnboardingStep.Agreement}`, member(false));
+
+  fireEvent.change(await screen.findByLabelText("Sign your full name"), {
+    target: { value: "Sam Member" },
+  });
+  const join = screen.getByRole("button", { name: "Join" });
+  fireEvent.click(join);
+
+  expect(await screen.findByText(expected)).toBeTruthy();
+  await waitFor(() => expect(join.hasAttribute("disabled")).toBe(false));
+};
+
+test.each([
+  [400, "Contract is outdated"],
+  [401, membershipAgreement.signSessionExpired],
+  [500, "We couldn’t record your agreement. Please try again."],
+])(
+  "shows a signature refused with %i as %j and lets the member try again",
+  async (status, expected) => {
+    signRefusal = { status, message: "Contract is outdated" };
+    await failToSign(expected);
+  },
+);
+
+test("lets the member try again when the agreement never reached the server", async () => {
+  signUnreachable = true;
+  await failToSign("We couldn’t record your agreement. Please try again.");
 });
 
 test("offers the tab's invitation on login", async () => {

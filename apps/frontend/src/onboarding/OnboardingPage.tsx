@@ -1,11 +1,14 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { R } from "@alliance/common/result";
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import { authRegister, contractSignContract } from "@alliance/shared/client";
+// eslint-disable-next-line api-client/named-hooks-only -- registration opens the session, and join reloads the member itself
+import { authRegister } from "@alliance/shared/client";
 import { captureEvent } from "@alliance/shared/lib/analytics";
+import { membershipAgreement } from "@alliance/shared/lib/copy";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { deviceTimeZone, signupTimeZone } from "@alliance/shared/lib/timeZone";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
+import { useContractSignature } from "@alliance/shared/lib/useContractSignature";
 import { useInvite } from "@alliance/shared/lib/useInvite";
 import { useMe } from "@alliance/shared/lib/useMe";
 import { useSignupFaces } from "@alliance/shared/lib/useSignupFaces";
@@ -70,6 +73,7 @@ const OnboardingPage = () => {
   const { onLogin, isAuthenticated, user, loading: authLoading } = useAuth();
   const { fetch: fetchMe } = useMe();
   const { latestContract } = useContract();
+  const contractSignature = useContractSignature();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const stepParam = searchParams.get("step");
@@ -268,15 +272,16 @@ const OnboardingPage = () => {
       }
     }
 
-    const signature = await contractSignContract({
-      path: { id: latestContract.id },
-      body: { signedName: signedName.trim() },
+    const signature = await contractSignature.sign({
+      contractId: latestContract.id,
+      signedName: signedName.trim(),
     });
-    if (!signature.response.ok) {
+    if (!signature.ok) {
       setError(
-        errorMessage({
+        thrownRefusalMessage({
           error: signature.error,
           fallback: "We couldn’t record your agreement. Please try again.",
+          sessionExpired: membershipAgreement.signSessionExpired,
         }),
       );
       setSubmitting(false);
@@ -301,6 +306,7 @@ const OnboardingPage = () => {
     enterPlatform,
     clearInvite,
     fetchMe,
+    contractSignature,
   ]);
 
   return (
