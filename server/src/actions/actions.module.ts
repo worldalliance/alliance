@@ -85,6 +85,7 @@ import { GeneralUpdate } from "./entities/general-update.entity";
 import { Project } from "./entities/project.entity";
 import { ReminderGroup } from "./entities/reminder-group.entity";
 import { FeedMembersService } from "./feed-members.service";
+import { FollowUpFormsService } from "./follow-up-forms.service";
 import { ForumActionCompleterWorker } from "./forum-action-completer.worker";
 import { GeneralUpdatesController } from "./general-updates.controller";
 import { GeneralUpdatesService } from "./general-updates.service";
@@ -199,6 +200,7 @@ import { TaskBadgeService } from "./task-badge.service";
     ActionUpdatesService,
     ActionUpdateNotifyService,
     ActionSuitesService,
+    FollowUpFormsService,
   ],
   exports: [
     ActionsService,

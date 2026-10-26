@@ -25,11 +25,13 @@ import {
   UpdateFollowUpFormDto,
 } from "./dto/follow-up-form.dto";
 import { loadedActionFollowUpForms } from "./entities/action.entity";
+import { FollowUpFormsService } from "./follow-up-forms.service";
 
 @Controller("actions")
 export class ActionFormsController {
   constructor(
     private readonly actionsService: ActionsService,
+    private readonly followUpForms: FollowUpFormsService,
     private readonly actionFormVariantService: ActionFormVariantService,
   ) {}
 
@@ -40,7 +42,7 @@ export class ActionFormsController {
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: CreateFollowUpFormDto,
   ): Promise<AdminFollowUpFormDto> {
-    const created = await this.actionsService.createFollowUpForm(id, dto);
+    const created = await this.followUpForms.createFollowUpForm(id, dto);
     const withForm = await this.actionsService.findOneOrFail({
       id,
       serverSide: true,
@@ -58,7 +60,7 @@ export class ActionFormsController {
     @Param("followUpFormId", ParseIntPipe) followUpFormId: number,
     @Body() dto: UpdateFollowUpFormDto,
   ): Promise<AdminFollowUpFormDto> {
-    const updated = await this.actionsService.updateFollowUpForm(
+    const updated = await this.followUpForms.updateFollowUpForm(
       followUpFormId,
       dto,
     );
@@ -71,7 +73,7 @@ export class ActionFormsController {
   async deleteFollowUpFormAdmin(
     @Param("followUpFormId", ParseIntPipe) followUpFormId: number,
   ): Promise<void> {
-    return this.actionsService.deleteFollowUpForm(followUpFormId);
+    return this.followUpForms.deleteFollowUpForm(followUpFormId);
   }
 
   @Get(":id/form-variants")

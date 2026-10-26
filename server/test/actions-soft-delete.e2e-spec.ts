@@ -31,6 +31,7 @@ import {
   ReminderGroup,
   ReminderGroupTimingMode,
 } from "src/actions/entities/reminder-group.entity";
+import { FollowUpFormsService } from "src/actions/follow-up-forms.service";
 import { GeneralUpdatesService } from "src/actions/general-updates.service";
 import { ProjectsService } from "src/actions/projects.service";
 import { AuthService } from "src/auth/auth.service";
@@ -74,6 +75,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
   let generalUpdates: GeneralUpdatesService;
   let actionUpdates: ActionUpdatesService;
   let actionSuites: ActionSuitesService;
+  let followUpForms: FollowUpFormsService;
   let actionRepo: Repository<Action>;
 
   const createAction = (name = "Parent action") =>
@@ -120,6 +122,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
     generalUpdates = ctx.app.get(GeneralUpdatesService);
     actionUpdates = ctx.app.get(ActionUpdatesService);
     actionSuites = ctx.app.get(ActionSuitesService);
+    followUpForms = ctx.app.get(FollowUpFormsService);
     actionRepo = ctx.dataSource.getRepository(Action);
   });
 
@@ -392,7 +395,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
       );
 
     await expect(
-      actions.createFollowUpForm(action.id, {
+      followUpForms.createFollowUpForm(action.id, {
         actionId: action.id,
         formId: parent.id,
         name: "Follow-up",
@@ -473,7 +476,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
       form(),
       form(),
     ]);
-    const followUp = await actions.createFollowUpForm(action.id, {
+    const followUp = await followUpForms.createFollowUpForm(action.id, {
       actionId: action.id,
       formId: original.id,
       name: "Follow-up",
@@ -481,7 +484,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
     await ctx.dataSource.getRepository(Form).softDelete(deleted.id);
 
     await expect(
-      actions.updateFollowUpForm(followUp.id, { formId: deleted.id }),
+      followUpForms.updateFollowUpForm(followUp.id, { formId: deleted.id }),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(
       await ctx.dataSource
@@ -565,7 +568,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
       );
 
     await expect(
-      actions.updateFollowUpForm(followUp.id, { name: "Renamed" }),
+      followUpForms.updateFollowUpForm(followUp.id, { name: "Renamed" }),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(
       await followUps.findOneOrFail({
