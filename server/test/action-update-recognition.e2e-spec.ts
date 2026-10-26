@@ -376,6 +376,8 @@ describe("action update recognition (e2e)", () => {
     await ctx.dataSource.getRepository(ActionUpdate).update(id, {
       splitCollectiveResult: true,
       shortNotifString: "",
+      // Delivery runs at the real now, when an update published at `due` is still hidden.
+      visibleAt: new Date(),
     });
     expect((await recognition.prepare(id, due)).ok).toBe(false);
     const held = await ctx.dataSource
