@@ -92,6 +92,7 @@ const UserDetail = ({
     updateRoles: { mutateAsync: updateRoles },
     suspendContract: { mutateAsync: suspendContract },
     setTagMembership: { mutateAsync: setTagMembership },
+    deleteAccount: { mutateAsync: deleteAccount },
   },
 }: {
   user: UserAdminDetailDto;
@@ -331,7 +332,7 @@ const UserDetail = ({
       </div>
       {isDeleteModalOpen && (
         <DeleteAccountModal
-          userId={user.id}
+          deleteAccount={deleteAccount}
           userName={user.name}
           userEmail={user.email}
           onCancel={() => setIsDeleteModalOpen(false)}
