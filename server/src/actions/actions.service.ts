@@ -11,7 +11,6 @@ import {
   expressionHasLeaf,
   type CohortExpression,
 } from "@alliance/common/cohort-expression";
-import { ANONYMOUS_DISPLAY_NAME } from "@alliance/common/displayName";
 import {
   displayOnlySchema,
   displayOnlySchemaError,
@@ -21,7 +20,6 @@ import {
 } from "@alliance/common/forms/display-only-schema";
 import { validateFormSchema } from "@alliance/common/forms/form-schema-validate";
 import { echoesStoredKey } from "@alliance/common/image-src";
-import { nameParts } from "@alliance/common/nameParts";
 import { run } from "@alliance/common/run";
 import { Assert } from "@alliance/common/types";
 import { describeSchemaIssues } from "@alliance/common/zod-issues";
@@ -64,8 +62,6 @@ import { NotificationPlan } from "src/notifs/dto/notification-plan.dto";
 import { NotifsService } from "src/notifs/notifs.service";
 import { ReminderGroupService } from "src/notifs/reminder-group.service";
 import { PosthogService } from "src/posthog/posthog.service";
-import { ShareUrl } from "src/share-urls/entities/share-url.entity";
-import { ShareUrlsService } from "src/share-urls/share-urls.service";
 import { displayOnlySchemaOf } from "src/tasks/display-only-snapshot";
 import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
@@ -161,7 +157,6 @@ import {
 } from "./dto/action-update.dto";
 import {
   ActionDto,
-  ActionSharePreview,
   CreateActionDto,
   ExportActionDto,
   SetPriorityDto,
@@ -177,7 +172,6 @@ import {
   UpdateGeneralUpdateDto,
 } from "./dto/general-update.dto";
 import { CreateReminderGroupDto } from "./dto/reminder-group.dto";
-import { ShareUrlStats } from "./dto/share-url.dto";
 import {
   ActionActivity,
   ActivitySource,
@@ -299,10 +293,6 @@ export class ActionsService {
     private readonly actionSuiteRepository: Repository<ActionSuite>,
     @InjectRepository(Form)
     private readonly formRepository: Repository<Form>,
-    @Inject(forwardRef(() => ShareUrlsService))
-    private readonly shareUrlsService: ShareUrlsService,
-    @InjectRepository(FormResponse)
-    private readonly formResponseRepository: Repository<FormResponse>,
     @InjectRepository(FollowUpForm)
     private readonly followUpFormRepository: Repository<FollowUpForm>,
     @InjectRepository(Community)
@@ -1148,70 +1138,6 @@ export class ActionsService {
     });
   }
 
-  async getSharePreview(
-    actionId: number,
-    shareCode?: string,
-  ): Promise<ActionSharePreview> {
-    // Match public action visibility before exposing referrer completion state.
-    await this.findOneOrFail({ id: actionId });
-
-    const trimmedCode = shareCode?.trim();
-    if (!trimmedCode) {
-      return { completedByReferrer: false, validReferral: false };
-    }
-
-    const shareUrl = await this.shareUrlsService.findActionShareByActionAndSid(
-      actionId,
-      trimmedCode,
-    );
-
-    // Campaign-owned action share links have no referring user.
-    if (shareUrl?.campaign) {
-      return {
-        firstName: shareUrl.campaign.name,
-        completedByReferrer: false,
-        validReferral: true,
-      };
-    }
-
-    if (!shareUrl?.user) {
-      return { completedByReferrer: false, validReferral: false };
-    }
-
-    return {
-      firstName: this.getFirstNameForSharePreview(shareUrl.user),
-      completedByReferrer:
-        (await this.getActionRelation(actionId, shareUrl.user.id)) ===
-        UserActionRelation.Completed,
-      validReferral: true,
-    };
-  }
-
-  async getOrCreateActionReferralCode(
-    actionId: number,
-    userId: number,
-  ): Promise<string> {
-    const shareUrl = await this.shareUrlsService.getOrCreateForAction(
-      actionId,
-      {
-        type: "user",
-        userId,
-      },
-    );
-    if (!shareUrl.sid) {
-      throw new BadRequestException("Unable to create share code");
-    }
-    return shareUrl.sid;
-  }
-
-  private getFirstNameForSharePreview(
-    user: Pick<User, "anonymous" | "name">,
-  ): string {
-    return user.anonymous
-      ? ANONYMOUS_DISPLAY_NAME
-      : nameParts(user.name).firstname || ANONYMOUS_DISPLAY_NAME;
-  }
-
   async findAllGeneralUpdates(): Promise<GeneralUpdate[]> {
     const now = new Date();
     return (
@@ -1584,20 +1510,6 @@ export class ActionsService {
             createdAt: new Date(),
           }),
         ),
-    });
-  }
-
-  async getActionRelation(
-    actionId: number,
-    userId: number,
-  ): Promise<UserActionRelation> {
-    const activities = await this.actionActivityRepository.find({
-      where: { action: { id: actionId }, user: { id: userId } },
-    });
-    return resolveUserActionRelation({
-      activities: new CachedFilter(activities),
-      userId,
-      actionId,
     });
   }
 
@@ -3334,86 +3246,6 @@ export class ActionsService {
     }
 
     return this.findActionRelationsForUsers(Promise.resolve(members));
-  }
-
-  async getShareLinksForForm(formId: number): Promise<ShareUrl[]> {
-    const action = await this.findActionByFormId(formId);
-    if (!action) {
-      throw new NotFoundException("No action found for this form");
-    }
-    // This is a per-user view (ShareUrlDto requires a user); campaign-owned
-    // links have no user and are managed via the admin campaign view instead.
-    return this.shareUrlsService.findUserOwnedForAction(action.id);
-  }
-
-  async getShareUrlStats(
-    actionId: number,
-    questionId?: string,
-  ): Promise<ShareUrlStats[]> {
-    // Per-user referral leaderboard (ShareUrlStats.user is non-null); exclude
-    // campaign-owned links, which have no referring user.
-    const shareUrls =
-      await this.shareUrlsService.findUserOwnedForAction(actionId);
-
-    if (shareUrls.length === 0) {
-      return [];
-    }
-
-    // Get all sids
-    const sids = shareUrls
-      .map((su) => su.sid)
-      .filter((sid): sid is string => !!sid);
-
-    if (sids.length === 0) {
-      return shareUrls.map((su) => ({
-        user: su.user!,
-        inviteCount: 0,
-        sid: su.sid ?? "",
-        yesCount: 0,
-      }));
-    }
-
-    // Count form responses per sid
-    const formResponseCounts = await this.formResponseRepository
-      .createQueryBuilder("fr")
-      .select("fr.sid", "sid")
-      .addSelect("COUNT(*)", "count")
-      .where("fr.sid IN (:...sids)", { sids })
-      .groupBy("fr.sid")
-      .getRawMany<{ sid: string; count: string }>();
-
-    const countMap = new Map<string, number>();
-    for (const row of formResponseCounts) {
-      countMap.set(row.sid, parseInt(row.count, 10));
-    }
-
-    // Count yes answers per sid for the specified question
-    const yesCountMap = new Map<string, number>();
-    if (questionId) {
-      const yesAnswerCounts = await this.formResponseRepository
-        .createQueryBuilder("fr")
-        .select("fr.sid", "sid")
-        .addSelect("COUNT(*)", "count")
-        .where("fr.sid IN (:...sids)", { sids })
-        .andWhere(`fr.answers ->> :questionId = 'yes'`, { questionId })
-        .groupBy("fr.sid")
-        .getRawMany<{ sid: string; count: string }>();
-
-      for (const row of yesAnswerCounts) {
-        yesCountMap.set(row.sid, parseInt(row.count, 10));
-      }
-    }
-
-    const results = shareUrls
-      .map((su) => ({
-        user: su.user!,
-        inviteCount: countMap.get(su.sid ?? "") ?? 0,
-        sid: su.sid ?? "",
-        yesCount: yesCountMap.get(su.sid ?? "") ?? 0,
-      }))
-      .filter((stat) => stat.inviteCount > 0);
-
-    return results.sort((a, b) => b.inviteCount - a.inviteCount);
   }
 
   async evaluateCohortExpressionBatch(expression: unknown): Promise<number[]> {

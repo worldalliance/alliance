@@ -35,6 +35,7 @@ import {
   AcknowledgeDeadlineShortening,
   ApiAcknowledgeDeadlineShortening,
 } from "./acknowledge-deadline-shortening";
+import { ActionShareService } from "./action-share.service";
 import { ActionSuspensionService } from "./action-suspension.service";
 import { ActionsService } from "./actions.service";
 import {
@@ -67,6 +68,7 @@ import { ForumActionCompleterWorker } from "./forum-action-completer.worker";
 export class ActionsController {
   constructor(
     private readonly actionsService: ActionsService,
+    private readonly shareService: ActionShareService,
     private readonly suspensionService: ActionSuspensionService,
     private readonly eventEmitter: EventEmitter2,
     private readonly forumActionCompleterWorker: ForumActionCompleterWorker,
@@ -163,7 +165,7 @@ export class ActionsController {
     @Query("ref") ref?: string,
   ): Promise<ActionSharePreviewDto> {
     return new ActionSharePreviewDto(
-      await this.actionsService.getSharePreview(id, sid ?? ref),
+      await this.shareService.getSharePreview(id, sid ?? ref),
     );
   }
 
@@ -175,7 +177,7 @@ export class ActionsController {
     @Request() req: JwtRequest,
   ): Promise<ActionReferralCodeDto> {
     return new ActionReferralCodeDto(
-      await this.actionsService.getOrCreateActionReferralCode(id, req.user.sub),
+      await this.shareService.getOrCreateActionReferralCode(id, req.user.sub),
     );
   }
 
@@ -389,7 +391,7 @@ export class ActionsController {
   async shareLinksForFormAdmin(
     @Param("formId", ParseIntPipe) formId: number,
   ): Promise<ShareUrlDto[]> {
-    const shareUrls = await this.actionsService.getShareLinksForForm(formId);
+    const shareUrls = await this.shareService.getShareLinksForForm(formId);
     return shareUrls.map((shareUrl) => new ShareUrlDto(shareUrl));
   }
 
@@ -401,7 +403,7 @@ export class ActionsController {
     @Param("actionId", ParseIntPipe) actionId: number,
     @Query("questionId") questionId?: string,
   ): Promise<ShareUrlStatsDto[]> {
-    const stats = await this.actionsService.getShareUrlStats(
+    const stats = await this.shareService.getShareUrlStats(
       actionId,
       questionId,
     );

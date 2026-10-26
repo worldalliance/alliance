@@ -40,6 +40,7 @@ import { ActionFormVariantService } from "./action-form-variant.service";
 import { ActionFormsController } from "./action-forms.controller";
 import { ActionParticipantsService } from "./action-participants.service";
 import { ActionRemindersController } from "./action-reminders.controller";
+import { ActionShareService } from "./action-share.service";
 import { ActionStatsService } from "./action-stats.service";
 import { ActionSuitesController } from "./action-suites.controller";
 import { ActionSuspensionService } from "./action-suspension.service";
@@ -187,6 +188,7 @@ import { TaskBadgeService } from "./task-badge.service";
     HomeFeedService,
     ActivityLikeService,
     ActionSuspensionService,
+    ActionShareService,
   ],
   exports: [
     ActionsService,
