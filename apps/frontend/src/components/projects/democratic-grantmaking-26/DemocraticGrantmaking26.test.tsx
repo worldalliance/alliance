@@ -39,7 +39,7 @@ const renderPage = () =>
     </QueryClientProvider>,
   );
 
-test("shows each expert once in a five-column grid between the waitlist bar and the timeline", async () => {
+test("shows each expert once in an eight-column grid between the waitlist bar and the timeline", async () => {
   renderPage();
 
   const bar = await screen.findByRole("img", {
@@ -60,10 +60,14 @@ test("shows each expert once in a five-column grid between the waitlist bar and 
     grid.compareDocumentPosition(timeline) & Node.DOCUMENT_POSITION_FOLLOWING,
   ).not.toBe(0);
   expect(timeline.contains(grid)).toBe(false);
-  expect(grid.className).toContain("grid-cols-3");
-  expect(grid.className).toContain("sm:grid-cols-5");
+  expect(grid.classList.contains("grid-cols-4")).toBe(true);
+  expect(grid.className).toContain("lg:grid-cols-8");
   const cards = [...grid.querySelectorAll(":scope > li")];
-  expect(cards).toHaveLength(15);
+  expect(cards).toHaveLength(16);
+  expect(screen.getByText("Nir Eyal")).toBeTruthy();
+  expect(
+    screen.getByText("Population-level bioethicist, UCL and Rutgers"),
+  ).toBeTruthy();
   expect(screen.queryByText("To be announced")).toBeNull();
   expect(screen.getByText("Julia Paxton")).toBeTruthy();
   expect(

@@ -43,30 +43,6 @@ export const FEATURED_PEOPLE: ProjectPerson[] = [
     href: "https://www.linkedin.com/in/sepllveda/",
   },
   {
-    name: "Lindsey McDougle",
-    imageSrc: "/assets/democratic-grantmaking-26/lindsey-mcdougle.jpg",
-    role: "Director, Rutgers Center for Nonprofit Leadership & Development; President-Elect, ARNOVA",
-    href: "https://spaa.newark.rutgers.edu/lindsey-mcdougle",
-  },
-  {
-    name: "Megan Tompkins-Stange",
-    imageSrc: "/assets/democratic-grantmaking-26/megan.jpg",
-    role: "Associate Professor of Public Policy, University of Michigan",
-    href: "https://www.linkedin.com/in/megan-tompkins-stange-b71b709/",
-  },
-  {
-    name: "Luke Kemp",
-    imageSrc: "/assets/democratic-grantmaking-26/luke-kemp.jpg",
-    role: "Research Affiliate, Centre for the Study of Existential Risk at University of Cambridge",
-    href: "https://www.linkedin.com/in/luke-kemp-689b8271/",
-  },
-  {
-    name: "Kyle Gracey",
-    imageSrc: "/assets/democratic-grantmaking-26/kyle-gracey.png",
-    role: "AI Strategy Program Leader, Rethink Priorities",
-    href: "https://www.linkedin.com/in/kylegracey/",
-  },
-  {
     name: "Samuel Dupret",
     imageSrc: "/assets/democratic-grantmaking-26/samuel-dupret.jpg",
     role: "Research manager, Happier Lives Institute",
@@ -77,6 +53,30 @@ export const FEATURED_PEOPLE: ProjectPerson[] = [
     imageSrc: "/assets/democratic-grantmaking-26/jan-maly.jpg",
     role: "Online Decision-Making, WU Wien",
     href: "https://janmaly.de/",
+  },
+  {
+    name: "Kyle Gracey",
+    imageSrc: "/assets/democratic-grantmaking-26/kyle-gracey.png",
+    role: "AI Strategy Program Leader, Rethink Priorities",
+    href: "https://www.linkedin.com/in/kylegracey/",
+  },
+  {
+    name: "Luke Kemp",
+    imageSrc: "/assets/democratic-grantmaking-26/luke-kemp.jpg",
+    role: "Research Affiliate, Centre for the Study of Existential Risk at University of Cambridge",
+    href: "https://www.linkedin.com/in/luke-kemp-689b8271/",
+  },
+  {
+    name: "Lindsey McDougle",
+    imageSrc: "/assets/democratic-grantmaking-26/lindsey-mcdougle.jpg",
+    role: "Director, Rutgers Center for Nonprofit Leadership & Development; President-Elect, ARNOVA",
+    href: "https://spaa.newark.rutgers.edu/lindsey-mcdougle",
+  },
+  {
+    name: "Megan Tompkins-Stange",
+    imageSrc: "/assets/democratic-grantmaking-26/megan.jpg",
+    role: "Associate Professor of Public Policy, University of Michigan",
+    href: "https://www.linkedin.com/in/megan-tompkins-stange-b71b709/",
   },
   {
     name: "Andrea Vernon",
@@ -92,6 +92,12 @@ export const FEATURED_PEOPLE: ProjectPerson[] = [
     name: "Julia Paxton",
     imageSrc: "/assets/democratic-grantmaking-26/julia-paxton.png",
     role: "Professor of Economics, Ohio University",
+  },
+  {
+    name: "Nir Eyal",
+    imageSrc: "/assets/democratic-grantmaking-26/nir-eyal.png",
+    role: "Population-level bioethicist, UCL and Rutgers",
+    href: "https://sph.rutgers.edu/directory/nir-eyal",
   },
 ];
 
