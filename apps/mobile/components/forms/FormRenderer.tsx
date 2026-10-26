@@ -8,16 +8,11 @@ import {
 } from "@alliance/shared/client";
 import { computeActiveUserKey } from "@alliance/shared/formrenderer";
 import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
-import { filterAnswersByFieldIds } from "@alliance/shared/forms/formDrafts";
-import {
-  completedFormSchema,
-  formulaSourcesFor,
-} from "@alliance/shared/forms/formulaChoices";
+import { completedFormSchema } from "@alliance/shared/forms/formulaChoices";
 import {
   resolveFormValue,
   type SetFieldValue,
 } from "@alliance/shared/forms/formValueUpdater";
-import { stripCardIds } from "@alliance/shared/forms/listCards";
 import {
   aggregateTarget,
   useVariableAggregates,
@@ -53,6 +48,7 @@ import OutputPublicToggle from "./OutputPublicToggle";
 import { pageNavigation } from "./pageNavigation";
 import { RenderField } from "./RenderField";
 import { useFormDraftState } from "./useFormDraftState";
+import { useFormSubmission } from "./useFormSubmission";
 import { variableInputsGateView } from "./variableInputsGateView";
 import WithdrawalModal from "./WithdrawalModal";
 
@@ -174,7 +170,6 @@ const FormRenderer = ({
     signedIn: !!user,
   });
   const { fieldErrors, applyFieldErrorUpdates } = useFieldErrors();
-  const [submitting, setSubmitting] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [hasEmittedStart, setHasEmittedStart] = useState(false);
   const { currentUserLocationLoading, userLocationDisplayValue } =
@@ -315,77 +310,27 @@ const FormRenderer = ({
     scrollToEnd,
   });
 
-  const handleSubmit = async () => {
-    if (submitting || readOnly || imageUpload.uploadingAny) {
-      return;
-    }
-    if (onSubmit && formSnapshotId === null) {
-      throw new Error(
-        "FormRenderer: formSnapshotId is required when onSubmit is set",
-      );
-    }
-    setSubmitting(true);
-
-    if (!(await navigation.readyToSubmit())) {
-      setSubmitting(false);
-      return;
-    }
-
-    if (!onSubmit || formSnapshotId === null) {
-      setSubmitting(false);
-      return;
-    }
-
-    const sanitizedAnswers = stripCardIds(
-      filterAnswersByFieldIds(effectiveFormData, fieldLookup),
-    );
-    const submissionPayload: SubmitFormDto = {
-      answers: sanitizedAnswers,
-      formSnapshotId,
-      actionId,
-      formulaSources: formulaSourcesFor(schema, sourceHistories),
-      visibilityValidatorResults,
-      deviceType: DEVICE_TYPE,
-      publicAnswers,
-      phDistinctId,
-      sessionReplayUrl,
-    };
-
-    pauseSyncing();
-    onSubmit(submissionPayload)
-      .then((submitted) => {
-        if (!submitted) {
-          resumeSyncing();
-          return;
-        }
-        clearStoredDraft();
-      })
-      .catch(() => resumeSyncing())
-      .finally(() => {
-        setSubmitting(false);
-      });
-  };
-
-  const handleAbandon = (choice: Omit<ActionWithdrawal, "partialFormData">) => {
-    if (formSnapshotId === null) {
-      throw new Error(
-        "FormRenderer: formSnapshotId is required to abandon a form",
-      );
-    }
-    const submissionPayload: SubmitFormDto = {
-      answers: stripCardIds(formData),
-      formSnapshotId,
-      actionId,
-      formulaSources: formulaSourcesFor(schema, sourceHistories),
-      visibilityValidatorResults,
-      deviceType: DEVICE_TYPE,
-      publicAnswers,
-    };
-
-    pauseSyncing();
-    onAbandonAction?.({ ...choice, partialFormData: submissionPayload });
-    setWithdrawOpen(false);
-  };
+  const { submitting, handleSubmit, handleAbandon } = useFormSubmission({
+    readOnly,
+    uploadingImages: imageUpload.uploadingAny,
+    onSubmit,
+    onAbandonAction,
+    formSnapshotId,
+    actionId,
+    schema,
+    sourceHistories,
+    visibilityValidatorResults,
+    fieldLookup,
+    formData,
+    effectiveFormData,
+    publicAnswers,
+    phDistinctId,
+    sessionReplayUrl,
+    readyToSubmit: navigation.readyToSubmit,
+    pauseSyncing,
+    resumeSyncing,
+    clearStoredDraft,
+  });
 
   const currentPage = visiblePageIndices.includes(currentPageIndex)
     ? schema.pages[currentPageIndex]
@@ -509,7 +454,10 @@ const FormRenderer = ({
           visible={withdrawOpen}
           onClose={() => setWithdrawOpen(false)}
           disabled={submitting}
-          onWithdraw={handleAbandon}
+          onWithdraw={(choice) => {
+            handleAbandon(choice);
+            setWithdrawOpen(false);
+          }}
         />
       )}
     </View>
