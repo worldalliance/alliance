@@ -2,6 +2,7 @@ import { TagDto, UserAdminDetailDto } from "@alliance/shared/client/types.gen";
 import { cn } from "@alliance/shared/styles/util";
 import { useCallback, useMemo, useState } from "react";
 import { useTagsAdmin } from "../../lib/useTagsAdmin";
+import { SectionLoadState, SectionRefreshError } from "./SectionQueryState";
 
 export default function UserTagsSection({
   user,
@@ -65,11 +66,7 @@ export default function UserTagsSection({
   );
 
   if (!allTags) {
-    return (
-      <p className={cn("text-sm", isError ? "text-red-500" : "text-zinc-500")}>
-        {isError ? "Failed to load tags" : "Loading tags..."}
-      </p>
-    );
+    return <SectionLoadState noun="tags" isError={isError} />;
   }
 
   return (
@@ -77,11 +74,7 @@ export default function UserTagsSection({
       <h2 className="text-sm font-semibold text-zinc-700 mb-2">
         Tags ({userTags.length})
       </h2>
-      {isRefetchError && (
-        <p className="text-xs text-red-500 mb-2">
-          Could not refresh tags. Reload to see the latest.
-        </p>
-      )}
+      {isRefetchError && <SectionRefreshError noun="tags" />}
       {tagMutationError && (
         <p className="text-xs text-red-500 mb-2">{tagMutationError}</p>
       )}
