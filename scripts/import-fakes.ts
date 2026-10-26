@@ -1,78 +1,18 @@
-import fs from "node:fs";
-import path from "node:path";
-import { devPorts, PortCaller } from "../common/src/dev-ports";
-import { mintAccessToken } from "./lib/access-token";
 import {
   dateShifter,
   type FakeEvent,
   type FakeFile,
-  fakeFileSchema,
   FakeKind,
+  loadFakeFiles,
   Outcome,
   type Participant,
   splitEvents,
 } from "./lib/fakes";
+import { actionIdByName, api, firstAdminId, sqlString } from "./lib/local-api";
 import { execLocalDb, queryLocalDb } from "./lib/local-db";
 
-const FAKES_DIR = path.join(import.meta.dirname, "..", ".scratch", "fakes");
-const API = `http://localhost:${devPorts(PortCaller.Tooling).server}`;
 const now = new Date();
 const failures: string[] = [];
-
-const tokens = new Map<number, string>();
-async function api<T>(params: {
-  as: number;
-  method: string;
-  route: string;
-  body?: unknown;
-}): Promise<T> {
-  if (!tokens.has(params.as)) tokens.set(params.as, mintAccessToken(params.as));
-  const response = await fetch(`${API}${params.route}`, {
-    method: params.method,
-    headers: {
-      Authorization: `Bearer ${tokens.get(params.as)}`,
-      "Content-Type": "application/json",
-    },
-    body: params.body === undefined ? undefined : JSON.stringify(params.body),
-  });
-  const text = await response.text();
-  if (!response.ok) {
-    throw new Error(
-      `${params.method} ${params.route} as ${params.as}: ${response.status} ${text}`,
-    );
-  }
-  return JSON.parse(text || "null");
-}
-
-function sqlString(value: string): string {
-  return `'${value.replaceAll("'", "''")}'`;
-}
-
-function loadFiles(): { file: string; fake: FakeFile }[] {
-  if (!fs.existsSync(FAKES_DIR)) return [];
-  const problems: string[] = [];
-  const loaded = fs
-    .readdirSync(FAKES_DIR)
-    .filter((name) => name.endsWith(".yml"))
-    .sort()
-    .flatMap((name) => {
-      const parsed = fakeFileSchema.safeParse(
-        Bun.YAML.parse(fs.readFileSync(path.join(FAKES_DIR, name), "utf8")),
-      );
-      if (parsed.success) return [{ file: name, fake: parsed.data }];
-      problems.push(`${name}: ${parsed.error.message}`);
-      return [];
-    });
-  if (problems.length > 0) throw new Error(problems.join("\n"));
-  return loaded;
-}
-
-function actionIdByName(name: string): number | null {
-  const [row] = queryLocalDb<{ id: number }>(
-    `SELECT id FROM action WHERE name = ${sqlString(name)} AND "deletedAt" IS NULL`,
-  );
-  return row?.id ?? null;
-}
 
 async function createFakeAction(params: {
   admin: number;
@@ -429,22 +369,17 @@ async function importFake(params: {
   return `action ${actionId}`;
 }
 
-const files = loadFiles();
+const files = loadFakeFiles();
 if (process.argv.includes("--check")) {
   console.log(`${files.length} fake files valid`);
   process.exit(0);
 }
 
-const [admin] = queryLocalDb<{ id: number }>(
-  `SELECT id FROM "user" WHERE admin ORDER BY id LIMIT 1`,
-);
-if (!admin) throw new Error("no admin user in the local db");
+const admin = firstAdminId();
 
 for (const { file, fake } of files) {
   try {
-    console.log(
-      `${file}: ${await importFake({ admin: admin.id, file, fake })}`,
-    );
+    console.log(`${file}: ${await importFake({ admin, file, fake })}`);
   } catch (error) {
     failures.push(`${file}: ${error}`);
   }

@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { z } from "zod";
 import { deviceVisibilityTargetSchema } from "../../common/src/forms/device";
 
@@ -62,6 +64,7 @@ export const fakeFileSchema = z
     z.strictObject({
       kind: z.literal(FakeKind.Fake),
       ...engagement,
+      thumbnailPrompt: z.string().min(1),
       action: z.strictObject({
         name: z.string(),
         shortDescription: z.string(),
@@ -103,6 +106,33 @@ export const fakeFileSchema = z
 export type FakeFile = z.infer<typeof fakeFileSchema>;
 export type Participant = FakeFile["participants"][number];
 export type FakeEvent = FakeFile["events"][number];
+
+export const FAKES_DIR = path.join(
+  import.meta.dirname,
+  "..",
+  "..",
+  ".scratch",
+  "fakes",
+);
+
+export function loadFakeFiles(): { file: string; fake: FakeFile }[] {
+  if (!fs.existsSync(FAKES_DIR)) return [];
+  const problems: string[] = [];
+  const loaded = fs
+    .readdirSync(FAKES_DIR)
+    .filter((name) => name.endsWith(".yml"))
+    .sort()
+    .flatMap((name) => {
+      const parsed = fakeFileSchema.safeParse(
+        Bun.YAML.parse(fs.readFileSync(path.join(FAKES_DIR, name), "utf8")),
+      );
+      if (parsed.success) return [{ file: name, fake: parsed.data }];
+      problems.push(`${name}: ${parsed.error.message}`);
+      return [];
+    });
+  if (problems.length > 0) throw new Error(problems.join("\n"));
+  return loaded;
+}
 
 /** Moves every recorded date by the same amount, landing `recordedAt` on `now`. */
 export function dateShifter(params: {

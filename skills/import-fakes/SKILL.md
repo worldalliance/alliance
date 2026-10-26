@@ -11,6 +11,8 @@ description: Read before restoring recorded fake actions, projects and engagemen
 2. `bun scripts/import-fakes.ts --check` validates every file. Fix a file it rejects using the error and `fakeFileSchema` in `scripts/lib/fakes.ts`.
 3. `bun scripts/import-fakes.ts` imports. It is safe to rerun: fake actions that already exist, members who already acted, and events and updates already present are skipped.
 
-Done when the import exits 0. A non-zero exit lists each failed file or member with the API's answer.
+4. `bun scripts/generate-thumbnails.ts` re-attaches each fake action's thumbnail from `.scratch/fakes/thumbnails/`, generating only the ones missing there.
+
+Done when both exit 0. A non-zero exit lists each failed file or member with the API's answer.
 
 Report each file's line from the output: the action it landed on, or why it was skipped. Include any members who stood in for recorded ones that are gone or out of the cohort.

@@ -46,9 +46,11 @@ Done when `GET /actions/adminslug/:id` returns the action with its `taskFormId` 
 
 ## 4. Record
 
-Write `.scratch/fakes/<action-name-slug>.yml` (lowercase ASCII words joined by hyphens), a `kind: fake` file in the shape of `fakeFileSchema` (`scripts/lib/fakes.ts`): the action's fields and form, its project (`null` when standalone), the events you added, `recordedAt` now, and empty `participants` and `updates`. `bun scripts/import-fakes.ts` re-creates it after `scripts/load_staging_data.sh` clears the db.
+Write `.scratch/fakes/<action-name-slug>.yml` (lowercase ASCII words joined by hyphens), a `kind: fake` file in the shape of `fakeFileSchema` (`scripts/lib/fakes.ts`): the action's fields and form, its project (`null` when standalone), the events you added, `recordedAt` now, empty `participants` and `updates`, and a `thumbnailPrompt`. The prompt describes only the scene, one concrete moment from the action as a member would snap it, with no text or logos; it doubles as the image's alt text, and `scripts/generate-thumbnails.ts` adds its own photographic style. `bun scripts/import-fakes.ts` re-creates the file's action after `scripts/load_staging_data.sh` clears the db.
 
-Done when `bun scripts/import-fakes.ts --check` passes.
+Then `bun scripts/generate-thumbnails.ts` generates the image and sets it as the action's square thumbnail.
+
+Done when `bun scripts/import-fakes.ts --check` passes and the thumbnail script reports the action attached.
 
 ## 5. Report
 
