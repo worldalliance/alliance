@@ -10,10 +10,8 @@ import {
   restorablePublicAnswers,
   serializeStoredFormDraft,
 } from "@alliance/shared/forms/formDrafts";
-import {
-  useFormDraftSync,
-  type useFormSchemaMaps,
-} from "@alliance/shared/useFormRenderer";
+import { useFormDraftSync } from "@alliance/shared/forms/useFormDraftSync";
+import { type useFormSchemaMaps } from "@alliance/shared/useFormRenderer";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useMemo, useRef, useState } from "react";
 
