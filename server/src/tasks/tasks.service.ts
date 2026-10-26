@@ -21,11 +21,7 @@ import {
   type AggregateViewSchema,
   type AggregateViewValue,
   type AnyField,
-  type CheckboxExtractionTarget,
-  type CheckboxField,
-  type CityFieldValue,
   collectFieldLookup,
-  type CustomComponentField,
   formSchema,
   FormSchema,
   type FormValue,
@@ -65,10 +61,8 @@ import {
   isAccountDerivedConditionKind,
   isKnownConditionKind,
 } from "@alliance/common/forms/visible-if-formula";
-import { toE164 } from "@alliance/common/phone";
 import { withCount } from "@alliance/common/plural";
 import { R, type Result } from "@alliance/common/result";
-import { isTimeZoneIdentifier } from "@alliance/common/timezone";
 import { describeSchemaIssues, issuePath } from "@alliance/common/zod-issues";
 import {
   BadRequestException,
@@ -102,15 +96,9 @@ import {
   softDeleteWhere,
   writeUnderLive,
 } from "src/datasources/soft-delete";
-import { EventType } from "src/eventlog/event-log.entity";
-import { EventLogService } from "src/eventlog/eventlog.service";
-import { MmsService } from "src/mms/mms.service";
-import { welcomeMessage } from "src/notifs/textnotifcontents";
-import { UpdateProfileDto } from "src/user/dto/user.dto";
 import { User } from "src/user/entities/user.entity";
 import { UserVisibilityContextService } from "src/user/user-visibility-context.service";
 import { UserService } from "src/user/user.service";
-import { toPlainTime } from "src/utils/plain-time";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import { In, type Repository } from "typeorm";
 import { CustomValidatorService } from "./customvalidator.service";
@@ -129,6 +117,7 @@ import {
   FormSnapshot,
   SnapshotHistoryOwner,
 } from "./entities/formsnapshot.entity";
+import { FormProfileAnswersService } from "./form-profile-answers.service";
 import { type FormResponseHistory } from "./form-response-history.dto";
 import { FormResponseQueryService } from "./form-response-query.service";
 import { FormRowAssignmentService } from "./form-row-assignment.service";
@@ -263,6 +252,7 @@ export class TasksService {
     private readonly formRowAssignmentService: FormRowAssignmentService,
     private readonly customValidatorService: CustomValidatorService,
     private readonly formResponseQueryService: FormResponseQueryService,
+    private readonly formProfileAnswersService: FormProfileAnswersService,
     @InjectRepository(Form)
     private formRepository: Repository<Form>,
     @InjectRepository(FormResponse)
@@ -277,9 +267,7 @@ export class TasksService {
     private readonly userVisibilityContextService: UserVisibilityContextService,
     private readonly actionActivityService: ActionActivityService,
     private readonly formLinks: ActionFormLinksService,
-    private mmsService: MmsService,
     private contractService: ContractService,
-    private eventLogService: EventLogService,
     private aiDetectionQueueService: AiDetectionQueueService,
     private formSnapshotService: FormSnapshotService,
     private actionFormVariantService: ActionFormVariantService,
@@ -955,106 +943,11 @@ export class TasksService {
         userId,
       });
 
-    const phoneNumber = this.getFirstAutoExtractAnswer(
-      submittedSchema,
-      effectiveAnswers,
-      "phone",
-    );
-    const preferredReminderTime = this.getFirstAutoExtractAnswer(
-      submittedSchema,
-      effectiveAnswers,
-      "time",
-    );
-    const timeZone = this.getFirstAutoExtractAnswer(
-      submittedSchema,
-      effectiveAnswers,
-      "timezone",
-    );
-    // Before the phone number, whose opt-in MMS a rejection cannot take back.
-    if (timeZone && !isTimeZoneIdentifier(timeZone)) {
-      throw new BadRequestException(`Invalid time zone: ${timeZone}`);
-    }
-
-    const city = this.getFirstAutoExtractAnswer(
-      submittedSchema,
-      effectiveAnswers,
-      "city",
-    );
-
-    const userUpdates: Partial<UpdateProfileDto> = {};
-
-    if (phoneNumber) {
-      this.logger.log(`Extracted phone number: ${phoneNumber}`);
-      const parsed = toE164(phoneNumber);
-
-      if (R.isFailure(parsed)) {
-        this.logger.warn(`Could not parse phone number: ${phoneNumber}`);
-      } else {
-        const normalized = parsed.value;
-        this.logger.log(`Valid phone number: ${normalized}`);
-        userUpdates.phoneNumber = normalized;
-
-        if (!user.optInMms) {
-          const mms = await this.mmsService.sendMms({
-            to: normalized,
-            userId: user.id,
-            body: welcomeMessage,
-            mediaUrls: [],
-            tracking: null,
-          });
-          if (mms) {
-            await this.userService.setOptInMms(user.id, mms.id);
-          } else {
-            if (process.env.NODE_ENV === "production") {
-              await this.eventLogService.sendMessage({
-                type: EventType.SmsFailure,
-                message: `Failed to send opt-in MMS to ${normalized}`,
-                userId: user.id,
-                blob: { to: normalized },
-              });
-            }
-          }
-        }
-      }
-    }
-
-    if (city) {
-      const parsedCityId = Number.parseInt(city, 10);
-      if (Number.isFinite(parsedCityId)) {
-        userUpdates.cityId = parsedCityId;
-      } else {
-        this.logger.warn(`setting custom city from form submission: ${city}`);
-        userUpdates.customCityString = city;
-      }
-    }
-
-    if (preferredReminderTime) {
-      const parsedTime = toPlainTime(preferredReminderTime);
-      if (parsedTime) {
-        userUpdates.preferredReminderTime = parsedTime;
-      } else {
-        this.logger.warn(
-          `Failed to parse preferred reminder time: ${preferredReminderTime}`,
-        );
-      }
-    }
-
-    if (timeZone) {
-      userUpdates.timeZone = timeZone;
-    }
-
-    const shareInfoPublicly = this.getCheckboxExtractionValue(
-      submittedSchema,
-      effectiveAnswers,
-      "shareInfoPublicly",
-    );
-    if (shareInfoPublicly !== null) {
-      userUpdates.shareInfoPublicly = shareInfoPublicly;
-    }
-
-    if (Object.keys(userUpdates).length > 0) {
-      await this.userService.update(user.id, userUpdates);
-    }
+    await this.formProfileAnswersService.applyProfileAnswers({
+      user,
+      schema: submittedSchema,
+      answers: effectiveAnswers,
+    });
 
     const contractIdsSigned = this.getContractIdsSigned(
       submittedSchema,
@@ -1385,54 +1278,6 @@ export class TasksService {
     return savedForm;
   }
 
-  private getFirstAutoExtractAnswer(
-    schema: FormSchema,
-    answers: Record<string, unknown>,
-    kind: "phone" | "time" | "timezone" | "city",
-  ): string | null {
-    for (const page of schema.pages ?? []) {
-      if (!page.fields) {
-        continue;
-      }
-      for (const field of page.fields) {
-        if (kind === "city" && field.kind === "city") {
-          if (!field.autoExtractUserData) {
-            continue;
-          }
-          const answer = answers[field.id];
-          if (
-            answer &&
-            typeof answer === "object" &&
-            "id" in (answer as CityFieldValue) &&
-            typeof (answer as CityFieldValue).id === "number" &&
-            Number.isFinite((answer as CityFieldValue).id)
-          ) {
-            return (answer as CityFieldValue).id.toString();
-          }
-          if (typeof answer === "string") {
-            const value = answer.trim();
-            if (value) {
-              return value;
-            }
-          }
-          continue;
-        }
-        if (
-          field.kind === kind &&
-          field.autoExtractUserData &&
-          typeof answers[field.id] === "string"
-        ) {
-          const value = (answers[field.id] as string).trim();
-          if (value) {
-            return value;
-          }
-        }
-      }
-    }
-
-    return null;
-  }
-
   private getContractIdsSigned(
     schema: FormSchema,
     answers: Record<string, unknown>,
@@ -1455,44 +1300,6 @@ export class TasksService {
     }
 
     return ids;
-  }
-
-  private getCheckboxExtractionValue(
-    schema: FormSchema,
-    answers: Record<string, unknown>,
-    target: CheckboxExtractionTarget,
-  ): boolean | null {
-    for (const page of schema.pages ?? []) {
-      if (!page.fields) {
-        continue;
-      }
-      for (const field of page.fields) {
-        if (field.kind !== "checkbox" && field.kind !== "custom") {
-          continue;
-        }
-        const extractField = field as CheckboxField | CustomComponentField;
-        if (extractField.autoExtractUserData?.target !== target) {
-          continue;
-        }
-        const answer = answers[field.id];
-        if (typeof answer === "boolean") {
-          return answer;
-        }
-        if (typeof answer === "string") {
-          const normalized = answer.trim().toLowerCase();
-          if (normalized === "true") {
-            return true;
-          }
-          if (normalized === "false") {
-            return false;
-          }
-        }
-        // Field wasn't answered - don't overwrite existing user setting
-        return null;
-      }
-    }
-
-    return null;
   }
 
   async listForms(): Promise<FormSummary[]> {
