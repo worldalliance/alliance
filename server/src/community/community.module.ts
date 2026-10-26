@@ -7,6 +7,7 @@ import { NotificationSettingsModule } from "src/notification-settings/notificati
 import { NotifsModule } from "src/notifs/notifs.module";
 import { User } from "src/user/entities/user.entity";
 import { UserModule } from "src/user/user.module";
+import { CommunityInviteRequestsService } from "./community-invite-requests.service";
 import { CommunityController } from "./community.controller";
 import { CommunityService } from "./community.service";
 import { CommunityInvite } from "./entities/community-invite.entity";
@@ -24,7 +25,11 @@ import { GroupJoinNotifsService } from "./group-join-notifs.service";
     forwardRef(() => UserModule),
   ],
   controllers: [CommunityController],
-  providers: [CommunityService, GroupJoinNotifsService],
+  providers: [
+    CommunityService,
+    CommunityInviteRequestsService,
+    GroupJoinNotifsService,
+  ],
   exports: [CommunityService],
 })
 export class CommunityModule {}

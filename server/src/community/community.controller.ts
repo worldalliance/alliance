@@ -19,6 +19,7 @@ import { CommunityLeaderGuard } from "src/auth/guards/communityleader.guard";
 import type { JwtRequest } from "src/auth/tokens";
 import { PosthogService } from "src/posthog/posthog.service";
 import { CommunityMemberContactInfoDto } from "src/user/dto/user-action-relations.dto";
+import { CommunityInviteRequestsService } from "./community-invite-requests.service";
 import { CommunityService } from "./community.service";
 import {
   CommunityInviteDto,
@@ -38,6 +39,7 @@ import {
 export class CommunityController {
   constructor(
     private readonly communityService: CommunityService,
+    private readonly communityInviteRequestsService: CommunityInviteRequestsService,
     private readonly posthog: PosthogService,
   ) {}
 
@@ -339,10 +341,11 @@ export class CommunityController {
     @Body() body: RequestCommunityInviteDto,
     @Request() req: JwtRequest,
   ): Promise<CommunityInviteDto> {
-    const invite = await this.communityService.requestCommunityInvite(
-      body,
-      req.user.sub,
-    );
+    const invite =
+      await this.communityInviteRequestsService.requestCommunityInvite(
+        body,
+        req.user.sub,
+      );
     this.posthog.capture({
       event: AnalyticsEvent.CommunityInviteRequested,
       distinctId: String(req.user.sub),
@@ -362,10 +365,11 @@ export class CommunityController {
     @Param("inviteId", ParseIntPipe) inviteId: number,
     @Request() req: JwtRequest,
   ): Promise<CommunityInviteDto> {
-    const invite = await this.communityService.approveCommunityInviteRequest(
-      inviteId,
-      req.user.sub,
-    );
+    const invite =
+      await this.communityInviteRequestsService.approveCommunityInviteRequest(
+        inviteId,
+        req.user.sub,
+      );
     this.posthog.capture({
       event: AnalyticsEvent.CommunityInviteApproved,
       distinctId: String(req.user.sub),
@@ -385,7 +389,7 @@ export class CommunityController {
     @Param("inviteId", ParseIntPipe) inviteId: number,
     @Request() req: JwtRequest,
   ): Promise<void> {
-    await this.communityService.rejectCommunityInviteRequest(
+    await this.communityInviteRequestsService.rejectCommunityInviteRequest(
       inviteId,
       req.user.sub,
     );
