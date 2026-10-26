@@ -13,31 +13,19 @@ import { computeActiveUserKey } from "@alliance/shared/formrenderer";
 import { computeFormStorageKey } from "@alliance/shared/forms/formDrafts";
 import { completedFormSchema } from "@alliance/shared/forms/formulaChoices";
 import { prefillListsFromPreviousAnswers } from "@alliance/shared/forms/listPrefill";
-import {
-  aggregateTarget,
-  useVariableAggregates,
-} from "@alliance/shared/forms/useVariableAggregates";
-import {
-  historySubject,
-  useVariableSourceHistories,
-} from "@alliance/shared/forms/useVariableSourceHistories";
 import { variableInputsGate } from "@alliance/shared/forms/variableInputsGate";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import {
   deviceTimeZone,
   formTimeZoneDefault,
 } from "@alliance/shared/lib/timeZone";
-import { useVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
 import { cn } from "@alliance/shared/styles/util";
 import {
-  useCurrentUserLocation,
   useFieldErrors,
   useFormSchemaMaps,
   useFormValidation,
   useFormVisibility,
-  usePreviousAnswerSources,
   useRandomizationKey,
-  useVisibilityValidatorResults,
 } from "@alliance/shared/useFormRenderer";
 import React, { useEffect, useMemo, useState } from "react";
 import Spinner from "../ui/Spinner";
@@ -52,6 +40,7 @@ import RenderField from "./RenderField";
 import { useDeviceType } from "./useDeviceType";
 import { useFormDraftState } from "./useFormDraftState";
 import { useFormEditing } from "./useFormEditing";
+import { useFormInputs } from "./useFormInputs";
 import { useFormScroll } from "./useFormScroll";
 import { useFormSubmission } from "./useFormSubmission";
 import { variableInputsGateView } from "./variableInputsGateView";
@@ -200,57 +189,25 @@ const FormRenderer = ({
     completedFormResponse,
   });
 
-  const { currentUserLocationLoading, userLocationDisplayValue } =
-    useCurrentUserLocation({
-      enabled: !!loadCurrentUserLocation && hasUserLocationDisplayBlock,
-      user,
-    });
-
   const {
-    userHasCity,
-    userPropertyHasValue,
-    firstContractSignedAt,
-    completedActionCount,
-    isLoading: visibilityContextLoading,
-    failed: visibilityContextFailed,
-  } = useVisibilityContext(schema, {
-    enabled: !!user,
-  });
-
-  const {
-    results: visibilityValidatorResults,
-    failed: visibilityValidatorsFailed,
-  } = useVisibilityValidatorResults({
+    userLocation,
+    visibilityContext,
+    visibilityValidators,
+    previousAnswers,
+    sourceHistories,
+    variableAggregates,
+  } = useFormInputs({
     schema,
+    formId: id,
+    formSnapshotId,
     readOnly,
-    savedResults: completedFormResponse?.visibilityValidatorResults,
-    signedIn: !!user || adminPreviewUserId !== undefined,
+    user,
+    userLoading,
+    adminPreviewUserId,
+    completedFormResponse,
+    loadUserLocation: !!loadCurrentUserLocation && hasUserLocationDisplayBlock,
   });
-
-  const { previousAnswerSchemas, previousAnswerData, previousAnswersPending } =
-    usePreviousAnswerSources({
-      schema,
-      previewUserId: adminPreviewUserId,
-      signedIn: !!user,
-    });
-
-  const sourceHistories = useVariableSourceHistories({
-    schema,
-    subject: historySubject({
-      adminPreviewUserId,
-      signedIn: !!user,
-      userLoading,
-    }),
-  });
-
-  const variableAggregates = useVariableAggregates({
-    schema,
-    target: aggregateTarget({
-      admin: adminPreviewUserId !== undefined,
-      formId: id,
-      formSnapshotId,
-    }),
-  });
+  const { previousAnswerSchemas, previousAnswerData } = previousAnswers;
 
   useEffect(() => {
     if (readOnly) return;
@@ -281,22 +238,22 @@ const FormRenderer = ({
     currentPageIndex,
     setCurrentPageIndex,
     effectiveDeviceType,
-    visibilityValidatorResults,
+    visibilityValidatorResults: visibilityValidators.results,
     fieldLookup,
     previousAnswerData,
     sourceHistories,
     variableAggregates,
     randomizationKey,
-    userHasCity,
-    userPropertyHasValue,
-    firstContractSignedAt,
-    completedActionCount,
+    userHasCity: visibilityContext.userHasCity,
+    userPropertyHasValue: visibilityContext.userPropertyHasValue,
+    firstContractSignedAt: visibilityContext.firstContractSignedAt,
+    completedActionCount: visibilityContext.completedActionCount,
     visibilityInputs: {
-      visibilityContextLoading,
-      visibilityContextFailed,
-      visibilityValidatorsFailed,
+      visibilityContextLoading: visibilityContext.isLoading,
+      visibilityContextFailed: visibilityContext.failed,
+      visibilityValidatorsFailed: visibilityValidators.failed,
       userLoading,
-      previousAnswersPending,
+      previousAnswersPending: previousAnswers.previousAnswersPending,
     },
   });
 
@@ -360,7 +317,7 @@ const FormRenderer = ({
     actionId,
     schema,
     sourceHistories,
-    visibilityValidatorResults,
+    visibilityValidatorResults: visibilityValidators.results,
     deviceType,
     fieldLookup,
     formData,
@@ -445,7 +402,7 @@ const FormRenderer = ({
     );
   }
 
-  if (visibilityContextLoading) {
+  if (visibilityContext.isLoading) {
     return (
       <div className="flex justify-center py-8">
         <Spinner />
@@ -477,8 +434,8 @@ const FormRenderer = ({
               blockProps={{
                 previousAnswerData,
                 previousAnswerSchemas,
-                userLocation: userLocationDisplayValue,
-                userLocationLoading: currentUserLocationLoading,
+                userLocation: userLocation.userLocationDisplayValue,
+                userLocationLoading: userLocation.currentUserLocationLoading,
               }}
               fieldRef={fieldRef}
               renderField={renderField}
