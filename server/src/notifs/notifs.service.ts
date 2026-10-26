@@ -200,30 +200,25 @@ export class NotifsService {
   }
 
   /**
-   * Moves an update's entries that aren't due yet to `until`, so entries kept
-   * back while it is unpublished arrive, and push, when it shows. Entries
-   * already due were delivered and stay put.
+   * Moves an update's entries that aren't due yet to `sendTime`, so they
+   * arrive, and push, when it shows. Entries already due were delivered and
+   * stay put.
    */
-  async deferActionUpdateEntries(params: {
+  async retimeActionUpdateEntries(params: {
     actionUpdateId: number;
-    until: Date;
+    sendTime: Date;
     em: EntityManager;
   }) {
-    const { actionUpdateId, until, em } = params;
+    const { actionUpdateId, sendTime, em } = params;
     await em.update(
       UnreadContent,
       {
         contentType: UnreadContentType.ActionUpdate,
         contentId: actionUpdateId,
         pushClaimedBy: IsNull(),
-        sendTime: Raw(
-          (sendTime) => `${sendTime} > now() AND ${sendTime} < :until`,
-          {
-            until,
-          },
-        ),
+        sendTime: Raw((sendTime) => `${sendTime} > now()`),
       },
-      { sendTime: until },
+      { sendTime },
     );
   }
 

@@ -180,6 +180,7 @@ import {
 import { ActionUpdateRecognitionPreviewService } from "./action-update-recognition-preview.service";
 import { ActionUpdateRecognitionService } from "./action-update-recognition.service";
 import {
+  actionUpdateEntrySendTime,
   checkActionShowsWhenEntriesArrive,
   isActionUpdatePublished,
   publishedActionUpdateWhere,
@@ -3389,6 +3390,14 @@ export class ActionsService {
       const actionUpdate = await this.lockActionUpdate(id, em);
       // Before the schema write, so publishing sees the `date` this request sets.
       Object.assign(actionUpdate, rest);
+      const now = new Date();
+      if (
+        rest.date !== undefined &&
+        actionUpdate.visibleAt !== null &&
+        actionUpdate.visibleAt > now
+      ) {
+        actionUpdate.visibleAt = max([now, actionUpdate.date]);
+      }
 
       if (schemaWrite) {
         const written = await this.writeSchemaOrThrow({
@@ -3409,7 +3418,7 @@ export class ActionsService {
         // been notified about it, so unpublishing is an explicit act, not a
         // side effect of clearing the editor.
         if (actionUpdate.visibleAt === null && written.schema.blocks.length) {
-          actionUpdate.visibleAt = max([new Date(), actionUpdate.date]);
+          actionUpdate.visibleAt = max([now, actionUpdate.date]);
         }
       }
 
@@ -3426,6 +3435,13 @@ export class ActionsService {
       }
 
       await em.save(actionUpdate);
+      if (rest.date !== undefined) {
+        await this.notifsService.retimeActionUpdateEntries({
+          em,
+          actionUpdateId: id,
+          sendTime: actionUpdateEntrySendTime(actionUpdate),
+        });
+      }
     });
 
     return this.findOneActionUpdate(id);
@@ -3455,10 +3471,10 @@ export class ActionsService {
       }
 
       await em.update(ActionUpdate, id, { visibleAt: actionUpdate.date });
-      await this.notifsService.deferActionUpdateEntries({
+      await this.notifsService.retimeActionUpdateEntries({
         em,
         actionUpdateId: id,
-        until: actionUpdate.date,
+        sendTime: actionUpdate.date,
       });
     });
 
