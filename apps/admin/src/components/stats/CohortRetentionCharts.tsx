@@ -1,9 +1,9 @@
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import { analyticsGetMemberCompletionRetentionAdmin } from "@alliance/shared/client";
 import { MemberCompletionRetentionCohortDto } from "@alliance/shared/client/types.gen";
 import chroma from "chroma-js";
 import { max, min } from "d3";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
+import { adminRefusalMessage } from "../../lib/adminRefusal";
+import { useMemberCompletionRetentionAdmin } from "../../lib/useMemberCompletionRetentionAdmin";
 import {
   TimeSeriesChart,
   fullDateFormatter,
@@ -12,27 +12,12 @@ import {
 import CohortCompletionGrid from "./CohortCompletionGrid";
 
 const CohortRetentionCharts: React.FC = () => {
-  const [retentionCohorts, setRetentionCohorts] = useState<
-    MemberCompletionRetentionCohortDto[]
-  >([]);
-  const [retentionLoading, setRetentionLoading] = useState<boolean>(false);
+  const {
+    data: retentionCohorts = [],
+    isPending: retentionLoading,
+    error: retentionError,
+  } = useMemberCompletionRetentionAdmin();
   const [weekRange, setWeekRange] = useState({ min: 0, max: 20 });
-
-  const loadRetentionCohorts = useCallback(async () => {
-    setRetentionLoading(true);
-    try {
-      const response = await analyticsGetMemberCompletionRetentionAdmin();
-      setRetentionCohorts(response.data ?? []);
-    } catch (err) {
-      console.error("Failed to load retention cohorts", err);
-    } finally {
-      setRetentionLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadRetentionCohorts();
-  }, [loadRetentionCohorts]);
 
   const sortedRetentionCohorts = useMemo(() => {
     return retentionCohorts
@@ -99,6 +84,17 @@ const CohortRetentionCharts: React.FC = () => {
 
     return { multiLineData, legendGradient, cohortMap };
   }, [filteredRetentionCohorts]);
+
+  if (retentionError) {
+    return (
+      <p className="text-sm text-red-600">
+        {adminRefusalMessage(
+          retentionError,
+          "Unable to load cohort retention.",
+        )}
+      </p>
+    );
+  }
 
   return (
     <>

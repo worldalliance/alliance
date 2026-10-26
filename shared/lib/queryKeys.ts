@@ -246,6 +246,8 @@ export const queryKeys = {
   }) => ["inviteLinkAdminSearch", query] as const,
   memberContactInfoAdmin: () =>
     ["communityGetAllMemberContactInfoAdmin"] as const,
+  memberCompletionRetentionAdmin: () =>
+    ["analyticsGetMemberCompletionRetentionAdmin"] as const,
   missedActionsAdmin: () => ["analyticsGetMissedActionsAdmin"] as const,
   onetimeInvitesAdminAll,
   onetimeInvitesAdmin: (page: number, limit: number) =>
