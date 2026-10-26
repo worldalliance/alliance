@@ -83,6 +83,7 @@ import OutputPublicToggle from "./OutputPublicToggle";
 import RenderDisplayBlock from "./RenderDisplayBlock";
 import RenderField from "./RenderField";
 import { useFormDraftState } from "./useFormDraftState";
+import { useFormScroll } from "./useFormScroll";
 import { variableInputsGateView } from "./variableInputsGateView";
 import WithdrawalMenu from "./WithdrawalMenu";
 
@@ -237,17 +238,14 @@ const FormRenderer = ({
     maxPageIndex,
   });
 
-  const formTopRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
-  const fieldElements = useRef(new Map<string, HTMLDivElement>());
-  // A fresh object per failed attempt, so submitting twice on the same bad
-  // field re-runs the focus effect instead of being skipped as unchanged.
-  const [invalidFieldFocus, setInvalidFieldFocus] = useState<{
-    fieldId?: string;
-  } | null>(null);
   // Guard against double-submit when the submit button's click handler
   // (ConfettiWrapper) and the form's submit event both call submitCurrentPage.
   const submittingRef = useRef(false);
+  const { formTopRef, fieldRef, focusInvalidField } = useFormScroll({
+    scrollContainerRef,
+    currentPageIndex,
+  });
   const { fieldErrors, clearFieldErrors, applyFieldErrorUpdates } =
     useFieldErrors();
   const [deviceType, setDeviceType] = useState<DeviceVisibilityTarget>(() =>
@@ -481,7 +479,7 @@ const FormRenderer = ({
     if (nextVisiblePageIndex !== null) {
       const result = await validatePage(currentPageIndex, true);
       if (!result.isValid) {
-        setInvalidFieldFocus({ fieldId: result.firstInvalidFieldId });
+        focusInvalidField(result.firstInvalidFieldId);
         trackValidationError(result.firstInvalidFieldId);
         return;
       }
@@ -514,7 +512,7 @@ const FormRenderer = ({
     const result = await validateAllPages();
     if (!result.isValid && typeof result.firstInvalidPageIndex === "number") {
       setCurrentPageIndex(result.firstInvalidPageIndex);
-      setInvalidFieldFocus({ fieldId: result.firstInvalidFieldId });
+      focusInvalidField(result.firstInvalidFieldId);
     }
     return result;
   }, [validateAllPages]);
@@ -546,7 +544,7 @@ const FormRenderer = ({
       if (!visibilitySettled) return finishSubmit(false);
       const result = await validatePage(currentPageIndex, true);
       if (!result.isValid) {
-        setInvalidFieldFocus({ fieldId: result.firstInvalidFieldId });
+        focusInvalidField(result.firstInvalidFieldId);
         trackValidationError(result.firstInvalidFieldId);
       } else if (reportNativeValidity()) {
         setCurrentPageIndex(nextVisiblePageIndex);
@@ -652,56 +650,6 @@ const FormRenderer = ({
     onAbandonAction?.({ ...choice, partialFormData: submissionPayload });
   };
 
-  // `scrollIntoView` moves every scrollable ancestor, the document included,
-  // so a caller-supplied container is scrolled on its own instead.
-  const scrollElementIntoView = useCallback(
-    (element: HTMLElement) => {
-      const container = scrollContainerRef?.current;
-      if (!container) {
-        element.scrollIntoView({ behavior: "instant", block: "start" });
-        return;
-      }
-      const rawScrollMarginTop = parseFloat(
-        getComputedStyle(element).scrollMarginTop,
-      );
-      const scrollMarginTop = Number.isFinite(rawScrollMarginTop)
-        ? rawScrollMarginTop
-        : 0;
-      const targetTop =
-        element.getBoundingClientRect().top -
-        container.getBoundingClientRect().top +
-        container.scrollTop -
-        scrollMarginTop;
-      container.scrollTo({ top: Math.max(0, targetTop), behavior: "instant" });
-    },
-    [scrollContainerRef],
-  );
-
-  const prevPageIndexRef = useRef(currentPageIndex);
-  useEffect(() => {
-    if (prevPageIndexRef.current === currentPageIndex) {
-      return;
-    }
-    prevPageIndexRef.current = currentPageIndex;
-    const top = formTopRef.current;
-    if (top) scrollElementIntoView(top);
-  }, [currentPageIndex]);
-
-  useEffect(() => {
-    if (!invalidFieldFocus?.fieldId) return;
-    const field = fieldElements.current.get(invalidFieldFocus.fieldId);
-    if (!field) return;
-    const invalid =
-      field.querySelector<HTMLElement>('[aria-invalid="true"]') ?? field;
-    const selector =
-      'input:not([type="hidden"]):not(:disabled), select:not(:disabled), textarea:not(:disabled), button:not(:disabled), [tabindex="0"]:not(:disabled)';
-    const control = invalid.matches(selector)
-      ? invalid
-      : invalid.querySelector<HTMLElement>(selector);
-    scrollElementIntoView(field);
-    (control ?? field).focus();
-  }, [invalidFieldFocus]);
-
   useEffect(() => {
     clearFieldErrors();
   }, [schema]);
@@ -714,10 +662,7 @@ const FormRenderer = ({
     return (
       <div
         key={field.id || index}
-        ref={(element) => {
-          if (element) fieldElements.current.set(field.id, element);
-          else fieldElements.current.delete(field.id);
-        }}
+        ref={fieldRef(field.id)}
         tabIndex={-1}
         className="scroll-mt-24"
       >
