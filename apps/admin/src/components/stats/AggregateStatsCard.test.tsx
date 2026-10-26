@@ -1,9 +1,10 @@
+import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { render, screen } from "@testing-library/react";
 import { actionStat } from "./actionStatFixture";
 import AggregateStatsCard from "./AggregateStatsCard";
 
-serveApi(
+const api = serveApi(
   routes({
     "GET /analytics/aggregate-stats": () => Response.json({ signedUsers: 40 }),
   }),
@@ -28,10 +29,25 @@ describe("AggregateStatsCard", () => {
           },
         ]}
       />,
+      queryWrapper(),
     );
 
     await screen.findByText("40");
     expect(screen.getByText(/75\.00/)).toBeTruthy();
     expect(screen.getByText(/25\.0/)).toBeTruthy();
+  });
+
+  it("says so when the stats fail to load", async () => {
+    api.alsoServing({
+      "GET /analytics/aggregate-stats": () =>
+        Response.json({ message: "boom" }, { status: 500 }),
+    });
+
+    render(
+      <AggregateStatsCard actionStats={[]} parsedContractStatusHistory={[]} />,
+      queryWrapper(),
+    );
+
+    await screen.findByText("Unable to load aggregate stats.");
   });
 });
