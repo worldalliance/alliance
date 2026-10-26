@@ -11,7 +11,7 @@ import {
 } from "../lib/updatePreview";
 
 export const UPDATE_PREVIEW_DESCRIPTION =
-  "Every variation going out, as members will see it. Highlighted parts differ per member.";
+  "Every variation going out, as members will see it. Highlighted parts are filled in per member or from the update.";
 
 export enum PreviewCountsKind {
   Counted = "counted",

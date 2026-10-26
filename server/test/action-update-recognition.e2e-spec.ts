@@ -14,6 +14,7 @@ import {
   ActionUpdateNotificationMode,
 } from "src/actions/entities/action-update.entity";
 import { Action, VisibilityMode } from "src/actions/entities/action.entity";
+import { Project } from "src/actions/entities/project.entity";
 import {
   MessageChannel,
   MessageSource,
@@ -221,9 +222,11 @@ describe("action update recognition (e2e)", () => {
       userId: completer.id,
       context: { actionId: expect.any(Number), actionUpdateId: id },
     });
-    expect(recognitionCopySchema.parse(exposure.copy).emailSubject).toBe(
-      "a hearing on the bill",
+    const copy = recognitionCopySchema.parse(exposure.copy);
+    expect(copy.emailSubject).toBe(
+      "Alliance progress update: Write to your representative",
     );
+    expect(copy.emailBody).toContain("a hearing on the bill\n\n## Body\n\n");
     expect(exposure.mail?.to).toBe(completer.email);
     const pushes = await ctx.dataSource
       .getRepository(Push)
@@ -409,6 +412,30 @@ describe("action update recognition (e2e)", () => {
     ).toBeNull();
   });
 
+  it("names the action's project in the email when it has one", async () => {
+    const member = await createMember();
+    const project = await ctx.dataSource
+      .getRepository(Project)
+      .save({ name: "Recognition project", category: [] });
+    await ctx.dataSource
+      .getRepository(Action)
+      .update(action.id, { project: { id: project.id } });
+    try {
+      const id = await createUpdate();
+      await notify(id).expect(200);
+      await deliverAll();
+      expect(
+        recognitionCopySchema.parse((await exposureOf(id, member.id)).copy)
+          .emailSubject,
+      ).toBe("Alliance progress update: Recognition project");
+    } finally {
+      await ctx.dataSource
+        .getRepository(Action)
+        .update(action.id, { project: null });
+      await ctx.dataSource.getRepository(Project).delete(project.id);
+    }
+  });
+
   it("freezes copy at the snapshot, so later edits leave every channel alone", async () => {
     const member = await createMember();
     const id = await createUpdate();
@@ -558,7 +585,7 @@ describe("action update recognition (e2e)", () => {
     await notify(id).expect(200);
     const mail = ctx.app.get(MailService);
     const send = jest
-      .spyOn(mail, "sendActionEventNotificationEmail")
+      .spyOn(mail, "sendCustomHtmlEmail")
       .mockRejectedValueOnce(new Error("rejected"));
     try {
       await deliverAll();

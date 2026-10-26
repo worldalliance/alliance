@@ -2,10 +2,12 @@ import {
   recognitionCopy,
   recognitionCopySchema,
 } from "@alliance/common/action-update-copy";
+import { displayOnlyMarkdown } from "@alliance/common/forms/display-only-markdown";
+import { readDisplayOnlySchema } from "@alliance/common/forms/display-only-schema";
 import { R, type Result } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
-import { chunk, escape } from "es-toolkit";
+import { chunk } from "es-toolkit";
 import { MessageSource } from "src/link-tracking/message-tracking.entity";
 import type { TrackedMessage } from "src/link-tracking/message-tracking.service";
 import { MailService } from "src/mail/mail.service";
@@ -33,6 +35,7 @@ import {
   TERMINAL_ACTIVITY_TYPES,
 } from "./action-activity-status";
 import { ActionParticipantsService } from "./action-participants.service";
+import { actionUpdateEmailHtml } from "./action-update-email";
 import {
   planRecognition,
   readRecognitionConfig,
@@ -162,7 +165,10 @@ export class ActionUpdateRecognitionService {
     const held = await this.dataSource.transaction(
       async (em): Promise<string | null> => {
         await lockActionUpdateRow(em, id);
-        const update = await em.findOneByOrFail(ActionUpdate, { id });
+        const update = await em.findOneOrFail(ActionUpdate, {
+          where: { id },
+          relations: { action: { project: true }, schemaSnapshot: true },
+        });
         if (
           !update.notifiedAt ||
           update.recognitionPreparedAt ||
@@ -174,25 +180,38 @@ export class ActionUpdateRecognitionService {
         const exposures = await em.find(ActionUpdateExposure, {
           where: { actionUpdateId: id },
         });
+        const hold = async (reason: string) => {
+          await em.update(ActionUpdate, id, { notificationHeldReason: reason });
+          return reason;
+        };
+        const content = readDisplayOnlySchema(update.schemaSnapshot?.schema);
+        if (!content) return hold("The update's content can't be read.");
         const planned = await this.plan({
           em,
           update,
           userIds: exposures.map((exposure) => exposure.userId),
           participantIds,
         });
-        if (!planned.ok) {
-          await em.update(ActionUpdate, id, {
-            notificationHeldReason: planned.error,
-          });
-          return planned.error;
-        }
+        if (!planned.ok) return hold(planned.error);
 
+        if (!update.action) {
+          throw new Error(`action update ${id} loaded without its action`);
+        }
+        const link = actionUrl(update.actionId, true);
+        const projectOrActionName =
+          update.action.project?.name ?? update.action.name;
+        const contentMarkdown = displayOnlyMarkdown({
+          blocks: content.blocks,
+          videoLink: link,
+        });
         const prepared = planned.value.map((plan) => ({
           plan,
           copy: recognitionCopy({
             allianceResult: plan.allianceResult,
             recipientName: plan.name,
-            link: actionUrl(update.actionId, true),
+            link,
+            projectOrActionName,
+            content: contentMarkdown,
           }),
         }));
         const entries = await this.notifsService.sendUnreadContents(
@@ -391,9 +410,9 @@ export class ActionUpdateRecognitionService {
         channels.includes(NotificationChannel.Email)
       ) {
         const mail = await R.fromPromise(
-          this.mailService.sendActionEventNotificationEmail({
+          this.mailService.sendCustomHtmlEmail({
             subject: copy.emailSubject,
-            message: escape(copy.emailBody),
+            html: actionUpdateEmailHtml(copy.emailBody),
             tracking,
             recipient: user.email,
           }),

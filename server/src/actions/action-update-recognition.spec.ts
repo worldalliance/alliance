@@ -91,6 +91,8 @@ describe("recognitionCopy", () => {
       allianceResult,
       recipientName: "Avery Example",
       link: "https://example.org/a?cid=x",
+      projectOrActionName: "Clean Water",
+      content: "## What we heard\n\nMost stores said yes.",
     });
 
   it("leads push and text with Update:, leaving the inbox's own label to say it's an update", () => {
@@ -98,14 +100,36 @@ describe("recognitionCopy", () => {
       inApp: "a hearing on the bill",
       push: "Update: a hearing on the bill",
       sms: "Update: a hearing on the bill https://example.org/a?cid=x",
-      emailSubject: "a hearing on the bill",
-      emailBody:
-        "Hi Avery,\na hearing on the bill\nhttps://example.org/a?cid=x",
+      emailSubject: "Alliance progress update: Clean Water",
+      emailBody: [
+        "Hi Avery,",
+        'Here\'s an update on a recent Alliance project, "[Clean Water](https://example.org/a?cid=x)."',
+        "a hearing on the bill",
+        "## What we heard\n\nMost stores said yes.",
+        "Best,",
+        "The Alliance Team",
+      ].join("\n\n"),
     });
   });
 
-  it("ends the email subject at the result's first sentence", () => {
-    expect(copyOf("a hearing. Thank you!").emailSubject).toBe("a hearing.");
+  it("keeps the result and name from adding Markdown to the email", () => {
+    expect(
+      recognitionCopy({
+        allianceResult: "# 1. *won*",
+        recipientName: "<b>Jo</b>",
+        link: "https://example.org/a",
+        projectOrActionName: "[x](y)",
+        content: "",
+      }).emailBody,
+    ).toBe(
+      [
+        "Hi \\<b>Jo\\</b>,",
+        'Here\'s an update on a recent Alliance project, "[\\[x\\](y)](https://example.org/a)."',
+        "\\# 1. \\*won\\*",
+        "Best,",
+        "The Alliance Team",
+      ].join("\n\n"),
+    );
   });
 });
 
