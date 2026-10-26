@@ -62,6 +62,7 @@ import { getDeviceTimeZone } from "../../lib/timeZone";
 import Text, { FontWeight } from "../system/Text";
 import { FormNavigation, ReadOnlyPageNavigation } from "./FormNavigation";
 import OutputPublicToggle from "./OutputPublicToggle";
+import { pageNavigation } from "./pageNavigation";
 import { RenderDisplayBlockMobile } from "./RenderDisplayBlock";
 import { RenderField } from "./RenderField";
 import { useFormDraftState } from "./useFormDraftState";
@@ -334,24 +335,17 @@ const FormRenderer = ({
     setPublicAnswers((prev) => ({ ...prev, [fieldId]: nextPublic }));
   };
 
-  const handleNextPage = async () => {
-    if (nextVisiblePageIndex === null || !visibilitySettled) {
-      return;
-    }
-    const result = await validatePage(currentPageIndex, true);
-    if (result.isValid) {
-      setCurrentPageIndex(nextVisiblePageIndex);
-      setImmediate(() => scrollPageTo(0, false));
-    }
-  };
-
-  const handlePreviousPage = () => {
-    if (previousVisiblePageIndex === null) {
-      return;
-    }
-    setCurrentPageIndex(previousVisiblePageIndex);
-    setImmediate(() => scrollToEnd(false));
-  };
+  const navigation = pageNavigation({
+    currentPageIndex,
+    setCurrentPageIndex,
+    nextVisiblePageIndex,
+    previousVisiblePageIndex,
+    visibilitySettled,
+    validatePage,
+    validateAllPages,
+    scrollPageTo,
+    scrollToEnd,
+  });
 
   const handleSubmit = async () => {
     if (submitting || readOnly || imageUpload.uploadingAny) {
@@ -364,25 +358,7 @@ const FormRenderer = ({
     }
     setSubmitting(true);
 
-    if (nextVisiblePageIndex !== null) {
-      const result = await validatePage(currentPageIndex, true);
-      if (result.isValid) {
-        setCurrentPageIndex(nextVisiblePageIndex);
-        setImmediate(() => scrollPageTo(0, false));
-      }
-      setSubmitting(false);
-      return;
-    }
-
-    const { isValid, firstInvalidPageIndex } = await validateAllPages();
-    if (!isValid) {
-      if (
-        typeof firstInvalidPageIndex === "number" &&
-        firstInvalidPageIndex !== currentPageIndex
-      ) {
-        setCurrentPageIndex(firstInvalidPageIndex);
-        setImmediate(() => scrollPageTo(0, false));
-      }
+    if (!(await navigation.readyToSubmit())) {
       setSubmitting(false);
       return;
     }
@@ -574,23 +550,16 @@ const FormRenderer = ({
         <ReadOnlyPageNavigation
           pageNumber={currentVisiblePageNumber}
           pageCount={visiblePageCount}
-          onBack={isFirstPage ? null : handlePreviousPage}
-          onNext={
-            nextVisiblePageIndex === null
-              ? null
-              : () => {
-                  setCurrentPageIndex(nextVisiblePageIndex);
-                  setImmediate(() => scrollPageTo(0, false));
-                }
-          }
+          onBack={isFirstPage ? null : navigation.goToPreviousPage}
+          onNext={navigation.browseToNextPage}
         />
       )}
       {!readOnly && (
         <FormNavigation
           pageNumber={currentVisiblePageNumber}
           pageCount={visiblePageCount}
-          onBack={isFirstPage ? null : handlePreviousPage}
-          onPrimary={isLastPage ? handleSubmit : handleNextPage}
+          onBack={isFirstPage ? null : navigation.goToPreviousPage}
+          onPrimary={isLastPage ? handleSubmit : navigation.goToNextPage}
           isLastPage={isLastPage}
           preview={!onSubmit}
           submitting={submitting}
