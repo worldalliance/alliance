@@ -1,12 +1,27 @@
 import { ActionEventNotifDto, Push } from "@alliance/shared/client/types.gen";
 import { cn } from "@alliance/shared/styles/util";
+import { UseQueryResult } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
+import { SectionLoadState, SectionRefreshError } from "./SectionQueryState";
 
 export default function UserNotificationsSection({
+  query: { data: notifs, isError, isRefetchError },
+}: {
+  query: UseQueryResult<ActionEventNotifDto[]>;
+}) {
+  if (!notifs) {
+    return <SectionLoadState noun="notifications" isError={isError} />;
+  }
+  return <UserNotifications notifs={notifs} isRefetchError={isRefetchError} />;
+}
+
+function UserNotifications({
   notifs,
+  isRefetchError,
 }: {
   notifs: ActionEventNotifDto[];
+  isRefetchError: boolean;
 }) {
   const [expandedEmailId, setExpandedEmailId] = useState<number | null>(null);
 
@@ -55,6 +70,7 @@ export default function UserNotificationsSection({
       <h2 className="text-sm font-semibold text-zinc-700 mb-2">
         Notifications ({notifs.length})
       </h2>
+      {isRefetchError && <SectionRefreshError noun="notifications" />}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Texts */}
         <div className="border border-zinc-200 rounded overflow-hidden">

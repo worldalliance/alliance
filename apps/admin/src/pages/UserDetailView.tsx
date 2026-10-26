@@ -1,9 +1,4 @@
 import { formatPhoneNumberForDisplay } from "@alliance/common/phone";
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import {
-  notifsNotifsForUserAdmin,
-  tasksGetFormsForUserSidAdmin,
-} from "@alliance/shared/client";
 import { UserAdminDetailDto } from "@alliance/shared/client/types.gen";
 import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import { userFriendsQuery } from "@alliance/shared/lib/user";
@@ -33,8 +28,13 @@ import { tagSummariesQuery } from "../lib/useTagsAdmin";
 import { userActionRelationsQuery } from "../lib/useUserActionRelationsAdmin";
 import { useUserAwayRangesAdmin } from "../lib/useUserAwayRangesAdmin";
 import { useUserDetailAdmin, userDetailQuery } from "../lib/useUserDetailAdmin";
+import {
+  useUserNotifsAndFormsAdmin,
+  userFormResponsesQuery,
+  userNotifsQuery,
+} from "../lib/useUserNotifsAndFormsAdmin";
 
-export async function clientLoader({ params }: Route.LoaderArgs) {
+export function clientLoader({ params }: Route.LoaderArgs) {
   const userIdParam = params.userId;
   if (!userIdParam) {
     throw new Error("Not found");
@@ -48,18 +48,10 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
   prefetchFromLoader(userActionRelationsQuery(userId));
   prefetchFromLoader(tagSummariesQuery());
   prefetchFromLoader(userFriendsQuery(userId));
-  const [notifRes, formResponsesRes] = await Promise.all([
-    notifsNotifsForUserAdmin({ path: { id: userId } }),
-    tasksGetFormsForUserSidAdmin({ path: { userId } }).catch(() => ({
-      data: [],
-    })),
-  ]);
+  prefetchFromLoader(userNotifsQuery(userId));
+  prefetchFromLoader(userFormResponsesQuery(userId));
 
-  return {
-    userId,
-    notifs: notifRes.data ?? [],
-    formResponses: formResponsesRes.data ?? [],
-  };
+  return { userId };
 }
 
 const UserDetailView: React.FC = () => {
@@ -100,7 +92,7 @@ const UserDetail = ({
   user: UserAdminDetailDto;
   userDetail: ReturnType<typeof useUserDetailAdmin>;
 }) => {
-  const { notifs, formResponses } = useLoaderData<typeof clientLoader>();
+  const { notifs, formResponses } = useUserNotifsAndFormsAdmin(user.id);
 
   const [isSuspendPending, setIsSuspendPending] = useState(false);
   const [suspendMutationError, setSuspendMutationError] = useState<
@@ -226,7 +218,7 @@ const UserDetail = ({
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <div className="lg:col-span-3 space-y-4">
           <UserActionsSection userId={user.id} />
-          <UserNotificationsSection notifs={notifs} />
+          <UserNotificationsSection query={notifs} />
         </div>
 
         {/* Right Column */}
@@ -290,7 +282,7 @@ const UserDetail = ({
             )}
           </section>
 
-          <UserFormSubmissionsSection formResponses={formResponses} />
+          <UserFormSubmissionsSection query={formResponses} />
         </div>
       </div>
       {isDeleteModalOpen && (
