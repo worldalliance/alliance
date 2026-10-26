@@ -29,7 +29,9 @@ import {
   HomeFeedItemDto,
   TimelineFeedItemDto,
 } from "./dto/action-feed.dto";
+import { FeedMembersService } from "./feed-members.service";
 import { parseFeedPage } from "./feed-page";
+import { GlobalFeedService } from "./global-feed.service";
 
 const GLOBAL_FEED_MEMBERS_DEFAULT_LIMIT = 30;
 const GLOBAL_FEED_MEMBERS_MAX_LIMIT = 50;
@@ -50,6 +52,8 @@ function parseFeedActivityType(value: string): FeedActionActivity {
 export class ActionFeedController {
   constructor(
     private readonly actionsService: ActionsService,
+    private readonly feedMembers: FeedMembersService,
+    private readonly globalFeed: GlobalFeedService,
     private readonly posthog: PosthogService,
   ) {}
 
@@ -87,7 +91,7 @@ export class ActionFeedController {
     @Request() req: JwtRequest,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
   ): Promise<GlobalFeedItemDto[]> {
-    return this.actionsService.getGlobalFeed(limit ?? 15, req.user?.sub);
+    return this.globalFeed.getGlobalFeed(limit ?? 15, req.user?.sub);
   }
 
   @Get("globalFeed/activityGroupMembers")
@@ -110,7 +114,7 @@ export class ActionFeedController {
     limit: number,
     @Query("afterId", new ParseIntPipe({ optional: true })) afterId?: number,
   ): Promise<ProfileDto[]> {
-    return this.actionsService.getActivityGroupMembers(
+    return this.feedMembers.getActivityGroupMembers(
       actionId,
       parseFeedActivityType(activityType),
       capGlobalFeedMembersLimit(limit),
@@ -136,7 +140,7 @@ export class ActionFeedController {
     limit: number,
     @Query("afterId", new ParseIntPipe({ optional: true })) afterId?: number,
   ): Promise<ProfileDto[]> {
-    return this.actionsService.getNewMembers(
+    return this.feedMembers.getNewMembers(
       capGlobalFeedMembersLimit(limit),
       afterId,
     );
@@ -161,7 +165,7 @@ export class ActionFeedController {
     limit: number,
     @Query("afterId", new ParseIntPipe({ optional: true })) afterId?: number,
   ): Promise<ProfileDto[]> {
-    return this.actionsService.getForumCommentMembers(
+    return this.feedMembers.getForumCommentMembers(
       postId,
       capGlobalFeedMembersLimit(limit),
       afterId,

@@ -5,12 +5,10 @@ import {
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { milliseconds } from "date-fns";
 import { ActionCategory } from "src/actions/action-category";
-import {
-  ActionsService,
-  GLOBAL_FEED_FACEPILE_LIMIT,
-} from "src/actions/actions.service";
+import { ActionsService } from "src/actions/actions.service";
 import { CohortResolverService } from "src/actions/cohort-resolver.service";
 import type { ActionActivity } from "src/actions/entities/action-activity.entity";
+import { GLOBAL_FEED_FACEPILE_LIMIT } from "src/actions/feed-members.service";
 import { SingleMemberCohortService } from "src/actions/single-member-cohort.service";
 import { ContractService } from "src/contract/contract.service";
 import {

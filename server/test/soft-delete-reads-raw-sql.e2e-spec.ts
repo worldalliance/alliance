@@ -13,6 +13,7 @@ import {
   ReminderGroup,
   ReminderGroupTimingMode,
 } from "src/actions/entities/reminder-group.entity";
+import { FeedMembersService } from "src/actions/feed-members.service";
 import { DetectableEntity } from "src/ai-detection/entities/ai-detection-result.entity";
 import { EntityResolverService } from "src/ai-detection/entity-resolver.service";
 import { AnalyticsModule } from "src/analytics/analytics.module";
@@ -54,6 +55,7 @@ describe("Raw SQL reads skip soft-deleted rows (e2e)", () => {
   let contractEventRepo: Repository<ContractEvent>;
   let commentRepo: Repository<Comment>;
   let actionsService: ActionsService;
+  let feedMembers: FeedMembersService;
 
   const daysAgo = (days: number) =>
     new Date(Date.now() - milliseconds({ days }));
@@ -142,6 +144,7 @@ describe("Raw SQL reads skip soft-deleted rows (e2e)", () => {
     contractEventRepo = ctx.dataSource.getRepository(ContractEvent);
     commentRepo = ctx.dataSource.getRepository(Comment);
     actionsService = ctx.app.get(ActionsService);
+    feedMembers = ctx.app.get(FeedMembersService);
   }, 50000);
 
   afterAll(async () => {
@@ -311,7 +314,7 @@ describe("Raw SQL reads skip soft-deleted rows (e2e)", () => {
         .id,
     );
 
-    const ids = (await actionsService.getNewMembers(100)).map(
+    const ids = (await feedMembers.getNewMembers(100)).map(
       (profile) => profile.id,
     );
     expect(ids).toContain(resigned.id);
@@ -325,7 +328,7 @@ describe("Raw SQL reads skip soft-deleted rows (e2e)", () => {
       (await activity({ userId: deleted.id, actionId: action.id })).id,
     );
 
-    const members = await actionsService.getActivityGroupMembers(
+    const members = await feedMembers.getActivityGroupMembers(
       action.id,
       ActionActivityType.USER_COMPLETED,
       100,
@@ -356,7 +359,7 @@ describe("Raw SQL reads skip soft-deleted rows (e2e)", () => {
       (await comment({ authorId: deleted.id, ...onPost })).id,
     );
 
-    const members = await actionsService.getForumCommentMembers(postId, 100);
+    const members = await feedMembers.getForumCommentMembers(postId, 100);
     expect(members.map((profile) => profile.id)).toEqual([live.id]);
   });
 

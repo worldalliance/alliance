@@ -6,7 +6,6 @@ import {
   MEMBER_ACTION_DEADLINE_PASSED,
   WITHDRAWAL_OPTION_LABELS,
   withdrawalOptionFromFlags,
-  type FeedActionActivity,
 } from "@alliance/common/actionActivity";
 import { AnalyticsEvent, ExceptionEvent } from "@alliance/common/analytics";
 import {
@@ -73,19 +72,9 @@ import {
 } from "src/datasources/soft-delete";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
-import {
-  Comment,
-  CommentParentObject,
-  loadedCommentAuthor,
-} from "src/forum/entities/comment.entity";
+import { CommentParentObject } from "src/forum/entities/comment.entity";
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
-import { Post } from "src/forum/entities/post.entity";
 import { ForumCommentQueryService } from "src/forum/forum-comment-query.service";
-import { ForumService } from "src/forum/forum.service";
-import {
-  hiddenCommentIds,
-  withoutHiddenComments,
-} from "src/forum/hidden-comments";
 import { renderedImageKey } from "src/images/images.service";
 import { FacepileService } from "src/likes/facepile.service";
 import {
@@ -118,15 +107,12 @@ import {
   UserActionRelationsForUser,
   UserActionSummary,
 } from "src/user/dto/user-action-relations.dto";
-import { ProfileDto } from "src/user/dto/user.dto";
 import {
   ContractEventType,
-  sqlUserHasActiveContractAt,
   sqlUserHasEverSigned,
 } from "src/user/entities/contract-event.entity";
 import { loadedTagUsers, Tag } from "src/user/entities/tag.entity";
 import { loadedUserCommunities, User } from "src/user/entities/user.entity";
-import { sqlUserHasProfilePicture } from "src/user/profile-picture";
 import {
   ActionAssignment,
   computeActionAssignment,
@@ -206,12 +192,6 @@ import {
   UpdateActionEventDto,
 } from "./dto/action-event.dto";
 import {
-  GlobalFeedActionUpdateDto,
-  GlobalFeedActivityGroupDto,
-  GlobalFeedForumCommentsDto,
-  GlobalFeedItemDto,
-  GlobalFeedItemType,
-  GlobalFeedNewMembersDto,
   HomeFeedItem,
   HomeFeedItemDto,
   HomeFeedItemType,
@@ -336,12 +316,6 @@ export type SuspensionCandidate = { user: User; reasonKey: string };
  */
 export type LinkedAction = Pick<Action, "id" | "name">;
 
-/** Facepile preview size; member-list endpoints paginate full lists. */
-export const GLOBAL_FEED_FACEPILE_LIMIT = 8;
-
-/** Feed/member-list rolling window. */
-const GLOBAL_FEED_WINDOW_DAYS = 8;
-
 /**
  * Withdrawal reasons longer than this are truncated in the opt-out event-log
  * message to keep the Slack copy readable; the full reason is still stored on
@@ -372,22 +346,6 @@ const MEMBER_FEED_RELATIONS = {
   reviewers: true,
 } satisfies Omit<Relations<Action>, "usersCompleted" | "status">;
 
-type FeedMemberPageRow = {
-  userId: number | string;
-  latestAt: Date | string;
-  latestId: number | string;
-};
-
-type FeedMemberRankedQuery = {
-  rankedSql: string;
-  params: unknown[];
-};
-
-type FeedMemberSummaryRow = FeedMemberPageRow & {
-  totalCount: number | string;
-  windowLatestAt: Date | string;
-};
-
 @Injectable()
 export class ActionsService {
   private readonly logger = new Logger(ActionsService.name);
@@ -401,8 +359,6 @@ export class ActionsService {
     private readonly actionEventRepository: Repository<ActionEvent>,
     @InjectRepository(ActionActivity)
     private readonly actionActivityRepository: Repository<ActionActivity>,
-    @InjectRepository(Comment)
-    private readonly commentRepository: Repository<Comment>,
     @InjectRepository(EditableContent)
     private readonly editableContentRepository: TypedRepository<EditableContent>,
     @InjectRepository(GeneralUpdate)
@@ -421,16 +377,12 @@ export class ActionsService {
     private readonly shareUrlsService: ShareUrlsService,
     @InjectRepository(FormResponse)
     private readonly formResponseRepository: Repository<FormResponse>,
-    @InjectRepository(Post)
-    private readonly postRepository: Repository<Post>,
     @InjectRepository(FollowUpForm)
     private readonly followUpFormRepository: Repository<FollowUpForm>,
     @InjectRepository(Community)
     private readonly communityRepository: Repository<Community>,
     @InjectRepository(ActionFormVariant)
     private readonly actionFormVariantRepository: Repository<ActionFormVariant>,
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
     private userService: UserService,
     private readonly friendService: FriendService,
     private readonly tagService: TagService,
@@ -442,7 +394,6 @@ export class ActionsService {
     private readonly actionEventReminderService: ActionEventReminderService,
     private readonly reminderGroupService: ReminderGroupService,
     private readonly likeNotificationService: LikeNotificationService,
-    private readonly forumService: ForumService,
     private readonly forumCommentQueryService: ForumCommentQueryService,
     private readonly eventLogService: EventLogService,
     @Inject(forwardRef(() => ActionFormVariantService))
@@ -4554,550 +4505,6 @@ export class ActionsService {
       .filter((stat) => stat.inviteCount > 0);
 
     return results.sort((a, b) => b.inviteCount - a.inviteCount);
-  }
-
-  /** Unified feed of recent activity groups, action updates, joins, and comments. */
-  async getGlobalFeed(
-    limit: number = 15,
-    userId?: number,
-  ): Promise<GlobalFeedItemDto[]> {
-    const feedItems: GlobalFeedItemDto[] = [];
-    const now = new Date();
-    const oneWeekAgo = this.globalFeedWindowStart();
-    const session = new CohortResolutionSession();
-    const user =
-      await this.actionVisibility.loadUserForActionVisibility(userId);
-
-    const recentActivities = (await this.actionActivityRepository
-      .createQueryBuilder("activity")
-      .leftJoinAndSelect("activity.user", "user")
-      .leftJoinAndSelect("activity.action", "action")
-      .select([
-        "activity.id",
-        "activity.type",
-        "activity.actionId",
-        "activity.createdAt",
-        "user.id",
-        "user.name",
-        "user.profilePicture",
-        "user.anonymous",
-        "user.admin",
-        "user.staff",
-        "user.profileDescription",
-        "action.id",
-        "action.name",
-        "action.onboarding",
-      ])
-      .loadRelationIdAndMap("user.leaderOfIds", "user.leaderOf")
-      .where("activity.type IN (:...types)", {
-        types: ACTION_ACTIVITY_FEED_VISIBLE_TYPES,
-      })
-      .andWhere("action.onboarding = false")
-      .andWhere("activity.createdAt > :oneWeekAgo", { oneWeekAgo })
-      .orderBy("activity.createdAt", "DESC")
-      .getMany()) as (ActionActivity & {
-      type: FeedActionActivity;
-    })[];
-
-    // The recency window runs on `visibleAt`, not `date`: an update backdated to
-    // when its subject happened would fall outside a one-week window on the day
-    // it was published.
-    const actionUpdates = await this.actionUpdateRepository.find({
-      where: {
-        visibleAt: MoreThan(oneWeekAgo),
-      },
-      relations: { action: true, schemaSnapshot: true },
-      order: { date: "DESC" },
-    });
-
-    const visibleActionIds =
-      await this.actionVisibility.visibleActionIdsForUser({
-        actionIds: [
-          ...recentActivities.map((activity) => activity.actionId),
-          ...actionUpdates.map((update) => update.actionId),
-        ],
-        user,
-        session,
-      });
-
-    // Activity groups are action + type, not day buckets.
-    const activityGroups = new Map<
-      string,
-      {
-        activities: ActionActivity[];
-        actionId: number;
-        actionName: string;
-        type: FeedActionActivity;
-        latestDate: Date;
-      }
-    >();
-
-    for (const activity of recentActivities) {
-      if (!visibleActionIds.has(activity.actionId)) {
-        continue;
-      }
-      const key = `${activity.actionId}-${activity.type}`;
-
-      if (!activityGroups.has(key)) {
-        activityGroups.set(key, {
-          activities: [],
-          actionId: activity.actionId,
-          actionName: loadedActionActivityAction(activity).name,
-          type: activity.type,
-          latestDate: activity.createdAt,
-        });
-      }
-      const group = activityGroups.get(key)!;
-      group.activities.push(activity);
-      if (activity.createdAt > group.latestDate) {
-        group.latestDate = activity.createdAt;
-      }
-    }
-
-    for (const group of activityGroups.values()) {
-      const uniqueUsers = new Map<number, ProfileDto>();
-      for (const activity of group.activities) {
-        const activityUser = loadedActionActivityUser(activity);
-        if (!uniqueUsers.has(activityUser.id)) {
-          uniqueUsers.set(activityUser.id, new ProfileDto(activityUser));
-        }
-      }
-      const users = Array.from(uniqueUsers.values());
-
-      const activityGroup: GlobalFeedActivityGroupDto = {
-        users: users.slice(0, GLOBAL_FEED_FACEPILE_LIMIT),
-        actionId: group.actionId,
-        actionName: group.actionName,
-        activityType: group.type,
-        count: uniqueUsers.size,
-      };
-
-      feedItems.push(
-        new GlobalFeedItemDto({
-          type: GlobalFeedItemType.ActivityGroup,
-          date: group.latestDate,
-          activityGroup,
-        }),
-      );
-    }
-
-    for (const update of actionUpdates) {
-      if (!visibleActionIds.has(update.actionId)) {
-        continue;
-      }
-      if (isActionUpdatePublished(update, now) && update.schemaSnapshot) {
-        const actionUpdateDto: GlobalFeedActionUpdateDto = {
-          id: update.id,
-          title: update.title,
-          schema: displayOnlySchemaOf({
-            owner: "ActionUpdate",
-            ownerId: update.id,
-            snapshot: update.schemaSnapshot,
-          }),
-          date: update.date,
-          actionId: update.actionId,
-          actionName: update.action?.name || "Unknown Action",
-        };
-
-        feedItems.push(
-          new GlobalFeedItemDto({
-            type: GlobalFeedItemType.ActionUpdate,
-            date: update.date,
-            actionUpdate: actionUpdateDto,
-          }),
-        );
-      }
-    }
-
-    const {
-      users: newMemberUsers,
-      count: newMemberCount,
-      latestDate: latestMemberDate,
-    } = await this.computeRecentNewMembers(oneWeekAgo, now);
-
-    if (newMemberCount > 0 && latestMemberDate) {
-      const newMembers: GlobalFeedNewMembersDto = {
-        users: newMemberUsers,
-        count: newMemberCount,
-      };
-
-      feedItems.push(
-        new GlobalFeedItemDto({
-          type: GlobalFeedItemType.NewMembers,
-          date: latestMemberDate,
-          newMembers,
-        }),
-      );
-    }
-
-    const recentComments = await withoutHiddenComments(
-      this.commentRepository.manager,
-      await this.commentRepository
-        .createQueryBuilder("comment")
-        .leftJoinAndSelect("comment.author", "author")
-        .select([
-          "comment.id",
-          "comment.parentObjectId",
-          "comment.parentObjectType",
-          "comment.createdAt",
-          "author.id",
-          "author.name",
-          "author.profilePicture",
-          "author.anonymous",
-          "author.admin",
-          "author.staff",
-          "author.profileDescription",
-        ])
-        .loadRelationIdAndMap("author.leaderOfIds", "author.leaderOf")
-        .where("comment.parentObjectType = :postType", {
-          postType: CommentParentObject.Post,
-        })
-        .andWhere("comment.createdAt > :oneWeekAgo", { oneWeekAgo })
-        .orderBy("comment.createdAt", "DESC")
-        .getMany(),
-    );
-
-    const commentGroups = new Map<
-      number,
-      {
-        users: Map<number, { profile: ProfileDto; commentId: number }>;
-        latestDate: Date;
-        postId: number;
-      }
-    >();
-
-    for (const comment of recentComments) {
-      const postId = comment.parentObjectId;
-
-      if (!commentGroups.has(postId)) {
-        commentGroups.set(postId, {
-          users: new Map(),
-          latestDate: comment.createdAt,
-          postId,
-        });
-      }
-      const group = commentGroups.get(postId)!;
-      const author = loadedCommentAuthor(comment);
-      if (!group.users.has(author.id)) {
-        group.users.set(author.id, {
-          profile: new ProfileDto(author),
-          commentId: comment.id,
-        });
-      }
-      if (comment.createdAt > group.latestDate) {
-        group.latestDate = comment.createdAt;
-      }
-    }
-
-    const postIds = Array.from(commentGroups.keys());
-    if (postIds.length > 0) {
-      const postsQuery = this.postRepository
-        .createQueryBuilder("post")
-        .select(["post.id", "post.title"])
-        .where("post.id IN (:...postIds)", { postIds });
-      this.forumService.addPostVisibilityFilter(postsQuery, "post");
-      const posts = await postsQuery.getMany();
-
-      const postTitleMap = new Map<number, string>();
-      for (const post of posts) {
-        postTitleMap.set(post.id, post.title);
-      }
-
-      for (const group of commentGroups.values()) {
-        const postTitle = postTitleMap.get(group.postId);
-        if (!postTitle) continue;
-
-        const usersArray = Array.from(group.users.values());
-        const forumComments: GlobalFeedForumCommentsDto = {
-          users: usersArray
-            .slice(0, GLOBAL_FEED_FACEPILE_LIMIT)
-            .map((u) => u.profile),
-          postId: group.postId,
-          postTitle,
-          count: group.users.size,
-          commentId:
-            usersArray.length === 1 ? usersArray[0].commentId : undefined,
-        };
-
-        feedItems.push(
-          new GlobalFeedItemDto({
-            type: GlobalFeedItemType.ForumComments,
-            date: group.latestDate,
-            forumComments,
-          }),
-        );
-      }
-    }
-
-    feedItems.sort((a, b) => b.date.getTime() - a.date.getTime());
-
-    return feedItems.slice(0, limit);
-  }
-
-  private globalFeedWindowStart(): Date {
-    return new Date(
-      Date.now() - milliseconds({ days: GLOBAL_FEED_WINDOW_DAYS }),
-    );
-  }
-
-  private buildRecentNewMembersRankedQuery(
-    oneWeekAgo: Date,
-    now: Date,
-  ): FeedMemberRankedQuery {
-    return {
-      rankedSql: `
-        SELECT "userId", "latestAt", "latestId"
-        FROM (
-          SELECT DISTINCT ON (signed_event."userId")
-            signed_event."userId" AS "userId",
-            signed_event.date AS "latestAt",
-            signed_event.id AS "latestId"
-          FROM "contract_event" signed_event
-          LEFT JOIN LATERAL (
-            SELECT previous_event.type
-            FROM "contract_event" previous_event
-            WHERE previous_event."userId" = signed_event."userId"
-              AND previous_event."deletedAt" IS NULL
-              AND (
-                previous_event.date < signed_event.date
-                OR (
-                  previous_event.date = signed_event.date
-                  AND previous_event.id < signed_event.id
-                )
-              )
-            ORDER BY previous_event.date DESC, previous_event.id DESC
-            LIMIT 1
-          ) previous_event ON true
-          WHERE signed_event.type = $1
-            AND signed_event."deletedAt" IS NULL
-            AND signed_event.date > $2
-            AND (
-              previous_event.type IS NULL
-              OR previous_event.type = $3
-            )
-            AND ${sqlUserHasActiveContractAt('signed_event."userId"', "$4")}
-          ORDER BY signed_event."userId" ASC, signed_event.date DESC, signed_event.id DESC
-        ) ranked`,
-      params: [
-        ContractEventType.SIGNED,
-        oneWeekAgo,
-        ContractEventType.SUSPENDED,
-        now,
-      ],
-    };
-  }
-
-  /** Recent active-contract members whose SIGNED event starts/resumes a contract. */
-  private async computeRecentNewMembers(
-    oneWeekAgo: Date,
-    now: Date,
-  ): Promise<{ users: ProfileDto[]; count: number; latestDate: Date | null }> {
-    const { rankedSql, params } = this.buildRecentNewMembersRankedQuery(
-      oneWeekAgo,
-      now,
-    );
-    return this.queryFeedMemberSummary({
-      rankedSql,
-      params,
-      limit: GLOBAL_FEED_FACEPILE_LIMIT,
-    });
-  }
-
-  private async queryFeedMemberPageIds({
-    rankedSql,
-    params,
-    limit,
-    afterId,
-  }: {
-    rankedSql: string;
-    params: unknown[];
-    limit: number;
-    afterId?: number;
-  }): Promise<number[]> {
-    const pageParams = [...params];
-
-    if (afterId === undefined) {
-      const limitParam = pageParams.length + 1;
-      pageParams.push(limit);
-      const rows = await this.userRepository.query<FeedMemberPageRow[]>(
-        `WITH ranked_members AS (${rankedSql})
-        SELECT "userId", "latestAt", "latestId" FROM ranked_members
-        ORDER BY "latestAt" DESC, "latestId" DESC
-        LIMIT $${limitParam}`,
-        pageParams,
-      );
-      return rows.map((row) => Number(row.userId));
-    }
-
-    // Share one materialized ranking; unknown cursors produce no page.
-    const afterParam = pageParams.length + 1;
-    pageParams.push(afterId);
-    const limitParam = pageParams.length + 1;
-    pageParams.push(limit);
-    const rows = await this.userRepository.query<FeedMemberPageRow[]>(
-      `WITH ranked_members AS MATERIALIZED (${rankedSql}),
-      cursor_row AS (
-        SELECT "latestAt", "latestId" FROM ranked_members WHERE "userId" = $${afterParam}
-      )
-      SELECT rm."userId", rm."latestAt", rm."latestId"
-      FROM ranked_members rm, cursor_row c
-      WHERE rm."latestAt" < c."latestAt"
-        OR (rm."latestAt" = c."latestAt" AND rm."latestId" < c."latestId")
-      ORDER BY rm."latestAt" DESC, rm."latestId" DESC
-      LIMIT $${limitParam}`,
-      pageParams,
-    );
-
-    return rows.map((row) => Number(row.userId));
-  }
-
-  private async hydrateFeedMemberProfiles(
-    orderedIds: number[],
-  ): Promise<ProfileDto[]> {
-    if (orderedIds.length === 0) return [];
-
-    // Hydrate only needed relations: `leaderOf` powers `isCommunityLeader`;
-    // load `contractEvents`/`cluster` for accurate
-    // `hasActiveContract`/`lastContractEvent`/`cluster`.
-    const users = await this.userRepository.find({
-      where: { id: In(orderedIds) },
-      relations: { leaderOf: true },
-    });
-    const byId = new Map(users.map((user) => [user.id, user]));
-    return orderedIds
-      .map((id) => byId.get(id))
-      .filter((user): user is User => user !== undefined)
-      .map((user) => new ProfileDto(user));
-  }
-
-  /**
-   * Orders the facepile preview by profile picture first, then recency, so
-   * recent photo-less joins don't crowd out photos from earlier in the
-   * window. `windowLatestAt` is a window-wide MAX because the first row is
-   * photo-first, not the most recent.
-   */
-  private async queryFeedMemberSummary({
-    rankedSql,
-    params,
-    limit,
-  }: {
-    rankedSql: string;
-    params: unknown[];
-    limit: number;
-  }): Promise<{ users: ProfileDto[]; count: number; latestDate: Date | null }> {
-    const limitParam = params.length + 1;
-    const rows = await this.userRepository.query<FeedMemberSummaryRow[]>(
-      `SELECT feed_members."userId", feed_members."latestAt", feed_members."latestId",
-        COUNT(*) OVER() AS "totalCount",
-        MAX(feed_members."latestAt") OVER() AS "windowLatestAt"
-      FROM (${rankedSql}) feed_members
-      INNER JOIN "user" ON "user".id = feed_members."userId" AND "user"."deletedAt" IS NULL
-      ORDER BY ${sqlUserHasProfilePicture('"user"."profilePicture"')} DESC, feed_members."latestAt" DESC, feed_members."latestId" DESC
-      LIMIT $${limitParam}`,
-      [...params, limit],
-    );
-
-    const users = await this.hydrateFeedMemberProfiles(
-      rows.map((row) => Number(row.userId)),
-    );
-
-    return {
-      users,
-      count: rows.length === 0 ? 0 : Number(rows[0].totalCount),
-      latestDate: rows[0]?.windowLatestAt
-        ? new Date(rows[0].windowLatestAt)
-        : null,
-    };
-  }
-
-  async getActivityGroupMembers(
-    actionId: number,
-    activityType: FeedActionActivity,
-    limit: number,
-    afterId?: number,
-    requestingUserId?: number,
-  ): Promise<ProfileDto[]> {
-    await this.findOneOrFail({ id: actionId, userId: requestingUserId });
-    const oneWeekAgo = this.globalFeedWindowStart();
-    const rankedSql = `
-      SELECT "userId", "latestAt", "latestId"
-      FROM (
-        SELECT DISTINCT ON (activity."userId")
-          activity."userId" AS "userId",
-          activity."createdAt" AS "latestAt",
-          activity.id AS "latestId"
-        FROM "action_activity" activity
-        INNER JOIN "action" action_entity ON action_entity.id = activity."actionId"
-        WHERE activity."actionId" = $1
-          AND activity.type = $2
-          AND action_entity.onboarding = false
-          AND activity."createdAt" > $3
-          AND activity."deletedAt" IS NULL
-          AND action_entity."deletedAt" IS NULL
-        ORDER BY activity."userId" ASC, activity."createdAt" DESC, activity.id DESC
-      ) ranked`;
-
-    const pageIds = await this.queryFeedMemberPageIds({
-      rankedSql,
-      params: [actionId, activityType, oneWeekAgo],
-      limit,
-      afterId,
-    });
-    return this.hydrateFeedMemberProfiles(pageIds);
-  }
-
-  async getNewMembers(limit: number, afterId?: number): Promise<ProfileDto[]> {
-    const oneWeekAgo = this.globalFeedWindowStart();
-    const { rankedSql, params } = this.buildRecentNewMembersRankedQuery(
-      oneWeekAgo,
-      new Date(),
-    );
-
-    const pageIds = await this.queryFeedMemberPageIds({
-      rankedSql,
-      params,
-      limit,
-      afterId,
-    });
-    return this.hydrateFeedMemberProfiles(pageIds);
-  }
-
-  async getForumCommentMembers(
-    postId: number,
-    limit: number,
-    afterId?: number,
-    requestingUserId?: number,
-  ): Promise<ProfileDto[]> {
-    const oneWeekAgo = this.globalFeedWindowStart();
-    await this.forumService.findOnePost(postId, requestingUserId);
-    const rankedSql = `
-      SELECT "userId", "latestAt", "latestId"
-      FROM (
-        SELECT DISTINCT ON (comment."authorId")
-          comment."authorId" AS "userId",
-          comment."createdAt" AS "latestAt",
-          comment.id AS "latestId"
-        FROM "comment" comment
-        WHERE comment."parentObjectType" = $1
-          AND comment."parentObjectId" = $2
-          AND comment."createdAt" > $3
-          AND comment."deletedAt" IS NULL
-          AND NOT (comment.id = ANY($4))
-        ORDER BY comment."authorId" ASC, comment."createdAt" DESC, comment.id DESC
-      ) ranked`;
-
-    const pageIds = await this.queryFeedMemberPageIds({
-      rankedSql,
-      params: [
-        CommentParentObject.Post,
-        postId,
-        oneWeekAgo,
-        await hiddenCommentIds(this.commentRepository.manager, [postId]),
-      ],
-      limit,
-      afterId,
-    });
-    return this.hydrateFeedMemberProfiles(pageIds);
   }
 
   async getTimelineFeed(
