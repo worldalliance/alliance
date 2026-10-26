@@ -1,57 +1,37 @@
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import { analyticsGetMemberReliabilityWindowAdmin } from "@alliance/shared/client";
-import { MemberReliabilityWindowDto } from "@alliance/shared/client/types.gen";
 import React, { useCallback, useState } from "react";
-
-const fetchMemberReliabilityWindow = async (
-  weeks: number,
-): Promise<MemberReliabilityWindowDto> => {
-  const response = await analyticsGetMemberReliabilityWindowAdmin({
-    query: { weeks },
-  });
-
-  if (!response.data) {
-    throw new Error("No member reliability data returned");
-  }
-
-  return response.data;
-};
+import { useAppliedQuery } from "../../lib/useAppliedQuery";
+import { useMemberReliabilityWindowAdmin } from "../../lib/useMemberReliabilityWindowAdmin";
 
 const MemberReliabilityCard: React.FC = () => {
   const [memberReliabilityWeeksInput, setMemberReliabilityWeeksInput] =
     useState<string>("5");
-  const [memberReliabilityWindow, setMemberReliabilityWindow] =
-    useState<MemberReliabilityWindowDto | null>(null);
-  const [memberReliabilityLoading, setMemberReliabilityLoading] =
-    useState<boolean>(false);
-  const [memberReliabilityError, setMemberReliabilityError] = useState<
-    string | null
-  >(null);
+  const [memberReliabilityWeeksError, setMemberReliabilityWeeksError] =
+    useState<string | null>(null);
 
-  const loadMemberReliabilityWindow = useCallback(async (weeks: number) => {
-    setMemberReliabilityLoading(true);
-    setMemberReliabilityError(null);
-    try {
-      setMemberReliabilityWindow(await fetchMemberReliabilityWindow(weeks));
-    } catch (err) {
-      console.error("Failed to load member reliability", err);
-      setMemberReliabilityWindow(null);
-      setMemberReliabilityError(
-        "Unable to load reliability data right now. Please try again soon.",
-      );
-    } finally {
-      setMemberReliabilityLoading(false);
-    }
-  }, []);
+  const {
+    data: memberReliabilityWindow,
+    loading: memberReliabilityLoading,
+    loadError: memberReliabilityLoadError,
+    apply: applyMemberReliabilityWeeks,
+  } = useAppliedQuery({
+    useQueryFor: useMemberReliabilityWindowAdmin,
+    loadErrorFallback:
+      "Unable to load reliability data right now. Please try again soon.",
+  });
+  const memberReliabilityError =
+    memberReliabilityWeeksError ?? memberReliabilityLoadError;
 
   const handleApplyMemberReliabilityWindow = useCallback(() => {
     const weeks = Number(memberReliabilityWeeksInput);
     if (!Number.isInteger(weeks) || weeks < 1) {
-      setMemberReliabilityError("Weeks must be a whole number of at least 1.");
+      setMemberReliabilityWeeksError(
+        "Weeks must be a whole number of at least 1.",
+      );
       return;
     }
-    void loadMemberReliabilityWindow(weeks);
-  }, [loadMemberReliabilityWindow, memberReliabilityWeeksInput]);
+    setMemberReliabilityWeeksError(null);
+    applyMemberReliabilityWeeks(weeks);
+  }, [applyMemberReliabilityWeeks, memberReliabilityWeeksInput]);
 
   return (
     <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white">
