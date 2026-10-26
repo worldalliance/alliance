@@ -23,6 +23,7 @@ import { FormResponseDraft } from "./entities/formresponsedraft.entity";
 import { FormProfileAnswersService } from "./form-profile-answers.service";
 import { FormResponseQueryService } from "./form-response-query.service";
 import { FormRowAssignmentService } from "./form-row-assignment.service";
+import { FormSubmissionValidationService } from "./form-submission-validation.service";
 import { FormSnapshotModule } from "./formsnapshot.module";
 import { TasksController } from "./tasks.controller";
 import { TasksService } from "./tasks.service";
@@ -58,6 +59,7 @@ import { TasksService } from "./tasks.service";
     CustomValidatorService,
     FormResponseQueryService,
     FormProfileAnswersService,
+    FormSubmissionValidationService,
   ],
 })
 export class TasksModule {}

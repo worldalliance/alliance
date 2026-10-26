@@ -131,6 +131,18 @@ export class FormResponseQueryService {
     return { form, responses };
   }
 
+  formulaSourceHistoryLoader(
+    userId: number,
+  ): (formId: number) => Promise<FormResponseHistory | undefined> {
+    return (formId) =>
+      this.getFormResponseHistory({ userId, formId }).catch(
+        (error: unknown) => {
+          if (error instanceof NotFoundException) return undefined;
+          throw error;
+        },
+      );
+  }
+
   /**
    * Counts the aggregate inputs of one version of a form. The version, not the
    * caller, decides which questions are counted.
