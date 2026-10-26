@@ -1,4 +1,3 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import {
   type AnyField,
   type FormSchema,
@@ -11,13 +10,8 @@ import {
   type UserDto,
 } from "@alliance/shared/client";
 import { computeActiveUserKey } from "@alliance/shared/formrenderer";
-import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
 import { computeFormStorageKey } from "@alliance/shared/forms/formDrafts";
 import { completedFormSchema } from "@alliance/shared/forms/formulaChoices";
-import {
-  resolveFormValue,
-  type SetFieldValue,
-} from "@alliance/shared/forms/formValueUpdater";
 import { prefillListsFromPreviousAnswers } from "@alliance/shared/forms/listPrefill";
 import {
   aggregateTarget,
@@ -33,7 +27,6 @@ import {
   deviceTimeZone,
   formTimeZoneDefault,
 } from "@alliance/shared/lib/timeZone";
-import { useImageUpload } from "@alliance/shared/lib/useImageUpload";
 import { useVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
 import { cn } from "@alliance/shared/styles/util";
 import {
@@ -58,6 +51,7 @@ import OutputPublicToggle from "./OutputPublicToggle";
 import RenderField from "./RenderField";
 import { useDeviceType } from "./useDeviceType";
 import { useFormDraftState } from "./useFormDraftState";
+import { useFormEditing } from "./useFormEditing";
 import { useFormScroll } from "./useFormScroll";
 import { useFormSubmission } from "./useFormSubmission";
 import { variableInputsGateView } from "./variableInputsGateView";
@@ -165,7 +159,6 @@ const FormRenderer = ({
     maxPageIndex,
   } = useFormSchemaMaps({ schema, userDefaultPublic, timeZone });
 
-  const [hasEmittedStart, setHasEmittedStart] = useState(false);
   const {
     formData,
     setFormData,
@@ -173,7 +166,8 @@ const FormRenderer = ({
     setPublicAnswer,
     currentPageIndex,
     setCurrentPageIndex,
-    lockDraft,
+    edited,
+    markEdited,
     saveFailed,
     pauseSyncing,
     resumeSyncing,
@@ -187,7 +181,6 @@ const FormRenderer = ({
     completedFormResponse,
     draftFormResponse,
     initialPageIndex,
-    edited: hasEmittedStart,
     userDefaultPublic,
     fieldLookup,
     defaultValueMap,
@@ -318,18 +311,6 @@ const FormRenderer = ({
     applyFieldErrorUpdates,
   });
 
-  const ensureStarted = () => {
-    if (readOnly) return;
-    lockDraft();
-    if (!hasEmittedStart) {
-      try {
-        onFormStarted?.();
-      } finally {
-        setHasEmittedStart(true);
-      }
-    }
-  };
-
   const currentPage =
     currentPageIndex < schema.pages.length &&
     visiblePageIndices.includes(currentPageIndex)
@@ -338,51 +319,15 @@ const FormRenderer = ({
   const isLastPage = nextVisiblePageIndex === null;
   const isFirstPage = previousVisiblePageIndex === null;
 
-  const updateField: SetFieldValue = (fieldId, value) => {
-    if (readOnly) return;
-    ensureStarted();
-    setFormData((prev) => {
-      const next = {
-        ...prev,
-        [fieldId]: resolveFormValue(value, prev[fieldId]),
-      };
-      const fieldDefinition = fieldLookup.get(fieldId);
-      if (fieldDefinition) {
-        const nextValue = next[fieldId];
-        if (fieldDefinition.kind === "multiselect") {
-          const selections = Array.isArray(nextValue) ? nextValue : [];
-          const validationResult =
-            selections.length === 0
-              ? null
-              : validateFieldValue(fieldDefinition, nextValue, next);
-          applyFieldErrorUpdates({ [fieldId]: validationResult });
-        } else if (fieldDefinition.kind === "ranking") {
-          // Don't flag partial rankings while the user is still placing
-          // items; page validation on submit enforces completeness.
-          applyFieldErrorUpdates({ [fieldId]: null });
-        } else {
-          const requiredError = validateFieldValue(
-            fieldDefinition,
-            nextValue,
-            next,
-          );
-          if (fieldDefinition.kind === "list") {
-            applyFieldErrorUpdates({ [fieldId]: requiredError }, fieldId);
-          } else {
-            applyFieldErrorUpdates({ [fieldId]: requiredError });
-          }
-        }
-      } else {
-        applyFieldErrorUpdates({ [fieldId]: null });
-      }
-      return next;
-    });
-  };
-
-  const imageUpload = useImageUpload({
-    onUploaded: (slot, imageKey) =>
-      applyUploadedImage({ slot, imageKey, setFieldValue: updateField }),
-    onStart: ensureStarted,
+  const { updateField, imageUpload } = useFormEditing({
+    readOnly,
+    edited,
+    markEdited,
+    onFormStarted,
+    setFormData,
+    fieldLookup,
+    validateFieldValue,
+    applyFieldErrorUpdates,
   });
   const { uploadingAny } = imageUpload;
 

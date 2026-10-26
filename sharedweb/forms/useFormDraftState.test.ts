@@ -90,7 +90,6 @@ const renderDraftState = (
         readOnly: false,
         draftFormResponse,
         syncDraftToServer,
-        edited: false,
         userDefaultPublic: true,
       });
     },
@@ -138,7 +137,7 @@ it("ignores a guest draft that arrives after the member starts editing", () => {
   const hook = renderDraftState();
 
   act(() => {
-    hook.result.current.lockDraft();
+    hook.result.current.markEdited();
     hook.result.current.setFormData({ name: "Typed" });
   });
   hook.rerender({

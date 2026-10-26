@@ -28,7 +28,6 @@ export function useFormDraftState({
   completedFormResponse,
   draftFormResponse,
   initialPageIndex,
-  edited,
   userDefaultPublic,
   fieldLookup,
   defaultValueMap,
@@ -45,7 +44,6 @@ export function useFormDraftState({
   completedFormResponse?: FormResponseDto;
   draftFormResponse?: FormResponseDto | null;
   initialPageIndex?: number;
-  edited: boolean;
   userDefaultPublic: boolean;
 } & Pick<
   SchemaMaps,
@@ -77,6 +75,7 @@ export function useFormDraftState({
   // arrive after mount) > empty. Once either localStorage or a draft is applied,
   // we lock out later draft applies so we never stomp user edits.
   const draftLockedRef = useRef(false);
+  const [edited, setEdited] = useState(false);
   const [formData, setFormData] = useState<Record<string, FormValue>>(() => {
     if (readOnly) {
       const answers =
@@ -311,8 +310,9 @@ export function useFormDraftState({
     });
   };
 
-  const lockDraft = () => {
+  const markEdited = () => {
     draftLockedRef.current = true;
+    setEdited(true);
   };
 
   return {
@@ -322,7 +322,8 @@ export function useFormDraftState({
     setPublicAnswer,
     currentPageIndex,
     setCurrentPageIndex,
-    lockDraft,
+    edited,
+    markEdited,
     saveFailed,
     pauseSyncing,
     resumeSyncing,
