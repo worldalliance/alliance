@@ -5,7 +5,7 @@ import { queryKeys } from "./queryKeys";
 
 const NO_ITEMS: GlobalFeedItemDto[] = [];
 
-const globalFeedQuery = (limit: number) =>
+export const globalFeedQuery = (limit: number) =>
   queryOptions({
     queryKey: queryKeys.globalFeed(limit),
     queryFn: ({ signal }) =>

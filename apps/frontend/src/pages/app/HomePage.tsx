@@ -1,5 +1,6 @@
 import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
 import {
+  actionsQuery,
   dismissActionErrorMessage,
   useInvalidateActions,
 } from "@alliance/shared/lib/actionsListPage";
@@ -10,8 +11,12 @@ import {
 import { homeItemKey, useHomePageActions } from "@alliance/shared/lib/homePage";
 import { getTaskDismissInfo } from "@alliance/shared/lib/largeActionCard";
 import { useBoundedIndex } from "@alliance/shared/lib/useBoundedIndex";
-import useGlobalFeed from "@alliance/shared/lib/useGlobalFeed";
+import { unreadGeneralUpdatesQuery } from "@alliance/shared/lib/useGeneralUpdates";
+import useGlobalFeed, {
+  globalFeedQuery,
+} from "@alliance/shared/lib/useGlobalFeed";
 import { resetHomeFeed } from "@alliance/shared/lib/useHomeFeed";
+import { prefetchFromLoader } from "@alliance/sharedweb/lib/queryClient";
 import { useMediaQuery } from "@alliance/sharedweb/lib/useMediaQuery";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
@@ -35,6 +40,22 @@ import { useMockTasks } from "../../onboarding/useMockTasks";
 import { WalkthroughAnchor } from "../../onboarding/walkthrough/steps";
 import LargeActionCard from "./LargeActionCard";
 import TaskNavigatorList, { type TaskNavigatorItem } from "./TaskNavigatorList";
+
+const GLOBAL_FEED_LIMIT = 10;
+
+// AppLayout mounts this page only once /auth/me answers; starting the queries
+// here runs them alongside it instead. The home feed is left to HomeFeed:
+// served alongside the tasks, it roughly doubles their response time.
+export function clientLoader() {
+  prefetchFromLoader(actionsQuery);
+  prefetchFromLoader(unreadGeneralUpdatesQuery);
+  prefetchFromLoader(globalFeedQuery(GLOBAL_FEED_LIMIT));
+  return null;
+}
+
+// The page's queries keep themselves fresh; rerunning the loader on a
+// search-only navigation, as the walkthrough's steps make, refetches them all.
+export const shouldRevalidate = () => false;
 
 const HomePage = () => {
   const queryClient = useQueryClient();
@@ -68,7 +89,7 @@ const HomePage = () => {
     items: globalFeedItems,
     loading: globalFeedLoading,
     failure: globalFeedFailure,
-  } = useGlobalFeed({ limit: 10 });
+  } = useGlobalFeed({ limit: GLOBAL_FEED_LIMIT });
 
   useSidFromParams();
 

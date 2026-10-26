@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import {
   generalUpdatesAllGeneralUpdates,
@@ -12,6 +12,16 @@ import { queryKeys } from "./queryKeys";
 const UNREAD_QUERY_KEY = queryKeys.generalUpdatesUnread();
 const ALL_QUERY_KEY = queryKeys.generalUpdatesAll();
 
+export const unreadGeneralUpdatesQuery = queryOptions({
+  queryKey: UNREAD_QUERY_KEY,
+  queryFn: () =>
+    generalUpdatesUnreadGeneralUpdates({ throwOnError: true }).then(
+      (response) => response.data.map(parseGeneralUpdate),
+    ),
+  // Both home screens hold their main content until this settles.
+  retry: false,
+});
+
 /**
  * Use instead of the generated client so web and mobile share parsing, cache
  * keys, and dismissal updates.
@@ -19,15 +29,7 @@ const ALL_QUERY_KEY = queryKeys.generalUpdatesAll();
 export function useUnreadGeneralUpdates() {
   const queryClient = useQueryClient();
 
-  const query = useQuery({
-    queryKey: UNREAD_QUERY_KEY,
-    queryFn: () =>
-      generalUpdatesUnreadGeneralUpdates({ throwOnError: true }).then(
-        (response) => response.data.map(parseGeneralUpdate),
-      ),
-    // Both home screens hold their main content until this settles.
-    retry: false,
-  });
+  const query = useQuery(unreadGeneralUpdatesQuery);
   const {
     data: generalUpdates = [],
     isLoading,
