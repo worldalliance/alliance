@@ -1,0 +1,3 @@
+- `useMemberCompletionRetentionAdmin` lives in `apps/admin/src/lib` beside the stats page's other one-endpoint hooks (`useAggregateStatsAdmin`, `useDailyStatsAdmin`), under `queryKeys.memberCompletionRetentionAdmin()`. Nothing writes the cohorts, so the hook has only the read.
+- The hook returns the cohorts as the server sends them; the component keeps its sorting, filtering and chart shaping, which only it uses.
+- A failed load now shows "Unable to load cohort retention." (or the session-expired message, through `adminRefusalMessage`) in place of both charts, where they used to say "No cohorts have completions yet." and log to the console, per the root `AGENTS.md` rule to fail loudly.

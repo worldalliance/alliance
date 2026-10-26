@@ -1,4 +1,5 @@
 import type { MemberCompletionRetentionCohortDto } from "@alliance/shared/client/types.gen";
+import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { render, screen } from "@testing-library/react";
 import { fullDateFormatter } from "../TimeSeriesChart";
@@ -26,7 +27,7 @@ const cohort = (
   ],
 });
 
-serveApi(
+const api = serveApi(
   routes({
     "GET /analytics/member-completion-retention": () =>
       Response.json([cohort("2026-01-05", 3), cohort("2026-01-12", 0)]),
@@ -38,10 +39,21 @@ const weekOf = (cohortStart: string) =>
 
 describe("CohortRetentionCharts", () => {
   it("leaves cohorts without a completion out of the grid", async () => {
-    render(<CohortRetentionCharts />);
+    render(<CohortRetentionCharts />, queryWrapper());
 
     await screen.findByText(weekOf("2026-01-05"));
     expect(screen.queryByText(weekOf("2026-01-12"))).toBeNull();
     expect(screen.getByText("75%")).toBeTruthy();
+  });
+
+  it("says so when the cohorts fail to load", async () => {
+    api.alsoServing({
+      "GET /analytics/member-completion-retention": () =>
+        Response.json({ message: "boom" }, { status: 500 }),
+    });
+
+    render(<CohortRetentionCharts />, queryWrapper());
+
+    await screen.findByText("Unable to load cohort retention.");
   });
 });
