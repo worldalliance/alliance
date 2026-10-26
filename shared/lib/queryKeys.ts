@@ -306,8 +306,12 @@ export const queryKeys = {
     ["userAwayRangeGetAwayRangeForUserAdmin", userId] as const,
   userCityCountsAdmin: () => ["userCityCountsAdmin"] as const,
   userDetailAdmin: (userId: number) => ["userUserDetailAdmin", userId] as const,
+  userFormResponsesAdmin: (userId: number) =>
+    ["tasksGetFormsForUserSidAdmin", userId] as const,
   userNotificationSettingsAdmin: (userId: number) =>
     ["notificationSettingsGetAdmin", userId] as const,
+  userNotifsAdmin: (userId: number) =>
+    ["notifsNotifsForUserAdmin", userId] as const,
   usersAdmin: () => ["userListAdmin"] as const,
   waitlistCohortsAdmin: () => ["waitlistAdminFindCohortsAdmin"] as const,
   waitlistEmailAdmin: (id: number) =>

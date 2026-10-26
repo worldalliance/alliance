@@ -1,11 +1,13 @@
 import type {
   CreateActionActivityDto,
+  FormResponseDto,
   NotificationSettingsAdminDto,
   UserActionRelationsResponseDto,
   UserAdminDetailDto,
 } from "@alliance/shared/client/types.gen";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import {
+  makeFormResponse,
   makeProfile,
   makeTag,
   makeUser,
@@ -49,22 +51,21 @@ let relations: UserActionRelationsResponseDto;
 let relationsStatus: number;
 let tagSummariesStatus: number;
 let friendsStatus: number;
+let formResponses: FormResponseDto[];
+let notifsStatus: number;
+let formResponsesStatus: number;
 let createdActivities: CreateActionActivityDto[];
-let memberRequested: () => void;
-let memberRequest: Promise<void>;
 
 serveApi(
   routes(
     {
-      "GET /user/userdetail/:id": () => {
-        memberRequested();
-        return detailStatus === 200
+      "GET /user/userdetail/:id": () =>
+        detailStatus === 200
           ? Response.json(stored)
           : Response.json(
               { message: "User not found" },
               { status: detailStatus },
-            );
-      },
+            ),
       "GET /user/userdetail/:id/notification-settings": () =>
         notificationSettings
           ? Response.json(notificationSettings)
@@ -100,13 +101,14 @@ serveApi(
         relations = relationsFor("completed");
         return Response.json({});
       },
-      // Answers only once the member is requested, so a member fetch that
-      // waits for the loader never starts.
-      "GET /notifs/for-user/:id": async () => {
-        await memberRequest;
-        return Response.json([]);
-      },
-      "POST /tasks/formsForUserSID/:userId": () => Response.json([]),
+      "GET /notifs/for-user/:id": () =>
+        notifsStatus === 200
+          ? Response.json([])
+          : Response.json({}, { status: notifsStatus }),
+      "POST /tasks/formsForUserSID/:userId": () =>
+        formResponsesStatus === 200
+          ? Response.json(formResponses)
+          : Response.json({}, { status: formResponsesStatus }),
       "GET /user/listfriends/:id": () =>
         friendsStatus === 200
           ? Response.json([alex])
@@ -128,10 +130,10 @@ beforeEach(() => {
   relationsStatus = 200;
   tagSummariesStatus = 200;
   friendsStatus = 200;
+  formResponses = [];
+  notifsStatus = 200;
+  formResponsesStatus = 200;
   createdActivities = [];
-  memberRequest = new Promise((resolve) => {
-    memberRequested = resolve;
-  });
 });
 
 afterEach(() => {
@@ -456,6 +458,85 @@ it("keeps cached friends it could not refresh and says so", async () => {
     ),
   ).toBeTruthy();
   expect(screen.getByText("Friends (1)")).toBeTruthy();
+});
+
+it("lists the member's form submissions newest first", async () => {
+  detailStatus = 200;
+  formResponses = [
+    makeFormResponse({ id: 1, formId: 4, createdAt: "2026-03-01T12:00:00Z" }),
+    makeFormResponse({
+      id: 2,
+      formId: 9,
+      createdAt: "2026-05-01T12:00:00Z",
+      deviceType: "ios",
+    }),
+  ];
+  renderPage();
+
+  expect(await screen.findByText("Invited Submissions (2)")).toBeTruthy();
+  expect(
+    screen
+      .getAllByRole("link", { name: /^Form #/ })
+      .map((link) => [link.textContent, link.getAttribute("href")]),
+  ).toEqual([
+    ["Form #9", "/forms/9/responses"],
+    ["Form #4", "/forms/4/responses"],
+  ]);
+  expect(screen.getByText("ios")).toBeTruthy();
+});
+
+it("says when the member has no form submissions", async () => {
+  detailStatus = 200;
+  renderPage();
+
+  expect(await screen.findByText("No form submissions.")).toBeTruthy();
+});
+
+it("says when the member's notifications fail to load", async () => {
+  detailStatus = 200;
+  notifsStatus = 500;
+  renderPage();
+
+  expect(await screen.findByText("Failed to load notifications")).toBeTruthy();
+});
+
+it("keeps cached notifications it could not refresh and says so", async () => {
+  detailStatus = 200;
+  notifsStatus = 500;
+  queryClient.setQueryData(queryKeys.userNotifsAdmin(7), []);
+  renderPage();
+
+  expect(
+    await screen.findByText(
+      "Could not refresh notifications. Reload to see the latest.",
+    ),
+  ).toBeTruthy();
+  expect(screen.getByText("Notifications (0)")).toBeTruthy();
+});
+
+it("says when the member's form submissions fail to load", async () => {
+  detailStatus = 200;
+  formResponsesStatus = 500;
+  renderPage();
+
+  expect(
+    await screen.findByText("Failed to load form submissions"),
+  ).toBeTruthy();
+  expect(screen.queryByText("No form submissions.")).toBeNull();
+});
+
+it("keeps cached form submissions it could not refresh and says so", async () => {
+  detailStatus = 200;
+  formResponsesStatus = 500;
+  queryClient.setQueryData(queryKeys.userFormResponsesAdmin(7), []);
+  renderPage();
+
+  expect(
+    await screen.findByText(
+      "Could not refresh form submissions. Reload to see the latest.",
+    ),
+  ).toBeTruthy();
+  expect(screen.getByText("Invited Submissions (0)")).toBeTruthy();
 });
 
 it("says when the member's actions fail to load", async () => {

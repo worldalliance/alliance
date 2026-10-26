@@ -1,9 +1,4 @@
 import { formatPhoneNumberForDisplay } from "@alliance/common/phone";
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import {
-  notifsNotifsForUserAdmin,
-  tasksGetFormsForUserSidAdmin,
-} from "@alliance/shared/client";
 import { UserAdminDetailDto } from "@alliance/shared/client/types.gen";
 import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import { userFriendsQuery } from "@alliance/shared/lib/user";
@@ -13,13 +8,14 @@ import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Mail, Phone, Trash2 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
-import { Link, useLoaderData, useNavigate } from "react-router";
+import { useCallback, useState } from "react";
+import { useLoaderData, useNavigate } from "react-router";
 import { Route } from "../../.react-router/types/src/pages/+types/UserDetailView";
 import DeleteAccountModal from "../components/DeleteAccountModal";
 import MemberGroupMoveSection from "../components/MemberGroupMoveSection";
 import UserAwayPeriodsSection from "../components/UserAwayPeriodsSection";
 import UserActionsSection from "../components/user-detail/UserActionsSection";
+import UserFormSubmissionsSection from "../components/user-detail/UserFormSubmissionsSection";
 import UserFriendsSection from "../components/user-detail/UserFriendsSection";
 import UserMemberInfoSection from "../components/user-detail/UserMemberInfoSection";
 import UserNotificationSettingsSection from "../components/user-detail/UserNotificationSettingsSection";
@@ -32,8 +28,13 @@ import { tagSummariesQuery } from "../lib/useTagsAdmin";
 import { userActionRelationsQuery } from "../lib/useUserActionRelationsAdmin";
 import { useUserAwayRangesAdmin } from "../lib/useUserAwayRangesAdmin";
 import { useUserDetailAdmin, userDetailQuery } from "../lib/useUserDetailAdmin";
+import {
+  useUserNotifsAndFormsAdmin,
+  userFormResponsesQuery,
+  userNotifsQuery,
+} from "../lib/useUserNotifsAndFormsAdmin";
 
-export async function clientLoader({ params }: Route.LoaderArgs) {
+export function clientLoader({ params }: Route.LoaderArgs) {
   const userIdParam = params.userId;
   if (!userIdParam) {
     throw new Error("Not found");
@@ -47,18 +48,10 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
   prefetchFromLoader(userActionRelationsQuery(userId));
   prefetchFromLoader(tagSummariesQuery());
   prefetchFromLoader(userFriendsQuery(userId));
-  const [notifRes, formResponsesRes] = await Promise.all([
-    notifsNotifsForUserAdmin({ path: { id: userId } }),
-    tasksGetFormsForUserSidAdmin({ path: { userId } }).catch(() => ({
-      data: [],
-    })),
-  ]);
+  prefetchFromLoader(userNotifsQuery(userId));
+  prefetchFromLoader(userFormResponsesQuery(userId));
 
-  return {
-    userId,
-    notifs: notifRes.data ?? [],
-    formResponses: formResponsesRes.data ?? [],
-  };
+  return { userId };
 }
 
 const UserDetailView: React.FC = () => {
@@ -99,7 +92,7 @@ const UserDetail = ({
   user: UserAdminDetailDto;
   userDetail: ReturnType<typeof useUserDetailAdmin>;
 }) => {
-  const { notifs, formResponses } = useLoaderData<typeof clientLoader>();
+  const { notifs, formResponses } = useUserNotifsAndFormsAdmin(user.id);
 
   const [isSuspendPending, setIsSuspendPending] = useState(false);
   const [suspendMutationError, setSuspendMutationError] = useState<
@@ -113,13 +106,6 @@ const UserDetail = ({
   const { currentAwayRange } = useUserAwayRangesAdmin(user.id);
 
   const latestEvent = user.lastContractEvent ?? null;
-
-  const sortedFormResponses = useMemo(() => {
-    return [...formResponses].sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
-  }, [formResponses]);
 
   const contractStatusColor =
     latestEvent === null
@@ -232,7 +218,7 @@ const UserDetail = ({
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <div className="lg:col-span-3 space-y-4">
           <UserActionsSection userId={user.id} />
-          <UserNotificationsSection notifs={notifs} />
+          <UserNotificationsSection query={notifs} />
         </div>
 
         {/* Right Column */}
@@ -296,41 +282,7 @@ const UserDetail = ({
             )}
           </section>
 
-          {/* Form Submissions */}
-          <section className="border border-zinc-200 rounded p-3">
-            <h2 className="text-sm font-semibold text-zinc-700 mb-2">
-              Invited Submissions ({sortedFormResponses.length})
-            </h2>
-            {sortedFormResponses.length > 0 ? (
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {sortedFormResponses.map((response) => (
-                  <div
-                    key={response.id}
-                    className="text-xs p-2 rounded bg-zinc-50 border border-zinc-100"
-                  >
-                    <div className="flex items-center justify-between">
-                      <Link
-                        to={`/forms/${response.formId}/responses`}
-                        className="font-medium text-blue-600 hover:underline"
-                      >
-                        Form #{response.formId}
-                      </Link>
-                      <span className="text-zinc-400">
-                        {new Date(response.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    {response.deviceType && (
-                      <p className="text-zinc-500 mt-0.5">
-                        {response.deviceType}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-zinc-500">No form submissions.</p>
-            )}
-          </section>
+          <UserFormSubmissionsSection query={formResponses} />
         </div>
       </div>
       {isDeleteModalOpen && (
