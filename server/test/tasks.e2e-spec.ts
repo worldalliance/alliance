@@ -17,6 +17,7 @@ import type {
 import type { Condition } from "@alliance/common/forms/visible-if-formula";
 import { milliseconds } from "date-fns";
 import { ActionsService } from "src/actions/actions.service";
+import { ActivityOutputService } from "src/actions/activity-output.service";
 import { CreateActionDto } from "src/actions/dto/action.dto";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
@@ -1317,7 +1318,7 @@ describe("Tasks (e2e)", () => {
         relations: { taskFormResponse: { formSnapshot: true } },
       });
     expect(
-      ctx.app.get(ActionsService).buildOutputFormResponse(activity)
+      ctx.app.get(ActivityOutputService).buildOutputFormResponse(activity)
         ?.formulaChoices,
     ).toEqual({ "public-pick": [{ label: "Shown Alpha", value: "a" }] });
   });

@@ -50,6 +50,7 @@ import { ActionVisibilityModule } from "./action-visibility.module";
 import { ActionsController } from "./actions.controller";
 import { ActionsGateway } from "./actions.gateway";
 import { ActionsService } from "./actions.service";
+import { ActivityOutputService } from "./activity-output.service";
 import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
 import { CohortDecisionListener } from "./cohort-decision.listener";
 import { CohortDecisionService } from "./cohort-decision.service";
@@ -177,6 +178,7 @@ import { TaskBadgeService } from "./task-badge.service";
     CohortResolverService,
     FeedMembersService,
     GlobalFeedService,
+    ActivityOutputService,
   ],
   exports: [
     ActionsService,
