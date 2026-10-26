@@ -1,13 +1,10 @@
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import {
-  userNmembers,
-  type StaffDirectoryEntryDto,
-} from "@alliance/shared/client";
+import type { StaffDirectoryEntryDto } from "@alliance/shared/client";
 import { shuffleWithSeed } from "@alliance/shared/forms/randomutils";
+import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { href, Link, useLoaderData } from "react-router";
+import { href, Link } from "react-router";
 import officePhoto from "../../assets/redesign/office.jpg?w=480;960;1200&format=avif;webp;jpg&as=picture";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
 import {
@@ -27,11 +24,6 @@ export function meta() {
     description: "The staff, experts, and members of the Alliance.",
     url: "/people",
   });
-}
-
-export async function loader() {
-  const res = await userNmembers();
-  return res.data?.count;
 }
 
 const PEOPLE_TITLE = "People";
@@ -176,8 +168,9 @@ function Office() {
   );
 }
 
-function MemberDirectory({ memberCount }: { memberCount: number | undefined }) {
+function MemberDirectory() {
   const { data: members, isPending } = usePublicMembers();
+  const { data: memberCount } = useAllianceMemberCount();
   const gridRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const shuffleSeed = useRef(Math.random().toString());
@@ -251,8 +244,6 @@ function MemberDirectory({ memberCount }: { memberCount: number | undefined }) {
 }
 
 export default function PeoplePage() {
-  const memberCount = useLoaderData<typeof loader>();
-
   return (
     <PageShell
       title={PEOPLE_TITLE}
@@ -261,7 +252,7 @@ export default function PeoplePage() {
     >
       <Office />
       <ExpertGroup />
-      <MemberDirectory memberCount={memberCount} />
+      <MemberDirectory />
     </PageShell>
   );
 }
