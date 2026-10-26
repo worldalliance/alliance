@@ -3556,7 +3556,7 @@ export class ActionsService {
         return loadedTagUsers(await this.tagService.findTagOrFail(tagId));
       }
       case ActionUpdateNotifyType.AllMembers:
-        return this.userService.findAllUsers();
+        return this.userService.findUsersWithActiveContract();
       default:
         throw new Error(`unknown notifyType: ${notifyType satisfies never}`);
     }

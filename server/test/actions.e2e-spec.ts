@@ -4012,12 +4012,13 @@ describe("Actions (e2e)", () => {
     it("refuses to notify when the action is archived while the audience loads", async () => {
       const update = await createUpdate({});
       await writeContent(update.id, update.schemaSnapshotId);
-      const findAllUsers = userService.findAllUsers.bind(userService);
+      const findUsersWithActiveContract =
+        userService.findUsersWithActiveContract.bind(userService);
       const audience = jest
-        .spyOn(userService, "findAllUsers")
+        .spyOn(userService, "findUsersWithActiveContract")
         .mockImplementation(async () => {
           await actionRepo.update(testAction.id, { archived: true });
-          return findAllUsers();
+          return findUsersWithActiveContract();
         });
 
       try {

@@ -1,0 +1,3 @@
+- "Active contract" is the latest non-deleted contract event at the moment of resolving being `signed`, the rule `sqlUserHasActiveContractAt` already applies to other "active member" queries in `UserService`.
+- The rule lives in a new `UserService.findActiveUsers()` rather than in `ActionsService`, next to the other active-contract user queries. `findAllUsers()` stays for its analytics caller.
+- The recognition preview counts go through the same audience resolver, so they change along with the send.

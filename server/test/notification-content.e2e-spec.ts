@@ -48,7 +48,11 @@ import { FormSnapshot } from "src/tasks/entities/formsnapshot.entity";
 import { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import type { Repository } from "typeorm";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import {
+  createTestApp,
+  giveActiveContract,
+  TestContext,
+} from "./e2e-test-utils";
 
 type InboxEntry = {
   id: number;
@@ -669,16 +673,18 @@ describe("Notification content stability (e2e)", () => {
       await ctx.dataSource
         .getRepository(ActionUpdate)
         .update(update.id, { notifyType: ActionUpdateNotifyType.AllMembers });
+      await giveActiveContract(ctx, recipient.id);
       const actions = ctx.app.get(ActionsService);
       const users = ctx.app.get(UserService);
-      const findAllUsers = users.findAllUsers.bind(users);
+      const findUsersWithActiveContract =
+        users.findUsersWithActiveContract.bind(users);
       const shows = new Date(Date.now() + milliseconds({ hours: 2 }));
       const audience = jest
-        .spyOn(users, "findAllUsers")
+        .spyOn(users, "findUsersWithActiveContract")
         .mockImplementation(async () => {
           await actions.updateActionUpdate(update.id, { date: shows });
           await actions.unpublishActionUpdateUntilDate(update.id);
-          return findAllUsers();
+          return findUsersWithActiveContract();
         });
 
       try {
