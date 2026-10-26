@@ -47,7 +47,6 @@ import {
   getRankingSlotCount,
   isValidRankingSelection,
 } from "@alliance/common/forms/ranking";
-import { memberSchema } from "@alliance/common/forms/row-list";
 import type { AssignedRow } from "@alliance/common/forms/row-list-schema";
 import type { VariableSourceHistory } from "@alliance/common/forms/variable-evaluation";
 import {
@@ -133,7 +132,11 @@ import {
 import { type FormResponseHistory } from "./form-response-history.dto";
 import { FormResponseQueryService } from "./form-response-query.service";
 import { FormRowAssignmentService } from "./form-row-assignment.service";
-import { formSchemaOf } from "./form-snapshot-schema";
+import {
+  cloneFormSnapshotWithSchema,
+  formSchemaOf,
+  snapshotForRow,
+} from "./form-snapshot-schema";
 import {
   CreateFormDto,
   type FormDraft,
@@ -146,7 +149,7 @@ import {
   SubmitFormDto,
   UpdateFormDto,
 } from "./form.dto";
-import { FormSnapshotService, hashFormSchema } from "./formsnapshot.service";
+import { FormSnapshotService } from "./formsnapshot.service";
 import {
   findFormsReadingForm,
   loadFormulaSourceForms,
@@ -159,7 +162,7 @@ import {
   withdrawalFormulaSources,
   withdrawnFormulaChoices,
 } from "./formula-sources";
-import { servedSchema, withServedVideoSources } from "./served-schema";
+import { servedSchema } from "./served-schema";
 
 /**
  * Validator verdicts arrive from HTTP as arbitrary JSON — class-validator
@@ -398,34 +401,9 @@ export class TasksService {
     if (userId === null) {
       throw new ForbiddenException("Sign in to open this form");
     }
-    const row = await this.memberRow(form, userId);
-    form.formSnapshot = this.snapshotForRow(loadedFormSnapshot(form), row);
+    const row = await this.formRowAssignmentService.memberRow(form, userId);
+    form.formSnapshot = snapshotForRow(loadedFormSnapshot(form), row);
     return form;
-  }
-
-  /** The member's row of the form's current list; null without a list. */
-  private async memberRow(
-    form: Form,
-    userId: number,
-  ): Promise<AssignedRow | null> {
-    const list = formSchemaOf(loadedFormSnapshot(form)).rowList;
-    return list === undefined
-      ? null
-      : this.formRowAssignmentService.rowFor({
-          formId: form.id,
-          userId,
-          list,
-        });
-  }
-
-  private snapshotForRow(
-    snapshot: FormSnapshot,
-    row: AssignedRow | null,
-  ): FormSnapshot {
-    return this.cloneFormSnapshotWithSchema(
-      snapshot,
-      memberSchema(formSchemaOf(snapshot), row),
-    );
   }
 
   private resolveAggregateValue(
@@ -481,16 +459,9 @@ export class TasksService {
     }));
   }
 
-  private cloneFormSnapshotWithSchema(
-    snapshot: FormSnapshot,
-    schema: Record<string, unknown>,
-  ): FormSnapshot {
-    return Object.assign(new FormSnapshot(), snapshot, { schema });
-  }
-
   async transformImageUrls(form: Form): Promise<Form> {
     const snapshot = loadedFormSnapshot(form);
-    form.formSnapshot = this.cloneFormSnapshotWithSchema(
+    form.formSnapshot = cloneFormSnapshotWithSchema(
       snapshot,
       servedSchema(snapshot),
     );
@@ -510,7 +481,7 @@ export class TasksService {
         }
       }
     }
-    form.formSnapshot = this.cloneFormSnapshotWithSchema(snapshot, schema);
+    form.formSnapshot = cloneFormSnapshotWithSchema(snapshot, schema);
     return form;
   }
 
@@ -963,9 +934,12 @@ export class TasksService {
       });
     }
 
-    const assignedRow = await this.memberRow(form, userId);
-    const submittedSnapshot = this.snapshotForRow(
-      await this.resolveSubmissionSnapshot({
+    const assignedRow = await this.formRowAssignmentService.memberRow(
+      form,
+      userId,
+    );
+    const submittedSnapshot = snapshotForRow(
+      await this.formSnapshotService.resolveSubmissionSnapshot({
         form,
         dto: submitFormDto,
         assignedRow,
@@ -1162,9 +1136,12 @@ export class TasksService {
     }
     const user = await this.userService.findOneOrFail(userId);
 
-    const assignedRow = await this.memberRow(form, userId);
-    const submittedSnapshot = this.snapshotForRow(
-      await this.resolveSubmissionSnapshot({
+    const assignedRow = await this.formRowAssignmentService.memberRow(
+      form,
+      userId,
+    );
+    const submittedSnapshot = snapshotForRow(
+      await this.formSnapshotService.resolveSubmissionSnapshot({
         form,
         dto: submitFollowUpFormDto,
         assignedRow,
@@ -1222,7 +1199,7 @@ export class TasksService {
       }
     }
 
-    const snapshot = await this.resolveSubmissionSnapshot({
+    const snapshot = await this.formSnapshotService.resolveSubmissionSnapshot({
       form,
       dto: submitFormDto,
       assignedRow: null,
@@ -1275,9 +1252,12 @@ export class TasksService {
       assertNotInStaffPreview(action);
     }
 
-    const assignedRow = await this.memberRow(form, userId);
-    const snapshot = this.snapshotForRow(
-      await this.resolveSubmissionSnapshot({
+    const assignedRow = await this.formRowAssignmentService.memberRow(
+      form,
+      userId,
+    );
+    const snapshot = snapshotForRow(
+      await this.formSnapshotService.resolveSubmissionSnapshot({
         form,
         dto: partialFormData,
         assignedRow,
@@ -1403,53 +1383,6 @@ export class TasksService {
       entityId: savedForm.id,
     });
     return savedForm;
-  }
-
-  // BACKCOMPAT(form-snapshot): pre-cutover mobile clients post
-  // `schemaSnapshot` (the full schema) instead of `formSnapshotId`. Resolve
-  // it to a historical snapshot for this form by hash — never accept the
-  // bytes as authoritative, since the resolved schema feeds validation,
-  // contract-signing extraction, and auto-extract. Once the minimum mobile
-  // version is past the cutover, delete the schemaSnapshot branch.
-  private async resolveSubmissionSnapshot({
-    form,
-    dto,
-    assignedRow,
-  }: {
-    form: Form;
-    dto: { formSnapshotId?: number; schemaSnapshot?: Record<string, unknown> };
-    /** The member's row; they were served the schema filled from it. */
-    assignedRow: AssignedRow | null;
-  }) {
-    if (dto.formSnapshotId !== undefined) {
-      return dto.formSnapshotId === form.formSnapshotId
-        ? loadedFormSnapshot(form)
-        : this.formSnapshotService.findHistoricalOrThrow(
-            form.id,
-            dto.formSnapshotId,
-          );
-    }
-    if (!dto.schemaSnapshot) {
-      throw new BadRequestException(
-        "Form submission missing both formSnapshotId and schemaSnapshot",
-      );
-    }
-    const echoed = withServedVideoSources(dto.schemaSnapshot);
-    const served = loadedFormSnapshot(form);
-    // getForm fills in contracts as well, which the history fallback does not rebuild.
-    const echoedHash = hashFormSchema(echoed);
-    if (
-      echoedHash === hashFormSchema(served.schema) ||
-      (assignedRow !== null &&
-        echoedHash ===
-          hashFormSchema(this.snapshotForRow(served, assignedRow).schema))
-    ) {
-      return served;
-    }
-    return this.formSnapshotService.findHistoricalBySchemaOrThrow(
-      form.id,
-      echoed,
-    );
   }
 
   private getFirstAutoExtractAnswer(
@@ -1705,10 +1638,10 @@ export class TasksService {
 
     await this.assertActionNotSubmitted({ actionId: dto.actionId, userId });
 
-    const snapshot = await this.resolveSubmissionSnapshot({
+    const snapshot = await this.formSnapshotService.resolveSubmissionSnapshot({
       form,
       dto,
-      assignedRow: await this.memberRow(form, userId),
+      assignedRow: await this.formRowAssignmentService.memberRow(form, userId),
     });
     const answers = readFormAnswers(dto.answers);
     if (R.isFailure(answers)) {

@@ -5,7 +5,7 @@ import {
 import { memberSchema } from "@alliance/common/forms/row-list";
 import type { AssignedRow } from "@alliance/common/forms/row-list-schema";
 import { Logger } from "@nestjs/common";
-import type { FormSnapshot } from "./entities/formsnapshot.entity";
+import { FormSnapshot } from "./entities/formsnapshot.entity";
 
 const logger = new Logger("FormSnapshotSchema");
 const checkedSnapshotIds = new Set<number>();
@@ -33,4 +33,21 @@ export function memberSnapshotSchema(
   assignedRow: AssignedRow | null,
 ): FormSchema {
   return memberSchema(formSchemaOf(snapshot), assignedRow);
+}
+
+export function cloneFormSnapshotWithSchema(
+  snapshot: FormSnapshot,
+  schema: Record<string, unknown>,
+): FormSnapshot {
+  return Object.assign(new FormSnapshot(), snapshot, { schema });
+}
+
+export function snapshotForRow(
+  snapshot: FormSnapshot,
+  row: AssignedRow | null,
+): FormSnapshot {
+  return cloneFormSnapshotWithSchema(
+    snapshot,
+    memberSnapshotSchema(snapshot, row),
+  );
 }

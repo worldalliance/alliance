@@ -1,16 +1,19 @@
+import type { AssignedRow } from "@alliance/common/forms/row-list-schema";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { createHash } from "crypto";
 import jsonStableStringify from "json-stable-stringify";
 import type { Repository } from "src/utils/Repository";
 import { EntityManager, In, SelectQueryBuilder } from "typeorm";
+import { type Form, loadedFormSnapshot } from "./entities/form.entity";
 import {
   FORM_SNAPSHOT_HISTORY_TABLE,
   FormSnapshot,
   SNAPSHOT_HISTORY_OWNERS,
   SnapshotHistoryOwner,
 } from "./entities/formsnapshot.entity";
-import { servedSchema } from "./served-schema";
+import { snapshotForRow } from "./form-snapshot-schema";
+import { servedSchema, withServedVideoSources } from "./served-schema";
 
 export function hashFormSchema(schema: Record<string, unknown>): string {
   return createHash("sha256")
@@ -74,6 +77,47 @@ export class FormSnapshotService {
       );
     }
     return snapshot;
+  }
+
+  // BACKCOMPAT(form-snapshot): pre-cutover mobile clients post
+  // `schemaSnapshot` (the full schema) instead of `formSnapshotId`. Resolve
+  // it to a historical snapshot for this form by hash — never accept the
+  // bytes as authoritative, since the resolved schema feeds validation,
+  // contract-signing extraction, and auto-extract. Once the minimum mobile
+  // version is past the cutover, delete the schemaSnapshot branch.
+  async resolveSubmissionSnapshot({
+    form,
+    dto,
+    assignedRow,
+  }: {
+    /** As TasksService.getForm serves it: contracts filled in, which the history fallback does not rebuild. */
+    form: Form;
+    dto: { formSnapshotId?: number; schemaSnapshot?: Record<string, unknown> };
+    /** The member's row; they were served the schema filled from it. */
+    assignedRow: AssignedRow | null;
+  }) {
+    if (dto.formSnapshotId !== undefined) {
+      return dto.formSnapshotId === form.formSnapshotId
+        ? loadedFormSnapshot(form)
+        : this.findHistoricalOrThrow(form.id, dto.formSnapshotId);
+    }
+    if (!dto.schemaSnapshot) {
+      throw new BadRequestException(
+        "Form submission missing both formSnapshotId and schemaSnapshot",
+      );
+    }
+    const echoed = withServedVideoSources(dto.schemaSnapshot);
+    const served = loadedFormSnapshot(form);
+    const echoedHash = hashFormSchema(echoed);
+    if (
+      echoedHash === hashFormSchema(served.schema) ||
+      (assignedRow !== null &&
+        echoedHash ===
+          hashFormSchema(snapshotForRow(served, assignedRow).schema))
+    ) {
+      return served;
+    }
+    return this.findHistoricalBySchemaOrThrow(form.id, echoed);
   }
 
   // Snapshot rows never change, so a snapshot's served hash is computed once.

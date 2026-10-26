@@ -9,12 +9,13 @@ import { writeUnderLive } from "src/datasources/soft-delete";
 import { User } from "src/user/entities/user.entity";
 import { IsNull, QueryFailedError, Repository } from "typeorm";
 import { FormRowAssignment } from "./entities/form-row-assignment.entity";
-import { Form } from "./entities/form.entity";
+import { Form, loadedFormSnapshot } from "./entities/form.entity";
 import {
   FormResponse,
   parseFormResponse,
 } from "./entities/formresponse.entity";
 import { pickBalancedRow, STALE_ASSIGNMENT_DAYS } from "./form-row-pick";
+import { formSchemaOf } from "./form-snapshot-schema";
 
 @Injectable()
 export class FormRowAssignmentService {
@@ -25,8 +26,20 @@ export class FormRowAssignmentService {
     private readonly responseRepo: Repository<FormResponse>,
   ) {}
 
+  /** The member's row of the form's current list; null without a list. */
+  async memberRow(form: Form, userId: number): Promise<AssignedRow | null> {
+    const list = formSchemaOf(loadedFormSnapshot(form)).rowList;
+    return list === undefined
+      ? null
+      : this.rowFor({
+          formId: form.id,
+          userId,
+          list,
+        });
+  }
+
   /** The member's row of `list`, the form's current list, assigning one if needed. */
-  async rowFor(params: {
+  private async rowFor(params: {
     formId: number;
     userId: number;
     list: RowList;
