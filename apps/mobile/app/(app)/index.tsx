@@ -7,7 +7,6 @@ import {
   dismissActionErrorMessage,
   useActionsQuery,
   useDismissActionMutation,
-  useInvalidateActions,
 } from "@alliance/shared/lib/actionsListPage";
 import { type ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
 import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
@@ -69,7 +68,6 @@ const renderKeyboardAwareScrollComponent = (props: ScrollViewProps) => (
 export default function HomeScreen() {
   const queryClient = useQueryClient();
   const invalidateTaskForms = useInvalidateTaskForms();
-  const invalidateActions = useInvalidateActions();
   const [refreshing, setRefreshing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -301,10 +299,6 @@ export default function HomeScreen() {
               actionId={currentItem.actionId}
               scrollPageTo={scrollPageTo}
               scrollToEnd={scrollToEnd}
-              onSubmitted={() => {
-                invalidateActions();
-                resetHomeFeed(queryClient);
-              }}
             />
           </View>
         ),
@@ -348,8 +342,6 @@ export default function HomeScreen() {
     currentItem,
     dismissProps,
     handleDismissGeneralUpdate,
-    invalidateActions,
-    queryClient,
     refetch,
     scrollPageTo,
     scrollToEnd,

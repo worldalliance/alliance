@@ -1,10 +1,15 @@
+import { ExceptionEvent } from "@alliance/common/analytics";
+import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options";
 import { GUEST_HEADER } from "@alliance/common/guest";
 import { act, renderHook } from "@testing-library/react";
 import type { ActionDto, SubmitFormDto } from "../client";
+import { formulaSourcesChanged } from "../forms/formulaChoices";
 import { queryKeys } from "./queryKeys";
 import { makeAction, makeFormResponse } from "./testFixtures";
 import { queryWrapper } from "./testing/queryWrapper";
+import { recordExceptions } from "./testing/recordExceptions";
 import { routes, serveApi } from "./testing/serveApi";
+import { ActivityList } from "./useActivities";
 import { useTaskFormSubmission } from "./useTaskFormSubmission";
 
 const api = serveApi(routes({}));
@@ -134,5 +139,130 @@ describe("optOut", () => {
     expect(s.cachedRelation()).toBe("none");
     expect(s.visibilityInvalidated()).toBe(false);
     expect(s.aggregateViewsInvalidated()).toBe(false);
+  });
+});
+
+describe("submitFollowUp", () => {
+  const reported = recordExceptions();
+  const followUpForm = { id: 5, formId: 8 };
+  const data: SubmitFormDto = {
+    answers: { q1: "yes" },
+    formSnapshotId: 3,
+    schemaSnapshot: {},
+    actionId: 9,
+    visibilityValidatorResults: { q1: true },
+    deviceType: "desktop",
+    publicAnswers: { q1: "yes" },
+    phDistinctId: "ph-id",
+    sessionReplayUrl: "https://replay.example.com/1",
+    sid: "session-id",
+    formulaSources: [{ formId: 3, responseIds: [5, 9] }],
+  };
+  const homeFeedKey = ["useHomeFeed", 20, false];
+  const activitiesKey = queryKeys.activities({
+    list: ActivityList.Action,
+    objectId: 9,
+    limit: 10,
+  });
+
+  const renderFollowUp = () => {
+    const { client, wrapper } = queryWrapper();
+    client.setQueryData(queryKeys.actions(), [makeAction({ id: 9 })]);
+    client.setQueryData(queryKeys.taskFormAggregateViews(8), []);
+    client.setQueryData(homeFeedKey, { pages: [], pageParams: [] });
+    client.setQueryData(activitiesKey, { pages: [], pageParams: [] });
+    const view = renderHook(() => useTaskFormSubmission(), { wrapper });
+    return {
+      submitFollowUp: () =>
+        view.result.current.submitFollowUp({ followUpForm, data }),
+      refreshed: () => ({
+        actions: client.getQueryState(queryKeys.actions())?.isInvalidated,
+        aggregateViews: client.getQueryState(
+          queryKeys.taskFormAggregateViews(8),
+        )?.isInvalidated,
+        homeFeed: client.getQueryData(homeFeedKey) === undefined,
+        activities: client.getQueryState(activitiesKey)?.isInvalidated,
+      }),
+    };
+  };
+
+  const untouched = {
+    actions: false,
+    aggregateViews: false,
+    homeFeed: false,
+    activities: false,
+  };
+
+  it("posts the answers and refreshes what the response moves", async () => {
+    const bodies: unknown[] = [];
+    api.alsoServing({
+      "POST /tasks/submitFollowUpForm/:id": async ({ request, params }) => {
+        bodies.push({ params, body: await request.json() });
+        return accepted();
+      },
+    });
+    const s = renderFollowUp();
+
+    const submitted = await act(s.submitFollowUp);
+
+    expect(submitted.ok).toBe(true);
+    expect(bodies).toEqual([
+      {
+        params: { id: "5" },
+        body: {
+          answers: { q1: "yes" },
+          formSnapshotId: 3,
+          schemaSnapshot: {},
+          visibilityValidatorResults: { q1: true },
+          deviceType: "desktop",
+          publicAnswers: { q1: "yes" },
+          phDistinctId: "ph-id",
+          sessionReplayUrl: "https://replay.example.com/1",
+          sid: "session-id",
+          formulaSources: [{ formId: 3, responseIds: [5, 9] }],
+        },
+      },
+    ]);
+    expect(s.refreshed()).toEqual({
+      actions: true,
+      aggregateViews: true,
+      homeFeed: true,
+      activities: true,
+    });
+  });
+
+  it("reports a refusal, touching no cache", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    api.alsoServing({ "POST /tasks/submitFollowUpForm/:id": refused });
+    const s = renderFollowUp();
+
+    const submitted = await act(s.submitFollowUp);
+
+    expect(submitted.ok).toBe(false);
+    expect(reported).toEqual([
+      {
+        event: ExceptionEvent.FollowUpFormSubmitError,
+        error: expect.anything(),
+        properties: { actionId: 9, followUpFormId: 5 },
+      },
+    ]);
+    expect(s.refreshed()).toEqual(untouched);
+  });
+
+  it("leaves unreported a refusal because the histories its options read changed", async () => {
+    api.throwingOnRefusal({
+      "POST /tasks/submitFollowUpForm/:id": () =>
+        Response.json(
+          { statusCode: 409, message: FORMULA_SOURCES_CHANGED },
+          { status: 409 },
+        ),
+    });
+    const s = renderFollowUp();
+
+    const submitted = await act(s.submitFollowUp);
+
+    expect(!submitted.ok && formulaSourcesChanged(submitted.error)).toBe(true);
+    expect(reported).toEqual([]);
+    expect(s.refreshed()).toEqual(untouched);
   });
 });
