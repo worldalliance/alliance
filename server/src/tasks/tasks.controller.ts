@@ -27,17 +27,6 @@ import { AuthGuard } from "src/auth/guards/auth.guard";
 import { AuthOptionalGuard } from "src/auth/guards/authoptional.guard";
 import { Public } from "src/auth/public.decorator";
 import { extractGuestToken, type JwtRequest } from "src/auth/tokens";
-import {
-  CreateCustomValidatorDto,
-  CreateCustomValidatorResponseDto,
-  CustomValidatorDto,
-  CustomValidatorResponseDto,
-  CustomValidatorTypeDto,
-  RunValidatorDto,
-  TestCustomExpressionDto,
-  TestCustomExpressionResponseDto,
-} from "./customvalidator.dto";
-import { CustomValidatorService } from "./customvalidator.service";
 import { FormResponseHistoryDto } from "./form-response-history.dto";
 import {
   CreateFormDto,
@@ -75,7 +64,6 @@ const formulaSourcesChangedResponse = {
 export class TasksController {
   constructor(
     private readonly tasksService: TasksService,
-    private readonly customValidatorService: CustomValidatorService,
     private readonly authService: AuthService,
   ) {}
 
@@ -408,71 +396,6 @@ export class TasksController {
   })
   async deleteFormAdmin(@Param("id", ParseIntPipe) id: number): Promise<void> {
     return this.tasksService.deleteForm(id);
-  }
-
-  @Get("customValidators")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: CustomValidatorTypeDto, isArray: true })
-  async customValidatorsAdmin(): Promise<CustomValidatorTypeDto[]> {
-    const types = await this.customValidatorService.customValidators();
-    return types.map((t) => new CustomValidatorTypeDto(t));
-  }
-
-  @Post("runValidator/:id")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: CustomValidatorResponseDto })
-  async runValidator(
-    @Param("id", ParseIntPipe) id: number,
-    @Request() req: JwtRequest,
-    @Body() body: RunValidatorDto,
-  ): Promise<CustomValidatorResponseDto> {
-    return new CustomValidatorResponseDto(
-      await this.customValidatorService.runValidator(
-        id,
-        req.user.sub,
-        body.fieldValue,
-      ),
-    );
-  }
-
-  @Get("findOneCustomValidator/:id")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: CustomValidatorDto })
-  async findOneCustomValidatorAdmin(
-    @Param("id", ParseIntPipe) id: number,
-  ): Promise<CustomValidatorDto> {
-    return new CustomValidatorDto(
-      await this.customValidatorService.findOneCustomValidator(id),
-    );
-  }
-
-  @Post("createCustomValidator")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: CreateCustomValidatorResponseDto })
-  async createCustomValidatorAdmin(
-    @Body() body: CreateCustomValidatorDto,
-  ): Promise<CreateCustomValidatorResponseDto> {
-    const validator =
-      await this.customValidatorService.findOrCreateCustomValidator({
-        type: body.type,
-        idArgument: body.idArgument,
-        expression: body.expression,
-      });
-    return new CreateCustomValidatorResponseDto(validator.id);
-  }
-
-  @Post("testCustomExpression")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: TestCustomExpressionResponseDto })
-  async testCustomExpressionAdmin(
-    @Body() body: TestCustomExpressionDto,
-  ): Promise<TestCustomExpressionResponseDto> {
-    return new TestCustomExpressionResponseDto(
-      await this.customValidatorService.testCustomExpression(
-        body.expression,
-        body.userId,
-      ),
-    );
   }
 
   @Post("optout/:id")

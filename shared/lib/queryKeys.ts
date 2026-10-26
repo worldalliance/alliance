@@ -209,9 +209,9 @@ export const queryKeys = {
   customExpressionTestAdmin: (input: {
     expression: string;
     userId: number | null;
-  }) => ["tasksTestCustomExpressionAdmin", input] as const,
+  }) => ["customValidatorTestCustomExpressionAdmin", input] as const,
   customValidatorAdmin: (id: number) =>
-    ["tasksFindOneCustomValidatorAdmin", id] as const,
+    ["customValidatorFindOneCustomValidatorAdmin", id] as const,
   dailyStatsAdmin: (range: { start: string; end: string }) =>
     ["analyticsGetDailyStatsAdmin", range] as const,
   eventLogAdmin: (page: number, limit: number, eventType: EventType | "") =>

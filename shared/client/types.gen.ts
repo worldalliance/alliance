@@ -4223,6 +4223,16 @@ export type UpdateFormDto = {
     expectedFormSnapshotId?: number;
 };
 
+export type OptOutActionDto = {
+    actionId: number;
+    reason: string;
+    outOfTime: boolean;
+    isMoral: boolean;
+    partialFormData?: {
+        [key: string]: unknown;
+    };
+};
+
 export type CustomValidatorType = 'UploadedPhoto' | 'SignedContract' | 'AddedProfileDescription' | 'RepliedToForumPost' | 'RepliedToForumPostOrChild' | 'HasPhoneNumber' | 'IsPhoneNumberValid' | 'MemberTag' | 'MemberCommunity' | 'AnyCommunity' | 'CustomExpression';
 
 export type CustomValidatorTypeDto = {
@@ -4277,16 +4287,6 @@ export type TestCustomExpressionResponseDto = {
     failUsers: Array<CustomExpressionUserDto>;
     selectedUserId?: number;
     selectedUserResult?: boolean;
-};
-
-export type OptOutActionDto = {
-    actionId: number;
-    reason: string;
-    outOfTime: boolean;
-    isMoral: boolean;
-    partialFormData?: {
-        [key: string]: unknown;
-    };
 };
 
 export type TimeSpentForUserDto = {
@@ -13945,120 +13945,6 @@ export type TasksDeleteFormAdminResponses = {
 
 export type TasksDeleteFormAdminResponse = TasksDeleteFormAdminResponses[keyof TasksDeleteFormAdminResponses];
 
-export type TasksCustomValidatorsAdminData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/tasks/customValidators';
-};
-
-export type TasksCustomValidatorsAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type TasksCustomValidatorsAdminError = TasksCustomValidatorsAdminErrors[keyof TasksCustomValidatorsAdminErrors];
-
-export type TasksCustomValidatorsAdminResponses = {
-    200: Array<CustomValidatorTypeDto>;
-};
-
-export type TasksCustomValidatorsAdminResponse = TasksCustomValidatorsAdminResponses[keyof TasksCustomValidatorsAdminResponses];
-
-export type TasksRunValidatorData = {
-    body: RunValidatorDto;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/tasks/runValidator/{id}';
-};
-
-export type TasksRunValidatorErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type TasksRunValidatorError = TasksRunValidatorErrors[keyof TasksRunValidatorErrors];
-
-export type TasksRunValidatorResponses = {
-    200: CustomValidatorResponseDto;
-};
-
-export type TasksRunValidatorResponse = TasksRunValidatorResponses[keyof TasksRunValidatorResponses];
-
-export type TasksFindOneCustomValidatorAdminData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/tasks/findOneCustomValidator/{id}';
-};
-
-export type TasksFindOneCustomValidatorAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type TasksFindOneCustomValidatorAdminError = TasksFindOneCustomValidatorAdminErrors[keyof TasksFindOneCustomValidatorAdminErrors];
-
-export type TasksFindOneCustomValidatorAdminResponses = {
-    200: CustomValidatorDto;
-};
-
-export type TasksFindOneCustomValidatorAdminResponse = TasksFindOneCustomValidatorAdminResponses[keyof TasksFindOneCustomValidatorAdminResponses];
-
-export type TasksCreateCustomValidatorAdminData = {
-    body: CreateCustomValidatorDto;
-    path?: never;
-    query?: never;
-    url: '/tasks/createCustomValidator';
-};
-
-export type TasksCreateCustomValidatorAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type TasksCreateCustomValidatorAdminError = TasksCreateCustomValidatorAdminErrors[keyof TasksCreateCustomValidatorAdminErrors];
-
-export type TasksCreateCustomValidatorAdminResponses = {
-    200: CreateCustomValidatorResponseDto;
-};
-
-export type TasksCreateCustomValidatorAdminResponse = TasksCreateCustomValidatorAdminResponses[keyof TasksCreateCustomValidatorAdminResponses];
-
-export type TasksTestCustomExpressionAdminData = {
-    body: TestCustomExpressionDto;
-    path?: never;
-    query?: never;
-    url: '/tasks/testCustomExpression';
-};
-
-export type TasksTestCustomExpressionAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type TasksTestCustomExpressionAdminError = TasksTestCustomExpressionAdminErrors[keyof TasksTestCustomExpressionAdminErrors];
-
-export type TasksTestCustomExpressionAdminResponses = {
-    200: TestCustomExpressionResponseDto;
-};
-
-export type TasksTestCustomExpressionAdminResponse = TasksTestCustomExpressionAdminResponses[keyof TasksTestCustomExpressionAdminResponses];
-
 export type TasksOptoutData = {
     body: OptOutActionDto;
     path: {
@@ -14106,6 +13992,120 @@ export type TasksGetFormsForUserSidAdminResponses = {
 };
 
 export type TasksGetFormsForUserSidAdminResponse = TasksGetFormsForUserSidAdminResponses[keyof TasksGetFormsForUserSidAdminResponses];
+
+export type CustomValidatorCustomValidatorsAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/tasks/customValidators';
+};
+
+export type CustomValidatorCustomValidatorsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type CustomValidatorCustomValidatorsAdminError = CustomValidatorCustomValidatorsAdminErrors[keyof CustomValidatorCustomValidatorsAdminErrors];
+
+export type CustomValidatorCustomValidatorsAdminResponses = {
+    200: Array<CustomValidatorTypeDto>;
+};
+
+export type CustomValidatorCustomValidatorsAdminResponse = CustomValidatorCustomValidatorsAdminResponses[keyof CustomValidatorCustomValidatorsAdminResponses];
+
+export type CustomValidatorRunValidatorData = {
+    body: RunValidatorDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/tasks/runValidator/{id}';
+};
+
+export type CustomValidatorRunValidatorErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type CustomValidatorRunValidatorError = CustomValidatorRunValidatorErrors[keyof CustomValidatorRunValidatorErrors];
+
+export type CustomValidatorRunValidatorResponses = {
+    200: CustomValidatorResponseDto;
+};
+
+export type CustomValidatorRunValidatorResponse = CustomValidatorRunValidatorResponses[keyof CustomValidatorRunValidatorResponses];
+
+export type CustomValidatorFindOneCustomValidatorAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/tasks/findOneCustomValidator/{id}';
+};
+
+export type CustomValidatorFindOneCustomValidatorAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type CustomValidatorFindOneCustomValidatorAdminError = CustomValidatorFindOneCustomValidatorAdminErrors[keyof CustomValidatorFindOneCustomValidatorAdminErrors];
+
+export type CustomValidatorFindOneCustomValidatorAdminResponses = {
+    200: CustomValidatorDto;
+};
+
+export type CustomValidatorFindOneCustomValidatorAdminResponse = CustomValidatorFindOneCustomValidatorAdminResponses[keyof CustomValidatorFindOneCustomValidatorAdminResponses];
+
+export type CustomValidatorCreateCustomValidatorAdminData = {
+    body: CreateCustomValidatorDto;
+    path?: never;
+    query?: never;
+    url: '/tasks/createCustomValidator';
+};
+
+export type CustomValidatorCreateCustomValidatorAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type CustomValidatorCreateCustomValidatorAdminError = CustomValidatorCreateCustomValidatorAdminErrors[keyof CustomValidatorCreateCustomValidatorAdminErrors];
+
+export type CustomValidatorCreateCustomValidatorAdminResponses = {
+    200: CreateCustomValidatorResponseDto;
+};
+
+export type CustomValidatorCreateCustomValidatorAdminResponse = CustomValidatorCreateCustomValidatorAdminResponses[keyof CustomValidatorCreateCustomValidatorAdminResponses];
+
+export type CustomValidatorTestCustomExpressionAdminData = {
+    body: TestCustomExpressionDto;
+    path?: never;
+    query?: never;
+    url: '/tasks/testCustomExpression';
+};
+
+export type CustomValidatorTestCustomExpressionAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type CustomValidatorTestCustomExpressionAdminError = CustomValidatorTestCustomExpressionAdminErrors[keyof CustomValidatorTestCustomExpressionAdminErrors];
+
+export type CustomValidatorTestCustomExpressionAdminResponses = {
+    200: TestCustomExpressionResponseDto;
+};
+
+export type CustomValidatorTestCustomExpressionAdminResponse = CustomValidatorTestCustomExpressionAdminResponses[keyof CustomValidatorTestCustomExpressionAdminResponses];
 
 export type AnalyticsGetTimeSpentPerUserAdminData = {
     body?: never;

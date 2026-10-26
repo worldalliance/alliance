@@ -1,6 +1,6 @@
 import {
-  tasksCreateCustomValidatorAdmin,
-  tasksFindOneCustomValidatorAdmin,
+  customValidatorCreateCustomValidatorAdmin,
+  customValidatorFindOneCustomValidatorAdmin,
 } from "@alliance/shared/client";
 import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
@@ -17,7 +17,7 @@ const customValidatorQuery = (id: number) =>
   queryOptions({
     queryKey: queryKeys.customValidatorAdmin(id),
     queryFn: async (): Promise<CustomValidatorDraft> => {
-      const { data } = await tasksFindOneCustomValidatorAdmin({
+      const { data } = await customValidatorFindOneCustomValidatorAdmin({
         path: { id },
         throwOnError: true,
       });
@@ -46,7 +46,7 @@ export function useCustomValidatorAdmin(id: number | null) {
 
   const create = useCallback(
     async (draft: CustomValidatorDraft) => {
-      const response = await tasksCreateCustomValidatorAdmin({
+      const response = await customValidatorCreateCustomValidatorAdmin({
         body: {
           type: draft.type,
           idArgument: draft.idArgument,
