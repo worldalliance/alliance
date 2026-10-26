@@ -10,11 +10,16 @@ import { milliseconds } from "date-fns";
 import { chunk } from "es-toolkit";
 import { useCallback, useMemo } from "react";
 import {
+  tasksCreateFormAdmin,
   tasksDeleteFormAdmin,
   tasksGetFormResponseCountsAdmin,
   tasksListFormsAdmin,
 } from "../client";
-import type { FormResponseCountDto, FormSummaryDto } from "../client/types.gen";
+import type {
+  CreateFormDto,
+  FormResponseCountDto,
+  FormSummaryDto,
+} from "../client/types.gen";
 import { queryKeys } from "./queryKeys";
 
 const QUERY_KEY = queryKeys.formsAdmin();
@@ -74,6 +79,17 @@ export function useFormsAdmin() {
   });
 
   return { forms: data ?? NO_FORMS, isLoading, isError, deleteForm };
+}
+
+// A new form has no cached field lists or counts yet, only an index to join.
+export function useCreateFormAdmin() {
+  const invalidateFormsIndex = useInvalidateFormsIndex();
+  const { mutateAsync: createForm } = useMutation({
+    mutationFn: (body: CreateFormDto) =>
+      tasksCreateFormAdmin({ body, throwOnError: true }).then((r) => r.data),
+    onSuccess: invalidateFormsIndex,
+  });
+  return { createForm };
 }
 
 export type FormOption = { id: number; title: string };
