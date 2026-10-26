@@ -38,6 +38,7 @@ import {
   ValidateIf,
   ValidateNested,
 } from "class-validator";
+import { OptionalSlugField, slugGiven } from "src/datasources/slug-column";
 import { CommentDto } from "src/forum/dto/comment.dto";
 import { EditableContentDto } from "src/forum/dto/editablecontent.dto";
 import type { Comment } from "src/forum/entities/comment.entity";
@@ -563,6 +564,10 @@ export class ActionDto extends PickType(Action, [
  * which members and logged-out clients receive.
  */
 export class AdminActionDto extends ActionDto {
+  @ApiProperty()
+  @IsDefined()
+  slug: string;
+
   @ApiPropertyOptional({
     description: "Cohort expression tree defining who participates",
     nullable: true,
@@ -621,6 +626,7 @@ export class AdminActionDto extends ActionDto {
 
   constructor(action: ParsedAction, extra?: ActionDtoExtra) {
     super(action, extra);
+    this.slug = action.slug;
     this.cohortExpression = action.cohortExpression;
     this.prerequisiteActionIds = action.prerequisiteActionIds;
     this.memberActionStart = action.memberActionPhase.event?.date ?? null;
@@ -727,6 +733,10 @@ export class CreateActionDto extends IntersectionType(
   @ArrayUnique()
   @IsInt({ each: true })
   prerequisiteActionIds?: number[];
+
+  @OptionalSlugField()
+  @ValidateIf(slugGiven)
+  slug?: string;
 }
 
 export class UpdateActionDto extends PartialType(CreateActionDto, {

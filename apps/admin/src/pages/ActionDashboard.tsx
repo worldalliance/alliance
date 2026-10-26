@@ -26,6 +26,7 @@ import { useSearchParamTab } from "../lib/useSearchParamTab";
 import ActionEditor from "./action-dashboard/ActionEditor";
 import ActionOverviewTab from "./action-dashboard/ActionOverviewTab";
 import ActionReadinessChecklist from "./action-dashboard/ActionReadinessChecklist";
+import { ActionSlugField } from "./action-dashboard/ActionSlugField";
 import { useActionCommands } from "./action-dashboard/useActionCommands";
 import { useActionEditor } from "./action-dashboard/useActionEditor";
 import { useActionExport } from "./action-dashboard/useActionExport";
@@ -192,9 +193,18 @@ const ActionDashboard: React.FC = () => {
                 </span>
               )}
             </div>
-            <h1 className="text-[#111] text-[16pt] font-bold">
-              {isNew ? "Create New Action" : `${action?.name}`}
-            </h1>
+            <div className="flex flex-col">
+              <h1 className="text-[#111] text-[16pt] font-bold">
+                {isNew ? "Create New Action" : `${action?.name}`}
+              </h1>
+              {action && (
+                <ActionSlugField
+                  slug={action.slug}
+                  saving={isUpdating}
+                  onSave={(slug) => admin.updateAction({ slug })}
+                />
+              )}
+            </div>
             {action && !action.project && (
               <div className="flex items-center">
                 <ActionCategoryIcons categories={action.category} />

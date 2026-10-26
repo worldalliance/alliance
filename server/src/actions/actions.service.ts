@@ -64,6 +64,7 @@ import {
   Community,
   loadedCommunityUsers,
 } from "src/community/entities/community.entity";
+import { throwIfSlugTaken } from "src/datasources/slug-column";
 import {
   assertLive,
   softDeleteCascade,
@@ -265,6 +266,7 @@ import {
 } from "./entities/action-update.entity";
 import {
   Action,
+  ACTION_SLUG_INDEX,
   loadedActionEvents,
   loadedActionFollowUpForms,
   parseAction,
@@ -663,6 +665,13 @@ export class ActionsService {
         await assertPrerequisitesValid({ em, actionIds: [inserted.id] });
         return inserted;
       },
+    }).catch((error: unknown) => {
+      throwIfSlugTaken({
+        error,
+        indexName: ACTION_SLUG_INDEX,
+        slug: rest.slug,
+      });
+      throw error;
     });
     await this.shiftPrioritiesAfterInsertion();
     await this.syncGeneralUpdateDatesForSuites([saved.suite?.id]);
@@ -1106,6 +1115,15 @@ export class ActionsService {
         });
       }),
     );
+  }
+
+  async findIdBySlug(slug: string): Promise<number> {
+    const action = await this.actionRepository.findOne({
+      where: { slug },
+      select: { id: true },
+    });
+    if (!action) throw new NotFoundException(`Action "${slug}" not found`);
+    return action.id;
   }
 
   async findOneOrFail(params: {
@@ -2007,6 +2025,13 @@ export class ActionsService {
           await assertPrerequisitesValid({ em, actionIds: [id] });
         }
       },
+    }).catch((error: unknown) => {
+      throwIfSlugTaken({
+        error,
+        indexName: ACTION_SLUG_INDEX,
+        slug: rest.slug,
+      });
+      throw error;
     });
     const newSuiteId = action.suite?.id;
     await this.syncGeneralUpdateDatesForSuites([oldSuiteId, newSuiteId]);
@@ -3848,6 +3873,8 @@ export class ActionsService {
       project: _project,
       // Action ids name different actions in another environment.
       prerequisiteActionIds: _prerequisiteActionIds,
+      // Regenerated, so importing a copy beside its original can't conflict.
+      slug: _slug,
       ...actionCols
     } = importaction;
 

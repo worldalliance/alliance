@@ -13,9 +13,9 @@ import {
 import { ApiOkResponse } from "@nestjs/swagger";
 import { AdminGuard } from "src/auth/guards/admin.guard";
 import {
+  AdminProjectDto,
   AssignProjectDto,
-  ProjectDto,
-  ProjectNameDto,
+  CreateProjectDto,
   ProjectWithStepsDto,
   UpdateProjectDto,
 } from "./dto/project.dto";
@@ -27,10 +27,18 @@ export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
 
   @Get()
-  @ApiOkResponse({ type: ProjectDto, isArray: true })
-  async findAllAdmin(): Promise<ProjectDto[]> {
+  @ApiOkResponse({ type: AdminProjectDto, isArray: true })
+  async findAllAdmin(): Promise<AdminProjectDto[]> {
     const projects = await this.projectsService.findAll();
-    return projects.map((project) => new ProjectDto(project));
+    return projects.map((project) => new AdminProjectDto(project));
+  }
+
+  @Get("by-slug/:slug")
+  @ApiOkResponse({ type: AdminProjectDto })
+  async findOneBySlugAdmin(
+    @Param("slug") slug: string,
+  ): Promise<AdminProjectDto> {
+    return new AdminProjectDto(await this.projectsService.findOneBySlug(slug));
   }
 
   @Get(":id")
@@ -44,22 +52,25 @@ export class ProjectsController {
   }
 
   @Post()
-  @ApiOkResponse({ type: ProjectDto })
-  async createAdmin(@Body() body: ProjectNameDto): Promise<ProjectDto> {
-    return new ProjectDto(await this.projectsService.create(body.name));
+  @ApiOkResponse({ type: AdminProjectDto })
+  async createAdmin(@Body() body: CreateProjectDto): Promise<AdminProjectDto> {
+    return new AdminProjectDto(
+      await this.projectsService.create({ name: body.name, slug: body.slug }),
+    );
   }
 
   @Patch(":id")
-  @ApiOkResponse({ type: ProjectDto })
+  @ApiOkResponse({ type: AdminProjectDto })
   async updateAdmin(
     @Param("id", ParseIntPipe) id: number,
     @Body() body: UpdateProjectDto,
-  ): Promise<ProjectDto> {
-    return new ProjectDto(
+  ): Promise<AdminProjectDto> {
+    return new AdminProjectDto(
       await this.projectsService.update({
         id,
         name: body.name,
         category: body.category,
+        slug: body.slug,
       }),
     );
   }

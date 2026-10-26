@@ -30,6 +30,7 @@ import {
   DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
+import { SlugColumn } from "src/datasources/slug-column";
 import { User } from "src/user/entities/user.entity";
 import type { Relation } from "src/utils/Repository";
 import { toDateTime, trimToNull } from "src/utils/transforms";
@@ -76,6 +77,8 @@ export function actionStatusAt(
   return eventInEffectAt(events, at).event?.newStatus ?? ActionStatus.Draft;
 }
 
+export const ACTION_SLUG_INDEX = "IDX_action_slug_live";
+
 @Entity()
 @Index(["taskFormId"], { unique: true, where: '"deletedAt" IS NULL' })
 export class Action {
@@ -90,6 +93,10 @@ export class Action {
   @ApiProperty({ description: "Name of the action" })
   @IsNotEmpty()
   name: string;
+
+  @SlugColumn(ACTION_SLUG_INDEX)
+  @IsDefined()
+  slug: string;
 
   @Column({
     type: "enum",

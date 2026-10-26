@@ -4,6 +4,7 @@ import {
   Allow,
   ArrayUnique,
   IsArray,
+  IsDefined,
   IsEmpty,
   IsEnum,
   IsOptional,
@@ -13,6 +14,7 @@ import {
   DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
+import { SlugColumn } from "src/datasources/slug-column";
 import type { Relation } from "src/utils/Repository";
 import {
   Column,
@@ -23,6 +25,8 @@ import {
 } from "typeorm";
 import { ActionCategory } from "../action-category";
 import { Action } from "./action.entity";
+
+export const PROJECT_SLUG_INDEX = "IDX_project_slug_live";
 
 /**
  * A series of actions run week after week toward one goal. Step order comes
@@ -42,6 +46,10 @@ export class Project {
   @ApiProperty()
   @Allow()
   name: string;
+
+  @SlugColumn(PROJECT_SLUG_INDEX)
+  @IsDefined()
+  slug: string;
 
   @Column({
     type: "enum",

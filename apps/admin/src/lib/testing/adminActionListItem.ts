@@ -7,6 +7,7 @@ export const adminActionListItem = (
 ): AdminActionListItemDto => ({
   id,
   name,
+  slug: `action-${id}`,
   category: [],
   body: "",
   shortDescription: "",

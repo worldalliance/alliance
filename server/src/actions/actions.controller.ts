@@ -194,6 +194,23 @@ export class ActionsController {
     );
   }
 
+  @Get("admin/by-slug/:slug")
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: AdminActionDto })
+  @ApiUnauthorizedResponse()
+  async findOneBySlugAdmin(
+    @Param("slug") slug: string,
+    @Request() req: JwtRequest,
+  ): Promise<AdminActionDto> {
+    return new AdminActionDto(
+      await this.actionsService.findOneOrFail({
+        id: await this.actionsService.findIdBySlug(slug),
+        userId: req.user.sub,
+        includeUnpublishedUpdates: true,
+      }),
+    );
+  }
+
   @Get(":id/incomplete-users")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [ProfileDto] })

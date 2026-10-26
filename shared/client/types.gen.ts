@@ -359,6 +359,10 @@ export type ActionReviewer = {
      */
     name: string;
     /**
+     * Stable, human-readable identifier for tooling
+     */
+    slug: string;
+    /**
      * Link to the reviewer's website, LinkedIn, etc.
      */
     url: string | null;
@@ -381,6 +385,10 @@ export type Action = {
      * Name of the action
      */
     name: string;
+    /**
+     * Stable, human-readable identifier for tooling
+     */
+    slug: string;
     /**
      * Alliance goals the action works towards, or meta
      */
@@ -2456,6 +2464,7 @@ export type AdminActionListItemDto = {
     reqAuthenticated?: boolean;
     authors?: Array<ProfileDto>;
     project?: ProjectDto | null;
+    slug: string;
     /**
      * Cohort expression tree defining who participates
      */
@@ -2618,6 +2627,7 @@ export type AdminActionDto = {
     reqAuthenticated?: boolean;
     authors?: Array<ProfileDto>;
     project?: ProjectDto | null;
+    slug: string;
     /**
      * Cohort expression tree defining who participates
      */
@@ -2778,6 +2788,10 @@ export type CreateActionDto = {
      * Actions each member waits for before this action's cohort decides them
      */
     prerequisiteActionIds?: Array<number>;
+    /**
+     * Stable, human-readable identifier for tooling
+     */
+    slug?: string;
 };
 
 export type UpdateActionDto = {
@@ -2873,6 +2887,10 @@ export type UpdateActionDto = {
      * Actions each member waits for before this action's cohort decides them
      */
     prerequisiteActionIds?: Array<number>;
+    /**
+     * Stable, human-readable identifier for tooling
+     */
+    slug?: string;
 };
 
 export type UserCompletedActionsCountDto = {
@@ -2981,6 +2999,10 @@ export type ExportActionDto = {
      * Name of the action
      */
     name: string;
+    /**
+     * Stable, human-readable identifier for tooling
+     */
+    slug: string;
     /**
      * Alliance goals the action works towards, or meta
      */
@@ -3638,6 +3660,16 @@ export type CorrectCohortDecisionDto = {
     note: string;
 };
 
+export type AdminProjectDto = {
+    id: number;
+    name: string;
+    /**
+     * Alliance goals the project works towards, or meta
+     */
+    category: Array<ActionCategory>;
+    slug: string;
+};
+
 export type ProjectStepDto = {
     actionId: number;
     actionName: string;
@@ -3651,14 +3683,19 @@ export type ProjectWithStepsDto = {
      * Alliance goals the project works towards, or meta
      */
     category: Array<ActionCategory>;
+    slug: string;
     /**
      * The project's actions, ordered by member-action start
      */
     steps: Array<ProjectStepDto>;
 };
 
-export type ProjectNameDto = {
+export type CreateProjectDto = {
     name: string;
+    /**
+     * Stable, human-readable identifier for tooling
+     */
+    slug?: string;
 };
 
 export type UpdateProjectDto = {
@@ -3667,6 +3704,10 @@ export type UpdateProjectDto = {
      * Alliance goals the project works towards, or meta
      */
     category?: Array<ActionCategory>;
+    /**
+     * Stable, human-readable identifier for tooling
+     */
+    slug?: string;
 };
 
 export type AssignProjectDto = {
@@ -10003,6 +10044,27 @@ export type ActionsFindOneAdminResponses = {
 
 export type ActionsFindOneAdminResponse = ActionsFindOneAdminResponses[keyof ActionsFindOneAdminResponses];
 
+export type ActionsFindOneBySlugAdminData = {
+    body?: never;
+    path: {
+        slug: string;
+    };
+    query?: never;
+    url: '/actions/admin/by-slug/{slug}';
+};
+
+export type ActionsFindOneBySlugAdminErrors = {
+    401: HeyApiError;
+};
+
+export type ActionsFindOneBySlugAdminError = ActionsFindOneBySlugAdminErrors[keyof ActionsFindOneBySlugAdminErrors];
+
+export type ActionsFindOneBySlugAdminResponses = {
+    200: AdminActionDto;
+};
+
+export type ActionsFindOneBySlugAdminResponse = ActionsFindOneBySlugAdminResponses[keyof ActionsFindOneBySlugAdminResponses];
+
 export type ActionsGetIncompleteUsersAdminData = {
     body?: never;
     path: {
@@ -11978,13 +12040,13 @@ export type ProjectsFindAllAdminErrors = {
 export type ProjectsFindAllAdminError = ProjectsFindAllAdminErrors[keyof ProjectsFindAllAdminErrors];
 
 export type ProjectsFindAllAdminResponses = {
-    200: Array<ProjectDto>;
+    200: Array<AdminProjectDto>;
 };
 
 export type ProjectsFindAllAdminResponse = ProjectsFindAllAdminResponses[keyof ProjectsFindAllAdminResponses];
 
 export type ProjectsCreateAdminData = {
-    body: ProjectNameDto;
+    body: CreateProjectDto;
     path?: never;
     query?: never;
     url: '/projects';
@@ -12000,10 +12062,34 @@ export type ProjectsCreateAdminErrors = {
 export type ProjectsCreateAdminError = ProjectsCreateAdminErrors[keyof ProjectsCreateAdminErrors];
 
 export type ProjectsCreateAdminResponses = {
-    200: ProjectDto;
+    200: AdminProjectDto;
 };
 
 export type ProjectsCreateAdminResponse = ProjectsCreateAdminResponses[keyof ProjectsCreateAdminResponses];
+
+export type ProjectsFindOneBySlugAdminData = {
+    body?: never;
+    path: {
+        slug: string;
+    };
+    query?: never;
+    url: '/projects/by-slug/{slug}';
+};
+
+export type ProjectsFindOneBySlugAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ProjectsFindOneBySlugAdminError = ProjectsFindOneBySlugAdminErrors[keyof ProjectsFindOneBySlugAdminErrors];
+
+export type ProjectsFindOneBySlugAdminResponses = {
+    200: AdminProjectDto;
+};
+
+export type ProjectsFindOneBySlugAdminResponse = ProjectsFindOneBySlugAdminResponses[keyof ProjectsFindOneBySlugAdminResponses];
 
 export type ProjectsRemoveAdminData = {
     body?: never;
@@ -12074,7 +12160,7 @@ export type ProjectsUpdateAdminErrors = {
 export type ProjectsUpdateAdminError = ProjectsUpdateAdminErrors[keyof ProjectsUpdateAdminErrors];
 
 export type ProjectsUpdateAdminResponses = {
-    200: ProjectDto;
+    200: AdminProjectDto;
 };
 
 export type ProjectsUpdateAdminResponse = ProjectsUpdateAdminResponses[keyof ProjectsUpdateAdminResponses];
