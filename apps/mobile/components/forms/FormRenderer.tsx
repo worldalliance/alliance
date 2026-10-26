@@ -22,6 +22,7 @@ import {
   historySubject,
   useVariableSourceHistories,
 } from "@alliance/shared/forms/useVariableSourceHistories";
+import { useVisibilityValidatorResults } from "@alliance/shared/forms/useVisibilityValidatorResults";
 import { variableInputsGate } from "@alliance/shared/forms/variableInputsGate";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import { formTimeZoneDefault } from "@alliance/shared/lib/timeZone";
@@ -34,7 +35,6 @@ import {
   useFormValidation,
   useFormVisibility,
   useRandomizationKey,
-  useVisibilityValidatorResults,
 } from "@alliance/shared/useFormRenderer";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, View } from "react-native";

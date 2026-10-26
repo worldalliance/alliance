@@ -9,11 +9,9 @@ import {
   historySubject,
   useVariableSourceHistories,
 } from "@alliance/shared/forms/useVariableSourceHistories";
+import { useVisibilityValidatorResults } from "@alliance/shared/forms/useVisibilityValidatorResults";
 import { useVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
-import {
-  useCurrentUserLocation,
-  useVisibilityValidatorResults,
-} from "@alliance/shared/useFormRenderer";
+import { useCurrentUserLocation } from "@alliance/shared/useFormRenderer";
 
 export function useFormInputs({
   schema,
