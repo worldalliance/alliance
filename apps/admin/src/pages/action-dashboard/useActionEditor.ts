@@ -14,6 +14,29 @@ import { useNavigateToCreatedAction } from "./useActionCommands";
 
 export type ActionEditorState = ReturnType<typeof useActionEditor>;
 
+function emptyActionDraft(suiteId: number | undefined): CreateActionDto {
+  return {
+    name: "",
+    category: [],
+    image: "",
+    body: "",
+    timeEstimate: 0,
+    shortDescription: "",
+    visibilityMode: "public",
+    isContractSigningAction: false,
+    preventCompletion: false,
+    staffPreview: false,
+    taskFormId: undefined,
+    isForumParticipationAction: false,
+    shouldCompleteAfterDeadline: false,
+    publicOnly: false,
+    suiteId,
+    optional: false,
+    authorIds: [],
+    onboarding: false,
+  };
+}
+
 export function useActionEditor(params: {
   admin: Pick<
     ReturnType<typeof useActionAdmin>,
@@ -50,52 +73,20 @@ export function useActionEditor(params: {
   const [cohortExpression, setCohortExpression] =
     useState<CohortExpression | null>(null);
 
-  const [form, setForm] = useState<CreateActionDto>({
-    name: "",
-    category: [],
-    image: "",
-    body: "",
-    timeEstimate: 0,
-    shortDescription: "",
-    visibilityMode: "public",
-    isContractSigningAction: false,
-    preventCompletion: false,
-    staffPreview: false,
-    taskFormId: undefined,
-    isForumParticipationAction: false,
-    shouldCompleteAfterDeadline: false,
-    publicOnly: false,
-    suiteId: undefined,
-    optional: false,
-    authorIds: [],
-    onboarding: false,
-  });
+  const [form, setForm] = useState<CreateActionDto>(() =>
+    emptyActionDraft(undefined),
+  );
   const [reviewerRows, setReviewerRows] = useState<ReviewerRow[]>([]);
 
   useEffect(() => {
     if (isNew) {
-      setForm({
-        name: "",
-        category: [],
-        image: "",
-        body: "",
-        timeEstimate: 0,
-        shortDescription: "",
-        visibilityMode: "public",
-        preventCompletion: false,
-        staffPreview: false,
-        taskFormId: undefined,
-        shouldCompleteAfterDeadline: false,
-        publicOnly: false,
-        isForumParticipationAction: false,
-        isContractSigningAction: false,
-        suiteId: searchParams.get("suiteId")
-          ? parseInt(searchParams.get("suiteId")!)
-          : undefined,
-        optional: false,
-        authorIds: [],
-        onboarding: false,
-      });
+      setForm(
+        emptyActionDraft(
+          searchParams.get("suiteId")
+            ? parseInt(searchParams.get("suiteId")!)
+            : undefined,
+        ),
+      );
       setReviewerRows([]);
       resetCoverImage(null);
       setError(null);
