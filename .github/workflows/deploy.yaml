@@ -392,7 +392,7 @@ jobs:
       SLACK_WEBHOOK_URL_DEPLOYMENT: ${{ secrets.SLACK_WEBHOOK_URL_DEPLOYMENT }}
 
   visual-regression:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
     services:
       postgres:
