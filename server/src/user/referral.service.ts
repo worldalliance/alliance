@@ -9,16 +9,13 @@ import {
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
 import type { Relations } from "src/utils/Repository";
 import { Brackets, type Repository } from "typeorm";
+import { sqlUserHasActiveContractAt } from "./entities/contract-event.entity";
 import { Friend } from "./entities/friend.entity";
 import {
   loadedOnetimeInviteInvitingUser,
   OnetimeInvite,
 } from "./entities/onetime-invite.entity";
-import {
-  ReferralSource,
-  sqlUserHasActiveContractAt,
-  User,
-} from "./entities/user.entity";
+import { ReferralSource, User } from "./entities/user.entity";
 import { acceptedFriendshipSql, friendOf } from "./friendship";
 import { OnetimeInviteService } from "./onetime-invite.service";
 import { sqlUserHasProfilePicture } from "./profile-picture";

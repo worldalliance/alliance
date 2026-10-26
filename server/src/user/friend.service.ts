@@ -24,8 +24,9 @@ import { isUniqueViolation } from "src/utils/db-errors";
 import { DataSource, type Repository } from "typeorm";
 import { type FriendGraphEdge } from "./dto/friend-graph.dto";
 import { FriendStatusDtoArgs } from "./dto/user.dto";
+import { sqlUserHasActiveContractAt } from "./entities/contract-event.entity";
 import { Friend, FriendStatus } from "./entities/friend.entity";
-import { sqlUserHasActiveContractAt, User } from "./entities/user.entity";
+import { User } from "./entities/user.entity";
 import {
   acceptedFriendshipsOf,
   acceptedFriendshipSql,
