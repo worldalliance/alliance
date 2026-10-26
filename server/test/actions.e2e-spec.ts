@@ -4117,20 +4117,21 @@ describe("Actions (e2e)", () => {
       blocks: [{ type: "display", kind: "header", id: "b1", text }],
     });
 
-    const createUpdate = async (title: string) => {
+    const createUpdate = async (title: string, date = new Date()) => {
       const created = await request(ctx.app.getHttpServer())
         .post(`/actions/createUpdate/${testAction.id}`)
         .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({
           title,
           shortNotifString: "something happened",
-          date: new Date().toISOString(),
+          date: date.toISOString(),
           notifyType: "none",
           notificationMode: "normal",
         })
         .expect(201);
       return created.body as {
         id: number;
+        date: string;
         visibleAt: string | null;
         schemaSnapshotId: number;
         associatedEventId: number | null;
@@ -4193,6 +4194,38 @@ describe("Actions (e2e)", () => {
       expect(await updateIdsOnActionPage(ctx.accessToken, "slug")).toContain(
         update.id,
       );
+    });
+
+    it("holds an update dated ahead until its date when its body is first written", async () => {
+      const update = await createUpdate(
+        "Written ahead",
+        new Date(Date.now() + milliseconds({ hours: 1 })),
+      );
+      const written = await writeContent(update.id, update.schemaSnapshotId);
+
+      expect(written.body.visibleAt).toBe(update.date);
+      expect(await memberUpdateIds()).not.toContain(update.id);
+      expect(
+        await updateIdsOnActionPage(ctx.accessToken, "slug"),
+      ).not.toContain(update.id);
+    });
+
+    it("holds the update until a date set in the same save as its body", async () => {
+      const update = await createUpdate("Dated with its body");
+      const date = new Date(Date.now() + milliseconds({ hours: 1 }));
+
+      const written = await request(ctx.app.getHttpServer())
+        .patch(`/actions/updateUpdate/${update.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          date: date.toISOString(),
+          schema: displaySchema("The body"),
+          expectedSchemaSnapshotId: update.schemaSnapshotId,
+        })
+        .expect(200);
+
+      expect(written.body.visibleAt).toBe(date.toISOString());
+      expect(await memberUpdateIds()).not.toContain(update.id);
     });
 
     it("keeps the original publish time when the body is edited again", async () => {

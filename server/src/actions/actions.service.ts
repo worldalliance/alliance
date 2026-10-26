@@ -57,7 +57,7 @@ import {
 } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
-import { milliseconds } from "date-fns";
+import { max, milliseconds } from "date-fns";
 import { groupBy } from "es-toolkit";
 import { CommunityService } from "src/community/community.service";
 import {
@@ -3402,12 +3402,16 @@ export class ActionsService {
         // just written.
         actionUpdate.schemaSnapshot = undefined;
 
-        // Writing a body is what publishes the update. Emptying one again
-        // deliberately does not retract it: members may already have seen or
-        // been notified about it, so unpublishing is an explicit act, not a
-        // side effect of clearing the editor.
+        // Writing a body is what publishes the update, at its displayed date
+        // when that is still ahead. Emptying one again deliberately does not
+        // retract it: members may already have seen or been notified about
+        // it, so unpublishing is an explicit act, not a side effect of
+        // clearing the editor.
         if (actionUpdate.visibleAt === null && written.schema.blocks.length) {
-          actionUpdate.visibleAt = new Date();
+          actionUpdate.visibleAt = max([
+            new Date(),
+            rest.date ?? actionUpdate.date,
+          ]);
         }
       }
 
@@ -3432,10 +3436,9 @@ export class ActionsService {
   }
 
   /**
-   * Hides a published update again until its displayed date. Publishing stamps
-   * `visibleAt` at the first body save, which is too early for an update
-   * written ahead of the date it is about; moving `visibleAt` up to `date`
-   * lets the `visibleAt <= now` gate republish it when that date arrives.
+   * Hides a published update again until its displayed date, for one whose
+   * date moved later after it published; moving `visibleAt` up to `date` lets
+   * the `visibleAt <= now` gate republish it when that date arrives.
    */
   async unpublishActionUpdateUntilDate(id: number): Promise<ActionUpdate> {
     // Before the transaction, as in `updateActionUpdate`.
@@ -3467,8 +3470,8 @@ export class ActionsService {
   }
 
   /**
-   * Undoes `unpublishActionUpdateUntilDate` before the date it waits for. The
-   * entries it moved to that date stay there.
+   * Publishes an update that is waiting on its displayed date. Its inbox
+   * entries stay due at that date.
    */
   async publishActionUpdateNow(id: number): Promise<ActionUpdate> {
     const actionUpdate = await this.findOneActionUpdate(id);
