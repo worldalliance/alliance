@@ -1,12 +1,9 @@
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import {
-  CustomExpressionUserDto,
-  tasksTestCustomExpressionAdmin,
-} from "@alliance/shared/client";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import Card from "@alliance/sharedweb/ui/Card";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { adminRefusalMessage } from "../../lib/adminRefusal";
+import { useCustomExpressionTestAdmin } from "../../lib/useCustomExpressionTestAdmin";
 import { useUsersAdmin } from "../../lib/useUsersAdmin";
 
 type CustomExpressionEditorProps = {
@@ -25,20 +22,23 @@ export function CustomExpressionEditor({
     () => (usersQuery.data ?? []).filter((user) => user.hasActiveContract),
     [usersQuery.data],
   );
-  const [expressionTest, setExpressionTest] = useState<{
-    result?: boolean;
-    error?: string;
-    totals?: {
-      pass: number;
-      fail: number;
-      total: number;
-    };
-    passUsers?: Array<CustomExpressionUserDto>;
-    failUsers?: Array<CustomExpressionUserDto>;
-    selectedUserLabel?: string;
-  } | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-  const [isTesting, setIsTesting] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const { query: expressionTestQuery, run: runExpressionTestQuery } =
+    useCustomExpressionTestAdmin({
+      expression: expression ?? "",
+      userId: selectedUserId,
+    });
+  const isTesting = expressionTestQuery.isFetching;
+  const testError =
+    validationError ??
+    (expressionTestQuery.error
+      ? adminRefusalMessage(
+          expressionTestQuery.error,
+          "Expression failed to run.",
+        )
+      : null);
+  const expressionTest = testError ? undefined : expressionTestQuery.data;
 
   const hasExpression = Boolean(expression?.trim());
   const sortedUsers = useMemo(
@@ -75,7 +75,7 @@ export function CustomExpressionEditor({
   }, [expressionTest?.failUsers]);
 
   useEffect(() => {
-    setExpressionTest(null);
+    setValidationError(null);
   }, [expression, selectedUserId]);
 
   useEffect(() => {
@@ -91,66 +91,32 @@ export function CustomExpressionEditor({
     }
   }, [selectedUserId, sortedUsers]);
 
-  const runExpressionTest = useCallback(async () => {
+  const runExpressionTest = useCallback(() => {
     if (!expression?.trim()) {
-      setExpressionTest({ error: "Expression is empty." });
+      setValidationError("Expression is empty.");
       return;
     }
     if (!selectedUserId) {
-      setExpressionTest({ error: "Select a user to test against." });
+      setValidationError("Select a user to test against.");
       return;
     }
     if (usersLoading) {
-      setExpressionTest({ error: "Users are still loading. Try again soon." });
+      setValidationError("Users are still loading. Try again soon.");
       return;
     }
     if (usersError) {
-      setExpressionTest({ error: usersError });
+      setValidationError(usersError);
       return;
     }
-
-    setIsTesting(true);
-    try {
-      const response = await tasksTestCustomExpressionAdmin({
-        body: {
-          expression,
-          userId: selectedUserId,
-        },
-      });
-
-      if (response.error) {
-        throw response.error;
-      }
-
-      if (!response.data) {
-        throw new Error("Missing custom expression results.");
-      }
-
-      const selectedResult = response.data.selectedUserResult;
-      if (typeof selectedResult !== "boolean") {
-        throw new Error("Missing selected user result.");
-      }
-
-      setExpressionTest({
-        result: selectedResult,
-        selectedUserLabel,
-        totals: {
-          pass: response.data.passCount,
-          fail: response.data.failCount,
-          total: response.data.totalCount,
-        },
-        passUsers: response.data.passUsers ?? [],
-        failUsers: response.data.failUsers ?? [],
-      });
-    } catch (err) {
-      const message =
-        (err as { message: string } | undefined)?.message ??
-        "Expression failed to run.";
-      setExpressionTest({ error: message });
-    } finally {
-      setIsTesting(false);
-    }
-  }, [expression, selectedUserId, selectedUserLabel, usersError, usersLoading]);
+    setValidationError(null);
+    void runExpressionTestQuery();
+  }, [
+    expression,
+    selectedUserId,
+    usersError,
+    usersLoading,
+    runExpressionTestQuery,
+  ]);
   const canTestExpression =
     hasExpression &&
     !isTesting &&
@@ -214,73 +180,66 @@ export function CustomExpressionEditor({
             Runs against selected user and all users
           </span>
         </div>
-        {expressionTest?.error && (
-          <p className="text-[11px] text-red-500">{expressionTest.error}</p>
-        )}
-        {expressionTest &&
-          expressionTest.result !== undefined &&
-          !expressionTest.error && (
-            <p
-              className={cn(
-                "text-[11px]",
-                expressionTest.result ? "text-green-600" : "text-red-600",
-              )}
-            >
-              {expressionTest.selectedUserLabel
-                ? `${expressionTest.selectedUserLabel}: `
-                : "Selected user: "}
-              {String(expressionTest.result)}
-            </p>
-          )}
-        {expressionTest?.totals && !expressionTest.error && (
-          <p className="text-[11px] text-gray-600">
-            Active-contract users: {expressionTest.totals.pass} pass,{" "}
-            {expressionTest.totals.fail} fail (total{" "}
-            {expressionTest.totals.total})
+        {testError && <p className="text-[11px] text-red-500">{testError}</p>}
+        {expressionTest && (
+          <p
+            className={cn(
+              "text-[11px]",
+              expressionTest.selectedUserResult
+                ? "text-green-600"
+                : "text-red-600",
+            )}
+          >
+            {selectedUserLabel ? `${selectedUserLabel}: ` : "Selected user: "}
+            {String(expressionTest.selectedUserResult)}
           </p>
         )}
-        {expressionTest?.passUsers &&
-          expressionTest?.failUsers &&
-          !expressionTest.error && (
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <details className="rounded border border-gray-200 bg-white p-2">
-                <summary className="cursor-pointer text-[11px] text-gray-700">
-                  Passing users ({passUsers.length})
-                </summary>
-                {passUsers.length === 0 ? (
-                  <p className="mt-1 text-[11px] text-gray-400">
-                    No users passed.
-                  </p>
-                ) : (
-                  <ul className="mt-1 max-h-40 overflow-auto text-[11px] text-gray-700">
-                    {passUsers.map((user) => (
-                      <li key={user.id}>
-                        {user.anonymous ? "Anonymous" : user.name}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </details>
-              <details className="rounded border border-gray-200 bg-white p-2">
-                <summary className="cursor-pointer text-[11px] text-gray-700">
-                  Failing users ({failUsers.length})
-                </summary>
-                {failUsers.length === 0 ? (
-                  <p className="mt-1 text-[11px] text-gray-400">
-                    No users failed.
-                  </p>
-                ) : (
-                  <ul className="mt-1 max-h-40 overflow-auto text-[11px] text-gray-700">
-                    {failUsers.map((user) => (
-                      <li key={user.id}>
-                        {user.anonymous ? "Anonymous" : user.name}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </details>
-            </div>
-          )}
+        {expressionTest && (
+          <p className="text-[11px] text-gray-600">
+            Active-contract users: {expressionTest.passCount} pass,{" "}
+            {expressionTest.failCount} fail (total {expressionTest.totalCount})
+          </p>
+        )}
+        {expressionTest && (
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <details className="rounded border border-gray-200 bg-white p-2">
+              <summary className="cursor-pointer text-[11px] text-gray-700">
+                Passing users ({passUsers.length})
+              </summary>
+              {passUsers.length === 0 ? (
+                <p className="mt-1 text-[11px] text-gray-400">
+                  No users passed.
+                </p>
+              ) : (
+                <ul className="mt-1 max-h-40 overflow-auto text-[11px] text-gray-700">
+                  {passUsers.map((user) => (
+                    <li key={user.id}>
+                      {user.anonymous ? "Anonymous" : user.name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </details>
+            <details className="rounded border border-gray-200 bg-white p-2">
+              <summary className="cursor-pointer text-[11px] text-gray-700">
+                Failing users ({failUsers.length})
+              </summary>
+              {failUsers.length === 0 ? (
+                <p className="mt-1 text-[11px] text-gray-400">
+                  No users failed.
+                </p>
+              ) : (
+                <ul className="mt-1 max-h-40 overflow-auto text-[11px] text-gray-700">
+                  {failUsers.map((user) => (
+                    <li key={user.id}>
+                      {user.anonymous ? "Anonymous" : user.name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </details>
+          </div>
+        )}
       </Card>
     </div>
   );

@@ -205,6 +205,10 @@ export const queryKeys = {
   contractsAdmin: () => ["contractAllAdmin"] as const,
   contractStatusHistoryAdmin: (range: { start: string; end: string }) =>
     ["analyticsGetContractStatusHistoryAdmin", range] as const,
+  customExpressionTestAdmin: (input: {
+    expression: string;
+    userId: number | null;
+  }) => ["tasksTestCustomExpressionAdmin", input] as const,
   customValidatorAdmin: (id: number) =>
     ["tasksFindOneCustomValidatorAdmin", id] as const,
   dailyStatsAdmin: (range: { start: string; end: string }) =>
