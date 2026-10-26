@@ -4,6 +4,7 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import { ActionPartnershipsModule } from "src/action-partnerships/action-partnerships.module";
 import { ActionPartnershipsService } from "src/action-partnerships/action-partnerships.service";
 import { ActionPartnershipResponse } from "src/action-partnerships/entities/action-partnership-response.entity";
+import { ActionActivityService } from "src/actions/action-activity.service";
 import { ActionFormVariantService } from "src/actions/action-form-variant.service";
 import { ActionSuitesService } from "src/actions/action-suites.service";
 import { ActionUpdatesService } from "src/actions/action-updates.service";
@@ -76,6 +77,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
   let actionUpdates: ActionUpdatesService;
   let actionSuites: ActionSuitesService;
   let followUpForms: FollowUpFormsService;
+  let actionActivity: ActionActivityService;
   let actionRepo: Repository<Action>;
 
   const createAction = (name = "Parent action") =>
@@ -123,6 +125,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
     actionUpdates = ctx.app.get(ActionUpdatesService);
     actionSuites = ctx.app.get(ActionSuitesService);
     followUpForms = ctx.app.get(FollowUpFormsService);
+    actionActivity = ctx.app.get(ActionActivityService);
     actionRepo = ctx.dataSource.getRepository(Action);
   });
 
@@ -287,7 +290,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
       );
 
     await expect(
-      actions.createActionActivity({
+      actionActivity.createActionActivity({
         actionId: action.id,
         userId: ctx.adminUserId,
         type: ActionActivityType.USER_DISMISSED,
@@ -315,7 +318,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
     await responses.softDelete(response.id);
 
     await expect(
-      actions.createActionActivity({
+      actionActivity.createActionActivity({
         actionId: action.id,
         userId: ctx.adminUserId,
         type: ActionActivityType.USER_COMPLETED,

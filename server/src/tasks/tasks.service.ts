@@ -88,6 +88,7 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { isNull, omitBy } from "es-toolkit";
+import { ActionActivityService } from "src/actions/action-activity.service";
 import { ActionFormVariantService } from "src/actions/action-form-variant.service";
 import { ActionsService } from "src/actions/actions.service";
 import { Action, parseAction } from "src/actions/entities/action.entity";
@@ -301,6 +302,7 @@ export class TasksService {
     private readonly userVisibilityContextService: UserVisibilityContextService,
     private forumCommentQueryService: ForumCommentQueryService,
     private actionsService: ActionsService,
+    private readonly actionActivityService: ActionActivityService,
     private mmsService: MmsService,
     @InjectRepository(CustomValidator)
     private customValidatorRepository: Repository<CustomValidator>,
@@ -984,7 +986,7 @@ export class TasksService {
     const submittedAt = new Date();
     if (action) {
       // Before any answer side effects (contract signing, profile updates).
-      await this.actionsService.ensureCompletionAllowed({
+      await this.actionActivityService.ensureCompletionAllowed({
         action: parseAction(action),
         userId,
         now: submittedAt,
@@ -1134,10 +1136,14 @@ export class TasksService {
       user,
     });
 
-    await this.actionsService.completeAction(submitFormDto.actionId, userId, {
-      taskFormResponse: savedForm,
-      now: submittedAt,
-    });
+    await this.actionActivityService.completeAction(
+      submitFormDto.actionId,
+      userId,
+      {
+        taskFormResponse: savedForm,
+        now: submittedAt,
+      },
+    );
     if (contractIdsSigned.length > 0) {
       this.contractService.announceSigned(user.id);
     }
@@ -1213,7 +1219,7 @@ export class TasksService {
       user,
     });
 
-    await this.actionsService.createActionActivity({
+    await this.actionActivityService.createActionActivity({
       actionId: followUpForm.actionId,
       userId,
       type: ActionActivityType.USER_SUBMITTED_FOLLOW_UP_FORM,
@@ -1333,7 +1339,7 @@ export class TasksService {
 
     await this.deleteFormDraft(userId, formId);
 
-    return this.actionsService.createActionActivity({
+    return this.actionActivityService.createActionActivity({
       actionId,
       userId,
       type: ActionActivityType.USER_WONT_COMPLETE,

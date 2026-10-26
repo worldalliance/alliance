@@ -35,6 +35,7 @@ import { ContractEvent } from "../user/entities/contract-event.entity";
 import { Tag } from "../user/entities/tag.entity";
 import { User } from "../user/entities/user.entity";
 import { UserModule } from "../user/user.module";
+import { ActionActivityService } from "./action-activity.service";
 import { ActionFeedController } from "./action-feed.controller";
 import { ActionFormVariantService } from "./action-form-variant.service";
 import { ActionFormsController } from "./action-forms.controller";
@@ -207,9 +208,11 @@ import { WelcomeQueueService } from "./welcome-queue.service";
     ActionRelationsService,
     ActionImportExportService,
     WelcomeQueueService,
+    ActionActivityService,
   ],
   exports: [
     ActionsService,
+    ActionActivityService,
     ActionVisibilityModule,
     ActionFormVariantService,
     ActionEventRecipientService,

@@ -1,22 +1,14 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import {
-  ActionActivityType,
-  MEMBER_ACTION_DEADLINE_PASSED,
-  WITHDRAWAL_OPTION_LABELS,
-  withdrawalOptionFromFlags,
-} from "@alliance/common/actionActivity";
-import { AnalyticsEvent } from "@alliance/common/analytics";
+import { ActionActivityType } from "@alliance/common/actionActivity";
 import { echoesStoredKey } from "@alliance/common/image-src";
 import {
   BadRequestException,
-  ForbiddenException,
   forwardRef,
   Inject,
   Injectable,
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { Community } from "src/community/entities/community.entity";
@@ -25,8 +17,6 @@ import {
   updateLive,
   writeUnderLive,
 } from "src/datasources/soft-delete";
-import { EventType } from "src/eventlog/event-log.entity";
-import { EventLogService } from "src/eventlog/eventlog.service";
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
 import { renderedImageKey } from "src/images/images.service";
 import {
@@ -35,9 +25,7 @@ import {
 } from "src/notifs/action-event-reminder.service";
 import { NotificationPlan } from "src/notifs/dto/notification-plan.dto";
 import { ReminderGroupService } from "src/notifs/reminder-group.service";
-import { PosthogService } from "src/posthog/posthog.service";
 import { Form } from "src/tasks/entities/form.entity";
-import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { User } from "src/user/entities/user.entity";
 import {
   ActionAssignment,
@@ -52,7 +40,6 @@ import type {
 import { DeepPartial, ILike, In, type Repository } from "typeorm";
 import { UserService } from "../user/user.service";
 import {
-  isTerminalActivity,
   resolveUserActionRelation,
   sqlIsLatestCompletion,
   sqlIsLatestWithdrawal,
@@ -73,10 +60,6 @@ import {
 } from "./cohort-reference-validation";
 import { CohortResolutionSession } from "./cohort-resolution-session";
 import { CohortResolverService } from "./cohort-resolver.service";
-import {
-  ActionActivityDto,
-  CreateActionActivityDto,
-} from "./dto/action-activity.dto";
 import { ActionReviewerDto } from "./dto/action-reviewer.dto";
 import {
   ActionDto,
@@ -86,11 +69,7 @@ import {
   UserActionRelation,
 } from "./dto/action.dto";
 import { CreateReminderGroupDto } from "./dto/reminder-group.dto";
-import {
-  ActionActivity,
-  ActivitySource,
-  ALLOW_DUPLICATE,
-} from "./entities/action-activity.entity";
+import { ActionActivity } from "./entities/action-activity.entity";
 import { ActionEvent, ActionStatus } from "./entities/action-event.entity";
 import { ActionFormVariant } from "./entities/action-form-variant.entity";
 import { ActionReviewer } from "./entities/action-reviewer.entity";
@@ -115,7 +94,6 @@ import {
 } from "./prerequisite-validation";
 import { shiftPrioritiesAfterInsertion } from "./priority-order";
 import { SingleMemberCohortService } from "./single-member-cohort.service";
-import { assertNotInStaffPreview } from "./staff-preview";
 import {
   CompletionBlock,
   computeCanCompleteAction,
@@ -131,23 +109,7 @@ import {
  */
 export type LinkedAction = Pick<Action, "id" | "name">;
 
-/**
- * Withdrawal reasons longer than this are truncated in the opt-out event-log
- * message to keep the Slack copy readable; the full reason is still stored on
- * the activity row and in the event's blob.
- */
-const OPT_OUT_REASON_PREVIEW_LENGTH = 300;
-
-const COMPLETION_UNAVAILABLE = "This action is not available to you";
-
 const ACTION_PARENT_GONE = "That suite, author or form is gone";
-
-const COMPLETION_BLOCK_MESSAGE: Record<CompletionBlock, string> = {
-  [CompletionBlock.PreventCompletion]: COMPLETION_UNAVAILABLE,
-  [CompletionBlock.NotInCohort]: COMPLETION_UNAVAILABLE,
-  [CompletionBlock.DeadlinePassed]: MEMBER_ACTION_DEADLINE_PASSED,
-  [CompletionBlock.OnboardingContractUnsigned]: COMPLETION_UNAVAILABLE,
-};
 
 const MEMBER_FEED_RELATIONS = {
   events: true,
@@ -179,14 +141,11 @@ export class ActionsService {
     @InjectRepository(ActionFormVariant)
     private readonly actionFormVariantRepository: Repository<ActionFormVariant>,
     private userService: UserService,
-    public eventEmitter: EventEmitter2,
     private readonly cohortResolverService: CohortResolverService,
     private readonly actionEventReminderService: ActionEventReminderService,
     private readonly reminderGroupService: ReminderGroupService,
-    private readonly eventLogService: EventLogService,
     @Inject(forwardRef(() => ActionFormVariantService))
     private readonly actionFormVariantService: ActionFormVariantService,
-    private readonly posthogService: PosthogService,
     private readonly cohortDecisionStaffService: CohortDecisionStaffService,
     private readonly singleMemberCohortService: SingleMemberCohortService,
     private readonly cohortDecisionService: CohortDecisionService,
@@ -870,180 +829,6 @@ export class ActionsService {
     ]);
   }
 
-  async dismissAction(
-    userId: number,
-    actionId: number,
-  ): Promise<ActionActivity> {
-    return await this.createActionActivity({
-      actionId,
-      userId,
-      type: ActionActivityType.USER_DISMISSED,
-    });
-  }
-
-  async createActionActivity(options: {
-    actionId: number;
-    userId: number;
-    type: ActionActivityType;
-    taskFormResponse?: FormResponse;
-    declineReason?: string;
-    isOutOfTime?: boolean;
-    isMoral?: boolean;
-    adminCreated?: boolean;
-    now?: Date;
-  }): Promise<ActionActivity> {
-    const {
-      actionId,
-      userId,
-      type,
-      taskFormResponse,
-      declineReason,
-      isOutOfTime,
-      isMoral,
-      adminCreated,
-      now = new Date(),
-    } = options;
-    const action = await this.findOneOrFail({ id: actionId, userId });
-
-    if (!adminCreated) {
-      assertNotInStaffPreview(action);
-    }
-
-    if (
-      type === ActionActivityType.USER_WONT_COMPLETE &&
-      action.isContractSigningAction &&
-      !adminCreated
-    ) {
-      throw new BadRequestException(
-        "Contract signing actions cannot be withdrawn from",
-      );
-    }
-
-    if (type === ActionActivityType.USER_COMPLETED && !adminCreated) {
-      await this.ensureCompletionAllowed({ action, userId, now });
-    }
-
-    const user = await this.userService.findOneOrFail(userId);
-
-    if (!ALLOW_DUPLICATE[type]) {
-      const existingActivity = await this.actionActivityRepository.findOne({
-        where: { actionId, userId, type },
-      });
-      if (existingActivity) {
-        throw new BadRequestException("Activity already exists");
-      }
-    }
-
-    const activity = this.actionActivityRepository.create({
-      type: type,
-      actionId: actionId,
-      userId: userId,
-      action: action,
-      user: user,
-      taskFormResponse,
-      declineReason: declineReason ?? null,
-      outOfTime: isOutOfTime,
-      isMoral,
-      source: adminCreated
-        ? ActivitySource.ADMIN_OVERRIDE
-        : ActivitySource.USER,
-    });
-    const savedActivity = await writeUnderLive(
-      this.actionActivityRepository.manager,
-      {
-        parents: [
-          {
-            target: Action,
-            id: actionId,
-            notFound: "That action is no longer here",
-          },
-          { target: User, id: userId },
-          ...(taskFormResponse
-            ? [
-                {
-                  target: FormResponse,
-                  id: taskFormResponse.id,
-                  notFound: "That form response is no longer here",
-                },
-              ]
-            : []),
-        ],
-        write: (manager) => manager.save(activity),
-      },
-    );
-
-    if (type === ActionActivityType.USER_WONT_COMPLETE) {
-      const option = withdrawalOptionFromFlags({
-        outOfTime: isOutOfTime,
-        isMoral,
-      });
-      const trimmedReason = declineReason?.trim();
-      // Spread to code points so truncation can't split a surrogate pair
-      // (e.g. an emoji) at the boundary.
-      const reasonChars = trimmedReason ? [...trimmedReason] : [];
-      const reason =
-        reasonChars.length > OPT_OUT_REASON_PREVIEW_LENGTH
-          ? `${reasonChars.slice(0, OPT_OUT_REASON_PREVIEW_LENGTH).join("")}...`
-          : trimmedReason;
-      const label = adminCreated
-        ? "admin-created"
-        : WITHDRAWAL_OPTION_LABELS[option];
-      const detail = reason ? `${label}: ${reason}` : label;
-      this.eventLogService.sendMessage({
-        type: EventType.ActionOptOut,
-        message: `${user.name} opted out of action ${action.name} (${detail})`,
-        userId,
-        blob: {
-          actionId,
-          declineReason,
-          outOfTime: isOutOfTime,
-          isMoral,
-          adminCreated: adminCreated ?? false,
-        },
-      });
-    }
-
-    this.eventEmitter.emit("action.activity", {
-      actionId,
-      activity: new ActionActivityDto(savedActivity),
-    });
-
-    await this.reloadUsersJoinedForAction(actionId);
-    if (isTerminalActivity(savedActivity)) {
-      await this.reloadUsersCompletedForAction(actionId);
-    }
-    if (type === ActionActivityType.USER_COMPLETED) {
-      if (!adminCreated) {
-        this.posthogService.capture({
-          event: AnalyticsEvent.ActionCompleted,
-          distinctId: String(userId),
-          properties: { actionId, actionName: action.name },
-        });
-      }
-    }
-
-    return savedActivity;
-  }
-
-  async completeAction(
-    actionId: number,
-    userId: number,
-    options: {
-      taskFormResponse?: FormResponse;
-      adminCreated?: boolean;
-      now?: Date;
-    } = {},
-  ): Promise<ActionActivity> {
-    return this.createActionActivity({
-      actionId,
-      userId,
-      type: ActionActivityType.USER_COMPLETED,
-      taskFormResponse: options.taskFormResponse,
-      adminCreated: options.adminCreated,
-      now: options.now,
-    });
-  }
-
   /**
    * Both image columns are served as urls, so an editor seeded from the api
    * sends one back on its next save. Dropping the echo keeps the upload key,
@@ -1211,23 +996,6 @@ export class ActionsService {
     });
   }
 
-  async ensureCompletionAllowed(params: {
-    action: ParsedAction;
-    userId: number;
-    now: Date;
-  }) {
-    const { action, userId, now } = params;
-    const user = await this.userService.findOneOrFail(userId, {
-      tags: true,
-      contractEvents: true,
-      awayRanges: true,
-    });
-    const block = await this.findCompletionBlock({ action, user, now });
-    if (block !== null) {
-      throw new ForbiddenException(COMPLETION_BLOCK_MESSAGE[block]);
-    }
-  }
-
   async countCommunityCompletedActions(
     userId: number,
     communityId: number,
@@ -1278,17 +1046,6 @@ export class ActionsService {
     return this.actionVisibility.listableActions({
       actions: actions.map(parseAction),
       user,
-    });
-  }
-
-  async adminCreateActivity(
-    activityDto: CreateActionActivityDto,
-  ): Promise<ActionActivity> {
-    return this.createActionActivity({
-      actionId: activityDto.actionId,
-      userId: activityDto.userId,
-      type: activityDto.type,
-      adminCreated: true,
     });
   }
 

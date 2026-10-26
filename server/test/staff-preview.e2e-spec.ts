@@ -1,6 +1,7 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { milliseconds } from "date-fns";
+import { ActionActivityService } from "src/actions/action-activity.service";
 import { ActionsService } from "src/actions/actions.service";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
@@ -63,6 +64,7 @@ describe("Staff preview (e2e)", () => {
   let editableContentRepo: Repository<EditableContent>;
   let formResponseRepo: Repository<FormResponse>;
   let actionsService: ActionsService;
+  let actionActivityService: ActionActivityService;
   let staffToken: string;
   let staffUserId: number;
 
@@ -133,6 +135,7 @@ describe("Staff preview (e2e)", () => {
     editableContentRepo = ctx.dataSource.getRepository(EditableContent);
     formResponseRepo = ctx.dataSource.getRepository(FormResponse);
     actionsService = ctx.app.get(ActionsService);
+    actionActivityService = ctx.app.get(ActionActivityService);
 
     const userRepo = ctx.dataSource.getRepository(User);
     const staff = await userRepo.save(
@@ -370,7 +373,7 @@ describe("Staff preview (e2e)", () => {
 
       for (const userId of [staffUserId, ctx.testUserId]) {
         await expect(
-          actionsService.completeAction(action.id, userId),
+          actionActivityService.completeAction(action.id, userId),
         ).rejects.toThrow(previewRefusal.message);
       }
     });
@@ -563,7 +566,7 @@ describe("Staff preview (e2e)", () => {
         events: [pastMemberAction],
       });
 
-      await actionsService.completeAction(action.id, ctx.testUserId);
+      await actionActivityService.completeAction(action.id, ctx.testUserId);
       await request(server())
         .post("/forum/comments")
         .set("Authorization", `Bearer ${ctx.accessToken}`)

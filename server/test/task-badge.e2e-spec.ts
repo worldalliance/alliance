@@ -5,6 +5,7 @@ import {
   type ExpoPushErrorTicket,
   type ExpoPushMessage,
 } from "expo-server-sdk";
+import { ActionActivityService } from "src/actions/action-activity.service";
 import { ActionsService } from "src/actions/actions.service";
 import {
   ActionEvent,
@@ -224,7 +225,7 @@ describe("Task badge sync (e2e)", () => {
     const { user, expoPushToken } = await createMemberWithDevice();
     await taskBadgeService.syncUser(user.id);
 
-    await ctx.app.get(ActionsService).createActionActivity({
+    await ctx.app.get(ActionActivityService).createActionActivity({
       actionId: action.id,
       userId: user.id,
       type,

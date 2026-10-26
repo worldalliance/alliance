@@ -35,6 +35,7 @@ import {
   AcknowledgeDeadlineShortening,
   ApiAcknowledgeDeadlineShortening,
 } from "./acknowledge-deadline-shortening";
+import { ActionActivityService } from "./action-activity.service";
 import { ActionImportExportService } from "./action-import-export.service";
 import { ActionRelationsService } from "./action-relations.service";
 import { ActionShareService } from "./action-share.service";
@@ -72,6 +73,7 @@ import { WelcomeQueueService } from "./welcome-queue.service";
 export class ActionsController {
   constructor(
     private readonly actionsService: ActionsService,
+    private readonly actionActivityService: ActionActivityService,
     private readonly importExport: ActionImportExportService,
     private readonly actionRelations: ActionRelationsService,
     private readonly actionSuites: ActionSuitesService,
@@ -310,7 +312,7 @@ export class ActionsController {
     @Request() req: JwtRequest,
   ): Promise<ActionActivityDto> {
     return new ActionActivityDto(
-      await this.actionsService.dismissAction(req.user.sub, id),
+      await this.actionActivityService.dismissAction(req.user.sub, id),
     );
   }
 
@@ -321,7 +323,7 @@ export class ActionsController {
     @Body() activityDto: CreateActionActivityDto,
   ): Promise<ActionActivityDto> {
     return new ActionActivityDto(
-      await this.actionsService.adminCreateActivity(activityDto),
+      await this.actionActivityService.adminCreateActivity(activityDto),
     );
   }
 

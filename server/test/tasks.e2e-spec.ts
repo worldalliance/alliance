@@ -16,7 +16,7 @@ import type {
 } from "@alliance/common/forms/form-schema";
 import type { Condition } from "@alliance/common/forms/visible-if-formula";
 import { milliseconds } from "date-fns";
-import { ActionsService } from "src/actions/actions.service";
+import { ActionActivityService } from "src/actions/action-activity.service";
 import { ActivityOutputService } from "src/actions/activity-output.service";
 import { CreateActionDto } from "src/actions/dto/action.dto";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
@@ -841,7 +841,7 @@ describe("Tasks (e2e)", () => {
       await onTime.submit().expect(201);
       await late.submit().expect(403);
       await ctx.app
-        .get(ActionsService)
+        .get(ActionActivityService)
         .completeAction(late.actionId, ctx.testUserId, { adminCreated: true });
 
       const completions = capture.mock.calls

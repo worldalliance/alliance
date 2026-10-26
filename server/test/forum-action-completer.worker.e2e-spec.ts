@@ -2,7 +2,7 @@ import { ActionActivityType } from "@alliance/common/actionActivity";
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { NotFoundException } from "@nestjs/common";
 import { addMinutes } from "date-fns";
-import { ActionsService } from "src/actions/actions.service";
+import { ActionActivityService } from "src/actions/action-activity.service";
 import { CohortDecisionService } from "src/actions/cohort-decision.service";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { ActionCohortDecision } from "src/actions/entities/action-cohort-decision.entity";
@@ -432,10 +432,12 @@ describe("ForumActionCompleterWorker (e2e)", () => {
 
   it("marks an action computed past a member deleted mid-run", async () => {
     const { action, responder } = await createUndecidedForumAction(new Date());
-    const actionsService = ctx.app.get(ActionsService);
-    const completeAction = actionsService.completeAction.bind(actionsService);
+    const actionActivityService = ctx.app.get(ActionActivityService);
+    const completeAction = actionActivityService.completeAction.bind(
+      actionActivityService,
+    );
     const complete = jest
-      .spyOn(actionsService, "completeAction")
+      .spyOn(actionActivityService, "completeAction")
       .mockImplementation(async (...args) => {
         await userRepo.softDelete(responder.id);
         return completeAction(...args);
@@ -453,10 +455,12 @@ describe("ForumActionCompleterWorker (e2e)", () => {
 
   it("stops at an action deleted mid-run without marking it computed", async () => {
     const { action } = await createUndecidedForumAction(new Date());
-    const actionsService = ctx.app.get(ActionsService);
-    const completeAction = actionsService.completeAction.bind(actionsService);
+    const actionActivityService = ctx.app.get(ActionActivityService);
+    const completeAction = actionActivityService.completeAction.bind(
+      actionActivityService,
+    );
     const complete = jest
-      .spyOn(actionsService, "completeAction")
+      .spyOn(actionActivityService, "completeAction")
       .mockImplementation(async (...args) => {
         await actionRepo.softDelete(action.id);
         return completeAction(...args);

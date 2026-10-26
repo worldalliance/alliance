@@ -1,4 +1,5 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
+import { ActionActivityService } from "../src/actions/action-activity.service";
 import { ActionParticipantsService } from "../src/actions/action-participants.service";
 import { ActionsService } from "../src/actions/actions.service";
 import { CohortResolverService } from "../src/actions/cohort-resolver.service";
@@ -59,7 +60,7 @@ describe("A member's latest completion or withdrawal decides completion (e2e)", 
     const action = await createAction({ start: addDays(now, -10), deadline });
     await saveLiveCohortDecisions(ctx);
     for (const type of types) {
-      await ctx.app.get(ActionsService).createActionActivity({
+      await ctx.app.get(ActionActivityService).createActionActivity({
         actionId: action.id,
         userId: member.id,
         type,
@@ -213,7 +214,7 @@ describe("A member's latest completion or withdrawal decides completion (e2e)", 
   it.each(orders)(
     "counts a member who $order in completion analytics: $completed",
     async ({ types, completed }) => {
-      const actionsService = ctx.app.get(ActionsService);
+      const actionActivityService = ctx.app.get(ActionActivityService);
       const others = await Promise.all(
         [0, 1, 2].map(() =>
           createAction({
@@ -225,7 +226,7 @@ describe("A member's latest completion or withdrawal decides completion (e2e)", 
       await createUser({ signedAt: addDays(now, -30) });
       const { member, action } = await setUp(types, addDays(now, -1));
       for (const other of others) {
-        await actionsService.completeAction(other.id, member.id, {
+        await actionActivityService.completeAction(other.id, member.id, {
           adminCreated: true,
         });
       }
