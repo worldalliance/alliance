@@ -1,10 +1,12 @@
 import { cn } from "@alliance/shared/styles/util";
 import { isProduction } from "@alliance/sharedweb/lib/config";
-import { LogOut, PanelLeft } from "lucide-react";
+import { memberPathFor } from "@alliance/sharedweb/lib/zoneLinks";
+import { House, LogOut, PanelLeft } from "lucide-react";
 import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { Outlet } from "react-router";
+import { Outlet, useLocation } from "react-router";
 import SidebarNav from "./components/SidebarNav";
 import { useAuth } from "./lib/AuthContext";
+import { getSiteUrl } from "./lib/config";
 import { useGroupAssignmentMembersAdmin } from "./lib/useGroupAssignmentAdmin";
 import { useOutreachPartnershipResponsesAdmin } from "./lib/useOutreachPartnershipResponsesAdmin";
 
@@ -20,6 +22,7 @@ const Sidebar: React.FC = () => {
   );
 
   const { logout, user, loading: authLoading } = useAuth();
+  const location = useLocation();
   const { data: membersUndergoingGroupAssignment = [] } =
     useGroupAssignmentMembersAdmin();
 
@@ -77,7 +80,7 @@ const Sidebar: React.FC = () => {
           />
         </div>
         {isSidebarOpen && (
-          <div className="flex flex-row justify-between items-center p-3 px-5">
+          <div className="flex flex-row justify-between items-center p-3 px-5 pb-8">
             <p className="text-sm text-gray-800 truncate">{user?.email}</p>
             <button
               type="button"
@@ -101,6 +104,13 @@ const Sidebar: React.FC = () => {
           <PanelLeft className="h-5 w-5" />
         </div>
       </div>
+      <a
+        href={`${getSiteUrl()}${memberPathFor(location.pathname)}`}
+        aria-label="Open in member zone"
+        className="fixed bottom-0 left-0 p-2 text-zinc-400 hover:text-black"
+      >
+        <House size={16} />
+      </a>
       <div className="flex-1 overflow-y-scroll max-h-screen">
         <div
           className="flex flex-col gap-y-5 min-h-0 flex-1 h-fit"

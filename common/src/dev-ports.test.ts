@@ -421,6 +421,7 @@ describe("resolveDevUrl", () => {
   it.each([
     [DevUrl.Api, "http://localhost:3305"],
     [DevUrl.App, "http://localhost:5473"],
+    [DevUrl.Admin, "http://localhost:5474"],
   ])("builds %s from this checkout's port", (which, expected) => {
     expect(
       resolveDevUrl({ ports: WORKTREE_PORTS, which, override: undefined }),

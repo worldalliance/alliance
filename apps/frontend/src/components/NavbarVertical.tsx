@@ -2,6 +2,7 @@ import { formatBadgeCount } from "@alliance/shared/lib/badgeCount";
 import { Features } from "@alliance/shared/lib/features";
 import { useIncomingCommunityInvites } from "@alliance/shared/lib/useIncomingCommunityInvites";
 import { cn } from "@alliance/shared/styles/util";
+import { adminPathFor } from "@alliance/sharedweb/lib/zoneLinks";
 import BottomSpacer from "@alliance/sharedweb/ui/BottomSpacer";
 import {
   BookText,
@@ -9,6 +10,7 @@ import {
   Layers,
   ListTodo,
   MessageSquare,
+  Settings,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -22,7 +24,7 @@ import {
 } from "react";
 import { Link, href, useLocation } from "react-router";
 import { useAuth } from "../lib/AuthContext";
-import { isFeatureEnabled } from "../lib/config";
+import { getAdminUrl, isFeatureEnabled } from "../lib/config";
 import { NavbarOptionsContext } from "../lib/NavbarOptionsContext";
 import { WalkthroughAnchor } from "../onboarding/walkthrough/steps";
 import { useMessagingUnread } from "../pages/app/messages";
@@ -85,7 +87,7 @@ const NavbarVertical: React.FC<{
   onMobileNavOpenChange: (open: boolean) => void;
   whiteBackground?: boolean;
 }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const navbarOptions = useContext(NavbarOptionsContext);
   const noBorder = navbarOptions?.options?.noBorder ?? false;
   const location = useLocation();
@@ -303,6 +305,16 @@ const NavbarVertical: React.FC<{
 
           <BottomSpacer />
         </div>
+
+        {user?.admin && (
+          <a
+            href={`${getAdminUrl()}${adminPathFor(location.pathname)}`}
+            aria-label="Open in admin panel"
+            className="fixed bottom-0 left-0 p-2 text-zinc-400 hover:text-black"
+          >
+            <Settings size={16} />
+          </a>
+        )}
       </aside>
     </>
   );

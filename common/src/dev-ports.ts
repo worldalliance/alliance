@@ -236,11 +236,13 @@ export function assertWorktreeDatabase({
 export enum DevUrl {
   Api = "ALLIANCE_DEV_API_URL",
   App = "ALLIANCE_DEV_APP_URL",
+  Admin = "ALLIANCE_DEV_ADMIN_URL",
 }
 
 const DEV_URL_PORT: Record<DevUrl, (ports: DevPorts) => number> = {
   [DevUrl.Api]: (ports) => ports.server,
   [DevUrl.App]: (ports) => ports.frontend,
+  [DevUrl.Admin]: (ports) => ports.admin,
 };
 
 /** Accepts environment overrides only when no worktree ports contradict them. */
@@ -282,11 +284,20 @@ export function devAppUrl(): string {
   });
 }
 
+export function devAdminUrl(): string {
+  return resolveDevUrl({
+    ports: devPorts(PortCaller.Tooling),
+    which: DevUrl.Admin,
+    override: process.env[DevUrl.Admin],
+  });
+}
+
 // Keep these keys outside Vite's VITE_ namespace so `.env` files cannot
 // override this checkout's resolved ports.
 export function devViteDefine(): Record<string, string> {
   return {
     "import.meta.env.ALLIANCE_DEV_API_URL": JSON.stringify(devApiUrl()),
     "import.meta.env.ALLIANCE_DEV_APP_URL": JSON.stringify(devAppUrl()),
+    "import.meta.env.ALLIANCE_DEV_ADMIN_URL": JSON.stringify(devAdminUrl()),
   };
 }

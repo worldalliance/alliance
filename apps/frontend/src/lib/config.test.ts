@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { getSiteUrl } from "./config";
+import { getAdminUrl, getSiteUrl } from "./config";
 
 declare global {
   interface Window {
@@ -18,5 +18,15 @@ describe("getSiteUrl", () => {
     window.happyDOM.setURL(`${origin}/actions/1`);
 
     expect(getSiteUrl()).toBe(origin);
+  });
+});
+
+describe("getAdminUrl", () => {
+  afterEach(() => window.happyDOM.setURL("http://localhost:3000/"));
+
+  test("follows the domain the page was loaded on", () => {
+    window.happyDOM.setURL("https://www.thealliance.org/actions/1");
+
+    expect(getAdminUrl()).toBe("https://admin.thealliance.org");
   });
 });

@@ -1,3 +1,5 @@
+import { adminOrigin } from "@alliance/common/url";
+
 type ViteEnv = {
   MODE: string;
   VITE_API_URL: string;
@@ -6,6 +8,7 @@ type ViteEnv = {
   // override them.
   ALLIANCE_DEV_API_URL?: string;
   ALLIANCE_DEV_APP_URL?: string;
+  ALLIANCE_DEV_ADMIN_URL?: string;
 };
 
 const env = (import.meta as unknown as { env: ViteEnv }).env;
@@ -17,7 +20,10 @@ const prod_url = env.VITE_API_URL;
 // A missing value must fail rather than send a worktree to the main database.
 // Read lazily because this module is also imported outside Vite.
 const devUrl = (
-  name: "ALLIANCE_DEV_API_URL" | "ALLIANCE_DEV_APP_URL",
+  name:
+    | "ALLIANCE_DEV_API_URL"
+    | "ALLIANCE_DEV_APP_URL"
+    | "ALLIANCE_DEV_ADMIN_URL",
 ): string => {
   const url = env[name];
 
@@ -53,6 +59,11 @@ export const getBaseUrl = (): string => {
     return prod_url;
   }
 };
+
+export const getAdminUrl = (): string =>
+  mode === "development"
+    ? devUrl("ALLIANCE_DEV_ADMIN_URL")
+    : adminOrigin(prod_url);
 
 export const getInviteBaseUrl = (): string =>
   env.VITE_ALT_APP_URL || getBaseUrl();

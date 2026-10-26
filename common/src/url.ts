@@ -116,6 +116,13 @@ export const siteHref = (url: string): string => {
   return path.startsWith("//") ? url : path;
 };
 
+/** The admin panel beside the web app at `appOrigin`, per deploy/nginx/alliance_admin.conf. */
+export const adminOrigin = (appOrigin: string): string => {
+  const url = new URL(appOrigin);
+  url.hostname = `admin.${url.hostname.replace(/^www\./, "")}`;
+  return url.origin;
+};
+
 /** `url` on `origin` when it is a site path; anything else as it came. */
 export const withOrigin = ({
   url,

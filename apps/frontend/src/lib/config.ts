@@ -1,5 +1,7 @@
+import { adminOrigin } from "@alliance/common/url";
 import { Features, isEnabled } from "@alliance/shared/lib/features";
 import {
+  getAdminUrl as getAdminUrlShared,
   getApiUrl as getApiUrlShared,
   getBaseUrl,
   getWebSocketUrl as getWebSocketUrlShared,
@@ -18,6 +20,11 @@ const browserOrigin = (): string | null =>
 export const getApiUrl = (): string => {
   const origin = browserOrigin();
   return origin ? `${origin}/api` : getApiUrlShared();
+};
+
+export const getAdminUrl = (): string => {
+  const origin = browserOrigin();
+  return origin ? adminOrigin(origin) : getAdminUrlShared();
 };
 
 export const getWebSocketUrl = (): string => {
