@@ -4,7 +4,7 @@ import {
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryOptions, useQuery } from "@tanstack/react-query";
-import { loaderPrefetchStaleTime } from "./queryClient";
+import { loaderPrefetchStaleTime } from "@alliance/sharedweb/lib/queryClient";
 
 /** The member's notifications, for a route loader to start before the page
  * mounts. */
