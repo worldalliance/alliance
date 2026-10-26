@@ -1,4 +1,5 @@
-import { canManageCommunity, type User } from "src/user/entities/user.entity";
+import { type User } from "src/user/entities/user.entity";
+import { canManageCommunity } from "./community-permissions";
 
 export function canModifyInvite(
   user: Pick<User, "id" | "admin" | "leaderOfIdSet">,

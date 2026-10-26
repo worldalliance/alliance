@@ -2,7 +2,6 @@
 /* eslint-disable @darraghor/nestjs-typed/all-properties-have-explicit-defined */
 /* eslint-disable @darraghor/nestjs-typed/all-properties-are-whitelisted */
 import { Temporal } from "@js-temporal/polyfill";
-import { BadRequestException } from "@nestjs/common";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import bcrypt from "bcryptjs";
 import { Exclude, Expose, Type } from "class-transformer";
@@ -640,26 +639,6 @@ export class User {
 
   @DeleteDateColumnTz()
   deletedAt: Date | null;
-}
-
-export function canManageCommunity(
-  user: Pick<User, "admin" | "leaderOfIdSet">,
-  communityId: number | null,
-): boolean {
-  return (
-    user.admin || (communityId !== null && user.leaderOfIdSet.has(communityId))
-  );
-}
-
-export function assertCanManageCommunity(
-  user: Pick<User, "admin" | "leaderOfIdSet">,
-  communityId: number,
-): void {
-  if (!canManageCommunity(user, communityId)) {
-    throw new BadRequestException(
-      `User is not a leader of community ${communityId}`,
-    );
-  }
 }
 
 export function hasPassword(user: Pick<User, "password">): boolean {

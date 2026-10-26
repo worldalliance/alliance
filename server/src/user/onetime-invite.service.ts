@@ -5,6 +5,7 @@ import {
 } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
+import { assertCanManageCommunity } from "src/community/community-permissions";
 import { Community } from "src/community/entities/community.entity";
 import { updateLive, writeUnderLive } from "src/datasources/soft-delete";
 import { InviteFeedEvents } from "src/invite-feed.events";
@@ -42,11 +43,7 @@ import {
   OnetimeInvite,
   OnetimeInviteStatus,
 } from "./entities/onetime-invite.entity";
-import {
-  assertCanManageCommunity,
-  loadedUserCommunities,
-  User,
-} from "./entities/user.entity";
+import { loadedUserCommunities, User } from "./entities/user.entity";
 import { inviteAcceptedSql } from "./invite-claim";
 import { UserService } from "./user.service";
 
