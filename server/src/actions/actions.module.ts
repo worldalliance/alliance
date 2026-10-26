@@ -42,6 +42,7 @@ import { ActionParticipantsService } from "./action-participants.service";
 import { ActionRemindersController } from "./action-reminders.controller";
 import { ActionStatsService } from "./action-stats.service";
 import { ActionSuitesController } from "./action-suites.controller";
+import { ActionSuspensionService } from "./action-suspension.service";
 import { ActionUpdateRecognitionPreviewService } from "./action-update-recognition-preview.service";
 import { ActionUpdateRecognitionService } from "./action-update-recognition.service";
 import { ActionUpdateRecognitionWorker } from "./action-update-recognition.worker";
@@ -185,6 +186,7 @@ import { TaskBadgeService } from "./task-badge.service";
     ActivityFeedService,
     HomeFeedService,
     ActivityLikeService,
+    ActionSuspensionService,
   ],
   exports: [
     ActionsService,

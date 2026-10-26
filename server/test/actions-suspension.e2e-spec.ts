@@ -3,7 +3,7 @@ import { JwtService } from "@nestjs/jwt";
 import { millisecondsInDay } from "date-fns/constants";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { ActionsService } from "../src/actions/actions.service";
+import { ActionSuspensionService } from "../src/actions/action-suspension.service";
 import { ActionActivity } from "../src/actions/entities/action-activity.entity";
 import {
   ActionEvent,
@@ -27,7 +27,7 @@ const addDays = (date: Date, days: number) =>
 
 describe("findUsersToSuspend (e2e)", () => {
   let ctx: TestContext;
-  let actionsService: ActionsService;
+  let suspensionService: ActionSuspensionService;
   let contractService: ContractService;
   let userService: UserService;
   let actionRepo: Repository<Action>;
@@ -104,7 +104,7 @@ describe("findUsersToSuspend (e2e)", () => {
 
   beforeAll(async () => {
     ctx = await createTestApp([]);
-    actionsService = ctx.app.get(ActionsService);
+    suspensionService = ctx.app.get(ActionSuspensionService);
     contractService = ctx.app.get(ContractService);
     userService = ctx.app.get(UserService);
 
@@ -252,7 +252,7 @@ describe("findUsersToSuspend (e2e)", () => {
       // so only the first 3 (fully past) suites should count.
       // failingUser has failed all 3 past suites => still suspended.
       await saveLiveCohortDecisions(ctx);
-      const result = await actionsService.findUsersToSuspend(now);
+      const result = await suspensionService.findUsersToSuspend(now);
       expect(result.map(({ user }) => user.id)).toEqual([failingUser.id]);
 
       // Now query at a time where only 2 suites are past and the 3rd suite's
@@ -263,7 +263,8 @@ describe("findUsersToSuspend (e2e)", () => {
       // Check at 2023-03-11T12:00:00Z — between member start and deadline
       const midSuiteThree = new Date("2023-03-11T12:00:00Z");
       await saveLiveCohortDecisions(ctx);
-      const midResult = await actionsService.findUsersToSuspend(midSuiteThree);
+      const midResult =
+        await suspensionService.findUsersToSuspend(midSuiteThree);
       // Only 2 suites are fully past at this point, not enough for suspension
       expect(midResult).toHaveLength(0);
     } finally {
@@ -332,7 +333,7 @@ describe("findUsersToSuspend (e2e)", () => {
     try {
       // 2 required failures + 1 optional failure should NOT trigger suspension
       await saveLiveCohortDecisions(ctx);
-      const result = await actionsService.findUsersToSuspend(now);
+      const result = await suspensionService.findUsersToSuspend(now);
       expect(result.map(({ user }) => user.id)).not.toContain(failingUser.id);
     } finally {
       // Restore Suite Three so subsequent tests have the original 3 required suites
@@ -357,7 +358,7 @@ describe("findUsersToSuspend (e2e)", () => {
 
   it("suspends users who fail three suites and does not re-suspend once inactive or re-signed", async () => {
     await saveLiveCohortDecisions(ctx);
-    const initialRun = await actionsService.findUsersToSuspend(now);
+    const initialRun = await suspensionService.findUsersToSuspend(now);
 
     expect(initialRun.map(({ user }) => user.id)).toEqual([failingUser.id]);
     expect(initialRun[0].reasonKey).toContain("s-");
@@ -372,7 +373,7 @@ describe("findUsersToSuspend (e2e)", () => {
     });
 
     await saveLiveCohortDecisions(ctx);
-    const afterSuspension = await actionsService.findUsersToSuspend(now);
+    const afterSuspension = await suspensionService.findUsersToSuspend(now);
     expect(afterSuspension).toHaveLength(0);
 
     await contractService.signContract({
@@ -383,7 +384,7 @@ describe("findUsersToSuspend (e2e)", () => {
     });
 
     await saveLiveCohortDecisions(ctx);
-    const afterResigning = await actionsService.findUsersToSuspend(now);
+    const afterResigning = await suspensionService.findUsersToSuspend(now);
     expect(afterResigning).toHaveLength(0);
   });
 
@@ -470,7 +471,7 @@ describe("findUsersToSuspend (e2e)", () => {
     );
 
     await saveLiveCohortDecisions(ctx);
-    const result = await actionsService.findUsersToSuspend(now);
+    const result = await suspensionService.findUsersToSuspend(now);
 
     expect(result.map(({ user }) => user.id)).toContain(
       multiActionFailingUser.id,
@@ -520,7 +521,7 @@ describe("findUsersToSuspend (e2e)", () => {
         ),
       );
 
-      const result = await actionsService.findUsersToSuspend(now);
+      const result = await suspensionService.findUsersToSuspend(now);
 
       expect(result.map(({ user }) => user.id)).toContain(member.id);
     } finally {
@@ -571,7 +572,7 @@ describe("findUsersToSuspend (e2e)", () => {
       );
 
     const isSuspended = async () =>
-      (await actionsService.findUsersToSuspend(now)).some(
+      (await suspensionService.findUsersToSuspend(now)).some(
         ({ user }) => user.id === member.id,
       );
 
@@ -678,7 +679,7 @@ describe("findUsersToSuspend (e2e)", () => {
     try {
       await saveLiveCohortDecisions(ctx);
 
-      const plans = await actionsService.getSuspendPlans(
+      const plans = await suspensionService.getSuspendPlans(
         today,
         addDays(today, 7),
         6,

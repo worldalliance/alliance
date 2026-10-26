@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { ActionsService } from "src/actions/actions.service";
+import { ActionSuspensionService } from "src/actions/action-suspension.service";
 import type { SuiteOutcome } from "src/actions/missed-suite-streak";
 import { externalChannels } from "src/notification-settings/external-channels";
 import { NotificationPreferencesService } from "src/notification-settings/notification-preferences.service";
@@ -22,7 +22,7 @@ import { reminderGroupKind } from "./reminder-group-kind";
 @Injectable()
 export class MissedSuitePlanService {
   constructor(
-    private readonly actionsService: ActionsService,
+    private readonly suspensionService: ActionSuspensionService,
     @InjectRepository(ActionEventNotif)
     private readonly actionEventNotifsRepository: Repository<ActionEventNotif>,
     private readonly preferences: NotificationPreferencesService,
@@ -55,7 +55,7 @@ export class MissedSuitePlanService {
     now: Date,
   ): Promise<SuiteOutcome[]> {
     return plans.some((plan) => isMissedSuiteReminderGroup(plan.group))
-      ? this.actionsService.findClosedSuiteOutcomes(now)
+      ? this.suspensionService.findClosedSuiteOutcomes(now)
       : [];
   }
 

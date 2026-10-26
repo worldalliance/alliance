@@ -35,6 +35,7 @@ import {
   AcknowledgeDeadlineShortening,
   ApiAcknowledgeDeadlineShortening,
 } from "./acknowledge-deadline-shortening";
+import { ActionSuspensionService } from "./action-suspension.service";
 import { ActionsService } from "./actions.service";
 import {
   ActionActivityDto,
@@ -66,6 +67,7 @@ import { ForumActionCompleterWorker } from "./forum-action-completer.worker";
 export class ActionsController {
   constructor(
     private readonly actionsService: ActionsService,
+    private readonly suspensionService: ActionSuspensionService,
     private readonly eventEmitter: EventEmitter2,
     private readonly forumActionCompleterWorker: ForumActionCompleterWorker,
     private readonly shareUrlsService: ShareUrlsService,
@@ -371,7 +373,7 @@ export class ActionsController {
     const start = new Date(rangeStart);
     const end = new Date(rangeEnd);
     const [suspensionPlans, forumAutocompletePlans] = await Promise.all([
-      this.actionsService.getSuspendPlans(start, end, 6),
+      this.suspensionService.getSuspendPlans(start, end, 6),
       this.forumActionCompleterWorker.getAutocompletePlans(start, end),
     ]);
 
