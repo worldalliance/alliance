@@ -8,7 +8,6 @@ import {
   isQuestionField,
   type AnyField,
   type FormSchema,
-  type FormValue,
 } from "@alliance/common/forms/form-schema";
 import { withResolvedOptions } from "@alliance/common/forms/formula-options";
 import {
@@ -38,6 +37,7 @@ import {
   type SetFieldValue,
 } from "@alliance/shared/forms/formValueUpdater";
 import { stripCardIds } from "@alliance/shared/forms/listCards";
+import { prefillListsFromPreviousAnswers } from "@alliance/shared/forms/listPrefill";
 import {
   aggregateTarget,
   useVariableAggregates,
@@ -329,64 +329,12 @@ const FormRenderer = ({
     }),
   });
 
-  // --- Prefill list fields from previous answer data ---
   useEffect(() => {
     if (readOnly) return;
     if (Object.keys(previousAnswerData).length === 0) return;
-
-    setFormData((prev) => {
-      const next = { ...prev };
-      let didUpdate = false;
-
-      for (const page of schema.pages) {
-        for (const element of page.fields) {
-          if (!isQuestionField(element)) continue;
-          if (element.kind !== "list") continue;
-          const listField = element;
-          const prefill = listField.prefillFromPreviousAnswer;
-          if (!prefill) continue;
-
-          // Only prefill if untouched (undefined, null, or array of all-empty objects from defaultNumber)
-          const cur = next[listField.id];
-          const isUntouched =
-            cur === undefined ||
-            cur === null ||
-            (Array.isArray(cur) &&
-              cur.every(
-                (c: unknown) =>
-                  typeof c === "object" &&
-                  c !== null &&
-                  Object.keys(c as Record<string, unknown>).length === 0,
-              ));
-          if (!isUntouched) continue;
-
-          const sourceAnswers = previousAnswerData[prefill.sourceFormId];
-          if (!sourceAnswers) continue;
-          const sourceList = sourceAnswers[prefill.sourceFieldId];
-          if (!Array.isArray(sourceList) || sourceList.length === 0) continue;
-
-          // Respect max constraint
-          const maxCards =
-            typeof listField.max === "number" ? listField.max : Infinity;
-          const items = sourceList.slice(0, maxCards);
-
-          const prefilledCards = items.map(
-            (srcCard: Record<string, unknown>) => {
-              const card: Record<string, FormValue> = {};
-              const val = srcCard[prefill.sourceSubFieldId];
-              if (val !== undefined && val !== null) {
-                card[prefill.targetSubFieldId] = val as FormValue;
-              }
-              return card;
-            },
-          );
-
-          next[listField.id] = prefilledCards;
-          didUpdate = true;
-        }
-      }
-      return didUpdate ? next : prev;
-    });
+    setFormData((formData) =>
+      prefillListsFromPreviousAnswers({ schema, previousAnswerData, formData }),
+    );
   }, [previousAnswerData, schema, readOnly]);
 
   const {
