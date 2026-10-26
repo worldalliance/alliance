@@ -28,7 +28,7 @@ const visibilityOf = (
 const hiddenMessageOf = (visibility: Visibility): string | null => {
   switch (visibility.state) {
     case VisibilityState.Unpublished:
-      return "Not visible to members yet — this update publishes the first time you save content on the Content tab.";
+      return "Not visible to members yet — this update publishes the first time you save content on the Content tab, or at its displayed date if that is later.";
     case VisibilityState.Scheduled:
       return `Not visible to members yet — this update publishes ${visibility.visibleAt.toLocaleString()}.`;
     case VisibilityState.Published:
@@ -74,7 +74,7 @@ export function VisibilityControls({
       return (
         <p className="text-sm text-gray-700">
           Not published yet — this update publishes the first time you save
-          content on the Content tab.
+          content on the Content tab, or at its displayed date if that is later.
         </p>
       );
     case VisibilityState.Scheduled:

@@ -16,6 +16,11 @@ import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { City } from "src/geo/city.entity";
 import { ImagesService } from "src/images/images.service";
+import {
+  NotificationPreference,
+  PreferenceSource,
+} from "src/notification-settings/notification-preference.entity";
+import { NEW_ACCOUNT_OFF } from "src/notification-settings/notification-preferences.service";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
 import {
   member,
@@ -110,7 +115,17 @@ export class UserService {
       };
       const inviteId = data.referredByInvite?.id;
       if (inviteId !== undefined) await this.claimInvite(manager, inviteId);
-      return manager.save(manager.create(User, data));
+      const created = await manager.save(manager.create(User, data));
+      await manager.insert(
+        NotificationPreference,
+        NEW_ACCOUNT_OFF.map((cell) => ({
+          ...cell,
+          userId: created.id,
+          enabled: false,
+          source: PreferenceSource.NewAccount,
+        })),
+      );
+      return created;
     });
     await this.eventLogService.sendMessage({
       type: EventType.AccountCreated,

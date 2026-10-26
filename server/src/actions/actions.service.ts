@@ -57,7 +57,7 @@ import {
 } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
-import { milliseconds } from "date-fns";
+import { max, milliseconds } from "date-fns";
 import { groupBy } from "es-toolkit";
 import { CommunityService } from "src/community/community.service";
 import {
@@ -3387,6 +3387,8 @@ export class ActionsService {
         gone: () => new NotFoundException("Action, tag or event not found"),
       });
       const actionUpdate = await this.lockActionUpdate(id, em);
+      // Before the schema write, so publishing sees the `date` this request sets.
+      Object.assign(actionUpdate, rest);
 
       if (schemaWrite) {
         const written = await this.writeSchemaOrThrow({
@@ -3407,11 +3409,9 @@ export class ActionsService {
         // been notified about it, so unpublishing is an explicit act, not a
         // side effect of clearing the editor.
         if (actionUpdate.visibleAt === null && written.schema.blocks.length) {
-          actionUpdate.visibleAt = new Date();
+          actionUpdate.visibleAt = max([new Date(), actionUpdate.date]);
         }
       }
-
-      Object.assign(actionUpdate, rest);
 
       if (tagId !== undefined) {
         actionUpdate.tag =
@@ -3432,9 +3432,8 @@ export class ActionsService {
   }
 
   /**
-   * Hides a published update again until its displayed date. Publishing stamps
-   * `visibleAt` at the first body save, which is too early for an update
-   * written ahead of the date it is about; moving `visibleAt` up to `date`
+   * Hides a published update again until its displayed date, for one whose
+   * date was moved later after it published. Moving `visibleAt` up to `date`
    * lets the `visibleAt <= now` gate republish it when that date arrives.
    */
   async unpublishActionUpdateUntilDate(id: number): Promise<ActionUpdate> {

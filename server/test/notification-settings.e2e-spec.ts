@@ -10,6 +10,7 @@ import {
 } from "src/notifs/entities/unread-content.entity";
 import { NotificationChannel } from "src/notifs/notif-utils";
 import { User } from "src/user/entities/user.entity";
+import { UserService } from "src/user/user.service";
 import request from "supertest";
 import { In, type Repository } from "typeorm";
 import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
@@ -101,6 +102,36 @@ describe("Notification settings (e2e)", () => {
         (kind) => kind.kind === NotificationKind.FriendRequests,
       )?.example,
     ).toBe("Jordan Ellis wants to be friends");
+  });
+
+  it("starts a signup with action update texts and emails off", async () => {
+    const signup = await ctx.app.get(UserService).create({
+      email: `settings-${++users}@example.com`,
+      password: "pass",
+      name: "Settings Signup",
+    });
+    const kinds: KindSettings[] = (
+      await get(signAccessToken(ctx.jwtService, signup)).expect(200)
+    ).body.kinds;
+
+    expect(
+      kinds.flatMap(({ kind, cells }) =>
+        cells
+          .filter((settings) => settings.override !== null)
+          .map(({ channel, override }) => ({ kind, channel, override })),
+      ),
+    ).toEqual([
+      {
+        kind: NotificationKind.ActionUpdates,
+        channel: NotificationChannel.Text,
+        override: false,
+      },
+      {
+        kind: NotificationKind.ActionUpdates,
+        channel: NotificationChannel.Email,
+        override: false,
+      },
+    ]);
   });
 
   it("hides leader-only kinds from members who lead no group", async () => {

@@ -1964,7 +1964,7 @@ export type UpdateNotificationSettingsDto = {
     cells?: Array<UpdateNotificationCellDto>;
 };
 
-export type PreferenceSource = 'member' | 'migrated';
+export type PreferenceSource = 'member' | 'migrated' | 'new_account';
 
 export type NotificationOverrideAdminDto = {
     kind: NotificationKind;

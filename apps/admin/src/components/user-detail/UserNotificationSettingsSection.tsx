@@ -12,6 +12,7 @@ import { SectionRefreshError } from "./SectionQueryState";
 const SOURCE_LABEL: Record<PreferenceSource, string> = {
   member: "Set by member",
   migrated: "Carried over by migration",
+  new_account: "Off for new accounts",
 };
 
 const onOff = (enabled: boolean) => (enabled ? "On" : "Off");
