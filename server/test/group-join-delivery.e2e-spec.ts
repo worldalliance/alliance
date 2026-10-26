@@ -1,3 +1,4 @@
+import { CommunityPlacementService } from "src/community/community-placement.service";
 import { CommunityService } from "src/community/community.service";
 import { loadedCommunityUsers } from "src/community/entities/community.entity";
 import {
@@ -22,11 +23,13 @@ describe("Group join notifications: delivery (e2e)", () => {
   let ctx: TestContext;
   let fx: GroupJoinFixtures;
   let communityService: CommunityService;
+  let communityPlacementService: CommunityPlacementService;
 
   beforeAll(async () => {
     ctx = await createTestApp([MessagingModule]);
     fx = new GroupJoinFixtures(ctx);
     communityService = ctx.app.get(CommunityService);
+    communityPlacementService = ctx.app.get(CommunityPlacementService);
   }, 50000);
 
   const setJoinNotice = (
@@ -208,7 +211,7 @@ describe("Group join notifications: delivery (e2e)", () => {
       .spyOn(ctx.app.get(NotifsService), "sendNotifs")
       .mockRejectedValue(new Error("notification write failed"));
 
-    await communityService.addLeaderAdmin(group.id, promoted.id);
+    await communityPlacementService.addLeaderAdmin(group.id, promoted.id);
 
     const updated = await fx.communityRepo.findOneOrFail({
       where: { id: group.id },

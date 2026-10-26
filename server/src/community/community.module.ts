@@ -10,6 +10,7 @@ import { UserModule } from "src/user/user.module";
 import { CommunityInviteRequestsService } from "./community-invite-requests.service";
 import { CommunityInvitesService } from "./community-invites.service";
 import { CommunityMembershipService } from "./community-membership.service";
+import { CommunityPlacementService } from "./community-placement.service";
 import { CommunityController } from "./community.controller";
 import { CommunityService } from "./community.service";
 import { CommunityInvite } from "./entities/community-invite.entity";
@@ -29,6 +30,7 @@ import { GroupJoinNotifsService } from "./group-join-notifs.service";
   controllers: [CommunityController],
   providers: [
     CommunityService,
+    CommunityPlacementService,
     CommunityInvitesService,
     CommunityInviteRequestsService,
     CommunityMembershipService,

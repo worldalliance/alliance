@@ -30,7 +30,6 @@ describe("CommunityInvitesService", () => {
         fx.communityConversationService,
         {} as ImagesService,
         fx.notifsService,
-        fx.groupJoinNotifsService,
         fx.membership,
       ),
       fx.membership,

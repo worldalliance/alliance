@@ -1,4 +1,5 @@
 import { CommunityInvitesService } from "src/community/community-invites.service";
+import { CommunityPlacementService } from "src/community/community-placement.service";
 import { CommunityService } from "src/community/community.service";
 import {
   CommunityInvite,
@@ -21,6 +22,7 @@ describe("Group join notifications: audience and triggers (e2e)", () => {
   let ctx: TestContext;
   let fx: GroupJoinFixtures;
   let communityService: CommunityService;
+  let communityPlacementService: CommunityPlacementService;
   let communityInvitesService: CommunityInvitesService;
   let contractService: ContractService;
   let groupAssignmentService: GroupAssignmentService;
@@ -29,6 +31,7 @@ describe("Group join notifications: audience and triggers (e2e)", () => {
     ctx = await createTestApp([MessagingModule]);
     fx = new GroupJoinFixtures(ctx);
     communityService = ctx.app.get(CommunityService);
+    communityPlacementService = ctx.app.get(CommunityPlacementService);
     communityInvitesService = ctx.app.get(CommunityInvitesService);
     contractService = ctx.app.get(ContractService);
     groupAssignmentService = ctx.app.get(GroupAssignmentService);
@@ -189,15 +192,15 @@ describe("Group join notifications: audience and triggers (e2e)", () => {
     const invited = await fx.createUser();
     const promoted = await fx.createUser();
 
-    await communityService.addUserToCommunityAdmin({
+    await communityPlacementService.addUserToCommunityAdmin({
       communityId: group.id,
       userId: placed.id,
     });
-    await communityService.addUserToCommunityAdmin({
+    await communityPlacementService.addUserToCommunityAdmin({
       communityId: otherGroup.id,
       userId: moved.id,
     });
-    await communityService.moveUserBetweenCommunitiesAdmin({
+    await communityPlacementService.moveUserBetweenCommunitiesAdmin({
       sourceCommunityId: otherGroup.id,
       destinationCommunityId: group.id,
       userId: moved.id,
@@ -209,8 +212,8 @@ describe("Group join notifications: audience and triggers (e2e)", () => {
       community: group,
     });
     await communityInvitesService.acceptCommunityInvite(invite.id, invited.id);
-    await communityService.addLeaderAdmin(group.id, promoted.id);
-    await communityService.addLeaderAdmin(group.id, placed.id);
+    await communityPlacementService.addLeaderAdmin(group.id, promoted.id);
+    await communityPlacementService.addLeaderAdmin(group.id, placed.id);
 
     expect((await fx.announcements()).get(existing.id)).toEqual(
       [placed.id, moved.id, invited.id, promoted.id].sort((a, b) => a - b),
@@ -237,7 +240,7 @@ describe("Group join notifications: audience and triggers (e2e)", () => {
       members: [inside],
     });
 
-    await communityService.addLeaderAdmin(group.id, outside.id);
+    await communityPlacementService.addLeaderAdmin(group.id, outside.id);
 
     const leaderNotices = await fx.notifRepo.find({
       where: { category: NotificationCategory.MemberJoinedCommunity },

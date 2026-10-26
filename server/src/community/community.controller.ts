@@ -21,6 +21,7 @@ import { PosthogService } from "src/posthog/posthog.service";
 import { CommunityMemberContactInfoDto } from "src/user/dto/user-action-relations.dto";
 import { CommunityInviteRequestsService } from "./community-invite-requests.service";
 import { CommunityInvitesService } from "./community-invites.service";
+import { CommunityPlacementService } from "./community-placement.service";
 import { CommunityService } from "./community.service";
 import {
   CommunityInviteDto,
@@ -40,6 +41,7 @@ import {
 export class CommunityController {
   constructor(
     private readonly communityService: CommunityService,
+    private readonly communityPlacementService: CommunityPlacementService,
     private readonly communityInvitesService: CommunityInvitesService,
     private readonly communityInviteRequestsService: CommunityInviteRequestsService,
     private readonly posthog: PosthogService,
@@ -184,7 +186,7 @@ export class CommunityController {
     @Param("communityId", ParseIntPipe) communityId: number,
     @Body() body: MoveCommunityMemberDto,
   ): Promise<void> {
-    await this.communityService.moveUserBetweenCommunitiesAdmin({
+    await this.communityPlacementService.moveUserBetweenCommunitiesAdmin({
       sourceCommunityId: communityId,
       destinationCommunityId: body.destinationCommunityId,
       userId: body.userId,
@@ -236,7 +238,7 @@ export class CommunityController {
     @Body() body: CommunityMemberDto,
   ): Promise<CommunityDto> {
     return new CommunityDto(
-      await this.communityService.addUserToCommunityAdmin({
+      await this.communityPlacementService.addUserToCommunityAdmin({
         communityId,
         userId: body.userId,
       }),
@@ -251,7 +253,10 @@ export class CommunityController {
     @Body() body: CommunityMemberDto,
   ): Promise<CommunityDto> {
     return new CommunityDto(
-      await this.communityService.addLeaderAdmin(communityId, body.userId),
+      await this.communityPlacementService.addLeaderAdmin(
+        communityId,
+        body.userId,
+      ),
     );
   }
 
@@ -263,7 +268,10 @@ export class CommunityController {
     @Body() body: CommunityMemberDto,
   ): Promise<CommunityDto> {
     return new CommunityDto(
-      await this.communityService.removeLeaderAdmin(communityId, body.userId),
+      await this.communityPlacementService.removeLeaderAdmin(
+        communityId,
+        body.userId,
+      ),
     );
   }
 
