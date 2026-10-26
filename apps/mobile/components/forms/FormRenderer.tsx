@@ -1,5 +1,3 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import { type DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import { type FormSchema } from "@alliance/common/forms/form-schema";
 import { withResolvedOptions } from "@alliance/common/forms/formula-options";
 import { interpolateFieldText } from "@alliance/common/forms/variable-interpolation";
@@ -43,12 +41,12 @@ import {
   useRandomizationKey,
   useVisibilityValidatorResults,
 } from "@alliance/shared/useFormRenderer";
-import { DeviceType, deviceType as expoDeviceType } from "expo-device";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { colors } from "../../lib/style/colors";
 import { getDeviceTimeZone } from "../../lib/timeZone";
 import Text, { FontWeight } from "../system/Text";
+import { DEVICE_TYPE } from "./deviceType";
 import { FormNavigation, ReadOnlyPageNavigation } from "./FormNavigation";
 import FormPage from "./FormPage";
 import OutputPublicToggle from "./OutputPublicToggle";
@@ -90,25 +88,6 @@ type FormRendererProps = {
   scrollPageTo: (y: number, animated?: boolean) => void;
   scrollToEnd: (animated?: boolean) => void;
 };
-
-const detectDeviceType = (): DeviceVisibilityTarget => {
-  if (expoDeviceType === null) return "mobile";
-  switch (expoDeviceType) {
-    case DeviceType.PHONE:
-      return "mobile";
-    case DeviceType.TABLET:
-      return "tablet";
-    case DeviceType.DESKTOP:
-      return "desktop";
-    case DeviceType.UNKNOWN:
-    case DeviceType.TV:
-      return "mobile";
-    default:
-      throw new Error(`unknown device type: ${expoDeviceType satisfies never}`);
-  }
-};
-
-const DEVICE_TYPE: DeviceVisibilityTarget = detectDeviceType();
 
 const FormRenderer = ({
   form,
