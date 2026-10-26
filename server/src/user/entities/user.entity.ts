@@ -1,4 +1,3 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 /* eslint-disable @darraghor/nestjs-typed/all-properties-have-explicit-defined */
 /* eslint-disable @darraghor/nestjs-typed/all-properties-are-whitelisted */
 import { Temporal } from "@js-temporal/polyfill";
@@ -29,7 +28,6 @@ import { StoredInviteAssignmentKind } from "src/share-urls/invite-assignment-kin
 import { phoneNumberTransformer } from "src/utils/phone";
 import { plainTimeTransformer } from "src/utils/plain-time";
 import type { Relation } from "src/utils/Repository";
-import { RetiredColumn } from "src/utils/retired-column";
 import {
   BeforeInsert,
   BeforeUpdate,
@@ -56,6 +54,7 @@ import { OnetimeInvite } from "./onetime-invite.entity";
 import { Tag } from "./tag.entity";
 import { UserAwayRange } from "./user-away-range.entity";
 import { UserDevice } from "./user-device.entity";
+import { UserRetiredColumns } from "./user-retired-columns";
 
 export enum PublicFormResponseDefault {
   Public = "public",
@@ -86,7 +85,7 @@ export enum ReferralSource {
 @Index(["referredByShareUrl"])
 @Index(["id"], { where: '"deletedAt" IS NOT NULL' })
 @Entity()
-export class User {
+export class User extends UserRetiredColumns {
   // Fields
 
   @PrimaryGeneratedColumn()
@@ -177,64 +176,6 @@ export class User {
   })
   @ApiProperty()
   sharePhoneNumberWithCommunityLead: boolean;
-
-  // TODO: drop these columns and fields in a deploy after this one. Until
-  // then a rollback restores the previous release, which inserts them.
-  @RetiredColumn({
-    name: "forumDigestPreference",
-    type: "enum",
-    enum: ["off", "daily", "weekly"],
-  })
-  legacyForumDigestPreference: string | null;
-
-  @RetiredColumn({
-    name: "socialNotifsPreference",
-    type: "enum",
-    enum: ["all", "digest", "none"],
-  })
-  legacySocialNotifsPreference: string | null;
-
-  @RetiredColumn({ name: "emailNotifsForActions", type: "boolean" })
-  legacyEmailNotifsForActions: boolean | null;
-
-  @RetiredColumn({ name: "textNotifsForActions", type: "boolean" })
-  legacyTextNotifsForActions: boolean | null;
-
-  @RetiredColumn({ name: "pushNotifsForActions", type: "boolean" })
-  legacyPushNotifsForActions: boolean | null;
-
-  @RetiredColumn({ name: "turnedOffAllNotifs", type: "boolean" })
-  legacyTurnedOffAllNotifs: boolean | null;
-
-  @RetiredColumn({ name: "pushesForLikes", type: "boolean" })
-  legacyPushesForLikes: boolean | null;
-
-  @RetiredColumn({ name: "pushesForComments", type: "boolean" })
-  legacyPushesForComments: boolean | null;
-
-  @RetiredColumn({ name: "pushesForFriendRequests", type: "boolean" })
-  legacyPushesForFriendRequests: boolean | null;
-
-  @RetiredColumn({ name: "pushesForMessages", type: "boolean" })
-  legacyPushesForMessages: boolean | null;
-
-  @RetiredColumn({ name: "pushesForActionUpdates", type: "boolean" })
-  legacyPushesForActionUpdates: boolean | null;
-
-  @RetiredColumn({ name: "pushesForNewGroupMembers", type: "boolean" })
-  legacyPushesForNewGroupMembers: boolean | null;
-
-  @RetiredColumn({ name: "textsForNewGroupMembers", type: "boolean" })
-  legacyTextsForNewGroupMembers: boolean | null;
-
-  @RetiredColumn({
-    name: "remindAboutUncompletedGroupMembers",
-    type: "boolean",
-  })
-  legacyRemindAboutUncompletedGroupMembers: boolean | null;
-
-  @RetiredColumn({ name: "receiveReplyNotifications", type: "boolean" })
-  legacyReceiveReplyNotifications: boolean | null;
 
   @Column({ type: "timestamptz", nullable: true })
   @ApiProperty({ type: Date, nullable: true })
@@ -518,6 +459,7 @@ export class User {
   }
 
   constructor(data: Partial<User> = {}) {
+    super();
     Object.assign(this, data);
   }
 
