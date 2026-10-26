@@ -1,18 +1,18 @@
 import { cn } from "@alliance/shared/styles/util";
-import { MEMBER_GOAL } from "./GrantmakingMemberProgress";
+import { MEMBER_GOAL, MEMBER_GOAL_LABEL } from "./GrantmakingMemberProgress";
+
+const share = (count: number) =>
+  `${(Math.min(count, MEMBER_GOAL) / MEMBER_GOAL) * 100}%`;
 
 export function MemberWaitlistBar({
   members,
   waitlist,
-  goal = MEMBER_GOAL,
   className,
 }: {
   members: number;
   waitlist: number;
-  goal?: number;
   className?: string;
 }) {
-  const share = (count: number) => `${(Math.min(count, goal) / goal) * 100}%`;
   return (
     <div
       className={cn(
@@ -29,13 +29,11 @@ export function MemberWaitlistBar({
           <span className="size-3 rounded-[2px] bg-zinc-400" aria-hidden />
           {waitlist.toLocaleString("en-US")} waitlist
         </span>
-        <span className="ml-auto">
-          Goal: {goal.toLocaleString("en-US")} members
-        </span>
+        <span className="ml-auto">Goal: {MEMBER_GOAL_LABEL} members</span>
       </p>
       <div
         role="img"
-        aria-label={`${members} members and ${waitlist} on the waitlist, toward ${goal.toLocaleString("en-US")}`}
+        aria-label={`${members} members and ${waitlist} on the waitlist, toward ${MEMBER_GOAL.toLocaleString("en-US")}`}
         className="flex h-5 w-full overflow-hidden rounded-full bg-zinc-100"
       >
         <div
@@ -45,7 +43,9 @@ export function MemberWaitlistBar({
         <div
           className="h-full rounded-r-full bg-zinc-400"
           style={{
-            width: share(Math.min(waitlist, Math.max(0, goal - members))),
+            width: share(
+              Math.min(waitlist, Math.max(0, MEMBER_GOAL - members)),
+            ),
           }}
         />
       </div>

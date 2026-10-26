@@ -6,13 +6,13 @@ export function NewsCollage({ className }: { className?: string }) {
     <section
       aria-labelledby="news-heading"
       className={cn(
-        "site-sans flex flex-col gap-5 rounded-lg bg-zinc-100 p-6 sm:p-8",
+        "site-sans flex flex-col gap-6 rounded-lg bg-zinc-100 px-7 py-8 sm:px-14 sm:py-10",
         className,
       )}
     >
       <h2
         id="news-heading"
-        className="text-lg font-semibold text-[var(--site-ink)] sm:text-xl"
+        className="text-center text-xl font-medium text-[var(--site-ink)] sm:text-2xl"
       >
         {NEWS_HEADING}
       </h2>

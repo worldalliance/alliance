@@ -1,19 +1,16 @@
 export const ABOUT_SECTIONS = [
   {
     heading: "What is this?",
-    body: `- Safer Chatbots for Children is a global project, done online by volunteers over the course of 1 month. Volunteers will read short scenarios of children turning to AI assistants and determine if the scenario shows safe behavior or not.
+    body: `- Safer Chatbots for Children is a volunteer project run by the Alliance and Kora intended to make AI chatbots safer for children and teenagers.
 - Volunteers will review English transcripts of children messaging AI chatbots such as ChatGPT, Claude, and Mistral, then submit feedback on how well the chatbots handled sensitive topics such as fear, academic dishonesty, online data sharing, and body image.`,
   },
   {
     heading: "How do I participate?",
-    body: `- This project is run by the Alliance and KORA that is accepting signups from the general public from any country.
-- Join the waitlist on this page. We expect the project to begin in Mid-November 2026 and conclude by Mid-December 2026. 
+    body: `- Join the waitlist on this page. We expect the project to begin in Mid-November 2026 and conclude by Mid-December 2026. 
 - Volunteers are encouraged to join the Alliance to continue volunteering on similar tasks after this project concludes.
+- This project is accepting signups from the general public from any country.
+- **Expected Time Committment**: 1 hour total over the course of 30 days, done at your own pace, from your own computer.
 `,
-  },
-  {
-    heading: "Why are we doing this?",
-    body: "At the Alliance, we’re assembling people who can count on each other to combat global problems that depend on everyone’s participation. With this project, we are testing the model of “citizen oversight”, where the general public gets a chance to weigh in on disruptive, potentially dangerous technologies such as AI and help shape the direction of these technologies in a healthy, democratic way.",
   },
   {
     heading: "How will this work?",
@@ -23,28 +20,43 @@ export const ABOUT_SECTIONS = [
 
 2. Kora, an AI safety nonprofit, will take the aggregated feedback on the scenarios to improve their safety tests (known in the industry as “benchmarks”) to match what is considered safe by the general public.
 
-3. Leading AI companies like Mistral will use these benchmarks to evaluate their models and improve future chatbot releases.`,
+3. Kora will write up the findings in a research paper and incorporate findings into their benchmark. Leading AI companies like Mistral use these benchmarks to evaluate and improve their products.`,
+  },
+  {
+    heading: "Why are we doing this?",
+    body: "At the Alliance, we’re assembling people who can count on each other to combat global problems that depend on everyone’s participation. With this project, we are testing the model of “citizen oversight”, where the general public gets a chance to weigh in on disruptive, potentially dangerous technologies such as AI and help shape the direction of these technologies in a healthy, democratic way.",
   },
 ];
 
-export const WAITLIST_GOAL = 500;
+export const PARTICIPANT_GOAL = 500;
 
-export const SIGNUP_BUTTON = "Join the waitlist for this project";
+export const SIGNUP_BUTTON = "Sign up here";
 
 export const SIGNUP_NOTE = "The project will begin November 17th";
 
 export const SIGNUP_CLOSED =
   "Waitlist is not live yet, please come back next week.";
 
+export const EXPERTS_HEADING = "Project advisor";
+
+export const EXPERTS_SUBTITLE =
+  "Safer Chatbots for Children is an ongoing project run by KORA, a leading AI safety evaluation nonprofit, and the Alliance, an online community of volunteers dedicated to tackling serious global issues.";
+
 export interface Expert {
   name: string;
   role: string;
   imageSrc?: string;
+  href?: string;
 }
 
 export const EXPERTS: Expert[] = [
-  { name: "Stéphie Herlin", role: "Head of Product and Research at KORA" },
-  { name: "Pending Name Review", role: "AI Safety Researcher at Meta" },
+  {
+    name: "Stéphie Herlin",
+    role: "Co-Founder and Research Lead, KORA",
+    imageSrc: "/assets/chatbot-safety/stephie-pic.png",
+    href: "https://www.linkedin.com/in/stephieherlin",
+  },
+  //{ name: "Pending Name Review", role: "AI Safety Researcher at Meta" },
 ];
 
 export interface Phase {
@@ -80,30 +92,40 @@ export const FACTS: Fact[] = [
   },
 ];
 
-export const SHOW_TIMELINE = false;
+export const SHOW_FACTS = false;
 
-export const TIMELINE_HEADING = "How the project works";
+export const SHOW_TIMELINE = true;
+
+export const TIMELINE_HEADING = "Project Overview";
 
 export const PHASES: Phase[] = [
   {
     label: "Step 1",
     description:
-      "Volunteers read scenarios of children interacting with a chatbot.",
+      "Volunteers will read scenarios that simulate a child or teenager talking to a chatbot.",
+    imageSrc: "/assets/chatbot-safety/chat-transcript.jpg",
   },
   {
     label: "Step 2",
     description:
-      "Volunteers rate the chatbot's responses as 'safe' or 'unsafe'",
+      "Volunteers will rate the chatbot's responses as 'safe' or 'unsafe'",
+    imageSrc: "/assets/chatbot-safety/to-do-list.svg",
+    /* imageSrc: "/assets/chatbot-safety/Boy-Laptop.svg"
+    Image is from a Creative Commons website, authorized for public use. 
+      - https://publicdomainvectors.org/en/free-clipart/Boy-and-laptop/40053.html 
+      - https://publicdomainvectors.org/en/public-domain/ */
   },
   {
     label: "Step 3",
     description:
-      "KORA takes the volunteer feedback to improve their safety tests, or benchmarks, to reflect what the public believes to be safe.",
+      "KORA will take the volunteer feedback to improve their benchmarks to reflect what the public believes to be safe.",
+    imageSrc: "/assets/chatbot-safety/kora-benchmark.jpg",
   },
   {
     label: "Step 4",
     description:
-      "Leading AI labs, such as Mistral (EU), use these benchmarks to evaluate their new chatbot models.",
+      "Leading AI labs such as Mistral (EU) will use these benchmarks to evaluate their new chatbot models.",
+    imageSrc: "/assets/chatbot-safety/mistral-kora.jpg",
   },
 ];
 

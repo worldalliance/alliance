@@ -11,7 +11,7 @@ export function ProjectTimeline({
 }) {
   return (
     <section className={cn("flex flex-col gap-6 lg:gap-10", className)}>
-      <h2 className="site-sans text-center text-xl font-semibold text-[var(--site-ink)] sm:text-2xl">
+      <h2 className="site-sans text-center text-xl font-medium text-[var(--site-ink)] sm:text-2xl">
         {TIMELINE_HEADING}
       </h2>
       <ol
@@ -52,10 +52,12 @@ export function ProjectTimeline({
                 >
                   {phase.label}
                 </p>
-                <PictureSlot
-                  src={phase.imageSrc}
-                  className="aspect-[3/2] w-full max-w-xs lg:max-w-none"
-                />
+                <div className="aspect-[4/3] w-full max-w-xs overflow-hidden rounded-md border border-zinc-200 bg-zinc-50 p-3 lg:max-w-none">
+                  <PictureSlot
+                    src={phase.imageSrc}
+                    className="size-full rounded-sm object-contain"
+                  />
+                </div>
                 <p className="leading-snug text-[var(--site-ink)]">
                   {phase.description}
                 </p>

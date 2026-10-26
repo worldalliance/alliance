@@ -2,29 +2,26 @@ import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCo
 import { cn } from "@alliance/shared/styles/util";
 import { data } from "react-router";
 import { socialPreviewMeta } from "../../../lib/socialPreviewMeta";
-import { DocProse, DocProseSize } from "../../../site/DocProse";
 import { SiteFooter } from "../../../site/Footer";
 import { NAV_HEIGHT, Navbar } from "../../../site/Navbar";
-import {
-  BandHeading,
-  BandHeadingSize,
-  SiteRoot,
-} from "../../../site/PageShell";
+import { SiteRoot } from "../../../site/PageShell";
 import { DisplayHeading, SITE_COL } from "../../../site/ui";
-import { MemberWaitlistBar } from "../democratic-grantmaking-26/MemberWaitlistBar";
-import { useWaitlistCount } from "../democratic-grantmaking-26/useWaitlist";
 import { WaitlistSignupForm } from "../democratic-grantmaking-26/WaitlistSignupForm";
+import { AboutGrid } from "./AboutGrid";
 import {
-  ABOUT_SECTIONS,
+  EXPERTS_HEADING,
+  EXPERTS_SUBTITLE,
+  PARTICIPANT_GOAL,
+  SHOW_FACTS,
   SHOW_TIMELINE,
   SIGNUP_BUTTON,
   SIGNUP_CLOSED,
   SIGNUP_NOTE,
-  WAITLIST_GOAL,
 } from "./copy";
 import { ExpertGrid } from "./ExpertGrid";
 import { FactBlocks } from "./FactBlocks";
 import { NewsCollage } from "./NewsCollage";
+import { ParticipantsBar } from "./ParticipantsBar";
 import { ProjectTimeline } from "./ProjectTimeline";
 
 export function loader() {
@@ -36,7 +33,7 @@ export function meta() {
   return socialPreviewMeta({
     title: "Safer Chatbots for Children — The Alliance",
     description:
-      "Join our project with KORA, a European research nonprofit, to improve tests measuring the safety of chatbots for children worldwide.",
+      "Join our volunteer project with KORA, a European research nonprofit, to improve tests measuring the safety of chatbots for children worldwide.",
     url: "/projects/safer-chatbots-for-children",
   });
 }
@@ -45,21 +42,16 @@ const PROJECT_COL = cn(SITE_COL, "lg:max-w-[1400px]");
 
 function ProjectProgress() {
   const members = useAllianceMemberCount();
-  const waitlist = useWaitlistCount();
-  if (members.data !== undefined && waitlist.data !== undefined) {
+  if (members.data !== undefined) {
     return (
-      <MemberWaitlistBar
-        members={members.data}
-        waitlist={waitlist.data}
-        goal={WAITLIST_GOAL}
-      />
+      <ParticipantsBar participants={members.data} goal={PARTICIPANT_GOAL} />
     );
   }
   return (
     <p className="site-sans text-base text-[var(--site-ink)]/70">
-      {members.isError || waitlist.isError
-        ? "Member and waitlist counts unavailable"
-        : "Loading member and waitlist counts…"}
+      {members.isError
+        ? "Participant count unavailable"
+        : "Loading participant count…"}
     </p>
   );
 }
@@ -92,11 +84,11 @@ export default function SaferChatbotsForChildren26() {
                   leading={1.2}
                   className="text-4xl sm:text-5xl lg:text-[clamp(2.25rem,min(3.75vw,6vh),4.5rem)]"
                 >
-                  A generation is growing up with AI chatbots. It’s time the
-                  public had a say.{" "}
+                  A generation of kids is growing up with AI chatbots. Help make
+                  sure they are safe.{" "}
                 </DisplayHeading>
                 <p className="text-left text-2xl sm:text-3xl">
-                  Join our project with{" "}
+                  Join our volunteer project with{" "}
                   <a
                     href="https://korabench.ai"
                     target="_blank"
@@ -105,8 +97,8 @@ export default function SaferChatbotsForChildren26() {
                   >
                     KORA,
                   </a>{" "}
-                  a European research nonprofit, to improve tests measuring the
-                  safety of chatbots for children worldwide.
+                  a safety research nonprofit, to improve the safety of chatbots
+                  for children worldwide.
                 </p>
               </div>
               <WaitlistSignupForm
@@ -125,56 +117,37 @@ export default function SaferChatbotsForChildren26() {
               <ProjectProgress />
             </div>
             <div className={cn(PROJECT_COL, "pt-12 md:pt-16")}>
-              <FactBlocks />
-            </div>
-            <div className={cn(PROJECT_COL, "pt-12 md:pt-16")}>
-              <NewsCollage />
+              <AboutGrid />
             </div>
             {SHOW_TIMELINE && (
               <div className={cn(PROJECT_COL, "pt-12 md:pt-16")}>
                 <ProjectTimeline currentIdx={0} />
               </div>
             )}
+            {SHOW_FACTS && (
+              <div className={cn(PROJECT_COL, "pt-12 md:pt-16")}>
+                <FactBlocks />
+              </div>
+            )}
           </div>
           <div
             className={cn(
               PROJECT_COL,
-              "mt-12 flex flex-col gap-12 md:mt-16 md:gap-16",
+              "mt-12 flex flex-col gap-12 pb-20 md:mt-16 md:gap-16 md:pb-24 lg:pb-32",
             )}
           >
-            <div className="flex flex-col items-center gap-8 rounded-lg bg-zinc-100 px-8 py-10 sm:px-12 sm:py-12">
-              <p className="text-center text-lg text-[var(--site-ink)]/70 sm:text-xl">
-                Safer Chatbots for Children is an ongoing project run by KORA, a
-                leading AI safety evaluation nonprofit, and the Alliance, an
-                online community of volunteers dedicated to tackling serious
-                global issues. This project is advised by.
-              </p>
+            <div className="flex flex-col items-center gap-8 rounded-lg bg-zinc-100 px-7 py-8 sm:px-14 sm:py-10">
+              <div className="flex flex-col items-center gap-1">
+                <p className="text-center text-xl font-medium sm:text-2xl">
+                  {EXPERTS_HEADING}
+                </p>
+                <p className="text-center text-lg text-[var(--site-ink)]/70 sm:text-xl">
+                  {EXPERTS_SUBTITLE}
+                </p>
+              </div>
               <ExpertGrid />
             </div>
-          </div>
-        </div>
-        <div
-          className={cn(PROJECT_COL, "pt-12 pb-20 md:pt-16 md:pb-24 lg:pb-32")}
-        >
-          <div className="mx-auto flex max-w-4xl flex-col gap-12 md:gap-16">
-            {ABOUT_SECTIONS.map(({ heading, body }) => (
-              <section
-                key={heading}
-                className="flex flex-col items-start gap-5 text-left"
-              >
-                <BandHeading
-                  size={BandHeadingSize.Section}
-                  className="text-left"
-                >
-                  {heading}
-                </BandHeading>
-                <DocProse
-                  size={DocProseSize.Large}
-                  markdown={body}
-                  className="w-full text-left"
-                />
-              </section>
-            ))}
+            <NewsCollage />
           </div>
         </div>
       </main>
