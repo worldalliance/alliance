@@ -1,6 +1,7 @@
 import { analyticsGetPlatformTenureCohortAdmin } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { skipToken, useQuery } from "@tanstack/react-query";
+import { keepPreviousUnlessFailed } from "./keepPreviousUnlessFailed";
 
 export function usePlatformTenureCohortAdmin(weeksOnPlatform: number | null) {
   return useQuery({
@@ -13,7 +14,6 @@ export function usePlatformTenureCohortAdmin(weeksOnPlatform: number | null) {
               query: { weeksOnPlatform },
               throwOnError: true,
             }).then((r) => r.data),
-    placeholderData: (previous, previousQuery) =>
-      previousQuery?.state.status === "error" ? undefined : previous,
+    placeholderData: keepPreviousUnlessFailed,
   });
 }
