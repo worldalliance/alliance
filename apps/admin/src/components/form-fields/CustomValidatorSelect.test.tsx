@@ -1,7 +1,13 @@
 import { makeUser } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { CustomValidatorSelect } from "./CustomValidatorSelect";
 
@@ -127,5 +133,41 @@ describe("the custom expression editor", () => {
 
     expect(await screen.findByText("Unknown identifier: foo")).toBeTruthy();
     expect(screen.queryByText(/Active-contract users:/)).toBeNull();
+  });
+
+  it("drops an earlier result when a later run fails", async () => {
+    renderSelect({ expression: "true" });
+    await screen.findByRole("option", { name: "Ana (7)" });
+    fireEvent.click(screen.getByRole("button", { name: "Test expression" }));
+    await screen.findByText("Ana (7): true");
+
+    expressionResult = () => Response.json({}, { status: 500 });
+    fireEvent.click(screen.getByRole("button", { name: "Test expression" }));
+
+    expect(await screen.findByText("Expression failed to run.")).toBeTruthy();
+    expect(screen.queryByText("Ana (7): true")).toBeNull();
+  });
+
+  it("drops the result once the expression is edited", async () => {
+    const query = queryWrapper();
+    const editor = (expression: string) => (
+      <CustomValidatorSelect
+        type="CustomExpression"
+        idArgument={null}
+        expression={expression}
+        onChange={() => {}}
+      />
+    );
+    const view = render(editor("true"), query);
+    await screen.findByRole("option", { name: "Ana (7)" });
+    fireEvent.click(screen.getByRole("button", { name: "Test expression" }));
+    await screen.findByText("Ana (7): true");
+
+    view.rerender(editor("false"));
+    expect(screen.queryByText("Ana (7): true")).toBeNull();
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+
+    view.rerender(editor("true"));
+    expect(screen.queryByText("Ana (7): true")).toBeNull();
   });
 });
