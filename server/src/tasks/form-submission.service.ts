@@ -38,6 +38,7 @@ import {
   FormResponse,
   type ParsedFormResponse,
 } from "./entities/formresponse.entity";
+import { FormDraftService } from "./form-draft.service";
 import { FormProfileAnswersService } from "./form-profile-answers.service";
 import { FormResponseQueryService } from "./form-response-query.service";
 import { FormResponseWriterService } from "./form-response-writer.service";
@@ -78,6 +79,7 @@ export class FormSubmissionService {
   constructor(
     private readonly tasksService: TasksService,
     private readonly formResponseWriterService: FormResponseWriterService,
+    private readonly formDraftService: FormDraftService,
     private readonly formRowAssignmentService: FormRowAssignmentService,
     private readonly formProfileAnswersService: FormProfileAnswersService,
     private readonly formSubmissionValidationService: FormSubmissionValidationService,
@@ -205,7 +207,7 @@ export class FormSubmissionService {
     if (contractIdsSigned.length > 0) {
       this.contractService.announceSigned(user.id);
     }
-    await this.tasksService.deleteFormDraft(userId, formId);
+    await this.formDraftService.deleteFormDraft(userId, formId);
 
     return savedForm;
   }
@@ -406,7 +408,7 @@ export class FormSubmissionService {
         user,
       });
 
-    await this.tasksService.deleteFormDraft(userId, formId);
+    await this.formDraftService.deleteFormDraft(userId, formId);
 
     return this.actionActivityService.createActionActivity({
       actionId,

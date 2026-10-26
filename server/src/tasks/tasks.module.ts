@@ -20,6 +20,7 @@ import { FormRowAssignment } from "./entities/form-row-assignment.entity";
 import { Form } from "./entities/form.entity";
 import { FormResponse } from "./entities/formresponse.entity";
 import { FormResponseDraft } from "./entities/formresponsedraft.entity";
+import { FormDraftService } from "./form-draft.service";
 import { FormProfileAnswersService } from "./form-profile-answers.service";
 import { FormResponseQueryService } from "./form-response-query.service";
 import { FormResponseWriterService } from "./form-response-writer.service";
@@ -64,6 +65,7 @@ import { TasksService } from "./tasks.service";
     FormSubmissionValidationService,
     FormResponseWriterService,
     FormSubmissionService,
+    FormDraftService,
   ],
 })
 export class TasksModule {}

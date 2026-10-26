@@ -27,6 +27,7 @@ import { AuthGuard } from "src/auth/guards/auth.guard";
 import { AuthOptionalGuard } from "src/auth/guards/authoptional.guard";
 import { Public } from "src/auth/public.decorator";
 import { extractGuestToken, type JwtRequest } from "src/auth/tokens";
+import { FormDraftService } from "./form-draft.service";
 import { FormResponseHistoryDto } from "./form-response-history.dto";
 import { FormResponseQueryService } from "./form-response-query.service";
 import { FormSubmissionService } from "./form-submission.service";
@@ -68,6 +69,7 @@ export class TasksController {
     private readonly tasksService: TasksService,
     private readonly formResponseQueryService: FormResponseQueryService,
     private readonly formSubmissionService: FormSubmissionService,
+    private readonly formDraftService: FormDraftService,
     private readonly authService: AuthService,
   ) {}
 
@@ -339,7 +341,7 @@ export class TasksController {
     @Request() req: JwtRequest,
   ): Promise<FormDraftDto> {
     return new FormDraftDto(
-      await this.tasksService.saveFormDraft({
+      await this.formDraftService.saveFormDraft({
         userId: req.user.sub,
         formId: id,
         dto: body,
@@ -355,7 +357,7 @@ export class TasksController {
     @Request() req: JwtRequest,
   ): Promise<MaybeFormDraftDto> {
     return new MaybeFormDraftDto(
-      await this.tasksService.getFormDraft(req.user.sub, id),
+      await this.formDraftService.getFormDraft(req.user.sub, id),
     );
   }
 
