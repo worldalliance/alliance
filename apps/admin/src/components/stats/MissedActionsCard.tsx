@@ -1,34 +1,24 @@
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import { analyticsGetMissedActionsAdmin } from "@alliance/shared/client";
-import { MissedActionsDto } from "@alliance/shared/client/types.gen";
 import React, { useCallback, useMemo, useState } from "react";
+import { adminRefusalMessage } from "../../lib/adminRefusal";
+import { useMissedActionsAdmin } from "../../lib/useMissedActionsAdmin";
 
 const MissedActionsCard: React.FC = () => {
-  const [missedActions, setMissedActions] = useState<MissedActionsDto | null>(
-    null,
-  );
-  const [missedActionsLoading, setMissedActionsLoading] =
-    useState<boolean>(false);
   const [missedActionsRequested, setMissedActionsRequested] =
     useState<boolean>(false);
-
-  const loadMissedActions = useCallback(async () => {
-    setMissedActionsLoading(true);
-    try {
-      const response = await analyticsGetMissedActionsAdmin();
-      setMissedActions(response.data ?? null);
-    } catch (err) {
-      console.error("Failed to load missed actions", err);
-      setMissedActions(null);
-    } finally {
-      setMissedActionsLoading(false);
-    }
-  }, []);
+  const {
+    data: missedActions,
+    isFetching: missedActionsLoading,
+    error: missedActionsError,
+    refetch: refetchMissedActions,
+  } = useMissedActionsAdmin({ enabled: missedActionsRequested });
 
   const handleLoadMissedActions = useCallback(() => {
-    setMissedActionsRequested(true);
-    void loadMissedActions();
-  }, [loadMissedActions]);
+    if (missedActionsRequested) {
+      void refetchMissedActions();
+    } else {
+      setMissedActionsRequested(true);
+    }
+  }, [missedActionsRequested, refetchMissedActions]);
 
   const missedActionGroups = useMemo(() => {
     if (!missedActions) {
@@ -69,7 +59,7 @@ const MissedActionsCard: React.FC = () => {
         {!missedActionsRequested ? null : missedActionsLoading &&
           !missedActions ? (
           <p className="text-sm text-gray-600">Loading missed actions...</p>
-        ) : missedActionGroups ? (
+        ) : missedActionGroups && !missedActionsError ? (
           missedActionGroups.map(({ title, members }) => (
             <div key={title} className="rounded-md border border-gray-200 p-4">
               <div className="flex items-baseline justify-between gap-3">
@@ -104,7 +94,10 @@ const MissedActionsCard: React.FC = () => {
           ))
         ) : (
           <p className="text-sm text-gray-600">
-            Unable to load missed actions.
+            {adminRefusalMessage(
+              missedActionsError,
+              "Unable to load missed actions.",
+            )}
           </p>
         )}
       </div>
