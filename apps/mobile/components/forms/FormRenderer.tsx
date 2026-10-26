@@ -41,12 +41,7 @@ import {
 } from "@alliance/shared/forms/useVariableSourceHistories";
 import { variableInputsGate } from "@alliance/shared/forms/variableInputsGate";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
-import {
-  cancelAllImageUploads,
-  draftSaveFailed,
-  outputFieldPublicToggle,
-  waitingForImageUpload,
-} from "@alliance/shared/lib/copy";
+import { outputFieldPublicToggle } from "@alliance/shared/lib/copy";
 import { formTimeZoneDefault } from "@alliance/shared/lib/timeZone";
 import { useImageUpload } from "@alliance/shared/lib/useImageUpload";
 import { useVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
@@ -61,14 +56,13 @@ import {
   useVisibilityValidatorResults,
 } from "@alliance/shared/useFormRenderer";
 import { DeviceType, deviceType as expoDeviceType } from "expo-device";
-import { CircleCheck, Ellipsis, X } from "lucide-react-native";
 import { useMemo, useState } from "react";
-import { ActivityIndicator, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import { colors } from "../../lib/style/colors";
 import { getDeviceTimeZone } from "../../lib/timeZone";
-import Button, { ButtonColor, ButtonSize } from "../system/Button";
 import Checkbox from "../system/Checkbox";
 import Text, { FontWeight } from "../system/Text";
+import { FormNavigation, ReadOnlyPageNavigation } from "./FormNavigation";
 import { RenderDisplayBlockMobile } from "./RenderDisplayBlock";
 import { RenderField } from "./RenderField";
 import { useFormDraftState } from "./useFormDraftState";
@@ -592,128 +586,40 @@ const FormRenderer = ({
       </View>
 
       {readOnly && visiblePageCount > 1 && (
-        <View>
-          <View className="flex-row justify-between items-center mb-3">
-            <Text className="text-sm text-zinc-500">
-              Page {currentVisiblePageNumber} of {visiblePageCount}
-            </Text>
-          </View>
-          <View className="flex-row gap-3">
-            {!isFirstPage && (
-              <Button
-                onPress={handlePreviousPage}
-                color={ButtonColor.Outline}
-                size={ButtonSize.Medium}
-                className="flex-1"
-                title="Back"
-              />
-            )}
-            {!isLastPage && (
-              <Button
-                onPress={() => {
-                  if (nextVisiblePageIndex !== null) {
-                    setCurrentPageIndex(nextVisiblePageIndex);
-                  }
+        <ReadOnlyPageNavigation
+          pageNumber={currentVisiblePageNumber}
+          pageCount={visiblePageCount}
+          onBack={isFirstPage ? null : handlePreviousPage}
+          onNext={
+            nextVisiblePageIndex === null
+              ? null
+              : () => {
+                  setCurrentPageIndex(nextVisiblePageIndex);
                   setImmediate(() => scrollPageTo(0, false));
-                }}
-                color={ButtonColor.Black}
-                size={ButtonSize.Medium}
-                className="flex-1"
-                title="Next"
-              />
-            )}
-          </View>
-        </View>
+                }
+          }
+        />
       )}
       {!readOnly && (
-        <View>
-          <View className="">
-            <View className="flex-row justify-between items-center mb-3">
-              {visiblePageCount > 1 ? (
-                <Text className="text-sm text-zinc-500">
-                  Page {currentVisiblePageNumber} of {visiblePageCount}
-                </Text>
-              ) : null}
-            </View>
-            <View className="flex-row gap-1.5">
-              {!isFirstPage && (
-                <Button
-                  onPress={handlePreviousPage}
-                  color={ButtonColor.Outline}
-                  size={ButtonSize.Medium}
-                  className="flex-1"
-                  disabled={submitting}
-                  title="Back"
-                />
-              )}
-              <Button
-                onPress={isLastPage ? handleSubmit : handleNextPage}
-                color={ButtonColor.Black}
-                size={ButtonSize.Medium}
-                className="flex-2 py-4! gap-x-1"
-                disabled={
-                  submitting ||
-                  imageUpload.uploadingAny ||
-                  (!isLastPage && !visibilitySettled)
-                }
-              >
-                {submitting ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <>
-                    {isLastPage ? (
-                      <CircleCheck size={16} color="#fff" strokeWidth={2.5} />
-                    ) : null}
-                    <Text
-                      className="text-white text-base"
-                      weight={FontWeight.Medium}
-                    >
-                      {isLastPage
-                        ? onSubmit
-                          ? "Complete"
-                          : "Complete (Preview Mode)"
-                        : "Next"}
-                    </Text>
-                  </>
-                )}
-              </Button>
-              {onAbandonAction && (
-                <Button
-                  onPress={() => setWithdrawOpen(true)}
-                  color={ButtonColor.Outline}
-                  size={ButtonSize.Medium}
-                >
-                  <Ellipsis size={15} />
-                </Button>
-              )}
-            </View>
-          </View>
-          {imageUpload.uploadingAny && (
-            <View className="flex-row items-center gap-1 p-2">
-              <Text className="text-zinc-500 text-base">
-                {waitingForImageUpload}
-              </Text>
-              <TouchableOpacity
-                onPress={imageUpload.cancelAll}
-                accessibilityLabel={cancelAllImageUploads}
-                hitSlop={8}
-                className="p-1"
-              >
-                <X size={20} color={colors.text.icon} />
-              </TouchableOpacity>
-            </View>
-          )}
-          {saveFailed && !readOnly && (
-            <Text className="text-amber-600 text-base p-2">
-              {draftSaveFailed}
-            </Text>
-          )}
-          {Object.keys(fieldErrors).length > 0 && (
-            <Text className="text-red-500 text-base p-2">
-              Your form has errors. Please fix before submitting.
-            </Text>
-          )}
-        </View>
+        <FormNavigation
+          pageNumber={currentVisiblePageNumber}
+          pageCount={visiblePageCount}
+          onBack={isFirstPage ? null : handlePreviousPage}
+          onPrimary={isLastPage ? handleSubmit : handleNextPage}
+          isLastPage={isLastPage}
+          preview={!onSubmit}
+          submitting={submitting}
+          primaryDisabled={
+            submitting ||
+            imageUpload.uploadingAny ||
+            (!isLastPage && !visibilitySettled)
+          }
+          onWithdraw={onAbandonAction ? () => setWithdrawOpen(true) : null}
+          uploadingImages={imageUpload.uploadingAny}
+          onCancelUploads={imageUpload.cancelAll}
+          saveFailed={saveFailed}
+          hasFieldErrors={Object.keys(fieldErrors).length > 0}
+        />
       )}
 
       {onAbandonAction && (
