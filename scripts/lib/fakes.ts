@@ -64,7 +64,7 @@ export const fakeFileSchema = z
     z.strictObject({
       kind: z.literal(FakeKind.Fake),
       ...engagement,
-      thumbnailPrompt: z.string().min(1),
+      imagePrompt: z.string().min(1),
       action: z.strictObject({
         name: z.string(),
         shortDescription: z.string(),

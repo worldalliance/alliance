@@ -46,11 +46,11 @@ Done when `GET /actions/adminslug/:id` returns the action with its `taskFormId` 
 
 ## 4. Record
 
-Write `.scratch/fakes/<action-name-slug>.yml` (lowercase ASCII words joined by hyphens), a `kind: fake` file in the shape of `fakeFileSchema` (`scripts/lib/fakes.ts`): the action's fields and form, its project (`null` when standalone), the events you added, `recordedAt` now, empty `participants` and `updates`, and a `thumbnailPrompt`. The prompt describes only the scene, one concrete moment from the action as a member would snap it, with no text or logos; it doubles as the image's alt text, and `scripts/generate-thumbnails.ts` adds its own photographic style. `bun scripts/import-fakes.ts` re-creates the file's action after `scripts/load_staging_data.sh` clears the db.
+Write `.scratch/fakes/<action-name-slug>.yml` (lowercase ASCII words joined by hyphens), a `kind: fake` file in the shape of `fakeFileSchema` (`scripts/lib/fakes.ts`): the action's fields and form, its project (`null` when standalone), the events you added, `recordedAt` now, empty `participants` and `updates`, and an `imagePrompt`. The prompt describes only the scene, one concrete moment from the action as a member would snap it, with no text or logos; it doubles as the thumbnail's alt text, and `scripts/generate-fake-images.ts` adds its own photographic style and framing. `bun scripts/import-fakes.ts` re-creates the file's action after `scripts/load_staging_data.sh` clears the db.
 
-Then `bun scripts/generate-thumbnails.ts` generates the image and sets it as the action's square thumbnail.
+Then `bun scripts/generate-fake-images.ts` generates the action's square thumbnail and cover image, each watermarked "AI", and sets both on the action.
 
-Done when `bun scripts/import-fakes.ts --check` passes and the thumbnail script reports the action attached.
+Done when `bun scripts/import-fakes.ts --check` passes and the image script reports both attached.
 
 ## 5. Report
 
