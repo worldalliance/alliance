@@ -1,24 +1,16 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import { type DisplayBlock } from "@alliance/common/forms/display-blocks";
 import {
-  isQuestionField,
   type AnyField,
   type FormSchema,
 } from "@alliance/common/forms/form-schema";
 import { withResolvedOptions } from "@alliance/common/forms/formula-options";
-import {
-  interpolateDisplayBlock,
-  interpolateFieldText,
-} from "@alliance/common/forms/variable-interpolation";
+import { interpolateFieldText } from "@alliance/common/forms/variable-interpolation";
 import {
   FormResponseDto,
   SubmitFormDto,
   type UserDto,
 } from "@alliance/shared/client";
-import {
-  computeActiveUserKey,
-  resolveDisplayBlockForUser,
-} from "@alliance/shared/formrenderer";
+import { computeActiveUserKey } from "@alliance/shared/formrenderer";
 import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
 import { computeFormStorageKey } from "@alliance/shared/forms/formDrafts";
 import { completedFormSchema } from "@alliance/shared/forms/formulaChoices";
@@ -61,8 +53,8 @@ import {
   useFormValidationErrorTracking,
 } from "./formAnalytics";
 import FormNavigation from "./FormNavigation";
+import FormPage from "./FormPage";
 import OutputPublicToggle from "./OutputPublicToggle";
-import RenderDisplayBlock from "./RenderDisplayBlock";
 import RenderField from "./RenderField";
 import { useDeviceType } from "./useDeviceType";
 import { useFormDraftState } from "./useFormDraftState";
@@ -449,18 +441,13 @@ const FormRenderer = ({
     clearFieldErrors();
   }, [schema]);
 
-  const renderField = (field: AnyField, index: number) => {
+  const renderField = (field: AnyField) => {
     const isOutputField = Boolean(field.output?.output);
     const defaultSharePublic =
       outputFieldDefaultPublic.get(field.id) ?? userDefaultPublic;
     const sharePublicly = publicAnswers[field.id] ?? defaultSharePublic;
     return (
-      <div
-        key={field.id || index}
-        ref={fieldRef(field.id)}
-        tabIndex={-1}
-        className="scroll-mt-24"
-      >
+      <>
         <RenderField
           field={withResolvedOptions(
             interpolateFieldText(field, variableValues),
@@ -487,30 +474,7 @@ const FormRenderer = ({
           disabled={readOnly}
           onChange={(nextPublic) => setPublicAnswer(field.id, nextPublic)}
         />
-      </div>
-    );
-  };
-
-  const renderElement = (element: AnyField | DisplayBlock, index: number) => {
-    if (isQuestionField(element)) {
-      if (!isElementCurrentlyVisible(element)) {
-        return null;
-      }
-      return renderField(element, index);
-    }
-    const resolvedBlock = resolveDisplayBlockForUser(element, activeUserKey);
-    if (!isElementCurrentlyVisible(resolvedBlock)) {
-      return null;
-    }
-    return (
-      <RenderDisplayBlock
-        key={resolvedBlock.id ?? `block-${index}`}
-        block={interpolateDisplayBlock(resolvedBlock, variableValues)}
-        previousAnswerData={previousAnswerData}
-        previousAnswerSchemas={previousAnswerSchemas}
-        userLocation={userLocationDisplayValue}
-        userLocationLoading={currentUserLocationLoading}
-      />
+      </>
     );
   };
 
@@ -559,10 +523,22 @@ const FormRenderer = ({
             readOnly && schema.pages.length === 1 && "mb-0",
           )}
         >
-          {currentPage !== null &&
-            currentPage.fields.map((element, index) =>
-              renderElement(element, index),
-            )}
+          {currentPage !== null && (
+            <FormPage
+              elements={currentPage.fields}
+              activeUserKey={activeUserKey}
+              isElementCurrentlyVisible={isElementCurrentlyVisible}
+              variableValues={variableValues}
+              blockProps={{
+                previousAnswerData,
+                previousAnswerSchemas,
+                userLocation: userLocationDisplayValue,
+                userLocationLoading: currentUserLocationLoading,
+              }}
+              fieldRef={fieldRef}
+              renderField={renderField}
+            />
+          )}
         </div>
         <FormNavigation
           pageNumber={Math.max(
