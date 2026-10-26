@@ -120,7 +120,6 @@ import {
   IsNull,
   LessThan,
   MoreThan,
-  Not,
   Or,
   type Repository,
 } from "typeorm";
@@ -176,8 +175,6 @@ import {
   HomeFeedItem,
   HomeFeedItemDto,
   HomeFeedItemType,
-  TimelineFeedItemDto,
-  TimelineFeedItemType,
 } from "./dto/action-feed.dto";
 import { ActionReviewerDto } from "./dto/action-reviewer.dto";
 import { CreateActionSuiteDto } from "./dto/action-suite.dto";
@@ -4388,81 +4385,6 @@ export class ActionsService {
       .filter((stat) => stat.inviteCount > 0);
 
     return results.sort((a, b) => b.inviteCount - a.inviteCount);
-  }
-
-  async getTimelineFeed(
-    limit: number = 15,
-    userId?: number,
-  ): Promise<TimelineFeedItemDto[]> {
-    const feedItems: TimelineFeedItemDto[] = [];
-
-    const now = new Date();
-
-    const eventsQuery = this.actionEventRepository.find({
-      relations: { action: { reviewers: true } },
-      where: { newStatus: Not(ActionStatus.MemberAction) },
-      order: { date: "DESC" },
-      take: 10,
-    });
-
-    const actionUpdatesQuery = this.actionUpdateRepository.find({
-      relations: { action: { reviewers: true }, schemaSnapshot: true },
-      where: publishedActionUpdateWhere(now),
-      order: { date: "DESC" },
-      take: 10,
-    });
-
-    const [events, actionUpdates] = await Promise.all([
-      eventsQuery,
-      actionUpdatesQuery,
-    ]);
-
-    const visibleActionIds =
-      await this.actionVisibility.visibleActionIdsForUser({
-        actionIds: [
-          ...events.map((event) => loadedActionEventAction(event).id),
-          ...actionUpdates.map((update) => update.actionId),
-        ],
-        userId,
-      });
-
-    for (const event of events) {
-      const action = loadedActionEventAction(event);
-      if (!visibleActionIds.has(action.id)) {
-        continue;
-      }
-      feedItems.push(
-        new TimelineFeedItemDto({
-          type: TimelineFeedItemType.ActionEvent,
-          date: event.date,
-          action: parseAction(action),
-          actionEvent: event,
-        }),
-      );
-    }
-
-    for (const actionUpdate of actionUpdates) {
-      if (!visibleActionIds.has(actionUpdate.actionId)) {
-        continue;
-      }
-      if (!actionUpdate.action) {
-        throw new Error(
-          `action of action update ${actionUpdate.id} not loaded`,
-        );
-      }
-      feedItems.push(
-        new TimelineFeedItemDto({
-          type: TimelineFeedItemType.ActionUpdate,
-          date: actionUpdate.date,
-          action: parseAction(actionUpdate.action),
-          actionUpdate,
-        }),
-      );
-    }
-
-    feedItems.sort((a, b) => b.date.getTime() - a.date.getTime());
-
-    return feedItems.slice(0, limit);
   }
 
   async evaluateCohortExpressionBatch(expression: unknown): Promise<number[]> {

@@ -14,8 +14,11 @@ import { ForumService } from "src/forum/forum.service";
 import { withoutHiddenComments } from "src/forum/hidden-comments";
 import { displayOnlySchemaOf } from "src/tasks/display-only-snapshot";
 import { ProfileDto } from "src/user/dto/user.dto";
-import { MoreThan, type Repository } from "typeorm";
-import { isActionUpdatePublished } from "./action-update-visibility";
+import { MoreThan, Not, type Repository } from "typeorm";
+import {
+  isActionUpdatePublished,
+  publishedActionUpdateWhere,
+} from "./action-update-visibility";
 import { ActionVisibilityService } from "./action-visibility.service";
 import { CohortResolutionSession } from "./cohort-resolution-session";
 import {
@@ -25,13 +28,21 @@ import {
   GlobalFeedItemDto,
   GlobalFeedItemType,
   GlobalFeedNewMembersDto,
+  TimelineFeedItemDto,
+  TimelineFeedItemType,
 } from "./dto/action-feed.dto";
 import {
   ActionActivity,
   loadedActionActivityAction,
   loadedActionActivityUser,
 } from "./entities/action-activity.entity";
+import {
+  ActionEvent,
+  ActionStatus,
+  loadedActionEventAction,
+} from "./entities/action-event.entity";
 import { ActionUpdate } from "./entities/action-update.entity";
+import { parseAction } from "./entities/action.entity";
 import {
   FeedMembersService,
   GLOBAL_FEED_FACEPILE_LIMIT,
@@ -41,6 +52,8 @@ import {
 @Injectable()
 export class GlobalFeedService {
   constructor(
+    @InjectRepository(ActionEvent)
+    private readonly actionEventRepository: Repository<ActionEvent>,
     @InjectRepository(ActionActivity)
     private readonly actionActivityRepository: Repository<ActionActivity>,
     @InjectRepository(ActionUpdate)
@@ -325,6 +338,81 @@ export class GlobalFeedService {
           }),
         );
       }
+    }
+
+    feedItems.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+    return feedItems.slice(0, limit);
+  }
+
+  async getTimelineFeed(
+    limit: number = 15,
+    userId?: number,
+  ): Promise<TimelineFeedItemDto[]> {
+    const feedItems: TimelineFeedItemDto[] = [];
+
+    const now = new Date();
+
+    const eventsQuery = this.actionEventRepository.find({
+      relations: { action: { reviewers: true } },
+      where: { newStatus: Not(ActionStatus.MemberAction) },
+      order: { date: "DESC" },
+      take: 10,
+    });
+
+    const actionUpdatesQuery = this.actionUpdateRepository.find({
+      relations: { action: { reviewers: true }, schemaSnapshot: true },
+      where: publishedActionUpdateWhere(now),
+      order: { date: "DESC" },
+      take: 10,
+    });
+
+    const [events, actionUpdates] = await Promise.all([
+      eventsQuery,
+      actionUpdatesQuery,
+    ]);
+
+    const visibleActionIds =
+      await this.actionVisibility.visibleActionIdsForUser({
+        actionIds: [
+          ...events.map((event) => loadedActionEventAction(event).id),
+          ...actionUpdates.map((update) => update.actionId),
+        ],
+        userId,
+      });
+
+    for (const event of events) {
+      const action = loadedActionEventAction(event);
+      if (!visibleActionIds.has(action.id)) {
+        continue;
+      }
+      feedItems.push(
+        new TimelineFeedItemDto({
+          type: TimelineFeedItemType.ActionEvent,
+          date: event.date,
+          action: parseAction(action),
+          actionEvent: event,
+        }),
+      );
+    }
+
+    for (const actionUpdate of actionUpdates) {
+      if (!visibleActionIds.has(actionUpdate.actionId)) {
+        continue;
+      }
+      if (!actionUpdate.action) {
+        throw new Error(
+          `action of action update ${actionUpdate.id} not loaded`,
+        );
+      }
+      feedItems.push(
+        new TimelineFeedItemDto({
+          type: TimelineFeedItemType.ActionUpdate,
+          date: actionUpdate.date,
+          action: parseAction(actionUpdate.action),
+          actionUpdate,
+        }),
+      );
     }
 
     feedItems.sort((a, b) => b.date.getTime() - a.date.getTime());

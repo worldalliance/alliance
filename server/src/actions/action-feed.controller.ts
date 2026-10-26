@@ -383,6 +383,6 @@ export class ActionFeedController {
     @Request() req: JwtRequest,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
   ): Promise<TimelineFeedItemDto[]> {
-    return this.actionsService.getTimelineFeed(limit ?? 15, req.user?.sub);
+    return this.globalFeed.getTimelineFeed(limit ?? 15, req.user?.sub);
   }
 }
