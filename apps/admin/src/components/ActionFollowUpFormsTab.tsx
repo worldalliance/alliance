@@ -1,15 +1,14 @@
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { FormSchema } from "@alliance/common/forms/form-schema";
 import { R } from "@alliance/common/result";
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import { AdminActionDto, tasksCreateFormAdmin } from "@alliance/shared/client";
+import { AdminActionDto } from "@alliance/shared/client";
 import type {
   AdminFollowUpFormDto,
   TagDto,
 } from "@alliance/shared/client/types.gen";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
-import { useInvalidateFormsIndex } from "@alliance/shared/lib/useFormsAdmin";
+import { useCreateFormAdmin } from "@alliance/shared/lib/useFormsAdmin";
 import { parseFollowUpFormDto } from "@alliance/shared/parsed-dtos";
 import { CardStyle } from "@alliance/shared/styles/card";
 import BaseButton, {
@@ -71,7 +70,7 @@ export default function ActionFollowUpFormsTab({
     deletingFollowUpFormIds,
   } = useActionAdmin(action.id, { enabled: false });
   const { error: pushError } = useToast();
-  const invalidateFormsIndex = useInvalidateFormsIndex();
+  const { createForm } = useCreateFormAdmin();
   const [creating, setCreating] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(
     followUpForms.length > 0 ? followUpForms[0].id : null,
@@ -95,25 +94,11 @@ export default function ActionFollowUpFormsTab({
   const handleCreateFollowUpForm = useCallback(async () => {
     setCreating(true);
     const result = await R.fromPromiseFn(async () => {
-      const formRes = await tasksCreateFormAdmin({
-        body: {
-          title: `${action.name} - follow-up`,
-          schema: emptyFormSchema,
-        },
+      const { id: formId } = await createForm({
+        title: `${action.name} - follow-up`,
+        schema: emptyFormSchema,
       });
-      if (!formRes.data?.id) {
-        throw new Error("Failed to create form");
-      }
-      try {
-        return await createFollowUpForm({
-          actionId: action.id,
-          formId: formRes.data.id,
-        });
-      } finally {
-        // The form row exists whether or not the link write landed. Not
-        // awaited: a rejection here would replace the error being reported.
-        void invalidateFormsIndex();
-      }
+      return createFollowUpForm({ actionId: action.id, formId });
     });
     setCreating(false);
     if (!result.ok) {
@@ -122,13 +107,7 @@ export default function ActionFollowUpFormsTab({
       return;
     }
     setSelectedId(result.value.id);
-  }, [
-    action.id,
-    action.name,
-    createFollowUpForm,
-    invalidateFormsIndex,
-    pushError,
-  ]);
+  }, [action.id, action.name, createFollowUpForm, createForm, pushError]);
 
   const handleSaveFields = useCallback(
     async (
