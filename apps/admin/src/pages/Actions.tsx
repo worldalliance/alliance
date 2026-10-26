@@ -1,8 +1,6 @@
 import { eventInEffectAt } from "@alliance/common/actionEvent";
 import { ActionDto, AdminActionListItemDto } from "@alliance/shared/client";
 import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
-import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
-import { parseActionDto } from "@alliance/shared/parsed-dtos";
 import React, { useMemo, useState } from "react";
 import { Link } from "react-router";
 import ActionListCard from "../components/ActionListCard";
@@ -14,7 +12,7 @@ import {
   actionStatusBucket,
 } from "../lib/actionStatusBucket";
 import { actionsLoadError } from "../lib/actionsLoadError";
-import { describeCohortExpression } from "../lib/describeCohortExpression";
+import { useActionParticipants } from "../lib/useActionParticipants";
 
 export const getLastPastEventDate = (
   action: Pick<ActionDto, "events">,
@@ -38,7 +36,6 @@ const ActionsList: React.FC = () => {
     [list.data],
   );
   const error = list.isError ? actionsLoadError(list.error) : null;
-  const { tags } = useTagsAdmin();
   const [shownBuckets, setShownBuckets] = useState<
     ReadonlySet<ActionStatusBucket>
   >(
@@ -50,23 +47,7 @@ const ActionsList: React.FC = () => {
       ]),
   );
 
-  const participantsById = useMemo(() => {
-    const names = {
-      tagNames: new Map(tags.map((tag) => [tag.id, tag.name])),
-      actionNames: new Map(actions.map((action) => [action.id, action.name])),
-    };
-    return new Map(
-      actions.map((dto) => {
-        const { action, cohortExpressionError } = parseActionDto(dto);
-        return [
-          dto.id,
-          cohortExpressionError
-            ? [{ text: "Invalid cohort expression" }]
-            : describeCohortExpression(action.cohortExpression, names),
-        ];
-      }),
-    );
-  }, [actions, tags]);
+  const participantsById = useActionParticipants(actions);
 
   const groupedActions = useMemo<ActionSuiteGroup[]>(() => {
     if (actions.length === 0) {

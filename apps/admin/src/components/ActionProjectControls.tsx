@@ -11,7 +11,7 @@ import { useId, useState } from "react";
 import { Link } from "react-router";
 import {
   useAssignActionProjectAdmin,
-  useCreateActionProjectAdmin,
+  useCreateProjectAdmin,
   useDeleteProjectAdmin,
   useProjectAdmin,
   useProjectsAdmin,
@@ -19,6 +19,7 @@ import {
 } from "../lib/useProjectsAdmin";
 import { ActionCategoryPicker } from "./ActionCategoryIcons";
 import ConfirmDialog from "./ConfirmDialog";
+import { ProjectNameInput } from "./ProjectNameInput";
 
 const NO_PROJECT = "none";
 
@@ -30,66 +31,6 @@ enum EditMode {
 
 const iconButtonClassName =
   "rounded border border-gray-2 bg-white p-2 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 disabled:opacity-50";
-
-function ProjectNameInput({
-  initialName,
-  placeholder,
-  saving,
-  onSave,
-  onCancel,
-}: {
-  initialName: string;
-  placeholder: string;
-  saving: boolean;
-  onSave: (name: string) => void;
-  onCancel: () => void;
-}) {
-  const [draft, setDraft] = useState(initialName);
-  const trimmed = draft.trim();
-  const save = () => {
-    if (trimmed) onSave(trimmed);
-  };
-  return (
-    <div className="flex flex-row items-center gap-1">
-      <input
-        type="text"
-        aria-label={placeholder}
-        placeholder={placeholder}
-        className="w-64 border border-gray-2 rounded px-3 py-1.5 text-sm"
-        value={draft}
-        onChange={(event) => setDraft(event.target.value)}
-        // Read-only rather than disabled, so a failed save leaves focus here.
-        readOnly={saving}
-        autoFocus
-        onKeyDown={(event) => {
-          if (event.key === "Enter") {
-            event.preventDefault();
-            save();
-          } else if (event.key === "Escape") {
-            event.preventDefault();
-            onCancel();
-          }
-        }}
-      />
-      <Button
-        color={ButtonColor.Blue}
-        onClick={save}
-        disabled={saving || !trimmed}
-        className="!px-3 !text-sm"
-      >
-        {saving ? "Saving…" : "Save"}
-      </Button>
-      <Button
-        color={ButtonColor.White}
-        onClick={onCancel}
-        disabled={saving}
-        className="!px-3 !text-sm"
-      >
-        Cancel
-      </Button>
-    </div>
-  );
-}
 
 export function ActionProjectControls({
   actionId,
@@ -109,18 +50,15 @@ export function ActionProjectControls({
     toast.error(errorMessage({ error, fallback }));
 
   const assign = useAssignActionProjectAdmin({
-    actionId,
     onError: onError("Could not change the action's project"),
   });
 
-  const create = useCreateActionProjectAdmin({
-    actionId,
+  const create = useCreateProjectAdmin({
     onSuccess: () => setMode(EditMode.None),
     onError: onError("Could not create the project"),
   });
 
   const rename = useUpdateProjectAdmin({
-    actionId,
     onSuccess: () => setMode(EditMode.None),
     onError: onError("Could not rename the project"),
   });
@@ -143,7 +81,7 @@ export function ActionProjectControls({
           initialName=""
           placeholder="New project name"
           saving={create.isPending}
-          onSave={(name) => create.mutate(name)}
+          onSave={(name) => create.mutate({ name, actionId })}
           onCancel={() => setMode(EditMode.None)}
         />
       );
@@ -169,7 +107,10 @@ export function ActionProjectControls({
           })}
           value={project ? String(project.id) : NO_PROJECT}
           onChange={(value) =>
-            assign.mutate(value === NO_PROJECT ? null : Number(value))
+            assign.mutate({
+              actionId,
+              projectId: value === NO_PROJECT ? null : Number(value),
+            })
           }
           disabled={projectsLoading || assign.isPending}
           className={cn(
@@ -215,7 +156,6 @@ export function ActionProjectSteps({
   const { data: project, error } = useProjectAdmin(projectId);
 
   const remove = useDeleteProjectAdmin({
-    actionId,
     onSuccess: () => setConfirmingDelete(false),
     onError: (error) =>
       toast.error(
@@ -224,7 +164,6 @@ export function ActionProjectSteps({
   });
 
   const updateCategory = useUpdateProjectAdmin({
-    actionId,
     onError: (error) =>
       toast.error(
         errorMessage({

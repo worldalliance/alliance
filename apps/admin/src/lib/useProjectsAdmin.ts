@@ -1,4 +1,5 @@
 import {
+  type AdminProjectDto,
   projectsAssignActionAdmin,
   projectsCreateAdmin,
   projectsFindAllAdmin,
@@ -29,7 +30,8 @@ export function useProjectAdmin(projectId: number) {
   });
 }
 
-function useInvalidateProjects(actionId: number) {
+// Every action query shows the action's project, so a project write refetches them all.
+function useInvalidateProjects() {
   const queryClient = useQueryClient();
   return (params?: { includeDetails: boolean }) =>
     Promise.all([
@@ -39,64 +41,62 @@ function useInvalidateProjects(actionId: number) {
             ? queryKeys.projectsAdmin()
             : queryKeys.projectsAdminAll(),
       }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.actionAdmin(actionId),
-      }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.actionAdminAll() }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.actionsAllAdmin() }),
     ]);
 }
 
 export function useAssignActionProjectAdmin(params: {
-  actionId: number;
   onError: (err: Error) => void;
 }) {
-  const { actionId, onError } = params;
-  const invalidate = useInvalidateProjects(actionId);
+  const invalidate = useInvalidateProjects();
   return useMutation({
-    mutationFn: (projectId: number | null) =>
+    mutationFn: (assignment: { actionId: number; projectId: number | null }) =>
       projectsAssignActionAdmin({
-        path: { actionId },
-        body: { projectId },
+        path: { actionId: assignment.actionId },
+        body: { projectId: assignment.projectId },
         throwOnError: true,
       }),
     onSuccess: () => invalidate(),
-    onError,
+    onError: params.onError,
   });
 }
 
-export function useCreateActionProjectAdmin(params: {
-  actionId: number;
-  onSuccess: () => void;
+export function useCreateProjectAdmin(params: {
+  onSuccess: (created: AdminProjectDto) => void;
   onError: (err: Error) => void;
 }) {
-  const { actionId, onSuccess, onError } = params;
-  const invalidate = useInvalidateProjects(actionId);
+  const { onSuccess, onError } = params;
+  const invalidate = useInvalidateProjects();
   return useMutation({
-    mutationFn: async (name: string) => {
+    mutationFn: async (input: { name: string; actionId?: number }) => {
       const { data: created } = await projectsCreateAdmin({
-        body: { name },
+        body: { name: input.name },
         throwOnError: true,
       });
-      await projectsAssignActionAdmin({
-        path: { actionId },
-        body: { projectId: created.id },
-        throwOnError: true,
-      });
+      if (input.actionId !== undefined) {
+        await projectsAssignActionAdmin({
+          path: { actionId: input.actionId },
+          body: { projectId: created.id },
+          throwOnError: true,
+        });
+      }
+      return created;
     },
-    onSuccess: async () => {
+    onSuccess: async (created) => {
       await invalidate();
-      onSuccess();
+      onSuccess(created);
     },
     onError,
   });
 }
 
 export function useUpdateProjectAdmin(params: {
-  actionId: number;
   onSuccess?: () => void;
   onError: (err: Error) => void;
 }) {
-  const { actionId, onSuccess, onError } = params;
-  const invalidate = useInvalidateProjects(actionId);
+  const { onSuccess, onError } = params;
+  const invalidate = useInvalidateProjects();
   return useMutation({
     mutationFn: ({ id, body }: { id: number; body: UpdateProjectDto }) =>
       projectsUpdateAdmin({ path: { id }, body, throwOnError: true }),
@@ -109,12 +109,11 @@ export function useUpdateProjectAdmin(params: {
 }
 
 export function useDeleteProjectAdmin(params: {
-  actionId: number;
   onSuccess: () => void;
   onError: (err: Error) => void;
 }) {
-  const { actionId, onSuccess, onError } = params;
-  const invalidate = useInvalidateProjects(actionId);
+  const { onSuccess, onError } = params;
+  const invalidate = useInvalidateProjects();
   return useMutation({
     mutationFn: (id: number) =>
       projectsRemoveAdmin({ path: { id }, throwOnError: true }),

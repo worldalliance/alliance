@@ -2493,6 +2493,14 @@ export type AdminActionListItemDto = {
      * Forms of the action's variants, besides its task form.
      */
     variantFormIds: Array<number>;
+    /**
+     * Members whose latest response is a withdrawal.
+     */
+    usersWontComplete: number;
+    /**
+     * Members who dismissed the action's card without completing or withdrawing.
+     */
+    usersDismissed: number;
 };
 
 export type CommunityCompletedActionsCountDto = {

@@ -78,7 +78,6 @@ import {
   Action,
   loadedActionEvents,
   loadedActionFollowUpForms,
-  loadedActionFormVariants,
   type ParsedAction,
 } from "../entities/action.entity";
 import { GeneralUpdate } from "../entities/general-update.entity";
@@ -638,23 +637,6 @@ export class AdminActionDto extends ActionDto {
     );
     this.storedImage = action.image ?? undefined;
     this.storedSquareThumbnailImage = action.squareThumbnailImage ?? undefined;
-  }
-}
-
-export class AdminActionListItemDto extends AdminActionDto {
-  @ApiProperty({
-    type: Number,
-    isArray: true,
-    description: "Forms of the action's variants, besides its task form.",
-  })
-  @IsDefined()
-  variantFormIds: number[];
-
-  constructor(action: ParsedAction, extra?: ActionDtoExtra) {
-    super(action, extra);
-    this.variantFormIds = loadedActionFormVariants(action).map(
-      (variant) => variant.formId,
-    );
   }
 }
 

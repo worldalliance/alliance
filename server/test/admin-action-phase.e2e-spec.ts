@@ -1,6 +1,10 @@
+import { ActionActivityType } from "@alliance/common/actionActivity";
 import request from "supertest";
+import { ActionActivity } from "../src/actions/entities/action-activity.entity";
 import { ActionFormVariant } from "../src/actions/entities/action-form-variant.entity";
+import { Action } from "../src/actions/entities/action.entity";
 import { FollowUpForm } from "../src/actions/entities/follow-up-form.entity";
+import { Project } from "../src/actions/entities/project.entity";
 import { TasksModule } from "../src/tasks/tasks.module";
 import {
   addDays,
@@ -16,13 +20,14 @@ import {
 describe("Admin action member-action phase (e2e)", () => {
   let ctx: TestContext;
   let createAction: CohortDecisionFixtures["createAction"];
+  let createUser: CohortDecisionFixtures["createUser"];
   let cleanUp: CohortDecisionFixtures["cleanUp"];
 
   const now = new Date();
 
   beforeAll(async () => {
     ctx = await createTestApp([TasksModule]);
-    ({ createAction, cleanUp } = cohortDecisionFixtures(ctx));
+    ({ createAction, createUser, cleanUp } = cohortDecisionFixtures(ctx));
   }, 50000);
 
   afterEach(() => cleanUp());
@@ -126,6 +131,74 @@ describe("Admin action member-action phase (e2e)", () => {
       response.body.find((listed: { id: number }) => listed.id === action.id),
     ).toMatchObject({
       followUpForms: [{ id: followUp.id, cohortExpression }],
+    });
+  });
+
+  it("lists each action's project", async () => {
+    const action = await createAction({
+      start: addDays(now, -1),
+      deadline: null,
+    });
+    const project = await ctx.dataSource
+      .getRepository(Project)
+      .save({ name: "Listed project" });
+    await ctx.dataSource
+      .getRepository(Action)
+      .update(action.id, { project: { id: project.id } });
+
+    const response = await request(ctx.app.getHttpServer())
+      .get("/actions/all")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
+
+    expect(
+      response.body.find((listed: { id: number }) => listed.id === action.id),
+    ).toMatchObject({ project: { id: project.id, name: "Listed project" } });
+  });
+
+  it("lists each action's latest withdrawals and unanswered dismissals", async () => {
+    const action = await createAction({
+      start: addDays(now, -1),
+      deadline: null,
+    });
+    const respond = async (types: ActionActivityType[]) => {
+      const user = await createUser();
+      for (const [index, type] of types.entries()) {
+        await ctx.dataSource.getRepository(ActionActivity).save({
+          userId: user.id,
+          actionId: action.id,
+          type,
+          createdAt: addDays(now, index - types.length),
+        });
+      }
+    };
+    await respond([ActionActivityType.USER_WONT_COMPLETE]);
+    await respond([
+      ActionActivityType.USER_WONT_COMPLETE,
+      ActionActivityType.USER_COMPLETED,
+    ]);
+    await respond([ActionActivityType.USER_DISMISSED]);
+    await respond([
+      ActionActivityType.USER_DISMISSED,
+      ActionActivityType.USER_COMPLETED,
+    ]);
+    const untouched = await createAction({
+      start: addDays(now, -1),
+      deadline: null,
+    });
+
+    const response = await request(ctx.app.getHttpServer())
+      .get("/actions/all")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
+
+    const listed = (id: number) =>
+      response.body.find((item: { id: number }) => item.id === id);
+    expect(listed(action.id)).toMatchObject({
+      usersWontComplete: 1,
+      usersDismissed: 1,
+    });
+    expect(listed(untouched.id)).toMatchObject({
+      usersWontComplete: 0,
+      usersDismissed: 0,
     });
   });
 

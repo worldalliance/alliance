@@ -4,6 +4,8 @@ export default [
   layout("adminlayout.tsx", [
     route("/invite-feed", "pages/InviteFeedPage.tsx"),
     layout("sidebar.tsx", [
+      route("/projects", "pages/ProjectsPage.tsx"),
+      route("/projects/:projectId", "pages/ProjectDetailPage.tsx"),
       route("/actions", "pages/Actions.tsx"),
       route("/timeline", "pages/NewTimelinePage.tsx"),
       route("/invite-links", "pages/InviteLinksPage.tsx"),

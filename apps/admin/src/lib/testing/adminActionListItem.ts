@@ -32,6 +32,8 @@ export const adminActionListItem = (
   reviewers: [],
   followUpForms: [],
   usersCompleted: 0,
+  usersWontComplete: 0,
+  usersDismissed: 0,
   events: [],
   status: "draft",
   updates: [],

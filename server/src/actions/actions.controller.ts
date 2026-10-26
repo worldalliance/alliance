@@ -35,6 +35,10 @@ import {
   AcknowledgeDeadlineShortening,
   ApiAcknowledgeDeadlineShortening,
 } from "./acknowledge-deadline-shortening";
+import {
+  ActionResponseCountsService,
+  NO_RESPONSES,
+} from "./action-response-counts.service";
 import { ActionsService } from "./actions.service";
 import {
   ActionActivityDto,
@@ -44,7 +48,6 @@ import {
   ActionSharePreviewDto,
   ActionWithdrawalDto,
   AdminActionDto,
-  AdminActionListItemDto,
   CreateActionActivityDto,
   CreateActionDto,
   CreateActionEventDto,
@@ -57,6 +60,7 @@ import {
   UpdateActionDto,
   WelcomeQueueDto,
 } from "./dto/action.dto";
+import { AdminActionListItemDto } from "./dto/admin-action-list-item.dto";
 import { CommunityCompletedActionsCountDto } from "./dto/community-completed-actions-count.dto";
 import { ShareUrlDto, ShareUrlStatsDto } from "./dto/share-url.dto";
 import { UserCompletedActionsCountDto } from "./dto/user-completed-actions-count.dto";
@@ -66,6 +70,7 @@ import { ForumActionCompleterWorker } from "./forum-action-completer.worker";
 export class ActionsController {
   constructor(
     private readonly actionsService: ActionsService,
+    private readonly actionResponseCountsService: ActionResponseCountsService,
     private readonly eventEmitter: EventEmitter2,
     private readonly forumActionCompleterWorker: ForumActionCompleterWorker,
     private readonly shareUrlsService: ShareUrlsService,
@@ -103,14 +108,24 @@ export class ActionsController {
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [AdminActionListItemDto] })
   async findAllWithDraftsAdmin(): Promise<AdminActionListItemDto[]> {
-    const actions = await this.actionsService.findAllSorted({
-      events: true,
-      suite: true,
-      reviewers: true,
-      formVariants: true,
-      followUpForms: true,
-    });
-    return actions.map((action) => new AdminActionListItemDto(action));
+    const [actions, responseCounts] = await Promise.all([
+      this.actionsService.findAllSorted({
+        events: true,
+        suite: true,
+        reviewers: true,
+        formVariants: true,
+        followUpForms: true,
+        project: true,
+      }),
+      this.actionResponseCountsService.countByAction(),
+    ]);
+    return actions.map(
+      (action) =>
+        new AdminActionListItemDto({
+          action,
+          responseCounts: responseCounts.get(action.id) ?? NO_RESPONSES,
+        }),
+    );
   }
 
   @Get("communityCompletedActionsCount")
