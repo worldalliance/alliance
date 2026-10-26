@@ -13,6 +13,7 @@ import { computeActiveUserKey } from "@alliance/shared/formrenderer";
 import { computeFormStorageKey } from "@alliance/shared/forms/formDrafts";
 import { completedFormSchema } from "@alliance/shared/forms/formulaChoices";
 import { prefillListsFromPreviousAnswers } from "@alliance/shared/forms/listPrefill";
+import { useFormSchemaMaps } from "@alliance/shared/forms/useFormSchemaMaps";
 import {
   useFieldErrors,
   useFormValidation,
@@ -25,7 +26,6 @@ import {
 } from "@alliance/shared/lib/timeZone";
 import { cn } from "@alliance/shared/styles/util";
 import {
-  useFormSchemaMaps,
   useFormVisibility,
   useRandomizationKey,
 } from "@alliance/shared/useFormRenderer";

@@ -14,6 +14,7 @@ import {
   type SetFieldValue,
 } from "@alliance/shared/forms/formValueUpdater";
 import { useCurrentUserLocation } from "@alliance/shared/forms/useCurrentUserLocation";
+import { useFormSchemaMaps } from "@alliance/shared/forms/useFormSchemaMaps";
 import {
   useFieldErrors,
   useFormValidation,
@@ -34,7 +35,6 @@ import { formTimeZoneDefault } from "@alliance/shared/lib/timeZone";
 import { useImageUpload } from "@alliance/shared/lib/useImageUpload";
 import { useVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
 import {
-  useFormSchemaMaps,
   useFormVisibility,
   useRandomizationKey,
 } from "@alliance/shared/useFormRenderer";
