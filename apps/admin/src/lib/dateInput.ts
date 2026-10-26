@@ -1,6 +1,6 @@
 import { R, type Result } from "@alliance/common/result";
 import { dateToInputValue } from "@alliance/shared/lib/dateInput";
-import { addDays, isValid, subDays } from "date-fns";
+import { addDays, endOfDay, isValid, subDays } from "date-fns";
 
 /** A date input's value for an instant, as a calendar date in local time. */
 export const toDateInput = (iso: string | null | undefined): string =>
@@ -26,3 +26,16 @@ export const fromEndDateInput = (
 
 export const toEndDateInput = (iso: string | null | undefined): string =>
   iso ? dateToInputValue(subDays(new Date(iso), 1)) : "";
+
+/** The bounds of the local calendar days a From/To pair spans, or null when either is blank. */
+export const fromDateInputRange = (range: {
+  start: string;
+  end: string;
+}): Result<{ start: Date; end: Date } | null, string> =>
+  R.flatMap(fromDateInput(range.start), (start) =>
+    R.map(fromDateInput(range.end), (end) =>
+      start && end
+        ? { start: new Date(start), end: endOfDay(new Date(end)) }
+        : null,
+    ),
+  );

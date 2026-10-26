@@ -1,36 +1,9 @@
 import type { ActionStatsWithOnboardingDto } from "@alliance/shared/client/types.gen";
 import { dateToInputValue } from "@alliance/shared/lib/dateInput";
+import { fromDateInputRange } from "../../lib/dateInput";
 import { parseIsoDate } from "./parseIsoDate";
 
 type DateRange = { start: string; end: string };
-
-const parseLocalDateInput = (
-  value?: string | null,
-  endOfDay = false,
-): Date | null => {
-  if (!value) return null;
-  const [yearRaw, monthRaw, dayRaw] = value.split("-");
-  const year = Number(yearRaw);
-  const month = Number(monthRaw);
-  const day = Number(dayRaw);
-  if (
-    !Number.isInteger(year) ||
-    !Number.isInteger(month) ||
-    !Number.isInteger(day)
-  ) {
-    return null;
-  }
-  const parsed = new Date(
-    year,
-    month - 1,
-    day,
-    endOfDay ? 23 : 0,
-    endOfDay ? 59 : 0,
-    endOfDay ? 59 : 0,
-    endOfDay ? 999 : 0,
-  );
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-};
 
 const getWeekStartDate = (value: Date): Date => {
   const date = new Date(value);
@@ -60,11 +33,11 @@ export const cumulativeCompletionPoints = (
 
   if (completedActions.length === 0) return [];
 
-  const rangeStart = parseLocalDateInput(range.start);
-  const rangeEnd = parseLocalDateInput(range.end, true);
-  if (!rangeStart || !rangeEnd || rangeStart > rangeEnd) {
+  const bounds = fromDateInputRange(range);
+  if (!bounds.ok || !bounds.value || bounds.value.start > bounds.value.end) {
     return [];
   }
+  const { start: rangeStart, end: rangeEnd } = bounds.value;
 
   const dataPoints: {
     date: Date;
@@ -116,11 +89,11 @@ export const weeklyCompletionPoints = (
   range: DateRange,
   now: Date,
 ) => {
-  const rangeStart = parseLocalDateInput(range.start);
-  const rangeEnd = parseLocalDateInput(range.end, true);
-  if (!rangeStart || !rangeEnd || rangeStart > rangeEnd) {
+  const bounds = fromDateInputRange(range);
+  if (!bounds.ok || !bounds.value || bounds.value.start > bounds.value.end) {
     return [];
   }
+  const { start: rangeStart, end: rangeEnd } = bounds.value;
 
   const weeklyBuckets = new Map<
     string,
