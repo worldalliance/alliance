@@ -2,6 +2,7 @@ import { NotFoundException } from "@nestjs/common";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { AuthService } from "src/auth/auth.service";
 import { Guest } from "src/auth/entities/guest.entity";
+import { CommunityMembershipService } from "src/community/community-membership.service";
 import { CommunityService } from "src/community/community.service";
 import {
   CommunityInvite,
@@ -188,7 +189,7 @@ describe("Account and group updates to a row deleted after its load (e2e)", () =
     await userRepo.softDelete(removed.id);
 
     await ctx.app
-      .get(CommunityService)
+      .get(CommunityMembershipService)
       .removeUserFromCommunityAndRefreshConversation({
         user: removed,
         community,

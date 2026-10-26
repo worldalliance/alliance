@@ -8,6 +8,7 @@ import { NotifsModule } from "src/notifs/notifs.module";
 import { User } from "src/user/entities/user.entity";
 import { UserModule } from "src/user/user.module";
 import { CommunityInviteRequestsService } from "./community-invite-requests.service";
+import { CommunityMembershipService } from "./community-membership.service";
 import { CommunityController } from "./community.controller";
 import { CommunityService } from "./community.service";
 import { CommunityInvite } from "./entities/community-invite.entity";
@@ -28,8 +29,9 @@ import { GroupJoinNotifsService } from "./group-join-notifs.service";
   providers: [
     CommunityService,
     CommunityInviteRequestsService,
+    CommunityMembershipService,
     GroupJoinNotifsService,
   ],
-  exports: [CommunityService],
+  exports: [CommunityService, CommunityMembershipService],
 })
 export class CommunityModule {}
