@@ -248,6 +248,8 @@ export const queryKeys = {
     ["communityGetAllMemberContactInfoAdmin"] as const,
   memberCompletionRetentionAdmin: () =>
     ["analyticsGetMemberCompletionRetentionAdmin"] as const,
+  memberReliabilityWindowAdmin: (weeks: number | null) =>
+    ["analyticsGetMemberReliabilityWindowAdmin", weeks] as const,
   missedActionsAdmin: () => ["analyticsGetMissedActionsAdmin"] as const,
   onetimeInvitesAdminAll,
   onetimeInvitesAdmin: (page: number, limit: number) =>
