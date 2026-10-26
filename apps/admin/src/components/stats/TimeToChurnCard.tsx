@@ -1,30 +1,18 @@
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import { analyticsGetTimeToChurnSamplesAdmin } from "@alliance/shared/client";
-import { TimeToChurnSampleDto } from "@alliance/shared/client/types.gen";
 import { bin, max, range, scaleLinear } from "d3";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useMemo } from "react";
+import { adminRefusalMessage } from "../../lib/adminRefusal";
+import { useTimeToChurnSamplesAdmin } from "../../lib/useTimeToChurnSamplesAdmin";
 
 const TimeToChurnCard: React.FC = () => {
-  const [timeToChurnSamples, setTimeToChurnSamples] = useState<
-    TimeToChurnSampleDto[]
-  >([]);
-  const [timeToChurnLoading, setTimeToChurnLoading] = useState<boolean>(false);
-
-  const loadTimeToChurnSamples = useCallback(async () => {
-    setTimeToChurnLoading(true);
-    try {
-      const response = await analyticsGetTimeToChurnSamplesAdmin();
-      setTimeToChurnSamples(response.data ?? []);
-    } catch (err) {
-      console.error("Failed to load time to churn samples", err);
-    } finally {
-      setTimeToChurnLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadTimeToChurnSamples();
-  }, [loadTimeToChurnSamples]);
+  const {
+    data,
+    isPending: timeToChurnLoading,
+    error: timeToChurnError,
+  } = useTimeToChurnSamplesAdmin();
+  const timeToChurnSamples = useMemo(
+    () => (timeToChurnError ? [] : (data ?? [])),
+    [data, timeToChurnError],
+  );
 
   const churnDurationsWeeks = useMemo(() => {
     return timeToChurnSamples
@@ -98,18 +86,28 @@ const TimeToChurnCard: React.FC = () => {
             From signing to last completed action
           </span>
         </div>
-        <div className="text-xs text-gray-500">
-          {timeToChurnSamples.length > 0
-            ? `${timeToChurnSamples.length} churned members`
-            : "No churned members yet"}
-        </div>
+        {!timeToChurnError && (
+          <div className="text-xs text-gray-500">
+            {timeToChurnSamples.length > 0
+              ? `${timeToChurnSamples.length} churned members`
+              : "No churned members yet"}
+          </div>
+        )}
       </div>
       <div className="relative p-4 pb-2">
-        {timeToChurnLoading && churnDurationsWeeks.length === 0 && (
+        {timeToChurnError ? (
+          <p className="text-sm text-gray-600">
+            {adminRefusalMessage(
+              timeToChurnError,
+              "Unable to load time to churn.",
+            )}
+          </p>
+        ) : timeToChurnLoading ? (
           <p className="text-sm text-gray-600">Loading time to churn...</p>
-        )}
-        {!timeToChurnLoading && churnDurationsWeeks.length === 0 && (
-          <p className="text-sm text-gray-600">No churned members yet.</p>
+        ) : (
+          churnDurationsWeeks.length === 0 && (
+            <p className="text-sm text-gray-600">No churned members yet.</p>
+          )
         )}
         {churnHistogramGeometry && churnDurationsWeeks.length > 0 && (
           <svg
