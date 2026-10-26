@@ -41,7 +41,6 @@ import {
 } from "@alliance/shared/forms/useVariableSourceHistories";
 import { variableInputsGate } from "@alliance/shared/forms/variableInputsGate";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
-import { outputFieldPublicToggle } from "@alliance/shared/lib/copy";
 import { formTimeZoneDefault } from "@alliance/shared/lib/timeZone";
 import { useImageUpload } from "@alliance/shared/lib/useImageUpload";
 import { useVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
@@ -60,9 +59,9 @@ import { useMemo, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { colors } from "../../lib/style/colors";
 import { getDeviceTimeZone } from "../../lib/timeZone";
-import Checkbox from "../system/Checkbox";
 import Text, { FontWeight } from "../system/Text";
 import { FormNavigation, ReadOnlyPageNavigation } from "./FormNavigation";
+import OutputPublicToggle from "./OutputPublicToggle";
 import { RenderDisplayBlockMobile } from "./RenderDisplayBlock";
 import { RenderField } from "./RenderField";
 import { useFormDraftState } from "./useFormDraftState";
@@ -335,31 +334,6 @@ const FormRenderer = ({
     setPublicAnswers((prev) => ({ ...prev, [fieldId]: nextPublic }));
   };
 
-  const renderPublicToggle = (field: AnyField) => {
-    if (!field.output?.output) return null;
-    const useMakePublicToggle = !!field.output.privateByDefault;
-    const defaultSharePublic =
-      outputFieldDefaultPublic.get(field.id) ?? userDefaultPublic;
-    const sharePublicly = publicAnswers[field.id] ?? defaultSharePublic;
-    const toggleChecked = useMakePublicToggle ? sharePublicly : !sharePublicly;
-    const toggleLabel = useMakePublicToggle
-      ? outputFieldPublicToggle.showPublicly
-      : outputFieldPublicToggle.hidePublicly;
-    return (
-      <View className="mt-2">
-        <Checkbox
-          checked={toggleChecked}
-          disabled={readOnly}
-          onChange={(next) => {
-            const nextPublic = useMakePublicToggle ? next : !next;
-            handlePublicToggleChange(field.id, nextPublic);
-          }}
-          label={toggleLabel}
-        />
-      </View>
-    );
-  };
-
   const handleNextPage = async () => {
     if (nextVisiblePageIndex === null || !visibilitySettled) {
       return;
@@ -579,7 +553,18 @@ const FormRenderer = ({
                 user={user}
                 fieldContext={fieldContext}
               />
-              {renderPublicToggle(field)}
+              <OutputPublicToggle
+                field={field}
+                sharePublicly={
+                  publicAnswers[field.id] ??
+                  outputFieldDefaultPublic.get(field.id) ??
+                  userDefaultPublic
+                }
+                disabled={readOnly}
+                onChange={(sharePublicly) =>
+                  handlePublicToggleChange(field.id, sharePublicly)
+                }
+              />
             </View>
           );
         })}
