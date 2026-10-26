@@ -1,35 +1,27 @@
 import { max } from "d3";
 import React, { useCallback, useMemo, useState } from "react";
-import { adminRefusalMessage } from "../../lib/adminRefusal";
+import { useAppliedQuery } from "../../lib/useAppliedQuery";
 import { usePlatformTenureCohortAdmin } from "../../lib/usePlatformTenureCohortAdmin";
 
 const PlatformTenureCohortCard: React.FC = () => {
   const [platformTenureWeeksInput, setPlatformTenureWeeksInput] =
     useState<string>("4");
-  const [platformTenureWeeks, setPlatformTenureWeeks] = useState<number | null>(
-    null,
-  );
   const [platformTenureWeeksError, setPlatformTenureWeeksError] = useState<
     string | null
   >(null);
 
   const {
-    data: platformTenureCohortData,
-    isFetching: platformTenureCohortLoading,
-    error: platformTenureCohortLoadError,
-    refetch: refetchPlatformTenureCohort,
-  } = usePlatformTenureCohortAdmin(platformTenureWeeks);
-  const platformTenureCohort = platformTenureCohortLoadError
-    ? undefined
-    : platformTenureCohortData;
+    data: platformTenureCohort,
+    loading: platformTenureCohortLoading,
+    loadError: platformTenureCohortLoadError,
+    apply: applyPlatformTenureWeeks,
+  } = useAppliedQuery({
+    useQueryFor: usePlatformTenureCohortAdmin,
+    loadErrorFallback:
+      "Unable to load this cohort right now. Please try again soon.",
+  });
   const platformTenureCohortError =
-    platformTenureWeeksError ??
-    (platformTenureCohortLoadError &&
-      !platformTenureCohortLoading &&
-      adminRefusalMessage(
-        platformTenureCohortLoadError,
-        "Unable to load this cohort right now. Please try again soon.",
-      ));
+    platformTenureWeeksError ?? platformTenureCohortLoadError;
 
   const handleApplyPlatformTenureCohort = useCallback(() => {
     const weeks = Number(platformTenureWeeksInput);
@@ -38,13 +30,8 @@ const PlatformTenureCohortCard: React.FC = () => {
       return;
     }
     setPlatformTenureWeeksError(null);
-    if (weeks === platformTenureWeeks) void refetchPlatformTenureCohort();
-    else setPlatformTenureWeeks(weeks);
-  }, [
-    platformTenureWeeks,
-    platformTenureWeeksInput,
-    refetchPlatformTenureCohort,
-  ]);
+    applyPlatformTenureWeeks(weeks);
+  }, [applyPlatformTenureWeeks, platformTenureWeeksInput]);
 
   const platformTenureMaxAssigned = useMemo(() => {
     return Math.max(
