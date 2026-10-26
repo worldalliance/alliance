@@ -642,33 +642,6 @@ export class User {
   deletedAt: Date | null;
 }
 
-/**
- * SQL equivalent of {@link isContractActiveAt}; keep date/id ordering in sync.
- *
- * @param userIdExpr User-id SQL, e.g. `'u.id'` or `'signed_event."userId"'`.
- * @param contractAtExpr Instant SQL, e.g. `':contractAt'`, `'$4'`, or `'NOW()'`.
- */
-export function sqlUserHasActiveContractAt(
-  userIdExpr: string,
-  contractAtExpr = ":contractAt",
-): string {
-  return `(
-    SELECT ce."type" FROM "contract_event" ce
-    WHERE ce."userId" = ${userIdExpr} AND ce."deletedAt" IS NULL
-      AND ce."date" <= ${contractAtExpr}
-    ORDER BY ce."date" DESC, ce."id" DESC
-    LIMIT 1
-  ) = '${ContractEventType.SIGNED}'`;
-}
-
-export function sqlUserHasEverSigned(userIdExpr: string): string {
-  return `EXISTS (
-    SELECT 1 FROM "contract_event" ce
-    WHERE ce."userId" = ${userIdExpr} AND ce."deletedAt" IS NULL
-      AND ce."type" = '${ContractEventType.SIGNED}'
-  )`;
-}
-
 export function canManageCommunity(
   user: Pick<User, "admin" | "leaderOfIdSet">,
   communityId: number | null,

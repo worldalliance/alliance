@@ -45,11 +45,12 @@ import {
   type Repository,
 } from "typeorm";
 import { UpdateProfileDto } from "./dto/user.dto";
+import { sqlUserHasActiveContractAt } from "./entities/contract-event.entity";
 import {
   OnetimeInvite,
   OnetimeInviteStatus,
 } from "./entities/onetime-invite.entity";
-import { sqlUserHasActiveContractAt, User } from "./entities/user.entity";
+import { User } from "./entities/user.entity";
 import { CLAIMABLE_INVITE } from "./invite-claim";
 import { referralLabel } from "./user.utils";
 

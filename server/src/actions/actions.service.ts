@@ -119,14 +119,13 @@ import {
   UserActionSummary,
 } from "src/user/dto/user-action-relations.dto";
 import { ProfileDto } from "src/user/dto/user.dto";
-import { ContractEventType } from "src/user/entities/contract-event.entity";
-import { loadedTagUsers, Tag } from "src/user/entities/tag.entity";
 import {
-  loadedUserCommunities,
+  ContractEventType,
   sqlUserHasActiveContractAt,
   sqlUserHasEverSigned,
-  User,
-} from "src/user/entities/user.entity";
+} from "src/user/entities/contract-event.entity";
+import { loadedTagUsers, Tag } from "src/user/entities/tag.entity";
+import { loadedUserCommunities, User } from "src/user/entities/user.entity";
 import { sqlUserHasProfilePicture } from "src/user/profile-picture";
 import {
   ActionAssignment,

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { sqlUserHasActiveContractAt } from "src/user/entities/user.entity";
+import { sqlUserHasActiveContractAt } from "src/user/entities/contract-event.entity";
 import { acceptedFriendshipSql } from "src/user/friendship";
 import type { Repository } from "src/utils/Repository";
 import { DataSource, EntityManager } from "typeorm";

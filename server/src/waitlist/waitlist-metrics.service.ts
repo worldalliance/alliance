@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { sqlIsLatestCompletion } from "src/actions/action-activity-status";
-import { sqlUserHasEverSigned } from "src/user/entities/user.entity";
+import { sqlUserHasEverSigned } from "src/user/entities/contract-event.entity";
 import { inviteClaimantSql } from "src/user/invite-claim";
 import { DataSource } from "typeorm";
 import type { WaitlistEntryFilterDto } from "./dto/waitlist-entry-admin.dto";

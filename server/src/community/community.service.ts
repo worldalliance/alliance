@@ -47,11 +47,11 @@ import {
 } from "src/notifs/notifs.service";
 import { groupUrl } from "src/search/approutes";
 import { CommunityMemberContactInfo } from "src/user/dto/user-action-relations.dto";
+import { sqlUserHasActiveContractAt } from "src/user/entities/contract-event.entity";
 import {
   assertCanManageCommunity,
   canManageCommunity,
   loadedUserCommunities,
-  sqlUserHasActiveContractAt,
   User,
 } from "src/user/entities/user.entity";
 import type { Relations } from "src/utils/Repository";

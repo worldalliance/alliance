@@ -1,12 +1,12 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { signupUrl, withRef } from "src/search/approutes";
-import { OnetimeInviteStatus } from "src/user/entities/onetime-invite.entity";
 import {
-  ReferralSource,
   sqlUserHasActiveContractAt,
   sqlUserHasEverSigned,
-} from "src/user/entities/user.entity";
+} from "src/user/entities/contract-event.entity";
+import { OnetimeInviteStatus } from "src/user/entities/onetime-invite.entity";
+import { ReferralSource } from "src/user/entities/user.entity";
 import type { PaginatedList } from "src/utils/pagination.dto";
 import type { Repository } from "src/utils/Repository";
 import {
