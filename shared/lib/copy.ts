@@ -320,6 +320,8 @@ export const cancelImageUpload = "Stop uploading this photo";
 
 export const cancelAllImageUploads = "Stop uploading";
 
+export const withdrawFromAction = "Withdraw from action";
+
 export const imageUploadFailed = "Failed to upload image";
 
 export const draftSaveFailed =
