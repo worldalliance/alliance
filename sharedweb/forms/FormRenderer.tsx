@@ -20,19 +20,12 @@ import {
   resolveDisplayBlockForUser,
 } from "@alliance/shared/formrenderer";
 import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
-import {
-  computeFormStorageKey,
-  filterAnswersByFieldIds,
-} from "@alliance/shared/forms/formDrafts";
-import {
-  completedFormSchema,
-  formulaSourcesFor,
-} from "@alliance/shared/forms/formulaChoices";
+import { computeFormStorageKey } from "@alliance/shared/forms/formDrafts";
+import { completedFormSchema } from "@alliance/shared/forms/formulaChoices";
 import {
   resolveFormValue,
   type SetFieldValue,
 } from "@alliance/shared/forms/formValueUpdater";
-import { stripCardIds } from "@alliance/shared/forms/listCards";
 import { prefillListsFromPreviousAnswers } from "@alliance/shared/forms/listPrefill";
 import {
   aggregateTarget,
@@ -61,14 +54,7 @@ import {
   useRandomizationKey,
   useVisibilityValidatorResults,
 } from "@alliance/shared/useFormRenderer";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { useSearchParams } from "react-router";
+import React, { useEffect, useMemo, useState } from "react";
 import Spinner from "../ui/Spinner";
 import {
   useFormPageDurationTracking,
@@ -81,6 +67,7 @@ import RenderField from "./RenderField";
 import { useDeviceType } from "./useDeviceType";
 import { useFormDraftState } from "./useFormDraftState";
 import { useFormScroll } from "./useFormScroll";
+import { useFormSubmission } from "./useFormSubmission";
 import { variableInputsGateView } from "./variableInputsGateView";
 import WithdrawalMenu from "./WithdrawalMenu";
 
@@ -170,8 +157,6 @@ const FormRenderer = ({
     persistKey,
   });
 
-  const [searchParams] = useSearchParams();
-
   const userDefaultPublic = user?.formDataPreference === "public";
   const [detectedTimeZone] = useState(deviceTimeZone);
   const timeZone = formTimeZoneDefault({
@@ -219,10 +204,6 @@ const FormRenderer = ({
     maxPageIndex,
   });
 
-  const formRef = useRef<HTMLFormElement>(null);
-  // Guard against double-submit when the submit button's click handler
-  // (ConfettiWrapper) and the form's submit event both call submitCurrentPage.
-  const submittingRef = useRef(false);
   const { formTopRef, fieldRef, focusInvalidField } = useFormScroll({
     scrollContainerRef,
     currentPageIndex,
@@ -233,7 +214,6 @@ const FormRenderer = ({
     readOnly,
     completedFormResponse,
   });
-  const [submitting, setSubmitting] = useState(false);
 
   const { currentUserLocationLoading, userLocationDisplayValue } =
     useCurrentUserLocation({
@@ -414,48 +394,6 @@ const FormRenderer = ({
   });
   const { uploadingAny } = imageUpload;
 
-  // The form is `noValidate` so its own errors come first, in field order;
-  // the browser then checks what they don't cover, such as email syntax.
-  const reportNativeValidity = useCallback(
-    () => formRef.current?.reportValidity() !== false,
-    [],
-  );
-
-  const handleNext = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (readOnly) {
-      if (nextVisiblePageIndex !== null) {
-        setCurrentPageIndex(nextVisiblePageIndex);
-      }
-      return;
-    }
-
-    // File fields receive their stored answer only after the upload finishes,
-    // so validation must wait too.
-    if (uploadingAny || !visibilitySettled) return;
-
-    if (nextVisiblePageIndex !== null) {
-      const result = await validatePage(currentPageIndex, true);
-      if (!result.isValid) {
-        focusInvalidField(result.firstInvalidFieldId);
-        trackValidationError(result.firstInvalidFieldId);
-        return;
-      }
-      if (!reportNativeValidity()) return;
-      setCurrentPageIndex(nextVisiblePageIndex);
-    }
-  };
-
-  const handlePrevious = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (previousVisiblePageIndex !== null) {
-      setCurrentPageIndex(previousVisiblePageIndex);
-    }
-  };
-
   const formTrackingParams = {
     formId: id,
     actionId,
@@ -468,147 +406,44 @@ const FormRenderer = ({
   const trackValidationError =
     useFormValidationErrorTracking(formTrackingParams);
 
-  const validateAllPagesAndShowFirstInvalid = useCallback(async () => {
-    const result = await validateAllPages();
-    if (!result.isValid && typeof result.firstInvalidPageIndex === "number") {
-      setCurrentPageIndex(result.firstInvalidPageIndex);
-      focusInvalidField(result.firstInvalidFieldId);
-    }
-    return result;
-  }, [validateAllPages]);
-
-  const submitCurrentPage = useCallback(async (): Promise<boolean> => {
-    if (submittingRef.current) {
-      return false;
-    }
-    submittingRef.current = true;
-    setSubmitting(true);
-
-    const finishSubmit = (result: boolean) => {
-      submittingRef.current = false;
-      setSubmitting(false);
-      return result;
-    };
-
-    if (readOnly || !onSubmit || uploadingAny) {
-      return finishSubmit(false);
-    }
-
-    if (formSnapshotId === null) {
-      throw new Error(
-        "FormRenderer: formSnapshotId is required when onSubmit is set",
-      );
-    }
-
-    if (nextVisiblePageIndex !== null) {
-      if (!visibilitySettled) return finishSubmit(false);
-      const result = await validatePage(currentPageIndex, true);
-      if (!result.isValid) {
-        focusInvalidField(result.firstInvalidFieldId);
-        trackValidationError(result.firstInvalidFieldId);
-      } else if (reportNativeValidity()) {
-        setCurrentPageIndex(nextVisiblePageIndex);
-      }
-      return finishSubmit(false);
-    }
-
-    const { isValid, firstInvalidFieldId } =
-      await validateAllPagesAndShowFirstInvalid();
-    if (!isValid) {
-      trackValidationError(firstInvalidFieldId);
-      return finishSubmit(false);
-    }
-    if (!reportNativeValidity()) {
-      return finishSubmit(false);
-    }
-
-    const sanitizedAnswers = stripCardIds(
-      filterAnswersByFieldIds(effectiveFormData, fieldLookup),
-    );
-
-    const sid = searchParams.get("sid") ?? searchParams.get("ref");
-
-    const submissionPayload: SubmitFormDto = {
-      answers: sanitizedAnswers,
-      formSnapshotId,
-      actionId,
-      formulaSources: formulaSourcesFor(schema, sourceHistories),
-      visibilityValidatorResults,
-      deviceType,
-      publicAnswers,
-      phDistinctId,
-      sessionReplayUrl,
-      sid: sid ?? undefined,
-    };
-
-    pauseSyncing();
-    try {
-      const submitted = await onSubmit(submissionPayload);
-      if (!submitted) {
-        resumeSyncing();
-      }
-      return submitted;
-    } catch {
-      resumeSyncing();
-      return false;
-    } finally {
-      submittingRef.current = false;
-      setSubmitting(false);
-    }
-  }, [
-    actionId,
-    currentPageIndex,
-    deviceType,
-    effectiveFormData,
-    fieldLookup,
-    form,
-    formSnapshotId,
-    nextVisiblePageIndex,
-    onSubmit,
-    phDistinctId,
-    readOnly,
-    reportNativeValidity,
-    publicAnswers,
-    schema,
-    searchParams,
-    sourceHistories,
-    sessionReplayUrl,
-    trackValidationError,
-    uploadingAny,
+  const {
+    formRef,
+    submitting,
+    handleNext,
+    handlePrevious,
     validateAllPagesAndShowFirstInvalid,
-    validatePage,
-    visibilitySettled,
+    submitCurrentPage,
+    handleSubmit,
+    handleAbandon,
+  } = useFormSubmission({
+    readOnly,
+    onSubmit,
+    onAbandonAction,
+    formSnapshotId,
+    actionId,
+    schema,
+    sourceHistories,
     visibilityValidatorResults,
+    deviceType,
+    fieldLookup,
+    formData,
+    effectiveFormData,
+    publicAnswers,
+    phDistinctId,
+    sessionReplayUrl,
+    uploadingImages: uploadingAny,
+    visibilitySettled,
+    currentPageIndex,
+    setCurrentPageIndex,
+    nextVisiblePageIndex,
+    previousVisiblePageIndex,
+    validatePage,
+    validateAllPages,
+    focusInvalidField,
+    trackValidationError,
     pauseSyncing,
     resumeSyncing,
-  ]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    await submitCurrentPage();
-  };
-
-  const handleAbandon = (choice: Omit<ActionWithdrawal, "partialFormData">) => {
-    if (formSnapshotId === null) {
-      throw new Error(
-        "FormRenderer: formSnapshotId is required to abandon a form",
-      );
-    }
-    const submissionPayload: SubmitFormDto = {
-      answers: stripCardIds(formData),
-      formSnapshotId,
-      actionId,
-      formulaSources: formulaSourcesFor(schema, sourceHistories),
-      visibilityValidatorResults,
-      deviceType,
-      publicAnswers,
-    };
-
-    pauseSyncing();
-    onAbandonAction?.({ ...choice, partialFormData: submissionPayload });
-  };
+  });
 
   useEffect(() => {
     clearFieldErrors();
