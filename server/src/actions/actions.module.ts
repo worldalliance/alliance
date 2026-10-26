@@ -38,6 +38,7 @@ import { UserModule } from "../user/user.module";
 import { ActionFeedController } from "./action-feed.controller";
 import { ActionFormVariantService } from "./action-form-variant.service";
 import { ActionFormsController } from "./action-forms.controller";
+import { ActionImportExportService } from "./action-import-export.service";
 import { ActionParticipantsService } from "./action-participants.service";
 import { ActionRelationsService } from "./action-relations.service";
 import { ActionRemindersController } from "./action-reminders.controller";
@@ -203,6 +204,7 @@ import { TaskBadgeService } from "./task-badge.service";
     ActionSuitesService,
     FollowUpFormsService,
     ActionRelationsService,
+    ActionImportExportService,
   ],
   exports: [
     ActionsService,

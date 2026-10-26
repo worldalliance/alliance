@@ -35,6 +35,7 @@ import {
   AcknowledgeDeadlineShortening,
   ApiAcknowledgeDeadlineShortening,
 } from "./acknowledge-deadline-shortening";
+import { ActionImportExportService } from "./action-import-export.service";
 import { ActionRelationsService } from "./action-relations.service";
 import { ActionShareService } from "./action-share.service";
 import { ActionSuitesService } from "./action-suites.service";
@@ -70,6 +71,7 @@ import { ForumActionCompleterWorker } from "./forum-action-completer.worker";
 export class ActionsController {
   constructor(
     private readonly actionsService: ActionsService,
+    private readonly importExport: ActionImportExportService,
     private readonly actionRelations: ActionRelationsService,
     private readonly actionSuites: ActionSuitesService,
     private readonly shareService: ActionShareService,
@@ -351,7 +353,7 @@ export class ActionsController {
     reminders?: boolean,
     @Query("suite", new ParseBoolPipe({ optional: true })) suite?: boolean,
   ): Promise<ExportActionDto> {
-    return this.actionsService.exportAction(
+    return this.importExport.exportAction(
       id,
       events,
       reminders,
@@ -364,9 +366,7 @@ export class ActionsController {
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: AdminActionDto })
   async pasteJsonAdmin(@Body() body: PasteJsonDto): Promise<AdminActionDto> {
-    return new AdminActionDto(
-      await this.actionsService.importAction(body.body),
-    );
+    return new AdminActionDto(await this.importExport.importAction(body.body));
   }
 
   @Get("scheduledPlans")
