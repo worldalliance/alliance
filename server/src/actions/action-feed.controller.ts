@@ -23,6 +23,7 @@ import { PosthogService } from "src/posthog/posthog.service";
 import { ProfileDto } from "src/user/dto/user.dto";
 import { AuthGuard } from "../auth/guards/auth.guard";
 import { ActionsService } from "./actions.service";
+import { ActivityFeedService } from "./activity-feed.service";
 import { ActionActivityDto } from "./dto/action-activity.dto";
 import {
   GlobalFeedItemDto,
@@ -32,6 +33,7 @@ import {
 import { FeedMembersService } from "./feed-members.service";
 import { parseFeedPage } from "./feed-page";
 import { GlobalFeedService } from "./global-feed.service";
+import { HomeFeedService } from "./home-feed.service";
 
 const GLOBAL_FEED_MEMBERS_DEFAULT_LIMIT = 30;
 const GLOBAL_FEED_MEMBERS_MAX_LIMIT = 50;
@@ -52,6 +54,8 @@ function parseFeedActivityType(value: string): FeedActionActivity {
 export class ActionFeedController {
   constructor(
     private readonly actionsService: ActionsService,
+    private readonly activityFeed: ActivityFeedService,
+    private readonly homeFeedService: HomeFeedService,
     private readonly feedMembers: FeedMembersService,
     private readonly globalFeed: GlobalFeedService,
     private readonly posthog: PosthogService,
@@ -72,7 +76,7 @@ export class ActionFeedController {
   ): Promise<ActionActivityDto[]> {
     const page = parseFeedPage({ limit, before });
 
-    return await this.actionsService.getActivityFeed(
+    return await this.activityFeed.getActivityFeed(
       page.limit,
       page.before,
       comments,
@@ -180,7 +184,7 @@ export class ActionFeedController {
     @Request() req: JwtRequest,
     @Param("id", ParseIntPipe) id: number,
   ): Promise<ActionActivityDto> {
-    return this.actionsService.getActivity(id, req.user?.sub);
+    return this.activityFeed.getActivity(id, req.user?.sub);
   }
 
   @Get(":id/activities")
@@ -196,7 +200,7 @@ export class ActionFeedController {
     @Query("before") before?: string,
   ): Promise<ActionActivityDto[]> {
     const beforeDate = before ? new Date(before) : undefined;
-    return this.actionsService.getActionActivities(
+    return this.activityFeed.getActionActivities(
       id,
       limit,
       comments,
@@ -217,7 +221,7 @@ export class ActionFeedController {
     limit?: string,
   ): Promise<ActionActivityDto[]> {
     const limitNum = limit ? parseInt(limit) : 20;
-    return this.actionsService.friendActivityForAction(
+    return this.activityFeed.friendActivityForAction(
       req.user.sub,
       actionId,
       comments,
@@ -238,7 +242,7 @@ export class ActionFeedController {
   ): Promise<ActionActivityDto[]> {
     const limitNum = limit ? parseInt(limit) : 20;
     const beforeDate = before ? new Date(before) : undefined;
-    return this.actionsService.friendActivity(
+    return this.activityFeed.friendActivity(
       req.user.sub,
       comments,
       limitNum,
@@ -262,7 +266,7 @@ export class ActionFeedController {
   ): Promise<HomeFeedItemDto[]> {
     const page = parseFeedPage({ limit, before });
 
-    return this.actionsService.homeFeed(
+    return this.homeFeedService.homeFeed(
       req.user.sub,
       page.limit,
       page.before,
@@ -283,7 +287,7 @@ export class ActionFeedController {
   ): Promise<ActionActivityDto[]> {
     const page = parseFeedPage({ limit, before });
 
-    return this.actionsService.communityActivity(
+    return this.activityFeed.communityActivity(
       page.limit,
       page.before,
       communityId,
@@ -301,11 +305,7 @@ export class ActionFeedController {
     @Query("comments", new ParseBoolPipe({ optional: true }))
     comments?: boolean,
   ): Promise<ActionActivityDto[]> {
-    return this.actionsService.findCompletedForUser(
-      +id,
-      comments,
-      req.user?.sub,
-    );
+    return this.activityFeed.findCompletedForUser(+id, comments, req.user?.sub);
   }
 
   @Get("userFeed/:id")
@@ -325,7 +325,7 @@ export class ActionFeedController {
   ): Promise<HomeFeedItemDto[]> {
     const page = parseFeedPage({ limit, before });
 
-    return this.actionsService.userFeed(
+    return this.homeFeedService.userFeed(
       +id,
       req.user?.sub,
       page.limit,

@@ -1,6 +1,5 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import {
-  ACTION_ACTIVITY_FEED_VISIBLE_TYPES,
   actionActivityIsVisibleInFeed,
   ActionActivityType,
   MEMBER_ACTION_DEADLINE_PASSED,
@@ -57,9 +56,7 @@ import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { CommentParentObject } from "src/forum/entities/comment.entity";
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
-import { ForumCommentQueryService } from "src/forum/forum-comment-query.service";
 import { renderedImageKey } from "src/images/images.service";
-import { FacepileService } from "src/likes/facepile.service";
 import {
   ActionEventReminderService,
   NOTIFICATION_LOOKBACK_WINDOW_MS,
@@ -74,10 +71,7 @@ import { ShareUrl } from "src/share-urls/entities/share-url.entity";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
 import { displayOnlySchemaOf } from "src/tasks/display-only-snapshot";
 import { Form } from "src/tasks/entities/form.entity";
-import {
-  FormResponse,
-  type ParsedFormResponse,
-} from "src/tasks/entities/formresponse.entity";
+import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { SnapshotHistoryOwner } from "src/tasks/entities/formsnapshot.entity";
 import { FormSnapshotService } from "src/tasks/formsnapshot.service";
 import {
@@ -92,7 +86,7 @@ import {
   sqlUserHasEverSigned,
 } from "src/user/entities/contract-event.entity";
 import { loadedTagUsers, Tag } from "src/user/entities/tag.entity";
-import { loadedUserCommunities, User } from "src/user/entities/user.entity";
+import { User } from "src/user/entities/user.entity";
 import {
   ActionAssignment,
   computeActionAssignment,
@@ -123,7 +117,6 @@ import {
   Or,
   type Repository,
 } from "typeorm";
-import { FriendService } from "../user/friend.service";
 import { TagService } from "../user/tag.service";
 import { UserService } from "../user/user.service";
 import {
@@ -151,7 +144,6 @@ import {
   publishedActionUpdateWhere,
 } from "./action-update-visibility";
 import { ActionVisibilityService } from "./action-visibility.service";
-import { ActivityOutputService } from "./activity-output.service";
 import { CohortAdmissionService } from "./cohort-admission.service";
 import { readsSavedDecisions } from "./cohort-decision";
 import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
@@ -171,11 +163,6 @@ import {
   CreateActionEventDto,
   UpdateActionEventDto,
 } from "./dto/action-event.dto";
-import {
-  HomeFeedItem,
-  HomeFeedItemDto,
-  HomeFeedItemType,
-} from "./dto/action-feed.dto";
 import { ActionReviewerDto } from "./dto/action-reviewer.dto";
 import { CreateActionSuiteDto } from "./dto/action-suite.dto";
 import {
@@ -312,12 +299,6 @@ const COMPLETION_BLOCK_MESSAGE: Record<CompletionBlock, string> = {
   [CompletionBlock.OnboardingContractUnsigned]: COMPLETION_UNAVAILABLE,
 };
 
-/**
- * Below this many active friends + group members, the feed is topped up with other
- * active members so a thin network still has something to read.
- */
-const MIN_HOME_FEED_SOURCE_USERS = 10;
-
 const MEMBER_FEED_RELATIONS = {
   events: true,
   followUpForms: true,
@@ -362,7 +343,6 @@ export class ActionsService {
     @InjectRepository(ActionFormVariant)
     private readonly actionFormVariantRepository: Repository<ActionFormVariant>,
     private userService: UserService,
-    private readonly friendService: FriendService,
     private readonly tagService: TagService,
     public eventEmitter: EventEmitter2,
     private readonly communityService: CommunityService,
@@ -372,11 +352,9 @@ export class ActionsService {
     private readonly actionEventReminderService: ActionEventReminderService,
     private readonly reminderGroupService: ReminderGroupService,
     private readonly likeNotificationService: LikeNotificationService,
-    private readonly forumCommentQueryService: ForumCommentQueryService,
     private readonly eventLogService: EventLogService,
     @Inject(forwardRef(() => ActionFormVariantService))
     private readonly actionFormVariantService: ActionFormVariantService,
-    private readonly facepileService: FacepileService,
     private readonly formSnapshotService: FormSnapshotService,
     private readonly posthogService: PosthogService,
     private readonly cohortDecisionStaffService: CohortDecisionStaffService,
@@ -387,7 +365,6 @@ export class ActionsService {
     private readonly prerequisiteProgressService: PrerequisiteProgressService,
     private readonly participants: ActionParticipantsService,
     private readonly recognitionPreview: ActionUpdateRecognitionPreviewService,
-    private readonly activityOutput: ActivityOutputService,
   ) {}
 
   async applyAssignedFormIds(
@@ -2109,314 +2086,6 @@ export class ActionsService {
     }
   }
 
-  async getLikedActivityIds(
-    activityIds: number[],
-    userId: number,
-  ): Promise<Set<number>> {
-    if (!activityIds.length || !userId) {
-      return new Set();
-    }
-
-    const rows = await this.actionActivityRepository
-      .createQueryBuilder("activity")
-      .innerJoin("activity.likes", "liker", "liker.id = :userId", { userId })
-      .where("activity.id IN (:...activityIds)", { activityIds })
-      .select("activity.id", "id")
-      .getRawMany<{ id: number }>();
-
-    return new Set(rows.map((r) => r.id));
-  }
-
-  async findCompletedForUser(
-    userId: number,
-    comments?: boolean,
-    requestingUserId?: number,
-  ): Promise<ActionActivityDto[]> {
-    const activities = await this.actionActivityRepository.find({
-      where: {
-        userId,
-        type: In(ACTION_ACTIVITY_FEED_VISIBLE_TYPES),
-      },
-      relations: {
-        action: true,
-        user: true,
-        editableContent: true,
-        taskFormResponse: { formSnapshot: true },
-      },
-    });
-
-    const visibleIds = await this.actionVisibility.visibleActionIdsForUser({
-      actionIds: activities.map((activity) => activity.actionId),
-      userId: requestingUserId,
-    });
-    return this.toActivityDtos({
-      activities: activities.filter((activity) =>
-        visibleIds.has(activity.actionId),
-      ),
-      requestingUserId,
-      comments,
-    });
-  }
-
-  async getActionActivities(
-    actionId: number,
-    limit?: number,
-    comments?: boolean,
-    requestingUserId?: number,
-    before?: Date,
-  ): Promise<ActionActivityDto[]> {
-    await this.findOneOrFail({ id: actionId, userId: requestingUserId });
-    const activities = await this.fetchActivityFeed({
-      limit: limit ?? 20,
-      actionId,
-      before,
-    });
-
-    return this.toActivityDtos({ activities, requestingUserId, comments });
-  }
-
-  /**
-   * Adds public form response output on top of {@link toActivityDtos}, and
-   * comments when `comments` is set. Used by the feeds that render activity
-   * cards in full.
-   */
-  private async toDetailedActivityDtos(params: {
-    activities: ActionActivity[];
-    requestingUserId?: number;
-    comments: boolean;
-    outputs?: Map<number, ParsedFormResponse>;
-  }): Promise<ActionActivityDto[]> {
-    const {
-      activities,
-      requestingUserId,
-      comments: includeComments,
-      outputs,
-    } = params;
-    const activityIds = activities.map((activity) => activity.id);
-    const likedIds = requestingUserId
-      ? await this.getLikedActivityIds(activityIds, requestingUserId)
-      : new Set<number>();
-    const facepiles = await this.facepileService.loadFacepiles(
-      ActionActivity,
-      activityIds,
-    );
-
-    const commentsByActivity = includeComments
-      ? await this.forumCommentQueryService.findCommentsForActivities(
-          activityIds,
-        )
-      : null;
-
-    return activities.map((activity) => {
-      const comments = commentsByActivity?.get(activity.id) ?? [];
-      return new ActionActivityDto(activity, {
-        comments,
-        formResponseOutput:
-          outputs?.get(activity.id) ??
-          this.activityOutput.buildOutputFormResponse(activity),
-        likedByMe: likedIds.has(activity.id),
-        requestingUserId,
-        facepile: facepiles(activity.id),
-      });
-    });
-  }
-
-  /** Feed activities with their bounded liker facepiles and liked-by-me state. */
-  private async toActivityDtos(params: {
-    activities: ActionActivity[];
-    requestingUserId?: number;
-    comments?: boolean;
-  }): Promise<ActionActivityDto[]> {
-    const { activities, requestingUserId, comments } = params;
-    if (activities.length === 0) {
-      return [];
-    }
-    if (comments) {
-      return this.toDetailedActivityDtos({
-        activities,
-        requestingUserId,
-        comments: true,
-      });
-    }
-
-    const activityIds = activities.map((activity) => activity.id);
-    const likedIds = requestingUserId
-      ? await this.getLikedActivityIds(activityIds, requestingUserId)
-      : new Set<number>();
-    const facepiles = await this.facepileService.loadFacepiles(
-      ActionActivity,
-      activityIds,
-    );
-
-    return activities.map(
-      (activity) =>
-        new ActionActivityDto(activity, {
-          likedByMe: likedIds.has(activity.id),
-          facepile: facepiles(activity.id),
-        }),
-    );
-  }
-
-  /**
-   * Shared helper to run optimized activity feed queries.
-   * Only selects the fields needed for ActionActivityDto to minimize data transfer.
-   */
-  private fetchActivityFeed(options: {
-    limit: number;
-    before?: Date;
-    userIds?: number[];
-    actionId?: number;
-    communityId?: number;
-    requireFormResponse?: boolean;
-  }) {
-    const qb = this.actionActivityRepository
-      .createQueryBuilder("activity")
-      .leftJoinAndSelect("activity.user", "user")
-      .leftJoinAndSelect("activity.action", "action")
-      .leftJoinAndSelect("activity.editableContent", "editableContent")
-      .leftJoinAndSelect("activity.taskFormResponse", "taskFormResponse")
-      .leftJoinAndSelect("taskFormResponse.formSnapshot", "taskFormSnapshot")
-      .select([
-        "activity.id",
-        "activity.type",
-        "activity.actionId",
-        "activity.userId",
-        "activity.createdAt",
-        "activity.likesCount",
-        "user.id",
-        "user.name",
-        "user.profilePicture",
-        "user.profileDescription",
-        "user.admin",
-        "user.staff",
-        "user.anonymous",
-        "action.id",
-        "action.name",
-        "editableContent.id",
-        "editableContent.body",
-        "editableContent.attachments",
-        "taskFormResponse.id",
-        "taskFormResponse.formId",
-        "taskFormResponse.answers",
-        "taskFormResponse.publicAnswers",
-        "taskFormResponse.formSnapshotId",
-        "taskFormResponse.visibilityValidatorResults",
-        "taskFormResponse.formulaChoices",
-        "taskFormResponse.deviceType",
-        "taskFormSnapshot.id",
-        "taskFormSnapshot.schema",
-      ])
-      .loadRelationIdAndMap("user.leaderOfIds", "user.leaderOf")
-      .where("activity.type IN (:...types)", {
-        types: ACTION_ACTIVITY_FEED_VISIBLE_TYPES,
-      })
-      .orderBy("activity.createdAt", "DESC")
-      .take(options.limit);
-
-    if (options.before) {
-      qb.andWhere("activity.createdAt < :before", { before: options.before });
-    }
-
-    if (options.communityId) {
-      qb.innerJoin(
-        "user.communities",
-        "communityFilter",
-        "communityFilter.id = :communityId",
-        { communityId: options.communityId },
-      );
-    } else if (options.userIds?.length) {
-      qb.andWhere("activity.userId IN (:...userIds)", {
-        userIds: options.userIds,
-      });
-    }
-
-    if (options.actionId) {
-      qb.andWhere("activity.actionId = :actionId", {
-        actionId: options.actionId,
-      });
-    }
-
-    if (options.requireFormResponse) {
-      qb.andWhere("taskFormResponse.id IS NOT NULL");
-    }
-
-    return qb.getMany();
-  }
-
-  private async fetchVisibleActivityFeed(options: {
-    limit: number;
-    before?: Date;
-    userIds?: number[];
-    actionId?: number;
-    communityId?: number;
-    requireFormResponse?: boolean;
-    requestingUserId?: number;
-    user?: User | null;
-    session?: CohortResolutionSession;
-  }): Promise<ActionActivity[]> {
-    const session = options.session ?? new CohortResolutionSession();
-    const user =
-      options.user !== undefined
-        ? options.user
-        : await this.actionVisibility.loadUserForActionVisibility(
-            options.requestingUserId,
-          );
-
-    const collected: ActionActivity[] = [];
-    let cursor = options.before;
-    const batchSize = Math.max(options.limit * 3, 20);
-
-    while (collected.length < options.limit) {
-      const batch = await this.fetchActivityFeed({
-        limit: batchSize,
-        before: cursor,
-        userIds: options.userIds,
-        actionId: options.actionId,
-        communityId: options.communityId,
-        requireFormResponse: options.requireFormResponse,
-      });
-      if (batch.length === 0) {
-        break;
-      }
-
-      const visibleIds = await this.actionVisibility.visibleActionIdsForUser({
-        actionIds: batch.map((activity) => activity.actionId),
-        user,
-        session,
-      });
-      for (const activity of batch) {
-        if (visibleIds.has(activity.actionId)) {
-          collected.push(activity);
-          if (collected.length >= options.limit) {
-            break;
-          }
-        }
-      }
-
-      if (batch.length < batchSize) {
-        break;
-      }
-      cursor = batch[batch.length - 1].createdAt;
-    }
-
-    return collected;
-  }
-
-  async getActivityFeed(
-    limit: number = 20,
-    before?: Date,
-    comments?: boolean,
-    requestingUserId?: number,
-  ): Promise<ActionActivityDto[]> {
-    const activities = await this.fetchVisibleActivityFeed({
-      limit,
-      before,
-      requestingUserId,
-    });
-
-    return this.toActivityDtos({ activities, requestingUserId, comments });
-  }
-
   async findCompletionBlock(params: {
     action: ParsedAction;
     user: User;
@@ -2462,94 +2131,6 @@ export class ActionsService {
     }
   }
 
-  async friendActivity(
-    userId: number,
-    comments?: boolean,
-    limit?: number,
-    before?: Date,
-  ): Promise<ActionActivityDto[]> {
-    const user = await this.userService.findOne(userId, {
-      sentFriendRequests: true,
-      receivedFriendRequests: true,
-    });
-    if (!user) {
-      throw new NotFoundException("User not found");
-    }
-    const friends = await this.friendService.findFriends(userId);
-
-    if (friends.length === 0) {
-      return [];
-    }
-
-    const friendActivities = await this.fetchVisibleActivityFeed({
-      limit: limit ?? 20,
-      before,
-      userIds: friends.map((f) => f.id),
-      requestingUserId: userId,
-    });
-
-    return this.toActivityDtos({
-      activities: friendActivities,
-      requestingUserId: userId,
-      comments,
-    });
-  }
-
-  async friendActivityForAction(
-    userId: number,
-    actionId: number,
-    comments?: boolean,
-    limit?: number,
-  ): Promise<ActionActivityDto[]> {
-    await this.findOneOrFail({ id: actionId, userId });
-    const friends = await this.friendService.findFriends(userId);
-
-    if (friends.length === 0) {
-      return [];
-    }
-
-    const friendActivities = await this.fetchActivityFeed({
-      limit: limit ?? 20,
-      userIds: friends.map((f) => f.id),
-      actionId,
-    });
-
-    return this.toActivityDtos({
-      activities: friendActivities,
-      requestingUserId: userId,
-      comments,
-    });
-  }
-
-  async communityActivity(
-    limitNum: number = 20,
-    beforeDate: Date | undefined,
-    communityId: number,
-    comments?: boolean,
-    requestingUserId?: number,
-  ): Promise<ActionActivityDto[]> {
-    const community = await this.communityService.findOneOrFail(communityId);
-
-    const members = community.users ?? [];
-
-    if (members.length === 0) {
-      return [];
-    }
-
-    const memberActivities = await this.fetchVisibleActivityFeed({
-      limit: limitNum,
-      before: beforeDate,
-      userIds: members.map((m) => m.id),
-      requestingUserId,
-    });
-
-    return this.toActivityDtos({
-      activities: memberActivities,
-      requestingUserId,
-      comments,
-    });
-  }
-
   async countCommunityCompletedActions(
     userId: number,
     communityId: number,
@@ -2586,196 +2167,6 @@ export class ActionsService {
       .getCount();
   }
 
-  async homeFeed(
-    userId: number,
-    limit: number = 20,
-    before?: Date,
-    comments?: boolean,
-  ): Promise<HomeFeedItemDto[]> {
-    const [friends, user] = await Promise.all([
-      this.friendService.findFriends(userId),
-      this.userService.findOne(userId, { communities: true }),
-    ]);
-    if (!user) throw new NotFoundException("User not found");
-
-    const friendIds = friends.map((f) => f.id);
-    const communityIds = loadedUserCommunities(user).map((c) => c.id);
-    const userClusterId = user.clusterId;
-
-    // Get community member IDs in batch
-    const communityMemberIds = new Set<number>();
-    if (communityIds.length > 0) {
-      const communities = await Promise.all(
-        communityIds.map((id) => this.communityService.findOneOrFail(id)),
-      );
-      for (const community of communities) {
-        for (const member of community.users ?? []) {
-          communityMemberIds.add(member.id);
-        }
-      }
-    }
-
-    const knownIds = new Set([...friendIds, ...communityMemberIds]);
-    knownIds.delete(userId);
-    const activeKnownCount = await this.userService.countActiveUsers([
-      ...knownIds,
-    ]);
-    // Seeded by viewer, so the fillers stay the same across pages and visits.
-    const fillerIds = await this.userService.pickActiveUserIdsForSeed({
-      count: MIN_HOME_FEED_SOURCE_USERS - activeKnownCount,
-      excludeIds: [...knownIds, userId],
-      seed: String(userId),
-    });
-
-    const allUserIds = [...knownIds, ...fillerIds, userId];
-
-    const visibilityUser =
-      await this.actionVisibility.loadUserForActionVisibility(userId);
-    const visibilitySession = new CohortResolutionSession();
-
-    const forumComments =
-      await this.forumCommentQueryService.findForumCommentsForFeed({
-        userId,
-        userClusterId,
-        sourceUserIds: allUserIds,
-        limit,
-        before,
-      });
-    const forumCommentItems: HomeFeedItem[] = forumComments.map((fc) => ({
-      type: HomeFeedItemType.ForumComment,
-      date: fc.comment.createdAt,
-      forumComment: fc,
-    }));
-    const forumCommentDateMs = forumCommentItems
-      .map((c) => c.date.getTime())
-      .sort((a, b) => b - a);
-
-    const batchSize = limit * 2;
-    const contentful: ActionActivity[] = [];
-    const outputs = new Map<number, ParsedFormResponse>();
-    let cursor = before;
-
-    while (contentful.length < limit && allUserIds.length > 0) {
-      const batch = await this.fetchActivityFeed({
-        limit: batchSize,
-        before: cursor,
-        userIds: allUserIds,
-        requireFormResponse: true,
-      });
-
-      const visibleIds = await this.actionVisibility.visibleActionIdsForUser({
-        actionIds: batch.map((activity) => activity.actionId),
-        user: visibilityUser,
-        session: visibilitySession,
-      });
-
-      for (const a of batch) {
-        if (!visibleIds.has(a.actionId)) {
-          continue;
-        }
-        const output = this.activityOutput.buildOutputFormResponse(a);
-        if (output) {
-          contentful.push(a);
-          outputs.set(a.id, output);
-          if (contentful.length >= limit) break;
-        }
-      }
-
-      if (batch.length < batchSize) break;
-
-      cursor = batch[batch.length - 1].createdAt;
-
-      const cursorMs = cursor.getTime();
-      const commentsNewerThanCursor = forumCommentDateMs.filter(
-        (d) => d > cursorMs,
-      ).length;
-      if (contentful.length + commentsNewerThanCursor >= limit) break;
-    }
-
-    const activityDtos = await this.toDetailedActivityDtos({
-      activities: contentful,
-      requestingUserId: userId,
-      comments: !!comments,
-      outputs,
-    });
-
-    const activityItems = activityDtos.map(
-      (activity): HomeFeedItem => ({
-        type: HomeFeedItemType.Activity,
-        date: activity.createdAt,
-        activity,
-      }),
-    );
-
-    const merged: HomeFeedItem[] = [...activityItems, ...forumCommentItems];
-    merged.sort((a, b) => b.date.getTime() - a.date.getTime());
-
-    return merged.slice(0, limit).map((item) => new HomeFeedItemDto(item));
-  }
-
-  async userFeed(
-    userId: number,
-    requestingUserId?: number,
-    limit: number = 20,
-    before?: Date,
-    comments?: boolean,
-  ): Promise<HomeFeedItemDto[]> {
-    const [rawActivities, forumComments] = await Promise.all([
-      this.actionActivityRepository.find({
-        where: {
-          userId,
-          type: In(ACTION_ACTIVITY_FEED_VISIBLE_TYPES),
-          ...(before ? { createdAt: LessThan(before) } : {}),
-        },
-        relations: {
-          action: true,
-          user: true,
-          taskFormResponse: { formSnapshot: true },
-        },
-        order: { createdAt: "DESC" },
-        take: limit * 3,
-      }),
-      this.forumCommentQueryService.findForumCommentsByUserForFeed({
-        authorId: userId,
-        requestingUserId,
-        limit,
-        before,
-      }),
-    ]);
-
-    const visibleIds = await this.actionVisibility.visibleActionIdsForUser({
-      actionIds: rawActivities.map((activity) => activity.actionId),
-      userId: requestingUserId,
-    });
-    const activities = rawActivities
-      .filter((activity) => visibleIds.has(activity.actionId))
-      .slice(0, limit);
-
-    const activityDtos = await this.toDetailedActivityDtos({
-      activities,
-      requestingUserId,
-      comments: !!comments,
-    });
-
-    const activityItems = activityDtos.map(
-      (activity): HomeFeedItem => ({
-        type: HomeFeedItemType.Activity,
-        date: activity.createdAt,
-        activity,
-      }),
-    );
-    const forumCommentItems: HomeFeedItem[] = forumComments.map((fc) => ({
-      type: HomeFeedItemType.ForumComment,
-      date: fc.comment.createdAt,
-      forumComment: fc,
-    }));
-
-    const merged: HomeFeedItem[] = [...activityItems, ...forumCommentItems];
-    merged.sort((a, b) => b.date.getTime() - a.date.getTime());
-
-    return merged.slice(0, limit).map((item) => new HomeFeedItemDto(item));
-  }
-
   async findByName(
     name: string,
     requestingUserId: number,
@@ -2790,37 +2181,6 @@ export class ActionsService {
     return this.actionVisibility.listableActions({
       actions: actions.map(parseAction),
       user,
-    });
-  }
-
-  async getActivity(
-    id: number,
-    requestingUserId?: number,
-  ): Promise<ActionActivityDto> {
-    const activity = await this.actionActivityRepository.findOne({
-      where: { id },
-      relations: {
-        user: true,
-        action: true,
-        likes: true,
-        editableContent: true,
-        taskFormResponse: { formSnapshot: true },
-      },
-    });
-    if (!activity) {
-      throw new NotFoundException("Activity not found");
-    }
-    await this.findOneOrFail({
-      id: activity.actionId,
-      userId: requestingUserId,
-    });
-    return new ActionActivityDto(activity, {
-      formResponseOutput: this.activityOutput.buildOutputFormResponse(activity),
-      likedByMe: requestingUserId
-        ? loadedActionActivityLikes(activity).some(
-            (like) => like.id === requestingUserId,
-          )
-        : undefined,
     });
   }
 

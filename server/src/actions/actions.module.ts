@@ -50,6 +50,7 @@ import { ActionVisibilityModule } from "./action-visibility.module";
 import { ActionsController } from "./actions.controller";
 import { ActionsGateway } from "./actions.gateway";
 import { ActionsService } from "./actions.service";
+import { ActivityFeedService } from "./activity-feed.service";
 import { ActivityOutputService } from "./activity-output.service";
 import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
 import { CohortDecisionListener } from "./cohort-decision.listener";
@@ -81,6 +82,7 @@ import { FeedMembersService } from "./feed-members.service";
 import { ForumActionCompleterWorker } from "./forum-action-completer.worker";
 import { GeneralUpdatesController } from "./general-updates.controller";
 import { GlobalFeedService } from "./global-feed.service";
+import { HomeFeedService } from "./home-feed.service";
 import { ProjectsController } from "./projects.controller";
 import { ProjectsService } from "./projects.service";
 import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
@@ -179,6 +181,8 @@ import { TaskBadgeService } from "./task-badge.service";
     FeedMembersService,
     GlobalFeedService,
     ActivityOutputService,
+    ActivityFeedService,
+    HomeFeedService,
   ],
   exports: [
     ActionsService,
