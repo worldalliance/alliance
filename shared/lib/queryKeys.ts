@@ -94,6 +94,7 @@ export const queryKeys = {
     ["contractGetById", contractId] as const,
   conversationMessages: (conversationId: number | null) =>
     ["messageGetMessages", conversationId] as const,
+  conversationUnreadSummary: () => ["conversationGetUnreadSummary"] as const,
   currentContract: () => ["contractGetCurrent"] as const,
   forumPost: (postId: string | undefined) =>
     ["forumFindOnePost", postId] as const,
@@ -140,6 +141,8 @@ export const queryKeys = {
   taskForm: (formId: number | null) => [...taskFormsAll(), formId] as const,
   taskFormAdmin: (formId: number | null) =>
     [...taskFormsAll(), "admin", formId] as const,
+  taskFormAggregateViews: (formId: number | null) =>
+    ["tasksGetFormAggregateViews", formId] as const,
   waitlistBrowser: () => ["waitlistBrowser"] as const,
   waitlistCount: () => ["waitlistCount"] as const,
   waitlistMailConfig: () => ["waitlistMailConfig"] as const,
@@ -159,6 +162,7 @@ export const queryKeys = {
   actionStatsAdmin: () => ["analyticsGetActionStatsAdmin"] as const,
   actionStatsByIdAdmin: (actionId: number | null) =>
     ["analyticsGetActionStatsByIdAdmin", actionId] as const,
+  aggregateStatsAdmin: () => ["analyticsGetAggregateStatsAdmin"] as const,
   actionUpdateAdmin: (id: number | null) =>
     ["actionUpdatesFindOneUpdateAdmin", id] as const,
   actionUpdateRecognitionPreviewCountsAdmin: (
@@ -242,6 +246,11 @@ export const queryKeys = {
   }) => ["inviteLinkAdminSearch", query] as const,
   memberContactInfoAdmin: () =>
     ["communityGetAllMemberContactInfoAdmin"] as const,
+  memberCompletionRetentionAdmin: () =>
+    ["analyticsGetMemberCompletionRetentionAdmin"] as const,
+  memberReliabilityWindowAdmin: (weeks: number | null) =>
+    ["analyticsGetMemberReliabilityWindowAdmin", weeks] as const,
+  missedActionsAdmin: () => ["analyticsGetMissedActionsAdmin"] as const,
   onetimeInvitesAdminAll,
   onetimeInvitesAdmin: (page: number, limit: number) =>
     [...onetimeInvitesAdminAll(), page, limit] as const,

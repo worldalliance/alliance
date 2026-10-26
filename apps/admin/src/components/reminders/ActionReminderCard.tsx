@@ -19,11 +19,10 @@ import {
   useReminderTextPreviewAdmin,
 } from "../../lib/useReminderPreviewsAdmin";
 import TextareaWithHighlights from "../TextareaWithHighlights";
-import ActionReminderGroupForm, {
-  ActionReminderGroupFormSubmitPayload,
-} from "./ActionReminderGroupForm";
+import ActionReminderGroupForm from "./ActionReminderGroupForm";
 import { GroupScheduleLabels } from "./groupSchedule";
 import MissedSuiteNote from "./MissedSuiteNote";
+import { ActionReminderGroupFormSubmitPayload } from "./reminderGroupRequest";
 
 interface ActionReminderCardProps {
   group: ReminderGroupDto;

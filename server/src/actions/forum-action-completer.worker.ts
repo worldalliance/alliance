@@ -34,7 +34,7 @@ import {
 import { TERMINAL_ACTIVITY_TYPES } from "./action-activity-status";
 import { ActionsService } from "./actions.service";
 import { CohortDecisionService } from "./cohort-decision.service";
-import { ForumAutocompletePlan } from "./dto/action.dto";
+import { ForumAutocompletePlan } from "./dto/scheduled-plans.dto";
 import { ActionActivity } from "./entities/action-activity.entity";
 import { ActionEvent } from "./entities/action-event.entity";
 import {

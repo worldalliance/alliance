@@ -23,12 +23,12 @@ import { PosthogService } from "src/posthog/posthog.service";
 import { ProfileDto } from "src/user/dto/user.dto";
 import { AuthGuard } from "../auth/guards/auth.guard";
 import { ActionsService } from "./actions.service";
+import { ActionActivityDto } from "./dto/action-activity.dto";
 import {
-  ActionActivityDto,
   GlobalFeedItemDto,
   HomeFeedItemDto,
   TimelineFeedItemDto,
-} from "./dto/action.dto";
+} from "./dto/action-feed.dto";
 import { parseFeedPage } from "./feed-page";
 
 const GLOBAL_FEED_MEMBERS_DEFAULT_LIMIT = 30;

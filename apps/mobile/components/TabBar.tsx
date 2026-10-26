@@ -4,7 +4,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { impactAsync, ImpactFeedbackStyle } from "expo-haptics";
 import { usePathname, useRouter } from "expo-router";
 import { Bell, ListTodo, MessageSquare, Users } from "lucide-react-native";
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { Animated, Pressable, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { isPathActive } from "../lib/isPathActive";
@@ -103,19 +103,8 @@ export default function TabBar() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const taskBadgeCount = useTaskBadgeSync();
-  const {
-    unread: unreadMessages,
-    hasUpdates,
-    updateTick,
-    refreshUnreadCount,
-  } = useMessagingUnread();
+  const unreadMessages = useMessagingUnread();
   const unreadNotifications = useUnreadNotificationCount();
-
-  useEffect(() => {
-    if (hasUpdates) {
-      refreshUnreadCount();
-    }
-  }, [hasUpdates, updateTick, refreshUnreadCount]);
 
   const tabBadgeCounts: Record<TabPaths, number> = {
     "/": taskBadgeCount ?? 0,

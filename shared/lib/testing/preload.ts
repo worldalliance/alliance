@@ -37,4 +37,11 @@ afterEach(cleanup);
 // A spy left standing reaches every test file that runs after it, so it is
 // restored here rather than per file. Spy in `beforeEach`: one installed in
 // `beforeAll` or at file scope is gone after the file's first test.
-afterEach(() => jest.restoreAllMocks());
+afterEach(() => {
+  jest.restoreAllMocks();
+  if (!Reflect.deleteProperty(navigator, "clipboard")) {
+    throw new Error(
+      "navigator.clipboard was stubbed without configurable: true",
+    );
+  }
+});

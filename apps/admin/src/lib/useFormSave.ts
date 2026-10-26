@@ -6,11 +6,14 @@ import {
 import { syncSchemaListInputs } from "@alliance/common/forms/variable-scope";
 import { R, type Result } from "@alliance/common/result";
 import {
-  tasksCreateFormAdmin,
   tasksGetFormAdmin,
   tasksUpdateFormAdmin,
+  type FormDto,
 } from "@alliance/shared/client";
-import { useInvalidateFormsAdmin } from "@alliance/shared/lib/useFormsAdmin";
+import {
+  useCreateFormAdmin,
+  useInvalidateFormsAdmin,
+} from "@alliance/shared/lib/useFormsAdmin";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback, useState } from "react";
@@ -98,6 +101,7 @@ export function useFormSave({
   const [saveError, setSaveError] = useState<string | null>(null);
   const { success: showSuccessToast, error: showErrorToast } = useToast();
   const invalidateForms = useInvalidateFormsAdmin();
+  const { createForm } = useCreateFormAdmin();
 
   const { create: createValidator } = useCustomValidatorAdmin(null);
   const resolveCustomValidatorDrafts = useCallback(
@@ -180,57 +184,57 @@ export function useFormSave({
         return;
       }
 
-      let response;
+      let savedForm: FormDto;
 
       if (formId) {
-        response = await tasksUpdateFormAdmin({
+        const response = await tasksUpdateFormAdmin({
           path: { formId },
           body: {
             schema: schemaForSave as unknown as Record<string, unknown>,
             expectedFormSnapshotId: baseFormSnapshotId ?? undefined,
           },
         });
+
+        if (response.response.status === 409) {
+          const theirs = await fetchTheirs(formId);
+          if (R.isSuccess(theirs)) {
+            setConflict({
+              base: JSON.parse(lastSavedSchemaJSON) as FormSchema,
+              mine: schemaForSave,
+              ...theirs.value,
+            });
+          } else {
+            setSaveError(
+              "This form was changed by someone else. Reload to continue.",
+            );
+          }
+          showErrorToast("This form was changed by someone else");
+          return;
+        }
+
+        if (!response.response.ok || !response.data) {
+          const fallbackMessage = "Could not save form";
+          setSaveError(fallbackMessage);
+          showErrorToast(fallbackMessage);
+          return;
+        }
+        savedForm = response.data;
+        void invalidateForms();
       } else {
-        response = await tasksCreateFormAdmin({
-          body: {
-            title: newFormTitle,
-            schema: schemaForSave as unknown as Record<string, unknown>,
-          },
+        savedForm = await createForm({
+          title: newFormTitle,
+          schema: schemaForSave as unknown as Record<string, unknown>,
         });
       }
 
-      if (formId && response.response.status === 409) {
-        const theirs = await fetchTheirs(formId);
-        if (R.isSuccess(theirs)) {
-          setConflict({
-            base: JSON.parse(lastSavedSchemaJSON) as FormSchema,
-            mine: schemaForSave,
-            ...theirs.value,
-          });
-        } else {
-          setSaveError(
-            "This form was changed by someone else. Reload to continue.",
-          );
-        }
-        showErrorToast("This form was changed by someone else");
-        return;
-      }
-
-      if (response.response.ok && response.data) {
-        const { id, formSnapshotId } = response.data;
-        void invalidateForms();
-        markSaved(schemaForSave, formSnapshotId);
-        navigateToSaved(id, () => setFormId(id));
-        showSuccessToast("Form saved successfully");
-      } else {
-        const fallbackMessage = "Could not save form";
-        setSaveError(fallbackMessage);
-        showErrorToast(fallbackMessage);
-      }
+      const { id, formSnapshotId } = savedForm;
+      markSaved(schemaForSave, formSnapshotId);
+      navigateToSaved(id, () => setFormId(id));
+      showSuccessToast("Form saved successfully");
     } catch (error) {
       console.error("Failed to save form:", error);
       const errorMessage =
-        error instanceof Error ? error.message : "Failed to save form";
+        error instanceof Error ? error.message : "Could not save form";
       setSaveError(errorMessage);
       showErrorToast(errorMessage);
     } finally {
@@ -240,6 +244,7 @@ export function useFormSave({
     displayOnlySave,
     formId,
     baseFormSnapshotId,
+    createForm,
     invalidateForms,
     lastSavedSchemaJSON,
     markSaved,

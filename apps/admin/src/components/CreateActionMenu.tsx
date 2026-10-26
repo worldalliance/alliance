@@ -1,8 +1,6 @@
 import { R } from "@alliance/common/result";
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import { actionsPasteJsonAdmin } from "@alliance/shared/client";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
-import { useInvalidateActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
+import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import {
   DropdownMenuContent,
   DropdownMenuItem,
@@ -16,7 +14,7 @@ import { sessionExpiredMessage } from "../lib/sessionExpired";
 
 const CreateActionMenu = () => {
   const navigate = useNavigate();
-  const invalidateActions = useInvalidateActionsAdmin();
+  const { pasteActionJson } = useActionAdmin(null);
   const { error, success } = useToast();
   const [pasteJsonLoading, setPasteJsonLoading] = useState(false);
 
@@ -25,10 +23,7 @@ const CreateActionMenu = () => {
     const result = await R.fromPromiseFn(
       async () => {
         const json = await navigator.clipboard.readText();
-        return actionsPasteJsonAdmin({
-          body: { body: json },
-          throwOnError: true,
-        });
+        return pasteActionJson(json);
       },
       (thrown) => {
         console.error("Failed to paste action", thrown);
@@ -41,8 +36,7 @@ const CreateActionMenu = () => {
     );
     setPasteJsonLoading(false);
     if (result.ok) {
-      void invalidateActions();
-      navigate(`/actions/${result.value.data.id}`);
+      navigate(`/actions/${result.value.id}`);
       success("Action pasted successfully");
     } else {
       error(result.error);

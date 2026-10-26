@@ -1,93 +1,106 @@
 import type { CreateActionDto } from "@alliance/shared/client";
+import { makeAction } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { act, renderHook } from "@testing-library/react";
+import { renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
-import { createActionForm } from "../../lib/testing/createActionForm";
+import { testActions } from "../../lib/testData";
 import { useActionCommands } from "./useActionCommands";
 
-let getFormStatus = 200;
-let createFormStatus = 200;
+let getFormStatus: number;
+let createFormStatus: number;
+let created: CreateActionDto[];
+let errors: (string | null)[];
 
 serveApi(
   routes({
-    "GET /tasks/adminForm/:id": () =>
+    "GET /tasks/adminForm/:id": ({ params }) =>
       getFormStatus === 200
-        ? Response.json({ id: 4, title: "Survey", schema: {} })
+        ? Response.json({ id: Number(params.id), title: "Task", schema: {} })
         : Response.json(
-            { message: "Form 4 is gone" },
+            { message: "Form 3 is gone" },
             { status: getFormStatus },
           ),
     "POST /tasks/createForm": () =>
       createFormStatus === 200
-        ? Response.json({ id: 9, title: "Survey (Copy)", schema: {} })
-        : Response.json(
-            { message: "Form schema is invalid" },
-            { status: createFormStatus },
-          ),
+        ? Response.json({ id: 9, title: "Task (Copy)", formSnapshotId: 1 })
+        : Response.json({ message: "Nope" }, { status: createFormStatus }),
   }),
 );
 
 beforeEach(() => {
   getFormStatus = 200;
   createFormStatus = 200;
+  created = [];
+  errors = [];
 });
 
-const duplicate = async () => {
-  jest.spyOn(console, "error").mockImplementation(() => {});
-  const createAction = jest.fn((_form: CreateActionDto) =>
-    Promise.reject(new Error("not created in this test")),
-  );
-  const setError = jest.fn();
+const notCalled = () => Promise.reject(new Error("not called"));
+
+function renderCommands() {
   const { wrapper: QueryWrapper } = queryWrapper();
-  const { result } = renderHook(
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryWrapper>
+      <ToastProvider>
+        <MemoryRouter>{children}</MemoryRouter>
+      </ToastProvider>
+    </QueryWrapper>
+  );
+  return renderHook(
     () =>
       useActionCommands({
         admin: {
           action: null,
-          createAction,
-          removeAction: jest.fn(),
-          archiveAction: jest.fn(),
-          unarchiveAction: jest.fn(),
+          createAction: (body: CreateActionDto) => {
+            created.push(body);
+            return Promise.resolve({
+              ...makeAction({ id: 2 }),
+              staffPreview: false,
+              prerequisiteActionIds: [],
+              memberActionStart: null,
+              memberActionDeadline: null,
+              followUpForms: [],
+            });
+          },
+          removeAction: notCalled,
+          archiveAction: notCalled,
+          unarchiveAction: notCalled,
         },
         actionId: 1,
-        form: createActionForm({ taskFormId: 4 }),
+        form: { ...testActions[0], taskFormId: 3 },
         imageKey: null,
         imageUploading: false,
-        setError,
+        setError: (error) => errors.push(error),
       }),
-    {
-      wrapper: ({ children }: { children: ReactNode }) => (
-        <QueryWrapper>
-          <MemoryRouter>
-            <ToastProvider>{children}</ToastProvider>
-          </MemoryRouter>
-        </QueryWrapper>
-      ),
-    },
+    { wrapper },
   );
-  await act(() => result.current.handleDuplicate());
-  return { createAction, setError };
-};
+}
 
-it.each([
-  ["loading", () => (getFormStatus = 400), "Form 4 is gone"],
-  ["copying", () => (createFormStatus = 400), "Form schema is invalid"],
-])(
-  "says why %s the task form was refused and creates no copy",
-  async (_, refuse, message) => {
-    refuse();
-    const { createAction, setError } = await duplicate();
-    expect(setError).toHaveBeenCalledWith(message);
-    expect(createAction).not.toHaveBeenCalled();
-  },
-);
+test("duplicating an action points the copy at a clone of its task form", async () => {
+  const view = renderCommands();
+  await view.result.current.handleDuplicate();
+  expect(errors).toEqual([]);
+  expect(created).toHaveLength(1);
+  expect(created[0]).toMatchObject({
+    name: `${testActions[0].name} (Copy)`,
+    taskFormId: 9,
+  });
+});
 
-it("gives the copy its own task form", async () => {
-  const { createAction } = await duplicate();
-  expect(createAction).toHaveBeenCalledWith(
-    expect.objectContaining({ name: "Call your rep (Copy)", taskFormId: 9 }),
-  );
+test("a task form that fails to clone stops the duplicate", async () => {
+  createFormStatus = 500;
+  const view = renderCommands();
+  await view.result.current.handleDuplicate();
+  expect(created).toEqual([]);
+  expect(errors).toHaveLength(1);
+});
+
+test("a task form that fails to load stops the duplicate", async () => {
+  getFormStatus = 404;
+  const view = renderCommands();
+  await view.result.current.handleDuplicate();
+  expect(created).toEqual([]);
+  expect(errors).toEqual(["Form 3 is gone"]);
 });

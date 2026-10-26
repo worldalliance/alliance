@@ -1,21 +1,14 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { formatCityValue, parseCityValue } from "@alliance/common/forms/city";
 import type {
   AnyField,
   CityField,
   FormValue,
   ListField,
-  PhoneField,
-  TimeField,
 } from "@alliance/common/forms/form-schema";
-import { getMaxSelections } from "@alliance/common/forms/multiselect";
-import { getRangeValues } from "@alliance/common/forms/range";
-import { withCount } from "@alliance/common/plural";
 import type { UserDto } from "@alliance/shared/client";
-import {
-  resolveUploadSlot,
-  type FileUploadSlot,
-  type FileUploadSlots,
+import type {
+  FileUploadSlot,
+  FileUploadSlots,
 } from "@alliance/shared/forms/fileUploadSlots";
 import { offersNoOptions } from "@alliance/shared/forms/formulaChoices";
 import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
@@ -27,60 +20,41 @@ import {
   listCardWriters,
   resolveCards,
 } from "@alliance/shared/forms/listCards";
-import {
-  buildTimeOfDayOptions,
-  commitTimeInput,
-  formatTimeForDisplay,
-  parseTimeInput,
-} from "@alliance/shared/forms/timeUtils";
-import { useFieldOptionSections } from "@alliance/shared/forms/useFieldOptionSections";
-import {
-  cancelImageUpload,
-  noOptionsAvailable,
-} from "@alliance/shared/lib/copy";
-import { usePhoneFieldCountry } from "@alliance/shared/lib/usePhoneNumberField";
-import { CardStyle } from "@alliance/shared/styles/card";
-import { cn } from "@alliance/shared/styles/util";
+import { noOptionsAvailable } from "@alliance/shared/lib/copy";
 import type { FieldConditionContext } from "@alliance/shared/useFormRenderer";
-import UploadingWithCancel from "@alliance/sharedweb/ui/UploadingWithCancel";
-import { ChevronDown } from "lucide-react";
+import type { ReactNode } from "react";
+import { CheckboxInputField } from "./CheckboxInputField";
 import {
-  Fragment,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
-import TextareaAutosize from "react-textarea-autosize";
-import { getApiUrl } from "../lib/config";
-import { readFileDataUri } from "../lib/readFileDataUri";
-import AppMarkdownWrapper from "../ui/AppMarkdownWrapper";
-import Card from "../ui/Card";
-import CharacterLimitNotice from "../ui/CharacterLimitNotice";
-import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
-import ImageLightbox from "../ui/ImageLightbox";
-import PhoneNumberInput from "../ui/PhoneNumberInput";
-import YesNoToggle from "../ui/YesNoToggle";
+  MultiSelectInputField,
+  RadioInputField,
+  RangeInputField,
+  SelectInputField,
+} from "./ChoiceFields";
 import CityAutosuggest from "./CityAutosuggest";
-import {
-  ClearSelectionButton,
-  DropdownIcons,
-  dropdownIconsPadding,
-} from "./ClearSelection";
 import { getCustomComponentById } from "./components";
+import { ContractInputField } from "./ContractInputField";
+import {
+  fieldInputClassName,
+  RenderLabel,
+  sharedInputClasses,
+  useQuestionLabelId,
+  ValidationMessage,
+} from "./fieldParts";
+import { FileInputField } from "./FileInputField";
 import {
   ListAddButton,
   ListCard,
   ListHiddenNote,
   ListRemoveButton,
 } from "./ListCard";
-import MultiSelectDropdown from "./MultiSelectDropdown";
-import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
-import { CheckboxSection } from "./optionPicker";
+import { PhoneInputField } from "./PhoneInputField";
 import { RankingFieldInput } from "./RankingFieldInput";
-import SearchableSelect from "./SearchableSelect";
-import { textareaMinRows } from "./textareaMinRows";
+import {
+  NumberInputField,
+  SingleLineInputField,
+  TextareaInputField,
+} from "./TextFields";
+import { TimeInputField } from "./TimeInputField";
 import TimeZoneSelect from "./TimeZoneSelect";
 
 export type RenderFieldProps = {
@@ -103,58 +77,6 @@ export type RenderFieldProps = {
   hideLabel?: boolean;
 };
 
-const sharedInputClasses =
-  "w-full px-3 py-2 rounded-md focus:outline-none bg-white disabled:!bg-transparent";
-
-function useQuestionLabelId(field: AnyField): string | undefined {
-  const instanceId = useId();
-  return field.label?.trim() ? `${field.id}-${instanceId}-label` : undefined;
-}
-
-export function RenderLabel({
-  field,
-  labelId,
-  error,
-  labelRightAddon,
-  isOutputView,
-  hideLabel,
-  required,
-}: {
-  field: AnyField;
-  labelId?: string;
-  error?: string | null;
-  labelRightAddon?: ReactNode;
-  isOutputView?: boolean;
-  hideLabel?: boolean;
-  /** Effective requiredness; defaults to the field's static `required` flag. */
-  required?: boolean;
-}) {
-  if (hideLabel && !labelId) return null;
-  const hasError = Boolean(error);
-  const isRequired = required ?? !!field.required;
-  return (
-    <>
-      {!hideLabel && !isRequired && !isOutputView && <OptionalLabelPrefix />}
-      <label
-        className={cn(
-          hideLabel ? "sr-only" : "block",
-          hasError ? "text-red-600" : "text-zinc-700",
-          labelRightAddon && "flex items-start justify-between gap-3",
-        )}
-      >
-        <span id={labelId}>
-          {field.label !== null && (
-            <FormMarkdownWrapper markdownContent={field.label} inline />
-          )}
-        </span>
-        {!hideLabel && labelRightAddon ? (
-          <span className="shrink-0">{labelRightAddon}</span>
-        ) : null}
-      </label>
-    </>
-  );
-}
-
 export function RenderField({
   field,
   value,
@@ -174,49 +96,22 @@ export function RenderField({
   isPreview,
   hideLabel,
 }: RenderFieldProps) {
-  const instanceId = useId();
-  const fieldName = `${field.id}-${instanceId}`;
   const labelId = useQuestionLabelId(field);
-  const {
-    slot: uploadSlot,
-    uploading,
-    uploadError,
-  } = resolveUploadSlot({ fileUpload, fileUploadSlot, fieldId: field.id });
-  const [fileReadError, setFileReadError] = useState<string | null>(null);
-  const radioGroupRef = useRef<HTMLDivElement>(null);
-  const selectRef = useRef<HTMLSelectElement>(null);
   const required = fieldContext.isFieldRequired(field);
   const errorMessage =
     typeof error === "string" && error.trim().length > 0 ? error : null;
   const hasError = Boolean(errorMessage);
-  const { sections, randomizedOptions } = useFieldOptionSections({
-    field,
-    randomizationKey,
-    disableOptionRandomization,
-  });
 
-  const composeClassName = (
-    base: string,
-    overrides: { normal?: string; error?: string } = {},
-  ) => {
-    const normal =
-      overrides.normal ??
-      "border border-zinc-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent";
-    const errorCls =
-      overrides.error ??
-      "border border-red-500 focus:ring-2 focus:ring-red-500 focus:border-transparent";
-    return `${base} ${hasError ? errorCls : normal}`;
+  const inputProps = {
+    value,
+    onChange,
+    disabled,
+    errorMessage,
+    labelRightAddon,
+    isOutputView,
+    hideLabel,
+    required,
   };
-
-  const renderValidationMessage = () =>
-    hasError ? <p className="text-sm text-red-600">{errorMessage}</p> : null;
-  const onClear = !disabled && onChange ? () => onChange("") : undefined;
-  const clearRadios = onClear
-    ? () => {
-        onClear();
-        radioGroupRef.current?.querySelector("input")?.focus();
-      }
-    : undefined;
 
   if (onChange !== undefined && offersNoOptions(field)) {
     return (
@@ -236,631 +131,77 @@ export function RenderField({
           required={required}
           aria-invalid={hasError}
           value=""
-          className={composeClassName(sharedInputClasses)}
+          className={fieldInputClassName({
+            base: sharedInputClasses,
+            hasError,
+          })}
         >
           <option value="">{noOptionsAvailable}</option>
         </select>
-        {renderValidationMessage()}
+        <ValidationMessage message={errorMessage} />
       </div>
     );
   }
 
   switch (field.kind) {
     case "text":
-      return (
-        <div className="space-y-1">
-          <RenderLabel
-            field={field}
-            labelId={labelId}
-            error={errorMessage}
-            labelRightAddon={labelRightAddon}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <input
-            aria-labelledby={labelId}
-            type="text"
-            value={(value as string) ?? ""}
-            onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-            required={required}
-            disabled={disabled}
-            aria-invalid={hasError}
-            className={composeClassName(sharedInputClasses, {
-              normal:
-                "border border-zinc-300 focus:ring-1 focus:ring-green focus:border-transparent",
-              error:
-                "border border-red-500 focus:ring-1 focus:ring-red-500 focus:border-transparent",
-            })}
-            placeholder={field.placeholder}
-          />
-          {renderValidationMessage()}
-        </div>
-      );
+    case "email":
+    case "date":
+      return <SingleLineInputField {...inputProps} field={field} />;
 
     case "textarea":
       return (
-        <div className="space-y-1">
-          <RenderLabel
-            field={field}
-            labelId={labelId}
-            error={errorMessage}
-            labelRightAddon={labelRightAddon}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <TextareaAutosize
-            aria-labelledby={labelId}
-            minRows={textareaMinRows({
-              rows: field.rows,
-              disabled,
-              isPreview,
-            })}
-            translate="no"
-            maxLength={field.maxLength}
-            value={(value as string) ?? ""}
-            onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-            required={required}
-            disabled={disabled}
-            aria-invalid={hasError}
-            className={composeClassName(
-              sharedInputClasses + " resize-none overflow-hidden notranslate",
-            )}
-            placeholder={field.placeholder}
-          />
-          {renderValidationMessage()}
-          {field.maxLength && (
-            <CharacterLimitNotice
-              value={(value as string) ?? ""}
-              max={field.maxLength}
-              readOnly={disabled}
-            />
-          )}
-        </div>
-      );
-
-    case "email":
-      return (
-        <div className="space-y-1">
-          <RenderLabel
-            field={field}
-            labelId={labelId}
-            error={errorMessage}
-            labelRightAddon={labelRightAddon}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <input
-            aria-labelledby={labelId}
-            type="email"
-            value={(value as string) ?? ""}
-            onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-            required={required}
-            disabled={disabled}
-            aria-invalid={hasError}
-            className={composeClassName(sharedInputClasses)}
-            placeholder="example@email.com"
-          />
-          {renderValidationMessage()}
-        </div>
+        <TextareaInputField
+          {...inputProps}
+          field={field}
+          isPreview={isPreview}
+        />
       );
 
     case "phone":
+      return <PhoneInputField {...inputProps} field={field} />;
+
+    case "number":
+      return <NumberInputField {...inputProps} field={field} />;
+
+    case "range":
+      return <RangeInputField {...inputProps} field={field} />;
+
+    case "checkbox":
+      return <CheckboxInputField {...inputProps} field={field} />;
+
+    case "radio":
       return (
-        <PhoneInputField
+        <RadioInputField
+          {...inputProps}
           field={field}
-          value={value}
-          onChange={onChange}
-          disabled={disabled}
-          baseError={errorMessage}
-          labelRightAddon={labelRightAddon}
-          isOutputView={isOutputView}
-          hideLabel={hideLabel}
-          required={required}
+          randomizationKey={randomizationKey}
+          disableOptionRandomization={disableOptionRandomization}
         />
       );
 
-    case "number": {
-      const numberStep = field.allowDecimals ? "any" : (field.step ?? 1);
-      const numberDecimalPlaces = field.allowDecimals
-        ? (field.decimalPlaces ?? undefined)
-        : undefined;
+    case "select":
       return (
-        <div className="space-y-1">
-          <RenderLabel
-            field={field}
-            labelId={labelId}
-            error={errorMessage}
-            labelRightAddon={labelRightAddon}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <input
-            aria-labelledby={labelId}
-            type="number"
-            value={
-              value === undefined || value === null
-                ? ""
-                : (value as number | string)
-            }
-            onChange={
-              onChange
-                ? (e) => {
-                    if (e.target.value === "") {
-                      onChange("");
-                      return;
-                    }
-                    const parsed = parseFloat(e.target.value);
-                    if (numberDecimalPlaces !== undefined) {
-                      const factor = Math.pow(10, numberDecimalPlaces);
-                      onChange(Math.round(parsed * factor) / factor);
-                    } else {
-                      onChange(parsed);
-                    }
-                  }
-                : undefined
-            }
-            required={required}
-            disabled={disabled}
-            min={field.min}
-            max={field.max}
-            step={numberStep}
-            aria-invalid={hasError}
-            className={composeClassName(sharedInputClasses)}
-          />
-          {renderValidationMessage()}
-        </div>
-      );
-    }
-
-    case "range": {
-      const values = getRangeValues(field);
-      const numericValue =
-        typeof value === "number"
-          ? value
-          : typeof value === "string" && value.trim().length > 0
-            ? Number(value)
-            : undefined;
-      const normalizedValue = Number.isFinite(numericValue)
-        ? Number(numericValue)
-        : undefined;
-
-      return (
-        <div className={cn("relative", clearRadios && "pb-6")}>
-          <RenderLabel
-            field={field}
-            labelId={labelId}
-            error={errorMessage}
-            labelRightAddon={labelRightAddon}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <div className="flex items-center justify-between text-xs text-zinc-500 py-1">
-            <span className="text-black">{field.startLabel}</span>
-            <span className="text-black">{field.endLabel}</span>
-          </div>
-          <div
-            ref={radioGroupRef}
-            role="radiogroup"
-            aria-labelledby={labelId}
-            className="flex w-full divide-x divide-zinc-300 border-x border-zinc-300"
-          >
-            {values.map((optionValue) => {
-              const checked = normalizedValue === optionValue;
-              return (
-                <label
-                  key={optionValue}
-                  className={cn(
-                    "flex flex-col items-center text-sm font-medium flex-1",
-                    `w-[${100 / values.length}%]`,
-                    disabled
-                      ? "opacity-60 cursor-not-allowed"
-                      : "cursor-pointer",
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name={fieldName}
-                    value={optionValue}
-                    className="sr-only"
-                    checked={checked}
-                    onChange={
-                      onChange && !disabled
-                        ? () => onChange(optionValue)
-                        : undefined
-                    }
-                    disabled={disabled}
-                  />
-                  <span
-                    className={cn(
-                      "w-full rounded-none border-y px-3 py-1 text-center",
-                      checked
-                        ? "bg-green text-white border-green"
-                        : hasError
-                          ? "border-red-500 text-red-600"
-                          : "border-zinc-300 text-zinc-700",
-                    )}
-                  >
-                    {optionValue}
-                  </span>
-                </label>
-              );
-            })}
-          </div>
-          {renderValidationMessage()}
-          {clearRadios && normalizedValue !== undefined && (
-            <ClearSelectionButton
-              onClear={clearRadios}
-              className="absolute bottom-0 right-0"
-            />
-          )}
-        </div>
-      );
-    }
-
-    case "checkbox": {
-      const checkboxPosition = field.checkboxPosition ?? "left";
-      const checkboxInput = (
-        <input
-          type="checkbox"
-          checked={!!value}
-          onChange={onChange ? (e) => onChange(e.target.checked) : undefined}
-          required={required}
-          disabled={disabled}
-          aria-invalid={hasError}
-          className={composeClassName(
-            `shrink-0 mt-px h-5 w-5 cursor-pointer ${
-              checkboxPosition === "right" ? "ml-2 pr-5" : "mr-2"
-            } ${
-              hasError ? "text-red-600" : "text-blue-600"
-            } focus:outline-none rounded`,
-            {
-              normal: "border border-zinc-300 focus:ring-blue-500 focus:ring-2",
-              error: "border border-red-500 focus:ring-red-500 focus:ring-2",
-            },
-          )}
+        <SelectInputField
+          {...inputProps}
+          field={field}
+          randomizationKey={randomizationKey}
+          disableOptionRandomization={disableOptionRandomization}
         />
       );
-      const checkboxLabel = (
-        <span className={hasError ? "text-red-600" : "text-zinc-700"}>
-          {field.label !== null && (
-            <FormMarkdownWrapper markdownContent={field.label} inline />
-          )}
-        </span>
-      );
-      return (
-        <div className="space-y-1 pr-5">
-          {!required && !isOutputView && <OptionalLabelPrefix />}
-          <label className="flex items-start">
-            {checkboxPosition === "right" ? (
-              <>
-                {checkboxLabel}
-                {checkboxInput}
-              </>
-            ) : (
-              <>
-                {checkboxInput}
-                {checkboxLabel}
-              </>
-            )}
-          </label>
-          {renderValidationMessage()}
-        </div>
-      );
-    }
 
-    case "radio": {
-      const options = randomizedOptions ?? field.options;
+    case "multiselect":
       return (
-        <div className={cn("relative", clearRadios && "pb-6")}>
-          <div className="space-y-2">
-            <RenderLabel
-              field={field}
-              labelId={labelId}
-              error={errorMessage}
-              labelRightAddon={labelRightAddon}
-              isOutputView={isOutputView}
-              hideLabel={hideLabel}
-              required={required}
-            />
-            <div
-              ref={radioGroupRef}
-              role="radiogroup"
-              aria-labelledby={labelId}
-              className={cn(
-                "space-y-2",
-                hasError && "border-l-2 border-red-500 pl-3",
-              )}
-            >
-              {options.map((option, optIndex) => (
-                <label key={optIndex} className="flex items-start">
-                  <input
-                    type="radio"
-                    name={fieldName}
-                    value={option.value}
-                    checked={value === option.value}
-                    onChange={
-                      onChange ? (e) => onChange(e.target.value) : undefined
-                    }
-                    required={required}
-                    disabled={disabled}
-                    aria-invalid={hasError}
-                    className={composeClassName(
-                      `shrink-0 mt-1 mr-2 h-4 w-4 ${
-                        hasError ? "text-red-600" : "text-blue-600"
-                      } focus:outline-none`,
-                      {
-                        normal:
-                          "border border-zinc-300 focus:ring-blue-500 focus:ring-2",
-                        error:
-                          "border border-red-500 focus:ring-red-500 focus:ring-2",
-                      },
-                    )}
-                  />
-                  <span className={hasError ? "text-red-600" : "text-zinc-700"}>
-                    <FormMarkdownWrapper
-                      markdownContent={option.label}
-                      inline
-                    />
-                  </span>
-                </label>
-              ))}
-            </div>
-            {renderValidationMessage()}
-          </div>
-          {clearRadios && typeof value === "string" && value !== "" && (
-            <ClearSelectionButton
-              onClear={clearRadios}
-              className="absolute bottom-0 left-0"
-            />
-          )}
-        </div>
-      );
-    }
-
-    case "select": {
-      return (
-        <div className="space-y-1">
-          <RenderLabel
-            field={field}
-            labelId={labelId}
-            error={errorMessage}
-            labelRightAddon={labelRightAddon}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          {field.searchable ? (
-            <SearchableSelect
-              sections={sections ?? []}
-              value={typeof value === "string" ? value : undefined}
-              onChange={onChange}
-              onClear={onClear}
-              labelId={labelId}
-              required={required}
-              disabled={disabled}
-              invalid={hasError}
-              className={composeClassName(sharedInputClasses)}
-            />
-          ) : (
-            <div className="relative">
-              <select
-                ref={selectRef}
-                aria-labelledby={labelId}
-                value={(value as string) ?? ""}
-                onChange={
-                  onChange ? (e) => onChange(e.target.value) : undefined
-                }
-                aria-required={required}
-                disabled={disabled}
-                aria-invalid={hasError}
-                className={composeClassName(
-                  `${sharedInputClasses} appearance-none ${dropdownIconsPadding} has-[option.placeholder:checked]:text-zinc-400`,
-                )}
-              >
-                <option value="" className="placeholder" disabled>
-                  Select an option
-                </option>
-                {(sections ?? []).map(({ category, items }) => {
-                  const rendered = items.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ));
-                  return category ? (
-                    <optgroup key={category.id} label={category.name}>
-                      {rendered}
-                    </optgroup>
-                  ) : (
-                    <Fragment key="">{rendered}</Fragment>
-                  );
-                })}
-              </select>
-              <DropdownIcons
-                onClear={
-                  onClear && typeof value === "string" && value !== ""
-                    ? () => {
-                        onClear();
-                        selectRef.current?.focus();
-                      }
-                    : undefined
-                }
-                placeholder={!value}
-              />
-            </div>
-          )}
-          {renderValidationMessage()}
-        </div>
-      );
-    }
-
-    case "multiselect": {
-      const selections: string[] =
-        Array.isArray(value) && value.every((e) => typeof e === "string")
-          ? (value as string[])
-          : [];
-      const selectedCount = selections.length;
-      const maxSelections = getMaxSelections(field);
-      const maxReached =
-        maxSelections !== undefined && selectedCount >= maxSelections;
-
-      return (
-        <div className="space-y-2">
-          <RenderLabel
-            field={field}
-            labelId={labelId}
-            error={errorMessage}
-            labelRightAddon={labelRightAddon}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          {field.dropdown ? (
-            <MultiSelectDropdown
-              sections={sections ?? []}
-              value={selections}
-              onChange={onChange}
-              searchable={field.searchable}
-              maxReached={maxReached}
-              labelId={labelId}
-              required={required}
-              disabled={disabled}
-              invalid={hasError}
-              className={composeClassName(sharedInputClasses)}
-            />
-          ) : (
-            <div
-              role="group"
-              aria-labelledby={labelId}
-              className={cn(
-                "space-y-2",
-                hasError && "border-l-2 border-red-500 pl-3",
-              )}
-            >
-              {(sections ?? []).map(({ category, items }, sectionIndex) => (
-                <CheckboxSection
-                  key={category?.id ?? ""}
-                  category={category}
-                  headingId={`${fieldName}-category-${sectionIndex}`}
-                >
-                  {items.map((option, itemIndex) => (
-                    <label key={option.value} className="flex">
-                      <input
-                        type="checkbox"
-                        name={fieldName}
-                        checked={selections.includes(option.value)}
-                        onChange={
-                          onChange
-                            ? (e) => {
-                                const currentValues: string[] =
-                                  Array.isArray(value) &&
-                                  value.every((e) => typeof e === "string")
-                                    ? (value as string[])
-                                    : [];
-                                if (e.target.checked) {
-                                  onChange([...currentValues, option.value]);
-                                } else {
-                                  onChange(
-                                    currentValues.filter(
-                                      (v) => v !== option.value,
-                                    ),
-                                  );
-                                }
-                              }
-                            : undefined
-                        }
-                        required={
-                          required &&
-                          selectedCount === 0 &&
-                          sectionIndex === 0 &&
-                          itemIndex === 0
-                        }
-                        disabled={
-                          disabled ||
-                          (!selections.includes(option.value) && maxReached)
-                        }
-                        aria-invalid={hasError}
-                        style={{ marginTop: "4px" }}
-                        className={composeClassName(
-                          `shrink-0 mr-2 h-4 w-4 disabled:ring-1 disabled:ring-zinc-400 ${
-                            hasError ? "text-red-600" : "text-blue-600"
-                          } focus:outline-none rounded`,
-                          {
-                            normal:
-                              "border border-zinc-300 focus:ring-blue-500 focus:ring-2",
-                            error:
-                              "border border-red-500 focus:ring-red-500 focus:ring-2",
-                          },
-                        )}
-                      />
-                      <span
-                        className={hasError ? "text-red-600" : "text-zinc-700"}
-                      >
-                        <FormMarkdownWrapper
-                          markdownContent={option.label}
-                          inline
-                        />
-                      </span>
-                    </label>
-                  ))}
-                </CheckboxSection>
-              ))}
-            </div>
-          )}
-          {maxSelections !== undefined && (
-            <p className="text-xs text-gray-500">
-              Select up to {withCount(maxSelections, "option")}
-            </p>
-          )}
-          {renderValidationMessage()}
-        </div>
-      );
-    }
-
-    case "date":
-      return (
-        <div className="space-y-1">
-          <RenderLabel
-            field={field}
-            labelId={labelId}
-            error={errorMessage}
-            labelRightAddon={labelRightAddon}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <input
-            aria-labelledby={labelId}
-            type="date"
-            value={(value as string) ?? ""}
-            onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-            required={required}
-            disabled={disabled}
-            aria-invalid={hasError}
-            className={composeClassName(sharedInputClasses)}
-          />
-          {renderValidationMessage()}
-        </div>
+        <MultiSelectInputField
+          {...inputProps}
+          field={field}
+          randomizationKey={randomizationKey}
+          disableOptionRandomization={disableOptionRandomization}
+        />
       );
 
     case "time":
-      return (
-        <TimeInputField
-          field={field as TimeField}
-          value={value}
-          onChange={onChange}
-          disabled={disabled}
-          baseError={errorMessage}
-          labelRightAddon={labelRightAddon}
-          isOutputView={isOutputView}
-          hideLabel={hideLabel}
-          required={required}
-        />
-      );
+      return <TimeInputField {...inputProps} field={field} />;
 
     case "timezone": {
       return (
@@ -881,7 +222,7 @@ export function RenderField({
             disabled={disabled}
             aria-invalid={hasError}
           />
-          {renderValidationMessage()}
+          <ValidationMessage message={errorMessage} />
         </div>
       );
     }
@@ -920,98 +261,20 @@ export function RenderField({
             allowCustomValue
             onSelect={(city) => onChange?.(city)}
           />
-          {renderValidationMessage()}
+          <ValidationMessage message={errorMessage} />
         </div>
       );
     }
 
-    case "file": {
-      const fileValue = value;
-      const imageUrl =
-        typeof fileValue === "string" && fileValue
-          ? getApiUrl() + "/images/" + fileValue
-          : null;
+    case "file":
       return (
-        <div className="space-y-2">
-          <RenderLabel
-            field={field}
-            labelId={labelId}
-            error={errorMessage}
-            labelRightAddon={labelRightAddon}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          {imageUrl && (
-            <div className="mb-2">
-              <ImageLightbox
-                images={[imageUrl]}
-                renderPreview={(openLightbox) => (
-                  <button
-                    type="button"
-                    className="focus:outline-none cursor-zoom-in"
-                    onClick={(e) => openLightbox(0, e)}
-                  >
-                    <img
-                      src={imageUrl}
-                      alt="Uploaded file"
-                      className={cn(
-                        "max-w-full h-auto rounded",
-                        isOutputView ? "max-h-48" : "max-h-32",
-                      )}
-                    />
-                  </button>
-                )}
-              />
-            </div>
-          )}
-          {!(disabled && fileValue) && (
-            <div className="flex items-center space-x-2">
-              <input
-                aria-labelledby={labelId}
-                type="file"
-                accept="image/*"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  // Clear the input so re-picking the same file after a failed
-                  // read still fires a change event.
-                  e.target.value = "";
-                  if (!file || disabled || !fileUpload) return;
-                  const dataUri = await readFileDataUri(file);
-                  if (!dataUri.ok) {
-                    setFileReadError(dataUri.error.message);
-                    return;
-                  }
-                  setFileReadError(null);
-                  void fileUpload.onFileSelected(uploadSlot, dataUri.value);
-                }}
-                required={required && !fileValue}
-                disabled={disabled || uploading}
-                aria-invalid={hasError}
-                className={composeClassName(
-                  sharedInputClasses +
-                    " max-w-full flex-1 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 file:cursor-pointer disabled:opacity-50 disabled:pointer-events-none",
-                )}
-              />
-              {uploading && (
-                <UploadingWithCancel
-                  label="Uploading..."
-                  cancelLabel={cancelImageUpload}
-                  onCancel={() => fileUpload?.cancelUpload(uploadSlot)}
-                  className="text-blue-600"
-                />
-              )}
-            </div>
-          )}
-
-          {renderValidationMessage()}
-
-          {(uploadError ?? fileReadError) && (
-            <p className=" text-red-600">{uploadError ?? fileReadError}</p>
-          )}
-        </div>
+        <FileInputField
+          {...inputProps}
+          field={field}
+          fileUpload={fileUpload}
+          fileUploadSlot={fileUploadSlot}
+        />
       );
-    }
 
     case "list": {
       const listField = field as ListField;
@@ -1117,48 +380,13 @@ export function RenderField({
               <ListAddButton listField={listField} onClick={addCard} />
             )}
           </div>
-          {renderValidationMessage()}
+          <ValidationMessage message={errorMessage} />
         </div>
       );
     }
 
-    case "contract": {
-      const contract = field.contract;
-      const signedValue = typeof value === "boolean" ? value : undefined;
-      return (
-        <div className="space-y-3">
-          {contract?.markdown ? (
-            <>
-              <div className="prose prose-sm max-w-none text-zinc-800 rounded border border-zinc-200 p-4 bg-white">
-                <AppMarkdownWrapper markdownContent={contract.markdown} />
-              </div>
-              <Card
-                style={CardStyle.White}
-                className="flex flex-row gap-x-4 items-center justify-between"
-              >
-                <div>
-                  {!required && !isOutputView && <OptionalLabelPrefix />}
-                  <p className="font-medium">{field.signQuestion.trim()}</p>
-                </div>
-                <YesNoToggle
-                  value={signedValue}
-                  onChange={(next) => onChange?.(next)}
-                  disabled={disabled}
-                  yesLabel={field.yesLabel.trim()}
-                  noLabel={field.noLabel.trim()}
-                  ariaLabel={field.signQuestion.trim()}
-                />
-              </Card>
-            </>
-          ) : (
-            <p className="text-sm text-zinc-500 italic">
-              Select a contract in the form builder to preview.
-            </p>
-          )}
-          {renderValidationMessage()}
-        </div>
-      );
-    }
+    case "contract":
+      return <ContractInputField {...inputProps} field={field} />;
 
     case "custom": {
       const definition = getCustomComponentById(field.componentId);
@@ -1192,7 +420,7 @@ export function RenderField({
             isOutputView={isOutputView}
             required={required}
           />
-          {renderValidationMessage()}
+          <ValidationMessage message={errorMessage} />
         </div>
       );
     }
@@ -1217,7 +445,7 @@ export function RenderField({
             hasError={hasError}
             isOutputView={isOutputView}
           />
-          {renderValidationMessage()}
+          <ValidationMessage message={errorMessage} />
         </div>
       );
 
@@ -1227,225 +455,3 @@ export function RenderField({
 }
 
 export default RenderField;
-
-type PhoneInputFieldProps = {
-  field: PhoneField;
-  value: FormValue | undefined;
-  onChange?: (value: FormValueUpdater) => void;
-  disabled?: boolean;
-  baseError: string | null;
-  labelRightAddon?: ReactNode;
-  isOutputView?: boolean;
-  hideLabel?: boolean;
-  required?: boolean;
-};
-
-export function PhoneInputField({
-  field,
-  value,
-  onChange,
-  disabled,
-  baseError,
-  labelRightAddon,
-  isOutputView,
-  hideLabel,
-  required = !!field.required,
-}: PhoneInputFieldProps) {
-  const labelId = useQuestionLabelId(field);
-  const answer = typeof value === "string" ? value : "";
-  const [country, setCountry] = usePhoneFieldCountry(answer);
-
-  return (
-    <div className="space-y-1">
-      <RenderLabel
-        field={field}
-        labelId={labelId}
-        error={baseError}
-        labelRightAddon={labelRightAddon}
-        isOutputView={isOutputView}
-        hideLabel={hideLabel}
-        required={required}
-      />
-      <PhoneNumberInput
-        labelId={labelId}
-        name={field.id}
-        value={answer}
-        onChange={(next) => onChange?.(next)}
-        country={country}
-        onCountryChange={setCountry}
-        disabled={disabled || !onChange}
-        required={required}
-        placeholder={field.placeholder || "Enter phone number"}
-        error={baseError ?? undefined}
-      />
-    </div>
-  );
-}
-
-type TimeInputFieldProps = {
-  field: TimeField;
-  value: FormValue | undefined;
-  onChange?: (value: FormValueUpdater) => void;
-  disabled?: boolean;
-  baseError: string | null;
-  labelRightAddon?: ReactNode;
-  isOutputView?: boolean;
-  hideLabel?: boolean;
-  /** Effective requiredness; defaults to the field's static `required` flag. */
-  required?: boolean;
-};
-
-export function TimeInputField({
-  field,
-  value,
-  onChange,
-  disabled,
-  baseError,
-  labelRightAddon,
-  isOutputView,
-  hideLabel,
-  required = !!field.required,
-}: TimeInputFieldProps) {
-  const labelId = useQuestionLabelId(field);
-  const normalizedValue = typeof value === "string" && value ? value : "";
-  const [inputValue, setInputValue] = useState<string>(() =>
-    formatTimeForDisplay(normalizedValue),
-  );
-  const [localError, setLocalError] = useState<string | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (isEditing || localError) return;
-    const nextDisplay = normalizedValue
-      ? formatTimeForDisplay(normalizedValue)
-      : "";
-    setInputValue(nextDisplay);
-  }, [normalizedValue, isEditing, field.id, localError]);
-
-  // --- Handle clicking outside dropdown ---
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node) &&
-        !inputRef.current?.contains(e.target as Node)
-      ) {
-        setShowDropdown(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const commitValue = () => {
-    const { answer, error } = commitTimeInput({ raw: inputValue, required });
-    setLocalError(error);
-    if (answer === null) return;
-    onChange?.(answer);
-    if (answer) setInputValue(formatTimeForDisplay(answer));
-  };
-
-  const effectiveError = localError ?? baseError ?? null;
-  const hasError = Boolean(effectiveError);
-
-  const timeOptions = buildTimeOfDayOptions(30).map((option) => option.label);
-
-  const handleSelectTime = (time: string) => {
-    setInputValue(time);
-    setShowDropdown(false);
-    setIsEditing(false);
-    setLocalError(null);
-    const parsed = parseTimeInput(time);
-    if (parsed) onChange?.(parsed.normalized);
-  };
-
-  return (
-    <div className="space-y-1 relative">
-      <RenderLabel
-        field={field}
-        labelId={labelId}
-        error={effectiveError}
-        labelRightAddon={labelRightAddon}
-        isOutputView={isOutputView}
-        hideLabel={hideLabel}
-        required={required}
-      />
-      <div className="relative">
-        <input
-          ref={inputRef}
-          aria-labelledby={labelId}
-          type="text"
-          value={inputValue}
-          onFocus={() => {
-            setIsEditing(true);
-            setShowDropdown(true);
-          }}
-          onBlur={() => {
-            setIsEditing(false);
-            commitValue();
-          }}
-          onChange={(e) => {
-            setInputValue(e.target.value);
-            setLocalError(null);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              setIsEditing(false);
-              commitValue();
-              setShowDropdown(false);
-            }
-          }}
-          placeholder="7:30 PM"
-          required={required}
-          disabled={disabled}
-          aria-invalid={hasError}
-          className={cn(
-            "w-full px-3 py-2 rounded-md focus:outline-none bg-white disabled:bg-transparent!",
-            hasError
-              ? "border border-red-500 focus:ring-1 focus:ring-red-500 focus:border-transparent"
-              : "border border-zinc-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent",
-          )}
-          inputMode="text"
-        />
-
-        {/* ▼ Dropdown Icon */}
-        <button
-          type="button"
-          onClick={() => setShowDropdown((prev) => !prev)}
-          className="absolute right-2 sm:right-3 h-full"
-          tabIndex={-1}
-        >
-          <ChevronDown className="h-2.5 w-2.5 text-black" />
-        </button>
-
-        {/* Dropdown List */}
-        {showDropdown && (
-          <div
-            ref={dropdownRef}
-            className="absolute z-20 w-full mt-1 border border-zinc-300 rounded-md shadow-lg max-h-48 overflow-y-auto"
-          >
-            {timeOptions.map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => handleSelectTime(t)}
-                className={cn(
-                  "w-full text-left px-3 py-2 bg-white text-sm hover:bg-zinc-50",
-                  t === inputValue && "bg-zinc-50 font-medium",
-                )}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {hasError && <p className="text-sm text-red-600">{effectiveError}</p>}
-    </div>
-  );
-}

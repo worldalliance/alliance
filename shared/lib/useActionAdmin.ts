@@ -5,19 +5,21 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import {
   actionFormsCreateFollowUpFormAdmin,
   actionFormsDeleteFollowUpFormAdmin,
   actionFormsUpdateFollowUpFormAdmin,
+  actionsAddEventAdmin,
   actionsArchiveAdmin,
   actionsCreateAdmin,
   actionsFindOneAdmin,
+  actionsPasteJsonAdmin,
   actionsRemoveAdmin,
   actionsUnarchiveAdmin,
   actionsUpdateAdmin,
-  AdminActionDto,
   CreateActionDto,
+  CreateActionEventDto,
   CreateFollowUpFormDto,
   UpdateActionDto,
   UpdateFollowUpFormDto,
@@ -64,8 +66,8 @@ function withRemoved(
 
 /**
  * Single source of truth for one admin action — wraps `actionsFindOneAdmin`
- * and the action/follow-up-form mutation endpoints in react-query, sharing
- * one cache key per action that the mutations invalidate on success.
+ * and the action/event/follow-up-form mutation endpoints in react-query,
+ * sharing one cache key per action that the mutations invalidate on success.
  *
  * Pass `actionId: null` to skip fetching (e.g. the create-new page, or a
  * conditional consumer); mutations that need an id throw if used then.
@@ -74,7 +76,10 @@ function withRemoved(
  *
  * Mutations are exposed as plain async functions plus the pending facts
  * consumers need (`isSaving`, `deletingFollowUpFormIds`, …), not as raw
- * `useMutation` results — callers attach `onError` per call site.
+ * `useMutation` results — callers attach `onError` per call site. The
+ * exception is `addEvent`, which resolves with the raw response on any
+ * refusal, so callers check `error` and can read the 409 that asks staff to
+ * acknowledge moving the deadline earlier.
  */
 export function useActionAdmin(
   actionId: number | null,
@@ -116,35 +121,24 @@ export function useActionAdmin(
   const invalidateActionAndList = () =>
     Promise.all([invalidate(), invalidateList()]);
 
-  // Follow-up forms are on the all-actions list but not in the forms index.
+  // Follow-up forms and events are on the all-actions list but not in the
+  // forms index.
   const invalidateActionAndActionsList = () =>
     Promise.all([invalidate(), invalidateActionsList()]);
-
-  /**
-   * For child flows that hand back a raw AdminActionDto: validate the
-   * cohortExpression at the boundary and write the result into the query
-   * cache, so `action` is always parsed. The cache is then refetched, because
-   * a child that patches `events` leaves the server-derived phase fields
-   * (`memberActionStart`, `memberActionDeadline`) stale.
-   */
-  const setActionFromDto = useCallback(
-    (dto: AdminActionDto) => {
-      queryClient.setQueryData(
-        queryKeys.actionAdmin(dto.id),
-        parseActionDto(dto),
-      );
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.actionAdmin(dto.id),
-      });
-    },
-    [queryClient],
-  );
 
   const createActionMutation = useMutation({
     // No per-action invalidation: the new action has its own (not-yet-fetched)
     // key and callers navigate to it.
     mutationFn: (body: CreateActionDto) =>
       actionsCreateAdmin({ body, throwOnError: true }).then((r) => r.data),
+    onSuccess: invalidateList,
+  });
+
+  const pasteActionJsonMutation = useMutation({
+    mutationFn: (json: string) =>
+      actionsPasteJsonAdmin({ body: { body: json }, throwOnError: true }).then(
+        (r) => r.data,
+      ),
     onSuccess: invalidateList,
   });
 
@@ -185,6 +179,22 @@ export function useActionAdmin(
         throwOnError: true,
       }).then((r) => r.data),
     onSuccess: invalidateActionAndList,
+  });
+
+  const addEventMutation = useMutation({
+    mutationFn: ({
+      body,
+      acknowledgeDeadlineShortening,
+    }: {
+      body: CreateActionEventDto;
+      acknowledgeDeadlineShortening?: boolean;
+    }) =>
+      actionsAddEventAdmin({
+        path: { id: requireActionId() },
+        body,
+        query: { acknowledgeDeadlineShortening },
+      }),
+    onSuccess: (sent) => sent.data && invalidateActionAndActionsList(),
   });
 
   const createFollowUpFormMutation = useMutation({
@@ -250,15 +260,16 @@ export function useActionAdmin(
     isPending: query.isPending,
     isFetching: query.isFetching,
     isError: query.isError,
-    setActionFromDto,
     createAction: createActionMutation.mutateAsync,
     isCreating: createActionMutation.isPending,
+    pasteActionJson: pasteActionJsonMutation.mutateAsync,
     updateAction: updateActionMutation.mutateAsync,
     isUpdating: updateActionMutation.isPending,
     removeAction: removeActionMutation.mutateAsync,
     isRemoving: removeActionMutation.isPending,
     archiveAction: archiveActionMutation.mutateAsync,
     unarchiveAction: unarchiveActionMutation.mutateAsync,
+    addEvent: addEventMutation.mutateAsync,
     createFollowUpForm: createFollowUpFormMutation.mutateAsync,
     isCreatingFollowUpForm: createFollowUpFormMutation.isPending,
     updateFollowUpForm: updateFollowUpFormMutation.mutateAsync,

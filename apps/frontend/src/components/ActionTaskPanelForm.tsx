@@ -2,15 +2,8 @@ import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
 import { ExceptionEvent } from "@alliance/common/analytics";
 import { FormSchema } from "@alliance/common/forms/form-schema";
 import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options";
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import {
-  FormResponseDto,
-  SubmitFormDto,
-  tasksSubmitForm,
-  tasksSubmitPublicForm,
-} from "@alliance/shared/client";
+import type { FormResponseDto, SubmitFormDto } from "@alliance/shared/client";
 import { formulaSourcesChanged } from "@alliance/shared/forms/formulaChoices";
-import { useRecordActionRelation } from "@alliance/shared/lib/actionsListPage";
 import {
   formAlreadySubmitted,
   memberActionDeadlinePassed,
@@ -19,7 +12,7 @@ import {
 import { captureException } from "@alliance/shared/lib/analytics";
 import { useLinkedGuestDraft } from "@alliance/shared/lib/useLinkedGuestDraft";
 import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
-import { useInvalidateVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
+import { useTaskFormSubmission } from "@alliance/shared/lib/useTaskFormSubmission";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import FormRenderer, {
@@ -72,8 +65,7 @@ const ActionTaskPanelForm = ({
     refreshUser,
     loading: authLoading,
   } = useAuth();
-  const invalidateVisibilityContext = useInvalidateVisibilityContext();
-  const recordRelation = useRecordActionRelation();
+  const { submit } = useTaskFormSubmission();
   const {
     data: form,
     error: formError,
@@ -92,22 +84,12 @@ const ActionTaskPanelForm = ({
     ? async (data: SubmitFormDto): Promise<boolean> => {
         setError(null);
 
-        const response = isAuthenticated
-          ? await tasksSubmitForm({
-              path: { id: taskFormId },
-              body: data,
-            })
-          : await tasksSubmitPublicForm({
-              path: { id: taskFormId },
-              body: data,
-            });
+        const response = await submit({
+          taskFormId,
+          body: data,
+          isMember: isAuthenticated,
+        });
         if (response.response.ok) {
-          if (isAuthenticated) {
-            // Bumped `completedActionCount` (and `firstContractSignedAt` for a
-            // contract-signing action).
-            invalidateVisibilityContext();
-            recordRelation(actionId, "completed");
-          }
           if (response.data) {
             onSubmitted?.(response.data);
           }

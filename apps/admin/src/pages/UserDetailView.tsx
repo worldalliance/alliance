@@ -3,13 +3,10 @@ import { formatPhoneNumberForDisplay } from "@alliance/common/phone";
 import {
   notifsNotifsForUserAdmin,
   tasksGetFormsForUserSidAdmin,
-  userFriendListFriends,
 } from "@alliance/shared/client";
-import {
-  ProfileDto,
-  UserAdminDetailDto,
-} from "@alliance/shared/client/types.gen";
+import { UserAdminDetailDto } from "@alliance/shared/client/types.gen";
 import { thrownStatus } from "@alliance/shared/lib/hey-api";
+import { userFriendsQuery } from "@alliance/shared/lib/user";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -22,6 +19,7 @@ import DeleteAccountModal from "../components/DeleteAccountModal";
 import MemberGroupMoveSection from "../components/MemberGroupMoveSection";
 import UserAwayPeriodsSection from "../components/UserAwayPeriodsSection";
 import UserActionsSection from "../components/user-detail/UserActionsSection";
+import UserFriendsSection from "../components/user-detail/UserFriendsSection";
 import UserMemberInfoSection from "../components/user-detail/UserMemberInfoSection";
 import UserNotificationSettingsSection from "../components/user-detail/UserNotificationSettingsSection";
 import UserNotificationsSection from "../components/user-detail/UserNotificationsSection";
@@ -48,19 +46,18 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
   prefetchFromLoader(userDetailQuery(userId));
   prefetchFromLoader(userActionRelationsQuery(userId));
   prefetchFromLoader(tagSummariesQuery());
-  const [notifRes, formResponsesRes, friendsRes] = await Promise.all([
+  prefetchFromLoader(userFriendsQuery(userId));
+  const [notifRes, formResponsesRes] = await Promise.all([
     notifsNotifsForUserAdmin({ path: { id: userId } }),
     tasksGetFormsForUserSidAdmin({ path: { userId } }).catch(() => ({
       data: [],
     })),
-    userFriendListFriends({ path: { id: userId } }),
   ]);
 
   return {
     userId,
     notifs: notifRes.data ?? [],
     formResponses: formResponsesRes.data ?? [],
-    friends: friendsRes.data ?? [],
   };
 }
 
@@ -96,13 +93,13 @@ const UserDetail = ({
     updateRoles: { mutateAsync: updateRoles },
     suspendContract: { mutateAsync: suspendContract },
     setTagMembership: { mutateAsync: setTagMembership },
+    deleteAccount: { mutateAsync: deleteAccount },
   },
 }: {
   user: UserAdminDetailDto;
   userDetail: ReturnType<typeof useUserDetailAdmin>;
 }) => {
-  const { notifs, formResponses, friends } =
-    useLoaderData<typeof clientLoader>();
+  const { notifs, formResponses } = useLoaderData<typeof clientLoader>();
 
   const [isSuspendPending, setIsSuspendPending] = useState(false);
   const [suspendMutationError, setSuspendMutationError] = useState<
@@ -247,21 +244,7 @@ const UserDetail = ({
           {/* Groups */}
           <MemberGroupMoveSection user={user} refreshUser={refresh} />
 
-          {/* Friends */}
-          <section className="border border-zinc-200 rounded p-3">
-            <h2 className="text-sm font-semibold text-zinc-700 mb-2">
-              Friends ({friends.length})
-            </h2>
-            {friends.length ? (
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {friends.map((friend) => (
-                  <FriendRow key={friend.id} friend={friend} />
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-zinc-500">No friends yet.</p>
-            )}
-          </section>
+          <UserFriendsSection userId={user.id} />
 
           <UserRolesSection user={user} updateRoles={updateRoles} />
 
@@ -352,7 +335,7 @@ const UserDetail = ({
       </div>
       {isDeleteModalOpen && (
         <DeleteAccountModal
-          userId={user.id}
+          deleteAccount={deleteAccount}
           userName={user.name}
           userEmail={user.email}
           onCancel={() => setIsDeleteModalOpen(false)}
@@ -368,38 +351,3 @@ const UserDetail = ({
 };
 
 export default UserDetailView;
-
-function FriendRow({ friend }: { friend: ProfileDto }) {
-  return (
-    <Link
-      to={`/member/${friend.id}`}
-      className="flex items-center gap-2 rounded px-1 py-1.5 hover:bg-zinc-50"
-    >
-      <AvatarProfile pfp={friend.profilePicture} size="small" />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-zinc-800">
-          {friend.displayName}
-        </p>
-        <p className="truncate text-xs text-zinc-500">
-          {formatFriendStatus(friend)}
-        </p>
-      </div>
-    </Link>
-  );
-}
-
-function formatFriendStatus(friend: ProfileDto) {
-  const labels = [];
-  if (friend.hasActiveContract) {
-    labels.push("Signed");
-  } else {
-    labels.push("Not signed");
-  }
-  if (friend.ambassador) {
-    labels.push("Ambassador");
-  }
-  if (friend.isCommunityLeader) {
-    labels.push("Leader");
-  }
-  return labels.join(" · ");
-}

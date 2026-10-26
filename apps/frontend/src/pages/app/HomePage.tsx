@@ -222,10 +222,6 @@ const HomePage = () => {
                 key={selectedTaskNavigatorItem.followUpForm.id}
                 followUpForm={selectedTaskNavigatorItem.followUpForm}
                 actionId={selectedTaskNavigatorItem.actionId}
-                onSubmitted={() => {
-                  invalidateActions();
-                  resetHomeFeed(queryClient);
-                }}
               />
             </div>
           ) : (
@@ -245,9 +241,6 @@ const HomePage = () => {
                               key={followUpForm.id}
                               followUpForm={followUpForm}
                               actionId={actionId}
-                              onSubmitted={() => {
-                                invalidateActions();
-                              }}
                             />
                           ),
                         )}

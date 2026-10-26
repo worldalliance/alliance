@@ -7,6 +7,7 @@ import {
 } from "@alliance/shared/lib/notificationSettings";
 import { useId } from "react";
 import { useNotificationSettingsAdmin } from "../../lib/useNotificationSettingsAdmin";
+import { SectionRefreshError } from "./SectionQueryState";
 
 const SOURCE_LABEL: Record<PreferenceSource, string> = {
   member: "Set by member",
@@ -35,11 +36,7 @@ export default function UserNotificationSettingsSection({
       <h2 id={headingId} className="text-sm font-semibold text-zinc-700 mb-2">
         Notification settings
       </h2>
-      {isRefetchError && (
-        <p className="text-xs text-red-500 mb-2">
-          Could not refresh notification settings. Reload to see the latest.
-        </p>
-      )}
+      {isRefetchError && <SectionRefreshError noun="notification settings" />}
       {settings ? (
         <div className="space-y-3 text-xs">
           <dl className="grid grid-cols-2 gap-1">

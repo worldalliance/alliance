@@ -3,7 +3,7 @@ import type { ReminderGroupClickRatePointDto } from "@alliance/shared/client/typ
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useQuery } from "@tanstack/react-query";
 
-type ReminderGroupClickRatePoint = Omit<
+export type ReminderGroupClickRatePoint = Omit<
   ReminderGroupClickRatePointDto,
   "date"
 > & { date: Date };

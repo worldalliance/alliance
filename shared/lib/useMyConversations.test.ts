@@ -58,6 +58,8 @@ serveApi(
     "POST /messaging/conversations/direct": () => started(),
     "POST /messaging/conversations/group": () => started(),
     "POST /messaging/conversations/:conversationId/accept": () => accepted(),
+    "POST /messaging/conversations/:conversationId/decline": () =>
+      Response.json(older),
   }),
 );
 
@@ -262,3 +264,20 @@ it("lists an accepted request as the server returns it", async () => {
 
   await waitFor(() => expect(result.current.conversations).toEqual([older]));
 });
+
+it.each(["leave", "declineInvite"] as const)(
+  "refreshes the unread messages count after the viewer's %s, which the socket doesn't announce to them",
+  async (write) => {
+    const query = queryWrapper();
+    const { result } = renderHook(useMyConversations, query);
+    await waitFor(() => expect(query.client.isFetching()).toBe(0));
+    query.client.setQueryData(queryKeys.conversationUnreadSummary(), 3);
+
+    await act(() => result.current[write](older.id));
+
+    expect(
+      query.client.getQueryState(queryKeys.conversationUnreadSummary())
+        ?.isInvalidated,
+    ).toBe(true);
+  },
+);

@@ -5,15 +5,8 @@ import {
 import { ExceptionEvent } from "@alliance/common/analytics";
 import { FormSchema } from "@alliance/common/forms/form-schema";
 import { GUEST_HEADER } from "@alliance/common/guest";
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import {
-  FormResponseDto,
-  SubmitFormDto,
-  tasksSubmitForm,
-  tasksSubmitPublicForm,
-} from "@alliance/shared/client";
+import type { FormResponseDto, SubmitFormDto } from "@alliance/shared/client";
 import { useFormulaSourcesRefetch } from "@alliance/shared/forms/useFormulaSourcesRefetch";
-import { useRecordActionRelation } from "@alliance/shared/lib/actionsListPage";
 import {
   formAlreadySubmitted,
   memberActionDeadlinePassed,
@@ -21,7 +14,7 @@ import {
 } from "@alliance/shared/lib/actionTaskPanel";
 import { captureException } from "@alliance/shared/lib/analytics";
 import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
-import { useInvalidateVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
+import { useTaskFormSubmission } from "@alliance/shared/lib/useTaskFormSubmission";
 import { useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { useAuth } from "../lib/AuthContext";
@@ -64,8 +57,7 @@ const ActionTaskPanelForm = ({
   const [error, setError] = useState<string | null>(null);
   const { reload: historiesReload, refetchIfSourcesChanged } =
     useFormulaSourcesRefetch(setError);
-  const invalidateVisibilityContext = useInvalidateVisibilityContext();
-  const recordRelation = useRecordActionRelation();
+  const { submit } = useTaskFormSubmission();
 
   const {
     data: form,
@@ -80,27 +72,14 @@ const ActionTaskPanelForm = ({
         const storedGuestToken = isAuthenticated
           ? null
           : await getStoredGuestToken();
-        const response = isAuthenticated
-          ? await tasksSubmitForm({
-              path: { id: taskFormId },
-              body: data,
-              throwOnError: false,
-            })
-          : await tasksSubmitPublicForm({
-              path: { id: taskFormId },
-              body: data,
-              headers: storedGuestToken
-                ? { [GUEST_HEADER]: storedGuestToken }
-                : undefined,
-              throwOnError: false,
-            });
+        const response = await submit({
+          taskFormId,
+          body: data,
+          isMember: isAuthenticated,
+          guestToken: storedGuestToken,
+        });
         if (response.response.ok) {
-          if (isAuthenticated) {
-            // Bumped `completedActionCount` (and `firstContractSignedAt` for a
-            // contract-signing action).
-            invalidateVisibilityContext();
-            recordRelation(actionId, "completed");
-          } else {
+          if (!isAuthenticated) {
             const issuedGuestToken =
               response.response.headers.get(GUEST_HEADER);
             if (issuedGuestToken && issuedGuestToken !== storedGuestToken) {

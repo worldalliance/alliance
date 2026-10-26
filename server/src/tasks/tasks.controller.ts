@@ -17,7 +17,10 @@ import {
 } from "@nestjs/common";
 import { ApiOkResponse, ApiResponse } from "@nestjs/swagger";
 import type { Request as ExpressRequest, Response } from "express";
-import { ActionActivityDto, OptOutActionDto } from "src/actions/dto/action.dto";
+import {
+  ActionActivityDto,
+  OptOutActionDto,
+} from "src/actions/dto/action-activity.dto";
 import { AuthService } from "src/auth/auth.service";
 import { AdminGuard } from "src/auth/guards/admin.guard";
 import { AuthGuard } from "src/auth/guards/auth.guard";

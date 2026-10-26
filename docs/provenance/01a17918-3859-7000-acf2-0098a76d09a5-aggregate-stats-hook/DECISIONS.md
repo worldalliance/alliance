@@ -1,0 +1,3 @@
+- The aggregate stats card is picked over the other stats cards still under a TODO lint disable (missed actions, member reliability, time to churn, cohort retention) because it is the smallest, and its sibling cards already load through one-endpoint hooks in `apps/admin/src/lib` (`useReminderGroupClickRatesAdmin`, `useDailyStatsAdmin`). The others are left for later.
+- `useAggregateStatsAdmin` lives in `apps/admin/src/lib` beside those siblings, under `queryKeys.aggregateStatsAdmin()`. Nothing writes the stats, so the hook has only the read.
+- A failed load now shows "Unable to load aggregate stats." (or the session-expired message, through `adminRefusalMessage`) where the card used to render nothing and log to the console, per the root `AGENTS.md` rule to fail loudly.

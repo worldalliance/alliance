@@ -3,14 +3,12 @@ import {
   MEMBER_ACTION_DEADLINE_PASSED,
 } from "@alliance/common/actionActivity";
 import { act, renderHook } from "@testing-library/react";
-import type { ActionDto } from "../client";
 import {
   type ActionWithdrawal,
   formAlreadySubmitted,
   memberActionDeadlinePassed,
   useTaskFormHandlers,
 } from "./actionTaskPanel";
-import { queryKeys } from "./queryKeys";
 import { makeAction } from "./testFixtures";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
@@ -67,47 +65,37 @@ describe("useTaskFormHandlers", () => {
     api.alsoServing({
       "POST /tasks/optout/:id": () => new Response("{}", { status }),
     });
-    const { client, wrapper } = queryWrapper();
-    const action = makeAction({ id: 1, taskFormId: 7 });
-    client.setQueryData(queryKeys.actions(), [action]);
-    client.setQueryData(queryKeys.myVisibilityContext(), {});
+    const { wrapper } = queryWrapper();
     const onOptOutAction = jest.fn();
     const view = renderHook(
       () =>
         useTaskFormHandlers({
-          action,
+          action: makeAction({ id: 1, taskFormId: 7 }),
           onCompleteAction: () => {},
           onOptOutAction,
         }),
       { wrapper },
     );
-    const cachedRelation = () =>
-      client.getQueryData<ActionDto[]>(queryKeys.actions())?.[0].viewer
-        ?.relation;
-    const visibilityInvalidated = () =>
-      client.getQueryState(queryKeys.myVisibilityContext())?.isInvalidated;
-    return { view, onOptOutAction, cachedRelation, visibilityInvalidated };
+    return { view, onOptOutAction };
   };
 
-  it("marks the cached action withdrawn once the server confirms", async () => {
-    const { view, onOptOutAction, cachedRelation, visibilityInvalidated } =
-      renderHandlers(201);
+  it("reports the withdrawal once the server confirms", async () => {
+    const { view, onOptOutAction } = renderHandlers(201);
 
     await act(() => view.result.current.handleAbandonAction(withdrawal));
 
-    expect(cachedRelation()).toBe("withdrawn");
     expect(onOptOutAction).toHaveBeenCalled();
-    expect(visibilityInvalidated()).toBe(true);
+    expect(view.result.current.actionError).toBeNull();
   });
 
-  it("leaves the cached action alone when the withdrawal fails", async () => {
-    const { view, onOptOutAction, cachedRelation, visibilityInvalidated } =
-      renderHandlers(500);
+  it("shows an error instead when the withdrawal fails", async () => {
+    const { view, onOptOutAction } = renderHandlers(500);
 
     await act(() => view.result.current.handleAbandonAction(withdrawal));
 
-    expect(cachedRelation()).toBe("none");
     expect(onOptOutAction).not.toHaveBeenCalled();
-    expect(visibilityInvalidated()).toBe(false);
+    expect(view.result.current.actionError).toBe(
+      "Something went wrong. Please try again.",
+    );
   });
 });

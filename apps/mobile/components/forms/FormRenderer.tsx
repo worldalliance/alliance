@@ -1,59 +1,18 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import {
-  canSubmitWithdrawal,
-  WITHDRAWAL_OPTION_LABELS,
-  WITHDRAWAL_OPTIONS,
-  withdrawalFlagsFromOption,
-  type WithdrawalOption,
-} from "@alliance/common/actionActivity";
-import { type DeviceVisibilityTarget } from "@alliance/common/forms/device";
-import {
-  CHAT_TRANSCRIPT_SIZE_UNIT_PX,
-  groupChatTranscriptMessages,
-  type AccordionBlock,
-  type ChatTranscriptMessage,
-  type DisplayBlock,
-  type ImagesItem,
-} from "@alliance/common/forms/display-blocks";
-import {
-  isQuestionField,
-  type AnyField,
-  type FormSchema,
-  type FormValue,
-} from "@alliance/common/forms/form-schema";
+import { type FormSchema } from "@alliance/common/forms/form-schema";
 import { withResolvedOptions } from "@alliance/common/forms/formula-options";
-import {
-  interpolateDisplayBlock,
-  interpolateFieldText,
-} from "@alliance/common/forms/variable-interpolation";
+import { interpolateFieldText } from "@alliance/common/forms/variable-interpolation";
 import {
   FormResponseDto,
   SubmitFormDto,
   type UserDto,
 } from "@alliance/shared/client";
-import {
-  computeActiveUserKey,
-  formatUserLocationDisplayValue,
-  resolveDisplayBlockForUser,
-  type UserLocationDisplayValue,
-} from "@alliance/shared/formrenderer";
+import { computeActiveUserKey } from "@alliance/shared/formrenderer";
 import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
-import {
-  applyDefaultValues,
-  computeFormStorageKey,
-  filterAnswersByFieldIds,
-  restorableAnswers,
-  restorablePublicAnswers,
-} from "@alliance/shared/forms/formDrafts";
-import {
-  completedFormSchema,
-  formulaSourcesFor,
-} from "@alliance/shared/forms/formulaChoices";
+import { completedFormSchema } from "@alliance/shared/forms/formulaChoices";
 import {
   resolveFormValue,
   type SetFieldValue,
 } from "@alliance/shared/forms/formValueUpdater";
-import { stripCardIds } from "@alliance/shared/forms/listCards";
 import {
   aggregateTarget,
   useVariableAggregates,
@@ -64,20 +23,12 @@ import {
 } from "@alliance/shared/forms/useVariableSourceHistories";
 import { variableInputsGate } from "@alliance/shared/forms/variableInputsGate";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
-import {
-  cancelAllImageUploads,
-  draftSaveFailed,
-  outputFieldPublicToggle,
-  waitingForImageUpload,
-} from "@alliance/shared/lib/copy";
 import { formTimeZoneDefault } from "@alliance/shared/lib/timeZone";
 import { useImageUpload } from "@alliance/shared/lib/useImageUpload";
 import { useVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
-import { cn } from "@alliance/shared/styles/util";
 import {
   useCurrentUserLocation,
   useFieldErrors,
-  useFormDraftSync,
   useFormSchemaMaps,
   useFormValidation,
   useFormVisibility,
@@ -85,38 +36,21 @@ import {
   useRandomizationKey,
   useVisibilityValidatorResults,
 } from "@alliance/shared/useFormRenderer";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { DeviceType, deviceType as expoDeviceType } from "expo-device";
-import { router } from "expo-router";
-import { ChevronDown, CircleCheck, Ellipsis, X } from "lucide-react-native";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Image,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { resolveImageSource } from "../../lib/config";
-import { getImageLoadSize } from "../../lib/imageLoadSize";
+import { useMemo, useState } from "react";
+import { ActivityIndicator, View } from "react-native";
 import { colors } from "../../lib/style/colors";
 import { getDeviceTimeZone } from "../../lib/timeZone";
-import AppMarkdownWrapper from "../AppMarkdownWrapper";
-import { ImageGalleryModal } from "../ImageLightbox";
-import { MARKDOWN_HUG_WIDTH_STYLE, MarkdownTone } from "../markdownStyles";
-import ProfileImage from "../ProfileImage";
-import Button, { ButtonColor, ButtonSize } from "../system/Button";
-import Checkbox from "../system/Checkbox";
 import Text, { FontWeight } from "../system/Text";
-import BigLinkDisplay from "./BigLinkDisplay";
-import CopyTextDisplay from "./CopyTextDisplay";
-import FormModal from "./FormModal";
-import HtmlBlock from "./HtmlBlock";
+import { DEVICE_TYPE } from "./deviceType";
+import { FormNavigation, ReadOnlyPageNavigation } from "./FormNavigation";
+import FormPage from "./FormPage";
+import OutputPublicToggle from "./OutputPublicToggle";
+import { pageNavigation } from "./pageNavigation";
 import { RenderField } from "./RenderField";
-import RenderPreviousAnswer from "./RenderPreviousAnswer";
+import { useFormDraftState } from "./useFormDraftState";
+import { useFormSubmission } from "./useFormSubmission";
 import { variableInputsGateView } from "./variableInputsGateView";
-import VideoPlayer from "./VideoPlayer";
+import WithdrawalModal from "./WithdrawalModal";
 
 type FormRendererProps = {
   form: FormSchema;
@@ -151,418 +85,6 @@ type FormRendererProps = {
   scrollToEnd: (animated?: boolean) => void;
 };
 
-const detectDeviceType = (): DeviceVisibilityTarget => {
-  if (expoDeviceType === null) return "mobile";
-  switch (expoDeviceType) {
-    case DeviceType.PHONE:
-      return "mobile";
-    case DeviceType.TABLET:
-      return "tablet";
-    case DeviceType.DESKTOP:
-      return "desktop";
-    case DeviceType.UNKNOWN:
-    case DeviceType.TV:
-      return "mobile";
-    default:
-      throw new Error(`unknown device type: ${expoDeviceType satisfies never}`);
-  }
-};
-
-const DEVICE_TYPE: DeviceVisibilityTarget = detectDeviceType();
-
-const CHAT_BUBBLE_TONE: Record<ChatTranscriptMessage["side"], MarkdownTone> = {
-  left: MarkdownTone.Default,
-  right: MarkdownTone.Inverted,
-};
-
-type RenderDisplayBlockMobileProps = {
-  block: DisplayBlock;
-  previousAnswerData?: Record<number, Record<string, unknown>>;
-  previousAnswerSchemas?: Record<number, FormSchema>;
-  /** Used for video spacing: margin only when another visible block/field is above on the page */
-  hasRenderedNeighborAbove?: boolean;
-  hasRenderedNeighborBelow?: boolean;
-  user?: Omit<UserDto, "email">;
-  userLocation?: UserLocationDisplayValue;
-  userLocationLoading?: boolean;
-};
-
-function ImageSlide({
-  image,
-  resolvedSrc,
-  width,
-  aspectRatio,
-  onPress,
-  onMeasure,
-}: {
-  image: ImagesItem;
-  resolvedSrc: string;
-  width: number | null;
-  aspectRatio: number | null;
-  onPress: () => void;
-  onMeasure: (ratio: number) => void;
-}) {
-  const widthStyle = width === null ? {} : { width };
-  const fullWidthClass = width === null && "w-full";
-
-  return (
-    <View style={widthStyle} className="items-center">
-      <TouchableOpacity
-        onPress={onPress}
-        activeOpacity={0.9}
-        style={widthStyle}
-        className={cn(fullWidthClass)}
-      >
-        <Image
-          source={{ uri: resolvedSrc }}
-          accessibilityLabel={image.alt}
-          onLoad={(event) => {
-            const size = getImageLoadSize(event);
-            if (size) onMeasure(size.width / size.height);
-          }}
-          className={cn("bg-zinc-200 rounded-lg", fullWidthClass)}
-          style={{
-            ...widthStyle,
-            ...(aspectRatio ? { aspectRatio } : { height: 192 }),
-          }}
-          resizeMode="contain"
-        />
-      </TouchableOpacity>
-      {image.caption ? (
-        <Text className="text-sm text-zinc-600 mt-2 text-center">
-          {image.caption}
-        </Text>
-      ) : null}
-    </View>
-  );
-}
-
-function ImagesDisplay({ images }: { images: ImagesItem[] }) {
-  const sources = images.map((image) => resolveImageSource(image.src));
-  const [width, setWidth] = useState(0);
-  const [index, setIndex] = useState(0);
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  // Keyed by slide rather than indexed into an array, because images finish
-  // loading out of order and a sparse array would put holes in the `Math.min`.
-  const [measuredAspectRatios, setMeasuredAspectRatios] = useState<
-    Record<number, number>
-  >({});
-
-  // One height for every slide, taken from the tallest image loaded so far, so
-  // swiping doesn't resize the block under the reader's finger. `contain`
-  // letterboxes the wider ones rather than cropping them.
-  const measured = Object.values(measuredAspectRatios);
-  const aspectRatio = measured.length ? Math.min(...measured) : null;
-
-  const measureSlide = (slide: number) => (ratio: number) =>
-    setMeasuredAspectRatios((current) => ({ ...current, [slide]: ratio }));
-
-  const lightbox = (
-    <ImageGalleryModal
-      uris={sources}
-      index={lightboxIndex}
-      onClose={() => setLightboxIndex(null)}
-    />
-  );
-
-  if (images.length === 1) {
-    return (
-      <View>
-        <ImageSlide
-          image={images[0]}
-          resolvedSrc={sources[0]}
-          width={null}
-          aspectRatio={aspectRatio}
-          onPress={() => setLightboxIndex(0)}
-          onMeasure={measureSlide(0)}
-        />
-        {lightbox}
-      </View>
-    );
-  }
-
-  return (
-    <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
-      <ScrollView
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        scrollEventThrottle={16}
-        onScroll={(event) =>
-          setIndex(
-            width ? Math.round(event.nativeEvent.contentOffset.x / width) : 0,
-          )
-        }
-      >
-        {images.map((image, slide) => (
-          <ImageSlide
-            key={slide}
-            image={image}
-            resolvedSrc={sources[slide]}
-            width={width}
-            aspectRatio={aspectRatio}
-            onPress={() => setLightboxIndex(slide)}
-            onMeasure={measureSlide(slide)}
-          />
-        ))}
-      </ScrollView>
-
-      <View className="flex-row justify-center gap-1.5 mt-2">
-        {images.map((_, dot) => (
-          <View
-            key={dot}
-            className={cn(
-              "h-2 w-2 rounded-full",
-              dot === index ? "bg-zinc-700" : "bg-zinc-300",
-            )}
-          />
-        ))}
-      </View>
-
-      {lightbox}
-    </View>
-  );
-}
-
-function AccordionDisplayMobile({ block }: { block: AccordionBlock }) {
-  const [openIndices, setOpenIndices] = useState<number[]>([]);
-
-  const toggle = (index: number) => {
-    setOpenIndices((open) => {
-      if (open.includes(index)) return open.filter((i) => i !== index);
-      return block.singleOpen ? [index] : [...open, index];
-    });
-  };
-
-  return (
-    <View className="border-t border-zinc-200">
-      {block.sections.map((section, index) => {
-        const isOpen = openIndices.includes(index);
-        return (
-          <View key={section.id ?? index} className="border-b border-zinc-200">
-            <TouchableOpacity
-              onPress={() => toggle(index)}
-              accessibilityRole="button"
-              accessibilityState={{ expanded: isOpen }}
-              className="flex-row items-center justify-between gap-3 py-3"
-            >
-              <Text className="flex-1 text-zinc-900" weight={FontWeight.Medium}>
-                {section.title}
-              </Text>
-              <ChevronDown
-                size={18}
-                color={colors.text.icon}
-                style={{ transform: [{ rotate: isOpen ? "180deg" : "0deg" }] }}
-              />
-            </TouchableOpacity>
-            {isOpen && (
-              <View className="gap-3 pb-4">
-                {section.blocks.map((nested, nestedIndex) => (
-                  <RenderDisplayBlockMobile
-                    key={nested.id ?? nestedIndex}
-                    block={nested}
-                  />
-                ))}
-              </View>
-            )}
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
-export function RenderDisplayBlockMobile({
-  block,
-  previousAnswerData,
-  previousAnswerSchemas,
-  hasRenderedNeighborAbove = false,
-  hasRenderedNeighborBelow = false,
-  user,
-  userLocation,
-  userLocationLoading = false,
-}: RenderDisplayBlockMobileProps) {
-  switch (block.kind) {
-    case "header":
-      const headerClass = {
-        1: "text-3xl",
-        2: "text-2xl",
-        3: "text-xl",
-        4: "text-lg",
-        5: "text-base",
-        6: "text-base",
-        none: "text-base",
-      }[block.level ?? "none"];
-      return (
-        <Text
-          className={cn("text-zinc-900 my-2", headerClass)}
-          weight={FontWeight.Semibold}
-          selectable
-        >
-          {block.text}
-        </Text>
-      );
-    case "text":
-      return <AppMarkdownWrapper>{block.text}</AppMarkdownWrapper>;
-    case "label":
-      return (
-        <Text className="text-sm text-zinc-500" weight={FontWeight.Semibold}>
-          {block.text}
-        </Text>
-      );
-    case "divider":
-      return <View className="h-px bg-zinc-200" />;
-    case "spacer": {
-      const sizes: Record<NonNullable<typeof block.size>, string> = {
-        xs: "h-2",
-        sm: "h-4",
-        md: "h-8",
-        lg: "h-12",
-        xl: "h-16",
-      };
-      return <View className={sizes[block.size ?? "md"]} />;
-    }
-    case "quote":
-      return (
-        <View className="bg-zinc-100 p-4 rounded-lg gap-3">
-          {block.userId != null ? (
-            <View className="flex-row items-center gap-2">
-              <ProfileImage
-                pfp={block.userProfilePicture ?? null}
-                size="medium"
-              />
-              <Text className="text-zinc-900" weight={FontWeight.Medium}>
-                {block.userName ?? `User #${block.userId}`}
-              </Text>
-            </View>
-          ) : null}
-          <AppMarkdownWrapper>{block.text}</AppMarkdownWrapper>
-        </View>
-      );
-    case "html":
-      return <HtmlBlock html={block.html} />;
-    case "images":
-      if (block.images.length === 0) return null;
-      return <ImagesDisplay images={block.images} />;
-    case "biglink":
-      return <BigLinkDisplay block={block} />;
-    case "copytext":
-      return <CopyTextDisplay block={block} />;
-    case "accordion":
-      if (block.sections.length === 0) return null;
-      return <AccordionDisplayMobile block={block} />;
-    case "userLocation": {
-      const locationText = formatUserLocationDisplayValue(userLocation);
-      const displayText =
-        locationText ||
-        (userLocationLoading ? "Loading location..." : null) ||
-        block.emptyText ||
-        "No location set";
-      const hasLocation = locationText.length > 0;
-      const title = block.title?.trim();
-      return (
-        <View>
-          {title ? (
-            <Text className="text-sm text-zinc-500 mb-1">{title}</Text>
-          ) : null}
-          <View className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-3">
-            <Text className={hasLocation ? "text-zinc-900" : "text-zinc-500"}>
-              {displayText}
-            </Text>
-          </View>
-        </View>
-      );
-    }
-    case "video": {
-      return (
-        <View
-          className={cn(
-            hasRenderedNeighborAbove && "mt-4",
-            hasRenderedNeighborBelow && "mb-4",
-          )}
-        >
-          <VideoPlayer
-            src={block.src}
-            videoId={block.videoId}
-            caption={block.caption}
-          />
-        </View>
-      );
-    }
-    case "chatTranscript": {
-      const transcript = groupChatTranscriptMessages(block.messages).map(
-        (group, gi) => {
-          const name = group.side === "left" ? block.leftName : block.rightName;
-          return (
-            <View
-              key={gi}
-              className={cn(
-                "gap-1",
-                group.side === "right" ? "items-end" : "items-start",
-              )}
-            >
-              {name?.trim() ? (
-                <Text className="px-2 text-xs text-zinc-500">{name}</Text>
-              ) : null}
-              {group.texts.map((text, mi) => (
-                <View
-                  key={mi}
-                  className={cn(
-                    "max-w-[75%] rounded-2xl px-3.5 py-2",
-                    group.side === "right" ? "bg-green" : "bg-zinc-200",
-                    mi === group.texts.length - 1 &&
-                      (group.side === "right"
-                        ? "rounded-br-sm"
-                        : "rounded-bl-sm"),
-                  )}
-                >
-                  <AppMarkdownWrapper
-                    style={MARKDOWN_HUG_WIDTH_STYLE}
-                    tone={CHAT_BUBBLE_TONE[group.side]}
-                  >
-                    {text}
-                  </AppMarkdownWrapper>
-                </View>
-              ))}
-            </View>
-          );
-        },
-      );
-      return (
-        <View className="rounded-lg border border-zinc-200 bg-white p-4">
-          {block.size ? (
-            <ScrollView
-              style={{ maxHeight: block.size * CHAT_TRANSCRIPT_SIZE_UNIT_PX }}
-              nestedScrollEnabled
-              persistentScrollbar
-              contentContainerStyle={{ gap: 12 }}
-            >
-              {transcript}
-            </ScrollView>
-          ) : (
-            <View className="gap-3">{transcript}</View>
-          )}
-        </View>
-      );
-    }
-    case "previousAnswer": {
-      const answers = previousAnswerData?.[block.sourceFormId];
-      const schema = previousAnswerSchemas?.[block.sourceFormId];
-      return (
-        <RenderPreviousAnswer
-          block={block}
-          schema={schema}
-          answers={answers}
-          user={user}
-        />
-      );
-    }
-    default:
-      block satisfies never;
-      return null;
-  }
-}
-
 const FormRenderer = ({
   form,
   id,
@@ -592,15 +114,6 @@ const FormRenderer = ({
     () =>
       completedFormSchema(form, readOnly ? completedFormResponse : undefined),
     [form, readOnly, completedFormResponse],
-  );
-
-  const storageKey = useMemo(
-    () =>
-      computeFormStorageKey({
-        formId: id,
-        instanceId: persistKey ?? undefined,
-      }),
-    [id, persistKey],
   );
 
   const activeUserKey = useMemo(
@@ -647,41 +160,6 @@ const FormRenderer = ({
     target: aggregateTarget({ admin: false, formId: id, formSnapshotId }),
   });
 
-  const clampPageIndex = (idx: number): number => {
-    if (!Number.isFinite(idx)) return 0;
-    const normalized = Math.floor(idx);
-    if (normalized < 0) return 0;
-    if (normalized > maxPageIndex) return maxPageIndex;
-    return normalized;
-  };
-
-  const [currentPageIndex, setCurrentPageIndex] = useState<number>(() =>
-    clampPageIndex(initialPageIndex ?? 0),
-  );
-  const [formData, setFormData] = useState<Record<string, FormValue>>(() => {
-    if (readOnly) {
-      const answers =
-        (completedFormResponse?.answers as Record<string, FormValue>) || {};
-      return filterAnswersByFieldIds(answers, fieldLookup);
-    }
-    return applyDefaultValues({}, defaultValueMap);
-  });
-  const [publicAnswers, setPublicAnswers] = useState<Record<string, boolean>>(
-    () => {
-      const completedPublicAnswers = completedFormResponse?.publicAnswers as
-        | Record<string, unknown>
-        | undefined;
-      const defaults: Record<string, boolean> = {};
-      for (const [fieldId, defaultIsPublic] of outputFieldDefaultPublic) {
-        const completedValue = completedPublicAnswers?.[fieldId];
-        defaults[fieldId] =
-          typeof completedValue === "boolean"
-            ? completedValue
-            : defaultIsPublic;
-      }
-      return defaults;
-    },
-  );
   const {
     results: visibilityValidatorResults,
     failed: visibilityValidatorsFailed,
@@ -692,11 +170,7 @@ const FormRenderer = ({
     signedIn: !!user,
   });
   const { fieldErrors, applyFieldErrorUpdates } = useFieldErrors();
-  const [submitting, setSubmitting] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
-  const [withdrawalOption, setWithdrawalOption] =
-    useState<WithdrawalOption | null>(null);
-  const [customReason, setCustomReason] = useState("");
   const [hasEmittedStart, setHasEmittedStart] = useState(false);
   const { currentUserLocationLoading, userLocationDisplayValue } =
     useCurrentUserLocation({
@@ -715,176 +189,33 @@ const FormRenderer = ({
     enabled: !!user,
   });
 
-  // Draft persistence: tracks whether we've loaded a stored draft so the save
-  // effect doesn't overwrite stored data with initial defaults.
-  const draftLoaded = useRef(false);
-  // The stored-draft apply below waits on `localDraftRead`, because a device
-  // that has never synced and one whose read hasn't finished both read null.
-  const [localDraftRead, setLocalDraftRead] = useState(false);
-  const [syncedUpdatedAt, setSyncedUpdatedAt] = useState<string | null>(null);
-
-  // Restore draft from AsyncStorage on mount
-  useEffect(() => {
-    if (readOnly || !persistKey) {
-      draftLoaded.current = true;
-      setLocalDraftRead(true);
-      return;
-    }
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(storageKey);
-        if (cancelled || !raw) {
-          draftLoaded.current = true;
-          setLocalDraftRead(true);
-          return;
-        }
-        const parsed = JSON.parse(raw);
-        if (typeof parsed?.syncedUpdatedAt === "string") {
-          setSyncedUpdatedAt(parsed.syncedUpdatedAt);
-        }
-        if (parsed?.formData && typeof parsed.formData === "object") {
-          const filtered = restorableAnswers(
-            parsed.formData as Record<string, FormValue>,
-            fieldLookup,
-          );
-          setFormData(applyDefaultValues(filtered, defaultValueMap));
-        }
-        if (parsed?.publicAnswers && typeof parsed.publicAnswers === "object") {
-          const overrides = restorablePublicAnswers(
-            parsed.publicAnswers as Record<string, unknown>,
-            outputFieldIds,
-          );
-          if (Object.keys(overrides).length > 0) {
-            setPublicAnswers((prev) => ({ ...prev, ...overrides }));
-          }
-        }
-        if (typeof parsed?.currentPageIndex === "number") {
-          setCurrentPageIndex(clampPageIndex(parsed.currentPageIndex));
-        }
-      } catch {
-        // Corrupt or missing draft — ignore.
-      }
-      draftLoaded.current = true;
-      setLocalDraftRead(true);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-    // Only run once on mount for a given storageKey
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storageKey]);
-
-  const draftSyncEnabled =
-    !!syncDraftToServer && !readOnly && !!persistKey && formSnapshotId !== null;
-
-  const { serverDraft, saveFailed, pauseSyncing, resumeSyncing } =
-    useFormDraftSync({
-      enabled: draftSyncEnabled,
-      formId: id,
-      actionId,
-      formSnapshotId,
-      answers: formData,
-      publicAnswers,
-      currentPageIndex,
-      edited: hasEmittedStart,
-      onSaved: setSyncedUpdatedAt,
-    });
-
-  useEffect(() => {
-    if (!draftSyncEnabled || hasEmittedStart || !serverDraft) return;
-    if (!localDraftRead) return;
-    // Equal means the stored draft is this device's own last save. Both sides
-    // are server-issued, so nothing here depends on the device's clock.
-    if (serverDraft.updatedAt === syncedUpdatedAt) {
-      return;
-    }
-    const answers = restorableAnswers(
-      serverDraft.answers as Record<string, FormValue>,
-      fieldLookup,
-    );
-    setFormData((prev) =>
-      applyDefaultValues({ ...prev, ...answers }, defaultValueMap),
-    );
-    setPublicAnswers((prev) => ({
-      ...prev,
-      ...restorablePublicAnswers(serverDraft.publicAnswers, outputFieldIds),
-    }));
-    setCurrentPageIndex(clampPageIndex(serverDraft.currentPageIndex));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    serverDraft,
-    draftSyncEnabled,
-    hasEmittedStart,
-    localDraftRead,
-    syncedUpdatedAt,
+  const {
+    formData,
+    setFormData,
+    publicAnswers,
+    setPublicAnswers,
+    currentPageIndex,
+    setCurrentPageIndex,
+    saveFailed,
+    pauseSyncing,
+    resumeSyncing,
+    clearStoredDraft,
+  } = useFormDraftState({
+    formId: id,
+    actionId,
+    formSnapshotId,
+    persistKey,
+    syncDraftToServer,
+    readOnly,
+    completedFormResponse,
+    initialPageIndex,
+    edited: hasEmittedStart,
     fieldLookup,
     defaultValueMap,
+    outputFieldDefaultPublic,
     outputFieldIds,
-  ]);
-
-  // Save draft to AsyncStorage when form state changes
-  useEffect(() => {
-    if (readOnly || !persistKey || !draftLoaded.current) return;
-
-    const timeout = setTimeout(() => {
-      AsyncStorage.setItem(
-        storageKey,
-        JSON.stringify({
-          formData,
-          publicAnswers,
-          currentPageIndex,
-          updatedAt: Date.now(),
-          syncedUpdatedAt,
-        }),
-      ).catch((e) => {
-        // Storage write failed — non-critical.
-        console.error("Failed to save draft", e);
-      });
-    }, 300);
-
-    return () => clearTimeout(timeout);
-  }, [
-    formData,
-    publicAnswers,
-    currentPageIndex,
-    persistKey,
-    storageKey,
-    readOnly,
-    syncedUpdatedAt,
-  ]);
-
-  useEffect(() => {
-    const completedPublicAnswers = completedFormResponse?.publicAnswers as
-      | Record<string, unknown>
-      | undefined;
-
-    setPublicAnswers((prev) => {
-      const next: Record<string, boolean> = {};
-      for (const [fieldId, defaultIsPublic] of outputFieldDefaultPublic) {
-        const completedValue = completedPublicAnswers?.[fieldId];
-        const fallbackValue =
-          typeof completedValue === "boolean"
-            ? completedValue
-            : (prev[fieldId] ?? defaultIsPublic);
-        next[fieldId] = fallbackValue;
-      }
-
-      const prevKeys = Object.keys(prev);
-      const nextKeys = Object.keys(next);
-      if (prevKeys.length !== nextKeys.length) {
-        return next;
-      }
-      for (const key of nextKeys) {
-        if (prev[key] !== next[key]) {
-          return next;
-        }
-      }
-      return prev;
-    });
-  }, [completedFormResponse?.publicAnswers, outputFieldDefaultPublic]);
+    maxPageIndex,
+  });
 
   const {
     visibilityExtras,
@@ -967,145 +298,39 @@ const FormRenderer = ({
     setPublicAnswers((prev) => ({ ...prev, [fieldId]: nextPublic }));
   };
 
-  const renderPublicToggle = (field: AnyField) => {
-    if (!field.output?.output) return null;
-    const useMakePublicToggle = !!field.output.privateByDefault;
-    const defaultSharePublic =
-      outputFieldDefaultPublic.get(field.id) ?? userDefaultPublic;
-    const sharePublicly = publicAnswers[field.id] ?? defaultSharePublic;
-    const toggleChecked = useMakePublicToggle ? sharePublicly : !sharePublicly;
-    const toggleLabel = useMakePublicToggle
-      ? outputFieldPublicToggle.showPublicly
-      : outputFieldPublicToggle.hidePublicly;
-    return (
-      <View className="mt-2">
-        <Checkbox
-          checked={toggleChecked}
-          disabled={readOnly}
-          onChange={(next) => {
-            const nextPublic = useMakePublicToggle ? next : !next;
-            handlePublicToggleChange(field.id, nextPublic);
-          }}
-          label={toggleLabel}
-        />
-      </View>
-    );
-  };
+  const navigation = pageNavigation({
+    currentPageIndex,
+    setCurrentPageIndex,
+    nextVisiblePageIndex,
+    previousVisiblePageIndex,
+    visibilitySettled,
+    validatePage,
+    validateAllPages,
+    scrollPageTo,
+    scrollToEnd,
+  });
 
-  const handleNextPage = async () => {
-    if (nextVisiblePageIndex === null || !visibilitySettled) {
-      return;
-    }
-    const result = await validatePage(currentPageIndex, true);
-    if (result.isValid) {
-      setCurrentPageIndex(nextVisiblePageIndex);
-      setImmediate(() => scrollPageTo(0, false));
-    }
-  };
-
-  const handlePreviousPage = () => {
-    if (previousVisiblePageIndex === null) {
-      return;
-    }
-    setCurrentPageIndex(previousVisiblePageIndex);
-    setImmediate(() => scrollToEnd(false));
-  };
-
-  const handleSubmit = async () => {
-    if (submitting || readOnly || imageUpload.uploadingAny) {
-      return;
-    }
-    if (onSubmit && formSnapshotId === null) {
-      throw new Error(
-        "FormRenderer: formSnapshotId is required when onSubmit is set",
-      );
-    }
-    setSubmitting(true);
-
-    if (nextVisiblePageIndex !== null) {
-      const result = await validatePage(currentPageIndex, true);
-      if (result.isValid) {
-        setCurrentPageIndex(nextVisiblePageIndex);
-        setImmediate(() => scrollPageTo(0, false));
-      }
-      setSubmitting(false);
-      return;
-    }
-
-    const { isValid, firstInvalidPageIndex } = await validateAllPages();
-    if (!isValid) {
-      if (
-        typeof firstInvalidPageIndex === "number" &&
-        firstInvalidPageIndex !== currentPageIndex
-      ) {
-        setCurrentPageIndex(firstInvalidPageIndex);
-        setImmediate(() => scrollPageTo(0, false));
-      }
-      setSubmitting(false);
-      return;
-    }
-
-    if (!onSubmit || formSnapshotId === null) {
-      setSubmitting(false);
-      return;
-    }
-
-    const sanitizedAnswers = stripCardIds(
-      filterAnswersByFieldIds(effectiveFormData, fieldLookup),
-    );
-    const submissionPayload: SubmitFormDto = {
-      answers: sanitizedAnswers,
-      formSnapshotId,
-      actionId,
-      formulaSources: formulaSourcesFor(schema, sourceHistories),
-      visibilityValidatorResults,
-      deviceType: DEVICE_TYPE,
-      publicAnswers,
-      phDistinctId,
-      sessionReplayUrl,
-    };
-
-    pauseSyncing();
-    onSubmit(submissionPayload)
-      .then((submitted) => {
-        if (!submitted) {
-          resumeSyncing();
-          return;
-        }
-        if (persistKey) {
-          AsyncStorage.removeItem(storageKey).catch(() => {});
-        }
-      })
-      .catch(() => resumeSyncing())
-      .finally(() => {
-        setSubmitting(false);
-      });
-  };
-
-  const handleAbandon = (option: WithdrawalOption) => {
-    if (formSnapshotId === null) {
-      throw new Error(
-        "FormRenderer: formSnapshotId is required to abandon a form",
-      );
-    }
-    const submissionPayload: SubmitFormDto = {
-      answers: stripCardIds(formData),
-      formSnapshotId,
-      actionId,
-      formulaSources: formulaSourcesFor(schema, sourceHistories),
-      visibilityValidatorResults,
-      deviceType: DEVICE_TYPE,
-      publicAnswers,
-    };
-
-    pauseSyncing();
-    onAbandonAction?.({
-      ...withdrawalFlagsFromOption(option),
-      reason: customReason.trim(),
-      partialFormData: submissionPayload,
-    });
-    setWithdrawOpen(false);
-  };
+  const { submitting, handleSubmit, handleAbandon } = useFormSubmission({
+    readOnly,
+    uploadingImages: imageUpload.uploadingAny,
+    onSubmit,
+    onAbandonAction,
+    formSnapshotId,
+    actionId,
+    schema,
+    sourceHistories,
+    visibilityValidatorResults,
+    fieldLookup,
+    formData,
+    effectiveFormData,
+    publicAnswers,
+    phDistinctId,
+    sessionReplayUrl,
+    readyToSubmit: navigation.readyToSubmit,
+    pauseSyncing,
+    resumeSyncing,
+    clearStoredDraft,
+  });
 
   const currentPage = visiblePageIndices.includes(currentPageIndex)
     ? schema.pages[currentPageIndex]
@@ -1117,34 +342,6 @@ const FormRenderer = ({
     1,
     visiblePageIndices.indexOf(currentPageIndex) + 1,
   );
-
-  const pageFields = currentPage ? currentPage.fields : undefined;
-  const resolvedPageElements = useMemo(
-    () =>
-      (pageFields ?? []).map((element) =>
-        isQuestionField(element)
-          ? element
-          : resolveDisplayBlockForUser(element, activeUserKey),
-      ),
-    [pageFields, activeUserKey],
-  );
-  const pageElementVisible = useMemo(
-    () =>
-      resolvedPageElements.map((element) => isElementCurrentlyVisible(element)),
-    [resolvedPageElements, isElementCurrentlyVisible],
-  );
-  const hasRenderedNeighborAbove = (idx: number): boolean => {
-    for (let j = idx - 1; j >= 0; j--) {
-      if (pageElementVisible[j]) return true;
-    }
-    return false;
-  };
-  const hasRenderedNeighborBelow = (idx: number): boolean => {
-    for (let j = idx + 1; j < pageElementVisible.length; j++) {
-      if (pageElementVisible[j]) return true;
-    }
-    return false;
-  };
 
   const gate = variableInputsGateView({
     gate: variableInputsGate(sourceHistories, variableAggregates),
@@ -1176,251 +373,92 @@ const FormRenderer = ({
 
   return (
     <View className="flex flex-col gap-y-8">
-      <View className="gap-y-4">
-        {pageFields?.map((element, idx) => {
-          if (!pageElementVisible[idx]) {
-            return null;
-          }
-          if (!isQuestionField(element)) {
-            const resolvedBlock = resolvedPageElements[idx] as DisplayBlock;
-            return (
-              <View key={resolvedBlock.id ?? `block-${idx}`}>
-                <RenderDisplayBlockMobile
-                  block={interpolateDisplayBlock(resolvedBlock, variableValues)}
-                  previousAnswerData={previousAnswerData}
-                  previousAnswerSchemas={previousAnswerSchemas}
-                  hasRenderedNeighborAbove={hasRenderedNeighborAbove(idx)}
-                  hasRenderedNeighborBelow={hasRenderedNeighborBelow(idx)}
-                  user={user}
-                  userLocation={userLocationDisplayValue}
-                  userLocationLoading={currentUserLocationLoading}
-                />
-              </View>
-            );
-          }
-          const field = element as AnyField;
-          return (
-            <View key={field.id}>
-              <RenderField
-                field={withResolvedOptions(
-                  interpolateFieldText(field, variableValues),
-                  resolvedOptions,
-                )}
-                value={effectiveFormData[field.id]}
-                onChange={(value) => handleFieldChange(field.id, value)}
-                fileUpload={readOnly ? undefined : imageUpload}
-                disabled={readOnly}
-                error={fieldErrors[field.id]}
-                fieldErrors={fieldErrors}
-                randomizationKey={randomizationKey}
-                disableOptionRandomization={disableOptionRandomization}
-                user={user}
-                fieldContext={fieldContext}
-              />
-              {renderPublicToggle(field)}
-            </View>
-          );
-        })}
-      </View>
+      <FormPage
+        elements={currentPage?.fields ?? []}
+        activeUserKey={activeUserKey}
+        isElementCurrentlyVisible={isElementCurrentlyVisible}
+        variableValues={variableValues}
+        blockProps={{
+          previousAnswerData,
+          previousAnswerSchemas,
+          user,
+          userLocation: userLocationDisplayValue,
+          userLocationLoading: currentUserLocationLoading,
+        }}
+        renderField={(field) => (
+          <>
+            <RenderField
+              field={withResolvedOptions(
+                interpolateFieldText(field, variableValues),
+                resolvedOptions,
+              )}
+              value={effectiveFormData[field.id]}
+              onChange={(value) => handleFieldChange(field.id, value)}
+              fileUpload={readOnly ? undefined : imageUpload}
+              disabled={readOnly}
+              error={fieldErrors[field.id]}
+              fieldErrors={fieldErrors}
+              randomizationKey={randomizationKey}
+              disableOptionRandomization={disableOptionRandomization}
+              user={user}
+              fieldContext={fieldContext}
+            />
+            <OutputPublicToggle
+              field={field}
+              sharePublicly={
+                publicAnswers[field.id] ??
+                outputFieldDefaultPublic.get(field.id) ??
+                userDefaultPublic
+              }
+              disabled={readOnly}
+              onChange={(sharePublicly) =>
+                handlePublicToggleChange(field.id, sharePublicly)
+              }
+            />
+          </>
+        )}
+      />
 
       {readOnly && visiblePageCount > 1 && (
-        <View>
-          <View className="flex-row justify-between items-center mb-3">
-            <Text className="text-sm text-zinc-500">
-              Page {currentVisiblePageNumber} of {visiblePageCount}
-            </Text>
-          </View>
-          <View className="flex-row gap-3">
-            {!isFirstPage && (
-              <Button
-                onPress={handlePreviousPage}
-                color={ButtonColor.Outline}
-                size={ButtonSize.Medium}
-                className="flex-1"
-                title="Back"
-              />
-            )}
-            {!isLastPage && (
-              <Button
-                onPress={() => {
-                  if (nextVisiblePageIndex !== null) {
-                    setCurrentPageIndex(nextVisiblePageIndex);
-                  }
-                  setImmediate(() => scrollPageTo(0, false));
-                }}
-                color={ButtonColor.Black}
-                size={ButtonSize.Medium}
-                className="flex-1"
-                title="Next"
-              />
-            )}
-          </View>
-        </View>
+        <ReadOnlyPageNavigation
+          pageNumber={currentVisiblePageNumber}
+          pageCount={visiblePageCount}
+          onBack={isFirstPage ? null : navigation.goToPreviousPage}
+          onNext={navigation.browseToNextPage}
+        />
       )}
       {!readOnly && (
-        <View>
-          <View className="">
-            <View className="flex-row justify-between items-center mb-3">
-              {visiblePageCount > 1 ? (
-                <Text className="text-sm text-zinc-500">
-                  Page {currentVisiblePageNumber} of {visiblePageCount}
-                </Text>
-              ) : null}
-            </View>
-            <View className="flex-row gap-1.5">
-              {!isFirstPage && (
-                <Button
-                  onPress={handlePreviousPage}
-                  color={ButtonColor.Outline}
-                  size={ButtonSize.Medium}
-                  className="flex-1"
-                  disabled={submitting}
-                  title="Back"
-                />
-              )}
-              <Button
-                onPress={isLastPage ? handleSubmit : handleNextPage}
-                color={ButtonColor.Black}
-                size={ButtonSize.Medium}
-                className="flex-2 py-4! gap-x-1"
-                disabled={
-                  submitting ||
-                  imageUpload.uploadingAny ||
-                  (!isLastPage && !visibilitySettled)
-                }
-              >
-                {submitting ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <>
-                    {isLastPage ? (
-                      <CircleCheck size={16} color="#fff" strokeWidth={2.5} />
-                    ) : null}
-                    <Text
-                      className="text-white text-base"
-                      weight={FontWeight.Medium}
-                    >
-                      {isLastPage
-                        ? onSubmit
-                          ? "Complete"
-                          : "Complete (Preview Mode)"
-                        : "Next"}
-                    </Text>
-                  </>
-                )}
-              </Button>
-              {onAbandonAction && (
-                <Button
-                  onPress={() => setWithdrawOpen(true)}
-                  color={ButtonColor.Outline}
-                  size={ButtonSize.Medium}
-                >
-                  <Ellipsis size={15} />
-                </Button>
-              )}
-            </View>
-          </View>
-          {imageUpload.uploadingAny && (
-            <View className="flex-row items-center gap-1 p-2">
-              <Text className="text-zinc-500 text-base">
-                {waitingForImageUpload}
-              </Text>
-              <TouchableOpacity
-                onPress={imageUpload.cancelAll}
-                accessibilityLabel={cancelAllImageUploads}
-                hitSlop={8}
-                className="p-1"
-              >
-                <X size={20} color={colors.text.icon} />
-              </TouchableOpacity>
-            </View>
-          )}
-          {saveFailed && !readOnly && (
-            <Text className="text-amber-600 text-base p-2">
-              {draftSaveFailed}
-            </Text>
-          )}
-          {Object.keys(fieldErrors).length > 0 && (
-            <Text className="text-red-500 text-base p-2">
-              Your form has errors. Please fix before submitting.
-            </Text>
-          )}
-        </View>
+        <FormNavigation
+          pageNumber={currentVisiblePageNumber}
+          pageCount={visiblePageCount}
+          onBack={isFirstPage ? null : navigation.goToPreviousPage}
+          onPrimary={isLastPage ? handleSubmit : navigation.goToNextPage}
+          isLastPage={isLastPage}
+          preview={!onSubmit}
+          submitting={submitting}
+          primaryDisabled={
+            submitting ||
+            imageUpload.uploadingAny ||
+            (!isLastPage && !visibilitySettled)
+          }
+          onWithdraw={onAbandonAction ? () => setWithdrawOpen(true) : null}
+          uploadingImages={imageUpload.uploadingAny}
+          onCancelUploads={imageUpload.cancelAll}
+          saveFailed={saveFailed}
+          hasFieldErrors={Object.keys(fieldErrors).length > 0}
+        />
       )}
 
       {onAbandonAction && (
-        <FormModal
+        <WithdrawalModal
           visible={withdrawOpen}
           onClose={() => setWithdrawOpen(false)}
-        >
-          <Text
-            className="text-lg text-zinc-900 mb-3"
-            weight={FontWeight.Semibold}
-          >
-            Withdraw from action
-          </Text>
-          <View className="gap-2 mb-3">
-            {WITHDRAWAL_OPTIONS.map((option) => (
-              <Fragment key={option}>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  className={cn(
-                    "border rounded px-3 py-3",
-                    withdrawalOption === option
-                      ? "border-blue-600 bg-blue-100"
-                      : "border-zinc-200",
-                  )}
-                  onPress={() => {
-                    setWithdrawalOption((previous) =>
-                      previous === option ? null : option,
-                    );
-                  }}
-                >
-                  <Text className="text-base text-zinc-900">
-                    {WITHDRAWAL_OPTION_LABELS[option]}
-                  </Text>
-                </TouchableOpacity>
-                {option === "moral" && (
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    className="border border-zinc-200 rounded px-3 py-3"
-                    onPress={() => {
-                      setWithdrawOpen(false);
-                      router.push("/membership");
-                    }}
-                  >
-                    <Text className="text-base text-zinc-900">On vacation</Text>
-                  </TouchableOpacity>
-                )}
-              </Fragment>
-            ))}
-          </View>
-          {withdrawalOption !== null && (
-            <TextInput
-              value={customReason}
-              onChangeText={setCustomReason}
-              placeholder="Explain in more detail..."
-              placeholderTextColor="#9ca3af"
-              multiline
-              textAlignVertical="top"
-              className="border border-zinc-200 rounded px-3 py-2 h-24 text-base text-zinc-900 mb-3"
-            />
-          )}
-          <View className="w-full self-center">
-            <Button
-              onPress={() => {
-                if (withdrawalOption !== null) handleAbandon(withdrawalOption);
-              }}
-              color={ButtonColor.Black}
-              size={ButtonSize.Large}
-              disabled={
-                submitting ||
-                !canSubmitWithdrawal(withdrawalOption, customReason)
-              }
-              title="Withdraw"
-            />
-          </View>
-        </FormModal>
+          disabled={submitting}
+          onWithdraw={(choice) => {
+            handleAbandon(choice);
+            setWithdrawOpen(false);
+          }}
+        />
       )}
     </View>
   );

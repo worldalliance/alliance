@@ -1,5 +1,11 @@
 import type { AnyField } from "@alliance/common/forms/form-schema";
-import { applyDefaultValues, restorableAnswers } from "./formDrafts";
+import { R } from "@alliance/common/result";
+import {
+  applyDefaultValues,
+  readStoredFormDraft,
+  restorableAnswers,
+  serializeStoredFormDraft,
+} from "./formDrafts";
 
 describe("restorableAnswers", () => {
   it("drops multiselect selections of options the field no longer has", () => {
@@ -34,5 +40,62 @@ describe("restorableAnswers", () => {
     expect(applyDefaultValues(restored, new Map([["places", ["ny"]]]))).toEqual(
       { places: [] },
     );
+  });
+});
+
+describe("readStoredFormDraft", () => {
+  const name: AnyField = {
+    id: "name",
+    type: "input",
+    kind: "text",
+    label: "Name",
+  };
+  const read = (raw: string) =>
+    readStoredFormDraft({
+      raw,
+      fieldLookup: new Map([["name", name]]),
+      outputFieldIds: new Set(["name"]),
+    });
+
+  it("round-trips what serializeStoredFormDraft writes", () => {
+    const raw = serializeStoredFormDraft({
+      formData: { name: "Ada", gone: "x" },
+      publicAnswers: { name: true, gone: false },
+      currentPageIndex: 2,
+      syncedUpdatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    expect(read(raw)).toEqual(
+      R.success({
+        answers: { name: "Ada" },
+        publicAnswers: { name: true },
+        currentPageIndex: 2,
+        syncedUpdatedAt: "2026-01-01T00:00:00.000Z",
+      }),
+    );
+  });
+
+  it("drops a mistyped field and keeps the rest", () => {
+    expect(
+      read(
+        JSON.stringify({
+          formData: "oops",
+          publicAnswers: { name: "yes" },
+          currentPageIndex: "1",
+          syncedUpdatedAt: null,
+        }),
+      ),
+    ).toEqual(
+      R.success({
+        answers: undefined,
+        publicAnswers: {},
+        currentPageIndex: undefined,
+        syncedUpdatedAt: undefined,
+      }),
+    );
+  });
+
+  it("fails on unparseable JSON and non-objects", () => {
+    expect(read("{").ok).toBe(false);
+    expect(read("null").ok).toBe(false);
   });
 });

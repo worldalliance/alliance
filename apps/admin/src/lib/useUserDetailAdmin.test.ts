@@ -1,4 +1,5 @@
 import type {
+  DeleteUserAdminDto,
   UpdateUserRolesAdminDto,
   UserAdminDetailDto,
 } from "@alliance/shared/client/types.gen";
@@ -30,6 +31,8 @@ let detailDelay: number;
 let suspended: string[];
 let tagStatus: number;
 let tagWrites: unknown[];
+let deleteStatus: number;
+let deletions: unknown[];
 
 serveApi(
   routes({
@@ -74,6 +77,17 @@ serveApi(
       stored = { ...stored, hasActiveContract: false };
       return Response.json({ date: "2026-10-16T00:00:00.000Z" });
     },
+    "DELETE /user/userdetail/:id": async ({ request, params }) => {
+      const body: DeleteUserAdminDto = await request.json();
+      deletions.push({ id: params.id, body });
+      if (deleteStatus !== 200) {
+        return Response.json(
+          { message: "Confirmation does not match the member's email address" },
+          { status: deleteStatus },
+        );
+      }
+      return new Response(null);
+    },
   }),
 );
 
@@ -87,6 +101,8 @@ beforeEach(() => {
   suspended = [];
   tagStatus = 200;
   tagWrites = [];
+  deleteStatus = 200;
+  deletions = [];
 });
 
 const renderLoaded = async () => {
@@ -271,6 +287,45 @@ describe("useUserDetailAdmin", () => {
     expect(
       client.getQueryState(queryKeys.userDetailAdmin(7))?.fetchStatus,
     ).toBe("idle");
+  });
+
+  it("deletes the member, invalidates every cached query and settles before the refetch lands", async () => {
+    const { client, view } = await renderLoaded();
+    client.setQueryData(queryKeys.usersAdmin(), [member]);
+    detailStatus = 404;
+    detailDelay = 100;
+    const body = {
+      reason: "Asked by email",
+      confirmationEmail: member.email,
+      screenshotKey: null,
+    };
+
+    await view.result.current.deleteAccount.mutateAsync(body);
+
+    expect(deletions).toEqual([{ id: "7", body }]);
+    expect(client.getQueryState(queryKeys.usersAdmin())?.isInvalidated).toBe(
+      true,
+    );
+    expect(
+      client.getQueryState(queryKeys.userDetailAdmin(7))?.fetchStatus,
+    ).toBe("fetching");
+    await waitFor(() => expect(view.result.current.query.isError).toBe(true));
+  });
+
+  it("rejects a refused deletion and leaves the cache fresh", async () => {
+    deleteStatus = 400;
+    const { client, view } = await renderLoaded();
+    client.setQueryData(queryKeys.usersAdmin(), [member]);
+
+    await expect(
+      view.result.current.deleteAccount.mutateAsync({
+        reason: "Asked by email",
+        confirmationEmail: "someone-else@example.com",
+      }),
+    ).rejects.toBeDefined();
+    expect(client.getQueryState(queryKeys.usersAdmin())?.isInvalidated).toBe(
+      false,
+    );
   });
 
   it("rejects a refresh whose refetch fails", async () => {

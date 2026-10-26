@@ -2,11 +2,10 @@ import { R } from "@alliance/common/result";
 import {
   ActionDto,
   CreateActionDto,
-  tasksCreateFormAdmin,
   tasksGetFormAdmin,
 } from "@alliance/shared/client";
 import type { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
-import { useInvalidateFormsIndex } from "@alliance/shared/lib/useFormsAdmin";
+import { useCreateFormAdmin } from "@alliance/shared/lib/useFormsAdmin";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback } from "react";
 import { useNavigate } from "react-router";
@@ -24,18 +23,6 @@ export const useNavigateToCreatedAction = () => {
 };
 
 type ActionAdmin = ReturnType<typeof useActionAdmin>;
-
-const copyTaskForm = async (id: number): Promise<number> => {
-  const { data: taskForm } = await tasksGetFormAdmin({
-    path: { id },
-    throwOnError: true,
-  });
-  const { data: copy } = await tasksCreateFormAdmin({
-    body: { title: taskForm.title + " (Copy)", schema: taskForm.schema },
-    throwOnError: true,
-  });
-  return copy.id;
-};
 
 export function useActionCommands(params: {
   admin: Pick<
@@ -67,7 +54,7 @@ export function useActionCommands(params: {
     setError,
   } = params;
   const navigate = useNavigate();
-  const invalidateFormsIndex = useInvalidateFormsIndex();
+  const { createForm } = useCreateFormAdmin();
   const handleActionCreated = useNavigateToCreatedAction();
 
   const handleDuplicate = useCallback(async () => {
@@ -79,17 +66,19 @@ export function useActionCommands(params: {
     let taskFormId = form.taskFormId;
     if (taskFormId) {
       const copied = await R.fromPromise(
-        copyTaskForm(taskFormId),
-        logActionError("Failed to copy the action's task form"),
+        tasksGetFormAdmin({
+          path: { id: taskFormId },
+          throwOnError: true,
+        }).then(({ data }) =>
+          createForm({ title: data.title + " (Copy)", schema: data.schema }),
+        ),
+        logActionError("Failed to duplicate the action's task form"),
       );
       if (!copied.ok) {
         setError(copied.error);
         return;
       }
-      taskFormId = copied.value;
-      // The clone is a form row from here on, whether or not the action it
-      // was made for gets created.
-      await invalidateFormsIndex();
+      taskFormId = copied.value.id;
     }
 
     const duplicateForm = {
@@ -113,8 +102,8 @@ export function useActionCommands(params: {
     imageKey,
     imageUploading,
     createAction,
+    createForm,
     handleActionCreated,
-    invalidateFormsIndex,
     setError,
   ]);
 

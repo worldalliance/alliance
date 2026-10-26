@@ -23,6 +23,7 @@ import {
 import { mergeConversationUpdate, sortConversations } from "./conversations";
 import { queryKeys } from "./queryKeys";
 import { type Explanation, sendOrExplain } from "./sendOrExplain";
+import { refreshUnreadMessageCount } from "./useUnreadMessageCount";
 import { writesDuringLoads } from "./writesDuringLoads";
 
 type ConversationsUpdate = (
@@ -133,14 +134,17 @@ export function useMyConversations({ load = true }: { load?: boolean } = {}) {
       }),
     );
 
-  const declineInvite = async (conversationId: number) =>
-    storeConversation(
-      await sendOrExplain({
-        send: conversationDeclineInvite,
-        options: { path: { conversationId } },
-        action: "decline the request",
-      }),
-    );
+  const declineInvite = async (conversationId: number) => {
+    const declined = await sendOrExplain({
+      send: conversationDeclineInvite,
+      options: { path: { conversationId } },
+      action: "decline the request",
+    });
+    // The server can't announce a decline or leave to the viewer over the
+    // overview socket, since they're no longer a participant.
+    if (declined.ok) void refreshUnreadMessageCount(queryClient);
+    return storeConversation(declined);
+  };
 
   const markRead = useCallback(
     (conversationId: number) =>
@@ -198,6 +202,7 @@ export function useMyConversations({ load = true }: { load?: boolean } = {}) {
       action: "leave the group",
     });
     if (left.ok) {
+      void refreshUnreadMessageCount(queryClient);
       setConversations(
         (prev) => prev?.filter(({ id }) => id !== conversationId) ?? null,
       );

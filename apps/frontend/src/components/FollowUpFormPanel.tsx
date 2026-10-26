@@ -9,9 +9,9 @@ import {
   followUpDraftStorageKey,
   followUpFormIntro,
   followUpPersistKey,
-  submitFollowUpForm,
 } from "@alliance/shared/lib/followUpForm";
 import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
+import { useTaskFormSubmission } from "@alliance/shared/lib/useTaskFormSubmission";
 import { CardStyle } from "@alliance/shared/styles/card";
 import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
@@ -26,14 +26,12 @@ interface FollowUpFormPanelProps {
   followUpForm: FollowUpFormDto;
   actionId: number;
   border?: boolean;
-  onSubmitted?: () => void;
 }
 
 export default function FollowUpFormPanel({
   followUpForm,
   actionId,
   border = false,
-  onSubmitted,
 }: FollowUpFormPanelProps) {
   const [error, setError] = useState<string | null>(null);
   const [formInstanceKey, setFormInstanceKey] = useState(0);
@@ -45,15 +43,12 @@ export default function FollowUpFormPanel({
     error: formError,
     isPending,
   } = useTaskForm(followUpForm.formId);
+  const { submitFollowUp } = useTaskFormSubmission();
 
   const handleSubmit = useCallback(
     async (data: SubmitFormDto): Promise<boolean> => {
       setError(null);
-      const submitted = await submitFollowUpForm({
-        followUpFormId: followUpForm.id,
-        actionId,
-        data,
-      });
+      const submitted = await submitFollowUp({ followUpForm, data });
       if (!submitted.ok) {
         setError(
           formulaSourcesChanged(submitted.error)
@@ -72,10 +67,9 @@ export default function FollowUpFormPanel({
       }
       success("Response submitted!");
       setFormInstanceKey((k) => k + 1);
-      onSubmitted?.();
       return true;
     },
-    [followUpForm.id, form, actionId, onSubmitted, success],
+    [followUpForm, form, submitFollowUp, success],
   );
 
   const { distinctId, sessionReplayUrl } = useMemo(

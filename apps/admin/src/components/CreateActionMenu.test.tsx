@@ -19,6 +19,7 @@ afterEach(() => {
 const renderMenu = () => {
   const router = createMemoryRouter([
     { path: "/", element: <CreateActionMenu /> },
+    { path: "/actions/:id", element: <p>Opened the pasted action</p> },
   ]);
   render(
     <QueryClientProvider client={new QueryClient()}>
@@ -28,6 +29,21 @@ const renderMenu = () => {
     </QueryClientProvider>,
   );
 };
+
+it("opens the pasted action", async () => {
+  jest.spyOn(navigator.clipboard, "readText").mockResolvedValue("{}");
+  client.setConfig({
+    baseUrl: "http://localhost",
+    fetch: async () => Response.json({ id: 3 }),
+  });
+  renderMenu();
+
+  fireEvent.click(screen.getByRole("button", { name: "Create" }));
+  fireEvent.click(await screen.findByText("Paste JSON"));
+
+  expect(await screen.findByText("Opened the pasted action")).toBeTruthy();
+  expect(screen.getByText("Action pasted successfully")).toBeTruthy();
+});
 
 it("shows the server's reason for refusing a paste", async () => {
   jest.spyOn(console, "error").mockImplementation(() => {});

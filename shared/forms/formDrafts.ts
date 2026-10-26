@@ -6,6 +6,8 @@ import type {
 } from "@alliance/common/forms/form-schema";
 import { isValidRangeSelection } from "@alliance/common/forms/range";
 import { isValidRankingSelection } from "@alliance/common/forms/ranking";
+import { R, type Result } from "@alliance/common/result";
+import { z } from "zod";
 import { dropUnuploadedFileAnswers } from "./fileAnswers";
 import { dropUnknownOptionAnswers } from "./optionAnswers";
 
@@ -192,4 +194,64 @@ export function restorablePublicAnswers(
     }
   }
   return restorable;
+}
+
+const storedFormDraftSchema = z.object({
+  formData: z.record(z.string(), z.unknown()).optional().catch(undefined),
+  publicAnswers: z.record(z.string(), z.unknown()).optional().catch(undefined),
+  currentPageIndex: z.number().optional().catch(undefined),
+  syncedUpdatedAt: z.string().optional().catch(undefined),
+});
+
+export type StoredFormDraft = {
+  answers: Record<string, FormValue> | undefined;
+  publicAnswers: Record<string, boolean>;
+  currentPageIndex: number | undefined;
+  syncedUpdatedAt: string | undefined;
+};
+
+/**
+ * Reads a draft written by `serializeStoredFormDraft`, keeping only what
+ * `restorableAnswers` and `restorablePublicAnswers` allow. A mistyped field is
+ * dropped on its own; only unparseable JSON or a non-object fails.
+ */
+export function readStoredFormDraft({
+  raw,
+  fieldLookup,
+  outputFieldIds,
+}: {
+  raw: string;
+  fieldLookup: Map<string, AnyField>;
+  outputFieldIds: Set<string>;
+}): Result<StoredFormDraft, Error> {
+  return R.flatMap(
+    R.fromThrowable(() => JSON.parse(raw)),
+    (json) => {
+      const parsed = storedFormDraftSchema.safeParse(json);
+      if (!parsed.success) return R.failure(parsed.error);
+      const { formData, publicAnswers, currentPageIndex, syncedUpdatedAt } =
+        parsed.data;
+      return R.success({
+        answers: formData
+          ? // Safe: the renderer wrote these values from its FormValue state.
+            restorableAnswers(
+              formData as Record<string, FormValue>,
+              fieldLookup,
+            )
+          : undefined,
+        publicAnswers: restorablePublicAnswers(publicAnswers, outputFieldIds),
+        currentPageIndex,
+        syncedUpdatedAt,
+      });
+    },
+  );
+}
+
+export function serializeStoredFormDraft(draft: {
+  formData: Record<string, FormValue>;
+  publicAnswers: Partial<Record<string, boolean>>;
+  currentPageIndex: number;
+  syncedUpdatedAt: string | null;
+}): string {
+  return JSON.stringify({ ...draft, updatedAt: Date.now() });
 }

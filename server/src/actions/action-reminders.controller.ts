@@ -20,6 +20,10 @@ import { ReminderPreviewService } from "src/notifs/reminder-preview.service";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { ActionsService } from "./actions.service";
 import {
+  NotificationScheduleEntryDto,
+  NotificationScheduleQueryDto,
+} from "./dto/notification-schedule.dto";
+import {
   CreateReminderGroupDto,
   PreviewEmailHtmlDto,
   PreviewEmailHtmlResponseDto,
@@ -27,11 +31,7 @@ import {
   PreviewTextMessageResponseDto,
   ReminderAnchorCandidateDto,
   ReminderGroupDto,
-} from "./dto/action.dto";
-import {
-  NotificationScheduleEntryDto,
-  NotificationScheduleQueryDto,
-} from "./dto/notification-schedule.dto";
+} from "./dto/reminder-group.dto";
 
 @Controller("actions")
 export class ActionRemindersController {

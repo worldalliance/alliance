@@ -7,7 +7,7 @@ import {
   ActionUpdateNotificationMode,
   ActionUpdateNotifyType,
 } from "../entities/action-update.entity";
-import { ActionUpdateDto } from "./action.dto";
+import { ActionUpdateDto } from "./action-update.dto";
 
 export class AdminActionUpdateDto extends ActionUpdateDto {
   @ApiProperty({

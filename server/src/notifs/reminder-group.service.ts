@@ -5,7 +5,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import {
   CreateReminderGroupDto,
   ReminderAnchorCandidate,
-} from "src/actions/dto/action.dto";
+} from "src/actions/dto/reminder-group.dto";
 import { ActionFormVariant } from "src/actions/entities/action-form-variant.entity";
 import {
   ActionSuite,
