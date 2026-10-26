@@ -1,8 +1,4 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import {
-  deviceVisibilityTargetSchema,
-  type DeviceVisibilityTarget,
-} from "@alliance/common/forms/device";
 import { type DisplayBlock } from "@alliance/common/forms/display-blocks";
 import {
   isQuestionField,
@@ -82,6 +78,7 @@ import FormNavigation from "./FormNavigation";
 import OutputPublicToggle from "./OutputPublicToggle";
 import RenderDisplayBlock from "./RenderDisplayBlock";
 import RenderField from "./RenderField";
+import { useDeviceType } from "./useDeviceType";
 import { useFormDraftState } from "./useFormDraftState";
 import { useFormScroll } from "./useFormScroll";
 import { variableInputsGateView } from "./variableInputsGateView";
@@ -127,22 +124,6 @@ type FormRendererProps = {
 };
 
 export { computeFormStorageKey };
-
-const DEFAULT_DEVICE_TYPE: DeviceVisibilityTarget = "desktop";
-
-const detectDeviceType = (): DeviceVisibilityTarget => {
-  if (typeof window === "undefined") {
-    return DEFAULT_DEVICE_TYPE;
-  }
-  const width = window.innerWidth;
-  if (width < 640) {
-    return "mobile";
-  }
-  if (width < 1024) {
-    return "tablet";
-  }
-  return "desktop";
-};
 
 const FormRenderer = ({
   form,
@@ -248,9 +229,10 @@ const FormRenderer = ({
   });
   const { fieldErrors, clearFieldErrors, applyFieldErrorUpdates } =
     useFieldErrors();
-  const [deviceType, setDeviceType] = useState<DeviceVisibilityTarget>(() =>
-    detectDeviceType(),
-  );
+  const { deviceType, effectiveDeviceType } = useDeviceType({
+    readOnly,
+    completedFormResponse,
+  });
   const [submitting, setSubmitting] = useState(false);
 
   const { currentUserLocationLoading, userLocationDisplayValue } =
@@ -269,28 +251,6 @@ const FormRenderer = ({
   } = useVisibilityContext(schema, {
     enabled: !!user,
   });
-
-  useEffect(() => {
-    if (readOnly || typeof window === "undefined") {
-      return;
-    }
-    const updateDeviceType = () => {
-      setDeviceType(detectDeviceType());
-    };
-    updateDeviceType();
-    window.addEventListener("resize", updateDeviceType);
-    return () => {
-      window.removeEventListener("resize", updateDeviceType);
-    };
-  }, [readOnly]);
-
-  const savedDeviceType = deviceVisibilityTargetSchema.safeParse(
-    completedFormResponse?.deviceType,
-  ).data;
-
-  const effectiveDeviceType = readOnly
-    ? (savedDeviceType ?? deviceType)
-    : deviceType;
 
   const {
     results: visibilityValidatorResults,
