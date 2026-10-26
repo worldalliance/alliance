@@ -1,4 +1,4 @@
-import { type useFormValidation } from "@alliance/shared/useFormRenderer";
+import { type useFormValidation } from "@alliance/shared/forms/useFormValidation";
 
 type Validation = ReturnType<typeof useFormValidation>;
 

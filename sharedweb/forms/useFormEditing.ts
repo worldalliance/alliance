@@ -7,11 +7,9 @@ import {
   resolveFormValue,
   type SetFieldValue,
 } from "@alliance/shared/forms/formValueUpdater";
+import { type FieldErrorUpdater } from "@alliance/shared/forms/useFormValidation";
 import { useImageUpload } from "@alliance/shared/lib/useImageUpload";
-import {
-  type FieldErrorUpdater,
-  type FormVisibility,
-} from "@alliance/shared/useFormRenderer";
+import { type FormVisibility } from "@alliance/shared/useFormRenderer";
 
 export function useFormEditing({
   readOnly,
