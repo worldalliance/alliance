@@ -15,7 +15,7 @@ const texts = (
   ...overrides,
 });
 
-const { name, link } = PREVIEW_PLACEHOLDERS;
+const { name, link, project, content } = PREVIEW_PLACEHOLDERS;
 
 describe("previewVariations", () => {
   it("gives everyone the collective result as written until it's split", () => {
@@ -28,8 +28,15 @@ describe("previewVariations", () => {
             inApp: "a hearing",
             push: "Update: a hearing",
             sms: `Update: a hearing ${link}`,
-            emailSubject: "a hearing",
-            emailBody: `Hi ${name},\na hearing\n${link}`,
+            emailSubject: `Alliance progress update: ${project}`,
+            emailBody: [
+              `Hi ${name},`,
+              `Here's an update on a recent Alliance project, "[${project}](${link})."`,
+              "a hearing",
+              content,
+              "Best,",
+              "The Alliance Team",
+            ].join("\n\n"),
           },
         },
       ],

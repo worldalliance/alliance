@@ -1,9 +1,8 @@
-import {
-  DefaultAbbrMarkerOptions,
-  SentenceSplitterSyntax,
-  split,
-} from "sentence-splitter";
 import { z } from "zod";
+import {
+  escapeMarkdownText,
+  markdownLink,
+} from "./forms/display-only-markdown";
 import { nameParts } from "./nameParts";
 import { R, type Result } from "./result";
 
@@ -49,44 +48,10 @@ export const recognitionCopySchema = z.strictObject({
   push: z.string(),
   sms: z.string(),
   emailSubject: z.string(),
-  /** Plain text; escape before it reaches HTML. */
+  /** Markdown. */
   emailBody: z.string(),
 });
 export type RecognitionCopy = z.infer<typeof recognitionCopySchema>;
-
-// Civic copy names these and dotted initialisms like "H.R." mid-sentence, and
-// the default list would end a subject at them. One that does end a sentence
-// keeps the next one too.
-const SUBJECT_LANGUAGE = {
-  ...DefaultAbbrMarkerOptions.language,
-  PREPOSITIVE_ABBREVIATIONS: [
-    ...DefaultAbbrMarkerOptions.language.PREPOSITIVE_ABBREVIATIONS,
-    "Prop.",
-    "No.",
-  ],
-};
-const ENDS_IN_INITIALISM = /(?:^|\s)(?:\p{Lu}\.){2,}["'”’)\]]*\s*$/u;
-// sentence-splitter reads every "5." as a list index, so it never ends a
-// sentence after a number.
-const ENDS_AFTER_NUMBER = /^.*?\S\s+\S*\d\.["'”’)\]]*(?=\s+\p{Lu})/su;
-
-export function firstSentence(text: string): string {
-  let sentence = "";
-  for (const node of split(text, {
-    AbbrMarker: { language: SUBJECT_LANGUAGE },
-  })) {
-    sentence += node.raw;
-    if (
-      node.type === SentenceSplitterSyntax.Sentence &&
-      !ENDS_IN_INITIALISM.test(node.raw)
-    )
-      break;
-  }
-  return ENDS_AFTER_NUMBER.exec(sentence)?.[0] ?? sentence.trim();
-}
-
-export const collectiveEmailSubject = (allianceResult: string) =>
-  firstSentence(allianceResult);
 
 /**
  * The inbox labels every entry "Action update:", so the entry leaves out the
@@ -96,15 +61,28 @@ export function recognitionCopy(params: {
   allianceResult: string;
   recipientName: string;
   link: string;
+  projectOrActionName: string;
+  /** The update's content, as Markdown. */
+  content: string;
 }): RecognitionCopy {
-  const { allianceResult, recipientName, link } = params;
+  const { allianceResult, recipientName, link, projectOrActionName, content } =
+    params;
   const { firstname } = nameParts(recipientName);
   const headline = `Update: ${allianceResult}`;
   return {
     inApp: allianceResult,
     push: headline,
     sms: `${headline} ${link}`,
-    emailSubject: collectiveEmailSubject(allianceResult),
-    emailBody: `Hi ${firstname},\n${allianceResult}\n${link}`,
+    emailSubject: `Alliance progress update: ${projectOrActionName}`,
+    emailBody: [
+      `Hi ${escapeMarkdownText(firstname)},`,
+      `Here's an update on a recent Alliance project, "${markdownLink({ text: projectOrActionName, url: link })}."`,
+      escapeMarkdownText(allianceResult),
+      content,
+      "Best,",
+      "The Alliance Team",
+    ]
+      .filter((paragraph) => paragraph !== "")
+      .join("\n\n"),
   };
 }

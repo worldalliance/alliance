@@ -451,14 +451,25 @@ export class MailService {
     tracking: TrackedMessage;
     recipient: string;
   }): Promise<Mail> {
-    const { subject, message, tracking, recipient } = params;
+    const { message, ...rest } = params;
+    return this.sendCustomHtmlEmail({
+      ...rest,
+      html: message.replace(/\n/g, "<br>"),
+    });
+  }
+
+  public async sendCustomHtmlEmail(params: {
+    subject: string;
+    html: string;
+    tracking: TrackedMessage;
+    recipient: string;
+  }): Promise<Mail> {
+    const { subject, html, tracking, recipient } = params;
     return this.sendMail({
       recipient,
       emailType: EmailType.CustomActionReminder,
       subject,
-      context: {
-        customMessage: message.replace(/\n/g, "<br>"),
-      },
+      context: { customMessage: html },
       tracking,
     });
   }
