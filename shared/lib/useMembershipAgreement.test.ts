@@ -43,6 +43,7 @@ let currentGate = gate();
 let detailGate = gate();
 const detailRequests: string[] = [];
 const signBodies: unknown[] = [];
+let meRequests = 0;
 
 serveApi(
   routes({
@@ -65,6 +66,10 @@ serveApi(
       signBodies.push(await request.json());
       return refused() ?? Response.json({ date: DATE });
     },
+    "GET /auth/me": () => {
+      meRequests += 1;
+      return Response.json({ user: { id: 1 } });
+    },
     "POST /contract/suspend": () => {
       if (!actionsReachable) throw new TypeError("Failed to fetch");
       return refused() ?? Response.json({ date: DATE });
@@ -82,14 +87,13 @@ const refused = () =>
       );
 
 const setup = (lastContractEvent?: ContractEventDto) => {
-  const refreshUser = jest.fn(() => Promise.resolve());
   const showError = jest.fn();
   const user = { lastContractEvent };
   const { result } = renderHook(
-    () => useMembershipAgreement({ user, refreshUser, showError }),
+    () => useMembershipAgreement({ user, showError }),
     queryWrapper(),
   );
-  return { result, refreshUser, showError };
+  return { result, showError };
 };
 
 type Agreement = ReturnType<typeof setup>["result"];
@@ -121,6 +125,7 @@ beforeEach(() => {
   detailGate = gate();
   detailRequests.length = 0;
   signBodies.length = 0;
+  meRequests = 0;
 });
 
 describe("useMembershipAgreement status", () => {
@@ -263,7 +268,7 @@ describe("useMembershipAgreement signing", () => {
   });
 
   it("signs the latest contract and refreshes the member", async () => {
-    const { result, refreshUser, showError } = setup();
+    const { result, showError } = setup();
     await loaded(result);
     fillIn(result);
     expect(result.current.canSign).toBe(true);
@@ -274,12 +279,12 @@ describe("useMembershipAgreement signing", () => {
     expect(result.current.lastContractEvent).toEqual(signed(2));
     expect(result.current.latestSigned).toBe(true);
     expect(result.current.confirmation).toBe("");
-    expect(refreshUser).toHaveBeenCalledTimes(1);
+    expect(meRequests).toBe(1);
     expect(showError).not.toHaveBeenCalled();
   });
 
   it("records a suspension", async () => {
-    const { result, refreshUser } = setup(signed(2));
+    const { result } = setup(signed(2));
     await loaded(result);
     expect(result.current.latestSigned).toBe(true);
 
@@ -287,19 +292,19 @@ describe("useMembershipAgreement signing", () => {
 
     expect(result.current.lastContractEvent?.type).toBe("suspended");
     expect(result.current.latestSigned).toBe(false);
-    expect(refreshUser).toHaveBeenCalledTimes(1);
+    expect(meRequests).toBe(1);
   });
 
   it("reports a signature that never reached the server", async () => {
     actionsReachable = false;
-    const { result, refreshUser, showError } = setup();
+    const { result, showError } = setup();
     await loaded(result);
     fillIn(result);
 
     await act(() => result.current.sign());
 
     expect(showError).toHaveBeenCalledTimes(1);
-    expect(refreshUser).not.toHaveBeenCalled();
+    expect(meRequests).toBe(0);
     expect(result.current.lastContractEvent).toBeNull();
     expect(result.current.confirmation).toBe(WEEKLY_COMMITMENT_CONFIRMATION);
     expect(result.current.isSubmitting).toBe(false);
@@ -307,40 +312,40 @@ describe("useMembershipAgreement signing", () => {
 
   it("reports a suspension that never reached the server", async () => {
     actionsReachable = false;
-    const { result, refreshUser, showError } = setup(signed(2));
+    const { result, showError } = setup(signed(2));
     await loaded(result);
 
     await act(() => result.current.suspend());
 
     expect(showError).toHaveBeenCalledTimes(1);
-    expect(refreshUser).not.toHaveBeenCalled();
+    expect(meRequests).toBe(0);
     expect(result.current.latestSigned).toBe(true);
     expect(result.current.isSubmitting).toBe(false);
   });
 
   it("reports a refused signature with the server's reason", async () => {
     refusal = 400;
-    const { result, refreshUser, showError } = setup();
+    const { result, showError } = setup();
     await loaded(result);
     fillIn(result);
 
     await act(() => result.current.sign());
 
     expect(showError.mock.calls).toEqual([[REFUSAL]]);
-    expect(refreshUser).not.toHaveBeenCalled();
+    expect(meRequests).toBe(0);
     expect(result.current.lastContractEvent).toBeNull();
     expect(result.current.confirmation).toBe(WEEKLY_COMMITMENT_CONFIRMATION);
   });
 
   it("reports a refused suspension with the server's reason", async () => {
     refusal = 400;
-    const { result, refreshUser, showError } = setup(signed(2));
+    const { result, showError } = setup(signed(2));
     await loaded(result);
 
     await act(() => result.current.suspend());
 
     expect(showError.mock.calls).toEqual([[REFUSAL]]);
-    expect(refreshUser).not.toHaveBeenCalled();
+    expect(meRequests).toBe(0);
     expect(result.current.latestSigned).toBe(true);
   });
 
