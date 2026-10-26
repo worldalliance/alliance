@@ -4,6 +4,7 @@ import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 import {
   ResponseCountStatus,
+  useCreateFormAdmin,
   useFormResponseCountsAdmin,
   useFormsAdmin,
   useInvalidateFormsAdmin,
@@ -57,6 +58,12 @@ serveApi(
       return Response.json(listed);
     },
     "DELETE /tasks/:id": () => new Response(null, { status: 204 }),
+    "POST /tasks/createForm": async ({ request }) => {
+      const { title } = (await request.json()) as { title: string };
+      const created = formRow(listed.length + 1, title);
+      listed = [created, ...listed];
+      return Response.json(created);
+    },
   }),
 );
 
@@ -204,6 +211,27 @@ test("deleting a form refetches the list it was deleted from", async () => {
   await view.result.current.deleteForm(1);
   await waitFor(() => expect(view.result.current.forms).toHaveLength(1));
   expect(view.result.current.forms[0].title).toBe("Kept");
+});
+
+test("creating a form refetches the index and leaves cached field lists", async () => {
+  listed = [formRow(1, "Existing")];
+  const { client, wrapper } = queryWrapper();
+  const fieldsKey = queryKeys.formQuestionFieldsAdmin(1);
+  client.setQueryData(fieldsKey, { formId: 1, fields: [] });
+  const view = renderHook(
+    () => ({ ...useFormsAdmin(), ...useCreateFormAdmin() }),
+    { wrapper },
+  );
+  await waitFor(() => expect(view.result.current.forms).toHaveLength(1));
+
+  const created = await view.result.current.createForm({
+    title: "New",
+    schema: {},
+  });
+
+  expect(created.id).toBe(2);
+  await waitFor(() => expect(view.result.current.forms).toHaveLength(2));
+  expect(client.getQueryState(fieldsKey)?.isInvalidated).toBe(false);
 });
 
 test("gives back the same empty array while the list is loading", async () => {
