@@ -84,6 +84,7 @@ import { ReminderGroup } from "./entities/reminder-group.entity";
 import { FeedMembersService } from "./feed-members.service";
 import { ForumActionCompleterWorker } from "./forum-action-completer.worker";
 import { GeneralUpdatesController } from "./general-updates.controller";
+import { GeneralUpdatesService } from "./general-updates.service";
 import { GlobalFeedService } from "./global-feed.service";
 import { HomeFeedService } from "./home-feed.service";
 import { ProjectsController } from "./projects.controller";
@@ -191,6 +192,7 @@ import { TaskBadgeService } from "./task-badge.service";
     ActionSuspensionService,
     ActionShareService,
     SchemaWriteService,
+    GeneralUpdatesService,
   ],
   exports: [
     ActionsService,

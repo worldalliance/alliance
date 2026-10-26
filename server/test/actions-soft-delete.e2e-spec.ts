@@ -29,6 +29,7 @@ import {
   ReminderGroup,
   ReminderGroupTimingMode,
 } from "src/actions/entities/reminder-group.entity";
+import { GeneralUpdatesService } from "src/actions/general-updates.service";
 import { ProjectsService } from "src/actions/projects.service";
 import { AuthService } from "src/auth/auth.service";
 import { Guest } from "src/auth/entities/guest.entity";
@@ -68,6 +69,7 @@ const deleteAfter =
 describe("Action writers under a deleted parent (e2e)", () => {
   let ctx: TestContext;
   let actions: ActionsService;
+  let generalUpdates: GeneralUpdatesService;
   let actionRepo: Repository<Action>;
 
   const createAction = (name = "Parent action") =>
@@ -111,6 +113,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
   beforeAll(async () => {
     ctx = await createTestApp([TasksModule, ActionPartnershipsModule]);
     actions = ctx.app.get(ActionsService);
+    generalUpdates = ctx.app.get(GeneralUpdatesService);
     actionRepo = ctx.dataSource.getRepository(Action);
   });
 
@@ -408,7 +411,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
       .mockImplementationOnce(deleteAfter(load, () => tags.softDelete(tag.id)));
 
     await expect(
-      actions.createGeneralUpdate({
+      generalUpdates.createGeneralUpdate({
         name: "Tagged update",
         startDate: new Date(),
         endDate: new Date(Date.now() + 86_400_000),
@@ -425,7 +428,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
   });
 
   it("refuses to tag a general update with a tag deleted while it saves", async () => {
-    const generalUpdate = await actions.createGeneralUpdate({
+    const generalUpdate = await generalUpdates.createGeneralUpdate({
       name: "Retagged update",
       startDate: new Date(),
       endDate: new Date(Date.now() + 86_400_000),
@@ -444,7 +447,9 @@ describe("Action writers under a deleted parent (e2e)", () => {
         target: Tag,
         id: tag.id,
         write: () =>
-          actions.updateGeneralUpdate(generalUpdate.id, { tagIds: [tag.id] }),
+          generalUpdates.updateGeneralUpdate(generalUpdate.id, {
+            tagIds: [tag.id],
+          }),
       }),
     ).toBeInstanceOf(NotFoundException);
     expect(
@@ -1006,7 +1011,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
         password: "password",
       }),
     );
-    const generalUpdate = await actions.createGeneralUpdate({
+    const generalUpdate = await generalUpdates.createGeneralUpdate({
       name: "Dismissed update",
       startDate: new Date(),
       endDate: new Date(Date.now() + 86_400_000),
@@ -1015,11 +1020,11 @@ describe("Action writers under a deleted parent (e2e)", () => {
     });
     await users.softDelete(member.id);
     jest
-      .spyOn(actions, "findUnreadGeneralUpdates")
+      .spyOn(generalUpdates, "findUnreadGeneralUpdates")
       .mockResolvedValueOnce([generalUpdate]);
 
     await expect(
-      actions.dismissGeneralUpdate(member.id, generalUpdate.id),
+      generalUpdates.dismissGeneralUpdate(member.id, generalUpdate.id),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(
       await ctx.dataSource.getRepository(GeneralUpdateActivity).count({
@@ -1030,7 +1035,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
   });
 
   it("records no dismissal of a general update deleted after it loads", async () => {
-    const generalUpdate = await actions.createGeneralUpdate({
+    const generalUpdate = await generalUpdates.createGeneralUpdate({
       name: "Doomed update",
       startDate: new Date(),
       endDate: new Date(Date.now() + 86_400_000),
@@ -1041,11 +1046,11 @@ describe("Action writers under a deleted parent (e2e)", () => {
       .getRepository(GeneralUpdate)
       .softDelete(generalUpdate.id);
     jest
-      .spyOn(actions, "findUnreadGeneralUpdates")
+      .spyOn(generalUpdates, "findUnreadGeneralUpdates")
       .mockResolvedValueOnce([generalUpdate]);
 
     await expect(
-      actions.dismissGeneralUpdate(ctx.testUserId, generalUpdate.id),
+      generalUpdates.dismissGeneralUpdate(ctx.testUserId, generalUpdate.id),
     ).rejects.toThrow(new NotFoundException("General update not found"));
     expect(
       await ctx.dataSource.getRepository(GeneralUpdateActivity).count({

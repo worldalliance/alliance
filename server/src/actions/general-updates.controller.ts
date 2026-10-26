@@ -13,23 +13,23 @@ import { ApiOkResponse, ApiResponse } from "@nestjs/swagger";
 import type { JwtRequest } from "src/auth/tokens";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { AuthGuard } from "../auth/guards/auth.guard";
-import { ActionsService } from "./actions.service";
 import {
   CreateGeneralUpdateDto,
   GeneralUpdateAdminDto,
   GeneralUpdateDto,
   UpdateGeneralUpdateDto,
 } from "./dto/general-update.dto";
+import { GeneralUpdatesService } from "./general-updates.service";
 
 @Controller("actions")
 export class GeneralUpdatesController {
-  constructor(private readonly actionsService: ActionsService) {}
+  constructor(private readonly generalUpdates: GeneralUpdatesService) {}
 
   @Get("generalUpdates")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: [GeneralUpdateDto] })
   async allGeneralUpdates(): Promise<GeneralUpdateDto[]> {
-    return (await this.actionsService.findAllGeneralUpdates()).map(
+    return (await this.generalUpdates.findAllGeneralUpdates()).map(
       (generalUpdate) => new GeneralUpdateDto(generalUpdate),
     );
   }
@@ -41,7 +41,7 @@ export class GeneralUpdatesController {
     @Request() req: JwtRequest,
   ): Promise<GeneralUpdateDto[]> {
     return (
-      await this.actionsService.findUnreadGeneralUpdates({
+      await this.generalUpdates.findUnreadGeneralUpdates({
         userId: req.user.sub,
         now: new Date(),
         allowExpired: false,
@@ -56,7 +56,7 @@ export class GeneralUpdatesController {
     @Request() req: JwtRequest,
     @Param("generalUpdateId", ParseIntPipe) generalUpdateId: number,
   ): Promise<void> {
-    return this.actionsService.dismissGeneralUpdate(
+    return this.generalUpdates.dismissGeneralUpdate(
       req.user.sub,
       generalUpdateId,
     );
@@ -66,7 +66,7 @@ export class GeneralUpdatesController {
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [GeneralUpdateAdminDto] })
   async allGeneralUpdatesAdmin(): Promise<GeneralUpdateAdminDto[]> {
-    return (await this.actionsService.findAllGeneralUpdatesAdmin()).map(
+    return (await this.generalUpdates.findAllGeneralUpdatesAdmin()).map(
       (generalUpdate) => new GeneralUpdateAdminDto(generalUpdate),
     );
   }
@@ -78,7 +78,7 @@ export class GeneralUpdatesController {
     @Param("id", ParseIntPipe) id: number,
   ): Promise<GeneralUpdateAdminDto> {
     return new GeneralUpdateAdminDto(
-      await this.actionsService.findOneGeneralUpdate(id),
+      await this.generalUpdates.findOneGeneralUpdate(id),
     );
   }
 
@@ -89,7 +89,7 @@ export class GeneralUpdatesController {
     @Body() dto: CreateGeneralUpdateDto,
   ): Promise<GeneralUpdateAdminDto> {
     return new GeneralUpdateAdminDto(
-      await this.actionsService.createGeneralUpdate(dto),
+      await this.generalUpdates.createGeneralUpdate(dto),
     );
   }
 
@@ -106,7 +106,7 @@ export class GeneralUpdatesController {
     @Body() dto: UpdateGeneralUpdateDto,
   ): Promise<GeneralUpdateAdminDto> {
     return new GeneralUpdateAdminDto(
-      await this.actionsService.updateGeneralUpdate(id, dto),
+      await this.generalUpdates.updateGeneralUpdate(id, dto),
     );
   }
 }
