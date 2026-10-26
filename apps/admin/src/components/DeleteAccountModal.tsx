@@ -1,8 +1,8 @@
 import { errorMessage } from "@alliance/common/errorMessage";
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
+// eslint-disable-next-line api-client/named-hooks-only -- file upload; its result is used once, not cached
 import {
+  type DeleteUserAdminDto,
   imagesUploadImage,
-  userDeleteUserAdmin,
 } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import FormInput from "@alliance/sharedweb/ui/FormInput";
@@ -18,7 +18,7 @@ import { AlertTriangle, Paperclip, X } from "lucide-react";
 import React, { useCallback, useState } from "react";
 
 interface DeleteAccountModalProps {
-  userId: number;
+  deleteAccount: (body: DeleteUserAdminDto) => Promise<unknown>;
   userName: string;
   userEmail: string;
   onCancel: () => void;
@@ -26,7 +26,7 @@ interface DeleteAccountModalProps {
 }
 
 export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
-  userId,
+  deleteAccount,
   userName,
   userEmail,
   onCancel,
@@ -90,14 +90,10 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
     setIsDeleting(true);
     setError(null);
     try {
-      await userDeleteUserAdmin({
-        path: { id: userId },
-        body: {
-          reason: reason.trim(),
-          confirmationEmail: confirmationEmail.trim(),
-          screenshotKey,
-        },
-        throwOnError: true,
+      await deleteAccount({
+        reason: reason.trim(),
+        confirmationEmail: confirmationEmail.trim(),
+        screenshotKey,
       });
       onDeleted();
     } catch (deleteError) {
@@ -110,7 +106,14 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
       );
       setIsDeleting(false);
     }
-  }, [canDelete, confirmationEmail, onDeleted, reason, screenshotKey, userId]);
+  }, [
+    canDelete,
+    confirmationEmail,
+    deleteAccount,
+    onDeleted,
+    reason,
+    screenshotKey,
+  ]);
 
   return (
     <Modal
