@@ -66,6 +66,7 @@ import { ScheduledPlansOverviewDto } from "./dto/scheduled-plans.dto";
 import { ShareUrlDto, ShareUrlStatsDto } from "./dto/share-url.dto";
 import { UserCompletedActionsCountDto } from "./dto/user-completed-actions-count.dto";
 import { ForumActionCompleterWorker } from "./forum-action-completer.worker";
+import { WelcomeQueueService } from "./welcome-queue.service";
 
 @Controller("actions")
 export class ActionsController {
@@ -76,6 +77,7 @@ export class ActionsController {
     private readonly actionSuites: ActionSuitesService,
     private readonly shareService: ActionShareService,
     private readonly suspensionService: ActionSuspensionService,
+    private readonly welcomeQueue: WelcomeQueueService,
     private readonly eventEmitter: EventEmitter2,
     private readonly forumActionCompleterWorker: ForumActionCompleterWorker,
     private readonly shareUrlsService: ShareUrlsService,
@@ -218,7 +220,7 @@ export class ActionsController {
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: WelcomeQueueDto })
   async getWelcomeQueueAdmin(): Promise<WelcomeQueueDto> {
-    return new WelcomeQueueDto(await this.actionsService.findWelcomeQueue());
+    return new WelcomeQueueDto(await this.welcomeQueue.findWelcomeQueue());
   }
 
   @Post("evaluate-cohort")

@@ -98,6 +98,7 @@ import { ProjectsService } from "./projects.service";
 import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
 import { SchemaWriteService } from "./schema-write.service";
 import { TaskBadgeService } from "./task-badge.service";
+import { WelcomeQueueService } from "./welcome-queue.service";
 
 @Module({
   imports: [
@@ -205,6 +206,7 @@ import { TaskBadgeService } from "./task-badge.service";
     FollowUpFormsService,
     ActionRelationsService,
     ActionImportExportService,
+    WelcomeQueueService,
   ],
   exports: [
     ActionsService,

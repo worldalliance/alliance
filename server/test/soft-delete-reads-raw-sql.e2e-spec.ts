@@ -1,7 +1,6 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { milliseconds } from "date-fns";
-import { ActionsService } from "src/actions/actions.service";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   ActionEvent,
@@ -14,6 +13,7 @@ import {
   ReminderGroupTimingMode,
 } from "src/actions/entities/reminder-group.entity";
 import { FeedMembersService } from "src/actions/feed-members.service";
+import { WelcomeQueueService } from "src/actions/welcome-queue.service";
 import { DetectableEntity } from "src/ai-detection/entities/ai-detection-result.entity";
 import { EntityResolverService } from "src/ai-detection/entity-resolver.service";
 import { AnalyticsModule } from "src/analytics/analytics.module";
@@ -54,7 +54,7 @@ describe("Raw SQL reads skip soft-deleted rows (e2e)", () => {
   let activityRepo: Repository<ActionActivity>;
   let contractEventRepo: Repository<ContractEvent>;
   let commentRepo: Repository<Comment>;
-  let actionsService: ActionsService;
+  let welcomeQueue: WelcomeQueueService;
   let feedMembers: FeedMembersService;
 
   const daysAgo = (days: number) =>
@@ -143,7 +143,7 @@ describe("Raw SQL reads skip soft-deleted rows (e2e)", () => {
     activityRepo = ctx.dataSource.getRepository(ActionActivity);
     contractEventRepo = ctx.dataSource.getRepository(ContractEvent);
     commentRepo = ctx.dataSource.getRepository(Comment);
-    actionsService = ctx.app.get(ActionsService);
+    welcomeQueue = ctx.app.get(WelcomeQueueService);
     feedMembers = ctx.app.get(FeedMembersService);
   }, 50000);
 
@@ -280,7 +280,7 @@ describe("Raw SQL reads skip soft-deleted rows (e2e)", () => {
 
     await actionRepo.softDelete(removed.id);
     await saveLiveCohortDecisions(ctx);
-    const queue = await actionsService.findWelcomeQueue();
+    const queue = await welcomeQueue.findWelcomeQueue();
     expect(
       queue.members.map((entry) => entry.user.id).sort((a, b) => a - b),
     ).toEqual(
