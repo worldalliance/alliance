@@ -37,6 +37,7 @@ import {
   TestCustomExpressionDto,
   TestCustomExpressionResponseDto,
 } from "./customvalidator.dto";
+import { CustomValidatorService } from "./customvalidator.service";
 import { FormResponseHistoryDto } from "./form-response-history.dto";
 import {
   CreateFormDto,
@@ -74,6 +75,7 @@ const formulaSourcesChangedResponse = {
 export class TasksController {
   constructor(
     private readonly tasksService: TasksService,
+    private readonly customValidatorService: CustomValidatorService,
     private readonly authService: AuthService,
   ) {}
 
@@ -412,7 +414,7 @@ export class TasksController {
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: CustomValidatorTypeDto, isArray: true })
   async customValidatorsAdmin(): Promise<CustomValidatorTypeDto[]> {
-    const types = await this.tasksService.customValidators();
+    const types = await this.customValidatorService.customValidators();
     return types.map((t) => new CustomValidatorTypeDto(t));
   }
 
@@ -425,7 +427,11 @@ export class TasksController {
     @Body() body: RunValidatorDto,
   ): Promise<CustomValidatorResponseDto> {
     return new CustomValidatorResponseDto(
-      await this.tasksService.runValidator(id, req.user.sub, body.fieldValue),
+      await this.customValidatorService.runValidator(
+        id,
+        req.user.sub,
+        body.fieldValue,
+      ),
     );
   }
 
@@ -436,7 +442,7 @@ export class TasksController {
     @Param("id", ParseIntPipe) id: number,
   ): Promise<CustomValidatorDto> {
     return new CustomValidatorDto(
-      await this.tasksService.findOneCustomValidator(id),
+      await this.customValidatorService.findOneCustomValidator(id),
     );
   }
 
@@ -446,11 +452,12 @@ export class TasksController {
   async createCustomValidatorAdmin(
     @Body() body: CreateCustomValidatorDto,
   ): Promise<CreateCustomValidatorResponseDto> {
-    const validator = await this.tasksService.findOrCreateCustomValidator({
-      type: body.type,
-      idArgument: body.idArgument,
-      expression: body.expression,
-    });
+    const validator =
+      await this.customValidatorService.findOrCreateCustomValidator({
+        type: body.type,
+        idArgument: body.idArgument,
+        expression: body.expression,
+      });
     return new CreateCustomValidatorResponseDto(validator.id);
   }
 
@@ -461,7 +468,7 @@ export class TasksController {
     @Body() body: TestCustomExpressionDto,
   ): Promise<TestCustomExpressionResponseDto> {
     return new TestCustomExpressionResponseDto(
-      await this.tasksService.testCustomExpression(
+      await this.customValidatorService.testCustomExpression(
         body.expression,
         body.userId,
       ),

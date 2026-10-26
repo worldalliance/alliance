@@ -13,6 +13,7 @@ import { MmsModule } from "src/mms/mms.module";
 import { ShareUrlsModule } from "src/share-urls/share-urls.module";
 import { User } from "src/user/entities/user.entity";
 import { UserModule } from "src/user/user.module";
+import { CustomValidatorService } from "./customvalidator.service";
 import { CustomValidator } from "./entities/customvalidator.entity";
 import { FormRowAssignment } from "./entities/form-row-assignment.entity";
 import { Form } from "./entities/form.entity";
@@ -48,6 +49,6 @@ import { TasksService } from "./tasks.service";
     ShareUrlsModule,
   ],
   controllers: [TasksController],
-  providers: [TasksService, FormRowAssignmentService],
+  providers: [TasksService, FormRowAssignmentService, CustomValidatorService],
 })
 export class TasksModule {}
