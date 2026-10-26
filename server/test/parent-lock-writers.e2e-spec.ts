@@ -1,4 +1,5 @@
 import { NotFoundException } from "@nestjs/common";
+import { CommunityInvitesService } from "src/community/community-invites.service";
 import { CommunityService } from "src/community/community.service";
 import { CommunityInvite } from "src/community/entities/community-invite.entity";
 import { Community } from "src/community/entities/community.entity";
@@ -91,10 +92,12 @@ describe("Writers locking the parents they attach to (e2e)", () => {
       });
 
     await expect(
-      communityService.createCommunityInvite(
-        { invitedUserId: invitee.id, communityId: community.id },
-        ctx.adminUserId,
-      ),
+      ctx.app
+        .get(CommunityInvitesService)
+        .createCommunityInvite(
+          { invitedUserId: invitee.id, communityId: community.id },
+          ctx.adminUserId,
+        ),
     ).rejects.toThrow(NotFoundException);
     expect(
       await ctx.dataSource.getRepository(CommunityInvite).find({

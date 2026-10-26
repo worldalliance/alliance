@@ -2,6 +2,7 @@ import { NotFoundException } from "@nestjs/common";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { AuthService } from "src/auth/auth.service";
 import { Guest } from "src/auth/entities/guest.entity";
+import { CommunityInvitesService } from "src/community/community-invites.service";
 import { CommunityMembershipService } from "src/community/community-membership.service";
 import { CommunityService } from "src/community/community.service";
 import {
@@ -232,7 +233,7 @@ describe("Account and group updates to a row deleted after its load (e2e)", () =
 
     await expect(
       ctx.app
-        .get(CommunityService)
+        .get(CommunityInvitesService)
         .rejectCommunityInvite(invite.id, invitee.id),
     ).rejects.toThrow(NotFoundException);
     expect(

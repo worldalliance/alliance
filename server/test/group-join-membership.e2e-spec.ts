@@ -1,3 +1,4 @@
+import { CommunityInvitesService } from "src/community/community-invites.service";
 import { CommunityService } from "src/community/community.service";
 import {
   CommunityInvite,
@@ -20,6 +21,7 @@ describe("Group join notifications: audience and triggers (e2e)", () => {
   let ctx: TestContext;
   let fx: GroupJoinFixtures;
   let communityService: CommunityService;
+  let communityInvitesService: CommunityInvitesService;
   let contractService: ContractService;
   let groupAssignmentService: GroupAssignmentService;
 
@@ -27,6 +29,7 @@ describe("Group join notifications: audience and triggers (e2e)", () => {
     ctx = await createTestApp([MessagingModule]);
     fx = new GroupJoinFixtures(ctx);
     communityService = ctx.app.get(CommunityService);
+    communityInvitesService = ctx.app.get(CommunityInvitesService);
     contractService = ctx.app.get(ContractService);
     groupAssignmentService = ctx.app.get(GroupAssignmentService);
   }, 50000);
@@ -205,7 +208,7 @@ describe("Group join notifications: audience and triggers (e2e)", () => {
       invitedUser: invited,
       community: group,
     });
-    await communityService.acceptCommunityInvite(invite.id, invited.id);
+    await communityInvitesService.acceptCommunityInvite(invite.id, invited.id);
     await communityService.addLeaderAdmin(group.id, promoted.id);
     await communityService.addLeaderAdmin(group.id, placed.id);
 
@@ -263,7 +266,7 @@ describe("Group join notifications: audience and triggers (e2e)", () => {
       community: group,
     });
 
-    await communityService.acceptCommunityInvite(invite.id, invited.id);
+    await communityInvitesService.acceptCommunityInvite(invite.id, invited.id);
 
     const categoriesFor = async (user: User) =>
       (await fx.notifRepo.find({ where: { user: { id: user.id } } }))
