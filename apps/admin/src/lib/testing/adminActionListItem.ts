@@ -12,6 +12,7 @@ export const adminActionListItem = (
   shortDescription: "",
   timeEstimate: null,
   squareThumbnailImageAlt: null,
+  customStatType: "none",
   createdAt: "2026-01-02T00:00:00.000Z",
   updatedAt: "2026-01-02T00:00:00.000Z",
   isContractSigningAction: false,

@@ -479,7 +479,7 @@ export type Action = {
      * Date and time when the action was computed for autocomplete
      */
     computedAutocompleteAt: string | null;
-    customStatType?: CustomActionStat;
+    customStatType: CustomActionStat;
     customStatLabel?: string;
     customStatValue?: number;
     customStatGoal?: number;
@@ -2272,7 +2272,7 @@ export type ActionDto = {
      * Date and time when the action was computed for autocomplete
      */
     computedAutocompleteAt: string | null;
-    customStatType?: CustomActionStat;
+    customStatType: CustomActionStat;
     customStatLabel?: string;
     customStatValue?: number;
     customStatGoal?: number;
@@ -2434,7 +2434,7 @@ export type AdminActionListItemDto = {
      * Date and time when the action was computed for autocomplete
      */
     computedAutocompleteAt: string | null;
-    customStatType?: CustomActionStat;
+    customStatType: CustomActionStat;
     customStatLabel?: string;
     customStatValue?: number;
     customStatGoal?: number;
@@ -2596,7 +2596,7 @@ export type AdminActionDto = {
      * Date and time when the action was computed for autocomplete
      */
     computedAutocompleteAt: string | null;
-    customStatType?: CustomActionStat;
+    customStatType: CustomActionStat;
     customStatLabel?: string;
     customStatValue?: number;
     customStatGoal?: number;
@@ -2746,10 +2746,10 @@ export type CreateActionDto = {
      * Whether to autocomplete action based on forum participation
      */
     isForumParticipationAction: boolean;
-    customStatType?: CustomActionStat;
     customStatLabel?: string;
     customStatValue?: number;
     customStatGoal?: number;
+    customStatType?: CustomActionStat;
     /**
      * Square thumbnail image alt for the action
      */
@@ -2841,10 +2841,10 @@ export type UpdateActionDto = {
      * Whether to autocomplete action based on forum participation
      */
     isForumParticipationAction?: boolean;
-    customStatType?: CustomActionStat;
     customStatLabel?: string;
     customStatValue?: number;
     customStatGoal?: number;
+    customStatType?: CustomActionStat;
     /**
      * Square thumbnail image alt for the action
      */
@@ -3074,7 +3074,7 @@ export type ExportActionDto = {
      * Date and time when the action was computed for autocomplete
      */
     computedAutocompleteAt: string | null;
-    customStatType?: CustomActionStat;
+    customStatType: CustomActionStat;
     customStatLabel?: string;
     customStatValue?: number;
     customStatGoal?: number;

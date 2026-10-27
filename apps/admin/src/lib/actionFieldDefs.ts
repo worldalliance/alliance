@@ -1,4 +1,5 @@
 import { CreateActionDto, VisibilityMode } from "@alliance/shared/client";
+import { tracksCustomStat } from "@alliance/shared/lib/customActionStat";
 import { suiteOptions } from "./suiteOptions";
 
 type ActionFieldType =
@@ -164,7 +165,7 @@ export function actionFieldDefs(
       type: "number",
       section: "settings",
       gridCol: true,
-      show: (f) => !!f.customStatType && f.customStatType !== "none",
+      show: (f) => tracksCustomStat(f.customStatType),
     },
     {
       name: "customStatLabel",
@@ -172,7 +173,7 @@ export function actionFieldDefs(
       type: "text",
       section: "settings",
       gridCol: true,
-      show: (f) => !!f.customStatType && f.customStatType !== "none",
+      show: (f) => tracksCustomStat(f.customStatType),
     },
     {
       name: "publicOnly",

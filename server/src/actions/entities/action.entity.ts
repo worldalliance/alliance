@@ -319,12 +319,15 @@ export class Action {
   @IsDate()
   computedAutocompleteAt: Date | null;
 
-  @Column({ type: "enum", enum: CustomActionStat, nullable: true })
+  @Column({
+    type: "enum",
+    enum: CustomActionStat,
+    default: CustomActionStat.NONE,
+  })
   @Type(() => String)
-  @ApiPropertyOptional({ enum: CustomActionStat, enumName: "CustomActionStat" })
-  @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  customStatType?: CustomActionStat;
+  @ApiProperty({ enum: CustomActionStat, enumName: "CustomActionStat" })
+  @IsEnum(CustomActionStat)
+  customStatType: CustomActionStat;
 
   @Column({ nullable: true })
   @ApiPropertyOptional()

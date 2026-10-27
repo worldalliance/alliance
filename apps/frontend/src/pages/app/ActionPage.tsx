@@ -39,6 +39,7 @@ import { useSidFromParams } from "../../lib/utils";
 import { NAV_HEIGHT, Navbar } from "../../site/Navbar";
 import { MissingRecordPage } from "../../site/NotFoundPage";
 import ActionCompletedBarWithInfo from "./ActionCompletedBarWithInfo";
+import ActionCustomStat from "./ActionCustomStat";
 
 export async function loader({
   params,
@@ -290,14 +291,7 @@ export default function ActionPage() {
                 textColor="zinc-800"
                 showInfoTooltip
               />
-              {!!action.customStatType && action.customStatValue !== null && (
-                <div className="mt-3">
-                  <p className="text-zinc-800">{action.customStatLabel}:</p>
-                  <p className="text-xl font-bold">
-                    {action.customStatValue ?? 0}
-                  </p>
-                </div>
-              )}
+              <ActionCustomStat action={action} />
             </div>
             <ActionActivityList
               actionId={action.id}
