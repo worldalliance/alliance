@@ -312,13 +312,21 @@ export const buildTimelineData = ({
   const span = maxDate.getTime() - globalStartDate.getTime();
   const dayCount = Math.max(1, Math.ceil(span / millisecondsInDay));
 
+  const rows: TimelineRow[] = [
+    ...sortedActions,
+    ...actions
+      .filter((action) => !action.events?.length)
+      .map((action) => ({ action, phases: [] })),
+  ];
+
   return {
-    timelineData: [
-      ...sortedActions,
-      ...actions
-        .filter((action) => !action.events?.length)
-        .map((action) => ({ action, phases: [] })),
-    ] satisfies TimelineRow[],
+    timelineData: mostRecentFirst
+      ? rows.sort(
+          (a, b) =>
+            Number(b.action.status === "draft") -
+            Number(a.action.status === "draft"),
+        )
+      : rows,
     globalStartDate,
     globalEndDate: maxDate,
     totalDays: dayCount,
