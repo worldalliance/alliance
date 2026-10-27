@@ -117,6 +117,7 @@ function activity(
     declineReason: null,
     isMoral: null,
     outOfTime: null,
+    doesntApply: null,
     ...overrides,
   };
 }
@@ -128,6 +129,7 @@ function resolve(
     action: makeAction(),
     user: makeUser(),
     cohort: { admitted: true, eligible: true },
+    variant: null,
     activities: [],
     now: NOW,
     ...overrides,
@@ -141,6 +143,7 @@ describe("resolveUserActionStatus", () => {
       assigned: true,
       optional: false,
       optionalReason: null,
+      optionalReasonText: null,
       contractGap: false,
       canComplete: true,
       relation: ViewerActionRelation.None,
@@ -250,6 +253,60 @@ describe("resolveUserActionStatus", () => {
       expect(status.optional).toBe(true);
       expect(status.optionalReason).toBeNull();
       expect(status.contractGap).toBe(true);
+    });
+  });
+
+  describe("optional branch", () => {
+    const optionalBranch = {
+      optional: true,
+      optionalReason: "You're donating food this week.",
+    };
+
+    it("makes the action optional, carrying the branch's reason", () => {
+      const status = resolve({ variant: optionalBranch });
+      expect(status.optional).toBe(true);
+      expect(status.optionalReason).toBe(ViewerOptionalReason.Branch);
+      expect(status.optionalReasonText).toBe(optionalBranch.optionalReason);
+      expect(status.contractGap).toBe(false);
+      expect(status.display).toBe(UserActionRelationPillStatus.OptionalTask);
+    });
+
+    it("stays optional rather than missed once the deadline passes", () => {
+      const status = resolve({
+        variant: optionalBranch,
+        now: new Date(DEADLINE.getTime() + millisecondsInDay),
+      });
+      expect(status.display).toBe(UserActionRelationPillStatus.OptionalTask);
+    });
+
+    it("leaves a required branch required", () => {
+      const status = resolve({
+        variant: { optional: false, optionalReason: "unused" },
+      });
+      expect(status.optional).toBe(false);
+      expect(status.optionalReasonText).toBeNull();
+    });
+
+    it("names the contract gap over the branch", () => {
+      const status = resolve({
+        variant: optionalBranch,
+        user: makeUser({
+          contractEvents: [
+            signed(new Date(PHASE_START.getTime() + millisecondsInDay)),
+          ],
+        }),
+      });
+      expect(status.optionalReason).toBe(ViewerOptionalReason.ContractGap);
+      expect(status.optionalReasonText).toBeNull();
+    });
+
+    it("does not assign a member outside the cohort", () => {
+      const status = resolve({
+        variant: optionalBranch,
+        cohort: { admitted: false, eligible: false },
+      });
+      expect(status.assigned).toBe(false);
+      expect(status.optional).toBe(false);
     });
   });
 

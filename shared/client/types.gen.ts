@@ -176,6 +176,7 @@ export type ActionActivity = {
     declineReason: string | null;
     isMoral: boolean | null;
     outOfTime: boolean | null;
+    doesntApply: boolean | null;
     /**
      * Source of the activity
      */
@@ -212,6 +213,8 @@ export type ActionFormVariant = {
     imageOverride: string | null;
     squareThumbnailImageOverride: string | null;
     squareThumbnailImageAltOverride: string | null;
+    optional: boolean;
+    optionalReason: string | null;
     createdAt: string;
     updatedAt: string;
 };
@@ -2159,11 +2162,11 @@ export type UserActionRelation = 'completed' | 'none' | 'declined' | 'dismissed'
 
 export type TaskAwayStatus = 'away_previously' | 'away_currently' | 'away_later' | 'not_away';
 
-export type ViewerOptionalReason = 'contract_gap';
+export type ViewerOptionalReason = 'contract_gap' | 'branch';
 
 export type ViewerActionRelation = 'completed' | 'withdrawn' | 'none';
 
-export type WithdrawalOption = 'out_of_time' | 'moral' | 'other';
+export type WithdrawalOption = 'out_of_time' | 'moral' | 'doesnt_apply' | 'other';
 
 export type UserActionWithdrawalDto = {
     reason: WithdrawalOption;
@@ -2176,6 +2179,7 @@ export type UserActionStatusDto = {
     assigned: boolean;
     optional: boolean;
     optionalReason: ViewerOptionalReason | null;
+    optionalReasonText: string | null;
     contractGap: boolean;
     canComplete: boolean;
     relation: ViewerActionRelation;
@@ -2320,6 +2324,7 @@ export type ActionWithdrawalDto = {
     declineReason: string | null;
     isMoral: boolean | null;
     outOfTime: boolean | null;
+    doesntApply: boolean | null;
 };
 
 export type SetActionPriorityDto = {
@@ -3204,6 +3209,7 @@ export type UserActionRelationDetailDto = {
     declineReason?: string;
     isMoral?: boolean;
     outOfTime?: boolean;
+    doesntApply?: boolean;
 };
 
 export type UserActionRelationsForUserDto = {
@@ -3621,6 +3627,8 @@ export type ActionFormVariantDto = {
     imageOverride: string | null;
     squareThumbnailImageOverride: string | null;
     squareThumbnailImageAltOverride: string | null;
+    optional: boolean;
+    optionalReason: string | null;
     createdAt: string;
     updatedAt: string;
 };
@@ -3650,6 +3658,8 @@ export type CreateActionFormVariantDto = {
     imageOverride?: string | null;
     squareThumbnailImageOverride?: string | null;
     squareThumbnailImageAltOverride?: string | null;
+    optional?: boolean;
+    optionalReason?: string | null;
     name: string;
     /**
      * Fraction of new joiners (0-1), for a random split. Set either this or rule.
@@ -3675,6 +3685,8 @@ export type UpdateActionFormVariantDto = {
     imageOverride?: string | null;
     squareThumbnailImageOverride?: string | null;
     squareThumbnailImageAltOverride?: string | null;
+    optional?: boolean;
+    optionalReason?: string | null;
     name?: string;
     rule?: {
         [key: string]: unknown;
@@ -4431,6 +4443,10 @@ export type OptOutActionDto = {
     reason: string;
     outOfTime: boolean;
     isMoral: boolean;
+    /**
+     * Defaults to false for older clients.
+     */
+    doesntApply?: boolean;
     partialFormData?: {
         [key: string]: unknown;
     };

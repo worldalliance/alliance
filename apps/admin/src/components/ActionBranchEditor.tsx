@@ -24,6 +24,8 @@ export type BranchFields = Required<
     | "bodyOverride"
     | "timeEstimateOverride"
     | "squareThumbnailImageAltOverride"
+    | "optional"
+    | "optionalReason"
   >
 > &
   Pick<
@@ -45,6 +47,8 @@ type Draft = {
   bodyOverride: string;
   timeEstimateOverride: string;
   squareThumbnailImageAltOverride: string;
+  optional: boolean;
+  optionalReason: string;
 };
 
 const draftOf = (branch: ParsedActionFormVariantDto | null): Draft => ({
@@ -56,6 +60,8 @@ const draftOf = (branch: ParsedActionFormVariantDto | null): Draft => ({
   timeEstimateOverride: branch?.timeEstimateOverride?.toString() ?? "",
   squareThumbnailImageAltOverride:
     branch?.squareThumbnailImageAltOverride ?? "",
+  optional: branch?.optional ?? false,
+  optionalReason: branch?.optionalReason ?? "",
 });
 
 const blankToNull = (value: string) => (value.trim() === "" ? null : value);
@@ -115,6 +121,8 @@ export default function ActionBranchEditor(props: {
       ),
       imageOverride: image.saved(),
       squareThumbnailImageOverride: thumbnail.saved(),
+      optional: draft.optional,
+      optionalReason: draft.optional ? blankToNull(draft.optionalReason) : null,
     });
   };
 
@@ -195,6 +203,30 @@ export default function ActionBranchEditor(props: {
             activeContractUserIds={props.activeContractUserIds}
             routing={routing}
           />
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <label className="flex items-center gap-2 text-sm text-zinc-700">
+          <input
+            type="checkbox"
+            checked={draft.optional}
+            onChange={(e) => set({ optional: e.target.checked })}
+          />
+          Optional for members on this branch
+        </label>
+        {draft.optional && (
+          <>
+            <p className="text-xs text-zinc-500">
+              They get no notifications for this action, and skipping it never
+              counts against them.
+            </p>
+            <TextField
+              label="Why it's optional, shown to them (blank for a generic line)"
+              value={draft.optionalReason}
+              onChange={(value) => set({ optionalReason: value })}
+            />
+          </>
         )}
       </div>
 

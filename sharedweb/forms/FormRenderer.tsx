@@ -18,6 +18,7 @@ import {
   type FormValue,
 } from "@alliance/common/forms/form-schema";
 import { withResolvedOptions } from "@alliance/common/forms/formula-options";
+import { isFormSkipped } from "@alliance/common/forms/skip-if";
 import {
   interpolateDisplayBlock,
   interpolateFieldText,
@@ -63,6 +64,7 @@ import {
   draftSaveFailed,
   guestReferral,
   outputFieldPublicToggle,
+  skipActionLabel,
   waitingForImageUpload,
 } from "@alliance/shared/lib/copy";
 import {
@@ -86,6 +88,7 @@ import {
 import UploadingWithCancel from "@alliance/sharedweb/ui/UploadingWithCancel";
 import {
   CircleDashed,
+  CircleOff,
   Clock,
   Ellipsis,
   Scale,
@@ -119,6 +122,7 @@ import { variableInputsGateView } from "./variableInputsGateView";
 const WITHDRAWAL_OPTION_ICONS: Record<WithdrawalOption, LucideIcon> = {
   out_of_time: Clock,
   moral: Scale,
+  doesnt_apply: CircleOff,
   other: CircleDashed,
 };
 
@@ -653,7 +657,17 @@ const FormRenderer = ({
     visiblePageIndices.includes(currentPageIndex)
       ? schema.pages[currentPageIndex]
       : null;
-  const isLastPage = nextVisiblePageIndex === null;
+  // Skipping is a withdrawal, so only forms that offer one can be skipped.
+  const skipped =
+    !readOnly &&
+    !followUp &&
+    !!onAbandonAction &&
+    isFormSkipped({
+      schema,
+      answers: effectiveFormData,
+      extras: visibilityExtras,
+    });
+  const isLastPage = nextVisiblePageIndex === null || skipped;
   const isFirstPage = previousVisiblePageIndex === null;
 
   const updateField: SetFieldValue = (fieldId, value) => {
@@ -1262,7 +1276,17 @@ const FormRenderer = ({
 
             {isLastPage && (
               <>
-                {readOnly ? null : onSubmit ? (
+                {readOnly ? null : onSubmit && skipped ? (
+                  <BaseButton
+                    variant={BaseButtonVariant.Black}
+                    className="w-full"
+                    type="button"
+                    disabled={submitting || uploadingAny}
+                    onClick={() => handleAbandon("doesnt_apply")}
+                  >
+                    {skipActionLabel}
+                  </BaseButton>
+                ) : onSubmit ? (
                   <div className="w-full">
                     {createAccountHref ? (
                       <a

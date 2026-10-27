@@ -113,7 +113,16 @@ it("marks a respondent who withdrew", () => {
       }),
     ],
     withdrawnUserMap: new Map([
-      [9, { userId: 9, declineReason: null, isMoral: null, outOfTime: true }],
+      [
+        9,
+        {
+          userId: 9,
+          declineReason: null,
+          isMoral: null,
+          outOfTime: true,
+          doesntApply: null,
+        },
+      ],
     ]),
   });
 

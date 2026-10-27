@@ -130,6 +130,11 @@ export class ActionActivity {
   @IsOptional()
   outOfTime: boolean | null; // for opting out due to running out of time
 
+  @Column({ type: "boolean", nullable: true })
+  @ApiProperty({ type: Boolean, nullable: true })
+  @IsOptional()
+  doesntApply: boolean | null;
+
   @Column({ type: "enum", enum: ActivitySource, default: ActivitySource.USER })
   @ApiProperty({
     description: "Source of the activity",

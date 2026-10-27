@@ -9,3 +9,17 @@ export function countsTowardMemberAnalytics(
 ): boolean {
   return !action.publicOnly && !action.onboarding;
 }
+
+/**
+ * Whether a member's assignment counts toward their completion rate. An
+ * optional branch or a "Doesn't apply to me" withdrawal costs nothing; a
+ * completion always counts.
+ */
+export function countsTowardCompletionRate(params: {
+  completed: boolean;
+  onOptionalBranch: boolean;
+  withdrewDoesntApply: boolean;
+}): boolean {
+  const { completed, onOptionalBranch, withdrewDoesntApply } = params;
+  return completed || (!onOptionalBranch && !withdrewDoesntApply);
+}

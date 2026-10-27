@@ -6,6 +6,7 @@ import {
   getViewerOnlyOptionalReason,
   isActionOptional,
   ViewerOnlyOptionalReason,
+  withOptionalReasonText,
 } from "./actionUtils";
 import { taskHeaders, type TitledCopy } from "./copy";
 
@@ -30,6 +31,7 @@ const HOME_COPY_BY_VIEWER_ONLY_OPTIONAL_REASON = {
   [ViewerOnlyOptionalReason.Unknown]: taskHeaders.homePage.optionalForViewer,
   [ViewerOnlyOptionalReason.ContractGap]:
     taskHeaders.homePage.optionalForContractGap,
+  [ViewerOnlyOptionalReason.Branch]: taskHeaders.homePage.optionalForViewer,
 } as const satisfies Record<ViewerOnlyOptionalReason, TitledCopy>;
 
 /**
@@ -64,7 +66,10 @@ export function getTaskDismissInfo(
   // missed a deadline they were never held to.
   const viewerOnlyReason = getViewerOnlyOptionalReason(action);
   if (viewerOnlyReason) {
-    const copy = HOME_COPY_BY_VIEWER_ONLY_OPTIONAL_REASON[viewerOnlyReason];
+    const copy = withOptionalReasonText(
+      HOME_COPY_BY_VIEWER_ONLY_OPTIONAL_REASON[viewerOnlyReason],
+      action,
+    );
     return { header: copy.title, message: copy.description };
   }
 

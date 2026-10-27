@@ -179,12 +179,25 @@ describe("buildResponsesHtml", () => {
 
   test.each([
     [
-      { outOfTime: true, isMoral: false },
+      { outOfTime: true, isMoral: false, doesntApply: null },
       "busy",
       "Took more than 15 minutes; busy",
     ],
-    [{ outOfTime: false, isMoral: true }, null, "Moral objection"],
-    [{ outOfTime: null, isMoral: null }, null, "Other reason"],
+    [
+      { outOfTime: false, isMoral: true, doesntApply: null },
+      null,
+      "Moral objection",
+    ],
+    [
+      { outOfTime: false, isMoral: false, doesntApply: true },
+      null,
+      "Doesn't apply to me",
+    ],
+    [
+      { outOfTime: null, isMoral: null, doesntApply: null },
+      null,
+      "Other reason",
+    ],
   ])(
     "labels a withdrawal %o with reason %p as %p",
     (flags, declineReason, expected) => {

@@ -1,7 +1,9 @@
+import { ActionActivityType } from "@alliance/common/actionActivity";
 import { findStartedMemberActionEvent } from "@alliance/common/actionEvent";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { sqlIsLatestCompletion } from "src/actions/action-activity-status";
+import { ActionBranchService } from "src/actions/action-branch.service";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { ActionEvent } from "src/actions/entities/action-event.entity";
 import {
@@ -19,7 +21,10 @@ import { hasMemberActionDeadlinePassed } from "src/utils/action-user";
 import { yieldToEventLoop } from "src/utils/event-loop";
 import { type Repository } from "typeorm";
 import { formatDateKey } from "./date-key";
-import { countsTowardMemberAnalytics } from "./member-analytics-action";
+import {
+  countsTowardCompletionRate,
+  countsTowardMemberAnalytics,
+} from "./member-analytics-action";
 import {
   MemberCompletionRetentionCohort,
   MemberCompletionRetentionPoint,
@@ -36,6 +41,7 @@ export class MemberRetentionAnalyticsService {
     @InjectRepository(Action)
     private readonly actionRepository: Repository<Action>,
     private readonly actionEventRecipientService: ActionEventRecipientService,
+    private readonly actionBranchService: ActionBranchService,
   ) {}
 
   async getMemberCompletionRetentionByCohort(
@@ -188,16 +194,33 @@ export class MemberRetentionAnalyticsService {
       cohortMembers.set(cohortIndex, members);
     }
 
-    const baseUsersByAction =
-      await this.actionEventRecipientService.findBaseUsersForEvents({
-        entries: actionGroups.flatMap((group) =>
-          group.entries.map((entry) => ({
-            action: entry.action,
-            eventId: entry.memberActionEvent.id,
-          })),
-        ),
-        includeSuspended: true,
-      });
+    const [baseUsersByAction, optionalBranchMembers, doesntApplyWithdrawals] =
+      await Promise.all([
+        this.actionEventRecipientService.findBaseUsersForEvents({
+          entries: actionGroups.flatMap((group) =>
+            group.entries.map((entry) => ({
+              action: entry.action,
+              eventId: entry.memberActionEvent.id,
+            })),
+          ),
+          includeSuspended: true,
+        }),
+        this.actionBranchService.findOptionalBranchMemberIds({
+          actionIds: eligibleActions.map(({ action }) => action.id),
+        }),
+        this.actionActivityRepository.find({
+          where: {
+            type: ActionActivityType.USER_WONT_COMPLETE,
+            doesntApply: true,
+          },
+          select: { userId: true, actionId: true },
+        }),
+      ]);
+    const withdrewDoesntApply = new Set(
+      doesntApplyWithdrawals.map(
+        (activity) => `${activity.userId}:${activity.actionId}`,
+      ),
+    );
 
     for (const [actionIndex, group] of actionGroups.entries()) {
       // Long CPU-bound accumulation; let queued requests run between groups.
@@ -219,6 +242,19 @@ export class MemberRetentionAnalyticsService {
           if (weekIndex < 0) {
             continue;
           }
+          const key = `${user.id}:${action.id}`;
+          const completed = completedLookup.has(key);
+          if (
+            !countsTowardCompletionRate({
+              completed,
+              onOptionalBranch: !!optionalBranchMembers
+                .get(action.id)
+                ?.has(user.id),
+              withdrewDoesntApply: withdrewDoesntApply.has(key),
+            })
+          ) {
+            continue;
+          }
 
           const weekMap =
             cohortWeekTotals.get(cohortIndex) ??
@@ -236,7 +272,7 @@ export class MemberRetentionAnalyticsService {
           };
           actionBucket.memberCount += 1;
           bucket.actionCounts.set(action.id, actionBucket);
-          if (completedLookup.has(`${user.id}:${action.id}`)) {
+          if (completed) {
             bucket.completedCount += 1;
           }
           weekMap.set(weekIndex, bucket);

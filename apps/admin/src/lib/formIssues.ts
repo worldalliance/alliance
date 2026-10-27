@@ -34,6 +34,7 @@ export enum IssueTargetKind {
   OutputView = "outputView",
   Variables = "variables",
   Rows = "rows",
+  SkipIf = "skipIf",
   Form = "form",
 }
 
@@ -44,6 +45,7 @@ export type IssueTarget =
   | { kind: IssueTargetKind.OutputView; viewId: string }
   | { kind: IssueTargetKind.Variables }
   | { kind: IssueTargetKind.Rows }
+  | { kind: IssueTargetKind.SkipIf }
   | { kind: IssueTargetKind.Form };
 
 export type FormIssue = {
@@ -56,6 +58,7 @@ export type FormIssue = {
 const ROLE_LABEL: Record<ValidatedFormula, string> = {
   [ValidatedFormula.Visibility]: "Visibility",
   [ValidatedFormula.RequiredIf]: "Required-if",
+  [ValidatedFormula.SkipIf]: "Skip-if",
 };
 
 /** Where each page, element, list sub-field, and accordion part is, by id. */
@@ -102,6 +105,9 @@ function locate({
   }
   if (error.blockId === ROW_LIST_BLOCK_ID) {
     return { kind: IssueTargetKind.Rows };
+  }
+  if (error.formula === ValidatedFormula.SkipIf) {
+    return { kind: IssueTargetKind.SkipIf };
   }
   const place = places.get(error.blockId);
   if (!place) return { kind: IssueTargetKind.Form };
@@ -362,6 +368,8 @@ const targetKey = (target: IssueTarget): string => {
       return "variables";
     case IssueTargetKind.Rows:
       return "rows";
+    case IssueTargetKind.SkipIf:
+      return "skipIf";
     case IssueTargetKind.Form:
       return "form";
     default:

@@ -27,12 +27,14 @@ export const WithdrawalBadge: React.FC<{ className?: string }> = ({
 const WITHDRAWAL_OPTION_TEXT_STYLE: Record<WithdrawalOption, string> = {
   out_of_time: "text-orange-600",
   moral: "text-amber-600",
+  doesnt_apply: "text-sky-600",
   other: "text-zinc-700",
 };
 
 type StoredWithdrawal = {
   outOfTime?: boolean | null;
   isMoral?: boolean | null;
+  doesntApply?: boolean | null;
   declineReason?: string | null;
 };
 

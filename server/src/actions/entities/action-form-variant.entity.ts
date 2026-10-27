@@ -6,6 +6,7 @@ import { ApiProperty } from "@nestjs/swagger";
 import { Transform, Type } from "class-transformer";
 import {
   Allow,
+  IsBoolean,
   IsEmpty,
   IsInt,
   IsNumber,
@@ -147,6 +148,19 @@ export class ActionFormVariant {
   @IsString()
   @Transform(trimToNull)
   squareThumbnailImageAltOverride: string | null;
+
+  /** Members on this variant are optional for its action: no reminders, no missed deadline, no suspension accounting. */
+  @Column({ default: false })
+  @ApiProperty()
+  @IsBoolean()
+  optional: boolean;
+
+  @Column({ type: "varchar", nullable: true })
+  @ApiProperty({ type: String, nullable: true })
+  @IsOptional()
+  @IsString()
+  @Transform(trimToNull)
+  optionalReason: string | null;
 
   @CreateDateColumnTz()
   @ApiProperty()

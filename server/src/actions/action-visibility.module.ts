@@ -8,6 +8,7 @@ import { ActionVisibilityService } from "./action-visibility.service";
 import { CohortAdmissionService } from "./cohort-admission.service";
 import { ActionActivity } from "./entities/action-activity.entity";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
+import { ActionFormAssignment } from "./entities/action-form-assignment.entity";
 import { ActionFormVariant } from "./entities/action-form-variant.entity";
 import { Action } from "./entities/action.entity";
 import { PrerequisiteProgressService } from "./prerequisite-progress.service";
@@ -20,6 +21,7 @@ import { SingleMemberCohortService } from "./single-member-cohort.service";
       Action,
       ActionActivity,
       ActionCohortDecision,
+      ActionFormAssignment,
       ActionFormVariant,
       Community,
       FormResponse,

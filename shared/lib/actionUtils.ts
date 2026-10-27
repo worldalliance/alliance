@@ -10,6 +10,7 @@ import {
   UserActionRelationDetailDto,
   UserActionSummaryDto,
 } from "../client";
+import type { TitledCopy } from "./copy";
 
 type TaskPriority = {
   id: number;
@@ -146,6 +147,7 @@ export function isActionOptional(action: ActionDto): boolean {
 export enum ViewerOnlyOptionalReason {
   Unknown = "unknown",
   ContractGap = "contract_gap",
+  Branch = "branch",
 }
 
 export function getViewerOnlyOptionalReason(
@@ -159,6 +161,8 @@ export function getViewerOnlyOptionalReason(
   switch (reason) {
     case "contract_gap":
       return ViewerOnlyOptionalReason.ContractGap;
+    case "branch":
+      return ViewerOnlyOptionalReason.Branch;
     case null:
       break;
     default:
@@ -167,14 +171,28 @@ export function getViewerOnlyOptionalReason(
   return ViewerOnlyOptionalReason.Unknown;
 }
 
+const DEFERS_FOR_VIEWER = {
+  [ViewerOnlyOptionalReason.Unknown]: false,
+  [ViewerOnlyOptionalReason.ContractGap]: true,
+  [ViewerOnlyOptionalReason.Branch]: true,
+} as const satisfies Record<ViewerOnlyOptionalReason, boolean>;
+
 /**
  * Does this task go after the viewer's other home items? Only a contract gap
- * defers it: an action the admin marked optional keeps its admin-chosen rank.
+ * or an optional branch defers it: an action the admin marked optional keeps
+ * its admin-chosen rank.
  */
 export function isDeferredForViewer(action: ActionDto): boolean {
-  return (
-    getViewerOnlyOptionalReason(action) === ViewerOnlyOptionalReason.ContractGap
-  );
+  const reason = getViewerOnlyOptionalReason(action);
+  return reason !== null && DEFERS_FOR_VIEWER[reason];
+}
+
+export function withOptionalReasonText(
+  copy: TitledCopy,
+  action: ActionDto,
+): TitledCopy {
+  const text = action.viewer?.optionalReasonText;
+  return text ? { ...copy, description: text } : copy;
 }
 
 export function isActionAssignedAndNotDismissed(action: ActionDto): boolean {

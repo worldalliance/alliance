@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { TERMINAL_ACTIVITY_TYPES } from "src/actions/action-activity-status";
+import { ActionBranchService } from "src/actions/action-branch.service";
 import { CohortResolutionSession } from "src/actions/cohort-resolution-session";
 import { CohortResolverService } from "src/actions/cohort-resolver.service";
 import {
@@ -44,6 +45,7 @@ export class ActionEventRecipientService {
     private readonly userService: UserService,
     private readonly tagService: TagService,
     private readonly cohortResolverService: CohortResolverService,
+    private readonly actionBranchService: ActionBranchService,
   ) {}
 
   /**
@@ -176,6 +178,7 @@ export class ActionEventRecipientService {
       cohortMemberIds,
       perActionCohortMemberIds,
       completionActivities,
+      optionalBranchMembers,
     ] = await Promise.all([
       this.userService.findByIds(
         users.map((user) => user.id),
@@ -201,15 +204,27 @@ export class ActionEventRecipientService {
           type: In(TERMINAL_ACTIVITY_TYPES),
         },
       }),
+      this.actionBranchService.findOptionalBranchMemberIds({
+        actionIds: [eventAction.id, ...actions.map((action) => action.id)],
+      }),
     ]);
 
+    const heldMemberIds = (actionId: number, memberIds: Set<number>) => {
+      const optional = optionalBranchMembers.get(actionId);
+      return optional
+        ? new Set([...memberIds].filter((id) => !optional.has(id)))
+        : memberIds;
+    };
     const cohortByActionId = new Map(
-      perActionCohortMemberIds.map((r) => [r.actionId, r.memberIds]),
+      perActionCohortMemberIds.map((r) => [
+        r.actionId,
+        heldMemberIds(r.actionId, r.memberIds),
+      ]),
     );
 
     const participationCohortMemberIds = actionSuite
-      ? new Set(perActionCohortMemberIds.flatMap((r) => [...r.memberIds]))
-      : cohortMemberIds;
+      ? new Set([...cohortByActionId.values()].flatMap((ids) => [...ids]))
+      : heldMemberIds(eventAction.id, cohortMemberIds);
 
     const idToUser = new Map(usersWithTags.map((user) => [user.id, user]));
 

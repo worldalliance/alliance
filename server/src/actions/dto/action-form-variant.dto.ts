@@ -32,8 +32,10 @@ const COPY_OVERRIDE_FIELDS = [
   "squareThumbnailImageAltOverride",
 ] as const;
 
-class VariantCopyOverridesDto extends PartialType(
-  PickType(ActionFormVariant, COPY_OVERRIDE_FIELDS),
+const OPTIONALITY_FIELDS = ["optional", "optionalReason"] as const;
+
+class VariantSettingsDto extends PartialType(
+  PickType(ActionFormVariant, [...COPY_OVERRIDE_FIELDS, ...OPTIONALITY_FIELDS]),
 ) {}
 
 export class ActionFormVariantDto extends PickType(ActionFormVariant, [
@@ -45,6 +47,7 @@ export class ActionFormVariantDto extends PickType(ActionFormVariant, [
   "rule",
   "position",
   ...COPY_OVERRIDE_FIELDS,
+  ...OPTIONALITY_FIELDS,
   "createdAt",
   "updatedAt",
 ]) {
@@ -65,12 +68,14 @@ export class ActionFormVariantDto extends PickType(ActionFormVariant, [
     this.squareThumbnailImageOverride = variant.squareThumbnailImageOverride;
     this.squareThumbnailImageAltOverride =
       variant.squareThumbnailImageAltOverride;
+    this.optional = variant.optional;
+    this.optionalReason = variant.optionalReason;
     this.createdAt = variant.createdAt;
     this.updatedAt = variant.updatedAt;
   }
 }
 
-export class CreateActionFormVariantDto extends VariantCopyOverridesDto {
+export class CreateActionFormVariantDto extends VariantSettingsDto {
   @ApiProperty()
   @IsString()
   name: string;
@@ -107,7 +112,7 @@ export class CreateActionFormVariantDto extends VariantCopyOverridesDto {
   sourceFormId?: number | null;
 }
 
-export class UpdateActionFormVariantDto extends VariantCopyOverridesDto {
+export class UpdateActionFormVariantDto extends VariantSettingsDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

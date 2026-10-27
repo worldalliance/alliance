@@ -11,6 +11,7 @@ import {
   useCompletedTaskForm,
   useGuestTaskForm,
 } from "@alliance/shared/lib/actionTaskPanelCompleted";
+import { withOptionalReasonText } from "@alliance/shared/lib/actionUtils";
 import {
   clipboardCopy,
   guestReferral,
@@ -227,7 +228,16 @@ const ActionPageTaskPanel = () => {
     </div>
   );
 
-  let taskPanelHeader = taskPanelHeaderByState[state];
+  let taskPanelHeader =
+    state === ActionPageTaskPanelState.OptionalForViewer
+      ? renderTitledHeader(
+          withOptionalReasonText(
+            taskHeaders.actionPage.optionalForViewer,
+            action,
+          ),
+          "text-sky-500",
+        )
+      : taskPanelHeaderByState[state];
   if (isCompletedPanel) {
     taskPanelHeader = completedHeader;
   } else if (isNonmemberPublicReferralAction) {

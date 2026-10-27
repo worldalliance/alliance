@@ -160,24 +160,30 @@ export class SingleMemberCohortService {
         const now = new Date();
         if (!canMissActionDeadline(action, now)) return false;
 
-        const [terminalUserIds, inCohort] = await Promise.all([
-          this.prerequisiteProgressService.loadTerminalUserIds(
-            actionId,
-            user.id,
-          ),
-          this.computeIsInRosterCohort({
-            user,
-            action,
-            visitedActionIds: new Set(visitedActionIds).add(actionId),
-            session,
-          }),
-        ]);
+        const [terminalUserIds, inCohort, optionalBranchMembers] =
+          await Promise.all([
+            this.prerequisiteProgressService.loadTerminalUserIds(
+              actionId,
+              user.id,
+            ),
+            this.computeIsInRosterCohort({
+              user,
+              action,
+              visitedActionIds: new Set(visitedActionIds).add(actionId),
+              session,
+            }),
+            this.actionBranchService.findOptionalBranchMemberIds({
+              actionIds: [actionId],
+              userId: user.id,
+            }),
+          ]);
         // `user` must have `contractEvents` and `awayRanges` loaded; without
         // them the contract and away checks silently read false.
         return computeMissedActionDeadline({
           action,
           user,
           inCohort,
+          onOptionalBranch: optionalBranchMembers.has(actionId),
           hasTerminalActivity: terminalUserIds.size > 0,
           now,
         });

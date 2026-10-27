@@ -485,6 +485,7 @@ export class TasksController {
           reason: body.reason,
           outOfTime: body.outOfTime,
           isMoral: body.isMoral,
+          doesntApply: body.doesntApply ?? false,
         },
         body.partialFormData,
       ),

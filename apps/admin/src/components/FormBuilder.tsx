@@ -41,6 +41,7 @@ import { FormVariablesProvider } from "./FormVariablesContext";
 import { OutputBuilder } from "./OutputBuilder";
 import { RowListBuilder } from "./row-list/RowListBuilder";
 import { ShareableTextBuilder } from "./ShareableTextBuilder";
+import { SkipIfBuilder } from "./skip-if/SkipIfBuilder";
 import { useSaveGate } from "./useSaveGate";
 import { VariableBuilder } from "./VariableBuilder";
 
@@ -316,6 +317,7 @@ export function FormBuilder(props: FormBuilderProps) {
       },
       showVariables: () => setActiveEditor("variables"),
       showRows: () => setActiveEditor("rows"),
+      showSkipIf: () => setActiveEditor("skip"),
     });
 
   return (
@@ -426,6 +428,12 @@ export function FormBuilder(props: FormBuilderProps) {
                   />
                 ) : activeEditor === "rows" ? (
                   <RowListBuilder
+                    key={schemaLoads}
+                    schema={schema}
+                    onSchemaChange={updateSchema}
+                  />
+                ) : activeEditor === "skip" ? (
+                  <SkipIfBuilder
                     key={schemaLoads}
                     schema={schema}
                     onSchemaChange={updateSchema}

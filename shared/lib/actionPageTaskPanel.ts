@@ -140,6 +140,7 @@ const stateByViewerOnlyOptionalReason = {
     ActionPageTaskPanelState.OptionalForViewer,
   [ViewerOnlyOptionalReason.ContractGap]:
     ActionPageTaskPanelState.OptionalForContractGap,
+  [ViewerOnlyOptionalReason.Branch]: ActionPageTaskPanelState.OptionalForViewer,
 } as const satisfies Record<ViewerOnlyOptionalReason, ActionPageTaskPanelState>;
 
 const relationKeepsPanel = {

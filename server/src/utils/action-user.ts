@@ -287,19 +287,23 @@ export function computeMissedRequiredAction(params: {
 /**
  * The `MissedActionDeadline` cohort leaf for one member, shared by the
  * single-user and population cohort paths: required and present for the
- * action, deadline passed, no completion or withdrawal. Dismissal does not
- * count; it is a view-only overlay offered on past-deadline cards.
+ * action, not on an optional branch, deadline passed, no completion or
+ * withdrawal. Dismissal does not count; it is a view-only overlay offered on
+ * past-deadline cards.
  */
 export function computeMissedActionDeadline(params: {
   action: SelfViewParams["action"] & Pick<Action, "optional">;
   user: NonNullable<SelfViewParams["user"]> &
     Pick<User, "awayRanges" | "isAwayAtAnyPointInRange">;
   inCohort: boolean;
+  onOptionalBranch: boolean;
   hasTerminalActivity: boolean;
   now: Date;
 }): boolean {
-  const { action, user, inCohort, hasTerminalActivity, now } = params;
+  const { action, user, inCohort, onOptionalBranch, hasTerminalActivity, now } =
+    params;
   return (
+    !onOptionalBranch &&
     computeMissedRequiredAction({ action, hasTerminalActivity, now }) &&
     computeIsRequiredForAction({ action, user, inCohort, dismissed: false }) &&
     !computeIsAwayDuringWindow({ action, user })

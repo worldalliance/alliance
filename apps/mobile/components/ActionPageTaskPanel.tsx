@@ -6,6 +6,7 @@ import {
   shouldLoadCompletedTaskFormByState,
 } from "@alliance/shared/lib/actionPageTaskPanel";
 import { useCompletedTaskForm } from "@alliance/shared/lib/actionTaskPanelCompleted";
+import { withOptionalReasonText } from "@alliance/shared/lib/actionUtils";
 import {
   clipboardCopy,
   taskHeaders,
@@ -194,7 +195,15 @@ const ActionPageTaskPanel = ({
   const taskPanelHeader =
     state === ActionPageTaskPanelState.Completed
       ? completedHeader
-      : taskPanelTopByState[state];
+      : state === ActionPageTaskPanelState.OptionalForViewer
+        ? renderTitledHeader(
+            withOptionalReasonText(
+              taskHeaders.actionPage.optionalForViewer,
+              action,
+            ),
+            "text-sky-500",
+          )
+        : taskPanelTopByState[state];
   const { header: headerStyle, body: bodyStyle } = cardStylesForState(state);
 
   const panelHandlers = {

@@ -293,6 +293,9 @@ export class UserActionStatusDto {
   })
   optionalReason: ViewerOptionalReason | null;
 
+  @ApiProperty({ type: String, nullable: true })
+  optionalReasonText: string | null;
+
   @ApiProperty()
   contractGap: boolean;
 
@@ -336,6 +339,7 @@ export class UserActionStatusDto {
     this.assigned = input.assigned;
     this.optional = input.optional;
     this.optionalReason = input.optionalReason;
+    this.optionalReasonText = input.optionalReasonText;
     this.contractGap = input.contractGap;
     this.canComplete = input.canComplete;
     this.relation = input.relation;
@@ -773,6 +777,11 @@ export class OptOutActionDto {
   @IsDefined()
   @IsBoolean()
   isMoral: boolean;
+
+  @ApiPropertyOptional({ description: "Defaults to false for older clients." })
+  @IsOptional()
+  @IsBoolean()
+  doesntApply?: boolean;
 
   @ApiPropertyOptional({ type: Object })
   @Type(() => Object)
@@ -1653,6 +1662,7 @@ export class ActionWithdrawalDto extends PickType(ActionActivity, [
   "declineReason",
   "isMoral",
   "outOfTime",
+  "doesntApply",
 ]) {
   constructor(activity: ActionActivity) {
     super();
@@ -1660,5 +1670,6 @@ export class ActionWithdrawalDto extends PickType(ActionActivity, [
     this.declineReason = activity.declineReason;
     this.isMoral = activity.isMoral;
     this.outOfTime = activity.outOfTime;
+    this.doesntApply = activity.doesntApply;
   }
 }

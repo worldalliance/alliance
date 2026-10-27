@@ -364,11 +364,16 @@ export class CohortResolverService {
     const action = await this.loadRosterLeafAction(actionId);
     const now = new Date();
     if (!action || !canMissActionDeadline(action, now)) return new Set();
-    const [users, cohortMemberIds, terminalUserIds] = await Promise.all([
-      this.getActiveUsers(session),
-      this.resolveDecidedCohort({ action, session, resolvingActionIds }),
-      this.prerequisiteProgressService.loadTerminalUserIds(action.id),
-    ]);
+    const [users, cohortMemberIds, terminalUserIds, optionalBranchMembers] =
+      await Promise.all([
+        this.getActiveUsers(session),
+        this.resolveDecidedCohort({ action, session, resolvingActionIds }),
+        this.prerequisiteProgressService.loadTerminalUserIds(action.id),
+        this.actionBranchService.findOptionalBranchMemberIds({
+          actionIds: [action.id],
+        }),
+      ]);
+    const optionalMemberIds = optionalBranchMembers.get(action.id);
     return new Set(
       users
         .filter((user) =>
@@ -376,6 +381,7 @@ export class CohortResolverService {
             action,
             user,
             inCohort: cohortMemberIds.has(user.id),
+            onOptionalBranch: !!optionalMemberIds?.has(user.id),
             hasTerminalActivity: terminalUserIds.has(user.id),
             now,
           }),

@@ -80,6 +80,7 @@ export type UserActionRelationDetail = {
   declineReason?: string;
   isMoral?: boolean;
   outOfTime?: boolean;
+  doesntApply?: boolean;
 };
 
 export class UserActionRelationDetailDto {
@@ -110,6 +111,9 @@ export class UserActionRelationDetailDto {
   @ApiPropertyOptional()
   outOfTime?: boolean;
 
+  @ApiPropertyOptional()
+  doesntApply?: boolean;
+
   constructor(input: UserActionRelationDetail) {
     this.actionId = input.actionId;
     this.status = input.status;
@@ -118,6 +122,7 @@ export class UserActionRelationDetailDto {
     this.declineReason = input.declineReason;
     this.isMoral = input.isMoral;
     this.outOfTime = input.outOfTime;
+    this.doesntApply = input.doesntApply;
   }
 }
 

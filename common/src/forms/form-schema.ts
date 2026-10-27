@@ -428,6 +428,8 @@ export const formSchema = z.strictObject({
   /** Computed values referenced as `#{name}` in display text and labels. */
   variables: z.array(formVariableSchema).optional(),
   rowList: rowListSchema.optional(),
+  /** While true, submitting records a "Doesn't apply to me" withdrawal instead of a completion. */
+  skipIfFormula: visibleIfFormulaSchema.optional(),
 });
 export type FormSchema = z.infer<typeof formSchema>;
 

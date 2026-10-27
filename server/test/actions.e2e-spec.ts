@@ -2309,12 +2309,14 @@ describe("Actions (e2e)", () => {
               declineReason: "busy",
               isMoral: false,
               outOfTime: true,
+              doesntApply: null,
             },
             {
               userId: ctx.adminUserId,
               declineReason: null,
               isMoral: null,
               outOfTime: null,
+              doesntApply: null,
             },
           ]),
         );

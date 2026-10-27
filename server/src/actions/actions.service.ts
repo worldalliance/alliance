@@ -169,6 +169,7 @@ import {
   sqlIsLatestWithdrawal,
   TERMINAL_ACTIVITY_TYPES,
 } from "./action-activity-status";
+import { ActionBranchService } from "./action-branch.service";
 import { applyVariantToAction } from "./action-branches";
 import { ActionFormAssignmentService } from "./action-form-assignment.service";
 import { ActionParticipantsService } from "./action-participants.service";
@@ -451,13 +452,14 @@ export class ActionsService {
     private readonly prerequisiteProgressService: PrerequisiteProgressService,
     private readonly participants: ActionParticipantsService,
     private readonly recognitionPreview: ActionUpdateRecognitionPreviewService,
+    private readonly actionBranchService: ActionBranchService,
   ) {}
 
   async applyAssignedVariants(
     actions: Action[],
     userId: number | undefined,
-  ): Promise<void> {
-    if (!userId || actions.length === 0) return;
+  ): Promise<Map<number, ActionFormVariant>> {
+    if (!userId || actions.length === 0) return new Map();
     const assigned =
       await this.actionFormAssignmentService.getOrCreateAssignedVariantsForActions(
         actions.map((a) => a.id),
@@ -467,6 +469,7 @@ export class ActionsService {
       const variant = assigned.get(action.id);
       if (variant) applyVariantToAction(action, variant);
     }
+    return assigned;
   }
 
   async findActionById(id: number): Promise<Action | null> {
@@ -1021,7 +1024,10 @@ export class ActionsService {
       session,
     });
 
-    await this.applyAssignedVariants(filtered, user?.id);
+    const assignedVariants = await this.applyAssignedVariants(
+      filtered,
+      user?.id,
+    );
 
     const actionsDismissed = new Set(
       (
@@ -1089,6 +1095,7 @@ export class ActionsService {
                   action,
                   user,
                   cohort,
+                  variant: assignedVariants.get(action.id) ?? null,
                   activities: userActivities.filtered({
                     userId: user.id,
                     actionId: action.id,
@@ -1216,9 +1223,7 @@ export class ActionsService {
       user,
       session,
     });
-    if (userId) {
-      await this.applyAssignedVariants([action], userId);
-    }
+    const assignedVariants = await this.applyAssignedVariants([action], userId);
 
     const activities = user
       ? await this.actionActivityRepository.find({
@@ -1264,7 +1269,14 @@ export class ActionsService {
         ? computeMemberActionAwayStatus({ action, user, now })
         : undefined,
       viewer: user
-        ? resolveUserActionStatus({ action, user, cohort, activities, now })
+        ? resolveUserActionStatus({
+            action,
+            user,
+            cohort,
+            variant: assignedVariants.get(action.id) ?? null,
+            activities,
+            now,
+          })
         : undefined,
       reqAuthenticated: !!user,
     });
@@ -1742,6 +1754,7 @@ export class ActionsService {
     declineReason?: string;
     isOutOfTime?: boolean;
     isMoral?: boolean;
+    doesntApply?: boolean;
     adminCreated?: boolean;
     now?: Date;
   }): Promise<ActionActivity> {
@@ -1753,6 +1766,7 @@ export class ActionsService {
       declineReason,
       isOutOfTime,
       isMoral,
+      doesntApply,
       adminCreated,
       now = new Date(),
     } = options;
@@ -1797,6 +1811,7 @@ export class ActionsService {
       declineReason: declineReason ?? null,
       outOfTime: isOutOfTime,
       isMoral,
+      doesntApply,
       source: adminCreated
         ? ActivitySource.ADMIN_OVERRIDE
         : ActivitySource.USER,
@@ -1829,6 +1844,7 @@ export class ActionsService {
       const option = withdrawalOptionFromFlags({
         outOfTime: isOutOfTime,
         isMoral,
+        doesntApply,
       });
       const trimmedReason = declineReason?.trim();
       // Spread to code points so truncation can't split a surrogate pair
@@ -1851,6 +1867,7 @@ export class ActionsService {
           declineReason,
           outOfTime: isOutOfTime,
           isMoral,
+          doesntApply,
           adminCreated: adminCreated ?? false,
         },
       });
@@ -4024,6 +4041,12 @@ export class ActionsService {
       });
     });
 
+    const optionalBranchMembersP = run(async () =>
+      this.actionBranchService.findOptionalBranchMemberIds({
+        actionIds: (await actionsP).map((a) => a.id),
+      }),
+    );
+
     // --- end of promise defs ---
 
     const now = new Date();
@@ -4075,6 +4098,7 @@ export class ActionsService {
           declineReason: undefined,
           isMoral: undefined,
           outOfTime: undefined,
+          doesntApply: undefined,
           isJoined: false,
           isAway: false,
           activities: [],
@@ -4127,7 +4151,8 @@ export class ActionsService {
       detail.activities.push(activity);
     }
 
-    for (const actionMap of relationByUserThenAction.values()) {
+    const optionalBranchMembers = await optionalBranchMembersP;
+    for (const [userId, actionMap] of relationByUserThenAction) {
       for (const [actionId, detail] of actionMap) {
         const action = actionById.get(actionId)!;
         const terminal = findLatestTerminalActivity(detail.activities);
@@ -4144,6 +4169,7 @@ export class ActionsService {
               detail.declineReason = terminal.declineReason ?? undefined;
               detail.isMoral = terminal.isMoral ?? undefined;
               detail.outOfTime = terminal.outOfTime ?? undefined;
+              detail.doesntApply = terminal.doesntApply ?? undefined;
               break;
             default:
               throw new Error(
@@ -4155,7 +4181,9 @@ export class ActionsService {
         detail.status = resolveUserActionPillStatus({
           isJoined: detail.isJoined,
           isAway: detail.isAway,
-          optional: action.optional,
+          optional:
+            action.optional ||
+            !!optionalBranchMembers.get(actionId)?.has(userId),
           deadlinePassed: hasMemberActionDeadlinePassed(
             action.memberActionPhase?.deadlineEvent?.date,
             now,
@@ -4179,6 +4207,7 @@ export class ActionsService {
           declineReason: detail.declineReason,
           isMoral: detail.isMoral,
           outOfTime: detail.outOfTime,
+          doesntApply: detail.doesntApply,
         }))
         .sort(
           (a, b) =>
@@ -4300,13 +4329,16 @@ export class ActionsService {
     const actionIds = closedSuites.flatMap((suite) =>
       suite.actions.map((action) => action.id),
     );
-    const satisfyingActivities = await this.actionActivityRepository.find({
-      where: {
-        actionId: In(actionIds),
-        type: In(TERMINAL_ACTIVITY_TYPES),
-      },
-      select: { actionId: true, userId: true },
-    });
+    const [satisfyingActivities, optionalBranchMembers] = await Promise.all([
+      this.actionActivityRepository.find({
+        where: {
+          actionId: In(actionIds),
+          type: In(TERMINAL_ACTIVITY_TYPES),
+        },
+        select: { actionId: true, userId: true },
+      }),
+      this.actionBranchService.findOptionalBranchMemberIds({ actionIds }),
+    ]);
     const satisfied = new Set(
       satisfyingActivities.map(
         (activity) => `${activity.userId}:${activity.actionId}`,
@@ -4355,9 +4387,11 @@ export class ActionsService {
         const { event, deadlineEvent } = action.memberActionPhase;
         if (!event) continue;
         const cohortMemberIds = cohortByAction.get(action.id)!;
+        const optionalMemberIds = optionalBranchMembers.get(action.id);
         for (const user of activeUsers) {
           if (
             lastSignedDateByUser.get(user.id)! >= event.date ||
+            optionalMemberIds?.has(user.id) ||
             !computeIsAssignedAndPresent({
               eventDate: event.date,
               deadlineDate: deadlineEvent?.date ?? null,

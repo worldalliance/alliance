@@ -2,6 +2,7 @@
 import {
   ActionActivityType,
   FORM_ALREADY_SUBMITTED,
+  type WithdrawalFlags,
   withdrawalHasRequiredReason,
 } from "@alliance/common/actionActivity";
 import { thrownMessage } from "@alliance/common/errorMessage";
@@ -36,6 +37,8 @@ import {
 } from "@alliance/common/forms/form-schema";
 import {
   type FormSchemaValidationError,
+  SKIP_IF_BLOCK_ID,
+  ValidatedFormula,
   validateFormSchema,
 } from "@alliance/common/forms/form-schema-validate";
 import { type FormulaChoices } from "@alliance/common/forms/formula-choices";
@@ -50,6 +53,7 @@ import {
 } from "@alliance/common/forms/ranking";
 import { memberSchema } from "@alliance/common/forms/row-list";
 import type { AssignedRow } from "@alliance/common/forms/row-list-schema";
+import { isFormSkipped } from "@alliance/common/forms/skip-if";
 import {
   type VariableAggregateSource,
   variableAggregateSources,
@@ -385,10 +389,31 @@ export class TasksService {
         schema: parsed.data,
       }),
     });
+    if (
+      parsed.data.skipIfFormula &&
+      formId !== undefined &&
+      (await this.isContractSigningActionForm(formId))
+    ) {
+      errors.push({
+        blockId: SKIP_IF_BLOCK_ID,
+        formula: ValidatedFormula.SkipIf,
+        message: "A contract-signing action can't be skipped",
+      });
+    }
     if (errors.length > 0) {
       return R.failure(errors);
     }
     return R.success(parsed.data);
+  }
+
+  private async isContractSigningActionForm(formId: number): Promise<boolean> {
+    const linked = await this.actionsService.findActionByFormId(formId);
+    if (!linked) return false;
+    const action = await this.actionRepository.findOne({
+      where: { id: linked.id },
+      select: { isContractSigningAction: true },
+    });
+    return !!action?.isContractSigningAction;
   }
 
   private async parseSchemaOrThrow(
@@ -566,11 +591,14 @@ export class TasksService {
     schema,
     submitFormDto,
     userId,
+    honorSkipIf,
   }: {
     // The schema the user submitted against
     schema: FormSchema;
     submitFormDto: SubmitFormDto;
     userId: number;
+    /** Only an action's task form can be skipped. */
+    honorSkipIf: boolean;
   }): Promise<{
     validatorResults: Record<number, boolean>;
     /**
@@ -580,6 +608,8 @@ export class TasksService {
      */
     effectiveAnswers: Record<string, FormValue>;
     formulaChoices: FormulaChoices;
+    /** The skip formula holds, so required fields were not enforced. */
+    skipped: boolean;
   }> {
     const answers = parseSubmittedAnswers(submitFormDto.answers);
 
@@ -674,6 +704,13 @@ export class TasksService {
       answers,
       visibilityExtras,
     );
+    const skipped =
+      honorSkipIf &&
+      isFormSkipped({
+        schema,
+        answers: effectiveAnswers,
+        extras: visibilityExtras,
+      });
 
     for (const page of schema.pages) {
       if (!isPageCurrentlyVisible(page, effectiveAnswers, visibilityExtras)) {
@@ -683,11 +720,13 @@ export class TasksService {
       }
       for (const field of page.fields) {
         if (isQuestionField(field)) {
-          const required = isFieldConditionallyRequired(
-            field,
-            effectiveAnswers,
-            visibilityExtras,
-          );
+          const required =
+            !skipped &&
+            isFieldConditionallyRequired(
+              field,
+              effectiveAnswers,
+              visibilityExtras,
+            );
           if (
             required &&
             isElementCurrentlyVisible(field, effectiveAnswers, visibilityExtras)
@@ -771,7 +810,7 @@ export class TasksService {
                 `Field ${elementInternalDescriptor(listField)} requires at least one item.`,
               );
             }
-            if (listValue.length < minCards) {
+            if (!skipped && listValue.length < minCards) {
               throw new BadRequestException(
                 `Field ${elementInternalDescriptor(listField)}: add at least ${withCount(minCards, "item")}.`,
               );
@@ -804,6 +843,7 @@ export class TasksService {
                   );
                 }
                 if (
+                  skipped ||
                   !isFieldConditionallyRequired(
                     sub,
                     mergedData,
@@ -835,7 +875,7 @@ export class TasksService {
         }),
     });
 
-    return { validatorResults, effectiveAnswers, formulaChoices };
+    return { validatorResults, effectiveAnswers, formulaChoices, skipped };
   }
 
   /**
@@ -982,14 +1022,6 @@ export class TasksService {
     // One instant for both completion checks, so a deadline passing
     // mid-submission cannot reject the completion after the answers applied.
     const submittedAt = new Date();
-    if (action) {
-      // Before any answer side effects (contract signing, profile updates).
-      await this.actionsService.ensureCompletionAllowed({
-        action: parseAction(action),
-        userId,
-        now: submittedAt,
-      });
-    }
 
     const assignedRow = await this.memberRow(form, userId);
     const submittedSnapshot = this.snapshotForRow(
@@ -1002,12 +1034,46 @@ export class TasksService {
     );
     const submittedSchema = formSchemaOf(submittedSnapshot);
 
-    const { validatorResults, effectiveAnswers, formulaChoices } =
+    const { validatorResults, effectiveAnswers, formulaChoices, skipped } =
       await this.validateFormSubmission({
         schema: submittedSchema,
         submitFormDto,
         userId,
+        honorSkipIf: true,
       });
+
+    if (skipped) {
+      const savedForm = await this.createAndSaveFormResponse({
+        form,
+        formId,
+        dto: { ...submitFormDto, answers: effectiveAnswers },
+        snapshot: submittedSnapshot,
+        validatorResults,
+        formulaChoices,
+        assignedRow,
+        user,
+      });
+      await this.actionsService.createActionActivity({
+        actionId: submitFormDto.actionId,
+        userId,
+        type: ActionActivityType.USER_WONT_COMPLETE,
+        taskFormResponse: savedForm,
+        isOutOfTime: false,
+        isMoral: false,
+        doesntApply: true,
+      });
+      await this.deleteFormDraft(userId, formId);
+      return savedForm;
+    }
+
+    if (action) {
+      // Before any answer side effects (contract signing, profile updates).
+      await this.actionsService.ensureCompletionAllowed({
+        action: parseAction(action),
+        userId,
+        now: submittedAt,
+      });
+    }
 
     const phoneNumber = this.getFirstAutoExtractAnswer(
       submittedSchema,
@@ -1200,6 +1266,7 @@ export class TasksService {
         schema: formSchemaOf(submittedSnapshot),
         submitFormDto: submitFollowUpFormDto as SubmitFormDto,
         userId,
+        honorSkipIf: false,
       });
 
     const savedForm = await this.createAndSaveFormResponse({
@@ -1283,7 +1350,7 @@ export class TasksService {
     formId: number,
     actionId: number,
     userId: number,
-    withdrawal: { reason: string; outOfTime: boolean; isMoral: boolean },
+    withdrawal: WithdrawalFlags & { reason: string },
     partialFormData: SubmitFormDto,
   ) {
     if (!withdrawalHasRequiredReason(withdrawal)) {
@@ -1341,6 +1408,7 @@ export class TasksService {
       declineReason: withdrawal.reason,
       isOutOfTime: withdrawal.outOfTime,
       isMoral: withdrawal.isMoral,
+      doesntApply: withdrawal.doesntApply,
     });
   }
 

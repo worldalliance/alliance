@@ -153,6 +153,17 @@ describe("home task order", () => {
     });
   });
 
+  it("moves a task optional on the member's branch after their other tasks", () => {
+    const optionalBranch = makeAction({
+      id: 10,
+      priority: 3,
+      viewer: makeViewer({ optional: true, optionalReason: "branch" }),
+    });
+    expect(order([explicitlyOptional, onboarding, optionalBranch]).ids).toEqual(
+      [11, 12, 10],
+    );
+  });
+
   it("keeps the baseline order among several late-joiner tasks", () => {
     const lateFirst = makeAction({
       id: 20,

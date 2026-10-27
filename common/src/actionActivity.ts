@@ -70,6 +70,7 @@ export const actionActivityCommentable = {
 export const WITHDRAWAL_OPTION_LABELS = {
   out_of_time: "Took more than 15 minutes",
   moral: "Moral objection",
+  doesnt_apply: "Doesn't apply to me",
   other: "Other reason",
 } as const;
 
@@ -83,6 +84,7 @@ export const WITHDRAWAL_OPTIONS = Object.keys(
 const WITHDRAWAL_OPTION_REQUIRES_REASON = {
   out_of_time: false,
   moral: true,
+  doesnt_apply: false,
   other: true,
 } as const satisfies Record<WithdrawalOption, boolean>;
 
@@ -101,29 +103,34 @@ export function canSubmitWithdrawal(
 export function withdrawalOptionFromFlags(flags: {
   outOfTime?: boolean | null;
   isMoral?: boolean | null;
+  doesntApply?: boolean | null;
 }): WithdrawalOption {
+  if (flags.doesntApply) return "doesnt_apply";
   if (flags.outOfTime) return "out_of_time";
   if (flags.isMoral) return "moral";
   return "other";
 }
 
+export type WithdrawalFlags = {
+  outOfTime: boolean;
+  isMoral: boolean;
+  doesntApply: boolean;
+};
+
 const WITHDRAWAL_OPTION_FLAGS = {
-  out_of_time: { outOfTime: true, isMoral: false },
-  moral: { outOfTime: false, isMoral: true },
-  other: { outOfTime: false, isMoral: false },
-} as const satisfies Record<
-  WithdrawalOption,
-  { outOfTime: boolean; isMoral: boolean }
->;
+  out_of_time: { outOfTime: true, isMoral: false, doesntApply: false },
+  moral: { outOfTime: false, isMoral: true, doesntApply: false },
+  doesnt_apply: { outOfTime: false, isMoral: false, doesntApply: true },
+  other: { outOfTime: false, isMoral: false, doesntApply: false },
+} as const satisfies Record<WithdrawalOption, WithdrawalFlags>;
 
 /**
  * Encodes a withdrawal option as its wire flags — the inverse of
  * `withdrawalOptionFromFlags`.
  */
-export function withdrawalFlagsFromOption(option: WithdrawalOption): {
-  outOfTime: boolean;
-  isMoral: boolean;
-} {
+export function withdrawalFlagsFromOption(
+  option: WithdrawalOption,
+): WithdrawalFlags {
   return WITHDRAWAL_OPTION_FLAGS[option];
 }
 
@@ -131,11 +138,9 @@ export function withdrawalFlagsFromOption(option: WithdrawalOption): {
  * Server-side counterpart of `canSubmitWithdrawal`, keyed on the wire flags
  * instead of the UI option.
  */
-export function withdrawalHasRequiredReason(withdrawal: {
-  outOfTime: boolean;
-  isMoral: boolean;
-  reason: string;
-}): boolean {
+export function withdrawalHasRequiredReason(
+  withdrawal: WithdrawalFlags & { reason: string },
+): boolean {
   return canSubmitWithdrawal(
     withdrawalOptionFromFlags(withdrawal),
     withdrawal.reason,

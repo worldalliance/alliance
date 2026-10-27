@@ -59,6 +59,7 @@ describe("useTaskFormHandlers", () => {
   const withdrawal: ActionWithdrawal = {
     outOfTime: true,
     isMoral: false,
+    doesntApply: false,
     reason: "",
     partialFormData: { answers: {}, actionId: 1, deviceType: "mobile" },
   };

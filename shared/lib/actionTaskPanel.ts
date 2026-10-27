@@ -1,6 +1,7 @@
 import {
   FORM_ALREADY_SUBMITTED,
   MEMBER_ACTION_DEADLINE_PASSED,
+  type WithdrawalFlags,
 } from "@alliance/common/actionActivity";
 import { useCallback, useState } from "react";
 // eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
@@ -26,9 +27,7 @@ export interface ActionTaskPanelPropsShared {
 }
 
 /** A member's withdrawal from an action, as collected by the task form UI. */
-export type ActionWithdrawal = {
-  outOfTime: boolean;
-  isMoral: boolean;
+export type ActionWithdrawal = WithdrawalFlags & {
   reason: string;
   partialFormData: SubmitFormDto;
 };
@@ -65,7 +64,8 @@ export const useTaskFormHandlers = ({
 
   const handleAbandonAction = useCallback(
     async (withdrawal: ActionWithdrawal) => {
-      const { outOfTime, isMoral, reason, partialFormData } = withdrawal;
+      const { outOfTime, isMoral, doesntApply, reason, partialFormData } =
+        withdrawal;
       const req = await tasksOptout({
         path: { id: action.taskFormId! },
         body: {
@@ -73,6 +73,7 @@ export const useTaskFormHandlers = ({
           reason,
           outOfTime,
           isMoral,
+          doesntApply,
           partialFormData,
         },
       });

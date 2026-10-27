@@ -9,6 +9,7 @@ import {
   sortBranches,
 } from "./action-branches";
 import type { CohortResolutionSession } from "./cohort-resolution-session";
+import { ActionFormAssignment } from "./entities/action-form-assignment.entity";
 import {
   ActionFormVariant,
   parseActionFormVariant,
@@ -20,6 +21,8 @@ export class ActionBranchService {
   constructor(
     @InjectRepository(ActionFormVariant)
     private readonly variantRepository: Repository<ActionFormVariant>,
+    @InjectRepository(ActionFormAssignment)
+    private readonly assignmentRepository: Repository<ActionFormAssignment>,
   ) {}
 
   /** The action's rule branches in routing order; empty unless it routes by rule. */
@@ -64,5 +67,28 @@ export class ActionBranchService {
       action.cohortExpression,
       await this.loadBranches(action.id, session),
     );
+  }
+
+  async findOptionalBranchMemberIds(params: {
+    actionIds: number[];
+    userId?: number;
+  }): Promise<Map<number, Set<number>>> {
+    const { actionIds, userId } = params;
+    if (actionIds.length === 0) return new Map();
+    const rows = await this.assignmentRepository.find({
+      where: {
+        actionId: In(actionIds),
+        userId,
+        variant: { optional: true },
+      },
+      select: { actionId: true, userId: true },
+    });
+    const byAction = new Map<number, Set<number>>();
+    for (const row of rows) {
+      const memberIds = byAction.get(row.actionId) ?? new Set<number>();
+      memberIds.add(row.userId);
+      byAction.set(row.actionId, memberIds);
+    }
+    return byAction;
   }
 }

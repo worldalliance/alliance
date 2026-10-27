@@ -1,4 +1,7 @@
-import { countsTowardMemberAnalytics } from "./member-analytics-action";
+import {
+  countsTowardCompletionRate,
+  countsTowardMemberAnalytics,
+} from "./member-analytics-action";
 
 describe("countsTowardMemberAnalytics", () => {
   it.each([
@@ -12,6 +15,40 @@ describe("countsTowardMemberAnalytics", () => {
       expect(countsTowardMemberAnalytics({ publicOnly, onboarding })).toBe(
         expected,
       );
+    },
+  );
+});
+
+describe("countsTowardCompletionRate", () => {
+  it.each([
+    {
+      completed: false,
+      onOptionalBranch: false,
+      withdrewDoesntApply: false,
+      expected: true,
+    },
+    {
+      completed: false,
+      onOptionalBranch: true,
+      withdrewDoesntApply: false,
+      expected: false,
+    },
+    {
+      completed: false,
+      onOptionalBranch: false,
+      withdrewDoesntApply: true,
+      expected: false,
+    },
+    {
+      completed: true,
+      onOptionalBranch: true,
+      withdrewDoesntApply: false,
+      expected: true,
+    },
+  ])(
+    "completed=$completed optionalBranch=$onOptionalBranch doesntApply=$withdrewDoesntApply → $expected",
+    ({ expected, ...params }) => {
+      expect(countsTowardCompletionRate(params)).toBe(expected);
     },
   );
 });

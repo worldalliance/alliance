@@ -113,6 +113,33 @@ describe("getTaskDismissInfo", () => {
     );
   });
 
+  it("shows an optional branch's staff-written reason", () => {
+    const info = getTaskDismissInfo(
+      makeAction({
+        optional: false,
+        viewer: makeViewer({
+          optional: true,
+          optionalReason: "branch",
+          optionalReasonText: "You're donating food this week.",
+        }),
+      }),
+    );
+    expect(info?.header).toBe(taskHeaders.homePage.optionalForViewer.title);
+    expect(info?.message).toBe("You're donating food this week.");
+  });
+
+  it("falls back to the generic line for an optional branch without a reason", () => {
+    const info = getTaskDismissInfo(
+      makeAction({
+        optional: false,
+        viewer: makeViewer({ optional: true, optionalReason: "branch" }),
+      }),
+    );
+    expect(info?.message).toBe(
+      taskHeaders.homePage.optionalForViewer.description,
+    );
+  });
+
   it("keeps that wording once the deadline has passed", () => {
     const info = getTaskDismissInfo(
       makeAction({

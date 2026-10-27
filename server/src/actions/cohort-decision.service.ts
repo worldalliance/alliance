@@ -288,26 +288,41 @@ export class CohortDecisionService {
           session,
           now,
         });
-        // Only a member held to the whole window of a non-optional action
-        // could miss it. Anyone else was only ever optional, so deciding them
-        // late creates no missed obligation.
-        const obligated = (user: User) =>
+        // Only a member held to the whole window of a non-optional action,
+        // and not routed to an optional branch, could miss it. Anyone else
+        // was only ever optional, so deciding them late creates no missed
+        // obligation.
+        const heldToWindow = (user: User) =>
           !action.optional &&
           user.hasActiveContractInFullRange({
             startDate: enrollment.start,
             endDate: enrollment.deadline,
           });
+        const optionalBranchIds = new Set(
+          (await this.actionBranchService.loadBranches(action.id, session))
+            .filter((branch) => branch.optional)
+            .map((branch) => branch.id),
+        );
+        const routed =
+          optionalBranchIds.size > 0 ||
+          pending.some((user) => !heldToWindow(user))
+            ? await this.cohortResolverService.resolveRoutedCohort(
+                action,
+                session,
+              )
+            : { cohort: new Set<number>(), branchIdByUser: null };
+        const obligated = (user: User) => {
+          const branchId = routed.branchIdByUser?.get(user.id);
+          return (
+            heldToWindow(user) &&
+            (branchId === undefined || !optionalBranchIds.has(branchId))
+          );
+        };
         await this.warnAboutLateDecisions({
           action,
           users: pending.filter(obligated),
           deadline: enrollment.deadline,
         });
-        const routed = pending.some((user) => !obligated(user))
-          ? await this.cohortResolverService.resolveRoutedCohort(
-              action,
-              session,
-            )
-          : { cohort: new Set<number>(), branchIdByUser: null };
         return this.decide({
           action,
           users: pending,

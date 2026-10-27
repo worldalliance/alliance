@@ -17,6 +17,7 @@ import {
 import { UserActionRelationPillStatus } from "../user/dto/user-action-relations.dto";
 import { findLatestTerminalActivity } from "./action-activity-status";
 import type { ActionActivity } from "./entities/action-activity.entity";
+import type { ActionFormVariant } from "./entities/action-form-variant.entity";
 import { loadedActionEvents, type Action } from "./entities/action.entity";
 import { isStaffPreviewActiveFor } from "./staff-preview";
 import { resolveUserActionPillStatus } from "./user-action-pill-status";
@@ -58,6 +59,8 @@ export type UserActionStatus = {
    * reason means adding a variant.
    */
   optionalReason: ViewerOptionalReason | null;
+  /** Staff-written explanation shown in place of the generic optional copy; only set for `Branch`. */
+  optionalReasonText: string | null;
   /**
    * Assigned optionally because the viewer's contract misses part of the
    * member-action window. Unlike
@@ -114,6 +117,7 @@ export enum ViewerActionRelation {
 export enum ViewerOptionalReason {
   /** The viewer's contract missed part of the member-action window. */
   ContractGap = "contract_gap",
+  Branch = "branch",
 }
 
 /** Assigned as a pair, so the union's correlation survives the assignment. */
@@ -240,13 +244,20 @@ export function resolveUserActionStatus(params: {
     | "staff"
   >;
   cohort: ViewerCohort;
+  variant: Pick<ActionFormVariant, "optional" | "optionalReason"> | null;
   activities: Pick<
     ActionActivity,
-    "id" | "type" | "createdAt" | "declineReason" | "isMoral" | "outOfTime"
+    | "id"
+    | "type"
+    | "createdAt"
+    | "declineReason"
+    | "isMoral"
+    | "outOfTime"
+    | "doesntApply"
   >[];
   now: Date;
 }): UserActionStatus {
-  const { action, user, cohort, activities, now } = params;
+  const { action, user, cohort, variant, activities, now } = params;
 
   const dismissed = activities.some(
     (activity) => activity.type === ActionActivityType.USER_DISMISSED,
@@ -291,7 +302,9 @@ export function resolveUserActionStatus(params: {
     ? { optional: true, optionalReason: null }
     : assignment === ActionAssignment.Optional
       ? { optional: true, optionalReason: ViewerOptionalReason.ContractGap }
-      : { optional: false, optionalReason: null };
+      : assigned && variant?.optional
+        ? { optional: true, optionalReason: ViewerOptionalReason.Branch }
+        : { optional: false, optionalReason: null };
 
   const awayDuringWindow = computeIsAwayDuringWindow({ action, user });
 
@@ -310,6 +323,10 @@ export function resolveUserActionStatus(params: {
   return {
     assigned,
     ...optionality,
+    optionalReasonText:
+      optionality.optionalReason === ViewerOptionalReason.Branch
+        ? (variant?.optionalReason ?? null)
+        : null,
     contractGap: assignment === ActionAssignment.Optional,
     canComplete: computeCanCompleteAction({
       action,

@@ -387,6 +387,7 @@ describe("computeMissedActionDeadline", () => {
       action: { ...makeAction({ openEnded }), optional },
       user: missedUser(),
       inCohort: true,
+      onOptionalBranch: false,
       hasTerminalActivity: false,
       now: AFTER_DEADLINE,
       ...rest,
@@ -431,5 +432,9 @@ describe("computeMissedActionDeadline", () => {
 
   it("excludes a member away during the window", () => {
     expect(missed({ user: missedUser({ away: true }) })).toBe(false);
+  });
+
+  it("excludes a member on an optional branch", () => {
+    expect(missed({ onOptionalBranch: true })).toBe(false);
   });
 });

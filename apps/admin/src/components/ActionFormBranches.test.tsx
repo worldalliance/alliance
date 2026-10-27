@@ -183,7 +183,34 @@ it("saves a branch's copy overrides, sending blanks as null so the action's own 
         bodyOverride: null,
         timeEstimateOverride: 20,
         squareThumbnailImageAltOverride: null,
+        optional: false,
+        optionalReason: null,
       },
+    ]),
+  );
+});
+
+it("saves a branch as optional with the reason its members see", async () => {
+  renderTab();
+  const [optional] = await screen.findAllByRole("checkbox", {
+    name: "Optional for members on this branch",
+  });
+  fireEvent.click(optional);
+  fireEvent.change(
+    screen.getByRole("textbox", {
+      name: "Why it's optional, shown to them (blank for a generic line)",
+    }),
+    { target: { value: "You're donating food this week." } },
+  );
+
+  fireEvent.click(screen.getAllByRole("button", { name: "Save branch" })[0]);
+
+  await waitFor(() =>
+    expect(saved).toEqual([
+      expect.objectContaining({
+        optional: true,
+        optionalReason: "You're donating food this week.",
+      }),
     ]),
   );
 });

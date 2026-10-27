@@ -19,7 +19,8 @@ export type FormEditorTab =
   | "outputs"
   | "aggregates"
   | "variables"
-  | "rows";
+  | "rows"
+  | "skip";
 
 export type IssueListState = { gate: IssueGate | null } | null;
 
@@ -30,6 +31,7 @@ const EDITOR_TABS: { tab: FormEditorTab; label: string }[] = [
   { tab: "aggregates", label: "Aggregate Views" },
   { tab: "variables", label: "Variables" },
   { tab: "rows", label: "Rows" },
+  { tab: "skip", label: "Skip" },
 ];
 
 export function FormBuilderHeader({

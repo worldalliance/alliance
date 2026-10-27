@@ -68,8 +68,9 @@ export function* conditionHolders(
 }
 
 /**
- * Every condition governing a form's input pages: `visibleIfFormula` and
- * `requiredIfFormula` conditions on each of `conditionHolders`.
+ * Every condition governing a form's input pages: the form's `skipIfFormula`,
+ * and `visibleIfFormula` and `requiredIfFormula` conditions on each of
+ * `conditionHolders`.
  *
  * Anything that reacts to which condition *kinds* a schema contains — which
  * values to fetch before evaluating, which source forms to load — should walk
@@ -87,6 +88,11 @@ export function forEachCondition(
   schema: FormSchema,
   visit: (condition: Condition) => boolean | void,
 ): boolean {
+  for (const condition of Object.values(
+    schema.skipIfFormula?.conditions ?? {},
+  )) {
+    if (visit(condition) === true) return true;
+  }
   for (const { formulas } of conditionHolders(schema.pages ?? [])) {
     for (const formula of [
       formulas.visibleIfFormula,

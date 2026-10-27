@@ -26,7 +26,10 @@ import {
 export enum ValidatedFormula {
   Visibility = "visibility",
   RequiredIf = "requiredIf",
+  SkipIf = "skipIf",
 }
+
+export const SKIP_IF_BLOCK_ID = "skipIf";
 
 export type FormSchemaValidationError = {
   viewId?: string;
@@ -83,6 +86,25 @@ export function validateFormSchema(
       collectInputErrors(item, errors);
       collectDisplayContentErrors(item, undefined, errors);
       collectQuestionFieldIds(item, earlierFieldIds);
+    }
+  }
+  checkConditions(
+    schema.skipIfFormula,
+    {
+      context: "input",
+      blockId: SKIP_IF_BLOCK_ID,
+      formula: ValidatedFormula.SkipIf,
+    },
+    errors,
+  );
+  for (const cond of Object.values(schema.skipIfFormula?.conditions ?? {})) {
+    const fieldId = getLocalFieldReference(cond);
+    if (fieldId !== null && !earlierFieldIds.has(fieldId)) {
+      errors.push({
+        blockId: SKIP_IF_BLOCK_ID,
+        formula: ValidatedFormula.SkipIf,
+        message: `Skip condition references field "${fieldId}", which isn't on this form`,
+      });
     }
   }
   collectVisibilityCycleErrors(schema, errors);

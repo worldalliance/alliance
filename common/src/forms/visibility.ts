@@ -423,7 +423,7 @@ export function isFieldConditionallyRequired(
   return !!field.required;
 }
 
-function hasEvaluableFormula(
+export function hasEvaluableFormula(
   formula: VisibleIfFormula | undefined,
 ): formula is VisibleIfFormula {
   return !!(
@@ -641,7 +641,7 @@ function stripHiddenRowCells(params: {
   return next;
 }
 
-function evaluateVisibleIfFormula(
+export function evaluateVisibleIfFormula(
   formula: VisibleIfFormula,
   data: Record<string, FormValue>,
   extras: ConditionExtras & { readOnly?: boolean },

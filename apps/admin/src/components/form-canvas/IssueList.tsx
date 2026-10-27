@@ -66,6 +66,8 @@ export function issueLocation(schema: FormSchema, target: IssueTarget): string {
       return "Variables";
     case IssueTargetKind.Rows:
       return "Rows";
+    case IssueTargetKind.SkipIf:
+      return "Skip";
     case IssueTargetKind.Form:
       return "Form";
     default:
@@ -84,6 +86,7 @@ export function openIssue(
     showOutputView,
     showVariables,
     showRows,
+    showSkipIf,
   }: {
     pages: readonly Page[];
     select: (
@@ -94,6 +97,7 @@ export function openIssue(
     showOutputView: (viewId: string) => void;
     showVariables: () => void;
     showRows: () => void;
+    showSkipIf: () => void;
   },
 ): void {
   switch (target.kind) {
@@ -115,6 +119,8 @@ export function openIssue(
       return showVariables();
     case IssueTargetKind.Rows:
       return showRows();
+    case IssueTargetKind.SkipIf:
+      return showSkipIf();
     case IssueTargetKind.Form:
       return;
     default:

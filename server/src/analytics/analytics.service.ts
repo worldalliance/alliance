@@ -5,6 +5,7 @@ import {
   sqlIsLatestCompletion,
   TERMINAL_ACTIVITY_TYPES,
 } from "src/actions/action-activity-status";
+import { ActionBranchService } from "src/actions/action-branch.service";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   ActionStatus,
@@ -67,6 +68,7 @@ export class AnalyticsService {
     @InjectRepository(ActionEventNotif)
     private readonly actionEventNotifRepository: Repository<ActionEventNotif>,
     private readonly actionEventRecipientService: ActionEventRecipientService,
+    private readonly actionBranchService: ActionBranchService,
   ) {}
 
   @Cron("0 8,20 * * *")
@@ -269,19 +271,26 @@ export class AnalyticsService {
       return { missedLastAction: [], missedLastTwoActions: [] };
     }
 
-    const baseUsersByAction =
-      await this.actionEventRecipientService.findBaseUsersForEvents({
+    const [baseUsersByAction, optionalBranchMembers] = await Promise.all([
+      this.actionEventRecipientService.findBaseUsersForEvents({
         entries: completedActions.map(({ action, memberActionEvent }) => ({
           action,
           eventId: memberActionEvent.id,
         })),
-      });
+      }),
+      this.actionBranchService.findOptionalBranchMemberIds({
+        actionIds: completedActions.map(({ action }) => action.id),
+      }),
+    ]);
     const activeUsers = new Map<number, User>();
     const participantsByAction = new Map<number, Set<number>>();
     for (const { action } of completedActions) {
+      const optionalMemberIds = optionalBranchMembers.get(action.id);
       const activeParticipants = (
         baseUsersByAction.get(action.id) ?? []
-      ).filter((user) => user.hasActiveContract);
+      ).filter(
+        (user) => user.hasActiveContract && !optionalMemberIds?.has(user.id),
+      );
       participantsByAction.set(
         action.id,
         new Set(activeParticipants.map((user) => user.id)),

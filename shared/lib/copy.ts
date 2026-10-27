@@ -80,6 +80,8 @@ export const taskHeaders = {
   },
 } as const;
 
+export const skipActionLabel = "Skip this action";
+
 export const awayRangesDescription =
   "You can schedule a period of time when you won't be able to complete Alliance tasks. This will let us know to plan around your absence.";
 

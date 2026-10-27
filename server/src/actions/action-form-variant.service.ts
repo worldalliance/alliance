@@ -33,14 +33,17 @@ export type VariantCopyOverrides = Pick<
   | "squareThumbnailImageAltOverride"
 >;
 
-export interface CreateVariantInput extends Partial<VariantCopyOverrides> {
+type VariantSettings = VariantCopyOverrides &
+  Pick<ActionFormVariant, "optional" | "optionalReason">;
+
+export interface CreateVariantInput extends Partial<VariantSettings> {
   name: string;
   splitValue?: number | null;
   rule?: unknown;
   sourceFormId?: number | null;
 }
 
-export interface UpdateVariantInput extends Partial<VariantCopyOverrides> {
+export interface UpdateVariantInput extends Partial<VariantSettings> {
   name?: string;
   splitValue?: number;
   rule?: unknown;
@@ -55,9 +58,9 @@ export interface VariantStats {
   submitted: number;
 }
 
-function copyOverrides(
-  input: Partial<VariantCopyOverrides>,
-): Partial<VariantCopyOverrides> {
+function variantSettings(
+  input: Partial<VariantSettings>,
+): Partial<VariantSettings> {
   return Object.fromEntries(
     Object.entries({
       nameOverride: input.nameOverride,
@@ -67,6 +70,8 @@ function copyOverrides(
       imageOverride: input.imageOverride,
       squareThumbnailImageOverride: input.squareThumbnailImageOverride,
       squareThumbnailImageAltOverride: input.squareThumbnailImageAltOverride,
+      optional: input.optional,
+      optionalReason: input.optionalReason,
     }).filter(([, value]) => value !== undefined),
   );
 }
@@ -167,7 +172,7 @@ export class ActionFormVariantService {
       });
       return variantTxRepo.save(
         variantTxRepo.create({
-          ...copyOverrides(input),
+          ...variantSettings(input),
           actionId,
           formId: newForm.id,
           name: input.name,
@@ -230,7 +235,7 @@ export class ActionFormVariantService {
             );
           }
           Object.assign(variant, {
-            ...copyOverrides(input),
+            ...variantSettings(input),
             ...(input.name !== undefined ? { name: input.name } : {}),
             ...(rule !== undefined ? { rule } : {}),
             splitValue: nextValue,

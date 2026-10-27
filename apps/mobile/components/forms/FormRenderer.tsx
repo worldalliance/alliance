@@ -22,6 +22,7 @@ import {
   type FormValue,
 } from "@alliance/common/forms/form-schema";
 import { withResolvedOptions } from "@alliance/common/forms/formula-options";
+import { isFormSkipped } from "@alliance/common/forms/skip-if";
 import {
   interpolateDisplayBlock,
   interpolateFieldText,
@@ -68,6 +69,7 @@ import {
   cancelAllImageUploads,
   draftSaveFailed,
   outputFieldPublicToggle,
+  skipActionLabel,
   waitingForImageUpload,
 } from "@alliance/shared/lib/copy";
 import { formTimeZoneDefault } from "@alliance/shared/lib/timeZone";
@@ -1111,7 +1113,16 @@ const FormRenderer = ({
     ? schema.pages[currentPageIndex]
     : undefined;
   const isFirstPage = previousVisiblePageIndex === null;
-  const isLastPage = nextVisiblePageIndex === null;
+  // Skipping is a withdrawal, so only forms that offer one can be skipped.
+  const skipped =
+    !readOnly &&
+    !!onAbandonAction &&
+    isFormSkipped({
+      schema,
+      answers: effectiveFormData,
+      extras: visibilityExtras,
+    });
+  const isLastPage = nextVisiblePageIndex === null || skipped;
   const visiblePageCount = visiblePageIndices.length;
   const currentVisiblePageNumber = Math.max(
     1,
@@ -1279,7 +1290,13 @@ const FormRenderer = ({
                 />
               )}
               <Button
-                onPress={isLastPage ? handleSubmit : handleNextPage}
+                onPress={
+                  skipped
+                    ? () => handleAbandon("doesnt_apply")
+                    : isLastPage
+                      ? handleSubmit
+                      : handleNextPage
+                }
                 color={ButtonColor.Black}
                 size={ButtonSize.Medium}
                 className="flex-2 py-4! gap-x-1"
@@ -1293,18 +1310,20 @@ const FormRenderer = ({
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <>
-                    {isLastPage ? (
+                    {isLastPage && !skipped ? (
                       <CircleCheck size={16} color="#fff" strokeWidth={2.5} />
                     ) : null}
                     <Text
                       className="text-white text-base"
                       weight={FontWeight.Medium}
                     >
-                      {isLastPage
-                        ? onSubmit
-                          ? "Complete"
-                          : "Complete (Preview Mode)"
-                        : "Next"}
+                      {skipped
+                        ? skipActionLabel
+                        : isLastPage
+                          ? onSubmit
+                            ? "Complete"
+                            : "Complete (Preview Mode)"
+                          : "Next"}
                     </Text>
                   </>
                 )}
