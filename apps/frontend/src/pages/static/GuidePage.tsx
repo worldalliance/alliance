@@ -223,7 +223,7 @@ export default function GuidePage() {
                 <section
                   key={kind}
                   id={kind}
-                  className="flex scroll-mt-32 flex-col gap-6"
+                  className="flex scroll-mt-36 flex-col gap-6 lg:scroll-mt-28"
                 >
                   <BandHeading size={BandHeadingSize.Section}>
                     {section.label}

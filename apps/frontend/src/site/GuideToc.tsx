@@ -5,10 +5,6 @@ import { SITE_COL } from "./ui";
 
 type TocSection = { id: string; label: string };
 
-/** Clears the bar, and matches the sections' `scroll-mt-32` so a TOC jump lands on its section. */
-const ACTIVE_LINE = 128;
-
-/** The last section whose top has passed the active line, or the last section once the page bottoms out. */
 export function useActiveSection(sections: TocSection[]) {
   const [active, setActive] = useState(sections[0]);
 
@@ -17,12 +13,12 @@ export function useActiveSection(sections: TocSection[]) {
       const atBottom =
         window.innerHeight + window.scrollY >=
         document.documentElement.scrollHeight - 2;
-      const passed = sections.filter(
-        (s) =>
-          (document.getElementById(s.id)?.getBoundingClientRect().top ??
-            Infinity) <=
-          ACTIVE_LINE + 1,
-      );
+      const passed = sections.filter((s) => {
+        const el = document.getElementById(s.id);
+        if (!el) return false;
+        const landing = parseFloat(getComputedStyle(el).scrollMarginTop);
+        return el.getBoundingClientRect().top <= landing + 1;
+      });
       setActive((atBottom ? sections.at(-1) : passed.at(-1)) ?? sections[0]);
     };
     window.addEventListener("scroll", update, { passive: true });
@@ -50,7 +46,7 @@ function TocLink({
       aria-current={current ? "true" : undefined}
       onClick={onClick}
       className={cn(
-        "block py-2",
+        "block py-2.5",
         current
           ? "font-medium text-[var(--site-primary)]"
           : "text-[var(--site-ink)]/60 hover:text-[var(--site-primary)]",
@@ -75,9 +71,9 @@ export function InlineToc({
   return (
     <nav
       aria-label={label}
-      className="sticky top-28 hidden self-start lg:block"
+      className="sticky top-28 hidden self-start pl-[3.6rem] lg:block"
     >
-      <ul className="text-sm">
+      <ul className="text-[1.09375rem]">
         {sections.map((section) => (
           <li key={section.id}>
             <TocLink section={section} current={section === active} />
@@ -136,7 +132,7 @@ export function StickyToc({
       inert={!visible}
       style={{ top }}
       className={cn(
-        "fixed inset-x-0 z-[80] border-b lg:hidden border-[var(--site-ink)]/12 bg-[var(--site-surface)] text-sm transition-[opacity,box-shadow] duration-300",
+        "fixed inset-x-0 z-[80] border-b lg:hidden border-[var(--site-ink)]/12 bg-[var(--site-surface)] text-[1.09375rem] transition-[opacity,box-shadow] duration-300",
         visible ? "opacity-100" : "pointer-events-none opacity-0",
         open && "shadow-[0_8px_16px_rgba(0,0,0,0.06)]",
       )}
@@ -155,14 +151,14 @@ export function StickyToc({
           className={cn(
             SITE_COL,
             columnClassName,
-            "flex items-center justify-between gap-4 py-3.5",
+            "flex items-center justify-between gap-4 py-[1.09375rem]",
           )}
         >
           <span className="truncate">{active?.label}</span>
           <ChevronDown
             aria-hidden
             className={cn(
-              "size-5 shrink-0 transition-transform duration-300 ease-out motion-reduce:transition-none",
+              "size-[1.5625rem] shrink-0 transition-transform duration-300 ease-out motion-reduce:transition-none",
               open && "rotate-180",
             )}
           />
