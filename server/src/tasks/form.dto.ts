@@ -30,7 +30,7 @@ import {
   IsString,
   ValidateNested,
 } from "class-validator";
-import type { LinkedAction } from "src/actions/actions.service";
+import type { LinkedAction } from "src/actions/action-form-links.service";
 import { Action } from "src/actions/entities/action.entity";
 import { AiDetectionResultDto } from "src/ai-detection/dto/ai-detection-result.dto";
 import { AiDetectionResult } from "src/ai-detection/entities/ai-detection-result.entity";

@@ -4,13 +4,13 @@ import {
 } from "@alliance/common/actionActivity";
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { milliseconds } from "date-fns";
+import { ActionActivityService } from "src/actions/action-activity.service";
 import { ActionCategory } from "src/actions/action-category";
-import {
-  ActionsService,
-  GLOBAL_FEED_FACEPILE_LIMIT,
-} from "src/actions/actions.service";
+import { ActionsService } from "src/actions/actions.service";
 import { CohortResolverService } from "src/actions/cohort-resolver.service";
 import type { ActionActivity } from "src/actions/entities/action-activity.entity";
+import { GLOBAL_FEED_FACEPILE_LIMIT } from "src/actions/feed-members.service";
+import { MemberActionsService } from "src/actions/member-actions.service";
 import { SingleMemberCohortService } from "src/actions/single-member-cohort.service";
 import { ContractService } from "src/contract/contract.service";
 import {
@@ -430,7 +430,7 @@ describe("Actions (e2e)", () => {
       const action = await actionRepo.findOneBy({ name: "Test Action" });
 
       await ctx.app
-        .get(ActionsService)
+        .get(ActionActivityService)
         .completeAction(action!.id, ctx.testUserId);
 
       const res = await request(ctx.app.getHttpServer())
@@ -1700,9 +1700,9 @@ describe("Actions (e2e)", () => {
       const lateSigner = await signedAt("late", 1000);
       const eligibleUser = await signedAt("eligible", -1000);
 
-      const actionsService = ctx.app.get(ActionsService);
+      const memberActions = ctx.app.get(MemberActionsService);
       const taskIds = async (userId: number) =>
-        (await actionsService.findUncompletedTasks(userId)).map((a) => a.id);
+        (await memberActions.findUncompletedTasks(userId)).map((a) => a.id);
 
       expect(await taskIds(lateSigner.id)).not.toContain(action.id);
       expect(await taskIds(eligibleUser.id)).toContain(action.id);
@@ -1741,7 +1741,7 @@ describe("Actions (e2e)", () => {
 
       try {
         const tasks = await ctx.app
-          .get(ActionsService)
+          .get(MemberActionsService)
           .findUncompletedTasks(member.id);
         expect(tasks.map((task) => task.id)).toContain(action.id);
 
@@ -2248,7 +2248,7 @@ describe("Actions (e2e)", () => {
       });
 
       const complete = await ctx.app
-        .get(ActionsService)
+        .get(ActionActivityService)
         .completeAction(action.id, ctx.testUserId);
 
       expect(complete).toMatchObject({
@@ -2279,7 +2279,7 @@ describe("Actions (e2e)", () => {
       });
 
       try {
-        await ctx.app.get(ActionsService).createActionActivity({
+        await ctx.app.get(ActionActivityService).createActionActivity({
           actionId: action.id,
           userId: ctx.testUserId,
           type: ActionActivityType.USER_WONT_COMPLETE,
@@ -2328,14 +2328,14 @@ describe("Actions (e2e)", () => {
       const { action } = await createPublishedAction("Relations Withdrawal");
 
       try {
-        await ctx.app.get(ActionsService).createActionActivity({
+        await ctx.app.get(ActionActivityService).createActionActivity({
           actionId: action.id,
           userId: ctx.testUserId,
           type: ActionActivityType.USER_WONT_COMPLETE,
           isOutOfTime: false,
           isMoral: true,
         });
-        await ctx.app.get(ActionsService).createActionActivity({
+        await ctx.app.get(ActionActivityService).createActionActivity({
           actionId: action.id,
           userId: ctx.adminUserId,
           type: ActionActivityType.USER_WONT_COMPLETE,
@@ -2400,7 +2400,9 @@ describe("Actions (e2e)", () => {
         expect(closedView.canParticipate).toBe(false);
         expect(closedView.viewer.canComplete).toBe(false);
         await expect(
-          ctx.app.get(ActionsService).completeAction(closed.id, ctx.testUserId),
+          ctx.app
+            .get(ActionActivityService)
+            .completeAction(closed.id, ctx.testUserId),
         ).rejects.toThrow(MEMBER_ACTION_DEADLINE_PASSED);
 
         await request(ctx.app.getHttpServer())
@@ -2417,11 +2419,11 @@ describe("Actions (e2e)", () => {
         expect(lateView.canParticipate).toBe(true);
         expect(lateView.viewer.canComplete).toBe(true);
         await ctx.app
-          .get(ActionsService)
+          .get(ActionActivityService)
           .completeAction(lateAllowed.id, ctx.testUserId);
 
         await ctx.app
-          .get(ActionsService)
+          .get(ActionActivityService)
           .completeAction(closedMidSubmit.id, ctx.testUserId, {
             now: new Date(Date.now() - milliseconds({ minutes: 1 })),
           });
@@ -2447,7 +2449,7 @@ describe("Actions (e2e)", () => {
       });
 
       const completion = await ctx.app
-        .get(ActionsService)
+        .get(ActionActivityService)
         .completeAction(action.id, ctx.testUserId);
 
       const activityId = completion.id;
@@ -2495,7 +2497,9 @@ describe("Actions (e2e)", () => {
 
       await friendService.makeFriendsAutomated(ctx.testUserId, friend.id);
 
-      await ctx.app.get(ActionsService).completeAction(action.id, friend.id);
+      await ctx.app
+        .get(ActionActivityService)
+        .completeAction(action.id, friend.id);
 
       const friendActivity = await request(ctx.app.getHttpServer())
         .get("/actions/friendActivity")
@@ -2515,7 +2519,7 @@ describe("Actions (e2e)", () => {
       );
 
       const completion = await ctx.app
-        .get(ActionsService)
+        .get(ActionActivityService)
         .completeAction(action.id, ctx.testUserId);
 
       const activityId = completion.id;
@@ -2542,7 +2546,7 @@ describe("Actions (e2e)", () => {
         status: ActionStatus.MemberAction,
       });
       const { id: activityId } = await ctx.app
-        .get(ActionsService)
+        .get(ActionActivityService)
         .completeAction(action.id, ctx.testUserId);
       const post = (path: string, token: string) =>
         request(ctx.app.getHttpServer())
@@ -2616,7 +2620,7 @@ describe("Actions (e2e)", () => {
       });
 
       const completion = await ctx.app
-        .get(ActionsService)
+        .get(ActionActivityService)
         .completeAction(action.id, ctx.testUserId);
 
       const activityId = completion.id;
@@ -2651,7 +2655,7 @@ describe("Actions (e2e)", () => {
       });
 
       const completion = await ctx.app
-        .get(ActionsService)
+        .get(ActionActivityService)
         .completeAction(action.id, ctx.testUserId);
 
       const activityId = completion.id;
@@ -2686,7 +2690,7 @@ describe("Actions (e2e)", () => {
       );
 
       const completion = await ctx.app
-        .get(ActionsService)
+        .get(ActionActivityService)
         .completeAction(action.id, ctx.testUserId);
 
       const activityId = completion.id;
@@ -2862,7 +2866,7 @@ describe("Actions (e2e)", () => {
       );
 
       const complete = await ctx.app
-        .get(ActionsService)
+        .get(ActionActivityService)
         .completeAction(action.id, ctx.testUserId);
 
       const outsiderGlobal = await request(ctx.app.getHttpServer())
@@ -3167,7 +3171,7 @@ describe("Actions (e2e)", () => {
         { status: ActionStatus.MemberAction },
       );
       await ctx.app
-        .get(ActionsService)
+        .get(ActionActivityService)
         .completeAction(action.id, ctx.testUserId);
 
       const res = await request(ctx.app.getHttpServer())

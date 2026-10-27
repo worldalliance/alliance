@@ -35,6 +35,14 @@ import {
   AcknowledgeDeadlineShortening,
   ApiAcknowledgeDeadlineShortening,
 } from "./acknowledge-deadline-shortening";
+import { ActionActivityService } from "./action-activity.service";
+import { ActionFormLinksService } from "./action-form-links.service";
+import { ActionImportExportService } from "./action-import-export.service";
+import { ActionParticipantsService } from "./action-participants.service";
+import { ActionRelationsService } from "./action-relations.service";
+import { ActionShareService } from "./action-share.service";
+import { ActionSuitesService } from "./action-suites.service";
+import { ActionSuspensionService } from "./action-suspension.service";
 import { ActionsService } from "./actions.service";
 import {
   ActionActivityDto,
@@ -61,11 +69,23 @@ import { ScheduledPlansOverviewDto } from "./dto/scheduled-plans.dto";
 import { ShareUrlDto, ShareUrlStatsDto } from "./dto/share-url.dto";
 import { UserCompletedActionsCountDto } from "./dto/user-completed-actions-count.dto";
 import { ForumActionCompleterWorker } from "./forum-action-completer.worker";
+import { MemberActionsService } from "./member-actions.service";
+import { WelcomeQueueService } from "./welcome-queue.service";
 
 @Controller("actions")
 export class ActionsController {
   constructor(
     private readonly actionsService: ActionsService,
+    private readonly actionActivityService: ActionActivityService,
+    private readonly memberActions: MemberActionsService,
+    private readonly participants: ActionParticipantsService,
+    private readonly formLinks: ActionFormLinksService,
+    private readonly importExport: ActionImportExportService,
+    private readonly actionRelations: ActionRelationsService,
+    private readonly actionSuites: ActionSuitesService,
+    private readonly shareService: ActionShareService,
+    private readonly suspensionService: ActionSuspensionService,
+    private readonly welcomeQueue: WelcomeQueueService,
     private readonly eventEmitter: EventEmitter2,
     private readonly forumActionCompleterWorker: ForumActionCompleterWorker,
     private readonly shareUrlsService: ShareUrlsService,
@@ -79,7 +99,7 @@ export class ActionsController {
     @Request() req: JwtRequest,
     @Query("sorted", new ParseBoolPipe({ optional: true })) sorted?: boolean,
   ): Promise<ActionDto[]> {
-    return this.actionsService.findMemberPublic(req.user.sub, sorted);
+    return this.memberActions.findMemberPublic(req.user.sub, sorted);
   }
 
   @Get("withdrawals/byForm/:formId")
@@ -88,7 +108,7 @@ export class ActionsController {
   async getWithdrawalsAdmin(
     @Param("formId", ParseIntPipe) formId: number,
   ): Promise<ActionWithdrawalDto[]> {
-    const activities = await this.actionsService.getWithdrawalsForForm(formId);
+    const activities = await this.formLinks.getWithdrawalsForForm(formId);
     return activities.map((a) => new ActionWithdrawalDto(a));
   }
 
@@ -126,7 +146,7 @@ export class ActionsController {
     @Query("communityId", ParseIntPipe) communityId: number,
   ): Promise<CommunityCompletedActionsCountDto> {
     return new CommunityCompletedActionsCountDto(
-      await this.actionsService.countCommunityCompletedActions(
+      await this.actionRelations.countCommunityCompletedActions(
         req.user.sub,
         communityId,
       ),
@@ -141,7 +161,7 @@ export class ActionsController {
     @Param("id", ParseIntPipe) id: number,
     @Request() req: JwtRequest,
   ): Promise<ActionDto> {
-    return this.actionsService.findOneDto(id, req.user?.sub);
+    return this.memberActions.findOneDto(id, req.user?.sub);
   }
 
   @Get(":id/sharePreview")
@@ -161,7 +181,7 @@ export class ActionsController {
     @Query("ref") ref?: string,
   ): Promise<ActionSharePreviewDto> {
     return new ActionSharePreviewDto(
-      await this.actionsService.getSharePreview(id, sid ?? ref),
+      await this.shareService.getSharePreview(id, sid ?? ref),
     );
   }
 
@@ -173,7 +193,7 @@ export class ActionsController {
     @Request() req: JwtRequest,
   ): Promise<ActionReferralCodeDto> {
     return new ActionReferralCodeDto(
-      await this.actionsService.getOrCreateActionReferralCode(id, req.user.sub),
+      await this.shareService.getOrCreateActionReferralCode(id, req.user.sub),
     );
   }
 
@@ -200,7 +220,7 @@ export class ActionsController {
   async getIncompleteUsersAdmin(
     @Param("id", ParseIntPipe) id: number,
   ): Promise<ProfileDto[]> {
-    const users = await this.actionsService.findIncompleteUsersForAction(id);
+    const users = await this.participants.findIncompleteUsersForAction(id);
     return users.map((user) => new ProfileDto(user));
   }
 
@@ -208,7 +228,7 @@ export class ActionsController {
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: WelcomeQueueDto })
   async getWelcomeQueueAdmin(): Promise<WelcomeQueueDto> {
-    return new WelcomeQueueDto(await this.actionsService.findWelcomeQueue());
+    return new WelcomeQueueDto(await this.welcomeQueue.findWelcomeQueue());
   }
 
   @Post("evaluate-cohort")
@@ -281,7 +301,7 @@ export class ActionsController {
     acknowledgeDeadlineShortening: boolean,
   ): Promise<ActionEventDto> {
     return new ActionEventDto(
-      await this.actionsService.addEvent({
+      await this.actionSuites.addEvent({
         actionId: id,
         event: actionEventDto,
         userId: req.user?.sub,
@@ -298,7 +318,7 @@ export class ActionsController {
     @Request() req: JwtRequest,
   ): Promise<ActionActivityDto> {
     return new ActionActivityDto(
-      await this.actionsService.dismissAction(req.user.sub, id),
+      await this.actionActivityService.dismissAction(req.user.sub, id),
     );
   }
 
@@ -309,7 +329,7 @@ export class ActionsController {
     @Body() activityDto: CreateActionActivityDto,
   ): Promise<ActionActivityDto> {
     return new ActionActivityDto(
-      await this.actionsService.adminCreateActivity(activityDto),
+      await this.actionActivityService.adminCreateActivity(activityDto),
     );
   }
 
@@ -343,7 +363,7 @@ export class ActionsController {
     reminders?: boolean,
     @Query("suite", new ParseBoolPipe({ optional: true })) suite?: boolean,
   ): Promise<ExportActionDto> {
-    return this.actionsService.exportAction(
+    return this.importExport.exportAction(
       id,
       events,
       reminders,
@@ -356,9 +376,7 @@ export class ActionsController {
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: AdminActionDto })
   async pasteJsonAdmin(@Body() body: PasteJsonDto): Promise<AdminActionDto> {
-    return new AdminActionDto(
-      await this.actionsService.importAction(body.body),
-    );
+    return new AdminActionDto(await this.importExport.importAction(body.body));
   }
 
   @Get("scheduledPlans")
@@ -371,7 +389,7 @@ export class ActionsController {
     const start = new Date(rangeStart);
     const end = new Date(rangeEnd);
     const [suspensionPlans, forumAutocompletePlans] = await Promise.all([
-      this.actionsService.getSuspendPlans(start, end, 6),
+      this.suspensionService.getSuspendPlans(start, end, 6),
       this.forumActionCompleterWorker.getAutocompletePlans(start, end),
     ]);
 
@@ -387,7 +405,7 @@ export class ActionsController {
   async shareLinksForFormAdmin(
     @Param("formId", ParseIntPipe) formId: number,
   ): Promise<ShareUrlDto[]> {
-    const shareUrls = await this.actionsService.getShareLinksForForm(formId);
+    const shareUrls = await this.shareService.getShareLinksForForm(formId);
     return shareUrls.map((shareUrl) => new ShareUrlDto(shareUrl));
   }
 
@@ -399,7 +417,7 @@ export class ActionsController {
     @Param("actionId", ParseIntPipe) actionId: number,
     @Query("questionId") questionId?: string,
   ): Promise<ShareUrlStatsDto[]> {
-    const stats = await this.actionsService.getShareUrlStats(
+    const stats = await this.shareService.getShareUrlStats(
       actionId,
       questionId,
     );
@@ -412,7 +430,7 @@ export class ActionsController {
   @ApiOkResponse({ type: UserActionRelationsResponseDto })
   async actionRelationsAdmin(): Promise<UserActionRelationsResponseDto> {
     return new UserActionRelationsResponseDto(
-      await this.actionsService.findUserActionRelations(),
+      await this.actionRelations.findUserActionRelations(),
     );
   }
 
@@ -423,7 +441,7 @@ export class ActionsController {
     @Param("userId", ParseIntPipe) userId: number,
   ): Promise<UserActionRelationsResponseDto> {
     return new UserActionRelationsResponseDto(
-      await this.actionsService.findUserActionRelationsForUser(userId),
+      await this.actionRelations.findUserActionRelationsForUser(userId),
     );
   }
 
@@ -434,7 +452,7 @@ export class ActionsController {
     @Param("communityId", ParseIntPipe) communityId: number,
   ): Promise<CommunityUserInfoDto> {
     return new CommunityUserInfoDto(
-      await this.actionsService.findMemberInfoByCommunityId(communityId),
+      await this.actionRelations.findMemberInfoByCommunityId(communityId),
     );
   }
 
@@ -446,7 +464,7 @@ export class ActionsController {
     @Param("communityId", ParseIntPipe) communityId: number,
   ): Promise<CommunityUserInfoDto> {
     return new CommunityUserInfoDto(
-      await this.actionsService.findMemberInfo(req.user.sub, communityId),
+      await this.actionRelations.findMemberInfo(req.user.sub, communityId),
     );
   }
 }

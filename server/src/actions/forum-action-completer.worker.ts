@@ -32,7 +32,7 @@ import {
   type Repository,
 } from "typeorm";
 import { TERMINAL_ACTIVITY_TYPES } from "./action-activity-status";
-import { ActionsService } from "./actions.service";
+import { ActionActivityService } from "./action-activity.service";
 import { CohortDecisionService } from "./cohort-decision.service";
 import { ForumAutocompletePlan } from "./dto/scheduled-plans.dto";
 import { ActionActivity } from "./entities/action-activity.entity";
@@ -65,7 +65,7 @@ export class ForumActionCompleterWorker {
     @InjectRepository(CustomValidator)
     private readonly customValidatorRepository: Repository<CustomValidator>,
     private readonly forumCommentQueryService: ForumCommentQueryService,
-    private readonly actionsService: ActionsService,
+    private readonly actionActivityService: ActionActivityService,
     private readonly actionEventRecipientService: ActionEventRecipientService,
     private readonly cohortDecisionService: CohortDecisionService,
     private readonly eventLogService: EventLogService,
@@ -284,7 +284,7 @@ export class ForumActionCompleterWorker {
     if (shouldWrite) {
       for (const userId of toComplete) {
         try {
-          await this.actionsService.completeAction(action.id, userId, {
+          await this.actionActivityService.completeAction(action.id, userId, {
             adminCreated: true,
           });
           await this.eventLogService.sendMessage({

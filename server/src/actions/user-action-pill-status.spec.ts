@@ -20,7 +20,7 @@ function input(
 
 /**
  * Fold a chronological (oldest-first) sequence of activity types into a single
- * status, mirroring the fold in `ActionsService`: a status-bearing activity
+ * status, mirroring the fold in `ActionRelationsService`: a status-bearing activity
  * sets the status, and a non-terminal activity (dismissal / follow-up form)
  * leaves the prior status intact.
  */

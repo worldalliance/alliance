@@ -2,8 +2,10 @@ import { ActionActivityType } from "@alliance/common/actionActivity";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
+import { User } from "src/user/entities/user.entity";
 import { computeIsAwayDuringWindow } from "src/utils/action-user";
-import { In, Repository } from "typeorm";
+import { In, type Repository } from "typeorm";
+import { UserService } from "../user/user.service";
 import {
   findLatestTerminalActivities,
   TERMINAL_ACTIVITY_TYPES,
@@ -16,6 +18,7 @@ import {
   parseAction,
   type ParsedAction,
 } from "./entities/action.entity";
+import { PrerequisiteProgressService } from "./prerequisite-progress.service";
 
 @Injectable()
 export class ActionParticipantsService {
@@ -25,6 +28,8 @@ export class ActionParticipantsService {
     @InjectRepository(ActionActivity)
     private readonly actionActivityRepository: Repository<ActionActivity>,
     private readonly actionEventRecipientService: ActionEventRecipientService,
+    private readonly prerequisiteProgressService: PrerequisiteProgressService,
+    private readonly userService: UserService,
   ) {}
 
   async findParticipantIdsForActionById(actionId: number): Promise<number[]> {
@@ -154,5 +159,59 @@ export class ActionParticipantsService {
     }
 
     return result;
+  }
+
+  async findUsersCompletedForAction(actionId: number): Promise<number> {
+    const completions = await this.prerequisiteProgressService.loadCompletions({
+      actionId,
+    });
+    return completions.length;
+  }
+
+  async reloadUsersCompletedForAction(actionId: number): Promise<void> {
+    const usersCompleted = await this.findUsersCompletedForAction(actionId);
+    await this.actionRepository.update(actionId, { usersCompleted });
+  }
+
+  async reloadAllActionUsersJoined(): Promise<void> {
+    const actions = await this.actionRepository.find();
+    for (const action of actions) {
+      await this.reloadUsersJoinedForAction(action.id);
+    }
+  }
+
+  async reloadUsersJoinedForAction(actionId: number): Promise<void> {
+    const usersJoined = (await this.findParticipantIdsForActionById(actionId))
+      .length;
+    await this.actionRepository.update(actionId, { usersJoined });
+  }
+
+  async findIncompleteUsersForAction(actionId: number): Promise<User[]> {
+    const action = parseAction(
+      await this.actionRepository.findOneOrFail({
+        where: { id: actionId },
+        relations: {
+          events: true,
+          activities: true,
+        },
+      }),
+    );
+
+    const joinedUserIds = await this.findParticipantIdsForAction(action);
+
+    const completions = await this.prerequisiteProgressService.loadCompletions({
+      actionId,
+    });
+    const completedUserIds = new Set(completions.map((a) => a.userId));
+
+    const incompleteUserIds = joinedUserIds.filter(
+      (id) => !completedUserIds.has(id),
+    );
+
+    if (incompleteUserIds.length === 0) {
+      return [];
+    }
+
+    return this.userService.findByIds(incompleteUserIds);
   }
 }

@@ -88,8 +88,9 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { isNull, omitBy } from "es-toolkit";
+import { ActionActivityService } from "src/actions/action-activity.service";
+import { ActionFormLinksService } from "src/actions/action-form-links.service";
 import { ActionFormVariantService } from "src/actions/action-form-variant.service";
-import { ActionsService } from "src/actions/actions.service";
 import { Action, parseAction } from "src/actions/entities/action.entity";
 import {
   FollowUpForm,
@@ -300,7 +301,8 @@ export class TasksService {
     private userService: UserService,
     private readonly userVisibilityContextService: UserVisibilityContextService,
     private forumCommentQueryService: ForumCommentQueryService,
-    private actionsService: ActionsService,
+    private readonly actionActivityService: ActionActivityService,
+    private readonly formLinks: ActionFormLinksService,
     private mmsService: MmsService,
     @InjectRepository(CustomValidator)
     private customValidatorRepository: Repository<CustomValidator>,
@@ -984,7 +986,7 @@ export class TasksService {
     const submittedAt = new Date();
     if (action) {
       // Before any answer side effects (contract signing, profile updates).
-      await this.actionsService.ensureCompletionAllowed({
+      await this.actionActivityService.ensureCompletionAllowed({
         action: parseAction(action),
         userId,
         now: submittedAt,
@@ -1134,10 +1136,14 @@ export class TasksService {
       user,
     });
 
-    await this.actionsService.completeAction(submitFormDto.actionId, userId, {
-      taskFormResponse: savedForm,
-      now: submittedAt,
-    });
+    await this.actionActivityService.completeAction(
+      submitFormDto.actionId,
+      userId,
+      {
+        taskFormResponse: savedForm,
+        now: submittedAt,
+      },
+    );
     if (contractIdsSigned.length > 0) {
       this.contractService.announceSigned(user.id);
     }
@@ -1213,7 +1219,7 @@ export class TasksService {
       user,
     });
 
-    await this.actionsService.createActionActivity({
+    await this.actionActivityService.createActionActivity({
       actionId: followUpForm.actionId,
       userId,
       type: ActionActivityType.USER_SUBMITTED_FOLLOW_UP_FORM,
@@ -1333,7 +1339,7 @@ export class TasksService {
 
     await this.deleteFormDraft(userId, formId);
 
-    return this.actionsService.createActionActivity({
+    return this.actionActivityService.createActionActivity({
       actionId,
       userId,
       type: ActionActivityType.USER_WONT_COMPLETE,
@@ -1598,7 +1604,7 @@ export class TasksService {
       .addSelect(FIELD_COUNT, "fieldCount")
       .orderBy("form.id", "DESC")
       .getRawMany<FormIndexRow>();
-    const actionsByFormId = await this.actionsService.findActionsByFormIds(
+    const actionsByFormId = await this.formLinks.findActionsByFormIds(
       rows.map((row) => row.id),
     );
     return rows.map((row) => ({

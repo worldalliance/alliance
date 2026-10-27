@@ -1,7 +1,7 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { milliseconds } from "date-fns";
-import { ActionsService } from "src/actions/actions.service";
+import { ActionActivityService } from "src/actions/action-activity.service";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   ActionEvent,
@@ -10,6 +10,7 @@ import {
 import { ActionFormAssignment } from "src/actions/entities/action-form-assignment.entity";
 import { ActionFormVariant } from "src/actions/entities/action-form-variant.entity";
 import { Action, VisibilityMode } from "src/actions/entities/action.entity";
+import { MemberActionsService } from "src/actions/member-actions.service";
 import {
   Comment,
   CommentParentObject,
@@ -62,7 +63,8 @@ describe("Staff preview (e2e)", () => {
   let commentRepo: Repository<Comment>;
   let editableContentRepo: Repository<EditableContent>;
   let formResponseRepo: Repository<FormResponse>;
-  let actionsService: ActionsService;
+  let memberActions: MemberActionsService;
+  let actionActivityService: ActionActivityService;
   let staffToken: string;
   let staffUserId: number;
 
@@ -132,7 +134,8 @@ describe("Staff preview (e2e)", () => {
     commentRepo = ctx.dataSource.getRepository(Comment);
     editableContentRepo = ctx.dataSource.getRepository(EditableContent);
     formResponseRepo = ctx.dataSource.getRepository(FormResponse);
-    actionsService = ctx.app.get(ActionsService);
+    memberActions = ctx.app.get(MemberActionsService);
+    actionActivityService = ctx.app.get(ActionActivityService);
 
     const userRepo = ctx.dataSource.getRepository(User);
     const staff = await userRepo.save(
@@ -353,7 +356,7 @@ describe("Staff preview (e2e)", () => {
         signAccessToken(ctx.jwtService, cohortStaff),
         action.id,
       );
-      const tasks = await actionsService.findUncompletedTasks(cohortStaff.id);
+      const tasks = await memberActions.findUncompletedTasks(cohortStaff.id);
 
       expect(listed?.viewer?.staffPreview).toBe(true);
       expect(tasks.map((task) => task.id)).not.toContain(action.id);
@@ -370,7 +373,7 @@ describe("Staff preview (e2e)", () => {
 
       for (const userId of [staffUserId, ctx.testUserId]) {
         await expect(
-          actionsService.completeAction(action.id, userId),
+          actionActivityService.completeAction(action.id, userId),
         ).rejects.toThrow(previewRefusal.message);
       }
     });
@@ -563,7 +566,7 @@ describe("Staff preview (e2e)", () => {
         events: [pastMemberAction],
       });
 
-      await actionsService.completeAction(action.id, ctx.testUserId);
+      await actionActivityService.completeAction(action.id, ctx.testUserId);
       await request(server())
         .post("/forum/comments")
         .set("Authorization", `Bearer ${ctx.accessToken}`)

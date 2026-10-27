@@ -1,7 +1,7 @@
 import { R } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
-import { ActionsService } from "src/actions/actions.service";
+import { ActionSuspensionService } from "src/actions/action-suspension.service";
 import { ContractService } from "src/contract/contract.service";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
@@ -29,7 +29,7 @@ export class ContractSuspenderWorker {
     private readonly dataSource: DataSource,
     private readonly mailService: MailService,
     private readonly mmsService: MmsService,
-    private readonly actionsService: ActionsService,
+    private readonly suspensionService: ActionSuspensionService,
     private readonly contractService: ContractService,
     private readonly eventLogService: EventLogService,
     private readonly pushService: PushService,
@@ -49,7 +49,7 @@ export class ContractSuspenderWorker {
       async () => {
         const now = new Date();
 
-        const candidates = await this.actionsService.findUsersToSuspend(now);
+        const candidates = await this.suspensionService.findUsersToSuspend(now);
 
         if (candidates.length > 0) {
           this.logger.log(

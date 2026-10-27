@@ -24,7 +24,7 @@ import type { Repository } from "typeorm";
  *
  * Single source of this rule, shared by {@link computeAssignmentCore}
  * (both assignment variants, i.e. the `ActionDto.shouldParticipate` wire field)
- * and `ActionsService.findCompletionBlock` (the `ActionDto.canParticipate`
+ * and `MemberActionsService.findCompletionBlock` (the `ActionDto.canParticipate`
  * wire field).
  */
 export function computeContractSignedAfterOnboardingStart(params: {
@@ -451,8 +451,9 @@ export function computeIsAssignedFromCohortSet(params: {
  * "Assigned and present" roster predicate: {@link computeIsAssignedFromCohortSet}
  * AND not away at any point during the member-action window. Single source
  * for every consumer of the participation roster — notification recipients
- * (`ActionEventRecipientService`) and suite stats (`ActionsService`) — so a
- * user the roster/pill counts as away is consistently excluded everywhere.
+ * (`ActionEventRecipientService`) and missed-suite streaks
+ * (`ActionSuspensionService`) — so a user the roster/pill counts as away is
+ * consistently excluded everywhere.
  * `user` must have `awayRanges` loaded.
  */
 export function computeIsAssignedAndPresent(

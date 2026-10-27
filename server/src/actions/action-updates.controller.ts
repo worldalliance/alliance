@@ -17,7 +17,8 @@ import { ApiOkResponse, ApiResponse } from "@nestjs/swagger";
 import type { JwtRequest } from "src/auth/tokens";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { AuthGuard } from "../auth/guards/auth.guard";
-import { ActionsService } from "./actions.service";
+import { ActionUpdateNotifyService } from "./action-update-notify.service";
+import { ActionUpdatesService } from "./action-updates.service";
 import {
   AdminActionUpdateDto,
   RecognitionPreviewAudienceDto,
@@ -31,7 +32,10 @@ import {
 
 @Controller("actions")
 export class ActionUpdatesController {
-  constructor(private readonly actionsService: ActionsService) {}
+  constructor(
+    private readonly actionUpdates: ActionUpdatesService,
+    private readonly actionUpdateNotify: ActionUpdateNotifyService,
+  ) {}
 
   @Post("createUpdate/:id")
   @UseGuards(AdminGuard)
@@ -41,7 +45,7 @@ export class ActionUpdatesController {
     @Body() createActionUpdateDto: CreateActionUpdateDto,
   ): Promise<AdminActionUpdateDto> {
     return new AdminActionUpdateDto(
-      await this.actionsService.createActionUpdate(id, createActionUpdateDto),
+      await this.actionUpdates.createActionUpdate(id, createActionUpdateDto),
     );
   }
 
@@ -52,7 +56,7 @@ export class ActionUpdatesController {
     @Param("id", ParseIntPipe) id: number,
   ): Promise<AdminActionUpdateDto> {
     return new AdminActionUpdateDto(
-      await this.actionsService.findOneActionUpdate(id),
+      await this.actionUpdates.findOneActionUpdate(id),
     );
   }
 
@@ -69,7 +73,7 @@ export class ActionUpdatesController {
     @Body() updateActionUpdateDto: UpdateActionUpdateDto,
   ): Promise<AdminActionUpdateDto> {
     return new AdminActionUpdateDto(
-      await this.actionsService.updateActionUpdate(id, updateActionUpdateDto),
+      await this.actionUpdates.updateActionUpdate(id, updateActionUpdateDto),
     );
   }
 
@@ -85,7 +89,7 @@ export class ActionUpdatesController {
     @Param("id", ParseIntPipe) id: number,
   ): Promise<AdminActionUpdateDto> {
     return new AdminActionUpdateDto(
-      await this.actionsService.notifyActionUpdate(id),
+      await this.actionUpdateNotify.notifyActionUpdate(id),
     );
   }
 
@@ -98,7 +102,7 @@ export class ActionUpdatesController {
     @Body() audience: RecognitionPreviewAudienceDto,
   ): Promise<RecognitionPreviewCountsDto> {
     return new RecognitionPreviewCountsDto(
-      await this.actionsService.previewActionUpdateRecognitionCounts(id, {
+      await this.actionUpdateNotify.previewActionUpdateRecognitionCounts(id, {
         notifyType: audience.notifyType,
         tagId: audience.tagId ?? null,
       }),
@@ -118,7 +122,7 @@ export class ActionUpdatesController {
     @Param("id", ParseIntPipe) id: number,
   ): Promise<AdminActionUpdateDto> {
     return new AdminActionUpdateDto(
-      await this.actionsService.unpublishActionUpdateUntilDate(id),
+      await this.actionUpdates.unpublishActionUpdateUntilDate(id),
     );
   }
 
@@ -134,7 +138,7 @@ export class ActionUpdatesController {
     @Param("id", ParseIntPipe) id: number,
   ): Promise<AdminActionUpdateDto> {
     return new AdminActionUpdateDto(
-      await this.actionsService.publishActionUpdateNow(id),
+      await this.actionUpdates.publishActionUpdateNow(id),
     );
   }
 
@@ -144,14 +148,14 @@ export class ActionUpdatesController {
   async deleteUpdateAdmin(
     @Param("id", ParseIntPipe) id: number,
   ): Promise<void> {
-    await this.actionsService.deleteActionUpdate(id);
+    await this.actionUpdates.deleteActionUpdate(id);
   }
 
   @Get("allUpdates")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ActionUpdateDto, isArray: true })
   async allUpdates(@Request() req: JwtRequest): Promise<ActionUpdateDto[]> {
-    const updates = await this.actionsService.getActionUpdates(
+    const updates = await this.actionUpdates.getActionUpdates(
       undefined,
       req.user.sub,
     );
@@ -165,7 +169,7 @@ export class ActionUpdatesController {
     @Request() req: JwtRequest,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
   ): Promise<ActionUpdateDto[]> {
-    const updates = await this.actionsService.getActionUpdates(
+    const updates = await this.actionUpdates.getActionUpdates(
       limit ?? 20,
       req.user.sub,
     );

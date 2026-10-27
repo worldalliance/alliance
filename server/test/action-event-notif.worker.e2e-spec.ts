@@ -3,7 +3,6 @@ import { Temporal } from "@js-temporal/polyfill";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { millisecondsInSecond, secondsInHour } from "date-fns/constants";
-import { ActionsService } from "src/actions/actions.service";
 import { CreateReminderGroupDto } from "src/actions/dto/reminder-group.dto";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
@@ -18,6 +17,7 @@ import {
   ReminderGroup,
   ReminderGroupTimingMode,
 } from "src/actions/entities/reminder-group.entity";
+import { MemberActionsService } from "src/actions/member-actions.service";
 import { Community } from "src/community/entities/community.entity";
 import { softDeleteCascade } from "src/datasources/soft-delete";
 import {
@@ -33,6 +33,7 @@ import { ActionEventReminderService } from "src/notifs/action-event-reminder.ser
 import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
 import { NotificationChannel } from "src/notifs/notif-utils";
 import { ReminderGroupService } from "src/notifs/reminder-group.service";
+import { ReminderPreviewService } from "src/notifs/reminder-preview.service";
 import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import {
@@ -2090,7 +2091,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
 
   it("previews a suite catch-up with the full suite scope, not just the member action", async () => {
     const now = Date.now();
-    const actionsService = ctx.app.get(ActionsService);
+    const reminderPreview = ctx.app.get(ReminderPreviewService);
     const user = await getPrimaryUser();
     await setUserContractSigned(
       user.id,
@@ -2153,7 +2154,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
     } as CreateReminderGroupDto;
 
     await saveLiveCohortDecisions(ctx);
-    const plans = await actionsService.tentativePlansForGroup(
+    const plans = await reminderPreview.tentativePlansForGroup(
       memberEvent.id,
       catchUpDto,
     );
@@ -2163,7 +2164,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
     await notifRepo.update(launchNotif.id, {
       notifiedActionIds: [actionA.id, actionB.id],
     });
-    const plansAfterFullCoverage = await actionsService.tentativePlansForGroup(
+    const plansAfterFullCoverage = await reminderPreview.tentativePlansForGroup(
       memberEvent.id,
       catchUpDto,
     );
@@ -2343,7 +2344,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
     });
 
     const tasks = await ctx.app
-      .get(ActionsService)
+      .get(MemberActionsService)
       .findUncompletedTasks(admin.id);
 
     expect(tasks.map((task) => task.id)).toEqual([launched.id]);

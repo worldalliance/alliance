@@ -4,7 +4,7 @@ import type {
 } from "@aws-sdk/client-s3";
 import { sdkStreamMixin } from "@smithy/util-stream";
 import { milliseconds } from "date-fns";
-import { ActionsService } from "src/actions/actions.service";
+import { ActionActivityService } from "src/actions/action-activity.service";
 import { GlobalFeedItemType } from "src/actions/dto/action-feed.dto";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
@@ -1410,7 +1410,7 @@ describe("Forum (e2e)", () => {
 
     it("provides activity and action level comment listings", async () => {
       const actionComplete = await ctx.app
-        .get(ActionsService)
+        .get(ActionActivityService)
         .completeAction(testAction.id, ctx.testUserId);
 
       const activityId = actionComplete.id;
@@ -1454,7 +1454,7 @@ describe("Forum (e2e)", () => {
         actionId: testAction.id,
       });
       const { id: activityId } = await ctx.app
-        .get(ActionsService)
+        .get(ActionActivityService)
         .completeAction(testAction.id, ctx.testUserId);
 
       const commentResponse = await request(ctx.app.getHttpServer())
@@ -2861,7 +2861,7 @@ describe("Forum (e2e)", () => {
       });
 
       const completeResponse = await ctx.app
-        .get(ActionsService)
+        .get(ActionActivityService)
         .completeAction(testAction.id, ctx.testUserId);
 
       const activityId = completeResponse.id;

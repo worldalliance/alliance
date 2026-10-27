@@ -4,7 +4,10 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import { ActionPartnershipsModule } from "src/action-partnerships/action-partnerships.module";
 import { ActionPartnershipsService } from "src/action-partnerships/action-partnerships.service";
 import { ActionPartnershipResponse } from "src/action-partnerships/entities/action-partnership-response.entity";
+import { ActionActivityService } from "src/actions/action-activity.service";
 import { ActionFormVariantService } from "src/actions/action-form-variant.service";
+import { ActionSuitesService } from "src/actions/action-suites.service";
+import { ActionUpdatesService } from "src/actions/action-updates.service";
 import { ActionsService } from "src/actions/actions.service";
 import { CreateActionDto } from "src/actions/dto/action.dto";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
@@ -29,6 +32,8 @@ import {
   ReminderGroup,
   ReminderGroupTimingMode,
 } from "src/actions/entities/reminder-group.entity";
+import { FollowUpFormsService } from "src/actions/follow-up-forms.service";
+import { GeneralUpdatesService } from "src/actions/general-updates.service";
 import { ProjectsService } from "src/actions/projects.service";
 import { AuthService } from "src/auth/auth.service";
 import { Guest } from "src/auth/entities/guest.entity";
@@ -68,6 +73,11 @@ const deleteAfter =
 describe("Action writers under a deleted parent (e2e)", () => {
   let ctx: TestContext;
   let actions: ActionsService;
+  let generalUpdates: GeneralUpdatesService;
+  let actionUpdates: ActionUpdatesService;
+  let actionSuites: ActionSuitesService;
+  let followUpForms: FollowUpFormsService;
+  let actionActivity: ActionActivityService;
   let actionRepo: Repository<Action>;
 
   const createAction = (name = "Parent action") =>
@@ -111,6 +121,11 @@ describe("Action writers under a deleted parent (e2e)", () => {
   beforeAll(async () => {
     ctx = await createTestApp([TasksModule, ActionPartnershipsModule]);
     actions = ctx.app.get(ActionsService);
+    generalUpdates = ctx.app.get(GeneralUpdatesService);
+    actionUpdates = ctx.app.get(ActionUpdatesService);
+    actionSuites = ctx.app.get(ActionSuitesService);
+    followUpForms = ctx.app.get(FollowUpFormsService);
+    actionActivity = ctx.app.get(ActionActivityService);
     actionRepo = ctx.dataSource.getRepository(Action);
   });
 
@@ -132,7 +147,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
       );
 
     await expect(
-      actions.addEvent({
+      actionSuites.addEvent({
         actionId: action.id,
         userId: ctx.adminUserId,
         event: {
@@ -163,7 +178,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
       );
 
     await expect(
-      actions.createActionUpdate(action.id, {
+      actionUpdates.createActionUpdate(action.id, {
         title: "News",
         date: new Date(),
         notifyType: ActionUpdateNotifyType.None,
@@ -275,7 +290,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
       );
 
     await expect(
-      actions.createActionActivity({
+      actionActivity.createActionActivity({
         actionId: action.id,
         userId: ctx.adminUserId,
         type: ActionActivityType.USER_DISMISSED,
@@ -303,7 +318,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
     await responses.softDelete(response.id);
 
     await expect(
-      actions.createActionActivity({
+      actionActivity.createActionActivity({
         actionId: action.id,
         userId: ctx.adminUserId,
         type: ActionActivityType.USER_COMPLETED,
@@ -383,7 +398,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
       );
 
     await expect(
-      actions.createFollowUpForm(action.id, {
+      followUpForms.createFollowUpForm(action.id, {
         actionId: action.id,
         formId: parent.id,
         name: "Follow-up",
@@ -408,7 +423,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
       .mockImplementationOnce(deleteAfter(load, () => tags.softDelete(tag.id)));
 
     await expect(
-      actions.createGeneralUpdate({
+      generalUpdates.createGeneralUpdate({
         name: "Tagged update",
         startDate: new Date(),
         endDate: new Date(Date.now() + 86_400_000),
@@ -425,7 +440,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
   });
 
   it("refuses to tag a general update with a tag deleted while it saves", async () => {
-    const generalUpdate = await actions.createGeneralUpdate({
+    const generalUpdate = await generalUpdates.createGeneralUpdate({
       name: "Retagged update",
       startDate: new Date(),
       endDate: new Date(Date.now() + 86_400_000),
@@ -444,7 +459,9 @@ describe("Action writers under a deleted parent (e2e)", () => {
         target: Tag,
         id: tag.id,
         write: () =>
-          actions.updateGeneralUpdate(generalUpdate.id, { tagIds: [tag.id] }),
+          generalUpdates.updateGeneralUpdate(generalUpdate.id, {
+            tagIds: [tag.id],
+          }),
       }),
     ).toBeInstanceOf(NotFoundException);
     expect(
@@ -462,7 +479,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
       form(),
       form(),
     ]);
-    const followUp = await actions.createFollowUpForm(action.id, {
+    const followUp = await followUpForms.createFollowUpForm(action.id, {
       actionId: action.id,
       formId: original.id,
       name: "Follow-up",
@@ -470,7 +487,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
     await ctx.dataSource.getRepository(Form).softDelete(deleted.id);
 
     await expect(
-      actions.updateFollowUpForm(followUp.id, { formId: deleted.id }),
+      followUpForms.updateFollowUpForm(followUp.id, { formId: deleted.id }),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(
       await ctx.dataSource
@@ -554,7 +571,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
       );
 
     await expect(
-      actions.updateFollowUpForm(followUp.id, { name: "Renamed" }),
+      followUpForms.updateFollowUpForm(followUp.id, { name: "Renamed" }),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(
       await followUps.findOneOrFail({
@@ -931,7 +948,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
 
   it("refuses to point an update at a deleted tag", async () => {
     const action = await createAction();
-    const update = await actions.createActionUpdate(action.id, {
+    const update = await actionUpdates.createActionUpdate(action.id, {
       title: "News",
       date: new Date(),
       notifyType: ActionUpdateNotifyType.None,
@@ -945,7 +962,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
     await tags.softDelete(tag.id);
 
     await expect(
-      actions.updateActionUpdate(update.id, { tagId: tag.id }),
+      actionUpdates.updateActionUpdate(update.id, { tagId: tag.id }),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(
       await ctx.dataSource.getRepository(ActionUpdate).findOneOrFail({
@@ -964,7 +981,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
       date: new Date(),
       action,
     });
-    const update = await actions.createActionUpdate(action.id, {
+    const update = await actionUpdates.createActionUpdate(action.id, {
       title: "News",
       date: new Date(),
       notifyType: ActionUpdateNotifyType.None,
@@ -977,7 +994,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
       await runner.query(`SELECT 1 FROM action WHERE id = $1 FOR UPDATE`, [
         action.id,
       ]);
-      const saved = actions.updateActionUpdate(update.id, {
+      const saved = actionUpdates.updateActionUpdate(update.id, {
         associatedEventId: event.id,
       });
       await waitForLockWait(ctx.dataSource);
@@ -1006,7 +1023,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
         password: "password",
       }),
     );
-    const generalUpdate = await actions.createGeneralUpdate({
+    const generalUpdate = await generalUpdates.createGeneralUpdate({
       name: "Dismissed update",
       startDate: new Date(),
       endDate: new Date(Date.now() + 86_400_000),
@@ -1015,11 +1032,11 @@ describe("Action writers under a deleted parent (e2e)", () => {
     });
     await users.softDelete(member.id);
     jest
-      .spyOn(actions, "findUnreadGeneralUpdates")
+      .spyOn(generalUpdates, "findUnreadGeneralUpdates")
       .mockResolvedValueOnce([generalUpdate]);
 
     await expect(
-      actions.dismissGeneralUpdate(member.id, generalUpdate.id),
+      generalUpdates.dismissGeneralUpdate(member.id, generalUpdate.id),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(
       await ctx.dataSource.getRepository(GeneralUpdateActivity).count({
@@ -1030,7 +1047,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
   });
 
   it("records no dismissal of a general update deleted after it loads", async () => {
-    const generalUpdate = await actions.createGeneralUpdate({
+    const generalUpdate = await generalUpdates.createGeneralUpdate({
       name: "Doomed update",
       startDate: new Date(),
       endDate: new Date(Date.now() + 86_400_000),
@@ -1041,11 +1058,11 @@ describe("Action writers under a deleted parent (e2e)", () => {
       .getRepository(GeneralUpdate)
       .softDelete(generalUpdate.id);
     jest
-      .spyOn(actions, "findUnreadGeneralUpdates")
+      .spyOn(generalUpdates, "findUnreadGeneralUpdates")
       .mockResolvedValueOnce([generalUpdate]);
 
     await expect(
-      actions.dismissGeneralUpdate(ctx.testUserId, generalUpdate.id),
+      generalUpdates.dismissGeneralUpdate(ctx.testUserId, generalUpdate.id),
     ).rejects.toThrow(new NotFoundException("General update not found"));
     expect(
       await ctx.dataSource.getRepository(GeneralUpdateActivity).count({

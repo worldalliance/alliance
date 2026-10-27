@@ -1,7 +1,8 @@
 import { Logger } from "@nestjs/common";
 import request from "supertest";
 import { Like, type Repository } from "typeorm";
-import { ActionsService } from "../src/actions/actions.service";
+import { ActionActivityService } from "../src/actions/action-activity.service";
+import { ActionUpdateNotifyService } from "../src/actions/action-update-notify.service";
 import { CohortDecisionService } from "../src/actions/cohort-decision.service";
 import type { ActionDto } from "../src/actions/dto/action.dto";
 import { ActionCohortDecision } from "../src/actions/entities/action-cohort-decision.entity";
@@ -103,8 +104,10 @@ describe("Member-facing reads of cohort decisions (e2e)", () => {
       viewer: { assigned: false, canComplete: true },
     });
 
-    await ctx.app.get(ActionsService).completeAction(us.id, member.id);
-    await ctx.app.get(ActionsService).completeAction(nonUs.id, member.id);
+    await ctx.app.get(ActionActivityService).completeAction(us.id, member.id);
+    await ctx.app
+      .get(ActionActivityService)
+      .completeAction(nonUs.id, member.id);
     expect((await decisionsFor(nonUs.id)).get(member.id)?.included).toBe(false);
   });
 
@@ -256,7 +259,9 @@ describe("Member-facing reads of cohort decisions (e2e)", () => {
         notificationMode: ActionUpdateNotificationMode.Legacy,
         schemaSnapshotId: snapshot.id,
       });
-      await ctx.app.get(ActionsService).notifyActionUpdate(update.id);
+      await ctx.app
+        .get(ActionUpdateNotifyService)
+        .notifyActionUpdate(update.id);
       return (
         await ctx.dataSource.getRepository(UnreadContent).find({
           where: {

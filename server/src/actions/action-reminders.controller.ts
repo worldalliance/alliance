@@ -18,7 +18,6 @@ import { MissedSuitePlanService } from "src/notifs/missed-suite-plans.service";
 import { ReminderGroupService } from "src/notifs/reminder-group.service";
 import { ReminderPreviewService } from "src/notifs/reminder-preview.service";
 import { AdminGuard } from "../auth/guards/admin.guard";
-import { ActionsService } from "./actions.service";
 import {
   NotificationScheduleEntryDto,
   NotificationScheduleQueryDto,
@@ -36,7 +35,6 @@ import {
 @Controller("actions")
 export class ActionRemindersController {
   constructor(
-    private readonly actionsService: ActionsService,
     private readonly actionEventReminderService: ActionEventReminderService,
     private readonly missedSuitePlanService: MissedSuitePlanService,
     private readonly reminderGroupService: ReminderGroupService,
@@ -145,7 +143,7 @@ export class ActionRemindersController {
     @Body() body: CreateReminderGroupDto,
   ): Promise<PreviewNotificationPlanDto[]> {
     return this.missedSuitePlanService.toPreview(
-      await this.actionsService.tentativePlansForGroup(eventId, body),
+      await this.reminderPreviewService.tentativePlansForGroup(eventId, body),
     );
   }
 

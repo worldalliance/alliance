@@ -1,6 +1,6 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { milliseconds } from "date-fns";
-import { ActionsService } from "src/actions/actions.service";
+import { ActionSuspensionService } from "src/actions/action-suspension.service";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   ActionEvent,
@@ -263,7 +263,7 @@ describe("missed-suite notices (e2e)", () => {
 
     await dispatch();
     const loadSuites = jest.spyOn(
-      ctx.app.get(ActionsService),
+      ctx.app.get(ActionSuspensionService),
       "findClosedSuiteOutcomes",
     );
     await dispatch();

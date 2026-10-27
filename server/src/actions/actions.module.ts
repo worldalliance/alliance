@@ -35,21 +35,33 @@ import { ContractEvent } from "../user/entities/contract-event.entity";
 import { Tag } from "../user/entities/tag.entity";
 import { User } from "../user/entities/user.entity";
 import { UserModule } from "../user/user.module";
+import { ActionActivityService } from "./action-activity.service";
 import { ActionFeedController } from "./action-feed.controller";
+import { ActionFormLinksService } from "./action-form-links.service";
 import { ActionFormVariantService } from "./action-form-variant.service";
 import { ActionFormsController } from "./action-forms.controller";
+import { ActionImportExportService } from "./action-import-export.service";
 import { ActionParticipantsService } from "./action-participants.service";
+import { ActionRelationsService } from "./action-relations.service";
 import { ActionRemindersController } from "./action-reminders.controller";
+import { ActionShareService } from "./action-share.service";
 import { ActionStatsService } from "./action-stats.service";
 import { ActionSuitesController } from "./action-suites.controller";
+import { ActionSuitesService } from "./action-suites.service";
+import { ActionSuspensionService } from "./action-suspension.service";
+import { ActionUpdateNotifyService } from "./action-update-notify.service";
 import { ActionUpdateRecognitionPreviewService } from "./action-update-recognition-preview.service";
 import { ActionUpdateRecognitionService } from "./action-update-recognition.service";
 import { ActionUpdateRecognitionWorker } from "./action-update-recognition.worker";
 import { ActionUpdatesController } from "./action-updates.controller";
+import { ActionUpdatesService } from "./action-updates.service";
 import { ActionVisibilityModule } from "./action-visibility.module";
 import { ActionsController } from "./actions.controller";
 import { ActionsGateway } from "./actions.gateway";
 import { ActionsService } from "./actions.service";
+import { ActivityFeedService } from "./activity-feed.service";
+import { ActivityLikeService } from "./activity-like.service";
+import { ActivityOutputService } from "./activity-output.service";
 import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
 import { CohortDecisionListener } from "./cohort-decision.listener";
 import { CohortDecisionService } from "./cohort-decision.service";
@@ -76,12 +88,20 @@ import { GeneralUpdateActivity } from "./entities/general-update-activity.entity
 import { GeneralUpdate } from "./entities/general-update.entity";
 import { Project } from "./entities/project.entity";
 import { ReminderGroup } from "./entities/reminder-group.entity";
+import { FeedMembersService } from "./feed-members.service";
+import { FollowUpFormsService } from "./follow-up-forms.service";
 import { ForumActionCompleterWorker } from "./forum-action-completer.worker";
 import { GeneralUpdatesController } from "./general-updates.controller";
+import { GeneralUpdatesService } from "./general-updates.service";
+import { GlobalFeedService } from "./global-feed.service";
+import { HomeFeedService } from "./home-feed.service";
+import { MemberActionsService } from "./member-actions.service";
 import { ProjectsController } from "./projects.controller";
 import { ProjectsService } from "./projects.service";
 import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
+import { SchemaWriteService } from "./schema-write.service";
 import { TaskBadgeService } from "./task-badge.service";
+import { WelcomeQueueService } from "./welcome-queue.service";
 
 @Module({
   imports: [
@@ -173,9 +193,31 @@ import { TaskBadgeService } from "./task-badge.service";
     TaskBadgeService,
     CohortDivergenceService,
     CohortResolverService,
+    FeedMembersService,
+    GlobalFeedService,
+    ActivityOutputService,
+    ActivityFeedService,
+    HomeFeedService,
+    ActivityLikeService,
+    ActionSuspensionService,
+    ActionShareService,
+    SchemaWriteService,
+    GeneralUpdatesService,
+    ActionUpdatesService,
+    ActionUpdateNotifyService,
+    ActionSuitesService,
+    FollowUpFormsService,
+    ActionRelationsService,
+    ActionImportExportService,
+    WelcomeQueueService,
+    ActionActivityService,
+    MemberActionsService,
+    ActionFormLinksService,
   ],
   exports: [
     ActionsService,
+    ActionActivityService,
+    ActionFormLinksService,
     ActionVisibilityModule,
     ActionFormVariantService,
     ActionEventRecipientService,

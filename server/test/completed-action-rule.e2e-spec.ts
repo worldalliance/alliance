@@ -1,6 +1,8 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
+import { ActionActivityService } from "../src/actions/action-activity.service";
+import { ActionFormLinksService } from "../src/actions/action-form-links.service";
 import { ActionParticipantsService } from "../src/actions/action-participants.service";
-import { ActionsService } from "../src/actions/actions.service";
+import { ActionRelationsService } from "../src/actions/action-relations.service";
 import { CohortResolverService } from "../src/actions/cohort-resolver.service";
 import { Action } from "../src/actions/entities/action.entity";
 import { SingleMemberCohortService } from "../src/actions/single-member-cohort.service";
@@ -59,7 +61,7 @@ describe("A member's latest completion or withdrawal decides completion (e2e)", 
     const action = await createAction({ start: addDays(now, -10), deadline });
     await saveLiveCohortDecisions(ctx);
     for (const type of types) {
-      await ctx.app.get(ActionsService).createActionActivity({
+      await ctx.app.get(ActionActivityService).createActionActivity({
         actionId: action.id,
         userId: member.id,
         type,
@@ -140,13 +142,11 @@ describe("A member's latest completion or withdrawal decides completion (e2e)", 
     "counts a member who $order as a participant: $completed",
     async ({ types, completed }) => {
       const { member, action } = await setUp(types);
-      const actionsService = ctx.app.get(ActionsService);
+      const participants = ctx.app.get(ActionParticipantsService);
 
       const [participantIds, incomplete, stored] = await Promise.all([
-        ctx.app
-          .get(ActionParticipantsService)
-          .findParticipantIdsForActionById(action.id),
-        actionsService.findIncompleteUsersForAction(action.id),
+        participants.findParticipantIdsForActionById(action.id),
+        participants.findIncompleteUsersForAction(action.id),
         ctx.dataSource.getRepository(Action).findOneByOrFail({ id: action.id }),
       ]);
 
@@ -176,7 +176,7 @@ describe("A member's latest completion or withdrawal decides completion (e2e)", 
       await ctx.app.get(ActionStatsAnalyticsService).calculateActionStats();
 
       const [withdrawals, stats] = await Promise.all([
-        ctx.app.get(ActionsService).getWithdrawalsForForm(form.id),
+        ctx.app.get(ActionFormLinksService).getWithdrawalsForForm(form.id),
         ctx.dataSource
           .getRepository(ActionStatsRecord)
           .findOneByOrFail({ actionId: action.id }),
@@ -202,7 +202,7 @@ describe("A member's latest completion or withdrawal decides completion (e2e)", 
       );
 
       const count = await ctx.app
-        .get(ActionsService)
+        .get(ActionRelationsService)
         .countCommunityCompletedActions(member.id, community.id);
       await communityRepo.delete(community.id);
 
@@ -213,7 +213,7 @@ describe("A member's latest completion or withdrawal decides completion (e2e)", 
   it.each(orders)(
     "counts a member who $order in completion analytics: $completed",
     async ({ types, completed }) => {
-      const actionsService = ctx.app.get(ActionsService);
+      const actionActivityService = ctx.app.get(ActionActivityService);
       const others = await Promise.all(
         [0, 1, 2].map(() =>
           createAction({
@@ -225,7 +225,7 @@ describe("A member's latest completion or withdrawal decides completion (e2e)", 
       await createUser({ signedAt: addDays(now, -30) });
       const { member, action } = await setUp(types, addDays(now, -1));
       for (const other of others) {
-        await actionsService.completeAction(other.id, member.id, {
+        await actionActivityService.completeAction(other.id, member.id, {
           adminCreated: true,
         });
       }

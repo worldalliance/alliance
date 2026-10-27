@@ -1,6 +1,7 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { milliseconds } from "date-fns";
-import { ActionsService } from "src/actions/actions.service";
+import { ActionUpdateNotifyService } from "src/actions/action-update-notify.service";
+import { ActionUpdatesService } from "src/actions/action-updates.service";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   ActionEvent,
@@ -67,7 +68,7 @@ describe("Notification content stability (e2e)", () => {
   let ctx: TestContext;
   let notifsService: NotifsService;
   let likes: LikeNotificationService;
-  let actionsService: ActionsService;
+  let actionUpdates: ActionUpdatesService;
   let userRepo: Repository<User>;
   let communityRepo: Repository<Community>;
   let notifRepo: Repository<Notification>;
@@ -172,7 +173,7 @@ describe("Notification content stability (e2e)", () => {
     ctx = await createTestApp([]);
     notifsService = ctx.app.get(NotifsService);
     likes = ctx.app.get(LikeNotificationService);
-    actionsService = ctx.app.get(ActionsService);
+    actionUpdates = ctx.app.get(ActionUpdatesService);
     userRepo = ctx.dataSource.getRepository(User);
     communityRepo = ctx.dataSource.getRepository(Community);
     notifRepo = ctx.dataSource.getRepository(Notification);
@@ -301,7 +302,7 @@ describe("Notification content stability (e2e)", () => {
       const update = await createUpdate(new Date(), "Original copy");
       const row = await send(update);
 
-      await actionsService.updateActionUpdate(update.id, {
+      await actionUpdates.updateActionUpdate(update.id, {
         shortNotifString: "Edited copy",
       });
 
@@ -313,7 +314,7 @@ describe("Notification content stability (e2e)", () => {
       const row = await send(update);
       const [pushed] = await notifsService.getUnreadContentsForPush([row.id]);
 
-      await actionsService.updateActionUpdate(update.id, {
+      await actionUpdates.updateActionUpdate(update.id, {
         shortNotifString: "Edited copy",
       });
 
@@ -330,7 +331,7 @@ describe("Notification content stability (e2e)", () => {
 
       await Promise.all(
         sent.map(({ update }) =>
-          actionsService.updateActionUpdate(update.id, {
+          actionUpdates.updateActionUpdate(update.id, {
             shortNotifString: "Edited copy",
           }),
         ),
@@ -346,7 +347,7 @@ describe("Notification content stability (e2e)", () => {
       const update = await createUpdate(sendTime, "Draft copy");
       const row = await send(update);
 
-      await actionsService.updateActionUpdate(update.id, {
+      await actionUpdates.updateActionUpdate(update.id, {
         shortNotifString: "Copy at availability",
       });
       await ctx.dataSource
@@ -354,10 +355,10 @@ describe("Notification content stability (e2e)", () => {
         .update(row.id, { sendTime: new Date(Date.now() - 1000) });
       expect(await shownText(row)).toBe("Copy at availability");
 
-      await actionsService.updateActionUpdate(update.id, {
+      await actionUpdates.updateActionUpdate(update.id, {
         shortNotifString: "Copy after availability",
       });
-      await actionsService.updateActionUpdate(update.id, {
+      await actionUpdates.updateActionUpdate(update.id, {
         shortNotifString: "Copy edited twice",
       });
       expect(await shownText(row)).toBe("Copy at availability");
@@ -371,7 +372,7 @@ describe("Notification content stability (e2e)", () => {
         visibleAt: new Date(Date.now() + milliseconds({ hours: 1 })),
       });
 
-      await actionsService.updateActionUpdate(update.id, {
+      await actionUpdates.updateActionUpdate(update.id, {
         shortNotifString: "Final copy",
       });
       await updates.update(update.id, {
@@ -386,11 +387,11 @@ describe("Notification content stability (e2e)", () => {
       const row = await send(update);
       expect(await shownText(row)).toBe("Seen copy");
 
-      await actionsService.updateActionUpdate(update.id, {
+      await actionUpdates.updateActionUpdate(update.id, {
         date: new Date(Date.now() + milliseconds({ hours: 1 })),
       });
-      await actionsService.unpublishActionUpdateUntilDate(update.id);
-      await actionsService.updateActionUpdate(update.id, {
+      await actionUpdates.unpublishActionUpdateUntilDate(update.id);
+      await actionUpdates.updateActionUpdate(update.id, {
         shortNotifString: "Edited while hidden",
       });
       await reachShowDate(update, row);
@@ -404,16 +405,16 @@ describe("Notification content stability (e2e)", () => {
         "Scheduled copy",
       );
       const row = await send(update);
-      await actionsService.unpublishActionUpdateUntilDate(update.id);
+      await actionUpdates.unpublishActionUpdateUntilDate(update.id);
       await ctx.dataSource
         .getRepository(UnreadContent)
         .update(row.id, { sendTime: new Date(Date.now() - 1000) });
 
-      await actionsService.updateActionUpdate(update.id, {
+      await actionUpdates.updateActionUpdate(update.id, {
         shortNotifString: "Hidden A",
       });
-      await actionsService.unpublishActionUpdateUntilDate(update.id);
-      await actionsService.updateActionUpdate(update.id, {
+      await actionUpdates.unpublishActionUpdateUntilDate(update.id);
+      await actionUpdates.updateActionUpdate(update.id, {
         shortNotifString: "Hidden B",
       });
       await reachShowDate(update, row);
@@ -432,7 +433,7 @@ describe("Notification content stability (e2e)", () => {
         visibilityMode: VisibilityMode.ParticipatingGroups,
       });
       expect(await shownText(row)).toBeUndefined();
-      await actionsService.updateActionUpdate(update.id, {
+      await actionUpdates.updateActionUpdate(update.id, {
         shortNotifString: "Edited during gap",
       });
       await actions.update(gapAction.id, {
@@ -446,11 +447,11 @@ describe("Notification content stability (e2e)", () => {
       const update = await createUpdate(new Date(), "Available copy");
       const row = await send(update);
 
-      await actionsService.updateActionUpdate(update.id, {
+      await actionUpdates.updateActionUpdate(update.id, {
         date: new Date(Date.now() + milliseconds({ hours: 1 })),
       });
-      await actionsService.unpublishActionUpdateUntilDate(update.id);
-      await actionsService.updateActionUpdate(update.id, {
+      await actionUpdates.unpublishActionUpdateUntilDate(update.id);
+      await actionUpdates.updateActionUpdate(update.id, {
         shortNotifString: "Edited while hidden",
       });
       await reachShowDate(update, row);
@@ -471,7 +472,7 @@ describe("Notification content stability (e2e)", () => {
       await actions.update(gapAction.id, {
         visibilityMode: VisibilityMode.ParticipatingGroups,
       });
-      await actionsService.updateActionUpdate(update.id, {
+      await actionUpdates.updateActionUpdate(update.id, {
         shortNotifString: "Edited during gap",
       });
       await actions.update(gapAction.id, {
@@ -496,7 +497,7 @@ describe("Notification content stability (e2e)", () => {
         const update = await createUpdate(new Date(), "Old copy");
         const stale = await loaded(await send(update));
 
-        await actionsService.updateActionUpdate(update.id, {
+        await actionUpdates.updateActionUpdate(update.id, {
           shortNotifString: "New copy",
         });
 
@@ -527,7 +528,7 @@ describe("Notification content stability (e2e)", () => {
       const row = await send(update);
       expect(await shownText(row)).toBeUndefined();
 
-      await actionsService.updateActionUpdate(update.id, {
+      await actionUpdates.updateActionUpdate(update.id, {
         shortNotifString: "Launch copy",
       });
       await ctx.dataSource.getRepository(ActionEvent).save({
@@ -548,7 +549,7 @@ describe("Notification content stability (e2e)", () => {
         .getRepository(ActionUpdate)
         .update(update.id, { visibleAt: null });
 
-      await actionsService.updateActionUpdate(update.id, {
+      await actionUpdates.updateActionUpdate(update.id, {
         shortNotifString: "Final copy",
         schema: { blocks: [{ type: "display", kind: "text", text: "Body" }] },
         expectedSchemaSnapshotId: update.schemaSnapshotId,
@@ -612,10 +613,8 @@ describe("Notification content stability (e2e)", () => {
       );
       const row = await send(update);
       const shows = new Date(Date.now() + milliseconds({ hours: 2 }));
-      const actions = ctx.app.get(ActionsService);
-
-      await actions.updateActionUpdate(update.id, { date: shows });
-      await actions.unpublishActionUpdateUntilDate(update.id);
+      await actionUpdates.updateActionUpdate(update.id, { date: shows });
+      await actionUpdates.unpublishActionUpdateUntilDate(update.id);
 
       expect(
         (
@@ -634,12 +633,10 @@ describe("Notification content stability (e2e)", () => {
       const row = await send(update);
       const rows = ctx.dataSource.getRepository(UnreadContent);
       await rows.update(row.id, { pushClaimedBy: "dispatch" });
-      const actions = ctx.app.get(ActionsService);
-
-      await actions.updateActionUpdate(update.id, {
+      await actionUpdates.updateActionUpdate(update.id, {
         date: new Date(Date.now() + milliseconds({ hours: 2 })),
       });
-      await actions.unpublishActionUpdateUntilDate(update.id);
+      await actionUpdates.unpublishActionUpdateUntilDate(update.id);
 
       expect((await rows.findOneByOrFail({ id: row.id })).sendTime).toEqual(
         row.sendTime,
@@ -656,9 +653,7 @@ describe("Notification content stability (e2e)", () => {
       const due = new Date(Date.now() - milliseconds({ minutes: 1 }));
       await rows.update(row.id, { sendTime: due, readAt: new Date() });
 
-      await ctx.app
-        .get(ActionsService)
-        .unpublishActionUpdateUntilDate(update.id);
+      await actionUpdates.unpublishActionUpdateUntilDate(update.id);
 
       expect((await rows.findOneByOrFail({ id: row.id })).sendTime).toEqual(
         due,
@@ -674,7 +669,6 @@ describe("Notification content stability (e2e)", () => {
         .getRepository(ActionUpdate)
         .update(update.id, { notifyType: ActionUpdateNotifyType.AllMembers });
       await giveActiveContract(ctx, recipient.id);
-      const actions = ctx.app.get(ActionsService);
       const users = ctx.app.get(UserService);
       const findUsersWithActiveContract =
         users.findUsersWithActiveContract.bind(users);
@@ -682,13 +676,15 @@ describe("Notification content stability (e2e)", () => {
       const audience = jest
         .spyOn(users, "findUsersWithActiveContract")
         .mockImplementation(async () => {
-          await actions.updateActionUpdate(update.id, { date: shows });
-          await actions.unpublishActionUpdateUntilDate(update.id);
+          await actionUpdates.updateActionUpdate(update.id, { date: shows });
+          await actionUpdates.unpublishActionUpdateUntilDate(update.id);
           return findUsersWithActiveContract();
         });
 
       try {
-        await actions.notifyActionUpdate(update.id);
+        await ctx.app
+          .get(ActionUpdateNotifyService)
+          .notifyActionUpdate(update.id);
       } finally {
         audience.mockRestore();
       }
@@ -706,8 +702,7 @@ describe("Notification content stability (e2e)", () => {
     it("starts an entry sent while its update is hidden when the update shows", async () => {
       const shows = new Date(Date.now() + milliseconds({ hours: 3 }));
       const update = await createUpdate(shows, "Sent while hidden");
-      const actions = ctx.app.get(ActionsService);
-      await actions.unpublishActionUpdateUntilDate(update.id);
+      await actionUpdates.unpublishActionUpdateUntilDate(update.id);
 
       const row = await send(
         await ctx.dataSource
