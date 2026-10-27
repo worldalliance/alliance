@@ -48,6 +48,7 @@ import {
 import { Form, loadedFormSnapshot } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { FormResponseDraft } from "src/tasks/entities/formresponsedraft.entity";
+import { FormDraftService } from "src/tasks/form-draft.service";
 import { formSchemaOf } from "src/tasks/form-snapshot-schema";
 import type { FormSummaryDto } from "src/tasks/form.dto";
 import { TasksModule } from "src/tasks/tasks.module";
@@ -1761,7 +1762,7 @@ describe("Tasks (e2e)", () => {
     it("starts a fresh draft once the last one was cleared", async () => {
       await saveDraft({ "full-name": "Cleared" }).expect(200);
       await ctx.app
-        .get(TasksService)
+        .get(FormDraftService)
         .deleteFormDraft(ctx.testUserId, draftFormId);
 
       await Promise.all([

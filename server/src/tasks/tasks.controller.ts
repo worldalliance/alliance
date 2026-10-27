@@ -27,17 +27,10 @@ import { AuthGuard } from "src/auth/guards/auth.guard";
 import { AuthOptionalGuard } from "src/auth/guards/authoptional.guard";
 import { Public } from "src/auth/public.decorator";
 import { extractGuestToken, type JwtRequest } from "src/auth/tokens";
-import {
-  CreateCustomValidatorDto,
-  CreateCustomValidatorResponseDto,
-  CustomValidatorDto,
-  CustomValidatorResponseDto,
-  CustomValidatorTypeDto,
-  RunValidatorDto,
-  TestCustomExpressionDto,
-  TestCustomExpressionResponseDto,
-} from "./customvalidator.dto";
+import { FormDraftService } from "./form-draft.service";
 import { FormResponseHistoryDto } from "./form-response-history.dto";
+import { FormResponseQueryService } from "./form-response-query.service";
+import { FormSubmissionService } from "./form-submission.service";
 import {
   CreateFormDto,
   FormAggregateViewsDto,
@@ -74,6 +67,9 @@ const formulaSourcesChangedResponse = {
 export class TasksController {
   constructor(
     private readonly tasksService: TasksService,
+    private readonly formResponseQueryService: FormResponseQueryService,
+    private readonly formSubmissionService: FormSubmissionService,
+    private readonly formDraftService: FormDraftService,
     private readonly authService: AuthService,
   ) {}
 
@@ -87,7 +83,11 @@ export class TasksController {
     @Body() body: SubmitFormDto,
   ): Promise<FormResponseDto> {
     return new FormResponseDto({
-      response: await this.tasksService.submitForm(+id, req.user.sub, body),
+      response: await this.formSubmissionService.submitForm(
+        +id,
+        req.user.sub,
+        body,
+      ),
     });
   }
 
@@ -113,7 +113,7 @@ export class TasksController {
     this.authService.setGuestCookie(res, guestToken);
     res.setHeader(GUEST_HEADER, guestToken);
     return new FormResponseDto({
-      response: await this.tasksService.submitFormPublic({
+      response: await this.formSubmissionService.submitFormPublic({
         formId: +id,
         submitFormDto: body,
         guestId,
@@ -131,7 +131,7 @@ export class TasksController {
     @Body() body: SubmitFollowUpFormDto,
   ): Promise<FormResponseDto> {
     return new FormResponseDto({
-      response: await this.tasksService.submitFollowUpForm(
+      response: await this.formSubmissionService.submitFollowUpForm(
         followUpFormId,
         req.user.sub,
         body,
@@ -160,7 +160,7 @@ export class TasksController {
   async getFormResponsesAdmin(
     @Param("id", ParseIntPipe) id: number,
   ): Promise<FormResponseDto[]> {
-    return this.tasksService.getFormResponses(id);
+    return this.formResponseQueryService.getFormResponses(id);
   }
 
   @Post("responses/byForms")
@@ -169,7 +169,7 @@ export class TasksController {
   async getFormResponsesByFormsAdmin(
     @Body() body: FormResponsesByFormsDto,
   ): Promise<FormResponseDto[]> {
-    return this.tasksService.getFormResponsesForForms(body.formIds);
+    return this.formResponseQueryService.getFormResponsesForForms(body.formIds);
   }
 
   @Post("responses/counts")
@@ -178,9 +178,10 @@ export class TasksController {
   async getFormResponseCountsAdmin(
     @Body() body: FormResponsesByFormsDto,
   ): Promise<FormResponseCountDto[]> {
-    const counts = await this.tasksService.getFormResponseCountsForForms(
-      body.formIds,
-    );
+    const counts =
+      await this.formResponseQueryService.getFormResponseCountsForForms(
+        body.formIds,
+      );
     return counts.map((count) => new FormResponseCountDto(count));
   }
 
@@ -224,7 +225,10 @@ export class TasksController {
     @Request() req: JwtRequest,
   ): Promise<FormResponseDto> {
     return new FormResponseDto({
-      response: await this.tasksService.getMyFormResponse(req.user.sub, id),
+      response: await this.formResponseQueryService.getMyFormResponse(
+        req.user.sub,
+        id,
+      ),
     });
   }
 
@@ -236,7 +240,7 @@ export class TasksController {
     @Request() req: JwtRequest,
   ): Promise<FormResponseHistoryDto> {
     return new FormResponseHistoryDto(
-      await this.tasksService.getFormResponseHistory({
+      await this.formResponseQueryService.getFormResponseHistory({
         userId: req.user.sub,
         formId: id,
       }),
@@ -251,7 +255,10 @@ export class TasksController {
     @Param("userId", ParseIntPipe) userId: number,
   ): Promise<FormResponseHistoryDto> {
     return new FormResponseHistoryDto(
-      await this.tasksService.getFormResponseHistory({ userId, formId }),
+      await this.formResponseQueryService.getFormResponseHistory({
+        userId,
+        formId,
+      }),
     );
   }
 
@@ -264,10 +271,11 @@ export class TasksController {
     @Param("formSnapshotId", ParseIntPipe) formSnapshotId: number,
   ): Promise<VariableAggregatesDto> {
     return new VariableAggregatesDto({
-      aggregates: await this.tasksService.countFormVersionAggregates({
-        formId,
-        formSnapshotId,
-      }),
+      aggregates:
+        await this.formResponseQueryService.countFormVersionAggregates({
+          formId,
+          formSnapshotId,
+        }),
     });
   }
 
@@ -279,7 +287,9 @@ export class TasksController {
     @Body() body: CountVariableAggregatesDto,
   ): Promise<VariableAggregatesDto> {
     return new VariableAggregatesDto({
-      aggregates: await this.tasksService.countVariableAggregates(body.sources),
+      aggregates: await this.formResponseQueryService.countVariableAggregates(
+        body.sources,
+      ),
     });
   }
 
@@ -298,7 +308,10 @@ export class TasksController {
       return new GuestFormResponseDto();
     }
     return new GuestFormResponseDto(
-      await this.tasksService.getGuestFormResponse(guestPayload.sub, id),
+      await this.formResponseQueryService.getGuestFormResponse(
+        guestPayload.sub,
+        id,
+      ),
     );
   }
 
@@ -311,7 +324,7 @@ export class TasksController {
     @Request() req: JwtRequest,
   ): Promise<LinkedGuestDraftDto> {
     return new LinkedGuestDraftDto(
-      await this.tasksService.getLinkedGuestDraftFormResponse({
+      await this.formResponseQueryService.getLinkedGuestDraftFormResponse({
         userId: req.user.sub,
         formId: id,
         actionId,
@@ -328,7 +341,7 @@ export class TasksController {
     @Request() req: JwtRequest,
   ): Promise<FormDraftDto> {
     return new FormDraftDto(
-      await this.tasksService.saveFormDraft({
+      await this.formDraftService.saveFormDraft({
         userId: req.user.sub,
         formId: id,
         dto: body,
@@ -344,7 +357,7 @@ export class TasksController {
     @Request() req: JwtRequest,
   ): Promise<MaybeFormDraftDto> {
     return new MaybeFormDraftDto(
-      await this.tasksService.getFormDraft(req.user.sub, id),
+      await this.formDraftService.getFormDraft(req.user.sub, id),
     );
   }
 
@@ -408,66 +421,6 @@ export class TasksController {
     return this.tasksService.deleteForm(id);
   }
 
-  @Get("customValidators")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: CustomValidatorTypeDto, isArray: true })
-  async customValidatorsAdmin(): Promise<CustomValidatorTypeDto[]> {
-    const types = await this.tasksService.customValidators();
-    return types.map((t) => new CustomValidatorTypeDto(t));
-  }
-
-  @Post("runValidator/:id")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: CustomValidatorResponseDto })
-  async runValidator(
-    @Param("id", ParseIntPipe) id: number,
-    @Request() req: JwtRequest,
-    @Body() body: RunValidatorDto,
-  ): Promise<CustomValidatorResponseDto> {
-    return new CustomValidatorResponseDto(
-      await this.tasksService.runValidator(id, req.user.sub, body.fieldValue),
-    );
-  }
-
-  @Get("findOneCustomValidator/:id")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: CustomValidatorDto })
-  async findOneCustomValidatorAdmin(
-    @Param("id", ParseIntPipe) id: number,
-  ): Promise<CustomValidatorDto> {
-    return new CustomValidatorDto(
-      await this.tasksService.findOneCustomValidator(id),
-    );
-  }
-
-  @Post("createCustomValidator")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: CreateCustomValidatorResponseDto })
-  async createCustomValidatorAdmin(
-    @Body() body: CreateCustomValidatorDto,
-  ): Promise<CreateCustomValidatorResponseDto> {
-    const validator = await this.tasksService.findOrCreateCustomValidator({
-      type: body.type,
-      idArgument: body.idArgument,
-      expression: body.expression,
-    });
-    return new CreateCustomValidatorResponseDto(validator.id);
-  }
-
-  @Post("testCustomExpression")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: TestCustomExpressionResponseDto })
-  async testCustomExpressionAdmin(
-    @Body() body: TestCustomExpressionDto,
-  ): Promise<TestCustomExpressionResponseDto> {
-    return new TestCustomExpressionResponseDto(
-      await this.tasksService.testCustomExpression(
-        body.expression,
-        body.userId,
-      ),
-    );
-  }
-
   @Post("optout/:id")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ActionActivityDto })
@@ -480,7 +433,7 @@ export class TasksController {
       throw new BadRequestException("Partial form data is required");
     }
     return new ActionActivityDto(
-      await this.tasksService.optoutForm(
+      await this.formSubmissionService.optoutForm(
         id,
         body.actionId,
         req.user.sub,
@@ -500,7 +453,7 @@ export class TasksController {
   async getFormsForUserSIDAdmin(
     @Param("userId", ParseIntPipe) userId: number,
   ): Promise<FormResponseDto[]> {
-    return (await this.tasksService.getFormsForUserSID(userId)).map(
+    return (await this.formResponseQueryService.getFormsForUserSID(userId)).map(
       (response) => new FormResponseDto({ response }),
     );
   }

@@ -1,6 +1,6 @@
 import {
   CustomValidatorTypeDto,
-  tasksCustomValidatorsAdmin,
+  customValidatorCustomValidatorsAdmin,
 } from "@alliance/shared/client";
 import { useEffect, useState } from "react";
 
@@ -9,7 +9,7 @@ let cachedValidatorsError: string | null = null;
 let pendingValidatorsRequest: Promise<CustomValidatorTypeDto[]> | null = null;
 
 async function fetchCustomValidators(): Promise<CustomValidatorTypeDto[]> {
-  const response = await tasksCustomValidatorsAdmin();
+  const response = await customValidatorCustomValidatorsAdmin();
   if (response.data) {
     return response.data;
   }

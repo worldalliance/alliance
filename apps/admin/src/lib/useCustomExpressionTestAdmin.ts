@@ -1,4 +1,4 @@
-import { tasksTestCustomExpressionAdmin } from "@alliance/shared/client";
+import { customValidatorTestCustomExpressionAdmin } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import {
   queryOptions,
@@ -20,7 +20,7 @@ const customExpressionTestQuery = ({
       userId === null
         ? skipToken
         : async () => {
-            const { data } = await tasksTestCustomExpressionAdmin({
+            const { data } = await customValidatorTestCustomExpressionAdmin({
               body: { expression, userId },
               throwOnError: true,
             });

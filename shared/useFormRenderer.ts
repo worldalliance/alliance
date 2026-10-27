@@ -49,11 +49,11 @@ import {
 import { R } from "@alliance/common/result";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  customValidatorRunValidator,
   tasksGetForm,
   tasksGetFormDraft,
   tasksGetFormResponsesAdmin,
   tasksGetMyFormResponse,
-  tasksRunValidator,
   tasksSaveFormDraft,
   userMyLocation,
   type FormDraftDto,
@@ -549,7 +549,7 @@ export function useVisibilityValidatorResults(args: {
       const entries = await Promise.all(
         missingIds.map(async (validatorId) => {
           try {
-            const response = await tasksRunValidator({
+            const response = await customValidatorRunValidator({
               path: { id: validatorId },
               body: {},
             });
@@ -1012,7 +1012,7 @@ export function useFormValidation(args: {
           }
 
           try {
-            const response = await tasksRunValidator({
+            const response = await customValidatorRunValidator({
               path: { id: field.customValidatorId },
               body: {
                 fieldValue: effectiveFormData[field.id]?.toString() ?? "",

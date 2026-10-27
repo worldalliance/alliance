@@ -13,12 +13,20 @@ import { MmsModule } from "src/mms/mms.module";
 import { ShareUrlsModule } from "src/share-urls/share-urls.module";
 import { User } from "src/user/entities/user.entity";
 import { UserModule } from "src/user/user.module";
+import { CustomValidatorController } from "./customvalidator.controller";
+import { CustomValidatorService } from "./customvalidator.service";
 import { CustomValidator } from "./entities/customvalidator.entity";
 import { FormRowAssignment } from "./entities/form-row-assignment.entity";
 import { Form } from "./entities/form.entity";
 import { FormResponse } from "./entities/formresponse.entity";
 import { FormResponseDraft } from "./entities/formresponsedraft.entity";
+import { FormDraftService } from "./form-draft.service";
+import { FormProfileAnswersService } from "./form-profile-answers.service";
+import { FormResponseQueryService } from "./form-response-query.service";
+import { FormResponseWriterService } from "./form-response-writer.service";
 import { FormRowAssignmentService } from "./form-row-assignment.service";
+import { FormSubmissionValidationService } from "./form-submission-validation.service";
+import { FormSubmissionService } from "./form-submission.service";
 import { FormSnapshotModule } from "./formsnapshot.module";
 import { TasksController } from "./tasks.controller";
 import { TasksService } from "./tasks.service";
@@ -47,7 +55,17 @@ import { TasksService } from "./tasks.service";
     FormSnapshotModule,
     ShareUrlsModule,
   ],
-  controllers: [TasksController],
-  providers: [TasksService, FormRowAssignmentService],
+  controllers: [TasksController, CustomValidatorController],
+  providers: [
+    TasksService,
+    FormRowAssignmentService,
+    CustomValidatorService,
+    FormResponseQueryService,
+    FormProfileAnswersService,
+    FormSubmissionValidationService,
+    FormResponseWriterService,
+    FormSubmissionService,
+    FormDraftService,
+  ],
 })
 export class TasksModule {}
