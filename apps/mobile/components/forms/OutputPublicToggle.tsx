@@ -1,5 +1,5 @@
 import { type AnyField } from "@alliance/common/forms/form-schema";
-import { outputFieldPublicToggle } from "@alliance/shared/lib/copy";
+import { outputPublicToggle } from "@alliance/shared/forms/outputPublicToggle";
 import { View } from "react-native";
 import Checkbox from "../system/Checkbox";
 
@@ -14,19 +14,15 @@ export default function OutputPublicToggle({
   disabled: boolean;
   onChange: (sharePublicly: boolean) => void;
 }) {
-  if (!field.output?.output) return null;
-  const useMakePublicToggle = !!field.output.privateByDefault;
-  const toggleChecked = useMakePublicToggle ? sharePublicly : !sharePublicly;
-  const toggleLabel = useMakePublicToggle
-    ? outputFieldPublicToggle.showPublicly
-    : outputFieldPublicToggle.hidePublicly;
+  const toggle = outputPublicToggle(field, sharePublicly);
+  if (!toggle) return null;
   return (
     <View className="mt-2">
       <Checkbox
-        checked={toggleChecked}
+        checked={toggle.checked}
         disabled={disabled}
-        onChange={(next) => onChange(useMakePublicToggle ? next : !next)}
-        label={toggleLabel}
+        onChange={(next) => onChange(toggle.sharePubliclyWhen(next))}
+        label={toggle.label}
       />
     </View>
   );
