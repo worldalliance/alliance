@@ -27,6 +27,7 @@ import {
 import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
 import {
   applyDefaultValues,
+  clampPageIndex,
   computeFormStorageKey,
   filterAnswersByFieldIds,
   readStoredFormDraft,
@@ -227,28 +228,21 @@ const FormRenderer = ({
     hasUserLocationDisplayBlock,
     outputFieldDefaultPublic,
     outputFieldIds,
-    pageCount,
     maxPageIndex,
   } = useFormSchemaMaps({ schema, userDefaultPublic, timeZone });
 
-  const clampPageIndex = (idx: number): number => {
-    if (!Number.isFinite(idx)) return 0;
-    const normalized = Math.floor(idx);
-    if (normalized < 0) return 0;
-    if (normalized > maxPageIndex) return maxPageIndex;
-    return normalized;
-  };
-
   const [currentPageIndex, setCurrentPageIndex] = useState<number>(() => {
     if (initialPageIndex !== undefined && !persistKey) {
-      return clampPageIndex(initialPageIndex);
+      return clampPageIndex(initialPageIndex, maxPageIndex);
     }
     if (readOnly) return 0;
     if (typeof window === "undefined" || !persistKey) return 0;
     const raw = window.localStorage.getItem(storageKey);
     if (!raw) return 0;
     const stored = readStoredFormDraft({ raw, fieldLookup, outputFieldIds });
-    return stored.ok ? clampPageIndex(stored.value.currentPageIndex ?? 0) : 0;
+    return stored.ok
+      ? clampPageIndex(stored.value.currentPageIndex ?? 0, maxPageIndex)
+      : 0;
   });
   const formTopRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -373,7 +367,9 @@ const FormRenderer = ({
       ...prev,
       ...restorablePublicAnswers(serverDraft.publicAnswers, outputFieldIds),
     }));
-    setCurrentPageIndex(clampPageIndex(serverDraft.currentPageIndex));
+    setCurrentPageIndex(
+      clampPageIndex(serverDraft.currentPageIndex, maxPageIndex),
+    );
   }, [
     serverDraft,
     draftSyncEnabled,
@@ -891,9 +887,7 @@ const FormRenderer = ({
       }));
     }
     if (currentPageIndex !== undefined) {
-      const maxIdx = Math.max(0, (pageCount || 1) - 1);
-      const idx = Math.min(Math.max(0, currentPageIndex), maxIdx);
-      setCurrentPageIndex(idx);
+      setCurrentPageIndex(clampPageIndex(currentPageIndex, maxPageIndex));
     }
   }, [
     persistKey,
@@ -901,7 +895,7 @@ const FormRenderer = ({
     readOnly,
     fieldLookup,
     storageKey,
-    pageCount,
+    maxPageIndex,
     defaultValueMap,
     outputFieldIds,
   ]);
@@ -928,11 +922,8 @@ const FormRenderer = ({
     ) {
       return;
     }
-    const maxIdx = Math.max(0, (pageCount || 1) - 1);
-    const normalized = Math.floor(initialPageIndex);
-    const clamped = Math.min(Math.max(0, normalized), maxIdx);
-    setCurrentPageIndex(clamped);
-  }, [initialPageIndex, persistKey, readOnly, pageCount]);
+    setCurrentPageIndex(clampPageIndex(initialPageIndex, maxPageIndex));
+  }, [initialPageIndex, persistKey, readOnly, maxPageIndex]);
 
   // `scrollIntoView` moves every scrollable ancestor, the document included,
   // so a caller-supplied container is scrolled on its own instead.

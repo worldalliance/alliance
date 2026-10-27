@@ -2,6 +2,7 @@ import type { AnyField } from "@alliance/common/forms/form-schema";
 import { R } from "@alliance/common/result";
 import {
   applyDefaultValues,
+  clampPageIndex,
   readStoredFormDraft,
   restorableAnswers,
   serializeStoredFormDraft,
@@ -97,5 +98,14 @@ describe("readStoredFormDraft", () => {
   it("fails on unparseable JSON and non-objects", () => {
     expect(read("{").ok).toBe(false);
     expect(read("null").ok).toBe(false);
+  });
+});
+
+describe("clampPageIndex", () => {
+  it("floors the index and keeps it within the form's pages", () => {
+    expect(clampPageIndex(1.7, 3)).toBe(1);
+    expect(clampPageIndex(-2, 3)).toBe(0);
+    expect(clampPageIndex(9, 3)).toBe(3);
+    expect(clampPageIndex(Number.NaN, 3)).toBe(0);
   });
 });
