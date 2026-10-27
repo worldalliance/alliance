@@ -5,9 +5,9 @@ description: Read before touching Linear, our issue tracker.
 
 # Linear API
 
-OAuth client credentials live in `.env.devtools` as `LINEAR_CLIENT_ID` and `LINEAR_CLIENT_SECRET`. This holds sensitive information, handle it like you would other .env files. Load them with `source .env.devtools`.
+OAuth client credentials live in `.env.devtools` as `LINEAR_CLIENT_ID` and `LINEAR_CLIENT_SECRET`. Load them with `source .env.devtools`.
 
-Linear accepts the `client_credentials` grant at `https://api.linear.app/oauth/token`, form-encoded, so those two are the whole story: no browser redirect to drive, no personal API key to go ask for.
+Linear accepts the `client_credentials` grant at `https://api.linear.app/oauth/token`, form-encoded.
 
 Mint with at least `read` and `write`: `scope=read,write,...`
 

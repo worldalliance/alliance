@@ -28,6 +28,7 @@ Read before the matching task:
 
 - Determining the provenance of anything in the repository → `(root)/skills/provenance/SKILL.md`
 - Implementing a feature, fixing a bug, or refactoring code → `(root)/skills/implement/SKILL.md`
+- Pulling PostHog session replays or other PostHog API data → `(root)/skills/posthog/SKILL.md`
 - Querying the local Postgres db → `(root)/skills/local-db/SKILL.md`
 - Using the Linear API → `(root)/skills/linear/SKILL.md`
 - Verifying a change in the browser, driving the mobile app, calling the API, or authenticating as an admin → `(root)/skills/playwright/SKILL.md`
