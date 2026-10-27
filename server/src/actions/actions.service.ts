@@ -9,7 +9,6 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { milliseconds } from "date-fns";
 import { Community } from "src/community/entities/community.entity";
 import {
   softDeleteWhere,
@@ -18,12 +17,6 @@ import {
 } from "src/datasources/soft-delete";
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
 import { renderedImageKey } from "src/images/images.service";
-import {
-  ActionEventReminderService,
-  NOTIFICATION_LOOKBACK_WINDOW_MS,
-} from "src/notifs/action-event-reminder.service";
-import { NotificationPlan } from "src/notifs/dto/notification-plan.dto";
-import { ReminderGroupService } from "src/notifs/reminder-group.service";
 import { Form } from "src/tasks/entities/form.entity";
 import { User } from "src/user/entities/user.entity";
 import type {
@@ -52,9 +45,8 @@ import {
   SetPriorityDto,
   UpdateActionDto,
 } from "./dto/action.dto";
-import { CreateReminderGroupDto } from "./dto/reminder-group.dto";
 import { ActionActivity } from "./entities/action-activity.entity";
-import { ActionEvent, ActionStatus } from "./entities/action-event.entity";
+import { ActionStatus } from "./entities/action-event.entity";
 import { ActionReviewer } from "./entities/action-reviewer.entity";
 import { ActionSuite } from "./entities/action-suite.entity";
 import {
@@ -63,7 +55,6 @@ import {
   type ParsedAction,
 } from "./entities/action.entity";
 import { GeneralUpdate } from "./entities/general-update.entity";
-import { ReminderGroup } from "./entities/reminder-group.entity";
 import { GeneralUpdatesService } from "./general-updates.service";
 import {
   assertNotAPrerequisite,
@@ -82,8 +73,6 @@ export class ActionsService {
     private actionRepository: Repository<Action>,
     @InjectRepository(ActionReviewer)
     private readonly actionReviewerRepository: Repository<ActionReviewer>,
-    @InjectRepository(ActionEvent)
-    private readonly actionEventRepository: Repository<ActionEvent>,
     @InjectRepository(ActionActivity)
     private readonly actionActivityRepository: Repository<ActionActivity>,
     @InjectRepository(EditableContent)
@@ -96,8 +85,6 @@ export class ActionsService {
     private readonly communityRepository: Repository<Community>,
     private userService: UserService,
     private readonly cohortResolverService: CohortResolverService,
-    private readonly actionEventReminderService: ActionEventReminderService,
-    private readonly reminderGroupService: ReminderGroupService,
     @Inject(forwardRef(() => ActionFormVariantService))
     private readonly actionFormVariantService: ActionFormVariantService,
     private readonly cohortDecisionStaffService: CohortDecisionStaffService,
@@ -591,50 +578,6 @@ export class ActionsService {
         where: { id },
         relations: { reviewers: true, events: true, followUpForms: true },
       }),
-    );
-  }
-
-  async tentativePlansForGroup(
-    eventId: number,
-    body: CreateReminderGroupDto,
-  ): Promise<NotificationPlan[]> {
-    const event = await this.actionEventRepository.findOneOrFail({
-      where: { id: eventId },
-      relations: {
-        action: {
-          events: true,
-        },
-      },
-    });
-    const fields = await this.reminderGroupService.reminderGroupFieldsFromDto(
-      body,
-      event,
-    );
-
-    let actionSuite: ActionSuite | undefined = undefined;
-    if (body.suiteId) {
-      actionSuite = await this.actionSuiteRepository.findOneOrFail({
-        where: { id: body.suiteId },
-        relations: { actions: true },
-      });
-    }
-
-    const withDeadlineEvent =
-      await this.reminderGroupService.attachSendableDeadlineEvent({
-        ...fields,
-        id: 0,
-        name: "Tentative Reminder Group",
-        memberActionEvent: event,
-        notifications: [],
-        allSent: false,
-        actionSuite,
-        deletedAt: null,
-      } satisfies ReminderGroup);
-
-    return this.actionEventReminderService.findPlansForGroup(
-      withDeadlineEvent,
-      new Date(Date.now() - NOTIFICATION_LOOKBACK_WINDOW_MS),
-      new Date(Date.now() + milliseconds({ days: 30 })),
     );
   }
 
