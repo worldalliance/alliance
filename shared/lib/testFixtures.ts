@@ -71,6 +71,7 @@ export function makeAction(
     shortDescription: "",
     timeEstimate: null,
     squareThumbnailImageAlt: null,
+    customStatType: "none",
     createdAt: new Date(0).toISOString(),
     updatedAt: new Date(0).toISOString(),
     isContractSigningAction: false,

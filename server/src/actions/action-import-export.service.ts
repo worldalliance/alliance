@@ -14,6 +14,7 @@ import { ActionReviewer } from "./entities/action-reviewer.entity";
 import { ActionSuite } from "./entities/action-suite.entity";
 import {
   Action,
+  CustomActionStat,
   parseAction,
   type ParsedAction,
 } from "./entities/action.entity";
@@ -115,6 +116,8 @@ export class ActionImportExportService {
 
         const inserted = await actionRepo.insert({
           ...actionCols,
+          // Exports taken before the column was NOT NULL can carry null.
+          customStatType: actionCols.customStatType ?? CustomActionStat.NONE,
           cohortExpression,
           id: undefined,
         });

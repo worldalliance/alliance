@@ -3,7 +3,7 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { OnetimeInvite } from "src/user/entities/onetime-invite.entity";
 import { inviteAcceptedSql } from "src/user/invite-claim";
-import { And, IsNull, Not, type Repository } from "typeorm";
+import { Not, type Repository } from "typeorm";
 import { ActionStatus } from "./entities/action-event.entity";
 import { Action, CustomActionStat } from "./entities/action.entity";
 
@@ -21,7 +21,7 @@ export class ActionStatsService {
     const actions = await this.actionRepository
       .find({
         where: {
-          customStatType: And(Not(IsNull()), Not(CustomActionStat.NONE)),
+          customStatType: Not(CustomActionStat.NONE),
         },
         relations: { events: true },
       })
@@ -35,10 +35,6 @@ export class ActionStatsService {
   }
 
   async computeCustomActionStats(action: Action) {
-    if (!action.customStatType) {
-      return null;
-    }
-
     let statValue: number | undefined;
     switch (action.customStatType) {
       case CustomActionStat.USERS_INVITED:

@@ -20,6 +20,7 @@ export const exampleMemberTaskAction: ActionWithAwayStatus = {
   computedAutocompleteAt: null,
   timeEstimate: 5,
   squareThumbnailImageAlt: null,
+  customStatType: "none",
   visibilityMode: "public",
   optional: false,
   usersJoined: 120,
