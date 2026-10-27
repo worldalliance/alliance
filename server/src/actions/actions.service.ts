@@ -1,9 +1,6 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { echoesStoredKey } from "@alliance/common/image-src";
 import {
   BadRequestException,
-  forwardRef,
-  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -25,7 +22,6 @@ import type {
 import { DeepPartial, ILike, In, type Repository } from "typeorm";
 import { UserService } from "../user/user.service";
 import { ActionFormLinksService } from "./action-form-links.service";
-import { ActionFormVariantService } from "./action-form-variant.service";
 import { replaceReviewers } from "./action-reviewers";
 import { isActionUpdatePublished } from "./action-update-visibility";
 import { ActionVisibilityService } from "./action-visibility.service";
@@ -78,32 +74,11 @@ export class ActionsService {
     private readonly actionSuiteRepository: Repository<ActionSuite>,
     private userService: UserService,
     private readonly cohortResolverService: CohortResolverService,
-    @Inject(forwardRef(() => ActionFormVariantService))
-    private readonly actionFormVariantService: ActionFormVariantService,
     private readonly cohortDecisionStaffService: CohortDecisionStaffService,
     private readonly actionVisibility: ActionVisibilityService,
     private readonly generalUpdates: GeneralUpdatesService,
     private readonly formLinks: ActionFormLinksService,
   ) {}
-
-  async applyAssignedFormIds(
-    actions: Action[],
-    userId: number | undefined,
-  ): Promise<void> {
-    if (!userId || actions.length === 0) return;
-    const overrides =
-      await this.actionFormVariantService.getOrCreateAssignedFormIdsForActions(
-        actions.map((a) => a.id),
-        userId,
-      );
-    if (overrides.size === 0) return;
-    for (const action of actions) {
-      const formId = overrides.get(action.id);
-      if (formId !== undefined) {
-        action.taskFormId = formId;
-      }
-    }
-  }
 
   async findActionById(id: number): Promise<Action | null> {
     return this.actionRepository.findOne({ where: { id } });

@@ -12,6 +12,7 @@ import type { Relations } from "src/utils/Repository";
 import { In, type Repository } from "typeorm";
 import { UserService } from "../user/user.service";
 import { resolveUserActionRelation } from "./action-activity-status";
+import { ActionFormVariantService } from "./action-form-variant.service";
 import { ActionVisibilityService } from "./action-visibility.service";
 import { ActionsService } from "./actions.service";
 import { CohortAdmissionService } from "./cohort-admission.service";
@@ -62,7 +63,27 @@ export class MemberActionsService {
     private readonly actionVisibility: ActionVisibilityService,
     private readonly singleMemberCohortService: SingleMemberCohortService,
     private readonly cohortAdmissionService: CohortAdmissionService,
+    private readonly actionFormVariantService: ActionFormVariantService,
   ) {}
+
+  private async applyAssignedFormIds(
+    actions: Action[],
+    userId: number | undefined,
+  ): Promise<void> {
+    if (!userId || actions.length === 0) return;
+    const overrides =
+      await this.actionFormVariantService.getOrCreateAssignedFormIdsForActions(
+        actions.map((a) => a.id),
+        userId,
+      );
+    if (overrides.size === 0) return;
+    for (const action of actions) {
+      const formId = overrides.get(action.id);
+      if (formId !== undefined) {
+        action.taskFormId = formId;
+      }
+    }
+  }
 
   /**
    * The viewer's {@link ViewerCohort} on one action — the single evaluation
@@ -175,7 +196,7 @@ export class MemberActionsService {
       session,
     });
 
-    await this.actionsService.applyAssignedFormIds(filtered, user?.id);
+    await this.applyAssignedFormIds(filtered, user?.id);
 
     const actionsDismissed = new Set(
       (
@@ -296,7 +317,7 @@ export class MemberActionsService {
       session,
     });
     if (userId) {
-      await this.actionsService.applyAssignedFormIds([action], userId);
+      await this.applyAssignedFormIds([action], userId);
     }
 
     const activities = user
