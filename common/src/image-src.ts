@@ -90,6 +90,28 @@ export function uploadKeyInUrl(src: string): string | undefined {
   return RENDERED_KEY_URL.exec(src)?.[1];
 }
 
+const FILE_NAME_MAX = 80;
+const EDGE_DOTS_AND_SPACE = /^[\s.]+|[\s.]+$/gu;
+
+/**
+ * The name a downloaded image saves under: the author's name stripped of
+ * characters file systems reject and of bidi controls that could make it
+ * display as another extension, or `image`, always ending in `.jpg`.
+ */
+export function jpegFileName(name: string | undefined): string {
+  // Cut by code point: half a surrogate pair makes encodeURIComponent throw.
+  const base = Array.from(
+    (name ?? "")
+      .replace(/[\\/:*?"<>|\p{Cc}\p{Cs}\u202A-\u202E\u2066-\u2069]/gu, "")
+      .replace(EDGE_DOTS_AND_SPACE, "")
+      .replace(/\.(jpe?g|webp|png|gif|hei[cf]|avif)$/i, ""),
+  )
+    .slice(0, FILE_NAME_MAX)
+    .join("")
+    .replace(EDGE_DOTS_AND_SPACE, "");
+  return `${base || "image"}.jpg`;
+}
+
 /** Upload keys are unique per upload and never rewritten. */
 export const IMAGE_CACHE_CONTROL = "public, max-age=31536000, immutable";
 

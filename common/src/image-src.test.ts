@@ -3,6 +3,7 @@ import {
   echoesStoredKey,
   isThumbnailKey,
   isUploadKey,
+  jpegFileName,
   resolveSafeUploadSrc,
   resolveUploadSrc,
   thumbnailKey,
@@ -228,5 +229,29 @@ describe("thumbnailSrc", () => {
   it("does not re-suffix a thumbnail url", () => {
     const thumb = "https://dj92mxbdjuclo.cloudfront.net/1770253183572-128.webp";
     expect(thumbnailSrc(thumbnailSrc(thumb))).toBe(thumb);
+  });
+});
+
+describe("jpegFileName", () => {
+  it.each([
+    [undefined, "image.jpg"],
+    ["", "image.jpg"],
+    ["  ", "image.jpg"],
+    ["Rally poster", "Rally poster.jpg"],
+    ["Rally poster.jpeg", "Rally poster.jpg"],
+    ["IMG_0001.HEIC", "IMG_0001.jpg"],
+    ['a/b:c*?"<>|d', "abcd.jpg"],
+    ["x".repeat(200), `${"x".repeat(80)}.jpg`],
+    ["x".repeat(79) + "😀z", `${"x".repeat(79)}😀.jpg`],
+    ["Rally poster.jpg ", "Rally poster.jpg"],
+    ["a\ud800b", "ab.jpg"],
+    ["a\u0000b\nc\td", "abcd.jpg"],
+    ["invoice\u202Efdp", "invoicefdp.jpg"],
+    ["invoice\u2067fdp\u2069", "invoicefdp.jpg"],
+    [".hidden", "hidden.jpg"],
+    ["a.", "a.jpg"],
+    ["photo.jpg.", "photo.jpg"],
+  ])("names %p as %p", (name, expected) => {
+    expect(jpegFileName(name)).toBe(expected);
   });
 });
