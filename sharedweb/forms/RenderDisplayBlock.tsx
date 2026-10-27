@@ -13,13 +13,15 @@ import {
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import { Accordion } from "@base-ui/react/accordion";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download } from "lucide-react";
 import React, { useRef, useState } from "react";
+import { downloadImage } from "../lib/downloadImage";
 import { resolveImageSrc } from "../lib/imageSrc";
 import { AvatarProfile } from "../ui/Avatar";
 import Card from "../ui/Card";
 import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
 import ImageLightbox from "../ui/ImageLightbox";
+import { useToast } from "../ui/ToastProvider";
 import {
   ACCORDION_CONTENTS,
   ACCORDION_SECTIONS,
@@ -34,17 +36,47 @@ import RenderPreviousAnswer from "./RenderPreviousAnswer";
 
 const VideoPlayer = lazyFormPart(() => import("./VideoPlayer"));
 
+function DownloadButton({ src, name }: { src: string; name?: string }) {
+  const { error } = useToast();
+  const [downloading, setDownloading] = useState(false);
+
+  const handleClick = async () => {
+    setDownloading(true);
+    const result = await downloadImage({ src, name });
+    setDownloading(false);
+    if (!result.ok) {
+      console.error("Failed to download image:", result.error);
+      error("Couldn't download the image. Try again in a moment.");
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={() => void handleClick()}
+      disabled={downloading}
+      title="Download image"
+      aria-label="Download image"
+      className="absolute right-2 top-2 rounded-full bg-white/80 p-1.5 text-zinc-800 shadow hover:bg-white disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+    >
+      <Download size={16} />
+    </button>
+  );
+}
+
 function ImageFigure({
   resolvedSrc,
   image,
   openLabel,
   onOpen,
+  downloadable,
   className,
 }: {
   resolvedSrc: string;
   image: ImagesItem;
   openLabel: string;
   onOpen: (e: React.MouseEvent) => void;
+  downloadable: boolean;
   className?: string;
 }) {
   // The button's label wins over the `img` alt in the accessible name, so the
@@ -53,18 +85,23 @@ function ImageFigure({
 
   return (
     <figure className={cn("mx-auto max-w-full text-center", className)}>
-      <button
-        type="button"
-        className="mx-auto block max-w-full rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 !cursor-zoom-in"
-        onClick={onOpen}
-        aria-label={label}
-      >
-        <img
-          src={resolvedSrc}
-          alt=""
-          className="mx-auto max-h-80 w-auto rounded !cursor-zoom-in"
-        />
-      </button>
+      <div className="relative mx-auto w-fit max-w-full">
+        <button
+          type="button"
+          className="block max-w-full rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 !cursor-zoom-in"
+          onClick={onOpen}
+          aria-label={label}
+        >
+          <img
+            src={resolvedSrc}
+            alt=""
+            className="mx-auto max-h-80 w-auto rounded !cursor-zoom-in"
+          />
+        </button>
+        {downloadable && (
+          <DownloadButton src={resolvedSrc} name={image.fileName} />
+        )}
+      </div>
       {image.caption?.trim() && (
         <figcaption className="mt-2 text-sm text-gray-600">
           {image.caption}
@@ -82,7 +119,13 @@ type Props = {
   userLocationLoading?: boolean;
 };
 
-function ImagesDisplay({ images }: { images: ImagesItem[] }) {
+function ImagesDisplay({
+  images,
+  downloadable,
+}: {
+  images: ImagesItem[];
+  downloadable: boolean;
+}) {
   const [index, setIndex] = useState(0);
   const trackRef = useRef<HTMLDivElement>(null);
   const sources = images.map((image) => resolveImageSrc(image.src));
@@ -114,6 +157,7 @@ function ImagesDisplay({ images }: { images: ImagesItem[] }) {
             image={images[0]}
             openLabel="Open image"
             onOpen={(e) => openAtIndex(0, e)}
+            downloadable={downloadable}
           />
         )}
       />
@@ -137,6 +181,7 @@ function ImagesDisplay({ images }: { images: ImagesItem[] }) {
                 image={image}
                 openLabel={`Open image ${slide + 1} of ${images.length}`}
                 onOpen={(e) => openAtIndex(slide, e)}
+                downloadable={downloadable}
                 className="w-full shrink-0 snap-center"
               />
             ))}
@@ -269,7 +314,12 @@ export default function RenderDisplayBlock({
 
     case "images":
       if (block.images.length === 0) return null;
-      return <ImagesDisplay images={block.images} />;
+      return (
+        <ImagesDisplay
+          images={block.images}
+          downloadable={block.downloadable ?? false}
+        />
+      );
 
     case "video":
       return (

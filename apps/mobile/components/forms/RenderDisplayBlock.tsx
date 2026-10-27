@@ -163,7 +163,12 @@ export function RenderDisplayBlockMobile({
       return <HtmlBlock html={block.html} />;
     case "images":
       if (block.images.length === 0) return null;
-      return <ImagesDisplay images={block.images} />;
+      return (
+        <ImagesDisplay
+          images={block.images}
+          downloadable={block.downloadable ?? false}
+        />
+      );
     case "biglink":
       return <BigLinkDisplay block={block} />;
     case "copytext":

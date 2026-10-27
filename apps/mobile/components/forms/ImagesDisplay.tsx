@@ -1,11 +1,40 @@
 import { type ImagesItem } from "@alliance/common/forms/display-blocks";
 import { cn } from "@alliance/shared/styles/util";
+import { Download } from "lucide-react-native";
 import { useState } from "react";
 import { Image, ScrollView, TouchableOpacity, View } from "react-native";
 import { resolveImageSource } from "../../lib/config";
 import { getImageLoadSize } from "../../lib/imageLoadSize";
+import { saveImage } from "../../lib/saveImage";
 import { ImageGalleryModal } from "../ImageLightbox";
 import Text from "../system/Text";
+
+function DownloadButton({ uri, name }: { uri: string; name?: string }) {
+  const [saving, setSaving] = useState(false);
+
+  const handlePress = async () => {
+    setSaving(true);
+    await saveImage({ uri, name });
+    setSaving(false);
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={() => void handlePress()}
+      disabled={saving}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel="Download image"
+      accessibilityState={{ busy: saving }}
+      className={cn(
+        "absolute right-2 top-2 rounded-full bg-white/80 p-1.5",
+        saving && "opacity-50",
+      )}
+    >
+      <Download size={16} className="text-zinc-800" />
+    </TouchableOpacity>
+  );
+}
 
 function ImageSlide({
   image,
@@ -14,6 +43,7 @@ function ImageSlide({
   aspectRatio,
   onPress,
   onMeasure,
+  downloadable,
 }: {
   image: ImagesItem;
   resolvedSrc: string;
@@ -21,6 +51,7 @@ function ImageSlide({
   aspectRatio: number | null;
   onPress: () => void;
   onMeasure: (ratio: number) => void;
+  downloadable: boolean;
 }) {
   const widthStyle = width === null ? {} : { width };
   const fullWidthClass = width === null && "w-full";
@@ -48,6 +79,9 @@ function ImageSlide({
           resizeMode="contain"
         />
       </TouchableOpacity>
+      {downloadable && (
+        <DownloadButton uri={resolvedSrc} name={image.fileName} />
+      )}
       {image.caption ? (
         <Text className="text-sm text-zinc-600 mt-2 text-center">
           {image.caption}
@@ -57,7 +91,13 @@ function ImageSlide({
   );
 }
 
-export default function ImagesDisplay({ images }: { images: ImagesItem[] }) {
+export default function ImagesDisplay({
+  images,
+  downloadable,
+}: {
+  images: ImagesItem[];
+  downloadable: boolean;
+}) {
   const sources = images.map((image) => resolveImageSource(image.src));
   const [width, setWidth] = useState(0);
   const [index, setIndex] = useState(0);
@@ -95,6 +135,7 @@ export default function ImagesDisplay({ images }: { images: ImagesItem[] }) {
           aspectRatio={aspectRatio}
           onPress={() => setLightboxIndex(0)}
           onMeasure={measureSlide(0)}
+          downloadable={downloadable}
         />
         {lightbox}
       </View>
@@ -123,6 +164,7 @@ export default function ImagesDisplay({ images }: { images: ImagesItem[] }) {
             aspectRatio={aspectRatio}
             onPress={() => setLightboxIndex(slide)}
             onMeasure={measureSlide(slide)}
+            downloadable={downloadable}
           />
         ))}
       </ScrollView>

@@ -1,8 +1,11 @@
 import {
   changedPhoto,
   echoesStoredKey,
+  ImageSaveKind,
+  imageSaveTarget,
   isThumbnailKey,
   isUploadKey,
+  jpegFileName,
   resolveSafeUploadSrc,
   resolveUploadSrc,
   thumbnailKey,
@@ -10,6 +13,7 @@ import {
   uploadKeyInUrl,
   uploadSrc,
 } from "./image-src";
+import { R } from "./result";
 
 describe("isUploadKey", () => {
   it("accepts the key shape the image service mints", () => {
@@ -228,5 +232,78 @@ describe("thumbnailSrc", () => {
   it("does not re-suffix a thumbnail url", () => {
     const thumb = "https://dj92mxbdjuclo.cloudfront.net/1770253183572-128.webp";
     expect(thumbnailSrc(thumbnailSrc(thumb))).toBe(thumb);
+  });
+});
+
+describe("jpegFileName", () => {
+  it.each([
+    [undefined, "image.jpg"],
+    ["", "image.jpg"],
+    ["  ", "image.jpg"],
+    ["Rally poster", "Rally poster.jpg"],
+    ["Rally poster.jpeg", "Rally poster.jpg"],
+    ["IMG_0001.HEIC", "IMG_0001.jpg"],
+    ['a/b:c*?"<>|d', "abcd.jpg"],
+    ["x".repeat(200), `${"x".repeat(80)}.jpg`],
+    ["x".repeat(79) + "😀z", `${"x".repeat(79)}😀.jpg`],
+    ["Rally poster.jpg ", "Rally poster.jpg"],
+    ["a\ud800b", "ab.jpg"],
+    ["a\u0000b\nc\td", "abcd.jpg"],
+    ["invoice\u202Efdp", "invoicefdp.jpg"],
+    ["invoice\u2067fdp\u2069", "invoicefdp.jpg"],
+    [".hidden", "hidden.jpg"],
+    ["a.", "a.jpg"],
+    ["photo.jpg.", "photo.jpg"],
+  ])("names %p as %p", (name, expected) => {
+    expect(jpegFileName(name)).toBe(expected);
+  });
+});
+
+describe("imageSaveTarget", () => {
+  const apiUrl = "http://localhost:3005";
+  const key = "1762925939234-8f14e45f-ceea-467f-a0e6-4a1b2c3d4e5f.webp";
+
+  it.each([
+    ["the url it renders as", `http://localhost:3005/images/${key}`],
+    ["a rendered cloudfront url", `https://cdn.example.com/${key}`],
+  ])("points %s at the jpeg download", (_, src) => {
+    expect(imageSaveTarget({ src, apiUrl })).toEqual(
+      R.success({
+        kind: ImageSaveKind.Download,
+        key,
+        url: `http://localhost:3005/images/${key}/download?name=image.jpg`,
+        fileName: "image.jpg",
+      }),
+    );
+  });
+
+  it("carries the author's name to the download", () => {
+    expect(
+      imageSaveTarget({
+        src: `https://cdn.example.com/${key}`,
+        apiUrl,
+        name: "Rally poster",
+      }),
+    ).toMatchObject({
+      value: {
+        url: `http://localhost:3005/images/${key}/download?name=Rally%20poster.jpg`,
+        fileName: "Rally poster.jpg",
+      },
+    });
+  });
+
+  it.each([
+    ["an external url", "https://example.com/photo.png"],
+    ["an unresolved key", key],
+  ])("opens %s as it is", (_, src) => {
+    expect(imageSaveTarget({ src, apiUrl })).toEqual(
+      R.success({ kind: ImageSaveKind.Open, url: src }),
+    );
+  });
+
+  it("refuses a source with an unsafe scheme", () => {
+    expect(
+      imageSaveTarget({ src: "javascript:alert(1)", apiUrl }),
+    ).toMatchObject({ ok: false });
   });
 });

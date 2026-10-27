@@ -718,4 +718,43 @@ describe("EditableImagesBlock", () => {
     expect(screen.getByText("Uploading...")).toBeTruthy();
     expect(fileInput().disabled).toBe(true);
   });
+
+  describe("download controls", () => {
+    const twoImages: ImagesBlock = {
+      ...emptyBlock,
+      images: [
+        { id: "a", src: "a.webp" },
+        { id: "b", src: "b.webp" },
+      ],
+    };
+    const checkbox = () =>
+      screen.getByLabelText<HTMLInputElement>("Show a download button");
+
+    it("stores the toggle as true, and as absent once unticked", () => {
+      render(<PerUserForm initial={twoImages} />, queryWrapper());
+
+      fireEvent.click(checkbox());
+      expect(written.downloadable).toBe(true);
+
+      fireEvent.click(checkbox());
+      expect(written.downloadable).toBeUndefined();
+    });
+
+    it("names one image's download, and clears it to absent", () => {
+      render(<PerUserForm initial={twoImages} />, queryWrapper());
+      expect(screen.queryByLabelText("Download file name")).toBeNull();
+
+      fireEvent.click(checkbox());
+      const [first] =
+        screen.getAllByLabelText<HTMLInputElement>("Download file name");
+      fireEvent.change(first, { target: { value: "Poster" } });
+      expect(written.images.map((image) => image.fileName)).toEqual([
+        "Poster",
+        undefined,
+      ]);
+
+      fireEvent.change(first, { target: { value: "" } });
+      expect(written.images[0].fileName).toBeUndefined();
+    });
+  });
 });

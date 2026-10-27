@@ -1,4 +1,5 @@
-import { safeUrl } from "./url-safety";
+import { R, type Result } from "./result";
+import { isSafeUrl, safeUrl } from "./url-safety";
 
 /** Stored sources may be upload keys or absolute URLs; upload keys contain no slash or scheme. */
 export function isUploadKey(src: string): boolean {
@@ -88,6 +89,69 @@ const RENDERED_KEY_URL =
  */
 export function uploadKeyInUrl(src: string): string | undefined {
   return RENDERED_KEY_URL.exec(src)?.[1];
+}
+
+const FILE_NAME_MAX = 80;
+const EDGE_DOTS_AND_SPACE = /^[\s.]+|[\s.]+$/gu;
+
+/**
+ * The name a downloaded image saves under: the author's name stripped of
+ * characters file systems reject and of bidi controls that could make it
+ * display as another extension, or `image`, always ending in `.jpg`.
+ */
+export function jpegFileName(name: string | undefined): string {
+  // Cut by code point: half a surrogate pair makes encodeURIComponent throw.
+  const base = Array.from(
+    (name ?? "")
+      .replace(/[\\/:*?"<>|\p{Cc}\p{Cs}\u202A-\u202E\u2066-\u2069]/gu, "")
+      .replace(EDGE_DOTS_AND_SPACE, "")
+      .replace(/\.(jpe?g|webp|png|gif|hei[cf]|avif)$/i, ""),
+  )
+    .slice(0, FILE_NAME_MAX)
+    .join("")
+    .replace(EDGE_DOTS_AND_SPACE, "");
+  return `${base || "image"}.jpg`;
+}
+
+export enum ImageSaveKind {
+  Download = "download",
+  Open = "open",
+}
+
+export type ImageSaveTarget =
+  | { kind: ImageSaveKind.Download; key: string; url: string; fileName: string }
+  | { kind: ImageSaveKind.Open; url: string };
+
+/**
+ * What saving an image acts on: a stored image's jpeg download, or any other
+ * source as it is, unless its scheme is unsafe. Forms serve sources the way
+ * getImageSource renders them, as a cloudfront url in production, so any url
+ * shaped like one counts as stored; an external url that only looks like one
+ * 404s at the download. A bare key isn't a rendered url; resolve it with
+ * resolveUploadSrc first.
+ */
+export function imageSaveTarget({
+  src,
+  apiUrl,
+  name,
+}: {
+  src: string;
+  apiUrl: string;
+  name?: string;
+}): Result<ImageSaveTarget, Error> {
+  const key = uploadKeyInUrl(src);
+  if (key) {
+    const fileName = jpegFileName(name);
+    return R.success({
+      kind: ImageSaveKind.Download,
+      key,
+      url: `${uploadSrc({ key, apiUrl })}/download?name=${encodeURIComponent(fileName)}`,
+      fileName,
+    });
+  }
+  return isSafeUrl(src)
+    ? R.success({ kind: ImageSaveKind.Open, url: src })
+    : R.failure(new Error("Unsafe image source"));
 }
 
 /** Upload keys are unique per upload and never rewritten. */

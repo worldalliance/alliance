@@ -6,16 +6,35 @@ import {
   thumbnailKey,
   uploadKeyInUrl,
 } from "@alliance/common/image-src";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
 import {
   BadRequestException,
+  HttpException,
+  HttpStatus,
   Inject,
   Injectable,
   Logger,
+  NotFoundException,
+  PayloadTooLargeException,
+  ServiceUnavailableException,
 } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import convert from "heic-convert";
 import sharp from "sharp";
+import { AsyncSemaphore } from "src/utils/async-semaphore";
+
+// A 108 MP phone photo fits; a small file with huge dimensions doesn't.
+const DOWNLOAD_MAX_PIXELS = 120_000_000;
+// A conversion near the pixel cap holds over a gigabyte while it runs.
+const MAX_CONCURRENT_CONVERSIONS = 1;
+const MAX_QUEUED_CONVERSIONS = 20;
+// The queue is first in, first out, so a cap per requester keeps one from
+// filling it; two leaves room for a household behind one address.
+const MAX_CONVERSIONS_PER_REQUESTER = 2;
 
 @Injectable()
 export class ImagesService {
@@ -63,6 +82,74 @@ export class ImagesService {
         CacheControl: IMAGE_CACHE_CONTROL,
       }),
     );
+  }
+
+  private readonly conversions = new AsyncSemaphore(
+    MAX_CONCURRENT_CONVERSIONS,
+    MAX_QUEUED_CONVERSIONS,
+  );
+  private readonly conversionsByRequester = new Map<string, number>();
+
+  /**
+   * Any object it can't read as an image is not found, as in pipeS3Object.
+   * Undefined when the client left before its turn, which skips the work.
+   */
+  async jpegDownload(params: {
+    key: string;
+    requester: string;
+    clientGone: () => boolean;
+  }): Promise<Buffer | undefined> {
+    const { key, requester, clientGone } = params;
+    const held = this.conversionsByRequester.get(requester) ?? 0;
+    if (held >= MAX_CONVERSIONS_PER_REQUESTER) {
+      throw new HttpException(
+        "Wait for your other image downloads to finish, then try again.",
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+    this.conversionsByRequester.set(requester, held + 1);
+    try {
+      const converted = await this.conversions.run(async () =>
+        clientGone() ? undefined : this.toJpeg(key),
+      );
+      if (!converted.ok) {
+        throw new ServiceUnavailableException(
+          "Too many image downloads at once. Try again in a moment.",
+        );
+      }
+      return converted.value;
+    } finally {
+      const left = (this.conversionsByRequester.get(requester) ?? 1) - 1;
+      if (left > 0) this.conversionsByRequester.set(requester, left);
+      else this.conversionsByRequester.delete(requester);
+    }
+  }
+
+  private async toJpeg(key: string): Promise<Buffer> {
+    try {
+      const object = await this.s3.send(
+        new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+      );
+      if (!object.Body) throw new NotFoundException();
+      const bytes = await object.Body.transformToByteArray();
+      const { width = 0, height = 0 } = await sharp(bytes).metadata();
+      if (width * height > DOWNLOAD_MAX_PIXELS) {
+        throw new PayloadTooLargeException(
+          "This image is too large to download as a jpeg.",
+        );
+      }
+      // JPEG has no alpha channel, and sharp fills transparency with black.
+      return await sharp(bytes, { limitInputPixels: DOWNLOAD_MAX_PIXELS })
+        .flatten({ background: "#ffffff" })
+        .jpeg({ quality: 90 })
+        .toBuffer();
+    } catch (err) {
+      if (err instanceof PayloadTooLargeException) throw err;
+      if (!(err instanceof NotFoundException) && err?.name !== "NoSuchKey") {
+        this.logger.warn(`Failed to convert ${JSON.stringify(key)}: ${err}`);
+      }
+      throw new NotFoundException();
+    }
   }
 
   async processAndUploadProfileImage(image: string): Promise<string> {
