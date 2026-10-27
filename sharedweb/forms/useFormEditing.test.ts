@@ -1,8 +1,6 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
-import {
-  useFieldErrors,
-  useFormSchemaMaps,
-} from "@alliance/shared/useFormRenderer";
+import { useFormSchemaMaps } from "@alliance/shared/forms/useFormSchemaMaps";
+import { useFieldErrors } from "@alliance/shared/forms/useFormValidation";
 import { act, renderHook } from "@testing-library/react";
 import { useFormDraftState } from "./useFormDraftState";
 import { useFormEditing } from "./useFormEditing";

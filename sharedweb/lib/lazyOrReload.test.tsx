@@ -58,8 +58,7 @@ beforeEach(() => {
   loads = 0;
   sessionStorage.clear();
   reload = jest.spyOn(window.location, "reload").mockImplementation(() => {});
-  // Held rather than run, so none fires during a later test file. Not
-  // `jest.useFakeTimers`, which in bun leaves `waitFor` broken afterwards.
+  // Held rather than run, so none fires during a later test file.
   // lazyOrReload never clears its timers, so a held one needs no id.
   reloadTimeouts = [];
   globalThis.setTimeout = ((handler: () => void, delay?: number) => {
