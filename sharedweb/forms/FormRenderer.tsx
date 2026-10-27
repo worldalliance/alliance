@@ -26,14 +26,8 @@ import {
 } from "@alliance/shared/formrenderer";
 import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
 import {
-  applyDefaultValues,
-  clampPageIndex,
   computeFormStorageKey,
   filterAnswersByFieldIds,
-  readStoredFormDraft,
-  restorableAnswers,
-  restorablePublicAnswers,
-  serializeStoredFormDraft,
 } from "@alliance/shared/forms/formDrafts";
 import {
   completedFormSchema,
@@ -64,7 +58,6 @@ import { cn } from "@alliance/shared/styles/util";
 import {
   useCurrentUserLocation,
   useFieldErrors,
-  useFormDraftSync,
   useFormSchemaMaps,
   useFormValidation,
   useFormVisibility,
@@ -89,6 +82,7 @@ import FormNavigation from "./FormNavigation";
 import OutputPublicToggle from "./OutputPublicToggle";
 import RenderDisplayBlock from "./RenderDisplayBlock";
 import RenderField from "./RenderField";
+import { useFormDraftState } from "./useFormDraftState";
 import { variableInputsGateView } from "./variableInputsGateView";
 import WithdrawalMenu from "./WithdrawalMenu";
 
@@ -178,20 +172,12 @@ const FormRenderer = ({
   sessionReplayUrl,
   scrollContainerRef,
 }: FormRendererProps) => {
-  // Compute schema and a namespaced storage key for persistence (if enabled)
   const readOnly = !!renderFormAsCompleted;
   const schema = useMemo(
     () =>
       completedFormSchema(form, readOnly ? completedFormResponse : undefined),
     [form, readOnly, completedFormResponse],
   );
-  const baseStorageKey = computeFormStorageKey({
-    formId: id,
-  });
-  const storageKey = computeFormStorageKey({
-    formId: id,
-    instanceId: persistKey ?? undefined,
-  });
   const activeUserKey = useMemo(
     () => computeActiveUserKey(user?.id, userId),
     [user?.id, userId],
@@ -220,19 +206,37 @@ const FormRenderer = ({
     maxPageIndex,
   } = useFormSchemaMaps({ schema, userDefaultPublic, timeZone });
 
-  const [currentPageIndex, setCurrentPageIndex] = useState<number>(() => {
-    if (initialPageIndex !== undefined && !persistKey) {
-      return clampPageIndex(initialPageIndex, maxPageIndex);
-    }
-    if (readOnly) return 0;
-    if (typeof window === "undefined" || !persistKey) return 0;
-    const raw = window.localStorage.getItem(storageKey);
-    if (!raw) return 0;
-    const stored = readStoredFormDraft({ raw, fieldLookup, outputFieldIds });
-    return stored.ok
-      ? clampPageIndex(stored.value.currentPageIndex ?? 0, maxPageIndex)
-      : 0;
+  const [hasEmittedStart, setHasEmittedStart] = useState(false);
+  const {
+    formData,
+    setFormData,
+    publicAnswers,
+    setPublicAnswer,
+    currentPageIndex,
+    setCurrentPageIndex,
+    lockDraft,
+    saveFailed,
+    pauseSyncing,
+    resumeSyncing,
+  } = useFormDraftState({
+    formId: id,
+    actionId,
+    formSnapshotId,
+    persistKey,
+    syncDraftToServer,
+    readOnly,
+    completedFormResponse,
+    draftFormResponse,
+    initialPageIndex,
+    edited: hasEmittedStart,
+    userDefaultPublic,
+    fieldLookup,
+    defaultValueMap,
+    outputFieldDefaultPublic,
+    outputFieldIds,
+    maxPageIndex,
   });
+
   const formTopRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const fieldElements = useRef(new Map<string, HTMLDivElement>());
@@ -241,133 +245,15 @@ const FormRenderer = ({
   const [invalidFieldFocus, setInvalidFieldFocus] = useState<{
     fieldId?: string;
   } | null>(null);
-  // Precedence: localStorage (active local edits) > draft (guest prefill, may
-  // arrive after mount) > empty. Once either localStorage or a draft is applied,
-  // we lock out later draft applies so we never stomp user edits.
-  const draftLockedRef = useRef(false);
   // Guard against double-submit when the submit button's click handler
   // (ConfettiWrapper) and the form's submit event both call submitCurrentPage.
   const submittingRef = useRef(false);
-  const [formData, setFormData] = useState<Record<string, FormValue>>(() => {
-    if (readOnly) {
-      const answers =
-        (completedFormResponse?.answers as Record<string, FormValue>) || {};
-      return filterAnswersByFieldIds(answers, fieldLookup);
-    }
-
-    const readLocalStorageAnswers = (): Record<string, FormValue> | null => {
-      if (typeof window === "undefined" || !persistKey) return null;
-      const raw = window.localStorage.getItem(storageKey);
-      if (!raw) return null;
-      const stored = readStoredFormDraft({ raw, fieldLookup, outputFieldIds });
-      const answers = stored.ok ? stored.value.answers : undefined;
-      return answers && Object.keys(answers).length > 0 ? answers : null;
-    };
-
-    const localAnswers = readLocalStorageAnswers();
-    if (localAnswers) {
-      draftLockedRef.current = true;
-      return applyDefaultValues(localAnswers, defaultValueMap);
-    }
-
-    const draftAnswers = draftFormResponse?.answers
-      ? restorableAnswers(
-          draftFormResponse.answers as Record<string, FormValue>,
-          fieldLookup,
-        )
-      : null;
-    if (draftAnswers && Object.keys(draftAnswers).length > 0) {
-      draftLockedRef.current = true;
-      return applyDefaultValues(draftAnswers, defaultValueMap);
-    }
-
-    return applyDefaultValues({}, defaultValueMap);
-  });
-
-  const [publicAnswerOverrides, setPublicAnswerOverrides] = useState<
-    Partial<Record<string, boolean>>
-  >({});
-  const resolvedPublicAnswers = useMemo(() => {
-    if (readOnly && completedFormResponse?.publicAnswers) {
-      return completedFormResponse.publicAnswers as Record<string, boolean>;
-    }
-    const resolved: Record<string, boolean> = {};
-    for (const [fieldId, defaultPublic] of outputFieldDefaultPublic.entries()) {
-      resolved[fieldId] = publicAnswerOverrides[fieldId] ?? defaultPublic;
-    }
-    return resolved;
-  }, [
-    readOnly,
-    completedFormResponse?.publicAnswers,
-    outputFieldDefaultPublic,
-    publicAnswerOverrides,
-  ]);
-
   const { fieldErrors, clearFieldErrors, applyFieldErrorUpdates } =
     useFieldErrors();
-  const [hasEmittedStart, setHasEmittedStart] = useState(false);
   const [deviceType, setDeviceType] = useState<DeviceVisibilityTarget>(() =>
     detectDeviceType(),
   );
   const [submitting, setSubmitting] = useState(false);
-
-  // Seeded during the first render, before the persist effect below rewrites
-  // the entry.
-  const [syncedUpdatedAt, setSyncedUpdatedAt] = useState<string | null>(() => {
-    if (readOnly || typeof window === "undefined" || !persistKey) return null;
-    const raw = window.localStorage.getItem(storageKey);
-    if (!raw) return null;
-    const stored = readStoredFormDraft({ raw, fieldLookup, outputFieldIds });
-    return (stored.ok && stored.value.syncedUpdatedAt) || null;
-  });
-
-  const draftSyncEnabled =
-    !!syncDraftToServer && !readOnly && !!persistKey && formSnapshotId !== null;
-
-  const { serverDraft, saveFailed, pauseSyncing, resumeSyncing } =
-    useFormDraftSync({
-      enabled: draftSyncEnabled,
-      formId: id,
-      actionId,
-      formSnapshotId,
-      answers: formData,
-      publicAnswers: resolvedPublicAnswers,
-      currentPageIndex,
-      edited: hasEmittedStart,
-      onSaved: setSyncedUpdatedAt,
-    });
-
-  useEffect(() => {
-    if (!draftSyncEnabled || hasEmittedStart || !serverDraft) return;
-    // Equal means the stored draft is this device's own last save. Both sides
-    // are server-issued, so nothing here depends on the device's clock.
-    if (serverDraft.updatedAt === syncedUpdatedAt) {
-      return;
-    }
-    const answers = restorableAnswers(
-      serverDraft.answers as Record<string, FormValue>,
-      fieldLookup,
-    );
-    draftLockedRef.current = true;
-    setFormData((prev) =>
-      applyDefaultValues({ ...prev, ...answers }, defaultValueMap),
-    );
-    setPublicAnswerOverrides((prev) => ({
-      ...prev,
-      ...restorablePublicAnswers(serverDraft.publicAnswers, outputFieldIds),
-    }));
-    setCurrentPageIndex(
-      clampPageIndex(serverDraft.currentPageIndex, maxPageIndex),
-    );
-  }, [
-    serverDraft,
-    draftSyncEnabled,
-    hasEmittedStart,
-    syncedUpdatedAt,
-    fieldLookup,
-    defaultValueMap,
-    outputFieldIds,
-  ]);
 
   const { currentUserLocationLoading, userLocationDisplayValue } =
     useCurrentUserLocation({
@@ -442,23 +328,6 @@ const FormRenderer = ({
       formSnapshotId,
     }),
   });
-
-  // --- Apply guest draft answers when they arrive after mount ---
-  // The draft query is fired in parallel with the form render so we don't
-  // block paint on it; apply it here if the user hasn't started editing and
-  // localStorage didn't already win the initial-state race.
-  useEffect(() => {
-    if (readOnly) return;
-    if (draftLockedRef.current) return;
-    if (!draftFormResponse?.answers) return;
-    const draftAnswers = restorableAnswers(
-      draftFormResponse.answers as Record<string, FormValue>,
-      fieldLookup,
-    );
-    if (Object.keys(draftAnswers).length === 0) return;
-    draftLockedRef.current = true;
-    setFormData(applyDefaultValues(draftAnswers, defaultValueMap));
-  }, [draftFormResponse, readOnly, fieldLookup, defaultValueMap]);
 
   // --- Prefill list fields from previous answer data ---
   useEffect(() => {
@@ -573,7 +442,7 @@ const FormRenderer = ({
 
   const ensureStarted = () => {
     if (readOnly) return;
-    draftLockedRef.current = true;
+    lockDraft();
     if (!hasEmittedStart) {
       try {
         onFormStarted?.();
@@ -760,7 +629,7 @@ const FormRenderer = ({
       formulaSources: formulaSourcesFor(schema, sourceHistories),
       visibilityValidatorResults,
       deviceType,
-      publicAnswers: resolvedPublicAnswers,
+      publicAnswers,
       phDistinctId,
       sessionReplayUrl,
       sid: sid ?? undefined,
@@ -793,7 +662,7 @@ const FormRenderer = ({
     phDistinctId,
     readOnly,
     reportNativeValidity,
-    resolvedPublicAnswers,
+    publicAnswers,
     schema,
     searchParams,
     sourceHistories,
@@ -828,91 +697,12 @@ const FormRenderer = ({
       formulaSources: formulaSourcesFor(schema, sourceHistories),
       visibilityValidatorResults,
       deviceType,
-      publicAnswers: resolvedPublicAnswers,
+      publicAnswers,
     };
 
     pauseSyncing();
     onAbandonAction?.({ ...choice, partialFormData: submissionPayload });
   };
-
-  // Persist progress when enabled
-  useEffect(() => {
-    if (readOnly) return;
-    if (!persistKey || typeof window === "undefined") return;
-    window.localStorage.setItem(
-      storageKey,
-      serializeStoredFormDraft({
-        formData,
-        publicAnswers: publicAnswerOverrides,
-        currentPageIndex,
-        syncedUpdatedAt,
-      }),
-    );
-  }, [
-    formData,
-    publicAnswerOverrides,
-    currentPageIndex,
-    persistKey,
-    storageKey,
-    readOnly,
-    syncedUpdatedAt,
-  ]);
-
-  useEffect(() => {
-    if (readOnly) return;
-    if (!persistKey || typeof window === "undefined") return;
-    const raw = window.localStorage.getItem(storageKey);
-    if (!raw) return;
-    const stored = readStoredFormDraft({ raw, fieldLookup, outputFieldIds });
-    if (!stored.ok) return;
-    const { answers, publicAnswers, currentPageIndex } = stored.value;
-    if (answers) {
-      setFormData(applyDefaultValues(answers, defaultValueMap));
-    }
-    if (Object.keys(publicAnswers).length > 0) {
-      setPublicAnswerOverrides((prev) => ({
-        ...prev,
-        ...publicAnswers,
-      }));
-    }
-    if (currentPageIndex !== undefined) {
-      setCurrentPageIndex(clampPageIndex(currentPageIndex, maxPageIndex));
-    }
-  }, [
-    persistKey,
-    baseStorageKey,
-    readOnly,
-    fieldLookup,
-    storageKey,
-    maxPageIndex,
-    defaultValueMap,
-    outputFieldIds,
-  ]);
-
-  // When rendering a completed form, sync provided answers into local state
-  useEffect(() => {
-    if (!readOnly) return;
-    if (completedFormResponse?.answers) {
-      setFormData(
-        filterAnswersByFieldIds(
-          completedFormResponse.answers as Record<string, FormValue>,
-          fieldLookup,
-        ),
-      );
-    }
-  }, [readOnly, completedFormResponse, fieldLookup]);
-
-  useEffect(() => {
-    if (
-      initialPageIndex === undefined ||
-      readOnly ||
-      persistKey ||
-      typeof initialPageIndex !== "number"
-    ) {
-      return;
-    }
-    setCurrentPageIndex(clampPageIndex(initialPageIndex, maxPageIndex));
-  }, [initialPageIndex, persistKey, readOnly, maxPageIndex]);
 
   // `scrollIntoView` moves every scrollable ancestor, the document included,
   // so a caller-supplied container is scrolled on its own instead.
@@ -968,40 +758,11 @@ const FormRenderer = ({
     clearFieldErrors();
   }, [schema]);
 
-  useEffect(() => {
-    if (readOnly) {
-      return;
-    }
-    setFormData((prev) => applyDefaultValues(prev, defaultValueMap));
-  }, [defaultValueMap, readOnly]);
-
-  const handlePublicToggleChange = (fieldId: string, nextPublic: boolean) => {
-    const defaultPublic =
-      outputFieldDefaultPublic.get(fieldId) ?? userDefaultPublic;
-    setPublicAnswerOverrides((prev) => {
-      if (nextPublic === defaultPublic) {
-        if (!(fieldId in prev)) {
-          return prev;
-        }
-        const next = { ...prev };
-        delete next[fieldId];
-        return next;
-      }
-      if (prev[fieldId] === nextPublic) {
-        return prev;
-      }
-      return {
-        ...prev,
-        [fieldId]: nextPublic,
-      };
-    });
-  };
-
   const renderField = (field: AnyField, index: number) => {
     const isOutputField = Boolean(field.output?.output);
     const defaultSharePublic =
       outputFieldDefaultPublic.get(field.id) ?? userDefaultPublic;
-    const sharePublicly = resolvedPublicAnswers[field.id] ?? defaultSharePublic;
+    const sharePublicly = publicAnswers[field.id] ?? defaultSharePublic;
     return (
       <div
         key={field.id || index}
@@ -1036,9 +797,7 @@ const FormRenderer = ({
           field={field}
           sharePublicly={sharePublicly}
           disabled={readOnly}
-          onChange={(nextPublic) =>
-            handlePublicToggleChange(field.id, nextPublic)
-          }
+          onChange={(nextPublic) => setPublicAnswer(field.id, nextPublic)}
         />
       </div>
     );
