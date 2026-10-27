@@ -28,7 +28,6 @@ export function meta() {
 
 const PEOPLE_TITLE = "People";
 const PEOPLE_COLUMN = "max-w-7xl";
-const PEOPLE_LEDE = "Every member broadens the scope of what we can do.";
 
 const OFFICE_PHOTO_CAPTION = "The office in San Francisco, California";
 
@@ -240,11 +239,7 @@ function MemberDirectory() {
 
 export default function PeoplePage() {
   return (
-    <PageShell
-      title={PEOPLE_TITLE}
-      subtitle={PEOPLE_LEDE}
-      columnClassName={PEOPLE_COLUMN}
-    >
+    <PageShell title={PEOPLE_TITLE} columnClassName={PEOPLE_COLUMN}>
       <MemberDirectory />
       <ExpertGroup />
       <Office />
