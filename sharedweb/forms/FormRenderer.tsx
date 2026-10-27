@@ -58,7 +58,6 @@ import {
   cancelAllImageUploads,
   draftSaveFailed,
   guestReferral,
-  outputFieldPublicToggle,
   waitingForImageUpload,
 } from "@alliance/shared/lib/copy";
 import {
@@ -98,6 +97,7 @@ import {
   useFormPageDurationTracking,
   useFormValidationErrorTracking,
 } from "./formAnalytics";
+import OutputPublicToggle from "./OutputPublicToggle";
 import RenderDisplayBlock from "./RenderDisplayBlock";
 import RenderField from "./RenderField";
 import { variableInputsGateView } from "./variableInputsGateView";
@@ -1013,11 +1013,6 @@ const FormRenderer = ({
     const defaultSharePublic =
       outputFieldDefaultPublic.get(field.id) ?? userDefaultPublic;
     const sharePublicly = resolvedPublicAnswers[field.id] ?? defaultSharePublic;
-    const useMakePublicToggle = Boolean(field.output?.privateByDefault);
-    const toggleLabel = useMakePublicToggle
-      ? outputFieldPublicToggle.showPublicly
-      : outputFieldPublicToggle.hidePublicly;
-    const toggleChecked = useMakePublicToggle ? sharePublicly : !sharePublicly;
     return (
       <div
         key={field.id || index}
@@ -1048,27 +1043,14 @@ const FormRenderer = ({
           fieldErrors={fieldErrors}
           responseHiddenFromOthers={isOutputField && !sharePublicly}
         />
-        {isOutputField && (
-          <label className="mt-2 flex items-center text-sm text-gray-500">
-            <input
-              type="checkbox"
-              className="mr-2 h-4 w-4"
-              checked={toggleChecked}
-              disabled={readOnly}
-              onChange={
-                readOnly
-                  ? undefined
-                  : (event) => {
-                      const nextPublic = useMakePublicToggle
-                        ? event.target.checked
-                        : !event.target.checked;
-                      handlePublicToggleChange(field.id, nextPublic);
-                    }
-              }
-            />
-            {toggleLabel}
-          </label>
-        )}
+        <OutputPublicToggle
+          field={field}
+          sharePublicly={sharePublicly}
+          disabled={readOnly}
+          onChange={(nextPublic) =>
+            handlePublicToggleChange(field.id, nextPublic)
+          }
+        />
       </div>
     );
   };
