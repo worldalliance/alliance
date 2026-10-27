@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { CommunityService } from "src/community/community.service";
+import { CommunityMembershipService } from "src/community/community-membership.service";
 import {
   groupJoinAudience,
   memberJoinedCommunityNotif,
@@ -38,7 +38,7 @@ export class GroupAssignmentService {
     @InjectRepository(Community)
     private readonly communityRepository: Repository<Community>,
     private readonly notifsService: NotifsService,
-    private readonly communityService: CommunityService,
+    private readonly communityMembershipService: CommunityMembershipService,
   ) {}
 
   async joinGroupAssignment(userId: number): Promise<void> {
@@ -150,7 +150,7 @@ export class GroupAssignmentService {
     // Queued members can lose their contract after they join the queue —
     // nothing clears `undergoingGroupAssignment` on suspension — so this is a
     // live rejection, not a formality.
-    await this.communityService.assertUsersHaveActiveContracts(
+    await this.communityMembershipService.assertUsersHaveActiveContracts(
       assignments.map(({ user }) => user),
     );
 
@@ -168,7 +168,7 @@ export class GroupAssignmentService {
 
     const userNotifs: CreateNotifParams[] = [];
     for (const { user, community } of assignments) {
-      await this.communityService.leaveOtherCommunitiesOnJoin(user);
+      await this.communityMembershipService.leaveOtherCommunitiesOnJoin(user);
 
       // Refetch community to get up-to-date users list
       const freshCommunity = await this.communityRepository.findOneOrFail({
@@ -177,18 +177,20 @@ export class GroupAssignmentService {
       });
 
       // Add user to new community
-      await this.communityService.addUsersToCommunityAndRefreshConversation({
-        user,
-        community: freshCommunity,
-        groupJoinAudience: groupJoinAudiences.get(community.id),
-        notifForLeader: ({ leader }) =>
-          memberJoinedCommunityNotif({
-            leader,
-            joiner: user,
-            community: freshCommunity,
-            message: notifMessage`Alliance staff assigned ${member(user)} to your group (${group(freshCommunity)})`,
-          }),
-      });
+      await this.communityMembershipService.addUsersToCommunityAndRefreshConversation(
+        {
+          user,
+          community: freshCommunity,
+          groupJoinAudience: groupJoinAudiences.get(community.id),
+          notifForLeader: ({ leader }) =>
+            memberJoinedCommunityNotif({
+              leader,
+              joiner: user,
+              community: freshCommunity,
+              message: notifMessage`Alliance staff assigned ${member(user)} to your group (${group(freshCommunity)})`,
+            }),
+        },
+      );
 
       userNotifs.push({
         user,

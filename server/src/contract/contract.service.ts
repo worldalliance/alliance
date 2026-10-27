@@ -5,6 +5,7 @@ import {
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
+import { CommunityMembershipService } from "src/community/community-membership.service";
 import { CommunityService } from "src/community/community.service";
 import {
   isCommunityLedBy,
@@ -78,6 +79,7 @@ export class ContractService {
     private readonly userRepository: Repository<User>,
     private readonly userService: UserService,
     private readonly communityService: CommunityService,
+    private readonly communityMembershipService: CommunityMembershipService,
     private readonly notifsService: NotifsService,
     private readonly eventLogService: EventLogService,
     private readonly eventEmitter: EventEmitter2,
@@ -273,18 +275,20 @@ export class ContractService {
         userUpdate.undergoingGroupAssignment = true;
       } else if (user.pendingCommunity) {
         promises.push(
-          this.communityService.addUsersToCommunityAndRefreshConversation({
-            user,
-            community: user.pendingCommunity,
-            contractBeingSigned: true,
-            notifForLeader: ({ leader }) =>
-              memberJoinedCommunityNotif({
-                leader,
-                joiner: user,
-                community: user.pendingCommunity!,
-                message: notifMessage`${member(user)} signed their contract and was re-added to your group (${group(user.pendingCommunity!)})`,
-              }),
-          }),
+          this.communityMembershipService.addUsersToCommunityAndRefreshConversation(
+            {
+              user,
+              community: user.pendingCommunity,
+              contractBeingSigned: true,
+              notifForLeader: ({ leader }) =>
+                memberJoinedCommunityNotif({
+                  leader,
+                  joiner: user,
+                  community: user.pendingCommunity!,
+                  message: notifMessage`${member(user)} signed their contract and was re-added to your group (${group(user.pendingCommunity!)})`,
+                }),
+            },
+          ),
         );
       }
     } else if (referredByInvite?.community) {
@@ -302,25 +306,27 @@ export class ContractService {
       ) {
         userUpdate.undergoingGroupAssignment = true;
       } else {
-        await this.communityService.addUsersToCommunityAndRefreshConversation({
-          user,
-          community,
-          contractBeingSigned: true,
-          notifForLeader: user.referredBy
-            ? buildNotifForLeaderWithReferrer(
-                user,
-                community,
-                user.referredBy,
-                (v) => (referrerNotified = v),
-              )
-            : ({ leader }) =>
-                memberJoinedCommunityNotif({
-                  leader,
-                  joiner: user,
+        await this.communityMembershipService.addUsersToCommunityAndRefreshConversation(
+          {
+            user,
+            community,
+            contractBeingSigned: true,
+            notifForLeader: user.referredBy
+              ? buildNotifForLeaderWithReferrer(
+                  user,
                   community,
-                  message: notifMessage`${member(user)} joined the Alliance and your group (${group(community)})`,
-                }),
-        });
+                  user.referredBy,
+                  (v) => (referrerNotified = v),
+                )
+              : ({ leader }) =>
+                  memberJoinedCommunityNotif({
+                    leader,
+                    joiner: user,
+                    community,
+                    message: notifMessage`${member(user)} joined the Alliance and your group (${group(community)})`,
+                  }),
+          },
+        );
       }
       if (user.referredBy && !referrerNotified) {
         notifs.push(newMemberReferredNotif(user, user.referredBy));
@@ -343,17 +349,19 @@ export class ContractService {
       let referrerNotified = false;
       if (community) {
         promises.push(
-          this.communityService.addUsersToCommunityAndRefreshConversation({
-            user,
-            community,
-            contractBeingSigned: true,
-            notifForLeader: buildNotifForLeaderWithReferrer(
+          this.communityMembershipService.addUsersToCommunityAndRefreshConversation(
+            {
               user,
               community,
-              referredBy,
-              (v) => (referrerNotified = v),
-            ),
-          }),
+              contractBeingSigned: true,
+              notifForLeader: buildNotifForLeaderWithReferrer(
+                user,
+                community,
+                referredBy,
+                (v) => (referrerNotified = v),
+              ),
+            },
+          ),
         );
       } else {
         userUpdate.undergoingGroupAssignment = true;
@@ -421,24 +429,27 @@ export class ContractService {
 
     const communitiesP = Promise.all(
       loadedUserCommunities(user).map((community: Community) =>
-        this.communityService.removeUserFromCommunityAndRefreshConversation({
-          user,
-          community,
-          removeAsLeader: false,
-          notifForLeader: ({ leader }) => ({
-            user: leader,
-            category: NotificationCategory.MemberSuspendedRemovedFromCommunity,
-            message: memberSuspendedMessage({
-              suspended: user,
-              automatic,
-              community,
+        this.communityMembershipService.removeUserFromCommunityAndRefreshConversation(
+          {
+            user,
+            community,
+            removeAsLeader: false,
+            notifForLeader: ({ leader }) => ({
+              user: leader,
+              category:
+                NotificationCategory.MemberSuspendedRemovedFromCommunity,
+              message: memberSuspendedMessage({
+                suspended: user,
+                automatic,
+                community,
+              }),
+              destination: userDestination(user.id),
+              webAppLocation: profileUrl(user.id),
+              associatedUsers: [user],
             }),
-            destination: userDestination(user.id),
-            webAppLocation: profileUrl(user.id),
-            associatedUsers: [user],
-          }),
-          saveAsPendingCommunity: true,
-        }),
+            saveAsPendingCommunity: true,
+          },
+        ),
       ),
     );
 

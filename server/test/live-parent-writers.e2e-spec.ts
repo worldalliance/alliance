@@ -6,6 +6,8 @@ import { AuthService } from "src/auth/auth.service";
 import { Guest } from "src/auth/entities/guest.entity";
 import { OAuthAccount } from "src/auth/oauth/oauth-account.entity";
 import { OAuthAuthService } from "src/auth/oauth/oauth-auth.service";
+import { CommunityMembershipService } from "src/community/community-membership.service";
+import { CommunityPlacementService } from "src/community/community-placement.service";
 import { CommunityService } from "src/community/community.service";
 import { Community } from "src/community/entities/community.entity";
 import { GroupJoinNotifsService } from "src/community/group-join-notifs.service";
@@ -417,7 +419,7 @@ describe("Writers beside a deletion (e2e)", () => {
       await deleteDeparting();
 
       await ctx.app
-        .get(CommunityService)
+        .get(CommunityMembershipService)
         .addUsersToCommunityAndRefreshConversation({
           community,
           user: joiner,
@@ -444,7 +446,9 @@ describe("Writers beside a deletion (e2e)", () => {
           return community;
         });
 
-      await communityService.removeLeaderAdmin(community.id, leader.id);
+      await ctx.app
+        .get(CommunityPlacementService)
+        .removeLeaderAdmin(community.id, leader.id);
 
       expect(await memberships()).toBe(0);
       expect(
@@ -485,7 +489,9 @@ describe("Writers beside a deletion (e2e)", () => {
       });
     const notify = jest.spyOn(ctx.app.get(GroupJoinNotifsService), "notify");
 
-    await communityService.addLeaderAdmin(id, promoted.id);
+    await ctx.app
+      .get(CommunityPlacementService)
+      .addLeaderAdmin(id, promoted.id);
 
     expect(notify).not.toHaveBeenCalled();
 
@@ -520,7 +526,9 @@ describe("Writers beside a deletion (e2e)", () => {
         return loaded;
       });
 
-    await communityService.addLeaderAdmin(id, promoted.id);
+    await ctx.app
+      .get(CommunityPlacementService)
+      .addLeaderAdmin(id, promoted.id);
 
     for (const table of [
       "community_users_user",
@@ -548,7 +556,7 @@ describe("Writers beside a deletion (e2e)", () => {
     const notify = jest.spyOn(ctx.app.get(GroupJoinNotifsService), "notify");
 
     await ctx.app
-      .get(CommunityService)
+      .get(CommunityMembershipService)
       .addUsersToCommunityAndRefreshConversation({
         user: joiner,
         community,
@@ -580,7 +588,7 @@ describe("Writers beside a deletion (e2e)", () => {
         suspended.id,
       ]);
       const removal = ctx.app
-        .get(CommunityService)
+        .get(CommunityMembershipService)
         .removeUserFromCommunityAndRefreshConversation({
           user: suspended,
           community,
@@ -624,11 +632,13 @@ describe("Writers beside a deletion (e2e)", () => {
     await communities.softDelete(community.id);
 
     await expect(
-      ctx.app.get(CommunityService).addUsersToCommunityAndRefreshConversation({
-        community,
-        user: joiner,
-        notifForLeader: () => null,
-      }),
+      ctx.app
+        .get(CommunityMembershipService)
+        .addUsersToCommunityAndRefreshConversation({
+          community,
+          user: joiner,
+          notifForLeader: () => null,
+        }),
     ).rejects.toThrow(NotFoundException);
     const [{ count }] = await ctx.dataSource.query(
       `SELECT count(*)::int AS count FROM community_users_user WHERE "userId" = $1`,

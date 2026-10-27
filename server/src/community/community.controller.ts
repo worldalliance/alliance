@@ -19,6 +19,10 @@ import { CommunityLeaderGuard } from "src/auth/guards/communityleader.guard";
 import type { JwtRequest } from "src/auth/tokens";
 import { PosthogService } from "src/posthog/posthog.service";
 import { CommunityMemberContactInfoDto } from "src/user/dto/user-action-relations.dto";
+import { CommunityInviteRequestsService } from "./community-invite-requests.service";
+import { CommunityInvitesService } from "./community-invites.service";
+import { CommunityParticipationService } from "./community-participation.service";
+import { CommunityPlacementService } from "./community-placement.service";
 import { CommunityService } from "./community.service";
 import {
   CommunityInviteDto,
@@ -38,6 +42,10 @@ import {
 export class CommunityController {
   constructor(
     private readonly communityService: CommunityService,
+    private readonly communityParticipationService: CommunityParticipationService,
+    private readonly communityPlacementService: CommunityPlacementService,
+    private readonly communityInvitesService: CommunityInvitesService,
+    private readonly communityInviteRequestsService: CommunityInviteRequestsService,
     private readonly posthog: PosthogService,
   ) {}
 
@@ -108,10 +116,11 @@ export class CommunityController {
     @Request() req: JwtRequest,
     @Param("communityId", ParseIntPipe) communityId: number,
   ): Promise<CommunityDto> {
-    const community = await this.communityService.joinPublicCommunity(
-      req.user.sub,
-      communityId,
-    );
+    const community =
+      await this.communityParticipationService.joinPublicCommunity(
+        req.user.sub,
+        communityId,
+      );
     this.posthog.capture({
       event: AnalyticsEvent.CommunityJoined,
       distinctId: String(req.user.sub),
@@ -149,7 +158,7 @@ export class CommunityController {
     @Body() body: CommunityMemberDto,
   ): Promise<CommunityDto> {
     return new CommunityDto(
-      await this.communityService.removeUserFromCommunity({
+      await this.communityParticipationService.removeUserFromCommunity({
         userId: req.user.sub,
         removeeId: body.userId,
         communityId,
@@ -165,7 +174,7 @@ export class CommunityController {
     @Body() body: CommunityMemberDto,
   ): Promise<CommunityDto> {
     return new CommunityDto(
-      await this.communityService.removeUserFromCommunityAdmin(
+      await this.communityParticipationService.removeUserFromCommunityAdmin(
         communityId,
         body.userId,
       ),
@@ -180,7 +189,7 @@ export class CommunityController {
     @Param("communityId", ParseIntPipe) communityId: number,
     @Body() body: MoveCommunityMemberDto,
   ): Promise<void> {
-    await this.communityService.moveUserBetweenCommunitiesAdmin({
+    await this.communityPlacementService.moveUserBetweenCommunitiesAdmin({
       sourceCommunityId: communityId,
       destinationCommunityId: body.destinationCommunityId,
       userId: body.userId,
@@ -195,7 +204,10 @@ export class CommunityController {
     @Param("communityId", ParseIntPipe) communityId: number,
     @Request() req: JwtRequest,
   ): Promise<void> {
-    await this.communityService.leaveCommunity(communityId, req.user.sub);
+    await this.communityParticipationService.leaveCommunity(
+      communityId,
+      req.user.sub,
+    );
     this.posthog.capture({
       event: AnalyticsEvent.CommunityLeft,
       distinctId: String(req.user.sub),
@@ -232,7 +244,7 @@ export class CommunityController {
     @Body() body: CommunityMemberDto,
   ): Promise<CommunityDto> {
     return new CommunityDto(
-      await this.communityService.addUserToCommunityAdmin({
+      await this.communityPlacementService.addUserToCommunityAdmin({
         communityId,
         userId: body.userId,
       }),
@@ -247,7 +259,10 @@ export class CommunityController {
     @Body() body: CommunityMemberDto,
   ): Promise<CommunityDto> {
     return new CommunityDto(
-      await this.communityService.addLeaderAdmin(communityId, body.userId),
+      await this.communityPlacementService.addLeaderAdmin(
+        communityId,
+        body.userId,
+      ),
     );
   }
 
@@ -259,7 +274,10 @@ export class CommunityController {
     @Body() body: CommunityMemberDto,
   ): Promise<CommunityDto> {
     return new CommunityDto(
-      await this.communityService.removeLeaderAdmin(communityId, body.userId),
+      await this.communityPlacementService.removeLeaderAdmin(
+        communityId,
+        body.userId,
+      ),
     );
   }
 
@@ -306,7 +324,7 @@ export class CommunityController {
     @Body() body: CreateCommunityInviteDto,
     @Request() req: JwtRequest,
   ): Promise<CommunityInviteDto> {
-    const invite = await this.communityService.createCommunityInvite(
+    const invite = await this.communityInvitesService.createCommunityInvite(
       body,
       req.user.sub,
     );
@@ -329,7 +347,10 @@ export class CommunityController {
     @Param("inviteId", ParseIntPipe) inviteId: number,
     @Request() req: JwtRequest,
   ): Promise<void> {
-    await this.communityService.deleteCommunityInvite(inviteId, req.user.sub);
+    await this.communityInvitesService.deleteCommunityInvite(
+      inviteId,
+      req.user.sub,
+    );
   }
 
   @Post("communityInvites/request")
@@ -339,10 +360,11 @@ export class CommunityController {
     @Body() body: RequestCommunityInviteDto,
     @Request() req: JwtRequest,
   ): Promise<CommunityInviteDto> {
-    const invite = await this.communityService.requestCommunityInvite(
-      body,
-      req.user.sub,
-    );
+    const invite =
+      await this.communityInviteRequestsService.requestCommunityInvite(
+        body,
+        req.user.sub,
+      );
     this.posthog.capture({
       event: AnalyticsEvent.CommunityInviteRequested,
       distinctId: String(req.user.sub),
@@ -362,10 +384,11 @@ export class CommunityController {
     @Param("inviteId", ParseIntPipe) inviteId: number,
     @Request() req: JwtRequest,
   ): Promise<CommunityInviteDto> {
-    const invite = await this.communityService.approveCommunityInviteRequest(
-      inviteId,
-      req.user.sub,
-    );
+    const invite =
+      await this.communityInviteRequestsService.approveCommunityInviteRequest(
+        inviteId,
+        req.user.sub,
+      );
     this.posthog.capture({
       event: AnalyticsEvent.CommunityInviteApproved,
       distinctId: String(req.user.sub),
@@ -385,7 +408,7 @@ export class CommunityController {
     @Param("inviteId", ParseIntPipe) inviteId: number,
     @Request() req: JwtRequest,
   ): Promise<void> {
-    await this.communityService.rejectCommunityInviteRequest(
+    await this.communityInviteRequestsService.rejectCommunityInviteRequest(
       inviteId,
       req.user.sub,
     );
@@ -399,7 +422,7 @@ export class CommunityController {
     @Request() req: JwtRequest,
   ): Promise<CommunityInviteDto[]> {
     return (
-      await this.communityService.findCommunityInvites(
+      await this.communityInvitesService.findCommunityInvites(
         req.user.sub,
         communityId,
       )
@@ -413,7 +436,7 @@ export class CommunityController {
     @Request() req: JwtRequest,
   ): Promise<CommunityInviteDto[]> {
     return (
-      await this.communityService.findIncomingCommunityInvitesForUser(
+      await this.communityInvitesService.findIncomingCommunityInvitesForUser(
         req.user.sub,
       )
     ).map((invite) => new CommunityInviteDto(invite));
@@ -426,10 +449,11 @@ export class CommunityController {
     @Param("inviteId", ParseIntPipe) inviteId: number,
     @Request() req: JwtRequest,
   ): Promise<void> {
-    const communityId = await this.communityService.acceptCommunityInvite(
-      inviteId,
-      req.user.sub,
-    );
+    const communityId =
+      await this.communityInvitesService.acceptCommunityInvite(
+        inviteId,
+        req.user.sub,
+      );
     this.posthog.capture({
       event: AnalyticsEvent.CommunityJoined,
       distinctId: String(req.user.sub),
@@ -448,6 +472,9 @@ export class CommunityController {
     @Param("inviteId", ParseIntPipe) inviteId: number,
     @Request() req: JwtRequest,
   ): Promise<void> {
-    await this.communityService.rejectCommunityInvite(inviteId, req.user.sub);
+    await this.communityInvitesService.rejectCommunityInvite(
+      inviteId,
+      req.user.sub,
+    );
   }
 }
