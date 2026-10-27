@@ -13,13 +13,15 @@ Mint with at least `read` and `write`: `scope=read,write,...`
 
 There is one team, `ALL` / Alliance.
 
-To pull a label's issues, filter `issueLabels` by `name: {eq: …}` and traverse `issues`.
+To pull a label's issues, filter `issues` by `labels: {name: {eq: …}}`. Traversing `issueLabels` → `issues` exceeds Linear's query complexity limit.
 
 ## Filing an issue
 
 Before filing any issue, make sure it isn't already filed.
 
-Label it `AI-generated`, in addition to any other relevant labels.
+File it in the `Backlog` state.
+
+Label it `AI-generated`, at least one label from the `Area` group (`Frontend`, `Backend`, `Admin`, `Infra`, `Mobile`, `Server`), and one from the `Type` group (`Bug`, `Improvement`, `Feature`), plus any other relevant labels.
 
 Write the description so the bug can be fixed from it alone, weeks later: repro, file paths with line numbers, and the branch and commit sha when the finding only exists on an unmerged branch.
 
