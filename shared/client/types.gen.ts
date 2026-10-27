@@ -7493,6 +7493,32 @@ export type ImagesGetImageResponses = {
 
 export type ImagesGetImageResponse = ImagesGetImageResponses[keyof ImagesGetImageResponses];
 
+export type ImagesDownloadImageData = {
+    body?: never;
+    path: {
+        key: string;
+    };
+    query?: {
+        name?: string;
+    };
+    url: '/images/{key}/download';
+};
+
+export type ImagesDownloadImageErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ImagesDownloadImageError = ImagesDownloadImageErrors[keyof ImagesDownloadImageErrors];
+
+export type ImagesDownloadImageResponses = {
+    200: StreamableFile;
+};
+
+export type ImagesDownloadImageResponse = ImagesDownloadImageResponses[keyof ImagesDownloadImageResponses];
+
 export type ImagesUploadImageData = {
     body: UploadImageDto;
     path?: never;
