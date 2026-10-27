@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { assertLive, softDeleteCascade } from "src/datasources/soft-delete";
 import { type Repository } from "typeorm";
+import { ActionParticipantsService } from "./action-participants.service";
 import { ActionsService } from "./actions.service";
 import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
 import {
@@ -35,6 +36,7 @@ export class ActionSuitesService {
     @InjectRepository(ActionSuite)
     private readonly actionSuiteRepository: Repository<ActionSuite>,
     private readonly actionsService: ActionsService,
+    private readonly participants: ActionParticipantsService,
     private readonly cohortDecisionStaffService: CohortDecisionStaffService,
     private readonly generalUpdates: GeneralUpdatesService,
   ) {}
@@ -105,7 +107,7 @@ export class ActionSuitesService {
     }
 
     for (const action of actions) {
-      await this.actionsService.reloadUsersJoinedForAction(action.id);
+      await this.participants.reloadUsersJoinedForAction(action.id);
     }
 
     await this.generalUpdates.syncGeneralUpdateDatesForSuites(

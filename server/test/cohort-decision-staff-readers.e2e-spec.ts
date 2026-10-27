@@ -1,7 +1,7 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { ActionsService } from "../src/actions/actions.service";
+import { ActionParticipantsService } from "../src/actions/action-participants.service";
 import { CohortDecisionService } from "../src/actions/cohort-decision.service";
 import { ActionActivity } from "../src/actions/entities/action-activity.entity";
 import { Action } from "../src/actions/entities/action.entity";
@@ -146,9 +146,9 @@ describe("Staff-facing reads of cohort decisions (e2e)", () => {
 
   it("counts a moved member as joined on the branch they were decided into", async () => {
     const { us, nonUs } = await decideThenMove();
-    const actionsService = ctx.app.get(ActionsService);
-    await actionsService.reloadUsersJoinedForAction(us.id);
-    await actionsService.reloadUsersJoinedForAction(nonUs.id);
+    const participants = ctx.app.get(ActionParticipantsService);
+    await participants.reloadUsersJoinedForAction(us.id);
+    await participants.reloadUsersJoinedForAction(nonUs.id);
 
     const usersJoined = async (actionId: number) =>
       (

@@ -141,13 +141,11 @@ describe("A member's latest completion or withdrawal decides completion (e2e)", 
     "counts a member who $order as a participant: $completed",
     async ({ types, completed }) => {
       const { member, action } = await setUp(types);
-      const actionsService = ctx.app.get(ActionsService);
+      const participants = ctx.app.get(ActionParticipantsService);
 
       const [participantIds, incomplete, stored] = await Promise.all([
-        ctx.app
-          .get(ActionParticipantsService)
-          .findParticipantIdsForActionById(action.id),
-        actionsService.findIncompleteUsersForAction(action.id),
+        participants.findParticipantIdsForActionById(action.id),
+        participants.findIncompleteUsersForAction(action.id),
         ctx.dataSource.getRepository(Action).findOneByOrFail({ id: action.id }),
       ]);
 

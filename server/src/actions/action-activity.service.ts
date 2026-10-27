@@ -21,6 +21,7 @@ import { User } from "src/user/entities/user.entity";
 import { type Repository } from "typeorm";
 import { UserService } from "../user/user.service";
 import { isTerminalActivity } from "./action-activity-status";
+import { ActionParticipantsService } from "./action-participants.service";
 import { ActionsService } from "./actions.service";
 import {
   ActionActivityDto,
@@ -58,6 +59,7 @@ export class ActionActivityService {
     @InjectRepository(ActionActivity)
     private readonly actionActivityRepository: Repository<ActionActivity>,
     private readonly actionsService: ActionsService,
+    private readonly participants: ActionParticipantsService,
     private readonly memberActions: MemberActionsService,
     private readonly userService: UserService,
     private readonly eventLogService: EventLogService,
@@ -206,9 +208,9 @@ export class ActionActivityService {
       activity: new ActionActivityDto(savedActivity),
     });
 
-    await this.actionsService.reloadUsersJoinedForAction(actionId);
+    await this.participants.reloadUsersJoinedForAction(actionId);
     if (isTerminalActivity(savedActivity)) {
-      await this.actionsService.reloadUsersCompletedForAction(actionId);
+      await this.participants.reloadUsersCompletedForAction(actionId);
     }
     if (type === ActionActivityType.USER_COMPLETED) {
       if (!adminCreated) {

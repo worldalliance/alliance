@@ -37,7 +37,6 @@ import {
   sqlIsLatestWithdrawal,
 } from "./action-activity-status";
 import { ActionFormVariantService } from "./action-form-variant.service";
-import { ActionParticipantsService } from "./action-participants.service";
 import { replaceReviewers } from "./action-reviewers";
 import { isActionUpdatePublished } from "./action-update-visibility";
 import { ActionVisibilityService } from "./action-visibility.service";
@@ -69,7 +68,6 @@ import {
 import { GeneralUpdate } from "./entities/general-update.entity";
 import { ReminderGroup } from "./entities/reminder-group.entity";
 import { GeneralUpdatesService } from "./general-updates.service";
-import { PrerequisiteProgressService } from "./prerequisite-progress.service";
 import {
   assertNotAPrerequisite,
   assertPrerequisitesValid,
@@ -116,8 +114,6 @@ export class ActionsService {
     private readonly actionFormVariantService: ActionFormVariantService,
     private readonly cohortDecisionStaffService: CohortDecisionStaffService,
     private readonly actionVisibility: ActionVisibilityService,
-    private readonly prerequisiteProgressService: PrerequisiteProgressService,
-    private readonly participants: ActionParticipantsService,
     private readonly generalUpdates: GeneralUpdatesService,
   ) {}
 
@@ -370,62 +366,6 @@ export class ActionsService {
 
     const actionMap = new Map(actionsWithRelations.map((a) => [a.id, a]));
     return actionIds.map((id) => parseAction(actionMap.get(id)!));
-  }
-
-  async findUsersCompletedForAction(actionId: number): Promise<number> {
-    const completions = await this.prerequisiteProgressService.loadCompletions({
-      actionId,
-    });
-    return completions.length;
-  }
-
-  async reloadUsersCompletedForAction(actionId: number): Promise<void> {
-    const usersCompleted = await this.findUsersCompletedForAction(actionId);
-    await this.actionRepository.update(actionId, { usersCompleted });
-  }
-
-  async reloadAllActionUsersJoined(): Promise<void> {
-    const actions = await this.actionRepository.find();
-    for (const action of actions) {
-      await this.reloadUsersJoinedForAction(action.id);
-    }
-  }
-
-  async reloadUsersJoinedForAction(actionId: number): Promise<void> {
-    const usersJoined = (
-      await this.participants.findParticipantIdsForActionById(actionId)
-    ).length;
-    await this.actionRepository.update(actionId, { usersJoined });
-  }
-
-  async findIncompleteUsersForAction(actionId: number): Promise<User[]> {
-    const action = parseAction(
-      await this.actionRepository.findOneOrFail({
-        where: { id: actionId },
-        relations: {
-          events: true,
-          activities: true,
-        },
-      }),
-    );
-
-    const joinedUserIds =
-      await this.participants.findParticipantIdsForAction(action);
-
-    const completions = await this.prerequisiteProgressService.loadCompletions({
-      actionId,
-    });
-    const completedUserIds = new Set(completions.map((a) => a.userId));
-
-    const incompleteUserIds = joinedUserIds.filter(
-      (id) => !completedUserIds.has(id),
-    );
-
-    if (incompleteUserIds.length === 0) {
-      return [];
-    }
-
-    return this.userService.findByIds(incompleteUserIds);
   }
 
   async findOneOrFail(params: {
