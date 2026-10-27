@@ -51,7 +51,7 @@ function LegalRow() {
 
 export function SiteFooter() {
   return (
-    <footer className="relative isolate overflow-hidden bg-black text-white">
+    <footer className="relative isolate overflow-hidden bg-black text-white [#join+&]:pt-[54px]">
       <div className={cn(SITE_COL, "relative z-10 pt-16 pb-10 lg:pt-24")}>
         <div className="flex flex-col gap-12 lg:flex-row lg:justify-between">
           <nav

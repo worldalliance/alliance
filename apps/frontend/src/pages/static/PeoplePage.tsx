@@ -126,10 +126,7 @@ function Office() {
   const { data: staff, isPending } = useStaffDirectory();
 
   return (
-    <PageBand
-      id="office"
-      className={cn("flex flex-col gap-10 pt-8 lg:pt-12", PEOPLE_COLUMN)}
-    >
+    <PageBand id="office" className={cn("flex flex-col gap-10", PEOPLE_COLUMN)}>
       <div className="flex flex-col gap-3">
         <BandHeading size={BandHeadingSize.Section}>Office</BandHeading>
         <SiteSubtitle>
@@ -143,8 +140,6 @@ function Office() {
             image={officePhoto}
             alt={OFFICE_PHOTO_CAPTION}
             sizes="(min-width: 1024px) 50vw, 100vw"
-            loading="eager"
-            fetchPriority="high"
             className="aspect-[4/3] w-full object-cover"
             style={{ borderRadius: "var(--site-radius-card)" }}
           />
@@ -195,7 +190,7 @@ function MemberDirectory() {
   return (
     <PageBand
       id="members"
-      className={cn("flex flex-col gap-10", PEOPLE_COLUMN)}
+      className={cn("flex flex-col gap-10 pt-8 lg:pt-12", PEOPLE_COLUMN)}
     >
       <div className="flex flex-col gap-3">
         <BandHeading size={BandHeadingSize.Section}>Members</BandHeading>
@@ -250,9 +245,9 @@ export default function PeoplePage() {
       subtitle={PEOPLE_LEDE}
       columnClassName={PEOPLE_COLUMN}
     >
-      <Office />
-      <ExpertGroup />
       <MemberDirectory />
+      <ExpertGroup />
+      <Office />
     </PageShell>
   );
 }

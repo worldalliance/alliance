@@ -27,7 +27,6 @@ export const experts: Expert[] = [
     name: "Dustin Palmer",
     description: "Executive Director, US Programs at GiveDirectly",
   },
-  { name: "Tom Luben", description: "Former US EPA ORD Scientist" },
   {
     name: "Romina Picolotti",
     description:
@@ -41,7 +40,7 @@ export const experts: Expert[] = [
     name: "Jennifer King",
     description: "Privacy & Data Policy Fellow, Stanford HAI",
   },
-  { name: "Ben Kalina", description: "Filmmaker and professor" },
+  { name: "Ben Kalina", description: "Emmy-winning filmmaker and professor" },
   { name: "Nathan Calvin", description: "General Counsel at Encode AI" },
   { name: "Kim Stanley Robinson", description: "Science fiction writer" },
   { name: "Oran Young", description: "Professor Emeritus, UC Santa Barbara" },
@@ -74,10 +73,6 @@ export const experts: Expert[] = [
   {
     name: "Joanna Nelson",
     description: "Founder & CEO, LandSea Science",
-  },
-  {
-    name: "Katie Chess",
-    description: "Former rare plant botanist, USGS",
   },
   {
     name: "Luke Kemp",

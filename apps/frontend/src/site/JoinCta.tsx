@@ -7,7 +7,10 @@ import { useInviteSession } from "./invite/InviteSession";
 import { WAITLIST_HREF } from "./links";
 import { SITE_COL, SitePicture } from "./ui";
 
-/** How far the artwork hangs over the footer, measured off the Figma. */
+/**
+ * How far the artwork hangs over the footer, measured off the Figma. The
+ * footer pads its top by the same amount when it follows `#join`.
+ */
 const FOOTER_OVERLAP = 54;
 
 const JOIN_CTA_HEADING = "Join the waitlist";
@@ -58,13 +61,12 @@ export function JoinCta({
   const heading =
     explicitHeading ?? (inviteHref ? INVITE_CTA_HEADING : JOIN_CTA_HEADING);
   return (
-    <section id="join" className="relative bg-[var(--site-surface)]">
-      <div
-        className="absolute inset-x-0 bottom-0 bg-black"
-        style={{ height: FOOTER_OVERLAP }}
-        aria-hidden
-      />
-      <div className={cn(SITE_COL, "relative")}>
+    <section
+      id="join"
+      className="relative bg-[var(--site-surface)]"
+      style={{ marginBottom: -FOOTER_OVERLAP }}
+    >
+      <div className={cn(SITE_COL, "relative z-10")}>
         <Link
           to={to}
           aria-label={heading}
