@@ -146,7 +146,7 @@ export class ActionsController {
     @Query("communityId", ParseIntPipe) communityId: number,
   ): Promise<CommunityCompletedActionsCountDto> {
     return new CommunityCompletedActionsCountDto(
-      await this.actionsService.countCommunityCompletedActions(
+      await this.actionRelations.countCommunityCompletedActions(
         req.user.sub,
         communityId,
       ),

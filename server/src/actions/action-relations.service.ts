@@ -4,7 +4,10 @@ import { run } from "@alliance/common/run";
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { CommunityService } from "src/community/community.service";
-import { loadedCommunityUsers } from "src/community/entities/community.entity";
+import {
+  Community,
+  loadedCommunityUsers,
+} from "src/community/entities/community.entity";
 import {
   UserActionRelationDetail,
   UserActionRelationPillStatus,
@@ -20,7 +23,10 @@ import {
 import { yieldToEventLoop } from "src/utils/event-loop";
 import { In, type Repository } from "typeorm";
 import { UserService } from "../user/user.service";
-import { findLatestTerminalActivity } from "./action-activity-status";
+import {
+  findLatestTerminalActivity,
+  sqlIsLatestCompletion,
+} from "./action-activity-status";
 import { ActionParticipantsService } from "./action-participants.service";
 import { ActionsService } from "./actions.service";
 import { CohortResolutionSession } from "./cohort-resolution-session";
@@ -38,6 +44,8 @@ export class ActionRelationsService {
     private readonly actionActivityRepository: Repository<ActionActivity>,
     @InjectRepository(ActionSuite)
     private readonly actionSuiteRepository: Repository<ActionSuite>,
+    @InjectRepository(Community)
+    private readonly communityRepository: Repository<Community>,
     private readonly actionsService: ActionsService,
     private readonly userService: UserService,
     private readonly communityService: CommunityService,
@@ -325,5 +333,41 @@ export class ActionRelationsService {
     }
 
     return this.findActionRelationsForUsers(Promise.resolve(members));
+  }
+
+  async countCommunityCompletedActions(
+    userId: number,
+    communityId: number,
+  ): Promise<number> {
+    const memberRow = await this.communityRepository
+      .createQueryBuilder("c")
+      .select("c.id", "id")
+      .innerJoin(
+        "community_users_user",
+        "cuu",
+        'cuu."communityId" = c.id AND cuu."userId" = :userId',
+        { userId },
+      )
+      .where("c.id = :communityId", { communityId })
+      .getRawOne<{ id: number }>();
+
+    if (!memberRow) {
+      await this.communityRepository.findOneOrFail({
+        where: { id: communityId },
+        select: { id: true },
+      });
+      throw new NotFoundException("User is not a member of this community");
+    }
+
+    return this.actionActivityRepository
+      .createQueryBuilder("activity")
+      .innerJoin(
+        "community_users_user",
+        "cuu",
+        'cuu."userId" = activity.userId AND cuu."communityId" = :communityId',
+        { communityId },
+      )
+      .where(sqlIsLatestCompletion("activity"))
+      .getCount();
   }
 }

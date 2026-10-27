@@ -2,7 +2,7 @@ import { ActionActivityType } from "@alliance/common/actionActivity";
 import { ActionActivityService } from "../src/actions/action-activity.service";
 import { ActionFormLinksService } from "../src/actions/action-form-links.service";
 import { ActionParticipantsService } from "../src/actions/action-participants.service";
-import { ActionsService } from "../src/actions/actions.service";
+import { ActionRelationsService } from "../src/actions/action-relations.service";
 import { CohortResolverService } from "../src/actions/cohort-resolver.service";
 import { Action } from "../src/actions/entities/action.entity";
 import { SingleMemberCohortService } from "../src/actions/single-member-cohort.service";
@@ -202,7 +202,7 @@ describe("A member's latest completion or withdrawal decides completion (e2e)", 
       );
 
       const count = await ctx.app
-        .get(ActionsService)
+        .get(ActionRelationsService)
         .countCommunityCompletedActions(member.id, community.id);
       await communityRepo.delete(community.id);
 

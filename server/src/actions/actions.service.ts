@@ -9,7 +9,6 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Community } from "src/community/entities/community.entity";
 import {
   softDeleteWhere,
   updateLive,
@@ -25,7 +24,6 @@ import type {
 } from "src/utils/Repository";
 import { DeepPartial, ILike, In, type Repository } from "typeorm";
 import { UserService } from "../user/user.service";
-import { sqlIsLatestCompletion } from "./action-activity-status";
 import { ActionFormLinksService } from "./action-form-links.service";
 import { ActionFormVariantService } from "./action-form-variant.service";
 import { replaceReviewers } from "./action-reviewers";
@@ -45,7 +43,6 @@ import {
   SetPriorityDto,
   UpdateActionDto,
 } from "./dto/action.dto";
-import { ActionActivity } from "./entities/action-activity.entity";
 import { ActionStatus } from "./entities/action-event.entity";
 import { ActionReviewer } from "./entities/action-reviewer.entity";
 import { ActionSuite } from "./entities/action-suite.entity";
@@ -73,16 +70,12 @@ export class ActionsService {
     private actionRepository: Repository<Action>,
     @InjectRepository(ActionReviewer)
     private readonly actionReviewerRepository: Repository<ActionReviewer>,
-    @InjectRepository(ActionActivity)
-    private readonly actionActivityRepository: Repository<ActionActivity>,
     @InjectRepository(EditableContent)
     private readonly editableContentRepository: TypedRepository<EditableContent>,
     @InjectRepository(GeneralUpdate)
     private readonly generalUpdateRepository: Repository<GeneralUpdate>,
     @InjectRepository(ActionSuite)
     private readonly actionSuiteRepository: Repository<ActionSuite>,
-    @InjectRepository(Community)
-    private readonly communityRepository: Repository<Community>,
     private userService: UserService,
     private readonly cohortResolverService: CohortResolverService,
     @Inject(forwardRef(() => ActionFormVariantService))
@@ -497,42 +490,6 @@ export class ActionsService {
     await this.generalUpdates.syncGeneralUpdateDatesForSuites([
       action?.suite?.id,
     ]);
-  }
-
-  async countCommunityCompletedActions(
-    userId: number,
-    communityId: number,
-  ): Promise<number> {
-    const memberRow = await this.communityRepository
-      .createQueryBuilder("c")
-      .select("c.id", "id")
-      .innerJoin(
-        "community_users_user",
-        "cuu",
-        'cuu."communityId" = c.id AND cuu."userId" = :userId',
-        { userId },
-      )
-      .where("c.id = :communityId", { communityId })
-      .getRawOne<{ id: number }>();
-
-    if (!memberRow) {
-      await this.communityRepository.findOneOrFail({
-        where: { id: communityId },
-        select: { id: true },
-      });
-      throw new NotFoundException("User is not a member of this community");
-    }
-
-    return this.actionActivityRepository
-      .createQueryBuilder("activity")
-      .innerJoin(
-        "community_users_user",
-        "cuu",
-        'cuu."userId" = activity.userId AND cuu."communityId" = :communityId',
-        { communityId },
-      )
-      .where(sqlIsLatestCompletion("activity"))
-      .getCount();
   }
 
   async findByName(
