@@ -1,11 +1,6 @@
-import { errorMessage } from "@alliance/common/errorMessage";
-import { R } from "@alliance/common/result";
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
-  actionRemindersTentativePlansForGroupAdmin,
   TagDto,
   type ActionEventDto,
-  type PreviewNotificationPlanDto,
   type ReminderAnchorCandidateDto,
   type ReminderCohortType,
   type ReminderGroupTimingMode,
@@ -14,6 +9,8 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import LargeCheckbox from "@alliance/sharedweb/ui/LargeCheckbox";
 import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { adminRefusalMessage } from "../../lib/adminRefusal";
+import { useReminderTentativePlansAdmin } from "../../lib/useReminderTentativePlansAdmin";
 import ReminderKeywordHelp from "./ReminderKeywordHelp";
 import ReminderMessageFields from "./ReminderMessageFields";
 import ReminderScheduleFields from "./ReminderScheduleFields";
@@ -132,12 +129,6 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     }
   }, [timingMode, relativeRangeStartHours, relativeRangeEndHours]);
 
-  const [tentativePlans, setTentativePlans] = useState<
-    PreviewNotificationPlanDto[] | null
-  >(null);
-  const [previewError, setPreviewError] = useState<string | null>(null);
-  const [previewAttempt, setPreviewAttempt] = useState(0);
-
   const [localError, setLocalError] = useState<string | null>(null);
   const initialSnapshotRef = useRef<string>("");
 
@@ -171,54 +162,28 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     });
   }, [initialValues]);
 
-  useEffect(() => {
-    if (!selectedEventId) {
-      setTentativePlans(null);
-      return;
-    }
-    if (draft.cohortType === "tag" && !draft.userTagId) {
-      setTentativePlans([]);
-      return;
-    }
-    if (
-      draft.timingMode === "within_relative_range" &&
-      !relativeRangeIsValid(draft)
-    ) {
-      setTentativePlans([]);
-      return;
-    }
+  const previewSkipped =
+    (draft.cohortType === "tag" && !draft.userTagId) ||
+    (draft.timingMode === "within_relative_range" &&
+      !relativeRangeIsValid(draft));
+  const previewGroup = useMemo(
+    () =>
+      previewSkipped ? null : { ...reminderGroupRequestFields(draft), suiteId },
+    [previewSkipped, draft, suiteId],
+  );
+  const preview = useReminderTentativePlansAdmin(selectedEventId, previewGroup);
+  const tentativePlans = !selectedEventId
+    ? null
+    : previewSkipped
+      ? []
+      : (preview.plans ?? null);
+  const previewError = preview.error
+    ? adminRefusalMessage(preview.error, "Unable to get tentative plans")
+    : null;
 
-    setTentativePlans(null);
-    setPreviewError(null);
-    let cancelled = false;
-    const timer = setTimeout(() => {
-      R.fromPromise(
-        actionRemindersTentativePlansForGroupAdmin({
-          path: {
-            eventId: selectedEventId,
-          },
-          body: { ...reminderGroupRequestFields(draft), suiteId },
-        }),
-      ).then((result) => {
-        if (cancelled) return;
-        if (!result.ok || result.value.error) {
-          setPreviewError(
-            errorMessage({
-              error: result.ok ? result.value.error : result.error,
-              fallback: "Unable to get tentative plans",
-            }),
-          );
-          return;
-        }
-        setLocalError(null);
-        setTentativePlans(result.value.data ?? []);
-      });
-    }, 300);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [suiteId, selectedEventId, draft, previewAttempt]);
+  useEffect(() => {
+    if (preview.plans) setLocalError(null);
+  }, [preview.plans]);
 
   useEffect(() => {
     if (computedInitialSnapshot === initialSnapshotRef.current) {
@@ -439,7 +404,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
         <TentativePlanSummary
           tentativePlans={tentativePlans}
           previewError={previewError}
-          onRetry={() => setPreviewAttempt((attempt) => attempt + 1)}
+          onRetry={preview.retry}
         />
         {onCancel && (
           <Button

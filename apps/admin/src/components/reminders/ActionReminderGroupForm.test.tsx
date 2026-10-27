@@ -64,6 +64,8 @@ const mockFetch = (
 
 const renderForm = (ui: ReactElement) => render(ui, queryWrapper());
 
+const countError = "Unable to get tentative plans";
+
 const plan = { scheduledFor: new Date(2030, 0, 1).toISOString() };
 
 it("previews the group with its suite", async () => {
@@ -165,7 +167,7 @@ it("holds submit after a failed preview until a retry succeeds", async () => {
   renderForm(formElement(7));
   const submit = screen.getByRole("button", { name: "Create Reminders" });
 
-  expect(await screen.findByText("Failed to fetch")).toBeTruthy();
+  expect(await screen.findByText(countError)).toBeTruthy();
   expect(submit).toHaveProperty("disabled", true);
 
   failing = false;
@@ -173,7 +175,18 @@ it("holds submit after a failed preview until a retry succeeds", async () => {
     screen.getByRole("button", { name: "Retry recipient count" }),
   );
   await waitFor(() => expect(submit).toHaveProperty("disabled", false));
-  expect(screen.queryByText("Failed to fetch")).toBeNull();
+  expect(screen.queryByText(countError)).toBeNull();
+});
+
+it("shows why the server refused to count recipients", async () => {
+  mockFetch(async (request) =>
+    isTentativeRequest(request)
+      ? Response.json({ message: "Unknown tag" }, { status: 400 })
+      : Response.json([], { status: 201 }),
+  );
+  renderForm(formElement(7));
+
+  expect(await screen.findByText("Unknown tag")).toBeTruthy();
 });
 
 it("replaces a failed preview's error while it recounts", async () => {
@@ -187,11 +200,11 @@ it("replaces a failed preview's error while it recounts", async () => {
     return new Promise<Response>(() => {});
   });
   const { rerender } = renderForm(formElement(7));
-  expect(await screen.findByText("Failed to fetch")).toBeTruthy();
+  expect(await screen.findByText(countError)).toBeTruthy();
 
   rerender(formElement(8));
 
-  expect(screen.queryByText("Failed to fetch")).toBeNull();
+  expect(screen.queryByText(countError)).toBeNull();
   expect(screen.getByText("Counting recipients…")).toBeTruthy();
 });
 

@@ -1,5 +1,6 @@
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import type {
+  CreateReminderGroupDto,
   EventType,
   InviteLinkKind,
   InviteLinkSort,
@@ -280,6 +281,10 @@ export const queryKeys = {
   ) => ["actionRemindersPreviewEmailHtmlAdmin", eventId, preview] as const,
   reminderGroupClickRatesAdmin: () =>
     ["analyticsGetReminderGroupClickRatesAdmin"] as const,
+  reminderTentativePlansAdmin: (
+    eventId: number | null,
+    group: CreateReminderGroupDto | null,
+  ) => ["actionRemindersTentativePlansForGroupAdmin", eventId, group] as const,
   reminderTextPreviewAdmin: (
     eventId: number | null,
     preview: PreviewTextDto | null,
