@@ -21,7 +21,7 @@ Before filing any issue, make sure it isn't already filed.
 
 File it in the `Backlog` state.
 
-Label it `AI-generated`, at least one label from the `Area` group (`Frontend`, `Backend`, `Admin`, `Infra`, `Mobile`, `Server`), and one from the `Type` group (`Bug`, `Improvement`, `Feature`), plus any other relevant labels.
+Label it `AI-generated`, plus labels from every label group as each group's description says, plus any other relevant labels. The groups and their labels' descriptions: `issueLabels(filter: {isGroup: {eq: true}}) { nodes { name description children { nodes { name description } } } }`.
 
 Write the description so the bug can be fixed from it alone, weeks later: repro, file paths with line numbers, and the branch and commit sha when the finding only exists on an unmerged branch.
 
