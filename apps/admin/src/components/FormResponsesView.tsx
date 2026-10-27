@@ -10,9 +10,9 @@ import type {
   FormResponseDto,
   ProfileDto,
 } from "@alliance/shared/client";
+import { downloadBlob } from "@alliance/sharedweb/lib/downloadBlob";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
-import { downloadBlob } from "../lib/downloadBlob";
 import {
   getDirectSnapshotTarget,
   type ReturnToState,
