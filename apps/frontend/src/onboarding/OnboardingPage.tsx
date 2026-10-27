@@ -75,9 +75,20 @@ const OnboardingPage = () => {
   const { latestContract } = useContract();
   const contractSignature = useContractSignature();
   const [searchParams, setSearchParams] = useSearchParams();
+  const oauthNotice = useOAuthNotice();
 
   const stepParam = searchParams.get("step");
-  const step = isOnboardingStep(stepParam) ? stepParam : OnboardingStep.Account;
+  // The provider lands here before auth loads. Until the OAuth effect below
+  // redirects, Account and any draft that points back at it would flash the
+  // invite-only heading. The notice outlives that redirect; the landing ends
+  // once a step is in the URL.
+  const oauthLanding =
+    oauthNotice?.kind === "outcome" && !isOnboardingStep(stepParam);
+  const step = isOnboardingStep(stepParam)
+    ? stepParam
+    : oauthLanding
+      ? OnboardingStep.Community
+      : OnboardingStep.Account;
   const referralCode = searchParams.get("ref");
   const isAccount = step === OnboardingStep.Account;
   // const mobileWeb = useMediaQuery(MOBILE_WEB_QUERY);
@@ -127,7 +138,10 @@ const OnboardingPage = () => {
     [setSearchParams],
   );
 
-  useDraftWriter({ email, password, step, referralCode }, !registered);
+  useDraftWriter(
+    { email, password, step, referralCode },
+    !registered && !oauthLanding,
+  );
 
   // A reload with nothing saved cannot submit a half-filled account, so it
   // restarts rather than stranding the member on a later screen.
@@ -143,10 +157,10 @@ const OnboardingPage = () => {
   useEffect(() => {
     if (resumedRef.current) return;
     resumedRef.current = true;
+    if (oauthLanding) return;
     if (draft && draft.step !== step) goTo(draft.step);
-  }, [draft, step, goTo]);
+  }, [draft, step, goTo, oauthLanding]);
 
-  const oauthNotice = useOAuthNotice();
   const oauthError =
     oauthNotice?.kind === "error" ? oauthNoticeMessage(oauthNotice) : null;
 
@@ -308,6 +322,16 @@ const OnboardingPage = () => {
     fetchMe,
     contractSignature,
   ]);
+
+  // Every provider sign-in returns here, so until auth says where the member
+  // belongs, any step shown is the wrong one for someone.
+  if (oauthLanding && (authLoading || user?.hasActiveContract)) {
+    return (
+      <div className="flex h-dvh items-center justify-center bg-white">
+        <Spinner size="large" />
+      </div>
+    );
+  }
 
   return (
     <div

@@ -8,8 +8,10 @@ import { MemoryRouter, useLocation } from "react-router";
 import * as ytEmbedModule from "../components/AllianceIntroYouTubeEmbed";
 import { AuthContext, type AuthContextType } from "../lib/AuthContext";
 import { InviteSessionProvider } from "../site/invite/InviteSession";
+import * as landingBodyModule from "../site/sections/LandingBody";
 import { testAuthUser } from "../stories/testData";
 import OnboardingPage from "./OnboardingPage";
+import * as onboardingPanelModule from "./OnboardingPanel";
 import { OnboardingStep } from "./flow";
 
 let contract: ContractDto | null;
@@ -54,6 +56,7 @@ beforeEach(() => {
   contract = null;
   signRefusal = null;
   signUnreachable = false;
+  localStorage.clear();
   // The landing body's player reaches for a YouTube thumbnail on render.
   jest.spyOn(ytEmbedModule, "default").mockImplementation(() => <></>);
   // The OAuth return URL the account step builds needs a real origin.
@@ -97,19 +100,26 @@ const step = () => new URLSearchParams(search()).get("step");
 // The OAuth return URL the account step builds needs a real origin.
 window.happyDOM.setURL("https://test.alliance/onboarding");
 
-const visit = (url: string, user?: UserDto) => {
-  render(
+/**
+ * Returns a call that settles auth on the user it is given, keeping the page
+ * mounted.
+ */
+const visit = (url: string, user?: UserDto, { authLoading = false } = {}) => {
+  const queryClient = new QueryClient();
+  const page = (pageUser: UserDto | undefined, loading: boolean) => (
     <MemoryRouter initialEntries={[url]}>
-      <QueryClientProvider client={new QueryClient()}>
-        <AuthContext.Provider value={authValue(user)}>
+      <QueryClientProvider client={queryClient}>
+        <AuthContext.Provider value={{ ...authValue(pageUser), loading }}>
           <InviteSessionProvider>
             <OnboardingPage />
             <Search />
           </InviteSessionProvider>
         </AuthContext.Provider>
       </QueryClientProvider>
-    </MemoryRouter>,
+    </MemoryRouter>
   );
+  const { rerender } = render(page(user, authLoading));
+  return (settled?: UserDto) => rerender(page(settled, false));
 };
 
 // The provider returns `linked` rather than `signed_up` whenever a user row
@@ -144,6 +154,72 @@ test("a provider signup walks on from the screen it lands on", async () => {
   await waitFor(() =>
     expect(search()).toBe(`?step=${OnboardingStep.Commitment}`),
   );
+});
+
+test("a provider return shows no sign-up screen while the session loads", () => {
+  visit("/onboarding?google=signed_up", undefined, { authLoading: true });
+
+  expect(
+    screen.queryByRole("heading", { name: "Create an account" }),
+  ).toBeNull();
+  expect(localStorage.getItem("alliance:onboarding-draft")).toBeNull();
+});
+
+test("a provider return ignores a typed-email draft while the session loads", () => {
+  localStorage.setItem(
+    "alliance:onboarding-draft",
+    JSON.stringify({
+      email: "member@example.com",
+      password: "",
+      step: OnboardingStep.Account,
+      referralCode: null,
+      savedAt: Date.now(),
+    }),
+  );
+  visit("/onboarding?google=signed_up", undefined, { authLoading: true });
+
+  expect(
+    screen.queryByRole("heading", { name: "Create an account" }),
+  ).toBeNull();
+  expect(step()).not.toBe(OnboardingStep.Account);
+});
+
+test("a provider sign-in by a member who has entered it shows no step on the way", () => {
+  visit("/onboarding?google=signed_in", member(true), { authLoading: true });
+
+  expect(screen.queryByText("What is the Alliance?")).toBeNull();
+  expect(
+    screen.queryByRole("heading", { name: "Create an account" }),
+  ).toBeNull();
+});
+
+test("a provider return never shows Account once the session loads", () => {
+  const landingBody = jest.spyOn(landingBodyModule, "LandingBody");
+  const settleAuth = visit("/onboarding?google=signed_up", undefined, {
+    authLoading: true,
+  });
+  settleAuth(member(false));
+
+  expect(landingBody).not.toHaveBeenCalled();
+});
+
+test("a provider sign-in by a member who has entered it never shows a step", () => {
+  const panel = jest.spyOn(onboardingPanelModule, "OnboardingPanel");
+  const settleAuth = visit("/onboarding?google=signed_in", undefined, {
+    authLoading: true,
+  });
+  settleAuth(member(true));
+
+  expect(panel).not.toHaveBeenCalled();
+});
+
+test("a provider signup keeps its screen once the agreement is signed", async () => {
+  const settleAuth = visit("/onboarding?google=signed_up", member(false));
+  await waitFor(() => expect(step()).toBe(OnboardingStep.Community));
+
+  settleAuth(member(true));
+
+  expect(screen.getByText("What is the Alliance?")).toBeTruthy();
 });
 
 test("a member with an account keeps their place across a reload", async () => {
