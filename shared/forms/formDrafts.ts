@@ -11,6 +11,14 @@ import { z } from "zod";
 import { dropUnuploadedFileAnswers } from "./fileAnswers";
 import { dropUnknownOptionAnswers } from "./optionAnswers";
 
+export function clampPageIndex(idx: number, maxPageIndex: number): number {
+  if (!Number.isFinite(idx)) return 0;
+  const normalized = Math.floor(idx);
+  if (normalized < 0) return 0;
+  if (normalized > maxPageIndex) return maxPageIndex;
+  return normalized;
+}
+
 /**
  * Compute a stable storage key for a form draft.
  * Format: `form:<slug>:v<version>[:<instanceId>]`

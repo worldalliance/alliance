@@ -2,6 +2,7 @@ import { type FormValue } from "@alliance/common/forms/form-schema";
 import { type FormResponseDto } from "@alliance/shared/client";
 import {
   applyDefaultValues,
+  clampPageIndex,
   computeFormStorageKey,
   filterAnswersByFieldIds,
   readStoredFormDraft,
@@ -60,16 +61,8 @@ export function useFormDraftState({
     [formId, persistKey],
   );
 
-  const clampPageIndex = (idx: number): number => {
-    if (!Number.isFinite(idx)) return 0;
-    const normalized = Math.floor(idx);
-    if (normalized < 0) return 0;
-    if (normalized > maxPageIndex) return maxPageIndex;
-    return normalized;
-  };
-
   const [currentPageIndex, setCurrentPageIndex] = useState<number>(() =>
-    clampPageIndex(initialPageIndex ?? 0),
+    clampPageIndex(initialPageIndex ?? 0, maxPageIndex),
   );
   const [formData, setFormData] = useState<Record<string, FormValue>>(() => {
     if (readOnly) {
@@ -139,7 +132,7 @@ export function useFormDraftState({
             setPublicAnswers((prev) => ({ ...prev, ...publicAnswers }));
           }
           if (currentPageIndex !== undefined) {
-            setCurrentPageIndex(clampPageIndex(currentPageIndex));
+            setCurrentPageIndex(clampPageIndex(currentPageIndex, maxPageIndex));
           }
         }
       } catch {
@@ -191,7 +184,9 @@ export function useFormDraftState({
       ...prev,
       ...restorablePublicAnswers(serverDraft.publicAnswers, outputFieldIds),
     }));
-    setCurrentPageIndex(clampPageIndex(serverDraft.currentPageIndex));
+    setCurrentPageIndex(
+      clampPageIndex(serverDraft.currentPageIndex, maxPageIndex),
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     serverDraft,
