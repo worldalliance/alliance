@@ -20,7 +20,7 @@ export function pageNavigation({
   visibilitySettled: boolean;
   scrollPageTo: (y: number, animated?: boolean) => void;
   scrollToEnd: (animated?: boolean) => void;
-} & Validation) {
+} & Pick<Validation, "validatePage" | "validateAllPages">) {
   const showPageFromTop = (index: number) => {
     setCurrentPageIndex(index);
     setImmediate(() => scrollPageTo(0, false));

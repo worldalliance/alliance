@@ -183,6 +183,25 @@ describe("useFormValidation", () => {
     expect(result.current.fieldErrors).toEqual({});
   });
 
+  it("validates only the fields it is given", async () => {
+    const shown = { ...textField("shown"), required: true };
+    const schema = schemaWith([
+      shown,
+      { ...textField("elsewhere"), required: true },
+    ]);
+    const { result } = renderValidation({ schema, formData: {} });
+
+    const screen = await validate(() =>
+      result.current.validateFields({
+        fields: [shown],
+        pageVisible: true,
+        includeCustomValidators: false,
+      }),
+    );
+    expect(screen).toEqual({ isValid: false, firstInvalidFieldId: "shown" });
+    expect(result.current.fieldErrors.elsewhere).toBeUndefined();
+  });
+
   it("reports the first invalid page across the whole form", async () => {
     const schema: FormSchema = {
       pages: [
