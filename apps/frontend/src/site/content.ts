@@ -122,7 +122,7 @@ export type PostUpdate = {
 };
 
 export const openedPost: PostUpdate = {
-  title: "Members reviewed 1,240 chatbot transcripts for child safety",
+  title: "Members reviewed 374 chatbot transcripts for child safety",
   actionLabel:
     "Review chatbot transcripts to help make chatbots safer for children",
   timeAgo: "4 months ago",

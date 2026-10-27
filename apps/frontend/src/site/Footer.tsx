@@ -50,7 +50,7 @@ function LegalRow() {
 
 export function SiteFooter() {
   return (
-    <footer className="relative isolate overflow-hidden bg-[var(--site-primary)] text-white">
+    <footer className="relative isolate overflow-hidden bg-[var(--site-primary)] text-white [#join+&]:pt-[54px]">
       <TexturedFill />
       <div className={cn(SITE_COL, "relative z-10 pt-16 pb-10 lg:pt-24")}>
         <div className="flex flex-col gap-12 lg:flex-row lg:justify-between">
