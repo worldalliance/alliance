@@ -411,6 +411,13 @@ export class UserService {
     return this.userRepository.find();
   }
 
+  async findUsersWithActiveContract(): Promise<User[]> {
+    return this.userRepository
+      .createQueryBuilder("u")
+      .where(sqlUserHasActiveContractAt("u.id", "NOW()"))
+      .getMany();
+  }
+
   async findActiveUsersWithTags(): Promise<User[]> {
     return this.userRepository.find({
       relations: { tags: true, awayRanges: true, contractEvents: true },
