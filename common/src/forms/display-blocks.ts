@@ -68,12 +68,14 @@ const imagesItemSchema = z.strictObject({
   src: z.string(),
   alt: z.string().optional(),
   caption: z.string().optional(),
+  fileName: z.string().optional(),
 });
 export type ImagesItem = z.infer<typeof imagesItemSchema>;
 
 const imagesContentSchema = z.strictObject({
   ...baseContentFields,
   images: z.array(imagesItemSchema),
+  downloadable: z.boolean().optional(),
 });
 
 const videoContentSchema = z.strictObject({

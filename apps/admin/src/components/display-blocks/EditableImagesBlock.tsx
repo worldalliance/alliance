@@ -81,11 +81,13 @@ function Thumbnail({ src }: { src: string }) {
 function SortableImageRow({
   id,
   image,
+  downloadable,
   onUpdate,
   onRemove,
 }: {
   id: string;
   image: ImagesItem;
+  downloadable: boolean;
   onUpdate: (updates: Partial<ImagesItem>) => void;
   onRemove: () => void;
 }) {
@@ -127,6 +129,17 @@ function SortableImageRow({
           placeholder="Alt text (optional)"
           className="w-full rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
+        {downloadable && (
+          <input
+            value={image.fileName ?? ""}
+            onChange={(e) =>
+              onUpdate({ fileName: e.target.value || undefined })
+            }
+            placeholder="Download file name (default: image)"
+            aria-label="Download file name"
+            className="w-full rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+        )}
       </div>
       <button
         type="button"
@@ -381,6 +394,17 @@ function ImagesEditor({
         )}
       </div>
 
+      <label className="flex items-center gap-2 text-xs text-zinc-600">
+        <input
+          type="checkbox"
+          checked={block.downloadable ?? false}
+          onChange={(e) =>
+            onUpdate({ downloadable: e.target.checked || undefined })
+          }
+        />
+        Show a download button
+      </label>
+
       {uploadError && (
         <p className="text-xs text-red-600">
           {failureText({ failure: uploadError, activeUserId, targetLabel })}
@@ -410,6 +434,7 @@ function ImagesEditor({
                   key={ids[index]}
                   id={ids[index]}
                   image={image}
+                  downloadable={block.downloadable ?? false}
                   onUpdate={(updates) =>
                     setImages(
                       images.map((entry, i) =>
