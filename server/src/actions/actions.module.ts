@@ -37,6 +37,7 @@ import { User } from "../user/entities/user.entity";
 import { UserModule } from "../user/user.module";
 import { ActionActivityService } from "./action-activity.service";
 import { ActionFeedController } from "./action-feed.controller";
+import { ActionFormLinksService } from "./action-form-links.service";
 import { ActionFormVariantService } from "./action-form-variant.service";
 import { ActionFormsController } from "./action-forms.controller";
 import { ActionImportExportService } from "./action-import-export.service";
@@ -211,10 +212,12 @@ import { WelcomeQueueService } from "./welcome-queue.service";
     WelcomeQueueService,
     ActionActivityService,
     MemberActionsService,
+    ActionFormLinksService,
   ],
   exports: [
     ActionsService,
     ActionActivityService,
+    ActionFormLinksService,
     ActionVisibilityModule,
     ActionFormVariantService,
     ActionEventRecipientService,

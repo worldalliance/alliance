@@ -13,6 +13,7 @@ import { User } from "src/user/entities/user.entity";
 import { CachedFilter } from "src/utils/cached-filter";
 import { type Repository } from "typeorm";
 import { resolveUserActionRelation } from "./action-activity-status";
+import { ActionFormLinksService } from "./action-form-links.service";
 import { ActionsService } from "./actions.service";
 import { ActionSharePreview, UserActionRelation } from "./dto/action.dto";
 import { ShareUrlStats } from "./dto/share-url.dto";
@@ -27,6 +28,7 @@ export class ActionShareService {
     private readonly formResponseRepository: Repository<FormResponse>,
     private readonly shareUrlsService: ShareUrlsService,
     private readonly actionsService: ActionsService,
+    private readonly formLinks: ActionFormLinksService,
   ) {}
 
   async getSharePreview(
@@ -108,7 +110,7 @@ export class ActionShareService {
   }
 
   async getShareLinksForForm(formId: number): Promise<ShareUrl[]> {
-    const action = await this.actionsService.findActionByFormId(formId);
+    const action = await this.formLinks.findActionByFormId(formId);
     if (!action) {
       throw new NotFoundException("No action found for this form");
     }

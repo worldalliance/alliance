@@ -32,10 +32,8 @@ import type {
 } from "src/utils/Repository";
 import { DeepPartial, ILike, In, type Repository } from "typeorm";
 import { UserService } from "../user/user.service";
-import {
-  sqlIsLatestCompletion,
-  sqlIsLatestWithdrawal,
-} from "./action-activity-status";
+import { sqlIsLatestCompletion } from "./action-activity-status";
+import { ActionFormLinksService } from "./action-form-links.service";
 import { ActionFormVariantService } from "./action-form-variant.service";
 import { replaceReviewers } from "./action-reviewers";
 import { isActionUpdatePublished } from "./action-update-visibility";
@@ -57,7 +55,6 @@ import {
 import { CreateReminderGroupDto } from "./dto/reminder-group.dto";
 import { ActionActivity } from "./entities/action-activity.entity";
 import { ActionEvent, ActionStatus } from "./entities/action-event.entity";
-import { ActionFormVariant } from "./entities/action-form-variant.entity";
 import { ActionReviewer } from "./entities/action-reviewer.entity";
 import { ActionSuite } from "./entities/action-suite.entity";
 import {
@@ -73,13 +70,6 @@ import {
   assertPrerequisitesValid,
 } from "./prerequisite-validation";
 import { shiftPrioritiesAfterInsertion } from "./priority-order";
-
-/**
- * All anything resolving a form back to its action reads. A partially selected
- * `Action` would type as a whole one with most columns silently undefined, so
- * the narrow reads hand back a narrow type instead.
- */
-export type LinkedAction = Pick<Action, "id" | "name">;
 
 const ACTION_PARENT_GONE = "That suite, author or form is gone";
 
@@ -104,8 +94,6 @@ export class ActionsService {
     private readonly actionSuiteRepository: Repository<ActionSuite>,
     @InjectRepository(Community)
     private readonly communityRepository: Repository<Community>,
-    @InjectRepository(ActionFormVariant)
-    private readonly actionFormVariantRepository: Repository<ActionFormVariant>,
     private userService: UserService,
     private readonly cohortResolverService: CohortResolverService,
     private readonly actionEventReminderService: ActionEventReminderService,
@@ -115,6 +103,7 @@ export class ActionsService {
     private readonly cohortDecisionStaffService: CohortDecisionStaffService,
     private readonly actionVisibility: ActionVisibilityService,
     private readonly generalUpdates: GeneralUpdatesService,
+    private readonly formLinks: ActionFormLinksService,
   ) {}
 
   async applyAssignedFormIds(
@@ -138,71 +127,6 @@ export class ActionsService {
 
   async findActionById(id: number): Promise<Action | null> {
     return this.actionRepository.findOne({ where: { id } });
-  }
-
-  async findActionByFormId(formId: number): Promise<LinkedAction | null> {
-    const byFormId = await this.findActionsByFormIds([formId]);
-    return byFormId.get(formId) ?? null;
-  }
-
-  /** Resolves all form IDs in at most three queries. Direct task forms take
-   * precedence over variants. Narrow because listing every form would
-   * otherwise materialize every linked action's markdown and image columns. */
-  async findActionsByFormIds(
-    formIds: number[],
-  ): Promise<Map<number, LinkedAction>> {
-    const byFormId = new Map<number, LinkedAction>();
-    if (formIds.length === 0) {
-      return byFormId;
-    }
-    const direct = await this.actionRepository.find({
-      where: { taskFormId: In(formIds) },
-      select: { id: true, name: true, taskFormId: true },
-    });
-    for (const action of direct) {
-      if (action.taskFormId != null) {
-        byFormId.set(action.taskFormId, { id: action.id, name: action.name });
-      }
-    }
-    const remaining = formIds.filter((formId) => !byFormId.has(formId));
-    if (remaining.length === 0) {
-      return byFormId;
-    }
-    const variants = await this.actionFormVariantRepository.find({
-      where: { formId: In(remaining) },
-      select: { formId: true, actionId: true },
-    });
-    if (variants.length === 0) {
-      return byFormId;
-    }
-    const actions = await this.actionRepository.find({
-      where: { id: In(variants.map((variant) => variant.actionId)) },
-      select: { id: true, name: true },
-    });
-    const actionById = new Map(
-      actions.map((action) => [
-        action.id,
-        { id: action.id, name: action.name },
-      ]),
-    );
-    for (const variant of variants) {
-      const action = actionById.get(variant.actionId);
-      if (action) {
-        byFormId.set(variant.formId, action);
-      }
-    }
-    return byFormId;
-  }
-
-  async assertFormIdNotUsedAsVariant(formId: number): Promise<void> {
-    const variant = await this.actionFormVariantRepository.findOne({
-      where: { formId },
-    });
-    if (variant) {
-      throw new BadRequestException(
-        `Form ${formId} is already used as a variant form for action ${variant.actionId}`,
-      );
-    }
   }
 
   /** Reviewers are ordered by the position the admin sent them in. */
@@ -251,7 +175,7 @@ export class ActionsService {
       });
     }
     if (rest.taskFormId !== undefined) {
-      await this.assertFormIdNotUsedAsVariant(rest.taskFormId);
+      await this.formLinks.assertFormIdNotUsedAsVariant(rest.taskFormId);
     }
     const action = this.actionRepository.create(rest);
     action.reviewers = this.reviewerRows(reviewers ?? []);
@@ -516,7 +440,7 @@ export class ActionsService {
       rest.taskFormId !== undefined &&
       rest.taskFormId !== action.taskFormId
     ) {
-      await this.assertFormIdNotUsedAsVariant(rest.taskFormId);
+      await this.formLinks.assertFormIdNotUsedAsVariant(rest.taskFormId);
     }
 
     action.suite = {
@@ -712,19 +636,6 @@ export class ActionsService {
       new Date(Date.now() - NOTIFICATION_LOOKBACK_WINDOW_MS),
       new Date(Date.now() + milliseconds({ days: 30 })),
     );
-  }
-
-  async getWithdrawalsForForm(formId: number): Promise<ActionActivity[]> {
-    const action = await this.findActionByFormId(formId);
-    if (!action) {
-      return [];
-    }
-    return this.actionActivityRepository
-      .createQueryBuilder("activity")
-      .where("activity.actionId = :actionId", { actionId: action.id })
-      .andWhere(sqlIsLatestWithdrawal("activity"))
-      .orderBy("activity.createdAt", "DESC")
-      .getMany();
   }
 
   async evaluateCohortExpressionBatch(expression: unknown): Promise<number[]> {

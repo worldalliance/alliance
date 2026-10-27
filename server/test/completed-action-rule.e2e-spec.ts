@@ -1,5 +1,6 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { ActionActivityService } from "../src/actions/action-activity.service";
+import { ActionFormLinksService } from "../src/actions/action-form-links.service";
 import { ActionParticipantsService } from "../src/actions/action-participants.service";
 import { ActionsService } from "../src/actions/actions.service";
 import { CohortResolverService } from "../src/actions/cohort-resolver.service";
@@ -175,7 +176,7 @@ describe("A member's latest completion or withdrawal decides completion (e2e)", 
       await ctx.app.get(ActionStatsAnalyticsService).calculateActionStats();
 
       const [withdrawals, stats] = await Promise.all([
-        ctx.app.get(ActionsService).getWithdrawalsForForm(form.id),
+        ctx.app.get(ActionFormLinksService).getWithdrawalsForForm(form.id),
         ctx.dataSource
           .getRepository(ActionStatsRecord)
           .findOneByOrFail({ actionId: action.id }),

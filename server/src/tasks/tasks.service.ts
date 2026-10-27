@@ -89,8 +89,8 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { isNull, omitBy } from "es-toolkit";
 import { ActionActivityService } from "src/actions/action-activity.service";
+import { ActionFormLinksService } from "src/actions/action-form-links.service";
 import { ActionFormVariantService } from "src/actions/action-form-variant.service";
-import { ActionsService } from "src/actions/actions.service";
 import { Action, parseAction } from "src/actions/entities/action.entity";
 import {
   FollowUpForm,
@@ -301,8 +301,8 @@ export class TasksService {
     private userService: UserService,
     private readonly userVisibilityContextService: UserVisibilityContextService,
     private forumCommentQueryService: ForumCommentQueryService,
-    private actionsService: ActionsService,
     private readonly actionActivityService: ActionActivityService,
+    private readonly formLinks: ActionFormLinksService,
     private mmsService: MmsService,
     @InjectRepository(CustomValidator)
     private customValidatorRepository: Repository<CustomValidator>,
@@ -1604,7 +1604,7 @@ export class TasksService {
       .addSelect(FIELD_COUNT, "fieldCount")
       .orderBy("form.id", "DESC")
       .getRawMany<FormIndexRow>();
-    const actionsByFormId = await this.actionsService.findActionsByFormIds(
+    const actionsByFormId = await this.formLinks.findActionsByFormIds(
       rows.map((row) => row.id),
     );
     return rows.map((row) => ({

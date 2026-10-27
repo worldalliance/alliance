@@ -36,6 +36,7 @@ import {
   ApiAcknowledgeDeadlineShortening,
 } from "./acknowledge-deadline-shortening";
 import { ActionActivityService } from "./action-activity.service";
+import { ActionFormLinksService } from "./action-form-links.service";
 import { ActionImportExportService } from "./action-import-export.service";
 import { ActionParticipantsService } from "./action-participants.service";
 import { ActionRelationsService } from "./action-relations.service";
@@ -78,6 +79,7 @@ export class ActionsController {
     private readonly actionActivityService: ActionActivityService,
     private readonly memberActions: MemberActionsService,
     private readonly participants: ActionParticipantsService,
+    private readonly formLinks: ActionFormLinksService,
     private readonly importExport: ActionImportExportService,
     private readonly actionRelations: ActionRelationsService,
     private readonly actionSuites: ActionSuitesService,
@@ -106,7 +108,7 @@ export class ActionsController {
   async getWithdrawalsAdmin(
     @Param("formId", ParseIntPipe) formId: number,
   ): Promise<ActionWithdrawalDto[]> {
-    const activities = await this.actionsService.getWithdrawalsForForm(formId);
+    const activities = await this.formLinks.getWithdrawalsForForm(formId);
     return activities.map((a) => new ActionWithdrawalDto(a));
   }
 
