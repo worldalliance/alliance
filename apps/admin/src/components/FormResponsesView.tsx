@@ -140,7 +140,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
   );
 
   const tabParam = params.get(paramKey("tab"));
-  const tab = isTab(tabParam) ? tabParam : "replays";
+  const tab = isTab(tabParam) ? tabParam : "responses";
   const filterFieldId = params.get(paramKey("filterField"))?.trim() ?? "";
   const filterOpParam = params.get(paramKey("filterOp"));
   const filterValueParam = params.get(paramKey("filterValue"));
