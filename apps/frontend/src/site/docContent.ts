@@ -16,8 +16,6 @@ export type GuideSectionCopy = {
   /** Shown in the table of contents. */
   label: string;
   markdown: string;
-  /** Prose that follows the section's graphic, where it has one. */
-  markdownAfter?: string;
 };
 
 export const GUIDE_SECTIONS: Record<GuideSectionKind, GuideSectionCopy> = {
@@ -40,8 +38,7 @@ The Alliance is composed of:
 2. **Members** who commit to complete tasks assigned to them.
 
 We built an online platform (web and mobile apps) that members use to complete tasks.
-`,
-    markdownAfter: `
+
 We depend on members reliably completing the tasks they are assigned. Since we know exactly how many people will participate in an action, we can plan precise and effective actions. For example, we can:
 
 - Build a base of common knowledge over time.
@@ -49,7 +46,7 @@ We depend on members reliably completing the tasks they are assigned. Since we k
 - Make lifestyle changes only when there are enough members to have a meaningful total impact.
 - Negotiate agreements with third parties, such as corporations, backed by credible financial incentives (such as a bulk purchase or promise of boycott).
 
-New members sign a **membership contract** that sets a clear expectation of reliability. Once they sign a contract, we start to assign them tasks. If a member does not complete the tasks they are assigned, we automatically suspend their contract and no longer assign them tasks. They can re-sign the contract at any time.
+New members enter into a **membership agreement** that sets a clear expectation of reliability. Once they enter into an agreement, we start to assign them tasks. If a member does not complete the tasks they are assigned, we automatically suspend their agreement and no longer assign them tasks. They can enter into the agreement again at any time.
 `,
   },
   [GuideSectionKind.Projects]: {
@@ -108,7 +105,7 @@ export const GUIDE_SECTION_ORDER: GuideSectionKind[] = [
   GuideSectionKind.Resources,
 ];
 
-export const GUIDE_CONTRACT_CAPTION = "Our current membership contract";
+export const GUIDE_CONTRACT_CAPTION = "Our current membership agreement";
 
 export const MEMBER_CONTRACT_TITLE = "Membership contract";
 

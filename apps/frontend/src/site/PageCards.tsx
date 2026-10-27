@@ -3,6 +3,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { ArrowRight } from "lucide-react";
 import type { ReactNode } from "react";
 import { href, Link } from "react-router";
+import { ContractDescriptionList } from "../components/ContractDescriptionList";
 import {
   ACTION_PRIORITY_LABELS,
   type ActionPriorityTags,
@@ -159,27 +160,13 @@ export function ImpactCard({
   );
 }
 
-function ContractDescriptionList() {
+function ContractTerms() {
   const { latestContract } = useContract();
-  const items = latestContract?.description ?? [];
-  if (items.length === 0) return null;
   return (
-    <ol className="flex list-none flex-col gap-4 pl-0">
-      {items.map((item, index) => (
-        <li key={index} className="flex min-w-0 flex-col">
-          <DocProse
-            markdown={item.point}
-            className="[&_p]:mt-0 [&_p]:leading-snug [&_p]:font-semibold [&_p]:text-black"
-          />
-          {item.subtext.trim() !== "" && (
-            <DocProse
-              markdown={item.subtext}
-              className="[&_p]:mt-0 [&_p]:text-[0.9em] [&_p]:leading-snug [&_p]:text-zinc-700"
-            />
-          )}
-        </li>
-      ))}
-    </ol>
+    <ContractDescriptionList
+      items={latestContract?.description}
+      markdown={latestContract?.markdown ?? PLACEHOLDER_CONTRACT_MARKDOWN}
+    />
   );
 }
 
@@ -202,7 +189,7 @@ export function ContractCard({
   size = DocProseSize.Default,
 }: {
   caption?: string;
-  /** Numbered description bullets from the live contract, instead of its markdown. */
+  /** The live contract's numbered terms with its markdown folded away, as the membership page shows it. */
   terms?: boolean;
   size?: DocProseSize;
 }) {
@@ -210,14 +197,10 @@ export function ContractCard({
     <figure className="flex flex-col gap-3">
       <div
         id="contract"
-        className={cn(
-          "scroll-mt-32 bg-zinc-100",
-          CONTRACT_PAD[size],
-          terms && "ring-2 ring-[var(--color-green)]",
-        )}
+        className={cn("scroll-mt-32 bg-zinc-100", CONTRACT_PAD[size])}
         style={{ borderRadius: "var(--site-radius-card)" }}
       >
-        {terms ? <ContractDescriptionList /> : <ContractMarkdown size={size} />}
+        {terms ? <ContractTerms /> : <ContractMarkdown size={size} />}
       </div>
       {caption && (
         <figcaption className="text-sm text-zinc-500">{caption}</figcaption>

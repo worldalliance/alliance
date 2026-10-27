@@ -13,14 +13,16 @@ import {
   GuideSectionKind,
 } from "../../site/docContent";
 import { DocProse } from "../../site/DocProse";
-import { useActiveSection } from "../../site/hooks";
+import { FontSwitcher } from "../../site/FontSwitcher";
+import { InlineToc, StickyToc, useActiveSection } from "../../site/GuideToc";
 import { FAQ_HREF, FOUNDATION_HREF, GOVERNANCE_HREF } from "../../site/links";
-import { NAV_HEIGHT } from "../../site/Navbar";
 import { ContractCard, ImpactCard } from "../../site/PageCards";
 import { BandHeading, BandHeadingSize, PageShell } from "../../site/PageShell";
 import { SITE_COL, SitePicture } from "../../site/ui";
 
 const GUIDE_COLUMN = "max-w-7xl";
+/** Lines the title up with the text: SITE_COL's padding, plus the TOC column and gap. */
+const GUIDE_HEADER_COLUMN = cn(GUIDE_COLUMN, "lg:pl-[calc(68px+18rem)]");
 
 export function meta() {
   return socialPreviewMeta({
@@ -34,6 +36,10 @@ const GUIDE_TITLE = "Guide to the Alliance";
 const GUIDE_LEDE = "Our goals, how we divide work, and our next steps.";
 /** Names the table of contents for screen readers; nothing draws it. */
 const GUIDE_TOC_LABEL = "Sections";
+const TOC_SECTIONS = GUIDE_SECTION_ORDER.map((kind) => ({
+  id: kind,
+  label: GUIDE_SECTIONS[kind].label,
+}));
 
 /** The three resources the guide hands off to at the end. */
 const RESOURCE_LINKS = [
@@ -143,7 +149,7 @@ function ResourceLinks() {
   );
 }
 
-/** Whatever sits between a section's prose and the prose that follows it. */
+/** Whatever follows a section's prose. */
 const guideExtras: Record<GuideSectionKind, ReactNode> = {
   [GuideSectionKind.Introduction]: null,
   [GuideSectionKind.Structure]: (
@@ -175,19 +181,42 @@ const guideExtras: Record<GuideSectionKind, ReactNode> = {
 };
 
 export default function GuidePage() {
-  const active = useActiveSection(GUIDE_SECTION_ORDER);
+  const active = useActiveSection(TOC_SECTIONS);
 
   return (
     <PageShell
       title={GUIDE_TITLE}
       subtitle={GUIDE_LEDE}
-      columnClassName={GUIDE_COLUMN}
+      columnClassName={GUIDE_HEADER_COLUMN}
     >
+      <FontSwitcher />
+      <StickyToc
+        sections={TOC_SECTIONS}
+        active={active}
+        label={GUIDE_TOC_LABEL}
+        columnClassName={GUIDE_COLUMN}
+      />
       <div
         className={cn(SITE_COL, GUIDE_COLUMN, "pt-8 pb-20 lg:pt-12 lg:pb-28")}
       >
-        <div className="grid gap-12 lg:grid-cols-[minmax(0,46rem)_minmax(0,18rem)] lg:justify-between lg:gap-16">
+        <div className="grid gap-12 lg:grid-cols-[14rem_minmax(0,46rem)] lg:gap-16">
+          <InlineToc
+            sections={TOC_SECTIONS}
+            active={active}
+            label={GUIDE_TOC_LABEL}
+          />
+
           <div className="flex flex-col gap-16">
+            <div>
+              <SitePicture
+                image={priorities[0].image}
+                alt=""
+                sizes="(min-width: 1024px) 46rem, 100vw"
+                loading="eager"
+                className="aspect-[16/9] w-full object-cover"
+                style={{ borderRadius: "var(--site-radius-card)" }}
+              />
+            </div>
             {GUIDE_SECTION_ORDER.map((kind) => {
               const section = GUIDE_SECTIONS[kind];
               return (
@@ -203,42 +232,10 @@ export default function GuidePage() {
                     <DocProse markdown={section.markdown} />
                   )}
                   {guideExtras[kind]}
-                  {section.markdownAfter && (
-                    <DocProse markdown={section.markdownAfter} />
-                  )}
                 </section>
               );
             })}
           </div>
-
-          <nav
-            className="hidden self-start bg-zinc-50 px-6 py-7 lg:block"
-            style={{
-              position: "sticky",
-              top: NAV_HEIGHT + 32,
-              borderRadius: "var(--site-radius-button)",
-            }}
-            aria-label={GUIDE_TOC_LABEL}
-          >
-            <ul className="flex flex-col gap-2.5">
-              {GUIDE_SECTION_ORDER.map((kind) => (
-                <li key={kind}>
-                  <a
-                    href={`#${kind}`}
-                    aria-current={kind === active ? "true" : undefined}
-                    className={cn(
-                      "text-lg",
-                      kind === active
-                        ? "font-semibold text-[var(--site-primary)]"
-                        : "text-[var(--site-ink)]/60 hover:text-[var(--site-primary)]",
-                    )}
-                  >
-                    {GUIDE_SECTIONS[kind].label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
         </div>
       </div>
     </PageShell>
