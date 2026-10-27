@@ -234,10 +234,9 @@ describe("while an email is still sending", () => {
   const realSetInterval = globalThis.setInterval;
 
   beforeEach(() => {
-    // Shortens the sending poll so the tests don't wait it out. Not
-    // `jest.useFakeTimers`, which in bun breaks `waitFor` for later test files.
-    // The cast only bridges the DOM and bun overloads of setInterval; the
-    // wrapper forwards to the real one.
+    // Shortens the sending poll so the tests don't wait it out. The cast only
+    // bridges the DOM and bun overloads of setInterval; the wrapper forwards to
+    // the real one.
     globalThis.setInterval = ((handler: TimerHandler, delay?: number) =>
       realSetInterval(
         handler,

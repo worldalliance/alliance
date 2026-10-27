@@ -45,3 +45,11 @@ afterEach(() => {
     );
   }
 });
+
+// bun's fake timers patch the real setTimeout in place, and useRealTimers
+// leaves their `clock` marker on it. Testing Library reads that marker as fake
+// timers still running, so every later waitFor throws.
+afterEach(() => {
+  jest.useRealTimers();
+  Reflect.deleteProperty(setTimeout, "clock");
+});

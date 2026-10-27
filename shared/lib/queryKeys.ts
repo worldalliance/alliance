@@ -77,6 +77,17 @@ export const queryKeys = {
   allianceMemberCount: () => ["userNmembers"] as const,
   ambassadorInviteDashboard: () =>
     ["userGetAmbassadorInviteDashboard"] as const,
+  citySearch: (search: {
+    text: string;
+    latitude: number | undefined;
+    longitude: number | undefined;
+  }) =>
+    [
+      "geoSearchCity",
+      search.text,
+      search.latitude ?? null,
+      search.longitude ?? null,
+    ] as const,
   communityConversation: (communityId: number | null) =>
     ["conversationGetCommunityConversations", communityId] as const,
   communityCompletedActionsCount: (communityId: number | null) =>
