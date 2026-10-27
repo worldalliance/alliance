@@ -233,6 +233,24 @@ describe("buildTimelineData", () => {
     expect(order(true)).toEqual([4, 1, 2, 3]);
   });
 
+  it("puts drafts first when most recent first", () => {
+    const draft = action(
+      5,
+      [event(7, "2026-01-01T00:00:00.000Z", "draft")],
+      "draft",
+    );
+    const eventlessDraft = action(6, [], "draft");
+    const { timelineData } = buildTimelineData({
+      actions: [eventless, early, eventlessDraft, draft, middle],
+      normalizedReminders: [],
+      mostRecentFirst: true,
+    });
+
+    expect(timelineData.map(({ action }) => action.id)).toEqual([
+      5, 6, 4, 1, 3,
+    ]);
+  });
+
   it("pads the bounds a day around events and reminders and starts at least two days before now", () => {
     const [point] = normalizeReminders(
       [reminder({ id: 1, sendAtAbsolute: "2026-01-10T00:00:00.000Z" })],

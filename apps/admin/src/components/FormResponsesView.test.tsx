@@ -1,6 +1,7 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import type { FormResponseDto } from "@alliance/shared/client";
 import { makeFormResponse, makeUser } from "@alliance/shared/lib/testFixtures";
+import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import FormResponsesView, { type FormWithSchema } from "./FormResponsesView";
@@ -57,9 +58,19 @@ const renderView = (params: {
     ],
     { initialEntries: [params.path] },
   );
-  render(<RouterProvider router={router} />);
+  render(
+    <ToastProvider>
+      <RouterProvider router={router} />
+    </ToastProvider>,
+  );
   return router;
 };
+
+it("opens on the responses table when no tab is picked", () => {
+  renderView({ path: "/" });
+
+  expect(screen.getByPlaceholderText("Search responses…")).toBeTruthy();
+});
 
 it("lists no response to a question whose stored answer is an empty object", () => {
   renderView({ path: "/?tab=questions" });
