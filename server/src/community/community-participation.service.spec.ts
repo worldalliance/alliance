@@ -1,5 +1,6 @@
 import { ImagesService } from "src/images/images.service";
 import { User } from "src/user/entities/user.entity";
+import { CommunityParticipationService } from "./community-participation.service";
 import {
   buildCommunity,
   leader1,
@@ -10,19 +11,23 @@ import {
 import { CommunityService } from "./community.service";
 import { memberLeftCommunityNotif } from "./community.utils";
 
-describe("CommunityService", () => {
+describe("CommunityParticipationService", () => {
   let fx: CommunityServiceMocks;
-  let service: CommunityService;
+  let participation: CommunityParticipationService;
 
   beforeEach(() => {
     fx = mockCommunityServices();
-    service = new CommunityService(
+    participation = new CommunityParticipationService(
       fx.communityRepository,
       fx.userRepository,
-      fx.communityConversationService,
-      {} as ImagesService,
-      fx.notifsService,
+      new CommunityService(
+        fx.communityRepository,
+        fx.userRepository,
+        fx.communityConversationService,
+        {} as ImagesService,
+      ),
       fx.membership,
+      fx.notifsService,
     );
   });
 
@@ -36,7 +41,7 @@ describe("CommunityService", () => {
       const community = buildCommunity({ users: [leader1, leader2, user] });
       fx.communityRepository.findOneOrFail.mockResolvedValue(community);
 
-      await service.leaveCommunity(community.id, user.id);
+      await participation.leaveCommunity(community.id, user.id);
 
       expect(fx.notifsService.sendNotifs).toHaveBeenCalledWith(
         [leader1, leader2].map((leader) =>
@@ -61,7 +66,7 @@ describe("CommunityService", () => {
         .spyOn(fx.membership, "leaveOtherCommunitiesOnJoin")
         .mockResolvedValue();
 
-      await service.joinPublicCommunity(user.id, 1);
+      await participation.joinPublicCommunity(user.id, 1);
 
       expect(leave).toHaveBeenCalledWith(user);
     });

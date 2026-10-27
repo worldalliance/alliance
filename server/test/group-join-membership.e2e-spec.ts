@@ -1,4 +1,5 @@
 import { CommunityInvitesService } from "src/community/community-invites.service";
+import { CommunityParticipationService } from "src/community/community-participation.service";
 import { CommunityPlacementService } from "src/community/community-placement.service";
 import { CommunityService } from "src/community/community.service";
 import {
@@ -22,6 +23,7 @@ describe("Group join notifications: audience and triggers (e2e)", () => {
   let ctx: TestContext;
   let fx: GroupJoinFixtures;
   let communityService: CommunityService;
+  let communityParticipationService: CommunityParticipationService;
   let communityPlacementService: CommunityPlacementService;
   let communityInvitesService: CommunityInvitesService;
   let contractService: ContractService;
@@ -31,6 +33,7 @@ describe("Group join notifications: audience and triggers (e2e)", () => {
     ctx = await createTestApp([MessagingModule]);
     fx = new GroupJoinFixtures(ctx);
     communityService = ctx.app.get(CommunityService);
+    communityParticipationService = ctx.app.get(CommunityParticipationService);
     communityPlacementService = ctx.app.get(CommunityPlacementService);
     communityInvitesService = ctx.app.get(CommunityInvitesService);
     contractService = ctx.app.get(ContractService);
@@ -57,7 +60,10 @@ describe("Group join notifications: audience and triggers (e2e)", () => {
     });
     const joiner = await fx.createUser({ name: "Jo Joiner" });
 
-    await communityService.joinPublicCommunity(joiner.id, group.id);
+    await communityParticipationService.joinPublicCommunity(
+      joiner.id,
+      group.id,
+    );
 
     const notifs = await fx.joinNotifs();
     expect(notifs.map((notif) => notif.user!.id).sort()).toEqual(
@@ -125,7 +131,7 @@ describe("Group join notifications: audience and triggers (e2e)", () => {
     );
 
     const later = await fx.createUser();
-    await communityService.joinPublicCommunity(later.id, group.id);
+    await communityParticipationService.joinPublicCommunity(later.id, group.id);
 
     const afterLater = await fx.announcements();
     expect(afterLater.get(first.id)).toEqual([later.id]);
@@ -169,9 +175,15 @@ describe("Group join notifications: audience and triggers (e2e)", () => {
     const group = await fx.createGroup({ leaders: [], members: [existing] });
     const member = await fx.createUser();
 
-    await communityService.joinPublicCommunity(member.id, group.id);
-    await communityService.leaveCommunity(group.id, member.id);
-    await communityService.joinPublicCommunity(member.id, group.id);
+    await communityParticipationService.joinPublicCommunity(
+      member.id,
+      group.id,
+    );
+    await communityParticipationService.leaveCommunity(group.id, member.id);
+    await communityParticipationService.joinPublicCommunity(
+      member.id,
+      group.id,
+    );
 
     expect((await fx.announcements()).get(existing.id)).toEqual([
       member.id,

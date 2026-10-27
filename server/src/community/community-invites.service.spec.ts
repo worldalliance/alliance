@@ -29,8 +29,6 @@ describe("CommunityInvitesService", () => {
         fx.userRepository,
         fx.communityConversationService,
         {} as ImagesService,
-        fx.notifsService,
-        fx.membership,
       ),
       fx.membership,
       fx.notifsService,

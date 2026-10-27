@@ -21,6 +21,7 @@ import { PosthogService } from "src/posthog/posthog.service";
 import { CommunityMemberContactInfoDto } from "src/user/dto/user-action-relations.dto";
 import { CommunityInviteRequestsService } from "./community-invite-requests.service";
 import { CommunityInvitesService } from "./community-invites.service";
+import { CommunityParticipationService } from "./community-participation.service";
 import { CommunityPlacementService } from "./community-placement.service";
 import { CommunityService } from "./community.service";
 import {
@@ -41,6 +42,7 @@ import {
 export class CommunityController {
   constructor(
     private readonly communityService: CommunityService,
+    private readonly communityParticipationService: CommunityParticipationService,
     private readonly communityPlacementService: CommunityPlacementService,
     private readonly communityInvitesService: CommunityInvitesService,
     private readonly communityInviteRequestsService: CommunityInviteRequestsService,
@@ -114,10 +116,11 @@ export class CommunityController {
     @Request() req: JwtRequest,
     @Param("communityId", ParseIntPipe) communityId: number,
   ): Promise<CommunityDto> {
-    const community = await this.communityService.joinPublicCommunity(
-      req.user.sub,
-      communityId,
-    );
+    const community =
+      await this.communityParticipationService.joinPublicCommunity(
+        req.user.sub,
+        communityId,
+      );
     this.posthog.capture({
       event: AnalyticsEvent.CommunityJoined,
       distinctId: String(req.user.sub),
@@ -155,7 +158,7 @@ export class CommunityController {
     @Body() body: CommunityMemberDto,
   ): Promise<CommunityDto> {
     return new CommunityDto(
-      await this.communityService.removeUserFromCommunity({
+      await this.communityParticipationService.removeUserFromCommunity({
         userId: req.user.sub,
         removeeId: body.userId,
         communityId,
@@ -171,7 +174,7 @@ export class CommunityController {
     @Body() body: CommunityMemberDto,
   ): Promise<CommunityDto> {
     return new CommunityDto(
-      await this.communityService.removeUserFromCommunityAdmin(
+      await this.communityParticipationService.removeUserFromCommunityAdmin(
         communityId,
         body.userId,
       ),
@@ -201,7 +204,10 @@ export class CommunityController {
     @Param("communityId", ParseIntPipe) communityId: number,
     @Request() req: JwtRequest,
   ): Promise<void> {
-    await this.communityService.leaveCommunity(communityId, req.user.sub);
+    await this.communityParticipationService.leaveCommunity(
+      communityId,
+      req.user.sub,
+    );
     this.posthog.capture({
       event: AnalyticsEvent.CommunityLeft,
       distinctId: String(req.user.sub),

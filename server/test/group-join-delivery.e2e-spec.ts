@@ -1,5 +1,5 @@
+import { CommunityParticipationService } from "src/community/community-participation.service";
 import { CommunityPlacementService } from "src/community/community-placement.service";
-import { CommunityService } from "src/community/community.service";
 import { loadedCommunityUsers } from "src/community/entities/community.entity";
 import {
   MessageSource,
@@ -22,13 +22,13 @@ import { GroupJoinFixtures } from "./group-join-fixtures";
 describe("Group join notifications: delivery (e2e)", () => {
   let ctx: TestContext;
   let fx: GroupJoinFixtures;
-  let communityService: CommunityService;
+  let communityParticipationService: CommunityParticipationService;
   let communityPlacementService: CommunityPlacementService;
 
   beforeAll(async () => {
     ctx = await createTestApp([MessagingModule]);
     fx = new GroupJoinFixtures(ctx);
-    communityService = ctx.app.get(CommunityService);
+    communityParticipationService = ctx.app.get(CommunityParticipationService);
     communityPlacementService = ctx.app.get(CommunityPlacementService);
   }, 50000);
 
@@ -61,7 +61,10 @@ describe("Group join notifications: delivery (e2e)", () => {
       anonymous: true,
     });
 
-    await communityService.joinPublicCommunity(joiner.id, group.id);
+    await communityParticipationService.joinPublicCommunity(
+      joiner.id,
+      group.id,
+    );
 
     const [notif] = await fx.joinNotifs();
     expect(notif.message).toBe(`Someone joined ${group.name}!`);
@@ -98,7 +101,10 @@ describe("Group join notifications: delivery (e2e)", () => {
     const group = await fx.createGroup({ leaders: [], members });
     const joiner = await fx.createUser({ name: "Tex Joiner" });
 
-    await communityService.joinPublicCommunity(joiner.id, group.id);
+    await communityParticipationService.joinPublicCommunity(
+      joiner.id,
+      group.id,
+    );
 
     expect((await fx.joinNotifs()).length).toBe(members.length);
     const texts = await fx.mmsRepo.find({ order: { to: "ASC" } });
@@ -148,7 +154,10 @@ describe("Group join notifications: delivery (e2e)", () => {
     const group = await fx.createGroup({ leaders: [], members });
     const joiner = await fx.createUser();
 
-    await communityService.joinPublicCommunity(joiner.id, group.id);
+    await communityParticipationService.joinPublicCommunity(
+      joiner.id,
+      group.id,
+    );
     await fx.notifRepo.update(
       { category: Not(NotificationCategory.GroupMemberJoined) },
       { shouldPush: false },
@@ -183,7 +192,10 @@ describe("Group join notifications: delivery (e2e)", () => {
           : sendNotifs(notifs),
       );
 
-    await communityService.joinPublicCommunity(joiner.id, group.id);
+    await communityParticipationService.joinPublicCommunity(
+      joiner.id,
+      group.id,
+    );
 
     const joined = await fx.communityRepo.findOneOrFail({
       where: { id: group.id },
@@ -231,7 +243,10 @@ describe("Group join notifications: delivery (e2e)", () => {
       .spyOn(ctx.app.get(MmsService), "sendMms")
       .mockRejectedValue(new Error("twilio is down"));
 
-    await communityService.joinPublicCommunity(joiner.id, group.id);
+    await communityParticipationService.joinPublicCommunity(
+      joiner.id,
+      group.id,
+    );
 
     expect((await fx.announcements()).get(member.id)).toEqual([joiner.id]);
   });
@@ -258,7 +273,10 @@ describe("Group join notifications: delivery (e2e)", () => {
     });
     const sendMms = jest.spyOn(ctx.app.get(MmsService), "sendMms");
 
-    await communityService.joinPublicCommunity(joiner.id, group.id);
+    await communityParticipationService.joinPublicCommunity(
+      joiner.id,
+      group.id,
+    );
 
     expect((await fx.announcements()).get(member.id)).toEqual([joiner.id]);
     expect(sendMms).not.toHaveBeenCalled();
