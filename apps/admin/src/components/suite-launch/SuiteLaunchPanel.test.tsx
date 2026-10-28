@@ -161,7 +161,7 @@ const resolveEveryCheck = async () => {
     fireEvent.click(box);
   fireEvent.click(
     screen.getByRole("checkbox", {
-      name: "These members are meant to get this much",
+      name: "Launch anyway, breaking the contract",
     }),
   );
   for (const dismiss of screen.getAllByRole("button", { name: "Dismiss" }))
@@ -178,7 +178,9 @@ it("flags overloaded members and text findings, and blocks launch until each is 
   expect(screen.getByText("Double space · Call · Body")).toBeTruthy();
   expect(screen.getByText("Possible misspelling · Write · Body")).toBeTruthy();
   expect(
-    screen.getByText("1 member has more than 15 minutes of actions."),
+    screen.getByText(
+      "1 member is assigned more than 15 minutes. The contract assigns tasks in 15-minute blocks.",
+    ),
   ).toBeTruthy();
   expect(launchButton().hasAttribute("disabled")).toBe(true);
 

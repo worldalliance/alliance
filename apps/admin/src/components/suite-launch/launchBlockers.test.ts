@@ -40,7 +40,7 @@ const ready = {
   hasMemberActionEvent: false,
   checkedActionIds: new Set([1]),
   dismissedFindingKeys: new Set(["f1"]),
-  overloadAcknowledged: false,
+  violationsAcknowledged: false,
   now,
 };
 
@@ -96,13 +96,13 @@ describe("launchBlockers", () => {
     ).toEqual([
       "Some checks failed to load.",
       "1 action has unfinished checklist items.",
-      "1 member has more than 15 minutes of actions.",
+      "1 contract violation to fix or accept.",
       "1 action isn't marked as checked.",
       "1 text finding to fix or dismiss.",
     ]);
   });
 
-  it("lets an acknowledged overload through", () => {
+  it("lets acknowledged contract violations through", () => {
     expect(
       launchBlockers({
         ...ready,
@@ -116,7 +116,7 @@ describe("launchBlockers", () => {
             },
           ],
         },
-        overloadAcknowledged: true,
+        violationsAcknowledged: true,
       }),
     ).toEqual([]);
   });

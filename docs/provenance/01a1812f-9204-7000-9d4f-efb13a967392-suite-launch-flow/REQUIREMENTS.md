@@ -29,6 +29,8 @@ On the admin suite view:
 - "Preview members' actions" shows the distribution of members across action combinations above the member search. (user)
 - Add what someone launching a suite would want close at hand, and the checks they would want run. (user)
 - Leave weekly load across suites unchecked for now. (user)
+- Call out loudly at launch any violation of the member contract. (user)
+- The launch button spans the full width, with no rocket icon. (user)
 
 ## Verification
 

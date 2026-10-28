@@ -5,7 +5,7 @@ import { useState } from "react";
 import { getApiUrl } from "../../lib/config";
 import { useUsersAdmin } from "../../lib/useUsersAdmin";
 import { ActionLinks, iconControlClass } from "./ActionLinks";
-import { overloadedMembers } from "./launchBlockers";
+import { overloadedMembers } from "./contractViolations";
 import LaunchCheck from "./LaunchCheck";
 import { actionMixes, MAX_MEMBER_MINUTES, type MemberLoad } from "./memberLoad";
 import type { LaunchAction } from "./useSuiteLaunchData";
@@ -18,13 +18,9 @@ const nameOf = (users: Map<number, UserDto>, userId: number) =>
 export const MemberLoadCheck = ({
   loads,
   actions,
-  acknowledged,
-  onAcknowledgedChange,
 }: {
   loads: MemberLoad[];
   actions: LaunchAction[];
-  acknowledged: boolean;
-  onAcknowledgedChange: (acknowledged: boolean) => void;
 }) => {
   const { data: users = [] } = useUsersAdmin();
   const usersById = new Map(users.map((user) => [user.id, user]));
@@ -35,7 +31,7 @@ export const MemberLoadCheck = ({
   return (
     <LaunchCheck
       title={`No member gets more than ${MAX_MEMBER_MINUTES} minutes`}
-      passed={overloaded.length === 0 || acknowledged}
+      passed={overloaded.length === 0}
       summary={`${overloaded.length} of ${loads.length} assigned members over`}
     >
       {overloaded.length > 0 && (
@@ -56,14 +52,6 @@ export const MemberLoadCheck = ({
               and {overloaded.length - SHOWN_OVERLOADED} more
             </p>
           )}
-          <label className="flex items-center gap-1.5 text-sm">
-            <input
-              type="checkbox"
-              checked={acknowledged}
-              onChange={(e) => onAcknowledgedChange(e.target.checked)}
-            />
-            These members are meant to get this much
-          </label>
         </>
       )}
     </LaunchCheck>

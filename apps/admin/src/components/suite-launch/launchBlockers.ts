@@ -1,16 +1,13 @@
+import { contractViolations } from "./contractViolations";
 import {
   remindersBeforeLaunch,
   type ReminderSendWindow,
 } from "./launchReminders";
 import type { LaunchSchedule } from "./launchSchedule";
-import { MAX_MEMBER_MINUTES } from "./memberLoad";
 import type { LaunchAction, SuiteLaunchData } from "./useSuiteLaunchData";
 
 const plural = (count: number, one: string, many: string) =>
   `${count} ${count === 1 ? one : many}`;
-
-export const overloadedMembers = (loads: SuiteLaunchData["loads"]) =>
-  loads.filter((load) => load.minutes > MAX_MEMBER_MINUTES);
 
 export function launchBlockers(params: {
   data: Pick<
@@ -29,7 +26,7 @@ export function launchBlockers(params: {
   hasMemberActionEvent: boolean;
   checkedActionIds: ReadonlySet<number>;
   dismissedFindingKeys: ReadonlySet<string>;
-  overloadAcknowledged: boolean;
+  violationsAcknowledged: boolean;
   now: Date;
 }): string[] {
   const {
@@ -39,7 +36,7 @@ export function launchBlockers(params: {
     hasMemberActionEvent,
     checkedActionIds,
     dismissedFindingKeys,
-    overloadAcknowledged,
+    violationsAcknowledged,
     now,
   } = params;
   if (hasMemberActionEvent) {
@@ -70,10 +67,10 @@ export function launchBlockers(params: {
       `${plural(unready.length, "action has", "actions have")} unfinished checklist items.`,
     );
   }
-  const overloaded = overloadedMembers(data.loads);
-  if (overloaded.length > 0 && !overloadAcknowledged) {
+  const violations = contractViolations({ loads: data.loads, schedule });
+  if (violations.length > 0 && !violationsAcknowledged) {
     blockers.push(
-      `${plural(overloaded.length, "member has", "members have")} more than ${MAX_MEMBER_MINUTES} minutes of actions.`,
+      `${plural(violations.length, "contract violation", "contract violations")} to fix or accept.`,
     );
   }
   const unchecked = data.actions.filter(
