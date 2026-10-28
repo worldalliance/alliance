@@ -2,6 +2,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { SiteArrow } from "@alliance/sharedweb/ui/SiteArrow";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
+import janosPasztor from "../../assets/redesign/avatar-janos-pasztor.jpg";
 import { FEATURED_IMPACT_ACTIONS } from "../../content/featuredImpactActions";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
 import { priorities } from "../../site/content";
@@ -41,6 +42,13 @@ const TOC_SECTIONS = GUIDE_SECTION_ORDER.map((kind) => ({
   label: GUIDE_SECTIONS[kind].label,
 }));
 
+const GUIDE_QUOTE = {
+  lead: "The world is not going in the right direction. We need new ideas. The Alliance is just that,",
+  emphasis: "but it will only work if we all participate.",
+  name: "Janos Pasztor",
+  role: "Former UN Assistant Secretary-General for\nClimate Change",
+};
+
 /** The three resources the guide hands off to at the end. */
 const RESOURCE_LINKS = [
   {
@@ -59,6 +67,41 @@ const RESOURCE_LINKS = [
     description: "answers common questions",
   },
 ];
+
+function GuideQuote() {
+  return (
+    <figure
+      className="flex gap-3 bg-zinc-100 py-[3.70656rem] pr-[5.77368rem] pl-[4.72392rem] sm:gap-4 sm:py-[4.94208rem] sm:pr-[7.69824rem] sm:pl-[6.29856rem]"
+      style={{ borderRadius: "var(--site-radius-card)" }}
+    >
+      <span
+        aria-hidden
+        className="site-quote text-[40px] leading-[0.85] sm:text-[54px] text-[var(--site-ink)]"
+      >
+        “
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-[26px]">
+        <blockquote className="site-quote text-[22px] leading-[1.15] sm:text-[29px] text-pretty text-[var(--site-ink)]">
+          {`${GUIDE_QUOTE.lead} `}
+          <span className="text-green">{GUIDE_QUOTE.emphasis}</span>
+        </blockquote>
+        <figcaption className="flex items-center gap-4 text-[1.05rem] leading-snug">
+          <img
+            src={janosPasztor}
+            alt=""
+            className="size-[4.5rem] shrink-0 rounded-md object-cover"
+          />
+          <span className="flex flex-col">
+            <span className="font-semibold">{GUIDE_QUOTE.name}</span>
+            <span className="whitespace-pre-line text-[var(--site-ink)]/60">
+              {GUIDE_QUOTE.role}
+            </span>
+          </span>
+        </figcaption>
+      </div>
+    </figure>
+  );
+}
 
 function PriorityGrid() {
   return (
@@ -197,7 +240,11 @@ export default function GuidePage() {
         columnClassName={GUIDE_COLUMN}
       />
       <div
-        className={cn(SITE_COL, GUIDE_COLUMN, "pt-8 pb-20 lg:pt-12 lg:pb-28")}
+        className={cn(
+          SITE_COL,
+          GUIDE_COLUMN,
+          "pt-[1.7rem] pb-20 lg:pt-[2.55rem] lg:pb-28",
+        )}
       >
         <div className="grid gap-12 lg:grid-cols-[14rem_minmax(0,46rem)] lg:gap-16">
           <InlineToc
@@ -207,16 +254,7 @@ export default function GuidePage() {
           />
 
           <div className="flex flex-col gap-16">
-            <div>
-              <SitePicture
-                image={priorities[0].image}
-                alt=""
-                sizes="(min-width: 1024px) 46rem, 100vw"
-                loading="eager"
-                className="aspect-[16/9] w-full object-cover"
-                style={{ borderRadius: "var(--site-radius-card)" }}
-              />
-            </div>
+            <GuideQuote />
             {GUIDE_SECTION_ORDER.map((kind) => {
               const section = GUIDE_SECTIONS[kind];
               return (
@@ -229,7 +267,10 @@ export default function GuidePage() {
                     {section.label}
                   </BandHeading>
                   {section.markdown.trim() && (
-                    <DocProse markdown={section.markdown} />
+                    <DocProse
+                      markdown={section.markdown}
+                      className="[&_:is(p,ul,ol)]:text-[var(--site-ink)]"
+                    />
                   )}
                   {guideExtras[kind]}
                 </section>

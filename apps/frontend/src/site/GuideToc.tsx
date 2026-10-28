@@ -46,7 +46,7 @@ function TocLink({
       aria-current={current ? "true" : undefined}
       onClick={onClick}
       className={cn(
-        "block py-2.5",
+        "block py-1.25",
         current
           ? "font-medium text-[var(--site-primary)]"
           : "text-[var(--site-ink)]/60 hover:text-[var(--site-primary)]",
@@ -71,7 +71,7 @@ export function InlineToc({
   return (
     <nav
       aria-label={label}
-      className="sticky top-28 hidden self-start pl-[3.6rem] lg:block"
+      className="sticky top-28 hidden self-start pl-[7.8rem] whitespace-nowrap lg:block"
     >
       <ul className="text-[1.09375rem]">
         {sections.map((section) => (
