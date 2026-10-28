@@ -387,7 +387,8 @@ it("shows each action's audience, task form link, and what to look at before che
   renderPanel();
 
   const write = (await screen.findByText(/^1 member ·/)).closest("li");
-  expect(write?.textContent).toContain("Archived · No cover image");
+  expect(write?.textContent).not.toContain("cover image");
+  expect(write?.textContent).toContain("Archived");
   expect(
     write?.querySelector('[aria-label="Edit task form"]')?.getAttribute("href"),
   ).toBe("/forms/5");
