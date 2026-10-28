@@ -1,8 +1,8 @@
 import {
-  City,
   CitySearchDto,
   PublicFormResponseDefault,
 } from "@alliance/shared/client";
+import { useMyLocation } from "@alliance/shared/lib/useMyLocation";
 import { useSeedSettingsForm } from "@alliance/shared/lib/useSeedSettingsForm";
 import { useSettingsAutosave } from "@alliance/shared/lib/useSettingsAutosave";
 import { CardStyle } from "@alliance/shared/styles/card";
@@ -13,7 +13,7 @@ import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import FormInput from "@alliance/sharedweb/ui/FormInput";
 import PhoneNumberInput from "@alliance/sharedweb/ui/PhoneNumberInput";
 import YesNoToggle from "@alliance/sharedweb/ui/YesNoToggle";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect } from "react";
 import { href, useLocation, useNavigate } from "react-router";
 import CityAutosuggest from "../../components/CityAutosuggest";
 import AccountSettings, {
@@ -25,7 +25,7 @@ import { useAuth } from "../../lib/AuthContext";
 const SettingsPage: React.FC = () => {
   const { user, logout, isImpersonation } = useAuth();
 
-  const [location, setLocation] = useState<City | null>(null);
+  const { data: location } = useMyLocation(user?.id);
   const {
     editableUser,
     updateEditableUser,
@@ -59,7 +59,7 @@ const SettingsPage: React.FC = () => {
     [updateEditableUser],
   );
 
-  const loading = useSeedSettingsForm({ user, setSavedProfile, setLocation });
+  const loading = useSeedSettingsForm({ user, setSavedProfile });
 
   // The page renders after an async load, so ScrollRestoration's hash
   // handling fires before the anchor exists.

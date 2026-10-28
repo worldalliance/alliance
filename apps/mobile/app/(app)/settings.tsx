@@ -1,4 +1,4 @@
-import { City } from "@alliance/shared/client";
+import { useMyLocation } from "@alliance/shared/lib/useMyLocation";
 import { useNotificationSettings } from "@alliance/shared/lib/useNotificationSettings";
 import { useSeedSettingsForm } from "@alliance/shared/lib/useSeedSettingsForm";
 import { useSettingsAutosave } from "@alliance/shared/lib/useSettingsAutosave";
@@ -74,7 +74,7 @@ function SettingsToggleRow({
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
-  const [location, setLocation] = useState<City | null>(null);
+  const { data: location } = useMyLocation(user?.id);
 
   const {
     editableUser,
@@ -107,7 +107,7 @@ export default function SettingsPage() {
     ]);
   }, [logout]);
 
-  const loading = useSeedSettingsForm({ user, setSavedProfile, setLocation });
+  const loading = useSeedSettingsForm({ user, setSavedProfile });
 
   if (loading) {
     return (

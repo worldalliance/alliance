@@ -2,6 +2,7 @@ import { milliseconds } from "date-fns";
 import type {
   ActionActivityDto,
   ActionEventDto,
+  City,
   CommunityDto,
   CommunityInviteDto,
   ConversationDto,
@@ -269,6 +270,22 @@ export function makeUser(overrides: Partial<UserDto> = {}): UserDto {
     clusterId: null,
     hasPassword: true,
     oauthAccounts: [],
+    ...overrides,
+  };
+}
+
+export function makeCity(overrides: Partial<City> = {}): City {
+  return {
+    id: 1,
+    name: "Oakland",
+    asciiName: null,
+    englishName: null,
+    admin1: "California",
+    admin2: "Alameda",
+    countryCode: "US",
+    countryName: "United States",
+    latitude: 37.8,
+    longitude: -122.27,
     ...overrides,
   };
 }
