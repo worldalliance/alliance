@@ -1,3 +1,4 @@
+import { participantsAvailable } from "@alliance/common/participant";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { cn } from "@alliance/shared/styles/util";
 import { data } from "react-router";
@@ -30,7 +31,9 @@ import { ParticipantsBar } from "./ParticipantsBar";
 import { ProjectTimeline } from "./ProjectTimeline";
 
 export function loader() {
-  if (import.meta.env.MODE === "production") throw data(null, { status: 404 });
+  if (!participantsAvailable(import.meta.env.MODE)) {
+    throw data(null, { status: 404 });
+  }
   return null;
 }
 
