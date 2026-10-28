@@ -3,8 +3,7 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import type { CookieOptions, Request, Response } from "express";
-import { createHash } from "node:crypto";
-import { randomToken } from "src/utils/random";
+import { hashToken, randomToken } from "src/utils/random";
 import type { Repository } from "src/utils/Repository";
 import { LessThan, MoreThan } from "typeorm";
 import { WaitlistBrowser } from "./entities/waitlist-browser.entity";
@@ -25,9 +24,6 @@ const cookieOptions = (): CookieOptions => ({
   sameSite: "strict",
   path: "/",
 });
-
-const hashToken = (token: string): string =>
-  createHash("sha256").update(token).digest("base64url");
 
 const cookie = (req: Request, name: string): string | undefined => {
   const value: unknown = req.cookies?.[name];
