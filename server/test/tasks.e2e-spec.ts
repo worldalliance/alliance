@@ -660,6 +660,38 @@ describe("Tasks (e2e)", () => {
       .expect(200);
   });
 
+  it("saves a form with a contract field as the admin form endpoint served it", async () => {
+    const schema = structuredClone(sampleSchema);
+    schema.pages[0].fields.push({
+      id: "contract",
+      type: "input",
+      kind: "contract",
+      label: "Contract",
+      contractId: ctx.defaultContractId,
+      signQuestion: "Sign the contract?",
+      yesLabel: "Yes",
+      noLabel: "No",
+    });
+    const created = await request(ctx.app.getHttpServer())
+      .post("/tasks/createForm")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({ title: "Contract form", schema })
+      .expect(201);
+    const served = await request(ctx.app.getHttpServer())
+      .get(`/tasks/adminForm/${created.body.id}`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .expect(200);
+
+    await request(ctx.app.getHttpServer())
+      .put(`/tasks/updateForm/${created.body.id}`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({
+        schema: served.body.schema,
+        expectedFormSnapshotId: served.body.formSnapshotId,
+      })
+      .expect(200);
+  });
+
   it("groups responses to older versions against the form's current version", async () => {
     const createResponse = await request(ctx.app.getHttpServer())
       .post("/tasks/createForm")

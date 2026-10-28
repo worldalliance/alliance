@@ -21,7 +21,6 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { ActionFormLinksService } from "src/actions/action-form-links.service";
 import { ContractService } from "src/contract/contract.service";
-import { ContractDto } from "src/contract/dto/contract.dto";
 import { softDeleteCascade } from "src/datasources/soft-delete";
 import { In, type Repository } from "typeorm";
 import { Form, loadedFormSnapshot } from "./entities/form.entity";
@@ -247,9 +246,10 @@ export class TasksService {
     for (const page of pages) {
       for (const field of page.fields) {
         if (field.kind === "contract" && field.contractId) {
-          field.contract = new ContractDto(
-            await this.contractService.findOne(field.contractId),
+          const { id, markdown } = await this.contractService.findOne(
+            field.contractId,
           );
+          field.contract = { id, markdown };
         }
       }
     }
