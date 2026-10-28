@@ -3,6 +3,7 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import type { CookieOptions, Request, Response } from "express";
+import { readCookie } from "src/utils/cookies";
 import { hashToken, randomToken } from "src/utils/random";
 import type { Repository } from "src/utils/Repository";
 import { LessThan, MoreThan } from "typeorm";
@@ -24,11 +25,6 @@ const cookieOptions = (): CookieOptions => ({
   sameSite: "strict",
   path: "/",
 });
-
-const cookie = (req: Request, name: string): string | undefined => {
-  const value: unknown = req.cookies?.[name];
-  return typeof value === "string" && value ? value : undefined;
-};
 
 /** What this browser session may see again: its entry's confirmation. */
 @Injectable()
@@ -53,19 +49,19 @@ export class WaitlistBrowserService {
   }
 
   private async expireLegacyCookies(req: Request, res: Response) {
-    const legacy = cookie(req, LEGACY_BROWSER_COOKIE);
+    const legacy = readCookie(req, LEGACY_BROWSER_COOKIE);
     if (legacy) {
       await this.browserRepository.delete({ tokenHash: hashToken(legacy) });
       res.clearCookie(LEGACY_BROWSER_COOKIE, cookieOptions());
     }
-    if (cookie(req, LEGACY_INVITE_COOKIE)) {
+    if (readCookie(req, LEGACY_INVITE_COOKIE)) {
       res.clearCookie(LEGACY_INVITE_COOKIE, cookieOptions());
     }
   }
 
   async findEntry(req: Request, res: Response): Promise<WaitlistEntry | null> {
     await this.expireLegacyCookies(req, res);
-    const token = cookie(req, WAITLIST_SESSION_COOKIE);
+    const token = readCookie(req, WAITLIST_SESSION_COOKIE);
     if (!token) return null;
     const browser = await this.browserRepository.findOne({
       where: { tokenHash: hashToken(token), expiresAt: MoreThan(new Date()) },
@@ -78,7 +74,7 @@ export class WaitlistBrowserService {
   /** Leaves the entry, its invites, and any account session alone. */
   async forget(req: Request, res: Response): Promise<void> {
     await this.expireLegacyCookies(req, res);
-    const token = cookie(req, WAITLIST_SESSION_COOKIE);
+    const token = readCookie(req, WAITLIST_SESSION_COOKIE);
     if (token) {
       await this.browserRepository.delete({ tokenHash: hashToken(token) });
     }
