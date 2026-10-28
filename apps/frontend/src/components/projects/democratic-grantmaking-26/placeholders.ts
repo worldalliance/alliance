@@ -60,12 +60,12 @@ export const FEATURED_PEOPLE: ProjectPerson[] = [
     role: "Politics & Society Lead, Our World in Data",
     href: "https://www.linkedin.com/in/bastian-herre-33264623/",
   },
-  {
-    name: "Eli Sepulveda",
-    imageSrc: "/assets/democratic-grantmaking-26/eli.jpeg",
-    role: "Global Catastrophic Risks, Founders Pledge",
-    href: "https://www.linkedin.com/in/sepllveda/",
-  },
+  // {
+  //   name: "Eli Sepulveda",
+  //   imageSrc: "/assets/democratic-grantmaking-26/eli.jpeg",
+  //   role: "Global Catastrophic Risks, Founders Pledge",
+  //   href: "https://www.linkedin.com/in/sepllveda/",
+  // },
   {
     name: "Samuel Dupret",
     imageSrc: "/assets/democratic-grantmaking-26/samuel-dupret.jpg",
@@ -84,12 +84,12 @@ export const FEATURED_PEOPLE: ProjectPerson[] = [
   //   role: "Research Affiliate, Centre for the Study of Existential Risk at University of Cambridge",
   //   href: "https://www.linkedin.com/in/luke-kemp-689b8271/",
   // },
-  // {
-  //   name: "Lindsey McDougle",
-  //   imageSrc: "/assets/democratic-grantmaking-26/lindsey-mcdougle.jpg",
-  //   role: "Director, Rutgers Center for Nonprofit Leadership & Development; President-Elect, ARNOVA",
-  //   href: "https://spaa.newark.rutgers.edu/lindsey-mcdougle",
-  // },
+  {
+    name: "Lindsey McDougle",
+    imageSrc: "/assets/democratic-grantmaking-26/lindsey-mcdougle.jpg",
+    role: "Director, Rutgers Center for Nonprofit Leadership & Development",
+    href: "https://spaa.newark.rutgers.edu/lindsey-mcdougle",
+  },
   // {
   //   name: "Megan Tompkins-Stange",
   //   imageSrc: "/assets/democratic-grantmaking-26/megan.jpg",
