@@ -1,0 +1,6 @@
+# Decisions
+
+- The expression stays nullable: an action with no cohort is `NULL`, so the entity property is `cohortExpression: unknown | null` and the API publishes it as a required nullable field on `Action`, `AdminActionDto`, `AdminActionListItemDto`, and `ExportActionDto`. This matches `FollowUpForm.cohortExpression`. No migration; the column is already a nullable jsonb.
+- Create and update take the expression as optional, via `PartialType(PickType(Action, ["cohortExpression"]))`, so a create that leaves it out stores `NULL` and a patch that leaves it out keeps it. Validation is unchanged: the services already parse it with `parseCohortExpressionForSaveOrThrow`.
+- `ActionDto`, which members and logged-out clients receive, still leaves the expression off.
+- On the admin client, `ParsedActionDto` and `ParsedFollowUpFormDto` carry `cohortExpression: CohortExpression | null`, and a missing or unparseable expression reads as `null`. The old `?: CohortExpression` existed only to stay assignable to the generated types, and no longer is once the generated field is required. Both parsed types change together because they share `parseCohortExpressionField`. This lands first, so the admin client reads `null` before the server contract requires the field.

@@ -58,6 +58,7 @@ function renderCommands() {
             return Promise.resolve({
               ...makeAction({ id: 2 }),
               staffPreview: false,
+              cohortExpression: null,
               prerequisiteActionIds: [],
               memberActionStart: null,
               memberActionDeadline: null,

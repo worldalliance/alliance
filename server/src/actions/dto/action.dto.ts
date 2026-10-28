@@ -238,7 +238,7 @@ export class ActionDto extends PickType(Action, [
 }
 
 export class CreateActionDto extends IntersectionType(
-  PickType(Action, ["cohortExpression"]),
+  PartialType(PickType(Action, ["cohortExpression"])),
   PickType(ActionDto, [
     "name",
     "category",

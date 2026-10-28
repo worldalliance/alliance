@@ -16,13 +16,13 @@ import { AdminFollowUpFormDto } from "./follow-up-form.dto";
  * which members and logged-out clients receive.
  */
 export class AdminActionDto extends ActionDto {
-  @ApiPropertyOptional({
+  @ApiProperty({
     description: "Cohort expression tree defining who participates",
     nullable: true,
   })
   @IsOptional()
   @Type(() => Object)
-  cohortExpression?: CohortExpression | null;
+  cohortExpression: CohortExpression | null;
 
   // eslint-disable-next-line @darraghor/nestjs-typed/api-property-matches-property-optionality -- without it, @ApiProperty keeps ActionDto's inherited required: false
   @ApiProperty({

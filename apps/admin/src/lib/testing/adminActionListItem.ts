@@ -14,6 +14,7 @@ export const adminActionListItem = (
   squareThumbnailImageAlt: null,
   customStatType: "none",
   customStatGoal: null,
+  cohortExpression: null,
   createdAt: "2026-01-02T00:00:00.000Z",
   updatedAt: "2026-01-02T00:00:00.000Z",
   isContractSigningAction: false,
