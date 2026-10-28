@@ -11,7 +11,6 @@ import {
   selectElement,
 } from "../lib/testing/formCanvas";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
-import { resetCustomValidatorsCache } from "./form-fields/useCustomValidators";
 
 const twoPages: FormSchema = {
   pages: [
@@ -96,7 +95,6 @@ beforeEach(() => {
   validatorsCreated = 0;
   conflictsLeft = 0;
   saveGate = Promise.resolve();
-  resetCustomValidatorsCache();
 });
 
 /** Lets the edit before it finish its task, as a separate event would. */

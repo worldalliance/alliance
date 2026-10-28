@@ -9,7 +9,6 @@ import { renderBlockEditor } from "../display-blocks/blockEditors";
 import { LocalExpressionBuffers } from "../form-fields/conditions/expressionBuffers";
 import { CustomValidatorDraftsContext } from "../form-fields/customValidatorDrafts";
 import { renderFieldEditor } from "../form-fields/fieldEditors";
-import { resetCustomValidatorsCache } from "../form-fields/useCustomValidators";
 import { VisibilityGroupContext } from "../VisibilityGroupContext";
 import { SelectChildProvider } from "./ChildRows";
 import {
@@ -238,7 +237,6 @@ describe("an editor in the settings sidebar", () => {
   });
 
   it("shows a saved custom validator's settings", async () => {
-    resetCustomValidatorsCache();
     api.alsoServing({
       "GET /tasks/customValidators": () =>
         Response.json([

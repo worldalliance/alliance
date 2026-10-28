@@ -9,8 +9,8 @@ import {
 } from "@alliance/sharedweb/ui/DropdownMenu";
 import { Menu } from "@base-ui/react/menu";
 import { Plus } from "lucide-react";
+import { useCustomValidatorTypesAdmin } from "../../../lib/useCustomValidatorTypesAdmin";
 import { useCustomValidatorDrafts } from "../customValidatorDrafts";
-import { useCustomValidators } from "../useCustomValidators";
 import type { RuleSources } from "./ConditionRule";
 import { defaultFieldRule } from "./fieldConditions";
 import { crossFormRule } from "./FieldRule";
@@ -41,7 +41,7 @@ export function AddRuleMenu({
     validators,
     loading: validatorsLoading,
     error: validatorsError,
-  } = useCustomValidators();
+  } = useCustomValidatorTypesAdmin();
   const { createDraftId, setDraft } = useCustomValidatorDrafts();
 
   const { earlierControllers, laterControllers, outputBlocks, selfId } =

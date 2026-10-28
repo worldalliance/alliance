@@ -4,7 +4,6 @@ import {
 } from "@alliance/common/forms/visible-if-formula";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { resetCustomValidatorsCache } from "../useCustomValidators";
 import {
   addRule,
   color,
@@ -320,7 +319,6 @@ describe("other rules", () => {
   });
 
   it("removes a validator rule on None, keeping the expression for repair", async () => {
-    resetCustomValidatorsCache();
     api.alsoServing({
       "GET /user/list": () => Response.json([]),
       "GET /tasks/customValidators": () =>
@@ -359,7 +357,6 @@ describe("other rules", () => {
   });
 
   it("moves an edited saved validator to a new draft", async () => {
-    resetCustomValidatorsCache();
     api.alsoServing({
       "GET /tasks/customValidators": () =>
         Response.json([
@@ -407,11 +404,9 @@ describe("other rules", () => {
       conditions: { v: { kind: "validator", validatorId: -9 } },
       formula: "v",
     });
-    resetCustomValidatorsCache();
   });
 
   it("registers a draft for a new validator rule and drops it with the rule", async () => {
-    resetCustomValidatorsCache();
     api.alsoServing({
       "GET /tasks/customValidators": () =>
         Response.json([
@@ -449,7 +444,6 @@ describe("other rules", () => {
     );
     expect(removeDraft).toHaveBeenCalledWith(-7);
     expect(latest()).toBeUndefined();
-    resetCustomValidatorsCache();
   });
 
   it("offers output-block rules instead of account rules in an output view", async () => {
