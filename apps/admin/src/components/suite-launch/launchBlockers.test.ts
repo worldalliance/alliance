@@ -22,7 +22,15 @@ const finding = {
 const ready = {
   data: {
     actions: [{ action, unready: [] }],
-    loads: [{ userId: 9, actionIds: [1], minutes: 10 }],
+    loads: [
+      {
+        userId: 9,
+        actionIds: [1],
+        minutes: 10,
+        otherActionIds: [],
+        otherMinutes: 0,
+      },
+    ],
     recipientCount: 1,
     textFindings: [finding],
     errors: [],
@@ -30,6 +38,7 @@ const ready = {
     spellcheckLoading: false,
   },
   schedule,
+  reminderWindows: [],
   hasMemberActionEvent: false,
   checkedActionIds: new Set([1]),
   dismissedFindingKeys: new Set(["f1"]),
@@ -74,7 +83,15 @@ describe("launchBlockers", () => {
               ],
             },
           ],
-          loads: [{ userId: 9, actionIds: [1], minutes: 16 }],
+          loads: [
+            {
+              userId: 9,
+              actionIds: [1],
+              minutes: 16,
+              otherActionIds: [],
+              otherMinutes: 0,
+            },
+          ],
           errors: ["Failed to load action A."],
         },
         checkedActionIds: new Set(),
@@ -95,11 +112,56 @@ describe("launchBlockers", () => {
         ...ready,
         data: {
           ...ready.data,
-          loads: [{ userId: 9, actionIds: [1], minutes: 16 }],
+          loads: [
+            {
+              userId: 9,
+              actionIds: [1],
+              minutes: 16,
+              otherActionIds: [],
+              otherMinutes: 0,
+            },
+          ],
         },
         overloadAcknowledged: true,
       }),
     ).toEqual([]);
+  });
+
+  it("counts other live actions toward a member's minutes", () => {
+    expect(
+      launchBlockers({
+        ...ready,
+        data: {
+          ...ready.data,
+          loads: [
+            {
+              userId: 9,
+              actionIds: [1],
+              minutes: 10,
+              otherActionIds: [5],
+              otherMinutes: 6,
+            },
+          ],
+        },
+      }),
+    ).toEqual(["1 member has more than 15 minutes of actions."]);
+  });
+
+  it("blocks reminders that would send before members start", () => {
+    expect(
+      launchBlockers({
+        ...ready,
+        reminderWindows: [
+          {
+            name: "Early",
+            start: new Date("2026-01-16T02:00:00Z"),
+            end: new Date("2026-01-17T02:00:00Z"),
+          },
+        ],
+      }),
+    ).toEqual([
+      "1 reminder would send before members start. Move office taking action later.",
+    ]);
   });
 
   it("blocks a schedule in the past or out of order, and an empty audience", () => {

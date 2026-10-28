@@ -60,6 +60,36 @@ describe("findTextIssues", () => {
     expect(flagged("Visit www.example.org", () => false)).toEqual([]);
   });
 
+  it("still flags a missing space before a word spelled like a domain ending", () => {
+    expect(flagged("Done this month.Net zero next")).toEqual([
+      { kind: TextIssueKind.MissingSpaceAfterPunctuation, text: "." },
+    ]);
+  });
+
+  it("flags placeholder text left in", () => {
+    expect(
+      flagged("Call TODO by Friday, link [insert link here], lorem ipsum."),
+    ).toEqual([
+      { kind: TextIssueKind.Placeholder, text: "TODO" },
+      { kind: TextIssueKind.Placeholder, text: "[insert link here]" },
+      { kind: TextIssueKind.Placeholder, text: "lorem ipsum" },
+    ]);
+  });
+
+  it("leaves a lowercase todo and markdown link text alone", () => {
+    expect(
+      flagged("Add it to your todo list: [Add to calendar](https://x.org)"),
+    ).toEqual([]);
+  });
+
+  it("ends a placeholder at its own bracket, not past a markdown link", () => {
+    expect(
+      flagged(
+        "[Add to calendar](https://x.org), see note [1] or [insert date]",
+      ),
+    ).toEqual([{ kind: TextIssueKind.Placeholder, text: "[insert date]" }]);
+  });
+
   it("checks no spelling without a dictionary", () => {
     expect(flagged("yuor")).toEqual([]);
   });

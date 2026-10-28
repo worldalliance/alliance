@@ -23,6 +23,16 @@ export interface CohortNames {
   actionNames: ReadonlyMap<number, string>;
 }
 
+export const cohortNames = (params: {
+  tags: readonly { id: string; name: string }[];
+  actions: readonly { id: number; name: string }[];
+}): CohortNames => ({
+  tagNames: new Map(params.tags.map((tag) => [tag.id, tag.name])),
+  actionNames: new Map(
+    params.actions.map((action) => [action.id, action.name]),
+  ),
+});
+
 const describeLeaf = (expr: LeafCondition, names: CohortNames): string => {
   switch (expr.type) {
     case "Tag":

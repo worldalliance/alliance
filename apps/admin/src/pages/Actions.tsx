@@ -13,7 +13,10 @@ import {
   actionStatusBucket,
 } from "../lib/actionStatusBucket";
 import { actionsLoadError } from "../lib/actionsLoadError";
-import { describeCohortExpression } from "../lib/describeCohortExpression";
+import {
+  cohortNames,
+  describeCohortExpression,
+} from "../lib/describeCohortExpression";
 import { inProgressSuites } from "../lib/inProgressSuites";
 import { useTagsAdmin } from "../lib/useTagsAdmin";
 
@@ -52,10 +55,7 @@ const ActionsList: React.FC = () => {
   );
 
   const participantsById = useMemo(() => {
-    const names = {
-      tagNames: new Map(tags.map((tag) => [tag.id, tag.name])),
-      actionNames: new Map(actions.map((action) => [action.id, action.name])),
-    };
+    const names = cohortNames({ tags, actions });
     return new Map(
       actions.map((dto) => {
         const { action, cohortExpressionError } = parseActionDto(dto);

@@ -1,21 +1,38 @@
-import { ExternalLink, Pencil } from "lucide-react";
+import { ExternalLink, FileText, Pencil } from "lucide-react";
+import type React from "react";
 import { Link } from "react-router";
 import { getSiteUrl } from "../../lib/config";
 
 export const iconControlClass =
   "rounded p-1.5 text-zinc-600 hover:bg-zinc-100 hover:text-black";
 
-export const EditActionLink = ({ actionId }: { actionId: number }) => (
+const NewTabLink = ({
+  to,
+  label,
+  children,
+}: React.PropsWithChildren<{ to: string; label: string }>) => (
   <Link
-    to={`/actions/${actionId}`}
+    to={to}
     target="_blank"
     rel="noreferrer"
-    aria-label="Edit action"
-    title="Edit action"
+    aria-label={label}
+    title={label}
     className={iconControlClass}
   >
-    <Pencil className="size-4" />
+    {children}
   </Link>
+);
+
+export const EditActionLink = ({ actionId }: { actionId: number }) => (
+  <NewTabLink to={`/actions/${actionId}`} label="Edit action">
+    <Pencil className="size-4" />
+  </NewTabLink>
+);
+
+export const EditTaskFormLink = ({ formId }: { formId: number }) => (
+  <NewTabLink to={`/forms/${formId}`} label="Edit task form">
+    <FileText className="size-4" />
+  </NewTabLink>
 );
 
 export const ActionLinks = ({ actionId }: { actionId: number }) => (

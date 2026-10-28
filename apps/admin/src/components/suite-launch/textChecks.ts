@@ -4,6 +4,7 @@ export enum TextIssueKind {
   SpaceBeforePunctuation = "space_before_punctuation",
   MissingSpaceAfterPunctuation = "missing_space_after_punctuation",
   Misspelling = "misspelling",
+  Placeholder = "placeholder",
 }
 
 export const TEXT_ISSUE_LABELS: Record<TextIssueKind, string> = {
@@ -13,6 +14,7 @@ export const TEXT_ISSUE_LABELS: Record<TextIssueKind, string> = {
   [TextIssueKind.MissingSpaceAfterPunctuation]:
     "Missing space after punctuation",
   [TextIssueKind.Misspelling]: "Possible misspelling",
+  [TextIssueKind.Placeholder]: "Placeholder text",
 };
 
 export type TextIssue = {
@@ -23,8 +25,8 @@ export type TextIssue = {
 
 // Replaced character for character, so issue offsets still index the original text.
 const UNCHECKED_SPANS = [
-  /(?:https?:\/\/|www\.)\S+/g,
   /\]\([^)]*\)/g,
+  /(?:https?:\/\/|www\.)\S+/g,
   /`[^`\n]*`/g,
   /<[^>\n]+>/g,
   /\S+@\S+\.\S+/g,
@@ -39,6 +41,11 @@ const PATTERNS: [TextIssueKind, RegExp][] = [
   [
     TextIssueKind.MissingSpaceAfterPunctuation,
     /(?<=[a-z]{2})[,;.!?](?=[A-Z][a-z])/g,
+  ],
+  [TextIssueKind.Placeholder, /\b(?:TODO|TBD|TKTK|FIXME)\b/g],
+  [
+    TextIssueKind.Placeholder,
+    /\blorem ipsum\b|\[(?:insert|add|tbd)\b[^\]\u0001]*\]/gi,
   ],
 ];
 
