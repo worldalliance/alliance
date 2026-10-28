@@ -2756,7 +2756,6 @@ export type CreateActionDto = {
      */
     isForumParticipationAction: boolean;
     customStatLabel?: string;
-    customStatValue?: number;
     customStatType?: CustomActionStat;
     /**
      * Square thumbnail image alt for the action
@@ -2851,7 +2850,6 @@ export type UpdateActionDto = {
      */
     isForumParticipationAction?: boolean;
     customStatLabel?: string;
-    customStatValue?: number;
     customStatType?: CustomActionStat;
     /**
      * Square thumbnail image alt for the action
