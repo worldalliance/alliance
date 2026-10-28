@@ -5,6 +5,7 @@ import { retryUnlessRefused } from "./retryQuery";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 import {
+  FormUpdateFailure,
   useAdminTaskForm,
   useAdminTaskFormActions,
   useInvalidateTaskForms,
@@ -18,6 +19,8 @@ let stored = { ...form, title: "stored" };
 let storedStatus = 200;
 let storedRequests = 0;
 let heldResponse: Promise<void> | null = null;
+let updateStatus = 200;
+let updateUnreachable = false;
 
 serveApi(
   routes({
@@ -35,6 +38,12 @@ serveApi(
       await held;
       return Response.json(served, { status: storedStatus });
     },
+    "PUT /tasks/updateForm/7": () => {
+      if (updateUnreachable) throw new TypeError("Failed to fetch");
+      return updateStatus === 200
+        ? Response.json({ ...stored, formSnapshotId: 2 })
+        : Response.json({ message: "Changed" }, { status: updateStatus });
+    },
   }),
 );
 
@@ -45,6 +54,8 @@ beforeEach(() => {
   storedStatus = 200;
   storedRequests = 0;
   heldResponse = null;
+  updateStatus = 200;
+  updateUnreachable = false;
 });
 
 it("loads the form with the given id", async () => {
@@ -124,6 +135,40 @@ it("fetches the stored form over a cached copy, and caches what it got", async (
   expect(client.getQueryData(queryKeys.taskFormAdmin(7))).toEqual(stored);
 });
 
+it("caches the saved form and invalidates the forms derived from it", async () => {
+  const { client, actions } = adminActions();
+  client.setQueryData(queryKeys.formsAdmin(), []);
+
+  const result = await actions().updateForm({
+    formId: 7,
+    body: { schema: {} },
+  });
+
+  expect(R.isSuccess(result)).toBe(true);
+  expect(client.getQueryData(queryKeys.taskFormAdmin(7))).toMatchObject({
+    formSnapshotId: 2,
+  });
+  expect(client.getQueryState(queryKeys.formsAdmin())?.isInvalidated).toBe(
+    true,
+  );
+});
+
+it("tells a conflicting save from a failed one, caching neither", async () => {
+  const { client, actions } = adminActions();
+  client.setQueryData(queryKeys.formsAdmin(), []);
+  const save = () => actions().updateForm({ formId: 7, body: { schema: {} } });
+
+  updateStatus = 409;
+  expect(await save()).toEqual(R.failure(FormUpdateFailure.Conflict));
+  updateStatus = 400;
+  expect(await save()).toEqual(R.failure(FormUpdateFailure.Failed));
+
+  expect(client.getQueryData(queryKeys.taskFormAdmin(7))).toBeUndefined();
+  expect(client.getQueryState(queryKeys.formsAdmin())?.isInvalidated).toBe(
+    false,
+  );
+});
+
 it("fails a fetch of the stored form at once, without the app's retries", async () => {
   storedStatus = 503;
   const { actions } = adminActions({
@@ -187,4 +232,17 @@ it("leaves its read in the cache over a screen's older fetch landing later", asy
   await waitFor(() => expect(hook.result.current.title).toBe("fresh"));
   await new Promise((resolve) => setTimeout(resolve, 20));
   expect(hook.result.current.title).toBe("fresh");
+});
+
+it("fails a save that never reached the server", async () => {
+  updateUnreachable = true;
+  const { client, actions } = adminActions();
+
+  const result = await actions().updateForm({
+    formId: 7,
+    body: { schema: {} },
+  });
+
+  expect(result).toEqual(R.failure(FormUpdateFailure.Failed));
+  expect(client.getQueryData(queryKeys.taskFormAdmin(7))).toBeUndefined();
 });
