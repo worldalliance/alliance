@@ -6,6 +6,7 @@ task: Admin panel — surface in-progress suites on the actions page and add a g
 ## Actions page
 
 - On the admin "Actions" page, add a new section directly underneath the timeline listing the suites that have at least one draft or active action. (user)
+- Each suite in "Suites with draft or active actions" lists its actions beneath it. (user)
 
 ## Suite launch flow
 

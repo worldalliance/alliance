@@ -7,41 +7,36 @@ import { ActionStatusBucket, actionStatusBucket } from "./actionStatusBucket";
 export type InProgressSuite = {
   id: number;
   name: string;
-  draftCount: number;
-  activeCount: number;
+  actions: { id: number; name: string; bucket: ActionStatusBucket }[];
 };
 
-const COUNTED_BUCKET: Record<
-  ActionStatusBucket,
-  "draftCount" | "activeCount" | null
-> = {
-  [ActionStatusBucket.Draft]: "draftCount",
-  [ActionStatusBucket.Active]: "activeCount",
-  [ActionStatusBucket.Pending]: null,
-  [ActionStatusBucket.Onboarding]: null,
-  [ActionStatusBucket.Completed]: null,
+const IN_PROGRESS: Record<ActionStatusBucket, boolean> = {
+  [ActionStatusBucket.Draft]: true,
+  [ActionStatusBucket.Active]: true,
+  [ActionStatusBucket.Pending]: false,
+  [ActionStatusBucket.Onboarding]: false,
+  [ActionStatusBucket.Completed]: false,
 };
 
 /** Suites with a draft or active action, in the order their first such action appears. */
 export function inProgressSuites(
   actions: (Pick<
     AdminActionListItemDto,
-    "status" | "onboarding" | "archived"
+    "id" | "name" | "status" | "onboarding" | "archived"
   > & {
     suite?: Pick<ActionSuite, "id" | "name">;
   })[],
 ): InProgressSuite[] {
   const suites = new Map<number, InProgressSuite>();
   for (const action of actions) {
-    const counted = COUNTED_BUCKET[actionStatusBucket(action)];
-    if (!action.suite || action.archived || !counted) continue;
+    const bucket = actionStatusBucket(action);
+    if (!action.suite || action.archived || !IN_PROGRESS[bucket]) continue;
     const suite = suites.get(action.suite.id) ?? {
       id: action.suite.id,
       name: action.suite.name,
-      draftCount: 0,
-      activeCount: 0,
+      actions: [],
     };
-    suite[counted] += 1;
+    suite.actions.push({ id: action.id, name: action.name, bucket });
     suites.set(suite.id, suite);
   }
   return [...suites.values()];
