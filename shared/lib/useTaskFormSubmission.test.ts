@@ -56,6 +56,29 @@ describe("submit", () => {
     expect(s.aggregateViewsInvalidated()).toBe(true);
   });
 
+  it("leaves a deferred completion to recordCompleted", async () => {
+    api.alsoServing({ "POST /tasks/submitForm/:id": accepted });
+    const s = renderSubmission();
+
+    await act(() =>
+      s.submission().submit({
+        taskFormId: 7,
+        body,
+        isMember: true,
+        deferCompletion: true,
+      }),
+    );
+
+    expect(s.cachedRelation()).toBe("none");
+    expect(s.visibilityInvalidated()).toBe(true);
+
+    act(() => s.submission().recordCompleted({ actionId: 1, isMember: false }));
+    expect(s.cachedRelation()).toBe("none");
+
+    act(() => s.submission().recordCompleted({ actionId: 1, isMember: true }));
+    expect(s.cachedRelation()).toBe("completed");
+  });
+
   it("sends a guest's token and leaves the member caches alone", async () => {
     let sentToken: string | null = null;
     api.alsoServing({
