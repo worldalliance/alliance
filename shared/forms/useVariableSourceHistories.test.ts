@@ -1,5 +1,7 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
+import { focusManager, onlineManager } from "@tanstack/react-query";
 import { act, renderHook } from "@testing-library/react";
+import { queryWrapper } from "../lib/testing/queryWrapper";
 import { routes, serveApi } from "../lib/testing/serveApi";
 import {
   HistoryReader,
@@ -92,11 +94,15 @@ const scoresOf = (histories: SourceHistories, formId: number) =>
         ?.responses.map((response) => response.answers.score)
     : histories.status;
 
-const render = (schema: FormSchema, subject: HistorySubject) =>
+const render = (
+  schema: FormSchema,
+  subject: HistorySubject,
+  wrapper = queryWrapper().wrapper,
+) =>
   renderHook(
     (props: { subject: HistorySubject }) =>
       useVariableSourceHistories({ schema, subject: props.subject }),
-    { initialProps: { subject } },
+    { initialProps: { subject }, wrapper },
   );
 
 describe("useVariableSourceHistories", () => {
@@ -262,7 +268,7 @@ describe("useVariableSourceHistories", () => {
     const { result, rerender } = renderHook(
       (props: { reload: number }) =>
         useVariableSourceHistories({ schema, subject, reload: props.reload }),
-      { initialProps: { reload: 0 } },
+      { initialProps: { reload: 0 }, wrapper: queryWrapper().wrapper },
     );
     await settle();
 
@@ -282,7 +288,10 @@ describe("useVariableSourceHistories", () => {
     const { result, rerender } = renderHook(
       (props: { schema: FormSchema }) =>
         useVariableSourceHistories({ schema: props.schema, subject }),
-      { initialProps: { schema: readingForms(7) } },
+      {
+        initialProps: { schema: readingForms(7) },
+        wrapper: queryWrapper().wrapper,
+      },
     );
     await settle();
 
@@ -293,6 +302,121 @@ describe("useVariableSourceHistories", () => {
     expect(scoresOf(result.current, 7)).toEqual([1]);
     expect(scoresOf(result.current, 8)).toEqual([2]);
     expect(requests).toEqual(["5:7", "5:8"]);
+  });
+
+  it("doesn't retry a failed load on its own, whatever the app's retries", async () => {
+    mine["7"] = async () => json({ message: "down" }, 500);
+    const { wrapper } = queryWrapper({ retry: 3, retryDelay: 0 });
+    const { result } = render(
+      readingForms(7),
+      { reader: HistoryReader.Self },
+      wrapper,
+    );
+    await settle();
+    expect(result.current.status).toBe(SourceHistoriesStatus.Failed);
+    expect(requests).toEqual(["me:7"]);
+  });
+
+  it("fails rather than waiting for the network while offline", async () => {
+    onlineManager.setOnline(false);
+    try {
+      mine["7"] = () => Promise.reject(new TypeError("Failed to fetch"));
+      const { result } = render(readingForms(7), {
+        reader: HistoryReader.Self,
+      });
+      await settle();
+      expect(result.current.status).toBe(SourceHistoriesStatus.Failed);
+    } finally {
+      onlineManager.setOnline(true);
+    }
+  });
+
+  it("shows loading again while a retry is out", async () => {
+    mine["7"] = async () => json({ message: "down" }, 500);
+    const { result } = render(readingForms(7), { reader: HistoryReader.Self });
+    await settle();
+    const failed = result.current;
+    if (failed.status !== SourceHistoriesStatus.Failed) {
+      throw new Error(`expected a failure, got ${failed.status}`);
+    }
+
+    mine["7"] = () => new Promise(() => {});
+    act(() => failed.retry());
+    await settle();
+    expect(result.current.status).toBe(SourceHistoriesStatus.Loading);
+  });
+
+  it("keeps an open form's histories when the window regains focus", async () => {
+    mine["7"] = async () => json(historyBody([1]));
+    const { result } = render(readingForms(7), { reader: HistoryReader.Self });
+    await settle();
+
+    mine["7"] = async () => json(historyBody([1, 2]));
+    act(() => {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+    });
+    await settle();
+    focusManager.setFocused(undefined);
+    expect(scoresOf(result.current, 7)).toEqual([1]);
+    expect(requests).toEqual(["me:7"]);
+  });
+
+  it("loads the histories afresh when the form reopens, whatever the app's staleTime", async () => {
+    const { wrapper } = queryWrapper({ staleTime: 5 * 60 * 1000 });
+    mine["7"] = async () => json(historyBody([1]));
+    const first = render(
+      readingForms(7),
+      { reader: HistoryReader.Self },
+      wrapper,
+    );
+    await settle();
+    first.unmount();
+    await settle();
+
+    mine["7"] = async () => json(historyBody([1, 2]));
+    const second = render(
+      readingForms(7),
+      { reader: HistoryReader.Self },
+      wrapper,
+    );
+    expect(second.result.current.status).toBe(SourceHistoriesStatus.Loading);
+    await settle();
+    expect(scoresOf(second.result.current, 7)).toEqual([1, 2]);
+    expect(requests).toEqual(["me:7", "me:7"]);
+  });
+
+  it("loads afresh for a form opened while another reading the same source stays open", async () => {
+    const { wrapper } = queryWrapper();
+    mine["7"] = async () => json(historyBody([1]));
+    const first = render(
+      readingForms(7),
+      { reader: HistoryReader.Self },
+      wrapper,
+    );
+    await settle();
+
+    mine["7"] = async () => json(historyBody([1, 2]));
+    const second = render(
+      readingForms(7),
+      { reader: HistoryReader.Self },
+      wrapper,
+    );
+    await settle();
+    expect(scoresOf(second.result.current, 7)).toEqual([1, 2]);
+    expect(scoresOf(first.result.current, 7)).toEqual([1]);
+    expect(requests).toEqual(["me:7", "me:7"]);
+  });
+
+  it("keeps its result between renders while nothing loads", async () => {
+    mine["7"] = async () => json(historyBody([1]));
+    const { result, rerender } = render(readingForms(7), {
+      reader: HistoryReader.Self,
+    });
+    await settle();
+    const loaded = result.current;
+    rerender({ subject: { reader: HistoryReader.Self } });
+    expect(result.current).toBe(loaded);
   });
 });
 

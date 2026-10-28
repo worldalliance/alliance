@@ -5,14 +5,16 @@ import {
   EMPTY_HISTORY,
   readSourceHistory,
 } from "@alliance/common/forms/variable-source-history";
-import { R, type Result } from "@alliance/common/result";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { R } from "@alliance/common/result";
+import { useQueries, type UseQueryResult } from "@tanstack/react-query";
+import { useCallback, useId } from "react";
 import {
   tasksGetMemberFormResponseHistoryAdmin,
   tasksGetMyFormResponseHistory,
 } from "../client";
 import { thrownStatus } from "../lib/hey-api";
 import { useStableIds } from "../lib/useStableIds";
+import { openFormQueryOptions } from "./openFormQueryOptions";
 
 export enum HistoryReader {
   /** A guest, or an admin preview with no member picked: no submissions. */
@@ -114,38 +116,27 @@ async function fetchHistory(
     HistorySubject,
     { reader: HistoryReader.Nobody | HistoryReader.Pending }
   >,
-): Promise<Result<VariableSourceHistory, Error>> {
+): Promise<VariableSourceHistory> {
   const { reader } = subject;
   switch (reader) {
     case HistoryReader.Self: {
-      const response = await R.fromPromise(
-        tasksGetMyFormResponseHistory({
-          path: { id: formId },
-          throwOnError: true,
-        }),
-        historyError,
-      );
-      return R.flatMap(response, ({ data }) => readSourceHistory(data));
+      const { data } = await tasksGetMyFormResponseHistory({
+        path: { id: formId },
+        throwOnError: true,
+      });
+      return R.unwrap(readSourceHistory(data));
     }
     case HistoryReader.Member: {
-      const response = await R.fromPromise(
-        tasksGetMemberFormResponseHistoryAdmin({
-          path: { formId, userId: subject.userId },
-          throwOnError: true,
-        }),
-        historyError,
-      );
-      return R.flatMap(response, ({ data }) => readSourceHistory(data));
+      const { data } = await tasksGetMemberFormResponseHistoryAdmin({
+        path: { formId, userId: subject.userId },
+        throwOnError: true,
+      });
+      return R.unwrap(readSourceHistory(data));
     }
     default:
       throw new Error(`unknown history reader: ${reader satisfies never}`);
   }
 }
-
-type Loaded = {
-  key: string;
-  byForm: ReadonlyMap<number, Result<VariableSourceHistory, Error>>;
-};
 
 /**
  * The submitted answers every variable or options formula input reading
@@ -162,95 +153,87 @@ export function useVariableSourceHistories(params: {
 }): SourceHistories {
   const { schema, subject, reload = 0 } = params;
   const formIds = useStableIds(formulaHistoryFormIds(schema));
+  // Each open form loads its own histories, so a form opened later never
+  // shows answers another open form loaded before a submission.
+  const instance = useId();
   const reader =
-    subject.reader === HistoryReader.Member
-      ? `${subject.reader}:${subject.userId}`
-      : subject.reader;
-  const key = `${reader}#${reload}`;
+    subject.reader === HistoryReader.Nobody ||
+    subject.reader === HistoryReader.Pending
+      ? undefined
+      : subject;
 
-  const [loaded, setLoaded] = useState<Loaded>({ key, byForm: new Map() });
-  const byForm = loaded.key === key ? loaded.byForm : undefined;
-  const missingKey = formIds.filter((formId) => !byForm?.has(formId)).join(",");
-
-  // Read through the key so a response for an earlier member can never land in
-  // this one's state.
-  useEffect(() => {
-    if (
-      subject.reader === HistoryReader.Nobody ||
-      subject.reader === HistoryReader.Pending ||
-      missingKey === ""
-    ) {
-      return;
-    }
-    let cancelled = false;
-    const missing = missingKey.split(",").map(Number);
-    void Promise.all(
-      missing.map(async (formId) => {
-        const history = await fetchHistory(formId, subject);
-        if (!history.ok) {
-          console.error(
-            `Failed to load answers from form ${formId}`,
-            history.error,
-          );
-        }
-        return [formId, history] as const;
-      }),
-    ).then((entries) => {
-      if (cancelled) return;
-      setLoaded((prev) => ({
-        key,
-        byForm: new Map([...(prev.key === key ? prev.byForm : []), ...entries]),
-      }));
-    });
-    return () => {
-      cancelled = true;
-    };
-    // `key` holds everything the fetch reads from `subject`, which is a fresh
-    // object each render.
-  }, [key, missingKey]);
-
-  const retry = useCallback(
-    () =>
-      setLoaded((prev) => ({
-        key: prev.key,
-        byForm: new Map([...prev.byForm].filter(([, history]) => history.ok)),
-      })),
-    [],
-  );
-
-  return useMemo((): SourceHistories => {
-    if (subject.reader === HistoryReader.Pending && formIds.length > 0) {
-      return { status: SourceHistoriesStatus.Loading };
-    }
-    if (
-      subject.reader === HistoryReader.Nobody ||
-      subject.reader === HistoryReader.Pending
-    ) {
-      return {
-        status: SourceHistoriesStatus.Ready,
-        sources: new Map(formIds.map((formId) => [formId, EMPTY_HISTORY])),
-      };
-    }
-    const results = formIds.map((formId) => byForm?.get(formId));
-    const sources = new Map<number, VariableSourceHistory>();
-    const deletedFormIds = new Set<number>();
-    let failed = false;
-    for (const [index, result] of results.entries()) {
-      if (result === undefined) {
+  const combine = useCallback(
+    (
+      results: UseQueryResult<VariableSourceHistory, Error>[],
+    ): SourceHistories => {
+      if (subject.reader === HistoryReader.Pending && formIds.length > 0) {
         return { status: SourceHistoriesStatus.Loading };
       }
-      if (result.ok) {
-        sources.set(formIds[index], result.value);
-      } else if (result.error instanceof SourceFormDeleted) {
-        deletedFormIds.add(formIds[index]);
-      } else {
-        failed = true;
+      if (
+        subject.reader === HistoryReader.Nobody ||
+        subject.reader === HistoryReader.Pending
+      ) {
+        return {
+          status: SourceHistoriesStatus.Ready,
+          sources: new Map(formIds.map((formId) => [formId, EMPTY_HISTORY])),
+        };
       }
-    }
-    // A failure a retry may clear outranks a deletion none can.
-    if (failed) return { status: SourceHistoriesStatus.Failed, retry };
-    return deletedFormIds.size > 0
-      ? { status: SourceHistoriesStatus.SourceDeleted, sources, deletedFormIds }
-      : { status: SourceHistoriesStatus.Ready, sources };
-  }, [subject.reader, formIds, byForm, retry]);
+      const sources = new Map<number, VariableSourceHistory>();
+      const deletedFormIds = new Set<number>();
+      let failed = false;
+      for (const [index, result] of results.entries()) {
+        if (result.isPending) return { status: SourceHistoriesStatus.Loading };
+        if (result.isSuccess) {
+          sources.set(formIds[index], result.data);
+        } else if (result.error instanceof SourceFormDeleted) {
+          deletedFormIds.add(formIds[index]);
+        } else {
+          failed = true;
+        }
+      }
+      // A failure a retry may clear outranks a deletion none can.
+      if (failed) {
+        const retry = () => {
+          for (const result of results) {
+            if (result.isError) void result.refetch();
+          }
+        };
+        return { status: SourceHistoriesStatus.Failed, retry };
+      }
+      return deletedFormIds.size > 0
+        ? {
+            status: SourceHistoriesStatus.SourceDeleted,
+            sources,
+            deletedFormIds,
+          }
+        : { status: SourceHistoriesStatus.Ready, sources };
+    },
+    [subject.reader, formIds],
+  );
+
+  return useQueries({
+    queries:
+      reader === undefined
+        ? []
+        : formIds.map((formId) => ({
+            queryKey: [
+              "variableSourceHistory",
+              instance,
+              reader,
+              formId,
+              reload,
+            ],
+            queryFn: () =>
+              fetchHistory(formId, reader).catch((thrown: unknown) => {
+                const error = historyError(thrown);
+                console.error(
+                  `Failed to load answers from form ${formId}`,
+                  error,
+                );
+                throw error;
+              }),
+            ...openFormQueryOptions,
+          })),
+    combine,
+  });
 }
