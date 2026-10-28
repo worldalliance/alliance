@@ -9,6 +9,23 @@ import { useCallback } from "react";
 import { tasksGetForm, tasksGetFormAdmin } from "../client";
 import { queryKeys } from "./queryKeys";
 
+const readForm = async (get: typeof tasksGetForm, formId: number) => {
+  const response = await get({ path: { id: formId } });
+  if (!response.data) {
+    // The status lets retryUnlessRefused skip a refusal.
+    throw Object.assign(
+      new Error(
+        errorMessage({
+          error: response.error,
+          fallback: "Unable to load form",
+        }),
+      ),
+      { statusCode: response.response.status },
+    );
+  }
+  return response.data;
+};
+
 const formQuery = ({
   formId,
   queryKey,
@@ -20,25 +37,7 @@ const formQuery = ({
 }) =>
   queryOptions({
     queryKey,
-    queryFn:
-      formId == null
-        ? skipToken
-        : async () => {
-            const response = await get({ path: { id: formId } });
-            if (!response.data) {
-              // The status lets retryUnlessRefused skip a refusal.
-              throw Object.assign(
-                new Error(
-                  errorMessage({
-                    error: response.error,
-                    fallback: "Unable to load form",
-                  }),
-                ),
-                { statusCode: response.response.status },
-              );
-            }
-            return response.data;
-          },
+    queryFn: formId == null ? skipToken : () => readForm(get, formId),
   });
 
 /** The form as the signed-in member is served it, filled from their row. */
