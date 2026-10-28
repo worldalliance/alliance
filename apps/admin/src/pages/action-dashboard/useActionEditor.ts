@@ -139,7 +139,7 @@ export function useActionEditor(params: {
     });
     setReviewerRows(reviewers.map((r) => ({ ...r, key: makeTempId() })));
 
-    setCohortExpression(parsedAction.cohortExpression ?? null);
+    setCohortExpression(parsedAction.cohortExpression);
 
     resetCoverImage(parsedAction.image ?? null);
   }, [action, actionFetching, seededActionId, resetCoverImage]);
