@@ -11,6 +11,9 @@ export const inLaunchZone = (date: Date) =>
     timeStyle: "short",
   })} PT`;
 
+/** The member contract's completion period. */
+export const COMPLETION_PERIOD_DAYS = 7;
+
 export type LaunchSchedule = { memberActionAt: Date; officeActionAt: Date };
 
 export const scheduleProblems = (
@@ -43,7 +46,7 @@ export function defaultLaunchSchedule(now: Date): LaunchSchedule {
       : onTheHour.getTime() === earliest.getTime()
         ? onTheHour
         : addHours(onTheHour, 1);
-  const officeActionAt = set(addDays(memberActionAt, 7), {
+  const officeActionAt = set(addDays(memberActionAt, COMPLETION_PERIOD_DAYS), {
     hours: 23,
     minutes: 59,
     seconds: 0,

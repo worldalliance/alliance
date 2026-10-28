@@ -8,13 +8,15 @@ import DateTimePicker, {
   type DateTimePickerChange,
 } from "@alliance/sharedweb/ui/DateTimePicker";
 import { ConfirmMode, useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { Rocket, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useState } from "react";
 import { notifyRealMembersText } from "../../lib/notifyRealMembers";
 import { useActionReminderGroupsAdmin } from "../../lib/useActionReminderGroupsAdmin";
 import { defaultReminderBodies } from "../reminders/presets";
 import { iconControlClass } from "./ActionLinks";
 import ActionReviewCheck from "./ActionReviewCheck";
+import { contractViolations } from "./contractViolations";
+import ContractViolationsBanner from "./ContractViolationsBanner";
 import { launchBlockers } from "./launchBlockers";
 import LaunchCheck from "./LaunchCheck";
 import { reminderSendWindows } from "./launchReminders";
@@ -70,7 +72,7 @@ const SuiteLaunchPanel = ({
   const [dismissedKeys, setDismissedKeys] = useState<ReadonlySet<string>>(
     new Set(),
   );
-  const [overloadAcknowledged, setOverloadAcknowledged] = useState(false);
+  const [violationsAcknowledged, setViolationsAcknowledged] = useState(false);
   const [launching, setLaunching] = useState(false);
   const [launchError, setLaunchError] = useState<string | null>(null);
 
@@ -82,6 +84,9 @@ const SuiteLaunchPanel = ({
       }
     };
 
+  const violations = data.loading
+    ? []
+    : contractViolations({ loads: data.loads, schedule });
   const now = new Date();
   const scheduleValid = scheduleProblems(schedule, now).length === 0;
   const blockers = launchBlockers({
@@ -93,7 +98,7 @@ const SuiteLaunchPanel = ({
     ),
     checkedActionIds,
     dismissedFindingKeys: dismissedKeys,
-    overloadAcknowledged,
+    violationsAcknowledged,
     now,
   });
 
@@ -151,6 +156,13 @@ const SuiteLaunchPanel = ({
         </button>
       </div>
 
+      {violations.length > 0 && (
+        <ContractViolationsBanner
+          violations={violations}
+          acknowledged={violationsAcknowledged}
+          onAcknowledgedChange={setViolationsAcknowledged}
+        />
+      )}
       <LaunchCheck title="Schedule" passed={scheduleValid}>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm">
@@ -197,12 +209,7 @@ const SuiteLaunchPanel = ({
               )
             }
           />
-          <MemberLoadCheck
-            loads={data.loads}
-            actions={data.actions}
-            acknowledged={overloadAcknowledged}
-            onAcknowledgedChange={setOverloadAcknowledged}
-          />
+          <MemberLoadCheck loads={data.loads} actions={data.actions} />
           <MemberPreview loads={data.loads} actions={data.actions} />
           {data.spellcheckLoading ? (
             <p className="text-sm text-zinc-500">
@@ -235,11 +242,10 @@ const SuiteLaunchPanel = ({
       <Button
         color={ButtonColor.Green}
         size="large"
-        className="gap-2"
+        className="w-full"
         disabled={blockers.length > 0 || launching}
         onClick={handleLaunch}
       >
-        <Rocket className="size-5" />
         {launching
           ? "Launching…"
           : `Launch and notify ${withCount(data.recipientCount, "member")}`}
