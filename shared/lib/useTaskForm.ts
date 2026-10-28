@@ -14,14 +14,14 @@ const formQuery = ({
   queryKey,
   get,
 }: {
-  formId: number | undefined;
+  formId: number | null | undefined;
   queryKey: readonly unknown[];
   get: typeof tasksGetForm;
 }) =>
   queryOptions({
     queryKey,
     queryFn:
-      formId === undefined
+      formId == null
         ? skipToken
         : async () => {
             const response = await get({ path: { id: formId } });
@@ -42,7 +42,7 @@ const formQuery = ({
   });
 
 /** The form as the signed-in member is served it, filled from their row. */
-export const taskFormQuery = (formId: number | undefined) =>
+export const taskFormQuery = (formId: number | null | undefined) =>
   formQuery({
     formId,
     queryKey: queryKeys.taskForm(formId ?? null),
@@ -50,19 +50,19 @@ export const taskFormQuery = (formId: number | undefined) =>
   });
 
 /** The stored form, unfilled: for admin screens that edit, clone or report on it. */
-export const adminTaskFormQuery = (formId: number | undefined) =>
+export const adminTaskFormQuery = (formId: number | null | undefined) =>
   formQuery({
     formId,
     queryKey: queryKeys.taskFormAdmin(formId ?? null),
     get: tasksGetFormAdmin,
   });
 
-export function useAdminTaskForm(formId: number | undefined) {
+export function useAdminTaskForm(formId: number | null | undefined) {
   return useQuery(adminTaskFormQuery(formId));
 }
 
 export function useTaskForm(
-  formId: number | undefined,
+  formId: number | null | undefined,
   params?: { enabled?: boolean },
 ) {
   return useQuery({

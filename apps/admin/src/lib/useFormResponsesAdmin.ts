@@ -18,11 +18,11 @@ import { useFormShareLinksAdmin } from "./useFormShareLinksAdmin";
 
 const NO_RESPONSES: FormResponseDto[] = [];
 
-export const formResponsesAdminQuery = (formId: number | undefined) =>
+export const formResponsesAdminQuery = (formId: number | null | undefined) =>
   queryOptions({
     queryKey: queryKeys.formResponsesAdmin(formId ?? null),
     queryFn:
-      formId === undefined
+      formId == null
         ? skipToken
         : () =>
             tasksGetFormResponsesAdmin({
