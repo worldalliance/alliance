@@ -2,6 +2,7 @@ const nullableNumberFields: ReadonlySet<string> = new Set([
   "suiteId",
   "forumParticipationPostId",
   "timeEstimate",
+  "customStatGoal",
 ]);
 
 const nullableTextFields: ReadonlySet<string> = new Set([
