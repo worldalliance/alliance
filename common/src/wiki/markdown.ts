@@ -12,6 +12,12 @@ export interface SourcePosition {
   column: number;
 }
 
+export interface WikiProblem {
+  path: string;
+  position: SourcePosition;
+  message: string;
+}
+
 export interface WikiHeading {
   depth: number;
   text: string;
