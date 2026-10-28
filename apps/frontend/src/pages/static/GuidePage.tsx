@@ -14,7 +14,6 @@ import {
   GuideSectionKind,
 } from "../../site/docContent";
 import { DocProse } from "../../site/DocProse";
-import { FontSwitcher } from "../../site/FontSwitcher";
 import { InlineToc, StickyToc, useActiveSection } from "../../site/GuideToc";
 import { FAQ_HREF, FOUNDATION_HREF, GOVERNANCE_HREF } from "../../site/links";
 import { ContractCard, ImpactCard } from "../../site/PageCards";
@@ -220,7 +219,6 @@ export default function GuidePage() {
       subtitle={GUIDE_LEDE}
       columnClassName={GUIDE_HEADER_COLUMN}
     >
-      <FontSwitcher />
       <StickyToc
         sections={TOC_SECTIONS}
         active={active}

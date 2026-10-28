@@ -19,11 +19,11 @@
   font-family: var(--site-font-logotype);
 }
 
-/** Pull quotes, which take the body face at medium weight unless set otherwise. */
+/** Pull quotes, in the body face at medium weight. */
 .site-root .site-quote,
 .site-root .site-quote * {
-  font-family: var(--site-font-quote, var(--site-font-body));
-  font-weight: var(--site-quote-weight, 500);
+  font-family: var(--site-font-body);
+  font-weight: 500;
 }
 
 /** Small labels and captions, which take the app face. */
