@@ -1,11 +1,13 @@
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { AuthContext } from "../../../lib/AuthContext";
 import { InviteSessionProvider } from "../../../site/invite/InviteSession";
 import { authValue } from "../../../testing/authValue";
-import DemocraticGrantmaking26 from "./DemocraticGrantmaking26";
+import DemocraticGrantmaking26, {
+  WaitlistHeroImages,
+} from "./DemocraticGrantmaking26";
 import { ExpertGrid } from "./ExpertGrid";
 import { FEATURED_PEOPLE } from "./placeholders";
 
@@ -39,7 +41,61 @@ const renderPage = () =>
     </QueryClientProvider>,
   );
 
-test("shows each expert once in an eight-column grid between the waitlist bar and the timeline", async () => {
+test("opens with a waitlist screen above the rest of the page", async () => {
+  renderPage();
+
+  const intro = screen.getByRole("region", { name: "Waitlist" });
+  expect(intro.className).toContain("min-h-svh");
+  const title = within(intro).getByRole("heading", { level: 1 });
+  expect(title.textContent).toContain("Vote on where we donate $100,000");
+  expect(
+    within(intro).getByText("Fall 2026").compareDocumentPosition(title) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).not.toBe(0);
+  expect(
+    within(intro).getByText(
+      "Join the Alliance to participate in this grantmaking project.",
+    ),
+  ).toBeTruthy();
+  expect(
+    within(intro).getByRole("button", { name: "Join the Alliance waitlist" }),
+  ).toBeTruthy();
+  const stack = intro.querySelector("ul");
+  expect(stack?.className).toContain("aspect-square");
+  expect(stack?.className).toContain("flex-col");
+  const strips = stack?.querySelectorAll(":scope > li") ?? [];
+  expect(strips).toHaveLength(4);
+  for (const strip of strips) expect(strip.querySelector("img")).toBeTruthy();
+
+  const bar = await screen.findByRole("img", {
+    name: "213 members and 309 on the waitlist, toward 1,000",
+  });
+  expect(
+    intro.compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).not.toBe(0);
+});
+
+test("shows a set hero image in its strip", () => {
+  render(
+    <WaitlistHeroImages
+      images={[
+        { src: "/hero-1.jpg", alt: "First scene" },
+        { src: null, alt: "" },
+        { src: null, alt: "" },
+        { src: null, alt: "" },
+      ]}
+    />,
+  );
+
+  const stack = screen.getByRole("list", { name: "Project images" });
+  expect(stack.className).toContain("aspect-square");
+  expect(stack.querySelectorAll(":scope > li")).toHaveLength(4);
+  const photo = screen.getByRole("img", { name: "First scene" });
+  expect(photo.getAttribute("src")).toBe("/hero-1.jpg");
+  expect(photo.className).toContain("object-cover");
+});
+
+test("shows each expert once in an eight-column grid after the waitlist bar and the timeline", async () => {
   renderPage();
 
   const bar = await screen.findByRole("img", {
@@ -51,13 +107,13 @@ test("shows each expert once in an eight-column grid between the waitlist bar an
   const grid = screen.getByRole("list", { name: "Expert panel" });
   const timeline = screen.getByRole("region", { name: "Timeline" });
   expect(
-    bar.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING,
+    bar.compareDocumentPosition(timeline) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).not.toBe(0);
+  expect(
+    timeline.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING,
   ).not.toBe(0);
   expect(
     line.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING,
-  ).not.toBe(0);
-  expect(
-    grid.compareDocumentPosition(timeline) & Node.DOCUMENT_POSITION_FOLLOWING,
   ).not.toBe(0);
   expect(timeline.contains(grid)).toBe(false);
   expect(grid.classList.contains("grid-cols-4")).toBe(true);

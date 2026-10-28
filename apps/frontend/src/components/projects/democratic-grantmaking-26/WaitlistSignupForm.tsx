@@ -14,7 +14,8 @@ import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { RotateCw } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
+import { href, Link } from "react-router";
 import { ACCOUNT_BUTTON } from "../../../onboarding/chrome";
 import { useInviteSession } from "../../../site/invite/InviteSession";
 import {
@@ -74,12 +75,20 @@ function ReferralBanner({ referral }: { referral: WaitlistReferralDto }) {
 export function WaitlistSignupForm({
   className,
   submitLabel = "Join the Alliance waitlist",
-  note = "When we're ready, we'll send you an invite link.",
+  note = (
+    <>
+      The Alliance is a global, invite-only community. We take 15-minute weekly
+      actions on our web and mobile apps to improve the world.{" "}
+      <Link to={href("/")} className="underline underline-offset-2">
+        Learn more
+      </Link>
+    </>
+  ),
   closedMessage,
 }: {
   className?: string;
   submitLabel?: string;
-  note?: string;
+  note?: ReactNode;
   closedMessage?: string;
 }) {
   const {
@@ -279,7 +288,9 @@ export function WaitlistSignupForm({
           })}
         </p>
       )}
-      <p className="text-center text-base text-[var(--site-ink)]/70">{note}</p>
+      <p className="mt-2 text-center text-base text-[var(--site-ink)]/70">
+        {note}
+      </p>
     </form>
   );
 }

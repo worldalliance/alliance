@@ -20,13 +20,13 @@ export function MemberWaitlistBar({
         className,
       )}
     >
-      <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-base sm:text-lg text-[var(--site-ink)]/70">
+      <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-lg sm:text-xl text-[var(--site-ink)]/70">
         <span className="flex items-center gap-1">
-          <span className="bg-green size-3 rounded-[2px]" aria-hidden />
+          <span className="bg-green size-4 rounded-sm" aria-hidden />
           {members.toLocaleString("en-US")} members
         </span>
         <span className="flex items-center gap-1">
-          <span className="size-3 rounded-[2px] bg-zinc-400" aria-hidden />
+          <span className="size-4 rounded-sm bg-zinc-400" aria-hidden />
           {waitlist.toLocaleString("en-US")} waitlist
         </span>
         <span className="ml-auto">Goal: {MEMBER_GOAL_LABEL} members</span>
@@ -34,7 +34,7 @@ export function MemberWaitlistBar({
       <div
         role="img"
         aria-label={`${members} members and ${waitlist} on the waitlist, toward ${MEMBER_GOAL.toLocaleString("en-US")}`}
-        className="flex h-5 w-full overflow-hidden rounded-full bg-zinc-100"
+        className="flex h-6 w-full overflow-hidden rounded-full bg-zinc-100"
       >
         <div
           className="bg-green h-full rounded-l-full"

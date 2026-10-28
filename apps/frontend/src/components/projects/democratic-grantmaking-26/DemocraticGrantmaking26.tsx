@@ -10,10 +10,14 @@ import {
   BandHeadingSize,
   SiteRoot,
 } from "../../../site/PageShell";
-import { DisplayHeading, SITE_COL } from "../../../site/ui";
+import { SITE_COL } from "../../../site/ui";
 import { ExpertGrid } from "./ExpertGrid";
 import { MemberWaitlistBar } from "./MemberWaitlistBar";
-import { ABOUT_SECTIONS } from "./placeholders";
+import {
+  ABOUT_SECTIONS,
+  WAITLIST_HERO_IMAGES,
+  type WaitlistHeroImage,
+} from "./placeholders";
 import { ProjectTimeline } from "./ProjectTimeline";
 import { useWaitlistCount } from "./useWaitlist";
 import { WaitlistSignupForm } from "./WaitlistSignupForm";
@@ -28,6 +32,67 @@ export function meta() {
 }
 
 const PROJECT_COL = cn(SITE_COL, "lg:max-w-[1400px]");
+
+export function WaitlistHeroImages({
+  images,
+}: {
+  images: readonly WaitlistHeroImage[];
+}) {
+  const described = images.some((image) => image.src);
+  return (
+    <ul
+      aria-hidden={described ? undefined : true}
+      aria-label={described ? "Project images" : undefined}
+      className="flex aspect-square w-[min(100%,calc(100svh-10rem))] shrink-0 flex-col gap-2 lg:w-[min(38rem,42vw,calc(100svh-10rem))]"
+    >
+      {images.map((image, index) => (
+        <li key={index} className="min-h-0 flex-1 overflow-hidden bg-zinc-200">
+          {image.src && (
+            <img
+              src={image.src}
+              alt={image.alt}
+              className="size-full object-cover"
+            />
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function WaitlistScreen() {
+  return (
+    <section
+      aria-label="Waitlist"
+      className="flex min-h-svh flex-col bg-white"
+      style={{ paddingTop: NAV_HEIGHT }}
+    >
+      <div
+        className={cn(
+          PROJECT_COL,
+          "my-auto grid grid-cols-1 items-center gap-10 py-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-x-24 lg:py-12 xl:gap-x-32",
+        )}
+      >
+        <div className="flex flex-col gap-4 lg:gap-5">
+          <p className="-mb-2 text-left text-[1.05rem] text-[var(--site-ink)]/70 sm:text-[1.2rem]">
+            Fall 2026
+          </p>
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl">
+            Vote on where we donate{" "}
+            <span className="font-semibold text-green">$100,000</span>
+          </h1>
+          <p className="text-left text-xl sm:text-2xl">
+            Join the Alliance to participate in this grantmaking project.
+          </p>
+          <WaitlistSignupForm className="mt-2 w-full" />
+        </div>
+        <div className="flex justify-center lg:justify-end">
+          <WaitlistHeroImages images={WAITLIST_HERO_IMAGES} />
+        </div>
+      </div>
+    </section>
+  );
+}
 
 function ProjectProgress() {
   const members = useAllianceMemberCount();
@@ -51,55 +116,44 @@ export default function DemocraticGrantmaking26() {
     <SiteRoot className="bg-white">
       <Navbar />
       <main>
-        <div
-          className="bg-white pb-10 lg:flex lg:min-h-svh lg:flex-col lg:pb-0"
-          style={{ paddingTop: NAV_HEIGHT }}
-        >
+        <WaitlistScreen />
+        <div className="bg-white pb-10 lg:flex lg:flex-col lg:pb-0">
           <div
-            className="flex flex-col justify-center pb-[clamp(1.5rem,10svh,6rem)] max-lg:[@media(max-aspect-ratio:1/2)_and_(min-height:901px)]:min-h-0! max-lg:[@media(max-aspect-ratio:1/2)_and_(min-height:901px)]:pb-6 md:pb-22 lg:min-h-0! lg:flex-1 lg:pb-0"
-            style={{ minHeight: `calc(100svh - ${NAV_HEIGHT}px)` }}
+            className={cn(
+              PROJECT_COL,
+              "flex flex-col gap-12 sm:gap-24 lg:gap-32",
+            )}
           >
-            <div
-              className={cn(
-                PROJECT_COL,
-                "grid grid-cols-1 gap-y-6 pt-16 [@media(max-width:480px)_and_(max-height:700px)]:pt-8 lg:grid-cols-[minmax(0,1fr)_max(24rem,34%)] lg:items-center lg:gap-x-[10%] lg:pt-[clamp(4rem,10svh,8rem)]",
-              )}
-            >
-              <div className="flex flex-col gap-4 lg:gap-[clamp(1rem,2.5vh,2rem)]">
-                <p className="text-left text-[1.05rem] text-[var(--site-ink)]/70 sm:text-[1.2rem] lg:-mb-2">
-                  An Alliance project / Fall 2026
+            <div className="flex flex-col gap-10">
+              <div className="flex flex-col gap-1">
+                <p className="text-center text-xl sm:text-2xl font-medium">
+                  You make this project possible.
                 </p>
-                <DisplayHeading
-                  as="h1"
-                  leading={1.1}
-                  className="text-5xl sm:text-6xl lg:text-8xl"
-                >
-                  Decide where to donate{" "}
-                  <span className="site-display">$100,000</span>
-                </DisplayHeading>
-                <p className="text-left text-2xl sm:text-3xl">
-                  We&apos;re an online group that completes 15-minute weekly
-                  projects to improve the world. When we reach 1,000 members,
-                  outside funders will give $100,000 to a nonprofit we choose
-                  together.
+                <p className="text-center text-xl sm:text-2xl">
+                  Once 1,000 members join the Alliance, external funders will
+                  donate $100,000 to this project.
                 </p>
               </div>
-              <WaitlistSignupForm className="w-full" />
-            </div>
-            <div
-              className={cn(
-                PROJECT_COL,
-                "pt-8 lg:pt-[clamp(1.5rem,4svh,4rem)]",
-              )}
-            >
               <ProjectProgress />
             </div>
+            <div className="flex flex-col gap-12">
+              <div className="flex flex-col gap-1">
+                <p className="text-center text-xl sm:text-2xl font-medium">
+                  We&apos;re improving expert-public communication.
+                </p>
+                <p className="text-center text-xl sm:text-2xl">
+                  Members and experts will work together to select a nonprofit
+                  to receive the grant.
+                </p>
+              </div>
+              <ProjectTimeline currentIdx={0} />
+            </div>
           </div>
-          <div className={cn(PROJECT_COL, "mt-12 lg:mt-24 lg:pb-24")}>
+          <div className={cn(PROJECT_COL, "mt-12 lg:mt-28 lg:pb-24")}>
             <div className="flex flex-col items-center gap-8 rounded-lg bg-zinc-100 px-7 py-8 sm:px-14 sm:py-10">
               <div className="flex flex-col items-center gap-1">
                 <p className="text-center text-xl sm:text-2xl font-medium">
-                  A model for public-expert collaboration
+                  Expert panel
                 </p>
                 <p className="text-center text-lg text-[var(--site-ink)]/70 sm:text-xl">
                   Experts will comment on candidate nonprofits to help you make
@@ -110,7 +164,6 @@ export default function DemocraticGrantmaking26() {
                 <ExpertGrid />
               </div>
             </div>
-            <ProjectTimeline currentIdx={0} className="mt-14 lg:mt-20" />
           </div>
         </div>
         <div

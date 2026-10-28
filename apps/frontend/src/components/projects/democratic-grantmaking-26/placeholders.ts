@@ -1,3 +1,27 @@
+export interface WaitlistHeroImage {
+  src: string | null;
+  alt: string;
+}
+
+export const WAITLIST_HERO_IMAGES: WaitlistHeroImage[] = [
+  {
+    src: "/assets/democratic-grantmaking-26/poverty.jpg",
+    alt: "Two women carrying water basins on their heads along a dirt road",
+  },
+  {
+    src: "/assets/democratic-grantmaking-26/environment.jpg",
+    alt: "Aerial view of a river winding through a dense forest",
+  },
+  {
+    src: "/assets/democratic-grantmaking-26/democracy.jpg",
+    alt: "A voter dropping an envelope into a ballot box",
+  },
+  {
+    src: "/assets/democratic-grantmaking-26/technology.jpg",
+    alt: "Server racks with network cables in a data center",
+  },
+];
+
 export interface ProjectPerson {
   name: string;
   role: string;
