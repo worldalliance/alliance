@@ -1,4 +1,7 @@
-import type { WaitlistHeroImage } from "../democratic-grantmaking-26/placeholders";
+import {
+  DATA_CENTER_IMAGE,
+  type WaitlistHeroImage,
+} from "../democratic-grantmaking-26/placeholders";
 
 export const ABOUT_SECTIONS = [
   {
@@ -33,9 +36,20 @@ export const ABOUT_SECTIONS = [
 export const PARTICIPANT_GOAL = 500;
 
 export const HERO_IMAGES: WaitlistHeroImage[] = [
-  { src: null, alt: "" },
-  { src: null, alt: "" },
-  { src: null, alt: "" },
+  {
+    src: "/assets/chatbot-safety/hero-students-walking.jpeg",
+    alt: "Students with backpacks walking down a brick school hallway",
+    position: "center 25%",
+  },
+  DATA_CENTER_IMAGE,
+  {
+    src: "/assets/chatbot-safety/hero-chatbot.avif",
+    alt: "A person typing a message to a chatbot on a phone",
+  },
+  {
+    src: "/assets/chatbot-safety/hero-library.jpeg",
+    alt: "Aisles of wooden bookshelves in a library",
+  },
 ];
 
 export const SIGNUP_BUTTON = "Sign up";

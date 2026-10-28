@@ -71,10 +71,13 @@ function HeroScreen() {
       >
         <div className="flex flex-col gap-4 lg:gap-5">
           <p className="-mb-2 text-left text-[1.05rem] text-[var(--site-ink)]/70 sm:text-[1.2rem]">
-            Safer Chatbots for Children / Winter 2026
+            Winter 2026
           </p>
           <h1 className="site-display font-medium text-5xl sm:text-6xl lg:text-7xl">
-            Make AI chatbots safer for kids
+            Make AI chatbots{" "}
+            <span className="site-display font-semibold text-green">
+              safer for kids
+            </span>
           </h1>
           <p className="text-left text-xl sm:text-2xl">
             80% of children use AI chatbots in 2026. Join our project with{" "}
