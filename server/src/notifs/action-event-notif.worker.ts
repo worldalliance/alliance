@@ -16,9 +16,9 @@ import {
   reminderContext,
 } from "src/link-tracking/message-tracking.entity";
 import type { TrackedMessage } from "src/link-tracking/message-tracking.service";
-import { processKeywordReplacements } from "src/mail/mail.service";
 import { NotificationKind } from "src/notification-settings/notification-kind";
 import { NotificationPreferencesService } from "src/notification-settings/notification-preferences.service";
+import { processKeywordReplacements } from "src/notifs/notification-keywords";
 import { tasksUrl } from "src/search/approutes";
 import { isUniqueViolation } from "src/utils/db-errors";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";

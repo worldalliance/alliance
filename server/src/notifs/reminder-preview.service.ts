@@ -12,7 +12,8 @@ import {
 import { ActionSuite } from "src/actions/entities/action-suite.entity";
 import { ReminderGroup } from "src/actions/entities/reminder-group.entity";
 import { EmailType } from "src/mail/mail.entity";
-import { MailService, processKeywordReplacements } from "src/mail/mail.service";
+import { MailService } from "src/mail/mail.service";
+import { processKeywordReplacements } from "src/notifs/notification-keywords";
 import { type Repository } from "typeorm";
 import {
   ActionEvent,
