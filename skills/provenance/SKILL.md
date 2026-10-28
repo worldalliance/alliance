@@ -19,7 +19,7 @@ UUID_V7=$(bun -e 'console.log(Bun.randomUUIDv7())')
 mkdir -p "docs/provenance/${UUID_V7}-${FEATURE_NAME}"
 ```
 
-UUIDv7 makes directory listings sort by creation time. Inside, `REQUIREMENTS.md`, plus `DECISIONS.md` when the task made a choice whose rationale is worth keeping. These are intended to live in the repo.
+UUIDv7 makes directory listings sort by creation time. Inside, `REQUIREMENTS.md`, plus `DECISIONS.md` when the task made a choice whose rationale is worth keeping. These are intended to live in the repo. The new directory also gets its row in `docs/wiki/coverage.md`, per `(root)/skills/wiki/SKILL.md`.
 
 References flow one way: `DECISIONS.md` may reference `REQUIREMENTS.md`; `REQUIREMENTS.md` stands independently and never references `DECISIONS.md`.
 

@@ -5,7 +5,7 @@ description: Read before implementing a feature, fixing a bug, or refactoring co
 
 # Implementation
 
-Read `(root)/skills/engineering-criteria.md` and use it throughout implementation. For a feature or behavior change, follow `(root)/skills/provenance/SKILL.md`; use the supplied provenance directory when continuing a specified task.
+Read `(root)/skills/engineering-criteria.md` and `(root)/skills/wiki/SKILL.md` and use them throughout implementation. For a feature or behavior change, follow `(root)/skills/provenance/SKILL.md`; use the supplied provenance directory when continuing a specified task.
 
 ## Discover before editing
 
