@@ -307,12 +307,11 @@ const FormRenderer = ({
     previousVisiblePageIndex,
     visibilitySettled,
     validatePage,
-    validateAllPages,
     scrollPageTo,
     scrollToEnd,
   });
 
-  const { submitting, handleSubmit, handleAbandon } = useFormSubmission({
+  const { submitting, submit, handleAbandon } = useFormSubmission({
     readOnly,
     uploadingImages: imageUpload.uploadingAny,
     onSubmit,
@@ -328,11 +327,16 @@ const FormRenderer = ({
     publicAnswers,
     phDistinctId,
     sessionReplayUrl,
-    readyToSubmit: navigation.readyToSubmit,
+    validateAllPages,
     pauseSyncing,
     resumeSyncing,
     clearStoredDraft,
   });
+
+  const handleSubmit = async () => {
+    const { firstInvalidPageIndex } = await submit();
+    navigation.showFirstInvalidPage(firstInvalidPageIndex);
+  };
 
   const currentPage = visiblePageIndices.includes(currentPageIndex)
     ? schema.pages[currentPageIndex]

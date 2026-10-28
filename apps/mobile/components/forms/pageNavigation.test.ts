@@ -6,14 +6,12 @@ function setup({
   previousVisiblePageIndex = null,
   visibilitySettled = true,
   pageValid = true,
-  allPages = { isValid: true, firstInvalidPageIndex: null },
 }: {
   currentPageIndex?: number;
   nextVisiblePageIndex?: number | null;
   previousVisiblePageIndex?: number | null;
   visibilitySettled?: boolean;
   pageValid?: boolean;
-  allPages?: { isValid: boolean; firstInvalidPageIndex: number | null };
 } = {}) {
   const shown: number[] = [];
   const validatedPages: number[] = [];
@@ -28,7 +26,6 @@ function setup({
       calls.validatedPages.push(pageIndex);
       return { isValid: pageValid };
     },
-    validateAllPages: async () => allPages,
     scrollPageTo: () => calls.scrolledTop++,
     scrollToEnd: () => calls.scrolledEnd++,
   });
@@ -83,38 +80,24 @@ describe("pageNavigation", () => {
     expect(navigation.browseToNextPage).toBeNull();
   });
 
-  describe("readyToSubmit", () => {
-    test("is false short of the last page, which it advances past", async () => {
-      const { navigation, calls } = setup();
-      expect(await navigation.readyToSubmit()).toBe(false);
-      expect(calls.shown).toEqual([1]);
-    });
-
-    test("is true on the last page when every page is valid", async () => {
-      const { navigation, calls } = setup({ nextVisiblePageIndex: null });
-      expect(await navigation.readyToSubmit()).toBe(true);
-      expect(calls.shown).toEqual([]);
-    });
-
+  describe("showFirstInvalidPage", () => {
     test("returns to the first page with an error", async () => {
-      const { navigation, calls } = setup({
-        currentPageIndex: 2,
-        nextVisiblePageIndex: null,
-        allPages: { isValid: false, firstInvalidPageIndex: 0 },
-      });
-      expect(await navigation.readyToSubmit()).toBe(false);
+      const { navigation, calls } = setup({ currentPageIndex: 2 });
+      navigation.showFirstInvalidPage(0);
       expect(calls.shown).toEqual([0]);
       await flushImmediate();
       expect(calls.scrolledTop).toBe(1);
     });
 
-    test("stays put when the error is on the current page", async () => {
-      const { navigation, calls } = setup({
-        currentPageIndex: 2,
-        nextVisiblePageIndex: null,
-        allPages: { isValid: false, firstInvalidPageIndex: 2 },
-      });
-      expect(await navigation.readyToSubmit()).toBe(false);
+    test("stays put when the error is on the current page", () => {
+      const { navigation, calls } = setup({ currentPageIndex: 2 });
+      navigation.showFirstInvalidPage(2);
+      expect(calls.shown).toEqual([]);
+    });
+
+    test("stays put when no page has an error", () => {
+      const { navigation, calls } = setup();
+      navigation.showFirstInvalidPage(null);
       expect(calls.shown).toEqual([]);
     });
   });
