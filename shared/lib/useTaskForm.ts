@@ -100,6 +100,16 @@ export function useAdminTaskFormActions() {
     [queryClient],
   );
 
+  /** Reloads the form for the screens showing it, rejecting if it fails. */
+  const refetch = useCallback(
+    (formId: number | undefined) =>
+      queryClient.refetchQueries(
+        { queryKey: adminTaskFormQuery(formId).queryKey },
+        { throwOnError: true },
+      ),
+    [queryClient],
+  );
+
   const { mutateAsync: updateForm } = useMutation({
     mutationFn: async ({
       formId,
@@ -136,7 +146,7 @@ export function useAdminTaskFormActions() {
     },
   });
 
-  return { fetchLatest, updateForm };
+  return { fetchLatest, refetch, updateForm };
 }
 
 export function useTaskForm(

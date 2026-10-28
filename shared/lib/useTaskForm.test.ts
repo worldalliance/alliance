@@ -234,6 +234,25 @@ it("leaves its read in the cache over a screen's older fetch landing later", asy
   expect(hook.result.current.title).toBe("fresh");
 });
 
+it("reloads the form a screen shows, and rejects when that fails", async () => {
+  const query = queryWrapper();
+  const hook = renderHook(
+    () => ({
+      title: useAdminTaskForm(7).data?.title,
+      actions: useAdminTaskFormActions(),
+    }),
+    { wrapper: query.wrapper },
+  );
+  await waitFor(() => expect(hook.result.current.title).toBe("stored"));
+
+  stored = { ...stored, title: "reloaded" };
+  await hook.result.current.actions.refetch(7);
+  await waitFor(() => expect(hook.result.current.title).toBe("reloaded"));
+
+  storedStatus = 500;
+  await expect(hook.result.current.actions.refetch(7)).rejects.toBeDefined();
+});
+
 it("fails a save that never reached the server", async () => {
   updateUnreachable = true;
   const { client, actions } = adminActions();
