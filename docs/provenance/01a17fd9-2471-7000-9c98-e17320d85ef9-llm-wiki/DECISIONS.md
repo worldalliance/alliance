@@ -36,7 +36,7 @@ Resolve requests against the corpus's known document IDs. Do not turn a client-s
 
 Produce catalog entries and the link graph with a maintained Markdown parser. Reuse the repository's Markdown rendering dependencies and URL-safety handling, adapting wiki links and heading anchors for this reader. Render text and supported Markdown rather than executing embedded HTML, scripts, or MDX. Existing hosted documents are public PDFs and are not the storage or serving path for this wiki.
 
-Use the working tree as the document source during local development so agent edits appear without a production deployment. Label it as a local working copy rather than presenting a commit as proof of uncommitted content. Production packages are validated before release; malformed or missing required documents fail the documentation build instead of silently disappearing from navigation or coverage.
+Use the working tree as the document source during local development so agent edits appear without a production deployment. Label it as a local working copy rather than presenting a commit as proof of uncommitted content; its GitHub citations point at the checked-out commit, so they resolve only once it is pushed, and lines edited since it may not match. Production packages are validated before release; malformed or missing required documents fail the documentation build instead of silently disappearing from navigation or coverage.
 
 ## Reader and search behavior
 
