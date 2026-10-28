@@ -5,15 +5,12 @@ import {
 } from "@alliance/common/forms/form-schema-validate";
 import { syncSchemaListInputs } from "@alliance/common/forms/variable-scope";
 import { R, type Result } from "@alliance/common/result";
+import { type FormDto } from "@alliance/shared/client";
+import { useCreateFormAdmin } from "@alliance/shared/lib/useFormsAdmin";
 import {
-  tasksGetFormAdmin,
-  tasksUpdateFormAdmin,
-  type FormDto,
-} from "@alliance/shared/client";
-import {
-  useCreateFormAdmin,
-  useInvalidateFormsAdmin,
-} from "@alliance/shared/lib/useFormsAdmin";
+  FormUpdateFailure,
+  useAdminTaskFormActions,
+} from "@alliance/shared/lib/useTaskForm";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback, useState } from "react";
@@ -42,20 +39,6 @@ export type DisplayOnlySave = (params: {
   schema: FormSchema;
   expectedSnapshotId: number | null;
 }) => Promise<DisplayOnlySaveResult>;
-
-const fetchTheirs = async (
-  formId: number,
-): Promise<Result<DisplayOnlySaveConflict, unknown>> => {
-  const { data, error } = await tasksGetFormAdmin({ path: { id: formId } });
-  if (!data) {
-    console.error("Failed to load their version of the form:", error);
-    return R.failure(error);
-  }
-  return R.success({
-    theirs: ensurePages(data.schema as FormSchema),
-    theirsSnapshotId: data.formSnapshotId,
-  });
-};
 
 export function useFormSave({
   displayOnlySave,
@@ -100,8 +83,26 @@ export function useFormSave({
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const { success: showSuccessToast, error: showErrorToast } = useToast();
-  const invalidateForms = useInvalidateFormsAdmin();
   const { createForm } = useCreateFormAdmin();
+  const { fetchLatest, updateForm } = useAdminTaskFormActions();
+  const fetchTheirs = useCallback(
+    async (
+      formId: number,
+    ): Promise<Result<DisplayOnlySaveConflict, unknown>> => {
+      const fetched = await fetchLatest(formId);
+      if (!fetched.ok) {
+        console.error(
+          "Failed to load their version of the form:",
+          fetched.error,
+        );
+      }
+      return R.map(fetched, (data) => ({
+        theirs: ensurePages(data.schema as FormSchema),
+        theirsSnapshotId: data.formSnapshotId,
+      }));
+    },
+    [fetchLatest],
+  );
 
   const { create: createValidator } = useCustomValidatorAdmin(null);
   const resolveCustomValidatorDrafts = useCallback(
@@ -187,15 +188,15 @@ export function useFormSave({
       let savedForm: FormDto;
 
       if (formId) {
-        const response = await tasksUpdateFormAdmin({
-          path: { formId },
+        const result = await updateForm({
+          formId,
           body: {
             schema: schemaForSave as unknown as Record<string, unknown>,
             expectedFormSnapshotId: baseFormSnapshotId ?? undefined,
           },
         });
 
-        if (response.response.status === 409) {
+        if (!result.ok && result.error === FormUpdateFailure.Conflict) {
           const theirs = await fetchTheirs(formId);
           if (R.isSuccess(theirs)) {
             setConflict({
@@ -212,14 +213,13 @@ export function useFormSave({
           return;
         }
 
-        if (!response.response.ok || !response.data) {
+        if (!result.ok) {
           const fallbackMessage = "Could not save form";
           setSaveError(fallbackMessage);
           showErrorToast(fallbackMessage);
           return;
         }
-        savedForm = response.data;
-        void invalidateForms();
+        savedForm = result.value;
       } else {
         savedForm = await createForm({
           title: newFormTitle,
@@ -245,7 +245,7 @@ export function useFormSave({
     formId,
     baseFormSnapshotId,
     createForm,
-    invalidateForms,
+    fetchTheirs,
     lastSavedSchemaJSON,
     markSaved,
     navigateToSaved,
@@ -261,6 +261,7 @@ export function useFormSave({
     showErrorToast,
     showSuccessToast,
     sourceFormsLoading,
+    updateForm,
     validation,
   ]);
 
@@ -305,14 +306,14 @@ export function useFormSave({
     setIsSaving(true);
     setSaveError(null);
     try {
-      const response = await tasksUpdateFormAdmin({
-        path: { formId },
+      const result = await updateForm({
+        formId,
         body: {
           schema: conflict.mine as unknown as Record<string, unknown>,
           expectedFormSnapshotId: conflict.theirsSnapshotId,
         },
       });
-      if (response.response.status === 409) {
+      if (!result.ok && result.error === FormUpdateFailure.Conflict) {
         const theirs = await fetchTheirs(formId);
         if (R.isSuccess(theirs)) {
           setConflict({
@@ -324,10 +325,9 @@ export function useFormSave({
         showErrorToast("Someone saved again — review the latest changes");
         return;
       }
-      if (response.response.ok && response.data) {
-        void invalidateForms();
+      if (result.ok) {
         amendSchema(conflict.mine);
-        markSaved(conflict.mine, response.data.formSnapshotId);
+        markSaved(conflict.mine, result.value.formSnapshotId);
         setConflict(null);
         showSuccessToast("Saved your version");
       } else {
@@ -346,7 +346,8 @@ export function useFormSave({
     conflict,
     displayOnlySave,
     formId,
-    invalidateForms,
+    fetchTheirs,
+    updateForm,
     amendSchema,
     markSaved,
     setConflict,
