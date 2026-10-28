@@ -1,5 +1,5 @@
 import { thrownMessage, thrownStack } from "@alliance/common/errorMessage";
-import { R } from "@alliance/common/result";
+import { R, type Result } from "@alliance/common/result";
 import { TIMED_OUT, withTimeout } from "@alliance/common/timeout";
 import {
   BadRequestException,
@@ -18,7 +18,10 @@ import {
 } from "src/link-tracking/message-tracking.service";
 import { tagTextLinks } from "src/link-tracking/tag-links";
 import type { Repository } from "src/utils/Repository";
-import { notifDeliveryEnabled } from "src/utils/notif-delivery";
+import {
+  DeliveryFailure,
+  notifDeliveryEnabled,
+} from "src/utils/notif-delivery";
 import { isAnonymizedPhoneNumber } from "src/utils/phone";
 import Twilio from "twilio";
 import type { MessageStatus } from "twilio/lib/rest/api/v2010/account/message";
@@ -147,12 +150,7 @@ export class MmsService {
     }
 
     try {
-      const sending = this.twilioClient.messages.create({
-        to: to,
-        from: this.senderFor(to),
-        body: body,
-        mediaUrl: mediaUrls,
-      });
+      const sending = this.dispatch({ to, body, mediaUrls });
       const message = await withTimeout(sending, this.sendTimeoutMs).catch(
         async (error: unknown) => {
           if (cid) await this.messageTracking.discard(cid);
@@ -171,6 +169,52 @@ export class MmsService {
     } catch (error) {
       return this.reportFailure({ to, userId, error });
     }
+  }
+
+  /** Sends a text with no Mms row or link tracking, so we keep no copy of the body. */
+  async sendUnrecordedText(params: {
+    to: string;
+    body: string;
+  }): Promise<Result<{ sid: string }, DeliveryFailure>> {
+    const { to, body } = params;
+    if (process.env.NODE_ENV === "test" || !notifDeliveryEnabled()) {
+      return R.failure(DeliveryFailure.Unavailable);
+    }
+    const sent = await R.fromPromise(
+      withTimeout(
+        this.dispatch({ to, body, mediaUrls: [] }),
+        this.sendTimeoutMs,
+      ),
+    );
+    if (!sent.ok) {
+      this.logError({
+        to,
+        text: `Unrecorded text not sent: ${thrownMessage(sent.error)}`,
+        error: sent.error,
+      });
+      return R.failure(DeliveryFailure.Failed);
+    }
+    if (sent.value === TIMED_OUT) {
+      this.logger.warn(
+        `Unrecorded text timed out after ${this.sendTimeoutMs}ms`,
+      );
+      return R.failure(DeliveryFailure.Failed);
+    }
+    return R.success({ sid: sent.value.sid });
+  }
+
+  private dispatch(params: {
+    to: string;
+    body: string;
+    mediaUrls: string[];
+  }): Promise<SentMessage> {
+    const { to, body, mediaUrls } = params;
+    return this.twilioClient.messages.create({
+      to,
+      from: this.senderFor(to),
+      body,
+      mediaUrl: mediaUrls,
+    });
   }
 
   private reportFailure(params: {

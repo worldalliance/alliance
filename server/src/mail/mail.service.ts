@@ -1,10 +1,12 @@
+import { thrownMessage, thrownStack } from "@alliance/common/errorMessage";
 import { nameParts } from "@alliance/common/nameParts";
-import { R } from "@alliance/common/result";
+import { R, type Result } from "@alliance/common/result";
+import { TIMED_OUT, withTimeout } from "@alliance/common/timeout";
 import { ISendMailOptions, MailerService } from "@nestjs-modules/mailer";
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { ActionEvent } from "src/actions/entities/action-event.entity";
-import { Action } from "src/actions/entities/action.entity";
+import { milliseconds } from "date-fns";
+import type SMTPTransport from "nodemailer/lib/smtp-transport";
 import {
   MessageChannel,
   MessageSource,
@@ -14,124 +16,25 @@ import {
   type TrackedMessage,
 } from "src/link-tracking/message-tracking.service";
 import { tagHtmlLinks } from "src/link-tracking/tag-links";
+import { reinstatementMessage } from "src/notifs/textnotifcontents";
 import {
-  ActionListStyle,
-  formatActionList,
-} from "src/notifs/notification-content";
-import {
-  getTimeLeftString,
-  reinstatementMessage,
-} from "src/notifs/textnotifcontents";
-import {
-  groupMembersListUrl,
   membershipUrl,
   passwordResetUrl,
   tasksUrl,
   verifyEmailUrl,
 } from "src/search/approutes";
-import { User } from "src/user/entities/user.entity";
-import { notifDeliveryEnabled } from "src/utils/notif-delivery";
+import {
+  DeliveryFailure,
+  notifDeliveryEnabled,
+} from "src/utils/notif-delivery";
 import type { Repository } from "src/utils/Repository";
 import { ContractReminderCopy } from "./contract-reminder-copy";
 import { EmailStatus, EmailType, Mail } from "./mail.entity";
 
+const SEND_TIMEOUT_MS = milliseconds({ seconds: 10 });
+
 export function mailSendingEnabled(): boolean {
   return process.env.NODE_ENV !== "test" && notifDeliveryEnabled();
-}
-
-function interpretEscapes(s: string): string {
-  return s
-    .replace(/\\n/g, "\n")
-    .replace(/\\r/g, "\r")
-    .replace(/\\t/g, "\t")
-    .replace(/\\\\/g, "\\");
-}
-
-export function processKeywordReplacements(
-  text: string,
-  context: {
-    user: Pick<User, "id" | "name">;
-    action: Pick<Action, "name">;
-    deadlineEvent?: Pick<ActionEvent, "date">;
-    uncompletedTasksCount: number;
-    uncompletedTasksTime: string;
-    uncompletedTasksNames: string[];
-    dateNow?: Date;
-    uncompletedMembersInGroupCount?: number;
-    isFirstAssignedSuite?: boolean;
-  },
-): string {
-  const dateNow = context.dateNow ?? new Date();
-  const { firstname, lastname } = nameParts(context.user.name);
-  if (!lastname) {
-    console.error(`User ${context.user.id} has no last name`);
-  }
-  let str = text
-    .replaceAll("#{fullname}", context.user.name)
-    .replaceAll("#{firstname}", firstname)
-    .replaceAll("#{nmembers}", () =>
-      context.uncompletedMembersInGroupCount === undefined
-        ? "0"
-        : context.uncompletedMembersInGroupCount.toString(),
-    )
-    .replaceAll("#{grouplink}", groupMembersListUrl(true))
-    .replaceAll("#{lastname}", lastname)
-    .replaceAll("#{action}", context.action.name)
-    .replaceAll(
-      "#{tasknames}",
-      formatActionList(context.uncompletedTasksNames, ActionListStyle.Comma),
-    )
-    .replaceAll("#{n}", context.uncompletedTasksCount.toString())
-    .replaceAll("#{tasktime}", context.uncompletedTasksTime)
-    .replaceAll(
-      "#{missedactioncontext}",
-      context.isFirstAssignedSuite
-        ? 'The Alliance counts on every member. We plan precise actions based on the number of people we expect to participate.\n\nTo learn more about our model, you can watch <a href="https://www.youtube.com/watch?v=fR7Upo0DlYs&t=125s">this video</a>.\n\nPlease know that if you miss several actions in a row, we will suspend your contract and no longer assign you tasks.'
-        : "Remember that we plan each action around the number of members we expect to participate.",
-    )
-    // Only marks a missed-suite group; a second miss sends its own copy.
-    .replaceAll("#{secondmisswarning}", "")
-    .replaceAll("#{s}", context.uncompletedTasksCount === 1 ? "" : "s")
-    .replaceAll(
-      "#{days}",
-      context.deadlineEvent
-        ? getTimeLeftString(context.deadlineEvent, dateNow, "days")
-        : "[err]",
-    )
-    .replaceAll(
-      "#{hours}",
-      context.deadlineEvent
-        ? getTimeLeftString(context.deadlineEvent, dateNow, "hours")
-        : "[err]",
-    )
-    .replaceAll(
-      "#{timeremaining}",
-      context.deadlineEvent
-        ? getTimeLeftString(context.deadlineEvent, dateNow)
-        : "[err]",
-    )
-    .replaceAll("#{link}", tasksUrl(true))
-    .replaceAll(
-      "#{formattedtasklist}",
-      formatActionList(context.uncompletedTasksNames, ActionListStyle.Numbered),
-    );
-
-  while (str.includes("|") && str.includes("#{") && str.includes("}")) {
-    const idx_start = str.indexOf("#{");
-    const idx_separator = str.indexOf("|", idx_start);
-    const idx_end = str.indexOf("}", idx_separator);
-    const st_one = interpretEscapes(
-      str.substring(idx_start + 2, idx_separator),
-    );
-    const st_many = interpretEscapes(str.substring(idx_separator + 1, idx_end));
-    if (context.uncompletedTasksCount === 1) {
-      str = str.substring(0, idx_start) + st_one + str.substring(idx_end + 1);
-    } else {
-      str = str.substring(0, idx_start) + st_many + str.substring(idx_end + 1);
-    }
-  }
-
-  return str;
 }
 
 export type WaitlistEmailType =
@@ -176,6 +79,9 @@ const notSent = (error: unknown): never => {
 
 @Injectable()
 export class MailService {
+  private readonly logger = new Logger(MailService.name);
+  private sendTimeoutMs = SEND_TIMEOUT_MS;
+
   constructor(
     private readonly mailerService: MailerService,
     @InjectRepository(Mail)
@@ -259,9 +165,6 @@ export class MailService {
     }
     const { from, rendered } = prepared;
 
-    const tag =
-      process.env.NODE_ENV === "production" ? "production" : "development";
-
     const html = cid
       ? tagHtmlLinks({ html: rendered, trackingId: cid })
       : rendered;
@@ -273,15 +176,13 @@ export class MailService {
     });
 
     const sent = await R.fromPromise(
-      this.mailerService.sendMail({
-        to: recipient,
+      this.transmit({
+        recipient,
         from,
-        subject: subject ?? undefined,
-        headers: {
-          "o:tag": emailType,
-          "X-Mailgun-Tag": tag,
-        },
+        emailType,
+        subject,
         html,
+        providerTracking: true,
       }),
     );
 
@@ -291,8 +192,7 @@ export class MailService {
       throw sent.error;
     }
 
-    const accepted = sent.value.accepted as string[];
-    const messageId = sent.value.messageId as string;
+    const { accepted, messageId } = sent.value;
 
     if (accepted.length > 0) {
       mail.status = EmailStatus.Sent;
@@ -301,6 +201,92 @@ export class MailService {
     }
     mail.sentMessageId = messageId;
     return this.mailRepository.save(mail);
+  }
+
+  private transmit(params: {
+    recipient: string;
+    from: string;
+    emailType: EmailType;
+    subject: string | null;
+    html: string;
+    providerTracking: boolean;
+  }): Promise<SMTPTransport.SentMessageInfo> {
+    const { recipient, from, emailType, subject, html, providerTracking } =
+      params;
+    return this.mailerService.sendMail({
+      to: recipient,
+      from,
+      subject: subject ?? undefined,
+      headers: {
+        "o:tag": emailType,
+        "X-Mailgun-Tag":
+          process.env.NODE_ENV === "production" ? "production" : "development",
+        ...(providerTracking ? {} : { "X-Mailgun-Track": "no" }),
+      },
+      html,
+    });
+  }
+
+  /**
+   * Sends with no Mail row and no link tracking, ours or Mailgun's, so we keep
+   * no copy of the body or its links.
+   */
+  async sendUnrecordedMail(params: {
+    recipient: string;
+    emailType: EmailType;
+    subject: string;
+    context: ISendMailOptions["context"];
+  }): Promise<Result<{ messageId: string }, DeliveryFailure>> {
+    const { recipient, emailType, subject, context } = params;
+    if (!mailSendingEnabled()) return R.failure(DeliveryFailure.Unavailable);
+    const prepared = await R.fromPromise(this.prepareSend(emailType, context));
+    if (!prepared.ok) {
+      this.logFailure({ emailType, error: prepared.error });
+      return R.failure(DeliveryFailure.Unavailable);
+    }
+    const { from, rendered } = prepared.value;
+    const sent = await R.fromPromise(
+      withTimeout(
+        this.transmit({
+          recipient,
+          from,
+          emailType,
+          subject,
+          html: rendered,
+          providerTracking: false,
+        }),
+        this.sendTimeoutMs,
+      ),
+    );
+    if (!sent.ok) {
+      this.logFailure({ emailType, error: sent.error });
+      return R.failure(DeliveryFailure.Failed);
+    }
+    if (sent.value === TIMED_OUT) {
+      this.logger.warn(
+        `Unrecorded ${emailType} email timed out after ${this.sendTimeoutMs}ms`,
+      );
+      return R.failure(DeliveryFailure.Failed);
+    }
+    if (sent.value.accepted.length === 0) {
+      this.logger.error(`Unrecorded ${emailType} email was not accepted`);
+      return R.failure(DeliveryFailure.Failed);
+    }
+    return R.success({ messageId: sent.value.messageId });
+  }
+
+  /** Mail servers quote rejected addresses, normalized rather than as sent. */
+  private logFailure(params: { emailType: EmailType; error: unknown }) {
+    const { emailType, error } = params;
+    const redact = (logged: string) =>
+      logged.replace(
+        /(?:"(?:[^"\\]|\\.)*"|[^\s<>()@"]+)@(?:\[[^\]]*\]|[\p{L}\p{N}-]+(\.[\p{L}\p{N}-]+)+)/gu,
+        "[redacted]",
+      );
+    this.logger.error(
+      redact(`Unrecorded ${emailType} email not sent: ${thrownMessage(error)}`),
+      redact(thrownStack(error)),
+    );
   }
 
   public async sendWelcomeEmail(params: {

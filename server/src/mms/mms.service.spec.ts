@@ -6,6 +6,7 @@ import {
   type MessageTracking,
 } from "src/link-tracking/message-tracking.entity";
 import { MessageTrackingService } from "src/link-tracking/message-tracking.service";
+import { DeliveryFailure } from "src/utils/notif-delivery";
 import type { Repository } from "src/utils/Repository";
 import type Twilio from "twilio";
 import type { Mms } from "./mms.entity";
@@ -24,17 +25,31 @@ const message = {
   errorMessage: null,
 };
 
-// sendMms reads NODE_ENV on the way in, and again in the catch that reports the
-// failure, so it has to say production for the whole call.
-const asProduction = async <T>(run: () => Promise<T>): Promise<T> => {
-  const previous = process.env.NODE_ENV;
-  process.env.NODE_ENV = "production";
+const withEnv = async <T>(
+  env: Record<string, string | undefined>,
+  run: () => Promise<T>,
+): Promise<T> => {
+  const previous = Object.fromEntries(
+    Object.keys(env).map((key) => [key, process.env[key]]),
+  );
+  const assign = (values: Record<string, string | undefined>) => {
+    for (const [key, value] of Object.entries(values)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  };
+  assign(env);
   try {
     return await run();
   } finally {
-    process.env.NODE_ENV = previous;
+    assign(previous);
   }
 };
+
+// sendMms reads NODE_ENV on the way in, and again in the catch that reports the
+// failure, so it has to say production for the whole call.
+const asProduction = <T>(run: () => Promise<T>): Promise<T> =>
+  withEnv({ NODE_ENV: "production" }, run);
 
 describe("MmsService sendMms", () => {
   let saved: Partial<Mms>[];
@@ -325,6 +340,80 @@ describe("MmsService sendMms", () => {
       expect.stringContaining("failed after"),
     ]);
     expect(calls.flat().filter((arg) => String(arg).includes(TO))).toEqual([]);
+  });
+
+  describe("sendUnrecordedText", () => {
+    const CODE_BODY = "Your code is 123456";
+    const sendText = () =>
+      service.sendUnrecordedText({ to: TO, body: CODE_BODY });
+
+    it("returns the twilio sid without saving a row", async () => {
+      const create = jest.fn(() => Promise.resolve(message));
+      service["twilioClient"] = {
+        messages: { create },
+      } as unknown as Twilio.Twilio;
+
+      const result = await asProduction(sendText);
+
+      expect(result).toEqual({ ok: true, value: { sid: "SM0123456789" } });
+      expect(create).toHaveBeenCalledWith({
+        to: TO,
+        from: "+15555550100",
+        body: CODE_BODY,
+        mediaUrl: [],
+      });
+      expect(saved).toEqual([]);
+    });
+
+    it.each([
+      { NODE_ENV: "test", SEND_DEV_NOTIFS: "1" },
+      { NODE_ENV: "development", SEND_DEV_NOTIFS: undefined },
+    ])(
+      "reports unavailable under NODE_ENV=$NODE_ENV with SEND_DEV_NOTIFS=$SEND_DEV_NOTIFS, without calling twilio",
+      async (env) => {
+        const create = jest.fn(() => Promise.resolve(message));
+        service["twilioClient"] = {
+          messages: { create },
+        } as unknown as Twilio.Twilio;
+
+        expect(await withEnv(env, sendText)).toEqual({
+          ok: false,
+          error: DeliveryFailure.Unavailable,
+        });
+        expect(create).not.toHaveBeenCalled();
+      },
+    );
+
+    it("reports a rejection as failed, without logging the number", async () => {
+      service["twilioClient"] = {
+        messages: {
+          create: () =>
+            Promise.reject(new Error(`21211 invalid 'To' number ${TO}`)),
+        },
+      } as unknown as Twilio.Twilio;
+
+      const result = await asProduction(sendText);
+
+      expect(result).toEqual({ ok: false, error: DeliveryFailure.Failed });
+      const logged = logSpies.flatMap((spy) => spy.mock.calls).flat();
+      expect(logged.length).toBeGreaterThan(0);
+      expect(logged.filter((arg) => String(arg).includes(TO))).toEqual([]);
+      expect(saved).toEqual([]);
+      expect(eventLogService.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it("reports a send twilio never answers as failed", async () => {
+      service["twilioClient"] = {
+        messages: { create: () => new Promise(() => {}) },
+      } as unknown as Twilio.Twilio;
+      service["sendTimeoutMs"] = 5;
+
+      expect(await asProduction(sendText)).toEqual({
+        ok: false,
+        error: DeliveryFailure.Failed,
+      });
+      expect(saved).toEqual([]);
+    });
   });
 });
 

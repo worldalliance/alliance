@@ -9,7 +9,6 @@ import { addDays } from "date-fns";
 import { memberLeftCommunityNotif } from "src/community/community.utils";
 import { Community } from "src/community/entities/community.entity";
 import { newMemberReferredNotif } from "src/contract/contract.utils";
-import { processKeywordReplacements } from "src/mail/mail.service";
 import { messagePushBody } from "src/messaging/message-push.listener";
 import { likeMessage } from "src/notifs/like-notification.service";
 import {
@@ -37,6 +36,7 @@ import {
   NO_REFERENCES,
   renderNotificationContent,
 } from "src/notifs/notification-content";
+import { processKeywordReplacements } from "src/notifs/notification-keywords";
 import {
   reinstatementMessage,
   suspensionMessage,

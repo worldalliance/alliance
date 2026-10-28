@@ -2,7 +2,7 @@ import type { ActionSuite } from "src/actions/entities/action-suite.entity";
 import { Action } from "src/actions/entities/action.entity";
 import type { ReminderGroup } from "src/actions/entities/reminder-group.entity";
 import type { SuiteOutcome } from "src/actions/missed-suite-streak";
-import { processKeywordReplacements } from "src/mail/mail.service";
+import { processKeywordReplacements } from "src/notifs/notification-keywords";
 import { User } from "src/user/entities/user.entity";
 import { MissedSuiteNoticeCopy } from "./entities/action-event-notif.entity";
 import {
