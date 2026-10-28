@@ -1,8 +1,10 @@
 import { pickForCount } from "@alliance/common/plural";
-import { TZDate } from "@date-fns/tz";
-import { addDays, formatDistanceStrict } from "date-fns";
-import { LAUNCH_TIME_ZONE } from "../../lib/launchTimeZone";
-import { COMPLETION_PERIOD_DAYS, type LaunchSchedule } from "./launchSchedule";
+import {
+  COMPLETION_PERIOD_DAYS,
+  completionDays,
+  completionTime,
+  type LaunchSchedule,
+} from "./launchSchedule";
 import { MAX_MEMBER_MINUTES, type MemberLoad } from "./memberLoad";
 
 export const overloadedMembers = (loads: MemberLoad[]) =>
@@ -22,15 +24,12 @@ export function contractViolations(params: {
     );
   }
   const { memberActionAt, officeActionAt } = schedule;
-  // Days by Pacific wall-clock time, so the default 11:59pm deadline a period
-  // out holds across a daylight saving change.
-  const periodEnd = addDays(
-    new TZDate(memberActionAt, LAUNCH_TIME_ZONE),
-    COMPLETION_PERIOD_DAYS,
-  );
-  if (officeActionAt > memberActionAt && officeActionAt < periodEnd) {
+  if (
+    officeActionAt > memberActionAt &&
+    completionDays(schedule) < COMPLETION_PERIOD_DAYS
+  ) {
     violations.push(
-      `Members get ${formatDistanceStrict(schedule.memberActionAt, schedule.officeActionAt)} to finish. The contract promises a ${COMPLETION_PERIOD_DAYS}-day completion period.`,
+      `Members get ${completionTime(schedule)} to finish. The contract promises a ${COMPLETION_PERIOD_DAYS}-day completion period.`,
     );
   }
   return violations;

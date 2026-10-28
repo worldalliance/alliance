@@ -31,7 +31,21 @@ describe("contractViolations", () => {
       }),
     ).toEqual([
       "2 members are assigned more than 15 minutes. The contract assigns tasks in 15-minute blocks.",
-      "Members get 3 days to finish. The contract promises a 7-day completion period.",
+      "Members get 2 days 23 hours to finish. The contract promises a 7-day completion period.",
+    ]);
+  });
+
+  it("spells out a period just under 7 days rather than rounding it up", () => {
+    expect(
+      contractViolations({
+        loads: [],
+        schedule: {
+          ...schedule,
+          officeActionAt: new Date("2026-11-08T01:00:00Z"),
+        },
+      }),
+    ).toEqual([
+      "Members get 6 days 22 hours to finish. The contract promises a 7-day completion period.",
     ]);
   });
 

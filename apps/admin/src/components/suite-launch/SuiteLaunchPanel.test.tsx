@@ -341,6 +341,16 @@ it("shows each action's audience, task form link, and what to look at before che
   expect(screen.getByText(/^2 members ·/)).toBeTruthy();
 });
 
+it("states how long members have to complete their actions", async () => {
+  setSystemTime(new Date("2026-01-15T20:00:00Z"));
+  renderPanel();
+  expect(
+    await screen.findByText(
+      "Members have 7 days 4 hours 59 minutes to complete their actions",
+    ),
+  ).toBeTruthy();
+});
+
 it("re-runs the checks without failing the loads an action doesn't make", async () => {
   served[2] = { ...served[2], taskFormId: null };
   renderPanel();
