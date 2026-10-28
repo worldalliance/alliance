@@ -18,13 +18,13 @@ const renderCard = (to?: string) =>
     </MemoryRouter>,
   );
 
-test("a destination makes the card a link with a green arrow", () => {
+test("a destination makes the card a link with a navy arrow", () => {
   renderCard("/projects/plant-based-study");
 
   const link = screen.getByRole("link", { name: /Cafe policy/ });
   expect(link.getAttribute("href")).toBe("/projects/plant-based-study");
   const arrow = link.querySelector("svg");
-  expect(arrow?.getAttribute("class")).toContain("text-green");
+  expect(arrow?.getAttribute("class")).toContain("text-(--site-primary)");
 });
 
 test("an external destination opens in a new tab", () => {

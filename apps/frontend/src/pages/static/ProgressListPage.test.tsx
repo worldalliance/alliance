@@ -38,7 +38,7 @@ test("uses a light, narrower column and links only cards that have a page", () =
     "/projects/plant-based-study",
   ]);
   expect(links[0]?.querySelector("svg")?.getAttribute("class")).toContain(
-    "text-green",
+    "text-(--site-primary)",
   );
 
   const cafe = screen.getByText(/11 cafe locations/);
