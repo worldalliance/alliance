@@ -3,8 +3,9 @@ import {
   MEMBER_ACTION_DEADLINE_PASSED,
 } from "@alliance/common/actionActivity";
 import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options";
-import type { ActionDto, FormResponseDto } from "@alliance/shared/client";
+import type { FormResponseDto } from "@alliance/shared/client";
 import { computeFormStorageKey } from "@alliance/shared/forms/formDrafts";
+import { actionStore } from "@alliance/shared/lib/actionStore";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import {
   makeAction,
@@ -12,6 +13,7 @@ import {
   makeUser,
 } from "@alliance/shared/lib/testFixtures";
 import { recordExceptions } from "@alliance/shared/lib/testing/recordExceptions";
+import { seedActions } from "@alliance/shared/lib/testing/seedActions";
 import {
   routes,
   serveApi,
@@ -246,7 +248,7 @@ it("reloads the page, unreported, when the form was already submitted", async ()
 
 it("marks the cached action completed once the server accepts the submission", async () => {
   const queryClient = new QueryClient();
-  queryClient.setQueryData(queryKeys.actions(), [makeAction({ id: 1 })]);
+  seedActions(queryClient, [makeAction({ id: 1 })]);
   renderMemberNoteForm({
     serving: {
       "POST /tasks/submitForm/:id": () =>
@@ -258,10 +260,7 @@ it("marks the cached action completed once the server accepts the submission", a
   fireEvent.click(await screen.findByRole("button", { name: "Complete" }));
 
   await waitFor(() =>
-    expect(
-      queryClient.getQueryData<ActionDto[]>(queryKeys.actions())?.[0]?.viewer
-        ?.relation,
-    ).toBe("completed"),
+    expect(actionStore(queryClient).get(1)?.viewer?.relation).toBe("completed"),
   );
 });
 

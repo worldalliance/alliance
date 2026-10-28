@@ -13,33 +13,46 @@ import {
   actionsDismissAction,
   actionsFindAllLoggedIn,
 } from "../client";
-import {
-  FilterMode,
-  hasViewerCompletedAction,
-  withOptimisticDismissal,
-  withOptimisticRelation,
-} from "./actionUtils";
+import { ActionSource, actionStore, selectAction } from "./actionStore";
+import { FilterMode, hasViewerCompletedAction } from "./actionUtils";
 import { thrownRefusalMessage } from "./hey-api";
 import { queryKeys } from "./queryKeys";
+import { useActionState } from "./useActionState";
 
 export const actionsQuery = queryOptions({
   queryKey: queryKeys.actions(),
-  queryFn: ({ signal }) =>
-    actionsFindAllLoggedIn({
-      query: { sorted: true },
-      throwOnError: true,
+  queryFn: ({ signal, client }) =>
+    actionStore(client).load({
+      source: ActionSource.List,
       signal,
-    }).then((response) =>
-      response.data.filter(
-        (action) => action.status !== "draft" || action.viewer?.staffPreview,
-      ),
-    ),
+      fetch: () =>
+        actionsFindAllLoggedIn({
+          query: { sorted: true },
+          throwOnError: true,
+          signal,
+        }).then((response) =>
+          response.data.filter(
+            (action) =>
+              action.status !== "draft" || action.viewer?.staffPreview,
+          ),
+        ),
+    }),
 });
 
 export const useActionsQuery = (options?: {
   refetchInterval?: (typeof actionsQuery)["refetchInterval"];
-}): UseQueryResult<ActionDto[], Error> =>
-  useQuery({ ...actionsQuery, refetchInterval: options?.refetchInterval });
+}): UseQueryResult<ActionDto[], Error> => {
+  const state = useActionState();
+  const select = useCallback(
+    (ids: number[]) => ids.map((id) => selectAction(state, id)),
+    [state],
+  );
+  return useQuery({
+    ...actionsQuery,
+    select,
+    refetchInterval: options?.refetchInterval,
+  });
+};
 
 export const invalidateActions = (queryClient: QueryClient): void =>
   void queryClient.invalidateQueries({ queryKey: queryKeys.actions() });
@@ -54,12 +67,10 @@ export function useDismissActionMutation() {
   return useMutation({
     mutationFn: (actionId: number) =>
       actionsDismissAction({ path: { id: actionId }, throwOnError: true }),
-    onSuccess: (_data, actionId) =>
-      applyConfirmedChange({
-        queryClient,
-        actionId,
-        patch: withOptimisticDismissal,
-      }),
+    onSuccess: (_data, actionId) => {
+      actionStore(queryClient).recordDismissal(actionId);
+      invalidateActions(queryClient);
+    },
   });
 }
 
@@ -77,33 +88,12 @@ export function useRecordActionRelation(): (
 ) => void {
   const queryClient = useQueryClient();
   return useCallback(
-    (actionId, relation) =>
-      applyConfirmedChange({
-        queryClient,
-        actionId,
-        patch: (action) => withOptimisticRelation(action, relation),
-      }),
+    (actionId, relation) => {
+      actionStore(queryClient).recordRelation(actionId, relation);
+      invalidateActions(queryClient);
+    },
     [queryClient],
   );
-}
-
-/**
- * Patches the cached list, then refetches. The invalidation cancels any
- * fetch already in flight, whose response predates the change and would
- * otherwise restore the action.
- */
-function applyConfirmedChange(params: {
-  queryClient: QueryClient;
-  actionId: number;
-  patch: (action: ActionDto) => ActionDto;
-}): void {
-  const { queryClient, actionId, patch } = params;
-  queryClient.setQueryData<ActionDto[] | undefined>(
-    queryKeys.actions(),
-    (prev) =>
-      prev?.map((action) => (action.id === actionId ? patch(action) : action)),
-  );
-  invalidateActions(queryClient);
 }
 
 export const filterActions = (
