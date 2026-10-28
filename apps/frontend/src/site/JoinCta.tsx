@@ -1,38 +1,22 @@
 import { cn } from "@alliance/shared/styles/util";
 import { SiteArrow } from "@alliance/sharedweb/ui/SiteArrow";
 import { Link } from "react-router";
-import membersPhoto from "../assets/redesign/members-photo.webp?w=480;960&format=avif;webp&as=picture";
 import { CTA_BODY } from "./content";
 import { useInviteSession } from "./invite/InviteSession";
 import { WAITLIST_HREF } from "./links";
-import { SITE_COL, SitePicture } from "./ui";
-
-/**
- * How far the artwork hangs over the footer, measured off the Figma. The
- * footer pads its top by the same amount when it follows `#join`.
- */
-const FOOTER_OVERLAP = 54;
+import { SITE_COL } from "./ui";
 
 const JOIN_CTA_HEADING = "Join the waitlist";
 const INVITE_CTA_HEADING = "Accept invite";
 
-const cardClass = "group relative isolate block w-full overflow-hidden";
+const cardClass =
+  "group relative isolate block w-full overflow-hidden bg-zinc-100 hover:bg-zinc-200";
 const cardStyle = { borderRadius: "var(--site-radius-card)" };
 
 function JoinCtaCard({ heading }: { heading: string }) {
   return (
     <>
-      <SitePicture
-        image={membersPhoto}
-        alt="Alliance members at a meetup"
-        sizes="100vw"
-        className="absolute inset-0 -z-20 size-full object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.06]"
-      />
-      <div
-        className="absolute inset-0 -z-10 bg-[var(--site-primary)] opacity-[0.42] transition-opacity duration-700 group-hover:opacity-[0.28]"
-        aria-hidden
-      />
-      <div className="flex min-h-[260px] flex-col justify-end p-6 pr-16 text-white sm:min-h-[420px] sm:p-10 sm:pr-20">
+      <div className="flex min-h-[260px] flex-col justify-end p-6 pr-16 text-zinc-900 sm:min-h-[420px] sm:p-10 sm:pr-20">
         <h2 className="text-[2.25rem] leading-none font-normal sm:text-[3.1rem] lg:text-[3.6rem]">
           {heading}
         </h2>
@@ -41,7 +25,7 @@ function JoinCtaCard({ heading }: { heading: string }) {
         </p>
       </div>
       <span className="absolute right-6 bottom-6 sm:right-10 sm:bottom-9">
-        <SiteArrow className="size-6 text-white transition-transform duration-500 ease-out group-hover:translate-x-2 group-hover:-translate-y-2 group-hover:scale-110" />
+        <SiteArrow className="size-6 text-zinc-900 transition-transform duration-500 ease-out group-hover:translate-x-2 group-hover:-translate-y-2 group-hover:scale-110" />
       </span>
     </>
   );
@@ -63,10 +47,9 @@ export function JoinCta({
   return (
     <section
       id="join"
-      className="relative bg-[var(--site-surface)]"
-      style={{ marginBottom: -FOOTER_OVERLAP }}
+      className="relative bg-[var(--site-surface)] pb-16 lg:pb-24"
     >
-      <div className={cn(SITE_COL, "relative z-10")}>
+      <div className={cn(SITE_COL, "relative")}>
         <Link
           to={to}
           aria-label={heading}
