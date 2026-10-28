@@ -153,7 +153,7 @@ export const PHASES: Phase[] = [
   },
 ];
 
-export const NEWS_HEADING = "Recent news on the dangers of AI and Child Safety";
+export const NEWS_HEADING = "Recent news on AI and child safety";
 
 export interface NewsArticle {
   title: string;
