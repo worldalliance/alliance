@@ -3,7 +3,7 @@ import type { City, SubmitFormDto } from "../client";
 import { makeCity, makeFormResponse } from "./testFixtures";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
-import { useMyLocation } from "./useMyLocation";
+import { myLocationCache, useMyLocation } from "./useMyLocation";
 import { useTaskFormSubmission } from "./useTaskFormSubmission";
 import { useUpdateProfileMutation } from "./user";
 
@@ -130,5 +130,37 @@ describe("writes that change the location", () => {
     );
 
     await waitFor(() => expect(view.result.current.location.data).toBeNull());
+  });
+});
+
+describe("myLocationCache.fetch", () => {
+  it("asks the server again whatever the app's staleTime, sharing a load in flight", async () => {
+    const { client, wrapper } = queryWrapper({ staleTime: 5 * 60 * 1000 });
+    const view = renderHook(() => useMyLocation(memberId), { wrapper });
+    await waitFor(() => expect(view.result.current.data).toEqual(oakland));
+
+    stored = tucson;
+    const cache = myLocationCache(client);
+    const [first, second] = await Promise.all([
+      cache.fetch(memberId),
+      cache.fetch(memberId),
+    ]);
+
+    expect([first, second]).toEqual([tucson, tucson]);
+    expect(loads).toBe(2);
+    await waitFor(() => expect(view.result.current.data).toEqual(tucson));
+  });
+
+  it("does not retry a failed load, whatever the app's retries", async () => {
+    api.alsoServing({
+      "GET /user/mylocation": () => {
+        loads += 1;
+        return Response.json({ message: "unavailable" }, { status: 503 });
+      },
+    });
+    const { client } = queryWrapper({ retry: 3, retryDelay: 0 });
+
+    await expect(myLocationCache(client).fetch(memberId)).rejects.toBeDefined();
+    expect(loads).toBe(1);
   });
 });
