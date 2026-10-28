@@ -14,6 +14,7 @@ import {
 } from "../lib/actionStatusBucket";
 import { actionsLoadError } from "../lib/actionsLoadError";
 import { describeCohortExpression } from "../lib/describeCohortExpression";
+import { inProgressSuites } from "../lib/inProgressSuites";
 import { useTagsAdmin } from "../lib/useTagsAdmin";
 
 export const getLastPastEventDate = (
@@ -67,6 +68,8 @@ const ActionsList: React.FC = () => {
       }),
     );
   }, [actions, tags]);
+
+  const suitesInProgress = useMemo(() => inProgressSuites(actions), [actions]);
 
   const groupedActions = useMemo<ActionSuiteGroup[]>(() => {
     if (actions.length === 0) {
@@ -179,6 +182,32 @@ const ActionsList: React.FC = () => {
         participantsById={participantsById}
         className="flex-shrink-0 max-h-[50vh] border border-zinc-200"
       />
+      {suitesInProgress.length > 0 && (
+        <section className="flex-shrink-0 space-y-2">
+          <h2 className="text-sm font-semibold ml-2">
+            Suites with draft or active actions
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {suitesInProgress.map((suite) => (
+              <Link
+                key={suite.id}
+                to={`/suites/${suite.id}`}
+                className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm hover:border-green"
+              >
+                <span className="font-semibold">{suite.name}</span>
+                <span className="ml-2 text-xs text-zinc-500">
+                  {[
+                    suite.activeCount > 0 && `${suite.activeCount} active`,
+                    suite.draftCount > 0 && `${suite.draftCount} draft`,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
       <p className="text-sm text-zinc-500 flex-shrink-0">
         Grouped by suite and ordered by latest event (most recent first)
       </p>
