@@ -17,7 +17,7 @@ Resolve repository questions through inspection. Ask the user for missing produc
 
 ## Implement
 
-Check supplied design decisions against the code and requirements; revise an implementation choice when the evidence calls for it, recording the reason in the task's existing decisions file when present.
+Check supplied design decisions against the code and requirements; revise an implementation choice when the evidence calls for it, recording the reason in the task's `DECISIONS.md` when it has a provenance directory, creating the file if needed.
 
 Implement through the identified owners of the behavior. When discovery during coding reveals another caller or contract, update the approach and verification to cover it.
 

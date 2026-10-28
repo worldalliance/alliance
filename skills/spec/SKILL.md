@@ -30,4 +30,4 @@ Don't assume the answer to any question. If anything is unclear, ask the user.
 
 ## Documentation
 
-After the interview, read and follow `(root)/skills/provenance/SKILL.md`, and create a new directory in `docs/provenance` and populate `REQUIREMENTS` and `DECISIONS`, separating what was suggested by the user and what was only agreed to.
+After the interview, read and follow `(root)/skills/provenance/SKILL.md`, and create a new directory in `docs/provenance` and populate its files, separating what was suggested by the user from what was only agreed to.

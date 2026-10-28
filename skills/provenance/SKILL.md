@@ -5,7 +5,7 @@ description: Read before implementing a feature or behavior change.
 
 # Provenance
 
-These files hold the current requirements and agent decisions, with their origins distinguished. Create them at the start of a task and revise them in place as requirements change.
+These files hold the current requirements and agent decisions, with their origins distinguished. Create `REQUIREMENTS.md` at the start of a task and revise the files in place as requirements change.
 
 ## When
 
@@ -19,7 +19,7 @@ UUID_V7=$(bun -e 'console.log(Bun.randomUUIDv7())')
 mkdir -p "docs/provenance/${UUID_V7}-${FEATURE_NAME}"
 ```
 
-UUIDv7 makes directory listings sort by creation time. Inside, two files: `REQUIREMENTS.md` and `DECISIONS.md`. These are intended to live in the repo.
+UUIDv7 makes directory listings sort by creation time. Inside, `REQUIREMENTS.md`, plus `DECISIONS.md` when the task made a choice whose rationale is worth keeping. These are intended to live in the repo.
 
 References flow one way: `DECISIONS.md` may reference `REQUIREMENTS.md`; `REQUIREMENTS.md` stands independently and never references `DECISIONS.md`.
 
