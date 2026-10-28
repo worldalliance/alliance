@@ -177,7 +177,7 @@ export class ActionDto extends PickType(Action, [
     this.id = action.id;
     this.name = action.name;
     this.category = action.category;
-    this.image = action.image ? getImageSource(action.image) : undefined;
+    this.image = action.image === null ? null : getImageSource(action.image);
     this.squareThumbnailImage = action.squareThumbnailImage
       ? getImageSource(action.squareThumbnailImage)
       : undefined;
@@ -242,7 +242,6 @@ export class CreateActionDto extends IntersectionType(
   PickType(ActionDto, [
     "name",
     "category",
-    "image",
     "squareThumbnailImage",
     "body",
     "shortDescription",
@@ -262,6 +261,7 @@ export class CreateActionDto extends IntersectionType(
   }),
   PartialType(
     PickType(ActionDto, [
+      "image",
       "squareThumbnailImageAlt",
       "timeEstimate",
       "customStatGoal",

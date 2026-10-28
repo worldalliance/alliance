@@ -69,7 +69,7 @@ export function echoesStoredKey({
   stored,
 }: {
   next: string;
-  stored: string | undefined;
+  stored: string | null | undefined;
 }): boolean {
   return !!stored && isUploadKey(stored) && next.endsWith(`/${stored}`);
 }

@@ -108,11 +108,16 @@ export class Action {
   @IsEnum(ActionCategory, { each: true })
   category: ActionCategory[];
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional({ description: "Image URL for the action" })
+  @Column({ type: "varchar", nullable: true })
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: "Image URL for the action",
+  })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  image?: string;
+  @IsString()
+  @Transform(trimToNull)
+  image: string | null;
 
   @Column({ nullable: true })
   @ApiPropertyOptional({

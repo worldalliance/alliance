@@ -388,7 +388,7 @@ export type Action = {
     /**
      * Image URL for the action
      */
-    image?: string;
+    image: string | null;
     /**
      * Square thumbnail image URL for the action
      */
@@ -2204,7 +2204,7 @@ export type ActionDto = {
     /**
      * Image URL for the action
      */
-    image?: string;
+    image: string | null;
     /**
      * Square thumbnail image URL for the action
      */
@@ -2366,7 +2366,7 @@ export type AdminActionListItemDto = {
     /**
      * Image URL for the action
      */
-    image?: string;
+    image: string | null;
     /**
      * Square thumbnail image URL for the action
      */
@@ -2474,7 +2474,7 @@ export type AdminActionListItemDto = {
     /**
      * The image column itself: an upload key or an external url, the form an update takes back. `image` is that value rendered as a url.
      */
-    storedImage?: string;
+    storedImage: string | null;
     /**
      * The squareThumbnailImage column itself, like `storedImage`.
      */
@@ -2528,7 +2528,7 @@ export type AdminActionDto = {
     /**
      * Image URL for the action
      */
-    image?: string;
+    image: string | null;
     /**
      * Square thumbnail image URL for the action
      */
@@ -2636,7 +2636,7 @@ export type AdminActionDto = {
     /**
      * The image column itself: an upload key or an external url, the form an update takes back. `image` is that value rendered as a url.
      */
-    storedImage?: string;
+    storedImage: string | null;
     /**
      * The squareThumbnailImage column itself, like `storedImage`.
      */
@@ -2710,10 +2710,6 @@ export type CreateActionDto = {
      */
     category: Array<ActionCategory>;
     /**
-     * Image URL for the action
-     */
-    image?: string;
-    /**
      * Square thumbnail image URL for the action
      */
     squareThumbnailImage?: string;
@@ -2757,6 +2753,10 @@ export type CreateActionDto = {
     isForumParticipationAction: boolean;
     customStatLabel?: string;
     customStatType?: CustomActionStat;
+    /**
+     * Image URL for the action
+     */
+    image?: string | null;
     /**
      * Square thumbnail image alt for the action
      */
@@ -2804,10 +2804,6 @@ export type UpdateActionDto = {
      */
     category?: Array<ActionCategory>;
     /**
-     * Image URL for the action
-     */
-    image?: string;
-    /**
      * Square thumbnail image URL for the action
      */
     squareThumbnailImage?: string;
@@ -2851,6 +2847,10 @@ export type UpdateActionDto = {
     isForumParticipationAction?: boolean;
     customStatLabel?: string;
     customStatType?: CustomActionStat;
+    /**
+     * Image URL for the action
+     */
+    image?: string | null;
     /**
      * Square thumbnail image alt for the action
      */
@@ -2995,7 +2995,7 @@ export type ExportActionDto = {
     /**
      * Image URL for the action
      */
-    image?: string;
+    image: string | null;
     /**
      * Square thumbnail image URL for the action
      */
