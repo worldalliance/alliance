@@ -47,6 +47,7 @@ const adminAction = (params: {
   cohortExpression: { type: "Manual", userIds: params.memberIds },
 });
 
+let benSigned = true;
 let formPages: { id: string; title: string; fields: [] }[] = [];
 let served: Record<number, ReturnType<typeof adminAction>> = {};
 let suiteEvents: ActionEventDto[] = [];
@@ -74,8 +75,13 @@ serveApi(
     },
     "GET /user/list": () =>
       Response.json([
-        { id: 10, name: "Ana", profilePicture: null },
-        { id: 11, name: "Ben", profilePicture: null },
+        { id: 10, name: "Ana", profilePicture: null, hasActiveContract: true },
+        {
+          id: 11,
+          name: "Ben",
+          profilePicture: null,
+          hasActiveContract: benSigned,
+        },
       ]),
     "POST /actions/suite/:suiteId/events": async ({ request }) => {
       const body: CreateActionEventDto = await request.json();
@@ -123,6 +129,7 @@ beforeEach(() => {
     }),
   };
   formPages = [];
+  benSigned = true;
   suiteEvents = [];
   createdEvents.length = 0;
   reminderEventIds.length = 0;
@@ -342,4 +349,15 @@ it("shows each action's audience, task form link, and what to look at before che
     write?.querySelector('[aria-label="Edit task form"]')?.getAttribute("href"),
   ).toBe("/forms/5");
   expect(screen.getByText(/^2 members ·/)).toBeTruthy();
+});
+
+it("counts only members with an active contract, as the server admits them", async () => {
+  benSigned = false;
+  renderPanel();
+
+  expect(
+    await screen.findByRole("button", { name: "Launch and notify 1 members" }),
+  ).toBeTruthy();
+  expect(screen.getByText(/^1 members ·/)).toBeTruthy();
+  expect(screen.getByText(/^0 members ·/)).toBeTruthy();
 });

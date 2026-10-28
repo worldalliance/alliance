@@ -8,6 +8,7 @@ import { adminTaskFormQuery } from "@alliance/shared/lib/useTaskForm";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { cohortEvaluationQuery } from "../../lib/useCohortEvaluationAdmin";
+import { useUsersAdmin } from "../../lib/useUsersAdmin";
 import {
   actionReadinessItems,
   type ReadinessCheckItem,
@@ -49,6 +50,12 @@ export function useSuiteLaunchData(suite: ActionSuiteDto): SuiteLaunchData {
     ),
   });
   const spellchecker = useQuery(spellcheckerQuery);
+  const users = useUsersAdmin();
+  const contracted = new Set(
+    (users.data ?? [])
+      .filter((user) => user.hasActiveContract)
+      .map((user) => user.id),
+  );
 
   const errors: string[] = [];
   const actions: LaunchAction[] = [];
@@ -67,14 +74,19 @@ export function useSuiteLaunchData(suite: ActionSuiteDto): SuiteLaunchData {
       if (parsedSchema.success) schema = parsedSchema.data;
       else errors.push(`${action.name}: its task form's schema is invalid.`);
     }
-    const cohort = cohortResults[index].data;
-    if (cohort) cohortByActionId.set(action.id, cohort.userIds);
+    const evaluated = cohortResults[index].data?.userIds;
+    // The server admits a regular action's member only while they hold a contract.
+    const cohort =
+      evaluated && !action.onboarding
+        ? evaluated.filter((userId) => contracted.has(userId))
+        : evaluated;
+    if (cohort) cohortByActionId.set(action.id, cohort);
     actions.push({
       action,
       unready: actionReadinessItems(action, schema).filter(
         (item) => !item.isReady,
       ),
-      memberCount: cohort ? cohort.userIds.length : null,
+      memberCount: cohort ? cohort.length : null,
     });
     textFindings.push(
       ...actionTextFindings({
@@ -105,6 +117,7 @@ export function useSuiteLaunchData(suite: ActionSuiteDto): SuiteLaunchData {
         ? [`Failed to evaluate the cohort for ${suite.actions[index].name}.`]
         : [],
     ),
+    ...(users.isError ? ["Failed to load members' contract status."] : []),
     ...(spellchecker.isError
       ? ["Failed to load the spelling dictionary."]
       : []),
@@ -116,7 +129,7 @@ export function useSuiteLaunchData(suite: ActionSuiteDto): SuiteLaunchData {
     recipientCount: loads.length,
     textFindings,
     errors: [...loadErrors, ...errors],
-    loading: [...actionResults, ...formResults, ...cohortResults].some(
+    loading: [...actionResults, ...formResults, ...cohortResults, users].some(
       (result) => result.isLoading,
     ),
     spellcheckLoading: spellchecker.isLoading,
