@@ -10,6 +10,11 @@ import { WaitlistHeroImages } from "../democratic-grantmaking-26/DemocraticGrant
 import { WaitlistSignupForm } from "../democratic-grantmaking-26/WaitlistSignupForm";
 import { AboutSections } from "./AboutSections";
 import {
+  ChatbotUseStat,
+  ChatbotUseStatPanel,
+  useStatReveal,
+} from "./ChatbotUseStat";
+import {
   HERO_IMAGES,
   PARTICIPANT_GOAL,
   SHOW_FACTS,
@@ -57,6 +62,7 @@ function ProjectProgress() {
 }
 
 function HeroScreen() {
+  const statReveal = useStatReveal();
   return (
     <section
       aria-label="Sign up"
@@ -80,7 +86,7 @@ function HeroScreen() {
             </span>
           </h1>
           <p className="text-left text-xl sm:text-2xl">
-            80% of children use AI chatbots in 2026. Join our project with{" "}
+            <ChatbotUseStat reveal={statReveal} /> Join our project with{" "}
             <a
               href="https://korabench.ai"
               target="_blank"
@@ -101,7 +107,10 @@ function HeroScreen() {
           />
         </div>
         <div className="flex justify-center lg:justify-end">
-          <WaitlistHeroImages images={HERO_IMAGES} />
+          <div className="relative">
+            <WaitlistHeroImages images={HERO_IMAGES} />
+            <ChatbotUseStatPanel reveal={statReveal} />
+          </div>
         </div>
       </div>
     </section>

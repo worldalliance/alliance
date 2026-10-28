@@ -35,6 +35,14 @@ export const ABOUT_SECTIONS = [
 
 export const PARTICIPANT_GOAL = 500;
 
+export const CHATBOT_USE_STAT = {
+  claim: "80% of children use AI chatbots in 2026.",
+  quote:
+    "81% of 9- to 12-year-olds, 89% of 13- to 15-year-olds, and 92% of 16- to 17-year-olds saying they use or interact with AI. Nearly 3 in 10 teens (29% of 13- to 17-year-olds) and 17% of 9- to 12-year-olds use AI daily.",
+  source: "Common Sense Media, AI Use by Tweens and Teens (2026)",
+  href: "https://www.commonsensemedia.org/sites/default/files/research/report/2026-ai-use-by-tweens-and-teens-1.pdf",
+};
+
 export const HERO_IMAGES: WaitlistHeroImage[] = [
   {
     src: "/assets/chatbot-safety/hero-students-walking.jpeg",
