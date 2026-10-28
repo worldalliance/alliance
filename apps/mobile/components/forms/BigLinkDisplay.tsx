@@ -31,12 +31,13 @@ import { getSiteUrl } from "../../lib/config";
 import { useHandleLinkPress } from "../AppMarkdownWrapper";
 import Text, { FontWeight } from "../system/Text";
 
-const bigLinkIcons: Record<BigLinkIcon, React.FC<{ size?: number }>> = {
+const bigLinkIcons: Record<BigLinkIcon, React.FC<{ size?: number }> | null> = {
   "messages-square": MessagesSquare,
   file: File,
   "file-text": FileText,
   "file-check": FileCheck,
   signature: Signature,
+  none: null,
 };
 
 const bigLinkColors: Record<BigLinkColor, { card: string; muted: string }> = {
@@ -145,7 +146,7 @@ function BigLinkRow({
       disabled={shownUrl === null}
       onPress={() => shownUrl !== null && handlePress(shownUrl)}
     >
-      <IconComponent size={20} />
+      {IconComponent && <IconComponent size={20} />}
       <View className="flex-1 gap-0.5">
         <Text className="text-base text-black" weight={FontWeight.Medium}>
           {block.text}

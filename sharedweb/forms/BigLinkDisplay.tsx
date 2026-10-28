@@ -30,12 +30,13 @@ import { useCopyOutcome } from "../lib/useCopyOutcome";
 import Card from "../ui/Card";
 import { useSiteHref } from "../ui/SiteAppProvider";
 
-const bigLinkIcons: Record<BigLinkIcon, React.FC<{ size?: number }>> = {
+const bigLinkIcons: Record<BigLinkIcon, React.FC<{ size?: number }> | null> = {
   "messages-square": MessagesSquare,
   file: File,
   "file-text": FileText,
   "file-check": FileCheck,
   signature: Signature,
+  none: null,
 };
 
 const bigLinkColors: Record<
@@ -210,7 +211,7 @@ function BigLinkContent({
   const muted = colorOf(block).muted;
   return (
     <>
-      <IconComponent size={20} />
+      {IconComponent && <IconComponent size={20} />}
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <p className="text-base" style={{ fontWeight: 450 }}>
           {block.text}

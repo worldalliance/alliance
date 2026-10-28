@@ -162,6 +162,13 @@ it("lists the link and the body when asked to", async () => {
   expect(screen.getByText("Share it with a friend")).toBeTruthy();
 });
 
+it("renders no leading icon when the block has none", async () => {
+  renderAs(ShareLinkViewer.Anonymous, block({ icon: "none" }));
+
+  const link = await screen.findByRole("link", { name: /Take the survey/ });
+  expect(link.querySelectorAll("svg")).toHaveLength(1);
+});
+
 it("renders an icon this build does not know as the default", async () => {
   const unknownIcon = JSON.parse('"hash"');
   renderAs(ShareLinkViewer.Anonymous, block({ icon: unknownIcon }));

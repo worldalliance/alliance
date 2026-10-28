@@ -91,6 +91,7 @@ const bigLinkIconSchema = z.enum([
   "file-text",
   "file-check",
   "signature",
+  "none",
 ]);
 export type BigLinkIcon = z.infer<typeof bigLinkIconSchema>;
 

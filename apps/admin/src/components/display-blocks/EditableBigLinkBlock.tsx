@@ -8,6 +8,7 @@ import {
 import { cn } from "@alliance/shared/styles/util";
 import {
   ArrowUpRight,
+  Ban,
   Copy,
   File,
   FileCheck,
@@ -38,6 +39,7 @@ const iconOptions: Option<BigLinkIcon>[] = [
     content: <FileCheck size={16} />,
   },
   { value: "signature", label: "Signature", content: <Signature size={16} /> },
+  { value: "none", label: "No icon", content: <Ban size={16} /> },
 ];
 
 const colorChoices: Record<BigLinkColor, { label: string; swatch: string }> = {
