@@ -71,7 +71,7 @@ export function InlineToc({
   return (
     <nav
       aria-label={label}
-      className="sticky top-28 hidden self-start pl-31 whitespace-nowrap lg:block"
+      className="sticky top-28 hidden w-full max-w-45 self-start justify-self-end whitespace-nowrap lg:block"
     >
       <ul className="text-lg">
         {sections.map((section) => (

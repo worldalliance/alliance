@@ -20,9 +20,8 @@ import { ContractCard, ImpactCard } from "../../site/PageCards";
 import { BandHeading, BandHeadingSize, PageShell } from "../../site/PageShell";
 import { SITE_COL } from "../../site/ui";
 
-const GUIDE_COLUMN = "max-w-7xl";
-/** Lines the title up with the text: SITE_COL's padding, plus the TOC column and gap. */
-const GUIDE_HEADER_COLUMN = cn(GUIDE_COLUMN, "lg:pl-90");
+/** Lines the title up with the centered text: its 45rem plus SITE_COL's padding. */
+const GUIDE_HEADER_COLUMN = "lg:max-w-216";
 
 export function meta() {
   return socialPreviewMeta({
@@ -222,12 +221,9 @@ export default function GuidePage() {
         sections={TOC_SECTIONS}
         active={active}
         label={GUIDE_TOC_LABEL}
-        columnClassName={GUIDE_COLUMN}
       />
-      <div
-        className={cn(SITE_COL, GUIDE_COLUMN, "pt-7 pb-20 lg:pt-10 lg:pb-28")}
-      >
-        <div className="grid gap-12 lg:grid-cols-[14rem_minmax(0,46rem)] lg:gap-16">
+      <div className={cn(SITE_COL, "pt-7 pb-20 lg:pt-20 lg:pb-28")}>
+        <div className="grid gap-12 lg:grid-cols-[minmax(8rem,1fr)_minmax(0,45rem)_minmax(8rem,1fr)] lg:gap-x-16 2xl:gap-x-42">
           <InlineToc
             sections={TOC_SECTIONS}
             active={active}
@@ -250,7 +246,7 @@ export default function GuidePage() {
                   {section.markdown.trim() && (
                     <DocProse
                       markdown={section.markdown}
-                      className="[&_:is(p,ul,ol)]:text-(--site-ink)"
+                      className="*:not-first:mt-6 [&_:is(p,ul,ol)]:text-(--site-ink)"
                     />
                   )}
                   {guideExtras[kind]}
