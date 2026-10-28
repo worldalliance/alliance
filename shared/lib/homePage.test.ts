@@ -1,8 +1,13 @@
 import { renderHook } from "@testing-library/react";
 import { addDays, subDays } from "date-fns";
 import type { UserActionStatusDto } from "../client/types.gen";
+import { withOptimisticRelation } from "./actionUtils";
 import type { ParsedGeneralUpdate } from "./generalUpdates";
 import { interleaveActionsAndUpdates, useHomePageActions } from "./homePage";
+import {
+  TaskFlowCompletionProvider,
+  useMarkTaskCompleting,
+} from "./TaskFlowCompletionContext";
 import {
   makeAction,
   makeEvent,
@@ -83,6 +88,27 @@ describe("useHomePageActions", () => {
 
   it("counts the minutes of the required current-week actions only", () => {
     expect(homePageActions().remainingTasksEstimatedTimeCurrentWeek).toBe(20);
+  });
+
+  it("keeps a task to do until its flow's completion screen closes", () => {
+    const hook = renderHook(
+      ({ list, completing }) => {
+        useMarkTaskCompleting({ actionId: required.id, completing });
+        return useHomePageActions(list).todoActions;
+      },
+      {
+        wrapper: TaskFlowCompletionProvider,
+        initialProps: { list: [required], completing: false },
+      },
+    );
+    hook.rerender({ list: [required], completing: true });
+    const completed = [withOptimisticRelation(required, "completed")];
+
+    hook.rerender({ list: completed, completing: true });
+    expect(ids(hook.result.current)).toEqual([1]);
+
+    hook.rerender({ list: completed, completing: false });
+    expect(hook.result.current).toEqual([]);
   });
 
   it("lists completed actions' open follow-ups, latest start first", () => {

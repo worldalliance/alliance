@@ -12,6 +12,7 @@ import {
   getPreviousVisiblePageIndex,
   resolveDisplayBlockForUser,
 } from "../formrenderer";
+import { useMarkTaskCompleting } from "../lib/TaskFlowCompletionContext";
 import { type FormVisibility } from "../useFormRenderer";
 import {
   backgroundScreenIndex,
@@ -60,18 +61,24 @@ export type TaskFlowFormState = Pick<
  * background page when it asks for nothing.
  */
 export function useTaskFlow(params: {
+  actionId: number;
   form: TaskFlowFormState;
   position: FlowPosition;
   /** Closes the flow with the platform's exit animation, on Back from the first screen. */
   onExit: () => void;
 }) {
-  const { form, position, onExit } = params;
+  const { actionId, form, position, onExit } = params;
   const [stage, setStage] = useState(FlowStage.Closed);
   const [screenIndex, setScreenIndex] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
   const [submittedAnswers, setSubmittedAnswers] = useState<Record<
     string,
     FormValue
   > | null>(null);
+  useMarkTaskCompleting({
+    actionId,
+    completing: submitting || stage === FlowStage.Complete,
+  });
 
   const screens = useMemo(() => buildFlowScreens(form.schema), [form.schema]);
   const { isElementCurrentlyVisible, activeUserKey } = form;
@@ -152,18 +159,23 @@ export function useTaskFlow(params: {
 
   const submit = async () => {
     const since = moves.current;
-    const outcome = await form.submit();
-    if (outcome.submitted) {
-      position.clear();
-      setSubmittedAnswers(form.effectiveFormData);
-      setStage(FlowStage.Complete);
-      return;
+    setSubmitting(true);
+    try {
+      const outcome = await form.submit();
+      if (outcome.submitted) {
+        position.clear();
+        setSubmittedAnswers(form.effectiveFormData);
+        setStage(FlowStage.Complete);
+        return;
+      }
+      if (moves.current !== since) return;
+      const invalidScreen = flowIndices.find(
+        (i) => screens[i].pageIndex === outcome.firstInvalidPageIndex,
+      );
+      if (invalidScreen !== undefined) goTo(invalidScreen);
+    } finally {
+      setSubmitting(false);
     }
-    if (moves.current !== since) return;
-    const invalidScreen = flowIndices.find(
-      (i) => screens[i].pageIndex === outcome.firstInvalidPageIndex,
-    );
-    if (invalidScreen !== undefined) goTo(invalidScreen);
   };
 
   const advancing = useRef(false);

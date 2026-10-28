@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { thrownStatus } from "./hey-api";
+import { useHeldWhileTaskCompletes } from "./TaskFlowCompletionContext";
 import { useAction } from "./useAction";
 import { useOnNextActionEvent } from "./useOnNextDeadline";
 
@@ -32,7 +33,10 @@ export function useActionHandlers(
     thrownStatus(error) === 404 &&
     errorUpdatedAt !== loadStart.errorUpdatedAt &&
     dataUpdatedAt === loadStart.dataUpdatedAt;
-  const action = notFound ? null : (data ?? null);
+  const action = useHeldWhileTaskCompletes(
+    notFound ? null : (data ?? null),
+    actionId,
+  );
 
   const previousIsAuthenticated = useRef(isAuthenticated);
   useEffect(() => {

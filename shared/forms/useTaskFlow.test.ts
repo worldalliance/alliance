@@ -8,6 +8,10 @@ import type {
   FormValue,
 } from "@alliance/common/forms/form-schema";
 import { act, renderHook } from "@testing-library/react";
+import {
+  TaskFlowCompletionProvider,
+  useHeldWhileTaskCompletes,
+} from "../lib/TaskFlowCompletionContext";
 import { type SubmitOutcome } from "./submitOutcome";
 import { type FlowPosition } from "./useFlowPosition";
 import { FlowStage, useTaskFlow, type TaskFlowFormState } from "./useTaskFlow";
@@ -51,6 +55,7 @@ type Overrides = {
   currentPageIndex?: number;
   visibilitySettled?: boolean;
   positionLoaded?: boolean;
+  submit?: () => Promise<SubmitOutcome>;
 };
 
 function flowParams(overrides: Overrides = {}) {
@@ -78,19 +83,39 @@ function flowParams(overrides: Overrides = {}) {
     validateScreenFields: async () => overrides.screenValid ?? true,
     submit: async () => {
       submits.push(true);
+      if (overrides.submit) return overrides.submit();
       return (
         overrides.outcome ?? { submitted: true, firstInvalidPageIndex: null }
       );
     },
   };
   const onExit = () => exits.push(true);
-  return { params: { form, position, onExit }, saved, cleared, submits, exits };
+  return {
+    params: { actionId: 1, form, position, onExit },
+    saved,
+    cleared,
+    submits,
+    exits,
+  };
 }
 
 function setup(overrides: Overrides = {}) {
   const { params, saved, cleared, submits, exits } = flowParams(overrides);
-  const hook = renderHook(() => useTaskFlow(params));
+  const hook = renderHook(() => useTaskFlow(params), {
+    wrapper: TaskFlowCompletionProvider,
+  });
   return { hook, params, saved, cleared, submits, exits };
+}
+
+function setupWithPage(overrides: Overrides) {
+  const { params } = flowParams(overrides);
+  return renderHook(
+    ({ page }) => ({
+      flow: useTaskFlow(params),
+      page: useHeldWhileTaskCompletes(page, params.actionId),
+    }),
+    { wrapper: TaskFlowCompletionProvider, initialProps: { page: "before" } },
+  );
 }
 
 describe("useTaskFlow", () => {
@@ -470,5 +495,69 @@ describe("useTaskFlow", () => {
     expect(hook.result.current.stage).toBe(FlowStage.Closed);
     expect(error).toHaveBeenCalled();
     error.mockRestore();
+  });
+
+  it("holds the task's pages from submitting until the completion screen closes", async () => {
+    const hook = setupWithPage({ savedScreen: 2, answers: { c: "z" } });
+    act(() => hook.result.current.flow.begin());
+    await act(() => hook.result.current.flow.next());
+    expect(hook.result.current.flow.stage).toBe(FlowStage.Complete);
+
+    hook.rerender({ page: "after" });
+    expect(hook.result.current.page).toBe("before");
+
+    act(() => hook.result.current.flow.close());
+    expect(hook.result.current.page).toBe("after");
+  });
+
+  it("holds the task's pages while the submit is in flight", async () => {
+    let settle: (outcome: SubmitOutcome) => void = () => {};
+    const hook = setupWithPage({
+      savedScreen: 2,
+      answers: { c: "z" },
+      submit: () =>
+        new Promise((resolve) => {
+          settle = resolve;
+        }),
+    });
+    act(() => hook.result.current.flow.begin());
+    let pending: Promise<void> = Promise.resolve();
+    await act(async () => {
+      pending = hook.result.current.flow.next();
+    });
+
+    hook.rerender({ page: "after" });
+    expect(hook.result.current.page).toBe("before");
+
+    await act(async () => {
+      settle({ submitted: true, firstInvalidPageIndex: null });
+      await pending;
+    });
+    expect(hook.result.current.flow.stage).toBe(FlowStage.Complete);
+  });
+
+  it("lets the pages update again when a submit fails", async () => {
+    const hook = setupWithPage({
+      savedScreen: 2,
+      outcome: { submitted: false, firstInvalidPageIndex: 1 },
+    });
+    act(() => hook.result.current.flow.begin());
+    await act(() => hook.result.current.flow.next());
+
+    hook.rerender({ page: "after" });
+    expect(hook.result.current.page).toBe("after");
+  });
+
+  it("lets the pages update again when the submit throws", async () => {
+    const hook = setupWithPage({
+      savedScreen: 2,
+      answers: { c: "z" },
+      submit: () => Promise.reject(new Error("offline")),
+    });
+    act(() => hook.result.current.flow.begin());
+    await act(() => hook.result.current.flow.next().catch(() => {}));
+
+    hook.rerender({ page: "after" });
+    expect(hook.result.current.page).toBe("after");
   });
 });
