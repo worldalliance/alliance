@@ -120,7 +120,7 @@ export default function DemocraticGrantmaking26() {
       <Navbar />
       <main>
         <WaitlistScreen />
-        <div className="bg-white pb-10 lg:flex lg:flex-col lg:pb-0">
+        <div className="mt-10 bg-white pb-10 lg:mt-32 lg:flex lg:flex-col lg:pb-0">
           <div
             className={cn(
               PROJECT_COL,
