@@ -102,7 +102,7 @@ test("shows each expert once in an eight-column grid after the waitlist bar and 
     name: "213 members and 309 on the waitlist, toward 1,000",
   });
   const line = screen.getByText(
-    "Experts will comment on candidate nonprofits to help you make an informed vote.",
+    "20+ experts will comment on candidate nonprofits to help you make an informed vote.",
   );
   const grid = screen.getByRole("list", { name: "Expert panel" });
   const timeline = screen.getByRole("region", { name: "Timeline" });
@@ -119,28 +119,8 @@ test("shows each expert once in an eight-column grid after the waitlist bar and 
   expect(grid.classList.contains("grid-cols-4")).toBe(true);
   expect(grid.className).toContain("lg:grid-cols-8");
   const cards = [...grid.querySelectorAll(":scope > li")];
-  expect(cards).toHaveLength(16);
-  expect(screen.getByText("Nir Eyal")).toBeTruthy();
-  expect(
-    screen.getByText("Professor of Bioethics, UCL and Rutgers"),
-  ).toBeTruthy();
+  expect(cards).toHaveLength(8);
   expect(screen.queryByText("To be announced")).toBeNull();
-  expect(screen.getByText("Julia Paxton")).toBeTruthy();
-  expect(
-    screen.getByText("Professor of Economics, Ohio University"),
-  ).toBeTruthy();
-  expect(screen.getByText("Andrea Vernon")).toBeTruthy();
-  expect(
-    screen.getByText(
-      "Executive Director of Experiential Learning and Clinical Professor, University of Montana",
-    ),
-  ).toBeTruthy();
-  expect(screen.getByText("Danielle McDonald")).toBeTruthy();
-  expect(
-    screen.getByText(
-      "Professor of Criminal Justice, Northern Kentucky University",
-    ),
-  ).toBeTruthy();
   FEATURED_PEOPLE.forEach((person, index) => {
     const card = cards[index];
     expect(card?.textContent).toContain(person.name);
