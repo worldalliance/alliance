@@ -1,27 +1,13 @@
-import {
-  FORM_ALREADY_SUBMITTED,
-  MEMBER_ACTION_DEADLINE_PASSED,
-} from "@alliance/common/actionActivity";
-import { ExceptionEvent } from "@alliance/common/analytics";
 import { FormSchema } from "@alliance/common/forms/form-schema";
-import { GUEST_HEADER } from "@alliance/common/guest";
 import type { FormResponseDto, SubmitFormDto } from "@alliance/shared/client";
-import { useFormulaSourcesRefetch } from "@alliance/shared/forms/useFormulaSourcesRefetch";
-import {
-  formAlreadySubmitted,
-  memberActionDeadlinePassed,
-  type ActionWithdrawal,
-} from "@alliance/shared/lib/actionTaskPanel";
-import { captureException } from "@alliance/shared/lib/analytics";
+import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
-import { useTaskFormSubmission } from "@alliance/shared/lib/useTaskFormSubmission";
-import { useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { useAuth } from "../lib/AuthContext";
-import { getStoredGuestToken, setStoredGuestToken } from "../lib/guestSession";
 import { colors } from "../lib/style/colors";
 import FormRenderer from "./forms/FormRenderer";
 import Text from "./system/Text";
+import { useSubmitTaskForm } from "./useSubmitTaskForm";
 
 interface ActionTaskPanelFormProps {
   taskFormId: number;
@@ -54,10 +40,13 @@ const ActionTaskPanelForm = ({
   preview = false,
 }: ActionTaskPanelFormProps) => {
   const { user, isAuthenticated, isLoading: userLoading } = useAuth();
-  const [error, setError] = useState<string | null>(null);
-  const { reload: historiesReload, refetchIfSourcesChanged } =
-    useFormulaSourcesRefetch(setError);
-  const { submit } = useTaskFormSubmission();
+  const { submitTaskForm, recordCompleted, error, historiesReload } =
+    useSubmitTaskForm({
+      taskFormId,
+      actionId,
+      onDeadlinePassed,
+      onAlreadySubmitted,
+    });
 
   const {
     data: form,
@@ -65,49 +54,18 @@ const ActionTaskPanelForm = ({
     isPending,
   } = useTaskForm(taskFormId, { enabled: !formResponse });
 
-  const handleSubmitForm = onCompleteAction
-    ? async (data: SubmitFormDto) => {
-        setError(null);
+  const completeAction = onCompleteAction
+    ? () => {
+        recordCompleted();
+        onCompleteAction();
+      }
+    : null;
 
-        const storedGuestToken = isAuthenticated
-          ? null
-          : await getStoredGuestToken();
-        const response = await submit({
-          taskFormId,
-          body: data,
-          isMember: isAuthenticated,
-          guestToken: storedGuestToken,
-        });
-        if (response.response.ok) {
-          if (!isAuthenticated) {
-            const issuedGuestToken =
-              response.response.headers.get(GUEST_HEADER);
-            if (issuedGuestToken && issuedGuestToken !== storedGuestToken) {
-              await setStoredGuestToken(issuedGuestToken);
-            }
-          }
-          onCompleteAction();
-          return true;
-        } else {
-          if (formAlreadySubmitted(response)) {
-            setError(FORM_ALREADY_SUBMITTED);
-            onAlreadySubmitted();
-            return false;
-          }
-          if (memberActionDeadlinePassed(response)) {
-            setError(MEMBER_ACTION_DEADLINE_PASSED);
-            onDeadlinePassed();
-            return false;
-          }
-          if (refetchIfSourcesChanged(response)) return false;
-          console.error(response.error);
-          captureException(ExceptionEvent.FormSubmitError, response.error, {
-            actionId,
-            $exception_fingerprint: "FormSubmitError",
-          });
-          setError("Failed to submit action.");
-          return false;
-        }
+  const handleSubmitForm = completeAction
+    ? async (data: SubmitFormDto) => {
+        const submitted = await submitTaskForm(data);
+        if (submitted) completeAction();
+        return submitted;
       }
     : null;
 
