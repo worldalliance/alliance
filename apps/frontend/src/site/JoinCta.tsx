@@ -45,10 +45,7 @@ export function JoinCta({
   const heading =
     explicitHeading ?? (inviteHref ? INVITE_CTA_HEADING : JOIN_CTA_HEADING);
   return (
-    <section
-      id="join"
-      className="relative bg-(--site-surface) pb-16 lg:pb-24"
-    >
+    <section id="join" className="relative bg-(--site-surface) pb-16 lg:pb-24">
       <div className={cn(SITE_COL, "relative")}>
         <Link
           to={to}
