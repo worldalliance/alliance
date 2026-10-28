@@ -334,11 +334,12 @@ export class Action {
   @IsEnum(CustomActionStat)
   customStatType: CustomActionStat;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
+  @Column({ type: "varchar", nullable: true })
+  @ApiProperty({ type: String, nullable: true })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  customStatLabel?: string;
+  @IsString()
+  @Transform(trimToNull)
+  customStatLabel: string | null;
 
   @Column({ type: "int", nullable: true })
   @ApiProperty({ type: Number, nullable: true })

@@ -9,7 +9,7 @@ import {
 import { createTestApp, TestContext } from "./e2e-test-utils";
 
 const NAME_PREFIX = "action-nullable-text e2e";
-const fields = ["squareThumbnailImageAlt"] as const;
+const fields = ["squareThumbnailImageAlt", "customStatLabel"] as const;
 
 describe("Action nullable text (e2e)", () => {
   let ctx: TestContext;

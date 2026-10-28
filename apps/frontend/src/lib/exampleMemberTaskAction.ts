@@ -22,6 +22,7 @@ export const exampleMemberTaskAction: ActionWithAwayStatus = {
   squareThumbnailImageAlt: null,
   customStatType: "none",
   customStatValue: null,
+  customStatLabel: null,
   customStatGoal: null,
   visibilityMode: "public",
   optional: false,
