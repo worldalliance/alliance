@@ -1,16 +1,16 @@
 # Implementation decisions
 
-These are agent implementation choices for [the requirements](REQUIREMENTS.md), not additional user-approved requirements. No application code is implemented by this spec.
+These are agent implementation choices for [the requirements](REQUIREMENTS.md), not additional user-approved requirements.
 
 ## Account ownership
 
-Use a dedicated `Participant` entity, with its own authentication module. Neither the Alliance `User` nor the anonymous `Guest` represents this identity: the former participates in membership flows, while the latter lacks a verified contact and reusable login. Keep the participant's stable ID as the eventual owner of their work; defer any member link until conversion is specified.
+Use a dedicated `ProjectParticipant` entity (table `project_participant`), with its own module in `server/src/participants/`. Messaging already owns `Participant` and `ParticipantDto` for conversation members, so every class and API schema here carries the `ProjectParticipant` prefix. Neither the Alliance `User` nor the anonymous `Guest` represents this identity: the former participates in membership flows, while the latter lacks a verified contact and reusable login. Keep the participant's stable ID as the eventual owner of their work; defer any member link until conversion is specified.
 
-Store the name, normalized email or phone, nullable timezone, contact verification time, and creation time. Require exactly one contact, unique within participants. Normalize emails by trimming and comparing case-insensitively; normalize phones to E.164 using the existing phone utilities. Do not collapse email aliases. Reuse the waitlist input bounds of 200 characters for names and 320 for email addresses. Trim names and reject blank values. Reuse `deviceTimeZone` / `signupTimeZone`; unavailable detection yields null without blocking signup, and later login may fill a missing timezone.
+Store the name, normalized email or phone, nullable timezone, contact verification time, and creation time. Require exactly one contact, unique within participants. Normalize emails by trimming and comparing case-insensitively through a `citext` column, as `User.email` does; normalize phones to E.164 using the existing phone utilities. Do not collapse email aliases. Reuse the waitlist input bounds of 200 characters for names and 320 for email addresses. Trim names and reject blank values. Reuse `deviceTimeZone` / `signupTimeZone`; unavailable detection yields null without blocking signup, and later login may fill a missing timezone.
 
 Use separate participant OAuth identities with unique `(provider, subject)` and `(participantId, provider)` pairs. Store provider identity metadata separately from the primary contact. This permits several methods for one verified email without adding a second contact.
 
-Generate additive migrations for participant, identity, challenge, and session storage. Start with new registrations; do not infer participant records from existing waitlist, guest, or member data. Participant login performs no matching or merging against member accounts, even if a signed-out member enters the same contact.
+Generate additive migrations for participant, challenge, rate-event, signup, and session storage, and identity storage with OAuth. Start with new registrations; do not infer participant records from existing waitlist, guest, or member data. Participant login performs no matching or merging against member accounts, even if a signed-out member enters the same contact.
 
 ## Flow and interface
 
@@ -34,11 +34,13 @@ For OAuth, a supplied nonblank name completes a new registration; an email addre
 
 ## OTP verification and completion
 
+One-time codes live in a generic `server/src/otp/` module (R8): an `OtpPurpose` enum names each use, a `Record<OtpPurpose, …>` holds its wording, and challenges, digests, limits, and purging are shared. The module knows nothing of HTTP or participants; it returns a browser token that the caller stores in its own cookie. `otpRefusalException` maps its refusals to the copy below with the `OtpError` code from `common/src/otp.ts` in the response's `error` field.
+
 Create the durable participant only after verified contact and a valid name are available. OTP success for an existing participant issues a session immediately. For a new participant needing a name, exchange verification for a browser-bound, single-use signup continuation valid for ten minutes. Expired continuations restart verification. OAuth uses the same completion path when its profile lacks a name.
 
-Generate codes with a cryptographically secure random source, preserving leading zeros. Store a keyed digest bound to the challenge and contact, not plaintext or an unkeyed hash of the low-entropy code. Derive a purpose-specific key from the server's signing secret. Challenge handles must be unguessable and tied to the initiating browser; the code by itself is insufficient to select or authenticate an account.
+Generate codes with a cryptographically secure random source, preserving leading zeros. Store an HMAC-SHA256 digest over the challenge ID, contact, and code, not plaintext or an unkeyed hash of the low-entropy code. Derive its key from `JWT_SECRET` with HKDF under a purpose label. Challenge handles must be unguessable and tied to the initiating browser; the code by itself is insufficient to select or authenticate an account.
 
-Enforce expiry, attempts, resend, and consumption in the database so they survive restarts and concurrent requests. Verification, signup completion, and unique-contact resolution must allow only one successful consumption. Simultaneous verified signups for the same contact resolve to one participant, without letting the losing request overwrite the name. Resending invalidates the earlier challenge across browsers. Delivery failure invalidates the new challenge too; an older code is not restored.
+Enforce expiry, attempts, resend, and consumption in the database so they survive restarts and concurrent requests. A challenge row exists only while its code is usable or exhausted: a new code, a successful verification (a conditional `DELETE … RETURNING`), a failed delivery, or the purge deletes it. Changing the contact deletes this browser's challenge and any signup awaiting a name. Verification, signup completion, and unique-contact resolution must allow only one successful consumption. Simultaneous verified signups for the same contact resolve to one participant, without letting the losing request overwrite the name. Resending invalidates the earlier challenge across browsers. Delivery failure invalidates the new challenge too; an older code is not restored.
 
 Implement the following rate limits as initial operational defaults, distinct from the user-approved code rules in R5:
 
@@ -48,7 +50,7 @@ Implement the following rate limits as initial operational defaults, distinct fr
 | Code sends per IP                 | 30 per minute and 200 per hour            |
 | Code verification per IP          | 30 per minute and 200 per hour            |
 
-Count provider delivery attempts, including failures, against send limits. Apply contact limits across browsers. Resend and attempt counters must update atomically. Return a retry time for throttled requests. Purge challenges, continuations, and rate-limit records within twenty-four hours after their respective validity or counting windows end, so incomplete signups do not leave permanent contact records.
+Keep these limits in the database rather than the in-memory `ThrottlerGuard`, so both contact and IP limits survive restarts and report a retry time. Each counted request is an `otp_rate_event` row whose bucket is a keyed digest of the contact or IP, so no contact or address is stored; an advisory lock per bucket makes check-and-count atomic. The sixty-second resend wait is checked under the same lock and refused as a throttle. The throttle copy formats `{time}` with `formatDistanceStrict`, rounding up. Count provider delivery attempts, including failures, against send limits. Apply contact limits across browsers. Resend and attempt counters must update atomically. Return a retry time for throttled requests. Hourly jobs purge challenges, continuations, and sessions once expired, and rate events once outside the longest window, so incomplete signups do not leave permanent contact records.
 
 Before verification, responses must not disclose whether a participant exists. Distinguish usable actions after failures with these messages:
 
@@ -72,19 +74,19 @@ Provider cancellation returns to the usable form. A provider lacking a verified 
 
 ## Delivery infrastructure
 
-Reuse the configured mail transport and Twilio infrastructure. The current `MmsService.sendMms` requires a member ID and stores the message body; `MailService.sendMail` stores rendered HTML. Factor the necessary transport boundary for authentication messages rather than supplying fake member IDs or retaining plaintext OTPs in message archives. Keep authentication delivery out of member notification preferences, campaign attribution, and waitlist mail.
+Reuse the configured mail transport and Twilio infrastructure through `sendUnrecordedMail` (new `EmailType.OtpCode`, template `otp-code.pug`) and `sendUnrecordedText`, which keep R9's existing delivery gate. The current `MmsService.sendMms` requires a member ID and stores the message body; `MailService.sendMail` stores rendered HTML. Factor the necessary transport boundary for authentication messages rather than supplying fake member IDs or retaining plaintext OTPs in message archives. Keep authentication delivery out of member notification preferences, campaign attribution, and waitlist mail.
 
 Retain operational delivery status and provider message IDs where needed, excluding codes, session tokens, and sensitive provider payloads from logs. Disabled or unavailable delivery must return an explicit unavailable result rather than pretending a code was sent. Tests use delivery stubs. Check sender support, Apple relay sender registration, and actual delivery during implementation verification; the existing credentials and provider account permissions have not been inspected for this spec.
 
 ## Participant sessions
 
-Use opaque random session tokens stored only in a dedicated HttpOnly cookie, with token digests, participant IDs, and expiry stored server-side. Use Secure cookies on HTTPS and SameSite=Lax for the browser OAuth return. Protect session-changing requests against cross-site submission. Credentials are not stored in browser local storage or URLs.
+Use opaque random session tokens stored only in a dedicated HttpOnly cookie, with token digests, participant IDs, and expiry stored server-side. The challenge token and signup continuation ride in their own HttpOnly cookies (`participant_code`, `participant_signup`) lasting ten minutes. Use Secure cookies on deployed environments, and SameSite=Strict until the browser OAuth return needs Lax. Session-changing requests pass `AllowedOriginGuard`, which requires an `Origin` header naming one of the configured app origins: CORS reflects any origin, so the header check, not CORS, is what stops cross-site submission. Credentials are not stored in browser local storage or URLs.
 
 Extend expiry and cookie lifetime on successful participant-authenticated requests, with no background keepalive loop. Reject expired sessions before extending them. Reauthentication replaces the current browser's participant session; other devices retain theirs. Logout revokes the presented session in storage and clears its cookie, leaving member cookies untouched. If logout cannot be confirmed, retain the signed-in UI with a retryable error.
 
-Participant credentials must be rejected by member, admin, and anonymous-guest authentication. Add a participant guard/session lookup rather than relaxing existing member guards. A temporary signup continuation grants only completion access. The backend, not just the UI, enforces these boundaries.
+Participant credentials must be rejected by member, admin, and anonymous-guest authentication; the opaque token fails JWT verification and rides in a cookie member guards never read. Look sessions up through `ParticipantSessionService.current` rather than relaxing existing member guards. The required participant guard arrives with the first participant-only endpoint, since none exists in this scope. A temporary signup continuation grants only completion access. The backend, not just the UI, enforces these boundaries.
 
-Keep new participant entry points under the same environment availability as the project page; they remain unavailable in production while the page is hidden. No new launch configuration is needed for this scope.
+Keep new participant entry points under the same environment availability as the project page: `ParticipantsAvailableGuard` and the page's loader both answer 404 wherever `PARTICIPANTS_AVAILABLE` in `common/src/participant.ts` is false, currently production and any unrecognized environment. Launch flips that one entry (R9).
 
 ## Verification before implementation handoff
 
@@ -102,7 +104,11 @@ Use API integration tests with delivery/provider stubs and database assertions, 
 Deliver as four stacked PRs, each with the tests above that cover its scope. Partial merges are safe because every new entry point shares the project page's production restriction.
 
 1. Delivery transport: `MailService.sendUnrecordedMail` and `MmsService.sendUnrecordedText` send without a member, stored body, or link tracking, and return a `DeliveryFailure` instead of faking a send. They share the provider call with `sendMail` and `sendMms`, whose behavior is unchanged. `processKeywordReplacements` moves to `notifs/notification-keywords.ts` to keep `mail.service.ts` under 500 lines. Commit this spec with it.
-2. Backend participant core: participant, challenge, continuation, and session storage with migrations; the participant guard and cookie sessions; email and SMS OTP with limits and purging. Both channels share the challenge machinery and differ only in delivery.
+2. Backend participant core: the generic OTP module; participant, challenge, rate-event, continuation, and session storage with one migration; cookie sessions; email and SMS OTP with limits and purging. Both channels share the challenge machinery and differ only in delivery. Endpoints under `/participants`:
+   - `GET me`: signed-in participant, pending code, and pending signup, for reload restoration.
+   - `POST code`: send a code. `DELETE code`: change the contact.
+   - `POST code/verify`: sign in, or open a signup awaiting a name.
+   - `POST signup`: name and complete. `POST sign-out`.
 3. Frontend OTP flow: the participant form, extracted contact parsing and country selector, R2 precedence, and sign-out.
 4. Google and Apple OAuth: identity storage and migration, participant start/callback handling, email matching and linking, and the provider buttons.
 

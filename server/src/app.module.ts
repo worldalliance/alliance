@@ -31,6 +31,7 @@ import { MailModule } from "./mail/mail.module";
 import { MessagingModule } from "./messaging/messaging.module";
 import { MmsModule } from "./mms/mms.module";
 import { NotifsModule } from "./notifs/notifs.module";
+import { ParticipantsModule } from "./participants/participants.module";
 import { PosthogModule } from "./posthog/posthog.module";
 import { PushModule } from "./push/push.module";
 import { S3Module } from "./s3/s3.module";
@@ -110,6 +111,7 @@ if (!("polyfilled" in Intl.DateTimeFormat)) {
     PushModule,
     EventLogModule,
     WaitlistModule,
+    ParticipantsModule,
   ],
   controllers: [AppController],
 })

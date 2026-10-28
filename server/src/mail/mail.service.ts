@@ -109,6 +109,7 @@ export class MailService {
     [EmailType.WaitlistConfirmation]: "waitlist-confirmation",
     [EmailType.WaitlistLink]: "waitlist-link",
     [EmailType.WaitlistStaff]: "waitlist-staff",
+    [EmailType.OtpCode]: "otp-code",
   };
 
   async renderHtml(emailType: EmailType, context: ISendMailOptions["context"]) {

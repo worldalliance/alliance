@@ -292,6 +292,25 @@ BEGIN
   END IF;
 END $$;
 
+-- Pending codes name the contact they went to, and staging has no use for
+-- prod's. Prod gains the table only once the migration adding it ships there.
+DO $$
+BEGIN
+  IF to_regclass('otp_challenge') IS NOT NULL THEN
+    TRUNCATE "otp_challenge";
+  END IF;
+END $$;
+
+-- Participants are not members and get no anonymized stand-ins; staging signs
+-- up its own.
+DO $$
+BEGIN
+  IF to_regclass('project_participant') IS NOT NULL THEN
+    TRUNCATE "project_participant", "project_participant_session",
+      "project_participant_signup";
+  END IF;
+END $$;
+
 -- Keys the fake names and sentences, so each comes out the same from one sync
 -- to the next. Change it to deal new ones.
 \set seed 1

@@ -12,7 +12,7 @@ import {
 } from "@alliance/common/oauth";
 import type { Result } from "@alliance/common/result";
 import { BadRequestException } from "@nestjs/common";
-import { socketCorsOrigins } from "src/utils/cors-origins";
+import { isAllowedOrigin } from "../allowed-origins";
 
 type OriginRequest = {
   protocol: string;
@@ -44,28 +44,6 @@ export function oauthRedirectUri(params: {
     return `${requestOrigin(params.req)}${path}`;
   }
   return `${params.returnTo.origin}/api${path}`;
-}
-
-/**
- * nginx serves the two public sites under `www.` as well, and the admin hosts
- * have no such alias, which is why only these two grow the variant. Staging
- * grows one no provider has a registration for, but nothing serves that host.
- */
-function allowedOrigins(): (string | RegExp)[] {
-  const configured = socketCorsOrigins({
-    nodeEnv: process.env.NODE_ENV,
-    appUrl: process.env.APP_URL,
-    altAppUrl: process.env.ALT_APP_URL,
-    adminUrl: process.env.ADMIN_URL,
-    altAdminUrl: process.env.ALT_ADMIN_URL,
-  });
-
-  const www = [process.env.APP_URL, process.env.ALT_APP_URL]
-    .filter((url): url is string => !!url)
-    .map((url) => new URL(url))
-    .map((url) => `${url.protocol}//www.${url.host}`);
-
-  return [...configured, ...www];
 }
 
 /**
@@ -135,13 +113,7 @@ export function resolveReturnTo(returnTo: string): URL {
     throw new BadRequestException("returnTo must be an absolute URL");
   }
 
-  const permitted = allowedOrigins().some((allowed) =>
-    typeof allowed === "string"
-      ? allowed === url.origin
-      : allowed.test(url.origin),
-  );
-
-  if (!permitted) {
+  if (!isAllowedOrigin(url.origin)) {
     throw new BadRequestException(`returnTo ${url.origin} is not allowed`);
   }
 

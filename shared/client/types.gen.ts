@@ -231,7 +231,7 @@ export type ActionEventNotifType = 'announcement' | 'misseddeadline' | 'reminder
 
 export type EmailStatus = 'pending' | 'sent' | 'failed';
 
-export type EmailType = 'verification' | 'password_reset' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'forum_reply' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder' | 'contract_suspended' | 'contract_reinstated' | 'contract_reminder' | 'waitlist_confirmation' | 'waitlist_link' | 'waitlist_staff';
+export type EmailType = 'verification' | 'password_reset' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'forum_reply' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder' | 'contract_suspended' | 'contract_reinstated' | 'contract_reminder' | 'waitlist_confirmation' | 'waitlist_link' | 'waitlist_staff' | 'otp_code';
 
 export type Mail = {
     id: number;
@@ -5092,6 +5092,69 @@ export type SaveWaitlistEmailTemplateDto = {
      * Markdown with #{placeholder}s
      */
     body: string;
+    name: string;
+};
+
+export type ProjectParticipantDto = {
+    id: string;
+    name: string;
+};
+
+export type OtpChannel = 'email' | 'sms';
+
+export type PendingProjectParticipantCodeDto = {
+    channel: OtpChannel;
+    /**
+     * Where the code went, partly hidden
+     */
+    maskedDestination: string;
+    resendAvailableAt: string;
+    expiresAt: string;
+};
+
+export type ProjectParticipantStateDto = {
+    participant: ProjectParticipantDto | null;
+    /**
+     * A code this browser asked for and has not used
+     */
+    pendingCode: PendingProjectParticipantCodeDto | null;
+    /**
+     * A verified contact is waiting on a name
+     */
+    signupPending: boolean;
+};
+
+export type StartProjectParticipantCodeDto = {
+    /**
+     * Send this or `phoneNumber`
+     */
+    email?: string;
+    /**
+     * E.164; send this or `email`
+     */
+    phoneNumber?: string;
+};
+
+export type VerifyProjectParticipantCodeDto = {
+    /**
+     * The device's IANA timezone, when it could be detected
+     */
+    timeZone?: string | null;
+    code: string;
+};
+
+export type ProjectParticipantCodeVerifiedDto = {
+    /**
+     * Null when the new participant still has to give a name
+     */
+    participant: ProjectParticipantDto | null;
+};
+
+export type CompleteProjectParticipantSignupDto = {
+    /**
+     * The device's IANA timezone, when it could be detected
+     */
+    timeZone?: string | null;
     name: string;
 };
 
@@ -15482,6 +15545,142 @@ export type WaitlistEmailAdminUpdateTemplateAdminResponses = {
 };
 
 export type WaitlistEmailAdminUpdateTemplateAdminResponse = WaitlistEmailAdminUpdateTemplateAdminResponses[keyof WaitlistEmailAdminUpdateTemplateAdminResponses];
+
+export type ParticipantsStateData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/participants/me';
+};
+
+export type ParticipantsStateErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ParticipantsStateError = ParticipantsStateErrors[keyof ParticipantsStateErrors];
+
+export type ParticipantsStateResponses = {
+    200: ProjectParticipantStateDto;
+};
+
+export type ParticipantsStateResponse = ParticipantsStateResponses[keyof ParticipantsStateResponses];
+
+export type ParticipantsAbandonCodeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/participants/code';
+};
+
+export type ParticipantsAbandonCodeErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ParticipantsAbandonCodeError = ParticipantsAbandonCodeErrors[keyof ParticipantsAbandonCodeErrors];
+
+export type ParticipantsAbandonCodeResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type ParticipantsAbandonCodeResponse = ParticipantsAbandonCodeResponses[keyof ParticipantsAbandonCodeResponses];
+
+export type ParticipantsSendCodeData = {
+    body: StartProjectParticipantCodeDto;
+    path?: never;
+    query?: never;
+    url: '/participants/code';
+};
+
+export type ParticipantsSendCodeErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ParticipantsSendCodeError = ParticipantsSendCodeErrors[keyof ParticipantsSendCodeErrors];
+
+export type ParticipantsSendCodeResponses = {
+    200: PendingProjectParticipantCodeDto;
+};
+
+export type ParticipantsSendCodeResponse = ParticipantsSendCodeResponses[keyof ParticipantsSendCodeResponses];
+
+export type ParticipantsVerifyCodeData = {
+    body: VerifyProjectParticipantCodeDto;
+    path?: never;
+    query?: never;
+    url: '/participants/code/verify';
+};
+
+export type ParticipantsVerifyCodeErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ParticipantsVerifyCodeError = ParticipantsVerifyCodeErrors[keyof ParticipantsVerifyCodeErrors];
+
+export type ParticipantsVerifyCodeResponses = {
+    200: ProjectParticipantCodeVerifiedDto;
+};
+
+export type ParticipantsVerifyCodeResponse = ParticipantsVerifyCodeResponses[keyof ParticipantsVerifyCodeResponses];
+
+export type ParticipantsCompleteSignupData = {
+    body: CompleteProjectParticipantSignupDto;
+    path?: never;
+    query?: never;
+    url: '/participants/signup';
+};
+
+export type ParticipantsCompleteSignupErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ParticipantsCompleteSignupError = ParticipantsCompleteSignupErrors[keyof ParticipantsCompleteSignupErrors];
+
+export type ParticipantsCompleteSignupResponses = {
+    200: ProjectParticipantDto;
+};
+
+export type ParticipantsCompleteSignupResponse = ParticipantsCompleteSignupResponses[keyof ParticipantsCompleteSignupResponses];
+
+export type ParticipantsSignOutData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/participants/sign-out';
+};
+
+export type ParticipantsSignOutErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ParticipantsSignOutError = ParticipantsSignOutErrors[keyof ParticipantsSignOutErrors];
+
+export type ParticipantsSignOutResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type ParticipantsSignOutResponse = ParticipantsSignOutResponses[keyof ParticipantsSignOutResponses];
 
 export type ClientOptions = {
     baseUrl: string;

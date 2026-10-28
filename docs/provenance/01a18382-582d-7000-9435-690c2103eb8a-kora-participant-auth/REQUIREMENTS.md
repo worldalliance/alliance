@@ -63,3 +63,20 @@ End a browser session after thirty days without activity. Allow simultaneous ses
 Origin: agent-proposed, user-approved.
 
 Initial account controls are signup, login, and sign-out. Defer profile edits, contact changes, linking different contacts, and lost-contact recovery. No membership invitation policy or phone-only membership policy is selected by this spec.
+
+## R8. Code messages
+
+Origin: agent-proposed, user-approved, except reuse, which is user-originated.
+
+Brand codes as the Alliance, not KORA. New and returning participants receive identical wording.
+
+- Email subject: “Your sign-in code is {code}”. Body: “Enter {code} to continue to Safer Chatbots for Children.” then “This code expires in 10 minutes. If you didn’t request it, you can ignore this email.”
+- SMS: “Your Alliance sign-in code is {code}. It expires in 10 minutes.”, a blank line, then `@{site host} #{code}` so browsers can offer the code for autofill.
+
+The code-sending and checking machinery is reusable for other one-time codes on the same site, each with its own wording.
+
+## R9. Delivery and launch switches
+
+Origin: user.
+
+Code delivery keeps the existing delivery gate: production, or `SEND_DEV_NOTIFS=1` elsewhere. Enabling the flow later should take one switch.

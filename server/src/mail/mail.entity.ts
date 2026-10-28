@@ -25,6 +25,7 @@ export enum EmailType {
   WaitlistConfirmation = "waitlist_confirmation",
   WaitlistLink = "waitlist_link",
   WaitlistStaff = "waitlist_staff",
+  OtpCode = "otp_code",
 }
 
 export enum EmailStatus {
