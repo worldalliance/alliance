@@ -139,6 +139,23 @@ describe("useInvite", () => {
     expect(result.current.unresolved).toBe(true);
   });
 
+  it("forgets both lookups for its code, and only those", async () => {
+    const { client, wrapper } = queryWrapper();
+    client.setQueryData(queryKeys.referrerProfile("OTHER"), user);
+    const { result } = renderHook(() => useInvite("CODE"), { wrapper });
+    await waitFor(() => expect(result.current.pending).toBe(false));
+
+    act(() => result.current.forgetLookups());
+
+    expect(client.getQueryState(queryKeys.referrerProfile("CODE"))).toBe(
+      undefined,
+    );
+    expect(client.getQueryState(queryKeys.onetimeInvite("CODE"))).toBe(
+      undefined,
+    );
+    expect(client.getQueryData(queryKeys.referrerProfile("OTHER"))).toBe(user);
+  });
+
   it("is not checking when there is no code", () => {
     const { result } = renderHook(() => useInvite(null), queryWrapper());
     expect(result.current.availability).toBe(InviteAvailability.Unknown);

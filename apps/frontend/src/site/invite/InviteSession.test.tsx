@@ -1,4 +1,5 @@
 import type { UserDto } from "@alliance/shared/client";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { makeOnetimeInvite } from "@alliance/shared/lib/testFixtures";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { useInvite } from "@alliance/shared/lib/useInvite";
@@ -306,6 +307,35 @@ test("forgets the invitation and drops ref from the URL, keeping other params", 
   await screen.findByText("/?utm=x", { selector: "output" });
   expect(screen.queryByRole("link", { name: "Accept invite" })).toBeNull();
   expect(sessionStorage.getItem(KEY)).toBeNull();
+});
+
+test("forgetting drops the cached lookups for the code", async () => {
+  const client = new QueryClient();
+  render(
+    <MemoryRouter initialEntries={["/?ref=good"]}>
+      <QueryClientProvider client={client}>
+        <AuthContext.Provider value={authValue({})}>
+          <InviteSessionProvider>
+            <Navbar />
+          </InviteSessionProvider>
+        </AuthContext.Provider>
+      </QueryClientProvider>
+    </MemoryRouter>,
+  );
+  await acceptLink();
+  expect(client.getQueryData(queryKeys.referrerProfile("good"))).toBeTruthy();
+  // Under load, useQuery's setOptions effect from the lookups' render can still
+  // be pending; flushed after the click, it rebuilds the removed queries.
+  await act(async () => {});
+
+  fireEvent.click(forgetButton());
+
+  await waitFor(() =>
+    expect(client.getQueryState(queryKeys.referrerProfile("good"))).toBe(
+      undefined,
+    ),
+  );
+  expect(client.getQueryState(queryKeys.onetimeInvite("good"))).toBe(undefined);
 });
 
 test("sends a visitor who forgets on the invite page to the homepage", async () => {

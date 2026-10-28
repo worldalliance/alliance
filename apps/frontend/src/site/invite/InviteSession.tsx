@@ -1,7 +1,5 @@
 import { R } from "@alliance/common/result";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { InviteAvailability, useInvite } from "@alliance/shared/lib/useInvite";
-import { useQueryClient } from "@tanstack/react-query";
 import {
   createContext,
   useCallback,
@@ -70,7 +68,6 @@ export function InviteSessionProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [memory, setMemory] = useState<InviteMemory>(NO_INVITE);
   const [restored, setRestored] = useState(false);
   const [forgetFailed, setForgetFailed] = useState(false);
@@ -96,7 +93,9 @@ export function InviteSessionProvider({ children }: { children: ReactNode }) {
   }, [restored, authLoading, isAuthenticated, urlCode]);
 
   const code = selectedCode(memory);
-  const { availability } = useInvite(isAuthenticated ? null : code);
+  const { availability, forgetLookups } = useInvite(
+    isAuthenticated ? null : code,
+  );
 
   useEffect(() => {
     if (code === null) return;
@@ -119,12 +118,7 @@ export function InviteSessionProvider({ children }: { children: ReactNode }) {
   const drop = useCallback(
     (next: InviteMemory) => {
       replace(next);
-      if (code !== null) {
-        queryClient.removeQueries({
-          queryKey: queryKeys.referrerProfile(code),
-        });
-        queryClient.removeQueries({ queryKey: queryKeys.onetimeInvite(code) });
-      }
+      forgetLookups();
       const params = new URLSearchParams(location.search);
       if (CAPTURE_PATHS.has(location.pathname) && params.has(REF_PARAM)) {
         params.delete(REF_PARAM);
@@ -142,7 +136,7 @@ export function InviteSessionProvider({ children }: { children: ReactNode }) {
         );
       }
     },
-    [replace, code, queryClient, location, navigate],
+    [replace, forgetLookups, location, navigate],
   );
 
   const forget = useCallback(() => drop(NO_INVITE), [drop]);

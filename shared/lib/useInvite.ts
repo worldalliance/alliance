@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 import {
   userOnetimeInviteOnetimeInvite,
   userReferralReferrerProfile,
@@ -43,6 +44,7 @@ const nullIfRefused = <T>(lookup: Promise<{ data: T }>): Promise<T | null> =>
  * comes from that lookup.
  */
 export function useInvite(referralCode: string | null) {
+  const queryClient = useQueryClient();
   const referrerQuery = useQuery({
     queryKey: queryKeys.referrerProfile(referralCode),
     queryFn: () =>
@@ -84,6 +86,16 @@ export function useInvite(referralCode: string | null) {
   const unresolved =
     Boolean(referralCode) && !pending && !failed && !referrer && !invite;
 
+  const forgetLookups = useCallback(() => {
+    if (referralCode === null) return;
+    queryClient.removeQueries({
+      queryKey: queryKeys.referrerProfile(referralCode),
+    });
+    queryClient.removeQueries({
+      queryKey: queryKeys.onetimeInvite(referralCode),
+    });
+  }, [queryClient, referralCode]);
+
   const availability = (() => {
     if (refusal || unresolved) return InviteAvailability.Unavailable;
     if (invite || (invite === null && referrer)) {
@@ -99,6 +111,7 @@ export function useInvite(referralCode: string | null) {
     availability,
     inviter: refusal ? null : namedInviter(referrer ?? null),
     onetimeInvite: refusal ? null : (invite ?? null),
+    forgetLookups,
   };
 }
 
