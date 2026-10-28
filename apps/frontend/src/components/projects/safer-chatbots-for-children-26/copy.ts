@@ -1,3 +1,5 @@
+import type { WaitlistHeroImage } from "../democratic-grantmaking-26/placeholders";
+
 export const ABOUT_SECTIONS = [
   {
     heading: "What is this?",
@@ -29,6 +31,12 @@ export const ABOUT_SECTIONS = [
 ];
 
 export const PARTICIPANT_GOAL = 500;
+
+export const HERO_IMAGES: WaitlistHeroImage[] = [
+  { src: null, alt: "" },
+  { src: null, alt: "" },
+  { src: null, alt: "" },
+];
 
 export const SIGNUP_BUTTON = "Sign up";
 

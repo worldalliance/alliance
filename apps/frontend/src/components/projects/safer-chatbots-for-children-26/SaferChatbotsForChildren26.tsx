@@ -5,15 +5,19 @@ import { socialPreviewMeta } from "../../../lib/socialPreviewMeta";
 import { SiteFooter } from "../../../site/Footer";
 import { NAV_HEIGHT, Navbar } from "../../../site/Navbar";
 import { SiteRoot } from "../../../site/PageShell";
-import {
-  DisplayHeading,
-  SITE_COL,
-  SiteSubtitle,
-  SubtitleSize,
-} from "../../../site/ui";
+import { SITE_COL } from "../../../site/ui";
+import { WaitlistHeroImages } from "../democratic-grantmaking-26/DemocraticGrantmaking26";
+import { WaitlistSignupForm } from "../democratic-grantmaking-26/WaitlistSignupForm";
 import { AboutSections } from "./AboutSections";
-import { ChatbotSignup } from "./ChatbotSignup";
-import { PARTICIPANT_GOAL, SHOW_FACTS, SHOW_TIMELINE } from "./copy";
+import {
+  HERO_IMAGES,
+  PARTICIPANT_GOAL,
+  SHOW_FACTS,
+  SHOW_TIMELINE,
+  SIGNUP_BUTTON,
+  SIGNUP_CLOSED,
+  SIGNUP_NOTE,
+} from "./copy";
 import { ExpertList } from "./ExpertList";
 import { FactBlocks } from "./FactBlocks";
 import { NewsCollage } from "./NewsCollage";
@@ -52,83 +56,72 @@ function ProjectProgress() {
   );
 }
 
+function HeroScreen() {
+  return (
+    <section
+      aria-label="Sign up"
+      className="flex min-h-svh flex-col bg-white"
+      style={{ paddingTop: NAV_HEIGHT }}
+    >
+      <div
+        className={cn(
+          PROJECT_COL,
+          "my-auto grid grid-cols-1 items-center gap-10 py-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-x-24 lg:py-12 xl:gap-x-32",
+        )}
+      >
+        <div className="flex flex-col gap-4 lg:gap-5">
+          <p className="-mb-2 text-left text-[1.05rem] text-[var(--site-ink)]/70 sm:text-[1.2rem]">
+            Safer Chatbots for Children / Winter 2026
+          </p>
+          <h1 className="site-display font-medium text-5xl sm:text-6xl lg:text-7xl">
+            Make AI chatbots safer for kids
+          </h1>
+          <p className="text-left text-xl sm:text-2xl">
+            80% of children use AI chatbots in 2026. Join our project with{" "}
+            <a
+              href="https://korabench.ai"
+              target="_blank"
+              rel="noreferrer"
+              className="underline"
+            >
+              KORA,
+            </a>{" "}
+            a safety research nonprofit, to improve the safety of chatbots for
+            children worldwide.
+          </p>
+          <ExpertList />
+          <WaitlistSignupForm
+            className="mt-2 w-full"
+            submitLabel={SIGNUP_BUTTON}
+            note={SIGNUP_NOTE}
+            closedMessage={SIGNUP_CLOSED}
+          />
+        </div>
+        <div className="flex justify-center lg:justify-end">
+          <WaitlistHeroImages images={HERO_IMAGES} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function SaferChatbotsForChildren26() {
   return (
     <SiteRoot className="bg-white">
       <Navbar />
       <main>
+        <HeroScreen />
         <div
-          className="bg-white lg:flex lg:min-h-svh lg:flex-col lg:pb-0"
-          style={{ paddingTop: NAV_HEIGHT }}
+          className={cn(
+            PROJECT_COL,
+            "flex flex-col gap-12 pb-20 md:gap-16 md:pb-24 lg:pb-32",
+          )}
         >
-          <div
-            className="flex flex-col justify-center max-lg:[@media(max-aspect-ratio:1/2)_and_(min-height:901px)]:min-h-0! lg:min-h-0! lg:flex-1"
-            style={{ minHeight: `calc(100svh - ${NAV_HEIGHT}px)` }}
-          >
-            <div
-              className={cn(
-                PROJECT_COL,
-                "grid grid-cols-1 gap-y-6 pt-16 [@media(max-width:480px)_and_(max-height:700px)]:pt-8 lg:grid-cols-[minmax(0,1fr)_max(24rem,34%)] lg:items-start lg:gap-x-[10%] lg:pt-[clamp(4rem,10svh,8rem)]",
-              )}
-            >
-              <p className="-mb-2 text-left text-[1.05rem] text-[var(--site-ink)]/70 sm:text-[1.2rem]">
-                Safer Chatbots for Children / Winter 2026
-              </p>
-              <div className="flex flex-col gap-4 lg:col-start-1 lg:row-start-2 lg:gap-[clamp(1rem,2.5vh,2rem)]">
-                <DisplayHeading
-                  as="h1"
-                  leading={1.1}
-                  className="text-5xl sm:text-6xl lg:text-8xl"
-                >
-                  Make AI chatbots safer for kids
-                </DisplayHeading>
-                <SiteSubtitle size={SubtitleSize.Display}>
-                  80% of children use AI chatbots in 2026. Join our project with{" "}
-                  <a
-                    href="https://korabench.ai"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="underline"
-                  >
-                    KORA,
-                  </a>{" "}
-                  a safety research nonprofit, to improve the safety of chatbots
-                  for children worldwide.
-                </SiteSubtitle>
-                <ExpertList />
-              </div>
-              <ChatbotSignup className="mt-6 w-full lg:col-start-2 lg:row-start-2 lg:mt-0 lg:self-center" />
-            </div>
-            <div
-              className={cn(
-                PROJECT_COL,
-                "pt-8 lg:pt-[clamp(1.5rem,4svh,4rem)]",
-              )}
-            >
-              <ProjectProgress />
-            </div>
-            {SHOW_TIMELINE && (
-              <div className={cn(PROJECT_COL, "pt-12 md:pt-16")}>
-                <ProjectTimeline currentIdx={0} />
-              </div>
-            )}
-            <div className={cn(PROJECT_COL, "pt-12 md:pt-16")}>
-              <AboutSections />
-            </div>
-            {SHOW_FACTS && (
-              <div className={cn(PROJECT_COL, "pt-12 md:pt-16")}>
-                <FactBlocks />
-              </div>
-            )}
-          </div>
-          <div
-            className={cn(
-              PROJECT_COL,
-              "mt-12 flex flex-col gap-12 pb-20 md:mt-16 md:gap-16 md:pb-24 lg:pb-32",
-            )}
-          >
-            <NewsCollage />
-          </div>
+          <ProjectProgress />
+          {SHOW_TIMELINE && <ProjectTimeline currentIdx={0} />}
+          <AboutSections />
+          {SHOW_FACTS && <FactBlocks />}
+          <NewsCollage />
         </div>
       </main>
       <SiteFooter />

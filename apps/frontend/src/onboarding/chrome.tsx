@@ -239,16 +239,12 @@ export const ACCOUNT_FIELD =
 
 export const ACCOUNT_BUTTON = "w-full gap-2 py-2.5";
 
-export function EmailDivider({
-  label = "Or continue with email",
-}: {
-  label?: string;
-}) {
+export function EmailDivider() {
   const rule = "h-px flex-1 bg-zinc-200";
   return (
     <p className="flex items-center gap-3 text-xs text-zinc-500">
       <span className={rule} aria-hidden />
-      {label}
+      Or continue with email
       <span className={rule} aria-hidden />
     </p>
   );
