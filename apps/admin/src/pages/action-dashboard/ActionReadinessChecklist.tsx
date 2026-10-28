@@ -1,12 +1,7 @@
-import {
-  fieldHasOptions,
-  isQuestionField,
-} from "@alliance/common/forms/form-schema";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import Card from "@alliance/sharedweb/ui/Card";
-import { secondsInMinute } from "date-fns/constants";
 import {
   AlertTriangle,
   CheckIcon,
@@ -16,17 +11,10 @@ import {
 } from "lucide-react";
 import React, { useMemo } from "react";
 import type { FormWithSchema } from "../../components/FormResponsesView";
-
-type ReadinessCheckItem = {
-  id: string;
-  label: string;
-  isReady: boolean;
-};
-
-const countWords = (text: string | null | undefined): number => {
-  if (!text) return 0;
-  return text.trim().split(/\s+/).filter(Boolean).length;
-};
+import {
+  actionReadinessItems,
+  type ReadinessCheckItem,
+} from "./actionReadiness";
 
 type ActionReadinessChecklistProps = {
   action: ParsedActionDto | null;
@@ -41,100 +29,11 @@ const ActionReadinessChecklist: React.FC<ActionReadinessChecklistProps> = ({
   collapsed: checklistCollapsed,
   onCollapsedChange: setChecklistCollapsed,
 }) => {
-  const readinessChecklist = useMemo<ReadinessCheckItem[]>(() => {
-    if (!action) {
-      return [];
-    }
-
-    const trimmedShortDescription = action.shortDescription?.trim() ?? "";
-    const trimmedBody = action.body?.trim() ?? "";
-    const partOfSuite = Boolean(action.suite?.id);
-    const items: ReadinessCheckItem[] = [
-      {
-        id: "shortDescription",
-        label: "Short description",
-        isReady: trimmedShortDescription.length > 0,
-      },
-      {
-        id: "body",
-        label: "Full body content",
-        isReady: trimmedBody.length > 0,
-      },
-      {
-        id: "timeEstimate",
-        label: "Time estimate set",
-        isReady: (action.timeEstimate ?? 0) > 0,
-      },
-      {
-        id: "suite",
-        label: "Part of a suite",
-        isReady: partOfSuite,
-      },
-      {
-        id: "cohort",
-        label: "Cohort expression set",
-        isReady: !!action.cohortExpression,
-      },
-      {
-        id: "authors",
-        label: "Action authors set",
-        isReady: (action.authors?.length ?? 0) > 0,
-      },
-      {
-        id: "taskForm",
-        label: "Task form linked",
-        isReady: Boolean(action.taskFormId),
-      },
-    ];
-
-    let descriptionWords = 0;
-    descriptionWords += countWords(action.body);
-    descriptionWords += countWords(action.shortDescription);
-
-    let formWords = 0;
-    if (taskForm?.schema) {
-      const schema = taskForm.schema;
-      formWords += countWords(schema.description);
-
-      for (const page of schema.pages) {
-        formWords += countWords(page.title);
-        formWords += countWords(page.description);
-
-        for (const field of page.fields) {
-          if (isQuestionField(field)) formWords += countWords(field.label);
-          if ("description" in field)
-            formWords += countWords(field.description as string);
-          if (isQuestionField(field) && fieldHasOptions(field)) {
-            for (const option of field.options) {
-              formWords += countWords(option.label);
-            }
-          }
-          if ("text" in field) formWords += countWords(field.text as string);
-          if ("caption" in field)
-            formWords += countWords(field.caption as string);
-          if ("startLabel" in field)
-            formWords += countWords(field.startLabel as string);
-          if ("endLabel" in field)
-            formWords += countWords(field.endLabel as string);
-        }
-      }
-    }
-
-    const totalWords = descriptionWords + formWords;
-    const totalSeconds = Math.round(totalWords * 0.462);
-    const minutes = Math.floor(totalSeconds / secondsInMinute);
-    const seconds = totalSeconds % secondsInMinute;
-    const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
-    const readingTimeLabel = `Total reading time: ${timeStr}  - (${descriptionWords} description words + ${formWords} form words)`;
-
-    items.push({
-      id: "readingTime",
-      label: readingTimeLabel,
-      isReady: totalSeconds < 15 * secondsInMinute,
-    });
-
-    return items;
-  }, [action, taskForm]);
+  const readinessChecklist = useMemo<ReadinessCheckItem[]>(
+    () =>
+      action ? actionReadinessItems(action, taskForm?.schema ?? null) : [],
+    [action, taskForm],
+  );
 
   const readinessReadyCount = readinessChecklist.filter(
     (item) => item.isReady,

@@ -212,6 +212,7 @@ export const queryKeys = {
   clustersAdmin: () => ["clusterListAdmin"] as const,
   cohortEvaluationAdmin: (expression: CohortExpression | null) =>
     ["actionsEvaluateCohortAdmin", expression] as const,
+  spellcheckerAdmin: () => ["spellcheckerAdmin"] as const,
   communitiesAdmin: () => ["communityGetCommunitiesAdmin"] as const,
   communityMemberInfoAdminAll,
   communityMemberInfoAdmin: (communityId: number | null) =>
