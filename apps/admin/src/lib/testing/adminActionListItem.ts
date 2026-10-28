@@ -15,6 +15,7 @@ export const adminActionListItem = (
   squareThumbnailImageAlt: null,
   customStatType: "none",
   customStatValue: null,
+  customStatLabel: null,
   customStatGoal: null,
   createdAt: "2026-01-02T00:00:00.000Z",
   updatedAt: "2026-01-02T00:00:00.000Z",

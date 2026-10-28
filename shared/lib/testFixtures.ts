@@ -74,6 +74,7 @@ export function makeAction(
     squareThumbnailImageAlt: null,
     customStatType: "none",
     customStatValue: null,
+    customStatLabel: null,
     customStatGoal: null,
     createdAt: new Date(0).toISOString(),
     updatedAt: new Date(0).toISOString(),
