@@ -25,6 +25,7 @@ If @.worktree/AGENTS.md exists, read it.
 Always read and apply:
 
 - `(root)/skills/trim-comments/SKILL.md` → every comment your change adds or touches, before you present the change.
+- `(root)/skills/unapproved-copy/SKILL.md` → every sentence of copy (user-facing text) your change adds or touches.
 
 Read before the matching task:
 
