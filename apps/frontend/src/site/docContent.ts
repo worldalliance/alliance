@@ -109,38 +109,46 @@ export const GUIDE_CONTRACT_CAPTION = "Our current membership agreement";
 
 export const MEMBER_CONTRACT_TITLE = "Membership contract";
 
-/** The four categories of action the roadmap points at, as a table. */
-export type ActionCategory = { name: string; examples: string[] };
+/** The four categories of action the roadmap points at. */
+export type ActionCategory = {
+  name: string;
+  definition: string;
+  examples: string[];
+};
 
 export const ACTION_CATEGORIES: ActionCategory[] = [
   {
     name: "Economic shifts",
+    definition: "Members change what they buy and use.",
     examples: [
-      "We could enforce an ethical standard on an industry by asking members to only purchase from companies that meet it.",
-      "We could coordinate individual waste reductions to meet global waste reduction targets.",
-      "We could create healthier social media apps and all switch to them at once.",
+      "Enforce an ethical standard on an industry by only buying from companies that meet it.",
+      "Coordinate individual waste reductions to meet global waste reduction targets.",
+      "Build healthier social media apps and all switch to them at once.",
     ],
   },
   {
     name: "Pooled funding",
+    definition: "Members contribute money toward a shared goal.",
     examples: [
-      "We could pay large teams to undertake impactful work that could otherwise only be conducted by volunteers.",
-      "We could fund entrepreneurial and educational programs in low-income countries to help build sustainable economies.",
-      "We could incubate non-profit, democratic media companies.",
+      "Pay large teams to do impactful work that otherwise only volunteers could do.",
+      "Fund entrepreneurial and educational programs in low-income countries to help build sustainable economies.",
+      "Incubate non-profit, democratic media companies.",
     ],
   },
   {
     name: "Social pressure",
+    definition: "Members push institutions to act.",
     examples: [
-      "We could direct public attention to an AI company and demand a specific safety policy.",
-      "We could run a membership-wide education campaign to create global support for an enforceable biodiversity treaty.",
+      "Direct public attention to an AI company and demand a specific safety policy.",
+      "Run a membership-wide education campaign to build global support for an enforceable biodiversity treaty.",
     ],
   },
   {
     name: "Direct action",
+    definition: "Members do work at scale.",
     examples: [
-      "We could design and participate in the world's largest citizen science projects.",
-      "We could create and participate in massive ecosystem restoration programs.",
+      "Design and take part in the world's largest citizen science projects.",
+      "Create and take part in massive ecosystem restoration programs.",
     ],
   },
 ];

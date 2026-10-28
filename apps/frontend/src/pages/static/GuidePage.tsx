@@ -126,30 +126,29 @@ function PriorityGrid() {
   );
 }
 
-function CategoryTable() {
+function CategoryGrid() {
   return (
-    <div
-      className="overflow-hidden"
-      style={{ borderRadius: "var(--site-radius-card)" }}
-    >
-      {ACTION_CATEGORIES.map((category, index) => (
-        <div
+    <div className="flex flex-col gap-3">
+      {ACTION_CATEGORIES.map((category) => (
+        <article
           key={category.name}
-          className={cn(
-            "grid gap-2 p-5 sm:grid-cols-[minmax(0,0.4fr)_minmax(0,1fr)] sm:gap-6",
-            index % 2 === 0 && " bg-zinc-50",
-            index % 2 === 1 && " bg-zinc-100",
-          )}
+          className="grid overflow-hidden sm:grid-cols-20"
+          style={{ borderRadius: "var(--site-radius-card)" }}
         >
-          <p className="text-base font-medium text-(--site-primary)">
-            {category.name}
-          </p>
-          <ul className="flex list-outside list-disc flex-col gap-1.5 pl-5 text-base leading-snug text-(--site-ink)/75">
+          <div className="bg-zinc-200 p-7.5 sm:col-span-7">
+            <h3 className="text-2xl leading-tight text-(--site-primary)">
+              {category.name}
+            </h3>
+            <p className="mt-2 text-sm leading-snug text-(--site-ink)/60">
+              {category.definition}
+            </p>
+          </div>
+          <ul className="flex list-outside list-disc flex-col gap-1.5 bg-zinc-100 p-7.5 pl-12.5 text-base leading-snug text-(--site-ink)/80 sm:col-span-13">
             {category.examples.map((example) => (
               <li key={example}>{example}</li>
             ))}
           </ul>
-        </div>
+        </article>
       ))}
     </div>
   );
@@ -206,7 +205,7 @@ const guideExtras: Record<GuideSectionKind, ReactNode> = {
       <PriorityGrid />
     </div>
   ),
-  [GuideSectionKind.Roadmap]: <CategoryTable />,
+  [GuideSectionKind.Roadmap]: <CategoryGrid />,
   [GuideSectionKind.Resources]: <ResourceLinks />,
 };
 
