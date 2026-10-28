@@ -2,7 +2,11 @@ import request from "supertest";
 import { Like } from "typeorm";
 import { CreateActionDto } from "../src/actions/dto/action.dto";
 import { Action } from "../src/actions/entities/action.entity";
-import { createActionAsAdmin, patchActionAsAdmin } from "./action-requests";
+import {
+  createActionAsAdmin,
+  getActionAsAdmin,
+  patchActionAsAdmin,
+} from "./action-requests";
 import { createTestApp, TestContext } from "./e2e-test-utils";
 
 const NAME_PREFIX = "action-thumbnail-image e2e";
@@ -34,6 +38,32 @@ describe("Action thumbnail image (e2e)", () => {
   const storedThumbnail = async (id: number) =>
     (await ctx.dataSource.getRepository(Action).findOneByOrFail({ id }))
       .squareThumbnailImage;
+
+  it("returns null for the thumbnail on an action created without it", async () => {
+    const created = await create({}).expect(201);
+    expect(created.body.squareThumbnailImage).toBeNull();
+
+    const fetched = await getActionAsAdmin(ctx, created.body.id).expect(200);
+    expect(fetched.body.squareThumbnailImage).toBeNull();
+    expect(fetched.body.storedSquareThumbnailImage).toBeNull();
+  });
+
+  it("keeps the thumbnail when a patch leaves it out and clears it with null", async () => {
+    const created = await create({ squareThumbnailImage: thumbnail }).expect(
+      201,
+    );
+
+    const renamed = await patch(created.body.id, {
+      name: `${NAME_PREFIX} renamed`,
+    }).expect(200);
+    expect(renamed.body.squareThumbnailImage).toBe(thumbnail);
+
+    const cleared = await patch(created.body.id, {
+      squareThumbnailImage: null,
+    }).expect(200);
+    expect(cleared.body.squareThumbnailImage).toBeNull();
+    expect(await storedThumbnail(created.body.id)).toBeNull();
+  });
 
   it("stores a typed thumbnail trimmed", async () => {
     const created = await create({

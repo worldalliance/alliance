@@ -20,6 +20,7 @@ function mockTask(
   return {
     ...fields,
     image: null,
+    squareThumbnailImage: null,
     squareThumbnailImageAlt: null,
     customStatType: "none",
     customStatValue: null,

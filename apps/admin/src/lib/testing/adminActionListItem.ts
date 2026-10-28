@@ -12,6 +12,7 @@ export const adminActionListItem = (
   body: "",
   shortDescription: "",
   timeEstimate: null,
+  squareThumbnailImage: null,
   squareThumbnailImageAlt: null,
   customStatType: "none",
   customStatValue: null,
@@ -46,5 +47,6 @@ export const adminActionListItem = (
   variantFormIds: [],
   memberActionStart: null,
   memberActionDeadline: null,
+  storedSquareThumbnailImage: null,
   ...overrides,
 });

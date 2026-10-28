@@ -1,5 +1,5 @@
 import { type CohortExpression } from "@alliance/common/cohort-expression";
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { Allow, IsDefined, IsOptional } from "class-validator";
 import {
@@ -43,11 +43,13 @@ export class AdminActionDto extends ActionDto {
   @IsOptional()
   storedImage: string | null;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
+    type: String,
+    nullable: true,
     description: "The squareThumbnailImage column itself, like `storedImage`.",
   })
   @IsOptional()
-  storedSquareThumbnailImage?: string;
+  storedSquareThumbnailImage: string | null;
 
   @ApiProperty()
   @IsDefined()
@@ -86,7 +88,7 @@ export class AdminActionDto extends ActionDto {
       (form) => new AdminFollowUpFormDto(form),
     );
     this.storedImage = action.image;
-    this.storedSquareThumbnailImage = action.squareThumbnailImage ?? undefined;
+    this.storedSquareThumbnailImage = action.squareThumbnailImage;
   }
 }
 

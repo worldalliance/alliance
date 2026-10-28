@@ -63,6 +63,7 @@ function renderCommands() {
               storedImage: null,
               memberActionStart: null,
               memberActionDeadline: null,
+              storedSquareThumbnailImage: null,
               followUpForms: [],
             });
           },

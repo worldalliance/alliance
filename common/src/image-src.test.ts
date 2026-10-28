@@ -146,6 +146,12 @@ describe("echoesStoredKey", () => {
       }),
     ).toBe(false);
     expect(
+      echoesStoredKey({
+        next: `https://example.com/images/${key}`,
+        stored: null,
+      }),
+    ).toBe(false);
+    expect(
       echoesStoredKey({ next: "https://example.com/a/", stored: "" }),
     ).toBe(false);
     expect(
