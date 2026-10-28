@@ -85,7 +85,7 @@ export function meta({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
   return socialPreviewMeta({
     title,
     description: action?.shortDescription,
-    image: action?.image,
+    image: action?.image ?? undefined,
   });
 }
 

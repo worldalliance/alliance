@@ -110,9 +110,9 @@ describe("duplicatedActionImages", () => {
     expect(
       duplicatedActionImages({
         form: {},
-        action: { squareThumbnailImage: undefined },
+        action: { squareThumbnailImage: undefined, storedImage: null },
         imageKey: null,
       }),
-    ).toEqual({ image: undefined, squareThumbnailImage: undefined });
+    ).toEqual({ image: null, squareThumbnailImage: undefined });
   });
 });

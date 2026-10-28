@@ -59,6 +59,7 @@ function renderCommands() {
               ...makeAction({ id: 2 }),
               staffPreview: false,
               prerequisiteActionIds: [],
+              storedImage: null,
               memberActionStart: null,
               memberActionDeadline: null,
               followUpForms: [],

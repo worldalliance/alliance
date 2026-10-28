@@ -10,7 +10,7 @@ export const exampleMemberTaskAction: ActionWithAwayStatus = {
   body: "We negotiated a long-term 20% discount with a compostable cup supplier, available to all cafes that members frequently visit.",
   category: ["environment"],
   id: 1,
-  image: "",
+  image: null,
   status: "member_action",
   isContractSigningAction: false,
   onboarding: false,

@@ -335,7 +335,7 @@ export class ActionsService {
    */
   private dropEchoedImages(
     next: Pick<UpdateActionDto, "image" | "squareThumbnailImage">,
-    stored: Pick<Action, "image" | "squareThumbnailImage">,
+    stored: Partial<Pick<Action, "image" | "squareThumbnailImage">>,
   ): void {
     for (const column of ["image", "squareThumbnailImage"] as const) {
       const value = next[column];

@@ -67,6 +67,7 @@ export function makeAction(
     id: 1,
     name: "Test action",
     category: [],
+    image: null,
     body: "",
     shortDescription: "",
     timeEstimate: null,

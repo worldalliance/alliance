@@ -34,12 +34,14 @@ export class AdminActionDto extends ActionDto {
   @Type(() => AdminFollowUpFormDto)
   followUpForms: AdminFollowUpFormDto[];
 
-  @ApiPropertyOptional({
+  @ApiProperty({
+    type: String,
+    nullable: true,
     description:
       "The image column itself: an upload key or an external url, the form an update takes back. `image` is that value rendered as a url.",
   })
   @IsOptional()
-  storedImage?: string;
+  storedImage: string | null;
 
   @ApiPropertyOptional({
     description: "The squareThumbnailImage column itself, like `storedImage`.",
@@ -83,7 +85,7 @@ export class AdminActionDto extends ActionDto {
     this.followUpForms = loadedActionFollowUpForms(action).map(
       (form) => new AdminFollowUpFormDto(form),
     );
-    this.storedImage = action.image ?? undefined;
+    this.storedImage = action.image;
     this.storedSquareThumbnailImage = action.squareThumbnailImage ?? undefined;
   }
 }

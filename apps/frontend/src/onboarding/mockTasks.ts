@@ -19,7 +19,7 @@ function mockTask(
 ): ActionWithAwayStatus {
   return {
     ...fields,
-    image: "",
+    image: null,
     squareThumbnailImageAlt: null,
     customStatType: "none",
     customStatGoal: null,
