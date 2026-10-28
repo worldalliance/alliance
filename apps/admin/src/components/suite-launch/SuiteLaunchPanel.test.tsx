@@ -3,6 +3,7 @@ import {
   type ActionEventDto,
   type ActionSuiteDto,
   type CreateActionEventDto,
+  type ProjectDto,
 } from "@alliance/shared/client";
 import { makeAction, makeProfile } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
@@ -21,6 +22,12 @@ import { MemoryRouter } from "react-router";
 import { spellcheckerQuery } from "./spellchecker";
 import SuiteLaunchPanel from "./SuiteLaunchPanel";
 
+const foodDrive = (): ProjectDto | null => ({
+  id: 4,
+  name: "Food drive",
+  category: [],
+});
+
 const adminAction = (params: {
   id: number;
   name: string;
@@ -34,6 +41,7 @@ const adminAction = (params: {
   body: params.body,
   timeEstimate: params.timeEstimate,
   suite: { id: 3, name: "Spring suite" },
+  project: foodDrive(),
   authors: [makeProfile(1)],
   taskFormId: params.taskFormId === undefined ? 5 : params.taskFormId,
   cohortExpression: { type: "Manual", userIds: params.memberIds },
@@ -193,11 +201,13 @@ it("flags overloaded members and text findings, and blocks launch until each is 
 });
 
 it("lists each action's unfinished checklist items", async () => {
-  served[2] = { ...served[2], body: "", taskFormId: null };
+  served[2] = { ...served[2], body: "", taskFormId: null, project: null };
   renderPanel();
 
   expect(
-    await screen.findByText("Missing: Full body content, Task form linked"),
+    await screen.findByText(
+      "Missing: Full body content, Part of a project, Task form linked",
+    ),
   ).toBeTruthy();
   expect(screen.queryByText(/Failed to load the task form/)).toBeNull();
   await resolveEveryCheck();

@@ -69,6 +69,11 @@ export function actionReadinessItems(
       isReady: partOfSuite,
     },
     {
+      id: "project",
+      label: "Part of a project",
+      isReady: Boolean(action.project),
+    },
+    {
       id: "cohort",
       label: "Cohort expression set",
       isReady: !!action.cohortExpression,
