@@ -1,5 +1,7 @@
 import { R } from "@alliance/common/result";
+import type { AdminFollowUpFormDto } from "./client/types.gen";
 import {
+  parseFollowUpFormDto,
   parseFormulaChoices,
   parseVisibilityValidatorResults,
 } from "./parsed-dtos";
@@ -63,6 +65,44 @@ describe("parseFormulaChoices", () => {
       parseFormulaChoices({ pick: "red" }),
     );
     expect(value).toEqual({});
+    expect(logged).toBe(1);
+  });
+});
+
+describe("parseFollowUpFormDto", () => {
+  const followUpForm = (
+    cohortExpression: AdminFollowUpFormDto["cohortExpression"],
+  ): AdminFollowUpFormDto => ({
+    id: 1,
+    name: null,
+    startDate: null,
+    endDate: null,
+    instructions: null,
+    actionId: 2,
+    formId: 3,
+    cohortExpression,
+  });
+
+  it("keeps a stored expression", () => {
+    const parsed = parseFollowUpFormDto(followUpForm({ type: "AllMembers" }));
+    expect(parsed.followUpForm.cohortExpression).toEqual({
+      type: "AllMembers",
+    });
+    expect(parsed.cohortExpressionError).toBeNull();
+  });
+
+  it("reads a missing expression as null", () => {
+    const parsed = parseFollowUpFormDto(followUpForm(null));
+    expect(parsed.followUpForm.cohortExpression).toBeNull();
+    expect(parsed.cohortExpressionError).toBeNull();
+  });
+
+  it("reads an unparseable expression as null, and reports the error", () => {
+    const { value, logged } = withSilencedErrors(() =>
+      parseFollowUpFormDto(followUpForm({ type: "NoSuchLeaf" })),
+    );
+    expect(value.followUpForm.cohortExpression).toBeNull();
+    expect(value.cohortExpressionError).not.toBeNull();
     expect(logged).toBe(1);
   });
 });

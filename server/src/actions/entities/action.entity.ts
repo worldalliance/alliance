@@ -179,14 +179,13 @@ export class Action {
   updatedAt: Date;
 
   @Column({ type: "jsonb", nullable: true })
-  @ApiPropertyOptional({
+  @ApiProperty({
     description: "Cohort expression tree defining who participates",
     nullable: true,
   })
   @IsOptional()
   @Type(() => Object)
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  cohortExpression?: unknown;
+  cohortExpression: unknown | null;
 
   /**
    * Actions whose outcome a member waits for before this action's cohort

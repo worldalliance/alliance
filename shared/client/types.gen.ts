@@ -424,7 +424,7 @@ export type Action = {
     /**
      * Cohort expression tree defining who participates
      */
-    cohortExpression?: {
+    cohortExpression: {
         [key: string]: unknown;
     } | null;
     /**
@@ -2468,7 +2468,7 @@ export type AdminActionListItemDto = {
     /**
      * Cohort expression tree defining who participates
      */
-    cohortExpression?: {
+    cohortExpression: {
         [key: string]: unknown;
     } | null;
     /**
@@ -2630,7 +2630,7 @@ export type AdminActionDto = {
     /**
      * Cohort expression tree defining who participates
      */
-    cohortExpression?: {
+    cohortExpression: {
         [key: string]: unknown;
     } | null;
     /**
@@ -3031,7 +3031,7 @@ export type ExportActionDto = {
     /**
      * Cohort expression tree defining who participates
      */
-    cohortExpression?: {
+    cohortExpression: {
         [key: string]: unknown;
     } | null;
     /**

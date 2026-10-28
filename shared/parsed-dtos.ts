@@ -12,10 +12,6 @@
  * there is a bug to fail fast on, these degrade so screens stay usable and can
  * show a warning instead of crashing. The failure is also logged here, with
  * the raw value, so call sites don't each need to.
- *
- * The parsed types use `cohortExpression?: CohortExpression` (not `| null`)
- * so they stay assignable to their generated counterparts and can flow into
- * existing `AdminActionDto`/`AdminFollowUpFormDto`-typed props unchanged.
  */
 
 import {
@@ -39,21 +35,21 @@ import type { ZodError } from "zod";
 import type { AdminActionDto, AdminFollowUpFormDto } from "./client/types.gen";
 
 export type ParsedActionDto = Omit<AdminActionDto, "cohortExpression"> & {
-  cohortExpression?: CohortExpression;
+  cohortExpression: CohortExpression | null;
 };
 
 export type ParsedFollowUpFormDto = Omit<
   AdminFollowUpFormDto,
   "cohortExpression"
 > & {
-  cohortExpression?: CohortExpression;
+  cohortExpression: CohortExpression | null;
 };
 
 function parseCohortExpressionField(
   value: unknown,
   context: string,
-): { expression: CohortExpression | undefined; error: ZodError | null } {
-  if (value == null) return { expression: undefined, error: null };
+): { expression: CohortExpression | null; error: ZodError | null } {
+  if (value == null) return { expression: null, error: null };
   const parsed = cohortExpressionSchema.safeParse(value);
   if (parsed.success) return { expression: parsed.data, error: null };
   console.error(
@@ -61,7 +57,7 @@ function parseCohortExpressionField(
     parsed.error,
     value,
   );
-  return { expression: undefined, error: parsed.error };
+  return { expression: null, error: parsed.error };
 }
 
 export function parseActionDto(dto: AdminActionDto): {

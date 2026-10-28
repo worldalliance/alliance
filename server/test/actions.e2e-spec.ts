@@ -397,6 +397,7 @@ describe("Actions (e2e)", () => {
         .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({ cohortExpression: null });
       expect(updateRes.status).toBe(200);
+      expect(updateRes.body).toHaveProperty("cohortExpression", null);
 
       const cleared = await actionRepo.findOneByOrFail({ id: actionId });
       expect(cleared.cohortExpression).toBeNull();
@@ -412,6 +413,7 @@ describe("Actions (e2e)", () => {
         .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({ name: "Clearable Cohort Action (renamed)" });
       expect(untouchedRes.status).toBe(200);
+      expect(untouchedRes.body.cohortExpression).toEqual({ type: "GroupLead" });
       const untouched = await actionRepo.findOneByOrFail({ id: actionId });
       expect(untouched.cohortExpression).toEqual({ type: "GroupLead" });
     });

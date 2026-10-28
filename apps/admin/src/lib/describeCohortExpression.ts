@@ -72,7 +72,7 @@ const describe = (
 };
 
 export const describeCohortExpression = (
-  expr: CohortExpression | undefined,
+  expr: CohortExpression | null,
   names: CohortNames,
 ): CohortSegment[] =>
   expr ? describe(expr, names, false) : [{ text: "None" }];

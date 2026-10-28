@@ -20,7 +20,7 @@ describe("describeCohortExpression", () => {
   });
 
   it("says None without an expression", () => {
-    expect(describeText(undefined, names)).toBe("None");
+    expect(describeText(null, names)).toBe("None");
   });
 
   it("resolves tag and action names", () => {

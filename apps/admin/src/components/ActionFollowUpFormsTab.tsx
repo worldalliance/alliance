@@ -325,7 +325,7 @@ function FollowUpFormCard({
     [followUpForm],
   );
   const [cohortExpr, setCohortExpr] = useState<CohortExpression | null>(
-    parsedForm.cohortExpression ?? null,
+    parsedForm.cohortExpression,
   );
 
   const handleSaveFields = () => {
