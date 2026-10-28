@@ -112,3 +112,22 @@ it("opens when React renders the click's update before the document sees it", ()
 
   expect(screen.queryByText("Withdrawal options")).not.toBeNull();
 });
+
+it("opens and closes from a trigger the caller supplies", () => {
+  const { container } = render(
+    <MemoryRouter>
+      <WithdrawalMenu
+        disabled={false}
+        onWithdraw={jest.fn()}
+        renderTrigger={(toggle) => <button onClick={toggle}>Custom</button>}
+      />
+    </MemoryRouter>,
+  );
+  expect(container.querySelector(".lucide-ellipsis")).toBeNull();
+
+  fireEvent.click(screen.getByRole("button", { name: "Custom" }));
+  expect(screen.queryByText("Withdrawal options")).not.toBeNull();
+
+  fireEvent.click(screen.getByRole("button", { name: "Custom" }));
+  expect(screen.queryByText("Withdrawal options")).toBeNull();
+});
