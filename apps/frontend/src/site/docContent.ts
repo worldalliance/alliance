@@ -91,7 +91,7 @@ It is difficult to know exactly which projects we will undertake as we grow. How
 `,
   },
   [GuideSectionKind.Resources]: {
-    label: "Learn more",
+    label: "Resources",
     markdown: "",
   },
 };

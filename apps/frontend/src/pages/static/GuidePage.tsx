@@ -22,7 +22,7 @@ import { SITE_COL } from "../../site/ui";
 
 const GUIDE_COLUMN = "max-w-7xl";
 /** Lines the title up with the text: SITE_COL's padding, plus the TOC column and gap. */
-const GUIDE_HEADER_COLUMN = cn(GUIDE_COLUMN, "lg:pl-[calc(68px+18rem)]");
+const GUIDE_HEADER_COLUMN = cn(GUIDE_COLUMN, "lg:pl-90");
 
 export function meta() {
   return socialPreviewMeta({
@@ -70,29 +70,29 @@ const RESOURCE_LINKS = [
 function GuideQuote() {
   return (
     <figure
-      className="flex gap-3 bg-zinc-100 py-[3.70656rem] pr-[5.77368rem] pl-[4.72392rem] sm:gap-4 sm:py-[4.94208rem] sm:pr-[7.69824rem] sm:pl-[6.29856rem]"
+      className="flex gap-3 bg-zinc-100 py-15 pr-11.5 pl-9.5 sm:gap-4 sm:py-20 sm:pr-31 sm:pl-25"
       style={{ borderRadius: "var(--site-radius-card)" }}
     >
       <span
         aria-hidden
-        className="site-quote text-[40px] leading-[0.85] sm:text-[54px] text-[var(--site-ink)]"
+        className="site-quote text-5xl leading-10 sm:text-6xl sm:leading-13 text-(--site-ink)"
       >
         “
       </span>
-      <div className="flex min-w-0 flex-1 flex-col gap-[26px]">
-        <blockquote className="site-quote text-[22px] leading-[1.15] sm:text-[29px] text-pretty text-[var(--site-ink)]">
+      <div className="flex min-w-0 flex-1 flex-col gap-7">
+        <blockquote className="site-quote text-2xl leading-7 sm:text-3xl sm:leading-8.5 text-pretty text-(--site-ink)">
           {`${GUIDE_QUOTE.lead} `}
           <span className="text-green">{GUIDE_QUOTE.emphasis}</span>
         </blockquote>
-        <figcaption className="flex items-center gap-4 text-[1.05rem] leading-snug">
+        <figcaption className="flex items-center gap-4 text-base leading-snug">
           <img
             src={janosPasztor}
             alt=""
-            className="size-[4.5rem] shrink-0 rounded-md object-cover"
+            className="size-18 shrink-0 rounded-md object-cover"
           />
           <span className="flex flex-col">
             <span className="font-semibold">{GUIDE_QUOTE.name}</span>
-            <span className="whitespace-pre-line text-[var(--site-ink)]/60">
+            <span className="whitespace-pre-line text-(--site-ink)/60">
               {GUIDE_QUOTE.role}
             </span>
           </span>
@@ -108,16 +108,16 @@ function PriorityGrid() {
       {priorities.map((priority) => (
         <article
           key={priority.id}
-          className="flex min-h-[133px] flex-col p-7.5 text-white"
+          className="flex min-h-35.5 flex-col p-7.5 text-white"
           style={{
             borderRadius: "var(--site-radius-card)",
             backgroundColor: "var(--site-primary)",
           }}
         >
-          <h3 className="text-[1.4rem] leading-tight">
+          <h3 className="text-2xl leading-tight">
             {priority.title.replace("\n", " ")}
           </h3>
-          <p className="mt-[7px] text-[0.9rem] leading-snug text-white/85">
+          <p className="mt-2 text-sm leading-snug text-white/85">
             {priority.description}
           </p>
         </article>
@@ -141,10 +141,10 @@ function CategoryTable() {
             index % 2 === 1 && " bg-zinc-100",
           )}
         >
-          <p className="text-[1.02rem] font-medium text-[var(--site-primary)]">
+          <p className="text-base font-medium text-(--site-primary)">
             {category.name}
           </p>
-          <ul className="flex list-outside list-disc flex-col gap-1.5 pl-5 text-[1rem] leading-snug text-[var(--site-ink)]/75">
+          <ul className="flex list-outside list-disc flex-col gap-1.5 pl-5 text-base leading-snug text-(--site-ink)/75">
             {category.examples.map((example) => (
               <li key={example}>{example}</li>
             ))}
@@ -162,17 +162,17 @@ function ResourceLinks() {
         <Link
           key={resource.to}
           to={resource.to}
-          className="group flex items-center gap-3 border-t border-[var(--site-ink)]/12 py-5 last:border-b"
+          className="group flex items-center gap-3 border-t border-(--site-ink)/12 py-5 last:border-b"
         >
-          <span className="text-[1.08rem]">
-            <span className="font-medium text-[var(--site-primary)] group-hover:underline">
+          <span className="text-lg">
+            <span className="font-medium text-(--site-primary) group-hover:underline">
               {resource.label}
             </span>
-            <span className="text-[var(--site-ink)]/70">
+            <span className="text-(--site-ink)/70">
               {` ${resource.description}`}
             </span>
           </span>
-          <SiteArrow className="size-2.5 text-[var(--site-primary)] transition-transform duration-300 ease-out group-hover:translate-x-1 group-hover:-translate-y-1" />
+          <SiteArrow className="size-2.5 text-(--site-primary) transition-transform duration-300 ease-out group-hover:translate-x-1 group-hover:-translate-y-1" />
         </Link>
       ))}
     </div>
@@ -195,7 +195,7 @@ const guideExtras: Record<GuideSectionKind, ReactNode> = {
           <ImpactCard
             key={action.actionId}
             action={action}
-            className="bg-zinc-50"
+            className="bg-zinc-100"
           />
         ))}
       </div>
@@ -226,11 +226,7 @@ export default function GuidePage() {
         columnClassName={GUIDE_COLUMN}
       />
       <div
-        className={cn(
-          SITE_COL,
-          GUIDE_COLUMN,
-          "pt-[1.7rem] pb-20 lg:pt-[2.55rem] lg:pb-28",
-        )}
+        className={cn(SITE_COL, GUIDE_COLUMN, "pt-7 pb-20 lg:pt-10 lg:pb-28")}
       >
         <div className="grid gap-12 lg:grid-cols-[14rem_minmax(0,46rem)] lg:gap-16">
           <InlineToc
@@ -255,7 +251,7 @@ export default function GuidePage() {
                   {section.markdown.trim() && (
                     <DocProse
                       markdown={section.markdown}
-                      className="[&_:is(p,ul,ol)]:text-[var(--site-ink)]"
+                      className="[&_:is(p,ul,ol)]:text-(--site-ink)"
                     />
                   )}
                   {guideExtras[kind]}

@@ -12,25 +12,25 @@ export enum DocProseSize {
 
 type ProseType = { h2: string; h3: string; body: string; rule: string };
 
-// `tailwind-merge` counts `text-[length]` as a font size and drops a `leading-*`
-// it merges over, so each line height travels with its own size.
+// `tailwind-merge` drops a `leading-*` that a font size merges over, so each
+// line height travels with its own size.
 const PROSE: Record<DocProseSize, ProseType> = {
   [DocProseSize.Large]: {
-    h2: "mt-12 text-[1.75rem] leading-tight sm:text-[2rem]",
-    h3: "mt-10 text-[1.5rem] leading-tight sm:text-[1.75rem]",
-    body: "mt-6 text-[1.25rem] leading-[1.65] sm:text-[1.5rem]",
+    h2: "mt-12 text-3xl leading-tight",
+    h3: "mt-10 text-2xl leading-tight sm:text-3xl",
+    body: "mt-6 text-xl leading-relaxed sm:text-2xl",
     rule: "mt-12",
   },
   [DocProseSize.Default]: {
-    h2: "mt-10 text-[1.5rem] leading-tight sm:text-[1.75rem]",
-    h3: "mt-8 text-[1.2rem] leading-tight",
-    body: "mt-4 text-[1.1rem] leading-[1.55] sm:text-[1.23rem]",
+    h2: "mt-10 text-2xl leading-tight sm:text-3xl",
+    h3: "mt-8 text-xl leading-tight",
+    body: "mt-4 text-lg leading-normal sm:text-xl",
     rule: "mt-10",
   },
   [DocProseSize.Compact]: {
-    h2: "mt-6 text-[1.05rem] leading-tight sm:text-[1.15rem]",
-    h3: "mt-5 text-[0.95rem] leading-tight",
-    body: "mt-2.5 text-[0.9rem] leading-[1.55]",
+    h2: "mt-6 text-base leading-tight sm:text-lg",
+    h3: "mt-5 text-base leading-tight",
+    body: "mt-2.5 text-sm leading-normal",
     rule: "mt-6",
   },
 };
@@ -53,7 +53,7 @@ export function DocProse({
   return (
     <div
       className={cn(
-        "flex flex-col tracking-[-0.011em] text-[var(--site-ink)]",
+        "flex flex-col tracking-[-0.011em] text-(--site-ink)",
         className,
       )}
     >
@@ -63,7 +63,7 @@ export function DocProse({
           h2: ({ children }) => (
             <h2
               className={cn(
-                "font-normal text-[var(--site-primary)] first:mt-0",
+                "font-normal text-(--site-primary) first:mt-0",
                 type.h2,
               )}
             >
@@ -76,21 +76,19 @@ export function DocProse({
             </h3>
           ),
           p: ({ children }) => (
-            <p
-              className={cn("text-[var(--site-ink)]/85 first:mt-0", type.body)}
-            >
+            <p className={cn("text-(--site-ink)/85 first:mt-0", type.body)}>
               {children}
             </p>
           ),
           strong: ({ children }) => (
-            <strong className="font-medium text-[var(--site-ink)]">
+            <strong className="font-medium text-(--site-ink)">
               {children}
             </strong>
           ),
           ol: ({ children }) => (
             <ol
               className={cn(
-                "flex list-outside list-decimal flex-col gap-2 pl-6 text-[var(--site-ink)]/85 first:mt-0",
+                "flex list-outside list-decimal flex-col gap-2 pl-6 text-(--site-ink)/85 first:mt-0",
                 type.body,
               )}
             >
@@ -100,7 +98,7 @@ export function DocProse({
           ul: ({ children }) => (
             <ul
               className={cn(
-                "flex list-outside list-disc flex-col gap-2 pl-6 text-[var(--site-ink)]/85 first:mt-0",
+                "flex list-outside list-disc flex-col gap-2 pl-6 text-(--site-ink)/85 first:mt-0",
                 type.body,
               )}
             >
@@ -112,7 +110,7 @@ export function DocProse({
           ),
           a: ({ children, href }) => {
             const className =
-              "text-[var(--site-primary)] underline decoration-[var(--site-primary)]/35 underline-offset-2 hover:decoration-[var(--site-primary)]";
+              "text-(--site-primary) underline decoration-(--site-primary)/35 underline-offset-2 hover:decoration-(--site-primary)";
             const target = href ?? "#";
             // Absolute URLs and mailto: leave the app, so they stay plain
             // anchors rather than going through the router.
@@ -132,9 +130,7 @@ export function DocProse({
             );
           },
           hr: () => (
-            <hr
-              className={cn("border-t border-[var(--site-ink)]/12", type.rule)}
-            />
+            <hr className={cn("border-t border-(--site-ink)/12", type.rule)} />
           ),
         }}
       >

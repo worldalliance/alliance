@@ -2,7 +2,7 @@ import { PLACEHOLDER_CONTRACT_MARKDOWN } from "@alliance/shared/lib/contract";
 import { cn } from "@alliance/shared/styles/util";
 import { ArrowRight } from "lucide-react";
 import type { ReactNode } from "react";
-import { href, Link } from "react-router";
+import { Link } from "react-router";
 import { ContractDescriptionList } from "../components/ContractDescriptionList";
 import {
   ACTION_PRIORITY_LABELS,
@@ -39,7 +39,7 @@ function ProgressCardLink({
   children: ReactNode;
 }) {
   const classes = cn(
-    "flex flex-col gap-1.5 bg-[var(--site-surface)] p-5",
+    "flex flex-col gap-1.5 bg-(--site-surface) p-5",
     to &&
       "inset-ring-1 inset-ring-transparent hover:inset-ring-(--site-primary)",
     className,
@@ -169,10 +169,6 @@ export function ImpactCard({
       title={action.emphasis}
       description={action.rest}
       tags={action.tags}
-      to={
-        action.customLink ??
-        href("/actions/:id", { id: action.actionId.toString() })
-      }
       imageSrc={action.imageSrc}
       imageAlt={action.imageAlt}
       className={className}
@@ -221,7 +217,7 @@ export function ContractCard({
         className={cn(
           "scroll-mt-32 bg-zinc-100",
           CONTRACT_PAD[size],
-          terms && "pt-9 pl-[2.16rem] text-[18px] sm:pt-12 sm:pl-[2.88rem]",
+          terms && "pt-9 pl-8.5 text-xl sm:pt-12 sm:pl-11.5",
         )}
         style={{ borderRadius: "var(--site-radius-card)" }}
       >

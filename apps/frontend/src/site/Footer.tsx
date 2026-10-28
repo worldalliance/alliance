@@ -56,10 +56,7 @@ export function SiteFooter() {
         className={cn(SITE_COL, "relative z-10 pb-8 lg:pb-10 pt-10 lg:pt-12")}
       >
         <div className="flex flex-col gap-12 lg:flex-row lg:justify-between">
-          <nav
-            className="flex flex-wrap gap-x-[52px] gap-y-8"
-            aria-label="Footer"
-          >
+          <nav className="flex flex-wrap gap-x-14 gap-y-8" aria-label="Footer">
             {FOOTER_COLUMNS.map((column) => (
               <ul key={column[0].to} className="flex flex-col gap-1.5">
                 {column.map((link) => (
@@ -70,7 +67,7 @@ export function SiteFooter() {
               </ul>
             ))}
           </nav>
-          <div className="flex max-w-[28rem] flex-col gap-1.5">
+          <div className="flex max-w-md flex-col gap-1.5">
             <span className="text-2xl leading-none">
               <Logotype onDark />
             </span>

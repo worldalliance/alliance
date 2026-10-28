@@ -48,8 +48,8 @@ function TocLink({
       className={cn(
         "block py-1.25",
         current
-          ? "font-medium text-[var(--site-primary)]"
-          : "text-[var(--site-ink)]/60 hover:text-[var(--site-primary)]",
+          ? "font-medium text-(--site-primary)"
+          : "text-(--site-ink)/60 hover:text-(--site-primary)",
         className,
       )}
     >
@@ -71,9 +71,9 @@ export function InlineToc({
   return (
     <nav
       aria-label={label}
-      className="sticky top-28 hidden self-start pl-[7.8rem] whitespace-nowrap lg:block"
+      className="sticky top-28 hidden self-start pl-31 whitespace-nowrap lg:block"
     >
-      <ul className="text-[1.09375rem]">
+      <ul className="text-lg">
         {sections.map((section) => (
           <li key={section.id}>
             <TocLink section={section} current={section === active} />
@@ -132,9 +132,8 @@ export function StickyToc({
       inert={!visible}
       style={{ top }}
       className={cn(
-        "fixed inset-x-0 z-[80] border-b lg:hidden border-[var(--site-ink)]/12 bg-[var(--site-surface)] text-[1.09375rem] transition-[opacity,box-shadow] duration-300",
+        "fixed inset-x-0 z-80 border-b lg:hidden border-(--site-ink)/12 bg-(--site-surface) text-lg transition-opacity duration-300",
         visible ? "opacity-100" : "pointer-events-none opacity-0",
-        open && "shadow-[0_8px_16px_rgba(0,0,0,0.06)]",
       )}
     >
       <button
@@ -151,14 +150,14 @@ export function StickyToc({
           className={cn(
             SITE_COL,
             columnClassName,
-            "flex items-center justify-between gap-4 py-[1.09375rem]",
+            "flex items-center justify-between gap-4 py-4.5",
           )}
         >
           <span className="truncate">{active?.label}</span>
           <ChevronDown
             aria-hidden
             className={cn(
-              "size-[1.5625rem] shrink-0 transition-transform duration-300 ease-out motion-reduce:transition-none",
+              "size-6 shrink-0 transition-transform duration-300 ease-out motion-reduce:transition-none",
               open && "rotate-180",
             )}
           />
@@ -168,7 +167,7 @@ export function StickyToc({
         id={listId}
         inert={!open}
         className={cn(
-          "grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none",
+          "grid transition-all duration-300 ease-out motion-reduce:transition-none",
           open ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
         )}
       >

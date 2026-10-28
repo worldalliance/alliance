@@ -12,7 +12,7 @@ function FormalTextDropdown({ markdown }: { markdown: string }) {
     <div className="flex flex-col">
       <button
         type="button"
-        className="relative top-[2px] flex w-fit items-center gap-1 self-end text-[0.85em] text-zinc-500 hover:text-zinc-800"
+        className="relative top-0.5 flex w-fit items-center gap-1 self-end text-sm text-zinc-500 hover:text-zinc-800"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-controls={contentId}
@@ -31,12 +31,12 @@ function FormalTextDropdown({ markdown }: { markdown: string }) {
         id={contentId}
         inert={!open}
         className={cn(
-          "grid transition-[grid-template-rows,opacity] duration-150 ease-out motion-reduce:transition-none",
+          "grid transition-all duration-150 ease-out motion-reduce:transition-none",
           open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
         )}
       >
         <div className="overflow-hidden">
-          <div className="mt-2 rounded p-4 text-[1.02em] text-zinc-700">
+          <div className="mt-2 rounded p-4 text-zinc-700">
             <AppMarkdownWrapper markdownContent={markdown} />
           </div>
         </div>
@@ -63,11 +63,11 @@ export function ContractDescriptionList({
             <li key={index} className="flex items-center gap-x-4">
               <span
                 className={cn(
-                  "shrink-0 size-[1.6667em] md:size-[1.6875em] flex items-center justify-center rounded border-2 border-[var(--site-primary)] text-[1.5em] md:text-[1.6667em] font-semibold leading-none tabular-nums",
+                  "shrink-0 size-[1.6667em] md:size-[1.6875em] flex items-center justify-center rounded border-2 border-(--site-primary) text-[1.5em] md:text-[1.6667em] font-semibold leading-none tabular-nums",
                   // The first term is the one expectation; the rest are exemptions.
                   index === 0
-                    ? "bg-[var(--site-primary)] text-white"
-                    : "bg-white text-[var(--site-primary)]",
+                    ? "bg-(--site-primary) text-white"
+                    : "bg-white text-(--site-primary)",
                 )}
               >
                 {index + 1}

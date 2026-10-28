@@ -16,11 +16,11 @@ const cardStyle = { borderRadius: "var(--site-radius-card)" };
 function JoinCtaCard({ heading }: { heading: string }) {
   return (
     <>
-      <div className="flex min-h-[260px] flex-col justify-end p-6 pr-16 text-zinc-900 sm:min-h-[420px] sm:p-10 sm:pr-20">
-        <h2 className="text-[2.25rem] leading-none font-normal sm:text-[3.1rem] lg:text-[3.6rem]">
+      <div className="flex min-h-69 flex-col justify-end p-6 pr-16 text-zinc-900 sm:min-h-112 sm:p-10 sm:pr-20">
+        <h2 className="text-4xl leading-none font-normal sm:text-5xl lg:text-6xl">
           {heading}
         </h2>
-        <p className="mt-3 max-w-[40rem] text-lg leading-snug font-normal sm:text-[1.35rem]">
+        <p className="mt-3 max-w-160 text-lg leading-snug font-normal sm:text-xl">
           {CTA_BODY}
         </p>
       </div>
@@ -47,7 +47,7 @@ export function JoinCta({
   return (
     <section
       id="join"
-      className="relative bg-[var(--site-surface)] pb-16 lg:pb-24"
+      className="relative bg-(--site-surface) pb-16 lg:pb-24"
     >
       <div className={cn(SITE_COL, "relative")}>
         <Link

@@ -82,22 +82,22 @@ function StaffPerson({ member }: { member: StaffDirectoryEntryDto }) {
   const inner = (
     <>
       <div
-        className="shrink-0 overflow-hidden rounded-[7px] bg-[var(--site-ink)]/[0.09]"
+        className="shrink-0 overflow-hidden rounded-lg bg-(--site-ink)/9"
         style={{ width: PROFILE_TILE_PX, height: PROFILE_TILE_PX }}
       >
         <AvatarProfile
           pfp={member.profilePicture}
           size="override"
           alt=""
-          className="size-full rounded-[7px]"
+          className="size-full rounded-lg"
         />
       </div>
       <div className="min-w-0">
-        <p className="text-lg leading-snug font-medium text-[var(--site-ink)] group-hover:underline decoration-[var(--site-ink)]/40 underline-offset-2 group-hover:decoration-[var(--site-ink)]">
+        <p className="text-lg leading-snug font-medium text-(--site-ink) group-hover:underline decoration-(--site-ink)/40 underline-offset-2 group-hover:decoration-(--site-ink)">
           {member.displayName}
         </p>
         {member.staffTitle && (
-          <p className="text-base leading-snug text-[var(--site-ink)]/55">
+          <p className="text-base leading-snug text-(--site-ink)/55">
             {member.staffTitle}
           </p>
         )}
@@ -133,21 +133,21 @@ function Office() {
           Alliance.
         </SiteSubtitle>
       </div>
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-16">
+      <div className="grid gap-10 lg:grid-cols-2 lg:items-center lg:gap-16">
         <figure className="flex flex-col gap-3">
           <SitePicture
             image={officePhoto}
             alt={OFFICE_PHOTO_CAPTION}
             sizes="(min-width: 1024px) 50vw, 100vw"
-            className="aspect-[4/3] w-full object-cover"
+            className="aspect-4/3 w-full object-cover"
             style={{ borderRadius: "var(--site-radius-card)" }}
           />
-          <figcaption className="text-sm text-[var(--site-ink)]/50">
+          <figcaption className="text-sm text-(--site-ink)/50">
             {OFFICE_PHOTO_CAPTION}
           </figcaption>
         </figure>
         {isPending ? (
-          <p className="text-[var(--site-ink)]/50">Loading staff…</p>
+          <p className="text-(--site-ink)/50">Loading staff…</p>
         ) : (
           <ul className="grid grid-cols-2 gap-x-8 gap-y-8">
             {(staff ?? []).map((member) => (
@@ -200,7 +200,7 @@ function MemberDirectory() {
         )}
       </div>
       {isPending ? (
-        <p className="text-[var(--site-ink)]/50">Loading members…</p>
+        <p className="text-(--site-ink)/50">Loading members…</p>
       ) : (
         <div
           ref={gridRef}
@@ -219,7 +219,7 @@ function MemberDirectory() {
               title={member.displayName}
               aria-label={member.displayName}
               className={cn(
-                "aspect-square overflow-hidden rounded-[7px] bg-[var(--site-ink)]/[0.09]",
+                "aspect-square overflow-hidden rounded-lg bg-(--site-ink)/9",
                 "transition-transform duration-200 ease-out hover:-translate-y-0.5",
               )}
             >
@@ -227,7 +227,7 @@ function MemberDirectory() {
                 pfp={member.profilePicture ?? null}
                 size="override"
                 alt=""
-                className="size-full rounded-[7px]"
+                className="size-full rounded-lg"
               />
             </Link>
           ))}
