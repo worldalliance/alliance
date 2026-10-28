@@ -28,6 +28,7 @@ On the admin suite view:
 - A text finding in the task form links to the task form editor. (user)
 - "Preview members' actions" shows the distribution of members across action combinations above the member search. (user)
 - Add what someone launching a suite would want close at hand, and the checks they would want run. (user)
+- Leave weekly load across suites unchecked for now. (user)
 
 ## Verification
 

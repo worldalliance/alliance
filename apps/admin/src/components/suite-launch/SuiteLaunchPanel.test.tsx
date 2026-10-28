@@ -45,14 +45,9 @@ let suiteEvents: ActionEventDto[] = [];
 const createdEvents: CreateActionEventDto[] = [];
 const reminderEventIds: string[] = [];
 
-let liveElsewhere: (ReturnType<typeof adminAction> & {
-  memberActionStart: string | null;
-  memberActionDeadline: string | null;
-})[] = [];
-
 serveApi(
   routes({
-    "GET /actions/all": () => Response.json(liveElsewhere),
+    "GET /actions/all": () => Response.json([]),
     "GET /user/tags": () => Response.json([]),
     "GET /actions/adminslug/:id": ({ params }) =>
       Response.json(served[Number(params.id)]),
@@ -120,7 +115,6 @@ beforeEach(() => {
     }),
   };
   formPages = [];
-  liveElsewhere = [];
   suiteEvents = [];
   createdEvents.length = 0;
   reminderEventIds.length = 0;
@@ -317,34 +311,6 @@ it("groups members by the actions they get and previews one from a group", async
     await screen.findByRole("link", { name: "Log in as this member" })
   ).closest("li");
   expect(row?.textContent).toContain("Ben18 min");
-});
-
-it("counts actions live elsewhere during the launch toward a member's minutes", async () => {
-  liveElsewhere = [
-    {
-      ...adminAction({
-        id: 50,
-        name: "Survey",
-        timeEstimate: 6,
-        body: "Answer.",
-        memberIds: [10],
-      }),
-      suite: { id: 9, name: "Other suite" },
-      memberActionStart: new Date(Date.now() - 86_400_000).toISOString(),
-      memberActionDeadline: null,
-    },
-  ];
-  renderPanel();
-
-  expect(
-    await screen.findByText("2 members have more than 15 minutes of actions."),
-  ).toBeTruthy();
-  expect(
-    screen.getByText("Counts other actions live during this launch: Survey"),
-  ).toBeTruthy();
-  expect(
-    screen.getByText(": 16 min (Call, Survey)", { exact: false }),
-  ).toBeTruthy();
 });
 
 it("lists the reminders the launch creates", async () => {
