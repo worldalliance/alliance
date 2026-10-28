@@ -40,6 +40,14 @@ export function siteBaseUrl() {
   return process.env.ALT_APP_URL || process.env.APP_URL;
 }
 
+export function verifyEmailUrl(token: string) {
+  return `${siteBaseUrl()}/verifyEmail?token=${token}`;
+}
+
+export function passwordResetUrl(token: string) {
+  return `${siteBaseUrl()}/resetpassword?token=${token}`;
+}
+
 export function groupUrl(params?: {
   tab?: "invites" | "groups" | "members";
   communityId?: number;
