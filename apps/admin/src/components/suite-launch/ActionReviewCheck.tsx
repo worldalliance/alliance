@@ -38,7 +38,7 @@ const ActionReviewCheck = ({
     <LaunchCheck
       title="Actions"
       passed={unready === 0 && unchecked === 0}
-      summary={`${unready} with unfinished checklist items · ${unchecked} not yet checked`}
+      summary={`${unready} with unfinished checklist items · ${unchecked} not yet marked ready`}
     >
       <ul className="divide-y divide-zinc-100">
         {actions.map((entry) => {
@@ -82,7 +82,7 @@ const ActionReviewCheck = ({
                   checked={checkedActionIds.has(action.id)}
                   onChange={(e) => onCheckedChange(action.id, e.target.checked)}
                 />
-                I checked this
+                Ready to launch
               </label>
             </li>
           );

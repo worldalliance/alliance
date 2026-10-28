@@ -78,7 +78,7 @@ export function launchBlockers(params: {
   );
   if (unchecked.length > 0) {
     blockers.push(
-      `${plural(unchecked.length, "action isn't", "actions aren't")} marked as checked.`,
+      `${plural(unchecked.length, "action isn't", "actions aren't")} marked ready to launch.`,
     );
   }
   const open = data.textFindings.filter(

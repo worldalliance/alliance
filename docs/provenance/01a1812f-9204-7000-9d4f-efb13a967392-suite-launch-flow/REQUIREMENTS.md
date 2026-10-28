@@ -32,6 +32,9 @@ On the admin suite view:
 - Call out loudly at launch any violation of the member contract. (user)
 - The launch button spans the full width, with no rocket icon. (user)
 - Each suite in "Suites with draft or active actions" lists its actions beneath it. (user)
+- The action checklist includes "Part of a project". (user)
+- Member counts respect who has signed the contract. (user)
+- The per-action "I checked this" box reads "Ready to launch". (user)
 
 ## Verification
 
