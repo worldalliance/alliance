@@ -9,14 +9,22 @@ import { SITE_COL } from "./ui";
 const JOIN_CTA_HEADING = "Join the waitlist";
 const INVITE_CTA_HEADING = "Accept invite";
 
-const cardClass =
-  "group relative isolate block w-full overflow-hidden bg-zinc-100 hover:bg-zinc-200";
+const cardClass = "group relative isolate block w-full overflow-hidden";
 const cardStyle = { borderRadius: "var(--site-radius-card)" };
 
 function JoinCtaCard({ heading }: { heading: string }) {
   return (
     <>
-      <div className="flex min-h-69 flex-col justify-end p-6 pr-16 text-zinc-900 sm:min-h-112 sm:p-10 sm:pr-20">
+      <img
+        src="/assets/democratic-grantmaking-26/environment.jpg"
+        alt=""
+        className="absolute inset-0 -z-20 size-full object-cover transition-transform duration-900 ease-out group-hover:scale-[1.06]"
+      />
+      <div
+        className="absolute inset-0 -z-10 bg-(--site-primary) opacity-42 transition-opacity duration-700 group-hover:opacity-28"
+        aria-hidden
+      />
+      <div className="flex min-h-69 flex-col justify-end p-6 pr-16 text-white sm:min-h-112 sm:p-10 sm:pr-20">
         <h2 className="text-4xl leading-none font-normal sm:text-5xl lg:text-6xl">
           {heading}
         </h2>
@@ -25,7 +33,7 @@ function JoinCtaCard({ heading }: { heading: string }) {
         </p>
       </div>
       <span className="absolute right-6 bottom-6 sm:right-10 sm:bottom-9">
-        <SiteArrow className="size-6 text-zinc-900 transition-transform duration-500 ease-out group-hover:translate-x-2 group-hover:-translate-y-2 group-hover:scale-110" />
+        <SiteArrow className="size-6 text-white transition-transform duration-500 ease-out group-hover:translate-x-2 group-hover:-translate-y-2 group-hover:scale-110" />
       </span>
     </>
   );
