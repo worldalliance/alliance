@@ -1,13 +1,13 @@
 import { cn } from "@alliance/shared/styles/util";
 import { HERO_HEADLINE_PARTS, HERO_SUBHEAD } from "../content";
-import { UpcomingProjects } from "../graphics/UpcomingProjects";
+import { ProductPair } from "../graphics/ProductPair";
 import { NAV_HEIGHT } from "../Navbar";
 import { DisplayHeading, SITE_COL, SiteSubtitle, SubtitleSize } from "../ui";
 
 /**
- * Headline and subhead hold the left column, with the upcoming projects beside
- * them. Below lg the projects drop under the copy so the headline can use the
- * full width.
+ * Headline and subhead hold the left column, with the feed and an opened post
+ * beside them, offset from one another rather than set in a row. Below lg the
+ * pair drops under the copy so the headline can use the full width.
  */
 export function Hero() {
   return (
@@ -37,7 +37,7 @@ export function Hero() {
             {HERO_SUBHEAD}
           </SiteSubtitle>
         </div>
-        <UpcomingProjects className="min-[1020px]:w-[46%] min-[1020px]:shrink-0 min-[1020px]:self-center" />
+        <ProductPair className="min-[1020px]:w-[46%] min-[1020px]:shrink-0" />
       </div>
     </section>
   );

@@ -51,7 +51,7 @@ function LegalRow() {
 
 export function SiteFooter() {
   return (
-    <footer className="relative isolate overflow-hidden bg-black text-white [#join+&]:pt-[54px]">
+    <footer className="relative isolate overflow-hidden bg-black text-white">
       <div
         className={cn(SITE_COL, "relative z-10 pb-8 lg:pb-10 pt-10 lg:pt-12")}
       >

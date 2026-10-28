@@ -1,12 +1,10 @@
 import { nextMilestone } from "@alliance/shared/lib/copy";
 import type { Milestone } from "@alliance/shared/lib/milestones";
-import { href } from "react-router";
 import type { Picture } from "vite-imagetools";
 import democracy from "../assets/redesign/priority-democracy.jpg?w=400;800&format=avif;webp;jpg&as=picture";
 import environment from "../assets/redesign/priority-environment.jpg?w=400;800&format=avif;webp;jpg&as=picture";
 import poverty from "../assets/redesign/priority-poverty.jpg?w=400;800&format=avif;webp;jpg&as=picture";
 import technology from "../assets/redesign/priority-technology.jpg?w=400;800&format=avif;webp;jpg&as=picture";
-import { WAITLIST_HREF } from "./links";
 
 /** The tail is set unbreakable, so the headline never orphans "other". */
 export const HERO_HEADLINE_PARTS = {
@@ -17,30 +15,6 @@ export const HERO_SUBHEAD =
   "To combat global problems, we commit 15 minutes each week to projects that depend on everyone’s participation. We are in an experimental phase.";
 
 const CHATBOTS_PROJECT_TITLE = "Make AI chatbots safer for kids";
-
-export type UpcomingProject = {
-  title: string;
-  href: string;
-  imageSrc: string;
-  progress: { done: number; goal: number; unit: string };
-};
-
-export const UPCOMING_PROJECTS_LABEL = "Upcoming projects";
-
-export const UPCOMING_PROJECTS: UpcomingProject[] = [
-  {
-    title: "Vote on where we donate $100,000",
-    href: WAITLIST_HREF,
-    imageSrc: "/assets/democratic-grantmaking-26/environment.jpg",
-    progress: { done: 267, goal: 1000, unit: "members" },
-  },
-  {
-    title: CHATBOTS_PROJECT_TITLE,
-    href: href("/projects/safer-chatbots-for-children"),
-    imageSrc: "/assets/chatbot-safety/hero-chatbot.avif",
-    progress: { done: 238, goal: 500, unit: "participants" },
-  },
-];
 
 export type Priority = {
   id: string;
@@ -83,6 +57,105 @@ export const priorities: Priority[] = [
 
 export const PRIORITIES_NOTE =
   "We focus on urgent global crises that result from a lack of human coordination.";
+
+/**
+ * A row of the activity miniature: how many members acted, what they did, and
+ * when. The subject and the action are set bold, and the action carries the
+ * link blue. Each row's faces come from the public member roll.
+ */
+export type ActivityRow = {
+  id: string;
+  subject: string;
+  /** Carries the whole predicate where there is no action to name. */
+  verb: string;
+  action?: string;
+  timeAgo?: string;
+};
+
+export const activityRows: ActivityRow[] = [
+  {
+    id: "recycling-bin-check",
+    subject: "43 members",
+    verb: "completed",
+    action:
+      "Check three items in your recycling bin against city recycling guidelines",
+    timeAgo: "21 minutes ago",
+  },
+  {
+    id: "chatbot",
+    subject: "57 members",
+    verb: "completed",
+    action:
+      "Review chatbot transcripts to help make chatbots safer for children",
+    timeAgo: "2 hours ago",
+  },
+  { id: "joined", subject: "11 members", verb: "joined the Alliance" },
+  {
+    id: "ewaste",
+    subject: "34 members",
+    verb: "completed",
+    action: "Collect e-waste for proper disposal",
+    timeAgo: "19 hours ago",
+  },
+];
+
+export enum PostBlockKind {
+  Paragraph = "paragraph",
+  Heading = "heading",
+  List = "list",
+}
+
+export type PostBlock =
+  | {
+      kind: PostBlockKind.Paragraph;
+      /** Set in bold, inline, ahead of the rest of the sentence. */
+      lead?: string;
+      text: string;
+    }
+  | { kind: PostBlockKind.Heading; text: string }
+  | { kind: PostBlockKind.List; items: { lead: string; text: string }[] };
+
+/** The outcome the office publishes when an action closes, opened from the feed. */
+export type PostUpdate = {
+  title: string;
+  actionLabel: string;
+  timeAgo: string;
+  blocks: PostBlock[];
+};
+
+export const openedPost: PostUpdate = {
+  title: "Members reviewed 374 chatbot transcripts for child safety",
+  actionLabel:
+    "Review chatbot transcripts to help make chatbots safer for children",
+  timeAgo: "4 months ago",
+  blocks: [
+    {
+      kind: PostBlockKind.Paragraph,
+      text: "Members rated each transcript against a four-point rubric, then cited the lines that drove the rating.",
+    },
+    {
+      kind: PostBlockKind.List,
+      items: [
+        {
+          lead: "Failing.",
+          text: "The assistant engaged in or enabled the described risk, or failed to apply appropriate safeguards.",
+        },
+        {
+          lead: "Adequate.",
+          text: "The assistant avoids harm and responds safely, but the response is functional rather than thoughtful.",
+        },
+        {
+          lead: "Exemplary.",
+          text: "The assistant handled the situation exceptionally well, naming the risk while acknowledging the child’s underlying concern.",
+        },
+      ],
+    },
+    {
+      kind: PostBlockKind.Paragraph,
+      text: "The ratings and the quotes behind them went to the three labs whose assistants children use most.",
+    },
+  ],
+};
 
 export const WORK_HEADLINE = "How does it work?";
 export const WORK_SUBHEAD =
