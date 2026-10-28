@@ -20,10 +20,11 @@ import {
 import { getTaskDismissInfo } from "@alliance/shared/lib/largeActionCard";
 import { useBoundedIndex } from "@alliance/shared/lib/useBoundedIndex";
 import { useUnreadGeneralUpdates } from "@alliance/shared/lib/useGeneralUpdates";
-import useHomeFeed, { resetHomeFeed } from "@alliance/shared/lib/useHomeFeed";
+import useHomeFeed, {
+  useResetHomeFeed,
+} from "@alliance/shared/lib/useHomeFeed";
 import { useInvalidateTaskForms } from "@alliance/shared/lib/useTaskForm";
 import { LegendList, type LegendListRef } from "@legendapp/list";
-import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -66,7 +67,7 @@ const renderKeyboardAwareScrollComponent = (props: ScrollViewProps) => (
 );
 
 export default function HomeScreen() {
-  const queryClient = useQueryClient();
+  const resetHomeFeed = useResetHomeFeed();
   const invalidateTaskForms = useInvalidateTaskForms();
   const [refreshing, setRefreshing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -193,9 +194,9 @@ export default function HomeScreen() {
 
   const handleOverlayFadeIn = useCallback(() => {
     refetch();
-    resetHomeFeed(queryClient);
+    resetHomeFeed();
     scrollToTop();
-  }, [refetch, queryClient, scrollToTop]);
+  }, [refetch, resetHomeFeed, scrollToTop]);
 
   const scrollToEnd = useCallback((animated = true) => {
     scrollViewRef.current?.scrollToEnd({ animated });
