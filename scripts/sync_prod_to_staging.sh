@@ -301,6 +301,16 @@ BEGIN
   END IF;
 END $$;
 
+-- Participants are not members and get no anonymized stand-ins; staging signs
+-- up its own.
+DO $$
+BEGIN
+  IF to_regclass('project_participant') IS NOT NULL THEN
+    TRUNCATE "project_participant", "project_participant_session",
+      "project_participant_signup";
+  END IF;
+END $$;
+
 -- Keys the fake names and sentences, so each comes out the same from one sync
 -- to the next. Change it to deal new ones.
 \set seed 1
