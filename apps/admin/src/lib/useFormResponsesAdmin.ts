@@ -3,7 +3,10 @@ import {
   type FormResponseDto,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { useAdminTaskForm } from "@alliance/shared/lib/useTaskForm";
+import {
+  useAdminTaskForm,
+  useAdminTaskFormActions,
+} from "@alliance/shared/lib/useTaskForm";
 import {
   queryOptions,
   skipToken,
@@ -35,6 +38,7 @@ export const formResponsesAdminQuery = (formId: number | null | undefined) =>
 export function useFormResponsesAdmin(formId: number | undefined) {
   const queryClient = useQueryClient();
   const form = useAdminTaskForm(formId);
+  const { refetch: refetchForm } = useAdminTaskFormActions();
 
   const responses = useQuery(formResponsesAdminQuery(formId));
 
@@ -43,11 +47,10 @@ export function useFormResponsesAdmin(formId: number | undefined) {
   const refresh = useMutation({
     mutationFn: () =>
       Promise.all([
-        ...[
-          queryKeys.taskFormAdmin(formId ?? null),
-          queryKeys.formResponsesAdmin(formId ?? null),
-        ].map((queryKey) =>
-          queryClient.refetchQueries({ queryKey }, { throwOnError: true }),
+        refetchForm(formId),
+        queryClient.refetchQueries(
+          { queryKey: queryKeys.formResponsesAdmin(formId ?? null) },
+          { throwOnError: true },
         ),
         // Share links fail the way their first load does, without failing
         // the refresh of rows that did reload.

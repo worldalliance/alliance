@@ -1,6 +1,6 @@
 import type { FormPlace } from "@alliance/common/forms/form-conditions";
 import type { FormSchema } from "@alliance/common/forms/form-schema";
-import { tasksGetFormAdmin } from "@alliance/shared/client";
+import { useAdminTaskFormActions } from "@alliance/shared/lib/useTaskForm";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useBeforeUnload, useBlocker } from "react-router";
@@ -49,6 +49,7 @@ export function useSavedForm({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const { error: showErrorToast } = useToast();
+  const { fetchLatest } = useAdminTaskFormActions();
 
   // A new form's first save already holds the saved schema; refetching it
   // would regroup and drop the admin's manual group boundaries.
@@ -79,10 +80,18 @@ export function useSavedForm({
     setIsLoading(true);
     setLoadError(null);
 
-    tasksGetFormAdmin({ path: { id: formId }, throwOnError: true })
-      .then((response) => {
-        const form = response.data;
-        if (form?.schema) {
+    const fail = (error: unknown) => {
+      console.error("Failed to load form:", error);
+      setLoadError(adminRefusalMessage(error, "Failed to load form"));
+    };
+    fetchLatest(formId)
+      .then((read) => {
+        if (!read.ok) {
+          fail(read.error);
+          return;
+        }
+        const form = read.value;
+        if (form.schema) {
           const nextSchema = ensurePages(form.schema as FormSchema);
           loadSchema(nextSchema);
           reloadEditors();
@@ -99,15 +108,13 @@ export function useSavedForm({
           markSaved(nextSchema, form.formSnapshotId);
         }
       })
-      .catch((error) => {
-        console.error("Failed to load form:", error);
-        setLoadError(adminRefusalMessage(error, "Failed to load form"));
-      })
+      .catch(fail)
       .finally(() => {
         setIsLoading(false);
       });
   }, [
     displayOnly,
+    fetchLatest,
     formId,
     initialSchema,
     loadAttempt,
