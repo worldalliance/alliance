@@ -5,8 +5,8 @@ import {
   type VariableAggregateCounts,
   type VariableAggregateSource,
 } from "@alliance/common/forms/variable-aggregates";
-import { R, type Result } from "@alliance/common/result";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { skipToken, useQuery } from "@tanstack/react-query";
+import { useCallback, useMemo } from "react";
 import {
   tasksCountVariableAggregatesAdmin,
   tasksGetVariableAggregates,
@@ -88,38 +88,30 @@ export function evaluatedAggregates(
 async function fetchAggregates(
   target: AggregateTarget,
   sources: VariableAggregateSource[],
-): Promise<Result<VariableAggregatesDto, Error>> {
+): Promise<VariableAggregatesDto> {
   const { reader } = target;
   switch (reader) {
-    case AggregateReader.Admin: {
-      const response = await R.fromPromise(
-        tasksCountVariableAggregatesAdmin({
+    case AggregateReader.Admin:
+      return (
+        await tasksCountVariableAggregatesAdmin({
           body: { sources },
           throwOnError: true,
-        }),
-        R.toError,
-      );
-      return R.map(response, ({ data }) => data);
-    }
-    case AggregateReader.FormVersion: {
-      const response = await R.fromPromise(
-        tasksGetVariableAggregates({
+        })
+      ).data;
+    case AggregateReader.FormVersion:
+      return (
+        await tasksGetVariableAggregates({
           path: {
             formId: target.formId,
             formSnapshotId: target.formSnapshotId,
           },
           throwOnError: true,
-        }),
-        R.toError,
-      );
-      return R.map(response, ({ data }) => data);
-    }
+        })
+      ).data;
     default:
       throw new Error(`unknown aggregate reader: ${reader satisfies never}`);
   }
 }
-
-type Loaded = { key: string; result: Result<VariableAggregatesDto, Error> };
 
 /**
  * The counts every aggregate input reads, fetched together once per open
@@ -137,39 +129,31 @@ export function useVariableAggregates(params: {
       ),
     [schema.variables],
   );
-  const sourcesKey = JSON.stringify(sources);
-  const targetKey =
-    target === undefined || target.reader === AggregateReader.Admin
-      ? target?.reader
-      : `${target.reader}:${target.formId}:${target.formSnapshotId}`;
-  const key = sources.length === 0 ? "" : `${targetKey}|${sourcesKey}`;
 
   const untargeted = target === undefined;
-  const [loaded, setLoaded] = useState<Loaded | undefined>(undefined);
-  const [attempt, setAttempt] = useState(0);
+  const { data, isError, refetch } = useQuery({
+    queryKey: ["variableAggregates", target, sources],
+    queryFn:
+      target !== undefined && sources.length > 0
+        ? () =>
+            fetchAggregates(target, sources).catch((error: unknown) => {
+              console.error("Failed to load aggregate counts", error);
+              throw error;
+            })
+        : skipToken,
+    // Counts hold still while a form is open and load afresh when it reopens.
+    staleTime: Infinity,
+    gcTime: 0,
+    // A failure shows the form's own retry control.
+    retry: false,
+    // A paused offline fetch would hold the form on loading; failing shows retry.
+    networkMode: "always",
+  });
 
-  useEffect(() => {
-    if (key === "" || target === undefined) return;
-    let cancelled = false;
-    void fetchAggregates(target, sources).then((result) => {
-      if (!result.ok) {
-        console.error("Failed to load aggregate counts", result.error);
-      }
-      if (!cancelled) setLoaded({ key, result });
-    });
-    return () => {
-      cancelled = true;
-    };
-    // `key` holds everything the fetch reads from `target` and `sources`.
-  }, [key, attempt]);
-
-  const retry = useCallback(() => {
-    setLoaded(undefined);
-    setAttempt((prev) => prev + 1);
-  }, []);
+  const retry = useCallback(() => void refetch(), [refetch]);
 
   return useMemo((): VariableAggregates => {
-    if (key === "") {
+    if (sources.length === 0) {
       return { status: VariableAggregatesStatus.Ready, aggregates: new Map() };
     }
     if (untargeted) {
@@ -178,13 +162,10 @@ export function useVariableAggregates(params: {
         aggregates: NO_AGGREGATES,
       };
     }
-    if (loaded?.key !== key)
-      return { status: VariableAggregatesStatus.Loading };
-    if (!loaded.result.ok) {
-      return { status: VariableAggregatesStatus.Failed, retry };
-    }
+    if (isError) return { status: VariableAggregatesStatus.Failed, retry };
+    if (!data) return { status: VariableAggregatesStatus.Loading };
     const aggregates = new Map<string, VariableAggregateCounts>();
-    for (const aggregate of loaded.result.value.aggregates) {
+    for (const aggregate of data.aggregates) {
       if (aggregate.counts !== null) {
         aggregates.set(aggregateSourceKey(aggregate), aggregate.counts);
       }
@@ -195,5 +176,5 @@ export function useVariableAggregates(params: {
     return complete
       ? { status: VariableAggregatesStatus.Ready, aggregates }
       : { status: VariableAggregatesStatus.SourceUnavailable, aggregates };
-  }, [key, untargeted, loaded, sources, retry]);
+  }, [sources, untargeted, isError, data, retry]);
 }

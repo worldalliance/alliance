@@ -1,6 +1,8 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import type { FormVariable } from "@alliance/common/forms/variables";
+import { focusManager, onlineManager } from "@tanstack/react-query";
 import { act, renderHook } from "@testing-library/react";
+import { queryWrapper } from "../lib/testing/queryWrapper";
 import { routes, serveApi } from "../lib/testing/serveApi";
 import {
   AggregateReader,
@@ -77,11 +79,15 @@ const FORM_VERSION: AggregateTarget = {
   formSnapshotId: 4,
 };
 
-const render = (schema: FormSchema, target: AggregateTarget | undefined) =>
+const render = (
+  schema: FormSchema,
+  target: AggregateTarget | undefined,
+  wrapper = queryWrapper().wrapper,
+) =>
   renderHook(
     (props: { schema: FormSchema }) =>
       useVariableAggregates({ schema: props.schema, target }),
-    { initialProps: { schema } },
+    { initialProps: { schema }, wrapper },
   );
 
 const countsOf = (aggregates: VariableAggregates, key: string) =>
@@ -172,6 +178,78 @@ describe("useVariableAggregates", () => {
     act(() => failed.retry());
     await settle();
     expect(countsOf(result.current, "7:a")).toEqual({ x: 1 });
+    expect(requests).toHaveLength(2);
+  });
+
+  it("doesn't retry a failed load on its own, whatever the app's retries", async () => {
+    answer = async () => json({ message: "down" }, 500);
+    const { wrapper } = queryWrapper({ retry: 3, retryDelay: 0 });
+    const { result } = render(
+      schemaWith([counting("a")]),
+      FORM_VERSION,
+      wrapper,
+    );
+    await settle();
+    expect(result.current.status).toBe(VariableAggregatesStatus.Failed);
+    expect(requests).toHaveLength(1);
+  });
+
+  it("fails rather than waiting for the network while offline", async () => {
+    onlineManager.setOnline(false);
+    try {
+      answer = () => Promise.reject(new TypeError("Failed to fetch"));
+      const { result } = render(schemaWith([counting("a")]), FORM_VERSION);
+      await settle();
+      expect(result.current.status).toBe(VariableAggregatesStatus.Failed);
+    } finally {
+      onlineManager.setOnline(true);
+    }
+  });
+
+  it("shows loading again while a retry is out", async () => {
+    answer = async () => json({ message: "down" }, 500);
+    const { result } = render(schemaWith([counting("a")]), FORM_VERSION);
+    await settle();
+    const failed = result.current;
+    if (failed.status !== VariableAggregatesStatus.Failed) {
+      throw new Error(`expected a failure, got ${failed.status}`);
+    }
+
+    answer = () => new Promise(() => {});
+    act(() => failed.retry());
+    await settle();
+    expect(result.current.status).toBe(VariableAggregatesStatus.Loading);
+  });
+
+  it("keeps an open form's counts when the window regains focus", async () => {
+    answer = async () => json({ aggregates: [aggregate("a", { x: 1 })] });
+    const { result } = render(schemaWith([counting("a")]), FORM_VERSION);
+    await settle();
+
+    answer = async () => json({ aggregates: [aggregate("a", { x: 2 })] });
+    act(() => {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+    });
+    await settle();
+    focusManager.setFocused(undefined);
+    expect(countsOf(result.current, "7:a")).toEqual({ x: 1 });
+    expect(requests).toHaveLength(1);
+  });
+
+  it("loads the counts afresh when the form reopens, whatever the app's staleTime", async () => {
+    const { wrapper } = queryWrapper({ staleTime: 5 * 60 * 1000 });
+    answer = async () => json({ aggregates: [aggregate("a", { x: 1 })] });
+    const first = render(schemaWith([counting("a")]), FORM_VERSION, wrapper);
+    await settle();
+    first.unmount();
+    await settle();
+
+    answer = async () => json({ aggregates: [aggregate("a", { x: 2 })] });
+    const second = render(schemaWith([counting("a")]), FORM_VERSION, wrapper);
+    expect(second.result.current.status).toBe(VariableAggregatesStatus.Loading);
+    await settle();
+    expect(countsOf(second.result.current, "7:a")).toEqual({ x: 2 });
     expect(requests).toHaveLength(2);
   });
 
