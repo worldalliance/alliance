@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { defaultLaunchSchedule } from "./launchSchedule";
+import { completionTime, defaultLaunchSchedule } from "./launchSchedule";
 
 const schedule = (now: string) => {
   const { memberActionAt, officeActionAt } = defaultLaunchSchedule(
@@ -49,5 +49,25 @@ describe("defaultLaunchSchedule", () => {
       memberActionAt: "2026-01-16T09:00:00.000Z",
       officeActionAt: "2026-01-24T07:59:00.000Z",
     });
+  });
+});
+
+describe("completionTime", () => {
+  it("spells out the time between members starting and the office deadline", () => {
+    expect(
+      completionTime({
+        memberActionAt: new Date("2026-01-16T03:00:00Z"),
+        officeActionAt: new Date("2026-01-23T07:59:00Z"),
+      }),
+    ).toBe("7 days 4 hours 59 minutes");
+  });
+
+  it("drops units that are zero", () => {
+    expect(
+      completionTime({
+        memberActionAt: new Date("2026-01-16T03:00:00Z"),
+        officeActionAt: new Date("2026-01-19T03:00:00Z"),
+      }),
+    ).toBe("3 days");
   });
 });

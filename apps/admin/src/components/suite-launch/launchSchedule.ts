@@ -1,5 +1,17 @@
 import { TZDate } from "@date-fns/tz";
-import { addDays, addHours, addMinutes, set, startOfHour } from "date-fns";
+import {
+  addDays,
+  addHours,
+  addMinutes,
+  formatDuration,
+  set,
+  startOfHour,
+} from "date-fns";
+import {
+  millisecondsInDay,
+  millisecondsInHour,
+  millisecondsInMinute,
+} from "date-fns/constants";
 
 export const LAUNCH_TIME_ZONE = "America/Los_Angeles";
 const MIN_LEAD_MINUTES = 30;
@@ -41,4 +53,14 @@ export function defaultLaunchSchedule(now: Date): LaunchSchedule {
     memberActionAt: new Date(memberActionAt.getTime()),
     officeActionAt: new Date(officeActionAt.getTime()),
   };
+}
+
+export function completionTime(schedule: LaunchSchedule): string {
+  const ms =
+    schedule.officeActionAt.getTime() - schedule.memberActionAt.getTime();
+  return formatDuration({
+    days: Math.floor(ms / millisecondsInDay),
+    hours: Math.floor((ms % millisecondsInDay) / millisecondsInHour),
+    minutes: Math.floor((ms % millisecondsInHour) / millisecondsInMinute),
+  });
 }

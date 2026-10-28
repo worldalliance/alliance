@@ -21,6 +21,7 @@ import LaunchCheck from "./LaunchCheck";
 import { reminderSendWindows } from "./launchReminders";
 import LaunchRemindersCheck from "./LaunchRemindersCheck";
 import {
+  completionTime,
   defaultLaunchSchedule,
   inLaunchZone,
   type LaunchSchedule,
@@ -150,7 +151,15 @@ const SuiteLaunchPanel = ({
           onAcknowledgedChange={setViolationsAcknowledged}
         />
       )}
-      <LaunchCheck title="Schedule" passed={scheduleValid}>
+      <LaunchCheck
+        title="Schedule"
+        passed={scheduleValid}
+        summary={
+          scheduleValid
+            ? `Members have ${completionTime(schedule)} to complete their actions`
+            : undefined
+        }
+      >
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm">
             Members taking action

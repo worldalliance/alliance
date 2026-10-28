@@ -1,5 +1,5 @@
-import { formatDistanceStrict, milliseconds } from "date-fns";
-import type { LaunchSchedule } from "./launchSchedule";
+import { milliseconds } from "date-fns";
+import { completionTime, type LaunchSchedule } from "./launchSchedule";
 import { MAX_MEMBER_MINUTES, type MemberLoad } from "./memberLoad";
 
 const COMPLETION_PERIOD_MS = milliseconds({ days: 7 });
@@ -24,7 +24,7 @@ export function contractViolations(params: {
     schedule.officeActionAt.getTime() - schedule.memberActionAt.getTime();
   if (period > 0 && period < COMPLETION_PERIOD_MS) {
     violations.push(
-      `Members get ${formatDistanceStrict(schedule.memberActionAt, schedule.officeActionAt)} to finish. The contract promises a 7-day completion period.`,
+      `Members get ${completionTime(schedule)} to finish. The contract promises a 7-day completion period.`,
     );
   }
   return violations;
