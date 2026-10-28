@@ -6,7 +6,10 @@ import {
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useFormWithdrawalsAdmin } from "@alliance/shared/lib/useFormWithdrawalsAdmin";
-import { adminTaskFormQuery } from "@alliance/shared/lib/useTaskForm";
+import {
+  adminTaskFormQuery,
+  useAdminTaskFormActions,
+} from "@alliance/shared/lib/useTaskForm";
 import {
   skipToken,
   useMutation,
@@ -117,6 +120,7 @@ const combineForms = (results: UseQueryResult<FormDto>[]) => ({
  * variant). A failed `refresh` keeps what already loaded on screen. */
 export function useActionMergedResponsesAdmin(actionId: number) {
   const queryClient = useQueryClient();
+  const { refetch: refetchForm } = useAdminTaskFormActions();
   const { variants } = useFormVariantsAdmin(actionId, variantOptionsOf);
   const variantOptions = variants.data;
   const formIds = useMemo(
@@ -155,7 +159,6 @@ export function useActionMergedResponsesAdmin(actionId: number) {
       Promise.all([
         ...[
           queryKeys.formVariantsAdmin(actionId),
-          ...(formIds ?? []).map((formId) => queryKeys.taskFormAdmin(formId)),
           queryKeys.formResponsesByFormsAdmin(formIds ?? null),
           queryKeys.formWithdrawalsAdmin(defaultFormId ?? null),
         ].map((queryKey) =>
@@ -164,6 +167,7 @@ export function useActionMergedResponsesAdmin(actionId: number) {
             { throwOnError: true },
           ),
         ),
+        ...(formIds ?? []).map(refetchForm),
         shareLinks.refetch(),
       ]),
   });
