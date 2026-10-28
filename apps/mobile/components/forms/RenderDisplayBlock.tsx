@@ -12,7 +12,7 @@ import {
   type UserLocationDisplayValue,
 } from "@alliance/shared/formrenderer";
 import { cn } from "@alliance/shared/styles/util";
-import { ChevronDown } from "lucide-react-native";
+import { ChevronDown, ChevronUp } from "lucide-react-native";
 import { useState } from "react";
 import { ScrollView, TouchableOpacity, View } from "react-native";
 import { colors } from "../../lib/style/colors";
@@ -69,11 +69,11 @@ function AccordionDisplayMobile({ block }: { block: AccordionBlock }) {
               <Text className="flex-1 text-zinc-900" weight={FontWeight.Medium}>
                 {section.title}
               </Text>
-              <ChevronDown
-                size={18}
-                color={colors.text.icon}
-                style={{ transform: [{ rotate: isOpen ? "180deg" : "0deg" }] }}
-              />
+              {isOpen ? (
+                <ChevronUp size={18} color={colors.text.icon} />
+              ) : (
+                <ChevronDown size={18} color={colors.text.icon} />
+              )}
             </TouchableOpacity>
             {isOpen && (
               <View className="gap-3 pb-4">
