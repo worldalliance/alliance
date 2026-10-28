@@ -2,6 +2,7 @@ import {
   CHAT_TRANSCRIPT_SIZE_UNIT_PX,
   groupChatTranscriptMessages,
   type AccordionBlock,
+  type AccordionSection,
   type ChatTranscriptMessage,
   type DisplayBlock,
 } from "@alliance/common/forms/display-blocks";
@@ -12,10 +13,8 @@ import {
   type UserLocationDisplayValue,
 } from "@alliance/shared/formrenderer";
 import { cn } from "@alliance/shared/styles/util";
-import { ChevronDown, ChevronUp } from "lucide-react-native";
-import { useState } from "react";
-import { ScrollView, TouchableOpacity, View } from "react-native";
-import { colors } from "../../lib/style/colors";
+import { useContext, useEffect, useId, useRef, useState } from "react";
+import { ScrollView, View } from "react-native";
 import AppMarkdownWrapper from "../AppMarkdownWrapper";
 import { MARKDOWN_HUG_WIDTH_STYLE, MarkdownTone } from "../markdownStyles";
 import ProfileImage from "../ProfileImage";
@@ -25,6 +24,7 @@ import CopyTextDisplay from "./CopyTextDisplay";
 import HtmlBlock from "./HtmlBlock";
 import ImagesDisplay from "./ImagesDisplay";
 import RenderPreviousAnswer from "./RenderPreviousAnswer";
+import { AccordionTitleBar, StickyAccordionContext } from "./StickyAccordion";
 import VideoPlayer from "./VideoPlayer";
 
 const CHAT_BUBBLE_TONE: Record<ChatTranscriptMessage["side"], MarkdownTone> = {
@@ -56,38 +56,88 @@ function AccordionDisplayMobile({ block }: { block: AccordionBlock }) {
 
   return (
     <View className="border-t border-zinc-200">
-      {block.sections.map((section, index) => {
-        const isOpen = openIndices.includes(index);
-        return (
-          <View key={section.id ?? index} className="border-b border-zinc-200">
-            <TouchableOpacity
-              onPress={() => toggle(index)}
-              accessibilityRole="button"
-              accessibilityState={{ expanded: isOpen }}
-              className="flex-row items-center justify-between gap-3 py-3"
-            >
-              <Text className="flex-1 text-zinc-900" weight={FontWeight.Medium}>
-                {section.title}
-              </Text>
-              {isOpen ? (
-                <ChevronUp size={18} color={colors.text.icon} />
-              ) : (
-                <ChevronDown size={18} color={colors.text.icon} />
-              )}
-            </TouchableOpacity>
-            {isOpen && (
-              <View className="gap-3 pb-4">
-                {section.blocks.map((nested, nestedIndex) => (
-                  <RenderDisplayBlockMobile
-                    key={nested.id ?? nestedIndex}
-                    block={nested}
-                  />
-                ))}
-              </View>
-            )}
-          </View>
-        );
-      })}
+      {block.sections.map((section, index) => (
+        <AccordionSectionMobile
+          key={section.id ?? index}
+          section={section}
+          isOpen={openIndices.includes(index)}
+          onToggle={() => toggle(index)}
+        />
+      ))}
+    </View>
+  );
+}
+
+function AccordionSectionMobile({
+  section,
+  isOpen,
+  onToggle,
+}: {
+  section: AccordionSection;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
+  const key = useId();
+  const sectionRef = useRef<View>(null);
+  const sticky = useContext(StickyAccordionContext);
+  const onToggleRef = useRef(onToggle);
+  onToggleRef.current = onToggle;
+
+  // react-native-web calls back from measureLayout a tick later, possibly
+  // after the section has closed or unmounted.
+  const reporting = useRef(false);
+
+  const measure = () => {
+    const content = sticky?.contentRef.current;
+    if (!sticky || !isOpen || !content || !sectionRef.current) return;
+    sectionRef.current.measureLayout(content, (_x, y, _width, height) => {
+      if (!reporting.current) return;
+      sticky.report({
+        key,
+        title: section.title,
+        top: y,
+        bottom: y + height,
+        close: () => onToggleRef.current(),
+      });
+    });
+  };
+
+  useEffect(() => {
+    if (!sticky || !isOpen) return;
+    reporting.current = true;
+    return () => {
+      reporting.current = false;
+      sticky.remove(key);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the section leaves the pinned bar only when it closes
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen) measure();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- measure reads the latest layout
+  }, [isOpen, sticky?.layoutVersion]);
+
+  return (
+    <View
+      ref={sectionRef}
+      onLayout={measure}
+      className="border-b border-zinc-200"
+    >
+      <AccordionTitleBar
+        title={section.title}
+        isOpen={isOpen}
+        onPress={onToggle}
+      />
+      {isOpen && (
+        <View className="gap-3 pb-4">
+          {section.blocks.map((nested, nestedIndex) => (
+            <RenderDisplayBlockMobile
+              key={nested.id ?? nestedIndex}
+              block={nested}
+            />
+          ))}
+        </View>
+      )}
     </View>
   );
 }
