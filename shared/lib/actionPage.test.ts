@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { useActionHandlers } from "./actionPage";
 import { queryKeys } from "./queryKeys";
-import { makeAction } from "./testFixtures";
+import { makeAction, makeViewer } from "./testFixtures";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 
@@ -141,6 +141,26 @@ it("marks the action completed in the shared cache and reloads tasks", async () 
     usersCompleted: 3,
   });
   expect(reloadTasks).toHaveBeenCalledTimes(1);
+});
+
+it("does not count a completion the server already reported", async () => {
+  getResponse = () =>
+    Response.json(
+      makeAction({
+        id: 7,
+        usersCompleted: 3,
+        userRelation: "completed",
+        viewer: makeViewer({ relation: "completed" }),
+      }),
+    );
+  const { client, hook } = renderHandlers();
+  await waitFor(() => expect(hook.result.current.action).not.toBeNull());
+
+  await hook.result.current.onCompleteAction();
+
+  expect(client.getQueryData(queryKeys.action(7))).toMatchObject({
+    usersCompleted: 3,
+  });
 });
 
 it("marks the action declined in the shared cache and reloads tasks", async () => {
