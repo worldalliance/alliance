@@ -5,6 +5,10 @@ export const ABOUT_SECTIONS = [
 - Volunteers will review English transcripts of children messaging AI chatbots such as ChatGPT, Claude, and Mistral, then submit feedback on how well the chatbots handled sensitive topics such as fear, academic dishonesty, online data sharing, and body image.`,
   },
   {
+    heading: "Why are we doing this?",
+    body: "At the Alliance, we’re assembling people who can count on each other to combat global problems that depend on everyone’s participation. With this project, we are testing the model of “citizen oversight”, where the general public gets a chance to weigh in on disruptive, potentially dangerous technologies such as AI and help shape the direction of these technologies in a healthy, democratic way.",
+  },
+  {
     heading: "How do I participate?",
     body: `- Join the waitlist on this page. We expect the project to begin in Mid-November 2026 and conclude by Mid-December 2026. 
 - Volunteers are encouraged to join the Alliance to continue volunteering on similar tasks after this project concludes.
@@ -22,29 +26,22 @@ export const ABOUT_SECTIONS = [
 
 3. Kora will write up the findings in a research paper and incorporate findings into their benchmark. Leading AI companies like Mistral use these benchmarks to evaluate and improve their products.`,
   },
-  {
-    heading: "Why are we doing this?",
-    body: "At the Alliance, we’re assembling people who can count on each other to combat global problems that depend on everyone’s participation. With this project, we are testing the model of “citizen oversight”, where the general public gets a chance to weigh in on disruptive, potentially dangerous technologies such as AI and help shape the direction of these technologies in a healthy, democratic way.",
-  },
 ];
 
 export const PARTICIPANT_GOAL = 500;
 
-export const SIGNUP_BUTTON = "Sign up here";
+export const SIGNUP_BUTTON = "Sign up";
 
 export const SIGNUP_NOTE = "The project will begin November 17th";
 
 export const SIGNUP_CLOSED =
   "Waitlist is not live yet, please come back next week.";
 
-export const EXPERTS_HEADING = "Project advisor";
-
-export const EXPERTS_SUBTITLE =
-  "Safer Chatbots for Children is an ongoing project run by KORA, a leading AI safety evaluation nonprofit, and the Alliance, an online community of volunteers dedicated to tackling serious global issues.";
+export const EXPERT_ROLE = "Expert advisor";
 
 export interface Expert {
   name: string;
-  role: string;
+  title: string;
   imageSrc?: string;
   href?: string;
 }
@@ -52,15 +49,14 @@ export interface Expert {
 export const EXPERTS: Expert[] = [
   {
     name: "Stéphie Herlin",
-    role: "Co-Founder and Research Lead, KORA",
+    title: "Co-Founder and Research Lead, KORA",
     imageSrc: "/assets/chatbot-safety/stephie-pic.png",
     href: "https://www.linkedin.com/in/stephieherlin",
   },
-  //{ name: "Pending Name Review", role: "AI Safety Researcher at Meta" },
+  //{ name: "Pending Name Review", title: "AI Safety Researcher at Meta" },
 ];
 
 export interface Phase {
-  label: string;
   description: string;
   imageSrc?: string;
 }
@@ -100,32 +96,28 @@ export const TIMELINE_HEADING = "Project Overview";
 
 export const PHASES: Phase[] = [
   {
-    label: "Step 1",
     description:
       "Volunteers will read scenarios that simulate a child or teenager talking to a chatbot.",
-    imageSrc: "/assets/chatbot-safety/chat-transcript.jpg",
+    imageSrc: "/assets/chatbot-safety/step-read-scenarios.png",
   },
   {
-    label: "Step 2",
     description:
       "Volunteers will rate the chatbot's responses as 'safe' or 'unsafe'",
-    imageSrc: "/assets/chatbot-safety/to-do-list.svg",
+    imageSrc: "/assets/chatbot-safety/step-rate-responses.png",
     /* imageSrc: "/assets/chatbot-safety/Boy-Laptop.svg"
     Image is from a Creative Commons website, authorized for public use. 
       - https://publicdomainvectors.org/en/free-clipart/Boy-and-laptop/40053.html 
       - https://publicdomainvectors.org/en/public-domain/ */
   },
   {
-    label: "Step 3",
     description:
       "KORA will take the volunteer feedback to improve their benchmarks to reflect what the public believes to be safe.",
-    imageSrc: "/assets/chatbot-safety/kora-benchmark.jpg",
+    imageSrc: "/assets/chatbot-safety/step-kora-benchmark.png",
   },
   {
-    label: "Step 4",
     description:
       "Leading AI labs such as Mistral (EU) will use these benchmarks to evaluate their new chatbot models.",
-    imageSrc: "/assets/chatbot-safety/mistral-kora.jpg",
+    imageSrc: "/assets/chatbot-safety/step-ai-labs.png",
   },
 ];
 

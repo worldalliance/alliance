@@ -55,6 +55,7 @@
     "hast-util-to-text": "^4.0.2",
     "hls.js": "^1.6.15",
     "html2canvas-pro": "^1.6.2",
+    "input-otp": "^1.5.0",
     "install": "^0.13.0",
     "isbot": "^5",
     "jsep": "^1.4.0",

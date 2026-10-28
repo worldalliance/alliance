@@ -3,11 +3,11 @@ import { DocProse, DocProseSize } from "../../../site/DocProse";
 import { BandHeading, BandHeadingSize } from "../../../site/PageShell";
 import { ABOUT_SECTIONS } from "./copy";
 
-export function AboutGrid({ className }: { className?: string }) {
+export function AboutSections({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "grid grid-cols-1 gap-x-12 gap-y-12 md:grid-cols-2 md:gap-y-16",
+        "mx-auto flex max-w-4xl flex-col gap-12 md:gap-16",
         className,
       )}
     >
@@ -20,7 +20,7 @@ export function AboutGrid({ className }: { className?: string }) {
             {heading}
           </BandHeading>
           <DocProse
-            size={DocProseSize.Default}
+            size={DocProseSize.Large}
             markdown={body}
             className="w-full text-left"
           />

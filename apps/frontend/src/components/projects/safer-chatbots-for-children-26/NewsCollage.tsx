@@ -12,7 +12,7 @@ export function NewsCollage({ className }: { className?: string }) {
     >
       <h2
         id="news-heading"
-        className="text-center text-xl font-medium text-[var(--site-ink)] sm:text-2xl"
+        className="text-left text-xl font-medium text-[var(--site-ink)] sm:text-2xl"
       >
         {NEWS_HEADING}
       </h2>

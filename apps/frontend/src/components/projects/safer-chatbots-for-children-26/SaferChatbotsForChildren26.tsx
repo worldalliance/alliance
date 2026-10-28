@@ -5,20 +5,16 @@ import { socialPreviewMeta } from "../../../lib/socialPreviewMeta";
 import { SiteFooter } from "../../../site/Footer";
 import { NAV_HEIGHT, Navbar } from "../../../site/Navbar";
 import { SiteRoot } from "../../../site/PageShell";
-import { DisplayHeading, SITE_COL } from "../../../site/ui";
-import { WaitlistSignupForm } from "../democratic-grantmaking-26/WaitlistSignupForm";
-import { AboutGrid } from "./AboutGrid";
 import {
-  EXPERTS_HEADING,
-  EXPERTS_SUBTITLE,
-  PARTICIPANT_GOAL,
-  SHOW_FACTS,
-  SHOW_TIMELINE,
-  SIGNUP_BUTTON,
-  SIGNUP_CLOSED,
-  SIGNUP_NOTE,
-} from "./copy";
-import { ExpertGrid } from "./ExpertGrid";
+  DisplayHeading,
+  SITE_COL,
+  SiteSubtitle,
+  SubtitleSize,
+} from "../../../site/ui";
+import { AboutSections } from "./AboutSections";
+import { ChatbotSignup } from "./ChatbotSignup";
+import { PARTICIPANT_GOAL, SHOW_FACTS, SHOW_TIMELINE } from "./copy";
+import { ExpertList } from "./ExpertList";
 import { FactBlocks } from "./FactBlocks";
 import { NewsCollage } from "./NewsCollage";
 import { ParticipantsBar } from "./ParticipantsBar";
@@ -72,7 +68,7 @@ export default function SaferChatbotsForChildren26() {
             <div
               className={cn(
                 PROJECT_COL,
-                "grid grid-cols-1 gap-y-6 pt-16 [@media(max-width:480px)_and_(max-height:700px)]:pt-8 lg:grid-cols-[minmax(0,1fr)_max(24rem,34%)] lg:items-start lg:gap-x-[4%] lg:pt-[clamp(4rem,10svh,8rem)]",
+                "grid grid-cols-1 gap-y-6 pt-16 [@media(max-width:480px)_and_(max-height:700px)]:pt-8 lg:grid-cols-[minmax(0,1fr)_max(24rem,34%)] lg:items-start lg:gap-x-[10%] lg:pt-[clamp(4rem,10svh,8rem)]",
               )}
             >
               <p className="-mb-2 text-left text-[1.05rem] text-[var(--site-ink)]/70 sm:text-[1.2rem]">
@@ -80,15 +76,14 @@ export default function SaferChatbotsForChildren26() {
               </p>
               <div className="flex flex-col gap-4 lg:col-start-1 lg:row-start-2 lg:gap-[clamp(1rem,2.5vh,2rem)]">
                 <DisplayHeading
-                  as="h2"
-                  leading={1.2}
-                  className="text-4xl sm:text-5xl lg:text-[clamp(2.25rem,min(3.75vw,6vh),4.5rem)]"
+                  as="h1"
+                  leading={1.1}
+                  className="text-5xl sm:text-6xl lg:text-8xl"
                 >
-                  A generation of kids is growing up with AI chatbots. Help make
-                  sure they are safe.{" "}
+                  Make AI chatbots safer for kids
                 </DisplayHeading>
-                <p className="text-left text-2xl sm:text-3xl">
-                  Join our volunteer project with{" "}
+                <SiteSubtitle size={SubtitleSize.Display}>
+                  80% of children use AI chatbots in 2026. Join our project with{" "}
                   <a
                     href="https://korabench.ai"
                     target="_blank"
@@ -99,14 +94,10 @@ export default function SaferChatbotsForChildren26() {
                   </a>{" "}
                   a safety research nonprofit, to improve the safety of chatbots
                   for children worldwide.
-                </p>
+                </SiteSubtitle>
+                <ExpertList />
               </div>
-              <WaitlistSignupForm
-                className="w-full lg:col-start-2 lg:row-start-2 lg:self-center"
-                submitLabel={SIGNUP_BUTTON}
-                note={SIGNUP_NOTE}
-                closedMessage={SIGNUP_CLOSED}
-              />
+              <ChatbotSignup className="mt-6 w-full lg:col-start-2 lg:row-start-2 lg:mt-0 lg:self-center" />
             </div>
             <div
               className={cn(
@@ -116,14 +107,14 @@ export default function SaferChatbotsForChildren26() {
             >
               <ProjectProgress />
             </div>
-            <div className={cn(PROJECT_COL, "pt-12 md:pt-16")}>
-              <AboutGrid />
-            </div>
             {SHOW_TIMELINE && (
               <div className={cn(PROJECT_COL, "pt-12 md:pt-16")}>
                 <ProjectTimeline currentIdx={0} />
               </div>
             )}
+            <div className={cn(PROJECT_COL, "pt-12 md:pt-16")}>
+              <AboutSections />
+            </div>
             {SHOW_FACTS && (
               <div className={cn(PROJECT_COL, "pt-12 md:pt-16")}>
                 <FactBlocks />
@@ -136,17 +127,6 @@ export default function SaferChatbotsForChildren26() {
               "mt-12 flex flex-col gap-12 pb-20 md:mt-16 md:gap-16 md:pb-24 lg:pb-32",
             )}
           >
-            <div className="flex flex-col items-center gap-8 rounded-lg bg-zinc-100 px-7 py-8 sm:px-14 sm:py-10">
-              <div className="flex flex-col items-center gap-1">
-                <p className="text-center text-xl font-medium sm:text-2xl">
-                  {EXPERTS_HEADING}
-                </p>
-                <p className="text-center text-lg text-[var(--site-ink)]/70 sm:text-xl">
-                  {EXPERTS_SUBTITLE}
-                </p>
-              </div>
-              <ExpertGrid />
-            </div>
             <NewsCollage />
           </div>
         </div>
