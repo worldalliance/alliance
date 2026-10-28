@@ -147,12 +147,7 @@ export class MmsService {
     }
 
     try {
-      const sending = this.twilioClient.messages.create({
-        to: to,
-        from: this.senderFor(to),
-        body: body,
-        mediaUrl: mediaUrls,
-      });
+      const sending = this.dispatch({ to, body, mediaUrls });
       const message = await withTimeout(sending, this.sendTimeoutMs).catch(
         async (error: unknown) => {
           if (cid) await this.messageTracking.discard(cid);
@@ -171,6 +166,20 @@ export class MmsService {
     } catch (error) {
       return this.reportFailure({ to, userId, error });
     }
+  }
+
+  private dispatch(params: {
+    to: string;
+    body: string;
+    mediaUrls: string[];
+  }): Promise<SentMessage> {
+    const { to, body, mediaUrls } = params;
+    return this.twilioClient.messages.create({
+      to,
+      from: this.senderFor(to),
+      body,
+      mediaUrl: mediaUrls,
+    });
   }
 
   private reportFailure(params: {
