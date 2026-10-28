@@ -22,6 +22,13 @@ On the admin suite view:
   - It runs basic spelling and grammar checks, such as double spaces. These don't block on their own, but the admin has to either change the text or dismiss each finding. (user)
 - A launch button asks the admin to type "I am going to notify {n} real members", where n is the number of members who will be notified. It then creates the two events and populates the default reminders. (user)
 
+## Follow-ups
+
+- "Begin launch process" spans the full width, with no rocket icon. (user)
+- A text finding in the task form links to the task form editor. (user)
+- "Preview members' actions" shows the distribution of members across action combinations above the member search. (user)
+- Add what someone launching a suite would want close at hand, and the checks they would want run. (user)
+
 ## Verification
 
 - Add tests, and confirm the change works and doesn't break existing behavior. (user)

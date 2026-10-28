@@ -39,13 +39,21 @@ const adminAction = (params: {
   cohortExpression: { type: "Manual", userIds: params.memberIds },
 });
 
+let formPages: { id: string; title: string; fields: [] }[] = [];
 let served: Record<number, ReturnType<typeof adminAction>> = {};
 let suiteEvents: ActionEventDto[] = [];
 const createdEvents: CreateActionEventDto[] = [];
 const reminderEventIds: string[] = [];
 
+let liveElsewhere: (ReturnType<typeof adminAction> & {
+  memberActionStart: string | null;
+  memberActionDeadline: string | null;
+})[] = [];
+
 serveApi(
   routes({
+    "GET /actions/all": () => Response.json(liveElsewhere),
+    "GET /user/tags": () => Response.json([]),
     "GET /actions/adminslug/:id": ({ params }) =>
       Response.json(served[Number(params.id)]),
     "GET /tasks/adminForm/:id": ({ params }) =>
@@ -53,7 +61,7 @@ serveApi(
         ? Response.json({
             id: 5,
             title: "Form",
-            schema: { pages: [], outputViews: [] },
+            schema: { pages: formPages, outputViews: [] },
           })
         : Response.json({ statusCode: 400 }, { status: 400 }),
     "POST /actions/evaluate-cohort": async ({ request }) => {
@@ -111,6 +119,8 @@ beforeEach(() => {
       memberIds: [11],
     }),
   };
+  formPages = [];
+  liveElsewhere = [];
   suiteEvents = [];
   createdEvents.length = 0;
   reminderEventIds.length = 0;
@@ -246,6 +256,28 @@ it("refuses to launch once the member start has passed while the panel sat open"
   expect(createdEvents).toEqual([]);
 });
 
+it("links a task form finding to the form and a body finding to the action", async () => {
+  formPages = [{ id: "p1", title: "Page  one", fields: [] }];
+  renderPanel();
+
+  const formFinding = (
+    await screen.findAllByText("Double space · Call · Task form")
+  )[0].closest("li");
+  const bodyFinding = screen
+    .getByText("Double space · Call · Body")
+    .closest("li");
+  expect(
+    formFinding
+      ?.querySelector('[aria-label="Edit task form"]')
+      ?.getAttribute("href"),
+  ).toBe("/forms/5");
+  expect(
+    bodyFinding
+      ?.querySelector('[aria-label="Edit action"]')
+      ?.getAttribute("href"),
+  ).toBe("/actions/1");
+});
+
 it("previews the actions assigned to a picked member", async () => {
   renderPanel();
   await screen.findByText("Double space · Call · Body");
@@ -266,4 +298,70 @@ it("previews the actions assigned to a picked member", async () => {
       .getByRole("link", { name: "Log in as this member" })
       .getAttribute("href"),
   ).toEndWith("/auth/impersonate/10");
+});
+
+it("groups members by the actions they get and previews one from a group", async () => {
+  renderPanel();
+  await screen.findByText("Double space · Call · Body");
+
+  const mixes = screen.getAllByRole("button", {
+    name: "Preview a member who gets these actions",
+  });
+  expect(mixes.map((button) => button.closest("tr")?.textContent)).toEqual([
+    "118Call, Write",
+    "110Call",
+  ]);
+  fireEvent.click(mixes[0]);
+
+  const row = (
+    await screen.findByRole("link", { name: "Log in as this member" })
+  ).closest("li");
+  expect(row?.textContent).toContain("Ben18 min");
+});
+
+it("counts actions live elsewhere during the launch toward a member's minutes", async () => {
+  liveElsewhere = [
+    {
+      ...adminAction({
+        id: 50,
+        name: "Survey",
+        timeEstimate: 6,
+        body: "Answer.",
+        memberIds: [10],
+      }),
+      suite: { id: 9, name: "Other suite" },
+      memberActionStart: new Date(Date.now() - 86_400_000).toISOString(),
+      memberActionDeadline: null,
+    },
+  ];
+  renderPanel();
+
+  expect(
+    await screen.findByText("2 members have more than 15 minutes of actions."),
+  ).toBeTruthy();
+  expect(
+    screen.getByText("Counts other actions live during this launch: Survey"),
+  ).toBeTruthy();
+  expect(
+    screen.getByText(": 16 min (Call, Survey)", { exact: false }),
+  ).toBeTruthy();
+});
+
+it("lists the reminders the launch creates", async () => {
+  renderPanel();
+  expect(await screen.findByText("7 created on launch")).toBeTruthy();
+  expect(screen.getByText("Member Action announcement")).toBeTruthy();
+  expect(screen.getByText("Missed deadline message")).toBeTruthy();
+});
+
+it("shows each action's audience, task form link, and what to look at before checking it", async () => {
+  served[2] = { ...served[2], image: null, archived: true };
+  renderPanel();
+
+  const write = (await screen.findByText(/^1 members ·/)).closest("li");
+  expect(write?.textContent).toContain("Archived · No cover image");
+  expect(
+    write?.querySelector('[aria-label="Edit task form"]')?.getAttribute("href"),
+  ).toBe("/forms/5");
+  expect(screen.getByText(/^2 members ·/)).toBeTruthy();
 });

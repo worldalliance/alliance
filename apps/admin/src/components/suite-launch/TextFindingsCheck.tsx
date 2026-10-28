@@ -1,8 +1,13 @@
 import { RefreshCw, X } from "lucide-react";
-import { EditActionLink, iconControlClass } from "./ActionLinks";
+import {
+  EditActionLink,
+  EditTaskFormLink,
+  iconControlClass,
+} from "./ActionLinks";
 import {
   findingContext,
   TEXT_SOURCE_LABELS,
+  TextSource,
   type TextFinding,
 } from "./actionTextFindings";
 import LaunchCheck from "./LaunchCheck";
@@ -23,9 +28,7 @@ const TextFindingsCheck = ({
   onRecheck: () => void;
 }) => {
   const open = findings.filter((finding) => !dismissedKeys.has(finding.key));
-  const actionNames = new Map(
-    actions.map(({ action }) => [action.id, action.name]),
-  );
+  const actionsById = new Map(actions.map(({ action }) => [action.id, action]));
   return (
     <LaunchCheck
       title="Spelling and grammar"
@@ -47,12 +50,14 @@ const TextFindingsCheck = ({
       <ul className="divide-y divide-zinc-100">
         {open.map((finding) => {
           const { before, flagged, after } = findingContext(finding);
+          const action = actionsById.get(finding.actionId);
+          const taskFormId =
+            finding.source === TextSource.TaskForm ? action?.taskFormId : null;
           return (
             <li key={finding.key} className="flex items-center gap-2 py-2">
               <div className="flex-1 text-sm">
                 <p className="text-xs text-zinc-500">
-                  {TEXT_ISSUE_LABELS[finding.kind]} ·{" "}
-                  {actionNames.get(finding.actionId)} ·{" "}
+                  {TEXT_ISSUE_LABELS[finding.kind]} · {action?.name} ·{" "}
                   {TEXT_SOURCE_LABELS[finding.source]}
                 </p>
                 <p className="whitespace-pre-wrap font-mono text-xs">
@@ -63,7 +68,11 @@ const TextFindingsCheck = ({
                   {after}…
                 </p>
               </div>
-              <EditActionLink actionId={finding.actionId} />
+              {taskFormId ? (
+                <EditTaskFormLink formId={taskFormId} />
+              ) : (
+                <EditActionLink actionId={finding.actionId} />
+              )}
               <button
                 type="button"
                 onClick={() => onDismiss(finding.key)}

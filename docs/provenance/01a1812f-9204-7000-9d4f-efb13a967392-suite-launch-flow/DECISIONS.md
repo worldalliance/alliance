@@ -34,3 +34,11 @@
 
 - The sequence is: create the member event, then the office event, then the default reminder groups on the new member event. The default reminders come from the same list the reminders tab's "Populate default reminders" uses, now `defaultReminderBodies` in `presets.ts`.
 - The steps aren't atomic. When one fails, the panel stays open and says exactly what was created and what's left to add by hand.
+
+## Launch review additions
+
+- Distribution: members are grouped by the exact set of suite actions they get, most common first, with each group's minutes. A button per group adds one of its members to the preview, so each distinct experience is one click from "Log in as this member".
+- Weekly load counts other live actions: any non-archived, non-onboarding action outside the suite whose member action window overlaps the launch's adds its time estimate to the suite's members it includes. The contract promises at most 15 minutes a week, and a member in two overlapping suites feels both. Members only other actions reach aren't listed, since this launch doesn't change their load.
+- Reminder preview: the default reminders are listed by send time in Pacific time, computed with the office action event as the deadline. A reminder that would send before members start blocks launch, which happens when the window is shorter than three days.
+- Each action row shows its cohort's member count and description, an edit link for its task form, and notes to weigh before "I checked this": archived, no cover image, and an empty cohort. The notes don't block, because a cohort that depends on an earlier action can be empty at launch and some actions go without an image.
+- Placeholder text (TODO, TBD, TKTK, FIXME, lorem ipsum, `[insert …]`, `[add …]`, `[tbd …]`) is a text finding like the rest.

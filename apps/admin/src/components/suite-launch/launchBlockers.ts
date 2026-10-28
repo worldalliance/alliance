@@ -1,12 +1,16 @@
+import {
+  remindersBeforeLaunch,
+  type ReminderSendWindow,
+} from "./launchReminders";
 import type { LaunchSchedule } from "./launchSchedule";
-import { MAX_MEMBER_MINUTES } from "./memberLoad";
+import { MAX_MEMBER_MINUTES, totalMinutes } from "./memberLoad";
 import type { LaunchAction, SuiteLaunchData } from "./useSuiteLaunchData";
 
 const plural = (count: number, one: string, many: string) =>
   `${count} ${count === 1 ? one : many}`;
 
 export const overloadedMembers = (loads: SuiteLaunchData["loads"]) =>
-  loads.filter((load) => load.minutes > MAX_MEMBER_MINUTES);
+  loads.filter((load) => totalMinutes(load) > MAX_MEMBER_MINUTES);
 
 export function launchBlockers(params: {
   data: Pick<
@@ -21,6 +25,7 @@ export function launchBlockers(params: {
     actions: { action: { id: number }; unready: LaunchAction["unready"] }[];
   };
   schedule: LaunchSchedule;
+  reminderWindows: ReminderSendWindow[];
   hasMemberActionEvent: boolean;
   checkedActionIds: ReadonlySet<number>;
   dismissedFindingKeys: ReadonlySet<string>;
@@ -30,6 +35,7 @@ export function launchBlockers(params: {
   const {
     data,
     schedule,
+    reminderWindows,
     hasMemberActionEvent,
     checkedActionIds,
     dismissedFindingKeys,
@@ -48,6 +54,12 @@ export function launchBlockers(params: {
   }
   if (schedule.officeActionAt <= schedule.memberActionAt) {
     blockers.push("Office taking action must come after members start.");
+  }
+  const early = remindersBeforeLaunch(reminderWindows, schedule);
+  if (early.length > 0) {
+    blockers.push(
+      `${plural(early.length, "reminder would", "reminders would")} send before members start. Move office taking action later.`,
+    );
   }
   if (data.recipientCount === 0) {
     blockers.push("No member is assigned any action.");

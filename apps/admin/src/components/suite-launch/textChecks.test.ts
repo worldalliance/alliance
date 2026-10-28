@@ -60,6 +60,16 @@ describe("findTextIssues", () => {
     expect(flagged("Visit www.example.org", () => false)).toEqual([]);
   });
 
+  it("flags placeholder text left in", () => {
+    expect(
+      flagged("Call TODO by Friday, link [insert link here], lorem ipsum."),
+    ).toEqual([
+      { kind: TextIssueKind.Placeholder, text: "TODO" },
+      { kind: TextIssueKind.Placeholder, text: "[insert link here]" },
+      { kind: TextIssueKind.Placeholder, text: "lorem ipsum" },
+    ]);
+  });
+
   it("checks no spelling without a dictionary", () => {
     expect(flagged("yuor")).toEqual([]);
   });

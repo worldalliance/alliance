@@ -4,6 +4,13 @@ import { addDays, addHours, addMinutes, set, startOfHour } from "date-fns";
 export const LAUNCH_TIME_ZONE = "America/Los_Angeles";
 const MIN_LEAD_MINUTES = 30;
 
+export const inLaunchZone = (date: Date) =>
+  `${date.toLocaleString("en-US", {
+    timeZone: LAUNCH_TIME_ZONE,
+    dateStyle: "medium",
+    timeStyle: "short",
+  })} PT`;
+
 export type LaunchSchedule = { memberActionAt: Date; officeActionAt: Date };
 
 export function defaultLaunchSchedule(now: Date): LaunchSchedule {

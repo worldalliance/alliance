@@ -11,26 +11,22 @@ import { Rocket, X } from "lucide-react";
 import { useState } from "react";
 import { notifyRealMembersText } from "../../lib/notifyRealMembers";
 import { useActionReminderGroupsAdmin } from "../../lib/useActionReminderGroupsAdmin";
+import { defaultReminderBodies } from "../reminders/presets";
 import { iconControlClass } from "./ActionLinks";
 import ActionReviewCheck from "./ActionReviewCheck";
 import { launchBlockers } from "./launchBlockers";
 import LaunchCheck from "./LaunchCheck";
+import { reminderSendWindows } from "./launchReminders";
+import LaunchRemindersCheck from "./LaunchRemindersCheck";
 import {
   defaultLaunchSchedule,
-  LAUNCH_TIME_ZONE,
+  inLaunchZone,
   type LaunchSchedule,
 } from "./launchSchedule";
 import { launchSuite } from "./launchSuite";
 import { MemberLoadCheck, MemberPreview } from "./MemberChecks";
 import TextFindingsCheck from "./TextFindingsCheck";
 import { useSuiteLaunchData } from "./useSuiteLaunchData";
-
-const inLaunchZone = (date: Date) =>
-  `${date.toLocaleString("en-US", {
-    timeZone: LAUNCH_TIME_ZONE,
-    dateStyle: "medium",
-    timeStyle: "short",
-  })} PT`;
 
 const toggled = <T,>(set: ReadonlySet<T>, item: T, on: boolean) => {
   const next = new Set(set);
@@ -50,11 +46,15 @@ const SuiteLaunchPanel = ({
   onClose: () => void;
 }) => {
   const { confirm, success } = useToast();
-  const data = useSuiteLaunchData(suite);
   const createReminders = useActionReminderGroupsAdmin(null).create;
   const [schedule, setSchedule] = useState<LaunchSchedule>(() =>
     defaultLaunchSchedule(new Date()),
   );
+  const data = useSuiteLaunchData(suite, schedule);
+  const reminderWindows = reminderSendWindows({
+    bodies: defaultReminderBodies({ suiteId: suite.id, hasDeadline: true }),
+    schedule,
+  });
   const [checkedActionIds, setCheckedActionIds] = useState<ReadonlySet<number>>(
     new Set(),
   );
@@ -80,6 +80,7 @@ const SuiteLaunchPanel = ({
   const blockers = launchBlockers({
     data,
     schedule,
+    reminderWindows,
     hasMemberActionEvent: suite.events.some(
       (event) => event.newStatus === "member_action",
     ),
@@ -161,6 +162,7 @@ const SuiteLaunchPanel = ({
           </label>
         </div>
       </LaunchCheck>
+      <LaunchRemindersCheck windows={reminderWindows} schedule={schedule} />
 
       {data.errors.length > 0 && (
         <ul className="text-sm text-red-500">
@@ -183,6 +185,7 @@ const SuiteLaunchPanel = ({
           <MemberLoadCheck
             loads={data.loads}
             actions={data.actions}
+            otherActions={data.otherActions}
             acknowledged={overloadAcknowledged}
             onAcknowledgedChange={setOverloadAcknowledged}
           />
