@@ -12,6 +12,12 @@ import texture from "../assets/redesign/drought-image.png?w=800;1600;2400&format
 export const SITE_COL =
   "mx-auto w-full max-w-[1750px] px-5 sm:px-8 lg:px-[68px]";
 
+/** The site's solid button; pair a tone with `SITE_BUTTON_STYLE`. */
+export const SITE_BUTTON =
+  "inline-flex min-h-11 items-center gap-2 px-4 text-base font-medium transition-colors";
+export const SITE_BUTTON_DARK = "bg-black text-white hover:bg-zinc-800";
+export const SITE_BUTTON_STYLE = { borderRadius: "var(--site-radius-button)" };
+
 /**
  * `display: contents` on the wrapper so the img stays a direct visual child of
  * the card it is absolutely positioned against.

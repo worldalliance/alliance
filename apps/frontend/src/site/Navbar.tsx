@@ -14,7 +14,13 @@ import {
   PARTNER_HREF,
   TASKS_HREF,
 } from "./links";
-import { Logotype, SITE_COL } from "./ui";
+import {
+  Logotype,
+  SITE_BUTTON,
+  SITE_BUTTON_DARK,
+  SITE_BUTTON_STYLE,
+  SITE_COL,
+} from "./ui";
 
 /** Height the pages reserve for the bar, which floats over their first band. */
 export const NAV_HEIGHT = 78;
@@ -161,7 +167,7 @@ export function Navbar({
             <Link
               to={accountHref}
               className={cn(
-                "inline-flex min-h-11 items-center gap-2 px-4 text-base font-medium transition-colors",
+                SITE_BUTTON,
                 inviteSignupHref
                   ? "max-[560px]:hidden"
                   : showSignup
@@ -169,9 +175,9 @@ export function Navbar({
                     : "max-[310px]:hidden",
                 light
                   ? "bg-white text-black hover:bg-zinc-100"
-                  : "bg-black text-white hover:bg-zinc-800",
+                  : SITE_BUTTON_DARK,
               )}
-              style={{ borderRadius: "var(--site-radius-button)" }}
+              style={SITE_BUTTON_STYLE}
             >
               {accountLabel}
               <SiteArrow
