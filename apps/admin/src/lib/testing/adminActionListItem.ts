@@ -13,6 +13,7 @@ export const adminActionListItem = (
   shortDescription: "",
   timeEstimate: null,
   squareThumbnailImage: null,
+  taskFormId: null,
   squareThumbnailImageAlt: null,
   customStatType: "none",
   customStatValue: null,

@@ -34,9 +34,18 @@ const api = serveApi(
       loads.push(new URL(request.url).pathname);
       return Response.json([makeProfile(5)]);
     },
-    "GET /tasks/adminForm/:id": ({ params }) =>
-      Response.json({ id: Number(params.id), title: "Form", schema: {} }),
-    "GET /tasks/responses/:id": () => Response.json([makeFormResponse()]),
+    "GET /tasks/adminForm/:id": ({ params, request }) => {
+      loads.push(new URL(request.url).pathname);
+      return Response.json({
+        id: Number(params.id),
+        title: "Form",
+        schema: {},
+      });
+    },
+    "GET /tasks/responses/:id": ({ request }) => {
+      loads.push(new URL(request.url).pathname);
+      return Response.json([makeFormResponse()]);
+    },
   }),
 );
 
@@ -51,6 +60,7 @@ const started: NonNullable<Parameters<typeof useActionReporting>[0]> = {
   optional: false,
   status: "member_action",
   events: [makeEvent()],
+  taskFormId: null,
 };
 
 describe("useActionReporting", () => {
@@ -132,6 +142,17 @@ describe("useActionReporting", () => {
     await waitFor(() => expect(view.result.current.actionStats).not.toBeNull());
     expect(loads).not.toContain("/actions/3/incomplete-users");
     expect(view.result.current.incompleteUsers).toEqual([]);
+  });
+
+  it("loads no task form or responses for an action without one", async () => {
+    const view = renderHook(
+      () => useActionReporting(started, 3),
+      queryWrapper(),
+    );
+
+    await waitFor(() => expect(view.result.current.actionStats).not.toBeNull());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(loads.filter((path) => path.startsWith("/tasks/"))).toEqual([]);
   });
 
   it("loads the task form and its responses", async () => {

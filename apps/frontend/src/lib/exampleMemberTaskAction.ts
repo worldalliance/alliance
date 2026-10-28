@@ -20,6 +20,7 @@ export const exampleMemberTaskAction: ActionWithAwayStatus = {
   computedAutocompleteAt: null,
   timeEstimate: 5,
   squareThumbnailImage: null,
+  taskFormId: null,
   squareThumbnailImageAlt: null,
   customStatType: "none",
   customStatValue: null,

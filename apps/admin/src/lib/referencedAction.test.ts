@@ -23,6 +23,7 @@ describe("referencedActionFromListItem", () => {
     expect(
       referencedActionFromListItem({
         id: 2,
+        taskFormId: null,
         variantFormIds: [],
         onboarding: false,
         memberActionDeadline: null,

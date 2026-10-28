@@ -26,6 +26,7 @@ function mockTask(
     customStatValue: null,
     customStatLabel: null,
     customStatGoal: null,
+    taskFormId: null,
     status: "member_action",
     visibilityMode: "public",
     isContractSigningAction: false,

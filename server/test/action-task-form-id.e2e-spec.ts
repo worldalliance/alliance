@@ -5,7 +5,7 @@ import { Action } from "../src/actions/entities/action.entity";
 import { TasksModule } from "../src/tasks/tasks.module";
 import {
   createActionAsAdmin,
-  createActionDefaults,
+  getActionAsAdmin,
   patchActionAsAdmin,
 } from "./action-requests";
 import { createTestApp, TestContext } from "./e2e-test-utils";
@@ -51,6 +51,35 @@ describe("Action task form id (e2e)", () => {
     return form.body.id;
   };
 
+  it("returns null for the form on an action created without one", async () => {
+    const created = await create({}).expect(201);
+    expect(created.body.taskFormId).toBeNull();
+
+    const fetched = await getActionAsAdmin(ctx, created.body.id).expect(200);
+    expect(fetched.body.taskFormId).toBeNull();
+  });
+
+  it("sets the form, keeps it when a patch leaves it out, and clears it with null", async () => {
+    const taskFormId = await createForm();
+    const created = await create({ taskFormId }).expect(201);
+    expect(created.body.taskFormId).toBe(taskFormId);
+
+    const renamed = await patchActionAsAdmin(ctx, created.body.id, {
+      name: "action-task-form-id e2e renamed",
+    }).expect(200);
+    expect(renamed.body.taskFormId).toBe(taskFormId);
+
+    const cleared = await patchActionAsAdmin(ctx, created.body.id, {
+      taskFormId: null,
+    }).expect(200);
+    expect(cleared.body.taskFormId).toBeNull();
+
+    const stored = await ctx.dataSource
+      .getRepository(Action)
+      .findOneByOrFail({ id: created.body.id });
+    expect(stored.taskFormId).toBeNull();
+  });
+
   it("saves a null form while another action has a form variant", async () => {
     const withVariant = await create({ taskFormId: await createForm() }).expect(
       201,
@@ -69,15 +98,7 @@ describe("Action task form id (e2e)", () => {
     }).expect(200);
     expect(cleared.body.taskFormId).toBeNull();
 
-    const createdWithout = await request(ctx.app.getHttpServer())
-      .post("/actions/create")
-      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-      .send({
-        ...createActionDefaults,
-        name: "action-task-form-id e2e",
-        taskFormId: null,
-      })
-      .expect(201);
+    const createdWithout = await create({ taskFormId: null }).expect(201);
     expect(createdWithout.body.taskFormId).toBeNull();
   });
 
@@ -91,4 +112,14 @@ describe("Action task form id (e2e)", () => {
       .expect(200);
     expect(exported.body.taskForm).toBeUndefined();
   });
+
+  it.each(["", "5", 1.5, 0, -1, 2_147_483_648, true])(
+    "rejects a form id of %p",
+    async (taskFormId) => {
+      const created = await create({}).expect(201);
+      await patchActionAsAdmin(ctx, created.body.id, { taskFormId }).expect(
+        400,
+      );
+    },
+  );
 });

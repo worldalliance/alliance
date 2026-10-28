@@ -25,7 +25,7 @@ describe("sidebarProgressFormIds", () => {
 
   it("drops an action without a task form", () => {
     expect(
-      sidebarProgressFormIds([makeAction({ taskFormId: undefined })]),
+      sidebarProgressFormIds([makeAction({ taskFormId: null })]),
     ).toStrictEqual([]);
   });
 });

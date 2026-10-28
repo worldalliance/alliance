@@ -121,7 +121,7 @@ export class ActionFormVariantService {
     const action = await this.actionRepo.findOne({ where: { id: actionId } });
     if (!action) throw new NotFoundException("Action not found");
 
-    const sourceFormId = input.sourceFormId ?? action.taskFormId ?? null;
+    const sourceFormId = input.sourceFormId ?? action.taskFormId;
     if (sourceFormId == null) {
       throw new BadRequestException(
         "Action has no form to clone. Set the action form first or pass sourceFormId.",
@@ -472,7 +472,7 @@ export class ActionFormVariantService {
     stats.push({
       variantId: null,
       name: "Default",
-      formId: action.taskFormId ?? null,
+      formId: action.taskFormId,
       splitValue: null,
       assigned: assignedByVariant.get(null) ?? 0,
       submitted: submittedByVariant.get(null) ?? 0,

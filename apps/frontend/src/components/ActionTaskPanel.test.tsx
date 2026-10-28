@@ -41,7 +41,10 @@ beforeEach(() => localStorage.clear());
 const renderPanel = (
   props: Pick<ActionTaskPanelProps, "action"> &
     Partial<
-      Pick<ActionTaskPanelProps, "onCompleteAction" | "onDeadlinePassed">
+      Pick<
+        ActionTaskPanelProps,
+        "onCompleteAction" | "onDeadlinePassed" | "disabled"
+      >
     >,
 ) =>
   render(
@@ -120,5 +123,15 @@ describe("ActionTaskPanel past the deadline", () => {
 
     expect(await screen.findByText(MEMBER_ACTION_DEADLINE_PASSED)).toBeTruthy();
     expect(onDeadlinePassed).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("ActionTaskPanel while disabled", () => {
+  it("renders no task form for an action without one", async () => {
+    renderPanel({ action: makeAction({ taskFormId: null }), disabled: true });
+    await act(async () => {});
+
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.queryByRole("status", { name: "Loading..." })).toBeNull();
   });
 });
