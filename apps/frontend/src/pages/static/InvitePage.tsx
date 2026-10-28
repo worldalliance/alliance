@@ -170,7 +170,7 @@ const InvitePage: React.FC = () => {
         </div>
       </section>
       <LandingBody />
-      <JoinCta to={signupTo} heading="Create an account" />
+      <JoinCta to={signupTo} label="Create an account" />
       <SiteFooter />
     </SiteRoot>
   );

@@ -400,7 +400,7 @@ const OnboardingPage = () => {
           <LandingBody />
           <JoinCta
             to={inviteRefusal ? undefined : ACCOUNT_ANCHOR}
-            heading={inviteRefusal ? undefined : "Create an account"}
+            label={inviteRefusal ? undefined : "Create an account"}
           />
           <SiteFooter />
         </>
