@@ -2,15 +2,10 @@ import {
   formSchema,
   type FormSchema,
 } from "@alliance/common/forms/form-schema";
-import type {
-  ActionSuiteDto,
-  AdminActionListItemDto,
-} from "@alliance/shared/client";
+import type { ActionSuiteDto } from "@alliance/shared/client";
 import { actionAdminQuery } from "@alliance/shared/lib/useActionAdmin";
-import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
 import { adminTaskFormQuery } from "@alliance/shared/lib/useTaskForm";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
-import { parseActionDto } from "@alliance/shared/parsed-dtos";
 import {
   hashKey,
   useQueries,
@@ -23,9 +18,7 @@ import {
   type ReadinessCheckItem,
 } from "../../pages/action-dashboard/actionReadiness";
 import { actionTextFindings, type TextFinding } from "./actionTextFindings";
-import type { LaunchSchedule } from "./launchSchedule";
 import { memberLoads, type MemberLoad } from "./memberLoad";
-import { otherLiveActions } from "./otherLiveActions";
 import { spellcheckerQuery } from "./spellchecker";
 
 export type LaunchAction = {
@@ -37,7 +30,6 @@ export type LaunchAction = {
 export type SuiteLaunchData = {
   actions: LaunchAction[];
   loads: MemberLoad[];
-  otherActions: AdminActionListItemDto[];
   recipientCount: number;
   textFindings: TextFinding[];
   errors: string[];
@@ -56,10 +48,7 @@ function distinctQueries<T extends { queryKey: QueryKey }>(queries: T[]) {
   };
 }
 
-export function useSuiteLaunchData(
-  suite: ActionSuiteDto,
-  schedule: LaunchSchedule,
-): SuiteLaunchData {
+export function useSuiteLaunchData(suite: ActionSuiteDto): SuiteLaunchData {
   const actionResults = useQueries({
     queries: suite.actions.map((action) => actionAdminQuery(action.id)),
   });
@@ -77,17 +66,6 @@ export function useSuiteLaunchData(
   const cohortResults = useQueries({ queries: cohorts.queries });
   const cohortResultOf = (index: number) => cohortResults[cohorts.slots[index]];
   const spellchecker = useQuery(spellcheckerQuery);
-  const allActions = useActionsAdmin();
-  const otherActions = otherLiveActions({
-    actions: allActions.data ?? [],
-    suiteId: suite.id,
-    schedule,
-  });
-  const otherCohortResults = useQueries({
-    queries: otherActions.map((dto) =>
-      cohortEvaluationQuery(parseActionDto(dto).action.cohortExpression),
-    ),
-  });
 
   const errors: string[] = [];
   const actions: LaunchAction[] = [];
@@ -123,13 +101,8 @@ export function useSuiteLaunchData(
       }),
     );
   });
-  otherActions.forEach((action, index) => {
-    const cohort = otherCohortResults[index].data;
-    if (cohort) cohortByActionId.set(action.id, cohort.userIds);
-  });
   const loads = memberLoads({
     actions: actions.map(({ action }) => action),
-    otherActions,
     cohortByActionId,
   });
 
@@ -144,19 +117,11 @@ export function useSuiteLaunchData(
         ? [`Failed to load the task form for ${action.name}.`]
         : [],
     ),
-    ...[
-      ...suite.actions.map((action, index) => ({
-        result: cohortResultOf(index),
-        name: action.name,
-      })),
-      ...otherCohortResults.map((result, index) => ({
-        result,
-        name: otherActions[index].name,
-      })),
-    ].flatMap(({ result, name }) =>
-      result.isError ? [`Failed to evaluate the cohort for ${name}.`] : [],
+    ...suite.actions.flatMap((action, index) =>
+      cohortResultOf(index).isError
+        ? [`Failed to evaluate the cohort for ${action.name}.`]
+        : [],
     ),
-    ...(allActions.isError ? ["Failed to load the other live actions."] : []),
     ...(spellchecker.isError
       ? ["Failed to load the spelling dictionary."]
       : []),
@@ -165,17 +130,12 @@ export function useSuiteLaunchData(
   return {
     actions,
     loads,
-    otherActions,
     recipientCount: loads.length,
     textFindings,
     errors: [...loadErrors, ...errors],
-    loading: [
-      ...actionResults,
-      ...formResults,
-      ...cohortResults,
-      ...otherCohortResults,
-      allActions,
-    ].some((result) => result.isLoading),
+    loading: [...actionResults, ...formResults, ...cohortResults].some(
+      (result) => result.isLoading,
+    ),
     spellcheckLoading: spellchecker.isLoading,
     refetch: () => {
       for (const result of [...actionResults, ...formResults, ...cohortResults])

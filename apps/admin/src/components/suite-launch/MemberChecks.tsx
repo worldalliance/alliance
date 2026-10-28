@@ -1,4 +1,4 @@
-import type { AdminActionListItemDto, UserDto } from "@alliance/shared/client";
+import type { UserDto } from "@alliance/shared/client";
 import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import { Eye, LogIn } from "lucide-react";
 import { useState } from "react";
@@ -7,12 +7,7 @@ import { useUsersAdmin } from "../../lib/useUsersAdmin";
 import { ActionLinks, iconControlClass } from "./ActionLinks";
 import { overloadedMembers } from "./launchBlockers";
 import LaunchCheck from "./LaunchCheck";
-import {
-  actionMixes,
-  MAX_MEMBER_MINUTES,
-  totalMinutes,
-  type MemberLoad,
-} from "./memberLoad";
+import { actionMixes, MAX_MEMBER_MINUTES, type MemberLoad } from "./memberLoad";
 import type { LaunchAction } from "./useSuiteLaunchData";
 
 const SHOWN_OVERLOADED = 10;
@@ -23,23 +18,18 @@ const nameOf = (users: Map<number, UserDto>, userId: number) =>
 export const MemberLoadCheck = ({
   loads,
   actions,
-  otherActions,
   acknowledged,
   onAcknowledgedChange,
 }: {
   loads: MemberLoad[];
   actions: LaunchAction[];
-  otherActions: AdminActionListItemDto[];
   acknowledged: boolean;
   onAcknowledgedChange: (acknowledged: boolean) => void;
 }) => {
   const { data: users = [] } = useUsersAdmin();
   const usersById = new Map(users.map((user) => [user.id, user]));
   const actionNames = new Map(
-    [...actions.map(({ action }) => action), ...otherActions].map((action) => [
-      action.id,
-      action.name,
-    ]),
+    actions.map(({ action }) => [action.id, action.name]),
   );
   const overloaded = overloadedMembers(loads);
   return (
@@ -48,12 +38,6 @@ export const MemberLoadCheck = ({
       passed={overloaded.length === 0 || acknowledged}
       summary={`${overloaded.length} of ${loads.length} assigned members over`}
     >
-      {otherActions.length > 0 && (
-        <p className="text-xs text-zinc-500">
-          Counts other actions live during this launch:{" "}
-          {otherActions.map((action) => action.name).join(", ")}
-        </p>
-      )}
       {overloaded.length > 0 && (
         <>
           <ul className="text-sm">
@@ -62,11 +46,8 @@ export const MemberLoadCheck = ({
                 <span className="font-medium">
                   {nameOf(usersById, load.userId)}
                 </span>
-                : {totalMinutes(load)} min (
-                {[...load.actionIds, ...load.otherActionIds]
-                  .map((id) => actionNames.get(id))
-                  .join(", ")}
-                )
+                : {load.minutes} min (
+                {load.actionIds.map((id) => actionNames.get(id)).join(", ")})
               </li>
             ))}
           </ul>
@@ -159,9 +140,7 @@ export const MemberPreview = ({
                   {nameOf(usersById, userId)}
                 </span>
                 <span className="text-xs text-zinc-500">
-                  {load
-                    ? `${load.minutes} min${load.otherMinutes > 0 ? ` + ${load.otherMinutes} min from other live actions` : ""}`
-                    : "No actions assigned"}
+                  {load ? `${load.minutes} min` : "No actions assigned"}
                 </span>
                 <a
                   href={`${getApiUrl()}/auth/impersonate/${userId}`}

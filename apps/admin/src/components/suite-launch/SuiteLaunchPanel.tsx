@@ -55,7 +55,7 @@ const SuiteLaunchPanel = ({
   const [schedule, setSchedule] = useState<LaunchSchedule>(() =>
     defaultLaunchSchedule(new Date()),
   );
-  const data = useSuiteLaunchData(suite, schedule);
+  const data = useSuiteLaunchData(suite);
   const reminderBodies = defaultReminderBodies({
     suiteId: suite.id,
     hasDeadline: true,
@@ -200,7 +200,6 @@ const SuiteLaunchPanel = ({
           <MemberLoadCheck
             loads={data.loads}
             actions={data.actions}
-            otherActions={data.otherActions}
             acknowledged={overloadAcknowledged}
             onAcknowledgedChange={setOverloadAcknowledged}
           />

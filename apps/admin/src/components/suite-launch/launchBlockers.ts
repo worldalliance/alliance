@@ -4,14 +4,14 @@ import {
   type ReminderSendWindow,
 } from "./launchReminders";
 import { scheduleProblems, type LaunchSchedule } from "./launchSchedule";
-import { MAX_MEMBER_MINUTES, totalMinutes } from "./memberLoad";
+import { MAX_MEMBER_MINUTES } from "./memberLoad";
 import type { LaunchAction, SuiteLaunchData } from "./useSuiteLaunchData";
 
 const plural = (count: number, one: string, many: string) =>
   `${count} ${pickForCount(count, one, many)}`;
 
 export const overloadedMembers = (loads: SuiteLaunchData["loads"]) =>
-  loads.filter((load) => totalMinutes(load) > MAX_MEMBER_MINUTES);
+  loads.filter((load) => load.minutes > MAX_MEMBER_MINUTES);
 
 export function launchBlockers(params: {
   data: Pick<
