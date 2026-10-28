@@ -25,7 +25,9 @@ import {
 import {
   groupMembersListUrl,
   membershipUrl,
+  passwordResetUrl,
   tasksUrl,
+  verifyEmailUrl,
 } from "src/search/approutes";
 import { User } from "src/user/entities/user.entity";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
@@ -313,14 +315,10 @@ export class MailService {
       subject: "Welcome to the Alliance",
       context: {
         name,
-        url: `${process.env.APP_URL}/verifyEmail?token=${verifyToken}`,
+        url: verifyEmailUrl(verifyToken),
       },
       tracking: null,
     });
-  }
-
-  private getPasswordResetUrl(resetToken: string) {
-    return `${process.env.APP_URL}/resetpassword?token=${resetToken}`; //todo: domain param
   }
 
   public async sendPasswordResetEmail(params: {
@@ -330,7 +328,7 @@ export class MailService {
     hasPassword: boolean;
   }): Promise<Mail> {
     const { email, name, resetToken, hasPassword } = params;
-    const url = this.getPasswordResetUrl(resetToken);
+    const url = passwordResetUrl(resetToken);
     const verb = hasPassword ? "reset" : "set";
     return this.sendMail({
       recipient: email,
