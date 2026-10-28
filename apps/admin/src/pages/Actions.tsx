@@ -190,13 +190,17 @@ const ActionsList: React.FC = () => {
           </h2>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(360px,1fr))] gap-4">
             {suitesInProgress.map((suite) => (
-              <Link
+              <div
                 key={suite.id}
-                to={`/suites/${suite.id}`}
-                className="flex flex-col gap-3 rounded-lg border border-zinc-200 bg-white p-4 text-sm hover:border-green"
+                className="relative flex flex-col gap-3 rounded-lg border border-zinc-200 bg-white p-4 text-sm hover:border-green"
               >
                 <div>
-                  <span className="font-semibold">{suite.name}</span>
+                  <Link
+                    to={`/suites/${suite.id}`}
+                    className="font-semibold after:absolute after:inset-0"
+                  >
+                    {suite.name}
+                  </Link>
                   <span className="ml-2 text-xs text-zinc-500">
                     {[
                       suite.activeCount > 0 && `${suite.activeCount} active`,
@@ -206,17 +210,22 @@ const ActionsList: React.FC = () => {
                       .join(" · ")}
                   </span>
                 </div>
-                <ul className="space-y-1.5">
+                <ul className="space-y-2">
                   {suite.actions.map((action) => (
-                    <li key={action.id} className="flex items-start gap-2">
-                      <span className="mt-0.5 rounded bg-zinc-100 px-1 text-[10px] uppercase text-zinc-600">
-                        {ACTION_STATUS_BUCKET_LABELS[action.bucket]}
-                      </span>
-                      {action.name}
+                    <li key={action.id}>
+                      <Link
+                        to={`/actions/${action.id}`}
+                        className="relative z-10 flex items-start gap-2 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 hover:border-green hover:bg-white"
+                      >
+                        <span className="mt-0.5 rounded bg-zinc-200 px-1 text-[10px] uppercase text-zinc-600">
+                          {ACTION_STATUS_BUCKET_LABELS[action.bucket]}
+                        </span>
+                        {action.name}
+                      </Link>
                     </li>
                   ))}
                 </ul>
-              </Link>
+              </div>
             ))}
           </div>
         </section>
