@@ -3,7 +3,11 @@ import request from "supertest";
 import { CreateActionDto } from "../src/actions/dto/action.dto";
 import { Action } from "../src/actions/entities/action.entity";
 import { TasksModule } from "../src/tasks/tasks.module";
-import { createActionAsAdmin } from "./action-requests";
+import {
+  createActionAsAdmin,
+  createActionDefaults,
+  patchActionAsAdmin,
+} from "./action-requests";
 import { createTestApp, TestContext } from "./e2e-test-utils";
 
 const schema: FormSchema = {
@@ -46,6 +50,36 @@ describe("Action task form id (e2e)", () => {
       .expect(201);
     return form.body.id;
   };
+
+  it("saves a null form while another action has a form variant", async () => {
+    const withVariant = await create({ taskFormId: await createForm() }).expect(
+      201,
+    );
+    await request(ctx.app.getHttpServer())
+      .post(`/actions/${withVariant.body.id}/form-variants`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({ name: "B", splitValue: 1 })
+      .expect(201);
+
+    const created = await create({ taskFormId: await createForm() }).expect(
+      201,
+    );
+    const cleared = await patchActionAsAdmin(ctx, created.body.id, {
+      taskFormId: null,
+    }).expect(200);
+    expect(cleared.body.taskFormId).toBeNull();
+
+    const createdWithout = await request(ctx.app.getHttpServer())
+      .post("/actions/create")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({
+        ...createActionDefaults,
+        name: "action-task-form-id e2e",
+        taskFormId: null,
+      })
+      .expect(201);
+    expect(createdWithout.body.taskFormId).toBeNull();
+  });
 
   it("exports no task form for an action without one", async () => {
     await createForm();

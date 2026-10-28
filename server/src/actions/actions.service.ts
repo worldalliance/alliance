@@ -129,7 +129,7 @@ export class ActionsService {
         value: rest.cohortExpression,
       });
     }
-    if (rest.taskFormId !== undefined) {
+    if (rest.taskFormId != null) {
       await this.formLinks.assertFormIdNotUsedAsVariant(rest.taskFormId);
     }
     const action = this.actionRepository.create(rest);
@@ -391,10 +391,7 @@ export class ActionsService {
       );
     }
 
-    if (
-      rest.taskFormId !== undefined &&
-      rest.taskFormId !== action.taskFormId
-    ) {
+    if (rest.taskFormId != null && rest.taskFormId !== action.taskFormId) {
       await this.formLinks.assertFormIdNotUsedAsVariant(rest.taskFormId);
     }
 
