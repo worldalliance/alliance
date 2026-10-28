@@ -18,6 +18,7 @@ export const testActions: ActionDto[] = [
     timeEstimate: 5,
     squareThumbnailImageAlt: null,
     customStatType: "none",
+    customStatGoal: null,
     usersJoined: 234,
     shortDescription:
       "Gold mining companies are expressing interest in a highly biodiverse, unprotected area. We can outpace these companies by purchasing the land from the current owner, Susie.",
@@ -70,6 +71,7 @@ export const testActions: ActionDto[] = [
     timeEstimate: 5,
     squareThumbnailImageAlt: null,
     customStatType: "none",
+    customStatGoal: null,
     usersJoined: 234,
     shortDescription:
       "Target has the power to stop millions of plastic bottles from polluting our planet. By applying pressure, we can make them stop stocking Coca-Cola single-use plastic bottles.",

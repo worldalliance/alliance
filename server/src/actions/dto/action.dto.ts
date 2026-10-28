@@ -257,7 +257,6 @@ export class CreateActionDto extends IntersectionType(
     "isForumParticipationAction",
     "customStatLabel",
     "customStatValue",
-    "customStatGoal",
   ]),
   PartialType(PickType(ActionDto, ["customStatType"]), {
     skipNullProperties: false,
@@ -266,6 +265,7 @@ export class CreateActionDto extends IntersectionType(
     PickType(ActionDto, [
       "squareThumbnailImageAlt",
       "timeEstimate",
+      "customStatGoal",
       "forumParticipationPostId",
       "forumParticipationIncludeChildren",
       "computedAutocompleteAt",
