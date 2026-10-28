@@ -1,11 +1,8 @@
 import { R } from "@alliance/common/result";
-import {
-  ActionDto,
-  CreateActionDto,
-  tasksGetFormAdmin,
-} from "@alliance/shared/client";
+import { ActionDto, CreateActionDto } from "@alliance/shared/client";
 import type { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { useCreateFormAdmin } from "@alliance/shared/lib/useFormsAdmin";
+import { useAdminTaskFormActions } from "@alliance/shared/lib/useTaskForm";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback } from "react";
 import { useNavigate } from "react-router";
@@ -55,6 +52,7 @@ export function useActionCommands(params: {
   } = params;
   const navigate = useNavigate();
   const { createForm } = useCreateFormAdmin();
+  const { fetchLatest } = useAdminTaskFormActions();
   const handleActionCreated = useNavigateToCreatedAction();
 
   const handleDuplicate = useCallback(async () => {
@@ -65,15 +63,19 @@ export function useActionCommands(params: {
 
     let taskFormId = form.taskFormId;
     if (taskFormId) {
-      const copied = await R.fromPromise(
-        tasksGetFormAdmin({
-          path: { id: taskFormId },
-          throwOnError: true,
-        }).then(({ data }) =>
-          createForm({ title: data.title + " (Copy)", schema: data.schema }),
-        ),
-        logActionError("Failed to duplicate the action's task form"),
+      const failed = logActionError(
+        "Failed to duplicate the action's task form",
       );
+      const read = await fetchLatest(taskFormId);
+      const copied = read.ok
+        ? await R.fromPromise(
+            createForm({
+              title: read.value.title + " (Copy)",
+              schema: read.value.schema,
+            }),
+            failed,
+          )
+        : R.failure(failed(read.error));
       if (!copied.ok) {
         setError(copied.error);
         return;
@@ -103,6 +105,7 @@ export function useActionCommands(params: {
     imageUploading,
     createAction,
     createForm,
+    fetchLatest,
     handleActionCreated,
     setError,
   ]);
