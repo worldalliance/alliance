@@ -187,13 +187,12 @@ const guideExtras: Record<GuideSectionKind, ReactNode> = {
   ),
   [GuideSectionKind.Projects]: (
     <div className="flex flex-col gap-6">
-      {/* The two screens a member sees: the action, then what came of it. */}
       <div className="grid gap-3 sm:grid-cols-3">
         {FEATURED_IMPACT_ACTIONS.slice(0, 3).map((action) => (
           <ImpactCard
             key={action.actionId}
             action={action}
-            className="bg-zinc-100"
+            className="bg-zinc-50"
           />
         ))}
       </div>

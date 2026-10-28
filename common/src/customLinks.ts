@@ -10,6 +10,7 @@ export const CUSTOM_LINK_RESERVED_SLUGS = new Set([
   "description",
   "faq",
   "invite",
+  "partner",
   "outreach-partner",
   "privacypolicy",
   "childsafety",

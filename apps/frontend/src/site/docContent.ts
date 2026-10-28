@@ -24,7 +24,7 @@ export const GUIDE_SECTIONS: Record<GuideSectionKind, GuideSectionCopy> = {
     markdown: `
 The Alliance aims to facilitate **large-scale coordination** over the Internet. We are focused on four **global crises**: extreme poverty, environmental destruction, democratic decline, and dangerous technological development.
 
-**Reliability** is key to our strategy. Every week, committed members participate in collective actions that advance our shared goals. Since we can count on members, we can plan each action with precision and predict whether it will succeed.
+**Reliability** is key to our strategy. Members commit to participate in weekly projects that advance our shared goals. Since we can count on members, we can plan projects with precision and predict whether they will succeed.
 
 We are in an experimental, invite-only stage. Eventually, we hope to unite millions of people behind an **expert-guided, democratically approved plan** that strategically mobilizes our collective economic, political, and social resources.
 `,
@@ -37,7 +37,7 @@ The Alliance is composed of:
 1. **A full-time office** that designs tasks to advance our priorities.
 2. **Members** who commit to complete tasks assigned to them.
 
-We built an online platform (web and mobile apps) that members use to complete tasks.
+Members complete task on our web and mobile apps.
 
 We depend on members reliably completing the tasks they are assigned. Since we know exactly how many people will participate in an action, we can plan precise and effective actions. For example, we can:
 

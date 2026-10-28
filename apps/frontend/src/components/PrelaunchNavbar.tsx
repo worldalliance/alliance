@@ -82,7 +82,7 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
     [NavbarPage.People]: href("/people"),
     [NavbarPage.Guide]: href("/guide"),
     [NavbarPage.Progress]: href("/progress"),
-    [NavbarPage.Partner]: href("/outreach-partner"),
+    [NavbarPage.Partner]: href("/partner"),
     [NavbarPage.LogIn]: isAuthenticated ? href("/tasks") : href("/login"),
   };
 

@@ -14,7 +14,7 @@ import {
   type ProgressProject,
 } from "../../content/projects";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
-import { ProgressLinkCard } from "../../site/PageCards";
+import { ImpactCard, ProgressLinkCard } from "../../site/PageCards";
 import { PageBand, PageShell } from "../../site/PageShell";
 import { matchesPriorities } from "./matchesPriorities";
 
@@ -137,18 +137,7 @@ function ProgressCard({ item }: { item: ProgressItem }) {
         />
       );
     case ProgressItemKind.Action:
-      return (
-        <ProgressLinkCard
-          title={item.action.emphasis}
-          description={item.action.rest}
-          tags={item.action.tags}
-          to={item.action.customLink}
-          arrow
-          imageSrc={item.action.imageSrc}
-          imageAlt={item.action.imageAlt}
-          className={className}
-        />
-      );
+      return <ImpactCard action={item.action} className={className} />;
     default:
       throw new Error(`unknown kind: ${item satisfies never}`);
   }

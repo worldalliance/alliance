@@ -1,4 +1,4 @@
-export const PARTNER_TITLE = "Mobilize an online community";
+export const PARTNER_TITLE = "Engage our online community";
 
 export const PARTNER_RELY_TITLE =
   "Our unique model allows partners to rely on us";

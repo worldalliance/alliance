@@ -20,7 +20,7 @@ function PriorityTags({ tags }: { tags: ActionPriorityTags }) {
       {tags.map((tag) => (
         <li
           key={tag}
-          className="text-xs font-medium bg-(--site-primary) px-2.5 py-1 rounded-md text-white tracking-wide"
+          className="text-xs font-medium bg-zinc-200 px-2.5 py-1 rounded-md text-zinc-500 tracking-wide"
         >
           {ACTION_PRIORITY_LABELS[tag]}
         </li>
@@ -105,7 +105,6 @@ export function ProgressLinkCard({
   imageSrc,
   imageAlt,
   arrow = false,
-  tagsAtBottom = false,
 }: {
   title: string;
   description: string;
@@ -115,21 +114,15 @@ export function ProgressLinkCard({
   imageSrc?: string;
   imageAlt?: string;
   arrow?: boolean;
-  tagsAtBottom?: boolean;
 }) {
   return (
     <ProgressCardLink to={to} className={className}>
-      <div
-        className={cn(
-          "flex items-center gap-4",
-          tagsAtBottom && "flex-1 items-stretch",
-        )}
-      >
+      <div className="flex items-center gap-4">
         <div className="flex min-w-0 flex-1 flex-col">
           <ProgressCardCopy
             title={title}
             description={description}
-            tags={tagsAtBottom ? undefined : tags}
+            tags={tags}
           />
           {imageSrc && (
             <img
@@ -138,11 +131,6 @@ export function ProgressLinkCard({
               aria-hidden={imageAlt ? undefined : true}
               className="aspect-16/10 w-full object-cover mt-2 sm:mt-4"
             />
-          )}
-          {tagsAtBottom && (
-            <div className="mt-auto pt-2 sm:pt-4">
-              <PriorityTags tags={tags} />
-            </div>
           )}
         </div>
         {to && arrow && (
@@ -169,10 +157,11 @@ export function ImpactCard({
       title={action.emphasis}
       description={action.rest}
       tags={action.tags}
+      to={action.customLink}
+      arrow
       imageSrc={action.imageSrc}
       imageAlt={action.imageAlt}
       className={className}
-      tagsAtBottom
     />
   );
 }

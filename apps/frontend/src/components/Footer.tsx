@@ -14,7 +14,7 @@ const EXPLORE_LINKS = [
 ] as const;
 
 const JOIN_LINKS = [
-  { label: "Partner", to: href("/outreach-partner") },
+  { label: "Partner", to: href("/partner") },
   { label: "Log in", to: href("/login") },
   { label: "Governance", to: href("/governance") },
 ] as const;
