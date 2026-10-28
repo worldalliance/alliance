@@ -161,8 +161,7 @@ export const HOME_TESTIMONIAL = {
     "it's just a few minutes per week and I've found every project thus far to be self-enriching and meaningful.",
 };
 
-export const CTA_BODY =
-  "Each new member makes every new project more impactful";
+export const CTA_BODY = "Each new member makes every project more impactful";
 
 export const FOOTER_TAGLINE =
   "A global group of people cooperating to improve the world.";
