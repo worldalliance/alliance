@@ -15,13 +15,12 @@ import { unreadGeneralUpdatesQuery } from "@alliance/shared/lib/useGeneralUpdate
 import useGlobalFeed, {
   globalFeedQuery,
 } from "@alliance/shared/lib/useGlobalFeed";
-import { resetHomeFeed } from "@alliance/shared/lib/useHomeFeed";
+import { useResetHomeFeed } from "@alliance/shared/lib/useHomeFeed";
 import { prefetchFromLoader } from "@alliance/sharedweb/lib/queryClient";
 import { useMediaQuery } from "@alliance/sharedweb/lib/useMediaQuery";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef } from "react";
 import FollowUpFormPanel from "../../components/FollowUpFormPanel";
 import GlobalFeed from "../../components/GlobalFeed";
@@ -58,7 +57,7 @@ export function clientLoader() {
 export const shouldRevalidate = () => false;
 
 const HomePage = () => {
-  const queryClient = useQueryClient();
+  const resetHomeFeed = useResetHomeFeed();
   const invalidateActions = useInvalidateActions();
   const { warning, error: toastError } = useToast();
   const {
@@ -214,9 +213,7 @@ const HomePage = () => {
                 userRelation={
                   selectedTaskNavigatorItem.action.userRelation ?? "none"
                 }
-                onCompleteAction={() => {
-                  resetHomeFeed(queryClient);
-                }}
+                onCompleteAction={resetHomeFeed}
                 onUpdateActionState={() => {
                   invalidateActions();
                   mainScrollRef.current?.scrollTo({
@@ -311,7 +308,7 @@ const HomePage = () => {
     remainingTasksEstimatedTimeCurrentWeek,
     taskNavigatorItems,
     setTaskNavigatorIndex,
-    queryClient,
+    resetHomeFeed,
     invalidateActions,
     warning,
     toastError,

@@ -19,7 +19,7 @@ import {
 import { invalidateActions, useRecordActionRelation } from "./actionsListPage";
 import { captureException } from "./analytics";
 import { queryKeys } from "./queryKeys";
-import { resetHomeFeed } from "./useHomeFeed";
+import { useResetHomeFeed } from "./useHomeFeed";
 import { useInvalidateTaskFormAggregateViews } from "./useTaskFormAggregateViews";
 import { useInvalidateVisibilityContext } from "./useVisibilityContext";
 
@@ -32,6 +32,7 @@ import { useInvalidateVisibilityContext } from "./useVisibilityContext";
  */
 export function useTaskFormSubmission() {
   const queryClient = useQueryClient();
+  const resetHomeFeed = useResetHomeFeed();
   const recordRelation = useRecordActionRelation();
   const invalidateVisibilityContext = useInvalidateVisibilityContext();
   const invalidateAggregateViews = useInvalidateTaskFormAggregateViews();
@@ -122,13 +123,13 @@ export function useTaskFormSubmission() {
       // actions and their follow-up forms.
       invalidateActions(queryClient);
       // The submission's activity shows in feeds, the viewer's own included.
-      resetHomeFeed(queryClient);
+      resetHomeFeed();
       void queryClient.invalidateQueries({
         queryKey: queryKeys.activitiesAll(),
       });
       return R.success(undefined);
     },
-    [invalidateAggregateViews, queryClient],
+    [invalidateAggregateViews, queryClient, resetHomeFeed],
   );
 
   return { submit, optOut, submitFollowUp };
