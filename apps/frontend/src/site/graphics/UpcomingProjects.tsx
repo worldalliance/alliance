@@ -7,6 +7,7 @@ import {
   UPCOMING_PROJECTS_LABEL,
   type UpcomingProject,
 } from "../content";
+import { ProgressTrack, ProgressTrackSize } from "../ProgressTrack";
 
 export const HIGHLIGHT_INTERVAL_MS = 4000;
 
@@ -45,17 +46,12 @@ function ProjectProgress({
       )}
     >
       <div className="site-sans flex min-h-0 flex-col gap-1.5 overflow-hidden">
-        <div
-          aria-hidden
-          className="mt-3 h-1 w-full overflow-hidden rounded-full bg-zinc-100 sm:h-2.5"
-        >
-          <div
-            className="bg-green h-full rounded-full"
-            style={{
-              width: `${(Math.min(progress.done, progress.goal) / progress.goal) * 100}%`,
-            }}
-          />
-        </div>
+        <ProgressTrack
+          goal={progress.goal}
+          segments={[{ count: progress.done, className: "bg-green" }]}
+          size={ProgressTrackSize.Card}
+          className="mt-3"
+        />
         <p className="text-sm text-[var(--site-ink)]/70">
           {progressLabel(progress)}
         </p>

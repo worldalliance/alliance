@@ -1,4 +1,5 @@
 import { cn } from "@alliance/shared/styles/util";
+import { ProgressTrack, ProgressTrackSize } from "../../../site/ProgressTrack";
 
 export function ParticipantsBar({
   participants,
@@ -25,16 +26,12 @@ export function ParticipantsBar({
           Goal: {goal.toLocaleString("en-US")} participants
         </span>
       </p>
-      <div
-        role="img"
-        aria-label={`${participants} participants, toward ${goal.toLocaleString("en-US")}`}
-        className="flex h-1.5 w-full overflow-hidden rounded-full bg-zinc-100 sm:h-6"
-      >
-        <div
-          className="bg-green h-full rounded-full"
-          style={{ width: `${(Math.min(participants, goal) / goal) * 100}%` }}
-        />
-      </div>
+      <ProgressTrack
+        goal={goal}
+        segments={[{ count: participants, className: "bg-green" }]}
+        size={ProgressTrackSize.Page}
+        label={`${participants} participants, toward ${goal.toLocaleString("en-US")}`}
+      />
     </div>
   );
 }

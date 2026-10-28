@@ -1,8 +1,6 @@
 import { cn } from "@alliance/shared/styles/util";
+import { ProgressTrack, ProgressTrackSize } from "../../../site/ProgressTrack";
 import { MEMBER_GOAL, MEMBER_GOAL_LABEL } from "./GrantmakingMemberProgress";
-
-const share = (count: number) =>
-  `${(Math.min(count, MEMBER_GOAL) / MEMBER_GOAL) * 100}%`;
 
 export function MemberWaitlistBar({
   members,
@@ -31,24 +29,15 @@ export function MemberWaitlistBar({
         </span>
         <span className="ml-auto">Goal: {MEMBER_GOAL_LABEL} members</span>
       </p>
-      <div
-        role="img"
-        aria-label={`${members} members and ${waitlist} on the waitlist, toward ${MEMBER_GOAL.toLocaleString("en-US")}`}
-        className="flex h-6 w-full overflow-hidden rounded-full bg-zinc-100"
-      >
-        <div
-          className="bg-green h-full rounded-l-full"
-          style={{ width: share(members) }}
-        />
-        <div
-          className="h-full rounded-r-full bg-zinc-400"
-          style={{
-            width: share(
-              Math.min(waitlist, Math.max(0, MEMBER_GOAL - members)),
-            ),
-          }}
-        />
-      </div>
+      <ProgressTrack
+        goal={MEMBER_GOAL}
+        segments={[
+          { count: members, className: "bg-green" },
+          { count: waitlist, className: "bg-zinc-400" },
+        ]}
+        size={ProgressTrackSize.Page}
+        label={`${members} members and ${waitlist} on the waitlist, toward ${MEMBER_GOAL.toLocaleString("en-US")}`}
+      />
     </div>
   );
 }
