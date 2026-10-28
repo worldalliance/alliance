@@ -20,6 +20,7 @@ import { invalidateActions, useRecordActionRelation } from "./actionsListPage";
 import { captureException } from "./analytics";
 import { queryKeys } from "./queryKeys";
 import { useResetHomeFeed } from "./useHomeFeed";
+import { myLocationCache } from "./useMyLocation";
 import { useInvalidateTaskFormAggregateViews } from "./useTaskFormAggregateViews";
 import { useInvalidateVisibilityContext } from "./useVisibilityContext";
 
@@ -68,12 +69,19 @@ export function useTaskFormSubmission() {
           // Bumped `completedActionCount` (and `firstContractSignedAt` for a
           // contract-signing action).
           invalidateVisibilityContext();
+          // Answers the form auto-extracts can set the member's city.
+          void myLocationCache(queryClient).invalidate();
           recordRelation(body.actionId, "completed");
         }
       }
       return result;
     },
-    [invalidateAggregateViews, invalidateVisibilityContext, recordRelation],
+    [
+      invalidateAggregateViews,
+      invalidateVisibilityContext,
+      queryClient,
+      recordRelation,
+    ],
   );
 
   const optOut = useCallback(

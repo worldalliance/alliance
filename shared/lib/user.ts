@@ -33,6 +33,7 @@ import {
 import { failedToLoad } from "./failedToLoad";
 import { thrownRefusalMessage } from "./hey-api";
 import { queryKeys } from "./queryKeys";
+import { myLocationCache } from "./useMyLocation";
 import { useInvalidateVisibilityContext } from "./useVisibilityContext";
 
 export const userQueryKeys = {
@@ -448,6 +449,9 @@ export const useUpdateProfileMutation = (
         queryClient.setQueryData(userQueryKeys.profile(targetId), data);
       }
       invalidateVisibilityContext();
+      if (variables.cityId !== undefined) {
+        void myLocationCache(queryClient).invalidate();
+      }
       if (variables.phoneNumber !== undefined) {
         void queryClient.invalidateQueries({
           queryKey: queryKeys.notificationSettings(),
