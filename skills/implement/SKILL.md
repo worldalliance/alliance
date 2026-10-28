@@ -5,7 +5,7 @@ description: Read before implementing a feature, fixing a bug, or refactoring co
 
 # Implementation
 
-Read `(root)/skills/engineering-criteria.md` and use it throughout implementation. For a feature or behavior change, follow `(root)/skills/provenance/SKILL.md`; use the supplied provenance directory when continuing a specified task.
+Read `(root)/skills/engineering-criteria.md` and `(root)/skills/wiki/SKILL.md` and use them throughout implementation. For a feature or behavior change, follow `(root)/skills/provenance/SKILL.md`; use the supplied provenance directory when continuing a specified task.
 
 ## Discover before editing
 
@@ -17,7 +17,7 @@ Resolve repository questions through inspection. Ask the user for missing produc
 
 ## Implement
 
-Check supplied design decisions against the code and requirements; revise an implementation choice when the evidence calls for it, recording the reason in the task's existing decisions file when present.
+Check supplied design decisions against the code and requirements; revise an implementation choice when the evidence calls for it, recording the reason in the task's `DECISIONS.md` when it has a provenance directory, creating the file if needed.
 
 Implement through the identified owners of the behavior. When discovery during coding reveals another caller or contract, update the approach and verification to cover it.
 

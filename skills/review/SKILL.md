@@ -21,7 +21,7 @@ Read `(root)/skills/engineering-criteria.md`. Apply each relevant criterion to t
 
 Start each review from the code and requirements. Keep prior reviews, review assessments, and agent-authored DECISIONS.md files out of the review context, including their contents in diffs. A later review is a fresh assessment, not a reconciliation with earlier verdicts.
 
-Inspect every changed file and trace affected callers and contracts. Finish discovery before proposing repairs. Report every supported finding, including nits with a concrete benefit; there is no finding-count limit. Record completed verification and unchecked areas in the summary; for unavailable checks, name the blocker and the specific check or assistance needed. An incomplete review is not a clean review.
+Inspect every changed file and trace affected callers and contracts. A change that leaves a `docs/wiki/` citation, page, or coverage row inaccurate is a finding, per **Change with the code** in `(root)/skills/wiki/SKILL.md`. Finish discovery before proposing repairs. Report every supported finding, including nits with a concrete benefit; there is no finding-count limit. Record completed verification and unchecked areas in the summary; for unavailable checks, name the blocker and the specific check or assistance needed. An incomplete review is not a clean review.
 
 For each behavioral finding, identify the reachable trigger, expected and actual behavior, consequence, and supporting requirement or contract. Make the defect observable: run the input that breaks it, write a failing test, or trace the execution path to a real caller. Distinguish observed failures from unverified claims.
 

@@ -44,6 +44,9 @@ Lists duplicated code, and text of five or more words repeated verbatim, that th
 `covercheck.ts [--base <ref>]`
 Runs `bun test --coverage` in each package of `test-all.sh`'s `PACKAGES` that owns a changed file, or in all of them when a changed file is in `common`, `shared`, or `sharedweb`, then lists the lines the working tree changed since its merge-base with `<ref>` (default `origin/main`) that no unit test ran, and changed files no test loaded. Scans the paths `.jscpd.json` scans, skipping test files. Exits 0 either way and 2 only when the run fails. Prefer `bun run covercheck`.
 
+`wikicheck.ts [root]`
+Checks `docs/wiki` structure against the files git tracks or doesn't ignore in the checkout at `root` (default: this repo): every local link and fragment resolves, no link is raw HTML, source citations use in-range `#L<n>` or `#L<n>-L<m>` anchors, every page has a title, `index.md` is well-formed and lists every topic page, and `coverage.md` has a well-formed row for each `docs/provenance` directory. Prints `file:line:column: message` per problem and exits 1 on any. Never fetches external links and cannot judge whether a page is accurate. Run by CI on pull requests. Prefer `bun run wikicheck`.
+
 `test-all.sh [package...]`
 Runs unit tests from inside each workspace so its `bunfig.toml` applies. No arguments runs every package. Prefer `bun run test`, which calls this; CI calls it per package.
 
