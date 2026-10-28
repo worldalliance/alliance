@@ -117,7 +117,7 @@ test("fails with the file, line, and column of each problem", () => {
   expect(status).toBe(1);
   expect(stderr.trim().split("\n")).toEqual([
     "docs/wiki/index.md:3:5: broken link: docs/wiki/gone.md does not exist",
-    "docs/wiki/coverage.md:1:1: docs/provenance/01a00000-0000-7000-8000-000000000002-new has no coverage row",
+    "docs/wiki/coverage.md:1:1: docs/provenance/01a00000-0000-7000-8000-000000000002-new has no coverage row; add one with dispositions per skills/wiki/SKILL.md#change-with-the-code",
     "wikicheck: 2 problem(s)",
   ]);
 });

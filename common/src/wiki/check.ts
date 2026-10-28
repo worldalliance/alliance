@@ -209,7 +209,7 @@ export function checkWiki(repo: RepoReader): WikiCheckResult {
       problems.push({
         path: WIKI_COVERAGE,
         position: { line: 1, column: 1 },
-        message: `${record} has no coverage row`,
+        message: `${record} has no coverage row; add one with dispositions per skills/wiki/SKILL.md#change-with-the-code`,
       });
     }
   }

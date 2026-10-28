@@ -1,6 +1,6 @@
 # Provenance coverage
 
-One row per directory in [`docs/provenance`](../provenance/), naming the wiki pages that explain its current behavior or the evidence for its other dispositions. `bun run wikicheck` fails when a directory has no row.
+One row per directory in [`docs/provenance`](../provenance/), naming the wiki pages that explain its current behavior or the evidence for its other dispositions. Rows follow directory order. `bun run wikicheck` fails when a directory has no row.
 
 The Disposition cell holds one or more of these, comma-separated, when parts of a record differ:
 

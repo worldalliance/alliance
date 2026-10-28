@@ -177,7 +177,7 @@ test("a provenance directory without a coverage row fails", () => {
         "# New\n",
     }),
   ).toEqual([
-    "docs/wiki/coverage.md:1: docs/provenance/01a00000-0000-7000-8000-000000000002-new has no coverage row",
+    "docs/wiki/coverage.md:1: docs/provenance/01a00000-0000-7000-8000-000000000002-new has no coverage row; add one with dispositions per skills/wiki/SKILL.md#change-with-the-code",
   ]);
 });
 
