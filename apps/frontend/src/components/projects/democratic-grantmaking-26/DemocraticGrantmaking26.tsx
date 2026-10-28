@@ -52,6 +52,7 @@ export function WaitlistHeroImages({
               src={image.src}
               alt={image.alt}
               className="size-full object-cover"
+              style={{ objectPosition: image.position }}
             />
           )}
         </li>

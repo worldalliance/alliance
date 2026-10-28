@@ -1,7 +1,14 @@
 export interface WaitlistHeroImage {
   src: string | null;
   alt: string;
+  /** CSS `object-position` for the crop; centered when unset. */
+  position?: string;
 }
+
+export const DATA_CENTER_IMAGE: WaitlistHeroImage = {
+  src: "/assets/democratic-grantmaking-26/technology.jpg",
+  alt: "Server racks with network cables in a data center",
+};
 
 export const WAITLIST_HERO_IMAGES: WaitlistHeroImage[] = [
   {
@@ -16,10 +23,7 @@ export const WAITLIST_HERO_IMAGES: WaitlistHeroImage[] = [
     src: "/assets/democratic-grantmaking-26/democracy.jpg",
     alt: "A voter dropping an envelope into a ballot box",
   },
-  {
-    src: "/assets/democratic-grantmaking-26/technology.jpg",
-    alt: "Server racks with network cables in a data center",
-  },
+  DATA_CENTER_IMAGE,
 ];
 
 export interface ProjectPerson {
