@@ -9,27 +9,37 @@ function FormalTextDropdown({ markdown }: { markdown: string }) {
   const contentId = useId();
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col">
       <button
         type="button"
-        className="flex w-fit items-center gap-1 text-sm text-zinc-500 hover:text-zinc-800"
+        className="relative top-[2px] flex w-fit items-center gap-1 self-end text-[0.85em] text-zinc-500 hover:text-zinc-800"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-controls={contentId}
       >
-        Full text
+        Formal text
         <ChevronDown
           size={14}
-          className={cn("transition-transform", open && "rotate-180")}
+          className={cn(
+            "transition-transform duration-150 ease-out motion-reduce:transition-none",
+            open && "rotate-180",
+          )}
           aria-hidden
         />
       </button>
       <div
         id={contentId}
-        hidden={!open}
-        className="rounded bg-zinc-50 p-4 text-sm text-zinc-700"
+        inert={!open}
+        className={cn(
+          "grid transition-[grid-template-rows,opacity] duration-150 ease-out motion-reduce:transition-none",
+          open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+        )}
       >
-        <AppMarkdownWrapper markdownContent={markdown} />
+        <div className="overflow-hidden">
+          <div className="mt-2 rounded p-4 text-[1.02em] text-zinc-700">
+            <AppMarkdownWrapper markdownContent={markdown} />
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -50,8 +60,16 @@ export function ContractDescriptionList({
       {items && items.length > 0 && (
         <ol className="flex flex-col gap-y-5 list-none pl-0">
           {items.map((item, index) => (
-            <li key={index} className="flex gap-x-4">
-              <span className="shrink-0 size-8 md:size-9 flex items-center justify-center rounded bg-[var(--site-primary)] text-white text-lg md:text-xl font-semibold leading-none tabular-nums">
+            <li key={index} className="flex items-center gap-x-4">
+              <span
+                className={cn(
+                  "shrink-0 size-[1.6667em] md:size-[1.6875em] flex items-center justify-center rounded border-2 border-[var(--site-primary)] text-[1.5em] md:text-[1.6667em] font-semibold leading-none tabular-nums",
+                  // The first term is the one expectation; the rest are exemptions.
+                  index === 0
+                    ? "bg-[var(--site-primary)] text-white"
+                    : "bg-white text-[var(--site-primary)]",
+                )}
+              >
                 {index + 1}
               </span>
               <div className="min-w-0 flex flex-col">

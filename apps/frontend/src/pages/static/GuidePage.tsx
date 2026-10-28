@@ -19,7 +19,7 @@ import { InlineToc, StickyToc, useActiveSection } from "../../site/GuideToc";
 import { FAQ_HREF, FOUNDATION_HREF, GOVERNANCE_HREF } from "../../site/links";
 import { ContractCard, ImpactCard } from "../../site/PageCards";
 import { BandHeading, BandHeadingSize, PageShell } from "../../site/PageShell";
-import { SITE_COL, SitePicture } from "../../site/ui";
+import { SITE_COL } from "../../site/ui";
 
 const GUIDE_COLUMN = "max-w-7xl";
 /** Lines the title up with the text: SITE_COL's padding, plus the TOC column and gap. */
@@ -106,31 +106,19 @@ function GuideQuote() {
 function PriorityGrid() {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
-      {priorities.map((priority, index) => (
+      {priorities.map((priority) => (
         <article
           key={priority.id}
-          className="relative isolate flex min-h-[190px] flex-col justify-end overflow-hidden p-5 text-white"
+          className="flex min-h-[133px] flex-col p-7.5 text-white"
           style={{
             borderRadius: "var(--site-radius-card)",
-            backgroundColor:
-              index % 2 === 0 ? "var(--site-primary)" : "var(--site-panel)",
+            backgroundColor: "var(--site-primary)",
           }}
         >
-          <SitePicture
-            image={priority.image}
-            alt=""
-            sizes="(min-width: 640px) 50vw, 100vw"
-            className="absolute inset-0 -z-10 size-full object-cover"
-            style={{
-              mixBlendMode: "screen",
-              filter: "grayscale(1) contrast(1.05)",
-              opacity: 0.45,
-            }}
-          />
           <h3 className="text-[1.4rem] leading-tight">
             {priority.title.replace("\n", " ")}
           </h3>
-          <p className="mt-2 text-[0.9rem] leading-snug text-white/85">
+          <p className="mt-[7px] text-[0.9rem] leading-snug text-white/85">
             {priority.description}
           </p>
         </article>

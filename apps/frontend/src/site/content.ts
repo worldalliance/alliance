@@ -34,21 +34,21 @@ export const priorities: Priority[] = [
     id: "environmental-destruction",
     title: "Environmental\nDestruction",
     description:
-      "The overuse of land for development and agriculture, overexploitation of natural resources, climate change, pollution, and invasive species are driving a mass extinction in nature.",
+      "The overuse of land, overexploitation of natural resources, climate change, pollution, and invasive species are driving a mass extinction in nature.",
     image: environment,
   },
   {
     id: "democratic-decline",
     title: "Democratic\nDecline",
     description:
-      "More countries are losing democratic qualities than at any time since the 1940s, and measures of global freedom have fallen for 19 straight years.",
+      "More countries are losing democratic qualities than at any time since the 1940s, and measures of global freedom have fallen for 19 years.",
     image: democracy,
   },
   {
     id: "dangerous-technology",
     title: "Dangerous\nTechnologies",
     description:
-      "Biotechnology is lowering the barrier to engineering deadly pathogens, and experts warn that artificial intelligence poses a risk of human extinction.",
+      "Biotechnology lowers the barrier to engineering deadly pathogens, and experts warn artificial intelligence poses a risk of extinction.",
     image: technology,
   },
 ];

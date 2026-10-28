@@ -20,7 +20,7 @@ function PriorityTags({ tags }: { tags: ActionPriorityTags }) {
       {tags.map((tag) => (
         <li
           key={tag}
-          className="text-xs font-medium bg-green px-2.5 py-1 rounded-md text-white tracking-wide"
+          className="text-xs font-medium bg-(--site-primary) px-2.5 py-1 rounded-md text-white tracking-wide"
         >
           {ACTION_PRIORITY_LABELS[tag]}
         </li>
@@ -41,7 +41,7 @@ function ProgressCardLink({
   const classes = cn(
     "flex flex-col gap-1.5 bg-[var(--site-surface)] p-5",
     to &&
-      "inset-ring-1 inset-ring-transparent hover:inset-ring-[var(--color-green)]",
+      "inset-ring-1 inset-ring-transparent hover:inset-ring-(--site-primary)",
     className,
   );
   if (!to) {
@@ -76,12 +76,17 @@ function ProgressCardCopy({
 }: {
   title: string;
   description: string;
-  tags: ActionPriorityTags;
+  tags?: ActionPriorityTags;
 }) {
   return (
     <>
-      <PriorityTags tags={tags} />
-      <p className="mt-2 sm:mt-4 text-base leading-snug font-medium text-black sm:text-lg">
+      {tags && <PriorityTags tags={tags} />}
+      <p
+        className={cn(
+          "text-base leading-snug font-medium text-black sm:text-lg",
+          tags && "mt-2 sm:mt-4",
+        )}
+      >
         {title}
       </p>
       <p className="text-base sm:text-lg leading-snug text-(--site-ink)/80 ">
@@ -100,6 +105,7 @@ export function ProgressLinkCard({
   imageSrc,
   imageAlt,
   arrow = false,
+  tagsAtBottom = false,
 }: {
   title: string;
   description: string;
@@ -109,15 +115,21 @@ export function ProgressLinkCard({
   imageSrc?: string;
   imageAlt?: string;
   arrow?: boolean;
+  tagsAtBottom?: boolean;
 }) {
   return (
     <ProgressCardLink to={to} className={className}>
-      <div className="flex items-center gap-4">
+      <div
+        className={cn(
+          "flex items-center gap-4",
+          tagsAtBottom && "flex-1 items-stretch",
+        )}
+      >
         <div className="flex min-w-0 flex-1 flex-col">
           <ProgressCardCopy
             title={title}
             description={description}
-            tags={tags}
+            tags={tagsAtBottom ? undefined : tags}
           />
           {imageSrc && (
             <img
@@ -127,9 +139,17 @@ export function ProgressLinkCard({
               className="aspect-16/10 w-full object-cover mt-2 sm:mt-4"
             />
           )}
+          {tagsAtBottom && (
+            <div className="mt-auto pt-2 sm:pt-4">
+              <PriorityTags tags={tags} />
+            </div>
+          )}
         </div>
         {to && arrow && (
-          <ArrowRight className="size-5 shrink-0 text-green" aria-hidden />
+          <ArrowRight
+            className="size-5 shrink-0 text-(--site-primary)"
+            aria-hidden
+          />
         )}
       </div>
     </ProgressCardLink>
@@ -156,6 +176,7 @@ export function ImpactCard({
       imageSrc={action.imageSrc}
       imageAlt={action.imageAlt}
       className={className}
+      tagsAtBottom
     />
   );
 }
@@ -197,10 +218,20 @@ export function ContractCard({
     <figure className="flex flex-col gap-3">
       <div
         id="contract"
-        className={cn("scroll-mt-32 bg-zinc-100", CONTRACT_PAD[size])}
+        className={cn(
+          "scroll-mt-32 bg-zinc-100",
+          CONTRACT_PAD[size],
+          terms && "pt-9 pl-[2.16rem] text-[18px] sm:pt-12 sm:pl-[2.88rem]",
+        )}
         style={{ borderRadius: "var(--site-radius-card)" }}
       >
-        {terms ? <ContractTerms /> : <ContractMarkdown size={size} />}
+        {terms ? (
+          <div className="[zoom:0.926]">
+            <ContractTerms />
+          </div>
+        ) : (
+          <ContractMarkdown size={size} />
+        )}
       </div>
       {caption && (
         <figcaption className="text-sm text-zinc-500">{caption}</figcaption>
