@@ -48,8 +48,8 @@ function TocLink({
       className={cn(
         "block py-1.25",
         current
-          ? "font-medium text-(--site-primary)"
-          : "text-(--site-ink)/60 hover:text-(--site-primary)",
+          ? "text-(--site-ink)"
+          : "text-(--site-ink)/50 hover:text-(--site-ink)",
         className,
       )}
     >
@@ -73,7 +73,7 @@ export function InlineToc({
       aria-label={label}
       className="sticky top-28 hidden w-full max-w-45 self-start justify-self-end whitespace-nowrap lg:block"
     >
-      <ul className="text-lg">
+      <ul className="text-base">
         {sections.map((section) => (
           <li key={section.id}>
             <TocLink section={section} current={section === active} />
