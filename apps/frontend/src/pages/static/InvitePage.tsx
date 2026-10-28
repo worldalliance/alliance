@@ -3,6 +3,7 @@ import { captureEvent } from "@alliance/shared/lib/analytics";
 import { useInvite } from "@alliance/shared/lib/useInvite";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
+import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import posthog from "posthog-js";
 import React, { useEffect } from "react";
 import { href, Link, useSearchParams } from "react-router";
@@ -17,7 +18,6 @@ import { LandingBody } from "../../site/sections/LandingBody";
 import {
   DisplayHeading,
   SITE_COL,
-  SiteButton,
   SiteSubtitle,
   SubtitleSize,
 } from "../../site/ui";
@@ -129,9 +129,9 @@ const InvitePage: React.FC = () => {
             direction the world is headed, and membership is a straightforward
             way to take action.
           </p>
-          <SiteButton to={signupTo} tone="primary" withArrow>
+          <Button to={signupTo} color={ButtonColor.SitePrimary} withArrow>
             Sign up
-          </SiteButton>
+          </Button>
           <ol className="flex max-w-xl list-decimal flex-col gap-3 pl-5 text-left text-lg leading-snug text-[var(--site-ink)]/80">
             <li>
               Skim our{" "}

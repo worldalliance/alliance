@@ -35,7 +35,6 @@ import { getApiUrl, isFeatureEnabled } from "../lib/config";
 import { posthogRequestContext } from "../lib/posthogRequestContext";
 import { signInOnStaging } from "../lib/reviewSignIn";
 import { WAITLIST_HREF } from "../site/links";
-import { SiteArrow } from "../site/ui";
 import {
   ACCOUNT_BUTTON,
   ACCOUNT_FIELD,
@@ -303,9 +302,9 @@ export function AccountStep({
                   color={ButtonColor.Black}
                   className={ACCOUNT_BUTTON}
                   disabled={pending}
+                  withArrow
                 >
                   {loggingIn ? "Log in" : "Get started"}
-                  <SiteArrow className="size-2.5" />
                 </Button>
                 {loggingIn && (
                   <button

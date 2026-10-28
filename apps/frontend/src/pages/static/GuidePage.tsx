@@ -1,4 +1,5 @@
 import { cn } from "@alliance/shared/styles/util";
+import { SiteArrow } from "@alliance/sharedweb/ui/SiteArrow";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { FEATURED_IMPACT_ACTIONS } from "../../content/featuredImpactActions";
@@ -17,7 +18,7 @@ import { FAQ_HREF, FOUNDATION_HREF, GOVERNANCE_HREF } from "../../site/links";
 import { NAV_HEIGHT } from "../../site/Navbar";
 import { ContractCard, ImpactCard } from "../../site/PageCards";
 import { BandHeading, BandHeadingSize, PageShell } from "../../site/PageShell";
-import { SITE_COL, SiteArrow, SitePicture } from "../../site/ui";
+import { SITE_COL, SitePicture } from "../../site/ui";
 
 const GUIDE_COLUMN = "max-w-7xl";
 

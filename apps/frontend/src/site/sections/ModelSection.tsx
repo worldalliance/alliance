@@ -1,4 +1,5 @@
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
+import { SiteArrow } from "@alliance/sharedweb/ui/SiteArrow";
 import { Link } from "react-router";
 import {
   farMilestones,
@@ -11,7 +12,7 @@ import {
 import { GrowthMilestones } from "../graphics/GrowthMilestones";
 import { PEOPLE_HREF, PROGRESS_HREF } from "../links";
 import { BandHeading } from "../PageShell";
-import { SITE_COL, SiteArrow, SiteSubtitle } from "../ui";
+import { SITE_COL, SiteSubtitle } from "../ui";
 
 export function ModelSection() {
   const { data: memberCount } = useAllianceMemberCount();

@@ -1,6 +1,7 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
 import { captureEvent } from "@alliance/shared/lib/analytics";
 import { cn } from "@alliance/shared/styles/util";
+import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
@@ -10,7 +11,7 @@ import { SiteFooter } from "./Footer";
 import { HOME_HREF, TASKS_HREF } from "./links";
 import { NAV_HEIGHT, Navbar } from "./Navbar";
 import { SiteRoot } from "./PageShell";
-import { DisplayHeading, SITE_COL, SiteButton } from "./ui";
+import { DisplayHeading, SITE_COL } from "./ui";
 
 export const NOT_FOUND_TITLE = "Page not found — The Alliance";
 
@@ -55,13 +56,13 @@ export function NotFoundPage({ source }: { source: NotFoundSource }) {
             aria-hidden={loading}
           >
             {isAuthenticated ? (
-              <SiteButton to={TASKS_HREF} withArrow>
+              <Button to={TASKS_HREF} color={ButtonColor.Black} withArrow>
                 My tasks
-              </SiteButton>
+              </Button>
             ) : (
-              <SiteButton to={HOME_HREF} withArrow>
+              <Button to={HOME_HREF} color={ButtonColor.Black} withArrow>
                 Learn about the Alliance
-              </SiteButton>
+              </Button>
             )}
           </div>
         </div>

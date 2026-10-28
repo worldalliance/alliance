@@ -1,10 +1,11 @@
 import { cn } from "@alliance/shared/styles/util";
+import { SiteArrow } from "@alliance/sharedweb/ui/SiteArrow";
 import { Fragment } from "react";
 import { Link } from "react-router";
 import { CONTACT_EMAIL, FOOTER_TAGLINE } from "./content";
 import { useInviteSession } from "./invite/InviteSession";
 import { FOOTER_COLUMNS, FOOTER_LEGAL_LINKS, type SiteLink } from "./links";
-import { Logotype, SITE_COL, SiteArrow, TexturedFill } from "./ui";
+import { Logotype, SITE_COL } from "./ui";
 
 function FooterAnchor({ link }: { link: SiteLink }) {
   const { signupHref } = useInviteSession();
@@ -50,8 +51,7 @@ function LegalRow() {
 
 export function SiteFooter() {
   return (
-    <footer className="relative isolate overflow-hidden bg-[var(--site-primary)] text-white">
-      <TexturedFill />
+    <footer className="relative isolate overflow-hidden bg-black text-white">
       <div className={cn(SITE_COL, "relative z-10 pt-16 pb-10 lg:pt-24")}>
         <div className="flex flex-col gap-12 lg:flex-row lg:justify-between">
           <nav

@@ -1,8 +1,8 @@
 import { noop } from "@alliance/shared/lib/constants";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
+import { SiteArrow } from "@alliance/sharedweb/ui/SiteArrow";
 import { Link } from "react-router";
 import { useInviteSession } from "../../../site/invite/InviteSession";
-import { SiteArrow } from "../../../site/ui";
 import type { useWaitlistBrowser } from "./useWaitlist";
 
 const FORGET_FALLBACK = "We couldn’t forget this browser. Please try again.";

@@ -1,5 +1,6 @@
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
+import { SiteArrow } from "@alliance/sharedweb/ui/SiteArrow";
 import { Menu, RotateCw, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { href, Link, useLocation } from "react-router";
@@ -13,7 +14,7 @@ import {
   PARTNER_HREF,
   TASKS_HREF,
 } from "./links";
-import { Logotype, SITE_COL, SiteArrow } from "./ui";
+import { Logotype, SITE_COL } from "./ui";
 
 /** Height the pages reserve for the bar, which floats over their first band. */
 export const NAV_HEIGHT = 78;
@@ -167,8 +168,8 @@ export function Navbar({
                     ? "max-[420px]:hidden"
                     : "max-[310px]:hidden",
                 light
-                  ? "bg-white text-[var(--site-primary)] hover:bg-white/85"
-                  : "bg-[var(--site-primary)] text-white hover:bg-[var(--site-primary-hover)]",
+                  ? "bg-white text-black hover:bg-zinc-100"
+                  : "bg-black text-white hover:bg-zinc-800",
               )}
               style={{ borderRadius: "var(--site-radius-button)" }}
             >

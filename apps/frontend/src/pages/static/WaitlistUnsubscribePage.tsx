@@ -6,11 +6,12 @@ import {
   thrownStatus,
 } from "@alliance/shared/lib/hey-api";
 import { cn } from "@alliance/shared/styles/util";
+import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useMutation } from "@tanstack/react-query";
 import { useSearchParams } from "react-router";
 import { z } from "zod";
 import { PageShell } from "../../site/PageShell";
-import { SITE_COL, SiteButton } from "../../site/ui";
+import { SITE_COL } from "../../site/ui";
 
 const UNSUBSCRIBE_FALLBACK = "We couldn’t unsubscribe you. Please try again.";
 const INVALID_LINK = "This unsubscribe link is not valid.";
@@ -47,14 +48,14 @@ export default function WaitlistUnsubscribePage() {
           Stop receiving emails about the Alliance waitlist? That includes your
           invitation to join when your turn comes.
         </p>
-        <SiteButton
-          tone="primary"
+        <Button
+          color={ButtonColor.SitePrimary}
           onClick={() => {
             if (!unsubscribe.isPending) unsubscribe.mutate(token);
           }}
         >
           {unsubscribe.isPending ? "Unsubscribing…" : "Unsubscribe"}
-        </SiteButton>
+        </Button>
         {unsubscribe.isError && (
           <p className="text-red-600" role="alert">
             {thrownRefusalMessage({

@@ -1,10 +1,11 @@
 import { cn } from "@alliance/shared/styles/util";
+import { SiteArrow } from "@alliance/sharedweb/ui/SiteArrow";
 import { Link } from "react-router";
 import membersPhoto from "../assets/redesign/members-photo.webp?w=480;960&format=avif;webp&as=picture";
 import { CTA_BODY } from "./content";
 import { useInviteSession } from "./invite/InviteSession";
 import { WAITLIST_HREF } from "./links";
-import { SITE_COL, SiteArrow, SitePicture, TexturedFill } from "./ui";
+import { SITE_COL, SitePicture } from "./ui";
 
 /** How far the artwork hangs over the footer, measured off the Figma. */
 const FOOTER_OVERLAP = 54;
@@ -59,12 +60,10 @@ export function JoinCta({
   return (
     <section id="join" className="relative bg-[var(--site-surface)]">
       <div
-        className="absolute inset-x-0 bottom-0 overflow-hidden bg-[var(--site-primary)]"
+        className="absolute inset-x-0 bottom-0 bg-black"
         style={{ height: FOOTER_OVERLAP }}
         aria-hidden
-      >
-        <TexturedFill />
-      </div>
+      />
       <div className={cn(SITE_COL, "relative")}>
         <Link
           to={to}

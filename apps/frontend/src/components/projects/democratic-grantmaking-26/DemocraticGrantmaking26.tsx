@@ -77,9 +77,11 @@ function WaitlistScreen() {
           <p className="-mb-2 text-left text-[1.05rem] text-[var(--site-ink)]/70 sm:text-[1.2rem]">
             Fall 2026
           </p>
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl">
+          <h1 className="site-display font-medium text-5xl sm:text-6xl lg:text-7xl">
             Vote on where we donate{" "}
-            <span className="font-semibold text-green">$100,000</span>
+            <span className="site-display font-semibold text-green">
+              $100,000
+            </span>
           </h1>
           <p className="text-left text-xl sm:text-2xl">
             Join the Alliance to participate in this grantmaking project.

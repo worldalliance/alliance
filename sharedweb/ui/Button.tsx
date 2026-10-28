@@ -1,5 +1,7 @@
 import { cn } from "@alliance/shared/styles/util";
 import React from "react";
+import { Link } from "react-router";
+import { SiteArrow } from "./SiteArrow";
 
 type ButtonProps = React.PropsWithChildren &
   React.AriaAttributes & {
@@ -9,9 +11,11 @@ type ButtonProps = React.PropsWithChildren &
     title?: string;
     disabled?: boolean;
     size?: "small" | "medium" | "large" | "mediumDynamic";
+    withArrow?: boolean;
   } & (
     | ({
         asDiv?: false;
+        to?: never;
         ref?: React.RefObject<HTMLButtonElement | null>;
       } & Pick<
         React.HTMLAttributes<HTMLButtonElement>,
@@ -29,6 +33,7 @@ type ButtonProps = React.PropsWithChildren &
         ))
     | ({
         asDiv: true;
+        to?: never;
         ref?: React.RefObject<HTMLDivElement | null>;
         type?: "button" | "reset";
         onClick: (e: React.MouseEvent<HTMLElement>) => void;
@@ -36,6 +41,17 @@ type ButtonProps = React.PropsWithChildren &
         React.HTMLAttributes<HTMLDivElement>,
         "onMouseEnter" | "onMouseLeave" | "onKeyDown" | "onPointerDown"
       >)
+    | {
+        to: string;
+        asDiv?: never;
+        ref?: never;
+        type?: never;
+        onClick?: never;
+        onMouseEnter?: never;
+        onMouseLeave?: never;
+        onKeyDown?: never;
+        onPointerDown?: never;
+      }
   );
 
 export enum ButtonColor {
@@ -54,7 +70,8 @@ export enum ButtonColor {
   Outline = "border border-gray-2 text-black",
   White = "border border-gray-2 text-black bg-white hover:bg-zinc-50",
   WhiteBorderless = "text-black bg-white hover:bg-zinc-50",
-  Black = "bg-[#081e40] hover:bg-[#0d2c5c] text-white border border-[#081e40] active:bg-[#0d2c5c]",
+  Black = "bg-black hover:bg-zinc-800 text-white",
+  SitePrimary = "bg-[var(--site-primary)] text-white hover:bg-[var(--site-primary-hover)] border border-transparent",
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -72,7 +89,9 @@ const Button: React.FC<ButtonProps> = ({
   onKeyDown,
   onPointerDown,
   size = "medium",
+  withArrow = false,
   asDiv,
+  to,
   ...rest
 }) => {
   const color = colorProp ?? ButtonColor.White;
@@ -88,6 +107,7 @@ const Button: React.FC<ButtonProps> = ({
     sizeClass,
     "font-medium rounded w-fit h-fit flex items-center justify-center box-border relative group",
     disabled && "opacity-50 !cursor-not-allowed",
+    withArrow && "gap-2",
     color,
     color === ButtonColor.Light && "!text-zinc-800",
     className,
@@ -98,6 +118,27 @@ const Button: React.FC<ButtonProps> = ({
   };
   const hoverClassName =
     "absolute -top-[110%] left-1/2 transform -translate-x-1/2 whitespace-nowrap bg-black/50 text-white text-sm p-2 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-150";
+  const content = (
+    <>
+      {children}
+      {withArrow && <SiteArrow className="size-2.5" />}
+      {hoverText && <div className={hoverClassName}>{hoverText}</div>}
+    </>
+  );
+
+  if (to !== undefined) {
+    return (
+      <Link
+        {...rest}
+        to={to}
+        title={title}
+        className={baseClassName}
+        style={baseStyle}
+      >
+        {content}
+      </Link>
+    );
+  }
 
   if (asDiv) {
     return (
@@ -113,8 +154,7 @@ const Button: React.FC<ButtonProps> = ({
         onKeyDown={onKeyDown}
         onPointerDown={onPointerDown}
       >
-        {children}
-        {hoverText && <div className={hoverClassName}>{hoverText}</div>}
+        {content}
       </div>
     );
   }
@@ -134,8 +174,7 @@ const Button: React.FC<ButtonProps> = ({
       onKeyDown={onKeyDown}
       onPointerDown={onPointerDown}
     >
-      {children}
-      {hoverText && <div className={hoverClassName}>{hoverText}</div>}
+      {content}
     </button>
   );
 };

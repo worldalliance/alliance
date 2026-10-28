@@ -1,3 +1,4 @@
+import { SiteArrow } from "@alliance/sharedweb/ui/SiteArrow";
 import { Link } from "react-router";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
 import { SiteFooter } from "../../site/Footer";
@@ -7,7 +8,6 @@ import { Navbar } from "../../site/Navbar";
 import { SiteRoot } from "../../site/PageShell";
 import { Hero } from "../../site/sections/Hero";
 import { LandingBody } from "../../site/sections/LandingBody";
-import { SiteArrow } from "../../site/ui";
 
 export function meta() {
   return socialPreviewMeta({
@@ -26,7 +26,7 @@ export default function PrelaunchLandingPage() {
         announcement={
           <Link
             to={WAITLIST_HREF}
-            className="flex h-12 items-center justify-center gap-3 bg-[var(--site-primary)] px-5 text-center text-sm font-medium text-white hover:bg-[var(--site-primary-hover)] sm:h-10"
+            className="flex h-12 items-center justify-center gap-3 bg-black px-5 text-center text-sm font-medium text-white hover:bg-[var(--site-primary-hover)] sm:h-10"
           >
             <span>Help decide where $100k goes.</span>
             <SiteArrow className="size-2.5 shrink-0" />
