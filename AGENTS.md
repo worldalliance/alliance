@@ -1,5 +1,7 @@
 # This repo
 
+This repository is open source.
+
 ## Packages
 
 - `server/`: backend, NestJS
