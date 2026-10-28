@@ -11,7 +11,6 @@ import type { LaunchAction } from "./useSuiteLaunchData";
 const actionNotes = ({ action, memberCount }: LaunchAction) =>
   [
     action.archived && "Archived",
-    !action.image && "No cover image",
     memberCount === 0 && "No members in its cohort",
   ].filter((note): note is string => !!note);
 

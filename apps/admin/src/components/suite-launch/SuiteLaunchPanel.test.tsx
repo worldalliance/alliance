@@ -340,11 +340,12 @@ it("lists the reminders the launch creates", async () => {
 });
 
 it("shows each action's audience, task form link, and what to look at before checking it", async () => {
-  served[2] = { ...served[2], image: null, archived: true };
+  served[2] = { ...served[2], archived: true };
   renderPanel();
 
   const write = (await screen.findByText(/^1 members ·/)).closest("li");
-  expect(write?.textContent).toContain("Archived · No cover image");
+  expect(write?.textContent).not.toContain("cover image");
+  expect(write?.textContent).toContain("Archived");
   expect(
     write?.querySelector('[aria-label="Edit task form"]')?.getAttribute("href"),
   ).toBe("/forms/5");

@@ -39,5 +39,5 @@
 
 - Distribution: members are grouped by the exact set of suite actions they get, most common first, with each group's minutes. A button per group adds one of its members to the preview, so each distinct experience is one click from "Log in as this member".
 - Reminder preview: the default reminders are listed by send time in Pacific time, computed with the office action event as the deadline. A reminder that would send before members start blocks launch, which happens when the window is shorter than three days.
-- Each action row shows its cohort's member count and description, an edit link for its task form, and notes to weigh before "Ready to launch": archived, no cover image, and an empty cohort. The notes don't block, because a cohort that depends on an earlier action can be empty at launch and some actions go without an image.
+- Each action row shows its cohort's member count and description, an edit link for its task form, and notes to weigh before "Ready to launch": archived and an empty cohort. The notes don't block, because a cohort that depends on an earlier action can be empty at launch. A missing cover image isn't noted, at staff's request.
 - Placeholder text (TODO, TBD, TKTK, FIXME, lorem ipsum, `[insert …]`, `[add …]`, `[tbd …]`) is a text finding like the rest.
