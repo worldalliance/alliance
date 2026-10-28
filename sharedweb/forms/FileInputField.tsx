@@ -108,7 +108,7 @@ export function FileInputField({
             className={fieldInputClassName({
               base:
                 sharedInputClasses +
-                " max-w-full flex-1 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 file:cursor-pointer disabled:opacity-50 disabled:pointer-events-none",
+                " max-w-full flex-1 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:bg-zinc-200 file:text-black hover:file:bg-zinc-300 file:cursor-pointer disabled:opacity-50 disabled:pointer-events-none",
               hasError,
             })}
           />
