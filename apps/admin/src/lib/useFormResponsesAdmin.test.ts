@@ -4,9 +4,13 @@ import {
 } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import { useQuery } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, expect, it } from "bun:test";
-import { useFormResponsesAdmin } from "./useFormResponsesAdmin";
+import {
+  formResponsesAdminQuery,
+  useFormResponsesAdmin,
+} from "./useFormResponsesAdmin";
 
 let requested: string[] = [];
 let formStatus = 200;
@@ -83,6 +87,13 @@ it("requests nothing without a form id", async () => {
 
   await new Promise((resolve) => setTimeout(resolve, 0));
   expect(result.current.loading).toBe(true);
+  expect(requested).toEqual([]);
+});
+
+it("requests no responses for a null form id", async () => {
+  renderHook(() => useQuery(formResponsesAdminQuery(null)), queryWrapper());
+
+  await new Promise((resolve) => setTimeout(resolve, 0));
   expect(requested).toEqual([]);
 });
 

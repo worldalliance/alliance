@@ -90,7 +90,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
     );
   }, [actionError]);
 
-  if ((disabled || formResponse) && action.taskFormId !== undefined) {
+  if ((disabled || formResponse) && action.taskFormId !== null) {
     return (
       <ActionTaskPanelForm
         taskFormId={action.taskFormId}

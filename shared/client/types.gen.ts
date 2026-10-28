@@ -412,7 +412,7 @@ export type Action = {
     /**
      * Form associated with the action
      */
-    taskFormId?: number;
+    taskFormId: number | null;
     /**
      * Timestamp when the action was created
      */
@@ -2228,7 +2228,7 @@ export type ActionDto = {
     /**
      * Form associated with the action
      */
-    taskFormId?: number;
+    taskFormId: number | null;
     /**
      * Timestamp when the action was created
      */
@@ -2390,7 +2390,7 @@ export type AdminActionListItemDto = {
     /**
      * Form associated with the action
      */
-    taskFormId?: number;
+    taskFormId: number | null;
     /**
      * Timestamp when the action was created
      */
@@ -2552,7 +2552,7 @@ export type AdminActionDto = {
     /**
      * Form associated with the action
      */
-    taskFormId?: number;
+    taskFormId: number | null;
     /**
      * Timestamp when the action was created
      */
@@ -2718,10 +2718,6 @@ export type CreateActionDto = {
      */
     shortDescription: string;
     /**
-     * Form associated with the action
-     */
-    taskFormId?: number;
-    /**
      * special case for contract signing (prevent doing other onboarding actions)
      */
     isContractSigningAction: boolean;
@@ -2764,6 +2760,10 @@ export type CreateActionDto = {
      * Time estimate in minutes
      */
     timeEstimate?: number | null;
+    /**
+     * Form associated with the action
+     */
+    taskFormId?: number | null;
     /**
      * Manual override: forum post id whose repliers should be autocompleted. When set, takes precedence over any forum validator on the task form.
      */
@@ -2812,10 +2812,6 @@ export type UpdateActionDto = {
      */
     shortDescription?: string;
     /**
-     * Form associated with the action
-     */
-    taskFormId?: number;
-    /**
      * special case for contract signing (prevent doing other onboarding actions)
      */
     isContractSigningAction?: boolean;
@@ -2858,6 +2854,10 @@ export type UpdateActionDto = {
      * Time estimate in minutes
      */
     timeEstimate?: number | null;
+    /**
+     * Form associated with the action
+     */
+    taskFormId?: number | null;
     /**
      * Manual override: forum post id whose repliers should be autocompleted. When set, takes precedence over any forum validator on the task form.
      */
@@ -3019,7 +3019,7 @@ export type ExportActionDto = {
     /**
      * Form associated with the action
      */
-    taskFormId?: number;
+    taskFormId: number | null;
     /**
      * Timestamp when the action was created
      */

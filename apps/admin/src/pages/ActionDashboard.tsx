@@ -309,7 +309,7 @@ const ActionDashboard: React.FC = () => {
             )}
             {activeTab === "form" && action && (
               <FormBuilder
-                formId={action.taskFormId}
+                formId={action.taskFormId ?? undefined}
                 setFormId={editor.setTaskFormId}
                 actionName={action.name}
               />

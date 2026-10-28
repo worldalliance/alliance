@@ -43,7 +43,7 @@ const ActionTaskPanel = ({
     });
   }, [action]);
 
-  if ((disabled || formResponse) && action.taskFormId !== undefined) {
+  if ((disabled || formResponse) && action.taskFormId !== null) {
     return (
       <ActionTaskPanelForm
         taskFormId={action.taskFormId}

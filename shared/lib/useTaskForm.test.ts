@@ -61,6 +61,7 @@ it("does not fetch without an id or while disabled", async () => {
 
   const hooks = [
     renderHook(() => useTaskForm(undefined), { wrapper }),
+    renderHook(() => useTaskForm(null), { wrapper }),
     renderHook(() => useTaskForm(7, { enabled: false }), { wrapper }),
   ];
 

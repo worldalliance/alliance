@@ -163,11 +163,17 @@ export class Action {
   @Max(2_147_483_647)
   timeEstimate: number | null;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional({ description: "Form associated with the action" })
+  @Column({ type: "int", nullable: true })
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description: "Form associated with the action",
+  })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  taskFormId?: number;
+  @IsInt()
+  @Min(1)
+  @Max(2_147_483_647)
+  taskFormId: number | null;
 
   @CreateDateColumnTz()
   @ApiProperty({ description: "Timestamp when the action was created" })
