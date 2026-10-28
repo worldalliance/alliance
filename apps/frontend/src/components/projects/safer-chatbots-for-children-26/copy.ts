@@ -8,7 +8,7 @@ export const ABOUT_SECTIONS = [
     heading: "What is this?",
     body: `- Safer Chatbots for Children is a volunteer project run by the Alliance and Kora intended to make AI chatbots safer for children and teenagers.
 - Volunteers will review English transcripts of children messaging AI chatbots such as ChatGPT and Claude, then submit feedback on how well the chatbots handled sensitive topics such as fear, academic dishonesty, online data sharing, and body image.
-- Volunteers will *not* be training large language models from big tech companies. The tasks will be used to improve a non-profit's benchmarks (tests) that evaluate the safety of of large language models.`,
+- Volunteers will *not* be training large language models from big tech companies. The tasks will be used to improve a non-profit's benchmarks (tests) that evaluate the safety of large language models.`,
   },
   {
     heading: "Why are we doing this?",
