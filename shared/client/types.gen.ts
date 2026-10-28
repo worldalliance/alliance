@@ -482,7 +482,7 @@ export type Action = {
     customStatType: CustomActionStat;
     customStatLabel?: string;
     customStatValue?: number;
-    customStatGoal?: number;
+    customStatGoal: number | null;
     /**
      * Events associated with the action
      */
@@ -2284,7 +2284,7 @@ export type ActionDto = {
     customStatType: CustomActionStat;
     customStatLabel?: string;
     customStatValue?: number;
-    customStatGoal?: number;
+    customStatGoal: number | null;
     suite?: ActionSuite;
     /**
      * Non-user reviewers credited on the action
@@ -2446,7 +2446,7 @@ export type AdminActionListItemDto = {
     customStatType: CustomActionStat;
     customStatLabel?: string;
     customStatValue?: number;
-    customStatGoal?: number;
+    customStatGoal: number | null;
     suite?: ActionSuite;
     /**
      * Non-user reviewers credited on the action
@@ -2608,7 +2608,7 @@ export type AdminActionDto = {
     customStatType: CustomActionStat;
     customStatLabel?: string;
     customStatValue?: number;
-    customStatGoal?: number;
+    customStatGoal: number | null;
     suite?: ActionSuite;
     /**
      * Non-user reviewers credited on the action
@@ -2757,7 +2757,6 @@ export type CreateActionDto = {
     isForumParticipationAction: boolean;
     customStatLabel?: string;
     customStatValue?: number;
-    customStatGoal?: number;
     customStatType?: CustomActionStat;
     /**
      * Square thumbnail image alt for the action
@@ -2779,6 +2778,7 @@ export type CreateActionDto = {
      * Date and time when the action was computed for autocomplete
      */
     computedAutocompleteAt?: string | null;
+    customStatGoal?: number | null;
     suiteId?: number | null;
     staffPreview?: boolean;
     reviewers?: Array<ActionReviewerDto>;
@@ -2852,7 +2852,6 @@ export type UpdateActionDto = {
     isForumParticipationAction?: boolean;
     customStatLabel?: string;
     customStatValue?: number;
-    customStatGoal?: number;
     customStatType?: CustomActionStat;
     /**
      * Square thumbnail image alt for the action
@@ -2874,6 +2873,7 @@ export type UpdateActionDto = {
      * Date and time when the action was computed for autocomplete
      */
     computedAutocompleteAt?: string | null;
+    customStatGoal?: number | null;
     suiteId?: number | null;
     staffPreview?: boolean;
     reviewers?: Array<ActionReviewerDto>;
@@ -3086,7 +3086,7 @@ export type ExportActionDto = {
     customStatType: CustomActionStat;
     customStatLabel?: string;
     customStatValue?: number;
-    customStatGoal?: number;
+    customStatGoal: number | null;
     /**
      * Events associated with the action
      */
