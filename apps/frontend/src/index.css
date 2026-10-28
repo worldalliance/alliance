@@ -273,3 +273,9 @@ hr {
     scrollbar-gutter: stable;
   }
 }
+
+html[data-immersive],
+html[data-immersive] body {
+  overflow: hidden;
+  scrollbar-gutter: auto;
+}
