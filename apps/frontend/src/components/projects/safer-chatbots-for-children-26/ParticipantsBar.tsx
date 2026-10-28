@@ -16,9 +16,9 @@ export function ParticipantsBar({
         className,
       )}
     >
-      <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-base text-[var(--site-ink)]/70 sm:text-lg">
+      <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-lg text-[var(--site-ink)]/70 sm:text-xl">
         <span className="flex items-center gap-1">
-          <span className="bg-green size-3 rounded-[2px]" aria-hidden />
+          <span className="bg-green size-4 rounded-sm" aria-hidden />
           {participants.toLocaleString("en-US")} participants
         </span>
         <span className="ml-auto">
@@ -28,7 +28,7 @@ export function ParticipantsBar({
       <div
         role="img"
         aria-label={`${participants} participants, toward ${goal.toLocaleString("en-US")}`}
-        className="flex h-5 w-full overflow-hidden rounded-full bg-zinc-100"
+        className="flex h-1.5 w-full overflow-hidden rounded-full bg-zinc-100 sm:h-6"
       >
         <div
           className="bg-green h-full rounded-full"
