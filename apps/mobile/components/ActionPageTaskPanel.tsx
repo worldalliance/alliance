@@ -12,10 +12,10 @@ import {
   type TitledCopy,
 } from "@alliance/shared/lib/copy";
 import {
-  buildActionShareUrl,
   buildShareText,
   getCompletedShareableTextTemplate,
 } from "@alliance/shared/lib/shareText";
+import { useActionShareUrl } from "@alliance/shared/lib/useActionShareUrl";
 import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import { milliseconds } from "date-fns";
 import { Link } from "expo-router";
@@ -151,8 +151,9 @@ const ActionPageTaskPanel = ({
     currentSchema: taskForm?.schema as Record<string, unknown> | undefined,
   });
 
+  const actionShareUrl = useActionShareUrl();
   const handleShareCopy = async () => {
-    const url = await buildActionShareUrl({
+    const url = await actionShareUrl({
       actionId: action.id,
       baseUrl: getSiteUrl(),
       isAuthenticated,

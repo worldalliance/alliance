@@ -27,7 +27,7 @@ import { useEffect, useState } from "react";
 import { isRouteErrorResponse, Link, useOutletContext } from "react-router";
 import { Route } from "../../.react-router/types/src/components/+types/ActionPageTaskPanel";
 import { useAuth } from "../lib/AuthContext";
-import { copyActionShareText } from "../lib/actionShare";
+import { useCopyActionShareText } from "../lib/actionShare";
 import { isNonmemberOnPublicActionReferral } from "../lib/publicActionReferral";
 import ActionTaskPanel from "./ActionTaskPanel";
 import AllianceSignupPitch from "./AllianceSignupPitch";
@@ -199,6 +199,7 @@ const ActionPageTaskPanel = () => {
     currentSchema: taskForm?.schema as Record<string, unknown> | undefined,
   });
 
+  const copyActionShareText = useCopyActionShareText();
   const handleShareCopy = () =>
     copyActionShareText({
       actionId: action.id,

@@ -53,6 +53,8 @@ const actionReminderGroupsAdminAll = () =>
  */
 export const queryKeys = {
   action: (actionId: number | null) => ["actionsFindOne", actionId] as const,
+  actionReferralCode: (actionId: number) =>
+    ["actionsGetActionReferralCode", actionId] as const,
   actionUpdatesAll: () => ["actionUpdatesAllUpdates"] as const,
   actionUpdatesRecent: (limit: number) =>
     ["actionUpdatesRecentUpdates", limit] as const,

@@ -1,5 +1,7 @@
+import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { copyActionShareText } from "./actionShare";
+import { renderHook } from "@testing-library/react";
+import { useCopyActionShareText } from "./actionShare";
 
 declare global {
   interface Window {
@@ -24,6 +26,11 @@ it("copies the share text with a personal link on the domain the member loaded",
   const writeText = jest
     .spyOn(navigator.clipboard, "writeText")
     .mockResolvedValue();
+
+  const copyActionShareText = renderHook(
+    () => useCopyActionShareText(),
+    queryWrapper(),
+  ).result.current;
 
   expect(
     await copyActionShareText({
