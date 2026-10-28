@@ -184,46 +184,39 @@ const ActionsList: React.FC = () => {
         className="flex-shrink-0 max-h-[50vh] border border-zinc-200"
       />
       {suitesInProgress.length > 0 && (
-        <section className="flex-shrink-0 space-y-2">
+        <section className="flex-shrink-0 space-y-3 py-2">
           <h2 className="text-sm font-semibold ml-2">
             Suites with draft or active actions
           </h2>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(360px,1fr))] gap-4">
             {suitesInProgress.map((suite) => (
-              <div
+              <Link
                 key={suite.id}
-                className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm"
+                to={`/suites/${suite.id}`}
+                className="flex flex-col gap-3 rounded-lg border border-zinc-200 bg-white p-4 text-sm hover:border-green"
               >
-                <Link
-                  to={`/suites/${suite.id}`}
-                  className="font-semibold hover:text-green"
-                >
-                  {suite.name}
-                </Link>
-                <span className="ml-2 text-xs text-zinc-500">
-                  {[
-                    suite.activeCount > 0 && `${suite.activeCount} active`,
-                    suite.draftCount > 0 && `${suite.draftCount} draft`,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </span>
-                <ul className="mt-1">
+                <div>
+                  <span className="font-semibold">{suite.name}</span>
+                  <span className="ml-2 text-xs text-zinc-500">
+                    {[
+                      suite.activeCount > 0 && `${suite.activeCount} active`,
+                      suite.draftCount > 0 && `${suite.draftCount} draft`,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                </div>
+                <ul className="space-y-1.5">
                   {suite.actions.map((action) => (
-                    <li key={action.id} className="flex items-center gap-2">
-                      <span className="rounded bg-zinc-100 px-1 text-[10px] uppercase text-zinc-600">
+                    <li key={action.id} className="flex items-start gap-2">
+                      <span className="mt-0.5 rounded bg-zinc-100 px-1 text-[10px] uppercase text-zinc-600">
                         {ACTION_STATUS_BUCKET_LABELS[action.bucket]}
                       </span>
-                      <Link
-                        to={`/actions/${action.id}`}
-                        className="hover:text-green"
-                      >
-                        {action.name}
-                      </Link>
+                      {action.name}
                     </li>
                   ))}
                 </ul>
-              </div>
+              </Link>
             ))}
           </div>
         </section>
