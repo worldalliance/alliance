@@ -97,7 +97,7 @@ describe("launchBlockers", () => {
       "Some checks failed to load.",
       "1 action has unfinished checklist items.",
       "1 contract violation to fix or accept.",
-      "1 action isn't marked as checked.",
+      "1 action isn't marked ready to launch.",
       "1 text finding to fix or dismiss.",
     ]);
   });

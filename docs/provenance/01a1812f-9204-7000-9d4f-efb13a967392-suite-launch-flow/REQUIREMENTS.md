@@ -19,7 +19,7 @@ On the admin suite view:
   - It flags any member whose assigned suite actions add up to more than 15 minutes. (user)
   - It checks that every readiness checklist item is satisfied for every action in the suite. (user)
   - It lets the admin select a list of members and preview all the actions assigned to each of them. (user)
-  - It lists every action with buttons to preview and to edit it, plus a checkbox labeled "I checked this" next to each. (user)
+  - It lists every action with buttons to preview and to edit it, plus a checkbox labeled "Ready to launch" next to each. (user)
   - It runs basic spelling and grammar checks, such as double spaces. These don't block on their own, but the admin has to either change the text or dismiss each finding. (user)
 - A launch button asks the admin to type "I am going to notify {n} real members", where n is the number of members who will be notified. It then creates the two events and populates the default reminders. (user)
 
@@ -32,6 +32,8 @@ On the admin suite view:
 - Leave weekly load across suites unchecked for now. (user)
 - Call out loudly at launch any violation of the member contract. (user)
 - The launch button spans the full width, with no rocket icon. (user)
+- The action checklist includes "Part of a project". (user)
+- Member counts respect who has signed the contract. (user)
 
 ## Verification
 

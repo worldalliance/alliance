@@ -214,7 +214,7 @@ const launchButton = () =>
 
 const resolveEveryCheck = async () => {
   for (const box of await screen.findAllByRole("checkbox", {
-    name: "I checked this",
+    name: "Ready to launch",
   }))
     fireEvent.click(box);
   fireEvent.click(
