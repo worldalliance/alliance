@@ -1,10 +1,13 @@
 import { type FormValue } from "@alliance/common/forms/form-schema";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import {
   tasksGetFormDraft,
   tasksSaveFormDraft,
   type FormDraftDto,
+  type SaveFormDraftDto,
 } from "../client";
+import { queryKeys } from "../lib/queryKeys";
 
 const DRAFT_SAVE_DEBOUNCE_MS = 1500;
 
@@ -53,39 +56,54 @@ export function useFormDraftSync(args: {
     edited,
     onSaved,
   } = args;
-  const [serverDraft, setServerDraft] = useState<FormDraftDto | null>(null);
-  const [fetched, setFetched] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
   const [paused, setPaused] = useState(false);
 
-  useEffect(() => {
-    if (!enabled) return;
-    // A renderer whose form changes under it keeps this hook mounted, and the
-    // previous form's draft and open save path would both carry over.
-    setServerDraft(null);
-    setFetched(false);
-    let cancelled = false;
-    tasksGetFormDraft({ path: { id: formId } })
-      .then((response) => {
-        if (cancelled || !response.response.ok) return;
-        setServerDraft(response.data?.draft ?? null);
-        setFetched(true);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [enabled, formId]);
+  const draftQuery = useQuery({
+    queryKey: queryKeys.taskFormDraft(formId),
+    queryFn: () =>
+      tasksGetFormDraft({ path: { id: formId }, throwOnError: true }).then(
+        (response) => response.data.draft ?? null,
+      ),
+    enabled,
+    // Each mount or re-enable reads the server again, and `fetched` waits for
+    // that read, including one paused offline: another device may have saved
+    // since, and a save opened on a cached copy overwrites it.
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+  // A failed fetch reads as no draft, so only a successful one opens the save
+  // path.
+  const fetched = draftQuery.isSuccess && draftQuery.fetchStatus === "idle";
+
+  const { mutate: saveDraft } = useMutation({
+    mutationFn: ({ id, body }: { id: number; body: SaveFormDraftDto }) =>
+      tasksSaveFormDraft({
+        path: { id },
+        body,
+        throwOnError: true,
+      }).then((response) => response.data),
+    // Paused offline saves would replay together on reconnect, in any order,
+    // with no failure shown meanwhile; each save fails instead.
+    networkMode: "always",
+    // Here rather than per `mutate`, which fires only for the latest call: a
+    // save overtaken by the next must still record its `updatedAt`.
+    onSuccess: (saved) => {
+      setSaveFailed(false);
+      onSaved(saved.updatedAt);
+    },
+    onError: () => setSaveFailed(true),
+  });
 
   useEffect(() => {
     // A save before the fetch lands overwrites another device's draft with
-    // this one's near-empty state. A failed fetch reads as no draft, so only
-    // a successful one opens the save path.
+    // this one's near-empty state.
     if (!enabled || !edited || !fetched || paused || formSnapshotId === null)
       return;
     const timer = setTimeout(() => {
-      tasksSaveFormDraft({
-        path: { id: formId },
+      saveDraft({
+        id: formId,
         body: {
           actionId,
           formSnapshotId,
@@ -93,16 +111,7 @@ export function useFormDraftSync(args: {
           publicAnswers,
           currentPageIndex,
         },
-      })
-        .then((response) => {
-          setSaveFailed(!response.response.ok);
-          if (response.data) {
-            onSaved(response.data.updatedAt);
-          }
-        })
-        .catch(() => {
-          setSaveFailed(true);
-        });
+      });
     }, DRAFT_SAVE_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [
@@ -116,11 +125,16 @@ export function useFormDraftSync(args: {
     answers,
     publicAnswers,
     currentPageIndex,
-    onSaved,
+    saveDraft,
   ]);
 
   const pauseSyncing = useCallback(() => setPaused(true), []);
   const resumeSyncing = useCallback(() => setPaused(false), []);
 
-  return { serverDraft, saveFailed, pauseSyncing, resumeSyncing };
+  return {
+    serverDraft: fetched ? draftQuery.data : null,
+    saveFailed,
+    pauseSyncing,
+    resumeSyncing,
+  };
 }

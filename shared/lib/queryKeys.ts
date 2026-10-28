@@ -160,6 +160,7 @@ export const queryKeys = {
     [...taskFormsAll(), "admin", formId] as const,
   taskFormAggregateViews: (formId: number | null) =>
     ["tasksGetFormAggregateViews", formId] as const,
+  taskFormDraft: (formId: number) => ["tasksGetFormDraft", formId] as const,
   waitlistBrowser: () => ["waitlistBrowser"] as const,
   waitlistCount: () => ["waitlistCount"] as const,
   waitlistMailConfig: () => ["waitlistMailConfig"] as const,

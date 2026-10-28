@@ -1,6 +1,7 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { useFormSchemaMaps } from "@alliance/shared/forms/useFormSchemaMaps";
 import { useFieldErrors } from "@alliance/shared/forms/useFormValidation";
+import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { act, renderHook } from "@testing-library/react";
 import { useFormDraftState } from "./useFormDraftState";
 import { useFormEditing } from "./useFormEditing";
@@ -58,7 +59,7 @@ const renderEditing = ({ readOnly = false } = {}) => {
       applyFieldErrorUpdates,
     });
     return { draft, editing, fieldErrors };
-  });
+  }, queryWrapper());
   return { hook, onFormStarted };
 };
 
