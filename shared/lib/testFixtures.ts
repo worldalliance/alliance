@@ -72,6 +72,7 @@ export function makeAction(
     timeEstimate: null,
     squareThumbnailImageAlt: null,
     customStatType: "none",
+    customStatValue: null,
     customStatGoal: null,
     createdAt: new Date(0).toISOString(),
     updatedAt: new Date(0).toISOString(),

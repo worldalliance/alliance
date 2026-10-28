@@ -481,7 +481,7 @@ export type Action = {
     computedAutocompleteAt: string | null;
     customStatType: CustomActionStat;
     customStatLabel?: string;
-    customStatValue?: number;
+    customStatValue: number | null;
     customStatGoal: number | null;
     /**
      * Events associated with the action
@@ -2283,7 +2283,7 @@ export type ActionDto = {
     computedAutocompleteAt: string | null;
     customStatType: CustomActionStat;
     customStatLabel?: string;
-    customStatValue?: number;
+    customStatValue: number | null;
     customStatGoal: number | null;
     suite?: ActionSuite;
     /**
@@ -2445,7 +2445,7 @@ export type AdminActionListItemDto = {
     computedAutocompleteAt: string | null;
     customStatType: CustomActionStat;
     customStatLabel?: string;
-    customStatValue?: number;
+    customStatValue: number | null;
     customStatGoal: number | null;
     suite?: ActionSuite;
     /**
@@ -2607,7 +2607,7 @@ export type AdminActionDto = {
     computedAutocompleteAt: string | null;
     customStatType: CustomActionStat;
     customStatLabel?: string;
-    customStatValue?: number;
+    customStatValue: number | null;
     customStatGoal: number | null;
     suite?: ActionSuite;
     /**
@@ -2756,7 +2756,6 @@ export type CreateActionDto = {
      */
     isForumParticipationAction: boolean;
     customStatLabel?: string;
-    customStatValue?: number;
     customStatType?: CustomActionStat;
     /**
      * Square thumbnail image alt for the action
@@ -2851,7 +2850,6 @@ export type UpdateActionDto = {
      */
     isForumParticipationAction?: boolean;
     customStatLabel?: string;
-    customStatValue?: number;
     customStatType?: CustomActionStat;
     /**
      * Square thumbnail image alt for the action
@@ -3085,7 +3083,7 @@ export type ExportActionDto = {
     computedAutocompleteAt: string | null;
     customStatType: CustomActionStat;
     customStatLabel?: string;
-    customStatValue?: number;
+    customStatValue: number | null;
     customStatGoal: number | null;
     /**
      * Events associated with the action

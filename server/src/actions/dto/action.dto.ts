@@ -256,7 +256,6 @@ export class CreateActionDto extends IntersectionType(
     "shouldCompleteAfterDeadline",
     "isForumParticipationAction",
     "customStatLabel",
-    "customStatValue",
   ]),
   PartialType(PickType(ActionDto, ["customStatType"]), {
     skipNullProperties: false,

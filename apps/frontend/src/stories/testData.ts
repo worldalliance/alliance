@@ -18,6 +18,7 @@ export const testActions: ActionDto[] = [
     timeEstimate: 5,
     squareThumbnailImageAlt: null,
     customStatType: "none",
+    customStatValue: null,
     customStatGoal: null,
     usersJoined: 234,
     shortDescription:
@@ -71,6 +72,7 @@ export const testActions: ActionDto[] = [
     timeEstimate: 5,
     squareThumbnailImageAlt: null,
     customStatType: "none",
+    customStatValue: null,
     customStatGoal: null,
     usersJoined: 234,
     shortDescription:

@@ -32,7 +32,11 @@ it("hides the value left over once the stat type is none", () => {
 it("hides a tracked stat until its value is computed", () => {
   const { container } = render(
     <ActionCustomStat
-      action={{ customStatType: "users_invited", customStatLabel: "Invites" }}
+      action={{
+        customStatType: "users_invited",
+        customStatLabel: "Invites",
+        customStatValue: null,
+      }}
     />,
   );
   expect(container.innerHTML).toBe("");
