@@ -231,7 +231,7 @@ export type ActionEventNotifType = 'announcement' | 'misseddeadline' | 'reminder
 
 export type EmailStatus = 'pending' | 'sent' | 'failed';
 
-export type EmailType = 'verification' | 'password_reset' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'forum_reply' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder' | 'contract_suspended' | 'contract_reinstated' | 'contract_reminder' | 'waitlist_confirmation' | 'waitlist_link' | 'waitlist_staff';
+export type EmailType = 'verification' | 'password_reset' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'forum_reply' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder' | 'contract_suspended' | 'contract_reinstated' | 'contract_reminder' | 'waitlist_confirmation' | 'waitlist_link' | 'waitlist_staff' | 'otp_code';
 
 export type Mail = {
     id: number;

@@ -29,6 +29,8 @@ const PHYSICALLY_DELETED = [
   "AiDetectionResult",
   "Cluster",
   "NotificationPreference",
+  "OtpChallenge",
+  "OtpRateEvent",
   "RecentSearch",
   "SpentToken",
   "WaitlistBrowser",
