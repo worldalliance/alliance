@@ -1,4 +1,5 @@
 import { errorMessage } from "@alliance/common/errorMessage";
+import { R, type Result } from "@alliance/common/result";
 import {
   queryOptions,
   skipToken,
@@ -6,7 +7,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { tasksGetForm, tasksGetFormAdmin } from "../client";
+import { tasksGetForm, tasksGetFormAdmin, type FormDto } from "../client";
 import { queryKeys } from "./queryKeys";
 
 const readForm = async (get: typeof tasksGetForm, formId: number) => {
@@ -58,6 +59,33 @@ export const adminTaskFormQuery = (formId: number | null | undefined) =>
 
 export function useAdminTaskForm(formId: number | null | undefined) {
   return useQuery(adminTaskFormQuery(formId));
+}
+
+/** For admin code that acts on the stored form once; a screen that renders
+ * it as it changes reads `useAdminTaskForm`. */
+export function useAdminTaskFormActions() {
+  const queryClient = useQueryClient();
+
+  // A request of its own, not fetchQuery: that would join a screen's fetch
+  // already in flight, older read and retries included. Once this read lands,
+  // any screen fetch still in flight is cancelled, even one sent after it, so
+  // the cache ends on this read.
+  const fetchLatest = useCallback(
+    async (formId: number): Promise<Result<FormDto, unknown>> => {
+      const read = await R.fromPromise(
+        readForm(tasksGetFormAdmin, formId),
+        (error) => error,
+      );
+      if (!read.ok) return read;
+      const { queryKey } = adminTaskFormQuery(formId);
+      await queryClient.cancelQueries({ queryKey });
+      queryClient.setQueryData(queryKey, read.value);
+      return read;
+    },
+    [queryClient],
+  );
+
+  return { fetchLatest };
 }
 
 export function useTaskForm(
