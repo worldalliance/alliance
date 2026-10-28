@@ -1,8 +1,11 @@
+import { thrownMessage, thrownStack } from "@alliance/common/errorMessage";
 import { nameParts } from "@alliance/common/nameParts";
-import { R } from "@alliance/common/result";
+import { R, type Result } from "@alliance/common/result";
+import { TIMED_OUT, withTimeout } from "@alliance/common/timeout";
 import { ISendMailOptions, MailerService } from "@nestjs-modules/mailer";
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { milliseconds } from "date-fns";
 import type SMTPTransport from "nodemailer/lib/smtp-transport";
 import {
   MessageChannel,
@@ -20,10 +23,15 @@ import {
   tasksUrl,
   verifyEmailUrl,
 } from "src/search/approutes";
-import { notifDeliveryEnabled } from "src/utils/notif-delivery";
+import {
+  DeliveryFailure,
+  notifDeliveryEnabled,
+} from "src/utils/notif-delivery";
 import type { Repository } from "src/utils/Repository";
 import { ContractReminderCopy } from "./contract-reminder-copy";
 import { EmailStatus, EmailType, Mail } from "./mail.entity";
+
+const SEND_TIMEOUT_MS = milliseconds({ seconds: 10 });
 
 export function mailSendingEnabled(): boolean {
   return process.env.NODE_ENV !== "test" && notifDeliveryEnabled();
@@ -71,6 +79,9 @@ const notSent = (error: unknown): never => {
 
 @Injectable()
 export class MailService {
+  private readonly logger = new Logger(MailService.name);
+  private sendTimeoutMs = SEND_TIMEOUT_MS;
+
   constructor(
     private readonly mailerService: MailerService,
     @InjectRepository(Mail)
@@ -165,7 +176,14 @@ export class MailService {
     });
 
     const sent = await R.fromPromise(
-      this.transmit({ recipient, from, emailType, subject, html }),
+      this.transmit({
+        recipient,
+        from,
+        emailType,
+        subject,
+        html,
+        providerTracking: true,
+      }),
     );
 
     if (!sent.ok) {
@@ -191,8 +209,10 @@ export class MailService {
     emailType: EmailType;
     subject: string | null;
     html: string;
+    providerTracking: boolean;
   }): Promise<SMTPTransport.SentMessageInfo> {
-    const { recipient, from, emailType, subject, html } = params;
+    const { recipient, from, emailType, subject, html, providerTracking } =
+      params;
     return this.mailerService.sendMail({
       to: recipient,
       from,
@@ -201,9 +221,72 @@ export class MailService {
         "o:tag": emailType,
         "X-Mailgun-Tag":
           process.env.NODE_ENV === "production" ? "production" : "development",
+        ...(providerTracking ? {} : { "X-Mailgun-Track": "no" }),
       },
       html,
     });
+  }
+
+  /**
+   * Sends with no Mail row and no link tracking, ours or Mailgun's, so we keep
+   * no copy of the body or its links.
+   */
+  async sendUnrecordedMail(params: {
+    recipient: string;
+    emailType: EmailType;
+    subject: string;
+    context: ISendMailOptions["context"];
+  }): Promise<Result<{ messageId: string }, DeliveryFailure>> {
+    const { recipient, emailType, subject, context } = params;
+    if (!mailSendingEnabled()) return R.failure(DeliveryFailure.Unavailable);
+    const prepared = await R.fromPromise(this.prepareSend(emailType, context));
+    if (!prepared.ok) {
+      this.logFailure({ emailType, error: prepared.error });
+      return R.failure(DeliveryFailure.Unavailable);
+    }
+    const { from, rendered } = prepared.value;
+    const sent = await R.fromPromise(
+      withTimeout(
+        this.transmit({
+          recipient,
+          from,
+          emailType,
+          subject,
+          html: rendered,
+          providerTracking: false,
+        }),
+        this.sendTimeoutMs,
+      ),
+    );
+    if (!sent.ok) {
+      this.logFailure({ emailType, error: sent.error });
+      return R.failure(DeliveryFailure.Failed);
+    }
+    if (sent.value === TIMED_OUT) {
+      this.logger.warn(
+        `Unrecorded ${emailType} email timed out after ${this.sendTimeoutMs}ms`,
+      );
+      return R.failure(DeliveryFailure.Failed);
+    }
+    if (sent.value.accepted.length === 0) {
+      this.logger.error(`Unrecorded ${emailType} email was not accepted`);
+      return R.failure(DeliveryFailure.Failed);
+    }
+    return R.success({ messageId: sent.value.messageId });
+  }
+
+  /** Mail servers quote rejected addresses, normalized rather than as sent. */
+  private logFailure(params: { emailType: EmailType; error: unknown }) {
+    const { emailType, error } = params;
+    const redact = (logged: string) =>
+      logged.replace(
+        /(?:"(?:[^"\\]|\\.)*"|[^\s<>()@"]+)@(?:\[[^\]]*\]|[\p{L}\p{N}-]+(\.[\p{L}\p{N}-]+)+)/gu,
+        "[redacted]",
+      );
+    this.logger.error(
+      redact(`Unrecorded ${emailType} email not sent: ${thrownMessage(error)}`),
+      redact(thrownStack(error)),
+    );
   }
 
   public async sendWelcomeEmail(params: {
