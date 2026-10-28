@@ -119,13 +119,16 @@ export class Action {
   @Transform(trimToNull)
   image: string | null;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional({
+  @Column({ type: "varchar", nullable: true })
+  @ApiProperty({
+    type: String,
+    nullable: true,
     description: "Square thumbnail image URL for the action",
   })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  squareThumbnailImage?: string;
+  @IsString()
+  @Transform(trimToNull)
+  squareThumbnailImage: string | null;
 
   @Column({ type: "varchar", nullable: true })
   @ApiProperty({

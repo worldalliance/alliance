@@ -71,6 +71,7 @@ export function makeAction(
     body: "",
     shortDescription: "",
     timeEstimate: null,
+    squareThumbnailImage: null,
     squareThumbnailImageAlt: null,
     customStatType: "none",
     customStatValue: null,

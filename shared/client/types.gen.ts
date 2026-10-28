@@ -392,7 +392,7 @@ export type Action = {
     /**
      * Square thumbnail image URL for the action
      */
-    squareThumbnailImage?: string;
+    squareThumbnailImage: string | null;
     /**
      * Square thumbnail image alt for the action
      */
@@ -2208,7 +2208,7 @@ export type ActionDto = {
     /**
      * Square thumbnail image URL for the action
      */
-    squareThumbnailImage?: string;
+    squareThumbnailImage: string | null;
     /**
      * Square thumbnail image alt for the action
      */
@@ -2370,7 +2370,7 @@ export type AdminActionListItemDto = {
     /**
      * Square thumbnail image URL for the action
      */
-    squareThumbnailImage?: string;
+    squareThumbnailImage: string | null;
     /**
      * Square thumbnail image alt for the action
      */
@@ -2478,7 +2478,7 @@ export type AdminActionListItemDto = {
     /**
      * The squareThumbnailImage column itself, like `storedImage`.
      */
-    storedSquareThumbnailImage?: string;
+    storedSquareThumbnailImage: string | null;
     staffPreview: boolean;
     prerequisiteActionIds: Array<number>;
     /**
@@ -2532,7 +2532,7 @@ export type AdminActionDto = {
     /**
      * Square thumbnail image URL for the action
      */
-    squareThumbnailImage?: string;
+    squareThumbnailImage: string | null;
     /**
      * Square thumbnail image alt for the action
      */
@@ -2640,7 +2640,7 @@ export type AdminActionDto = {
     /**
      * The squareThumbnailImage column itself, like `storedImage`.
      */
-    storedSquareThumbnailImage?: string;
+    storedSquareThumbnailImage: string | null;
     staffPreview: boolean;
     prerequisiteActionIds: Array<number>;
     /**
@@ -2710,10 +2710,6 @@ export type CreateActionDto = {
      */
     category: Array<ActionCategory>;
     /**
-     * Square thumbnail image URL for the action
-     */
-    squareThumbnailImage?: string;
-    /**
      * markdown page body
      */
     body: string;
@@ -2756,6 +2752,10 @@ export type CreateActionDto = {
      * Image URL for the action
      */
     image?: string | null;
+    /**
+     * Square thumbnail image URL for the action
+     */
+    squareThumbnailImage?: string | null;
     /**
      * Square thumbnail image alt for the action
      */
@@ -2804,10 +2804,6 @@ export type UpdateActionDto = {
      */
     category?: Array<ActionCategory>;
     /**
-     * Square thumbnail image URL for the action
-     */
-    squareThumbnailImage?: string;
-    /**
      * markdown page body
      */
     body?: string;
@@ -2850,6 +2846,10 @@ export type UpdateActionDto = {
      * Image URL for the action
      */
     image?: string | null;
+    /**
+     * Square thumbnail image URL for the action
+     */
+    squareThumbnailImage?: string | null;
     /**
      * Square thumbnail image alt for the action
      */
@@ -2999,7 +2999,7 @@ export type ExportActionDto = {
     /**
      * Square thumbnail image URL for the action
      */
-    squareThumbnailImage?: string;
+    squareThumbnailImage: string | null;
     /**
      * Square thumbnail image alt for the action
      */
