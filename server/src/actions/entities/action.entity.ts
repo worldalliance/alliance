@@ -124,6 +124,8 @@ export class Action {
     description: "Square thumbnail image URL for the action",
   })
   @IsOptional()
+  @IsString()
+  @Transform(trimToNull)
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   squareThumbnailImage?: string;
 

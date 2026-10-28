@@ -118,6 +118,9 @@ export class ActionImportExportService {
           ...actionCols,
           // Exports taken before the column was NOT NULL can carry null.
           customStatType: actionCols.customStatType ?? CustomActionStat.NONE,
+          // Exports taken before blank thumbnails were cleared can carry one.
+          squareThumbnailImage:
+            actionCols.squareThumbnailImage?.trim() || undefined,
           cohortExpression,
           id: undefined,
         });
