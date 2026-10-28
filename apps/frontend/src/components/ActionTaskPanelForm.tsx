@@ -21,7 +21,7 @@ import FormRenderer, {
 import Card from "@alliance/sharedweb/ui/Card";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import posthog from "posthog-js";
-import { useMemo, useState, type RefObject } from "react";
+import { useMemo, useRef, useState, type RefObject } from "react";
 import { useAuth } from "../lib/AuthContext";
 
 interface ActionTaskPanelFormProps {
@@ -65,7 +65,7 @@ const ActionTaskPanelForm = ({
     refreshUser,
     loading: authLoading,
   } = useAuth();
-  const { submit } = useTaskFormSubmission();
+  const { submit, recordCompleted } = useTaskFormSubmission();
   const {
     data: form,
     error: formError,
@@ -80,56 +80,71 @@ const ActionTaskPanelForm = ({
     enabled: draftEnabled,
   });
 
-  const handleSubmitForm = onCompleteAction
-    ? async (data: SubmitFormDto): Promise<boolean> => {
-        setError(null);
+  const submittedRef = useRef<FormResponseDto | null>(null);
 
-        const response = await submit({
-          taskFormId,
-          body: data,
-          isMember: isAuthenticated,
+  const submitTaskForm = async (data: SubmitFormDto): Promise<boolean> => {
+    setError(null);
+
+    const response = await submit({
+      taskFormId,
+      body: data,
+      isMember: isAuthenticated,
+      deferCompletion: true,
+    });
+    if (response.response.ok) {
+      submittedRef.current = response.data ?? null;
+      if (typeof window !== "undefined" && form) {
+        const storageKey = computeFormStorageKey({
+          formId: form.id,
+          instanceId: taskFormId,
         });
-        if (response.response.ok) {
-          if (response.data) {
-            onSubmitted?.(response.data);
-          }
-          if (!isAuthenticated && redirectOnComplete) {
-            window.location.href = "/actions/completed";
-          }
-          if (typeof window !== "undefined" && form) {
-            const storageKey = computeFormStorageKey({
-              formId: form.id,
-              instanceId: taskFormId,
-            });
-            window.localStorage.removeItem(storageKey);
-          }
-          if (user && !user.hasActiveContract) {
-            //TODO: better handling of user refresh (things used to break if the user signed a contract in another tab then went back to the first one)
-            refreshUser();
-          }
-          onCompleteAction();
-          return true;
+        window.localStorage.removeItem(storageKey);
+      }
+      return true;
+    }
+    if (formAlreadySubmitted(response)) {
+      window.location.reload();
+      return false;
+    }
+    if (memberActionDeadlinePassed(response)) {
+      setError(MEMBER_ACTION_DEADLINE_PASSED);
+      onDeadlinePassed();
+      return false;
+    }
+    if (formulaSourcesChanged(response)) {
+      setError(FORMULA_SOURCES_CHANGED);
+      return false;
+    }
+    console.error(response.error);
+    captureException(ExceptionEvent.FormSubmitError, response.error, {
+      actionId,
+      $exception_fingerprint: "FormSubmitError",
+    });
+    setError("Failed to submit action.");
+    return false;
+  };
+
+  /** Marks the submitted action completed, which can unmount this form. */
+  const completeAction = onCompleteAction
+    ? () => {
+        recordCompleted({ actionId, isMember: isAuthenticated });
+        if (submittedRef.current) onSubmitted?.(submittedRef.current);
+        if (user && !user.hasActiveContract) {
+          //TODO: better handling of user refresh (things used to break if the user signed a contract in another tab then went back to the first one)
+          refreshUser();
         }
-        if (formAlreadySubmitted(response)) {
-          window.location.reload();
-          return false;
+        onCompleteAction();
+        if (!isAuthenticated && redirectOnComplete) {
+          window.location.href = "/actions/completed";
         }
-        if (memberActionDeadlinePassed(response)) {
-          setError(MEMBER_ACTION_DEADLINE_PASSED);
-          onDeadlinePassed();
-          return false;
-        }
-        if (formulaSourcesChanged(response)) {
-          setError(FORMULA_SOURCES_CHANGED);
-          return false;
-        }
-        console.error(response.error);
-        captureException(ExceptionEvent.FormSubmitError, response.error, {
-          actionId,
-          $exception_fingerprint: "FormSubmitError",
-        });
-        setError("Failed to submit action.");
-        return false;
+      }
+    : null;
+
+  const handleSubmitForm = completeAction
+    ? async (data: SubmitFormDto): Promise<boolean> => {
+        const submitted = await submitTaskForm(data);
+        if (submitted) completeAction();
+        return submitted;
       }
     : null;
 
