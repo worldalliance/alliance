@@ -261,7 +261,11 @@ The initial content pass is complete when no row is `pending` or `blocked`.
 | [01a18382-b718-7000-a320-4531df06aa52-task-form-id-nullable](../provenance/01a18382-b718-7000-a320-4531df06aa52-task-form-id-nullable/) | pending | | |
 | [01a18383-52b2-7000-86d3-06e53a608ec1-cohort-expression-nullable](../provenance/01a18383-52b2-7000-86d3-06e53a608ec1-cohort-expression-nullable/) | pending | | |
 | [01a1838a-15f7-7000-87ae-3e5e8d5d0f1d-custom-stat-label-nullable](../provenance/01a1838a-15f7-7000-87ae-3e5e8d5d0f1d-custom-stat-label-nullable/) | pending | | |
+| [01a18395-cc7f-7000-acba-0c4ee331a2c2-thumbnail-image-nullable](../provenance/01a18395-cc7f-7000-acba-0c4ee331a2c2-thumbnail-image-nullable/) | pending | | |
 | [01a183a7-4c79-7000-972f-f94dedfe3f43-invite-lookups-hook](../provenance/01a183a7-4c79-7000-972f-f94dedfe3f43-invite-lookups-hook/) | pending | | |
 | [01a18417-950b-7000-950f-453abd69022c-admin-form-hook](../provenance/01a18417-950b-7000-950f-453abd69022c-admin-form-hook/) | pending | | |
 | [01a18417-a8b8-7000-ac0b-a9fbf2f7df97-member-location-hook](../provenance/01a18417-a8b8-7000-ac0b-a9fbf2f7df97-member-location-hook/) | pending | | |
+| [01a18417-c429-7000-a89c-e26b3ec11f9e-home-feed-reset-hook](../provenance/01a18417-c429-7000-a89c-e26b3ec11f9e-home-feed-reset-hook/) | pending | | |
+| [01a18419-36ab-7000-a116-2295ed2513c7-custom-validator-types-hook](../provenance/01a18419-36ab-7000-a116-2295ed2513c7-custom-validator-types-hook/) | pending | | |
+| [01a18425-b0a3-7000-b553-0ecd82814c43-form-draft-hook](../provenance/01a18425-b0a3-7000-b553-0ecd82814c43-form-draft-hook/) | pending | | |
 | [01a184c6-93e6-7000-9c02-8541ab74b7cd-variable-aggregates-hook](../provenance/01a184c6-93e6-7000-9c02-8541ab74b7cd-variable-aggregates-hook/) | pending | | |
