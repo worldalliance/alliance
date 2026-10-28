@@ -16,6 +16,8 @@ export const HERO_HEADLINE_PARTS = {
 export const HERO_SUBHEAD =
   "To combat global problems, we commit 15 minutes each week to projects that depend on everyone’s participation. We are in an experimental phase.";
 
+const CHATBOTS_PROJECT_TITLE = "Make AI chatbots safer for kids";
+
 export type UpcomingProject = {
   title: string;
   href: string;
@@ -33,7 +35,7 @@ export const UPCOMING_PROJECTS: UpcomingProject[] = [
     progress: { done: 267, goal: 1000, unit: "members" },
   },
   {
-    title: "Make AI chatbots safer for kids",
+    title: CHATBOTS_PROJECT_TITLE,
     href: href("/projects/safer-chatbots-for-children"),
     imageSrc: "/assets/chatbot-safety/hero-chatbot.avif",
     progress: { done: 238, goal: 500, unit: "participants" },
@@ -122,12 +124,11 @@ export const HOURS_LEGEND_TOTAL = "Hours in the week";
 export const HOURS_LEGEND_SPENT = "Time spent completing actions";
 
 export const nearMilestones: Milestone[] = [
-  { members: 30, label: "Jointly pitch the media on an underreported topic" },
   {
     members: 100,
     label: "Encourage a small business to adopt a sustainability policy",
   },
-  { members: 300, label: "Conduct a large-scale citizen science project" },
+  { members: 500, label: CHATBOTS_PROJECT_TITLE },
   {
     members: 1000,
     label: nextMilestone.action,
@@ -135,10 +136,6 @@ export const nearMilestones: Milestone[] = [
 ];
 
 export const farMilestones: Milestone[] = [
-  {
-    members: 3000,
-    label: "Run an online deliberation to design policies with popular support",
-  },
   { members: 10000, label: "Develop a crowd-sourced fact-checking program" },
   { members: 30000, label: "Fill city council meetings across a country" },
   {
