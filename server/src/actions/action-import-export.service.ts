@@ -50,12 +50,13 @@ export class ActionImportExportService {
       relations,
     });
 
-    const taskFormEntity = taskForm
-      ? await this.formRepository.findOneOrFail({
-          where: { id: action.taskFormId },
-          relations: { formSnapshot: true },
-        })
-      : undefined;
+    const taskFormEntity =
+      taskForm && action.taskFormId !== null
+        ? await this.formRepository.findOneOrFail({
+            where: { id: action.taskFormId },
+            relations: { formSnapshot: true },
+          })
+        : undefined;
 
     const reminderGroups = reminders
       ? await this.reminderGroupService.getReminderGroupsForEvent(action.id)
