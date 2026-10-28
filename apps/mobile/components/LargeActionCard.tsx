@@ -92,6 +92,7 @@ export default function LargeActionCard({
   onCompleteAction = onUpdateActionState,
 }: LargeActionCardProps) {
   const nextEvent = getNextEvent(action);
+  const goToActionPage = () => router.push(`/actions/${action.id}`);
   const { activities: friendActivities } = useActivities({
     list: ActivityList.FriendsForAction,
     objectId: action.id,
@@ -123,21 +124,21 @@ export default function LargeActionCard({
             filled={true}
           />
           <TouchableOpacity
-            onPress={() => {
-              router.push(`/actions/${action.id}`);
-            }}
+            onPress={goToActionPage}
             className="mr-2 flex flex-row items-center gap-x-1"
           >
             <ArrowRight size={20} />
           </TouchableOpacity>
         </View>
-        <Text
-          className="text-xl mb-2"
-          family={FontFamily.Serif}
-          weight={FontWeight.Bold}
-        >
-          {action.name}
-        </Text>
+        <TouchableOpacity onPress={goToActionPage}>
+          <Text
+            className="text-xl mb-2"
+            family={FontFamily.Serif}
+            weight={FontWeight.Bold}
+          >
+            {action.name}
+          </Text>
+        </TouchableOpacity>
       </View>
       <Text className="text-base text-zinc-500 mb-4">
         {action.shortDescription}

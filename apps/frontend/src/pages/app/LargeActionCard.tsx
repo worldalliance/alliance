@@ -128,7 +128,12 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
         <div className="p-0 sm:p-2">
           <div className="flex sm:flex-row gap-4 items-start flex-col-reverse">
             <div className="flex flex-col flex-1 gap-y-2">
-              <p className="text-title text-2xl!">{action.name}</p>
+              <Link
+                to={href("/actions/:id", { id: action.id.toString() })}
+                className="text-title text-2xl!"
+              >
+                {action.name}
+              </Link>
               <TaskTimeInfo action={action} nextEvent={nextEvent} />
             </div>
             {showDetails && (
