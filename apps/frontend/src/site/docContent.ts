@@ -122,7 +122,6 @@ export const ACTION_CATEGORIES: ActionCategory[] = [
     definition: "Members change what they buy and use.",
     examples: [
       "Enforce an ethical standard on an industry by only buying from companies that meet it.",
-      "Coordinate individual waste reductions to meet global waste reduction targets.",
       "Build healthier social media apps and all switch to them at once.",
     ],
   },
@@ -130,14 +129,13 @@ export const ACTION_CATEGORIES: ActionCategory[] = [
     name: "Pooled funding",
     definition: "Members contribute money toward a shared goal.",
     examples: [
-      "Pay large teams to do impactful work that otherwise only volunteers could do.",
       "Fund entrepreneurial and educational programs in low-income countries to help build sustainable economies.",
       "Incubate non-profit, democratic media companies.",
     ],
   },
   {
     name: "Social pressure",
-    definition: "Members push institutions to act.",
+    definition: "Members get institutions to act.",
     examples: [
       "Direct public attention to an AI company and demand a specific safety policy.",
       "Run a membership-wide education campaign to build global support for an enforceable biodiversity treaty.",
