@@ -9,6 +9,7 @@ import ActionStatusBucketFilter from "../components/ActionStatusBucketFilter";
 import ActionTimeline from "../components/ActionTimeline";
 import CreateActionMenu from "../components/CreateActionMenu";
 import {
+  ACTION_STATUS_BUCKET_LABELS,
   ActionStatusBucket,
   actionStatusBucket,
 } from "../lib/actionStatusBucket";
@@ -189,12 +190,16 @@ const ActionsList: React.FC = () => {
           </h2>
           <div className="flex flex-wrap gap-2">
             {suitesInProgress.map((suite) => (
-              <Link
+              <div
                 key={suite.id}
-                to={`/suites/${suite.id}`}
-                className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm hover:border-green"
+                className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm"
               >
-                <span className="font-semibold">{suite.name}</span>
+                <Link
+                  to={`/suites/${suite.id}`}
+                  className="font-semibold hover:text-green"
+                >
+                  {suite.name}
+                </Link>
                 <span className="ml-2 text-xs text-zinc-500">
                   {[
                     suite.activeCount > 0 && `${suite.activeCount} active`,
@@ -203,7 +208,22 @@ const ActionsList: React.FC = () => {
                     .filter(Boolean)
                     .join(" · ")}
                 </span>
-              </Link>
+                <ul className="mt-1">
+                  {suite.actions.map((action) => (
+                    <li key={action.id} className="flex items-center gap-2">
+                      <span className="rounded bg-zinc-100 px-1 text-[10px] uppercase text-zinc-600">
+                        {ACTION_STATUS_BUCKET_LABELS[action.bucket]}
+                      </span>
+                      <Link
+                        to={`/actions/${action.id}`}
+                        className="hover:text-green"
+                      >
+                        {action.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
           </div>
         </section>

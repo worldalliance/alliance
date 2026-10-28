@@ -31,6 +31,7 @@ On the admin suite view:
 - Leave weekly load across suites unchecked for now. (user)
 - Call out loudly at launch any violation of the member contract. (user)
 - The launch button spans the full width, with no rocket icon. (user)
+- Each suite in "Suites with draft or active actions" lists its actions beneath it. (user)
 
 ## Verification
 
