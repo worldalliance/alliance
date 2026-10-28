@@ -9,7 +9,7 @@ The Disposition cell holds one or more of these, comma-separated, when parts of 
 - `unimplemented`: specified but not built; Notes gives the evidence.
 - `implementation-only`: refactors or internals with no behavior to explain; Notes says so.
 - `blocked`: requirements and code disagree; Notes states the question awaiting the user.
-- `pending`: not yet synthesized. Stands alone.
+- `pending`: not yet synthesized. Combines with no other disposition; Topics lists any pages already explaining part of it.
 
 The initial content pass is complete when no row is `pending` or `blocked`.
 

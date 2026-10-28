@@ -3,6 +3,7 @@ import { parseWikiDocument } from "./markdown";
 
 const A = "../provenance/01a00000-0000-7000-8000-00000000000a-a";
 const B = "../provenance/01a00000-0000-7000-8000-00000000000b-b";
+const C = "../provenance/01a00000-0000-7000-8000-00000000000c-c";
 
 function parse(
   rows: string[],
@@ -26,6 +27,7 @@ test("rows parse into records, dispositions, topics, and notes", () => {
   const { entries, problems } = parse([
     `| [req](${A}/REQUIREMENTS.md) [dec](${A}/DECISIONS.md) | current, superseded | [Signup](signup.md) [Login](auth/login.md#flow) | The 2024 rule was replaced. |`,
     `| [b](${B}/) | pending | | |`,
+    `| [c](${C}/) | pending | [Signup](signup.md) | |`,
   ]);
   expect(problems).toEqual([]);
   expect(entries.map(({ position: _, ...entry }) => entry)).toEqual([
@@ -42,6 +44,12 @@ test("rows parse into records, dispositions, topics, and notes", () => {
       record: "docs/provenance/01a00000-0000-7000-8000-00000000000b-b",
       dispositions: [CoverageDisposition.Pending],
       topics: [],
+      notes: "",
+    },
+    {
+      record: "docs/provenance/01a00000-0000-7000-8000-00000000000c-c",
+      dispositions: [CoverageDisposition.Pending],
+      topics: ["docs/wiki/signup.md"],
       notes: "",
     },
   ]);
