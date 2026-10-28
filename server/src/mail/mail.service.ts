@@ -3,6 +3,7 @@ import { R } from "@alliance/common/result";
 import { ISendMailOptions, MailerService } from "@nestjs-modules/mailer";
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import type SMTPTransport from "nodemailer/lib/smtp-transport";
 import {
   MessageChannel,
   MessageSource,
@@ -153,9 +154,6 @@ export class MailService {
     }
     const { from, rendered } = prepared;
 
-    const tag =
-      process.env.NODE_ENV === "production" ? "production" : "development";
-
     const html = cid
       ? tagHtmlLinks({ html: rendered, trackingId: cid })
       : rendered;
@@ -167,16 +165,7 @@ export class MailService {
     });
 
     const sent = await R.fromPromise(
-      this.mailerService.sendMail({
-        to: recipient,
-        from,
-        subject: subject ?? undefined,
-        headers: {
-          "o:tag": emailType,
-          "X-Mailgun-Tag": tag,
-        },
-        html,
-      }),
+      this.transmit({ recipient, from, emailType, subject, html }),
     );
 
     if (!sent.ok) {
@@ -185,8 +174,7 @@ export class MailService {
       throw sent.error;
     }
 
-    const accepted = sent.value.accepted as string[];
-    const messageId = sent.value.messageId as string;
+    const { accepted, messageId } = sent.value;
 
     if (accepted.length > 0) {
       mail.status = EmailStatus.Sent;
@@ -195,6 +183,27 @@ export class MailService {
     }
     mail.sentMessageId = messageId;
     return this.mailRepository.save(mail);
+  }
+
+  private transmit(params: {
+    recipient: string;
+    from: string;
+    emailType: EmailType;
+    subject: string | null;
+    html: string;
+  }): Promise<SMTPTransport.SentMessageInfo> {
+    const { recipient, from, emailType, subject, html } = params;
+    return this.mailerService.sendMail({
+      to: recipient,
+      from,
+      subject: subject ?? undefined,
+      headers: {
+        "o:tag": emailType,
+        "X-Mailgun-Tag":
+          process.env.NODE_ENV === "production" ? "production" : "development",
+      },
+      html,
+    });
   }
 
   public async sendWelcomeEmail(params: {

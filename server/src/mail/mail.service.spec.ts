@@ -100,15 +100,28 @@ describe("sendMail", () => {
   });
 
   it("sends from MAIL_FROM and records the message id", async () => {
-    const { service, saves } = await harness(() =>
-      Promise.resolve({
+    const sent: ISendMailOptions[] = [];
+    const { service, saves } = await harness((options) => {
+      sent.push(options);
+      return Promise.resolve({
         accepted: ["member@privaterelay.appleid.com"],
         messageId: "<abc@mg>",
-      }),
-    );
+      });
+    });
 
     const mail = await send(service);
 
+    expect(sent).toEqual([
+      expect.objectContaining({
+        to: "member@privaterelay.appleid.com",
+        from: "Alliance <alliance@thealliance.org>",
+        subject: "Welcome to the Alliance",
+        headers: {
+          "o:tag": EmailType.Welcome,
+          "X-Mailgun-Tag": "production",
+        },
+      }),
+    ]);
     expect(mail.status).toBe(EmailStatus.Sent);
     expect(mail.sentMessageId).toBe("<abc@mg>");
     expect(saves[0].status).toBe(EmailStatus.Pending);
