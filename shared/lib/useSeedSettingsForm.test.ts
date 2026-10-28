@@ -27,12 +27,11 @@ beforeEach(() => {
 
 const seed = (user: { id: number }) => {
   const setSavedProfile = jest.fn();
-  const setLocation = jest.fn();
   const view = renderHook(
-    ({ user }) => useSeedSettingsForm({ user, setSavedProfile, setLocation }),
+    ({ user }) => useSeedSettingsForm({ user, setSavedProfile }),
     { initialProps: { user }, wrapper: queryWrapper().wrapper },
   );
-  return { setSavedProfile, setLocation, view };
+  return { setSavedProfile, view };
 };
 
 describe("useSeedSettingsForm", () => {
@@ -114,14 +113,16 @@ describe("useSeedSettingsForm", () => {
         });
       },
     });
-    const { setLocation, view } = seed({ id: 7 });
+    const { setSavedProfile, view } = seed({ id: 7 });
     await waitFor(() => expect(logged).toHaveBeenCalledTimes(1));
     expect(view.result.current).toBe(true);
 
     located.resolve();
 
     await waitFor(() => expect(view.result.current).toBe(false));
-    expect(setLocation).toHaveBeenCalledTimes(1);
+    expect(setSavedProfile).toHaveBeenCalledTimes(1);
+    const seedCity = setSavedProfile.mock.calls[0][0];
+    expect(seedCity(null)).toEqual({ id: 7, cityId: 1 });
   });
 
   const locationRefused = {
@@ -138,7 +139,7 @@ describe("useSeedSettingsForm", () => {
   ])("logs a refused location request when the client %s", async (_, serve) => {
     serve();
     const logged = jest.spyOn(console, "error").mockImplementation(() => {});
-    const { setLocation } = seed({ id: 7 });
+    const { setSavedProfile } = seed({ id: 7 });
 
     await waitFor(() =>
       expect(logged).toHaveBeenCalledWith(
@@ -146,6 +147,6 @@ describe("useSeedSettingsForm", () => {
         expect.anything(),
       ),
     );
-    expect(setLocation).not.toHaveBeenCalled();
+    expect(setSavedProfile).not.toHaveBeenCalledWith(expect.any(Function));
   });
 });

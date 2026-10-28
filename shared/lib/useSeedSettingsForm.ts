@@ -1,7 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { userMyLocation, type City, type UpdateProfileDto } from "../client";
+import { type UpdateProfileDto } from "../client";
 import { meCache } from "./useMe";
+import { myLocationCache } from "./useMyLocation";
 import type { SettingsAutosaveState } from "./useSettingsAutosave";
 
 /**
@@ -11,9 +12,8 @@ import type { SettingsAutosaveState } from "./useSettingsAutosave";
 export function useSeedSettingsForm(params: {
   user: (UpdateProfileDto & { id: number }) | undefined;
   setSavedProfile: SettingsAutosaveState["setSavedProfile"];
-  setLocation: (city: City) => void;
 }): boolean {
-  const { user, setSavedProfile, setLocation } = params;
+  const { user, setSavedProfile } = params;
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
   // refreshUser hands back a new user object, and re-seeding the form off it
@@ -39,11 +39,10 @@ export function useSeedSettingsForm(params: {
 
     // A failed profile load still gets a form when the location arrives, so
     // loading spans both requests.
-    const located = userMyLocation({ throwOnError: true })
-      .then((locationResponse) => {
-        const city = locationResponse.data?.city;
+    const located = myLocationCache(queryClient)
+      .fetch(user.id)
+      .then((city) => {
         if (city) {
-          setLocation(city);
           const cityId = city.id;
           setSavedProfile((prev) =>
             prev ? { ...prev, cityId } : { ...user, cityId },
@@ -57,7 +56,7 @@ export function useSeedSettingsForm(params: {
     Promise.all([seeded, located]).finally(() => {
       setLoading(false);
     });
-  }, [user, setSavedProfile, setLocation, queryClient]);
+  }, [user, setSavedProfile, queryClient]);
 
   return loading;
 }

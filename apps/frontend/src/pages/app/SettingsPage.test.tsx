@@ -1,6 +1,9 @@
 import { OAuthProvider } from "@alliance/common/oauth";
 import type { City, UserDto } from "@alliance/shared/client";
-import { makeNotificationSettings } from "@alliance/shared/lib/testFixtures";
+import {
+  makeCity,
+  makeNotificationSettings,
+} from "@alliance/shared/lib/testFixtures";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { meQuery } from "@alliance/shared/lib/useMe";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
@@ -26,6 +29,8 @@ const me: UserDto = {
 let seedings = 0;
 let meFails = false;
 let city: City | null = null;
+let locationLoads = 0;
+let locationFails = false;
 let updates: unknown[] = [];
 let savedZone = me.timeZone;
 let notificationSettings = makeNotificationSettings();
@@ -41,7 +46,13 @@ serveApi(
       }
       return Response.json({ user: { ...me, timeZone: savedZone } });
     },
-    "GET /user/mylocation": () => Response.json({ city }),
+    "GET /user/mylocation": () => {
+      locationLoads += 1;
+      if (locationFails) {
+        return Response.json({ message: "down" }, { status: 500 });
+      }
+      return Response.json({ city });
+    },
     "GET /user/notification-settings": () =>
       Response.json(notificationSettings),
     "PATCH /user/notification-settings": async ({ request }) => {
@@ -53,7 +64,9 @@ serveApi(
       return Response.json(notificationSettings);
     },
     "POST /user/update": async ({ request }) => {
-      updates.push(await request.json());
+      const update = await request.json();
+      updates.push(update);
+      if (update.cityId === null) city = null;
       return Response.json({ user: me });
     },
   }),
@@ -63,6 +76,8 @@ afterEach(() => {
   seedings = 0;
   meFails = false;
   city = null;
+  locationLoads = 0;
+  locationFails = false;
   updates = [];
   savedZone = me.timeZone;
   notificationSettings = makeNotificationSettings();
@@ -133,6 +148,38 @@ it("loads the profile once for the form and the connected accounts", async () =>
   await screen.findByRole("button", { name: "Connect Google" });
 
   expect(seedings).toBe(1);
+});
+
+describe("the location", () => {
+  beforeEach(() => {
+    city = makeCity({ name: "Tucson" });
+  });
+
+  it("follows a saved custom city instead of the city the page opened with", async () => {
+    render(settings(me));
+    const input = await screen.findByPlaceholderText("Tucson");
+
+    fireEvent.change(input, { target: { value: "Near the bay" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    await waitFor(() =>
+      expect(input.getAttribute("placeholder")).toBe("Near the bay"),
+    );
+    expect(updates).toContainEqual(
+      expect.objectContaining({
+        customCityString: "Near the bay",
+        cityId: null,
+      }),
+    );
+  });
+
+  it("shows the form at once when the location fails to load", async () => {
+    locationFails = true;
+    render(settings(me));
+
+    await screen.findByPlaceholderText("Enter phone number");
+    expect(locationLoads).toBe(1);
+  });
 });
 
 it("says the settings failed to load when the profile load fails", async () => {
