@@ -113,7 +113,7 @@ const DomainMigrationModal: React.FC = () => {
                 thealliance.org
               </strong>
               . You can switch your account over now, or keep using the old
-              address until we move everyone on September 17th.
+              address until we move everyone on November 2nd.
             </p>
             <div className="flex gap-3 rounded-lg bg-amber-50 p-4">
               <span aria-hidden="true">⚠️</span>

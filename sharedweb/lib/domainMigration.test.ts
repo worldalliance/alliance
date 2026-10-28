@@ -1,4 +1,4 @@
-import { addDays, addSeconds, subDays } from "date-fns";
+import { addDays, addHours, addSeconds, subDays } from "date-fns";
 import {
   isLegacyDomain,
   isSnoozed,
@@ -115,13 +115,13 @@ describe("snooze", () => {
   test("covers the day after it is set", () => {
     const now = new Date("2026-09-01T12:00:00Z");
     snooze(now);
-    expect(isSnoozed(addDays(now, 1))).toBe(true);
+    expect(isSnoozed(addHours(now, 23))).toBe(true);
   });
 
-  test("expires on the second day", () => {
+  test("expires after one day", () => {
     const now = new Date("2026-09-01T12:00:00Z");
     snooze(now);
-    expect(isSnoozed(addDays(now, 2))).toBe(false);
+    expect(isSnoozed(addDays(now, 1))).toBe(false);
   });
 
   test("ignores a garbage value", () => {

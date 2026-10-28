@@ -7,7 +7,7 @@ import { addDays, addSeconds, isAfter } from "date-fns";
 export { isLegacyAllianceHost as isLegacyDomain } from "@alliance/common/url";
 
 const SNOOZE_KEY = "domain-migration-snoozed-at";
-const SNOOZE_DAYS = 2;
+const SNOOZE_DAYS = 1;
 const REDIRECT_KEY = "domain-migration-redirected";
 const REDIRECT_WINDOW_SECONDS = 10;
 
