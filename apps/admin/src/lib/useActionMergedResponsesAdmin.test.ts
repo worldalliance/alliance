@@ -130,6 +130,18 @@ it("keeps the loaded responses up and fails the refresh when only the withdrawal
   expect(hook().responses).toHaveLength(1);
 });
 
+it("reloads every variant's form on refresh", async () => {
+  const { hook } = mount();
+  await waitFor(() => expect(hook().loading).toBe(false));
+  requested = [];
+
+  await act(() => hook().refresh.mutateAsync());
+
+  expect(requested).toEqual(
+    expect.arrayContaining(["form 4", "form 5", "responses"]),
+  );
+});
+
 it("refreshes only this action's responses, not another set of forms still cached", async () => {
   const query = queryWrapper();
   const first = mount(query);

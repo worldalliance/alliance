@@ -155,7 +155,7 @@ export function useActionMergedResponsesAdmin(actionId: number) {
       Promise.all([
         ...[
           queryKeys.formVariantsAdmin(actionId),
-          ...(formIds ?? []).map((formId) => queryKeys.taskForm(formId)),
+          ...(formIds ?? []).map((formId) => queryKeys.taskFormAdmin(formId)),
           queryKeys.formResponsesByFormsAdmin(formIds ?? null),
           queryKeys.formWithdrawalsAdmin(defaultFormId ?? null),
         ].map((queryKey) =>
