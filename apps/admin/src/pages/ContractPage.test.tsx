@@ -20,20 +20,28 @@ const contract = (id: number) =>
   }) satisfies ContractAdminDto;
 
 let servedName = "Pledge";
+let servedDescription: ContractAdminDto["description"] = [];
 let findStatus = 200;
 let updateStatus = 200;
+let updateBody: unknown = null;
 
 serveApi(
   routes({
     "GET /contract/admin/:id": ({ params }) =>
       findStatus === 200
-        ? Response.json({ ...contract(Number(params.id)), name: servedName })
+        ? Response.json({
+            ...contract(Number(params.id)),
+            name: servedName,
+            description: servedDescription,
+          })
         : Response.json({}, { status: findStatus }),
     "POST /contract/create": () => Response.json(contract(2)),
     "PATCH /contract/update/:id": async ({ request, params }) => {
       if (updateStatus !== 200)
         return Response.json({}, { status: updateStatus });
-      const { name }: { name: string } = await request.json();
+      const body: { name: string } = await request.json();
+      updateBody = body;
+      const { name } = body;
       return Response.json({ ...contract(Number(params.id)), name });
     },
   }),
@@ -41,8 +49,10 @@ serveApi(
 
 afterEach(() => {
   servedName = "Pledge";
+  servedDescription = [];
   findStatus = 200;
   updateStatus = 200;
+  updateBody = null;
 });
 
 const renderPage = (path: string) => {
@@ -140,4 +150,23 @@ it("reports a failed save and keeps the form", async () => {
   expect(await screen.findByText("Failed to save contract")).toBeDefined();
   expect(screen.getByLabelText("Name")).toBe(name);
   errors.mockRestore();
+});
+
+it("loads and saves a point's admin notes", async () => {
+  servedDescription = [
+    { point: "Show up", subtext: "", adminNotes: "Why it reads this way" },
+  ];
+  renderPage("/contracts/1");
+  const notes = await screen.findByLabelText("Admin notes");
+  expect(notes).toHaveProperty("value", "Why it reads this way");
+  fireEvent.change(notes, { target: { value: "Revised note" } });
+  fireEvent.submit(notes.closest("form")!);
+
+  await waitFor(() =>
+    expect(updateBody).toMatchObject({
+      description: [
+        { point: "Show up", subtext: "", adminNotes: "Revised note" },
+      ],
+    }),
+  );
 });

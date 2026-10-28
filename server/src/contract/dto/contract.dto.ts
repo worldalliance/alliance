@@ -21,6 +21,12 @@ export class ContractDescriptionItem {
   subtext: string;
 }
 
+export class ContractAdminDescriptionItem extends ContractDescriptionItem {
+  @ApiProperty({ description: "Shown only in the admin panel" })
+  @IsString()
+  adminNotes: string;
+}
+
 export class ContractDto extends PickType(Contract, ["id", "markdown"]) {
   @ApiProperty({ type: () => ContractDescriptionItem, isArray: true })
   description: ContractDescriptionItem[];
@@ -29,7 +35,10 @@ export class ContractDto extends PickType(Contract, ["id", "markdown"]) {
     super();
     this.id = input.id;
     this.markdown = input.markdown;
-    this.description = input.description;
+    this.description = input.description.map(({ point, subtext }) => ({
+      point,
+      subtext,
+    }));
   }
 }
 
@@ -58,8 +67,8 @@ export class ContractAdminDto extends PickType(Contract, [
   "startDate",
   "endDate",
 ]) {
-  @ApiProperty({ type: () => ContractDescriptionItem, isArray: true })
-  description: ContractDescriptionItem[];
+  @ApiProperty({ type: () => ContractAdminDescriptionItem, isArray: true })
+  description: ContractAdminDescriptionItem[];
 
   constructor(input: ParsedContract) {
     super();
@@ -79,12 +88,15 @@ export class CreateContractDto extends PickType(Contract, [
   "startDate",
   "endDate",
 ]) {
-  @ApiPropertyOptional({ type: () => ContractDescriptionItem, isArray: true })
+  @ApiPropertyOptional({
+    type: () => ContractAdminDescriptionItem,
+    isArray: true,
+  })
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => ContractDescriptionItem)
-  description?: ContractDescriptionItem[];
+  @Type(() => ContractAdminDescriptionItem)
+  description?: ContractAdminDescriptionItem[];
 }
 
 export class UpdateContractDto extends PickType(Contract, [
@@ -92,12 +104,15 @@ export class UpdateContractDto extends PickType(Contract, [
   "startDate",
   "endDate",
 ]) {
-  @ApiPropertyOptional({ type: () => ContractDescriptionItem, isArray: true })
+  @ApiPropertyOptional({
+    type: () => ContractAdminDescriptionItem,
+    isArray: true,
+  })
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => ContractDescriptionItem)
-  description?: ContractDescriptionItem[];
+  @Type(() => ContractAdminDescriptionItem)
+  description?: ContractAdminDescriptionItem[];
 }
 
 export type ContractFieldDto = ContractField & {

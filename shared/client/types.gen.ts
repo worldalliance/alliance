@@ -1997,6 +1997,15 @@ export type ContractDto = {
     description: Array<ContractDescriptionItem>;
 };
 
+export type ContractAdminDescriptionItem = {
+    point: string;
+    subtext: string;
+    /**
+     * Shown only in the admin panel
+     */
+    adminNotes: string;
+};
+
 export type ContractAdminDto = {
     id: number;
     name: string | null;
@@ -2004,7 +2013,7 @@ export type ContractAdminDto = {
     markdown: string;
     startDate: string | null;
     endDate: string | null;
-    description: Array<ContractDescriptionItem>;
+    description: Array<ContractAdminDescriptionItem>;
 };
 
 export type SignContractDto = {
@@ -2020,14 +2029,14 @@ export type CreateContractDto = {
     markdown: string;
     startDate: string | null;
     endDate: string | null;
-    description?: Array<ContractDescriptionItem>;
+    description?: Array<ContractAdminDescriptionItem>;
 };
 
 export type UpdateContractDto = {
     name: string | null;
     startDate: string | null;
     endDate: string | null;
-    description?: Array<ContractDescriptionItem>;
+    description?: Array<ContractAdminDescriptionItem>;
 };
 
 export type ClusterMemberDto = {

@@ -20,6 +20,7 @@ type DescriptionRow = {
   key: string;
   point: string;
   subtext: string;
+  adminNotes: string;
 };
 
 type ContractForm = {
@@ -34,6 +35,7 @@ const newDescriptionRow = (): DescriptionRow => ({
   key: crypto.randomUUID(),
   point: "",
   subtext: "",
+  adminNotes: "",
 });
 
 const emptyForm: ContractForm = {
@@ -49,6 +51,7 @@ const toDescriptionPayload = (rows: DescriptionRow[]) =>
     .map((row) => ({
       point: row.point.trim(),
       subtext: row.subtext.trim(),
+      adminNotes: row.adminNotes.trim(),
     }))
     .filter((item) => item.point.length > 0);
 
@@ -59,6 +62,7 @@ const toForm = (contract: ContractAdminDto): ContractForm => ({
     key: crypto.randomUUID(),
     point: item.point,
     subtext: item.subtext,
+    adminNotes: item.adminNotes,
   })),
   startDate: contract.startDate
     ? formatLocalDateTime(resolveDateValue(contract.startDate), "minute")
@@ -317,6 +321,23 @@ const ContractPage: React.FC = () => {
                           minRows={2}
                           placeholder="Subtext"
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm font-mono"
+                        />
+                        <FormTextarea
+                          value={row.adminNotes}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              description: prev.description.map((item) =>
+                                item.key === row.key
+                                  ? { ...item, adminNotes: e.target.value }
+                                  : item,
+                              ),
+                            }))
+                          }
+                          minRows={2}
+                          placeholder="Admin notes (only visible in the admin panel)"
+                          aria-label="Admin notes"
+                          className="w-full px-3 py-2 border border-amber-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-amber-50 text-sm"
                         />
                         {(row.point.trim() !== "" ||
                           row.subtext.trim() !== "") && (
