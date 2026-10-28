@@ -22,6 +22,7 @@ function mockTask(
     image: "",
     squareThumbnailImageAlt: null,
     customStatType: "none",
+    customStatValue: null,
     customStatGoal: null,
     status: "member_action",
     visibilityMode: "public",

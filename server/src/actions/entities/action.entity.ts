@@ -335,11 +335,10 @@ export class Action {
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   customStatLabel?: string;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
+  @Column({ type: "int", nullable: true })
+  @ApiProperty({ type: Number, nullable: true })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  customStatValue?: number;
+  customStatValue: number | null;
 
   @Column({ type: "int", nullable: true })
   @ApiProperty({ type: Number, nullable: true })

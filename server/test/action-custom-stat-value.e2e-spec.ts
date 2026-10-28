@@ -4,6 +4,7 @@ import { Action } from "../src/actions/entities/action.entity";
 import {
   createActionAsAdmin,
   createActionDefaults,
+  getActionAsAdmin,
   patchActionAsAdmin,
 } from "./action-requests";
 import { createTestApp, TestContext } from "./e2e-test-utils";
@@ -29,6 +30,16 @@ describe("Action custom stat value (e2e)", () => {
 
   const stored = (id: number) =>
     ctx.dataSource.getRepository(Action).findOneByOrFail({ id });
+
+  it("returns null for a value not yet computed", async () => {
+    const created = await createActionAsAdmin(ctx, {
+      name: NAME_PREFIX,
+    }).expect(201);
+    expect(created.body.customStatValue).toBeNull();
+
+    const fetched = await getActionAsAdmin(ctx, created.body.id).expect(200);
+    expect(fetched.body.customStatValue).toBeNull();
+  });
 
   it("ignores a value sent on create", async () => {
     const created = await request(ctx.app.getHttpServer())
