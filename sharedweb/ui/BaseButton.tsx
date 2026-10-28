@@ -61,8 +61,7 @@ const baseButtonVariants = cva(
           "border border-gray-2 text-black bg-transparent",
         [BaseButtonVariant.White]:
           "border border-gray-2 text-black bg-white hover:bg-zinc-50",
-        [BaseButtonVariant.Black]:
-          "bg-[#081e40] hover:bg-[#0d2c5c] text-white border border-[#081e40] active:bg-[#0d2c5c]",
+        [BaseButtonVariant.Black]: "bg-black hover:bg-zinc-800 text-white",
       },
       size: {
         [BaseButtonSize.Small]: "px-3 py-1.5 text-sm h-9 gap-x-1",

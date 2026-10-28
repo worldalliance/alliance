@@ -240,7 +240,7 @@ export default function AwayRangesSection() {
         </View>
       )}
 
-      <View className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+      <View className="border border-zinc-200 rounded-lg p-4 bg-zinc-50">
         <Text className="mb-3" weight={FontWeight.Medium}>
           Schedule time away
         </Text>

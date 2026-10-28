@@ -31,7 +31,10 @@ import { getSiteUrl } from "../../lib/config";
 import { useHandleLinkPress } from "../AppMarkdownWrapper";
 import Text, { FontWeight } from "../system/Text";
 
-const bigLinkIcons: Record<BigLinkIcon, React.FC<{ size?: number }> | null> = {
+const bigLinkIcons: Record<
+  BigLinkIcon,
+  React.FC<{ size?: number; className?: string }> | null
+> = {
   "messages-square": MessagesSquare,
   file: File,
   "file-text": FileText,
@@ -40,14 +43,21 @@ const bigLinkIcons: Record<BigLinkIcon, React.FC<{ size?: number }> | null> = {
   none: null,
 };
 
-const bigLinkColors: Record<BigLinkColor, { card: string; muted: string }> = {
+const bigLinkColors: Record<
+  BigLinkColor,
+  { card: string; text: string; muted: string; copied: string }
+> = {
   [BigLinkColor.Grey]: {
     card: "border-zinc-200 bg-white",
+    text: "text-black",
     muted: "text-zinc-500",
+    copied: "text-green",
   },
   [BigLinkColor.Green]: {
-    card: "border-green/30 bg-green/10",
-    muted: "text-zinc-600",
+    card: "border-green bg-green",
+    text: "text-white",
+    muted: "text-white/80",
+    copied: "text-white",
   },
 };
 
@@ -146,13 +156,16 @@ function BigLinkRow({
       disabled={shownUrl === null}
       onPress={() => shownUrl !== null && handlePress(shownUrl)}
     >
-      {IconComponent && <IconComponent size={20} />}
+      {IconComponent && <IconComponent size={20} className={color.text} />}
       <View className="flex-1 gap-0.5">
-        <Text className="text-base text-black" weight={FontWeight.Medium}>
+        <Text
+          className={cn("text-base", color.text)}
+          weight={FontWeight.Medium}
+        >
           {block.text}
         </Text>
         {block.body ? (
-          <Text className="text-sm text-black">{block.body}</Text>
+          <Text className={cn("text-sm", color.text)}>{block.body}</Text>
         ) : null}
         {block.showUrl && shownUrl !== null && (
           <Text className={cn("text-sm", color.muted)}>{shownUrl}</Text>
@@ -164,7 +177,7 @@ function BigLinkRow({
         )}
       </View>
       {shownUrl !== null && (
-        <BigLinkActionIcon action={action} copied={copied} />
+        <BigLinkActionIcon action={action} copied={copied} color={color} />
       )}
     </TouchableOpacity>
   );
@@ -173,18 +186,20 @@ function BigLinkRow({
 function BigLinkActionIcon({
   action,
   copied,
+  color,
 }: {
   action: BigLinkAction;
   copied: boolean;
+  color: (typeof bigLinkColors)[BigLinkColor];
 }) {
   switch (action) {
     case BigLinkAction.Open:
-      return <ArrowUpRight size={20} />;
+      return <ArrowUpRight size={20} className={color.text} />;
     case BigLinkAction.Copy:
       return copied ? (
-        <Check size={20} className="text-green" />
+        <Check size={20} className={color.copied} />
       ) : (
-        <Copy size={20} />
+        <Copy size={20} className={color.text} />
       );
     default:
       throw new Error(`unknown big link action: ${action satisfies never}`);

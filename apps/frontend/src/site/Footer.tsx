@@ -51,8 +51,10 @@ function LegalRow() {
 
 export function SiteFooter() {
   return (
-    <footer className="relative isolate overflow-hidden bg-black text-white [#join+&]:pt-[54px]">
-      <div className={cn(SITE_COL, "relative z-10 pt-16 pb-10 lg:pt-24")}>
+    <footer className="relative isolate overflow-hidden bg-black text-white">
+      <div
+        className={cn(SITE_COL, "relative z-10 pb-8 lg:pb-10 pt-10 lg:pt-12")}
+      >
         <div className="flex flex-col gap-12 lg:flex-row lg:justify-between">
           <nav
             className="flex flex-wrap gap-x-[52px] gap-y-8"
@@ -69,7 +71,7 @@ export function SiteFooter() {
             ))}
           </nav>
           <div className="flex max-w-[28rem] flex-col gap-1.5">
-            <span className="text-[2.1rem] leading-none">
+            <span className="text-2xl leading-none">
               <Logotype onDark />
             </span>
             <p className="font-normal text-white/90">{FOOTER_TAGLINE}</p>

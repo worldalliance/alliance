@@ -24,7 +24,7 @@ const PROSE: Record<DocProseSize, ProseType> = {
   [DocProseSize.Default]: {
     h2: "mt-10 text-[1.5rem] leading-tight sm:text-[1.75rem]",
     h3: "mt-8 text-[1.2rem] leading-tight",
-    body: "mt-4 text-[1.05rem] leading-[1.65] sm:text-[1.12rem]",
+    body: "mt-4 text-[1.1rem] leading-[1.55] sm:text-[1.23rem]",
     rule: "mt-10",
   },
   [DocProseSize.Compact]: {
@@ -51,7 +51,12 @@ export function DocProse({
   const type = PROSE[size];
 
   return (
-    <div className={cn("flex flex-col text-[var(--site-ink)]", className)}>
+    <div
+      className={cn(
+        "flex flex-col tracking-[-0.011em] text-[var(--site-ink)]",
+        className,
+      )}
+    >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{

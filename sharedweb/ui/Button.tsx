@@ -58,7 +58,7 @@ export enum ButtonColor {
   Stone = "bg-gray-4 text-white hover:bg-[#444] border border-[#444]",
   Green = "bg-green text-white hover:bg-[#4d8c1d] border border-green",
   GreenOutLine = "border border-green text-green hover:bg-green/10",
-  Red = "bg-red-100 !text-red-500 hover:bg-red-200",
+  Red = "bg-red-600 text-white hover:bg-red-700",
   RedOutline = "border border-red-500 text-red-500",
   Light = "bg-zinc-200/60 border border-[#efeff1]",
   LightHover = "bg-zinc-200/60 hover:bg-zinc-200/80 !text-zinc-500",

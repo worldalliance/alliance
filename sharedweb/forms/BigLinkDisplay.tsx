@@ -41,29 +41,60 @@ const bigLinkIcons: Record<BigLinkIcon, React.FC<{ size?: number }> | null> = {
 
 const bigLinkColors: Record<
   BigLinkColor,
-  { style: CardStyle; hover: string; muted: string }
+  {
+    style: CardStyle;
+    card: string;
+    hover: string;
+    muted: string;
+    copied: string;
+    failed: string;
+  }
 > = {
   [BigLinkColor.Grey]: {
     style: CardStyle.Grey,
+    card: "text-black",
     hover: "hover:bg-zinc-100",
     muted: "text-zinc-500",
+    copied: "text-green",
+    failed: "text-red-600",
   },
   [BigLinkColor.Green]: {
-    style: CardStyle.LightGreen,
-    hover: "hover:bg-green/20",
-    muted: "text-zinc-600",
+    style: CardStyle.Green,
+    card: "bg-green text-white",
+    hover: "hover:bg-[#4d8c1d]",
+    muted: "text-white/80",
+    copied: "text-white",
+    failed: "text-white",
   },
 };
 
 const colorOf = (block: BigLinkBlock) =>
   bigLinkColors[block.color ?? BigLinkColor.Grey];
 
-const copyIcons: Record<CopyOutcome, React.ReactNode> = {
-  [CopyOutcome.Copied]: (
-    <Check size={20} className="text-green" aria-label="Copied" />
-  ),
-  [CopyOutcome.Failed]: <p className="text-sm text-red-600">Copy failed</p>,
-};
+function CopyOutcomeIcon({
+  outcome,
+  block,
+}: {
+  outcome: CopyOutcome;
+  block: BigLinkBlock;
+}) {
+  switch (outcome) {
+    case CopyOutcome.Copied:
+      return (
+        <Check
+          size={20}
+          className={colorOf(block).copied}
+          aria-label="Copied"
+        />
+      );
+    case CopyOutcome.Failed:
+      return (
+        <p className={cn("text-sm", colorOf(block).failed)}>Copy failed</p>
+      );
+    default:
+      throw new Error(`unknown copy outcome: ${outcome satisfies never}`);
+  }
+}
 
 /** Whose code a share-target link carries for the person looking at it. */
 export enum ShareLinkViewer {
@@ -162,7 +193,11 @@ function OpenBigLink({ block, url }: { block: BigLinkBlock; url: string }) {
       className="block group text-black "
     >
       <Card
-        className={cn("flex flex-row items-center gap-3", color.hover)}
+        className={cn(
+          "flex flex-row items-center gap-3",
+          color.card,
+          color.hover,
+        )}
         style={color.style}
       >
         <BigLinkContent block={block} url={url} />
@@ -184,12 +219,16 @@ function CopyBigLink({ block, url }: { block: BigLinkBlock; url: string }) {
       className="block w-full text-left text-black"
     >
       <Card
-        className={cn("flex flex-row items-center gap-3", color.hover)}
+        className={cn(
+          "flex flex-row items-center gap-3",
+          color.card,
+          color.hover,
+        )}
         style={color.style}
       >
         <BigLinkContent block={block} url={absoluteUrl} />
         {outcome ? (
-          copyIcons[outcome]
+          <CopyOutcomeIcon outcome={outcome} block={block} />
         ) : (
           <Copy size={20} aria-label="Copy link" />
         )}
@@ -237,10 +276,11 @@ function BigLinkStatus({
   block: BigLinkBlock;
   message: string;
 }) {
+  const color = colorOf(block);
   return (
     <Card
-      className="flex flex-row items-center gap-3 text-black"
-      style={colorOf(block).style}
+      className={cn("flex flex-row items-center gap-3", color.card)}
+      style={color.style}
     >
       <BigLinkContent block={block} message={message} />
     </Card>
