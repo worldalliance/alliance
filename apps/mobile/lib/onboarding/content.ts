@@ -26,7 +26,7 @@ export const SCALE_NOTE =
   "Our work is advised by scientists, analysts, and other experts for rigor and effectiveness.";
 
 export const PRIORITIES_NOTE =
-  "We focus on urgent global crises that result from a lack of human coordination.";
+  "We focus on combatting urgent global crises that result from a lack of human coordination.";
 
 export const HOURS_START_LABEL = "Action arrives";
 export const HOURS_END_LABEL = "Deadline";

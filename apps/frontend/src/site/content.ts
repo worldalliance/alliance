@@ -56,7 +56,7 @@ export const priorities: Priority[] = [
 ];
 
 export const PRIORITIES_NOTE =
-  "We focus on urgent global crises that result from a lack of human coordination.";
+  "We focus on combatting urgent global crises that result from a lack of human coordination.";
 
 /**
  * A row of the activity miniature: how many members acted, what they did, and
