@@ -7,6 +7,7 @@ const nullableNumberFields: ReadonlySet<string> = new Set([
 
 const nullableTextFields: ReadonlySet<string> = new Set([
   "squareThumbnailImageAlt",
+  "customStatLabel",
 ]);
 
 export const actionFormInputValue = (
