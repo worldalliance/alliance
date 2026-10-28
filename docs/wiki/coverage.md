@@ -39,20 +39,20 @@ The initial content pass is complete when no row is `pending` or `blocked`.
 | [01a0b09b-c77a-7000-ab39-1f948ba56954-onboarding-tweaks](../provenance/01a0b09b-c77a-7000-ab39-1f948ba56954-onboarding-tweaks/) | pending | | |
 | [01a0b15c-ff46-7000-9f48-54a7aaa12780-timezone-picker-overhaul](../provenance/01a0b15c-ff46-7000-9f48-54a7aaa12780-timezone-picker-overhaul/) | pending | | |
 | [01a0b16a-95b0-7000-a507-181808570daf-random-feed-fill](../provenance/01a0b16a-95b0-7000-a507-181808570daf-random-feed-fill/) | pending | | |
-| [01a0b180-775d-7000-9447-481c53a03e39-friend-graph-admin](../provenance/01a0b180-775d-7000-9447-481c53a03e39-friend-graph-admin/) | pending | | |
+| [01a0b180-775d-7000-9447-481c53a03e39-friend-graph-admin](../provenance/01a0b180-775d-7000-9447-481c53a03e39-friend-graph-admin/) | current, superseded | [Friends](friends.md) | The Extras sidebar entry was replaced by the Community folder in [sidebar folders](../provenance/01a0d01b-2adf-7000-88f2-29de64dd3166-admin-actions-filter-and-sidebar-folders/). |
 | [01a0b185-0403-7000-841f-9499984a8236-responses-table-view](../provenance/01a0b185-0403-7000-841f-9499984a8236-responses-table-view/) | pending | | |
 | [01a0b1bc-32da-7000-abc8-c35d535ca93d-group-rename-permissions](../provenance/01a0b1bc-32da-7000-abc8-c35d535ca93d-group-rename-permissions/) | pending | | |
 | [01a0b1c3-202d-7000-bcd9-6e0846e22b53-responses-html-export](../provenance/01a0b1c3-202d-7000-bcd9-6e0846e22b53-responses-html-export/) | pending | | |
 | [01a0b23d-8ff9-7000-a579-b9ffc5bfdf4b-action-save-errors](../provenance/01a0b23d-8ff9-7000-a579-b9ffc5bfdf4b-action-save-errors/) | pending | | |
-| [01a0b6ef-68c7-7000-9c3b-bc25f3cbb87b-friend-pair-unique](../provenance/01a0b6ef-68c7-7000-9c3b-bc25f3cbb87b-friend-pair-unique/) | pending | | |
-| [01a0b6f9-4ed4-7000-bbcf-5e6fb150bd67-declined-friend-resend](../provenance/01a0b6f9-4ed4-7000-bbcf-5e6fb150bd67-declined-friend-resend/) | pending | | |
-| [01a0b704-2cbe-7000-9842-55b31661aaff-crossing-friend-request](../provenance/01a0b704-2cbe-7000-9842-55b31661aaff-crossing-friend-request/) | pending | | |
+| [01a0b6ef-68c7-7000-9c3b-bc25f3cbb87b-friend-pair-unique](../provenance/01a0b6ef-68c7-7000-9c3b-bc25f3cbb87b-friend-pair-unique/) | current, superseded | [Friends](friends.md) | The unique index now covers live rows only, since friendships are soft-deleted ([soft delete](../provenance/01a10e08-a6a6-7000-bcea-4d904d909dbb-typeorm-soft-delete/)). |
+| [01a0b6f9-4ed4-7000-bbcf-5e6fb150bd67-declined-friend-resend](../provenance/01a0b6f9-4ed4-7000-bbcf-5e6fb150bd67-declined-friend-resend/) | current | [Friends](friends.md) | |
+| [01a0b704-2cbe-7000-9842-55b31661aaff-crossing-friend-request](../provenance/01a0b704-2cbe-7000-9842-55b31661aaff-crossing-friend-request/) | current | [Friends](friends.md) | |
 | [01a0b7ef-0f91-7000-ad7f-958a79e98943-join-request-spam-filter](../provenance/01a0b7ef-0f91-7000-ad7f-958a79e98943-join-request-spam-filter/) | pending | | |
-| [01a0bb1a-4b71-7000-9b19-56bf8c5d7a00-friend-resend-notif](../provenance/01a0bb1a-4b71-7000-9b19-56bf8c5d7a00-friend-resend-notif/) | pending | | |
-| [01a0bb4f-dbaf-7000-98db-663e577b3cfd-cancel-friend-notif](../provenance/01a0bb4f-dbaf-7000-98db-663e577b3cfd-cancel-friend-notif/) | pending | | |
-| [01a0bb5a-2ac3-7000-9d1a-6ce724054400-unfriend-accepted-notif](../provenance/01a0bb5a-2ac3-7000-9d1a-6ce724054400-unfriend-accepted-notif/) | pending | | |
+| [01a0bb1a-4b71-7000-9b19-56bf8c5d7a00-friend-resend-notif](../provenance/01a0bb1a-4b71-7000-9b19-56bf8c5d7a00-friend-resend-notif/) | current | [Friends](friends.md) | |
+| [01a0bb4f-dbaf-7000-98db-663e577b3cfd-cancel-friend-notif](../provenance/01a0bb4f-dbaf-7000-98db-663e577b3cfd-cancel-friend-notif/) | current, superseded | [Friends](friends.md) | Leaving `acceptedNotif` unread on unfriend was reversed by [unfriend-accepted-notif](../provenance/01a0bb5a-2ac3-7000-9d1a-6ce724054400-unfriend-accepted-notif/); deleting the row was replaced by a soft delete ([soft delete](../provenance/01a10e08-a6a6-7000-bcea-4d904d909dbb-typeorm-soft-delete/)). |
+| [01a0bb5a-2ac3-7000-9d1a-6ce724054400-unfriend-accepted-notif](../provenance/01a0bb5a-2ac3-7000-9d1a-6ce724054400-unfriend-accepted-notif/) | current | [Friends](friends.md) | |
 | [01a0bb62-b444-7000-9263-a788fe398146-skip-push-for-read-notif](../provenance/01a0bb62-b444-7000-9263-a788fe398146-skip-push-for-read-notif/) | pending | | |
-| [01a0bb79-a555-7000-9f77-1d848787d1f5-friend-query-error-states](../provenance/01a0bb79-a555-7000-9f77-1d848787d1f5-friend-query-error-states/) | pending | | |
+| [01a0bb79-a555-7000-9f77-1d848787d1f5-friend-query-error-states](../provenance/01a0bb79-a555-7000-9f77-1d848787d1f5-friend-query-error-states/) | pending | [Friends](friends.md) | |
 | [01a0c536-8e09-7000-899c-76bead316b0c-admin-roles](../provenance/01a0c536-8e09-7000-899c-76bead316b0c-admin-roles/) | pending | | |
 | [01a0c53f-35ac-7000-9835-178a970de498-dropdown-search](../provenance/01a0c53f-35ac-7000-9835-178a970de498-dropdown-search/) | pending | | |
 | [01a0c684-f671-7000-b54a-68e4c06f58fc-actions-page-scroll-boxes](../provenance/01a0c684-f671-7000-b54a-68e4c06f58fc-actions-page-scroll-boxes/) | pending | | |
@@ -67,7 +67,7 @@ The initial content pass is complete when no row is `pending` or `blocked`.
 | [01a0cfe1-e854-7000-b0fc-1eaed2998655-mark-all-read-before](../provenance/01a0cfe1-e854-7000-b0fc-1eaed2998655-mark-all-read-before/) | pending | | |
 | [01a0cfe9-aaf5-7000-878c-e783a4e12ca9-mark-all-read-not-due](../provenance/01a0cfe9-aaf5-7000-878c-e783a4e12ca9-mark-all-read-not-due/) | pending | | |
 | [01a0cff2-c399-7000-b987-c6db9b7fc7e5-settings-oauth-connections](../provenance/01a0cff2-c399-7000-b987-c6db9b7fc7e5-settings-oauth-connections/) | pending | | |
-| [01a0d01b-2adf-7000-88f2-29de64dd3166-admin-actions-filter-and-sidebar-folders](../provenance/01a0d01b-2adf-7000-88f2-29de64dd3166-admin-actions-filter-and-sidebar-folders/) | pending | | |
+| [01a0d01b-2adf-7000-88f2-29de64dd3166-admin-actions-filter-and-sidebar-folders](../provenance/01a0d01b-2adf-7000-88f2-29de64dd3166-admin-actions-filter-and-sidebar-folders/) | pending | [Friends](friends.md) | |
 | [01a0d03c-a3df-7000-b4a8-245e95c378ac-unselect-choice-fields](../provenance/01a0d03c-a3df-7000-b4a8-245e95c378ac-unselect-choice-fields/) | pending | | |
 | [01a0d0bf-2fa0-7000-a713-06901578f949-cross-form-variable-inputs](../provenance/01a0d0bf-2fa0-7000-a713-06901578f949-cross-form-variable-inputs/) | pending | | |
 | [01a0d555-e196-7000-9255-6ced6c086339-remote-pr-screenshots](../provenance/01a0d555-e196-7000-9255-6ced6c086339-remote-pr-screenshots/) | pending | | |
@@ -101,7 +101,7 @@ The initial content pass is complete when no row is `pending` or `blocked`.
 | [01a10da1-f93c-7000-b67a-4c3247c3b6fd-mobile-staging-app](../provenance/01a10da1-f93c-7000-b67a-4c3247c3b6fd-mobile-staging-app/) | pending | | |
 | [01a10da7-33be-7000-a2be-c73e0a584bd4-cohort-action-select-unmatched](../provenance/01a10da7-33be-7000-a2be-c73e0a584bd4-cohort-action-select-unmatched/) | pending | | |
 | [01a10ddb-7017-7000-a50b-f0094258f441-invite-accepted-rule](../provenance/01a10ddb-7017-7000-a50b-f0094258f441-invite-accepted-rule/) | pending | | |
-| [01a10e08-a6a6-7000-bcea-4d904d909dbb-typeorm-soft-delete](../provenance/01a10e08-a6a6-7000-bcea-4d904d909dbb-typeorm-soft-delete/) | pending | | |
+| [01a10e08-a6a6-7000-bcea-4d904d909dbb-typeorm-soft-delete](../provenance/01a10e08-a6a6-7000-bcea-4d904d909dbb-typeorm-soft-delete/) | pending | [Friends](friends.md) | |
 | [01a10e0b-52d6-7000-80bf-78e4b8829f57-action-update-recognition](../provenance/01a10e0b-52d6-7000-80bf-78e4b8829f57-action-update-recognition/) | pending | | |
 | [01a10e32-fd0a-7000-a8a9-09964bd5903b-missed-action-rule](../provenance/01a10e32-fd0a-7000-a8a9-09964bd5903b-missed-action-rule/) | pending | | |
 | [01a10e4f-c3ff-7000-b268-85f1dac00389-form-canvas-editor](../provenance/01a10e4f-c3ff-7000-b268-85f1dac00389-form-canvas-editor/) | pending | | |
@@ -230,7 +230,7 @@ The initial content pass is complete when no row is `pending` or `blocked`.
 | [01a17918-d9d5-7000-a5ae-8e77e2fe8f45-split-web-render-field](../provenance/01a17918-d9d5-7000-a5ae-8e77e2fe8f45-split-web-render-field/) | pending | | |
 | [01a17931-6620-7000-a489-91466aa4281a-missed-actions-hook](../provenance/01a17931-6620-7000-a489-91466aa4281a-missed-actions-hook/) | pending | | |
 | [01a17931-c191-7000-9449-4d637f1b4fcd-task-form-submission-hook](../provenance/01a17931-c191-7000-9449-4d637f1b4fcd-task-form-submission-hook/) | pending | | |
-| [01a17931-c459-7000-b969-0bb89c5abe4b-user-friends-hook](../provenance/01a17931-c459-7000-b969-0bb89c5abe4b-user-friends-hook/) | pending | | |
+| [01a17931-c459-7000-b969-0bb89c5abe4b-user-friends-hook](../provenance/01a17931-c459-7000-b969-0bb89c5abe4b-user-friends-hook/) | current | [Friends](friends.md) | |
 | [01a17935-c068-7000-a95a-42cb5ee56136-cohort-retention-hook](../provenance/01a17935-c068-7000-a95a-42cb5ee56136-cohort-retention-hook/) | pending | | |
 | [01a17936-0389-7000-a56d-382c2b29274c-contract-signature-hook](../provenance/01a17936-0389-7000-a56d-382c2b29274c-contract-signature-hook/) | pending | | |
 | [01a17969-2f3f-7000-8faa-7d077a283e32-split-mobile-form-renderer](../provenance/01a17969-2f3f-7000-8faa-7d077a283e32-split-mobile-form-renderer/) | pending | | |
