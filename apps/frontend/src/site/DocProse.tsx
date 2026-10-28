@@ -90,7 +90,7 @@ export function DocProse({
           ol: ({ children }) => (
             <ol
               className={cn(
-                "flex list-outside list-decimal flex-col gap-2 pl-6 text-[var(--site-ink)]/85",
+                "flex list-outside list-decimal flex-col gap-2 pl-6 text-[var(--site-ink)]/85 first:mt-0",
                 type.body,
               )}
             >
@@ -100,7 +100,7 @@ export function DocProse({
           ul: ({ children }) => (
             <ul
               className={cn(
-                "flex list-outside list-disc flex-col gap-2 pl-6 text-[var(--site-ink)]/85",
+                "flex list-outside list-disc flex-col gap-2 pl-6 text-[var(--site-ink)]/85 first:mt-0",
                 type.body,
               )}
             >
