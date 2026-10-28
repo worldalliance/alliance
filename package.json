@@ -30,6 +30,7 @@
     "gitignore:check": "./scripts/check-gitignore.sh",
     "dupcheck": "bun scripts/dupcheck.ts",
     "covercheck": "bun scripts/covercheck.ts",
+    "wikicheck": "bun scripts/wikicheck.ts",
     "eas-build-pre-install": "bun install --frozen-lockfile"
   },
   "devDependencies": {
