@@ -32,7 +32,7 @@ import {
 } from "react-router";
 import chevronLeft from "../assets/icons8-expand-arrow-96.png";
 import { useAuth } from "../lib/AuthContext";
-import { copyActionShareText } from "../lib/actionShare";
+import { useCopyActionShareText } from "../lib/actionShare";
 import ActionCompletedBarWithInfo from "../pages/app/ActionCompletedBarWithInfo";
 import TaskTimeInfo from "../pages/app/TaskTimeInfo";
 import ActionEventsPanel from "./ActionEventsPanel";
@@ -76,6 +76,7 @@ const ActionContents = () => {
 
   const isCompleted = hasViewerCompletedAction(action);
   const { user, isAuthenticated } = useAuth();
+  const copyActionShareText = useCopyActionShareText();
   const aggregateViews = useTaskFormAggregateViews(
     isAuthenticated ? action.taskFormId : null,
   );

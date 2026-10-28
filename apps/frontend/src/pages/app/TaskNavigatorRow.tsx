@@ -24,7 +24,7 @@ import {
 import { type ReactNode } from "react";
 import { Link, href } from "react-router";
 import ShareButton from "../../components/ShareButton";
-import { copyActionShareText } from "../../lib/actionShare";
+import { useCopyActionShareText } from "../../lib/actionShare";
 import { useAuth } from "../../lib/AuthContext";
 
 const ICON_SIZE = 16;
@@ -197,6 +197,7 @@ export function TaskNavigatorCompletedRow({
     currentSchema: taskForm?.schema as Record<string, unknown> | undefined,
   });
 
+  const copyActionShareText = useCopyActionShareText();
   const handleShare = () =>
     copyActionShareText({
       actionId: action.id,

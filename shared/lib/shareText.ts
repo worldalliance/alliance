@@ -1,36 +1,10 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { isQuestionField } from "@alliance/common/forms/form-schema";
 import { nameParts } from "@alliance/common/nameParts";
-// eslint-disable-next-line api-client/named-hooks-only -- one-off request whose result no query cache holds
-import { actionsGetActionReferralCode } from "../client/sdk.gen";
 import type { FormResponseDto } from "../client/types.gen";
 
 export const FIRST_NAME_TOKEN = "#{first-name}";
 export const FULL_NAME_TOKEN = "#{full-name}";
-
-/**
- * Canonical action share URL. Authenticated callers get a personal
- * `?sid=<code>` suffix via the server's share-url lookup; unauthenticated
- * callers get the plain URL.
- */
-export async function buildActionShareUrl({
-  actionId,
-  baseUrl,
-  isAuthenticated,
-}: {
-  actionId: number;
-  baseUrl: string;
-  isAuthenticated: boolean;
-}): Promise<string> {
-  const url = `${baseUrl}/actions/${actionId}`;
-  if (!isAuthenticated) return url;
-  const { data } = await actionsGetActionReferralCode({
-    path: { id: actionId },
-  });
-  return data?.referralCode
-    ? `${url}?sid=${encodeURIComponent(data.referralCode)}`
-    : url;
-}
 
 const getUserNameParts = (name?: string | null) => {
   const trimmedName = name?.trim() ?? "";
