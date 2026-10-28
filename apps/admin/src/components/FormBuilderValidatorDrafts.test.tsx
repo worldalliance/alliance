@@ -7,7 +7,6 @@ import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { z } from "zod";
 import { openSection, selectElement } from "../lib/testing/formCanvas";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
-import { resetCustomValidatorsCache } from "./form-fields/useCustomValidators";
 
 const withList: FormSchema = {
   pages: [
@@ -32,7 +31,6 @@ describe("FormBuilder save with a draft validator", () => {
   const saved: FormSchema[] = [];
   let validatorLoads = 0;
   beforeEach(() => {
-    resetCustomValidatorsCache();
     saved.length = 0;
     validatorLoads = 0;
   });

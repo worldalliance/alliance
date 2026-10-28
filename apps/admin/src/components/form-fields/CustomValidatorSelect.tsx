@@ -4,9 +4,9 @@ import {
 } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
 import { useMemo, type ChangeEvent } from "react";
+import { useCustomValidatorTypesAdmin } from "../../lib/useCustomValidatorTypesAdmin";
 import { useTagsAdmin } from "../../lib/useTagsAdmin";
 import { CustomExpressionEditor } from "./CustomExpressionEditor";
-import { useCustomValidators } from "./useCustomValidators";
 
 type CustomValidatorSelectProps = {
   type?: CustomValidatorType;
@@ -31,7 +31,7 @@ export function CustomValidatorSelect({
   label = "Custom validator",
   filter,
 }: CustomValidatorSelectProps) {
-  const { validators, loading, error } = useCustomValidators();
+  const { validators, loading, error } = useCustomValidatorTypesAdmin();
   const isMemberTag = type === "MemberTag";
   const { tags, isLoading: tagsLoading } = useTagsAdmin({
     enabled: isMemberTag,

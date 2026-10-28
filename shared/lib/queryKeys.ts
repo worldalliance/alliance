@@ -225,6 +225,8 @@ export const queryKeys = {
   }) => ["customValidatorTestCustomExpressionAdmin", input] as const,
   customValidatorAdmin: (id: number) =>
     ["customValidatorFindOneCustomValidatorAdmin", id] as const,
+  customValidatorTypesAdmin: () =>
+    ["customValidatorCustomValidatorsAdmin"] as const,
   dailyStatsAdmin: (range: { start: string; end: string }) =>
     ["analyticsGetDailyStatsAdmin", range] as const,
   eventLogAdmin: (page: number, limit: number, eventType: EventType | "") =>
