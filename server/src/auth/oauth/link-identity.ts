@@ -1,6 +1,6 @@
 import { R, type Result } from "@alliance/common/result";
 import { compactDecrypt, CompactEncrypt } from "jose";
-import { hkdfSync } from "node:crypto";
+import { deriveServerKey } from "src/utils/server-key";
 import { z } from "zod";
 
 const linkedIdentitySchema = z.object({
@@ -11,12 +11,7 @@ const linkedIdentitySchema = z.object({
 export type LinkedIdentity = z.infer<typeof linkedIdentitySchema>;
 
 function linkIdentityKey(): Uint8Array {
-  if (!process.env.JWT_SECRET) {
-    throw new Error("JWT_SECRET is not set");
-  }
-  return new Uint8Array(
-    hkdfSync("sha256", process.env.JWT_SECRET, "", "oauth-link-identity", 32),
-  );
+  return deriveServerKey("oauth-link-identity");
 }
 
 export function encryptIdentity(identity: LinkedIdentity): Promise<string> {
