@@ -70,6 +70,8 @@ export default function ActionBranchEditor(props: {
   actionId: number;
   /** null for a branch not yet created. */
   branch: ParsedActionFormVariantDto | null;
+  /** 1-based, in routing order. */
+  position: number;
   /** The saved rules of the branches routed before this one. */
   earlierRules: readonly (CohortExpression | null)[];
   activeContractUserIds?: Set<number>;
@@ -84,8 +86,9 @@ export default function ActionBranchEditor(props: {
 }) {
   const { branch, ruleError, sources, saving, onSave, onDelete, onMove } =
     props;
-  const navigate = useNavigate();
   const [draft, setDraft] = useState(() => draftOf(branch));
+  const navigate = useNavigate();
+  const nameId = useId();
   const image = useImageOverride(branch?.imageOverride ?? null);
   const thumbnail = useImageOverride(
     branch?.squareThumbnailImageOverride ?? null,
@@ -131,60 +134,88 @@ export default function ActionBranchEditor(props: {
       style={CardStyle.White}
       className={`p-4 space-y-4 ${branch ? "" : "border-blue-200 bg-blue-50/40"}`}
     >
-      <div className="flex items-center gap-2">
-        {onMove && (
-          <div className="flex flex-col">
-            <button
-              type="button"
-              aria-label="Move branch up"
-              title="Move branch up"
-              disabled={!props.canMoveUp}
-              onClick={() => onMove(-1)}
-              className="text-zinc-500 hover:text-zinc-900 disabled:opacity-30"
-            >
-              <ChevronUp size={16} />
-            </button>
-            <button
-              type="button"
-              aria-label="Move branch down"
-              title="Move branch down"
-              disabled={!props.canMoveDown}
-              onClick={() => onMove(1)}
-              className="text-zinc-500 hover:text-zinc-900 disabled:opacity-30"
-            >
-              <ChevronDown size={16} />
-            </button>
-          </div>
-        )}
-        <input
-          aria-label="Branch name (staff only)"
-          placeholder="Branch name (staff only)"
-          className="border border-zinc-300 rounded-md px-2 py-1 flex-1 font-medium"
-          value={draft.name}
-          onChange={(e) => set({ name: e.target.value })}
-        />
-        {branch && (
-          <button
-            type="button"
-            aria-label="Edit this branch's form"
-            title="Edit this branch's form"
-            onClick={() => navigate(`/forms/${branch.formId}`)}
-            className="p-1 text-zinc-500 hover:text-zinc-900"
-          >
-            <SquarePen size={18} />
-          </button>
-        )}
-        <BaseButton
-          variant={BaseButtonVariant.RedOutline}
-          onClick={onDelete}
-          disabled={saving}
-        >
-          <span className="flex items-center gap-1">
-            <Trash2 size={14} />
-            {branch ? "Delete branch" : "Discard"}
-          </span>
-        </BaseButton>
-      </div>
+      <table className="w-full text-sm">
+        <tbody>
+          <tr>
+            <th className="text-left font-medium text-zinc-700 pr-4 py-1">
+              Branch {props.position}
+            </th>
+            <td className="py-1">
+              <div className="flex items-center gap-1">
+                {onMove && (
+                  <>
+                    <button
+                      type="button"
+                      aria-label="Move branch down"
+                      title="Move branch down"
+                      disabled={!props.canMoveDown}
+                      onClick={() => onMove(1)}
+                      className="p-1 text-zinc-500 hover:text-zinc-900 disabled:opacity-30"
+                    >
+                      <ChevronDown size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Move branch up"
+                      title="Move branch up"
+                      disabled={!props.canMoveUp}
+                      onClick={() => onMove(-1)}
+                      className="p-1 text-zinc-500 hover:text-zinc-900 disabled:opacity-30"
+                    >
+                      <ChevronUp size={16} />
+                    </button>
+                  </>
+                )}
+                <div className="ml-auto">
+                  <BaseButton
+                    variant={BaseButtonVariant.RedOutline}
+                    onClick={onDelete}
+                    disabled={saving}
+                  >
+                    <span className="flex items-center gap-1">
+                      <Trash2 size={14} />
+                      {branch ? "Delete branch" : "Discard"}
+                    </span>
+                  </BaseButton>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <th className="text-left align-top font-medium text-zinc-700 pr-4 py-1 w-48">
+              <label htmlFor={nameId}>Branch name</label>
+              <p className="text-xs font-normal italic text-zinc-500 mt-1">
+                A human readable description of the branch for staff only
+              </p>
+            </th>
+            <td className="py-1">
+              <textarea
+                id={nameId}
+                rows={2}
+                className="w-96 border border-zinc-300 rounded-md px-2 py-1"
+                value={draft.name}
+                onChange={(e) => set({ name: e.target.value })}
+              />
+            </td>
+          </tr>
+          {branch && (
+            <tr>
+              <th className="text-left font-medium text-zinc-700 pr-4 py-1">
+                Form
+              </th>
+              <td className="py-1">
+                <BaseButton
+                  variant={BaseButtonVariant.Outline}
+                  iconLeft={SquarePen}
+                  onClick={() => navigate(`/forms/${branch.formId}`)}
+                >
+                  Open in form builder
+                </BaseButton>
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
 
       <div>
         <p className="text-sm font-medium text-zinc-700 mb-1">

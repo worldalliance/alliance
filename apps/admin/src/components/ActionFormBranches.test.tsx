@@ -120,7 +120,7 @@ it("shows a branched action's branches in routing order", async () => {
 
   expect(await screen.findByText("Form branches")).toBeTruthy();
   const names = screen
-    .getAllByRole("textbox", { name: "Branch name (staff only)" })
+    .getAllByRole("textbox", { name: "Branch name" })
     .map((input) => (input as HTMLInputElement).value);
   expect(names).toEqual(["County recruiting", "County staffed"]);
 });

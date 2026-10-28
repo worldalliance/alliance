@@ -134,6 +134,7 @@ export default function ActionBranchesSection(props: {
           key={`${variant.id}:${variant.updatedAt}`}
           actionId={action.id}
           branch={variant}
+          position={index + 1}
           earlierRules={branches
             .slice(0, index)
             .map(({ variant: earlier }) => earlier.rule ?? null)}
@@ -155,6 +156,7 @@ export default function ActionBranchesSection(props: {
         <ActionBranchEditor
           actionId={action.id}
           branch={null}
+          position={branches.length + 1}
           earlierRules={branches.map(({ variant }) => variant.rule ?? null)}
           activeContractUserIds={activeContractUserIds}
           ruleError={false}
