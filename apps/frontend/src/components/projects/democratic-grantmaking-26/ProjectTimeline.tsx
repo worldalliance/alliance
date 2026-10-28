@@ -67,12 +67,12 @@ export function ProjectTimeline({
                   />
                 )}
               </div>
-              <p className="lg:hidden">
-                <span className={cn("font-semibold", current && "text-green")}>
+              <div className="lg:hidden">
+                <p className={cn("font-semibold", current && "text-green")}>
                   {phase.description}
-                </span>{" "}
-                <span className="text-[var(--site-ink)]/70">{phase.label}</span>
-              </p>
+                </p>
+                <p className="text-[var(--site-ink)]/70">{phase.label}</p>
+              </div>
               <div className="hidden lg:block lg:w-[min(10rem,12cqw)] lg:shrink-0 lg:-translate-x-1/2">
                 <p className="text-[var(--site-ink)]/70">{phase.label}</p>
                 <p className={cn("font-semibold", current && "text-green")}>

@@ -156,8 +156,8 @@ export default function DemocraticGrantmaking26() {
                   Expert panel
                 </p>
                 <p className="text-center text-lg text-[var(--site-ink)]/70 sm:text-xl">
-                  Experts will comment on candidate nonprofits to help you make
-                  an informed vote.
+                  20+ experts will comment on candidate nonprofits to help you
+                  make an informed vote.
                 </p>
               </div>
               <div className="w-full">
