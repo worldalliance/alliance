@@ -2,74 +2,14 @@ import { MailerService, type ISendMailOptions } from "@nestjs-modules/mailer";
 import { Test } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { MessageSource } from "src/link-tracking/message-tracking.entity";
-import {
-  MessageTrackingService,
-  type TrackedMessage,
-} from "src/link-tracking/message-tracking.service";
+import { MessageTrackingService } from "src/link-tracking/message-tracking.service";
 import { ContractReminderCopy } from "./contract-reminder-copy";
 import { EmailStatus, EmailType, Mail } from "./mail.entity";
 import { MailNotSentError, MailService } from "./mail.service";
+import { harness, useMailSendingEnv } from "./mail.service.fixtures";
 
 describe("sendMail", () => {
-  const originalEnv = { ...process.env };
-
-  async function harness(
-    sendMail: (
-      options: ISendMailOptions,
-    ) => Promise<{ accepted: string[]; messageId: string }>,
-    other: {
-      saveFails?: boolean;
-      trackFails?: boolean;
-      verifyAllTransporters?: () => Promise<boolean>;
-    } = {},
-  ) {
-    const saves: Mail[] = [];
-    const tracked: TrackedMessage[] = [];
-    const discarded: string[] = [];
-    const moduleRef = await Test.createTestingModule({
-      providers: [
-        MailService,
-        {
-          provide: MailerService,
-          useValue: {
-            sendMail,
-            verifyAllTransporters: other.verifyAllTransporters,
-          },
-        },
-        {
-          provide: MessageTrackingService,
-          useValue: {
-            track: (input: { message: TrackedMessage }) => {
-              if (other.trackFails) {
-                return Promise.reject(new Error("insert failed"));
-              }
-              tracked.push(input.message);
-              return Promise.resolve("track-1");
-            },
-            discard: (trackingId: string) => {
-              discarded.push(trackingId);
-              return Promise.resolve();
-            },
-          },
-        },
-        {
-          provide: getRepositoryToken(Mail),
-          useValue: {
-            create: (mail: Partial<Mail>) => ({ ...mail }),
-            save: (mail: Mail) => {
-              if (other.saveFails) {
-                return Promise.reject(new Error("connection lost"));
-              }
-              saves.push({ ...mail });
-              return Promise.resolve(mail);
-            },
-          },
-        },
-      ],
-    }).compile();
-
-    return { service: moduleRef.get(MailService), saves, tracked, discarded };
-  }
+  useMailSendingEnv();
 
   const send = (service: MailService) =>
     service.sendMail({
@@ -79,15 +19,6 @@ describe("sendMail", () => {
       context: { name: "Jane", url: "https://example.org/verify" },
       tracking: null,
     });
-
-  beforeEach(() => {
-    process.env.NODE_ENV = "production";
-    process.env.MAIL_FROM = "Alliance <alliance@thealliance.org>";
-  });
-
-  afterEach(() => {
-    process.env = { ...originalEnv };
-  });
 
   it("records a failed Mail row when the transport rejects", async () => {
     const rejection = new Error("550 sender domain not allowed");
