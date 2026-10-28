@@ -46,14 +46,13 @@ export default function WithdrawalMenu({
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={ref}>
       <BaseButton onClick={() => setDropdownOpen(!dropdownOpen)}>
         <Ellipsis size={15} />
       </BaseButton>
       <Dropdown
         isOpen={dropdownOpen}
         className="absolute top-[100%] right-0 gap-y-2 *:w-full w-[300px]"
-        ref={ref}
       >
         <p className="mb-1 text-center">Withdrawal options</p>
         {WITHDRAWAL_OPTIONS.map((option) => (

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { flushSync } from "react-dom";
 import { MemoryRouter, Route, Routes } from "react-router";
 import WithdrawalMenu from "./WithdrawalMenu";
 
@@ -90,4 +91,24 @@ it("sends a member on vacation to their away periods", () => {
   fireEvent.click(screen.getByRole("button", { name: "On vacation" }));
 
   expect(screen.getByText("Membership page")).toBeTruthy();
+});
+
+it("opens when React renders the click's update before the document sees it", () => {
+  const { container } = render(
+    <MemoryRouter>
+      <WithdrawalMenu disabled={false} onWithdraw={jest.fn()} />
+    </MemoryRouter>,
+  );
+  const trigger = container
+    .querySelector(".lucide-ellipsis")
+    ?.closest("button");
+  if (!trigger) throw new Error("no withdrawal menu");
+  // A browser renders the update before the click bubbles to document; jsdom
+  // only does when something flushes it on the way up.
+  const flush = () => flushSync(() => {});
+  document.body.addEventListener("click", flush);
+  fireEvent.click(trigger);
+  document.body.removeEventListener("click", flush);
+
+  expect(screen.queryByText("Withdrawal options")).not.toBeNull();
 });
