@@ -1,15 +1,12 @@
 import {
   type CountryCode,
-  DEFAULT_PHONE_COUNTRY,
   hasPhoneExtension,
-  internationalPhoneCountry,
   looksLikePhoneNumber,
   toE164,
 } from "@alliance/common/phone";
 import { R, type Result } from "@alliance/common/result";
 import { cn } from "@alliance/shared/styles/util";
 import PhoneCountrySelect from "@alliance/sharedweb/ui/PhoneCountrySelect";
-import { useState } from "react";
 import isEmail from "validator/lib/isEmail";
 import { WAITLIST_FIELD } from "./waitlistStyles";
 
@@ -36,44 +33,6 @@ export function parseWaitlistContact(
     R.map(toE164(trimmed, country), (phoneNumber) => ({ phoneNumber })),
     () => INVALID_CONTACT,
   );
-}
-
-export function useWaitlistContactField() {
-  const [value, setValue] = useState("");
-  const [country, setCountry] = useState<CountryCode>(DEFAULT_PHONE_COUNTRY);
-  const [error, setError] = useState<string | null>(null);
-  const blurError = (inCountry: CountryCode) => {
-    const parsed = parseWaitlistContact(value, inCountry);
-    return value.trim() && R.isFailure(parsed) ? parsed.error : null;
-  };
-  return {
-    parse: () => {
-      const parsed = parseWaitlistContact(value, country);
-      if (R.isFailure(parsed)) setError(parsed.error);
-      return parsed;
-    },
-    reset: () => {
-      setValue("");
-      setCountry(DEFAULT_PHONE_COUNTRY);
-      setError(null);
-    },
-    inputProps: {
-      value,
-      onChange: (next: string) => {
-        setValue(next);
-        setError(null);
-        const typed = internationalPhoneCountry(next);
-        if (typed) setCountry(typed);
-      },
-      country,
-      onCountryChange: (next: CountryCode) => {
-        setCountry(next);
-        if (error) setError(blurError(next));
-      },
-      error,
-      onBlur: () => setError(blurError(country)),
-    },
-  };
 }
 
 export function WaitlistContactInput({
