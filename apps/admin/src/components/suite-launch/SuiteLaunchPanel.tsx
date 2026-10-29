@@ -197,15 +197,6 @@ const SuiteLaunchPanel = ({
         <h2 className="text-lg font-semibold">Launch {suite.name}</h2>
       </div>
 
-      {violations.length > 0 && (
-        <ContractViolationsBanner
-          violations={violations}
-          acknowledged={violationsAcknowledged}
-          onAcknowledgedChange={(acknowledged) =>
-            setAcceptedViolations(new Set(acknowledged ? violations : []))
-          }
-        />
-      )}
       <LaunchCheck
         id={LaunchSection.Schedule}
         title="Schedule"
@@ -326,6 +317,15 @@ const SuiteLaunchPanel = ({
         </ul>
       )}
       {launchError && <p className="text-sm text-red-500">{launchError}</p>}
+      {violations.length > 0 && (
+        <ContractViolationsBanner
+          violations={violations}
+          acknowledged={violationsAcknowledged}
+          onAcknowledgedChange={(acknowledged) =>
+            setAcceptedViolations(new Set(acknowledged ? violations : []))
+          }
+        />
+      )}
       <Button
         color={ButtonColor.Green}
         size="large"
