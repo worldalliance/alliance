@@ -62,7 +62,7 @@ export const MemberPreview = ({
         </thead>
         <tbody>
           {actionMixes(loads ?? []).map((mix) => (
-            <tr key={mix.actionIds.join(",")}>
+            <tr key={mix.actionIds.join(",")} className="align-top">
               <td>{mix.userIds.length}</td>
               <td>
                 <span
@@ -85,9 +85,11 @@ export const MemberPreview = ({
                 )}
               </td>
               <td>
-                {mix.actionIds
-                  .map((id) => actionsById.get(id)?.name)
-                  .join(", ")}
+                <ul>
+                  {mix.actionIds.map((id) => (
+                    <li key={id}>{actionsById.get(id)?.name}</li>
+                  ))}
+                </ul>
               </td>
               <td className="text-right">
                 <button
@@ -95,7 +97,7 @@ export const MemberPreview = ({
                   onClick={() => preview(mix.userIds)}
                   aria-label="Preview a member who gets these actions"
                   title="Preview a member who gets these actions"
-                  className={iconControlClass}
+                  className={cn(iconControlClass, "-my-1 ml-auto block")}
                 >
                   <Eye className="size-4" />
                 </button>

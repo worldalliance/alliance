@@ -1,5 +1,5 @@
 import { onlineManager } from "@tanstack/react-query";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { expect, it, setSystemTime } from "bun:test";
 import {
   api,
@@ -65,9 +65,23 @@ it("groups members by the actions they get and previews one from a group", async
   const mixes = screen.getAllByRole("button", {
     name: "Preview a member who gets these actions",
   });
-  expect(mixes.map((button) => button.closest("tr")?.textContent)).toEqual([
-    "118 over 15 minutesCall, Write",
-    "110Call",
+  const mixRow = (button: HTMLElement) => {
+    const [members, minutes, actions] = [
+      ...(button.closest("tr")?.querySelectorAll("td") ?? []),
+    ];
+    return {
+      members: members?.textContent,
+      minutes: minutes?.textContent,
+      actions: actions
+        ? within(actions)
+            .getAllByRole("listitem")
+            .map((item) => item.textContent)
+        : [],
+    };
+  };
+  expect(mixes.map(mixRow)).toEqual([
+    { members: "1", minutes: "18 over 15 minutes", actions: ["Call", "Write"] },
+    { members: "1", minutes: "10", actions: ["Call"] },
   ]);
   fireEvent.click(mixes[0]);
 
