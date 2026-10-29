@@ -80,11 +80,6 @@ export function membershipUrl(full = false) {
   return full ? `${siteBaseUrl()}${path}` : path;
 }
 
-export function groupMembersListUrl(full = false) {
-  const path = `/groups?tab=members`; //TODO: multiple groups
-  return full ? `${siteBaseUrl()}${path}` : path;
-}
-
 export function postUrl(postId: number) {
   return `/forum/post/${postId}`;
 }
