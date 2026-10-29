@@ -1,230 +1,15 @@
+import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { expect, it, setSystemTime } from "bun:test";
 import {
-  actionSuitesAddSuiteEventAdmin,
-  type ActionEventDto,
-  type ActionSuiteDto,
-  type CreateActionEventDto,
-  type ProjectDto,
-} from "@alliance/shared/client";
-import { makeAction, makeProfile } from "@alliance/shared/lib/testFixtures";
-import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
-import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import {
-  afterEach,
-  beforeEach,
-  expect,
-  it,
-  mock,
-  setSystemTime,
-} from "bun:test";
-import { MemoryRouter } from "react-router";
-import { spellcheckerQuery } from "./spellchecker";
-import SuiteLaunchPanel from "./SuiteLaunchPanel";
+  api,
+  launchButton,
+  onClose,
+  renderPanel,
+  resolveEveryCheck,
+  serveLaunchApi,
+} from "./SuiteLaunchPanel.testHarness";
 
-const adminAction = (params: {
-  id: number;
-  name: string;
-  timeEstimate: number;
-  body: string;
-  memberIds: number[] | null;
-  taskFormId?: number | null;
-  image?: string | null;
-  project?: ProjectDto | null;
-}) => ({
-  ...makeAction({ id: params.id, name: params.name }),
-  image: params.image === undefined ? "cover.png" : params.image,
-  shortDescription: "Short.",
-  body: params.body,
-  timeEstimate: params.timeEstimate,
-  suite: { id: 3, name: "Spring suite" },
-  project:
-    params.project === undefined
-      ? { id: 4, name: "Food drive", category: [] }
-      : params.project,
-  authors: [makeProfile(1)],
-  taskFormId: params.taskFormId === undefined ? 5 : params.taskFormId,
-  cohortExpression: params.memberIds && {
-    type: "Manual",
-    userIds: params.memberIds,
-  },
-});
-
-let benSigned = true;
-let benEverSigned = false;
-let userListFails = false;
-let awayRanges: { userId: number; fromDay: number; toDay: number }[] = [];
-let awayRangesFail = false;
-let formPages: { id: string; title: string; fields: [] }[] = [];
-let served: Record<number, ReturnType<typeof adminAction>> = {};
-let suiteEvents: ActionEventDto[] = [];
-const createdEvents: CreateActionEventDto[] = [];
-const reminderEventIds: string[] = [];
-
-serveApi(
-  routes({
-    "GET /actions/all": () => Response.json([]),
-    "GET /user/tags": () => Response.json([]),
-    "GET /actions/adminslug/:id": ({ params }) =>
-      Response.json(served[Number(params.id)]),
-    "GET /tasks/adminForm/:id": ({ params }) =>
-      Number.isInteger(Number(params.id))
-        ? Response.json({
-            id: 5,
-            title: "Form",
-            schema: {
-              pages: formPages,
-              outputViews: [{ type: "card", id: "card", blocks: [] }],
-            },
-          })
-        : Response.json({ statusCode: 400 }, { status: 400 }),
-    "POST /actions/evaluate-cohort": async ({ request }) => {
-      const { expression }: { expression: { userIds: number[] } } =
-        await request.json();
-      return Response.json({ userIds: expression.userIds });
-    },
-    "GET /user/admin/awayranges": () =>
-      awayRangesFail
-        ? Response.json({ statusCode: 500 }, { status: 500 })
-        : Response.json(
-            awayRanges.map(({ userId, fromDay, toDay }) => ({
-              id: userId,
-              userId,
-              userName: `User ${userId}`,
-              startDate: new Date(
-                Date.now() + fromDay * 86_400_000,
-              ).toISOString(),
-              endDate: new Date(Date.now() + toDay * 86_400_000).toISOString(),
-            })),
-          ),
-    "GET /user/list": () =>
-      userListFails
-        ? Response.json({ statusCode: 500 }, { status: 500 })
-        : Response.json([
-            {
-              id: 10,
-              name: "Ana",
-              profilePicture: null,
-              hasActiveContract: true,
-            },
-            {
-              id: 11,
-              name: "Ben",
-              profilePicture: null,
-              hasActiveContract: benSigned,
-              ...(benEverSigned && {
-                lastContractEvent: {
-                  type: "signed",
-                  date: "2026-01-01T00:00:00.000Z",
-                  automatic: false,
-                  contractId: 1,
-                },
-              }),
-            },
-          ]),
-    "POST /actions/suite/:suiteId/events": async ({ request }) => {
-      const body: CreateActionEventDto = await request.json();
-      createdEvents.push(body);
-      suiteEvents = [
-        ...suiteEvents,
-        { ...body, id: 100 + suiteEvents.length, suiteManaged: true },
-      ];
-      return Response.json(suiteWith(suiteEvents));
-    },
-    "POST /actions/events/:eventId/createremindergroup": ({ params }) => {
-      reminderEventIds.push(params.eventId);
-      return Response.json({ id: reminderEventIds.length });
-    },
-  }),
-);
-
-const suiteWith = (events: ActionEventDto[]): ActionSuiteDto => ({
-  id: 3,
-  name: "Spring suite",
-  actions: [
-    makeAction({ id: 1, name: "Call" }),
-    makeAction({ id: 2, name: "Write" }),
-  ],
-  events,
-  reminderGroups: [],
-  generalUpdates: [],
-});
-
-beforeEach(() => {
-  served = {
-    1: adminAction({
-      id: 1,
-      name: "Call",
-      timeEstimate: 10,
-      body: "Call  your representative.",
-      memberIds: [10, 11],
-    }),
-    2: adminAction({
-      id: 2,
-      name: "Write",
-      timeEstimate: 8,
-      body: "Write teh letter.",
-      memberIds: [11],
-    }),
-  };
-  formPages = [];
-  benSigned = true;
-  benEverSigned = false;
-  userListFails = false;
-  awayRanges = [];
-  awayRangesFail = false;
-  suiteEvents = [];
-  createdEvents.length = 0;
-  reminderEventIds.length = 0;
-});
-
-afterEach(() => setSystemTime());
-
-const onClose = mock(() => {});
-
-const renderPanel = () => {
-  const addEvent = (body: CreateActionEventDto) =>
-    actionSuitesAddSuiteEventAdmin({
-      path: { suiteId: 3 },
-      body,
-      throwOnError: true,
-    }).then((res) => res.data);
-  const query = queryWrapper();
-  // The dictionary loads through Vite's `?raw` imports, which bun can't resolve.
-  query.client.setQueryData(
-    spellcheckerQuery.queryKey,
-    () => (word: string) => word !== "teh",
-  );
-  return render(
-    <MemoryRouter>
-      <ToastProvider>
-        <SuiteLaunchPanel
-          suite={suiteWith([])}
-          addEvent={addEvent}
-          onClose={onClose}
-        />
-      </ToastProvider>
-    </MemoryRouter>,
-    query,
-  );
-};
-
-const launchButton = () =>
-  screen.getByRole("button", { name: /Launch and notify/ });
-
-const resolveEveryCheck = async () => {
-  for (const box of await screen.findAllByRole("checkbox", {
-    name: "Ready to launch",
-  }))
-    fireEvent.click(box);
-  fireEvent.click(
-    screen.getByRole("checkbox", {
-      name: "Launch anyway, breaking the contract",
-    }),
-  );
-  for (const dismiss of screen.getAllByRole("button", { name: "Dismiss" }))
-    fireEvent.click(dismiss);
-};
+serveLaunchApi();
 
 it("flags overloaded members and text findings, and blocks launch until each is resolved", async () => {
   renderPanel();
@@ -251,7 +36,12 @@ it("flags overloaded members and text findings, and blocks launch until each is 
 });
 
 it("lists each action's unfinished checklist items", async () => {
-  served[2] = { ...served[2], body: "", taskFormId: null, project: null };
+  api.served[2] = {
+    ...api.served[2],
+    body: "",
+    taskFormId: null,
+    project: null,
+  };
   renderPanel();
 
   expect(
@@ -282,11 +72,11 @@ it("creates both events and the default reminders once the count is typed", asyn
   fireEvent.click(screen.getByRole("button", { name: "Launch" }));
 
   await waitFor(() => expect(onClose).toHaveBeenCalled());
-  expect(createdEvents.map((event) => event.newStatus)).toEqual([
+  expect(api.createdEvents.map((event) => event.newStatus)).toEqual([
     "member_action",
     "office_action",
   ]);
-  expect(reminderEventIds).toEqual(Array(7).fill("100"));
+  expect(api.reminderEventIds).toEqual(Array(7).fill("100"));
 });
 
 it("refuses to launch once the member start has passed while the panel sat open", async () => {
@@ -309,11 +99,11 @@ it("refuses to launch once the member start has passed while the panel sat open"
       "Members taking action must start in the future. Pick a later time.",
     ),
   ).toBeTruthy();
-  expect(createdEvents).toEqual([]);
+  expect(api.createdEvents).toEqual([]);
 });
 
 it("links a task form finding to the form and a body finding to the action", async () => {
-  formPages = [{ id: "p1", title: "Page  one", fields: [] }];
+  api.formPages = [{ id: "p1", title: "Page  one", fields: [] }];
   renderPanel();
 
   const formFinding = (
@@ -383,7 +173,7 @@ it("lists the reminders the launch creates", async () => {
 });
 
 it("shows each action's audience, task form link, and what to look at before checking it", async () => {
-  served[2] = { ...served[2], image: null, archived: true };
+  api.served[2] = { ...api.served[2], image: null, archived: true };
   renderPanel();
 
   const write = (await screen.findByText(/^1 member ·/)).closest("li");
@@ -406,7 +196,7 @@ it("states how long members have to complete their actions", async () => {
 });
 
 it("counts only members with an active contract, as the server admits them", async () => {
-  benSigned = false;
+  api.benSigned = false;
   renderPanel();
 
   expect(
@@ -417,7 +207,7 @@ it("counts only members with an active contract, as the server admits them", asy
 });
 
 it("counts no one for an action without a cohort, as the server does", async () => {
-  served[1] = { ...served[1], cohortExpression: null };
+  api.served[1] = { ...api.served[1], cohortExpression: null };
   renderPanel();
 
   expect(
@@ -426,8 +216,8 @@ it("counts no one for an action without a cohort, as the server does", async () 
 });
 
 it("counts an onboarding action's unsigned members", async () => {
-  benSigned = false;
-  served[2] = { ...served[2], onboarding: true };
+  api.benSigned = false;
+  api.served[2] = { ...api.served[2], onboarding: true };
   renderPanel();
 
   expect(
@@ -436,9 +226,9 @@ it("counts an onboarding action's unsigned members", async () => {
 });
 
 it("leaves out of an onboarding action the members who have already signed", async () => {
-  benSigned = false;
-  benEverSigned = true;
-  served[1] = { ...served[1], onboarding: true };
+  api.benSigned = false;
+  api.benEverSigned = true;
+  api.served[1] = { ...api.served[1], onboarding: true };
   renderPanel();
 
   expect(
@@ -447,7 +237,7 @@ it("leaves out of an onboarding action the members who have already signed", asy
 });
 
 it("leaves out members away during the launch", async () => {
-  awayRanges = [{ userId: 11, fromDay: -1, toDay: 30 }];
+  api.awayRanges = [{ userId: 11, fromDay: -1, toDay: 30 }];
   renderPanel();
 
   expect(
@@ -456,7 +246,7 @@ it("leaves out members away during the launch", async () => {
 });
 
 it("counts members away only before members start or after office taking action", async () => {
-  awayRanges = [
+  api.awayRanges = [
     { userId: 10, fromDay: -10, toDay: -1 },
     { userId: 11, fromDay: 10, toDay: 20 },
   ];
@@ -487,7 +277,7 @@ it("keeps the checks up while away dates load past the year ahead", async () => 
 });
 
 it("blocks launch, counting no one, when members' away dates fail to load", async () => {
-  awayRangesFail = true;
+  api.awayRangesFail = true;
   renderPanel();
 
   expect(
@@ -505,7 +295,7 @@ it("blocks launch, counting no one, when members' away dates fail to load", asyn
 });
 
 it("blocks launch when members' contract status fails to load", async () => {
-  userListFails = true;
+  api.userListFails = true;
   renderPanel();
 
   expect(
@@ -520,8 +310,56 @@ it("blocks launch when members' contract status fails to load", async () => {
   expect(screen.queryByText("No member is assigned any action.")).toBeNull();
 });
 
+it("keeps the schedule, checks, and dismissals across a reload, until launch", async () => {
+  const first = renderPanel();
+  await resolveEveryCheck();
+  fireEvent.change(
+    first.container.querySelectorAll('input[type="datetime-local"]')[0],
+    { target: { value: "2099-01-02T10:00" } },
+  );
+  fireEvent.change(
+    first.container.querySelectorAll('input[type="datetime-local"]')[1],
+    { target: { value: "2099-01-10T10:00" } },
+  );
+  await waitFor(() =>
+    expect(launchButton().hasAttribute("disabled")).toBe(false),
+  );
+  first.unmount();
+
+  const second = renderPanel();
+  await waitFor(() =>
+    expect(launchButton().hasAttribute("disabled")).toBe(false),
+  );
+  const memberStart = second.container.querySelectorAll(
+    'input[type="datetime-local"]',
+  )[0];
+  expect(memberStart instanceof HTMLInputElement && memberStart.value).toBe(
+    "2099-01-02T10:00",
+  );
+
+  fireEvent.click(launchButton());
+  fireEvent.change(
+    await screen.findByPlaceholderText("I am going to notify 2 real members"),
+    { target: { value: "I am going to notify 2 real members" } },
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Launch" }));
+  await waitFor(() => expect(onClose).toHaveBeenCalled());
+  expect(window.localStorage.length).toBe(0);
+});
+
+it("says saved progress it can't read starts over", async () => {
+  window.localStorage.setItem("alliance.suiteLaunch.v1.3", "{not json");
+  renderPanel();
+
+  expect(
+    await screen.findByText(
+      "Saved launch progress couldn't be read, so this starts over.",
+    ),
+  ).toBeTruthy();
+});
+
 it("re-runs the checks without failing the loads an action doesn't make", async () => {
-  served[2] = { ...served[2], taskFormId: null };
+  api.served[2] = { ...api.served[2], taskFormId: null };
   renderPanel();
   fireEvent.click(await screen.findByRole("button", { name: "Re-run checks" }));
   await new Promise((resolve) => setTimeout(resolve, 50));

@@ -35,6 +35,7 @@ On the admin suite view:
 - The action checklist includes "Part of a project". (user)
 - Member counts respect who has signed the contract. (user)
 - Cut the misspelling check's false positives. (user)
+- The launch process is its own page and keeps its state across a refresh, at least locally. (user)
 
 ## Verification
 

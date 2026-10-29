@@ -8,8 +8,8 @@ import DateTimePicker, {
   type DateTimePickerChange,
 } from "@alliance/sharedweb/ui/DateTimePicker";
 import { ConfirmMode, useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { X } from "lucide-react";
-import { useState } from "react";
+import { ArrowLeft } from "lucide-react";
+import { useEffect, useState } from "react";
 import { notifyRealMembersText } from "../../lib/notifyRealMembers";
 import { useActionReminderGroupsAdmin } from "../../lib/useActionReminderGroupsAdmin";
 import { defaultReminderBodies } from "../reminders/presets";
@@ -19,6 +19,11 @@ import { contractViolations } from "./contractViolations";
 import ContractViolationsBanner from "./ContractViolationsBanner";
 import { launchBlockers } from "./launchBlockers";
 import LaunchCheck from "./LaunchCheck";
+import {
+  clearLaunchProgress,
+  readLaunchProgress,
+  writeLaunchProgress,
+} from "./launchProgress";
 import { reminderSendWindows } from "./launchReminders";
 import LaunchRemindersCheck from "./LaunchRemindersCheck";
 import {
@@ -55,8 +60,10 @@ const SuiteLaunchPanel = ({
 }) => {
   const { confirm, success } = useToast();
   const createReminders = useActionReminderGroupsAdmin(null).create;
-  const [schedule, setSchedule] = useState<LaunchSchedule>(() =>
-    defaultLaunchSchedule(new Date()),
+  const [read] = useState(() => readLaunchProgress(suite.id));
+  const saved = read.ok ? read.value : null;
+  const [schedule, setSchedule] = useState<LaunchSchedule>(
+    () => saved?.schedule ?? defaultLaunchSchedule(new Date()),
   );
   const data = useSuiteLaunchData({ suite, schedule });
   const reminderBodies = defaultReminderBodies({
@@ -68,12 +75,31 @@ const SuiteLaunchPanel = ({
     schedule,
   });
   const [checkedActionIds, setCheckedActionIds] = useState<ReadonlySet<number>>(
-    new Set(),
+    saved?.checkedActionIds ?? new Set(),
   );
   const [dismissedKeys, setDismissedKeys] = useState<ReadonlySet<string>>(
-    new Set(),
+    saved?.dismissedKeys ?? new Set(),
   );
-  const [violationsAcknowledged, setViolationsAcknowledged] = useState(false);
+  const [violationsAcknowledged, setViolationsAcknowledged] = useState(
+    saved?.violationsAcknowledged ?? false,
+  );
+  useEffect(() => {
+    writeLaunchProgress({
+      suiteId: suite.id,
+      progress: {
+        schedule,
+        checkedActionIds,
+        dismissedKeys,
+        violationsAcknowledged,
+      },
+    });
+  }, [
+    suite.id,
+    schedule,
+    checkedActionIds,
+    dismissedKeys,
+    violationsAcknowledged,
+  ]);
   const [launching, setLaunching] = useState(false);
   const [launchError, setLaunchError] = useState<string | null>(null);
 
@@ -139,6 +165,7 @@ const SuiteLaunchPanel = ({
     });
     setLaunching(false);
     if (result.ok) {
+      clearLaunchProgress(suite.id);
       success(`${suite.name} is scheduled to launch.`);
       onClose();
     } else {
@@ -148,18 +175,23 @@ const SuiteLaunchPanel = ({
 
   return (
     <section className="flex flex-col gap-4 rounded-lg border-2 border-green p-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Launch {suite.name}</h2>
+      <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close launch process"
-          title="Close launch process"
+          aria-label="Back to suite"
+          title="Back to suite"
           className={iconControlClass}
         >
-          <X className="size-5" />
+          <ArrowLeft className="size-5" />
         </button>
+        <h2 className="text-lg font-semibold">Launch {suite.name}</h2>
       </div>
+      {!read.ok && (
+        <p className="text-sm text-yellow-800">
+          {"Saved launch progress couldn't be read, so this starts over."}
+        </p>
+      )}
 
       {violations.length > 0 && (
         <ContractViolationsBanner
