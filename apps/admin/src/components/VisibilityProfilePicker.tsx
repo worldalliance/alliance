@@ -1,7 +1,7 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import type { Condition } from "@alliance/common/forms/visible-if-formula";
 import { withCount } from "@alliance/common/plural";
-import { Check, X } from "lucide-react";
+import { Check, ChevronRight, X } from "lucide-react";
 import { useConditionFieldLookup } from "../lib/useConditionFieldLookup";
 import { useCustomValidatorAdmin } from "../lib/useCustomValidatorAdmin";
 import { useCustomValidatorTypesAdmin } from "../lib/useCustomValidatorTypesAdmin";
@@ -54,11 +54,14 @@ export function VisibilityProfilePicker({
   userIds,
   selectedUserId,
   onSelect,
+  collapsible = false,
 }: {
   schema: FormSchema;
   userIds: readonly number[];
   selectedUserId: number | null;
   onSelect: (userId: number) => void;
+  /** Starts folded under a heading naming how many variants there are. */
+  collapsible?: boolean;
 }) {
   const {
     conditions,
@@ -95,7 +98,7 @@ export function VisibilityProfilePicker({
     (condition) => condition.kind === "validator" && condition.validatorId < 0,
   );
 
-  return (
+  const cards = (
     <div className="flex flex-col gap-2">
       <SelectableCardGroup label="Preview as members who see">
         {profiles.map((profile) => (
@@ -144,5 +147,22 @@ export function VisibilityProfilePicker({
         </p>
       )}
     </div>
+  );
+  return collapsible ? (
+    <details className="group">
+      <summary className="flex cursor-pointer list-none items-center gap-1 rounded py-1.5 text-sm hover:bg-zinc-100 [&::-webkit-details-marker]:hidden">
+        <ChevronRight
+          className="size-4 shrink-0 text-zinc-500 transition-transform group-open:rotate-90"
+          aria-hidden
+        />
+        Member variants
+        <span className="ml-2 text-xs text-zinc-500">
+          {withCount(profiles.length, "variant")}
+        </span>
+      </summary>
+      <div className="mt-2">{cards}</div>
+    </details>
+  ) : (
+    cards
   );
 }
