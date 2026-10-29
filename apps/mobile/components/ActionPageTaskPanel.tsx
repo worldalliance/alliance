@@ -37,8 +37,6 @@ export interface ActionPageTaskPanelProps {
   onOptOutAction: () => void;
   onDeadlinePassed: () => void;
   onAlreadySubmitted: () => void;
-  scrollPageTo: (y: number, animated?: boolean) => void;
-  scrollToEnd: (animated?: boolean) => void;
 }
 
 const renderTitledHeader = (copy: TitledCopy, titleClassName?: string) => (
@@ -124,8 +122,6 @@ const ActionPageTaskPanel = ({
   onOptOutAction,
   onDeadlinePassed,
   onAlreadySubmitted,
-  scrollPageTo,
-  scrollToEnd,
 }: ActionPageTaskPanelProps) => {
   const { user, isAuthenticated } = useAuth();
   const [copied, setCopied] = useState(false);
@@ -225,8 +221,6 @@ const ActionPageTaskPanel = ({
           bottom={
             <ActionTaskPanel
               action={action}
-              scrollPageTo={scrollPageTo}
-              scrollToEnd={scrollToEnd}
               disabled
               formResponse={formResponse ?? undefined}
               {...panelHandlers}
@@ -246,14 +240,7 @@ const ActionPageTaskPanel = ({
         <StackedCard
           top={taskPanelHeader}
           topCardStyle={headerStyle}
-          bottom={
-            <ActionTaskPanel
-              action={action}
-              scrollPageTo={scrollPageTo}
-              scrollToEnd={scrollToEnd}
-              {...panelHandlers}
-            />
-          }
+          bottom={<ActionTaskPanel action={action} {...panelHandlers} />}
           bottomCardStyle={bodyStyle}
         />
       );

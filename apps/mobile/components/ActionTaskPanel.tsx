@@ -6,13 +6,10 @@ import {
 import { captureEvent } from "@alliance/shared/lib/analytics";
 import { noop } from "@alliance/shared/lib/constants";
 import { useCallback } from "react";
-import { taskFlowEnabled } from "../lib/config";
 import ActionTaskPanelForm from "./ActionTaskPanelForm";
 
 export type ActionTaskPanelProps = ActionTaskPanelPropsShared & {
   onAlreadySubmitted: () => void;
-  scrollPageTo: (y: number, animated?: boolean) => void;
-  scrollToEnd: (animated?: boolean) => void;
 };
 
 const ActionTaskPanel = ({
@@ -21,8 +18,6 @@ const ActionTaskPanel = ({
   onOptOutAction,
   onDeadlinePassed,
   onAlreadySubmitted,
-  scrollPageTo,
-  scrollToEnd,
   disabled,
   formResponse,
 }: ActionTaskPanelProps) => {
@@ -44,23 +39,18 @@ const ActionTaskPanel = ({
     });
   }, [action]);
 
-  const taskFlowAction = taskFlowEnabled() ? action : undefined;
-
   if ((disabled || formResponse) && action.taskFormId !== null) {
     return (
       <ActionTaskPanelForm
         taskFormId={action.taskFormId}
-        scrollPageTo={scrollPageTo}
-        scrollToEnd={scrollToEnd}
         onCompleteAction={null}
         onDeadlinePassed={noop}
         onAlreadySubmitted={noop}
         onFormStarted={handleFormStarted}
         onAbandonAction={onAbandonAction}
-        actionId={action.id}
+        action={action}
         disabled={true}
         formResponse={formResponse}
-        taskFlowAction={taskFlowAction}
       />
     );
   }
@@ -69,15 +59,12 @@ const ActionTaskPanel = ({
     return action.taskFormId ? (
       <ActionTaskPanelForm
         taskFormId={action.taskFormId}
-        scrollPageTo={scrollPageTo}
-        scrollToEnd={scrollToEnd}
         onCompleteAction={null}
         onDeadlinePassed={noop}
         onAlreadySubmitted={noop}
         onFormStarted={noop}
-        actionId={action.id}
+        action={action}
         preview
-        taskFlowAction={taskFlowAction}
       />
     ) : null;
   }
@@ -86,16 +73,13 @@ const ActionTaskPanel = ({
     return (
       <ActionTaskPanelForm
         taskFormId={action.taskFormId}
-        scrollPageTo={scrollPageTo}
-        scrollToEnd={scrollToEnd}
         onCompleteAction={handleComplete}
         onFormStarted={handleFormStarted}
         onAbandonAction={onAbandonAction}
         onDeadlinePassed={onDeadlinePassed}
         onAlreadySubmitted={onAlreadySubmitted}
-        actionId={action.id}
+        action={action}
         disabled={disabled}
-        taskFlowAction={taskFlowAction}
       />
     );
   }

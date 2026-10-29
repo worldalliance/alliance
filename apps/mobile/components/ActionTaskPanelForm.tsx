@@ -1,17 +1,11 @@
 import { FormSchema } from "@alliance/common/forms/form-schema";
-import {
-  ActionDto,
-  FormResponseDto,
-  SubmitFormDto,
-} from "@alliance/shared/client";
+import { ActionDto, FormResponseDto } from "@alliance/shared/client";
 import { taskFlowMode } from "@alliance/shared/forms/useTaskFlow";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import { noop } from "@alliance/shared/lib/constants";
 import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import { ActivityIndicator, View } from "react-native";
-import { useAuth } from "../lib/AuthContext";
 import { colors } from "../lib/style/colors";
-import FormRenderer from "./forms/FormRenderer";
 import Text from "./system/Text";
 import TaskFlow from "./taskflow/TaskFlow";
 import { useSubmitTaskForm } from "./useSubmitTaskForm";
@@ -23,15 +17,11 @@ interface ActionTaskPanelFormProps {
   onAbandonAction?: (withdrawal: ActionWithdrawal) => void;
   onDeadlinePassed: () => void;
   onAlreadySubmitted: () => void;
-  actionId: number;
-  scrollPageTo: (y: number, animated?: boolean) => void;
-  scrollToEnd: (animated?: boolean) => void;
+  action: ActionDto;
   disabled?: boolean;
   formResponse?: FormResponseDto;
   /** Editable but unsubmittable, and nothing typed outlives the screen. */
   preview?: boolean;
-  /** Set to show the form as the full-screen task flow for this action. */
-  taskFlowAction?: ActionDto;
 }
 
 const ActionTaskPanelForm = ({
@@ -41,19 +31,15 @@ const ActionTaskPanelForm = ({
   onAbandonAction,
   onDeadlinePassed,
   onAlreadySubmitted,
-  actionId,
-  scrollPageTo,
-  scrollToEnd,
+  action,
   disabled,
   formResponse,
   preview = false,
-  taskFlowAction,
 }: ActionTaskPanelFormProps) => {
-  const { user, isAuthenticated, isLoading: userLoading } = useAuth();
   const { submitTaskForm, recordCompleted, error, historiesReload } =
     useSubmitTaskForm({
       taskFormId,
-      actionId,
+      actionId: action.id,
       onDeadlinePassed,
       onAlreadySubmitted,
     });
@@ -71,14 +57,6 @@ const ActionTaskPanelForm = ({
       }
     : null;
 
-  const handleSubmitForm = completeAction
-    ? async (data: SubmitFormDto) => {
-        const submitted = await submitTaskForm(data);
-        if (submitted) completeAction();
-        return submitted;
-      }
-    : null;
-
   const flowMode = taskFlowMode({
     submitted: !!formResponse,
     disabled: !!disabled,
@@ -86,13 +64,13 @@ const ActionTaskPanelForm = ({
     completable: !!completeAction,
   });
   const renderFlow = (flowForm: {
-    action: ActionDto;
     schema: FormSchema;
     formId: number;
     formSnapshotId: number;
   }) => (
     <TaskFlow
-      key={`${flowForm.action.id}:${taskFormId}:${flowMode}`}
+      key={`${action.id}:${taskFormId}:${flowMode}`}
+      action={action}
       {...flowForm}
       mode={flowMode}
       completedFormResponse={formResponse}
@@ -110,31 +88,12 @@ const ActionTaskPanelForm = ({
     ? (formResponse.schemaSnapshot as unknown as FormSchema)
     : null;
 
-  if (formResponse && responseSchema && taskFlowAction) {
+  if (formResponse && responseSchema) {
     return renderFlow({
-      action: taskFlowAction,
       schema: responseSchema,
       formId: formResponse.formId,
       formSnapshotId: formResponse.formSnapshotId,
     });
-  }
-
-  if (formResponse && responseSchema) {
-    return (
-      <FormRenderer
-        form={responseSchema}
-        id={formResponse.formId}
-        formSnapshotId={formResponse.formSnapshotId}
-        actionId={actionId}
-        completedFormResponse={formResponse}
-        onSubmit={null}
-        userId={formResponse.user?.id}
-        user={formResponse.user ?? undefined}
-        scrollPageTo={scrollPageTo}
-        scrollToEnd={scrollToEnd}
-        renderFormAsCompleted
-      />
-    );
   }
 
   if (isPending) {
@@ -160,34 +119,11 @@ const ActionTaskPanelForm = ({
 
   return (
     <View>
-      {taskFlowAction ? (
-        renderFlow({
-          action: taskFlowAction,
-          schema,
-          formId: taskFormId,
-          formSnapshotId: form.formSnapshotId,
-        })
-      ) : (
-        <FormRenderer
-          id={taskFormId}
-          formSnapshotId={form.formSnapshotId}
-          form={schema}
-          onSubmit={handleSubmitForm}
-          onFormStarted={onFormStarted}
-          onAbandonAction={onAbandonAction}
-          actionId={actionId}
-          persistKey={preview ? null : String(taskFormId)}
-          reloadSourceHistories={historiesReload}
-          userId={user?.id}
-          user={user}
-          userLoading={userLoading}
-          loadCurrentUserLocation={!!user && isAuthenticated}
-          syncDraftToServer={isAuthenticated}
-          scrollPageTo={scrollPageTo}
-          scrollToEnd={scrollToEnd}
-          renderFormAsCompleted={disabled}
-        />
-      )}
+      {renderFlow({
+        schema,
+        formId: taskFormId,
+        formSnapshotId: form.formSnapshotId,
+      })}
       {error ? <Text className="mt-2 text-red-500">{error}</Text> : null}
     </View>
   );

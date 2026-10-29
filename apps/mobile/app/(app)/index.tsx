@@ -45,12 +45,10 @@ import LargeGeneralUpdateCard from "../../components/LargeGeneralUpdateCard";
 import LoadFailed from "../../components/LoadFailed";
 import NoTasksNotice from "../../components/NoTasksNotice";
 import ProfileImage from "../../components/ProfileImage";
-import SuccessOverlay from "../../components/SuccessOverlay";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
 import { TaskNavigatorStepper } from "../../components/system/TaskNavigatorStepper";
 import Text from "../../components/system/Text";
 import { useAuth } from "../../lib/AuthContext";
-import { taskFlowEnabled } from "../../lib/config";
 import {
   Anchor,
   useWalkthroughScroll,
@@ -71,11 +69,6 @@ export default function HomeScreen() {
   const resetHomeFeed = useResetHomeFeed();
   const invalidateTaskForms = useInvalidateTaskForms();
   const [refreshing, setRefreshing] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-
-  const handleSuccessComplete = useCallback(() => {
-    setShowSuccess(false);
-  }, []);
   const actionsQuery = useActionsQuery();
   const {
     data: actions,
@@ -189,17 +182,11 @@ export default function HomeScreen() {
     legendListRef.current?.scrollToOffset({ offset: 0, animated: false });
   }, []);
 
-  const handleOverlayFadeIn = useCallback(() => {
+  const handleSubmitSuccess = useCallback(() => {
     refetch();
     resetHomeFeed();
     scrollToTop();
   }, [refetch, resetHomeFeed, scrollToTop]);
-
-  // The task flow shows its own completion card, so it skips the overlay.
-  const handleSubmitSuccess = useCallback(() => {
-    if (taskFlowEnabled()) handleOverlayFadeIn();
-    else setShowSuccess(true);
-  }, [handleOverlayFadeIn]);
 
   const scrollToEnd = useCallback((animated = true) => {
     scrollViewRef.current?.scrollToEnd({ animated });
@@ -335,8 +322,6 @@ export default function HomeScreen() {
               refetch();
             }}
             onCompleteAction={handleSubmitSuccess}
-            scrollPageTo={scrollPageTo}
-            scrollToEnd={scrollToEnd}
           />
         </Anchor>
       ),
@@ -486,11 +471,6 @@ export default function HomeScreen() {
           </KeyboardAwareScrollView>
         )}
       </Anchor>
-      <SuccessOverlay
-        visible={showSuccess}
-        onFadeInComplete={handleOverlayFadeIn}
-        onComplete={handleSuccessComplete}
-      />
     </View>
   );
 }

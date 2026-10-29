@@ -11,7 +11,7 @@ import useActivities, {
 } from "@alliance/shared/lib/useActivities";
 import { cn } from "@alliance/shared/styles/util";
 import { router, useLocalSearchParams } from "expo-router";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -22,7 +22,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import ActionEventsPanel from "../../../../components/ActionEventsPanel";
 import ActionPageTaskPanel from "../../../../components/ActionPageTaskPanel";
 import AppMarkdownWrapper from "../../../../components/AppMarkdownWrapper";
@@ -133,8 +132,6 @@ export default function ActionDetailScreen() {
     onDeadlinePassed,
   } = useActionHandlers(parseInt(id), true, reloadTasks);
 
-  const scrollViewRef = useRef<KeyboardAwareScrollViewRef>(null);
-
   const onRefresh = useCallback(async () => {
     if (!action) return;
     setRefreshing(true);
@@ -177,14 +174,6 @@ export default function ActionDetailScreen() {
     );
   }
 
-  const scrollPageTo = (y: number, animated = true) => {
-    scrollViewRef.current?.scrollTo({ y, animated });
-  };
-
-  const scrollToEnd = (animated = true) => {
-    scrollViewRef.current?.scrollToEnd({ animated });
-  };
-
   const nextEvent = getNextEvent(action);
 
   const renderTabContent = () => {
@@ -211,8 +200,6 @@ export default function ActionDetailScreen() {
                   />
                 </View>
                 <ActionPageTaskPanel
-                  scrollPageTo={scrollPageTo}
-                  scrollToEnd={scrollToEnd}
                   action={action}
                   onCompleteAction={onCompleteAction}
                   onOptOutAction={onOptOutAction}
@@ -252,7 +239,6 @@ export default function ActionDetailScreen() {
     <>
       <KeyboardAwareScrollView
         className="bg-white"
-        ref={scrollViewRef}
         keyboardShouldPersistTaps="handled"
         testID="vr-action-detail-ready"
         refreshControl={

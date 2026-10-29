@@ -20,8 +20,6 @@ import Text, { FontFamily, FontWeight } from "./system/Text";
 import TaskTimeInfo from "./TaskTimeInfo";
 
 export interface LargeActionCardProps extends LargeActionCardPropsShared {
-  scrollPageTo: (y: number, animated?: boolean) => void;
-  scrollToEnd: (animated?: boolean) => void;
   onCompleteAction?: () => void;
   onAlreadySubmitted: () => void;
 }
@@ -87,8 +85,6 @@ export default function LargeActionCard({
   onUpdateActionState,
   onDeadlinePassed,
   onAlreadySubmitted,
-  scrollPageTo,
-  scrollToEnd,
   onCompleteAction = onUpdateActionState,
 }: LargeActionCardProps) {
   const nextEvent = getNextEvent(action);
@@ -154,8 +150,6 @@ export default function LargeActionCard({
           onOptOutAction={onUpdateActionState}
           onDeadlinePassed={onDeadlinePassed}
           onAlreadySubmitted={onAlreadySubmitted}
-          scrollPageTo={scrollPageTo}
-          scrollToEnd={scrollToEnd}
         />
       </View>
     </Card>
