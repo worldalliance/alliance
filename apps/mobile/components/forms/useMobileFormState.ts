@@ -1,4 +1,7 @@
-import { type FormSchema } from "@alliance/common/forms/form-schema";
+import {
+  type AnyField,
+  type FormSchema,
+} from "@alliance/common/forms/form-schema";
 import {
   FormResponseDto,
   SubmitFormDto,
@@ -239,7 +242,7 @@ export function useMobileFormState({
     },
   });
 
-  const { validatePage, validateAllPages } = useFormValidation({
+  const { validateScreen, validatePage, validateAllPages } = useFormValidation({
     schema,
     readOnly,
     effectiveFormData,
@@ -302,6 +305,9 @@ export function useMobileFormState({
     clearStoredDraft,
   });
 
+  const validateScreenFields = async (fields: AnyField[]) =>
+    (await validateScreen(fields)).isValid;
+
   return {
     schema,
     readOnly,
@@ -334,6 +340,7 @@ export function useMobileFormState({
     visibilitySettled,
     validateFieldValue,
     validatePage,
+    validateScreenFields,
     handleFieldChange,
     handlePublicToggleChange,
     imageUpload,
