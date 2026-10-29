@@ -153,14 +153,12 @@ const LaunchRemindersCheck = ({
                           recipient={sample.name}
                         />
                       )}
-                      <div className="flex flex-wrap items-start gap-3">
-                        {rendered.textMessage && (
-                          <TextMockup message={rendered.textMessage} />
-                        )}
-                        {rendered.pushMessage && (
-                          <PushMockup message={rendered.pushMessage} />
-                        )}
-                      </div>
+                      {rendered.textMessage && (
+                        <TextMockup message={rendered.textMessage} />
+                      )}
+                      {rendered.pushMessage && (
+                        <PushMockup message={rendered.pushMessage} />
+                      )}
                     </div>
                   ))
                 ) : (
