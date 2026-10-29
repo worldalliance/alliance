@@ -134,7 +134,7 @@ const LaunchRemindersCheck = ({
                   previews.map(({ variant, rendered }) => (
                     <div
                       key={variant.label}
-                      className="mb-3 ml-4 flex flex-col gap-3 border-l-2 border-zinc-200 pl-3"
+                      className="my-3 ml-4 flex flex-col gap-4 border-l-2 border-zinc-200 pl-3"
                     >
                       <p className="text-xs text-zinc-500">
                         {body.cohortType === "group_leads_with_uncompleted"
@@ -164,7 +164,7 @@ const LaunchRemindersCheck = ({
                     </div>
                   ))
                 ) : (
-                  <p className="mb-2 ml-4 text-xs text-zinc-500">
+                  <p className="my-3 ml-4 text-xs text-zinc-500">
                     The preview appears once members load.
                   </p>
                 )}

@@ -5,13 +5,13 @@ import { createContext, useContext, useId, type ReactNode } from "react";
 const GroupName = createContext<string | null>(null);
 
 const cardClass =
-  "flex flex-col justify-start rounded-lg border-2 bg-white p-2 text-left text-xs";
+  "flex flex-col justify-start gap-1 rounded-lg border-2 bg-white p-3 text-left text-xs";
 
 const CardTitle = ({ children }: { children: ReactNode }) => (
-  <span className="block text-sm font-medium">{children}</span>
+  <span className="mb-1 block text-sm font-medium">{children}</span>
 );
 
-const cardGrid = "grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-2";
+const cardGrid = "grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-3";
 
 export const SelectableCardGroup = ({
   label,
@@ -22,8 +22,8 @@ export const SelectableCardGroup = ({
 }) => {
   const name = useId();
   return (
-    <fieldset className="flex flex-col gap-1.5">
-      <legend className="mb-1.5 text-sm">{label}</legend>
+    <fieldset>
+      <legend className="mb-2 text-sm">{label}</legend>
       <div className={cardGrid}>
         <GroupName.Provider value={name}>{children}</GroupName.Provider>
       </div>
