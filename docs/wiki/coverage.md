@@ -265,3 +265,4 @@ The initial content pass is complete when no row is `pending` or `blocked`.
 | [01a18417-950b-7000-950f-453abd69022c-admin-form-hook](../provenance/01a18417-950b-7000-950f-453abd69022c-admin-form-hook/) | pending | | |
 | [01a18417-a8b8-7000-ac0b-a9fbf2f7df97-member-location-hook](../provenance/01a18417-a8b8-7000-ac0b-a9fbf2f7df97-member-location-hook/) | pending | | |
 | [01a184c6-93e6-7000-9c02-8541ab74b7cd-variable-aggregates-hook](../provenance/01a184c6-93e6-7000-9c02-8541ab74b7cd-variable-aggregates-hook/) | pending | | |
+| [01a184ea-8c43-7000-8b66-1272464cc07c-variable-source-histories-hook](../provenance/01a184ea-8c43-7000-8b66-1272464cc07c-variable-source-histories-hook/) | pending | | |

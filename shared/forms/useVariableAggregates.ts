@@ -12,6 +12,7 @@ import {
   tasksGetVariableAggregates,
   type VariableAggregatesDto,
 } from "../client";
+import { openFormQueryOptions } from "./openFormQueryOptions";
 
 export enum AggregateReader {
   /** An admin preview or review, which may count a schema not yet saved. */
@@ -141,13 +142,7 @@ export function useVariableAggregates(params: {
               throw error;
             })
         : skipToken,
-    // Counts hold still while a form is open and load afresh when it reopens.
-    staleTime: Infinity,
-    gcTime: 0,
-    // A failure shows the form's own retry control.
-    retry: false,
-    // A paused offline fetch would hold the form on loading; failing shows retry.
-    networkMode: "always",
+    ...openFormQueryOptions,
   });
 
   const retry = useCallback(() => void refetch(), [refetch]);
