@@ -70,6 +70,10 @@ Non-standard workspace: every web package installs from `apps/frontend/package.j
 
 Reach for a maintained npm package over hand-rolling parsing, sanitization, date handling, retries. Inside the repo, reuse or extract a shared util instead of duplicating one.
 
+## Established practice
+
+Prefer established standards and widely adopted practices that fit the stack and task. Research before choosing when the applicable practice is unclear, unfamiliar, or may have changed, starting with standards bodies and official framework or library documentation. Distinguish formal standards, common practice, and vendor recommendations; cite sources for researched choices. Explicit requirements and concrete compatibility constraints take precedence. Explain material departures from established practice and the constraint that warrants them.
+
 ## Issue tracking
 
 Issues live in Linear.
