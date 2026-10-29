@@ -18,7 +18,7 @@ import { routes, serveApi } from "../lib/testing/serveApi";
 import { useFormVisibility, type FormVisibility } from "../useFormRenderer";
 import { useFieldErrors, useFormValidation } from "./useFormValidation";
 
-serveApi(
+const api = serveApi(
   routes({
     "POST /tasks/runValidator/:id": () =>
       Response.json({ isValid: false, message: "taken" }),
@@ -62,8 +62,6 @@ describe("useFieldErrors", () => {
     expect(result.current.fieldErrors).toEqual({});
   });
 });
-
-const api = serveApi(routes({}));
 
 function renderValidation(args: {
   schema: FormSchema;
