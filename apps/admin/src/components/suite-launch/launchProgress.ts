@@ -22,7 +22,10 @@ const storageKey = (suiteId: number) => `alliance.suiteLaunch.v2.${suiteId}`;
 
 export function readLaunchProgress(suiteId: number): LaunchProgress | null {
   if (typeof window === "undefined") return null;
-  const raw = window.localStorage.getItem(storageKey(suiteId));
+  const read = R.fromThrowable(() =>
+    window.localStorage.getItem(storageKey(suiteId)),
+  );
+  const raw = read.ok ? read.value : null;
   if (!raw) return null;
   const parsed = R.fromThrowable(() => JSON.parse(raw));
   if (!parsed.ok) return null;
@@ -61,5 +64,5 @@ export function writeLaunchProgress(params: {
 
 export function clearLaunchProgress(suiteId: number): void {
   if (typeof window === "undefined") return;
-  window.localStorage.removeItem(storageKey(suiteId));
+  R.fromThrowable(() => window.localStorage.removeItem(storageKey(suiteId)));
 }

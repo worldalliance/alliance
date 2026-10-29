@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "bun:test";
+import { afterEach, describe, expect, it, spyOn } from "bun:test";
 import {
   clearLaunchProgress,
   readLaunchProgress,
@@ -42,4 +42,19 @@ describe("launch progress", () => {
     );
     expect(readLaunchProgress(3)).toBeNull();
   });
+});
+
+it("treats storage the browser blocks as no saved progress", () => {
+  const blocked = () => {
+    throw new DOMException("blocked", "SecurityError");
+  };
+  const reads = spyOn(Storage.prototype, "getItem").mockImplementation(blocked);
+  const removes = spyOn(Storage.prototype, "removeItem").mockImplementation(
+    blocked,
+  );
+
+  expect(readLaunchProgress(3)).toBeNull();
+  expect(() => clearLaunchProgress(3)).not.toThrow();
+  reads.mockRestore();
+  removes.mockRestore();
 });
