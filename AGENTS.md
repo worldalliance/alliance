@@ -67,6 +67,10 @@ Follow the user's intended request in context. Requests to explain, evaluate, co
 
 For example, after you suggest X, "Why X?" asks you to explain your reasoning. It does not mean the user is against X. Explain the recommendation and revise it only where the reasoning fails.
 
+## Open questions
+
+A question whose answer will be recorded in provenance, such as a product decision or a choice between approaches, goes in one numbered plain-text message, not a structured question tool, and asks only what the code can't answer. Give each question lettered options: your recommendation first, then alternatives, then "I don't care". Open the message by saying that picking an option or answering in their own words makes it a requirement later agents must keep, while "I don't care" leaves the choice to the agent, which may switch if its pick causes friction. Keep asking as answers uncover more decisions, until none is open. Other questions, such as asking permission to run a command, stay plain.
+
 ## Fail loudly
 
 Prefer to fail loudly over silently.
