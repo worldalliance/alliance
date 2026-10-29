@@ -34,11 +34,11 @@ const FindingRow = ({
   return (
     <li
       className={cn(
-        "flex items-start gap-2 py-2",
+        "flex items-start gap-2 py-3",
         dismissed && "text-zinc-400",
       )}
     >
-      <div className="flex flex-1 flex-col gap-1 text-sm">
+      <div className="flex flex-1 flex-col gap-1.5 text-sm">
         <p className="text-xs text-zinc-500">
           {TEXT_ISSUE_LABELS[group[0].kind]} ·{" "}
           {group.length === 1 ? place(group[0]) : `${group.length} places`}

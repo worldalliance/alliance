@@ -183,7 +183,7 @@ const SuiteLaunchPanel = ({
   };
 
   return (
-    <section className="flex flex-col gap-4 rounded-lg border-2 border-green p-4">
+    <section className="flex flex-col gap-6 rounded-lg border-2 border-green p-5">
       <div className="flex items-center gap-2">
         <button
           type="button"

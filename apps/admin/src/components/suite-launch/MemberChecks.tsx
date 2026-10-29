@@ -102,7 +102,7 @@ export const MemberPreview = ({
         {selectedUserIds.map((userId) => {
           const load = loadsByUser.get(userId);
           return (
-            <li key={userId} className="py-2">
+            <li key={userId} className="py-3">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">
                   {nameOf(usersById, userId)}

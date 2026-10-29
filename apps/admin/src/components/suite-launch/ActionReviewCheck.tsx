@@ -127,7 +127,7 @@ const ActionReviewCheck = ({
             ownMemberStart: memberStartById.get(action.id) ?? null,
           });
           return (
-            <li key={action.id} className="flex items-start gap-3 py-2">
+            <li key={action.id} className="flex items-start gap-3 py-3">
               <div className="flex-1">
                 <p className="text-sm font-medium">
                   {action.name}

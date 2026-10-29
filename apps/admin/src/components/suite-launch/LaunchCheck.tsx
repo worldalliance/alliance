@@ -11,7 +11,7 @@ const LaunchCheck: React.FC<
     id?: LaunchSection;
   }>
 > = ({ title, passed, summary, id, children }) => (
-  <Card id={id} className="flex scroll-mt-4 flex-col gap-3">
+  <Card id={id} className="flex scroll-mt-4 flex-col gap-4">
     <div className="flex items-center gap-2">
       {passed ? (
         <CheckIcon
