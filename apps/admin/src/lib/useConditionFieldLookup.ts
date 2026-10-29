@@ -10,15 +10,16 @@ import { useMemo } from "react";
 import type { ConditionFieldLookup } from "./visibilitySummary";
 
 /**
- * Finds the questions `page`'s rules read, loading those on other forms, so a
- * summary can name them and their options by label.
+ * Finds the questions `page`'s rules read, or the whole form's without one,
+ * loading those on other forms, so a summary can name them and their options
+ * by label.
  */
 export function useConditionFieldLookup(
   schema: FormSchema,
-  page: Page,
+  page?: Page,
 ): ConditionFieldLookup {
   const sourceFormIds = useStableIds(
-    collectSourceFormIds({ ...schema, pages: [page] }),
+    collectSourceFormIds(page ? { ...schema, pages: [page] } : schema),
   );
   const { byForm } = useFormQuestionFieldsMap(sourceFormIds);
   const ownFields = useMemo(

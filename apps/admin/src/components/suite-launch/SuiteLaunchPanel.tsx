@@ -34,6 +34,7 @@ import {
 import { launchSuite } from "./launchSuite";
 import { MemberPreview } from "./MemberChecks";
 import { actionMixes } from "./memberLoad";
+import TaskFormPreviews from "./TaskFormPreviews";
 import TextFindingsCheck from "./TextFindingsCheck";
 import { useSuiteLaunchData } from "./useSuiteLaunchData";
 
@@ -272,6 +273,7 @@ const SuiteLaunchPanel = ({
             }
           />
           <MemberPreview loads={data.loads} actions={data.actions} />
+          <TaskFormPreviews actions={data.actions} />
           {data.spellcheckLoading ? (
             <p className="text-sm text-zinc-500">
               Loading the spelling dictionary…

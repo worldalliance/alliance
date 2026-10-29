@@ -5,6 +5,7 @@ import { ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { getSiteUrl } from "../../lib/config";
 import { useUsersAdmin } from "../../lib/useUsersAdmin";
+import { SelectableCard, SelectableCardGroup } from "../SelectableCards";
 import { LaunchSection } from "./launchBlockers";
 import LaunchCheck from "./LaunchCheck";
 import {
@@ -66,43 +67,22 @@ const LaunchRemindersCheck = ({
       summary={`${windows.length} created on launch${atNight > 0 ? ` · ${atNight} reach some members at night` : ""}`}
     >
       {mixes.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <p id="reminder-preview-as" className="text-sm">
-            Preview as
-          </p>
-          <div
-            role="radiogroup"
-            aria-labelledby="reminder-preview-as"
-            className="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-3"
-          >
-            {mixes.map((option, index) => (
-              <button
-                key={option.actionIds.join(",")}
-                type="button"
-                role="radio"
-                aria-checked={mix === option}
-                onClick={() => setMixIndex(index)}
-                className={cn(
-                  "flex flex-col justify-start gap-1 rounded-lg border-2 bg-white p-3 text-left text-xs",
-                  mix === option
-                    ? "border-green"
-                    : "border-zinc-200 hover:border-zinc-400",
-                )}
-              >
-                <span className="mb-1 block text-sm font-medium">
-                  {withCount(option.userIds.length, "member")} ·{" "}
-                  {withCount(option.actionIds.length, "task")} ·{" "}
-                  {option.minutes} min
+        <SelectableCardGroup label="Preview as">
+          {mixes.map((option, index) => (
+            <SelectableCard
+              key={option.actionIds.join(",")}
+              selected={mix === option}
+              onSelect={() => setMixIndex(index)}
+              title={`${withCount(option.userIds.length, "member")} · ${withCount(option.actionIds.length, "task")} · ${option.minutes} min`}
+            >
+              {option.actionIds.map((id) => (
+                <span key={id} className="block text-zinc-600">
+                  {actionsById.get(id)?.name}
                 </span>
-                {option.actionIds.map((id) => (
-                  <span key={id} className="block text-zinc-600">
-                    {actionsById.get(id)?.name}
-                  </span>
-                ))}
-              </button>
-            ))}
-          </div>
-        </div>
+              ))}
+            </SelectableCard>
+          ))}
+        </SelectableCardGroup>
       )}
       <p className="text-xs text-zinc-500">
         Click a reminder to see it as these members get it

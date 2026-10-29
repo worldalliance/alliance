@@ -133,6 +133,8 @@ export const queryKeys = {
   myReusableInvites: () => ["shareUrlsMyInvites"] as const,
   inviteMessageTemplate: () => ["shareUrlsInviteMessageTemplate"] as const,
   myVisibilityContext: () => ["userMyVisibilityContext"] as const,
+  userVisibilityContextAdmin: (userId: number) =>
+    ["userVisibilityContextAdmin", userId] as const,
   /** Prefixes the lists, unread count and load time, so invalidating it
    * invalidates them all. */
   notifications: () => ["notifications"] as const,

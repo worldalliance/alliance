@@ -138,6 +138,17 @@ export class UserController {
     );
   }
 
+  @Get(":id/visibilitycontext")
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: MyVisibilityContextDto })
+  async visibilityContextAdmin(
+    @Param("id", ParseIntPipe) id: number,
+  ): Promise<MyVisibilityContextDto> {
+    return new MyVisibilityContextDto(
+      await this.userVisibilityContextService.getVisibilityContext(id),
+    );
+  }
+
   @Get("listMessageableUsers")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: [ProfileDto] })

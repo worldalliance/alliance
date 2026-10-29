@@ -1,4 +1,6 @@
+import { formSchema } from "@alliance/common/forms/form-schema";
 import { GUEST_HEADER } from "@alliance/common/guest";
+import { describeSchemaIssues } from "@alliance/common/zod-issues";
 import {
   BadRequestException,
   Body,
@@ -51,6 +53,11 @@ import {
   SubmitFormDto,
   UpdateFormDto,
 } from "./form.dto";
+import {
+  VisibilityProfilesDto,
+  VisibilityProfilesRequestDto,
+} from "./member-visibility.dto";
+import { MemberVisibilityService } from "./member-visibility.service";
 import { TasksService } from "./tasks.service";
 import {
   CountVariableAggregatesDto,
@@ -71,7 +78,28 @@ export class TasksController {
     private readonly formSubmissionService: FormSubmissionService,
     private readonly formDraftService: FormDraftService,
     private readonly authService: AuthService,
+    private readonly memberVisibilityService: MemberVisibilityService,
   ) {}
+
+  @Post("visibilityProfiles")
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: VisibilityProfilesDto })
+  async visibilityProfilesAdmin(
+    @Body() body: VisibilityProfilesRequestDto,
+  ): Promise<VisibilityProfilesDto> {
+    const schema = formSchema.safeParse(body.schema);
+    if (!schema.success) {
+      throw new BadRequestException(
+        `The form schema is invalid: ${describeSchemaIssues(schema.error).join("; ")}`,
+      );
+    }
+    return new VisibilityProfilesDto(
+      await this.memberVisibilityService.profiles({
+        schema: schema.data,
+        userIds: body.userIds,
+      }),
+    );
+  }
 
   @Post("submitForm/:id")
   @UseGuards(AuthGuard)

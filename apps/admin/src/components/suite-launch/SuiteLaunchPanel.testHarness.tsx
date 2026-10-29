@@ -1,4 +1,5 @@
 import type { CohortExpression } from "@alliance/common/cohort-expression";
+import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 // eslint-disable-next-line api-client/named-hooks-only -- stands in for the page's addEvent against the mocked API; no query cache holds it
 import {
   actionSuitesAddSuiteEventAdmin,
@@ -54,8 +55,14 @@ const initialState = () => ({
   /** Pages served for a form id instead of `formPages`. */
   formPagesById: {} as Record<
     number,
-    { id: string; title: string; fields: [] }[]
+    {
+      id: string;
+      title: string;
+      fields: [];
+      visibleIfFormula?: VisibleIfFormula;
+    }[]
   >,
+  visibilityProfileRequests: [] as { userIds: number[] }[],
   served: {
     1: adminAction({
       id: 1,
@@ -109,6 +116,23 @@ export const serveLaunchApi = () => {
           await request.json();
         return Response.json({ userIds: expression.userIds ?? [] });
       },
+      "POST /tasks/visibilityProfiles": async ({ request }) => {
+        const { userIds }: { userIds: number[] } = await request.json();
+        api.visibilityProfileRequests.push({ userIds });
+        return Response.json({
+          profiles: userIds.map((userId) => ({
+            results: [userId === 10],
+            userIds: [userId],
+          })),
+        });
+      },
+      "GET /user/:id/visibilitycontext": ({ params }) =>
+        Response.json({
+          userHasCity: params.id === "10",
+          userPropertyHasValue: {},
+          firstContractSignedAt: null,
+          completedActionCount: 0,
+        }),
       "GET /user/list": () =>
         Response.json([
           {

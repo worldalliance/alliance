@@ -5,7 +5,7 @@ import {
 } from "@alliance/common/forms/user-properties";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useRef } from "react";
-import { userMyVisibilityContext } from "../client";
+import { userMyVisibilityContext, userVisibilityContextAdmin } from "../client";
 import { schemaNeedsVisibilityContext } from "../formrenderer";
 import { queryKeys } from "./queryKeys";
 import { retryUnlessRefused } from "./retryQuery";
@@ -62,20 +62,35 @@ export function hasSettledSinceMount(
  *
  * `isLoading` means "this mount hasn't seen fresh values yet", not react-query's
  * "there is no data" — see below. Callers gate the whole form on it.
+ *
+ * An admin previewing as a member passes that member's id to read theirs.
  */
 export function useVisibilityContext(
   schema: FormSchema,
-  { enabled }: { enabled: boolean },
+  {
+    enabled,
+    previewUserId,
+  }: { enabled: boolean; previewUserId?: string | number },
 ): VisibilityContext {
   const needsContext = useMemo(
     () => schemaNeedsVisibilityContext(schema),
     [schema],
   );
 
+  const previewedId =
+    previewUserId != null && /^\d+$/.test(String(previewUserId))
+      ? Number(previewUserId)
+      : null;
   const { data, dataUpdatedAt, errorUpdatedAt } = useQuery({
-    queryKey: queryKeys.myVisibilityContext(),
+    queryKey:
+      previewedId === null
+        ? queryKeys.myVisibilityContext()
+        : queryKeys.userVisibilityContextAdmin(previewedId),
     queryFn: async () => {
-      const response = await userMyVisibilityContext();
+      const response =
+        previewedId === null
+          ? await userMyVisibilityContext()
+          : await userVisibilityContextAdmin({ path: { id: previewedId } });
       if (response.error) {
         throw response.error;
       }

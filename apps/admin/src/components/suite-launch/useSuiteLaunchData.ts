@@ -27,6 +27,9 @@ export type LaunchAction = {
   reviewVersion: string;
   /** The longest read any member gets, across the task form and its variants. */
   readingSeconds: number;
+  taskFormSchema: FormSchema | null;
+  /** Null until the cohort is evaluated. */
+  memberIds: number[] | null;
 };
 
 export type SuiteLaunchData = {
@@ -140,6 +143,8 @@ export function useSuiteLaunchData(suite: ActionSuiteDto): SuiteLaunchData {
           (read) => readingTime(action, read).totalSeconds,
         ),
       ),
+      taskFormSchema: schema,
+      memberIds: cohort ?? null,
     });
     textFindings.push(
       ...actionTextFindings({

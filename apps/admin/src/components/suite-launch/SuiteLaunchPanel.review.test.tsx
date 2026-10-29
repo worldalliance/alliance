@@ -245,3 +245,37 @@ it("notes an action that already has its own members taking action event", async
   expect(note.closest("li")?.textContent).toContain("Write");
   expect(screen.getAllByText(/Already has its own/)).toHaveLength(1);
 });
+
+it("previews a task form as each kind of member among the action's own recipients", async () => {
+  api.served[1] = { ...api.served[1], taskFormId: 7 };
+  api.formPagesById[7] = [
+    {
+      id: "p1",
+      title: "Only with a city",
+      fields: [],
+      visibleIfFormula: {
+        formula: "c1",
+        conditions: { c1: { kind: "userHasCity", userHasCity: true } },
+      },
+    },
+  ];
+  renderPanel();
+
+  fireEvent.click(await screen.findByText("Call", { selector: "summary" }));
+  const cards = await screen.findAllByRole("radio", {
+    name: /1 member.*has city/,
+  });
+  expect(api.visibilityProfileRequests).toEqual([{ userIds: [10, 11] }]);
+  expect(screen.queryByText("Write", { selector: "summary" })).toBeNull();
+
+  fireEvent.click(cards[1]);
+  expect(await screen.findByText("As Ben sees it")).toBeTruthy();
+});
+
+it("leaves out task forms that show every member the same thing", async () => {
+  renderPanel();
+  await screen.findByText("Double space · Call · Body");
+
+  expect(screen.queryByText("Task forms by member")).toBeNull();
+  expect(api.visibilityProfileRequests).toEqual([]);
+});
