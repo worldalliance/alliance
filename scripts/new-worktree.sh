@@ -15,10 +15,12 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-die() { echo "error: $*" >&2; exit 1; }
-
 # shellcheck source=scripts/lib/env-value.sh
 source "$repo_root/scripts/lib/env-value.sh"
+# shellcheck source=scripts/lib/worktree-paths.sh
+source "$repo_root/scripts/lib/worktree-paths.sh"
+# shellcheck source=scripts/lib/worktree-db.sh
+source "$repo_root/scripts/lib/worktree-db.sh"
 
 # Assign first: `eval "$(...)"` succeeds on empty output, so a failure here would
 # surface further down as an unbound variable naming none of this.
@@ -26,9 +28,6 @@ bases="$(bun "$repo_root/scripts/ports.ts" --base)" ||
   die "scripts/ports.ts --base failed, so the port bases for a slot are unknown"
 eval "$bases"
 MAX_SLOT="$MAX_PORT_SLOT"
-
-git_common_dir="$(git -C "$repo_root" rev-parse --path-format=absolute --git-common-dir)"
-main_root="$(cd "$(dirname "$git_common_dir")" && pwd)"
 
 usage() {
   awk 'NR == 1 { next } !/^#/ { exit } { sub(/^# ?/, ""); print }' "$0"
@@ -53,14 +52,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -n "$name" ]] || die "usage: scripts/new-worktree.sh <name> [options]"
-[[ "$name" =~ ^[a-z0-9][a-z0-9-]*$ ]] || die "name must be lowercase letters, digits and dashes"
+valid_name "$name" || die "name must be lowercase letters, digits and dashes"
 
 # In a linked worktree, --from HEAD and server/.env would resolve inconsistently.
 [[ "$(git -C "$repo_root" rev-parse --absolute-git-dir)" == "$git_common_dir" ]] ||
   die "this is a worktree, and scripts/new-worktree.sh only works in the main checkout ($main_root). Report this rather than working around it."
 
 branch="${branch:-$name}"
-worktree_dir="$(dirname "$main_root")/alliance-$name"
+worktree_dir="$(worktree_dir_for "$name")"
 db_name="alliance_${name//-/_}"
 test_db_name="${db_name}_test"
 
@@ -209,36 +208,13 @@ frontend_port=$(( BASE_FRONTEND_PORT + offset ))
 admin_port=$(( BASE_ADMIN_PORT + offset ))
 mobile_port=$(( BASE_MOBILE_PORT + offset ))
 
-source_env="$main_root/server/.env"
-[[ -f "$source_env" ]] || die "$source_env not found — copy server/.env.example first"
-
-db_host="$(env_value "$source_env" DB_HOST)"
-db_port="$(env_value "$source_env" DB_PORT)"
-db_user="$(env_value "$source_env" DB_USERNAME)"
-db_password="$(env_value "$source_env" DB_PASSWORD)"
-source_db="$(env_value "$source_env" DB_NAME)"
-
-# DB_PASSWORD stays optional — a local cluster may use trust or peer auth.
-[[ -n "$db_host" ]] || die "DB_HOST not set in $source_env"
-[[ -n "$db_port" ]] || die "DB_PORT not set in $source_env"
-[[ -n "$db_user" ]] || die "DB_USERNAME not set in $source_env"
-[[ -n "$source_db" ]] || die "DB_NAME not set in $source_env"
+load_main_db_settings
 [[ "$db_name" != "$source_db" && "$test_db_name" != "$source_db" ]] ||
   die "database name $db_name/$test_db_name collides with the main checkout's DB_NAME — pick another worktree name"
 
-for tool in psql createdb dropdb pg_dump; do
-  command -v "$tool" >/dev/null || die "$tool not found — install the postgres client tools"
-done
-
-if [[ -n "$db_password" ]]; then export PGPASSWORD="$db_password"; fi
-psql_args=(-h "$db_host" -p "$db_port" -U "$db_user")
-psql "${psql_args[@]}" -d postgres -tAc 'SELECT 1' >/dev/null 2>&1 ||
-  die "cannot reach postgres at $db_host:$db_port as $db_user (credentials from $source_env)"
-
 # Create databases before the worktree so a database failure leaves no checkout
 # that rm-worktree.sh cannot identify.
-existing_db="$(psql "${psql_args[@]}" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$db_name'")"
-if [[ "$existing_db" == "1" ]]; then
+if db_exists "$db_name"; then
   echo "==> database $db_name already exists, reusing"
 else
   echo "==> copying database $source_db -> $db_name"
@@ -256,8 +232,7 @@ fi
 
 # The test database never copies dev data; the e2e suite owns its schema through
 # dropSchema and synchronize.
-existing_test_db="$(psql "${psql_args[@]}" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$test_db_name'")"
-if [[ "$existing_test_db" == "1" ]]; then
+if db_exists "$test_db_name"; then
   echo "==> test database $test_db_name already exists, reusing"
 else
   echo "==> creating test database $test_db_name"
