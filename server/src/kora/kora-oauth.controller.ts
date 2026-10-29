@@ -202,6 +202,8 @@ export class KoraOAuthController {
         req,
         res,
         participantId: verified.value.participant.id,
+        signedUp: verified.value.signedUp,
+        method: verified.value.method,
       });
     } else {
       setCookie({

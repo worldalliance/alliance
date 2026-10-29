@@ -1,3 +1,4 @@
+import { AnalyticsEvent } from "@alliance/common/analytics";
 import { KoraError } from "@alliance/common/kora";
 import { KoraParticipantSession } from "src/kora/entities/kora-participant-session.entity";
 import { KoraParticipantSignup } from "src/kora/entities/kora-participant-signup.entity";
@@ -5,6 +6,7 @@ import { KoraParticipant } from "src/kora/entities/kora-participant.entity";
 import { KoraCookie } from "src/kora/kora-cookies";
 import { Mail } from "src/mail/mail.entity";
 import { Mms } from "src/mms/mms.entity";
+import { PosthogService } from "src/posthog/posthog.service";
 import { User } from "src/user/entities/user.entity";
 import { WaitlistEntry } from "src/waitlist/entities/waitlist-entry.entity";
 import request from "supertest";
@@ -112,6 +114,25 @@ describe("Kora signup and login (e2e)", () => {
     ).toBe("Asia/Tokyo");
   });
 
+  it("counts a code signup and a later code sign-in by their channel", async () => {
+    const capture = jest.spyOn(h.ctx.app.get(PosthogService), "capture");
+    const phoneNumber = uniquePhone();
+    const first = await h.signedUp(h.browser(), { phoneNumber });
+    const later = h.browser();
+    await h.sendCode(later, { phoneNumber }).expect(200);
+    await h.verify(later, { code: h.lastCode() }).expect(200);
+
+    const counted = {
+      distinctId: `kora_participant:${first.id}`,
+      properties: { method: "sms" },
+    };
+    expect(capture.mock.calls.map(([event]) => event)).toEqual([
+      { event: AnalyticsEvent.KoraParticipantSignedUp, ...counted },
+      { event: AnalyticsEvent.KoraParticipantSignedIn, ...counted },
+    ]);
+    capture.mockRestore();
+  });
+
   it("matches a returning email regardless of case and keeps the first timezone", async () => {
     const email = uniqueEmail();
     const browser = h.browser();
@@ -210,11 +231,12 @@ describe("Kora signup and login (e2e)", () => {
     await h.signup(browser, { name: "Fresh" }).expect(400);
   });
 
-  it("resolves simultaneous signups for one contact to one participant", async () => {
+  it("resolves simultaneous signups for one contact to one participant, counting one signup", async () => {
     const email = uniqueEmail();
     const [a, b] = [h.browser(), h.browser()];
     await h.verified(a, { email });
     await h.verified(b, { email });
+    const capture = jest.spyOn(h.ctx.app.get(PosthogService), "capture");
 
     const [first, second] = await Promise.all([
       h.signup(a, { name: "Name A" }),
@@ -226,6 +248,25 @@ describe("Kora signup and login (e2e)", () => {
     const stored = await participants().findOneByOrFail({ email });
     expect(stored.name).toBe(first.body.name);
     expect(await participants().countBy({ email })).toBe(1);
+    expect(
+      capture.mock.calls.map(([{ event, properties }]) => ({
+        event,
+        properties,
+      })),
+    ).toEqual(
+      expect.arrayContaining([
+        {
+          event: AnalyticsEvent.KoraParticipantSignedUp,
+          properties: { method: "email" },
+        },
+        {
+          event: AnalyticsEvent.KoraParticipantSignedIn,
+          properties: { method: "email" },
+        },
+      ]),
+    );
+    expect(capture).toHaveBeenCalledTimes(2);
+    capture.mockRestore();
   });
 
   it("signs a participant in again after a lost signup response, without a duplicate", async () => {

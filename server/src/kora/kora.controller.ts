@@ -157,12 +157,14 @@ export class KoraController {
     }
     clearCookie(res, KoraCookie.Code);
     if ("participant" in verified.value) {
-      const { participant } = verified.value;
+      const { participant, signedUp, method } = verified.value;
       await this.participantService.forgetSignup(req, res);
       await this.sessionService.begin({
         req,
         res,
         participantId: participant.id,
+        signedUp,
+        method,
       });
       return new KoraCodeVerifiedDto(participant);
     }
@@ -199,12 +201,15 @@ export class KoraController {
         { description: KoraError.SignupExpired },
       );
     }
+    const { participant, signedUp, method } = completed.value;
     await this.sessionService.begin({
       req,
       res,
-      participantId: completed.value.id,
+      participantId: participant.id,
+      signedUp,
+      method,
     });
-    return new KoraParticipantDto(completed.value);
+    return new KoraParticipantDto(participant);
   }
 
   /** Ends this browser's participant session only. */

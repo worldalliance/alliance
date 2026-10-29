@@ -84,3 +84,9 @@ The code-sending and checking machinery is reusable for other one-time codes on 
 Origin: user.
 
 Code delivery keeps the existing delivery gate: production, or `SEND_DEV_NOTIFS=1` elsewhere. Enabling the flow later should take one switch.
+
+## R10. Analytics
+
+Origin: agent-proposed, user-approved.
+
+Record participant sign-up and sign-in events in PostHog for every method (email OTP, SMS OTP, Google, Apple), separate from the member sign-up and login events.

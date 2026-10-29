@@ -34,8 +34,16 @@ import { clearCookie, KoraCookie } from "./kora-cookies";
 
 const SIGNUP_TTL_MS = milliseconds({ minutes: 10 });
 
+export type KoraSignInMethod = OtpChannel | OAuthProvider;
+
+export type SignedIn = {
+  participant: KoraParticipant;
+  signedUp: boolean;
+  method: KoraSignInMethod;
+};
+
 export type ContactVerified =
-  | { participant: KoraParticipant }
+  | SignedIn
   | { signupToken: string; signupTtlMs: number };
 
 type ProviderIdentity = { provider: OAuthProvider; subject: string };
@@ -89,8 +97,8 @@ async function createParticipant(
     contactVerifiedAt: Date;
     identity: ProviderIdentity | null;
   },
-): Promise<KoraParticipant> {
-  await manager
+): Promise<{ participant: KoraParticipant; signedUp: boolean }> {
+  const inserted = await manager
     .createQueryBuilder()
     .insert()
     .into(KoraParticipant)
@@ -101,6 +109,7 @@ async function createParticipant(
       contactVerifiedAt: params.contactVerifiedAt,
     })
     .orIgnore()
+    .returning(`"id"`)
     .execute();
   const participant = await manager.findOneByOrFail(
     KoraParticipant,
@@ -113,7 +122,7 @@ async function createParticipant(
       email: params.contact.destination,
     });
   }
-  return participant;
+  return { participant, signedUp: inserted.raw.length > 0 };
 }
 
 @Injectable()
@@ -149,7 +158,11 @@ export class KoraParticipantService {
     );
     if (participant) {
       await this.fillTimeZone(participant, params.timeZone);
-      return R.success({ participant });
+      return R.success({
+        participant,
+        signedUp: false,
+        method: verified.value.channel,
+      });
     }
     return R.success(
       await this.openSignup({ contact: verified.value, identity: null }),
@@ -191,7 +204,11 @@ export class KoraParticipantService {
         });
       }
       await this.fillTimeZone(connected.participant, timeZone);
-      return R.success({ participant: connected.participant });
+      return R.success({
+        participant: connected.participant,
+        signedUp: false,
+        method: profile.provider,
+      });
     }
     if (byEmail) {
       await connect(this.dataSource.manager, {
@@ -200,7 +217,11 @@ export class KoraParticipantService {
         email: contact.destination,
       });
       await this.fillTimeZone(byEmail, timeZone);
-      return R.success({ participant: byEmail });
+      return R.success({
+        participant: byEmail,
+        signedUp: false,
+        method: profile.provider,
+      });
     }
     const name = profile.name
       ?.trim()
@@ -208,17 +229,16 @@ export class KoraParticipantService {
     if (!name) {
       return R.success(await this.openSignup({ contact, identity }));
     }
-    return R.success({
-      participant: await this.dataSource.transaction((manager) =>
-        createParticipant(manager, {
-          name,
-          contact,
-          timeZone,
-          contactVerifiedAt: new Date(),
-          identity,
-        }),
-      ),
-    });
+    const created = await this.dataSource.transaction((manager) =>
+      createParticipant(manager, {
+        name,
+        contact,
+        timeZone,
+        contactVerifiedAt: new Date(),
+        identity,
+      }),
+    );
+    return R.success({ ...created, method: profile.provider });
   }
 
   /**
@@ -229,7 +249,7 @@ export class KoraParticipantService {
     signupToken: string;
     name: string;
     timeZone: string | null;
-  }): Promise<Result<KoraParticipant, KoraError.SignupExpired>> {
+  }): Promise<Result<SignedIn, KoraError.SignupExpired>> {
     return this.dataSource.transaction(async (manager) => {
       const consumed = await manager
         .createQueryBuilder()
@@ -251,14 +271,14 @@ export class KoraParticipantService {
         return R.failure(KoraError.SignupExpired);
       }
       const { provider, subject } = signup;
-      const participant = await createParticipant(manager, {
+      const created = await createParticipant(manager, {
         name: params.name,
         contact: signup,
         timeZone: params.timeZone,
         contactVerifiedAt: signup.createdAt,
         identity: provider && subject ? { provider, subject } : null,
       });
-      return R.success(participant);
+      return R.success({ ...created, method: provider ?? signup.channel });
     });
   }
 

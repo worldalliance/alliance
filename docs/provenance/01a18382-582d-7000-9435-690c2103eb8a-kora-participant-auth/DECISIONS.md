@@ -92,6 +92,10 @@ Participant credentials must be rejected by member, admin, and anonymous-guest a
 
 Keep new participant entry points under the same environment availability as the project page: `KoraAvailableGuard` and the page's loader both answer 404 wherever `KORA_AVAILABLE` in `common/src/kora.ts` is false, currently production and any unrecognized environment. Launch flips that one entry (R9).
 
+## Analytics
+
+`KoraSessionService.begin`, which every successful sign-in passes through, sends `kora_participant_signed_up` or `kora_participant_signed_in` (R10). A signup counts only when the insert created the participant, not when a concurrent signup already had. The distinct ID is `kora_participant:{id}`, which keeps participants apart from members' numeric IDs, and the only property is `method` (`email`, `sms`, `google`, `apple`). The server does not `identify` participants with a name or email, as it does members, since nothing yet needs a participant's PII in PostHog. Both events forward to Slack, as the member `new_user` and `login` events do.
+
 ## Verification before implementation handoff
 
 Use API integration tests with delivery/provider stubs and database assertions, plus browser interaction tests for the form. Cover:
@@ -115,6 +119,6 @@ Deliver as five stacked PRs, each with the tests above that cover its scope. Par
    - `POST signup`: name and complete. `POST sign-out`.
 3. Kora naming: rename the participant module, tables, cookies, routes, launch switch, and OTP purpose to their `Kora` names (R1), with a migration renaming the merged tables, constraints, indexes, and enum value in place.
 4. Frontend OTP flow: the participant form, extracted contact parsing and country selector, R2 precedence, and sign-out.
-5. Google and Apple OAuth: identity storage and migration, participant start/callback handling, email matching and linking, and the provider buttons. The operator registers `https://{app host}/api/kora/google/callback` as a Google redirect URI and `https://{app host}/api/kora/apple/callback` as an Apple Services ID return URL for each deployed app host. Local Google sign-in additionally needs `http://localhost:{server port}/kora/google/callback`. Tests stub both providers, as the member OAuth tests do; real Google and Apple sign-in is checked on staging.
+5. Google and Apple OAuth: identity storage and migration, participant start/callback handling, email matching and linking, the provider buttons, and participant analytics. The operator registers `https://{app host}/api/kora/google/callback` as a Google redirect URI and `https://{app host}/api/kora/apple/callback` as an Apple Services ID return URL for each deployed app host. Local Google sign-in additionally needs `http://localhost:{server port}/kora/google/callback`. Tests stub both providers, as the member OAuth tests do; real Google and Apple sign-in is checked on staging.
 
 The split gives the security-heavy OTP/session review and the OAuth review their own diffs, and lets the existing mail and SMS paths be checked unchanged before anything depends on the new boundary.

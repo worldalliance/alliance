@@ -1,3 +1,4 @@
+import { AnalyticsEvent } from "@alliance/common/analytics";
 import { KORA_PROJECT_PATH } from "@alliance/common/kora";
 import { OAuthError, OAuthIntent, OAuthProvider } from "@alliance/common/oauth";
 import { R } from "@alliance/common/result";
@@ -7,6 +8,7 @@ import type { OAuthProfile } from "src/auth/oauth/oauth-client";
 import { KoraParticipantOAuthIdentity } from "src/kora/entities/kora-participant-oauth-identity.entity";
 import { KoraParticipant } from "src/kora/entities/kora-participant.entity";
 import { KoraParticipantService } from "src/kora/kora-participant.service";
+import { PosthogService } from "src/posthog/posthog.service";
 import { User } from "src/user/entities/user.entity";
 import type TestAgent from "supertest/lib/agent";
 import { ORIGIN, koraHarness, type KoraHarness } from "./kora-fixtures";
@@ -87,6 +89,7 @@ describe("Kora OAuth sign-in (e2e)", () => {
   });
 
   it("signs up with the provider's name and email, returning to the project page", async () => {
+    const capture = jest.spyOn(h.ctx.app.get(PosthogService), "capture");
     const users = await h.ctx.dataSource.getRepository(User).count();
 
     const { browser, location } = await signIn();
@@ -115,11 +118,18 @@ describe("Kora OAuth sign-in (e2e)", () => {
         email: profile.email,
       }),
     ]);
+    expect(capture).toHaveBeenCalledWith({
+      event: AnalyticsEvent.KoraParticipantSignedUp,
+      distinctId: `kora_participant:${participant!.id}`,
+      properties: { method: OAuthProvider.Google },
+    });
     expect(await h.ctx.dataSource.getRepository(User).count()).toBe(users);
+    capture.mockRestore();
   });
 
   it("asks for a name the provider did not supply, then connects the account", async () => {
     profile = { ...googleProfile(), provider: OAuthProvider.Apple, name: "  " };
+    const capture = jest.spyOn(h.ctx.app.get(PosthogService), "capture");
 
     const { browser, location } = await signIn();
 
@@ -145,6 +155,19 @@ describe("Kora OAuth sign-in (e2e)", () => {
 
     const again = await signIn();
     expect((await h.state(again.browser)).participant).toEqual(signedUp);
+    expect(capture.mock.calls.map(([call]) => call)).toEqual([
+      {
+        event: AnalyticsEvent.KoraParticipantSignedUp,
+        distinctId: `kora_participant:${signedUp.id}`,
+        properties: { method: OAuthProvider.Apple },
+      },
+      {
+        event: AnalyticsEvent.KoraParticipantSignedIn,
+        distinctId: `kora_participant:${signedUp.id}`,
+        properties: { method: OAuthProvider.Apple },
+      },
+    ]);
+    capture.mockRestore();
   });
 
   it("cuts a provider's name to the longest a participant may have", async () => {
