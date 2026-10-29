@@ -230,7 +230,7 @@ export function useWebFormState({
     },
   });
 
-  const { validatePage, validateAllPages } = useFormValidation({
+  const { validateScreen, validatePage, validateAllPages } = useFormValidation({
     schema,
     readOnly,
     effectiveFormData,
@@ -287,6 +287,7 @@ export function useWebFormState({
     setCurrentPageIndex,
     nextVisiblePageIndex,
     previousVisiblePageIndex,
+    validateScreen,
     validatePage,
     validateAllPages,
     focusInvalidField,

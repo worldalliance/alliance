@@ -42,6 +42,7 @@ export function useFormSubmission({
   setCurrentPageIndex,
   nextVisiblePageIndex,
   previousVisiblePageIndex,
+  validateScreen,
   validatePage,
   validateAllPages,
   focusInvalidField,
@@ -70,6 +71,7 @@ export function useFormSubmission({
   setCurrentPageIndex: (pageIndex: number) => void;
   nextVisiblePageIndex: number | null;
   previousVisiblePageIndex: number | null;
+  validateScreen: FormValidation["validateScreen"];
   validatePage: FormValidation["validatePage"];
   validateAllPages: FormValidation["validateAllPages"];
   focusInvalidField: (fieldId: string | undefined) => void;
@@ -141,6 +143,19 @@ export function useFormSubmission({
     }
     return result;
   }, [validateAllPages]);
+
+  const validateScreenFields = useCallback(
+    async (fields: AnyField[]): Promise<boolean> => {
+      if (uploadingImages) return false;
+      const result = await validateScreen(fields);
+      if (!result.isValid) {
+        showInvalid(result.firstInvalidFieldId);
+        return false;
+      }
+      return reportNativeValidity();
+    },
+    [reportNativeValidity, showInvalid, uploadingImages, validateScreen],
+  );
 
   /** Whether a submit or page check may start now; one at a time. */
   const canSubmit = useCallback((): boolean => {
@@ -292,6 +307,7 @@ export function useFormSubmission({
     handleNext,
     handlePrevious,
     validateAllPagesAndShowFirstInvalid,
+    validateScreenFields,
     submit,
     submitCurrentPage,
     handleSubmit,

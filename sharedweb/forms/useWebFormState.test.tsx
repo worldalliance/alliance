@@ -1,4 +1,5 @@
 import {
+  isQuestionField,
   type AnyField,
   type FormSchema,
 } from "@alliance/common/forms/form-schema";
@@ -143,4 +144,29 @@ it("validates once when submitted again mid-check", async () => {
   });
 
   expect(runs).toBe(1);
+});
+
+it("fails a screen whose shown field is missing its answer", async () => {
+  const { hook } = renderFormState();
+
+  let valid;
+  await act(async () => {
+    valid = await hook.result.current.validateScreenFields([needed]);
+  });
+
+  expect(valid).toBe(false);
+  expect(hook.result.current.fieldErrors.needed).toBeTruthy();
+});
+
+it("passes a screen whose fields need nothing", async () => {
+  const { hook } = renderFormState();
+
+  let valid;
+  await act(async () => {
+    valid = await hook.result.current.validateScreenFields(
+      schema.pages[1].fields.filter(isQuestionField),
+    );
+  });
+
+  expect(valid).toBe(true);
 });
