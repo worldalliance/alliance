@@ -1702,6 +1702,8 @@ export type ActionEventNotifDto = {
     idempotency_key: string | null;
     createdAt: string;
     user: ProfileDto;
+    mailClickedAt?: string | null;
+    mmsClickedAt?: string | null;
 };
 
 export type NotifClickDto = {

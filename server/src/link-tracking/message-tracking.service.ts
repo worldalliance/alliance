@@ -10,6 +10,7 @@ import { inviteClaimantSql } from "src/user/invite-claim";
 import type { Repository } from "src/utils/Repository";
 import { randomToken } from "src/utils/random";
 import type { EntityManager } from "typeorm";
+import { LinkOpening } from "./link-opening.entity";
 import {
   MessageChannel,
   type MessageContext,
@@ -84,6 +85,24 @@ export class MessageTrackingService {
       relations: { actionEventNotif: true },
     });
     return tracking?.actionEventNotif?.notificationId ?? null;
+  }
+
+  /** When each tracked message's links were first opened, by `trackingId`. */
+  async firstOpenedAt(trackingIds: string[]): Promise<Map<string, Date>> {
+    if (trackingIds.length === 0) return new Map();
+    const rows = await this.trackingRepository
+      .createQueryBuilder("tracking")
+      .innerJoin(
+        LinkOpening,
+        "opening",
+        'opening."messageTrackingId" = tracking.id',
+      )
+      .select("tracking.trackingId", "trackingId")
+      .addSelect('MIN(opening."observedAt")', "openedAt")
+      .where("tracking.trackingId IN (:...trackingIds)", { trackingIds })
+      .groupBy("tracking.trackingId")
+      .getRawMany<{ trackingId: string; openedAt: Date }>();
+    return new Map(rows.map((row) => [row.trackingId, new Date(row.openedAt)]));
   }
 }
 

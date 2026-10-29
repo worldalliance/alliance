@@ -145,7 +145,7 @@ export class NotifsService {
   }
 
   async notifsForUser(id: number) {
-    return this.actionEventNotifsRepository.find({
+    const notifs = await this.actionEventNotifsRepository.find({
       where: { user: { id } },
       relations: {
         user: true,
@@ -154,6 +154,12 @@ export class NotifsService {
         pushes: true,
       },
     });
+    const firstOpenedAt = await this.messageTracking.firstOpenedAt(
+      notifs.flatMap((notif) =>
+        [notif.mail?.cid, notif.mms?.cid].filter((cid) => cid != null),
+      ),
+    );
+    return { notifs, firstOpenedAt };
   }
 
   async notifLinkClick(body: NotifClickDto): Promise<boolean> {

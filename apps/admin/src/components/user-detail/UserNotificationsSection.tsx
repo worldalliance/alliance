@@ -1,9 +1,22 @@
 import { ActionEventNotifDto, Push } from "@alliance/shared/client/types.gen";
 import { cn } from "@alliance/shared/styles/util";
 import { UseQueryResult } from "@tanstack/react-query";
+import { format, formatDistanceStrict } from "date-fns";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import { SectionLoadState, SectionRefreshError } from "./SectionQueryState";
+
+/** Clicks recorded before link tracking have no time. */
+export const linkClickedLabel = ({
+  clickedAt,
+  sentAt,
+}: {
+  clickedAt: string | null | undefined;
+  sentAt: string;
+}) =>
+  clickedAt
+    ? `Link clicked ${format(new Date(clickedAt), "MMM d, h:mm a")}, ${formatDistanceStrict(new Date(clickedAt), new Date(sentAt))} after sending`
+    : "Link clicked";
 
 export default function UserNotificationsSection({
   query: { data: notifs, isError, isRefetchError },
@@ -119,7 +132,12 @@ function UserNotifications({
                         </p>
                       )}
                       {mms?.clickedLink && (
-                        <span className="text-green-600">Link clicked</span>
+                        <span className="text-green-600">
+                          {linkClickedLabel({
+                            clickedAt: notif.mmsClickedAt,
+                            sentAt: mms.createdAt,
+                          })}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -188,7 +206,10 @@ function UserNotifications({
                       </p>
                       {mail?.clickedLink && (
                         <span className="text-green-600 ml-5">
-                          Link clicked
+                          {linkClickedLabel({
+                            clickedAt: notif.mailClickedAt,
+                            sentAt: mail.createdAt,
+                          })}
                         </span>
                       )}
                     </div>

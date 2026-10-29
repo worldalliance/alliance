@@ -104,9 +104,9 @@ export class NotifsController {
   async notifsForUserAdmin(
     @Param("id", ParseIntPipe) id: number,
   ): Promise<ActionEventNotifDto[]> {
-    return this.notifsService
-      .notifsForUser(id)
-      .then((notifs) => notifs.map((notif) => new ActionEventNotifDto(notif)));
+    const { notifs, firstOpenedAt } =
+      await this.notifsService.notifsForUser(id);
+    return notifs.map((notif) => new ActionEventNotifDto(notif, firstOpenedAt));
   }
 
   @Post("linkClick")
