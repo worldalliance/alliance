@@ -65,16 +65,17 @@ const SearchPalette = ({ onClose }: { onClose: () => void }) => {
     void navigate(to);
   };
 
+  // Results can change under a kept index as lists load, so clamp at use.
+  const highlighted = Math.min(activeIndex, results.length - 1);
+
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    if ((e.key === "ArrowDown" || e.key === "ArrowUp") && results.length) {
       e.preventDefault();
       const step = e.key === "ArrowDown" ? 1 : -1;
-      setActiveIndex(
-        (index) => (index + step + results.length) % results.length,
-      );
-    } else if (e.key === "Enter" && results[activeIndex]) {
+      setActiveIndex((highlighted + step + results.length) % results.length);
+    } else if (e.key === "Enter" && results[highlighted]) {
       e.preventDefault();
-      open(results[activeIndex].to);
+      open(results[highlighted].to);
     }
   };
 
@@ -108,7 +109,7 @@ const SearchPalette = ({ onClose }: { onClose: () => void }) => {
               onMouseMove={() => setActiveIndex(index)}
               className={cn(
                 "flex items-baseline gap-3 px-4 py-2 text-sm",
-                index === activeIndex && "bg-zinc-100",
+                index === highlighted && "bg-zinc-100",
               )}
             >
               <span className="w-14 shrink-0 text-xs text-zinc-500">
