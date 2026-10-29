@@ -1,4 +1,3 @@
-import { phoneSearchDigits, phoneSearchTerm } from "@alliance/common/phone";
 import { withCount } from "@alliance/common/plural";
 import {
   ProfileDto,
@@ -21,6 +20,7 @@ import {
   ROLE_FILTERS,
   RoleFilter,
 } from "../lib/memberRoleFilter";
+import { memberSearchMatcher } from "../lib/memberSearch";
 import { useActionRelationsAdmin } from "../lib/useActionRelationsAdmin";
 import { useCompletedAllActiveActions } from "../lib/useCompletedAllActiveActions";
 import { useMemberContactInfoAdmin } from "../lib/useMemberContactInfoAdmin";
@@ -110,20 +110,7 @@ const UsersList: React.FC = () => {
     if (!searchQuery.trim()) {
       return filteredByTags;
     }
-    const query = searchQuery.toLowerCase().trim();
-    const phoneQuery = phoneSearchTerm(query);
-    return filteredByTags.filter((user) => {
-      const name = user.name?.toLowerCase() ?? "";
-      const email = user.email?.toLowerCase() ?? "";
-      const phone = user.phoneNumber?.toLowerCase() ?? "";
-      const normalizedPhone = phoneSearchDigits(user.phoneNumber);
-      return (
-        name.includes(query) ||
-        email.includes(query) ||
-        phone.includes(query) ||
-        (phoneQuery !== "" && normalizedPhone.includes(phoneQuery))
-      );
-    });
+    return filteredByTags.filter(memberSearchMatcher(searchQuery));
   }, [filteredByTags, searchQuery]);
 
   const handleShuffle = useCallback(() => {
