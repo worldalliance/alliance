@@ -2,7 +2,9 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -36,4 +38,26 @@ export function useTaskFlowReturn(): TaskFlowReturnValue {
     throw new Error("useTaskFlowReturn needs a TaskFlowReturnProvider");
   }
   return value;
+}
+
+/**
+ * Calls `begin` once when the member is back on the task's own page after
+ * leaving its flow mid-task, as soon as the flow is `ready` to resume.
+ */
+export function useReopenLeftTask(params: {
+  actionId: number;
+  onTaskPage: boolean;
+  ready: boolean;
+  begin: () => void;
+}) {
+  const { actionId, onTaskPage, ready } = params;
+  const { leftActionId, clearLeftTask } = useTaskFlowReturn();
+  const beginRef = useRef(params.begin);
+  beginRef.current = params.begin;
+  const returning = onTaskPage && leftActionId === actionId && ready;
+  useEffect(() => {
+    if (!returning) return;
+    clearLeftTask();
+    beginRef.current();
+  }, [returning, clearLeftTask]);
 }
