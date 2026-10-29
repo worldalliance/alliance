@@ -41,6 +41,8 @@ Never infer user intent from existing code, prior agent decisions, or agent prop
 
 State current agent decisions, assumptions, interpretations, and implementation choices, each with its rationale. Replace superseded choices in place. Reference requirements rather than duplicating them. These decisions are not authoritative merely for existing; a later agent may reconsider them within the constraints in REQUIREMENTS.md.
 
+A choice the user defers ("I don't know", "I don't care", "it doesn't matter", or the like) is the agent's, not a requirement: record the recommendation here, and drop it for an alternative once it adds more friction than it's worth.
+
 ## Unclear provenance
 
 Record unknown origins explicitly. Approval makes an agent proposal an approved requirement, not a user-originated idea. For example, an approved agent recommendation to use PostgreSQL is a direct requirement labeled agent-proposed and user-approved; the implementation rationale belongs in DECISIONS.md.
