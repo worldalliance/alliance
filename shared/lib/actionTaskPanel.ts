@@ -2,6 +2,7 @@ import {
   FORM_ALREADY_SUBMITTED,
   MEMBER_ACTION_DEADLINE_PASSED,
 } from "@alliance/common/actionActivity";
+import { GENERIC_FAILURE } from "@alliance/common/errorMessage";
 import { useCallback, useState } from "react";
 import type { ActionDto, FormResponseDto, SubmitFormDto } from "../client";
 import type { SubmitResult } from "../forms/formulaChoices";
@@ -68,7 +69,7 @@ export const useTaskFormHandlers = ({
         partialFormData,
       });
       if (req.error) {
-        setActionError("Something went wrong. Please try again.");
+        setActionError(GENERIC_FAILURE);
         return;
       }
       setActionError(null);

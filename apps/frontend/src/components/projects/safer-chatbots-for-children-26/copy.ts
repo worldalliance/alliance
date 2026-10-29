@@ -17,7 +17,7 @@ export const ABOUT_SECTIONS = [
   },
   {
     heading: "How do I participate?",
-    body: `- Join the waitlist on this page. We expect the project to begin in Mid-November 2026 and conclude by Mid-December 2026. 
+    body: `- Sign up on this page. We expect the project to begin in Mid-November 2026 and conclude by Mid-December 2026. 
 - Volunteers are encouraged to join the Alliance to continue volunteering on similar tasks after this project concludes.
 - This project is accepting signups from the general public from any country.
 - **Expected Time Committment**: 1 hour total over the course of 30 days, done at your own pace, from your own computer.
@@ -62,12 +62,7 @@ export const HERO_IMAGES: WaitlistHeroImage[] = [
   },
 ];
 
-export const SIGNUP_BUTTON = "Sign up";
-
 export const SIGNUP_NOTE = "The project will begin November 17th";
-
-export const SIGNUP_CLOSED =
-  "Waitlist is not live yet, please come back next week.";
 
 export const EXPERT_ROLE = "Expert advisor";
 
