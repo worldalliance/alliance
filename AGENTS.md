@@ -30,6 +30,7 @@ Read before the matching task:
 
 - Making a repository change intended to be kept, or determining the provenance of anything in the repository → `(root)/skills/provenance/SKILL.md`
 - Implementing a feature, fixing a bug, or refactoring code → `(root)/skills/implement/SKILL.md`
+- Verifying any change, including docs, skills, scripts, workflows, and reviews → **Checks** in `(root)/skills/implement/SKILL.md`
 - Pulling PostHog session replays or other PostHog API data → `(root)/skills/posthog/SKILL.md`
 - Querying the local Postgres db → `(root)/skills/local-db/SKILL.md`
 - Using the Linear API → `(root)/skills/linear/SKILL.md`
@@ -39,30 +40,6 @@ Read before the matching task:
 ## Typechecking
 
 `bun run typecheck` from inside a package; the repo root has no such script. Each package's script picks the right config (`tsconfig.typecheck.json` where shared sources need pulling in directly). Never bare `tsc`, even with `--noEmit`.
-
-## Duplication
-
-`bun run dupcheck` from the repo root after a change, alongside typecheck. It lists copied code, and text of five or more words repeated verbatim, that the working tree has and its merge-base with `origin/main` doesn't. Matches are exact, so it errs both ways. Some hits look alike but should stay separate, or are an edit inside existing duplication; judge each. It misses the same rule or message written differently, so a clean run leaves the search for an existing implementation still yours to do.
-
-The purpose of deduplication is to put things that should change together in one place. Reducing repeated code is a useful side effect, not the goal. Deduplicate when a future change should naturally apply to all copies together; keep things separate when they are likely to evolve independently.
-
-## Coverage
-
-`bun run covercheck` from the repo root after a change that adds logic. It lists lines the working tree changed since its merge-base with `origin/main` that no unit test ran, and changed files no test loads. It runs the tests of each package it touched, or of every package once it touches `common`, `shared`, or `sharedweb`. A reminder, not a gate: judge each gap and add a test where one would catch a regression.
-
-## Formatting
-
-`bun run format [FILE...]` from the repo root, all files when none are named; `bun run format:check [FILE...]` to only report.
-
-## Workflows
-
-`actionlint` from the repo root after editing `.github/workflows/`; CI and deploys fail on its findings. Without `shellcheck` on `PATH` it skips the shell in `run:` blocks and still passes; `brew install actionlint shellcheck`.
-
-`shellcheck .github/actions/*/*.sh .github/scripts/*.sh scripts/deploy_backend.sh` after editing any of them; actionlint skips those scripts, and CI and deploys run it too.
-
-## Testing
-
-`bun run test` from the repo root; scope by package: `bun run test apps/admin sharedweb`. From inside a package, run bare `bun test`.
 
 ## Dependencies
 
@@ -162,7 +139,3 @@ Aim for files well under 500 lines to help optimize this codebase for coding age
 Every changed line traces to the request. Adjacent code keeps its style, its formatting, and its comments, even where you would write it differently.
 
 Delete what your change orphaned: the import, variable, or function nothing calls now. Leave dead code that was already there, and name it in your response.
-
-## Success criteria
-
-State the check that decides the task is done, then loop until it passes. A bug fix starts with a test that reproduces the bug. A refactor runs the suite green before and after. Adding validation means tests for the invalid inputs, then the code that passes them.
