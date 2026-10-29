@@ -144,4 +144,34 @@ describe("useVisibilityValidatorResults", () => {
       console.error = original;
     }
   });
+
+  it("runs for the previewed member, again for each member previewed", async () => {
+    const ranFor: string[] = [];
+    api.alsoServing({
+      "POST /tasks/runValidator/:id": () => {
+        ranFor.push("admin");
+        return Response.json({ isValid: false });
+      },
+      "POST /tasks/runValidator/:id/asUser/:userId": ({ params }) => {
+        ranFor.push(params.userId);
+        return Response.json({ isValid: params.userId === "7" });
+      },
+    });
+    const { result, rerender } = renderHook(
+      ({ previewUserId }) =>
+        useVisibilityValidatorResults({
+          schema: gatedSchema,
+          readOnly: false,
+          signedIn: true,
+          previewUserId,
+        }),
+      { initialProps: { previewUserId: 7 } },
+    );
+    await waitFor(() => expect(result.current.results[42]).toBe(true));
+
+    rerender({ previewUserId: 8 });
+
+    await waitFor(() => expect(result.current.results[42]).toBe(false));
+    expect(ranFor).toEqual(["7", "8"]);
+  });
 });
