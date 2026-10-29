@@ -23,9 +23,6 @@ jobs:
   gitignore-check:
     uses: ./.github/workflows/gitignore-check.yaml
 
-  wikicheck:
-    uses: ./.github/workflows/wikicheck.yaml
-
   typecheck:
     strategy:
       fail-fast: false

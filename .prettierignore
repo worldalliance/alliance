@@ -27,6 +27,3 @@ expo-env.d.ts
 apps/mobile/google-services-dev.json
 apps/*/public/.well-known
 apps/frontend/src/components/projects/plant-based-study/data.json
-
-# Aligning the ledger's table rewrites every row whenever its widest cell changes, so parallel edits conflict
-docs/wiki/coverage.md
