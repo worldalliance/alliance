@@ -17,18 +17,25 @@ const script = workflow.jobs.review.steps.find(
 if (typeof script !== "string")
   throw new Error("Missing review combination step");
 
-test("the reviewers' final markers control notification independently of the combiner", () => {
+test("reviewer markers control notification and every available review is summarized", () => {
   const scratch = join(import.meta.dir, "../../.scratch");
   mkdirSync(scratch, { recursive: true });
   const dir = mkdtempSync(join(scratch, "review-gate-"));
   writeFileSync(
     join(dir, "curl"),
-    '#!/bin/sh\nprintf "%s\\n" "$COMBINER_RESPONSE"\n',
+    '#!/bin/sh\nprintf "%s\\n" "$COMBINER_RESPONSE"\nexit "${CURL_EXIT:-0}"\n',
     {
       mode: 0o700,
     },
   );
-  const cases = [
+  const cases: {
+    claude: string;
+    codex: string;
+    combined: string;
+    expected: boolean;
+    curlExit?: number;
+    rawResponse?: string;
+  }[] = [
     {
       claude: "Nits only.",
       codex: "No issues.",
@@ -63,6 +70,27 @@ test("the reviewers' final markers control notification independently of the com
       combined: "A summary.",
       expected: true,
     })),
+    {
+      claude:
+        "Summary and checks.\nMust-fix: a real defect.\nNits: a name.\n[NEEDS_ATTENTION]",
+      codex: "",
+      combined: "- A real defect.",
+      expected: true,
+    },
+    {
+      claude: "A real defect.\n[NEEDS_ATTENTION]",
+      codex: "",
+      combined: "",
+      expected: true,
+      curlExit: 6,
+    },
+    {
+      claude: "A real defect.\n[NEEDS_ATTENTION]",
+      codex: "No issues.",
+      combined: "",
+      expected: true,
+      rawResponse: "not-json",
+    },
     { claude: "", codex: "", combined: "", expected: false },
   ];
   try {
@@ -76,9 +104,12 @@ test("the reviewers' final markers control notification independently of the com
           CLAUDE_FINAL_MESSAGE: input.claude,
           CODEX_FINAL_MESSAGE: input.codex,
           OPENAI_API_KEY: "test-placeholder",
-          COMBINER_RESPONSE: JSON.stringify({
-            choices: [{ message: { content: input.combined } }],
-          }),
+          CURL_EXIT: String(input.curlExit ?? 0),
+          COMBINER_RESPONSE:
+            input.rawResponse ??
+            JSON.stringify({
+              choices: [{ message: { content: input.combined } }],
+            }),
           GITHUB_OUTPUT: output,
         },
       });
@@ -88,6 +119,11 @@ test("the reviewers' final markers control notification independently of the com
       expect(stepOutput.split("\n"), `case ${index + 1}`).toContain(
         `needs_review=${input.expected}`,
       );
+      if (input.claude || input.codex) {
+        expect(stepOutput, `case ${index + 1}`).toContain(
+          `\n${input.combined}\n`,
+        );
+      }
     }
   } finally {
     rmSync(dir, { recursive: true, force: true });

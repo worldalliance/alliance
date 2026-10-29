@@ -125,44 +125,33 @@ jobs:
             exit 0
           fi
 
-          # If only *one* review has content, just use that directly
-          if [ -z "$claude" ] && [ -n "$codex" ]; then
-            combined="$codex"
-          elif [ -n "$claude" ] && [ -z "$codex" ]; then
-            combined="$claude"
-          else
-            # Both have content: call OpenAI to merge them
-            instructions="You are merging two automated code review outputs into a single concise list of issues. Keep only real, actionable issues, but prune any preamble or commentary. Merge duplicates. Output a markdown bullet list where each bullet is one issue. Preserve the listed file paths and line numbers. Notification eligibility is determined from the reviewers' final markers separately; omit marker tokens from your summary.
+          instructions="You are merging two automated code review outputs into a single concise list of issues. Keep only real, actionable issues, but prune any preamble or commentary. Merge duplicates. Output a markdown bullet list where each bullet is one issue. Preserve the listed file paths and line numbers. Notification eligibility is determined from the reviewers' final markers separately; omit marker tokens from your summary.
 
-            If both reviews indicate that there are no issues (for example, they are empty, say there are no issues, or only contain pleasantries), then respond with an empty string and do NOT invent any meta-commentary (such as complaining about missing content)."
+          If both reviews indicate that there are no issues (for example, they are empty, say there are no issues, or only contain pleasantries), then respond with an empty string and do NOT invent any meta-commentary (such as complaining about missing content)."
 
-            payload="$(jq -nc \
-              --arg instructions "$instructions" \
-              --arg claude "$claude" \
-              --arg codex "$codex" \
-              '{
-                model: "gpt-5.2",
-                messages: [
-                  { "role": "developer", "content": $instructions },
-                  {
-                    "role": "user",
-                    "content": ("Claude review:\n" + $claude + "\n\nOpenAI review:\n" + $codex)
-                  }
-                ]
-              }')"
+          payload="$(jq -nc \
+            --arg instructions "$instructions" \
+            --arg claude "$claude" \
+            --arg codex "$codex" \
+            '{
+              model: "gpt-5.2",
+              messages: [
+                { "role": "developer", "content": $instructions },
+                {
+                  "role": "user",
+                  "content": ("Claude review:\n" + $claude + "\n\nOpenAI review:\n" + $codex)
+                }
+              ]
+            }')"
 
-            response="$(
-              curl -sS https://api.openai.com/v1/chat/completions \
-                -H "Content-Type: application/json" \
-                -H "Authorization: Bearer $OPENAI_API_KEY" \
-                -d "$payload"
-            )"
-
-            echo "Response:"
-            echo "----------"
-            printf '%s\n' "$response"
-
-            combined="$(printf "%s" "$response" | jq -r '.choices[0].message.content // ""')"
+          if ! response="$(
+            curl -fsS --connect-timeout 10 --max-time 120 https://api.openai.com/v1/chat/completions \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer $OPENAI_API_KEY" \
+              -d "$payload"
+          )" || ! combined="$(printf "%s" "$response" | jq -r '.choices[0].message.content // ""')"; then
+            combined=""
+            echo "::warning::Review summarization failed; using the full-report link."
           fi
 
           echo "Combined review:"
