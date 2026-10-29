@@ -17,7 +17,7 @@ import { ActionSource, actionStore, selectAction } from "./actionStore";
 import { FilterMode, hasViewerCompletedAction } from "./actionUtils";
 import { thrownRefusalMessage } from "./hey-api";
 import { queryKeys } from "./queryKeys";
-import { useActionState } from "./useActionState";
+import { useStoreState } from "./useStoreState";
 
 export const actionsQuery = queryOptions({
   queryKey: queryKeys.actions(),
@@ -42,7 +42,7 @@ export const actionsQuery = queryOptions({
 export const useActionsQuery = (options?: {
   refetchInterval?: (typeof actionsQuery)["refetchInterval"];
 }): UseQueryResult<ActionDto[], Error> => {
-  const state = useActionState();
+  const state = useStoreState(actionStore);
   const select = useCallback(
     (ids: number[]) => ids.map((id) => selectAction(state, id)),
     [state],

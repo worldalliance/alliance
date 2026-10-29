@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { actionsFindOne } from "../client";
 import { ActionSource, actionStore, selectAction } from "./actionStore";
 import { queryKeys } from "./queryKeys";
-import { useActionState } from "./useActionState";
+import { useStoreState } from "./useStoreState";
 
 export function useAction(
   actionId: number | null,
@@ -17,7 +17,7 @@ export function useAction(
   } = params ?? {};
   const queryClient = useQueryClient();
   const store = actionStore(queryClient);
-  const state = useActionState();
+  const state = useStoreState(actionStore);
   const session = store.getSession();
   const select = useCallback((id: number) => selectAction(state, id), [state]);
   const query = useQuery({
