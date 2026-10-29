@@ -31,7 +31,6 @@ import {
   ApiResponse,
 } from "@nestjs/swagger";
 import { ThrottlerGuard } from "@nestjs/throttler";
-import { milliseconds } from "date-fns";
 import type { Request as ExpressRequest, Response } from "express";
 import { OAUTH_THROTTLE } from "src/auth/signup-throttle.config";
 import { PosthogService } from "src/posthog/posthog.service";
@@ -60,7 +59,12 @@ import {
 } from "./oauth-auth.service";
 import type { OAuthProfile } from "./oauth-client";
 import { OAuthClients } from "./oauth-clients";
-import { addProof, mintProof, spendProof } from "./oauth-proof";
+import {
+  addProof,
+  mintProof,
+  OAUTH_PROOF_MAX_AGE_MS,
+  spendProof,
+} from "./oauth-proof";
 import {
   fallbackLoginUrl,
   mobileReturnUrlWith,
@@ -79,9 +83,6 @@ import {
   type SessionTokens,
 } from "./oauth.dto";
 import { ProviderParam } from "./provider-param";
-
-/** Outlives the state token it guards, so a slow consent screen still lands. */
-const STATE_COOKIE_MAX_AGE_MS = milliseconds({ minutes: 15 });
 
 const CANCEL_ERROR: Record<OAuthProvider, string> = {
   [OAuthProvider.Google]: "access_denied",
@@ -598,8 +599,6 @@ export class OAuthController {
       presented: extractOAuthStateFromCookie(req),
       proofHash: state.proofHash,
     });
-    // Left alone when nothing matched, so a stray callback cannot retire the
-    // flows this browser still has open.
     if (remaining === null) {
       return false;
     }
@@ -619,7 +618,7 @@ export class OAuthController {
       // provider, and a strict cookie is not sent on one.
       sameSite: "lax",
       path: "/",
-      maxAge: STATE_COOKIE_MAX_AGE_MS,
+      maxAge: OAUTH_PROOF_MAX_AGE_MS,
     });
   }
 

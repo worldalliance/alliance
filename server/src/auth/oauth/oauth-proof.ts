@@ -1,4 +1,10 @@
+import { milliseconds } from "date-fns";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+
+export const OAUTH_STATE_LIFETIME = "10m";
+
+/** Outlives the state token it guards, so a slow consent screen still lands. */
+export const OAUTH_PROOF_MAX_AGE_MS = milliseconds({ minutes: 15 });
 
 export type OAuthProof = {
   proof: string;
@@ -40,7 +46,11 @@ export function addProof(params: {
     .join(PROOF_SEPARATOR);
 }
 
-/** The proofs left once this flow's is spent, or null if it holds none. */
+/**
+ * The proofs left once this flow's is spent, or null if it holds none. Callers
+ * leave the cookie untouched on null, so a stray callback cannot retire the
+ * flows this browser still has open.
+ */
 export function spendProof(params: {
   presented: string | undefined;
   proofHash: string;

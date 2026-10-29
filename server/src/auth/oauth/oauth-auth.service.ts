@@ -33,7 +33,7 @@ import {
 } from "./link-identity";
 import { OAuthAccount } from "./oauth-account.entity";
 import type { OAuthProfile } from "./oauth-client";
-import { proofMatches } from "./oauth-proof";
+import { OAUTH_STATE_LIFETIME, proofMatches } from "./oauth-proof";
 
 export enum OAuthOrigin {
   Web = "web",
@@ -107,7 +107,6 @@ export type OAuthAuthentication = {
   outcome: OAuthOutcome;
 };
 
-const STATE_LIFETIME = "10m";
 const HANDOFF_LIFETIME_MS = milliseconds({ minutes: 5 });
 
 @Injectable()
@@ -130,7 +129,7 @@ export class OAuthAuthService {
         posthog: requestContext.getStore()?.posthog,
         tokenType: JWTTokenType.oauthState,
       },
-      { expiresIn: STATE_LIFETIME },
+      { expiresIn: OAUTH_STATE_LIFETIME },
     );
   }
 
