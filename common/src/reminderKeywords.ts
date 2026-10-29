@@ -163,3 +163,7 @@ export function renderReminderKeywords(
 
   return str;
 }
+
+/** A reminder body as the HTML its email sends. */
+export const reminderEmailHtml = (message: string) =>
+  message.replace(/\n/g, "<br>");

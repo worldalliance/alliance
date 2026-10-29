@@ -94,7 +94,7 @@ export function nightRecipientCount(params: {
   }).length;
 }
 
-export type RenderedReminder = {
+type RenderedReminder = {
   emailSubject: string | null;
   emailMessage: string | null;
   textMessage: string | null;

@@ -1,6 +1,7 @@
 import { onlineManager } from "@tanstack/react-query";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { expect, it, setSystemTime } from "bun:test";
+import { LaunchSection } from "./launchBlockers";
 import {
   api,
   launchButton,
@@ -10,6 +11,15 @@ import {
 } from "./SuiteLaunchPanel.testHarness";
 
 serveLaunchApi();
+
+const actionsCheck = async () =>
+  within(
+    await waitFor(() => {
+      const section = document.getElementById(LaunchSection.Actions);
+      if (!section) throw new Error("The Actions check isn't rendered");
+      return section;
+    }),
+  );
 
 it("links a task form finding to the form and a body finding to its text in the action", async () => {
   api.formPages = [{ id: "p1", title: "Page  one", fields: [] }];
@@ -102,9 +112,9 @@ it("shows each action's audience, task form link, and what to look at before che
   api.served[2] = { ...api.served[2], image: null, archived: true };
   renderPanel();
 
-  const write = (await screen.findByText(/^1 member · (?!\d+ min$)/)).closest(
-    "li",
-  );
+  const write = (
+    await (await actionsCheck()).findByText(/^1 member ·/)
+  ).closest("li");
   expect(write?.textContent).not.toContain("cover image");
   expect(write?.textContent).toContain("Image set");
   expect(write?.textContent).toContain("Archived");
@@ -121,7 +131,7 @@ it("counts only members with an active contract, as the server admits them", asy
   expect(
     await screen.findByRole("button", { name: "Launch and notify 1 member" }),
   ).toBeTruthy();
-  expect(screen.getByText(/^1 member · (?!\d+ min$)/)).toBeTruthy();
+  expect((await actionsCheck()).getByText(/^1 member ·/)).toBeTruthy();
   expect(screen.getByText(/^0 members ·/)).toBeTruthy();
 });
 
@@ -184,12 +194,26 @@ it("shows each reminder as the picked group of members gets it", async () => {
   ).closest("li");
   expect(announcement?.textContent).toContain("Member Action announcement");
   expect(announcement?.textContent).toContain("As Ben gets it");
-
-  fireEvent.click(
-    within(screen.getByRole("group", { name: "Preview as" })).getAllByRole(
-      "radio",
-    )[1],
+  if (!announcement) throw new Error("no announcement");
+  const preview = within(announcement);
+  expect(preview.getByTitle("Email body").getAttribute("srcdoc")).toContain(
+    "2 new Alliance tasks are ready for you to complete",
   );
+  expect(
+    preview.getByRole("figure", { name: "Push notification" }).textContent,
+  ).toContain("New tasks: Call, Write");
+  expect(
+    preview.getByText("Text Message").closest("figure")?.textContent,
+  ).toContain("New Alliance tasks: Call, Write. Complete within");
+
+  const mixes = within(
+    screen.getByRole("group", { name: "Preview as" }),
+  ).getAllByRole("radio");
+  expect(mixes.map((mix) => mix.closest("label")?.textContent)).toEqual([
+    "1 member · 2 tasks · 18 minCallWrite",
+    "1 member · 1 task · 10 minCall",
+  ]);
+  fireEvent.click(mixes[1]);
   expect(
     await screen.findByText("New Alliance task: Call", { exact: false }),
   ).toBeTruthy();

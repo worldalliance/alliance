@@ -14,18 +14,11 @@ import {
   renderLaunchReminder,
   SAMPLE_GROUP_UNFINISHED,
   type ReminderSendWindow,
-  type RenderedReminder,
 } from "./launchReminders";
 import { inLaunchZone, type LaunchSchedule } from "./launchSchedule";
 import type { ActionMix } from "./memberLoad";
+import { EmailMockup, PushMockup, TextMockup } from "./MessageMockups";
 import type { LaunchAction } from "./useSuiteLaunchData";
-
-const RENDERED_FIELDS: [keyof RenderedReminder, string][] = [
-  ["emailSubject", "Email subject"],
-  ["emailMessage", "Email"],
-  ["textMessage", "Text"],
-  ["pushMessage", "Push"],
-];
 
 const LaunchRemindersCheck = ({
   bodies,
@@ -77,7 +70,7 @@ const LaunchRemindersCheck = ({
               key={option.actionIds.join(",")}
               selected={mix === option}
               onSelect={() => setMixIndex(index)}
-              title={`${withCount(option.userIds.length, "member")} · ${option.minutes} min`}
+              title={`${withCount(option.userIds.length, "member")} · ${withCount(option.actionIds.length, "task")} · ${option.minutes} min`}
             >
               {option.actionIds.map((id) => (
                 <span key={id} className="block text-zinc-600">
@@ -139,9 +132,9 @@ const LaunchRemindersCheck = ({
               >
                 {sample && previews.length > 0 ? (
                   previews.map(({ variant, rendered }) => (
-                    <dl
+                    <div
                       key={variant.label}
-                      className="mb-2 ml-4 flex flex-col gap-2 border-l-2 border-zinc-200 pl-3"
+                      className="mb-3 ml-4 flex flex-col gap-3 border-l-2 border-zinc-200 pl-3"
                     >
                       <p className="text-xs text-zinc-500">
                         {body.cohortType === "group_leads_with_uncompleted"
@@ -153,18 +146,22 @@ const LaunchRemindersCheck = ({
                           {variant.label}
                         </p>
                       )}
-                      {RENDERED_FIELDS.map(
-                        ([field, label]) =>
-                          rendered[field] && (
-                            <div key={field}>
-                              <dt className="text-xs text-zinc-500">{label}</dt>
-                              <dd className="whitespace-pre-wrap">
-                                {rendered[field]}
-                              </dd>
-                            </div>
-                          ),
+                      {(rendered.emailSubject || rendered.emailMessage) && (
+                        <EmailMockup
+                          subject={rendered.emailSubject}
+                          body={rendered.emailMessage ?? ""}
+                          recipient={sample.name}
+                        />
                       )}
-                    </dl>
+                      <div className="flex flex-wrap items-start gap-3">
+                        {rendered.textMessage && (
+                          <TextMockup message={rendered.textMessage} />
+                        )}
+                        {rendered.pushMessage && (
+                          <PushMockup message={rendered.pushMessage} />
+                        )}
+                      </div>
+                    </div>
                   ))
                 ) : (
                   <p className="mb-2 ml-4 text-xs text-zinc-500">
