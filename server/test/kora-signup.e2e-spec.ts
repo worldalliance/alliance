@@ -1,20 +1,16 @@
-import { ParticipantError } from "@alliance/common/participant";
+import { KoraError } from "@alliance/common/kora";
+import { KoraParticipantSession } from "src/kora/entities/kora-participant-session.entity";
+import { KoraParticipantSignup } from "src/kora/entities/kora-participant-signup.entity";
+import { KoraParticipant } from "src/kora/entities/kora-participant.entity";
+import { KoraCookie } from "src/kora/kora-cookies";
 import { Mail } from "src/mail/mail.entity";
 import { Mms } from "src/mms/mms.entity";
-import { ProjectParticipantSession } from "src/participants/entities/project-participant-session.entity";
-import { ProjectParticipantSignup } from "src/participants/entities/project-participant-signup.entity";
-import { ProjectParticipant } from "src/participants/entities/project-participant.entity";
-import { ParticipantCookie } from "src/participants/participant-cookies";
 import { User } from "src/user/entities/user.entity";
 import { WaitlistEntry } from "src/waitlist/entities/waitlist-entry.entity";
 import request from "supertest";
 import type TestAgent from "supertest/lib/agent";
+import { ORIGIN, koraHarness, type KoraHarness } from "./kora-fixtures";
 import { forgetRateEvents, uniqueEmail, uniquePhone } from "./otp-fixtures";
-import {
-  ORIGIN,
-  participantHarness,
-  type ParticipantHarness,
-} from "./participant-fixtures";
 
 const INVALID_CONTACT = "Enter a valid email address or mobile number.";
 
@@ -23,15 +19,14 @@ function cookieFrom(res: request.Response, name: string): string | undefined {
   return cookies.find((cookie) => cookie.startsWith(`${name}=`));
 }
 
-describe("Participant signup and login (e2e)", () => {
-  let h: ParticipantHarness;
+describe("Kora signup and login (e2e)", () => {
+  let h: KoraHarness;
 
-  const participants = () => h.ctx.dataSource.getRepository(ProjectParticipant);
-  const sessions = () =>
-    h.ctx.dataSource.getRepository(ProjectParticipantSession);
+  const participants = () => h.ctx.dataSource.getRepository(KoraParticipant);
+  const sessions = () => h.ctx.dataSource.getRepository(KoraParticipantSession);
 
   beforeAll(async () => {
-    h = await participantHarness();
+    h = await koraHarness();
   }, 50000);
 
   beforeEach(async () => {
@@ -147,7 +142,7 @@ describe("Participant signup and login (e2e)", () => {
   ])("refuses %s", async (_label, body) => {
     const res = await h
       .browser()
-      .post("/participants/code")
+      .post("/kora/code")
       .set("Origin", ORIGIN)
       .send(body)
       .expect(400);
@@ -169,7 +164,7 @@ describe("Participant signup and login (e2e)", () => {
     const expired = h.browser();
     await h.verified(expired, { email: uniqueEmail() });
     await h.ctx.dataSource
-      .getRepository(ProjectParticipantSignup)
+      .getRepository(KoraParticipantSignup)
       .createQueryBuilder()
       .update()
       .set({ expiresAt: new Date(Date.now() - 1000) })
@@ -178,7 +173,7 @@ describe("Participant signup and login (e2e)", () => {
     expect(res.body).toEqual(
       expect.objectContaining({
         message: "Your verification has expired. Verify your contact again.",
-        error: ParticipantError.SignupExpired,
+        error: KoraError.SignupExpired,
       }),
     );
 
@@ -187,11 +182,11 @@ describe("Participant signup and login (e2e)", () => {
     const verified = await h
       .verify(browser, { code: h.lastCode() })
       .expect(200);
-    const signupCookie = cookieFrom(verified, ParticipantCookie.Signup);
+    const signupCookie = cookieFrom(verified, KoraCookie.Signup);
     expect(signupCookie).toBeDefined();
     await h.signup(browser, { name: "Once" }).expect(200);
     await request(h.ctx.app.getHttpServer())
-      .post("/participants/signup")
+      .post("/kora/signup")
       .set("Origin", ORIGIN)
       .set("Cookie", signupCookie!.split(";")[0])
       .send({ name: "Twice" })
@@ -245,7 +240,7 @@ describe("Participant signup and login (e2e)", () => {
 
   describe("sessions", () => {
     const sessionToken = (res: request.Response): string => {
-      const cookie = cookieFrom(res, ParticipantCookie.Session);
+      const cookie = cookieFrom(res, KoraCookie.Session);
       if (!cookie) throw new Error("no session cookie");
       return cookie.split(";")[0].split("=")[1];
     };
@@ -267,7 +262,7 @@ describe("Participant signup and login (e2e)", () => {
       const browser = h.browser();
       await h.verified(browser, { email: uniqueEmail() });
       const res = await h.signup(browser, { name: "Cookie" }).expect(200);
-      const cookie = cookieFrom(res, ParticipantCookie.Session) ?? "";
+      const cookie = cookieFrom(res, KoraCookie.Session) ?? "";
       expect(cookie).toContain("HttpOnly");
       expect(cookie).toContain("SameSite=Strict");
       expect(cookie).toContain(`Max-Age=${30 * 24 * 60 * 60}`);
@@ -276,8 +271,8 @@ describe("Participant signup and login (e2e)", () => {
         { participantId: res.body.id },
         { expiresAt: new Date(Date.now() + 1000) },
       );
-      const renewed = await browser.get("/participants/me").expect(200);
-      expect(cookieFrom(renewed, ParticipantCookie.Session)).toContain(
+      const renewed = await browser.get("/kora/me").expect(200);
+      expect(cookieFrom(renewed, KoraCookie.Session)).toContain(
         `Max-Age=${30 * 24 * 60 * 60}`,
       );
       const [row] = await sessions().find({
@@ -294,9 +289,9 @@ describe("Participant signup and login (e2e)", () => {
         { participantId: participant.id },
         { expiresAt: new Date(Date.now() - 1000) },
       );
-      const res = await browser.get("/participants/me").expect(200);
+      const res = await browser.get("/kora/me").expect(200);
       expect(res.body.participant).toBeNull();
-      expect(cookieFrom(res, ParticipantCookie.Session)).toMatch(
+      expect(cookieFrom(res, KoraCookie.Session)).toMatch(
         /Expires=Thu, 01 Jan 1970/,
       );
     });
@@ -314,16 +309,13 @@ describe("Participant signup and login (e2e)", () => {
       await h.sendCode(laptop, { email }).expect(200);
       await h.verify(laptop, { code: h.lastCode() }).expect(200);
 
-      await phone
-        .post("/participants/sign-out")
-        .set("Origin", ORIGIN)
-        .expect(204);
+      await phone.post("/kora/sign-out").set("Origin", ORIGIN).expect(204);
       expect((await h.state(phone)).participant).toBeNull();
       expect((await h.state(laptop)).participant).toEqual(created.body);
 
       const replay = await request(h.ctx.app.getHttpServer())
-        .get("/participants/me")
-        .set("Cookie", `${ParticipantCookie.Session}=${phoneToken}`)
+        .get("/kora/me")
+        .set("Cookie", `${KoraCookie.Session}=${phoneToken}`)
         .expect(200);
       expect(replay.body.participant).toBeNull();
     });
@@ -345,7 +337,7 @@ describe("Participant signup and login (e2e)", () => {
       const server = h.ctx.app.getHttpServer();
       await request(server)
         .get("/user/me")
-        .set("Cookie", `${ParticipantCookie.Session}=${token}`)
+        .set("Cookie", `${KoraCookie.Session}=${token}`)
         .expect(401);
       await request(server)
         .get("/user/me")
@@ -364,24 +356,22 @@ describe("Participant signup and login (e2e)", () => {
     it("leaves member cookies alone on sign-out", async () => {
       const { browser } = await signedInBrowser();
       const res = await browser
-        .post("/participants/sign-out")
+        .post("/kora/sign-out")
         .set("Origin", ORIGIN)
         .set("Cookie", "access_token=member")
         .expect(204);
       const cleared: string[] = [res.headers["set-cookie"] ?? []].flat();
-      expect(cleared.map((c) => c.split("=")[0])).toEqual([
-        ParticipantCookie.Session,
-      ]);
+      expect(cleared.map((c) => c.split("=")[0])).toEqual([KoraCookie.Session]);
     });
   });
 
   describe("cross-site and availability", () => {
     const sessionChanging = [
-      ["post", "/participants/code"],
-      ["delete", "/participants/code"],
-      ["post", "/participants/code/verify"],
-      ["post", "/participants/signup"],
-      ["post", "/participants/sign-out"],
+      ["post", "/kora/code"],
+      ["delete", "/kora/code"],
+      ["post", "/kora/code/verify"],
+      ["post", "/kora/signup"],
+      ["post", "/kora/sign-out"],
     ] as const;
     it.each(
       sessionChanging.flatMap(([method, path]) => [
@@ -397,7 +387,7 @@ describe("Participant signup and login (e2e)", () => {
       const nodeEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = "production";
       try {
-        await h.browser().get("/participants/me").expect(404);
+        await h.browser().get("/kora/me").expect(404);
         await h.sendCode(h.browser(), { email: uniqueEmail() }).expect(404);
       } finally {
         process.env.NODE_ENV = nodeEnv;

@@ -34,7 +34,7 @@ describe("One-time codes (e2e)", () => {
 
   const start = (contact: OtpContact = email()) =>
     otp.start({
-      purpose: OtpPurpose.ParticipantSignIn,
+      purpose: OtpPurpose.KoraSignIn,
       contact,
       ip: IP,
       webOtpHost: "localhost",
@@ -48,7 +48,7 @@ describe("One-time codes (e2e)", () => {
 
   const verify = (browserToken: string, code: string) =>
     otp.verify({
-      purpose: OtpPurpose.ParticipantSignIn,
+      purpose: OtpPurpose.KoraSignIn,
       browserToken,
       code,
       ip: IP,
@@ -229,7 +229,7 @@ describe("One-time codes (e2e)", () => {
 
   it("reports a pending code until it runs out of attempts or expires", async () => {
     const pending = (browserToken: string) =>
-      otp.pending({ purpose: OtpPurpose.ParticipantSignIn, browserToken });
+      otp.pending({ purpose: OtpPurpose.KoraSignIn, browserToken });
     const contact = email();
     const exhausted = await started(contact);
     const shown = await pending(exhausted.browserToken);
@@ -253,7 +253,7 @@ describe("One-time codes (e2e)", () => {
 
   it("refuses an abandoned code", async () => {
     const { browserToken, code } = await started();
-    await otp.abandon({ purpose: OtpPurpose.ParticipantSignIn, browserToken });
+    await otp.abandon({ purpose: OtpPurpose.KoraSignIn, browserToken });
     expect(await refusal(browserToken, code)).toBe(OtpError.CodeInvalid);
   });
 

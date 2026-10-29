@@ -4,7 +4,7 @@ These are agent implementation choices for [the requirements](REQUIREMENTS.md), 
 
 ## Account ownership
 
-Use a dedicated `ProjectParticipant` entity (table `project_participant`), with its own module in `server/src/participants/`. Messaging already owns `Participant` and `ParticipantDto` for conversation members, so every class and API schema here carries the `ProjectParticipant` prefix. Neither the Alliance `User` nor the anonymous `Guest` represents this identity: the former participates in membership flows, while the latter lacks a verified contact and reusable login. Keep the participant's stable ID as the eventual owner of their work; defer any member link until conversion is specified.
+Use a dedicated `KoraParticipant` entity (table `kora_participant`), with its own module in `server/src/kora/` and endpoints under `/kora`. Every class, table, cookie, and API schema carries the `Kora` prefix (R1), which also keeps it apart from messaging's `Participant` and `ParticipantDto` for conversation members. The OTP module stays generic (R8); only its purpose value, `kora_sign_in`, names Kora. Neither the Alliance `User` nor the anonymous `Guest` represents this identity: the former participates in membership flows, while the latter lacks a verified contact and reusable login. Keep the participant's stable ID as the eventual owner of their work; defer any member link until conversion is specified.
 
 Store the name, normalized email or phone, nullable timezone, contact verification time, and creation time. Require exactly one contact, unique within participants. Normalize emails by trimming and comparing case-insensitively through a `citext` column, as `User.email` does; normalize phones to E.164 using the existing phone utilities. Do not collapse email aliases. Reuse the waitlist input bounds of 200 characters for names and 320 for email addresses. Trim names and reject blank values. Reuse `deviceTimeZone` / `signupTimeZone`; unavailable detection yields null without blocking signup, and later login may fill a missing timezone.
 
@@ -80,13 +80,13 @@ Retain operational delivery status and provider message IDs where needed, exclud
 
 ## Participant sessions
 
-Use opaque random session tokens stored only in a dedicated HttpOnly cookie, with token digests, participant IDs, and expiry stored server-side. The challenge token and signup continuation ride in their own HttpOnly cookies (`participant_code`, `participant_signup`) lasting ten minutes. Use Secure cookies on deployed environments, and SameSite=Strict until the browser OAuth return needs Lax. Session-changing requests pass `AllowedOriginGuard`, which requires an `Origin` header naming one of the configured app origins: CORS reflects any origin, so the header check, not CORS, is what stops cross-site submission. Credentials are not stored in browser local storage or URLs.
+Use opaque random session tokens stored only in a dedicated HttpOnly cookie (`kora_session`), with token digests, participant IDs, and expiry stored server-side. The challenge token and signup continuation ride in their own HttpOnly cookies (`kora_code`, `kora_signup`) lasting ten minutes. Use Secure cookies on deployed environments, and SameSite=Strict until the browser OAuth return needs Lax. Session-changing requests pass `AllowedOriginGuard`, which requires an `Origin` header naming one of the configured app origins: CORS reflects any origin, so the header check, not CORS, is what stops cross-site submission. Credentials are not stored in browser local storage or URLs.
 
 Extend expiry and cookie lifetime on successful participant-authenticated requests, with no background keepalive loop. Reject expired sessions before extending them. Reauthentication replaces the current browser's participant session; other devices retain theirs. Logout revokes the presented session in storage and clears its cookie, leaving member cookies untouched. If logout cannot be confirmed, retain the signed-in UI with a retryable error.
 
-Participant credentials must be rejected by member, admin, and anonymous-guest authentication; the opaque token fails JWT verification and rides in a cookie member guards never read. Look sessions up through `ParticipantSessionService.current` rather than relaxing existing member guards. The required participant guard arrives with the first participant-only endpoint, since none exists in this scope. A temporary signup continuation grants only completion access. The backend, not just the UI, enforces these boundaries.
+Participant credentials must be rejected by member, admin, and anonymous-guest authentication; the opaque token fails JWT verification and rides in a cookie member guards never read. Look sessions up through `KoraSessionService.current` rather than relaxing existing member guards. The required participant guard arrives with the first participant-only endpoint, since none exists in this scope. A temporary signup continuation grants only completion access. The backend, not just the UI, enforces these boundaries.
 
-Keep new participant entry points under the same environment availability as the project page: `ParticipantsAvailableGuard` and the page's loader both answer 404 wherever `PARTICIPANTS_AVAILABLE` in `common/src/participant.ts` is false, currently production and any unrecognized environment. Launch flips that one entry (R9).
+Keep new participant entry points under the same environment availability as the project page: `KoraAvailableGuard` and the page's loader both answer 404 wherever `KORA_AVAILABLE` in `common/src/kora.ts` is false, currently production and any unrecognized environment. Launch flips that one entry (R9).
 
 ## Verification before implementation handoff
 
@@ -101,15 +101,16 @@ Use API integration tests with delivery/provider stubs and database assertions, 
 
 ## Pull requests
 
-Deliver as four stacked PRs, each with the tests above that cover its scope. Partial merges are safe because every new entry point shares the project page's production restriction.
+Deliver as five stacked PRs, each with the tests above that cover its scope. Partial merges are safe because every new entry point shares the project page's production restriction.
 
 1. Delivery transport: `MailService.sendUnrecordedMail` and `MmsService.sendUnrecordedText` send without a member, stored body, or link tracking, and return a `DeliveryFailure` instead of faking a send. They share the provider call with `sendMail` and `sendMms`, whose behavior is unchanged. `processKeywordReplacements` moves to `notifs/notification-keywords.ts` to keep `mail.service.ts` under 500 lines. Commit this spec with it.
-2. Backend participant core: the generic OTP module; participant, challenge, rate-event, continuation, and session storage with one migration; cookie sessions; email and SMS OTP with limits and purging. Both channels share the challenge machinery and differ only in delivery. Endpoints under `/participants`:
+2. Backend participant core: the generic OTP module; participant, challenge, rate-event, continuation, and session storage with one migration; cookie sessions; email and SMS OTP with limits and purging. Both channels share the challenge machinery and differ only in delivery. Endpoints under `/kora`:
    - `GET me`: signed-in participant, pending code, and pending signup, for reload restoration.
    - `POST code`: send a code. `DELETE code`: change the contact.
    - `POST code/verify`: sign in, or open a signup awaiting a name.
    - `POST signup`: name and complete. `POST sign-out`.
-3. Frontend OTP flow: the participant form, extracted contact parsing and country selector, R2 precedence, and sign-out.
-4. Google and Apple OAuth: identity storage and migration, participant start/callback handling, email matching and linking, and the provider buttons.
+3. Kora naming: rename the participant module, tables, cookies, routes, launch switch, and OTP purpose to their `Kora` names (R1), with a migration renaming the merged tables, constraints, indexes, and enum value in place.
+4. Frontend OTP flow: the participant form, extracted contact parsing and country selector, R2 precedence, and sign-out.
+5. Google and Apple OAuth: identity storage and migration, participant start/callback handling, email matching and linking, and the provider buttons.
 
 The split gives the security-heavy OTP/session review and the OAuth review their own diffs, and lets the existing mail and SMS paths be checked unchanged before anything depends on the new boundary.

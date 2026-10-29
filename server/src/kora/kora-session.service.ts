@@ -7,23 +7,19 @@ import { readCookie } from "src/utils/cookies";
 import { hashToken, randomToken } from "src/utils/random";
 import type { Repository } from "src/utils/Repository";
 import { LessThan } from "typeorm";
-import { ProjectParticipantSession } from "./entities/project-participant-session.entity";
-import { ProjectParticipant } from "./entities/project-participant.entity";
-import {
-  clearCookie,
-  ParticipantCookie,
-  setCookie,
-} from "./participant-cookies";
+import { KoraParticipantSession } from "./entities/kora-participant-session.entity";
+import { KoraParticipant } from "./entities/kora-participant.entity";
+import { clearCookie, KoraCookie, setCookie } from "./kora-cookies";
 
 const IDLE_TIMEOUT_MS = milliseconds({ days: 30 });
 
 @Injectable()
-export class ParticipantSessionService {
+export class KoraSessionService {
   constructor(
-    @InjectRepository(ProjectParticipantSession)
-    private readonly sessions: Repository<ProjectParticipantSession>,
-    @InjectRepository(ProjectParticipant)
-    private readonly participants: Repository<ProjectParticipant>,
+    @InjectRepository(KoraParticipantSession)
+    private readonly sessions: Repository<KoraParticipantSession>,
+    @InjectRepository(KoraParticipant)
+    private readonly participants: Repository<KoraParticipant>,
   ) {}
 
   /** Replaces this browser's session, leaving other browsers signed in. */
@@ -33,7 +29,7 @@ export class ParticipantSessionService {
     participantId: string;
   }): Promise<void> {
     const { req, res, participantId } = params;
-    const previous = readCookie(req, ParticipantCookie.Session);
+    const previous = readCookie(req, KoraCookie.Session);
     if (previous) {
       await this.sessions.delete({ tokenHash: hashToken(previous) });
     }
@@ -45,18 +41,15 @@ export class ParticipantSessionService {
     });
     setCookie({
       res,
-      name: ParticipantCookie.Session,
+      name: KoraCookie.Session,
       token,
       maxAgeMs: IDLE_TIMEOUT_MS,
     });
   }
 
   /** The signed-in participant, whose session this extends. */
-  async current(
-    req: Request,
-    res: Response,
-  ): Promise<ProjectParticipant | null> {
-    const token = readCookie(req, ParticipantCookie.Session);
+  async current(req: Request, res: Response): Promise<KoraParticipant | null> {
+    const token = readCookie(req, KoraCookie.Session);
     if (!token) return null;
     const now = Date.now();
     const renewed = await this.sessions
@@ -73,12 +66,12 @@ export class ParticipantSessionService {
     const participant =
       row && (await this.participants.findOneBy({ id: row.participantId }));
     if (!participant) {
-      clearCookie(res, ParticipantCookie.Session);
+      clearCookie(res, KoraCookie.Session);
       return null;
     }
     setCookie({
       res,
-      name: ParticipantCookie.Session,
+      name: KoraCookie.Session,
       token,
       maxAgeMs: IDLE_TIMEOUT_MS,
     });
@@ -86,11 +79,11 @@ export class ParticipantSessionService {
   }
 
   async end(req: Request, res: Response): Promise<void> {
-    const token = readCookie(req, ParticipantCookie.Session);
+    const token = readCookie(req, KoraCookie.Session);
     if (token) {
       await this.sessions.delete({ tokenHash: hashToken(token) });
     }
-    clearCookie(res, ParticipantCookie.Session);
+    clearCookie(res, KoraCookie.Session);
   }
 
   @Cron(CronExpression.EVERY_HOUR)

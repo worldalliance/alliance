@@ -301,13 +301,13 @@ BEGIN
   END IF;
 END $$;
 
--- Participants are not members and get no anonymized stand-ins; staging signs
--- up its own.
+-- Kora participants are not members and get no anonymized stand-ins; staging
+-- signs up its own.
 DO $$
 BEGIN
-  IF to_regclass('project_participant') IS NOT NULL THEN
-    TRUNCATE "project_participant", "project_participant_session",
-      "project_participant_signup";
+  IF to_regclass('kora_participant') IS NOT NULL THEN
+    TRUNCATE "kora_participant", "kora_participant_session",
+      "kora_participant_signup";
   END IF;
 END $$;
 
