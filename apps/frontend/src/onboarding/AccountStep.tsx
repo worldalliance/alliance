@@ -8,7 +8,6 @@ import { ACCOUNT_MOVED_MESSAGE, ALLIANCE_DOMAIN } from "@alliance/common/url";
 // eslint-disable-next-line api-client/named-hooks-only -- auth and session flow, which no query cache holds
 import { authForgotPassword, authLogin } from "@alliance/shared/client";
 import { forgotPassword as forgotPasswordCopy } from "@alliance/shared/lib/copy";
-import { Features } from "@alliance/shared/lib/features";
 import { readPosthogContext } from "@alliance/shared/lib/posthog-request";
 import {
   INVITE_REFUSAL_HEADING,
@@ -31,7 +30,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { href, Link, useLocation, useNavigate } from "react-router";
 import { z } from "zod";
 import { useAuth } from "../lib/AuthContext";
-import { getApiUrl, isFeatureEnabled } from "../lib/config";
+import { getApiUrl } from "../lib/config";
 import { posthogRequestContext } from "../lib/posthogRequestContext";
 import { signInOnStaging } from "../lib/reviewSignIn";
 import { WAITLIST_HREF } from "../site/links";
@@ -91,14 +90,11 @@ export function AccountStep({
   // says so after the provider round-trip. Refusing it here costs the member
   // the trip rather than the whole journey.
   const inviteOnly =
-    (!isFeatureEnabled(Features.PublicSignup) && !referralCode) ||
-    inviteRefusal !== null ||
-    inviteUnresolved;
+    !referralCode || inviteRefusal !== null || inviteUnresolved;
   // An invite in the URL is a way in, so logging in offers the sign-up screen
   // it came from rather than sending the member off to ask for another invite.
   const canSignUp =
-    isFeatureEnabled(Features.PublicSignup) ||
-    (!!referralCode && inviteRefusal === null && !inviteUnresolved);
+    !!referralCode && inviteRefusal === null && !inviteUnresolved;
   const [loggingIn, setLoggingIn] = useState(startInLogin);
   const [error, setError] = useState<ReactNode>(null);
   const location = useLocation();
