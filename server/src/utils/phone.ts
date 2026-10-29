@@ -16,11 +16,11 @@ export const phoneNumberTransformer: ValueTransformer = {
 };
 
 /**
- * Values written by `scripts/sync_prod_to_staging.sh` in place of real member
+ * Values written by `scripts/anonymize/anonymize.sql` in place of real member
  * numbers. `+1555…` is the current format; `15550100` is what it wrote before,
  * and survives on staging until the next sync runs.
  *
- * Keep in sync with that script — it is the only writer of these.
+ * Keep in sync with that file — it is the only writer of these.
  */
 const ANONYMIZED_PHONE_PREFIXES = ["+1555", "15550100"] as const;
 
