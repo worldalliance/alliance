@@ -12,7 +12,12 @@ valid_name() { [[ "$1" =~ ^[a-z0-9][a-z0-9-]*$ ]]; }
 
 worktree_dir_for() { echo "$worktree_root/alliance-$1"; }
 
-is_current_checkout() { [[ "$PWD" == "$1" || "$PWD" == "$1"/* ]]; }
+is_current_checkout() {
+  local here
+  here="$(pwd -P)" ||
+    die "cannot resolve the current directory, so it cannot be told apart from $1"
+  [[ "$here" == "$1" || "$here" == "$1"/* ]]
+}
 
 # A half-removed worktree is already deregistered, so the .git pointer, not
 # 'git worktree list', is what says this tree is ours for rm -rf to delete.
