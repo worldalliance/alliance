@@ -10994,6 +10994,28 @@ export type ActionUpdatesDeleteUpdateAdminResponses = {
 
 export type ActionUpdatesDeleteUpdateAdminResponse = ActionUpdatesDeleteUpdateAdminResponses[keyof ActionUpdatesDeleteUpdateAdminResponses];
 
+export type ActionUpdatesAllUpdatesAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/actions/updates/admin';
+};
+
+export type ActionUpdatesAllUpdatesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionUpdatesAllUpdatesAdminError = ActionUpdatesAllUpdatesAdminErrors[keyof ActionUpdatesAllUpdatesAdminErrors];
+
+export type ActionUpdatesAllUpdatesAdminResponses = {
+    200: Array<ActionUpdateDto>;
+};
+
+export type ActionUpdatesAllUpdatesAdminResponse = ActionUpdatesAllUpdatesAdminResponses[keyof ActionUpdatesAllUpdatesAdminResponses];
+
 export type ActionUpdatesAllUpdatesData = {
     body?: never;
     path?: never;

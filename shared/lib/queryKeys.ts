@@ -56,6 +56,7 @@ export const queryKeys = {
   actionReferralCode: (actionId: number) =>
     ["actionsGetActionReferralCode", actionId] as const,
   actionUpdatesAll: () => ["actionUpdatesAllUpdates"] as const,
+  actionUpdatesAllAdmin: () => ["actionUpdatesAllUpdatesAdmin"] as const,
   actionUpdatesRecent: (limit: number) =>
     ["actionUpdatesRecentUpdates", limit] as const,
   /** Prefixes action details and generalUpdatesUnread, so invalidating it refetches those too. */

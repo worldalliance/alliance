@@ -12,6 +12,7 @@ import {
   ListOrdered,
   Mail,
   MailPlus,
+  Megaphone,
   Map,
   MessageSquare,
   Network,
@@ -185,6 +186,11 @@ export const navEntries = (counts: {
     folder: SidebarFolder.Content,
     label: "Content",
     links: [
+      {
+        to: "/action-updates",
+        label: "Action Updates",
+        icon: <Megaphone size={16} />,
+      },
       {
         to: "/general-updates",
         label: "General Updates",
