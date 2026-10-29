@@ -102,7 +102,9 @@ it("shows each action's audience, task form link, and what to look at before che
   api.served[2] = { ...api.served[2], image: null, archived: true };
   renderPanel();
 
-  const write = (await screen.findByText(/^1 member ·/)).closest("li");
+  const write = (await screen.findByText(/^1 member · (?!\d+ min$)/)).closest(
+    "li",
+  );
   expect(write?.textContent).not.toContain("cover image");
   expect(write?.textContent).toContain("Image set");
   expect(write?.textContent).toContain("Archived");
@@ -119,7 +121,7 @@ it("counts only members with an active contract, as the server admits them", asy
   expect(
     await screen.findByRole("button", { name: "Launch and notify 1 member" }),
   ).toBeTruthy();
-  expect(screen.getByText(/^1 member ·/)).toBeTruthy();
+  expect(screen.getByText(/^1 member · (?!\d+ min$)/)).toBeTruthy();
   expect(screen.getByText(/^0 members ·/)).toBeTruthy();
 });
 
@@ -183,9 +185,11 @@ it("shows each reminder as the picked group of members gets it", async () => {
   expect(announcement?.textContent).toContain("Member Action announcement");
   expect(announcement?.textContent).toContain("As Ben gets it");
 
-  fireEvent.change(screen.getByLabelText("Preview as"), {
-    target: { value: "1" },
-  });
+  fireEvent.click(
+    within(screen.getByRole("group", { name: "Preview as" })).getAllByRole(
+      "radio",
+    )[1],
+  );
   expect(
     await screen.findByText("New Alliance task: Call", { exact: false }),
   ).toBeTruthy();

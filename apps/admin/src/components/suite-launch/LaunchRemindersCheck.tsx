@@ -1,7 +1,10 @@
+import { withCount } from "@alliance/common/plural";
 import type { CreateReminderGroupDto, UserDto } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
 import { useState } from "react";
 import { getSiteUrl } from "../../lib/config";
+import Disclosure from "../Disclosure";
+import { SelectableCard, SelectableCardGroup } from "../SelectableCards";
 import { LaunchSection } from "./launchBlockers";
 import LaunchCheck from "./LaunchCheck";
 import {
@@ -45,8 +48,6 @@ const LaunchRemindersCheck = ({
 }) => {
   const [mixIndex, setMixIndex] = useState(0);
   const actionsById = new Map(actions.map(({ action }) => [action.id, action]));
-  const mixNames = (mix: ActionMix) =>
-    mix.actionIds.map((id) => actionsById.get(id)?.name).join(", ");
   const mix = mixes.at(mixIndex) ?? mixes.at(0);
   const sampleId = mix?.userIds[0];
   const sample = users.find((user) => user.id === sampleId);
@@ -70,20 +71,27 @@ const LaunchRemindersCheck = ({
       summary={`${windows.length} created on launch${atNight > 0 ? ` · ${atNight} reach some members at night` : ""}`}
     >
       {mixes.length > 0 && (
-        <label className="flex min-w-0 items-center gap-2 text-sm">
-          Preview as
-          <select
-            value={mixIndex}
-            onChange={(e) => setMixIndex(Number(e.target.value))}
-            className="min-w-0 flex-1 truncate rounded border border-zinc-300 px-2 py-1 text-sm"
-          >
-            {mixes.map((option, index) => (
-              <option key={option.actionIds.join(",")} value={index}>
-                {mixNames(option)} ({option.userIds.length} members)
-              </option>
-            ))}
-          </select>
-        </label>
+        <SelectableCardGroup label="Preview as">
+          {mixes.map((option, index) => (
+            <SelectableCard
+              key={option.actionIds.join(",")}
+              selected={mix === option}
+              onSelect={() => setMixIndex(index)}
+              title={`${withCount(option.userIds.length, "member")} · ${option.minutes} min`}
+            >
+              {option.actionIds.map((id) => (
+                <span key={id} className="block text-zinc-600">
+                  {actionsById.get(id)?.name}
+                </span>
+              ))}
+            </SelectableCard>
+          ))}
+        </SelectableCardGroup>
+      )}
+      {mixes.length > 0 && reminders.length > 0 && (
+        <p className="text-xs text-zinc-500">
+          Open a reminder to see it as these members get it
+        </p>
       )}
       <ul className="text-sm">
         {reminders.map(({ body, window }) => {
@@ -108,28 +116,27 @@ const LaunchRemindersCheck = ({
               : [];
           return (
             <li key={window.name}>
-              <details>
-                <summary
-                  className={cn(
-                    "flex cursor-pointer justify-between gap-4 py-0.5",
-                    early.has(window) && "text-red-600",
-                  )}
-                >
-                  <span>
-                    {window.name}
-                    {!!nightCounts.get(window) && (
-                      <span className="ml-2 text-xs text-yellow-700">
-                        Reaches {nightCounts.get(window)} members between 10pm
-                        and 8am their time
-                      </span>
-                    )}
+              <Disclosure
+                summaryClassName={cn(early.has(window) && "text-red-600")}
+                summary={
+                  <span className="flex flex-1 justify-between gap-4">
+                    <span>
+                      {window.name}
+                      {!!nightCounts.get(window) && (
+                        <span className="ml-2 text-xs text-yellow-700">
+                          Reaches {nightCounts.get(window)} members between 10pm
+                          and 8am their time
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-zinc-500">
+                      {inLaunchZone(window.start)}
+                      {window.end.getTime() !== window.start.getTime() &&
+                        ` – ${inLaunchZone(window.end)}`}
+                    </span>
                   </span>
-                  <span className="text-zinc-500">
-                    {inLaunchZone(window.start)}
-                    {window.end.getTime() !== window.start.getTime() &&
-                      ` – ${inLaunchZone(window.end)}`}
-                  </span>
-                </summary>
+                }
+              >
                 {sample && previews.length > 0 ? (
                   previews.map(({ variant, rendered }) => (
                     <dl
@@ -164,7 +171,7 @@ const LaunchRemindersCheck = ({
                     The preview appears once members load.
                   </p>
                 )}
-              </details>
+              </Disclosure>
             </li>
           );
         })}
