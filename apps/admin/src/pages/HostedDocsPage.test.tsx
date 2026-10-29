@@ -82,7 +82,7 @@ test("lists documents with views, uploader, and replacement state", async () => 
   renderPage();
   await screen.findByText("2026-Pilot.pdf");
   expect(screen.getByText("7")).toBeTruthy();
-  expect(screen.getByText(/^Ada Admin · /)).toBeTruthy();
+  expect(screen.getByText("Ada Admin")).toBeTruthy();
   expect(screen.getByDisplayValue("Board packet")).toBeTruthy();
 });
 
