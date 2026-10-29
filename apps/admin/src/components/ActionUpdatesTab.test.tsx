@@ -2,6 +2,7 @@ import type { ActionUpdateDto } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { useQuery } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
@@ -42,6 +43,16 @@ const HangingActionReload = ({ children }: { children: ReactNode }) => {
   return children;
 };
 
+// ToastProvider keeps an empty alert region of its own.
+const tabAlert = () =>
+  screen.queryAllByRole("alert").find((el) => el.tagName === "P") ?? null;
+const findTabAlert = () =>
+  waitFor(() => {
+    const alert = tabAlert();
+    if (!alert) throw new Error("no alert in the tab");
+    return alert;
+  });
+
 const renderTab = (
   updates: ActionUpdateDto[] = [],
   params: { actionReloadHangs?: boolean } = {},
@@ -57,21 +68,23 @@ const renderTab = (
     />
   );
   render(
-    <MemoryRouter>
-      <Routes>
-        <Route
-          path="/"
-          element={
-            params.actionReloadHangs ? (
-              <HangingActionReload>{tab}</HangingActionReload>
-            ) : (
-              tab
-            )
-          }
-        />
-        <Route path="/actions/4/updates/9" element={<p>Update 9</p>} />
-      </Routes>
-    </MemoryRouter>,
+    <ToastProvider>
+      <MemoryRouter>
+        <Routes>
+          <Route
+            path="/"
+            element={
+              params.actionReloadHangs ? (
+                <HangingActionReload>{tab}</HangingActionReload>
+              ) : (
+                tab
+              )
+            }
+          />
+          <Route path="/actions/4/updates/9" element={<p>Update 9</p>} />
+        </Routes>
+      </MemoryRouter>
+    </ToastProvider>,
     { wrapper: query.wrapper },
   );
   const actionInvalidated = () =>
@@ -110,7 +123,7 @@ describe("ActionUpdatesTab", () => {
 
     expect(await screen.findByText("Update 9")).toBeTruthy();
     expect(actionInvalidated()).toBe(true);
-    expect(screen.queryByRole("alert")).toBeNull();
+    expect(tabAlert()).toBeNull();
   });
 
   it("opens the created update without waiting for the action to reload", async () => {
@@ -199,7 +212,7 @@ describe("ActionUpdatesTab", () => {
 
     createUpdate();
 
-    expect((await screen.findByRole("alert")).textContent).toBe(
+    expect((await findTabAlert()).textContent).toBe(
       "notificationMode must be one of",
     );
   });
@@ -209,7 +222,7 @@ describe("ActionUpdatesTab", () => {
 
     createUpdate();
 
-    expect((await screen.findByRole("alert")).textContent).toBe(
+    expect((await findTabAlert()).textContent).toBe(
       "Couldn't create the update.",
     );
   });
@@ -222,11 +235,20 @@ describe("ActionUpdatesTab", () => {
 
     createUpdate();
 
-    expect((await screen.findByRole("alert")).textContent).toBe(
+    expect((await findTabAlert()).textContent).toBe(
       "Couldn't create the update.",
     );
   });
 });
+
+const clickDelete = (button: HTMLElement) => {
+  fireEvent.click(button);
+  const confirmButton = screen
+    .getAllByRole("button", { name: "Delete" })
+    .at(-1);
+  if (!confirmButton) throw new Error("no confirm button");
+  fireEvent.click(confirmButton);
+};
 
 describe("deleting an update", () => {
   afterEach(() => {
@@ -236,16 +258,35 @@ describe("deleting an update", () => {
   const deleteExisting = (params: { actionReloadHangs?: boolean } = {}) => {
     const tab = renderTab([existing], params);
     tab.client.setQueryData(queryKeys.actionUpdateAdmin(7), existing);
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    clickDelete(screen.getByRole("button", { name: "Delete" }));
     return tab;
   };
+
+  it("asks before deleting, and keeps the update on cancel", async () => {
+    let deleted = false;
+    deleteAnswer = () => {
+      deleted = true;
+      return Response.json({});
+    };
+    renderTab([existing]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    expect(
+      screen.getByText('Delete "Old news"? Members stop seeing it.'),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await Bun.sleep(30);
+
+    expect(deleted).toBe(false);
+    expect(screen.getByRole("button", { name: "Delete" })).toBeTruthy();
+  });
 
   it("drops the cached update and refreshes the action", async () => {
     const { client, actionInvalidated } = deleteExisting();
 
     await waitFor(() => expect(actionInvalidated()).toBe(true));
     expect(client.getQueryData(queryKeys.actionUpdateAdmin(7))).toBeUndefined();
-    expect(screen.queryByRole("alert")).toBeNull();
+    expect(tabAlert()).toBeNull();
   });
 
   it("hides the delete while it's in flight", async () => {
@@ -283,8 +324,8 @@ describe("deleting an update", () => {
     renderTab([existing, { ...existing, id: 8, title: "Older news" }]);
 
     const [first, second] = screen.getAllByRole("button", { name: "Delete" });
-    fireEvent.click(first);
-    fireEvent.click(second);
+    clickDelete(first);
+    clickDelete(second);
 
     await waitFor(() =>
       expect(screen.queryAllByRole("button", { name: "Delete" })).toHaveLength(
@@ -299,7 +340,7 @@ describe("deleting an update", () => {
     const { actionInvalidated } = deleteExisting();
 
     await waitFor(() => expect(actionInvalidated()).toBe(true));
-    expect(screen.queryByRole("alert")).toBeNull();
+    expect(tabAlert()).toBeNull();
   });
 
   it("says why the server refused the delete and keeps the update", async () => {
@@ -312,7 +353,7 @@ describe("deleting an update", () => {
 
     const { client, actionInvalidated } = deleteExisting();
 
-    expect((await screen.findByRole("alert")).textContent).toBe("Not allowed");
+    expect((await findTabAlert()).textContent).toBe("Not allowed");
     expect(screen.getByRole("button", { name: "Delete" })).toBeTruthy();
     expect(client.getQueryData(queryKeys.actionUpdateAdmin(7))).toEqual(
       existing,

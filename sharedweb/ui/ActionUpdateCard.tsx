@@ -11,7 +11,7 @@ import Button, { ButtonColor } from "./Button";
 
 export interface ActionUpdateCardProps {
   update: ActionUpdateDto;
-  onDelete?: () => void;
+  onDelete?: (button: HTMLElement) => void;
   actions?: React.ReactNode;
   onActionPageTimeline?: boolean;
   border?: boolean;
@@ -66,7 +66,11 @@ const ActionUpdateCard = ({
             {actions}
 
             {onDelete && (
-              <Button onClick={onDelete} color={ButtonColor.Black} size="small">
+              <Button
+                onClick={(e) => onDelete(e.currentTarget)}
+                color={ButtonColor.Black}
+                size="small"
+              >
                 Delete
               </Button>
             )}
