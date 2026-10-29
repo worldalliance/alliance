@@ -90,3 +90,14 @@ Code delivery keeps the existing delivery gate: production, or `SEND_DEV_NOTIFS=
 Origin: agent-proposed, user-approved.
 
 Record participant sign-up and sign-in events in PostHog for every method (email OTP, SMS OTP, Google, Apple), separate from the member sign-up and login events.
+
+## R11. Provider callback registration
+
+Origin: user.
+
+The participant callbacks are registered with both providers on the six web app hosts: `thealliance.org`, `www.thealliance.org`, `worldalliance.org`, `www.worldalliance.org`, `staging.thealliance.org`, and `staging.worldalliance.org`.
+
+- Google: `https://{host}/api/kora/google/callback` is an authorized redirect URI on the Web OAuth client, as is `http://localhost:3005/kora/google/callback` for local development.
+- Apple: `https://{host}/api/kora/apple/callback` is a return URL on the Services ID `org.thealliance.signin`.
+
+The admin hosts are not registered, because the participant flow runs only on the web app. The callback paths cannot change without updating both providers.
