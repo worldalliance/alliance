@@ -5,12 +5,9 @@ import { TZDate } from "@date-fns/tz";
 import { addDays, isTuesday, nextTuesday, set } from "date-fns";
 import { useState } from "react";
 import { href, Link } from "react-router";
-import {
-  inLaunchZone,
-  LAUNCH_TIME_ZONE,
-} from "../components/suite-launch/launchSchedule";
 import { formatAwayRange } from "../components/UserAwayPeriodsSection";
 import { adminRefusalMessage } from "../lib/adminRefusal";
+import { inLaunchZone, LAUNCH_TIME_ZONE } from "../lib/launchTimeZone";
 import { useAwayRangesInWindowAdmin } from "../lib/useAwayRangesInWindowAdmin";
 
 /** Next Tuesday, today included, 7pm through the Tuesday after at 11:59pm, Pacific time. */

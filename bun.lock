@@ -116,6 +116,7 @@
         "@alliance/shared": "workspace:*",
         "@alliance/sharedweb": "workspace:*",
         "@base-ui/react": "^1.2.0",
+        "@date-fns/tz": "^1.4.1",
         "@dnd-kit/core": "^6.3.1",
         "@dnd-kit/modifiers": "^9.0.0",
         "@dnd-kit/sortable": "^10.0.0",
@@ -846,6 +847,8 @@
     "@css-inline/css-inline-win32-x64-msvc": ["@css-inline/css-inline-win32-x64-msvc@0.20.0", "", { "os": "win32", "cpu": "x64" }, "sha512-pdO/QXLRwuq/RxO5PSFMhmWGJSQOvkiDyV4RrewEkE7SOCY8HAYNhx1T0y0pj2WzxuVdbNQbpwiCHAdQNplUJw=="],
 
     "@darraghor/eslint-plugin-nestjs-typed": ["@darraghor/eslint-plugin-nestjs-typed@6.18.0", "", { "dependencies": { "@typescript-eslint/scope-manager": "^8.48.1", "@typescript-eslint/type-utils": "^8.48.1", "@typescript-eslint/utils": "^8.48.1", "eslint-module-utils": "2.12.1", "glob": "11.1.0", "reflect-metadata": "0.2.2", "ts-api-utils": "2.1.0" }, "peerDependencies": { "@typescript-eslint/parser": "^7.0.0 || ^8.0.0", "class-validator": "*", "eslint": ">=9.18.0" } }, "sha512-Mh8LfDmG+P+KiW5ICR9qmASviANnhKBQDirJM/ydH9/Hpyd3cPTs3Yw5BT7oDprQgJGViidxPZWZVC16H1DGew=="],
+
+    "@date-fns/tz": ["@date-fns/tz@1.5.0", "", {}, "sha512-lwYN/vDPeNRULcepoE/LO2Pgx+7/RV+S9ARfbc9lr2DtGkOD7pAiruHvbR1RX3Qyf6ja47EWJDMsNK5vK08DJg=="],
 
     "@dnd-kit/accessibility": ["@dnd-kit/accessibility@3.1.1", "", { "dependencies": { "tslib": "^2.0.0" }, "peerDependencies": { "react": ">=16.8.0" } }, "sha512-2P+YgaXF+gRsIihwwY1gCsQSYnu9Zyj2py8kY5fFvUM1qm2WA2u639R6YNVfU4GWr+ZM5mqEsfHZZLoRONbemw=="],
 
