@@ -10,7 +10,10 @@ export function ProjectTimeline({
   className?: string;
 }) {
   return (
-    <section aria-label={TIMELINE_HEADING} className={className}>
+    <section className={cn("flex flex-col gap-5", className)}>
+      <h2 className="text-center text-2xl font-medium text-[var(--site-ink)] sm:text-3xl">
+        {TIMELINE_HEADING}
+      </h2>
       <ol
         className="site-sans relative flex flex-col gap-6 text-lg lg:grid lg:grid-rows-[auto_auto_auto] lg:gap-x-8"
         style={{
