@@ -62,9 +62,20 @@ it("groups members by the actions they get and previews one from a group", async
   const mixes = screen.getAllByRole("button", {
     name: "Preview a member who gets these actions",
   });
-  expect(mixes.map((button) => button.closest("tr")?.textContent)).toEqual([
-    "118Call, Write",
-    "110Call",
+  const cells = (button: HTMLElement) =>
+    [...(button.closest("tr")?.querySelectorAll("td") ?? [])].map((td) =>
+      [...td.querySelectorAll("span")].map((line) => line.textContent),
+    );
+  expect(
+    mixes.map((button) => {
+      const [members, minutes] = [
+        ...(button.closest("tr")?.querySelectorAll("td") ?? []),
+      ].map((td) => td.textContent);
+      return { members, minutes, actions: cells(button)[2] };
+    }),
+  ).toEqual([
+    { members: "1", minutes: "18", actions: ["Call", "Write"] },
+    { members: "1", minutes: "10", actions: ["Call"] },
   ]);
   fireEvent.click(mixes[0]);
 

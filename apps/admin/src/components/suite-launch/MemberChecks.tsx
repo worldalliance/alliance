@@ -52,7 +52,7 @@ export const MemberPreview = ({
         </thead>
         <tbody>
           {actionMixes(loads).map((mix) => (
-            <tr key={mix.actionIds.join(",")}>
+            <tr key={mix.actionIds.join(",")} className="align-top">
               <td>{mix.userIds.length}</td>
               <td
                 className={cn(
@@ -63,9 +63,11 @@ export const MemberPreview = ({
                 {mix.minutes}
               </td>
               <td>
-                {mix.actionIds
-                  .map((id) => actionsById.get(id)?.name)
-                  .join(", ")}
+                {mix.actionIds.map((id) => (
+                  <span key={id} className="block">
+                    {actionsById.get(id)?.name}
+                  </span>
+                ))}
               </td>
               <td className="text-right">
                 <button
