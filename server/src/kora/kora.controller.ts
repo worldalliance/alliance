@@ -129,15 +129,8 @@ export class KoraController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<void> {
-    const codeToken = readCookie(req, KoraCookie.Code);
-    if (codeToken) {
-      await this.otpService.abandon({
-        purpose: PURPOSE,
-        browserToken: codeToken,
-      });
-    }
-    clearCookie(res, KoraCookie.Code);
-    await this.dropSignup(req, res);
+    await this.participantService.forgetCode(req, res);
+    await this.participantService.forgetSignup(req, res);
   }
 
   @Post("code/verify")
@@ -164,13 +157,16 @@ export class KoraController {
     }
     clearCookie(res, KoraCookie.Code);
     if ("participant" in verified.value) {
-      await this.dropSignup(req, res);
+      const { participant, signedUp, method } = verified.value;
+      await this.participantService.forgetSignup(req, res);
       await this.sessionService.begin({
         req,
         res,
-        participantId: verified.value.participant.id,
+        participantId: participant.id,
+        signedUp,
+        method,
       });
-      return new KoraCodeVerifiedDto(verified.value.participant);
+      return new KoraCodeVerifiedDto(participant);
     }
     setCookie({
       res,
@@ -205,12 +201,15 @@ export class KoraController {
         { description: KoraError.SignupExpired },
       );
     }
+    const { participant, signedUp, method } = completed.value;
     await this.sessionService.begin({
       req,
       res,
-      participantId: completed.value.id,
+      participantId: participant.id,
+      signedUp,
+      method,
     });
-    return new KoraParticipantDto(completed.value);
+    return new KoraParticipantDto(participant);
   }
 
   /** Ends this browser's participant session only. */
@@ -223,13 +222,5 @@ export class KoraController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<void> {
     await this.sessionService.end(req, res);
-  }
-
-  private async dropSignup(req: Request, res: Response): Promise<void> {
-    const signupToken = readCookie(req, KoraCookie.Signup);
-    if (signupToken) {
-      await this.participantService.abandonSignup(signupToken);
-    }
-    clearCookie(res, KoraCookie.Signup);
   }
 }
