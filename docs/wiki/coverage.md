@@ -154,28 +154,28 @@ The initial content pass is complete when no row is `pending` or `blocked`.
 | [01a1403d-b6b6-7000-ae0b-73c811231bf4-latest-withdrawal-rule](../provenance/01a1403d-b6b6-7000-ae0b-73c811231bf4-latest-withdrawal-rule/) | pending | | |
 | [01a14041-e5c0-7000-a9ae-cdc1f11df1c9-dedup-event-boundary](../provenance/01a14041-e5c0-7000-a9ae-cdc1f11df1c9-dedup-event-boundary/) | pending | | |
 | [01a140f9-bc1e-7000-8c07-a0852bf7aee4-collective-result-groups](../provenance/01a140f9-bc1e-7000-8c07-a0852bf7aee4-collective-result-groups/) | pending | | |
-| [01a1428e-0285-7000-8c1a-9063cad87c1b-split-responses-html-export](../provenance/01a1428e-0285-7000-8c1a-9063cad87c1b-split-responses-html-export/) | pending | | |
+| [01a1428e-0285-7000-8c1a-9063cad87c1b-split-responses-html-export](../provenance/01a1428e-0285-7000-8c1a-9063cad87c1b-split-responses-html-export/) | implementation-only | | Splits `responsesHtmlExport.ts` under the line limit; the exported HTML is byte-identical. |
 | [01a1428e-e534-7000-b94b-29f9e649a2f1-invite-funnel-hook](../provenance/01a1428e-e534-7000-b94b-29f9e649a2f1-invite-funnel-hook/) | pending | | |
-| [01a1428f-d125-7000-bcbf-f46d26a1df76-split-community-page](../provenance/01a1428f-d125-7000-bcbf-f46d26a1df76-split-community-page/) | pending | | |
-| [01a14290-cb2c-7000-b964-d7b7887d936c-split-cohort-expression-builder](../provenance/01a14290-cb2c-7000-b964-d7b7887d936c-split-cohort-expression-builder/) | pending | | |
+| [01a1428f-d125-7000-bcbf-f46d26a1df76-split-community-page](../provenance/01a1428f-d125-7000-bcbf-f46d26a1df76-split-community-page/) | implementation-only | | Splits `CommunityPage.tsx` under the line limit, with no behavior change; adds tests of the existing group editor. |
+| [01a14290-cb2c-7000-b964-d7b7887d936c-split-cohort-expression-builder](../provenance/01a14290-cb2c-7000-b964-d7b7887d936c-split-cohort-expression-builder/) | implementation-only | | Splits `CohortExpressionBuilder.tsx` under the line limit, with no behavior change. |
 | [01a14290-d198-7000-8362-6451c7f4fb45-group-membership-mutations](../provenance/01a14290-d198-7000-8362-6451c7f4fb45-group-membership-mutations/) | pending | | |
 | [01a14291-0be3-7000-8a41-acfbf1c827f7-conversation-info-cache](../provenance/01a14291-0be3-7000-8a41-acfbf1c827f7-conversation-info-cache/) | pending | | |
-| [01a142a4-899f-7000-ba4d-05f2e3691b84-split-actions-controller](../provenance/01a142a4-899f-7000-ba4d-05f2e3691b84-split-actions-controller/) | pending | | |
+| [01a142a4-899f-7000-ba4d-05f2e3691b84-split-actions-controller](../provenance/01a142a4-899f-7000-ba4d-05f2e3691b84-split-actions-controller/) | implementation-only | | Splits `ActionsController` by concern with the same routes, guards, and DTOs; only generated client names change. |
 | [01a142bd-e020-7000-a502-c77a03cb505c-dedup-event-effect-client](../provenance/01a142bd-e020-7000-a502-c77a03cb505c-dedup-event-effect-client/) | pending | | |
 | [01a14340-7802-7000-9c91-727af2919d87-thumbnail-alt-nullable](../provenance/01a14340-7802-7000-9c91-727af2919d87-thumbnail-alt-nullable/) | pending | | |
 | [01a14348-9ec5-7000-ab59-715b70c00de3-notification-settings-overhaul](../provenance/01a14348-9ec5-7000-ab59-715b70c00de3-notification-settings-overhaul/) | pending | | |
 | [01a14387-9f5e-7000-86a9-f6df5f028517-clear-restored-push-tokens](../provenance/01a14387-9f5e-7000-86a9-f6df5f028517-clear-restored-push-tokens/) | pending | | |
-| [01a1438a-3b0d-7000-8c2e-42bfba85601e-split-home-page](../provenance/01a1438a-3b0d-7000-8c2e-42bfba85601e-split-home-page/) | pending | | |
-| [01a1438b-2ccc-7000-a45b-c9267e3de265-split-user-service](../provenance/01a1438b-2ccc-7000-a45b-c9267e3de265-split-user-service/) | pending | | |
-| [01a1438b-f1d5-7000-99bf-6a390362cfe2-split-action-event-reminder-service](../provenance/01a1438b-f1d5-7000-99bf-6a390362cfe2-split-action-event-reminder-service/) | pending | | |
+| [01a1438a-3b0d-7000-8c2e-42bfba85601e-split-home-page](../provenance/01a1438a-3b0d-7000-8c2e-42bfba85601e-split-home-page/) | implementation-only | | Splits `HomePage.tsx` under the line limit, with no behavior change. |
+| [01a1438b-2ccc-7000-a45b-c9267e3de265-split-user-service](../provenance/01a1438b-2ccc-7000-a45b-c9267e3de265-split-user-service/) | implementation-only | | Splits `UserService` and `user.controller.ts` by concern with the same routes; generated client names change, and the friend-request read-status error log names `FriendService` as its logger context. |
+| [01a1438b-f1d5-7000-99bf-6a390362cfe2-split-action-event-reminder-service](../provenance/01a1438b-f1d5-7000-99bf-6a390362cfe2-split-action-event-reminder-service/) | implementation-only | | Splits `ActionEventReminderService` under the line limit, with no route or behavior change. |
 | [01a1438d-cd44-7000-8490-c96b0bdd63b6-contract-status-history-hook](../provenance/01a1438d-cd44-7000-8490-c96b0bdd63b6-contract-status-history-hook/) | pending | | |
 | [01a1438e-6aa8-7000-80c8-7a379a7cae47-forum-posts-hook](../provenance/01a1438e-6aa8-7000-80c8-7a379a7cae47-forum-posts-hook/) | pending | | |
-| [01a1438e-6c03-7000-ae45-64aa87aca4bc-split-form-builder](../provenance/01a1438e-6c03-7000-ae45-64aa87aca4bc-split-form-builder/) | pending | | |
+| [01a1438e-6c03-7000-ae45-64aa87aca4bc-split-form-builder](../provenance/01a1438e-6c03-7000-ae45-64aa87aca4bc-split-form-builder/) | implementation-only | | Splits `FormBuilder.tsx` under the line limit. Its incidental changes, an unknown field kind throwing and the display-only preview no longer fetching the user list it never showed, are internals. |
 | [01a14394-7578-7000-b6d7-844d63bd9ec7-action-reporting-queries](../provenance/01a14394-7578-7000-b6d7-844d63bd9ec7-action-reporting-queries/) | pending | | |
-| [01a14395-4800-7000-8518-73760e8ea2c1-split-formrenderer](../provenance/01a14395-4800-7000-8518-73760e8ea2c1-split-formrenderer/) | pending | | |
+| [01a14395-4800-7000-8518-73760e8ea2c1-split-formrenderer](../provenance/01a14395-4800-7000-8518-73760e8ea2c1-split-formrenderer/) | implementation-only | | Splits `shared/formrenderer.ts` under the line limit, with no behavior change. |
 | [01a143e2-6ff5-7000-993e-e5f897a2e2c9-dedup-member-action-deadline](../provenance/01a143e2-6ff5-7000-993e-e5f897a2e2c9-dedup-member-action-deadline/) | pending | | |
 | [01a143e9-cdc4-7000-a10b-06239a023560-dedup-membership-agreement](../provenance/01a143e9-cdc4-7000-a10b-06239a023560-dedup-membership-agreement/) | pending | | |
-| [01a143ec-bfb9-7000-9605-8aecd2c210b8-dedup-group-capacity](../provenance/01a143ec-bfb9-7000-9605-8aecd2c210b8-dedup-group-capacity/) | pending | | |
+| [01a143ec-bfb9-7000-9605-8aecd2c210b8-dedup-group-capacity](../provenance/01a143ec-bfb9-7000-9605-8aecd2c210b8-dedup-group-capacity/) | implementation-only | | Moves the group capacity rules to `common/` for the server and clients; the copies already agreed, so no behavior changes. Counting a community with users or leaders unloaded now throws, which no caller does. |
 | [01a1440d-bdf5-7000-806b-674008ff7bf9-onetime-invite-create-hook](../provenance/01a1440d-bdf5-7000-806b-674008ff7bf9-onetime-invite-create-hook/) | pending | | |
 | [01a1440f-dffe-7000-b4c7-e90aa409000e-comment-thread-writes](../provenance/01a1440f-dffe-7000-b4c7-e90aa409000e-comment-thread-writes/) | pending | | |
 | [01a14414-f3d0-7000-8668-75bbe4899822-conversation-create-invite-read-hook](../provenance/01a14414-f3d0-7000-8668-75bbe4899822-conversation-create-invite-read-hook/) | pending | | |
@@ -184,57 +184,57 @@ The initial content pass is complete when no row is `pending` or `blocked`.
 | [01a144f2-29ac-7000-a7d0-fd4c8678d769-platform-tenure-cohort-hook](../provenance/01a144f2-29ac-7000-a7d0-fd4c8678d769-platform-tenure-cohort-hook/) | pending | | |
 | [01a144f2-480b-7000-88db-c5e0ce02c965-forum-post-create-hook](../provenance/01a144f2-480b-7000-88db-c5e0ce02c965-forum-post-create-hook/) | pending | | |
 | [01a144f2-cbbd-7000-b545-abb87762658c-group-assignment-queue-hook](../provenance/01a144f2-cbbd-7000-b545-abb87762658c-group-assignment-queue-hook/) | pending | | |
-| [01a144f2-edd5-7000-ab78-3ff72ed680b6-waitlist-browser-hook](../provenance/01a144f2-edd5-7000-ab78-3ff72ed680b6-waitlist-browser-hook/) | pending | | |
+| [01a144f2-edd5-7000-ab78-3ff72ed680b6-waitlist-browser-hook](../provenance/01a144f2-edd5-7000-ab78-3ff72ed680b6-waitlist-browser-hook/) | implementation-only | | Moves the waitlist browser writes into `useWaitlistBrowser`. The forget's pending or error state now lives in the signup form and survives the switch between form and confirmation; a submit clears it. |
 | [01a144f5-00a2-7000-bf93-336890769b45-conversation-messages-hook](../provenance/01a144f5-00a2-7000-bf93-336890769b45-conversation-messages-hook/) | pending | | |
 | [01a144f7-7722-7000-a5dd-4a08d2db1dd0-previous-contract-load-failure](../provenance/01a144f7-7722-7000-a5dd-4a08d2db1dd0-previous-contract-load-failure/) | pending | | |
-| [01a14523-7f9f-7000-b9bd-03606a52b634-split-form-response-statistics](../provenance/01a14523-7f9f-7000-b9bd-03606a52b634-split-form-response-statistics/) | pending | | |
-| [01a14542-afaf-7000-b086-41461b01bc22-split-mobile-invites](../provenance/01a14542-afaf-7000-b086-41461b01bc22-split-mobile-invites/) | pending | | |
-| [01a14543-6d99-7000-accc-ff2657dcc974-split-user-profile-page](../provenance/01a14543-6d99-7000-accc-ff2657dcc974-split-user-profile-page/) | pending | | |
-| [01a14544-f484-7000-bd77-3c389e3178c9-split-action-form](../provenance/01a14544-f484-7000-bd77-3c389e3178c9-split-action-form/) | pending | | |
-| [01a14545-0e69-7000-9a43-2723e096e25d-split-share-urls-service](../provenance/01a14545-0e69-7000-9a43-2723e096e25d-split-share-urls-service/) | pending | | |
-| [01a1454a-0f02-7000-8f2f-11daaded24f0-split-form-responses-view](../provenance/01a1454a-0f02-7000-8f2f-11daaded24f0-split-form-responses-view/) | pending | | |
+| [01a14523-7f9f-7000-b9bd-03606a52b634-split-form-response-statistics](../provenance/01a14523-7f9f-7000-b9bd-03606a52b634-split-form-response-statistics/) | implementation-only | | Splits `FormResponseStatistics.tsx` under the line limit, with no behavior change. |
+| [01a14542-afaf-7000-b086-41461b01bc22-split-mobile-invites](../provenance/01a14542-afaf-7000-b086-41461b01bc22-split-mobile-invites/) | implementation-only | | Splits the mobile invites screen under the line limit, with no change to what the user sees. |
+| [01a14543-6d99-7000-accc-ff2657dcc974-split-user-profile-page](../provenance/01a14543-6d99-7000-accc-ff2657dcc974-split-user-profile-page/) | implementation-only | | Splits `UserProfilePage.tsx` under the line limit, with no behavior change. |
+| [01a14544-f484-7000-bd77-3c389e3178c9-split-action-form](../provenance/01a14544-f484-7000-bd77-3c389e3178c9-split-action-form/) | implementation-only | | Splits `ActionForm.tsx` under the line limit, with no behavior change. |
+| [01a14545-0e69-7000-9a43-2723e096e25d-split-share-urls-service](../provenance/01a14545-0e69-7000-9a43-2723e096e25d-split-share-urls-service/) | implementation-only | | Splits `ShareUrlsService` under the line limit, with the same routes and generated client. |
+| [01a1454a-0f02-7000-8f2f-11daaded24f0-split-form-responses-view](../provenance/01a1454a-0f02-7000-8f2f-11daaded24f0-split-form-responses-view/) | implementation-only | | Splits `FormResponsesView.tsx` under the line limit, with no behavior change. |
 | [01a1561b-b82c-7000-8f68-1448ca8fd134-random-variable-input](../provenance/01a1561b-b82c-7000-8f68-1448ca8fd134-random-variable-input/) | pending | | |
 | [01a15845-3b24-7000-a5ed-e2b3f9df48b1-message-time-now](../provenance/01a15845-3b24-7000-a5ed-e2b3f9df48b1-message-time-now/) | pending | | |
 | [01a15845-6dd1-7000-b296-ce306201ac1a-dedup-relative-time](../provenance/01a15845-6dd1-7000-b296-ce306201ac1a-dedup-relative-time/) | pending | | |
 | [01a15845-90e9-7000-a9c3-b337dea65d4b-member-analytics-action-rule](../provenance/01a15845-90e9-7000-a9c3-b337dea65d4b-member-analytics-action-rule/) | pending | | |
 | [01a15847-f538-7000-b409-150765d982b3-community-onetime-invites-hook](../provenance/01a15847-f538-7000-b409-150765d982b3-community-onetime-invites-hook/) | pending | | |
 | [01a15848-732a-7000-bec7-532b900f3149-mobile-invite-buckets](../provenance/01a15848-732a-7000-bec7-532b900f3149-mobile-invite-buckets/) | pending | | |
-| [01a15848-797f-7000-aeeb-e0e48bbfb3ab-dedup-invite-modify-rule](../provenance/01a15848-797f-7000-aeeb-e0e48bbfb3ab-dedup-invite-modify-rule/) | pending | | |
+| [01a15848-797f-7000-aeeb-e0e48bbfb3ab-dedup-invite-modify-rule](../provenance/01a15848-797f-7000-aeeb-e0e48bbfb3ab-dedup-invite-modify-rule/) | implementation-only | | Gives one-time and community invites one edit/delete permission check; who may act and each refusal are unchanged. |
 | [01a15851-60a7-7000-ab4f-4aacbea9bc2b-unread-badge-label](../provenance/01a15851-60a7-7000-ab4f-4aacbea9bc2b-unread-badge-label/) | pending | | |
 | [01a15883-063b-7000-99cb-61e301470ad8-signed-in-member-hook](../provenance/01a15883-063b-7000-99cb-61e301470ad8-signed-in-member-hook/) | pending | | |
-| [01a15883-6762-7000-a828-8c54193e330f-split-common-controls](../provenance/01a15883-6762-7000-a828-8c54193e330f-split-common-controls/) | pending | | |
+| [01a15883-6762-7000-a828-8c54193e330f-split-common-controls](../provenance/01a15883-6762-7000-a828-8c54193e330f-split-common-controls/) | implementation-only | | Splits `CommonControls.tsx` under the line limit. The expression tester re-picking its first user after a type switch is incidental. |
 | [01a15885-e7da-7000-a24b-002a1902a5e7-user-action-relations-hook](../provenance/01a15885-e7da-7000-a24b-002a1902a5e7-user-action-relations-hook/) | pending | | |
 | [01a15887-1ceb-7000-9c79-6042b320cf40-search-results-hook](../provenance/01a15887-1ceb-7000-9c79-6042b320cf40-search-results-hook/) | pending | | |
 | [01a15888-aee0-7000-a7cd-00b182d90810-web-notifications-cache](../provenance/01a15888-aee0-7000-a7cd-00b182d90810-web-notifications-cache/) | pending | | |
 | [01a15889-48b5-7000-825f-7d9c257e22e7-action-page-hook](../provenance/01a15889-48b5-7000-825f-7d9c257e22e7-action-page-hook/) | pending | | |
 | [01a158da-a80a-7000-b025-0bdbfecac75a-test-isolation](../provenance/01a158da-a80a-7000-b025-0bdbfecac75a-test-isolation/) | pending | | |
-| [01a158e9-c886-7000-8f8b-802fa226d992-split-group-detail-page](../provenance/01a158e9-c886-7000-8f8b-802fa226d992-split-group-detail-page/) | pending | | |
+| [01a158e9-c886-7000-8f8b-802fa226d992-split-group-detail-page](../provenance/01a158e9-c886-7000-8f8b-802fa226d992-split-group-detail-page/) | implementation-only | | Splits the admin `GroupDetailPage.tsx` under the line limit, with no behavior change. |
 | [01a158eb-d58a-7000-9a75-ecba65f39794-my-communities-writes](../provenance/01a158eb-d58a-7000-9a75-ecba65f39794-my-communities-writes/) | pending | | |
-| [01a1599b-d8b9-7000-af6e-478a25cbbbae-split-display-block-wrapper](../provenance/01a1599b-d8b9-7000-af6e-478a25cbbbae-split-display-block-wrapper/) | pending | | |
+| [01a1599b-d8b9-7000-af6e-478a25cbbbae-split-display-block-wrapper](../provenance/01a1599b-d8b9-7000-af6e-478a25cbbbae-split-display-block-wrapper/) | implementation-only | | Splits `DisplayBlockWrapper.tsx` under the line limit. The per-user list now clears its search when per-user content is turned off, and also closes on undo, incidental state resets. It also drops the empty row it left under a block without per-user content. |
 | [01a15a65-3c7f-7000-aa66-853b32e1bf1d-action-comment-author-notifs](../provenance/01a15a65-3c7f-7000-aa66-853b32e1bf1d-action-comment-author-notifs/) | pending | | |
 | [01a15c01-fc02-7000-9b8e-2e0f5097d3a4-assigned-row-list](../provenance/01a15c01-fc02-7000-9b8e-2e0f5097d3a4-assigned-row-list/) | pending | | |
 | [01a15f81-20e1-7000-a186-698f5a5a3ebf-allow-mandatory-to-optional](../provenance/01a15f81-20e1-7000-a186-698f5a5a3ebf-allow-mandatory-to-optional/) | pending | | |
 | [01a16500-7a55-7000-9fa7-f499ec7f19d6-progress-page-layout](../provenance/01a16500-7a55-7000-9fa7-f499ec7f19d6-progress-page-layout/) | pending | | |
 | [01a16526-995b-7000-a61f-098a195c4680-action-updates-texts-emails-off](../provenance/01a16526-995b-7000-a61f-098a195c4680-action-updates-texts-emails-off/) | pending | | |
 | [01a16ab8-a9ae-7000-95fc-0eda20044d15-immersive-task-flow](../provenance/01a16ab8-a9ae-7000-95fc-0eda20044d15-immersive-task-flow/) | pending | | |
-| [01a17003-0aa0-7000-84b8-85f76849bb18-split-action-reminders-tab](../provenance/01a17003-0aa0-7000-84b8-85f76849bb18-split-action-reminders-tab/) | pending | | |
+| [01a17003-0aa0-7000-84b8-85f76849bb18-split-action-reminders-tab](../provenance/01a17003-0aa0-7000-84b8-85f76849bb18-split-action-reminders-tab/) | implementation-only | | Splits `ActionRemindersTab.tsx` under the line limit. The preset menu closing with the create form is an incidental state reset. |
 | [01a1701a-2d70-7000-9009-e2711f13b18a-invite-page-named-hook](../provenance/01a1701a-2d70-7000-9009-e2711f13b18a-invite-page-named-hook/) | pending | | |
 | [01a1701a-e598-7000-bae5-5122ea8992ad-task-form-aggregate-views-hook](../provenance/01a1701a-e598-7000-bae5-5122ea8992ad-task-form-aggregate-views-hook/) | pending | | |
 | [01a1701d-3efe-7000-9b8e-f323a8a5f13a-unread-message-count](../provenance/01a1701d-3efe-7000-9b8e-f323a8a5f13a-unread-message-count/) | pending | | |
 | [01a17020-f1fe-7000-bc3e-4e854ae18916-tag-summaries-hook](../provenance/01a17020-f1fe-7000-bc3e-4e854ae18916-tag-summaries-hook/) | pending | | |
 | [01a17021-9ec2-7000-acab-4eddd20ba6d0-action-add-event-hook](../provenance/01a17021-9ec2-7000-acab-4eddd20ba6d0-action-add-event-hook/) | pending | | |
 | [01a17037-518b-7000-b61c-857bf5663bec-split-action-reminder-group-form](../provenance/01a17037-518b-7000-b61c-857bf5663bec-split-action-reminder-group-form/) | pending | | |
-| [01a17038-dad8-7000-a137-d7dadc37d8ce-split-user-dto](../provenance/01a17038-dad8-7000-a137-d7dadc37d8ce-split-user-dto/) | pending | | |
-| [01a1704d-0439-7000-b88f-4e1919594f0d-split-action-dto](../provenance/01a1704d-0439-7000-b88f-4e1919594f0d-split-action-dto/) | pending | | |
-| [01a1704e-d820-7000-93f2-918ca5e217a1-split-stats-page](../provenance/01a1704e-d820-7000-93f2-918ca5e217a1-split-stats-page/) | pending | | |
+| [01a17038-dad8-7000-a137-d7dadc37d8ce-split-user-dto](../provenance/01a17038-dad8-7000-a137-d7dadc37d8ce-split-user-dto/) | implementation-only | | Splits `user.dto.ts` under the line limit; the OpenAPI schema is unchanged. |
+| [01a1704d-0439-7000-b88f-4e1919594f0d-split-action-dto](../provenance/01a1704d-0439-7000-b88f-4e1919594f0d-split-action-dto/) | implementation-only | | Splits `action.dto.ts` under the line limit; the OpenAPI schema is byte-identical. |
+| [01a1704e-d820-7000-93f2-918ca5e217a1-split-stats-page](../provenance/01a1704e-d820-7000-93f2-918ca5e217a1-split-stats-page/) | implementation-only | | Splits the admin `StatsPage.tsx` into section components, with no behavior change. |
 | [01a17918-3859-7000-acf2-0098a76d09a5-aggregate-stats-hook](../provenance/01a17918-3859-7000-acf2-0098a76d09a5-aggregate-stats-hook/) | pending | | |
-| [01a17918-d9d5-7000-a5ae-8e77e2fe8f45-split-web-render-field](../provenance/01a17918-d9d5-7000-a5ae-8e77e2fe8f45-split-web-render-field/) | pending | | |
+| [01a17918-d9d5-7000-a5ae-8e77e2fe8f45-split-web-render-field](../provenance/01a17918-d9d5-7000-a5ae-8e77e2fe8f45-split-web-render-field/) | implementation-only | | Splits `sharedweb/forms/RenderField.tsx` under the line limit; rendered output is unchanged. |
 | [01a17931-6620-7000-a489-91466aa4281a-missed-actions-hook](../provenance/01a17931-6620-7000-a489-91466aa4281a-missed-actions-hook/) | pending | | |
-| [01a17931-c191-7000-9449-4d637f1b4fcd-task-form-submission-hook](../provenance/01a17931-c191-7000-9449-4d637f1b4fcd-task-form-submission-hook/) | pending | | |
+| [01a17931-c191-7000-9449-4d637f1b4fcd-task-form-submission-hook](../provenance/01a17931-c191-7000-9449-4d637f1b4fcd-task-form-submission-hook/) | implementation-only | | Moves task form submit and opt-out into `useTaskFormSubmission`; what callers show is unchanged. On mobile, a refused withdrawal now resolves instead of rejecting unhandled. |
 | [01a17931-c459-7000-b969-0bb89c5abe4b-user-friends-hook](../provenance/01a17931-c459-7000-b969-0bb89c5abe4b-user-friends-hook/) | current | [Friends](friends.md) | |
 | [01a17935-c068-7000-a95a-42cb5ee56136-cohort-retention-hook](../provenance/01a17935-c068-7000-a95a-42cb5ee56136-cohort-retention-hook/) | pending | | |
 | [01a17936-0389-7000-a56d-382c2b29274c-contract-signature-hook](../provenance/01a17936-0389-7000-a56d-382c2b29274c-contract-signature-hook/) | pending | | |
-| [01a17969-2f3f-7000-8faa-7d077a283e32-split-mobile-form-renderer](../provenance/01a17969-2f3f-7000-8faa-7d077a283e32-split-mobile-form-renderer/) | pending | | |
+| [01a17969-2f3f-7000-8faa-7d077a283e32-split-mobile-form-renderer](../provenance/01a17969-2f3f-7000-8faa-7d077a283e32-split-mobile-form-renderer/) | implementation-only | | Splits the mobile `FormRenderer.tsx` under the line limit. The withdraw modal now holds its own choice and reason, which clear whenever the form shows its loading, gate, or error screen in its place, an incidental state reset. |
 | [01a1799c-c23e-7000-92c9-e29d5059fbff-delete-account-hook](../provenance/01a1799c-c23e-7000-92c9-e29d5059fbff-delete-account-hook/) | pending | | |
 | [01a1799d-72f5-7000-907c-07b9d2c92ffc-follow-up-submission-hook](../provenance/01a1799d-72f5-7000-907c-07b9d2c92ffc-follow-up-submission-hook/) | pending | | |
 | [01a1799d-d6e3-7000-8559-cc006f5e2ba8-paste-action-hook](../provenance/01a1799d-d6e3-7000-8559-cc006f5e2ba8-paste-action-hook/) | pending | | |
@@ -250,7 +250,7 @@ The initial content pass is complete when no row is `pending` or `blocked`.
 | [01a17a60-3f57-7000-b64f-710b2b3c33c9-all-members-update-audience](../provenance/01a17a60-3f57-7000-b64f-710b2b3c33c9-all-members-update-audience/) | pending | | |
 | [01a17a64-7dd4-7000-b28a-91afa0ac16ee-action-update-redate-reschedules](../provenance/01a17a64-7dd4-7000-b28a-91afa0ac16ee-action-update-redate-reschedules/) | pending | | |
 | [01a17a8a-0c7a-7000-bf57-606eafa6bf0f-custom-link-parameters](../provenance/01a17a8a-0c7a-7000-bf57-606eafa6bf0f-custom-link-parameters/) | pending | | |
-| [01a17ac8-4124-7000-a0d9-464a9e391477-split-actions-service](../provenance/01a17ac8-4124-7000-a0d9-464a9e391477-split-actions-service/) | pending | | |
+| [01a17ac8-4124-7000-a0d9-464a9e391477-split-actions-service](../provenance/01a17ac8-4124-7000-a0d9-464a9e391477-split-actions-service/) | implementation-only | | Splits `ActionsService` by concern with the same routes and responses; two error logs name the new services as their logger context. |
 | [01a17e74-1f8c-7000-bf66-825238132ce2-custom-stat-type-not-null](../provenance/01a17e74-1f8c-7000-bf66-825238132ce2-custom-stat-type-not-null/) | pending | | |
 | [01a17fae-367a-7000-91ec-14761287c0b3-dg26-waitlist-screen](../provenance/01a17fae-367a-7000-91ec-14761287c0b3-dg26-waitlist-screen/) | pending | | |
 | [01a17fd9-2471-7000-9c98-e17320d85ef9-llm-wiki](../provenance/01a17fd9-2471-7000-9c98-e17320d85ef9-llm-wiki/) | pending | | |
@@ -260,14 +260,14 @@ The initial content pass is complete when no row is `pending` or `blocked`.
 | [01a18382-582d-7000-9435-690c2103eb8a-kora-participant-auth](../provenance/01a18382-582d-7000-9435-690c2103eb8a-kora-participant-auth/) | pending | | |
 | [01a18382-7123-7000-a168-2c903e9e16a7-action-image-nullable](../provenance/01a18382-7123-7000-a168-2c903e9e16a7-action-image-nullable/) | pending | | |
 | [01a18382-b718-7000-a320-4531df06aa52-task-form-id-nullable](../provenance/01a18382-b718-7000-a320-4531df06aa52-task-form-id-nullable/) | pending | | |
-| [01a18383-52b2-7000-86d3-06e53a608ec1-cohort-expression-nullable](../provenance/01a18383-52b2-7000-86d3-06e53a608ec1-cohort-expression-nullable/) | pending | | |
+| [01a18383-52b2-7000-86d3-06e53a608ec1-cohort-expression-nullable](../provenance/01a18383-52b2-7000-86d3-06e53a608ec1-cohort-expression-nullable/) | implementation-only | | Publishes the action's `cohortExpression` as a required nullable field to match its column; validation and member payloads are unchanged. |
 | [01a1838a-15f7-7000-87ae-3e5e8d5d0f1d-custom-stat-label-nullable](../provenance/01a1838a-15f7-7000-87ae-3e5e8d5d0f1d-custom-stat-label-nullable/) | pending | | |
 | [01a18395-cc7f-7000-acba-0c4ee331a2c2-thumbnail-image-nullable](../provenance/01a18395-cc7f-7000-acba-0c4ee331a2c2-thumbnail-image-nullable/) | pending | | |
-| [01a183a7-4c79-7000-972f-f94dedfe3f43-invite-lookups-hook](../provenance/01a183a7-4c79-7000-972f-f94dedfe3f43-invite-lookups-hook/) | pending | | |
+| [01a183a7-4c79-7000-972f-f94dedfe3f43-invite-lookups-hook](../provenance/01a183a7-4c79-7000-972f-f94dedfe3f43-invite-lookups-hook/) | implementation-only | | Moves removing the cached invite lookups into `useInvite`. |
 | [01a18417-950b-7000-950f-453abd69022c-admin-form-hook](../provenance/01a18417-950b-7000-950f-453abd69022c-admin-form-hook/) | pending | | |
 | [01a18417-a8b8-7000-ac0b-a9fbf2f7df97-member-location-hook](../provenance/01a18417-a8b8-7000-ac0b-a9fbf2f7df97-member-location-hook/) | pending | | |
-| [01a18417-c429-7000-a89c-e26b3ec11f9e-home-feed-reset-hook](../provenance/01a18417-c429-7000-a89c-e26b3ec11f9e-home-feed-reset-hook/) | pending | | |
+| [01a18417-c429-7000-a89c-e26b3ec11f9e-home-feed-reset-hook](../provenance/01a18417-c429-7000-a89c-e26b3ec11f9e-home-feed-reset-hook/) | implementation-only | | Moves the home feed reset behind `useResetHomeFeed`, keeping when it happens. |
 | [01a18419-36ab-7000-a116-2295ed2513c7-custom-validator-types-hook](../provenance/01a18419-36ab-7000-a116-2295ed2513c7-custom-validator-types-hook/) | pending | | |
 | [01a18425-b0a3-7000-b553-0ecd82814c43-form-draft-hook](../provenance/01a18425-b0a3-7000-b553-0ecd82814c43-form-draft-hook/) | pending | | |
-| [01a184c6-93e6-7000-9c02-8541ab74b7cd-variable-aggregates-hook](../provenance/01a184c6-93e6-7000-9c02-8541ab74b7cd-variable-aggregates-hook/) | pending | | |
-| [01a184ea-8c43-7000-8b66-1272464cc07c-variable-source-histories-hook](../provenance/01a184ea-8c43-7000-8b66-1272464cc07c-variable-source-histories-hook/) | pending | | |
+| [01a184c6-93e6-7000-9c02-8541ab74b7cd-variable-aggregates-hook](../provenance/01a184c6-93e6-7000-9c02-8541ab74b7cd-variable-aggregates-hook/) | blocked | | Requirements keep what forms show when a load fails, but on web and admin a failed load now reloads, briefly showing loading, when the tab regains focus; mobile is unaffected. Should it (ALL-1926)? |
+| [01a184ea-8c43-7000-8b66-1272464cc07c-variable-source-histories-hook](../provenance/01a184ea-8c43-7000-8b66-1272464cc07c-variable-source-histories-hook/) | blocked | | Requirements keep what forms show when a load fails and when a source form is deleted, but on web and admin both now reload, briefly showing loading, when the tab regains focus; mobile is unaffected. Should they (ALL-1926)? |
