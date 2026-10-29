@@ -13,7 +13,7 @@ Read the requirements and trace the existing behavior from its entry points thro
 
 Before editing, give a short progress update naming the code to reuse or change, the consumers and contracts affected, and the checks that will establish success. For new logic, name the closest existing implementation and why it fits or needs to remain separate, or report that the search found none.
 
-Resolve repository questions through inspection. Ask the user for missing product decisions or conflicting requirements that the available evidence cannot settle. Continue independent work while waiting.
+Before writing code, ask the questions the request leaves open, such as a missing product decision or conflicting requirements, per the Open questions section of `(root)/skills/spec/SKILL.md`. A request that leaves none open goes straight to implementation.
 
 ## Implement
 
