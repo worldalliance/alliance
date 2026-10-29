@@ -19,11 +19,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Remove AGENTS.md and CLAUDE.md before review
-        run: |
-          set -euo pipefail
-          rm -f AGENTS.md CLAUDE.md
-
       # --- Claude Code (Anthropic) ---
 
       - name: Setup Node (for installing Claude Code CLI)
@@ -41,25 +36,12 @@ jobs:
         run: |
           set -euox pipefail
 
-          prompt_file="$(mktemp)"
-          cat > "$prompt_file" <<'PROMPT'
-          This is commit for ${{ github.repository }}.
-          Commit SHA: ${{ github.sha }}
-
-          1) Run `git diff ${{ github.sha }}^!` and review only this patch in the context of the repo.
-
-          Review only the changes introduced by the commit.
-          Suggest any improvements, potential bugs, or issues. Attend to high level direction also, such as if there might be a better way to accomplish the same objective.
-
-          Output a final message with your concise thoughts. Be sure to separate this from your other output as a new message so only the review is sent. Do not summarize the commit, just write one short bullet point for each specific issue you found, if any. Do not list things that do not need fixing. End the message with the phrase "[NEEDS_ATTENTION]" if there is a significant issue or possible improvement that the author should address. If everything is fine, do not include this phrase.
-          Only output [NEEDS_ATTENTION] if you are highly confident there is a substantial issue. Look around at related files to make sure you arent missing anything before doing so. If the changes remove a feature or affordance but this removal was clearly intentional by the author, this does not need attention. Do not leave comments of the form "verify that x" or "x needs to be tested" - these are not code issues. Include full file paths from repository root as well as line numbers for applicable issues in your review.
-          PROMPT
-
           raw_json="$(
-            claude -p "$(cat "$prompt_file")" \
+            claude -p \
               --output-format json \
               --model claude-opus-4-6 \
-              --allowedTools "Read,Bash(git diff:*),Bash(git show:*),Bash(git status:*),Bash(git log:*)" \
+              --allowedTools "Read,Bash(git diff:*),Bash(git show:*),Bash(git status:*),Bash(git log:*),Bash(git rev-parse:*)" \
+              < .github/commit-review/prompt.md
           )"
 
           final_message="$(printf "%s" "$raw_json" | jq -r '.result // ""')"
@@ -80,18 +62,19 @@ jobs:
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           model: gpt-5.5
-          prompt: |
-            This is commit for ${{ github.repository }}.
-            Commit SHA: ${{ github.sha }}
+          prompt-file: .github/commit-review/prompt.md
+          sandbox: read-only
 
-            1) Run `git diff ${{ github.sha }}^!` and review only this patch in the context of the repo.
-
-            Review ONLY the changes introduced by the commit.
-            Suggest any improvements, potential bugs, or issues. Attend to high level direction also, such as if there might be a better way to accomplish the same objective.
-
-            Output a final message with your concise thoughts. Do not summarize the commit, just write one short bullet point for each specific issue you found, if any. End the message with the phrase "[NEEDS_ATTENTION]" if there is a significant issue or possible improvement that the author should address. If everything is fine, do not include this phrase.
-            Only output [NEEDS_ATTENTION] if you are highly confident there is a substantial issue. Look around at related files to make sure you arent missing anything before doing so. If the changes remove a feature or affordance but this removal was clearly intentional by the author, this does not need attention. Do not leave comments of the form "verify that x" or "x needs to be tested" - these are not code issues.
-            Include full file paths from repository root as well as line numbers for applicable issues in your review.
+      - name: Publish full reviews
+        if: always()
+        env:
+          CLAUDE_FINAL_MESSAGE: ${{ steps.run_claude.outputs.final_message }}
+          CODEX_FINAL_MESSAGE: ${{ steps.run_codex.outputs.final-message }}
+        run: |
+          printf '## Claude review\n\n%s\n\n## Codex review\n\n%s\n' \
+            "${CLAUDE_FINAL_MESSAGE:-Review did not produce output.}" \
+            "${CODEX_FINAL_MESSAGE:-Review did not produce output.}" \
+            >> "$GITHUB_STEP_SUMMARY"
 
       - name: Combine reviews with OpenAI
         id: combine_reviews
@@ -114,52 +97,41 @@ jobs:
             exit 0
           fi
 
-          # If only *one* review has content, just use that directly
-          if [ -z "$claude" ] && [ -n "$codex" ]; then
-            combined="$codex"
-          elif [ -n "$claude" ] && [ -z "$codex" ]; then
-            combined="$claude"
-          else
-            # Both have content: call OpenAI to merge them
-            instructions="You are merging two automated code review outputs into a single concise list of issues. Keep only real, actionable issues, but prune any preamble or commentary. Merge duplicates. Output a markdown bullet list where each bullet is one issue. If there is at least one substantive issue, end the response with the exact text [NEEDS_ATTENTION]. Otherwise do not include that text. Be sure to preserve full file paths and line numbers listed.
+          instructions="You are merging two automated code review outputs into a single concise list of must-fix and should-fix findings. Omit nits, preambles, and commentary. Merge duplicates. Output a markdown bullet list where each bullet is one issue. Preserve the listed file paths and line numbers. Notification eligibility is determined from the reviewers' final markers separately; omit marker tokens from your summary.
 
-            If both reviews indicate that there are no issues (for example, they are empty, say there are no issues, or only contain pleasantries), then respond with an empty string and do NOT invent any meta-commentary (such as complaining about missing content)."
+          If both reviews indicate that there are no issues (for example, they are empty, say there are no issues, or only contain pleasantries), then respond with an empty string and do NOT invent any meta-commentary (such as complaining about missing content)."
 
-            payload="$(jq -nc \
-              --arg instructions "$instructions" \
-              --arg claude "$claude" \
-              --arg codex "$codex" \
-              '{
-                model: "gpt-5.2",
-                messages: [
-                  { "role": "developer", "content": $instructions },
-                  {
-                    "role": "user",
-                    "content": ("Claude review:\n" + $claude + "\n\nOpenAI review:\n" + $codex)
-                  }
-                ]
-              }')"
+          payload="$(jq -nc \
+            --arg instructions "$instructions" \
+            --arg claude "$claude" \
+            --arg codex "$codex" \
+            '{
+              model: "gpt-5.2",
+              messages: [
+                { "role": "developer", "content": $instructions },
+                {
+                  "role": "user",
+                  "content": ("Claude review:\n" + $claude + "\n\nOpenAI review:\n" + $codex)
+                }
+              ]
+            }')"
 
-            response="$(
-              curl -sS https://api.openai.com/v1/chat/completions \
-                -H "Content-Type: application/json" \
-                -H "Authorization: Bearer $OPENAI_API_KEY" \
-                -d "$payload"
-            )"
-
-            echo "Response:"
-            echo "----------"
-            printf '%s\n' "$response"
-
-            combined="$(printf "%s" "$response" | jq -r '.choices[0].message.content // ""')"
+          if ! response="$(
+            curl -fsS --connect-timeout 10 --max-time 120 https://api.openai.com/v1/chat/completions \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer $OPENAI_API_KEY" \
+              -d "$payload"
+          )" || ! combined="$(printf "%s" "$response" | jq -r '.choices[0].message.content // ""')"; then
+            combined=""
+            echo "::warning::Review summarization failed; using the full-report link."
           fi
 
           echo "Combined review:"
           echo "----------------"
           printf '%s\n' "$combined"
 
-          # Compute needs_review flag based on presence of [NEEDS_ATTENTION]
-          if printf '%s\n' "$combined" | grep -q 'NEEDS_ATTENTION'; then
+          attention_marker='\[NEEDS_ATTENTION\][`*_]*[.]?[[:space:]]*$'
+          if [[ "$claude" =~ $attention_marker || "$codex" =~ $attention_marker ]]; then
             needs_review="true"
           else
             needs_review="false"
@@ -290,14 +262,16 @@ jobs:
             --arg url "$RUN_URL" \
             --arg summary "$CLEAN_SUMMARY" \
             --arg mention "$SLACK_MENTION" \
-            '{
+            '(if $mention != "" then $mention + " " else "" end) as $prefix
+            | ($prefix + $summary) as $text
+            | {
               text: "review given",
               blocks: [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": (if $mention != "" then ($mention + " " + $summary) else $summary end)
+                    "text": (if ($summary | test("[^[:space:]]")) and ($text | length) <= 3000 then $text else $prefix + "Review needs attention. Open the run for the full reports." end)
                   }
                 },
                 {

@@ -43,7 +43,7 @@ The finished text reads as if the wrong version never existed. Someone who never
 
 ## Scope
 
-The pass covers what the change touched, plus what the change made false or misleading. Leave everything else as found, including units elsewhere in the same file that would fail the test.
+The pass covers what the change touched, plus what the change made false or misleading. Additional improvements follow the scope guidance in the root `AGENTS.md`.
 
 ## Protected
 

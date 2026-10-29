@@ -28,8 +28,9 @@ Always read and apply:
 
 Read before the matching task:
 
-- Determining the provenance of anything in the repository → `(root)/skills/provenance/SKILL.md`
+- Making a repository change intended to be kept, or determining the provenance of anything in the repository → `(root)/skills/provenance/SKILL.md`
 - Implementing a feature, fixing a bug, or refactoring code → `(root)/skills/implement/SKILL.md`
+- Verifying any change, including docs, skills, scripts, workflows, and reviews → **Checks** in `(root)/skills/implement/SKILL.md`
 - Pulling PostHog session replays or other PostHog API data → `(root)/skills/posthog/SKILL.md`
 - Querying the local Postgres db → `(root)/skills/local-db/SKILL.md`
 - Using the Linear API → `(root)/skills/linear/SKILL.md`
@@ -40,35 +41,15 @@ Read before the matching task:
 
 `bun run typecheck` from inside a package; the repo root has no such script. Each package's script picks the right config (`tsconfig.typecheck.json` where shared sources need pulling in directly). Never bare `tsc`, even with `--noEmit`.
 
-## Duplication
-
-`bun run dupcheck` from the repo root after a change, alongside typecheck. It lists copied code, and text of five or more words repeated verbatim, that the working tree has and its merge-base with `origin/main` doesn't. Matches are exact, so it errs both ways. Some hits look alike but should stay separate, or are an edit inside existing duplication; judge each. It misses the same rule or message written differently, so a clean run leaves the search for an existing implementation still yours to do.
-
-The purpose of deduplication is to put things that should change together in one place. Reducing repeated code is a useful side effect, not the goal. Deduplicate when a future change should naturally apply to all copies together; keep things separate when they are likely to evolve independently.
-
-## Coverage
-
-`bun run covercheck` from the repo root after a change that adds logic. It lists lines the working tree changed since its merge-base with `origin/main` that no unit test ran, and changed files no test loads. It runs the tests of each package it touched, or of every package once it touches `common`, `shared`, or `sharedweb`. A reminder, not a gate: judge each gap and add a test where one would catch a regression.
-
-## Formatting
-
-`bun run format [FILE...]` from the repo root, all files when none are named; `bun run format:check [FILE...]` to only report.
-
-## Workflows
-
-`actionlint` from the repo root after editing `.github/workflows/`; CI and deploys fail on its findings. Without `shellcheck` on `PATH` it skips the shell in `run:` blocks and still passes; `brew install actionlint shellcheck`.
-
-`shellcheck .github/actions/*/*.sh .github/scripts/*.sh scripts/deploy_backend.sh` after editing any of them; actionlint skips those scripts, and CI and deploys run it too.
-
-## Testing
-
-`bun run test` from the repo root; scope by package: `bun run test apps/admin sharedweb`. From inside a package, run bare `bun test`.
-
 ## Dependencies
 
 Non-standard workspace: every web package installs from `apps/frontend/package.json`. A dependency used in `apps/admin`, `sharedweb`, `common`, … must also be declared there, same version range. `bun install` after editing.
 
 Reach for a maintained npm package over hand-rolling parsing, sanitization, date handling, retries. Inside the repo, reuse or extract a shared util instead of duplicating one.
+
+## Established practice
+
+Prefer established standards and widely adopted practices that fit the stack and task. Research before choosing when the applicable practice is unclear, unfamiliar, or may have changed, starting with standards bodies and official framework or library documentation. Distinguish formal standards, common practice, and vendor recommendations; cite sources for researched choices. Explicit requirements and concrete compatibility constraints take precedence. Explain material departures from established practice and the constraint that warrants them.
 
 ## Issue tracking
 
@@ -79,6 +60,12 @@ Issues live in Linear.
 ## Git
 
 Ask before running a git command that writes. Read-only ones (`git diff`, `git status`, `git log`) need no permission.
+
+## Questions
+
+Follow the user's intended request in context. Requests to explain, evaluate, compare, or justify authorize investigation and an answer; they do not by themselves authorize changes. Requests to perform work authorize that work, including when phrased as questions. Asking about a recommendation neither rejects it nor approves an alternative.
+
+For example, after you suggest X, "Why X?" asks you to explain your reasoning. It does not mean the user is against X. Explain the recommendation and revise it only where the reasoning fails.
 
 ## Fail loudly
 
@@ -147,12 +134,8 @@ Follow YAGNI. Prefer one-liners. An abstraction earns its place at the second ca
 
 Aim for files well under 500 lines to help optimize this codebase for coding agents. A file past 500 is already overdue for a split. When your change adds to a file and would leave it past that, split the file first: ask `codex exec -s read-only`, naming only the file and not your change, for a few splits along cohesive boundaries, then apply the one you judge best.
 
-## Surgical changes
+## Scope and improvement
 
-Every changed line traces to the request. Adjacent code keeps its style, its formatting, and its comments, even where you would write it differently.
+Improve the code and agent instructions involved in the task when there is a concrete benefit and the resulting change remains coherent, reviewable, and verifiable. Report unrelated opportunities for separate work. Judge existing implementations by current requirements and evidence.
 
-Delete what your change orphaned: the import, variable, or function nothing calls now. Leave dead code that was already there, and name it in your response.
-
-## Success criteria
-
-State the check that decides the task is done, then loop until it passes. A bug fix starts with a test that reproduces the bug. A refactor runs the suite green before and after. Adding validation means tests for the invalid inputs, then the code that passes them.
+Delete what your change orphaned: the import, variable, or function nothing calls now.
