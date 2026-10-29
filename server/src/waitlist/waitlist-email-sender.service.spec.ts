@@ -156,7 +156,8 @@ describe("sendOutcome of a mail", () => {
       EmailStatus.Pending,
       {
         status: WaitlistEmailRecipientStatus.Failed,
-        error: "Mail delivery is off on this server",
+        error:
+          "Mail delivery is off on this server, or the address accepts no mail",
         stopsRun: false,
       },
     ],

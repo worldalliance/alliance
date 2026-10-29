@@ -30,6 +30,28 @@ describe("sendMail", () => {
     expect(saves.at(-1)?.to).toBe("member@privaterelay.appleid.com");
   });
 
+  it("records an anonymized address's mail without sending it", async () => {
+    const sent: ISendMailOptions[] = [];
+    const { service, saves } = await harness((options) => {
+      sent.push(options);
+      return Promise.resolve({ accepted: [], messageId: "" });
+    });
+
+    await service.sendMail({
+      recipient: "User12@Example.com",
+      emailType: EmailType.Welcome,
+      subject: "Welcome to the Alliance",
+      context: { name: "Jane", url: "https://example.org/verify" },
+      tracking: null,
+    });
+
+    expect(sent).toEqual([]);
+    expect(saves.at(-1)).toMatchObject({
+      to: "User12@Example.com",
+      status: EmailStatus.Pending,
+    });
+  });
+
   it("sends from MAIL_FROM and records the message id", async () => {
     const sent: ISendMailOptions[] = [];
     const { service, saves } = await harness((options) => {

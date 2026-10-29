@@ -53,6 +53,8 @@ BEGIN
   END IF;
 END $$;
 
+-- MailService sends nothing to @example.com, so every stand-in address stays
+-- on that domain.
 UPDATE "user"
 SET
   "email"    = 'user'||id||'@example.com',

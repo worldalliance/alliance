@@ -97,6 +97,20 @@ describe("sendUnrecordedMail", () => {
     },
   );
 
+  it("reports an anonymized address unavailable, without sending", async () => {
+    let attempted = false;
+    const { service } = await harness(() => {
+      attempted = true;
+      return Promise.resolve({ accepted: [], messageId: "" });
+    });
+
+    expect(await sendUnrecorded(service, "waitlist7@example.com")).toEqual({
+      ok: false,
+      error: DeliveryFailure.Unavailable,
+    });
+    expect(attempted).toBe(false);
+  });
+
   it.each([
     {
       outcome: "rejects",

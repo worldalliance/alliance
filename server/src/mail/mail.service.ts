@@ -37,6 +37,14 @@ export function mailSendingEnabled(): boolean {
   return process.env.NODE_ENV !== "test" && notifDeliveryEnabled();
 }
 
+/**
+ * `scripts/anonymize/anonymize.sql` writes these in place of real addresses.
+ * example.com accepts no mail, so sending would only bounce.
+ */
+function isAnonymizedEmail(email: string): boolean {
+  return email.toLowerCase().endsWith("@example.com");
+}
+
 export type WaitlistEmailType =
   | EmailType.WaitlistConfirmation
   | EmailType.WaitlistLink;
@@ -144,9 +152,10 @@ export class MailService {
     tracking: TrackedMessage | null;
   }): Promise<Mail> {
     const { recipient, emailType, subject, context, tracking } = params;
-    const prepared = mailSendingEnabled()
-      ? await this.prepareSend(emailType, context)
-      : null;
+    const prepared =
+      mailSendingEnabled() && !isAnonymizedEmail(recipient)
+        ? await this.prepareSend(emailType, context)
+        : null;
     const cid =
       tracking &&
       (await this.messageTracking
@@ -239,7 +248,9 @@ export class MailService {
     context: ISendMailOptions["context"];
   }): Promise<Result<{ messageId: string }, DeliveryFailure>> {
     const { recipient, emailType, subject, context } = params;
-    if (!mailSendingEnabled()) return R.failure(DeliveryFailure.Unavailable);
+    if (!mailSendingEnabled() || isAnonymizedEmail(recipient)) {
+      return R.failure(DeliveryFailure.Unavailable);
+    }
     const prepared = await R.fromPromise(this.prepareSend(emailType, context));
     if (!prepared.ok) {
       this.logFailure({ emailType, error: prepared.error });
