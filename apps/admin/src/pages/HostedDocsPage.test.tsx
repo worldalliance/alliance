@@ -126,6 +126,34 @@ test("keeps an ID typed before or after choosing the file", async () => {
   expect(id.getAttribute("value")).toBe("Custom.pdf");
 });
 
+test("keeps an ID typed after choosing the file when another file is chosen", async () => {
+  renderPage();
+  await screen.findByText("2026-Pilot.pdf");
+  fireEvent.change(screen.getByLabelText("PDF"), {
+    target: { files: [pdf("First.pdf")] },
+  });
+  fireEvent.change(screen.getByLabelText("ID"), {
+    target: { value: "Custom.pdf" },
+  });
+  fireEvent.change(screen.getByLabelText("PDF"), {
+    target: { files: [pdf("Second.pdf")] },
+  });
+  expect(screen.getByLabelText("ID").getAttribute("value")).toBe("Custom.pdf");
+});
+
+test("follows the next file after a cancelled pick", async () => {
+  renderPage();
+  await screen.findByText("2026-Pilot.pdf");
+  fireEvent.change(screen.getByLabelText("PDF"), {
+    target: { files: [pdf("First.pdf")] },
+  });
+  fireEvent.change(screen.getByLabelText("PDF"), { target: { files: [] } });
+  fireEvent.change(screen.getByLabelText("PDF"), {
+    target: { files: [pdf("Second.pdf")] },
+  });
+  expect(screen.getByLabelText("ID").getAttribute("value")).toBe("Second.pdf");
+});
+
 test("follows the file name while the ID is still the one it filled in", async () => {
   renderPage();
   await screen.findByText("2026-Pilot.pdf");
