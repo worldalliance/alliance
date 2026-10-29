@@ -117,6 +117,8 @@ export function useFormValidation(args: {
     firstInvalidPageIndex: number | null;
     firstInvalidFieldId?: string;
   }>;
+  /** Validates fields whose page the caller is showing, so only their own visibility hides them; runs custom validators. */
+  validateScreen: (fields: AnyField[]) => Promise<PageValidationResult>;
 } {
   const {
     schema,
@@ -288,5 +290,15 @@ export function useFormValidation(args: {
     } as const;
   }, [schema.pages.length, validatePage]);
 
-  return { validateFields, validatePage, validateAllPages };
+  const validateScreen = useCallback(
+    (fields: AnyField[]) =>
+      validateFields({
+        fields,
+        pageVisible: true,
+        includeCustomValidators: true,
+      }),
+    [validateFields],
+  );
+
+  return { validateFields, validatePage, validateAllPages, validateScreen };
 }
