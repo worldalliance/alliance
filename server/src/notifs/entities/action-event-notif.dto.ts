@@ -1,4 +1,4 @@
-import { ApiProperty, PickType } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
 import { ProfileDto } from "src/user/dto/user.dto";
 import type { WithRelations } from "src/utils/Repository";
 import { ActionEventNotif } from "./action-event-notif.entity";
@@ -18,8 +18,17 @@ export class ActionEventNotifDto extends PickType(ActionEventNotif, [
   @ApiProperty({ type: ProfileDto })
   user: ProfileDto;
 
+  /** When the email's link was first opened; null when unknown or never. */
+  @ApiPropertyOptional({ type: Date, nullable: true })
+  mailClickedAt?: Date | null;
+
+  /** When the text's link was first opened; null when unknown or never. */
+  @ApiPropertyOptional({ type: Date, nullable: true })
+  mmsClickedAt?: Date | null;
+
   constructor(
     actionEventNotif: WithRelations<ActionEventNotif, { user: true }>,
+    firstOpenedAt?: ReadonlyMap<string, Date>,
   ) {
     super();
     this.id = actionEventNotif.id;
@@ -33,5 +42,11 @@ export class ActionEventNotifDto extends PickType(ActionEventNotif, [
     this.idempotency_key = actionEventNotif.idempotency_key;
     this.createdAt = actionEventNotif.createdAt;
     this.user = new ProfileDto(actionEventNotif.user);
+    if (firstOpenedAt) {
+      const openedAt = (cid: string | null | undefined) =>
+        (cid && firstOpenedAt.get(cid)) || null;
+      this.mailClickedAt = openedAt(actionEventNotif.mail?.cid);
+      this.mmsClickedAt = openedAt(actionEventNotif.mms?.cid);
+    }
   }
 }

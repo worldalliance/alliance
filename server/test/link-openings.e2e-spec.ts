@@ -310,6 +310,37 @@ describe("Link openings (e2e)", () => {
     ).toMatchObject({ readAt });
   });
 
+  it("tells admins when a reminder's text was first opened", async () => {
+    const notif = await ctx.dataSource.getRepository(ActionEventNotif).save({
+      user: member,
+      type: ActionEventNotifType.Reminder,
+    });
+    const mms = await mmsService.sendMms({
+      to: "+15555550123",
+      userId: member.id,
+      body: "https://app.example.org/tasks",
+      mediaUrls: [],
+      tracking: { ...reminder(member.id), actionEventNotifId: notif.id },
+    });
+    await ctx.dataSource
+      .getRepository(ActionEventNotif)
+      .update(notif.id, { mms: { id: mms!.id } });
+    const hoursAgo = (hours: number) =>
+      new Date(Date.now() - milliseconds({ hours })).toISOString();
+    const first = hoursAgo(2);
+    await post(opening(mms!.cid!, { observedAt: hoursAgo(1) })).expect(204);
+    await post(opening(mms!.cid!, { observedAt: first })).expect(204);
+
+    const res = await supertest(ctx.app.getHttpServer())
+      .get(`/notifs/for-user/${member.id}`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .expect(200);
+
+    const sent = res.body.find((n: { id: number }) => n.id === notif.id);
+    expect(sent.mmsClickedAt).toBe(first);
+    expect(sent.mailClickedAt).toBeNull();
+  });
+
   it("attributes a waitlist email to an entry with no account", async () => {
     const entry = await saveEntry("Entrant");
     const mail = await sendWaitlistEmail(entry, {
