@@ -423,22 +423,13 @@ it("previews a task form as each kind of member among the action's own recipient
 
   expect(await screen.findByText("2 member variants")).toBeTruthy();
   fireEvent.click(screen.getByText("Call", { selector: "summary" }));
-  const cards = await screen.findAllByRole("radio", {
+  const cards = await screen.findAllByRole("link", {
     name: /1 member.*has city/,
   });
   expect(api.visibilityProfileRequests).toEqual([{ userIds: [10, 11] }]);
   expect(screen.queryByText("Write", { selector: "summary" })).toBeNull();
-
-  fireEvent.click(cards[1]);
-  expect(await screen.findByText("As Ben sees it")).toBeTruthy();
-});
-
-it("leaves out task forms that show every member the same thing", async () => {
-  renderPanel();
-  await screen.findByText("Double space · Call · Action page description");
-
-  expect(screen.queryByText("Task forms by member")).toBeNull();
-  expect(api.visibilityProfileRequests).toEqual([]);
+  expect(cards[1].getAttribute("href")).toBe("/forms/7?previewAs=11");
+  expect(cards[1].getAttribute("target")).toBe("_blank");
 });
 
 it("lists each variant form whose conditions tell members apart as its own entry", async () => {
@@ -483,7 +474,16 @@ it("lists each variant form whose conditions tell members apart as its own entry
   fireEvent.click(variant);
   const entry = variant.closest("li");
   if (!entry) throw new Error("no variant entry");
-  expect(
-    await within(entry).findAllByRole("radio", { name: /1 member.*has city/ }),
-  ).toHaveLength(2);
+  const cards = await within(entry).findAllByRole("link", {
+    name: /1 member.*has city/,
+  });
+  expect(cards[1].getAttribute("href")).toBe("/forms/9?previewAs=11");
+});
+
+it("leaves out task forms that show every member the same thing", async () => {
+  renderPanel();
+  await screen.findByText("Double space · Call · Action page description");
+
+  expect(screen.queryByText("Task forms by member")).toBeNull();
+  expect(api.visibilityProfileRequests).toEqual([]);
 });

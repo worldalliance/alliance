@@ -1,6 +1,7 @@
 import { cn } from "@alliance/shared/styles/util";
-import { CircleCheck } from "lucide-react";
+import { CircleCheck, ExternalLink } from "lucide-react";
 import { createContext, useContext, useId, type ReactNode } from "react";
+import { Link } from "react-router";
 
 const GroupName = createContext<string | null>(null);
 
@@ -72,3 +73,51 @@ export const SelectableCard = ({
     </label>
   );
 };
+
+export const CardLinks = ({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) => {
+  const labelId = useId();
+  return (
+    <div className="flex flex-col gap-2">
+      <p id={labelId} className="text-sm">
+        {label}
+      </p>
+      <ul aria-labelledby={labelId} className={cardGrid}>
+        {children}
+      </ul>
+    </div>
+  );
+};
+
+export const CardLink = ({
+  to,
+  title,
+  children,
+}: {
+  to: string;
+  title: ReactNode;
+  children: ReactNode;
+}) => (
+  <li className="flex">
+    <Link
+      to={to}
+      target="_blank"
+      rel="noreferrer"
+      className={cn(cardClass, "flex-1 border-zinc-200 hover:border-zinc-400")}
+    >
+      <CardTitle>
+        <span className="flex items-center gap-1">
+          {title}
+          <ExternalLink className="size-3 shrink-0" aria-hidden />
+          <span className="sr-only">(opens in a new tab)</span>
+        </span>
+      </CardTitle>
+      {children}
+    </Link>
+  </li>
+);

@@ -5,6 +5,7 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, expect, it, mock } from "bun:test";
+import { MemoryRouter } from "react-router";
 import { VisibilityProfilePicker } from "./VisibilityProfilePicker";
 
 const city: Condition = { kind: "userHasCity", userHasCity: true };
@@ -87,6 +88,33 @@ it("shows each group's verdict on the conditions that tell groups apart", async 
 
   fireEvent.click(radios[0]);
   expect(onSelect).toHaveBeenCalledWith(2);
+});
+
+it("links each group to a page about its first member", async () => {
+  profiles = [
+    { results: [true, false], userIds: [2, 3] },
+    { results: [true, true], userIds: [1] },
+  ];
+  const { wrapper } = queryWrapper();
+  render(
+    <MemoryRouter>
+      <VisibilityProfilePicker
+        schema={gatedBy([city, veteran])}
+        userIds={[1, 2, 3]}
+        hrefFor={(userId) => `/members/${userId}`}
+      />
+    </MemoryRouter>,
+    { wrapper },
+  );
+
+  const links = await screen.findAllByRole("link");
+  expect(links.map((link) => link.getAttribute("href"))).toEqual([
+    "/members/2",
+    "/members/1",
+  ]);
+  expect(links[0].getAttribute("target")).toBe("_blank");
+  expect(links[0].textContent).toContain("(opens in a new tab)");
+  expect(screen.queryByRole("radio")).toBeNull();
 });
 
 it("says so when every member sees the same version", async () => {

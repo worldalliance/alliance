@@ -14,7 +14,12 @@ import {
   type ConditionFieldLookup,
   describeCondition,
 } from "../lib/visibilitySummary";
-import { SelectableCard, SelectableCardGroup } from "./SelectableCards";
+import {
+  CardLink,
+  CardLinks,
+  SelectableCard,
+  SelectableCardGroup,
+} from "./SelectableCards";
 
 type ValidatorCondition = Extract<Condition, { kind: "validator" }>;
 
@@ -53,17 +58,27 @@ const ConditionText = ({
     describeCondition(condition, fieldOf)
   );
 
+/** Picks a group's member, or links each group to a page about its first member. */
+type ProfileChoice =
+  | {
+      selectedUserId: number | null;
+      onSelect: (userId: number) => void;
+      hrefFor?: never;
+    }
+  | {
+      hrefFor: (userId: number) => string;
+      selectedUserId?: never;
+      onSelect?: never;
+    };
+
 export function VisibilityProfilePicker({
   schema,
   userIds,
-  selectedUserId,
-  onSelect,
+  ...choice
 }: {
   schema: FormSchema;
   userIds: readonly number[];
-  selectedUserId: number | null;
-  onSelect: (userId: number) => void;
-}) {
+} & ProfileChoice) {
   const {
     conditions,
     userIds: askedIds,
@@ -93,48 +108,66 @@ export function VisibilityProfilePicker({
       isDraftValidatorId(condition.validatorId),
   );
 
+  const label = "Preview as members who see";
+  const cardBody = (profile: (typeof profiles)[number]) =>
+    profiles.length === 1 ? (
+      <span className="text-zinc-600">All see the same version</span>
+    ) : (
+      conditions.map(
+        (condition, index) =>
+          varies[index] && (
+            <span
+              key={JSON.stringify(condition)}
+              className="flex items-start gap-1 text-zinc-600"
+            >
+              {profile.results[index] ? (
+                <Check
+                  className="mt-0.5 size-3 shrink-0 text-green"
+                  aria-label="Holds"
+                />
+              ) : (
+                <X
+                  className="mt-0.5 size-3 shrink-0 text-red-600"
+                  aria-label="Doesn't hold"
+                />
+              )}
+              <ConditionText condition={condition} fieldOf={fieldOf} />
+            </span>
+          ),
+      )
+    );
+  const { hrefFor } = choice;
   return (
     <div className="flex flex-col gap-2">
-      <SelectableCardGroup label="Preview as members who see">
-        {profiles.map((profile) => (
-          <SelectableCard
-            key={profile.results.join(",")}
-            selected={
-              selectedUserId !== null &&
-              profile.userIds.includes(selectedUserId)
-            }
-            onSelect={() => onSelect(profile.userIds[0])}
-            title={withCount(profile.userIds.length, "member")}
-          >
-            {profiles.length === 1 ? (
-              <span className="text-zinc-600">All see the same version</span>
-            ) : (
-              conditions.map(
-                (condition, index) =>
-                  varies[index] && (
-                    <span
-                      key={JSON.stringify(condition)}
-                      className="flex items-start gap-1 text-zinc-600"
-                    >
-                      {profile.results[index] ? (
-                        <Check
-                          className="mt-0.5 size-3 shrink-0 text-green"
-                          aria-label="Holds"
-                        />
-                      ) : (
-                        <X
-                          className="mt-0.5 size-3 shrink-0 text-red-600"
-                          aria-label="Doesn't hold"
-                        />
-                      )}
-                      <ConditionText condition={condition} fieldOf={fieldOf} />
-                    </span>
-                  ),
-              )
-            )}
-          </SelectableCard>
-        ))}
-      </SelectableCardGroup>
+      {hrefFor ? (
+        <CardLinks label={label}>
+          {profiles.map((profile) => (
+            <CardLink
+              key={profile.results.join(",")}
+              to={hrefFor(profile.userIds[0])}
+              title={withCount(profile.userIds.length, "member")}
+            >
+              {cardBody(profile)}
+            </CardLink>
+          ))}
+        </CardLinks>
+      ) : (
+        <SelectableCardGroup label={label}>
+          {profiles.map((profile) => (
+            <SelectableCard
+              key={profile.results.join(",")}
+              selected={
+                choice.selectedUserId !== null &&
+                profile.userIds.includes(choice.selectedUserId)
+              }
+              onSelect={() => choice.onSelect(profile.userIds[0])}
+              title={withCount(profile.userIds.length, "member")}
+            >
+              {cardBody(profile)}
+            </SelectableCard>
+          ))}
+        </SelectableCardGroup>
+      )}
       {unsavedValidators && (
         <p className="text-xs text-yellow-700">
           Save the form to group members by its new validators; until then they
