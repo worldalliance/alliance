@@ -10,9 +10,12 @@ const progress = {
     memberActionAt: new Date("2026-11-01T02:00:00Z"),
     officeActionAt: new Date("2026-11-08T07:59:00Z"),
   },
-  checkedActionIds: new Set([1, 2]),
+  readyActionVersions: new Map([
+    [1, "2026-10-30T18:00:00.000Z|4"],
+    [2, "2026-10-30T18:05:00.000Z|"],
+  ]),
   dismissedKeys: new Set(["misspelling|grantmaking"]),
-  violationsAcknowledged: true,
+  acceptedViolations: new Set(["Members get 6 days to finish."]),
 };
 
 afterEach(() => window.localStorage.clear());
@@ -31,10 +34,10 @@ describe("launch progress", () => {
   });
 
   it("ignores stored progress it can't read", () => {
-    window.localStorage.setItem("alliance.suiteLaunch.v1.3", "{not json");
+    window.localStorage.setItem("alliance.suiteLaunch.v2.3", "{not json");
     expect(readLaunchProgress(3)).toBeNull();
     window.localStorage.setItem(
-      "alliance.suiteLaunch.v1.3",
+      "alliance.suiteLaunch.v2.3",
       JSON.stringify({ memberActionAt: "soon" }),
     );
     expect(readLaunchProgress(3)).toBeNull();

@@ -29,6 +29,28 @@ describe("actionTextFindings", () => {
     ]);
   });
 
+  it("checks each variant form, pointing each finding at the form to edit", () => {
+    const pageTitled = (title: string) => ({
+      pages: [{ id: "p1", title, fields: [] }],
+      outputViews: [],
+    });
+    const findings = actionTextFindings({
+      action: { ...action, name: "Call Congress" },
+      taskFormSchema: pageTitled("Page  one"),
+      taskFormId: 5,
+      variantForms: [
+        { formId: 8, schema: pageTitled("Page  one") },
+        { formId: 9, schema: pageTitled("Fine") },
+      ],
+    });
+    expect(findings.map(({ source, formId }) => [source, formId])).toEqual([
+      [TextSource.Body, null],
+      [TextSource.TaskForm, 5],
+      [TextSource.VariantForm, 8],
+    ]);
+    expect(new Set(findings.map(({ key }) => key)).size).toBe(3);
+  });
+
   it("shows the flagged text with surrounding context", () => {
     const [, body] = actionTextFindings({ action, taskFormSchema: null });
     expect(findingContext(body)).toEqual({

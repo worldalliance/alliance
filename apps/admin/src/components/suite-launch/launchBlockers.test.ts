@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { TextSource } from "./actionTextFindings";
-import { launchBlockers } from "./launchBlockers";
+import { launchBlockers, LaunchSection } from "./launchBlockers";
 import { TextIssueKind } from "./textChecks";
 
 const now = new Date("2026-01-15T18:00:00Z");
@@ -14,6 +14,7 @@ const finding = {
   dismissKey: "f1",
   actionId: 1,
   source: TextSource.Body,
+  formId: null,
   text: "a  b",
   kind: TextIssueKind.DoubleSpace,
   start: 1,
@@ -45,23 +46,26 @@ const ready = {
   now,
 };
 
+const messages = (params: Parameters<typeof launchBlockers>[0]) =>
+  launchBlockers(params).map(({ message }) => message);
+
 describe("launchBlockers", () => {
   it("allows launch once every check passes", () => {
-    expect(launchBlockers(ready)).toEqual([]);
+    expect(messages(ready)).toEqual([]);
   });
 
   it("never launches a suite twice", () => {
-    expect(launchBlockers({ ...ready, hasMemberActionEvent: true })).toEqual([
+    expect(messages({ ...ready, hasMemberActionEvent: true })).toEqual([
       "This suite already has a members taking action event.",
     ]);
   });
 
   it("waits for checks to load", () => {
     expect(
-      launchBlockers({ ...ready, data: { ...ready.data, loading: true } }),
+      messages({ ...ready, data: { ...ready.data, loading: true } }),
     ).toEqual(["Checks are loading."]);
     expect(
-      launchBlockers({
+      messages({
         ...ready,
         data: { ...ready.data, spellcheckLoading: true },
       }),
@@ -70,7 +74,7 @@ describe("launchBlockers", () => {
 
   it("blocks on each unresolved check", () => {
     expect(
-      launchBlockers({
+      messages({
         ...ready,
         data: {
           ...ready.data,
@@ -105,7 +109,7 @@ describe("launchBlockers", () => {
 
   it("lets acknowledged contract violations through", () => {
     expect(
-      launchBlockers({
+      messages({
         ...ready,
         data: {
           ...ready.data,
@@ -124,7 +128,7 @@ describe("launchBlockers", () => {
 
   it("blocks reminders that would send before members start", () => {
     expect(
-      launchBlockers({
+      messages({
         ...ready,
         reminderWindows: [
           {
@@ -141,7 +145,7 @@ describe("launchBlockers", () => {
 
   it("blocks a schedule in the past or out of order, and an empty audience", () => {
     expect(
-      launchBlockers({
+      messages({
         ...ready,
         data: { ...ready.data, recipientCount: 0 },
         schedule: {
@@ -154,5 +158,15 @@ describe("launchBlockers", () => {
       "Office taking action must come after members start.",
       "No member is assigned any action.",
     ]);
+  });
+
+  it("points each blocker at the section that resolves it", () => {
+    expect(
+      launchBlockers({
+        ...ready,
+        checkedActionIds: new Set(),
+        schedule: { ...schedule, memberActionAt: now },
+      }).map(({ section }) => section),
+    ).toEqual([LaunchSection.Schedule, LaunchSection.Actions]);
   });
 });

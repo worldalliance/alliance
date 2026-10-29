@@ -5,6 +5,7 @@ export enum TextIssueKind {
   MissingSpaceAfterPunctuation = "missing_space_after_punctuation",
   Misspelling = "misspelling",
   Placeholder = "placeholder",
+  UnreachableLink = "unreachable_link",
 }
 
 export const TEXT_ISSUE_LABELS: Record<TextIssueKind, string> = {
@@ -15,6 +16,7 @@ export const TEXT_ISSUE_LABELS: Record<TextIssueKind, string> = {
     "Missing space after punctuation",
   [TextIssueKind.Misspelling]: "Possible misspelling",
   [TextIssueKind.Placeholder]: "Placeholder text",
+  [TextIssueKind.UnreachableLink]: "Link members can't open",
 };
 
 export type TextIssue = {
@@ -51,6 +53,10 @@ const PATTERNS: [TextIssueKind, RegExp][] = [
   ],
 ];
 
+// Staff, test, and placeholder hosts, matched in the unmasked text since links are masked.
+const UNREACHABLE_LINK =
+  /\bhttps?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|(?:[\w-]+\.)*example\.(?:com|org|net)|(?:admin|staging)\.[\w-]+(?:\.[\w-]+)+)(?::\d+)?(?:\/[^\s)\]>"']*)?(?<![.,;:!?])/gi;
+
 // Lowercase only: capitalized words are mostly names the dictionary lacks.
 const WORD = /(?<![\w'’\u0001])[a-z]+(?:['’][a-z]+)?(?![\w\u0001])/g;
 const MIN_SPELLED_LENGTH = 3;
@@ -73,6 +79,13 @@ export function findTextIssues(
         end: match.index + match[0].length,
       });
     }
+  }
+  for (const match of text.matchAll(UNREACHABLE_LINK)) {
+    issues.push({
+      kind: TextIssueKind.UnreachableLink,
+      start: match.index,
+      end: match.index + match[0].length,
+    });
   }
   if (isKnownWord) {
     for (const match of checked.matchAll(WORD)) {

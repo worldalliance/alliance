@@ -37,6 +37,10 @@ On the admin suite view:
 - The per-action "I checked this" box reads "Ready to launch". (user)
 - Cut the misspelling check's false positives. (user)
 - The launch process is its own page and keeps its state across a refresh, at least locally. (user)
+- The office taking action default stays at 11:59pm. (user)
+- The launch shows each reminder's actual text in a dropdown. (user)
+- A second members-taking-action event on a suite is acceptable; the server needn't refuse one. (user)
+- Every instance of the same misspelling is one finding, dismissed at once. (user)
 
 ## Verification
 

@@ -34,9 +34,35 @@ describe("findTextIssues", () => {
   it("skips links, code, html, and email addresses", () => {
     expect(
       flagged(
-        "See [the  page](https://example.org/a.Bc  x) or `a  b` or <a  href> or hi@example.org.Nope",
+        "See [the  page](https://thealliance.org/a.Bc  x) or `a  b` or <a  href> or hi@example.org.Nope",
       ),
     ).toEqual([{ kind: TextIssueKind.DoubleSpace, text: "  " }]);
+  });
+
+  it("flags links into staff, test, or placeholder sites that members can't open", () => {
+    expect(
+      flagged(
+        "Sign [here](https://admin.thealliance.org/actions/3), see http://localhost:5173/tasks or https://example.com.",
+      ),
+    ).toEqual([
+      {
+        kind: TextIssueKind.UnreachableLink,
+        text: "https://admin.thealliance.org/actions/3",
+      },
+      {
+        kind: TextIssueKind.UnreachableLink,
+        text: "http://localhost:5173/tasks",
+      },
+      { kind: TextIssueKind.UnreachableLink, text: "https://example.com" },
+    ]);
+  });
+
+  it("leaves ordinary links alone", () => {
+    expect(
+      flagged(
+        "Read https://www.thealliance.org/about and https://docs.google.com/document/d/abc.",
+      ),
+    ).toEqual([]);
   });
 
   it("flags lowercase words the dictionary lacks, skipping capitalized and short words", () => {

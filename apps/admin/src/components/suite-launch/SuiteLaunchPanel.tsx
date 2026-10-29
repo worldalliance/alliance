@@ -16,7 +16,7 @@ import { iconControlClass } from "./ActionLinks";
 import ActionReviewCheck from "./ActionReviewCheck";
 import { contractViolations } from "./contractViolations";
 import ContractViolationsBanner from "./ContractViolationsBanner";
-import { launchBlockers } from "./launchBlockers";
+import { launchBlockers, LaunchSection } from "./launchBlockers";
 import LaunchCheck from "./LaunchCheck";
 import {
   clearLaunchProgress,
@@ -33,6 +33,7 @@ import {
 } from "./launchSchedule";
 import { launchSuite } from "./launchSuite";
 import { MemberLoadCheck, MemberPreview } from "./MemberChecks";
+import { actionMixes } from "./memberLoad";
 import TextFindingsCheck from "./TextFindingsCheck";
 import { useSuiteLaunchData } from "./useSuiteLaunchData";
 
@@ -46,9 +47,11 @@ const toggled = <T,>(set: ReadonlySet<T>, item: T, on: boolean) => {
 const SuiteLaunchPanel = ({
   suite,
   addEvent,
+  fetchSuite,
   onClose,
 }: {
   suite: ActionSuiteDto;
+  fetchSuite: () => Promise<ActionSuiteDto>;
   /** Resolves `null` when staff decline to move a deadline earlier. */
   addEvent: (body: CreateActionEventDto) => Promise<ActionSuiteDto | null>;
   onClose: () => void;
@@ -56,39 +59,45 @@ const SuiteLaunchPanel = ({
   const { confirm, success } = useToast();
   const createReminders = useActionReminderGroupsAdmin(null).create;
   const [saved] = useState(() => readLaunchProgress(suite.id));
-  const [schedule, setSchedule] = useState<LaunchSchedule>(
-    () => saved?.schedule ?? defaultLaunchSchedule(new Date()),
+  const [schedule, setSchedule] = useState<LaunchSchedule>(() =>
+    saved && saved.schedule.memberActionAt > new Date()
+      ? saved.schedule
+      : defaultLaunchSchedule(new Date()),
   );
   const data = useSuiteLaunchData(suite);
+  const reminderBodies = defaultReminderBodies({
+    suiteId: suite.id,
+    hasDeadline: true,
+  });
   const reminderWindows = reminderSendWindows({
-    bodies: defaultReminderBodies({ suiteId: suite.id, hasDeadline: true }),
+    bodies: reminderBodies,
     schedule,
   });
-  const [checkedActionIds, setCheckedActionIds] = useState<ReadonlySet<number>>(
-    saved?.checkedActionIds ?? new Set(),
-  );
+  const [readyActionVersions, setReadyActionVersions] = useState<
+    ReadonlyMap<number, string>
+  >(saved?.readyActionVersions ?? new Map());
   const [dismissedKeys, setDismissedKeys] = useState<ReadonlySet<string>>(
     saved?.dismissedKeys ?? new Set(),
   );
-  const [violationsAcknowledged, setViolationsAcknowledged] = useState(
-    saved?.violationsAcknowledged ?? false,
-  );
+  const [acceptedViolations, setAcceptedViolations] = useState<
+    ReadonlySet<string>
+  >(saved?.acceptedViolations ?? new Set());
   useEffect(() => {
     writeLaunchProgress({
       suiteId: suite.id,
       progress: {
         schedule,
-        checkedActionIds,
+        readyActionVersions,
         dismissedKeys,
-        violationsAcknowledged,
+        acceptedViolations,
       },
     });
   }, [
     suite.id,
     schedule,
-    checkedActionIds,
+    readyActionVersions,
     dismissedKeys,
-    violationsAcknowledged,
+    acceptedViolations,
   ]);
   const [launching, setLaunching] = useState(false);
   const [launchError, setLaunchError] = useState<string | null>(null);
@@ -104,6 +113,25 @@ const SuiteLaunchPanel = ({
   const violations = data.loading
     ? []
     : contractViolations({ loads: data.loads, schedule });
+  const violationsAcknowledged = violations.every((violation) =>
+    acceptedViolations.has(violation),
+  );
+  const markedReady = data.actions.filter(({ action }) =>
+    readyActionVersions.has(action.id),
+  );
+  const checkedActionIds = new Set(
+    markedReady
+      .filter(
+        ({ action, reviewVersion }) =>
+          readyActionVersions.get(action.id) === reviewVersion,
+      )
+      .map(({ action }) => action.id),
+  );
+  const changedActionIds = new Set(
+    markedReady
+      .map(({ action }) => action.id)
+      .filter((actionId) => !checkedActionIds.has(actionId)),
+  );
   const now = new Date();
   const scheduleValid =
     schedule.memberActionAt > now &&
@@ -124,7 +152,7 @@ const SuiteLaunchPanel = ({
   const handleLaunch = async () => {
     const ok = await confirm({
       title: "Launch suite?",
-      message: `This creates the members taking action and office taking action events and the default reminders, which will notify ${data.recipientCount} members.`,
+      message: `Members start ${inLaunchZone(schedule.memberActionAt)} and have until ${inLaunchZone(schedule.officeActionAt)}, ${completionTime(schedule)}. This creates both events and ${reminderBodies.length} reminders, notifying ${data.recipientCount} members.`,
       confirmLabel: "Launch",
       cancelLabel: "Cancel",
       mode: ConfirmMode.Fullscreen,
@@ -140,7 +168,8 @@ const SuiteLaunchPanel = ({
     setLaunching(true);
     setLaunchError(null);
     const result = await launchSuite({
-      suite,
+      suiteId: suite.id,
+      fetchSuite,
       schedule,
       addEvent,
       createReminders: createReminders.mutateAsync,
@@ -174,10 +203,16 @@ const SuiteLaunchPanel = ({
         <ContractViolationsBanner
           violations={violations}
           acknowledged={violationsAcknowledged}
-          onAcknowledgedChange={setViolationsAcknowledged}
+          onAcknowledgedChange={(acknowledged) =>
+            setAcceptedViolations(new Set(acknowledged ? violations : []))
+          }
         />
       )}
-      <LaunchCheck title="Schedule" passed={scheduleValid}>
+      <LaunchCheck
+        id={LaunchSection.Schedule}
+        title="Schedule"
+        passed={scheduleValid}
+      >
         {scheduleValid && (
           <p className="text-sm text-black">
             Members have {completionTime(schedule)} to complete their actions
@@ -206,7 +241,14 @@ const SuiteLaunchPanel = ({
           </label>
         </div>
       </LaunchCheck>
-      <LaunchRemindersCheck windows={reminderWindows} schedule={schedule} />
+      <LaunchRemindersCheck
+        bodies={reminderBodies}
+        windows={reminderWindows}
+        schedule={schedule}
+        timeZones={data.recipientTimeZones}
+        mixes={actionMixes(data.loads)}
+        actions={data.actions}
+      />
 
       {data.errors.length > 0 && (
         <ul className="text-sm text-red-500">
@@ -222,8 +264,15 @@ const SuiteLaunchPanel = ({
           <ActionReviewCheck
             actions={data.actions}
             checkedActionIds={checkedActionIds}
-            onCheckedChange={(actionId, checked) =>
-              setCheckedActionIds((prev) => toggled(prev, actionId, checked))
+            changedActionIds={changedActionIds}
+            schedule={schedule}
+            onCheckedChange={({ action, reviewVersion }, checked) =>
+              setReadyActionVersions((prev) => {
+                const next = new Map(prev);
+                if (checked) next.set(action.id, reviewVersion);
+                else next.delete(action.id);
+                return next;
+              })
             }
           />
           <MemberLoadCheck loads={data.loads} actions={data.actions} />
@@ -240,6 +289,9 @@ const SuiteLaunchPanel = ({
               onDismiss={(key) =>
                 setDismissedKeys((prev) => toggled(prev, key, true))
               }
+              onRestore={(key) =>
+                setDismissedKeys((prev) => toggled(prev, key, false))
+              }
               onRecheck={data.refetch}
             />
           )}
@@ -248,8 +300,24 @@ const SuiteLaunchPanel = ({
 
       {blockers.length > 0 && (
         <ul className="list-disc pl-5 text-sm text-yellow-800">
-          {blockers.map((blocker) => (
-            <li key={blocker}>{blocker}</li>
+          {blockers.map(({ message, section }) => (
+            <li key={message}>
+              {section ? (
+                <button
+                  type="button"
+                  className="text-left underline"
+                  onClick={() =>
+                    document
+                      .getElementById(section)
+                      ?.scrollIntoView({ behavior: "smooth" })
+                  }
+                >
+                  {message}
+                </button>
+              ) : (
+                message
+              )}
+            </li>
           ))}
         </ul>
       )}
@@ -263,7 +331,9 @@ const SuiteLaunchPanel = ({
       >
         {launching
           ? "Launching…"
-          : `Launch and notify ${data.recipientCount} members`}
+          : data.loading
+            ? "Running checks…"
+            : `Launch and notify ${data.recipientCount} members`}
       </Button>
     </section>
   );

@@ -1,11 +1,17 @@
 import Card from "@alliance/sharedweb/ui/Card";
 import { AlertTriangle, CheckIcon } from "lucide-react";
 import type React from "react";
+import type { LaunchSection } from "./launchBlockers";
 
 const LaunchCheck: React.FC<
-  React.PropsWithChildren<{ title: string; passed: boolean; summary?: string }>
-> = ({ title, passed, summary, children }) => (
-  <Card className="flex flex-col gap-3">
+  React.PropsWithChildren<{
+    title: string;
+    passed: boolean;
+    summary?: string;
+    id?: LaunchSection;
+  }>
+> = ({ title, passed, summary, id, children }) => (
+  <Card id={id} className="flex scroll-mt-4 flex-col gap-3">
     <div className="flex items-center gap-2">
       {passed ? (
         <CheckIcon

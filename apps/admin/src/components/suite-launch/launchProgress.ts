@@ -5,19 +5,20 @@ import type { LaunchSchedule } from "./launchSchedule";
 const storedProgressSchema = z.object({
   memberActionAt: z.iso.datetime(),
   officeActionAt: z.iso.datetime(),
-  checkedActionIds: z.array(z.number()),
+  readyActionVersions: z.array(z.tuple([z.number(), z.string()])),
   dismissedKeys: z.array(z.string()),
-  violationsAcknowledged: z.boolean(),
+  acceptedViolations: z.array(z.string()),
 });
 
 export type LaunchProgress = {
   schedule: LaunchSchedule;
-  checkedActionIds: ReadonlySet<number>;
+  /** Action id → the `reviewVersion` staff marked ready. */
+  readyActionVersions: ReadonlyMap<number, string>;
   dismissedKeys: ReadonlySet<string>;
-  violationsAcknowledged: boolean;
+  acceptedViolations: ReadonlySet<string>;
 };
 
-const storageKey = (suiteId: number) => `alliance.suiteLaunch.v1.${suiteId}`;
+const storageKey = (suiteId: number) => `alliance.suiteLaunch.v2.${suiteId}`;
 
 export function readLaunchProgress(suiteId: number): LaunchProgress | null {
   if (typeof window === "undefined") return null;
@@ -32,9 +33,9 @@ export function readLaunchProgress(suiteId: number): LaunchProgress | null {
       memberActionAt: new Date(stored.data.memberActionAt),
       officeActionAt: new Date(stored.data.officeActionAt),
     },
-    checkedActionIds: new Set(stored.data.checkedActionIds),
+    readyActionVersions: new Map(stored.data.readyActionVersions),
     dismissedKeys: new Set(stored.data.dismissedKeys),
-    violationsAcknowledged: stored.data.violationsAcknowledged,
+    acceptedViolations: new Set(stored.data.acceptedViolations),
   };
 }
 
@@ -50,9 +51,9 @@ export function writeLaunchProgress(params: {
       JSON.stringify({
         memberActionAt: progress.schedule.memberActionAt.toISOString(),
         officeActionAt: progress.schedule.officeActionAt.toISOString(),
-        checkedActionIds: [...progress.checkedActionIds],
+        readyActionVersions: [...progress.readyActionVersions],
         dismissedKeys: [...progress.dismissedKeys],
-        violationsAcknowledged: progress.violationsAcknowledged,
+        acceptedViolations: [...progress.acceptedViolations],
       } satisfies z.infer<typeof storedProgressSchema>),
     ),
   );

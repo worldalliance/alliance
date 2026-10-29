@@ -1,196 +1,24 @@
+import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { expect, it, setSystemTime } from "bun:test";
 import {
-  actionSuitesAddSuiteEventAdmin,
-  type ActionEventDto,
-  type ActionSuiteDto,
-  type CreateActionEventDto,
-  type ProjectDto,
-} from "@alliance/shared/client";
-import { makeAction, makeProfile } from "@alliance/shared/lib/testFixtures";
-import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
-import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import {
-  afterEach,
-  beforeEach,
-  expect,
-  it,
-  mock,
-  setSystemTime,
-} from "bun:test";
-import { MemoryRouter } from "react-router";
-import { spellcheckerQuery } from "./spellchecker";
-import SuiteLaunchPanel from "./SuiteLaunchPanel";
+  api,
+  launchButton,
+  manual,
+  onClose,
+  renderPanel,
+  resolveEveryCheck,
+  serveLaunchApi,
+} from "./SuiteLaunchPanel.testHarness";
 
-const foodDrive = (): ProjectDto | null => ({
-  id: 4,
-  name: "Food drive",
-  category: [],
-});
-
-const adminAction = (params: {
-  id: number;
-  name: string;
-  timeEstimate: number;
-  body: string;
-  memberIds: number[];
-  taskFormId?: number | null;
-}) => ({
-  ...makeAction({ id: params.id, name: params.name }),
-  shortDescription: "Short.",
-  body: params.body,
-  timeEstimate: params.timeEstimate,
-  suite: { id: 3, name: "Spring suite" },
-  project: foodDrive(),
-  authors: [makeProfile(1)],
-  taskFormId: params.taskFormId === undefined ? 5 : params.taskFormId,
-  cohortExpression: { type: "Manual", userIds: params.memberIds },
-});
-
-let benSigned = true;
-let formPages: { id: string; title: string; fields: [] }[] = [];
-let served: Record<number, ReturnType<typeof adminAction>> = {};
-let suiteEvents: ActionEventDto[] = [];
-const createdEvents: CreateActionEventDto[] = [];
-const reminderEventIds: string[] = [];
-
-serveApi(
-  routes({
-    "GET /actions/all": () => Response.json([]),
-    "GET /user/tags": () => Response.json([]),
-    "GET /actions/adminslug/:id": ({ params }) =>
-      Response.json(served[Number(params.id)]),
-    "GET /tasks/adminForm/:id": ({ params }) =>
-      Number.isInteger(Number(params.id))
-        ? Response.json({
-            id: 5,
-            title: "Form",
-            schema: { pages: formPages, outputViews: [] },
-          })
-        : Response.json({ statusCode: 400 }, { status: 400 }),
-    "POST /actions/evaluate-cohort": async ({ request }) => {
-      const { expression }: { expression: { userIds: number[] } } =
-        await request.json();
-      return Response.json({ userIds: expression.userIds });
-    },
-    "GET /user/list": () =>
-      Response.json([
-        { id: 10, name: "Ana", profilePicture: null, hasActiveContract: true },
-        {
-          id: 11,
-          name: "Ben",
-          profilePicture: null,
-          hasActiveContract: benSigned,
-        },
-      ]),
-    "POST /actions/suite/:suiteId/events": async ({ request }) => {
-      const body: CreateActionEventDto = await request.json();
-      createdEvents.push(body);
-      suiteEvents = [
-        ...suiteEvents,
-        { ...body, id: 100 + suiteEvents.length, suiteManaged: true },
-      ];
-      return Response.json(suiteWith(suiteEvents));
-    },
-    "POST /actions/events/:eventId/createremindergroup": ({ params }) => {
-      reminderEventIds.push(params.eventId);
-      return Response.json({ id: reminderEventIds.length });
-    },
-  }),
-);
-
-const suiteWith = (events: ActionEventDto[]): ActionSuiteDto => ({
-  id: 3,
-  name: "Spring suite",
-  actions: [
-    makeAction({ id: 1, name: "Call" }),
-    makeAction({ id: 2, name: "Write" }),
-  ],
-  events,
-  reminderGroups: [],
-  generalUpdates: [],
-});
-
-beforeEach(() => {
-  window.localStorage.clear();
-  served = {
-    1: adminAction({
-      id: 1,
-      name: "Call",
-      timeEstimate: 10,
-      body: "Call  your representative.",
-      memberIds: [10, 11],
-    }),
-    2: adminAction({
-      id: 2,
-      name: "Write",
-      timeEstimate: 8,
-      body: "Write teh letter.",
-      memberIds: [11],
-    }),
-  };
-  formPages = [];
-  benSigned = true;
-  suiteEvents = [];
-  createdEvents.length = 0;
-  reminderEventIds.length = 0;
-});
-
-afterEach(() => setSystemTime());
-
-const onClose = mock(() => {});
-
-const renderPanel = () => {
-  const addEvent = (body: CreateActionEventDto) =>
-    actionSuitesAddSuiteEventAdmin({
-      path: { suiteId: 3 },
-      body,
-      throwOnError: true,
-    }).then((res) => res.data);
-  const query = queryWrapper();
-  // The dictionary loads through Vite's `?raw` imports, which bun can't resolve.
-  query.client.setQueryData(
-    spellcheckerQuery.queryKey,
-    () => (word: string) => word !== "teh",
-  );
-  return render(
-    <MemoryRouter>
-      <ToastProvider>
-        <SuiteLaunchPanel
-          suite={suiteWith([])}
-          addEvent={addEvent}
-          onClose={onClose}
-        />
-      </ToastProvider>
-    </MemoryRouter>,
-    query,
-  );
-};
-
-const launchButton = () =>
-  screen.getByRole("button", { name: /Launch and notify/ });
-
-const resolveEveryCheck = async () => {
-  for (const box of await screen.findAllByRole("checkbox", {
-    name: "Ready to launch",
-  }))
-    fireEvent.click(box);
-  fireEvent.click(
-    screen.getByRole("checkbox", {
-      name: "Launch anyway, breaking the contract",
-    }),
-  );
-  for (const dismiss of screen.getAllByRole("button", { name: "Dismiss" }))
-    fireEvent.click(dismiss);
-};
+serveLaunchApi();
 
 it("flags overloaded members and text findings, and blocks launch until each is resolved", async () => {
   renderPanel();
 
-  expect(await screen.findByText(/Ben/)).toBeTruthy();
   expect(
-    screen.getByText(": 18 min (Call, Write)", { exact: false }),
-  ).toBeTruthy();
+    (await screen.findByText(": 18 min (Call, Write)", { exact: false }))
+      .textContent,
+  ).toContain("Ben");
   expect(screen.getByText("Double space · Call · Body")).toBeTruthy();
   expect(screen.getByText("Possible misspelling · Write · Body")).toBeTruthy();
   expect(
@@ -209,7 +37,12 @@ it("flags overloaded members and text findings, and blocks launch until each is 
 });
 
 it("lists each action's unfinished checklist items", async () => {
-  served[2] = { ...served[2], body: "", taskFormId: null, project: null };
+  api.served[2] = {
+    ...api.served[2],
+    body: "",
+    taskFormId: null,
+    project: null,
+  };
   renderPanel();
 
   expect(
@@ -240,11 +73,11 @@ it("creates both events and the default reminders once the count is typed", asyn
   fireEvent.click(screen.getByRole("button", { name: "Launch" }));
 
   await waitFor(() => expect(onClose).toHaveBeenCalled());
-  expect(createdEvents.map((event) => event.newStatus)).toEqual([
+  expect(api.createdEvents.map((event) => event.newStatus)).toEqual([
     "member_action",
     "office_action",
   ]);
-  expect(reminderEventIds).toEqual(Array(7).fill("100"));
+  expect(api.reminderEventIds).toEqual(Array(7).fill("100"));
 });
 
 it("refuses to launch once the member start has passed while the panel sat open", async () => {
@@ -267,101 +100,7 @@ it("refuses to launch once the member start has passed while the panel sat open"
       "Members taking action must start in the future. Pick a later time.",
     ),
   ).toBeTruthy();
-  expect(createdEvents).toEqual([]);
-});
-
-it("links a task form finding to the form and a body finding to the action", async () => {
-  formPages = [{ id: "p1", title: "Page  one", fields: [] }];
-  renderPanel();
-
-  const formFinding = (
-    await screen.findAllByText("Double space · Call · Task form")
-  )[0].closest("li");
-  const bodyFinding = screen
-    .getByText("Double space · Call · Body")
-    .closest("li");
-  expect(
-    formFinding
-      ?.querySelector('[aria-label="Edit task form"]')
-      ?.getAttribute("href"),
-  ).toBe("/forms/5");
-  expect(
-    bodyFinding
-      ?.querySelector('[aria-label="Edit action"]')
-      ?.getAttribute("href"),
-  ).toBe("/actions/1");
-});
-
-it("previews the actions assigned to a picked member", async () => {
-  renderPanel();
-  await screen.findByText("Double space · Call · Body");
-
-  fireEvent.change(screen.getByPlaceholderText("Search by name"), {
-    target: { value: "Ana" },
-  });
-  fireEvent.click(await screen.findByRole("button", { name: /Ana/ }));
-
-  const row = (
-    await screen.findByRole("link", { name: "Log in as this member" })
-  ).closest("li");
-  expect(row?.textContent).toContain("Ana10 min");
-  expect(row?.textContent).toContain("Call");
-  expect(row?.textContent).not.toContain("Write");
-  expect(
-    screen
-      .getByRole("link", { name: "Log in as this member" })
-      .getAttribute("href"),
-  ).toEndWith("/auth/impersonate/10");
-});
-
-it("groups members by the actions they get and previews one from a group", async () => {
-  renderPanel();
-  await screen.findByText("Double space · Call · Body");
-
-  const mixes = screen.getAllByRole("button", {
-    name: "Preview a member who gets these actions",
-  });
-  expect(mixes.map((button) => button.closest("tr")?.textContent)).toEqual([
-    "118Call, Write",
-    "110Call",
-  ]);
-  fireEvent.click(mixes[0]);
-
-  const row = (
-    await screen.findByRole("link", { name: "Log in as this member" })
-  ).closest("li");
-  expect(row?.textContent).toContain("Ben18 min");
-});
-
-it("lists the reminders the launch creates", async () => {
-  renderPanel();
-  expect(await screen.findByText("7 created on launch")).toBeTruthy();
-  expect(screen.getByText("Member Action announcement")).toBeTruthy();
-  expect(screen.getByText("Missed deadline message")).toBeTruthy();
-});
-
-it("shows each action's audience, task form link, and what to look at before checking it", async () => {
-  served[2] = { ...served[2], archived: true };
-  renderPanel();
-
-  const write = (await screen.findByText(/^1 members ·/)).closest("li");
-  expect(write?.textContent).not.toContain("cover image");
-  expect(write?.textContent).toContain("Archived");
-  expect(
-    write?.querySelector('[aria-label="Edit task form"]')?.getAttribute("href"),
-  ).toBe("/forms/5");
-  expect(screen.getByText(/^2 members ·/)).toBeTruthy();
-});
-
-it("counts only members with an active contract, as the server admits them", async () => {
-  benSigned = false;
-  renderPanel();
-
-  expect(
-    await screen.findByRole("button", { name: "Launch and notify 1 members" }),
-  ).toBeTruthy();
-  expect(screen.getByText(/^1 members ·/)).toBeTruthy();
-  expect(screen.getByText(/^0 members ·/)).toBeTruthy();
+  expect(api.createdEvents).toEqual([]);
 });
 
 it("keeps the schedule, checks, and dismissals across a reload, until launch", async () => {
@@ -399,4 +138,149 @@ it("keeps the schedule, checks, and dismissals across a reload, until launch", a
   fireEvent.click(screen.getByRole("button", { name: "Launch" }));
   await waitFor(() => expect(onClose).toHaveBeenCalled());
   expect(window.localStorage.length).toBe(0);
+});
+
+it("unmarks an action edited after it was marked ready", async () => {
+  const first = renderPanel();
+  await resolveEveryCheck();
+  await waitFor(() =>
+    expect(launchButton().hasAttribute("disabled")).toBe(false),
+  );
+  first.unmount();
+
+  api.served[2] = { ...api.served[2], updatedAt: "2026-10-30T12:00:00.000Z" };
+  renderPanel();
+
+  expect(
+    await screen.findByText("Edited since it was marked ready"),
+  ).toBeTruthy();
+  expect(
+    screen.getByText("1 action isn't marked ready to launch."),
+  ).toBeTruthy();
+  expect(launchButton().hasAttribute("disabled")).toBe(true);
+});
+
+it("asks again to break the contract once the violations change", async () => {
+  const first = renderPanel();
+  await resolveEveryCheck();
+  await waitFor(() =>
+    expect(launchButton().hasAttribute("disabled")).toBe(false),
+  );
+  first.unmount();
+
+  api.served[2] = {
+    ...api.served[2],
+    cohortExpression: manual([10, 11]),
+  };
+  renderPanel();
+
+  expect(
+    await screen.findByText(
+      "2 members are assigned more than 15 minutes. The contract assigns tasks in 15-minute blocks.",
+    ),
+  ).toBeTruthy();
+  expect(
+    screen.getByText("1 contract violation to fix or accept."),
+  ).toBeTruthy();
+  expect(launchButton().hasAttribute("disabled")).toBe(true);
+});
+
+it("starts from the default schedule when the saved start has passed", async () => {
+  const first = renderPanel();
+  await resolveEveryCheck();
+  await waitFor(() =>
+    expect(launchButton().hasAttribute("disabled")).toBe(false),
+  );
+  first.unmount();
+
+  setSystemTime(new Date(Date.now() + 2 * 24 * 60 * 60 * 1000));
+  renderPanel();
+
+  await waitFor(() =>
+    expect(launchButton().hasAttribute("disabled")).toBe(false),
+  );
+});
+
+it("doesn't offer to notify 0 members while the checks load", async () => {
+  renderPanel();
+
+  expect(screen.getByRole("button", { name: "Running checks…" })).toBeTruthy();
+  expect(
+    await screen.findByRole("button", { name: /Launch and notify 2/ }),
+  ).toBeTruthy();
+});
+
+it("restores a dismissed finding, which blocks launch again", async () => {
+  renderPanel();
+  await resolveEveryCheck();
+  await waitFor(() =>
+    expect(launchButton().hasAttribute("disabled")).toBe(false),
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "Show dismissed" }));
+  const misspelling = screen
+    .getByText("Possible misspelling · Write · Body")
+    .closest("li");
+  const restore = misspelling?.querySelector('[aria-label="Restore"]');
+  if (!restore) throw new Error("no restore button on the dismissed finding");
+  fireEvent.click(restore);
+
+  expect(screen.getByText("1 text finding to fix or dismiss.")).toBeTruthy();
+  expect(launchButton().hasAttribute("disabled")).toBe(true);
+  expect(screen.getAllByRole("button", { name: "Dismiss" })).toHaveLength(1);
+});
+
+it("jumps from a blocker to the section that resolves it", async () => {
+  renderPanel();
+  const scrolled: string[] = [];
+  const original = Element.prototype.scrollIntoView;
+  Element.prototype.scrollIntoView = function (this: Element) {
+    scrolled.push(this.id);
+  };
+
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: "2 text findings to fix or dismiss.",
+    }),
+  );
+  Element.prototype.scrollIntoView = original;
+
+  expect(scrolled).toEqual(["launch-text"]);
+  expect(document.getElementById("launch-text")?.textContent).toContain(
+    "Spelling and grammar",
+  );
+});
+
+it("lists every instance of one misspelling as one finding, dismissed at once", async () => {
+  api.served[1] = { ...api.served[1], body: "Call teh office." };
+  renderPanel();
+
+  const row = (
+    await screen.findByText("Possible misspelling · 2 places")
+  ).closest("li");
+  expect(row?.textContent).toContain("Call · Body");
+  expect(row?.textContent).toContain("Write · Body");
+  expect(screen.getByText("1 text finding to fix or dismiss.")).toBeTruthy();
+
+  const dismiss = row?.querySelector('[aria-label="Dismiss"]');
+  if (!dismiss) throw new Error("no dismiss button on the grouped finding");
+  fireEvent.click(dismiss);
+  expect(screen.queryByText(/text findings? to fix or dismiss/)).toBeNull();
+});
+
+it("states the schedule in Pacific time when asking to launch", async () => {
+  // 9am Pacific, so the default start is 7pm the same day; daylight saving ends before the deadline.
+  setSystemTime(new Date("2026-10-28T16:00:00Z"));
+  renderPanel();
+  await resolveEveryCheck();
+  await waitFor(() =>
+    expect(launchButton().hasAttribute("disabled")).toBe(false),
+  );
+
+  fireEvent.click(launchButton());
+  expect(
+    await screen.findByText(
+      "Members start Oct 28, 2026 at 7:00 PM PT and have until Nov 4, 2026 at 11:59 PM PT, 7 days 5 hours 59 minutes. This creates both events and 7 reminders, notifying 2 members.",
+    ),
+  ).toBeTruthy();
 });

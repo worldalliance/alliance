@@ -40,6 +40,26 @@ export function formTexts(schema: FormSchema): string[] {
   return texts.filter((text): text is string => !!text);
 }
 
+/** How long the action's description and task form take to read. */
+export function readingTime(
+  action: Pick<ParsedActionDto, "body" | "shortDescription">,
+  taskFormSchema: FormSchema | null,
+): { descriptionWords: number; formWords: number; totalSeconds: number } {
+  const descriptionWords =
+    countWords(action.body) + countWords(action.shortDescription);
+  const formWords = taskFormSchema
+    ? formTexts(taskFormSchema).reduce(
+        (total, text) => total + countWords(text),
+        0,
+      )
+    : 0;
+  return {
+    descriptionWords,
+    formWords,
+    totalSeconds: Math.round((descriptionWords + formWords) * 0.462),
+  };
+}
+
 export function actionReadinessItems(
   action: ParsedActionDto,
   taskFormSchema: FormSchema | null,
@@ -90,19 +110,10 @@ export function actionReadinessItems(
     },
   ];
 
-  let descriptionWords = 0;
-  descriptionWords += countWords(action.body);
-  descriptionWords += countWords(action.shortDescription);
-
-  const formWords = taskFormSchema
-    ? formTexts(taskFormSchema).reduce(
-        (total, text) => total + countWords(text),
-        0,
-      )
-    : 0;
-
-  const totalWords = descriptionWords + formWords;
-  const totalSeconds = Math.round(totalWords * 0.462);
+  const { descriptionWords, formWords, totalSeconds } = readingTime(
+    action,
+    taskFormSchema,
+  );
   const minutes = Math.floor(totalSeconds / secondsInMinute);
   const seconds = totalSeconds % secondsInMinute;
   const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;

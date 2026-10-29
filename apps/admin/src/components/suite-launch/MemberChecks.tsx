@@ -118,6 +118,12 @@ export const MemberPreview = ({
         loadFailed={isLoadingError}
         label="Members"
       />
+      {selectedUserIds.length > 0 && (
+        <p className="text-xs text-zinc-500">
+          Logging in as a member signs this browser out of the admin panel. Sign
+          back in before launching; your launch progress is kept.
+        </p>
+      )}
       <ul className="divide-y divide-zinc-100">
         {selectedUserIds.map((userId) => {
           const load = loadsByUser.get(userId);

@@ -6,6 +6,17 @@ import {
 import type { LaunchSchedule } from "./launchSchedule";
 import type { LaunchAction, SuiteLaunchData } from "./useSuiteLaunchData";
 
+/** Each value is the DOM id of the section that resolves the blocker. */
+export enum LaunchSection {
+  Contract = "launch-contract",
+  Schedule = "launch-schedule",
+  Reminders = "launch-reminders",
+  Actions = "launch-actions",
+  Text = "launch-text",
+}
+
+export type LaunchBlocker = { message: string; section: LaunchSection | null };
+
 const plural = (count: number, one: string, many: string) =>
   `${count} ${count === 1 ? one : many}`;
 
@@ -28,7 +39,7 @@ export function launchBlockers(params: {
   dismissedFindingKeys: ReadonlySet<string>;
   violationsAcknowledged: boolean;
   now: Date;
-}): string[] {
+}): LaunchBlocker[] {
   const {
     data,
     schedule,
@@ -40,36 +51,54 @@ export function launchBlockers(params: {
     now,
   } = params;
   if (hasMemberActionEvent) {
-    return ["This suite already has a members taking action event."];
+    return [
+      {
+        message: "This suite already has a members taking action event.",
+        section: null,
+      },
+    ];
   }
-  if (data.loading || data.spellcheckLoading) return ["Checks are loading."];
+  if (data.loading || data.spellcheckLoading) {
+    return [{ message: "Checks are loading.", section: null }];
+  }
 
-  const blockers: string[] = [];
-  if (data.errors.length > 0) blockers.push("Some checks failed to load.");
+  const blockers: LaunchBlocker[] = [];
+  const block = (section: LaunchSection | null, message: string) =>
+    blockers.push({ message, section });
+  if (data.errors.length > 0) block(null, "Some checks failed to load.");
   if (schedule.memberActionAt <= now) {
-    blockers.push("Members taking action must start in the future.");
+    block(
+      LaunchSection.Schedule,
+      "Members taking action must start in the future.",
+    );
   }
   if (schedule.officeActionAt <= schedule.memberActionAt) {
-    blockers.push("Office taking action must come after members start.");
+    block(
+      LaunchSection.Schedule,
+      "Office taking action must come after members start.",
+    );
   }
   const early = remindersBeforeLaunch(reminderWindows, schedule);
   if (early.length > 0) {
-    blockers.push(
+    block(
+      LaunchSection.Reminders,
       `${plural(early.length, "reminder would", "reminders would")} send before members start. Move office taking action later.`,
     );
   }
   if (data.recipientCount === 0) {
-    blockers.push("No member is assigned any action.");
+    block(LaunchSection.Actions, "No member is assigned any action.");
   }
   const unready = data.actions.filter(({ unready }) => unready.length > 0);
   if (unready.length > 0) {
-    blockers.push(
+    block(
+      LaunchSection.Actions,
       `${plural(unready.length, "action has", "actions have")} unfinished checklist items.`,
     );
   }
   const violations = contractViolations({ loads: data.loads, schedule });
   if (violations.length > 0 && !violationsAcknowledged) {
-    blockers.push(
+    block(
+      LaunchSection.Contract,
       `${plural(violations.length, "contract violation", "contract violations")} to fix or accept.`,
     );
   }
@@ -77,16 +106,20 @@ export function launchBlockers(params: {
     ({ action }) => !checkedActionIds.has(action.id),
   );
   if (unchecked.length > 0) {
-    blockers.push(
+    block(
+      LaunchSection.Actions,
       `${plural(unchecked.length, "action isn't", "actions aren't")} marked ready to launch.`,
     );
   }
-  const open = data.textFindings.filter(
-    (finding) => !dismissedFindingKeys.has(finding.dismissKey),
+  const open = new Set(
+    data.textFindings
+      .map((finding) => finding.dismissKey)
+      .filter((key) => !dismissedFindingKeys.has(key)),
   );
-  if (open.length > 0) {
-    blockers.push(
-      `${plural(open.length, "text finding", "text findings")} to fix or dismiss.`,
+  if (open.size > 0) {
+    block(
+      LaunchSection.Text,
+      `${plural(open.size, "text finding", "text findings")} to fix or dismiss.`,
     );
   }
   return blockers;
