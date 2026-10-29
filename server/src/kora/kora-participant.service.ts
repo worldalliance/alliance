@@ -4,16 +4,19 @@ import { Injectable } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
+import type { Request, Response } from "express";
 import { OtpChannel, OtpPurpose } from "src/otp/otp-copy";
 import {
   type OtpContact,
   OtpService,
   type OtpVerifyRefusal,
 } from "src/otp/otp.service";
+import { readCookie } from "src/utils/cookies";
 import { hashToken, randomToken } from "src/utils/random";
 import type { Repository } from "src/utils/Repository";
 import {
   DataSource,
+  type EntityManager,
   type FindOptionsWhere,
   IsNull,
   LessThan,
@@ -21,10 +24,11 @@ import {
 } from "typeorm";
 import { KoraParticipantSignup } from "./entities/kora-participant-signup.entity";
 import { KoraParticipant } from "./entities/kora-participant.entity";
+import { clearCookie, KoraCookie } from "./kora-cookies";
 
 const SIGNUP_TTL_MS = milliseconds({ minutes: 10 });
 
-export type CodeVerified =
+export type ContactVerified =
   | { participant: KoraParticipant }
   | { signupToken: string; signupTtlMs: number };
 
@@ -47,6 +51,34 @@ function contactWhere(contact: OtpContact): FindOptionsWhere<KoraParticipant> {
   return { email: email ?? IsNull(), phoneNumber: phoneNumber ?? IsNull() };
 }
 
+/**
+ * When the contact already has a participant, as after a concurrent signup,
+ * returns that participant with its name unchanged.
+ */
+async function createParticipant(
+  manager: EntityManager,
+  params: {
+    name: string;
+    contact: OtpContact;
+    timeZone: string | null;
+    contactVerifiedAt: Date;
+  },
+): Promise<KoraParticipant> {
+  await manager
+    .createQueryBuilder()
+    .insert()
+    .into(KoraParticipant)
+    .values({
+      name: params.name,
+      ...contactColumns(params.contact),
+      timeZone: params.timeZone,
+      contactVerifiedAt: params.contactVerifiedAt,
+    })
+    .orIgnore()
+    .execute();
+  return manager.findOneByOrFail(KoraParticipant, contactWhere(params.contact));
+}
+
 @Injectable()
 export class KoraParticipantService {
   constructor(
@@ -63,7 +95,7 @@ export class KoraParticipantService {
     code: string;
     ip: string;
     timeZone: string | null;
-  }): Promise<Result<CodeVerified, OtpVerifyRefusal>> {
+  }): Promise<Result<ContactVerified, OtpVerifyRefusal>> {
     const verified = await this.otpService.verify({
       purpose: OtpPurpose.KoraSignIn,
       browserToken: params.codeToken,
@@ -77,21 +109,10 @@ export class KoraParticipantService {
       contactWhere(verified.value),
     );
     if (participant) {
-      if (params.timeZone !== null) {
-        await this.participants.update(
-          { id: participant.id, timeZone: IsNull() },
-          { timeZone: params.timeZone },
-        );
-      }
+      await this.fillTimeZone(participant, params.timeZone);
       return R.success({ participant });
     }
-    const signupToken = randomToken(32);
-    await this.signups.insert({
-      tokenHash: hashToken(signupToken),
-      ...verified.value,
-      expiresAt: new Date(Date.now() + SIGNUP_TTL_MS),
-    });
-    return R.success({ signupToken, signupTtlMs: SIGNUP_TTL_MS });
+    return R.success(await this.openSignup(verified.value));
   }
 
   /**
@@ -121,21 +142,13 @@ export class KoraParticipantService {
       if (!signup) {
         return R.failure(KoraError.SignupExpired);
       }
-      await manager
-        .createQueryBuilder()
-        .insert()
-        .into(KoraParticipant)
-        .values({
-          name: params.name,
-          ...contactColumns(signup),
-          timeZone: params.timeZone,
-          contactVerifiedAt: signup.createdAt,
-        })
-        .orIgnore()
-        .execute();
-      return R.success(
-        await manager.findOneByOrFail(KoraParticipant, contactWhere(signup)),
-      );
+      const participant = await createParticipant(manager, {
+        name: params.name,
+        contact: signup,
+        timeZone: params.timeZone,
+        contactVerifiedAt: signup.createdAt,
+      });
+      return R.success(participant);
     });
   }
 
@@ -146,12 +159,49 @@ export class KoraParticipantService {
     });
   }
 
-  async abandonSignup(signupToken: string): Promise<void> {
-    await this.signups.delete({ tokenHash: hashToken(signupToken) });
+  async forgetCode(req: Request, res: Response): Promise<void> {
+    const codeToken = readCookie(req, KoraCookie.Code);
+    if (codeToken) {
+      await this.otpService.abandon({
+        purpose: OtpPurpose.KoraSignIn,
+        browserToken: codeToken,
+      });
+    }
+    clearCookie(res, KoraCookie.Code);
+  }
+
+  async forgetSignup(req: Request, res: Response): Promise<void> {
+    const signupToken = readCookie(req, KoraCookie.Signup);
+    if (signupToken) {
+      await this.signups.delete({ tokenHash: hashToken(signupToken) });
+    }
+    clearCookie(res, KoraCookie.Signup);
   }
 
   @Cron(CronExpression.EVERY_HOUR)
   async forgetExpiredSignups(): Promise<void> {
     await this.signups.delete({ expiresAt: LessThan(new Date()) });
+  }
+
+  private async openSignup(contact: OtpContact): Promise<ContactVerified> {
+    const signupToken = randomToken(32);
+    await this.signups.insert({
+      tokenHash: hashToken(signupToken),
+      ...contact,
+      expiresAt: new Date(Date.now() + SIGNUP_TTL_MS),
+    });
+    return { signupToken, signupTtlMs: SIGNUP_TTL_MS };
+  }
+
+  private async fillTimeZone(
+    participant: KoraParticipant,
+    timeZone: string | null,
+  ): Promise<void> {
+    if (timeZone !== null) {
+      await this.participants.update(
+        { id: participant.id, timeZone: IsNull() },
+        { timeZone },
+      );
+    }
   }
 }
