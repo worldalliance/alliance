@@ -21,7 +21,7 @@ const SuiteLaunchPage = () => {
     );
   }
   return (
-    <div className="p-6">
+    <div className="mx-auto w-full max-w-4xl p-6">
       <SuiteLaunchPanel
         suite={suite}
         addEvent={addEvent.mutateAsync}
