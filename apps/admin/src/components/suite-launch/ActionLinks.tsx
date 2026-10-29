@@ -2,6 +2,7 @@ import { ExternalLink, FileText, Pencil } from "lucide-react";
 import type React from "react";
 import { Link } from "react-router";
 import { getSiteUrl } from "../../lib/config";
+import { formEditorPath } from "../../lib/formEditorLink";
 import {
   selectionSearch,
   type LinkedSelection,
@@ -47,8 +48,18 @@ export const EditActionLink = ({
   </NewTabLink>
 );
 
-export const EditTaskFormLink = ({ formId }: { formId: number }) => (
-  <NewTabLink to={`/forms/${formId}`} label="Edit task form">
+export const EditTaskFormLink = ({
+  formId,
+  elementId,
+}: {
+  formId: number;
+  /** Opens the form with this page or element selected. */
+  elementId?: string | null;
+}) => (
+  <NewTabLink
+    to={elementId ? formEditorPath(formId, elementId) : `/forms/${formId}`}
+    label={elementId ? "Edit this text in the form" : "Edit task form"}
+  >
     <FileText className="size-4" />
   </NewTabLink>
 );

@@ -18,26 +18,39 @@ const countWords = (text: string | null | undefined): number => {
 };
 
 /** Every piece of member-facing text in a form schema, in page order. */
-export function formTexts(schema: FormSchema): string[] {
-  const texts: (string | null | undefined)[] = [schema.description];
+/** Each piece of a form's text with the page or element it belongs to, null for the form's own description. */
+export function formTextPlaces(
+  schema: FormSchema,
+): { text: string; id: string | null }[] {
+  const texts: { text: string | null | undefined; id: string | null }[] = [
+    { text: schema.description, id: null },
+  ];
   for (const page of schema.pages) {
-    texts.push(page.title, page.description);
+    texts.push(
+      { text: page.title, id: page.id },
+      { text: page.description, id: page.id },
+    );
 
     for (const field of page.fields) {
-      if (isQuestionField(field)) texts.push(field.label);
-      if ("description" in field) texts.push(field.description as string);
+      const at = (text: unknown) => {
+        if (typeof text === "string") texts.push({ text, id: field.id ?? null });
+      };
+      if (isQuestionField(field)) at(field.label);
+      if ("description" in field) at(field.description);
       if (isQuestionField(field) && fieldHasOptions(field)) {
-        for (const option of field.options) {
-          texts.push(option.label);
-        }
+        for (const option of field.options) at(option.label);
       }
-      if ("text" in field) texts.push(field.text as string);
-      if ("caption" in field) texts.push(field.caption as string);
-      if ("startLabel" in field) texts.push(field.startLabel as string);
-      if ("endLabel" in field) texts.push(field.endLabel as string);
+      if ("text" in field) at(field.text);
+      if ("caption" in field) at(field.caption);
+      if ("startLabel" in field) at(field.startLabel);
+      if ("endLabel" in field) at(field.endLabel);
     }
   }
-  return texts.filter((text): text is string => !!text);
+  return texts.flatMap(({ text, id }) => (text ? [{ text, id }] : []));
+}
+
+export function formTexts(schema: FormSchema): string[] {
+  return formTextPlaces(schema).map(({ text }) => text);
 }
 
 /** How long the action's description and task form take to read. */

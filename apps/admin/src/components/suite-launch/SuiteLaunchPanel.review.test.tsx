@@ -20,9 +20,9 @@ it("links a task form finding to the form and a body finding to its text in the 
     .closest("li");
   expect(
     formFinding
-      ?.querySelector('[aria-label="Edit task form"]')
+      ?.querySelector('[aria-label="Edit this text in the form"]')
       ?.getAttribute("href"),
-  ).toBe("/forms/5");
+  ).toBe("/forms/5?select=p1");
   expect(
     bodyFinding
       ?.querySelector('[aria-label="Edit this text"]')
@@ -191,9 +191,9 @@ it("checks the text of each variant form, linking to that form", async () => {
   )[0].closest("li");
   expect(
     variantFinding
-      ?.querySelector('[aria-label="Edit task form"]')
+      ?.querySelector('[aria-label="Edit this text in the form"]')
       ?.getAttribute("href"),
-  ).toBe("/forms/9");
+  ).toBe("/forms/9?select=p1");
 });
 
 it("notes reading time from the longest variant form", async () => {

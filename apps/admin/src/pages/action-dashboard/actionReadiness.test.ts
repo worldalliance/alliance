@@ -1,6 +1,6 @@
 import { formSchema } from "@alliance/common/forms/form-schema";
 import { describe, expect, it } from "bun:test";
-import { formTexts } from "./actionReadiness";
+import { formTextPlaces, formTexts } from "./actionReadiness";
 
 describe("formTexts", () => {
   it("collects the form, page, field, option, and display text in order", () => {
@@ -30,6 +30,16 @@ describe("formTexts", () => {
       ],
     });
 
+    expect(formTextPlaces(schema).map(({ text, id }) => [text, id])).toEqual([
+      ["Form intro", null],
+      ["Page title", "p1"],
+      ["Page intro", "p1"],
+      ["Your town", "town"],
+      ["Pick one", "town"],
+      ["Ames", "town"],
+      ["Boone", "town"],
+      ["Welcome", "intro"],
+    ]);
     expect(formTexts(schema)).toEqual([
       "Form intro",
       "Page title",

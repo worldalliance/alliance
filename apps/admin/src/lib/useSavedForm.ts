@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useBeforeUnload, useBlocker } from "react-router";
 import { adminRefusalMessage } from "./adminRefusal";
 import { ensurePages } from "./ensureFormSchema";
-import { findQuestion } from "./formDependencies";
+import { findPlace } from "./formDependencies";
 import { useSelectOnLoad } from "./formEditorLink";
 
 type FormConflict = {
@@ -98,11 +98,11 @@ export function useSavedForm({
           const selectOnLoad = selectOnLoadRef.current;
           selectOnLoadRef.current = null;
           if (selectOnLoad !== null) {
-            const place = findQuestion(nextSchema.pages, selectOnLoad);
+            const place = findPlace(nextSchema.pages, selectOnLoad);
             if (place) {
               selectPlace(place);
             } else {
-              showErrorToast(`This form has no question "${selectOnLoad}"`);
+              showErrorToast(`This form has no element "${selectOnLoad}"`);
             }
           }
           markSaved(nextSchema, form.formSnapshotId);

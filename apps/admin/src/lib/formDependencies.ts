@@ -54,6 +54,37 @@ type Governed = ConditionHolder["formulas"];
  * duplicates, the last wins, as in `collectFieldLookup`, so a link reaches the
  * question the condition editor names.
  */
+/** The page, element, or list sub-field whose id is `id`, question or not. */
+export function findPlace(
+  pages: readonly Page[],
+  id: string,
+): FormPlace | null {
+  for (const { place } of conditionHolders(pages)) {
+    const page = pages[place.pageIndex];
+    switch (place.kind) {
+      case PlaceKind.Page:
+        if (page?.id === id) return place;
+        break;
+      case PlaceKind.Element:
+        if (page?.fields[place.index]?.id === id) return place;
+        break;
+      case PlaceKind.SubField: {
+        const list = page?.fields[place.index];
+        if (
+          list &&
+          "fields" in list &&
+          list.fields?.[place.subIndex]?.id === id
+        )
+          return place;
+        break;
+      }
+      default:
+        throw new Error(`unknown place: ${place satisfies never}`);
+    }
+  }
+  return null;
+}
+
 export function findQuestion(
   pages: readonly Page[],
   fieldId: string,
