@@ -3,8 +3,8 @@ import { expect, it, mock } from "bun:test";
 import { milliseconds } from "date-fns";
 import type { ActionDto } from "../client";
 import { useRecordActionRelation } from "./actionsListPage";
-import { actionStore } from "./actionStore";
 import { queryKeys } from "./queryKeys";
+import { currentSession } from "./sessionStores";
 import { makeAction, makeViewer } from "./testFixtures";
 import { queryWrapper } from "./testing/queryWrapper";
 import { seedActions } from "./testing/seedActions";
@@ -123,7 +123,7 @@ it("drops a confirmed withdrawal at once, and an older in-flight fetch can't res
     view.result.current.recordRelation({
       actionId: 1,
       relation: "declined",
-      session: actionStore(client).getSession(),
+      session: currentSession(client),
     }),
   );
   await waitFor(() => expect(view.result.current.count).toBe(0));

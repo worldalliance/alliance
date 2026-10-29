@@ -8,6 +8,7 @@ import {
   useRecordActionRelation,
 } from "./actionsListPage";
 import { queryKeys } from "./queryKeys";
+import { currentSession } from "./sessionStores";
 import { makeAction, makeViewer } from "./testFixtures";
 import { queryWrapper } from "./testing/queryWrapper";
 import { seedAction, seedActions } from "./testing/seedActions";
@@ -82,7 +83,7 @@ it("marks only the given cached action completed and marks the list stale", () =
     recordRelation({
       actionId: 1,
       relation: "completed",
-      session: actionStore(client).getSession(),
+      session: currentSession(client),
     }),
   );
 

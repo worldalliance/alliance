@@ -17,6 +17,7 @@ import { ActionSource, actionStore, selectAction } from "./actionStore";
 import { FilterMode, hasViewerCompletedAction } from "./actionUtils";
 import { thrownRefusalMessage } from "./hey-api";
 import { queryKeys } from "./queryKeys";
+import { currentSession } from "./sessionStores";
 import { useStoreState } from "./useStoreState";
 
 export const actionsQuery = queryOptions({
@@ -66,7 +67,7 @@ export function useDismissActionMutation() {
   const queryClient = useQueryClient();
   const store = actionStore(queryClient);
   return useMutation({
-    onMutate: () => store.getSession(),
+    onMutate: () => currentSession(queryClient),
     mutationFn: (actionId: number) =>
       actionsDismissAction({ path: { id: actionId }, throwOnError: true }),
     onSuccess: (_data, actionId, session) => {
