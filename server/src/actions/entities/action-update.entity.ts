@@ -120,7 +120,12 @@ export class ActionUpdate {
 
   /** The collective result; with the result split, the completed group's. */
   @Column({ type: "text" })
-  @ValidateIf((update: ActionUpdate) => !update.splitCollectiveResult)
+  /** Only a notification reads it, so an update that sends none may leave it empty. */
+  @ValidateIf(
+    (update: ActionUpdate) =>
+      !update.splitCollectiveResult &&
+      update.notifyType !== ActionUpdateNotifyType.None,
+  )
   @IsNotEmpty()
   @ApiProperty()
   shortNotifString: string;

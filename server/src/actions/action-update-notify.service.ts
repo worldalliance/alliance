@@ -84,6 +84,10 @@ export class ActionUpdateNotifyService {
     if (recognition) {
       const config = readRecognitionConfig(actionUpdate);
       if (!config.ok) throw new BadRequestException(config.error);
+    } else if (!actionUpdate.shortNotifString.trim()) {
+      throw new BadRequestException(
+        "Write the notification text before sending.",
+      );
     }
 
     // The claim and the sends commit together. The claim is the only thing

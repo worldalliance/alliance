@@ -1,3 +1,4 @@
+import { readGroupResults } from "@alliance/common/action-update-copy";
 import {
   displayOnlyToFormSchema,
   readDisplayOnlySchema,
@@ -190,6 +191,12 @@ const ActionUpdatePage: React.FC = () => {
     notifyType: update.notifyType,
     hasUnsavedDetails,
     hasBody: !!storedSchema && storedSchema.blocks.length > 0,
+    hasNotificationText: readGroupResults({
+      split: update.splitCollectiveResult,
+      completed: update.shortNotifString,
+      didNotComplete: update.nonCompleterResult,
+      uninvolved: update.uninvolvedResult,
+    }).ok,
   });
 
   const detailsTab = (
@@ -221,7 +228,10 @@ const ActionUpdatePage: React.FC = () => {
           onChange={(e) =>
             setForm({ ...form, shortNotifString: e.target.value })
           }
-          required={!(recognition && form.splitCollectiveResult)}
+          required={
+            form.notifyType !== "none" &&
+            !(recognition && form.splitCollectiveResult)
+          }
           className={TEXT_INPUT_CLASS}
         />
         {recognition &&
