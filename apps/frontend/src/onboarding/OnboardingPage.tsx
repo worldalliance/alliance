@@ -18,6 +18,7 @@ import {
   oauthNoticeMessage,
   useOAuthNotice,
 } from "@alliance/sharedweb/lib/oauth";
+import { prefersReducedMotion } from "@alliance/sharedweb/lib/reducedMotion";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import posthog from "posthog-js";
@@ -228,9 +229,7 @@ const OnboardingPage = () => {
     if (leavingRef.current) return;
     leavingRef.current = true;
     setJoinPhase(JoinPhase.Leaving);
-    const fadeMs = window.matchMedia("(prefers-reduced-motion: reduce)").matches
-      ? 0
-      : PANEL_FADE_MS;
+    const fadeMs = prefersReducedMotion() ? 0 : PANEL_FADE_MS;
     const fade = new Promise<void>((resolve) => {
       window.setTimeout(resolve, fadeMs);
     });

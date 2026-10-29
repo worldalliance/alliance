@@ -1,4 +1,5 @@
 import { cn } from "@alliance/shared/styles/util";
+import { prefersReducedMotion } from "@alliance/sharedweb/lib/reducedMotion";
 import type { KeyboardEvent, MouseEvent, PointerEvent, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 
@@ -244,12 +245,7 @@ export default function ConfettiWrapper({
 
     setIsRunning(false);
 
-    if (
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ) {
-      return;
-    }
+    if (prefersReducedMotion()) return;
 
     queueBurst(viewportX, viewportY, localX, localY);
   };

@@ -8,6 +8,7 @@ import {
   sanitizeRankingValue,
 } from "@alliance/common/forms/ranking";
 import { cn } from "@alliance/shared/styles/util";
+import { prefersReducedMotion } from "@alliance/sharedweb/lib/reducedMotion";
 import {
   closestCenter,
   DndContext,
@@ -45,10 +46,6 @@ const OPTION_DRAG_ID_PREFIX = "option:";
 const optionDragId = (option: string) => `${OPTION_DRAG_ID_PREFIX}${option}`;
 const dragIdToOption = (id: string | number) =>
   String(id).slice(OPTION_DRAG_ID_PREFIX.length);
-
-const prefersReducedMotion = () =>
-  typeof window !== "undefined" &&
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
  * Animate sibling shifts for non-drag changes (click-to-place, X removal).
