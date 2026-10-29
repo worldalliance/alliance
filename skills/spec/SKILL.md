@@ -16,7 +16,7 @@ Interview the user on the feature, asking per **Open questions**: behavior, stat
 
 Read the codebase first: every question you ask is a choice the code can't answer. Collect every question whose answer would change the implementation. Assume no answer; if anything is unclear, ask.
 
-Ask every question in one numbered plain-text message, not a structured question tool. Give each question lettered options: your recommendation first, then alternatives, then "I don't care". Picking the recommendation makes it an agent-proposed, user-approved requirement; "I don't care" leaves it a deferred choice, per `(root)/skills/provenance/SKILL.md`. Open each message by telling the user that difference: the recommendation becomes a requirement later agents must keep, while "I don't care" lets the agent decide and switch to something else if its pick causes friction.
+Ask every question in one numbered plain-text message, not a structured question tool. Give each question lettered options: your recommendation first, then alternatives, then "I don't care". Picking an option makes it an agent-proposed, user-approved requirement; an answer in the user's own words makes it user-originated; "I don't care" leaves it a deferred choice, per `(root)/skills/provenance/SKILL.md`. Open each message by telling the user that difference: picking an option or stating an answer makes it a requirement later agents must keep, while "I don't care" lets the agent decide and switch to something else if its pick causes friction.
 
 Continue asking as answers uncover more decision points. Done when every question is settled, and you can't name an open question whose answer would change the implementation.
 
