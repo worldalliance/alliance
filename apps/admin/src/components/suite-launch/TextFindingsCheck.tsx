@@ -2,6 +2,7 @@ import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
 import { cn } from "@alliance/shared/styles/util";
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
+import { LinkedField } from "../../lib/linkedSelection";
 import {
   EditActionLink,
   EditTaskFormLink,
@@ -10,6 +11,7 @@ import {
 import {
   findingContext,
   TEXT_SOURCE_LABELS,
+  TextSource,
   type TextFinding,
 } from "./actionTextFindings";
 import DismissToggle from "./DismissToggle";
@@ -17,6 +19,14 @@ import { LaunchSection } from "./launchBlockers";
 import LaunchCheck from "./LaunchCheck";
 import { TEXT_ISSUE_LABELS } from "./textChecks";
 import type { LaunchAction } from "./useSuiteLaunchData";
+
+const SOURCE_FIELDS: Record<TextSource, LinkedField | null> = {
+  [TextSource.Name]: LinkedField.Name,
+  [TextSource.ShortDescription]: LinkedField.ShortDescription,
+  [TextSource.Body]: LinkedField.Body,
+  [TextSource.TaskForm]: null,
+  [TextSource.VariantForm]: null,
+};
 
 const FindingRow = ({
   group,
@@ -46,6 +56,7 @@ const FindingRow = ({
         </p>
         {group.map((finding) => {
           const { before, flagged, after } = findingContext(finding);
+          const field = SOURCE_FIELDS[finding.source];
           return (
             <div key={finding.key} className="flex items-center gap-2">
               <p className="flex-1 whitespace-pre-wrap font-mono text-xs">
@@ -63,7 +74,19 @@ const FindingRow = ({
               {finding.formId ? (
                 <EditTaskFormLink formId={finding.formId} />
               ) : (
-                <EditActionLink actionId={finding.actionId} />
+                <EditActionLink
+                  actionId={finding.actionId}
+                  select={
+                    field
+                      ? {
+                          field,
+                          from: finding.start,
+                          to: finding.end,
+                          text: flagged,
+                        }
+                      : undefined
+                  }
+                />
               )}
             </div>
           );

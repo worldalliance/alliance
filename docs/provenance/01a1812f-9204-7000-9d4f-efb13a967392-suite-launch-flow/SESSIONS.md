@@ -9,3 +9,6 @@ The sessions that built this task before the round-1 review fixes went unrecorde
 - claude:ca52cf7e-17cf-49e5-9dcd-95f4a728be09
 - claude:d4d0fe66-c801-4102-a95d-472e5fecd894
 - claude:48a2cb29-044e-4a7d-9966-a219049e562a
+- claude:6e37bd4e-0950-46b9-93b3-e34d59754248
+- claude:76236b1f-fb4f-4518-91d0-dd258927b348
+- claude:e6025c13-77c0-46fe-b52f-99cc42897c24

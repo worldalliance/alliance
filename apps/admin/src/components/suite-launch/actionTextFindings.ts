@@ -1,5 +1,6 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
+import { ACTION_TEXT_FIELD_LABELS } from "../../lib/actionFieldDefs";
 import { formTexts } from "../../pages/action-dashboard/actionReadiness";
 import { findTextIssues, TextIssueKind, type TextIssue } from "./textChecks";
 
@@ -12,9 +13,9 @@ export enum TextSource {
 }
 
 export const TEXT_SOURCE_LABELS: Record<TextSource, string> = {
-  [TextSource.Name]: "Name",
-  [TextSource.ShortDescription]: "Short description",
-  [TextSource.Body]: "Body",
+  [TextSource.Name]: ACTION_TEXT_FIELD_LABELS.name,
+  [TextSource.ShortDescription]: ACTION_TEXT_FIELD_LABELS.shortDescription,
+  [TextSource.Body]: ACTION_TEXT_FIELD_LABELS.body,
   [TextSource.TaskForm]: "Task form",
   [TextSource.VariantForm]: "Variant form",
 };

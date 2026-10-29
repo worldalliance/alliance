@@ -11,7 +11,7 @@ import {
 
 serveLaunchApi();
 
-it("links a task form finding to the form and a body finding to the action", async () => {
+it("links a task form finding to the form and a body finding to its text in the action", async () => {
   api.formPages = [{ id: "p1", title: "Page  one", fields: [] }];
   renderPanel();
 
@@ -19,7 +19,7 @@ it("links a task form finding to the form and a body finding to the action", asy
     await screen.findAllByText("Double space · Call · Task form")
   )[0].closest("li");
   const bodyFinding = screen
-    .getByText("Double space · Call · Body")
+    .getByText("Double space · Call · Action page description")
     .closest("li");
   expect(
     formFinding
@@ -28,14 +28,14 @@ it("links a task form finding to the form and a body finding to the action", asy
   ).toBe("/forms/5");
   expect(
     bodyFinding
-      ?.querySelector('[aria-label="Edit action"]')
+      ?.querySelector('[aria-label="Edit this text"]')
       ?.getAttribute("href"),
-  ).toBe("/actions/1");
+  ).toBe("/actions/1?tab=details&field=body&from=4&to=6&text=++");
 });
 
 it("previews the actions assigned to a picked member", async () => {
   renderPanel();
-  await screen.findByText("Double space · Call · Body");
+  await screen.findByText("Double space · Call · Action page description");
 
   fireEvent.change(screen.getByPlaceholderText("Search by name"), {
     target: { value: "Ana" },
@@ -60,7 +60,7 @@ it("previews the actions assigned to a picked member", async () => {
 
 it("groups members by the actions they get and previews one from a group", async () => {
   renderPanel();
-  await screen.findByText("Double space · Call · Body");
+  await screen.findByText("Double space · Call · Action page description");
 
   const mixes = screen.getAllByRole("button", {
     name: "Preview a member who gets these actions",

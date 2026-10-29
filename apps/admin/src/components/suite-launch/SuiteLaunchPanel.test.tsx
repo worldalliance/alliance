@@ -25,8 +25,12 @@ it("flags overloaded members and text findings, and blocks launch until each is 
   expect(screen.getByText("18").className).toContain("text-red-600");
   expect(screen.getByText("10").className).not.toContain("text-red-600");
   expect(screen.getAllByText("over 15 minutes")).toHaveLength(1);
-  expect(screen.getByText("Double space · Call · Body")).toBeTruthy();
-  expect(screen.getByText("Possible misspelling · Write · Body")).toBeTruthy();
+  expect(
+    screen.getByText("Double space · Call · Action page description"),
+  ).toBeTruthy();
+  expect(
+    screen.getByText("Possible misspelling · Write · Action page description"),
+  ).toBeTruthy();
   expect(
     screen.getByText(
       "1 member is assigned more than 15 minutes. The contract assigns tasks in 15-minute blocks.",
@@ -355,7 +359,7 @@ it("restores a dismissed finding, which blocks launch again", async () => {
 
   fireEvent.click(screen.getByRole("button", { name: "Show dismissed" }));
   const misspelling = screen
-    .getByText("Possible misspelling · Write · Body")
+    .getByText("Possible misspelling · Write · Action page description")
     .closest("li");
   const restore = misspelling?.querySelector('[aria-label="Restore"]');
   if (!restore) throw new Error("no restore button on the dismissed finding");
@@ -394,8 +398,8 @@ it("lists every instance of one misspelling as one finding, dismissed at once", 
   const row = (
     await screen.findByText("Possible misspelling · 2 places")
   ).closest("li");
-  expect(row?.textContent).toContain("Call · Body");
-  expect(row?.textContent).toContain("Write · Body");
+  expect(row?.textContent).toContain("Call · Action page description");
+  expect(row?.textContent).toContain("Write · Action page description");
   expect(screen.getByText("1 text finding to fix or dismiss.")).toBeTruthy();
 
   const dismiss = row?.querySelector('[aria-label="Dismiss"]');

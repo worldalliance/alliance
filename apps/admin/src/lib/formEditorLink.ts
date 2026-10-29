@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useSearchParams } from "react-router";
+import { dropSearchParams } from "./dropSearchParams";
 
 const SELECT_PARAM = "select";
 
@@ -16,14 +17,7 @@ export function useSelectOnLoad() {
   const selectOnLoadRef = useRef(searchParams.get(SELECT_PARAM));
   useEffect(() => {
     if (!searchParams.has(SELECT_PARAM)) return;
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        next.delete(SELECT_PARAM);
-        return next;
-      },
-      { replace: true },
-    );
+    dropSearchParams(setSearchParams, [SELECT_PARAM]);
   }, [searchParams, setSearchParams]);
   return selectOnLoadRef;
 }
