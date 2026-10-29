@@ -151,6 +151,14 @@ export class ActionUpdatesController {
     await this.actionUpdates.deleteActionUpdate(id);
   }
 
+  @Get("updates/admin")
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: ActionUpdateDto, isArray: true })
+  async allUpdatesAdmin(): Promise<ActionUpdateDto[]> {
+    const updates = await this.actionUpdates.getAllActionUpdatesAdmin();
+    return updates.map((update) => new ActionUpdateDto(update));
+  }
+
   @Get("allUpdates")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ActionUpdateDto, isArray: true })

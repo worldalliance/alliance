@@ -314,6 +314,15 @@ export class ActionUpdatesService {
     return actionUpdate;
   }
 
+  /** Every update, drafts and scheduled ones included, newest date first. */
+  async getAllActionUpdatesAdmin(): Promise<ActionUpdate[]> {
+    return this.actionUpdateRepository.find({
+      order: { date: "DESC", id: "DESC" },
+      relations: { action: true, schemaSnapshot: true },
+      select: { action: { id: true, name: true } },
+    });
+  }
+
   async getActionUpdates(
     limit?: number,
     userId?: number,

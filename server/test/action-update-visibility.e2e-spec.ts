@@ -101,6 +101,44 @@ describe("Action update visibility (e2e)", () => {
     );
   };
 
+  it("lists drafts, scheduled, and published updates for admins only", async () => {
+    const draft = await createUpdate("Admin list draft");
+    const scheduled = await createUpdate(
+      "Admin list scheduled",
+      new Date(Date.now() + milliseconds({ days: 3 })),
+    );
+    await writeContent(scheduled.id, scheduled.schemaSnapshotId);
+    const published = await createUpdate("Admin list published");
+    await writeContent(published.id, published.schemaSnapshotId);
+
+    const response = await request(ctx.app.getHttpServer())
+      .get("/actions/updates/admin")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .expect(200);
+    const byId = new Map(
+      (
+        response.body as {
+          id: number;
+          visibleAt: string | null;
+          actionName?: string;
+        }[]
+      ).map((update) => [update.id, update]),
+    );
+
+    expect(byId.get(draft.id)?.visibleAt).toBeNull();
+    expect(
+      new Date(byId.get(scheduled.id)?.visibleAt ?? 0).getTime(),
+    ).toBeGreaterThan(Date.now());
+    expect(
+      new Date(byId.get(published.id)?.visibleAt ?? Infinity).getTime(),
+    ).toBeLessThanOrEqual(Date.now());
+    expect(byId.get(draft.id)?.actionName).toBe("Visibility Action");
+    await request(ctx.app.getHttpServer())
+      .get("/actions/updates/admin")
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
+      .expect(401);
+  });
+
   it("keeps an update with no body off the member-facing reads", async () => {
     const update = await createUpdate("Still being written");
 
