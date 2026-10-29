@@ -22,6 +22,7 @@ const finding = {
   actionId: 1,
   source: TextSource.Body,
   formId: null,
+  formElementId: null,
   text: "a  b",
   kind: TextIssueKind.DoubleSpace,
   start: 1,

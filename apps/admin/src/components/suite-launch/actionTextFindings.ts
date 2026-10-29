@@ -1,7 +1,7 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
 import { ACTION_TEXT_FIELD_LABELS } from "../../lib/actionFieldDefs";
-import { formTexts } from "../../pages/action-dashboard/actionReadiness";
+import { formTextPlaces } from "../../pages/action-dashboard/actionReadiness";
 import { findTextIssues, TextIssueKind, type TextIssue } from "./textChecks";
 
 export enum TextSource {
@@ -29,6 +29,8 @@ export type TextFinding = Pick<TextIssue, "kind" | "start" | "end"> & {
   source: TextSource;
   /** The form to edit to fix it, null for the action's own text. */
   formId: number | null;
+  /** The form page or element holding the text, null when no id names it alone. */
+  formElementId: string | null;
   text: string;
 };
 
@@ -59,25 +61,43 @@ export function actionTextFindings(params: {
     variantForms = [],
     isKnownWord,
   } = params;
-  const formTextsOf = (
-    source: TextSource,
-    schema: FormSchema | null,
-    formId: number | null,
-  ) =>
-    (schema ? formTexts(schema) : []).map(
-      (text): [TextSource, string, number | null] => [source, text, formId],
+  type Located = Pick<
+    TextFinding,
+    "source" | "text" | "formId" | "formElementId"
+  >;
+  const formTextsOf = ({
+    source,
+    schema,
+    formId,
+  }: {
+    source: TextSource;
+    schema: FormSchema | null;
+    formId: number | null;
+  }) =>
+    (schema ? formTextPlaces(schema) : []).map(
+      ({ text, id }): Located => ({ source, text, formId, formElementId: id }),
     );
-  const texts: [TextSource, string, number | null][] = [
-    [TextSource.Name, action.name, null],
-    [TextSource.ShortDescription, action.shortDescription, null],
-    [TextSource.Body, action.body, null],
-    ...formTextsOf(TextSource.TaskForm, taskFormSchema, taskFormId),
+  const actionText = (source: TextSource, text: string): Located => ({
+    source,
+    text,
+    formId: null,
+    formElementId: null,
+  });
+  const texts: Located[] = [
+    actionText(TextSource.Name, action.name),
+    actionText(TextSource.ShortDescription, action.shortDescription),
+    actionText(TextSource.Body, action.body),
+    ...formTextsOf({
+      source: TextSource.TaskForm,
+      schema: taskFormSchema,
+      formId: taskFormId,
+    }),
     ...variantForms.flatMap(({ formId, schema }) =>
-      formTextsOf(TextSource.VariantForm, schema, formId),
+      formTextsOf({ source: TextSource.VariantForm, schema, formId }),
     ),
   ];
   const occurrences = new Map<string, number>();
-  return texts.flatMap(([source, text, formId]) =>
+  return texts.flatMap(({ source, text, formId, formElementId }) =>
     findTextIssues(text, isKnownWord).map((issue): TextFinding => {
       const { before, flagged, after } = findingContext({
         text,
@@ -104,6 +124,7 @@ export function actionTextFindings(params: {
         actionId: action.id,
         source,
         formId,
+        formElementId,
         text,
       };
     }),

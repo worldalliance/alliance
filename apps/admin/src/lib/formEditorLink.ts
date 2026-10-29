@@ -4,13 +4,13 @@ import { dropSearchParams } from "./dropSearchParams";
 
 const SELECT_PARAM = "select";
 
-/** The form's editor, opened with the question `fieldId` selected. */
-export const formEditorPath = (formId: number, fieldId: string) =>
-  `/forms/${formId}?${new URLSearchParams({ [SELECT_PARAM]: fieldId })}`;
+/** The form's editor, opened with the page or element `id` selected. */
+export const formEditorPath = (formId: number, id: string) =>
+  `/forms/${formId}?${new URLSearchParams({ [SELECT_PARAM]: id })}`;
 
 /**
- * The question `formEditorPath` named when the editor mounted. The parameter
- * leaves the URL at once, so a reload doesn't select the question again.
+ * The page or element `formEditorPath` named when the editor mounted. The
+ * parameter leaves the URL at once, so a reload doesn't select it again.
  */
 export function useSelectOnLoad() {
   const [searchParams, setSearchParams] = useSearchParams();

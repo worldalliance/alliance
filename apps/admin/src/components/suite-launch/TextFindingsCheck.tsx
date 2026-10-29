@@ -72,7 +72,10 @@ const FindingRow = ({
                 {after}…
               </p>
               {finding.formId ? (
-                <EditTaskFormLink formId={finding.formId} />
+                <EditTaskFormLink
+                  formId={finding.formId}
+                  elementId={finding.formElementId}
+                />
               ) : (
                 <EditActionLink
                   actionId={finding.actionId}
