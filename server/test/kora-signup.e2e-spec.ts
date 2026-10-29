@@ -258,13 +258,13 @@ describe("Kora signup and login (e2e)", () => {
       return { browser, token: sessionToken(res), participant: res.body };
     }
 
-    it("sets an HttpOnly, Strict cookie lasting thirty days and extends it on use", async () => {
+    it("sets an HttpOnly, Lax cookie lasting thirty days and extends it on use", async () => {
       const browser = h.browser();
       await h.verified(browser, { email: uniqueEmail() });
       const res = await h.signup(browser, { name: "Cookie" }).expect(200);
       const cookie = cookieFrom(res, KoraCookie.Session) ?? "";
       expect(cookie).toContain("HttpOnly");
-      expect(cookie).toContain("SameSite=Strict");
+      expect(cookie).toContain("SameSite=Lax");
       expect(cookie).toContain(`Max-Age=${30 * 24 * 60 * 60}`);
 
       await sessions().update(

@@ -10,6 +10,7 @@ import {
   MaxLength,
   ValidateIf,
 } from "class-validator";
+import { OAuthStartDto } from "src/auth/oauth/oauth.dto";
 import { maskDestination } from "src/otp/mask-destination";
 import { OtpChannel } from "src/otp/otp-copy";
 import { WRONG_CODE_MESSAGE } from "src/otp/otp-refusal";
@@ -17,7 +18,10 @@ import type { PendingOtp } from "src/otp/otp.service";
 import { IsE164 } from "src/utils/phone";
 import { IsTimeZoneIdentifier } from "src/utils/timezone";
 import { trim } from "src/utils/transforms";
-import { KoraParticipant } from "../entities/kora-participant.entity";
+import {
+  KORA_PARTICIPANT_NAME_MAX_LENGTH,
+  KoraParticipant,
+} from "../entities/kora-participant.entity";
 
 export const INVALID_CONTACT = "Enter a valid email address or mobile number.";
 
@@ -56,11 +60,11 @@ export class VerifyKoraCodeDto extends DetectedTimeZoneDto {
 }
 
 export class CompleteKoraSignupDto extends DetectedTimeZoneDto {
-  @ApiProperty({ maxLength: 200 })
+  @ApiProperty({ maxLength: KORA_PARTICIPANT_NAME_MAX_LENGTH })
   @Transform(trim)
   @IsString()
   @IsNotEmpty({ message: "Enter your full name." })
-  @MaxLength(200)
+  @MaxLength(KORA_PARTICIPANT_NAME_MAX_LENGTH)
   name: string;
 }
 
@@ -137,3 +141,10 @@ export class KoraParticipantStateDto {
     this.signupPending = input.signupPending;
   }
 }
+
+export class StartKoraOAuthDto extends PickType(OAuthStartDto, [
+  "returnTo",
+  "timeZone",
+  "posthogSessionId",
+  "posthogDistinctId",
+]) {}

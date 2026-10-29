@@ -1,10 +1,12 @@
 import { KoraError } from "@alliance/common/kora";
+import { OAuthError, type OAuthProvider } from "@alliance/common/oauth";
 import { R, type Result } from "@alliance/common/result";
 import { Injectable } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import type { Request, Response } from "express";
+import type { OAuthProfile } from "src/auth/oauth/oauth-client";
 import { OtpChannel, OtpPurpose } from "src/otp/otp-copy";
 import {
   type OtpContact,
@@ -22,8 +24,12 @@ import {
   LessThan,
   MoreThan,
 } from "typeorm";
+import { KoraParticipantOAuthIdentity } from "./entities/kora-participant-oauth-identity.entity";
 import { KoraParticipantSignup } from "./entities/kora-participant-signup.entity";
-import { KoraParticipant } from "./entities/kora-participant.entity";
+import {
+  KORA_PARTICIPANT_NAME_MAX_LENGTH,
+  KoraParticipant,
+} from "./entities/kora-participant.entity";
 import { clearCookie, KoraCookie } from "./kora-cookies";
 
 const SIGNUP_TTL_MS = milliseconds({ minutes: 10 });
@@ -31,6 +37,8 @@ const SIGNUP_TTL_MS = milliseconds({ minutes: 10 });
 export type ContactVerified =
   | { participant: KoraParticipant }
   | { signupToken: string; signupTtlMs: number };
+
+type ProviderIdentity = { provider: OAuthProvider; subject: string };
 
 function contactColumns(contact: OtpContact): {
   email: string | null;
@@ -52,6 +60,23 @@ function contactWhere(contact: OtpContact): FindOptionsWhere<KoraParticipant> {
 }
 
 /**
+ * Leaves a provider account another participant holds, or a second account
+ * from the same provider, unconnected: the verified email still signs in.
+ */
+async function connect(
+  manager: EntityManager,
+  params: ProviderIdentity & { participantId: string; email: string },
+): Promise<void> {
+  await manager
+    .createQueryBuilder()
+    .insert()
+    .into(KoraParticipantOAuthIdentity)
+    .values(params)
+    .orIgnore()
+    .execute();
+}
+
+/**
  * When the contact already has a participant, as after a concurrent signup,
  * returns that participant with its name unchanged.
  */
@@ -62,6 +87,7 @@ async function createParticipant(
     contact: OtpContact;
     timeZone: string | null;
     contactVerifiedAt: Date;
+    identity: ProviderIdentity | null;
   },
 ): Promise<KoraParticipant> {
   await manager
@@ -76,7 +102,18 @@ async function createParticipant(
     })
     .orIgnore()
     .execute();
-  return manager.findOneByOrFail(KoraParticipant, contactWhere(params.contact));
+  const participant = await manager.findOneByOrFail(
+    KoraParticipant,
+    contactWhere(params.contact),
+  );
+  if (params.identity) {
+    await connect(manager, {
+      ...params.identity,
+      participantId: participant.id,
+      email: params.contact.destination,
+    });
+  }
+  return participant;
 }
 
 @Injectable()
@@ -87,6 +124,8 @@ export class KoraParticipantService {
     private readonly participants: Repository<KoraParticipant>,
     @InjectRepository(KoraParticipantSignup)
     private readonly signups: Repository<KoraParticipantSignup>,
+    @InjectRepository(KoraParticipantOAuthIdentity)
+    private readonly identities: Repository<KoraParticipantOAuthIdentity>,
     private readonly otpService: OtpService,
   ) {}
 
@@ -112,7 +151,74 @@ export class KoraParticipantService {
       await this.fillTimeZone(participant, params.timeZone);
       return R.success({ participant });
     }
-    return R.success(await this.openSignup(verified.value));
+    return R.success(
+      await this.openSignup({ contact: verified.value, identity: null }),
+    );
+  }
+
+  /**
+   * The provider account it signed in with before, whatever its email says
+   * now, or else the participant whose email it verified.
+   */
+  async verifyProvider(params: {
+    profile: OAuthProfile;
+    timeZone: string | null;
+  }): Promise<Result<ContactVerified, OAuthError.EmailNotVerified>> {
+    const { profile, timeZone } = params;
+    if (!profile.emailVerified) {
+      return R.failure(OAuthError.EmailNotVerified);
+    }
+    const identity: ProviderIdentity = {
+      provider: profile.provider,
+      subject: profile.subject,
+    };
+    const contact: OtpContact = {
+      channel: OtpChannel.Email,
+      destination: profile.email.trim(),
+    };
+    const [connected, byEmail] = await Promise.all([
+      this.identities.findOne({
+        where: identity,
+        relations: { participant: true },
+      }),
+      this.participants.findOneBy(contactWhere(contact)),
+    ]);
+
+    if (connected?.participant) {
+      if (connected.email !== contact.destination) {
+        await this.identities.update(connected.id, {
+          email: contact.destination,
+        });
+      }
+      await this.fillTimeZone(connected.participant, timeZone);
+      return R.success({ participant: connected.participant });
+    }
+    if (byEmail) {
+      await connect(this.dataSource.manager, {
+        ...identity,
+        participantId: byEmail.id,
+        email: contact.destination,
+      });
+      await this.fillTimeZone(byEmail, timeZone);
+      return R.success({ participant: byEmail });
+    }
+    const name = profile.name
+      ?.trim()
+      .slice(0, KORA_PARTICIPANT_NAME_MAX_LENGTH);
+    if (!name) {
+      return R.success(await this.openSignup({ contact, identity }));
+    }
+    return R.success({
+      participant: await this.dataSource.transaction((manager) =>
+        createParticipant(manager, {
+          name,
+          contact,
+          timeZone,
+          contactVerifiedAt: new Date(),
+          identity,
+        }),
+      ),
+    });
   }
 
   /**
@@ -133,20 +239,24 @@ export class KoraParticipantService {
           tokenHash: hashToken(params.signupToken),
           now: new Date(),
         })
-        .returning(`"channel", "destination", "createdAt"`)
+        .returning(
+          `"channel", "destination", "provider", "subject", "createdAt"`,
+        )
         .execute();
       const [signup]: Pick<
         KoraParticipantSignup,
-        "channel" | "destination" | "createdAt"
+        "channel" | "destination" | "provider" | "subject" | "createdAt"
       >[] = consumed.raw;
       if (!signup) {
         return R.failure(KoraError.SignupExpired);
       }
+      const { provider, subject } = signup;
       const participant = await createParticipant(manager, {
         name: params.name,
         contact: signup,
         timeZone: params.timeZone,
         contactVerifiedAt: signup.createdAt,
+        identity: provider && subject ? { provider, subject } : null,
       });
       return R.success(participant);
     });
@@ -183,11 +293,16 @@ export class KoraParticipantService {
     await this.signups.delete({ expiresAt: LessThan(new Date()) });
   }
 
-  private async openSignup(contact: OtpContact): Promise<ContactVerified> {
+  private async openSignup(params: {
+    contact: OtpContact;
+    identity: ProviderIdentity | null;
+  }): Promise<ContactVerified> {
     const signupToken = randomToken(32);
     await this.signups.insert({
       tokenHash: hashToken(signupToken),
-      ...contact,
+      ...params.contact,
+      provider: params.identity?.provider ?? null,
+      subject: params.identity?.subject ?? null,
       expiresAt: new Date(Date.now() + SIGNUP_TTL_MS),
     });
     return { signupToken, signupTtlMs: SIGNUP_TTL_MS };

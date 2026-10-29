@@ -1,4 +1,4 @@
-import { KoraError } from "@alliance/common/kora";
+import { KORA_PROJECT_PATH, KoraError } from "@alliance/common/kora";
 import { OtpError } from "@alliance/common/otp";
 import type {
   KoraParticipantStateDto,
@@ -9,9 +9,12 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, mock, onTestFinished, test } from "bun:test";
+import { MemoryRouter } from "react-router";
 import { AuthContext, type AuthContextType } from "../../../lib/AuthContext";
 import { testAuthUser } from "../../../stories/testData";
 import { KoraSignIn } from "./KoraSignIn";
+
+declare const happyDOM: { setURL: (url: string) => void };
 
 const pendingCode = (resendInMs = 60_000): PendingKoraCodeDto => ({
   channel: "email",
@@ -61,6 +64,7 @@ serveApi(
 );
 
 beforeEach(() => {
+  happyDOM.setURL(`https://worldalliance.org${KORA_PROJECT_PATH}`);
   state = { participant: null, pendingCode: null, signupPending: false };
   stateFails = false;
   sends = [];
@@ -84,13 +88,15 @@ const signedOutMember: AuthContextType = {
   loading: false,
 };
 
-const renderCard = (member: Partial<AuthContextType> = {}) =>
+const renderCard = (member: Partial<AuthContextType> = {}, search = "") =>
   render(
-    <QueryClientProvider client={new QueryClient()}>
-      <AuthContext.Provider value={{ ...signedOutMember, ...member }}>
-        <KoraSignIn note="Starts soon" />
-      </AuthContext.Provider>
-    </QueryClientProvider>,
+    <MemoryRouter initialEntries={[`${KORA_PROJECT_PATH}${search}`]}>
+      <QueryClientProvider client={new QueryClient()}>
+        <AuthContext.Provider value={{ ...signedOutMember, ...member }}>
+          <KoraSignIn note="Starts soon" />
+        </AuthContext.Provider>
+      </QueryClientProvider>
+    </MemoryRouter>,
   );
 
 const contactInput = () =>
@@ -368,4 +374,40 @@ test("signs out, and keeps the signed-in view when sign-out fails", async () => 
   signOut = () => new Response(null, { status: 204 });
   fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
   await screen.findByLabelText("Email or mobile number");
+});
+
+test("starts Google and Apple sign-in back to the project page", async () => {
+  renderCard();
+  for (const [name, provider] of [
+    ["Continue with Google", "google"],
+    ["Continue with Apple", "apple"],
+  ]) {
+    const url = new URL(
+      (await screen.findByRole("link", { name })).getAttribute("href")!,
+    );
+    expect(url.pathname).toEndWith(`/kora/${provider}/start`);
+    expect(url.searchParams.get("returnTo")).toBe(
+      `${window.location.origin}${KORA_PROJECT_PATH}`,
+    );
+  }
+});
+
+test("says why the provider sign-in came back without signing in", async () => {
+  renderCard({}, "?googleError=cancelled");
+  expect((await screen.findByRole("alert")).textContent).toBe(
+    "Google sign-in was cancelled.",
+  );
+});
+
+test("drops the provider's refusal once the participant uses the form", async () => {
+  renderCard({}, "?googleError=cancelled");
+  await screen.findByText("Google sign-in was cancelled.");
+  await submitContact("person@example.com");
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: "Change email or mobile number",
+    }),
+  );
+  await screen.findByLabelText("Email or mobile number");
+  expect(screen.queryByText("Google sign-in was cancelled.")).toBeNull();
 });

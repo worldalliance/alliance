@@ -15682,6 +15682,100 @@ export type KoraSignOutResponses = {
 
 export type KoraSignOutResponse = KoraSignOutResponses[keyof KoraSignOutResponses];
 
+export type KoraOAuthStartData = {
+    body?: never;
+    path: {
+        provider: OAuthProvider;
+    };
+    query: {
+        returnTo: string;
+        timeZone?: string;
+        posthogSessionId?: string;
+        posthogDistinctId?: string;
+    };
+    url: '/kora/{provider}/start';
+};
+
+export type KoraOAuthStartErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraOAuthStartError = KoraOAuthStartErrors[keyof KoraOAuthStartErrors];
+
+export type KoraOAuthStartResponses = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraOAuthStartResponse = KoraOAuthStartResponses[keyof KoraOAuthStartResponses];
+
+export type KoraOAuthCallbackData = {
+    body?: never;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: {
+        code?: string;
+        state?: string;
+        error?: string;
+        /**
+         * JSON Apple posts on the first authorization, holding the name.
+         */
+        user?: string;
+    };
+    url: '/kora/{provider}/callback';
+};
+
+export type KoraOAuthCallbackErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraOAuthCallbackError = KoraOAuthCallbackErrors[keyof KoraOAuthCallbackErrors];
+
+export type KoraOAuthCallbackResponses = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraOAuthCallbackResponse = KoraOAuthCallbackResponses[keyof KoraOAuthCallbackResponses];
+
+export type KoraOAuthCallbackFormData = {
+    body: OAuthCallbackDto;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: never;
+    url: '/kora/{provider}/callback';
+};
+
+export type KoraOAuthCallbackFormErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraOAuthCallbackFormError = KoraOAuthCallbackFormErrors[keyof KoraOAuthCallbackFormErrors];
+
+export type KoraOAuthCallbackFormResponses = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraOAuthCallbackFormResponse = KoraOAuthCallbackFormResponses[keyof KoraOAuthCallbackFormResponses];
+
 export type ClientOptions = {
     baseUrl: string;
 };

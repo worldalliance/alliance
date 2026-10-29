@@ -20,6 +20,7 @@ export enum JWTTokenType {
   oauthState = "oauth_state",
   oauthHandoff = "oauth_handoff",
   oauthLinkHandoff = "oauth_link_handoff",
+  koraOAuthState = "kora_oauth_state",
 }
 
 const TOKEN_TYPE_IS_AUTHENTICATED: Record<JWTTokenType, boolean> = {
@@ -31,6 +32,7 @@ const TOKEN_TYPE_IS_AUTHENTICATED: Record<JWTTokenType, boolean> = {
   [JWTTokenType.oauthState]: false,
   [JWTTokenType.oauthHandoff]: false,
   [JWTTokenType.oauthLinkHandoff]: false,
+  [JWTTokenType.koraOAuthState]: false,
 };
 
 const jwtPayloadSchema = z.object({

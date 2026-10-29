@@ -3,6 +3,8 @@ import { CreateDateColumnTz } from "src/datasources/basecolumns";
 import { phoneNumberTransformer } from "src/utils/phone";
 import { Check, Column, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
 
+export const KORA_PARTICIPANT_NAME_MAX_LENGTH = 200;
+
 /** Someone taking part in the Kora project without being an Alliance member. */
 @Entity()
 @Check(
@@ -19,7 +21,7 @@ export class KoraParticipant {
   @ApiProperty()
   id: string;
 
-  @Column({ type: "varchar", length: 200 })
+  @Column({ type: "varchar", length: KORA_PARTICIPANT_NAME_MAX_LENGTH })
   @ApiProperty()
   name: string;
 
