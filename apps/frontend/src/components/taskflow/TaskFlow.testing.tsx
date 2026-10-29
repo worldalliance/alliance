@@ -19,7 +19,7 @@ import {
   useNavigate,
   type NavigateFunction,
 } from "react-router";
-import { AuthContext } from "../../lib/AuthContext";
+import { AuthContext, type AuthContextType } from "../../lib/AuthContext";
 import {
   ImmersiveTone,
   NavbarOptionsContext,
@@ -37,7 +37,7 @@ const textInput = (id: string, label: string, required = false) => ({
   required,
 });
 
-const flowSchema = {
+export const taskSchema = {
   pages: [
     {
       id: "p1",
@@ -74,13 +74,14 @@ export const action: ActionDto = makeAction({
   reviewers: [{ name: "Sam Reviewer" }],
 });
 let serverAction = action;
-let servedSchema: unknown = flowSchema;
+let servedSchema: unknown = taskSchema;
+let submissions = 0;
 let submitStatus = 201;
 let submitHeld = Promise.resolve();
 
 /** Serves the flow's task form and action for every test in the calling file,
- * resetting the served schema, action and the submit's status before each test.
- * Call at file scope. */
+ * resetting the served schema and action, the submission count and the
+ * submit's status before each test. Call at file scope. */
 export const serveTaskFlow = () => {
   serveApi(
     routes({
@@ -96,10 +97,15 @@ export const serveTaskFlow = () => {
       "PUT /tasks/formDraft/:id": () =>
         Response.json({ updatedAt: "2026-10-26T00:00:00.000Z" }),
       "POST /tasks/submitForm/:id": async () => {
+        submissions += 1;
         await submitHeld;
         return submitStatus === 201
           ? Response.json(makeFormResponse(), { status: 201 })
           : Response.json({ message: "nope" }, { status: submitStatus });
+      },
+      "POST /tasks/submitPublicForm/:id": () => {
+        submissions += 1;
+        return Response.json(makeFormResponse(), { status: 201 });
       },
       "GET /user/mylocation": () => Response.json({ city: null }),
       "GET /actions/slug/:id": () => Response.json(serverAction),
@@ -107,7 +113,8 @@ export const serveTaskFlow = () => {
   );
   beforeEach(() => {
     serverAction = action;
-    servedSchema = flowSchema;
+    servedSchema = taskSchema;
+    submissions = 0;
     submitStatus = 201;
     submitHeld = Promise.resolve();
   });
@@ -138,11 +145,13 @@ export function renderFlow({
   queryClient = new QueryClient(),
   page,
   path = "/actions/1",
+  auth = authValue({ user: testAuthUser }),
 }: {
   onCompleteAction?: () => void;
   queryClient?: QueryClient;
   page?: ReactNode;
   path?: string;
+  auth?: AuthContextType;
 } = {}) {
   window.localStorage.clear();
   const pageElement = page ?? (
@@ -159,7 +168,7 @@ export function renderFlow({
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[path]}>
         <SiteAppProvider>
-          <AuthContext.Provider value={authValue({ user: testAuthUser })}>
+          <AuthContext.Provider value={auth}>
             <ToastProvider>
               <TaskFlowReturnProvider>
                 <TaskFlowCompletionProvider>
@@ -228,6 +237,14 @@ export const setServedSchema = (schema: unknown) => {
 };
 
 export const backgroundOnlySchema = {
-  pages: [flowSchema.pages[0]],
+  pages: [taskSchema.pages[0]],
   outputViews: [],
 };
+
+export const submissionCount = () => submissions;
+
+/** localStorage keys other than the flow's own resume position. */
+export const storedDraftKeys = () =>
+  Array.from({ length: window.localStorage.length }, (_, i) =>
+    window.localStorage.key(i),
+  ).filter((key) => !key?.startsWith("taskflow-screen:"));

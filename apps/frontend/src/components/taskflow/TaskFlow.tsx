@@ -8,9 +8,13 @@ import {
   useFlowPosition,
   type FlowPositionStorage,
 } from "@alliance/shared/forms/useFlowPosition";
-import { FlowStage, useTaskFlow } from "@alliance/shared/forms/useTaskFlow";
+import {
+  FlowStage,
+  TASK_FLOW_MODE_RULES,
+  useTaskFlow,
+  type TaskFlowMode,
+} from "@alliance/shared/forms/useTaskFlow";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
-import { taskFlow } from "@alliance/shared/lib/copy";
 import {
   useReopenLeftTask,
   useTaskFlowReturn,
@@ -53,6 +57,10 @@ const localFlowStorage: FlowPositionStorage = {
 
 type TaskFlowProps = {
   action: ActionDto;
+  mode: TaskFlowMode;
+  /** The submission a read-only flow shows. */
+  completedFormResponse?: FormResponseDto;
+  publicAction?: boolean;
   schema: FormSchema;
   formId: number;
   taskFormId: number;
@@ -68,11 +76,14 @@ type TaskFlowProps = {
 };
 
 /**
- * `onCompleteAction` runs only once the member leaves the completion screen,
- * since completing the action unmounts this panel.
+ * `onCompleteAction` runs only once the member leaves the completion screen
+ * of a live flow, since completing the action unmounts this panel.
  */
 export default function TaskFlow({
   action,
+  mode,
+  completedFormResponse,
+  publicAction = false,
   schema,
   formId,
   taskFormId,
@@ -88,6 +99,9 @@ export default function TaskFlow({
 }: TaskFlowProps) {
   const { user, isAuthenticated, loading: userLoading } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { records, readOnly, withdraws } = TASK_FLOW_MODE_RULES[mode];
+  const withdraw = withdraws && !publicAction ? onAbandonAction : undefined;
+
   // Leaving through the nav or the browser's Back unmounts the flow before
   // its buttons can complete the action, even while the submit is in flight.
   const completionPending = useRef(false);
@@ -126,18 +140,20 @@ export default function TaskFlow({
     id: formId,
     formSnapshotId,
     actionId: action.id,
-    persistKey: String(taskFormId),
+    persistKey: records ? String(taskFormId) : null,
     userId: user?.id,
     user,
     userLoading,
     loadCurrentUserLocation: !!user && isAuthenticated,
-    syncDraftToServer: isAuthenticated,
-    draftFormResponse,
+    syncDraftToServer: records && isAuthenticated && !publicAction,
+    draftFormResponse: records ? draftFormResponse : undefined,
+    renderFormAsCompleted: readOnly,
+    completedFormResponse,
     phDistinctId,
     sessionReplayUrl,
     onFormStarted,
-    onAbandonAction,
-    onSubmit: submit,
+    onAbandonAction: withdraw,
+    onSubmit: records ? submit : null,
     scrollContainerRef: scrollRef,
   });
   const position = useFlowPosition({
@@ -147,6 +163,7 @@ export default function TaskFlow({
   });
   const flow = useTaskFlow({
     actionId: action.id,
+    mode,
     form,
     position,
     onExit: () => void close(),
@@ -245,7 +262,7 @@ export default function TaskFlow({
             background={flow.background}
             onClose={() => void close()}
             onWithdraw={
-              onAbandonAction
+              withdraw
                 ? (withdrawal) => {
                     form.handleAbandon(withdrawal);
                     position.clear();
@@ -254,7 +271,7 @@ export default function TaskFlow({
                 : null
             }
             onNext={() => void flow.start()}
-            isLast={flow.backgroundIsLast}
+            nextLabel={flow.startLabel}
             error={submitError}
           />
         );
@@ -266,7 +283,7 @@ export default function TaskFlow({
             form={form}
             screen={flow.screen}
             nextReady={flow.nextReady}
-            isLast={flow.isLast}
+            nextLabel={flow.nextLabel}
             error={submitError}
             scrollRef={scrollRef}
             onClose={() => void close()}
@@ -282,7 +299,11 @@ export default function TaskFlow({
             user={user}
             fading={recoloring}
             onClose={() => void finish()}
-            onInvite={() => void finish(() => navigate("/invites"))}
+            onInvite={
+              isAuthenticated
+                ? () => void finish(() => navigate("/invites"))
+                : null
+            }
           />
         );
       default:
@@ -301,7 +322,7 @@ export default function TaskFlow({
         onClick={flow.begin}
         disabled={!position.loaded}
       >
-        {taskFlow.begin}
+        {flow.beginLabel}
       </FlowButton>
       <Dialog.Root
         open={shown}

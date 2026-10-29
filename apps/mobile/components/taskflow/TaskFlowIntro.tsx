@@ -21,7 +21,7 @@ export default function TaskFlowIntro({
   onClose,
   onWithdraw,
   onNext,
-  isLast,
+  nextLabel,
   error,
 }: {
   action: ActionDto;
@@ -31,8 +31,7 @@ export default function TaskFlowIntro({
   onClose: () => void;
   onWithdraw: (() => void) | null;
   onNext: () => void;
-  /** No question screen follows, so Next submits. */
-  isLast: boolean;
+  nextLabel: string;
   error: string | null;
 }) {
   const { media, reading } = splitBackground(background);
@@ -61,7 +60,7 @@ export default function TaskFlowIntro({
             kind={FlowButtonKind.Primary}
             onPress={onNext}
             loading={form.submitting}
-            title={isLast ? taskFlow.submit : taskFlow.next}
+            title={nextLabel}
           />
         </>
       }

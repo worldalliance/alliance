@@ -1,122 +1,15 @@
-import type {
-  DisplayBlock,
-  HeaderBlock,
-} from "@alliance/common/forms/display-blocks";
-import type {
-  AnyField,
-  FormSchema,
-  FormValue,
-} from "@alliance/common/forms/form-schema";
-import { act, renderHook } from "@testing-library/react";
-import {
-  TaskFlowCompletionProvider,
-  useHeldWhileTaskCompletes,
-} from "../lib/TaskFlowCompletionContext";
+import { act } from "@testing-library/react";
+import { taskFlow } from "../lib/copy";
 import { type SubmitOutcome } from "./submitOutcome";
-import { type FlowPosition } from "./useFlowPosition";
-import { FlowStage, useTaskFlow, type TaskFlowFormState } from "./useTaskFlow";
-
-const input = (id: string): AnyField => ({
-  id,
-  type: "input",
-  kind: "textarea",
-  label: id,
-  required: true,
-});
-const header = (id: string): HeaderBlock => ({
-  id,
-  type: "display",
-  kind: "header",
-  text: id,
-});
-const text = (id: string): DisplayBlock => ({
-  id,
-  type: "display",
-  kind: "text",
-  text: id,
-});
-
-// Screens: 0 background, 1 "h" with a and b, 2 "h" with c.
-const schema: FormSchema = {
-  pages: [
-    { id: "p1", fields: [text("intro")] },
-    { id: "p2", fields: [header("h"), input("a"), input("b"), input("c")] },
-  ],
-  outputViews: [],
-};
-
-type Overrides = {
-  schema?: FormSchema;
-  answers?: Record<string, FormValue>;
-  savedScreen?: number | null;
-  screenValid?: boolean | Promise<boolean>;
-  outcome?: SubmitOutcome;
-  visiblePageIndices?: number[];
-  currentPageIndex?: number;
-  visibilitySettled?: boolean;
-  positionLoaded?: boolean;
-  submit?: () => Promise<SubmitOutcome>;
-};
-
-function flowParams(overrides: Overrides = {}) {
-  const answers = overrides.answers ?? {};
-  const saved: number[] = [];
-  const cleared: true[] = [];
-  const submits: true[] = [];
-  const exits: true[] = [];
-  const position: FlowPosition = {
-    screenIndex: overrides.savedScreen ?? null,
-    loaded: overrides.positionLoaded ?? true,
-    save: (index) => saved.push(index),
-    clear: () => cleared.push(true),
-  };
-  const form: TaskFlowFormState = {
-    schema: overrides.schema ?? schema,
-    visiblePageIndices: overrides.visiblePageIndices ?? [0, 1],
-    isElementCurrentlyVisible: () => true,
-    visibilitySettled: overrides.visibilitySettled ?? true,
-    validateFieldValue: (_field, value) => (value ? null : "Required"),
-    effectiveFormData: answers,
-    activeUserKey: undefined,
-    currentPageIndex: overrides.currentPageIndex ?? 0,
-    setCurrentPageIndex: () => {},
-    validateScreenFields: async () => overrides.screenValid ?? true,
-    submit: async () => {
-      submits.push(true);
-      if (overrides.submit) return overrides.submit();
-      return (
-        overrides.outcome ?? { submitted: true, firstInvalidPageIndex: null }
-      );
-    },
-  };
-  const onExit = () => exits.push(true);
-  return {
-    params: { actionId: 1, form, position, onExit },
-    saved,
-    cleared,
-    submits,
-    exits,
-  };
-}
-
-function setup(overrides: Overrides = {}) {
-  const { params, saved, cleared, submits, exits } = flowParams(overrides);
-  const hook = renderHook(() => useTaskFlow(params), {
-    wrapper: TaskFlowCompletionProvider,
-  });
-  return { hook, params, saved, cleared, submits, exits };
-}
-
-function setupWithPage(overrides: Overrides) {
-  const { params } = flowParams(overrides);
-  return renderHook(
-    ({ page }) => ({
-      flow: useTaskFlow(params),
-      page: useHeldWhileTaskCompletes(page, params.actionId),
-    }),
-    { wrapper: TaskFlowCompletionProvider, initialProps: { page: "before" } },
-  );
-}
+import { FlowStage } from "./useTaskFlow";
+import {
+  header,
+  input,
+  schema,
+  setup,
+  setupWithPage,
+  text,
+} from "./useTaskFlow.testing";
 
 describe("useTaskFlow", () => {
   it("begins on the background page when nothing is saved", () => {
@@ -132,7 +25,7 @@ describe("useTaskFlow", () => {
     act(() => hook.result.current.begin());
     expect(hook.result.current.stage).toBe(FlowStage.Screens);
     expect(hook.result.current.screenIndex).toBe(2);
-    expect(hook.result.current.isLast).toBe(true);
+    expect(hook.result.current.nextLabel).toBe(taskFlow.submit);
   });
 
   it("shows opening content whose questions are hidden as the background page", () => {
@@ -307,12 +200,12 @@ describe("useTaskFlow", () => {
     expect(submits).toHaveLength(1);
   });
 
-  it("marks the background page last only when no question screen follows", () => {
+  it("labels the background page's button Submit only when no question screen follows", () => {
     const backgroundOnly = setup({
       schema: { pages: [schema.pages[0]], outputViews: [] },
     });
-    expect(backgroundOnly.hook.result.current.backgroundIsLast).toBe(true);
-    expect(setup().hook.result.current.backgroundIsLast).toBe(false);
+    expect(backgroundOnly.hook.result.current.startLabel).toBe(taskFlow.submit);
+    expect(setup().hook.result.current.startLabel).toBe(taskFlow.next);
   });
 
   it("holds Next while visibility is still settling", async () => {

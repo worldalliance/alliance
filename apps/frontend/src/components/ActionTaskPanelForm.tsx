@@ -8,12 +8,14 @@ import {
   type SubmitFormDto,
 } from "@alliance/shared/client";
 import { formulaSourcesChanged } from "@alliance/shared/forms/formulaChoices";
+import { taskFlowMode } from "@alliance/shared/forms/useTaskFlow";
 import {
   formAlreadySubmitted,
   memberActionDeadlinePassed,
   type ActionWithdrawal,
 } from "@alliance/shared/lib/actionTaskPanel";
 import { captureException } from "@alliance/shared/lib/analytics";
+import { noop } from "@alliance/shared/lib/constants";
 import { useLinkedGuestDraft } from "@alliance/shared/lib/useLinkedGuestDraft";
 import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import { useTaskFormSubmission } from "@alliance/shared/lib/useTaskFormSubmission";
@@ -163,10 +165,57 @@ const ActionTaskPanelForm = ({
     };
   }, []);
 
-  if (formResponse) {
+  const Wrapper = card ? Card : "div";
+  const wrapperClassName = card ? "p-4 sm:p-6" : "flex flex-col gap-y-2";
+  const flowMode = taskFlowMode({
+    submitted: !!formResponse,
+    disabled: !!disabled,
+    preview,
+    completable: !!completeAction,
+  });
+  const renderFlow = (flowForm: {
+    action: ActionDto;
+    schema: FormSchema;
+    formId: number;
+    formSnapshotId: number;
+  }) => (
+    <Wrapper className={wrapperClassName}>
+      <TaskFlow
+        key={`${flowForm.action.id}:${taskFormId}:${flowMode}`}
+        {...flowForm}
+        mode={flowMode}
+        completedFormResponse={formResponse}
+        publicAction={publicAction}
+        taskFormId={taskFormId}
+        draftFormResponse={draftFormResponse}
+        phDistinctId={distinctId}
+        sessionReplayUrl={sessionReplayUrl}
+        submitTaskForm={submitTaskForm}
+        submitError={error}
+        onCompleteAction={completeAction ?? noop}
+        onFormStarted={onFormStarted}
+        onAbandonAction={onAbandonAction}
+      />
+    </Wrapper>
+  );
+
+  const responseSchema = formResponse
+    ? (formResponse.schemaSnapshot as unknown as FormSchema)
+    : null;
+
+  if (formResponse && responseSchema && taskFlowAction) {
+    return renderFlow({
+      action: taskFlowAction,
+      schema: responseSchema,
+      formId: formResponse.formId,
+      formSnapshotId: formResponse.formSnapshotId,
+    });
+  }
+
+  if (formResponse && responseSchema) {
     return (
       <FormRenderer
-        form={formResponse.schemaSnapshot as unknown as FormSchema}
+        form={responseSchema}
         id={formResponse.formId}
         formSnapshotId={formResponse.formSnapshotId}
         actionId={actionId}
@@ -214,39 +263,17 @@ const ActionTaskPanelForm = ({
     }
   }
 
-  const Wrapper = card ? Card : "div";
-
-  if (
-    taskFlowAction &&
-    completeAction &&
-    !disabled &&
-    !preview &&
-    !publicAction
-  ) {
-    return (
-      <Wrapper className={card ? "p-4 sm:p-6" : "flex flex-col gap-y-2"}>
-        <TaskFlow
-          key={`${taskFlowAction.id}:${taskFormId}`}
-          action={taskFlowAction}
-          schema={schema}
-          formId={form.id}
-          taskFormId={taskFormId}
-          formSnapshotId={form.formSnapshotId}
-          draftFormResponse={draftFormResponse}
-          phDistinctId={distinctId}
-          sessionReplayUrl={sessionReplayUrl}
-          submitTaskForm={submitTaskForm}
-          submitError={error}
-          onCompleteAction={completeAction}
-          onFormStarted={onFormStarted}
-          onAbandonAction={onAbandonAction}
-        />
-      </Wrapper>
-    );
+  if (taskFlowAction) {
+    return renderFlow({
+      action: taskFlowAction,
+      schema,
+      formId: form.id,
+      formSnapshotId: form.formSnapshotId,
+    });
   }
 
   return (
-    <Wrapper className={card ? "p-4 sm:p-6" : "flex flex-col gap-y-2"}>
+    <Wrapper className={wrapperClassName}>
       <div>
         <FormRenderer
           form={schema}

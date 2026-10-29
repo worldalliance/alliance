@@ -12,6 +12,7 @@ import {
   getPreviousVisiblePageIndex,
   resolveDisplayBlockForUser,
 } from "../formrenderer";
+import { taskFlow } from "../lib/copy";
 import { useMarkTaskCompleting } from "../lib/TaskFlowCompletionContext";
 import { type FormVisibility } from "../useFormRenderer";
 import {
@@ -38,6 +39,69 @@ const IS_OPEN: Record<FlowStage, boolean> = {
   [FlowStage.Complete]: false,
 };
 
+export enum TaskFlowMode {
+  Live = "live",
+  /** A staff preview. */
+  Preview = "preview",
+  ReadOnly = "readOnly",
+}
+
+/** What a flow may do in each mode, for useTaskFlow and both platforms' form state. */
+export const TASK_FLOW_MODE_RULES: Record<
+  TaskFlowMode,
+  {
+    /** Answers save as a draft, the screen persists, and Submit records the completion. */
+    records: boolean;
+    /** Inputs show the answers but can't change them, so Next doesn't check them. */
+    readOnly: boolean;
+    /** The member can withdraw from the action. */
+    withdraws: boolean;
+    beginLabel: string;
+    lastLabel: string;
+  }
+> = {
+  [TaskFlowMode.Live]: {
+    records: true,
+    readOnly: false,
+    withdraws: true,
+    beginLabel: taskFlow.begin,
+    lastLabel: taskFlow.submit,
+  },
+  [TaskFlowMode.Preview]: {
+    records: false,
+    readOnly: false,
+    withdraws: false,
+    beginLabel: taskFlow.begin,
+    lastLabel: taskFlow.submit,
+  },
+  [TaskFlowMode.ReadOnly]: {
+    records: false,
+    readOnly: true,
+    withdraws: false,
+    beginLabel: taskFlow.view,
+    lastLabel: taskFlow.done,
+  },
+};
+
+export function taskFlowMode(params: {
+  submitted: boolean;
+  disabled: boolean;
+  preview: boolean;
+  completable: boolean;
+}): TaskFlowMode {
+  const { submitted, disabled, preview, completable } = params;
+  if (submitted || disabled) return TaskFlowMode.ReadOnly;
+  if (preview) return TaskFlowMode.Preview;
+  return completable ? TaskFlowMode.Live : TaskFlowMode.ReadOnly;
+}
+
+const UNSAVED_POSITION: FlowPosition = {
+  screenIndex: null,
+  loaded: true,
+  save: () => {},
+  clear: () => {},
+};
+
 export type TaskFlowFormState = Pick<
   FormVisibility,
   | "visiblePageIndices"
@@ -62,12 +126,15 @@ export type TaskFlowFormState = Pick<
  */
 export function useTaskFlow(params: {
   actionId: number;
+  mode: TaskFlowMode;
   form: TaskFlowFormState;
   position: FlowPosition;
-  /** Closes the flow with the platform's exit animation, on Back from the first screen. */
+  /** Closes the flow with the platform's exit animation, on Back from the first screen and when a read-only flow's last screen is done. */
   onExit: () => void;
 }) {
-  const { actionId, form, position, onExit } = params;
+  const { actionId, mode, form, onExit } = params;
+  const rules = TASK_FLOW_MODE_RULES[mode];
+  const position = rules.records ? params.position : UNSAVED_POSITION;
   const [stage, setStage] = useState(FlowStage.Closed);
   const [screenIndex, setScreenIndex] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -77,7 +144,7 @@ export function useTaskFlow(params: {
   > | null>(null);
   useMarkTaskCompleting({
     actionId,
-    completing: submitting || stage === FlowStage.Complete,
+    completing: rules.records && (submitting || stage === FlowStage.Complete),
   });
 
   const screens = useMemo(() => buildFlowScreens(form.schema), [form.schema]);
@@ -121,13 +188,14 @@ export function useTaskFlow(params: {
   const previousIndex = getPreviousVisiblePageIndex(flowIndices, screenIndex);
   const screenFields = screen?.elements.filter(isQuestionField) ?? [];
   const nextReady =
-    form.visibilitySettled &&
-    screenFields.every(
-      (field) =>
-        !isElementCurrentlyVisible(field) ||
-        form.validateFieldValue(field, form.effectiveFormData[field.id]) ===
-          null,
-    );
+    rules.readOnly ||
+    (form.visibilitySettled &&
+      screenFields.every(
+        (field) =>
+          !isElementCurrentlyVisible(field) ||
+          form.validateFieldValue(field, form.effectiveFormData[field.id]) ===
+            null,
+      ));
   const progress = flowProgress({
     visibleIndices,
     screenIndex:
@@ -157,15 +225,31 @@ export function useTaskFlow(params: {
     setStage(FlowStage.Background);
   };
 
+  const complete = () => {
+    position.clear();
+    setSubmittedAnswers(form.effectiveFormData);
+    setStage(FlowStage.Complete);
+  };
+
   const submit = async () => {
+    switch (mode) {
+      case TaskFlowMode.ReadOnly:
+        onExit();
+        return;
+      case TaskFlowMode.Preview:
+        complete();
+        return;
+      case TaskFlowMode.Live:
+        break;
+      default:
+        throw new Error(`unknown task flow mode: ${mode satisfies never}`);
+    }
     const since = moves.current;
     setSubmitting(true);
     try {
       const outcome = await form.submit();
       if (outcome.submitted) {
-        position.clear();
-        setSubmittedAnswers(form.effectiveFormData);
-        setStage(FlowStage.Complete);
+        complete();
         return;
       }
       if (moves.current !== since) return;
@@ -286,7 +370,9 @@ export function useTaskFlow(params: {
   const next = () =>
     advance(async () => {
       const since = moves.current;
-      if (!(await form.validateScreenFields(screenFields))) return;
+      if (!rules.readOnly && !(await form.validateScreenFields(screenFields))) {
+        return;
+      }
       if (moves.current !== since) return;
       if (nextIndex === null) await submit();
       else goTo(nextIndex);
@@ -298,8 +384,9 @@ export function useTaskFlow(params: {
     screen,
     screenIndex,
     background,
-    isLast: nextIndex === null,
-    backgroundIsLast: flowIndices.length === 0,
+    nextLabel: nextIndex !== null ? taskFlow.next : rules.lastLabel,
+    startLabel: flowIndices.length === 0 ? rules.lastLabel : taskFlow.next,
+    beginLabel: rules.beginLabel,
     nextReady,
     progress,
     submittedAnswers,

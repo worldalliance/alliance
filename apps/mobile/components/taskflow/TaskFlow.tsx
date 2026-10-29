@@ -1,10 +1,18 @@
 import { type FormSchema } from "@alliance/common/forms/form-schema";
-import { type ActionDto, type SubmitFormDto } from "@alliance/shared/client";
+import {
+  type ActionDto,
+  type FormResponseDto,
+  type SubmitFormDto,
+} from "@alliance/shared/client";
 import { FlowButtonKind, flowMotion } from "@alliance/shared/forms/flowStyle";
 import { useFlowPosition } from "@alliance/shared/forms/useFlowPosition";
-import { FlowStage, useTaskFlow } from "@alliance/shared/forms/useTaskFlow";
+import {
+  FlowStage,
+  TASK_FLOW_MODE_RULES,
+  type TaskFlowMode,
+  useTaskFlow,
+} from "@alliance/shared/forms/useTaskFlow";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
-import { taskFlow } from "@alliance/shared/lib/copy";
 import {
   useReopenLeftTask,
   useTaskFlowReturn,
@@ -34,7 +42,11 @@ const PROGRESS_TIMING = timingFor(flowMotion.progress);
 
 type TaskFlowProps = {
   action: ActionDto;
+  mode: TaskFlowMode;
+  /** The submission a read-only flow shows. */
+  completedFormResponse?: FormResponseDto;
   schema: FormSchema;
+  formId: number;
   taskFormId: number;
   formSnapshotId: number;
   submitTaskForm: (data: SubmitFormDto) => Promise<boolean>;
@@ -46,12 +58,15 @@ type TaskFlowProps = {
 };
 
 /**
- * `onCompleteAction` runs only once the member leaves the completion screen,
- * since completing the action unmounts this panel.
+ * `onCompleteAction` runs only once the member leaves the completion screen
+ * of a live flow, since completing the action unmounts this panel.
  */
 export default function TaskFlow({
   action,
+  mode,
+  completedFormResponse,
   schema,
+  formId,
   taskFormId,
   formSnapshotId,
   onCompleteAction,
@@ -62,21 +77,25 @@ export default function TaskFlow({
   reloadSourceHistories,
 }: TaskFlowProps) {
   const { user, isAuthenticated, isLoading: userLoading } = useAuth();
+  const { records, readOnly, withdraws } = TASK_FLOW_MODE_RULES[mode];
+  const withdraw = withdraws ? onAbandonAction : undefined;
   const form = useMobileFormState({
     form: schema,
-    id: taskFormId,
+    id: formId,
     formSnapshotId,
     actionId: action.id,
-    persistKey: String(taskFormId),
+    persistKey: records ? String(taskFormId) : null,
     reloadSourceHistories,
     userId: user?.id,
     user,
     userLoading,
     loadCurrentUserLocation: !!user && isAuthenticated,
-    syncDraftToServer: isAuthenticated,
+    syncDraftToServer: records && isAuthenticated,
+    renderFormAsCompleted: readOnly,
+    completedFormResponse,
     onFormStarted,
-    onAbandonAction,
-    onSubmit: submitTaskForm,
+    onAbandonAction: withdraw,
+    onSubmit: records ? submitTaskForm : null,
   });
   const insets = useSafeAreaInsets();
   const position = useFlowPosition({
@@ -86,6 +105,7 @@ export default function TaskFlow({
   });
   const flow = useTaskFlow({
     actionId: action.id,
+    mode,
     form,
     position,
     onExit: () => void close(),
@@ -142,7 +162,7 @@ export default function TaskFlow({
   };
   const finish = (then?: () => void) =>
     close(() => {
-      onCompleteAction();
+      if (records) onCompleteAction();
       then?.();
     });
 
@@ -152,13 +172,15 @@ export default function TaskFlow({
     if (isFocused || stage === FlowStage.Closed) return;
     if (form.submitting || closing.current) return;
     closeFlow();
-    if (stage === FlowStage.Complete) onCompleteAction();
-    else if (onTaskPage) leaveTask(action.id);
+    if (stage !== FlowStage.Complete) {
+      if (onTaskPage) leaveTask(action.id);
+    } else if (records) onCompleteAction();
   }, [
     isFocused,
     stage,
     form.submitting,
     closeFlow,
+    records,
     onCompleteAction,
     onTaskPage,
     action.id,
@@ -185,9 +207,9 @@ export default function TaskFlow({
             form={form}
             background={flow.background}
             onClose={() => void close()}
-            onWithdraw={onAbandonAction ? () => setWithdrawOpen(true) : null}
+            onWithdraw={withdraw ? () => setWithdrawOpen(true) : null}
             onNext={() => void flow.start()}
-            isLast={flow.backgroundIsLast}
+            nextLabel={flow.startLabel}
             error={error}
           />
         );
@@ -199,7 +221,7 @@ export default function TaskFlow({
             form={form}
             screen={flow.screen}
             nextReady={flow.nextReady}
-            isLast={flow.isLast}
+            nextLabel={flow.nextLabel}
             error={error}
             onClose={() => void close()}
             onBack={flow.back}
@@ -229,7 +251,7 @@ export default function TaskFlow({
         kind={FlowButtonKind.Primary}
         onPress={flow.begin}
         loading={!position.loaded}
-        title={taskFlow.begin}
+        title={flow.beginLabel}
       />
       <Modal
         visible={shown}
@@ -259,7 +281,7 @@ export default function TaskFlow({
             ) : null}
           </KeyboardAvoidingView>
         </Animated.View>
-        {onAbandonAction ? (
+        {withdraw ? (
           <WithdrawalModal
             visible={withdrawOpen}
             onClose={() => setWithdrawOpen(false)}

@@ -7,6 +7,7 @@ import { formatUserLocationDisplayValue } from "@alliance/shared/formrenderer";
 import { useCurrentUserLocation } from "@alliance/shared/forms/useCurrentUserLocation";
 import { taskFlow } from "@alliance/shared/lib/copy";
 import { cn } from "@alliance/shared/styles/util";
+import { useOutputItems } from "@alliance/shared/useOutputItems";
 import { OutputRenderer } from "@alliance/sharedweb/forms/OutputRenderer";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { ModalTitle } from "@alliance/sharedweb/ui/Modal";
@@ -27,13 +28,15 @@ export default function TaskFlowComplete({
   user: UserDto | undefined;
   fading: boolean;
   onClose: () => void;
-  onInvite: () => void;
+  /** Null for a guest, who has no one to invite. */
+  onInvite: (() => void) | null;
 }) {
   const { userLocationDisplayValue } = useCurrentUserLocation({
     enabled: !!user,
     user,
   });
   const location = formatUserLocationDisplayValue(userLocationDisplayValue);
+  const outputItems = useOutputItems({ schema, answers, ownView: true });
 
   return (
     <div
@@ -50,35 +53,39 @@ export default function TaskFlowComplete({
             {taskFlow.complete}
           </ModalTitle>
           <p className="mt-3 text-base text-white">{taskFlow.completeUpdate}</p>
-          <div className="mt-6 flex flex-col gap-y-4 rounded-md bg-white p-6">
-            {user ? (
-              <div className="flex items-center gap-x-3">
-                <AvatarProfile
-                  pfp={user.profilePicture}
-                  size="medium"
-                  alt={user.name}
-                />
-                <div className="flex-1">
-                  <p className="text-base font-semibold text-zinc-900">
-                    {user.name}
-                  </p>
-                  {location ? (
-                    <p className="text-base text-zinc-500">{location}</p>
-                  ) : null}
+          {user || outputItems.length > 0 ? (
+            <div className="mt-6 flex flex-col gap-y-4 rounded-md bg-white p-6">
+              {user ? (
+                <div className="flex items-center gap-x-3">
+                  <AvatarProfile
+                    pfp={user.profilePicture}
+                    size="medium"
+                    alt={user.name}
+                  />
+                  <div className="flex-1">
+                    <p className="text-base font-semibold text-zinc-900">
+                      {user.name}
+                    </p>
+                    {location ? (
+                      <p className="text-base text-zinc-500">{location}</p>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-            ) : null}
-            <OutputRenderer schema={schema} answers={answers} ownView />
-          </div>
+              ) : null}
+              <OutputRenderer schema={schema} answers={answers} ownView />
+            </div>
+          ) : null}
         </div>
       </div>
       <div className={cn(FLOW_COLUMN, "flex flex-col gap-y-3 py-4")}>
         <FlowButton kind={FlowButtonKind.Inverse} onClick={onClose}>
           {taskFlow.closeTask}
         </FlowButton>
-        <FlowButton kind={FlowButtonKind.Secondary} onClick={onInvite}>
-          {taskFlow.inviteFriend}
-        </FlowButton>
+        {onInvite ? (
+          <FlowButton kind={FlowButtonKind.Secondary} onClick={onInvite}>
+            {taskFlow.inviteFriend}
+          </FlowButton>
+        ) : null}
       </div>
     </div>
   );

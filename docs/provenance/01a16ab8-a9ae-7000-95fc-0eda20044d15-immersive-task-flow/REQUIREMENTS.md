@@ -22,6 +22,7 @@ task: Immersive full-screen, multi-step task flow on mobile and web, mapped from
 - The "Task complete!" screen's second button is "Invite a friend", opening the invites page, in place of the design's "Explore upcoming projects".
 - "Begin" opens a "Project background" page (that is its H1), not a summary page. It shows the contributors, then the form's opening videos and images, then its opening text, with Next and the progress bar. It does not repeat what the action page already shows: no task title, description, tags, time pills or participant progress bar. A task with no opening content skips this page.
 - There is no task outline.
+- The task flow runs for every task, not only live ones: staff previews, guests on public tasks, and tasks the member can no longer submit or has already submitted.
 - There is no page-title label above the screen title ("Page 1", "Page 2", …).
 - Every screen has an H1 that says, in active terms, what the member should do.
 - Each scenario's description sits in an accordion that can be collapsed and is collapsed by default. This applies to every scenario.

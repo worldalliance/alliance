@@ -91,7 +91,7 @@ export default function TaskFlowScreen({
   form,
   screen,
   nextReady,
-  isLast,
+  nextLabel,
   error,
   onClose,
   onBack,
@@ -100,7 +100,7 @@ export default function TaskFlowScreen({
   form: MobileFormState;
   screen: FlowScreen;
   nextReady: boolean;
-  isLast: boolean;
+  nextLabel: string;
   error: string | null;
   onClose: () => void;
   onBack: () => void;
@@ -144,7 +144,7 @@ export default function TaskFlowScreen({
               className={nextReady ? "flex-1" : "flex-1 opacity-50"}
               loading={form.submitting}
               disabled={form.imageUpload.uploadingAny}
-              title={isLast ? taskFlow.submit : taskFlow.next}
+              title={nextLabel}
             />
           </View>
         </>

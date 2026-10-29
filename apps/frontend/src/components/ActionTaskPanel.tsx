@@ -92,6 +92,10 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
     );
   }, [actionError]);
 
+  const taskFlowAction = isFeatureEnabled(Features.TaskFlow)
+    ? action
+    : undefined;
+
   if ((disabled || formResponse) && action.taskFormId !== null) {
     return (
       <ActionTaskPanelForm
@@ -105,6 +109,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
         disabled={true}
         formResponse={formResponse}
         onSubmitted={onFormSubmitted}
+        taskFlowAction={taskFlowAction}
       />
     );
   }
@@ -120,6 +125,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
         actionId={action.id}
         scrollContainerRef={scrollContainerRef}
         preview
+        taskFlowAction={taskFlowAction}
       />
     ) : null;
   }
@@ -157,9 +163,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
         onSubmitted={onFormSubmitted}
         scrollContainerRef={scrollContainerRef}
         disabled={disabled || !canSubmit}
-        taskFlowAction={
-          isFeatureEnabled(Features.TaskFlow) ? action : undefined
-        }
+        taskFlowAction={taskFlowAction}
       />
     );
   }

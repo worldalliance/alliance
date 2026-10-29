@@ -352,9 +352,11 @@ export const taskFlowFallbackTitle = {
 
 export const taskFlow = {
   begin: "Begin",
+  view: "View task",
   next: "Next",
   back: "Back",
   submit: "Submit",
+  done: "Done",
   background: "Project background",
   complete: "Task complete!",
   completeUpdate:

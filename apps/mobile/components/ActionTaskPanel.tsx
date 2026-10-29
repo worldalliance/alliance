@@ -44,6 +44,8 @@ const ActionTaskPanel = ({
     });
   }, [action]);
 
+  const taskFlowAction = taskFlowEnabled() ? action : undefined;
+
   if ((disabled || formResponse) && action.taskFormId !== null) {
     return (
       <ActionTaskPanelForm
@@ -58,6 +60,7 @@ const ActionTaskPanel = ({
         actionId={action.id}
         disabled={true}
         formResponse={formResponse}
+        taskFlowAction={taskFlowAction}
       />
     );
   }
@@ -74,6 +77,7 @@ const ActionTaskPanel = ({
         onFormStarted={noop}
         actionId={action.id}
         preview
+        taskFlowAction={taskFlowAction}
       />
     ) : null;
   }
@@ -91,7 +95,7 @@ const ActionTaskPanel = ({
         onAlreadySubmitted={onAlreadySubmitted}
         actionId={action.id}
         disabled={disabled}
-        taskFlowAction={taskFlowEnabled() ? action : undefined}
+        taskFlowAction={taskFlowAction}
       />
     );
   }

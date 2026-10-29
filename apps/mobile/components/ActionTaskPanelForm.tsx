@@ -4,7 +4,9 @@ import {
   FormResponseDto,
   SubmitFormDto,
 } from "@alliance/shared/client";
+import { taskFlowMode } from "@alliance/shared/forms/useTaskFlow";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
+import { noop } from "@alliance/shared/lib/constants";
 import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import { ActivityIndicator, View } from "react-native";
 import { useAuth } from "../lib/AuthContext";
@@ -77,10 +79,50 @@ const ActionTaskPanelForm = ({
       }
     : null;
 
-  if (formResponse) {
+  const flowMode = taskFlowMode({
+    submitted: !!formResponse,
+    disabled: !!disabled,
+    preview,
+    completable: !!completeAction,
+  });
+  const renderFlow = (flowForm: {
+    action: ActionDto;
+    schema: FormSchema;
+    formId: number;
+    formSnapshotId: number;
+  }) => (
+    <TaskFlow
+      key={`${flowForm.action.id}:${taskFormId}:${flowMode}`}
+      {...flowForm}
+      mode={flowMode}
+      completedFormResponse={formResponse}
+      taskFormId={taskFormId}
+      submitTaskForm={submitTaskForm}
+      submitError={error}
+      reloadSourceHistories={historiesReload}
+      onCompleteAction={completeAction ?? noop}
+      onFormStarted={onFormStarted}
+      onAbandonAction={onAbandonAction}
+    />
+  );
+
+  const responseSchema = formResponse
+    ? (formResponse.schemaSnapshot as unknown as FormSchema)
+    : null;
+
+  if (formResponse && responseSchema && taskFlowAction) {
+    return renderFlow({
+      action: taskFlowAction,
+      schema: responseSchema,
+      formId: formResponse.formId,
+      formSnapshotId: formResponse.formSnapshotId,
+    });
+  }
+
+  if (formResponse && responseSchema) {
     return (
       <FormRenderer
-        form={formResponse.schemaSnapshot as unknown as FormSchema}
+        form={responseSchema}
         id={formResponse.formId}
         formSnapshotId={formResponse.formSnapshotId}
         actionId={actionId}
@@ -118,19 +160,13 @@ const ActionTaskPanelForm = ({
 
   return (
     <View>
-      {taskFlowAction && completeAction && !disabled ? (
-        <TaskFlow
-          action={taskFlowAction}
-          schema={schema}
-          taskFormId={taskFormId}
-          formSnapshotId={form.formSnapshotId}
-          submitTaskForm={submitTaskForm}
-          submitError={error}
-          reloadSourceHistories={historiesReload}
-          onCompleteAction={completeAction}
-          onFormStarted={onFormStarted}
-          onAbandonAction={onAbandonAction}
-        />
+      {taskFlowAction ? (
+        renderFlow({
+          action: taskFlowAction,
+          schema,
+          formId: taskFormId,
+          formSnapshotId: form.formSnapshotId,
+        })
       ) : (
         <FormRenderer
           id={taskFormId}

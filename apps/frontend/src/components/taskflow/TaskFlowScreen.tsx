@@ -85,7 +85,7 @@ export default function TaskFlowScreen({
   form,
   screen,
   nextReady,
-  isLast,
+  nextLabel,
   error,
   scrollRef,
   onClose,
@@ -95,7 +95,7 @@ export default function TaskFlowScreen({
   form: WebFormState;
   screen: FlowScreen;
   nextReady: boolean;
-  isLast: boolean;
+  nextLabel: string;
   error: string | null;
   scrollRef: RefObject<HTMLDivElement | null>;
   onClose: () => void;
@@ -152,7 +152,7 @@ export default function TaskFlowScreen({
                 loading={form.submitting}
                 disabled={form.imageUpload.uploadingAny}
               >
-                {isLast ? taskFlow.submit : taskFlow.next}
+                {nextLabel}
               </FlowButton>
             </div>
           </>
