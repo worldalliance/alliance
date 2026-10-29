@@ -799,7 +799,7 @@ jobs:
             export SMTP_HOST=${{ secrets.SMTP_HOST }}
             export SMTP_USER=${{ secrets.SMTP_USER }}
             export SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
-            [ "${{ github.ref_name }}" != "production" ] || [ -n "${{ vars.MAIL_FROM }}" ] || { echo "MAIL_FROM is unset for this environment"; exit 1; }
+            [ "${{ github.ref_name }}" != "production" ] && [ "${{ vars.SEND_DEV_NOTIFS }}" != "1" ] || [ -n "${{ vars.MAIL_FROM }}" ] || { echo "MAIL_FROM is unset for this environment, which sends mail"; exit 1; }
             export MAIL_FROM="${{ vars.MAIL_FROM }}"
             export ASSETS_BUCKET=${{ secrets.ASSETS_BUCKET_NAME }}
             export POSTHOG_KEY=${{ secrets.POSTHOG_KEY }}
@@ -815,6 +815,7 @@ jobs:
             export POSTHOG_PROJECT_ID=${{ secrets.POSTHOG_PROJECT_ID }}
             export MAILGUN_SIGNING_KEY=${{ secrets.MAILGUN_SIGNING_KEY }}
             export WAITLIST_PUBLIC_MAIL_DAILY_CAP=${{ vars.WAITLIST_PUBLIC_MAIL_DAILY_CAP }}
+            export SEND_DEV_NOTIFS=${{ vars.SEND_DEV_NOTIFS }}
             export NOTIF_TEST_PHONE_NUMBER=${{ secrets.NOTIF_TEST_PHONE_NUMBER }}
             export NOTIF_TEST_EMAIL=${{ secrets.NOTIF_TEST_EMAIL }}
             export USE_CLOUDFRONT=${{ vars.USE_CLOUDFRONT }}
