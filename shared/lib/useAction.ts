@@ -18,6 +18,7 @@ export function useAction(
   const queryClient = useQueryClient();
   const store = actionStore(queryClient);
   const state = useActionState();
+  const session = store.getSession();
   const select = useCallback((id: number) => selectAction(state, id), [state]);
   const query = useQuery({
     queryKey: queryKeys.action(actionId),
@@ -43,12 +44,14 @@ export function useAction(
   });
 
   const markCompleted = useCallback(async () => {
-    if (actionId !== null) store.recordRelation(actionId, "completed");
-  }, [store, actionId]);
+    if (actionId !== null)
+      store.recordRelation({ actionId, relation: "completed", session });
+  }, [store, actionId, session]);
 
   const markDeclined = useCallback(async () => {
-    if (actionId !== null) store.recordRelation(actionId, "declined");
-  }, [store, actionId]);
+    if (actionId !== null)
+      store.recordRelation({ actionId, relation: "declined", session });
+  }, [store, actionId, session]);
 
   return { query, markCompleted, markDeclined };
 }

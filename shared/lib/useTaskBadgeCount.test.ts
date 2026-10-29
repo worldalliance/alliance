@@ -3,6 +3,7 @@ import { expect, it, mock } from "bun:test";
 import { milliseconds } from "date-fns";
 import type { ActionDto } from "../client";
 import { useRecordActionRelation } from "./actionsListPage";
+import { actionStore } from "./actionStore";
 import { queryKeys } from "./queryKeys";
 import { makeAction, makeViewer } from "./testFixtures";
 import { queryWrapper } from "./testing/queryWrapper";
@@ -118,7 +119,13 @@ it("drops a confirmed withdrawal at once, and an older in-flight fetch can't res
   void client.refetchQueries({ queryKey: queryKeys.actions() });
   await waitFor(() => expect(calls).toBe(1));
 
-  act(() => view.result.current.recordRelation(1, "declined"));
+  act(() =>
+    view.result.current.recordRelation({
+      actionId: 1,
+      relation: "declined",
+      session: actionStore(client).getSession(),
+    }),
+  );
   await waitFor(() => expect(view.result.current.count).toBe(0));
 
   releaseStale([makeAction({ id: 1 })]);

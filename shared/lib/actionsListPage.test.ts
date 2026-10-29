@@ -78,7 +78,13 @@ it("marks only the given cached action completed and marks the list stale", () =
     wrapper,
   }).result.current;
 
-  act(() => recordRelation(1, "completed"));
+  act(() =>
+    recordRelation({
+      actionId: 1,
+      relation: "completed",
+      session: actionStore(client).getSession(),
+    }),
+  );
 
   const marked = actionStore(client).get(1);
   const untouched = actionStore(client).get(2);

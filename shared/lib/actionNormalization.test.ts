@@ -163,7 +163,13 @@ it("keeps a confirmation made while the first list is still loading", async () =
   );
   await waitFor(() => expect(listRequests).toBe(1));
 
-  act(() => list.result.current.record(7, "completed"));
+  act(() =>
+    list.result.current.record({
+      actionId: 7,
+      relation: "completed",
+      session: actionStore(client).getSession(),
+    }),
+  );
   pending.resolve(Response.json([makeAction({ id: 7 })]));
 
   await waitFor(() => expect(list.result.current.query.isSuccess).toBe(true));
@@ -233,6 +239,19 @@ it("clears mounted action consumers at a session boundary", async () => {
 
   await waitFor(() => expect(detail.result.current.query.data).toBeUndefined());
   expect(actionStore(client).get(7)).toBeUndefined();
+});
+
+it("ignores a detail callback from the previous session", async () => {
+  const { client, wrapper } = queryWrapper();
+  const detail = renderHook(() => useAction(7), { wrapper });
+  await waitFor(() => expect(detail.result.current.query.isSuccess).toBe(true));
+  const oldConfirmation = detail.result.current.markCompleted;
+
+  act(() => meCache(client).clear());
+  await waitFor(() => expect(actionStore(client).get(7)).toBeDefined());
+  await act(oldConfirmation);
+
+  expect(actionStore(client).get(7)?.viewer?.relation).toBe("none");
 });
 
 it("discards a cancelled list response even when the transport ignores abort", async () => {

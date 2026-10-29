@@ -101,8 +101,10 @@ function createActionStore(queryClient: QueryClient) {
 
   const update = (params: {
     actionId: number;
+    session: number;
     patch: (action: ActionDto) => ActionDto;
   }) => {
+    if (params.session !== session) return false;
     loads.record({
       queryClient,
       queryKey: queryKeys.actions(),
@@ -113,11 +115,13 @@ function createActionStore(queryClient: QueryClient) {
     });
     const current = store.getState().entities[params.actionId]?.action;
     if (current) receive([params.patch(current)], ActionSource.List);
+    return true;
   };
 
   return {
     subscribe: store.subscribe,
     getState: store.getState,
+    getSession: () => session,
     get: (actionId: number) => store.getState().entities[actionId]?.action,
     receive,
     clear: () => {
@@ -148,9 +152,16 @@ function createActionStore(queryClient: QueryClient) {
       );
       return actions.map(({ id }) => id);
     },
-    recordRelation: (actionId: number, relation: "completed" | "declined") => {
+    recordRelation: ({
+      relation,
+      ...params
+    }: {
+      actionId: number;
+      relation: "completed" | "declined";
+      session: number;
+    }) =>
       update({
-        actionId,
+        ...params,
         patch: (action) => {
           const completionDelta: Record<typeof relation, number> = {
             completed: Number(!hasViewerCompletedAction(action)),
@@ -161,10 +172,9 @@ function createActionStore(queryClient: QueryClient) {
             usersCompleted: action.usersCompleted + completionDelta[relation],
           };
         },
-      });
-    },
-    recordDismissal: (actionId: number) =>
-      update({ actionId, patch: withOptimisticDismissal }),
+      }),
+    recordDismissal: (params: { actionId: number; session: number }) =>
+      update({ ...params, patch: withOptimisticDismissal }),
   };
 }
 

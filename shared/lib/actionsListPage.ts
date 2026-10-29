@@ -64,12 +64,14 @@ export function useInvalidateActions(): () => void {
 
 export function useDismissActionMutation() {
   const queryClient = useQueryClient();
+  const store = actionStore(queryClient);
   return useMutation({
+    onMutate: () => store.getSession(),
     mutationFn: (actionId: number) =>
       actionsDismissAction({ path: { id: actionId }, throwOnError: true }),
-    onSuccess: (_data, actionId) => {
-      actionStore(queryClient).recordDismissal(actionId);
-      invalidateActions(queryClient);
+    onSuccess: (_data, actionId, session) => {
+      if (store.recordDismissal({ actionId, session }))
+        invalidateActions(queryClient);
     },
   });
 }
@@ -82,15 +84,16 @@ export const dismissActionErrorMessage = (error: unknown): string =>
   });
 
 /** Applies a completion or withdrawal the server has just confirmed. */
-export function useRecordActionRelation(): (
-  actionId: number,
-  relation: "completed" | "declined",
-) => void {
+export function useRecordActionRelation(): (params: {
+  actionId: number;
+  relation: "completed" | "declined";
+  session: number;
+}) => void {
   const queryClient = useQueryClient();
   return useCallback(
-    (actionId, relation) => {
-      actionStore(queryClient).recordRelation(actionId, relation);
-      invalidateActions(queryClient);
+    (params) => {
+      if (actionStore(queryClient).recordRelation(params))
+        invalidateActions(queryClient);
     },
     [queryClient],
   );
