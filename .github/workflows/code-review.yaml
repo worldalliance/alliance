@@ -19,11 +19,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Remove AGENTS.md and CLAUDE.md before review
-        run: |
-          set -euo pipefail
-          rm -f AGENTS.md CLAUDE.md
-
       # --- Claude Code (Anthropic) ---
 
       - name: Setup Node (for installing Claude Code CLI)
@@ -41,25 +36,12 @@ jobs:
         run: |
           set -euox pipefail
 
-          prompt_file="$(mktemp)"
-          cat > "$prompt_file" <<'PROMPT'
-          This is commit for ${{ github.repository }}.
-          Commit SHA: ${{ github.sha }}
-
-          1) Run `git diff ${{ github.sha }}^!` and review only this patch in the context of the repo.
-
-          Review only the changes introduced by the commit.
-          Suggest any improvements, potential bugs, or issues. Attend to high level direction also, such as if there might be a better way to accomplish the same objective.
-
-          Output a final message with your concise thoughts. Be sure to separate this from your other output as a new message so only the review is sent. Do not summarize the commit, just write one short bullet point for each specific issue you found, if any. Do not list things that do not need fixing. End the message with the phrase "[NEEDS_ATTENTION]" if there is a significant issue or possible improvement that the author should address. If everything is fine, do not include this phrase.
-          Only output [NEEDS_ATTENTION] if you are highly confident there is a substantial issue. Look around at related files to make sure you arent missing anything before doing so. If the changes remove a feature or affordance but this removal was clearly intentional by the author, this does not need attention. Do not leave comments of the form "verify that x" or "x needs to be tested" - these are not code issues. Include full file paths from repository root as well as line numbers for applicable issues in your review.
-          PROMPT
-
           raw_json="$(
-            claude -p "$(cat "$prompt_file")" \
+            claude -p \
               --output-format json \
               --model claude-opus-4-6 \
-              --allowedTools "Read,Bash(git diff:*),Bash(git show:*),Bash(git status:*),Bash(git log:*)" \
+              --allowedTools "Read,Bash(git diff:*),Bash(git show:*),Bash(git status:*),Bash(git log:*),Bash(git rev-parse:*)" \
+              < .github/commit-review/prompt.md
           )"
 
           final_message="$(printf "%s" "$raw_json" | jq -r '.result // ""')"
@@ -80,18 +62,8 @@ jobs:
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           model: gpt-5.5
-          prompt: |
-            This is commit for ${{ github.repository }}.
-            Commit SHA: ${{ github.sha }}
-
-            1) Run `git diff ${{ github.sha }}^!` and review only this patch in the context of the repo.
-
-            Review ONLY the changes introduced by the commit.
-            Suggest any improvements, potential bugs, or issues. Attend to high level direction also, such as if there might be a better way to accomplish the same objective.
-
-            Output a final message with your concise thoughts. Do not summarize the commit, just write one short bullet point for each specific issue you found, if any. End the message with the phrase "[NEEDS_ATTENTION]" if there is a significant issue or possible improvement that the author should address. If everything is fine, do not include this phrase.
-            Only output [NEEDS_ATTENTION] if you are highly confident there is a substantial issue. Look around at related files to make sure you arent missing anything before doing so. If the changes remove a feature or affordance but this removal was clearly intentional by the author, this does not need attention. Do not leave comments of the form "verify that x" or "x needs to be tested" - these are not code issues.
-            Include full file paths from repository root as well as line numbers for applicable issues in your review.
+          prompt-file: .github/commit-review/prompt.md
+          sandbox: read-only
 
       - name: Publish full reviews
         if: always()
@@ -125,7 +97,7 @@ jobs:
             exit 0
           fi
 
-          instructions="You are merging two automated code review outputs into a single concise list of issues. Keep only real, actionable issues, but prune any preamble or commentary. Merge duplicates. Output a markdown bullet list where each bullet is one issue. Preserve the listed file paths and line numbers. Notification eligibility is determined from the reviewers' final markers separately; omit marker tokens from your summary.
+          instructions="You are merging two automated code review outputs into a single concise list of must-fix and should-fix findings. Omit nits, preambles, and commentary. Merge duplicates. Output a markdown bullet list where each bullet is one issue. Preserve the listed file paths and line numbers. Notification eligibility is determined from the reviewers' final markers separately; omit marker tokens from your summary.
 
           If both reviews indicate that there are no issues (for example, they are empty, say there are no issues, or only contain pleasantries), then respond with an empty string and do NOT invent any meta-commentary (such as complaining about missing content)."
 
