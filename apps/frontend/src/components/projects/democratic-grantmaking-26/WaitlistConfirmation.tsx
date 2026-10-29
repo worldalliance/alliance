@@ -2,9 +2,9 @@ import { cn } from "@alliance/shared/styles/util";
 import { copyOutcome, CopyOutcome } from "@alliance/sharedweb/lib/clipboard";
 import { Check, Copy } from "lucide-react";
 import { useState, type ReactNode } from "react";
+import { PROJECT_FIELD } from "../fieldStyles";
 import { personalShareUrl } from "./useWaitlist";
 import { WaitlistLinkRequest } from "./WaitlistLinkRequest";
-import { WAITLIST_FIELD } from "./waitlistStyles";
 
 const COPY_ICON = <Copy className="size-5" aria-hidden />;
 
@@ -51,7 +51,7 @@ export function WaitlistConfirmation({
               value={url}
               aria-label="Your personal link"
               onFocus={(e) => e.currentTarget.select()}
-              className={cn(WAITLIST_FIELD, "h-10 min-w-0 flex-1")}
+              className={cn(PROJECT_FIELD, "h-10 min-w-0 flex-1")}
             />
             <button
               type="button"

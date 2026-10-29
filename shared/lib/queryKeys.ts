@@ -122,6 +122,7 @@ export const queryKeys = {
     ["communityGetIncomingCommunityInvitesForUser"] as const,
   linkedGuestDraft: (taskFormId: number) =>
     ["tasksGetLinkedGuestDraft", taskFormId] as const,
+  koraState: () => ["koraState"] as const,
   linkPreview: (url: string) => ["linkPreviewGetPreview", url] as const,
   members: () => ["userMembers"] as const,
   membersWithFriends: () => ["userMembersWithFriends"] as const,

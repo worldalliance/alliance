@@ -1,25 +1,28 @@
 import {
   type CountryCode,
+  DEFAULT_PHONE_COUNTRY,
   hasPhoneExtension,
+  internationalPhoneCountry,
   looksLikePhoneNumber,
   toE164,
 } from "@alliance/common/phone";
 import { R, type Result } from "@alliance/common/result";
 import { cn } from "@alliance/shared/styles/util";
 import PhoneCountrySelect from "@alliance/sharedweb/ui/PhoneCountrySelect";
+import { useState } from "react";
 import isEmail from "validator/lib/isEmail";
-import { WAITLIST_FIELD } from "./waitlistStyles";
+import { PROJECT_FIELD } from "./fieldStyles";
 
 export const CONTACT_LABEL = "Email or mobile number";
 export const INVALID_CONTACT = "Enter a valid email address or mobile number.";
-const ERROR_ID = "waitlist-contact-error";
+const ERROR_ID = "contact-error";
 
-export type WaitlistContact = { email: string } | { phoneNumber: string };
+export type Contact = { email: string } | { phoneNumber: string };
 
-export function parseWaitlistContact(
+export function parseContact(
   text: string,
   country: CountryCode,
-): Result<WaitlistContact, typeof INVALID_CONTACT> {
+): Result<Contact, typeof INVALID_CONTACT> {
   const trimmed = text.trim();
   if (trimmed.includes("@")) {
     return isEmail(trimmed)
@@ -35,7 +38,7 @@ export function parseWaitlistContact(
   );
 }
 
-export function WaitlistContactInput({
+export function ContactInput({
   value,
   onChange,
   country,
@@ -57,7 +60,7 @@ export function WaitlistContactInput({
     <div className="flex flex-col gap-1">
       <div
         className={cn(
-          WAITLIST_FIELD,
+          PROJECT_FIELD,
           "flex items-center px-0 focus-within:border-[var(--site-primary)]",
           error && "border-red-700",
         )}
@@ -103,4 +106,43 @@ export function WaitlistContactInput({
       )}
     </div>
   );
+}
+
+export function useContactField() {
+  const [value, setValue] = useState("");
+  const [country, setCountry] = useState<CountryCode>(DEFAULT_PHONE_COUNTRY);
+  const [error, setError] = useState<string | null>(null);
+  const blurError = (inCountry: CountryCode) => {
+    const parsed = parseContact(value, inCountry);
+    return value.trim() && R.isFailure(parsed) ? parsed.error : null;
+  };
+  return {
+    /** Shows the error itself on a failure. */
+    parse: () => {
+      const parsed = parseContact(value, country);
+      if (R.isFailure(parsed)) setError(parsed.error);
+      return parsed;
+    },
+    reset: () => {
+      setValue("");
+      setCountry(DEFAULT_PHONE_COUNTRY);
+      setError(null);
+    },
+    inputProps: {
+      value,
+      onChange: (next: string) => {
+        setValue(next);
+        setError(null);
+        const typed = internationalPhoneCountry(next);
+        if (typed) setCountry(typed);
+      },
+      country,
+      onCountryChange: (next: CountryCode) => {
+        setCountry(next);
+        if (error) setError(blurError(next));
+      },
+      error,
+      onBlur: () => setError(blurError(country)),
+    },
+  };
 }

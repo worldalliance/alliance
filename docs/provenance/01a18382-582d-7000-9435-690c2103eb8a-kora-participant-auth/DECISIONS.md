@@ -14,7 +14,11 @@ Generate additive migrations for participant, challenge, rate-event, signup, and
 
 ## Flow and interface
 
-Replace the project page's `WaitlistSignupForm` with a participant form. Extract and reuse its email/phone parsing and country-selector UI; keep Alliance waitlist browser memory, referrals, nominations, confirmation emails, and sharing links out of the participant flow. The existing participant-count display is outside this change.
+Replace the project page's `WaitlistSignupForm` with `KoraSignIn`. Its email/phone parsing, country selector, and field state move to `components/projects/ContactInput.tsx` (`parseContact`, `ContactInput`, `useContactField`), which the waitlist form uses too. The waitlist form's closed mode served only this page and is removed with it. Keep Alliance waitlist browser memory, referrals, nominations, confirmation emails, and sharing links out of the participant flow. The existing participant-count display is outside this change.
+
+The card renders from the cached `GET /kora/me` state, and each mutation writes its result into that cache, so a reload resumes at the same step. The member side comes from `useAuth`. Its bootstrap reads a failed member lookup as signed out, so only the participant lookup offers retry; a member whose lookup failed sees the participant form, which carries no member data.
+
+`POST code` needs the contact itself, and the page holds it only in memory. Resend reuses it; after a reload, which forgets it, the code step hides resend and offers only “Change email or mobile number”. Changing the contact returns to contact entry with the typed value still filled in. A code the server calls no longer valid does the same, showing its copy there, since the code step after a reload has no resend to act on it. The code input uses `autocomplete="one-time-code"`, which Safari fills from the SMS, and asks WebOTP for SMS codes, which Chrome on Android requires. A refusal carrying a known `OtpError` or `KoraError` shows the server's copy at any status, including the 503 of a failed delivery; other failures use `thrownRefusalMessage`.
 
 Use these states:
 
@@ -22,7 +26,7 @@ Use these states:
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Resolving sessions | Reserve the card while member and participant session state loads. A lookup failure offers retry rather than treating an unknown session as signed out. |
 | Active member      | Apply R2 before showing any participant state.                                                                                                          |
-| Signed out         | Show “Email or mobile number”, “Continue”, “Continue with Google”, and “Continue with Apple”.                                                           |
+| Signed out         | Show “Email or mobile number”, “Continue”, “Continue with Google”, and “Continue with Apple”. The provider buttons arrive with OAuth (PR 5).            |
 | Sending code       | Disable repeat submission; retain the entered contact.                                                                                                  |
 | Awaiting code      | Show a masked destination, a six-digit input supporting paste/autofill, “Verify”, the resend countdown, and “Change email or mobile number”.            |
 | Completing signup  | Show “Full name” and “Continue” after contact verification when a name is still required.                                                               |

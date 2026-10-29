@@ -1,8 +1,4 @@
-import {
-  DEFAULT_PHONE_COUNTRY,
-  internationalPhoneCountry,
-  type CountryCode,
-} from "@alliance/common/phone";
+import { GENERIC_FAILURE } from "@alliance/common/errorMessage";
 import { R } from "@alliance/common/result";
 import type { WaitlistReferralDto } from "@alliance/shared/client";
 import {
@@ -14,10 +10,12 @@ import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { RotateCw } from "lucide-react";
-import { useState, type FormEvent, type ReactNode } from "react";
+import { type FormEvent, type ReactNode } from "react";
 import { href, Link } from "react-router";
 import { ACCOUNT_BUTTON } from "../../../onboarding/chrome";
 import { useInviteSession } from "../../../site/invite/InviteSession";
+import { ContactInput, useContactField } from "../ContactInput";
+import { PROJECT_FIELD } from "../fieldStyles";
 import {
   useWaitlistBrowser,
   useWaitlistMailEnabled,
@@ -25,16 +23,9 @@ import {
 } from "./useWaitlist";
 import { ForgetBrowser, RememberedInvite } from "./WaitlistBrowserMemory";
 import { WaitlistConfirmation } from "./WaitlistConfirmation";
-import {
-  parseWaitlistContact,
-  WaitlistContactInput,
-} from "./WaitlistContactInput";
 import { WaitlistNominations } from "./WaitlistNominations";
-import { WAITLIST_FIELD } from "./waitlistStyles";
 
 const SOCIAL_PROOF_THRESHOLD = 3;
-
-const SUBMIT_FALLBACK = "Something went wrong. Please try again.";
 
 function ReferralBanner({ referral }: { referral: WaitlistReferralDto }) {
   const { organization, inviterName } = referral;
@@ -84,12 +75,10 @@ export function WaitlistSignupForm({
       </Link>
     </>
   ),
-  closedMessage,
 }: {
   className?: string;
   submitLabel?: string;
   note?: ReactNode;
-  closedMessage?: string;
 }) {
   const {
     codes,
@@ -100,14 +89,7 @@ export function WaitlistSignupForm({
   const mailEnabled = useWaitlistMailEnabled();
   const { query: browser, forget, join: submit } = useWaitlistBrowser();
   const { signupHref: inviteSignupHref } = useInviteSession();
-  const [closedShown, setClosedShown] = useState(false);
-  const [contact, setContact] = useState("");
-  const [country, setCountry] = useState<CountryCode>(DEFAULT_PHONE_COUNTRY);
-  const [contactError, setContactError] = useState<string | null>(null);
-  const blurError = (inCountry: CountryCode) => {
-    const parsed = parseWaitlistContact(contact, inCountry);
-    return contact.trim() && R.isFailure(parsed) ? parsed.error : null;
-  };
+  const contact = useContactField();
   // Until the browser state answers, a returning entrant's input would vanish
   // into their confirmation. An error falls through to a usable form.
   const restoring = browser.isPending;
@@ -120,9 +102,7 @@ export function WaitlistSignupForm({
           forget={forget}
           onForgotten={() => {
             submit.reset();
-            setContact("");
-            setCountry(DEFAULT_PHONE_COUNTRY);
-            setContactError(null);
+            contact.reset();
           }}
         />
       )}
@@ -138,16 +118,9 @@ export function WaitlistSignupForm({
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (closedMessage) {
-      setClosedShown(true);
-      return;
-    }
     const form = new FormData(event.currentTarget);
-    const parsed = parseWaitlistContact(contact, country);
-    if (R.isFailure(parsed)) {
-      setContactError(parsed.error);
-      return;
-    }
+    const parsed = contact.parse();
+    if (R.isFailure(parsed)) return;
     forget.reset();
     submit.mutate({
       name: String(form.get("name") ?? ""),
@@ -237,54 +210,23 @@ export function WaitlistSignupForm({
         required
         maxLength={200}
         disabled={restoring}
-        className={WAITLIST_FIELD}
+        className={PROJECT_FIELD}
       />
-      <WaitlistContactInput
-        value={contact}
-        onChange={(next) => {
-          setContact(next);
-          setContactError(null);
-          const typed = internationalPhoneCountry(next);
-          if (typed) setCountry(typed);
-        }}
-        country={country}
-        onCountryChange={(next) => {
-          setCountry(next);
-          if (contactError) setContactError(blurError(next));
-        }}
-        error={contactError}
-        onBlur={() => setContactError(blurError(country))}
-        disabled={restoring}
-      />
+      <ContactInput {...contact.inputProps} disabled={restoring} />
       <Button
         type="submit"
         color={ButtonColor.Black}
-        onClick={(event) => {
-          if (!closedMessage) return;
-          event.preventDefault();
-          setClosedShown(true);
-        }}
-        disabled={
-          closedShown ||
-          restoring ||
-          submit.isPending ||
-          !referralKnown ||
-          linkFailed
-        }
+        disabled={restoring || submit.isPending || !referralKnown || linkFailed}
         className={cn(ACCOUNT_BUTTON, "p-4 text-base sm:text-lg")}
       >
-        {closedShown
-          ? closedMessage
-          : submit.isPending
-            ? "Joining…"
-            : submitLabel}
+        {submit.isPending ? "Joining…" : submitLabel}
       </Button>
       {submit.isError && !linkFailed && (
         <p className="text-sm text-red-700" role="alert">
           {thrownRefusalMessage({
             error: submit.error,
-            fallback: SUBMIT_FALLBACK,
-            sessionExpired: SUBMIT_FALLBACK,
+            fallback: GENERIC_FAILURE,
+            sessionExpired: GENERIC_FAILURE,
           })}
         </p>
       )}

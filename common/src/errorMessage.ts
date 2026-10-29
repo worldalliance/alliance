@@ -1,3 +1,5 @@
+export const GENERIC_FAILURE = "Something went wrong. Please try again.";
+
 export function errorMessage(params: {
   error: unknown;
   fallback: string;
