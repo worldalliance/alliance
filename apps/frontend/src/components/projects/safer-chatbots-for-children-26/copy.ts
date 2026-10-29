@@ -10,7 +10,7 @@ export const ABOUT_SECTIONS = [
 
 Volunteers will review transcripts of children talking to AI chatbots such as ChatGPT and Claude, then rate how well the chatbots handled sensitive topics such as fear, academic dishonesty, online data sharing, and body image.
 
-The data will be used to improve how KORA evaluates the safety of large language models.`,
+The data will be used to improve how KORA evaluates the safety of large language models. Leading AI companies like Mistral use these benchmarks to evaluate and improve their products.`,
   },
   {
     heading: "What is the benefit?",
@@ -18,14 +18,6 @@ The data will be used to improve how KORA evaluates the safety of large language
 ` /* 
     - KORA has identified a [lack of research](https://arxiv.org/html/2608.07902v1) on how AI systems affect children and teenagers. We are excited to partner with them to make these systems safer.
     */,
-  },
-  {
-    heading: "How will this work?",
-    body: `1. Participants will rate short scenarios of children interacting with an AI chatbot as safe, unsafe, or undetermined.
-
-2. KORA will use the ratings to improve their safety tests (known in the industry as “benchmarks”) to match what is considered safe by the general public. Leading AI companies like Mistral use these benchmarks to evaluate and improve their products.
-
-3. KORA will publish the findings in a research paper.`,
   },
   {
     heading: "How do I participate?",
