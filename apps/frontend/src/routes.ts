@@ -1,3 +1,4 @@
+import { KORA_PROJECT_PATH } from "@alliance/common/kora";
 import { WAITLIST_UNSUBSCRIBE_PATH } from "@alliance/common/waitlist";
 import {
   type RouteConfig,
@@ -30,7 +31,7 @@ export default [
     "components/projects/democratic-grantmaking-26/DemocraticGrantmaking26.tsx",
   ),
   route(
-    "/projects/safer-chatbots-for-children",
+    KORA_PROJECT_PATH,
     "components/projects/safer-chatbots-for-children-26/SaferChatbotsForChildren26.tsx",
   ),
   route("/projects/:slug", "pages/static/ProgressProjectPage.tsx"),
