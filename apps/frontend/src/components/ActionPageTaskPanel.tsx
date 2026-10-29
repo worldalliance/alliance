@@ -33,6 +33,7 @@ import ActionTaskPanel from "./ActionTaskPanel";
 import AllianceSignupPitch from "./AllianceSignupPitch";
 import ShareButton from "./ShareButton";
 import StackedCard from "./system/StackedCard";
+import { TASK_FLOW_ORIGIN } from "./taskflow/useExpandingPanel";
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   console.error(error);
@@ -262,7 +263,7 @@ const ActionPageTaskPanel = () => {
   }, [isNonmemberPublicReferralAction, referralPanelAnimationNonce]);
 
   const renderStackedCard = (bottom: React.ReactNode) => (
-    <div className="relative">
+    <div className={cn("relative", TASK_FLOW_ORIGIN)}>
       <StackedCard
         top={taskPanelHeader}
         topCardStyle={headerStyle}

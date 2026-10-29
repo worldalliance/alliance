@@ -17,10 +17,12 @@ const EASE_OUT_QUART = [0.25, 1, 0.5, 1] as const;
 
 /** Durations and easing curves for every transition of the task flow, on web and mobile. */
 export const flowMotion = {
-  /** The flow opening, sliding up. */
+  /** The flow opening: growing out of the task container on web, sliding up on mobile. */
   expand: { durationMs: 350, easing: EASE_OUT_QUART },
-  /** The flow closing, sliding down. */
+  /** The flow closing: shrinking back into the task container on web, sliding down on mobile. */
   collapse: { durationMs: 200, easing: EASE_OUT_QUART },
+  /** The web panel fading out as it shrinks. */
+  collapseFade: { durationMs: 200, easing: EASE_OUT_QUART },
   /**
    * The completion screen turning back to the usual colours before the flow
    * closes, and on web the side nav and top band turning green and back.
