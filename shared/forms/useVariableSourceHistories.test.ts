@@ -2,6 +2,10 @@ import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { focusManager, onlineManager } from "@tanstack/react-query";
 import { act, renderHook } from "@testing-library/react";
 import { queryWrapper } from "../lib/testing/queryWrapper";
+import {
+  refetchingWrapper,
+  refocusAndReconnect,
+} from "../lib/testing/refocusAndReconnect";
 import { routes, serveApi } from "../lib/testing/serveApi";
 import {
   HistoryReader,
@@ -314,6 +318,35 @@ describe("useVariableSourceHistories", () => {
     );
     await settle();
     expect(result.current.status).toBe(SourceHistoriesStatus.Failed);
+    expect(requests).toEqual(["me:7"]);
+  });
+
+  it("waits for retry after a failed load, through refocus and reconnect", async () => {
+    mine["7"] = async () => json({ message: "down" }, 500);
+    const { result } = render(
+      readingForms(7),
+      { reader: HistoryReader.Self },
+      refetchingWrapper(),
+    );
+    await settle();
+
+    mine["7"] = async () => json(historyBody([1]));
+    await refocusAndReconnect(settle);
+    expect(result.current.status).toBe(SourceHistoriesStatus.Failed);
+    expect(requests).toEqual(["me:7"]);
+  });
+
+  it("keeps a deleted source form deleted through refocus and reconnect", async () => {
+    mine["7"] = async () => json({ message: "Form not found" }, 404);
+    const { result } = render(
+      readingForms(7),
+      { reader: HistoryReader.Self },
+      refetchingWrapper(),
+    );
+    await settle();
+
+    await refocusAndReconnect(settle);
+    expect(result.current.status).toBe(SourceHistoriesStatus.SourceDeleted);
     expect(requests).toEqual(["me:7"]);
   });
 

@@ -3,6 +3,10 @@ import type { FormVariable } from "@alliance/common/forms/variables";
 import { focusManager, onlineManager } from "@tanstack/react-query";
 import { act, renderHook } from "@testing-library/react";
 import { queryWrapper } from "../lib/testing/queryWrapper";
+import {
+  refetchingWrapper,
+  refocusAndReconnect,
+} from "../lib/testing/refocusAndReconnect";
 import { routes, serveApi } from "../lib/testing/serveApi";
 import {
   AggregateReader,
@@ -190,6 +194,21 @@ describe("useVariableAggregates", () => {
       wrapper,
     );
     await settle();
+    expect(result.current.status).toBe(VariableAggregatesStatus.Failed);
+    expect(requests).toHaveLength(1);
+  });
+
+  it("waits for retry after a failed load, through refocus and reconnect", async () => {
+    answer = async () => json({ message: "down" }, 500);
+    const { result } = render(
+      schemaWith([counting("a")]),
+      FORM_VERSION,
+      refetchingWrapper(),
+    );
+    await settle();
+
+    answer = async () => json({ aggregates: [aggregate("a", { x: 1 })] });
+    await refocusAndReconnect(settle);
     expect(result.current.status).toBe(VariableAggregatesStatus.Failed);
     expect(requests).toHaveLength(1);
   });
