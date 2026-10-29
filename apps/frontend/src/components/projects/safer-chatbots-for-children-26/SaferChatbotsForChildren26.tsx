@@ -1,7 +1,7 @@
 import { koraAvailable } from "@alliance/common/kora";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { cn } from "@alliance/shared/styles/util";
-import { data } from "react-router";
+import { data, Link } from "react-router";
 import { socialPreviewMeta } from "../../../lib/socialPreviewMeta";
 import { SiteFooter } from "../../../site/Footer";
 import { NAV_HEIGHT, Navbar } from "../../../site/Navbar";
@@ -9,11 +9,7 @@ import { SiteRoot } from "../../../site/PageShell";
 import { SITE_COL } from "../../../site/ui";
 import { WaitlistHeroImages } from "../democratic-grantmaking-26/DemocraticGrantmaking26";
 import { AboutSections } from "./AboutSections";
-import {
-  ChatbotUseStat,
-  ChatbotUseStatPanel,
-  useStatReveal,
-} from "./ChatbotUseStat";
+import { ChatbotUseStat } from "./ChatbotUseStat";
 import {
   HERO_IMAGES,
   PARTICIPANT_GOAL,
@@ -63,7 +59,6 @@ function ProjectProgress() {
 }
 
 function HeroScreen() {
-  const statReveal = useStatReveal();
   return (
     <section
       aria-label="Sign up"
@@ -87,7 +82,11 @@ function HeroScreen() {
             </span>
           </h1>
           <p className="text-left text-xl sm:text-2xl">
-            <ChatbotUseStat reveal={statReveal} /> Join our project with{" "}
+            <ChatbotUseStat /> Join the{" "}
+            <Link to="/" className="underline">
+              Alliance
+            </Link>
+            &apos;s volunteer project with{" "}
             <a
               href="https://korabench.ai"
               target="_blank"
@@ -103,10 +102,7 @@ function HeroScreen() {
           <KoraSignIn className="mt-2 w-full" note={SIGNUP_NOTE} />
         </div>
         <div className="flex justify-center lg:justify-end">
-          <div className="relative">
-            <WaitlistHeroImages images={HERO_IMAGES} />
-            <ChatbotUseStatPanel reveal={statReveal} />
-          </div>
+          <WaitlistHeroImages images={HERO_IMAGES} />
         </div>
       </div>
     </section>
