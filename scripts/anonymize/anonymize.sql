@@ -96,6 +96,75 @@ BEGIN
   END IF;
 END $$;
 
+UPDATE "waitlist_entry"
+SET "email" = 'waitlist'||id||'@example.com'
+WHERE "email" IS NOT NULL;
+
+TRUNCATE "waitlist_mail_allowance";
+
+UPDATE "oauth_account" SET "email" = 'oauth'||id||'@example.com';
+
+UPDATE "action_partnership_response"
+SET "contact" = 'partner'||id||'@example.com';
+
+-- No code reads these legacy contact tables any more.
+TRUNCATE "prefill_user", "onetime_invite_request";
+
+\ir scrub_contacts.sql
+
+DO $$
+DECLARE
+  c RECORD;
+  n BIGINT;
+  scrubbed TEXT;
+BEGIN
+  FOR c IN
+    SELECT * FROM (VALUES
+      ('event_log', 'message', 'text'),
+      ('event_log', 'blob', 'jsonb'),
+      ('form_response', 'answers', 'answers'),
+      ('form_response_draft', 'answers', 'answers'),
+      ('message', 'body', 'text'),
+      ('notification', 'message', 'text'),
+      ('notification', 'targetContent', 'text'),
+      ('notification', 'content', 'jsonb'),
+      ('unread_content', 'content', 'jsonb'),
+      ('push', 'body', 'text'),
+      ('ai_detection_result', 'rawApiResponse', 'json_string'),
+      ('user', 'profileDescription', 'text'),
+      ('mail', 'renderedHtml', 'text'),
+      ('onetime_invite', 'invitee', 'text'),
+      ('onetime_invite', 'info', 'text'),
+      ('waitlist_entry', 'reason', 'text'),
+      ('waitlist_entry', 'nonprofitNominations', 'text'),
+      ('mms_optout', 'rawBody', 'text'),
+      ('ambassador_program_interaction', 'text', 'text'),
+      ('user_away_range', 'note', 'text'),
+      ('action_activity_comment', 'content', 'text'),
+      ('action_partnership_response', 'notes', 'text'),
+      ('action_partnership_response', 'desiredCollaboration', 'text'),
+      ('action_partnership_response', 'outreachOtherDetails', 'text'),
+      ('action_partnership_note', 'body', 'text')
+    ) AS v(tbl, col, kind)
+  LOOP
+    scrubbed := format(
+      CASE c.kind
+        WHEN 'text' THEN 'pg_temp.scrub_contacts(%1$I::text)'
+        WHEN 'jsonb' THEN 'pg_temp.scrub_contacts_jsonb(%1$I, answers => false)'
+        WHEN 'answers' THEN 'pg_temp.scrub_contacts_jsonb(%1$I, answers => true)'
+        WHEN 'json_string' THEN 'pg_temp.scrub_contacts_json_string(%1$I)'
+      END,
+      c.col
+    );
+    EXECUTE format(
+      'UPDATE %1$I SET %2$I = %3$s WHERE %2$I IS DISTINCT FROM %3$s',
+      c.tbl, c.col, scrubbed
+    );
+    GET DIAGNOSTICS n = ROW_COUNT;
+    RAISE NOTICE 'Scrubbed contacts in % %.% row(s).', n, c.tbl, c.col;
+  END LOOP;
+END $$;
+
 -- Keys the fake names and sentences, so each comes out the same from one sync
 -- to the next. Change it to deal new ones.
 \set seed 1
