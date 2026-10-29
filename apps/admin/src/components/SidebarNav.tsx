@@ -19,6 +19,7 @@ import {
   MessageSquare,
   Network,
   Newspaper,
+  Plane,
   Radio,
   ScrollText,
   Share2,
@@ -192,6 +193,7 @@ const SidebarNav = ({
           icon: <Users size={16} />,
         },
         { to: "/member-map", label: "Member Map", icon: <Map size={16} /> },
+        { to: "/away", label: "Away Members", icon: <Plane size={16} /> },
         { to: "/clusters", label: "Clusters", icon: <Network size={16} /> },
         {
           to: "/friend-graph",

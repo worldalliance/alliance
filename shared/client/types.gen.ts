@@ -1264,6 +1264,17 @@ export type UpdateAwayRangeDto = {
     endDay?: string;
 };
 
+export type MemberAwayRangeDto = {
+    id: number;
+    startDate: string;
+    endDate: string;
+    createdAt: string;
+    reason: UserAwayRangeReason;
+    note: string | null;
+    userId: number;
+    userName: string;
+};
+
 export type RegisterDeviceDto = {
     deviceType: string;
     expoPushToken: string;
@@ -6722,6 +6733,28 @@ export type UserAwayRangeUpdateAwayRangeResponses = {
 };
 
 export type UserAwayRangeUpdateAwayRangeResponse = UserAwayRangeUpdateAwayRangeResponses[keyof UserAwayRangeUpdateAwayRangeResponses];
+
+export type UserAwayRangeGetAwayRangesInWindowAdminData = {
+    body?: never;
+    path?: never;
+    query: {
+        from: string;
+        to: string;
+    };
+    url: '/user/admin/awayranges';
+};
+
+export type UserAwayRangeGetAwayRangesInWindowAdminErrors = {
+    401: HeyApiError;
+};
+
+export type UserAwayRangeGetAwayRangesInWindowAdminError = UserAwayRangeGetAwayRangesInWindowAdminErrors[keyof UserAwayRangeGetAwayRangesInWindowAdminErrors];
+
+export type UserAwayRangeGetAwayRangesInWindowAdminResponses = {
+    200: Array<MemberAwayRangeDto>;
+};
+
+export type UserAwayRangeGetAwayRangesInWindowAdminResponse = UserAwayRangeGetAwayRangesInWindowAdminResponses[keyof UserAwayRangeGetAwayRangesInWindowAdminResponses];
 
 export type UserAwayRangeCreateAwayRangeAdminData = {
     body: CreateAwayRangeDto;

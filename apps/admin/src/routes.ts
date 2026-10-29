@@ -53,6 +53,7 @@ export default [
       route("/priority", "pages/PriorityPage.tsx"),
       route("/staff-directory", "pages/StaffDirectoryPage.tsx"),
       route("/member-map", "pages/MemberMapPage.tsx"),
+      route("/away", "pages/AwayMembersPage.tsx"),
     ]),
   ]),
   layout("loggedoutonly.tsx", [route("/login", "pages/LoginPage.tsx")]),

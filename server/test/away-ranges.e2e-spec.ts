@@ -433,4 +433,51 @@ describe("Away ranges (e2e)", () => {
     const notes = res.body.map((range: { note: string | null }) => range.note);
     expect(new Set(notes)).toEqual(new Set([null, "skiing"]));
   });
+
+  describe("admin view of who is away in a window", () => {
+    const at = (iso: string) => new Date(iso);
+    const inWindow = (from: string, to: string, token = ctx.adminAccessToken) =>
+      request(ctx.app.getHttpServer())
+        .get("/user/admin/awayranges")
+        .query({ from, to })
+        .set("Authorization", `Bearer ${token}`);
+
+    it("lists ranges overlapping the window with their member, soonest first", async () => {
+      const save = (startDate: string, endDate: string) =>
+        awayRangeRepo.save({
+          userId: ctx.testUserId,
+          startDate: at(startDate),
+          endDate: at(endDate),
+          reason: UserAwayRangeReason.VACATION,
+        });
+      await save("2030-03-05T00:00:00Z", "2030-03-12T00:00:00Z");
+      await save("2030-02-25T00:00:00Z", "2030-03-02T00:00:00Z");
+      await save("2030-02-01T00:00:00Z", "2030-03-01T00:00:00Z");
+      await save("2030-04-01T00:00:00Z", "2030-04-03T00:00:00Z");
+
+      const res = await inWindow(
+        "2030-03-01T00:00:00Z",
+        "2030-03-08T00:00:00Z",
+      ).expect(200);
+
+      expect(
+        res.body.map((range: { startDate: string; userId: number }) => [
+          range.startDate,
+          range.userId,
+        ]),
+      ).toEqual([
+        ["2030-02-25T00:00:00.000Z", ctx.testUserId],
+        ["2030-03-05T00:00:00.000Z", ctx.testUserId],
+      ]);
+      expect(res.body[0].userName).toEqual(expect.any(String));
+    });
+
+    it("refuses a member", async () => {
+      await inWindow(
+        "2030-03-01T00:00:00Z",
+        "2030-03-08T00:00:00Z",
+        ctx.accessToken,
+      ).expect(401);
+    });
+  });
 });
