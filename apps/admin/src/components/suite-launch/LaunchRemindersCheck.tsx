@@ -73,12 +73,12 @@ const LaunchRemindersCheck = ({
       summary={`${windows.length} created on launch${atNight > 0 ? ` · ${atNight} reach some members at night` : ""}`}
     >
       {mixes.length > 0 && (
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex min-w-0 items-center gap-2 text-sm">
           Preview as
           <select
             value={mixIndex}
             onChange={(e) => setMixIndex(Number(e.target.value))}
-            className="rounded border border-zinc-300 px-2 py-1 text-sm"
+            className="min-w-0 flex-1 truncate rounded border border-zinc-300 px-2 py-1 text-sm"
           >
             {mixes.map((option, index) => (
               <option key={option.actionIds.join(",")} value={index}>
