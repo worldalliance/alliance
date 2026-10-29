@@ -1,5 +1,4 @@
 import { formatBadgeCount } from "@alliance/shared/lib/badgeCount";
-import { Features } from "@alliance/shared/lib/features";
 import { useIncomingCommunityInvites } from "@alliance/shared/lib/useIncomingCommunityInvites";
 import { cn } from "@alliance/shared/styles/util";
 import BottomSpacer from "@alliance/sharedweb/ui/BottomSpacer";
@@ -22,7 +21,6 @@ import {
 } from "react";
 import { href, Link, useLocation } from "react-router";
 import { useAuth } from "../lib/AuthContext";
-import { isFeatureEnabled } from "../lib/config";
 import {
   NavbarOptionsContext,
   useImmersiveChrome,
@@ -126,14 +124,10 @@ const NavbarVertical: React.FC<{
       destination: destinations[NavbarPage.Activity],
     },
     { page: NavbarPage.Groups, destination: destinations[NavbarPage.Groups] },
-    ...(isFeatureEnabled(Features.Messaging)
-      ? [
-          {
-            page: NavbarPage.Messages,
-            destination: destinations[NavbarPage.Messages],
-          },
-        ]
-      : []),
+    {
+      page: NavbarPage.Messages,
+      destination: destinations[NavbarPage.Messages],
+    },
     { page: NavbarPage.Invite, destination: destinations[NavbarPage.Invite] },
     {
       page: NavbarPage.Information,

@@ -4,7 +4,6 @@ import {
   CompletionData,
 } from "@alliance/shared/lib/actionUtils";
 import { isLedBy } from "@alliance/shared/lib/communityUtils";
-import { Features } from "@alliance/shared/lib/features";
 import { useCommunityCompletedActionsCount } from "@alliance/shared/lib/useCommunityCompletedActionsCount";
 import { useCommunityConversation } from "@alliance/shared/lib/useCommunityConversation";
 import { useCommunityMemberContactInfo } from "@alliance/shared/lib/useCommunityMemberContactInfo";
@@ -31,7 +30,6 @@ import FloatingChatPanel from "../../components/FloatingChatpanel";
 import PillTab from "../../components/PillTab";
 import TwoColumnLayout from "../../components/TwoColumnLayout";
 import { useAuth } from "../../lib/AuthContext";
-import { isFeatureEnabled } from "../../lib/config";
 import { useCommunityEditor } from "../../lib/useCommunityEditor";
 import { WalkthroughAnchor } from "../../onboarding/walkthrough/steps";
 import MyGroupsPage from "./MyGroupsPage";
@@ -96,10 +94,6 @@ const CommunityPage = () => {
   }, [community, communityConversation]);
 
   const { user, refreshUser } = useAuth();
-
-  const messagingEnabled = useMemo(() => {
-    return isFeatureEnabled(Features.Messaging);
-  }, []);
 
   const amLeader = useMemo(() => {
     return community && isLedBy(community, user?.id);
@@ -196,7 +190,6 @@ const CommunityPage = () => {
   const tabs = SHOWN_TABS[amLeader ? "leader" : "member"];
 
   const isLargeScreen = useMediaQuery("(min-width: 1250px)");
-  const isChatOpen = messagingEnabled && chatOpen;
 
   const completionData = useMemo<CompletionData>(() => {
     if (!allCompletionData) {
@@ -399,7 +392,7 @@ const CommunityPage = () => {
               )}
               <BottomSpacer />
             </div>
-            {!chatOpen && messagingEnabled && isLargeScreen && (
+            {!chatOpen && isLargeScreen && (
               <div className="fixed bottom-5 right-7 z-10 bg-white hover:bg-zinc-100">
                 <Button
                   color={ButtonColor.Outline}
@@ -415,7 +408,7 @@ const CommunityPage = () => {
         </div>
       }
       sidebar={
-        messagingEnabled && isLargeScreen ? (
+        isLargeScreen ? (
           <div
             className="p-10 h-full px-5 transition-all duration-200 ease-in-out min-h-0 flex flex-col"
             style={{
@@ -431,7 +424,7 @@ const CommunityPage = () => {
           </div>
         ) : null
       }
-      sidebarWidth={isChatOpen && isLargeScreen ? 500 : 0}
+      sidebarWidth={chatOpen && isLargeScreen ? 500 : 0}
       noSidebarOverflow
     />
   );
