@@ -1,4 +1,5 @@
 import { withCount } from "@alliance/common/plural";
+import type { Result } from "@alliance/common/result";
 import type {
   ActionSuiteDto,
   CreateActionEventDto,
@@ -56,7 +57,7 @@ const SuiteLaunchPanel = ({
   onClose,
 }: {
   suite: ActionSuiteDto;
-  fetchSuite: () => Promise<ActionSuiteDto>;
+  fetchSuite: () => Promise<Result<ActionSuiteDto, Error>>;
   /** Resolves `null` when staff decline to move a deadline earlier. */
   addEvent: (body: CreateActionEventDto) => Promise<ActionSuiteDto | null>;
   onClose: () => void;
@@ -153,9 +154,7 @@ const SuiteLaunchPanel = ({
     data,
     schedule,
     reminderWindows,
-    hasMemberActionEvent: suite.events.some(
-      (event) => event.newStatus === "member_action",
-    ),
+    suiteEvents: suite.events,
     checkedActionIds,
     dismissedFindingKeys: dismissedKeys,
     violations,

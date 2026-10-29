@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from "react-router";
 import SuiteLaunchPanel from "../components/suite-launch/SuiteLaunchPanel";
+import { refetchFresh } from "../lib/refetchFresh";
 import {
   suiteLoadError,
   useActionSuiteAdmin,
@@ -24,11 +25,7 @@ const SuiteLaunchPage = () => {
       <SuiteLaunchPanel
         suite={suite}
         addEvent={addEvent.mutateAsync}
-        fetchSuite={async () => {
-          const { data, error } = await suiteQuery.refetch();
-          if (!data) throw error;
-          return data;
-        }}
+        fetchSuite={() => refetchFresh(suiteQuery.refetch)}
         onClose={() => navigate(`/suites/${suiteId}`)}
       />
     </div>

@@ -1,3 +1,4 @@
+import { R } from "@alliance/common/result";
 import type {
   ActionEventDto,
   ActionSuiteDto,
@@ -54,7 +55,7 @@ describe("launchSuite", () => {
 
     const result = await launchSuite({
       reminderBodies,
-      fetchSuite: async () => suiteWith([draftEvent]),
+      fetchSuite: async () => R.success(suiteWith([draftEvent])),
       schedule,
       addEvent,
       createReminders,
@@ -93,7 +94,7 @@ describe("launchSuite", () => {
 
     const result = await launchSuite({
       reminderBodies,
-      fetchSuite: async () => suiteWith([]),
+      fetchSuite: async () => R.success(suiteWith([])),
       schedule,
       addEvent,
       createReminders,
@@ -108,7 +109,7 @@ describe("launchSuite", () => {
   it("reports a declined member event as cancelled", async () => {
     const result = await launchSuite({
       reminderBodies,
-      fetchSuite: async () => suiteWith([]),
+      fetchSuite: async () => R.success(suiteWith([])),
       schedule,
       addEvent: async () => null,
       createReminders: async () => [],
@@ -130,7 +131,7 @@ describe("launchSuite", () => {
 
     const result = await launchSuite({
       reminderBodies,
-      fetchSuite: async () => suiteWith([]),
+      fetchSuite: async () => R.success(suiteWith([])),
       schedule,
       addEvent,
       createReminders,
@@ -145,7 +146,7 @@ describe("launchSuite", () => {
   it("says what exists when the reminders fail", async () => {
     const result = await launchSuite({
       reminderBodies,
-      fetchSuite: async () => suiteWith([]),
+      fetchSuite: async () => R.success(suiteWith([])),
       schedule,
       addEvent: appendingAddEvent([]),
       createReminders: async () => {
@@ -172,7 +173,7 @@ describe("launchSuite", () => {
 
     const result = await launchSuite({
       reminderBodies,
-      fetchSuite: async () => suiteWith([memberEvent]),
+      fetchSuite: async () => R.success(suiteWith([memberEvent])),
       schedule,
       addEvent,
       createReminders: async () => [],
@@ -181,7 +182,7 @@ describe("launchSuite", () => {
     expect(result).toEqual({
       ok: false,
       error:
-        "Someone launched this suite since this page loaded. Nothing was created.",
+        "Someone changed this suite since the page loaded. This suite already has a members taking action event. Nothing was created.",
     });
     expect(addEvent).not.toHaveBeenCalled();
   });
@@ -191,15 +192,55 @@ describe("launchSuite", () => {
 
     const result = await launchSuite({
       reminderBodies,
-      fetchSuite: async () => {
-        throw new Error("offline");
-      },
+      fetchSuite: async () => R.failure(new Error("offline")),
       schedule,
       addEvent,
       createReminders: async () => [],
     });
 
     expect(!result.ok && result.error).toEndWith("Nothing was launched.");
+    expect(addEvent).not.toHaveBeenCalled();
+  });
+
+  it("refuses a suite that gained a deadline event since the page loaded", async () => {
+    const officeEvent = event(2, {
+      title: "Office taking action",
+      description: "",
+      newStatus: "office_action",
+      date: "2026-01-23T07:59:00Z",
+    });
+    const addEvent = appendingAddEvent([officeEvent]);
+
+    const result = await launchSuite({
+      reminderBodies,
+      fetchSuite: async () => R.success(suiteWith([officeEvent])),
+      schedule,
+      addEvent,
+      createReminders: async () => [],
+    });
+
+    expect(!result.ok && result.error).toEndWith("Nothing was created.");
+    expect(addEvent).not.toHaveBeenCalled();
+  });
+
+  it("refuses a suite that gained an event before the office deadline", async () => {
+    const resolution = event(2, {
+      title: "Resolution",
+      description: "",
+      newStatus: "resolution",
+      date: "2026-01-20T00:00:00Z",
+    });
+    const addEvent = appendingAddEvent([resolution]);
+
+    const result = await launchSuite({
+      reminderBodies,
+      fetchSuite: async () => R.success(suiteWith([resolution])),
+      schedule,
+      addEvent,
+      createReminders: async () => [],
+    });
+
+    expect(!result.ok && result.error).toContain("before the office deadline");
     expect(addEvent).not.toHaveBeenCalled();
   });
 });

@@ -12,6 +12,7 @@
 - "PST" is read as Pacific time (`America/Los_Angeles`), so the defaults follow daylight saving. Both dates stay editable, with the Pacific time shown under each picker.
 - The office event is 11:59pm Pacific, seven days after the day members start. When the member start rolls past midnight, the office event moves with it.
 - The office event uses the `office_action` status ("Office taking action"), matching `CreateEventForm`'s deadline default.
+- A suite that already has an office taking action event can't launch (`existingLaunchEvent`). Nor can one with an event of any status dated from the chosen members' start to the chosen office deadline (`eventBeforeDeadline`, a blocker under Schedule): members' deadline is the first event after they start, whatever its status, so such an event would end members' time before the new office event. An event before members start or after the office deadline doesn't change their deadline and stays. Agent decision from review; origin otherwise unrecorded.
 - How long members get reads as whole days counted the way the contract check counts them, by Pacific wall-clock time, then the real hours and minutes past the last whole day, so it never contradicts the contract banner. On the day clocks fall back, that remainder can read 24 hours or more.
 - While the schedule is valid, the Schedule check states "Members have <duration> to complete their actions" in black body text under its title, not in the grey summary beside it. The origin of this placement and color is unrecorded.
 

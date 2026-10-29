@@ -1,4 +1,5 @@
 import type { CohortExpression } from "@alliance/common/cohort-expression";
+import { R } from "@alliance/common/result";
 // eslint-disable-next-line api-client/named-hooks-only -- stands in for the page's addEvent against the mocked API; no query cache holds it
 import {
   actionSuitesAddSuiteEventAdmin,
@@ -216,7 +217,7 @@ export const renderPanel = ({ dictionaryLoads = false } = {}) => {
         <SuiteLaunchPanel
           suite={suiteWith([])}
           addEvent={addEvent}
-          fetchSuite={async () => suiteWith(api.suiteEvents)}
+          fetchSuite={async () => R.success(suiteWith(api.suiteEvents))}
           onClose={onClose}
         />
       </ToastProvider>

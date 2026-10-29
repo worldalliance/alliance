@@ -1,4 +1,6 @@
 import { pickForCount } from "@alliance/common/plural";
+import type { ActionEventDto } from "@alliance/shared/client";
+import { ACTION_STATUS_LABELS } from "../../lib/actionStatusDisplay";
 import {
   remindersBeforeLaunch,
   type ReminderSendWindow,
@@ -20,6 +22,37 @@ export type LaunchBlocker = { message: string; section: LaunchSection | null };
 const plural = (count: number, one: string, many: string) =>
   `${count} ${pickForCount(count, one, many)}`;
 
+/** Why the suite's own events already rule out launching, if they do. */
+export function existingLaunchEvent(
+  events: readonly Pick<ActionEventDto, "newStatus">[],
+): string | null {
+  if (events.some((event) => event.newStatus === "member_action")) {
+    return "This suite already has a members taking action event.";
+  }
+  if (events.some((event) => event.newStatus === "office_action")) {
+    return "This suite already has an office taking action event. Delete it on the suite page, then launch.";
+  }
+  return null;
+}
+
+/**
+ * Members' deadline is the first event after they start, whatever its
+ * status, so an event dated from their start to the office deadline would
+ * end their time early.
+ */
+export function eventBeforeDeadline(
+  events: readonly Pick<ActionEventDto, "newStatus" | "date">[],
+  schedule: LaunchSchedule,
+): string | null {
+  const early = events.find((event) => {
+    const date = new Date(event.date);
+    return date >= schedule.memberActionAt && date <= schedule.officeActionAt;
+  });
+  return early
+    ? `This suite has a "${ACTION_STATUS_LABELS[early.newStatus]}" event before the office deadline, which would end members' time early. Move office taking action before it, or delete it on the suite page.`
+    : null;
+}
+
 export function launchBlockers(params: {
   data: Pick<
     SuiteLaunchData,
@@ -35,7 +68,7 @@ export function launchBlockers(params: {
   };
   schedule: LaunchSchedule;
   reminderWindows: ReminderSendWindow[];
-  hasMemberActionEvent: boolean;
+  suiteEvents: readonly Pick<ActionEventDto, "newStatus" | "date">[];
   checkedActionIds: ReadonlySet<number>;
   dismissedFindingKeys: ReadonlySet<string>;
   violations: readonly string[];
@@ -46,21 +79,15 @@ export function launchBlockers(params: {
     data,
     schedule,
     reminderWindows,
-    hasMemberActionEvent,
+    suiteEvents,
     checkedActionIds,
     dismissedFindingKeys,
     violations,
     violationsAcknowledged,
     now,
   } = params;
-  if (hasMemberActionEvent) {
-    return [
-      {
-        message: "This suite already has a members taking action event.",
-        section: null,
-      },
-    ];
-  }
+  const existing = existingLaunchEvent(suiteEvents);
+  if (existing) return [{ message: existing, section: null }];
   if (data.loading || data.spellcheckLoading) {
     return [{ message: "Checks are loading.", section: null }];
   }
@@ -72,6 +99,8 @@ export function launchBlockers(params: {
   for (const problem of scheduleProblems(schedule, now)) {
     block(LaunchSection.Schedule, problem);
   }
+  const eventInWindow = eventBeforeDeadline(suiteEvents, schedule);
+  if (eventInWindow) block(LaunchSection.Schedule, eventInWindow);
   const early = remindersBeforeLaunch(reminderWindows, schedule);
   if (early.length > 0) {
     block(

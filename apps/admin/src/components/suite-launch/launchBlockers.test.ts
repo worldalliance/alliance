@@ -4,6 +4,7 @@ import { launchBlockers, LaunchSection } from "./launchBlockers";
 import { TextIssueKind } from "./textChecks";
 
 const now = new Date("2026-01-15T18:00:00Z");
+const past = "2026-01-01T00:00:00.000Z";
 const schedule = {
   memberActionAt: new Date("2026-01-16T03:00:00Z"),
   officeActionAt: new Date("2026-01-23T07:59:00Z"),
@@ -32,7 +33,7 @@ const ready = {
   },
   schedule,
   reminderWindows: [],
-  hasMemberActionEvent: false,
+  suiteEvents: [],
   checkedActionIds: new Set([1]),
   dismissedFindingKeys: new Set(["d1"]),
   violations: [],
@@ -49,9 +50,53 @@ describe("launchBlockers", () => {
   });
 
   it("never launches a suite twice", () => {
-    expect(messages({ ...ready, hasMemberActionEvent: true })).toEqual([
-      "This suite already has a members taking action event.",
+    expect(
+      messages({
+        ...ready,
+        suiteEvents: [{ newStatus: "member_action", date: past }],
+      }),
+    ).toEqual(["This suite already has a members taking action event."]);
+  });
+
+  it("refuses a suite that already has its deadline event", () => {
+    expect(
+      messages({
+        ...ready,
+        suiteEvents: [{ newStatus: "office_action", date: past }],
+      }),
+    ).toEqual([
+      "This suite already has an office taking action event. Delete it on the suite page, then launch.",
     ]);
+  });
+
+  it("blocks an event between members' start and the office deadline", () => {
+    expect(
+      launchBlockers({
+        ...ready,
+        suiteEvents: [
+          { newStatus: "draft", date: past },
+          { newStatus: "resolution", date: "2026-01-20T00:00:00.000Z" },
+        ],
+      }),
+    ).toEqual([
+      {
+        message:
+          'This suite has a "Resolution" event before the office deadline, which would end members\' time early. Move office taking action before it, or delete it on the suite page.',
+        section: LaunchSection.Schedule,
+      },
+    ]);
+  });
+
+  it("lets through events before members start or after the office deadline", () => {
+    expect(
+      messages({
+        ...ready,
+        suiteEvents: [
+          { newStatus: "draft", date: "2026-01-15T20:00:00.000Z" },
+          { newStatus: "resolution", date: "2026-03-20T00:00:00.000Z" },
+        ],
+      }),
+    ).toEqual([]);
   });
 
   it("waits for checks to load", () => {
