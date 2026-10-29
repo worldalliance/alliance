@@ -1,4 +1,5 @@
 import type { UserDto } from "@alliance/shared/client";
+import { cn } from "@alliance/shared/styles/util";
 import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import { Eye, LogIn } from "lucide-react";
 import { useState } from "react";
@@ -10,53 +11,8 @@ import LaunchCheck from "./LaunchCheck";
 import { actionMixes, MAX_MEMBER_MINUTES, type MemberLoad } from "./memberLoad";
 import type { LaunchAction } from "./useSuiteLaunchData";
 
-const SHOWN_OVERLOADED = 10;
-
 const nameOf = (users: Map<number, UserDto>, userId: number) =>
   users.get(userId)?.name ?? `User #${userId}`;
-
-export const MemberLoadCheck = ({
-  loads,
-  actions,
-}: {
-  loads: MemberLoad[];
-  actions: LaunchAction[];
-}) => {
-  const { data: users = [] } = useUsersAdmin();
-  const usersById = new Map(users.map((user) => [user.id, user]));
-  const actionNames = new Map(
-    actions.map(({ action }) => [action.id, action.name]),
-  );
-  const overloaded = overloadedMembers(loads);
-  return (
-    <LaunchCheck
-      title={`No member gets more than ${MAX_MEMBER_MINUTES} minutes`}
-      passed={overloaded.length === 0}
-      summary={`${overloaded.length} of ${loads.length} assigned members over`}
-    >
-      {overloaded.length > 0 && (
-        <>
-          <ul className="text-sm">
-            {overloaded.slice(0, SHOWN_OVERLOADED).map((load) => (
-              <li key={load.userId}>
-                <span className="font-medium">
-                  {nameOf(usersById, load.userId)}
-                </span>
-                : {load.minutes} min (
-                {load.actionIds.map((id) => actionNames.get(id)).join(", ")})
-              </li>
-            ))}
-          </ul>
-          {overloaded.length > SHOWN_OVERLOADED && (
-            <p className="text-xs text-zinc-500">
-              and {overloaded.length - SHOWN_OVERLOADED} more
-            </p>
-          )}
-        </>
-      )}
-    </LaunchCheck>
-  );
-};
 
 export const MemberPreview = ({
   loads,
@@ -70,12 +26,21 @@ export const MemberPreview = ({
   const usersById = new Map(users.map((user) => [user.id, user]));
   const loadsByUser = new Map(loads.map((load) => [load.userId, load]));
   const actionsById = new Map(actions.map(({ action }) => [action.id, action]));
+  const overloaded = overloadedMembers(loads).length;
   const preview = (userIds: number[]) => {
     const userId = userIds.find((id) => !selectedUserIds.includes(id));
     if (userId !== undefined) setSelectedUserIds([...selectedUserIds, userId]);
   };
   return (
-    <LaunchCheck title="Preview members' actions" passed>
+    <LaunchCheck
+      title="Preview members' actions"
+      passed={overloaded === 0}
+      summary={
+        overloaded === 0
+          ? `No member gets more than ${MAX_MEMBER_MINUTES} minutes`
+          : `${overloaded} of ${loads.length} members get more than ${MAX_MEMBER_MINUTES} minutes`
+      }
+    >
       <table className="w-fit text-sm [&_td]:pr-6 [&_th]:pr-6">
         <thead className="text-left text-xs text-zinc-500">
           <tr>
@@ -89,7 +54,14 @@ export const MemberPreview = ({
           {actionMixes(loads).map((mix) => (
             <tr key={mix.actionIds.join(",")}>
               <td>{mix.userIds.length}</td>
-              <td>{mix.minutes}</td>
+              <td
+                className={cn(
+                  mix.minutes > MAX_MEMBER_MINUTES &&
+                    "font-medium text-red-600",
+                )}
+              >
+                {mix.minutes}
+              </td>
               <td>
                 {mix.actionIds
                   .map((id) => actionsById.get(id)?.name)

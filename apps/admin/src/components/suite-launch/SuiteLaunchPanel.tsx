@@ -32,7 +32,7 @@ import {
   type LaunchSchedule,
 } from "./launchSchedule";
 import { launchSuite } from "./launchSuite";
-import { MemberLoadCheck, MemberPreview } from "./MemberChecks";
+import { MemberPreview } from "./MemberChecks";
 import { actionMixes } from "./memberLoad";
 import TextFindingsCheck from "./TextFindingsCheck";
 import { useSuiteLaunchData } from "./useSuiteLaunchData";
@@ -273,7 +273,6 @@ const SuiteLaunchPanel = ({
               })
             }
           />
-          <MemberLoadCheck loads={data.loads} actions={data.actions} />
           <MemberPreview loads={data.loads} actions={data.actions} />
           {data.spellcheckLoading ? (
             <p className="text-sm text-zinc-500">

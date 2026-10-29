@@ -16,9 +16,8 @@ it("flags overloaded members and text findings, and blocks launch until each is 
   renderPanel();
 
   expect(
-    (await screen.findByText(": 18 min (Call, Write)", { exact: false }))
-      .textContent,
-  ).toContain("Ben");
+    await screen.findByText("1 of 2 members get more than 15 minutes"),
+  ).toBeTruthy();
   expect(screen.getByText("Double space · Call · Body")).toBeTruthy();
   expect(screen.getByText("Possible misspelling · Write · Body")).toBeTruthy();
   expect(
