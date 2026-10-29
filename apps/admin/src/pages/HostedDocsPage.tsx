@@ -37,8 +37,12 @@ function pdfProblem(file: File): string | null {
 
 const docUrl = (slug: string) => `${getInviteBaseUrl()}/docs/${slug}`;
 
-const byline = (name: string | null, at: string) =>
-  `${name ?? "Deleted admin"} · ${formatDateTime(new Date(at))}`;
+const Byline = ({ name, at }: { name: string | null; at: string }) => (
+  <>
+    <span className="block">{name ?? "Deleted admin"}</span>
+    <span className="block text-xs">{formatDateTime(new Date(at))}</span>
+  </>
+);
 
 const HostedDocsPage: React.FC = () => {
   const docs = useHostedDocsAdmin();
@@ -223,7 +227,7 @@ const HostedDocsPage: React.FC = () => {
                       </button>
                     </div>
                   </td>
-                  <td className="px-3 py-2 min-w-64">
+                  <td className="px-3 py-2 min-w-48">
                     <InlineTextInput
                       aria-label={`Notes for ${doc.slug}`}
                       className={INLINE_CLASS}
@@ -244,13 +248,18 @@ const HostedDocsPage: React.FC = () => {
                     />
                   </td>
                   <td className="px-3 py-2 tabular-nums">{doc.views}</td>
-                  <td className="px-3 py-2 text-zinc-600 whitespace-nowrap">
-                    {byline(doc.uploadedByName, doc.createdAt)}
+                  <td className="px-3 py-2 text-zinc-600">
+                    <Byline name={doc.uploadedByName} at={doc.createdAt} />
                   </td>
-                  <td className="px-3 py-2 text-zinc-600 whitespace-nowrap">
-                    {doc.fileReplacedAt
-                      ? byline(doc.fileReplacedByName, doc.fileReplacedAt)
-                      : "—"}
+                  <td className="px-3 py-2 text-zinc-600">
+                    {doc.fileReplacedAt ? (
+                      <Byline
+                        name={doc.fileReplacedByName}
+                        at={doc.fileReplacedAt}
+                      />
+                    ) : (
+                      "—"
+                    )}
                   </td>
                   <td className="px-3 py-2 text-right whitespace-nowrap">
                     <label
@@ -275,8 +284,9 @@ const HostedDocsPage: React.FC = () => {
                       size="small"
                       disabled={remove.isPending}
                       onClick={() => setDeleting(doc)}
+                      aria-label="Delete document"
                     >
-                      Delete document
+                      Delete
                     </Button>
                   </td>
                 </tr>

@@ -70,17 +70,17 @@ const OrganizationLinks: React.FC<OrganizationLinksProps> = ({
           <table className="w-full text-sm">
             <thead className="bg-zinc-100 text-left">
               <tr>
-                <th className="px-3 py-2 font-medium text-zinc-600">Channel</th>
-                <th className="px-3 py-2 font-medium text-zinc-600">Link</th>
-                <th className="px-3 py-2 font-medium text-zinc-600">
+                <th className="px-2 py-2 font-medium text-zinc-600">Channel</th>
+                <th className="px-2 py-2 font-medium text-zinc-600">Link</th>
+                <th className="px-2 py-2 font-medium text-zinc-600">
                   Published
                 </th>
-                <th className="px-3 py-2 font-medium text-zinc-600">Created</th>
-                <th className="px-3 py-2 font-medium text-zinc-600">Entries</th>
-                <th className="px-3 py-2 font-medium text-zinc-600">
+                <th className="px-2 py-2 font-medium text-zinc-600">Created</th>
+                <th className="px-2 py-2 font-medium text-zinc-600">Entries</th>
+                <th className="px-2 py-2 font-medium text-zinc-600">
                   Referral message
                 </th>
-                <th className="px-3 py-2" />
+                <th className="px-2 py-2" />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
@@ -196,7 +196,7 @@ const LinkRow: React.FC<LinkRowProps> = ({
 
   return (
     <tr className={archived ? "text-zinc-400" : undefined}>
-      <td className="px-3 py-2">
+      <td className="px-2 py-2">
         <InlineTextInput
           aria-label="Channel"
           className="border border-transparent hover:border-zinc-300 focus:border-zinc-400 rounded px-1 py-0.5"
@@ -206,7 +206,7 @@ const LinkRow: React.FC<LinkRowProps> = ({
           onSave={(channel, done) => onUpdate({ channel }, done)}
         />
       </td>
-      <td className="px-3 py-2">
+      <td className="px-2 py-2">
         <button
           type="button"
           onClick={onCopy}
@@ -218,7 +218,7 @@ const LinkRow: React.FC<LinkRowProps> = ({
           <Copy size={14} />
         </button>
       </td>
-      <td className="px-3 py-2">
+      <td className="px-2 py-2">
         <input
           type="date"
           aria-label="Publication date"
@@ -230,11 +230,11 @@ const LinkRow: React.FC<LinkRowProps> = ({
           onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
         />
       </td>
-      <td className="px-3 py-2">
+      <td className="px-2 py-2">
         {formatMediumDateEnUS(new Date(link.createdAt))}
       </td>
-      <td className="px-3 py-2">{link.entryCount}</td>
-      <td className="px-3 py-2">
+      <td className="px-2 py-2">{link.entryCount}</td>
+      <td className="px-2 py-2">
         <input
           type="checkbox"
           aria-label={`Show referral message for ${link.channel}`}
@@ -243,7 +243,7 @@ const LinkRow: React.FC<LinkRowProps> = ({
           onChange={(e) => onUpdate({ showReferralMessage: e.target.checked })}
         />
       </td>
-      <td className="px-3 py-2 text-right">
+      <td className="px-2 py-2 text-right">
         <Button
           color={ButtonColor.Transparent}
           size="small"
