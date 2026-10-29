@@ -13,21 +13,20 @@ const SuiteLaunchPage = () => {
   const navigate = useNavigate();
 
   const suite = suiteQuery.data;
-  if (!suite) {
-    return suiteQuery.isError ? (
-      <p className="p-6 text-red-500">{suiteLoadError(suiteQuery.error)}</p>
-    ) : (
-      <div className="p-6">Loading...</div>
-    );
-  }
   return (
-    <div className="p-6">
-      <SuiteLaunchPanel
-        suite={suite}
-        addEvent={addEvent.mutateAsync}
-        fetchSuite={() => refetchFresh(suiteQuery.refetch)}
-        onClose={() => navigate(`/suites/${suiteId}`)}
-      />
+    <div className="mx-auto w-full max-w-4xl p-6">
+      {suite ? (
+        <SuiteLaunchPanel
+          suite={suite}
+          addEvent={addEvent.mutateAsync}
+          fetchSuite={() => refetchFresh(suiteQuery.refetch)}
+          onClose={() => navigate(`/suites/${suiteId}`)}
+        />
+      ) : suiteQuery.isError ? (
+        <p className="text-red-500">{suiteLoadError(suiteQuery.error)}</p>
+      ) : (
+        <div>Loading...</div>
+      )}
     </div>
   );
 };
