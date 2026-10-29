@@ -2,28 +2,39 @@ import { useEffect, useRef } from "react";
 import { useSearchParams } from "react-router";
 
 const SELECT_PARAM = "select";
+const PREVIEW_AS_PARAM = "previewAs";
 
 /** The form's editor, opened with the question `fieldId` selected. */
 export const formEditorPath = (formId: number, fieldId: string) =>
   `/forms/${formId}?${new URLSearchParams({ [SELECT_PARAM]: fieldId })}`;
 
+/** The form's preview, opened as the member `userId`. */
+export const formPreviewPath = (formId: number, userId: number) =>
+  `/forms/${formId}?${new URLSearchParams({ [PREVIEW_AS_PARAM]: String(userId) })}`;
+
 /**
- * The question `formEditorPath` named when the editor mounted. The parameter
- * leaves the URL at once, so a reload doesn't select the question again.
+ * `param`'s value when the editor mounted. The parameter leaves the URL at
+ * once, so a reload doesn't apply it again.
  */
-export function useSelectOnLoad() {
+function useParamOnLoad(param: string) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const selectOnLoadRef = useRef(searchParams.get(SELECT_PARAM));
+  const onLoadRef = useRef(searchParams.get(param));
   useEffect(() => {
-    if (!searchParams.has(SELECT_PARAM)) return;
+    if (!searchParams.has(param)) return;
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
-        next.delete(SELECT_PARAM);
+        next.delete(param);
         return next;
       },
       { replace: true },
     );
-  }, [searchParams, setSearchParams]);
-  return selectOnLoadRef;
+  }, [param, searchParams, setSearchParams]);
+  return onLoadRef;
 }
+
+/** The question `formEditorPath` named when the editor mounted. */
+export const useSelectOnLoad = () => useParamOnLoad(SELECT_PARAM);
+
+/** The member `formPreviewPath` named when the editor mounted. */
+export const usePreviewAsOnLoad = () => useParamOnLoad(PREVIEW_AS_PARAM);

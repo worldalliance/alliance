@@ -1,9 +1,11 @@
 import { memberConditions } from "@alliance/common/forms/form-conditions";
 import type { FormSchema } from "@alliance/common/forms/form-schema";
+import { withCount } from "@alliance/common/plural";
 import Card from "@alliance/sharedweb/ui/Card";
 import { ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { useUsersAdmin } from "../../lib/useUsersAdmin";
+import { useVisibilityProfilesAdmin } from "../../lib/useVisibilityProfilesAdmin";
 import { MemberFormRenderer } from "../MemberFormRenderer";
 import { VisibilityProfilePicker } from "../VisibilityProfilePicker";
 import type { LaunchAction } from "./useSuiteLaunchData";
@@ -46,6 +48,26 @@ const TaskFormPreview = ({
   );
 };
 
+const VariantCount = ({
+  schema,
+  memberIds,
+}: {
+  schema: FormSchema;
+  memberIds: number[];
+}) => {
+  const { data: profiles } = useVisibilityProfilesAdmin({
+    schema,
+    userIds: memberIds,
+  });
+  return (
+    profiles && (
+      <span className="ml-2 text-xs text-zinc-500">
+        {withCount(profiles.length, "variant")}
+      </span>
+    )
+  );
+};
+
 const TaskFormPreviews = ({ actions }: { actions: LaunchAction[] }) => {
   const varying = actions.flatMap(({ action, taskFormSchema, memberIds }) =>
     taskFormSchema &&
@@ -73,6 +95,7 @@ const TaskFormPreviews = ({ actions }: { actions: LaunchAction[] }) => {
                   aria-hidden
                 />
                 {action.name}
+                <VariantCount schema={schema} memberIds={memberIds} />
               </summary>
               <TaskFormPreview schema={schema} memberIds={memberIds} />
             </details>

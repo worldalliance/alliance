@@ -5,7 +5,11 @@ import { Eye, LogIn } from "lucide-react";
 import { useState } from "react";
 import { getApiUrl } from "../../lib/config";
 import { useUsersAdmin } from "../../lib/useUsersAdmin";
-import { ActionLinks, iconControlClass } from "./ActionLinks";
+import {
+  ActionLinks,
+  iconControlClass,
+  PreviewTaskFormLink,
+} from "./ActionLinks";
 import { overloadedMembers } from "./contractViolations";
 import LaunchCheck from "./LaunchCheck";
 import { actionMixes, MAX_MEMBER_MINUTES, type MemberLoad } from "./memberLoad";
@@ -122,17 +126,24 @@ export const MemberPreview = ({
                 </a>
               </div>
               <ul className="ml-4">
-                {load?.actionIds.map((actionId) => (
-                  <li
-                    key={actionId}
-                    className="flex items-center gap-1 text-sm"
-                  >
-                    <span className="flex-1">
-                      {actionsById.get(actionId)?.name}
-                    </span>
-                    <ActionLinks actionId={actionId} />
-                  </li>
-                ))}
+                {load?.actionIds.map((actionId) => {
+                  const action = actionsById.get(actionId);
+                  return (
+                    <li
+                      key={actionId}
+                      className="flex items-center gap-1 text-sm"
+                    >
+                      <span className="flex-1">{action?.name}</span>
+                      {action?.taskFormId != null && (
+                        <PreviewTaskFormLink
+                          formId={action.taskFormId}
+                          userId={userId}
+                        />
+                      )}
+                      <ActionLinks actionId={actionId} />
+                    </li>
+                  );
+                })}
               </ul>
             </li>
           );

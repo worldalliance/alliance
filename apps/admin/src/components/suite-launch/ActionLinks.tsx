@@ -1,8 +1,8 @@
-import { ExternalLink, FileText, Pencil } from "lucide-react";
+import { ExternalLink, FileText, Pencil, ScanEye } from "lucide-react";
 import type React from "react";
 import { Link } from "react-router";
 import { getSiteUrl } from "../../lib/config";
-import { formEditorPath } from "../../lib/formEditorLink";
+import { formEditorPath, formPreviewPath } from "../../lib/formEditorLink";
 import {
   selectionSearch,
   type LinkedSelection,
@@ -61,6 +61,21 @@ export const EditTaskFormLink = ({
     label={elementId ? "Edit this text in the form" : "Edit task form"}
   >
     <FileText className="size-4" />
+  </NewTabLink>
+);
+
+export const PreviewTaskFormLink = ({
+  formId,
+  userId,
+}: {
+  formId: number;
+  userId: number;
+}) => (
+  <NewTabLink
+    to={formPreviewPath(formId, userId)}
+    label="Preview task form as this member"
+  >
+    <ScanEye className="size-4" />
   </NewTabLink>
 );
 

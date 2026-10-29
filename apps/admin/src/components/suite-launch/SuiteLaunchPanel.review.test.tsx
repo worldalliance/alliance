@@ -53,6 +53,11 @@ it("previews the actions assigned to a picked member", async () => {
   expect(
     screen.getByText(/Logging in as a member signs this browser out/),
   ).toBeTruthy();
+  expect(
+    row
+      ?.querySelector('[aria-label="Preview task form as this member"]')
+      ?.getAttribute("href"),
+  ).toBe("/forms/5?previewAs=10");
 });
 
 it("groups members by the actions they get and previews one from a group", async () => {
@@ -261,7 +266,8 @@ it("previews a task form as each kind of member among the action's own recipient
   ];
   renderPanel();
 
-  fireEvent.click(await screen.findByText("Call", { selector: "summary" }));
+  expect(await screen.findByText("2 variants")).toBeTruthy();
+  fireEvent.click(screen.getByText("Call", { selector: "summary" }));
   const cards = await screen.findAllByRole("radio", {
     name: /1 member.*has city/,
   });
