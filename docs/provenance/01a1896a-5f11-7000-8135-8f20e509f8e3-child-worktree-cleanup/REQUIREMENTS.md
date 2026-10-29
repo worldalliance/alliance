@@ -34,6 +34,12 @@ Origin: agent-proposed, user-approved.
 
 - `scripts/new-worktree.sh` takes `<name>`, `--branch <branch>`, and `--from <ref>`. Remove its `--slot` and `--force` options; ports always come from the lowest free slot.
 
+# Agent instructions
+
+Origin: user.
+
+- Make clear to agents, in instructions they always read, that new worktrees are created with `scripts/new-worktree.sh`.
+
 # Concurrency
 
 Origin: user.

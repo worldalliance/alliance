@@ -20,6 +20,8 @@ Working under `server/**` → read `server/AGENTS.md`; under `apps/**` → `apps
 
 If @.worktree/AGENTS.md exists, read it.
 
+Create every worktree with `scripts/new-worktree.sh <name>`, from the main checkout or a worktree it created. The script gives each one its own ports and database and records it, so removal finds everything it owns; a plain `git worktree add` or a harness's worktree isolation gets none of that. Tell an agent you hand a worktree to read that worktree's `.worktree/AGENTS.md`, since one started from your checkout has your checkout's ports in context. `scripts/rm-worktree.sh <name>` removes a worktree with its descendants, deleting their uncommitted work and the branches the script created, unpushed commits included. Commit and push what should outlive it.
+
 ## Skills
 
 Always read and apply:

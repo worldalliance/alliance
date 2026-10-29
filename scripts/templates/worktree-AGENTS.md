@@ -19,4 +19,4 @@ Databases: `{{DB_NAME}}`, and `{{TEST_DB_NAME}}` for `bun run test:e2e`, which d
 
 ## Child worktrees
 
-`./scripts/new-worktree.sh <name>` run here creates a child of this worktree, starting at this worktree's last commit, with the main checkout's database and local config, not this worktree's. `./scripts/rm-worktree.sh <name>` removes a child and its own children. Removing this worktree removes its children, and theirs, first. Removal discards their uncommitted work and deletes the branches it created for them, unpushed commits included. Commit and push what should outlive them.
+`./scripts/new-worktree.sh <name>` run here creates a child of this worktree, starting at this worktree's last commit, with the main checkout's database and local config, not this worktree's.
