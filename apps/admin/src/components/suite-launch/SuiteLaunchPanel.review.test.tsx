@@ -66,6 +66,37 @@ it("previews the actions assigned to a picked member", async () => {
   expect(
     screen.getByText(/Logging in as a member signs this browser out/),
   ).toBeTruthy();
+  expect(
+    row
+      ?.querySelector('[aria-label="Preview task form as this member"]')
+      ?.getAttribute("href"),
+  ).toBe("/forms/5?previewAs=10");
+});
+
+it("previews each of an action's variant forms as a picked member", async () => {
+  api.actionList = [1, 2].map((id) => ({
+    id,
+    name: api.served[id].name,
+    taskFormId: 5,
+    variantFormIds: id === 1 ? [9] : [],
+    onboarding: false,
+    memberActionDeadline: null,
+  }));
+  renderPanel();
+  await screen.findByText("Double space · Call · Action page description");
+
+  fireEvent.change(screen.getByPlaceholderText("Search by name"), {
+    target: { value: "Ana" },
+  });
+  fireEvent.click(await screen.findByRole("button", { name: /Ana/ }));
+
+  expect(
+    (
+      await screen.findByRole("link", {
+        name: "Preview variant “Variant 9” as this member",
+      })
+    ).getAttribute("href"),
+  ).toBe("/forms/9?previewAs=10");
 });
 
 it("groups members by the actions they get and previews one from a group", async () => {
@@ -354,6 +385,27 @@ it("keeps running checks while an action's load is paused offline", async () => 
   view.unmount();
 });
 
+it("says so beside a task form when grouping its members fails", async () => {
+  api.profilesFail = true;
+  api.served[1] = { ...api.served[1], taskFormId: 7 };
+  api.formPagesById[7] = [
+    {
+      id: "p1",
+      title: "Only with a city",
+      fields: [],
+      visibleIfFormula: {
+        formula: "c1",
+        conditions: { c1: { kind: "userHasCity", userHasCity: true } },
+      },
+    },
+  ];
+  renderPanel();
+
+  expect(
+    (await screen.findByText("Couldn't group members")).getAttribute("title"),
+  ).toBe("Couldn't group members by what they see.");
+});
+
 it("previews a task form as each kind of member among the action's own recipients", async () => {
   api.served[1] = { ...api.served[1], taskFormId: 7 };
   api.formPagesById[7] = [
@@ -369,7 +421,8 @@ it("previews a task form as each kind of member among the action's own recipient
   ];
   renderPanel();
 
-  fireEvent.click(await screen.findByText("Call", { selector: "summary" }));
+  expect(await screen.findByText("2 member variants")).toBeTruthy();
+  fireEvent.click(screen.getByText("Call", { selector: "summary" }));
   const cards = await screen.findAllByRole("radio", {
     name: /1 member.*has city/,
   });

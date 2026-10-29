@@ -4,6 +4,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { ensurePages, ensureSchemaViews } from "../lib/ensureFormSchema";
+import { usePreviewAsOnLoad } from "../lib/formEditorLink";
 import {
   collectFormIssues,
   indexIssues,
@@ -209,8 +210,11 @@ export function FormBuilder(props: FormBuilderProps) {
     onInvalid: showSaveIssues,
   });
   const [outputViewId, setOutputViewId] = useState<string | null>(null);
+  const previewAsOnLoad = usePreviewAsOnLoad().current;
   const [isPreviewMode, setIsPreviewMode] = useState(false);
-  const [previewUserId, setPreviewUserId] = useState<string>("preview");
+  const [previewUserId, setPreviewUserId] = useState<string>(
+    previewAsOnLoad ?? "preview",
+  );
   const [jsonScope, setJsonScope] = useState<JsonScope | null>(null);
   const builderRef = useRef<HTMLDivElement | null>(null);
 
@@ -276,6 +280,17 @@ export function FormBuilder(props: FormBuilderProps) {
           retryLabel: hasUnsavedChanges ? "Discard edits and retry" : "Retry",
           onRetry: retryLoad,
         };
+  const blockingIssues = issues.length + (loadError === null ? 0 : 1);
+  const requestPreview = useCallback(() => {
+    if (blockingIssues > 0) setIssueList({ gate: IssueGate.Preview });
+    else setIsPreviewMode(true);
+  }, [blockingIssues]);
+  const previewPending = useRef(previewAsOnLoad !== null);
+  useEffect(() => {
+    if (!previewPending.current || isLoading || sourceFormsLoading) return;
+    previewPending.current = false;
+    requestPreview();
+  }, [isLoading, sourceFormsLoading, requestPreview]);
 
   const { handleSaveForm, dialog: saveGateDialog } = useSaveGate({
     schema,
@@ -379,7 +394,8 @@ export function FormBuilder(props: FormBuilderProps) {
                 }}
                 onEditJson={() => setJsonScope({ kind: JsonScopeKind.Form })}
                 isPreviewMode={isPreviewMode}
-                onPreviewModeChange={setIsPreviewMode}
+                onPreview={requestPreview}
+                onEdit={() => setIsPreviewMode(false)}
                 activeEditor={activeEditor}
                 onActiveEditorChange={displayOnly ? null : setActiveEditor}
                 save={{

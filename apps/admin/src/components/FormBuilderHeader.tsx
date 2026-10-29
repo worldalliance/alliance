@@ -43,7 +43,8 @@ export function FormBuilderHeader({
   history,
   onEditJson,
   isPreviewMode,
-  onPreviewModeChange,
+  onPreview,
+  onEdit,
   activeEditor,
   onActiveEditorChange,
   save,
@@ -58,7 +59,9 @@ export function FormBuilderHeader({
   history: ComponentProps<typeof HistoryControls>;
   onEditJson: () => void;
   isPreviewMode: boolean;
-  onPreviewModeChange: (isPreviewMode: boolean) => void;
+  /** Opens the preview, or the issue list while issues block it. */
+  onPreview: () => void;
+  onEdit: () => void;
   activeEditor: string;
   /** Null where the builder edits only the form, without the other tabs. */
   onActiveEditorChange: ((editor: FormEditorTab) => void) | null;
@@ -70,7 +73,6 @@ export function FormBuilderHeader({
   };
 }) {
   const { onSave, isSaving, isLoading, hasUnsavedChanges } = save;
-  const blockingIssues = issues.length + (loadFailure ? 1 : 0);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -122,15 +124,7 @@ export function FormBuilderHeader({
           )}
           {activeEditor === "form" && (
             <Button
-              onClick={() => {
-                if (isPreviewMode) {
-                  onPreviewModeChange(false);
-                } else if (blockingIssues > 0) {
-                  onIssueListChange({ gate: IssueGate.Preview });
-                } else {
-                  onPreviewModeChange(true);
-                }
-              }}
+              onClick={isPreviewMode ? onEdit : onPreview}
               color={ButtonColor.Stone}
               size="small"
             >

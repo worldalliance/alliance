@@ -1,9 +1,11 @@
 import { memberConditions } from "@alliance/common/forms/form-conditions";
 import type { FormSchema } from "@alliance/common/forms/form-schema";
+import { withCount } from "@alliance/common/plural";
 import Card from "@alliance/sharedweb/ui/Card";
 import { sumBy } from "es-toolkit";
 import { useState } from "react";
 import { useUsersAdmin } from "../../lib/useUsersAdmin";
+import { useVisibilityProfilesAdmin } from "../../lib/useVisibilityProfilesAdmin";
 import Disclosure from "../Disclosure";
 import { MemberFormRenderer } from "../MemberFormRenderer";
 import { VisibilityProfilePicker } from "../VisibilityProfilePicker";
@@ -44,6 +46,33 @@ const TaskFormPreview = ({
         </p>
       )}
     </div>
+  );
+};
+
+const VariantCount = ({
+  schema,
+  memberIds,
+}: {
+  schema: FormSchema;
+  memberIds: number[];
+}) => {
+  const { data: profiles, error } = useVisibilityProfilesAdmin({
+    schema,
+    userIds: memberIds,
+  });
+  if (error) {
+    return (
+      <span className="ml-2 text-xs text-red-600" title={error.message}>
+        {"Couldn't group members"}
+      </span>
+    );
+  }
+  return (
+    profiles && (
+      <span className="ml-2 text-xs text-zinc-500">
+        {withCount(profiles.length, "member variant")}
+      </span>
+    )
   );
 };
 
@@ -109,6 +138,7 @@ const TaskFormPreviews = ({ actions }: { actions: LaunchAction[] }) => {
                 <>
                   {action.name}
                   {label && <span className="text-zinc-500">, {label}</span>}
+                  <VariantCount schema={schema} memberIds={memberIds} />
                 </>
               }
             >

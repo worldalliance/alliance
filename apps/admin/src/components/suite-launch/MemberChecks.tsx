@@ -5,7 +5,11 @@ import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import { Eye, LogIn, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { getApiUrl } from "../../lib/config";
-import { ActionLinks, iconControlClass } from "./ActionLinks";
+import {
+  ActionLinks,
+  iconControlClass,
+  PreviewTaskFormLink,
+} from "./ActionLinks";
 import { overloadedMembers } from "./contractViolations";
 import LaunchCheck from "./LaunchCheck";
 import {
@@ -34,6 +38,9 @@ export const MemberPreview = ({
   const usersById = new Map(users.map((user) => [user.id, user]));
   const loadsByUser = new Map((loads ?? []).map((load) => [load.userId, load]));
   const actionsById = new Map(actions.map(({ action }) => [action.id, action]));
+  const variantFormsById = new Map(
+    actions.map(({ action, variantForms }) => [action.id, variantForms]),
+  );
   const overloaded = loads ? overloadedMembers(loads).length : 0;
   const preview = (userIds: number[]) => {
     const userId = userIds.find((id) => !selectedUserIds.includes(id));
@@ -147,17 +154,35 @@ export const MemberPreview = ({
                 </a>
               </div>
               <ul className="ml-4">
-                {load?.actionIds.map((actionId) => (
-                  <li
-                    key={actionId}
-                    className="flex items-center gap-1 text-sm"
-                  >
-                    <span className="flex-1">
-                      {actionsById.get(actionId)?.name}
-                    </span>
-                    <ActionLinks actionId={actionId} />
-                  </li>
-                ))}
+                {load?.actionIds.map((actionId) => {
+                  const action = actionsById.get(actionId);
+                  return (
+                    <li
+                      key={actionId}
+                      className="flex items-center gap-1 text-sm"
+                    >
+                      <span className="flex-1">{action?.name}</span>
+                      {action?.taskFormId != null && (
+                        <PreviewTaskFormLink
+                          formId={action.taskFormId}
+                          userId={userId}
+                          variantName={null}
+                        />
+                      )}
+                      {variantFormsById
+                        .get(actionId)
+                        ?.map(({ formId, name }) => (
+                          <PreviewTaskFormLink
+                            key={formId}
+                            formId={formId}
+                            userId={userId}
+                            variantName={name}
+                          />
+                        ))}
+                      <ActionLinks actionId={actionId} />
+                    </li>
+                  );
+                })}
               </ul>
             </li>
           );

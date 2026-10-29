@@ -33,19 +33,18 @@ export function FormBuilderPreview({
   const previewUserError = previewUsersQuery.isLoadingError
     ? "Could not load users"
     : null;
-  const resolvedPreviewUser = useMemo(() => {
-    if (previewUserId === "preview") {
-      return FORM_BUILDER_PREVIEW_USER;
-    }
-    const match = previewUsers.find(
-      (candidate) => String(candidate.id) === previewUserId,
-    );
-    return match ?? FORM_BUILDER_PREVIEW_USER;
-  }, [previewUserId, previewUsers]);
-  const resolvedPreviewUserId =
-    resolvedPreviewUser === FORM_BUILDER_PREVIEW_USER
-      ? "preview"
-      : resolvedPreviewUser.id;
+  const previewMember = useMemo(
+    () =>
+      previewUserId === "preview"
+        ? null
+        : (previewUsers.find(
+            (candidate) => String(candidate.id) === previewUserId,
+          ) ?? null),
+    [previewUserId, previewUsers],
+  );
+  const resolvedPreviewUser = previewMember ?? FORM_BUILDER_PREVIEW_USER;
+  const resolvedPreviewUserId = previewMember?.id ?? "preview";
+  const memberUnavailable = previewUserId !== "preview" && !previewMember;
 
   const [rowIndex, setRowIndex] = useState(0);
   const list = schema.rowList;
@@ -91,12 +90,22 @@ export function FormBuilderPreview({
           </select>
         </label>
       )}
-      <MemberFormRenderer
-        schema={previewSchema}
-        previewUserId={resolvedPreviewUserId}
-        user={resolvedPreviewUser}
-        initialPageIndex={pageIndex}
-      />
+      {!memberUnavailable ? (
+        <MemberFormRenderer
+          schema={previewSchema}
+          previewUserId={resolvedPreviewUserId}
+          user={resolvedPreviewUser}
+          initialPageIndex={pageIndex}
+        />
+      ) : isLoadingPreviewUsers ? (
+        <p className="text-sm text-gray-500">Loading the member…</p>
+      ) : (
+        previewUsersQuery.data && (
+          <p className="text-sm text-red-500">
+            Member #{previewUserId} isn&apos;t in the user list.
+          </p>
+        )
+      )}
     </div>
   );
 }

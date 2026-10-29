@@ -45,7 +45,9 @@ export function useSavedForm({
     initialSnapshotId,
   );
   const [conflict, setConflict] = useState<FormConflict | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(
+    () => !displayOnly && Boolean(formId) && !initialSchema,
+  );
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const { error: showErrorToast } = useToast();
