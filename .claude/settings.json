@@ -5,11 +5,24 @@
       "Bash(bun run gen-api)",
       "Bash(bun run test:*)"
     ],
-    "deny": ["Artifact", "ScheduleWakeup", "Workflow"]
+    "deny": ["Artifact", "Workflow"]
   },
   "autoMemoryEnabled": false,
   "disableArtifact": true,
-  "disableBundledSkills": true,
+  "skillOverrides": {
+    "update-config": "off",
+    "keybindings-help": "off",
+    "code-review": "off",
+    "simplify": "off",
+    "fewer-permission-prompts": "off",
+    "schedule": "off",
+    "claude-api": "off",
+    "workflow-authoring": "off",
+    "run": "off",
+    "init": "off",
+    "security-review": "off",
+    "dataviz": "off"
+  },
   "hooks": {
     "PostToolUse": [
       {
