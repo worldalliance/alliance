@@ -11,6 +11,7 @@ import ActionUpdateCard from "@alliance/sharedweb/ui/ActionUpdateCard";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
+import { ToastPlacement, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { EyeOff, SquarePen } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
@@ -55,6 +56,7 @@ const ActionUpdatesTab = ({
     new Set(),
   );
   const { create, remove } = useActionUpdateAdmin(null);
+  const { confirm } = useToast();
   const creating = create.isPending;
 
   const texts: CollectiveResultTexts = {
@@ -102,7 +104,18 @@ const ActionUpdatesTab = ({
     navigate(`/actions/${actionId}/updates/${created.value.id}`);
   };
 
-  const handleDelete = async (update: ActionUpdateDto) => {
+  const handleDelete = async (
+    update: ActionUpdateDto,
+    button: HTMLElement,
+  ) => {
+    const ok = await confirm({
+      message: `Delete "${update.title}"? Members stop seeing it.`,
+      confirmLabel: "Delete",
+      cancelLabel: "Cancel",
+      anchorEl: button,
+      placement: ToastPlacement.TopLeft,
+    });
+    if (!ok) return;
     setDeleteError(null);
     setDeletingIds((ids) => new Set(ids).add(update.id));
     const deleted = await R.fromPromise(
@@ -317,7 +330,7 @@ const ActionUpdatesTab = ({
             onDelete={
               deletingIds.has(update.id)
                 ? undefined
-                : () => handleDelete(update)
+                : (button) => handleDelete(update, button)
             }
             actions={
               <>
