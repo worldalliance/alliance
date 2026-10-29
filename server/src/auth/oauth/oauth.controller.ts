@@ -53,16 +53,14 @@ import {
 import { bounceAppleCallback, takeAppleUser } from "./apple-callback";
 import { beginMobileBrowserSession } from "./mobile-browser-session";
 import {
-  addProof,
-  mintProof,
   OAuthAuthService,
   OAuthOrigin,
-  spendProof,
   type OAuthAuthentication,
   type OAuthState,
 } from "./oauth-auth.service";
 import type { OAuthProfile } from "./oauth-client";
 import { OAuthClients } from "./oauth-clients";
+import { addProof, mintProof, spendProof } from "./oauth-proof";
 import {
   fallbackLoginUrl,
   mobileReturnUrlWith,
