@@ -437,7 +437,7 @@ function formatAwayDate(date: string) {
   });
 }
 
-function formatAwayRange(range: UserAwayRangeDto) {
+export function formatAwayRange(range: UserAwayRangeDto) {
   return `${formatAwayDate(range.startDate)} to ${formatAwayDate(
     range.endDate,
   )}`;

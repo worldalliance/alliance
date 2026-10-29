@@ -326,6 +326,8 @@ export const queryKeys = {
     ["actionsActionRelationsForUserAdmin", userId] as const,
   userAwayRangesAdmin: (userId: number) =>
     ["userAwayRangeGetAwayRangeForUserAdmin", userId] as const,
+  awayRangesInWindowAdmin: (from: string, to: string) =>
+    ["userAwayRangeGetAwayRangesInWindowAdmin", from, to] as const,
   userCityCountsAdmin: () => ["userCityCountsAdmin"] as const,
   userDetailAdmin: (userId: number) => ["userUserDetailAdmin", userId] as const,
   userFormResponsesAdmin: (userId: number) =>

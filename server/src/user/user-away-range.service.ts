@@ -17,7 +17,7 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import { softDeleteCascade, writeUnderLive } from "src/datasources/soft-delete";
 import type { Repository as TypedRepository } from "src/utils/Repository";
-import { DataSource } from "typeorm";
+import { DataSource, LessThan, MoreThan } from "typeorm";
 import {
   applyMemberAwayRangeEdit,
   AwayRangeEditor,
@@ -298,6 +298,24 @@ export class UserAwayRangeService {
       default:
         throw new Error(`unknown away range editor: ${editor satisfies never}`);
     }
+  }
+
+  /** Every member's ranges that overlap the window, soonest first. */
+  async getAwayRangesInWindow(params: {
+    from: Date;
+    to: Date;
+  }): Promise<(UserAwayRange & { user: User })[]> {
+    const ranges = await this.userAwayRangeRepository.find({
+      where: {
+        startDate: LessThan(params.to),
+        endDate: MoreThan(params.from),
+      },
+      relations: { user: true },
+      order: { startDate: "ASC" },
+    });
+    return ranges.flatMap((range) =>
+      range.user ? [{ ...range, user: range.user }] : [],
+    );
   }
 
   async isUserIdAway(

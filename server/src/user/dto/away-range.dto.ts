@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
 
 import { Transform } from "class-transformer";
-import { IsDefined, IsOptional, IsString } from "class-validator";
+import { IsDateString, IsDefined, IsOptional, IsString } from "class-validator";
 import { trimToNull } from "src/utils/transforms";
 import { UserAwayRange } from "../entities/user-away-range.entity";
 
@@ -57,5 +57,29 @@ export class UserAwayRangeDto extends PickType(UserAwayRange, [
     this.reason = awayRange.reason;
     this.note = awayRange.note;
     this.createdAt = awayRange.createdAt;
+  }
+}
+
+export class AwayRangesInWindowQueryDto {
+  @ApiProperty({ type: String, format: "date-time" })
+  @IsDateString()
+  from: string;
+
+  @ApiProperty({ type: String, format: "date-time" })
+  @IsDateString()
+  to: string;
+}
+
+export class MemberAwayRangeDto extends UserAwayRangeDto {
+  @ApiProperty()
+  userId: number;
+
+  @ApiProperty()
+  userName: string;
+
+  constructor(awayRange: UserAwayRange & { user: { name: string } }) {
+    super(awayRange);
+    this.userId = awayRange.userId;
+    this.userName = awayRange.user.name;
   }
 }

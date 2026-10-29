@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   Request,
   UseGuards,
 } from "@nestjs/common";
@@ -16,7 +17,9 @@ import type { JwtRequest } from "src/auth/tokens";
 import { AuthGuard } from "../auth/guards/auth.guard";
 import { AwayRangeEditor } from "./away-range-history";
 import {
+  AwayRangesInWindowQueryDto,
   CreateAwayRangeDto,
+  MemberAwayRangeDto,
   UpdateAwayRangeDto,
   UserAwayRangeDto,
 } from "./dto/away-range.dto";
@@ -85,6 +88,20 @@ export class UserAwayRangeController {
         editor: AwayRangeEditor.Member,
       }),
     );
+  }
+
+  @Get("admin/awayranges")
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: [MemberAwayRangeDto] })
+  @ApiUnauthorizedResponse()
+  async getAwayRangesInWindowAdmin(
+    @Query() query: AwayRangesInWindowQueryDto,
+  ): Promise<MemberAwayRangeDto[]> {
+    const ranges = await this.userAwayRangeService.getAwayRangesInWindow({
+      from: new Date(query.from),
+      to: new Date(query.to),
+    });
+    return ranges.map((range) => new MemberAwayRangeDto(range));
   }
 
   @Get("awayranges/:id")
