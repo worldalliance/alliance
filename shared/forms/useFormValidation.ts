@@ -175,7 +175,7 @@ export function useFormValidation(args: {
 
       return Object.fromEntries(results);
     },
-    [readOnly, effectiveFormData],
+    [readOnly, effectiveFormData, previewUserId],
   );
 
   const validateFields = useCallback(

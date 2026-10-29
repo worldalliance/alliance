@@ -140,6 +140,31 @@ describe("useFormValidation", () => {
     expect(result.current.fieldErrors.why).toBe("Member 7 lacks the tag");
   });
 
+  it("checks the newly previewed member after the preview switches", async () => {
+    api.alsoServing({
+      "POST /tasks/runValidator/:id/asUser/:userId": ({ params }) =>
+        Response.json(
+          params.userId === "7"
+            ? { isValid: false, message: "Member 7 lacks the tag" }
+            : { isValid: true },
+        ),
+    });
+    const args = {
+      schema: schemaWith([{ ...textField("why"), customValidatorId: 42 }]),
+      formData: { why: "because" },
+      previewUserId: 7,
+    };
+    const { result, rerender } = renderValidation(args);
+    await validate(() => result.current.validatePage(0, true));
+
+    args.previewUserId = 8;
+    rerender(args.formData);
+    const page = await validate(() => result.current.validatePage(0, true));
+
+    expect(page.isValid).toBe(true);
+    expect(result.current.fieldErrors.why).toBeUndefined();
+  });
+
   it("passes a hidden page and clears the errors its fields left", async () => {
     const { result } = renderValidation({
       schema: twoPageSchema,
