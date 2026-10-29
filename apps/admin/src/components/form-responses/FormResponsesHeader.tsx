@@ -65,62 +65,54 @@ const FormResponsesHeader: React.FC<FormResponsesHeaderProps> = ({
   }, [responses]);
 
   return (
-    <div className="px-6 py-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div>
-            <div className="flex items-baseline gap-2">
-              <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
-              {releaseDate && (
-                <span className="text-sm text-gray-500">
-                  Released {releaseDate}
-                </span>
-              )}
-            </div>
-            <p className="text-sm text-gray-500">
-              {withCount(total, "response")}
-            </p>
-            {referralsError && (
-              <p className="text-sm text-red-500">{referralsError}</p>
-            )}
-          </div>
-          <div className="flex items-center gap-2 ml-3">
-            <Button
-              onClick={() => onTabChange("responses")}
-              color={
-                tab === "responses" ? ButtonColor.Black : ButtonColor.White
-              }
-              size="small"
-            >
-              Responses
-            </Button>
-            <Button
-              onClick={() => onTabChange("stats")}
-              color={tab === "stats" ? ButtonColor.Black : ButtonColor.White}
-              size="small"
-            >
-              Stats
-            </Button>
-            <Button
-              onClick={() => onTabChange("questions")}
-              color={
-                tab === "questions" ? ButtonColor.Black : ButtonColor.White
-              }
-              size="small"
-            >
-              Questions
-            </Button>
-            <Button
-              onClick={() => onTabChange("replays")}
-              color={tab === "replays" ? ButtonColor.Black : ButtonColor.White}
-              size="small"
-            >
-              Replays
-            </Button>
-          </div>
+    <div className="px-6 py-4 space-y-3">
+      <div>
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
+          {releaseDate && (
+            <span className="text-sm text-gray-500">
+              Released {releaseDate}
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-gray-500">{withCount(total, "response")}</p>
+        {referralsError && (
+          <p className="text-sm text-red-500">{referralsError}</p>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 whitespace-nowrap">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            onClick={() => onTabChange("responses")}
+            color={tab === "responses" ? ButtonColor.Black : ButtonColor.White}
+            size="small"
+          >
+            Responses
+          </Button>
+          <Button
+            onClick={() => onTabChange("stats")}
+            color={tab === "stats" ? ButtonColor.Black : ButtonColor.White}
+            size="small"
+          >
+            Stats
+          </Button>
+          <Button
+            onClick={() => onTabChange("questions")}
+            color={tab === "questions" ? ButtonColor.Black : ButtonColor.White}
+            size="small"
+          >
+            Questions
+          </Button>
+          <Button
+            onClick={() => onTabChange("replays")}
+            color={tab === "replays" ? ButtonColor.Black : ButtonColor.White}
+            size="small"
+          >
+            Replays
+          </Button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {variantOptions && variantOptions.length > 0 && (
             <select
               value={selectedVariantKey || "all"}
