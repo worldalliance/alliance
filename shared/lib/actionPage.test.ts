@@ -1,13 +1,14 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { useActionHandlers } from "./actionPage";
-import { queryKeys } from "./queryKeys";
+import { actionStore } from "./actionStore";
 import {
   TaskFlowCompletionProvider,
   useMarkTaskCompleting,
 } from "./TaskFlowCompletionContext";
 import { makeAction, makeViewer } from "./testFixtures";
 import { queryWrapper } from "./testing/queryWrapper";
+import { seedAction } from "./testing/seedActions";
 import { routes, serveApi } from "./testing/serveApi";
 
 let getResponse: () => Response | Promise<Response>;
@@ -83,7 +84,7 @@ it("keeps the action when a refetch is refused", async () => {
 
 it("reports not found when the load over a cached copy is refused", async () => {
   const { client, wrapper } = queryWrapper();
-  client.setQueryData(queryKeys.action(7), makeAction({ id: 7 }));
+  seedAction(client, makeAction({ id: 7 }));
   getResponse = () => Response.json({}, { status: 404 });
 
   const hook = renderHook(() => useActionHandlers(7, true, () => {}), {
@@ -96,7 +97,7 @@ it("reports not found when the load over a cached copy is refused", async () => 
 
 it("refetches on mount over a fresh cached copy", async () => {
   const { client, wrapper } = queryWrapper();
-  client.setQueryData(queryKeys.action(7), makeAction({ id: 7, name: "Old" }));
+  seedAction(client, makeAction({ id: 7, name: "Old" }));
   getResponse = () => Response.json(makeAction({ id: 7, name: "New" }));
 
   const hook = renderHook(() => useActionHandlers(7, true, () => {}), {
@@ -109,10 +110,7 @@ it("refetches on mount over a fresh cached copy", async () => {
 
 it("refetches when the action id changes over a fresh cached copy", async () => {
   const { client, wrapper } = queryWrapper();
-  client.setQueryData(
-    queryKeys.action(8),
-    makeAction({ id: 8, name: "Cached" }),
-  );
+  seedAction(client, makeAction({ id: 8, name: "Cached" }));
   const hook = renderHook(
     ({ actionId }) => useActionHandlers(actionId, true, () => {}),
     { wrapper, initialProps: { actionId: 7 } },
@@ -141,7 +139,7 @@ it("marks the action completed in the shared cache and reloads tasks", async () 
 
   await hook.result.current.onCompleteAction();
 
-  expect(client.getQueryData(queryKeys.action(7))).toMatchObject({
+  expect(actionStore(client).get(7)).toMatchObject({
     userRelation: "completed",
     usersCompleted: 3,
   });
@@ -163,7 +161,7 @@ it("does not count a completion the server already reported", async () => {
 
   await hook.result.current.onCompleteAction();
 
-  expect(client.getQueryData(queryKeys.action(7))).toMatchObject({
+  expect(actionStore(client).get(7)).toMatchObject({
     usersCompleted: 3,
   });
 });
@@ -204,7 +202,7 @@ it("marks the action declined in the shared cache and reloads tasks", async () =
 
   await hook.result.current.onOptOutAction();
 
-  expect(client.getQueryData(queryKeys.action(7))).toMatchObject({
+  expect(actionStore(client).get(7)).toMatchObject({
     userRelation: "declined",
     usersCompleted: 2,
   });
@@ -228,7 +226,7 @@ it("keeps a completion written while a refetch is in flight", async () => {
   respond();
   await new Promise((resolve) => setTimeout(resolve, 10));
 
-  expect(client.getQueryData(queryKeys.action(7))).toMatchObject({
+  expect(actionStore(client).get(7)).toMatchObject({
     userRelation: "completed",
     usersCompleted: 3,
   });

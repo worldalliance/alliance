@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { authMe, type AuthMeResponseDto, type UserDto } from "../client";
+import { actionStore } from "./actionStore";
 
 export const meQuery = queryOptions({
   queryKey: ["authMe"],
@@ -29,6 +30,7 @@ export function meCache(queryClient: QueryClient) {
       .getQueryCache()
       .find({ queryKey: meQuery.queryKey, exact: true });
     queryClient.removeQueries({ predicate: (query) => query !== member });
+    actionStore(queryClient).clear();
     queryClient.getMutationCache().clear();
     return member;
   };

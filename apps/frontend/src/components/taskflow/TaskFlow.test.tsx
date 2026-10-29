@@ -1,5 +1,5 @@
-import type { ActionDto } from "@alliance/shared/client";
 import { useActionHandlers } from "@alliance/shared/lib/actionPage";
+import { actionStore } from "@alliance/shared/lib/actionStore";
 import {
   hasViewerCompletedAction,
   withOptimisticRelation,
@@ -7,6 +7,7 @@ import {
 import { taskFlow, withdrawFromAction } from "@alliance/shared/lib/copy";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { makeAction } from "@alliance/shared/lib/testFixtures";
+import { seedActions } from "@alliance/shared/lib/testing/seedActions";
 import { QueryClient } from "@tanstack/react-query";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
@@ -142,25 +143,21 @@ it("stays open while the submit is in flight", async () => {
 it("completes the action only once the member closes the completion card", async () => {
   const onCompleteAction = jest.fn();
   const queryClient = new QueryClient();
-  queryClient.setQueryData(queryKeys.actions(), [makeAction({ id: 1 })]);
+  seedActions(queryClient, [makeAction({ id: 1 })]);
   renderFlow({ onCompleteAction, queryClient });
   await submitFlow();
 
   expect(onCompleteAction).not.toHaveBeenCalled();
-  expect(
-    queryClient.getQueryData<ActionDto[]>(queryKeys.actions())?.[0]?.viewer
-      ?.relation,
-  ).not.toBe("completed");
+  expect(actionStore(queryClient).get(1)?.viewer?.relation).not.toBe(
+    "completed",
+  );
 
   fireEvent.click(screen.getByRole("button", { name: taskFlow.closeTask }));
 
   await waitFor(() => expect(onCompleteAction).toHaveBeenCalledTimes(1), {
     timeout: CLOSE_TIMEOUT,
   });
-  expect(
-    queryClient.getQueryData<ActionDto[]>(queryKeys.actions())?.[0]?.viewer
-      ?.relation,
-  ).toBe("completed");
+  expect(actionStore(queryClient).get(1)?.viewer?.relation).toBe("completed");
 });
 
 it("keeps the completion card up when a refetch reports the action completed", async () => {

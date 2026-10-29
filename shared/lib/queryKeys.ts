@@ -52,13 +52,13 @@ const actionReminderGroupsAdminAll = () =>
  * Central registry of react-query keys
  */
 export const queryKeys = {
-  action: (actionId: number | null) => ["actionsFindOne", actionId] as const,
+  action: (actionId: number | null) => ["actions", "detail", actionId] as const,
   actionReferralCode: (actionId: number) =>
     ["actionsGetActionReferralCode", actionId] as const,
   actionUpdatesAll: () => ["actionUpdatesAllUpdates"] as const,
   actionUpdatesRecent: (limit: number) =>
     ["actionUpdatesRecentUpdates", limit] as const,
-  /** Also prefixes generalUpdatesUnread, so invalidating it refetches that too. */
+  /** Prefixes action details and generalUpdatesUnread, so invalidating it refetches those too. */
   actions: () => ["actions"] as const,
   activitiesAll,
   activity: (activityId: number) =>

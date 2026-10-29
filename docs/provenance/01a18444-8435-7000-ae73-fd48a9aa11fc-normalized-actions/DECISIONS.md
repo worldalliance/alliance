@@ -1,0 +1,39 @@
+# Decisions
+
+- Use Redux Toolkit for the action pilot. Its entity adapter provides an established normalized store; TanStack DB remains a beta alternative. This is an agent selection, not a user requirement for Redux throughout the repository.
+- Normalize the complete member/public action responses used by the shared web/mobile hooks. Keep admin, feed summaries, and historical representations separate until their field authority is defined. Identical IDs alone do not make those payloads interchangeable. The member list endpoint does not load `authors`, `project`, `suite`, or `updates`, so those fields come from the newest detail response while the rest come from the newest response of either kind.
+- Scope the store to a QueryClient and clear it at session boundaries. Action DTOs include viewer permissions, progress, and assigned forms. Mutation responses that resolve after a session boundary do not patch the new session's records: the store's write methods take the session the write started in. The detail page's completion callbacks use the session of the render they come from, not the submission's.
+- Query caches retain IDs and list order; components obtain action records from Redux. Query lifecycle metadata remains in TanStack.
+- Action queries share an invalidation prefix so writes affecting server-computed fields refresh details as well as list membership. Unread general updates retain their existing membership in that prefix.
+- Reuse actionUtils for viewer-state patches and writesDuringLoads for confirmed writes during requests. Both list and detail loads participate in the same action write stream. Request start order decides between successful overlapping loads; aborted loads and prior-session work cannot populate the store.
+- Assess other entity families before broad migration. Unread totals remain server-authoritative when the client holds only a subset of the counted records.
+
+# Further migrations
+
+These are recommendations from the repository audit, not approved implementation scope.
+
+| Priority | Entity                                     | Evidence and proposed boundary                                                                                                                                                                                                                                                                                          |
+| -------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Next     | Notifications                              | `shared/lib/useNotificationsCache.ts` patches every cached list separately; the bell, home row, and notifications screen request different limits. Normalize using `getNotificationIdentityKey` (`sourceType` plus ID), with query-specific ordered IDs and load timestamps.                                            |
+| Next     | Activities and forum comments across feeds | `shared/lib/useActivities.tsx` patches activity detail and all activity lists; `shared/lib/feedHelpers.ts` independently patches home/user feed copies. Store shared mutable fields once, preserve page cursors and list membership, and distinguish payloads with comments loaded from those without.                  |
+| Next     | Forum posts                                | `shared/lib/useForumPost.ts`, `useForumPosts.ts`, and `user.ts` hold detail, forum-index, and user-profile copies. Likes and saved edits benefit from one record. Create responses intentionally lack detail fields, so declare which response owns each field before merging them.                                     |
+| Later    | Member profiles and friendships            | `shared/lib/user.ts`, `useMembers.ts`, and `useMembersWithFriends.ts` expose overlapping profiles; messages and communities embed profiles too. Normalize public profile fields separately from private account data and viewer-specific relationships. A friend change also changes collection membership.             |
+| Later    | Conversations and messages                 | `shared/lib/useMyConversations.ts` already centralizes the main conversation list, while `useCommunityConversation.ts` keeps another copy. A conversation table can connect them. Message normalization must preserve socket reconciliation, temporary IDs, and reply projections.                                      |
+| Later    | Communities                                | `shared/lib/useMyCommunities.ts` and `usePublicCommunities.ts` expose overlapping group fields. Keep membership, contact information, permissions, and aggregate progress separately scoped.                                                                                                                            |
+| Later    | Admin actions and form metadata            | `shared/lib/useActionAdmin.ts` already coordinates list/detail invalidation. An admin-specific action table could share editable fields; list-only variant IDs and member-filtered forms cannot overwrite richer or differently scoped data. Normalize form index metadata separately from draft and published schemas. |
+| Lower    | General/action updates                     | The unread/all/recent lists overlap, but immutable content needs less synchronization than read/dismissed status and ordering. Reuse notification/content-read coordination where the server contracts overlap.                                                                                                         |
+
+## Counts and intentionally separate state
+
+- Notification unread count is an aggregate over more records than a preview loads. Retain the server total and coordinate confirmed/optimistic deltas by composite notification identity; refetch after ambiguous writes. Counting cached unread entities undercounts. Preserve the loaded-at cutoff for mark-all-read and concurrent-write-safe rollback.
+- Task count is already derived from the complete member action list by `useTaskBadgeCount`; it now observes normalized action updates. Keep this derived rather than introducing a separately writable count.
+- Message unread totals include server-specific request/message rules (`useUnreadMessageCount`). Preserve their endpoint and socket refresh contract until coverage and counting rules are explicitly equivalent.
+- Preserve independent form drafts, published snapshots, historical feed representations, analytics aggregates, and search result membership. Their differing versions or scopes are part of their meaning, even when they reference the same underlying ID.
+
+## Validation
+
+- The initial four normalization regressions fail on the original implementation: propagation in both directions, overlapping response ordering, and shared idempotent completion. The detail-relation (both completion orders) and previous-session regressions, including deferred completion, fail without their fixes.
+- Integration tests exercise the real shared hooks with the existing API test server, including first-load writes, request cancellation, viewer isolation, session reset, and optional-auth fallback responses.
+- All 71 focused shared-hook tests pass. The full unit suites pass through `covercheck`; it reports 252 of 285 changed executable lines covered. Remaining reported lines are declarations, formatting, invariant failure handling, and the Storybook fixture.
+- Typechecks pass in shared, sharedweb, frontend, admin, and mobile.
+- Duplication, formatting, and diff whitespace checks pass.

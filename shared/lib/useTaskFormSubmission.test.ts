@@ -2,12 +2,14 @@ import { ExceptionEvent } from "@alliance/common/analytics";
 import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options";
 import { GUEST_HEADER } from "@alliance/common/guest";
 import { act, renderHook } from "@testing-library/react";
-import type { ActionDto, SubmitFormDto } from "../client";
+import type { SubmitFormDto } from "../client";
 import { formulaSourcesChanged } from "../forms/formulaChoices";
+import { actionStore } from "./actionStore";
 import { queryKeys } from "./queryKeys";
 import { makeAction, makeFormResponse } from "./testFixtures";
 import { queryWrapper } from "./testing/queryWrapper";
 import { recordExceptions } from "./testing/recordExceptions";
+import { seedActions } from "./testing/seedActions";
 import { routes, serveApi } from "./testing/serveApi";
 import { ActivityList } from "./useActivities";
 import { useTaskFormSubmission } from "./useTaskFormSubmission";
@@ -19,17 +21,13 @@ const withdrawal = { actionId: 1, reason: "", outOfTime: true, isMoral: false };
 
 const renderSubmission = () => {
   const { client, wrapper } = queryWrapper();
-  client.setQueryData(queryKeys.actions(), [
-    makeAction({ id: 1, taskFormId: 7 }),
-  ]);
+  seedActions(client, [makeAction({ id: 1, taskFormId: 7 })]);
   client.setQueryData(queryKeys.myVisibilityContext(), {});
   client.setQueryData(queryKeys.taskFormAggregateViews(7), []);
   const view = renderHook(() => useTaskFormSubmission(), { wrapper });
   return {
     submission: () => view.result.current,
-    cachedRelation: () =>
-      client.getQueryData<ActionDto[]>(queryKeys.actions())?.[0].viewer
-        ?.relation,
+    cachedRelation: () => actionStore(client).get(1)?.viewer?.relation,
     visibilityInvalidated: () =>
       client.getQueryState(queryKeys.myVisibilityContext())?.isInvalidated,
     aggregateViewsInvalidated: () =>
@@ -190,7 +188,7 @@ describe("submitFollowUp", () => {
 
   const renderFollowUp = () => {
     const { client, wrapper } = queryWrapper();
-    client.setQueryData(queryKeys.actions(), [makeAction({ id: 9 })]);
+    seedActions(client, [makeAction({ id: 9 })]);
     client.setQueryData(queryKeys.taskFormAggregateViews(8), []);
     client.setQueryData(homeFeedKey, { pages: [], pageParams: [] });
     client.setQueryData(activitiesKey, { pages: [], pageParams: [] });

@@ -2,7 +2,7 @@ import { ExceptionEvent } from "@alliance/common/analytics";
 import { GUEST_HEADER } from "@alliance/common/guest";
 import { R, type Result } from "@alliance/common/result";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import {
   FollowUpFormDto,
   OptOutActionDto,
@@ -17,6 +17,7 @@ import {
   type SubmitResult,
 } from "../forms/formulaChoices";
 import { invalidateActions, useRecordActionRelation } from "./actionsListPage";
+import { actionStore } from "./actionStore";
 import { captureException } from "./analytics";
 import { queryKeys } from "./queryKeys";
 import { useResetHomeFeed } from "./useHomeFeed";
@@ -35,6 +36,7 @@ export function useTaskFormSubmission() {
   const queryClient = useQueryClient();
   const resetHomeFeed = useResetHomeFeed();
   const recordRelation = useRecordActionRelation();
+  const submittedSession = useRef(actionStore(queryClient).getSession());
   const invalidateVisibilityContext = useInvalidateVisibilityContext();
   const invalidateAggregateViews = useInvalidateTaskFormAggregateViews();
 
@@ -54,6 +56,8 @@ export function useTaskFormSubmission() {
       /** Leaves marking the action completed to `recordCompleted`, since it can unmount the form. */
       deferCompletion?: boolean;
     }) => {
+      const session = actionStore(queryClient).getSession();
+      submittedSession.current = session;
       const result = isMember
         ? await tasksSubmitForm({
             path: { id: taskFormId },
@@ -74,7 +78,12 @@ export function useTaskFormSubmission() {
           invalidateVisibilityContext();
           // Answers the form auto-extracts can set the member's city.
           void myLocationCache(queryClient).invalidate();
-          if (!deferCompletion) recordRelation(body.actionId, "completed");
+          if (!deferCompletion)
+            recordRelation({
+              actionId: body.actionId,
+              relation: "completed",
+              session,
+            });
         }
       }
       return result;
@@ -90,26 +99,41 @@ export function useTaskFormSubmission() {
   /** Marks a deferred completion in a member's cached lists; a guest has none. */
   const recordCompleted = useCallback(
     ({ actionId, isMember }: { actionId: number; isMember: boolean }) => {
-      if (isMember) recordRelation(actionId, "completed");
+      if (isMember)
+        recordRelation({
+          actionId,
+          relation: "completed",
+          session: submittedSession.current,
+        });
     },
     [recordRelation],
   );
 
   const optOut = useCallback(
     async (taskFormId: number, body: OptOutActionDto) => {
+      const session = actionStore(queryClient).getSession();
       const result = await tasksOptout({
         path: { id: taskFormId },
         body,
         throwOnError: false,
       });
       if (result.response.ok) {
-        recordRelation(body.actionId, "declined");
+        recordRelation({
+          actionId: body.actionId,
+          relation: "declined",
+          session,
+        });
         invalidateVisibilityContext();
         invalidateAggregateViews(taskFormId);
       }
       return result;
     },
-    [invalidateAggregateViews, invalidateVisibilityContext, recordRelation],
+    [
+      invalidateAggregateViews,
+      invalidateVisibilityContext,
+      recordRelation,
+      queryClient,
+    ],
   );
 
   const submitFollowUp = useCallback(

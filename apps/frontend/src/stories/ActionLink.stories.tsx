@@ -1,5 +1,5 @@
 import { ActionDto } from "@alliance/shared/client";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { seedAction } from "@alliance/shared/lib/testing/seedActions";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
 import { Meta, StoryObj } from "@storybook/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -48,7 +48,7 @@ function makeSeededClient() {
     defaultOptions: { queries: { staleTime: Infinity, retry: false } },
   });
   for (const action of previewActions) {
-    client.setQueryData(queryKeys.action(action.id), action);
+    seedAction(client, action);
   }
   return client;
 }

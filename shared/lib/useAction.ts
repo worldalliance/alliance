@@ -1,12 +1,10 @@
 import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
 import { useCallback } from "react";
-import { ActionDto, actionsFindOne } from "../client";
-import {
-  hasViewerCompletedAction,
-  withOptimisticRelation,
-} from "./actionUtils";
+import { actionsFindOne } from "../client";
+import { ActionSource, actionStore, selectAction } from "./actionStore";
 import { queryKeys } from "./queryKeys";
+import { useActionState } from "./useActionState";
 
 export function useAction(
   actionId: number | null,
@@ -18,48 +16,42 @@ export function useAction(
     staleTime = milliseconds({ minutes: 5 }),
   } = params ?? {};
   const queryClient = useQueryClient();
+  const store = actionStore(queryClient);
+  const state = useActionState();
+  const session = store.getSession();
+  const select = useCallback((id: number) => selectAction(state, id), [state]);
   const query = useQuery({
     queryKey: queryKeys.action(actionId),
     queryFn:
       actionId === null
         ? skipToken
-        : () =>
-            actionsFindOne({ path: { id: actionId }, throwOnError: true }).then(
-              (res) => res.data,
-            ),
+        : async ({ signal }) => {
+            await store.load({
+              source: ActionSource.Detail,
+              signal,
+              fetch: () =>
+                actionsFindOne({
+                  path: { id: actionId },
+                  throwOnError: true,
+                  signal,
+                }).then((res) => [res.data]),
+            });
+            return actionId;
+          },
+    select,
     enabled,
     staleTime,
   });
 
-  const updateAction = useCallback(
-    async (update: (action: ActionDto) => ActionDto) => {
-      const queryKey = queryKeys.action(actionId);
-      await queryClient.cancelQueries({ queryKey });
-      queryClient.setQueryData<ActionDto>(
-        queryKey,
-        (action) => action && update(action),
-      );
-    },
-    [queryClient, actionId],
-  );
+  const markCompleted = useCallback(async () => {
+    if (actionId !== null)
+      store.recordRelation({ actionId, relation: "completed", session });
+  }, [store, actionId, session]);
 
-  const markCompleted = useCallback(
-    () =>
-      updateAction((action) =>
-        hasViewerCompletedAction(action)
-          ? action
-          : {
-              ...withOptimisticRelation(action, "completed"),
-              usersCompleted: action.usersCompleted + 1,
-            },
-      ),
-    [updateAction],
-  );
-
-  const markDeclined = useCallback(
-    () => updateAction((action) => withOptimisticRelation(action, "declined")),
-    [updateAction],
-  );
+  const markDeclined = useCallback(async () => {
+    if (actionId !== null)
+      store.recordRelation({ actionId, relation: "declined", session });
+  }, [store, actionId, session]);
 
   return { query, markCompleted, markDeclined };
 }
