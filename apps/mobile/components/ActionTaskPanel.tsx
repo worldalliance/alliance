@@ -6,6 +6,7 @@ import {
 import { captureEvent } from "@alliance/shared/lib/analytics";
 import { noop } from "@alliance/shared/lib/constants";
 import { useCallback } from "react";
+import { taskFlowEnabled } from "../lib/config";
 import ActionTaskPanelForm from "./ActionTaskPanelForm";
 
 export type ActionTaskPanelProps = ActionTaskPanelPropsShared & {
@@ -90,6 +91,7 @@ const ActionTaskPanel = ({
         onAlreadySubmitted={onAlreadySubmitted}
         actionId={action.id}
         disabled={disabled}
+        taskFlowAction={taskFlowEnabled() ? action : undefined}
       />
     );
   }

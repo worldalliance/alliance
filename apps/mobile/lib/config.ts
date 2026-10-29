@@ -98,3 +98,7 @@ export const getWebSocketUrl = (): string => {
   }
   return baseUrl;
 };
+
+/** The full-screen task flow replaces the inline task form in dev builds started with `EXPO_PUBLIC_TASK_FLOW=1`. */
+export const taskFlowEnabled = (): boolean =>
+  __DEV__ && process.env.EXPO_PUBLIC_TASK_FLOW === "1";

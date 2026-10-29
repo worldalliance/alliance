@@ -1,5 +1,9 @@
 import { FormSchema } from "@alliance/common/forms/form-schema";
-import type { FormResponseDto, SubmitFormDto } from "@alliance/shared/client";
+import {
+  ActionDto,
+  FormResponseDto,
+  SubmitFormDto,
+} from "@alliance/shared/client";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import { ActivityIndicator, View } from "react-native";
@@ -7,6 +11,7 @@ import { useAuth } from "../lib/AuthContext";
 import { colors } from "../lib/style/colors";
 import FormRenderer from "./forms/FormRenderer";
 import Text from "./system/Text";
+import TaskFlow from "./taskflow/TaskFlow";
 import { useSubmitTaskForm } from "./useSubmitTaskForm";
 
 interface ActionTaskPanelFormProps {
@@ -23,6 +28,8 @@ interface ActionTaskPanelFormProps {
   formResponse?: FormResponseDto;
   /** Editable but unsubmittable, and nothing typed outlives the screen. */
   preview?: boolean;
+  /** Set to show the form as the full-screen task flow for this action. */
+  taskFlowAction?: ActionDto;
 }
 
 const ActionTaskPanelForm = ({
@@ -38,6 +45,7 @@ const ActionTaskPanelForm = ({
   disabled,
   formResponse,
   preview = false,
+  taskFlowAction,
 }: ActionTaskPanelFormProps) => {
   const { user, isAuthenticated, isLoading: userLoading } = useAuth();
   const { submitTaskForm, recordCompleted, error, historiesReload } =
@@ -106,27 +114,44 @@ const ActionTaskPanelForm = ({
     );
   }
 
+  const schema = form.schema as unknown as FormSchema;
+
   return (
     <View>
-      <FormRenderer
-        id={taskFormId}
-        formSnapshotId={form.formSnapshotId}
-        form={form.schema as unknown as FormSchema}
-        onSubmit={handleSubmitForm}
-        onFormStarted={onFormStarted}
-        onAbandonAction={onAbandonAction}
-        actionId={actionId}
-        persistKey={preview ? null : String(taskFormId)}
-        reloadSourceHistories={historiesReload}
-        userId={user?.id}
-        user={user}
-        userLoading={userLoading}
-        loadCurrentUserLocation={!!user && isAuthenticated}
-        syncDraftToServer={isAuthenticated}
-        scrollPageTo={scrollPageTo}
-        scrollToEnd={scrollToEnd}
-        renderFormAsCompleted={disabled}
-      />
+      {taskFlowAction && completeAction && !disabled ? (
+        <TaskFlow
+          action={taskFlowAction}
+          schema={schema}
+          taskFormId={taskFormId}
+          formSnapshotId={form.formSnapshotId}
+          submitTaskForm={submitTaskForm}
+          submitError={error}
+          reloadSourceHistories={historiesReload}
+          onCompleteAction={completeAction}
+          onFormStarted={onFormStarted}
+          onAbandonAction={onAbandonAction}
+        />
+      ) : (
+        <FormRenderer
+          id={taskFormId}
+          formSnapshotId={form.formSnapshotId}
+          form={schema}
+          onSubmit={handleSubmitForm}
+          onFormStarted={onFormStarted}
+          onAbandonAction={onAbandonAction}
+          actionId={actionId}
+          persistKey={preview ? null : String(taskFormId)}
+          reloadSourceHistories={historiesReload}
+          userId={user?.id}
+          user={user}
+          userLoading={userLoading}
+          loadCurrentUserLocation={!!user && isAuthenticated}
+          syncDraftToServer={isAuthenticated}
+          scrollPageTo={scrollPageTo}
+          scrollToEnd={scrollToEnd}
+          renderFormAsCompleted={disabled}
+        />
+      )}
       {error ? <Text className="mt-2 text-red-500">{error}</Text> : null}
     </View>
   );

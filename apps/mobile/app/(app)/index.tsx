@@ -50,6 +50,7 @@ import { SimplePageTitle } from "../../components/system/SimplePageTitle";
 import { TaskNavigatorStepper } from "../../components/system/TaskNavigatorStepper";
 import Text from "../../components/system/Text";
 import { useAuth } from "../../lib/AuthContext";
+import { taskFlowEnabled } from "../../lib/config";
 import {
   Anchor,
   useWalkthroughScroll,
@@ -71,10 +72,6 @@ export default function HomeScreen() {
   const invalidateTaskForms = useInvalidateTaskForms();
   const [refreshing, setRefreshing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-
-  const handleSubmitSuccess = useCallback(() => {
-    setShowSuccess(true);
-  }, []);
 
   const handleSuccessComplete = useCallback(() => {
     setShowSuccess(false);
@@ -197,6 +194,12 @@ export default function HomeScreen() {
     resetHomeFeed();
     scrollToTop();
   }, [refetch, resetHomeFeed, scrollToTop]);
+
+  // The task flow shows its own completion card, so it skips the overlay.
+  const handleSubmitSuccess = useCallback(() => {
+    if (taskFlowEnabled()) handleOverlayFadeIn();
+    else setShowSuccess(true);
+  }, [handleOverlayFadeIn]);
 
   const scrollToEnd = useCallback((animated = true) => {
     scrollViewRef.current?.scrollToEnd({ animated });
