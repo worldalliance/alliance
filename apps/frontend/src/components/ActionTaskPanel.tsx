@@ -12,8 +12,10 @@ import {
 import { canCompleteAction } from "@alliance/shared/lib/actionUtils";
 import { captureEvent } from "@alliance/shared/lib/analytics";
 import { noop } from "@alliance/shared/lib/constants";
+import { Features } from "@alliance/shared/lib/features";
 import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
 import { useCallback, useMemo, type RefObject } from "react";
+import { isFeatureEnabled } from "../lib/config";
 import ActionTaskPanelForm from "./ActionTaskPanelForm";
 
 export type ActionTaskPanelProps = ActionTaskPanelPropsShared & {
@@ -90,6 +92,10 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
     );
   }, [actionError]);
 
+  const taskFlowAction = isFeatureEnabled(Features.TaskFlow)
+    ? action
+    : undefined;
+
   if ((disabled || formResponse) && action.taskFormId !== null) {
     return (
       <ActionTaskPanelForm
@@ -103,6 +109,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
         disabled={true}
         formResponse={formResponse}
         onSubmitted={onFormSubmitted}
+        taskFlowAction={taskFlowAction}
       />
     );
   }
@@ -118,6 +125,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
         actionId={action.id}
         scrollContainerRef={scrollContainerRef}
         preview
+        taskFlowAction={taskFlowAction}
       />
     ) : null;
   }
@@ -155,6 +163,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
         onSubmitted={onFormSubmitted}
         scrollContainerRef={scrollContainerRef}
         disabled={disabled || !canSubmit}
+        taskFlowAction={taskFlowAction}
       />
     );
   }

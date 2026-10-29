@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { SiteAppProvider, SiteOriginLinkProvider } from "../ui/SiteAppProvider";
+import { StickyAccordionTitles } from "./accordionStyles";
 import RenderDisplayBlock from "./RenderDisplayBlock";
 
 const accordion = (singleOpen?: boolean): AccordionBlock => ({
@@ -94,6 +95,22 @@ describe("the accordion display block", () => {
 
     expect(screen.queryByText("Inside one")).toBeNull();
     expect(screen.getByText("Inside two")).toBeTruthy();
+  });
+
+  it("pins section titles only inside a container that asks for it", () => {
+    const titleClass = () =>
+      screen.getByRole("button", { name: "First" }).closest("h3")?.className;
+
+    const { unmount } = render(<RenderDisplayBlock block={accordion()} />);
+    expect(titleClass()).not.toContain("sticky");
+    unmount();
+
+    render(
+      <StickyAccordionTitles.Provider value>
+        <RenderDisplayBlock block={accordion()} />
+      </StickyAccordionTitles.Provider>,
+    );
+    expect(titleClass()).toContain("sticky");
   });
 });
 

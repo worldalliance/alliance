@@ -7,9 +7,11 @@ import {
   type ActionWithdrawal,
   formAlreadySubmitted,
   memberActionDeadlinePassed,
+  taskFlowContributors,
   useTaskFormHandlers,
 } from "./actionTaskPanel";
-import { makeAction } from "./testFixtures";
+import { shuffledAuthors } from "./actionUtils";
+import { makeAction, makeProfile } from "./testFixtures";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 
@@ -96,6 +98,39 @@ describe("useTaskFormHandlers", () => {
     expect(onOptOutAction).not.toHaveBeenCalled();
     expect(view.result.current.actionError).toBe(
       "Something went wrong. Please try again.",
+    );
+  });
+});
+
+describe("taskFlowContributors", () => {
+  it("credits authors as staff ahead of reviewers as experts", () => {
+    expect(
+      taskFlowContributors({
+        id: 1,
+        authors: [makeProfile(4)],
+        reviewers: [{ name: "Sam Reviewer" }],
+      }),
+    ).toEqual([
+      { key: "author-4", name: "User 4", picture: null, role: "Staff" },
+      {
+        key: "reviewer-0",
+        name: "Sam Reviewer",
+        picture: null,
+        role: "Expert",
+      },
+    ]);
+  });
+
+  it("credits authors in the action page's order", () => {
+    const authors = [1, 2, 3, 4, 5].map(makeProfile);
+    expect(
+      taskFlowContributors({ id: 9, authors, reviewers: [] }).map(
+        (contributor) => contributor.key,
+      ),
+    ).toEqual(
+      shuffledAuthors({ id: 9, authors }).map(
+        (author) => `author-${author.id}`,
+      ),
     );
   });
 });

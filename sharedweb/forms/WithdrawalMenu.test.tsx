@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { flushSync } from "react-dom";
 import { MemoryRouter, Route, Routes } from "react-router";
 import WithdrawalMenu from "./WithdrawalMenu";
 
@@ -90,4 +91,77 @@ it("sends a member on vacation to their away periods", () => {
   fireEvent.click(screen.getByRole("button", { name: "On vacation" }));
 
   expect(screen.getByText("Membership page")).toBeTruthy();
+});
+
+it("opens when React renders the click's update before the document sees it", () => {
+  const { container } = render(
+    <MemoryRouter>
+      <WithdrawalMenu disabled={false} onWithdraw={jest.fn()} />
+    </MemoryRouter>,
+  );
+  const trigger = container
+    .querySelector(".lucide-ellipsis")
+    ?.closest("button");
+  if (!trigger) throw new Error("no withdrawal menu");
+  // A browser renders the update before the click bubbles to document; jsdom
+  // only does when something flushes it on the way up.
+  const flush = () => flushSync(() => {});
+  document.body.addEventListener("click", flush);
+  fireEvent.click(trigger);
+  document.body.removeEventListener("click", flush);
+
+  expect(screen.queryByText("Withdrawal options")).not.toBeNull();
+});
+
+it("opens and closes from a trigger the caller supplies", () => {
+  const { container } = render(
+    <MemoryRouter>
+      <WithdrawalMenu
+        disabled={false}
+        onWithdraw={jest.fn()}
+        renderTrigger={(toggle) => <button onClick={toggle}>Custom</button>}
+      />
+    </MemoryRouter>,
+  );
+  expect(container.querySelector(".lucide-ellipsis")).toBeNull();
+
+  fireEvent.click(screen.getByRole("button", { name: "Custom" }));
+  expect(screen.queryByText("Withdrawal options")).not.toBeNull();
+
+  fireEvent.click(screen.getByRole("button", { name: "Custom" }));
+  expect(screen.queryByText("Withdrawal options")).toBeNull();
+});
+
+it("closes on Escape and marks the key handled", () => {
+  renderMenu();
+
+  const notPrevented = fireEvent.keyDown(
+    screen.getByRole("button", { name: "Moral objection" }),
+    { key: "Escape" },
+  );
+
+  expect(notPrevented).toBe(false);
+  expect(screen.queryByText("Withdrawal options")).toBeNull();
+});
+
+it("returns focus to the trigger when Escape closes it", () => {
+  renderMenu();
+  const option = screen.getByRole("button", { name: "Moral objection" });
+  option.focus();
+
+  fireEvent.keyDown(option, { key: "Escape" });
+
+  expect(document.activeElement).toBe(
+    document.querySelector(".lucide-ellipsis")?.closest("button"),
+  );
+});
+
+it("leaves Escape to its container while closed", () => {
+  renderMenu();
+  const trigger = document.querySelector(".lucide-ellipsis")?.closest("button");
+  if (!trigger) throw new Error("no withdrawal menu");
+  fireEvent.click(trigger);
+  expect(screen.queryByText("Withdrawal options")).toBeNull();
+
+  expect(fireEvent.keyDown(trigger, { key: "Escape" })).toBe(true);
 });

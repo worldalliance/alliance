@@ -2,10 +2,12 @@ import type {
   ActionReviewerIcon,
   ProfileDto,
 } from "@alliance/shared/client/types.gen";
-import { shuffleWithSeed } from "@alliance/shared/forms/randomutils";
 import { showActionPageTaskSection } from "@alliance/shared/lib/actionPageTaskPanel";
 import { useCompletedTaskForm } from "@alliance/shared/lib/actionTaskPanelCompleted";
-import { hasViewerCompletedAction } from "@alliance/shared/lib/actionUtils";
+import {
+  hasViewerCompletedAction,
+  shuffledAuthors,
+} from "@alliance/shared/lib/actionUtils";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
 import { getActiveFollowUpForms } from "@alliance/shared/lib/followUpForm";
 import { getNextEvent } from "@alliance/shared/lib/largeActionCard";
@@ -105,12 +107,10 @@ const ActionContents = () => {
     }
   }, [location.hash]);
 
-  const shuffledAuthors = useMemo(() => {
-    if (!action.authors) {
-      return [];
-    }
-    return shuffleWithSeed(action.authors, action.id.toString());
-  }, [action.authors, action.id]);
+  const authors = useMemo(
+    () => shuffledAuthors({ id: action.id, authors: action.authors }),
+    [action.authors, action.id],
+  );
 
   const activeFollowUpForms = useMemo(() => {
     return getActiveFollowUpForms(action);
@@ -254,13 +254,13 @@ const ActionContents = () => {
               />
             </div>
 
-            {(!!shuffledAuthors.length || !!action.reviewers?.length) && (
+            {(!!authors.length || !!action.reviewers?.length) && (
               <div>
                 <p className="text-title-small mb-4">Contributors</p>
                 <div className="flex flex-col gap-y-2">
-                  {!!shuffledAuthors.length && (
+                  {!!authors.length && (
                     <div className="flex flex-row flex-wrap gap-x-3 gap-y-1.5">
-                      {shuffledAuthors.map((author: ProfileDto) => (
+                      {authors.map((author: ProfileDto) => (
                         <Link
                           key={author.id}
                           to={href("/member/:id", {

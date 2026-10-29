@@ -344,6 +344,29 @@ export const unreadablePhotos = (count: number, of: number) =>
     ? `Couldn't read ${pickForCount(count, "that photo", "those photos")}. Try picking again.`
     : `Couldn't read ${count} of ${of} photos.`;
 
+/** The task flow's title for a screen whose form gives it no header. */
+export const taskFlowFallbackTitle = {
+  questions: "Answer the questions below",
+  reading: "Read this before you continue",
+} as const;
+
+export const taskFlow = {
+  begin: "Begin",
+  view: "View task",
+  next: "Next",
+  back: "Back",
+  submit: "Submit",
+  done: "Done",
+  background: "Project background",
+  complete: "Task complete!",
+  completeUpdate:
+    "We'll share a progress update on this project with all members in the coming weeks.",
+  closeTask: "Close task",
+  inviteFriend: "Invite a friend",
+  staff: "Staff",
+  expert: "Expert",
+} as const;
+
 export const outputFieldPublicToggle = {
   showPublicly: "Show my response to other members",
   hidePublicly: "Hide my response from others",

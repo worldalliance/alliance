@@ -8,7 +8,6 @@ import { NAV_HEIGHT, Navbar } from "../../../site/Navbar";
 import { SiteRoot } from "../../../site/PageShell";
 import { SITE_COL } from "../../../site/ui";
 import { WaitlistHeroImages } from "../democratic-grantmaking-26/DemocraticGrantmaking26";
-import { WaitlistSignupForm } from "../democratic-grantmaking-26/WaitlistSignupForm";
 import { AboutSections } from "./AboutSections";
 import {
   ChatbotUseStat,
@@ -20,12 +19,11 @@ import {
   PARTICIPANT_GOAL,
   SHOW_FACTS,
   SHOW_TIMELINE,
-  SIGNUP_BUTTON,
-  SIGNUP_CLOSED,
   SIGNUP_NOTE,
 } from "./copy";
 import { ExpertList } from "./ExpertList";
 import { FactBlocks } from "./FactBlocks";
+import { KoraSignIn } from "./KoraSignIn";
 import { NewsCollage } from "./NewsCollage";
 import { ParticipantsBar } from "./ParticipantsBar";
 import { ProjectTimeline } from "./ProjectTimeline";
@@ -102,12 +100,7 @@ function HeroScreen() {
             children worldwide.
           </p>
           <ExpertList />
-          <WaitlistSignupForm
-            className="mt-2 w-full"
-            submitLabel={SIGNUP_BUTTON}
-            note={SIGNUP_NOTE}
-            closedMessage={SIGNUP_CLOSED}
-          />
+          <KoraSignIn className="mt-2 w-full" note={SIGNUP_NOTE} />
         </div>
         <div className="flex justify-center lg:justify-end">
           <div className="relative">

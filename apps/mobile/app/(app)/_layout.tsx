@@ -15,6 +15,8 @@ import AnimatedSidebar from "../../components/AnimatedSidebar";
 import Button, { ButtonColor } from "../../components/system/Button";
 import Text from "../../components/system/Text";
 // import { Walkthrough } from "../../components/onboarding/Walkthrough";
+import { TaskFlowCompletionProvider } from "@alliance/shared/lib/TaskFlowCompletionContext";
+import { TaskFlowReturnProvider } from "@alliance/shared/lib/TaskFlowReturnContext";
 import Sidebar from "../../components/Sidebar";
 import TabBar from "../../components/TabBar";
 import {
@@ -207,11 +209,15 @@ export default function AppLayout() {
   return (
     <AppDrawerProvider isPermanent={dimensions.width >= 1024}>
       <WalkthroughAnchorProvider>
-        <View className="flex-1" testID="vr-app-shell-ready">
-          <AppContent />
-          {/* The platform tour is off: logging in lands on the platform. */}
-          {/* <Walkthrough /> */}
-        </View>
+        <TaskFlowReturnProvider>
+          <View className="flex-1" testID="vr-app-shell-ready">
+            <TaskFlowCompletionProvider>
+              <AppContent />
+            </TaskFlowCompletionProvider>
+            {/* The platform tour is off: logging in lands on the platform. */}
+            {/* <Walkthrough /> */}
+          </View>
+        </TaskFlowReturnProvider>
       </WalkthroughAnchorProvider>
     </AppDrawerProvider>
   );

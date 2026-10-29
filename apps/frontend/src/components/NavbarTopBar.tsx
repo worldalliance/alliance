@@ -14,10 +14,19 @@ import {
   useState,
 } from "react";
 import { useAuth } from "../lib/AuthContext";
-import { NavbarOptionsContext } from "../lib/NavbarOptionsContext";
+import {
+  NavbarOptionsContext,
+  useImmersiveChrome,
+} from "../lib/NavbarOptionsContext";
 import NotificationsIcon from "./NotificationsIcon";
 import ProfileDropdown from "./ProfileDropdown";
 import SearchBar from "./SearchBar";
+import { flowMotion, REDUCED_MOTION, transition } from "./taskflow/flowMotion";
+
+const HEADER_STYLE = {
+  transition: transition(flowMotion.recolor, "background-color", "box-shadow"),
+};
+const ICON_STYLE = { transition: transition(flowMotion.fade, "opacity") };
 
 export function NavbarTopBar({
   onMenuClick,
@@ -31,6 +40,7 @@ export function NavbarTopBar({
   const navbarOptions = useContext(NavbarOptionsContext);
   const whiteBackground =
     whiteBackgroundProp ?? navbarOptions?.options?.whiteBackground ?? false;
+  const { immersive, success } = useImmersiveChrome();
   const { isAuthenticated } = useAuth();
   const [searchExpanded, setSearchExpanded] = useState(false);
   const searchContainerRef = useOutsideClick(() => setSearchExpanded(false));
@@ -81,6 +91,10 @@ export function NavbarTopBar({
   }, [isAuthenticated, updateNavbarTopBarHeight]);
 
   useEffect(() => {
+    if (immersive) {
+      setSearchExpanded(false);
+      return;
+    }
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
@@ -89,7 +103,7 @@ export function NavbarTopBar({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [immersive]);
 
   if (!isAuthenticated) {
     return null;
@@ -99,10 +113,14 @@ export function NavbarTopBar({
     <header
       className={cn(
         "z-20 flex items-center justify-between gap-2.5 px-3 py-2 md:px-4",
-        whiteBackground ? "bg-white" : "bg-page",
+        whiteBackground && !immersive ? "bg-white" : "bg-page",
+        immersive && "shadow-[inset_0_-1px_0_var(--color-zinc-200)]",
+        success && "bg-green shadow-none",
         "fixed top-0 left-0 right-0 md:left-[var(--nav-width)]",
+        REDUCED_MOTION,
         className,
       )}
+      style={HEADER_STYLE}
       ref={navbarTopBarRef}
     >
       {/* Menu button - mobile only */}
@@ -119,10 +137,14 @@ export function NavbarTopBar({
         {/* Search: icon that expands to search bar */}
         <div
           ref={searchContainerRef}
+          inert={immersive}
           className={cn(
             "flex items-center",
+            immersive && "opacity-0",
             searchExpanded ? "flex-1 min-w-0 max-w-md" : "shrink-0",
+            REDUCED_MOTION,
           )}
+          style={ICON_STYLE}
         >
           {searchExpanded ? (
             <div className="flex items-center w-full rounded-md bg-white overflow-visible">
@@ -165,7 +187,11 @@ export function NavbarTopBar({
           )}
         </div>
 
-        <div className="relative">
+        <div
+          inert={immersive}
+          className={cn("relative", immersive && "opacity-0", REDUCED_MOTION)}
+          style={ICON_STYLE}
+        >
           <NotificationsIcon />
         </div>
         <div className="relative">
