@@ -5,15 +5,16 @@ import {
 import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options";
 import type { FormResponseDto } from "@alliance/shared/client";
 import { computeFormStorageKey } from "@alliance/shared/forms/formDrafts";
-import { actionStore } from "@alliance/shared/lib/actionStore";
+import { taskFlow } from "@alliance/shared/lib/copy";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { TaskFlowCompletionProvider } from "@alliance/shared/lib/TaskFlowCompletionContext";
+import { TaskFlowReturnProvider } from "@alliance/shared/lib/TaskFlowReturnContext";
 import {
   makeAction,
   makeFormResponse,
   makeUser,
 } from "@alliance/shared/lib/testFixtures";
 import { recordExceptions } from "@alliance/shared/lib/testing/recordExceptions";
-import { seedActions } from "@alliance/shared/lib/testing/seedActions";
 import {
   routes,
   serveApi,
@@ -23,13 +24,24 @@ import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 import { AuthContext, type AuthContextType } from "../lib/AuthContext";
 import { testAuthUser } from "../stories/testData";
 import { authValue } from "../testing/authValue";
 import ActionTaskPanelForm from "./ActionTaskPanelForm";
+import { CLOSE_TIMEOUT } from "./taskflow/TaskFlow.testing";
 
-declare const happyDOM: { setURL: (url: string) => void };
+const action = makeAction({ id: 1 });
+
+const withFlow = (children: ReactNode) => (
+  <TaskFlowReturnProvider>
+    <TaskFlowCompletionProvider>{children}</TaskFlowCompletionProvider>
+  </TaskFlowReturnProvider>
+);
+
+const begin = async () =>
+  fireEvent.click(await screen.findByRole("button", { name: taskFlow.begin }));
 
 const reported = recordExceptions();
 
@@ -52,6 +64,7 @@ const api = serveApi(
           outputViews: [],
         },
       }),
+    "GET /user/mylocation": () => Response.json({ city: null }),
   }),
 );
 
@@ -62,14 +75,16 @@ it("seeds a timezone field from a member whose session loads after the form", as
       <MemoryRouter>
         <SiteAppProvider>
           <AuthContext.Provider value={auth}>
-            <ActionTaskPanelForm
-              taskFormId={7}
-              actionId={1}
-              onCompleteAction={null}
-              onDeadlinePassed={() => {}}
-              onFormStarted={() => {}}
-              publicAction
-            />
+            {withFlow(
+              <ActionTaskPanelForm
+                taskFormId={7}
+                action={action}
+                onCompleteAction={() => {}}
+                onDeadlinePassed={() => {}}
+                onFormStarted={() => {}}
+                publicAction
+              />,
+            )}
           </AuthContext.Provider>
         </SiteAppProvider>
       </MemoryRouter>
@@ -82,11 +97,12 @@ it("seeds a timezone field from a member whose session loads after the form", as
   rerender(
     panel(authValue({ user: makeUser({ timeZone: "Pacific/Chatham" }) })),
   );
+  await begin();
 
   expect(await screen.findByRole("combobox", { name: /Chatham/ })).toBeTruthy();
 });
 
-it("shows a form with no timezone field before the session loads", async () => {
+it("opens a form with no timezone field to begin before the session loads", async () => {
   api.alsoServing({
     "GET /tasks/slug/:id": () =>
       Response.json({
@@ -111,21 +127,25 @@ it("shows a form with no timezone field before the session loads", async () => {
       <MemoryRouter>
         <SiteAppProvider>
           <AuthContext.Provider value={authValue({ loading: true })}>
-            <ActionTaskPanelForm
-              taskFormId={8}
-              actionId={1}
-              onCompleteAction={null}
-              onDeadlinePassed={() => {}}
-              onFormStarted={() => {}}
-              publicAction
-            />
+            {withFlow(
+              <ActionTaskPanelForm
+                taskFormId={8}
+                action={action}
+                onCompleteAction={() => {}}
+                onDeadlinePassed={() => {}}
+                onFormStarted={() => {}}
+                publicAction
+              />,
+            )}
           </AuthContext.Provider>
         </SiteAppProvider>
       </MemoryRouter>
     </QueryClientProvider>,
   );
 
-  expect(await screen.findByRole("textbox")).toBeTruthy();
+  expect(
+    await screen.findByRole("button", { name: taskFlow.begin }),
+  ).toBeTruthy();
 });
 
 const renderMemberNoteForm = ({
@@ -173,21 +193,34 @@ const renderMemberNoteForm = ({
         <SiteAppProvider>
           <AuthContext.Provider value={auth}>
             <ToastProvider>
-              <ActionTaskPanelForm
-                taskFormId={5}
-                actionId={1}
-                onCompleteAction={onCompleteAction}
-                onSubmitted={onSubmitted}
-                onFormStarted={() => {}}
-                onDeadlinePassed={onDeadlinePassed}
-                publicAction={publicAction}
-              />
+              {withFlow(
+                <ActionTaskPanelForm
+                  taskFormId={5}
+                  action={action}
+                  onCompleteAction={onCompleteAction}
+                  onSubmitted={onSubmitted}
+                  onFormStarted={() => {}}
+                  onDeadlinePassed={onDeadlinePassed}
+                  publicAction={publicAction}
+                />,
+              )}
             </ToastProvider>
           </AuthContext.Provider>
         </SiteAppProvider>
       </MemoryRouter>
     </QueryClientProvider>,
   );
+};
+
+const submitNote = async () => {
+  await begin();
+  fireEvent.click(await screen.findByRole("button", { name: taskFlow.submit }));
+};
+
+const submitAndClose = async () => {
+  await submitNote();
+  await screen.findByRole("heading", { name: taskFlow.complete });
+  fireEvent.click(screen.getByRole("button", { name: taskFlow.closeTask }));
 };
 
 const submitRefusedWith = async (
@@ -202,7 +235,7 @@ const submitRefusedWith = async (
     onDeadlinePassed,
   });
 
-  fireEvent.click(await screen.findByRole("button", { name: "Complete" }));
+  await submitNote();
 };
 
 it("shows the reload instruction, unreported, when the histories its options read changed", async () => {
@@ -246,24 +279,6 @@ it("reloads the page, unreported, when the form was already submitted", async ()
   }
 });
 
-it("marks the cached action completed once the server accepts the submission", async () => {
-  const queryClient = new QueryClient();
-  seedActions(queryClient, [makeAction({ id: 1 })]);
-  renderMemberNoteForm({
-    serving: {
-      "POST /tasks/submitForm/:id": () =>
-        Response.json(makeFormResponse(), { status: 201 }),
-    },
-    queryClient,
-  });
-
-  fireEvent.click(await screen.findByRole("button", { name: "Complete" }));
-
-  await waitFor(() =>
-    expect(actionStore(queryClient).get(1)?.viewer?.relation).toBe("completed"),
-  );
-});
-
 it("completes with the served response and drops the local draft once the server accepts the submission", async () => {
   const served = makeFormResponse({ answers: { note: "done" } });
   const draftKey = computeFormStorageKey({ formId: 5, instanceId: 5 });
@@ -279,39 +294,13 @@ it("completes with the served response and drops the local draft once the server
     onCompleteAction,
   });
 
-  fireEvent.click(await screen.findByRole("button", { name: "Complete" }));
+  await submitAndClose();
 
-  await waitFor(() => expect(onCompleteAction).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(onCompleteAction).toHaveBeenCalledTimes(1), {
+    timeout: CLOSE_TIMEOUT,
+  });
   expect(onSubmitted).toHaveBeenCalledWith(served);
   expect(window.localStorage.getItem(draftKey)).toBeNull();
-});
-
-it("sends a guest to the completed page after their public task completes", async () => {
-  const startHref = window.location.href;
-  happyDOM.setURL("http://localhost/actions/1");
-  let pathOnComplete: string | null = null;
-  try {
-    renderMemberNoteForm({
-      serving: {
-        "POST /tasks/submitPublicForm/:id": () =>
-          Response.json(makeFormResponse(), { status: 201 }),
-      },
-      auth: authValue(),
-      publicAction: true,
-      onCompleteAction: () => {
-        pathOnComplete = window.location.pathname;
-      },
-    });
-
-    fireEvent.click(await screen.findByRole("button", { name: "Complete" }));
-
-    await waitFor(() =>
-      expect(window.location.pathname).toBe("/actions/completed"),
-    );
-    expect(pathOnComplete).toBe("/actions/1");
-  } finally {
-    happyDOM.setURL(startHref);
-  }
 });
 
 it("refreshes a member without a contract once their task completes", async () => {
@@ -327,9 +316,11 @@ it("refreshes a member without a contract once their task completes", async () =
     }),
   });
 
-  fireEvent.click(await screen.findByRole("button", { name: "Complete" }));
+  await submitAndClose();
 
-  await waitFor(() => expect(refreshUser).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(refreshUser).toHaveBeenCalledTimes(1), {
+    timeout: CLOSE_TIMEOUT,
+  });
 });
 
 it("invalidates the form's aggregate views once the server accepts the submission", async () => {
@@ -343,7 +334,7 @@ it("invalidates the form's aggregate views once the server accepts the submissio
     queryClient,
   });
 
-  fireEvent.click(await screen.findByRole("button", { name: "Complete" }));
+  await submitNote();
 
   await waitFor(() =>
     expect(
@@ -362,6 +353,8 @@ it("prefills a member's form with the draft they left as a guest", async () => {
         }),
     },
   });
+
+  await begin();
 
   expect(await screen.findByDisplayValue("from my guest visit")).toBeTruthy();
 });

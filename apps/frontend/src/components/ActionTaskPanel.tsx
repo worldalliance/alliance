@@ -12,10 +12,8 @@ import {
 import { canCompleteAction } from "@alliance/shared/lib/actionUtils";
 import { captureEvent } from "@alliance/shared/lib/analytics";
 import { noop } from "@alliance/shared/lib/constants";
-import { Features } from "@alliance/shared/lib/features";
 import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
 import { useCallback, useMemo, type RefObject } from "react";
-import { isFeatureEnabled } from "../lib/config";
 import ActionTaskPanelForm from "./ActionTaskPanelForm";
 
 export type ActionTaskPanelProps = ActionTaskPanelPropsShared & {
@@ -92,10 +90,6 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
     );
   }, [actionError]);
 
-  const taskFlowAction = isFeatureEnabled(Features.TaskFlow)
-    ? action
-    : undefined;
-
   if ((disabled || formResponse) && action.taskFormId !== null) {
     return (
       <ActionTaskPanelForm
@@ -105,11 +99,10 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
         onFormStarted={handleFormStarted}
         onAbandonAction={onAbandonAction}
         card={card}
-        actionId={action.id}
+        action={action}
         disabled={true}
         formResponse={formResponse}
         onSubmitted={onFormSubmitted}
-        taskFlowAction={taskFlowAction}
       />
     );
   }
@@ -122,10 +115,8 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
         onDeadlinePassed={noop}
         onFormStarted={noop}
         card={card}
-        actionId={action.id}
-        scrollContainerRef={scrollContainerRef}
+        action={action}
         preview
-        taskFlowAction={taskFlowAction}
       />
     ) : null;
   }
@@ -158,12 +149,10 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
         onAbandonAction={onAbandonAction}
         onDeadlinePassed={onDeadlinePassed}
         card={card}
-        actionId={action.id}
+        action={action}
         redirectOnComplete={redirectOnComplete}
         onSubmitted={onFormSubmitted}
-        scrollContainerRef={scrollContainerRef}
         disabled={disabled || !canSubmit}
-        taskFlowAction={taskFlowAction}
       />
     );
   }

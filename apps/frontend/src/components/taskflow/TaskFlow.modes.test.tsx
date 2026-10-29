@@ -24,12 +24,11 @@ it("runs a staff preview through to the completion card without submitting or st
     page: (
       <ActionTaskPanelForm
         taskFormId={9}
-        actionId={1}
         onCompleteAction={null}
         onFormStarted={() => {}}
         onDeadlinePassed={() => {}}
         preview
-        taskFlowAction={action}
+        action={action}
       />
     ),
   });
@@ -52,13 +51,12 @@ it("walks a task the member can't submit read-only, closing from its last screen
     page: (
       <ActionTaskPanelForm
         taskFormId={9}
-        actionId={1}
         onCompleteAction={null}
         onAbandonAction={() => {}}
         onFormStarted={() => {}}
         onDeadlinePassed={() => {}}
         disabled
-        taskFlowAction={action}
+        action={action}
       />
     ),
   });
@@ -85,12 +83,11 @@ it("shows a guest the completion card before completing a public task and redire
     page: (
       <ActionTaskPanelForm
         taskFormId={9}
-        actionId={1}
         onCompleteAction={onCompleteAction}
         onFormStarted={() => {}}
         onDeadlinePassed={() => {}}
         publicAction
-        taskFlowAction={action}
+        action={action}
       />
     ),
   });
@@ -123,13 +120,12 @@ it("offers a guest on a public task no withdraw", async () => {
     page: (
       <ActionTaskPanelForm
         taskFormId={9}
-        actionId={1}
         onCompleteAction={() => {}}
         onAbandonAction={() => {}}
         onFormStarted={() => {}}
         onDeadlinePassed={() => {}}
         publicAction
-        taskFlowAction={action}
+        action={action}
       />
     ),
   });
@@ -143,7 +139,6 @@ it("opens a submitted response read-only, with the member's answers", async () =
     page: (
       <ActionTaskPanelForm
         taskFormId={9}
-        actionId={1}
         onCompleteAction={() => {}}
         onFormStarted={() => {}}
         onDeadlinePassed={() => {}}
@@ -153,7 +148,7 @@ it("opens a submitted response read-only, with the member's answers", async () =
           schemaSnapshot: taskSchema,
           answers: { a: "Helpful" },
         })}
-        taskFlowAction={action}
+        action={action}
       />
     ),
   });
