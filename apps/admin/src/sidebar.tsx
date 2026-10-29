@@ -3,6 +3,7 @@ import { isProduction } from "@alliance/sharedweb/lib/config";
 import { LogOut, PanelLeft } from "lucide-react";
 import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { Outlet } from "react-router";
+import AdminSearch from "./components/AdminSearch";
 import SidebarNav from "./components/SidebarNav";
 import { useAuth } from "./lib/AuthContext";
 import { useGroupAssignmentMembersAdmin } from "./lib/useGroupAssignmentAdmin";
@@ -71,6 +72,7 @@ const Sidebar: React.FC = () => {
           >
             Alliance Admin
           </h1>
+          <AdminSearch />
           <SidebarNav
             groupAssignmentCount={membersUndergoingGroupAssignment.length}
             pendingOutreachPartnershipCount={pendingOutreachPartnershipCount}
