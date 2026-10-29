@@ -11,6 +11,7 @@ const schedule = {
 const action = { id: 1 };
 const finding = {
   key: "f1",
+  dismissKey: "d1",
   actionId: 1,
   source: TextSource.Body,
   text: "a  b",
@@ -39,7 +40,7 @@ const ready = {
   reminderWindows: [],
   hasMemberActionEvent: false,
   checkedActionIds: new Set([1]),
-  dismissedFindingKeys: new Set(["f1"]),
+  dismissedFindingKeys: new Set(["d1"]),
   violationsAcknowledged: false,
   now,
 };
@@ -100,6 +101,13 @@ describe("launchBlockers", () => {
       "1 action isn't marked ready to launch.",
       "1 text finding to fix or dismiss.",
     ]);
+  });
+
+  it("dismisses a text finding by its dismissKey, not its key", () => {
+    expect(launchBlockers(ready)).toEqual([]);
+    expect(
+      launchBlockers({ ...ready, dismissedFindingKeys: new Set(["f1"]) }),
+    ).toEqual(["1 text finding to fix or dismiss."]);
   });
 
   it("lets acknowledged contract violations through", () => {

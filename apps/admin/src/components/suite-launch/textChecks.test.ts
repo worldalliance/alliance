@@ -56,8 +56,28 @@ describe("findTextIssues", () => {
     );
   });
 
-  it("skips bare www links", () => {
+  it("skips code fence labels and file names, still checking a caption", () => {
+    expect(
+      flagged("```imgcap\n1762827853197.webp\nA pothoel\n```", (word) =>
+        ["pothole"].includes(word),
+      ),
+    ).toEqual([{ kind: TextIssueKind.Misspelling, text: "pothoel" }]);
+  });
+
+  it("still checks the rest of a line after inline triple backticks", () => {
+    expect(
+      flagged("Use ```js``` then zzq here", (word) => word !== "zzq"),
+    ).toEqual([{ kind: TextIssueKind.Misspelling, text: "zzq" }]);
+    expect(flagged("```js``` then zzq here", (word) => word !== "zzq")).toEqual(
+      [{ kind: TextIssueKind.Misspelling, text: "zzq" }],
+    );
+  });
+
+  it("skips bare www links and domains", () => {
     expect(flagged("Visit www.example.org", () => false)).toEqual([]);
+    expect(flagged("Visit thealliance.org", () => false)).toEqual([]);
+    expect(flagged("Visit thealliance.org/rsvp/qwzx", () => false)).toEqual([]);
+    expect(flagged("Email jsmith@thealliance.org", () => false)).toEqual([]);
   });
 
   it("still flags a missing space before a word spelled like a domain ending", () => {

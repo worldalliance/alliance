@@ -34,6 +34,7 @@ On the admin suite view:
 - The launch button spans the full width, with no rocket icon. (user)
 - The action checklist includes "Part of a project". (user)
 - Member counts respect who has signed the contract. (user)
+- Cut the misspelling check's false positives. (user)
 
 ## Verification
 

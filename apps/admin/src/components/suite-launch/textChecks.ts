@@ -17,23 +17,32 @@ export const TEXT_ISSUE_LABELS: Record<TextIssueKind, string> = {
   [TextIssueKind.Placeholder]: "Placeholder text",
 };
 
-export type TextIssue = {
-  kind: TextIssueKind;
-  start: number;
-  end: number;
-};
+type RuleKind = Exclude<TextIssueKind, TextIssueKind.Misspelling>;
+
+export type TextIssue = { start: number; end: number } & (
+  | { kind: RuleKind }
+  | {
+      kind: TextIssueKind.Misspelling;
+      /** The word looked up: straight apostrophes, no trailing `'s`. */
+      word: string;
+    }
+);
 
 // Replaced character for character, so issue offsets still index the original text.
 const UNCHECKED_SPANS = [
   /\]\([^)]*\)/g,
   /(?:https?:\/\/|www\.)\S+/g,
+  /\S+@\S+\.\S+/g,
+  // Case-sensitive, so a sentence ending before "Net" or "Us" with no space still counts.
+  /\b[\w-]+(?:\.[\w-]+)*\.(?:org|com|net|io|gov|edu|co|us|uk)\b(?:\/\S*)?/g,
+  /^ {0,3}```[^`\n]*$/gm,
   /`[^`\n]*`/g,
   /<[^>\n]+>/g,
-  /\S+@\S+\.\S+/g,
+  /\S+\.(?:webp|png|jpe?g|gif|svg|pdf|mp4)\b/gi,
 ];
 const MASK = "\u0001";
 
-const PATTERNS: [TextIssueKind, RegExp][] = [
+const PATTERNS: [RuleKind, RegExp][] = [
   // Markdown reads two trailing spaces as a line break, so only spaces between words count.
   [TextIssueKind.DoubleSpace, /(?<=\S) {2,}(?=\S)/g],
   [TextIssueKind.RepeatedWord, /\b([a-z]+)\s+\1\b/gi],
@@ -80,6 +89,7 @@ export function findTextIssues(
           kind: TextIssueKind.Misspelling,
           start: match.index,
           end: match.index + match[0].length,
+          word,
         });
       }
     }
