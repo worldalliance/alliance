@@ -62,7 +62,14 @@ const FindingRow = ({
               {finding.formId ? (
                 <EditTaskFormLink formId={finding.formId} />
               ) : (
-                <EditActionLink actionId={finding.actionId} />
+                <EditActionLink
+                  actionId={finding.actionId}
+                  select={{
+                    field: finding.source,
+                    from: finding.start,
+                    to: finding.end,
+                  }}
+                />
               )}
             </div>
           );

@@ -8,7 +8,7 @@ import {
 
 serveLaunchApi();
 
-it("links a task form finding to the form and a body finding to the action", async () => {
+it("links a task form finding to the form and a body finding to its text in the action", async () => {
   api.formPages = [{ id: "p1", title: "Page  one", fields: [] }];
   renderPanel();
 
@@ -25,9 +25,9 @@ it("links a task form finding to the form and a body finding to the action", asy
   ).toBe("/forms/5");
   expect(
     bodyFinding
-      ?.querySelector('[aria-label="Edit action"]')
+      ?.querySelector('[aria-label="Edit this text"]')
       ?.getAttribute("href"),
-  ).toBe("/actions/1");
+  ).toBe("/actions/1?tab=details&field=body&from=4&to=6");
 });
 
 it("previews the actions assigned to a picked member", async () => {

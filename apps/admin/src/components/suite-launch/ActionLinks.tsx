@@ -2,6 +2,10 @@ import { ExternalLink, FileText, Pencil } from "lucide-react";
 import type React from "react";
 import { Link } from "react-router";
 import { getSiteUrl } from "../../lib/config";
+import {
+  selectionSearch,
+  type LinkedSelection,
+} from "../../lib/linkedSelection";
 
 export const iconControlClass =
   "rounded p-1.5 text-zinc-600 hover:bg-zinc-100 hover:text-black";
@@ -23,8 +27,22 @@ const NewTabLink = ({
   </Link>
 );
 
-export const EditActionLink = ({ actionId }: { actionId: number }) => (
-  <NewTabLink to={`/actions/${actionId}`} label="Edit action">
+export const EditActionLink = ({
+  actionId,
+  select,
+}: {
+  actionId: number;
+  /** Opens the action's details with this text selected. */
+  select?: LinkedSelection;
+}) => (
+  <NewTabLink
+    to={
+      select
+        ? `/actions/${actionId}?tab=details&${selectionSearch(select)}`
+        : `/actions/${actionId}`
+    }
+    label={select ? "Edit this text" : "Edit action"}
+  >
     <Pencil className="size-4" />
   </NewTabLink>
 );
