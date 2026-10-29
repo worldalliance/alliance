@@ -2,7 +2,11 @@ import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
 import { ExceptionEvent } from "@alliance/common/analytics";
 import { FormSchema } from "@alliance/common/forms/form-schema";
 import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options";
-import type { FormResponseDto, SubmitFormDto } from "@alliance/shared/client";
+import {
+  type ActionDto,
+  type FormResponseDto,
+  type SubmitFormDto,
+} from "@alliance/shared/client";
 import { formulaSourcesChanged } from "@alliance/shared/forms/formulaChoices";
 import {
   formAlreadySubmitted,
@@ -23,6 +27,7 @@ import Spinner from "@alliance/sharedweb/ui/Spinner";
 import posthog from "posthog-js";
 import { useMemo, useRef, useState, type RefObject } from "react";
 import { useAuth } from "../lib/AuthContext";
+import TaskFlow from "./taskflow/TaskFlow";
 
 interface ActionTaskPanelFormProps {
   taskFormId: number;
@@ -40,6 +45,8 @@ interface ActionTaskPanelFormProps {
   scrollContainerRef?: RefObject<HTMLElement | null>;
   /** Editable but unsubmittable, and nothing typed outlives the page. */
   preview?: boolean;
+  /** Set to show the form as the full-screen task flow for this action. */
+  taskFlowAction?: ActionDto;
 }
 
 const ActionTaskPanelForm = ({
@@ -57,6 +64,7 @@ const ActionTaskPanelForm = ({
   onSubmitted,
   scrollContainerRef,
   preview = false,
+  taskFlowAction,
 }: ActionTaskPanelFormProps) => {
   const [error, setError] = useState<string | null>(null);
   const {
@@ -207,6 +215,35 @@ const ActionTaskPanelForm = ({
   }
 
   const Wrapper = card ? Card : "div";
+
+  if (
+    taskFlowAction &&
+    completeAction &&
+    !disabled &&
+    !preview &&
+    !publicAction
+  ) {
+    return (
+      <Wrapper className={card ? "p-4 sm:p-6" : "flex flex-col gap-y-2"}>
+        <TaskFlow
+          key={`${taskFlowAction.id}:${taskFormId}`}
+          action={taskFlowAction}
+          schema={schema}
+          formId={form.id}
+          taskFormId={taskFormId}
+          formSnapshotId={form.formSnapshotId}
+          draftFormResponse={draftFormResponse}
+          phDistinctId={distinctId}
+          sessionReplayUrl={sessionReplayUrl}
+          submitTaskForm={submitTaskForm}
+          submitError={error}
+          onCompleteAction={completeAction}
+          onFormStarted={onFormStarted}
+          onAbandonAction={onAbandonAction}
+        />
+      </Wrapper>
+    );
+  }
 
   return (
     <Wrapper className={card ? "p-4 sm:p-6" : "flex flex-col gap-y-2"}>

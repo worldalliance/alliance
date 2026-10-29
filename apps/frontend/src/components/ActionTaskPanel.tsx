@@ -12,8 +12,10 @@ import {
 import { canCompleteAction } from "@alliance/shared/lib/actionUtils";
 import { captureEvent } from "@alliance/shared/lib/analytics";
 import { noop } from "@alliance/shared/lib/constants";
+import { Features } from "@alliance/shared/lib/features";
 import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
 import { useCallback, useMemo, type RefObject } from "react";
+import { isFeatureEnabled } from "../lib/config";
 import ActionTaskPanelForm from "./ActionTaskPanelForm";
 
 export type ActionTaskPanelProps = ActionTaskPanelPropsShared & {
@@ -155,6 +157,9 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
         onSubmitted={onFormSubmitted}
         scrollContainerRef={scrollContainerRef}
         disabled={disabled || !canSubmit}
+        taskFlowAction={
+          isFeatureEnabled(Features.TaskFlow) ? action : undefined
+        }
       />
     );
   }

@@ -3,6 +3,7 @@ export enum Features {
   PublicSignup = "public_signup",
   Messaging = "messaging",
   GeneralUpdatesLink = "general_updates_link",
+  TaskFlow = "task_flow",
 }
 
 export const PROD_FLAGS: Record<Features, boolean> = {
@@ -10,6 +11,7 @@ export const PROD_FLAGS: Record<Features, boolean> = {
   [Features.PublicSignup]: false,
   [Features.Messaging]: true,
   [Features.GeneralUpdatesLink]: false,
+  [Features.TaskFlow]: false,
 };
 
 export const DEV_FLAGS: Record<Features, boolean> = {
@@ -17,6 +19,7 @@ export const DEV_FLAGS: Record<Features, boolean> = {
   [Features.PublicSignup]: false,
   [Features.Messaging]: true,
   [Features.GeneralUpdatesLink]: true,
+  [Features.TaskFlow]: true,
 };
 
 export const isEnabled = (feature: Features, env: string) => {
