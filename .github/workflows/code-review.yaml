@@ -132,7 +132,7 @@ jobs:
             combined="$claude"
           else
             # Both have content: call OpenAI to merge them
-            instructions="You are merging two automated code review outputs into a single concise list of issues. Keep only real, actionable issues, but prune any preamble or commentary. Merge duplicates. Output a markdown bullet list where each bullet is one issue. If there is at least one substantive issue, end the response with the exact text [NEEDS_ATTENTION]. Otherwise do not include that text. Be sure to preserve full file paths and line numbers listed.
+            instructions="You are merging two automated code review outputs into a single concise list of issues. Keep only real, actionable issues, but prune any preamble or commentary. Merge duplicates. Output a markdown bullet list where each bullet is one issue. Preserve the listed file paths and line numbers. Notification eligibility is determined from the reviewers' final markers separately; omit marker tokens from your summary.
 
             If both reviews indicate that there are no issues (for example, they are empty, say there are no issues, or only contain pleasantries), then respond with an empty string and do NOT invent any meta-commentary (such as complaining about missing content)."
 
@@ -169,8 +169,8 @@ jobs:
           echo "----------------"
           printf '%s\n' "$combined"
 
-          # Compute needs_review flag based on presence of [NEEDS_ATTENTION]
-          if printf '%s\n' "$combined" | grep -q 'NEEDS_ATTENTION'; then
+          attention_marker='\[NEEDS_ATTENTION\][`*_]*[.]?[[:space:]]*$'
+          if [[ "$claude" =~ $attention_marker || "$codex" =~ $attention_marker ]]; then
             needs_review="true"
           else
             needs_review="false"
