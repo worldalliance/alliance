@@ -6,21 +6,25 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import AdminSearch from "./AdminSearch";
 
 let failForms = false;
+let usersArrive = Promise.resolve();
 afterEach(() => {
   failForms = false;
+  usersArrive = Promise.resolve();
 });
 
 serveApi(
   routes({
-    "GET /user/list": () =>
-      Response.json([
+    "GET /user/list": async () => {
+      await usersArrive;
+      return Response.json([
         {
           id: 10,
           name: "Ana Lee",
           email: "ana@example.org",
           phoneNumber: null,
         },
-      ]),
+      ]);
+    },
     "GET /actions/all": () =>
       Response.json([{ id: 4, name: "Call your senator", archived: false }]),
     "GET /actions/suites": () => Response.json([]),
@@ -66,4 +70,20 @@ it("says which lists failed to load, since they aren't searched", async () => {
   expect(
     await screen.findByText("Couldn't load forms, so they aren't searched."),
   ).toBeTruthy();
+});
+
+it("still opens a result that arrives after arrowing through none", async () => {
+  let release = () => {};
+  usersArrive = new Promise((resolve) => (release = resolve));
+  renderSearch();
+
+  fireEvent.keyDown(window, { key: "k", metaKey: true });
+  const input = await screen.findByRole("textbox", { name: "Search" });
+  fireEvent.change(input, { target: { value: "ana@" } });
+  fireEvent.keyDown(input, { key: "ArrowDown" });
+  release();
+  await screen.findByText("ana@example.org");
+  fireEvent.keyDown(input, { key: "Enter" });
+
+  expect(await screen.findByText("Member page")).toBeTruthy();
 });
