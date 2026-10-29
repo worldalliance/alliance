@@ -3,7 +3,7 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, setSystemTime } from "bun:test";
 import { MemoryRouter } from "react-router";
-import AwayMembersPage from "./AwayMembersPage";
+import AwayMembersPage, { defaultAwayWindow } from "./AwayMembersPage";
 
 const asked: { from: string | null; to: string | null }[] = [];
 
@@ -72,4 +72,16 @@ it("asks for a start before the end", async () => {
   fireEvent.change(to, { target: { value: "2030-03-01T10:00" } });
 
   expect(await screen.findByText("Pick a start before the end.")).toBeTruthy();
+});
+
+it("starts the default window today when today is Tuesday in Pacific time", () => {
+  const tuesdayMorningPt = new Date("2026-11-03T15:00:00Z");
+  const tuesdayNightPt = new Date("2026-11-04T05:00:00Z");
+  const expected = {
+    from: new Date("2026-11-04T03:00:00.000Z"),
+    to: new Date("2026-11-11T07:59:00.000Z"),
+  };
+
+  expect(defaultAwayWindow(tuesdayMorningPt)).toEqual(expected);
+  expect(defaultAwayWindow(tuesdayNightPt)).toEqual(expected);
 });

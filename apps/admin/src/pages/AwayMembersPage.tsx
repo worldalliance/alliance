@@ -2,7 +2,7 @@ import { withCount } from "@alliance/common/plural";
 import { formatAwayReason } from "@alliance/shared/lib/awayRangesFormatters";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
 import { TZDate } from "@date-fns/tz";
-import { addDays, nextTuesday, set } from "date-fns";
+import { addDays, isTuesday, nextTuesday, set } from "date-fns";
 import { useState } from "react";
 import { href, Link } from "react-router";
 import {
@@ -13,9 +13,10 @@ import { formatAwayRange } from "../components/UserAwayPeriodsSection";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { useAwayRangesInWindowAdmin } from "../lib/useAwayRangesInWindowAdmin";
 
-/** Next Tuesday 7pm through the Tuesday after at 11:59pm, Pacific time. */
+/** Next Tuesday, today included, 7pm through the Tuesday after at 11:59pm, Pacific time. */
 export const defaultAwayWindow = (now: Date) => {
-  const tuesday = nextTuesday(new TZDate(now, LAUNCH_TIME_ZONE));
+  const today = new TZDate(now, LAUNCH_TIME_ZONE);
+  const tuesday = isTuesday(today) ? today : nextTuesday(today);
   const at = (day: Date, hours: number, minutes: number) =>
     new Date(
       set(day, { hours, minutes, seconds: 0, milliseconds: 0 }).getTime(),
