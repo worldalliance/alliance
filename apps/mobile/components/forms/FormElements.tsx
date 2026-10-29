@@ -48,10 +48,12 @@ export function FormElements({
   form,
   elements,
   disableOptionRandomization,
+  className,
 }: {
   form: MobileFormState;
   elements: PageItem[];
   disableOptionRandomization?: boolean;
+  className?: string;
 }) {
   const { readOnly, fieldErrors, variableValues } = form;
   return (
@@ -67,6 +69,7 @@ export function FormElements({
         userLocation: form.userLocationDisplayValue,
         userLocationLoading: form.currentUserLocationLoading,
       }}
+      className={className}
       renderField={(field) => (
         <>
           <RenderField
