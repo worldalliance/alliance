@@ -47,6 +47,8 @@ const HostedDocsPage: React.FC = () => {
   const fileInput = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState(INITIAL_DRAFT);
   const [file, setFile] = useState<File | null>(null);
+  /** The ID last filled in from a file name, which the next file may replace. */
+  const [filledSlug, setFilledSlug] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [replacing, setReplacing] = useState<{
     doc: HostedDocDto;
@@ -57,6 +59,7 @@ const HostedDocsPage: React.FC = () => {
     onSuccess: () => {
       setDraft(INITIAL_DRAFT);
       setFile(null);
+      setFilledSlug(null);
       setValidationError(null);
       if (fileInput.current) fileInput.current.value = "";
     },
@@ -121,14 +124,12 @@ const HostedDocsPage: React.FC = () => {
             disabled={create.isPending}
             onChange={(e) => {
               const picked = e.target.files?.[0] ?? null;
-              // An ID the admin typed stays; one filled from a file name follows the next file.
-              const filled = file && hostedDocSlugFromFileName(file.name);
               setFile(picked);
-              if (picked && (draft.slug === "" || draft.slug === filled))
-                setDraft({
-                  ...draft,
-                  slug: hostedDocSlugFromFileName(picked.name),
-                });
+              if (picked && (draft.slug === "" || draft.slug === filledSlug)) {
+                const slug = hostedDocSlugFromFileName(picked.name);
+                setDraft({ ...draft, slug });
+                setFilledSlug(slug);
+              }
             }}
           />
         </label>
