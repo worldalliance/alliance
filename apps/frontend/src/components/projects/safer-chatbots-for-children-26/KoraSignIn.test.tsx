@@ -354,7 +354,9 @@ test("a signed-in member sees only the member message", async () => {
     signupPending: false,
   };
   renderCard({ isAuthenticated: true, user: testAuthUser });
-  await screen.findByText("You’re already an Alliance member.");
+  await screen.findByText(
+    "Alliance members will participate in this project through weekly tasks.",
+  );
   expect(screen.queryByText(/signed in as/)).toBeNull();
   expect(screen.queryByLabelText("Email or mobile number")).toBeNull();
 });

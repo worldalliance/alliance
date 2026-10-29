@@ -35,7 +35,7 @@ export function meta() {
   return socialPreviewMeta({
     title: "Safer Chatbots for Children — The Alliance",
     description:
-      "Join our volunteer project with KORA, a European research nonprofit, to improve tests measuring the safety of chatbots for children worldwide.",
+      "Join the Alliance's project with KORA to improve the safety of chatbots for children worldwide.",
     url: "/projects/safer-chatbots-for-children",
   });
 }
@@ -86,17 +86,16 @@ function HeroScreen() {
             <Link to="/" className="underline">
               Alliance
             </Link>
-            &apos;s volunteer project with{" "}
+            &apos;s project with{" "}
             <a
               href="https://korabench.ai"
               target="_blank"
               rel="noreferrer"
               className="underline"
             >
-              KORA,
+              KORA
             </a>{" "}
-            a safety research nonprofit, to improve the safety of chatbots for
-            children worldwide.
+            to improve the safety of chatbots for children worldwide.
           </p>
           <ExpertList />
           <KoraSignIn className="mt-2 w-full" note={SIGNUP_NOTE} />
