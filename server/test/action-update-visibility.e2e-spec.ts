@@ -7,6 +7,7 @@ import {
 import {
   ActionUpdate,
   ActionUpdateNotificationMode,
+  ActionUpdateNotifyType,
 } from "src/actions/entities/action-update.entity";
 import { Action, VisibilityMode } from "src/actions/entities/action.entity";
 import { ContractService } from "src/contract/contract.service";
@@ -100,6 +101,49 @@ describe("Action update visibility (e2e)", () => {
       (update) => update.id,
     );
   };
+
+  it("needs notification text only when the update sends a notification", async () => {
+    const post = (notifyType: string) =>
+      request(ctx.app.getHttpServer())
+        .post(`/actions/createUpdate/${testAction.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          title: "No text",
+          shortNotifString: "",
+          date: new Date().toISOString(),
+          notifyType,
+          notificationMode: "legacy",
+        });
+
+    await post("none").expect(201);
+    await post("all_members").expect(400);
+  });
+
+  it("refuses to send an update whose notification text is empty", async () => {
+    const created = await request(ctx.app.getHttpServer())
+      .post(`/actions/createUpdate/${testAction.id}`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({
+        title: "Audience added later",
+        shortNotifString: "",
+        date: new Date().toISOString(),
+        notifyType: "none",
+      })
+      .expect(201);
+    await ctx.dataSource.getRepository(ActionUpdate).update(created.body.id, {
+      notifyType: ActionUpdateNotifyType.AllMembers,
+      notificationMode: ActionUpdateNotificationMode.Legacy,
+    });
+    await writeContent(created.body.id, created.body.schemaSnapshotId);
+
+    const response = await request(ctx.app.getHttpServer())
+      .post(`/actions/updates/${created.body.id}/notify`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .expect(400);
+    expect(response.body.message).toBe(
+      "Write the notification text before sending.",
+    );
+  });
 
   it("keeps an update with no body off the member-facing reads", async () => {
     const update = await createUpdate("Still being written");

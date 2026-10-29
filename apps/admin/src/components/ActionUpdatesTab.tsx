@@ -73,12 +73,13 @@ const ActionUpdatesTab = ({
   const isSubmitDisabled =
     creating ||
     !newUpdate.title.trim() ||
-    !readGroupResults({
-      split: texts.splitCollectiveResult,
-      completed: texts.shortNotifString,
-      didNotComplete: texts.nonCompleterResult,
-      uninvolved: texts.uninvolvedResult,
-    }).ok ||
+    (newUpdate.notifyType !== "none" &&
+      !readGroupResults({
+        split: texts.splitCollectiveResult,
+        completed: texts.shortNotifString,
+        didNotComplete: texts.nonCompleterResult,
+        uninvolved: texts.uninvolvedResult,
+      }).ok) ||
     (newUpdate.notifyType === "tag" && !newUpdate.tagId);
 
   const handleSubmit = async () => {
@@ -171,7 +172,9 @@ const ActionUpdatesTab = ({
                   shortNotifString: e.target.value,
                 })
               }
-              required={!texts.splitCollectiveResult}
+              required={
+                newUpdate.notifyType !== "none" && !texts.splitCollectiveResult
+              }
             />
           </label>
           <CollectiveResultSplitFields

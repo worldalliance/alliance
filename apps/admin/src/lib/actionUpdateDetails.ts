@@ -61,12 +61,17 @@ export const notifyBlockedReasonOf = (params: {
   notifyType: ActionUpdateNotifyType;
   hasUnsavedDetails: boolean;
   hasBody: boolean;
+  /** The saved text the notification would carry is written. */
+  hasNotificationText: boolean;
 }): string | null => {
   if (params.notifyType === "none") {
     return "Pick an audience and save to enable sending.";
   }
   if (params.hasUnsavedDetails) {
     return "Save your changes before sending.";
+  }
+  if (!params.hasNotificationText) {
+    return "Write the notification text and save before sending.";
   }
   if (!params.hasBody) {
     return "Write the update body on the Content tab first.";

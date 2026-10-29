@@ -58,6 +58,7 @@ describe("notifyBlockedReasonOf", () => {
     notifyType: "all_members",
     hasUnsavedDetails: false,
     hasBody: true,
+    hasNotificationText: true,
   } as const;
 
   it("allows sending a saved update with an audience and a body", () => {
@@ -74,5 +75,11 @@ describe("notifyBlockedReasonOf", () => {
     expect(notifyBlockedReasonOf({ ...sendable, hasBody: false })).toMatch(
       /Write the update body/,
     );
+  });
+
+  it("asks for the notification text an update with no notification could skip", () => {
+    expect(
+      notifyBlockedReasonOf({ ...sendable, hasNotificationText: false }),
+    ).toBe("Write the notification text and save before sending.");
   });
 });

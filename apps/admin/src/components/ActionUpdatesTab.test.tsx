@@ -146,6 +146,9 @@ describe("ActionUpdatesTab", () => {
     fireEvent.change(screen.getByPlaceholderText("Title..."), {
       target: { value: "Hearing scheduled" },
     });
+    fireEvent.change(screen.getByDisplayValue("No notification"), {
+      target: { value: "all_members" },
+    });
     fireEvent.click(
       screen.getByRole("checkbox", {
         name: "Split by who completed the action",
@@ -319,4 +322,23 @@ describe("deleting an update", () => {
     );
     expect(actionInvalidated()).toBe(false);
   });
+});
+
+it("creates an update with no notification without notification text", async () => {
+  let created = false;
+  answer = () => {
+    created = true;
+    return Response.json({ id: 9 }, { status: 201 });
+  };
+  renderTab();
+  fireEvent.change(screen.getByPlaceholderText("Title..."), {
+    target: { value: "Quiet update" },
+  });
+  const create = screen.getByRole("button", {
+    name: "Create and write content",
+  });
+
+  expect(create).toHaveProperty("disabled", false);
+  fireEvent.click(create);
+  await waitFor(() => expect(created).toBe(true));
 });
