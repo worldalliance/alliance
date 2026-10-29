@@ -5,6 +5,8 @@ export enum KoraCookie {
   Session = "kora_session",
   Code = "kora_code",
   Signup = "kora_signup",
+  /** Proofs of the provider sign-ins this browser has open. */
+  OAuth = "kora_oauth",
 }
 
 function cookieOptions(): CookieOptions {
@@ -12,7 +14,9 @@ function cookieOptions(): CookieOptions {
   return {
     httpOnly: true,
     secure: env.ok && isDeployed(env.value),
-    sameSite: "strict",
+    // Lax, not strict: the provider's redirect back is a cross-site
+    // navigation, and its callback replaces this browser's session.
+    sameSite: "lax",
     path: "/",
   };
 }

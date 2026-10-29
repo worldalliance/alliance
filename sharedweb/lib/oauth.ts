@@ -20,6 +20,26 @@ import { useStripSearchParams } from "./useStripSearchParams";
  * For a top-level navigation, not a fetch. The server answers with a redirect
  * to the provider, which will not render inside an XHR.
  */
+export function providerStartUrl(params: {
+  startUrl: string;
+  returnTo: string;
+  posthog?: PosthogContext;
+}): URL {
+  const url = new URL(params.startUrl);
+  url.searchParams.set("returnTo", params.returnTo);
+  const timeZone = signupTimeZone(deviceTimeZone());
+  if (timeZone) {
+    url.searchParams.set("timeZone", timeZone);
+  }
+  if (params.posthog?.sessionId) {
+    url.searchParams.set("posthogSessionId", params.posthog.sessionId);
+  }
+  if (params.posthog?.distinctId) {
+    url.searchParams.set("posthogDistinctId", params.posthog.distinctId);
+  }
+  return url;
+}
+
 export function oauthStartUrl(params: {
   apiUrl: string;
   provider: OAuthProvider;
@@ -28,21 +48,14 @@ export function oauthStartUrl(params: {
   referralCode?: string | null;
   posthog?: PosthogContext;
 }): string {
-  const url = new URL(`${params.apiUrl}/auth/${params.provider}/start`);
+  const url = providerStartUrl({
+    startUrl: `${params.apiUrl}/auth/${params.provider}/start`,
+    returnTo: params.returnTo,
+    posthog: params.posthog,
+  });
   url.searchParams.set("intent", params.intent);
-  url.searchParams.set("returnTo", params.returnTo);
-  const timeZone = signupTimeZone(deviceTimeZone());
-  if (timeZone) {
-    url.searchParams.set("timeZone", timeZone);
-  }
   if (params.referralCode) {
     url.searchParams.set("referralCode", params.referralCode);
-  }
-  if (params.posthog?.sessionId) {
-    url.searchParams.set("posthogSessionId", params.posthog.sessionId);
-  }
-  if (params.posthog?.distinctId) {
-    url.searchParams.set("posthogDistinctId", params.posthog.distinctId);
   }
   return url.toString();
 }

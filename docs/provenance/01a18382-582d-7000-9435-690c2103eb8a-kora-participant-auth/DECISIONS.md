@@ -22,19 +22,19 @@ The card renders from the cached `GET /kora/me` state, and each mutation writes 
 
 Use these states:
 
-| State              | Behavior                                                                                                                                                |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Resolving sessions | Reserve the card while member and participant session state loads. A lookup failure offers retry rather than treating an unknown session as signed out. |
-| Active member      | Apply R2 before showing any participant state.                                                                                                          |
-| Signed out         | Show “Email or mobile number”, “Continue”, “Continue with Google”, and “Continue with Apple”. The provider buttons arrive with OAuth (PR 5).            |
-| Sending code       | Disable repeat submission; retain the entered contact.                                                                                                  |
-| Awaiting code      | Show a masked destination, a six-digit input supporting paste/autofill, “Verify”, the resend countdown, and “Change email or mobile number”.            |
-| Completing signup  | Show “Full name” and “Continue” after contact verification when a name is still required.                                                               |
-| Signed in          | Show “You’re signed in as {name}.” and an icon control with the accessible name and tooltip “Sign out”.                                                 |
+| State              | Behavior                                                                                                                                                                                                                        |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Resolving sessions | Reserve the card while member and participant session state loads. A lookup failure offers retry rather than treating an unknown session as signed out.                                                                         |
+| Active member      | Apply R2 before showing any participant state.                                                                                                                                                                                  |
+| Signed out         | Show “Continue with Google” and “Continue with Apple” through `OAuthButtons`, an “Or continue with email or mobile number” divider, then “Email or mobile number” and “Continue”, as the onboarding account step lays them out. |
+| Sending code       | Disable repeat submission; retain the entered contact.                                                                                                                                                                          |
+| Awaiting code      | Show a masked destination, a six-digit input supporting paste/autofill, “Verify”, the resend countdown, and “Change email or mobile number”.                                                                                    |
+| Completing signup  | Show “Full name” and “Continue” after contact verification when a name is still required.                                                                                                                                       |
+| Signed in          | Show “You’re signed in as {name}.” and an icon control with the accessible name and tooltip “Sign out”.                                                                                                                         |
 
 Changing the contact before signup abandons the current challenge and starts contact entry again; it is not an account contact-editing feature. Preserve entered values on retryable errors. Report errors inline with an accessible alert, focus the next required field, and keep the flow keyboard usable.
 
-For OAuth, a supplied nonblank name completes a new registration; an email address is not a fallback name. Existing participant names and contacts are not overwritten from subsequent provider responses.
+For OAuth, a supplied nonblank name, trimmed and cut to the 200-character bound, completes a new registration; an email address is not a fallback name. Existing participant names and contacts are not overwritten from subsequent provider responses.
 
 ## OTP verification and completion
 
@@ -70,11 +70,11 @@ Before verification, responses must not disclose whether a participant exists. D
 
 ## OAuth isolation and matching
 
-Reuse the existing Google/Apple protocol clients and browser-state protections. Add participant-specific start/callback handling; do not call the member `OAuthAuthService.authenticate` or `createReferredUser` paths. Provider redirects must return to the initiating allowed project host, and state/proof validation must bind the callback to this participant flow.
+Reuse the existing Google/Apple protocol clients, now provided by `OAuthClientsModule` to both the member and Kora modules, and the member web flow's protections: `GET /kora/{provider}/start` and `GET`/`POST /kora/{provider}/callback` in `KoraOAuthController`. Do not call the member `OAuthAuthService.authenticate` or `createReferredUser` paths. The state is a JWT with its own `kora_oauth_state` token type, so neither callback accepts the other flow's state. Its proof hash binds the callback to a proof in the starting browser's `kora_oauth` cookie, using the member flow's `mintProof`/`addProof`/`spendProof`. Apple's form post bounces to a GET through the shared `bounceAppleCallback`. `returnTo` must be an allowed origin (`resolveReturnTo`), and the redirect URI is that origin's `/api/kora/{provider}/callback` when deployed, or the API's own origin locally. An expired state returns to its vetted `returnTo` with `expired`; a state the server cannot read falls back to the project page on `APP_URL`. The callback reports failures to the page as `?{provider}Error=`, the member flow's parameter, and a success as a plain redirect, since the page reloads its state from `GET /kora/me`. A successful callback also drops this browser's pending code and pending signup.
 
-Resolve an existing provider/subject identity first. Otherwise match only a provider-verified email to a participant email, then attach the identity transactionally. If neither exists, begin participant signup. An existing provider subject remains attached to its participant even if the provider's email changes; this does not change the participant's primary contact or merge accounts. Reject a conflicting identity attachment instead of transferring ownership.
+Resolve an existing provider/subject identity first. Otherwise match only a provider-verified email to a participant email and attach the identity. If neither exists, begin participant signup. An existing provider subject remains attached to its participant even if the provider's email changes, which updates only the identity's stored email; the participant's primary contact is unchanged and no accounts merge. Attachment never transfers ownership: a subject already attached elsewhere, or a second account from a provider the participant already has, stays unconnected (`INSERT … ON CONFLICT DO NOTHING`) and still signs in, because R4 lets the verified email open the account. This leaves no conflict to report, so concurrent first sign-ins resolve to one participant and one identity.
 
-Provider cancellation returns to the usable form. A provider lacking a verified email is refused with an option to use OTP or another provider. Adapt the existing OAuth error messages so participant failures do not mention invitations, passwords, or member onboarding. Phone-only participants using an unrelated OAuth email create a separate account under R4; no matching by name occurs.
+Provider cancellation returns to the usable form with the member flow's cancellation copy. A provider lacking a verified email is refused with “{Provider} hasn’t verified that email address. Continue with your email or mobile number instead.” `koraOAuthErrorMessage` in `common/src/kora.ts` reuses the member copy for cancelled, failed, and expired, and maps the member-only errors to the failed copy, so participant failures never mention invitations, passwords, or member onboarding. The wording is the agent's and can change. Phone-only participants using an unrelated OAuth email create a separate account under R4; no matching by name occurs.
 
 ## Delivery infrastructure
 
@@ -84,13 +84,17 @@ Retain operational delivery status and provider message IDs where needed, exclud
 
 ## Participant sessions
 
-Use opaque random session tokens stored only in a dedicated HttpOnly cookie (`kora_session`), with token digests, participant IDs, and expiry stored server-side. The challenge token and signup continuation ride in their own HttpOnly cookies (`kora_code`, `kora_signup`) lasting ten minutes. Use Secure cookies on deployed environments, and SameSite=Strict until the browser OAuth return needs Lax. Session-changing requests pass `AllowedOriginGuard`, which requires an `Origin` header naming one of the configured app origins: CORS reflects any origin, so the header check, not CORS, is what stops cross-site submission. Credentials are not stored in browser local storage or URLs.
+Use opaque random session tokens stored only in a dedicated HttpOnly cookie (`kora_session`), with token digests, participant IDs, and expiry stored server-side. The challenge token and signup continuation ride in their own HttpOnly cookies (`kora_code`, `kora_signup`) lasting ten minutes. Use Secure cookies on deployed environments, and SameSite=Lax: the provider's redirect back is a cross-site top-level navigation, and its callback has to read `kora_session` to replace this browser's session and `kora_code`/`kora_signup` to drop them. Strict cookies would be withheld there. Session-changing requests pass `AllowedOriginGuard`, which requires an `Origin` header naming one of the configured app origins: CORS reflects any origin, so the header check, not CORS, is what stops cross-site submission. Credentials are not stored in browser local storage or URLs.
 
 Extend expiry and cookie lifetime on successful participant-authenticated requests, with no background keepalive loop. Reject expired sessions before extending them. Reauthentication replaces the current browser's participant session; other devices retain theirs. Logout revokes the presented session in storage and clears its cookie, leaving member cookies untouched. If logout cannot be confirmed, retain the signed-in UI with a retryable error.
 
 Participant credentials must be rejected by member, admin, and anonymous-guest authentication; the opaque token fails JWT verification and rides in a cookie member guards never read. Look sessions up through `KoraSessionService.current` rather than relaxing existing member guards. The required participant guard arrives with the first participant-only endpoint, since none exists in this scope. A temporary signup continuation grants only completion access. The backend, not just the UI, enforces these boundaries.
 
 Keep new participant entry points under the same environment availability as the project page: `KoraAvailableGuard` and the page's loader both answer 404 wherever `KORA_AVAILABLE` in `common/src/kora.ts` is false, currently production and any unrecognized environment. Launch flips that one entry (R9).
+
+## Analytics
+
+`KoraSessionService.begin`, which every successful sign-in passes through, sends `kora_participant_signed_up` or `kora_participant_signed_in` (R10). A signup counts only when the insert created the participant, not when a concurrent signup already had. The distinct ID is `kora_participant:{id}`, which keeps participants apart from members' numeric IDs, and the only property is `method` (`email`, `sms`, `google`, `apple`). The server does not `identify` participants with a name or email, as it does members, since nothing yet needs a participant's PII in PostHog. Both events forward to Slack, as the member `new_user` and `login` events do.
 
 ## Verification before implementation handoff
 
@@ -115,6 +119,6 @@ Deliver as five stacked PRs, each with the tests above that cover its scope. Par
    - `POST signup`: name and complete. `POST sign-out`.
 3. Kora naming: rename the participant module, tables, cookies, routes, launch switch, and OTP purpose to their `Kora` names (R1), with a migration renaming the merged tables, constraints, indexes, and enum value in place.
 4. Frontend OTP flow: the participant form, extracted contact parsing and country selector, R2 precedence, and sign-out.
-5. Google and Apple OAuth: identity storage and migration, participant start/callback handling, email matching and linking, and the provider buttons.
+5. Google and Apple OAuth: identity storage and migration, participant start/callback handling, email matching and linking, the provider buttons, and participant analytics. The operator registers `https://{app host}/api/kora/google/callback` as a Google redirect URI and `https://{app host}/api/kora/apple/callback` as an Apple Services ID return URL for each deployed app host. Local Google sign-in additionally needs `http://localhost:{server port}/kora/google/callback`. Tests stub both providers, as the member OAuth tests do; real Google and Apple sign-in is checked on staging.
 
 The split gives the security-heavy OTP/session review and the OAuth review their own diffs, and lets the existing mail and SMS paths be checked unchanged before anything depends on the new boundary.

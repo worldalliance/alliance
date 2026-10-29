@@ -39,6 +39,10 @@ export enum AnalyticsEvent {
   Login = "login",
   Logout = "logout",
 
+  // Kora participants
+  KoraParticipantSignedUp = "kora_participant_signed_up",
+  KoraParticipantSignedIn = "kora_participant_signed_in",
+
   // OTA updates
   OtaGateResolved = "ota_gate_resolved",
 
@@ -174,6 +178,10 @@ export const SEND_TO_SLACK: Record<AnalyticsEvent | ExceptionEvent, boolean> = {
   [AnalyticsEvent.AuthFailedToRefresh]: false,
   [AnalyticsEvent.Login]: true,
   [AnalyticsEvent.Logout]: true,
+
+  // Kora participants
+  [AnalyticsEvent.KoraParticipantSignedUp]: true,
+  [AnalyticsEvent.KoraParticipantSignedIn]: true,
 
   // OTA updates
   [AnalyticsEvent.OtaGateResolved]: false,

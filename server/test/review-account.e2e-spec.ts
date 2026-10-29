@@ -13,7 +13,8 @@ import {
 import { io } from "socket.io-client";
 import { AuthService } from "src/auth/auth.service";
 import { TokenMode } from "src/auth/dto/signin.dto";
-import { mintProof, OAuthAuthService } from "src/auth/oauth/oauth-auth.service";
+import { OAuthAuthService } from "src/auth/oauth/oauth-auth.service";
+import { mintProof } from "src/auth/oauth/oauth-proof";
 import { ACCESS_COOKIE, REFRESH_COOKIE } from "src/auth/tokens";
 import { MailService } from "src/mail/mail.service";
 import { MessagingModule } from "src/messaging/messaging.module";

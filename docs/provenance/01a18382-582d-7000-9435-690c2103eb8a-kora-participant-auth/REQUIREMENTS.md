@@ -42,6 +42,8 @@ Provide one “Continue” flow for new and returning participants:
 
 Offer all four methods initially: email OTP, SMS OTP, Google OAuth, and Apple OAuth.
 
+Google and Apple return to a participant-specific callback endpoint, separate from the member OAuth callback, which the operator registers with each provider (agent-proposed, user-approved). Returning from a cancelled provider screen shows “{Provider} sign-in was cancelled.” (agent-proposed, user-approved). Provider sign-in behaves like the existing member OAuth web flow, and its buttons reuse the existing OAuth button component and look like its other uses (user).
+
 ## R5. OTP behavior
 
 Origin: agent-proposed, user-approved.
@@ -82,3 +84,9 @@ The code-sending and checking machinery is reusable for other one-time codes on 
 Origin: user.
 
 Code delivery keeps the existing delivery gate: production, or `SEND_DEV_NOTIFS=1` elsewhere. Enabling the flow later should take one switch.
+
+## R10. Analytics
+
+Origin: agent-proposed, user-approved.
+
+Record participant sign-up and sign-in events in PostHog for every method (email OTP, SMS OTP, Google, Apple), separate from the member sign-up and login events.

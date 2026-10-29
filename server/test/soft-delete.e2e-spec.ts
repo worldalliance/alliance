@@ -44,6 +44,7 @@ const NEVER_DELETED = [
   "EditableContent",
   "FormRowAssignment",
   "KoraParticipant",
+  "KoraParticipantOAuthIdentity",
 ];
 
 describe("softDeleteCascade (e2e)", () => {

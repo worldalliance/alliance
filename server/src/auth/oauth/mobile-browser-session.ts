@@ -1,7 +1,8 @@
 import type { OAuthIntent, OAuthProvider } from "@alliance/common/oauth";
 import type { Request as ExpressRequest } from "express";
-import { mintProof, OAuthAuthService, OAuthOrigin } from "./oauth-auth.service";
+import { OAuthAuthService, OAuthOrigin } from "./oauth-auth.service";
 import type { OAuthClient } from "./oauth-client";
+import { mintProof } from "./oauth-proof";
 import { mobileOAuthRedirectUri, mobileReturnUrl } from "./oauth-urls";
 import { MobileOAuthBrowserSessionDto } from "./oauth.dto";
 

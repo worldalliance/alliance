@@ -31,7 +31,6 @@ import {
   ApiResponse,
 } from "@nestjs/swagger";
 import { ThrottlerGuard } from "@nestjs/throttler";
-import { milliseconds } from "date-fns";
 import type { Request as ExpressRequest, Response } from "express";
 import { OAUTH_THROTTLE } from "src/auth/signup-throttle.config";
 import { PosthogService } from "src/posthog/posthog.service";
@@ -44,26 +43,28 @@ import { AuthGuard } from "../guards/auth.guard";
 import { NotImpersonatingGuard } from "../guards/not-impersonating.guard";
 import { Public } from "../public.decorator";
 import {
-  APPLE_USER_COOKIE,
-  extractAppleUserFromCookie,
   extractGuestTokenFromCookie,
   extractOAuthStateFromCookie,
   OAUTH_STATE_COOKIE,
   refuseImpersonation,
   type JwtRequest,
 } from "../tokens";
+import { bounceAppleCallback, takeAppleUser } from "./apple-callback";
 import { beginMobileBrowserSession } from "./mobile-browser-session";
 import {
-  addProof,
-  mintProof,
   OAuthAuthService,
   OAuthOrigin,
-  spendProof,
   type OAuthAuthentication,
   type OAuthState,
 } from "./oauth-auth.service";
 import type { OAuthProfile } from "./oauth-client";
 import { OAuthClients } from "./oauth-clients";
+import {
+  addProof,
+  mintProof,
+  OAUTH_PROOF_MAX_AGE_MS,
+  spendProof,
+} from "./oauth-proof";
 import {
   fallbackLoginUrl,
   mobileReturnUrlWith,
@@ -82,12 +83,6 @@ import {
   type SessionTokens,
 } from "./oauth.dto";
 import { ProviderParam } from "./provider-param";
-
-/** Outlives the state token it guards, so a slow consent screen still lands. */
-const STATE_COOKIE_MAX_AGE_MS = milliseconds({ minutes: 15 });
-
-/** Only has to survive the bounce below, which is a single redirect. */
-const APPLE_USER_COOKIE_MAX_AGE_MS = milliseconds({ minutes: 5 });
 
 const CANCEL_ERROR: Record<OAuthProvider, string> = {
   [OAuthProvider.Google]: "access_denied",
@@ -280,34 +275,11 @@ export class OAuthController {
     );
   }
 
-  /**
-   * Apple answers with a cross-site form post, on which the browser withholds
-   * the lax state cookie. Bouncing to a GET on the same URL makes it a
-   * top-level navigation, which does carry the cookie.
-   */
   @Public()
   @Post("callback")
   @ApiResponse({ status: 303, description: "Bounces to GET callback" })
   callbackForm(@Body() body: OAuthCallbackDto, @Res() res: Response): void {
-    // The name rides a cookie rather than the query, which nginx's access log,
-    // the request log and the member's history would each write down.
-    const { user, ...bounced } = body;
-    const query = new URLSearchParams();
-    for (const [key, value] of Object.entries(bounced)) {
-      if (typeof value === "string") {
-        query.set(key, value);
-      }
-    }
-    if (user) {
-      res.cookie(APPLE_USER_COOKIE, user, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: APPLE_USER_COOKIE_MAX_AGE_MS,
-      });
-    }
-    res.redirect(HttpStatus.SEE_OTHER, `?${query}`);
+    bounceAppleCallback(body, res);
   }
 
   @Public()
@@ -554,7 +526,7 @@ export class OAuthController {
     const profile = await this.clients.get(state.provider).exchangeCode({
       code: params.code,
       redirectUri: state.redirectUri,
-      callbackUser: this.takeAppleUser(req, res),
+      callbackUser: takeAppleUser(req, res),
     });
     if (!profile.ok) {
       console.error("oauth code exchange failed", profile.error);
@@ -627,25 +599,11 @@ export class OAuthController {
       presented: extractOAuthStateFromCookie(req),
       proofHash: state.proofHash,
     });
-    // Left alone when nothing matched, so a stray callback cannot retire the
-    // flows this browser still has open.
     if (remaining === null) {
       return false;
     }
     this.setProofCookie(res, remaining);
     return true;
-  }
-
-  /** Read once: the bounce is the only hop the name has to survive. */
-  private takeAppleUser(
-    req: ExpressRequest,
-    res: Response,
-  ): string | undefined {
-    const user = extractAppleUserFromCookie(req);
-    if (user) {
-      res.clearCookie(APPLE_USER_COOKIE, { path: "/" });
-    }
-    return user;
   }
 
   private setProofCookie(res: Response, proofs: string): void {
@@ -660,7 +618,7 @@ export class OAuthController {
       // provider, and a strict cookie is not sent on one.
       sameSite: "lax",
       path: "/",
-      maxAge: STATE_COOKIE_MAX_AGE_MS,
+      maxAge: OAUTH_PROOF_MAX_AGE_MS,
     });
   }
 

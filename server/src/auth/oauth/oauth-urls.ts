@@ -31,19 +31,30 @@ function requestOrigin(req: OriginRequest): string {
 /**
  * The provider matches this against its registered list, and the callback
  * sets the session cookies on whatever origin it runs on, so it has to be the
- * origin the member came from rather than one canonical host. Deployed, that is
- * the vetted returnTo, under the /api prefix nginx serves the API on.
+ * origin the browser came from rather than one canonical host. Deployed, that
+ * is the vetted returnTo, under the /api prefix nginx serves the API on.
  */
+export function callbackUri(params: {
+  req: OriginRequest;
+  path: string;
+  returnTo: URL;
+}): string {
+  if (!deployed()) {
+    return `${requestOrigin(params.req)}${params.path}`;
+  }
+  return `${params.returnTo.origin}/api${params.path}`;
+}
+
 export function oauthRedirectUri(params: {
   req: OriginRequest;
   provider: OAuthProvider;
   returnTo: URL;
 }): string {
-  const path = `/auth/${params.provider}/callback`;
-  if (!deployed()) {
-    return `${requestOrigin(params.req)}${path}`;
-  }
-  return `${params.returnTo.origin}/api${path}`;
+  return callbackUri({
+    req: params.req,
+    path: `/auth/${params.provider}/callback`,
+    returnTo: params.returnTo,
+  });
 }
 
 /**
@@ -96,8 +107,12 @@ export function mobileReturnUrlWith(params: {
   return url.toString();
 }
 
+export function fallbackAppUrl(req: OriginRequest, path: string): string {
+  return `${process.env.APP_URL ?? requestOrigin(req)}${path}`;
+}
+
 export function fallbackLoginUrl(req: OriginRequest): string {
-  return `${process.env.APP_URL ?? requestOrigin(req)}/login`;
+  return fallbackAppUrl(req, "/login");
 }
 
 /**

@@ -1,8 +1,10 @@
+import { AnalyticsEvent } from "@alliance/common/analytics";
 import { Injectable } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import type { Request, Response } from "express";
+import { PosthogService } from "src/posthog/posthog.service";
 import { readCookie } from "src/utils/cookies";
 import { hashToken, randomToken } from "src/utils/random";
 import type { Repository } from "src/utils/Repository";
@@ -10,6 +12,7 @@ import { LessThan } from "typeorm";
 import { KoraParticipantSession } from "./entities/kora-participant-session.entity";
 import { KoraParticipant } from "./entities/kora-participant.entity";
 import { clearCookie, KoraCookie, setCookie } from "./kora-cookies";
+import type { KoraSignInMethod } from "./kora-participant.service";
 
 const IDLE_TIMEOUT_MS = milliseconds({ days: 30 });
 
@@ -20,6 +23,7 @@ export class KoraSessionService {
     private readonly sessions: Repository<KoraParticipantSession>,
     @InjectRepository(KoraParticipant)
     private readonly participants: Repository<KoraParticipant>,
+    private readonly posthog: PosthogService,
   ) {}
 
   /** Replaces this browser's session, leaving other browsers signed in. */
@@ -27,6 +31,8 @@ export class KoraSessionService {
     req: Request;
     res: Response;
     participantId: string;
+    signedUp: boolean;
+    method: KoraSignInMethod;
   }): Promise<void> {
     const { req, res, participantId } = params;
     const previous = readCookie(req, KoraCookie.Session);
@@ -44,6 +50,13 @@ export class KoraSessionService {
       name: KoraCookie.Session,
       token,
       maxAgeMs: IDLE_TIMEOUT_MS,
+    });
+    this.posthog.capture({
+      event: params.signedUp
+        ? AnalyticsEvent.KoraParticipantSignedUp
+        : AnalyticsEvent.KoraParticipantSignedIn,
+      distinctId: `kora_participant:${participantId}`,
+      properties: { method: params.method },
     });
   }
 

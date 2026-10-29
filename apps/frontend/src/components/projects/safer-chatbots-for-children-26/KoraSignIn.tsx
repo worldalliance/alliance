@@ -1,13 +1,26 @@
-import { KoraError } from "@alliance/common/kora";
+import {
+  KORA_PROJECT_PATH,
+  KoraError,
+  koraOAuthErrorMessage,
+} from "@alliance/common/kora";
 import { OTP_CODE_LENGTH, OtpError } from "@alliance/common/otp";
 import { R } from "@alliance/common/result";
 import type {
   KoraParticipantDto,
   PendingKoraCodeDto,
 } from "@alliance/shared/client";
+import { readPosthogContext } from "@alliance/shared/lib/posthog-request";
 import { cn } from "@alliance/shared/styles/util";
+import { useAppOrigin } from "@alliance/sharedweb/lib/appOrigin";
+import { getBaseUrl } from "@alliance/sharedweb/lib/config";
+import {
+  providerStartUrl,
+  useOAuthNotice,
+} from "@alliance/sharedweb/lib/oauth";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import OAuthButtons from "@alliance/sharedweb/ui/OAuthButtons";
 import { LogOut, RotateCw } from "lucide-react";
+import posthog from "posthog-js";
 import {
   useEffect,
   useRef,
@@ -16,8 +29,10 @@ import {
   type ReactNode,
 } from "react";
 import { useAuth } from "../../../lib/AuthContext";
+import { getApiUrl } from "../../../lib/config";
+import { posthogRequestContext } from "../../../lib/posthogRequestContext";
 import { useWebOtpCode } from "../../../lib/useWebOtpCode";
-import { ACCOUNT_BUTTON } from "../../../onboarding/chrome";
+import { ACCOUNT_BUTTON, EmailDivider } from "../../../onboarding/chrome";
 import { ContactInput, useContactField, type Contact } from "../ContactInput";
 import { PROJECT_FIELD } from "../fieldStyles";
 import {
@@ -224,6 +239,9 @@ export function KoraSignIn({
   const { query, sendCode, abandonCode, verifyCode, completeSignup } = kora;
   const contact = useContactField();
   const [sent, setSent] = useState<Contact | null>(null);
+  const oauthNotice = useOAuthNotice();
+  const [noticeDismissed, setNoticeDismissed] = useState(false);
+  const origin = useAppOrigin(getBaseUrl());
   const card = cn("flex flex-col gap-2.5 text-[var(--site-ink)]", className);
 
   if (member.loading || query.isPending) {
@@ -319,8 +337,14 @@ export function KoraSignIn({
         ? verifyCode.error
         : null;
   const error = sentBack ?? sendCode.error;
+  const errorMessage = error
+    ? koraRefusalMessage(error)
+    : oauthNotice?.kind === "error" && !noticeDismissed
+      ? koraOAuthErrorMessage(oauthNotice.provider, oauthNotice.error)
+      : null;
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setNoticeDismissed(true);
     completeSignup.reset();
     verifyCode.reset();
     const parsed = contact.parse();
@@ -329,6 +353,17 @@ export function KoraSignIn({
   };
   return (
     <form className={card} onSubmit={onSubmit}>
+      <OAuthButtons
+        disabled={sendCode.isPending}
+        hrefFor={(provider) =>
+          providerStartUrl({
+            startUrl: `${getApiUrl()}/kora/${provider}/start`,
+            returnTo: `${origin}${KORA_PROJECT_PATH}`,
+            posthog: readPosthogContext(() => posthogRequestContext(posthog)),
+          }).toString()
+        }
+      />
+      <EmailDivider label="Or continue with email or mobile number" />
       <ContactInput {...contact.inputProps} disabled={sendCode.isPending} />
       <Button
         type="submit"
@@ -338,7 +373,7 @@ export function KoraSignIn({
       >
         {sendCode.isPending ? "Sending code…" : "Continue"}
       </Button>
-      {error && <ErrorText>{koraRefusalMessage(error)}</ErrorText>}
+      {errorMessage && <ErrorText>{errorMessage}</ErrorText>}
       <p className="mt-2 text-center text-base text-[var(--site-ink)]/70">
         {note}
       </p>
