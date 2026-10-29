@@ -51,7 +51,7 @@ export const MemberPreview = ({
             : `${overloaded} of ${withCount(loads.length, "member")} ${pickForCount(overloaded, "gets", "get")} more than ${MAX_MEMBER_MINUTES} minutes`
       }
     >
-      <table className="w-fit text-sm [&_td]:pr-6 [&_th]:pr-6">
+      <table className="w-fit text-sm [&_td]:py-2.5 [&_td]:pr-6 [&_th]:pr-6">
         <thead className="text-left text-xs text-zinc-500">
           <tr>
             <th className="font-normal">Members</th>
@@ -60,7 +60,7 @@ export const MemberPreview = ({
             <th />
           </tr>
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-zinc-100">
           {actionMixes(loads ?? []).map((mix) => (
             <tr key={mix.actionIds.join(",")} className="align-top">
               <td>{mix.userIds.length}</td>
