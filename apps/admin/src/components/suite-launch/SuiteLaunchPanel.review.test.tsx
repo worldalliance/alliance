@@ -1,5 +1,5 @@
 import { fireEvent, screen } from "@testing-library/react";
-import { expect, it, setSystemTime } from "bun:test";
+import { expect, it, setSystemTime, spyOn } from "bun:test";
 import {
   api,
   renderPanel,
@@ -274,8 +274,14 @@ it("previews a task form as each kind of member among the action's own recipient
   expect(api.visibilityProfileRequests).toEqual([{ userIds: [10, 11] }]);
   expect(screen.queryByText("Write", { selector: "summary" })).toBeNull();
 
+  const open = spyOn(window, "open").mockImplementation(() => null);
   fireEvent.click(cards[1]);
-  expect(await screen.findByText("As Ben sees it")).toBeTruthy();
+  expect(open).toHaveBeenCalledWith(
+    "/forms/7?previewAs=11",
+    "_blank",
+    "noopener",
+  );
+  open.mockRestore();
 });
 
 it("leaves out task forms that show every member the same thing", async () => {
