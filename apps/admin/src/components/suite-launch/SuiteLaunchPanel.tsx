@@ -140,9 +140,7 @@ const SuiteLaunchPanel = ({
     data,
     schedule,
     reminderWindows,
-    hasMemberActionEvent: suite.events.some(
-      (event) => event.newStatus === "member_action",
-    ),
+    suiteEvents: suite.events,
     checkedActionIds,
     dismissedFindingKeys: dismissedKeys,
     violationsAcknowledged,

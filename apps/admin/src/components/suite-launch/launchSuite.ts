@@ -7,7 +7,26 @@ import type {
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { defaultEventNames } from "../CreateEventForm";
 import { defaultReminderBodies } from "../reminders/presets";
+import { existingLaunchEvent } from "./launchBlockers";
 import type { LaunchSchedule } from "./launchSchedule";
+
+/**
+ * A React Query refetch resolves even when it fails, with the cached data
+ * still attached; a launch must not check against that stale copy.
+ */
+export async function refetchedOrThrow<T>(
+  refetch: () => Promise<{
+    data: T | undefined;
+    isError: boolean;
+    error: unknown;
+  }>,
+): Promise<T> {
+  const result = await refetch();
+  if (result.isError || result.data === undefined) {
+    throw result.error ?? new Error("The reload returned nothing.");
+  }
+  return result.data;
+}
 
 export async function launchSuite(params: {
   suiteId: number;
@@ -35,6 +54,8 @@ export async function launchSuite(params: {
       "Someone launched this suite since this page loaded. Nothing was created.",
     );
   }
+  const existing = existingLaunchEvent(latest.value.events);
+  if (existing) return R.failure(`${existing} Nothing was created.`);
   const existingEventIds = new Set(
     latest.value.events.map((event) => event.id),
   );

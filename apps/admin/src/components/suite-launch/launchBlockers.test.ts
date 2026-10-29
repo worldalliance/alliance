@@ -39,7 +39,7 @@ const ready = {
   },
   schedule,
   reminderWindows: [],
-  hasMemberActionEvent: false,
+  suiteEvents: [],
   checkedActionIds: new Set([1]),
   dismissedFindingKeys: new Set(["f1"]),
   violationsAcknowledged: false,
@@ -55,8 +55,16 @@ describe("launchBlockers", () => {
   });
 
   it("never launches a suite twice", () => {
-    expect(messages({ ...ready, hasMemberActionEvent: true })).toEqual([
-      "This suite already has a members taking action event.",
+    expect(
+      messages({ ...ready, suiteEvents: [{ newStatus: "member_action" }] }),
+    ).toEqual(["This suite already has a members taking action event."]);
+  });
+
+  it("refuses a suite that already has its deadline event", () => {
+    expect(
+      messages({ ...ready, suiteEvents: [{ newStatus: "office_action" }] }),
+    ).toEqual([
+      "This suite already has an office taking action event. Delete it on the suite page, then launch.",
     ]);
   });
 

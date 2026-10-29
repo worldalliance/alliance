@@ -6,7 +6,7 @@ import type {
 } from "@alliance/shared/client";
 import { describe, expect, it, mock } from "bun:test";
 import { defaultReminderBodies } from "../reminders/presets";
-import { launchSuite } from "./launchSuite";
+import { launchSuite, refetchedOrThrow } from "./launchSuite";
 
 const schedule = {
   memberActionAt: new Date("2026-01-16T03:00:00Z"),
@@ -199,5 +199,48 @@ describe("launchSuite", () => {
 
     expect(!result.ok && result.error).toEndWith("Nothing was launched.");
     expect(addEvent).not.toHaveBeenCalled();
+  });
+
+  it("refuses a suite that gained a deadline event since the page loaded", async () => {
+    const officeEvent = event(2, {
+      title: "Office taking action",
+      description: "",
+      newStatus: "office_action",
+      date: "2026-01-23T07:59:00Z",
+    });
+    const addEvent = appendingAddEvent([officeEvent]);
+
+    const result = await launchSuite({
+      suiteId: 3,
+      fetchSuite: async () => suiteWith([officeEvent]),
+      schedule,
+      addEvent,
+      createReminders: async () => [],
+    });
+
+    expect(!result.ok && result.error).toEndWith("Nothing was created.");
+    expect(addEvent).not.toHaveBeenCalled();
+  });
+});
+
+describe("refetchedOrThrow", () => {
+  it("throws when the reload failed, even with cached data still around", async () => {
+    const cached = suiteWith([]);
+    const failure = new Error("offline");
+
+    await expect(
+      refetchedOrThrow(async () => ({
+        data: cached,
+        isError: true,
+        error: failure,
+      })),
+    ).rejects.toBe(failure);
+    expect(
+      await refetchedOrThrow(async () => ({
+        data: cached,
+        isError: false,
+        error: null,
+      })),
+    ).toBe(cached);
   });
 });

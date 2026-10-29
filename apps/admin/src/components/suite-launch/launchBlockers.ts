@@ -1,3 +1,4 @@
+import type { ActionEventDto } from "@alliance/shared/client";
 import { contractViolations } from "./contractViolations";
 import {
   remindersBeforeLaunch,
@@ -20,6 +21,19 @@ export type LaunchBlocker = { message: string; section: LaunchSection | null };
 const plural = (count: number, one: string, many: string) =>
   `${count} ${count === 1 ? one : many}`;
 
+/** Why the suite's own events already rule out launching, if they do. */
+export function existingLaunchEvent(
+  events: readonly Pick<ActionEventDto, "newStatus">[],
+): string | null {
+  if (events.some((event) => event.newStatus === "member_action")) {
+    return "This suite already has a members taking action event.";
+  }
+  if (events.some((event) => event.newStatus === "office_action")) {
+    return "This suite already has an office taking action event. Delete it on the suite page, then launch.";
+  }
+  return null;
+}
+
 export function launchBlockers(params: {
   data: Pick<
     SuiteLaunchData,
@@ -34,7 +48,7 @@ export function launchBlockers(params: {
   };
   schedule: LaunchSchedule;
   reminderWindows: ReminderSendWindow[];
-  hasMemberActionEvent: boolean;
+  suiteEvents: readonly Pick<ActionEventDto, "newStatus">[];
   checkedActionIds: ReadonlySet<number>;
   dismissedFindingKeys: ReadonlySet<string>;
   violationsAcknowledged: boolean;
@@ -44,20 +58,14 @@ export function launchBlockers(params: {
     data,
     schedule,
     reminderWindows,
-    hasMemberActionEvent,
+    suiteEvents,
     checkedActionIds,
     dismissedFindingKeys,
     violationsAcknowledged,
     now,
   } = params;
-  if (hasMemberActionEvent) {
-    return [
-      {
-        message: "This suite already has a members taking action event.",
-        section: null,
-      },
-    ];
-  }
+  const existing = existingLaunchEvent(suiteEvents);
+  if (existing) return [{ message: existing, section: null }];
   if (data.loading || data.spellcheckLoading) {
     return [{ message: "Checks are loading.", section: null }];
   }
