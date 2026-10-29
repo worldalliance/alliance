@@ -13,7 +13,10 @@ export const ABOUT_SECTIONS = [
   {
     heading: "Why are we doing this?",
     body: `- At the Alliance, we’re assembling people who can count on each other to combat global problems that depend on everyone’s participation. With this project, we are testing the model of “citizen oversight”, where the general public gets a chance to weigh in on disruptive, potentially dangerous technologies such as AI and help shape the direction of these technologies in a healthy, democratic way.
-- KORA has identified a [lack of research](https://arxiv.org/html/2608.07902v1) on how AI systems affect children and teenagers. We are excited to partner with them to make these systems safer.`,
+- As AI adoption grows, [safety evaluations struggle](https://hai.stanford.edu/ai-index/2026-ai-index-report/responsible-ai) to capture the complexity of real-world harms, particularly those affecting children and teenagers. KORA is working to close these gaps. Volunteers for this project will help develop AI safety evaluations that better reflect the risks people actually face.
+`, /* 
+    - KORA has identified a [lack of research](https://arxiv.org/html/2608.07902v1) on how AI systems affect children and teenagers. We are excited to partner with them to make these systems safer.
+    */
   },
   {
     heading: "How do I participate?",
@@ -39,9 +42,6 @@ export const PARTICIPANT_GOAL = 500;
 
 export const CHATBOT_USE_STAT = {
   claim: "80% of children use AI chatbots in 2026.",
-  quote:
-    "81% of 9- to 12-year-olds, 89% of 13- to 15-year-olds, and 92% of 16- to 17-year-olds saying they use or interact with AI. Nearly 3 in 10 teens (29% of 13- to 17-year-olds) and 17% of 9- to 12-year-olds use AI daily.",
-  source: "Common Sense Media, AI Use by Tweens and Teens (2026)",
   href: "https://www.commonsensemedia.org/sites/default/files/research/report/2026-ai-use-by-tweens-and-teens-1.pdf",
 };
 
@@ -124,26 +124,22 @@ export const TIMELINE_HEADING = "Project Overview";
 export const PHASES: Phase[] = [
   {
     description:
-      "Volunteers will read scenarios that simulate a child or teenager talking to a chatbot.",
+      "Step 1: Volunteers will read scenarios that simulate a child or teenager talking to a chatbot.",
     imageSrc: "/assets/chatbot-safety/step-read-scenarios.png",
   },
   {
     description:
-      "Volunteers will rate the chatbot's responses as 'safe' or 'unsafe'",
+      "Step 2: Volunteers will rate the chatbot's responses as 'safe' or 'unsafe'.",
     imageSrc: "/assets/chatbot-safety/step-rate-responses.png",
-    /* imageSrc: "/assets/chatbot-safety/Boy-Laptop.svg"
-    Image is from a Creative Commons website, authorized for public use. 
-      - https://publicdomainvectors.org/en/free-clipart/Boy-and-laptop/40053.html 
-      - https://publicdomainvectors.org/en/public-domain/ */
   },
   {
     description:
-      "KORA will take the volunteer feedback to improve their benchmarks to reflect what the public believes to be safe.",
+      "Step 3: KORA will take the volunteer feedback to improve their benchmarks to reflect what the public believes to be safe.",
     imageSrc: "/assets/chatbot-safety/step-kora-benchmark.png",
   },
   {
     description:
-      "Leading AI labs such as Mistral (EU) will use these benchmarks to evaluate their new chatbot models.",
+      "Step 4: Leading AI labs such as Mistral (EU) will use these benchmarks to evaluate their new chatbot models.",
     imageSrc: "/assets/chatbot-safety/step-ai-labs.png",
   },
 ];
