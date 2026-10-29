@@ -28,11 +28,11 @@ import {
 const PHYSICALLY_DELETED = [
   "AiDetectionResult",
   "Cluster",
+  "KoraParticipantSession",
+  "KoraParticipantSignup",
   "NotificationPreference",
   "OtpChallenge",
   "OtpRateEvent",
-  "ProjectParticipantSession",
-  "ProjectParticipantSignup",
   "RecentSearch",
   "SpentToken",
   "WaitlistBrowser",
@@ -43,7 +43,7 @@ const PHYSICALLY_DELETED = [
 const NEVER_DELETED = [
   "EditableContent",
   "FormRowAssignment",
-  "ProjectParticipant",
+  "KoraParticipant",
 ];
 
 describe("softDeleteCascade (e2e)", () => {

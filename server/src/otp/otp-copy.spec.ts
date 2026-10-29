@@ -1,7 +1,7 @@
 import { OtpPurpose, otpEmail, otpText } from "./otp-copy";
 
 describe("participant sign-in copy", () => {
-  const purpose = OtpPurpose.ParticipantSignIn;
+  const purpose = OtpPurpose.KoraSignIn;
 
   it("puts the code in the email subject and body", () => {
     expect(otpEmail({ purpose, code: "012345" })).toEqual({

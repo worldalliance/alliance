@@ -11,6 +11,8 @@ Origin: user.
 
 Create a separate backend entity for non-member participants in the Kora project. Registration creates a limited participant account, not an Alliance waitlist entry or member account. Participants will eventually use a public task resembling the Apgard task at a larger scale, and should eventually be able to convert to membership easily.
 
+The participant feature is a short-lived offshoot of the Kora project, expected to be retired within a few months, not a general Alliance feature. Name its backend, storage, and interfaces for Kora specifically.
+
 This spec covers participant signup and login only. Implementing the task, authorizing task access, and converting participants to membership are outside this work. Participant registration requires no invitation or referral code.
 
 ## R2. Entry point and availability

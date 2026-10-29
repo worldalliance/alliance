@@ -1,5 +1,5 @@
+import { KoraError } from "@alliance/common/kora";
 import { OtpError } from "@alliance/common/otp";
-import { ParticipantError } from "@alliance/common/participant";
 import { R } from "@alliance/common/result";
 import {
   BadRequestException,
@@ -17,33 +17,29 @@ import {
 import { ApiNoContentResponse, ApiOkResponse } from "@nestjs/swagger";
 import type { Request, Response } from "express";
 import { AllowedOriginGuard } from "src/auth/guards/allowed-origin.guard";
-import { ParticipantsAvailableGuard } from "src/auth/guards/participants-available.guard";
+import { KoraAvailableGuard } from "src/auth/guards/kora-available.guard";
 import { OtpChannel, OtpPurpose } from "src/otp/otp-copy";
 import { OTP_TTL_MS } from "src/otp/otp-limits";
 import { otpRefusalException } from "src/otp/otp-refusal";
 import { type OtpContact, OtpService } from "src/otp/otp.service";
 import { readCookie } from "src/utils/cookies";
 import {
-  CompleteProjectParticipantSignupDto,
+  CompleteKoraSignupDto,
   INVALID_CONTACT,
-  PendingProjectParticipantCodeDto,
-  ProjectParticipantCodeVerifiedDto,
-  ProjectParticipantDto,
-  ProjectParticipantStateDto,
-  StartProjectParticipantCodeDto,
-  VerifyProjectParticipantCodeDto,
-} from "./dto/participant.dto";
-import {
-  clearCookie,
-  ParticipantCookie,
-  setCookie,
-} from "./participant-cookies";
-import { ParticipantSessionService } from "./participant-session.service";
-import { ParticipantService } from "./participant.service";
+  KoraCodeVerifiedDto,
+  KoraParticipantDto,
+  KoraParticipantStateDto,
+  PendingKoraCodeDto,
+  StartKoraCodeDto,
+  VerifyKoraCodeDto,
+} from "./dto/kora-participant.dto";
+import { clearCookie, KoraCookie, setCookie } from "./kora-cookies";
+import { KoraParticipantService } from "./kora-participant.service";
+import { KoraSessionService } from "./kora-session.service";
 
-const PURPOSE = OtpPurpose.ParticipantSignIn;
+const PURPOSE = OtpPurpose.KoraSignIn;
 
-function contactOf(dto: StartProjectParticipantCodeDto): OtpContact {
+function contactOf(dto: StartKoraCodeDto): OtpContact {
   if (dto.email !== undefined && dto.phoneNumber === undefined) {
     return { channel: OtpChannel.Email, destination: dto.email };
   }
@@ -65,24 +61,24 @@ function webOtpHost(req: Request): string {
   return new URL(origin).host;
 }
 
-@Controller("participants")
-@UseGuards(ParticipantsAvailableGuard)
-export class ParticipantsController {
+@Controller("kora")
+@UseGuards(KoraAvailableGuard)
+export class KoraController {
   constructor(
-    private readonly participantService: ParticipantService,
-    private readonly sessionService: ParticipantSessionService,
+    private readonly participantService: KoraParticipantService,
+    private readonly sessionService: KoraSessionService,
     private readonly otpService: OtpService,
   ) {}
 
   /** Everything the sign-in card needs to resume after a reload. */
   @Get("me")
-  @ApiOkResponse({ type: ProjectParticipantStateDto })
+  @ApiOkResponse({ type: KoraParticipantStateDto })
   async state(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<ProjectParticipantStateDto> {
-    const codeToken = readCookie(req, ParticipantCookie.Code);
-    const signupToken = readCookie(req, ParticipantCookie.Signup);
+  ): Promise<KoraParticipantStateDto> {
+    const codeToken = readCookie(req, KoraCookie.Code);
+    const signupToken = readCookie(req, KoraCookie.Signup);
     const [participant, pendingCode, signupPending] = await Promise.all([
       this.sessionService.current(req, res),
       codeToken
@@ -90,7 +86,7 @@ export class ParticipantsController {
         : null,
       signupToken ? this.participantService.signupPending(signupToken) : false,
     ]);
-    return new ProjectParticipantStateDto({
+    return new KoraParticipantStateDto({
       participant,
       pendingCode,
       signupPending,
@@ -100,12 +96,12 @@ export class ParticipantsController {
   @Post("code")
   @UseGuards(AllowedOriginGuard)
   @HttpCode(HttpStatus.OK)
-  @ApiOkResponse({ type: PendingProjectParticipantCodeDto })
+  @ApiOkResponse({ type: PendingKoraCodeDto })
   async sendCode(
-    @Body() dto: StartProjectParticipantCodeDto,
+    @Body() dto: StartKoraCodeDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<PendingProjectParticipantCodeDto> {
+  ): Promise<PendingKoraCodeDto> {
     const started = await this.otpService.start({
       purpose: PURPOSE,
       contact: contactOf(dto),
@@ -117,11 +113,11 @@ export class ParticipantsController {
     }
     setCookie({
       res,
-      name: ParticipantCookie.Code,
+      name: KoraCookie.Code,
       token: started.value.browserToken,
       maxAgeMs: OTP_TTL_MS,
     });
-    return new PendingProjectParticipantCodeDto(started.value.pending);
+    return new PendingKoraCodeDto(started.value.pending);
   }
 
   /** Drops this browser's code and any signup awaiting a name. */
@@ -133,27 +129,27 @@ export class ParticipantsController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<void> {
-    const codeToken = readCookie(req, ParticipantCookie.Code);
+    const codeToken = readCookie(req, KoraCookie.Code);
     if (codeToken) {
       await this.otpService.abandon({
         purpose: PURPOSE,
         browserToken: codeToken,
       });
     }
-    clearCookie(res, ParticipantCookie.Code);
+    clearCookie(res, KoraCookie.Code);
     await this.dropSignup(req, res);
   }
 
   @Post("code/verify")
   @UseGuards(AllowedOriginGuard)
   @HttpCode(HttpStatus.OK)
-  @ApiOkResponse({ type: ProjectParticipantCodeVerifiedDto })
+  @ApiOkResponse({ type: KoraCodeVerifiedDto })
   async verifyCode(
-    @Body() dto: VerifyProjectParticipantCodeDto,
+    @Body() dto: VerifyKoraCodeDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<ProjectParticipantCodeVerifiedDto> {
-    const codeToken = readCookie(req, ParticipantCookie.Code);
+  ): Promise<KoraCodeVerifiedDto> {
+    const codeToken = readCookie(req, KoraCookie.Code);
     if (!codeToken) {
       throw otpRefusalException({ error: OtpError.CodeInvalid });
     }
@@ -166,7 +162,7 @@ export class ParticipantsController {
     if (!verified.ok) {
       throw otpRefusalException(verified.error);
     }
-    clearCookie(res, ParticipantCookie.Code);
+    clearCookie(res, KoraCookie.Code);
     if ("participant" in verified.value) {
       await this.dropSignup(req, res);
       await this.sessionService.begin({
@@ -174,39 +170,39 @@ export class ParticipantsController {
         res,
         participantId: verified.value.participant.id,
       });
-      return new ProjectParticipantCodeVerifiedDto(verified.value.participant);
+      return new KoraCodeVerifiedDto(verified.value.participant);
     }
     setCookie({
       res,
-      name: ParticipantCookie.Signup,
+      name: KoraCookie.Signup,
       token: verified.value.signupToken,
       maxAgeMs: verified.value.signupTtlMs,
     });
-    return new ProjectParticipantCodeVerifiedDto(null);
+    return new KoraCodeVerifiedDto(null);
   }
 
   @Post("signup")
   @UseGuards(AllowedOriginGuard)
   @HttpCode(HttpStatus.OK)
-  @ApiOkResponse({ type: ProjectParticipantDto })
+  @ApiOkResponse({ type: KoraParticipantDto })
   async completeSignup(
-    @Body() dto: CompleteProjectParticipantSignupDto,
+    @Body() dto: CompleteKoraSignupDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<ProjectParticipantDto> {
-    const signupToken = readCookie(req, ParticipantCookie.Signup);
+  ): Promise<KoraParticipantDto> {
+    const signupToken = readCookie(req, KoraCookie.Signup);
     const completed = signupToken
       ? await this.participantService.completeSignup({
           signupToken,
           name: dto.name,
           timeZone: dto.timeZone ?? null,
         })
-      : R.failure(ParticipantError.SignupExpired);
-    clearCookie(res, ParticipantCookie.Signup);
+      : R.failure(KoraError.SignupExpired);
+    clearCookie(res, KoraCookie.Signup);
     if (!completed.ok) {
       throw new BadRequestException(
         "Your verification has expired. Verify your contact again.",
-        { description: ParticipantError.SignupExpired },
+        { description: KoraError.SignupExpired },
       );
     }
     await this.sessionService.begin({
@@ -214,7 +210,7 @@ export class ParticipantsController {
       res,
       participantId: completed.value.id,
     });
-    return new ProjectParticipantDto(completed.value);
+    return new KoraParticipantDto(completed.value);
   }
 
   /** Ends this browser's participant session only. */
@@ -230,10 +226,10 @@ export class ParticipantsController {
   }
 
   private async dropSignup(req: Request, res: Response): Promise<void> {
-    const signupToken = readCookie(req, ParticipantCookie.Signup);
+    const signupToken = readCookie(req, KoraCookie.Signup);
     if (signupToken) {
       await this.participantService.abandonSignup(signupToken);
     }
-    clearCookie(res, ParticipantCookie.Signup);
+    clearCookie(res, KoraCookie.Signup);
   }
 }

@@ -24,6 +24,7 @@ import { ForumModule } from "./forum/forum.module";
 import { GeoModule } from "./geo/geo.module";
 import { HostedDocsModule } from "./hosted-docs/hosted-docs.module";
 import { ImagesModule } from "./images/images.module";
+import { KoraModule } from "./kora/kora.module";
 import { LikesModule } from "./likes/likes.module";
 import { LinkPreviewModule } from "./link-preview/link-preview.module";
 import { LinkTrackingModule } from "./link-tracking/link-tracking.module";
@@ -31,7 +32,6 @@ import { MailModule } from "./mail/mail.module";
 import { MessagingModule } from "./messaging/messaging.module";
 import { MmsModule } from "./mms/mms.module";
 import { NotifsModule } from "./notifs/notifs.module";
-import { ParticipantsModule } from "./participants/participants.module";
 import { PosthogModule } from "./posthog/posthog.module";
 import { PushModule } from "./push/push.module";
 import { S3Module } from "./s3/s3.module";
@@ -111,7 +111,7 @@ if (!("polyfilled" in Intl.DateTimeFormat)) {
     PushModule,
     EventLogModule,
     WaitlistModule,
-    ParticipantsModule,
+    KoraModule,
   ],
   controllers: [AppController],
 })

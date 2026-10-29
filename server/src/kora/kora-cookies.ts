@@ -1,10 +1,10 @@
 import { currentNodeEnv, isDeployed } from "@alliance/common/node-env";
 import type { CookieOptions, Response } from "express";
 
-export enum ParticipantCookie {
-  Session = "participant_session",
-  Code = "participant_code",
-  Signup = "participant_signup",
+export enum KoraCookie {
+  Session = "kora_session",
+  Code = "kora_code",
+  Signup = "kora_signup",
 }
 
 function cookieOptions(): CookieOptions {
@@ -19,7 +19,7 @@ function cookieOptions(): CookieOptions {
 
 export function setCookie(params: {
   res: Response;
-  name: ParticipantCookie;
+  name: KoraCookie;
   token: string;
   maxAgeMs: number;
 }): void {
@@ -29,6 +29,6 @@ export function setCookie(params: {
   });
 }
 
-export function clearCookie(res: Response, name: ParticipantCookie): void {
+export function clearCookie(res: Response, name: KoraCookie): void {
   res.clearCookie(name, cookieOptions());
 }

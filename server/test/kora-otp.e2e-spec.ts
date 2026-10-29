@@ -1,25 +1,21 @@
 import { OtpError } from "@alliance/common/otp";
-import { ProjectParticipantSession } from "src/participants/entities/project-participant-session.entity";
-import { ProjectParticipantSignup } from "src/participants/entities/project-participant-signup.entity";
-import { ParticipantSessionService } from "src/participants/participant-session.service";
-import { ParticipantService } from "src/participants/participant.service";
+import { KoraParticipantSession } from "src/kora/entities/kora-participant-session.entity";
+import { KoraParticipantSignup } from "src/kora/entities/kora-participant-signup.entity";
+import { KoraParticipantService } from "src/kora/kora-participant.service";
+import { KoraSessionService } from "src/kora/kora-session.service";
+import { ORIGIN, koraHarness, type KoraHarness } from "./kora-fixtures";
 import {
   forgetRateEvents,
   uniqueEmail,
   uniquePhone,
   wrongCode,
 } from "./otp-fixtures";
-import {
-  ORIGIN,
-  participantHarness,
-  type ParticipantHarness,
-} from "./participant-fixtures";
 
-describe("Participant one-time codes (e2e)", () => {
-  let h: ParticipantHarness;
+describe("Kora one-time codes (e2e)", () => {
+  let h: KoraHarness;
 
   beforeAll(async () => {
-    h = await participantHarness();
+    h = await koraHarness();
   }, 50000);
 
   beforeEach(async () => {
@@ -108,10 +104,7 @@ describe("Participant one-time codes (e2e)", () => {
   it("restarts at contact entry when the contact is changed", async () => {
     const browser = h.browser();
     await h.sendCode(browser, { email: uniqueEmail() }).expect(200);
-    await browser
-      .delete("/participants/code")
-      .set("Origin", ORIGIN)
-      .expect(204);
+    await browser.delete("/kora/code").set("Origin", ORIGIN).expect(204);
     expect(await h.state(browser)).toEqual({
       participant: null,
       pendingCode: null,
@@ -125,10 +118,7 @@ describe("Participant one-time codes (e2e)", () => {
   it("forgets expired signups and sessions", async () => {
     await h.verified(h.browser(), { email: uniqueEmail() });
     await h.signedUp(h.browser(), { email: uniqueEmail() });
-    for (const target of [
-      ProjectParticipantSignup,
-      ProjectParticipantSession,
-    ]) {
+    for (const target of [KoraParticipantSignup, KoraParticipantSession]) {
       await h.ctx.dataSource
         .getRepository(target)
         .createQueryBuilder()
@@ -137,13 +127,10 @@ describe("Participant one-time codes (e2e)", () => {
         .execute();
     }
 
-    await h.ctx.app.get(ParticipantService).forgetExpiredSignups();
-    await h.ctx.app.get(ParticipantSessionService).forgetExpired();
+    await h.ctx.app.get(KoraParticipantService).forgetExpiredSignups();
+    await h.ctx.app.get(KoraSessionService).forgetExpired();
 
-    for (const target of [
-      ProjectParticipantSignup,
-      ProjectParticipantSession,
-    ]) {
+    for (const target of [KoraParticipantSignup, KoraParticipantSession]) {
       expect(await h.ctx.dataSource.getRepository(target).count()).toBe(0);
     }
   });

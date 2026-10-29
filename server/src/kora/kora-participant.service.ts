@@ -1,4 +1,4 @@
-import { ParticipantError } from "@alliance/common/participant";
+import { KoraError } from "@alliance/common/kora";
 import { R, type Result } from "@alliance/common/result";
 import { Injectable } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
@@ -19,13 +19,13 @@ import {
   LessThan,
   MoreThan,
 } from "typeorm";
-import { ProjectParticipantSignup } from "./entities/project-participant-signup.entity";
-import { ProjectParticipant } from "./entities/project-participant.entity";
+import { KoraParticipantSignup } from "./entities/kora-participant-signup.entity";
+import { KoraParticipant } from "./entities/kora-participant.entity";
 
 const SIGNUP_TTL_MS = milliseconds({ minutes: 10 });
 
 export type CodeVerified =
-  | { participant: ProjectParticipant }
+  | { participant: KoraParticipant }
   | { signupToken: string; signupTtlMs: number };
 
 function contactColumns(contact: OtpContact): {
@@ -42,21 +42,19 @@ function contactColumns(contact: OtpContact): {
   }
 }
 
-function contactWhere(
-  contact: OtpContact,
-): FindOptionsWhere<ProjectParticipant> {
+function contactWhere(contact: OtpContact): FindOptionsWhere<KoraParticipant> {
   const { email, phoneNumber } = contactColumns(contact);
   return { email: email ?? IsNull(), phoneNumber: phoneNumber ?? IsNull() };
 }
 
 @Injectable()
-export class ParticipantService {
+export class KoraParticipantService {
   constructor(
     private readonly dataSource: DataSource,
-    @InjectRepository(ProjectParticipant)
-    private readonly participants: Repository<ProjectParticipant>,
-    @InjectRepository(ProjectParticipantSignup)
-    private readonly signups: Repository<ProjectParticipantSignup>,
+    @InjectRepository(KoraParticipant)
+    private readonly participants: Repository<KoraParticipant>,
+    @InjectRepository(KoraParticipantSignup)
+    private readonly signups: Repository<KoraParticipantSignup>,
     private readonly otpService: OtpService,
   ) {}
 
@@ -67,7 +65,7 @@ export class ParticipantService {
     timeZone: string | null;
   }): Promise<Result<CodeVerified, OtpVerifyRefusal>> {
     const verified = await this.otpService.verify({
-      purpose: OtpPurpose.ParticipantSignIn,
+      purpose: OtpPurpose.KoraSignIn,
       browserToken: params.codeToken,
       code: params.code,
       ip: params.ip,
@@ -104,12 +102,12 @@ export class ParticipantService {
     signupToken: string;
     name: string;
     timeZone: string | null;
-  }): Promise<Result<ProjectParticipant, ParticipantError.SignupExpired>> {
+  }): Promise<Result<KoraParticipant, KoraError.SignupExpired>> {
     return this.dataSource.transaction(async (manager) => {
       const consumed = await manager
         .createQueryBuilder()
         .delete()
-        .from(ProjectParticipantSignup)
+        .from(KoraParticipantSignup)
         .where(`"tokenHash" = :tokenHash AND "expiresAt" > :now`, {
           tokenHash: hashToken(params.signupToken),
           now: new Date(),
@@ -117,16 +115,16 @@ export class ParticipantService {
         .returning(`"channel", "destination", "createdAt"`)
         .execute();
       const [signup]: Pick<
-        ProjectParticipantSignup,
+        KoraParticipantSignup,
         "channel" | "destination" | "createdAt"
       >[] = consumed.raw;
       if (!signup) {
-        return R.failure(ParticipantError.SignupExpired);
+        return R.failure(KoraError.SignupExpired);
       }
       await manager
         .createQueryBuilder()
         .insert()
-        .into(ProjectParticipant)
+        .into(KoraParticipant)
         .values({
           name: params.name,
           ...contactColumns(signup),
@@ -136,7 +134,7 @@ export class ParticipantService {
         .orIgnore()
         .execute();
       return R.success(
-        await manager.findOneByOrFail(ProjectParticipant, contactWhere(signup)),
+        await manager.findOneByOrFail(KoraParticipant, contactWhere(signup)),
       );
     });
   }

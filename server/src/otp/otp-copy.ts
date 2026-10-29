@@ -3,7 +3,7 @@ import { OTP_TTL_MS } from "./otp-limits";
 
 /** What a code is for. Each has its own wording and its own challenges. */
 export enum OtpPurpose {
-  ParticipantSignIn = "participant_sign_in",
+  KoraSignIn = "kora_sign_in",
 }
 
 export enum OtpChannel {
@@ -19,7 +19,7 @@ type OtpCopy = {
 
 /** The same wording whether or not an account exists, so a message reveals neither. */
 const OTP_COPY: Record<OtpPurpose, OtpCopy> = {
-  [OtpPurpose.ParticipantSignIn]: {
+  [OtpPurpose.KoraSignIn]: {
     codeLabel: "sign-in code",
     emailAction: "continue to Safer Chatbots for Children",
   },

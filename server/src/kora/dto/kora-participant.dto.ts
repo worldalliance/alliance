@@ -17,11 +17,11 @@ import type { PendingOtp } from "src/otp/otp.service";
 import { IsE164 } from "src/utils/phone";
 import { IsTimeZoneIdentifier } from "src/utils/timezone";
 import { trim } from "src/utils/transforms";
-import { ProjectParticipant } from "../entities/project-participant.entity";
+import { KoraParticipant } from "../entities/kora-participant.entity";
 
 export const INVALID_CONTACT = "Enter a valid email address or mobile number.";
 
-export class StartProjectParticipantCodeDto {
+export class StartKoraCodeDto {
   @ApiPropertyOptional({ description: "Send this or `phoneNumber`" })
   @ValidateIf((_object, value) => value !== undefined)
   @Transform(trim)
@@ -46,7 +46,7 @@ class DetectedTimeZoneDto {
   timeZone?: string | null;
 }
 
-export class VerifyProjectParticipantCodeDto extends DetectedTimeZoneDto {
+export class VerifyKoraCodeDto extends DetectedTimeZoneDto {
   @ApiProperty()
   @IsString()
   @Matches(new RegExp(`^\\d{${OTP_CODE_LENGTH}}$`), {
@@ -55,7 +55,7 @@ export class VerifyProjectParticipantCodeDto extends DetectedTimeZoneDto {
   code: string;
 }
 
-export class CompleteProjectParticipantSignupDto extends DetectedTimeZoneDto {
+export class CompleteKoraSignupDto extends DetectedTimeZoneDto {
   @ApiProperty({ maxLength: 200 })
   @Transform(trim)
   @IsString()
@@ -64,18 +64,18 @@ export class CompleteProjectParticipantSignupDto extends DetectedTimeZoneDto {
   name: string;
 }
 
-export class ProjectParticipantDto extends PickType(ProjectParticipant, [
+export class KoraParticipantDto extends PickType(KoraParticipant, [
   "id",
   "name",
 ]) {
-  constructor(input: ProjectParticipant) {
+  constructor(input: KoraParticipant) {
     super();
     this.id = input.id;
     this.name = input.name;
   }
 }
 
-export class PendingProjectParticipantCodeDto {
+export class PendingKoraCodeDto {
   @ApiProperty({ enum: OtpChannel, enumName: "OtpChannel" })
   channel: OtpChannel;
 
@@ -96,45 +96,44 @@ export class PendingProjectParticipantCodeDto {
   }
 }
 
-export class ProjectParticipantCodeVerifiedDto {
+export class KoraCodeVerifiedDto {
   @ApiProperty({
-    type: () => ProjectParticipantDto,
+    type: () => KoraParticipantDto,
     nullable: true,
     description: "Null when the new participant still has to give a name",
   })
-  participant: ProjectParticipantDto | null;
+  participant: KoraParticipantDto | null;
 
-  constructor(participant: ProjectParticipant | null) {
-    this.participant = participant && new ProjectParticipantDto(participant);
+  constructor(participant: KoraParticipant | null) {
+    this.participant = participant && new KoraParticipantDto(participant);
   }
 }
 
-export type ProjectParticipantState = {
-  participant: ProjectParticipant | null;
+export type KoraParticipantState = {
+  participant: KoraParticipant | null;
   pendingCode: PendingOtp | null;
   signupPending: boolean;
 };
 
-export class ProjectParticipantStateDto {
-  @ApiProperty({ type: () => ProjectParticipantDto, nullable: true })
-  participant: ProjectParticipantDto | null;
+export class KoraParticipantStateDto {
+  @ApiProperty({ type: () => KoraParticipantDto, nullable: true })
+  participant: KoraParticipantDto | null;
 
   @ApiProperty({
-    type: () => PendingProjectParticipantCodeDto,
+    type: () => PendingKoraCodeDto,
     nullable: true,
     description: "A code this browser asked for and has not used",
   })
-  pendingCode: PendingProjectParticipantCodeDto | null;
+  pendingCode: PendingKoraCodeDto | null;
 
   @ApiProperty({ description: "A verified contact is waiting on a name" })
   signupPending: boolean;
 
-  constructor(input: ProjectParticipantState) {
+  constructor(input: KoraParticipantState) {
     this.participant =
-      input.participant && new ProjectParticipantDto(input.participant);
+      input.participant && new KoraParticipantDto(input.participant);
     this.pendingCode =
-      input.pendingCode &&
-      new PendingProjectParticipantCodeDto(input.pendingCode);
+      input.pendingCode && new PendingKoraCodeDto(input.pendingCode);
     this.signupPending = input.signupPending;
   }
 }

@@ -8,10 +8,10 @@ import {
   ManyToOne,
   PrimaryColumn,
 } from "typeorm";
-import { ProjectParticipant } from "./project-participant.entity";
+import { KoraParticipant } from "./kora-participant.entity";
 
 @Entity()
-export class ProjectParticipantSession {
+export class KoraParticipantSession {
   /** sha256 of the cookie's token. */
   @PrimaryColumn()
   tokenHash: string;
@@ -20,9 +20,9 @@ export class ProjectParticipantSession {
   @Column({ type: "uuid" })
   participantId: string;
 
-  @ManyToOne(() => ProjectParticipant, { onDelete: "CASCADE" })
+  @ManyToOne(() => KoraParticipant, { onDelete: "CASCADE" })
   @JoinColumn({ name: "participantId" })
-  participant?: Relation<ProjectParticipant>;
+  participant?: Relation<KoraParticipant>;
 
   @Index()
   @Column({ type: "timestamptz" })

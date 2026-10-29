@@ -5095,14 +5095,14 @@ export type SaveWaitlistEmailTemplateDto = {
     name: string;
 };
 
-export type ProjectParticipantDto = {
+export type KoraParticipantDto = {
     id: string;
     name: string;
 };
 
 export type OtpChannel = 'email' | 'sms';
 
-export type PendingProjectParticipantCodeDto = {
+export type PendingKoraCodeDto = {
     channel: OtpChannel;
     /**
      * Where the code went, partly hidden
@@ -5112,19 +5112,19 @@ export type PendingProjectParticipantCodeDto = {
     expiresAt: string;
 };
 
-export type ProjectParticipantStateDto = {
-    participant: ProjectParticipantDto | null;
+export type KoraParticipantStateDto = {
+    participant: KoraParticipantDto | null;
     /**
      * A code this browser asked for and has not used
      */
-    pendingCode: PendingProjectParticipantCodeDto | null;
+    pendingCode: PendingKoraCodeDto | null;
     /**
      * A verified contact is waiting on a name
      */
     signupPending: boolean;
 };
 
-export type StartProjectParticipantCodeDto = {
+export type StartKoraCodeDto = {
     /**
      * Send this or `phoneNumber`
      */
@@ -5135,7 +5135,7 @@ export type StartProjectParticipantCodeDto = {
     phoneNumber?: string;
 };
 
-export type VerifyProjectParticipantCodeDto = {
+export type VerifyKoraCodeDto = {
     /**
      * The device's IANA timezone, when it could be detected
      */
@@ -5143,14 +5143,14 @@ export type VerifyProjectParticipantCodeDto = {
     code: string;
 };
 
-export type ProjectParticipantCodeVerifiedDto = {
+export type KoraCodeVerifiedDto = {
     /**
      * Null when the new participant still has to give a name
      */
-    participant: ProjectParticipantDto | null;
+    participant: KoraParticipantDto | null;
 };
 
-export type CompleteProjectParticipantSignupDto = {
+export type CompleteKoraSignupDto = {
     /**
      * The device's IANA timezone, when it could be detected
      */
@@ -15546,141 +15546,141 @@ export type WaitlistEmailAdminUpdateTemplateAdminResponses = {
 
 export type WaitlistEmailAdminUpdateTemplateAdminResponse = WaitlistEmailAdminUpdateTemplateAdminResponses[keyof WaitlistEmailAdminUpdateTemplateAdminResponses];
 
-export type ParticipantsStateData = {
+export type KoraStateData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/participants/me';
+    url: '/kora/me';
 };
 
-export type ParticipantsStateErrors = {
+export type KoraStateErrors = {
     /**
      * Default error response for hey-api
      */
     default: HeyApiError;
 };
 
-export type ParticipantsStateError = ParticipantsStateErrors[keyof ParticipantsStateErrors];
+export type KoraStateError = KoraStateErrors[keyof KoraStateErrors];
 
-export type ParticipantsStateResponses = {
-    200: ProjectParticipantStateDto;
+export type KoraStateResponses = {
+    200: KoraParticipantStateDto;
 };
 
-export type ParticipantsStateResponse = ParticipantsStateResponses[keyof ParticipantsStateResponses];
+export type KoraStateResponse = KoraStateResponses[keyof KoraStateResponses];
 
-export type ParticipantsAbandonCodeData = {
+export type KoraAbandonCodeData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/participants/code';
+    url: '/kora/code';
 };
 
-export type ParticipantsAbandonCodeErrors = {
+export type KoraAbandonCodeErrors = {
     /**
      * Default error response for hey-api
      */
     default: HeyApiError;
 };
 
-export type ParticipantsAbandonCodeError = ParticipantsAbandonCodeErrors[keyof ParticipantsAbandonCodeErrors];
+export type KoraAbandonCodeError = KoraAbandonCodeErrors[keyof KoraAbandonCodeErrors];
 
-export type ParticipantsAbandonCodeResponses = {
+export type KoraAbandonCodeResponses = {
     204: {
         [key: string]: never;
     };
 };
 
-export type ParticipantsAbandonCodeResponse = ParticipantsAbandonCodeResponses[keyof ParticipantsAbandonCodeResponses];
+export type KoraAbandonCodeResponse = KoraAbandonCodeResponses[keyof KoraAbandonCodeResponses];
 
-export type ParticipantsSendCodeData = {
-    body: StartProjectParticipantCodeDto;
+export type KoraSendCodeData = {
+    body: StartKoraCodeDto;
     path?: never;
     query?: never;
-    url: '/participants/code';
+    url: '/kora/code';
 };
 
-export type ParticipantsSendCodeErrors = {
+export type KoraSendCodeErrors = {
     /**
      * Default error response for hey-api
      */
     default: HeyApiError;
 };
 
-export type ParticipantsSendCodeError = ParticipantsSendCodeErrors[keyof ParticipantsSendCodeErrors];
+export type KoraSendCodeError = KoraSendCodeErrors[keyof KoraSendCodeErrors];
 
-export type ParticipantsSendCodeResponses = {
-    200: PendingProjectParticipantCodeDto;
+export type KoraSendCodeResponses = {
+    200: PendingKoraCodeDto;
 };
 
-export type ParticipantsSendCodeResponse = ParticipantsSendCodeResponses[keyof ParticipantsSendCodeResponses];
+export type KoraSendCodeResponse = KoraSendCodeResponses[keyof KoraSendCodeResponses];
 
-export type ParticipantsVerifyCodeData = {
-    body: VerifyProjectParticipantCodeDto;
+export type KoraVerifyCodeData = {
+    body: VerifyKoraCodeDto;
     path?: never;
     query?: never;
-    url: '/participants/code/verify';
+    url: '/kora/code/verify';
 };
 
-export type ParticipantsVerifyCodeErrors = {
+export type KoraVerifyCodeErrors = {
     /**
      * Default error response for hey-api
      */
     default: HeyApiError;
 };
 
-export type ParticipantsVerifyCodeError = ParticipantsVerifyCodeErrors[keyof ParticipantsVerifyCodeErrors];
+export type KoraVerifyCodeError = KoraVerifyCodeErrors[keyof KoraVerifyCodeErrors];
 
-export type ParticipantsVerifyCodeResponses = {
-    200: ProjectParticipantCodeVerifiedDto;
+export type KoraVerifyCodeResponses = {
+    200: KoraCodeVerifiedDto;
 };
 
-export type ParticipantsVerifyCodeResponse = ParticipantsVerifyCodeResponses[keyof ParticipantsVerifyCodeResponses];
+export type KoraVerifyCodeResponse = KoraVerifyCodeResponses[keyof KoraVerifyCodeResponses];
 
-export type ParticipantsCompleteSignupData = {
-    body: CompleteProjectParticipantSignupDto;
+export type KoraCompleteSignupData = {
+    body: CompleteKoraSignupDto;
     path?: never;
     query?: never;
-    url: '/participants/signup';
+    url: '/kora/signup';
 };
 
-export type ParticipantsCompleteSignupErrors = {
+export type KoraCompleteSignupErrors = {
     /**
      * Default error response for hey-api
      */
     default: HeyApiError;
 };
 
-export type ParticipantsCompleteSignupError = ParticipantsCompleteSignupErrors[keyof ParticipantsCompleteSignupErrors];
+export type KoraCompleteSignupError = KoraCompleteSignupErrors[keyof KoraCompleteSignupErrors];
 
-export type ParticipantsCompleteSignupResponses = {
-    200: ProjectParticipantDto;
+export type KoraCompleteSignupResponses = {
+    200: KoraParticipantDto;
 };
 
-export type ParticipantsCompleteSignupResponse = ParticipantsCompleteSignupResponses[keyof ParticipantsCompleteSignupResponses];
+export type KoraCompleteSignupResponse = KoraCompleteSignupResponses[keyof KoraCompleteSignupResponses];
 
-export type ParticipantsSignOutData = {
+export type KoraSignOutData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/participants/sign-out';
+    url: '/kora/sign-out';
 };
 
-export type ParticipantsSignOutErrors = {
+export type KoraSignOutErrors = {
     /**
      * Default error response for hey-api
      */
     default: HeyApiError;
 };
 
-export type ParticipantsSignOutError = ParticipantsSignOutErrors[keyof ParticipantsSignOutErrors];
+export type KoraSignOutError = KoraSignOutErrors[keyof KoraSignOutErrors];
 
-export type ParticipantsSignOutResponses = {
+export type KoraSignOutResponses = {
     204: {
         [key: string]: never;
     };
 };
 
-export type ParticipantsSignOutResponse = ParticipantsSignOutResponses[keyof ParticipantsSignOutResponses];
+export type KoraSignOutResponse = KoraSignOutResponses[keyof KoraSignOutResponses];
 
 export type ClientOptions = {
     baseUrl: string;

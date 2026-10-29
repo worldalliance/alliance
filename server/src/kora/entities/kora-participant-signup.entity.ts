@@ -4,7 +4,7 @@ import { Column, Entity, Index, PrimaryColumn } from "typeorm";
 
 /** A verified contact waiting on a name before it becomes a participant. */
 @Entity()
-export class ProjectParticipantSignup {
+export class KoraParticipantSignup {
   /** sha256 of the cookie's token. */
   @PrimaryColumn()
   tokenHash: string;
