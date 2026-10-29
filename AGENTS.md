@@ -84,6 +84,12 @@ Issues live in Linear.
 
 Ask before running a git command that writes. Read-only ones (`git diff`, `git status`, `git log`) need no permission.
 
+## Questions
+
+Follow the user's intended request in context. Requests to explain, evaluate, compare, or justify authorize investigation and an answer; they do not by themselves authorize changes. Requests to perform work authorize that work, including when phrased as questions. Asking about a recommendation neither rejects it nor approves an alternative.
+
+For example, after you suggest X, "Why X?" asks you to explain your reasoning. It does not mean the user is against X. Explain the recommendation and revise it only where the reasoning fails.
+
 ## Fail loudly
 
 Prefer to fail loudly over silently.
