@@ -112,6 +112,7 @@ const suiteWith = (events: ActionEventDto[]): ActionSuiteDto => ({
 });
 
 beforeEach(() => {
+  window.localStorage.clear();
   served = {
     1: adminAction({
       id: 1,
@@ -361,4 +362,41 @@ it("counts only members with an active contract, as the server admits them", asy
   ).toBeTruthy();
   expect(screen.getByText(/^1 members ·/)).toBeTruthy();
   expect(screen.getByText(/^0 members ·/)).toBeTruthy();
+});
+
+it("keeps the schedule, checks, and dismissals across a reload, until launch", async () => {
+  const first = renderPanel();
+  await resolveEveryCheck();
+  fireEvent.change(
+    first.container.querySelectorAll('input[type="datetime-local"]')[0],
+    { target: { value: "2099-01-02T10:00" } },
+  );
+  fireEvent.change(
+    first.container.querySelectorAll('input[type="datetime-local"]')[1],
+    { target: { value: "2099-01-10T10:00" } },
+  );
+  await waitFor(() =>
+    expect(launchButton().hasAttribute("disabled")).toBe(false),
+  );
+  first.unmount();
+
+  const second = renderPanel();
+  await waitFor(() =>
+    expect(launchButton().hasAttribute("disabled")).toBe(false),
+  );
+  const memberStart = second.container.querySelectorAll(
+    'input[type="datetime-local"]',
+  )[0];
+  expect(memberStart instanceof HTMLInputElement && memberStart.value).toBe(
+    "2099-01-02T10:00",
+  );
+
+  fireEvent.click(launchButton());
+  fireEvent.change(
+    await screen.findByPlaceholderText("I am going to notify 2 real members"),
+    { target: { value: "I am going to notify 2 real members" } },
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Launch" }));
+  await waitFor(() => expect(onClose).toHaveBeenCalled());
+  expect(window.localStorage.length).toBe(0);
 });

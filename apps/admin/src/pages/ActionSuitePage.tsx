@@ -8,7 +8,6 @@ import ActionListCard from "../components/ActionListCard";
 import ActionTimeline from "../components/ActionTimeline";
 import GeneralUpdateCard from "../components/GeneralUpdateCard";
 import ActionRemindersTab from "../components/reminders/ActionRemindersTab";
-import SuiteLaunchPanel from "../components/suite-launch/SuiteLaunchPanel";
 import SuiteEventList from "../components/SuiteEventList";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import {
@@ -29,7 +28,6 @@ const ActionSuitePage = () => {
   } = useActionSuiteAdmin(suiteId);
   const navigate = useNavigate();
 
-  const [launchOpen, setLaunchOpen] = useState(false);
   const [highlightedReminder, setHighlightedReminder] = useState<number | null>(
     null,
   );
@@ -102,23 +100,15 @@ const ActionSuitePage = () => {
         className="-m-6 mb-0"
         onReminderClick={handleHighlightReminder}
       />
-      {launchOpen ? (
-        <SuiteLaunchPanel
-          suite={suite}
-          addEvent={addEvent.mutateAsync}
-          onClose={() => setLaunchOpen(false)}
-        />
-      ) : (
-        !suite.events.some((event) => event.newStatus === "member_action") && (
-          <Button
-            color={ButtonColor.Green}
-            size="large"
-            className="w-full text-lg"
-            onClick={() => setLaunchOpen(true)}
-          >
-            Begin launch process
-          </Button>
-        )
+      {!suite.events.some((event) => event.newStatus === "member_action") && (
+        <Button
+          color={ButtonColor.Green}
+          size="large"
+          className="w-full text-lg"
+          onClick={() => navigate(`/suites/${suiteId}/launch`)}
+        >
+          Begin launch process
+        </Button>
       )}
       <SuiteEventList
         addToSuite={addEvent.mutateAsync}

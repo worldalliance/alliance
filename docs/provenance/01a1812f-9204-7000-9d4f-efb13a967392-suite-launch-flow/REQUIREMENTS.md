@@ -36,6 +36,7 @@ On the admin suite view:
 - Member counts respect who has signed the contract. (user)
 - The per-action "I checked this" box reads "Ready to launch". (user)
 - Cut the misspelling check's false positives. (user)
+- The launch process is its own page and keeps its state across a refresh, at least locally. (user)
 
 ## Verification
 

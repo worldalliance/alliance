@@ -19,7 +19,7 @@
 - Contract violations show in a red banner at the top of the panel and block launch until staff tick "Launch anyway, breaking the contract". Two contract terms are checkable at launch: a member assigned more than 15 minutes (the contract's 15-minute blocks), and office taking action less than 7 days after members start (its 7-day completion period). Its non-overlap term needs other suites' periods per member, left out with the cross-suite load. Its exceptions depend on a member's circumstances, which no launch check can see.
 - Readiness reuses the action dashboard's checklist, now extracted to `actionReadiness.ts`, so both screens apply the same rules. It reads each action through the admin action query, because suite payloads don't load authors or the suite relation.
 - Member preview lists each picked member's assigned actions, their total minutes, preview and edit links, and a "Log in as this member" impersonation link (the same endpoint the user detail page uses).
-- "Ready to launch" boxes, dismissals, and the overload acknowledgment live in component state, so closing the panel resets them.
+- The launch flow is its own page, `/suites/:suiteId/launch`. The schedule, "Ready to launch" boxes, dismissals, and the contract acknowledgment are saved in this browser's localStorage per suite, so a refresh or leaving and coming back keeps them; a successful launch clears them. They are per browser, not shared between staff.
 - n in "I am going to notify {n} real members" is the size of the union of the suite's action cohorts.
 - The typed confirmation is required in every environment, unlike the reminders tab's, which skips it in development.
 
