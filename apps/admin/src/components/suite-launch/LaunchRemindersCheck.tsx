@@ -13,18 +13,11 @@ import {
   renderLaunchReminder,
   SAMPLE_GROUP_UNFINISHED,
   type ReminderSendWindow,
-  type RenderedReminder,
 } from "./launchReminders";
 import { inLaunchZone, type LaunchSchedule } from "./launchSchedule";
 import type { ActionMix } from "./memberLoad";
+import { EmailMockup, PushMockup, TextMockup } from "./MessageMockups";
 import type { LaunchAction } from "./useSuiteLaunchData";
-
-const RENDERED_FIELDS: [keyof RenderedReminder, string][] = [
-  ["emailSubject", "Email subject"],
-  ["emailMessage", "Email"],
-  ["textMessage", "Text"],
-  ["pushMessage", "Push"],
-];
 
 const LaunchRemindersCheck = ({
   bodies,
@@ -98,6 +91,7 @@ const LaunchRemindersCheck = ({
               >
                 <span className="block text-sm font-medium">
                   {withCount(option.userIds.length, "member")} ·{" "}
+                  {withCount(option.actionIds.length, "task")} ·{" "}
                   {option.minutes} min
                 </span>
                 {option.actionIds.map((id) => (
@@ -159,24 +153,28 @@ const LaunchRemindersCheck = ({
                   </span>
                 </summary>
                 {rendered && sample ? (
-                  <dl className="mb-2 ml-4 flex flex-col gap-2 border-l-2 border-zinc-200 pl-3">
+                  <div className="mb-3 ml-4 flex flex-col gap-3 border-l-2 border-zinc-200 pl-3">
                     <p className="text-xs text-zinc-500">
                       {body.cohortType === "group_leads_with_uncompleted"
                         ? `As ${sample.name} would get it leading a group with ${SAMPLE_GROUP_UNFINISHED} members still to finish`
                         : `As ${sample.name} gets it`}
                     </p>
-                    {RENDERED_FIELDS.map(
-                      ([field, label]) =>
-                        rendered[field] && (
-                          <div key={field}>
-                            <dt className="text-xs text-zinc-500">{label}</dt>
-                            <dd className="whitespace-pre-wrap">
-                              {rendered[field]}
-                            </dd>
-                          </div>
-                        ),
+                    {rendered.emailMessage && (
+                      <EmailMockup
+                        subject={rendered.emailSubject}
+                        body={rendered.emailMessage}
+                        recipient={sample.name}
+                      />
                     )}
-                  </dl>
+                    <div className="flex flex-wrap items-start gap-3">
+                      {rendered.textMessage && (
+                        <TextMockup message={rendered.textMessage} />
+                      )}
+                      {rendered.pushMessage && (
+                        <PushMockup message={rendered.pushMessage} />
+                      )}
+                    </div>
+                  </div>
                 ) : (
                   <p className="mb-2 ml-4 text-xs text-zinc-500">
                     The preview appears once members load.
