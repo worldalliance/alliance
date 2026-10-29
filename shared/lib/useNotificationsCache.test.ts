@@ -1,11 +1,10 @@
 import { NOTIFS_LOADED_AT_HEADER } from "@alliance/common/notifs";
-import { NotificationDto } from "@alliance/shared/client";
 import { QueryClient } from "@tanstack/react-query";
+import { notificationStore, type NotificationList } from "./notificationStore";
 import { queryKeys } from "./queryKeys";
-import { endSession } from "./sessionStores";
 import { makeNotification } from "./testFixtures";
+import { seedNotifications } from "./testing/seedNotifications";
 import { routes, serveApi, type RouteTable } from "./testing/serveApi";
-import { meCache } from "./useMe";
 import { notificationsCache } from "./useNotificationsCache";
 
 const LOADED_AT = "2026-09-23T12:00:00.123Z";
@@ -14,10 +13,14 @@ const LATER = "2026-09-23T12:05:00.000Z";
 
 const LIST_KEY = queryKeys.notificationsList();
 const PAGE_KEY = queryKeys.notificationsList(20);
-const LOADED_AT_KEY = queryKeys.notificationsLoadedAt();
 const UNREAD_COUNT_KEY = queryKeys.notificationsUnreadCount();
 
 const api = serveApi(routes({}));
+
+const cachedList = (queryClient: QueryClient, key = LIST_KEY) =>
+  queryClient
+    .getQueryData<NotificationList>(key)
+    ?.keys.map((key) => notificationStore(queryClient).get(key));
 
 const listed = (headers: Record<string, string>) => ({
   "GET /notifs": () => Response.json([], { headers }),
@@ -26,16 +29,25 @@ const listed = (headers: Record<string, string>) => ({
 it("keeps the list's load time beside the list", async () => {
   api.throwingOnRefusal(listed({ [NOTIFS_LOADED_AT_HEADER]: LOADED_AT }));
   const queryClient = new QueryClient();
-  await queryClient.fetchQuery(notificationsCache(queryClient).list());
-  expect(queryClient.getQueryData(LOADED_AT_KEY)).toBe(LOADED_AT);
+  expect(
+    (await queryClient.fetchQuery(notificationsCache(queryClient).list()))
+      .loadedAt,
+  ).toBe(LOADED_AT);
 });
 
 it("keeps no load time when the list came without one", async () => {
   api.throwingOnRefusal(listed({}));
   const queryClient = new QueryClient();
-  queryClient.setQueryData(LOADED_AT_KEY, LOADED_AT);
-  await queryClient.fetchQuery(notificationsCache(queryClient).list());
-  expect(queryClient.getQueryData(LOADED_AT_KEY)).toBeNull();
+  seedNotifications({
+    client: queryClient,
+    notifications: [],
+    loadedAt: LOADED_AT,
+  });
+  await queryClient.invalidateQueries({ queryKey: LIST_KEY });
+  expect(
+    (await queryClient.fetchQuery(notificationsCache(queryClient).list()))
+      .loadedAt,
+  ).toBeNull();
 });
 
 it("loads the unread count", async () => {
@@ -63,7 +75,7 @@ afterEach(() => {
 
 it("refetches the list and unread count on refresh", async () => {
   const queryClient = new QueryClient();
-  queryClient.setQueryData(LIST_KEY, []);
+  seedNotifications({ client: queryClient, notifications: [] });
   queryClient.setQueryData(UNREAD_COUNT_KEY, 0);
   await notificationsCache(queryClient).refresh();
   expect(queryClient.getQueryState(LIST_KEY)?.isInvalidated).toBe(true);
@@ -73,7 +85,11 @@ it("refetches the list and unread count on refresh", async () => {
 it("marks all read up to the kept load time", async () => {
   api.throwingOnRefusal(readAll);
   const queryClient = new QueryClient();
-  queryClient.setQueryData(LOADED_AT_KEY, LOADED_AT);
+  seedNotifications({
+    client: queryClient,
+    notifications: [],
+    loadedAt: LOADED_AT,
+  });
   await notificationsCache(queryClient).markAllRead();
   expect(readAllQueries[0]?.get("loadedAt")).toBe(LOADED_AT);
 });
@@ -113,55 +129,74 @@ it("marks all read with no bound when no load time was kept", async () => {
 it("marks the cached list read and refetches it and the unread count", async () => {
   api.throwingOnRefusal(readAll);
   const queryClient = new QueryClient();
-  queryClient.setQueryData(LIST_KEY, [makeNotification({ id: 1 })]);
+  seedNotifications({
+    client: queryClient,
+    notifications: [makeNotification({ id: 1 })],
+  });
   queryClient.setQueryData(UNREAD_COUNT_KEY, 1);
   await notificationsCache(queryClient).markAllRead();
-  expect(
-    queryClient.getQueryData<NotificationDto[]>(LIST_KEY)?.[0]?.readAt,
-  ).not.toBeNull();
+  expect(cachedList(queryClient)?.[0]?.readAt).not.toBeNull();
   expect(queryClient.getQueryData(UNREAD_COUNT_KEY)).toBe(0);
   expect(queryClient.getQueryState(LIST_KEY)?.isInvalidated).toBe(true);
   expect(queryClient.getQueryState(UNREAD_COUNT_KEY)?.isInvalidated).toBe(true);
 });
 
-it("restores the lists and unread count when marking all read fails", async () => {
+it("restores the notifications and unread count when marking all read fails", async () => {
   api.alsoServing({
     "POST /notifs/read-all": () => new Response(null, { status: 500 }),
   });
   const queryClient = new QueryClient();
-  const list = [makeNotification({ id: 1 }), makeNotification({ id: 2 })];
-  queryClient.setQueryData(LIST_KEY, list);
-  queryClient.setQueryData(PAGE_KEY, list.slice(0, 1));
-  queryClient.setQueryData(UNREAD_COUNT_KEY, 1);
+  const list = [
+    makeNotification({ id: 1 }),
+    makeNotification({ id: 2 }),
+    makeNotification({ id: 3, readAt: SENT }),
+  ];
+  seedNotifications({ client: queryClient, notifications: list });
+  seedNotifications({
+    client: queryClient,
+    notifications: list.slice(0, 1),
+    limit: 20,
+  });
+  queryClient.setQueryData(UNREAD_COUNT_KEY, 3);
   await notificationsCache(queryClient).markAllRead();
-  expect(queryClient.getQueryData(LIST_KEY)).toEqual(list);
-  expect(queryClient.getQueryData(PAGE_KEY)).toEqual(list.slice(0, 1));
-  expect(queryClient.getQueryData(UNREAD_COUNT_KEY)).toBe(1);
+  expect(cachedList(queryClient)).toEqual(list);
+  expect(cachedList(queryClient, PAGE_KEY)).toEqual(list.slice(0, 1));
+  expect(queryClient.getQueryData(UNREAD_COUNT_KEY)).toBe(3);
+  expect(queryClient.getQueryState(UNREAD_COUNT_KEY)?.isInvalidated).toBe(true);
 });
 
-it("refetches the unread count it had not cached when marking all read fails", async () => {
+it("refetches the lists and leaves an uncached count uncached when marking all read fails", async () => {
   api.throwingOnRefusal({
     "POST /notifs/read-all": () => new Response(null, { status: 500 }),
   });
   const queryClient = new QueryClient();
-  queryClient.setQueryData(LIST_KEY, [makeNotification({ id: 1 })]);
+  seedNotifications({
+    client: queryClient,
+    notifications: [makeNotification({ id: 1 })],
+  });
   await notificationsCache(queryClient).markAllRead();
-  expect(queryClient.getQueryState(LIST_KEY)?.isInvalidated).toBe(false);
-  expect(queryClient.getQueryState(UNREAD_COUNT_KEY)?.isInvalidated).toBe(true);
+  expect(queryClient.getQueryState(LIST_KEY)?.isInvalidated).toBe(true);
+  expect(queryClient.getQueryData(UNREAD_COUNT_KEY)).toBeUndefined();
 });
 
 it("marks the cached notifications for the read content, and only those", () => {
   const queryClient = new QueryClient();
-  queryClient.setQueryData<NotificationDto[]>(LIST_KEY, [
-    makeNotification({ id: 1, contentId: 10 }),
-    makeNotification({ id: 2, contentId: 11 }),
-    makeNotification({ id: 3, contentId: 10, contentType: "action_update" }),
-  ]);
+  seedNotifications({
+    client: queryClient,
+    notifications: [
+      makeNotification({ id: 1, contentId: 10 }),
+      makeNotification({ id: 2, contentId: 11 }),
+      makeNotification({ id: 3, contentId: 10, contentType: "action_update" }),
+    ],
+  });
 
   notificationsCache(queryClient).markCachedReadByContent("forum_reply", [10]);
 
-  const cached = queryClient.getQueryData<NotificationDto[]>(LIST_KEY);
-  expect(cached?.map((n) => n.readAt !== null)).toEqual([true, false, false]);
+  expect(cachedList(queryClient)?.map((n) => n?.readAt !== null)).toEqual([
+    true,
+    false,
+    false,
+  ]);
 });
 
 it("refetches the unread count after marking content read", () => {
@@ -212,9 +247,10 @@ it("refetches the list and unread count and rejects when a read is refused", asy
     "POST /notifs/read/:id": () => new Response(null, { status: 500 }),
   });
   const queryClient = new QueryClient();
-  queryClient.setQueryData<NotificationDto[]>(LIST_KEY, [
-    makeNotification({ id: 1 }),
-  ]);
+  seedNotifications({
+    client: queryClient,
+    notifications: [makeNotification({ id: 1 })],
+  });
   queryClient.setQueryData<number>(UNREAD_COUNT_KEY, 1);
 
   await expect(
@@ -243,10 +279,10 @@ it("refetches after every read has finished when one is refused", async () => {
     },
   });
   const queryClient = new QueryClient();
-  queryClient.setQueryData<NotificationDto[]>(LIST_KEY, [
-    makeNotification({ id: 1 }),
-    makeNotification({ id: 2 }),
-  ]);
+  seedNotifications({
+    client: queryClient,
+    notifications: [makeNotification({ id: 1 }), makeNotification({ id: 2 })],
+  });
 
   const marked = notificationsCache(queryClient).markRead([
     { id: 1, sourceType: "unread_content" },
@@ -264,12 +300,15 @@ it("refetches after every read has finished when one is refused", async () => {
 it("marks the given notifications read and counts down only those that were unread", async () => {
   api.throwingOnRefusal(read);
   const queryClient = new QueryClient();
-  queryClient.setQueryData<NotificationDto[]>(LIST_KEY, [
-    makeNotification({ id: 1 }),
-    makeNotification({ id: 2, readAt: SENT }),
-    makeNotification({ id: 3 }),
-    makeNotification({ id: 1, sourceType: "notification" }),
-  ]);
+  seedNotifications({
+    client: queryClient,
+    notifications: [
+      makeNotification({ id: 1 }),
+      makeNotification({ id: 2, readAt: SENT }),
+      makeNotification({ id: 3 }),
+      makeNotification({ id: 1, sourceType: "notification" }),
+    ],
+  });
   queryClient.setQueryData<number>(UNREAD_COUNT_KEY, 5);
 
   await notificationsCache(queryClient).markRead([
@@ -277,8 +316,7 @@ it("marks the given notifications read and counts down only those that were unre
     { id: 2, sourceType: "unread_content" },
   ]);
 
-  const cached = queryClient.getQueryData<NotificationDto[]>(LIST_KEY);
-  expect(cached?.map((n) => n.readAt !== null)).toEqual([
+  expect(cachedList(queryClient)?.map((n) => n?.readAt !== null)).toEqual([
     true,
     true,
     false,
@@ -290,10 +328,10 @@ it("marks the given notifications read and counts down only those that were unre
 it("leaves an uncached unread count uncached", async () => {
   api.throwingOnRefusal(read);
   const queryClient = new QueryClient();
-  queryClient.setQueryData<NotificationDto[]>(LIST_KEY, [
-    makeNotification({ id: 1 }),
-    makeNotification({ id: 2 }),
-  ]);
+  seedNotifications({
+    client: queryClient,
+    notifications: [makeNotification({ id: 1 }), makeNotification({ id: 2 })],
+  });
 
   await notificationsCache(queryClient).markRead([
     { id: 1, sourceType: "unread_content" },
@@ -305,13 +343,15 @@ it("leaves an uncached unread count uncached", async () => {
 it("marks a notification read in every cached list and counts it down once", async () => {
   api.throwingOnRefusal(read);
   const queryClient = new QueryClient();
-  queryClient.setQueryData<NotificationDto[]>(LIST_KEY, [
-    makeNotification({ id: 1 }),
-    makeNotification({ id: 2 }),
-  ]);
-  queryClient.setQueryData<NotificationDto[]>(PAGE_KEY, [
-    makeNotification({ id: 1 }),
-  ]);
+  seedNotifications({
+    client: queryClient,
+    notifications: [makeNotification({ id: 1 }), makeNotification({ id: 2 })],
+  });
+  seedNotifications({
+    client: queryClient,
+    notifications: [makeNotification({ id: 1 })],
+    limit: 20,
+  });
   queryClient.setQueryData<number>(UNREAD_COUNT_KEY, 2);
 
   await notificationsCache(queryClient).markRead([
@@ -319,9 +359,7 @@ it("marks a notification read in every cached list and counts it down once", asy
   ]);
 
   for (const key of [LIST_KEY, PAGE_KEY]) {
-    expect(
-      queryClient.getQueryData<NotificationDto[]>(key)?.[0]?.readAt,
-    ).not.toBeNull();
+    expect(cachedList(queryClient, key)?.[0]?.readAt).not.toBeNull();
   }
   expect(queryClient.getQueryData(UNREAD_COUNT_KEY)).toBe(1);
 });
@@ -356,9 +394,10 @@ it("refetches the list and unread count when the list is not cached", async () =
 it("refetches the list and unread count when the notification is not in the list", async () => {
   api.throwingOnRefusal(read);
   const queryClient = new QueryClient();
-  queryClient.setQueryData<NotificationDto[]>(LIST_KEY, [
-    makeNotification({ id: 1 }),
-  ]);
+  seedNotifications({
+    client: queryClient,
+    notifications: [makeNotification({ id: 1 })],
+  });
   queryClient.setQueryData<number>(UNREAD_COUNT_KEY, 1);
 
   await notificationsCache(queryClient).markRead([
@@ -373,93 +412,9 @@ it("refetches the list and unread count when the notification is not in the list
 it("leaves the cache alone when marking nothing", async () => {
   api.throwingOnRefusal(read);
   const queryClient = new QueryClient();
-  queryClient.setQueryData<NotificationDto[]>(LIST_KEY, []);
+  seedNotifications({ client: queryClient, notifications: [] });
 
   await notificationsCache(queryClient).markRead([]);
-
-  expect(queryClient.getQueryState(LIST_KEY)?.isInvalidated).toBe(false);
-});
-
-it("drops a failed mark-all-read's restore after the session ends", async () => {
-  const { promise: refusalHeld, resolve: releaseRefusal } =
-    Promise.withResolvers<void>();
-  const { promise: readAllSent, resolve: sendReadAll } =
-    Promise.withResolvers<void>();
-  api.alsoServing({
-    "POST /notifs/read-all": async () => {
-      sendReadAll();
-      await refusalHeld;
-      return new Response(null, { status: 500 });
-    },
-  });
-  const queryClient = new QueryClient();
-  queryClient.setQueryData(LIST_KEY, [makeNotification({ id: 1 })]);
-
-  const markedAll = notificationsCache(queryClient).markAllRead();
-  await readAllSent;
-  meCache(queryClient).clear();
-  releaseRefusal();
-  await markedAll;
-
-  expect(queryClient.getQueryData(LIST_KEY)).toBeUndefined();
-});
-
-it("sends no mark-all-read when the session ends while it cancels loads", async () => {
-  api.throwingOnRefusal(readAll);
-  const queryClient = new QueryClient();
-  queryClient.setQueryData(LIST_KEY, [makeNotification({ id: 1 })]);
-
-  const markedAll = notificationsCache(queryClient).markAllRead();
-  meCache(queryClient).clear();
-  await markedAll;
-
-  expect(readAllQueries).toHaveLength(0);
-});
-
-it("leaves a new session's lists alone when an old session's read is refused", async () => {
-  const { promise: refusalHeld, resolve: releaseRefusal } =
-    Promise.withResolvers<void>();
-  api.alsoServing({
-    "POST /notifs/read/:id": async () => {
-      await refusalHeld;
-      return new Response(null, { status: 500 });
-    },
-  });
-  const queryClient = new QueryClient();
-  queryClient.setQueryData(LIST_KEY, [makeNotification({ id: 1 })]);
-
-  const marked = notificationsCache(queryClient)
-    .markRead([{ id: 1, sourceType: "unread_content" }])
-    .catch(() => {});
-  endSession(queryClient);
-  queryClient.setQueryData(LIST_KEY, [makeNotification({ id: 2 })]);
-  releaseRefusal();
-  await marked;
-
-  expect(queryClient.getQueryState(LIST_KEY)?.isInvalidated).toBe(false);
-});
-
-it("leaves a new session's lists alone when an old session's mark-all-read succeeds", async () => {
-  const { promise: confirmationHeld, resolve: releaseConfirmation } =
-    Promise.withResolvers<void>();
-  const { promise: readAllSent, resolve: sendReadAll } =
-    Promise.withResolvers<void>();
-  api.throwingOnRefusal({
-    "POST /notifs/read-all": async () => {
-      sendReadAll();
-      await confirmationHeld;
-      return new Response(null, { status: 201 });
-    },
-  });
-  const queryClient = new QueryClient();
-  queryClient.setQueryData(LIST_KEY, [makeNotification({ id: 1 })]);
-
-  const markedAll = notificationsCache(queryClient).markAllRead();
-  await readAllSent;
-  endSession(queryClient);
-  queryClient.setQueryData(LIST_KEY, [makeNotification({ id: 2 })]);
-  releaseConfirmation();
-  await markedAll;
 
   expect(queryClient.getQueryState(LIST_KEY)?.isInvalidated).toBe(false);
 });

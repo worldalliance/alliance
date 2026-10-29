@@ -1,6 +1,9 @@
 import type { NotificationDto } from "@alliance/shared/client";
+import { getNotificationIdentityKey } from "@alliance/shared/lib/notificationIdentity";
+import { notificationStore } from "@alliance/shared/lib/notificationStore";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
+import { seedNotifications } from "@alliance/shared/lib/testing/seedNotifications";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import {
   act,
@@ -54,7 +57,7 @@ afterEach(() => {
 
 const renderActions = () => {
   const { client, wrapper: QueryWrapper } = queryWrapper();
-  client.setQueryData(queryKeys.notificationsList(20), [friendRequest]);
+  seedNotifications({ client, notifications: [friendRequest], limit: 20 });
   client.setQueryData(queryKeys.notificationsUnreadCount(), 1);
   const rendered = renderHook(
     () => ({ actions: useNotificationActions(), location: useLocation() }),
@@ -78,7 +81,7 @@ it("opens a clicked friend request at its location and marks it read", async () 
   expect(result.current.location.state).toEqual({ openFriendRequest: true });
   await waitFor(() => expect(reads).toEqual(["1"]));
   expect(
-    client.getQueryData<NotificationDto[]>(queryKeys.notificationsList(20))?.[0]
+    notificationStore(client).get(getNotificationIdentityKey(friendRequest))
       ?.readAt,
   ).not.toBeNull();
   expect(client.getQueryData(queryKeys.notificationsUnreadCount())).toBe(0);

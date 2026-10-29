@@ -1,6 +1,7 @@
 import type { NotificationDto } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
+import { seedNotifications } from "@alliance/shared/lib/testing/seedNotifications";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it } from "bun:test";
@@ -41,7 +42,7 @@ afterEach(() => {
 it("dismisses a likes group by marking only its unread likes read", async () => {
   const likes = [like(1), like(2, SENT), like(3)];
   const { client, wrapper } = queryWrapper();
-  client.setQueryData(queryKeys.notificationsList(20), likes);
+  seedNotifications({ client, notifications: likes, limit: 20 });
   client.setQueryData(queryKeys.notificationsUnreadCount(), 2);
   render(
     <NotificationList
