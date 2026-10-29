@@ -75,8 +75,9 @@ const InvitesPage = () => {
   };
 
   return (
-    <div className="flex flex-row w-full items-center justify-center pt-36">
+    <div className="flex flex-row w-full items-center justify-center p-5">
       <div className="flex flex-col pb-10 items-stretch mx-2 w-2xl">
+        <h1 className="text-lg font-bold text-zinc-900 mb-3">User invites</h1>
         <Card className="flex-1">
           <p className="font-bold">Create an invite</p>
           <form onSubmit={handleSubmit} className="flex flex-col gap-2">
