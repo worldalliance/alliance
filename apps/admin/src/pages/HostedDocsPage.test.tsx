@@ -110,6 +110,34 @@ test("prefills the ID from the file name and uploads", async () => {
   expect(screen.getByLabelText("ID").getAttribute("value")).toBe("");
 });
 
+test("keeps an ID typed before or after choosing the file", async () => {
+  renderPage();
+  await screen.findByText("2026-Pilot.pdf");
+  const id = screen.getByLabelText("ID");
+  fireEvent.change(id, { target: { value: "Custom.pdf" } });
+  fireEvent.change(screen.getByLabelText("PDF"), {
+    target: { files: [pdf("Annual Report 2026.pdf")] },
+  });
+  expect(id.getAttribute("value")).toBe("Custom.pdf");
+
+  fireEvent.change(screen.getByLabelText("PDF"), {
+    target: { files: [pdf("Second Draft.pdf")] },
+  });
+  expect(id.getAttribute("value")).toBe("Custom.pdf");
+});
+
+test("follows the file name while the ID is still the one it filled in", async () => {
+  renderPage();
+  await screen.findByText("2026-Pilot.pdf");
+  fireEvent.change(screen.getByLabelText("PDF"), {
+    target: { files: [pdf("First.pdf")] },
+  });
+  fireEvent.change(screen.getByLabelText("PDF"), {
+    target: { files: [pdf("Second.pdf")] },
+  });
+  expect(screen.getByLabelText("ID").getAttribute("value")).toBe("Second.pdf");
+});
+
 test("rejects an invalid ID without sending it", async () => {
   renderPage();
   await screen.findByText("2026-Pilot.pdf");

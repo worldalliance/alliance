@@ -125,8 +125,10 @@ const HostedDocsPage: React.FC = () => {
             disabled={create.isPending}
             onChange={(e) => {
               const picked = e.target.files?.[0] ?? null;
+              // An ID the admin typed stays; one filled from a file name follows the next file.
+              const filled = file && hostedDocSlugFromFileName(file.name);
               setFile(picked);
-              if (picked)
+              if (picked && (draft.slug === "" || draft.slug === filled))
                 setDraft({
                   ...draft,
                   slug: hostedDocSlugFromFileName(picked.name),
