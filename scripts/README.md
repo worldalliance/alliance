@@ -4,7 +4,7 @@ Run from the repo root. Everything not listed here is a helper called by these s
 
 ## Worktrees
 
-`new-worktree.sh <name> [--branch <branch>] [--from <ref>] [--slot <n>] [--force]`
+`new-worktree.sh <name> [--branch <branch>] [--from <ref>]`
 Creates a git worktree with its own ports and database. Main checkout only. Also `bun run worktree:new`.
 
 `rm-worktree.sh <name>`

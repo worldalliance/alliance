@@ -9,8 +9,8 @@
 #
 #   --branch <branch>  branch to create or check out (default: <name>)
 #   --from <ref>       base the new branch on <ref> (default: HEAD)
-#   --slot <n>         port slot (default: lowest free slot)
-#   --force            take --slot even if another worktree already claims it
+#
+# Ports come from the lowest free slot.
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -37,14 +37,11 @@ name=""
 branch=""
 from="HEAD"
 slot=""
-force=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --branch) branch="${2:-}"; shift 2 ;;
     --from) from="${2:-}"; shift 2 ;;
-    --slot) slot="${2:-}"; shift 2 ;;
-    --force) force=1; shift ;;
     -h|--help) usage; exit 0 ;;
     -*) die "unknown option: $1" ;;
     *) [[ -n "$name" ]] && die "unexpected argument: $1"; name="$1"; shift ;;
@@ -185,22 +182,12 @@ take_slot() {
   claim_slot "$1"
 }
 
-if [[ -n "$slot" ]]; then
-  [[ "$slot" =~ ^[0-9]+$ ]] && (( slot >= 1 && slot <= MAX_SLOT )) || die "--slot must be 1-$MAX_SLOT"
-  # --force may override a settled claim, but never an in-progress creation.
-  take_slot "$slot" ||
-    die "slot $slot is locked — another scripts/new-worktree.sh (pid $(cat "$lock_root/$slot/pid" 2>/dev/null || echo unknown)) is creating it right now"
-  if (( ! force )) && ! slot_free "$slot"; then
-    die "slot $slot is already claimed by another worktree or its ports are in use (--force to override)"
-  fi
-else
-  for candidate in $(seq 1 "$MAX_SLOT"); do
-    take_slot "$candidate" || continue
-    if slot_free "$candidate"; then slot="$candidate"; break; fi
-    release_lock
-  done
-  [[ -n "$slot" ]] || die "no free port slot (1-$MAX_SLOT) available"
-fi
+for candidate in $(seq 1 "$MAX_SLOT"); do
+  take_slot "$candidate" || continue
+  if slot_free "$candidate"; then slot="$candidate"; break; fi
+  release_lock
+done
+[[ -n "$slot" ]] || die "no free port slot (1-$MAX_SLOT) available"
 
 offset=$(( slot * PORT_SLOT_STRIDE ))
 server_port=$(( BASE_SERVER_PORT + offset ))
