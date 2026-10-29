@@ -134,8 +134,8 @@ Follow YAGNI. Prefer one-liners. An abstraction earns its place at the second ca
 
 Aim for files well under 500 lines to help optimize this codebase for coding agents. A file past 500 is already overdue for a split. When your change adds to a file and would leave it past that, split the file first: ask `codex exec -s read-only`, naming only the file and not your change, for a few splits along cohesive boundaries, then apply the one you judge best.
 
-## Surgical changes
+## Scope and improvement
 
-Every changed line traces to the request. Adjacent code keeps its style, its formatting, and its comments, even where you would write it differently.
+Improve the code and agent instructions involved in the task when there is a concrete benefit and the resulting change remains coherent, reviewable, and verifiable. Report unrelated opportunities for separate work. Judge existing implementations by current requirements and evidence.
 
-Delete what your change orphaned: the import, variable, or function nothing calls now. Leave dead code that was already there, and name it in your response.
+Delete what your change orphaned: the import, variable, or function nothing calls now.

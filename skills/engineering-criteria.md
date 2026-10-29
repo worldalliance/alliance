@@ -2,7 +2,7 @@
 
 Apply each criterion where the change affects it, alongside the repo's `AGENTS.md` rules.
 
-1. **Intent & scope** — the change satisfies the requirements; each changed line serves that purpose.
+1. **Intent & scope** — the change satisfies the requirements and follows the scope guidance in `AGENTS.md`.
 2. **Correctness** — logic, error paths, boundary conditions, concurrency/async hazards, backward compatibility, and public API contracts hold for affected callers. Passing tests supplement execution tracing, especially for races and external dependencies.
 3. **Maintainability** — improve the codebase over time, making it easier to understand, change, and test. The same rule has one implementation where callers can share it; similar-looking code with different contracts stays separate. Responsibilities belong in the layer that owns the behavior. Choose the simplest design or root-cause fix that meets the demonstrated requirements and preserves relevant invariants. When existing structure creates recurring friction, compare implementing directly with a bounded refactor. Ground the benefit in demonstrated requirements, repeated changes, or user-stated upcoming work, and weigh it against implementation cost and regression risk. Added generality serves a current need. If correctness depends on an undocumented invariant, express it through types, structure, or tests, with a comment for constraints those cannot express.
 4. **Security & privacy** — trace sources → validation/transformation → sinks (db, filesystem, UI rendering, logs, external calls). Check injection, unsafe deserialization, authn/authz gaps, secrets and PII handling, and unsafe logging.
