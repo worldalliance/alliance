@@ -1,6 +1,6 @@
+import { getTimeLeftString } from "@alliance/common/reminderKeywords";
 import { Temporal } from "@js-temporal/polyfill";
 import { ActionEvent } from "src/actions/entities/action-event.entity";
-import { getTimeLeftString } from "./textnotifcontents";
 
 export function deadlineEventFor(
   now: Date,

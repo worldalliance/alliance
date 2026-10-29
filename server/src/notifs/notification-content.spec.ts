@@ -1,5 +1,5 @@
+import { ActionListStyle } from "@alliance/common/reminderKeywords";
 import {
-  ActionListStyle,
   collectReferenceIds,
   communityDestination,
   DELETED_GROUP_LABEL,

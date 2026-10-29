@@ -1,8 +1,5 @@
-import {
-  ActionListStyle,
-  SegmentType,
-  UserNameForm,
-} from "./notification-content";
+import { ActionListStyle } from "@alliance/common/reminderKeywords";
+import { SegmentType, UserNameForm } from "./notification-content";
 import { buildReminderMessage } from "./reminder-message";
 
 describe("buildReminderMessage", () => {
