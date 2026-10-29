@@ -1,6 +1,6 @@
 # Writing a task form for the full-screen task flow
 
-The task flow splits a task's existing form into screens. It runs on mobile behind `EXPO_PUBLIC_TASK_FLOW=1` in dev builds, and on web behind the `TaskFlow` feature flag (on in development and staging). You don't need a different schema; how you arrange the blocks you already use decides what each screen looks like.
+The task flow splits a task's existing form into screens. It replaces the inline task form on mobile and web. You don't need a different schema; how you arrange the blocks you already use decides what each screen looks like.
 
 ## How a form becomes screens
 

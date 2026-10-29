@@ -19,15 +19,12 @@ import { noop } from "@alliance/shared/lib/constants";
 import { useLinkedGuestDraft } from "@alliance/shared/lib/useLinkedGuestDraft";
 import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import { useTaskFormSubmission } from "@alliance/shared/lib/useTaskFormSubmission";
-import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
-import FormRenderer, {
-  computeFormStorageKey,
-} from "@alliance/sharedweb/forms/FormRenderer";
+import { computeFormStorageKey } from "@alliance/sharedweb/forms/FormRenderer";
 import Card from "@alliance/sharedweb/ui/Card";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import posthog from "posthog-js";
-import { useMemo, useRef, useState, type RefObject } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useAuth } from "../lib/AuthContext";
 import TaskFlow from "./taskflow/TaskFlow";
 
@@ -38,17 +35,14 @@ interface ActionTaskPanelFormProps {
   onAbandonAction?: (withdrawal: ActionWithdrawal) => void;
   onDeadlinePassed: () => void;
   card?: boolean;
-  actionId: number;
+  action: ActionDto;
   disabled?: boolean;
   publicAction?: boolean;
   formResponse?: FormResponseDto;
   redirectOnComplete?: boolean;
   onSubmitted?: (formResponse: FormResponseDto) => void;
-  scrollContainerRef?: RefObject<HTMLElement | null>;
   /** Editable but unsubmittable, and nothing typed outlives the page. */
   preview?: boolean;
-  /** Set to show the form as the full-screen task flow for this action. */
-  taskFlowAction?: ActionDto;
 }
 
 const ActionTaskPanelForm = ({
@@ -58,15 +52,13 @@ const ActionTaskPanelForm = ({
   onAbandonAction,
   onDeadlinePassed,
   card = false,
-  actionId,
+  action,
   disabled = false,
   publicAction = false,
   formResponse,
   redirectOnComplete = publicAction,
   onSubmitted,
-  scrollContainerRef,
   preview = false,
-  taskFlowAction,
 }: ActionTaskPanelFormProps) => {
   const [error, setError] = useState<string | null>(null);
   const {
@@ -75,6 +67,7 @@ const ActionTaskPanelForm = ({
     refreshUser,
     loading: authLoading,
   } = useAuth();
+  const actionId = action.id;
   const { submit, recordCompleted } = useTaskFormSubmission();
   const {
     data: form,
@@ -150,14 +143,6 @@ const ActionTaskPanelForm = ({
       }
     : null;
 
-  const handleSubmitForm = completeAction
-    ? async (data: SubmitFormDto): Promise<boolean> => {
-        const submitted = await submitTaskForm(data);
-        if (submitted) completeAction();
-        return submitted;
-      }
-    : null;
-
   const { distinctId, sessionReplayUrl } = useMemo(() => {
     return {
       distinctId: posthog.get_distinct_id(),
@@ -174,14 +159,14 @@ const ActionTaskPanelForm = ({
     completable: !!completeAction,
   });
   const renderFlow = (flowForm: {
-    action: ActionDto;
     schema: FormSchema;
     formId: number;
     formSnapshotId: number;
   }) => (
     <Wrapper className={wrapperClassName}>
       <TaskFlow
-        key={`${flowForm.action.id}:${taskFormId}:${flowMode}`}
+        key={`${actionId}:${taskFormId}:${flowMode}`}
+        action={action}
         {...flowForm}
         mode={flowMode}
         completedFormResponse={formResponse}
@@ -203,29 +188,12 @@ const ActionTaskPanelForm = ({
     ? (formResponse.schemaSnapshot as unknown as FormSchema)
     : null;
 
-  if (formResponse && responseSchema && taskFlowAction) {
+  if (formResponse && responseSchema) {
     return renderFlow({
-      action: taskFlowAction,
       schema: responseSchema,
       formId: formResponse.formId,
       formSnapshotId: formResponse.formSnapshotId,
     });
-  }
-
-  if (formResponse && responseSchema) {
-    return (
-      <FormRenderer
-        form={responseSchema}
-        id={formResponse.formId}
-        formSnapshotId={formResponse.formSnapshotId}
-        actionId={actionId}
-        completedFormResponse={formResponse}
-        onSubmit={null}
-        userId={formResponse.user?.id}
-        user={formResponse.user}
-        renderFormAsCompleted
-      />
-    );
   }
 
   const schema = form?.schema as unknown as FormSchema | undefined;
@@ -263,47 +231,11 @@ const ActionTaskPanelForm = ({
     }
   }
 
-  if (taskFlowAction) {
-    return renderFlow({
-      action: taskFlowAction,
-      schema,
-      formId: form.id,
-      formSnapshotId: form.formSnapshotId,
-    });
-  }
-
-  return (
-    <Wrapper className={wrapperClassName}>
-      <div>
-        <FormRenderer
-          form={schema}
-          id={form.id}
-          formSnapshotId={form.formSnapshotId}
-          actionId={actionId}
-          onSubmit={handleSubmitForm}
-          persistKey={preview ? null : String(taskFormId)}
-          userId={user?.id}
-          user={user}
-          userLoading={authLoading}
-          loadCurrentUserLocation={!!user && isAuthenticated}
-          onFormStarted={onFormStarted}
-          onAbandonAction={onAbandonAction}
-          renderFormAsCompleted={disabled}
-          publicAction={publicAction}
-          draftFormResponse={draftFormResponse}
-          syncDraftToServer={isAuthenticated && !publicAction}
-          phDistinctId={distinctId}
-          sessionReplayUrl={sessionReplayUrl}
-          scrollContainerRef={scrollContainerRef}
-        />
-      </div>
-      {error && (
-        <Card style={CardStyle.White} className="!border-red-400 !bg-red-50">
-          <div className="text-red-500">{error}</div>
-        </Card>
-      )}
-    </Wrapper>
-  );
+  return renderFlow({
+    schema,
+    formId: form.id,
+    formSnapshotId: form.formSnapshotId,
+  });
 };
 
 export default ActionTaskPanelForm;

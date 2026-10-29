@@ -42,11 +42,10 @@ function ActionPagePanel() {
   return (
     <ActionTaskPanelForm
       taskFormId={9}
-      actionId={1}
       onCompleteAction={() => void onCompleteAction()}
       onFormStarted={() => {}}
       onDeadlinePassed={() => {}}
-      taskFlowAction={pageAction}
+      action={pageAction}
     />
   );
 }
@@ -285,11 +284,10 @@ function TogglePanel() {
       {shown ? (
         <ActionTaskPanelForm
           taskFormId={9}
-          actionId={1}
           onCompleteAction={() => {}}
           onFormStarted={() => {}}
           onDeadlinePassed={() => {}}
-          taskFlowAction={action}
+          action={action}
         />
       ) : null}
     </>
@@ -334,11 +332,10 @@ function PanelForRoute() {
   return (
     <ActionTaskPanelForm
       taskFormId={9}
-      actionId={actionId}
       onCompleteAction={() => {}}
       onFormStarted={() => {}}
       onDeadlinePassed={() => {}}
-      taskFlowAction={makeAction({ id: actionId, name: `Task ${actionId}` })}
+      action={makeAction({ id: actionId, name: `Task ${actionId}` })}
     />
   );
 }
@@ -358,12 +355,11 @@ const openWithdrawMenu = async (onAbandonAction: () => void = () => {}) => {
     page: (
       <ActionTaskPanelForm
         taskFormId={9}
-        actionId={1}
         onCompleteAction={() => {}}
         onAbandonAction={onAbandonAction}
         onFormStarted={() => {}}
         onDeadlinePassed={() => {}}
-        taskFlowAction={action}
+        action={action}
       />
     ),
   });

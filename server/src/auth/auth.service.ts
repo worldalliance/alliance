@@ -243,7 +243,7 @@ export class AuthService {
 
     if (!resolution) {
       if (process.env.NODE_ENV !== "test") {
-        throw new BadRequestException("invalid referral code"); // TODO: feature flag
+        throw new BadRequestException("invalid referral code");
       }
       return {
         invite: null,

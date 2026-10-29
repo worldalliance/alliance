@@ -1,6 +1,9 @@
 import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
 import { AnalyticsEvent } from "@alliance/common/analytics";
 import * as analyticsModule from "@alliance/shared/lib/analytics";
+import { taskFlow } from "@alliance/shared/lib/copy";
+import { TaskFlowCompletionProvider } from "@alliance/shared/lib/TaskFlowCompletionContext";
+import { TaskFlowReturnProvider } from "@alliance/shared/lib/TaskFlowReturnContext";
 import { makeAction, makeViewer } from "@alliance/shared/lib/testFixtures";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
@@ -13,7 +16,7 @@ import { testAuthUser } from "../stories/testData";
 import { authValue } from "../testing/authValue";
 import ActionTaskPanel, { type ActionTaskPanelProps } from "./ActionTaskPanel";
 
-// Only the form fetch is routed, so a submit or guest-draft request fails the test.
+// Only the form and location fetches are routed, so a submit or guest-draft request fails the test.
 const api = serveApi(
   routes({
     "GET /tasks/slug/:id": () =>
@@ -33,10 +36,18 @@ const api = serveApi(
           outputViews: [],
         },
       }),
+    "GET /user/mylocation": () => Response.json({ city: null }),
   }),
 );
 
 beforeEach(() => localStorage.clear());
+
+const typeName = async () => {
+  fireEvent.click(await screen.findByRole("button", { name: taskFlow.begin }));
+  fireEvent.change(await screen.findByRole("textbox"), {
+    target: { value: "Ada" },
+  });
+};
 
 const renderPanel = (
   props: Pick<ActionTaskPanelProps, "action"> &
@@ -53,13 +64,17 @@ const renderPanel = (
         <SiteAppProvider>
           <AuthContext.Provider value={authValue({ user: testAuthUser })}>
             <ToastProvider>
-              <ActionTaskPanel
-                userRelation="none"
-                onCompleteAction={() => {}}
-                onOptOutAction={() => {}}
-                onDeadlinePassed={() => {}}
-                {...props}
-              />
+              <TaskFlowReturnProvider>
+                <TaskFlowCompletionProvider>
+                  <ActionTaskPanel
+                    userRelation="none"
+                    onCompleteAction={() => {}}
+                    onOptOutAction={() => {}}
+                    onDeadlinePassed={() => {}}
+                    {...props}
+                  />
+                </TaskFlowCompletionProvider>
+              </TaskFlowReturnProvider>
             </ToastProvider>
           </AuthContext.Provider>
         </SiteAppProvider>
@@ -68,7 +83,7 @@ const renderPanel = (
   );
 
 describe("ActionTaskPanel in staff preview", () => {
-  it("lets staff type into the form without submitting, keeping it, or tracking a form start", async () => {
+  it("runs staff through the form to the completion card without submitting, keeping it, or tracking a form start", async () => {
     const onCompleteAction = jest.fn();
     const captureEvent = jest.spyOn(analyticsModule, "captureEvent");
     renderPanel({
@@ -83,14 +98,12 @@ describe("ActionTaskPanel in staff preview", () => {
       onCompleteAction,
     });
 
-    fireEvent.change(await screen.findByRole("textbox"), {
-      target: { value: "Ada" },
-    });
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /Preview Mode/ }));
-    });
+    await typeName();
+    fireEvent.click(screen.getByRole("button", { name: taskFlow.submit }));
 
-    expect(screen.getByRole<HTMLInputElement>("textbox").value).toBe("Ada");
+    expect(
+      await screen.findByRole("heading", { name: taskFlow.complete }),
+    ).toBeTruthy();
     expect(onCompleteAction).not.toHaveBeenCalled();
     expect(localStorage.length).toBe(0);
     expect(captureEvent).not.toHaveBeenCalledWith(
@@ -114,11 +127,9 @@ describe("ActionTaskPanel past the deadline", () => {
     const onDeadlinePassed = jest.fn();
     renderPanel({ action: makeAction({ taskFormId: 7 }), onDeadlinePassed });
 
-    fireEvent.change(await screen.findByRole("textbox"), {
-      target: { value: "Ada" },
-    });
+    await typeName();
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Complete" }));
+      fireEvent.click(screen.getByRole("button", { name: taskFlow.submit }));
     });
 
     expect(await screen.findByText(MEMBER_ACTION_DEADLINE_PASSED)).toBeTruthy();

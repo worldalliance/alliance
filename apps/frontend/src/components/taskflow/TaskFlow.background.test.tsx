@@ -58,12 +58,11 @@ it("closes a read-only background-only form from the background page's Done", as
     page: (
       <ActionTaskPanelForm
         taskFormId={9}
-        actionId={1}
         onCompleteAction={null}
         onFormStarted={() => {}}
         onDeadlinePassed={() => {}}
         disabled
-        taskFlowAction={action}
+        action={action}
       />
     ),
   });
@@ -82,7 +81,6 @@ function PanelShowingItsSubmission() {
   return (
     <ActionTaskPanelForm
       taskFormId={9}
-      actionId={1}
       onCompleteAction={() =>
         setResponse(
           makeFormResponse({
@@ -95,7 +93,7 @@ function PanelShowingItsSubmission() {
       onFormStarted={() => {}}
       onDeadlinePassed={() => {}}
       formResponse={response}
-      taskFlowAction={action}
+      action={action}
     />
   );
 }

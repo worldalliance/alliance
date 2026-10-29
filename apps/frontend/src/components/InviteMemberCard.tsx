@@ -1,4 +1,3 @@
-import { Features } from "@alliance/shared/lib/features";
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
@@ -7,7 +6,6 @@ import Card from "@alliance/sharedweb/ui/Card";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback } from "react";
 import { useAuth } from "../lib/AuthContext";
-import { isFeatureEnabled } from "../lib/config";
 
 const InviteMemberCard = () => {
   const { user } = useAuth();
@@ -27,10 +25,8 @@ const InviteMemberCard = () => {
     }
   }, [user, referralLink, errorToast]);
 
-  if (!isFeatureEnabled(Features.PublicSignup)) {
-    if (!user?.admin) {
-      return null;
-    }
+  if (!user?.admin) {
+    return null;
   }
 
   if (!user?.referralCode) return null;

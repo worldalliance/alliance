@@ -1,7 +1,6 @@
 import { ProfileDto } from "@alliance/shared/client";
 import { roleBadges } from "@alliance/shared/lib/copy";
 import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
-import { Features } from "@alliance/shared/lib/features";
 import type { useProfileDraft } from "@alliance/shared/lib/useProfileDraft";
 import {
   friendMutationErrorMessage,
@@ -26,7 +25,6 @@ import { MessageSquare, RefreshCw } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import { href, useNavigate } from "react-router";
 import { useAuth } from "../lib/AuthContext";
-import { isFeatureEnabled } from "../lib/config";
 import FriendRequestButton from "./FriendRequestButton";
 import ImageEditor from "./ImageEditor";
 
@@ -143,8 +141,6 @@ const UserProfileCard: React.FC<
     cancelProfileEdit();
     setAvatarEditorKey((prev) => prev + 1);
   };
-
-  const messagingEnabled = isFeatureEnabled(Features.Messaging);
 
   return (
     <Card className="px-4 md:px-8 pb-6 relative gap-y-2">
@@ -289,8 +285,7 @@ const UserProfileCard: React.FC<
             accepting={acceptFriendRequest.isPending}
           />
         )}
-        {messagingEnabled &&
-          isAuthenticated &&
+        {isAuthenticated &&
           !isMe &&
           friendStatus &&
           friendStatus.status === "accepted" && (

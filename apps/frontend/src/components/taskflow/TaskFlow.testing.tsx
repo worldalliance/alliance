@@ -157,11 +157,10 @@ export function renderFlow({
   const pageElement = page ?? (
     <ActionTaskPanelForm
       taskFormId={9}
-      actionId={1}
       onCompleteAction={onCompleteAction}
       onFormStarted={() => {}}
       onDeadlinePassed={() => {}}
-      taskFlowAction={action}
+      action={action}
     />
   );
   render(

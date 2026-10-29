@@ -7,6 +7,7 @@ task: Immersive full-screen, multi-step task flow on mobile and web, mapped from
 
 - Build a new task experience based on the Food Pact designs in `designs/` beside this file. It replaces the existing inline task form.
 - Build it in the mobile app first.
+- The flow is on for every member, on mobile and web, in development, staging, and production. It has no feature flag.
 - On an existing task, tapping "Begin" opens an immersive full-screen flow like the designs.
 - The flow is driven by mapping elements of the existing task form JSON onto the new screens.
 - Admin-side task creation changes as little as possible.
@@ -55,9 +56,7 @@ task: Immersive full-screen, multi-step task flow on mobile and web, mapped from
 
 - Project written-text screens come from display blocks in the form JSON (header, text, images, copytext, …). They do not come from the action's body markdown.
 - A new screen starts at each form page boundary and at each `header` block, in addition to the 2-input cap.
-- On mobile, the flow is behind a dev-only env flag. With the flag off, the existing inline form is unchanged.
 - Time appears only as the action's total time estimate.
 - No server, database schema, or admin builder changes.
 
-- On web, the flow is behind a `TaskFlow` feature flag: on in development and staging, off in production.
 - On web, flow content sits in a centred column about 640px wide, with Back/Next and the progress bar pinned to the bottom.
