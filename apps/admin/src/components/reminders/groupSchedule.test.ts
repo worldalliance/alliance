@@ -1,6 +1,10 @@
 import type { ReminderGroupDto } from "@alliance/shared/client";
 import { makeEvent } from "@alliance/shared/lib/testFixtures";
-import { describeGroupSchedule, groupSendStart } from "./groupSchedule";
+import {
+  describeGroupSchedule,
+  groupSendStart,
+  relativeSendLabel,
+} from "./groupSchedule";
 
 const deadline = new Date(2026, 0, 10, 12, 0);
 const hour = 60 * 60;
@@ -178,5 +182,33 @@ describe("groupSendStart", () => {
     });
 
     expect(groupSendStart(group, null)).toBeNull();
+  });
+});
+
+describe("relativeSendLabel", () => {
+  const at = (hours: number) =>
+    relativeSendLabel(
+      new Date(deadline.getTime() + hours * hour * 1000),
+      deadline,
+    );
+
+  it("shows days and hours, so sends a day apart read a day apart", () => {
+    expect([at(41), at(65), at(48)]).toEqual([
+      "in 1 day 17 hours",
+      "in 2 days 17 hours",
+      "in 2 days",
+    ]);
+  });
+
+  it("shows hours and minutes under a day, minutes under an hour", () => {
+    expect([at(5.5), at(0.25), at(0)]).toEqual([
+      "in 5 hours 30 minutes",
+      "in 15 minutes",
+      "now",
+    ]);
+  });
+
+  it("counts time since a send that already happened", () => {
+    expect(at(-30)).toBe("1 day 6 hours ago");
   });
 });

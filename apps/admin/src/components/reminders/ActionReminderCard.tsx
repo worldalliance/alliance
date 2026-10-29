@@ -10,7 +10,7 @@ import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
-import { formatDate, formatDistanceToNow } from "date-fns";
+import { formatDate } from "date-fns";
 import { ChevronDown } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
@@ -20,7 +20,7 @@ import {
 } from "../../lib/useReminderPreviewsAdmin";
 import TextareaWithHighlights from "../TextareaWithHighlights";
 import ActionReminderGroupForm from "./ActionReminderGroupForm";
-import { GroupScheduleLabels } from "./groupSchedule";
+import { GroupScheduleLabels, relativeSendLabel } from "./groupSchedule";
 import MissedSuiteNote from "./MissedSuiteNote";
 import { ActionReminderGroupFormSubmitPayload } from "./reminderGroupRequest";
 
@@ -124,11 +124,11 @@ const ActionReminderCard = ({
 
   const isFinished =
     reminderPlans && reminderPlans.length === 0 && sentReminders?.length;
-  const relativeSendLabel = useMemo(() => {
+  const sendLabel = useMemo(() => {
     if (!sendStartDate) {
       return null;
     }
-    return formatDistanceToNow(sendStartDate, { addSuffix: true });
+    return relativeSendLabel(sendStartDate, new Date());
   }, [sendStartDate]);
 
   return (
@@ -156,14 +156,14 @@ const ActionReminderCard = ({
           </Button>
           <div className="flex flex-col gap-1">
             <div className="flex flex-row gap-2 items-center">
-              {relativeSendLabel && (
+              {sendLabel && (
                 <p
                   className={cn(
                     "text-sm",
                     isFinished ? "text-gray-500" : "text-blue-500",
                   )}
                 >
-                  {relativeSendLabel}
+                  {sendLabel}
                 </p>
               )}
               <p className={cn("font-semibold", isFinished && "text-gray-500")}>

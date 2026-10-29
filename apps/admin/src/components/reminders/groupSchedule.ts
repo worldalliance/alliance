@@ -1,3 +1,4 @@
+import { withCount } from "@alliance/common/plural";
 import type { ActionEvent, ReminderGroupDto } from "@alliance/shared/client";
 import {
   format,
@@ -6,7 +7,12 @@ import {
   parseISO,
   subSeconds,
 } from "date-fns";
-import { millisecondsInSecond } from "date-fns/constants";
+import {
+  millisecondsInMinute,
+  millisecondsInSecond,
+  minutesInDay,
+  minutesInHour,
+} from "date-fns/constants";
 
 export type GroupScheduleLabels = {
   primary: string;
@@ -196,6 +202,26 @@ export const describeGroupSchedule = ({
         pastTense: "Scheduled group reminder",
       };
   }
+};
+
+export const relativeSendLabel = (sendStart: Date, now: Date) => {
+  const totalMinutes = Math.floor(
+    Math.abs(sendStart.getTime() - now.getTime()) / millisecondsInMinute,
+  );
+  if (totalMinutes === 0) return "now";
+  const days = Math.floor(totalMinutes / minutesInDay);
+  const hours = Math.floor((totalMinutes % minutesInDay) / minutesInHour);
+  const minutes = totalMinutes % minutesInHour;
+  const parts = (
+    days > 0
+      ? [withCount(days, "day"), hours > 0 && withCount(hours, "hour")]
+      : [
+          hours > 0 && withCount(hours, "hour"),
+          minutes > 0 && withCount(minutes, "minute"),
+        ]
+  ).filter(Boolean);
+  const span = parts.join(" ");
+  return sendStart > now ? `in ${span}` : `${span} ago`;
 };
 
 export const groupSendStart = (
