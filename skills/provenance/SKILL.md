@@ -1,6 +1,6 @@
 ---
 name: provenance
-description: Read before implementing a feature or behavior change.
+description: Read before making a repository change intended to be kept, or determining the provenance of anything in the repository.
 ---
 
 # Provenance
@@ -9,7 +9,7 @@ These files hold the current requirements and agent decisions, with their origin
 
 ## When
 
-Applies when implementing a feature or changing behavior, any task where the change will outrun what the user described. Skip it for trivial fixes, chores, and refactors whose diff matches the request; over-applying is cheap, skipping is the failure mode. A refactor bundled into a feature task still gets a directory.
+Every repository change intended to be kept gets a directory, however small: code, tests, config, scripts, docs, and skills. Create it before editing, even when committing has not been requested. Temporary experiments and working files need none. A change continuing an existing task revises that task's directory instead. A change touching only `docs/provenance/` needs none.
 
 ## Layout
 
@@ -27,7 +27,7 @@ References flow one way: `DECISIONS.md` may reference `REQUIREMENTS.md`; `REQUIR
 
 Open with frontmatter naming the user and the task. Use `git config user.name` for the user field. Do not redact this field.
 
-State the current user requirements, constraints, preferences, and approved selections directly. Incorporate clarifications into the affected entries and remove superseded requirements. Keep conversation history, approval quotes, and interview question numbers out of the files.
+State the current user requirements, constraints, preferences, and approved selections directly. For a fix, refactor, or chore that does only what the user asked, restating the request as a requirement or two is sufficient. Incorporate clarifications into the affected entries and remove superseded requirements. Keep conversation history, approval quotes, and interview question numbers out of the files.
 
 Make each requirement self-contained: expand shorthand and include the exact behavior, values, and message copy needed to implement it. Omit references to unavailable attachments or the task transcript. Accessible supporting links may supplement the requirements.
 

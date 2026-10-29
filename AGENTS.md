@@ -28,7 +28,7 @@ Always read and apply:
 
 Read before the matching task:
 
-- Determining the provenance of anything in the repository → `(root)/skills/provenance/SKILL.md`
+- Making a repository change intended to be kept, or determining the provenance of anything in the repository → `(root)/skills/provenance/SKILL.md`
 - Implementing a feature, fixing a bug, or refactoring code → `(root)/skills/implement/SKILL.md`
 - Pulling PostHog session replays or other PostHog API data → `(root)/skills/posthog/SKILL.md`
 - Querying the local Postgres db → `(root)/skills/local-db/SKILL.md`
