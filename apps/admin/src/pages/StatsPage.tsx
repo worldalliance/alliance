@@ -142,7 +142,7 @@ const StatsPage: React.FC = () => {
   }, []);
 
   return (
-    <div className="p-6 md:p-8 space-y-6 text-gray-900 mx-auto">
+    <div className="p-6 md:p-8 space-y-6 text-gray-900">
       <AggregateStatsCard
         actionStats={actionStats}
         parsedContractStatusHistory={parsedContractStatusHistory}
@@ -246,7 +246,7 @@ const StatsPage: React.FC = () => {
 
       <TimeToChurnCard />
 
-      <div className="border border-gray-200 rounded-lg overflow-hidden min-w-[1000px]">
+      <div className="border border-gray-200 rounded-lg overflow-hidden">
         <button
           onClick={() => setDailyStatsTableOpen(!dailyStatsTableOpen)}
           className="w-full px-4 py-3 bg-gray-50 flex items-center justify-between hover:bg-gray-100 transition-colors"
@@ -321,7 +321,7 @@ const StatsPage: React.FC = () => {
       </div>
 
       {actionStats.length > 0 && (
-        <div className="border border-gray-200 rounded-lg overflow-hidden min-w-[800px]">
+        <div className="border border-gray-200 rounded-lg overflow-hidden">
           <button
             onClick={() => setActionStatsTableOpen(!actionStatsTableOpen)}
             className="w-full px-4 py-3 bg-gray-50 flex items-center justify-between hover:bg-gray-100 transition-colors"
