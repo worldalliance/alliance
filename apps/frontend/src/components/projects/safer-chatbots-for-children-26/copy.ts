@@ -14,9 +14,9 @@ export const ABOUT_SECTIONS = [
     heading: "Why are we doing this?",
     body: `- At the Alliance, we’re assembling people who can count on each other to combat global problems that depend on everyone’s participation. With this project, we are testing the model of “citizen oversight”, where the general public gets a chance to weigh in on disruptive, potentially dangerous technologies such as AI and help shape the direction of these technologies in a healthy, democratic way.
 - As AI adoption grows, [safety evaluations struggle](https://hai.stanford.edu/ai-index/2026-ai-index-report/responsible-ai) to capture the complexity of real-world harms, particularly those affecting children and teenagers. KORA is working to close these gaps. Volunteers for this project will help develop AI safety evaluations that better reflect the risks people actually face.
-`, /* 
+` /* 
     - KORA has identified a [lack of research](https://arxiv.org/html/2608.07902v1) on how AI systems affect children and teenagers. We are excited to partner with them to make these systems safer.
-    */
+    */,
   },
   {
     heading: "How do I participate?",
