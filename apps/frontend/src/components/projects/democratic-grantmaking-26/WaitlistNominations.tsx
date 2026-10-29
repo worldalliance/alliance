@@ -2,8 +2,8 @@ import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { cn } from "@alliance/shared/styles/util";
 import { Check, LoaderCircle, Save } from "lucide-react";
 import { useId, useState } from "react";
+import { PROJECT_FIELD } from "../fieldStyles";
 import { useWaitlistBrowser } from "./useWaitlist";
-import { WAITLIST_FIELD } from "./waitlistStyles";
 
 export function WaitlistNominations({
   initialValue,
@@ -37,7 +37,7 @@ export function WaitlistNominations({
           maxLength={4000}
           rows={1}
           className={cn(
-            WAITLIST_FIELD,
+            PROJECT_FIELD,
             "h-10 min-h-10 min-w-0 flex-1 resize-y py-1",
           )}
           onChange={(event) => {
