@@ -82,7 +82,7 @@ export function launchBlockers(params: {
     );
   }
   const open = data.textFindings.filter(
-    (finding) => !dismissedFindingKeys.has(finding.key),
+    (finding) => !dismissedFindingKeys.has(finding.dismissKey),
   );
   if (open.length > 0) {
     blockers.push(

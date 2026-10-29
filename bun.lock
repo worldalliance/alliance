@@ -138,6 +138,7 @@
         "@tanstack/react-query": "^5.90.20",
         "@tanstack/react-query-persist-client": "^5.90.22",
         "@tanstack/react-table": "^8.21.3",
+        "an-array-of-english-words": "^2.0.0",
         "class-variance-authority": "^0.7.1",
         "classnames": "^2.5.1",
         "clsx": "^2.1.1",
@@ -2229,6 +2230,8 @@
     "amp": ["amp@0.3.1", "", {}, "sha512-OwIuC4yZaRogHKiuU5WlMR5Xk/jAcpPtawWL05Gj8Lvm2F6mwoJt4O/bHI+DHwG79vWd+8OFYM4/BzYqyRd3qw=="],
 
     "amp-message": ["amp-message@0.1.2", "", { "dependencies": { "amp": "0.3.1" } }, "sha512-JqutcFwoU1+jhv7ArgW38bqrE+LQdcRv4NxNw0mp0JHQyB6tXesWRjtYKlDgHRY2o3JE5UTaBGUK8kSWUdxWUg=="],
+
+    "an-array-of-english-words": ["an-array-of-english-words@2.0.0", "", { "bin": { "words": "cli.js", "an-array-of-english-words": "cli.js" } }, "sha512-FXnNvZSOI27kkKXeLSquhaTGP7z198UOQ4txaYO9fCfrjCh+D5SV7G7XqzEH0229+pAi4cjBEZ4WIQYgjKtO7Q=="],
 
     "anser": ["anser@1.4.10", "", {}, "sha512-hCv9AqTQ8ycjpSd3upOJd7vFwW1JaoYQ7tpham03GJ1ca8/65rqn0RpaWpItOAd6ylW9wAw6luXYPJIyPFVOww=="],
 

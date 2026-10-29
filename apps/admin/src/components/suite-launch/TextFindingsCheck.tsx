@@ -27,7 +27,9 @@ const TextFindingsCheck = ({
   onDismiss: (key: string) => void;
   onRecheck: () => void;
 }) => {
-  const open = findings.filter((finding) => !dismissedKeys.has(finding.key));
+  const open = findings.filter(
+    (finding) => !dismissedKeys.has(finding.dismissKey),
+  );
   const actionsById = new Map(actions.map(({ action }) => [action.id, action]));
   return (
     <LaunchCheck
@@ -75,7 +77,7 @@ const TextFindingsCheck = ({
               )}
               <button
                 type="button"
-                onClick={() => onDismiss(finding.key)}
+                onClick={() => onDismiss(finding.dismissKey)}
                 aria-label="Dismiss"
                 title="Dismiss"
                 className={iconControlClass}

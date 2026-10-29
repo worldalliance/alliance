@@ -1,7 +1,7 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
 import { formTexts } from "../../pages/action-dashboard/actionReadiness";
-import { findTextIssues, type TextIssue } from "./textChecks";
+import { findTextIssues, TextIssueKind, type TextIssue } from "./textChecks";
 
 export enum TextSource {
   Name = "name",
@@ -20,6 +20,8 @@ export const TEXT_SOURCE_LABELS: Record<TextSource, string> = {
 export type TextFinding = TextIssue & {
   /** Survives edits elsewhere in the text, so a dismissal outlasts unrelated fixes. */
   key: string;
+  /** Shared by every misspelling of the same word, so one dismissal covers them all. */
+  dismissKey: string;
   actionId: number;
   source: TextSource;
   text: string;
@@ -53,14 +55,29 @@ export function actionTextFindings(params: {
   const occurrences = new Map<string, number>();
   return texts.flatMap(([source, text]) =>
     findTextIssues(text, isKnownWord).map((issue) => {
-      const finding = { ...issue, key: "", actionId: action.id, source, text };
+      const finding = {
+        ...issue,
+        key: "",
+        dismissKey: "",
+        actionId: action.id,
+        source,
+        text,
+      };
       const { before, flagged, after } = findingContext(finding);
       const key = [action.id, source, issue.kind, before, flagged, after].join(
         "|",
       );
       const occurrence = occurrences.get(key) ?? 0;
       occurrences.set(key, occurrence + 1);
-      return { ...finding, key: `${key}|${occurrence}` };
+      const unique = `${key}|${occurrence}`;
+      return {
+        ...finding,
+        key: unique,
+        dismissKey:
+          issue.kind === TextIssueKind.Misspelling
+            ? `${issue.kind}|${flagged.toLowerCase().replace("’", "'")}`
+            : unique,
+      };
     }),
   );
 }

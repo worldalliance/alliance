@@ -1,17 +1,25 @@
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryOptions } from "@tanstack/react-query";
+import { z } from "zod";
 
 export const spellcheckerQuery = queryOptions({
   queryKey: queryKeys.spellcheckerAdmin(),
   queryFn: async () => {
-    const [{ default: Typo }, { default: aff }, { default: dic }] =
-      await Promise.all([
-        import("typo-js"),
-        import("typo-js/dictionaries/en_US/en_US.aff?raw"),
-        import("typo-js/dictionaries/en_US/en_US.dic?raw"),
-      ]);
+    const [
+      { default: Typo },
+      { default: aff },
+      { default: dic },
+      { default: words },
+    ] = await Promise.all([
+      import("typo-js"),
+      import("typo-js/dictionaries/en_US/en_US.aff?raw"),
+      import("typo-js/dictionaries/en_US/en_US.dic?raw"),
+      import("an-array-of-english-words/index.json?raw"),
+    ]);
     const dictionary = new Typo("en_US", aff, dic);
-    return (word: string) => dictionary.check(word);
+    // Hunspell knows inflections; the long list knows newer and compound words.
+    const wordList = new Set(z.array(z.string()).parse(JSON.parse(words)));
+    return (word: string) => wordList.has(word) || dictionary.check(word);
   },
   staleTime: Infinity,
 });

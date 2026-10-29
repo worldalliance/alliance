@@ -56,8 +56,17 @@ describe("findTextIssues", () => {
     );
   });
 
-  it("skips bare www links", () => {
+  it("skips code fence labels and file names, still checking a caption", () => {
+    expect(
+      flagged("```imgcap\n1762827853197.webp\nA pothoel\n```", (word) =>
+        ["pothole"].includes(word),
+      ),
+    ).toEqual([{ kind: TextIssueKind.Misspelling, text: "pothoel" }]);
+  });
+
+  it("skips bare www links and domains", () => {
     expect(flagged("Visit www.example.org", () => false)).toEqual([]);
+    expect(flagged("Visit thealliance.org", () => false)).toEqual([]);
   });
 
   it("flags placeholder text left in", () => {

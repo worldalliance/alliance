@@ -26,10 +26,13 @@ export type TextIssue = {
 // Replaced character for character, so issue offsets still index the original text.
 const UNCHECKED_SPANS = [
   /(?:https?:\/\/|www\.)\S+/g,
+  /\b[\w-]+(?:\.[\w-]+)*\.(?:org|com|net|io|gov|edu|co|us|uk)\b/gi,
   /\]\([^)]*\)/g,
+  /```[^\n]*/g,
   /`[^`\n]*`/g,
   /<[^>\n]+>/g,
   /\S+@\S+\.\S+/g,
+  /\S+\.(?:webp|png|jpe?g|gif|svg|pdf|mp4)\b/gi,
 ];
 const MASK = "\u0001";
 

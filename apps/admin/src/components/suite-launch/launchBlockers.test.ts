@@ -11,6 +11,7 @@ const schedule = {
 const action = { id: 1 };
 const finding = {
   key: "f1",
+  dismissKey: "f1",
   actionId: 1,
   source: TextSource.Body,
   text: "a  b",

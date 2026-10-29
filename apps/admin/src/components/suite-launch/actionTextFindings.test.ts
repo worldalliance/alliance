@@ -62,4 +62,26 @@ describe("actionTextFindings", () => {
     const keys = findings.map((finding) => finding.key);
     expect(new Set(keys).size).toBe(keys.length);
   });
+
+  it("dismisses a misspelled word everywhere at once, other findings one by one", () => {
+    const findings = actionTextFindings({
+      action: {
+        id: 7,
+        name: "Grantmaking  prep",
+        shortDescription: "Our grantmaking plan.",
+        body: "More grantmaking  soon.",
+      },
+      taskFormSchema: null,
+      isKnownWord: (word) => word !== "grantmaking",
+    });
+    const dismissKeys = (kind: TextIssueKind) =>
+      findings
+        .filter((finding) => finding.kind === kind)
+        .map((finding) => finding.dismissKey);
+    expect(new Set(dismissKeys(TextIssueKind.Misspelling))).toEqual(
+      new Set(["misspelling|grantmaking"]),
+    );
+    expect(dismissKeys(TextIssueKind.Misspelling)).toHaveLength(2);
+    expect(new Set(dismissKeys(TextIssueKind.DoubleSpace)).size).toBe(2);
+  });
 });
