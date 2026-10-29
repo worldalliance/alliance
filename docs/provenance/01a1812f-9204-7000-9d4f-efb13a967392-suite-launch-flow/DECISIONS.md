@@ -13,6 +13,7 @@
 - The office event is 11:59pm Pacific, seven days after the day members start. When the member start rolls past midnight, the office event moves with it.
 - The office event uses the `office_action` status ("Office taking action"), matching `CreateEventForm`'s deadline default.
 - How long members get reads as whole days counted the way the contract check counts them, by Pacific wall-clock time, then the real hours and minutes past the last whole day, so it never contradicts the contract banner. On the day clocks fall back, that remainder can read 24 hours or more.
+- While the schedule is valid, the Schedule check states "Members have <duration> to complete their actions" in black body text under its title, not in the grey summary beside it. The origin of this placement and color is unrecorded.
 
 ## Sanity checks
 

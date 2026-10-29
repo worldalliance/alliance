@@ -188,11 +188,10 @@ it("shows each action's audience, task form link, and what to look at before che
 it("states how long members have to complete their actions", async () => {
   setSystemTime(new Date("2026-01-15T20:00:00Z"));
   renderPanel();
-  expect(
-    await screen.findByText(
-      "Members have 7 days 4 hours 59 minutes to complete their actions",
-    ),
-  ).toBeTruthy();
+  const sentence = await screen.findByText(
+    "Members have 7 days 4 hours 59 minutes to complete their actions",
+  );
+  expect(sentence.tagName).toBe("P");
 });
 
 it("counts only members with an active contract, as the server admits them", async () => {
