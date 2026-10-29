@@ -159,7 +159,7 @@ const ActionsList: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-screen p-5 gap-y-3">
+    <div className="flex flex-col p-5 gap-y-3">
       <title>Admin panel</title>
       {error && <p className="text-red-500 flex-shrink-0">{error}</p>}
       <ActionTimeline
@@ -183,7 +183,7 @@ const ActionsList: React.FC = () => {
         Grouped by suite and ordered by latest event (most recent first)
       </p>
 
-      <div className="space-y-5 flex-1 min-h-0 overflow-y-auto rounded-lg border border-zinc-200 bg-white p-5">
+      <div className="space-y-5 rounded-lg border border-zinc-200 bg-white p-5">
         {groupedActions.map((suite) => (
           <div
             key={suite.id ?? "suite-unspecified"}
