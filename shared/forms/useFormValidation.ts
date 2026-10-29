@@ -6,9 +6,9 @@ import {
 } from "@alliance/common/forms/form-schema";
 import { type ConditionExtras } from "@alliance/common/forms/visibility";
 import { useCallback, useState } from "react";
-import { customValidatorRunValidator } from "../client";
 import { type FormVisibility } from "../useFormRenderer";
 import { getListSubFieldErrors } from "./fieldValidation";
+import { runCustomValidator } from "./runCustomValidator";
 
 export type FieldErrorUpdater = (
   updates: Record<string, string | null>,
@@ -104,6 +104,8 @@ export function useFormValidation(args: {
   isElementCurrentlyVisible: FormVisibility["isElementCurrentlyVisible"];
   validateFieldValue: FormVisibility["validateFieldValue"];
   applyFieldErrorUpdates: FieldErrorUpdater;
+  /** Admin preview: run custom validators for this user rather than the caller. */
+  previewUserId?: string | number;
 }): {
   validateFields: (
     input: FieldsValidationInput,
@@ -129,6 +131,7 @@ export function useFormValidation(args: {
     isElementCurrentlyVisible,
     validateFieldValue,
     applyFieldErrorUpdates,
+    previewUserId,
   } = args;
 
   const runCustomValidatorsForFields = useCallback(
@@ -146,11 +149,10 @@ export function useFormValidation(args: {
           }
 
           try {
-            const response = await customValidatorRunValidator({
-              path: { id: field.customValidatorId },
-              body: {
-                fieldValue: effectiveFormData[field.id]?.toString() ?? "",
-              },
+            const response = await runCustomValidator({
+              validatorId: field.customValidatorId,
+              fieldValue: effectiveFormData[field.id]?.toString() ?? "",
+              previewUserId,
             });
 
             if (response.error || !response.data) {

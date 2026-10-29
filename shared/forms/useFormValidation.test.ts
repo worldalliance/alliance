@@ -63,9 +63,12 @@ describe("useFieldErrors", () => {
   });
 });
 
+const api = serveApi(routes({}));
+
 function renderValidation(args: {
   schema: FormSchema;
   formData: Record<string, FormValue>;
+  previewUserId?: number;
 }) {
   return renderHook(
     (formData: Record<string, FormValue>) => {
@@ -98,6 +101,7 @@ function renderValidation(args: {
         isElementCurrentlyVisible: visibility.isElementCurrentlyVisible,
         validateFieldValue: visibility.validateFieldValue,
         applyFieldErrorUpdates,
+        previewUserId: args.previewUserId,
       });
       return { ...validation, fieldErrors, applyFieldErrorUpdates };
     },
@@ -116,6 +120,26 @@ async function validate<T>(run: () => Promise<T>): Promise<T> {
 }
 
 describe("useFormValidation", () => {
+  it("runs a field's custom validator for the previewed member", async () => {
+    api.alsoServing({
+      "POST /tasks/runValidator/:id/asUser/:userId": ({ params }) =>
+        Response.json(
+          params.userId === "7"
+            ? { isValid: false, message: "Member 7 lacks the tag" }
+            : { isValid: true },
+        ),
+    });
+    const { result } = renderValidation({
+      schema: schemaWith([{ ...textField("why"), customValidatorId: 42 }]),
+      formData: { why: "because" },
+      previewUserId: 7,
+    });
+
+    const page = await validate(() => result.current.validatePage(0, true));
+    expect(page.isValid).toBe(false);
+    expect(result.current.fieldErrors.why).toBe("Member 7 lacks the tag");
+  });
+
   it("passes a hidden page and clears the errors its fields left", async () => {
     const { result } = renderValidation({
       schema: twoPageSchema,

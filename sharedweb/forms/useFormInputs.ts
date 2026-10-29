@@ -48,6 +48,7 @@ export function useFormInputs({
     readOnly,
     savedResults: completedFormResponse?.visibilityValidatorResults,
     signedIn: !!user || adminPreviewUserId !== undefined,
+    previewUserId: adminPreviewUserId,
   });
 
   const previousAnswers = usePreviousAnswerSources({

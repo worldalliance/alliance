@@ -373,7 +373,7 @@ describe("keeps a restored draft's selections once a visibility input fails", ()
           formula: "c1",
         },
       },
-      route: "POST /tasks/runValidator/:id",
+      route: "POST /tasks/runValidator/:id/asUser/:userId",
     },
     "previous answers": {
       localSource: {

@@ -2,8 +2,8 @@ import { forEachCondition } from "@alliance/common/forms/form-conditions";
 import { type FormSchema } from "@alliance/common/forms/form-schema";
 import { R } from "@alliance/common/result";
 import { useEffect, useMemo, useState } from "react";
-import { customValidatorRunValidator } from "../client";
 import { parseVisibilityValidatorResults } from "../parsed-dtos";
+import { runCustomValidator } from "./runCustomValidator";
 
 export function referencedValidatorIds(schema: FormSchema): number[] {
   const ids = new Set<number>();
@@ -27,12 +27,14 @@ export function useVisibilityValidatorResults(args: {
   savedResults?: Record<string, unknown> | null;
   /** Whether anyone, a member or a previewing admin, can run a validator. A guest fails them all. */
   signedIn: boolean;
+  /** Admin preview: run validators for this user rather than the caller. */
+  previewUserId?: string | number;
 }): {
   results: Record<number, boolean>;
   /** A run failed, so its verdict reads as hidden without being known. */
   failed: boolean;
 } {
-  const { schema, readOnly, savedResults, signedIn } = args;
+  const { schema, readOnly, savedResults, signedIn, previewUserId } = args;
 
   const visibilityValidatorIds = useMemo(
     () => referencedValidatorIds(schema),
@@ -79,6 +81,13 @@ export function useVisibilityValidatorResults(args: {
     [visibilityValidatorIds],
   );
 
+  // Verdicts belong to the user they ran for. Keeping an empty `prev` matters
+  // for the same reason as above.
+  useEffect(() => {
+    setResults((prev) => (Object.keys(prev).length ? {} : prev));
+    setFailedIds((prev) => (prev.size ? new Set() : prev));
+  }, [previewUserId]);
+
   useEffect(() => {
     if (readOnly || !signedIn) {
       return;
@@ -93,9 +102,9 @@ export function useVisibilityValidatorResults(args: {
       const entries = await Promise.all(
         missingIds.map(async (validatorId) => {
           try {
-            const response = await customValidatorRunValidator({
-              path: { id: validatorId },
-              body: {},
+            const response = await runCustomValidator({
+              validatorId,
+              previewUserId,
             });
             if (!response.data || response.error) {
               throw response.error ?? new Error("Missing validator response");
@@ -131,7 +140,7 @@ export function useVisibilityValidatorResults(args: {
     return () => {
       cancelled = true;
     };
-  }, [visibilityValidatorIds, results, readOnly, signedIn]);
+  }, [visibilityValidatorIds, results, readOnly, signedIn, previewUserId]);
 
   const failed =
     !readOnly &&

@@ -55,6 +55,23 @@ export class CustomValidatorController {
     );
   }
 
+  @Post("runValidator/:id/asUser/:userId")
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: CustomValidatorResponseDto })
+  async runValidatorAsUserAdmin(
+    @Param("id", ParseIntPipe) id: number,
+    @Param("userId", ParseIntPipe) userId: number,
+    @Body() body: RunValidatorDto,
+  ): Promise<CustomValidatorResponseDto> {
+    return new CustomValidatorResponseDto(
+      await this.customValidatorService.runValidator(
+        id,
+        userId,
+        body.fieldValue,
+      ),
+    );
+  }
+
   @Get("findOneCustomValidator/:id")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: CustomValidatorDto })

@@ -14135,6 +14135,31 @@ export type CustomValidatorRunValidatorResponses = {
 
 export type CustomValidatorRunValidatorResponse = CustomValidatorRunValidatorResponses[keyof CustomValidatorRunValidatorResponses];
 
+export type CustomValidatorRunValidatorAsUserAdminData = {
+    body: RunValidatorDto;
+    path: {
+        id: number;
+        userId: number;
+    };
+    query?: never;
+    url: '/tasks/runValidator/{id}/asUser/{userId}';
+};
+
+export type CustomValidatorRunValidatorAsUserAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type CustomValidatorRunValidatorAsUserAdminError = CustomValidatorRunValidatorAsUserAdminErrors[keyof CustomValidatorRunValidatorAsUserAdminErrors];
+
+export type CustomValidatorRunValidatorAsUserAdminResponses = {
+    200: CustomValidatorResponseDto;
+};
+
+export type CustomValidatorRunValidatorAsUserAdminResponse = CustomValidatorRunValidatorAsUserAdminResponses[keyof CustomValidatorRunValidatorAsUserAdminResponses];
+
 export type CustomValidatorFindOneCustomValidatorAdminData = {
     body?: never;
     path: {

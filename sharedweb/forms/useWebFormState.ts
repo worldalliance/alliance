@@ -239,6 +239,7 @@ export function useWebFormState({
     isElementCurrentlyVisible,
     validateFieldValue,
     applyFieldErrorUpdates,
+    previewUserId: adminPreviewUserId,
   });
 
   const { updateField, imageUpload } = useFormEditing({
