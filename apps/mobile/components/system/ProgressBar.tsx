@@ -13,6 +13,8 @@ import Animated, {
 interface ProgressBarProps extends ViewProps {
   /** `null` sweeps a shuttle across the track instead of filling it. */
   percentage: number | null;
+  /** Restarts the fill when its identity changes, so pass a constant. */
+  fillTiming?: WithTimingConfig;
 }
 
 const FILL_TIMING: WithTimingConfig = {
@@ -44,12 +46,18 @@ const Sweep = () => {
 };
 
 // Starts at the first value it's given, so only later changes animate.
-const Fill = ({ percentage }: { percentage: number }) => {
+const Fill = ({
+  percentage,
+  timing,
+}: {
+  percentage: number;
+  timing: WithTimingConfig;
+}) => {
   const width = useSharedValue(percentage);
 
   useEffect(() => {
-    width.value = withTiming(percentage, FILL_TIMING);
-  }, [percentage, width]);
+    width.value = withTiming(percentage, timing);
+  }, [percentage, timing, width]);
 
   const style = useAnimatedStyle(() => ({ width: `${width.value}%` }));
 
@@ -58,6 +66,7 @@ const Fill = ({ percentage }: { percentage: number }) => {
 
 export default function ProgressBar({
   percentage,
+  fillTiming = FILL_TIMING,
   className,
   ...props
 }: ProgressBarProps) {
@@ -67,7 +76,7 @@ export default function ProgressBar({
         {percentage === null ? (
           <Sweep />
         ) : (
-          <Fill percentage={Math.min(percentage, 100)} />
+          <Fill percentage={Math.min(percentage, 100)} timing={fillTiming} />
         )}
       </View>
     </View>
