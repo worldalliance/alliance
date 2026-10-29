@@ -176,9 +176,7 @@ it("shows each reminder as the picked group of members gets it", async () => {
   expect(announcement?.textContent).toContain("Member Action announcement");
   expect(announcement?.textContent).toContain("As Ben gets it");
 
-  fireEvent.change(screen.getByLabelText("Preview as"), {
-    target: { value: "1" },
-  });
+  fireEvent.click(screen.getAllByRole("radio")[1]);
   expect(
     await screen.findByText("New Alliance task: Call", { exact: false }),
   ).toBeTruthy();

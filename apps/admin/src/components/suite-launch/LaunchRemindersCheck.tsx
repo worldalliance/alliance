@@ -1,5 +1,7 @@
+import { withCount } from "@alliance/common/plural";
 import type { CreateReminderGroupDto } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
+import { ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { getSiteUrl } from "../../lib/config";
 import { useUsersAdmin } from "../../lib/useUsersAdmin";
@@ -44,8 +46,6 @@ const LaunchRemindersCheck = ({
   const { data: users = [] } = useUsersAdmin();
   const [mixIndex, setMixIndex] = useState(0);
   const actionsById = new Map(actions.map(({ action }) => [action.id, action]));
-  const mixNames = (mix: ActionMix) =>
-    mix.actionIds.map((id) => actionsById.get(id)?.name).join(", ");
   const mix = mixes.at(mixIndex) ?? mixes.at(0);
   const sampleId = mix?.userIds[0];
   const sample = users.find((user) => user.id === sampleId);
@@ -73,21 +73,46 @@ const LaunchRemindersCheck = ({
       summary={`${windows.length} created on launch${atNight > 0 ? ` · ${atNight} reach some members at night` : ""}`}
     >
       {mixes.length > 0 && (
-        <label className="flex min-w-0 items-center gap-2 text-sm">
-          Preview as
-          <select
-            value={mixIndex}
-            onChange={(e) => setMixIndex(Number(e.target.value))}
-            className="min-w-0 flex-1 truncate rounded border border-zinc-300 px-2 py-1 text-sm"
+        <div className="flex flex-col gap-1.5">
+          <p id="reminder-preview-as" className="text-sm">
+            Preview as
+          </p>
+          <div
+            role="radiogroup"
+            aria-labelledby="reminder-preview-as"
+            className="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-2"
           >
             {mixes.map((option, index) => (
-              <option key={option.actionIds.join(",")} value={index}>
-                {mixNames(option)} ({option.userIds.length} members)
-              </option>
+              <button
+                key={option.actionIds.join(",")}
+                type="button"
+                role="radio"
+                aria-checked={mix === option}
+                onClick={() => setMixIndex(index)}
+                className={cn(
+                  "flex flex-col justify-start rounded-lg border-2 bg-white p-2 text-left text-xs",
+                  mix === option
+                    ? "border-green"
+                    : "border-zinc-200 hover:border-zinc-400",
+                )}
+              >
+                <span className="block text-sm font-medium">
+                  {withCount(option.userIds.length, "member")} ·{" "}
+                  {option.minutes} min
+                </span>
+                {option.actionIds.map((id) => (
+                  <span key={id} className="block text-zinc-600">
+                    {actionsById.get(id)?.name}
+                  </span>
+                ))}
+              </button>
             ))}
-          </select>
-        </label>
+          </div>
+        </div>
       )}
+      <p className="text-xs text-zinc-500">
+        Click a reminder to see it as these members get it
+      </p>
       <ul className="text-sm">
         {reminders.map(({ body, window }) => {
           const rendered =
@@ -107,14 +132,18 @@ const LaunchRemindersCheck = ({
               : null;
           return (
             <li key={window.name}>
-              <details>
+              <details className="group">
                 <summary
                   className={cn(
-                    "flex cursor-pointer justify-between gap-4 py-0.5",
+                    "flex cursor-pointer list-none justify-between gap-4 rounded px-1 py-1 hover:bg-zinc-100 [&::-webkit-details-marker]:hidden",
                     early.has(window) && "text-red-600",
                   )}
                 >
-                  <span>
+                  <span className="flex items-center gap-1">
+                    <ChevronRight
+                      className="size-4 shrink-0 text-zinc-500 transition-transform group-open:rotate-90"
+                      aria-hidden
+                    />
                     {window.name}
                     {!!nightCounts.get(window) && (
                       <span className="ml-2 text-xs text-yellow-700">
