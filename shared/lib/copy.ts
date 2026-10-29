@@ -350,6 +350,21 @@ export const taskFlowFallbackTitle = {
   reading: "Read this before you continue",
 } as const;
 
+export const taskFlow = {
+  begin: "Begin",
+  next: "Next",
+  back: "Back",
+  submit: "Submit",
+  background: "Project background",
+  complete: "Task complete!",
+  completeUpdate:
+    "We'll share a progress update on this project with all members in the coming weeks.",
+  closeTask: "Close task",
+  inviteFriend: "Invite a friend",
+  staff: "Staff",
+  expert: "Expert",
+} as const;
+
 export const outputFieldPublicToggle = {
   showPublicly: "Show my response to other members",
   hidePublicly: "Hide my response from others",
