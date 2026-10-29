@@ -12,7 +12,7 @@ const progress = {
     officeActionAt: new Date("2026-11-08T07:59:00Z"),
   },
   checkedActionIds: new Set([1, 2]),
-  dismissedKeys: new Set(["misspelling|grantmaking"]),
+  dismissedKeys: new Set(["misspelling|teh"]),
   violationsAcknowledged: true,
 };
 

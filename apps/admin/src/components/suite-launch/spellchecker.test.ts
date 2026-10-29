@@ -12,6 +12,12 @@ describe("knownWordChecker", () => {
     expect(isKnown("which")).toBe(true);
   });
 
+  it("accepts the Alliance's own words", () => {
+    for (const word of ["grantmaking", "grantmaker", "grantmakers"]) {
+      expect(isKnown(word)).toBe(true);
+    }
+  });
+
   it("leaves a typo-shaped list entry to Hunspell", () => {
     expect(isKnown("wich")).toBe(false);
     expect(isKnown("theres")).toBe(false);

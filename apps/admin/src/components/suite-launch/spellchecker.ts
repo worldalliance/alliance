@@ -2,6 +2,8 @@ import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryOptions } from "@tanstack/react-query";
 import { z } from "zod";
 
+const ALLIANCE_WORDS = new Set(["grantmaking", "grantmaker", "grantmakers"]);
+
 // Rare or archaic words in the long list that are mostly typos in practice.
 const LIST_TYPOS = new Set([
   "wich",
@@ -31,6 +33,7 @@ export const knownWordChecker =
     hunspellKnows: (word: string) => boolean;
   }) =>
   (word: string) =>
+    ALLIANCE_WORDS.has(word) ||
     (params.wordList.has(word) && !LIST_TYPOS.has(word)) ||
     params.hunspellKnows(word);
 
