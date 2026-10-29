@@ -26,9 +26,13 @@ export function FormBuilderPreview({
     [previewUsersQuery.data],
   );
   const memberIds = useMemo(
-    () => previewUsers.map((user) => user.id),
+    () =>
+      previewUsers
+        .filter((user) => user.hasActiveContract)
+        .map((user) => user.id),
     [previewUsers],
   );
+  const [cardPick, setCardPick] = useState<number | null>(null);
   const isLoadingPreviewUsers = previewUsersQuery.isLoading;
   const previewUserError = previewUsersQuery.isLoadingError
     ? "Could not load users"
@@ -61,15 +65,20 @@ export function FormBuilderPreview({
         <VisibilityProfilePicker
           schema={schema}
           userIds={memberIds}
-          selectedUserId={
-            resolvedPreviewUserId === "preview" ? null : resolvedPreviewUserId
-          }
-          onSelect={(userId) => setPreviewUserId(String(userId))}
+          selectedUserId={cardPick}
+          onSelect={(userId) => {
+            setCardPick(userId);
+            setPreviewUserId(String(userId));
+          }}
+          collapsible
         />
       </div>
       <PreviewAsUserBar
         previewUserId={previewUserId}
-        setPreviewUserId={setPreviewUserId}
+        setPreviewUserId={(userId) => {
+          setCardPick(null);
+          setPreviewUserId(userId);
+        }}
         previewUsers={previewUsers}
         isLoadingPreviewUsers={isLoadingPreviewUsers}
         previewUserError={previewUserError}

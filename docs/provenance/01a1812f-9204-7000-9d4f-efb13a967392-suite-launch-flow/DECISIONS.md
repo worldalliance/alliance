@@ -68,6 +68,9 @@
 Current behavior whose origin is unrecorded: no user requirement records it, so a later agent may reconsider any of it.
 
 - The form builder's preview can preview the form as each kind of member its member conditions tell apart.
+- Those member variants fold under a "Member variants" heading that shows how many variants there are.
+- Only members with an active contract are grouped into variants.
+- A variant card stays highlighted only while the preview shows the member that card picked.
 - The suite launch page's "Task forms by member" lists the task forms whose conditions tell members apart, and a group opens the form previewed as one of its members.
 
 ## Task forms by member and A/B variant forms

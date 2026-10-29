@@ -14,6 +14,7 @@ import {
   type ConditionFieldLookup,
   describeCondition,
 } from "../lib/visibilitySummary";
+import Disclosure from "./Disclosure";
 import {
   CardLink,
   CardLinks,
@@ -74,10 +75,13 @@ type ProfileChoice =
 export function VisibilityProfilePicker({
   schema,
   userIds,
+  collapsible = false,
   ...choice
 }: {
   schema: FormSchema;
   userIds: readonly number[];
+  /** Starts folded under a heading naming how many variants there are. */
+  collapsible?: boolean;
 } & ProfileChoice) {
   const {
     conditions,
@@ -137,7 +141,7 @@ export function VisibilityProfilePicker({
       )
     );
   const { hrefFor } = choice;
-  return (
+  const cards = (
     <div className="flex flex-col gap-2">
       {hrefFor ? (
         <CardLinks label={label}>
@@ -175,5 +179,22 @@ export function VisibilityProfilePicker({
         </p>
       )}
     </div>
+  );
+  return collapsible ? (
+    <Disclosure
+      summaryClassName="text-sm"
+      summary={
+        <>
+          Member variants
+          <span className="ml-2 text-xs text-zinc-500">
+            {withCount(profiles.length, "variant")}
+          </span>
+        </>
+      }
+    >
+      <div className="mt-2">{cards}</div>
+    </Disclosure>
+  ) : (
+    cards
   );
 }
