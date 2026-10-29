@@ -1,3 +1,4 @@
+import { GENERIC_FAILURE } from "@alliance/common/errorMessage";
 import { R } from "@alliance/common/result";
 import type { WaitlistReferralDto } from "@alliance/shared/client";
 import {
@@ -25,8 +26,6 @@ import { WaitlistConfirmation } from "./WaitlistConfirmation";
 import { WaitlistNominations } from "./WaitlistNominations";
 
 const SOCIAL_PROOF_THRESHOLD = 3;
-
-const SUBMIT_FALLBACK = "Something went wrong. Please try again.";
 
 function ReferralBanner({ referral }: { referral: WaitlistReferralDto }) {
   const { organization, inviterName } = referral;
@@ -248,8 +247,8 @@ export function WaitlistSignupForm({
         <p className="text-sm text-red-700" role="alert">
           {thrownRefusalMessage({
             error: submit.error,
-            fallback: SUBMIT_FALLBACK,
-            sessionExpired: SUBMIT_FALLBACK,
+            fallback: GENERIC_FAILURE,
+            sessionExpired: GENERIC_FAILURE,
           })}
         </p>
       )}
