@@ -93,6 +93,17 @@ jobs:
             Only output [NEEDS_ATTENTION] if you are highly confident there is a substantial issue. Look around at related files to make sure you arent missing anything before doing so. If the changes remove a feature or affordance but this removal was clearly intentional by the author, this does not need attention. Do not leave comments of the form "verify that x" or "x needs to be tested" - these are not code issues.
             Include full file paths from repository root as well as line numbers for applicable issues in your review.
 
+      - name: Publish full reviews
+        if: always()
+        env:
+          CLAUDE_FINAL_MESSAGE: ${{ steps.run_claude.outputs.final_message }}
+          CODEX_FINAL_MESSAGE: ${{ steps.run_codex.outputs.final-message }}
+        run: |
+          printf '## Claude review\n\n%s\n\n## Codex review\n\n%s\n' \
+            "${CLAUDE_FINAL_MESSAGE:-Review did not produce output.}" \
+            "${CODEX_FINAL_MESSAGE:-Review did not produce output.}" \
+            >> "$GITHUB_STEP_SUMMARY"
+
       - name: Combine reviews with OpenAI
         id: combine_reviews
         env:
@@ -290,14 +301,16 @@ jobs:
             --arg url "$RUN_URL" \
             --arg summary "$CLEAN_SUMMARY" \
             --arg mention "$SLACK_MENTION" \
-            '{
+            '(if $mention != "" then $mention + " " else "" end) as $prefix
+            | ($prefix + $summary) as $text
+            | {
               text: "review given",
               blocks: [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": (if $mention != "" then ($mention + " " + $summary) else $summary end)
+                    "text": (if ($summary | test("[^[:space:]]")) and ($text | length) <= 3000 then $text else $prefix + "Review needs attention. Open the run for the full reports." end)
                   }
                 },
                 {
