@@ -54,7 +54,12 @@ const FindingRow = ({
                   </span>
                 )}
                 …{before}
-                <mark className={dismissed ? "bg-zinc-100" : "bg-yellow-200"}>
+                <mark
+                  className={cn(
+                    "font-mono",
+                    dismissed ? "bg-zinc-100" : "bg-yellow-200",
+                  )}
+                >
                   {flagged.replaceAll(" ", "·")}
                 </mark>
                 {after}…
