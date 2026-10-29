@@ -10,6 +10,7 @@ import {
   UserActionRelationDetailDto,
   UserActionSummaryDto,
 } from "../client";
+import { shuffleWithSeed } from "../forms/randomutils";
 
 type TaskPriority = {
   id: number;
@@ -491,3 +492,6 @@ export function calculateAllCompletionData(params: {
     current: completionDataForActions(currentActions),
   };
 }
+
+export const shuffledAuthors = (action: Pick<ActionDto, "id" | "authors">) =>
+  shuffleWithSeed(action.authors ?? [], action.id.toString());

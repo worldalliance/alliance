@@ -14,8 +14,16 @@ import {
   textField,
   twoPageSchema,
 } from "../lib/testing/formVisibility";
+import { routes, serveApi } from "../lib/testing/serveApi";
 import { useFormVisibility, type FormVisibility } from "../useFormRenderer";
 import { useFieldErrors, useFormValidation } from "./useFormValidation";
+
+serveApi(
+  routes({
+    "POST /tasks/runValidator/:id": () =>
+      Response.json({ isValid: false, message: "taken" }),
+  }),
+);
 
 describe("useFieldErrors", () => {
   it("sets and clears messages, treating blank as cleared", () => {
@@ -181,6 +189,92 @@ describe("useFormValidation", () => {
 
     expect(page.isValid).toBe(true);
     expect(result.current.fieldErrors).toEqual({});
+  });
+
+  it("validates only the fields it is given", async () => {
+    const shown = { ...textField("shown"), required: true };
+    const schema = schemaWith([
+      shown,
+      { ...textField("elsewhere"), required: true },
+    ]);
+    const { result } = renderValidation({ schema, formData: {} });
+
+    const screen = await validate(() =>
+      result.current.validateFields({
+        fields: [shown],
+        pageVisible: true,
+        includeCustomValidators: false,
+      }),
+    );
+    expect(screen).toEqual({ isValid: false, firstInvalidFieldId: "shown" });
+    expect(result.current.fieldErrors.elsewhere).toBeUndefined();
+  });
+
+  it("validates a screen's fields as shown", async () => {
+    const field = { ...textField("answer"), required: true };
+    const { result } = renderValidation({
+      schema: schemaWith([field]),
+      formData: { answer: "yes" },
+    });
+
+    expect(
+      await validate(() => result.current.validateScreen([field])),
+    ).toEqual({ isValid: true, firstInvalidFieldId: undefined });
+  });
+
+  it("blocks a screen on its first invalid field and shows its error", async () => {
+    const field = { ...textField("answer"), required: true };
+    const { result } = renderValidation({
+      schema: schemaWith([field]),
+      formData: {},
+    });
+
+    expect(
+      await validate(() => result.current.validateScreen([field])),
+    ).toEqual({ isValid: false, firstInvalidFieldId: "answer" });
+    expect(result.current.fieldErrors.answer).toBeTruthy();
+  });
+
+  it("blocks a screen on its custom validator", async () => {
+    const field = { ...textField("handle"), customValidatorId: 7 };
+    const { result } = renderValidation({
+      schema: schemaWith([field]),
+      formData: { handle: "x" },
+    });
+
+    expect(
+      await validate(() => result.current.validateScreen([field])),
+    ).toEqual({ isValid: false, firstInvalidFieldId: "handle" });
+    expect(result.current.fieldErrors.handle).toBe("taken");
+  });
+
+  it("checks a screen whose page is hidden", async () => {
+    const { result } = renderValidation({
+      schema: twoPageSchema,
+      formData: { gate: "no" },
+    });
+    const detail = { ...textField("detail"), required: true };
+
+    expect(
+      await validate(() => result.current.validateScreen([detail])),
+    ).toEqual({ isValid: false, firstInvalidFieldId: "detail" });
+  });
+
+  it("passes a screen's required field that its own rule hides", async () => {
+    const gated = {
+      ...textField("detail"),
+      required: true,
+      visibleIfFormula: gatedOnYes,
+    };
+    const { result } = renderValidation({
+      schema: schemaWith([textField("gate"), gated]),
+      formData: { gate: "no" },
+    });
+
+    expect(
+      await validate(() => result.current.validateScreen([gated])),
+    ).toEqual({ isValid: true, firstInvalidFieldId: undefined });
+    expect(result.current.fieldErrors.detail).toBeUndefined();
   });
 
   it("reports the first invalid page across the whole form", async () => {

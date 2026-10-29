@@ -1,27 +1,20 @@
-import {
-  FORM_ALREADY_SUBMITTED,
-  MEMBER_ACTION_DEADLINE_PASSED,
-} from "@alliance/common/actionActivity";
-import { ExceptionEvent } from "@alliance/common/analytics";
 import { FormSchema } from "@alliance/common/forms/form-schema";
-import { GUEST_HEADER } from "@alliance/common/guest";
-import type { FormResponseDto, SubmitFormDto } from "@alliance/shared/client";
-import { useFormulaSourcesRefetch } from "@alliance/shared/forms/useFormulaSourcesRefetch";
 import {
-  formAlreadySubmitted,
-  memberActionDeadlinePassed,
-  type ActionWithdrawal,
-} from "@alliance/shared/lib/actionTaskPanel";
-import { captureException } from "@alliance/shared/lib/analytics";
+  ActionDto,
+  FormResponseDto,
+  SubmitFormDto,
+} from "@alliance/shared/client";
+import { taskFlowMode } from "@alliance/shared/forms/useTaskFlow";
+import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
+import { noop } from "@alliance/shared/lib/constants";
 import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
-import { useTaskFormSubmission } from "@alliance/shared/lib/useTaskFormSubmission";
-import { useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { useAuth } from "../lib/AuthContext";
-import { getStoredGuestToken, setStoredGuestToken } from "../lib/guestSession";
 import { colors } from "../lib/style/colors";
 import FormRenderer from "./forms/FormRenderer";
 import Text from "./system/Text";
+import TaskFlow from "./taskflow/TaskFlow";
+import { useSubmitTaskForm } from "./useSubmitTaskForm";
 
 interface ActionTaskPanelFormProps {
   taskFormId: number;
@@ -37,6 +30,8 @@ interface ActionTaskPanelFormProps {
   formResponse?: FormResponseDto;
   /** Editable but unsubmittable, and nothing typed outlives the screen. */
   preview?: boolean;
+  /** Set to show the form as the full-screen task flow for this action. */
+  taskFlowAction?: ActionDto;
 }
 
 const ActionTaskPanelForm = ({
@@ -52,12 +47,16 @@ const ActionTaskPanelForm = ({
   disabled,
   formResponse,
   preview = false,
+  taskFlowAction,
 }: ActionTaskPanelFormProps) => {
   const { user, isAuthenticated, isLoading: userLoading } = useAuth();
-  const [error, setError] = useState<string | null>(null);
-  const { reload: historiesReload, refetchIfSourcesChanged } =
-    useFormulaSourcesRefetch(setError);
-  const { submit } = useTaskFormSubmission();
+  const { submitTaskForm, recordCompleted, error, historiesReload } =
+    useSubmitTaskForm({
+      taskFormId,
+      actionId,
+      onDeadlinePassed,
+      onAlreadySubmitted,
+    });
 
   const {
     data: form,
@@ -65,56 +64,65 @@ const ActionTaskPanelForm = ({
     isPending,
   } = useTaskForm(taskFormId, { enabled: !formResponse });
 
-  const handleSubmitForm = onCompleteAction
-    ? async (data: SubmitFormDto) => {
-        setError(null);
-
-        const storedGuestToken = isAuthenticated
-          ? null
-          : await getStoredGuestToken();
-        const response = await submit({
-          taskFormId,
-          body: data,
-          isMember: isAuthenticated,
-          guestToken: storedGuestToken,
-        });
-        if (response.response.ok) {
-          if (!isAuthenticated) {
-            const issuedGuestToken =
-              response.response.headers.get(GUEST_HEADER);
-            if (issuedGuestToken && issuedGuestToken !== storedGuestToken) {
-              await setStoredGuestToken(issuedGuestToken);
-            }
-          }
-          onCompleteAction();
-          return true;
-        } else {
-          if (formAlreadySubmitted(response)) {
-            setError(FORM_ALREADY_SUBMITTED);
-            onAlreadySubmitted();
-            return false;
-          }
-          if (memberActionDeadlinePassed(response)) {
-            setError(MEMBER_ACTION_DEADLINE_PASSED);
-            onDeadlinePassed();
-            return false;
-          }
-          if (refetchIfSourcesChanged(response)) return false;
-          console.error(response.error);
-          captureException(ExceptionEvent.FormSubmitError, response.error, {
-            actionId,
-            $exception_fingerprint: "FormSubmitError",
-          });
-          setError("Failed to submit action.");
-          return false;
-        }
+  const completeAction = onCompleteAction
+    ? () => {
+        recordCompleted();
+        onCompleteAction();
       }
     : null;
 
-  if (formResponse) {
+  const handleSubmitForm = completeAction
+    ? async (data: SubmitFormDto) => {
+        const submitted = await submitTaskForm(data);
+        if (submitted) completeAction();
+        return submitted;
+      }
+    : null;
+
+  const flowMode = taskFlowMode({
+    submitted: !!formResponse,
+    disabled: !!disabled,
+    preview,
+    completable: !!completeAction,
+  });
+  const renderFlow = (flowForm: {
+    action: ActionDto;
+    schema: FormSchema;
+    formId: number;
+    formSnapshotId: number;
+  }) => (
+    <TaskFlow
+      key={`${flowForm.action.id}:${taskFormId}:${flowMode}`}
+      {...flowForm}
+      mode={flowMode}
+      completedFormResponse={formResponse}
+      taskFormId={taskFormId}
+      submitTaskForm={submitTaskForm}
+      submitError={error}
+      reloadSourceHistories={historiesReload}
+      onCompleteAction={completeAction ?? noop}
+      onFormStarted={onFormStarted}
+      onAbandonAction={onAbandonAction}
+    />
+  );
+
+  const responseSchema = formResponse
+    ? (formResponse.schemaSnapshot as unknown as FormSchema)
+    : null;
+
+  if (formResponse && responseSchema && taskFlowAction) {
+    return renderFlow({
+      action: taskFlowAction,
+      schema: responseSchema,
+      formId: formResponse.formId,
+      formSnapshotId: formResponse.formSnapshotId,
+    });
+  }
+
+  if (formResponse && responseSchema) {
     return (
       <FormRenderer
-        form={formResponse.schemaSnapshot as unknown as FormSchema}
+        form={responseSchema}
         id={formResponse.formId}
         formSnapshotId={formResponse.formSnapshotId}
         actionId={actionId}
@@ -148,27 +156,38 @@ const ActionTaskPanelForm = ({
     );
   }
 
+  const schema = form.schema as unknown as FormSchema;
+
   return (
     <View>
-      <FormRenderer
-        id={taskFormId}
-        formSnapshotId={form.formSnapshotId}
-        form={form.schema as unknown as FormSchema}
-        onSubmit={handleSubmitForm}
-        onFormStarted={onFormStarted}
-        onAbandonAction={onAbandonAction}
-        actionId={actionId}
-        persistKey={preview ? null : String(taskFormId)}
-        reloadSourceHistories={historiesReload}
-        userId={user?.id}
-        user={user}
-        userLoading={userLoading}
-        loadCurrentUserLocation={!!user && isAuthenticated}
-        syncDraftToServer={isAuthenticated}
-        scrollPageTo={scrollPageTo}
-        scrollToEnd={scrollToEnd}
-        renderFormAsCompleted={disabled}
-      />
+      {taskFlowAction ? (
+        renderFlow({
+          action: taskFlowAction,
+          schema,
+          formId: taskFormId,
+          formSnapshotId: form.formSnapshotId,
+        })
+      ) : (
+        <FormRenderer
+          id={taskFormId}
+          formSnapshotId={form.formSnapshotId}
+          form={schema}
+          onSubmit={handleSubmitForm}
+          onFormStarted={onFormStarted}
+          onAbandonAction={onAbandonAction}
+          actionId={actionId}
+          persistKey={preview ? null : String(taskFormId)}
+          reloadSourceHistories={historiesReload}
+          userId={user?.id}
+          user={user}
+          userLoading={userLoading}
+          loadCurrentUserLocation={!!user && isAuthenticated}
+          syncDraftToServer={isAuthenticated}
+          scrollPageTo={scrollPageTo}
+          scrollToEnd={scrollToEnd}
+          renderFormAsCompleted={disabled}
+        />
+      )}
       {error ? <Text className="mt-2 text-red-500">{error}</Text> : null}
     </View>
   );

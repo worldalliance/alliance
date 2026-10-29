@@ -6,6 +6,7 @@ import {
 import { captureEvent } from "@alliance/shared/lib/analytics";
 import { noop } from "@alliance/shared/lib/constants";
 import { useCallback } from "react";
+import { taskFlowEnabled } from "../lib/config";
 import ActionTaskPanelForm from "./ActionTaskPanelForm";
 
 export type ActionTaskPanelProps = ActionTaskPanelPropsShared & {
@@ -43,6 +44,8 @@ const ActionTaskPanel = ({
     });
   }, [action]);
 
+  const taskFlowAction = taskFlowEnabled() ? action : undefined;
+
   if ((disabled || formResponse) && action.taskFormId !== null) {
     return (
       <ActionTaskPanelForm
@@ -57,6 +60,7 @@ const ActionTaskPanel = ({
         actionId={action.id}
         disabled={true}
         formResponse={formResponse}
+        taskFlowAction={taskFlowAction}
       />
     );
   }
@@ -73,6 +77,7 @@ const ActionTaskPanel = ({
         onFormStarted={noop}
         actionId={action.id}
         preview
+        taskFlowAction={taskFlowAction}
       />
     ) : null;
   }
@@ -90,6 +95,7 @@ const ActionTaskPanel = ({
         onAlreadySubmitted={onAlreadySubmitted}
         actionId={action.id}
         disabled={disabled}
+        taskFlowAction={taskFlowAction}
       />
     );
   }

@@ -84,9 +84,16 @@ export type PageValidationResult = {
   firstInvalidFieldId?: string;
 };
 
+type FieldsValidationInput = {
+  fields: AnyField[];
+  pageVisible: boolean;
+  includeCustomValidators: boolean;
+};
+
 /**
- * Page and whole-form validation. Fields on a hidden page count as invisible:
- * their errors clear and neither navigation nor submission is blocked.
+ * Field, page and whole-form validation. Fields on a hidden page count as
+ * invisible: their errors clear and neither navigation nor submission is
+ * blocked.
  */
 export function useFormValidation(args: {
   schema: FormSchema;
@@ -98,6 +105,9 @@ export function useFormValidation(args: {
   validateFieldValue: FormVisibility["validateFieldValue"];
   applyFieldErrorUpdates: FieldErrorUpdater;
 }): {
+  validateFields: (
+    input: FieldsValidationInput,
+  ) => Promise<PageValidationResult>;
   validatePage: (
     pageIndex: number,
     includeCustomValidators: boolean,
@@ -107,6 +117,8 @@ export function useFormValidation(args: {
     firstInvalidPageIndex: number | null;
     firstInvalidFieldId?: string;
   }>;
+  /** Validates fields whose page the caller is showing, so only their own visibility hides them; runs custom validators. */
+  validateScreen: (fields: AnyField[]) => Promise<PageValidationResult>;
 } {
   const {
     schema,
@@ -164,25 +176,19 @@ export function useFormValidation(args: {
     [readOnly, effectiveFormData],
   );
 
-  const validatePage = useCallback(
-    async (
-      pageIndex: number,
-      includeCustomValidators: boolean,
-    ): Promise<PageValidationResult> => {
-      const page = schema.pages[pageIndex];
-      if (!page) {
-        return { isValid: true };
-      }
-
+  const validateFields = useCallback(
+    async ({
+      fields,
+      pageVisible,
+      includeCustomValidators,
+    }: FieldsValidationInput): Promise<PageValidationResult> => {
       const updates: Record<string, string | null> = {};
-      const fieldsOnPage = page.fields.filter(isQuestionField);
-      const pageVisible = visiblePageIndices.includes(pageIndex);
       const visibleFields = pageVisible
-        ? fieldsOnPage.filter((field) => isElementCurrentlyVisible(field))
+        ? fields.filter((field) => isElementCurrentlyVisible(field))
         : [];
       const visibleFieldIds = new Set(visibleFields.map((field) => field.id));
 
-      for (const field of fieldsOnPage) {
+      for (const field of fields) {
         if (!visibleFieldIds.has(field.id)) {
           updates[field.id] = null;
           continue;
@@ -214,9 +220,9 @@ export function useFormValidation(args: {
         }
       }
 
-      // Every list on the page, not just the visible ones: a list the user
-      // has since hidden still owns stale `parentId:cardIndex:subId` keys.
-      const listFieldIds = fieldsOnPage
+      // Every given list, not just the visible ones: a list the user has
+      // since hidden still owns stale `parentId:cardIndex:subId` keys.
+      const listFieldIds = fields
         .filter((f) => f.kind === "list")
         .map((f) => f.id);
       applyFieldErrorUpdates(
@@ -237,16 +243,32 @@ export function useFormValidation(args: {
       return { isValid: !hasAnyError, firstInvalidFieldId };
     },
     [
-      schema,
       effectiveFormData,
       isElementCurrentlyVisible,
-      visiblePageIndices,
       validateFieldValue,
       visibilityExtras,
       runCustomValidatorsForFields,
       applyFieldErrorUpdates,
       readOnly,
     ],
+  );
+
+  const validatePage = useCallback(
+    async (
+      pageIndex: number,
+      includeCustomValidators: boolean,
+    ): Promise<PageValidationResult> => {
+      const page = schema.pages[pageIndex];
+      if (!page) {
+        return { isValid: true };
+      }
+      return validateFields({
+        fields: page.fields.filter(isQuestionField),
+        pageVisible: visiblePageIndices.includes(pageIndex),
+        includeCustomValidators,
+      });
+    },
+    [schema, visiblePageIndices, validateFields],
   );
 
   const validateAllPages = useCallback(async () => {
@@ -268,5 +290,15 @@ export function useFormValidation(args: {
     } as const;
   }, [schema.pages.length, validatePage]);
 
-  return { validatePage, validateAllPages };
+  const validateScreen = useCallback(
+    (fields: AnyField[]) =>
+      validateFields({
+        fields,
+        pageVisible: true,
+        includeCustomValidators: true,
+      }),
+    [validateFields],
+  );
+
+  return { validateFields, validatePage, validateAllPages, validateScreen };
 }

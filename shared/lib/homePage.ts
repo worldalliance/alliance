@@ -11,13 +11,15 @@ import {
 } from "./actionUtils";
 import { getActiveFollowUpForms } from "./followUpForm";
 import type { ParsedGeneralUpdate } from "./generalUpdates";
+import { useHeldWhileTaskCompletes } from "./TaskFlowCompletionContext";
 
 export type ActiveFollowUpFormEntry = {
   followUpForm: FollowUpFormDto;
   actionId: number;
 };
 
-export function useHomePageActions(actions: ActionWithAwayStatus[] | null) {
+export function useHomePageActions(liveActions: ActionWithAwayStatus[] | null) {
+  const actions = useHeldWhileTaskCompletes(liveActions);
   const todoActions = useMemo(
     () =>
       withDeferredLast(

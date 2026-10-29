@@ -17,6 +17,7 @@ import { ArrowRight, ChevronRight, Eye } from "lucide-react";
 import { useCallback, useEffect, useState, type RefObject } from "react";
 import { href, Link, useNavigate } from "react-router";
 import ActionTaskPanel from "../../components/ActionTaskPanel";
+import { TASK_FLOW_ORIGIN } from "../../components/taskflow/useExpandingPanel";
 import { useAuth } from "../../lib/AuthContext";
 import ActionCompletedBarWithInfo from "./ActionCompletedBarWithInfo";
 import TaskTimeInfo from "./TaskTimeInfo";
@@ -98,6 +99,7 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
       <Card
         className={cn(
           "p-4 sm:p-6 transition-all duration-300 w-full relative rounded-md",
+          TASK_FLOW_ORIGIN,
           state === LargeActionCardState.Closed && "opacity-0 overflow-hidden",
           state !== LargeActionCardState.Closed && "opacity-100",
           className,

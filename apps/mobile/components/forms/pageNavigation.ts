@@ -9,7 +9,6 @@ export function pageNavigation({
   previousVisiblePageIndex,
   visibilitySettled,
   validatePage,
-  validateAllPages,
   scrollPageTo,
   scrollToEnd,
 }: {
@@ -20,21 +19,17 @@ export function pageNavigation({
   visibilitySettled: boolean;
   scrollPageTo: (y: number, animated?: boolean) => void;
   scrollToEnd: (animated?: boolean) => void;
-} & Validation) {
+} & Pick<Validation, "validatePage">) {
   const showPageFromTop = (index: number) => {
     setCurrentPageIndex(index);
     setImmediate(() => scrollPageTo(0, false));
   };
 
-  const advanceIfCurrentPageValid = async (next: number) => {
-    const result = await validatePage(currentPageIndex, true);
-    if (result.isValid) showPageFromTop(next);
-  };
-
   return {
     goToNextPage: async () => {
       if (nextVisiblePageIndex === null || !visibilitySettled) return;
-      await advanceIfCurrentPageValid(nextVisiblePageIndex);
+      const result = await validatePage(currentPageIndex, true);
+      if (result.isValid) showPageFromTop(nextVisiblePageIndex);
     },
     goToPreviousPage: () => {
       if (previousVisiblePageIndex === null) return;
@@ -46,25 +41,13 @@ export function pageNavigation({
       nextVisiblePageIndex === null
         ? null
         : () => showPageFromTop(nextVisiblePageIndex),
-    /**
-     * Resolves true when the form can be submitted. Short of that it moves
-     * the member on: past the current page when it isn't the last, or back
-     * to the first page with an error.
-     */
-    readyToSubmit: async (): Promise<boolean> => {
-      if (nextVisiblePageIndex !== null) {
-        await advanceIfCurrentPageValid(nextVisiblePageIndex);
-        return false;
-      }
-      const { isValid, firstInvalidPageIndex } = await validateAllPages();
-      if (isValid) return true;
+    showFirstInvalidPage: (firstInvalidPageIndex: number | null) => {
       if (
-        typeof firstInvalidPageIndex === "number" &&
+        firstInvalidPageIndex !== null &&
         firstInvalidPageIndex !== currentPageIndex
       ) {
         showPageFromTop(firstInvalidPageIndex);
       }
-      return false;
     },
   };
 }

@@ -97,6 +97,22 @@ describe("useOutputItems", () => {
     ).toEqual(["Given"]);
   });
 
+  it("hides answers the member didn't make public", () => {
+    const privately = { ...submission, publicAnswers: { name: false } };
+    expect(values({ schema, submission: privately })).toEqual([]);
+    expect(values({ schema, answers: { name: "Given" } })).toEqual([]);
+  });
+
+  it("shows the member their own answers whatever they shared", () => {
+    const privately = { ...submission, publicAnswers: { name: false } };
+    expect(values({ schema, submission: privately, ownView: true })).toEqual([
+      "Stored",
+    ]);
+    expect(
+      values({ schema, answers: { name: "Given" }, ownView: true }),
+    ).toEqual(["Given"]);
+  });
+
   it("is empty without a schema", () => {
     expect(values({ submission: null, viewId: "v1" })).toEqual([]);
   });

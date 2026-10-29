@@ -7,12 +7,20 @@ import Animated, {
   useSharedValue,
   withRepeat,
   withTiming,
+  type WithTimingConfig,
 } from "react-native-reanimated";
 
 interface ProgressBarProps extends ViewProps {
   /** `null` sweeps a shuttle across the track instead of filling it. */
   percentage: number | null;
+  /** Restarts the fill when its identity changes, so pass a constant. */
+  fillTiming?: WithTimingConfig;
 }
+
+const FILL_TIMING: WithTimingConfig = {
+  duration: 400,
+  easing: Easing.out(Easing.cubic),
+};
 
 const Sweep = () => {
   const offset = useSharedValue(-0.4);
@@ -37,8 +45,28 @@ const Sweep = () => {
   );
 };
 
+// Starts at the first value it's given, so only later changes animate.
+const Fill = ({
+  percentage,
+  timing,
+}: {
+  percentage: number;
+  timing: WithTimingConfig;
+}) => {
+  const width = useSharedValue(percentage);
+
+  useEffect(() => {
+    width.value = withTiming(percentage, timing);
+  }, [percentage, timing, width]);
+
+  const style = useAnimatedStyle(() => ({ width: `${width.value}%` }));
+
+  return <Animated.View className="h-full rounded bg-green" style={style} />;
+};
+
 export default function ProgressBar({
   percentage,
+  fillTiming = FILL_TIMING,
   className,
   ...props
 }: ProgressBarProps) {
@@ -48,10 +76,7 @@ export default function ProgressBar({
         {percentage === null ? (
           <Sweep />
         ) : (
-          <View
-            className="h-full rounded bg-green"
-            style={{ width: `${Math.min(percentage, 100)}%` }}
-          />
+          <Fill percentage={Math.min(percentage, 100)} timing={fillTiming} />
         )}
       </View>
     </View>

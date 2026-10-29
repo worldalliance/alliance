@@ -15,7 +15,7 @@ import {
   TreePalm,
   type LucideIcon,
 } from "lucide-react";
-import React, { useState } from "react";
+import React, { useState, type ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { useOutsideClick } from "../lib/useOutsideClick";
 import BaseButton, { BaseButtonVariant } from "../ui/BaseButton";
@@ -30,9 +30,11 @@ const WITHDRAWAL_OPTION_ICONS: Record<WithdrawalOption, LucideIcon> = {
 export default function WithdrawalMenu({
   disabled,
   onWithdraw,
+  renderTrigger,
 }: {
   disabled: boolean;
   onWithdraw: (choice: Omit<ActionWithdrawal, "partialFormData">) => void;
+  renderTrigger?: (toggle: () => void) => ReactNode;
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [withdrawalOption, setWithdrawalOption] =
@@ -41,19 +43,33 @@ export default function WithdrawalMenu({
   const ref = useOutsideClick(() => setDropdownOpen(false));
   const navigate = useNavigate();
 
+  const toggle = () => setDropdownOpen(!dropdownOpen);
+
   const toggleWithdrawalOption = (option: WithdrawalOption) => {
     setWithdrawalOption((previous) => (previous === option ? null : option));
   };
 
   return (
-    <div className="relative">
-      <BaseButton onClick={() => setDropdownOpen(!dropdownOpen)}>
-        <Ellipsis size={15} />
-      </BaseButton>
+    <div
+      className="relative"
+      ref={ref}
+      onKeyDown={(e) => {
+        if (!dropdownOpen || e.key !== "Escape") return;
+        e.preventDefault();
+        setDropdownOpen(false);
+        ref.current?.querySelector("button")?.focus();
+      }}
+    >
+      {renderTrigger ? (
+        renderTrigger(toggle)
+      ) : (
+        <BaseButton onClick={toggle}>
+          <Ellipsis size={15} />
+        </BaseButton>
+      )}
       <Dropdown
         isOpen={dropdownOpen}
         className="absolute top-[100%] right-0 gap-y-2 *:w-full w-[300px]"
-        ref={ref}
       >
         <p className="mb-1 text-center">Withdrawal options</p>
         {WITHDRAWAL_OPTIONS.map((option) => (

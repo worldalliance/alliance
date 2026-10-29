@@ -14,7 +14,7 @@ import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import { Accordion } from "@base-ui/react/accordion";
 import { ChevronLeft, ChevronRight, Download } from "lucide-react";
-import React, { useRef, useState } from "react";
+import React, { useContext, useRef, useState } from "react";
 import { downloadImage } from "../lib/downloadImage";
 import { resolveImageSrc } from "../lib/imageSrc";
 import { AvatarProfile } from "../ui/Avatar";
@@ -22,11 +22,13 @@ import Card from "../ui/Card";
 import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
 import ImageLightbox from "../ui/ImageLightbox";
 import { useToast } from "../ui/ToastProvider";
+import { zIndex } from "../ui/zIndex";
 import {
   ACCORDION_CONTENTS,
   ACCORDION_SECTIONS,
   ACCORDION_TITLE,
   AccordionChevron,
+  StickyAccordionTitles,
 } from "./accordionStyles";
 import BigLinkDisplay from "./BigLinkDisplay";
 import CopyTextDisplay from "./CopyTextDisplay";
@@ -228,11 +230,18 @@ function ImagesDisplay({
 }
 
 function AccordionDisplay({ block }: { block: AccordionBlock }) {
+  const stickyTitles = useContext(StickyAccordionTitles);
   return (
     <Accordion.Root multiple={!block.singleOpen} className={ACCORDION_SECTIONS}>
       {block.sections.map((section, index) => (
         <Accordion.Item key={section.id ?? index}>
-          <Accordion.Header>
+          <Accordion.Header
+            className={
+              stickyTitles
+                ? cn(zIndex.raised, "sticky top-0 bg-white")
+                : undefined
+            }
+          >
             <Accordion.Trigger className="group flex w-full items-center justify-between gap-3 py-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
               <span className={ACCORDION_TITLE}>{section.title}</span>
               <AccordionChevron className="group-data-[panel-open]:rotate-180" />

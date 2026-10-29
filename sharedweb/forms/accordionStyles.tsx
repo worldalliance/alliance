@@ -1,5 +1,6 @@
 import { cn } from "@alliance/shared/styles/util";
 import { ChevronDown } from "lucide-react";
+import { createContext } from "react";
 
 export const ACCORDION_SECTIONS =
   "border-y border-gray-200 divide-y divide-gray-200";
@@ -18,3 +19,6 @@ export function AccordionChevron({ className }: { className?: string }) {
     />
   );
 }
+
+/** Pins an open section's title to the top of its scroll container while the section scrolls past. */
+export const StickyAccordionTitles = createContext(false);

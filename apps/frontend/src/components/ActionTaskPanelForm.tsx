@@ -2,14 +2,20 @@ import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
 import { ExceptionEvent } from "@alliance/common/analytics";
 import { FormSchema } from "@alliance/common/forms/form-schema";
 import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options";
-import type { FormResponseDto, SubmitFormDto } from "@alliance/shared/client";
+import {
+  type ActionDto,
+  type FormResponseDto,
+  type SubmitFormDto,
+} from "@alliance/shared/client";
 import { formulaSourcesChanged } from "@alliance/shared/forms/formulaChoices";
+import { taskFlowMode } from "@alliance/shared/forms/useTaskFlow";
 import {
   formAlreadySubmitted,
   memberActionDeadlinePassed,
   type ActionWithdrawal,
 } from "@alliance/shared/lib/actionTaskPanel";
 import { captureException } from "@alliance/shared/lib/analytics";
+import { noop } from "@alliance/shared/lib/constants";
 import { useLinkedGuestDraft } from "@alliance/shared/lib/useLinkedGuestDraft";
 import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import { useTaskFormSubmission } from "@alliance/shared/lib/useTaskFormSubmission";
@@ -21,8 +27,9 @@ import FormRenderer, {
 import Card from "@alliance/sharedweb/ui/Card";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import posthog from "posthog-js";
-import { useMemo, useState, type RefObject } from "react";
+import { useMemo, useRef, useState, type RefObject } from "react";
 import { useAuth } from "../lib/AuthContext";
+import TaskFlow from "./taskflow/TaskFlow";
 
 interface ActionTaskPanelFormProps {
   taskFormId: number;
@@ -40,6 +47,8 @@ interface ActionTaskPanelFormProps {
   scrollContainerRef?: RefObject<HTMLElement | null>;
   /** Editable but unsubmittable, and nothing typed outlives the page. */
   preview?: boolean;
+  /** Set to show the form as the full-screen task flow for this action. */
+  taskFlowAction?: ActionDto;
 }
 
 const ActionTaskPanelForm = ({
@@ -57,6 +66,7 @@ const ActionTaskPanelForm = ({
   onSubmitted,
   scrollContainerRef,
   preview = false,
+  taskFlowAction,
 }: ActionTaskPanelFormProps) => {
   const [error, setError] = useState<string | null>(null);
   const {
@@ -65,7 +75,7 @@ const ActionTaskPanelForm = ({
     refreshUser,
     loading: authLoading,
   } = useAuth();
-  const { submit } = useTaskFormSubmission();
+  const { submit, recordCompleted } = useTaskFormSubmission();
   const {
     data: form,
     error: formError,
@@ -80,56 +90,71 @@ const ActionTaskPanelForm = ({
     enabled: draftEnabled,
   });
 
-  const handleSubmitForm = onCompleteAction
-    ? async (data: SubmitFormDto): Promise<boolean> => {
-        setError(null);
+  const submittedRef = useRef<FormResponseDto | null>(null);
 
-        const response = await submit({
-          taskFormId,
-          body: data,
-          isMember: isAuthenticated,
+  const submitTaskForm = async (data: SubmitFormDto): Promise<boolean> => {
+    setError(null);
+
+    const response = await submit({
+      taskFormId,
+      body: data,
+      isMember: isAuthenticated,
+      deferCompletion: true,
+    });
+    if (response.response.ok) {
+      submittedRef.current = response.data ?? null;
+      if (typeof window !== "undefined" && form) {
+        const storageKey = computeFormStorageKey({
+          formId: form.id,
+          instanceId: taskFormId,
         });
-        if (response.response.ok) {
-          if (response.data) {
-            onSubmitted?.(response.data);
-          }
-          if (!isAuthenticated && redirectOnComplete) {
-            window.location.href = "/actions/completed";
-          }
-          if (typeof window !== "undefined" && form) {
-            const storageKey = computeFormStorageKey({
-              formId: form.id,
-              instanceId: taskFormId,
-            });
-            window.localStorage.removeItem(storageKey);
-          }
-          if (user && !user.hasActiveContract) {
-            //TODO: better handling of user refresh (things used to break if the user signed a contract in another tab then went back to the first one)
-            refreshUser();
-          }
-          onCompleteAction();
-          return true;
+        window.localStorage.removeItem(storageKey);
+      }
+      return true;
+    }
+    if (formAlreadySubmitted(response)) {
+      window.location.reload();
+      return false;
+    }
+    if (memberActionDeadlinePassed(response)) {
+      setError(MEMBER_ACTION_DEADLINE_PASSED);
+      onDeadlinePassed();
+      return false;
+    }
+    if (formulaSourcesChanged(response)) {
+      setError(FORMULA_SOURCES_CHANGED);
+      return false;
+    }
+    console.error(response.error);
+    captureException(ExceptionEvent.FormSubmitError, response.error, {
+      actionId,
+      $exception_fingerprint: "FormSubmitError",
+    });
+    setError("Failed to submit action.");
+    return false;
+  };
+
+  /** Marks the submitted action completed, which can unmount this form. */
+  const completeAction = onCompleteAction
+    ? () => {
+        recordCompleted({ actionId, isMember: isAuthenticated });
+        if (submittedRef.current) onSubmitted?.(submittedRef.current);
+        if (user && !user.hasActiveContract) {
+          //TODO: better handling of user refresh (things used to break if the user signed a contract in another tab then went back to the first one)
+          refreshUser();
         }
-        if (formAlreadySubmitted(response)) {
-          window.location.reload();
-          return false;
+        onCompleteAction();
+        if (!isAuthenticated && redirectOnComplete) {
+          window.location.href = "/actions/completed";
         }
-        if (memberActionDeadlinePassed(response)) {
-          setError(MEMBER_ACTION_DEADLINE_PASSED);
-          onDeadlinePassed();
-          return false;
-        }
-        if (formulaSourcesChanged(response)) {
-          setError(FORMULA_SOURCES_CHANGED);
-          return false;
-        }
-        console.error(response.error);
-        captureException(ExceptionEvent.FormSubmitError, response.error, {
-          actionId,
-          $exception_fingerprint: "FormSubmitError",
-        });
-        setError("Failed to submit action.");
-        return false;
+      }
+    : null;
+
+  const handleSubmitForm = completeAction
+    ? async (data: SubmitFormDto): Promise<boolean> => {
+        const submitted = await submitTaskForm(data);
+        if (submitted) completeAction();
+        return submitted;
       }
     : null;
 
@@ -140,10 +165,57 @@ const ActionTaskPanelForm = ({
     };
   }, []);
 
-  if (formResponse) {
+  const Wrapper = card ? Card : "div";
+  const wrapperClassName = card ? "p-4 sm:p-6" : "flex flex-col gap-y-2";
+  const flowMode = taskFlowMode({
+    submitted: !!formResponse,
+    disabled: !!disabled,
+    preview,
+    completable: !!completeAction,
+  });
+  const renderFlow = (flowForm: {
+    action: ActionDto;
+    schema: FormSchema;
+    formId: number;
+    formSnapshotId: number;
+  }) => (
+    <Wrapper className={wrapperClassName}>
+      <TaskFlow
+        key={`${flowForm.action.id}:${taskFormId}:${flowMode}`}
+        {...flowForm}
+        mode={flowMode}
+        completedFormResponse={formResponse}
+        publicAction={publicAction}
+        taskFormId={taskFormId}
+        draftFormResponse={draftFormResponse}
+        phDistinctId={distinctId}
+        sessionReplayUrl={sessionReplayUrl}
+        submitTaskForm={submitTaskForm}
+        submitError={error}
+        onCompleteAction={completeAction ?? noop}
+        onFormStarted={onFormStarted}
+        onAbandonAction={onAbandonAction}
+      />
+    </Wrapper>
+  );
+
+  const responseSchema = formResponse
+    ? (formResponse.schemaSnapshot as unknown as FormSchema)
+    : null;
+
+  if (formResponse && responseSchema && taskFlowAction) {
+    return renderFlow({
+      action: taskFlowAction,
+      schema: responseSchema,
+      formId: formResponse.formId,
+      formSnapshotId: formResponse.formSnapshotId,
+    });
+  }
+
+  if (formResponse && responseSchema) {
     return (
       <FormRenderer
-        form={formResponse.schemaSnapshot as unknown as FormSchema}
+        form={responseSchema}
         id={formResponse.formId}
         formSnapshotId={formResponse.formSnapshotId}
         actionId={actionId}
@@ -191,10 +263,17 @@ const ActionTaskPanelForm = ({
     }
   }
 
-  const Wrapper = card ? Card : "div";
+  if (taskFlowAction) {
+    return renderFlow({
+      action: taskFlowAction,
+      schema,
+      formId: form.id,
+      formSnapshotId: form.formSnapshotId,
+    });
+  }
 
   return (
-    <Wrapper className={card ? "p-4 sm:p-6" : "flex flex-col gap-y-2"}>
+    <Wrapper className={wrapperClassName}>
       <div>
         <FormRenderer
           form={schema}

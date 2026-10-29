@@ -44,12 +44,15 @@ export function useTaskFormSubmission() {
       body,
       isMember,
       guestToken,
+      deferCompletion = false,
     }: {
       taskFormId: number;
       body: SubmitFormDto;
       isMember: boolean;
       /** Sent with a guest's submission to keep their guest session. */
       guestToken?: string | null;
+      /** Leaves marking the action completed to `recordCompleted`, since it can unmount the form. */
+      deferCompletion?: boolean;
     }) => {
       const result = isMember
         ? await tasksSubmitForm({
@@ -71,7 +74,7 @@ export function useTaskFormSubmission() {
           invalidateVisibilityContext();
           // Answers the form auto-extracts can set the member's city.
           void myLocationCache(queryClient).invalidate();
-          recordRelation(body.actionId, "completed");
+          if (!deferCompletion) recordRelation(body.actionId, "completed");
         }
       }
       return result;
@@ -82,6 +85,14 @@ export function useTaskFormSubmission() {
       queryClient,
       recordRelation,
     ],
+  );
+
+  /** Marks a deferred completion in a member's cached lists; a guest has none. */
+  const recordCompleted = useCallback(
+    ({ actionId, isMember }: { actionId: number; isMember: boolean }) => {
+      if (isMember) recordRelation(actionId, "completed");
+    },
+    [recordRelation],
   );
 
   const optOut = useCallback(
@@ -140,5 +151,5 @@ export function useTaskFormSubmission() {
     [invalidateAggregateViews, queryClient, resetHomeFeed],
   );
 
-  return { submit, optOut, submitFollowUp };
+  return { submit, recordCompleted, optOut, submitFollowUp };
 }

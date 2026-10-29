@@ -1,13 +1,31 @@
 import { useTaskBadgeCount } from "@alliance/shared/lib/useTaskBadgeCount";
 import { cn } from "@alliance/shared/styles/util";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Outlet, useNavigation } from "react-router";
 import NavbarTopBar from "./components/NavbarTopBar";
 import NavbarVertical from "./components/NavbarVertical";
 import { RefreshNotificationsOnOpening } from "./lib/linkOpenings";
-import { NavbarOptionsProvider } from "./lib/NavbarOptionsContext";
+import {
+  NavbarOptionsProvider,
+  useImmersiveChrome,
+} from "./lib/NavbarOptionsContext";
 import { Walkthrough } from "./onboarding/walkthrough/Walkthrough";
+
+/** Inert while immersive: the task flow covers it, and keyboard focus mustn't reach what's underneath. */
+export function NavbarMain({ children }: { children: ReactNode }) {
+  const { immersive } = useImmersiveChrome();
+  return (
+    <main
+      inert={immersive}
+      className={cn(
+        "md:ml-[var(--nav-width)] min-h-[calc(100dvh-var(--navbar-top-bar-height))] mt-[var(--navbar-top-bar-height)] relative flex flex-col bg-page",
+      )}
+    >
+      {children}
+    </main>
+  );
+}
 
 function Navbar() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -46,11 +64,7 @@ function Navbar() {
       />
       <NavbarTopBar onMenuClick={() => setMobileNavOpen((o) => !o)} />
 
-      <main
-        className={cn(
-          "md:ml-[var(--nav-width)] min-h-[calc(100dvh-var(--navbar-top-bar-height))] mt-[var(--navbar-top-bar-height)] relative flex flex-col bg-page",
-        )}
-      >
+      <NavbarMain>
         <div className="flex-1 relative">
           <Outlet />
         </div>
@@ -59,7 +73,7 @@ function Navbar() {
             <Spinner size="large" />
           </div>
         )}
-      </main>
+      </NavbarMain>
       <Walkthrough />
     </NavbarOptionsProvider>
   );

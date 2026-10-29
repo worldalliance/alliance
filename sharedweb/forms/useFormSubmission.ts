@@ -8,6 +8,10 @@ import { type SubmitFormDto } from "@alliance/shared/client";
 import { filterAnswersByFieldIds } from "@alliance/shared/forms/formDrafts";
 import { formulaSourcesFor } from "@alliance/shared/forms/formulaChoices";
 import { stripCardIds } from "@alliance/shared/forms/listCards";
+import {
+  NOT_SUBMITTED,
+  type SubmitOutcome,
+} from "@alliance/shared/forms/submitOutcome";
 import { type useFormValidation } from "@alliance/shared/forms/useFormValidation";
 import { type SourceHistories } from "@alliance/shared/forms/useVariableSourceHistories";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
@@ -38,6 +42,7 @@ export function useFormSubmission({
   setCurrentPageIndex,
   nextVisiblePageIndex,
   previousVisiblePageIndex,
+  validateScreen,
   validatePage,
   validateAllPages,
   focusInvalidField,
@@ -66,6 +71,7 @@ export function useFormSubmission({
   setCurrentPageIndex: (pageIndex: number) => void;
   nextVisiblePageIndex: number | null;
   previousVisiblePageIndex: number | null;
+  validateScreen: FormValidation["validateScreen"];
   validatePage: FormValidation["validatePage"];
   validateAllPages: FormValidation["validateAllPages"];
   focusInvalidField: (fieldId: string | undefined) => void;
@@ -76,7 +82,7 @@ export function useFormSubmission({
   const [searchParams] = useSearchParams();
   const formRef = useRef<HTMLFormElement>(null);
   // Guard against double-submit when the submit button's click handler
-  // (ConfettiWrapper) and the form's submit event both call submitCurrentPage.
+  // (ConfettiWrapper) and the form's submit event both submit.
   const submittingRef = useRef(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -85,6 +91,14 @@ export function useFormSubmission({
   const reportNativeValidity = useCallback(
     () => formRef.current?.reportValidity() !== false,
     [],
+  );
+
+  const showInvalid = useCallback(
+    (fieldId: string | undefined) => {
+      focusInvalidField(fieldId);
+      trackValidationError(fieldId);
+    },
+    [focusInvalidField, trackValidationError],
   );
 
   const handleNext = async (e: React.MouseEvent) => {
@@ -105,8 +119,7 @@ export function useFormSubmission({
     if (nextVisiblePageIndex !== null) {
       const result = await validatePage(currentPageIndex, true);
       if (!result.isValid) {
-        focusInvalidField(result.firstInvalidFieldId);
-        trackValidationError(result.firstInvalidFieldId);
+        showInvalid(result.firstInvalidFieldId);
         return;
       }
       if (!reportNativeValidity()) return;
@@ -131,95 +144,93 @@ export function useFormSubmission({
     return result;
   }, [validateAllPages]);
 
-  const submitCurrentPage = useCallback(async (): Promise<boolean> => {
-    if (submittingRef.current) {
+  const validateScreenFields = useCallback(
+    async (fields: AnyField[]): Promise<boolean> => {
+      if (uploadingImages) return false;
+      const result = await validateScreen(fields);
+      if (!result.isValid) {
+        showInvalid(result.firstInvalidFieldId);
+        return false;
+      }
+      return reportNativeValidity();
+    },
+    [reportNativeValidity, showInvalid, uploadingImages, validateScreen],
+  );
+
+  /** Whether a submit or page check may start now; one at a time. */
+  const canSubmit = useCallback((): boolean => {
+    if (submittingRef.current || readOnly || !onSubmit || uploadingImages) {
       return false;
     }
-    submittingRef.current = true;
-    setSubmitting(true);
-
-    const finishSubmit = (result: boolean) => {
-      submittingRef.current = false;
-      setSubmitting(false);
-      return result;
-    };
-
-    if (readOnly || !onSubmit || uploadingImages) {
-      return finishSubmit(false);
-    }
-
     if (formSnapshotId === null) {
       throw new Error(
         "FormRenderer: formSnapshotId is required when onSubmit is set",
       );
     }
+    return true;
+  }, [formSnapshotId, onSubmit, readOnly, uploadingImages]);
 
-    if (nextVisiblePageIndex !== null) {
-      if (!visibilitySettled) return finishSubmit(false);
-      const result = await validatePage(currentPageIndex, true);
-      if (!result.isValid) {
-        focusInvalidField(result.firstInvalidFieldId);
-        trackValidationError(result.firstInvalidFieldId);
-      } else if (reportNativeValidity()) {
-        setCurrentPageIndex(nextVisiblePageIndex);
-      }
-      return finishSubmit(false);
+  const submit = useCallback(async (): Promise<SubmitOutcome> => {
+    if (!canSubmit() || !onSubmit || formSnapshotId === null) {
+      return NOT_SUBMITTED;
     }
 
-    const { isValid, firstInvalidFieldId } =
-      await validateAllPagesAndShowFirstInvalid();
-    if (!isValid) {
-      trackValidationError(firstInvalidFieldId);
-      return finishSubmit(false);
-    }
-    if (!reportNativeValidity()) {
-      return finishSubmit(false);
-    }
-
-    const sanitizedAnswers = stripCardIds(
-      filterAnswersByFieldIds(effectiveFormData, fieldLookup),
-    );
-
-    const sid = searchParams.get("sid") ?? searchParams.get("ref");
-
-    const submissionPayload: SubmitFormDto = {
-      answers: sanitizedAnswers,
-      formSnapshotId,
-      actionId,
-      formulaSources: formulaSourcesFor(schema, sourceHistories),
-      visibilityValidatorResults,
-      deviceType,
-      publicAnswers,
-      phDistinctId,
-      sessionReplayUrl,
-      sid: sid ?? undefined,
-    };
-
-    pauseSyncing();
+    submittingRef.current = true;
+    setSubmitting(true);
     try {
-      const submitted = await onSubmit(submissionPayload);
-      if (!submitted) {
-        resumeSyncing();
+      const { isValid, firstInvalidFieldId, firstInvalidPageIndex } =
+        await validateAllPagesAndShowFirstInvalid();
+      if (!isValid) {
+        trackValidationError(firstInvalidFieldId);
+        return { submitted: false, firstInvalidPageIndex };
       }
-      return submitted;
-    } catch {
-      resumeSyncing();
-      return false;
+      if (!reportNativeValidity()) {
+        return NOT_SUBMITTED;
+      }
+
+      const sanitizedAnswers = stripCardIds(
+        filterAnswersByFieldIds(effectiveFormData, fieldLookup),
+      );
+
+      const sid = searchParams.get("sid") ?? searchParams.get("ref");
+
+      const submissionPayload: SubmitFormDto = {
+        answers: sanitizedAnswers,
+        formSnapshotId,
+        actionId,
+        formulaSources: formulaSourcesFor(schema, sourceHistories),
+        visibilityValidatorResults,
+        deviceType,
+        publicAnswers,
+        phDistinctId,
+        sessionReplayUrl,
+        sid: sid ?? undefined,
+      };
+
+      pauseSyncing();
+      try {
+        const submitted = await onSubmit(submissionPayload);
+        if (!submitted) {
+          resumeSyncing();
+        }
+        return { submitted, firstInvalidPageIndex: null };
+      } catch {
+        resumeSyncing();
+        return NOT_SUBMITTED;
+      }
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
     }
   }, [
     actionId,
-    currentPageIndex,
+    canSubmit,
     deviceType,
     effectiveFormData,
     fieldLookup,
     formSnapshotId,
-    nextVisiblePageIndex,
     onSubmit,
     phDistinctId,
-    readOnly,
     reportNativeValidity,
     publicAnswers,
     schema,
@@ -227,13 +238,40 @@ export function useFormSubmission({
     sourceHistories,
     sessionReplayUrl,
     trackValidationError,
-    uploadingImages,
     validateAllPagesAndShowFirstInvalid,
-    validatePage,
-    visibilitySettled,
     visibilityValidatorResults,
     pauseSyncing,
     resumeSyncing,
+  ]);
+
+  const submitCurrentPage = useCallback(async (): Promise<boolean> => {
+    if (nextVisiblePageIndex === null) {
+      return (await submit()).submitted;
+    }
+    if (!visibilitySettled || !canSubmit()) return false;
+    submittingRef.current = true;
+    setSubmitting(true);
+    try {
+      const result = await validatePage(currentPageIndex, true);
+      if (!result.isValid) {
+        showInvalid(result.firstInvalidFieldId);
+      } else if (reportNativeValidity()) {
+        setCurrentPageIndex(nextVisiblePageIndex);
+      }
+      return false;
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
+  }, [
+    canSubmit,
+    currentPageIndex,
+    nextVisiblePageIndex,
+    reportNativeValidity,
+    showInvalid,
+    submit,
+    validatePage,
+    visibilitySettled,
   ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -269,6 +307,8 @@ export function useFormSubmission({
     handleNext,
     handlePrevious,
     validateAllPagesAndShowFirstInvalid,
+    validateScreenFields,
+    submit,
     submitCurrentPage,
     handleSubmit,
     handleAbandon,

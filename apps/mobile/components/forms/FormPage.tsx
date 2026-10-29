@@ -5,6 +5,7 @@ import {
 } from "@alliance/common/forms/form-schema";
 import { interpolateDisplayBlock } from "@alliance/common/forms/variable-interpolation";
 import { resolveDisplayBlockForUser } from "@alliance/shared/formrenderer";
+import { cn } from "@alliance/shared/styles/util";
 import { useMemo, type ReactNode } from "react";
 import { View } from "react-native";
 import {
@@ -19,6 +20,7 @@ export default function FormPage({
   variableValues,
   blockProps,
   renderField,
+  className,
 }: {
   elements: PageItem[];
   activeUserKey: string | undefined;
@@ -29,6 +31,7 @@ export default function FormPage({
     "block" | "hasRenderedNeighborAbove" | "hasRenderedNeighborBelow"
   >;
   renderField: (field: AnyField) => ReactNode;
+  className?: string;
 }) {
   const resolvedPageElements = useMemo(
     () =>
@@ -58,7 +61,7 @@ export default function FormPage({
   };
 
   return (
-    <View className="gap-y-4">
+    <View className={cn("gap-y-4", className)}>
       {resolvedPageElements.map((element, idx) => {
         if (!pageElementVisible[idx]) {
           return null;

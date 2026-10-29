@@ -20,12 +20,16 @@ import {
   useMemo,
   useRef,
 } from "react";
-import { Link, href, useLocation } from "react-router";
+import { href, Link, useLocation } from "react-router";
 import { useAuth } from "../lib/AuthContext";
 import { isFeatureEnabled } from "../lib/config";
-import { NavbarOptionsContext } from "../lib/NavbarOptionsContext";
+import {
+  NavbarOptionsContext,
+  useImmersiveChrome,
+} from "../lib/NavbarOptionsContext";
 import { WalkthroughAnchor } from "../onboarding/walkthrough/steps";
 import { useMessagingUnread } from "../pages/app/messages";
+import { flowMotion, REDUCED_MOTION, transition } from "./taskflow/flowMotion";
 
 export enum NavbarPage {
   Tasks = "Tasks",
@@ -46,6 +50,20 @@ export const destinations: Record<NavbarPage, string> = {
   [NavbarPage.Messages]: href("/messages"),
   [NavbarPage.Invite]: href("/invites"),
 };
+
+const RAIL_STYLE = {
+  transition: [
+    "translate 100ms ease-in-out",
+    "transform 100ms ease-in-out",
+    transition(flowMotion.nav, "width"),
+    transition(flowMotion.recolor, "background-color", "color"),
+  ].join(", "),
+};
+const STROKE_STYLE = { transition: transition(flowMotion.recolor, "opacity") };
+const ITEM_RECOLOR_STYLE = {
+  transition: transition(flowMotion.recolor, "color", "background-color"),
+};
+const LABEL_STYLE = { transition: transition(flowMotion.fade, "opacity") };
 
 const getIcon = (page: NavbarPage, size: number) => {
   switch (page) {
@@ -88,6 +106,7 @@ const NavbarVertical: React.FC<{
   const { isAuthenticated } = useAuth();
   const navbarOptions = useContext(NavbarOptionsContext);
   const noBorder = navbarOptions?.options?.noBorder ?? false;
+  const { immersive: collapsed, success } = useImmersiveChrome();
   const location = useLocation();
 
   const { pendingCommunityInvites } = useIncomingCommunityInvites();
@@ -131,18 +150,16 @@ const NavbarVertical: React.FC<{
     }
   }, []);
 
+  // Observing the nav itself, not the window, keeps `--nav-width` in step
+  // with the collapse animation frame by frame.
   useLayoutEffect(() => {
     updateNavWidth();
-
-    const handleResize = () => {
-      updateNavWidth();
-    };
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
-  }, [updateNavWidth]);
+    const nav = navRef.current;
+    if (!nav) return;
+    const observer = new ResizeObserver(updateNavWidth);
+    observer.observe(nav);
+    return () => observer.disconnect();
+  }, [updateNavWidth, isAuthenticated]);
 
   useEffect(() => {
     const handleDocumentMouseDown = (event: MouseEvent) => {
@@ -187,17 +204,8 @@ const NavbarVertical: React.FC<{
 
     if (!isAuthenticated) {
       document.documentElement.style.setProperty("--nav-width", "0px");
-      return;
     }
-
-    if (
-      document.documentElement.style.getPropertyValue("--nav-width") === "0px"
-    ) {
-      requestAnimationFrame(() => {
-        updateNavWidth();
-      });
-    }
-  }, [isAuthenticated, updateNavWidth]);
+  }, [isAuthenticated]);
 
   if (!isAuthenticated) {
     return null;
@@ -210,15 +218,42 @@ const NavbarVertical: React.FC<{
         className={cn(
           "fixed top-0 left-0 h-screen w-screen sm:w-[clamp(14rem,18vw,17rem)]",
           whiteBackground ? "bg-white" : "bg-page",
+          success && "bg-green text-white",
           "flex flex-col",
           !noBorder && "border-r border-zinc-200",
-          "transform transition-transform duration-100 ease-in-out",
+          collapsed && "md:border-r-transparent",
           "z-30 overflow-y-auto",
+          collapsed && "md:w-[4.75rem] md:overflow-visible",
           "md:shadow-none",
           open ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+          REDUCED_MOTION,
         )}
+        style={RAIL_STYLE}
         ref={navRef}
       >
+        {collapsed && (
+          <>
+            {/* The rail's stroke starts below the top band, clear of the logo. */}
+            <span
+              aria-hidden
+              className={cn(
+                "absolute inset-x-0 top-[calc(var(--navbar-top-bar-height)-1px)] hidden h-px bg-zinc-200 md:block",
+                success && "opacity-0",
+                REDUCED_MOTION,
+              )}
+              style={STROKE_STYLE}
+            />
+            <span
+              aria-hidden
+              className={cn(
+                "absolute -right-px top-[calc(var(--navbar-top-bar-height)-1px)] bottom-0 hidden w-px bg-zinc-200 md:block",
+                success && "opacity-0",
+                REDUCED_MOTION,
+              )}
+              style={STROKE_STYLE}
+            />
+          </>
+        )}
         {/* Close button on mobile */}
         <div className="md:hidden flex justify-end p-4">
           <button
@@ -229,12 +264,24 @@ const NavbarVertical: React.FC<{
           </button>
         </div>
 
-        <div className="flex flex-col items-start px-4 py-4">
+        <div
+          className={cn(
+            "flex flex-col items-start px-4 py-4",
+            collapsed && "md:min-h-0 md:flex-1",
+          )}
+        >
           <Link to={href("/")}>
-            <p className="font-logotype p-3 text-xl mb-12 h-sm">The Alliance</p>
+            <p className="font-logotype p-3 text-xl mb-12 h-sm whitespace-nowrap">
+              The Alliance
+            </p>
           </Link>
 
-          <nav className="flex flex-col w-full py-4 gap-y-2 text-lg">
+          <nav
+            className={cn(
+              "flex flex-col w-full py-4 gap-y-2 text-lg",
+              collapsed && "md:min-h-0 md:overflow-x-hidden md:overflow-y-auto",
+            )}
+          >
             {navItems.map((item) => {
               const badgeLabel = formatBadgeCount(
                 unreadNotifsForPage[item.page],
@@ -250,20 +297,59 @@ const NavbarVertical: React.FC<{
                       : undefined
                   }
                   className={cn(
-                    "px-3 py-1.5 rounded-md flex items-center justify-between w-full pr-2",
+                    "px-3 py-1.5 rounded-md flex items-center justify-between w-full pr-2 overflow-hidden",
                     currentLocation === item.page
                       ? "bg-zinc-200/80 text-black"
                       : "text-zinc-700 hover:bg-zinc-100",
+                    success &&
+                      (currentLocation === item.page
+                        ? "bg-white/20 text-white"
+                        : "text-white/80 hover:bg-white/10"),
+                    REDUCED_MOTION,
                   )}
                   onClick={() => setOpen(false)}
+                  title={
+                    collapsed
+                      ? badgeLabel
+                        ? `${item.page} (${badgeLabel})`
+                        : item.page
+                      : undefined
+                  }
+                  style={ITEM_RECOLOR_STYLE}
                 >
-                  <div className="flex items-center gap-x-3">
+                  <div className="relative flex items-center gap-x-3">
                     {getIcon(item.page, 20)}
-                    <p>{item.page}</p>
+                    {collapsed && badgeLabel && (
+                      <>
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "absolute -top-0.5 left-3.5 hidden size-2 rounded-full md:block",
+                            item.page === NavbarPage.Tasks
+                              ? "bg-red-500"
+                              : "bg-zinc-500",
+                          )}
+                        />
+                        <span className="hidden md:block md:sr-only">
+                          {badgeLabel}
+                        </span>
+                      </>
+                    )}
+                    <p
+                      className={cn(
+                        "whitespace-nowrap",
+                        collapsed && "md:opacity-0",
+                        REDUCED_MOTION,
+                      )}
+                      style={LABEL_STYLE}
+                    >
+                      {item.page}
+                    </p>
                   </div>
                   {badgeLabel && (
                     <div
                       className={cn(
+                        collapsed && "md:hidden",
                         "font-semibold text-xs text-white",
                         "rounded-full px-1",
                         "flex justify-center items-center",

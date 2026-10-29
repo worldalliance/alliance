@@ -21,6 +21,8 @@ export type OutputSource = {
   deviceType?: DeviceVisibilityTarget;
   /** The member who submitted `submission`, whose pick a `random` input shows. */
   submitterId?: number;
+  /** Shows the member their own answers, including those they kept private. */
+  ownView?: boolean;
 };
 
 type SubmissionWithPublicAnswers =
@@ -36,6 +38,7 @@ export function useOutputItems({
   validatorResults,
   deviceType,
   submitterId,
+  ownView = false,
 }: OutputSource): ResolvedOutputItem[] {
   const effectiveSchema =
     schema ?? (submission?.schemaSnapshot as unknown as FormSchema | undefined);
@@ -64,9 +67,18 @@ export function useOutputItems({
   const resolvedDeviceType =
     deviceType ??
     deviceVisibilityTargetSchema.safeParse(submission?.deviceType).data;
-  const resolvedPublicAnswers = (
+  const storedPublicAnswers = (
     submission as SubmissionWithPublicAnswers | undefined
   )?.publicAnswers;
+  const resolvedPublicAnswers = useMemo(
+    () =>
+      ownView
+        ? Object.fromEntries(
+            Object.keys(resolvedAnswers).map((fieldId) => [fieldId, true]),
+          )
+        : storedPublicAnswers,
+    [ownView, resolvedAnswers, storedPublicAnswers],
+  );
   const randomizationKey =
     submission && submitterId !== undefined
       ? formRandomizationKey({

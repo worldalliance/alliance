@@ -1,3 +1,5 @@
+import { TaskFlowCompletionProvider } from "@alliance/shared/lib/TaskFlowCompletionContext";
+import { TaskFlowReturnProvider } from "@alliance/shared/lib/TaskFlowReturnContext";
 import { cn } from "@alliance/shared/styles/util";
 import { isStaging } from "@alliance/sharedweb/lib/config";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
@@ -82,8 +84,10 @@ export default function AppLayout() {
   }
 
   return (
-    <>
-      <Outlet />
+    <TaskFlowReturnProvider>
+      <TaskFlowCompletionProvider>
+        <Outlet />
+      </TaskFlowCompletionProvider>
       <DomainMigrationModal />
       {isStaging() && (
         <div
@@ -113,6 +117,6 @@ export default function AppLayout() {
           ))}
         </div>
       )}
-    </>
+    </TaskFlowReturnProvider>
   );
 }

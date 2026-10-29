@@ -2,7 +2,10 @@ import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
 import { useCallback } from "react";
 import { ActionDto, actionsFindOne } from "../client";
-import { withOptimisticRelation } from "./actionUtils";
+import {
+  hasViewerCompletedAction,
+  withOptimisticRelation,
+} from "./actionUtils";
 import { queryKeys } from "./queryKeys";
 
 export function useAction(
@@ -42,10 +45,14 @@ export function useAction(
 
   const markCompleted = useCallback(
     () =>
-      updateAction((action) => ({
-        ...withOptimisticRelation(action, "completed"),
-        usersCompleted: action.usersCompleted + 1,
-      })),
+      updateAction((action) =>
+        hasViewerCompletedAction(action)
+          ? action
+          : {
+              ...withOptimisticRelation(action, "completed"),
+              usersCompleted: action.usersCompleted + 1,
+            },
+      ),
     [updateAction],
   );
 

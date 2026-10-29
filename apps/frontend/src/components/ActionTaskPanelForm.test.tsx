@@ -3,7 +3,8 @@ import {
   MEMBER_ACTION_DEADLINE_PASSED,
 } from "@alliance/common/actionActivity";
 import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options";
-import type { ActionDto } from "@alliance/shared/client";
+import type { ActionDto, FormResponseDto } from "@alliance/shared/client";
+import { computeFormStorageKey } from "@alliance/shared/forms/formDrafts";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import {
   makeAction,
@@ -25,6 +26,8 @@ import { AuthContext, type AuthContextType } from "../lib/AuthContext";
 import { testAuthUser } from "../stories/testData";
 import { authValue } from "../testing/authValue";
 import ActionTaskPanelForm from "./ActionTaskPanelForm";
+
+declare const happyDOM: { setURL: (url: string) => void };
 
 const reported = recordExceptions();
 
@@ -126,11 +129,19 @@ it("shows a form with no timezone field before the session loads", async () => {
 const renderMemberNoteForm = ({
   serving,
   onDeadlinePassed = () => {},
+  onCompleteAction = () => {},
+  onSubmitted,
   queryClient = new QueryClient(),
+  auth = authValue({ user: testAuthUser }),
+  publicAction,
 }: {
   serving: RouteTable;
   onDeadlinePassed?: () => void;
+  onCompleteAction?: () => void;
+  onSubmitted?: (response: FormResponseDto) => void;
   queryClient?: QueryClient;
+  auth?: AuthContextType;
+  publicAction?: boolean;
 }) => {
   api.alsoServing({
     "GET /tasks/slug/:id": () =>
@@ -158,14 +169,16 @@ const renderMemberNoteForm = ({
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
         <SiteAppProvider>
-          <AuthContext.Provider value={authValue({ user: testAuthUser })}>
+          <AuthContext.Provider value={auth}>
             <ToastProvider>
               <ActionTaskPanelForm
                 taskFormId={5}
                 actionId={1}
-                onCompleteAction={() => {}}
+                onCompleteAction={onCompleteAction}
+                onSubmitted={onSubmitted}
                 onFormStarted={() => {}}
                 onDeadlinePassed={onDeadlinePassed}
+                publicAction={publicAction}
               />
             </ToastProvider>
           </AuthContext.Provider>
@@ -250,6 +263,74 @@ it("marks the cached action completed once the server accepts the submission", a
         ?.relation,
     ).toBe("completed"),
   );
+});
+
+it("completes with the served response and drops the local draft once the server accepts the submission", async () => {
+  const served = makeFormResponse({ answers: { note: "done" } });
+  const draftKey = computeFormStorageKey({ formId: 5, instanceId: 5 });
+  window.localStorage.setItem(draftKey, "{}");
+  const onSubmitted = jest.fn();
+  const onCompleteAction = jest.fn();
+  renderMemberNoteForm({
+    serving: {
+      "POST /tasks/submitForm/:id": () =>
+        Response.json(served, { status: 201 }),
+    },
+    onSubmitted,
+    onCompleteAction,
+  });
+
+  fireEvent.click(await screen.findByRole("button", { name: "Complete" }));
+
+  await waitFor(() => expect(onCompleteAction).toHaveBeenCalledTimes(1));
+  expect(onSubmitted).toHaveBeenCalledWith(served);
+  expect(window.localStorage.getItem(draftKey)).toBeNull();
+});
+
+it("sends a guest to the completed page after their public task completes", async () => {
+  const startHref = window.location.href;
+  happyDOM.setURL("http://localhost/actions/1");
+  let pathOnComplete: string | null = null;
+  try {
+    renderMemberNoteForm({
+      serving: {
+        "POST /tasks/submitPublicForm/:id": () =>
+          Response.json(makeFormResponse(), { status: 201 }),
+      },
+      auth: authValue(),
+      publicAction: true,
+      onCompleteAction: () => {
+        pathOnComplete = window.location.pathname;
+      },
+    });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Complete" }));
+
+    await waitFor(() =>
+      expect(window.location.pathname).toBe("/actions/completed"),
+    );
+    expect(pathOnComplete).toBe("/actions/1");
+  } finally {
+    happyDOM.setURL(startHref);
+  }
+});
+
+it("refreshes a member without a contract once their task completes", async () => {
+  const refreshUser = jest.fn(() => Promise.resolve());
+  renderMemberNoteForm({
+    serving: {
+      "POST /tasks/submitForm/:id": () =>
+        Response.json(makeFormResponse(), { status: 201 }),
+    },
+    auth: authValue({
+      user: makeUser({ hasActiveContract: false }),
+      refreshUser,
+    }),
+  });
+
+  fireEvent.click(await screen.findByRole("button", { name: "Complete" }));
+
+  await waitFor(() => expect(refreshUser).toHaveBeenCalledTimes(1));
 });
 
 it("invalidates the form's aggregate views once the server accepts the submission", async () => {

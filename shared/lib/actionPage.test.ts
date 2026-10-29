@@ -1,7 +1,12 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { createElement, type ReactNode } from "react";
 import { useActionHandlers } from "./actionPage";
 import { queryKeys } from "./queryKeys";
-import { makeAction } from "./testFixtures";
+import {
+  TaskFlowCompletionProvider,
+  useMarkTaskCompleting,
+} from "./TaskFlowCompletionContext";
+import { makeAction, makeViewer } from "./testFixtures";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 
@@ -141,6 +146,55 @@ it("marks the action completed in the shared cache and reloads tasks", async () 
     usersCompleted: 3,
   });
   expect(reloadTasks).toHaveBeenCalledTimes(1);
+});
+
+it("does not count a completion the server already reported", async () => {
+  getResponse = () =>
+    Response.json(
+      makeAction({
+        id: 7,
+        usersCompleted: 3,
+        userRelation: "completed",
+        viewer: makeViewer({ relation: "completed" }),
+      }),
+    );
+  const { client, hook } = renderHandlers();
+  await waitFor(() => expect(hook.result.current.action).not.toBeNull());
+
+  await hook.result.current.onCompleteAction();
+
+  expect(client.getQueryData(queryKeys.action(7))).toMatchObject({
+    usersCompleted: 3,
+  });
+});
+
+it("holds the action while its task flow completes", async () => {
+  const { wrapper: queries } = queryWrapper();
+  const hook = renderHook(
+    ({ completing }) => {
+      useMarkTaskCompleting({ actionId: 7, completing });
+      return useActionHandlers(7, true, () => {});
+    },
+    {
+      wrapper: ({ children }: { children: ReactNode }) =>
+        queries({
+          children: createElement(TaskFlowCompletionProvider, null, children),
+        }),
+      initialProps: { completing: false },
+    },
+  );
+  await waitFor(() => expect(hook.result.current.action).not.toBeNull());
+  hook.rerender({ completing: true });
+
+  getResponse = () => Response.json(makeAction({ id: 7, usersCompleted: 3 }));
+  await act(async () => {
+    await hook.result.current.refetchAction();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  });
+  expect(hook.result.current.action).toMatchObject({ usersCompleted: 2 });
+
+  hook.rerender({ completing: false });
+  expect(hook.result.current.action).toMatchObject({ usersCompleted: 3 });
 });
 
 it("marks the action declined in the shared cache and reloads tasks", async () => {
