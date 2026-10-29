@@ -11,6 +11,7 @@ export type SiteLink = {
 };
 
 export const PEOPLE_HREF = href("/people");
+export const EXPERT_GROUP_HREF = `${PEOPLE_HREF}#expert-group`;
 export const GUIDE_HREF = href("/guide");
 export const PROGRESS_HREF = href("/progress");
 export const PARTNER_HREF = href("/partner");

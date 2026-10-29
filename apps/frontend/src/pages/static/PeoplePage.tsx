@@ -45,6 +45,38 @@ function memberGridCols(width: number, memberCount: number): number {
   return Math.ceil(memberCount / MEMBER_ROWS);
 }
 
+// 1280px is PEOPLE_COLUMN's max-w-7xl.
+const MEMBER_MAX_COLS = memberGridCols(1280, Infinity);
+
+// Server-rendered at the loaded grid's height, so the members arriving don't
+// push down a restored scroll position or a hash target below. Each row clips
+// the tiles that wrap past its width.
+function MemberGridPlaceholder() {
+  return (
+    <div className="flex flex-col" style={{ gap: MEMBER_GAP_PX }} aria-hidden>
+      {Array.from({ length: MEMBER_ROWS }, (_, row) => (
+        <div
+          key={row}
+          className="grid overflow-hidden"
+          style={{
+            columnGap: MEMBER_GAP_PX,
+            gridTemplateColumns: `repeat(auto-fill, minmax(${PROFILE_TILE_PX}px, 1fr))`,
+            gridTemplateRows: "auto",
+            gridAutoRows: 0,
+          }}
+        >
+          {Array.from({ length: MEMBER_MAX_COLS }, (_, i) => (
+            <div
+              key={i}
+              className="aspect-square rounded-lg bg-(--site-ink)/9"
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Four columns of names, since we hold no photographs of the expert group. */
 function ExpertGroup() {
   return (
@@ -193,14 +225,12 @@ function MemberDirectory() {
     >
       <div className="flex flex-col gap-3">
         <BandHeading size={BandHeadingSize.Section}>Members</BandHeading>
-        {memberCount !== undefined && (
-          <SiteSubtitle>
-            {`The Alliance has ${memberCount} ${memberCount === 1 ? "member" : "members"}. Membership is currently by invitation only.`}
-          </SiteSubtitle>
-        )}
+        <SiteSubtitle className={cn(memberCount === undefined && "invisible")}>
+          {`The Alliance has ${memberCount ?? 0} ${memberCount === 1 ? "member" : "members"}. Membership is currently by invitation only.`}
+        </SiteSubtitle>
       </div>
       {isPending ? (
-        <p className="text-(--site-ink)/50">Loading members…</p>
+        <MemberGridPlaceholder />
       ) : (
         <div
           ref={gridRef}

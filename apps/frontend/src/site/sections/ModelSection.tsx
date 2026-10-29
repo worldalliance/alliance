@@ -10,7 +10,7 @@ import {
   nearMilestones,
 } from "../content";
 import { GrowthMilestones } from "../graphics/GrowthMilestones";
-import { PEOPLE_HREF, PROGRESS_HREF } from "../links";
+import { EXPERT_GROUP_HREF, PROGRESS_HREF } from "../links";
 import { BandHeading } from "../PageShell";
 import { SITE_COL, SiteSubtitle } from "../ui";
 
@@ -25,7 +25,7 @@ export function ModelSection() {
           <SiteSubtitle>
             {GROWTH_HEADLINE_FAR_PARTS.lead}
             <Link
-              to={PEOPLE_HREF}
+              to={EXPERT_GROUP_HREF}
               className="underline decoration-[var(--site-primary)]/35 underline-offset-2 hover:decoration-[var(--site-primary)]"
             >
               {GROWTH_HEADLINE_FAR_PARTS.link}
