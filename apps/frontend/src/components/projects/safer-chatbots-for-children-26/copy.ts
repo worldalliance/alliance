@@ -6,35 +6,37 @@ import {
 export const ABOUT_SECTIONS = [
   {
     heading: "What is this?",
-    body: `- Safer Chatbots for Children is a volunteer project run by the Alliance and Kora intended to make AI chatbots safer for children and teenagers.
-- Volunteers will review English transcripts of children messaging AI chatbots such as ChatGPT and Claude, then submit feedback on how well the chatbots handled sensitive topics such as fear, academic dishonesty, online data sharing, and body image.
-- Volunteers will *not* be training large language models from big tech companies. The tasks will be used to improve a non-profit's benchmarks (tests) that evaluate the safety of large language models.`,
+    body: `Safer Chatbots for Children is a project run by the Alliance and KORA to make AI chatbots safer for children and teenagers.
+
+Volunteers will review transcripts of children talking to AI chatbots such as ChatGPT and Claude, then rate how well the chatbots handled sensitive topics such as fear, academic dishonesty, online data sharing, and body image.
+
+The data will be used to improve how KORA evaluates the safety of large language models.`,
   },
   {
-    heading: "Why are we doing this?",
-    body: `- At the Alliance, we’re assembling people who can count on each other to combat global problems that depend on everyone’s participation. With this project, we are testing the model of “citizen oversight”, where the general public gets a chance to weigh in on disruptive, potentially dangerous technologies such as AI and help shape the direction of these technologies in a healthy, democratic way.
-- As AI adoption grows, [safety evaluations struggle](https://hai.stanford.edu/ai-index/2026-ai-index-report/responsible-ai) to capture the complexity of real-world harms, particularly those affecting children and teenagers. KORA is working to close these gaps. Volunteers for this project will help develop AI safety evaluations that better reflect the risks people actually face.
+    heading: "What is the benefit?",
+    body: `As AI adoption grows, [safety evaluations struggle](https://hai.stanford.edu/ai-index/2026-ai-index-report/responsible-ai) to capture the complexity of real-world harms, particularly those affecting children and teenagers. This project will help develop AI safety evaluations that better reflect how the public believes AI should behave with children.
 ` /* 
     - KORA has identified a [lack of research](https://arxiv.org/html/2608.07902v1) on how AI systems affect children and teenagers. We are excited to partner with them to make these systems safer.
     */,
   },
   {
+    heading: "How will this work?",
+    body: `1. Participants will rate short scenarios of children interacting with an AI chatbot as safe, unsafe, or undetermined.
+
+2. KORA will use the ratings to improve their safety tests (known in the industry as “benchmarks”) to match what is considered safe by the general public. Leading AI companies like Mistral use these benchmarks to evaluate and improve their products.
+
+3. KORA will publish the findings in a research paper.`,
+  },
+  {
     heading: "How do I participate?",
-    body: `- Sign up on this page. We expect the project to begin in Mid-November 2026 and conclude by Mid-December 2026. 
-- Volunteers are encouraged to join the Alliance to continue volunteering on similar tasks after this project concludes.
-- This project is accepting signups from the general public from any country.
-- **Expected Time Committment**: 1 hour total over the course of 30 days, done at your own pace, from your own computer.
+    body: `Sign up on this page. We expect the project to begin in Mid-November 2026.
+
+Participants will spend about an hour reviewing chatbot transcripts online. You can participate at your own pace.
 `,
   },
   {
-    heading: "How will this work?",
-    body: `This will happen in a three-step process:
-
-1. Each participant will: Read short scenarios of children interacting with an AI chatbot, then rate each scenario as “safe”, “unsafe”, or “undetermined”
-
-2. Kora, an AI safety nonprofit, will take the aggregated feedback on the scenarios to improve their safety tests (known in the industry as “benchmarks”) to match what is considered safe by the general public.
-
-3. Kora will write up the findings in a research paper and incorporate findings into their benchmark. Leading AI companies like Mistral use these benchmarks to evaluate and improve their products.`,
+    heading: "Who can participate?",
+    body: `Anyone over the age of 18 that can read English can participate.`,
   },
 ];
 
@@ -129,12 +131,12 @@ export const PHASES: Phase[] = [
   },
   {
     description:
-      "Step 2: Volunteers will rate the chatbot's responses as 'safe' or 'unsafe'.",
+      "Step 2: Volunteers will rate scenarios as 'safe' or 'unsafe'.",
     imageSrc: "/assets/chatbot-safety/step-rate-responses.png",
   },
   {
     description:
-      "Step 3: KORA will take the volunteer feedback to improve their benchmarks to reflect what the public believes to be safe.",
+      "Step 3: KORA will use feedback to improve their benchmarks to reflect what the public believes to be safe.",
     imageSrc: "/assets/chatbot-safety/step-kora-benchmark.png",
   },
   {

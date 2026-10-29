@@ -254,7 +254,10 @@ export function KoraSignIn({
   if (member.isAuthenticated) {
     return (
       <div className={card}>
-        <p className="text-lg">You’re already an Alliance member.</p>
+        <p className="text-lg">
+          Alliance members will participate in this project through weekly
+          tasks.
+        </p>
       </div>
     );
   }
