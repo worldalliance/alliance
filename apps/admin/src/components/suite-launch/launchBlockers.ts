@@ -34,6 +34,16 @@ export function existingLaunchEvent(
   return null;
 }
 
+/** Keyed by the missing items, so another item going missing asks again. */
+export const checklistDismissKey = (entry: {
+  action: { id: number };
+  unready: readonly { id: string }[];
+}) =>
+  `checklist:${entry.action.id}:${entry.unready
+    .map((item) => item.id)
+    .sort()
+    .join(",")}`;
+
 export function launchBlockers(params: {
   data: Pick<
     SuiteLaunchData,
@@ -96,7 +106,11 @@ export function launchBlockers(params: {
   if (data.recipientCount === 0) {
     block(LaunchSection.Actions, "No member is assigned any action.");
   }
-  const unready = data.actions.filter(({ unready }) => unready.length > 0);
+  const unready = data.actions.filter(
+    (entry) =>
+      entry.unready.length > 0 &&
+      !dismissedFindingKeys.has(checklistDismissKey(entry)),
+  );
   if (unready.length > 0) {
     block(
       LaunchSection.Actions,

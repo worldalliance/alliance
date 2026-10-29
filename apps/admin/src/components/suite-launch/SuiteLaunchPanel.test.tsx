@@ -57,6 +57,26 @@ it("lists each action's unfinished checklist items", async () => {
   expect(launchButton().hasAttribute("disabled")).toBe(true);
 });
 
+it("launches with unfinished checklist items once they're dismissed", async () => {
+  api.served[2] = { ...api.served[2], project: null };
+  renderPanel();
+  await resolveEveryCheck();
+  expect(
+    await screen.findByText("1 action has unfinished checklist items."),
+  ).toBeTruthy();
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Dismiss missing items" }),
+  );
+
+  await waitFor(() =>
+    expect(launchButton().hasAttribute("disabled")).toBe(false),
+  );
+  expect(
+    screen.getByText("Missing (dismissed): Part of a project"),
+  ).toBeTruthy();
+});
+
 it("creates both events and the default reminders once the count is typed", async () => {
   renderPanel();
   await resolveEveryCheck();

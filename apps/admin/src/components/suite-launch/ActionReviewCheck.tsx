@@ -1,5 +1,7 @@
 import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
+import { cn } from "@alliance/shared/styles/util";
 import { secondsInMinute } from "date-fns/constants";
+import { Undo2, X } from "lucide-react";
 import {
   cohortSegmentsText,
   describeCohortExpression,
@@ -7,8 +9,8 @@ import {
 import { referencedActionFromListItem } from "../../lib/referencedAction";
 import { useTagsAdmin } from "../../lib/useTagsAdmin";
 import OpenReferenceWarning from "../OpenReferenceWarning";
-import { ActionLinks, EditTaskFormLink } from "./ActionLinks";
-import { LaunchSection } from "./launchBlockers";
+import { ActionLinks, EditTaskFormLink, iconControlClass } from "./ActionLinks";
+import { checklistDismissKey, LaunchSection } from "./launchBlockers";
 import LaunchCheck from "./LaunchCheck";
 import { inLaunchZone, type LaunchSchedule } from "./launchSchedule";
 import type { LaunchAction } from "./useSuiteLaunchData";
@@ -36,12 +38,44 @@ const actionNotes = (params: {
   ].filter((note): note is string => !!note);
 };
 
+const MissingItems = ({
+  labels,
+  dismissed,
+  onToggle,
+}: {
+  labels: string[];
+  dismissed: boolean;
+  onToggle: (dismissed: boolean) => void;
+}) => (
+  <p
+    className={cn(
+      "flex items-center gap-1 text-xs",
+      dismissed ? "text-zinc-400" : "text-yellow-700",
+    )}
+  >
+    {dismissed ? "Missing (dismissed): " : "Missing: "}
+    {labels.join(", ")}
+    <button
+      type="button"
+      onClick={() => onToggle(!dismissed)}
+      aria-label={dismissed ? "Restore missing items" : "Dismiss missing items"}
+      title={dismissed ? "Restore" : "Dismiss and launch anyway"}
+      className={iconControlClass}
+    >
+      {dismissed ? <Undo2 className="size-3.5" /> : <X className="size-3.5" />}
+    </button>
+  </p>
+);
+
 const ActionReviewCheck = ({
   actions,
   checkedActionIds,
   changedActionIds,
   schedule,
   onCheckedChange,
+  dismissedKeys,
+  onDismiss,
+  onRestore,
 }: {
   actions: LaunchAction[];
   checkedActionIds: ReadonlySet<number>;
@@ -49,6 +83,9 @@ const ActionReviewCheck = ({
   changedActionIds: ReadonlySet<number>;
   schedule: LaunchSchedule;
   onCheckedChange: (entry: LaunchAction, checked: boolean) => void;
+  dismissedKeys: ReadonlySet<string>;
+  onDismiss: (key: string) => void;
+  onRestore: (key: string) => void;
 }) => {
   const { tags } = useTagsAdmin();
   const { data: allActions = [] } = useActionsAdmin();
@@ -66,7 +103,11 @@ const ActionReviewCheck = ({
     // This suite's actions close at the office deadline this launch creates.
     ...(suiteActionIds.has(item.id) && { deadline: schedule.officeActionAt }),
   }));
-  const unready = actions.filter((entry) => entry.unready.length > 0).length;
+  const unready = actions.filter(
+    (entry) =>
+      entry.unready.length > 0 &&
+      !dismissedKeys.has(checklistDismissKey(entry)),
+  ).length;
   const unchecked = actions.filter(
     ({ action }) => !checkedActionIds.has(action.id),
   ).length;
@@ -108,9 +149,15 @@ const ActionReviewCheck = ({
                   <p className="text-xs text-yellow-700">{notes.join(" · ")}</p>
                 )}
                 {unready.length > 0 && (
-                  <p className="text-xs text-yellow-700">
-                    Missing: {unready.map((item) => item.label).join(", ")}
-                  </p>
+                  <MissingItems
+                    labels={unready.map((item) => item.label)}
+                    dismissed={dismissedKeys.has(checklistDismissKey(entry))}
+                    onToggle={(dismissed) =>
+                      (dismissed ? onDismiss : onRestore)(
+                        checklistDismissKey(entry),
+                      )
+                    }
+                  />
                 )}
                 <OpenReferenceWarning
                   actionId={action.id}

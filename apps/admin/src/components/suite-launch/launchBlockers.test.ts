@@ -1,6 +1,10 @@
 import { describe, expect, it } from "bun:test";
 import { TextSource } from "./actionTextFindings";
-import { launchBlockers, LaunchSection } from "./launchBlockers";
+import {
+  checklistDismissKey,
+  launchBlockers,
+  LaunchSection,
+} from "./launchBlockers";
 import { TextIssueKind } from "./textChecks";
 
 const now = new Date("2026-01-15T18:00:00Z");
@@ -50,6 +54,32 @@ const messages = (params: Parameters<typeof launchBlockers>[0]) =>
   launchBlockers(params).map(({ message }) => message);
 
 describe("launchBlockers", () => {
+  it("lets dismissed checklist items through, until another item goes missing", () => {
+    const entry = {
+      action,
+      unready: [{ id: "body", label: "Full body content", isReady: false }],
+    };
+    const dismissed = new Set([
+      ...ready.dismissedFindingKeys,
+      checklistDismissKey(entry),
+    ]);
+    const withEntry = (unready: typeof entry.unready) => ({
+      ...ready,
+      data: { ...ready.data, actions: [{ ...entry, unready }] },
+      dismissedFindingKeys: dismissed,
+    });
+
+    expect(messages(withEntry(entry.unready))).toEqual([]);
+    expect(
+      messages(
+        withEntry([
+          ...entry.unready,
+          { id: "form", label: "Task form linked", isReady: false },
+        ]),
+      ),
+    ).toEqual(["1 action has unfinished checklist items."]);
+  });
+
   it("allows launch once every check passes", () => {
     expect(messages(ready)).toEqual([]);
   });

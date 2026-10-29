@@ -272,6 +272,13 @@ const SuiteLaunchPanel = ({
                 return next;
               })
             }
+            dismissedKeys={dismissedKeys}
+            onDismiss={(key) =>
+              setDismissedKeys((prev) => toggled(prev, key, true))
+            }
+            onRestore={(key) =>
+              setDismissedKeys((prev) => toggled(prev, key, false))
+            }
           />
           <MemberPreview loads={data.loads} actions={data.actions} />
           {data.spellcheckLoading ? (
