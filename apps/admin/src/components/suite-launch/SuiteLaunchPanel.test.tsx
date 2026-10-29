@@ -1,5 +1,6 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { expect, it, setSystemTime } from "bun:test";
+import { LaunchSection } from "./launchBlockers";
 import {
   api,
   launchButton,
@@ -39,6 +40,17 @@ it("flags overloaded members and text findings, and blocks launch until each is 
     expect(launchButton().hasAttribute("disabled")).toBe(false),
   );
   expect(launchButton().textContent).toContain("Launch and notify 2 members");
+});
+
+it("shows the contract warning right above the launch button", async () => {
+  renderPanel();
+
+  await screen.findByText(
+    "1 member is assigned more than 15 minutes. The contract assigns tasks in 15-minute blocks.",
+  );
+  expect(launchButton().previousElementSibling?.id).toBe(
+    LaunchSection.Contract,
+  );
 });
 
 it("passes the members' actions check when no member gets more than 15 minutes", async () => {
@@ -274,11 +286,11 @@ it("refuses to launch once the member start has passed while the panel sat open"
   );
   fireEvent.click(screen.getByRole("button", { name: "Launch" }));
 
-  expect(
-    await screen.findByText(
-      "Members taking action must start in the future. Pick a later time.",
-    ),
-  ).toBeTruthy();
+  const error = await screen.findByText(
+    "Members taking action must start in the future. Pick a later time.",
+  );
+  expect(launchButton().previousElementSibling).toBe(error);
+  expect(error.previousElementSibling?.id).toBe(LaunchSection.Contract);
   expect(api.createdEvents).toEqual([]);
 });
 
