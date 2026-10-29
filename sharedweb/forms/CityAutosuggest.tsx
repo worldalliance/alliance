@@ -79,6 +79,7 @@ const CityAutosuggest: React.FC<CityAutosuggestProps> = ({
           e.preventDefault();
           setHighlighted((i) => Math.max(i - 1, 0));
         } else if (e.key === "Escape") {
+          if (results.length > 0) e.preventDefault();
           setOpen(false);
         }
       },

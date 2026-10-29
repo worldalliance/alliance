@@ -131,3 +131,37 @@ it("opens and closes from a trigger the caller supplies", () => {
   fireEvent.click(screen.getByRole("button", { name: "Custom" }));
   expect(screen.queryByText("Withdrawal options")).toBeNull();
 });
+
+it("closes on Escape and marks the key handled", () => {
+  renderMenu();
+
+  const notPrevented = fireEvent.keyDown(
+    screen.getByRole("button", { name: "Moral objection" }),
+    { key: "Escape" },
+  );
+
+  expect(notPrevented).toBe(false);
+  expect(screen.queryByText("Withdrawal options")).toBeNull();
+});
+
+it("returns focus to the trigger when Escape closes it", () => {
+  renderMenu();
+  const option = screen.getByRole("button", { name: "Moral objection" });
+  option.focus();
+
+  fireEvent.keyDown(option, { key: "Escape" });
+
+  expect(document.activeElement).toBe(
+    document.querySelector(".lucide-ellipsis")?.closest("button"),
+  );
+});
+
+it("leaves Escape to its container while closed", () => {
+  renderMenu();
+  const trigger = document.querySelector(".lucide-ellipsis")?.closest("button");
+  if (!trigger) throw new Error("no withdrawal menu");
+  fireEvent.click(trigger);
+  expect(screen.queryByText("Withdrawal options")).toBeNull();
+
+  expect(fireEvent.keyDown(trigger, { key: "Escape" })).toBe(true);
+});

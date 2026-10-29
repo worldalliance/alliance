@@ -50,7 +50,16 @@ export default function WithdrawalMenu({
   };
 
   return (
-    <div className="relative" ref={ref}>
+    <div
+      className="relative"
+      ref={ref}
+      onKeyDown={(e) => {
+        if (!dropdownOpen || e.key !== "Escape") return;
+        e.preventDefault();
+        setDropdownOpen(false);
+        ref.current?.querySelector("button")?.focus();
+      }}
+    >
       {renderTrigger ? (
         renderTrigger(toggle)
       ) : (
