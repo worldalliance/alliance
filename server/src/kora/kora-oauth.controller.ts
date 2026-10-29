@@ -51,6 +51,7 @@ import { KoraSessionService } from "./kora-session.service";
 /**
  * Participant sign-in through Google or Apple. Each provider has this
  * callback registered beside the member one, which never sees these flows.
+ * Renaming the route breaks sign-in until both providers list the new path.
  */
 @ApiParam({ name: "provider", enum: OAuthProvider, enumName: "OAuthProvider" })
 @Controller("kora/:provider")
