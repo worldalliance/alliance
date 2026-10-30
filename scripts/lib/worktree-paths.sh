@@ -20,6 +20,13 @@ is_current_checkout() {
   [[ "$here" == "$1" || "$here" == "$1"/* ]]
 }
 
+refuse_unremovable() {
+  ! is_current_checkout "$1" ||
+    die "$1 is the checkout you are working in, and this removal would delete it from under you. Report this rather than working around it."
+  ! worktree_locked "$1" ||
+    die "$1 is locked — 'git -C $main_root worktree unlock $1' first if you really mean to remove it"
+}
+
 # A half-removed worktree is already deregistered, so the .git pointer, not
 # 'git worktree list', is what says this tree is ours for rm -rf to delete.
 is_our_worktree() {

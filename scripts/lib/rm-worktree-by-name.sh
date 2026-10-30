@@ -8,11 +8,10 @@ remove_worktree_by_name() {
   [[ -d "$worktree_dir" ]] || die "$worktree_dir not found"
   [[ "$worktree_dir" == "$main_root" ]] && die "refusing to remove the main checkout"
 
-  ! is_current_checkout "$worktree_dir" ||
-    die "$worktree_dir is the checkout you are working in, so removing it would delete the ground under you. Report this rather than working around it."
-
   is_our_worktree "$worktree_dir" ||
     die "$worktree_dir is not a worktree of $main_root, so it will not be removed"
+
+  refuse_unremovable "$worktree_dir"
 
   worktree_ports="$worktree_dir/.worktree/ports.json"
   worktree_env="$worktree_dir/.worktree/env"
@@ -35,9 +34,6 @@ remove_worktree_by_name() {
   # A worktree left half-removed by an earlier run has a dangling .git pointer,
   # so HEAD no longer resolves.
   branch="$(git -C "$worktree_dir" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
-
-  ! worktree_locked "$worktree_dir" ||
-    die "$worktree_dir is locked — 'git -C $main_root worktree unlock $worktree_dir' first if you really mean to remove it"
 
   [[ -f "$main_root/server/.env" ]] ||
     die "$main_root/server/.env not found, so $db_name cannot be told apart from the main checkout's database — remove the worktree by hand with 'rm -rf $worktree_dir && git -C $main_root worktree prune'"
