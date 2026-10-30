@@ -393,6 +393,9 @@ export function useTaskFlow(params: {
       elements: withoutEmptySections(screen.elements, isElementVisible),
     },
     screenIndex,
+    pastFirstStep:
+      stage === FlowStage.Screens &&
+      (backgroundIndex !== null || screenIndex !== flowIndices[0]),
     background,
     nextLabel: nextIndex !== null ? taskFlow.next : rules.lastLabel,
     startLabel: flowIndices.length === 0 ? rules.lastLabel : taskFlow.next,

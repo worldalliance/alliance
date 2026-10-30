@@ -69,10 +69,28 @@ it("opens the project background, then one screen per page", async () => {
   expect(screen.getByText("Why this project matters")).toBeTruthy();
   expect(screen.getByText("Sam Reviewer")).toBeTruthy();
   expect(screen.getByText("Expert")).toBeTruthy();
+  expect(screen.queryByText(taskFlow.progressSaved)).toBeNull();
 
   fireEvent.click(screen.getByRole("button", { name: "Next" }));
   await screen.findByRole("heading", { name: "Rate the chatbot" });
   expect(screen.getAllByRole("textbox")).toHaveLength(2);
+  expect(screen.getByText(taskFlow.progressSaved)).toBeTruthy();
+});
+
+it("says progress is saved from the second step on", async () => {
+  setServedSchema({ ...taskSchema, pages: taskSchema.pages.slice(1) });
+  renderFlow();
+
+  fireEvent.click(await screen.findByRole("button", { name: taskFlow.begin }));
+  fireEvent.change(
+    await screen.findByRole("textbox", { name: /First impression/ }),
+    { target: { value: "Helpful" } },
+  );
+  expect(screen.queryByText(taskFlow.progressSaved)).toBeNull();
+
+  fireEvent.click(screen.getByRole("button", { name: taskFlow.next }));
+  await screen.findByRole("textbox", { name: /Anything else/ });
+  expect(screen.getByText(taskFlow.progressSaved)).toBeTruthy();
 });
 
 it("keeps the member on a screen until its required answers are in", async () => {

@@ -19,11 +19,12 @@ From the notes: "When you leave the task and come back the button should say 'co
 
 - The button that opens the flow reads "Continue" when the member has started the task before (a saved screen or a saved draft), and "Begin" otherwise. (Notes)
 
-## TN-3: "Progress is saved"
+## TN-3: "Progress auto-saved"
 
 From the notes: "Add 'progress is saved' as a small grey disclaimer".
 
-- The flow shows "Progress is saved" in small grey text to the right of the close (✕) button, wherever answers save. (Notes, placement: User)
+- The flow shows "Progress auto-saved" in small grey text to the right of the close (✕) button, wherever answers save. (Notes, placement and wording: User)
+- It shows only from the flow's second step on, not on its first. (User)
 
 ## TN-4: Admin indicators for the task flow
 

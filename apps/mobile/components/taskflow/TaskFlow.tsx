@@ -307,6 +307,9 @@ export default function TaskFlow({
                 <TaskFlowHeader
                   onClose={() => void close()}
                   disabled={form.submitting}
+                  progressSaved={
+                    records && blocked === null && flow.pastFirstStep
+                  }
                   onWithdraw={
                     withdraw && blocked === null ? openWithdraw : null
                   }

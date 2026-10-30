@@ -37,22 +37,29 @@ export function TaskFlowWithdrawMenu({
 export default function TaskFlowHeader({
   onClose,
   disabled,
+  progressSaved,
   onWithdraw,
 }: {
   onClose: () => void;
   disabled: boolean;
+  progressSaved: boolean;
   onWithdraw: FlowWithdrawHandler | null;
 }) {
   return (
     <div className={cn(FLOW_COLUMN, "flex items-center justify-between py-3")}>
-      <FlowButton
-        kind={FlowButtonKind.Icon}
-        onClick={onClose}
-        disabled={disabled}
-        aria-label={taskFlow.closeTask}
-      >
-        <X size={20} aria-hidden />
-      </FlowButton>
+      <div className="flex items-center gap-x-3">
+        <FlowButton
+          kind={FlowButtonKind.Icon}
+          onClick={onClose}
+          disabled={disabled}
+          aria-label={taskFlow.closeTask}
+        >
+          <X size={20} aria-hidden />
+        </FlowButton>
+        {progressSaved ? (
+          <p className="text-sm text-zinc-500">{taskFlow.progressSaved}</p>
+        ) : null}
+      </div>
       {onWithdraw ? (
         <TaskFlowWithdrawMenu disabled={disabled} onWithdraw={onWithdraw} />
       ) : null}
