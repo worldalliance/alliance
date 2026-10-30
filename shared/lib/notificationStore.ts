@@ -67,11 +67,17 @@ function createNotificationStore(queryClient: QueryClient) {
     queryClient,
     queryKey: queryKeys.notificationsLists(),
   });
+  const counts = sessionLoads<number>({
+    queryClient,
+    queryKey: queryKeys.notificationsUnreadCount(),
+  });
   const all = () =>
     adapter
       .getSelectors()
       .selectAll(store.getState())
       .map((record) => record.notification);
+
+  let countDowns = new Set<Promise<unknown>>();
 
   const receive = (
     notifications: NotificationDto[],
@@ -86,7 +92,10 @@ function createNotificationStore(queryClient: QueryClient) {
     getState: store.getState,
     get: (key: string) => store.getState().entities[key]?.notification,
     receive,
-    clear: () => void store.dispatch(slice.actions.cleared()),
+    clear: () => {
+      countDowns = new Set();
+      store.dispatch(slice.actions.cleared());
+    },
     loadList: async (load: {
       signal: AbortSignal;
       fetch: () => Promise<{
@@ -105,6 +114,10 @@ function createNotificationStore(queryClient: QueryClient) {
       });
       return { keys: receive(value, revision), loadedAt };
     },
+    loadUnreadCount: async (load: {
+      signal: AbortSignal;
+      fetch: () => Promise<number>;
+    }) => (await counts.load(load)).value,
     /** Returns the keys of the records it changed, none once `session` has ended. */
     write: (params: {
       session: number;
@@ -125,11 +138,21 @@ function createNotificationStore(queryClient: QueryClient) {
       store.dispatch(slice.actions.written(changed));
       return changed.map(getNotificationIdentityKey);
     },
+    /** Tracks a write that lowered the count until `confirmation` settles; the
+     * returned check, made after it settles, says whether no other is pending. */
+    trackCountDown: (confirmation: Promise<unknown>) => {
+      const pending = countDowns;
+      pending.add(confirmation);
+      const settle = () => void pending.delete(confirmation);
+      void confirmation.then(settle, settle);
+      return () => pending.size === 0;
+    },
     writeUnreadCount: (params: {
       session: number;
       update: (count: number) => number;
     }) => {
       if (params.session !== currentSession(queryClient)) return;
+      counts.write(params.update);
       queryClient.setQueryData<number>(
         queryKeys.notificationsUnreadCount(),
         (count) => (count === undefined ? undefined : params.update(count)),

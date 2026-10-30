@@ -12,6 +12,7 @@ import {
   queryOptions,
   useQuery,
   useQueryClient,
+  type QueryKey,
 } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import {
@@ -44,9 +45,17 @@ const readWhere =
 
 export function notificationsCache(queryClient: QueryClient) {
   const store = notificationStore(queryClient);
-  const refreshIn = (session: number) => {
+  // A count load in flight may hold a stale decrement, and invalidation alone
+  // neither replaces it for a count with no data nor stops it landing on an
+  // inactive one, so it is cancelled first.
+  const refreshIn = async (session: number, queryKey: QueryKey = ROOT_KEY) => {
+    if (session !== currentSession(queryClient)) return;
+    await queryClient.cancelQueries({
+      queryKey: UNREAD_COUNT_KEY,
+      exact: true,
+    });
     if (session === currentSession(queryClient))
-      void queryClient.invalidateQueries({ queryKey: ROOT_KEY });
+      void queryClient.invalidateQueries({ queryKey });
   };
 
   return {
@@ -72,10 +81,14 @@ export function notificationsCache(queryClient: QueryClient) {
 
     unreadCount: queryOptions({
       queryKey: UNREAD_COUNT_KEY,
-      queryFn: () =>
-        notifsGetUnreadCount({ throwOnError: true }).then(
-          (response) => response.data.unreadCount,
-        ),
+      queryFn: ({ signal }) =>
+        store.loadUnreadCount({
+          signal,
+          fetch: () =>
+            notifsGetUnreadCount({ signal, throwOnError: true }).then(
+              (response) => response.data.unreadCount,
+            ),
+        }),
     }),
 
     refresh: () => queryClient.invalidateQueries({ queryKey: ROOT_KEY }),
@@ -124,13 +137,20 @@ export function notificationsCache(queryClient: QueryClient) {
         session,
         update: (count) => Math.max(count - unread.length, 0),
       });
-      if (!loaded.some(Boolean)) refreshIn(session);
+      const lastCountDown = unread.length
+        ? store.trackCountDown(confirmation)
+        : () => false;
+      if (!loaded.some(Boolean)) void refreshIn(session);
       try {
         await confirmation;
       } catch (error) {
-        refreshIn(session);
+        await refreshIn(session);
         throw error;
       }
+      // Count loads before confirmation may have counted these reads twice (in
+      // flight) or not at all (started later). Refetched only once no other
+      // read's count-down is pending, since the refetch would undo it.
+      if (lastCountDown()) await refreshIn(session, UNREAD_COUNT_KEY);
     },
 
     markCachedReadByContent: (
@@ -178,6 +198,7 @@ export function notificationsCache(queryClient: QueryClient) {
         confirmation,
       });
       store.writeUnreadCount({ session, update: () => 0 });
+      store.trackCountDown(confirmation);
 
       try {
         await confirmation;
@@ -192,12 +213,12 @@ export function notificationsCache(queryClient: QueryClient) {
         });
         if (previousCount !== undefined)
           store.writeUnreadCount({ session, update: () => previousCount });
-        refreshIn(session);
+        await refreshIn(session);
         return;
       }
       // Rows that came due after the load stay unread, so the list and
       // count refetch to show them.
-      refreshIn(session);
+      await refreshIn(session);
     },
   };
 }
