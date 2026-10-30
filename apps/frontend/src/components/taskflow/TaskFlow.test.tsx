@@ -268,7 +268,7 @@ it("doesn't reopen on the task's page a flow left from the home card", async () 
   act(() => navigate("/actions/1"));
 
   expect(
-    await screen.findByRole("button", { name: taskFlow.begin }),
+    await screen.findByRole("button", { name: taskFlow.continue }),
   ).toBeTruthy();
   await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
   expect(
@@ -304,7 +304,7 @@ it("doesn't reopen a flow that unmounted without the member leaving the page", a
     fireEvent.click(screen.getByRole("button", { name: "Toggle panel" }));
 
     expect(
-      await screen.findByRole("button", { name: taskFlow.begin }),
+      await screen.findByRole("button", { name: taskFlow.continue }),
     ).toBeTruthy();
     await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
     expect(
@@ -347,7 +347,7 @@ it("starts closed on another action's page rather than carrying the flow over", 
   act(() => navigate("/actions/2"));
 
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-  expect(screen.getByRole("button", { name: taskFlow.begin })).toBeTruthy();
+  expect(screen.getByRole("button", { name: taskFlow.continue })).toBeTruthy();
 });
 
 const openWithdrawMenu = async (onAbandonAction: () => void = () => {}) => {

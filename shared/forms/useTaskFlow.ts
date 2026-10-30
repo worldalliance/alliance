@@ -58,6 +58,8 @@ export const TASK_FLOW_MODE_RULES: Record<
     /** The member can withdraw from the action. */
     withdraws: boolean;
     beginLabel: string;
+    /** The begin label once the member has started. */
+    resumeLabel: string;
     lastLabel: string;
   }
 > = {
@@ -66,6 +68,7 @@ export const TASK_FLOW_MODE_RULES: Record<
     readOnly: false,
     withdraws: true,
     beginLabel: taskFlow.begin,
+    resumeLabel: taskFlow.continue,
     lastLabel: taskFlow.submit,
   },
   [TaskFlowMode.Preview]: {
@@ -73,6 +76,7 @@ export const TASK_FLOW_MODE_RULES: Record<
     readOnly: false,
     withdraws: false,
     beginLabel: taskFlow.begin,
+    resumeLabel: taskFlow.continue,
     lastLabel: taskFlow.submit,
   },
   [TaskFlowMode.ReadOnly]: {
@@ -80,6 +84,7 @@ export const TASK_FLOW_MODE_RULES: Record<
     readOnly: true,
     withdraws: false,
     beginLabel: taskFlow.view,
+    resumeLabel: taskFlow.view,
     lastLabel: taskFlow.done,
   },
 };
@@ -416,7 +421,11 @@ export function useTaskFlow(params: {
     background,
     nextLabel: nextIndex !== null ? taskFlow.next : rules.lastLabel,
     startLabel: flowIndices.length === 0 ? rules.lastLabel : taskFlow.next,
-    beginLabel: rules.beginLabel,
+    beginLabel:
+      position.screenIndex !== null ||
+      form.currentPageIndex > (form.visiblePageIndices[0] ?? 0)
+        ? rules.resumeLabel
+        : rules.beginLabel,
     nextReady,
     progress,
     submittedAnswers,

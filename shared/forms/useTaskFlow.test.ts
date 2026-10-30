@@ -1,7 +1,7 @@
 import { act } from "@testing-library/react";
 import { taskFlow } from "../lib/copy";
 import { type SubmitOutcome } from "./submitOutcome";
-import { FlowStage } from "./useTaskFlow";
+import { FlowStage, TaskFlowMode } from "./useTaskFlow";
 import {
   header,
   input,
@@ -61,6 +61,32 @@ describe("useTaskFlow", () => {
     expect(hook.result.current.progress).toBeCloseTo(100 / 3);
     act(() => hook.result.current.back());
     expect(hook.result.current.progress).toBe(12.5);
+  });
+
+  it("reads Begin until the member has started, then Continue", () => {
+    expect(setup().hook.result.current.beginLabel).toBe(taskFlow.begin);
+    expect(setup({ savedScreen: 0 }).hook.result.current.beginLabel).toBe(
+      taskFlow.continue,
+    );
+    expect(setup({ currentPageIndex: 1 }).hook.result.current.beginLabel).toBe(
+      taskFlow.continue,
+    );
+  });
+
+  it("reads Begin on a form whose first page is hidden from this member", () => {
+    const { hook } = setup({
+      visiblePageIndices: [1, 2],
+      currentPageIndex: 1,
+    });
+    expect(hook.result.current.beginLabel).toBe(taskFlow.begin);
+  });
+
+  it("reads View task on a read-only task the member has started", () => {
+    const { hook } = setup({
+      mode: TaskFlowMode.ReadOnly,
+      currentPageIndex: 1,
+    });
+    expect(hook.result.current.beginLabel).toBe(taskFlow.view);
   });
 
   it("resumes on the saved screen", () => {
