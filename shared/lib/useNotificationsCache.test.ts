@@ -3,6 +3,7 @@ import { NotificationDto } from "@alliance/shared/client";
 import { QueryClient } from "@tanstack/react-query";
 import { queryKeys } from "./queryKeys";
 import { endSession } from "./sessionStores";
+import { makeNotification } from "./testFixtures";
 import { routes, serveApi, type RouteTable } from "./testing/serveApi";
 import { meCache } from "./useMe";
 import { notificationsCache } from "./useNotificationsCache";
@@ -17,24 +18,6 @@ const LOADED_AT_KEY = queryKeys.notificationsLoadedAt();
 const UNREAD_COUNT_KEY = queryKeys.notificationsUnreadCount();
 
 const api = serveApi(routes({}));
-
-const notification = (
-  overrides: Pick<NotificationDto, "id"> & Partial<NotificationDto>,
-): NotificationDto => ({
-  category: "forum_reply",
-  message: "A reply",
-  priority: "low",
-  webAppLocation: "/",
-  mobileAppLocation: null,
-  readAt: null,
-  createdAt: SENT,
-  updatedAt: SENT,
-  sendTime: SENT,
-  associatedUsers: [],
-  sourceType: "unread_content",
-  contentType: "forum_reply",
-  ...overrides,
-});
 
 const listed = (headers: Record<string, string>) => ({
   "GET /notifs": () => Response.json([], { headers }),
@@ -130,7 +113,7 @@ it("marks all read with no bound when no load time was kept", async () => {
 it("marks the cached list read and refetches it and the unread count", async () => {
   api.throwingOnRefusal(readAll);
   const queryClient = new QueryClient();
-  queryClient.setQueryData(LIST_KEY, [notification({ id: 1 })]);
+  queryClient.setQueryData(LIST_KEY, [makeNotification({ id: 1 })]);
   queryClient.setQueryData(UNREAD_COUNT_KEY, 1);
   await notificationsCache(queryClient).markAllRead();
   expect(
@@ -146,7 +129,7 @@ it("restores the lists and unread count when marking all read fails", async () =
     "POST /notifs/read-all": () => new Response(null, { status: 500 }),
   });
   const queryClient = new QueryClient();
-  const list = [notification({ id: 1 }), notification({ id: 2 })];
+  const list = [makeNotification({ id: 1 }), makeNotification({ id: 2 })];
   queryClient.setQueryData(LIST_KEY, list);
   queryClient.setQueryData(PAGE_KEY, list.slice(0, 1));
   queryClient.setQueryData(UNREAD_COUNT_KEY, 1);
@@ -161,7 +144,7 @@ it("refetches the unread count it had not cached when marking all read fails", a
     "POST /notifs/read-all": () => new Response(null, { status: 500 }),
   });
   const queryClient = new QueryClient();
-  queryClient.setQueryData(LIST_KEY, [notification({ id: 1 })]);
+  queryClient.setQueryData(LIST_KEY, [makeNotification({ id: 1 })]);
   await notificationsCache(queryClient).markAllRead();
   expect(queryClient.getQueryState(LIST_KEY)?.isInvalidated).toBe(false);
   expect(queryClient.getQueryState(UNREAD_COUNT_KEY)?.isInvalidated).toBe(true);
@@ -170,9 +153,9 @@ it("refetches the unread count it had not cached when marking all read fails", a
 it("marks the cached notifications for the read content, and only those", () => {
   const queryClient = new QueryClient();
   queryClient.setQueryData<NotificationDto[]>(LIST_KEY, [
-    notification({ id: 1, contentId: 10 }),
-    notification({ id: 2, contentId: 11 }),
-    notification({ id: 3, contentId: 10, contentType: "action_update" }),
+    makeNotification({ id: 1, contentId: 10 }),
+    makeNotification({ id: 2, contentId: 11 }),
+    makeNotification({ id: 3, contentId: 10, contentType: "action_update" }),
   ]);
 
   notificationsCache(queryClient).markCachedReadByContent("forum_reply", [10]);
@@ -230,7 +213,7 @@ it("refetches the list and unread count and rejects when a read is refused", asy
   });
   const queryClient = new QueryClient();
   queryClient.setQueryData<NotificationDto[]>(LIST_KEY, [
-    notification({ id: 1 }),
+    makeNotification({ id: 1 }),
   ]);
   queryClient.setQueryData<number>(UNREAD_COUNT_KEY, 1);
 
@@ -261,8 +244,8 @@ it("refetches after every read has finished when one is refused", async () => {
   });
   const queryClient = new QueryClient();
   queryClient.setQueryData<NotificationDto[]>(LIST_KEY, [
-    notification({ id: 1 }),
-    notification({ id: 2 }),
+    makeNotification({ id: 1 }),
+    makeNotification({ id: 2 }),
   ]);
 
   const marked = notificationsCache(queryClient).markRead([
@@ -282,10 +265,10 @@ it("marks the given notifications read and counts down only those that were unre
   api.throwingOnRefusal(read);
   const queryClient = new QueryClient();
   queryClient.setQueryData<NotificationDto[]>(LIST_KEY, [
-    notification({ id: 1 }),
-    notification({ id: 2, readAt: SENT }),
-    notification({ id: 3 }),
-    notification({ id: 1, sourceType: "notification" }),
+    makeNotification({ id: 1 }),
+    makeNotification({ id: 2, readAt: SENT }),
+    makeNotification({ id: 3 }),
+    makeNotification({ id: 1, sourceType: "notification" }),
   ]);
   queryClient.setQueryData<number>(UNREAD_COUNT_KEY, 5);
 
@@ -308,8 +291,8 @@ it("leaves an uncached unread count uncached", async () => {
   api.throwingOnRefusal(read);
   const queryClient = new QueryClient();
   queryClient.setQueryData<NotificationDto[]>(LIST_KEY, [
-    notification({ id: 1 }),
-    notification({ id: 2 }),
+    makeNotification({ id: 1 }),
+    makeNotification({ id: 2 }),
   ]);
 
   await notificationsCache(queryClient).markRead([
@@ -323,11 +306,11 @@ it("marks a notification read in every cached list and counts it down once", asy
   api.throwingOnRefusal(read);
   const queryClient = new QueryClient();
   queryClient.setQueryData<NotificationDto[]>(LIST_KEY, [
-    notification({ id: 1 }),
-    notification({ id: 2 }),
+    makeNotification({ id: 1 }),
+    makeNotification({ id: 2 }),
   ]);
   queryClient.setQueryData<NotificationDto[]>(PAGE_KEY, [
-    notification({ id: 1 }),
+    makeNotification({ id: 1 }),
   ]);
   queryClient.setQueryData<number>(UNREAD_COUNT_KEY, 2);
 
@@ -374,7 +357,7 @@ it("refetches the list and unread count when the notification is not in the list
   api.throwingOnRefusal(read);
   const queryClient = new QueryClient();
   queryClient.setQueryData<NotificationDto[]>(LIST_KEY, [
-    notification({ id: 1 }),
+    makeNotification({ id: 1 }),
   ]);
   queryClient.setQueryData<number>(UNREAD_COUNT_KEY, 1);
 
@@ -410,7 +393,7 @@ it("drops a failed mark-all-read's restore after the session ends", async () => 
     },
   });
   const queryClient = new QueryClient();
-  queryClient.setQueryData(LIST_KEY, [notification({ id: 1 })]);
+  queryClient.setQueryData(LIST_KEY, [makeNotification({ id: 1 })]);
 
   const markedAll = notificationsCache(queryClient).markAllRead();
   await readAllSent;
@@ -424,7 +407,7 @@ it("drops a failed mark-all-read's restore after the session ends", async () => 
 it("sends no mark-all-read when the session ends while it cancels loads", async () => {
   api.throwingOnRefusal(readAll);
   const queryClient = new QueryClient();
-  queryClient.setQueryData(LIST_KEY, [notification({ id: 1 })]);
+  queryClient.setQueryData(LIST_KEY, [makeNotification({ id: 1 })]);
 
   const markedAll = notificationsCache(queryClient).markAllRead();
   meCache(queryClient).clear();
@@ -443,13 +426,13 @@ it("leaves a new session's lists alone when an old session's read is refused", a
     },
   });
   const queryClient = new QueryClient();
-  queryClient.setQueryData(LIST_KEY, [notification({ id: 1 })]);
+  queryClient.setQueryData(LIST_KEY, [makeNotification({ id: 1 })]);
 
   const marked = notificationsCache(queryClient)
     .markRead([{ id: 1, sourceType: "unread_content" }])
     .catch(() => {});
   endSession(queryClient);
-  queryClient.setQueryData(LIST_KEY, [notification({ id: 2 })]);
+  queryClient.setQueryData(LIST_KEY, [makeNotification({ id: 2 })]);
   releaseRefusal();
   await marked;
 
@@ -469,12 +452,12 @@ it("leaves a new session's lists alone when an old session's mark-all-read succe
     },
   });
   const queryClient = new QueryClient();
-  queryClient.setQueryData(LIST_KEY, [notification({ id: 1 })]);
+  queryClient.setQueryData(LIST_KEY, [makeNotification({ id: 1 })]);
 
   const markedAll = notificationsCache(queryClient).markAllRead();
   await readAllSent;
   endSession(queryClient);
-  queryClient.setQueryData(LIST_KEY, [notification({ id: 2 })]);
+  queryClient.setQueryData(LIST_KEY, [makeNotification({ id: 2 })]);
   releaseConfirmation();
   await markedAll;
 
