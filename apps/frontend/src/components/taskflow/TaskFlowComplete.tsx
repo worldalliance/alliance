@@ -50,7 +50,7 @@ export default function TaskFlowComplete({
     >
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className={cn(FLOW_COLUMN, "pt-12 pb-6")}>
-          <ModalTitle className="text-4xl text-white">
+          <ModalTitle className="text-4xl font-semibold text-white">
             {taskFlow.complete}
           </ModalTitle>
           <p className="mt-3 text-base text-white">{taskFlow.completeUpdate}</p>

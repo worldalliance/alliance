@@ -40,7 +40,11 @@ export default function TaskFlowComplete({
   return (
     <View className="flex-1 bg-green" style={{ paddingTop: insets.top }}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 48 }}>
-        <Text accessibilityRole="header" className="text-4xl text-white">
+        <Text
+          accessibilityRole="header"
+          className="text-4xl text-white"
+          weight={FontWeight.Semibold}
+        >
           {taskFlow.complete}
         </Text>
         <Text className="text-base text-white mt-3">
