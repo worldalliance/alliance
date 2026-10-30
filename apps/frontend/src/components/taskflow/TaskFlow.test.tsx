@@ -281,6 +281,19 @@ it("only closes on the tasks homepage from the completion card's View tasks", as
   expect(screen.queryByRole("dialog")).toBeNull();
 });
 
+it("goes straight to the invites page from the completion card, completing the task", async () => {
+  const onCompleteAction = jest.fn();
+  renderFlow({ onCompleteAction });
+  await submitFlow();
+
+  fireEvent.click(screen.getByRole("button", { name: taskFlow.inviteFriend }));
+
+  expect(screen.getByText("Invites")).toBeTruthy();
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(onCompleteAction).toHaveBeenCalledTimes(1);
+  expect(await screen.findByText("nav expanded")).toBeTruthy();
+});
+
 it("turns the nav back from green before the completion card shrinks away", async () => {
   renderFlow();
   await submitFlow();

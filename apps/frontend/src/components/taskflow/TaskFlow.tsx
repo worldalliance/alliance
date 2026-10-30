@@ -313,11 +313,7 @@ export default function TaskFlow({
                   : undefined,
               )
             }
-            onInvite={
-              isAuthenticated
-                ? () => void finish(() => navigate("/invites"))
-                : null
-            }
+            onInvite={isAuthenticated ? () => navigate(href("/invites")) : null}
           />
         );
       default:

@@ -4,6 +4,8 @@ export enum FlowButtonKind {
   Secondary = "secondary",
   /** The primary action on the green completion screen. */
   Inverse = "inverse",
+  /** The secondary action on the green completion screen. */
+  InverseSecondary = "inverseSecondary",
   Icon = "icon",
 }
 

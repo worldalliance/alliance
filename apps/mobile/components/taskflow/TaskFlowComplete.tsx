@@ -75,7 +75,7 @@ export default function TaskFlowComplete({
           iconLeft={ListTodo}
         />
         <FlowButton
-          kind={FlowButtonKind.Secondary}
+          kind={FlowButtonKind.InverseSecondary}
           onPress={onInvite}
           title={taskFlow.inviteFriend}
           iconLeft={UserPlus}

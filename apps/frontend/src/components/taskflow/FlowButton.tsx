@@ -22,6 +22,10 @@ const KINDS: Record<
     variant: BaseButtonVariant.White,
     className: "text-zinc-900",
   },
+  [FlowButtonKind.InverseSecondary]: {
+    variant: BaseButtonVariant.Black,
+    className: "bg-navy hover:bg-navy/90",
+  },
   [FlowButtonKind.Icon]: {
     variant: BaseButtonVariant.Grey,
     className:
