@@ -12,9 +12,16 @@ import { OutputRenderer } from "@alliance/sharedweb/forms/OutputRenderer";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { ModalTitle } from "@alliance/sharedweb/ui/Modal";
 import { ListTodo, UserPlus, X } from "lucide-react";
+import { useRef } from "react";
 import FlowButton, { FlowButtonKind } from "./FlowButton";
 import { flowMotion, REDUCED_MOTION, transition } from "./flowMotion";
 import { FLOW_COLUMN } from "./TaskFlowScreen";
+
+const KEEPS_OPEN = { "data-keeps-open": true };
+// `button` so the screen's own buttons don't also close it as a background tap.
+const KEEPS_OPEN_SELECTOR = "button, [data-keeps-open]";
+const keepsOpen = (target: EventTarget | null) =>
+  target instanceof Element && target.closest(KEEPS_OPEN_SELECTOR) !== null;
 
 export default function TaskFlowComplete({
   schema,
@@ -42,6 +49,7 @@ export default function TaskFlowComplete({
     user,
   });
   const location = formatUserLocationDisplayValue(userLocationDisplayValue);
+  const pressStartedInside = useRef(false);
 
   return (
     <div
@@ -51,18 +59,33 @@ export default function TaskFlowComplete({
         REDUCED_MOTION,
       )}
       style={{ transition: transition(flowMotion.recolor, "opacity") }}
+      onPointerDown={(event) => {
+        pressStartedInside.current = keepsOpen(event.target);
+      }}
+      onClick={(event) => {
+        // A drag that starts on the card and ends on the background is a text
+        // selection, not a dismissal.
+        if (pressStartedInside.current || keepsOpen(event.target)) return;
+        onClose();
+      }}
     >
       <div className="relative flex min-h-0 flex-1 flex-col">
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className={cn(FLOW_COLUMN, "pt-12 pb-12")}>
-            <ModalTitle className="text-4xl font-semibold text-white">
+            <ModalTitle
+              className="text-4xl font-semibold text-white"
+              {...KEEPS_OPEN}
+            >
               {taskFlow.complete}
             </ModalTitle>
-            <p className="mt-3 text-base text-white">
+            <p className="mt-3 text-base text-white" {...KEEPS_OPEN}>
               {taskFlow.completeUpdate}
             </p>
             {outputItems.length > 0 ? (
-              <div className="mt-6 flex flex-col gap-y-4 rounded-md bg-white p-6">
+              <div
+                className="mt-6 flex flex-col gap-y-4 rounded-md bg-white p-6"
+                {...KEEPS_OPEN}
+              >
                 {user ? (
                   <div className="flex items-center gap-x-3">
                     <AvatarProfile

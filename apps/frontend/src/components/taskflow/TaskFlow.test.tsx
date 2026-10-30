@@ -344,6 +344,8 @@ it("goes straight to the invites page from the completion card, completing the t
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(onCompleteAction).toHaveBeenCalledTimes(1);
   expect(await screen.findByText("nav expanded")).toBeTruthy();
+  // The background's close handler didn't also carry the member to /tasks.
+  expect(screen.getByText(/^at \/invites /)).toBeTruthy();
 });
 
 it("hides the member's answers card on completion without an output view", async () => {
@@ -367,6 +369,52 @@ it("shows the member's answers card on completion from the output view", async (
   await submitFlow();
   expect(screen.getByText(testAuthUser.name)).toBeTruthy();
   expect(screen.getByText("First impression")).toBeTruthy();
+});
+
+it("closes the completion screen on a tap on its background, not its content", async () => {
+  const onCompleteAction = jest.fn();
+  setServedSchema({
+    ...taskSchema,
+    outputViews: [
+      {
+        type: "default",
+        id: "v1",
+        blocks: [{ id: "b1", fieldId: "a", showLabel: true }],
+      },
+    ],
+  });
+  renderFlow({ onCompleteAction, path: "/tasks" });
+  await submitFlow();
+
+  fireEvent.click(screen.getByRole("heading", { name: taskFlow.complete }));
+  fireEvent.click(screen.getByText(taskFlow.completeUpdate));
+  fireEvent.click(screen.getByText(testAuthUser.name));
+  await act(() => new Promise((resolve) => setTimeout(resolve, CLOSE_TIMEOUT)));
+  expect(onCompleteAction).not.toHaveBeenCalled();
+
+  const background = screen
+    .getByText(taskFlow.completeUpdate)
+    .closest(".bg-green");
+  if (!background) throw new Error("completion text has no green background");
+  fireEvent.click(background);
+  await waitFor(() => expect(onCompleteAction).toHaveBeenCalledTimes(1), {
+    timeout: CLOSE_TIMEOUT,
+  });
+});
+
+it("keeps the completion screen open when a selection drag ends on it", async () => {
+  const onCompleteAction = jest.fn();
+  renderFlow({ onCompleteAction, path: "/tasks" });
+  await submitFlow();
+
+  const title = screen.getByRole("heading", { name: taskFlow.complete });
+  const background = title.closest(".bg-green");
+  if (!background) throw new Error("completion text has no green background");
+  fireEvent.pointerDown(title);
+  fireEvent.click(background);
+
+  await act(() => new Promise((resolve) => setTimeout(resolve, CLOSE_TIMEOUT)));
+  expect(onCompleteAction).not.toHaveBeenCalled();
 });
 
 it("turns the nav back from green before the completion card shrinks away", async () => {
