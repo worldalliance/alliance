@@ -8,7 +8,7 @@ import {
   symlinkSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fixtureGit } from "./fixture-git";
 
 const LIB = join(import.meta.dir, "worktree-paths.sh");
@@ -67,4 +67,22 @@ test("a working directory deleted out from under the caller fails loudly", () =>
   expect(result.status).toBe(1);
   expect(result.stderr).toContain("cannot resolve the current directory");
   expect(result.stdout).not.toContain("returned");
+});
+
+test("a checkout git cannot read fails naming that checkout", () => {
+  const result = spawnSync(
+    "bash",
+    [
+      "-c",
+      `set -euo pipefail; repo_root="${root}"; source "${LIB}"; echo "sourced"`,
+    ],
+    {
+      encoding: "utf8",
+      env: { ...process.env, GIT_CEILING_DIRECTORIES: dirname(root) },
+    },
+  );
+
+  expect(result.status).not.toBe(0);
+  expect(result.stderr).toContain(`cannot find the Git directory of ${root}`);
+  expect(result.stdout).not.toContain("sourced");
 });

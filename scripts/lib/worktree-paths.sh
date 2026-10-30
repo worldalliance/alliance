@@ -4,7 +4,8 @@
 
 die() { echo "error: $*" >&2; exit 1; }
 
-git_common_dir="$(git -C "$repo_root" rev-parse --path-format=absolute --git-common-dir)"
+git_common_dir="$(git -C "$repo_root" rev-parse --path-format=absolute --git-common-dir)" ||
+  die "cannot find the Git directory of $repo_root"
 main_root="$(cd "$(dirname "$git_common_dir")" && pwd)"
 worktree_root="$(dirname "$main_root")"
 
