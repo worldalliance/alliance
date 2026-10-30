@@ -50,7 +50,7 @@ function ActionPagePanel() {
   );
 }
 
-it("opens the project background, then screens of at most two questions", async () => {
+it("opens the project background, then one screen per page", async () => {
   renderFlow();
 
   fireEvent.click(await screen.findByRole("button", { name: taskFlow.begin }));
@@ -379,7 +379,7 @@ it("closes the flow and forgets its screen when the member withdraws", async () 
   await waitFor(() => expect(onAbandonAction).toHaveBeenCalledTimes(1));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(await screen.findByText("nav expanded")).toBeTruthy();
-  expect(window.localStorage.getItem("taskflow-screen:9")).toBeNull();
+  expect(window.localStorage.getItem("taskflow-step:9")).toBeNull();
 });
 
 it("closes only the withdraw menu when Escape dismisses it", async () => {

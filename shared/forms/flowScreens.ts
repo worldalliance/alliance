@@ -12,81 +12,26 @@ import { resolveDisplayBlockForUser } from "../formrenderer";
 import { taskFlowFallbackTitle } from "../lib/copy";
 import { type FormVisibility } from "../useFormRenderer";
 
-const MAX_INPUTS_PER_SCREEN = 2;
-
-const isHeader = (element: PageItem) =>
+const isHeader = (element: PageItem): element is HeaderBlock =>
   !isQuestionField(element) && element.kind === "header";
 
 export type FlowScreen = {
   pageIndex: number;
-  /** The header the screen opens with, or continues from when the input cap split it. */
+  /** The page's first header block, shown as the screen's title. */
   heading: HeaderBlock | null;
   elements: PageItem[];
 };
 
-/**
- * Splits each page into screens of the full-screen task flow: a new screen at
- * every page and every header block, and at most two inputs per screen.
- * Blocks after a screen's last allowed input move on with the next input,
- * since they introduce it. Headers stacked directly under a screen's opening
- * header stay on that screen, and headers that end a page join the page's
- * last screen, so no header is lost.
- */
+/** One screen of the full-screen task flow per form page. */
 export function buildFlowScreens(schema: FormSchema): FlowScreen[] {
-  const screens: FlowScreen[] = [];
-
-  schema.pages.forEach((page, pageIndex) => {
-    let heading: HeaderBlock | null = null;
-    let current: PageItem[] = [];
-    let inputs = 0;
-    let carried: PageItem[] = [];
-
-    const flush = () => {
-      if (current.length > 0) {
-        screens.push({ pageIndex, heading, elements: current });
-      }
-      current = [];
-      inputs = 0;
+  return schema.pages.map((page, pageIndex) => {
+    const heading = page.fields.find(isHeader) ?? null;
+    return {
+      pageIndex,
+      heading,
+      elements: page.fields.filter((element) => element !== heading),
     };
-
-    for (const element of page.fields) {
-      if (isQuestionField(element)) {
-        if (inputs === MAX_INPUTS_PER_SCREEN) {
-          flush();
-          current = carried;
-          carried = [];
-        }
-        current.push(element);
-        inputs += 1;
-      } else if (element.kind === "header") {
-        if (heading !== null && current.every(isHeader)) {
-          current.push(element);
-          continue;
-        }
-        current.push(...carried);
-        carried = [];
-        flush();
-        heading = element;
-      } else if (inputs === MAX_INPUTS_PER_SCREEN) {
-        carried.push(element);
-      } else {
-        current.push(element);
-      }
-    }
-    current.push(...carried);
-    if (heading !== null && current.every(isHeader)) {
-      const last = screens.at(-1);
-      if (last?.pageIndex === pageIndex) {
-        last.elements.push(heading, ...current);
-        current = [];
-      } else if (current.length === 0) {
-        screens.push({ pageIndex, heading, elements: [] });
-      }
-    }
-    flush();
   });
-
-  return screens;
 }
 
 export function visibleFlowScreenIndices(params: {
@@ -166,7 +111,7 @@ export function flowScreenTitle(params: {
 }
 
 export const missingHeaderWarning = (screen: FlowScreen, title: string) =>
-  `Task flow: a screen on page ${screen.pageIndex + 1} has no header (first element: ${screen.elements[0]?.id}), so it shows "${title}". Open it with a level-1 header in active voice.`;
+  `Task flow: page ${screen.pageIndex + 1} has no header (first element: ${screen.elements[0]?.id}), so it shows "${title}". Open it with a level-1 header in active voice.`;
 
 const IS_MEDIA: Record<DisplayKind, boolean> = {
   header: false,

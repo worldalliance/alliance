@@ -40,11 +40,12 @@ export const text = (id: string): DisplayBlock => ({
   text: id,
 });
 
-// Screens: 0 background, 1 "h" with a and b, 2 "h" with c.
+// Screens: 0 background, 1 "h" with a and b, 2 "h2" with c.
 export const schema: FormSchema = {
   pages: [
     { id: "p1", fields: [text("intro")] },
-    { id: "p2", fields: [header("h"), input("a"), input("b"), input("c")] },
+    { id: "p2", fields: [header("h"), input("a"), input("b")] },
+    { id: "p3", fields: [header("h2"), input("c")] },
   ],
   outputViews: [],
 };
@@ -77,7 +78,7 @@ function flowParams(overrides: Overrides = {}) {
   };
   const form: TaskFlowFormState = {
     schema: overrides.schema ?? schema,
-    visiblePageIndices: overrides.visiblePageIndices ?? [0, 1],
+    visiblePageIndices: overrides.visiblePageIndices ?? [0, 1, 2],
     isElementCurrentlyVisible: () => true,
     visibilitySettled: overrides.visibilitySettled ?? true,
     validateFieldValue: (_field, value) => (value ? null : "Required"),

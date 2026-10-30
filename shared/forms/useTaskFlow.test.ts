@@ -51,6 +51,25 @@ describe("useTaskFlow", () => {
     ]);
   });
 
+  it("keeps the background page's blocks in the order the author wrote them", () => {
+    const { hook } = setup({
+      schema: {
+        pages: [
+          { id: "p1", fields: [text("intro"), header("watch"), text("after")] },
+          { id: "p2", fields: [header("h"), input("a")] },
+        ],
+        outputViews: [],
+      },
+      visiblePageIndices: [0, 1],
+    });
+    act(() => hook.result.current.begin());
+    expect(hook.result.current.background).toEqual([
+      text("intro"),
+      header("watch"),
+      text("after"),
+    ]);
+  });
+
   it("goes back from the first question screen to the background page", async () => {
     const { hook, saved } = setup();
     act(() => hook.result.current.begin());

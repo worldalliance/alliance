@@ -61,6 +61,17 @@ export const taskSchema = {
         },
         textInput("a", "First impression", true),
         textInput("b", "Tone"),
+      ],
+    },
+    {
+      id: "p3",
+      fields: [
+        {
+          id: "h2",
+          type: "display",
+          kind: "header",
+          text: "Rate the chatbot",
+        },
         textInput("c", "Anything else"),
       ],
     },
@@ -246,4 +257,4 @@ export const submissionCount = () => submissions;
 export const storedDraftKeys = () =>
   Array.from({ length: window.localStorage.length }, (_, i) =>
     window.localStorage.key(i),
-  ).filter((key) => !key?.startsWith("taskflow-screen:"));
+  ).filter((key) => !key?.startsWith("taskflow-step:"));

@@ -17,7 +17,7 @@ function memoryStorage(initial: Record<string, string> = {}) {
 
 describe("useFlowPosition", () => {
   it("restores the screen saved for the same form version", async () => {
-    const { storage } = memoryStorage({ "taskflow-screen:7": "3:2" });
+    const { storage } = memoryStorage({ "taskflow-step:7": "3:2" });
     const { result } = renderHook(() =>
       useFlowPosition({ taskFormId: 7, formSnapshotId: 3, storage }),
     );
@@ -26,7 +26,7 @@ describe("useFlowPosition", () => {
   });
 
   it("ignores a screen saved for another form version", async () => {
-    const { storage } = memoryStorage({ "taskflow-screen:7": "2:4" });
+    const { storage } = memoryStorage({ "taskflow-step:7": "2:4" });
     const { result } = renderHook(() =>
       useFlowPosition({ taskFormId: 7, formSnapshotId: 3, storage }),
     );
@@ -35,7 +35,7 @@ describe("useFlowPosition", () => {
   });
 
   it("forgets the previous form's screen when the form changes", async () => {
-    const { storage } = memoryStorage({ "taskflow-screen:7": "3:2" });
+    const { storage } = memoryStorage({ "taskflow-step:7": "3:2" });
     const { result, rerender } = renderHook(
       ({ taskFormId }) =>
         useFlowPosition({ taskFormId, formSnapshotId: 3, storage }),
@@ -50,7 +50,7 @@ describe("useFlowPosition", () => {
 
   it("keeps a screen saved while the stored one is still loading", async () => {
     let release: () => void = () => {};
-    const { storage } = memoryStorage({ "taskflow-screen:7": "3:2" });
+    const { storage } = memoryStorage({ "taskflow-step:7": "3:2" });
     const slow: FlowPositionStorage = {
       ...storage,
       getItem: (key) =>
@@ -75,9 +75,9 @@ describe("useFlowPosition", () => {
     await waitFor(() => expect(result.current.loaded).toBe(true));
     act(() => result.current.save(5));
     expect(result.current.screenIndex).toBe(5);
-    await waitFor(() => expect(items.get("taskflow-screen:7")).toBe("3:5"));
+    await waitFor(() => expect(items.get("taskflow-step:7")).toBe("3:5"));
     act(() => result.current.clear());
     expect(result.current.screenIndex).toBeNull();
-    await waitFor(() => expect(items.has("taskflow-screen:7")).toBe(false));
+    await waitFor(() => expect(items.has("taskflow-step:7")).toBe(false));
   });
 });

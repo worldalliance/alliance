@@ -177,10 +177,7 @@ export function useTaskFlow(params: {
   const backgroundScreen =
     backgroundIndex === null ? null : screens[backgroundIndex];
   const background = backgroundScreen
-    ? [
-        ...(backgroundScreen.heading ? [backgroundScreen.heading] : []),
-        ...backgroundScreen.elements,
-      ]
+    ? form.schema.pages[backgroundScreen.pageIndex].fields
     : [];
 
   const screen = screens[screenIndex];
