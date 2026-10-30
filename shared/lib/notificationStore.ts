@@ -91,6 +91,7 @@ function createNotificationStore(queryClient: QueryClient) {
     subscribe: store.subscribe,
     getState: store.getState,
     get: (key: string) => store.getState().entities[key]?.notification,
+    unread: () => all().filter((notification) => !notification.readAt),
     receive,
     clear: () => {
       countDowns = new Set();

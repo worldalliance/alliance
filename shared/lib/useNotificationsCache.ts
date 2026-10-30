@@ -44,6 +44,14 @@ const readWhere =
       ? { ...notification, readAt }
       : undefined;
 
+// Mirrors setReadAll (notification-inbox.service.ts), which marks rows sent and
+// created through the cutoff's millisecond.
+const isThroughCutoff =
+  (loadedAt: string | null) => (notification: NotificationDto) =>
+    loadedAt === null ||
+    (Date.parse(notification.sendTime) <= Date.parse(loadedAt) &&
+      Date.parse(notification.createdAt) <= Date.parse(loadedAt));
+
 export function notificationsCache(queryClient: QueryClient) {
   const store = notificationStore(queryClient);
   // A count load in flight may hold a stale decrement, and invalidation alone
@@ -198,10 +206,16 @@ export function notificationsCache(queryClient: QueryClient) {
       });
       const marked = store.write({
         session,
-        change: readWhere(() => true, readAt),
+        change: readWhere(isThroughCutoff(loadedAt), readAt),
         confirmation,
       });
-      store.writeUnreadCount({ session, update: () => 0 });
+      // Unread rows past the cutoff stay unread; the refetch adds any not
+      // loaded. Read-all only lowers the count, and the store may hold stale
+      // unread rows.
+      store.writeUnreadCount({
+        session,
+        update: (count) => Math.min(count, store.unread().length),
+      });
       store.trackCountDown(confirmation);
 
       try {
