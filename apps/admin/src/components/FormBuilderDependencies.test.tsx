@@ -217,7 +217,7 @@ describe("FormBuilder dependency links", () => {
   it("says when the form lacks the question a link names", async () => {
     renderSavedFormBuilder(1, "/?select=gone");
     expect(
-      await screen.findByText('This form has no question "gone"'),
+      await screen.findByText('This form has no element "gone"'),
     ).toBeTruthy();
     expect(heading()).toBe("Page settings");
   });

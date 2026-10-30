@@ -40,7 +40,8 @@ export function useFormInputs({
   });
 
   const visibilityContext = useVisibilityContext(schema, {
-    enabled: !!user,
+    enabled: !!user || adminPreviewUserId !== undefined,
+    previewUserId: adminPreviewUserId,
   });
 
   const visibilityValidators = useVisibilityValidatorResults({

@@ -28,6 +28,7 @@ import { FormRowAssignmentService } from "./form-row-assignment.service";
 import { FormSubmissionValidationService } from "./form-submission-validation.service";
 import { FormSubmissionService } from "./form-submission.service";
 import { FormSnapshotModule } from "./formsnapshot.module";
+import { MemberVisibilityService } from "./member-visibility.service";
 import { TasksController } from "./tasks.controller";
 import { TasksService } from "./tasks.service";
 
@@ -63,6 +64,7 @@ import { TasksService } from "./tasks.service";
     FormResponseQueryService,
     FormProfileAnswersService,
     FormSubmissionValidationService,
+    MemberVisibilityService,
     FormResponseWriterService,
     FormSubmissionService,
     FormDraftService,

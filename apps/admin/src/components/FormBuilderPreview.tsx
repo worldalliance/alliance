@@ -1,13 +1,13 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { rowLabel, schemaForRow } from "@alliance/common/forms/row-list";
 import { cn } from "@alliance/shared/styles/util";
-import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
 import { useMemo, useState } from "react";
 import { FORM_BUILDER_PREVIEW_USER } from "../lib/testData";
 import { useUsersAdmin } from "../lib/useUsersAdmin";
-import { PreviewBoundary } from "./form-canvas/ElementBoundary";
+import { MemberFormRenderer } from "./MemberFormRenderer";
 import { PreviewAsUserBar } from "./PreviewAsUserBar";
 import { inputText } from "./VariableSamples";
+import { VisibilityProfilePicker } from "./VisibilityProfilePicker";
 
 export function FormBuilderPreview({
   schema,
@@ -25,6 +25,14 @@ export function FormBuilderPreview({
     () => previewUsersQuery.data ?? [],
     [previewUsersQuery.data],
   );
+  const memberIds = useMemo(
+    () =>
+      previewUsers
+        .filter((user) => user.hasActiveContract)
+        .map((user) => user.id),
+    [previewUsers],
+  );
+  const [cardPick, setCardPick] = useState<number | null>(null);
   const isLoadingPreviewUsers = previewUsersQuery.isLoading;
   const previewUserError = previewUsersQuery.isLoadingError
     ? "Could not load users"
@@ -39,9 +47,9 @@ export function FormBuilderPreview({
     return match ?? FORM_BUILDER_PREVIEW_USER;
   }, [previewUserId, previewUsers]);
   const resolvedPreviewUserId =
-    previewUserId === "preview"
+    resolvedPreviewUser === FORM_BUILDER_PREVIEW_USER
       ? "preview"
-      : (resolvedPreviewUser?.id ?? "preview");
+      : resolvedPreviewUser.id;
 
   const [rowIndex, setRowIndex] = useState(0);
   const list = schema.rowList;
@@ -54,6 +62,18 @@ export function FormBuilderPreview({
 
   return (
     <div className="max-w-3xl mx-auto bg-white p-6">
+      <div className="mb-4">
+        <VisibilityProfilePicker
+          schema={schema}
+          userIds={memberIds}
+          selectedUserId={cardPick === resolvedPreviewUserId ? cardPick : null}
+          onSelect={(userId) => {
+            setCardPick(userId);
+            setPreviewUserId(String(userId));
+          }}
+          collapsible
+        />
+      </div>
       <PreviewAsUserBar
         previewUserId={previewUserId}
         setPreviewUserId={setPreviewUserId}
@@ -77,22 +97,12 @@ export function FormBuilderPreview({
           </select>
         </label>
       )}
-      <PreviewBoundary resetKeys={[previewSchema, resolvedPreviewUserId]}>
-        <FormRenderer
-          key={resolvedPreviewUserId}
-          id={0}
-          formSnapshotId={null}
-          actionId={0}
-          form={previewSchema}
-          onSubmit={null}
-          renderFormAsCompleted={false}
-          userId={resolvedPreviewUserId}
-          user={resolvedPreviewUser}
-          adminPreviewUserId={resolvedPreviewUserId}
-          showVariableError
-          initialPageIndex={pageIndex}
-        />
-      </PreviewBoundary>
+      <MemberFormRenderer
+        schema={previewSchema}
+        previewUserId={resolvedPreviewUserId}
+        user={resolvedPreviewUser}
+        initialPageIndex={pageIndex}
+      />
     </div>
   );
 }

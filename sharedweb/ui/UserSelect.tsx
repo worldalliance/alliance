@@ -153,6 +153,7 @@ const UserSelect: React.FC<UserSelectProps> = ({
             <button
               type="button"
               onClick={() => removeUser(user.id)}
+              aria-label={`Remove ${user.name ?? `User #${user.id}`}`}
               className="text-xs text-red-600 hover:text-red-700 flex-shrink-0 ml-1"
             >
               ✕

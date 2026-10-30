@@ -133,6 +133,8 @@ export const queryKeys = {
   myReusableInvites: () => ["shareUrlsMyInvites"] as const,
   inviteMessageTemplate: () => ["shareUrlsInviteMessageTemplate"] as const,
   myVisibilityContext: () => ["userMyVisibilityContext"] as const,
+  userVisibilityContextAdmin: (userId: number) =>
+    ["userVisibilityContextAdmin", userId] as const,
   /** Prefixes the lists, unread count and load time, so invalidating it
    * invalidates them all. */
   notifications: () => ["notifications"] as const,
@@ -212,6 +214,7 @@ export const queryKeys = {
   clustersAdmin: () => ["clusterListAdmin"] as const,
   cohortEvaluationAdmin: (expression: CohortExpression | null) =>
     ["actionsEvaluateCohortAdmin", expression] as const,
+  spellcheckerAdmin: () => ["spellcheckerAdmin"] as const,
   communitiesAdmin: () => ["communityGetCommunitiesAdmin"] as const,
   communityMemberInfoAdminAll,
   communityMemberInfoAdmin: (communityId: number | null) =>

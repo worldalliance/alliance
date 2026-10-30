@@ -1,0 +1,60 @@
+import { TZDate } from "@date-fns/tz";
+import {
+  addDays,
+  addHours,
+  addMinutes,
+  formatDuration,
+  set,
+  startOfHour,
+} from "date-fns";
+import {
+  millisecondsInDay,
+  millisecondsInHour,
+  millisecondsInMinute,
+} from "date-fns/constants";
+
+import { LAUNCH_TIME_ZONE } from "../../lib/launchTimeZone";
+
+const MIN_LEAD_MINUTES = 30;
+
+export type LaunchSchedule = { memberActionAt: Date; officeActionAt: Date };
+
+export function defaultLaunchSchedule(now: Date): LaunchSchedule {
+  const earliest = new TZDate(
+    addMinutes(now, MIN_LEAD_MINUTES),
+    LAUNCH_TIME_ZONE,
+  );
+  const sevenPm = set(new TZDate(now, LAUNCH_TIME_ZONE), {
+    hours: 19,
+    minutes: 0,
+    seconds: 0,
+    milliseconds: 0,
+  });
+  const onTheHour = startOfHour(earliest);
+  const memberActionAt =
+    sevenPm >= earliest
+      ? sevenPm
+      : onTheHour.getTime() === earliest.getTime()
+        ? onTheHour
+        : addHours(onTheHour, 1);
+  const officeActionAt = set(addDays(memberActionAt, 7), {
+    hours: 23,
+    minutes: 59,
+    seconds: 0,
+    milliseconds: 0,
+  });
+  return {
+    memberActionAt: new Date(memberActionAt.getTime()),
+    officeActionAt: new Date(officeActionAt.getTime()),
+  };
+}
+
+export function completionTime(schedule: LaunchSchedule): string {
+  const ms =
+    schedule.officeActionAt.getTime() - schedule.memberActionAt.getTime();
+  return formatDuration({
+    days: Math.floor(ms / millisecondsInDay),
+    hours: Math.floor((ms % millisecondsInDay) / millisecondsInHour),
+    minutes: Math.floor((ms % millisecondsInHour) / millisecondsInMinute),
+  });
+}

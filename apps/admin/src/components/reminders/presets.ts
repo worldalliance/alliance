@@ -149,3 +149,23 @@ export const reminderPresets: Record<ReminderPresetName, ReminderPreset> = {
     excludePreviouslyNotified: false,
   },
 };
+
+const defaultDeadlinePresets: ReminderPresetName[] = [
+  "Two Day Range",
+  "One Day Range",
+  "Three Hour",
+  "Missed Deadline",
+  "Group Leads 3 days",
+  "Group Leads 2 days",
+];
+
+export const defaultReminderBodies = (params: {
+  suiteId: number;
+  hasDeadline: boolean;
+}): CreateReminderGroupDto[] =>
+  (
+    [
+      "Announcement",
+      ...(params.hasDeadline ? defaultDeadlinePresets : []),
+    ] satisfies ReminderPresetName[]
+  ).map((preset) => ({ suiteId: params.suiteId, ...reminderPresets[preset] }));

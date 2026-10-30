@@ -6,6 +6,7 @@ import {
   DependentEntryKind,
   dependentsOf,
   dependentsOutside,
+  findPlace,
   findQuestion,
   groupDependents,
   sourcesOf,
@@ -66,6 +67,25 @@ const pages: Page[] = [
 ];
 
 describe("formDependencies", () => {
+  it("finds a page or any element by id, questions or not", () => {
+    expect(findPlace(pages, "p2")).toEqual({
+      kind: PlaceKind.Page,
+      pageIndex: 1,
+    });
+    expect(findPlace(pages, "list")).toEqual({
+      kind: PlaceKind.Element,
+      pageIndex: 0,
+      index: 1,
+    });
+    expect(findPlace(pages, "sub2")).toEqual({
+      kind: PlaceKind.SubField,
+      pageIndex: 0,
+      index: 1,
+      subIndex: 1,
+    });
+    expect(findPlace(pages, "gone")).toBeNull();
+  });
+
   it("finds top-level and list questions", () => {
     expect(findQuestion(pages, "a")).toEqual({
       kind: PlaceKind.Element,

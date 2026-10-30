@@ -38,7 +38,7 @@ export type CreateEventFormProps = {
     }
 );
 
-const defaultEventNames: Record<ActionStatus, string> = {
+export const defaultEventNames: Record<ActionStatus, string> = {
   draft: "Draft",
   office_action: "Office taking action",
   member_action: "Members taking action",

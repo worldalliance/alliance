@@ -6,6 +6,7 @@ import {
 } from "./form-schema";
 import {
   conditionFieldReference,
+  isAccountDerivedConditionKind,
   type Condition,
   type VisibleIfFormula,
 } from "./visible-if-formula";
@@ -132,4 +133,22 @@ export function collectSourceFormIds(schema: FormSchema): number[] {
     if (sourceFormId != null) ids.add(sourceFormId);
   });
   return Array.from(ids);
+}
+
+/**
+ * Each distinct condition whose verdict depends on who is filling the form out
+ * rather than on their answers: account state, a validator, or an answer to
+ * another form. In first-use order, so client and server index them alike.
+ */
+export function memberConditions(schema: FormSchema): Condition[] {
+  const byKey = new Map<string, Condition>();
+  forEachCondition(schema, (condition) => {
+    const memberDependent =
+      condition.kind === "validator" ||
+      isAccountDerivedConditionKind(condition.kind) ||
+      conditionFieldReference(condition)?.sourceFormId != null;
+    const key = JSON.stringify(condition);
+    if (memberDependent && !byKey.has(key)) byKey.set(key, condition);
+  });
+  return [...byKey.values()];
 }

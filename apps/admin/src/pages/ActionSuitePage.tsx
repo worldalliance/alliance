@@ -8,6 +8,7 @@ import ActionListCard from "../components/ActionListCard";
 import ActionTimeline from "../components/ActionTimeline";
 import GeneralUpdateCard from "../components/GeneralUpdateCard";
 import ActionRemindersTab from "../components/reminders/ActionRemindersTab";
+import { existingLaunchEvent } from "../components/suite-launch/launchBlockers";
 import SuiteEventList from "../components/SuiteEventList";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import {
@@ -100,6 +101,16 @@ const ActionSuitePage = () => {
         className="-m-6 mb-0"
         onReminderClick={handleHighlightReminder}
       />
+      {!existingLaunchEvent(suite.events) && (
+        <Button
+          color={ButtonColor.Green}
+          size="large"
+          className="w-full text-lg"
+          onClick={() => navigate(`/suites/${suiteId}/launch`)}
+        >
+          Begin launch process
+        </Button>
+      )}
       <SuiteEventList
         addToSuite={addEvent.mutateAsync}
         events={suite.events}

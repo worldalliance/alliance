@@ -4,6 +4,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { ensurePages, ensureSchemaViews } from "../lib/ensureFormSchema";
+import { usePreviewAsOnLoad } from "../lib/formEditorLink";
 import {
   collectFormIssues,
   indexIssues,
@@ -205,8 +206,11 @@ export function FormBuilder(props: FormBuilderProps) {
     onInvalid: showSaveIssues,
   });
   const [outputViewId, setOutputViewId] = useState<string | null>(null);
-  const [isPreviewMode, setIsPreviewMode] = useState(false);
-  const [previewUserId, setPreviewUserId] = useState<string>("preview");
+  const previewAsOnLoad = usePreviewAsOnLoad().current;
+  const [isPreviewMode, setIsPreviewMode] = useState(previewAsOnLoad !== null);
+  const [previewUserId, setPreviewUserId] = useState<string>(
+    previewAsOnLoad ?? "preview",
+  );
   const [jsonScope, setJsonScope] = useState<JsonScope | null>(null);
   const builderRef = useRef<HTMLDivElement | null>(null);
 
