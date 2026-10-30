@@ -79,6 +79,7 @@ describe("useTaskFlow", () => {
     expect(hook.result.current.stage).toBe(FlowStage.Screens);
     expect(hook.result.current.screenIndex).toBe(2);
     expect(hook.result.current.nextLabel).toBe(taskFlow.submit);
+    expect(hook.result.current.nextIsLast).toBe(true);
   });
 
   it("shows opening content whose questions are hidden as the background page", () => {

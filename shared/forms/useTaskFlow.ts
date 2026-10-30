@@ -398,7 +398,9 @@ export function useTaskFlow(params: {
       (backgroundIndex !== null || screenIndex !== flowIndices[0]),
     background,
     nextLabel: nextIndex !== null ? taskFlow.next : rules.lastLabel,
+    nextIsLast: nextIndex === null,
     startLabel: flowIndices.length === 0 ? rules.lastLabel : taskFlow.next,
+    startIsLast: flowIndices.length === 0,
     beginLabel:
       position.screenIndex !== null || form.currentPageIndex > 0
         ? rules.resumeLabel

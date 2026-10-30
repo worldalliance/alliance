@@ -6,6 +6,7 @@ import { taskFlow } from "@alliance/shared/lib/copy";
 import { FormElements } from "@alliance/sharedweb/forms/FormElements";
 import { type WebFormState } from "@alliance/sharedweb/forms/useWebFormState";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
+import { ArrowRight, Check } from "lucide-react";
 import FlowButton, { FlowButtonKind } from "./FlowButton";
 import { TaskFlowPage, TaskFlowTitle } from "./TaskFlowScreen";
 
@@ -15,6 +16,7 @@ export default function TaskFlowIntro({
   background,
   onNext,
   nextLabel,
+  nextIsLast,
   error,
 }: {
   action: ActionDto;
@@ -23,6 +25,7 @@ export default function TaskFlowIntro({
   background: PageItem[];
   onNext: () => void;
   nextLabel: string;
+  nextIsLast: boolean;
   error: string | null;
 }) {
   const { media, reading } = splitBackground(background);
@@ -38,6 +41,7 @@ export default function TaskFlowIntro({
             className="w-full"
             loading={form.submitting}
             onClick={onNext}
+            iconRight={nextIsLast ? Check : ArrowRight}
           >
             {nextLabel}
           </FlowButton>

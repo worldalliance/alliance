@@ -218,7 +218,7 @@ export const submitFlow = async () => {
     target: { value: "Helpful" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Next" }));
-  fireEvent.click(await screen.findByRole("button", { name: "Submit" }));
+  fireEvent.click(await screen.findByRole("button", { name: taskFlow.submit }));
   await screen.findByRole("heading", { name: taskFlow.complete });
 };
 

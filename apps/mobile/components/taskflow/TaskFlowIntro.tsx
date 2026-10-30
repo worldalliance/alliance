@@ -4,6 +4,7 @@ import { splitBackground } from "@alliance/shared/forms/flowScreens";
 import { FlowButtonKind } from "@alliance/shared/forms/flowStyle";
 import { taskFlowContributors } from "@alliance/shared/lib/actionTaskPanel";
 import { taskFlow } from "@alliance/shared/lib/copy";
+import { ArrowRight, Check } from "lucide-react-native";
 import { View } from "react-native";
 import { FormElements } from "../forms/FormElements";
 import { type MobileFormState } from "../forms/useMobileFormState";
@@ -18,6 +19,7 @@ export default function TaskFlowIntro({
   background,
   onNext,
   nextLabel,
+  nextIsLast,
   error,
 }: {
   action: ActionDto;
@@ -26,6 +28,7 @@ export default function TaskFlowIntro({
   background: PageItem[];
   onNext: () => void;
   nextLabel: string;
+  nextIsLast: boolean;
   error: string | null;
 }) {
   const { media, reading } = splitBackground(background);
@@ -41,6 +44,7 @@ export default function TaskFlowIntro({
             onPress={onNext}
             loading={form.submitting}
             title={nextLabel}
+            iconRight={nextIsLast ? Check : ArrowRight}
           />
         </>
       }

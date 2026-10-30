@@ -123,10 +123,10 @@ it("stays on the last screen with the error when the submit fails", async () => 
     target: { value: "Helpful" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Next" }));
-  fireEvent.click(await screen.findByRole("button", { name: "Submit" }));
+  fireEvent.click(await screen.findByRole("button", { name: taskFlow.submit }));
 
   expect(await screen.findByText("Failed to submit action.")).toBeTruthy();
-  expect(screen.getByRole("button", { name: "Submit" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: taskFlow.submit })).toBeTruthy();
   expect(screen.queryByRole("heading", { name: taskFlow.complete })).toBeNull();
   expect(onCompleteAction).not.toHaveBeenCalled();
 });
@@ -153,7 +153,7 @@ it("stays open while the submit is in flight", async () => {
     target: { value: "Helpful" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Next" }));
-  fireEvent.click(await screen.findByRole("button", { name: "Submit" }));
+  fireEvent.click(await screen.findByRole("button", { name: taskFlow.submit }));
 
   const close = screen.getByRole("button", { name: taskFlow.closeTask });
   await waitFor(() => expect(close).toHaveProperty("disabled", true));
@@ -238,7 +238,7 @@ it("completes the action when the member leaves through the nav mid-submit", asy
     target: { value: "Helpful" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Next" }));
-  fireEvent.click(await screen.findByRole("button", { name: "Submit" }));
+  fireEvent.click(await screen.findByRole("button", { name: taskFlow.submit }));
   const close = screen.getByRole("button", { name: taskFlow.closeTask });
   await waitFor(() => expect(close).toHaveProperty("disabled", true));
 
