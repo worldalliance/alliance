@@ -29,7 +29,8 @@ if [[ ! -f "$DUMP_FILE" ]]; then
   exit 1
 fi
 
-# Optionally reset local DB, keeping its comment.
+# Optionally reset local DB. Its comment carries over: in a worktree it names the
+# record that owns the database, and rm-worktree.sh keeps a database without it.
 if [[ "$RESET_LOCAL_DB" == "1" ]]; then
   echo "==> Dropping & recreating local DB: ${LOCAL_DB_NAME} on ${LOCAL_PGHOST}:${LOCAL_PGPORT}"
   PGPASSWORD="${LOCAL_PGPASSWORD:-}" \

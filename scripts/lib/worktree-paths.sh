@@ -20,9 +20,19 @@ is_current_checkout() {
   [[ "$here" == "$1" || "$here" == "$1"/* ]]
 }
 
-refuse_unremovable() {
+refuse_current_checkout() {
   ! is_current_checkout "$1" ||
     die "$1 is the checkout you are working in, and this removal would delete it from under you. Report this rather than working around it."
+}
+
+# Not grep -q: exiting on the first match can SIGPIPE git, and pipefail would
+# then report a match as a miss.
+branch_checked_out() {
+  git -C "$main_root" worktree list --porcelain | grep -xF "branch refs/heads/$1" >/dev/null
+}
+
+refuse_unremovable() {
+  refuse_current_checkout "$1"
   ! worktree_locked "$1" ||
     die "$1 is locked — 'git -C $main_root worktree unlock $1' first if you really mean to remove it"
 }

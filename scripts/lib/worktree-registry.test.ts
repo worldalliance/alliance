@@ -68,6 +68,7 @@ test("a dashed name's databases take underscores", () => {
 test.each([
   ["parent", OTHER_ID],
   ["branch_added", "1"],
+  ["branch_from", "a".repeat(40)],
   ["dir_added", "1"],
 ])("%s=%s passes", (field, value) => {
   expect(problemAfter(`set_record_field ${ID} ${field} '${value}'`)).toBe("");
@@ -91,6 +92,7 @@ test.each([
   ["branch", "", "has an invalid branch"],
   ["branch_created", "2", "has an invalid branch_created"],
   ["branch_added", "0", "has an invalid branch_added"],
+  ["branch_from", "main", "has an invalid branch_from"],
   ["dir_added", "yes", "has an invalid dir_added"],
   ["slot", "x", "has an invalid slot"],
 ])("%s=%s is refused", (field, value, problem) => {

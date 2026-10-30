@@ -45,4 +45,4 @@ Origin: user.
 
 Origin: user.
 
-- Produce a specification only. Write implementation code when requested separately.
+- Implement the specified behavior in `scripts/new-worktree.sh`, `scripts/rm-worktree.sh`, and their documentation, with automated tests for the acceptance checks.

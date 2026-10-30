@@ -13,6 +13,10 @@ registry_lock="$registry/lock"
 
 valid_id() { [[ "$1" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]; }
 
+# A checkout's record id lives in its Git admin directory, beyond git clean's
+# reach. Prints nothing for a directory that is not a worktree of this repository.
+instance_file() { ! is_our_worktree "$1" || echo "$(admin_dir_of "$1")/alliance-instance"; }
+
 record_field() {
   local file="$instances/$1/record"
   [[ -f "$file" ]] || return 0
@@ -89,6 +93,7 @@ record_problem() {
   valid_branch "$(record_field "$id" branch)" || { echo "has an invalid branch"; return 0; }
   [[ "$(record_field "$id" branch_created)" =~ ^[01]$ ]] || { echo "has an invalid branch_created"; return 0; }
   [[ "$(record_field "$id" branch_added)" =~ ^1?$ ]] || { echo "has an invalid branch_added"; return 0; }
+  [[ "$(record_field "$id" branch_from)" =~ ^([0-9a-f]{40}|[0-9a-f]{64})?$ ]] || { echo "has an invalid branch_from"; return 0; }
   [[ "$(record_field "$id" dir_added)" =~ ^1?$ ]] || { echo "has an invalid dir_added"; return 0; }
   [[ "$(record_field "$id" slot)" =~ ^[0-9]+$ ]] || { echo "has an invalid slot"; return 0; }
 }

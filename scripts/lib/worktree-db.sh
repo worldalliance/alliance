@@ -29,6 +29,23 @@ load_main_db_settings() {
     die "cannot reach postgres at $db_host:$db_port as $db_user (credentials from $source_env)"
 }
 
+# The database comment marking a database as owned by record $1.
+db_owner_tag() { echo "alliance-worktree:$1"; }
+
+# Creation makes each database under this name, or it with _test appended, which
+# only record $1 derives, and renames it once tagged.
+staging_db_for() { echo "alliance_wt_${1//-/}"; }
+
 db_exists() {
   [[ "$(psql "${psql_args[@]}" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$1'")" == 1 ]]
+}
+
+# Prints "absent" or "comment:<comment>". Callers pass names derived from a
+# valid worktree name or record id, which need no quoting.
+db_comment() {
+  local row
+  row="$(psql -X "${psql_args[@]}" -d postgres -tAc \
+    "SELECT 'comment:' || coalesce(shobj_description(oid, 'pg_database'), '') FROM pg_database WHERE datname='$1'")" ||
+    return 1
+  echo "${row:-absent}"
 }

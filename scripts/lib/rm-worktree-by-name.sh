@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Removes a worktree by name, finding its databases in its own .worktree/.
-# Source after worktree-db.sh.
+# Removes a worktree created before worktree records by name, finding its
+# databases in its own .worktree/. Source after worktree-db.sh.
 
 remove_worktree_by_name() {
   local name="$1" worktree_dir worktree_ports worktree_env db_name test_db_name branch db
@@ -10,6 +10,9 @@ remove_worktree_by_name() {
 
   is_our_worktree "$worktree_dir" ||
     die "$worktree_dir is not a worktree of $main_root, so it will not be removed"
+
+  [[ ! -f "$(instance_file "$worktree_dir")" ]] ||
+    die "$worktree_dir has a record id in $(instance_file "$worktree_dir"), but no worktree record matches it, so what it owns is unknown. Report this rather than working around it."
 
   refuse_unremovable "$worktree_dir"
 
