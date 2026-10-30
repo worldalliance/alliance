@@ -22,6 +22,7 @@ import {
 } from "@testing-library/react";
 import { useState, type ReactNode } from "react";
 import { useLocation } from "react-router";
+import { testAuthUser } from "../../stories/testData";
 import ActionTaskPanelForm from "../ActionTaskPanelForm";
 import { CardMenuSlotContext } from "./CardMenuSlot";
 import {
@@ -343,6 +344,29 @@ it("goes straight to the invites page from the completion card, completing the t
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(onCompleteAction).toHaveBeenCalledTimes(1);
   expect(await screen.findByText("nav expanded")).toBeTruthy();
+});
+
+it("hides the member's answers card on completion without an output view", async () => {
+  renderFlow();
+  await submitFlow();
+  expect(screen.queryByText(testAuthUser.name)).toBeNull();
+});
+
+it("shows the member's answers card on completion from the output view", async () => {
+  setServedSchema({
+    ...taskSchema,
+    outputViews: [
+      {
+        type: "default",
+        id: "v1",
+        blocks: [{ id: "b1", fieldId: "a", showLabel: true }],
+      },
+    ],
+  });
+  renderFlow();
+  await submitFlow();
+  expect(screen.getByText(testAuthUser.name)).toBeTruthy();
+  expect(screen.getByText("First impression")).toBeTruthy();
 });
 
 it("turns the nav back from green before the completion card shrinks away", async () => {
