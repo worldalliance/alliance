@@ -18,7 +18,12 @@ import {
   useTaskFlowReturn,
 } from "@alliance/shared/lib/TaskFlowReturnContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router, useIsFocused, useLocalSearchParams } from "expo-router";
+import {
+  router,
+  useIsFocused,
+  useLocalSearchParams,
+  usePathname,
+} from "expo-router";
 import { ArrowRight } from "lucide-react-native";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Modal, useWindowDimensions, View } from "react-native";
@@ -114,6 +119,7 @@ export default function TaskFlow({
     onExit: () => void close(),
   });
   const isFocused = useIsFocused();
+  const pathname = usePathname();
   const { id: pageActionId } = useLocalSearchParams<{ id?: string }>();
   const onTaskPage = pageActionId === String(action.id);
   const { leaveTask } = useTaskFlowReturn();
@@ -245,7 +251,11 @@ export default function TaskFlow({
               schema={form.schema}
               answers={flow.submittedAnswers ?? {}}
               user={user}
-              onClose={() => void finish()}
+              onClose={() =>
+                void finish(
+                  pathname === "/" ? undefined : () => router.navigate("/"),
+                )
+              }
               onInvite={() => void finish(() => router.push("/invites"))}
             />
           </Animated.View>

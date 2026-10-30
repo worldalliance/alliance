@@ -11,6 +11,7 @@ import { useOutputItems } from "@alliance/shared/useOutputItems";
 import { OutputRenderer } from "@alliance/sharedweb/forms/OutputRenderer";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { ModalTitle } from "@alliance/sharedweb/ui/Modal";
+import { ListTodo, UserPlus } from "lucide-react";
 import FlowButton, { FlowButtonKind } from "./FlowButton";
 import { flowMotion, REDUCED_MOTION, transition } from "./flowMotion";
 import { FLOW_COLUMN } from "./TaskFlowScreen";
@@ -78,11 +79,19 @@ export default function TaskFlowComplete({
         </div>
       </div>
       <div className={cn(FLOW_COLUMN, "flex flex-col gap-y-3 py-4")}>
-        <FlowButton kind={FlowButtonKind.Inverse} onClick={onClose}>
-          {taskFlow.closeTask}
+        <FlowButton
+          kind={FlowButtonKind.Inverse}
+          onClick={onClose}
+          iconLeft={ListTodo}
+        >
+          {taskFlow.viewTasks}
         </FlowButton>
         {onInvite ? (
-          <FlowButton kind={FlowButtonKind.Secondary} onClick={onInvite}>
+          <FlowButton
+            kind={FlowButtonKind.Secondary}
+            onClick={onInvite}
+            iconLeft={UserPlus}
+          >
             {taskFlow.inviteFriend}
           </FlowButton>
         ) : null}

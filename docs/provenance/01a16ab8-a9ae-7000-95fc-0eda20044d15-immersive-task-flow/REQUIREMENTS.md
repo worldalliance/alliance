@@ -18,7 +18,7 @@ task: Immersive full-screen, multi-step task flow on mobile and web, mapped from
 - From the designs:
   - content screens with an X close button, a large title, body, Back/Next buttons, and a progress bar (at the top, per TN-1 in task-flow-testing-fall-26)
   - Next is disabled until the screen's required inputs are filled
-  - a green "Task complete!" screen with the member's response card and "Close task"
+  - a green "Task complete!" screen with the member's response card and "View tasks" (renamed from "Close task" by TN-11 in task-flow-testing-fall-26)
 
 - The "Task complete!" screen's second button is "Invite a friend", opening the invites page, in place of the design's "Explore upcoming projects".
 - "Begin" opens a "Project background" page (that is its H1), not a summary page. It shows the contributors, then the form's opening videos and images, then its opening text, with Next and the progress bar. It does not repeat what the action page already shows: no task title, description, tags, time pills or participant progress bar. A task with no opening content skips this page.
@@ -33,7 +33,7 @@ task: Immersive full-screen, multi-step task flow on mobile and web, mapped from
 
 - The flow's progress bar animates smoothly between steps.
 - The "Task complete" page's subheader is exactly "We'll share a progress update on this project with all members in the coming weeks." There is no thank-you sentence before it.
-- The "Task complete" page stays up until the member presses "Close task" or "Invite a friend". It never closes on its own.
+- The "Task complete" page stays up until the member presses "View tasks" or "Invite a friend". It never closes on its own.
 - Exiting a task partway and tapping "Continue" returns the member to the screen they left.
 
 - Following a link out of the flow to another app page (such as the forum) closes the flow popup automatically. There is no "Return to task" button on any platform.
@@ -43,7 +43,7 @@ task: Immersive full-screen, multi-step task flow on mobile and web, mapped from
 - The web app gets the same flow, built after mobile and matching its behaviour: the background page, screens, completion card, resume, pinned accordion titles and the animated progress bar.
 - On web, opening the flow is a transition, not an overlay. The side nav animates down to its icons only. The top bar's search and notifications icons disappear; the profile button stays. The Alliance logo stays in the upper left, and no stroke line crosses it. The grey top band gets a stroke matching the collapsed nav. The flow reaches the right edge of the window, with no strip beside its scrollbar. The task's container (on the homepage, the task card) expands to fill the screen beside the collapsed nav.
 - On web, the whole window is green while the "Task complete!" screen shows: the collapsed nav and the top band as well as the flow.
-- On web, "Close task" on the "Task complete!" screen plays smoothly and quickly, in this order: the screen, nav and top band return to their default colours; the panel collapses into the task's container; the nav, top bar and everything else return to normal.
+- On web, "View tasks" on the "Task complete!" screen plays smoothly and quickly, in this order: the screen, nav and top band return to their default colours; the panel collapses into the task's container; the nav, top bar and everything else return to normal.
 - On web, every animation in the flow uses an ease-out-quart curve over 200ms, except the panel opening out of the task's container, which uses ease-out-quart over 350ms.
 - The flow's close (✕) and withdraw (…) buttons are filled light grey circles on web, as they are on mobile, and line up with the screen's text.
 - The flow meets professional design standards and is consistent with itself. Buttons share one treatment: none has a stroke where its neighbours don't.

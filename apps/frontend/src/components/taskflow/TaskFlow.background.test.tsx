@@ -101,7 +101,7 @@ function PanelShowingItsSubmission() {
 it("opens a task just submitted through the flow on its project background", async () => {
   renderFlow({ page: <PanelShowingItsSubmission /> });
   await submitFlow();
-  fireEvent.click(screen.getByRole("button", { name: taskFlow.closeTask }));
+  fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
 
   await screen.findByRole(
     "button",

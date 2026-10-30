@@ -189,6 +189,12 @@ export function renderFlow({
                       <Route path="/actions/1" element={pageElement} />
                       <Route path="/actions/2" element={pageElement} />
                       <Route path="/" element={pageElement} />
+                      <Route
+                        path="/tasks"
+                        element={
+                          path === "/tasks" ? pageElement : <p>Tasks home</p>
+                        }
+                      />
                       <Route path="/forum" element={<p>Forum</p>} />
                     </Routes>
                   </NavbarOptionsProvider>

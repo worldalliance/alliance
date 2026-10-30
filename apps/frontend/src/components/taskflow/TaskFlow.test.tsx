@@ -177,7 +177,7 @@ it("completes the action only once the member closes the completion card", async
     "completed",
   );
 
-  fireEvent.click(screen.getByRole("button", { name: taskFlow.closeTask }));
+  fireEvent.click(screen.getByRole("button", { name: taskFlow.viewTasks }));
 
   await waitFor(() => expect(onCompleteAction).toHaveBeenCalledTimes(1), {
     timeout: CLOSE_TIMEOUT,
@@ -199,7 +199,7 @@ it("keeps the completion card up when a refetch reports the action completed", a
   expect(screen.getByRole("heading", { name: taskFlow.complete })).toBeTruthy();
   expect(screen.queryByText("Completed panel")).toBeNull();
 
-  fireEvent.click(screen.getByRole("button", { name: taskFlow.closeTask }));
+  fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
   expect(
     await screen.findByText("Completed panel", {}, { timeout: CLOSE_TIMEOUT }),
   ).toBeTruthy();
@@ -255,12 +255,38 @@ it("completes the action when the member leaves through the nav mid-submit", asy
   expect(screen.queryByRole("dialog")).toBeNull();
 });
 
+it("goes to the tasks homepage from the completion card's View tasks", async () => {
+  const onCompleteAction = jest.fn();
+  renderFlow({ onCompleteAction });
+  await submitFlow();
+
+  fireEvent.click(screen.getByRole("button", { name: taskFlow.viewTasks }));
+
+  expect(
+    await screen.findByText("Tasks home", {}, { timeout: CLOSE_TIMEOUT }),
+  ).toBeTruthy();
+  expect(onCompleteAction).toHaveBeenCalledTimes(1);
+});
+
+it("only closes on the tasks homepage from the completion card's View tasks", async () => {
+  const onCompleteAction = jest.fn();
+  renderFlow({ onCompleteAction, path: "/tasks" });
+  await submitFlow();
+
+  fireEvent.click(screen.getByRole("button", { name: taskFlow.viewTasks }));
+
+  await waitFor(() => expect(onCompleteAction).toHaveBeenCalledTimes(1), {
+    timeout: CLOSE_TIMEOUT,
+  });
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
+
 it("turns the nav back from green before the completion card shrinks away", async () => {
   renderFlow();
   await submitFlow();
   expect(screen.getByText("nav green")).toBeTruthy();
 
-  fireEvent.click(screen.getByRole("button", { name: taskFlow.closeTask }));
+  fireEvent.click(screen.getByRole("button", { name: taskFlow.viewTasks }));
 
   expect(await screen.findByText("nav plain")).toBeTruthy();
   expect(screen.getByText("nav collapsed")).toBeTruthy();

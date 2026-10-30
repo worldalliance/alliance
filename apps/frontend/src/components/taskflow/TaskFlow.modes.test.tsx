@@ -105,7 +105,7 @@ it("shows a guest the completion card before completing a public task and redire
       screen.getByText(taskFlow.completeUpdate).nextElementSibling,
     ).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: taskFlow.closeTask }));
+    fireEvent.click(screen.getByRole("button", { name: taskFlow.viewTasks }));
     await waitFor(() => expect(onCompleteAction).toHaveBeenCalledTimes(1), {
       timeout: CLOSE_TIMEOUT,
     });
