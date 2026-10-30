@@ -148,7 +148,8 @@ function mailOutcome(status: EmailStatus): SendOutcome {
     case EmailStatus.Pending:
       return {
         status: WaitlistEmailRecipientStatus.Failed,
-        error: "Mail delivery is off on this server",
+        error:
+          "Mail delivery is off on this server, or the address accepts no mail",
         stopsRun: false,
       };
     default:

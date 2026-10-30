@@ -23,7 +23,7 @@ Always read the generated SQL before committing. The generator gets renames wron
 
 The bar is that it runs against prod, not that it survives every value the column's type allows. A branch for a shape no row holds never runs.
 
-Check the shapes against real data: `scripts/load_staging_data.sh` loads staging, a pii-pruned copy of prod, into the local db. `scripts/sync_prod_to_staging.sh` is what prunes it.
+Check the shapes against real data: `scripts/load_staging_data.sh` loads staging, a pii-pruned copy of prod, into the local db. `scripts/anonymize/anonymize.sql`, run by `scripts/sync_prod_to_staging.sh`, is what prunes it.
 
 ## Hand edits
 

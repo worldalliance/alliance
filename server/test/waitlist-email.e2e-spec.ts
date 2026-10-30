@@ -718,7 +718,7 @@ describe("Waitlist email admin (e2e)", () => {
         [WaitlistEmailRecipientStatus.Failed, "550 mailbox unavailable"],
         [
           WaitlistEmailRecipientStatus.Failed,
-          "Mail delivery is off on this server",
+          "Mail delivery is off on this server, or the address accepts no mail",
         ],
         [WaitlistEmailRecipientStatus.Uncertain, "Timeout"],
         [WaitlistEmailRecipientStatus.Pending, null],
@@ -729,7 +729,7 @@ describe("Waitlist email admin (e2e)", () => {
         [WaitlistEmailRecipientStatus.Uncertain, "Timeout"],
         [
           WaitlistEmailRecipientStatus.Failed,
-          "Mail delivery is off on this server",
+          "Mail delivery is off on this server, or the address accepts no mail",
         ],
       ]);
       expect(
@@ -1132,7 +1132,7 @@ describe("Waitlist email admin (e2e)", () => {
       const entry = await saveEntry();
       const res = await sendTest({ entryId: entry.id }).expect(502);
       expect(res.body.message).toBe(
-        "The test email failed: Mail delivery is off on this server",
+        "The test email failed: Mail delivery is off on this server, or the address accepts no mail",
       );
     });
 
