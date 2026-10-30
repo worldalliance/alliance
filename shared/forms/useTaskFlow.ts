@@ -209,13 +209,28 @@ export function useTaskFlow(params: {
           form.validateFieldValue(field, form.effectiveFormData[field.id]) ===
             null,
       ));
-  const progress = flowProgress({
-    visibleIndices,
-    screenIndex:
-      stage === FlowStage.Background && backgroundIndex !== null
-        ? backgroundIndex
-        : screenIndex,
-  });
+  // Set on each move rather than derived, so answering doesn't move the bar.
+  const [progress, setProgress] = useState(0);
+  const showProgressAt = (index: number, { forward }: { forward: boolean }) => {
+    // Before visibility settles the step list is still missing pages, and a
+    // share written from it would stick; the effect below writes it instead.
+    if (!form.visibilitySettled) return;
+    const reached = flowProgress({ visibleIndices, screenIndex: index });
+    setProgress((shown) => (forward ? Math.max(shown, reached) : reached));
+  };
+
+  useEffect(() => {
+    if (!form.visibilitySettled || !IS_OPEN[stage]) return;
+    setProgress(
+      flowProgress({
+        visibleIndices,
+        screenIndex:
+          stage === FlowStage.Background
+            ? (backgroundIndex ?? screenIndex)
+            : screenIndex,
+      }),
+    );
+  }, [form.visibilitySettled]);
 
   // Back and close count as moves, so a step awaited before them doesn't
   // carry the member anywhere afterwards.
@@ -225,16 +240,18 @@ export function useTaskFlow(params: {
     setStage(FlowStage.Closed);
   }, []);
 
-  const goTo = (index: number) => {
+  const goTo = (index: number, { forward }: { forward: boolean }) => {
     setScreenIndex(index);
     form.setCurrentPageIndex(screens[index].pageIndex);
     position.save(index);
+    showProgressAt(index, { forward });
     setStage(FlowStage.Screens);
   };
 
   const showBackground = () => {
     if (backgroundIndex === null) return;
     position.save(backgroundIndex);
+    showProgressAt(backgroundIndex, { forward: false });
     setStage(FlowStage.Background);
   };
 
@@ -269,7 +286,7 @@ export function useTaskFlow(params: {
       const invalidScreen = flowIndices.find(
         (i) => screens[i].pageIndex === outcome.firstInvalidPageIndex,
       );
-      if (invalidScreen !== undefined) goTo(invalidScreen);
+      if (invalidScreen !== undefined) goTo(invalidScreen, { forward: true });
     } finally {
       setSubmitting(false);
     }
@@ -295,7 +312,7 @@ export function useTaskFlow(params: {
         pageIndex: form.currentPageIndex,
       });
       if (resumeAt === null) await submit();
-      else goTo(resumeAt);
+      else goTo(resumeAt, { forward: true });
     });
 
   /** Opens the flow where the member left off; it never submits on its own. */
@@ -313,7 +330,7 @@ export function useTaskFlow(params: {
       (visibleIndices.includes(saved) || !form.visibilitySettled)
     ) {
       if (saved === backgroundIndex) showBackground();
-      else goTo(saved);
+      else goTo(saved, { forward: false });
       return;
     }
     // The draft's page may not show as visible yet either, and the fallback
@@ -338,7 +355,7 @@ export function useTaskFlow(params: {
       console.error("Task flow has no visible screen to open");
       return;
     }
-    goTo(resumeAt);
+    goTo(resumeAt, { forward: false });
   };
 
   const [beginOnSettle, setBeginOnSettle] = useState(false);
@@ -350,7 +367,7 @@ export function useTaskFlow(params: {
 
   const back = () => {
     moves.current += 1;
-    if (previousIndex !== null) goTo(previousIndex);
+    if (previousIndex !== null) goTo(previousIndex, { forward: false });
     else if (backgroundScreen) showBackground();
     else onExit();
   };
@@ -375,7 +392,7 @@ export function useTaskFlow(params: {
             pageIndex: form.currentPageIndex,
           })
         : getFallbackVisiblePageIndex(flowIndices, screenIndex);
-    if (fallback !== null) goTo(fallback);
+    if (fallback !== null) goTo(fallback, { forward: true });
     else if (backgroundScreen) showBackground();
     else onExit();
   }, [stranded]);
@@ -388,7 +405,7 @@ export function useTaskFlow(params: {
       }
       if (moves.current !== since) return;
       if (nextIndex === null) await submit();
-      else goTo(nextIndex);
+      else goTo(nextIndex, { forward: true });
     });
 
   return {

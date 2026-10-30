@@ -228,8 +228,8 @@ describe("flowResumeIndex", () => {
 });
 
 describe("flowProgress", () => {
-  it("counts the current screen as reached", () => {
-    expect(flowProgress({ visibleIndices: [0, 2, 3, 5], screenIndex: 2 })).toBe(
+  it("counts the screens finished before the current one", () => {
+    expect(flowProgress({ visibleIndices: [0, 2, 3, 5], screenIndex: 3 })).toBe(
       50,
     );
   });

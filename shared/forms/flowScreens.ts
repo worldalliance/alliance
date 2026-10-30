@@ -94,14 +94,15 @@ export function flowResumeIndex(params: {
   );
 }
 
+/** The share of visible screens finished before `screenIndex`, so it fills only on completion. */
 export function flowProgress(params: {
   visibleIndices: number[];
   screenIndex: number;
 }): number {
   const { visibleIndices, screenIndex } = params;
   if (visibleIndices.length === 0) return 0;
-  const reached = visibleIndices.filter((i) => i <= screenIndex).length;
-  return (reached / visibleIndices.length) * 100;
+  const finished = visibleIndices.filter((i) => i < screenIndex).length;
+  return (finished / visibleIndices.length) * 100;
 }
 
 /** The screen's opening header, or a generic title when it has none showing. */
