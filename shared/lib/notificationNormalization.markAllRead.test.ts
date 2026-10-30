@@ -41,6 +41,26 @@ it("keeps mark-all-read in a list load that starts before the server confirms it
   await markedAll;
 });
 
+it("keeps mark-all-read's count in a count load that starts before the server confirms it", async () => {
+  const { client } = queryWrapper();
+  seedNotifications({ client, notifications: [makeNotification({ id: 1 })] });
+  client.setQueryData(queryKeys.notificationsUnreadCount(), 1);
+  const confirmation = held();
+  api.readAllResponse = () => confirmation.until(accepted());
+  const cache = notificationsCache(client);
+
+  const markedAll = cache.markAllRead();
+  await waitFor(() =>
+    expect(client.getQueryData(queryKeys.notificationsUnreadCount())).toBe(0),
+  );
+
+  expect(await client.fetchQuery({ ...cache.unreadCount, staleTime: 0 })).toBe(
+    0,
+  );
+  confirmation.release();
+  await markedAll;
+});
+
 it("marks read only what the server marks when marking all read", async () => {
   const { client } = queryWrapper();
   seedNotifications({
@@ -102,6 +122,40 @@ it("never raises the count when marking all read", async () => {
   );
 
   expect(client.getQueryData(queryKeys.notificationsUnreadCount())).toBe(1);
+  confirmation.release();
+  await markedAll;
+});
+
+it("counts down a read past the cutoff made while mark-all-read is pending", async () => {
+  const { client } = queryWrapper();
+  seedNotifications({
+    client,
+    notifications: [makeNotification({ id: 1 })],
+    limit: 20,
+    loadedAt: LOADED_AT,
+  });
+  seedNotifications({
+    client,
+    notifications: [
+      makeNotification({ id: 2, sendTime: AFTER_LOAD, createdAt: AFTER_LOAD }),
+      makeNotification({ id: 1 }),
+    ],
+  });
+  client.setQueryData(queryKeys.notificationsUnreadCount(), 2);
+  api.counted = () => Response.json({ unreadCount: 1 });
+  const confirmation = held();
+  api.readAllResponse = () => confirmation.until(accepted());
+  const cache = notificationsCache(client);
+
+  const markedAll = cache.markAllRead(20);
+  await waitFor(() =>
+    expect(client.getQueryData(queryKeys.notificationsUnreadCount())).toBe(1),
+  );
+  await cache.markRead([makeNotification({ id: 2 })]);
+
+  expect(await client.fetchQuery({ ...cache.unreadCount, staleTime: 0 })).toBe(
+    0,
+  );
   confirmation.release();
   await markedAll;
 });

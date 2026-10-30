@@ -143,6 +143,7 @@ export function notificationsCache(queryClient: QueryClient) {
         ),
         confirmation,
       });
+      // Not replayed over later loads: a decrement is not idempotent.
       store.writeUnreadCount({
         session,
         update: (count) => Math.max(count - unread.length, 0),
@@ -211,10 +212,13 @@ export function notificationsCache(queryClient: QueryClient) {
       });
       // Unread rows past the cutoff stay unread; the refetch adds any not
       // loaded. Read-all only lowers the count, and the store may hold stale
-      // unread rows.
+      // unread rows. Counted when applied, so reads made meanwhile count down,
+      // and one made during a count load counts twice until the count
+      // refetches; this breaks sessionLoads' commute rule.
       store.writeUnreadCount({
         session,
         update: (count) => Math.min(count, store.unread().length),
+        confirmation,
       });
       store.trackCountDown(confirmation);
 

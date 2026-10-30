@@ -152,9 +152,10 @@ function createNotificationStore(queryClient: QueryClient) {
     writeUnreadCount: (params: {
       session: number;
       update: (count: number) => number;
+      confirmation?: Promise<unknown>;
     }) => {
       if (params.session !== currentSession(queryClient)) return;
-      counts.write(params.update);
+      counts.write(params.update, params.confirmation);
       queryClient.setQueryData<number>(
         queryKeys.notificationsUnreadCount(),
         (count) => (count === undefined ? undefined : params.update(count)),

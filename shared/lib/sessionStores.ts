@@ -60,7 +60,9 @@ const applying =
  * A write with a confirmation also replays over loads that start before the
  * confirmation settles. Such a load may read the write, and writes made after
  * it, from the server, so the update must be idempotent and commute with later
- * writes until the confirmation settles. The confirmation rejects when the
+ * writes until the confirmation settles. One that does not commute shows a
+ * wrong value until the query refetches, so a caller breaks this only where a
+ * refetch follows, and says so at the write. The confirmation rejects when the
  * server refuses the write, and a refused write stops applying to every load.
  * Loads in flight apply writes in the order they were made.
  */

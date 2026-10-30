@@ -13,6 +13,30 @@ import {
 
 const api = serveNotifications();
 
+it("doesn't count down a read again in a count load that starts before the read is confirmed", async () => {
+  const { client } = queryWrapper();
+  seedNotifications({
+    client,
+    notifications: [makeNotification({ id: 1 }), makeNotification({ id: 2 })],
+  });
+  client.setQueryData(queryKeys.notificationsUnreadCount(), 2);
+  const confirmation = held();
+  api.readResponse = () => confirmation.until(accepted());
+
+  const marked = notificationsCache(client).markRead([
+    makeNotification({ id: 1 }),
+  ]);
+  api.counted = () => Response.json({ unreadCount: 1 });
+  const count = await client.fetchQuery({
+    ...notificationsCache(client).unreadCount,
+    staleTime: 0,
+  });
+
+  expect(count).toBe(1);
+  confirmation.release();
+  await marked;
+});
+
 it("takes the server's count after a read it may have counted down twice", async () => {
   const { client, wrapper } = queryWrapper();
   seedNotifications({
