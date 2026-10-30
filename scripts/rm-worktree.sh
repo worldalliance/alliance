@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Removes a worktree created by scripts/new-worktree.sh, with everything it
-# owns: its checkout, its databases, its port slot, and the branch the script
-# created for it.
+# Removes worktrees created by scripts/new-worktree.sh, with everything each
+# one owns: its checkout, its databases, its port slot, and the branch the
+# script created for it. A worktree's children, and theirs, go before it.
 #
 # Removal is destructive and asks nothing. It discards staged, unstaged,
 # untracked and ignored files, local database changes, and created branches
@@ -10,11 +10,12 @@
 # never made. Remote branches and pull requests are never touched. Stop the
 # agents and dev servers running in those worktrees first.
 #
-# Usage: scripts/rm-worktree.sh <name>
+# Usage: scripts/rm-worktree.sh <name>   remove <name> and its descendants
 #        scripts/rm-worktree.sh --list
 #
-# What cannot be removed stays, and the run exits nonzero naming it. Rerunning
-# the same command once that is resolved finishes the job.
+# What cannot be removed stays, along with its ancestors, and the run exits
+# nonzero naming it. Independent worktrees are still removed. Rerunning the same
+# command once that is resolved finishes the job.
 #
 # Worktrees created before records are removed by name alone, and their
 # branch only when it is merged.
@@ -27,7 +28,8 @@
 #   autoload -Uz compinit && compinit
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Physical, like the worktree paths git reports that it is compared with.
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 
 # shellcheck source=scripts/lib/env-value.sh
 source "$repo_root/scripts/lib/env-value.sh"
@@ -58,11 +60,13 @@ head_label() {
 # Every worktree this script would accept a name for, so the completion offers
 # exactly those and nothing else.
 list_worktrees() {
-  local dir dir_name id recorded=" "
+  local dir dir_name id lineage recorded=" "
+  lineage=" $( { lineage_of "$(invoking_checkout)"; lineage_of "$repo_root"; } | tr '\n' ' ') "
   for dir in "$instances"/*/; do
     id="$(basename "$dir")"
     [[ -f "$dir/record" ]] || continue
     recorded+="$(record_field "$id" name) "
+    [[ "$lineage" == *" $id "* ]] && continue
     dir="$(record_field "$id" dir)"
     is_current_checkout "$dir" && continue
     printf '%s\t%s\n' "$(record_field "$id" name)" "$(record_field "$id" branch)"
@@ -232,6 +236,34 @@ remove_instance() {
   echo "==> removed $name"
 }
 
+children_of() { awk -v parent="$1" '$2 == parent { print $1 }' <<<"$edges"; }
+
+# A chain deeper than the number of records loops, and following it would hang
+# with the registry lock held.
+descendants_of() {
+  local child depth="${2:-0}"
+  (( depth < $(wc -l <<<"$edges") )) ||
+    die "worktree records under $(record_field "$1" name) form a parent loop — fix or remove those records"
+  for child in $(children_of "$1"); do
+    echo "$child"
+    descendants_of "$child" $(( depth + 1 ))
+  done
+}
+
+# Keeping a parent whose descendant remains keeps the record that leads a rerun
+# back to that descendant.
+remove_subtree() {
+  local id="$1" child kept=0
+  for child in $(children_of "$id"); do
+    remove_subtree "$child" || kept=1
+  done
+  if (( kept )); then
+    note_remaining "$(record_field "$id" name) was kept because a descendant remains"
+    return 1
+  fi
+  remove_instance "$id"
+}
+
 # Read outside the lock, a record a concurrent removal deletes would look
 # malformed. A record seen before the lock and gone or replaced under it was
 # removed by that run, and any record not seen before it belongs to a newer
@@ -253,23 +285,50 @@ if [[ -z "$target" ]]; then
   exit 0
 fi
 
-problem="$(record_problem "$target")"
-[[ -z "$problem" ]] || die "worktree record $instances/$target $problem, so nothing was removed — fix or remove that record"
-dir="$(record_field "$target" dir)"
-if claimed_by_creation "$target" "$dir"; then
-  refuse_current_checkout "$dir"
-else
-  refuse_unremovable "$dir"
-fi
+[[ "$target" != *$'\n'* ]] ||
+  die "more than one worktree record in $instances names $name, so nothing was removed — remove the extra one"
+
+# A record with no readable parent might be a descendant, so nothing is removed
+# until it is fixed.
+edges="$(
+  for dir in "$instances"/*/; do
+    id="$(basename "$dir")"
+    [[ -d "$dir" ]] || continue
+    parent="$(record_field "$id" parent)"
+    if ! valid_id "$id" || ! valid_parent "$parent"; then
+      die "worktree record $dir has no valid id and parent, so whether it is part of this removal is unknown — fix or remove that record"
+    fi
+    echo "$id $parent"
+  done
+)"
+
+selected="$target"$'\n'"$(descendants_of "$target")"
+
+for id in $selected; do
+  problem="$(record_problem "$id")"
+  [[ -z "$problem" ]] || die "worktree record $instances/$id $problem, so nothing was removed — fix or remove that record"
+  dir="$(record_field "$id" dir)"
+  if claimed_by_creation "$id" "$dir"; then
+    refuse_current_checkout "$dir"
+  else
+    refuse_unremovable "$dir"
+  fi
+  # --list hides the lineage of the checkout holding this script too, wherever
+  # the working directory is.
+  [[ "$dir" != "$repo_root" ]] ||
+    die "$dir holds the rm-worktree.sh running now, and this removal includes it. Run the main checkout's scripts/rm-worktree.sh instead."
+done
 
 stamp="$(process_stamp $$)" || die "ps cannot report this run's start time, so its removal flag could not be told from a stale one"
-rm -f "$instances/$target/removing"
-ln -sn "$stamp" "$instances/$target/removing"
+for id in $selected; do
+  rm -f "$instances/$id/removing"
+  ln -sn "$stamp" "$instances/$id/removing"
+done
 release_lock 8
 
 load_main_db_settings
 
-remove_instance "$target" || true
+remove_subtree "$target" || true
 
 if [[ -n "$kept_branches" ]]; then
   echo "kept branches:"

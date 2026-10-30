@@ -1,20 +1,24 @@
 #!/usr/bin/env bash
-# Creates a git worktree that runs completely independently of the main
+# Creates a git worktree that runs completely independently of every other
 # checkout: its own server/frontend/admin/metro ports and its own local
 # database.
 #
-# Only works in the main checkout. Inside a worktree it exits.
+# Run it from the main checkout or from a worktree this script created. That
+# checkout becomes the new worktree's parent, and scripts/rm-worktree.sh removes
+# a parent's children along with it. Local config and the starting database
+# always come from the main checkout.
 #
 # Usage: scripts/new-worktree.sh <name> [options]
 #
 #   --branch <branch>  branch to create or check out (default: <name>). A branch
 #                      that already exists is kept when the worktree is removed.
-#   --from <ref>       base a new branch on <ref> (default: HEAD)
+#   --from <ref>       base a new branch on <ref> (default: the parent's HEAD)
 #
 # Ports come from the lowest free slot.
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Physical, like the worktree paths git reports that it is compared with.
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 
 # shellcheck source=scripts/lib/env-value.sh
 source "$repo_root/scripts/lib/env-value.sh"
@@ -58,13 +62,14 @@ done
 [[ -n "$name" ]] || die "usage: scripts/new-worktree.sh <name> [options]"
 valid_name "$name" || die "name must be lowercase letters, digits and dashes"
 
-# In a linked worktree, --from HEAD and server/.env would resolve inconsistently.
-[[ "$(git -C "$repo_root" rev-parse --absolute-git-dir)" == "$git_common_dir" ]] ||
-  die "this is a worktree, and scripts/new-worktree.sh only works in the main checkout ($main_root). Report this rather than working around it."
-parent=main
+creator="$(invoking_checkout)"
+parent="$(checkout_identity "$creator")"
+[[ -n "$parent" ]] ||
+  die "$creator has no worktree record, because it was not created by a scripts/new-worktree.sh that records parents, so a child of it would outlive its removal. Run this from the main checkout ($main_root) or from a worktree created since."
 
-git -C "$main_root" rev-parse --verify --quiet "$from^{commit}" >/dev/null ||
-  die "--from $from is not a commit"
+# HEAD is per checkout, so it resolves in the parent, not in the main checkout.
+git -C "$creator" rev-parse --verify --quiet "$from^{commit}" >/dev/null ||
+  die "--from $from is not a commit in $creator"
 
 branch="${branch:-$name}"
 valid_branch "$branch" || die "invalid branch name: $branch"
@@ -133,6 +138,8 @@ trap on_exit EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
+# Removing a parent flags it under the registry lock this loop takes, so a child
+# is either recorded before that removal looks for children or refused.
 mkdir -p "$instances"
 while :; do
   acquire_lock "$registry_lock" "the worktree registry" 8
@@ -150,6 +157,22 @@ sweep_registry_leftovers
 
 [[ -z "$previous" ]] ||
   die "a worktree named $name is already recorded, and someone may be using it — choose another name. Only if your own run stopped while creating or removing $name, 'scripts/rm-worktree.sh $name' removes what it left"
+
+if [[ "$parent" != main ]]; then
+  [[ -d "$instances/$parent" ]] || die "$creator is being removed, so it cannot take a new child"
+  parent_removing="$(readlink "$instances/$parent/removing" 2>/dev/null || true)"
+  if [[ -n "$parent_removing" ]]; then
+    ! stamp_alive "$parent_removing" || die "$creator is being removed, so it cannot take a new child"
+    # One removal flags its whole selection, so the topmost ancestor carrying
+    # this stamp is the worktree that removal was asked for.
+    stopped="$parent"
+    ancestors="$(lineage_of "$creator")"
+    for ancestor in $ancestors; do
+      [[ "$(readlink "$instances/$ancestor/removing" 2>/dev/null)" != "$parent_removing" ]] || stopped="$ancestor"
+    done
+    die "an earlier removal that includes $creator did not finish, so it cannot take a new child — 'scripts/rm-worktree.sh $(record_field "$stopped" name)' finishes it"
+  fi
+fi
 
 # A worktree from before records owns its databases without a record, so its
 # directory is checked first.
@@ -245,18 +268,18 @@ createdb "${psql_args[@]}" "${staging_db}_test"
 tag_db "${staging_db}_test"
 publish_db "${staging_db}_test" "$test_db_name"
 
-echo "==> creating worktree $worktree_dir (slot $slot)"
+echo "==> creating worktree $worktree_dir (slot $slot, child of $creator)"
 # A stop between branching and recording it leaves the branch at branch_from,
 # where removal can tell it from one that has commits of its own.
 if (( branch_created )); then
   # --from can move while the database copies, so it resolves again here.
-  from_rev="$(git -C "$main_root" rev-parse --verify --quiet "$from^{commit}")" ||
-    die "--from $from is not a commit"
+  from_rev="$(git -C "$creator" rev-parse --verify --quiet "$from^{commit}")" ||
+    die "--from $from is not a commit in $creator"
   set_record_field "$id" branch_from "$from_rev"
   # A branch someone else made since the claim is theirs, so the record stops
   # pointing removal at it. Branching from --from itself lets
   # branch.autoSetupMerge choose the upstream.
-  git -C "$main_root" branch "$branch" "$from" || {
+  git -C "$creator" branch "$branch" "$from" || {
     set_record_field "$id" branch_from ""
     exit 1
   }

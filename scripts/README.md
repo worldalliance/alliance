@@ -5,10 +5,10 @@ Run from the repo root. Everything not listed here is a helper called by these s
 ## Worktrees
 
 `new-worktree.sh <name> [--branch <branch>] [--from <ref>]`
-Creates a git worktree with its own ports and database. Main checkout only. Also `bun run worktree:new`.
+Creates a git worktree with its own ports and database, as a child of the checkout it runs in: the main checkout or a worktree it created. A new branch starts at that checkout's HEAD unless `--from` names another ref, and an existing `--branch` is checked out as it is; config and the starting database come from the main checkout. Also `bun run worktree:new`.
 
 `rm-worktree.sh <name>`
-Removes a worktree created above: its checkout, databases, port slot, and the branch the script created, unpushed commits and uncommitted work included. A branch that existed before its worktree is kept; remotes are never touched. A failure leaves what it could not remove and exits nonzero; rerunning finishes once that is resolved. It refuses to remove the checkout it runs in. Records live in `.git/alliance-worktrees/`. Also `bun run worktree:rm`.
+Removes a worktree created above and its descendants, children first: checkouts, databases, port slots, and branches the script created, unpushed commits and uncommitted work included. A branch that existed before its worktree is kept; remotes are never touched. A failure leaves what it could not remove, plus its ancestors, and exits nonzero; rerunning finishes once that is resolved. It refuses a removal that includes the checkout it runs in. Records live in `.git/alliance-worktrees/`. Also `bun run worktree:rm`.
 `--list` prints the names it accepts. Those names tab-complete in zsh once `scripts/completions` is on `fpath` ahead of `compinit`; the script's header has the two lines to paste into `~/.zshrc`.
 
 `with-env.sh [command...]`

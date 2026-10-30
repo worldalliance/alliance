@@ -83,6 +83,14 @@ const STUBS: Record<string, string> = {
 
 export type RunResult = { exitCode: number; stdout: string; stderr: string };
 
+/** `checkout` is the checkout whose scripts/ the script runs from; it defaults to `cwd`, then the main checkout. */
+type ScriptParams = {
+  script: string;
+  args: string[];
+  cwd?: string;
+  checkout?: string;
+};
+
 export class WorktreeFixture {
   readonly root: string;
   readonly main: string;
@@ -140,12 +148,12 @@ export class WorktreeFixture {
     };
   }
 
-  private command(params: { script: string; args: string[]; cwd?: string }) {
-    const cwd = params.cwd ?? this.main;
-    return ["bash", join(cwd, "scripts", params.script), ...params.args];
+  private command(params: ScriptParams) {
+    const checkout = params.checkout ?? params.cwd ?? this.main;
+    return ["bash", join(checkout, "scripts", params.script), ...params.args];
   }
 
-  run(params: { script: string; args: string[]; cwd?: string }): RunResult {
+  run(params: ScriptParams): RunResult {
     const [command, ...args] = this.command(params);
     const result = spawnSync(command, args, {
       cwd: params.cwd ?? this.main,
@@ -161,7 +169,7 @@ export class WorktreeFixture {
 
   private spawned = 0;
 
-  spawn(params: { script: string; args: string[]; cwd?: string }) {
+  spawn(params: ScriptParams) {
     const base = join(this.state, `spawn-${++this.spawned}`);
     const proc = Bun.spawn(this.command(params), {
       cwd: params.cwd ?? this.main,
@@ -202,6 +210,18 @@ export class WorktreeFixture {
 
   remove(args: string[], cwd?: string): RunResult {
     return this.run({ script: "rm-worktree.sh", args, cwd });
+  }
+
+  createTree(): void {
+    for (const [name, cwd] of [
+      ["a", this.main],
+      ["b", this.dir("a")],
+      ["c", this.dir("b")],
+      ["sib", this.main],
+    ]) {
+      const result = this.create(name, { cwd });
+      if (result.exitCode !== 0) throw new Error(result.stderr);
+    }
   }
 
   /** A worktree as new-worktree.sh made it before records, claiming `slot` in ports.json or, with `envOnly`, in .worktree/env. */

@@ -12,6 +12,7 @@ instances="$registry/instances"
 registry_lock="$registry/lock"
 
 valid_id() { [[ "$1" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]; }
+valid_parent() { [[ "$1" == main ]] || valid_id "$1"; }
 
 # A checkout's record id lives in its Git admin directory, beyond git clean's
 # reach. Prints nothing for a directory that is not a worktree of this repository.
@@ -85,7 +86,7 @@ record_problem() {
   parent="$(record_field "$id" parent)"
   db="$(db_name_for "$name")"
   valid_name "$name" || { echo "has an invalid name '$name'"; return 0; }
-  [[ "$parent" == main ]] || valid_id "$parent" || { echo "has an invalid parent '$parent'"; return 0; }
+  valid_parent "$parent" || { echo "has an invalid parent '$parent'"; return 0; }
   [[ "$(record_field "$id" dir)" == "$(worktree_dir_for "$name")" ]] || { echo "names a directory other than $(worktree_dir_for "$name")"; return 0; }
   [[ "$(record_field "$id" dir)" != "$main_root" ]] || { echo "names the main checkout"; return 0; }
   [[ "$(record_field "$id" db)" == "$db" && "$(record_field "$id" test_db)" == "${db}_test" ]] ||
@@ -96,4 +97,45 @@ record_problem() {
   [[ "$(record_field "$id" branch_from)" =~ ^([0-9a-f]{40}|[0-9a-f]{64})?$ ]] || { echo "has an invalid branch_from"; return 0; }
   [[ "$(record_field "$id" dir_added)" =~ ^1?$ ]] || { echo "has an invalid dir_added"; return 0; }
   [[ "$(record_field "$id" slot)" =~ ^[0-9]+$ ]] || { echo "has an invalid slot"; return 0; }
+}
+
+# The checkout a command acts for: the one holding the working directory when it
+# belongs to this repository, else the one holding the script.
+invoking_checkout() {
+  local root common
+  if root="$(git rev-parse --show-toplevel 2>/dev/null)" &&
+    common="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" &&
+    [[ "$(cd "$common" && pwd -P)" == "$git_common_dir" ]]; then
+    (cd "$root" && pwd -P)
+  else
+    echo "$repo_root"
+  fi
+}
+
+# Prints main, the checkout's record id, or nothing for a worktree this script
+# did not record.
+checkout_identity() {
+  local root="$1" file id
+  [[ "$root" == "$main_root" ]] && { echo main; return 0; }
+  file="$(instance_file "$root")"
+  [[ -f "$file" ]] || return 0
+  id="$(cat "$file")"
+  valid_id "$id" && [[ "$(record_field "$id" dir)" == "$root" ]] ||
+    die "$file names '$id', and no worktree record for $root matches it. Report this rather than editing it."
+  echo "$id"
+}
+
+# A checkout and its ancestors, whose removal would include it.
+lineage_of() {
+  local id record steps=0 records=0
+  for record in "$instances"/*/record; do
+    [[ -f "$record" ]] && records=$((records + 1))
+  done
+  id="$(checkout_identity "$1")" || exit 1
+  while [[ -n "$id" && "$id" != main ]]; do
+    (( steps++ < records )) ||
+      die "worktree records above $1 form a parent loop — fix or remove those records"
+    echo "$id"
+    id="$(record_field "$id" parent)"
+  done
 }

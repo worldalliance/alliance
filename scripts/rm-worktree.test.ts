@@ -344,3 +344,20 @@ test(
   },
   TIMEOUT,
 );
+
+test(
+  "rm-worktree.sh --list fails when the caller's checkout names another worktree's record",
+  () => {
+    expect(f.create("a").exitCode).toBe(0);
+    expect(f.create("b").exitCode).toBe(0);
+    const gitDir = f.git(f.dir("a"), "rev-parse", "--absolute-git-dir");
+    writeFileSync(join(gitDir, "alliance-instance"), `${f.instanceId("b")}\n`);
+
+    const listed = f.remove(["--list"], f.dir("a"));
+
+    expect(listed.exitCode).toBe(1);
+    expect(listed.stdout).toBe("");
+    expect(listed.stderr).toContain("no worktree record for");
+  },
+  TIMEOUT,
+);
