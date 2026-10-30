@@ -370,7 +370,7 @@ export default function TaskFlow({
           >
             {flow.open ? (
               <>
-                <div className={cn(FLOW_COLUMN, "pt-4")}>
+                <div className={cn(FLOW_COLUMN, "pt-8")}>
                   <ProgressBar
                     progress={flow.progress}
                     total={100}
