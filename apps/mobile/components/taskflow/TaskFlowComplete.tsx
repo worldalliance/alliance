@@ -11,10 +11,33 @@ import { useOutputItems } from "@alliance/shared/useOutputItems";
 import { ListTodo, UserPlus } from "lucide-react-native";
 import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
+import { colors } from "../../lib/style/colors";
 import OutputRenderer from "../OutputRenderer";
 import ProfileImage from "../ProfileImage";
 import Text, { FontWeight } from "../system/Text";
 import FlowButton from "./FlowButton";
+
+const FADE_HEIGHT = 48;
+
+function BottomFade() {
+  return (
+    <Svg
+      pointerEvents="none"
+      style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}
+      width="100%"
+      height={FADE_HEIGHT}
+    >
+      <Defs>
+        <LinearGradient id="complete-fade" x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0" stopColor={colors.green} stopOpacity="0" />
+          <Stop offset="1" stopColor={colors.green} stopOpacity="1" />
+        </LinearGradient>
+      </Defs>
+      <Rect width="100%" height="100%" fill="url(#complete-fade)" />
+    </Svg>
+  );
+}
 
 export default function TaskFlowComplete({
   schema,
@@ -39,39 +62,50 @@ export default function TaskFlowComplete({
 
   return (
     <View className="flex-1 bg-green" style={{ paddingTop: insets.top }}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 48 }}>
-        <Text
-          accessibilityRole="header"
-          className="text-4xl text-white"
-          weight={FontWeight.Semibold}
+      <View className="flex-1">
+        <ScrollView
+          contentContainerStyle={{
+            padding: 16,
+            paddingTop: 48,
+            paddingBottom: 48,
+          }}
         >
-          {taskFlow.complete}
-        </Text>
-        <Text className="text-base text-white mt-3">
-          {taskFlow.completeUpdate}
-        </Text>
-        {outputItems.length > 0 ? (
-          <View className="mt-6 rounded-md bg-white p-6 gap-y-4">
-            {user ? (
-              <View className="flex-row items-center gap-x-3">
-                <ProfileImage pfp={user.profilePicture} size="medium" />
-                <View className="flex-1">
-                  <Text
-                    className="text-base text-zinc-900"
-                    weight={FontWeight.Semibold}
-                  >
-                    {user.name}
-                  </Text>
-                  {location ? (
-                    <Text className="text-base text-zinc-500">{location}</Text>
-                  ) : null}
+          <Text
+            accessibilityRole="header"
+            className="text-4xl text-white"
+            weight={FontWeight.Semibold}
+          >
+            {taskFlow.complete}
+          </Text>
+          <Text className="text-base text-white mt-3">
+            {taskFlow.completeUpdate}
+          </Text>
+          {outputItems.length > 0 ? (
+            <View className="mt-6 rounded-md bg-white p-6 gap-y-4">
+              {user ? (
+                <View className="flex-row items-center gap-x-3">
+                  <ProfileImage pfp={user.profilePicture} size="medium" />
+                  <View className="flex-1">
+                    <Text
+                      className="text-base text-zinc-900"
+                      weight={FontWeight.Semibold}
+                    >
+                      {user.name}
+                    </Text>
+                    {location ? (
+                      <Text className="text-base text-zinc-500">
+                        {location}
+                      </Text>
+                    ) : null}
+                  </View>
                 </View>
-              </View>
-            ) : null}
-            <OutputRenderer schema={schema} answers={answers} ownView />
-          </View>
-        ) : null}
-      </ScrollView>
+              ) : null}
+              <OutputRenderer schema={schema} answers={answers} ownView />
+            </View>
+          ) : null}
+        </ScrollView>
+        <BottomFade />
+      </View>
       <View
         className="px-4 pt-4 gap-y-3"
         style={{ paddingBottom: insets.bottom + 8 }}

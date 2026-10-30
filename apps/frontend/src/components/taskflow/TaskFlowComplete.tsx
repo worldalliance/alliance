@@ -48,35 +48,43 @@ export default function TaskFlowComplete({
       )}
       style={{ transition: transition(flowMotion.recolor, "opacity") }}
     >
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className={cn(FLOW_COLUMN, "pt-12 pb-6")}>
-          <ModalTitle className="text-4xl font-semibold text-white">
-            {taskFlow.complete}
-          </ModalTitle>
-          <p className="mt-3 text-base text-white">{taskFlow.completeUpdate}</p>
-          {outputItems.length > 0 ? (
-            <div className="mt-6 flex flex-col gap-y-4 rounded-md bg-white p-6">
-              {user ? (
-                <div className="flex items-center gap-x-3">
-                  <AvatarProfile
-                    pfp={user.profilePicture}
-                    size="medium"
-                    alt={user.name}
-                  />
-                  <div className="flex-1">
-                    <p className="text-base font-semibold text-zinc-900">
-                      {user.name}
-                    </p>
-                    {location ? (
-                      <p className="text-base text-zinc-500">{location}</p>
-                    ) : null}
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className={cn(FLOW_COLUMN, "pt-12 pb-12")}>
+            <ModalTitle className="text-4xl font-semibold text-white">
+              {taskFlow.complete}
+            </ModalTitle>
+            <p className="mt-3 text-base text-white">
+              {taskFlow.completeUpdate}
+            </p>
+            {outputItems.length > 0 ? (
+              <div className="mt-6 flex flex-col gap-y-4 rounded-md bg-white p-6">
+                {user ? (
+                  <div className="flex items-center gap-x-3">
+                    <AvatarProfile
+                      pfp={user.profilePicture}
+                      size="medium"
+                      alt={user.name}
+                    />
+                    <div className="flex-1">
+                      <p className="text-base font-semibold text-zinc-900">
+                        {user.name}
+                      </p>
+                      {location ? (
+                        <p className="text-base text-zinc-500">{location}</p>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
-              ) : null}
-              <OutputRenderer schema={schema} answers={answers} ownView />
-            </div>
-          ) : null}
+                ) : null}
+                <OutputRenderer schema={schema} answers={answers} ownView />
+              </div>
+            ) : null}
+          </div>
         </div>
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-linear-to-t from-green to-transparent"
+        />
       </div>
       <div className={cn(FLOW_COLUMN, "flex flex-col gap-y-3 py-4")}>
         <FlowButton
