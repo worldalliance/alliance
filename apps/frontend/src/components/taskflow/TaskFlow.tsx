@@ -37,6 +37,7 @@ import ProgressBar from "../system/ProgressBar";
 import FlowButton, { FlowButtonKind } from "./FlowButton";
 import { afterMotion, flowMotion, transition } from "./flowMotion";
 import TaskFlowComplete from "./TaskFlowComplete";
+import TaskFlowHeader, { type FlowWithdrawHandler } from "./TaskFlowHeader";
 import TaskFlowIntro from "./TaskFlowIntro";
 import TaskFlowScreen, {
   FLOW_COLUMN,
@@ -242,11 +243,19 @@ export default function TaskFlow({
       then?.();
     });
 
+  const onWithdraw: FlowWithdrawHandler | null = withdraw
+    ? (withdrawal) => {
+        form.handleAbandon(withdrawal);
+        position.clear();
+        flow.close();
+      }
+    : null;
+
+  const blocked = formBlockedView(form);
   const renderStage = () => {
-    const blocked = formBlockedView(form);
     if (blocked !== null && flow.stage !== FlowStage.Complete) {
       return (
-        <TaskFlowPage onClose={() => void close()}>
+        <TaskFlowPage>
           <TaskFlowTitle>{action.name}</TaskFlowTitle>
           {blocked}
         </TaskFlowPage>
@@ -261,16 +270,6 @@ export default function TaskFlow({
             action={action}
             form={form}
             background={flow.background}
-            onClose={() => void close()}
-            onWithdraw={
-              withdraw
-                ? (withdrawal) => {
-                    form.handleAbandon(withdrawal);
-                    position.clear();
-                    flow.close();
-                  }
-                : null
-            }
             onNext={() => void flow.start()}
             nextLabel={flow.startLabel}
             error={submitError}
@@ -287,7 +286,6 @@ export default function TaskFlow({
             nextLabel={flow.nextLabel}
             error={submitError}
             scrollRef={scrollRef}
-            onClose={() => void close()}
             onBack={flow.back}
             onNext={() => void flow.next()}
           />
@@ -350,14 +348,21 @@ export default function TaskFlow({
             )}
           >
             {flow.open ? (
-              <div className={cn(FLOW_COLUMN, "pt-4")}>
-                <ProgressBar
-                  progress={flow.progress}
-                  total={100}
-                  label={taskFlow.progress}
-                  fillTransition={PROGRESS_TRANSITION}
+              <>
+                <div className={cn(FLOW_COLUMN, "pt-4")}>
+                  <ProgressBar
+                    progress={flow.progress}
+                    total={100}
+                    label={taskFlow.progress}
+                    fillTransition={PROGRESS_TRANSITION}
+                  />
+                </div>
+                <TaskFlowHeader
+                  onClose={() => void close()}
+                  disabled={form.submitting}
+                  onWithdraw={blocked === null ? onWithdraw : null}
                 />
-              </div>
+              </>
             ) : null}
             <StickyAccordionTitles.Provider value>
               {renderStage()}

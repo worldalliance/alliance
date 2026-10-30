@@ -5,11 +5,9 @@ import {
 } from "@alliance/shared/forms/flowScreens";
 import { FlowButtonKind } from "@alliance/shared/forms/flowStyle";
 import { draftSaveFailed, taskFlow } from "@alliance/shared/lib/copy";
-import { X } from "lucide-react-native";
 import { useEffect, type ReactNode } from "react";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "../../lib/style/colors";
 import { FormElements } from "../forms/FormElements";
 import { StickyAccordionScrollView } from "../forms/StickyAccordion";
 import { type MobileFormState } from "../forms/useMobileFormState";
@@ -17,26 +15,6 @@ import Text from "../system/Text";
 import FlowButton from "./FlowButton";
 
 const FOOTER_HEIGHT = 120;
-
-export function TaskFlowCloseButton({
-  onPress,
-  disabled,
-}: {
-  onPress: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <FlowButton
-      kind={FlowButtonKind.Icon}
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityLabel={taskFlow.closeTask}
-      hitSlop={8}
-    >
-      <X size={20} color={colors.text.icon} />
-    </FlowButton>
-  );
-}
 
 export function TaskFlowTitle({ children }: { children: ReactNode }) {
   return (
@@ -51,16 +29,10 @@ export function TaskFlowTitle({ children }: { children: ReactNode }) {
 }
 
 export function TaskFlowPage({
-  headerEnd,
-  onClose,
-  closeDisabled,
   bottomOffset,
   footer,
   children,
 }: {
-  headerEnd?: ReactNode;
-  onClose: () => void;
-  closeDisabled?: boolean;
   bottomOffset?: number;
   footer?: ReactNode;
   children: ReactNode;
@@ -68,10 +40,6 @@ export function TaskFlowPage({
   const insets = useSafeAreaInsets();
   return (
     <View className="flex-1 bg-white">
-      <View className="flex-row items-center justify-between px-4 py-2">
-        <TaskFlowCloseButton onPress={onClose} disabled={closeDisabled} />
-        {headerEnd}
-      </View>
       <StickyAccordionScrollView
         bottomOffset={bottomOffset}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
@@ -96,7 +64,6 @@ export default function TaskFlowScreen({
   nextReady,
   nextLabel,
   error,
-  onClose,
   onBack,
   onNext,
 }: {
@@ -105,7 +72,6 @@ export default function TaskFlowScreen({
   nextReady: boolean;
   nextLabel: string;
   error: string | null;
-  onClose: () => void;
   onBack: () => void;
   onNext: () => void;
 }) {
@@ -124,8 +90,6 @@ export default function TaskFlowScreen({
 
   return (
     <TaskFlowPage
-      onClose={onClose}
-      closeDisabled={form.submitting}
       bottomOffset={FOOTER_HEIGHT}
       footer={
         <>

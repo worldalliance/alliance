@@ -26,6 +26,7 @@ import {
   setServerAction,
   setSubmitStatus,
   submitFlow,
+  taskSchema,
 } from "./TaskFlow.testing";
 
 serveTaskFlow();
@@ -361,7 +362,7 @@ it("starts closed on another action's page rather than carrying the flow over", 
   expect(screen.getByRole("button", { name: taskFlow.continue })).toBeTruthy();
 });
 
-const openWithdrawMenu = async (onAbandonAction: () => void = () => {}) => {
+const renderWithdrawable = (onAbandonAction: () => void = () => {}) =>
   renderFlow({
     page: (
       <ActionTaskPanelForm
@@ -374,6 +375,9 @@ const openWithdrawMenu = async (onAbandonAction: () => void = () => {}) => {
       />
     ),
   });
+
+const openWithdrawMenu = async (onAbandonAction: () => void = () => {}) => {
+  renderWithdrawable(onAbandonAction);
   fireEvent.click(await screen.findByRole("button", { name: taskFlow.begin }));
   await screen.findByRole("heading", { name: taskFlow.background });
   fireEvent.click(screen.getByRole("button", { name: withdrawFromAction }));
@@ -391,6 +395,15 @@ it("closes the flow and forgets its screen when the member withdraws", async () 
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(await screen.findByText("nav expanded")).toBeTruthy();
   expect(window.localStorage.getItem("taskflow-step:9")).toBeNull();
+});
+
+it("offers withdrawing on every step, including a one-page task's only step", async () => {
+  setServedSchema({ pages: [taskSchema.pages[1]], outputViews: [] });
+  renderWithdrawable();
+  fireEvent.click(await screen.findByRole("button", { name: taskFlow.begin }));
+
+  await screen.findByRole("heading", { name: "Rate the chatbot" });
+  expect(screen.getByRole("button", { name: withdrawFromAction })).toBeTruthy();
 });
 
 it("closes only the withdraw menu when Escape dismisses it", async () => {

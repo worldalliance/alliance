@@ -19,7 +19,7 @@ import {
 } from "@alliance/shared/lib/TaskFlowReturnContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useIsFocused, useLocalSearchParams } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Modal, useWindowDimensions, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Animated, {
@@ -35,6 +35,7 @@ import ProgressBar from "../system/ProgressBar";
 import FlowButton from "./FlowButton";
 import { animateTo, timingFor } from "./flowMotion";
 import TaskFlowComplete from "./TaskFlowComplete";
+import TaskFlowHeader from "./TaskFlowHeader";
 import TaskFlowIntro from "./TaskFlowIntro";
 import TaskFlowScreen, { TaskFlowPage, TaskFlowTitle } from "./TaskFlowScreen";
 
@@ -115,6 +116,7 @@ export default function TaskFlow({
   const onTaskPage = pageActionId === String(action.id);
   const { leaveTask } = useTaskFlowReturn();
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const openWithdraw = useCallback(() => setWithdrawOpen(true), []);
 
   useReopenLeftTask({
     actionId: action.id,
@@ -187,11 +189,11 @@ export default function TaskFlow({
     leaveTask,
   ]);
 
+  const blocked = formBlockedView(form);
   const renderStage = () => {
-    const blocked = formBlockedView(form);
     if (blocked !== null && flow.stage !== FlowStage.Complete) {
       return (
-        <TaskFlowPage onClose={() => void close()}>
+        <TaskFlowPage>
           <TaskFlowTitle>{action.name}</TaskFlowTitle>
           {blocked}
         </TaskFlowPage>
@@ -206,8 +208,6 @@ export default function TaskFlow({
             action={action}
             form={form}
             background={flow.background}
-            onClose={() => void close()}
-            onWithdraw={withdraw ? () => setWithdrawOpen(true) : null}
             onNext={() => void flow.start()}
             nextLabel={flow.startLabel}
             error={error}
@@ -223,7 +223,6 @@ export default function TaskFlow({
             nextReady={flow.nextReady}
             nextLabel={flow.nextLabel}
             error={error}
-            onClose={() => void close()}
             onBack={flow.back}
             onNext={() => void flow.next()}
           />
@@ -268,12 +267,21 @@ export default function TaskFlow({
         >
           <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
             {flow.open ? (
-              <View className="px-4" style={{ paddingTop: insets.top + 8 }}>
-                <ProgressBar
-                  percentage={flow.progress}
-                  fillTiming={PROGRESS_TIMING}
+              <>
+                <View className="px-4" style={{ paddingTop: insets.top + 8 }}>
+                  <ProgressBar
+                    percentage={flow.progress}
+                    fillTiming={PROGRESS_TIMING}
+                  />
+                </View>
+                <TaskFlowHeader
+                  onClose={() => void close()}
+                  disabled={form.submitting}
+                  onWithdraw={
+                    withdraw && blocked === null ? openWithdraw : null
+                  }
                 />
-              </View>
+              </>
             ) : null}
             <View className="flex-1">{renderStage()}</View>
           </KeyboardAvoidingView>
