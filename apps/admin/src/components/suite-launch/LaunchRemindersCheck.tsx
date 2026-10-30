@@ -4,6 +4,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { getSiteUrl } from "../../lib/config";
+import { inLaunchZone } from "../../lib/launchTimeZone";
 import { useUsersAdmin } from "../../lib/useUsersAdmin";
 import { SelectableCard, SelectableCardGroup } from "../SelectableCards";
 import { LaunchSection } from "./launchBlockers";
@@ -15,7 +16,7 @@ import {
   SAMPLE_GROUP_UNFINISHED,
   type ReminderSendWindow,
 } from "./launchReminders";
-import { inLaunchZone, type LaunchSchedule } from "./launchSchedule";
+import type { LaunchSchedule } from "./launchSchedule";
 import type { ActionMix } from "./memberLoad";
 import { EmailMockup, PushMockup, TextMockup } from "./MessageMockups";
 import type { LaunchAction } from "./useSuiteLaunchData";

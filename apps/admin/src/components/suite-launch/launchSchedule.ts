@@ -13,15 +13,9 @@ import {
   millisecondsInMinute,
 } from "date-fns/constants";
 
-export const LAUNCH_TIME_ZONE = "America/Los_Angeles";
-const MIN_LEAD_MINUTES = 30;
+import { LAUNCH_TIME_ZONE } from "../../lib/launchTimeZone";
 
-export const inLaunchZone = (date: Date) =>
-  `${date.toLocaleString("en-US", {
-    timeZone: LAUNCH_TIME_ZONE,
-    dateStyle: "medium",
-    timeStyle: "short",
-  })} PT`;
+const MIN_LEAD_MINUTES = 30;
 
 export type LaunchSchedule = { memberActionAt: Date; officeActionAt: Date };
 
