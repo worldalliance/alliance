@@ -197,13 +197,12 @@ export function useTaskFlow(params: {
           form.validateFieldValue(field, form.effectiveFormData[field.id]) ===
             null,
       ));
-  const progress = flowProgress({
-    visibleIndices,
-    screenIndex:
-      stage === FlowStage.Background && backgroundIndex !== null
-        ? backgroundIndex
-        : screenIndex,
-  });
+  // Set on each move rather than derived, so answering doesn't move the bar.
+  const [progress, setProgress] = useState(0);
+  const showProgressAt = (index: number, { forward }: { forward: boolean }) => {
+    const reached = flowProgress({ visibleIndices, screenIndex: index });
+    setProgress((shown) => (forward ? Math.max(shown, reached) : reached));
+  };
 
   // Back and close count as moves, so a step awaited before them doesn't
   // carry the member anywhere afterwards.
@@ -213,16 +212,18 @@ export function useTaskFlow(params: {
     setStage(FlowStage.Closed);
   }, []);
 
-  const goTo = (index: number) => {
+  const goTo = (index: number, { forward = false } = {}) => {
     setScreenIndex(index);
     form.setCurrentPageIndex(screens[index].pageIndex);
     position.save(index);
+    showProgressAt(index, { forward });
     setStage(FlowStage.Screens);
   };
 
   const showBackground = () => {
     if (backgroundIndex === null) return;
     position.save(backgroundIndex);
+    showProgressAt(backgroundIndex, { forward: false });
     setStage(FlowStage.Background);
   };
 
@@ -283,7 +284,7 @@ export function useTaskFlow(params: {
         pageIndex: form.currentPageIndex,
       });
       if (resumeAt === null) await submit();
-      else goTo(resumeAt);
+      else goTo(resumeAt, { forward: true });
     });
 
   /** Opens the flow where the member left off; it never submits on its own. */
@@ -376,7 +377,7 @@ export function useTaskFlow(params: {
       }
       if (moves.current !== since) return;
       if (nextIndex === null) await submit();
-      else goTo(nextIndex);
+      else goTo(nextIndex, { forward: true });
     });
 
   return {

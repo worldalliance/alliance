@@ -17,7 +17,50 @@ describe("useTaskFlow", () => {
     act(() => hook.result.current.begin());
     expect(hook.result.current.stage).toBe(FlowStage.Background);
     expect(hook.result.current.background).toEqual([text("intro")]);
+    expect(hook.result.current.progress).toBe(0);
+  });
+
+  it("counts finished steps, so the last screen isn't full", async () => {
+    const { hook } = setup();
+    act(() => hook.result.current.begin());
+    await act(() => hook.result.current.start());
     expect(hook.result.current.progress).toBeCloseTo(100 / 3);
+    await act(() => hook.result.current.next());
+    expect(hook.result.current.screenIndex).toBe(2);
+    expect(hook.result.current.progress).toBeCloseTo(200 / 3);
+  });
+
+  it("holds progress while answers change which steps show", async () => {
+    const { hook, params } = setup();
+    act(() => hook.result.current.begin());
+    await act(() => hook.result.current.start());
+    params.form = { ...params.form, visiblePageIndices: [0, 1] };
+    hook.rerender();
+    expect(hook.result.current.progress).toBeCloseTo(100 / 3);
+  });
+
+  it("never moves progress backwards going forward, only on Back", async () => {
+    const extra = ["d", "e", "f", "g", "h"].map((id) => ({
+      id: `p-${id}`,
+      fields: [input(id)],
+    }));
+    const { hook, params } = setup({
+      schema: { ...schema, pages: [...schema.pages, ...extra] },
+      visiblePageIndices: [0, 1, 2],
+    });
+    act(() => hook.result.current.begin());
+    await act(() => hook.result.current.start());
+    expect(hook.result.current.progress).toBeCloseTo(100 / 3);
+    params.form = {
+      ...params.form,
+      visiblePageIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+    };
+    hook.rerender();
+    await act(() => hook.result.current.next());
+    expect(hook.result.current.screenIndex).toBe(2);
+    expect(hook.result.current.progress).toBeCloseTo(100 / 3);
+    act(() => hook.result.current.back());
+    expect(hook.result.current.progress).toBe(12.5);
   });
 
   it("resumes on the saved screen", () => {
