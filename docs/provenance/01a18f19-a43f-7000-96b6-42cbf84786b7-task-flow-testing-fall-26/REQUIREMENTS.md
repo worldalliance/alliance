@@ -84,7 +84,9 @@ From the notes: "Close task / invite a friend buttons should have iconology", "C
 From the notes: "This could be an opportunity to display the project contributors on the preview card?", "If we are going to display them on the first page, should label them explicitly as contributors + make this list look better (should be side by side on large screens, less space between title and subtitle, less space between text + photo)", "Also will look bad w/ more than like 3 ppl" and "Add contributors header".
 
 - Contributors move from the "Project background" page to the task card, under a "Contributors" heading. (Approved)
+- The list names the task's authors as well as its expert reviewers, wherever the card shows. (User)
 - They sit side by side on large screens, with less space between name and role and between text and photo. (Notes)
+- Side by side, they sit next to each other with a normal gap between them, not spread into columns. (User)
 
 ## TN-13: Completion card fades under the buttons
 

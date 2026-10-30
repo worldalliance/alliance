@@ -1,5 +1,6 @@
 import type { ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
-import { makeAction } from "@alliance/shared/lib/testFixtures";
+import { taskFlow } from "@alliance/shared/lib/copy";
+import { makeAction, makeProfile } from "@alliance/shared/lib/testFixtures";
 import * as activitiesModule from "@alliance/shared/lib/useActivities";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
@@ -52,6 +53,24 @@ const card = (
     </AuthContext.Provider>
   </MemoryRouter>
 );
+
+it("names the task's contributors on the card", () => {
+  render(
+    card(
+      makeAction({
+        id: 1,
+        authors: [makeProfile(3)],
+        reviewers: [{ name: "Sam Reviewer" }],
+      }),
+    ),
+  );
+
+  expect(
+    screen.getByRole("heading", { name: taskFlow.contributors }),
+  ).toBeTruthy();
+  expect(screen.getByText("Sam Reviewer")).toBeTruthy();
+  expect(screen.getByText(makeProfile(3).displayName)).toBeTruthy();
+});
 
 describe("LargeActionCard deadline refusal", () => {
   it("reports it through onDeadlinePassed, not onUpdateActionState", () => {

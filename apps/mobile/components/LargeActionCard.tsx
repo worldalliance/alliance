@@ -19,6 +19,7 @@ import ActionTaskPanel from "./ActionTaskPanel";
 import Button, { ButtonColor } from "./system/Button";
 import Card from "./system/Card";
 import Text, { FontFamily, FontWeight } from "./system/Text";
+import TaskContributors from "./TaskContributors";
 import { CardWithdrawContext } from "./taskflow/CardWithdrawContext";
 import FlowButton from "./taskflow/FlowButton";
 import { TaskFlowWithdrawButton } from "./taskflow/TaskFlowHeader";
@@ -157,6 +158,7 @@ export default function LargeActionCard({
         action={action}
         friendActivities={friendActivities}
       />
+      <TaskContributors action={action} />
       <View className="mt-6 border-t border-zinc-200 pt-6">
         <CardWithdrawContext.Provider value={placeWithdraw}>
           <ActionTaskPanel

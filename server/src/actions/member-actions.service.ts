@@ -43,9 +43,16 @@ import {
 } from "./user-action-status";
 
 const MEMBER_FEED_RELATIONS = {
+  authors: true,
   events: true,
   followUpForms: true,
   reviewers: true,
+} satisfies Omit<Relations<Action>, "usersCompleted" | "status">;
+
+// The task badge counts statuses, so it pays for none of the card's relations.
+const BADGE_RELATIONS = {
+  events: true,
+  followUpForms: true,
 } satisfies Omit<Relations<Action>, "usersCompleted" | "status">;
 
 @Injectable()
@@ -154,7 +161,7 @@ export class MemberActionsService {
     const actions = await this.actionRepository
       .find({
         where: { id: In(params.openActionIds) },
-        relations: MEMBER_FEED_RELATIONS,
+        relations: BADGE_RELATIONS,
         relationLoadStrategy: "query",
       })
       .then((rows) => rows.map(parseAction));

@@ -41,8 +41,7 @@ it("opens the project background, then one screen per page", async () => {
     await screen.findByRole("heading", { name: taskFlow.background }),
   ).toBeTruthy();
   expect(screen.getByText("Why this project matters")).toBeTruthy();
-  expect(screen.getByText("Sam Reviewer")).toBeTruthy();
-  expect(screen.getByText("Expert")).toBeTruthy();
+  expect(screen.queryByText("Sam Reviewer")).toBeNull();
   expect(screen.queryByText(taskFlow.progressSaved)).toBeNull();
 
   fireEvent.click(screen.getByRole("button", { name: taskFlow.next }));

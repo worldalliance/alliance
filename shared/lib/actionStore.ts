@@ -28,6 +28,9 @@ const carriesDetailFields: Record<ActionSource, boolean> = {
 // MEMBER_FEED_RELATIONS (member-actions.service.ts) omits these relations that
 // findOneOrFail (actions.service.ts) loads, so list responses send them empty.
 const detailOnlyFields = [
+  // BACKCOMPAT(member-feed-authors): the feed sends authors now; keeping this
+  // entry only stops an installed client wiping them when it talks to a server
+  // from before that change. Drop once no client can reach such a server.
   "authors",
   "project",
   "suite",
