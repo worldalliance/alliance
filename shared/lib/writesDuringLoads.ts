@@ -7,7 +7,7 @@ import {
 type Update<T> = (prev: T) => T;
 
 /** A load may read the server before a write lands, so each write recorded
- * while a query loads is replayed over that load's result. */
+ * while a query loads is replayed over that load's result, after `replay`. */
 export function writesDuringLoads<T>() {
   const pendingByClient = new WeakMap<
     QueryClient,
@@ -18,6 +18,7 @@ export function writesDuringLoads<T>() {
     queryClient: QueryClient;
     queryKey: QueryKey;
     fetch: () => Promise<T>;
+    replay?: Update<T>[];
   }): Promise<T> => {
     const byKey =
       pendingByClient.get(params.queryClient) ??
@@ -26,7 +27,7 @@ export function writesDuringLoads<T>() {
     const hash = hashKey(params.queryKey);
     const pending = byKey.get(hash) ?? new Set<Update<T>[]>();
     byKey.set(hash, pending);
-    const writes: Update<T>[] = [];
+    const writes: Update<T>[] = [...(params.replay ?? [])];
     pending.add(writes);
     try {
       const loaded = await params.fetch();

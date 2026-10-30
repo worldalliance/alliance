@@ -4,7 +4,7 @@ import {
   createSlice,
   type PayloadAction,
 } from "@reduxjs/toolkit";
-import { CancelledError, type QueryClient } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import { pick } from "es-toolkit";
 import type { ActionDto } from "../client";
 import {
@@ -13,7 +13,7 @@ import {
   withOptimisticRelation,
 } from "./actionUtils";
 import { queryKeys } from "./queryKeys";
-import { writesDuringLoads } from "./writesDuringLoads";
+import { currentSession, sessionLoads, sessionStore } from "./sessionStores";
 
 export enum ActionSource {
   List = "list",
@@ -85,16 +85,21 @@ const slice = createSlice({
 });
 
 export type ActionState = ReturnType<typeof slice.reducer>;
-const loads = writesDuringLoads<ActionDto[]>();
 
 function createActionStore(queryClient: QueryClient) {
   const store = configureStore({ reducer: slice.reducer });
-  let revision = 0;
-  let session = 0;
+  const loads = sessionLoads<ActionDto[]>({
+    queryClient,
+    queryKey: queryKeys.actions(),
+  });
 
   const receive = (actions: ActionDto[], source: ActionSource) => {
     store.dispatch(
-      slice.actions.received({ actions, revision: ++revision, source }),
+      slice.actions.received({
+        actions,
+        revision: loads.nextRevision(),
+        source,
+      }),
     );
     return actions.map(({ id }) => id);
   };
@@ -104,15 +109,12 @@ function createActionStore(queryClient: QueryClient) {
     session: number;
     patch: (action: ActionDto) => ActionDto;
   }) => {
-    if (params.session !== session) return false;
-    loads.record({
-      queryClient,
-      queryKey: queryKeys.actions(),
-      update: (actions) =>
-        actions.map((action) =>
-          action.id === params.actionId ? params.patch(action) : action,
-        ),
-    });
+    if (params.session !== currentSession(queryClient)) return false;
+    loads.write((actions) =>
+      actions.map((action) =>
+        action.id === params.actionId ? params.patch(action) : action,
+      ),
+    );
     const current = store.getState().entities[params.actionId]?.action;
     if (current) receive([params.patch(current)], ActionSource.List);
     return true;
@@ -121,35 +123,19 @@ function createActionStore(queryClient: QueryClient) {
   return {
     subscribe: store.subscribe,
     getState: store.getState,
-    getSession: () => session,
     get: (actionId: number) => store.getState().entities[actionId]?.action,
     receive,
-    clear: () => {
-      session++;
-      store.dispatch(slice.actions.cleared());
-    },
-    load: async (params: {
+    clear: () => void store.dispatch(slice.actions.cleared()),
+    load: async ({
+      source,
+      ...load
+    }: {
       source: ActionSource;
       signal: AbortSignal;
       fetch: () => Promise<ActionDto[]>;
     }) => {
-      const started = ++revision;
-      const requestedSession = session;
-      const actions = await loads.load({
-        queryClient,
-        queryKey: queryKeys.actions(),
-        fetch: params.fetch,
-      });
-      if (params.signal.aborted || session !== requestedSession) {
-        throw new CancelledError();
-      }
-      store.dispatch(
-        slice.actions.received({
-          actions,
-          revision: started,
-          source: params.source,
-        }),
-      );
+      const { value: actions, revision } = await loads.load(load);
+      store.dispatch(slice.actions.received({ actions, revision, source }));
       return actions.map(({ id }) => id);
     },
     recordRelation: ({
@@ -178,16 +164,7 @@ function createActionStore(queryClient: QueryClient) {
   };
 }
 
-const stores = new WeakMap<QueryClient, ReturnType<typeof createActionStore>>();
-
-export function actionStore(queryClient: QueryClient) {
-  let store = stores.get(queryClient);
-  if (!store) {
-    store = createActionStore(queryClient);
-    stores.set(queryClient, store);
-  }
-  return store;
-}
+export const actionStore = sessionStore(createActionStore);
 
 export function selectAction(state: ActionState, actionId: number): ActionDto {
   const record = state.entities[actionId];

@@ -6,6 +6,7 @@ import {
 } from "./actionsListPage";
 import { actionStore } from "./actionStore";
 import { queryKeys } from "./queryKeys";
+import { currentSession } from "./sessionStores";
 import { makeAction, makeProfile } from "./testFixtures";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
@@ -167,7 +168,7 @@ it("keeps a confirmation made while the first list is still loading", async () =
     list.result.current.record({
       actionId: 7,
       relation: "completed",
-      session: actionStore(client).getSession(),
+      session: currentSession(client),
     }),
   );
   pending.resolve(Response.json([makeAction({ id: 7 })]));

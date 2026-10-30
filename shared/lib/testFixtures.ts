@@ -10,6 +10,7 @@ import type {
   FormResponseDto,
   KindSettingsDto,
   MessageDto,
+  NotificationDto,
   NotificationSettingsDto,
   OnetimeInviteDto,
   ParticipantDto,
@@ -386,6 +387,26 @@ export function makeNotificationSettings(
     defaults: { inApp: true, push: true, text: true, email: true },
     kinds: [makeKindSettings()],
     reachability: { textablePhoneNumber: true, textStopped: false },
+    ...overrides,
+  };
+}
+
+export function makeNotification(
+  overrides: Pick<NotificationDto, "id"> & Partial<NotificationDto>,
+): NotificationDto {
+  return {
+    category: "forum_reply",
+    message: "A reply",
+    priority: "low",
+    webAppLocation: "/",
+    mobileAppLocation: null,
+    readAt: null,
+    createdAt: "2026-09-23T12:00:00.000Z",
+    updatedAt: "2026-09-23T12:00:00.000Z",
+    sendTime: "2026-09-23T12:00:00.000Z",
+    associatedUsers: [],
+    sourceType: "unread_content",
+    contentType: "forum_reply",
     ...overrides,
   };
 }

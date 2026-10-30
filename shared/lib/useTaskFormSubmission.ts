@@ -17,9 +17,9 @@ import {
   type SubmitResult,
 } from "../forms/formulaChoices";
 import { invalidateActions, useRecordActionRelation } from "./actionsListPage";
-import { actionStore } from "./actionStore";
 import { captureException } from "./analytics";
 import { queryKeys } from "./queryKeys";
+import { currentSession } from "./sessionStores";
 import { useResetHomeFeed } from "./useHomeFeed";
 import { myLocationCache } from "./useMyLocation";
 import { useInvalidateTaskFormAggregateViews } from "./useTaskFormAggregateViews";
@@ -36,7 +36,7 @@ export function useTaskFormSubmission() {
   const queryClient = useQueryClient();
   const resetHomeFeed = useResetHomeFeed();
   const recordRelation = useRecordActionRelation();
-  const submittedSession = useRef(actionStore(queryClient).getSession());
+  const submittedSession = useRef(currentSession(queryClient));
   const invalidateVisibilityContext = useInvalidateVisibilityContext();
   const invalidateAggregateViews = useInvalidateTaskFormAggregateViews();
 
@@ -56,7 +56,7 @@ export function useTaskFormSubmission() {
       /** Leaves marking the action completed to `recordCompleted`, since it can unmount the form. */
       deferCompletion?: boolean;
     }) => {
-      const session = actionStore(queryClient).getSession();
+      const session = currentSession(queryClient);
       submittedSession.current = session;
       const result = isMember
         ? await tasksSubmitForm({
@@ -111,7 +111,7 @@ export function useTaskFormSubmission() {
 
   const optOut = useCallback(
     async (taskFormId: number, body: OptOutActionDto) => {
-      const session = actionStore(queryClient).getSession();
+      const session = currentSession(queryClient);
       const result = await tasksOptout({
         path: { id: taskFormId },
         body,
