@@ -94,7 +94,7 @@ test.each([
   [false, true],
   [true, true],
 ])(
-  "admin_dir_of resolves a worktree's git link with useRelativePaths=%p, its admin directories pruned=%p, and is empty for a plain directory",
+  "a worktree's git link with useRelativePaths=%p is ours, its admin directories pruned=%p, and a plain directory or another repository's worktree is not",
   (relative, pruned) => {
     const main = join(root, "alliance");
     fixtureGit(root, "init", "-q", "-b", "main", main);
@@ -114,20 +114,34 @@ test.each([
       readFileSync(join(root, "alliance-foo", ".git"), "utf8"),
     ).toStartWith(relative ? "gitdir: ../" : "gitdir: /");
     mkdirSync(join(root, "alliance-bar"));
+    const other = join(root, "other");
+    fixtureGit(root, "init", "-q", "-b", "main", other);
+    fixtureGit(other, "commit", "-q", "--allow-empty", "-m", "init");
+    fixtureGit(
+      other,
+      "-c",
+      `worktree.useRelativePaths=${relative}`,
+      "worktree",
+      "add",
+      "-q",
+      "-b",
+      "baz",
+      join(root, "alliance-baz"),
+    );
     if (pruned) rmSync(join(main, ".git", "worktrees"), { recursive: true });
 
     const result = spawnSync(
       "bash",
       [
         "-c",
-        `repo_root="${main}"; source "${LIB}"; admin_dir_of "$(worktree_dir_for foo)"; admin_dir_of "$(worktree_dir_for bar)"`,
+        `repo_root="${main}"; source "${LIB}"; admin_dir_of "$(worktree_dir_for foo)"; is_our_worktree "$(worktree_dir_for foo)" && echo ours; is_our_worktree "$(worktree_dir_for bar)" || echo "not ours"; is_our_worktree "$(worktree_dir_for baz)" || echo "not ours"`,
       ],
       { encoding: "utf8" },
     );
 
     expect(result.stderr).toBe("");
     expect(result.stdout).toBe(
-      `${join(main, ".git", "worktrees", "alliance-foo")}\n\n`,
+      `${join(main, ".git", "worktrees", "alliance-foo")}\nours\nnot ours\nnot ours\n`,
     );
   },
 );

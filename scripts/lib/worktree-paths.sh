@@ -29,9 +29,7 @@ refuse_unremovable() {
 
 # A half-removed worktree is already deregistered, so the .git pointer, not
 # 'git worktree list', is what says this tree is ours for rm -rf to delete.
-is_our_worktree() {
-  [[ "$(cat "$1/.git" 2>/dev/null)" == "gitdir: $git_common_dir/worktrees/"* ]]
-}
+is_our_worktree() { [[ "$(admin_dir_of "$1")" == "$git_common_dir/worktrees/"* ]]; }
 
 # The Git admin directory a checkout's .git file names, as an absolute path.
 # worktree.useRelativePaths writes it relative to the checkout. Its leading ../
