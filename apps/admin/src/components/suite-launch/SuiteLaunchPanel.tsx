@@ -11,6 +11,7 @@ import DateTimePicker, {
 import { ConfirmMode, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { ArrowLeft } from "lucide-react";
 import { useLayoutEffect, useState } from "react";
+import { inLaunchZone } from "../../lib/launchTimeZone";
 import { notifyRealMembersText } from "../../lib/notifyRealMembers";
 import { useActionReminderGroupsAdmin } from "../../lib/useActionReminderGroupsAdmin";
 import { defaultReminderBodies } from "../reminders/presets";
@@ -34,7 +35,6 @@ import LaunchRemindersCheck from "./LaunchRemindersCheck";
 import {
   completionTime,
   defaultLaunchSchedule,
-  inLaunchZone,
   scheduleProblems,
   type LaunchSchedule,
 } from "./launchSchedule";

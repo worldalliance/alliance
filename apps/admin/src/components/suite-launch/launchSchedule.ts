@@ -9,16 +9,9 @@ import {
   startOfHour,
 } from "date-fns";
 import { millisecondsInDay, minutesInHour } from "date-fns/constants";
+import { LAUNCH_TIME_ZONE } from "../../lib/launchTimeZone";
 
-export const LAUNCH_TIME_ZONE = "America/Los_Angeles";
 const MIN_LEAD_MINUTES = 30;
-
-export const inLaunchZone = (date: Date) =>
-  `${date.toLocaleString("en-US", {
-    timeZone: LAUNCH_TIME_ZONE,
-    dateStyle: "medium",
-    timeStyle: "short",
-  })} PT`;
 
 /** The member contract's completion period. */
 export const COMPLETION_PERIOD_DAYS = 7;

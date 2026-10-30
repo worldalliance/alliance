@@ -3,6 +3,7 @@ import type { CreateReminderGroupDto, UserDto } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
 import { useState } from "react";
 import { getSiteUrl } from "../../lib/config";
+import { inLaunchZone } from "../../lib/launchTimeZone";
 import Disclosure from "../Disclosure";
 import { SelectableCard, SelectableCardGroup } from "../SelectableCards";
 import { LaunchSection } from "./launchBlockers";
@@ -15,7 +16,7 @@ import {
   SAMPLE_GROUP_UNFINISHED,
   type ReminderSendWindow,
 } from "./launchReminders";
-import { inLaunchZone, type LaunchSchedule } from "./launchSchedule";
+import type { LaunchSchedule } from "./launchSchedule";
 import type { ActionMix } from "./memberLoad";
 import { EmailMockup, PushMockup, TextMockup } from "./MessageMockups";
 import type { LaunchAction } from "./useSuiteLaunchData";

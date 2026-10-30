@@ -8,6 +8,7 @@ import {
   cohortSegmentsText,
   describeCohortExpression,
 } from "../../lib/describeCohortExpression";
+import { inLaunchZone } from "../../lib/launchTimeZone";
 import { referencedActionFromListItem } from "../../lib/referencedAction";
 import { useTagsAdmin } from "../../lib/useTagsAdmin";
 import OpenReferenceWarning from "../OpenReferenceWarning";
@@ -21,7 +22,7 @@ import {
   LaunchSection,
 } from "./launchBlockers";
 import LaunchCheck from "./LaunchCheck";
-import { inLaunchZone, type LaunchSchedule } from "./launchSchedule";
+import type { LaunchSchedule } from "./launchSchedule";
 import type { LaunchAction } from "./useSuiteLaunchData";
 
 const readingOverEstimate = ({ action, readingSeconds }: LaunchAction) =>

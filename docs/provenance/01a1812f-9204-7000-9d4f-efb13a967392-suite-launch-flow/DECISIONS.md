@@ -11,6 +11,7 @@
 ## Schedule
 
 - "PST" is read as Pacific time (`America/Los_Angeles`), so the defaults follow daylight saving. Both dates stay editable, with the Pacific time shown under each picker.
+- Every Pacific time label on the launch page comes from `LAUNCH_TIME_ZONE` and `inLaunchZone` in `apps/admin/src/lib/launchTimeZone.ts`, the helpers the Away members page uses, not from a copy in the suite launch code. `inLaunchZone` formats with a fixed pattern (`Oct 28, 2026 at 7:00 PM PT`), so the labels read the same on every platform; the launch-zone-stable-format task records why. Agent decision.
 - The office event is 11:59pm Pacific, seven days after the day members start. When the member start rolls past midnight, the office event moves with it.
 - The office event uses the `office_action` status ("Office taking action"), matching `CreateEventForm`'s deadline default.
 - A suite that already has an office taking action event can't launch (`existingLaunchEvent`). Nor can one with an event of any status dated from the chosen members' start to the chosen office deadline (`eventBeforeDeadline`, a blocker under Schedule): members' deadline is the first event after they start, whatever its status, so such an event would end members' time before the new office event. An event before members start or after the office deadline doesn't change their deadline and stays. Agent decision from review; origin otherwise unrecorded.
