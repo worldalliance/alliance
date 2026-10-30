@@ -67,6 +67,17 @@ it("opens the project background, then one screen per page", async () => {
   expect(screen.getAllByRole("textbox")).toHaveLength(2);
 });
 
+it("puts the progress bar above the close button", async () => {
+  renderFlow();
+  await openFirstQuestionScreen();
+
+  const inFlow = [...screen.getByRole("dialog").querySelectorAll("*")];
+  const bar = screen.getByRole("progressbar", { name: taskFlow.progress });
+  const close = screen.getByRole("button", { name: taskFlow.closeTask });
+  expect(inFlow.indexOf(bar)).toBeLessThan(inFlow.indexOf(close));
+  expect(inFlow.indexOf(bar)).toBeGreaterThanOrEqual(0);
+});
+
 it("keeps the member on a screen until its required answers are in", async () => {
   renderFlow();
   await openFirstQuestionScreen();

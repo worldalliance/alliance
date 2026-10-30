@@ -359,6 +359,7 @@ export const taskFlow = {
   submit: "Submit",
   done: "Done",
   background: "Project background",
+  progress: "Task progress",
   complete: "Task complete!",
   completeUpdate:
     "We'll share a progress update on this project with all members in the coming weeks.",

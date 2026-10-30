@@ -267,18 +267,15 @@ export default function TaskFlow({
           onLayout={enter}
         >
           <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-            <View className="flex-1">{renderStage()}</View>
             {flow.open ? (
-              <View
-                className="px-4"
-                style={{ paddingBottom: insets.bottom + 8 }}
-              >
+              <View className="px-4" style={{ paddingTop: insets.top + 8 }}>
                 <ProgressBar
                   percentage={flow.progress}
                   fillTiming={PROGRESS_TIMING}
                 />
               </View>
             ) : null}
+            <View className="flex-1">{renderStage()}</View>
           </KeyboardAvoidingView>
         </Animated.View>
         {withdraw ? (

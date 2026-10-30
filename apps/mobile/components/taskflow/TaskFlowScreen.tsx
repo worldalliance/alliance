@@ -67,7 +67,7 @@ export function TaskFlowPage({
 }) {
   const insets = useSafeAreaInsets();
   return (
-    <View className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-white">
       <View className="flex-row items-center justify-between px-4 py-2">
         <TaskFlowCloseButton onPress={onClose} disabled={closeDisabled} />
         {headerEnd}
@@ -79,7 +79,10 @@ export function TaskFlowPage({
         {children}
       </StickyAccordionScrollView>
       {footer ? (
-        <View className="px-4 py-3 gap-y-3 border-t border-zinc-100">
+        <View
+          className="px-4 pt-3 gap-y-3 border-t border-zinc-100"
+          style={{ paddingBottom: insets.bottom + 12 }}
+        >
           {footer}
         </View>
       ) : null}

@@ -16,7 +16,7 @@ task: Immersive full-screen, multi-step task flow on mobile and web, mapped from
   2. Task form inputs, one screen per form page.
 - The goal is a more engaging, digestible experience: text and inputs are broken up across separate screens.
 - From the designs:
-  - content screens with an X close button, a large title, body, Back/Next buttons, and a bottom progress bar
+  - content screens with an X close button, a large title, body, Back/Next buttons, and a progress bar (at the top, per TN-1 in [task-flow-testing-fall-26](../01a18f19-a43f-7000-96b6-42cbf84786b7-task-flow-testing-fall-26/REQUIREMENTS.md))
   - Next is disabled until the screen's required inputs are filled
   - a green "Task complete!" screen with the member's response card and "Close task"
 
@@ -58,4 +58,4 @@ task: Immersive full-screen, multi-step task flow on mobile and web, mapped from
 - Time appears only as the action's total time estimate.
 - No server or database schema changes. Admin builder changes are set by TN-4 in [task-flow-testing-fall-26](../01a18f19-a43f-7000-96b6-42cbf84786b7-task-flow-testing-fall-26/REQUIREMENTS.md).
 
-- On web, flow content sits in a centred column about 640px wide, with Back/Next and the progress bar pinned to the bottom.
+- On web, flow content sits in a centred column about 640px wide, with Back/Next pinned to the bottom.
