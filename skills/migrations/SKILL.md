@@ -17,7 +17,7 @@ Never hand-write a schema migration from scratch; always start from a generated 
 
 ## Review
 
-Always read the generated SQL before committing. The generator gets renames wrong: **a column rename comes out as `DROP` + `ADD`**, which deletes the data. Edit it to `RENAME COLUMN`.
+Always read the generated SQL before committing. The generator gets renames wrong: **a column rename comes out as `DROP` + `ADD`**, which deletes the data. The running release reads and writes the old column until the new release replaces it, so a rename follows **Breaking changes** in the root `AGENTS.md`.
 
 ## How much to handle
 
