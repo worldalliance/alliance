@@ -33,7 +33,8 @@ export function formTextPlaces(
 
     for (const field of page.fields) {
       const at = (text: unknown) => {
-        if (typeof text === "string") texts.push({ text, id: field.id ?? null });
+        if (typeof text === "string")
+          texts.push({ text, id: field.id ?? null });
       };
       if (isQuestionField(field)) at(field.label);
       if ("description" in field) at(field.description);
