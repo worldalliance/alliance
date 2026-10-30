@@ -43,6 +43,7 @@ import {
 } from "./user-action-status";
 
 const MEMBER_FEED_RELATIONS = {
+  authors: true,
   events: true,
   followUpForms: true,
   reviewers: true,

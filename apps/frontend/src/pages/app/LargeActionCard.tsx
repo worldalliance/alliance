@@ -17,6 +17,7 @@ import { ArrowRight, ChevronRight, Eye } from "lucide-react";
 import { useCallback, useEffect, useState, type RefObject } from "react";
 import { href, Link, useNavigate } from "react-router";
 import ActionTaskPanel from "../../components/ActionTaskPanel";
+import TaskContributors from "../../components/TaskContributors";
 import { CardMenuSlotContext } from "../../components/taskflow/CardMenuSlot";
 import FlowButton, {
   FlowButtonKind,
@@ -157,6 +158,7 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
             action={action}
             textSize="base"
           />
+          <TaskContributors action={action} />
           <div className="mt-6 border-t border-zinc-200 pt-6">
             {showSignContractFirst && (
               <div className="mb-4 flex flex-row justify-between items-center gap-x-2 rounded-md border border-zinc-200 bg-zinc-50 p-4">

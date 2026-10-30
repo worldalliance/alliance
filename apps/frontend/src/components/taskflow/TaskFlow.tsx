@@ -275,7 +275,6 @@ export default function TaskFlow({
       case FlowStage.Background:
         return (
           <TaskFlowIntro
-            action={action}
             form={form}
             background={flow.background}
             onNext={() => void flow.start()}

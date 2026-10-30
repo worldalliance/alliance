@@ -366,6 +366,7 @@ export const taskFlow = {
   viewTasks: "View tasks",
   progressSaved: "Progress auto-saved",
   inviteFriend: "Invite a friend",
+  contributors: "Contributors",
   staff: "Staff",
   expert: "Expert",
 } as const;
