@@ -16,6 +16,9 @@ import FlowButton, { FlowButtonKind } from "./FlowButton";
 import { flowMotion, REDUCED_MOTION, transition } from "./flowMotion";
 import { FLOW_COLUMN } from "./TaskFlowScreen";
 
+const KEEPS_OPEN = { "data-keeps-open": true };
+const KEEP_OPEN = "button, [data-keeps-open]";
+
 export default function TaskFlowComplete({
   schema,
   answers,
@@ -47,18 +50,33 @@ export default function TaskFlowComplete({
         REDUCED_MOTION,
       )}
       style={{ transition: transition(flowMotion.recolor, "opacity") }}
+      onClick={(event) => {
+        if (
+          event.target instanceof Element &&
+          event.target.closest(KEEP_OPEN)
+        ) {
+          return;
+        }
+        onClose();
+      }}
     >
       <div className="relative flex min-h-0 flex-1 flex-col">
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className={cn(FLOW_COLUMN, "pt-12 pb-12")}>
-            <ModalTitle className="text-4xl font-semibold text-white">
+            <ModalTitle
+              className="text-4xl font-semibold text-white"
+              {...KEEPS_OPEN}
+            >
               {taskFlow.complete}
             </ModalTitle>
-            <p className="mt-3 text-base text-white">
+            <p className="mt-3 text-base text-white" {...KEEPS_OPEN}>
               {taskFlow.completeUpdate}
             </p>
             {outputItems.length > 0 ? (
-              <div className="mt-6 flex flex-col gap-y-4 rounded-md bg-white p-6">
+              <div
+                className="mt-6 flex flex-col gap-y-4 rounded-md bg-white p-6"
+                {...KEEPS_OPEN}
+              >
                 {user ? (
                   <div className="flex items-center gap-x-3">
                     <AvatarProfile

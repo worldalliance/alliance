@@ -317,6 +317,24 @@ it("shows the member's answers card on completion from the output view", async (
   expect(screen.getByText(testAuthUser.name)).toBeTruthy();
 });
 
+it("closes the completion screen on a tap on its background, not its text", async () => {
+  const onCompleteAction = jest.fn();
+  renderFlow({ onCompleteAction, path: "/tasks" });
+  await submitFlow();
+
+  fireEvent.click(screen.getByRole("heading", { name: taskFlow.complete }));
+  fireEvent.click(screen.getByText(taskFlow.completeUpdate));
+  await act(() => new Promise((resolve) => setTimeout(resolve, CLOSE_TIMEOUT)));
+  expect(onCompleteAction).not.toHaveBeenCalled();
+
+  const background = screen.getByText(taskFlow.completeUpdate).parentElement;
+  if (!background) throw new Error("completion text has no container");
+  fireEvent.click(background);
+  await waitFor(() => expect(onCompleteAction).toHaveBeenCalledTimes(1), {
+    timeout: CLOSE_TIMEOUT,
+  });
+});
+
 it("turns the nav back from green before the completion card shrinks away", async () => {
   renderFlow();
   await submitFlow();

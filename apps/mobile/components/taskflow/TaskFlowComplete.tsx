@@ -9,7 +9,7 @@ import { useCurrentUserLocation } from "@alliance/shared/forms/useCurrentUserLoc
 import { taskFlow } from "@alliance/shared/lib/copy";
 import { useOutputItems } from "@alliance/shared/useOutputItems";
 import { ListTodo, UserPlus } from "lucide-react-native";
-import { ScrollView, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { colors } from "../../lib/style/colors";
@@ -19,6 +19,9 @@ import Text, { FontWeight } from "../system/Text";
 import FlowButton from "./FlowButton";
 
 const FADE_HEIGHT = 48;
+
+/** Takes the tap, so it doesn't reach the background, which closes the screen. */
+const KEEPS_OPEN = { onStartShouldSetResponder: () => true };
 
 function BottomFade() {
   return (
@@ -61,7 +64,12 @@ export default function TaskFlowComplete({
   const outputItems = useOutputItems({ schema, answers, ownView: true });
 
   return (
-    <View className="flex-1 bg-green" style={{ paddingTop: insets.top }}>
+    <Pressable
+      className="flex-1 bg-green"
+      style={{ paddingTop: insets.top }}
+      onPress={onClose}
+      accessible={false}
+    >
       <View className="flex-1">
         <ScrollView
           contentContainerStyle={{
@@ -74,14 +82,18 @@ export default function TaskFlowComplete({
             accessibilityRole="header"
             className="text-4xl text-white"
             weight={FontWeight.Semibold}
+            {...KEEPS_OPEN}
           >
             {taskFlow.complete}
           </Text>
-          <Text className="text-base text-white mt-3">
+          <Text className="text-base text-white mt-3" {...KEEPS_OPEN}>
             {taskFlow.completeUpdate}
           </Text>
           {outputItems.length > 0 ? (
-            <View className="mt-6 rounded-md bg-white p-6 gap-y-4">
+            <View
+              className="mt-6 rounded-md bg-white p-6 gap-y-4"
+              {...KEEPS_OPEN}
+            >
               {user ? (
                 <View className="flex-row items-center gap-x-3">
                   <ProfileImage pfp={user.profilePicture} size="medium" />
@@ -123,6 +135,6 @@ export default function TaskFlowComplete({
           iconLeft={UserPlus}
         />
       </View>
-    </View>
+    </Pressable>
   );
 }
