@@ -159,7 +159,7 @@ export default function LargeActionCard({
         friendActivities={friendActivities}
       />
       <TaskContributors action={action} />
-      <View className="mt-6 border-t border-zinc-200 pt-6">
+      <View className="mt-6">
         <CardWithdrawContext.Provider value={placeWithdraw}>
           <ActionTaskPanel
             key={action.id}
