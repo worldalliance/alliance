@@ -3,17 +3,13 @@ import {
   type FormValue,
 } from "@alliance/common/forms/form-schema";
 import { type UserDto } from "@alliance/shared/client";
-import { formatUserLocationDisplayValue } from "@alliance/shared/formrenderer";
-import { useCurrentUserLocation } from "@alliance/shared/forms/useCurrentUserLocation";
 import { taskFlow } from "@alliance/shared/lib/copy";
 import { cn } from "@alliance/shared/styles/util";
-import { useOutputItems } from "@alliance/shared/useOutputItems";
-import { OutputRenderer } from "@alliance/sharedweb/forms/OutputRenderer";
-import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { ModalTitle } from "@alliance/sharedweb/ui/Modal";
 import { ListTodo, UserPlus } from "lucide-react";
 import FlowButton, { FlowButtonKind } from "./FlowButton";
 import { flowMotion, REDUCED_MOTION, transition } from "./flowMotion";
+import TaskAnswersCard from "./TaskAnswersCard";
 import { FLOW_COLUMN } from "./TaskFlowScreen";
 
 const KEEPS_OPEN = { "data-keeps-open": true };
@@ -35,13 +31,6 @@ export default function TaskFlowComplete({
   /** Null for a guest, who has no one to invite. */
   onInvite: (() => void) | null;
 }) {
-  const { userLocationDisplayValue } = useCurrentUserLocation({
-    enabled: !!user,
-    user,
-  });
-  const location = formatUserLocationDisplayValue(userLocationDisplayValue);
-  const outputItems = useOutputItems({ schema, answers, ownView: true });
-
   return (
     <div
       className={cn(
@@ -72,31 +61,12 @@ export default function TaskFlowComplete({
             <p className="mt-3 text-base text-white" {...KEEPS_OPEN}>
               {taskFlow.completeUpdate}
             </p>
-            {outputItems.length > 0 ? (
-              <div
-                className="mt-6 flex flex-col gap-y-4 rounded-md bg-white p-6"
-                {...KEEPS_OPEN}
-              >
-                {user ? (
-                  <div className="flex items-center gap-x-3">
-                    <AvatarProfile
-                      pfp={user.profilePicture}
-                      size="medium"
-                      alt={user.name}
-                    />
-                    <div className="flex-1">
-                      <p className="text-base font-semibold text-zinc-900">
-                        {user.name}
-                      </p>
-                      {location ? (
-                        <p className="text-base text-zinc-500">{location}</p>
-                      ) : null}
-                    </div>
-                  </div>
-                ) : null}
-                <OutputRenderer schema={schema} answers={answers} ownView />
-              </div>
-            ) : null}
+            <TaskAnswersCard
+              className="mt-6"
+              output={{ schema, answers }}
+              user={user}
+              {...KEEPS_OPEN}
+            />
           </div>
         </div>
         <div

@@ -38,6 +38,7 @@ import ProgressBar from "../system/ProgressBar";
 import { CardMenuSlotContext } from "./CardMenuSlot";
 import FlowButton, { FlowButtonKind } from "./FlowButton";
 import { afterMotion, flowMotion, transition } from "./flowMotion";
+import TaskAnswersCard from "./TaskAnswersCard";
 import TaskFlowComplete from "./TaskFlowComplete";
 import TaskFlowHeader, {
   TaskFlowWithdrawMenu,
@@ -338,7 +339,7 @@ export default function TaskFlow({
         )}
       >
         <FlowButton
-          kind={FlowButtonKind.Primary}
+          kind={readOnly ? FlowButtonKind.Secondary : FlowButtonKind.Primary}
           className="flex-1"
           onClick={flow.begin}
           disabled={!position.loaded}
@@ -350,6 +351,13 @@ export default function TaskFlow({
           ? withdrawMenu
           : menuSlot && withdrawMenu && createPortal(withdrawMenu, menuSlot)}
       </div>
+      {completedFormResponse ? (
+        <TaskAnswersCard
+          className="mt-4 border border-zinc-200"
+          output={{ schema, submission: completedFormResponse }}
+          user={user}
+        />
+      ) : null}
       <Dialog.Root
         open={shown}
         modal={false}
