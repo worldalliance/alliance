@@ -3,7 +3,8 @@ import { useEffect, useRef } from "react";
 import { useUpdateProfileMutation } from "./user";
 
 /**
- * Delete this once the accounts that predate signup capture have a zone.
+ * The zone source for an account created without one: a signup that detected
+ * no valid zone, and accounts that predate signup capture.
  *
  * Pass `enabled: false` where the session is not the member's own. An admin
  * impersonating a member posts as that member, so the member would end up with
