@@ -16,3 +16,7 @@ Databases: `{{DB_NAME}}`, and `{{TEST_DB_NAME}}` for `bun run test:e2e`, which d
 ./scripts/with-env.sh              # prints this worktree's ports and databases
 ./scripts/with-env.sh <command>    # runs <command> with them exported
 ```
+
+## Child worktrees
+
+`./scripts/new-worktree.sh <name>` run here creates a child of this worktree, starting at this worktree's last commit, with the main checkout's database and local config, not this worktree's.

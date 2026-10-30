@@ -1,24 +1,37 @@
 #!/usr/bin/env bash
-# Creates a git worktree that runs completely independently of the main
+# Creates a git worktree that runs completely independently of every other
 # checkout: its own server/frontend/admin/metro ports and its own local
 # database.
 #
-# Only works in the main checkout. Inside a worktree it exits.
+# Run it from the main checkout or from a worktree this script created. That
+# checkout becomes the new worktree's parent, and scripts/rm-worktree.sh removes
+# a parent's children along with it. Local config and the starting database
+# always come from the main checkout.
 #
 # Usage: scripts/new-worktree.sh <name> [options]
 #
-#   --branch <branch>  branch to create or check out (default: <name>)
-#   --from <ref>       base the new branch on <ref> (default: HEAD)
-#   --slot <n>         port slot (default: lowest free slot)
-#   --force            take --slot even if another worktree already claims it
+#   --branch <branch>  branch to create or check out (default: <name>). A branch
+#                      that already exists is kept when the worktree is removed.
+#   --from <ref>       base a new branch on <ref> (default: the parent's HEAD)
+#
+# Ports come from the lowest free slot.
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-
-die() { echo "error: $*" >&2; exit 1; }
+# Physical, like the worktree paths git reports that it is compared with.
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 
 # shellcheck source=scripts/lib/env-value.sh
 source "$repo_root/scripts/lib/env-value.sh"
+# shellcheck source=scripts/lib/worktree-paths.sh
+source "$repo_root/scripts/lib/worktree-paths.sh"
+# shellcheck source=scripts/lib/worktree-lock.sh
+source "$repo_root/scripts/lib/worktree-lock.sh"
+# shellcheck source=scripts/lib/worktree-process.sh
+source "$repo_root/scripts/lib/worktree-process.sh"
+# shellcheck source=scripts/lib/worktree-registry.sh
+source "$repo_root/scripts/lib/worktree-registry.sh"
+# shellcheck source=scripts/lib/worktree-db.sh
+source "$repo_root/scripts/lib/worktree-db.sh"
 
 # Assign first: `eval "$(...)"` succeeds on empty output, so a failure here would
 # surface further down as an unbound variable naming none of this.
@@ -26,9 +39,6 @@ bases="$(bun "$repo_root/scripts/ports.ts" --base)" ||
   die "scripts/ports.ts --base failed, so the port bases for a slot are unknown"
 eval "$bases"
 MAX_SLOT="$MAX_PORT_SLOT"
-
-git_common_dir="$(git -C "$repo_root" rev-parse --path-format=absolute --git-common-dir)"
-main_root="$(cd "$(dirname "$git_common_dir")" && pwd)"
 
 usage() {
   awk 'NR == 1 { next } !/^#/ { exit } { sub(/^# ?/, ""); print }' "$0"
@@ -38,14 +48,11 @@ name=""
 branch=""
 from="HEAD"
 slot=""
-force=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --branch) branch="${2:-}"; shift 2 ;;
     --from) from="${2:-}"; shift 2 ;;
-    --slot) slot="${2:-}"; shift 2 ;;
-    --force) force=1; shift ;;
     -h|--help) usage; exit 0 ;;
     -*) die "unknown option: $1" ;;
     *) [[ -n "$name" ]] && die "unexpected argument: $1"; name="$1"; shift ;;
@@ -53,18 +60,28 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -n "$name" ]] || die "usage: scripts/new-worktree.sh <name> [options]"
-[[ "$name" =~ ^[a-z0-9][a-z0-9-]*$ ]] || die "name must be lowercase letters, digits and dashes"
+valid_name "$name" || die "name must be lowercase letters, digits and dashes"
 
-# In a linked worktree, --from HEAD and server/.env would resolve inconsistently.
-[[ "$(git -C "$repo_root" rev-parse --absolute-git-dir)" == "$git_common_dir" ]] ||
-  die "this is a worktree, and scripts/new-worktree.sh only works in the main checkout ($main_root). Report this rather than working around it."
+creator="$(invoking_checkout)"
+parent="$(checkout_identity "$creator")"
+[[ -n "$parent" ]] ||
+  die "$creator has no worktree record, because it was not created by a scripts/new-worktree.sh that records parents, so a child of it would outlive its removal. Run this from the main checkout ($main_root) or from a worktree created since."
+
+# HEAD is per checkout, so it resolves in the parent, not in the main checkout.
+git -C "$creator" rev-parse --verify --quiet "$from^{commit}" >/dev/null ||
+  die "--from $from is not a commit in $creator"
 
 branch="${branch:-$name}"
-worktree_dir="$(dirname "$main_root")/alliance-$name"
-db_name="alliance_${name//-/_}"
+valid_branch "$branch" || die "invalid branch name: $branch"
+worktree_dir="$(worktree_dir_for "$name")"
+db_name="$(db_name_for "$name")"
 test_db_name="${db_name}_test"
 
-[[ -e "$worktree_dir" ]] && die "$worktree_dir already exists"
+[[ "$worktree_dir" != "$main_root" ]] || die "$worktree_dir is the main checkout — pick another worktree name"
+
+load_main_db_settings
+[[ "$db_name" != "$source_db" && "$test_db_name" != "$source_db" ]] ||
+  die "database name $db_name/$test_db_name collides with the main checkout's DB_NAME — pick another worktree name"
 
 any_port_in_use() {
   local status=0
@@ -76,15 +93,15 @@ any_port_in_use() {
   esac
 }
 
-# ports.json is authoritative because the dev servers resolve through it.
-# .worktree/env supports older worktrees. Reading only env would miss a worktree
-# whose env was edited or never written, and port probing cannot see an idle one.
+# Worktrees created before records claim their slot only through ports.json, or
+# .worktree/env in older ones. Port probing cannot see an idle one.
 #
 # Process substitution keeps claimed in this shell after the loop finishes.
-collect_claimed_slots() {
+collect_unrecorded_slots() {
   local dir claimed="" found
   while IFS= read -r dir; do
     found=""
+    [[ -f "$(instance_file "$dir")" ]] && continue
     if [[ -f "$dir/.worktree/ports.json" ]]; then
       # A malformed file makes ports.ts throw, which must not read as unclaimed.
       found="$( (cd "$dir" && bun "$repo_root/scripts/ports.ts") | sed -n 's/^SLOT=//p' )" ||
@@ -99,177 +116,194 @@ collect_claimed_slots() {
   echo "$claimed"
 }
 
-# `die` inside the command substitution exits only that subshell, so `set -e`
-# catching the failed assignment is what stops the run.
-claimed_slots="$(collect_claimed_slots)"
-
-slot_claimed() {
-  [[ " $claimed_slots " == *" $1 "* ]]
-}
-
-slot_free() {
-  local candidate="$1" offset=$(( $1 * PORT_SLOT_STRIDE ))
-  slot_claimed "$candidate" && return 1
+ports_in_use() {
+  local offset=$(( $1 * PORT_SLOT_STRIDE ))
   any_port_in_use \
     $(( BASE_SERVER_PORT + offset )) \
     $(( BASE_FRONTEND_PORT + offset )) \
     $(( BASE_ADMIN_PORT + offset )) \
-    $(( BASE_MOBILE_PORT + offset )) && return 1
-  return 0
+    $(( BASE_MOBILE_PORT + offset ))
 }
 
-# The durable .worktree/ports.json claim does not exist yet, so concurrent runs
-# reserve slots with an atomic mkdir under the shared git directory.
-lock_root="$git_common_dir/alliance-slot-locks"
-mkdir -p "$lock_root"
+id=""
+created=""
 
-held_lock=""
-held_reaper=""
-
-release_lock() {
-  [[ -n "$held_lock" ]] && rm -rf "$held_lock"
-  [[ -n "$held_reaper" ]] && rmdir "$held_reaper" 2>/dev/null
-  held_lock=""
-  held_reaper=""
+on_exit() {
+  if [[ -n "$id" && -z "$created" ]]; then
+    echo "error: $name was not finished. Its record keeps what it created so far; remove that with 'scripts/rm-worktree.sh $name'." >&2
+  fi
 }
 
-# A signal trap that only released the lock would let bash resume the run
-# afterwards, unlocked, while another run takes the slot. Exiting from the
-# signal traps still runs the EXIT trap, so the lock is released exactly once.
-trap release_lock EXIT
+trap on_exit EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-claim_slot() {
-  # Under set -u, a combined local declaration would read candidate too early.
-  local candidate="$1"
-  local dir="$lock_root/$candidate"
-
-  mkdir "$dir" 2>/dev/null || return 1
-  echo $$ > "$dir/pid"
-  held_lock="$dir"
-  return 0
-}
-
-# A SIGKILLed run leaves its lock behind. Without reaping it the slot would drop
-# out of selection with nothing said, until enough had leaked that every slot
-# looked taken.
-#
-# Reaping needs its own mutex: two runs that both cleared one stale lock would
-# both go on to claim the slot, which is the collision the lock exists to
-# prevent. An unreadable pid counts as live — claim_slot writes it a moment
-# after mkdir, and reaping inside that window would hand out a held slot.
-reap_stale_lock() {
-  local candidate="$1"
-  local dir="$lock_root/$candidate"
-  local reaper="$lock_root/$candidate.reaping"
-  local owner status=1
-
-  mkdir "$reaper" 2>/dev/null || return 1
-  held_reaper="$reaper"
-
-  owner="$(cat "$dir/pid" 2>/dev/null || true)"
-  if [[ -n "$owner" ]] && ! kill -0 "$owner" 2>/dev/null; then
-    echo "note: clearing stale lock on slot $candidate (holder $owner is gone)" >&2
-    rm -rf "$dir"
-    status=0
+# Removing a parent flags it under the registry lock this loop takes, so a child
+# is either recorded before that removal looks for children or refused.
+mkdir -p "$instances"
+while :; do
+  acquire_lock "$registry_lock" "the worktree registry" 8
+  previous="$(records_with name "$name")"
+  removing_stamp="$(readlink "$instances/$previous/removing" 2>/dev/null || true)"
+  if [[ -n "$previous" && -n "$removing_stamp" ]] && stamp_alive "$removing_stamp"; then
+    release_lock 8
+    echo "==> waiting for pid ${removing_stamp%% *} to finish removing the previous $name" >&2
+    while [[ -d "$instances/$previous" ]] && stamp_alive "$removing_stamp"; do sleep 0.2; done
+    continue
   fi
+  break
+done
+sweep_registry_leftovers
 
-  rmdir "$reaper"
-  held_reaper=""
-  return "$status"
-}
+[[ -z "$previous" ]] ||
+  die "a worktree named $name is already recorded, and someone may be using it — choose another name. Only if your own run stopped while creating or removing $name, 'scripts/rm-worktree.sh $name' removes what it left"
 
-take_slot() {
-  claim_slot "$1" && return 0
-  reap_stale_lock "$1" || return 1
-  claim_slot "$1"
-}
-
-if [[ -n "$slot" ]]; then
-  [[ "$slot" =~ ^[0-9]+$ ]] && (( slot >= 1 && slot <= MAX_SLOT )) || die "--slot must be 1-$MAX_SLOT"
-  # --force may override a settled claim, but never an in-progress creation.
-  take_slot "$slot" ||
-    die "slot $slot is locked — another scripts/new-worktree.sh (pid $(cat "$lock_root/$slot/pid" 2>/dev/null || echo unknown)) is creating it right now"
-  if (( ! force )) && ! slot_free "$slot"; then
-    die "slot $slot is already claimed by another worktree or its ports are in use (--force to override)"
+if [[ "$parent" != main ]]; then
+  [[ -d "$instances/$parent" ]] || die "$creator is being removed, so it cannot take a new child"
+  parent_removing="$(readlink "$instances/$parent/removing" 2>/dev/null || true)"
+  if [[ -n "$parent_removing" ]]; then
+    ! stamp_alive "$parent_removing" || die "$creator is being removed, so it cannot take a new child"
+    # One removal flags its whole selection, so the topmost ancestor carrying
+    # this stamp is the worktree that removal was asked for.
+    stopped="$parent"
+    ancestors="$(lineage_of "$creator")"
+    for ancestor in $ancestors; do
+      [[ "$(readlink "$instances/$ancestor/removing" 2>/dev/null)" != "$parent_removing" ]] || stopped="$ancestor"
+    done
+    die "an earlier removal that includes $creator did not finish, so it cannot take a new child — 'scripts/rm-worktree.sh $(record_field "$stopped" name)' finishes it"
   fi
-else
-  for candidate in $(seq 1 "$MAX_SLOT"); do
-    take_slot "$candidate" || continue
-    if slot_free "$candidate"; then slot="$candidate"; break; fi
-    release_lock
-  done
-  [[ -n "$slot" ]] || die "no free port slot (1-$MAX_SLOT) available"
 fi
+
+# A worktree from before records owns its databases without a record, so its
+# directory is checked first.
+[[ ! -e "$worktree_dir" ]] || die "$worktree_dir already exists"
+
+for db in "$db_name" "$test_db_name"; do
+  [[ -z "$(records_with db "$db")$(records_with test_db "$db")" ]] ||
+    die "database $db belongs to another worktree — pick another name"
+  ! db_exists "$db" ||
+    die "database $db already exists and no worktree records it — pick another name, or drop it if nothing uses it"
+done
+
+# A holder may have switched away from its branch, so being checked out is not
+# the only claim on it.
+branch_holder="$(records_with branch "$branch" | head -n 1)"
+[[ -z "$branch_holder" ]] || die "branch $branch belongs to worktree $(record_field "$branch_holder" name)"
+if git -C "$main_root" show-ref --verify --quiet "refs/heads/$branch"; then
+  branch_created=0
+  ! branch_checked_out "$branch" ||
+    die "branch $branch is already checked out in another worktree"
+else
+  branch_created=1
+fi
+
+recorded_slots=" $(record_fields slot | tr '\n' ' ') "
+# `die` inside the command substitution exits only that subshell, so `set -e`
+# catching the failed assignment is what stops the run.
+unrecorded_slots=" $(collect_unrecorded_slots) "
+
+for candidate in $(seq 1 "$MAX_SLOT"); do
+  [[ "$recorded_slots $unrecorded_slots" == *" $candidate "* ]] && continue
+  ports_in_use "$candidate" && continue
+  slot="$candidate"
+  break
+done
+[[ -n "$slot" ]] || die "no free port slot (1-$MAX_SLOT) available"
+
+new_id="$(bun -e 'console.log(Bun.randomUUIDv7())')"
+staging="$instances/.new-$new_id"
+mkdir "$staging"
+# The lock is held before the record is visible, so removal waits for this
+# creation from the moment it can see it.
+acquire_lock "$staging/lock" "worktree $name" 9
+cat > "$staging/record" <<RECORD
+name=$name
+parent=$parent
+dir=$worktree_dir
+db=$db_name
+test_db=$test_db_name
+branch=$branch
+branch_created=$branch_created
+slot=$slot
+RECORD
+mv "$staging" "$instances/$new_id"
+id="$new_id"
+release_lock 8
 
 offset=$(( slot * PORT_SLOT_STRIDE ))
 server_port=$(( BASE_SERVER_PORT + offset ))
 frontend_port=$(( BASE_FRONTEND_PORT + offset ))
 admin_port=$(( BASE_ADMIN_PORT + offset ))
 mobile_port=$(( BASE_MOBILE_PORT + offset ))
+owner_tag="$(db_owner_tag "$id")"
 
-source_env="$main_root/server/.env"
-[[ -f "$source_env" ]] || die "$source_env not found — copy server/.env.example first"
+staging_db="$(staging_db_for "$id")"
 
-db_host="$(env_value "$source_env" DB_HOST)"
-db_port="$(env_value "$source_env" DB_PORT)"
-db_user="$(env_value "$source_env" DB_USERNAME)"
-db_password="$(env_value "$source_env" DB_PASSWORD)"
-source_db="$(env_value "$source_env" DB_NAME)"
+# A database exists under its real name only once tagged, so a stop at any point
+# leaves only databases removal can tell are this record's. RENAME fails on a
+# name someone else took after the check above.
+run_sql() { psql -X "${psql_args[@]}" -d postgres -q -v ON_ERROR_STOP=1 -c "$1"; }
+tag_db() { run_sql "COMMENT ON DATABASE \"$1\" IS '$owner_tag'"; }
+publish_db() { run_sql "ALTER DATABASE \"$1\" RENAME TO \"$2\""; }
 
-# DB_PASSWORD stays optional — a local cluster may use trust or peer auth.
-[[ -n "$db_host" ]] || die "DB_HOST not set in $source_env"
-[[ -n "$db_port" ]] || die "DB_PORT not set in $source_env"
-[[ -n "$db_user" ]] || die "DB_USERNAME not set in $source_env"
-[[ -n "$source_db" ]] || die "DB_NAME not set in $source_env"
-[[ "$db_name" != "$source_db" && "$test_db_name" != "$source_db" ]] ||
-  die "database name $db_name/$test_db_name collides with the main checkout's DB_NAME — pick another worktree name"
-
-for tool in psql createdb dropdb pg_dump; do
-  command -v "$tool" >/dev/null || die "$tool not found — install the postgres client tools"
-done
-
-if [[ -n "$db_password" ]]; then export PGPASSWORD="$db_password"; fi
-psql_args=(-h "$db_host" -p "$db_port" -U "$db_user")
-psql "${psql_args[@]}" -d postgres -tAc 'SELECT 1' >/dev/null 2>&1 ||
-  die "cannot reach postgres at $db_host:$db_port as $db_user (credentials from $source_env)"
-
-# Create databases before the worktree so a database failure leaves no checkout
-# that rm-worktree.sh cannot identify.
-existing_db="$(psql "${psql_args[@]}" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$db_name'")"
-if [[ "$existing_db" == "1" ]]; then
-  echo "==> database $db_name already exists, reusing"
+echo "==> copying database $source_db -> $db_name"
+if createdb "${psql_args[@]}" -T "$source_db" "$staging_db" 2>/dev/null; then
+  tag_db "$staging_db"
 else
-  echo "==> copying database $source_db -> $db_name"
-  if ! createdb "${psql_args[@]}" -T "$source_db" "$db_name" 2>/dev/null; then
-    echo "    template copy failed (source database in use), falling back to dump/restore"
-    createdb "${psql_args[@]}" "$db_name"
-    # psql can exit 0 after SQL errors unless ON_ERROR_STOP is set.
-    if ! pg_dump "${psql_args[@]}" -d "$source_db" |
-      psql "${psql_args[@]}" -q -v ON_ERROR_STOP=1 --single-transaction -d "$db_name" >/dev/null; then
-      dropdb --if-exists "${psql_args[@]}" "$db_name"
-      die "restoring $source_db into $db_name failed"
-    fi
+  echo "    template copy failed (source database in use), falling back to dump/restore"
+  createdb "${psql_args[@]}" "$staging_db"
+  tag_db "$staging_db"
+  # psql can exit 0 after SQL errors unless ON_ERROR_STOP is set.
+  if ! pg_dump "${psql_args[@]}" -d "$source_db" |
+    psql "${psql_args[@]}" -q -v ON_ERROR_STOP=1 --single-transaction -d "$staging_db" >/dev/null; then
+    die "restoring $source_db into $db_name failed"
   fi
 fi
+publish_db "$staging_db" "$db_name"
 
 # The test database never copies dev data; the e2e suite owns its schema through
 # dropSchema and synchronize.
-existing_test_db="$(psql "${psql_args[@]}" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$test_db_name'")"
-if [[ "$existing_test_db" == "1" ]]; then
-  echo "==> test database $test_db_name already exists, reusing"
-else
-  echo "==> creating test database $test_db_name"
-  createdb "${psql_args[@]}" "$test_db_name"
-fi
+echo "==> creating test database $test_db_name"
+createdb "${psql_args[@]}" "${staging_db}_test"
+tag_db "${staging_db}_test"
+publish_db "${staging_db}_test" "$test_db_name"
 
-echo "==> creating worktree $worktree_dir (slot $slot)"
-if git -C "$main_root" show-ref --verify --quiet "refs/heads/$branch"; then
-  git -C "$main_root" worktree add "$worktree_dir" "$branch"
-else
-  git -C "$main_root" worktree add -b "$branch" "$worktree_dir" "$from"
+echo "==> creating worktree $worktree_dir (slot $slot, child of $creator)"
+# A stop between branching and recording it leaves the branch at branch_from,
+# where removal can tell it from one that has commits of its own.
+if (( branch_created )); then
+  # --from can move while the database copies, so it resolves again here.
+  from_rev="$(git -C "$creator" rev-parse --verify --quiet "$from^{commit}")" ||
+    die "--from $from is not a commit in $creator"
+  set_record_field "$id" branch_from "$from_rev"
+  # A branch someone else made since the claim is theirs, so the record stops
+  # pointing removal at it. Branching from --from itself lets
+  # branch.autoSetupMerge choose the upstream.
+  git -C "$creator" branch "$branch" "$from" || {
+    set_record_field "$id" branch_from ""
+    exit 1
+  }
+  set_record_field "$id" branch_added 1
 fi
+# mkdir fails on a path someone else took after the check above, so dir_added
+# claims only a tree this run makes.
+mkdir "$worktree_dir" || die "could not create $worktree_dir"
+set_record_field "$id" dir_added 1
+# Children inherit the lock's descriptor, and a daemon one leaves running, such as
+# git's fsmonitor, would hold the lock after this run exits. The tree holds only
+# its .git until the instance file is written, so removal accepts a populated
+# tree only by its instance file.
+git -C "$main_root" worktree add --no-checkout "$worktree_dir" "$branch" 9>&- || {
+  rmdir "$worktree_dir" 2>/dev/null && set_record_field "$id" dir_added ""
+  exit 1
+}
+echo "$id" > "$(instance_file "$worktree_dir")"
+# The instance file claims the tree from here, so a worktree made by hand after
+# this one is deleted is not taken for it.
+set_record_field "$id" dir_added ""
+git -C "$worktree_dir" checkout -q -f 9>&-
+
+mkdir -p "$worktree_dir/.worktree"
 
 echo "==> copying local (untracked) config"
 
@@ -289,7 +323,6 @@ for f in .env.devtools server/.env apps/frontend/.env.local apps/admin/.env.loca
 done
 
 echo "==> writing .worktree/"
-mkdir -p "$worktree_dir/.worktree"
 
 # Vite and the server read this even when started outside the root scripts.
 cat > "$worktree_dir/.worktree/ports.json" <<JSON
@@ -373,7 +406,9 @@ set_env_key APP_URL "http://localhost:$frontend_port" "$worktree_env"
 set_env_key ADMIN_URL "http://localhost:$admin_port" "$worktree_env"
 
 echo "==> bun install"
-(cd "$worktree_dir" && bun install)
+(cd "$worktree_dir" && bun install 9>&-)
+
+created=1
 
 echo
 echo "worktree ready: $worktree_dir"
