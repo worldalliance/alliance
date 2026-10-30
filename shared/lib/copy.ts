@@ -356,7 +356,7 @@ export const taskFlow = {
   view: "View task",
   next: "Next",
   back: "Back",
-  submit: "Submit",
+  submit: "Complete",
   done: "Done",
   background: "Project background",
   progress: "Task progress",

@@ -408,6 +408,9 @@ export function useTaskFlow(params: {
     else onExit();
   }, [stranded]);
 
+  const nextIsLast = nextIndex === null;
+  const startIsLast = flowIndices.length === 0;
+
   const next = () =>
     advance(async () => {
       const since = moves.current;
@@ -427,8 +430,10 @@ export function useTaskFlow(params: {
     progressSaved:
       rules.records && stage === FlowStage.Screens && pastFirstStep,
     background,
-    nextLabel: nextIndex !== null ? taskFlow.next : rules.lastLabel,
-    startLabel: flowIndices.length === 0 ? rules.lastLabel : taskFlow.next,
+    nextLabel: nextIsLast ? rules.lastLabel : taskFlow.next,
+    nextIsLast,
+    startLabel: startIsLast ? rules.lastLabel : taskFlow.next,
+    startIsLast,
     beginLabel:
       position.screenIndex !== null ||
       form.currentPageIndex > (form.visiblePageIndices[0] ?? 0)

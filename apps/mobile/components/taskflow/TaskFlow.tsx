@@ -221,6 +221,7 @@ export default function TaskFlow({
             background={flow.background}
             onNext={() => void flow.start()}
             nextLabel={flow.startLabel}
+            nextIsLast={flow.startIsLast}
             error={error}
           />
         );
@@ -233,6 +234,7 @@ export default function TaskFlow({
             screen={flow.screen}
             nextReady={flow.nextReady}
             nextLabel={flow.nextLabel}
+            nextIsLast={flow.nextIsLast}
             error={error}
             onBack={flow.back}
             onNext={() => void flow.next()}

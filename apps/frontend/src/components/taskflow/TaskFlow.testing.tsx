@@ -209,7 +209,7 @@ export function renderFlow({
 export const openFirstQuestionScreen = async () => {
   fireEvent.click(await screen.findByRole("button", { name: taskFlow.begin }));
   await screen.findByRole("heading", { name: taskFlow.background });
-  fireEvent.click(screen.getByRole("button", { name: "Next" }));
+  fireEvent.click(screen.getByRole("button", { name: taskFlow.next }));
   await screen.findByRole("heading", { name: "Rate the chatbot" });
 };
 
@@ -221,8 +221,8 @@ export const submitFlow = async () => {
   fireEvent.change(screen.getByRole("textbox", { name: /First impression/ }), {
     target: { value: "Helpful" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Next" }));
-  fireEvent.click(await screen.findByRole("button", { name: "Submit" }));
+  fireEvent.click(screen.getByRole("button", { name: taskFlow.next }));
+  fireEvent.click(await screen.findByRole("button", { name: taskFlow.submit }));
   await screen.findByRole("heading", { name: taskFlow.complete });
 };
 

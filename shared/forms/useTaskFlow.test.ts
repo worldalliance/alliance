@@ -95,6 +95,7 @@ describe("useTaskFlow", () => {
     expect(hook.result.current.stage).toBe(FlowStage.Screens);
     expect(hook.result.current.screenIndex).toBe(2);
     expect(hook.result.current.nextLabel).toBe(taskFlow.submit);
+    expect(hook.result.current.nextIsLast).toBe(true);
   });
 
   it("shows opening content whose questions are hidden as the background page", () => {
@@ -305,7 +306,9 @@ describe("useTaskFlow", () => {
       schema: { pages: [schema.pages[0]], outputViews: [] },
     });
     expect(backgroundOnly.hook.result.current.startLabel).toBe(taskFlow.submit);
+    expect(backgroundOnly.hook.result.current.startIsLast).toBe(true);
     expect(setup().hook.result.current.startLabel).toBe(taskFlow.next);
+    expect(setup().hook.result.current.startIsLast).toBe(false);
   });
 
   it("holds Next while visibility is still settling", async () => {

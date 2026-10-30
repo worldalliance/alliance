@@ -5,6 +5,7 @@ import {
 } from "@alliance/shared/forms/flowScreens";
 import { FlowButtonKind } from "@alliance/shared/forms/flowStyle";
 import { draftSaveFailed, taskFlow } from "@alliance/shared/lib/copy";
+import { ArrowLeft, ArrowRight, Check } from "lucide-react-native";
 import { useEffect, type ReactNode } from "react";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -63,6 +64,7 @@ export default function TaskFlowScreen({
   screen,
   nextReady,
   nextLabel,
+  nextIsLast,
   error,
   onBack,
   onNext,
@@ -71,6 +73,7 @@ export default function TaskFlowScreen({
   screen: FlowScreen;
   nextReady: boolean;
   nextLabel: string;
+  nextIsLast: boolean;
   error: string | null;
   onBack: () => void;
   onNext: () => void;
@@ -104,6 +107,7 @@ export default function TaskFlowScreen({
               className="flex-1"
               disabled={form.submitting}
               title={taskFlow.back}
+              iconLeft={ArrowLeft}
             />
             <FlowButton
               kind={FlowButtonKind.Primary}
@@ -112,6 +116,7 @@ export default function TaskFlowScreen({
               loading={form.submitting}
               disabled={form.imageUpload.uploadingAny}
               title={nextLabel}
+              iconRight={nextIsLast ? Check : ArrowRight}
             />
           </View>
         </>

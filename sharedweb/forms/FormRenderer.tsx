@@ -1,4 +1,5 @@
 import { computeFormStorageKey } from "@alliance/shared/forms/formDrafts";
+import { taskFlow } from "@alliance/shared/lib/copy";
 import { cn } from "@alliance/shared/styles/util";
 import React from "react";
 import { formBlockedView, FormElements } from "./FormElements";
@@ -92,7 +93,7 @@ const FormRenderer = ({
           onPreviewSubmit={form.validateAllPagesAndShowFirstInvalid}
           submitting={submitting}
           submitLabel={
-            schema.submit?.label || (followUp ? "Submit" : "Complete")
+            schema.submit?.label || (followUp ? "Submit" : taskFlow.submit)
           }
           uploadingImages={uploadingAny}
           onCancelUploads={imageUpload.cancelAll}

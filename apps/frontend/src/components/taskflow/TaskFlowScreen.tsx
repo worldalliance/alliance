@@ -8,6 +8,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { FormElements } from "@alliance/sharedweb/forms/FormElements";
 import { type WebFormState } from "@alliance/sharedweb/forms/useWebFormState";
 import { ModalTitle } from "@alliance/sharedweb/ui/Modal";
+import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { useEffect, type ReactNode, type RefObject } from "react";
 import FlowButton, { FlowButtonKind } from "./FlowButton";
 
@@ -54,6 +55,7 @@ export default function TaskFlowScreen({
   screen,
   nextReady,
   nextLabel,
+  nextIsLast,
   error,
   scrollRef,
   onBack,
@@ -63,6 +65,7 @@ export default function TaskFlowScreen({
   screen: FlowScreen;
   nextReady: boolean;
   nextLabel: string;
+  nextIsLast: boolean;
   error: string | null;
   scrollRef: RefObject<HTMLDivElement | null>;
   onBack: () => void;
@@ -106,6 +109,7 @@ export default function TaskFlowScreen({
                 className="flex-1"
                 disabled={form.submitting}
                 onClick={onBack}
+                iconLeft={ArrowLeft}
               >
                 {taskFlow.back}
               </FlowButton>
@@ -115,6 +119,7 @@ export default function TaskFlowScreen({
                 className={cn("flex-1", !nextReady && "opacity-50")}
                 loading={form.submitting}
                 disabled={form.imageUpload.uploadingAny}
+                iconRight={nextIsLast ? Check : ArrowRight}
               >
                 {nextLabel}
               </FlowButton>
