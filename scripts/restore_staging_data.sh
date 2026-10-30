@@ -29,16 +29,20 @@ if [[ ! -f "$DUMP_FILE" ]]; then
   exit 1
 fi
 
-# Optionally reset local DB
+# Optionally reset local DB, keeping its comment.
 if [[ "$RESET_LOCAL_DB" == "1" ]]; then
   echo "==> Dropping & recreating local DB: ${LOCAL_DB_NAME} on ${LOCAL_PGHOST}:${LOCAL_PGPORT}"
   PGPASSWORD="${LOCAL_PGPASSWORD:-}" \
-  psql \
+  psql -X \
     -h "$LOCAL_PGHOST" -p "$LOCAL_PGPORT" -U "$LOCAL_PGUSER" \
     -d postgres \
     -v ON_ERROR_STOP=1 \
-    -c "DROP DATABASE IF EXISTS \"${LOCAL_DB_NAME}\";" \
-    -c "CREATE DATABASE \"${LOCAL_DB_NAME}\";"
+    -v db="$LOCAL_DB_NAME" <<'SQL'
+SELECT coalesce((SELECT shobj_description(oid, 'pg_database') FROM pg_database WHERE datname = :'db'), '') AS comment \gset
+DROP DATABASE IF EXISTS :"db";
+CREATE DATABASE :"db";
+COMMENT ON DATABASE :"db" IS :'comment';
+SQL
 fi
 
 echo "==> Restoring into local DB: ${LOCAL_DB_NAME} on ${LOCAL_PGHOST}:${LOCAL_PGPORT}"

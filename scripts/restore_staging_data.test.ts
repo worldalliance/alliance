@@ -18,6 +18,7 @@ const STUBS: Record<string, string> = {
     exit "\${RESTORE_STATUS:-0}"`,
   psql: `
     echo "psql \${@: -1}" >> "$STATE/log"
+    cat >> "$STATE/stdin"
     exit "\${CLEAR_STATUS:-0}"`,
 };
 
@@ -42,13 +43,18 @@ afterEach(() => {
   rmSync(home, { recursive: true });
 });
 
-function restore(params: { restoreStatus: number; clearStatus: number }) {
+function restore(params: {
+  restoreStatus: number;
+  clearStatus: number;
+  reset?: boolean;
+}) {
   const result = Bun.spawnSync(["bash", SCRIPT, join(home, "dump.pgcustom")], {
+    stdin: "ignore",
     env: {
       PATH: `${bin}:${process.env.PATH}`,
       STATE: state,
       LOCAL_DB_NAME: "restore_test",
-      RESET_LOCAL_DB: "0",
+      RESET_LOCAL_DB: params.reset ? "1" : "0",
       RESTORE_STATUS: String(params.restoreStatus),
       CLEAR_STATUS: String(params.clearStatus),
     },
@@ -57,6 +63,7 @@ function restore(params: { restoreStatus: number; clearStatus: number }) {
     exitCode: result.exitCode,
     stderr: result.stderr.toString(),
     log: readFileSync(join(state, "log"), "utf8").trim().split("\n"),
+    stdin: readFileSync(join(state, "stdin"), "utf8"),
   };
 }
 
@@ -67,6 +74,17 @@ test("restore_staging_data.sh clears push tokens after a restore", () => {
     exitCode: 0,
     log: ["pg_restore", CLEAR],
   });
+});
+
+test("restore_staging_data.sh recreates the database with its comment before restoring", () => {
+  const result = restore({ restoreStatus: 0, clearStatus: 0, reset: true });
+  expect(result).toMatchObject({
+    exitCode: 0,
+    log: ["psql db=restore_test", "pg_restore", CLEAR],
+  });
+  expect(result.stdin).toMatch(
+    /SELECT coalesce\(\(SELECT shobj_description[^\n]*\), ''\) AS comment \\gset\nDROP DATABASE [^\n]*\nCREATE DATABASE :"db";\nCOMMENT ON DATABASE :"db" IS :'comment';\n/,
+  );
 });
 
 test("restore_staging_data.sh clears push tokens after a partly failed restore, then fails", () => {
