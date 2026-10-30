@@ -365,6 +365,7 @@ export const taskFlow = {
     "We'll share a progress update on this project with all members in the coming weeks.",
   closeTask: "Close task",
   taskDetails: "Details",
+  viewTasks: "View tasks",
   progressSaved: "Progress auto-saved",
   inviteFriend: "Invite a friend",
   staff: "Staff",

@@ -7,6 +7,7 @@ import { formatUserLocationDisplayValue } from "@alliance/shared/formrenderer";
 import { FlowButtonKind } from "@alliance/shared/forms/flowStyle";
 import { useCurrentUserLocation } from "@alliance/shared/forms/useCurrentUserLocation";
 import { taskFlow } from "@alliance/shared/lib/copy";
+import { ListTodo, UserPlus } from "lucide-react-native";
 import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import OutputRenderer from "../OutputRenderer";
@@ -70,12 +71,14 @@ export default function TaskFlowComplete({
         <FlowButton
           kind={FlowButtonKind.Inverse}
           onPress={onClose}
-          title={taskFlow.closeTask}
+          title={taskFlow.viewTasks}
+          iconLeft={ListTodo}
         />
         <FlowButton
           kind={FlowButtonKind.Secondary}
           onPress={onInvite}
           title={taskFlow.inviteFriend}
+          iconLeft={UserPlus}
         />
       </View>
     </View>

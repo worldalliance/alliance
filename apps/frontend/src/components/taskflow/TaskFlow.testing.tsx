@@ -16,6 +16,7 @@ import {
   MemoryRouter,
   Route,
   Routes,
+  useLocation,
   useNavigate,
   type NavigateFunction,
 } from "react-router";
@@ -141,6 +142,13 @@ function CaptureNavigate() {
   return null;
 }
 
+// react-router keys the initial entry "default" and every navigation afresh,
+// so a navigation to the path already shown is visible here.
+function CaptureLocation() {
+  const { pathname, key } = useLocation();
+  return <p>{`at ${pathname} ${key}`}</p>;
+}
+
 function NavMode() {
   const options = useContext(NavbarOptionsContext)?.options;
   return (
@@ -188,11 +196,18 @@ export function renderFlow({
                 <TaskFlowCompletionProvider>
                   <NavbarOptionsProvider>
                     <CaptureNavigate />
+                    <CaptureLocation />
                     <NavMode />
                     <Routes>
                       <Route path="/actions/1" element={pageElement} />
                       <Route path="/actions/2" element={pageElement} />
                       <Route path="/" element={pageElement} />
+                      <Route
+                        path="/tasks"
+                        element={
+                          path === "/tasks" ? pageElement : <p>Tasks home</p>
+                        }
+                      />
                       <Route path="/forum" element={<p>Forum</p>} />
                     </Routes>
                   </NavbarOptionsProvider>

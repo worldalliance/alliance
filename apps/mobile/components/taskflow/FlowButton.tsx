@@ -45,6 +45,7 @@ const KINDS: Record<
 export default function FlowButton({
   kind,
   title,
+  iconLeft: IconLeft,
   iconRight: IconRight,
   loading = false,
   disabled = false,
@@ -54,6 +55,7 @@ export default function FlowButton({
 }: Omit<TouchableOpacityProps, "children"> & {
   kind: FlowButtonKind;
   title?: string;
+  iconLeft?: LucideIcon;
   iconRight?: LucideIcon;
   loading?: boolean;
   children?: ReactNode;
@@ -78,6 +80,7 @@ export default function FlowButton({
         <ActivityIndicator size="small" color={contentColor} />
       ) : title ? (
         <View className="flex-row items-center gap-x-2">
+          {IconLeft ? <IconLeft size={18} color={contentColor} /> : null}
           <Text className={textClassName} weight={FontWeight.Medium}>
             {title}
           </Text>

@@ -109,6 +109,8 @@ it("shows a guest the completion card before completing a public task and redire
     await waitFor(() => expect(onCompleteAction).toHaveBeenCalledTimes(1), {
       timeout: CLOSE_TIMEOUT,
     });
+    // The guest's hard redirect, not a client-side navigation it could race.
+    expect(screen.getByText("at /actions/1 default")).toBeTruthy();
     expect(window.location.pathname).toBe("/actions/completed");
   } finally {
     happyDOM.setURL(startHref);

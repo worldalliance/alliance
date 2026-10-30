@@ -29,7 +29,7 @@ import { Dialog } from "@base-ui/react/dialog";
 import { ArrowRight } from "lucide-react";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { matchPath, useLocation, useNavigate } from "react-router";
+import { href, matchPath, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../../lib/AuthContext";
 import {
   ImmersiveTone,
@@ -53,6 +53,7 @@ import TaskFlowScreen, {
 import { useExpandingPanel } from "./useExpandingPanel";
 
 const PROGRESS_TRANSITION = transition(flowMotion.progress, "width");
+const TASKS_PATH = href("/tasks");
 
 const isTaskPage = (path: string, actionId: number) =>
   matchPath("/actions/:id", path)?.params.id === String(actionId);
@@ -306,7 +307,14 @@ export default function TaskFlow({
             answers={flow.submittedAnswers ?? {}}
             user={user}
             fading={recoloring}
-            onClose={() => void finish()}
+            leavesToTasks={isAuthenticated}
+            onClose={() =>
+              void finish(
+                isAuthenticated && pathname !== TASKS_PATH
+                  ? () => navigate(TASKS_PATH)
+                  : undefined,
+              )
+            }
             onInvite={
               isAuthenticated
                 ? () => void finish(() => navigate("/invites"))
