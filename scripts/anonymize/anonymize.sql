@@ -87,12 +87,13 @@ BEGIN
 END $$;
 
 -- Kora participants are not members and get no anonymized stand-ins; staging
--- signs up its own.
+-- signs up its own. CASCADE also empties, in full, every table with a foreign
+-- key into these.
 DO $$
 BEGIN
   IF to_regclass('kora_participant') IS NOT NULL THEN
     TRUNCATE "kora_participant", "kora_participant_session",
-      "kora_participant_signup";
+      "kora_participant_signup" CASCADE;
   END IF;
 END $$;
 
