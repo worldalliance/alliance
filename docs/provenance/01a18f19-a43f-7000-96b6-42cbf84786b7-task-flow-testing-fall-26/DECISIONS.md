@@ -1,0 +1,6 @@
+## Decisions
+
+- **TN-25: one screen per page, aligned by index.** `buildFlowScreens` maps every page to a screen, empty pages included, so a screen's index is its page's index. An empty page never shows because `visibleFlowScreenIndices` skips screens with nothing visible.
+- **TN-25: the first header block anywhere on the page is the title.** It's lifted out of the page's content, even when content comes before it, so an author's title never shows twice. The authoring guide asks for it at the top of the page.
+- **TN-25: saved screens restart.** Saved positions were screen indices under the old splitting, which now point at different pages. The storage key moved from `taskflow-screen:` to `taskflow-step:`, so a member's saved position from before resumes by page from their draft instead of landing on the wrong page.
+- **TN-25: a header's section ends at the next header.** `withoutEmptySections` drops a header block whose blocks, up to the next header block, all hide, and keeps a header with no blocks under it, which an author placed on purpose. A step whose only showing block is such a header doesn't show. Before one step per page, a header started its own step, which was skipped once everything in it hid; this keeps that behaviour within a step. It applies only in the task flow; the classic form renderer is unchanged.

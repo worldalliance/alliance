@@ -174,6 +174,7 @@ From the notes: "Remove mapping of page breaks via header and 3rd question, shou
 - Each form page is one step. Header blocks and a page's 3rd input no longer start a new step. (Notes)
 - A step's title is its page's first header block. The page's title isn't shown. A page with no header block gets the generic fallback title. (Approved)
 - Authors open each page with a level-1 header block. (Approved)
+- A header block within a step hides while every block under it, up to the next header block, is hidden, and shows again with them. (User)
 
 ## Out of scope
 

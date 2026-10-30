@@ -13,7 +13,7 @@ export type FlowPosition = {
   clear: () => void;
 };
 
-const storageKey = (taskFormId: number) => `taskflow-screen:${taskFormId}`;
+const storageKey = (taskFormId: number) => `taskflow-step:${taskFormId}`;
 
 /**
  * The flow screen a member last had open on this device, kept per form

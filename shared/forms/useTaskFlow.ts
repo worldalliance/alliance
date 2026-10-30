@@ -21,6 +21,7 @@ import {
   flowProgress,
   flowResumeIndex,
   visibleFlowScreenIndices,
+  withoutEmptySections,
 } from "./flowScreens";
 import { type SubmitOutcome } from "./submitOutcome";
 import { type FlowPosition } from "./useFlowPosition";
@@ -179,7 +180,7 @@ export function useTaskFlow(params: {
   const background = backgroundScreen
     ? [
         ...(backgroundScreen.heading ? [backgroundScreen.heading] : []),
-        ...backgroundScreen.elements,
+        ...withoutEmptySections(backgroundScreen.elements, isElementVisible),
       ]
     : [];
 
@@ -381,7 +382,10 @@ export function useTaskFlow(params: {
   return {
     stage,
     open: IS_OPEN[stage],
-    screen,
+    screen: screen && {
+      ...screen,
+      elements: withoutEmptySections(screen.elements, isElementVisible),
+    },
     screenIndex,
     background,
     nextLabel: nextIndex !== null ? taskFlow.next : rules.lastLabel,

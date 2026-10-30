@@ -13,7 +13,7 @@ task: Immersive full-screen, multi-step task flow on mobile and web, mapped from
 - Admin-side task creation changes as little as possible.
 - Screens follow this structure:
   1. Project written text, across multiple screens.
-  2. Task form inputs, across multiple screens, with at most 2 inputs per screen.
+  2. Task form inputs, across multiple screens. How pages become screens is set by TN-25 in [task-flow-testing-fall-26](../01a18f19-a43f-7000-96b6-42cbf84786b7-task-flow-testing-fall-26/REQUIREMENTS.md).
 - The goal is a more engaging, digestible experience: text and inputs are broken up across separate screens.
 - From the designs:
   - content screens with an X close button, a large title, body, Back/Next buttons, and a bottom progress bar
@@ -55,7 +55,6 @@ task: Immersive full-screen, multi-step task flow on mobile and web, mapped from
 - The "Task complete" card shows the member's own output answers, including any they chose to hide from other members.
 
 - Project written-text screens come from display blocks in the form JSON (header, text, images, copytext, …). They do not come from the action's body markdown.
-- A new screen starts at each form page boundary and at each `header` block, in addition to the 2-input cap.
 - Time appears only as the action's total time estimate.
 - No server, database schema, or admin builder changes.
 
