@@ -105,10 +105,7 @@ const ActionUpdatesTab = ({
     navigate(`/actions/${actionId}/updates/${created.value.id}`);
   };
 
-  const handleDelete = async (
-    update: ActionUpdateDto,
-    button: HTMLElement,
-  ) => {
+  const handleDelete = async (update: ActionUpdateDto, button: HTMLElement) => {
     const ok = await confirm({
       message: `Delete "${update.title}"? Members stop seeing it.`,
       confirmLabel: "Delete",
