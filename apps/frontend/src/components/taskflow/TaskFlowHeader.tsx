@@ -46,7 +46,9 @@ export default function TaskFlowHeader({
   onWithdraw: FlowWithdrawHandler | null;
 }) {
   return (
-    <div className={cn(FLOW_COLUMN, "flex items-center justify-between py-3")}>
+    <div
+      className={cn(FLOW_COLUMN, "flex items-center justify-between pt-4 pb-3")}
+    >
       <div className="flex items-center gap-x-3">
         <FlowButton
           kind={FlowButtonKind.Icon}
