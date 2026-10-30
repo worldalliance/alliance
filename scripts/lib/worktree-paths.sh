@@ -33,6 +33,24 @@ is_our_worktree() {
   [[ "$(cat "$1/.git" 2>/dev/null)" == "gitdir: $git_common_dir/worktrees/"* ]]
 }
 
+# The Git admin directory a checkout's .git file names, as an absolute path.
+# worktree.useRelativePaths writes it relative to the checkout. Its leading ../
+# segments resolve lexically, since a half-removed worktree's admin directory and
+# its parent may be gone.
+admin_dir_of() {
+  local git_dir dir
+  git_dir="$(sed -n 's/^gitdir: //p' "$1/.git" 2>/dev/null || true)"
+  if [[ -n "$git_dir" && "$git_dir" != /* ]]; then
+    dir="$(cd "$1" && pwd -P)"
+    while [[ "$git_dir" == ../* ]]; do
+      dir="$(dirname "$dir")"
+      git_dir="${git_dir#../}"
+    done
+    git_dir="$dir/$git_dir"
+  fi
+  echo "$git_dir"
+}
+
 # rm -rf does not honour the lock that 'git worktree remove' refuses to cross.
 worktree_locked() {
   local git_dir

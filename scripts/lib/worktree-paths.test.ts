@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import {
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   realpathSync,
   rmSync,
   symlinkSync,
@@ -85,4 +86,78 @@ test("a checkout git cannot read fails naming that checkout", () => {
   expect(result.status).not.toBe(0);
   expect(result.stderr).toContain(`cannot find the Git directory of ${root}`);
   expect(result.stdout).not.toContain("sourced");
+});
+
+test.each([
+  [false, false],
+  [true, false],
+  [false, true],
+  [true, true],
+])(
+  "admin_dir_of resolves a worktree's git link with useRelativePaths=%p, its admin directories pruned=%p, and is empty for a plain directory",
+  (relative, pruned) => {
+    const main = join(root, "alliance");
+    fixtureGit(root, "init", "-q", "-b", "main", main);
+    fixtureGit(main, "commit", "-q", "--allow-empty", "-m", "init");
+    fixtureGit(
+      main,
+      "-c",
+      `worktree.useRelativePaths=${relative}`,
+      "worktree",
+      "add",
+      "-q",
+      "-b",
+      "foo",
+      join(root, "alliance-foo"),
+    );
+    expect(
+      readFileSync(join(root, "alliance-foo", ".git"), "utf8"),
+    ).toStartWith(relative ? "gitdir: ../" : "gitdir: /");
+    mkdirSync(join(root, "alliance-bar"));
+    if (pruned) rmSync(join(main, ".git", "worktrees"), { recursive: true });
+
+    const result = spawnSync(
+      "bash",
+      [
+        "-c",
+        `repo_root="${main}"; source "${LIB}"; admin_dir_of "$(worktree_dir_for foo)"; admin_dir_of "$(worktree_dir_for bar)"`,
+      ],
+      { encoding: "utf8" },
+    );
+
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toBe(
+      `${join(main, ".git", "worktrees", "alliance-foo")}\n\n`,
+    );
+  },
+);
+
+test("admin_dir_of resolves a relative gitdir from the physical path of a checkout reached through a symlink", () => {
+  const main = join(root, "alliance");
+  fixtureGit(root, "init", "-q", "-b", "main", main);
+  fixtureGit(main, "commit", "-q", "--allow-empty", "-m", "init");
+  fixtureGit(
+    main,
+    "-c",
+    "worktree.useRelativePaths=true",
+    "worktree",
+    "add",
+    "-q",
+    "-b",
+    "foo",
+    join(root, "alliance-foo"),
+  );
+  const link = join(root, "deep", "foo");
+  mkdirSync(join(root, "deep"));
+  symlinkSync(join(root, "alliance-foo"), link);
+
+  const result = spawnSync(
+    "bash",
+    ["-c", `repo_root="${main}"; source "${LIB}"; admin_dir_of "${link}"`],
+    { encoding: "utf8" },
+  );
+
+  expect(result.stdout).toBe(
+    `${join(main, ".git", "worktrees", "alliance-foo")}\n`,
+  );
 });
