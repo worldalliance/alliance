@@ -302,7 +302,8 @@ export default function HomeScreen() {
       body: (
         <Anchor
           name={WalkthroughAnchor.CurrentTask}
-          className="bg-white py-2 px-1"
+          className="bg-white py-2 px-1 border-b-3"
+          style={{ borderColor: colors.grey[1] }}
         >
           <LargeActionCard
             action={currentItem.action}
@@ -434,12 +435,7 @@ export default function HomeScreen() {
               paddingBottom: 40,
             }}
             ListHeaderComponent={
-              <>
-                <View onLayout={handleHomeBodyLayout}>{homeBody}</View>
-                <View className="px-4 pt-4 pb-2 bg-white">
-                  <Text className="text-xl">Activity</Text>
-                </View>
-              </>
+              <View onLayout={handleHomeBodyLayout}>{homeBody}</View>
             }
             ListFooterComponent={
               homeFeedFetchingNextPage ? (

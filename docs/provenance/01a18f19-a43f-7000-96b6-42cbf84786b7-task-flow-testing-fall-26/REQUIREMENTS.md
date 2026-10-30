@@ -112,7 +112,7 @@ From the notes: "Three-dot button should show up on every page", "Add ability to
 
 From the notes: "Mobile preview card should take up near-full screen", "Make it look more like a card somehow", "Maybe grey separator below it / identical to the separators between the activity cards in the feed" and "While we're at it let's kill the 'activity' heading below the preview card".
 
-- On the mobile tasks homepage, the current task card takes up nearly the full screen. (Notes)
+- On the mobile tasks homepage, the current task card hugs its contents, with no empty space under the contributors. (User)
 - A grey separator identical to the ones between feed activity cards sits below it. (Notes)
 - The "Activity" heading below it is removed. (Notes)
 
