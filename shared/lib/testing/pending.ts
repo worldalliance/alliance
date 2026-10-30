@@ -10,3 +10,12 @@ export const pending = <T>(queue: Pending<T>[], signal?: AbortSignal) =>
   new Promise<T>((resolve, reject) => {
     queue.push({ resolve, reject, signal });
   });
+
+/** A response held until the test releases it. */
+export const held = () => {
+  const { promise, resolve } = Promise.withResolvers<void>();
+  return {
+    release: resolve,
+    until: <T>(value: T) => promise.then(() => value),
+  };
+};
