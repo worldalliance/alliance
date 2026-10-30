@@ -384,6 +384,20 @@ describe("MmsService sendMms", () => {
       },
     );
 
+    it("reports an anonymized number unavailable, without calling twilio", async () => {
+      const create = jest.fn(() => Promise.resolve(message));
+      service["twilioClient"] = {
+        messages: { create },
+      } as unknown as Twilio.Twilio;
+
+      expect(
+        await asProduction(() =>
+          service.sendUnrecordedText({ to: "+15551234567", body: CODE_BODY }),
+        ),
+      ).toEqual({ ok: false, error: DeliveryFailure.Unavailable });
+      expect(create).not.toHaveBeenCalled();
+    });
+
     it("reports a rejection as failed, without logging the number", async () => {
       service["twilioClient"] = {
         messages: {

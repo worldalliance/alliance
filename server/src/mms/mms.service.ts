@@ -44,6 +44,11 @@ type SentMessage = {
   errorMessage: string | null;
 };
 
+const canText = (to: string): boolean =>
+  process.env.NODE_ENV !== "test" &&
+  notifDeliveryEnabled() &&
+  !isAnonymizedPhoneNumber(to);
+
 @Injectable()
 export class MmsService {
   private readonly logger = new Logger(MmsService.name);
@@ -116,11 +121,7 @@ export class MmsService {
     const body = cid
       ? tagTextLinks({ text: params.body, trackingId: cid })
       : params.body;
-    if (
-      process.env.NODE_ENV === "test" ||
-      !notifDeliveryEnabled() ||
-      isAnonymizedPhoneNumber(to)
-    ) {
+    if (!canText(to)) {
       const mms = this.mmsRepository.create({
         to: to,
         from: "+15555550100",
@@ -177,7 +178,7 @@ export class MmsService {
     body: string;
   }): Promise<Result<{ sid: string }, DeliveryFailure>> {
     const { to, body } = params;
-    if (process.env.NODE_ENV === "test" || !notifDeliveryEnabled()) {
+    if (!canText(to)) {
       return R.failure(DeliveryFailure.Unavailable);
     }
     const sent = await R.fromPromise(
