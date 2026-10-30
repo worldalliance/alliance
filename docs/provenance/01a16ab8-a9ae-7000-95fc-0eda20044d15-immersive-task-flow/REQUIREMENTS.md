@@ -57,6 +57,6 @@ task: Immersive full-screen, multi-step task flow on mobile and web, mapped from
 - Project written-text screens come from display blocks in the form JSON (header, text, images, copytext, …). They do not come from the action's body markdown.
 - A new screen starts at each form page boundary and at each `header` block, in addition to the 2-input cap.
 - Time appears only as the action's total time estimate.
-- No server, database schema, or admin builder changes.
+- No server or database schema changes. Admin builder changes are set by TN-4 in [task-flow-testing-fall-26](../01a18f19-a43f-7000-96b6-42cbf84786b7-task-flow-testing-fall-26/REQUIREMENTS.md).
 
 - On web, flow content sits in a centred column about 640px wide, with Back/Next and the progress bar pinned to the bottom.
