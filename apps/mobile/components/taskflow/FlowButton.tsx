@@ -34,6 +34,11 @@ const KINDS: Record<
     textClassName: "text-zinc-900",
     contentColor: "#18181b",
   },
+  [FlowButtonKind.InverseSecondary]: {
+    className: "h-11 rounded-md bg-navy px-4",
+    textClassName: "text-white",
+    contentColor: colors.white,
+  },
   [FlowButtonKind.Icon]: {
     className: "h-9 w-9 rounded-full bg-zinc-100",
     textClassName: "",

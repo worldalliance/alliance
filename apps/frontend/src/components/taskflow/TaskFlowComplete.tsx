@@ -91,7 +91,7 @@ export default function TaskFlowComplete({
         </FlowButton>
         {onInvite ? (
           <FlowButton
-            kind={FlowButtonKind.Secondary}
+            kind={FlowButtonKind.InverseSecondary}
             onClick={onInvite}
             iconLeft={UserPlus}
           >
