@@ -33,6 +33,7 @@ it("runs a staff preview through to the completion card without submitting or st
     ),
   });
   await openFirstQuestionScreen();
+  expect(screen.queryByText(taskFlow.progressSaved)).toBeNull();
   fireEvent.change(screen.getByRole("textbox", { name: /First impression/ }), {
     target: { value: "Helpful" },
   });

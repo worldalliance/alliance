@@ -214,7 +214,9 @@ export function useTaskFlow(params: {
           form.validateFieldValue(field, form.effectiveFormData[field.id]) ===
             null,
       ));
-  // Set on each move rather than derived, so answering doesn't move the bar.
+  // Both set on each move rather than derived, so answering doesn't move the
+  // bar or take the auto-save note away mid-step.
+  const [pastFirstStep, setPastFirstStep] = useState(false);
   const [progress, setProgress] = useState(0);
   const showProgressAt = (index: number, { forward }: { forward: boolean }) => {
     // Before visibility settles the step list is still missing pages, and a
@@ -247,6 +249,9 @@ export function useTaskFlow(params: {
 
   const goTo = (index: number, { forward }: { forward: boolean }) => {
     setScreenIndex(index);
+    setPastFirstStep(
+      backgroundIndex !== null || flowIndices.indexOf(index) > 0,
+    );
     form.setCurrentPageIndex(screens[index].pageIndex);
     position.save(index);
     showProgressAt(index, { forward });
@@ -255,6 +260,7 @@ export function useTaskFlow(params: {
 
   const showBackground = () => {
     if (backgroundIndex === null) return;
+    setPastFirstStep(false);
     position.save(backgroundIndex);
     showProgressAt(backgroundIndex, { forward: false });
     setStage(FlowStage.Background);
@@ -418,6 +424,8 @@ export function useTaskFlow(params: {
     open: IS_OPEN[stage],
     screen: visibleScreen,
     screenIndex,
+    progressSaved:
+      rules.records && stage === FlowStage.Screens && pastFirstStep,
     background,
     nextLabel: nextIndex !== null ? taskFlow.next : rules.lastLabel,
     startLabel: flowIndices.length === 0 ? rules.lastLabel : taskFlow.next,

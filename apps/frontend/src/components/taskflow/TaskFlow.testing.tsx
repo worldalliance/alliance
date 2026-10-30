@@ -88,6 +88,7 @@ let serverAction = action;
 let servedSchema: unknown = taskSchema;
 let submissions = 0;
 let submitStatus = 201;
+let draftSaveStatus = 200;
 let submitHeld = Promise.resolve();
 
 /** Serves the flow's task form and action for every test in the calling file,
@@ -106,7 +107,9 @@ export const serveTaskFlow = () => {
       "GET /tasks/draft/:id": () => Response.json({}),
       "GET /tasks/formDraft/:id": () => Response.json({}),
       "PUT /tasks/formDraft/:id": () =>
-        Response.json({ updatedAt: "2026-10-26T00:00:00.000Z" }),
+        draftSaveStatus === 200
+          ? Response.json({ updatedAt: "2026-10-26T00:00:00.000Z" })
+          : Response.json({ message: "nope" }, { status: draftSaveStatus }),
       "POST /tasks/submitForm/:id": async () => {
         submissions += 1;
         await submitHeld;
@@ -127,6 +130,7 @@ export const serveTaskFlow = () => {
     servedSchema = taskSchema;
     submissions = 0;
     submitStatus = 201;
+    draftSaveStatus = 200;
     submitHeld = Promise.resolve();
   });
 };
@@ -230,6 +234,11 @@ export const setServerAction = (next: ActionDto) => {
 /** Sets the status the submit answers with until the next test. */
 export const setSubmitStatus = (status: number) => {
   submitStatus = status;
+};
+
+/** Sets the status a draft save answers with until the next test. */
+export const setDraftSaveStatus = (status: number) => {
+  draftSaveStatus = status;
 };
 
 /** Holds the submit's response until the returned release is called. */
