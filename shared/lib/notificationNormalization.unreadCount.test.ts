@@ -212,6 +212,47 @@ it("keeps mark-all-read's count when a read settles while it is pending", async 
   await act(() => markedAll);
 });
 
+it("keeps a pending read's count-down when a read of an unloaded notification settles", async () => {
+  const { client, wrapper } = queryWrapper();
+  seedNotifications({
+    client,
+    notifications: [makeNotification({ id: 1 }), makeNotification({ id: 2 })],
+  });
+  client.setQueryData(queryKeys.notificationsUnreadCount(), 2);
+  let serverCount = 2;
+  const reads = [held(), held(), held()];
+  const lowersCount = [true, false, true];
+  let readsSent = 0;
+  api.readResponse = () => {
+    const sent = readsSent++;
+    return reads[sent]!.until(null).then(() => {
+      if (lowersCount[sent]) serverCount--;
+      return accepted();
+    });
+  };
+  api.counted = () => Response.json({ unreadCount: serverCount });
+  const count = renderHook(() => useUnreadNotificationCount(), { wrapper });
+  const cache = notificationsCache(client);
+
+  const mixed = cache.markRead([
+    makeNotification({ id: 1 }),
+    makeNotification({ id: 3 }),
+  ]);
+  const pending = cache.markRead([makeNotification({ id: 2 })]);
+  reads[0]!.release();
+  reads[1]!.release();
+  await act(() => mixed);
+  await waitFor(() =>
+    expect(
+      client.getQueryState(queryKeys.notificationsUnreadCount())?.fetchStatus,
+    ).toBe("idle"),
+  );
+
+  expect(count.result.current).toBe(0);
+  reads[2]!.release();
+  await act(() => pending);
+});
+
 it("refetches the count for a new session's read while an old session's read is pending", async () => {
   const { client } = queryWrapper();
   seedNotifications({ client, notifications: [makeNotification({ id: 1 })] });
@@ -233,4 +274,61 @@ it("refetches the count for a new session's read while an old session's read is 
   ).toBe(true);
   oldRead.release();
   await old;
+});
+
+it("keeps a pending read's count-down when a read of only unloaded notifications settles", async () => {
+  const { client, wrapper } = queryWrapper();
+  seedNotifications({ client, notifications: [makeNotification({ id: 1 })] });
+  client.setQueryData(queryKeys.notificationsUnreadCount(), 2);
+  let serverCount = 2;
+  const pendingRead = held();
+  let readsSent = 0;
+  api.readResponse = () =>
+    readsSent++ === 0
+      ? pendingRead.until(null).then(() => {
+          serverCount--;
+          return accepted();
+        })
+      : accepted();
+  api.counted = () => Response.json({ unreadCount: serverCount });
+  const count = renderHook(() => useUnreadNotificationCount(), { wrapper });
+  const cache = notificationsCache(client);
+
+  const pending = cache.markRead([makeNotification({ id: 1 })]);
+  await act(() => cache.markRead([makeNotification({ id: 3 })]));
+  await waitFor(() =>
+    expect(
+      client.getQueryState(queryKeys.notificationsUnreadCount())?.fetchStatus,
+    ).toBe("idle"),
+  );
+
+  expect(count.result.current).toBe(1);
+  pendingRead.release();
+  await act(() => pending);
+});
+
+it("keeps a first count load in flight when a read of unloaded notifications refetches the lists", async () => {
+  const { client, wrapper } = queryWrapper();
+  seedNotifications({ client, notifications: [makeNotification({ id: 1 })] });
+  const response = held();
+  api.counted = () => response.until(Response.json({ unreadCount: 3 }));
+  const pendingRead = held();
+  let readsSent = 0;
+  api.readResponse = () =>
+    readsSent++ === 0 ? pendingRead.until(accepted()) : accepted();
+  const count = renderHook(() => useUnreadNotificationCount(), { wrapper });
+  await waitFor(() =>
+    expect(
+      client.getQueryState(queryKeys.notificationsUnreadCount())?.fetchStatus,
+    ).toBe("fetching"),
+  );
+  const cache = notificationsCache(client);
+
+  const pending = cache.markRead([makeNotification({ id: 1 })]);
+  await act(() => cache.markRead([makeNotification({ id: 9 })]));
+  response.release();
+
+  await waitFor(() => expect(count.result.current).toBe(2));
+  pendingRead.release();
+  await act(() => pending);
 });

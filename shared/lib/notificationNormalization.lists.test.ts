@@ -148,3 +148,36 @@ it("refetches for a read of a record no cached list holds", async () => {
     client.getQueryState(queryKeys.notificationsUnreadCount())?.isInvalidated,
   ).toBe(true);
 });
+
+it("refetches for a read of an unloaded notification only once the read settles", async () => {
+  const { client } = queryWrapper();
+  seedNotifications({ client, notifications: [makeNotification({ id: 1 })] });
+  const confirmation = held();
+  api.readResponse = () => confirmation.until(accepted());
+  const isInvalidated = () =>
+    client.getQueryState(queryKeys.notificationsList())?.isInvalidated;
+
+  const marked = notificationsCache(client).markRead([
+    makeNotification({ id: 2 }),
+  ]);
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  expect(isInvalidated()).toBe(false);
+  confirmation.release();
+  await marked;
+
+  expect(isInvalidated()).toBe(true);
+});
+
+it("refetches for a read of loaded and unloaded notifications together", async () => {
+  const { client } = queryWrapper();
+  seedNotifications({ client, notifications: [makeNotification({ id: 1 })] });
+
+  await notificationsCache(client).markRead([
+    makeNotification({ id: 1 }),
+    makeNotification({ id: 2 }),
+  ]);
+
+  expect(
+    client.getQueryState(queryKeys.notificationsList())?.isInvalidated,
+  ).toBe(true);
+});

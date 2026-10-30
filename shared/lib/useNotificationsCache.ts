@@ -8,6 +8,7 @@ import {
   UnreadContentType,
 } from "@alliance/shared/client";
 import {
+  partialMatchKey,
   QueryClient,
   queryOptions,
   useQuery,
@@ -50,10 +51,11 @@ export function notificationsCache(queryClient: QueryClient) {
   // inactive one, so it is cancelled first.
   const refreshIn = async (session: number, queryKey: QueryKey = ROOT_KEY) => {
     if (session !== currentSession(queryClient)) return;
-    await queryClient.cancelQueries({
-      queryKey: UNREAD_COUNT_KEY,
-      exact: true,
-    });
+    if (partialMatchKey(UNREAD_COUNT_KEY, queryKey))
+      await queryClient.cancelQueries({
+        queryKey: UNREAD_COUNT_KEY,
+        exact: true,
+      });
     if (session === currentSession(queryClient))
       void queryClient.invalidateQueries({ queryKey });
   };
@@ -137,19 +139,21 @@ export function notificationsCache(queryClient: QueryClient) {
         session,
         update: (count) => Math.max(count - unread.length, 0),
       });
-      const lastCountDown = unread.length
-        ? store.trackCountDown(confirmation)
-        : () => false;
-      if (!loaded.some(Boolean)) void refreshIn(session);
+      const unlisted = loaded.some((notification) => !notification);
+      const lastCountDown =
+        unread.length || unlisted
+          ? store.trackCountDown(confirmation)
+          : () => false;
       try {
         await confirmation;
       } catch (error) {
         await refreshIn(session);
         throw error;
       }
+      if (unlisted) await refreshIn(session, queryKeys.notificationsLists());
       // Count loads before confirmation may have counted these reads twice (in
       // flight) or not at all (started later). Refetched only once no other
-      // read's count-down is pending, since the refetch would undo it.
+      // write to the count is pending, since the refetch would undo it.
       if (lastCountDown()) await refreshIn(session, UNREAD_COUNT_KEY);
     },
 

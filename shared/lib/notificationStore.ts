@@ -138,8 +138,9 @@ function createNotificationStore(queryClient: QueryClient) {
       store.dispatch(slice.actions.written(changed));
       return changed.map(getNotificationIdentityKey);
     },
-    /** Tracks a write that lowered the count until `confirmation` settles; the
-     * returned check, made after it settles, says whether no other is pending. */
+    /** Tracks a write that lowers the server's count until `confirmation`
+     * settles; the returned check, made after it settles, says whether no other
+     * is pending. */
     trackCountDown: (confirmation: Promise<unknown>) => {
       const pending = countDowns;
       pending.add(confirmation);
