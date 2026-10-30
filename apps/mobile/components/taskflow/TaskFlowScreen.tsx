@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FormElements } from "../forms/FormElements";
 import { StickyAccordionScrollView } from "../forms/StickyAccordion";
 import { type MobileFormState } from "../forms/useMobileFormState";
-import Text from "../system/Text";
+import Text, { FontWeight } from "../system/Text";
 import FlowButton from "./FlowButton";
 
 const FOOTER_HEIGHT = 120;
@@ -22,6 +22,7 @@ export function TaskFlowTitle({ children }: { children: ReactNode }) {
     <Text
       accessibilityRole="header"
       className="text-3xl text-zinc-900 mt-2 mb-4"
+      weight={FontWeight.Semibold}
       selectable
     >
       {children}

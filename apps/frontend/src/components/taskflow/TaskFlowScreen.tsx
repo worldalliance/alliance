@@ -16,7 +16,7 @@ export const FLOW_COLUMN = "mx-auto w-full max-w-[640px] px-4";
 
 export function TaskFlowTitle({ children }: { children: ReactNode }) {
   return (
-    <ModalTitle className="mt-2 mb-4 text-3xl text-zinc-900">
+    <ModalTitle className="mt-2 mb-4 text-3xl font-semibold text-zinc-900">
       {children}
     </ModalTitle>
   );
