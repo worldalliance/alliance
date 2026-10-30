@@ -21,6 +21,7 @@ import {
   isClearedByContentRead,
 } from "./notificationIdentity";
 import { queryKeys } from "./queryKeys";
+import { currentSession } from "./sessionStores";
 
 const ROOT_KEY = queryKeys.notifications();
 const LISTS_KEY = queryKeys.notificationsLists();
@@ -59,6 +60,11 @@ function markCachedRead(
 }
 
 export function notificationsCache(queryClient: QueryClient) {
+  const refreshIn = (session: number) => {
+    if (session === currentSession(queryClient))
+      void queryClient.invalidateQueries({ queryKey: ROOT_KEY });
+  };
+
   return {
     list: (limit?: number) =>
       queryOptions({
@@ -90,6 +96,7 @@ export function notificationsCache(queryClient: QueryClient) {
     markRead: async (
       notificationsToMark: Pick<NotificationDto, "id" | "sourceType">[],
     ) => {
+      const session = currentSession(queryClient);
       markCachedRead(queryClient, notificationsToMark);
       const refused = (
         await Promise.allSettled(
@@ -102,7 +109,7 @@ export function notificationsCache(queryClient: QueryClient) {
         )
       ).find((result) => result.status === "rejected");
       if (refused) {
-        void queryClient.invalidateQueries({ queryKey: ROOT_KEY });
+        refreshIn(session);
         throw refused.reason;
       }
     },
@@ -134,7 +141,9 @@ export function notificationsCache(queryClient: QueryClient) {
 
     /** Bounded by the load time of the list with this limit. */
     markAllRead: async (limit?: number) => {
+      const session = currentSession(queryClient);
       await queryClient.cancelQueries({ queryKey: ROOT_KEY });
+      if (session !== currentSession(queryClient)) return;
 
       const prevLists = queryClient.getQueriesData<NotificationDto[]>({
         queryKey: LISTS_KEY,
@@ -159,8 +168,9 @@ export function notificationsCache(queryClient: QueryClient) {
         });
         // Rows that came due after the load stay unread, so the list and
         // count refetch to show them.
-        void queryClient.invalidateQueries({ queryKey: ROOT_KEY });
+        refreshIn(session);
       } catch {
+        if (session !== currentSession(queryClient)) return;
         for (const [queryKey, list] of prevLists) {
           if (list !== undefined) {
             queryClient.setQueryData(queryKey, list);

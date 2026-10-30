@@ -2,7 +2,9 @@ import { NOTIFS_LOADED_AT_HEADER } from "@alliance/common/notifs";
 import { NotificationDto } from "@alliance/shared/client";
 import { QueryClient } from "@tanstack/react-query";
 import { queryKeys } from "./queryKeys";
+import { endSession } from "./sessionStores";
 import { routes, serveApi, type RouteTable } from "./testing/serveApi";
+import { meCache } from "./useMe";
 import { notificationsCache } from "./useNotificationsCache";
 
 const LOADED_AT = "2026-09-23T12:00:00.123Z";
@@ -391,6 +393,90 @@ it("leaves the cache alone when marking nothing", async () => {
   queryClient.setQueryData<NotificationDto[]>(LIST_KEY, []);
 
   await notificationsCache(queryClient).markRead([]);
+
+  expect(queryClient.getQueryState(LIST_KEY)?.isInvalidated).toBe(false);
+});
+
+it("drops a failed mark-all-read's restore after the session ends", async () => {
+  const { promise: refusalHeld, resolve: releaseRefusal } =
+    Promise.withResolvers<void>();
+  const { promise: readAllSent, resolve: sendReadAll } =
+    Promise.withResolvers<void>();
+  api.alsoServing({
+    "POST /notifs/read-all": async () => {
+      sendReadAll();
+      await refusalHeld;
+      return new Response(null, { status: 500 });
+    },
+  });
+  const queryClient = new QueryClient();
+  queryClient.setQueryData(LIST_KEY, [notification({ id: 1 })]);
+
+  const markedAll = notificationsCache(queryClient).markAllRead();
+  await readAllSent;
+  meCache(queryClient).clear();
+  releaseRefusal();
+  await markedAll;
+
+  expect(queryClient.getQueryData(LIST_KEY)).toBeUndefined();
+});
+
+it("sends no mark-all-read when the session ends while it cancels loads", async () => {
+  api.throwingOnRefusal(readAll);
+  const queryClient = new QueryClient();
+  queryClient.setQueryData(LIST_KEY, [notification({ id: 1 })]);
+
+  const markedAll = notificationsCache(queryClient).markAllRead();
+  meCache(queryClient).clear();
+  await markedAll;
+
+  expect(readAllQueries).toHaveLength(0);
+});
+
+it("leaves a new session's lists alone when an old session's read is refused", async () => {
+  const { promise: refusalHeld, resolve: releaseRefusal } =
+    Promise.withResolvers<void>();
+  api.alsoServing({
+    "POST /notifs/read/:id": async () => {
+      await refusalHeld;
+      return new Response(null, { status: 500 });
+    },
+  });
+  const queryClient = new QueryClient();
+  queryClient.setQueryData(LIST_KEY, [notification({ id: 1 })]);
+
+  const marked = notificationsCache(queryClient)
+    .markRead([{ id: 1, sourceType: "unread_content" }])
+    .catch(() => {});
+  endSession(queryClient);
+  queryClient.setQueryData(LIST_KEY, [notification({ id: 2 })]);
+  releaseRefusal();
+  await marked;
+
+  expect(queryClient.getQueryState(LIST_KEY)?.isInvalidated).toBe(false);
+});
+
+it("leaves a new session's lists alone when an old session's mark-all-read succeeds", async () => {
+  const { promise: confirmationHeld, resolve: releaseConfirmation } =
+    Promise.withResolvers<void>();
+  const { promise: readAllSent, resolve: sendReadAll } =
+    Promise.withResolvers<void>();
+  api.throwingOnRefusal({
+    "POST /notifs/read-all": async () => {
+      sendReadAll();
+      await confirmationHeld;
+      return new Response(null, { status: 201 });
+    },
+  });
+  const queryClient = new QueryClient();
+  queryClient.setQueryData(LIST_KEY, [notification({ id: 1 })]);
+
+  const markedAll = notificationsCache(queryClient).markAllRead();
+  await readAllSent;
+  endSession(queryClient);
+  queryClient.setQueryData(LIST_KEY, [notification({ id: 2 })]);
+  releaseConfirmation();
+  await markedAll;
 
   expect(queryClient.getQueryState(LIST_KEY)?.isInvalidated).toBe(false);
 });
