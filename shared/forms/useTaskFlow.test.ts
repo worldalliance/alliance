@@ -63,6 +63,16 @@ describe("useTaskFlow", () => {
     expect(hook.result.current.progress).toBe(12.5);
   });
 
+  it("reads Begin until the member has started, then Continue", () => {
+    expect(setup().hook.result.current.beginLabel).toBe(taskFlow.begin);
+    expect(setup({ savedScreen: 0 }).hook.result.current.beginLabel).toBe(
+      taskFlow.continue,
+    );
+    expect(setup({ currentPageIndex: 1 }).hook.result.current.beginLabel).toBe(
+      taskFlow.continue,
+    );
+  });
+
   it("resumes on the saved screen", () => {
     const { hook } = setup({ savedScreen: 2 });
     act(() => hook.result.current.begin());

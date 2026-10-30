@@ -352,6 +352,7 @@ export const taskFlowFallbackTitle = {
 
 export const taskFlow = {
   begin: "Begin",
+  continue: "Continue",
   view: "View task",
   next: "Next",
   back: "Back",

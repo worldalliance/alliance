@@ -34,7 +34,7 @@ task: Immersive full-screen, multi-step task flow on mobile and web, mapped from
 - The flow's progress bar animates smoothly between steps.
 - The "Task complete" page's subheader is exactly "We'll share a progress update on this project with all members in the coming weeks." There is no thank-you sentence before it.
 - The "Task complete" page stays up until the member presses "Close task" or "Invite a friend". It never closes on its own.
-- Exiting a task partway and tapping "Begin" again returns the member to the screen they left.
+- Exiting a task partway and tapping "Continue" returns the member to the screen they left.
 
 - Following a link out of the flow to another app page (such as the forum) closes the flow popup automatically. There is no "Return to task" button on any platform.
 
