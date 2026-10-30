@@ -54,7 +54,7 @@ export default function TaskFlowComplete({
             {taskFlow.complete}
           </ModalTitle>
           <p className="mt-3 text-base text-white">{taskFlow.completeUpdate}</p>
-          {user || outputItems.length > 0 ? (
+          {outputItems.length > 0 ? (
             <div className="mt-6 flex flex-col gap-y-4 rounded-md bg-white p-6">
               {user ? (
                 <div className="flex items-center gap-x-3">

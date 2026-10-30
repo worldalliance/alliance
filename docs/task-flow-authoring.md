@@ -16,7 +16,7 @@ The rules below live in [`flowScreens.ts`](../shared/forms/flowScreens.ts) and [
 - Open every page with a header, except an opening page that asks for nothing: that becomes the background page, which already has its title, so a header on it shows as a second one. A page without a header gets a generic title ("Answer the questions below" or "Read this before you continue"). Dev builds on both platforms log a warning naming the page.
 - Keep pages short: two questions or fewer per page where you can.
 - Put long reference material (a scenario, a template) in an accordion. Sections start collapsed. Accordions hold display blocks only, and not previous answers, user locations or other accordions: no questions, and no visibility rules inside a section.
-- Make sure the output view the "Task complete" card shows covers each question marked as output. Without any output view, the "Task complete" card shows only the member's name and location, and a guest gets no card.
+- Make sure the output view the "Task complete" card shows covers each question marked as output. Without an output view that shows something, the "Task complete" screen has no card.
 - Repeat any restructure on each A/B variant form; variants are separate forms.
 
 ## Not expressible yet

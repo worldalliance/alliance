@@ -7,6 +7,7 @@ import { formatUserLocationDisplayValue } from "@alliance/shared/formrenderer";
 import { FlowButtonKind } from "@alliance/shared/forms/flowStyle";
 import { useCurrentUserLocation } from "@alliance/shared/forms/useCurrentUserLocation";
 import { taskFlow } from "@alliance/shared/lib/copy";
+import { useOutputItems } from "@alliance/shared/useOutputItems";
 import { ListTodo, UserPlus } from "lucide-react-native";
 import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -34,6 +35,7 @@ export default function TaskFlowComplete({
     user,
   });
   const location = formatUserLocationDisplayValue(userLocationDisplayValue);
+  const outputItems = useOutputItems({ schema, answers, ownView: true });
 
   return (
     <View className="flex-1 bg-green" style={{ paddingTop: insets.top }}>
@@ -44,25 +46,27 @@ export default function TaskFlowComplete({
         <Text className="text-base text-white mt-3">
           {taskFlow.completeUpdate}
         </Text>
-        <View className="mt-6 rounded-md bg-white p-6 gap-y-4">
-          {user ? (
-            <View className="flex-row items-center gap-x-3">
-              <ProfileImage pfp={user.profilePicture} size="medium" />
-              <View className="flex-1">
-                <Text
-                  className="text-base text-zinc-900"
-                  weight={FontWeight.Semibold}
-                >
-                  {user.name}
-                </Text>
-                {location ? (
-                  <Text className="text-base text-zinc-500">{location}</Text>
-                ) : null}
+        {outputItems.length > 0 ? (
+          <View className="mt-6 rounded-md bg-white p-6 gap-y-4">
+            {user ? (
+              <View className="flex-row items-center gap-x-3">
+                <ProfileImage pfp={user.profilePicture} size="medium" />
+                <View className="flex-1">
+                  <Text
+                    className="text-base text-zinc-900"
+                    weight={FontWeight.Semibold}
+                  >
+                    {user.name}
+                  </Text>
+                  {location ? (
+                    <Text className="text-base text-zinc-500">{location}</Text>
+                  ) : null}
+                </View>
               </View>
-            </View>
-          ) : null}
-          <OutputRenderer schema={schema} answers={answers} ownView />
-        </View>
+            ) : null}
+            <OutputRenderer schema={schema} answers={answers} ownView />
+          </View>
+        ) : null}
       </ScrollView>
       <View
         className="px-4 pt-4 gap-y-3"
