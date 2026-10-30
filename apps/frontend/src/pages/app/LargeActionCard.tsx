@@ -159,7 +159,7 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
             textSize="base"
           />
           <TaskContributors action={action} />
-          <div className="mt-6 border-t border-zinc-200 pt-6">
+          <div className="mt-6">
             {showSignContractFirst && (
               <div className="mb-4 flex flex-row justify-between items-center gap-x-2 rounded-md border border-zinc-200 bg-zinc-50 p-4">
                 <p>{taskHeaders.actionPage.onboardingSignContractFirst}</p>
