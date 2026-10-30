@@ -103,6 +103,7 @@ From the notes: "Three-dot button should show up on every page", "Add ability to
 
 - The withdraw (…) menu is on every step of the flow, including tasks with a single page, wherever the member can withdraw. (Notes)
 - The task card on the tasks homepage has the withdraw (…) menu. (Notes)
+- On that card the menu sits in the upper right corner, beside the button that opens the task's page. That button shows only a right arrow, without the word "Details". Both are circular buttons. (User)
 
 ## TN-16: Mobile task card (mobile)
 

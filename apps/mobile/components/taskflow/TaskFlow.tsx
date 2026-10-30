@@ -19,7 +19,7 @@ import {
 } from "@alliance/shared/lib/TaskFlowReturnContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useIsFocused, useLocalSearchParams } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Modal, useWindowDimensions, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Animated, {
@@ -32,9 +32,11 @@ import { formBlockedView } from "../forms/FormElements";
 import { useMobileFormState } from "../forms/useMobileFormState";
 import WithdrawalModal from "../forms/WithdrawalModal";
 import ProgressBar from "../system/ProgressBar";
+import { CardWithdrawContext } from "./CardWithdrawContext";
 import FlowButton from "./FlowButton";
 import { animateTo, timingFor } from "./flowMotion";
 import TaskFlowComplete from "./TaskFlowComplete";
+import TaskFlowHeader, { TaskFlowWithdrawButton } from "./TaskFlowHeader";
 import TaskFlowIntro from "./TaskFlowIntro";
 import TaskFlowScreen, { TaskFlowPage, TaskFlowTitle } from "./TaskFlowScreen";
 
@@ -115,6 +117,14 @@ export default function TaskFlow({
   const onTaskPage = pageActionId === String(action.id);
   const { leaveTask } = useTaskFlowReturn();
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const placeWithdraw = useContext(CardWithdrawContext);
+  const openWithdraw = useCallback(() => setWithdrawOpen(true), []);
+  const canWithdraw = withdraw !== undefined;
+  useEffect(() => {
+    if (!placeWithdraw) return;
+    placeWithdraw(canWithdraw ? openWithdraw : null);
+    return () => placeWithdraw(null);
+  }, [placeWithdraw, canWithdraw, openWithdraw]);
 
   useReopenLeftTask({
     actionId: action.id,
@@ -187,11 +197,11 @@ export default function TaskFlow({
     leaveTask,
   ]);
 
+  const blocked = formBlockedView(form);
   const renderStage = () => {
-    const blocked = formBlockedView(form);
     if (blocked !== null && flow.stage !== FlowStage.Complete) {
       return (
-        <TaskFlowPage onClose={() => void close()}>
+        <TaskFlowPage>
           <TaskFlowTitle>{action.name}</TaskFlowTitle>
           {blocked}
         </TaskFlowPage>
@@ -206,8 +216,6 @@ export default function TaskFlow({
             action={action}
             form={form}
             background={flow.background}
-            onClose={() => void close()}
-            onWithdraw={withdraw ? () => setWithdrawOpen(true) : null}
             onNext={() => void flow.start()}
             nextLabel={flow.startLabel}
             error={error}
@@ -223,7 +231,6 @@ export default function TaskFlow({
             nextReady={flow.nextReady}
             nextLabel={flow.nextLabel}
             error={error}
-            onClose={() => void close()}
             onBack={flow.back}
             onNext={() => void flow.next()}
           />
@@ -245,14 +252,36 @@ export default function TaskFlow({
     }
   };
 
+  const withdrawalModal = (visible: boolean) =>
+    withdraw ? (
+      <WithdrawalModal
+        visible={visible}
+        onClose={() => setWithdrawOpen(false)}
+        disabled={form.submitting}
+        onWithdraw={(withdrawal) => {
+          form.handleAbandon(withdrawal);
+          position.clear();
+          setWithdrawOpen(false);
+          flow.close();
+        }}
+      />
+    ) : null;
+
   return (
     <View>
-      <FlowButton
-        kind={FlowButtonKind.Primary}
-        onPress={flow.begin}
-        loading={!position.loaded}
-        title={flow.beginLabel}
-      />
+      <View className="flex-row items-center gap-x-3">
+        <FlowButton
+          kind={FlowButtonKind.Primary}
+          onPress={flow.begin}
+          loading={!position.loaded}
+          title={flow.beginLabel}
+          className="flex-1"
+        />
+        {withdraw && !placeWithdraw ? (
+          <TaskFlowWithdrawButton onPress={openWithdraw} />
+        ) : null}
+      </View>
+      {withdrawalModal(withdrawOpen && !shown)}
       <Modal
         visible={shown}
         transparent
@@ -268,29 +297,26 @@ export default function TaskFlow({
         >
           <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
             {flow.open ? (
-              <View className="px-4" style={{ paddingTop: insets.top + 8 }}>
-                <ProgressBar
-                  percentage={flow.progress}
-                  fillTiming={PROGRESS_TIMING}
+              <>
+                <View className="px-4" style={{ paddingTop: insets.top + 8 }}>
+                  <ProgressBar
+                    percentage={flow.progress}
+                    fillTiming={PROGRESS_TIMING}
+                  />
+                </View>
+                <TaskFlowHeader
+                  onClose={() => void close()}
+                  disabled={form.submitting}
+                  onWithdraw={
+                    withdraw && blocked === null ? openWithdraw : null
+                  }
                 />
-              </View>
+              </>
             ) : null}
             <View className="flex-1">{renderStage()}</View>
           </KeyboardAvoidingView>
         </Animated.View>
-        {withdraw ? (
-          <WithdrawalModal
-            visible={withdrawOpen}
-            onClose={() => setWithdrawOpen(false)}
-            disabled={form.submitting}
-            onWithdraw={(withdrawal) => {
-              form.handleAbandon(withdrawal);
-              position.clear();
-              setWithdrawOpen(false);
-              flow.close();
-            }}
-          />
-        ) : null}
+        {withdrawalModal(withdrawOpen && shown)}
       </Modal>
     </View>
   );

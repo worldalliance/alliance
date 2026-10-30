@@ -1,16 +1,11 @@
 import { type PageItem } from "@alliance/common/forms/form-schema";
 import { type ActionDto } from "@alliance/shared/client";
 import { splitBackground } from "@alliance/shared/forms/flowScreens";
-import {
-  taskFlowContributors,
-  type ActionWithdrawal,
-} from "@alliance/shared/lib/actionTaskPanel";
-import { taskFlow, withdrawFromAction } from "@alliance/shared/lib/copy";
+import { taskFlowContributors } from "@alliance/shared/lib/actionTaskPanel";
+import { taskFlow } from "@alliance/shared/lib/copy";
 import { FormElements } from "@alliance/sharedweb/forms/FormElements";
 import { type WebFormState } from "@alliance/sharedweb/forms/useWebFormState";
-import WithdrawalMenu from "@alliance/sharedweb/forms/WithdrawalMenu";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import { Ellipsis } from "lucide-react";
 import FlowButton, { FlowButtonKind } from "./FlowButton";
 import { TaskFlowPage, TaskFlowTitle } from "./TaskFlowScreen";
 
@@ -18,8 +13,6 @@ export default function TaskFlowIntro({
   action,
   form,
   background,
-  onClose,
-  onWithdraw,
   onNext,
   nextLabel,
   error,
@@ -28,10 +21,6 @@ export default function TaskFlowIntro({
   form: WebFormState;
   /** The form's opening content, which asks for nothing. */
   background: PageItem[];
-  onClose: () => void;
-  onWithdraw:
-    | ((withdrawal: Omit<ActionWithdrawal, "partialFormData">) => void)
-    | null;
   onNext: () => void;
   nextLabel: string;
   error: string | null;
@@ -41,25 +30,6 @@ export default function TaskFlowIntro({
 
   return (
     <TaskFlowPage
-      onClose={onClose}
-      closeDisabled={form.submitting}
-      headerEnd={
-        onWithdraw ? (
-          <WithdrawalMenu
-            disabled={form.submitting}
-            onWithdraw={onWithdraw}
-            renderTrigger={(toggle) => (
-              <FlowButton
-                kind={FlowButtonKind.Icon}
-                onClick={toggle}
-                aria-label={withdrawFromAction}
-              >
-                <Ellipsis size={20} aria-hidden />
-              </FlowButton>
-            )}
-          />
-        ) : null
-      }
       footer={
         <>
           {error ? <p className="text-sm text-red-500">{error}</p> : null}

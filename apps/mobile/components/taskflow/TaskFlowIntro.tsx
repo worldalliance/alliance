@@ -3,10 +3,8 @@ import { type ActionDto } from "@alliance/shared/client";
 import { splitBackground } from "@alliance/shared/forms/flowScreens";
 import { FlowButtonKind } from "@alliance/shared/forms/flowStyle";
 import { taskFlowContributors } from "@alliance/shared/lib/actionTaskPanel";
-import { taskFlow, withdrawFromAction } from "@alliance/shared/lib/copy";
-import { Ellipsis } from "lucide-react-native";
+import { taskFlow } from "@alliance/shared/lib/copy";
 import { View } from "react-native";
-import { colors } from "../../lib/style/colors";
 import { FormElements } from "../forms/FormElements";
 import { type MobileFormState } from "../forms/useMobileFormState";
 import ProfileImage from "../ProfileImage";
@@ -18,8 +16,6 @@ export default function TaskFlowIntro({
   action,
   form,
   background,
-  onClose,
-  onWithdraw,
   onNext,
   nextLabel,
   error,
@@ -28,8 +24,6 @@ export default function TaskFlowIntro({
   form: MobileFormState;
   /** The form's opening content, which asks for nothing. */
   background: PageItem[];
-  onClose: () => void;
-  onWithdraw: (() => void) | null;
   onNext: () => void;
   nextLabel: string;
   error: string | null;
@@ -39,20 +33,6 @@ export default function TaskFlowIntro({
 
   return (
     <TaskFlowPage
-      onClose={onClose}
-      closeDisabled={form.submitting}
-      headerEnd={
-        onWithdraw ? (
-          <FlowButton
-            kind={FlowButtonKind.Icon}
-            onPress={onWithdraw}
-            accessibilityLabel={withdrawFromAction}
-            hitSlop={8}
-          >
-            <Ellipsis size={20} color={colors.text.icon} />
-          </FlowButton>
-        ) : null
-      }
       footer={
         <>
           {error ? <Text className="text-sm text-red-500">{error}</Text> : null}
