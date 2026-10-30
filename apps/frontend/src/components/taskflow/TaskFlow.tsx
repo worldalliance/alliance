@@ -348,11 +348,8 @@ export default function TaskFlow({
               "fixed inset-0 flex flex-col bg-white outline-none md:top-[var(--navbar-top-bar-height)] md:left-[var(--nav-width)]",
             )}
           >
-            <StickyAccordionTitles.Provider value>
-              {renderStage()}
-            </StickyAccordionTitles.Provider>
             {flow.open ? (
-              <div className={cn(FLOW_COLUMN, "pb-4")}>
+              <div className={cn(FLOW_COLUMN, "pt-4")}>
                 <ProgressBar
                   progress={flow.progress}
                   total={100}
@@ -360,6 +357,9 @@ export default function TaskFlow({
                 />
               </div>
             ) : null}
+            <StickyAccordionTitles.Provider value>
+              {renderStage()}
+            </StickyAccordionTitles.Provider>
           </Dialog.Popup>
         </Dialog.Portal>
       </Dialog.Root>
