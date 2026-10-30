@@ -115,6 +115,15 @@ test("a record naming the main checkout is refused", () => {
   );
 });
 
+test("a record under an id that is not a UUID is refused", () => {
+  expect(
+    withRecord({
+      name: "foo",
+      then: `mv "$instances/${ID}" "$instances/x y"; record_problem "x y"`,
+    }),
+  ).toBe("has an invalid id 'x y'\n");
+});
+
 test("a missing record is refused", () => {
   expect(problemAfter(`rm "$instances/${ID}/record"`)).toBe(
     "has no record file\n",

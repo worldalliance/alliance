@@ -75,6 +75,7 @@ valid_branch() { [[ -n "$1" && "$(git check-ref-format --branch "$1" 2>/dev/null
 # databases, never an arbitrary path or database.
 record_problem() {
   local id="$1" name parent db
+  valid_id "$id" || { echo "has an invalid id '$id'"; return 0; }
   [[ -f "$instances/$id/record" ]] || { echo "has no record file"; return 0; }
   name="$(record_field "$id" name)"
   parent="$(record_field "$id" parent)"
