@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -87,10 +87,20 @@ test("an empty stamp reads as dead", () => {
 test("a process whose name holds parentheses and spaces is stamped", () => {
   const dir = mkdtempSync(join(tmpdir(), "worktree-process-"));
   const sleeper = join(dir, "a) Z b");
-  symlinkSync(Bun.which("sleep") ?? "/bin/sleep", sleeper);
+  // Linux takes a script's comm from its filename. The shebang names bash
+  // directly because env would re-exec and reset comm. The script blocks on a
+  // fifo, not sleep, so kill leaves no child.
+  writeFileSync(sleeper, '#!/bin/bash\nexec 3<>"$1"; read -t 5 <&3\n', {
+    mode: 0o755,
+  });
   try {
     const result = bash(
-      `"${sleeper}" 5 & p=$!; s="$(process_stamp $p)" && stamp_alive "$s" || exit 2; kill $p; wait $p || true; stamp_alive "$s"`,
+      `mkfifo "${dir}/fifo"; "${sleeper}" "${dir}/fifo" & p=$!
+      if [[ -r /proc/$p/comm ]]; then
+        for _ in {1..50}; do [[ "$(</proc/$p/comm)" == "a) Z b" ]] && break; sleep 0.1; done
+        [[ "$(</proc/$p/comm)" == "a) Z b" ]] || exit 3
+      fi
+      s="$(process_stamp $p)" && stamp_alive "$s" || exit 2; kill $p; wait $p || true; stamp_alive "$s"`,
     );
 
     expect(result.status).toBe(1);
