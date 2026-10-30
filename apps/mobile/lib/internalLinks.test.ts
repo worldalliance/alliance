@@ -1,4 +1,8 @@
-import { extractPathFromInternalUrl, getInternalRoute } from "./internalLinks";
+import {
+  extractPathFromInternalUrl,
+  getInternalRoute,
+  leavesApp,
+} from "./internalLinks";
 
 describe("extractPathFromInternalUrl", () => {
   it("takes the path from either of our domains", () => {
@@ -87,4 +91,19 @@ describe("getInternalRoute", () => {
     expect(getInternalRoute("#intro")).toBeNull();
     expect(getInternalRoute("?q=hi")).toBeNull();
   });
+});
+
+describe("leavesApp", () => {
+  it("keeps app paths in the app", () => {
+    expect(leavesApp("/actions/3")).toBe(false);
+  });
+
+  it("leaves the app for other sites and schemes", () => {
+    expect(leavesApp("https://example.com/guide")).toBe(true);
+    expect(leavesApp("mailto:someone@example.com")).toBe(true);
+  });
+});
+
+it("keeps a link to our own site in the app", () => {
+  expect(leavesApp("https://thealliance.org/actions/12")).toBe(false);
 });

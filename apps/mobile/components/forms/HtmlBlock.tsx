@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { View } from "react-native";
 import { WebView } from "react-native-webview";
-import { useHandleLinkPress } from "../AppMarkdownWrapper";
+import { useHandleLinkPress } from "../../lib/linkPress";
 
 // Authored HTML brings its own <style>, so these only set defaults it can
 // override: they come first in the document and use no extra specificity.

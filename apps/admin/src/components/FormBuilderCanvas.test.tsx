@@ -273,7 +273,7 @@ describe("the form canvas", () => {
       ],
     });
     fireEvent.click(button("Contents of Section: More"));
-    const link = screen.getByRole("link", { name: "Away" });
+    const link = screen.getByRole("link", { name: /^Away/ });
     expect(fireEvent.click(link)).toBe(false);
     expect(heading()).toBe("Text Block: [Away](https://example.com)");
   });

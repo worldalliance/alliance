@@ -173,7 +173,11 @@ export function RenderDisplayBlockMobile({
         </Text>
       );
     case "text":
-      return <AppMarkdownWrapper>{block.text}</AppMarkdownWrapper>;
+      return (
+        <AppMarkdownWrapper markLinksLeavingApp>
+          {block.text}
+        </AppMarkdownWrapper>
+      );
     case "label":
       return (
         <Text className="text-sm text-zinc-500" weight={FontWeight.Semibold}>

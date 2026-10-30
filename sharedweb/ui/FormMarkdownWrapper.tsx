@@ -4,6 +4,7 @@ import ReactMarkdown from "react-markdown";
 import { useMarkdownUrlTransform } from "../lib/markdownUrl";
 import ActionLink, { getActionIdFromHref } from "./ActionLink";
 import ExternalLinkPreview from "./ExternalLinkPreview";
+import NewTabMark from "./NewTabMark";
 
 interface FormMarkdownWrapper {
   markdownContent: string;
@@ -70,7 +71,7 @@ const FormMarkdownWrapper: React.FC<FormMarkdownWrapper> = ({
         // `text-link`, a raw unlayered CSS class (apps' index.css) that
         // outranks every layered Tailwind utility in the cascade — only an
         // !important utility reliably overrides its green.
-        a: ({ node: _node, ...props }) =>
+        a: ({ node: _node, children, ...props }) =>
           getActionIdFromHref(props.href) != null ? (
             <ActionLink
               className={cn(
@@ -80,7 +81,10 @@ const FormMarkdownWrapper: React.FC<FormMarkdownWrapper> = ({
               {...props}
               target="_blank"
               rel="noreferrer"
-            />
+            >
+              {children}
+              <NewTabMark />
+            </ActionLink>
           ) : (
             <ExternalLinkPreview
               className={cn(
@@ -90,7 +94,10 @@ const FormMarkdownWrapper: React.FC<FormMarkdownWrapper> = ({
               {...props}
               target="_blank"
               rel="noreferrer"
-            />
+            >
+              {children}
+              <NewTabMark />
+            </ExternalLinkPreview>
           ),
         code: ({ node: _node, className: _className, ...props }) => (
           <code

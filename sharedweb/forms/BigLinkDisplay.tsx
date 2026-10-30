@@ -10,6 +10,7 @@ import {
   ShareLinkTargetKind,
   useShareLink,
 } from "@alliance/shared/forms/useShareLink";
+import { linkHints } from "@alliance/shared/lib/copy";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import {
@@ -201,7 +202,11 @@ function OpenBigLink({ block, url }: { block: BigLinkBlock; url: string }) {
         style={color.style}
       >
         <BigLinkContent block={block} url={url} />
-        <ArrowUpRight size={20} aria-hidden />
+        <ArrowUpRight
+          size={20}
+          role="img"
+          aria-label={linkHints.opensInNewTab}
+        />
       </Card>
     </Link>
   );

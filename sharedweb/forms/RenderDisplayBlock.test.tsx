@@ -4,8 +4,9 @@ import {
   type BigLinkBlock,
   type CopyTextBlock,
 } from "@alliance/common/forms/display-blocks";
+import { linkHints } from "@alliance/shared/lib/copy";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { SiteAppProvider, SiteOriginLinkProvider } from "../ui/SiteAppProvider";
 import { StickyAccordionTitles } from "./accordionStyles";
@@ -49,6 +50,31 @@ describe("the header display block", () => {
     );
     const heading = screen.getByRole("heading", { level: 2, name: "Default" });
     expect(heading.className).toContain("text-2xl");
+  });
+});
+
+describe("the text display block", () => {
+  it("marks each link as opening in a new tab", () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <SiteAppProvider>
+            <RenderDisplayBlock
+              block={{
+                type: "display",
+                kind: "text",
+                text: "See [the guide](https://example.com/guide).",
+              }}
+            />
+          </SiteAppProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    const link = screen.getByRole("link", { name: /the guide/ });
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(
+      within(link).getByRole("img", { name: linkHints.opensInNewTab }),
+    ).toBeTruthy();
   });
 });
 
@@ -147,6 +173,21 @@ describe("the biglink display block", () => {
       </MemoryRouter>,
     );
     expect(screen.getByRole("link").textContent).toBe(biglink.text);
+  });
+
+  it("says the link opens in a new tab", () => {
+    render(
+      <MemoryRouter>
+        <SiteAppProvider>
+          <RenderDisplayBlock block={biglink} />
+        </SiteAppProvider>
+      </MemoryRouter>,
+    );
+    expect(
+      within(screen.getByRole("link")).getByRole("img", {
+        name: linkHints.opensInNewTab,
+      }),
+    ).toBeTruthy();
   });
 
   it("aims the link at the given origin in an app that serves another domain", () => {
