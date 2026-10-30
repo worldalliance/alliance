@@ -35,6 +35,8 @@ export default function FlowButton({
   loading = false,
   disabled,
   className,
+  iconLeft,
+  iconRight,
   children,
   ...props
 }: Omit<BaseButtonProps, "variant" | "size"> & {
@@ -54,6 +56,8 @@ export default function FlowButton({
       )}
       disabled={disabled || loading}
       aria-busy={loading}
+      iconLeft={loading ? undefined : iconLeft}
+      iconRight={loading ? undefined : iconRight}
       {...props}
     >
       {loading ? (

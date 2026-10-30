@@ -25,6 +25,7 @@ import { formBlockedView } from "@alliance/sharedweb/forms/FormElements";
 import { useWebFormState } from "@alliance/sharedweb/forms/useWebFormState";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import { Dialog } from "@base-ui/react/dialog";
+import { ArrowRight } from "lucide-react";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { matchPath, useLocation, useNavigate } from "react-router";
@@ -336,6 +337,7 @@ export default function TaskFlow({
           className="flex-1"
           onClick={flow.begin}
           disabled={!position.loaded}
+          iconRight={ArrowRight}
         >
           {flow.beginLabel}
         </FlowButton>

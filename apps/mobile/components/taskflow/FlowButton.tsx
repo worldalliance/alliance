@@ -1,9 +1,11 @@
 import { FlowButtonKind } from "@alliance/shared/forms/flowStyle";
 import { cn } from "@alliance/shared/styles/util";
+import { type LucideIcon } from "lucide-react-native";
 import { type ReactNode } from "react";
 import {
   ActivityIndicator,
   TouchableOpacity,
+  View,
   type TouchableOpacityProps,
 } from "react-native";
 import { colors } from "../../lib/style/colors";
@@ -11,27 +13,31 @@ import Text, { FontWeight } from "../system/Text";
 
 const KINDS: Record<
   FlowButtonKind,
-  { className: string; textClassName: string; spinnerColor: string }
+  {
+    className: string;
+    textClassName: string;
+    contentColor: string;
+  }
 > = {
   [FlowButtonKind.Primary]: {
     className: "h-11 rounded-md bg-green px-4",
     textClassName: "text-white",
-    spinnerColor: colors.white,
+    contentColor: colors.white,
   },
   [FlowButtonKind.Secondary]: {
     className: "h-11 rounded-md bg-zinc-200 px-4",
     textClassName: "text-black",
-    spinnerColor: colors.text.icon,
+    contentColor: colors.text.primary,
   },
   [FlowButtonKind.Inverse]: {
     className: "h-11 rounded-md bg-white px-4",
     textClassName: "text-zinc-900",
-    spinnerColor: colors.text.icon,
+    contentColor: colors.text.primary,
   },
   [FlowButtonKind.Icon]: {
     className: "h-9 w-9 rounded-full bg-zinc-100",
     textClassName: "",
-    spinnerColor: colors.text.icon,
+    contentColor: colors.text.icon,
   },
 };
 
@@ -39,6 +45,8 @@ const KINDS: Record<
 export default function FlowButton({
   kind,
   title,
+  iconLeft: IconLeft,
+  iconRight: IconRight,
   loading = false,
   disabled = false,
   className,
@@ -47,10 +55,12 @@ export default function FlowButton({
 }: Omit<TouchableOpacityProps, "children"> & {
   kind: FlowButtonKind;
   title?: string;
+  iconLeft?: LucideIcon;
+  iconRight?: LucideIcon;
   loading?: boolean;
   children?: ReactNode;
 }) {
-  const { className: kindClassName, textClassName, spinnerColor } = KINDS[kind];
+  const { className: kindClassName, textClassName, contentColor } = KINDS[kind];
   return (
     <TouchableOpacity
       accessibilityRole="button"
@@ -67,11 +77,15 @@ export default function FlowButton({
       {...props}
     >
       {loading ? (
-        <ActivityIndicator size="small" color={spinnerColor} />
+        <ActivityIndicator size="small" color={contentColor} />
       ) : title ? (
-        <Text className={textClassName} weight={FontWeight.Medium}>
-          {title}
-        </Text>
+        <View className="flex-row items-center gap-x-2">
+          {IconLeft ? <IconLeft size={18} color={contentColor} /> : null}
+          <Text className={textClassName} weight={FontWeight.Medium}>
+            {title}
+          </Text>
+          {IconRight ? <IconRight size={18} color={contentColor} /> : null}
+        </View>
       ) : (
         children
       )}
