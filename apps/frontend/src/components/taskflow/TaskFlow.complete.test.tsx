@@ -274,5 +274,6 @@ it("turns the nav back from green before the completion card shrinks away", asyn
   expect(
     await screen.findByText("nav expanded", {}, { timeout: CLOSE_TIMEOUT }),
   ).toBeTruthy();
+  expect(screen.getByRole("dialog")).toBeTruthy();
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 });

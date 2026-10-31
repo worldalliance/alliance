@@ -31,14 +31,14 @@
   - `NavbarTopBar` fades out and inerts search and notifications. The profile button stays.
   - While immersive, the root drops its reserved scrollbar gutter and stops scrolling. A fixed panel can't extend into that gutter, which otherwise shows as a white strip on the right.
   - `--nav-width` follows the rail through a `ResizeObserver`, so the content and the panel track the animation frame by frame.
-- **Expanding from the task container.** `useExpandingPanel` animates the panel's `clip-path` from the container's rectangle to the full panel, so nothing reflows mid-animation. The container is the nearest ancestor marked `TASK_FLOW_ORIGIN` (the homepage task card), falling back to the panel's parent on the action page. Closing reverses the clip and fades out, and the nav stays collapsed until the panel has shrunk back. Re-expanding the nav earlier would move the card out from under the shrinking clip. Reduced motion skips every step.
+- **Expanding from the task container.** `useExpandingPanel` animates the panel's `clip-path` from the container's rectangle to the full panel, so nothing reflows mid-animation. The container is the nearest ancestor marked `TASK_FLOW_ORIGIN` (the homepage task card), falling back to the panel's parent on the action page. Closing widens the nav first, then reverses the clip into the card at its new position and fades out (TN-20 in task-flow-testing-fall-26). Reduced motion skips every step.
 - **Closing the completion screen.** The close runs in steps:
   1. The completion screen fades out to the panel's white while the nav and top band turn back from green.
-  2. The empty panel shrinks into the container.
-  3. The nav widens.
+  2. The nav widens.
+  3. The empty panel shrinks into the container.
   4. The action is completed.
 
-  Completing re-renders the task panel or the home list, and that took about 100ms of main thread in testing. It waits for step 3 because a stall during the nav's width transition makes the nav jump. Each wait counts from the frame after the change that starts it, so a slow commit can't cut a step short. The Begin button stays hidden while the flow is on its completion stage, so it doesn't show through the shrinking panel.
+  Completing re-renders the task panel or the home list, and that took about 100ms of main thread in testing. It waits for step 2 because a stall during the nav's width transition makes the nav jump, and for step 3 because one during the panel's clip-path collapse makes the panel jump. Each wait counts from the frame after the change that starts it, so a slow commit can't cut a step short. The Begin button stays hidden while the flow is on its completion stage, so it doesn't show through the shrinking panel.
 
 - **Motion in one place.** Every duration and easing curve in the flow, on both platforms, is in `shared/forms/flowStyle.ts`, with each curve as cubic-bezier control points: the panel's expand and collapse, the recolor, the nav's width, the label and icon fades, and the progress bar. Web's `flowMotion.ts` turns them into CSS transitions and mobile's into Reanimated timings. `NavbarVertical` and `NavbarTopBar` read them through inline `transition` styles, because Tailwind classes can't take runtime values. Mobile's `ProgressBar` takes the flow's timing as `fillTiming`, and web's as `fillTransition`; their other uses keep their own.
 - **One page frame.** On each platform, the background page, the question screens and the blocked view share one `TaskFlowPage` frame and `TaskFlowTitle`: the scrolling content and the footer. The close and withdraw row above them is `TaskFlowHeader`, rendered once by `TaskFlow`. The blocked view is titled with the action's name.

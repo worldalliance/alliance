@@ -274,8 +274,8 @@ hr {
   }
 }
 
-html[data-immersive],
-html[data-immersive] body {
+html[data-flow-panel],
+html[data-flow-panel] body {
   overflow: hidden;
   scrollbar-gutter: auto;
 }
