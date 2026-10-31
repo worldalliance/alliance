@@ -341,20 +341,15 @@ const HomePage = () => {
 
   useWhiteBackground();
 
-  return isLargeScreen ? (
+  // One layout at every width, so crossing the breakpoint doesn't remount
+  // the task card and close a task flow open from it.
+  return (
     <TwoColumnLayout
       main={mainContent}
-      sidebar={sidebarContent}
+      sidebar={isLargeScreen ? sidebarContent : undefined}
       noSidebarOverflow
       mainScrollRef={mainScrollRef}
     />
-  ) : (
-    <div
-      ref={mainScrollRef}
-      className="w-full h-[calc(100vh-var(--navbar-top-bar-height))] bg-page overflow-y-auto [scrollbar-gutter:stable]"
-    >
-      {mainContent}
-    </div>
   );
 };
 

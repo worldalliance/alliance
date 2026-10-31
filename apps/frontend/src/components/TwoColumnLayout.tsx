@@ -1,7 +1,7 @@
 import { cn } from "@alliance/shared/styles/util";
 import { ReactNode, RefObject } from "react";
 
-export const TWO_COLUMN_LAYOUT_CLASSNAME =
+const TWO_COLUMN_LAYOUT_CLASSNAME =
   "w-full h-[calc(100vh-var(--navbar-top-bar-height))] bg-page";
 
 interface TwoColumnLayoutProps {
