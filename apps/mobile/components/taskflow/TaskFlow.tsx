@@ -27,7 +27,6 @@ import {
 import { ArrowRight } from "lucide-react-native";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Modal, useWindowDimensions, View } from "react-native";
-import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -316,29 +315,25 @@ export default function TaskFlow({
           style={panelStyle}
           onLayout={enter}
         >
-          <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-            {flow.open ? (
-              <>
-                <View className="px-4" style={{ paddingTop: insets.top + 8 }}>
-                  <ProgressBar
-                    percentage={flow.progress}
-                    fillTiming={PROGRESS_TIMING}
-                  />
-                </View>
-                <TaskFlowHeader
-                  onClose={() => void close()}
-                  disabled={form.submitting}
-                  progressSaved={
-                    records && blocked === null && flow.pastFirstStep
-                  }
-                  onWithdraw={
-                    withdraw && blocked === null ? openWithdraw : null
-                  }
+          {flow.open ? (
+            <>
+              <View className="px-4" style={{ paddingTop: insets.top + 8 }}>
+                <ProgressBar
+                  percentage={flow.progress}
+                  fillTiming={PROGRESS_TIMING}
                 />
-              </>
-            ) : null}
-            <View className="flex-1">{renderStage()}</View>
-          </KeyboardAvoidingView>
+              </View>
+              <TaskFlowHeader
+                onClose={() => void close()}
+                disabled={form.submitting}
+                progressSaved={
+                  records && blocked === null && flow.pastFirstStep
+                }
+                onWithdraw={withdraw && blocked === null ? openWithdraw : null}
+              />
+            </>
+          ) : null}
+          <View className="flex-1">{renderStage()}</View>
         </Animated.View>
         {withdrawalModal(withdrawOpen && shown)}
       </Modal>
