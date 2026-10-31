@@ -11,6 +11,10 @@ The rules below live in [`flowScreens.ts`](../shared/forms/flowScreens.ts) and [
 - **The first page the member sees becomes the "Project background" page when it asks for nothing.** A visibility rule that hides the whole page hands this role to the next visible page. If it holds only content (text, video, images), "Begin" opens a page titled "Project background": that page's videos and images, then its text. The contributors (authors as "Staff", reviewers as "Expert") show on the task card instead. A question a visibility rule hides from the member doesn't count, and the page gives way to a question screen if the question shows. If it holds a question the member can see, there's no background page, and "Begin" opens that screen.
 - **The "Task complete" card is the form's default output view**, or its first output view when none has type `default`. It shows the member's own answers, including any they hid from other members.
 
+## In the admin
+
+On an action's Form tab, each page shows the step it becomes ("Project background", or "Step N" and its title) and what to fix: a missing header, or more than two inputs. These notes count steps as if every page shows, and they never block saving. The action's readiness checklist also asks for an image and an output view.
+
 ## Conventions
 
 - Open every page with a header, except an opening page that asks for nothing: that becomes the background page, which already has its title, so a header on it shows as a second one. A page without a header gets a generic title ("Answer the questions below" or "Read this before you continue"). Dev builds on both platforms log a warning naming the page.

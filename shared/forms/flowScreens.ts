@@ -9,7 +9,7 @@ import {
 } from "@alliance/common/forms/form-schema";
 import { interpolateDisplayBlock } from "@alliance/common/forms/variable-interpolation";
 import { resolveDisplayBlockForUser } from "../formrenderer";
-import { taskFlowFallbackTitle } from "../lib/copy";
+import { taskFlow, taskFlowFallbackTitle } from "../lib/copy";
 import { type FormVisibility } from "../useFormRenderer";
 
 const isHeader = (element: PageItem): element is HeaderBlock =>
@@ -124,6 +124,49 @@ export function flowScreenTitle(params: {
   )
     ? taskFlowFallbackTitle.questions
     : taskFlowFallbackTitle.reading;
+}
+
+const MAX_INPUTS_PER_STEP = 2;
+
+/** How a form page shows in the task flow, assuming every page and element shows. */
+export type FlowStepPreview = {
+  label: string;
+  warnings: string[];
+};
+
+/** Each page's step in the task flow, for authors; null for an empty page, which never shows. */
+export function flowStepPreviews(
+  schema: FormSchema,
+): (FlowStepPreview | null)[] {
+  let step = 0;
+  return buildFlowScreens(schema).map((screen, index) => {
+    if (screen.heading === null && screen.elements.length === 0) return null;
+    const inputs = screen.elements.filter(isQuestionField).length;
+    if (index === 0 && inputs === 0) {
+      return { label: taskFlow.background, warnings: [] };
+    }
+    step += 1;
+    const fallback =
+      inputs > 0
+        ? taskFlowFallbackTitle.questions
+        : taskFlowFallbackTitle.reading;
+    const warnings = [
+      ...(screen.heading === null
+        ? [
+            `No header block, so this step is titled "${fallback}". Open the page with a level-1 header in active voice.`,
+          ]
+        : []),
+      ...(inputs > MAX_INPUTS_PER_STEP
+        ? [
+            `${inputs} inputs on one step. Keep each page to ${MAX_INPUTS_PER_STEP} or fewer.`,
+          ]
+        : []),
+    ];
+    return {
+      label: `Step ${step}: ${screen.heading?.text ?? fallback}`,
+      warnings,
+    };
+  });
 }
 
 export const missingHeaderWarning = (screen: FlowScreen, title: string) =>
