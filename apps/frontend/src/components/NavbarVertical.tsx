@@ -225,28 +225,17 @@ const NavbarVertical: React.FC<{
         style={RAIL_STYLE}
         ref={navRef}
       >
+        {/* The rail's stroke starts below the top band, clear of the logo. */}
         {collapsed && (
-          <>
-            {/* The rail's stroke starts below the top band, clear of the logo. */}
-            <span
-              aria-hidden
-              className={cn(
-                "absolute inset-x-0 top-[calc(var(--navbar-top-bar-height)-1px)] hidden h-px bg-zinc-200 md:block",
-                success && "opacity-0",
-                REDUCED_MOTION,
-              )}
-              style={STROKE_STYLE}
-            />
-            <span
-              aria-hidden
-              className={cn(
-                "absolute -right-px top-[calc(var(--navbar-top-bar-height)-1px)] bottom-0 hidden w-px bg-zinc-200 md:block",
-                success && "opacity-0",
-                REDUCED_MOTION,
-              )}
-              style={STROKE_STYLE}
-            />
-          </>
+          <span
+            aria-hidden
+            className={cn(
+              "absolute -right-px top-[calc(var(--navbar-top-bar-height)-1px)] bottom-0 hidden w-px bg-zinc-200 md:block",
+              success && "opacity-0",
+              REDUCED_MOTION,
+            )}
+            style={STROKE_STYLE}
+          />
         )}
         {/* Close button on mobile */}
         <div className="md:hidden flex justify-end p-4">
