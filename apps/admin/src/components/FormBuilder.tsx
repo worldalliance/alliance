@@ -59,6 +59,7 @@ type FormBuilderProps = {
       title: string;
       formId?: undefined;
       actionName?: undefined;
+      taskFlow?: undefined;
     }
   | {
       displayOnly?: false;
@@ -67,6 +68,8 @@ type FormBuilderProps = {
       title?: undefined;
       formId?: number;
       actionName?: string;
+      /** The action's task form, which members fill in through the task flow. */
+      taskFlow?: boolean;
     }
 );
 
@@ -88,6 +91,7 @@ export function FormBuilder(props: FormBuilderProps) {
   const displayOnlyTitle = props.displayOnly ? props.title : "";
   const formId = props.displayOnly ? undefined : props.formId;
   const actionName = props.displayOnly ? undefined : props.actionName;
+  const taskFlow = props.displayOnly ? false : (props.taskFlow ?? false);
 
   const newFormTitle = actionName ? actionName + " form" : "Untitled Form";
 
@@ -460,6 +464,7 @@ export function FormBuilder(props: FormBuilderProps) {
                     overrideTarget={overrideTarget}
                     override={override}
                     onEditJson={setJsonScope}
+                    taskFlow={taskFlow}
                   />
                 )}
               </div>

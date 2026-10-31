@@ -8,13 +8,14 @@ import type {
   Page,
   PageItem,
 } from "@alliance/common/forms/form-schema";
-import { taskFlowFallbackTitle } from "../lib/copy";
+import { taskFlow, taskFlowFallbackTitle } from "../lib/copy";
 import {
   backgroundScreenIndex,
   buildFlowScreens,
   flowProgress,
   flowResumeIndex,
   flowScreenTitle,
+  flowStepPreviews,
   splitBackground,
   visibleFlowScreenIndices,
   withoutEmptySections,
@@ -321,5 +322,61 @@ describe("splitBackground", () => {
       media: [video],
       reading: [text("a"), text("b")],
     });
+  });
+});
+
+describe("flowStepPreviews", () => {
+  it("skips an empty leading page when picking the background", () => {
+    expect(
+      flowStepPreviews(
+        schemaOf(
+          page("p1", []),
+          page("p2", [text("a")]),
+          page("p3", [header("Rate"), input("q")]),
+        ),
+      ),
+    ).toEqual([
+      null,
+      { label: taskFlow.background, warnings: [] },
+      { label: "Step 1: Rate", warnings: [] },
+    ]);
+  });
+
+  it("labels an opening page without inputs as the project background", () => {
+    expect(
+      flowStepPreviews(
+        schemaOf(
+          page("p1", [text("a")]),
+          page("p2", [header("Rate"), input("q")]),
+        ),
+      ),
+    ).toEqual([
+      { label: taskFlow.background, warnings: [] },
+      { label: "Step 1: Rate", warnings: [] },
+    ]);
+  });
+
+  it("warns about a page without a header or with more than two inputs", () => {
+    const [step] = flowStepPreviews(
+      schemaOf(page("p1", [input("a"), input("b"), input("c")])),
+    );
+    expect(step?.label).toBe(`Step 1: ${taskFlowFallbackTitle.questions}`);
+    expect(step?.warnings).toHaveLength(2);
+  });
+
+  it("skips an empty page, which never shows", () => {
+    expect(
+      flowStepPreviews(
+        schemaOf(
+          page("p1", [input("a")]),
+          page("p2", []),
+          page("p3", [header("h"), input("b")]),
+        ),
+      ).map((step) => step?.label ?? null),
+    ).toEqual([
+      `Step 1: ${taskFlowFallbackTitle.questions}`,
+      null,
+      "Step 2: h",
+    ]);
   });
 });

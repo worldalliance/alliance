@@ -8,8 +8,9 @@ import {
   type PageItem,
 } from "@alliance/common/forms/form-schema";
 import { interpolateDisplayBlock } from "@alliance/common/forms/variable-interpolation";
+import { withCount } from "@alliance/common/plural";
 import { resolveDisplayBlockForUser } from "../formrenderer";
-import { taskFlowFallbackTitle } from "../lib/copy";
+import { taskFlow, taskFlowFallbackTitle } from "../lib/copy";
 import { type FormVisibility } from "../useFormRenderer";
 
 const isHeader = (element: PageItem): element is HeaderBlock =>
@@ -119,15 +120,65 @@ export function flowScreenTitle(params: {
   if (heading && isElementCurrentlyVisible(heading)) {
     return interpolateDisplayBlock(heading, variableValues).text;
   }
-  return screen.elements.some(
-    (element) => isQuestionField(element) && isElementCurrentlyVisible(element),
-  )
-    ? taskFlowFallbackTitle.questions
-    : taskFlowFallbackTitle.reading;
+  return fallbackFlowTitle(
+    screen.elements.some(
+      (element) =>
+        isQuestionField(element) && isElementCurrentlyVisible(element),
+    ),
+  );
+}
+
+const fallbackFlowTitle = (hasQuestion: boolean) =>
+  hasQuestion ? taskFlowFallbackTitle.questions : taskFlowFallbackTitle.reading;
+
+const ADD_A_HEADER = "Open the page with a level-1 header in active voice.";
+
+const MAX_INPUTS_PER_STEP = 2;
+
+/** How a form page shows in the task flow, assuming every page and element shows. */
+export type FlowStepPreview = {
+  label: string;
+  warnings: string[];
+};
+
+/** Each page's step in the task flow, for authors; null for an empty page, which never shows. */
+export function flowStepPreviews(
+  schema: FormSchema,
+): (FlowStepPreview | null)[] {
+  const screens = buildFlowScreens(schema);
+  const shows = (screen: FlowScreen) =>
+    screen.heading !== null || screen.elements.length > 0;
+  const firstShown = screens.findIndex(shows);
+  let step = 0;
+  return screens.map((screen, index) => {
+    if (!shows(screen)) return null;
+    const inputs = screen.elements.filter(isQuestionField).length;
+    if (index === firstShown && inputs === 0) {
+      return { label: taskFlow.background, warnings: [] };
+    }
+    step += 1;
+    const fallback = fallbackFlowTitle(inputs > 0);
+    const warnings = [
+      ...(screen.heading === null
+        ? [
+            `No header block, so this step is titled "${fallback}". ${ADD_A_HEADER}`,
+          ]
+        : []),
+      ...(inputs > MAX_INPUTS_PER_STEP
+        ? [
+            `${withCount(inputs, "question")} on one step. Keep each page to ${MAX_INPUTS_PER_STEP} or fewer.`,
+          ]
+        : []),
+    ];
+    return {
+      label: `Step ${step}: ${screen.heading?.text ?? fallback}`,
+      warnings,
+    };
+  });
 }
 
 export const missingHeaderWarning = (screen: FlowScreen, title: string) =>
-  `Task flow: page ${screen.pageIndex + 1} has no header (first element: ${screen.elements[0]?.id}), so it shows "${title}". Open it with a level-1 header in active voice.`;
+  `Task flow: page ${screen.pageIndex + 1} has no header (first element: ${screen.elements[0]?.id}), so it shows "${title}". ${ADD_A_HEADER}`;
 
 const IS_MEDIA: Record<DisplayKind, boolean> = {
   header: false,

@@ -2,8 +2,9 @@ import { PlaceKind } from "@alliance/common/forms/form-conditions";
 import type { Page, PageItem } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { withCount } from "@alliance/common/plural";
+import { type FlowStepPreview } from "@alliance/shared/forms/flowScreens";
 import { cn } from "@alliance/shared/styles/util";
-import { TriangleAlert } from "lucide-react";
+import { ListOrdered, TriangleAlert } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import {
@@ -68,7 +69,29 @@ type FormCanvasProps = {
   onUpdatePage: (updates: Partial<Page>) => void;
   /** The user whose content the selected block shows. */
   override: ContentOverride | null;
+  /** The task flow step this page becomes, on a task form. */
+  step: FlowStepPreview | null;
 };
+
+function TaskFlowStepNote({ step }: { step: FlowStepPreview }) {
+  return (
+    <div className="mb-4 rounded-md bg-gray-50 px-3 py-2 text-sm">
+      <p className="flex items-center gap-x-2 text-gray-700">
+        <ListOrdered size={14} aria-hidden />
+        {step.label}
+      </p>
+      {step.warnings.map((warning) => (
+        <p
+          key={warning}
+          className="mt-1 flex items-start gap-x-2 text-amber-700"
+        >
+          <TriangleAlert size={14} className="mt-0.5 shrink-0" aria-hidden />
+          {warning}
+        </p>
+      ))}
+    </div>
+  );
+}
 
 /** The selected page as respondents see it, with selection and editing overlays. */
 export function FormCanvas({
@@ -87,6 +110,7 @@ export function FormCanvas({
   onUpdateBlockById,
   onUpdatePage,
   override,
+  step,
 }: FormCanvasProps) {
   const fields = page.fields;
   const { acceptDrop, drop, dragFor } = useListDrag<string>((_, move) =>
@@ -237,6 +261,7 @@ export function FormCanvas({
           )}
         </div>
       )}
+      {step && <TaskFlowStepNote step={step} />}
       {fields.length === 0 && (
         <p className="py-8 text-center text-sm text-gray-500">
           {displayOnly

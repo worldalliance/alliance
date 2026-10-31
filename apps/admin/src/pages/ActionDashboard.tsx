@@ -312,6 +312,7 @@ const ActionDashboard: React.FC = () => {
                 formId={action.taskFormId ?? undefined}
                 setFormId={editor.setTaskFormId}
                 actionName={action.name}
+                taskFlow
               />
             )}
 

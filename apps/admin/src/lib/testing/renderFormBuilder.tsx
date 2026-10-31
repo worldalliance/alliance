@@ -33,6 +33,12 @@ export function renderFormBuilder(initialSchema: FormSchema, formId?: number) {
   );
 }
 
+export function renderTaskFormBuilder(initialSchema: FormSchema) {
+  renderBuilder(
+    <FormBuilder initialSchema={initialSchema} setFormId={() => {}} taskFlow />,
+  );
+}
+
 /** The builder loading form `formId` from the server, opened at `url`. */
 export function renderSavedFormBuilder(formId: number, url: string) {
   return renderBuilder(

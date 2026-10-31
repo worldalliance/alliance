@@ -1,4 +1,5 @@
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
+import { flowStepPreviews } from "@alliance/shared/forms/flowScreens";
 import type { ComponentProps } from "react";
 import { copyElementWithUniqueIds } from "../lib/copyWithUniqueIds";
 import type { IssueIndex } from "../lib/formIssues";
@@ -33,12 +34,15 @@ export function FormBuilderCanvas({
   overrideTarget,
   override,
   onEditJson,
+  taskFlow,
 }: Omit<
   ComponentProps<typeof FormBuilderSettings>,
   "conditionFieldOf" | "summarize"
 > & {
   issueIndex: IssueIndex;
   override: ContentOverride | null;
+  /** Shows how each page maps onto the full-screen task flow. */
+  taskFlow: boolean;
 }) {
   const {
     selectedPageIndex,
@@ -168,6 +172,11 @@ export function FormBuilderCanvas({
           onUpdateBlockById={updateBlockById}
           onUpdatePage={updateCurrentPage}
           override={override}
+          step={
+            taskFlow
+              ? (flowStepPreviews(schema)[selectedPageIndex] ?? null)
+              : null
+          }
         />
       }
       settings={
