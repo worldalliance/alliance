@@ -203,7 +203,7 @@ it("doesn't reopen a flow that unmounted without the member leaving the page", a
   }
 });
 
-it("collapses the nav while the flow is open", async () => {
+it("collapses the nav while the flow is open, and widens it before the panel closes", async () => {
   renderFlow();
   expect(await screen.findByText("nav expanded")).toBeTruthy();
 
@@ -212,6 +212,7 @@ it("collapses the nav while the flow is open", async () => {
 
   fireEvent.click(screen.getByRole("button", { name: taskFlow.closeTask }));
   expect(await screen.findByText("nav expanded")).toBeTruthy();
+  expect(screen.getByRole("dialog")).toBeTruthy();
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 });
 

@@ -213,10 +213,10 @@ export default function TaskFlow({
   const { panel, panelRef, collapse } = useExpandingPanel(anchorRef);
   const closing = useRef(false);
   const [recoloring, setRecoloring] = useState(false);
-  const [shrunk, setShrunk] = useState(false);
-  const shown = flow.stage !== FlowStage.Closed && !shrunk;
+  const [navReleased, setNavReleased] = useState(false);
+  const shown = flow.stage !== FlowStage.Closed;
   useImmersiveNavbar({
-    immersive: shown,
+    immersive: shown && !navReleased,
     tone:
       flow.stage === FlowStage.Complete && !recoloring
         ? ImmersiveTone.Success
@@ -232,16 +232,15 @@ export default function TaskFlow({
       setRecoloring(true);
       await afterMotion(flowMotion.recolor);
     }
+    // The nav widens before the panel shrinks, so the panel shrinks into the
+    // card where it will rest, and completing the task, which re-renders the
+    // page behind, can't stall the nav's width transition.
+    setNavReleased(true);
+    await afterMotion(flowMotion.nav, flowMotion.fade);
     await collapse();
-    if (complete) {
-      // Completing re-renders the page behind, which would stall the nav's
-      // width transition, so the stage and the held page wait for it.
-      setShrunk(true);
-      await afterMotion(flowMotion.nav, flowMotion.fade);
-    }
     closing.current = false;
     setRecoloring(false);
-    setShrunk(false);
+    setNavReleased(false);
     flow.close();
     then?.();
   };
