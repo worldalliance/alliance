@@ -148,9 +148,10 @@ From the notes: "When you 'close task', the task closes then the bar comes up. W
 
 From the notes: "On open-ended type fields a new input field appears above the keyboard (location selector)", "On others the keyboard opens and pushes the progress bar/control console up with it", "The keyboard should overlay on top of the progress field and the page should scroll to the field thats being inputted, no zoom. Have the second input field appear for all typing inputs" and "Mobile doesn't scroll down enough when selecting some fields".
 
-- Every typed input in the flow, long text included, shows an input field above the keyboard while focused, as the location field does. (Notes)
+- Typed inputs stay inline in the step: no second input field opens above the keyboard, except the city picker's existing one. This supersedes the note's request for a second input field. (User)
 - The keyboard covers the footer (Back, Next) instead of pushing it up. (Notes)
 - The screen scrolls the focused field fully into view, with no zoom. (Notes)
+- Dragging the step's content down dismisses the keyboard, so the footer is reachable from a keypad with no return key. (Approved)
 
 ## TN-22: Tap the background to close the completion screen
 

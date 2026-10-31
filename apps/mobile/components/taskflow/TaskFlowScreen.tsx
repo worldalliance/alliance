@@ -15,7 +15,9 @@ import { type MobileFormState } from "../forms/useMobileFormState";
 import Text, { FontWeight } from "../system/Text";
 import FlowButton from "./FlowButton";
 
-const FOOTER_HEIGHT = 120;
+// Breathing room between the focused field and the keyboard, which now
+// covers the footer rather than lifting it.
+const FIELD_KEYBOARD_GAP = 16;
 
 export function TaskFlowTitle({ children }: { children: ReactNode }) {
   return (
@@ -44,6 +46,7 @@ export function TaskFlowPage({
     <View className="flex-1 bg-white">
       <StickyAccordionScrollView
         bottomOffset={bottomOffset}
+        keyboardDismissMode="interactive"
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
       >
         {children}
@@ -94,7 +97,7 @@ export default function TaskFlowScreen({
 
   return (
     <TaskFlowPage
-      bottomOffset={FOOTER_HEIGHT}
+      bottomOffset={FIELD_KEYBOARD_GAP}
       footer={
         <>
           {form.saveFailed ? (
