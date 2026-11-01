@@ -46,3 +46,4 @@ task: Run the per-commit review loop automatically before a coding agent opens a
 
 - User-originated: the instructions agents follow state the established practice for which checks run where, and why, so a later agent can challenge it.
 - User-originated: the experiments and evidence behind these choices are recorded in this provenance directory.
+- User-originated: general skills don't name this task's provenance directory. Agents don't need the sources to follow a rule, and the sources stay in this directory for anyone who wants them.
