@@ -11,6 +11,36 @@ Done means the PR is open and its CI passed. The root `AGENTS.md` rule to ask be
 
 Work from the repo root of the main checkout or of a worktree `scripts/new-worktree.sh` created, since it refuses to create a worktree from any other. Arriving because the PR's CI failed, start at **CI**.
 
+The chart shows which stage you are in; the sections below hold the rules.
+
+```mermaid
+flowchart TD
+  commit["Commit on a branch"] --> review["Review: reviewers in parallel"]
+  review -->|failed review: rerun| review
+  review -->|findings| fix["Fix: fresh fixer"]
+  review -->|no findings| due{"Anything due?"}
+  fix -->|failed fixer or failing check: fresh fixer| fix
+  fix --> questions{"Fixer asked questions?"}
+  questions -->|yes| ask["Questions: ask the person"]
+  ask -->|answers| fix
+  questions -->|no| due
+  due -->|yes, next round| review
+  due -->|no| push["Push and open the PR: ask once first"]
+  push --> ci{"CI"}
+  ci -->|not finished: wait or rerun| ci
+  ci -->|passed or merged| finished(["Done"])
+  ci -->|branch caused failure| newCommit["New commit on top"]
+  newCommit --> review
+  ci -->|main caused failure or conflict| moved["main moved on: ask the person"]
+  moved -->|agrees| rebase["Rebase onto origin/main"]
+  rebase --> review
+  moved -->|declines| stays(["Stop: PR stays as it is"])
+  review -->|second failed review| person(["Stop: go to the person"])
+  fix -->|second fixer failure or second failing check| person
+  push -->|rejected push| person
+  ci -->|anything else| person
+```
+
 ## The loop
 
 Commit your work on a branch of your own, creating one if you are on `main`; ask the person about uncommitted changes that aren't yours; `git fetch origin`. The base is the branch's upstream once it is pushed, else `origin/main`. A round is:

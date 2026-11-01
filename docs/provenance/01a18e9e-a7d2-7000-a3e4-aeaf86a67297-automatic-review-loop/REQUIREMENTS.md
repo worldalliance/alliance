@@ -46,4 +46,5 @@ task: Run the per-commit review loop automatically before a coding agent opens a
 
 - User-originated: the instructions agents follow state the established practice for which checks run where, and why, so a later agent can challenge it.
 - User-originated: the experiments and evidence behind these choices are recorded in this provenance directory.
+- User-originated: `skills/review-loop/SKILL.md` carries a mermaid flowchart of the whole process, after its opening paragraphs and before step 1, so an agent or a person can see which stage they are in. It has roughly fifteen nodes with short labels matching the prose's step names.
 - User-originated: general skills don't name this task's provenance directory. Agents don't need the sources to follow a rule, and the sources stay in this directory for anyone who wants them.
