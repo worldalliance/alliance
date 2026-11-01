@@ -35,6 +35,10 @@ Finish when the requirements and applicable criteria are satisfied and checks pa
 
 ## Checks
 
+Run the checks below that the change touches, in as few shell calls as possible, with full output to a log under `.scratch/` and only each check's pass/fail line and the tail of a failure read back. `dupcheck` and `covercheck` exit 0 with findings, so read their output whole.
+
+Local checks are targeted; CI runs the full matrix against the branch merged into `main`, on Linux, and a PR is not done until it passes. This follows common practice rather than a formal standard: fast checks before submit, everything after on the integrated result. Running every CI job locally repeats CI's work on a different OS and base, and in the measured review-loop runs it would have caught none of the failures that reached CI (a moved `main`, Linux-only behavior). Add a local check when CI keeps failing on something cheap to catch locally. Sources and evidence: **Which checks run where** in `(root)/docs/provenance/01a18e9e-a7d2-7000-a3e4-aeaf86a67297-automatic-review-loop/DECISIONS.md`.
+
 ### Typechecking
 
 Run typechecking for affected packages that provide a typecheck script, following the root `AGENTS.md` Typechecking rule.
