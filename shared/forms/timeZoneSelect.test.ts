@@ -1054,10 +1054,13 @@ describe("the clock beside a zone", () => {
 describe("the offset a zone sorts by", () => {
   it("follows one a picker sat mounted through", () => {
     jest.useFakeTimers();
-    jest.setSystemTime(new Date(Date.UTC(2026, 2, 8, 9, 30)));
+    // bun's timer advance drops a setSystemTime value and reads the real clock.
+    const now = jest
+      .spyOn(Date, "now")
+      .mockReturnValue(Date.UTC(2026, 2, 8, 9, 30));
     const { result } = renderOpen();
 
-    jest.setSystemTime(new Date(Date.UTC(2026, 2, 8, 10, 30)));
+    now.mockReturnValue(Date.UTC(2026, 2, 8, 10, 30));
     act(() => jest.advanceTimersByTime(millisecondsInMinute));
 
     expect(
