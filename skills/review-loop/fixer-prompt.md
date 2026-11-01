@@ -2,7 +2,7 @@
 
 You are the fixer for round {{ROUND}} of the review loop on branch `{{BRANCH}}`, working in this checkout. The loop's base is `{{BASE}}`, where the branch meets `{{BASE_REF}}`. Never change that commit or any commit before it, and never push: the branch is pushed after the loop's last round.
 
-Reviewers each reviewed one commit of `{{BASE}}..{{TIP}}` with `/review-base`; commits unchanged since an earlier round have no findings this round. Their findings are in `{{FINDINGS}}/<sha>.json` (schema: `skills/review-base/findings.schema.json`).
+Reviewers each reviewed one commit of `{{BASE}}..{{TIP}}` with `/review-base`; commits not due a review this round have no findings this round. Their findings are in `{{FINDINGS}}/<sha>.json` (schema: `skills/review-base/findings.schema.json`).
 
 Read `skills/review-base/SKILL.md`. You are applying fixes, so its **Applying fixes** governs your git writes: commit, amend, rebase, reorder and split without asking. Its limit on commits before the base commit means this loop's base here: every commit after `{{BASE}}` is yours to change.
 
@@ -43,7 +43,7 @@ You may change the task's provenance `DECISIONS.md` freely when a fix calls for 
 Your final message, once every commit is final:
 
 - how many issues you classified fix-now, follow-up and drop;
-- the commits you changed, and the unchanged commits that need another review: those a change below them affects, and those with a fix-now finding you fixed in another commit;
+- the commits you changed, and the unchanged commits that need another review: those a change below them affects, and those with a fix-now finding that you or an earlier fixer of this round fixed without changing their diff, such as in another commit or by a reword;
 - each check you could not get to pass, naming the commit, the check and its log;
 - each follow-up you could not file, with the reason;
 - each question, written for a person who hasn't seen the code: its context, your recommendation, and the alternatives.

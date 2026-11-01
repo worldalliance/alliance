@@ -16,7 +16,9 @@ Each round's dedup, triage and fixes run in a new `claude -p` session, briefed f
 
 ## Re-review selection
 
-Every commit a round rewrote gets a full review in the next round. A commit whose own diff is unchanged and whose last review came up clean is skipped, unless a commit below it changed in a way its code depends on, or a fix-now finding on it was fixed in another commit; the fixer names both kinds in its report. "Own diff" is the commit's patch, so a rebase or a message-only rewrite needs no re-review, and whitespace counts, since indentation changes meaning in YAML, Python and Markdown. Agent-workflow-specs re-reviewed unchanged commits stacked on a rewritten one with no finding attributable to the restack. Re-entering the loop after a push continues its round numbers and keeps its earlier reviews, so a CI fix or a rebase reviews only new and changed commits, as cost requires, and the fixer never re-triages an old round.
+The requirement's "has come up clean" is the agent's interpretation, not the user's statement: a commit is clean when its last review had no fix-now findings. The fix-now bar is what the loop guards, so findings that became follow-ups or were dropped don't keep a commit under review. `skills/review-loop/SKILL.md` states this definition itself.
+
+Every commit a round rewrote gets a full review in the next round. A commit whose own diff is unchanged and whose last review had no fix-now findings is skipped, unless a commit below it changed in a way its code depends on, or a fix-now finding on it was fixed without changing its diff; the fixer names both kinds in its report. "Own diff" is the commit's patch, so a rebase or a message-only rewrite of a clean commit needs no re-review, and whitespace counts, since indentation changes meaning in YAML, Python and Markdown. Agent-workflow-specs re-reviewed unchanged commits stacked on a rewritten one with no finding attributable to the restack. Re-entering the loop after a push continues its round numbers and keeps its earlier reviews, so a CI fix or a rebase reviews only new and changed commits, as cost requires, and the fixer never re-triages an old round.
 
 ## Questions
 
