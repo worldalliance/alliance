@@ -29,9 +29,9 @@ Implement through the identified owners of the behavior. When discovery during c
 
 Read the complete resulting diff and apply every relevant engineering criterion. Compare new logic with the reuse candidates from discovery, trace affected callers, and fix supported issues introduced by the change before handing it back.
 
-Run the checks under **Checks** that the change touches and the behavioral checks identified during discovery against the final code. After repairs, rerun checks affected by those repairs. If preparing commits is requested, each commit has one purpose and passes its checks on its own; results from the branch tip alone do not establish that.
+Run the checks under **Checks** that the change touches and the behavioral checks identified during discovery against the final code. After repairs, rerun checks affected by those repairs. When you prepare commits, each commit has one purpose and passes its checks on its own; results from the branch tip alone do not establish that.
 
-Finish when the requirements and applicable criteria are satisfied and checks pass, or identify the exact blocker and unfinished work. In the handoff, name the implementation reused or consolidated, commands and results, and remaining uncertainty. Link code and evidence rather than asserting compliance. The user's independent review remains a separate handoff.
+Finish when the requirements and applicable criteria are satisfied and checks pass, or identify the exact blocker and unfinished work. Once checks pass and the task's work is done, continue with `(root)/skills/review-loop/SKILL.md`, whose opening says when to skip it. In the handoff, name the implementation reused or consolidated, commands and results, and remaining uncertainty. Link code and evidence rather than asserting compliance. The user's independent review remains a separate handoff.
 
 ## Checks
 

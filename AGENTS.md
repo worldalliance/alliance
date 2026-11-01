@@ -36,6 +36,7 @@ Read before the matching task:
 - Pulling PostHog session replays or other PostHog API data → `(root)/skills/posthog/SKILL.md`
 - Querying the local Postgres db → `(root)/skills/local-db/SKILL.md`
 - Using the Linear API → `(root)/skills/linear/SKILL.md`
+- Finishing a branch, once its work is done and its checks pass and before pushing or opening its PR, or when its PR's CI fails → `(root)/skills/review-loop/SKILL.md`. Skip it when `REVIEW_LOOP_ROLE` is set.
 - Spawning a subagent, which goes through the `claude` or `codex` CLI in place of your harness's built-in agent tool → `(root)/skills/subagents/SKILL.md`
 - Verifying a change in the browser, driving the mobile app, calling the API, or authenticating as an admin → `(root)/skills/playwright/SKILL.md`
 - Writing or editing any doc an agent reads (`SKILL.md`, `AGENTS.md`, `CLAUDE.md`, docs those point at) → `(root)/skills/writing-for-agents/SKILL.md`
