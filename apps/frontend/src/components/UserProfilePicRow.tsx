@@ -1,4 +1,5 @@
 import { ProfileDto } from "@alliance/shared/client";
+import { MAX_COMPLETED_FACES } from "@alliance/shared/lib/actionCompletedBarWithInfo";
 import { cn } from "@alliance/shared/styles/util";
 import {
   AvatarGroup,
@@ -28,18 +29,22 @@ const UserProfilePicRow = ({ users }: { users: ProfileDto[] }) => {
       className={cn("relative flex-wrap cursor-pointer", zIndex.raised)}
       onClick={handleClick}
     >
-      {(expanded ? unique : unique.slice(0, 5)).map((user) => (
-        <a
-          href={href("/member/:id", { id: user.id.toString() })}
-          onClick={(e) => e.stopPropagation()}
-          key={user.id}
-          className="flex items-center"
-        >
-          <AvatarProfile pfp={user.profilePicture ?? null} size="small" />
-        </a>
-      ))}
-      {unique.length > 5 && !expanded && (
-        <AvatarGroupCount size="small">+{unique.length - 5}</AvatarGroupCount>
+      {(expanded ? unique : unique.slice(0, MAX_COMPLETED_FACES)).map(
+        (user) => (
+          <a
+            href={href("/member/:id", { id: user.id.toString() })}
+            onClick={(e) => e.stopPropagation()}
+            key={user.id}
+            className="flex items-center"
+          >
+            <AvatarProfile pfp={user.profilePicture ?? null} size="small" />
+          </a>
+        ),
+      )}
+      {unique.length > MAX_COMPLETED_FACES && !expanded && (
+        <AvatarGroupCount size="small">
+          +{unique.length - MAX_COMPLETED_FACES}
+        </AvatarGroupCount>
       )}
     </AvatarGroup>
   );

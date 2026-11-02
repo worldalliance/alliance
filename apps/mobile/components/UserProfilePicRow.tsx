@@ -1,3 +1,4 @@
+import { MAX_COMPLETED_FACES } from "@alliance/shared/lib/actionCompletedBarWithInfo";
 import { View } from "react-native";
 import ProfileImage from "./ProfileImage";
 import Text from "./system/Text";
@@ -14,8 +15,8 @@ export const UserProfilePicRow = ({
   const unique = users.filter(
     (item, pos, self) => self.findIndex((t) => t.id === item.id) === pos,
   );
-  const displayUsers = unique.slice(0, 3);
-  const remaining = unique.length - 3;
+  const displayUsers = unique.slice(0, MAX_COMPLETED_FACES);
+  const remaining = unique.length - MAX_COMPLETED_FACES;
 
   return (
     <View className="flex-row items-center">
