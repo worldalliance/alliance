@@ -2,7 +2,13 @@ import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { makeFormResponse, makeUser } from "@alliance/shared/lib/testFixtures";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { SiteAppProvider } from "../ui/SiteAppProvider";
 import FormRenderer from "./FormRenderer";
@@ -67,9 +73,12 @@ serveApi(
 
 beforeEach(() => window.localStorage.clear());
 
-const renderForm = () =>
-  render(
-    <QueryClientProvider client={new QueryClient()}>
+let client = new QueryClient();
+
+const renderForm = () => {
+  client = new QueryClient();
+  return render(
+    <QueryClientProvider client={client}>
       <MemoryRouter>
         <SiteAppProvider>
           <FormRenderer
@@ -85,14 +94,18 @@ const renderForm = () =>
       </MemoryRouter>
     </QueryClientProvider>,
   );
+};
 
 const savedPageIndex = () =>
   JSON.parse(window.localStorage.getItem(storageKey) ?? "{}").currentPageIndex;
 
-const loadSourceAnswers = () =>
-  act(async () => {
+const loadSourceAnswers = async () => {
+  await act(async () => {
     answerSourceForm();
   });
+  await waitFor(() => expect(client.isFetching()).toBe(0));
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+};
 
 describe("a page gated on another form's answers", () => {
   it("keeps a returning member on it while those answers load", async () => {

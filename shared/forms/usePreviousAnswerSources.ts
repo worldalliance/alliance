@@ -4,8 +4,8 @@ import {
   isQuestionField,
   type FormSchema,
 } from "@alliance/common/forms/form-schema";
-import { R } from "@alliance/common/result";
-import { useEffect, useMemo, useState } from "react";
+import { useQueries, type UseQueryResult } from "@tanstack/react-query";
+import { useCallback, useId, useMemo } from "react";
 import {
   tasksGetForm,
   tasksGetFormResponsesAdmin,
@@ -13,6 +13,64 @@ import {
 } from "../client";
 import { collectManualSourceFormIds } from "../formrenderer";
 import { completedFormSchema } from "./formulaChoices";
+import { openFormQueryOptions } from "./openFormQueryOptions";
+
+type SourceReader = { previewId: string | null; signedIn: boolean };
+
+type PreviousAnswerSource = {
+  schema: FormSchema | null;
+  answers: Record<string, unknown> | null;
+};
+
+const readSourceSchema = async (formId: number) => {
+  try {
+    const response = await tasksGetForm({ path: { id: formId } });
+    // Stored jsonb, written by a builder that validated it; nothing
+    // re-checks it on the way back in.
+    const stored: unknown = response.data?.schema;
+    return stored ? (stored as FormSchema) : null;
+  } catch {
+    // Source form deleted or not visible to this user.
+    return null;
+  }
+};
+
+const readSourceResponse = async (
+  formId: number,
+  { previewId, signedIn }: SourceReader,
+) => {
+  if (previewId !== null) {
+    const { data } = await tasksGetFormResponsesAdmin({
+      path: { id: formId },
+      throwOnError: true,
+    });
+    return (
+      data.find((candidate) => String(candidate.user?.id) === previewId) ?? null
+    );
+  }
+  if (!signedIn) return null;
+  const { data, error, response } = await tasksGetMyFormResponse({
+    path: { id: formId },
+    throwOnError: false,
+  });
+  // A 404 is a member who hasn't submitted the source form.
+  if (error && response.status !== 404) throw error;
+  return data ?? null;
+};
+
+const readSource = async (
+  formId: number,
+  reader: SourceReader,
+): Promise<PreviousAnswerSource> => {
+  const [schema, response] = await Promise.all([
+    readSourceSchema(formId),
+    readSourceResponse(formId, reader),
+  ]);
+  return {
+    schema: schema && completedFormSchema(schema, response ?? undefined),
+    answers: response && (response.answers ?? {}),
+  };
+};
 
 /**
  * The schemas and the user's answers for every form this one reads back:
@@ -28,7 +86,10 @@ export function usePreviousAnswerSources(args: {
 }): {
   previousAnswerSchemas: Record<number, FormSchema>;
   previousAnswerData: Record<number, Record<string, unknown>>;
-  /** Stays set after a fetch fails, so nothing is judged by answers it lacks. */
+  /**
+   * Stays set while any read has failed, until it loads again, so nothing is
+   * judged by answers it lacks.
+   */
   previousAnswersPending: boolean;
 } {
   const { schema, previewUserId, signedIn } = args;
@@ -60,110 +121,42 @@ export function usePreviousAnswerSources(args: {
     return Array.from(ids);
   }, [schema]);
 
-  const [previousAnswerSchemas, setPreviousAnswerSchemas] = useState<
-    Record<number, FormSchema>
-  >({});
-  const [previousAnswerData, setPreviousAnswerData] = useState<
-    Record<number, Record<string, unknown>>
-  >({});
-  const loadKey = `${sourceFormIds.join(",")}|${previewUserId ?? ""}|${signedIn}`;
-  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  // Each open form loads its own sources, so a form opened later never shows
+  // answers another open form loaded before a submission.
+  const instance = useId();
+  const previewId =
+    previewUserId === undefined || previewUserId === null
+      ? null
+      : String(previewUserId);
 
-  useEffect(() => {
-    if (sourceFormIds.length === 0) {
-      setPreviousAnswerSchemas({});
-      setPreviousAnswerData({});
-      setLoadedKey(null);
-      return;
-    }
-
-    const previewId =
-      previewUserId === undefined || previewUserId === null
-        ? null
-        : String(previewUserId);
-
-    let cancelled = false;
-    void (async () => {
-      const schemaEntries = await Promise.all(
-        sourceFormIds.map(async (formId) => {
-          try {
-            const response = await tasksGetForm({ path: { id: formId } });
-            // Stored jsonb, written by a builder that validated it; nothing
-            // re-checks it on the way back in.
-            const stored: unknown = response.data?.schema;
-            return stored ? ([formId, stored as FormSchema] as const) : null;
-          } catch {
-            // Source form deleted or not visible to this user.
-            return null;
-          }
-        }),
-      );
-      if (cancelled) return;
-
-      const schemas: Record<number, FormSchema> = {};
-      for (const entry of schemaEntries) {
-        if (entry) {
-          schemas[entry[0]] = entry[1];
-        }
+  const combine = useCallback(
+    (results: UseQueryResult<PreviousAnswerSource, Error>[]) => {
+      const previousAnswerSchemas: Record<number, FormSchema> = {};
+      const previousAnswerData: Record<number, Record<string, unknown>> = {};
+      for (const [index, { data }] of results.entries()) {
+        const formId = sourceFormIds[index];
+        if (data?.schema) previousAnswerSchemas[formId] = data.schema;
+        if (data?.answers) previousAnswerData[formId] = data.answers;
       }
+      return {
+        previousAnswerSchemas,
+        previousAnswerData,
+        previousAnswersPending: results.some((result) => !result.isSuccess),
+      };
+    },
+    [sourceFormIds],
+  );
 
-      const dataEntries = await Promise.all(
-        sourceFormIds.map(async (formId) => {
-          if (previewId !== null) {
-            const sent = await R.fromPromise(
-              tasksGetFormResponsesAdmin({
-                path: { id: formId },
-                throwOnError: false,
-              }),
-            );
-            if (!sent.ok || sent.value.error) return R.failure(formId);
-            const match = sent.value.data.find(
-              (candidate) => String(candidate.user?.id) === previewId,
-            );
-            return R.success(match ? ([formId, match] as const) : null);
-          }
-          if (!signedIn) return R.success(null);
-          const sent = await R.fromPromise(
-            tasksGetMyFormResponse({
-              path: { id: formId },
-              throwOnError: false,
-            }),
-          );
-          if (!sent.ok) return R.failure(formId);
-          const { data: response, error } = sent.value;
-          // A 404 is a member who hasn't submitted the source form.
-          if (error && sent.value.response.status !== 404) {
-            return R.failure(formId);
-          }
-          return R.success(response ? ([formId, response] as const) : null);
+  return useQueries({
+    queries: sourceFormIds.map((formId) => ({
+      queryKey: ["previousAnswerSource", instance, previewId, signedIn, formId],
+      queryFn: () =>
+        readSource(formId, { previewId, signedIn }).catch((error: unknown) => {
+          console.error(`Failed to load answers from form ${formId}`, error);
+          throw error;
         }),
-      );
-      if (cancelled) return;
-
-      const data: Record<number, Record<string, unknown>> = {};
-      for (const loaded of dataEntries) {
-        const entry = loaded.ok ? loaded.value : null;
-        if (entry) {
-          data[entry[0]] = entry[1].answers ?? {};
-          const sourceSchema = schemas[entry[0]];
-          if (sourceSchema) {
-            schemas[entry[0]] = completedFormSchema(sourceSchema, entry[1]);
-          }
-        }
-      }
-      setPreviousAnswerSchemas(schemas);
-      setPreviousAnswerData(data);
-      if (dataEntries.every((loaded) => loaded.ok)) setLoadedKey(loadKey);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [sourceFormIds, previewUserId, signedIn, loadKey]);
-
-  return {
-    previousAnswerSchemas,
-    previousAnswerData,
-    previousAnswersPending: sourceFormIds.length > 0 && loadedKey !== loadKey,
-  };
+      ...openFormQueryOptions,
+    })),
+    combine,
+  });
 }
