@@ -220,6 +220,7 @@ export default function TaskFlow({
       case FlowStage.Closed:
         return null;
       case FlowStage.Background:
+        if (!flow.background) return null;
         return (
           <TaskFlowIntro
             form={form}

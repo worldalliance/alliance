@@ -16,7 +16,7 @@ describe("useTaskFlow", () => {
     const { hook } = setup();
     act(() => hook.result.current.begin());
     expect(hook.result.current.stage).toBe(FlowStage.Background);
-    expect(hook.result.current.background).toEqual([text("intro")]);
+    expect(hook.result.current.background?.elements).toEqual([text("intro")]);
     expect(hook.result.current.progress).toBe(0);
   });
 
@@ -115,13 +115,13 @@ describe("useTaskFlow", () => {
     hook.rerender();
     act(() => hook.result.current.begin());
     expect(hook.result.current.stage).toBe(FlowStage.Background);
-    expect(hook.result.current.background).toEqual([
+    expect(hook.result.current.background?.elements).toEqual([
       text("intro"),
       input("hidden"),
     ]);
   });
 
-  it("keeps the background page's blocks in the order the author wrote them", () => {
+  it("titles the background page with its header, without repeating it", () => {
     const { hook } = setup({
       schema: {
         pages: [
@@ -133,9 +133,9 @@ describe("useTaskFlow", () => {
       visiblePageIndices: [0, 1],
     });
     act(() => hook.result.current.begin());
-    expect(hook.result.current.background).toEqual([
+    expect(hook.result.current.background?.heading).toEqual(header("watch"));
+    expect(hook.result.current.background?.elements).toEqual([
       text("intro"),
-      header("watch"),
       text("after"),
     ]);
   });

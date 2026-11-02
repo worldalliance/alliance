@@ -119,3 +119,28 @@ it("opens a task just submitted through the flow on its project background", asy
     ).toBeTruthy();
   });
 });
+
+it("titles the background page with its own header, shown once", async () => {
+  setServedSchema({
+    ...taskSchema,
+    pages: [
+      {
+        id: "p1",
+        fields: [
+          { id: "bh", type: "display", kind: "header", text: "Why it matters" },
+          ...taskSchema.pages[0].fields,
+        ],
+      },
+      ...taskSchema.pages.slice(1),
+    ],
+  });
+  renderFlow();
+  fireEvent.click(await screen.findByRole("button", { name: taskFlow.begin }));
+
+  expect(
+    await screen.findAllByRole("heading", { name: "Why it matters" }),
+  ).toHaveLength(1);
+  expect(
+    screen.queryByRole("heading", { name: taskFlow.background }),
+  ).toBeNull();
+});

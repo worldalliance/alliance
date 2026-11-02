@@ -84,9 +84,7 @@ export default function TaskFlowScreen({
 }) {
   const title = flowScreenTitle({
     screen,
-    activeUserKey: form.activeUserKey,
-    isElementCurrentlyVisible: form.isElementCurrentlyVisible,
-    variableValues: form.variableValues,
+    form,
   });
 
   useEffect(() => {

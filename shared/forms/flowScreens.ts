@@ -106,20 +106,26 @@ export function flowProgress(params: {
   return (finished / visibleIndices.length) * 100;
 }
 
-/** The screen's opening header, or a generic title when it has none showing. */
+/** The form state a screen's title reads, which both platforms' states satisfy. */
+export type FlowTitleFormState = Pick<
+  FormVisibility,
+  "isElementCurrentlyVisible" | "variableValues"
+> & { activeUserKey: string | undefined };
+
+/** The screen's opening header, or `fallback` when given and otherwise a generic title, when no header is showing. */
 export function flowScreenTitle(params: {
   screen: FlowScreen;
-  activeUserKey: string | undefined;
-  isElementCurrentlyVisible: FormVisibility["isElementCurrentlyVisible"];
-  variableValues: FormVisibility["variableValues"];
+  form: FlowTitleFormState;
+  fallback?: string;
 }): string {
-  const { screen, activeUserKey, isElementCurrentlyVisible, variableValues } =
-    params;
+  const { screen, form, fallback } = params;
+  const { activeUserKey, isElementCurrentlyVisible, variableValues } = form;
   const heading =
     screen.heading && resolveDisplayBlockForUser(screen.heading, activeUserKey);
   if (heading && isElementCurrentlyVisible(heading)) {
     return interpolateDisplayBlock(heading, variableValues).text;
   }
+  if (fallback !== undefined) return fallback;
   return fallbackFlowTitle(
     screen.elements.some(
       (element) =>
@@ -154,7 +160,12 @@ export function flowStepPreviews(
     if (!shows(screen)) return null;
     const inputs = screen.elements.filter(isQuestionField).length;
     if (index === firstShown && inputs === 0) {
-      return { label: taskFlow.background, warnings: [] };
+      return {
+        label: screen.heading
+          ? `Background: ${screen.heading.text}`
+          : taskFlow.background,
+        warnings: [],
+      };
     }
     step += 1;
     const fallback = fallbackFlowTitle(inputs > 0);

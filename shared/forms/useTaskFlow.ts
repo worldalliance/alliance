@@ -184,13 +184,14 @@ export function useTaskFlow(params: {
     backgroundIndex === null ? null : screens[backgroundIndex];
   const background = useMemo(
     () =>
-      backgroundScreen
-        ? withoutEmptySections(
-            form.schema.pages[backgroundScreen.pageIndex].fields,
-            isElementVisible,
-          )
-        : [],
-    [backgroundScreen, form.schema, isElementVisible],
+      backgroundScreen && {
+        ...backgroundScreen,
+        elements: withoutEmptySections(
+          backgroundScreen.elements,
+          isElementVisible,
+        ),
+      },
+    [backgroundScreen, isElementVisible],
   );
 
   const screen = screens[screenIndex];

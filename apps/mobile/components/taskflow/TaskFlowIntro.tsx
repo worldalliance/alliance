@@ -1,5 +1,8 @@
-import { type PageItem } from "@alliance/common/forms/form-schema";
-import { splitBackground } from "@alliance/shared/forms/flowScreens";
+import {
+  flowScreenTitle,
+  splitBackground,
+  type FlowScreen,
+} from "@alliance/shared/forms/flowScreens";
 import { FlowButtonKind } from "@alliance/shared/forms/flowStyle";
 import { taskFlow } from "@alliance/shared/lib/copy";
 import { ArrowRight, Check } from "lucide-react-native";
@@ -19,14 +22,19 @@ export default function TaskFlowIntro({
   error,
 }: {
   form: MobileFormState;
-  /** The form's opening content, which asks for nothing. */
-  background: PageItem[];
+  /** The form's opening screen, which asks for nothing. */
+  background: FlowScreen;
   onNext: () => void;
   nextLabel: string;
   nextIsLast: boolean;
   error: string | null;
 }) {
-  const { media, reading } = splitBackground(background);
+  const { media, reading } = splitBackground(background.elements);
+  const title = flowScreenTitle({
+    screen: background,
+    form,
+    fallback: taskFlow.background,
+  });
 
   return (
     <TaskFlowPage
@@ -43,7 +51,7 @@ export default function TaskFlowIntro({
         </>
       }
     >
-      <TaskFlowTitle>{taskFlow.background}</TaskFlowTitle>
+      <TaskFlowTitle>{title}</TaskFlowTitle>
 
       {media.length > 0 ? (
         <View className="mb-6">
