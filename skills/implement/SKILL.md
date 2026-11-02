@@ -29,11 +29,15 @@ Implement through the identified owners of the behavior. When discovery during c
 
 Read the complete resulting diff and apply every relevant engineering criterion. Compare new logic with the reuse candidates from discovery, trace affected callers, and fix supported issues introduced by the change before handing it back.
 
-Run the checks under **Checks** that the change touches and the behavioral checks identified during discovery against the final code. After repairs, rerun checks affected by those repairs. If preparing commits is requested, each commit has one purpose and passes its checks on its own; results from the branch tip alone do not establish that.
+Run the checks under **Checks** that the change touches and the behavioral checks identified during discovery against the final code. After repairs, rerun checks affected by those repairs. When you prepare commits, each commit has one purpose and passes its checks on its own; results from the branch tip alone do not establish that.
 
-Finish when the requirements and applicable criteria are satisfied and checks pass, or identify the exact blocker and unfinished work. In the handoff, name the implementation reused or consolidated, commands and results, and remaining uncertainty. Link code and evidence rather than asserting compliance. The user's independent review remains a separate handoff.
+Finish when the requirements and applicable criteria are satisfied and checks pass, or identify the exact blocker and unfinished work. Once checks pass and the task's work is done, continue with `(root)/skills/review-loop/SKILL.md`, whose opening says when to skip it. In the handoff, name the implementation reused or consolidated, commands and results, and remaining uncertainty. Link code and evidence rather than asserting compliance. The user's independent review remains a separate handoff.
 
 ## Checks
+
+Run the checks below that the change touches, in as few shell calls as possible, with full output to a log under `.scratch/` and only each check's pass/fail line and the tail of a failure read back. `dupcheck` and `covercheck` exit 0 with findings, so read their output whole.
+
+Local checks are targeted; CI runs the full matrix against the branch merged into `main`, on Linux, and a PR is not done until it passes. This follows common practice rather than a formal standard: fast checks before submit, everything after on the integrated result. Running every CI job locally repeats CI's work on a different OS and base, and in the measured review-loop runs it would have caught none of the failures that reached CI (a moved `main`, Linux-only behavior). Add a local check when CI keeps failing on something cheap to catch locally.
 
 ### Typechecking
 

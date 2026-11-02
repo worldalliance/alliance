@@ -1,0 +1,53 @@
+---
+user: Charles Lien
+task: Run the per-commit review loop automatically before a coding agent opens a PR
+---
+
+## Trigger and audience
+
+- User-originated: a coding agent that finishes a branch runs the review loop on its own, without anyone pasting a prompt. It serves non-technical coworkers creating PRs with agents as well as technical users.
+- User-originated: the loop keeps the orchestrating session's context and the total usage as low as the review bar allows.
+
+## Reviews
+
+- User-originated: every commit in `<remote branch>..<local branch>` gets its own `/review-base` review whose base is `git show --stat <sha>`, run by a fresh `claude -p` agent in its own worktree checked out at the local branch tip, so each reviewer sees the commits that follow.
+- User-originated: every re-review is a full, independent review of the commit, not one narrowed to what changed since the last review. Reviewers are non-deterministic, so a repeat review gets another chance at what earlier ones missed.
+- User-originated: findings are deduplicated and each is classified as fix-now, follow-up (a pre-existing issue this change doesn't exacerbate), or drop (incorrect).
+- User-originated: no code the agents know they would have to change later gets pushed. Every fix-now finding is fixed before the commit it belongs to is pushed. Follow-ups are filed in Linear.
+- User-originated: rounds repeat until a round has no fix-now findings, with no round cap. Every code change gets at least one further review. A commit that hasn't changed and has come up clean may be skipped in later rounds.
+- User-originated: fixes follow `/review-base` editing guidance: fold each change into the commit it belongs to, create new commits, and split commits as needed.
+
+## Questions
+
+- User-originated: questions that `skills/spec` says to ask pause the loop and go to the user running the agent, who may answer, find someone who can, or say they don't know or don't care. Agents may change provenance `DECISIONS.md` files freely during reviews.
+
+## Cost
+
+- User-originated: agents are spawned so each session's context stays small. A session is resumed only when its context is known to be needed as a continuation.
+- Agent-proposed, user-approved: each round's fix work starts in a fresh agent session.
+- Agent-proposed, user-approved: the checks stay the `implement` skill's; the agent running them reads one pass/fail line per check and the end of any failure, with full output kept in a log.
+
+## Shape
+
+- User-originated (2026-11-01): the MVP is prose only: a skill the agent follows by hand, with no checked-in script orchestrating the loop or its checks. Refinement comes later. The exact shape of the MVP is not a hard requirement.
+
+## Worktrees
+
+- User-originated: reviewer worktrees are created with `scripts/new-worktree.sh` from the current worktree, not from a hard-coded main-checkout path, and every worktree and branch a run creates is removed afterwards.
+
+## Completion
+
+- Agent-proposed, user-approved: the loop is done when the PR is open and its CI passes. A CI failure goes back through the same fix-and-review loop.
+- User-originated: when a PR can't merge because of changes on `main`, the agent tells the user what conflicts and asks whether to update the branch. If they agree, it rebases the branch onto current `origin/main` rather than merging, resolves conflicts, and runs the review loop before pushing. Any commit whose diff changed in the rebase, conflict resolutions included, is reviewed. That run's base is `origin/main`, so commits from `main` aren't reviewed. The rebased branch is pushed with `git push --force-with-lease`, on the task's own PR branch only, the one exception to never forcing a push. The agent then goes back to watching CI.
+- User-originated: the PR description is accurate, but keeping it current is low priority.
+- Agent-proposed, user-approved: the coding agent commits and runs the loop without asking first, overriding the root `AGENTS.md` rule to ask before git writes.
+- User-originated (2026-11-01), superseding the earlier rule to ask once before every first push and PR: an instruction from the user that asked for a PR or a push, at any point in the task, is the approval for every push and PR edit the skill makes, and the agent does not ask again before pushing. Only when no instruction covered pushing or a PR does the agent ask once, before the first push; later pushes, including CI fixes, and PR edits then go ahead without asking. The user who said "make a PR" would think "I just told you to make a PR, why are you asking me if you can make a PR?" This reasoning stays out of the skill.
+
+## Documentation
+
+- User-originated: the instructions agents follow state the established practice for which checks run where, and why, so a later agent can challenge it.
+- User-originated: the experiments and evidence behind these choices are recorded in this provenance directory.
+- User-originated: `skills/review-loop/SKILL.md` carries a mermaid flowchart of the whole process, after its opening paragraphs and before step 1, so an agent or the user can see which stage they are in. It has roughly fifteen nodes with short labels matching the prose's step names.
+- User-originated: general skills don't name this task's provenance directory. Agents don't need the sources to follow a rule, and the sources stay in this directory for anyone who wants them.
+- User-originated (2026-11-01): `skills/review-loop/SKILL.md` carries a second mermaid chart, right after the process chart, whose nodes are the parties rather than the steps: the user, the coding agent that follows the skill (the hub, the only node that talks to the user), the reviewers (one per commit, following `/review-base`), the fixer (fresh each round), and the outside systems Linear and GitHub CI, about seven nodes and ten edges. Each edge is labeled with what crosses it: hub to reviewer, a worktree at the tip and one commit SHA; reviewer back, a findings file and an exit code; hub to fixer, base, tip, findings directory, ledger and the user's answers; fixer back, a report naming changed commits, classifications and questions; fixer to Linear, follow-up issues; hub to user, questions; user back, answers; hub to GitHub, push and PR; CI back, pass or fail. One sentence says the process chart shows where you are and the role chart shows who you are and what you owe whom. `skills/review-loop/fixer-prompt.md` opens by saying it is the Fixer in that chart, pointing at the skill. A role chart lets a brief say "you are X in this chart", like an org chart. The chart holds no per-agent steps, which stay in the prose each role reads, since steps in the chart would duplicate the prose and drift.
+- User-originated (2026-11-01): the review-loop skill, its fixer brief and its charts call the human running the agent "the user". "The person" sounds detached and weird.

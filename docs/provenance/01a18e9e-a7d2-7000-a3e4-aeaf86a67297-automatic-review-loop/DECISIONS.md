@@ -1,0 +1,70 @@
+# Decisions
+
+Numbers cited here are in `EVIDENCE.md`.
+
+## Prose, not a script
+
+`skills/review-loop/SKILL.md` describes the loop and the coding agent runs it by hand: worktrees, reviewers, a fixer per round, re-review selection, push and CI. A script was built first, `scripts/review-loop.sh` over `scripts/check.sh`, so that no tokens went on orchestration, and then measured: the orchestrator it replaced had cost 2–3% of a run. Reviewing the script took 25 rounds, about $179 and 203 fix-now issues, about 90% of those in rounds 10–25 on its own robustness (signal handling, perl alarm limits on macOS, flock scope, git path quoting, untested guards), and the loop broke twice on itself. A checked-in script has to work in almost every case, since every agent trusts it; a prose step lets each agent write the throwaway loop its branch needs, with no more machinery than that case takes.
+
+The user set the MVP as prose only and left its shape to the agent ("I don't care"), who chose: the coding agent tracks which commits are due a review itself, by patch, and the fixer checks each rewritten commit on its own with a `git rebase --exec`-style run of the `implement` checks the commit touches, output to a log. The `implement` skill asks for checks in as few shell calls as possible because the measured cost of checks was turn count, not output size: back-to-back check turns cost up to ~$10 across three runs where trimming output would have saved ~$0.9. The agent reads `dupcheck` and `covercheck` output whole, since both exit 0 with findings the skill says to judge, so a pass/fail line would hide them.
+
+Revisit when orchestrator cost, or a hand-written loop failing silently (a failed reviewer counted clean, a check skipped, a worktree left behind), becomes a measured problem. The removed scripts' tests, listed under **Verification** in `EVIDENCE.md`, enumerate the cases a script would have to handle.
+
+## Fresh fixer per round
+
+Each round's dedup, triage and fixes run in a new `claude -p` session, briefed from `skills/review-loop/fixer-prompt.md` with the base, the round's tip, the findings, a ledger carried across rounds that it reads selectively, and the user's answers. It runs the checks itself rather than being handed check output. The resumed fixer grew to 311K context over nine rounds. Per-round cost depends more on what the fixer reads than on resuming, so the brief stays short and check output stays in a log. A round whose reviews found nothing runs no fixer, since it would triage nothing. A fixer that reports a failing check or dies leaves the round unfinished, since no code the agents know is bad gets pushed. A review or fixer that fails twice in a row goes to the user with its logs, as a check a second fixer can't pass does: a persistent cause such as expired auth or a usage limit would otherwise retry forever, and the no-cap requirement covers rounds with findings, not crashed agents. A failed reviewer's logs are copied out first, since removing its worktree deletes them. A later fixer on the same round keeps that round's classifications, so it finishes the work rather than triaging shas the first fixer rewrote. It reads which fixes are done from the code, not the ledger: the ledger sits outside git, so aborting a dead fixer's rebase can discard a fix the ledger still records, and the commit, its diff unchanged, would not come up for review again. A follow-up the fixer can't file goes to the user, since the ledger is a local file and the issue would otherwise leave no record. `claude -p` starts with `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=7200000`, the two-hour limit the scripted loop used, for background agents. On CLI 2.1.316 a background shell ignores that ceiling and ends at its own `timeout`, so the fixer prompt asks for a `timeout` that outlasts its check run.
+
+## Re-review selection
+
+The requirement's "has come up clean" is the agent's interpretation, not the user's statement: a commit is clean when its last review had no fix-now findings. The fix-now bar is what the loop guards, so findings that became follow-ups or were dropped don't keep a commit under review. `skills/review-loop/SKILL.md` states this definition itself.
+
+Every commit a round rewrote gets a full review in the next round. A commit whose own diff is unchanged and whose last review had no fix-now findings is skipped, unless a commit below it changed in a way its code depends on, or a fix-now finding on it was fixed without changing its diff; the fixer names both kinds in its report. "Own diff" is the commit's patch, so a rebase or a message-only rewrite of a clean commit needs no re-review, and whitespace counts, since indentation changes meaning in YAML, Python and Markdown. Agent-workflow-specs re-reviewed unchanged commits stacked on a rewritten one with no finding attributable to the restack. Re-entering the loop after a push continues its round numbers and keeps its earlier reviews, so a CI fix or a rebase reviews only new and changed commits, as cost requires, and the fixer never re-triages an old round.
+
+## Questions
+
+The fixer fixes everything that doesn't depend on an answer and asks the rest in its report, each written for the user, who hasn't seen the code. The coding agent relays them in the root `AGENTS.md` **Open questions** format and briefs the next fixer with the answers. "I don't know" or "I don't care" leaves the choice to the fixer, recorded in the task's `DECISIONS.md`.
+
+## Which checks run where
+
+Local checks are targeted: typecheck and tests for the packages a change touches, plus the other `implement` checks it touches, such as formatting for a skill or actionlint for a workflow. The full matrix runs in CI, which tests the branch merged into `main` on Linux; a PR is not done until it passes. That is practice rather than a repository rule: `main` requires no status checks. None of the three CI failures in the measured runs would have been caught by running more checks locally: two came from the merge with a moved `main`, one from Linux. Running every CI job locally before each push would repeat CI's work on a different OS and base. Add a local check when CI keeps failing on something cheap to catch locally.
+
+This follows common practice, not a formal standard; sources checked 2026-10-30:
+
+- Google runs only fast, reliable tests before submit and every potentially affected test after ([Software Engineering at Google, ch. 23](https://abseil.io/resources/swe-book/html/ch23.html)). Fowler's CI has developers build locally, then CI runs the full build on mainline ([Continuous Integration](https://martinfowler.com/articles/continuousIntegration.html)).
+- GitHub's required status checks and merge queue block merging, not pushing, until checks pass on the latest base ([protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches), [merge queue](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue)).
+- A `pull_request` workflow runs on `refs/pull/<n>/merge`, the branch merged into the base ([events that trigger workflows](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows)), which is how task-flow passed locally and failed in CI.
+- Selecting tests by change is standard tooling (Jest `--findRelatedTests`, Nx `affected`, Bazel `rdeps`). At scale, Meta's predictive test selection runs under a third of dependency-selected tests and still reports over 99.9% of faulty changes ([Machalica et al., 2019](https://arxiv.org/abs/1810.05286)).
+- Bun's test runner has no import-graph selection ([bun test](https://bun.com/docs/cli/test)), so "affected" here means the packages a change touches, passed as path arguments.
+
+A later agent may revisit this split when the evidence changes, for example if CI failures that local checks could cheaply catch keep recurring, or if CI turnaround becomes the bottleneck.
+
+## Done means CI passed
+
+After the final push the agent opens the PR, waits with `gh pr checks --watch`, and sends a failure through the fix-and-review loop. The watch's exit 0 covers only checks that started, and GitHub starts no `pull_request` workflow on a conflicted PR ([events that trigger workflows](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows)), so done also needs `mergeable` to be `MERGEABLE`. That read comes first, whatever the watch's exit, since on a PR with no checks `gh pr checks` fails with `no checks reported`, `--json` and `--watch` alike (`populateStatusChecks` in gh 2.100.0's `pkg/cmd/pr/checks/checks.go`), and a failed check on a mergeable PR must not read as done. A pending check must not either, since the watch can stop on a gh or API error while CI runs. The same read takes `state`, since a merged PR reports `UNKNOWN` forever and would otherwise read as still computing. gh counts a cancelled check as neither failed nor pending, so the watch exits 0 on it, and `main` has no required checks to stop the merge. The skill reruns a cancelled run once and then hands it to the user, rather than handing every cancel over, since most are transient and a rerun costs only CI time. The watch starts after a 60-second sleep: `code-review.yaml` runs on push, so its check can finish before `gh pr create`'s `pull_request` workflows register, whose first jobs started 7 to 19 seconds after creation on recent PRs, and the watch would exit 0 on it alone. Requiring a named check after the watch would close this without a fixed wait, but ties the skill to a job name. The PR description is written when the PR opens, and later corrected only where a new commit made it wrong, since keeping it current is low priority.
+
+The coding agent fixes a CI failure itself, in a new commit on top, and reruns the loop, which reviews that commit like any other. After the push the upstream is the loop's base, so the pushed commits stay as they are and a CI fix needs no force. The agent already holds the branch's context and reads only the failed log's tail, which a fresh fixer would need briefing with anyway. Updating from a moved `main` is a rebase, not a merge, since `/review-base` reviews a commit against one parent. The forced push adds `--force-if-includes`, since the fetch before the rebase moves the remote-tracking ref `--force-with-lease` compares against, so a commit someone else pushed would pass the lease and be deleted ([git-push](https://git-scm.com/docs/git-push)). The rebased run's base is `origin/main`, since the upstream's merge-base with the rebased HEAD would put `main`'s new commits under review and within the fixer's reach; once the rebased branch is pushed, the upstream is the base again, so the fixer can't rewrite pushed commits.
+
+## Push once, at the end
+
+The loop pushes the branch once all commits are clean, not each clean prefix; CI fixes push again afterwards. It does not reorder commits to push more of them. The user has no preference. Re-review selection already keeps clean commits out of later rounds, which was the point of pushing early, and every push triggers `code-review.yaml`'s AI review in CI.
+
+## A push instruction covers the PR
+
+The skill names opening the PR in what an instruction approves, so "push this" also opens one. The loop isn't done until the PR is open, and the requirement asks only when no instruction covered pushing or a PR. An explicit request for no PR is the user's answer, so it draws no question, and it isn't a request to push, so it approves none: the loop stops after a push approved some other way, otherwise with the commits on the branch.
+
+## Updating from `main` still asks
+
+The approval to push doesn't reach **`main` moved on**: that question asks whether to rewrite the branch at all, and declining leaves the PR as it is. Once the user agrees, the forced push goes ahead without a second question.
+
+## Worktrees
+
+Reviewer worktrees come from `scripts/new-worktree.sh <name> --from <sha>` run in the current worktree, pinned to the round's tip so a fixer committing mid-round can't move it. Removing the coding worktree removes any reviewer worktrees left behind. `new-worktree.sh` refuses a checkout it didn't create, so the loop runs from the main checkout or a worktree the script made, not a harness-made one.
+
+## Trigger
+
+A model-invocable skill, `skills/review-loop/SKILL.md`, holds the loop's instructions, and a line in the root `AGENTS.md` Skills list points coding agents at it after implementation checks pass and before pushing or opening a PR, and when the PR's CI fails. `review` and `review-base` stay user-invoked. Every spawned session runs with `REVIEW_LOOP_ROLE` set, by the commands in `skills/subagents/SKILL.md`, since a session can't otherwise tell it was spawned and the loop needs the user for questions; the pointer and the skill say to skip on it. The skill is also skipped when the user asked to keep the change uncommitted or unpushed.
+
+## Not adopted
+
+- Trimming reviewer startup: 15% of reviewer cost.
+- Different focus per reviewer, or Claude and Codex reviewers on the same commit, to catch more per round: untested; worth an experiment comparing rounds and total cost on one branch.
