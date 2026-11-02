@@ -90,8 +90,6 @@ Extend expiry and cookie lifetime on successful participant-authenticated reques
 
 Participant credentials must be rejected by member, admin, and anonymous-guest authentication; the opaque token fails JWT verification and rides in a cookie member guards never read. Look sessions up through `KoraSessionService.current` rather than relaxing existing member guards. The required participant guard arrives with the first participant-only endpoint, since none exists in this scope. A temporary signup continuation grants only completion access. The backend, not just the UI, enforces these boundaries.
 
-Keep new participant entry points under the same environment availability as the project page: `KoraAvailableGuard` and the page's loader both answer 404 wherever `KORA_AVAILABLE` in `common/src/kora.ts` is false, currently only an unrecognized environment. Production launch (R2) flipped that one entry (R9).
-
 ## Analytics
 
 `KoraSessionService.begin`, which every successful sign-in passes through, sends `kora_participant_signed_up` or `kora_participant_signed_in` (R10). A signup counts only when the insert created the participant, not when a concurrent signup already had. The distinct ID is `kora_participant:{id}`, which keeps participants apart from members' numeric IDs, and the only property is `method` (`email`, `sms`, `google`, `apple`). The server does not `identify` participants with a name or email, as it does members, since nothing yet needs a participant's PII in PostHog. Both events forward to Slack, as the member `new_user` and `login` events do.
@@ -104,7 +102,7 @@ Use API integration tests with delivery/provider stubs and database assertions, 
 - Google and Apple with and without a supplied name; email-OTP/provider matching in both orders; relay/different-email separation; stable provider identity after email changes; concurrent signup/link attempts and conflicting identity ownership.
 - Every OTP boundary in R5, the operational limits above, delivery errors, expired continuations, concurrent verification/resend, single-use replay, and absence of raw OTPs in application persistence/logs.
 - Session renewal and expiration using a controlled clock; separate browsers; logout/replay; loss of a response after successful signup followed by a fresh login without duplicate creation.
-- R2 member-message precedence; separation from member/waitlist writes and cookies; rejection of participant credentials on member/admin APIs; OAuth state mismatch and disallowed redirect origins; production availability restrictions.
+- R2 member-message precedence; separation from member/waitlist writes and cookies; rejection of participant credentials on member/admin APIs; OAuth state mismatch and disallowed redirect origins.
 - Loading, retry, code paste/autofill, resend countdown, contact correction, OAuth cancellation, name completion, reload restoration, and sign-out on desktop and phone-sized browsers.
 
 ## Pull requests

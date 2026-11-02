@@ -1,18 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { koraAvailable, koraOAuthErrorMessage } from "./kora";
+import { koraOAuthErrorMessage } from "./kora";
 import { OAuthError, OAuthProvider } from "./oauth";
-
-describe("koraAvailable", () => {
-  it("is on in production and staging", () => {
-    expect(koraAvailable("production")).toBe(true);
-    expect(koraAvailable("staging")).toBe(true);
-  });
-
-  it("stays off wherever the environment is unrecognized", () => {
-    expect(koraAvailable("prod")).toBe(false);
-    expect(koraAvailable(undefined)).toBe(false);
-  });
-});
 
 describe("koraOAuthErrorMessage", () => {
   it("never sends a participant toward invites or member accounts", () => {

@@ -19,7 +19,7 @@ This spec covers participant signup and login only. Implementing the task, autho
 
 Origin: agent-proposed, user-approved.
 
-Use the existing `/projects/safer-chatbots-for-children` page. Support desktop and mobile browsers; native mobile integration is outside this work. Replace the page's closed waitlist signup form with participant signup. Serve the page and participant signup in production as well as staging (user-originated).
+Use the existing `/projects/safer-chatbots-for-children` page. Support desktop and mobile browsers; native mobile integration is outside this work. Replace the page's closed waitlist signup form with participant signup. Serve the page and participant signup in every environment, with no availability switch (user-originated).
 
 For a visitor already authenticated as an Alliance member, hide the participant form and display exactly: “You’re already an Alliance member.” Determine this from the current member session, without checking whether an entered email address or phone number belongs to a member.
 
@@ -79,11 +79,11 @@ Brand codes as the Alliance, not KORA. New and returning participants receive id
 
 The code-sending and checking machinery is reusable for other one-time codes on the same site, each with its own wording.
 
-## R9. Delivery and launch switches
+## R9. Delivery gate
 
 Origin: user.
 
-Code delivery keeps the existing delivery gate: production, or `SEND_DEV_NOTIFS=1` elsewhere. Enabling the flow later should take one switch.
+Code delivery keeps the existing delivery gate: production, or `SEND_DEV_NOTIFS=1` elsewhere.
 
 ## R10. Analytics
 
