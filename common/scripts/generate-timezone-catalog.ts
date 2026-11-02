@@ -6,9 +6,9 @@
  */
 import { download, readMember, sha512 } from "./tzdb-archive";
 
-const TZDB_VERSION = "2026e";
+const TZDB_VERSION = "2026f";
 const TZDATA_SHA512 =
-  "5be2f875f73b75e5783c474bf7a6c768e433cc90283f8fc6a75e3d05bd92aec97936e8a55ccca5e880b5dacc18ba65932bab0e783e1ed5d2af4a3a4df95512be";
+  "26189803c8b3e903dcc467404e2feefb7d190cb1870249a23577ce31e9dcbf187e4704e0b45c8d1366d1c501bb5b53a2e80f8e2828b2163be15e532f6acab52d";
 
 const ARCHIVE_URL = `https://data.iana.org/time-zones/releases/tzdata${TZDB_VERSION}.tar.gz`;
 
