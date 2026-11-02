@@ -11,7 +11,7 @@ Done means the PR is open and its CI passed. The root `AGENTS.md` rule to ask be
 
 Work from the repo root of the main checkout or of a worktree `scripts/new-worktree.sh` created, since it refuses to create a worktree from any other. Arriving because the PR's CI failed, start at **CI**.
 
-The chart shows which stage you are in; the sections below hold the rules.
+The sections after the two charts hold the rules.
 
 ```mermaid
 flowchart TD
@@ -40,6 +40,27 @@ flowchart TD
   fix -->|second fixer failure or second failing check| user
   push -->|rejected push| user
   ci -->|anything else| user
+```
+
+The process chart shows where you are; the role chart shows who you are and what you owe whom.
+
+```mermaid
+flowchart LR
+  user(["User"])
+  hub["Coding agent: the hub, follows this skill"]
+  reviewers["Reviewers: one per commit, follow /review-base"]
+  fixer["Fixer: fresh each round"]
+  linear[("Linear")]
+  ci[("GitHub CI")]
+  hub -->|"questions"| user
+  user -->|"answers"| hub
+  hub -->|"worktree at the tip, one commit SHA"| reviewers
+  reviewers -->|"findings file, exit code"| hub
+  hub -->|"base, tip, findings directory, ledger, the user's answers"| fixer
+  fixer -->|"report: changed commits, classifications, questions"| hub
+  fixer -->|"follow-up issues"| linear
+  hub -->|"push and PR"| ci
+  ci -->|"pass or fail"| hub
 ```
 
 ## The loop

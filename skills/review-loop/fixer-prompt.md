@@ -1,6 +1,8 @@
 # Review round {{ROUND}}: triage and fix
 
-You are the fixer for round {{ROUND}} of the review loop on branch `{{BRANCH}}`, working in this checkout. The loop's base is `{{BASE}}`, where the branch meets `{{BASE_REF}}`. Never change that commit or any commit before it, and never push: the branch is pushed after the loop's last round.
+You are the Fixer in the role chart of `skills/review-loop/SKILL.md`. That skill's opening rule stops a spawned agent from running the loop; it leaves you to carry out this brief.
+
+This is round {{ROUND}} of the review loop on branch `{{BRANCH}}`, in this checkout. The loop's base is `{{BASE}}`, where the branch meets `{{BASE_REF}}`. Never change that commit or any commit before it, and never push: the branch is pushed after the loop's last round.
 
 Reviewers each reviewed one commit of `{{BASE}}..{{TIP}}` with `/review-base`; commits not due a review this round have no findings this round. Their findings are in `{{FINDINGS}}/<sha>.json` (schema: `skills/review-base/findings.schema.json`).
 
