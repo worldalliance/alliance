@@ -15,7 +15,6 @@ import {
 import { ApiParam, ApiResponse } from "@nestjs/swagger";
 import { ThrottlerGuard } from "@nestjs/throttler";
 import type { Request, Response } from "express";
-import { KoraAvailableGuard } from "src/auth/guards/kora-available.guard";
 import {
   bounceAppleCallback,
   takeAppleUser,
@@ -55,7 +54,6 @@ import { KoraSessionService } from "./kora-session.service";
  */
 @ApiParam({ name: "provider", enum: OAuthProvider, enumName: "OAuthProvider" })
 @Controller("kora/:provider")
-@UseGuards(KoraAvailableGuard)
 export class KoraOAuthController {
   constructor(
     private readonly clients: OAuthClients,

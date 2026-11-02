@@ -17,7 +17,6 @@ import {
 import { ApiNoContentResponse, ApiOkResponse } from "@nestjs/swagger";
 import type { Request, Response } from "express";
 import { AllowedOriginGuard } from "src/auth/guards/allowed-origin.guard";
-import { KoraAvailableGuard } from "src/auth/guards/kora-available.guard";
 import { OtpChannel, OtpPurpose } from "src/otp/otp-copy";
 import { OTP_TTL_MS } from "src/otp/otp-limits";
 import { otpRefusalException } from "src/otp/otp-refusal";
@@ -62,7 +61,6 @@ function webOtpHost(req: Request): string {
 }
 
 @Controller("kora")
-@UseGuards(KoraAvailableGuard)
 export class KoraController {
   constructor(
     private readonly participantService: KoraParticipantService,

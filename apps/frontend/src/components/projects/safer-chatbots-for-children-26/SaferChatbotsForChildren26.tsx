@@ -1,7 +1,6 @@
-import { koraAvailable } from "@alliance/common/kora";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { cn } from "@alliance/shared/styles/util";
-import { data, Link } from "react-router";
+import { Link } from "react-router";
 import { socialPreviewMeta } from "../../../lib/socialPreviewMeta";
 import { SiteFooter } from "../../../site/Footer";
 import { NAV_HEIGHT, Navbar } from "../../../site/Navbar";
@@ -23,13 +22,6 @@ import { KoraSignIn } from "./KoraSignIn";
 import { NewsCollage } from "./NewsCollage";
 import { ParticipantsBar } from "./ParticipantsBar";
 import { ProjectTimeline } from "./ProjectTimeline";
-
-export function loader() {
-  if (!koraAvailable(import.meta.env.MODE)) {
-    throw data(null, { status: 404 });
-  }
-  return null;
-}
 
 export function meta() {
   return socialPreviewMeta({
