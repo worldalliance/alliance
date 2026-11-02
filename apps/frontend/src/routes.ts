@@ -34,6 +34,7 @@ export default [
     KORA_PROJECT_PATH,
     "components/projects/safer-chatbots-for-children-26/SaferChatbotsForChildren26.tsx",
   ),
+  route("/safer-chatbots", "pages/static/SaferChatbotsRedirect.tsx"),
   route("/projects/:slug", "pages/static/ProgressProjectPage.tsx"),
   route(WAITLIST_UNSUBSCRIBE_PATH, "pages/static/WaitlistUnsubscribePage.tsx"),
 
