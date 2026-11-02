@@ -3,22 +3,21 @@
 Tooling for the coding agents that work on this repository. Nothing here ships with the apps.
 
 - `skills/`: the skills, reached through the `.claude/skills` and `.agents/skills` symlinks. The root `AGENTS.md` says when each applies.
-- `chats/sync.sh`: uploads a Claude Code or Codex session's transcript to the private `worldalliance-agent-chats` S3 bucket. The hooks in `.claude/settings.json` and `.codex/hooks.json` run it after every turn, before compaction, and at session end. `skills/provenance/SKILL.md` says how a task lists its sessions and how to read a transcript.
+- `chats/chats.ts`: `upload claude|codex` copies a session's transcript to the private `worldalliance-agent-chats` S3 bucket, `fetch <key>` streams one back, and `check` warns when the keys are missing. It runs on bun, which the repository already needs. The hooks in `.claude/settings.json` and `.codex/hooks.json` run it after every turn, before compaction, and at session end. `skills/provenance/SKILL.md` says how a task lists its sessions and how to read a transcript.
 
 ## Set up uploads, once per machine
 
-1. Install the AWS CLI and jq.
-2. Store the `alliance-agent-chats` IAM user's keys in a profile of the same name. Whoever runs terraform passes them from its output, so the secret never prints; anyone else asks them.
+Add the `alliance-agent-chats` IAM user's keys to `.env.devtools` at the repository root, the gitignored file that already holds the Linear and PostHog keys. `scripts/new-worktree.sh` copies it into every new worktree; add the keys to each existing worktree's copy too.
 
-   ```bash
-   for key in access_key_id secret_access_key; do
-     aws configure set "aws_$key" "$(terraform -chdir=terraform output -raw "agent_chats_$key")" --profile alliance-agent-chats
-   done
-   aws configure set region us-west-2 --profile alliance-agent-chats
-   ```
+```
+AGENT_CHATS_AWS_ACCESS_KEY_ID=...
+AGENT_CHATS_AWS_SECRET_ACCESS_KEY=...
+```
 
-3. Codex only: run `/hooks` in a session and trust the repository's hooks. Codex skips them until then. In a worktree, Codex runs the main checkout's `.codex/hooks.json` and `agents/chats/sync.sh`, not the worktree's, so a worktree uploads only while the main checkout's branch has them.
+Whoever runs terraform reads the two values with `terraform -chdir=terraform output -raw agent_chats_access_key_id` and `agent_chats_secret_access_key`; anyone else asks them.
 
-Claude Code warns at session start when the profile or jq is missing. A failed upload shows as a failed hook in a Codex session, but in Claude Code only as the session ends, since its per-turn uploads run in the background, where a failure shows nothing. `aws s3 ls s3://worldalliance-agent-chats/ --profile alliance-agent-chats` checks the profile.
+Codex only: run `/hooks` in a session and trust the repository's hooks. Codex skips them until then. In a worktree, Codex runs the main checkout's `.codex/hooks.json` and `agents/chats/chats.ts`, not the worktree's, so a worktree uploads only while the main checkout's branch has them.
+
+Claude Code warns at session start when the keys are missing. A failed upload shows as a failed hook in a Codex session, but in Claude Code only as the session ends, since its per-turn uploads run in the background, where a failure shows nothing. `bun agents/chats/chats.ts fetch claude/none.jsonl` checks the keys against the bucket: `NoSuchKey` means they work.
 
 Anyone without the keys, such as an outside contributor, sets `ALLIANCE_AGENT_CHATS=off` in their shell environment to skip the uploads and the warning.

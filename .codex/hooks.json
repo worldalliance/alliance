@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")/agents/chats/sync.sh\" codex",
+            "command": "bun \"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")/agents/chats/chats.ts\" upload codex",
             "timeout": 10
           }
         ]
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")/agents/chats/sync.sh\" codex",
+            "command": "bun \"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")/agents/chats/chats.ts\" upload codex",
             "timeout": 10
           }
         ]
@@ -27,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")/agents/chats/sync.sh\" codex",
+            "command": "bun \"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")/agents/chats/chats.ts\" upload codex",
             "timeout": 10
           }
         ]
@@ -38,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")/agents/chats/sync.sh\" codex",
+            "command": "bun \"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")/agents/chats/chats.ts\" upload codex",
             "timeout": 3
           }
         ]

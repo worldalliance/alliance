@@ -64,7 +64,7 @@ This list is the link from a task to its transcripts; commits carry none. `.gita
 Hooks in `.claude/settings.json` and `.codex/hooks.json` upload every session's raw transcript to the private `worldalliance-agent-chats` bucket at `<tool>/<session>.jsonl`, a subagent's at `<tool>/<session>/<file>`. Read one when the files here are wrong or thin:
 
 ```bash
-AWS_PROFILE=alliance-agent-chats aws s3 cp s3://worldalliance-agent-chats/claude/<uuid>.jsonl .scratch/
+bun agents/chats/chats.ts fetch claude/<uuid>.jsonl > .scratch/<uuid>.jsonl
 ```
 
 A transcript runs to megabytes of JSON lines, so read it through `jq` filters written for the question at hand, such as the user turns alone, never whole. Claude lines with `.type` of `user` or `assistant` hold the text in `.message.content`; Codex lines with `.type` of `response_item` hold it in `.payload`.

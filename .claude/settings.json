@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ \"$ALLIANCE_AGENT_CHATS\" = off ] || { command -v jq && aws configure get aws_access_key_id --profile alliance-agent-chats; } >/dev/null 2>&1 || echo '{\"systemMessage\": \"Agent transcript uploads are not set up on this machine: agents/README.md says how.\"}'"
+            "command": "bun \"$CLAUDE_PROJECT_DIR\"/agents/chats/chats.ts check"
           }
         ]
       }
@@ -50,7 +50,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/agents/chats/sync.sh claude",
+            "command": "bun \"$CLAUDE_PROJECT_DIR\"/agents/chats/chats.ts upload claude",
             "async": true
           }
         ]
@@ -61,7 +61,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/agents/chats/sync.sh claude",
+            "command": "bun \"$CLAUDE_PROJECT_DIR\"/agents/chats/chats.ts upload claude",
             "async": true
           }
         ]
@@ -72,7 +72,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/agents/chats/sync.sh claude",
+            "command": "bun \"$CLAUDE_PROJECT_DIR\"/agents/chats/chats.ts upload claude",
             "async": true
           }
         ]
@@ -83,7 +83,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/agents/chats/sync.sh claude",
+            "command": "bun \"$CLAUDE_PROJECT_DIR\"/agents/chats/chats.ts upload claude",
             "timeout": 10
           }
         ]

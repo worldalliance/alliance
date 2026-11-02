@@ -4,3 +4,7 @@
 - claude:dc98b510-da53-461d-b3b2-5c16696c3e60
 - claude:71d27cb6-572e-4abf-86e8-a186446a3fde
 - claude:b129edd7-2651-4890-a701-d4453983828b
+- claude:a75c83b3-aac7-4fc8-8751-211eb4706bbc
+- claude:ebef81b4-234d-4c7a-bfaf-ebd48a99dee1
+- claude:e5e18aa7-718e-480d-9064-bd22a371d2e3
+- claude:ed62456d-163e-49ec-80c9-f05eb8fea9c1
