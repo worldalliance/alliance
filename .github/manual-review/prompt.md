@@ -4,7 +4,7 @@ Run the review requested in `$OUTPUT_DIR/request.json`. You are headless in GitH
 
 ## Instructions
 
-Read `$REVIEW_TOOLS_DIR/skills/$REVIEW_SKILL/SKILL.md` and follow it. When it references the review skill, engineering criteria, or findings schema, use the copies under `$REVIEW_TOOLS_DIR/skills/`. These belong to the workflow's revision; the source checkout can predate them. Read the source checkout's `AGENTS.md` and applicable nested instructions for repository conventions.
+Read `$REVIEW_TOOLS_DIR/agents/skills/$REVIEW_SKILL/SKILL.md` and follow it. When it references the review skill, engineering criteria, or findings schema, use the copies under `$REVIEW_TOOLS_DIR/agents/skills/`. These belong to the workflow's revision; the source checkout can predate them. Read the source checkout's `AGENTS.md` and applicable nested instructions for repository conventions.
 
 The current directory is the source checkout, with full history, initially at the requested checkout commit. Interpret `HEAD` in the request against that initial snapshot. The review target may differ from it. For `review-base`, resolve one commit and verify that snapshot against its parent, as the skill requires. For `review`, establish the requested diff before inspecting it and run checks at the snapshot whose behavior is being reviewed.
 

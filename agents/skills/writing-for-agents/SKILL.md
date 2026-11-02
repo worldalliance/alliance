@@ -14,7 +14,7 @@ Every edit to an agent-facing document makes this pass:
 1. Place it: **where the rule goes**.
 2. Write it positively, and only if it **earns space**.
 3. Correcting an earlier version? The diff is a replacement: **after a correction**.
-4. Prune, until every sentence you added or changed passes the **keep test** in `(root)/skills/keep-test.md`, then the rules in **pruning**.
+4. Prune, until every sentence you added or changed passes the **keep test** in `(root)/agents/skills/keep-test.md`, then the rules in **pruning**.
 
 Done when each rule below has been applied to each line you touched.
 
@@ -105,7 +105,7 @@ You win twice: fewer tokens, and a sharper hook for the agent to hang its thinki
 
 ## After a correction
 
-**Corrections replace** in `(root)/skills/keep-test.md` governs the edit: rewrite the line that produced the wrong behavior, in place, so the document states the new rule and only the new rule.
+**Corrections replace** in `(root)/agents/skills/keep-test.md` governs the edit: rewrite the line that produced the wrong behavior, in place, so the document states the new rule and only the new rule.
 
 What's specific to an agent doc is the cost. Leaving the old rule standing beside its replacement is **negation** written into the file. "Don't do X, do Y instead" keeps X in the document and keeps it available, and it costs load on every future read to say what the file already stopped saying.
 

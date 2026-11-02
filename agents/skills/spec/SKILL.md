@@ -20,4 +20,4 @@ Done when every question is settled, and you can't name an open question whose a
 
 ## Documentation
 
-After the interview, read and follow `(root)/skills/provenance/SKILL.md`, and create a new directory in `docs/provenance` and populate its files, separating what was suggested by the user from what was only agreed to.
+After the interview, read and follow `(root)/agents/skills/provenance/SKILL.md`, and create a new directory in `docs/provenance` and populate its files, separating what was suggested by the user from what was only agreed to.

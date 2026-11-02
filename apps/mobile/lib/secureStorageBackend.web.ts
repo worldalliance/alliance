@@ -1,7 +1,7 @@
 import type { SecureStorageBackend } from "./secureStorageBackendContract";
 
 // localStorage is not a keychain, and access plus refresh tokens land in it here.
-// Web exists only as the playwright target (skills/playwright/MOBILE.md), so a
+// Web exists only as the playwright target (agents/skills/playwright/MOBILE.md), so a
 // production web bundle fails at import rather than shipping readable tokens.
 if (!__DEV__) {
   throw new Error(

@@ -214,4 +214,4 @@ Two toolbar controls:
 
 ## Reading list Alex named
 
-`AGENTS.md`, `skills/provenance/SKILL.md`, `skills/unslop/SKILL.md`, `skills/trim-comments/SKILL.md`.
+`AGENTS.md`, `agents/skills/provenance/SKILL.md`, `skills/unslop/SKILL.md`, `agents/skills/trim-comments/SKILL.md`.

@@ -28,7 +28,7 @@ Before the delegated runs, the same normalized-entities branch had run 8 rounds 
 
 ## Where a round's cost goes
 
-- **Reviewer, ~$1 per run** ($0.87, $0.97, $1.11 by run): about half cache writes, a third output. A reviewer reaches the diff at a median 27K context, after the system prompt, `AGENTS.md`, skill and tool lists, `/review-base`, `skills/review/SKILL.md` and the findings schema. That startup is $0.15 per run, 15% of reviewer cost; the rest is exploring the code (mean peak 76K).
+- **Reviewer, ~$1 per run** ($0.87, $0.97, $1.11 by run): about half cache writes, a third output. A reviewer reaches the diff at a median 27K context, after the system prompt, `AGENTS.md`, skill and tool lists, `/review-base`, `agents/skills/review/SKILL.md` and the findings schema. That startup is $0.15 per run, 15% of reviewer cost; the rest is exploring the code (mean peak 76K).
 - **Fixer**: resuming one session grew its context 65K → 101K → … → 311K over nine rounds; a fresh session per round would have read ~9.8M cached tokens instead of 36.8M (~$5 of $12.5). Fresh sessions were not automatically cheap: task-flow's round-1 fixer reached 266K from check output and findings, and one left a `Monitor` running that woke it 14 times at ~266K each.
 - **Fixer waiting**: agent-workflow-specs fixers polled reviewers with `pgrep`/`sleep` loops, each poll re-reading 30–60K context: $3.3.
 - **Orchestrator**: grows with accumulated round summaries; $0.15 per round in agent-workflow-specs.

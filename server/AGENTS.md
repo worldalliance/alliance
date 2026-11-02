@@ -2,8 +2,8 @@
 
 Read before the matching task:
 
-- Editing any `*.dto.ts` or `*.controller.ts` → `(root)/skills/dto-return-types/SKILL.md`
-- Generating or writing a migration → `(root)/skills/migrations/SKILL.md`
+- Editing any `*.dto.ts` or `*.controller.ts` → `(root)/agents/skills/dto-return-types/SKILL.md`
+- Generating or writing a migration → `(root)/agents/skills/migrations/SKILL.md`
 
 ## Entities
 

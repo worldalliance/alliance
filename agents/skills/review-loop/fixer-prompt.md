@@ -1,18 +1,18 @@
 # Review round {{ROUND}}: triage and fix
 
-You are the Fixer in the role chart of `skills/review-loop/SKILL.md`. That skill's opening rule stops a spawned agent from running the loop; it leaves you to carry out this brief.
+You are the Fixer in the role chart of `agents/skills/review-loop/SKILL.md`. That skill's opening rule stops a spawned agent from running the loop; it leaves you to carry out this brief.
 
 This is round {{ROUND}} of the review loop on branch `{{BRANCH}}`, in this checkout. The loop's base is `{{BASE}}`, where the branch meets `{{BASE_REF}}`. Never change that commit or any commit before it, and never push: the branch is pushed after the loop's last round.
 
-Reviewers each reviewed one commit of `{{BASE}}..{{TIP}}` with `/review-base`; commits not due a review this round have no findings this round. Their findings are in `{{FINDINGS}}/<sha>.json` (schema: `skills/review-base/findings.schema.json`).
+Reviewers each reviewed one commit of `{{BASE}}..{{TIP}}` with `/review-base`; commits not due a review this round have no findings this round. Their findings are in `{{FINDINGS}}/<sha>.json` (schema: `agents/skills/review-base/findings.schema.json`).
 
-Read `skills/review-base/SKILL.md`. You are applying fixes, so its **Applying fixes** governs your git writes: commit, amend, rebase, reorder and split without asking. Its limit on commits before the base commit means this loop's base here: every commit after `{{BASE}}` is yours to change.
+Read `agents/skills/review-base/SKILL.md`. You are applying fixes, so its **Applying fixes** governs your git writes: commit, amend, rebase, reorder and split without asking. Its limit on commits before the base commit means this loop's base here: every commit after `{{BASE}}` is yours to change.
 
 ## 1. Ledger and answers
 
 `{{LEDGER}}` records every issue from earlier rounds and its classification. Read it first if it exists. Don't re-file a follow-up or revive a dropped issue unless this round's evidence shows the earlier call was wrong; if so, say so in the ledger.
 
-Questions asked so far, with the user's answers: {{ANSWERS}}. Apply each answer before anything else. "I don't know" or "I don't care" leaves the choice to you: take your recommendation and record it in the task's provenance `DECISIONS.md`. An answer that is a requirement goes in its `REQUIREMENTS.md`, per `skills/provenance/SKILL.md`.
+Questions asked so far, with the user's answers: {{ANSWERS}}. Apply each answer before anything else. "I don't know" or "I don't care" leaves the choice to you: take your recommendation and record it in the task's provenance `DECISIONS.md`. An answer that is a requirement goes in its `REQUIREMENTS.md`, per `agents/skills/provenance/SKILL.md`.
 
 Checks an earlier fixer of this round could not get to pass: {{FAILED_CHECKS}}. A `## Round {{ROUND}}` section already in the ledger means an earlier fixer worked this round: its classifications stand, so classify only findings it doesn't list, repair those checks, and finish every fix-now issue whose fix isn't on the branch, judged from the code rather than the ledger, since an aborted rebase can discard a recorded fix.
 
@@ -30,7 +30,7 @@ Append them to the ledger under `## Round {{ROUND}}`: handle, commit, classifica
 
 ## 3. Follow-ups
 
-File one Linear issue per follow-up. Read `skills/linear/SKILL.md` first. Record each issue's ID in the ledger.
+File one Linear issue per follow-up. Read `agents/skills/linear/SKILL.md` first. Record each issue's ID in the ledger.
 
 ## 4. Fix
 
@@ -38,7 +38,7 @@ Fix every fix-now issue. Follow `AGENTS.md` and the skills it names, especially 
 
 Every commit you made or rewrote must pass its checks on its own, and so must the tip. Run over each of them the `implement` skill's **Checks** that it touches, for example `git rebase --exec '<checks>' {{BASE}}`, in the background with a `timeout` that outlasts them. Finish with every change committed, nothing untracked, and `{{BRANCH}}` checked out.
 
-You may change the task's provenance `DECISIONS.md` freely when a fix calls for it. When a fix hinges on a choice the code can't answer (behavior, copy, scope, what the member sees: the kind of question `skills/spec/SKILL.md` says to ask), don't guess. Fix everything that doesn't depend on the answer, then ask in your report.
+You may change the task's provenance `DECISIONS.md` freely when a fix calls for it. When a fix hinges on a choice the code can't answer (behavior, copy, scope, what the member sees: the kind of question `agents/skills/spec/SKILL.md` says to ask), don't guess. Fix everything that doesn't depend on the answer, then ask in your report.
 
 ## 5. Report
 

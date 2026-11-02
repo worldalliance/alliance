@@ -30,7 +30,7 @@ The fixes were proposed and built around the defect that holds regardless: the r
 ## Left alone
 
 - `bun run gen-api` was not run, so `AuthLoginErrors` in `shared/client/types.gen.ts` still lists only 401. The client code works either way, because `HeyApiError` already carries `message`. Flagged to the user.
-- `skills/linear/SKILL.md` fails `bun run format:check` on `main`, from a stray trailing newline in `72add7aef`. A repo-wide `bun run format` fixed it as a side effect; that was reverted to keep the diff traceable, and the pre-existing failure was named to the user instead.
+- `agents/skills/linear/SKILL.md` fails `bun run format:check` on `main`, from a stray trailing newline in `72add7aef`. A repo-wide `bun run format` fixed it as a side effect; that was reverted to keep the diff traceable, and the pre-existing failure was named to the user instead.
 - No mobile counterpart, despite the parity rule in `apps/AGENTS.md`. There is no domain for the app to migrate between.
 
 ## Changes in 212ea9048 with unknown provenance

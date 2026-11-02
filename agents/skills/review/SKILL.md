@@ -15,7 +15,7 @@ High-signal review of the proposed change: catch correctness bugs, edge cases, a
 
 # What to inspect
 
-Read `(root)/skills/engineering-criteria.md`. Apply each relevant criterion to the change and use it when recommending fixes.
+Read `(root)/agents/skills/engineering-criteria.md`. Apply each relevant criterion to the change and use it when recommending fixes.
 
 # Verify every claim
 

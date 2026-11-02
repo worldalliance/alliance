@@ -182,8 +182,8 @@ snapshot windows overlap on long-lived forms and would produce nonsense sections
 
 ## Repo constraints stated by the user
 
-Read `AGENTS.md` and `apps/AGENTS.md` first; apply `skills/provenance/SKILL.md`,
-`skills/unslop/SKILL.md` and `skills/trim-comments/SKILL.md`.
+Read `AGENTS.md` and `apps/AGENTS.md` first; apply `agents/skills/provenance/SKILL.md`,
+`skills/unslop/SKILL.md` and `agents/skills/trim-comments/SKILL.md`.
 
 - Add `@tanstack/react-table` (headless, so it takes the existing Tailwind and `sharedweb`
   components) to both `apps/admin/package.json` and `apps/frontend/package.json` at the same
@@ -214,7 +214,7 @@ Read `AGENTS.md` and `apps/AGENTS.md` first; apply `skills/provenance/SKILL.md`,
    search matching against rendered text, sort comparators per field kind, and swatch
    determinism.
 3. `bun run format:check` is clean.
-4. Verified in the browser per `skills/playwright/SKILL.md` against local forms 138 (135
+4. Verified in the browser per `agents/skills/playwright/SKILL.md` against local forms 138 (135
    responses, 3 snapshots), 140 (133 responses, 67 schema items, the column-count stress
    case) and 5 ("Reliability form", 378 responses across 25 snapshots, the Expanded-mode
    stress case): search narrows rows, headers sort, columns hide and persist across reload,

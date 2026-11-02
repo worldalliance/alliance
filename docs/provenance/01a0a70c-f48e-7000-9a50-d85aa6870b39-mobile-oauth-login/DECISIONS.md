@@ -52,7 +52,7 @@
 
 ## Login surface
 
-- `/onboarding` (the `WelcomeGate`) is the one login screen. The provider buttons are white, with Google's four-color mark and Apple's black logo, to match the gate's existing white "Log in" button on the photo. The unauthenticated redirect and logout already land there. `app/auth/login.tsx` is deleted, and the one link to it (the action page's "Log in to complete this task") points at `/onboarding`. `skills/playwright/MOBILE.md` named the old route and now names `/onboarding`.
+- `/onboarding` (the `WelcomeGate`) is the one login screen. The provider buttons are white, with Google's four-color mark and Apple's black logo, to match the gate's existing white "Log in" button on the photo. The unauthenticated redirect and logout already land there. `app/auth/login.tsx` is deleted, and the one link to it (the action page's "Log in to complete this task") points at `/onboarding`. `agents/skills/playwright/MOBILE.md` named the old route and now names `/onboarding`.
 - Provider buttons show only in `AccountMode.LogIn`. The dormant sign-up mode stays untouched.
 - Apple's button sits above Google's, which its button guidelines ask for in a stacked layout. The order comes from a `Record<OAuthProvider, number>` rank, so a provider added later has to be given one. It holds on Android too, where nothing asks for it either way, rather than growing a platform branch. The web gate keeps declaration order.
 - The email field no longer autofocuses. With provider buttons above it, an open keyboard would push them and the title off small screens.
