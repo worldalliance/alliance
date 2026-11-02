@@ -270,6 +270,18 @@ describe("flowScreenTitle", () => {
     ).toBe("Rate it");
   });
 
+  it("falls back to the given title when the header isn't showing", () => {
+    expect(
+      flowScreenTitle({
+        screen: { pageIndex: 0, heading: header("h"), elements: [text("a")] },
+        activeUserKey: undefined,
+        isElementCurrentlyVisible: () => false,
+        variableValues: new Map(),
+        fallback: taskFlow.background,
+      }),
+    ).toBe(taskFlow.background);
+  });
+
   it("falls back by whether the screen asks for anything", () => {
     expect(title({ pageIndex: 0, heading: null, elements: [input("q")] })).toBe(
       taskFlowFallbackTitle.questions,
@@ -326,6 +338,13 @@ describe("flowStepPreviews", () => {
       { label: taskFlow.background, warnings: [] },
       { label: "Step 1: Rate", warnings: [] },
     ]);
+  });
+
+  it("labels an opening page without inputs by its header when it has one", () => {
+    const [background] = flowStepPreviews(
+      schemaOf(page("p1", [header("Why it matters"), text("a")])),
+    );
+    expect(background?.label).toBe("Background: Why it matters");
   });
 
   it("warns about a page without a header or with more than two inputs", () => {

@@ -1,5 +1,8 @@
-import { type PageItem } from "@alliance/common/forms/form-schema";
-import { splitBackground } from "@alliance/shared/forms/flowScreens";
+import {
+  flowScreenTitle,
+  splitBackground,
+  type FlowScreen,
+} from "@alliance/shared/forms/flowScreens";
 import { taskFlow } from "@alliance/shared/lib/copy";
 import { FormElements } from "@alliance/sharedweb/forms/FormElements";
 import { type WebFormState } from "@alliance/sharedweb/forms/useWebFormState";
@@ -16,14 +19,21 @@ export default function TaskFlowIntro({
   error,
 }: {
   form: WebFormState;
-  /** The form's opening content, which asks for nothing. */
-  background: PageItem[];
+  /** The form's opening screen, which asks for nothing. */
+  background: FlowScreen;
   onNext: () => void;
   nextLabel: string;
   nextIsLast: boolean;
   error: string | null;
 }) {
-  const { media, reading } = splitBackground(background);
+  const { media, reading } = splitBackground(background.elements);
+  const title = flowScreenTitle({
+    screen: background,
+    activeUserKey: form.activeUserKey,
+    isElementCurrentlyVisible: form.isElementCurrentlyVisible,
+    variableValues: form.variableValues,
+    fallback: taskFlow.background,
+  });
 
   return (
     <TaskFlowPage
@@ -42,7 +52,7 @@ export default function TaskFlowIntro({
         </>
       }
     >
-      <TaskFlowTitle>{taskFlow.background}</TaskFlowTitle>
+      <TaskFlowTitle>{title}</TaskFlowTitle>
 
       {media.length > 0 ? (
         <div className="mb-6 space-y-6">

@@ -105,20 +105,27 @@ export function flowProgress(params: {
   return (finished / visibleIndices.length) * 100;
 }
 
-/** The screen's opening header, or a generic title when it has none showing. */
+/** The screen's opening header, or `fallback` or a generic title when it has none showing. */
 export function flowScreenTitle(params: {
   screen: FlowScreen;
   activeUserKey: string | undefined;
   isElementCurrentlyVisible: FormVisibility["isElementCurrentlyVisible"];
   variableValues: FormVisibility["variableValues"];
+  fallback?: string;
 }): string {
-  const { screen, activeUserKey, isElementCurrentlyVisible, variableValues } =
-    params;
+  const {
+    screen,
+    activeUserKey,
+    isElementCurrentlyVisible,
+    variableValues,
+    fallback,
+  } = params;
   const heading =
     screen.heading && resolveDisplayBlockForUser(screen.heading, activeUserKey);
   if (heading && isElementCurrentlyVisible(heading)) {
     return interpolateDisplayBlock(heading, variableValues).text;
   }
+  if (fallback !== undefined) return fallback;
   return screen.elements.some(
     (element) => isQuestionField(element) && isElementCurrentlyVisible(element),
   )
@@ -143,7 +150,12 @@ export function flowStepPreviews(
     if (screen.heading === null && screen.elements.length === 0) return null;
     const inputs = screen.elements.filter(isQuestionField).length;
     if (index === 0 && inputs === 0) {
-      return { label: taskFlow.background, warnings: [] };
+      return {
+        label: screen.heading
+          ? `Background: ${screen.heading.text}`
+          : taskFlow.background,
+        warnings: [],
+      };
     }
     step += 1;
     const fallback =

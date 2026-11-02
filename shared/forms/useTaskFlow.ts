@@ -182,12 +182,10 @@ export function useTaskFlow(params: {
   const flowIndices = visibleIndices.filter((i) => i !== backgroundIndex);
   const backgroundScreen =
     backgroundIndex === null ? null : screens[backgroundIndex];
-  const background = backgroundScreen
-    ? [
-        ...(backgroundScreen.heading ? [backgroundScreen.heading] : []),
-        ...withoutEmptySections(backgroundScreen.elements, isElementVisible),
-      ]
-    : [];
+  const background = backgroundScreen && {
+    ...backgroundScreen,
+    elements: withoutEmptySections(backgroundScreen.elements, isElementVisible),
+  };
 
   const screen = screens[screenIndex];
   const nextIndex = getNextVisiblePageIndex(flowIndices, screenIndex);

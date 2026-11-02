@@ -16,7 +16,7 @@ describe("useTaskFlow", () => {
     const { hook } = setup();
     act(() => hook.result.current.begin());
     expect(hook.result.current.stage).toBe(FlowStage.Background);
-    expect(hook.result.current.background).toEqual([text("intro")]);
+    expect(hook.result.current.background?.elements).toEqual([text("intro")]);
     expect(hook.result.current.progress).toBe(0);
   });
 
@@ -99,7 +99,7 @@ describe("useTaskFlow", () => {
     hook.rerender();
     act(() => hook.result.current.begin());
     expect(hook.result.current.stage).toBe(FlowStage.Background);
-    expect(hook.result.current.background).toEqual([
+    expect(hook.result.current.background?.elements).toEqual([
       text("intro"),
       input("hidden"),
     ]);

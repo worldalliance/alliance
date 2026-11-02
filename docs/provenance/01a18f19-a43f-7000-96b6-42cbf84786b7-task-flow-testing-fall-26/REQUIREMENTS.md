@@ -30,7 +30,7 @@ From the notes: "Add 'progress is saved' as a small grey disclaimer".
 
 From the notes: "Need indicators on Admin side that clearly communicate how it will translate to the multi-step task view".
 
-- The admin form builder labels each page with the step it becomes: "Step N" followed by the title that step will show, or "Project background" for the background page. (Approved)
+- The admin form builder labels each page with the step it becomes: "Step N" followed by the title that step will show, or, for the background page, "Background:" followed by its header, or "Project background" when it has none. (Approved, background title: User)
 - The form builder's issues list warns when a page has no header block, when a page has more than 2 inputs, when the form has no output view, and when the task has no image. (Approved)
 
 ## TN-5: A completed task on its action page
@@ -183,6 +183,10 @@ From the notes: "Remove mapping of page breaks via header and 3rd question, shou
 ## TN-26: At most three faces above the task card's progress bar
 
 - Above the task card's progress bar, at most 3 faces of friends who completed the task show, followed by "+N" for the rest, so the faces, "+N" and the "… members completed" count fit on one line. (User)
+
+## TN-27: The background page's title is the author's
+
+- The background page's title is its form page's header, as on every other step, so authors choose it. "Project background" is only the title of a background page with no header showing. (User)
 
 ## Out of scope
 
