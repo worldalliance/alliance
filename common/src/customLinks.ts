@@ -18,6 +18,7 @@ export const CUSTOM_LINK_RESERVED_SLUGS = new Set([
   "error",
   "progress",
   "projects",
+  "safer-chatbots",
   "waitlist",
   "utensilinitiative",
   "restaurantguide",
