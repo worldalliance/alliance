@@ -2,6 +2,8 @@
 
 This repository is open source.
 
+The project is the Alliance, and `alliance` is its identifier wherever a name carries one: packages, bundle ids, URL schemes, databases, env vars, services. `worldalliance` (GitHub org, Linear workspace, legacy domain), `thealliance` (domain, Apple Services ID), and `alliancefoundation` (iOS bundle ids, Expo account) exist only where `alliance` was taken; reference those existing things by their real names, and name new things `alliance`. That holds for a new Apple identifier too: it falls back to the existing prefix only if `alliance` is taken, even when that leaves related ids with different prefixes (`com.alliance.alliancemobile.<variant>` beside `com.alliancefoundation.alliancemobile`).
+
 ## Packages
 
 - `server/`: backend, NestJS
