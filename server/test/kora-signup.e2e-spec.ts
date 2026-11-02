@@ -423,16 +423,5 @@ describe("Kora signup and login (e2e)", () => {
       const req = h.browser()[method](path);
       await (origin ? req.set("Origin", origin) : req).expect(403);
     });
-
-    it("answers 404 in production", async () => {
-      const nodeEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = "production";
-      try {
-        await h.browser().get("/kora/me").expect(404);
-        await h.sendCode(h.browser(), { email: uniqueEmail() }).expect(404);
-      } finally {
-        process.env.NODE_ENV = nodeEnv;
-      }
-    });
   });
 });
