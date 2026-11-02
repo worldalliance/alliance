@@ -181,6 +181,10 @@ From the notes: "Remove mapping of page breaks via header and 3rd question, shou
 - Authors open each page with a level-1 header block. (Approved)
 - A header block within a step hides while every block under it, up to the next header block, is hidden, and shows again with them. (User)
 
+## TN-26: At most three faces above the task card's progress bar
+
+- Above the task card's progress bar, at most 3 faces of friends who completed the task show, followed by "+N" for the rest, so the faces, "+N" and the "… members completed" count fit on one line. (User)
+
 ## Out of scope
 
 - A date picker for date fields on mobile is separate work. (User)
