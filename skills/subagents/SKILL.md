@@ -12,7 +12,7 @@ REVIEW_LOOP_ROLE=subagent CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=7200000 claude --
 REVIEW_LOOP_ROLE=subagent codex exec --dangerously-bypass-approvals-and-sandbox --json -o .scratch/<name>-out.md - < .scratch/<name>-prompt.md > .scratch/<name>.jsonl 2> .scratch/<name>.err; echo $? > .scratch/<name>.exit
 ```
 
-`REVIEW_LOOP_ROLE` keeps the subagent out of the review loop, which needs a person. `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS` raises how long `claude -p` waits on background agents after its last turn, from 10 minutes to two hours. A background shell ends at its own `timeout`, so a prompt for a long task such as a check run asks for a long `timeout`.
+`REVIEW_LOOP_ROLE` keeps the subagent out of the review loop, which needs the user. `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS` raises how long `claude -p` waits on background agents after its last turn, from 10 minutes to two hours. A background shell ends at its own `timeout`, so a prompt for a long task such as a check run asks for a long `timeout`.
 
 ## Reading the result
 

@@ -19,7 +19,7 @@ task: Run the per-commit review loop automatically before a coding agent opens a
 
 ## Questions
 
-- User-originated: questions that `skills/spec` says to ask pause the loop and go to the person running the agent, who may answer, find someone who can, or say they don't know or don't care. Agents may change provenance `DECISIONS.md` files freely during reviews.
+- User-originated: questions that `skills/spec` says to ask pause the loop and go to the user running the agent, who may answer, find someone who can, or say they don't know or don't care. Agents may change provenance `DECISIONS.md` files freely during reviews.
 
 ## Cost
 
@@ -38,13 +38,14 @@ task: Run the per-commit review loop automatically before a coding agent opens a
 ## Completion
 
 - Agent-proposed, user-approved: the loop is done when the PR is open and its CI passes. A CI failure goes back through the same fix-and-review loop.
-- User-originated: when a PR can't merge because of changes on `main`, the agent tells the person what conflicts and asks whether to update the branch. If they agree, it rebases the branch onto current `origin/main` rather than merging, resolves conflicts, and runs the review loop before pushing. Any commit whose diff changed in the rebase, conflict resolutions included, is reviewed. That run's base is `origin/main`, so commits from `main` aren't reviewed. The rebased branch is pushed with `git push --force-with-lease`, on the task's own PR branch only, the one exception to never forcing a push. The agent then goes back to watching CI.
+- User-originated: when a PR can't merge because of changes on `main`, the agent tells the user what conflicts and asks whether to update the branch. If they agree, it rebases the branch onto current `origin/main` rather than merging, resolves conflicts, and runs the review loop before pushing. Any commit whose diff changed in the rebase, conflict resolutions included, is reviewed. That run's base is `origin/main`, so commits from `main` aren't reviewed. The rebased branch is pushed with `git push --force-with-lease`, on the task's own PR branch only, the one exception to never forcing a push. The agent then goes back to watching CI.
 - User-originated: the PR description is accurate, but keeping it current is low priority.
-- Agent-proposed, user-approved: the coding agent commits and runs the loop without asking first, overriding the root `AGENTS.md` rule to ask before git writes, but asks the person once before the first push and PR. Later pushes, including CI fixes, and PR edits go ahead without asking.
+- Agent-proposed, user-approved: the coding agent commits and runs the loop without asking first, overriding the root `AGENTS.md` rule to ask before git writes, but asks the user once before the first push and PR. Later pushes, including CI fixes, and PR edits go ahead without asking.
 
 ## Documentation
 
 - User-originated: the instructions agents follow state the established practice for which checks run where, and why, so a later agent can challenge it.
 - User-originated: the experiments and evidence behind these choices are recorded in this provenance directory.
-- User-originated: `skills/review-loop/SKILL.md` carries a mermaid flowchart of the whole process, after its opening paragraphs and before step 1, so an agent or a person can see which stage they are in. It has roughly fifteen nodes with short labels matching the prose's step names.
+- User-originated: `skills/review-loop/SKILL.md` carries a mermaid flowchart of the whole process, after its opening paragraphs and before step 1, so an agent or the user can see which stage they are in. It has roughly fifteen nodes with short labels matching the prose's step names.
 - User-originated: general skills don't name this task's provenance directory. Agents don't need the sources to follow a rule, and the sources stay in this directory for anyone who wants them.
+- User-originated (2026-11-01): the review-loop skill, its fixer brief and its charts call the human running the agent "the user". "The person" sounds detached and weird.
