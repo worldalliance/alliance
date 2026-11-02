@@ -145,7 +145,7 @@ export default {
             "./assets/fonts/LibreBaskerville.ttf",
             "./assets/fonts/LibreBaskerville-Bold.ttf",
             "./assets/fonts/LibreBaskerville-SemiBold.ttf",
-            "./assets/fonts/BerlingskeSerif-Blk.ttf",
+            "./assets/fonts/LibreCaslonText-Bold.ttf",
           ],
         },
       ],
