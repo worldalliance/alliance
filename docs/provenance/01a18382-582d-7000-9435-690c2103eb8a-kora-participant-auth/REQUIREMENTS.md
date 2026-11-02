@@ -19,7 +19,7 @@ This spec covers participant signup and login only. Implementing the task, autho
 
 Origin: agent-proposed, user-approved.
 
-Use the existing `/projects/safer-chatbots-for-children` page. Support desktop and mobile browsers; native mobile integration is outside this work. Enable signup where the page is available by replacing its closed waitlist signup form with participant signup, while retaining the page's production visibility restriction.
+Use the existing `/projects/safer-chatbots-for-children` page. Support desktop and mobile browsers; native mobile integration is outside this work. Replace the page's closed waitlist signup form with participant signup. Serve the page and participant signup in production as well as staging (user-originated).
 
 For a visitor already authenticated as an Alliance member, hide the participant form and display exactly: “You’re already an Alliance member.” Determine this from the current member session, without checking whether an entered email address or phone number belongs to a member.
 

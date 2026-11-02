@@ -15,7 +15,7 @@ export enum KoraError {
 
 /** The one launch switch for the project page and the Kora participant API. */
 const KORA_AVAILABLE: Record<NodeEnv, boolean> = {
-  [NodeEnv.Production]: false,
+  [NodeEnv.Production]: true,
   [NodeEnv.Staging]: true,
   [NodeEnv.Development]: true,
   [NodeEnv.Test]: true,

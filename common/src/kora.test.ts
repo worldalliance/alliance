@@ -3,14 +3,14 @@ import { koraAvailable, koraOAuthErrorMessage } from "./kora";
 import { OAuthError, OAuthProvider } from "./oauth";
 
 describe("koraAvailable", () => {
-  it("stays off in production and wherever the environment is unrecognized", () => {
-    expect(koraAvailable("production")).toBe(false);
-    expect(koraAvailable("prod")).toBe(false);
-    expect(koraAvailable(undefined)).toBe(false);
+  it("is on in production and staging", () => {
+    expect(koraAvailable("production")).toBe(true);
+    expect(koraAvailable("staging")).toBe(true);
   });
 
-  it("is on in staging", () => {
-    expect(koraAvailable("staging")).toBe(true);
+  it("stays off wherever the environment is unrecognized", () => {
+    expect(koraAvailable("prod")).toBe(false);
+    expect(koraAvailable(undefined)).toBe(false);
   });
 });
 
