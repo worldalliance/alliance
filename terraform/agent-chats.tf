@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "agent_chats" {
-  bucket = "worldalliance-agent-chats"
+  bucket = "alliance-agent-chats"
   tags = {
     Name        = "alliance-agent-chats"
     Environment = "prod"

@@ -61,7 +61,7 @@ This list is the link from a task to its transcripts; commits carry none. `.gita
 
 ## Transcripts
 
-Hooks in `.claude/settings.json` and `.codex/hooks.json` upload every session's raw transcript to the private `worldalliance-agent-chats` bucket at `<tool>/<session>.jsonl`, a subagent's at `<tool>/<session>/<file>`. Read one when the files here are wrong or thin:
+Hooks in `.claude/settings.json` and `.codex/hooks.json` upload every session's raw transcript to the private `alliance-agent-chats` bucket at `<tool>/<session>.jsonl`, a subagent's at `<tool>/<session>/<file>`. Read one when the files here are wrong or thin:
 
 ```bash
 bun agents/chats/chats.ts fetch claude/<uuid>.jsonl > .scratch/<uuid>.jsonl

@@ -3,7 +3,7 @@
 Tooling for the coding agents that work on this repository. Nothing here ships with the apps.
 
 - `skills/`: the skills, reached through the `.claude/skills` and `.agents/skills` symlinks. The root `AGENTS.md` says when each applies.
-- `chats/chats.ts`: `upload claude|codex` copies a session's transcript to the private `worldalliance-agent-chats` S3 bucket, `fetch <key>` streams one back, and `check` warns when the keys are missing. It runs on bun, which the repository already needs. The hooks in `.claude/settings.json` and `.codex/hooks.json` run it after every turn, before compaction, and at session end. `skills/provenance/SKILL.md` says how a task lists its sessions and how to read a transcript.
+- `chats/chats.ts`: `upload claude|codex` copies a session's transcript to the private `alliance-agent-chats` S3 bucket, `fetch <key>` streams one back, and `check` warns when the keys are missing. It runs on bun, which the repository already needs. The hooks in `.claude/settings.json` and `.codex/hooks.json` run it after every turn, before compaction, and at session end. `skills/provenance/SKILL.md` says how a task lists its sessions and how to read a transcript.
 
 ## Set up uploads, once per machine
 

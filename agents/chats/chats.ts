@@ -15,7 +15,7 @@ enum Tool {
   Codex = "codex",
 }
 
-const bucket = "worldalliance-agent-chats";
+const bucket = "alliance-agent-chats";
 const envFile = path.resolve(import.meta.dir, "../../.env.devtools");
 const keyNames = {
   accessKeyId: "AGENT_CHATS_AWS_ACCESS_KEY_ID",
