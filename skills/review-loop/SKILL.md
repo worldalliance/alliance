@@ -5,9 +5,9 @@ description: Read once a branch's checks pass, before pushing it or opening its 
 
 # Review loop
 
-Skip this skill when `REVIEW_LOOP_ROLE` is set: another agent spawned you, so hand back to it, since the loop needs the user to answer questions and approve the push. Skip it too when the user asked to leave the change uncommitted or unpushed.
+Skip this skill when `REVIEW_LOOP_ROLE` is set: another agent spawned you, so hand back to it, since the loop needs the user to answer questions. Skip it too when the user asked to leave the change uncommitted or unpushed.
 
-Done means the PR is open and its CI passed. The root `AGENTS.md` rule to ask before git writes does not apply to this skill's commits, worktrees and rewrites.
+Done means the PR is open and its CI passed. The root `AGENTS.md` rule to ask before git writes does not apply to this skill's commits, worktrees, rewrites, pushes, the PR and PR edits; **Push and open the PR** says when a push needs asking.
 
 Work from the repo root of the main checkout or of a worktree `scripts/new-worktree.sh` created, since it refuses to create a worktree from any other. Arriving because the PR's CI failed, start at **CI**.
 
@@ -25,7 +25,8 @@ flowchart TD
   ask -->|answers| fix
   questions -->|no| due
   due -->|yes, next round| review
-  due -->|no| push["Push and open the PR: ask once first"]
+  due -->|no| push["Push and open the PR: ask once only if no instruction covered it"]
+  push -->|declined or told no PR| noPr(["Stop: no PR"])
   push --> ci{"CI"}
   ci -->|not finished: wait or rerun| ci
   ci -->|passed or merged| finished(["Done"])
@@ -53,7 +54,7 @@ Due a review: in a branch's first round every commit; afterwards every commit wi
 
 ## Push and open the PR
 
-List the commits for the user and ask once, before the first push and PR; on their approval, `git push -u origin HEAD` and `gh pr create` with a description written from the commits. Later pushes and PR edits go ahead without asking. Never force, except in **`main` moved on**. A rejected push goes to the user, since someone else may have pushed to the branch. On a later pass, `gh pr edit` the description only where a new commit made it wrong.
+An instruction from the user that asked for a PR or a push, at any point in the task, approves every push, the PR and every PR edit this skill makes, apart from the question in **`main` moved on**. When no instruction covered either, list the commits for the user and ask once, before the first push; their approval covers the same, and if they decline, stop with the commits on the branch. Once approved, `git push -u origin HEAD` and, on the first pass, `gh pr create` with a description written from the commits. A user who asked for no PR gets none: stop after an approved push, otherwise with the commits on the branch. Never force, except in **`main` moved on**. A rejected push goes to the user, since someone else may have pushed to the branch. Later pushes and PR edits go ahead without asking. On a later pass, `gh pr edit` the description only where a new commit made it wrong.
 
 ## CI
 

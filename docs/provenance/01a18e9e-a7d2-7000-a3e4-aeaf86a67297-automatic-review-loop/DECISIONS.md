@@ -48,13 +48,21 @@ The coding agent fixes a CI failure itself, in a new commit on top, and reruns t
 
 The loop pushes the branch once all commits are clean, not each clean prefix; CI fixes push again afterwards. It does not reorder commits to push more of them. The user has no preference. Re-review selection already keeps clean commits out of later rounds, which was the point of pushing early, and every push triggers `code-review.yaml`'s AI review in CI.
 
+## A push instruction covers the PR
+
+The skill names opening the PR in what an instruction approves, so "push this" also opens one. The loop isn't done until the PR is open, and the requirement asks only when no instruction covered pushing or a PR. An explicit request for no PR is the user's answer, so it draws no question, and it isn't a request to push, so it approves none: the loop stops after a push approved some other way, otherwise with the commits on the branch.
+
+## Updating from `main` still asks
+
+The approval to push doesn't reach **`main` moved on**: that question asks whether to rewrite the branch at all, and declining leaves the PR as it is. Once the user agrees, the forced push goes ahead without a second question.
+
 ## Worktrees
 
 Reviewer worktrees come from `scripts/new-worktree.sh <name> --from <sha>` run in the current worktree, pinned to the round's tip so a fixer committing mid-round can't move it. Removing the coding worktree removes any reviewer worktrees left behind. `new-worktree.sh` refuses a checkout it didn't create, so the loop runs from the main checkout or a worktree the script made, not a harness-made one.
 
 ## Trigger
 
-A model-invocable skill, `skills/review-loop/SKILL.md`, holds the loop's instructions, and a line in the root `AGENTS.md` Skills list points coding agents at it after implementation checks pass and before pushing or opening a PR, and when the PR's CI fails. `review` and `review-base` stay user-invoked. Every spawned session runs with `REVIEW_LOOP_ROLE` set, by the commands in `skills/subagents/SKILL.md`, since a session can't otherwise tell it was spawned and the loop needs the user for questions and the push; the pointer and the skill say to skip on it. The skill is also skipped when the user asked to keep the change uncommitted or unpushed.
+A model-invocable skill, `skills/review-loop/SKILL.md`, holds the loop's instructions, and a line in the root `AGENTS.md` Skills list points coding agents at it after implementation checks pass and before pushing or opening a PR, and when the PR's CI fails. `review` and `review-base` stay user-invoked. Every spawned session runs with `REVIEW_LOOP_ROLE` set, by the commands in `skills/subagents/SKILL.md`, since a session can't otherwise tell it was spawned and the loop needs the user for questions; the pointer and the skill say to skip on it. The skill is also skipped when the user asked to keep the change uncommitted or unpushed.
 
 ## Not adopted
 
