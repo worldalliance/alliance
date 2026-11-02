@@ -24,6 +24,16 @@
     "dataviz": "off"
   },
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ \"$ALLIANCE_AGENT_CHATS\" = off ] || { command -v jq && aws configure get aws_access_key_id --profile alliance-agent-chats; } >/dev/null 2>&1 || echo '{\"systemMessage\": \"Agent transcript uploads are not set up on this machine: agents/README.md says how.\"}'"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write|NotebookEdit|Bash",
@@ -31,6 +41,50 @@
           {
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/trim-comments-reminder.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/agents/chats/sync.sh claude",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/agents/chats/sync.sh claude",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/agents/chats/sync.sh claude",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/agents/chats/sync.sh claude",
+            "timeout": 10
           }
         ]
       }

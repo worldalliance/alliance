@@ -11,7 +11,7 @@ This repository is open source.
 - `sharedweb/`: shared by admin + frontend
 - `shared/`: shared by admin + frontend + mobile
 - `common/`: shared by all apps + server
-- `agents/`: skills for the coding agents, nothing the apps ship
+- `agents/`: skills and hooks for the coding agents, nothing the apps ship
 
 ## Nested AGENTS.md
 
@@ -133,7 +133,7 @@ Icon-only controls carry a tooltip or `aria-label`. Destructive or irreversible 
 
 Secrets stay in the environment, out of context. Read `.env*` files through a filter that redacts values; to use a secret, pipe it into the command from a script.
 
-Preserve identifying information deliberately used for authorship, credit, or project responsibility. Redact secrets and incidental personal information as `[redacted]` before writing repo files or capturing artifacts, including provenance, ignored files, and `.scratch/` artifacts. Use synthetic data for fixtures and examples. Before handing off, check every file you created or changed for secrets and incidental personal information.
+Preserve identifying information deliberately used for authorship, credit, or project responsibility. Redact secrets and incidental personal information as `[redacted]` before writing repo files or capturing artifacts, including provenance, ignored files, and `.scratch/` artifacts. The session transcripts the `agents/chats/` hooks upload to their private bucket stay raw. Use synthetic data for fixtures and examples. Before handing off, check every file you created or changed for secrets and incidental personal information.
 
 ## Working files
 

@@ -1,0 +1,48 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")/agents/chats/sync.sh\" codex",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")/agents/chats/sync.sh\" codex",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")/agents/chats/sync.sh\" codex",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")/agents/chats/sync.sh\" codex",
+            "timeout": 3
+          }
+        ]
+      }
+    ]
+  }
+}
