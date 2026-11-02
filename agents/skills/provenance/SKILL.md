@@ -19,7 +19,7 @@ UUID_V7=$(bun -e 'console.log(Bun.randomUUIDv7())')
 mkdir -p "docs/provenance/${UUID_V7}-${FEATURE_NAME}"
 ```
 
-UUIDv7 makes directory listings sort by creation time. Inside, `REQUIREMENTS.md`, plus `DECISIONS.md` when the task made a choice whose rationale is worth keeping. These are intended to live in the repo.
+UUIDv7 makes directory listings sort by creation time. Inside, `REQUIREMENTS.md` and `SESSIONS.md`, plus `DECISIONS.md` when the task made a choice whose rationale is worth keeping. These are intended to live in the repo.
 
 References flow one way: `DECISIONS.md` may reference `REQUIREMENTS.md`; `REQUIREMENTS.md` stands independently and never references `DECISIONS.md`.
 
@@ -46,6 +46,18 @@ A choice the user defers ("I don't know", "I don't care", "it doesn't matter", o
 ## Unclear provenance
 
 Record unknown origins explicitly. Approval makes an agent proposal an approved requirement, not a user-originated idea. For example, an approved agent recommendation to use PostgreSQL is a direct requirement labeled agent-proposed and user-approved; the implementation rationale belongs in DECISIONS.md.
+
+## SESSIONS.md
+
+One bullet per agent session that changed the repository for the task, code included. Before a session first makes such a change, including a session continuing an existing task, it adds its own bullet unless one is already there:
+
+```bash
+line="- claude:${CLAUDE_CODE_SESSION_ID:?}"   # Codex: line="- codex:${CODEX_THREAD_ID:?}"
+f=docs/provenance/<task-dir>/SESSIONS.md
+grep -qxF -- "$line" "$f" 2>/dev/null || echo "$line" >> "$f"
+```
+
+This list is the link from a task to its transcripts; commits carry none. `.gitattributes` merges these files by union, so appends from two branches don't conflict.
 
 ## Transcripts
 
