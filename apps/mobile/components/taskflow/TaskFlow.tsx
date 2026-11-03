@@ -41,6 +41,7 @@ import ProgressBar from "../system/ProgressBar";
 import { CardWithdrawContext } from "./CardWithdrawContext";
 import FlowButton from "./FlowButton";
 import { animateTo, timingFor } from "./flowMotion";
+import TaskAnswersCard from "./TaskAnswersCard";
 import TaskFlowComplete from "./TaskFlowComplete";
 import TaskFlowHeader, { TaskFlowWithdrawButton } from "./TaskFlowHeader";
 import TaskFlowIntro from "./TaskFlowIntro";
@@ -297,6 +298,17 @@ export default function TaskFlow({
           <TaskFlowWithdrawButton onPress={openWithdraw} />
         ) : null}
       </View>
+      {completedFormResponse ? (
+        <TaskAnswersCard
+          className="mt-4 border border-zinc-200"
+          output={{
+            schema,
+            submission: completedFormResponse,
+            submitterId: user?.id,
+          }}
+          user={user}
+        />
+      ) : null}
       {withdrawalModal(withdrawOpen && !shown)}
       <Modal
         visible={shown}

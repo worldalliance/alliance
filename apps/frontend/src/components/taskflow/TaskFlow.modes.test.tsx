@@ -1,6 +1,7 @@
 import { taskFlow, withdrawFromAction } from "@alliance/shared/lib/copy";
 import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { testAuthUser } from "../../stories/testData";
 import { authValue } from "../../testing/authValue";
 import ActionTaskPanelForm from "../ActionTaskPanelForm";
 import {
@@ -163,4 +164,84 @@ it("opens a submitted response read-only, with the member's answers", async () =
   await screen.findByRole("heading", { name: "Rate the chatbot" });
 
   expect(screen.getByDisplayValue("Helpful")).toBeTruthy();
+});
+
+it("shows a submitted task's answers card under its View task button", async () => {
+  renderFlow({
+    page: (
+      <ActionTaskPanelForm
+        taskFormId={9}
+        onCompleteAction={() => {}}
+        onFormStarted={() => {}}
+        onDeadlinePassed={() => {}}
+        formResponse={makeFormResponse({
+          formId: 9,
+          formSnapshotId: 3,
+          schemaSnapshot: {
+            ...taskSchema,
+            outputViews: [
+              {
+                type: "default",
+                id: "v1",
+                blocks: [{ id: "b1", fieldId: "a", showLabel: true }],
+              },
+            ],
+          },
+          answers: { a: "Helpful" },
+        })}
+        action={action}
+      />
+    ),
+  });
+
+  const view = await screen.findByRole("button", { name: taskFlow.view });
+  const name = await screen.findByText(testAuthUser.name);
+  expect(
+    view.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+});
+
+it("resolves a random-backed variable in the answers card it shows", async () => {
+  renderFlow({
+    page: (
+      <ActionTaskPanelForm
+        taskFormId={9}
+        onCompleteAction={() => {}}
+        onFormStarted={() => {}}
+        onDeadlinePassed={() => {}}
+        formResponse={makeFormResponse({
+          formId: 9,
+          formSnapshotId: 3,
+          schemaSnapshot: {
+            ...taskSchema,
+            variables: [
+              {
+                name: "pick",
+                inputs: { input1: { kind: "random" } },
+                formula: '["Red"][input1 % 1]',
+              },
+            ],
+            outputViews: [
+              {
+                type: "default",
+                id: "v1",
+                blocks: [
+                  {
+                    id: "b1",
+                    type: "display",
+                    kind: "text",
+                    text: "Your pick: #{pick}",
+                  },
+                ],
+              },
+            ],
+          },
+          answers: { a: "Helpful" },
+        })}
+        action={action}
+      />
+    ),
+  });
+
+  expect(await screen.findByText("Your pick: Red")).toBeTruthy();
 });
