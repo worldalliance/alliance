@@ -211,14 +211,10 @@ export function RadioInputField({
                 disabled={disabled}
                 aria-invalid={hasError}
                 className={fieldInputClassName({
-                  base: `shrink-0 mt-1 mr-2 h-4 w-4 ${
-                    hasError ? "text-red-600" : "text-blue-600"
-                  } focus:outline-none`,
+                  base: "shrink-0 mt-1 mr-2 h-4 w-4 focus:outline-none",
                   hasError,
-                  normal:
-                    "border border-zinc-300 focus:ring-blue-500 focus:ring-2",
-                  error:
-                    "border border-red-500 focus:ring-red-500 focus:ring-2",
+                  normal: "focus:ring-green focus:ring-2",
+                  error: "focus:ring-red-500 focus:ring-2",
                 })}
               />
               <span className={hasError ? "text-red-600" : "text-zinc-700"}>
@@ -448,14 +444,10 @@ export function MultiSelectInputField({
                     aria-invalid={hasError}
                     style={{ marginTop: "4px" }}
                     className={fieldInputClassName({
-                      base: `shrink-0 mr-2 h-4 w-4 disabled:ring-1 disabled:ring-zinc-400 ${
-                        hasError ? "text-red-600" : "text-blue-600"
-                      } focus:outline-none rounded`,
+                      base: "shrink-0 mr-2 h-4 w-4 disabled:ring-1 disabled:ring-zinc-400 focus:outline-none",
                       hasError,
-                      normal:
-                        "border border-zinc-300 focus:ring-blue-500 focus:ring-2",
-                      error:
-                        "border border-red-500 focus:ring-red-500 focus:ring-2",
+                      normal: "focus:ring-green focus:ring-2",
+                      error: "focus:ring-red-500 focus:ring-2",
                     })}
                   />
                   <span className={hasError ? "text-red-600" : "text-zinc-700"}>

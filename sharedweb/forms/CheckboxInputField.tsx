@@ -29,12 +29,10 @@ export function CheckboxInputField({
       className={fieldInputClassName({
         base: `shrink-0 mt-px h-5 w-5 cursor-pointer ${
           checkboxPosition === "right" ? "ml-2 pr-5" : "mr-2"
-        } ${
-          hasError ? "text-red-600" : "text-blue-600"
-        } focus:outline-none rounded`,
+        } focus:outline-none`,
         hasError,
-        normal: "border border-zinc-300 focus:ring-blue-500 focus:ring-2",
-        error: "border border-red-500 focus:ring-red-500 focus:ring-2",
+        normal: "focus:ring-green focus:ring-2",
+        error: "focus:ring-red-500 focus:ring-2",
       })}
     />
   );

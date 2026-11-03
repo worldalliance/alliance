@@ -104,6 +104,7 @@
 }
 
 html {
+  accent-color: var(--color-green);
   overflow-x: hidden;
   font-size: 15px;
   background-color: var(--color-page);
