@@ -13,7 +13,7 @@ The rules below live in [`flowScreens.ts`](../shared/forms/flowScreens.ts) and [
 
 ## In the admin
 
-On an action's Form tab, each page shows the step it becomes ("Project background", or "Step N" and its title) and what to fix: a missing header, or more than two questions. These notes count steps as if every page shows, and they never block saving.
+On an action's Form tab, each page shows the step it becomes ("Project background", or "Step N" and its title) and what to fix: a missing header, or more than two questions. These notes count steps as if every page shows, and they never block saving. The action's readiness checklist also asks for an image and an output view.
 
 ## Conventions
 
