@@ -19,7 +19,7 @@ UUID_V7=$(bun -e 'console.log(Bun.randomUUIDv7())')
 mkdir -p "docs/provenance/${UUID_V7}-${FEATURE_NAME}"
 ```
 
-UUIDv7 makes directory listings sort by creation time. Inside, `REQUIREMENTS.md`, plus `DECISIONS.md` when the task made a choice whose rationale is worth keeping. These are intended to live in the repo.
+UUIDv7 makes directory listings sort by creation time. Inside, `REQUIREMENTS.md` and `SESSIONS.md`, plus `DECISIONS.md` when the task made a choice whose rationale is worth keeping. These are intended to live in the repo.
 
 References flow one way: `DECISIONS.md` may reference `REQUIREMENTS.md`; `REQUIREMENTS.md` stands independently and never references `DECISIONS.md`.
 
@@ -46,3 +46,33 @@ A choice the user defers ("I don't know", "I don't care", "it doesn't matter", o
 ## Unclear provenance
 
 Record unknown origins explicitly. Approval makes an agent proposal an approved requirement, not a user-originated idea. For example, an approved agent recommendation to use PostgreSQL is a direct requirement labeled agent-proposed and user-approved; the implementation rationale belongs in DECISIONS.md.
+
+## SESSIONS.md
+
+One bullet per agent session that changed the repository for the task, code included. Before a session first makes such a change, including a session continuing an existing task, it adds its own bullet unless one is already there:
+
+```bash
+line="- claude:${CLAUDE_CODE_SESSION_ID:?}"   # Codex: line="- codex:${CODEX_THREAD_ID:?}"
+f=docs/provenance/<task-dir>/SESSIONS.md
+grep -qxF -- "$line" "$f" 2>/dev/null || echo "$line" >> "$f"
+```
+
+Run the check your CLI's session-start hook runs as well. Codex's hooks run the main checkout's script, even from a worktree:
+
+```bash
+bun "$(git rev-parse --show-toplevel)/agents/chats/chats.ts" check   # Codex: bun "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/agents/chats/chats.ts" check
+```
+
+When it says uploads are not set up, or the script is missing, tell the user that this session's transcript is not being stored and that `agents/README.md` has the setup, then carry on.
+
+This list is the link from a task to its transcripts; commits carry none. `.gitattributes` merges these files by union, so appends from two branches don't conflict.
+
+## Transcripts
+
+Hooks in `.claude/settings.json` and `.codex/hooks.json` upload every session's raw transcript to the private `alliance-agent-chats` bucket at `<tool>/<session>.jsonl`, a subagent's at `<tool>/<session>/<file>`. Read one when the files here are wrong or thin:
+
+```bash
+bun agents/chats/chats.ts fetch claude/<uuid>.jsonl > .scratch/<uuid>.jsonl
+```
+
+A transcript runs to megabytes of JSON lines, so read it through `jq` filters written for the question at hand, such as the user turns alone, never whole. Claude lines with `.type` of `user` or `assistant` hold the text in `.message.content`; Codex lines with `.type` of `response_item` hold it in `.payload`.

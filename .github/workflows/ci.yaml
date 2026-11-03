@@ -23,6 +23,17 @@ jobs:
   gitignore-check:
     uses: ./.github/workflows/gitignore-check.yaml
 
+  skills-path-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject skills outside agents/skills
+        run: |
+          if [ -e skills ]; then
+            echo "::error::Skills live in agents/skills/, the directory .claude/skills and .agents/skills point at. Move skills/* there."
+            exit 1
+          fi
+
   typecheck:
     strategy:
       fail-fast: false

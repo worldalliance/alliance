@@ -10,7 +10,7 @@ Resolve the user's "base" to an exact commit SHA. If they have not provided one,
 
 # Review
 
-Read `(root)/skills/review/SKILL.md` and use it to review the base commit. The commits other than the base will be reviewed in the future, so you don't need to review them. You may view them for more context on the planned follow-up changes.
+Read `(root)/agents/skills/review/SKILL.md` and use it to review the base commit. The commits other than the base will be reviewed in the future, so you don't need to review them. You may view them for more context on the planned follow-up changes.
 
 Run checks against the base snapshot, using an isolated checkout when needed to preserve the current checkout and uncommitted work. Results from the branch tip do not establish that the base works alone.
 
@@ -24,7 +24,7 @@ Judge it against that as part of the review. A mechanism the commit introduces t
 
 # Output
 
-Findings and the judgment behind each field come from the review skill. Report them as JSON instead of the markdown it describes, conforming to `(root)/skills/review-base/findings.schema.json`.
+Findings and the judgment behind each field come from the review skill. Report them as JSON instead of the markdown it describes, conforming to `(root)/agents/skills/review-base/findings.schema.json`.
 
 Before you start reviewing, initialize `.scratch/review/<base-sha>.json` with `{"base": <sha>, "summary": "", "findings": []}` without reading a previous file at that path. Create, modify, or delete findings as you review the commit. Put the reproduction or execution trace in each finding's `evidence`.
 

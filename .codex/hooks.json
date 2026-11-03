@@ -1,0 +1,59 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")/agents/chats/chats.ts\" upload codex",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")/agents/chats/chats.ts\" upload codex",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")/agents/chats/chats.ts\" upload codex",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")/agents/chats/chats.ts\" upload codex",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")/agents/chats/chats.ts\" check",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

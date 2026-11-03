@@ -4,7 +4,8 @@
     "noEmit": true,
     "lib": ["ESNext"]
   },
-  // `../scripts` has no package.json. Keeping its TypeScript in this config
-  // avoids a workspace package that deploy.yaml would also need to ship to EC2.
-  "include": ["src", "scripts", "../scripts"]
+  // `../scripts` and `../agents` have no package.json. Keeping their TypeScript
+  // in this config avoids a workspace package that deploy.yaml would also need
+  // to ship to EC2.
+  "include": ["src", "scripts", "../scripts", "../agents"]
 }

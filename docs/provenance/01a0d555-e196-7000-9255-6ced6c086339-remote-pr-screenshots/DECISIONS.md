@@ -65,7 +65,7 @@ It gives three rules, each prompted by something that happened in the test runs:
 
 - **Restart servers and Metro after every checkout.** In the second test run, the web "before" and "after" were byte-identical: both showed the head code, and the comment claimed a change. The agent had restored the base file in place without the page reloading.
 - **Open every asset and retake any pair that's identical or shows the same side.** This is the other half of the fix for the same failure.
-- **Capture motion as video, and use the emulator when react-native-web would misrepresent the change** (animations, gestures, native modules, platform styling). Otherwise react-native-web stays the default for mobile, as `skills/playwright/MOBILE.md` already advises. In the second run the agent skipped the emulator for a text-only change. In the third, with an animated collapsible card, it used the emulator and recorded videos on both platforms.
+- **Capture motion as video, and use the emulator when react-native-web would misrepresent the change** (animations, gestures, native modules, platform styling). Otherwise react-native-web stays the default for mobile, as `agents/skills/playwright/MOBILE.md` already advises. In the second run the agent skipped the emulator for a text-only change. In the third, with an animated collapsible card, it used the emulator and recorded videos on both platforms.
 
 ## Model and output
 

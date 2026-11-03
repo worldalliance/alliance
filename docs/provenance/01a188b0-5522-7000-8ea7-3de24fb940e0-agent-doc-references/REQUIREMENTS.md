@@ -9,4 +9,4 @@ task: Maintain agent docs like code
 
 ## Agent-proposed, user-approved
 
-- `skills/writing-for-agents/SKILL.md` states that a reference to a document's path or heading breaks silently when its target is renamed, moved, or deleted, so the edit that does so updates every reference to it throughout the repository.
+- `agents/skills/writing-for-agents/SKILL.md` states that a reference to a document's path or heading breaks silently when its target is renamed, moved, or deleted, so the edit that does so updates every reference to it throughout the repository.

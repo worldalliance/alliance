@@ -6,7 +6,7 @@
 - **Backfill script follows the `backfill-image-thumbnails.ts` shape:** dry run by default, `--apply` to write. It runs in one transaction against the TypeORM CLI datasource (`src/datasources/dataSource.ts`), the same connection `migration:runprod` uses.
 - **Backfill idempotency keys on project name**, since the ids a first run creates differ per database. The script aborts before writing if any action id is missing or already belongs to a project with a different name. A silent reassignment would hide a wrong id.
 - **Header styling:** `text-sm text-zinc-500` on both platforms, matching the muted secondary text nearby.
-- **Mobile verified via react-native-web**, following `skills/playwright/MOBILE.md`, which keeps the iOS simulator for push and deep links. The change is plain text in a shared RN component.
+- **Mobile verified via react-native-web**, following `agents/skills/playwright/MOBILE.md`, which keeps the iOS simulator for push and deep links. The change is plain text in a shared RN component.
 - **Local-db check of the series list:** every id's name matches its series. One schedule observation: Potholes 48 and 50 both open for members on 2025-11-10, 25 seconds apart, so under the "same week is the same step" rule they are one step, not 48 → 50. This doesn't change the backfill, since nothing reads step order yet.
 
 ## Admin project management

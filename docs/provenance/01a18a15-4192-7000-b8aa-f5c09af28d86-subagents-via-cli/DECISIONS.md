@@ -2,7 +2,7 @@
 
 Experiments below ran against `claude` 2.1.312 and `codex-cli` 0.163.0, from Claude Code's Bash tool unless they name another parent.
 
-- The rule is a pointer line in the root `AGENTS.md` Skills list, and the commands, readout, and failure handling live in `skills/subagents/SKILL.md`. The root file loads every turn and holds rules, not procedures (`skills/writing-for-agents/SKILL.md`).
+- The rule is a pointer line in the root `AGENTS.md` Skills list, and the commands, readout, and failure handling live in `agents/skills/subagents/SKILL.md`. The root file loads every turn and holds rules, not procedures (`agents/skills/writing-for-agents/SKILL.md`).
 - The prompt goes in a `.scratch/` file, written with a file-writing tool or a quoted heredoc, passed on stdin (`codex exec … -` reads it from there). Single quotes would break on apostrophes, and an unquoted heredoc expands the body while writing it. The user left this choice to the agent.
   - A double-quoted argument runs backticked paths and expands `$`: ``zsh -c 'printf "%s\n" "Read `server/AGENTS.md` and report $HOME"'`` printed `permission denied: server/AGENTS.md`, then `Read  and report [home]`. The scripts in `scripts/` are executable, so a backticked one would run.
   - Through stdin, a prompt of ``Reply with exactly: OK `x` $HOME`` came back verbatim from both CLIs.

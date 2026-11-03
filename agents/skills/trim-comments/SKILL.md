@@ -3,7 +3,7 @@ name: trim-comments
 description: Cut the comments. Read before presenting any code change.
 ---
 
-Read `(root)/skills/keep-test.md` first. It carries the test, the rewrite rule, scope, and stability. This file supplies the two arguments that make it a comment pass: the source of truth, and what counts as protected.
+Read `(root)/agents/skills/keep-test.md` first. It carries the test, the rewrite rule, scope, and stability. This file supplies the two arguments that make it a comment pass: the source of truth, and what counts as protected.
 
 Change no executable code, names, types, formatting, or behavior. Add no comment except to replace an existing one holding a fact worth saving.
 

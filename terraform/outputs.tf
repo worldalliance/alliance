@@ -97,3 +97,18 @@ output "ci_storage_bucket_name" {
   description = "S3 bucket used for CI storage (visual regression baselines, etc.)"
   value       = aws_s3_bucket.ci_storage.bucket
 }
+
+output "agent_chats_bucket_name" {
+  description = "S3 bucket holding Claude Code and Codex session transcripts"
+  value       = aws_s3_bucket.agent_chats.bucket
+}
+
+output "agent_chats_access_key_id" {
+  value     = aws_iam_access_key.agent_chats.id
+  sensitive = true
+}
+
+output "agent_chats_secret_access_key" {
+  value     = aws_iam_access_key.agent_chats.secret
+  sensitive = true
+}

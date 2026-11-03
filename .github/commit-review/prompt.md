@@ -2,7 +2,7 @@
 
 Resolve the checked-out `HEAD` to an exact commit SHA and review it against its first parent. If the commit has no parent, review its full tree as the initial change.
 
-Read `skills/review/SKILL.md` and follow it, including its engineering criteria. Read the checkout's `AGENTS.md` and applicable nested instructions for repository conventions.
+Read `agents/skills/review/SKILL.md` and follow it, including its engineering criteria. Read the checkout's `AGENTS.md` and applicable nested instructions for repository conventions.
 
 ## Runner
 

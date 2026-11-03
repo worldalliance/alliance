@@ -13,6 +13,7 @@ The project is the Alliance, and `alliance` is its identifier wherever a name ca
 - `sharedweb/`: shared by admin + frontend
 - `shared/`: shared by admin + frontend + mobile
 - `common/`: shared by all apps + server
+- `agents/`: skills and hooks for the coding agents, nothing the apps ship
 
 ## Nested AGENTS.md
 
@@ -28,20 +29,20 @@ Create every worktree with `scripts/new-worktree.sh <name>`, from the main check
 
 Always read and apply:
 
-- `(root)/skills/trim-comments/SKILL.md` → every comment your change adds or touches, before you present the change.
+- `(root)/agents/skills/trim-comments/SKILL.md` → every comment your change adds or touches, before you present the change.
 
 Read before the matching task:
 
-- Making a repository change intended to be kept, or determining the provenance of anything in the repository → `(root)/skills/provenance/SKILL.md`
-- Implementing a feature, fixing a bug, or refactoring code → `(root)/skills/implement/SKILL.md`
-- Verifying any change, including docs, skills, scripts, workflows, and reviews → **Checks** in `(root)/skills/implement/SKILL.md`
-- Pulling PostHog session replays or other PostHog API data → `(root)/skills/posthog/SKILL.md`
-- Querying the local Postgres db → `(root)/skills/local-db/SKILL.md`
-- Using the Linear API → `(root)/skills/linear/SKILL.md`
-- Finishing a branch, once its work is done and its checks pass and before pushing or opening its PR, or when its PR's CI fails → `(root)/skills/review-loop/SKILL.md`. Skip it when `REVIEW_LOOP_ROLE` is set.
-- Spawning a subagent, which goes through the `claude` or `codex` CLI in place of your harness's built-in agent tool → `(root)/skills/subagents/SKILL.md`
-- Verifying a change in the browser, driving the mobile app, calling the API, or authenticating as an admin → `(root)/skills/playwright/SKILL.md`
-- Writing or editing any doc an agent reads (`SKILL.md`, `AGENTS.md`, `CLAUDE.md`, docs those point at) → `(root)/skills/writing-for-agents/SKILL.md`
+- Making a repository change intended to be kept, or determining the provenance of anything in the repository → `(root)/agents/skills/provenance/SKILL.md`
+- Implementing a feature, fixing a bug, or refactoring code → `(root)/agents/skills/implement/SKILL.md`
+- Verifying any change, including docs, skills, scripts, workflows, and reviews → **Checks** in `(root)/agents/skills/implement/SKILL.md`
+- Pulling PostHog session replays or other PostHog API data → `(root)/agents/skills/posthog/SKILL.md`
+- Querying the local Postgres db → `(root)/agents/skills/local-db/SKILL.md`
+- Using the Linear API → `(root)/agents/skills/linear/SKILL.md`
+- Finishing a branch, once its work is done and its checks pass and before pushing or opening its PR, or when its PR's CI fails → `(root)/agents/skills/review-loop/SKILL.md`. Skip it when `REVIEW_LOOP_ROLE` is set.
+- Spawning a subagent, which goes through the `claude` or `codex` CLI in place of your harness's built-in agent tool → `(root)/agents/skills/subagents/SKILL.md`
+- Verifying a change in the browser, driving the mobile app, calling the API, or authenticating as an admin → `(root)/agents/skills/playwright/SKILL.md`
+- Writing or editing any doc an agent reads (`SKILL.md`, `AGENTS.md`, `CLAUDE.md`, docs those point at) → `(root)/agents/skills/writing-for-agents/SKILL.md`
 
 ## Typechecking
 
@@ -134,7 +135,7 @@ Icon-only controls carry a tooltip or `aria-label`. Destructive or irreversible 
 
 Secrets stay in the environment, out of context. Read `.env*` files through a filter that redacts values; to use a secret, pipe it into the command from a script.
 
-Preserve identifying information deliberately used for authorship, credit, or project responsibility. Redact secrets and incidental personal information as `[redacted]` before writing repo files or capturing artifacts, including provenance, ignored files, and `.scratch/` artifacts. Use synthetic data for fixtures and examples. Before handing off, check every file you created or changed for secrets and incidental personal information.
+Preserve identifying information deliberately used for authorship, credit, or project responsibility. Redact secrets and incidental personal information as `[redacted]` before writing repo files or capturing artifacts, including provenance, ignored files, and `.scratch/` artifacts. The session transcripts the `agents/chats/` hooks upload to their private bucket stay raw. Use synthetic data for fixtures and examples. Before handing off, check every file you created or changed for secrets and incidental personal information.
 
 ## Working files
 
@@ -146,7 +147,7 @@ Follow YAGNI. Prefer one-liners. An abstraction earns its place at the second ca
 
 ## File size
 
-Aim for files well under 500 lines to help optimize this codebase for coding agents. A file past 500 is already overdue for a split. When your change adds to a file and would leave it past that, split the file first: ask a codex subagent (`(root)/skills/subagents/SKILL.md`) with `-s read-only` in place of `--dangerously-bypass-approvals-and-sandbox`, naming only the file and not your change, for a few splits along cohesive boundaries, then apply the one you judge best.
+Aim for files well under 500 lines to help optimize this codebase for coding agents. A file past 500 is already overdue for a split. When your change adds to a file and would leave it past that, split the file first: ask a codex subagent (`(root)/agents/skills/subagents/SKILL.md`) with `-s read-only` in place of `--dangerously-bypass-approvals-and-sandbox`, naming only the file and not your change, for a few splits along cohesive boundaries, then apply the one you judge best.
 
 ## Scope and improvement
 

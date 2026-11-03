@@ -7,7 +7,7 @@ description: Read before implementing a feature, fixing a bug, refactoring code,
 
 For verification-only work, go directly to **Checks**.
 
-Read `(root)/skills/engineering-criteria.md` and use it throughout implementation. Follow `(root)/skills/provenance/SKILL.md`.
+Read `(root)/agents/skills/engineering-criteria.md` and use it throughout implementation. Follow `(root)/agents/skills/provenance/SKILL.md`.
 
 ## Discover before editing
 
@@ -31,7 +31,7 @@ Read the complete resulting diff and apply every relevant engineering criterion.
 
 Run the checks under **Checks** that the change touches and the behavioral checks identified during discovery against the final code. After repairs, rerun checks affected by those repairs. When you prepare commits, each commit has one purpose and passes its checks on its own; results from the branch tip alone do not establish that.
 
-Finish when the requirements and applicable criteria are satisfied and checks pass, or identify the exact blocker and unfinished work. Once checks pass and the task's work is done, continue with `(root)/skills/review-loop/SKILL.md`, whose opening says when to skip it. In the handoff, name the implementation reused or consolidated, commands and results, and remaining uncertainty. Link code and evidence rather than asserting compliance. The user's independent review remains a separate handoff.
+Finish when the requirements and applicable criteria are satisfied and checks pass, or identify the exact blocker and unfinished work. Once checks pass and the task's work is done, continue with `(root)/agents/skills/review-loop/SKILL.md`, whose opening says when to skip it. In the handoff, name the implementation reused or consolidated, commands and results, and remaining uncertainty. Link code and evidence rather than asserting compliance. The user's independent review remains a separate handoff.
 
 ## Checks
 
