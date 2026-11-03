@@ -87,6 +87,7 @@ From the notes: "This could be an opportunity to display the project contributor
 - The list names the task's authors as well as its expert reviewers, wherever the card shows. (User)
 - They sit side by side on large screens, with less space between name and role and between text and photo. (Notes)
 - Side by side, they sit next to each other with a normal gap between them, not spread into columns. (User)
+- Nothing caps how many show. Past three, they wrap onto further rows on web and stack on mobile, as the list already does. (User)
 
 ## TN-13: Completion card fades under the buttons
 
