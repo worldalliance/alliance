@@ -1,11 +1,22 @@
 import { type ImagesItem } from "@alliance/common/forms/display-blocks";
 import { cn } from "@alliance/shared/styles/util";
 import { Download } from "lucide-react-native";
-import { useState } from "react";
-import { Image, ScrollView, TouchableOpacity, View } from "react-native";
+import { useCallback, useState } from "react";
+import {
+  Image,
+  ScrollView,
+  TouchableOpacity,
+  View,
+  type ImageLoadEventData,
+  type NativeSyntheticEvent,
+} from "react-native";
 import { resolveImageSource } from "../../lib/config";
 import { getImageLoadSize } from "../../lib/imageLoadSize";
 import { saveImage } from "../../lib/saveImage";
+import {
+  withSlideAspectRatio,
+  type SlideAspectRatios,
+} from "../../lib/slideAspectRatios";
 import { ImageGalleryModal } from "../ImageLightbox";
 import Text from "../system/Text";
 
@@ -38,6 +49,7 @@ function DownloadButton({ uri, name }: { uri: string; name?: string }) {
 
 function ImageSlide({
   image,
+  slide,
   resolvedSrc,
   width,
   aspectRatio,
@@ -46,15 +58,25 @@ function ImageSlide({
   downloadable,
 }: {
   image: ImagesItem;
+  slide: number;
   resolvedSrc: string;
   width: number | null;
   aspectRatio: number | null;
   onPress: () => void;
-  onMeasure: (ratio: number) => void;
+  onMeasure: (slide: number, ratio: number) => void;
   downloadable: boolean;
 }) {
   const widthStyle = width === null ? {} : { width };
   const fullWidthClass = width === null && "w-full";
+  // react-native-web re-runs its image load whenever the onLoad prop changes
+  // identity, so an unstable handler makes every re-render load again.
+  const handleLoad = useCallback(
+    (event: NativeSyntheticEvent<ImageLoadEventData>) => {
+      const size = getImageLoadSize(event);
+      if (size) onMeasure(slide, size.width / size.height);
+    },
+    [onMeasure, slide],
+  );
 
   return (
     <View style={widthStyle} className="items-center">
@@ -67,10 +89,7 @@ function ImageSlide({
         <Image
           source={{ uri: resolvedSrc }}
           accessibilityLabel={image.alt}
-          onLoad={(event) => {
-            const size = getImageLoadSize(event);
-            if (size) onMeasure(size.width / size.height);
-          }}
+          onLoad={handleLoad}
           className={cn("bg-zinc-200 rounded-lg", fullWidthClass)}
           style={{
             ...widthStyle,
@@ -104,9 +123,8 @@ export default function ImagesDisplay({
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   // Keyed by slide rather than indexed into an array, because images finish
   // loading out of order and a sparse array would put holes in the `Math.min`.
-  const [measuredAspectRatios, setMeasuredAspectRatios] = useState<
-    Record<number, number>
-  >({});
+  const [measuredAspectRatios, setMeasuredAspectRatios] =
+    useState<SlideAspectRatios>({});
 
   // One height for every slide, taken from the tallest image loaded so far, so
   // swiping doesn't resize the block under the reader's finger. `contain`
@@ -114,8 +132,13 @@ export default function ImagesDisplay({
   const measured = Object.values(measuredAspectRatios);
   const aspectRatio = measured.length ? Math.min(...measured) : null;
 
-  const measureSlide = (slide: number) => (ratio: number) =>
-    setMeasuredAspectRatios((current) => ({ ...current, [slide]: ratio }));
+  const measure = useCallback(
+    (slide: number, ratio: number) =>
+      setMeasuredAspectRatios((current) =>
+        withSlideAspectRatio(current, { slide, ratio }),
+      ),
+    [],
+  );
 
   const lightbox = (
     <ImageGalleryModal
@@ -130,11 +153,12 @@ export default function ImagesDisplay({
       <View>
         <ImageSlide
           image={images[0]}
+          slide={0}
           resolvedSrc={sources[0]}
           width={null}
           aspectRatio={aspectRatio}
           onPress={() => setLightboxIndex(0)}
-          onMeasure={measureSlide(0)}
+          onMeasure={measure}
           downloadable={downloadable}
         />
         {lightbox}
@@ -159,11 +183,12 @@ export default function ImagesDisplay({
           <ImageSlide
             key={slide}
             image={image}
+            slide={slide}
             resolvedSrc={sources[slide]}
             width={width}
             aspectRatio={aspectRatio}
             onPress={() => setLightboxIndex(slide)}
-            onMeasure={measureSlide(slide)}
+            onMeasure={measure}
             downloadable={downloadable}
           />
         ))}
