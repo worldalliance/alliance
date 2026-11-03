@@ -183,6 +183,7 @@ export class HomeFeedService {
         relations: {
           action: true,
           user: true,
+          editableContent: true,
           taskFormResponse: { formSnapshot: true },
         },
         order: { createdAt: "DESC" },
