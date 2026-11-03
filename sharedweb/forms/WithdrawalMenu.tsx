@@ -6,6 +6,7 @@ import {
   type WithdrawalOption,
 } from "@alliance/common/actionActivity";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
+import { withdrawalOptions } from "@alliance/shared/lib/copy";
 import { cn } from "@alliance/shared/styles/util";
 import {
   CircleDashed,
@@ -71,7 +72,7 @@ export default function WithdrawalMenu({
         isOpen={dropdownOpen}
         className="absolute top-[100%] right-0 gap-y-2 *:w-full w-[300px]"
       >
-        <p className="mb-1 text-center">Withdrawal options</p>
+        <p className="mb-1 text-center">{withdrawalOptions}</p>
         {WITHDRAWAL_OPTIONS.map((option) => (
           <React.Fragment key={option}>
             <BaseButton

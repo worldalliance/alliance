@@ -322,6 +322,8 @@ export const cancelAllImageUploads = "Stop uploading";
 
 export const withdrawFromAction = "Withdraw from action";
 
+export const withdrawalOptions = "Withdrawal options";
+
 export const imageUploadFailed = "Failed to upload image";
 
 export const draftSaveFailed =
