@@ -3,6 +3,7 @@ import { client } from "@alliance/shared/client/client.gen";
 import { registerAnalytics } from "@alliance/shared/lib/analytics";
 import { registerErrorStatus } from "@alliance/shared/lib/hey-api";
 import { registerPosthogRequestContext } from "@alliance/shared/lib/posthog-request";
+import { webEnv } from "@alliance/sharedweb/lib/env";
 import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInputScrollGuard";
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
@@ -85,8 +86,13 @@ export const ErrorBoundary = RootErrorBoundary;
 export function Layout({ children }: { children: React.ReactNode }) {
   useNumberInputScrollGuard();
   const { pathname } = useLocation();
-  const withPosthog =
-    import.meta.env.PROD && pathname !== MOBILE_OAUTH_RETURN_PATH;
+  // A deployed build can't lack the key (webEnvPlugin). `citesting take`
+  // builds with `--mode development`: a production bundle without it.
+  const posthogKey =
+    import.meta.env.PROD && pathname !== MOBILE_OAUTH_RETURN_PATH
+      ? webEnv("VITE_PUBLIC_POSTHOG_KEY")
+      : undefined;
+  const withPosthog = posthogKey !== undefined;
   // Here rather than in Root, so an arrival on an error page is sent too.
   useLinkOpenings({ withPosthog });
 
@@ -118,11 +124,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <body>
         {/* PostHog records the full URL, and the mobile app's sign-in handoff
             arrives in this page's query string. */}
-        {withPosthog ? (
-          <PostHogProvider
-            apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_KEY}
-            options={options}
-          >
+        {posthogKey !== undefined ? (
+          <PostHogProvider apiKey={posthogKey} options={options}>
             <PosthogBuildTag />
             {inner}
           </PostHogProvider>
