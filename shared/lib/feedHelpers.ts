@@ -1,23 +1,24 @@
-// eslint-disable-next-line api-client/named-hooks-only -- the TanStack hooks in this file own these calls
+import type { HomeFeedItemDto } from "@alliance/shared/client";
 import {
-  HomeFeedForumCommentDto,
-  HomeFeedItemDto,
-  actionFeedLikeActivity,
-  actionFeedUnlikeActivity,
-  forumLikeComment,
-  forumUnlikeComment,
-} from "@alliance/shared/client";
-import {
-  InfiniteData,
+  type InfiniteData,
+  type QueryClient,
   useInfiniteQuery,
-  useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import {
   actionActivityDtoIsVisibleInFeed,
   type FeedActionActivityDto,
 } from "./actionActivity";
+import {
+  ActivityFields,
+  type ActivityState,
+  activityStore,
+  selectFeedActivity,
+  selectForumComment,
+} from "./activityStore";
+import { useLikeActivity, useLikeForumComment } from "./useFeedLikes";
+import { useStoreState } from "./useStoreState";
 
 /** A home-feed item that has passed `isViewable`. */
 export type ParsedHomeFeedItemDto = Omit<HomeFeedItemDto, "activity"> & {
@@ -39,261 +40,142 @@ const isViewable = (item: HomeFeedItemDto): item is ParsedHomeFeedItemDto => {
   }
 };
 
-export const processFeedItems = (
-  data: HomeFeedItemDto[] | undefined,
-): ParsedHomeFeedItemDto[] =>
-  (data?.filter(isViewable) ?? []).sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-  );
+type FeedItemRef =
+  | { type: "activity"; date: string; activityId: number }
+  | { type: "forum_comment"; date: string; commentId: number };
 
-export type FeedPage = {
-  items: ParsedHomeFeedItemDto[];
+const toRef = (item: ParsedHomeFeedItemDto): FeedItemRef[] => {
+  const { date, activity, forumComment } = item;
+  switch (item.type) {
+    case "activity":
+      return activity
+        ? [{ type: item.type, date, activityId: activity.id }]
+        : [];
+    case "forum_comment":
+      return forumComment
+        ? [{ type: item.type, date, commentId: forumComment.comment.id }]
+        : [];
+    default:
+      item.type satisfies never;
+      return [];
+  }
+};
+
+type FeedPage = {
+  items: FeedItemRef[];
   serverCount: number;
   oldestRawDate: string | undefined;
 };
 
-export const buildFeedPage = (raw: HomeFeedItemDto[]): FeedPage => ({
-  items: processFeedItems(raw),
-  serverCount: raw.length,
-  oldestRawDate: raw.length ? raw[raw.length - 1].date : undefined,
-});
+const feedCarries = (comments: boolean): ActivityFields[] =>
+  comments
+    ? [ActivityFields.Comments, ActivityFields.Output]
+    : [ActivityFields.Output];
 
-export type InfiniteFeedData = InfiniteData<FeedPage>;
-
-export const mapActivitiesInPages = (
-  old: InfiniteFeedData | undefined,
-  mapper: (activity: FeedActionActivityDto) => FeedActionActivityDto,
-): InfiniteFeedData | undefined => {
-  if (!old) return old;
+const loadFeedPage = async (params: {
+  queryClient: QueryClient;
+  comments: boolean;
+  signal: AbortSignal;
+  fetch: () => Promise<HomeFeedItemDto[]>;
+}): Promise<FeedPage> => {
+  let raw: HomeFeedItemDto[] = [];
+  await activityStore(params.queryClient).load({
+    carries: feedCarries(params.comments),
+    signal: params.signal,
+    fetch: () =>
+      params.fetch().then((items) => {
+        raw = items;
+        return {
+          activities: items.flatMap((item) => item.activity ?? []),
+          forumComments: items.flatMap((item) => item.forumComment ?? []),
+        };
+      }),
+  });
+  const items = raw
+    .filter(isViewable)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .flatMap(toRef);
   return {
-    ...old,
-    pages: old.pages.map((page) => ({
-      ...page,
-      items: page.items.map((item) =>
-        item.type === "activity" && item.activity
-          ? { ...item, activity: mapper(item.activity) }
-          : item,
-      ),
-    })),
+    items,
+    serverCount: raw.length,
+    oldestRawDate: raw.at(-1)?.date,
   };
 };
 
-export const mapForumCommentsInPages = (
-  old: InfiniteFeedData | undefined,
-  mapper: (comment: HomeFeedForumCommentDto) => HomeFeedForumCommentDto,
-): InfiniteFeedData | undefined => {
-  if (!old) return old;
-  return {
-    ...old,
-    pages: old.pages.map((page) => ({
-      ...page,
-      items: page.items
-        .map((item): ParsedHomeFeedItemDto | null => {
-          switch (item.type) {
-            case "activity":
-              return item;
-            case "forum_comment": {
-              const fc = item.forumComment;
-              if (!fc) return item;
-              return { ...item, forumComment: mapper(fc) };
-            }
-            default: {
-              // Drop unknown variants so older clients don't crash on new server types.
-              item.type satisfies never;
-              return null;
-            }
-          }
-        })
-        .filter((i): i is ParsedHomeFeedItemDto => i !== null),
-    })),
-  };
-};
-
-export const useFeedLikeMutations = (
-  queryKeyRoot: string,
-  items: HomeFeedItemDto[],
-) => {
-  const queryClient = useQueryClient();
-
-  const likeMutation = useMutation({
-    mutationFn: async ({
-      activityId,
-      isLiked,
-    }: {
-      activityId: number;
-      isLiked: boolean;
-      activityType: string;
-    }) => {
-      const response = isLiked
-        ? await actionFeedUnlikeActivity({ path: { id: activityId } })
-        : await actionFeedLikeActivity({ path: { id: activityId } });
-      if (response.response.ok && response.data) return response.data;
-      throw new Error("Like request failed");
-    },
-    onMutate: async ({ activityId, isLiked }) => {
-      await queryClient.cancelQueries({ queryKey: [queryKeyRoot] });
-
-      const previousQueries = queryClient.getQueriesData<InfiniteFeedData>({
-        queryKey: [queryKeyRoot],
-      });
-
-      queryClient.setQueriesData<InfiniteFeedData>(
-        { queryKey: [queryKeyRoot] },
-        (old) =>
-          mapActivitiesInPages(old, (a) =>
-            a.id === activityId
-              ? {
-                  ...a,
-                  likedByMe: !isLiked,
-                  likesCount: isLiked ? a.likesCount - 1 : a.likesCount + 1,
-                }
-              : a,
-          ),
-      );
-
-      return { previousQueries };
-    },
-    onError: (_err, _vars, context) => {
-      context?.previousQueries?.forEach(([key, data]) => {
-        queryClient.setQueryData(key, data);
-      });
-    },
-    onSuccess: (data, { activityId }) => {
-      queryClient.setQueriesData<InfiniteFeedData>(
-        { queryKey: [queryKeyRoot] },
-        (old) =>
-          mapActivitiesInPages(old, (a) =>
-            a.id === activityId
-              ? {
-                  ...a,
-                  likes: data.likes,
-                  likesCount: data.likesCount,
-                  likedByMe: data.likedByMe,
-                }
-              : a,
-          ),
-      );
-    },
-  });
-
-  const handleLikeActivity = useCallback(
-    async (activityId: number) => {
-      const activity = items.find(
-        (i) => i.type === "activity" && i.activity?.id === activityId,
-      )?.activity;
-      if (!activity) return;
-      await likeMutation.mutateAsync({
-        activityId,
-        isLiked: activity.likedByMe ?? false,
-        activityType: activity.type,
-      });
-    },
-    [items, likeMutation],
-  );
-
-  const commentLikeMutation = useMutation({
-    mutationFn: async ({
-      commentId,
-      isLiked,
-    }: {
-      commentId: number;
-      isLiked: boolean;
-    }) => {
-      const response = isLiked
-        ? await forumUnlikeComment({ path: { id: commentId } })
-        : await forumLikeComment({ path: { id: commentId } });
-      if (!response.response.ok) throw new Error("Like request failed");
-    },
-    onMutate: async ({ commentId, isLiked }) => {
-      await queryClient.cancelQueries({ queryKey: [queryKeyRoot] });
-
-      const previousQueries = queryClient.getQueriesData<InfiniteFeedData>({
-        queryKey: [queryKeyRoot],
-      });
-
-      queryClient.setQueriesData<InfiniteFeedData>(
-        { queryKey: [queryKeyRoot] },
-        (old) =>
-          mapForumCommentsInPages(old, (c) =>
-            c.comment.id === commentId
-              ? {
-                  ...c,
-                  likedByMe: !isLiked,
-                  likesCount: isLiked ? c.likesCount - 1 : c.likesCount + 1,
-                }
-              : c,
-          ),
-      );
-
-      return { previousQueries };
-    },
-    onError: (_err, _vars, context) => {
-      context?.previousQueries?.forEach(([key, data]) => {
-        queryClient.setQueryData(key, data);
-      });
-    },
-  });
-
-  const handleLikeForumComment = useCallback(
-    async (commentId: number) => {
-      const forumComment = items
-        .map((item) => item.forumComment)
-        .find((fc) => fc?.comment.id === commentId);
-      if (!forumComment) return;
-      await commentLikeMutation.mutateAsync({
-        commentId,
-        isLiked: forumComment.likedByMe,
-      });
-    },
-    [items, commentLikeMutation],
-  );
-
-  return { handleLikeActivity, handleLikeForumComment };
+const selectItem = (
+  state: ActivityState,
+  item: FeedItemRef,
+): ParsedHomeFeedItemDto => {
+  switch (item.type) {
+    case "activity":
+      return {
+        type: item.type,
+        date: item.date,
+        activity: selectFeedActivity(state, item.activityId),
+      };
+    case "forum_comment":
+      return {
+        type: item.type,
+        date: item.date,
+        forumComment: selectForumComment(state, item.commentId),
+      };
+    default:
+      throw new Error(`unknown feed item: ${item satisfies never}`);
+  }
 };
 
 export const useFeedQuery = (params: {
-  queryKeyRoot: string;
   queryKey: ReadonlyArray<unknown>;
-  fetchPage: (before?: string) => Promise<FeedPage>;
+  comments: boolean;
+  fetchItems: (params: {
+    before: string | undefined;
+    signal: AbortSignal;
+  }) => Promise<HomeFeedItemDto[]>;
   limit: number;
   enabled?: boolean;
 }) => {
-  const { queryKeyRoot, queryKey, fetchPage, limit, enabled } = params;
+  const { queryKey, comments, fetchItems, limit, enabled } = params;
+  const queryClient = useQueryClient();
+  const state = useStoreState(activityStore);
+  const select = useCallback(
+    (data: InfiniteData<FeedPage>) =>
+      data.pages.flatMap((page) =>
+        page.items.map((item) => selectItem(state, item)),
+      ),
+    [state],
+  );
 
   const {
-    data,
+    data: items = NO_ITEMS,
     isLoading: loading,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
     queryKey,
-    queryFn: ({ pageParam }) => fetchPage(pageParam),
+    queryFn: ({ pageParam, signal }) =>
+      loadFeedPage({
+        queryClient,
+        comments,
+        signal,
+        fetch: () => fetchItems({ before: pageParam, signal }),
+      }),
     initialPageParam: undefined as string | undefined,
-    getNextPageParam: (lastPage) => {
-      if (lastPage.serverCount < limit) return undefined;
-      return lastPage.oldestRawDate;
-    },
+    getNextPageParam: (lastPage) =>
+      lastPage.serverCount < limit ? undefined : lastPage.oldestRawDate,
+    select,
     enabled,
   });
-
-  const items = useMemo(
-    () => data?.pages.flatMap((p) => p.items) ?? [],
-    [data],
-  );
-
-  const { handleLikeActivity, handleLikeForumComment } = useFeedLikeMutations(
-    queryKeyRoot,
-    items,
-  );
 
   return {
     loading,
     items,
-    handleLikeActivity,
-    handleLikeForumComment,
+    handleLikeActivity: useLikeActivity(),
+    handleLikeForumComment: useLikeForumComment(),
     fetchNextPage,
     hasNextPage: hasNextPage ?? false,
     isFetchingNextPage,
   };
 };
+
+const NO_ITEMS: ParsedHomeFeedItemDto[] = [];

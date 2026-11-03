@@ -275,8 +275,6 @@ export default function ActionPage() {
                 publicMode,
                 onOptOutAction,
                 onDeadlinePassed,
-                activities,
-                handleLikeActivity,
               } satisfies TaskPanelContext & ActionActivityDetailContext
             }
           />
@@ -297,7 +295,7 @@ export default function ActionPage() {
               actionId={action.id}
               activities={activities}
               loading={false}
-              onLikeActivity={(activityId) => handleLikeActivity(activityId)}
+              onLikeActivity={handleLikeActivity}
               maxN={10}
             />
           </div>

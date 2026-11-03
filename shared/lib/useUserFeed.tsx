@@ -1,5 +1,5 @@
 import { actionFeedUserFeed } from "@alliance/shared/client";
-import { buildFeedPage, useFeedQuery } from "./feedHelpers";
+import { useFeedQuery } from "./feedHelpers";
 
 export type UseUserFeedProps = {
   userId: number;
@@ -14,21 +14,20 @@ const useUserFeed = (props: UseUserFeedProps) => {
   const comments = props.comments ?? false;
 
   return useFeedQuery({
-    queryKeyRoot: QUERY_KEY_ROOT,
     queryKey: [QUERY_KEY_ROOT, props.userId, limit, comments],
+    comments,
     limit,
     enabled: Boolean(props.userId),
-    fetchPage: async (before) => {
-      const resp = await actionFeedUserFeed({
+    fetchItems: ({ before, signal }) =>
+      actionFeedUserFeed({
         path: { id: props.userId },
         query: {
           limit: limit.toString(),
           before: before ?? new Date().toISOString(),
           comments,
         },
-      });
-      return buildFeedPage(resp.data ?? []);
-    },
+        signal,
+      }).then((response) => response.data ?? []),
   });
 };
 

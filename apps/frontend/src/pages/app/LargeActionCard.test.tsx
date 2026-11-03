@@ -17,7 +17,6 @@ beforeEach(() => {
     loading: false,
     activities: [],
     handleLikeActivity: jest.fn(),
-    updateActivity: jest.fn(),
     refresh: jest.fn(),
     fetchNextPage: jest.fn(),
     hasNextPage: false,

@@ -1,7 +1,7 @@
 import { actionFeedHomeFeed } from "@alliance/shared/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { buildFeedPage, useFeedQuery } from "./feedHelpers";
+import { useFeedQuery } from "./feedHelpers";
 
 export type UseHomeFeedProps = {
   comments?: boolean;
@@ -26,19 +26,18 @@ const useHomeFeed = (props: UseHomeFeedProps = {}) => {
   const comments = props.comments ?? false;
 
   return useFeedQuery({
-    queryKeyRoot: QUERY_KEY_ROOT,
     queryKey: [QUERY_KEY_ROOT, limit, comments],
+    comments,
     limit,
-    fetchPage: async (before) => {
-      const resp = await actionFeedHomeFeed({
+    fetchItems: ({ before, signal }) =>
+      actionFeedHomeFeed({
         query: {
           limit: limit.toString(),
           before: before ?? new Date().toISOString(),
           comments,
         },
-      });
-      return buildFeedPage(resp.data ?? []);
-    },
+        signal,
+      }).then((response) => response.data ?? []),
   });
 };
 
