@@ -1,4 +1,5 @@
 import {
+  adminOrigin,
   isAllianceAppHostname,
   isLegacyAllianceHost,
   siteHref,
@@ -138,5 +139,18 @@ describe("withOrigin", () => {
     "mailto:someone@example.org",
   ])("leaves %s alone", (url) => {
     expect(withOrigin({ url, origin: "https://thealliance.org" })).toBe(url);
+  });
+});
+
+describe("adminOrigin", () => {
+  it.each([
+    ["https://thealliance.org", "https://admin.thealliance.org"],
+    ["https://www.worldalliance.org", "https://admin.worldalliance.org"],
+    [
+      "https://www.staging.thealliance.org",
+      "https://admin.staging.thealliance.org",
+    ],
+  ])("puts %s's panel on admin.", (app, admin) => {
+    expect(adminOrigin(app)).toBe(admin);
   });
 });
