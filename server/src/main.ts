@@ -10,7 +10,6 @@ import { useContainer } from "class-validator";
 import type { ServerOptions } from "socket.io";
 import { AppModule } from "./app.module";
 import { env } from "./config/env";
-import { mailSendingEnabled } from "./mail/mail.service";
 import { MetricsInterceptor } from "./metrics";
 import { twilioSignatureEnforced } from "./mms/twilio-signature.guard";
 import { injectResponseSchemas } from "./openapi-errors";
@@ -18,6 +17,7 @@ import { capturePosthogExceptions } from "./posthog.filter";
 import { posthogClientIfEnabled } from "./posthog/posthog-client";
 import { configureApp } from "./utils/configure-app";
 import { socketCorsOrigins } from "./utils/cors-origins";
+import { deliverySends } from "./utils/notif-delivery";
 import { RouteContextGuard } from "./utils/request-context.guard";
 import { publicMailDailyCap } from "./waitlist/waitlist-mail.service";
 
@@ -35,7 +35,7 @@ function validateEnv() {
     "JWT_SECRET",
     "JWT_REFRESH_SECRET",
     ...(twilioSignatureEnforced() ? ["TWILIO_AUTH_TOKEN", "APP_URL"] : []),
-    ...(mailSendingEnabled() ? ["MAIL_FROM"] : []),
+    ...(deliverySends() ? ["MAIL_FROM"] : []),
     ...deployedUrlVars(),
   ]);
 

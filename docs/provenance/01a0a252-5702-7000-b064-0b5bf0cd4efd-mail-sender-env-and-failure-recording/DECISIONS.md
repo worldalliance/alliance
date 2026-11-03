@@ -6,7 +6,7 @@ The user asked for "the necessary github secrets edit". A sender address is not 
 
 ## Required only when mail actually sends
 
-`mailSendingEnabled()` was extracted from the condition already at the top of `MailService.sendMail` and is now the single source for both that early return and `MAIL_FROM`'s required-ness in `validateEnv` (`server/src/main.ts`). The extraction preserves the original expression exactly, including its raw `process.env.NODE_ENV` string comparisons rather than the `NodeEnv` enum from `@alliance/common/node-env`: switching to the parsed enum would change behavior when `NODE_ENV` is unparseable and `SEND_DEV_NOTIFS=1`, which is outside what was asked.
+`deliverySends()` in `server/src/utils/notif-delivery.ts` is the single source for both `MailService.sendMail`'s early return and `MAIL_FROM`'s required-ness in `validateEnv` (`server/src/main.ts`), so the two can't disagree.
 
 Staging does not need `MAIL_FROM` — it runs `NODE_ENV=staging`, which does not send.
 

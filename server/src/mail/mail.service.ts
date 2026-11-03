@@ -24,20 +24,13 @@ import {
   tasksUrl,
   verifyEmailUrl,
 } from "src/search/approutes";
-import {
-  DeliveryFailure,
-  notifDeliveryEnabled,
-} from "src/utils/notif-delivery";
+import { DeliveryFailure, deliverySends } from "src/utils/notif-delivery";
 import type { Repository } from "src/utils/Repository";
 import { env } from "../config/env";
 import { ContractReminderCopy } from "./contract-reminder-copy";
 import { EmailStatus, EmailType, Mail } from "./mail.entity";
 
 const SEND_TIMEOUT_MS = milliseconds({ seconds: 10 });
-
-export function mailSendingEnabled(): boolean {
-  return env("NODE_ENV") !== NodeEnv.Test && notifDeliveryEnabled();
-}
 
 /**
  * `scripts/anonymize/anonymize.sql` writes these in place of real addresses.
@@ -155,7 +148,7 @@ export class MailService {
   }): Promise<Mail> {
     const { recipient, emailType, subject, context, tracking } = params;
     const prepared =
-      mailSendingEnabled() && !isAnonymizedEmail(recipient)
+      deliverySends() && !isAnonymizedEmail(recipient)
         ? await this.prepareSend(emailType, context)
         : null;
     const cid =
@@ -250,7 +243,7 @@ export class MailService {
     context: ISendMailOptions["context"];
   }): Promise<Result<{ messageId: string }, DeliveryFailure>> {
     const { recipient, emailType, subject, context } = params;
-    if (!mailSendingEnabled() || isAnonymizedEmail(recipient)) {
+    if (!deliverySends() || isAnonymizedEmail(recipient)) {
       return R.failure(DeliveryFailure.Unavailable);
     }
     const prepared = await R.fromPromise(this.prepareSend(emailType, context));
@@ -422,7 +415,7 @@ export class MailService {
 
   /** Whether the mail server can be reached; true while sending is off. */
   async verifyTransport(): Promise<boolean> {
-    if (!mailSendingEnabled()) return true;
+    if (!deliverySends()) return true;
     const verified = await R.fromPromise(
       this.mailerService.verifyAllTransporters(),
     );

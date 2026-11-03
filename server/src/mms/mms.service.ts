@@ -21,6 +21,7 @@ import { tagTextLinks } from "src/link-tracking/tag-links";
 import type { Repository } from "src/utils/Repository";
 import {
   DeliveryFailure,
+  deliverySends,
   notifDeliveryEnabled,
 } from "src/utils/notif-delivery";
 import { isAnonymizedPhoneNumber } from "src/utils/phone";
@@ -47,9 +48,7 @@ type SentMessage = {
 };
 
 const canText = (to: string): boolean =>
-  env("NODE_ENV") !== NodeEnv.Test &&
-  notifDeliveryEnabled() &&
-  !isAnonymizedPhoneNumber(to);
+  deliverySends() && !isAnonymizedPhoneNumber(to);
 
 @Injectable()
 export class MmsService {

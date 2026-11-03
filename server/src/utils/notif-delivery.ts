@@ -5,6 +5,11 @@ export function notifDeliveryEnabled(): boolean {
   return env("NODE_ENV") === NodeEnv.Production || env("SEND_DEV_NOTIFS");
 }
 
+/** False under test even with SEND_DEV_NOTIFS set, so specs never reach Mailgun or Twilio. */
+export function deliverySends(): boolean {
+  return env("NODE_ENV") !== NodeEnv.Test && notifDeliveryEnabled();
+}
+
 /** Why an unrecorded message did not reach its recipient. */
 export enum DeliveryFailure {
   /** Sending is off or unconfigured here, the recipient can't receive it, or the message failed to render, so nothing reached the provider. */
