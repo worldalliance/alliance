@@ -1,7 +1,13 @@
 import type { CreateActionDto } from "@alliance/shared/client";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { createActionForm } from "../lib/testing/createActionForm";
 import ActionForm from "./ActionForm";
 
@@ -77,7 +83,10 @@ const renderForm = (
 
 const section = (title: string) => {
   const heading = screen.getByRole("heading", { name: title });
-  const container = heading.parentElement?.parentElement;
+  const toggle = heading.querySelector("button[aria-controls]");
+  const container = toggle
+    ? document.getElementById(toggle.getAttribute("aria-controls") ?? "")
+    : heading.parentElement?.parentElement;
   if (!container) throw new Error(`no section for ${title}`);
   return container;
 };
@@ -101,7 +110,7 @@ const gridNames = (title: string) =>
 
 const leafTexts = (title: string) =>
   Array.from(section(title).querySelectorAll("label, p, span"))
-    .filter((el) => el.childElementCount === 0)
+    .filter((el) => el.childElementCount === 0 && !el.closest("[aria-hidden]"))
     .map((el) => el.textContent);
 
 const options = (name: string) =>
@@ -126,16 +135,21 @@ describe("ActionForm", () => {
       "suiteId",
       "visibilityMode",
       "timeEstimate",
+      "staffPreview",
+    ]);
+    expect(fieldNames("Audience")).toEqual(["onboarding", "publicOnly"]);
+    expect(fieldNames("Completion")).toEqual([
+      "shouldCompleteAfterDeadline",
+      "preventCompletion",
+      "optional",
+    ]);
+    expect(fieldNames("Forum participation")).toEqual([
+      "isForumParticipationAction",
+    ]);
+    expect(fieldNames("Custom stat")).toEqual([
       "customStatType",
       "customStatGoal",
       "customStatLabel",
-      "onboarding",
-      "staffPreview",
-      "shouldCompleteAfterDeadline",
-      "preventCompletion",
-      "publicOnly",
-      "optional",
-      "isForumParticipationAction",
     ]);
 
     expect(fieldKinds("Content")).toEqual([
@@ -150,11 +164,14 @@ describe("ActionForm", () => {
       "select",
       "select",
       "number",
-      "select",
-      "number",
-      "text",
-      ...Array(7).fill("checkbox"),
+      "checkbox",
     ]);
+    expect(fieldKinds("Custom stat")).toEqual(["select", "number", "text"]);
+    expect(
+      within(section("Settings")).getByRole("switch", {
+        name: /^Staff Preview/,
+      }),
+    ).toBeTruthy();
 
     expect(
       Array.from(section("Content").querySelectorAll("textarea"), (t) =>
@@ -169,23 +186,8 @@ describe("ActionForm", () => {
       ["squareThumbnailImage", "squareThumbnailImageAlt"],
     ]);
     expect(gridNames("Settings")).toEqual([
-      [
-        "suiteId",
-        "visibilityMode",
-        "timeEstimate",
-        "customStatType",
-        "customStatGoal",
-        "customStatLabel",
-      ],
-      [
-        "onboarding",
-        "staffPreview",
-        "shouldCompleteAfterDeadline",
-        "preventCompletion",
-        "publicOnly",
-        "optional",
-        "isForumParticipationAction",
-      ],
+      ["suiteId", "visibilityMode", "timeEstimate"],
+      ["staffPreview"],
     ]);
 
     const content = within(section("Content"));
@@ -194,42 +196,41 @@ describe("ActionForm", () => {
     expect(within(section("Settings")).getByText("Category")).toBeTruthy();
   });
 
+  it("opens a rarely used section when one of its fields is set", () => {
+    renderForm();
+
+    const open = (title: string) =>
+      screen.queryByRole("button", { name: title, expanded: true }) !== null;
+    expect(open("Audience")).toBe(false);
+    expect(open("Completion")).toBe(true);
+    expect(open("Forum participation")).toBe(false);
+    expect(open("Custom stat")).toBe(true);
+
+    cleanup();
+    renderForm({ form: { optional: false, customStatType: "none" } });
+    expect(open("Completion")).toBe(false);
+    expect(open("Custom stat")).toBe(false);
+  });
+
   it("hides the custom stat fields without a stat type and shows the forum override on forum participation actions", () => {
     renderForm({
       form: { customStatType: "none", isForumParticipationAction: true },
     });
 
-    expect(fieldNames("Settings")).toEqual([
-      "suiteId",
-      "visibilityMode",
-      "timeEstimate",
-      "customStatType",
+    expect(fieldNames("Custom stat")).toEqual(["customStatType"]);
+    expect(fieldNames("Forum participation")).toEqual([
       "forumParticipationPostId",
-      "onboarding",
-      "staffPreview",
-      "shouldCompleteAfterDeadline",
-      "preventCompletion",
-      "publicOnly",
-      "optional",
       "isForumParticipationAction",
       "forumParticipationIncludeChildren",
     ]);
-    expect(fieldKinds("Settings")).toEqual([
-      "select",
-      "select",
-      "number",
-      "select",
-      "number",
-      ...Array(8).fill("checkbox"),
+    expect(leafTexts("Forum participation")).toEqual([
+      "Forum Post ID (override)",
+      "Autocomplete based on replies to this post, ignoring any forum validator on the form. Leave blank to use the form's validator.",
+      "Forum Participation Action",
+      "Autocomplete action for users who leave comment but dont hit complete",
+      "Include child replies",
+      "Also count replies to nested child posts of the override post",
     ]);
-    expect(leafTexts("Settings")).toEqual(
-      expect.arrayContaining([
-        "Forum Post ID (override)",
-        "Autocomplete based on replies to this post, ignoring any forum validator on the form. Leave blank to use the form's validator.",
-        "Include child replies",
-        "Also count replies to nested child posts of the override post",
-      ]),
-    );
   });
 
   it("shows each field's label, help text, and options", () => {
@@ -251,23 +252,27 @@ describe("ActionForm", () => {
       "Suite",
       "Visibility Mode",
       "Time Estimate (min)",
-      "Custom Stat Type",
-      "Custom Stat Goal",
-      "Custom Stat Label",
-      "Onboarding",
-      "Prevent completion by members who signed their contracts before action",
       "Staff Preview",
       "Staff see it on their home pages until the Member Action event starts, or indefinitely if none is scheduled. Until then, nobody can submit, complete, withdraw, dismiss, like, or comment.",
+    ]);
+    expect(leafTexts("Audience")).toEqual([
+      "Onboarding",
+      "Prevent completion by members who signed their contracts before action",
+      "Public Only",
+      "For actions completed by non-members and not by members",
+    ]);
+    expect(leafTexts("Completion")).toEqual([
       "Complete After Deadline",
       "Show in tasks view after deadline passes",
       "Prevent Completion",
       "Prevents members from completing the action even on the detail page",
-      "Public Only",
-      "For actions completed by non-members and not by members",
       "Optional",
       "Shows prominent dismiss dialog above task card",
-      "Forum Participation Action",
-      "Autocomplete action for users who leave comment but dont hit complete",
+    ]);
+    expect(leafTexts("Custom stat")).toEqual([
+      "Custom Stat Type",
+      "Custom Stat Goal",
+      "Custom Stat Label",
     ]);
     expect(options("Suite")).toEqual([["", "No suite"]]);
     expect(options("Visibility Mode")).toEqual([
