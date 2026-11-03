@@ -1,7 +1,8 @@
-import type { ReactNode } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { useCallback, useState, type ReactNode } from "react";
+import { View } from "react-native";
 
-import { taskHeaders } from "@alliance/shared/lib/copy";
+import { FlowButtonKind } from "@alliance/shared/forms/flowStyle";
+import { taskFlow, taskHeaders } from "@alliance/shared/lib/copy";
 import {
   getNextEvent,
   LargeActionCardPropsShared,
@@ -12,11 +13,15 @@ import useActivities, {
 import { cn } from "@alliance/shared/styles/util";
 import { router } from "expo-router";
 import { ArrowRight, Eye } from "lucide-react-native";
+import { colors } from "../lib/style/colors";
 import { ActionCompletedBarWithInfo } from "./ActionCompletedBarWithInfo";
 import ActionTaskPanel from "./ActionTaskPanel";
 import Button, { ButtonColor } from "./system/Button";
 import Card from "./system/Card";
 import Text, { FontFamily, FontWeight } from "./system/Text";
+import { CardWithdrawContext } from "./taskflow/CardWithdrawContext";
+import FlowButton from "./taskflow/FlowButton";
+import { TaskFlowWithdrawButton } from "./taskflow/TaskFlowHeader";
 import TaskTimeInfo from "./TaskTimeInfo";
 
 export interface LargeActionCardProps extends LargeActionCardPropsShared {
@@ -88,6 +93,11 @@ export default function LargeActionCard({
   onCompleteAction = onUpdateActionState,
 }: LargeActionCardProps) {
   const nextEvent = getNextEvent(action);
+  const [openWithdraw, setOpenWithdraw] = useState<(() => void) | null>(null);
+  const placeWithdraw = useCallback(
+    (open: (() => void) | null) => setOpenWithdraw(() => open),
+    [],
+  );
   const { activities: friendActivities } = useActivities({
     list: ActivityList.FriendsForAction,
     objectId: action.id,
@@ -118,14 +128,19 @@ export default function LargeActionCard({
             className="flex-row items-center gap-x-1"
             filled={true}
           />
-          <TouchableOpacity
-            onPress={() => {
-              router.push(`/actions/${action.id}`);
-            }}
-            className="mr-2 flex flex-row items-center gap-x-1"
-          >
-            <ArrowRight size={20} />
-          </TouchableOpacity>
+          <View className="flex-row items-center gap-x-2">
+            {openWithdraw ? (
+              <TaskFlowWithdrawButton onPress={openWithdraw} />
+            ) : null}
+            <FlowButton
+              kind={FlowButtonKind.Icon}
+              onPress={() => router.push(`/actions/${action.id}`)}
+              accessibilityLabel={taskFlow.taskDetails}
+              hitSlop={8}
+            >
+              <ArrowRight size={20} color={colors.text.icon} />
+            </FlowButton>
+          </View>
         </View>
         <Text
           className="text-xl mb-2"
@@ -143,14 +158,16 @@ export default function LargeActionCard({
         friendActivities={friendActivities}
       />
       <View className="mt-6 border-t border-zinc-200 pt-6">
-        <ActionTaskPanel
-          key={action.id}
-          action={action}
-          onCompleteAction={onCompleteAction}
-          onOptOutAction={onUpdateActionState}
-          onDeadlinePassed={onDeadlinePassed}
-          onAlreadySubmitted={onAlreadySubmitted}
-        />
+        <CardWithdrawContext.Provider value={placeWithdraw}>
+          <ActionTaskPanel
+            key={action.id}
+            action={action}
+            onCompleteAction={onCompleteAction}
+            onOptOutAction={onUpdateActionState}
+            onDeadlinePassed={onDeadlinePassed}
+            onAlreadySubmitted={onAlreadySubmitted}
+          />
+        </CardWithdrawContext.Provider>
       </View>
     </Card>
   );

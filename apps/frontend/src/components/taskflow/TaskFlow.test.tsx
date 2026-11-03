@@ -9,10 +9,17 @@ import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { makeAction } from "@alliance/shared/lib/testFixtures";
 import { seedActions } from "@alliance/shared/lib/testing/seedActions";
 import { QueryClient } from "@tanstack/react-query";
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
-import { useState } from "react";
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import { useState, type ReactNode } from "react";
 import { useLocation } from "react-router";
 import ActionTaskPanelForm from "../ActionTaskPanelForm";
+import { CardMenuSlotContext } from "./CardMenuSlot";
 import {
   action,
   backgroundOnlySchema,
@@ -404,6 +411,60 @@ it("offers withdrawing on every step, including a one-page task's only step", as
 
   await screen.findByRole("heading", { name: "Rate the chatbot" });
   expect(screen.getByRole("button", { name: withdrawFromAction })).toBeTruthy();
+});
+
+it("offers withdrawing beside Begin while the flow is closed", async () => {
+  const onAbandonAction = jest.fn();
+  renderWithdrawable(onAbandonAction);
+  await screen.findByRole("button", { name: taskFlow.begin });
+
+  fireEvent.click(screen.getByRole("button", { name: withdrawFromAction }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Took more than 15 minutes" }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Withdraw" }));
+
+  await waitFor(() => expect(onAbandonAction).toHaveBeenCalledTimes(1));
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+function InCard({ children }: { children: ReactNode }) {
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  return (
+    <>
+      <header ref={setSlot} />
+      <CardMenuSlotContext.Provider value={slot}>
+        {children}
+      </CardMenuSlotContext.Provider>
+    </>
+  );
+}
+
+it("puts the withdraw menu in the card's header inside a task card", async () => {
+  renderFlow({
+    page: (
+      <InCard>
+        <ActionTaskPanelForm
+          taskFormId={9}
+          onCompleteAction={() => {}}
+          onAbandonAction={() => {}}
+          onFormStarted={() => {}}
+          onDeadlinePassed={() => {}}
+          action={action}
+        />
+      </InCard>
+    ),
+  });
+  await screen.findByRole("button", { name: taskFlow.begin });
+
+  expect(
+    within(screen.getByRole("banner")).getByRole("button", {
+      name: withdrawFromAction,
+    }),
+  ).toBeTruthy();
+  expect(
+    screen.getAllByRole("button", { name: withdrawFromAction }),
+  ).toHaveLength(1);
 });
 
 it("closes only the withdraw menu when Escape dismisses it", async () => {

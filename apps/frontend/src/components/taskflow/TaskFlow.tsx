@@ -26,7 +26,8 @@ import { formBlockedView } from "@alliance/sharedweb/forms/FormElements";
 import { useWebFormState } from "@alliance/sharedweb/forms/useWebFormState";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import { Dialog } from "@base-ui/react/dialog";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { matchPath, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../../lib/AuthContext";
 import {
@@ -34,10 +35,14 @@ import {
   useImmersiveNavbar,
 } from "../../lib/NavbarOptionsContext";
 import ProgressBar from "../system/ProgressBar";
+import { CardMenuSlotContext } from "./CardMenuSlot";
 import FlowButton, { FlowButtonKind } from "./FlowButton";
 import { afterMotion, flowMotion, transition } from "./flowMotion";
 import TaskFlowComplete from "./TaskFlowComplete";
-import TaskFlowHeader, { type FlowWithdrawHandler } from "./TaskFlowHeader";
+import TaskFlowHeader, {
+  TaskFlowWithdrawMenu,
+  type FlowWithdrawHandler,
+} from "./TaskFlowHeader";
 import TaskFlowIntro from "./TaskFlowIntro";
 import TaskFlowScreen, {
   FLOW_COLUMN,
@@ -100,6 +105,7 @@ export default function TaskFlow({
   onAbandonAction,
 }: TaskFlowProps) {
   const { user, isAuthenticated, loading: userLoading } = useAuth();
+  const menuSlot = useContext(CardMenuSlotContext);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { records, readOnly, withdraws } = TASK_FLOW_MODE_RULES[mode];
   const withdraw = withdraws && !publicAction ? onAbandonAction : undefined;
@@ -310,19 +316,34 @@ export default function TaskFlow({
     }
   };
 
+  const withdrawMenu =
+    onWithdraw && flow.stage === FlowStage.Closed ? (
+      <TaskFlowWithdrawMenu
+        disabled={form.submitting}
+        onWithdraw={onWithdraw}
+      />
+    ) : null;
+
   return (
     <div ref={anchorRef}>
-      <FlowButton
-        kind={FlowButtonKind.Primary}
+      <div
         className={cn(
-          "w-full",
+          "flex gap-x-3",
           flow.stage === FlowStage.Complete && "invisible",
         )}
-        onClick={flow.begin}
-        disabled={!position.loaded}
       >
-        {flow.beginLabel}
-      </FlowButton>
+        <FlowButton
+          kind={FlowButtonKind.Primary}
+          className="flex-1"
+          onClick={flow.begin}
+          disabled={!position.loaded}
+        >
+          {flow.beginLabel}
+        </FlowButton>
+        {menuSlot === undefined
+          ? withdrawMenu
+          : menuSlot && withdrawMenu && createPortal(withdrawMenu, menuSlot)}
+      </div>
       <Dialog.Root
         open={shown}
         modal={false}

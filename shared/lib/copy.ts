@@ -364,6 +364,7 @@ export const taskFlow = {
   completeUpdate:
     "We'll share a progress update on this project with all members in the coming weeks.",
   closeTask: "Close task",
+  taskDetails: "Details",
   inviteFriend: "Invite a friend",
   staff: "Staff",
   expert: "Expert",
