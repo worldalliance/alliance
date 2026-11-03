@@ -19,6 +19,7 @@ import {
 } from "@alliance/shared/lib/TaskFlowReturnContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useIsFocused, useLocalSearchParams } from "expo-router";
+import { ArrowRight } from "lucide-react-native";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Modal, useWindowDimensions, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
@@ -277,6 +278,7 @@ export default function TaskFlow({
           onPress={flow.begin}
           loading={!position.loaded}
           title={flow.beginLabel}
+          iconRight={ArrowRight}
           className="flex-1"
         />
         {withdraw && !placeWithdraw ? (

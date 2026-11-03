@@ -123,6 +123,13 @@ it("drops the auto-saved note while the draft can't reach the account", async ()
   expect(screen.queryByText(taskFlow.progressSaved)).toBeNull();
 });
 
+it("puts a right arrow on the button that opens the flow", async () => {
+  renderFlow();
+
+  const begin = await screen.findByRole("button", { name: taskFlow.begin });
+  expect(begin.querySelector("svg.lucide-arrow-right")).toBeTruthy();
+});
+
 it("keeps the member on a screen until its required answers are in", async () => {
   renderFlow();
   await openFirstQuestionScreen();
