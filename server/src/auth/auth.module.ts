@@ -11,8 +11,10 @@ import { Guest } from "./entities/guest.entity";
 import { SpentToken } from "./entities/spent-token.entity";
 import { OAuthAccount } from "./oauth/oauth-account.entity";
 import { OAuthAuthService } from "./oauth/oauth-auth.service";
+import { OAuthCallbackService } from "./oauth/oauth-callback.service";
 import { OAuthClientsModule } from "./oauth/oauth-clients.module";
 import { OAuthLinkController } from "./oauth/oauth-link.controller";
+import { OAuthSessionService } from "./oauth/oauth-session.service";
 import { OAuthController } from "./oauth/oauth.controller";
 import { SessionModule } from "./session.module";
 import { SpentTokenService } from "./spent-token.service";
@@ -33,7 +35,13 @@ import { SpentTokenService } from "./spent-token.service";
     }),
     TypeOrmModule.forFeature([User, Guest, OAuthAccount, SpentToken]),
   ],
-  providers: [AuthService, OAuthAuthService, SpentTokenService],
+  providers: [
+    AuthService,
+    OAuthAuthService,
+    OAuthCallbackService,
+    OAuthSessionService,
+    SpentTokenService,
+  ],
   controllers: [AuthController, OAuthController, OAuthLinkController],
   exports: [AuthService],
 })
