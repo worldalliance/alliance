@@ -1,3 +1,5 @@
+import { linkHints } from "@alliance/shared/lib/copy";
+import { ExternalLink } from "lucide-react-native";
 import type MarkdownIt from "markdown-it";
 import React, { useCallback, useMemo, useState } from "react";
 import {
@@ -10,6 +12,7 @@ import {
 } from "react-native";
 import Markdown, { ASTNode, RenderRules } from "react-native-markdown-display";
 import { getApiUrl } from "../lib/config";
+import { leavesApp } from "../lib/internalLinks";
 import { useHandleLinkPress } from "../lib/linkPress";
 import { useFontScale } from "../lib/style/useFontScale";
 import { ImageLightboxModal } from "./ImageLightbox";
@@ -113,6 +116,8 @@ interface AppMarkdownWrapperProps {
   small?: boolean;
   tone?: MarkdownTone;
   markdownit?: MarkdownIt;
+  /** Marks links that leave the app with an icon and a screen reader hint. */
+  markLinksLeavingApp?: boolean;
 }
 
 const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
@@ -123,6 +128,7 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
   small = false,
   tone = MarkdownTone.Default,
   markdownit = markdownParser,
+  markLinksLeavingApp = false,
 }) => {
   const markdownSource = markdownContent ?? children ?? "";
   const handleLinkPress = useHandleLinkPress();
@@ -339,13 +345,22 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
       // Custom link rendering
       link: (node, children, _parent, styles) => {
         const href = node.attributes?.href || "";
+        const marked = markLinksLeavingApp && leavesApp(href);
         return (
           <Text
             style={styles.link}
             onPress={() => handleLinkPress(href)}
             key={node.key}
+            accessibilityRole={marked ? "link" : undefined}
+            accessibilityHint={marked ? linkHints.opensInBrowser : undefined}
           >
             {children}
+            {marked ? (
+              <>
+                {"\u00a0"}
+                <ExternalLink size={14} color={palette.link} />
+              </>
+            ) : null}
           </Text>
         );
       },
@@ -368,7 +383,15 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
           : renderPlainCodeBlock({ node, parent, codeStyle: textStyles.code });
       },
     }),
-    [handleLinkPress, wrapImage, renderImgcap, textStyles.code, fontScale],
+    [
+      handleLinkPress,
+      wrapImage,
+      renderImgcap,
+      textStyles.code,
+      fontScale,
+      markLinksLeavingApp,
+      palette.link,
+    ],
   );
 
   const bodyStyle = small ? textStyles.bodySmall : textStyles.body;

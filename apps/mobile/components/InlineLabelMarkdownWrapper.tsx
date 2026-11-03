@@ -1,5 +1,8 @@
+import { linkHints } from "@alliance/shared/lib/copy";
+import { ExternalLink } from "lucide-react-native";
 import React, { useMemo } from "react";
 import Markdown, { RenderRules } from "react-native-markdown-display";
+import { leavesApp } from "../lib/internalLinks";
 import { useHandleLinkPress } from "../lib/linkPress";
 import {
   MARKDOWN_PALETTES,
@@ -10,9 +13,11 @@ import Text from "./system/Text";
 
 const PALETTE = MARKDOWN_PALETTES[MarkdownTone.Default];
 
-const InlineLabelMarkdownWrapper: React.FC<{ children: string }> = ({
-  children,
-}) => {
+const InlineLabelMarkdownWrapper: React.FC<{
+  children: string;
+  /** Mark links that leave the app, as form content does elsewhere. */
+  markLinksLeavingApp?: boolean;
+}> = ({ children, markLinksLeavingApp = false }) => {
   const handleLinkPress = useHandleLinkPress();
   const textStyles = useMarkdownTextStyles();
 
@@ -20,15 +25,27 @@ const InlineLabelMarkdownWrapper: React.FC<{ children: string }> = ({
     () => ({
       paragraph: (node, children) => <Text key={node.key}>{children}</Text>,
       body: (node, children) => <Text key={node.key}>{children}</Text>,
-      link: (node, children, _parent, styles) => (
-        <Text
-          key={node.key}
-          style={styles.link}
-          onPress={() => handleLinkPress(node.attributes?.href || "")}
-        >
-          {children}
-        </Text>
-      ),
+      link: (node, children, _parent, styles) => {
+        const href = node.attributes?.href || "";
+        const marked = markLinksLeavingApp && leavesApp(href);
+        return (
+          <Text
+            key={node.key}
+            style={styles.link}
+            accessibilityRole={marked ? "link" : undefined}
+            accessibilityHint={marked ? linkHints.opensInBrowser : undefined}
+            onPress={() => handleLinkPress(href)}
+          >
+            {children}
+            {marked ? (
+              <>
+                {"\u00a0"}
+                <ExternalLink size={14} color={PALETTE.link} />
+              </>
+            ) : null}
+          </Text>
+        );
+      },
       image: () => null,
       fence: () => null,
       code_block: () => null,
@@ -42,7 +59,7 @@ const InlineLabelMarkdownWrapper: React.FC<{ children: string }> = ({
       ordered_list: (n, c) => <Text key={n.key}>{c}</Text>,
       list_item: (n, c) => <Text key={n.key}>{c}</Text>,
     }),
-    [handleLinkPress],
+    [handleLinkPress, markLinksLeavingApp],
   );
 
   const markdownStyles = useMemo(

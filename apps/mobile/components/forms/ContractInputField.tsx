@@ -23,7 +23,9 @@ export function ContractInputField({
       {contract?.markdown ? (
         <>
           <View className="rounded-lg border border-zinc-200 bg-white p-4">
-            <AppMarkdownWrapper>{contract.markdown}</AppMarkdownWrapper>
+            <AppMarkdownWrapper markLinksLeavingApp>
+              {contract.markdown}
+            </AppMarkdownWrapper>
           </View>
           <Card cardStyle={CardStyle.White} className="p-4">
             {!required && !isOutputView && <OptionalLabelPrefix />}

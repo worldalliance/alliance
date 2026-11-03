@@ -160,3 +160,6 @@ export function internalRouteFor(url: string): string | null {
   const path = extractPathFromInternalUrl(url);
   return path ? getInternalRoute(path) : null;
 }
+
+/** Whether following the link leaves the app, for the browser or another app. */
+export const leavesApp = (url: string) => internalRouteFor(url) === null;

@@ -135,7 +135,7 @@ function RankedSlotRow({
           className="flex-1 flex-row items-center gap-x-3 rounded-lg border border-zinc-300 bg-white px-3 py-3"
         >
           <View className="flex-1">
-            <AppMarkdownWrapper markdownContent={label} />
+            <AppMarkdownWrapper markdownContent={label} markLinksLeavingApp />
           </View>
           {interactive && (
             <TouchableOpacity
@@ -243,6 +243,7 @@ export function RankingFieldInput({
               <View className="flex-1">
                 <AppMarkdownWrapper
                   markdownContent={getRankingOptionLabel(field, option)}
+                  markLinksLeavingApp
                 />
               </View>
             </View>
@@ -277,7 +278,10 @@ export function RankingFieldInput({
               activeOpacity={0.7}
             >
               <View className={cn(isRanked && "opacity-40")}>
-                <AppMarkdownWrapper markdownContent={option.label} />
+                <AppMarkdownWrapper
+                  markdownContent={option.label}
+                  markLinksLeavingApp
+                />
               </View>
             </TouchableOpacity>
           );

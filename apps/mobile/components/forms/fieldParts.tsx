@@ -57,7 +57,9 @@ export function RenderLabel({
       {!isRequired && !isOutputView && <OptionalLabelPrefix />}
       {field.label !== null && (
         <View>
-          <InlineLabelMarkdownWrapper>{field.label}</InlineLabelMarkdownWrapper>
+          <InlineLabelMarkdownWrapper markLinksLeavingApp>
+            {field.label}
+          </InlineLabelMarkdownWrapper>
         </View>
       )}
     </View>

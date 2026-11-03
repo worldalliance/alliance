@@ -173,7 +173,11 @@ export function RenderDisplayBlockMobile({
         </Text>
       );
     case "text":
-      return <AppMarkdownWrapper>{block.text}</AppMarkdownWrapper>;
+      return (
+        <AppMarkdownWrapper markLinksLeavingApp>
+          {block.text}
+        </AppMarkdownWrapper>
+      );
     case "label":
       return (
         <Text className="text-sm text-zinc-500" weight={FontWeight.Semibold}>
@@ -206,7 +210,9 @@ export function RenderDisplayBlockMobile({
               </Text>
             </View>
           ) : null}
-          <AppMarkdownWrapper>{block.text}</AppMarkdownWrapper>
+          <AppMarkdownWrapper markLinksLeavingApp>
+            {block.text}
+          </AppMarkdownWrapper>
         </View>
       );
     case "html":
@@ -294,6 +300,7 @@ export function RenderDisplayBlockMobile({
                   <AppMarkdownWrapper
                     style={MARKDOWN_HUG_WIDTH_STYLE}
                     tone={CHAT_BUBBLE_TONE[group.side]}
+                    markLinksLeavingApp
                   >
                     {text}
                   </AppMarkdownWrapper>

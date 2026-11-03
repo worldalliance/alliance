@@ -373,6 +373,11 @@ export const taskFlow = {
   expert: "Expert",
 } as const;
 
+export const linkHints = {
+  opensInNewTab: "opens in new tab",
+  opensInBrowser: "Opens in your browser",
+} as const;
+
 export const outputFieldPublicToggle = {
   showPublicly: "Show my response to other members",
   hidePublicly: "Hide my response from others",

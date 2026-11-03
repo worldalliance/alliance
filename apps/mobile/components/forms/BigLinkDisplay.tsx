@@ -10,7 +10,7 @@ import {
   ShareLinkTargetKind,
   useShareLink,
 } from "@alliance/shared/forms/useShareLink";
-import { clipboardCopy } from "@alliance/shared/lib/copy";
+import { clipboardCopy, linkHints } from "@alliance/shared/lib/copy";
 import { cn } from "@alliance/shared/styles/util";
 import { milliseconds } from "date-fns";
 import {
@@ -28,6 +28,7 @@ import { TouchableOpacity, View, type AccessibilityRole } from "react-native";
 import { useAuth } from "../../lib/AuthContext";
 import { copyOrAlert } from "../../lib/clipboard";
 import { getSiteUrl } from "../../lib/config";
+import { leavesApp } from "../../lib/internalLinks";
 import { useHandleLinkPress } from "../../lib/linkPress";
 import Text, { FontWeight } from "../system/Text";
 
@@ -146,9 +147,7 @@ function BigLinkRow({
       accessibilityRole={
         shownUrl === null ? undefined : bigLinkActionRoles[action]
       }
-      accessibilityHint={
-        action === BigLinkAction.Copy ? clipboardCopy.copyLink : undefined
-      }
+      accessibilityHint={bigLinkHint(action, shownUrl)}
       className={cn(
         "flex-row items-center gap-3 rounded-lg border px-5 py-4 mr-3",
         color.card,
@@ -181,6 +180,22 @@ function BigLinkRow({
       )}
     </TouchableOpacity>
   );
+}
+
+function bigLinkHint(
+  action: BigLinkAction,
+  url: string | null,
+): string | undefined {
+  switch (action) {
+    case BigLinkAction.Open:
+      return url !== null && leavesApp(url)
+        ? linkHints.opensInBrowser
+        : undefined;
+    case BigLinkAction.Copy:
+      return clipboardCopy.copyLink;
+    default:
+      throw new Error(`unknown big link action: ${action satisfies never}`);
+  }
 }
 
 function BigLinkActionIcon({
