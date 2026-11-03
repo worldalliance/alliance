@@ -1,6 +1,9 @@
+// First, so an invalid environment is reported whole before any module reads it.
+import "./config/validate-env";
+
 import { devPorts, PortCaller } from "@alliance/common/dev-ports";
 import { GUEST_HEADER } from "@alliance/common/guest";
-import { isDeployed, NodeEnv } from "@alliance/common/node-env";
+import { NodeEnv } from "@alliance/common/node-env";
 import { NOTIFS_LOADED_AT_HEADER } from "@alliance/common/notifs";
 import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
@@ -11,47 +14,12 @@ import type { ServerOptions } from "socket.io";
 import { AppModule } from "./app.module";
 import { env } from "./config/env";
 import { MetricsInterceptor } from "./metrics";
-import { twilioSignatureEnforced } from "./mms/twilio-signature.guard";
 import { injectResponseSchemas } from "./openapi-errors";
 import { capturePosthogExceptions } from "./posthog.filter";
 import { posthogClientIfEnabled } from "./posthog/posthog-client";
 import { configureApp } from "./utils/configure-app";
 import { socketCorsOrigins } from "./utils/cors-origins";
-import { deliverySends } from "./utils/notif-delivery";
 import { RouteContextGuard } from "./utils/request-context.guard";
-import { publicMailDailyCap } from "./waitlist/waitlist-mail.service";
-
-function deployedUrlVars(): string[] {
-  if (!isDeployed(env("NODE_ENV"))) return [];
-  return ["APP_URL", "ALT_APP_URL", "ADMIN_URL", "ALT_ADMIN_URL"];
-}
-
-function validateEnv() {
-  const requiredVars = new Set([
-    "DB_HOST",
-    "DB_USERNAME",
-    "DB_PASSWORD",
-    "DB_NAME",
-    "JWT_SECRET",
-    "JWT_REFRESH_SECRET",
-    ...(twilioSignatureEnforced() ? ["TWILIO_AUTH_TOKEN", "APP_URL"] : []),
-    ...(deliverySends() ? ["MAIL_FROM"] : []),
-    ...deployedUrlVars(),
-  ]);
-
-  const missing = [...requiredVars].filter((v) => !process.env[v]);
-
-  if (missing.length > 0) {
-    console.error(
-      `ERR: Missing required environment variables: ${missing.join(", ")}`,
-    );
-    process.exit(1);
-  }
-
-  // Parses the waitlist mail cap now, so a malformed one fails boot rather
-  // than a request.
-  publicMailDailyCap();
-}
 
 class SocketIoAdapter extends IoAdapter {
   createIOServer(port: number, options?: ServerOptions) {
@@ -73,8 +41,6 @@ class SocketIoAdapter extends IoAdapter {
 }
 
 async function bootstrap() {
-  validateEnv();
-
   const port = devPorts(PortCaller.Server).server;
   const client = posthogClientIfEnabled();
 

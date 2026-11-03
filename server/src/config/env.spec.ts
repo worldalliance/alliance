@@ -1,5 +1,188 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { env, requireEnv } from "./env";
+import { env, requireEnv, validateServerEnv } from "./env";
+
+const base = {
+  NODE_ENV: "test",
+  DB_HOST: "localhost",
+  DB_USERNAME: "postgres",
+  DB_NAME: "alliance",
+  JWT_SECRET: "jwt",
+  JWT_REFRESH_SECRET: "refresh",
+};
+
+const shared = {
+  DB_PASSWORD: "postgres",
+  APP_URL: "https://app.example.com",
+  ADMIN_URL: "https://admin.example.com",
+  ASSETS_BUCKET: "bucket",
+  MAIL_FROM: "Alliance <alliance@example.com>",
+  SMTP_HOST: "smtp.example.com",
+  SMTP_USER: "smtp",
+  SMTP_PASSWORD: "smtp-password",
+  MAILGUN_SIGNING_KEY: "mailgun",
+  TWILIO_ACCOUNT_SID: "sid",
+  TWILIO_AUTH_TOKEN: "twilio",
+  TWILIO_PHONE_NUMBER: "+15550000000",
+  EXPO_ACCESS_TOKEN: "expo",
+  SLACK_WEBHOOK_URL: "https://hooks.example.com/slack",
+  POSTHOG_KEY: "phc_test",
+  POSTHOG_QUERY_KEY: "phx_test",
+  POSTHOG_PROJECT_ID: "1",
+  PANGRAM_API_KEY: "pangram",
+  GOOGLE_CLIENT_ID: "google",
+  GOOGLE_CLIENT_SECRET: "google-secret",
+  APPLE_TEAM_ID: "team",
+  APPLE_KEY_ID: "key",
+  APPLE_SERVICES_ID: "services",
+  APPLE_BUNDLE_ID: "org.example.app",
+  APPLE_PRIVATE_KEY_BASE64: "a2V5",
+};
+
+const development = {
+  ...base,
+  ...shared,
+  NODE_ENV: "development",
+  ADMIN_USER: "admin@example.com",
+  ADMIN_PASSWORD: "password",
+  DB_PORT: "5432",
+  AWS_REGION: "us-west-2",
+  PANGRAM_API_URL: "https://pangram.example.com",
+};
+
+const deployed = {
+  ...base,
+  ...shared,
+  NODE_ENV: "staging",
+  ALT_APP_URL: "https://alt.example.com",
+  ALT_ADMIN_URL: "https://admin.alt.example.com",
+  DB_CA_CERT: "cert",
+  CLOUDFRONT_DOMAIN: "cdn.example.com",
+  NOTIF_TEST_PHONE_NUMBER: "+15550000001",
+};
+
+const production = {
+  ...deployed,
+  NODE_ENV: "production",
+  WAITLIST_PUBLIC_MAIL_DAILY_CAP: "500",
+};
+
+const problems = (source: Record<string, string | undefined>) => {
+  const result = validateServerEnv(source);
+  return result.ok ? [] : result.error;
+};
+
+describe("validateServerEnv", () => {
+  it("accepts the minimal test config, with typed defaults", () => {
+    const result = validateServerEnv(base);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.DB_PORT).toBe(5432);
+    expect(result.value.AWS_REGION).toBe("us-west-2");
+    expect(result.value.SEND_DEV_NOTIFS).toBe(false);
+    expect(result.value.PANGRAM_API_URL).toBe(
+      "https://text.api.pangram.com/v3",
+    );
+  });
+
+  it("reports every missing always-required key at once", () => {
+    expect(problems({ NODE_ENV: "test", DB_HOST: "" })).toEqual([
+      "DB_HOST: missing",
+      "DB_USERNAME: missing",
+      "DB_NAME: missing",
+      "JWT_SECRET: missing",
+      "JWT_REFRESH_SECRET: missing",
+    ]);
+  });
+
+  it("rejects a missing or unknown NODE_ENV", () => {
+    expect(problems({ ...base, NODE_ENV: undefined })).toEqual([
+      "NODE_ENV: missing",
+    ]);
+    const [unknown] = problems({ ...base, NODE_ENV: "prod" });
+    expect(unknown).toStartWith("NODE_ENV: ");
+    expect(unknown).not.toBe("NODE_ENV: missing");
+  });
+
+  it("names malformed values", () => {
+    const found = problems({
+      ...base,
+      DB_PORT: "five",
+      APP_URL: "not a url",
+      SEND_DEV_NOTIFS: "yes",
+      WAITLIST_PUBLIC_MAIL_DAILY_CAP: "-1",
+    });
+    expect(found.map((line) => line.split(":")[0])).toEqual([
+      "DB_PORT",
+      "APP_URL",
+      "SEND_DEV_NOTIFS",
+      "WAITLIST_PUBLIC_MAIL_DAILY_CAP",
+    ]);
+    expect(found.some((line) => line.endsWith(": missing"))).toBe(false);
+  });
+
+  it("parses flags, numbers and lists", () => {
+    const result = validateServerEnv({
+      ...base,
+      SEND_DEV_NOTIFS: "0",
+      USE_CLOUDFRONT: "true",
+      CLOUDFRONT_DOMAIN: "cdn.example.com",
+      DB_PORT: "6543",
+      APPLE_BUNDLE_ID: "a,,b",
+      WAITLIST_PUBLIC_MAIL_DAILY_CAP: "500",
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.SEND_DEV_NOTIFS).toBe(false);
+    expect(result.value.USE_CLOUDFRONT).toBe(true);
+    expect(result.value.DB_PORT).toBe(6543);
+    expect(result.value.APPLE_BUNDLE_ID).toEqual(["a", "b"]);
+    expect(result.value.WAITLIST_PUBLIC_MAIL_DAILY_CAP).toBe(500);
+  });
+
+  const complete = { development, staging: deployed, production };
+
+  it("accepts a complete config in each environment", () => {
+    for (const config of Object.values(complete)) {
+      expect(problems(config)).toEqual([]);
+    }
+  });
+
+  it("requires each environment's keys", () => {
+    for (const [NODE_ENV, config] of Object.entries(complete)) {
+      expect(problems({ ...base, NODE_ENV }).sort()).toEqual(
+        Object.keys(config)
+          .filter((key) => !(key in base))
+          .map((key) => `${key}: missing`)
+          .sort(),
+      );
+    }
+  });
+
+  it("requires the deployed keys beside a malformed key", () => {
+    const found = problems({ ...base, NODE_ENV: "staging", DB_PORT: "five" });
+    expect(found[0]).toStartWith("DB_PORT: ");
+    expect(found.slice(1)).toEqual(problems({ ...base, NODE_ENV: "staging" }));
+  });
+
+  it("requires no mail or Twilio config in tests, even with delivery on", () => {
+    expect(problems({ ...base, SEND_DEV_NOTIFS: "1" })).toEqual([]);
+  });
+
+  it("requires a CloudFront domain when CloudFront is on", () => {
+    expect(problems({ ...development, USE_CLOUDFRONT: "true" })).toEqual([
+      "CLOUDFRONT_DOMAIN: missing",
+    ]);
+    expect(
+      problems({ ...base, NODE_ENV: "prod", USE_CLOUDFRONT: "true" }),
+    ).toContain("CLOUDFRONT_DOMAIN: missing");
+  });
+
+  it("treats a required empty APPLE_BUNDLE_ID list as missing", () => {
+    expect(problems({ ...deployed, APPLE_BUNDLE_ID: "," })).toEqual([
+      "APPLE_BUNDLE_ID: missing",
+    ]);
+  });
+});
 
 describe("env", () => {
   const original = { ...process.env };

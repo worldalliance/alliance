@@ -1,4 +1,3 @@
-import { isDeployed } from "@alliance/common/node-env";
 import { R, type Result } from "@alliance/common/result";
 import {
   ForbiddenException,
@@ -12,11 +11,10 @@ import type { Request } from "express";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { validateRequest } from "twilio/lib/webhooks/webhooks";
-import { env } from "../config/env";
+import { env, twilioSignatureEnforcedFor } from "../config/env";
 
-/** Keeps startup validation aligned with guard policy. */
 export function twilioSignatureEnforced(): boolean {
-  return isDeployed(env("NODE_ENV"));
+  return twilioSignatureEnforcedFor(env("NODE_ENV"));
 }
 
 /** Public path; nginx strips `/api` before the request reaches Nest. */

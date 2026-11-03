@@ -22,5 +22,6 @@ These hold for the whole overhaul; this task is its first step.
 - An invalid config stops the app at startup, listing every bad key at once. (agent-proposed, user-approved)
 - Values come out typed (numbers, booleans, URLs), so callers don't parse them. (agent-proposed, user-approved)
 - A key is optional only where the code runs without it. (agent-proposed, user-approved)
+- Every server key the schema reads that Infisical's `alliance` project sets (non-empty) in an environment is required when `NODE_ENV` is that environment: `development` for Infisical `dev`, `staging` for `staging`, `production` for `prod`. A server missing one refuses to start, even where the code could run without it. Flags, whose unset value means off, stay unrequired. `NODE_ENV=test` has no Infisical environment and requires only the keys every server needs. (user)
 - Where values come from doesn't change in this task. (agent-proposed, user-approved)
 - Ship it as one pull request. (user)
