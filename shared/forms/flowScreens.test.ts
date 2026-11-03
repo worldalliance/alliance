@@ -17,6 +17,7 @@ import {
   flowScreenTitle,
   splitBackground,
   visibleFlowScreenIndices,
+  withoutEmptySections,
   type FlowScreen,
 } from "./flowScreens";
 
@@ -100,6 +101,38 @@ describe("buildFlowScreens", () => {
   });
 });
 
+describe("withoutEmptySections", () => {
+  const elements = [
+    input("q"),
+    header("plan"),
+    text("plan-text"),
+    input("plan-q"),
+    header("end"),
+  ];
+  const shownIds = (hidden: string[]) =>
+    withoutEmptySections(
+      elements,
+      (element) => !hidden.some((id) => id === element.id),
+    ).map((element) => element.id);
+
+  it("drops a header once everything under it is hidden", () => {
+    expect(shownIds(["plan-text", "plan-q"])).toEqual([
+      "q",
+      "plan-text",
+      "plan-q",
+      "end",
+    ]);
+  });
+
+  it("keeps a header while anything under it shows", () => {
+    expect(shownIds(["plan-text"])).toEqual(elements.map(({ id }) => id));
+  });
+
+  it("keeps a header with nothing under it", () => {
+    expect(shownIds([])).toContain("end");
+  });
+});
+
 describe("visibleFlowScreenIndices", () => {
   const screens = buildFlowScreens(
     schemaOf(
@@ -141,6 +174,18 @@ describe("visibleFlowScreenIndices", () => {
       });
     expect(visible(true)).toEqual([0]);
     expect(visible(false)).toEqual([]);
+  });
+
+  it("skips a screen whose only showing block heads a hidden section", () => {
+    expect(
+      visibleFlowScreenIndices({
+        screens: buildFlowScreens(
+          schemaOf(page("p1", [header("h"), header("sub"), text("a")])),
+        ),
+        visiblePageIndices: [0],
+        isElementVisible: (element) => element.id !== "a",
+      }),
+    ).toEqual([]);
   });
 
   it("skips screens whose elements are all hidden", () => {

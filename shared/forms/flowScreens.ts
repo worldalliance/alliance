@@ -34,6 +34,19 @@ export function buildFlowScreens(schema: FormSchema): FlowScreen[] {
   });
 }
 
+/** Drops each header block whose section, the blocks up to the next header, has blocks and shows none of them. */
+export function withoutEmptySections(
+  elements: PageItem[],
+  isElementVisible: (element: PageItem) => boolean,
+): PageItem[] {
+  return elements.filter((element, index) => {
+    if (!isHeader(element)) return true;
+    const end = elements.findIndex((next, i) => i > index && isHeader(next));
+    const section = elements.slice(index + 1, end === -1 ? undefined : end);
+    return section.length === 0 || section.some(isElementVisible);
+  });
+}
+
 export function visibleFlowScreenIndices(params: {
   screens: FlowScreen[];
   visiblePageIndices: number[];
@@ -44,7 +57,9 @@ export function visibleFlowScreenIndices(params: {
     visiblePageIndices.includes(screen.pageIndex) &&
     (screen.elements.length === 0
       ? screen.heading !== null && isElementVisible(screen.heading)
-      : screen.elements.some(isElementVisible))
+      : withoutEmptySections(screen.elements, isElementVisible).some(
+          isElementVisible,
+        ))
       ? [index]
       : [],
   );

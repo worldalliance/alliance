@@ -21,6 +21,7 @@ import {
   flowProgress,
   flowResumeIndex,
   visibleFlowScreenIndices,
+  withoutEmptySections,
 } from "./flowScreens";
 import { type SubmitOutcome } from "./submitOutcome";
 import { type FlowPosition } from "./useFlowPosition";
@@ -176,11 +177,26 @@ export function useTaskFlow(params: {
   const flowIndices = visibleIndices.filter((i) => i !== backgroundIndex);
   const backgroundScreen =
     backgroundIndex === null ? null : screens[backgroundIndex];
-  const background = backgroundScreen
-    ? form.schema.pages[backgroundScreen.pageIndex].fields
-    : [];
+  const background = useMemo(
+    () =>
+      backgroundScreen
+        ? withoutEmptySections(
+            form.schema.pages[backgroundScreen.pageIndex].fields,
+            isElementVisible,
+          )
+        : [],
+    [backgroundScreen, form.schema, isElementVisible],
+  );
 
   const screen = screens[screenIndex];
+  const visibleScreen = useMemo(
+    () =>
+      screen && {
+        ...screen,
+        elements: withoutEmptySections(screen.elements, isElementVisible),
+      },
+    [screen, isElementVisible],
+  );
   const nextIndex = getNextVisiblePageIndex(flowIndices, screenIndex);
   const previousIndex = getPreviousVisiblePageIndex(flowIndices, screenIndex);
   const screenFields = screen?.elements.filter(isQuestionField) ?? [];
@@ -378,7 +394,7 @@ export function useTaskFlow(params: {
   return {
     stage,
     open: IS_OPEN[stage],
-    screen,
+    screen: visibleScreen,
     screenIndex,
     background,
     nextLabel: nextIndex !== null ? taskFlow.next : rules.lastLabel,
