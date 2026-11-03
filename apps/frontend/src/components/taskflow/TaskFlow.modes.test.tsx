@@ -61,7 +61,9 @@ it("walks a task the member can't submit read-only, closing from its last screen
       />
     ),
   });
-  fireEvent.click(await screen.findByRole("button", { name: taskFlow.view }));
+  const greyView = await screen.findByRole("button", { name: taskFlow.view });
+  expect(greyView.className).toContain("bg-zinc-200");
+  fireEvent.click(greyView);
   await screen.findByRole("heading", { name: taskFlow.background });
   expect(screen.queryByRole("button", { name: withdrawFromAction })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: taskFlow.next }));

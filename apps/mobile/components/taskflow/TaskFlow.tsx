@@ -286,7 +286,7 @@ export default function TaskFlow({
     <View>
       <View className="flex-row items-center gap-x-3">
         <FlowButton
-          kind={FlowButtonKind.Primary}
+          kind={readOnly ? FlowButtonKind.Secondary : FlowButtonKind.Primary}
           onPress={flow.begin}
           loading={!position.loaded}
           title={flow.beginLabel}

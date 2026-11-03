@@ -340,7 +340,7 @@ export default function TaskFlow({
         )}
       >
         <FlowButton
-          kind={FlowButtonKind.Primary}
+          kind={readOnly ? FlowButtonKind.Secondary : FlowButtonKind.Primary}
           className="flex-1"
           onClick={flow.begin}
           disabled={!position.loaded}
