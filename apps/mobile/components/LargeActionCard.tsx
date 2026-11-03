@@ -12,7 +12,7 @@ import useActivities, {
 } from "@alliance/shared/lib/useActivities";
 import { cn } from "@alliance/shared/styles/util";
 import { router } from "expo-router";
-import { ArrowRight, Eye } from "lucide-react-native";
+import { ChevronRight, Eye } from "lucide-react-native";
 import { colors } from "../lib/style/colors";
 import { ActionCompletedBarWithInfo } from "./ActionCompletedBarWithInfo";
 import ActionTaskPanel from "./ActionTaskPanel";
@@ -42,12 +42,12 @@ function Banner({
   children?: ReactNode;
 }) {
   const headerText = (
-    <Text className="text-sky-800" weight={FontWeight.Semibold}>
+    <Text className="text-zinc-900" weight={FontWeight.Semibold}>
       {header}
     </Text>
   );
   return (
-    <View className="-mx-4 -mt-4 mb-3 bg-sky-100 border-b border-sky-300 px-4 py-3">
+    <View className="mb-3 rounded-md bg-sky-100 px-4 py-3">
       {icon ? (
         <View className="flex-row items-center gap-x-2">
           {icon}
@@ -56,7 +56,7 @@ function Banner({
       ) : (
         headerText
       )}
-      <Text className={cn("text-sky-700 mt-1", children && "mb-3")}>
+      <Text className={cn("text-zinc-900 mt-1", children && "mb-3")}>
         {message}
       </Text>
       {children}
@@ -110,7 +110,7 @@ export default function LargeActionCard({
       <View>
         {action.viewer?.staffPreview && (
           <Banner
-            icon={<Eye size={16} color="#075985" />}
+            icon={<Eye size={16} color={colors.text.primary} />}
             header={taskHeaders.staffPreview.title}
             message={taskHeaders.staffPreview.description}
           />
@@ -122,13 +122,21 @@ export default function LargeActionCard({
             onDismiss={dismissProps.onDismiss}
           />
         )}
-        <View className="flex flex-row items-center justify-between mb-4">
-          <TaskTimeInfo
-            action={action}
-            nextEvent={nextEvent}
-            className="flex-row items-center gap-x-1"
-            filled={true}
-          />
+        <View className="flex-row items-start gap-x-4">
+          <View className="flex-1 gap-y-2">
+            <Text
+              className="text-2xl"
+              family={FontFamily.Serif}
+              weight={FontWeight.Semibold}
+            >
+              {action.name}
+            </Text>
+            <TaskTimeInfo
+              action={action}
+              nextEvent={nextEvent}
+              className="flex-row flex-wrap gap-x-4"
+            />
+          </View>
           <View className="flex-row items-center gap-x-2">
             {openWithdraw ? (
               <TaskFlowWithdrawButton onPress={openWithdraw} />
@@ -139,19 +147,12 @@ export default function LargeActionCard({
               accessibilityLabel="Details"
               hitSlop={8}
             >
-              <ArrowRight size={20} color={colors.text.icon} />
+              <ChevronRight size={20} color={colors.text.icon} />
             </FlowButton>
           </View>
         </View>
-        <Text
-          className="text-xl mb-2"
-          family={FontFamily.Serif}
-          weight={FontWeight.Bold}
-        >
-          {action.name}
-        </Text>
       </View>
-      <Text className="text-base text-zinc-500 mb-4">
+      <Text className="text-base text-zinc-900 my-4">
         {action.shortDescription}
       </Text>
       <ActionCompletedBarWithInfo

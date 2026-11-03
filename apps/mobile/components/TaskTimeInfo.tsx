@@ -19,20 +19,25 @@ const TaskTimeInfo = ({
   filled = false,
 }: TaskTimeInfoPropsShared & { className?: string; filled?: boolean }) => {
   const color = deadlineColor(nextEvent, action);
+  const iconSize = filled ? 15 : 16;
+  const textSize = filled ? "text-sm" : "text-base";
 
   return (
     <View className={cn(className)}>
       {!!action.timeEstimate ? (
         <View
           className={cn(
-            "flex-row items-center gap-x-1",
+            "flex-row items-center",
             filled
-              ? "text-white bg-green rounded-full px-3 py-1"
-              : "text-green",
+              ? "gap-x-1 text-white bg-green rounded-full px-3 py-1"
+              : "gap-x-1.5 text-green",
           )}
         >
-          <ClockIcon size={15} color={filled ? colors.white : colors.green} />
-          <Text className={cn("text-sm", filled ? "text-white" : "text-green")}>
+          <ClockIcon
+            size={iconSize}
+            color={filled ? colors.white : colors.green}
+          />
+          <Text className={cn(textSize, filled ? "text-white" : "text-green")}>
             {withCount(action.timeEstimate, "minute")}
           </Text>
         </View>
@@ -40,14 +45,14 @@ const TaskTimeInfo = ({
       {!!nextEvent ? (
         <View
           className={cn(
-            "flex-row items-center gap-x-1",
+            "flex-row items-center",
             filled
-              ? `text-white rounded-full px-3 py-1 bg-zinc-100`
-              : "text-green",
+              ? "gap-x-1 text-white rounded-full px-3 py-1 bg-zinc-100"
+              : "gap-x-1.5 text-green",
           )}
         >
-          <Calendar size={15} color={color} />
-          <Text className="text-sm" style={{ color: color }}>
+          <Calendar size={iconSize} color={color} />
+          <Text className={textSize} style={{ color: color }}>
             {absoluteDeadline
               ? formatDeadline(nextEvent.date)
               : `${formatTime(new Date(nextEvent.date), { addSuffix: false })} left`}
