@@ -26,8 +26,9 @@ const useUserFeed = (props: UseUserFeedProps) => {
           before: before ?? new Date().toISOString(),
           comments,
         },
+        throwOnError: true,
         signal,
-      }).then((response) => response.data ?? []),
+      }).then((response) => response.data),
   });
 };
 

@@ -151,6 +151,7 @@ export const useFeedQuery = (params: {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isFetchNextPageError,
   } = useInfiniteQuery({
     queryKey,
     queryFn: ({ pageParam, signal }) =>
@@ -173,7 +174,9 @@ export const useFeedQuery = (params: {
     handleLikeActivity: useLikeActivity(),
     handleLikeForumComment: useLikeForumComment(),
     fetchNextPage,
-    hasNextPage: hasNextPage ?? false,
+    // A failed page stops pagination until a refetch, so a caller that pulls
+    // whenever nothing is loading can't request it in a loop.
+    hasNextPage: hasNextPage && !isFetchNextPageError,
     isFetchingNextPage,
   };
 };

@@ -81,7 +81,7 @@ const fetchActivities = async (params: {
     comments = false,
   } = params.props;
   const before = params.before ?? new Date().toISOString();
-  const options = { signal: params.signal } as const;
+  const options = { throwOnError: true, signal: params.signal } as const;
 
   switch (list) {
     case ActivityList.Friends:
@@ -149,7 +149,7 @@ const fetchActivityPage = async (params: {
     signal,
     fetch: () =>
       fetchActivities({ props, signal, before }).then((response) => ({
-        activities: response.data ?? [],
+        activities: response.data,
         forumComments: [],
       })),
   });
@@ -231,6 +231,7 @@ const useActivities = (props: UseActivitiesProps) => {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isFetchNextPageError,
   } = useInfiniteQuery({
     queryKey: activitiesKey(props),
     queryFn: ({ pageParam, signal }) =>
@@ -251,7 +252,9 @@ const useActivities = (props: UseActivitiesProps) => {
     handleLikeActivity,
     refresh,
     fetchNextPage: infinite ? fetchNextPage : noop,
-    hasNextPage: infinite ? (hasNextPage ?? false) : false,
+    // A failed page stops pagination until a refetch, so a caller that pulls
+    // whenever nothing is loading can't request it in a loop.
+    hasNextPage: infinite && hasNextPage && !isFetchNextPageError,
     isFetchingNextPage: infinite ? isFetchingNextPage : false,
   };
 };
