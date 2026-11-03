@@ -1,0 +1,8 @@
+# Decisions
+
+- The state bucket is defined in the main `terraform/` config with `prevent_destroy`, created by a targeted apply while state is still local, and the state is then migrated with `terraform init -migrate-state`. This is the bootstrap described in Gruntwork's widely cited guide (https://blog.gruntwork.io/how-to-manage-terraform-state-28f5697e68fa); HashiCorp prescribes no bootstrap method. A separate bootstrap config would add a second local state to keep.
+- Locking uses the S3 backend's native lockfile (`use_lockfile`, Terraform >= 1.10) rather than DynamoDB, which HashiCorp has deprecated for the S3 backend (https://developer.hashicorp.com/terraform/language/backend/s3).
+- Encryption relies on the backend's `encrypt = true` plus S3's default SSE-S3 encryption, so no bucket encryption resource is declared.
+- The bucket is named `alliance-terraform-state-751910243706`: `alliance-terraform-state` is taken in another AWS account, and an account-ID suffix is the common way to get a unique S3 name while keeping the `alliance` identifier from the root `AGENTS.md`. The account ID is not secret per AWS (https://docs.aws.amazon.com/accounts/latest/reference/manage-acct-identifiers.html); access is controlled by IAM and the public access block.
+- The backend block reaches `main` only after the state is migrated, so no teammate's `init` points at an empty bucket.
+- `terraform/README.md` tells teammates to decline `init`'s offer to copy local state and to delete their local `terraform.tfstate`: copies passed around before the move are stale, and copying one would overwrite the shared state.
