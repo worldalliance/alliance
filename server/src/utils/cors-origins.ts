@@ -1,11 +1,7 @@
-import { isDeployed, parseNodeEnv } from "@alliance/common/node-env";
+import { isDeployed, type NodeEnv } from "@alliance/common/node-env";
 
 const LOCALHOST_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
-/**
- * Adds localhost for known local environments. Unknown NODE_ENV values keep the
- * deployed set so a typo cannot widen socket access.
- */
 export function socketCorsOrigins({
   nodeEnv,
   appUrl,
@@ -13,7 +9,7 @@ export function socketCorsOrigins({
   adminUrl,
   altAdminUrl,
 }: {
-  nodeEnv: string | undefined;
+  nodeEnv: NodeEnv;
   appUrl: string | undefined;
   altAppUrl: string | undefined;
   adminUrl: string | undefined;
@@ -23,8 +19,5 @@ export function socketCorsOrigins({
     (origin): origin is string => !!origin,
   );
 
-  const env = parseNodeEnv(nodeEnv);
-  const allowLocalhost = env.ok && !isDeployed(env.value);
-
-  return allowLocalhost ? [...deployed, LOCALHOST_ORIGIN] : deployed;
+  return isDeployed(nodeEnv) ? deployed : [...deployed, LOCALHOST_ORIGIN];
 }

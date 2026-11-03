@@ -1,3 +1,4 @@
+import { NodeEnv } from "@alliance/common/node-env";
 import { R } from "@alliance/common/result";
 import { REVIEW_ACCOUNT_MESSAGE } from "@alliance/common/review-account";
 import {
@@ -23,6 +24,7 @@ import {
   OnetimeInvite,
 } from "src/user/entities/onetime-invite.entity";
 import type { Repository } from "src/utils/Repository";
+import { env } from "../config/env";
 import { MailService } from "../mail/mail.service";
 import { AccountEmailService } from "../user/account-email.service";
 import {
@@ -92,7 +94,7 @@ export class AuthService {
   private static GUEST_COOKIE_MAX_AGE_MS = milliseconds({ days: 30 });
 
   setAuthCookies(res: Response, access: string, refresh?: string) {
-    const prod = process.env.NODE_ENV === "production";
+    const prod = env("NODE_ENV") === NodeEnv.Production;
 
     res.cookie(ACCESS_COOKIE, access, {
       httpOnly: true,
@@ -118,7 +120,7 @@ export class AuthService {
   }
 
   setGuestCookie(res: Response, token: string) {
-    const prod = process.env.NODE_ENV === "production";
+    const prod = env("NODE_ENV") === NodeEnv.Production;
     res.cookie(GUEST_COOKIE, token, {
       httpOnly: true,
       secure: prod,
@@ -181,7 +183,7 @@ export class AuthService {
     try {
       const payload = guestJwtPayloadSchema.safeParse(
         await this.jwtService.verifyAsync(token, {
-          secret: process.env.JWT_SECRET,
+          secret: env("JWT_SECRET"),
         }),
       );
       return payload.success ? payload.data : null;
@@ -242,7 +244,7 @@ export class AuthService {
     );
 
     if (!resolution) {
-      if (process.env.NODE_ENV !== "test") {
+      if (env("NODE_ENV") !== NodeEnv.Test) {
         throw new BadRequestException("invalid referral code");
       }
       return {
@@ -434,7 +436,7 @@ export class AuthService {
     });
     const token = await this.jwtService.signAsync(payload, {
       expiresIn: "14d",
-      secret: process.env.JWT_REFRESH_SECRET,
+      secret: env("JWT_REFRESH_SECRET"),
     });
     return token;
   }
@@ -502,7 +504,7 @@ export class AuthService {
       tokenType: JWTTokenType.passwordReset,
     };
     return this.jwtService.sign(payload, {
-      secret: process.env.JWT_SECRET,
+      secret: env("JWT_SECRET"),
       expiresIn: `1d`,
     });
   }

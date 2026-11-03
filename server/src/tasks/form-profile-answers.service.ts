@@ -5,6 +5,7 @@ import {
   type CustomComponentField,
   FormSchema,
 } from "@alliance/common/forms/form-schema";
+import { NodeEnv } from "@alliance/common/node-env";
 import { toE164 } from "@alliance/common/phone";
 import { R } from "@alliance/common/result";
 import { isTimeZoneIdentifier } from "@alliance/common/timezone";
@@ -17,6 +18,7 @@ import { UpdateProfileDto } from "src/user/dto/user.dto";
 import { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { toPlainTime } from "src/utils/plain-time";
+import { env } from "../config/env";
 
 function getFirstAutoExtractAnswer(
   schema: FormSchema,
@@ -165,7 +167,7 @@ export class FormProfileAnswersService {
           if (mms) {
             await this.userService.setOptInMms(user.id, mms.id);
           } else {
-            if (process.env.NODE_ENV === "production") {
+            if (env("NODE_ENV") === NodeEnv.Production) {
               await this.eventLogService.sendMessage({
                 type: EventType.SmsFailure,
                 message: `Failed to send opt-in MMS to ${normalized}`,

@@ -1,5 +1,8 @@
 import "dotenv/config";
 
+import { NodeEnv } from "@alliance/common/node-env";
+import { env, requireEnv } from "../config/env";
+
 import {
   assertWorktreeDatabase,
   DevDatabase,
@@ -15,32 +18,32 @@ export const connectionOptions = (): PostgresConnectionOptions => {
   assertWorktreeDatabase({
     ports: devPorts(PortCaller.Server),
     which: DevDatabase.Dev,
-    actual: process.env.DB_NAME,
+    actual: env("DB_NAME"),
   });
 
   const shared: PostgresConnectionOptions = {
     type: "postgres",
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT ? +process.env.DB_PORT : 5432,
-    username: process.env.DB_USERNAME,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
+    host: env("DB_HOST"),
+    port: env("DB_PORT"),
+    username: env("DB_USERNAME"),
+    password: env("DB_PASSWORD"),
+    database: env("DB_NAME"),
     useUTC: true,
     maxQueryExecutionTime: 100,
     logging: ["error", "warn"],
     logger: new AppTypeOrmLogger(),
   };
 
-  return process.env.NODE_ENV === "production" ||
-    process.env.NODE_ENV === "staging"
+  return env("NODE_ENV") === NodeEnv.Production ||
+    env("NODE_ENV") === NodeEnv.Staging
     ? {
         ...shared,
         ssl: {
           rejectUnauthorized: true,
-          ca: process.env.DB_CA_CERT,
+          ca: requireEnv("DB_CA_CERT"),
         },
         extra: {
-          ssl: { rejectUnauthorized: true, ca: process.env.DB_CA_CERT },
+          ssl: { rejectUnauthorized: true, ca: requireEnv("DB_CA_CERT") },
         },
       }
     : {

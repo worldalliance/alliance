@@ -34,7 +34,3 @@ export function parseNodeEnv(
         ),
       );
 }
-
-export function currentNodeEnv(): Result<NodeEnv, Error> {
-  return parseNodeEnv(process.env.NODE_ENV);
-}

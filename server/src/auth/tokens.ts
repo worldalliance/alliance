@@ -4,6 +4,7 @@ import { ForbiddenException, UnauthorizedException } from "@nestjs/common";
 import type { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
 import { z } from "zod";
+import { env } from "../config/env";
 
 export const ACCESS_COOKIE = "access_token";
 export const REFRESH_COOKIE = "refresh_token";
@@ -136,7 +137,7 @@ export async function verifyAccessToken(
   token: string,
 ): Promise<JwtPayload> {
   const payload = jwtPayloadSchema.safeParse(
-    await jwtService.verifyAsync(token, { secret: process.env.JWT_SECRET }),
+    await jwtService.verifyAsync(token, { secret: env("JWT_SECRET") }),
   );
   if (
     !payload.success ||
@@ -153,7 +154,7 @@ export async function verifyRefreshToken(
 ): Promise<JwtPayload> {
   const payload = jwtPayloadSchema.safeParse(
     await jwtService.verifyAsync(token, {
-      secret: process.env.JWT_REFRESH_SECRET,
+      secret: env("JWT_REFRESH_SECRET"),
     }),
   );
   if (!payload.success || payload.data.tokenType !== JWTTokenType.refresh) {
@@ -168,7 +169,7 @@ export async function verifyMailedToken(
   params: { token: string; tokenType: MailedTokenType },
 ): Promise<Result<number>> {
   const verified = await R.fromPromise(
-    jwtService.verifyAsync(params.token, { secret: process.env.JWT_SECRET }),
+    jwtService.verifyAsync(params.token, { secret: env("JWT_SECRET") }),
   );
   if (!verified.ok) {
     return verified;

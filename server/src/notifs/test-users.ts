@@ -4,12 +4,13 @@ import {
   ReferralSource,
   User,
 } from "src/user/entities/user.entity";
+import { env } from "../config/env";
 
 export const testUser = new User({
   id: -1,
   name: "Test User",
   email: "test@example.com",
-  phoneNumber: process.env.NOTIF_TEST_PHONE_NUMBER ?? null,
+  phoneNumber: env("NOTIF_TEST_PHONE_NUMBER") ?? null,
   emailVerified: false,
   devices: [],
   contractEvents: [

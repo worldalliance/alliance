@@ -1,4 +1,5 @@
 import { thrownMessage, thrownStack } from "@alliance/common/errorMessage";
+import { NodeEnv } from "@alliance/common/node-env";
 import { R, type Result } from "@alliance/common/result";
 import { TIMED_OUT, withTimeout } from "@alliance/common/timeout";
 import {
@@ -25,6 +26,7 @@ import {
 import { isAnonymizedPhoneNumber } from "src/utils/phone";
 import Twilio from "twilio";
 import type { MessageStatus } from "twilio/lib/rest/api/v2010/account/message";
+import { env } from "../config/env";
 import { Mms } from "./mms.entity";
 
 /** Twilio delivers to UK numbers only from an alphanumeric sender. */
@@ -45,7 +47,7 @@ type SentMessage = {
 };
 
 const canText = (to: string): boolean =>
-  process.env.NODE_ENV !== "test" &&
+  env("NODE_ENV") !== NodeEnv.Test &&
   notifDeliveryEnabled() &&
   !isAnonymizedPhoneNumber(to);
 
@@ -64,12 +66,12 @@ export class MmsService {
     private readonly eventLogService: EventLogService,
     private readonly messageTracking: MessageTrackingService,
   ) {
-    if (process.env.NODE_ENV === "test") {
+    if (env("NODE_ENV") === NodeEnv.Test) {
       return;
     }
-    const accountSid = process.env.TWILIO_ACCOUNT_SID!;
-    const authToken = process.env.TWILIO_AUTH_TOKEN!;
-    this.twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER!;
+    const accountSid = env("TWILIO_ACCOUNT_SID")!;
+    const authToken = env("TWILIO_AUTH_TOKEN")!;
+    this.twilioPhoneNumber = env("TWILIO_PHONE_NUMBER")!;
 
     if (
       (!accountSid || !authToken || !this.twilioPhoneNumber) &&
@@ -230,7 +232,7 @@ export class MmsService {
       text: `Failed to send MMS to user ${userId}: ${errorMessage}`,
       error,
     });
-    if (process.env.NODE_ENV === "production") {
+    if (env("NODE_ENV") === NodeEnv.Production) {
       this.eventLogService.sendMessage({
         type: EventType.SmsFailure,
         message: `Failed to send MMS to ${to}: ${errorMessage}`,

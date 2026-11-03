@@ -1,8 +1,10 @@
+import { NodeEnv } from "@alliance/common/node-env";
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { HttpException, HttpStatus, NotFoundException } from "@nestjs/common";
 import type { Response } from "express";
 import { basename } from "path";
 import { Readable } from "stream";
+import { env } from "../config/env";
 
 export async function pipeS3Object(params: {
   s3: S3Client;
@@ -56,7 +58,7 @@ export async function pipeS3Object(params: {
     // A shared cache stores a response that ends cleanly, so a failed stream
     // must not end like a complete one or carry the cache header.
     body.on("error", (err) => {
-      if (process.env.NODE_ENV !== "development") {
+      if (env("NODE_ENV") !== NodeEnv.Development) {
         console.error("Error streaming %s:", JSON.stringify(key), err);
       }
       try {
@@ -81,7 +83,7 @@ export async function pipeS3Object(params: {
         HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE,
       );
 
-    if (process.env.NODE_ENV !== "development") {
+    if (env("NODE_ENV") !== NodeEnv.Development) {
       console.error("Error getting %s:", JSON.stringify(key), err);
     }
     throw new NotFoundException();

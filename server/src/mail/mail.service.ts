@@ -1,5 +1,6 @@
 import { thrownMessage, thrownStack } from "@alliance/common/errorMessage";
 import { nameParts } from "@alliance/common/nameParts";
+import { NodeEnv } from "@alliance/common/node-env";
 import { R, type Result } from "@alliance/common/result";
 import { TIMED_OUT, withTimeout } from "@alliance/common/timeout";
 import { ISendMailOptions, MailerService } from "@nestjs-modules/mailer";
@@ -28,13 +29,14 @@ import {
   notifDeliveryEnabled,
 } from "src/utils/notif-delivery";
 import type { Repository } from "src/utils/Repository";
+import { env } from "../config/env";
 import { ContractReminderCopy } from "./contract-reminder-copy";
 import { EmailStatus, EmailType, Mail } from "./mail.entity";
 
 const SEND_TIMEOUT_MS = milliseconds({ seconds: 10 });
 
 export function mailSendingEnabled(): boolean {
-  return process.env.NODE_ENV !== "test" && notifDeliveryEnabled();
+  return env("NODE_ENV") !== NodeEnv.Test && notifDeliveryEnabled();
 }
 
 /**
@@ -136,7 +138,7 @@ export class MailService {
     // Apple forwards to a Hide My Email relay only from senders registered
     // under Sign in with Apple for Email Communication in the developer
     // portal. Register a new address there before changing MAIL_FROM.
-    const from = process.env.MAIL_FROM;
+    const from = env("MAIL_FROM");
     if (!from) {
       throw new MailNotSentError("MAIL_FROM is unset");
     }
@@ -230,7 +232,7 @@ export class MailService {
       headers: {
         "o:tag": emailType,
         "X-Mailgun-Tag":
-          process.env.NODE_ENV === "production" ? "production" : "development",
+          env("NODE_ENV") === NodeEnv.Production ? "production" : "development",
         ...(providerTracking ? {} : { "X-Mailgun-Track": "no" }),
       },
       html,

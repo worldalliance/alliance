@@ -1,7 +1,6 @@
 import { hkdfSync } from "node:crypto";
+import { env } from "../config/env";
 
 export function deriveServerKey(info: string): Buffer {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) throw new Error("JWT_SECRET is not set");
-  return Buffer.from(hkdfSync("sha256", secret, "", info, 32));
+  return Buffer.from(hkdfSync("sha256", env("JWT_SECRET"), "", info, 32));
 }

@@ -25,6 +25,17 @@ The user left this to the agent. `AGENTS.md` prefers enums for closed sets, but 
 
 The deploy writes `export KEY=${{ secrets.X }}`, which expands a secret that was never set to `KEY=`. A whitespace-only value, which no key can use, reads as unset too, and so does a required value its transform leaves empty, such as a list set to `,`: one rule for missing, whichever helper reads the key.
 
+## Unknown or missing `NODE_ENV` refuses to boot
+
+The user left this to the agent. `env("NODE_ENV")` throws on an unset or unknown value, and the server reads it while it boots. Behavior and the keys the server needs depend on `NODE_ENV`, so an unknown value leaves both undecidable; the deploy always sets it. The old warning and Slack post in `main.ts` are gone. Tests that exercised behavior under an unset or bogus `NODE_ENV` (Twilio guard, PostHog client) now cover only valid values. The `currentNodeEnv()` callers (`review-account.ts`, `kora-cookies.ts`, `oauth-urls.ts`) read `env("NODE_ENV")` instead: their fallbacks for an unknown value could no longer fire, and keeping them left two policies for one value. `currentNodeEnv()` is gone.
+
+## Flags
+
+`1`/`true` are on and `0`/`false`/unset are off; anything else is an error. Deployed values are `SEND_DEV_NOTIFS=1`, `USE_CLOUDFRONT=true` and an empty `SEND_DEV_NOTIFS` in production; `.env.example` uses `0`.
+
 ## Smaller choices
 
+- `ASSETS_BUCKET` fields became getters calling `requireEnv`, so constructing a service in a test without a bucket doesn't throw; using one does.
+- `JwtModule` reads `env("JWT_SECRET")` instead of Nest's `ConfigService`, the only `ConfigService` user, so `AppModule` drops `ConfigModule.forRoot`. Bun loads `.env` at process start; `ConfigModule` loaded it again only once Nest started, after module-level code had already read the environment.
+- `server/.env.example` gains the schema keys it lacked and drops `APNS_*`, which nothing reads; it validates against the schema.
 - `oauth.controller.ts` was past the 500-line limit, so it was split first, in its own commit, along the lines a read-only codex subagent recommended: callback handling into `OAuthCallbackService`, shared session helpers into `OAuthSessionService`, the proof cookie into `oauth-browser-proof.ts`, with routes, decorators and class/method names unchanged.

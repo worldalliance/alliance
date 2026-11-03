@@ -71,18 +71,6 @@ describe("socketCorsOrigins", () => {
     expect(matches(origins, "http://notlocalhost")).toBe(false);
   });
 
-  it.each([undefined, "", "qa", "Production"])(
-    "gives NODE_ENV=%p the deployed set rather than widening",
-    (nodeEnv) => {
-      expect(socketCorsOrigins({ nodeEnv, ...DEPLOYED })).toEqual([
-        DEPLOYED.appUrl,
-        DEPLOYED.altAppUrl,
-        DEPLOYED.adminUrl,
-        DEPLOYED.altAdminUrl,
-      ]);
-    },
-  );
-
   it("drops a URL that is unset rather than allowing undefined", () => {
     expect(
       socketCorsOrigins({

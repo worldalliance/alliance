@@ -1,4 +1,5 @@
-import { currentNodeEnv, NodeEnv } from "@alliance/common/node-env";
+import { NodeEnv } from "@alliance/common/node-env";
+import { env } from "../config/env";
 
 const REFUSES_REVIEW_ACCOUNTS: Record<NodeEnv, boolean> = {
   [NodeEnv.Production]: true,
@@ -7,11 +8,9 @@ const REFUSES_REVIEW_ACCOUNTS: Record<NodeEnv, boolean> = {
   [NodeEnv.Test]: false,
 };
 
-/** Whether this deployment keeps `isTestUser` accounts out. An unknown
- * NODE_ENV refuses them. */
+/** Whether this deployment keeps `isTestUser` accounts out. */
 export function refusesReviewAccounts(): boolean {
-  const env = currentNodeEnv();
-  return !env.ok || REFUSES_REVIEW_ACCOUNTS[env.value];
+  return REFUSES_REVIEW_ACCOUNTS[env("NODE_ENV")];
 }
 
 export function isRefusedReviewAccount(user: { isTestUser: boolean }): boolean {

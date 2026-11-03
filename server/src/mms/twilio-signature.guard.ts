@@ -1,3 +1,4 @@
+import { isDeployed } from "@alliance/common/node-env";
 import { R, type Result } from "@alliance/common/result";
 import {
   ForbiddenException,
@@ -11,12 +12,11 @@ import type { Request } from "express";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { validateRequest } from "twilio/lib/webhooks/webhooks";
-
-const UNVERIFIED_ENVS: ReadonlySet<string> = new Set(["test", "development"]);
+import { env } from "../config/env";
 
 /** Keeps startup validation aligned with guard policy. */
 export function twilioSignatureEnforced(): boolean {
-  return !UNVERIFIED_ENVS.has(process.env.NODE_ENV ?? "");
+  return isDeployed(env("NODE_ENV"));
 }
 
 /** Public path; nginx strips `/api` before the request reaches Nest. */
@@ -25,7 +25,7 @@ const TWILIO_WEBHOOK_PATH = "/api/mms/inbound";
 /** Builds the public URL from `APP_URL`, ignoring proxy-altered request data. */
 export function twilioWebhookUrl(): Result<string, Error> {
   return R.map(
-    R.fromThrowable(() => new URL(TWILIO_WEBHOOK_PATH, process.env.APP_URL)),
+    R.fromThrowable(() => new URL(TWILIO_WEBHOOK_PATH, env("APP_URL"))),
     (url) => url.toString(),
   );
 }
@@ -49,7 +49,7 @@ export class TwilioSignatureGuard implements CanActivate {
     const webhookUrl = twilioWebhookUrl();
     const expectedUrl = R.toNullable(webhookUrl);
 
-    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const authToken = env("TWILIO_AUTH_TOKEN");
     if (!authToken) {
       this.logger.error(
         "TWILIO_AUTH_TOKEN is not set; rejecting inbound Twilio webhook",
@@ -59,13 +59,10 @@ export class TwilioSignatureGuard implements CanActivate {
     }
 
     if (R.isFailure(webhookUrl)) {
-      const appUrl = process.env.APP_URL ?? "unset";
       this.logger.error(
-        `APP_URL is not a usable base URL (${appUrl}); rejecting inbound Twilio webhook`,
+        "APP_URL is unset or not a URL; rejecting inbound Twilio webhook",
       );
-      this.alert(`APP_URL is not a usable base URL (${appUrl})`, expectedUrl, {
-        appUrl,
-      });
+      this.alert("APP_URL is unset or not a URL", expectedUrl, {});
       throw new ForbiddenException();
     }
     const url = webhookUrl.value;

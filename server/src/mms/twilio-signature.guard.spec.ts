@@ -77,8 +77,8 @@ describe("twilioSignatureEnforced", () => {
     }
   });
 
-  it("is on everywhere else, including an unset NODE_ENV", () => {
-    for (const NODE_ENV of ["production", "staging", undefined]) {
+  it("is on in deployed environments", () => {
+    for (const NODE_ENV of ["production", "staging"]) {
       withEnv({ NODE_ENV }, () => expect(twilioSignatureEnforced()).toBe(true));
     }
   });

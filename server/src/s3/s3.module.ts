@@ -1,6 +1,6 @@
-// s3.module.ts
 import { S3Client } from "@aws-sdk/client-s3";
 import { Module } from "@nestjs/common";
+import { env } from "../config/env";
 
 @Module({
   providers: [
@@ -9,7 +9,7 @@ import { Module } from "@nestjs/common";
       useFactory: () =>
         new S3Client({
           // credentials are picked up automatically from the instance profile
-          region: process.env.AWS_REGION ?? "us-west-2",
+          region: env("AWS_REGION"),
         }),
     },
   ],

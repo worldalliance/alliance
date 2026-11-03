@@ -1,4 +1,6 @@
+import { NodeEnv } from "@alliance/common/node-env";
 import type { Request as ExpressRequest, Response } from "express";
+import { env } from "../../config/env";
 import { extractOAuthStateFromCookie, OAUTH_STATE_COOKIE } from "../tokens";
 import type { OAuthState } from "./oauth-auth.service";
 import { OAUTH_PROOF_MAX_AGE_MS, spendProof } from "./oauth-proof";
@@ -10,7 +12,7 @@ export function setProofCookie(res: Response, proofs: string): void {
   }
   res.cookie(OAUTH_STATE_COOKIE, proofs, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: env("NODE_ENV") === NodeEnv.Production,
     // Lax, not strict: the callback arrives as a navigation from the
     // provider, and a strict cookie is not sent on one.
     sameSite: "lax",

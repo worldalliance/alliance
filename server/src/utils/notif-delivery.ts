@@ -1,7 +1,8 @@
+import { NodeEnv } from "@alliance/common/node-env";
+import { env } from "../config/env";
+
 export function notifDeliveryEnabled(): boolean {
-  return (
-    process.env.NODE_ENV === "production" || process.env.SEND_DEV_NOTIFS === "1"
-  );
+  return env("NODE_ENV") === NodeEnv.Production || env("SEND_DEV_NOTIFS");
 }
 
 /** Why an unrecorded message did not reach its recipient. */

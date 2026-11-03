@@ -6,6 +6,7 @@ import { Notification } from "src/notifs/entities/notification.entity";
 import { UnreadContent } from "src/notifs/entities/unread-content.entity";
 import { NotifsModule } from "src/notifs/notifs.module";
 import { UserDevice } from "src/user/entities/user-device.entity";
+import { env } from "../config/env";
 import { NotifPushDispatcherWorker } from "./notif-push-dispatcher.worker";
 import { PushController } from "./push.controller";
 import { Push } from "./push.entity";
@@ -23,7 +24,7 @@ import { EXPO_CLIENT, PushService } from "./push.service";
       provide: EXPO_CLIENT,
       useFactory: () =>
         new Expo({
-          accessToken: process.env.EXPO_ACCESS_TOKEN,
+          accessToken: env("EXPO_ACCESS_TOKEN"),
           useFcmV1: true,
         }),
     },

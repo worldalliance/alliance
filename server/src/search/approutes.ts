@@ -5,6 +5,7 @@ import {
   waitlistUnsubscribeUrl,
 } from "@alliance/common/waitlist";
 import { Comment } from "src/forum/entities/comment.entity";
+import { env } from "../config/env";
 
 export function profileUrl(userId: number) {
   return `/member/${userId}`;
@@ -37,7 +38,7 @@ export function signupUrl(full = false) {
 }
 
 export function siteBaseUrl() {
-  return process.env.ALT_APP_URL || process.env.APP_URL;
+  return env("ALT_APP_URL") ?? env("APP_URL");
 }
 
 export function verifyEmailUrl(token: string) {

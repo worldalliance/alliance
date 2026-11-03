@@ -1,7 +1,7 @@
+import { NodeEnv } from "@alliance/common/node-env";
 import { MailerModule } from "@nestjs-modules/mailer";
 import { PugAdapter } from "@nestjs-modules/mailer/adapters/pug.adapter";
 import { Module, OnModuleInit } from "@nestjs/common";
-import { ConfigModule } from "@nestjs/config";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { MulterModule } from "@nestjs/platform-express";
 import { ScheduleModule } from "@nestjs/schedule";
@@ -16,6 +16,7 @@ import { AuthModule } from "./auth/auth.module";
 import { CampaignModule } from "./campaign/campaign.module";
 import { ClusterModule } from "./cluster/cluster.module";
 import { CommunityModule } from "./community/community.module";
+import { env } from "./config/env";
 import { ContractModule } from "./contract/contract.module";
 import { CustomLinksModule } from "./custom-links/custom-links.module";
 import { connectionOptions } from "./datasources/dataSource";
@@ -53,17 +54,14 @@ if (!("polyfilled" in Intl.DateTimeFormat)) {
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-    }),
     MailerModule.forRoot({
       transport: {
-        host: process.env.SMTP_HOST,
+        host: env("SMTP_HOST"),
         port: 587,
         secure: false,
         auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASSWORD,
+          user: env("SMTP_USER"),
+          pass: env("SMTP_PASSWORD"),
         },
       },
       template: {
@@ -119,16 +117,15 @@ export class AppModule implements OnModuleInit {
   constructor(private userService: UserService) {}
 
   async onModuleInit() {
-    if (process.env.ADMIN_USER && process.env.NODE_ENV !== "production") {
-      const user = await this.userService.findOneByEmail(
-        process.env.ADMIN_USER,
-      );
+    const adminUser = env("ADMIN_USER");
+    if (adminUser && env("NODE_ENV") !== NodeEnv.Production) {
+      const user = await this.userService.findOneByEmail(adminUser);
       if (user) {
         await this.userService.setAdmin(user.id, true);
       } else {
         await this.userService.create({
-          email: process.env.ADMIN_USER,
-          password: process.env.ADMIN_PASSWORD,
+          email: adminUser,
+          password: env("ADMIN_PASSWORD"),
           name: "Admin",
           admin: true,
           referralSource: ReferralSource.None,

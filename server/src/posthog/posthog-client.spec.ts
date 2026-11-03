@@ -23,11 +23,10 @@ describe("posthogClientIfEnabled", () => {
     await client?.shutdown();
   });
 
-  it.each(["staging", "development", "test", "bogus", undefined])(
+  it.each(["staging", "development", "test"])(
     "creates none when NODE_ENV is %s, even with a key",
     (env) => {
-      if (env === undefined) delete process.env.NODE_ENV;
-      else process.env.NODE_ENV = env;
+      process.env.NODE_ENV = env;
       expect(posthogClientIfEnabled()).toBeNull();
     },
   );

@@ -1,6 +1,6 @@
 import { devPorts, PortCaller } from "@alliance/common/dev-ports";
 import { GUEST_HEADER } from "@alliance/common/guest";
-import { currentNodeEnv, isDeployed } from "@alliance/common/node-env";
+import { isDeployed, NodeEnv } from "@alliance/common/node-env";
 import { NOTIFS_LOADED_AT_HEADER } from "@alliance/common/notifs";
 import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
@@ -9,6 +9,7 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { useContainer } from "class-validator";
 import type { ServerOptions } from "socket.io";
 import { AppModule } from "./app.module";
+import { env } from "./config/env";
 import { mailSendingEnabled } from "./mail/mail.service";
 import { MetricsInterceptor } from "./metrics";
 import { twilioSignatureEnforced } from "./mms/twilio-signature.guard";
@@ -20,10 +21,8 @@ import { socketCorsOrigins } from "./utils/cors-origins";
 import { RouteContextGuard } from "./utils/request-context.guard";
 import { publicMailDailyCap } from "./waitlist/waitlist-mail.service";
 
-// Let validateNodeEnv report unknown values without treating them as deployed.
 function deployedUrlVars(): string[] {
-  const env = currentNodeEnv();
-  if (!env.ok || !isDeployed(env.value)) return [];
+  if (!isDeployed(env("NODE_ENV"))) return [];
   return ["APP_URL", "ALT_APP_URL", "ADMIN_URL", "ALT_ADMIN_URL"];
 }
 
@@ -52,26 +51,6 @@ function validateEnv() {
   // Parses the waitlist mail cap now, so a malformed one fails boot rather
   // than a request.
   publicMailDailyCap();
-
-  validateNodeEnv();
-}
-
-function validateNodeEnv() {
-  const env = currentNodeEnv();
-  if (env.ok) return;
-
-  const msg = `:warning: Server starting with ${env.error.message}. Outbound notifs may misfire.`;
-  console.error(msg);
-
-  const webhook = process.env.SLACK_WEBHOOK_URL;
-  if (!webhook) return;
-  void fetch(webhook, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text: msg }),
-  }).catch((err) => {
-    console.error("Failed to post NODE_ENV warning to Slack:", err);
-  });
 }
 
 class SocketIoAdapter extends IoAdapter {
@@ -80,11 +59,11 @@ class SocketIoAdapter extends IoAdapter {
       ...options,
       cors: {
         origin: socketCorsOrigins({
-          nodeEnv: process.env.NODE_ENV,
-          appUrl: process.env.APP_URL,
-          altAppUrl: process.env.ALT_APP_URL,
-          adminUrl: process.env.ADMIN_URL,
-          altAdminUrl: process.env.ALT_ADMIN_URL,
+          nodeEnv: env("NODE_ENV"),
+          appUrl: env("APP_URL"),
+          altAppUrl: env("ALT_APP_URL"),
+          adminUrl: env("ADMIN_URL"),
+          altAdminUrl: env("ALT_ADMIN_URL"),
         }),
         methods: ["GET", "POST"],
         credentials: true,
@@ -119,7 +98,7 @@ async function bootstrap() {
   app.useWebSocketAdapter(new SocketIoAdapter(app));
   app.set("trust proxy", "loopback");
 
-  if (process.env.NODE_ENV !== "production") {
+  if (env("NODE_ENV") !== NodeEnv.Production) {
     const config = new DocumentBuilder()
       .setTitle("Alliance API")
       .setVersion("1.0")

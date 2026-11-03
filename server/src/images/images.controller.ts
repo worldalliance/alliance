@@ -24,6 +24,7 @@ import { create as contentDisposition } from "content-disposition";
 import type { Request, Response } from "express";
 import { pipeS3Object } from "src/s3/pipe-s3-object";
 import { OnlyThrottle } from "src/utils/throttle";
+import { requireEnv } from "../config/env";
 import { UploadImageDto, UploadImageResponseDto } from "./dto/image.dto";
 import { IMAGE_DOWNLOAD_THROTTLE } from "./image-download-throttle.config";
 import { getImageSource, ImagesService } from "./images.service";
@@ -35,7 +36,9 @@ export class ImagesController {
     @Inject("S3_CLIENT") private readonly s3: S3Client,
   ) {}
 
-  private readonly bucket = process.env.ASSETS_BUCKET!;
+  private get bucket() {
+    return requireEnv("ASSETS_BUCKET");
+  }
 
   @Get(":key")
   @ApiOkResponse({ type: StreamableFile })

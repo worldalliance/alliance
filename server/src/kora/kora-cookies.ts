@@ -1,5 +1,6 @@
-import { currentNodeEnv, isDeployed } from "@alliance/common/node-env";
+import { isDeployed } from "@alliance/common/node-env";
 import type { CookieOptions, Response } from "express";
+import { env } from "../config/env";
 
 export enum KoraCookie {
   Session = "kora_session",
@@ -10,10 +11,9 @@ export enum KoraCookie {
 }
 
 function cookieOptions(): CookieOptions {
-  const env = currentNodeEnv();
   return {
     httpOnly: true,
-    secure: env.ok && isDeployed(env.value),
+    secure: isDeployed(env("NODE_ENV")),
     // Lax, not strict: the provider's redirect back is a cross-site
     // navigation, and its callback replaces this browser's session.
     sameSite: "lax",

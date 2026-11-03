@@ -21,6 +21,7 @@ import { UserService } from "src/user/user.service";
 import { requestContext } from "src/utils/request-context";
 import { Not, type Repository } from "typeorm";
 import { z } from "zod";
+import { env } from "../../config/env";
 import { AuthService } from "../auth.service";
 import { isRefusedReviewAccount } from "../review-account";
 import { sessionAccount } from "../session.service";
@@ -170,7 +171,7 @@ export class OAuthAuthService {
   }): Promise<OAuthState | null> {
     const payload = await R.fromPromise(
       this.jwtService.verifyAsync<OAuthState>(params.token, {
-        secret: process.env.JWT_SECRET,
+        secret: env("JWT_SECRET"),
         ignoreExpiration: params.ignoreExpiration,
       }),
     );
@@ -274,7 +275,7 @@ export class OAuthAuthService {
   }): Promise<Result<T, OAuthError>> {
     const payload = await R.fromPromise(
       this.jwtService.verifyAsync(params.token, {
-        secret: process.env.JWT_SECRET,
+        secret: env("JWT_SECRET"),
       }),
     );
     if (!payload.ok) {

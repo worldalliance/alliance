@@ -13,6 +13,7 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { softDeleteCascade, updateLive } from "src/datasources/soft-delete";
 import type { Repository } from "src/utils/Repository";
+import { requireEnv } from "../config/env";
 import type { VideoDetailResponse } from "./dto/video-response.dto";
 import { Video } from "./entities/video.entity";
 
@@ -26,7 +27,9 @@ export class VideosService {
     @Inject("S3_CLIENT") private readonly s3: S3Client,
   ) {}
 
-  private readonly bucket = process.env.ASSETS_BUCKET!;
+  private get bucket() {
+    return requireEnv("ASSETS_BUCKET");
+  }
 
   private contentTypeForFile(filename: string) {
     if (filename.endsWith(".m3u8")) {

@@ -1,5 +1,6 @@
-import { currentNodeEnv, NodeEnv } from "@alliance/common/node-env";
+import { NodeEnv } from "@alliance/common/node-env";
 import { PostHog } from "posthog-node";
+import { env, requireEnv } from "../config/env";
 
 const POSTHOG_ENABLED: Record<NodeEnv, boolean> = {
   [NodeEnv.Production]: true,
@@ -9,13 +10,12 @@ const POSTHOG_ENABLED: Record<NodeEnv, boolean> = {
 };
 
 export function newPosthogClient(): PostHog {
-  return new PostHog(process.env.POSTHOG_KEY!, {
+  return new PostHog(requireEnv("POSTHOG_KEY"), {
     host: "https://us.i.posthog.com",
   });
 }
 
 export function posthogClientIfEnabled(): PostHog | null {
-  const env = currentNodeEnv();
-  if (!env.ok || !POSTHOG_ENABLED[env.value]) return null;
+  if (!POSTHOG_ENABLED[env("NODE_ENV")]) return null;
   return newPosthogClient();
 }
