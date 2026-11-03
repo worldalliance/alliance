@@ -17,6 +17,7 @@ import React, {
 import { Alert } from "react-native";
 import type { UserDto } from "../../../shared/client";
 import { getBinaryApiUrl, setReviewSession } from "./config";
+import { mobileEnv } from "./env";
 import { clearGuestToken, getStoredGuestToken } from "./guestSession";
 import { signInWithProvider } from "./oauth";
 import { thrownFailure, type OAuthFailure } from "./oauthResult";
@@ -272,17 +273,14 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
   useEffect(() => {
     const visualTestCredentials = getVisualTestAutoLoginCredentials();
     const devAutoLoginEnabled =
-      __DEV__ && process.env.EXPO_PUBLIC_DEV_AUTO_LOGIN === "true";
+      __DEV__ && mobileEnv("EXPO_PUBLIC_DEV_AUTO_LOGIN");
+    const devEmail = mobileEnv("EXPO_PUBLIC_DEV_EMAIL");
+    const devPassword = mobileEnv("EXPO_PUBLIC_DEV_PASSWORD");
 
     const credentials = visualTestCredentials
       ? visualTestCredentials
-      : devAutoLoginEnabled &&
-          process.env.EXPO_PUBLIC_DEV_EMAIL &&
-          process.env.EXPO_PUBLIC_DEV_PASSWORD
-        ? {
-            email: process.env.EXPO_PUBLIC_DEV_EMAIL,
-            password: process.env.EXPO_PUBLIC_DEV_PASSWORD,
-          }
+      : devAutoLoginEnabled && devEmail && devPassword
+        ? { email: devEmail, password: devPassword }
         : null;
 
     if (!credentials || isLoading || user) {
