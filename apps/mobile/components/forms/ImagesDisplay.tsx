@@ -6,6 +6,10 @@ import { Image, ScrollView, TouchableOpacity, View } from "react-native";
 import { resolveImageSource } from "../../lib/config";
 import { getImageLoadSize } from "../../lib/imageLoadSize";
 import { saveImage } from "../../lib/saveImage";
+import {
+  withSlideAspectRatio,
+  type SlideAspectRatios,
+} from "../../lib/slideAspectRatios";
 import { ImageGalleryModal } from "../ImageLightbox";
 import Text from "../system/Text";
 
@@ -104,9 +108,8 @@ export default function ImagesDisplay({
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   // Keyed by slide rather than indexed into an array, because images finish
   // loading out of order and a sparse array would put holes in the `Math.min`.
-  const [measuredAspectRatios, setMeasuredAspectRatios] = useState<
-    Record<number, number>
-  >({});
+  const [measuredAspectRatios, setMeasuredAspectRatios] =
+    useState<SlideAspectRatios>({});
 
   // One height for every slide, taken from the tallest image loaded so far, so
   // swiping doesn't resize the block under the reader's finger. `contain`
@@ -115,7 +118,9 @@ export default function ImagesDisplay({
   const aspectRatio = measured.length ? Math.min(...measured) : null;
 
   const measureSlide = (slide: number) => (ratio: number) =>
-    setMeasuredAspectRatios((current) => ({ ...current, [slide]: ratio }));
+    setMeasuredAspectRatios((current) =>
+      withSlideAspectRatio(current, { slide, ratio }),
+    );
 
   const lightbox = (
     <ImageGalleryModal
