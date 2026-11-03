@@ -114,9 +114,14 @@ async function download(key: string): Promise<number> {
 
 function check(): number {
   if (optedOut() || credentials().ok) return 0;
+  const message = `Agent transcript uploads are not set up on this machine, so this session's transcript is not being stored; ${setupHint}.`;
   console.log(
     JSON.stringify({
-      systemMessage: `Agent transcript uploads are not set up on this machine: ${setupHint}`,
+      systemMessage: message,
+      hookSpecificOutput: {
+        hookEventName: "SessionStart",
+        additionalContext: message,
+      },
     }),
   );
   return 0;

@@ -14,4 +14,5 @@ task: Archive agent chat transcripts and link them from provenance
 - Secrets inside stored transcripts are acceptable. (User-originated.)
 - Agent infrastructure lives under a top-level `agents/` directory: skills move to `agents/skills/`, the upload hook lives in `agents/chats/`. (User-originated.)
 - Per-person setup is adding the bucket's two keys to `.env.devtools`, the gitignored file that already holds developer tool keys; nothing else to install or configure beyond what the repository already needs. (User-originated.)
+- When uploads are not set up on a machine, the agent says so to the user at the point it appends its session to the task's `SESSIONS.md`. (User-originated.)
 - How those keys reach the bucket client is left to the agent. (User-deferred.)
