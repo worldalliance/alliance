@@ -28,7 +28,7 @@ import { TouchableOpacity, View, type AccessibilityRole } from "react-native";
 import { useAuth } from "../../lib/AuthContext";
 import { copyOrAlert } from "../../lib/clipboard";
 import { getSiteUrl } from "../../lib/config";
-import { useHandleLinkPress } from "../AppMarkdownWrapper";
+import { useHandleLinkPress } from "../../lib/linkPress";
 import Text, { FontWeight } from "../system/Text";
 
 const bigLinkIcons: Record<

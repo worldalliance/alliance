@@ -153,3 +153,10 @@ export function extractPathFromInternalUrl(url: string): string | null {
   }
   return null;
 }
+
+export function internalRouteFor(url: string): string | null {
+  const route = getInternalRoute(url);
+  if (route) return route;
+  const path = extractPathFromInternalUrl(url);
+  return path ? getInternalRoute(path) : null;
+}

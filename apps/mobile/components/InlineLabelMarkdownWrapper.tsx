@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import Markdown, { RenderRules } from "react-native-markdown-display";
-import { useHandleLinkPress } from "./AppMarkdownWrapper";
+import { useHandleLinkPress } from "../lib/linkPress";
 import {
   MARKDOWN_PALETTES,
   MarkdownTone,

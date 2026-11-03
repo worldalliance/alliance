@@ -1,9 +1,7 @@
-import { RelativePathString, router } from "expo-router";
 import type MarkdownIt from "markdown-it";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   Image,
-  Linking,
   StyleProp,
   TextStyle,
   TouchableOpacity,
@@ -11,11 +9,8 @@ import {
   ViewStyle,
 } from "react-native";
 import Markdown, { ASTNode, RenderRules } from "react-native-markdown-display";
-import { getApiUrl, getSitePageUrl } from "../lib/config";
-import {
-  extractPathFromInternalUrl,
-  getInternalRoute,
-} from "../lib/internalLinks";
+import { getApiUrl } from "../lib/config";
+import { useHandleLinkPress } from "../lib/linkPress";
 import { useFontScale } from "../lib/style/useFontScale";
 import { ImageLightboxModal } from "./ImageLightbox";
 import { renderListItem } from "./markdownListItem";
@@ -28,48 +23,6 @@ import {
   type MarkdownLayoutStyle,
 } from "./markdownStyles";
 import Text from "./system/Text";
-
-function useHandleLinkPress() {
-  return useCallback((url: string): boolean => {
-    // Check if this is an internal route we can handle (relative URL)
-    let internalRoute = getInternalRoute(url);
-
-    // If not a relative match, check if it's an absolute URL to our domain
-    if (!internalRoute) {
-      const extractedPath = extractPathFromInternalUrl(url);
-      if (extractedPath) {
-        internalRoute = getInternalRoute(extractedPath);
-      }
-    }
-
-    if (internalRoute) {
-      router.push(internalRoute as RelativePathString);
-      return false; // Prevent default handling
-    }
-
-    // For external URLs, open in browser
-    if (url.startsWith("http://") || url.startsWith("https://")) {
-      Linking.openURL(url).catch((err) => {
-        console.error("Failed to open URL:", err);
-      });
-      return false;
-    }
-
-    // For mailto: and other protocols
-    if (url.includes(":")) {
-      Linking.openURL(url).catch((err) => {
-        console.error("Failed to open URL:", err);
-      });
-      return false;
-    }
-
-    // For relative URLs that don't match internal routes, open on web
-    Linking.openURL(getSitePageUrl(url)).catch((err) => {
-      console.error("Failed to open URL:", err);
-    });
-    return false;
-  }, []);
-}
 
 /**
  * Transform image URLs to use the API server for relative paths
@@ -518,4 +471,4 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
 
 export default AppMarkdownWrapper;
 
-export { transformImageUrl, useHandleLinkPress };
+export { transformImageUrl };
