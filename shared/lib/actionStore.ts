@@ -5,13 +5,13 @@ import {
   type PayloadAction,
 } from "@reduxjs/toolkit";
 import type { QueryClient } from "@tanstack/react-query";
-import { pick } from "es-toolkit";
 import type { ActionDto } from "../client";
 import {
   hasViewerCompletedAction,
   withOptimisticDismissal,
   withOptimisticRelation,
 } from "./actionUtils";
+import { mergeOwned, type Owned } from "./ownedFields";
 import { queryKeys } from "./queryKeys";
 import { currentSession, sessionLoads, sessionStore } from "./sessionStores";
 
@@ -20,30 +20,33 @@ export enum ActionSource {
   Detail = "detail",
 }
 
-const carriesDetailFields: Record<ActionSource, boolean> = {
-  [ActionSource.List]: false,
-  [ActionSource.Detail]: true,
+enum ActionFields {
+  Detail = "detail",
+}
+
+const carries: Record<ActionSource, readonly ActionFields[]> = {
+  [ActionSource.List]: [],
+  [ActionSource.Detail]: [ActionFields.Detail],
 };
 
 // MEMBER_FEED_RELATIONS (member-actions.service.ts) omits these relations that
 // findOneOrFail (actions.service.ts) loads, so list responses send them empty.
-const detailOnlyFields = [
-  // BACKCOMPAT(member-feed-authors): the feed sends authors now; keeping this
-  // entry only stops an installed client wiping them when it talks to a server
-  // from before that change. Drop once no client can reach such a server.
-  "authors",
-  "project",
-  "suite",
-  "updates",
-] as const satisfies (keyof ActionDto)[];
-
-type ActionRecord = {
-  id: number;
-  action: ActionDto;
-  revision: number;
-  detailRevision?: number;
+const actionFieldGroups: Record<ActionFields, readonly (keyof ActionDto)[]> = {
+  [ActionFields.Detail]: [
+    // BACKCOMPAT(member-feed-authors): the feed sends authors now; keeping this
+    // entry only stops an installed client wiping them when it talks to a server
+    // from before that change. Drop once no client can reach such a server.
+    "authors",
+    "project",
+    "suite",
+    "updates",
+  ],
 };
-const adapter = createEntityAdapter<ActionRecord>();
+
+type ActionRecord = Owned<ActionDto, ActionFields>;
+const adapter = createEntityAdapter({
+  selectId: (record: ActionRecord) => record.value.id,
+});
 const slice = createSlice({
   name: "actions",
   initialState: adapter.getInitialState(),
@@ -58,29 +61,19 @@ const slice = createSlice({
         source: ActionSource;
       }>,
     ) => {
-      const fromDetail = carriesDetailFields[payload.source];
       for (const action of payload.actions) {
         const current = state.entities[action.id];
         // Optional auth can return an anonymous payload after a token expires.
-        if (current?.action.reqAuthenticated && !action.reqAuthenticated)
+        if (current?.value.reqAuthenticated && !action.reqAuthenticated)
           continue;
-        const newer = payload.revision > (current?.revision ?? 0);
-        const newerDetail =
-          fromDetail && payload.revision > (current?.detailRevision ?? 0);
-        if (!newer && !newerDetail) continue;
-        const latest = !current || newer ? action : current.action;
-        const details = !current || newerDetail ? action : current.action;
-        adapter.setOne(state, {
-          id: action.id,
-          action:
-            details === latest
-              ? latest
-              : { ...latest, ...pick(details, detailOnlyFields) },
-          revision: newer ? payload.revision : (current?.revision ?? 0),
-          detailRevision: newerDetail
-            ? payload.revision
-            : current?.detailRevision,
+        const merged = mergeOwned({
+          current,
+          incoming: action,
+          revision: payload.revision,
+          carries: carries[payload.source],
+          groups: actionFieldGroups,
         });
+        if (merged) adapter.setOne(state, merged);
       }
     },
     cleared: () => adapter.getInitialState(),
@@ -118,7 +111,7 @@ function createActionStore(queryClient: QueryClient) {
         action.id === params.actionId ? params.patch(action) : action,
       ),
     );
-    const current = store.getState().entities[params.actionId]?.action;
+    const current = store.getState().entities[params.actionId]?.value;
     if (current) receive([params.patch(current)], ActionSource.List);
     return true;
   };
@@ -126,7 +119,7 @@ function createActionStore(queryClient: QueryClient) {
   return {
     subscribe: store.subscribe,
     getState: store.getState,
-    get: (actionId: number) => store.getState().entities[actionId]?.action,
+    get: (actionId: number) => store.getState().entities[actionId]?.value,
     receive,
     clear: () => void store.dispatch(slice.actions.cleared()),
     load: async ({
@@ -173,5 +166,5 @@ export function selectAction(state: ActionState, actionId: number): ActionDto {
   const record = state.entities[actionId];
   if (!record)
     throw new Error(`Action ${actionId} is missing from the entity store`);
-  return record.action;
+  return record.value;
 }
