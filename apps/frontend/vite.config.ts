@@ -8,6 +8,7 @@ import {
   devViteDefine,
   PortCaller,
 } from "../../common/src/dev-ports";
+import { webEnvPlugin } from "../../common/src/web-env";
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 
@@ -25,7 +26,13 @@ const ports = devPorts(PortCaller.Tooling);
 // https://vite.dev/config/
 export default defineConfig({
   define: devViteDefine(),
-  plugins: [!isStorybook && reactRouter(), tailwindcss(), imagetools()],
+  plugins: [
+    !isStorybook &&
+      webEnvPlugin(["VITE_PUBLIC_POSTHOG_KEY", "VITE_PUBLIC_POSTHOG_HOST"]),
+    !isStorybook && reactRouter(),
+    tailwindcss(),
+    imagetools(),
+  ],
   optimizeDeps: {
     exclude: ["@alliance/shared", "@alliance/sharedweb", "@alliance/common"],
   },
