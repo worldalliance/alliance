@@ -43,7 +43,6 @@ import { animateTo, timingFor } from "./flowMotion";
 import TaskAnswersCard from "./TaskAnswersCard";
 import TaskFlowComplete from "./TaskFlowComplete";
 import TaskFlowHeader, { TaskFlowWithdrawButton } from "./TaskFlowHeader";
-import TaskFlowIntro from "./TaskFlowIntro";
 import TaskFlowScreen, { TaskFlowPage, TaskFlowTitle } from "./TaskFlowScreen";
 
 const PROGRESS_TIMING = timingFor(flowMotion.progress);
@@ -219,18 +218,6 @@ export default function TaskFlow({
     switch (flow.stage) {
       case FlowStage.Closed:
         return null;
-      case FlowStage.Background:
-        if (!flow.background) return null;
-        return (
-          <TaskFlowIntro
-            form={form}
-            background={flow.background}
-            onNext={() => void flow.start()}
-            nextLabel={flow.startLabel}
-            nextIsLast={flow.startIsLast}
-            error={error}
-          />
-        );
       case FlowStage.Screens:
         if (!flow.screen) return null;
         return (

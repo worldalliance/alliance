@@ -12,18 +12,19 @@ import {
 } from "./useTaskFlow.testing";
 
 describe("useTaskFlow", () => {
-  it("begins on the background page when nothing is saved", () => {
+  it("begins on the first screen when nothing is saved", () => {
     const { hook } = setup();
     act(() => hook.result.current.begin());
-    expect(hook.result.current.stage).toBe(FlowStage.Background);
-    expect(hook.result.current.background?.elements).toEqual([text("intro")]);
+    expect(hook.result.current.stage).toBe(FlowStage.Screens);
+    expect(hook.result.current.screenIndex).toBe(0);
+    expect(hook.result.current.screen?.elements).toEqual([text("intro")]);
     expect(hook.result.current.progress).toBe(0);
   });
 
   it("counts finished steps, so the last screen isn't full", async () => {
     const { hook } = setup();
     act(() => hook.result.current.begin());
-    await act(() => hook.result.current.start());
+    await act(() => hook.result.current.next());
     expect(hook.result.current.progress).toBeCloseTo(100 / 3);
     await act(() => hook.result.current.next());
     expect(hook.result.current.screenIndex).toBe(2);
@@ -33,7 +34,7 @@ describe("useTaskFlow", () => {
   it("holds progress while answers change which steps show", async () => {
     const { hook, params } = setup();
     act(() => hook.result.current.begin());
-    await act(() => hook.result.current.start());
+    await act(() => hook.result.current.next());
     params.form = { ...params.form, visiblePageIndices: [0, 1] };
     hook.rerender();
     expect(hook.result.current.progress).toBeCloseTo(100 / 3);
@@ -49,7 +50,7 @@ describe("useTaskFlow", () => {
       visiblePageIndices: [0, 1, 2],
     });
     act(() => hook.result.current.begin());
-    await act(() => hook.result.current.start());
+    await act(() => hook.result.current.next());
     expect(hook.result.current.progress).toBeCloseTo(100 / 3);
     params.form = {
       ...params.form,
@@ -98,59 +99,17 @@ describe("useTaskFlow", () => {
     expect(hook.result.current.nextIsLast).toBe(true);
   });
 
-  it("shows opening content whose questions are hidden as the background page", () => {
-    const { hook, params } = setup({
-      schema: {
-        pages: [
-          { id: "p1", fields: [text("intro"), input("hidden")] },
-          { id: "p2", fields: [header("h"), input("a")] },
-        ],
-        outputViews: [],
-      },
-    });
-    params.form = {
-      ...params.form,
-      isElementCurrentlyVisible: (element) => element.id !== "hidden",
-    };
-    hook.rerender();
-    act(() => hook.result.current.begin());
-    expect(hook.result.current.stage).toBe(FlowStage.Background);
-    expect(hook.result.current.background?.elements).toEqual([
-      text("intro"),
-      input("hidden"),
-    ]);
-  });
-
-  it("titles the background page with its header, without repeating it", () => {
-    const { hook } = setup({
-      schema: {
-        pages: [
-          { id: "p1", fields: [text("intro"), header("watch"), text("after")] },
-          { id: "p2", fields: [header("h"), input("a")] },
-        ],
-        outputViews: [],
-      },
-      visiblePageIndices: [0, 1],
-    });
-    act(() => hook.result.current.begin());
-    expect(hook.result.current.background?.heading).toEqual(header("watch"));
-    expect(hook.result.current.background?.elements).toEqual([
-      text("intro"),
-      text("after"),
-    ]);
-  });
-
-  it("goes back from the first question screen to the background page", async () => {
+  it("goes back from the second screen to the first", async () => {
     const { hook, saved } = setup();
     act(() => hook.result.current.begin());
-    await act(() => hook.result.current.start());
+    await act(() => hook.result.current.next());
     expect(hook.result.current.screenIndex).toBe(1);
     act(() => hook.result.current.back());
-    expect(hook.result.current.stage).toBe(FlowStage.Background);
+    expect(hook.result.current.screenIndex).toBe(0);
     expect(saved).toEqual([0, 1, 0]);
   });
 
-  it("exits on Back from the first screen of a form with no background", () => {
+  it("exits on Back from the first screen", () => {
     const { hook, exits } = setup({
       schema: { pages: [schema.pages[1]], outputViews: [] },
     });
@@ -216,16 +175,16 @@ describe("useTaskFlow", () => {
       validation.resolve(true);
       await next;
     });
-    expect(hook.result.current.stage).toBe(FlowStage.Background);
+    expect(hook.result.current.screenIndex).toBe(0);
   });
 
-  it("submits from the background page when no question screen shows", async () => {
+  it("submits a one-page form that asks nothing from its only step", async () => {
     const { hook } = setup({
       schema: { pages: [schema.pages[0]], outputViews: [] },
     });
     act(() => hook.result.current.begin());
-    expect(hook.result.current.stage).toBe(FlowStage.Background);
-    await act(async () => hook.result.current.start());
+    expect(hook.result.current.stage).toBe(FlowStage.Screens);
+    await act(async () => hook.result.current.next());
     expect(hook.result.current.stage).toBe(FlowStage.Complete);
   });
 
@@ -261,13 +220,14 @@ describe("useTaskFlow", () => {
     expect(cleared).toHaveLength(1);
   });
 
-  it("opens the background page, not a submit, when the draft's page is now hidden", () => {
+  it("opens the only visible screen, not a submit, when the draft's page is now hidden", () => {
     const { hook, submits } = setup({
       visiblePageIndices: [0],
       currentPageIndex: 1,
     });
     act(() => hook.result.current.begin());
-    expect(hook.result.current.stage).toBe(FlowStage.Background);
+    expect(hook.result.current.stage).toBe(FlowStage.Screens);
+    expect(hook.result.current.screenIndex).toBe(0);
     expect(submits).toHaveLength(0);
   });
 
@@ -290,25 +250,25 @@ describe("useTaskFlow", () => {
     expect(submits).toHaveLength(1);
   });
 
-  it("submits once when a background-only form's Next is pressed twice", async () => {
+  it("submits once when a one-page form's Next is pressed twice", async () => {
     const { hook, submits } = setup({
       schema: { pages: [schema.pages[0]], outputViews: [] },
     });
     act(() => hook.result.current.begin());
     await act(() =>
-      Promise.all([hook.result.current.start(), hook.result.current.start()]),
+      Promise.all([hook.result.current.next(), hook.result.current.next()]),
     );
     expect(submits).toHaveLength(1);
   });
 
-  it("labels the background page's button Submit only when no question screen follows", () => {
-    const backgroundOnly = setup({
+  it("labels the first screen's button Complete only when it is also the last", () => {
+    const onePage = setup({
       schema: { pages: [schema.pages[0]], outputViews: [] },
     });
-    expect(backgroundOnly.hook.result.current.startLabel).toBe(taskFlow.submit);
-    expect(backgroundOnly.hook.result.current.startIsLast).toBe(true);
-    expect(setup().hook.result.current.startLabel).toBe(taskFlow.next);
-    expect(setup().hook.result.current.startIsLast).toBe(false);
+    expect(onePage.hook.result.current.nextLabel).toBe(taskFlow.submit);
+    expect(onePage.hook.result.current.nextIsLast).toBe(true);
+    expect(setup().hook.result.current.nextLabel).toBe(taskFlow.next);
+    expect(setup().hook.result.current.nextIsLast).toBe(false);
   });
 
   it("holds Next while visibility is still settling", async () => {
@@ -323,16 +283,16 @@ describe("useTaskFlow", () => {
     expect(hook.result.current.screenIndex).toBe(1);
   });
 
-  it("holds the background page's Next while visibility is still settling", async () => {
+  it("holds the last screen's Next from submitting while visibility is still settling", async () => {
     const { hook, submits } = setup({
       savedScreen: 0,
       visiblePageIndices: [0],
       visibilitySettled: false,
     });
     act(() => hook.result.current.begin());
-    await act(() => hook.result.current.start());
+    await act(() => hook.result.current.next());
     expect(submits).toHaveLength(0);
-    expect(hook.result.current.stage).toBe(FlowStage.Background);
+    expect(hook.result.current.screenIndex).toBe(0);
   });
 
   it("resumes the saved screen before visibility settles, without saving over it", () => {
@@ -384,7 +344,7 @@ describe("useTaskFlow", () => {
     expect(saved).toEqual([2, 1]);
   });
 
-  it("returns to the background page when settling hides every question screen", () => {
+  it("falls back to the first screen when settling hides every later one", () => {
     const { hook, params } = setup({
       savedScreen: 2,
       visibilitySettled: false,
@@ -397,16 +357,17 @@ describe("useTaskFlow", () => {
       visiblePageIndices: [0],
     };
     hook.rerender();
-    expect(hook.result.current.stage).toBe(FlowStage.Background);
+    expect(hook.result.current.stage).toBe(FlowStage.Screens);
+    expect(hook.result.current.screenIndex).toBe(0);
   });
 
-  it("leaves the background page when settling hides it", () => {
+  it("moves off the first screen when settling hides it", () => {
     const { hook, params } = setup({
       savedScreen: 0,
       visibilitySettled: false,
     });
     act(() => hook.result.current.begin());
-    expect(hook.result.current.stage).toBe(FlowStage.Background);
+    expect(hook.result.current.screenIndex).toBe(0);
 
     params.form = {
       ...params.form,
@@ -416,25 +377,6 @@ describe("useTaskFlow", () => {
     hook.rerender();
     expect(hook.result.current.stage).toBe(FlowStage.Screens);
     expect(hook.result.current.screenIndex).toBe(1);
-  });
-
-  it("shows a resumed screen that settling makes the background as the background page", () => {
-    const { hook, params, saved } = setup({
-      savedScreen: 0,
-      visiblePageIndices: [],
-      visibilitySettled: false,
-    });
-    act(() => hook.result.current.begin());
-    expect(hook.result.current.stage).toBe(FlowStage.Screens);
-
-    params.form = {
-      ...params.form,
-      visibilitySettled: true,
-      visiblePageIndices: [0, 1],
-    };
-    hook.rerender();
-    expect(hook.result.current.stage).toBe(FlowStage.Background);
-    expect(saved).toEqual([0, 0]);
   });
 
   it("ignores a saved screen the form no longer has", () => {
@@ -447,7 +389,8 @@ describe("useTaskFlow", () => {
 
     params.form = { ...params.form, visibilitySettled: true };
     hook.rerender();
-    expect(hook.result.current.stage).toBe(FlowStage.Background);
+    expect(hook.result.current.stage).toBe(FlowStage.Screens);
+    expect(hook.result.current.screenIndex).toBe(0);
   });
 
   it("keeps the draft's page when it shows only once visibility settles", () => {
@@ -492,10 +435,11 @@ describe("useTaskFlow", () => {
       visiblePageIndices: [0, 1],
     };
     hook.rerender();
-    expect(hook.result.current.stage).toBe(FlowStage.Background);
+    expect(hook.result.current.stage).toBe(FlowStage.Screens);
+    expect(hook.result.current.screenIndex).toBe(0);
   });
 
-  it("resumes the draft's question screen when the draft is past the background", () => {
+  it("resumes the draft's screen when the draft is past the first one", () => {
     const { hook } = setup({ currentPageIndex: 1 });
     act(() => hook.result.current.begin());
     expect(hook.result.current.stage).toBe(FlowStage.Screens);

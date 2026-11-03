@@ -40,7 +40,7 @@ export const text = (id: string): DisplayBlock => ({
   text: id,
 });
 
-// Screens: 0 background, 1 "h" with a and b, 2 "h2" with c.
+// Screens: 0 "intro" text, 1 "h" with a and b, 2 "h2" with c.
 export const schema: FormSchema = {
   pages: [
     { id: "p1", fields: [text("intro")] },

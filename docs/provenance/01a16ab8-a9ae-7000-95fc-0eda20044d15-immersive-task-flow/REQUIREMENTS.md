@@ -21,7 +21,7 @@ task: Immersive full-screen, multi-step task flow on mobile and web, mapped from
   - a green "Task complete!" screen with the member's response card and "View tasks" (per TN-11 in task-flow-testing-fall-26)
 
 - The "Task complete!" screen's second button is "Invite a friend", opening the invites page, in place of the design's "Explore upcoming projects".
-- "Begin" opens a background page, not a summary page. Its H1 is the page's header, or "Project background" without one (TN-27 in task-flow-testing-fall-26). It shows the form's opening videos and images, then its opening text, with Next and the progress bar. The contributors show on the task card (TN-12 in task-flow-testing-fall-26). It does not repeat what the action page already shows: no task title, description, tags, time pills or participant progress bar. A task with no opening content skips this page.
+- "Begin" opens the form's first step, not a summary page, with Next and the progress bar. The flow has no project background page (see "No background page" in task-flow-testing-fall-26), and the contributors show on the task card (TN-12 there). A step does not repeat what the action page already shows: no task title, description, tags, time pills or participant progress bar.
 - There is no task outline.
 - The task flow runs for every task, not only live ones: staff previews, guests on public tasks, and tasks the member can no longer submit or has already submitted.
 - There is no page-title label above the screen title ("Page 1", "Page 2", …).
@@ -40,7 +40,7 @@ task: Immersive full-screen, multi-step task flow on mobile and web, mapped from
 
 - While an accordion section is open in the flow, its title bar stays pinned to the top as the member scrolls through it, so they can close it from anywhere in the section.
 
-- The web app gets the same flow, built after mobile and matching its behaviour: the background page, screens, completion card, resume, pinned accordion titles and the animated progress bar.
+- The web app gets the same flow, built after mobile and matching its behaviour: screens, completion card, resume, pinned accordion titles and the animated progress bar.
 - On web, opening the flow is a transition, not an overlay. The side nav animates down to its icons only. The top bar's search and notifications icons disappear; the profile button stays. The Alliance logo stays in the upper left, and no stroke line crosses it. The grey top band gets a stroke matching the collapsed nav. The flow reaches the right edge of the window, with no strip beside its scrollbar. The task's container (on the homepage, the task card) expands to fill the screen beside the collapsed nav.
 - On web, the whole window is green while the "Task complete!" screen shows: the collapsed nav and the top band as well as the flow.
 - On web, "View tasks" on the "Task complete!" screen plays smoothly and quickly, in this order: the screen, nav and top band return to their default colours; the nav, top bar and everything else return to normal; the panel collapses into the task's container (order set by TN-20 in task-flow-testing-fall-26).

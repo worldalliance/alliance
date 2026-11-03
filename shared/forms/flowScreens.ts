@@ -1,7 +1,4 @@
-import {
-  type DisplayKind,
-  type HeaderBlock,
-} from "@alliance/common/forms/display-blocks";
+import { type HeaderBlock } from "@alliance/common/forms/display-blocks";
 import {
   isQuestionField,
   type FormSchema,
@@ -10,7 +7,7 @@ import {
 import { interpolateDisplayBlock } from "@alliance/common/forms/variable-interpolation";
 import { withCount } from "@alliance/common/plural";
 import { resolveDisplayBlockForUser } from "../formrenderer";
-import { taskFlow, taskFlowFallbackTitle } from "../lib/copy";
+import { taskFlowFallbackTitle } from "../lib/copy";
 import { type FormVisibility } from "../useFormRenderer";
 
 const isHeader = (element: PageItem): element is HeaderBlock =>
@@ -66,22 +63,6 @@ export function visibleFlowScreenIndices(params: {
   );
 }
 
-/** The first visible screen when it asks for nothing, which the intro shows instead. */
-export function backgroundScreenIndex(params: {
-  screens: FlowScreen[];
-  visibleIndices: number[];
-  isElementVisible: (element: PageItem) => boolean;
-}): number | null {
-  const { screens, visibleIndices, isElementVisible } = params;
-  const first = visibleIndices[0];
-  if (first === undefined) return null;
-  return screens[first].elements.some(
-    (element) => isQuestionField(element) && isElementVisible(element),
-  )
-    ? null
-    : first;
-}
-
 export function flowResumeIndex(params: {
   screens: FlowScreen[];
   visibleIndices: number[];
@@ -112,20 +93,18 @@ export type FlowTitleFormState = Pick<
   "isElementCurrentlyVisible" | "variableValues"
 > & { activeUserKey: string | undefined };
 
-/** The screen's opening header, or `fallback` when given and otherwise a generic title, when no header is showing. */
+/** The screen's opening header, or a generic title when no header is showing. */
 export function flowScreenTitle(params: {
   screen: FlowScreen;
   form: FlowTitleFormState;
-  fallback?: string;
 }): string {
-  const { screen, form, fallback } = params;
+  const { screen, form } = params;
   const { activeUserKey, isElementCurrentlyVisible, variableValues } = form;
   const heading =
     screen.heading && resolveDisplayBlockForUser(screen.heading, activeUserKey);
   if (heading && isElementCurrentlyVisible(heading)) {
     return interpolateDisplayBlock(heading, variableValues).text;
   }
-  if (fallback !== undefined) return fallback;
   return fallbackFlowTitle(
     screen.elements.some(
       (element) =>
@@ -154,19 +133,10 @@ export function flowStepPreviews(
   const screens = buildFlowScreens(schema);
   const shows = (screen: FlowScreen) =>
     screen.heading !== null || screen.elements.length > 0;
-  const firstShown = screens.findIndex(shows);
   let step = 0;
-  return screens.map((screen, index) => {
+  return screens.map((screen) => {
     if (!shows(screen)) return null;
     const inputs = screen.elements.filter(isQuestionField).length;
-    if (index === firstShown && inputs === 0) {
-      return {
-        label: screen.heading
-          ? `Background: ${screen.heading.text}`
-          : taskFlow.background,
-        warnings: [],
-      };
-    }
     step += 1;
     const fallback = fallbackFlowTitle(inputs > 0);
     const warnings = [
@@ -190,34 +160,3 @@ export function flowStepPreviews(
 
 export const missingHeaderWarning = (screen: FlowScreen, title: string) =>
   `Task flow: page ${screen.pageIndex + 1} has no header (first element: ${screen.elements[0]?.id}), so it shows "${title}". ${ADD_A_HEADER}`;
-
-const IS_MEDIA: Record<DisplayKind, boolean> = {
-  header: false,
-  text: false,
-  label: false,
-  divider: false,
-  spacer: false,
-  html: false,
-  images: true,
-  video: true,
-  quote: false,
-  biglink: false,
-  copytext: false,
-  previousAnswer: false,
-  userLocation: false,
-  chatTranscript: false,
-  accordion: false,
-};
-
-/** The background page shows the opening media above the opening text. */
-export function splitBackground(background: PageItem[]): {
-  media: PageItem[];
-  reading: PageItem[];
-} {
-  const isMedia = (element: PageItem) =>
-    !isQuestionField(element) && IS_MEDIA[element.kind];
-  return {
-    media: background.filter(isMedia),
-    reading: background.filter((element) => !isMedia(element)),
-  };
-}

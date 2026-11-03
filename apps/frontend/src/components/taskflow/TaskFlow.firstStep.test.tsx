@@ -1,13 +1,13 @@
 import type { FormResponseDto } from "@alliance/shared/client";
-import { taskFlow } from "@alliance/shared/lib/copy";
+import { taskFlow, taskFlowFallbackTitle } from "@alliance/shared/lib/copy";
 import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import ActionTaskPanelForm from "../ActionTaskPanelForm";
 import {
   action,
-  backgroundOnlySchema,
   CLOSE_TIMEOUT,
+  readingOnlySchema,
   renderFlow,
   serveTaskFlow,
   setServedSchema,
@@ -18,16 +18,16 @@ import {
 
 serveTaskFlow();
 
-const openBackground = async () => {
+const openFirstStep = async () => {
   fireEvent.click(await screen.findByRole("button", { name: taskFlow.begin }));
-  await screen.findByRole("heading", { name: taskFlow.background });
+  await screen.findByRole("heading", { name: taskFlowFallbackTitle.reading });
 };
 
-it("submits a background-only form from the background page's Submit", async () => {
-  setServedSchema(backgroundOnlySchema);
+it("submits a one-page form that asks nothing from its only step", async () => {
+  setServedSchema(readingOnlySchema);
   const onCompleteAction = jest.fn();
   renderFlow({ onCompleteAction });
-  await openBackground();
+  await openFirstStep();
 
   fireEvent.click(screen.getByRole("button", { name: taskFlow.submit }));
 
@@ -37,23 +37,23 @@ it("submits a background-only form from the background page's Submit", async () 
   expect(onCompleteAction).not.toHaveBeenCalled();
 });
 
-it("keeps the background page with the error when its submit fails", async () => {
-  setServedSchema(backgroundOnlySchema);
+it("keeps the step with the error when its submit fails", async () => {
+  setServedSchema(readingOnlySchema);
   setSubmitStatus(500);
   renderFlow();
-  await openBackground();
+  await openFirstStep();
 
   fireEvent.click(screen.getByRole("button", { name: taskFlow.submit }));
 
   expect(await screen.findByText("Failed to submit action.")).toBeTruthy();
   expect(
-    screen.getByRole("heading", { name: taskFlow.background }),
+    screen.getByRole("heading", { name: taskFlowFallbackTitle.reading }),
   ).toBeTruthy();
   expect(screen.queryByRole("heading", { name: taskFlow.complete })).toBeNull();
 });
 
-it("closes a read-only background-only form from the background page's Done", async () => {
-  setServedSchema(backgroundOnlySchema);
+it("closes a read-only one-page form from its only step's Done", async () => {
+  setServedSchema(readingOnlySchema);
   renderFlow({
     page: (
       <ActionTaskPanelForm
@@ -67,7 +67,7 @@ it("closes a read-only background-only form from the background page's Done", as
     ),
   });
   fireEvent.click(await screen.findByRole("button", { name: taskFlow.view }));
-  await screen.findByRole("heading", { name: taskFlow.background });
+  await screen.findByRole("heading", { name: taskFlowFallbackTitle.reading });
 
   fireEvent.click(screen.getByRole("button", { name: taskFlow.done }));
 
@@ -98,7 +98,7 @@ function PanelShowingItsSubmission() {
   );
 }
 
-it("opens a task just submitted through the flow on its project background", async () => {
+it("opens a task just submitted through the flow on its first step", async () => {
   renderFlow({ page: <PanelShowingItsSubmission /> });
   await submitFlow();
   fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
@@ -111,16 +111,18 @@ it("opens a task just submitted through the flow on its project background", asy
 
   // Begin opens nothing until the remounted form's visibility settles.
   await waitFor(() => {
-    if (!screen.queryByRole("heading", { name: taskFlow.background })) {
+    if (
+      !screen.queryByRole("heading", { name: taskFlowFallbackTitle.reading })
+    ) {
       fireEvent.click(screen.getByRole("button", { name: taskFlow.view }));
     }
     expect(
-      screen.getByRole("heading", { name: taskFlow.background }),
+      screen.getByRole("heading", { name: taskFlowFallbackTitle.reading }),
     ).toBeTruthy();
   });
 });
 
-it("titles the background page with its own header, shown once", async () => {
+it("titles an opening page that asks nothing with its own header, shown once", async () => {
   setServedSchema({
     ...taskSchema,
     pages: [
@@ -141,6 +143,6 @@ it("titles the background page with its own header, shown once", async () => {
     await screen.findAllByRole("heading", { name: "Why it matters" }),
   ).toHaveLength(1);
   expect(
-    screen.queryByRole("heading", { name: taskFlow.background }),
+    screen.queryByRole("heading", { name: taskFlowFallbackTitle.reading }),
   ).toBeNull();
 });

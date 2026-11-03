@@ -1,6 +1,7 @@
 import {
   draftSaveFailed,
   taskFlow,
+  taskFlowFallbackTitle,
   withdrawFromAction,
 } from "@alliance/shared/lib/copy";
 import { makeAction } from "@alliance/shared/lib/testFixtures";
@@ -17,11 +18,11 @@ import ActionTaskPanelForm from "../ActionTaskPanelForm";
 import { CardMenuSlotContext } from "./CardMenuSlot";
 import {
   action,
-  backgroundOnlySchema,
   CLOSE_TIMEOUT,
   holdSubmit,
   navigate,
   openFirstQuestionScreen,
+  readingOnlySchema,
   renderFlow,
   serveTaskFlow,
   setDraftSaveStatus,
@@ -32,13 +33,15 @@ import {
 
 serveTaskFlow();
 
-it("opens the project background, then one screen per page", async () => {
+it("opens one screen per page, starting on the first", async () => {
   renderFlow();
 
   fireEvent.click(await screen.findByRole("button", { name: taskFlow.begin }));
 
   expect(
-    await screen.findByRole("heading", { name: taskFlow.background }),
+    await screen.findByRole("heading", {
+      name: taskFlowFallbackTitle.reading,
+    }),
   ).toBeTruthy();
   expect(screen.getByText("Why this project matters")).toBeTruthy();
   expect(screen.queryByText("Sam Reviewer")).toBeNull();
@@ -138,7 +141,7 @@ it("stays on the last screen with the error when the submit fails", async () => 
 
 it("shows why a broken form can't open in place of its screens", async () => {
   setServedSchema({
-    ...backgroundOnlySchema,
+    ...readingOnlySchema,
     variables: [{ name: "total", inputs: {}, formula: "this" }],
   });
   renderFlow();
@@ -146,7 +149,7 @@ it("shows why a broken form can't open in place of its screens", async () => {
 
   expect(await screen.findByText("This form can't be displayed")).toBeTruthy();
   expect(
-    screen.queryByRole("heading", { name: taskFlow.background }),
+    screen.queryByRole("heading", { name: taskFlowFallbackTitle.reading }),
   ).toBeNull();
 });
 
@@ -297,7 +300,7 @@ const renderWithdrawable = (onAbandonAction: () => void = () => {}) =>
 const openWithdrawMenu = async (onAbandonAction: () => void = () => {}) => {
   renderWithdrawable(onAbandonAction);
   fireEvent.click(await screen.findByRole("button", { name: taskFlow.begin }));
-  await screen.findByRole("heading", { name: taskFlow.background });
+  await screen.findByRole("heading", { name: taskFlowFallbackTitle.reading });
   fireEvent.click(screen.getByRole("button", { name: withdrawFromAction }));
 };
 

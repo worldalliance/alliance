@@ -30,7 +30,7 @@ From the notes: "Add 'progress is saved' as a small grey disclaimer".
 
 From the notes: "Need indicators on Admin side that clearly communicate how it will translate to the multi-step task view".
 
-- The admin form builder labels each page with the step it becomes: "Step N" followed by the title that step will show, or, for the background page, "Background:" followed by its header, or "Project background" when it has none. (Approved, background title: User)
+- The admin form builder labels each page with the step it becomes: "Step N" followed by the title that step will show. (Approved)
 - The form builder's issues list warns when a page has no header block, when a page has more than 2 inputs, when the form has no output view, and when the task has no image. (Approved)
 
 ## TN-5: A completed task on its action page
@@ -83,7 +83,7 @@ From the notes: "Close task / invite a friend buttons should have iconology", "C
 
 From the notes: "This could be an opportunity to display the project contributors on the preview card?", "If we are going to display them on the first page, should label them explicitly as contributors + make this list look better (should be side by side on large screens, less space between title and subtitle, less space between text + photo)", "Also will look bad w/ more than like 3 ppl" and "Add contributors header".
 
-- Contributors move from the "Project background" page to the task card, under a "Contributors" heading. (Approved)
+- Contributors show on the task card, under a "Contributors" heading, rather than anywhere in the task form. (Approved)
 - The list names the task's authors as well as its expert reviewers, wherever the card shows. (User)
 - They sit side by side on large screens, with less space between name and role and between text and photo. (Notes)
 - Side by side, they sit next to each other with a normal gap between them, not spread into columns. (User)
@@ -177,7 +177,7 @@ From the notes: "Remove the artifact card on completion page if no output view".
 
 From the notes: "Remove mapping of page breaks via header and 3rd question, should only happen at page breaks" and "What header type should I use for each step?".
 
-- Each form page is one step. Header blocks and a page's 3rd input no longer start a new step. (Notes)
+- Each form page is one step, a page that asks nothing included. Header blocks and a page's 3rd input no longer start a new step. (Notes)
 - A step's title is its page's first header block. The page's title isn't shown. A page with no header block gets the generic fallback title. (Approved)
 - Authors open each page with a level-1 header block. (Approved)
 - A header block within a step hides while every block under it, up to the next header block, is hidden, and shows again with them. (User)
@@ -186,9 +186,14 @@ From the notes: "Remove mapping of page breaks via header and 3rd question, shou
 
 - Above the task card's progress bar, at most 3 faces of friends who completed the task show, followed by "+N" for the rest, so the faces, "+N" and the "… members completed" count fit on one line. (User)
 
-## TN-27: The background page's title is the author's
+## TN-27: The background page's title is the author's — superseded
 
-- The background page's title is its form page's header, as on every other step, so authors choose it. "Project background" is only the title of a background page with no header showing. (User)
+Superseded by "No background page" below: the flow has no background page, so a page that asks nothing is titled by its header under TN-25's rule, like every other step. (User)
+
+## No background page
+
+- The task flow has no project background page. An opening page that asks nothing is an ordinary step: numbered, counted in the progress bar and drawn like any other step. (User)
+- A project background comes back in a later testing round. Until then, a task that wants one gets an ordinary opening page, written by hand in the admin panel. (User)
 
 ## Out of scope
 

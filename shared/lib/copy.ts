@@ -360,7 +360,6 @@ export const taskFlow = {
   back: "Back",
   submit: "Complete",
   done: "Done",
-  background: "Project background",
   progress: "Task progress",
   complete: "Task complete!",
   completeUpdate:

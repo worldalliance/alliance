@@ -42,8 +42,8 @@ describe("useTaskFlow modes", () => {
       answers: { c: "z" },
     });
     act(() => hook.result.current.begin());
-    expect(hook.result.current.stage).toBe(FlowStage.Background);
-    await act(() => hook.result.current.start());
+    expect(hook.result.current.stage).toBe(FlowStage.Screens);
+    await act(() => hook.result.current.next());
     await act(() => hook.result.current.next());
     await act(() => hook.result.current.next());
     expect(hook.result.current.stage).toBe(FlowStage.Complete);
@@ -58,7 +58,7 @@ describe("useTaskFlow modes", () => {
       answers: { a: "x", b: "y", c: "z" },
     });
     act(() => hook.result.current.flow.begin());
-    await act(() => hook.result.current.flow.start());
+    await act(() => hook.result.current.flow.next());
     await act(() => hook.result.current.flow.next());
     await act(() => hook.result.current.flow.next());
     expect(hook.result.current.flow.stage).toBe(FlowStage.Complete);
@@ -73,8 +73,8 @@ describe("useTaskFlow modes", () => {
       screenValid: false,
     });
     act(() => hook.result.current.begin());
-    await act(() => hook.result.current.start());
     expect(hook.result.current.nextReady).toBe(true);
+    await act(() => hook.result.current.next());
     await act(() => hook.result.current.next());
     expect(hook.result.current.screenIndex).toBe(2);
     await act(() => hook.result.current.next());
@@ -82,14 +82,14 @@ describe("useTaskFlow modes", () => {
     expect(submits).toHaveLength(0);
   });
 
-  it("is done from the background page when no question screen follows", async () => {
+  it("is done from a one-page form's only step", async () => {
     const { hook, exits } = setup({
       mode: TaskFlowMode.ReadOnly,
       schema: { pages: [schema.pages[0]], outputViews: [] },
     });
     act(() => hook.result.current.begin());
-    expect(hook.result.current.startLabel).toBe(taskFlow.done);
-    await act(() => hook.result.current.start());
+    expect(hook.result.current.nextLabel).toBe(taskFlow.done);
+    await act(() => hook.result.current.next());
     expect(exits).toHaveLength(1);
   });
 });

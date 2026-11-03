@@ -1,4 +1,8 @@
-import { taskFlow, withdrawFromAction } from "@alliance/shared/lib/copy";
+import {
+  taskFlow,
+  taskFlowFallbackTitle,
+  withdrawFromAction,
+} from "@alliance/shared/lib/copy";
 import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { testAuthUser } from "../../stories/testData";
@@ -65,7 +69,7 @@ it("walks a task the member can't submit read-only, closing from its last screen
   const greyView = await screen.findByRole("button", { name: taskFlow.view });
   expect(greyView.className).toContain("bg-zinc-200");
   fireEvent.click(greyView);
-  await screen.findByRole("heading", { name: taskFlow.background });
+  await screen.findByRole("heading", { name: taskFlowFallbackTitle.reading });
   expect(screen.queryByRole("button", { name: withdrawFromAction })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: taskFlow.next }));
   await screen.findByRole("heading", { name: "Rate the chatbot" });
@@ -136,7 +140,7 @@ it("offers a guest on a public task no withdraw", async () => {
     ),
   });
   fireEvent.click(await screen.findByRole("button", { name: taskFlow.begin }));
-  await screen.findByRole("heading", { name: taskFlow.background });
+  await screen.findByRole("heading", { name: taskFlowFallbackTitle.reading });
   expect(screen.queryByRole("button", { name: withdrawFromAction })).toBeNull();
 });
 
@@ -159,7 +163,7 @@ it("opens a submitted response read-only, with the member's answers", async () =
     ),
   });
   fireEvent.click(await screen.findByRole("button", { name: taskFlow.view }));
-  await screen.findByRole("heading", { name: taskFlow.background });
+  await screen.findByRole("heading", { name: taskFlowFallbackTitle.reading });
   fireEvent.click(screen.getByRole("button", { name: taskFlow.next }));
   await screen.findByRole("heading", { name: "Rate the chatbot" });
 

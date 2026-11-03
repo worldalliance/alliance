@@ -8,15 +8,13 @@ import type {
   Page,
   PageItem,
 } from "@alliance/common/forms/form-schema";
-import { taskFlow, taskFlowFallbackTitle } from "../lib/copy";
+import { taskFlowFallbackTitle } from "../lib/copy";
 import {
-  backgroundScreenIndex,
   buildFlowScreens,
   flowProgress,
   flowResumeIndex,
   flowScreenTitle,
   flowStepPreviews,
-  splitBackground,
   visibleFlowScreenIndices,
   withoutEmptySections,
   type FlowScreen,
@@ -240,33 +238,6 @@ describe("flowProgress", () => {
   });
 });
 
-describe("backgroundScreenIndex", () => {
-  const screens = buildFlowScreens(
-    schemaOf(
-      page("p1", [text("a")]),
-      page("p2", [header("h"), input("q")]),
-      page("p3", [text("b")]),
-    ),
-  );
-
-  const background = (
-    visibleIndices: number[],
-    isElementVisible: (element: PageItem) => boolean = () => true,
-  ) => backgroundScreenIndex({ screens, visibleIndices, isElementVisible });
-
-  it("is the first visible screen when it has no inputs", () => {
-    expect(background([0, 1, 2])).toBe(0);
-  });
-
-  it("is null when the first visible screen asks for input", () => {
-    expect(background([1, 2])).toBeNull();
-  });
-
-  it("is the first visible screen when its questions are hidden", () => {
-    expect(background([1, 2], (element) => element.id !== "q")).toBe(1);
-  });
-});
-
 describe("flowScreenTitle", () => {
   const title = (screen: FlowScreen, visible = true) =>
     flowScreenTitle({
@@ -282,20 +253,6 @@ describe("flowScreenTitle", () => {
     expect(
       title({ pageIndex: 0, heading: header("Rate it"), elements: [] }),
     ).toBe("Rate it");
-  });
-
-  it("falls back to the given title when the header isn't showing", () => {
-    expect(
-      flowScreenTitle({
-        screen: { pageIndex: 0, heading: header("h"), elements: [text("a")] },
-        form: {
-          activeUserKey: undefined,
-          isElementCurrentlyVisible: () => false,
-          variableValues: new Map(),
-        },
-        fallback: taskFlow.background,
-      }),
-    ).toBe(taskFlow.background);
   });
 
   it("falls back by whether the screen asks for anything", () => {
@@ -328,57 +285,21 @@ describe("flowScreenTitle", () => {
   });
 });
 
-describe("splitBackground", () => {
-  it("puts media ahead of the text it came with", () => {
-    const video: DisplayBlock = {
-      id: "v",
-      type: "display",
-      kind: "video",
-      src: "https://example.com/v.mp4",
-    };
-    expect(splitBackground([text("a"), video, text("b")])).toEqual({
-      media: [video],
-      reading: [text("a"), text("b")],
-    });
-  });
-});
-
 describe("flowStepPreviews", () => {
-  it("skips an empty leading page when picking the background", () => {
+  it("numbers an opening page that asks nothing as its own step", () => {
     expect(
       flowStepPreviews(
         schemaOf(
           page("p1", []),
-          page("p2", [text("a")]),
+          page("p2", [header("Why it matters"), text("a")]),
           page("p3", [header("Rate"), input("q")]),
         ),
       ),
     ).toEqual([
       null,
-      { label: taskFlow.background, warnings: [] },
-      { label: "Step 1: Rate", warnings: [] },
+      { label: "Step 1: Why it matters", warnings: [] },
+      { label: "Step 2: Rate", warnings: [] },
     ]);
-  });
-
-  it("labels an opening page without inputs as the project background", () => {
-    expect(
-      flowStepPreviews(
-        schemaOf(
-          page("p1", [text("a")]),
-          page("p2", [header("Rate"), input("q")]),
-        ),
-      ),
-    ).toEqual([
-      { label: taskFlow.background, warnings: [] },
-      { label: "Step 1: Rate", warnings: [] },
-    ]);
-  });
-
-  it("labels an opening page without inputs by its header when it has one", () => {
-    const [background] = flowStepPreviews(
-      schemaOf(page("p1", [header("Why it matters"), text("a")])),
-    );
-    expect(background?.label).toBe("Background: Why it matters");
   });
 
   it("warns about a page without a header or with more than two inputs", () => {

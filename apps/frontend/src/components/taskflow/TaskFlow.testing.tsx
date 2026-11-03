@@ -1,5 +1,5 @@
 import type { ActionDto } from "@alliance/shared/client";
-import { taskFlow } from "@alliance/shared/lib/copy";
+import { taskFlow, taskFlowFallbackTitle } from "@alliance/shared/lib/copy";
 import { TaskFlowCompletionProvider } from "@alliance/shared/lib/TaskFlowCompletionContext";
 import { TaskFlowReturnProvider } from "@alliance/shared/lib/TaskFlowReturnContext";
 import {
@@ -44,7 +44,7 @@ export const taskSchema = {
       id: "p1",
       fields: [
         {
-          id: "bg",
+          id: "intro",
           type: "display",
           kind: "text",
           text: "Why this project matters",
@@ -224,7 +224,7 @@ export function renderFlow({
 
 export const openFirstQuestionScreen = async () => {
   fireEvent.click(await screen.findByRole("button", { name: taskFlow.begin }));
-  await screen.findByRole("heading", { name: taskFlow.background });
+  await screen.findByRole("heading", { name: taskFlowFallbackTitle.reading });
   fireEvent.click(screen.getByRole("button", { name: taskFlow.next }));
   await screen.findByRole("heading", { name: "Rate the chatbot" });
 };
@@ -271,7 +271,7 @@ export const setServedSchema = (schema: unknown) => {
   servedSchema = schema;
 };
 
-export const backgroundOnlySchema = {
+export const readingOnlySchema = {
   pages: [taskSchema.pages[0]],
   outputViews: [],
 };

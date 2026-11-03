@@ -45,7 +45,6 @@ import TaskFlowHeader, {
   TaskFlowWithdrawMenu,
   type FlowWithdrawHandler,
 } from "./TaskFlowHeader";
-import TaskFlowIntro from "./TaskFlowIntro";
 import TaskFlowScreen, {
   FLOW_COLUMN,
   TaskFlowPage,
@@ -273,18 +272,6 @@ export default function TaskFlow({
     switch (flow.stage) {
       case FlowStage.Closed:
         return null;
-      case FlowStage.Background:
-        if (!flow.background) return null;
-        return (
-          <TaskFlowIntro
-            form={form}
-            background={flow.background}
-            onNext={() => void flow.start()}
-            nextLabel={flow.startLabel}
-            nextIsLast={flow.startIsLast}
-            error={submitError}
-          />
-        );
       case FlowStage.Screens:
         if (!flow.screen) return null;
         return (
