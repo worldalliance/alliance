@@ -258,7 +258,7 @@ export default function TaskFlow({
                   pathname === "/" ? undefined : () => router.navigate("/"),
                 )
               }
-              onInvite={() => void finish(() => router.push("/invites"))}
+              onInvite={() => router.push("/invites")}
             />
           </Animated.View>
         );

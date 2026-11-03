@@ -209,6 +209,7 @@ export function renderFlow({
                         }
                       />
                       <Route path="/forum" element={<p>Forum</p>} />
+                      <Route path="/invites" element={<p>Invites</p>} />
                     </Routes>
                   </NavbarOptionsProvider>
                 </TaskFlowCompletionProvider>
