@@ -18,7 +18,7 @@ export default function TaskContributors({ action }: { action: ActionDto }) {
       >
         {taskFlow.contributors}
       </Text>
-      <View className="gap-y-3">
+      <View className="flex-row flex-wrap gap-x-6 gap-y-3">
         {contributors.map((contributor) => (
           <View key={contributor.key} className="flex-row items-center gap-x-2">
             <ProfileImage pfp={contributor.picture} size="medium" />
