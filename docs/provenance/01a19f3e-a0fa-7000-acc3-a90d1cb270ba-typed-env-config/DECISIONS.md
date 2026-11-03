@@ -54,6 +54,7 @@ The rules that decide delivery, sending and Twilio signature checks (`notifDeliv
 ## Smaller choices
 
 - `ASSETS_BUCKET` fields became getters calling `requireEnv`, so constructing a service in a test without a bucket doesn't throw; using one does.
+- The Twilio guard reads `TWILIO_AUTH_TOKEN` and `APP_URL` through `requireEnv`. Wherever it enforces signatures, boot already requires both, with `APP_URL` a URL, so it has no branch or alert for either being unusable. `MmsService` drops its own check for missing Twilio keys for the same reason: boot requires all three whenever it sends.
 - `JwtModule` reads `env("JWT_SECRET")` instead of Nest's `ConfigService`, the only `ConfigService` user, so `AppModule` drops `ConfigModule.forRoot`. Bun loads `.env` at process start; `ConfigModule` loaded it again only once Nest started, after module-level code had already read the environment.
 - `server/.env.example` gains the schema keys it lacked and drops `APNS_*`, which nothing reads; it validates against the schema.
 - `oauth.controller.ts` was past the 500-line limit, so it was split first, in its own commit, along the lines a read-only codex subagent recommended: callback handling into `OAuthCallbackService`, shared session helpers into `OAuthSessionService`, the proof cookie into `oauth-browser-proof.ts`, with routes, decorators and class/method names unchanged.

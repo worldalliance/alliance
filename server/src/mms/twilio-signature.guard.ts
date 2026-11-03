@@ -1,4 +1,3 @@
-import { R, type Result } from "@alliance/common/result";
 import {
   ForbiddenException,
   Injectable,
@@ -11,7 +10,7 @@ import type { Request } from "express";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { validateRequest } from "twilio/lib/webhooks/webhooks";
-import { env, twilioSignatureEnforcedFor } from "../config/env";
+import { env, requireEnv, twilioSignatureEnforcedFor } from "../config/env";
 
 export function twilioSignatureEnforced(): boolean {
   return twilioSignatureEnforcedFor(env("NODE_ENV"));
@@ -21,11 +20,8 @@ export function twilioSignatureEnforced(): boolean {
 const TWILIO_WEBHOOK_PATH = "/api/mms/inbound";
 
 /** Builds the public URL from `APP_URL`, ignoring proxy-altered request data. */
-export function twilioWebhookUrl(): Result<string, Error> {
-  return R.map(
-    R.fromThrowable(() => new URL(TWILIO_WEBHOOK_PATH, env("APP_URL"))),
-    (url) => url.toString(),
-  );
+export function twilioWebhookUrl(): string {
+  return new URL(TWILIO_WEBHOOK_PATH, requireEnv("APP_URL")).toString();
 }
 
 const ALERT_INTERVAL_MS = milliseconds({ minutes: 15 });
@@ -44,26 +40,8 @@ export class TwilioSignatureGuard implements CanActivate {
       return true;
     }
 
-    const webhookUrl = twilioWebhookUrl();
-    const expectedUrl = R.toNullable(webhookUrl);
-
-    const authToken = env("TWILIO_AUTH_TOKEN");
-    if (!authToken) {
-      this.logger.error(
-        "TWILIO_AUTH_TOKEN is not set; rejecting inbound Twilio webhook",
-      );
-      this.alert("TWILIO_AUTH_TOKEN is not set", expectedUrl, {});
-      throw new ForbiddenException();
-    }
-
-    if (R.isFailure(webhookUrl)) {
-      this.logger.error(
-        "APP_URL is unset or not a URL; rejecting inbound Twilio webhook",
-      );
-      this.alert("APP_URL is unset or not a URL", expectedUrl, {});
-      throw new ForbiddenException();
-    }
-    const url = webhookUrl.value;
+    const authToken = requireEnv("TWILIO_AUTH_TOKEN");
+    const url = twilioWebhookUrl();
 
     const req = context.switchToHttp().getRequest<Request>();
     const signature = req.header("X-Twilio-Signature");
@@ -80,10 +58,7 @@ export class TwilioSignatureGuard implements CanActivate {
       this.logger.warn(
         `Rejected inbound Twilio webhook: signature did not match for ${url}`,
       );
-      this.alert(`signature did not match for ${url}`, url, {
-        url,
-        hadSignature: Boolean(signature),
-      });
+      this.alert({ url, hadSignature: Boolean(signature) });
       throw new ForbiddenException();
     }
 
@@ -91,11 +66,7 @@ export class TwilioSignatureGuard implements CanActivate {
   }
 
   /** Sends rate-limited rejection alerts without delaying the response. */
-  private alert(
-    reason: string,
-    expectedUrl: string | null,
-    blob: Record<string, unknown>,
-  ): void {
+  private alert(params: { url: string; hadSignature: boolean }): void {
     this.rejectionsSinceAlert++;
 
     const now = Date.now();
@@ -117,11 +88,11 @@ export class TwilioSignatureGuard implements CanActivate {
     void this.eventLogService.sendMessage({
       type: EventType.SmsFailure,
       message:
-        `Inbound Twilio webhook rejected: ${reason}${since}. ` +
+        `Inbound Twilio webhook rejected: signature did not match${since}. ` +
         "No STOP or START from a member is being honoured while this continues — " +
         "check that the webhook URL in the Twilio console is exactly " +
-        `${expectedUrl ?? "<APP_URL is unusable>"}.`,
-      blob: { ...blob, rejectionsSinceLastAlert: rejections },
+        `${params.url}.`,
+      blob: { ...params, rejectionsSinceLastAlert: rejections },
       userId: null,
     });
   }

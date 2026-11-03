@@ -19,11 +19,7 @@ import {
 } from "src/link-tracking/message-tracking.service";
 import { tagTextLinks } from "src/link-tracking/tag-links";
 import type { Repository } from "src/utils/Repository";
-import {
-  DeliveryFailure,
-  deliverySends,
-  notifDeliveryEnabled,
-} from "src/utils/notif-delivery";
+import { DeliveryFailure, deliverySends } from "src/utils/notif-delivery";
 import { isAnonymizedPhoneNumber } from "src/utils/phone";
 import Twilio from "twilio";
 import type { MessageStatus } from "twilio/lib/rest/api/v2010/account/message";
@@ -71,18 +67,6 @@ export class MmsService {
     const accountSid = env("TWILIO_ACCOUNT_SID")!;
     const authToken = env("TWILIO_AUTH_TOKEN")!;
     this.twilioPhoneNumber = env("TWILIO_PHONE_NUMBER")!;
-
-    if (
-      (!accountSid || !authToken || !this.twilioPhoneNumber) &&
-      notifDeliveryEnabled()
-    ) {
-      this.logger.error(
-        "Twilio configuration (Account SID, Auth Token, Phone Number) is missing or invalid.",
-      );
-      throw new InternalServerErrorException(
-        "Twilio configuration is missing or invalid.",
-      );
-    }
 
     try {
       this.twilioClient = Twilio(accountSid, authToken); // Initialize Twilio client
