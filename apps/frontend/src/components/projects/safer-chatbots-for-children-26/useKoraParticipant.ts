@@ -5,7 +5,6 @@ import {
   koraAbandonCode,
   koraCompleteSignup,
   koraSendCode,
-  koraSignOut,
   koraState,
   koraVerifyCode,
   type KoraParticipantDto,
@@ -108,16 +107,11 @@ export function useKoraParticipant() {
       }
     },
   });
-  const signOut = useMutation({
-    mutationFn: () => koraSignOut({ throwOnError: true }),
-    onSuccess: () => update({ participant: null }),
-  });
   return {
     query,
     sendCode,
     abandonCode,
     verifyCode,
     completeSignup,
-    signOut,
   };
 }

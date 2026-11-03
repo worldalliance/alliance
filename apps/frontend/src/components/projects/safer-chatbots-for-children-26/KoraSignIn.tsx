@@ -19,7 +19,7 @@ import {
 } from "@alliance/sharedweb/lib/oauth";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import OAuthButtons from "@alliance/sharedweb/ui/OAuthButtons";
-import { LogOut, RotateCw } from "lucide-react";
+import { RotateCw } from "lucide-react";
 import posthog from "posthog-js";
 import {
   useEffect,
@@ -199,31 +199,10 @@ function NameStep({
   );
 }
 
-function Portal({
-  kora: { signOut },
-  participant,
-}: {
-  kora: Kora;
-  participant: KoraParticipantDto;
-}) {
+function Portal({ participant }: { participant: KoraParticipantDto }) {
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="flex items-center gap-2 text-2xl font-medium">
-        Hi {participant.name}
-        <button
-          type="button"
-          aria-label="Sign out"
-          title="Sign out"
-          disabled={signOut.isPending}
-          onClick={() => signOut.mutate()}
-          className="rounded p-1 hover:bg-black/5"
-        >
-          <LogOut className="size-5" aria-hidden />
-        </button>
-      </h2>
-      {signOut.isError && (
-        <ErrorText>{koraRefusalMessage(signOut.error)}</ErrorText>
-      )}
+      <h2 className="text-2xl font-medium">Hi {participant.name}</h2>
       <ol className="flex list-decimal flex-col gap-1.5 pl-6 text-lg">
         {PORTAL_STEPS.map((step) => (
           <li key={step}>{step}</li>
@@ -324,7 +303,7 @@ export function KoraSignIn({
   if (participant) {
     return (
       <div className={card}>
-        <Portal kora={kora} participant={participant} />
+        <Portal participant={participant} />
       </div>
     );
   }

@@ -33,7 +33,6 @@ let sends: StartKoraCodeDto[];
 let send: () => Response;
 let verify: (code: string) => Response | Promise<Response>;
 let signup: (name: string) => Response;
-let signOut: () => Response;
 let abandoned: number;
 let abandon: () => Response | Promise<Response>;
 let timeZones: unknown[];
@@ -60,7 +59,6 @@ serveApi(
       timeZones.push(body.timeZone);
       return signup(body.name);
     },
-    "POST /kora/sign-out": () => signOut(),
   }),
 );
 
@@ -72,7 +70,6 @@ beforeEach(() => {
   send = () => Response.json(pendingCode());
   verify = () => Response.json({ participant: null });
   signup = (name) => Response.json({ id: "p1", name });
-  signOut = () => new Response(null, { status: 204 });
   abandoned = 0;
   abandon = () => new Response(null, { status: 204 });
   timeZones = [];
@@ -379,23 +376,6 @@ test("a signed-in participant sees how reviewing works, not yet open", async () 
       name: "Start reviewing — opens November 17",
     }).disabled,
   ).toBe(true);
-});
-
-test("signs out, and keeps the signed-in view when sign-out fails", async () => {
-  state = {
-    participant: { id: "p1", name: "Participant" },
-    pendingCode: null,
-    signupPending: false,
-  };
-  signOut = () => new Response(null, { status: 500 });
-  renderCard();
-  fireEvent.click(await screen.findByRole("button", { name: "Sign out" }));
-  await screen.findByText("Something went wrong. Please try again.");
-  screen.getByText("Hi Participant");
-
-  signOut = () => new Response(null, { status: 204 });
-  fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
-  await screen.findByLabelText("Email or mobile number");
 });
 
 test("starts Google and Apple sign-in back to the project page", async () => {

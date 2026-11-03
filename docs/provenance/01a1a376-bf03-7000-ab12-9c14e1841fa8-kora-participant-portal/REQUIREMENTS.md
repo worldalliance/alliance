@@ -12,7 +12,7 @@ The page is `/projects/safer-chatbots-for-children` in `apps/frontend`. A Kora p
 - For a signed-in Kora participant, the hero's "You’re signed in as {name}." line is replaced by a landing card that explains the chatbot ranking experience and serves as the portal into it. Origin: user.
 - Only the hero changes. The page stays at the same URL, and the sections below the hero (participant bar, timeline, about sections, news) stay as they are. Origin: agent-proposed, user-approved.
 - The card's copy, in order. Origin: agent-proposed, user-approved.
-  - Heading: `Hi {name}`, with the existing sign-out icon button beside it.
+  - Heading: `Hi {name}`. The portal has no sign-out button. Origin: user.
   - Numbered steps:
     1. `Read two AI chats with the same child.`
     2. `Tap or drag across words, mark them +1 or −1, with an optional note.`
