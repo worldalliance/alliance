@@ -3,20 +3,16 @@ import {
   type FormValue,
 } from "@alliance/common/forms/form-schema";
 import { type UserDto } from "@alliance/shared/client";
-import { formatUserLocationDisplayValue } from "@alliance/shared/formrenderer";
 import { FlowButtonKind } from "@alliance/shared/forms/flowStyle";
-import { useCurrentUserLocation } from "@alliance/shared/forms/useCurrentUserLocation";
 import { taskFlow } from "@alliance/shared/lib/copy";
-import { useOutputItems } from "@alliance/shared/useOutputItems";
 import { ListTodo, UserPlus } from "lucide-react-native";
 import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { colors } from "../../lib/style/colors";
-import OutputRenderer from "../OutputRenderer";
-import ProfileImage from "../ProfileImage";
 import Text, { FontWeight } from "../system/Text";
 import FlowButton from "./FlowButton";
+import TaskAnswersCard from "./TaskAnswersCard";
 
 const FADE_HEIGHT = 48;
 
@@ -60,13 +56,6 @@ export default function TaskFlowComplete({
   onInvite: () => void;
 }) {
   const insets = useSafeAreaInsets();
-  const output = { schema, answers, ownView: true } as const;
-  const outputItems = useOutputItems(output);
-  const { userLocationDisplayValue } = useCurrentUserLocation({
-    enabled: !!user && outputItems.length > 0,
-    user,
-  });
-  const location = formatUserLocationDisplayValue(userLocationDisplayValue);
 
   return (
     <Pressable
@@ -95,32 +84,12 @@ export default function TaskFlowComplete({
               {taskFlow.completeUpdate}
             </Text>
           </View>
-          {outputItems.length > 0 ? (
-            <View
-              className="mt-6 rounded-md bg-white p-6 gap-y-4"
-              {...KEEPS_OPEN}
-            >
-              {user ? (
-                <View className="flex-row items-center gap-x-3">
-                  <ProfileImage pfp={user.profilePicture} size="medium" />
-                  <View className="flex-1">
-                    <Text
-                      className="text-base text-zinc-900"
-                      weight={FontWeight.Semibold}
-                    >
-                      {user.name}
-                    </Text>
-                    {location ? (
-                      <Text className="text-base text-zinc-500">
-                        {location}
-                      </Text>
-                    ) : null}
-                  </View>
-                </View>
-              ) : null}
-              <OutputRenderer {...output} />
-            </View>
-          ) : null}
+          <TaskAnswersCard
+            className="mt-6"
+            output={{ schema, answers }}
+            user={user}
+            {...KEEPS_OPEN}
+          />
         </ScrollView>
         <BottomFade />
       </View>
