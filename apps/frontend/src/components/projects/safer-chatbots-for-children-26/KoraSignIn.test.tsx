@@ -12,6 +12,7 @@ import { beforeEach, expect, mock, onTestFinished, test } from "bun:test";
 import { MemoryRouter } from "react-router";
 import { AuthContext, type AuthContextType } from "../../../lib/AuthContext";
 import { testAuthUser } from "../../../stories/testData";
+import { PORTAL_STEPS } from "./copy";
 import { KoraSignIn } from "./KoraSignIn";
 
 declare const happyDOM: { setURL: (url: string) => void };
@@ -137,7 +138,7 @@ test("signs up a new participant by email code, then asks for a name", async () 
   });
   fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
-  await screen.findByText("You’re signed in as Test Person.");
+  await screen.findByText("Hi Test Person");
   expect(timeZones).toHaveLength(3);
   expect(timeZones.every((zone) => typeof zone === "string")).toBe(true);
 });
@@ -150,7 +151,7 @@ test("signs a returning participant in by phone without asking for a name", asyn
   await submitContact("+44 7400 123456");
   await enterCode("123456");
 
-  await screen.findByText("You’re signed in as Returning.");
+  await screen.findByText("Hi Returning");
   expect(sends).toEqual([{ phoneNumber: "+447400123456" }]);
   expect(screen.queryByLabelText("Full name")).toBeNull();
 });
@@ -357,8 +358,27 @@ test("a signed-in member sees only the member message", async () => {
   await screen.findByText(
     "Alliance members will participate in this project through weekly tasks.",
   );
-  expect(screen.queryByText(/signed in as/)).toBeNull();
+  expect(screen.queryByText(/^Hi /)).toBeNull();
   expect(screen.queryByLabelText("Email or mobile number")).toBeNull();
+});
+
+test("a signed-in participant sees how reviewing works, not yet open", async () => {
+  state = {
+    participant: { id: "p1", name: "Participant" },
+    pendingCode: null,
+    signupPending: false,
+  };
+  renderCard();
+  await screen.findByText("Hi Participant");
+  expect(
+    screen.getAllByRole("listitem").map((item) => item.textContent),
+  ).toEqual(PORTAL_STEPS);
+  screen.getByText("It takes about an hour, at your own pace.");
+  expect(
+    screen.getByRole<HTMLButtonElement>("button", {
+      name: "Start reviewing — opens November 17",
+    }).disabled,
+  ).toBe(true);
 });
 
 test("signs out, and keeps the signed-in view when sign-out fails", async () => {
@@ -371,7 +391,7 @@ test("signs out, and keeps the signed-in view when sign-out fails", async () => 
   renderCard();
   fireEvent.click(await screen.findByRole("button", { name: "Sign out" }));
   await screen.findByText("Something went wrong. Please try again.");
-  screen.getByText("You’re signed in as Participant.");
+  screen.getByText("Hi Participant");
 
   signOut = () => new Response(null, { status: 204 });
   fireEvent.click(screen.getByRole("button", { name: "Sign out" }));

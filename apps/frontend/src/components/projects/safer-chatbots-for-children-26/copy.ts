@@ -58,6 +58,22 @@ export const HERO_IMAGES: WaitlistHeroImage[] = [
 
 export const SIGNUP_NOTE = "The project will begin November 17th";
 
+export const PORTAL_STEPS = [
+  "Read two AI chats with the same child.",
+  "Tap or drag across words, mark them +1 or −1, with an optional note.",
+  "Say which AI was safer, then lock in.",
+];
+
+export const PORTAL_TIME = "It takes about an hour, at your own pace.";
+
+export const PORTAL_START_LABEL = "Start reviewing — opens November 17";
+
+export const REVIEW_DEMO = {
+  src: "/assets/chatbot-safety/review-demo.mp4",
+  poster: "/assets/chatbot-safety/review-demo-poster.jpg",
+  label: "Demo: marking part of an AI reply −1 and adding a note",
+};
+
 export const EXPERT_ROLE = "Expert advisor";
 
 export interface Expert {

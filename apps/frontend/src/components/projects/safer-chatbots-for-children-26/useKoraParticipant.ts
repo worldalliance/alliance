@@ -8,6 +8,7 @@ import {
   koraSignOut,
   koraState,
   koraVerifyCode,
+  type KoraParticipantDto,
   type KoraParticipantStateDto,
   type StartKoraCodeDto,
 } from "@alliance/shared/client";
@@ -15,8 +16,14 @@ import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { retryUnlessRefused } from "@alliance/shared/lib/retryQuery";
 import { deviceTimeZone, signupTimeZone } from "@alliance/shared/lib/timeZone";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { z } from "zod";
+import { useAuth } from "../../../lib/AuthContext";
 
 const koraRefusalSchema = z.object({
   error: z.union([z.enum(OtpError), z.enum(KoraError)]),
@@ -42,6 +49,21 @@ export function koraRefusalMessage(error: unknown): string {
 
 const timeZone = () => signupTimeZone(deviceTimeZone());
 
+const koraStateQuery = queryOptions({
+  queryKey: queryKeys.koraState(),
+  queryFn: () => koraState({ throwOnError: true }).then((res) => res.data),
+  retry: retryUnlessRefused(1),
+  staleTime: Infinity,
+});
+
+/** Signed-in members see the member view instead, whatever their participant cookie says. */
+export function useSignedInParticipant(): KoraParticipantDto | null {
+  const member = useAuth();
+  const { data } = useQuery(koraStateQuery);
+  if (member.loading || member.isAuthenticated) return null;
+  return data?.participant ?? null;
+}
+
 export function useKoraParticipant() {
   const queryClient = useQueryClient();
   const update = (change: Partial<KoraParticipantStateDto>) =>
@@ -49,12 +71,7 @@ export function useKoraParticipant() {
       queryKeys.koraState(),
       (old) => old && { ...old, ...change },
     );
-  const query = useQuery({
-    queryKey: queryKeys.koraState(),
-    queryFn: () => koraState({ throwOnError: true }).then((res) => res.data),
-    retry: retryUnlessRefused(1),
-    staleTime: Infinity,
-  });
+  const query = useQuery(koraStateQuery);
   const sendCode = useMutation({
     mutationFn: (body: StartKoraCodeDto) =>
       koraSendCode({ body, throwOnError: true }).then((res) => res.data),

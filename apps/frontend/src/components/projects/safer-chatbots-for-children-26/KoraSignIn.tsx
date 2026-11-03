@@ -35,6 +35,7 @@ import { useWebOtpCode } from "../../../lib/useWebOtpCode";
 import { ACCOUNT_BUTTON, EmailDivider } from "../../../onboarding/chrome";
 import { ContactInput, useContactField, type Contact } from "../ContactInput";
 import { PROJECT_FIELD } from "../fieldStyles";
+import { PORTAL_START_LABEL, PORTAL_STEPS, PORTAL_TIME } from "./copy";
 import {
   koraRefusalMessage,
   thrownKoraError,
@@ -198,7 +199,7 @@ function NameStep({
   );
 }
 
-function SignedIn({
+function Portal({
   kora: { signOut },
   participant,
 }: {
@@ -206,9 +207,9 @@ function SignedIn({
   participant: KoraParticipantDto;
 }) {
   return (
-    <div className="flex flex-col gap-2">
-      <p className="flex items-center gap-2 text-lg">
-        You’re signed in as {participant.name}.
+    <div className="flex flex-col gap-3">
+      <h2 className="flex items-center gap-2 text-2xl font-medium">
+        Hi {participant.name}
         <button
           type="button"
           aria-label="Sign out"
@@ -219,10 +220,25 @@ function SignedIn({
         >
           <LogOut className="size-5" aria-hidden />
         </button>
-      </p>
+      </h2>
       {signOut.isError && (
         <ErrorText>{koraRefusalMessage(signOut.error)}</ErrorText>
       )}
+      <ol className="flex list-decimal flex-col gap-1.5 pl-6 text-lg">
+        {PORTAL_STEPS.map((step) => (
+          <li key={step}>{step}</li>
+        ))}
+      </ol>
+      <p className="text-base text-[var(--site-ink)]/70">{PORTAL_TIME}</p>
+      <Button
+        type="button"
+        color={ButtonColor.Black}
+        disabled
+        onClick={() => undefined}
+        className={SUBMIT}
+      >
+        {PORTAL_START_LABEL}
+      </Button>
     </div>
   );
 }
@@ -308,7 +324,7 @@ export function KoraSignIn({
   if (participant) {
     return (
       <div className={card}>
-        <SignedIn kora={kora} participant={participant} />
+        <Portal kora={kora} participant={participant} />
       </div>
     );
   }

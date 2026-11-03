@@ -22,6 +22,8 @@ import { KoraSignIn } from "./KoraSignIn";
 import { NewsCollage } from "./NewsCollage";
 import { ParticipantsBar } from "./ParticipantsBar";
 import { ProjectTimeline } from "./ProjectTimeline";
+import { ReviewDemoVideo } from "./ReviewDemoVideo";
+import { useSignedInParticipant } from "./useKoraParticipant";
 
 export function meta() {
   return socialPreviewMeta({
@@ -51,6 +53,7 @@ function ProjectProgress() {
 }
 
 function HeroScreen() {
+  const participant = useSignedInParticipant();
   return (
     <section
       aria-label="Sign up"
@@ -93,7 +96,11 @@ function HeroScreen() {
           <KoraSignIn className="mt-2 w-full" note={SIGNUP_NOTE} />
         </div>
         <div className="flex justify-center lg:justify-end">
-          <WaitlistHeroImages images={HERO_IMAGES} />
+          {participant ? (
+            <ReviewDemoVideo />
+          ) : (
+            <WaitlistHeroImages images={HERO_IMAGES} />
+          )}
         </div>
       </div>
     </section>
