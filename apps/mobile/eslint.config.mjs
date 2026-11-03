@@ -3,7 +3,10 @@ import expoConfig from "eslint-config-expo/flat.js";
 import { defineConfig } from "eslint/config";
 import globals from "globals";
 import apiClientRules from "../../eslint/api-client-rules.mjs";
-import sharedRules from "../../eslint/shared-rules.mjs";
+import sharedRules, {
+  envReadsOnlyIn,
+  mobileEnvReads,
+} from "../../eslint/shared-rules.mjs";
 
 export default defineConfig([
   expoConfig,
@@ -26,6 +29,11 @@ export default defineConfig([
     ignores: ["dist/*", ".expo/"],
   },
   sharedRules,
+  envReadsOnlyIn({
+    files: ["**/*.{ts,tsx}"],
+    ignores: ["lib/env.ts", "**/*.test.{ts,tsx}"],
+    ...mobileEnvReads,
+  }),
   apiClientRules,
   {
     rules: {

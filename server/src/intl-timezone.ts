@@ -13,6 +13,7 @@ import "@formatjs/intl-datetimeformat/add-all-tz.js";
 import "@formatjs/intl-datetimeformat/locale-data/en.js";
 
 // FormatJS takes UTC as the local zone whatever the host says, so Date does too.
+// eslint-disable-next-line config-module/env-reads -- a write, not a config read
 process.env.TZ = "UTC";
 
 // FormatJS misreads tzdb's link files and throws on some catalog aliases, such

@@ -1,10 +1,24 @@
 import tseslint from "typescript-eslint";
 import apiClientRules from "./eslint/api-client-rules.mjs";
-import sharedRules from "./eslint/shared-rules.mjs";
+import sharedRules, {
+  envReadsOnlyIn,
+  sharedEnvReads,
+  webEnvReads,
+} from "./eslint/shared-rules.mjs";
 
 export default tseslint.config([
   ...tseslint.configs.recommended,
   sharedRules,
+  envReadsOnlyIn({
+    files: ["sharedweb/**/*.{ts,tsx}"],
+    ignores: ["sharedweb/lib/env.ts", "sharedweb/**/*.test.{ts,tsx}"],
+    ...webEnvReads,
+  }),
+  envReadsOnlyIn({
+    files: ["shared/**/*.{ts,tsx}"],
+    ignores: ["shared/**/*.test.{ts,tsx}", "shared/lib/testing/**"],
+    ...sharedEnvReads,
+  }),
   ...apiClientRules.map((config) => ({
     ...config,
     files: ["shared/**/*.{ts,tsx}", "sharedweb/**/*.{ts,tsx}"],

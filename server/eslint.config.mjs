@@ -1,7 +1,10 @@
 import eslintNestJs from "@darraghor/eslint-plugin-nestjs-typed";
 import parser from "@typescript-eslint/parser";
 import tseslint from "typescript-eslint";
-import sharedRules from "../eslint/shared-rules.mjs";
+import sharedRules, {
+  envReadsOnlyIn,
+  serverEnvReads,
+} from "../eslint/shared-rules.mjs";
 import localRules from "./eslint/eslint-local-rules.mjs";
 
 export default tseslint.config([
@@ -19,6 +22,11 @@ export default tseslint.config([
   },
   eslintNestJs.configs.flatRecommended,
   sharedRules,
+  envReadsOnlyIn({
+    files: ["src/**/*.ts"],
+    ignores: ["src/config/env.ts", "src/**/*.spec.ts", "src/**/*.fixtures.ts"],
+    ...serverEnvReads,
+  }),
   {
     plugins: { "local-rules": localRules },
     files: ["**/*.ts"],

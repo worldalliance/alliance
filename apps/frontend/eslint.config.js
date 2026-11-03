@@ -4,7 +4,10 @@ import { defineConfig } from "eslint/config";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 import apiClientRules from "../../eslint/api-client-rules.mjs";
-import sharedRules from "../../eslint/shared-rules.mjs";
+import sharedRules, {
+  envReadsOnlyIn,
+  webEnvReads,
+} from "../../eslint/shared-rules.mjs";
 
 export default defineConfig([
   {
@@ -23,6 +26,11 @@ export default defineConfig([
   pluginReact.configs.flat.recommended,
   pluginReactHooks.configs["recommended-latest"],
   sharedRules,
+  envReadsOnlyIn({
+    files: ["**/*.{ts,tsx}"],
+    ignores: ["vite.config.ts", "**/*.test.{ts,tsx}", "**/*.testing.{ts,tsx}"],
+    ...webEnvReads,
+  }),
   apiClientRules,
   {
     rules: {
