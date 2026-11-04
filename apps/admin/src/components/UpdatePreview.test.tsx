@@ -2,11 +2,9 @@ import { render, screen, within } from "@testing-library/react";
 import type { CollectiveResultTexts } from "../lib/updatePreview";
 import { PreviewCountsKind, UpdatePreview } from "./UpdatePreview";
 
-const split: CollectiveResultTexts = {
+const texts: CollectiveResultTexts = {
   shortNotifString: "a hearing",
-  splitCollectiveResult: true,
-  nonCompleterResult: "",
-  uninvolvedResult: "a hearing; join the next one",
+  nonCompleterResult: "a hearing; join the next one",
 };
 
 const cardOf = (label: string) => {
@@ -20,7 +18,7 @@ describe("UpdatePreview", () => {
   it("counts each variation and marks a skipped group as not notified", () => {
     render(
       <UpdatePreview
-        texts={split}
+        texts={{ ...texts, nonCompleterResult: "" }}
         counts={{
           kind: PreviewCountsKind.Counted,
           counts: {
@@ -34,15 +32,12 @@ describe("UpdatePreview", () => {
 
     expect(card("Completed the action").getByText("1 member")).toBeTruthy();
     const skipped = card("Didn't complete the action");
-    expect(skipped.getByText("4 members")).toBeTruthy();
+    expect(skipped.getByText("9 members")).toBeTruthy();
     expect(skipped.getByText(/Not notified/)).toBeTruthy();
-    expect(cardOf("Away or not involved").textContent).toContain(
-      "PushUpdate: a hearing; join the next one",
-    );
   });
 
   it("highlights the parts that differ per member", () => {
-    render(<UpdatePreview texts={split} />);
+    render(<UpdatePreview texts={texts} />);
 
     expect(
       screen.getAllByText("[link]").every((part) => part.tagName === "MARK"),
@@ -53,7 +48,7 @@ describe("UpdatePreview", () => {
   it("says why the counts are missing", () => {
     render(
       <UpdatePreview
-        texts={split}
+        texts={texts}
         counts={{
           kind: PreviewCountsKind.Unavailable,
           reason: "Pick a tag to count recipients.",
@@ -67,7 +62,7 @@ describe("UpdatePreview", () => {
   it("shows what blocks a send in place of the variations", () => {
     render(
       <UpdatePreview
-        texts={{ ...split, shortNotifString: "", uninvolvedResult: "" }}
+        texts={{ shortNotifString: "", nonCompleterResult: "" }}
       />,
     );
 

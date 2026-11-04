@@ -8,7 +8,6 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  ValidateIf,
 } from "class-validator";
 import { DeleteDateColumnTz } from "src/datasources/basecolumns";
 import { Notification } from "src/notifs/entities/notification.entity";
@@ -118,31 +117,28 @@ export class ActionUpdate {
   @IsOptional()
   visibleAt: Date | null;
 
-  /** The collective result; with the result split, the completed group's. */
+  /** Completed group's notification text; empty skips them. */
   @Column({ type: "text" })
-  /** Only a notification reads it, so an update that sends none may leave it empty. */
-  @ValidateIf(
-    (update: ActionUpdate) =>
-      !update.splitCollectiveResult &&
-      update.notifyType !== ActionUpdateNotifyType.None,
-  )
-  @IsNotEmpty()
+  @IsString()
   @ApiProperty()
   shortNotifString: string;
 
+  // BACKCOMPAT(split-collective-result): sending always uses two texts.
+  // Drop once nothing reads this column.
   @Column({ default: false })
   @IsBoolean()
   @ApiProperty()
   splitCollectiveResult: boolean;
 
-  /** Read only while the result is split; empty skips the group. */
+  /** Didn't-complete (and uninvolved) group's text; empty skips them. */
   @Column({ type: "text", nullable: true })
   @IsOptional()
   @IsString()
   @ApiProperty({ type: String, nullable: true })
   nonCompleterResult: string | null;
 
-  /** Read only while the result is split; empty skips the group. */
+  // BACKCOMPAT(uninvolved-result): uninvolved members read nonCompleterResult.
+  // Drop once nothing reads this column.
   @Column({ type: "text", nullable: true })
   @IsOptional()
   @IsString()

@@ -33,16 +33,11 @@ const withPlaceholders = (text: string) =>
 export enum PreviewVariation {
   Completed = "completed",
   DidNotComplete = "did_not_complete",
-  Uninvolved = "uninvolved",
-  /** Every recipient, while unsplit. */
-  Everyone = "everyone",
 }
 
 export const PREVIEW_VARIATION_LABELS: Record<PreviewVariation, string> = {
   [PreviewVariation.Completed]: "Completed the action",
   [PreviewVariation.DidNotComplete]: "Didn't complete the action",
-  [PreviewVariation.Uninvolved]: "Away or not involved",
-  [PreviewVariation.Everyone]: "Everyone",
 };
 
 export const previewVariationCount: Record<
@@ -50,17 +45,13 @@ export const previewVariationCount: Record<
   (counts: RecognitionPreviewCountsDto) => number
 > = {
   [PreviewVariation.Completed]: (counts) => counts.completed,
-  [PreviewVariation.DidNotComplete]: (counts) => counts.didNotComplete,
-  [PreviewVariation.Uninvolved]: (counts) => counts.uninvolved,
-  [PreviewVariation.Everyone]: (counts) =>
-    counts.completed + counts.didNotComplete + counts.uninvolved,
+  [PreviewVariation.DidNotComplete]: (counts) =>
+    counts.didNotComplete + counts.uninvolved,
 };
 
 export type CollectiveResultTexts = {
   shortNotifString: string;
-  splitCollectiveResult: boolean;
   nonCompleterResult: string;
-  uninvolvedResult: string;
 };
 
 /** null where the variation's group is skipped. */
@@ -89,32 +80,18 @@ export function previewVariations(
 ): Result<PreviewVariationCopy[], string> {
   return R.map(
     readGroupResults({
-      split: texts.splitCollectiveResult,
       completed: texts.shortNotifString,
       didNotComplete: texts.nonCompleterResult,
-      uninvolved: texts.uninvolvedResult,
     }),
-    (results) =>
-      texts.splitCollectiveResult
-        ? [
-            {
-              variation: PreviewVariation.Completed,
-              copy: copyOf(results[RecognitionGroup.Completed]),
-            },
-            {
-              variation: PreviewVariation.DidNotComplete,
-              copy: copyOf(results[RecognitionGroup.DidNotComplete]),
-            },
-            {
-              variation: PreviewVariation.Uninvolved,
-              copy: copyOf(results[RecognitionGroup.Uninvolved]),
-            },
-          ]
-        : [
-            {
-              variation: PreviewVariation.Everyone,
-              copy: copyOf(results[RecognitionGroup.Completed]),
-            },
-          ],
+    (results) => [
+      {
+        variation: PreviewVariation.Completed,
+        copy: copyOf(results[RecognitionGroup.Completed]),
+      },
+      {
+        variation: PreviewVariation.DidNotComplete,
+        copy: copyOf(results[RecognitionGroup.DidNotComplete]),
+      },
+    ],
   );
 }

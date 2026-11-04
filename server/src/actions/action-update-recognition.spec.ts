@@ -11,12 +11,6 @@ import {
 } from "./action-update-recognition";
 import { ActionUpdateNotificationMode } from "./entities/action-update.entity";
 
-const everyGroup = (text: string): GroupResults => ({
-  [RecognitionGroup.Completed]: text,
-  [RecognitionGroup.DidNotComplete]: text,
-  [RecognitionGroup.Uninvolved]: text,
-});
-
 const split: GroupResults = {
   [RecognitionGroup.Completed]: "a hearing",
   [RecognitionGroup.DidNotComplete]: "a hearing without you",
@@ -137,47 +131,48 @@ describe("readRecognitionConfig", () => {
   const update = {
     notificationMode: ActionUpdateNotificationMode.Normal,
     shortNotifString: "a hearing",
-    splitCollectiveResult: false,
-    nonCompleterResult: null,
-    uninvolvedResult: null,
+    nonCompleterResult: null as string | null,
   };
 
-  it("reads every group from the collective result until it's split", () => {
-    expect(
-      readRecognitionConfig({ ...update, nonCompleterResult: "unused" }),
-    ).toEqual({ ok: true, value: everyGroup("a hearing") });
-  });
-
-  it("requires the collective result until it's split", () => {
-    expect(readRecognitionConfig({ ...update, shortNotifString: " " })).toEqual(
-      { ok: false, error: "Write the collective result." },
-    );
-  });
-
-  it("skips each split group left empty", () => {
+  it("gives uninvolved members the didn't-complete text", () => {
     expect(
       readRecognitionConfig({
         ...update,
-        splitCollectiveResult: true,
-        shortNotifString: "",
-        nonCompleterResult: "  ",
-        uninvolvedResult: "a hearing, which you can still join",
+        nonCompleterResult: "a hearing, which you can still join",
       }),
     ).toEqual({
       ok: true,
       value: {
-        [RecognitionGroup.Completed]: null,
-        [RecognitionGroup.DidNotComplete]: null,
+        [RecognitionGroup.Completed]: "a hearing",
+        [RecognitionGroup.DidNotComplete]:
+          "a hearing, which you can still join",
         [RecognitionGroup.Uninvolved]: "a hearing, which you can still join",
       },
     });
   });
 
-  it("refuses a split result with every group empty", () => {
+  it("skips both non-completer groups when that text is empty", () => {
     expect(
       readRecognitionConfig({
         ...update,
-        splitCollectiveResult: true,
+        shortNotifString: "",
+        nonCompleterResult: "a hearing, which you can still join",
+      }),
+    ).toEqual({
+      ok: true,
+      value: {
+        [RecognitionGroup.Completed]: null,
+        [RecognitionGroup.DidNotComplete]:
+          "a hearing, which you can still join",
+        [RecognitionGroup.Uninvolved]: "a hearing, which you can still join",
+      },
+    });
+  });
+
+  it("refuses a result with every group empty", () => {
+    expect(
+      readRecognitionConfig({
+        ...update,
         shortNotifString: " ",
       }),
     ).toEqual({ ok: false, error: "Write at least one group's result." });

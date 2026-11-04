@@ -26,7 +26,7 @@ const renderPreview = (update = actionUpdateAdmin()) =>
 describe("AudienceUpdatePreview", () => {
   it("counts no one when nobody is notified", () => {
     renderPreview(actionUpdateAdmin({ notifyType: "none" }));
-    expect(screen.getByText("0 members")).toBeTruthy();
+    expect(screen.getAllByText("0 members")).toHaveLength(2);
   });
 
   it("says when the recipients couldn't be counted", async () => {

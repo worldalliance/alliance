@@ -21,21 +21,15 @@ export const usesRecognition = (mode: ActionUpdateNotificationMode) =>
 export function readRecognitionConfig(
   update: Pick<
     ActionUpdate,
-    | "notificationMode"
-    | "shortNotifString"
-    | "splitCollectiveResult"
-    | "nonCompleterResult"
-    | "uninvolvedResult"
+    "notificationMode" | "shortNotifString" | "nonCompleterResult"
   >,
 ): Result<GroupResults, string> {
   if (!usesRecognition(update.notificationMode)) {
     return R.failure("This update uses the legacy notification copy.");
   }
   return readGroupResults({
-    split: update.splitCollectiveResult,
     completed: update.shortNotifString,
     didNotComplete: update.nonCompleterResult,
-    uninvolved: update.uninvolvedResult,
   });
 }
 

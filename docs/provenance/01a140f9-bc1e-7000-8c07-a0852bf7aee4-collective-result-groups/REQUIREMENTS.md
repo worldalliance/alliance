@@ -5,13 +5,12 @@ task: Split an action update's collective result by member group, add a live Pre
 
 ## User-origin requirements
 
-### Split by group
+### Two notification texts
 
-- An action update's "Collective result" gets a checkbox that splits it into three groups, each with its own text:
-  - members who completed the action,
-  - members who didn't complete the action,
-  - members who were away or not involved.
-- The checkbox and the group fields appear both in the new-update dialog (the action's Updates tab) and on the action update editor page.
+- An action update has two notification texts, with no checkbox to turn the split on or off:
+  - Notif text for people who completed
+  - Notif text for people who didn't complete (includes people away/uninvolved as well as people who failed to complete)
+- The two fields appear both in the new-update dialog (the action's Updates tab) and on the action update editor page.
 
 ### Preview Update
 
@@ -38,23 +37,20 @@ task: Split an action update's collective result by member group, add a live Pre
 - The migration drops `contributionFormula`, `retrospectiveContributionFormula`, and the exposure's `mode`, `branch`, `contribution`, and `weeksAgo` columns.
 - The migration for the experiment drops the column, deletes the assignment rows, and removes the enum value without checking for existing data first.
 
-### Split by group
+### Two notification texts
 
-- With split on, each group has its own collective result text, sent as written.
-- The existing Collective result field holds the completed group's text. Two new fields hold the didn't-complete and away/not-involved texts.
+- `shortNotifString` holds the completed group's text. `nonCompleterResult` holds the didn't-complete text, and away/uninvolved members read that same text.
 - Group membership:
   - Completed: the member's latest terminal activity on the action is a completion.
-  - Didn't complete: the member hasn't completed, is an expected participant on the action's participant roster, and hasn't withdrawn.
-  - Away or not involved: the member hasn't completed and isn't an expected participant. That covers not assigned, outside the action's cohort, away during the member-action window, or withdrawn ("won't complete").
+  - Didn't complete: everyone else. That covers expected participants who haven't completed, plus not assigned, outside the action's cohort, away during the member-action window, or withdrawn ("won't complete").
 - A group whose text is empty gets no notification.
-- If all three texts are empty, the send is blocked.
+- If both texts are empty, the send is blocked.
 - Each member's group is decided when recognition copy is frozen (`recognitionPreparedAt`), the same moment completion is read.
-- Turning split off keeps the two extra texts saved but unused. Turning it back on restores them. With split off, everyone reads the one Collective result.
-- Updates in legacy notification mode get neither the checkbox nor the preview.
+- Updates in legacy notification mode get neither the two group fields nor the preview.
 
 ### Preview Update
 
-- With split on, variations are listed by group: "Completed the action", "Didn't complete the action", and "Away or not involved". With split off, there is one "Everyone" card. A group skipped because its text is empty is listed as not notified.
+- Variations are listed by group: "Completed the action" and "Didn't complete the action". A group skipped because its text is empty is listed as not notified. The didn't-complete card's count includes away/uninvolved members.
 - The preview has no Branch A/B labels and no note about drawing branches.
 - Each variation shows every channel: in-app, push, text message, email subject, and email body.
 - Per-member parts appear as visibly highlighted placeholders, not real member data: the recipient's first name and the link.

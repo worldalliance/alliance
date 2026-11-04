@@ -97,9 +97,12 @@ const createUpdate = (params: { actionReloadHangs?: boolean } = {}) => {
   fireEvent.change(screen.getByPlaceholderText("Title..."), {
     target: { value: "Hearing scheduled" },
   });
-  fireEvent.change(screen.getByPlaceholderText("Notification message"), {
-    target: { value: "a hearing on the bill" },
-  });
+  fireEvent.change(
+    screen.getByRole("textbox", {
+      name: "Notif text for people who completed",
+    }),
+    { target: { value: "a hearing on the bill" } },
+  );
   fireEvent.click(
     screen.getByRole("button", { name: "Create and write content" }),
   );
@@ -149,7 +152,7 @@ describe("ActionUpdatesTab", () => {
     expect(body).not.toHaveProperty("notificationMode");
   });
 
-  it("previews a split result as it's typed, and creates it split", async () => {
+  it("previews both notif texts as they're typed, and creates them", async () => {
     let body: unknown;
     answer = async (request) => {
       body = await request.json();
@@ -162,11 +165,6 @@ describe("ActionUpdatesTab", () => {
     fireEvent.change(screen.getByDisplayValue("No notification"), {
       target: { value: "all_members" },
     });
-    fireEvent.click(
-      screen.getByRole("checkbox", {
-        name: "Split by who completed the action",
-      }),
-    );
     const create = screen.getByRole("button", {
       name: "Create and write content",
     });
@@ -174,14 +172,16 @@ describe("ActionUpdatesTab", () => {
     expect(create).toHaveProperty("disabled", true);
 
     fireEvent.change(
-      screen.getByRole("textbox", { name: /^Didn't complete the action/ }),
+      screen.getByRole("textbox", {
+        name: /^Notif text for people who didn't complete/,
+      }),
       { target: { value: "a hearing; there's still time" } },
     );
 
     expect(document.body.textContent).toContain(
       "PushUpdate: a hearing; there's still time",
     );
-    expect(screen.getAllByText(/Not notified/)).toHaveLength(2);
+    expect(screen.getAllByText(/Not notified/)).toHaveLength(1);
     expect(screen.queryByText(/^\d+ members?$/)).toBeNull();
     fireEvent.click(create);
     expect(await screen.findByText("Update 9")).toBeTruthy();
@@ -189,7 +189,7 @@ describe("ActionUpdatesTab", () => {
       shortNotifString: "",
       splitCollectiveResult: true,
       nonCompleterResult: "a hearing; there's still time",
-      uninvolvedResult: null,
+      uninvolvedResult: "a hearing; there's still time",
     });
   });
 

@@ -200,20 +200,29 @@ describe("ActionUpdatePage", () => {
     await renderDetails();
 
     expect(screen.queryByText("Preview Update")).toBeNull();
-    expect(screen.queryByText("Split by who completed the action")).toBeNull();
+    expect(
+      screen.queryByRole("textbox", {
+        name: /^Notif text for people who didn't complete/,
+      }),
+    ).toBeNull();
   });
 
-  it("offers the split until each member's copy is frozen", async () => {
+  it("offers both notif texts until each member's copy is frozen", async () => {
     await renderDetails();
 
     expect(
-      screen.getByRole("checkbox", {
-        name: "Split by who completed the action",
+      screen.getByRole("textbox", {
+        name: "Notif text for people who completed",
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("textbox", {
+        name: /^Notif text for people who didn't complete/,
       }),
     ).toBeTruthy();
   });
 
-  it("stops offering the split once copy is frozen", async () => {
+  it("keeps the notif texts once copy is frozen and hides the preview", async () => {
     served = update({
       notifiedAt: "2026-10-01T00:00:00.000Z",
       recognitionPreparedAt: "2026-10-01T00:00:00.000Z",
@@ -222,37 +231,40 @@ describe("ActionUpdatePage", () => {
     await renderDetails();
 
     expect(await screen.findByText(/copy was frozen/)).toBeTruthy();
-    expect(screen.queryByText("Split by who completed the action")).toBeNull();
+    expect(
+      screen.getByRole("textbox", {
+        name: "Notif text for people who completed",
+      }),
+    ).toBeTruthy();
     expect(screen.queryByText("Preview Update")).toBeNull();
     expect(countedAudiences).toEqual([]);
   });
 
-  it("previews every variation as the collective result is typed and split", async () => {
+  it("previews every variation as the notif texts are typed", async () => {
     await renderDetails();
     const preview = () =>
       screen.getByText("Preview Update").closest("div.border") as HTMLElement;
 
-    fireEvent.change(screen.getByDisplayValue("a hearing on the bill"), {
-      target: { value: "a vote" },
-    });
-    expect(preview().textContent).toContain("PushUpdate: a vote");
-    expect(await within(preview()).findByText("9 members")).toBeTruthy();
-
-    fireEvent.click(
-      screen.getByRole("checkbox", {
-        name: "Split by who completed the action",
-      }),
-    );
     fireEvent.change(
-      screen.getByRole("textbox", { name: /^Away or not involved/ }),
+      screen.getByRole("textbox", {
+        name: "Notif text for people who completed",
+      }),
+      { target: { value: "a vote" } },
+    );
+    expect(preview().textContent).toContain("PushUpdate: a vote");
+    expect(await within(preview()).findByText("2 members")).toBeTruthy();
+
+    fireEvent.change(
+      screen.getByRole("textbox", {
+        name: /^Notif text for people who didn't complete/,
+      }),
       { target: { value: "a vote while you were away" } },
     );
 
     expect(preview().textContent).toContain(
       "PushUpdate: a vote while you were away",
     );
-    expect(within(preview()).getByText("4 members")).toBeTruthy();
-    expect(within(preview()).getAllByText(/Not notified/)).toHaveLength(1);
+    expect(within(preview()).getByText("7 members")).toBeTruthy();
   });
 
   it("counts the audience as picked, before it's saved", async () => {

@@ -17,28 +17,18 @@ export enum RecognitionGroup {
 export type GroupResults = Record<RecognitionGroup, string | null>;
 
 export function readGroupResults(params: {
-  split: boolean;
   completed: string;
   didNotComplete: string | null;
-  uninvolved: string | null;
 }): Result<GroupResults, string> {
   const orNull = (text: string | null) => text?.trim() || null;
   const completed = orNull(params.completed);
-  if (!params.split) {
-    return completed
-      ? R.success({
-          [RecognitionGroup.Completed]: completed,
-          [RecognitionGroup.DidNotComplete]: completed,
-          [RecognitionGroup.Uninvolved]: completed,
-        })
-      : R.failure("Write the collective result.");
-  }
+  const didNotComplete = orNull(params.didNotComplete);
   const results: GroupResults = {
     [RecognitionGroup.Completed]: completed,
-    [RecognitionGroup.DidNotComplete]: orNull(params.didNotComplete),
-    [RecognitionGroup.Uninvolved]: orNull(params.uninvolved),
+    [RecognitionGroup.DidNotComplete]: didNotComplete,
+    [RecognitionGroup.Uninvolved]: didNotComplete,
   };
-  return Object.values(results).some((text) => text !== null)
+  return completed !== null || didNotComplete !== null
     ? R.success(results)
     : R.failure("Write at least one group's result.");
 }

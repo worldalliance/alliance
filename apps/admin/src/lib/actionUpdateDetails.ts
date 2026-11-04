@@ -26,9 +26,7 @@ export type ActionUpdateForm = CollectiveResultTexts & {
 export const formOf = (update: AdminActionUpdateDto): ActionUpdateForm => ({
   title: update.title,
   shortNotifString: update.shortNotifString,
-  splitCollectiveResult: update.splitCollectiveResult,
   nonCompleterResult: update.nonCompleterResult ?? "",
-  uninvolvedResult: update.uninvolvedResult ?? "",
   notifyType: update.notifyType,
   tagId: update.tag?.id ?? "",
   date: update.date,
@@ -48,15 +46,14 @@ export const detailsBody = (form: ActionUpdateForm): UpdateActionUpdateDto => ({
     ? Number(form.associatedEventId)
     : null,
   ...(usesRecognition(form.notificationMode) && {
-    splitCollectiveResult: form.splitCollectiveResult,
+    splitCollectiveResult: true,
     nonCompleterResult: form.nonCompleterResult || null,
-    uninvolvedResult: form.uninvolvedResult || null,
+    uninvolvedResult: form.nonCompleterResult || null,
   }),
 });
 
-// The notification carries `shortNotifString` and goes to the saved audience,
-// so an unsaved edit to either would send something other than what's on
-// screen.
+// The notification carries the saved texts and audience, so an unsaved edit
+// to either would send something other than what's on screen.
 export const notifyBlockedReasonOf = (params: {
   notifyType: ActionUpdateNotifyType;
   hasUnsavedDetails: boolean;

@@ -1,6 +1,3 @@
-export const COLLECTIVE_RESULT_DESCRIPTION =
-  "Every member reads this as written, after “Update: ” in pushes and texts.";
-
 export function NotificationHeldBanner({ reason }: { reason: string }) {
   return (
     <div

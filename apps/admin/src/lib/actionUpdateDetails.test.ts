@@ -30,13 +30,13 @@ const update = (
 });
 
 describe("detailsBody", () => {
-  it("saves the split results of a recognition update", () => {
+  it("saves the didn't-complete text for uninvolved members too", () => {
     expect(
       detailsBody(formOf(update({ nonCompleterResult: "without you" }))),
     ).toMatchObject({
-      splitCollectiveResult: false,
+      splitCollectiveResult: true,
       nonCompleterResult: "without you",
-      uninvolvedResult: null,
+      uninvolvedResult: "without you",
     });
   });
 

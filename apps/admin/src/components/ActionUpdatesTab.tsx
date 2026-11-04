@@ -22,8 +22,7 @@ import {
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import type { CollectiveResultTexts } from "../lib/updatePreview";
 import { useActionUpdateAdmin } from "../lib/useActionUpdateAdmin";
-import { COLLECTIVE_RESULT_DESCRIPTION } from "./ActionUpdateRecognition";
-import { CollectiveResultSplitFields } from "./CollectiveResultSplitFields";
+import { CollectiveResultFields } from "./CollectiveResultFields";
 import { UPDATE_PREVIEW_DESCRIPTION, UpdatePreview } from "./UpdatePreview";
 
 interface ActionUpdatesTabProps {
@@ -38,7 +37,7 @@ const defaultNewUpdate: CreateActionUpdateDto = {
   date: new Date().toISOString(),
   notifyType: "none",
   shortNotifString: "",
-  splitCollectiveResult: false,
+  splitCollectiveResult: true,
 };
 
 const ActionUpdatesTab = ({
@@ -61,26 +60,23 @@ const ActionUpdatesTab = ({
 
   const texts: CollectiveResultTexts = {
     shortNotifString: newUpdate.shortNotifString ?? "",
-    splitCollectiveResult: newUpdate.splitCollectiveResult ?? false,
     nonCompleterResult: newUpdate.nonCompleterResult ?? "",
-    uninvolvedResult: newUpdate.uninvolvedResult ?? "",
   };
   const setTexts = (next: CollectiveResultTexts) =>
     setNewUpdate({
       ...newUpdate,
       ...next,
+      splitCollectiveResult: true,
       nonCompleterResult: next.nonCompleterResult || null,
-      uninvolvedResult: next.uninvolvedResult || null,
+      uninvolvedResult: next.nonCompleterResult || null,
     });
   const isSubmitDisabled =
     creating ||
     !newUpdate.title.trim() ||
     (newUpdate.notifyType !== "none" &&
       !readGroupResults({
-        split: texts.splitCollectiveResult,
         completed: texts.shortNotifString,
         didNotComplete: texts.nonCompleterResult,
-        uninvolved: texts.uninvolvedResult,
       }).ok) ||
     (newUpdate.notifyType === "tag" && !newUpdate.tagId);
 
@@ -166,28 +162,7 @@ const ActionUpdatesTab = ({
               required
             />
           </label>
-          <label className="flex flex-col text-sm gap-1">
-            <span className="font-bold">Collective result</span>
-            <span className="text-xs text-zinc-600">
-              What the action achieved. {COLLECTIVE_RESULT_DESCRIPTION}
-            </span>
-            <input
-              type="text"
-              className="p-2 rounded-md bg-white text-base"
-              placeholder="Notification message"
-              value={newUpdate.shortNotifString}
-              onChange={(e) =>
-                setNewUpdate({
-                  ...newUpdate,
-                  shortNotifString: e.target.value,
-                })
-              }
-              required={
-                newUpdate.notifyType !== "none" && !texts.splitCollectiveResult
-              }
-            />
-          </label>
-          <CollectiveResultSplitFields
+          <CollectiveResultFields
             texts={texts}
             onChange={setTexts}
             inputClassName="p-2 rounded-md bg-white text-base"

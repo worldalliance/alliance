@@ -1,57 +1,40 @@
 import { readGroupResults, RecognitionGroup } from "./action-update-copy";
 
 describe("readGroupResults", () => {
-  it("gives every group the collective result until it's split", () => {
+  it("gives uninvolved members the didn't-complete text", () => {
     expect(
       readGroupResults({
-        split: false,
         completed: " a hearing ",
-        didNotComplete: "unused",
-        uninvolved: null,
+        didNotComplete: " a hearing without you ",
       }),
     ).toEqual({
       ok: true,
       value: {
         [RecognitionGroup.Completed]: "a hearing",
-        [RecognitionGroup.DidNotComplete]: "a hearing",
-        [RecognitionGroup.Uninvolved]: "a hearing",
+        [RecognitionGroup.DidNotComplete]: "a hearing without you",
+        [RecognitionGroup.Uninvolved]: "a hearing without you",
       },
     });
   });
 
-  it("requires the collective result until it's split", () => {
+  it("skips each empty group, but not both", () => {
     expect(
       readGroupResults({
-        split: false,
-        completed: " ",
-        didNotComplete: "a hearing",
-        uninvolved: "a hearing",
-      }),
-    ).toEqual({ ok: false, error: "Write the collective result." });
-  });
-
-  it("skips each empty split group, but not all three", () => {
-    expect(
-      readGroupResults({
-        split: true,
         completed: "",
         didNotComplete: "a hearing without you",
-        uninvolved: null,
       }),
     ).toEqual({
       ok: true,
       value: {
         [RecognitionGroup.Completed]: null,
         [RecognitionGroup.DidNotComplete]: "a hearing without you",
-        [RecognitionGroup.Uninvolved]: null,
+        [RecognitionGroup.Uninvolved]: "a hearing without you",
       },
     });
     expect(
       readGroupResults({
-        split: true,
         completed: "",
         didNotComplete: " ",
-        uninvolved: null,
       }),
     ).toEqual({ ok: false, error: "Write at least one group's result." });
   });

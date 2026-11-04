@@ -11,13 +11,12 @@ import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
 import React, { useCallback, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { NotificationAudienceFields } from "../components/ActionUpdateNotificationAudience";
-import { COLLECTIVE_RESULT_DESCRIPTION } from "../components/ActionUpdateRecognition";
 import {
   HiddenFromMembersBanner,
   VisibilityControls,
 } from "../components/ActionUpdateVisibility";
 import { AudienceUpdatePreview } from "../components/AudienceUpdatePreview";
-import { CollectiveResultSplitFields } from "../components/CollectiveResultSplitFields";
+import { CollectiveResultFields } from "../components/CollectiveResultFields";
 import { FormBuilder } from "../components/FormBuilder";
 import FormSection from "../components/FormSection";
 import { UPDATE_PREVIEW_DESCRIPTION } from "../components/UpdatePreview";
@@ -192,10 +191,8 @@ const ActionUpdatePage: React.FC = () => {
     hasUnsavedDetails,
     hasBody: !!storedSchema && storedSchema.blocks.length > 0,
     hasNotificationText: readGroupResults({
-      split: update.splitCollectiveResult,
       completed: update.shortNotifString,
       didNotComplete: update.nonCompleterResult,
-      uninvolved: update.uninvolvedResult,
     }).ok,
   });
 
@@ -215,38 +212,38 @@ const ActionUpdatePage: React.FC = () => {
       </FormSection>
 
       <FormSection
-        title={recognition ? "Collective result" : "Short notification text"}
+        title={recognition ? "Notification text" : "Short notification text"}
         description={
           recognition
-            ? COLLECTIVE_RESULT_DESCRIPTION
+            ? undefined
             : 'An automatic "Update: " prefix is added to this text.'
         }
       >
-        <input
-          type="text"
-          value={form.shortNotifString}
-          onChange={(e) =>
-            setForm({ ...form, shortNotifString: e.target.value })
-          }
-          required={
-            form.notifyType !== "none" &&
-            !(recognition && form.splitCollectiveResult)
-          }
-          className={TEXT_INPUT_CLASS}
-        />
-        {recognition &&
-          (update.recognitionPreparedAt ? (
-            <p className="mt-2 text-sm text-gray-700">
-              Each member&apos;s copy was frozen when this update came due, so
-              changing the collective result no longer reaches anyone.
-            </p>
-          ) : (
-            <CollectiveResultSplitFields
+        {recognition ? (
+          <>
+            <CollectiveResultFields
               texts={form}
               onChange={(texts) => setForm({ ...form, ...texts })}
               inputClassName={TEXT_INPUT_CLASS}
             />
-          ))}
+            {update.recognitionPreparedAt && (
+              <p className="mt-2 text-sm text-gray-700">
+                Each member&apos;s copy was frozen when this update came due, so
+                changing the notification text no longer reaches anyone.
+              </p>
+            )}
+          </>
+        ) : (
+          <input
+            type="text"
+            value={form.shortNotifString}
+            onChange={(e) =>
+              setForm({ ...form, shortNotifString: e.target.value })
+            }
+            required={form.notifyType !== "none"}
+            className={TEXT_INPUT_CLASS}
+          />
+        )}
       </FormSection>
 
       <FormSection title="Notification audience">

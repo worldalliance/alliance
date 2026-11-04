@@ -105,6 +105,7 @@ describe("action update recognition (e2e)", () => {
     const created = await admin("post", `/actions/createUpdate/${action.id}`, {
       title: "Recognition",
       shortNotifString: "a hearing on the bill",
+      nonCompleterResult: "a hearing on the bill",
       date: new Date(Date.now() - milliseconds({ minutes: 1 })).toISOString(),
       notifyType: "tag",
       tagId: audience.id,
@@ -264,7 +265,7 @@ describe("action update recognition (e2e)", () => {
     ).toBe(1);
   });
 
-  it("splits the collective result by group, and skips a group left empty", async () => {
+  it("sends the didn't-complete text to uninvolved members, and skips a group left empty", async () => {
     const completer = await createMember();
     const nonCompleter = await createMember({ inCohort: true });
     const uninvolved = await createMember();
@@ -278,10 +279,8 @@ describe("action update recognition (e2e)", () => {
     await saveLiveCohortDecisions(ctx, [action.id]);
 
     const id = await createUpdate({
-      splitCollectiveResult: true,
-      shortNotifString: "a hearing",
-      nonCompleterResult: "",
-      uninvolvedResult: "a hearing; join the next one",
+      shortNotifString: "",
+      nonCompleterResult: "a hearing; join the next one",
     });
     await notify(id).expect(200);
     await deliverAll();
@@ -292,7 +291,7 @@ describe("action update recognition (e2e)", () => {
       ),
     ).toEqual(
       new Map([
-        [completer.id, { message: ["a hearing"] }],
+        [nonCompleter.id, { message: ["a hearing; join the next one"] }],
         [uninvolved.id, { message: ["a hearing; join the next one"] }],
         [withdrawn.id, { message: ["a hearing; join the next one"] }],
       ]),
@@ -300,7 +299,7 @@ describe("action update recognition (e2e)", () => {
     const skipped = await ctx.dataSource
       .getRepository(ActionUpdateExposure)
       .findOneOrFail({
-        where: { actionUpdateId: id, userId: nonCompleter.id },
+        where: { actionUpdateId: id, userId: completer.id },
         withDeleted: true,
       });
     expect(skipped.deletedAt).not.toBeNull();
@@ -361,8 +360,8 @@ describe("action update recognition (e2e)", () => {
   it("blocks a send with no collective result", async () => {
     await createMember();
     const id = await createUpdate({
-      splitCollectiveResult: true,
       shortNotifString: "",
+      nonCompleterResult: "",
     });
     expect((await notify(id).expect(400)).body.message).toBe(
       "Write at least one group's result.",
@@ -377,8 +376,8 @@ describe("action update recognition (e2e)", () => {
     expect(await entriesFor(id)).toHaveLength(0);
 
     await ctx.dataSource.getRepository(ActionUpdate).update(id, {
-      splitCollectiveResult: true,
       shortNotifString: "",
+      nonCompleterResult: "",
       // Delivery runs at the real now, when an update published at `due` is still hidden.
       visibleAt: new Date(),
     });
@@ -395,7 +394,7 @@ describe("action update recognition (e2e)", () => {
 
     await ctx.dataSource
       .getRepository(ActionUpdate)
-      .update(id, { uninvolvedResult: "a hearing while you were away" });
+      .update(id, { nonCompleterResult: "a hearing while you were away" });
     expect((await recognition.prepare(id, due)).ok).toBe(true);
     expect((await recognition.prepare(id, due)).ok).toBe(true);
     await deliverAll();

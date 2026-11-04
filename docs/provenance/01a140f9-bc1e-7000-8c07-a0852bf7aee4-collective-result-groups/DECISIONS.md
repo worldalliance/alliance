@@ -4,16 +4,17 @@ Status: implemented. [REQUIREMENTS.md](./REQUIREMENTS.md) defines the behavior, 
 
 ## Data
 
-- `ActionUpdate` gets three columns: `splitCollectiveResult boolean NOT NULL DEFAULT false`, `nonCompleterResult text NULL`, and `uninvolvedResult text NULL` (migration `ActionUpdateSplitCollectiveResult`). `shortNotifString` stays as the completed group's text. The default lets a server that predates the columns keep inserting, the same reasoning as `notificationMode`'s default.
-- `@IsNotEmpty()` on `shortNotifString` applies only while `splitCollectiveResult` is false. The admin inputs drop `required` in the same case. With split off, the rule stays "Write the collective result."
-- Existing rows need no data migration: they default to split off and keep sending as before.
+- `ActionUpdate` has `splitCollectiveResult boolean NOT NULL DEFAULT false`, `nonCompleterResult text NULL`, and `uninvolvedResult text NULL` (migration `ActionUpdateSplitCollectiveResult`). `shortNotifString` is the completed group's text. The default lets a server that predates the columns keep inserting, the same reasoning as `notificationMode`'s default.
+- The admin no longer offers a split checkbox. New and saved recognition updates write `splitCollectiveResult: true`. Sending uses two texts: completed (`shortNotifString`) and didn't-complete (`nonCompleterResult`). Away/uninvolved members read `nonCompleterResult`. Admin copies that text into `uninvolvedResult` so a leftover reader still matches. No schema or data migration; the extra columns stay as they are.
+- `shortNotifString` is not `@IsNotEmpty()`; a send with both texts empty is blocked by `readGroupResults` ("Write at least one group's result.").
 - The create DTO takes the three fields as optional. The update DTO takes them as partial, like its other fields. They appear on `AdminActionUpdateDto` only, never on member-facing DTOs.
 - The create and update DTOs no longer take `notificationMode` or any formula. `createActionUpdate` sets `notificationMode` to `normal` itself, because the column's default stays `legacy` for servers that predate it.
+- Editing either notification text freezes in-app copy the same way editing `shortNotifString` already did.
 
 ## Shared copy code (`common/src/action-update-copy.ts`)
 
 - `recognitionCopy({ allianceResult, recipientName, link })` builds every recipient's copy: the text as written in-app, "Update: " before it in push and text, its first sentence as the email subject, and a "Hi <first name>" email body. `RecognitionBranch`, `recognitionBody`, `weeksAgoLead`, and `common/src/forms/contribution-formula.ts` are gone, along with `parseContributionFormula` in `shared/parsed-dtos.ts`.
-- `RecognitionGroup` and `readGroupResults` are the one implementation of "which text each group reads, and what blocks a send". The server's `readRecognitionConfig`, the preview, and the create dialog's submit check all call it. With split off, every group reads the trimmed `shortNotifString`. With split on, each empty text becomes `null` (skip), and all three `null` fails with "Write at least one group's result."
+- `RecognitionGroup` and `readGroupResults` are the one implementation of "which text each group reads, and what blocks a send". The server's `readRecognitionConfig`, the preview, and the create dialog's submit check all call it. Completed reads trimmed `shortNotifString`; DidNotComplete and Uninvolved both read trimmed `nonCompleterResult`. Each empty text becomes `null` (skip); both empty fails with "Write at least one group's result." `RecognitionGroup.Uninvolved` stays as a classification for counts; it is not a separately authored text.
 - `firstSentence`'s tests live in `common/src/action-update-copy.test.ts`. `sentence-splitter` was added to `common/package.json` and `apps/frontend/package.json` at `^5.0.1`, matching the server's version.
 
 ## Planning
@@ -31,9 +32,9 @@ Status: implemented. [REQUIREMENTS.md](./REQUIREMENTS.md) defines the behavior, 
 
 - `apps/admin/src/lib/updatePreview.ts` builds the variations as pure data from the unsaved texts. `components/UpdatePreview.tsx` renders them, and both screens use it. The preview runs the shared copy function on every render, so copy updates on each keystroke with no debounce. If `readGroupResults` fails, its message replaces the cards.
 - The placeholders are the sentinel strings `[name]` and `[link]`, highlighted with `<mark>` by splitting the output on them. `[name]` has no space, so `nameParts` keeps it whole.
-- `PreviewVariation` is `Completed`, `DidNotComplete`, `Uninvolved`, and `Everyone`. With split off there is one "Everyone" card, counted as all three groups together, because every member gets the same copy. With split on, there are three. A skipped group's card says "Not notified: this group's result is empty."
-- The split checkbox and the two extra inputs live in `components/CollectiveResultSplitFields.tsx`, under the existing Collective result input on both screens. Once copy is frozen, the editor page replaces them with a note that edits no longer reach anyone, and hides the preview. Legacy updates get neither.
-- `components/ActionUpdateRecognition.tsx` keeps only `COLLECTIVE_RESULT_DESCRIPTION` and `NotificationHeldBanner`. The editor no longer loads the action's form or its variants, which only fed the formula editor.
+- `PreviewVariation` is `Completed` and `DidNotComplete`. The didn't-complete card's count is `didNotComplete + uninvolved`. A skipped group's card says "Not notified: this group's result is empty."
+- The two inputs live in `components/CollectiveResultFields.tsx` on both screens. Once copy is frozen, the editor page keeps the fields and adds a note that edits no longer reach anyone, and hides the preview. Legacy updates get neither.
+- `components/ActionUpdateRecognition.tsx` keeps only `NotificationHeldBanner`. The editor no longer loads the action's form or its variants, which only fed the formula editor.
 
 ## Counts
 
