@@ -76,3 +76,28 @@ export function deployedConfigFor<E extends NodeEnv>(
 ): (typeof deployedConfig)[E] {
   return deployedConfig[nodeEnv];
 }
+
+/** DOMAIN_NAME and ALT_DOMAIN_NAME have no server env key of their own. */
+export function deployedConfigEnv(
+  config: DeployedConfig,
+): Record<keyof DeployedConfig, string | undefined> {
+  return {
+    DOMAIN_NAME: config.DOMAIN_NAME,
+    ALT_DOMAIN_NAME: config.ALT_DOMAIN_NAME,
+    DB_NAME: config.DB_NAME,
+    DB_PORT: String(config.DB_PORT),
+    APPLE_TEAM_ID: config.APPLE_TEAM_ID,
+    APPLE_KEY_ID: config.APPLE_KEY_ID,
+    APPLE_SERVICES_ID: config.APPLE_SERVICES_ID,
+    APPLE_BUNDLE_ID: config.APPLE_BUNDLE_ID.join(","),
+    GOOGLE_CLIENT_ID: config.GOOGLE_CLIENT_ID,
+    MAIL_FROM: config.MAIL_FROM,
+    SEND_DEV_NOTIFS: String(config.SEND_DEV_NOTIFS),
+    WAITLIST_PUBLIC_MAIL_DAILY_CAP:
+      config.WAITLIST_PUBLIC_MAIL_DAILY_CAP?.toString(),
+    USE_CLOUDFRONT: String(config.USE_CLOUDFRONT),
+    CLOUDFRONT_DOMAIN: config.CLOUDFRONT_DOMAIN,
+    POSTHOG_KEY: config.POSTHOG_KEY,
+    POSTHOG_PROJECT_ID: config.POSTHOG_PROJECT_ID,
+  };
+}
