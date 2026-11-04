@@ -123,21 +123,12 @@ export default function LargeActionCard({
           onDismiss={dismissProps.onDismiss}
         />
       )}
-      <View className="flex-row items-start gap-x-4">
-        <View className="flex-1 gap-y-2">
-          <Text
-            className="text-2xl"
-            family={FontFamily.Serif}
-            weight={FontWeight.Semibold}
-          >
-            {action.name}
-          </Text>
-          <TaskTimeInfo
-            action={action}
-            nextEvent={nextEvent}
-            className="flex-row flex-wrap gap-x-4"
-          />
-        </View>
+      <View className="flex-row items-center justify-between gap-x-4">
+        <TaskTimeInfo
+          action={action}
+          nextEvent={nextEvent}
+          className="flex-1 flex-row flex-wrap gap-x-4"
+        />
         <View className="flex-row items-center gap-x-2">
           {openWithdraw ? (
             <TaskFlowWithdrawButton onPress={openWithdraw} />
@@ -152,6 +143,13 @@ export default function LargeActionCard({
           </FlowButton>
         </View>
       </View>
+      <Text
+        className="text-xl mt-2"
+        family={FontFamily.Serif}
+        weight={FontWeight.Semibold}
+      >
+        {action.name}
+      </Text>
       <Text className="text-base text-zinc-900 my-4">
         {action.shortDescription}
       </Text>

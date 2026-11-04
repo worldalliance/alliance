@@ -133,12 +133,14 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
           </Card>
         )}
         <div className="p-0 sm:p-2">
-          <div className="flex gap-4 items-start">
-            <div className="flex flex-col flex-1 gap-y-2">
-              <p className="text-title text-2xl!">{action.name}</p>
+          <div className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2">
+            <p className="text-title text-xl! col-span-2 row-start-2 sm:col-span-1 sm:row-start-1">
+              {action.name}
+            </p>
+            <div className="col-start-1 row-start-1 sm:row-start-2">
               <TaskTimeInfo action={action} nextEvent={nextEvent} />
             </div>
-            <div className="flex items-center gap-x-2">
+            <div className="col-start-2 row-start-1 flex items-center gap-x-2 sm:row-span-2 sm:self-start">
               <div ref={setMenuSlot} className="empty:hidden" />
               {showDetails && (
                 <FlowButton
