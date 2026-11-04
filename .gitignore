@@ -18,6 +18,11 @@ coverage
 .env.test.local
 .env.production.local
 .env.devtools
+# A deployed build takes these values from common/src/deployed-config.ts.
+/apps/admin/.env.production
+/apps/admin/.env.staging
+/apps/frontend/.env.production
+/apps/frontend/.env.staging
 
 npm-debug.log*
 yarn-debug.log*

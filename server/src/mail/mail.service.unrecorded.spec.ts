@@ -3,7 +3,11 @@ import { Logger } from "@nestjs/common";
 import { DeliveryFailure } from "src/utils/notif-delivery";
 import { EmailType } from "./mail.entity";
 import { MailService } from "./mail.service";
-import { harness, useMailSendingEnv } from "./mail.service.fixtures";
+import {
+  harness,
+  sendingWithoutMailFrom,
+  useMailSendingEnv,
+} from "./mail.service.fixtures";
 
 describe("sendUnrecordedMail", () => {
   useMailSendingEnv();
@@ -67,9 +71,7 @@ describe("sendUnrecordedMail", () => {
     },
     {
       unavailable: "when MAIL_FROM is unset",
-      configure: () => {
-        delete process.env.MAIL_FROM;
-      },
+      configure: sendingWithoutMailFrom,
     },
     {
       unavailable: "when the template fails to render",

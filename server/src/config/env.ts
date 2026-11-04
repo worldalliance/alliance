@@ -1,4 +1,9 @@
 import {
+  deployedConfigEnv,
+  deployedConfigFor,
+} from "@alliance/common/deployed-config";
+import {
+  envWithFallback,
   envFlag as flag,
   optionalEnv as optional,
   parseEnv,
@@ -82,18 +87,51 @@ const fields = {
 export type ServerEnvKey = keyof typeof fields;
 export type ServerEnv = z.output<z.ZodObject<typeof fields>>;
 
-/** Reads `process.env` on every call, so a value a test sets is seen. */
+function committedEnv(nodeEnv: NodeEnv): Partial<Record<ServerEnvKey, string>> {
+  const config = deployedConfigFor(nodeEnv);
+  if (!config) return {};
+  const { DOMAIN_NAME, ALT_DOMAIN_NAME, ...committed } =
+    deployedConfigEnv(config);
+  return {
+    ...committed,
+    APP_URL: `https://${DOMAIN_NAME}`,
+    ALT_APP_URL: `https://${ALT_DOMAIN_NAME}`,
+    ADMIN_URL: `https://admin.${DOMAIN_NAME}`,
+    ALT_ADMIN_URL: `https://admin.${ALT_DOMAIN_NAME}`,
+  };
+}
+
+const committedByEnv = new Map<
+  string | undefined,
+  Partial<Record<ServerEnvKey, string>>
+>(Object.values(NodeEnv).map((nodeEnv) => [nodeEnv, committedEnv(nodeEnv)]));
+
+const withCommitted = (source: Record<string, string | undefined>) =>
+  envWithFallback({
+    source,
+    fallback: committedByEnv.get(source.NODE_ENV) ?? {},
+  });
+
+// Merges only the key read, since env() sits on per-row paths.
+const committedSource = (key: ServerEnvKey) =>
+  envWithFallback({
+    source: { [key]: process.env[key] },
+    fallback: { [key]: committedByEnv.get(process.env.NODE_ENV)?.[key] },
+  });
+
+/** Reads `process.env` on every call, so a value a test sets is seen. In
+ * staging and production, the committed config fills what it leaves unset. */
 export function env<K extends ServerEnvKey>(
   key: K,
 ): z.output<(typeof fields)[K]> {
-  return readEnvKey({ fields, key, source: process.env });
+  return readEnvKey({ fields, key, source: committedSource(key) });
 }
 
 /** For a key that is optional overall but required where it's called. */
 export function requireEnv<K extends ServerEnvKey>(
   key: K,
 ): NonNullable<z.output<(typeof fields)[K]>> {
-  return requireEnvKey({ fields, key, source: process.env });
+  return requireEnvKey({ fields, key, source: committedSource(key) });
 }
 
 export function notifDeliveryEnabledFor(
@@ -114,7 +152,7 @@ export function twilioSignatureEnforcedFor(nodeEnv: NodeEnv): boolean {
 
 // ADMIN_USER and ADMIN_PASSWORD are in Infisical but the deploy never hands
 // them to the server, which reads them only outside production.
-const deployedInInfisical = [
+const deployedSet = [
   "APPLE_BUNDLE_ID",
   "APPLE_KEY_ID",
   "APPLE_PRIVATE_KEY_BASE64",
@@ -142,9 +180,9 @@ const deployedInInfisical = [
   "TWILIO_PHONE_NUMBER",
 ] as const satisfies ServerEnvKey[];
 
-// The keys Infisical's `alliance` project sets in the matching environment,
-// flags aside; test has no Infisical environment.
-const inInfisical: Record<NodeEnv, readonly ServerEnvKey[]> = {
+// The keys Infisical's `alliance` project or the committed config sets in the
+// matching environment, flags aside; test has no Infisical environment.
+const setFor: Record<NodeEnv, readonly ServerEnvKey[]> = {
   [NodeEnv.Development]: [
     "ADMIN_PASSWORD",
     "ADMIN_URL",
@@ -177,11 +215,8 @@ const inInfisical: Record<NodeEnv, readonly ServerEnvKey[]> = {
     "TWILIO_AUTH_TOKEN",
     "TWILIO_PHONE_NUMBER",
   ],
-  [NodeEnv.Staging]: deployedInInfisical,
-  [NodeEnv.Production]: [
-    ...deployedInInfisical,
-    "WAITLIST_PUBLIC_MAIL_DAILY_CAP",
-  ],
+  [NodeEnv.Staging]: deployedSet,
+  [NodeEnv.Production]: [...deployedSet, "WAITLIST_PUBLIC_MAIL_DAILY_CAP"],
   [NodeEnv.Test]: [],
 };
 
@@ -194,8 +229,8 @@ function conditionallyRequired(config: Partial<ServerEnv>): ServerEnvKey[] {
   const nodeEnv = config.NODE_ENV;
   if (nodeEnv === undefined) return [...cloudfront];
   return [
-    ...inInfisical[nodeEnv],
-    // The deploy sets these outside Infisical.
+    ...setFor[nodeEnv],
+    // The committed config sets the URLs, and the deploy the bucket.
     ...(isDeployed(nodeEnv)
       ? ([
           "APP_URL",
@@ -231,5 +266,9 @@ function conditionallyRequired(config: Partial<ServerEnv>): ServerEnvKey[] {
 export function validateServerEnv(
   source: Record<string, string | undefined> = process.env,
 ): Result<ServerEnv, string[]> {
-  return parseEnv({ fields, source, requiredKeys: conditionallyRequired });
+  return parseEnv({
+    fields,
+    source: withCommitted(source),
+    requiredKeys: conditionallyRequired,
+  });
 }

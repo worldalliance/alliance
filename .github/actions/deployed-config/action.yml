@@ -1,0 +1,26 @@
+name: Deployed config
+description: >-
+  Download the deployed-config job's deployed-config.env into the workspace
+  and read its lines into outputs.
+
+outputs:
+  DOMAIN_NAME:
+    description: The environment's main domain.
+    value: ${{ steps.read.outputs.DOMAIN_NAME }}
+  ALT_DOMAIN_NAME:
+    description: The environment's alternate domain.
+    value: ${{ steps.read.outputs.ALT_DOMAIN_NAME }}
+  POSTHOG_PROJECT_ID:
+    description: The environment's PostHog project id.
+    value: ${{ steps.read.outputs.POSTHOG_PROJECT_ID }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: deployed-config
+
+    - id: read
+      shell: bash
+      run: cat deployed-config.env >> "$GITHUB_OUTPUT"

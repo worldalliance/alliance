@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { z } from "zod";
 import {
   envFlag,
+  envWithFallback,
   formatEnvProblems,
   httpUrl,
   optionalEnv,
@@ -206,6 +207,17 @@ describe("parseEnv", () => {
     };
     const parsed = parseEnv({ fields: counted, source: { A: "a" } });
     expect(parsed.ok && parsed.value.A).toBe("a1");
+  });
+});
+
+describe("envWithFallback", () => {
+  it("prefers a set source value, letting a blank one fall through and keeping one only it sets", () => {
+    expect(
+      envWithFallback({
+        source: { A: "set", B: " ", C: undefined, E: "e" },
+        fallback: { A: "a", B: "b", C: "c", D: "d" },
+      }),
+    ).toEqual({ A: "set", B: "b", C: "c", D: "d", E: "e" });
   });
 });
 

@@ -1,3 +1,5 @@
+import { deployedConfigFor } from "@alliance/common/deployed-config";
+import { NodeEnv } from "@alliance/common/node-env";
 import { afterEach, describe, expect, it } from "bun:test";
 import { env, requireEnv, validateServerEnv } from "./env";
 
@@ -147,15 +149,72 @@ describe("validateServerEnv", () => {
     }
   });
 
-  it("requires each environment's keys", () => {
+  const committed = new Set([
+    "DB_NAME",
+    "DB_PORT",
+    "SEND_DEV_NOTIFS",
+    "USE_CLOUDFRONT",
+    "APP_URL",
+    "ALT_APP_URL",
+    "ADMIN_URL",
+    "ALT_ADMIN_URL",
+    "MAIL_FROM",
+    "WAITLIST_PUBLIC_MAIL_DAILY_CAP",
+    "CLOUDFRONT_DOMAIN",
+    "POSTHOG_KEY",
+    "POSTHOG_PROJECT_ID",
+    "GOOGLE_CLIENT_ID",
+    "APPLE_TEAM_ID",
+    "APPLE_KEY_ID",
+    "APPLE_SERVICES_ID",
+    "APPLE_BUNDLE_ID",
+  ]);
+  const uncommitted = (config: Record<string, string>) =>
+    Object.fromEntries(
+      Object.entries(config).filter(([key]) => !committed.has(key)),
+    );
+
+  it("requires each environment's keys, less what the committed config sets", () => {
     for (const [NODE_ENV, config] of Object.entries(complete)) {
+      const supplied =
+        NODE_ENV === "development" ? config : uncommitted(config);
       expect(problems({ ...base, NODE_ENV }).sort()).toEqual(
-        Object.keys(config)
+        Object.keys(supplied)
           .filter((key) => !(key in base))
           .map((key) => `${key}: missing`)
           .sort(),
       );
     }
+  });
+
+  it("parses each deployed environment's committed values", () => {
+    const parsed = (config: Record<string, string>) => {
+      const result = validateServerEnv(uncommitted(config));
+      if (!result.ok) throw new Error(result.error.join("\n"));
+      return result.value;
+    };
+    const committedFor = (nodeEnv: NodeEnv.Staging | NodeEnv.Production) => {
+      const {
+        DOMAIN_NAME: _,
+        ALT_DOMAIN_NAME: __,
+        ...rest
+      } = deployedConfigFor(nodeEnv);
+      return rest;
+    };
+    expect(parsed(deployed)).toMatchObject({
+      ...committedFor(NodeEnv.Staging),
+      APP_URL: "https://staging.worldalliance.org",
+      ALT_APP_URL: "https://staging.thealliance.org",
+      ADMIN_URL: "https://admin.staging.worldalliance.org",
+      ALT_ADMIN_URL: "https://admin.staging.thealliance.org",
+    });
+    expect(parsed(production)).toMatchObject({
+      ...committedFor(NodeEnv.Production),
+      APP_URL: "https://worldalliance.org",
+      ALT_APP_URL: "https://thealliance.org",
+      ADMIN_URL: "https://admin.worldalliance.org",
+      ALT_ADMIN_URL: "https://admin.thealliance.org",
+    });
   });
 
   it("requires the deployed keys beside a malformed key", () => {
@@ -229,5 +288,20 @@ describe("env", () => {
     expect(() => requireEnv("MAIL_FROM")).toThrow("MAIL_FROM: missing");
     process.env.MAIL_FROM = "Alliance <a@example.com>";
     expect(requireEnv("MAIL_FROM")).toBe("Alliance <a@example.com>");
+  });
+
+  it("falls back to the committed config in a deployed environment", () => {
+    const committed = deployedConfigFor(NodeEnv.Production);
+    process.env = { NODE_ENV: "production", DB_NAME: "" };
+    expect(env("APP_URL")).toBe(`https://${committed.DOMAIN_NAME}`);
+    expect(env("DB_NAME")).toBe(committed.DB_NAME);
+    expect(env("WAITLIST_PUBLIC_MAIL_DAILY_CAP")).toBe(
+      committed.WAITLIST_PUBLIC_MAIL_DAILY_CAP,
+    );
+    expect(env("APPLE_BUNDLE_ID")).toEqual(committed.APPLE_BUNDLE_ID);
+    process.env.DB_NAME = "alliance_sync";
+    expect(env("DB_NAME")).toBe("alliance_sync");
+    process.env.NODE_ENV = "development";
+    expect(env("APP_URL")).toBeUndefined();
   });
 });
