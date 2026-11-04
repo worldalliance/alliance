@@ -1,5 +1,6 @@
 import type { AnyField, FormValue } from "@alliance/common/forms/form-schema";
 import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
+import { shownLabel } from "@alliance/shared/forms/shownLabel";
 import { cn } from "@alliance/shared/styles/util";
 import { useId, type ReactNode } from "react";
 import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
@@ -41,7 +42,9 @@ export function ValidationMessage({ message }: { message: string | null }) {
 
 export function useQuestionLabelId(field: AnyField): string | undefined {
   const instanceId = useId();
-  return field.label?.trim() ? `${field.id}-${instanceId}-label` : undefined;
+  return shownLabel(field) === null
+    ? undefined
+    : `${field.id}-${instanceId}-label`;
 }
 
 export function RenderLabel({

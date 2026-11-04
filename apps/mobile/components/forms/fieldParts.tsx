@@ -1,5 +1,6 @@
 import type { AnyField, FormValue } from "@alliance/common/forms/form-schema";
 import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
+import { shownLabel } from "@alliance/shared/forms/shownLabel";
 import { View } from "react-native";
 import InlineLabelMarkdownWrapper from "../InlineLabelMarkdownWrapper";
 import Text from "../system/Text";
@@ -51,14 +52,15 @@ export function RenderLabel({
 }) {
   if (hideLabel) return null;
   const isRequired = required ?? !!field.required;
-  if (field.label === null && isRequired) return null;
+  const label = shownLabel(field);
+  if (label === null && isRequired) return null;
   return (
     <View className="mb-1">
       {!isRequired && !isOutputView && <OptionalLabelPrefix />}
-      {field.label !== null && (
+      {label !== null && (
         <View>
           <InlineLabelMarkdownWrapper markLinksLeavingApp>
-            {field.label}
+            {label}
           </InlineLabelMarkdownWrapper>
         </View>
       )}
