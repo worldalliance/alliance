@@ -28,7 +28,6 @@ Where the task flow's surfaces look different on web and mobile, mobile changes 
 - The staff-preview notice is a rounded light blue box inside the card's padding, with a semibold heading and an eye icon, in the card's dark text colour, not a full-width blue strip. (Approved)
 - The title is serif semibold at the web card's size. (Approved)
 - The short description is in the dark body colour, not grey. (Approved)
-- Contributors sit side by side, wrapping onto further rows, not stacked one per row. (Approved)
 
 ### Radio buttons and checkboxes
 

@@ -42,16 +42,10 @@ import {
   type ViewerCohort,
 } from "./user-action-status";
 
-/** What every `buildMemberFeed` caller loads; its `ActionDto`s throw without them. */
-const FEED_DTO_RELATIONS = {
+const MEMBER_FEED_RELATIONS = {
   events: true,
   followUpForms: true,
   reviewers: true,
-} satisfies Omit<Relations<Action>, "usersCompleted" | "status">;
-
-const MEMBER_FEED_RELATIONS = {
-  ...FEED_DTO_RELATIONS,
-  authors: true,
 } satisfies Omit<Relations<Action>, "usersCompleted" | "status">;
 
 @Injectable()
@@ -160,8 +154,7 @@ export class MemberActionsService {
     const actions = await this.actionRepository
       .find({
         where: { id: In(params.openActionIds) },
-        // The badge counts statuses, so it skips the authors only the card shows.
-        relations: FEED_DTO_RELATIONS,
+        relations: MEMBER_FEED_RELATIONS,
         relationLoadStrategy: "query",
       })
       .then((rows) => rows.map(parseAction));

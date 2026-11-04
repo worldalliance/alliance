@@ -79,15 +79,11 @@ From the notes: "Close task / invite a friend buttons should have iconology", "C
 - "Close task" becomes "View tasks", with a list icon. It closes the flow and goes to the tasks homepage; on the tasks homepage it only closes the flow. (Approved)
 - "Invite a friend" has a person-plus icon. (Approved)
 
-## TN-12: Contributors on the task card
+## TN-12: Contributors on the task card — reverted
 
 From the notes: "This could be an opportunity to display the project contributors on the preview card?", "If we are going to display them on the first page, should label them explicitly as contributors + make this list look better (should be side by side on large screens, less space between title and subtitle, less space between text + photo)", "Also will look bad w/ more than like 3 ppl" and "Add contributors header".
 
-- Contributors show on the task card, under a "Contributors" heading, rather than anywhere in the task form. (Approved)
-- The list names the task's authors as well as its expert reviewers, wherever the card shows. (User)
-- They sit side by side on large screens, with less space between name and role and between text and photo. (Notes)
-- Side by side, they sit next to each other with a normal gap between them, not spread into columns. (User)
-- Nothing caps how many show. Past three, they wrap onto further rows on web and stack on mobile, as the list already does. (User)
+- The task card on the tasks homepage shows no contributors list, on web and mobile at every breakpoint, and neither does the task flow. The action page's own list of authors and reviewers under its title is unaffected. (User)
 
 ## TN-13: Completion card fades under the buttons
 
@@ -113,7 +109,7 @@ From the notes: "Three-dot button should show up on every page", "Add ability to
 
 From the notes: "Mobile preview card should take up near-full screen", "Make it look more like a card somehow", "Maybe grey separator below it / identical to the separators between the activity cards in the feed" and "While we're at it let's kill the 'activity' heading below the preview card".
 
-- On the mobile tasks homepage, the current task card hugs its contents, with no empty space under the contributors. (User)
+- On the mobile tasks homepage, the current task card hugs its contents, with no empty space at its bottom. (User)
 - A grey separator identical to the ones between feed activity cards sits below it. (Notes)
 - The "Activity" heading below it is removed. (Notes)
 

@@ -21,7 +21,7 @@ task: Immersive full-screen, multi-step task flow on mobile and web, mapped from
   - a green "Task complete!" screen with the member's response card and "View tasks" (per TN-11 in task-flow-testing-fall-26)
 
 - The "Task complete!" screen's second button is "Invite a friend", opening the invites page, in place of the design's "Explore upcoming projects".
-- "Begin" opens the form's first step, not a summary page, with Next and the progress bar. The flow has no project background page (see "No background page" in task-flow-testing-fall-26), and the contributors show on the task card (TN-12 there). A step does not repeat what the action page already shows: no task title, description, tags, time pills or participant progress bar.
+- "Begin" opens the form's first step, not a summary page, with Next and the progress bar. The flow has no project background page (see "No background page" in task-flow-testing-fall-26), and no contributors list shows in the flow or on the task card (TN-12 there). A step does not repeat what the action page already shows: no task title, description, tags, time pills or participant progress bar.
 - There is no task outline.
 - The task flow runs for every task, not only live ones: staff previews, guests on public tasks, and tasks the member can no longer submit or has already submitted.
 - There is no page-title label above the screen title ("Page 1", "Page 2", …).
