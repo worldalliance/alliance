@@ -1,0 +1,1 @@
+- `signedMembersCount` counts in SQL through `sqlUserHasActiveContractAt` instead of loading every user, because this task puts this public endpoint on each onboarding action's bar and preview, which call it on mount and window focus. The SQL commit lands first so that no deployed commit has them calling the full-table load. Agent decision.
