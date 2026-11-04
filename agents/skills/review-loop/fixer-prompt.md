@@ -21,7 +21,7 @@ Checks an earlier fixer of this round could not get to pass: {{FAILED_CHECKS}}. 
 Merge findings that describe the same defect, including across commits. Verify each against the code before classifying; reviewers can be wrong. Classify each one:
 
 - **fix-now**: anything this branch introduced or made worse that we would otherwise have to change later. No code we know is bad gets pushed.
-- **follow-up**: real but pre-existing, and this branch doesn't make it worse.
+- **follow-up**: real but pre-existing, and this branch doesn't make it worse; or a finding that would otherwise be fix-now whose fix would add scope the user didn't ask for, once a follow-up issue was chosen for it by the user or by you on a choice that fell to you, unless the finding is a cut.
 - **drop**: incorrect. Give the reason.
 - **cut**: a finding that would otherwise be fix-now, on work the user made optional or conditional on its cost ("only if it's easy", or "I don't care" whether it gets done), per the task's provenance, once the ledger's requirement-or-decision column shows that work drew a fix-now finding in an earlier round. Remove the work instead of fixing it, record the cut in `DECISIONS.md`, and file a follow-up for it. Required work and a choice the user deferred ("I don't care how") are never cut.
 
@@ -39,7 +39,7 @@ Fix every fix-now issue. Follow `AGENTS.md` and the skills it names, especially 
 
 Every commit you made or rewrote must pass its checks on its own, and so must the tip. Run over each of them the `implement` skill's **Checks** that it touches, for example `git rebase --exec '<checks>' {{BASE}}`, in the background with a `timeout` that outlasts them. Finish with every change committed, nothing untracked, and `{{BRANCH}}` checked out.
 
-You may change the task's provenance `DECISIONS.md` freely when a fix calls for it. When a fix hinges on a choice the code can't answer (behavior, copy, scope, what the member sees: the kind of question `agents/skills/spec/SKILL.md` says to ask), don't guess. Fix everything that doesn't depend on the answer, then ask in your report. A subject the user made conditional or said "I don't care" about is yours: decide its questions yourself and record each choice in `DECISIONS.md`.
+You may change the task's provenance `DECISIONS.md` freely when a fix calls for it. A fix that would add scope the user didn't ask for, such as migrating other tasks' files or adding a new test harness, check or tool, is a question: ask it with a rough cost, recommending a follow-up issue. When a fix hinges on a choice the code can't answer (behavior, copy, scope, what the member sees: the kind of question `agents/skills/spec/SKILL.md` says to ask), don't guess. Fix everything that doesn't depend on the answer, then ask in your report. A subject the user made conditional or said "I don't care" about is yours: decide its questions yourself, scope ones included, and record each choice in `DECISIONS.md`.
 
 ## 5. Report
 
