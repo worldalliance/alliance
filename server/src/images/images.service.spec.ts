@@ -1,3 +1,5 @@
+import { deployedConfigFor } from "@alliance/common/deployed-config";
+import { NodeEnv } from "@alliance/common/node-env";
 import { afterEach, describe, expect, it } from "bun:test";
 import { getImageSource } from "./images.service";
 
@@ -31,17 +33,19 @@ describe("getImageSource when deployed", () => {
     },
   );
 
-  it("throws when CloudFront is on without a domain", () => {
-    deployed({ USE_CLOUDFRONT: "true" });
-    expect(() => getImageSource(KEY)).toThrow("CLOUDFRONT_DOMAIN: missing");
-  });
-
   it("throws on an unrecognized flag value", () => {
     deployed({ USE_CLOUDFRONT: "yes", CLOUDFRONT_DOMAIN: "cdn.example.org" });
     expect(() => getImageSource(KEY)).toThrow("USE_CLOUDFRONT");
   });
 
-  it.each(["", "0", "false"])(
+  it("serves from the committed CloudFront domain when the flag is unset", () => {
+    deployed({});
+    expect(getImageSource(KEY)).toBe(
+      `https://${deployedConfigFor(NodeEnv.Staging).CLOUDFRONT_DOMAIN}/${KEY}`,
+    );
+  });
+
+  it.each(["0", "false"])(
     "serves through the API when the flag is %p",
     (flag) => {
       deployed({ USE_CLOUDFRONT: flag });

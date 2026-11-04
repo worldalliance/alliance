@@ -6,7 +6,11 @@ import { MessageTrackingService } from "src/link-tracking/message-tracking.servi
 import { ContractReminderCopy } from "./contract-reminder-copy";
 import { EmailStatus, EmailType, Mail } from "./mail.entity";
 import { MailNotSentError, MailService } from "./mail.service";
-import { harness, useMailSendingEnv } from "./mail.service.fixtures";
+import {
+  harness,
+  sendingWithoutMailFrom,
+  useMailSendingEnv,
+} from "./mail.service.fixtures";
 
 describe("sendMail", () => {
   useMailSendingEnv();
@@ -156,7 +160,7 @@ describe("sendMail", () => {
     "sends the %s contract reminder, attributed to its member",
     async (copy) => {
       const { subject, paragraphs } = contractReminders[copy];
-      process.env.APP_URL = "https://app.example.org";
+      process.env.ALT_APP_URL = "https://app.example.org";
       const sent: ISendMailOptions[] = [];
       const { service, tracked } = await harness((options) => {
         sent.push(options);
@@ -190,7 +194,7 @@ describe("sendMail", () => {
   );
 
   it("sends the reinstatement email to the member's first name", async () => {
-    process.env.APP_URL = "https://app.example.org";
+    process.env.ALT_APP_URL = "https://app.example.org";
     const sent: ISendMailOptions[] = [];
     const { service } = await harness((options) => {
       sent.push(options);
@@ -235,7 +239,7 @@ describe("sendMail", () => {
   });
 
   it("refuses to send when MAIL_FROM is unset", async () => {
-    delete process.env.MAIL_FROM;
+    sendingWithoutMailFrom();
     let attempted = false;
     const { service } = await harness(() => {
       attempted = true;
@@ -249,7 +253,7 @@ describe("sendMail", () => {
   });
 
   it("tracks nothing when MAIL_FROM is unset", async () => {
-    delete process.env.MAIL_FROM;
+    sendingWithoutMailFrom();
     const { service, tracked } = await harness(() =>
       Promise.resolve({ accepted: [], messageId: "" }),
     );

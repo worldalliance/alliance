@@ -78,3 +78,11 @@ export function useMailSendingEnv() {
     process.env = { ...originalEnv };
   });
 }
+
+/** A deployed environment always has the committed MAIL_FROM, so only
+ * development sending can lack it. */
+export function sendingWithoutMailFrom() {
+  process.env.NODE_ENV = "development";
+  process.env.SEND_DEV_NOTIFS = "1";
+  delete process.env.MAIL_FROM;
+}
