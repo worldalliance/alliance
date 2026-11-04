@@ -45,6 +45,8 @@ const begin = async () =>
 
 const reported = recordExceptions();
 
+beforeEach(() => localStorage.clear());
+
 const api = serveApi(
   routes({
     "GET /tasks/slug/:id": () =>
