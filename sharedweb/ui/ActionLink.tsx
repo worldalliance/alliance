@@ -1,8 +1,10 @@
+import { withCount } from "@alliance/common/plural";
 import {
   ActionDto,
   ActionEventDto,
   ActionStatus,
 } from "@alliance/shared/client";
+import { useActionDisplayCount } from "@alliance/shared/lib/actionCompletedBarWithInfo";
 import { hasViewerCompletedAction } from "@alliance/shared/lib/actionUtils";
 import { formatNextTaskDue } from "@alliance/shared/lib/formatNextTaskDue";
 import { getNextEvent } from "@alliance/shared/lib/largeActionCard";
@@ -197,12 +199,15 @@ function ActionPreviewMeta({
   nextEvent: ActionEventDto | null;
 }) {
   const items: React.ReactNode[] = [];
+  const { count } = useActionDisplayCount(action);
 
-  if (action.usersCompleted > 0) {
+  if (count) {
     items.push(
-      <span key="completed" className="flex items-center gap-x-1">
+      <span key="members" className="flex items-center gap-x-1">
         <Users size={12} className="shrink-0" />
-        {action.usersCompleted.toLocaleString()} completed
+        {action.onboarding
+          ? withCount(count, "member")
+          : `${count.toLocaleString()} completed`}
       </span>,
     );
   }

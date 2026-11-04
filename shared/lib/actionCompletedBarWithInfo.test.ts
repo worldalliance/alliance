@@ -22,6 +22,8 @@ const activity = (
   editableContent: { body: "", attachments: [] },
 });
 
+const loaded = (count: number) => ({ count, isError: false });
+
 test("selectCompletedFriends keeps only the friends who completed", () => {
   expect(
     selectCompletedFriends([
@@ -37,25 +39,80 @@ test("selectCompletedFriends treats unloaded activity as none", () => {
   expect(selectCompletedFriends(null)).toEqual([]);
 });
 
-test("only a regular action's label has a denominator", () => {
-  const counts = { usersCompleted: 3, usersJoined: 10 };
+test("an onboarding action labels the count it is given, with a full bar", () => {
+  const action = makeAction({
+    onboarding: true,
+    usersCompleted: 3,
+    usersJoined: 0,
+  });
 
-  expect(getCompletedPercentage(makeAction(counts))).toEqual({
+  expect(getCompletedPercentage(action, loaded(1200))).toEqual({
+    labelString: "1200 members",
+    percentage: 100,
+    hasDenominator: false,
+  });
+});
+
+test("an onboarding action draws a full bar while its count loads", () => {
+  const action = makeAction({ onboarding: true, usersJoined: 10 });
+
+  expect(
+    getCompletedPercentage(action, { count: undefined, isError: false }),
+  ).toEqual({
+    labelString: "... members",
+    percentage: 100,
+    hasDenominator: false,
+  });
+});
+
+test("an onboarding action draws an empty bar when its count fails", () => {
+  const action = makeAction({ onboarding: true, usersJoined: 10 });
+
+  expect(
+    getCompletedPercentage(action, { count: undefined, isError: true }),
+  ).toEqual({
+    labelString: "Member count unavailable",
+    percentage: 0,
+    hasDenominator: false,
+  });
+});
+
+test("an onboarding action keeps its count when a refetch fails", () => {
+  const action = makeAction({ onboarding: true });
+
+  expect(
+    getCompletedPercentage(action, { count: 1200, isError: true }).labelString,
+  ).toBe("1200 members");
+});
+
+test("an action with nobody to count draws no bar", () => {
+  const onboarding = makeAction({ onboarding: true });
+  const regular = makeAction({ usersJoined: 0 });
+
+  expect(getCompletedPercentage(onboarding, loaded(0)).percentage).toBeNull();
+  expect(getCompletedPercentage(regular, loaded(0)).percentage).toBeNull();
+});
+
+test("a regular action keeps its completed-of-joined bar", () => {
+  const action = makeAction({ usersCompleted: 3, usersJoined: 10 });
+
+  expect(getCompletedPercentage(action, loaded(3))).toEqual({
     labelString: "3 / 10 members completed",
     percentage: 30,
     hasDenominator: true,
   });
-  for (const kind of [{ optional: true }, { onboarding: true }]) {
-    expect(getCompletedPercentage(makeAction({ ...counts, ...kind }))).toEqual({
-      labelString: "3 members completed",
-      percentage: 100,
-      hasDenominator: false,
-    });
-  }
 });
 
-test("an action with nobody to count has no denominator", () => {
-  expect(
-    getCompletedPercentage(makeAction({ usersJoined: 0 })).hasDenominator,
-  ).toBe(false);
+test("an optional action counts completions with no denominator", () => {
+  const action = makeAction({
+    optional: true,
+    usersCompleted: 3,
+    usersJoined: 10,
+  });
+
+  expect(getCompletedPercentage(action, loaded(3))).toEqual({
+    labelString: "3 members completed",
+    percentage: 100,
+    hasDenominator: false,
+  });
 });

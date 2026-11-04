@@ -2,6 +2,7 @@ import {
   ActionCompletedBarWithInfoPropsShared,
   getCompletedPercentage,
   selectCompletedFriends,
+  useActionDisplayCount,
 } from "@alliance/shared/lib/actionCompletedBarWithInfo";
 import { useMemo } from "react";
 import { View } from "react-native";
@@ -13,7 +14,10 @@ export const ActionCompletedBarWithInfo = ({
   action,
   friendActivities,
 }: ActionCompletedBarWithInfoPropsShared) => {
-  const { labelString, percentage } = getCompletedPercentage(action);
+  const { labelString, percentage } = getCompletedPercentage(
+    action,
+    useActionDisplayCount(action),
+  );
 
   const completedFriends = useMemo(
     () => selectCompletedFriends(friendActivities),

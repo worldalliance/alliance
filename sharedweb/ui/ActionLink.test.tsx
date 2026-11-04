@@ -6,6 +6,7 @@ import ActionLink from "./ActionLink";
 
 let requested: string[] = [];
 let respond: () => Response;
+let replyMemberCount: () => Response | Promise<Response>;
 
 serveApi(
   routes({
@@ -13,11 +14,13 @@ serveApi(
       requested.push(params.id);
       return respond();
     },
+    "POST /user/nmembers": () => replyMemberCount(),
   }),
 );
 
 beforeEach(() => {
   requested = [];
+  replyMemberCount = () => Response.json({ count: 1200 });
   respond = () =>
     Response.json(
       makeAction({
@@ -47,6 +50,44 @@ it("previews the action on hover", async () => {
   expect(await screen.findByText("Call your representative")).toBeTruthy();
   expect(screen.getByText("3 completed")).toBeTruthy();
   expect(requested).toEqual(["7"]);
+});
+
+it("previews an onboarding action with the signed member count", async () => {
+  respond = () =>
+    Response.json(makeAction({ id: 7, onboarding: true, usersCompleted: 3 }));
+
+  fireEvent.mouseEnter(renderLink());
+
+  expect(await screen.findByText("1200 members")).toBeTruthy();
+  expect(screen.queryByText("3 completed")).toBeNull();
+});
+
+it("previews an onboarding action with no member line while the count loads", async () => {
+  respond = () =>
+    Response.json(makeAction({ id: 7, name: "Sign", onboarding: true }));
+  replyMemberCount = () => new Promise(() => {});
+
+  fireEvent.mouseEnter(renderLink());
+
+  await screen.findByText("Sign");
+  expect(screen.queryByText(/member/i)).toBeNull();
+});
+
+it("previews an onboarding action with no member line when the count fails", async () => {
+  respond = () =>
+    Response.json(makeAction({ id: 7, name: "Sign", onboarding: true }));
+  let replied = 0;
+  replyMemberCount = () => {
+    replied += 1;
+    return new Response(null, { status: 404 });
+  };
+
+  fireEvent.mouseEnter(renderLink());
+
+  await screen.findByText("Sign");
+  await waitFor(() => expect(replied).toBe(1));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(screen.queryByText(/member/i)).toBeNull();
 });
 
 it("says the action couldn't load when the server refuses it", async () => {
