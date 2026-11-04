@@ -102,6 +102,19 @@ export function parseEnv<F extends EnvFields>(params: {
   return R.success(config as z.output<z.ZodObject<F>>);
 }
 
+/** `source` over `fallback`; a blank value in `source` is unset, so the
+ * fallback shows through it. */
+export function envWithFallback(params: {
+  source: EnvSource;
+  fallback: EnvSource;
+}): EnvSource {
+  const merged = { ...params.fallback };
+  for (const [key, value] of Object.entries(params.source)) {
+    if (unsetIfBlank(value) !== undefined) merged[key] = value;
+  }
+  return merged;
+}
+
 export function formatEnvProblems(params: {
   heading: string;
   problems: string[];
