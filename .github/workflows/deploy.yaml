@@ -24,6 +24,22 @@ jobs:
         with:
           check: ${{ github.ref_name == 'production' && 'empty' || 'exists' }}
 
+  # An artifact, not job outputs: Actions drops a job output that matches any
+  # secret's value.
+  deployed-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+      - run: bun install --frozen-lockfile
+      - run: bun scripts/deployed-config.ts "$env_name" > deployed-config.env
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deployed-config
+          path: deployed-config.env
+
   test-backend-e2e:
     uses: ./.github/workflows/test-backend-e2e.yaml
     with:
