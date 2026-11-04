@@ -384,11 +384,13 @@ it("puts the withdraw menu in the card's header inside a task card", async () =>
 it("closes only the withdraw menu when Escape dismisses it", async () => {
   await openWithdrawMenu();
 
-  fireEvent.keyDown(screen.getByRole("button", { name: withdrawFromAction }), {
+  fireEvent.keyDown(screen.getByRole("button", { name: "Moral objection" }), {
     key: "Escape",
   });
 
-  expect(screen.queryByText("Withdrawal options")).toBeNull();
+  await waitFor(() =>
+    expect(screen.queryByText("Withdrawal options")).toBeNull(),
+  );
   await act(() => new Promise((resolve) => setTimeout(resolve, CLOSE_TIMEOUT)));
   expect(screen.getByRole("dialog")).toBeTruthy();
 });

@@ -21,10 +21,10 @@ export function TaskFlowWithdrawMenu({
     <WithdrawalMenu
       disabled={disabled}
       onWithdraw={onWithdraw}
-      renderTrigger={(toggle) => (
+      renderTrigger={(show) => (
         <FlowButton
           kind={FlowButtonKind.Icon}
-          onClick={toggle}
+          onClick={show}
           aria-label={withdrawFromAction}
         >
           <Ellipsis size={20} aria-hidden />

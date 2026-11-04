@@ -1,0 +1,4 @@
+## Decisions
+
+- **The withdrawal menu is the shared `Modal`.** `WithdrawalMenu` renders `sharedweb/ui/Modal` (centered, backdrop, close button, Escape, focus return) instead of an anchored `Dropdown`, so every web caller gets the centered popup: the home task card's `…`, the task flow header's `…`, and `FormRenderer`'s inline form. The modal portals to `<body>` at `zIndex.modal`, so nothing in the card can stack over it. The trigger only opens it; the backdrop covers the trigger while it's open.
+- **No backdrop dim inside the task flow.** Opened from the flow's header, the modal is nested in the flow's base-ui dialog, and base-ui skips a nested dialog's backdrop. Forcing it in `Modal` would double-dim every modal opened from another modal, so the flow case shows the panel and its shadow alone.
