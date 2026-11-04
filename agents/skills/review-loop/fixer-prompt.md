@@ -48,4 +48,4 @@ Your final message, once every commit is final:
 - the commits you changed, and the unchanged commits that need another review: those a change below them affects, and those with a fix-now finding that you or an earlier fixer of this round fixed without changing their diff, such as in another commit or by a reword;
 - each check you could not get to pass, naming the commit, the check and its log;
 - each follow-up you could not file, with the reason;
-- each question, written for a user who hasn't seen the code: its context, your recommendation, and the alternatives.
+- each question, in the root `AGENTS.md` **Open questions** format.
