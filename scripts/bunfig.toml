@@ -1,0 +1,7 @@
+# Shadows the root bunfig rather than merging, so the root's `[install]` block
+# is repeated here. Keep the two in sync.
+[install]
+linker = "hoisted"
+
+[test]
+preload = ["./lib/git-env-guard.ts"]

@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import "./git-env-guard";
 
 /** Runs git in a test fixture repo with a fixed identity and no hooks. */
 export function fixtureGit(cwd: string, ...args: string[]): void {

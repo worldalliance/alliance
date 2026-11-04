@@ -10,3 +10,6 @@
 # not a bare `bun test` here.
 [install]
 linker = "hoisted"
+
+[test]
+preload = ["./scripts/lib/git-env-guard.ts"]

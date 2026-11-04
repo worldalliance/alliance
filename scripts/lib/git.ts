@@ -46,3 +46,15 @@ export function mergeBaseFromArgs(): {
   }
   return { base, repoRoot, baseCommit: mergeBase.stdout.trim() };
 }
+
+export function gitLocalEnvVars(): string[] {
+  const vars = spawnSync("git", ["rev-parse", "--local-env-vars"], {
+    encoding: "utf8",
+  });
+  if (vars.status !== 0) {
+    throw new Error(
+      `git rev-parse --local-env-vars: ${vars.error ?? vars.stderr}`,
+    );
+  }
+  return vars.stdout.split("\n").filter(Boolean);
+}
