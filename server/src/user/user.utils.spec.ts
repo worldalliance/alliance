@@ -1,6 +1,6 @@
 import { Campaign } from "src/campaign/entities/campaign.entity";
 import { User } from "./entities/user.entity";
-import { referralLabel, textReachable } from "./user.utils";
+import { memberWithReferral, referralLabel, textReachable } from "./user.utils";
 
 describe("textReachable", () => {
   const reachable = {
@@ -76,5 +76,27 @@ describe("referralLabel", () => {
         referredByCampaign: { id: 7 } as Campaign,
       }),
     ).toBe("");
+  });
+});
+
+describe("memberWithReferral", () => {
+  it("follows the name with the referral label", () => {
+    expect(
+      memberWithReferral({
+        name: "Bob",
+        referredBy: { name: "Alice" } as User,
+        referredByCampaign: null,
+      }),
+    ).toBe("Bob (invited by Alice)");
+  });
+
+  it("is the bare name without a referrer", () => {
+    expect(
+      memberWithReferral({
+        name: "Bob",
+        referredBy: null,
+        referredByCampaign: null,
+      }),
+    ).toBe("Bob");
   });
 });

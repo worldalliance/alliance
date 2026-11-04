@@ -14,7 +14,7 @@ import { sendBestEffort } from "src/notifs/send-best-effort";
 import { suspensionMessage } from "src/notifs/textnotifcontents";
 import { PushService } from "src/push/push.service";
 import { User } from "src/user/entities/user.entity";
-import { referralLabel, textReachable } from "src/user/user.utils";
+import { memberWithReferral, textReachable } from "src/user/user.utils";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
 import { DataSource, In } from "typeorm";
 import { env } from "../config/env";
@@ -62,13 +62,13 @@ export class ContractSuspenderWorker {
           userIds,
           kinds: [NotificationKind.ContractSuspended],
         });
-        const referralLabels = new Map(
+        const membersWithReferral = new Map(
           (
             await this.dataSource.getRepository(User).find({
               where: { id: In(userIds) },
               relations: { referredBy: true, referredByCampaign: true },
             })
-          ).map((user) => [user.id, referralLabel(user)]),
+          ).map((user) => [user.id, memberWithReferral(user)]),
         );
 
         for (const { user, reasonKey } of candidates) {
@@ -95,7 +95,7 @@ export class ContractSuspenderWorker {
             send: () =>
               this.eventLogService.sendMessage({
                 type: EventType.ContractSuspended,
-                message: `[${env("NODE_ENV")}]: Suspending contract for ${[user.name, referralLabels.get(user.id)].filter(Boolean).join(" ")}. failure code ${reasonKey}`,
+                message: `[${env("NODE_ENV")}]: Suspending contract for ${membersWithReferral.get(user.id) ?? user.name}. failure code ${reasonKey}`,
                 userId: user.id,
                 blob: {
                   suspendReason: reasonKey,

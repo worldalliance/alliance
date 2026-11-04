@@ -45,7 +45,7 @@ import {
 } from "src/user/entities/user.entity";
 import { findReferredByInvite } from "src/user/user-soft-delete";
 import { UserService } from "src/user/user.service";
-import { referralLabel } from "src/user/user.utils";
+import { memberWithReferral } from "src/user/user.utils";
 import { IsNull, LessThanOrEqual, MoreThan, Or, Repository } from "typeorm";
 import {
   claimReinstatement,
@@ -382,9 +382,7 @@ export class ContractService {
       this.notifsService.sendNotifs(notifs),
       this.eventLogService.sendMessage({
         type: EventType.ContractSigned,
-        message: [user.name, referralLabel(user), "signed their contract :)"]
-          .filter(Boolean)
-          .join(" "),
+        message: `${memberWithReferral(user)} signed their contract :)`,
         userId: user.id,
         blob: null,
       }),
