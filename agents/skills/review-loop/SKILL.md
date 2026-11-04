@@ -1,13 +1,13 @@
 ---
 name: review-loop
-description: Read once a branch's checks pass, before pushing it or opening its PR, and when that PR's CI fails. Runs the per-commit review loop, then pushes, opens the PR and watches CI.
+description: Read once a branch's checks pass, before pushing it or opening its PR, and when that PR's CI fails. Runs the per-commit review loop behind a draft PR, then marks the PR ready and watches CI.
 ---
 
 # Review loop
 
 Skip this skill when `REVIEW_LOOP_ROLE` is set: another agent spawned you, so hand back to it, since the loop needs the user to answer questions. Skip it too when the user asked to leave the change uncommitted or unpushed.
 
-Done means the PR is open and its CI passed. The root `AGENTS.md` rule to ask before git writes does not apply to this skill's commits, worktrees, rewrites, pushes, the PR and PR edits; **Push and open the PR** says when a push needs asking.
+Done means the PR is ready for review and its CI passed. The root `AGENTS.md` rule to ask before git writes does not apply to this skill's commits, worktrees, rewrites, pushes, the PR and PR edits; **The PR** says when a push needs asking.
 
 Work from the repo root of the main checkout or of a worktree `scripts/new-worktree.sh` created, since it refuses to create a worktree from any other. Arriving because the PR's CI failed, start at **CI**.
 
@@ -15,7 +15,8 @@ The sections after the two charts hold the rules.
 
 ```mermaid
 flowchart TD
-  commit["Commit on a branch"] --> review["Review: reviewers in parallel"]
+  commit["Commit on a branch"] --> draft["Ask once if no instruction covered a push; push and open a draft PR if no PR is open"]
+  draft --> review["Review: reviewers in parallel"]
   review -->|failed review: rerun| review
   review -->|findings| fix["Fix: fresh fixer"]
   review -->|no findings| due{"Anything due?"}
@@ -24,10 +25,11 @@ flowchart TD
   questions -->|yes| ask["Questions: ask the user"]
   ask -->|answers| fix
   questions -->|no| due
-  due -->|yes, next round| review
-  due -->|no| push["Push and open the PR: ask once only if no instruction covered it"]
-  push -->|declined or told no PR| noPr(["Stop: no PR"])
-  push --> ci{"CI"}
+  due -->|yes, next round| update["Force push if a draft and commits changed"]
+  update --> review
+  due -->|no| ready["Push and mark the PR ready if a draft"]
+  ready -->|declined or told no PR| noPr(["Stop: no PR"])
+  ready --> ci{"CI"}
   ci -->|not finished: wait or rerun| ci
   ci -->|passed or merged| finished(["Done"])
   ci -->|branch caused failure| newCommit["New commit on top"]
@@ -38,7 +40,9 @@ flowchart TD
   moved -->|declines| stays(["Stop: PR stays as it is"])
   review -->|second failed review| user(["Stop: go to the user"])
   fix -->|second fixer failure or second failing check| user
-  push -->|rejected push| user
+  draft -->|rejected push| user
+  update -->|rejected push| user
+  ready -->|rejected push| user
   ci -->|anything else| user
 ```
 
@@ -65,17 +69,19 @@ flowchart LR
 
 ## The loop
 
-Commit your work on a branch of your own, creating one if you are on `main`; ask the user about uncommitted changes that aren't yours; `git fetch origin`. The base is the branch's upstream once it is pushed, else `origin/main`. A round is:
+Commit your work on a branch of your own, creating one if you are on `main`; ask the user about uncommitted changes that aren't yours; `git fetch origin`. Fix the base once, as a SHA, when the loop starts, since the draft's pushes move the upstream: the SHA in `.scratch/review-loop/<branch>/base` when that file exists, left by a loop that pushed but didn't open its draft; on an open draft, the SHA in its description's `<!-- review-loop base: <sha> -->` line, or `git merge-base origin/main HEAD` when it has none; that same merge base when the branch has no upstream; and `git merge-base @{u} HEAD` otherwise, since commits pushed outside a draft stay as they are. Open the draft per **The PR**, then run rounds. A round is:
 
 1. **Review.** Every commit in `<base>..HEAD` due a review gets its own reviewer at the round's tip: `scripts/new-worktree.sh <name> --from <tip>` from this checkout, with a short name no worktree or branch uses, then in that worktree `mkdir .scratch` and `claude -p` per `agents/skills/subagents/SKILL.md` with the prompt `` /review-base base is `git show --stat <sha>` ``. Run a handful at a time in the background and wait for all of them. A review passed when `claude` exited 0 and its `.scratch/review/<sha>.json` names that base with a filled-in summary, which review-base writes last. Any other outcome is a failed review. Copy a passing file into `.scratch/review-loop/<branch>/round-<n>/`, and a failed run's `.scratch/<name>.err` and `.scratch/<name>.jsonl` there too, since removal deletes them; then `scripts/rm-worktree.sh <name>` whichever the outcome. Rerun a failed review in a fresh worktree; a failed review never counts as clean, and a second failure of the same review goes to the user with those logs.
 2. **Fix.** Skip when every review's `findings` is empty. Fill in every `{{...}}` of `agents/skills/review-loop/fixer-prompt.md`, with `{{LEDGER}}` the one path `.scratch/review-loop/<branch>/ledger.md` every round, and run a fresh fixer with it per `agents/skills/subagents/SKILL.md`, never `--resume`. Leave the checkout alone while it runs, since it rewrites the branch. Its final message says which commits changed, which unchanged commits need another review, which checks it could not get to pass, which follow-ups it could not file, and its questions. A follow-up it could not file goes to the user with the reason. If it exited nonzero or wrote no result, run `git rebase --abort` when a rebase is in progress, confirm the branch is checked out, and run a fresh fixer on the same round; a second failure in a row goes to the user with its `.err` and the end of its `.jsonl`. If it reported a failing check, brief another fixer on the same round with it as `{{FAILED_CHECKS}}`; a check the second can't get to pass goes to the user, and the round stays unfinished until it passes.
 3. **Questions.** Relay its questions to the user in the **Open questions** format of the root `AGENTS.md`. They may answer, find someone who can, or say they don't know or don't care; each is an answer. Then brief another fixer on the same round with the answers, so it fixes what waited on them. The next round starts once every question has an answer.
 
-Due a review: in a branch's first round every commit; afterwards every commit with no review yet or whose diff changed since its last review (`git patch-id --verbatim` on `git show --no-color <sha>` tells a changed diff from a rebased or reworded one), plus the commits the fixer named. An unchanged commit counts as clean when its last review passed with no fix-now findings, so findings that became follow-ups or drops don't keep it under review. A re-review is a full review of the commit, not one narrowed to what changed. Repeat rounds, with no cap, until a round leaves nothing due, no question unanswered and no check failing: a round with a fix-now finding changes a commit, and every change gets at least one further full review. Re-entering the loop after a push continues its round numbers and keeps its earlier reviews.
+Due a review: in a branch's first round every commit; afterwards every commit with no review yet or whose diff changed since its last review (`git patch-id --verbatim` on `git show --no-color <sha>` tells a changed diff from a rebased or reworded one), plus the commits the fixer named. An unchanged commit counts as clean when its last review passed with no fix-now findings, so findings that became follow-ups or drops don't keep it under review. A re-review is a full review of the commit, not one narrowed to what changed. Repeat rounds, with no cap, until a round leaves nothing due, no question unanswered and no check failing: a round with a fix-now finding changes a commit, and every change gets at least one further full review. Re-entering the loop, as after a CI failure, continues its round numbers and keeps its earlier reviews.
 
-## Push and open the PR
+## The PR
 
-An instruction from the user that asked for a PR or a push, at any point in the task, approves every push, the PR and every PR edit this skill makes, apart from the question in **`main` moved on**. When no instruction covered either, list the commits for the user and ask once, before the first push; their approval covers the same, and if they decline, stop with the commits on the branch. Once approved, `git push -u origin HEAD` and, on the first pass, `gh pr create` with a description written from the commits. A user who asked for no PR gets none: stop after an approved push, otherwise with the commits on the branch. Never force, except in **`main` moved on**. A rejected push goes to the user, since someone else may have pushed to the branch. Later pushes and PR edits go ahead without asking. On a later pass, `gh pr edit` the description only where a new commit made it wrong.
+An instruction from the user that asked for a PR or a push, at any point in the task, approves every push, the PR and every PR edit this skill makes, apart from the question in **`main` moved on**. When no instruction covered either, list the commits for the user and ask once, before the first round; their approval covers the same, and if they decline, run the loop without pushing and stop with the commits on the branch. A user who asked for no PR gets none: run the loop without pushing, then push once it ends if they approved a push.
+
+Once approved, before the first round, when the branch has no open PR, write the base SHA to `.scratch/review-loop/<branch>/base`, `git push -u origin HEAD`, `gh pr create --draft` with a description written from the commits that ends in `<!-- review-loop base: <base SHA> -->`, so a later session finds the base, and then delete that file; an open draft carries on as it is. While the PR is a draft, `git push --force-with-lease --force-if-includes origin HEAD` after every round whose fixer changed commits, so the draft shows the branch as it stands. CI on a round's push doesn't count, since the next round's push replaces what it tested. Once a round leaves nothing due, push the same way if anything is unpushed, then `gh pr ready` and go to **CI**, which watches the head's checks, including the commit review that marking the PR ready starts. With no draft, on a PR that was ready when the loop started or on the no-PR path, push once the loop ends with `git push -u origin HEAD`, which also replaces an upstream such as `origin/main` that a branch made from it tracks, except in **`main` moved on**. `gh pr edit` the description whenever a push makes it wrong, keeping its base line. A rejected push goes to the user, since someone else may have pushed to the branch.
 
 ## CI
 
@@ -83,7 +89,7 @@ An instruction from the user that asked for a PR or a push, at any point in the 
 sleep 60; gh pr checks --watch --interval 60
 ```
 
-One blocking wait, in the background with your harness's longest time limit; run it again if the limit stops it. The sleep lets `gh pr create`'s `pull_request` workflows register, since the watch exits 0 once the checks it can see have finished, and a check the push started can finish first.
+One blocking wait, in the background with your harness's longest time limit; run it again if the limit stops it. The sleep lets the workflows the last push or `gh pr ready` started register, since the watch exits 0 once the checks it can see have finished, and one of them can finish first.
 
 Exit 0 covers only checks that ran to an end: gh counts a cancelled check as neither failed nor pending, and GitHub starts no `pull_request` workflow on a conflicted PR. On a PR with no checks the watch and every `gh pr checks` fail with `no checks reported`. So whatever the watch's exit, start with `gh pr view --json state,mergeable`, which needs no checks:
 
