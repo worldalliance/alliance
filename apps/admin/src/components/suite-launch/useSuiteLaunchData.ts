@@ -2,7 +2,7 @@ import {
   formSchema,
   type FormSchema,
 } from "@alliance/common/forms/form-schema";
-import type { ActionSuiteDto } from "@alliance/shared/client";
+import type { ActionSuiteDto, UserDto } from "@alliance/shared/client";
 import { actionAdminQuery } from "@alliance/shared/lib/useActionAdmin";
 import { adminTaskFormQuery } from "@alliance/shared/lib/useTaskForm";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
@@ -12,12 +12,17 @@ import {
   useQuery,
   type QueryKey,
 } from "@tanstack/react-query";
+import { addYears, max } from "date-fns";
+import { useState } from "react";
+import { useAwayRangesInWindowAdmin } from "../../lib/useAwayRangesInWindowAdmin";
 import { cohortEvaluationQuery } from "../../lib/useCohortEvaluationAdmin";
+import { useUsersAdmin } from "../../lib/useUsersAdmin";
 import {
   actionReadinessItems,
   type ReadinessCheckItem,
 } from "../../pages/action-dashboard/actionReadiness";
 import { actionTextFindings, type TextFinding } from "./actionTextFindings";
+import type { LaunchSchedule } from "./launchSchedule";
 import { memberLoads, type MemberLoad } from "./memberLoad";
 import { spellcheckerQuery } from "./spellchecker";
 
@@ -29,8 +34,12 @@ export type LaunchAction = {
 
 export type SuiteLaunchData = {
   actions: LaunchAction[];
-  loads: MemberLoad[];
-  recipientCount: number;
+  /** Null while any action's member count is unknown. */
+  loads: MemberLoad[] | null;
+  /** Null while any action's member count is unknown. */
+  recipientCount: number | null;
+  users: UserDto[];
+  usersLoadFailed: boolean;
   textFindings: TextFinding[];
   errors: string[];
   loading: boolean;
@@ -48,7 +57,11 @@ function distinctQueries<T extends { queryKey: QueryKey }>(queries: T[]) {
   };
 }
 
-export function useSuiteLaunchData(suite: ActionSuiteDto): SuiteLaunchData {
+export function useSuiteLaunchData(params: {
+  suite: ActionSuiteDto;
+  schedule: LaunchSchedule;
+}): SuiteLaunchData {
+  const { suite, schedule } = params;
   const actionResults = useQueries({
     queries: suite.actions.map((action) => actionAdminQuery(action.id)),
   });
@@ -66,6 +79,32 @@ export function useSuiteLaunchData(suite: ActionSuiteDto): SuiteLaunchData {
   const cohortResults = useQueries({ queries: cohorts.queries });
   const cohortResultOf = (index: number) => cohortResults[cohorts.slots[index]];
   const spellchecker = useQuery(spellcheckerQuery);
+  const users = useUsersAdmin();
+  const idsWhere = (keep: (user: UserDto) => boolean) =>
+    new Set((users.data ?? []).filter(keep).map((user) => user.id));
+  const contracted = idsWhere((user) => user.hasActiveContract);
+  const neverSigned = idsWhere((user) => !user.lastContractEvent);
+  const [awayFrom] = useState(() => new Date());
+  // A year-long window keeps schedule edits from refetching. An office date
+  // past that year widens the window, and the old window's ranges keep the
+  // checks mounted while the counts read unknown.
+  const awayRanges = useAwayRangesInWindowAdmin(
+    {
+      from: awayFrom,
+      to: max([addYears(awayFrom, 1), schedule.officeActionAt]),
+    },
+    { keepPrevious: true },
+  );
+  const awayData = awayRanges.isPlaceholderData ? undefined : awayRanges.data;
+  const away = new Set(
+    (awayData ?? [])
+      .filter(
+        (range) =>
+          new Date(range.startDate) < schedule.officeActionAt &&
+          new Date(range.endDate) > schedule.memberActionAt,
+      )
+      .map((range) => range.userId),
+  );
 
   const errors: string[] = [];
   const actions: LaunchAction[] = [];
@@ -84,14 +123,28 @@ export function useSuiteLaunchData(suite: ActionSuiteDto): SuiteLaunchData {
       if (parsedSchema.success) schema = parsedSchema.data;
       else errors.push(`${action.name}: its task form's schema is invalid.`);
     }
-    const cohort = cohortResultOf(index).data;
-    if (cohort) cohortByActionId.set(action.id, cohort.userIds);
+    const evaluated = action.cohortExpression
+      ? cohortResultOf(index).data?.userIds
+      : [];
+    // Mirrors computeIsAssignedAndPresent in server/src/utils/action-user.ts.
+    // Never signing stands in for first signing at or after a launch still to
+    // come, and hasActiveContract (active now) for a contract held throughout
+    // the members-to-office window, since contract events are never dated in
+    // the future.
+    const admitted = action.onboarding ? neverSigned : contracted;
+    const cohort =
+      users.data && awayData
+        ? evaluated?.filter(
+            (userId) => admitted.has(userId) && !away.has(userId),
+          )
+        : undefined;
+    if (cohort) cohortByActionId.set(action.id, cohort);
     actions.push({
       action,
       unready: actionReadinessItems(action, schema).filter(
         (item) => !item.isReady,
       ),
-      memberCount: cohort ? cohort.userIds.length : null,
+      memberCount: cohort ? cohort.length : null,
     });
     textFindings.push(
       ...actionTextFindings({
@@ -101,10 +154,14 @@ export function useSuiteLaunchData(suite: ActionSuiteDto): SuiteLaunchData {
       }),
     );
   });
-  const loads = memberLoads({
-    actions: actions.map(({ action }) => action),
-    cohortByActionId,
-  });
+  const loads =
+    actions.length === suite.actions.length &&
+    actions.every(({ memberCount }) => memberCount !== null)
+      ? memberLoads({
+          actions: actions.map(({ action }) => action),
+          cohortByActionId,
+        })
+      : null;
 
   const loadErrors = [
     ...actionResults.flatMap((result, index) =>
@@ -122,6 +179,8 @@ export function useSuiteLaunchData(suite: ActionSuiteDto): SuiteLaunchData {
         ? [`Failed to evaluate the cohort for ${action.name}.`]
         : [],
     ),
+    ...(users.isError ? ["Failed to load members' contract status."] : []),
+    ...(awayRanges.isError ? ["Failed to load members' away dates."] : []),
     ...(spellchecker.isError
       ? ["Failed to load the spelling dictionary."]
       : []),
@@ -130,12 +189,18 @@ export function useSuiteLaunchData(suite: ActionSuiteDto): SuiteLaunchData {
   return {
     actions,
     loads,
-    recipientCount: loads.length,
+    recipientCount: loads ? loads.length : null,
+    users: users.data ?? [],
+    usersLoadFailed: users.isError,
     textFindings,
     errors: [...loadErrors, ...errors],
-    loading: [...actionResults, ...formResults, ...cohortResults].some(
-      (result) => result.isLoading,
-    ),
+    loading: [
+      ...actionResults,
+      ...formResults,
+      ...cohortResults,
+      users,
+      awayRanges,
+    ].some((result) => result.isLoading),
     spellcheckLoading: spellchecker.isLoading,
     refetch: () => {
       for (const result of [...actionResults, ...formResults, ...cohortResults])

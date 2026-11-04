@@ -35,6 +35,10 @@ describe("contractViolations", () => {
     ]);
   });
 
+  it("skips the 15-minute check while loads are unknown", () => {
+    expect(contractViolations({ loads: null, schedule })).toEqual([]);
+  });
+
   it("spells out a period just under 7 days rather than rounding it up", () => {
     expect(
       contractViolations({

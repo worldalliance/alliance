@@ -138,6 +138,28 @@ describe("launchBlockers", () => {
     ]);
   });
 
+  it("says no member is assigned only when the count is known", () => {
+    const failed = {
+      ...ready.data,
+      errors: ["Failed to load the spelling dictionary."],
+    };
+    expect(
+      launchBlockers({ ...ready, data: { ...failed, recipientCount: 0 } }),
+    ).toContain("No member is assigned any action.");
+    expect(
+      launchBlockers({ ...ready, data: { ...failed, recipientCount: null } }),
+    ).not.toContain("No member is assigned any action.");
+  });
+
+  it("blocks an unknown member count even when nothing failed to load", () => {
+    expect(
+      launchBlockers({
+        ...ready,
+        data: { ...ready.data, recipientCount: null },
+      }),
+    ).toEqual(["The member count is unknown."]);
+  });
+
   it("blocks a schedule in the past or out of order, and an empty audience", () => {
     expect(
       launchBlockers({

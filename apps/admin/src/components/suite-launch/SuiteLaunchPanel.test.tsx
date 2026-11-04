@@ -27,7 +27,7 @@ const adminAction = (params: {
   name: string;
   timeEstimate: number;
   body: string;
-  memberIds: number[];
+  memberIds: number[] | null;
   taskFormId?: number | null;
   image?: string | null;
   project?: ProjectDto | null;
@@ -44,9 +44,17 @@ const adminAction = (params: {
       : params.project,
   authors: [makeProfile(1)],
   taskFormId: params.taskFormId === undefined ? 5 : params.taskFormId,
-  cohortExpression: { type: "Manual", userIds: params.memberIds },
+  cohortExpression: params.memberIds && {
+    type: "Manual",
+    userIds: params.memberIds,
+  },
 });
 
+let benSigned = true;
+let benEverSigned = false;
+let userListFails = false;
+let awayRanges: { userId: number; fromDay: number; toDay: number }[] = [];
+let awayRangesFail = false;
 let formPages: { id: string; title: string; fields: [] }[] = [];
 let served: Record<number, ReturnType<typeof adminAction>> = {};
 let suiteEvents: ActionEventDto[] = [];
@@ -75,11 +83,45 @@ serveApi(
         await request.json();
       return Response.json({ userIds: expression.userIds });
     },
+    "GET /user/admin/awayranges": () =>
+      awayRangesFail
+        ? Response.json({ statusCode: 500 }, { status: 500 })
+        : Response.json(
+            awayRanges.map(({ userId, fromDay, toDay }) => ({
+              id: userId,
+              userId,
+              userName: `User ${userId}`,
+              startDate: new Date(
+                Date.now() + fromDay * 86_400_000,
+              ).toISOString(),
+              endDate: new Date(Date.now() + toDay * 86_400_000).toISOString(),
+            })),
+          ),
     "GET /user/list": () =>
-      Response.json([
-        { id: 10, name: "Ana", profilePicture: null },
-        { id: 11, name: "Ben", profilePicture: null },
-      ]),
+      userListFails
+        ? Response.json({ statusCode: 500 }, { status: 500 })
+        : Response.json([
+            {
+              id: 10,
+              name: "Ana",
+              profilePicture: null,
+              hasActiveContract: true,
+            },
+            {
+              id: 11,
+              name: "Ben",
+              profilePicture: null,
+              hasActiveContract: benSigned,
+              ...(benEverSigned && {
+                lastContractEvent: {
+                  type: "signed",
+                  date: "2026-01-01T00:00:00.000Z",
+                  automatic: false,
+                  contractId: 1,
+                },
+              }),
+            },
+          ]),
     "POST /actions/suite/:suiteId/events": async ({ request }) => {
       const body: CreateActionEventDto = await request.json();
       createdEvents.push(body);
@@ -126,6 +168,11 @@ beforeEach(() => {
     }),
   };
   formPages = [];
+  benSigned = true;
+  benEverSigned = false;
+  userListFails = false;
+  awayRanges = [];
+  awayRangesFail = false;
   suiteEvents = [];
   createdEvents.length = 0;
   reminderEventIds.length = 0;
@@ -355,6 +402,121 @@ it("states how long members have to complete their actions", async () => {
       "Members have 7 days 4 hours 59 minutes to complete their actions",
     ),
   ).toBeTruthy();
+});
+
+it("counts only members with an active contract, as the server admits them", async () => {
+  benSigned = false;
+  renderPanel();
+
+  expect(
+    await screen.findByRole("button", { name: "Launch and notify 1 member" }),
+  ).toBeTruthy();
+  expect(screen.getByText(/^1 member ·/)).toBeTruthy();
+  expect(screen.getByText(/^0 members ·/)).toBeTruthy();
+});
+
+it("counts no one for an action without a cohort, as the server does", async () => {
+  served[1] = { ...served[1], cohortExpression: null };
+  renderPanel();
+
+  expect(
+    await screen.findByRole("button", { name: "Launch and notify 1 member" }),
+  ).toBeTruthy();
+});
+
+it("counts an onboarding action's unsigned members", async () => {
+  benSigned = false;
+  served[2] = { ...served[2], onboarding: true };
+  renderPanel();
+
+  expect(
+    await screen.findByRole("button", { name: "Launch and notify 2 members" }),
+  ).toBeTruthy();
+});
+
+it("leaves out of an onboarding action the members who have already signed", async () => {
+  benSigned = false;
+  benEverSigned = true;
+  served[1] = { ...served[1], onboarding: true };
+  renderPanel();
+
+  expect(
+    await screen.findByRole("button", { name: "Launch and notify 1 member" }),
+  ).toBeTruthy();
+});
+
+it("leaves out members away during the launch", async () => {
+  awayRanges = [{ userId: 11, fromDay: -1, toDay: 30 }];
+  renderPanel();
+
+  expect(
+    await screen.findByRole("button", { name: "Launch and notify 1 member" }),
+  ).toBeTruthy();
+});
+
+it("counts members away only before members start or after office taking action", async () => {
+  awayRanges = [
+    { userId: 10, fromDay: -10, toDay: -1 },
+    { userId: 11, fromDay: 10, toDay: 20 },
+  ];
+  renderPanel();
+
+  expect(
+    await screen.findByRole("button", { name: "Launch and notify 2 members" }),
+  ).toBeTruthy();
+});
+
+it("keeps the checks up while away dates load past the year ahead", async () => {
+  const { container } = renderPanel();
+  await screen.findByRole("button", { name: "Launch and notify 2 members" });
+  fireEvent.click(
+    screen.getAllByRole("button", {
+      name: "Preview a member who gets these actions",
+    })[0],
+  );
+  fireEvent.change(
+    container.querySelectorAll('input[type="datetime-local"]')[1],
+    { target: { value: "2099-01-10T10:00" } },
+  );
+  expect(screen.queryByText("Running checks…")).toBeNull();
+  expect(launchButton().textContent).toBe("Launch and notify ? members");
+  expect(screen.getByText("Actions unknown")).toBeTruthy();
+  await screen.findByRole("button", { name: "Launch and notify 2 members" });
+  expect(screen.queryByText("Actions unknown")).toBeNull();
+});
+
+it("blocks launch, counting no one, when members' away dates fail to load", async () => {
+  awayRangesFail = true;
+  renderPanel();
+
+  expect(
+    await screen.findByText("Failed to load members' away dates."),
+  ).toBeTruthy();
+  await waitFor(() =>
+    expect(launchButton().hasAttribute("disabled")).toBe(true),
+  );
+  expect(screen.getAllByText(/^\? members ·/)).toHaveLength(2);
+  expect(launchButton().textContent).toBe("Launch and notify ? members");
+  expect(screen.queryByText("No member is assigned any action.")).toBeNull();
+  expect(
+    screen.getByText("Unknown until every member count loads"),
+  ).toBeTruthy();
+});
+
+it("blocks launch when members' contract status fails to load", async () => {
+  userListFails = true;
+  renderPanel();
+
+  expect(
+    await screen.findByText("Failed to load members' contract status."),
+  ).toBeTruthy();
+  await waitFor(() =>
+    expect(launchButton().hasAttribute("disabled")).toBe(true),
+  );
+  expect(screen.getByText("Some checks failed to load.")).toBeTruthy();
+  expect(screen.getAllByText(/^\? members ·/)).toHaveLength(2);
+  expect(launchButton().textContent).toBe("Launch and notify ? members");
+  expect(screen.queryByText("No member is assigned any action.")).toBeNull();
 });
 
 it("re-runs the checks without failing the loads an action doesn't make", async () => {

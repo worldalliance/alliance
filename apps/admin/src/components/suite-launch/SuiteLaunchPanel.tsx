@@ -58,7 +58,7 @@ const SuiteLaunchPanel = ({
   const [schedule, setSchedule] = useState<LaunchSchedule>(() =>
     defaultLaunchSchedule(new Date()),
   );
-  const data = useSuiteLaunchData(suite);
+  const data = useSuiteLaunchData({ suite, schedule });
   const reminderBodies = defaultReminderBodies({
     suiteId: suite.id,
     hasDeadline: true,
@@ -104,6 +104,10 @@ const SuiteLaunchPanel = ({
   });
 
   const handleLaunch = async () => {
+    const { recipientCount } = data;
+    if (recipientCount === null) {
+      throw new Error("Launch ran with the member count unknown");
+    }
     const groupLeadsNote = reminderBodies.some(
       (body) => body.cohortType === "group_leads_with_uncompleted",
     )
@@ -111,11 +115,11 @@ const SuiteLaunchPanel = ({
       : "";
     const ok = await confirm({
       title: "Launch suite?",
-      message: `This creates the members taking action and office taking action events and the default reminders, which will notify ${withCount(data.recipientCount, "member")}.${groupLeadsNote}`,
+      message: `This creates the members taking action and office taking action events and the default reminders, which will notify ${withCount(recipientCount, "member")}.${groupLeadsNote}`,
       confirmLabel: "Launch",
       cancelLabel: "Cancel",
       mode: ConfirmMode.Fullscreen,
-      requiredText: notifyRealMembersText(data.recipientCount),
+      requiredText: notifyRealMembersText(recipientCount),
     });
     if (!ok) return;
     if (schedule.memberActionAt <= new Date()) {
@@ -218,8 +222,17 @@ const SuiteLaunchPanel = ({
               )
             }
           />
-          <MemberLoadCheck loads={data.loads} actions={data.actions} />
-          <MemberPreview loads={data.loads} actions={data.actions} />
+          <MemberLoadCheck
+            loads={data.loads}
+            actions={data.actions}
+            users={data.users}
+          />
+          <MemberPreview
+            loads={data.loads}
+            actions={data.actions}
+            users={data.users}
+            usersLoadFailed={data.usersLoadFailed}
+          />
           {data.spellcheckLoading ? (
             <p className="text-sm text-zinc-500">
               Loading the spelling dictionary…
@@ -257,7 +270,9 @@ const SuiteLaunchPanel = ({
       >
         {launching
           ? "Launching…"
-          : `Launch and notify ${withCount(data.recipientCount, "member")}`}
+          : data.recipientCount === null
+            ? "Launch and notify ? members"
+            : `Launch and notify ${withCount(data.recipientCount, "member")}`}
       </Button>
     </section>
   );

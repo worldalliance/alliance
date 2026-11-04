@@ -1,8 +1,11 @@
 import { userAwayRangeGetAwayRangesInWindowAdmin } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
-export function useAwayRangesInWindowAdmin(window: { from: Date; to: Date }) {
+export function useAwayRangesInWindowAdmin(
+  window: { from: Date; to: Date },
+  { keepPrevious = false }: { keepPrevious?: boolean } = {},
+) {
   const from = window.from.toISOString();
   const to = window.to.toISOString();
   return useQuery({
@@ -12,5 +15,6 @@ export function useAwayRangesInWindowAdmin(window: { from: Date; to: Date }) {
         query: { from, to },
         throwOnError: true,
       }).then((r) => r.data),
+    placeholderData: keepPrevious ? keepPreviousData : undefined,
   });
 }

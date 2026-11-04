@@ -3,7 +3,6 @@ import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import { Eye, LogIn } from "lucide-react";
 import { useState } from "react";
 import { getApiUrl } from "../../lib/config";
-import { useUsersAdmin } from "../../lib/useUsersAdmin";
 import { ActionLinks, iconControlClass } from "./ActionLinks";
 import { overloadedMembers } from "./contractViolations";
 import LaunchCheck from "./LaunchCheck";
@@ -18,21 +17,26 @@ const nameOf = (users: Map<number, UserDto>, userId: number) =>
 export const MemberLoadCheck = ({
   loads,
   actions,
+  users,
 }: {
-  loads: MemberLoad[];
+  loads: MemberLoad[] | null;
   actions: LaunchAction[];
+  users: UserDto[];
 }) => {
-  const { data: users = [] } = useUsersAdmin();
   const usersById = new Map(users.map((user) => [user.id, user]));
   const actionNames = new Map(
     actions.map(({ action }) => [action.id, action.name]),
   );
-  const overloaded = overloadedMembers(loads);
+  const overloaded = loads ? overloadedMembers(loads) : [];
   return (
     <LaunchCheck
       title={`No member gets more than ${MAX_MEMBER_MINUTES} minutes`}
-      passed={overloaded.length === 0}
-      summary={`${overloaded.length} of ${loads.length} assigned members over`}
+      passed={loads !== null && overloaded.length === 0}
+      summary={
+        loads
+          ? `${overloaded.length} of ${loads.length} assigned members over`
+          : "Unknown until every member count loads"
+      }
     >
       {overloaded.length > 0 && (
         <>
@@ -61,14 +65,17 @@ export const MemberLoadCheck = ({
 export const MemberPreview = ({
   loads,
   actions,
+  users,
+  usersLoadFailed,
 }: {
-  loads: MemberLoad[];
+  loads: MemberLoad[] | null;
   actions: LaunchAction[];
+  users: UserDto[];
+  usersLoadFailed: boolean;
 }) => {
-  const { data: users = [], isLoading, isLoadingError } = useUsersAdmin();
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
   const usersById = new Map(users.map((user) => [user.id, user]));
-  const loadsByUser = new Map(loads.map((load) => [load.userId, load]));
+  const loadsByUser = new Map((loads ?? []).map((load) => [load.userId, load]));
   const actionsById = new Map(actions.map(({ action }) => [action.id, action]));
   const preview = (userIds: number[]) => {
     const userId = userIds.find((id) => !selectedUserIds.includes(id));
@@ -86,7 +93,7 @@ export const MemberPreview = ({
           </tr>
         </thead>
         <tbody>
-          {actionMixes(loads).map((mix) => (
+          {actionMixes(loads ?? []).map((mix) => (
             <tr key={mix.actionIds.join(",")}>
               <td>{mix.userIds.length}</td>
               <td>{mix.minutes}</td>
@@ -114,8 +121,7 @@ export const MemberPreview = ({
         users={users}
         selectedUserIds={selectedUserIds}
         onChange={setSelectedUserIds}
-        loading={isLoading}
-        loadFailed={isLoadingError}
+        loadFailed={usersLoadFailed}
         label="Members"
       />
       <ul className="divide-y divide-zinc-100">
@@ -128,7 +134,11 @@ export const MemberPreview = ({
                   {nameOf(usersById, userId)}
                 </span>
                 <span className="text-xs text-zinc-500">
-                  {load ? `${load.minutes} min` : "No actions assigned"}
+                  {load
+                    ? `${load.minutes} min`
+                    : loads
+                      ? "No actions assigned"
+                      : "Actions unknown"}
                 </span>
                 <a
                   href={`${getApiUrl()}/auth/impersonate/${userId}`}

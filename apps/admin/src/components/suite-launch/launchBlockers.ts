@@ -57,6 +57,9 @@ export function launchBlockers(params: {
   if (data.recipientCount === 0) {
     blockers.push("No member is assigned any action.");
   }
+  if (data.recipientCount === null) {
+    blockers.push("The member count is unknown.");
+  }
   const unready = data.actions.filter(({ unready }) => unready.length > 0);
   if (unready.length > 0) {
     blockers.push(
