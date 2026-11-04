@@ -6,9 +6,9 @@ import { routes, serveApi } from "./testing/serveApi";
 import useActivities, {
   ActivityList,
   useActivity,
-  useLikeActivity,
   useRefreshActivities,
 } from "./useActivities";
+import { useLikeActivity } from "./useFeedLikes";
 
 let communityRequests = 0;
 let detailRequests = 0;
@@ -99,10 +99,7 @@ it("useLikeActivity marks the like in cached lists, then takes the server's", as
 
   let liked!: Promise<unknown>;
   act(() => {
-    liked = hook.result.current.likeActivity.mutateAsync({
-      activityId: 1,
-      isLiked: false,
-    });
+    liked = hook.result.current.likeActivity(1);
   });
 
   await waitFor(() =>
@@ -127,10 +124,7 @@ it("useLikeActivity rolls cached lists back when the like fails", async () => {
 
   let liked!: Promise<unknown>;
   act(() => {
-    liked = hook.result.current.likeActivity.mutateAsync({
-      activityId: 1,
-      isLiked: false,
-    });
+    liked = hook.result.current.likeActivity(1);
   });
   await waitFor(() => expect(likeResponses).toHaveLength(1));
   expect(likeState(hook)).toEqual({ likedByMe: true, likesCount: 1 });
@@ -162,10 +156,7 @@ it("useLikeActivity marks the like on a useActivity entry, then takes the server
 
   let liked!: Promise<unknown>;
   act(() => {
-    liked = hook.result.current.likeActivity.mutateAsync({
-      activityId: 9,
-      isLiked: false,
-    });
+    liked = hook.result.current.likeActivity(9);
   });
 
   await waitFor(() =>
@@ -188,10 +179,7 @@ it("useLikeActivity rolls a useActivity entry back when the like fails", async (
 
   let liked!: Promise<unknown>;
   act(() => {
-    liked = hook.result.current.likeActivity.mutateAsync({
-      activityId: 9,
-      isLiked: false,
-    });
+    liked = hook.result.current.likeActivity(9);
   });
   await waitFor(() => expect(likeResponses).toHaveLength(1));
   expect(detailLikeState(hook)).toEqual({ likedByMe: true, likesCount: 1 });
@@ -215,29 +203,27 @@ it("useActivity requests nothing for an id that isn't one", async () => {
   expect(detailRequests).toBe(0);
 });
 
-it("useLikeActivity refetches a useActivity entry whose load the like cancelled", async () => {
-  detailResponses = [];
+it("keeps a like made while a useActivity entry reloads", async () => {
   const hook = renderDetail();
+  await waitFor(() => expect(hook.result.current.detail.data?.id).toBe(9));
+  detailResponses = [];
+  act(() => void hook.result.current.detail.refetch());
   await waitFor(() => expect(detailResponses).toHaveLength(1));
 
   let liked!: Promise<unknown>;
   act(() => {
-    liked = hook.result.current.likeActivity.mutateAsync({
-      activityId: 9,
-      isLiked: false,
-    });
+    liked = hook.result.current.likeActivity(9);
   });
   await waitFor(() => expect(likeResponses).toHaveLength(1));
+  detailResponses[0].resolve(Response.json(activity(9)));
+  await waitFor(() =>
+    expect(hook.result.current.detail.isFetching).toBe(false),
+  );
+  expect(detailLikeState(hook)).toEqual({ likedByMe: true, likesCount: 1 });
+
   likeResponses[0].resolve(
     Response.json({ likes: [], likesCount: 1, likedByMe: true }),
   );
   await act(() => liked);
-
-  await waitFor(() => expect(detailResponses).toHaveLength(2));
-  detailResponses[1].resolve(
-    Response.json({ ...activity(9), likesCount: 1, likedByMe: true }),
-  );
-  await waitFor(() =>
-    expect(detailLikeState(hook)).toEqual({ likedByMe: true, likesCount: 1 }),
-  );
+  expect(detailLikeState(hook)).toEqual({ likedByMe: true, likesCount: 1 });
 });

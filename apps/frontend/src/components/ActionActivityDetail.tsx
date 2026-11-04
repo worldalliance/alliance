@@ -1,13 +1,13 @@
 import { actionActivityTransitiveVerb } from "@alliance/common/actionActivity";
-import { ActionActivityDto, ActionDto } from "@alliance/shared/client";
+import type { ActionDto } from "@alliance/shared/client";
 import { useActivity } from "@alliance/shared/lib/useActivities";
+import { useLikeActivity } from "@alliance/shared/lib/useFeedLikes";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { OutputRenderer } from "@alliance/sharedweb/forms/OutputRenderer";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import EditableContentRenderer from "@alliance/sharedweb/ui/EditableContentRenderer";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import UserDisplayName from "@alliance/sharedweb/ui/UserDisplayName";
-import { useMemo } from "react";
 import { Link, href, useOutletContext, useParams } from "react-router";
 import chevronLeft from "../assets/icons8-expand-arrow-96.png";
 import { useAuth } from "../lib/AuthContext";
@@ -29,43 +29,20 @@ export function ErrorBoundary(error: unknown) {
 
 export interface ActionActivityDetailContext {
   action: ActionDto;
-  activities: ActionActivityDto[];
-  handleLikeActivity: (
-    activityId: number,
-    overrides?: { isLiked: boolean; activityType: string },
-  ) => Promise<unknown>;
 }
 
 const ActionActivityDetail = () => {
   const params = useParams();
   const activityId = parseInt(params.activityId!);
   const { user } = useAuth();
-  const { action, activities, handleLikeActivity } =
-    useOutletContext<ActionActivityDetailContext>();
-
-  const origactivity = activities.find((a) => a.id === activityId) || null;
-
-  const { data: fetchedActivity, isLoading } = useActivity(activityId);
-
-  const activity = useMemo(() => {
-    const base = fetchedActivity ?? origactivity;
-    if (!base || !origactivity) return base;
-    return {
-      ...base,
-      likes: origactivity.likes ?? fetchedActivity?.likes,
-      likesCount: origactivity.likesCount ?? fetchedActivity?.likesCount,
-      likedByMe: origactivity.likedByMe ?? fetchedActivity?.likedByMe,
-    };
-  }, [fetchedActivity, origactivity]);
+  const { action } = useOutletContext<ActionActivityDetailContext>();
+  const { data: activity, isLoading } = useActivity(activityId);
+  const likeActivity = useLikeActivity();
 
   const verb = activity ? actionActivityTransitiveVerb[activity.type] : null;
 
   const handleLike = async () => {
-    if (!user || !activity) return;
-    await handleLikeActivity(activityId, {
-      isLiked: activity.likedByMe ?? false,
-      activityType: activity.type,
-    });
+    if (user) await likeActivity(activityId);
   };
 
   const isLiked = activity?.likedByMe ?? false;

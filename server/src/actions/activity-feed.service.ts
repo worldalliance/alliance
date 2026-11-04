@@ -219,6 +219,7 @@ export class ActivityFeedService {
         "user.profileDescription",
         "user.admin",
         "user.staff",
+        "user.ambassador",
         "user.anonymous",
         "action.id",
         "action.name",

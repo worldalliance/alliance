@@ -3,11 +3,13 @@ import type {
   ActionActivityDto,
   ActionEventDto,
   City,
+  CommentDto,
   CommunityDto,
   CommunityInviteDto,
   ConversationDto,
   ConversationType,
   FormResponseDto,
+  HomeFeedForumCommentDto,
   KindSettingsDto,
   MessageDto,
   NotificationDto,
@@ -180,6 +182,38 @@ export function makeActivity(
     user: makeProfile(1),
     comments: [],
     editableContent: { body: "", attachments: [] },
+    ...overrides,
+  };
+}
+
+export function makeComment(overrides: Partial<CommentDto> = {}): CommentDto {
+  return {
+    id: 1,
+    parentObjectType: "post",
+    parentObjectId: 1,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    parentId: null,
+    pinned: false,
+    tagId: null,
+    deleted: false,
+    author: makeProfile(1),
+    likes: [],
+    likesCount: 0,
+    editableContent: { body: "A comment", attachments: [] },
+    ...overrides,
+  };
+}
+
+export function makeFeedForumComment(
+  overrides: Partial<HomeFeedForumCommentDto> = {},
+): HomeFeedForumCommentDto {
+  return {
+    comment: makeComment(),
+    postId: 1,
+    postTitle: "A post",
+    likedByMe: false,
+    likesCount: 0,
     ...overrides,
   };
 }

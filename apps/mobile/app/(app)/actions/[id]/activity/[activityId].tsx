@@ -1,9 +1,7 @@
 import { actionActivityTransitiveVerb } from "@alliance/common/actionActivity";
 import { thrownStatus } from "@alliance/shared/lib/hey-api";
-import {
-  useActivity,
-  useLikeActivity,
-} from "@alliance/shared/lib/useActivities";
+import { useActivity } from "@alliance/shared/lib/useActivities";
+import { useLikeActivity } from "@alliance/shared/lib/useFeedLikes";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
@@ -65,11 +63,7 @@ export default function ActivityDetailScreen() {
   const likeActivity = useLikeActivity();
 
   const handleLike = useCallback(async () => {
-    if (!activity) return;
-    await likeActivity.mutateAsync({
-      activityId: activity.id,
-      isLiked: activity.likedByMe ?? false,
-    });
+    if (activity) await likeActivity(activity.id);
   }, [activity, likeActivity]);
 
   const verb = activity && actionActivityTransitiveVerb[activity.type];
