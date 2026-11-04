@@ -1,4 +1,3 @@
-import { R } from "@alliance/common/result";
 import type { ExecutionContext } from "@nestjs/common";
 import { ForbiddenException } from "@nestjs/common";
 import { milliseconds } from "date-fns";
@@ -77,8 +76,8 @@ describe("twilioSignatureEnforced", () => {
     }
   });
 
-  it("is on everywhere else, including an unset NODE_ENV", () => {
-    for (const NODE_ENV of ["production", "staging", undefined]) {
+  it("is on in deployed environments", () => {
+    for (const NODE_ENV of ["production", "staging"]) {
       withEnv({ NODE_ENV }, () => expect(twilioSignatureEnforced()).toBe(true));
     }
   });
@@ -86,7 +85,7 @@ describe("twilioSignatureEnforced", () => {
 
 describe("twilioWebhookUrl", () => {
   const urlFor = (appUrl: string | undefined) =>
-    withEnv({ APP_URL: appUrl }, () => R.toNullable(twilioWebhookUrl()));
+    withEnv({ APP_URL: appUrl }, () => twilioWebhookUrl());
 
   it("builds the public URL from APP_URL, including the /api prefix", () => {
     expect(urlFor(APP_URL)).toBe(PUBLIC_URL);
@@ -109,9 +108,9 @@ describe("twilioWebhookUrl", () => {
     }
   });
 
-  it("fails rather than inventing a URL it cannot build", () => {
+  it("throws rather than inventing a URL it cannot build", () => {
     for (const unusable of [undefined, "", "not a url"]) {
-      expect(urlFor(unusable)).toBeNull();
+      expect(() => urlFor(unusable)).toThrow("Invalid environment: APP_URL");
     }
   });
 });
@@ -185,26 +184,16 @@ describe("TwilioSignatureGuard", () => {
     });
   });
 
-  it("fails closed when APP_URL cannot be made into a URL", () => {
-    for (const unusable of [undefined, "", "not a url"]) {
-      withEnv(enforcing({ APP_URL: unusable }), () => {
-        expect(() => guard.canActivate(contextFor(signedRequest()))).toThrow(
-          ForbiddenException,
-        );
-      });
-    }
-  });
-
   it("accepts a request when APP_URL carries a trailing slash", () => {
     withEnv(enforcing({ APP_URL: `${APP_URL}/` }), () => {
       expect(guard.canActivate(contextFor(signedRequest()))).toBe(true);
     });
   });
 
-  it("fails closed when no auth token is configured", () => {
+  it("refuses every request when no auth token is configured", () => {
     withEnv(enforcing({ TWILIO_AUTH_TOKEN: undefined }), () => {
       expect(() => guard.canActivate(contextFor(signedRequest()))).toThrow(
-        ForbiddenException,
+        "TWILIO_AUTH_TOKEN: missing",
       );
     });
   });
@@ -248,37 +237,6 @@ describe("TwilioSignatureGuard", () => {
       expect(event.type).toBe(EventType.SmsFailure);
       expect(event.message).toContain(PUBLIC_URL);
       expect(event.blob.url).toBe(PUBLIC_URL);
-    });
-
-    it("alerts on a missing auth token and an unusable APP_URL", () => {
-      for (const env of [
-        { TWILIO_AUTH_TOKEN: undefined },
-        { APP_URL: "not a url" },
-      ]) {
-        const { guard, sendMessage } = alertingGuard();
-
-        withEnv(enforcing(env), () => reject(guard));
-
-        expect(sendMessage).toHaveBeenCalledTimes(1);
-      }
-    });
-
-    it("still names the console URL when the auth token is what is missing", () => {
-      const { guard, sendMessage } = alertingGuard();
-
-      withEnv(enforcing({ TWILIO_AUTH_TOKEN: undefined }), () => reject(guard));
-
-      expect(alertMessage(sendMessage)).toContain(PUBLIC_URL);
-    });
-
-    it("says the URL is unbuildable rather than naming a wrong one", () => {
-      const { guard, sendMessage } = alertingGuard();
-
-      withEnv(enforcing({ APP_URL: "not a url" }), () => reject(guard));
-
-      const message = alertMessage(sendMessage);
-      expect(message).toContain("<APP_URL is unusable>");
-      expect(message).not.toContain("undefined");
     });
 
     it("alerts once per window, reporting what it stood for", () => {

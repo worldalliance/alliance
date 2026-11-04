@@ -1,4 +1,4 @@
-import { currentNodeEnv, isDeployed } from "@alliance/common/node-env";
+import { isDeployed } from "@alliance/common/node-env";
 import {
   MOBILE_OAUTH_ERROR_PARAM,
   MOBILE_OAUTH_HANDOFF_PARAM,
@@ -12,6 +12,7 @@ import {
 } from "@alliance/common/oauth";
 import type { Result } from "@alliance/common/result";
 import { BadRequestException } from "@nestjs/common";
+import { env, requireEnv } from "../../config/env";
 import { isAllowedOrigin } from "../allowed-origins";
 
 type OriginRequest = {
@@ -20,8 +21,7 @@ type OriginRequest = {
 };
 
 function deployed(): boolean {
-  const env = currentNodeEnv();
-  return env.ok && isDeployed(env.value);
+  return isDeployed(env("NODE_ENV"));
 }
 
 function requestOrigin(req: OriginRequest): string {
@@ -88,10 +88,7 @@ export function mobileOAuthRedirectUri(params: {
 }
 
 function appUrl(): URL {
-  if (!process.env.APP_URL) {
-    throw new Error("APP_URL is not set");
-  }
-  return new URL(process.env.APP_URL);
+  return new URL(requireEnv("APP_URL"));
 }
 
 export function mobileReturnUrlWith(params: {
@@ -108,7 +105,7 @@ export function mobileReturnUrlWith(params: {
 }
 
 export function fallbackAppUrl(req: OriginRequest, path: string): string {
-  return `${process.env.APP_URL ?? requestOrigin(req)}${path}`;
+  return `${env("APP_URL") ?? requestOrigin(req)}${path}`;
 }
 
 export function fallbackLoginUrl(req: OriginRequest): string {

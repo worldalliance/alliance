@@ -1,4 +1,5 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
+import { NodeEnv } from "@alliance/common/node-env";
 import { BadRequestException, Body, Controller, Post } from "@nestjs/common";
 import { ApiOkResponse } from "@nestjs/swagger";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -8,6 +9,7 @@ import { PostHog } from "posthog-node";
 import { newPosthogClient } from "src/posthog/posthog-client";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
+import { env, requireEnv } from "../config/env";
 import { captureEvent } from "../utils/posthog";
 import type { MailgunWebhookBody } from "./mailgun";
 
@@ -17,7 +19,7 @@ function verifyMailgunSignature(sig: {
   signature: string;
 }) {
   const hmac = crypto
-    .createHmac("sha256", process.env.MAILGUN_SIGNING_KEY!)
+    .createHmac("sha256", requireEnv("MAILGUN_SIGNING_KEY"))
     .update(sig.timestamp + sig.token)
     .digest("hex");
 
@@ -56,7 +58,7 @@ export class MailgunWebhookController {
     @InjectRepository(User)
     private userRepository: Repository<User>,
   ) {
-    if (process.env.NODE_ENV === "test") return;
+    if (env("NODE_ENV") === NodeEnv.Test) return;
     // Not posthogClientIfEnabled: Mailgun may deliver production mail events
     // to a non-production server, so the mail's `production` tag decides.
     this.posthog = newPosthogClient();
@@ -65,7 +67,7 @@ export class MailgunWebhookController {
   @Post("/handle-event")
   @ApiOkResponse()
   async handle(@Body() body: MailgunWebhookBody): Promise<void> {
-    if (process.env.NODE_ENV === "test") return;
+    if (env("NODE_ENV") === NodeEnv.Test) return;
 
     if (!body?.signature || !verifyMailgunSignature(body.signature)) {
       throw new BadRequestException("invalid signature");

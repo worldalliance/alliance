@@ -11,6 +11,7 @@ import {
   type JWTPayload,
 } from "jose";
 import { z } from "zod";
+import { env } from "../../config/env";
 import type { OAuthClient, OAuthProfile } from "./oauth-client";
 
 type AppleConfig = {
@@ -98,11 +99,11 @@ export function appleTokenFailure(error: unknown): Error {
 @Injectable()
 export class AppleOAuthClient implements OAuthClient {
   private config(): AppleConfig {
-    const teamId = process.env.APPLE_TEAM_ID;
-    const keyId = process.env.APPLE_KEY_ID;
-    const servicesId = process.env.APPLE_SERVICES_ID;
-    const bundleIds = process.env.APPLE_BUNDLE_ID?.split(",").filter(Boolean);
-    const privateKey = process.env.APPLE_PRIVATE_KEY_BASE64;
+    const teamId = env("APPLE_TEAM_ID");
+    const keyId = env("APPLE_KEY_ID");
+    const servicesId = env("APPLE_SERVICES_ID");
+    const bundleIds = env("APPLE_BUNDLE_ID");
+    const privateKey = env("APPLE_PRIVATE_KEY_BASE64");
     if (!teamId || !keyId || !servicesId || !bundleIds?.length || !privateKey) {
       throw new ServiceUnavailableException("Apple sign-in is not configured");
     }

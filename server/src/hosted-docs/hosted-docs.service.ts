@@ -20,6 +20,7 @@ import { randomUUID } from "crypto";
 import { isUniqueViolation } from "src/utils/db-errors";
 import type { Repository } from "src/utils/Repository";
 import type { ZodError } from "zod";
+import { requireEnv } from "../config/env";
 import { CreateHostedDocDto, UpdateHostedDocDto } from "./dto/hosted-doc.dto";
 import { HostedDoc } from "./entities/hosted-doc.entity";
 
@@ -42,7 +43,9 @@ function assertPdf(file: Express.Multer.File | undefined): Express.Multer.File {
 @Injectable()
 export class HostedDocsService {
   private readonly logger = new Logger(HostedDocsService.name);
-  private readonly bucket = process.env.ASSETS_BUCKET!;
+  private get bucket() {
+    return requireEnv("ASSETS_BUCKET");
+  }
 
   constructor(
     @InjectRepository(HostedDoc)

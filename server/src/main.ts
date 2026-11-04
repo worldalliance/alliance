@@ -1,6 +1,9 @@
+// First, so an invalid environment is reported whole before any module reads it.
+import "./config/validate-env";
+
 import { devPorts, PortCaller } from "@alliance/common/dev-ports";
 import { GUEST_HEADER } from "@alliance/common/guest";
-import { currentNodeEnv, isDeployed } from "@alliance/common/node-env";
+import { NodeEnv } from "@alliance/common/node-env";
 import { NOTIFS_LOADED_AT_HEADER } from "@alliance/common/notifs";
 import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
@@ -9,70 +12,14 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { useContainer } from "class-validator";
 import type { ServerOptions } from "socket.io";
 import { AppModule } from "./app.module";
-import { mailSendingEnabled } from "./mail/mail.service";
+import { env } from "./config/env";
 import { MetricsInterceptor } from "./metrics";
-import { twilioSignatureEnforced } from "./mms/twilio-signature.guard";
 import { injectResponseSchemas } from "./openapi-errors";
 import { capturePosthogExceptions } from "./posthog.filter";
 import { posthogClientIfEnabled } from "./posthog/posthog-client";
 import { configureApp } from "./utils/configure-app";
 import { socketCorsOrigins } from "./utils/cors-origins";
 import { RouteContextGuard } from "./utils/request-context.guard";
-import { publicMailDailyCap } from "./waitlist/waitlist-mail.service";
-
-// Let validateNodeEnv report unknown values without treating them as deployed.
-function deployedUrlVars(): string[] {
-  const env = currentNodeEnv();
-  if (!env.ok || !isDeployed(env.value)) return [];
-  return ["APP_URL", "ALT_APP_URL", "ADMIN_URL", "ALT_ADMIN_URL"];
-}
-
-function validateEnv() {
-  const requiredVars = new Set([
-    "DB_HOST",
-    "DB_USERNAME",
-    "DB_PASSWORD",
-    "DB_NAME",
-    "JWT_SECRET",
-    "JWT_REFRESH_SECRET",
-    ...(twilioSignatureEnforced() ? ["TWILIO_AUTH_TOKEN", "APP_URL"] : []),
-    ...(mailSendingEnabled() ? ["MAIL_FROM"] : []),
-    ...deployedUrlVars(),
-  ]);
-
-  const missing = [...requiredVars].filter((v) => !process.env[v]);
-
-  if (missing.length > 0) {
-    console.error(
-      `ERR: Missing required environment variables: ${missing.join(", ")}`,
-    );
-    process.exit(1);
-  }
-
-  // Parses the waitlist mail cap now, so a malformed one fails boot rather
-  // than a request.
-  publicMailDailyCap();
-
-  validateNodeEnv();
-}
-
-function validateNodeEnv() {
-  const env = currentNodeEnv();
-  if (env.ok) return;
-
-  const msg = `:warning: Server starting with ${env.error.message}. Outbound notifs may misfire.`;
-  console.error(msg);
-
-  const webhook = process.env.SLACK_WEBHOOK_URL;
-  if (!webhook) return;
-  void fetch(webhook, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text: msg }),
-  }).catch((err) => {
-    console.error("Failed to post NODE_ENV warning to Slack:", err);
-  });
-}
 
 class SocketIoAdapter extends IoAdapter {
   createIOServer(port: number, options?: ServerOptions) {
@@ -80,11 +27,11 @@ class SocketIoAdapter extends IoAdapter {
       ...options,
       cors: {
         origin: socketCorsOrigins({
-          nodeEnv: process.env.NODE_ENV,
-          appUrl: process.env.APP_URL,
-          altAppUrl: process.env.ALT_APP_URL,
-          adminUrl: process.env.ADMIN_URL,
-          altAdminUrl: process.env.ALT_ADMIN_URL,
+          nodeEnv: env("NODE_ENV"),
+          appUrl: env("APP_URL"),
+          altAppUrl: env("ALT_APP_URL"),
+          adminUrl: env("ADMIN_URL"),
+          altAdminUrl: env("ALT_ADMIN_URL"),
         }),
         methods: ["GET", "POST"],
         credentials: true,
@@ -94,8 +41,6 @@ class SocketIoAdapter extends IoAdapter {
 }
 
 async function bootstrap() {
-  validateEnv();
-
   const port = devPorts(PortCaller.Server).server;
   const client = posthogClientIfEnabled();
 
@@ -119,7 +64,7 @@ async function bootstrap() {
   app.useWebSocketAdapter(new SocketIoAdapter(app));
   app.set("trust proxy", "loopback");
 
-  if (process.env.NODE_ENV !== "production") {
+  if (env("NODE_ENV") !== NodeEnv.Production) {
     const config = new DocumentBuilder()
       .setTitle("Alliance API")
       .setVersion("1.0")

@@ -1,6 +1,8 @@
+import { NodeEnv } from "@alliance/common/node-env";
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { UserService } from "src/user/user.service";
+import { env } from "../config/env";
 import { TimeSpentForUser } from "./timespent.dto";
 
 @Injectable()
@@ -56,12 +58,14 @@ ORDER BY pp.total_session_duration_seconds DESC
   }
 
   constructor(private readonly userService: UserService) {
-    if (!process.env.POSTHOG_QUERY_KEY || !process.env.POSTHOG_PROJECT_ID) {
+    const apiKey = env("POSTHOG_QUERY_KEY");
+    const projectId = env("POSTHOG_PROJECT_ID");
+    if (!apiKey || !projectId) {
       this.logger.warn("POSTHOG_QUERY_KEY or POSTHOG_PROJECT_ID is not set");
       return;
     }
-    this.API_KEY = process.env.POSTHOG_QUERY_KEY;
-    this.PROJECT_ID = process.env.POSTHOG_PROJECT_ID;
+    this.API_KEY = apiKey;
+    this.PROJECT_ID = projectId;
   }
 
   async getPosthogData(
@@ -127,8 +131,8 @@ ORDER BY pp.total_session_duration_seconds DESC
       return;
     }
     if (
-      process.env.NODE_ENV === "development" &&
-      !process.env.DEV_POSTHOG_ANALYTICS
+      env("NODE_ENV") === NodeEnv.Development &&
+      !env("DEV_POSTHOG_ANALYTICS")
     ) {
       return;
     }

@@ -1,9 +1,11 @@
+import { NodeEnv } from "@alliance/common/node-env";
 import { R, type Result } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import type { Repository } from "src/utils/Repository";
 import type { DeepPartial, EntityManager } from "typeorm";
+import { env } from "../config/env";
 import {
   EventLogDto,
   EventLogList,
@@ -166,12 +168,12 @@ export class EventLogService {
       return;
     }
 
-    const webhookUrl = process.env.SLACK_WEBHOOK_URL;
+    const webhookUrl = env("SLACK_WEBHOOK_URL");
     if (!webhookUrl) {
       this.logger.warn("SLACK_WEBHOOK_URL is not set; skipping Slack message");
       return;
     }
-    if (process.env.NODE_ENV !== "production") {
+    if (env("NODE_ENV") !== NodeEnv.Production) {
       this.logger.log(`Skipping Slack message in development: ${slackMessage}`);
       return;
     }

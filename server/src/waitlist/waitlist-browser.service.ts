@@ -1,3 +1,4 @@
+import { NodeEnv } from "@alliance/common/node-env";
 import { Injectable } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -7,6 +8,7 @@ import { readCookie } from "src/utils/cookies";
 import { hashToken, randomToken } from "src/utils/random";
 import type { Repository } from "src/utils/Repository";
 import { LessThan, MoreThan } from "typeorm";
+import { env } from "../config/env";
 import { WaitlistBrowser } from "./entities/waitlist-browser.entity";
 import type { WaitlistEntry } from "./entities/waitlist-entry.entity";
 
@@ -21,7 +23,7 @@ const SESSION_MAX_MS = milliseconds({ days: 30 });
 
 const cookieOptions = (): CookieOptions => ({
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
+  secure: env("NODE_ENV") === NodeEnv.Production,
   sameSite: "strict",
   path: "/",
 });

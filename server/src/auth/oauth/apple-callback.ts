@@ -1,6 +1,8 @@
+import { NodeEnv } from "@alliance/common/node-env";
 import { HttpStatus } from "@nestjs/common";
 import { milliseconds } from "date-fns";
 import type { Request as ExpressRequest, Response } from "express";
+import { env } from "../../config/env";
 import { APPLE_USER_COOKIE, extractAppleUserFromCookie } from "../tokens";
 import type { OAuthCallbackDto } from "./oauth.dto";
 
@@ -28,7 +30,7 @@ export function bounceAppleCallback(
   if (user) {
     res.cookie(APPLE_USER_COOKIE, user, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: env("NODE_ENV") === NodeEnv.Production,
       sameSite: "lax",
       path: "/",
       maxAge: APPLE_USER_COOKIE_MAX_AGE_MS,

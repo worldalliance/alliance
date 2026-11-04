@@ -1,4 +1,5 @@
 import { hasContent } from "@alliance/common/editableContent";
+import { NodeEnv } from "@alliance/common/node-env";
 import {
   BadRequestException,
   Injectable,
@@ -30,6 +31,7 @@ import { commentUrl } from "src/search/approutes";
 import { ProfileDto } from "src/user/dto/user.dto";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import { IsNull, type EntityManager, type Repository } from "typeorm";
+import { env } from "../config/env";
 import { Notification } from "../notifs/entities/notification.entity";
 import { User } from "../user/entities/user.entity";
 import { assertCommentParentNotInStaffPreview } from "./comment-staff-preview";
@@ -158,12 +160,12 @@ export class ForumCommentService {
 
     if (
       createCommentDto.parentObjectType === CommentParentObject.Action &&
-      process.env.NODE_ENV === "production"
+      env("NODE_ENV") === NodeEnv.Production
     ) {
       this.eventLogService.sendMessage({
         type: EventType.ActionComment,
         message: `New comment on action ${createCommentDto.parentObjectId}`,
-        slackMessage: `New comment on action ${createCommentDto.parentObjectId} <@U08P0TJ283T> <@U08NU231VGS> - <${process.env.APP_URL}${commentUrl(reply)}|Open action>`,
+        slackMessage: `New comment on action ${createCommentDto.parentObjectId} <@U08P0TJ283T> <@U08NU231VGS> - <${env("APP_URL")}${commentUrl(reply)}|Open action>`,
         userId: userId,
         blob: {
           actionId: createCommentDto.parentObjectId,

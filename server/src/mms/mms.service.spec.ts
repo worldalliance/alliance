@@ -473,14 +473,4 @@ describe("MmsService constructor", () => {
     process.env.SEND_DEV_NOTIFS = "0";
     expect(construct).not.toThrow();
   });
-
-  it("refuses to boot without twilio config when texts go out", () => {
-    process.env.SEND_DEV_NOTIFS = "1";
-    expect(construct).toThrow("Twilio configuration is missing or invalid.");
-  });
-
-  it("refuses to boot without twilio config in production", () => {
-    process.env.NODE_ENV = "production";
-    expect(construct).toThrow("Twilio configuration is missing or invalid.");
-  });
 });

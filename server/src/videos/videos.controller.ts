@@ -18,6 +18,7 @@ import { ApiBody, ApiConsumes, ApiOkResponse } from "@nestjs/swagger";
 import type { Response } from "express";
 import { AdminGuard } from "src/auth/guards/admin.guard";
 import { pipeS3Object } from "src/s3/pipe-s3-object";
+import { requireEnv } from "../config/env";
 import {
   DeleteVideoResponseDto,
   ReplaceVideoResponseDto,
@@ -56,7 +57,9 @@ export class VideosController {
     @Inject("S3_CLIENT") private readonly s3: S3Client,
   ) {}
 
-  private readonly bucket = process.env.ASSETS_BUCKET!;
+  private get bucket() {
+    return requireEnv("ASSETS_BUCKET");
+  }
 
   @Post("upload")
   @UseGuards(AdminGuard)

@@ -2,6 +2,7 @@ import { OAuthProvider } from "@alliance/common/oauth";
 import { R, type Result } from "@alliance/common/result";
 import { Injectable, ServiceUnavailableException } from "@nestjs/common";
 import { OAuth2Client } from "google-auth-library";
+import { env } from "../../config/env";
 import type { OAuthClient, OAuthProfile } from "./oauth-client";
 
 type GoogleConfig = {
@@ -16,8 +17,8 @@ export class GoogleOAuthClient implements OAuthClient {
   private oauth2Client: OAuth2Client | null = null;
 
   private config(): GoogleConfig {
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const clientId = env("GOOGLE_CLIENT_ID");
+    const clientSecret = env("GOOGLE_CLIENT_SECRET");
     if (!clientId || !clientSecret) {
       throw new ServiceUnavailableException("Google sign-in is not configured");
     }

@@ -38,6 +38,7 @@ import { IsEnum, IsOptional } from "class-validator";
 import type { Request as ExpressRequest, Response } from "express";
 import { PosthogService } from "src/posthog/posthog.service";
 import { OnlyThrottle } from "src/utils/throttle";
+import { env, requireEnv } from "../config/env";
 import { AuthService } from "./auth.service";
 import {
   AuthMeResponseDto,
@@ -404,13 +405,10 @@ export class AuthController {
   }
 
   private siteUrl(req: ExpressRequest): string {
-    if (!process.env.APP_URL) {
-      throw new Error("APP_URL is not set");
-    }
     return siteUrlForHost({
       host: req.get("host"),
-      appUrl: process.env.APP_URL,
-      altAppUrl: process.env.ALT_APP_URL,
+      appUrl: requireEnv("APP_URL"),
+      altAppUrl: env("ALT_APP_URL"),
     });
   }
 }

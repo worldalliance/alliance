@@ -1,25 +1,14 @@
-type ViteEnv = {
-  MODE: string;
-  VITE_API_URL: string;
-  VITE_ALT_APP_URL?: string;
-  // Vite configs inject these without the VITE_ prefix so `.env` files cannot
-  // override them.
-  ALLIANCE_DEV_API_URL?: string;
-  ALLIANCE_DEV_APP_URL?: string;
-};
+import { requireWebEnv, webEnv } from "./env";
 
-const env = (import.meta as unknown as { env: ViteEnv }).env;
+const mode = import.meta.env.MODE;
 
-const mode = env.MODE;
-
-const prod_url = env.VITE_API_URL;
+const prodUrl = (): string => requireWebEnv("VITE_API_URL");
 
 // A missing value must fail rather than send a worktree to the main database.
-// Read lazily because this module is also imported outside Vite.
 const devUrl = (
   name: "ALLIANCE_DEV_API_URL" | "ALLIANCE_DEV_APP_URL",
 ): string => {
-  const url = env[name];
+  const url = webEnv(name);
 
   if (!url) {
     throw new Error(
@@ -34,7 +23,7 @@ export const getWebSocketUrl = (mode: string): string => {
   if (mode === "development") {
     return devUrl("ALLIANCE_DEV_API_URL");
   } else {
-    return prod_url;
+    return prodUrl();
   }
 };
 
@@ -50,18 +39,18 @@ export const getBaseUrl = (): string => {
   if (mode === "development") {
     return devUrl("ALLIANCE_DEV_APP_URL");
   } else {
-    return prod_url;
+    return prodUrl();
   }
 };
 
 export const getInviteBaseUrl = (): string =>
-  env.VITE_ALT_APP_URL || getBaseUrl();
+  webEnv("VITE_ALT_APP_URL") ?? getBaseUrl();
 
 export const getApiUrl = (): string => {
   if (mode === "development") {
     return devUrl("ALLIANCE_DEV_API_URL");
   } else {
-    return prod_url + "/api";
+    return prodUrl() + "/api";
   }
 };
 

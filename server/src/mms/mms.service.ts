@@ -1,4 +1,5 @@
 import { thrownMessage, thrownStack } from "@alliance/common/errorMessage";
+import { NodeEnv } from "@alliance/common/node-env";
 import { R, type Result } from "@alliance/common/result";
 import { TIMED_OUT, withTimeout } from "@alliance/common/timeout";
 import {
@@ -18,13 +19,11 @@ import {
 } from "src/link-tracking/message-tracking.service";
 import { tagTextLinks } from "src/link-tracking/tag-links";
 import type { Repository } from "src/utils/Repository";
-import {
-  DeliveryFailure,
-  notifDeliveryEnabled,
-} from "src/utils/notif-delivery";
+import { DeliveryFailure, deliverySends } from "src/utils/notif-delivery";
 import { isAnonymizedPhoneNumber } from "src/utils/phone";
 import Twilio from "twilio";
 import type { MessageStatus } from "twilio/lib/rest/api/v2010/account/message";
+import { env } from "../config/env";
 import { Mms } from "./mms.entity";
 
 /** Twilio delivers to UK numbers only from an alphanumeric sender. */
@@ -45,9 +44,7 @@ type SentMessage = {
 };
 
 const canText = (to: string): boolean =>
-  process.env.NODE_ENV !== "test" &&
-  notifDeliveryEnabled() &&
-  !isAnonymizedPhoneNumber(to);
+  deliverySends() && !isAnonymizedPhoneNumber(to);
 
 @Injectable()
 export class MmsService {
@@ -64,24 +61,12 @@ export class MmsService {
     private readonly eventLogService: EventLogService,
     private readonly messageTracking: MessageTrackingService,
   ) {
-    if (process.env.NODE_ENV === "test") {
+    if (env("NODE_ENV") === NodeEnv.Test) {
       return;
     }
-    const accountSid = process.env.TWILIO_ACCOUNT_SID!;
-    const authToken = process.env.TWILIO_AUTH_TOKEN!;
-    this.twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER!;
-
-    if (
-      (!accountSid || !authToken || !this.twilioPhoneNumber) &&
-      notifDeliveryEnabled()
-    ) {
-      this.logger.error(
-        "Twilio configuration (Account SID, Auth Token, Phone Number) is missing or invalid.",
-      );
-      throw new InternalServerErrorException(
-        "Twilio configuration is missing or invalid.",
-      );
-    }
+    const accountSid = env("TWILIO_ACCOUNT_SID")!;
+    const authToken = env("TWILIO_AUTH_TOKEN")!;
+    this.twilioPhoneNumber = env("TWILIO_PHONE_NUMBER")!;
 
     try {
       this.twilioClient = Twilio(accountSid, authToken); // Initialize Twilio client
@@ -230,7 +215,7 @@ export class MmsService {
       text: `Failed to send MMS to user ${userId}: ${errorMessage}`,
       error,
     });
-    if (process.env.NODE_ENV === "production") {
+    if (env("NODE_ENV") === NodeEnv.Production) {
       this.eventLogService.sendMessage({
         type: EventType.SmsFailure,
         message: `Failed to send MMS to ${to}: ${errorMessage}`,

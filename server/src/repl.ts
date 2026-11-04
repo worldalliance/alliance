@@ -1,3 +1,5 @@
+import "./config/validate-env";
+
 import { repl } from "@nestjs/core";
 import { AppModule } from "./app.module";
 

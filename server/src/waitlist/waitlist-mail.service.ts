@@ -11,22 +11,13 @@ import {
 import type { Repository } from "src/utils/Repository";
 import { DataSource } from "typeorm";
 import { z } from "zod";
+import { env } from "../config/env";
 import { WaitlistEntry } from "./entities/waitlist-entry.entity";
 import { SPAM_LIKE } from "./waitlist-spam";
 
 /** Null, and public sending off, until the cap is set. */
 export function publicMailDailyCap(): number | null {
-  const cap = process.env.WAITLIST_PUBLIC_MAIL_DAILY_CAP;
-  if (!cap) {
-    return null;
-  }
-  const parsed = z.coerce.number().int().positive().safeParse(cap);
-  if (!parsed.success) {
-    throw new Error(
-      `WAITLIST_PUBLIC_MAIL_DAILY_CAP must be a positive integer, got "${cap}"`,
-    );
-  }
-  return parsed.data;
+  return env("WAITLIST_PUBLIC_MAIL_DAILY_CAP") ?? null;
 }
 
 export enum MailClaim {

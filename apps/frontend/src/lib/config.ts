@@ -4,6 +4,7 @@ import {
   getBaseUrl,
   getWebSocketUrl as getWebSocketUrlShared,
 } from "@alliance/sharedweb/lib/config";
+import { webEnv } from "@alliance/sharedweb/lib/env";
 
 // One vhost serves this app on both worldalliance.org and thealliance.org and
 // proxies /api and /socket.io on each. The auth cookie is SameSite=strict, so a
@@ -29,7 +30,7 @@ export const getWebSocketUrl = (): string => {
  * only the origin of the configured host is wrong on the alt domain.
  */
 export const getPosthogHost = (): string | undefined => {
-  const configured = import.meta.env.VITE_PUBLIC_POSTHOG_HOST;
+  const configured = webEnv("VITE_PUBLIC_POSTHOG_HOST");
   const origin = browserOrigin();
   return origin && configured
     ? `${origin}${new URL(configured).pathname}`

@@ -6,6 +6,7 @@ import {
 } from "@alliance/common/waitlist";
 import * as cheerio from "cheerio";
 import MarkdownIt from "markdown-it";
+import { env } from "../config/env";
 
 const linkify = new MarkdownIt().linkify.set({
   fuzzyLink: false,
@@ -24,7 +25,7 @@ const configuredHostname = (url: string | undefined): string | null => {
 /** Local and test runs link to `APP_URL`, which isn't an Alliance host. */
 const isTrackedHostname = (hostname: string): boolean =>
   isAllianceAppHostname(hostname) ||
-  [process.env.APP_URL, process.env.ALT_APP_URL].some(
+  [env("APP_URL"), env("ALT_APP_URL")].some(
     (url) => configuredHostname(url) === hostname,
   );
 

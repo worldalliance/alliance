@@ -6,6 +6,7 @@ import {
   thumbnailKey,
   uploadKeyInUrl,
 } from "@alliance/common/image-src";
+import { NodeEnv } from "@alliance/common/node-env";
 import {
   GetObjectCommand,
   PutObjectCommand,
@@ -26,6 +27,7 @@ import { randomUUID } from "crypto";
 import convert from "heic-convert";
 import sharp from "sharp";
 import { AsyncSemaphore } from "src/utils/async-semaphore";
+import { env, requireEnv } from "../config/env";
 
 // A 108 MP phone photo fits; a small file with huge dimensions doesn't.
 const DOWNLOAD_MAX_PIXELS = 120_000_000;
@@ -42,7 +44,10 @@ export class ImagesService {
 
   constructor(@Inject("S3_CLIENT") private readonly s3: S3Client) {}
 
-  private readonly bucket = process.env.ASSETS_BUCKET!; // TODO: separate dev bucket
+  // TODO: separate dev bucket
+  private get bucket() {
+    return requireEnv("ASSETS_BUCKET");
+  }
 
   /**
    * The timestamp keeps keys roughly ordered; the uuid is what makes them
@@ -233,16 +238,13 @@ export function getImageSource(string: string) {
   }
 
   if (
-    process.env.NODE_ENV === "production" ||
-    process.env.NODE_ENV === "staging"
+    env("NODE_ENV") === NodeEnv.Production ||
+    env("NODE_ENV") === NodeEnv.Staging
   ) {
-    if (
-      process.env.USE_CLOUDFRONT === "true" &&
-      process.env.CLOUDFRONT_DOMAIN
-    ) {
-      return `https://${process.env.CLOUDFRONT_DOMAIN}/${string}`;
+    if (env("USE_CLOUDFRONT")) {
+      return `https://${requireEnv("CLOUDFRONT_DOMAIN")}/${string}`;
     }
-    return `${process.env.APP_URL}/api/images/${string}`;
+    return `${env("APP_URL")}/api/images/${string}`;
   } else {
     return `http://localhost:${devPorts(PortCaller.Server).server}/images/${string}`;
   }

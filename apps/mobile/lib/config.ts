@@ -3,6 +3,7 @@ import { R } from "@alliance/common/result";
 import { client } from "@alliance/shared/client/client.gen";
 import * as Application from "expo-application";
 import { NativeModules, Platform } from "react-native";
+import { mobileEnv } from "./env";
 import { type ReleaseTarget, releaseTargetFor, STAGING } from "./releaseTarget";
 import { getVisualTestApiUrl } from "./visualTest";
 
@@ -10,12 +11,11 @@ import { getVisualTestApiUrl } from "./visualTest";
 // OTA runtimeVersion. A missing value must fail rather than send a worktree to
 // the main checkout's database.
 const devApiPort = (): number => {
-  const raw = process.env.EXPO_PUBLIC_ALLIANCE_API_PORT;
-  const port = Number(raw);
+  const port = mobileEnv("EXPO_PUBLIC_ALLIANCE_API_PORT");
 
-  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+  if (port === undefined) {
     throw new Error(
-      `EXPO_PUBLIC_ALLIANCE_API_PORT=${raw ?? "<unset>"} is not a port — start the app with \`bun run --cwd apps/mobile start\` (or web/ios/android), which resolves it for this checkout`,
+      `EXPO_PUBLIC_ALLIANCE_API_PORT is unset — start the app with \`bun run --cwd apps/mobile start\` (or web/ios/android), which resolves it for this checkout`,
     );
   }
 
@@ -28,7 +28,7 @@ const getDevHost = (): string => {
   }
   const url = NativeModules.SourceCode?.getConstants().scriptURL;
   const ip = !!url ? url.split(":")[1].substring(2) : undefined;
-  return ip ?? process.env.EXPO_PUBLIC_DEV_API_URL ?? "localhost";
+  return ip ?? mobileEnv("EXPO_PUBLIC_DEV_API_URL") ?? "localhost";
 };
 
 /** The deployment a release build talks to, fixed by its bundle ID or package. */

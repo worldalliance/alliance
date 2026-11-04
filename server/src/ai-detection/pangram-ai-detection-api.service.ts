@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { env } from "../config/env";
 import { PangramAiDetectionResult } from "./ai-detection.types";
 
 type PangramApiResponse = {
@@ -9,10 +10,8 @@ type PangramApiResponse = {
 @Injectable()
 export class PangramAiDetectionApiService {
   private readonly logger = new Logger(PangramAiDetectionApiService.name);
-  private readonly endpoint = process.env.PANGRAM_API_URL?.trim()
-    ? process.env.PANGRAM_API_URL.trim()
-    : "https://text.api.pangram.com/v3";
-  private readonly apiKey = process.env.PANGRAM_API_KEY?.trim();
+  private readonly endpoint = env("PANGRAM_API_URL");
+  private readonly apiKey = env("PANGRAM_API_KEY");
 
   private normalizeProbability(value: unknown): number | null {
     if (typeof value !== "number" || Number.isNaN(value)) {

@@ -4,13 +4,14 @@ import { Check, Copy } from "lucide-react-native";
 import { useState } from "react";
 import { Platform, TouchableOpacity, View } from "react-native";
 import { copyOrAlert } from "../lib/clipboard";
+import { mobileEnv } from "../lib/env";
 import { colors } from "../lib/style/colors";
 import Card, { CardStyle } from "./system/Card";
 import Text, { FontFamily, FontWeight } from "./system/Text";
 
-// Metro inlines this at bundle time, so it names the commit the JS came from
-// rather than the binary's. Empty unless the build set it.
-const COMMIT = process.env.EXPO_PUBLIC_GIT_COMMIT;
+// Inlined at bundle time, so it names the commit the JS came from rather than
+// the binary's.
+const COMMIT = mobileEnv("EXPO_PUBLIC_GIT_COMMIT");
 
 const UNKNOWN = "unknown";
 
@@ -52,7 +53,7 @@ export default function BuildInfoCard() {
         `updateId: ${Updates.updateId ?? "none"}`,
         `runtime: ${Updates.runtimeVersion ?? UNKNOWN}`,
         `channel: ${Updates.channel || UNKNOWN}`,
-        `commit: ${COMMIT || UNKNOWN}`,
+        `commit: ${COMMIT ?? UNKNOWN}`,
       ].join("\n"),
     );
     if (landed) setCopied(true);

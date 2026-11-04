@@ -1,5 +1,7 @@
 import { thrownStack } from "@alliance/common/errorMessage";
+import { NodeEnv } from "@alliance/common/node-env";
 import { Injectable, Logger } from "@nestjs/common";
+import { env } from "../config/env";
 import { AiDetectionProcessor } from "./ai-detection.processor";
 import { AiDetectionJobData } from "./ai-detection.types";
 
@@ -11,8 +13,8 @@ export class AiDetectionQueueService {
 
   async addDetectJob(job: AiDetectionJobData): Promise<void> {
     if (
-      process.env.NODE_ENV !== "production" &&
-      !process.env.USE_DEV_AI_DETECTION
+      env("NODE_ENV") !== NodeEnv.Production &&
+      !env("USE_DEV_AI_DETECTION")
     ) {
       return;
     }

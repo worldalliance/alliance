@@ -15,6 +15,7 @@ import remarkHtml from "remark-html";
 import { getImageSource } from "src/images/images.service";
 import { postUrl } from "src/search/approutes";
 import type { User } from "src/user/entities/user.entity";
+import { env, requireEnv } from "../config/env";
 import { type Comment, loadedCommentAuthor } from "./entities/comment.entity";
 import type { EditableContent } from "./entities/editablecontent.entity";
 import type { ParsedPost } from "./entities/post.entity";
@@ -30,7 +31,9 @@ export type PostExport = {
 @Injectable()
 export class ForumExportService {
   private readonly logger = new Logger(ForumExportService.name);
-  private readonly bucket = process.env.ASSETS_BUCKET!;
+  private get bucket() {
+    return requireEnv("ASSETS_BUCKET");
+  }
 
   constructor(
     private readonly forumAdminService: ForumAdminService,
@@ -185,7 +188,7 @@ ${renderContent(post.editableContent, input)}
 <h2>${escapeHtml(withCount(commentCount, "comment"))}</h2>
 ${threads.length ? renderThread(threads, input) : `<p class="empty">No comments yet.</p>`}
 </section>
-<footer><a href="${escapeHtml(`${process.env.APP_URL}${postUrl(post.id)}`)}">View this post on the site</a></footer>
+<footer><a href="${escapeHtml(`${env("APP_URL")}${postUrl(post.id)}`)}">View this post on the site</a></footer>
 </main>
 <script>
 ${closeScriptSafe(input.editModeScript)}</script>

@@ -16,6 +16,7 @@ import { PushService } from "src/push/push.service";
 import { textReachable } from "src/user/user.utils";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
 import { DataSource } from "typeorm";
+import { env } from "../config/env";
 import { LOCK_KEYS } from "../notifs/lock-keys";
 import { withPgAdvisoryLock } from "../notifs/lock-utils";
 
@@ -85,7 +86,7 @@ export class ContractSuspenderWorker {
             send: () =>
               this.eventLogService.sendMessage({
                 type: EventType.ContractSuspended,
-                message: `[${process.env.NODE_ENV}]: Suspending contract for ${user.name}. failure code ${reasonKey}`,
+                message: `[${env("NODE_ENV")}]: Suspending contract for ${user.name}. failure code ${reasonKey}`,
                 userId: user.id,
                 blob: {
                   suspendReason: reasonKey,

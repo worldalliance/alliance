@@ -6,13 +6,13 @@ The user asked for "the necessary github secrets edit". A sender address is not 
 
 ## Required only when mail actually sends
 
-`mailSendingEnabled()` was extracted from the condition already at the top of `MailService.sendMail` and is now the single source for both that early return and `MAIL_FROM`'s required-ness in `validateEnv` (`server/src/main.ts`). The extraction preserves the original expression exactly, including its raw `process.env.NODE_ENV` string comparisons rather than the `NodeEnv` enum from `@alliance/common/node-env`: switching to the parsed enum would change behavior when `NODE_ENV` is unparseable and `SEND_DEV_NOTIFS=1`, which is outside what was asked.
+`deliverySends()` in `server/src/utils/notif-delivery.ts` is the single source for both `MailService.sendMail`'s early return and `MAIL_FROM`'s required-ness in startup validation (`deliverySendsFor` in `server/src/config/env.ts`), so the two can't disagree.
 
 Staging does not need `MAIL_FROM` — it runs `NODE_ENV=staging`, which does not send.
 
 ## Two layers of enforcement for a missing MAIL_FROM
 
-- `validateEnv` in `server/src/main.ts` exits at boot, matching the existing `twilioSignatureEnforced()` pattern in the same set.
+- Startup validation (`server/src/config/validate-env.ts`) exits at boot, as it does for the keys the Twilio guard needs.
 - `deploy.yaml` fails the production deploy before it starts, matching the `ALT_DOMAIN_NAME` guard a few lines below. Without it, a missing variable would surface only as a pm2 restart loop after a green deploy.
 
 The `sendMail` throw is what makes `from` typed `string` without a non-null assertion, so it is not purely redundant.

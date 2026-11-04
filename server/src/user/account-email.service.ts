@@ -1,3 +1,4 @@
+import { NodeEnv } from "@alliance/common/node-env";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import {
@@ -8,6 +9,7 @@ import {
 import { updateLive } from "src/datasources/soft-delete";
 import { MailService } from "src/mail/mail.service";
 import { DataSource } from "typeorm";
+import { env } from "../config/env";
 import { User } from "./entities/user.entity";
 import { UserService } from "./user.service";
 
@@ -21,7 +23,10 @@ export class AccountEmailService {
   ) {}
 
   async sendWelcomeEmail(userId: number) {
-    if (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "staging") {
+    if (
+      env("NODE_ENV") === NodeEnv.Test ||
+      env("NODE_ENV") === NodeEnv.Staging
+    ) {
       return;
     }
 
@@ -63,7 +68,7 @@ export class AccountEmailService {
     };
     return this.jwtService.sign(payload, {
       expiresIn: `7d`,
-      secret: process.env.JWT_SECRET,
+      secret: env("JWT_SECRET"),
     });
   }
 }

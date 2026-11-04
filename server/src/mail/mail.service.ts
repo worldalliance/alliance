@@ -1,5 +1,6 @@
 import { thrownMessage, thrownStack } from "@alliance/common/errorMessage";
 import { nameParts } from "@alliance/common/nameParts";
+import { NodeEnv } from "@alliance/common/node-env";
 import { R, type Result } from "@alliance/common/result";
 import { TIMED_OUT, withTimeout } from "@alliance/common/timeout";
 import { ISendMailOptions, MailerService } from "@nestjs-modules/mailer";
@@ -23,19 +24,13 @@ import {
   tasksUrl,
   verifyEmailUrl,
 } from "src/search/approutes";
-import {
-  DeliveryFailure,
-  notifDeliveryEnabled,
-} from "src/utils/notif-delivery";
+import { DeliveryFailure, deliverySends } from "src/utils/notif-delivery";
 import type { Repository } from "src/utils/Repository";
+import { env } from "../config/env";
 import { ContractReminderCopy } from "./contract-reminder-copy";
 import { EmailStatus, EmailType, Mail } from "./mail.entity";
 
 const SEND_TIMEOUT_MS = milliseconds({ seconds: 10 });
-
-export function mailSendingEnabled(): boolean {
-  return process.env.NODE_ENV !== "test" && notifDeliveryEnabled();
-}
 
 /**
  * `scripts/anonymize/anonymize.sql` writes these in place of real addresses.
@@ -136,7 +131,7 @@ export class MailService {
     // Apple forwards to a Hide My Email relay only from senders registered
     // under Sign in with Apple for Email Communication in the developer
     // portal. Register a new address there before changing MAIL_FROM.
-    const from = process.env.MAIL_FROM;
+    const from = env("MAIL_FROM");
     if (!from) {
       throw new MailNotSentError("MAIL_FROM is unset");
     }
@@ -153,7 +148,7 @@ export class MailService {
   }): Promise<Mail> {
     const { recipient, emailType, subject, context, tracking } = params;
     const prepared =
-      mailSendingEnabled() && !isAnonymizedEmail(recipient)
+      deliverySends() && !isAnonymizedEmail(recipient)
         ? await this.prepareSend(emailType, context)
         : null;
     const cid =
@@ -230,7 +225,7 @@ export class MailService {
       headers: {
         "o:tag": emailType,
         "X-Mailgun-Tag":
-          process.env.NODE_ENV === "production" ? "production" : "development",
+          env("NODE_ENV") === NodeEnv.Production ? "production" : "development",
         ...(providerTracking ? {} : { "X-Mailgun-Track": "no" }),
       },
       html,
@@ -248,7 +243,7 @@ export class MailService {
     context: ISendMailOptions["context"];
   }): Promise<Result<{ messageId: string }, DeliveryFailure>> {
     const { recipient, emailType, subject, context } = params;
-    if (!mailSendingEnabled() || isAnonymizedEmail(recipient)) {
+    if (!deliverySends() || isAnonymizedEmail(recipient)) {
       return R.failure(DeliveryFailure.Unavailable);
     }
     const prepared = await R.fromPromise(this.prepareSend(emailType, context));
@@ -420,7 +415,7 @@ export class MailService {
 
   /** Whether the mail server can be reached; true while sending is off. */
   async verifyTransport(): Promise<boolean> {
-    if (!mailSendingEnabled()) return true;
+    if (!deliverySends()) return true;
     const verified = await R.fromPromise(
       this.mailerService.verifyAllTransporters(),
     );

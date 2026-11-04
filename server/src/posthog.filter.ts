@@ -13,6 +13,7 @@ import {
 } from "@nestjs/core";
 import type { Request } from "express";
 import { PostHog } from "posthog-node";
+import { env } from "./config/env";
 import { captureException } from "./utils/posthog";
 
 @Catch()
@@ -53,7 +54,7 @@ export class PosthogExceptionFilter extends BaseExceptionFilter {
         path: req?.url,
         method: req?.method,
         status,
-        env: process.env.NODE_ENV,
+        env: env("NODE_ENV"),
         server: true,
       },
     });

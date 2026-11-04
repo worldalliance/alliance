@@ -28,6 +28,7 @@ import { AuthOptionalGuard } from "src/auth/guards/authoptional.guard";
 import { Public } from "src/auth/public.decorator";
 import type { JwtRequest } from "src/auth/tokens";
 import { pipeS3Object } from "src/s3/pipe-s3-object";
+import { requireEnv } from "../config/env";
 import {
   CreateHostedDocDto,
   HostedDocDto,
@@ -123,7 +124,9 @@ export class DocsController {
     @Inject("S3_CLIENT") private readonly s3: S3Client,
   ) {}
 
-  private readonly bucket = process.env.ASSETS_BUCKET!;
+  private get bucket() {
+    return requireEnv("ASSETS_BUCKET");
+  }
 
   @Get(":slug")
   @Public()

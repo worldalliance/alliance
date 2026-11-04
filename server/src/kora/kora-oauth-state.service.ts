@@ -7,6 +7,7 @@ import { OAUTH_STATE_LIFETIME } from "src/auth/oauth/oauth-proof";
 import { JWTTokenType } from "src/auth/tokens";
 import { requestContext } from "src/utils/request-context";
 import { z } from "zod";
+import { env } from "../config/env";
 
 /**
  * Its own token type, so neither callback accepts the other's state: a member
@@ -55,7 +56,7 @@ export class KoraOAuthStateService {
   }): Promise<Result<KoraOAuthState, KoraOAuthStateRefusal>> {
     const payload = await R.fromPromise(
       this.jwtService.verifyAsync<object>(params.token, {
-        secret: process.env.JWT_SECRET,
+        secret: env("JWT_SECRET"),
         ignoreExpiration: true,
       }),
     );

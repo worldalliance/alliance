@@ -27,16 +27,12 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import sharp from "sharp";
+import { env, requireEnv } from "../src/config/env";
 
 const apply = process.argv.includes("--apply");
-const bucket = process.env.ASSETS_BUCKET;
-const region = process.env.AWS_REGION ?? "us-west-2";
+const bucket = requireEnv("ASSETS_BUCKET");
 
-if (!bucket) {
-  console.error("ASSETS_BUCKET is required");
-  process.exit(1);
-}
-
+const region = env("AWS_REGION");
 const s3 = new S3Client({ region });
 const CONCURRENCY = 8;
 
