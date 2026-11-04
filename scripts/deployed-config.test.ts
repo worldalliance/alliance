@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
 import {
@@ -72,4 +72,22 @@ describe("deployed-config.ts", () => {
       expect(run(...args).exitCode).toBe(2);
     }
   });
+});
+
+test("no workflow reads a GitHub variable or a secret the committed config replaced", () => {
+  const replaced = [
+    ...Object.keys(deployedConfigEnv(deployedConfigFor(NodeEnv.Production))),
+    "RDS_PORT",
+  ];
+  const pattern = new RegExp(
+    `\\bvars\\b|\\bsecrets\\s*(?:\\.|\\[\\s*['"])(${replaced.join("|")})\\b`,
+  );
+  const github = join(import.meta.dir, "..", ".github");
+  const files = readdirSync(github, { recursive: true, encoding: "utf8" })
+    .filter((file) => /\.ya?ml$/.test(file))
+    .map((file) => join(github, file));
+  expect(files.length).toBeGreaterThan(0);
+  expect(
+    files.filter((file) => pattern.test(readFileSync(file, "utf8"))),
+  ).toEqual([]);
 });

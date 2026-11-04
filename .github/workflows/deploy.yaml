@@ -24,8 +24,8 @@ jobs:
         with:
           check: ${{ github.ref_name == 'production' && 'empty' || 'exists' }}
 
-  # An artifact, not job outputs: Actions drops a job output that matches any
-  # secret's value.
+  # An artifact, not job outputs: the backend deploy ships the file itself, and
+  # Actions drops a job output that matches any secret's value.
   deployed-config:
     runs-on: ubuntu-latest
     steps:
@@ -68,10 +68,15 @@ jobs:
 
   build-react-app:
     runs-on: ubuntu-latest
+    needs: deployed-config
     environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Read deployed config
+        id: config
+        uses: ./.github/actions/deployed-config
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -89,23 +94,18 @@ jobs:
         run: bun typecheck
         working-directory: ./apps/frontend
 
-      - name: Check alt domain is configured
-        run: |
-          [ -n "${{ vars.ALT_DOMAIN_NAME }}" ] || { echo "ALT_DOMAIN_NAME is unset for this environment"; exit 1; }
-
       - name: Build React App
         run: bun run --cwd apps/frontend build -- --mode "$env_name"
         env:
           VITE_APP_GIT_SHA: ${{ github.sha }}
           VITE_APP_VERSION: ${{ github.ref_name }}
-          VITE_ALT_APP_URL: https://${{ vars.ALT_DOMAIN_NAME }}
 
       - name: Inject & upload source maps to PostHog
         continue-on-error: true
         uses: PostHog/upload-source-maps@v0.4.6
         with:
           directory: ./apps/frontend/build/client/assets/
-          env-id: ${{ secrets.POSTHOG_PROJECT_ID }}
+          env-id: ${{ steps.config.outputs.POSTHOG_PROJECT_ID }}
           cli-token: ${{ secrets.POSTHOG_SOURCEMAP_KEY }}
 
       - name: create output folder
@@ -141,7 +141,6 @@ jobs:
 
   build-admin-frontend:
     runs-on: ubuntu-latest
-    environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -154,14 +153,8 @@ jobs:
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
-      - name: Check alt domain is configured
-        run: |
-          [ -n "${{ vars.ALT_DOMAIN_NAME }}" ] || { echo "ALT_DOMAIN_NAME is unset for this environment"; exit 1; }
-
       - name: Build React App
         run: bun run --cwd apps/admin build -- --mode "$env_name"
-        env:
-          VITE_ALT_APP_URL: https://${{ vars.ALT_DOMAIN_NAME }}
 
       - name: Zip Build Output
         run: zip -r admin-build.zip build/client
@@ -223,12 +216,17 @@ jobs:
   deploy-react-app:
     runs-on: ubuntu-latest
     needs:
+      - deployed-config
       - checks
       - deploy-nest-backend
     environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Read deployed config
+        id: config
+        uses: ./.github/actions/deployed-config
 
       - name: Upload nginx vhost to EC2
         uses: appleboy/scp-action@v0.1.3
@@ -290,10 +288,8 @@ jobs:
             # Source of truth is deploy/nginx/alliance.conf, uploaded to
             # ~/alliance.conf; substitute the per-environment domains into
             # server_name + cert paths.
-            DOMAIN='${{ vars.DOMAIN_NAME }}'
-            ALT_DOMAIN='${{ vars.ALT_DOMAIN_NAME }}'
-            [ -n "$DOMAIN" ] || { echo "DOMAIN_NAME is unset for this environment"; exit 1; }
-            [ -n "$ALT_DOMAIN" ] || { echo "ALT_DOMAIN_NAME is unset for this environment"; exit 1; }
+            DOMAIN='${{ steps.config.outputs.DOMAIN_NAME }}'
+            ALT_DOMAIN='${{ steps.config.outputs.ALT_DOMAIN_NAME }}'
             sudo mkdir -p /var/www/certbot
             # nginx creates the video cache directory, owned by its workers,
             # only inside a parent that exists.
@@ -312,6 +308,7 @@ jobs:
   deploy-admin-app:
     runs-on: ubuntu-latest
     needs:
+      - deployed-config
       - checks
       - deploy-nest-backend
       - deploy-react-app
@@ -319,6 +316,10 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Read deployed config
+        id: config
+        uses: ./.github/actions/deployed-config
 
       - name: Download Admin Build Artifact
         uses: actions/download-artifact@v4
@@ -360,10 +361,8 @@ jobs:
 
             chmod o+x /home/ec2-user
 
-            DOMAIN='${{ vars.DOMAIN_NAME }}'
-            ALT_DOMAIN='${{ vars.ALT_DOMAIN_NAME }}'
-            [ -n "$DOMAIN" ] || { echo "DOMAIN_NAME is unset for this environment"; exit 1; }
-            [ -n "$ALT_DOMAIN" ] || { echo "ALT_DOMAIN_NAME is unset for this environment"; exit 1; }
+            DOMAIN='${{ steps.config.outputs.DOMAIN_NAME }}'
+            ALT_DOMAIN='${{ steps.config.outputs.ALT_DOMAIN_NAME }}'
             sudo mkdir -p /var/www/certbot
 
             render () {
@@ -722,11 +721,15 @@ jobs:
   deploy-nest-backend:
     runs-on: ubuntu-latest
     needs:
+      - deployed-config
       - checks
     environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Download deployed config
+        uses: ./.github/actions/deployed-config
 
       - name: Zip backend deploy workspace
         run: |
@@ -742,6 +745,7 @@ jobs:
             server/src \
             server/migrations \
             server/scripts \
+            deployed-config.env \
             scripts/deploy_backend.sh \
             scripts/sync_prod_to_staging.sh \
             scripts/anonymize \
@@ -798,48 +802,39 @@ jobs:
             cd ~/
 
             export DB_HOST=${{ secrets.RDS_HOSTNAME }}
-            export DB_PORT=${{ secrets.RDS_PORT }}
             export DB_USERNAME=${{ secrets.RDS_USERNAME }}
             export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             export JWT_SECRET=${{ secrets.JWT_SECRET }}
             export JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}
-            export GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }}
             export GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
-            export APPLE_TEAM_ID=${{ vars.APPLE_TEAM_ID }}
-            export APPLE_KEY_ID=${{ vars.APPLE_KEY_ID }}
-            export APPLE_SERVICES_ID=${{ vars.APPLE_SERVICES_ID }}
-            export APPLE_BUNDLE_ID=${{ vars.APPLE_BUNDLE_ID }}
             export APPLE_PRIVATE_KEY_BASE64=${{ secrets.APPLE_PRIVATE_KEY_BASE64 }}
             export NODE_ENV=${{ github.ref_name == 'production' && 'production' || 'staging' }}
-            export DB_NAME="alliance"
+            # BACKCOMPAT(ALL-2011): a rollback restarts the previous release in
+            # this shell, and a release from before the server's committed-config
+            # fallback needs these exported. Remove once each environment's
+            # running release has that fallback.
+            deployed_config=$(unzip -p ~/nest-build.zip deployed-config.env) || { echo "could not extract deployed-config.env"; exit 1; }
+            while IFS='=' read -r key value; do
+              export "$key=$value"
+            done <<< "$deployed_config"
+            export APP_URL="https://$DOMAIN_NAME"
+            export ALT_APP_URL="https://$ALT_DOMAIN_NAME"
+            export ADMIN_URL="https://admin.$DOMAIN_NAME"
+            export ALT_ADMIN_URL="https://admin.$ALT_DOMAIN_NAME"
             export SMTP_HOST=${{ secrets.SMTP_HOST }}
             export SMTP_USER=${{ secrets.SMTP_USER }}
             export SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
-            [ "${{ github.ref_name }}" != "production" ] && [ "${{ vars.SEND_DEV_NOTIFS }}" != "1" ] || [ -n "${{ vars.MAIL_FROM }}" ] || { echo "MAIL_FROM is unset for this environment, which sends mail"; exit 1; }
-            export MAIL_FROM="${{ vars.MAIL_FROM }}"
             export ASSETS_BUCKET=${{ secrets.ASSETS_BUCKET_NAME }}
-            export POSTHOG_KEY=${{ secrets.POSTHOG_KEY }}
-            [ -n "${{ vars.ALT_DOMAIN_NAME }}" ] || { echo "ALT_DOMAIN_NAME is unset for this environment"; exit 1; }
-            export APP_URL=https://${{vars.DOMAIN_NAME}}
-            export ALT_APP_URL=https://${{vars.ALT_DOMAIN_NAME}}
-            export ADMIN_URL=https://admin.${{vars.DOMAIN_NAME}}
-            export ALT_ADMIN_URL=https://admin.${{vars.ALT_DOMAIN_NAME}}
             export TWILIO_PHONE_NUMBER=${{ secrets.TWILIO_PHONE_NUMBER }}
             export TWILIO_ACCOUNT_SID=${{ secrets.TWILIO_ACCOUNT_SID }}
             export TWILIO_AUTH_TOKEN=${{ secrets.TWILIO_AUTH_TOKEN }}
             export POSTHOG_QUERY_KEY=${{ secrets.POSTHOG_QUERY_KEY }}
-            export POSTHOG_PROJECT_ID=${{ secrets.POSTHOG_PROJECT_ID }}
             export MAILGUN_SIGNING_KEY=${{ secrets.MAILGUN_SIGNING_KEY }}
-            export WAITLIST_PUBLIC_MAIL_DAILY_CAP=${{ vars.WAITLIST_PUBLIC_MAIL_DAILY_CAP }}
-            export SEND_DEV_NOTIFS=${{ vars.SEND_DEV_NOTIFS }}
             export NOTIF_TEST_PHONE_NUMBER=${{ secrets.NOTIF_TEST_PHONE_NUMBER }}
             export NOTIF_TEST_EMAIL=${{ secrets.NOTIF_TEST_EMAIL }}
-            export USE_CLOUDFRONT=${{ vars.USE_CLOUDFRONT }}
-            export CLOUDFRONT_DOMAIN=${{ secrets.CLOUDFRONT_DOMAIN }}
             export SLACK_WEBHOOK_URL=${{ secrets.SLACK_WEBHOOK_URL }}
             export DB_CA_CERT="${{ secrets.DB_CA_CERT }}"
             export PANGRAM_API_KEY=${{ secrets.PANGRAM_API_KEY }}
-            export PANGRAM_API_URL=https://text.api.pangram.com/v3
             export EXPO_ACCESS_TOKEN=${{ secrets.EXPO_ACCESS_TOKEN }}
 
             # In memory, so a later deploy can't rewrite the file under a run still going.
@@ -861,52 +856,68 @@ jobs:
 
   verify-deployment:
     needs:
+      - deployed-config
       - deploy-nest-backend
       - deploy-react-app
       - deploy-admin-app
     runs-on: ubuntu-latest
-    environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/actions/deployed-config
+
+      - name: Read deployed config
+        id: config
+        uses: ./.github/actions/deployed-config
+
       - name: Check main app
         run: |
           echo "Checking main app..."
-          curl --fail --silent --show-error http://${{vars.DOMAIN_NAME}} > /dev/null
+          curl --fail --silent --show-error http://${{ steps.config.outputs.DOMAIN_NAME }} > /dev/null
           echo "main app is reachable"
 
       - name: Check main app on alt domain
         run: |
-          echo "Checking main app on ${{vars.ALT_DOMAIN_NAME}}..."
-          curl --fail --silent --show-error http://${{vars.ALT_DOMAIN_NAME}} > /dev/null
+          echo "Checking main app on ${{ steps.config.outputs.ALT_DOMAIN_NAME }}..."
+          curl --fail --silent --show-error http://${{ steps.config.outputs.ALT_DOMAIN_NAME }} > /dev/null
           echo "main app is reachable on the alt domain"
 
       - name: Check admin app
         run: |
           echo "Checking admin app..."
-          curl --fail --silent --show-error http://admin.${{vars.DOMAIN_NAME}} > /dev/null
+          curl --fail --silent --show-error http://admin.${{ steps.config.outputs.DOMAIN_NAME }} > /dev/null
           echo "admin app is reachable"
   verify-https:
     needs:
+      - deployed-config
       - deploy-nest-backend
       - deploy-react-app
       - deploy-admin-app
     runs-on: ubuntu-latest
-    environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/actions/deployed-config
+
+      - name: Read deployed config
+        id: config
+        uses: ./.github/actions/deployed-config
+
       - name: Check main app
         run: |
           echo "Checking main app..."
-          curl --fail --silent --show-error https://${{vars.DOMAIN_NAME}} > /dev/null
+          curl --fail --silent --show-error https://${{ steps.config.outputs.DOMAIN_NAME }} > /dev/null
           echo "main app https ok"
 
       - name: Check main app https on alt domain
         run: |
-          echo "Checking main app https on ${{vars.ALT_DOMAIN_NAME}}..."
-          curl --fail --silent --show-error https://${{vars.ALT_DOMAIN_NAME}} > /dev/null
+          echo "Checking main app https on ${{ steps.config.outputs.ALT_DOMAIN_NAME }}..."
+          curl --fail --silent --show-error https://${{ steps.config.outputs.ALT_DOMAIN_NAME }} > /dev/null
           echo "alt domain https ok"
 
       - name: Check Android app links file
         run: |
-          for host in ${{vars.DOMAIN_NAME}} ${{vars.ALT_DOMAIN_NAME}}; do
+          for host in ${{ steps.config.outputs.DOMAIN_NAME }} ${{ steps.config.outputs.ALT_DOMAIN_NAME }}; do
             echo "Checking assetlinks.json on $host..."
             curl --fail --silent --show-error https://$host/.well-known/assetlinks.json > /dev/null
           done
@@ -915,13 +926,13 @@ jobs:
       - name: Check admin app
         run: |
           echo "Checking admin app..."
-          curl --fail --silent --show-error https://admin.${{vars.DOMAIN_NAME}} > /dev/null
+          curl --fail --silent --show-error https://admin.${{ steps.config.outputs.DOMAIN_NAME }} > /dev/null
           echo "admin app https ok"
 
       - name: Check admin app on alt domain
         run: |
-          echo "Checking admin app on admin.${{vars.ALT_DOMAIN_NAME}}..."
-          curl --fail --silent --show-error https://admin.${{vars.ALT_DOMAIN_NAME}} > /dev/null
+          echo "Checking admin app on admin.${{ steps.config.outputs.ALT_DOMAIN_NAME }}..."
+          curl --fail --silent --show-error https://admin.${{ steps.config.outputs.ALT_DOMAIN_NAME }} > /dev/null
           echo "admin alt domain https ok"
 
       # nginx -t can pass while every /events/ request fails, e.g. on PostHog's
@@ -929,26 +940,35 @@ jobs:
       - name: Check PostHog proxy
         run: |
           echo "Checking PostHog proxy..."
-          curl --fail --silent --show-error --max-time 30 https://${{vars.DOMAIN_NAME}}/events/static/array.js > /dev/null
+          curl --fail --silent --show-error --max-time 30 https://${{ steps.config.outputs.DOMAIN_NAME }}/events/static/array.js > /dev/null
           echo "PostHog proxy https ok"
 
   verify-api:
     needs:
+      - deployed-config
       - deploy-nest-backend
       - deploy-react-app
       - deploy-admin-app
     runs-on: ubuntu-latest
-    environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/actions/deployed-config
+
+      - name: Read deployed config
+        id: config
+        uses: ./.github/actions/deployed-config
+
       - name: Check API health
         run: |
           echo "Checking API health..."
-          curl --fail --silent --show-error https://${{vars.DOMAIN_NAME}}/api/ > /dev/null
+          curl --fail --silent --show-error https://${{ steps.config.outputs.DOMAIN_NAME }}/api/ > /dev/null
           echo "API health ok"
 
   notify:
     runs-on: ubuntu-latest
     needs:
+      - deployed-config
       - deploy-nest-backend
       - verify-deployment
       - verify-https
@@ -969,7 +989,8 @@ jobs:
 
       - name: Post webhook if any upstream did not succeed
         if: >-
-          ${{ always() && (needs.deploy-nest-backend.result != 'success'
+          ${{ always() && (needs.deployed-config.result != 'success'
+          || needs.deploy-nest-backend.result != 'success'
           || needs.verify-deployment.result != 'success'
           || needs.verify-https.result != 'success'
           || needs.verify-api.result != 'success'

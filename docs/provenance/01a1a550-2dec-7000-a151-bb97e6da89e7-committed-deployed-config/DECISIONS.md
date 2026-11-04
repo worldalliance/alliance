@@ -8,7 +8,7 @@
 
 ## An environment value overrides the committed one
 
-`envWithFallback` in `common/src/env.ts` layers a set environment value over the committed one; a blank value falls through, matching how ALL-1961 reads blanks as unset. `scripts/sync_prod_to_staging.sh` runs migrations with `NODE_ENV=staging` and `DB_NAME` pointed at a scratch database; with committed values winning, it would migrate the live staging database instead. Environment over config file is also the common layering (12-factor config, Vite's own `.env` handling). The deploy stops exporting every committed key, so nothing overrides them in a deploy.
+`envWithFallback` in `common/src/env.ts` layers a set environment value over the committed one; a blank value falls through, matching how ALL-1961 reads blanks as unset. `scripts/sync_prod_to_staging.sh` runs migrations with `NODE_ENV=staging` and `DB_NAME` pointed at a scratch database; with committed values winning, it would migrate the live staging database instead. Environment over config file is also the common layering (12-factor config, Vite's own `.env` handling). The backend deploy exports the committed values themselves, so a deploy overrides nothing.
 
 ## What moved and what didn't
 
@@ -20,7 +20,11 @@
 
 ## How the workflow reads it
 
-A `deployed-config` job runs `scripts/deployed-config.ts`, which prints `KEY=value` lines into `$GITHUB_OUTPUT`; jobs that need the domains or the PostHog project id list it in `needs`. One job rather than a step per job, since six jobs read it and only one needs `bun install`.
+A `deployed-config` job runs `scripts/deployed-config.ts` into a `deployed-config.env` artifact of `KEY=value` lines. Each job that needs it calls the `.github/actions/deployed-config` composite action, which downloads it and reads its lines into step outputs; `deploy-nest-backend` ships it to the host inside `nest-build.zip`. One job rather than a step per job, since seven jobs read it and only one needs `bun install`. An artifact rather than job outputs: the backend deploy needs the file itself, and Actions drops a job output that holds the value of any secret in scope, environment- or repo-level, and the repo-level `RDS_PORT` is `5432`, the committed `DB_PORT`; another repo-level secret, such as `RDS_USERNAME`, could match part of a domain. A step output is only masked in logs. Tests in `scripts/deployed-config.test.ts` fail on any reference under `.github` to the `vars` context, whole-object reads such as `toJSON(vars)` included, or any read of a secret the config replaced, in dot or index syntax, so the old path can't grow back, and on an action output naming a key the script doesn't print, which would otherwise read as empty.
+
+## The backend deploy keeps exporting the committed keys, for now
+
+`scripts/deploy_backend.sh` rolls a failed release back by restarting the previous one in the deploy's shell. On each environment's first deploy of this change that release predates the server's committed-config fallback, and its startup check fails without the committed keys exported. So `deploy-nest-backend` exports every line of `deployed-config.env`, plus the four URLs derived from the domains, under `BACKCOMPAT(ALL-2011)`: the deploy reads no GitHub variable for them, and the old release can still start. ALL-2011 removes the exports once each environment runs a release with the fallback.
 
 ## The web build defines its values from the committed config
 
@@ -29,3 +33,7 @@ A `deployed-config` job runs `scripts/deployed-config.ts`, which prints `KEY=val
 ## Required-key lists
 
 `server/src/config/env.ts` keeps its per-environment required lists, renamed from `inInfisical`/`deployedInInfisical` to `setFor`/`deployedSet`, since once the GitHub variables and Infisical copies go the committed config sets some of those keys.
+
+## deploy.yaml stays past 500 lines in this change
+
+This change grows `.github/workflows/deploy.yaml` past the root `AGENTS.md` 500-line limit (984 lines before, 1020 after) without splitting it first. The user chose to accept the growth here and split the workflow separately, in ALL-2012.
