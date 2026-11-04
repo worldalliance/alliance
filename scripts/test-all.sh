@@ -19,6 +19,11 @@ PACKAGES=(server common shared sharedweb apps/frontend apps/admin apps/mobile sc
 script_dir="$(cd "$(dirname "$0")" && pwd)" || exit 1
 cd "$script_dir/.." || exit 1
 
+# `git rebase --exec` and hooks export GIT_DIR, which would point the tests'
+# fixture repos at this checkout.
+# shellcheck disable=SC2046
+unset $(git rev-parse --local-env-vars)
+
 if [ "$#" -gt 0 ]; then
   PACKAGES=("$@")
 fi

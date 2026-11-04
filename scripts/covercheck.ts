@@ -9,7 +9,7 @@ import {
   parseLcov,
   testFailures,
 } from "./lib/coverage";
-import { git, mergeBaseFromArgs } from "./lib/git";
+import { git, gitLocalEnvVars, mergeBaseFromArgs } from "./lib/git";
 import {
   readSourceConfig,
   scannedFiles,
@@ -121,7 +121,12 @@ function runTests({
       "--coverage-dir",
       coverageDir,
     ],
-    { cwd: path.join(repoRoot, pkg), encoding: "utf8", maxBuffer: 1 << 30 },
+    {
+      cwd: path.join(repoRoot, pkg),
+      env: withoutGitLocalVars(process.env),
+      encoding: "utf8",
+      maxBuffer: 1 << 30,
+    },
   );
   const output = `${run.stderr}${run.stdout}`;
   const failures = testFailures({ output, status: run.status });
@@ -233,4 +238,11 @@ try {
 } catch (error) {
   console.error(`covercheck: ${error}`);
   process.exitCode = 2;
+}
+
+function withoutGitLocalVars(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const local = new Set(gitLocalEnvVars());
+  return Object.fromEntries(
+    Object.entries(env).filter(([name]) => !local.has(name)),
+  );
 }
