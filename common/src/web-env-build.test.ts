@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { validateWebEnv, webEnvPlugin } from "./web-env";
+import { validateWebEnv, webEnvPlugin } from "./web-env-build";
 
 const deployed = {
   VITE_API_URL: "https://app.example.com",

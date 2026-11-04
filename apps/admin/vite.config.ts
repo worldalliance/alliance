@@ -7,7 +7,7 @@ import {
   devViteDefine,
   PortCaller,
 } from "../../common/src/dev-ports";
-import { webEnvPlugin } from "../../common/src/web-env";
+import { webEnvPlugin } from "../../common/src/web-env-build";
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 
