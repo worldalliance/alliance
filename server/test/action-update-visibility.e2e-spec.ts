@@ -112,11 +112,16 @@ describe("Action update visibility (e2e)", () => {
           shortNotifString: "",
           date: new Date().toISOString(),
           notifyType,
-          notificationMode: "legacy",
         });
 
     await post("none").expect(201);
-    await post("all_members").expect(400);
+    const created = await post("all_members").expect(201);
+    await writeContent(created.body.id, created.body.schemaSnapshotId);
+    const response = await request(ctx.app.getHttpServer())
+      .post(`/actions/updates/${created.body.id}/notify`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .expect(400);
+    expect(response.body.message).toBe("Write at least one group's result.");
   });
 
   it("refuses to send an update whose notification text is empty", async () => {
@@ -378,6 +383,7 @@ describe("Action update visibility (e2e)", () => {
         .send({
           title: "Notified ahead",
           shortNotifString: "something happened",
+          nonCompleterResult: "something happened",
           date: futureDate().toISOString(),
           notifyType: "all_members",
         })

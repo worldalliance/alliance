@@ -67,9 +67,9 @@ describe("Action update audience (e2e)", () => {
       .send({
         title: "Audience",
         shortNotifString: "something happened",
+        nonCompleterResult: "something happened",
         date: new Date().toISOString(),
         notifyType: "all_members",
-        notificationMode: "normal",
       })
       .expect(201);
     await request(server)

@@ -62,3 +62,7 @@ task: Split an action update's collective result by member group, add a live Pre
 ## Out of scope
 
 - Agent-proposed, user-approved: storing each member's group on their exposure row.
+
+## CI
+
+- The three failing action-update e2e tests on main pass: `reaches only users with an active contract`, `needs notification text only when the update sends a notification`, and `sends a recognition update once its date moves into the past`. (user-originated)
