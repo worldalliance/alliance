@@ -9,21 +9,19 @@ import sharedRules, {
   webEnvReads,
 } from "../eslint/shared-rules.mjs";
 
+const tsFile = {
+  files: ["**/*.ts"],
+  languageOptions: { parser: tseslint.parser },
+  plugins: { "@typescript-eslint": tseslint.plugin },
+};
+
 const RULE = "zod/named-import";
 
 const flagged = (code: string) =>
   new Linter({ configType: "flat" })
     .verify(
       `${code}\nexport const schema = z.string();`,
-      [
-        {
-          files: ["**/*.ts"],
-          languageOptions: { parser: tseslint.parser },
-          plugins: { "@typescript-eslint": tseslint.plugin },
-        },
-        ...sharedRules,
-        ...apiClientRules,
-      ],
+      [tsFile, ...sharedRules, ...apiClientRules],
       "src/schema.ts",
     )
     .some((message) => message.ruleId === RULE);
@@ -126,5 +124,102 @@ describe("envReadsOnlyIn", () => {
         file: "src/env.ts",
       }),
     ).toBe(false);
+  });
+});
+
+const maxLinesMessages = (params: { waiver?: string; lines: number }) =>
+  new Linter({ configType: "flat" })
+    .verify(
+      [
+        ...(params.waiver ? [params.waiver] : []),
+        ...Array.from({ length: params.lines }, (_, i) => `f(${i});\n`),
+      ].join("\n"),
+      [tsFile, ...sharedRules],
+      "src/big.ts",
+    )
+    .filter((message) => message.ruleId === "alliance/max-lines")
+    .map((message) => message.message);
+
+describe("alliance/max-lines", () => {
+  it("counts non-blank lines only", () => {
+    expect(maxLinesMessages({ lines: 500 })).toEqual([]);
+  });
+
+  it("flags a file past 500 with no waiver, offering one", () => {
+    expect(maxLinesMessages({ lines: 501 })).toEqual([
+      expect.stringContaining(
+        "/* alliance/max-lines 550 -- <why it is one unit> */",
+      ),
+    ]);
+  });
+
+  it.each([501, 549, 550])(
+    "accepts the waiver it offers at %i lines",
+    (lines) => {
+      const [message] = maxLinesMessages({ lines });
+      expect(message).toBeDefined();
+      const waiver = message?.match(/\/\* alliance\/max-lines .*? \*\//)?.[0];
+      expect(maxLinesMessages({ waiver, lines })).toEqual([]);
+    },
+  );
+
+  it("flags a second waiver", () => {
+    expect(
+      maxLinesMessages({
+        waiver:
+          "/* alliance/max-lines 650 -- one state machine */\n/* alliance/max-lines 9999 -- stale */",
+        lines: 618,
+      }),
+    ).toEqual([expect.stringContaining("Only the first")]);
+  });
+
+  it.each([
+    ["/* alliance/max-lines 650 -- one state machine */", 649, []],
+    ["/* alliance/max-lines 650 -- one state machine */", 600, []],
+    [
+      "/* alliance/max-lines 650 -- one state machine */",
+      598,
+      ["Lower the waiver to 600"],
+    ],
+    [
+      "/* alliance/max-lines 650 -- one state machine */",
+      650,
+      ["past the 650 its waiver records", "raise the waiver to 700"],
+    ],
+    ["/* alliance/max-lines 650 */", 600, ["Write the waiver as"]],
+    [
+      "/** alliance/max-lines 650 -- one state machine */",
+      600,
+      ["Write the waiver as /* alliance/max-lines 650"],
+    ],
+    [
+      "/* alliance/max-lines 620 -- one state machine */",
+      600,
+      ["/* alliance/max-lines 650 -- <why it is one unit> */"],
+    ],
+    ["/* alliance/max-lines 500 -- small */", 600, ["Write the waiver as"]],
+    ["// alliance/max-lines 400 -- small", 600, ["Write the waiver as"]],
+    [
+      "// alliance/max-lines 650 -- one state machine",
+      600,
+      ["Write the waiver as /* alliance/max-lines 650"],
+    ],
+    ["/* alliance/max-lines 300 -- small */", 299, ["Remove the waiver"]],
+    [
+      "/* alliance/max-lines 550 -- one state machine */",
+      500,
+      ["the file has 500 non-blank lines", "Remove the waiver"],
+    ],
+    ["// alliance/max-lines counts non-blank lines", 100, []],
+    ["// alliance/max-lines-legacy 400 -- note", 100, []],
+    [
+      "/* alliance/max-lines 650 -- one state machine */",
+      499,
+      ["Remove the waiver"],
+    ],
+  ])("%#: %s at %i more lines", (waiver, lines, expected) => {
+    const messages = maxLinesMessages({ waiver, lines });
+    expect(messages).toHaveLength(expected.length ? 1 : 0);
+    for (const text of expected) expect(messages[0]).toContain(text);
   });
 });

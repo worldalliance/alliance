@@ -151,7 +151,7 @@ Follow YAGNI. Prefer one-liners. An abstraction earns its place at the second ca
 
 ## File size
 
-Aim for files well under 500 lines to help optimize this codebase for coding agents. A file past 500 is already overdue for a split. When your change adds to a file and would leave it past that, split the file first: ask a codex subagent (`(root)/agents/skills/subagents/SKILL.md`) with `-s read-only` in place of `--dangerously-bypass-approvals-and-sandbox`, naming only the file and not your change, for a few splits along cohesive boundaries, then apply the one you judge best.
+Aim for files well under 500 lines to help optimize this codebase for coding agents. When your change adds to a file and would leave it past 500 non-blank lines with no waiver, or past the ceiling its waiver records, first ask a codex subagent (`(root)/agents/skills/subagents/SKILL.md`) with `-s read-only` in place of `--dangerously-bypass-approvals-and-sandbox`, naming only the file and not your change, for a few splits along cohesive boundaries. Apply the one you judge best, or keep the file whole when it is one cohesive unit, which any task touching it would read in full after a split too: put `/* alliance/max-lines <ceiling> -- <why it is one unit> */` at its top, or raise the ceiling in its waiver and revise the reason. The ceiling is the non-blank line count, waiver line included, rounded up to a multiple of 50, so small changes within that band leave the waiver alone. Where `/* */` isn't a comment, write the waiver in the language's own comment syntax. The `alliance/max-lines` lint rule checks the ceiling.
 
 ## Scope and improvement
 

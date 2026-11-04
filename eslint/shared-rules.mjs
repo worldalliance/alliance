@@ -1,14 +1,99 @@
 import { builtinRules } from "eslint/use-at-your-own-risk";
 
-const coreMaxLines = builtinRules.get("max-lines");
+const WAIVER = /^\*?\s*alliance\/max-lines\s+\d/;
+const WAIVER_FORM = /^\s*alliance\/max-lines (\d+) -- \S/;
+const STEP = 50;
+const nonBlankLines = (text) =>
+  text.split(/\r\n|[\r\n\u2028\u2029]/u).filter((line) => line.trim()).length;
+const ceilingFor = (lines) => Math.ceil(lines / STEP) * STEP;
+const waiverExample = (lines) =>
+  `/* alliance/max-lines ${ceilingFor(lines)} -- <why it is one unit> */`;
+
 const maxLines = {
-  ...coreMaxLines,
   meta: {
-    ...coreMaxLines.meta,
+    type: "suggestion",
+    schema: [
+      {
+        type: "object",
+        properties: { max: { type: "integer", minimum: 0 } },
+        required: ["max"],
+        additionalProperties: false,
+      },
+    ],
     messages: {
       exceed:
-        "File has too many lines ({{actual}}). Maximum allowed is {{max}}. A file past the limit is already overdue for a split: split it before adding to it.",
+        "File has {{actual}} non-blank lines (max {{max}}). Before adding to it, follow the root AGENTS.md File size rule: split it, or keep it whole with {{waiver}} at its top.",
+      pastWaiver:
+        "File has {{actual}} non-blank lines, past the {{recorded}} its waiver records. Follow the root AGENTS.md File size rule again: split it, or raise the waiver to {{ceiling}} and revise its reason.",
+      malformed:
+        "Write the waiver as {{waiver}}: a multiple of {{step}} above {{max}} and a reason.",
+      unneeded:
+        "Without its waiver the file has {{actual}} non-blank lines, within the {{max}} limit. Remove the waiver.",
+      belowWaiver:
+        "File has {{actual}} non-blank lines, so its waiver needs only {{ceiling}}, below the {{recorded}} it records. Lower the waiver to {{ceiling}}.",
+      duplicate:
+        "Only the first alliance/max-lines waiver counts. Remove this one.",
     },
+  },
+  create(context) {
+    const { max } = context.options[0];
+    return {
+      "Program:exit"() {
+        const { sourceCode } = context;
+        const { text } = sourceCode;
+        const actual = nonBlankLines(text);
+        const [waiver, ...extras] = sourceCode
+          .getAllComments()
+          .filter((comment) => WAIVER.test(comment.value));
+        for (const extra of extras) {
+          context.report({ node: extra, messageId: "duplicate" });
+        }
+        if (!waiver) {
+          if (actual > max) {
+            context.report({
+              loc: { line: 1, column: 0 },
+              messageId: "exceed",
+              data: { actual, max, waiver: waiverExample(actual + 1) },
+            });
+          }
+          return;
+        }
+        const recorded =
+          waiver.type === "Block"
+            ? Number(WAIVER_FORM.exec(waiver.value)?.[1])
+            : NaN;
+        const ceiling = ceilingFor(actual);
+        const [start, end] = waiver.range;
+        const withoutWaiver = nonBlankLines(
+          text.slice(0, start) + text.slice(end),
+        );
+        if (withoutWaiver <= max) {
+          context.report({
+            node: waiver,
+            messageId: "unneeded",
+            data: { actual: withoutWaiver, max },
+          });
+        } else if (!(recorded > max && recorded % STEP === 0)) {
+          context.report({
+            node: waiver,
+            messageId: "malformed",
+            data: { max, step: STEP, waiver: waiverExample(actual) },
+          });
+        } else if (actual > recorded) {
+          context.report({
+            node: waiver,
+            messageId: "pastWaiver",
+            data: { actual, recorded, ceiling },
+          });
+        } else if (ceiling < recorded) {
+          context.report({
+            node: waiver,
+            messageId: "belowWaiver",
+            data: { actual, recorded, ceiling },
+          });
+        }
+      },
+    };
   },
 };
 
@@ -125,7 +210,7 @@ export default [
     ],
     plugins: { alliance: { rules: { "max-lines": maxLines } } },
     rules: {
-      "alliance/max-lines": ["warn", { max: 500, skipBlankLines: true }],
+      "alliance/max-lines": ["warn", { max: 500 }],
     },
   },
 ];
