@@ -35,7 +35,8 @@ const ActionCompletedBarWithInfo: React.FC<ActionCompletedBarWithInfoProps> = ({
   barClassName,
   barFillClassName,
 }: ActionCompletedBarWithInfoProps) => {
-  const { labelString, percentage } = getCompletedPercentage(action);
+  const { labelString, percentage, hasDenominator } =
+    getCompletedPercentage(action);
 
   const completedFriends = useMemo(
     () => selectCompletedFriends(friendActivities),
@@ -53,7 +54,7 @@ const ActionCompletedBarWithInfo: React.FC<ActionCompletedBarWithInfoProps> = ({
           <p className={cn(`text-${textSize}`, `text-${textColor}`)}>
             {labelString}
           </p>
-          {showInfoTooltip && (
+          {showInfoTooltip && hasDenominator && (
             <InfoTooltip
               content={
                 <p>

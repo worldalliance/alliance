@@ -32,7 +32,7 @@ export function getCompletedPercentage(
   const threshold = action.usersJoined;
 
   if (!threshold) {
-    return { labelString: "", percentage: null };
+    return { labelString: "", percentage: null, hasDenominator: false };
   }
 
   const safeThreshold = Math.max(threshold, value);
@@ -45,5 +45,5 @@ export function getCompletedPercentage(
 
   const percentage = noDenominator ? 100 : (value / safeThreshold) * 100;
 
-  return { labelString, percentage };
+  return { labelString, percentage, hasDenominator: !noDenominator };
 }

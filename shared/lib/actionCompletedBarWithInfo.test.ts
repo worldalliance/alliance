@@ -1,8 +1,11 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { expect, test } from "bun:test";
 import type { ActionActivityDto } from "../client";
-import { selectCompletedFriends } from "./actionCompletedBarWithInfo";
-import { makeProfile } from "./testFixtures";
+import {
+  getCompletedPercentage,
+  selectCompletedFriends,
+} from "./actionCompletedBarWithInfo";
+import { makeAction, makeProfile } from "./testFixtures";
 
 const activity = (
   id: number,
@@ -32,4 +35,27 @@ test("selectCompletedFriends keeps only the friends who completed", () => {
 
 test("selectCompletedFriends treats unloaded activity as none", () => {
   expect(selectCompletedFriends(null)).toEqual([]);
+});
+
+test("only a regular action's label has a denominator", () => {
+  const counts = { usersCompleted: 3, usersJoined: 10 };
+
+  expect(getCompletedPercentage(makeAction(counts))).toEqual({
+    labelString: "3 / 10 members completed",
+    percentage: 30,
+    hasDenominator: true,
+  });
+  for (const kind of [{ optional: true }, { onboarding: true }]) {
+    expect(getCompletedPercentage(makeAction({ ...counts, ...kind }))).toEqual({
+      labelString: "3 members completed",
+      percentage: 100,
+      hasDenominator: false,
+    });
+  }
+});
+
+test("an action with nobody to count has no denominator", () => {
+  expect(
+    getCompletedPercentage(makeAction({ usersJoined: 0 })).hasDenominator,
+  ).toBe(false);
 });
