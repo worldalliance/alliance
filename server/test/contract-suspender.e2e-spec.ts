@@ -21,7 +21,7 @@ import {
   ContractEventType,
 } from "src/user/entities/contract-event.entity";
 import { UserDevice } from "src/user/entities/user-device.entity";
-import { User } from "src/user/entities/user.entity";
+import { ReferralSource, User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
 import {
@@ -206,6 +206,34 @@ describe("ContractSuspenderWorker (e2e)", () => {
       ).toBe(mailed);
     },
   );
+
+  it("names who invited the member in the suspension alert", async () => {
+    const { member } = await suspendable("invited", false);
+    const referrer = await ctx.app.get(UserService).create({
+      email: "suspension-referrer@example.com",
+      password: "Password123!",
+      name: "Inviting Member",
+      tags: [ctx.defaultTag],
+    });
+    await ctx.dataSource.getRepository(User).update(member.id, {
+      referredById: referrer.id,
+      referralSource: ReferralSource.ReferralLink,
+    });
+    const sendMessage = jest
+      .spyOn(ctx.app.get(EventLogService), "sendMessage")
+      .mockResolvedValue(R.success(undefined));
+
+    await ctx.app.get(ContractSuspenderWorker).processSuspensions();
+
+    expect(sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: member.id,
+        message: expect.stringMatching(
+          /^\[\w+\]: Suspending contract for Suspended Member \(invited by Inviting Member\)\. failure code /,
+        ),
+      }),
+    );
+  });
 
   it("logs suspended and failed members by id, not name", async () => {
     const suspended = await suspendable("logged", false);
