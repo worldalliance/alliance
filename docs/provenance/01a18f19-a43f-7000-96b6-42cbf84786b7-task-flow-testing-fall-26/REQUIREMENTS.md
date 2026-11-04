@@ -193,6 +193,7 @@ Superseded by "No background page" below: the flow has no background page, so a 
 ## No background page
 
 - The task flow has no project background page. An opening page that asks nothing is an ordinary step: numbered, counted in the progress bar and drawn like any other step. (User)
+- That page shows its blocks in the order the author placed them, as every step does; videos and images aren't moved above the text. (Approved)
 - A project background comes back in a later testing round. Until then, a task that wants one gets an ordinary opening page, written by hand in the admin panel. (User)
 
 ## Out of scope
