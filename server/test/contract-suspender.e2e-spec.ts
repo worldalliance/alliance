@@ -207,33 +207,48 @@ describe("ContractSuspenderWorker (e2e)", () => {
     },
   );
 
-  it("names who invited the member in the suspension alert", async () => {
-    const { member } = await suspendable("invited", false);
-    const referrer = await ctx.app.get(UserService).create({
-      email: "suspension-referrer@example.com",
-      password: "Password123!",
-      name: "Inviting Member",
-      tags: [ctx.defaultTag],
-    });
-    await ctx.dataSource.getRepository(User).update(member.id, {
-      referredById: referrer.id,
-      referralSource: ReferralSource.ReferralLink,
-    });
-    const sendMessage = jest
-      .spyOn(ctx.app.get(EventLogService), "sendMessage")
-      .mockResolvedValue(R.success(undefined));
+  it.each([
+    {
+      kind: "automatic",
+      suspend: () => ctx.app.get(ContractSuspenderWorker).processSuspensions(),
+      message:
+        /^\[\w+\]: Suspending contract for Suspended Member \(invited by Inviting Member\)\. failure code /,
+    },
+    {
+      kind: "manual",
+      suspend: (userId: number) =>
+        ctx.app.get(ContractService).suspendContract({ userId }),
+      message:
+        /^Suspended Member \(invited by Inviting Member\) suspended their contract :\($/,
+    },
+  ])(
+    "names who invited the member in the $kind suspension alert",
+    async ({ kind, suspend, message }) => {
+      const { member } = await suspendable(`invited-${kind}`, false);
+      const referrer = await ctx.app.get(UserService).create({
+        email: `suspension-referrer-${kind}@example.com`,
+        password: "Password123!",
+        name: "Inviting Member",
+        tags: [ctx.defaultTag],
+      });
+      await ctx.dataSource.getRepository(User).update(member.id, {
+        referredById: referrer.id,
+        referralSource: ReferralSource.ReferralLink,
+      });
+      const sendMessage = jest
+        .spyOn(ctx.app.get(EventLogService), "sendMessage")
+        .mockResolvedValue(R.success(undefined));
 
-    await ctx.app.get(ContractSuspenderWorker).processSuspensions();
+      await suspend(member.id);
 
-    expect(sendMessage).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: member.id,
-        message: expect.stringMatching(
-          /^\[\w+\]: Suspending contract for Suspended Member \(invited by Inviting Member\)\. failure code /,
-        ),
-      }),
-    );
-  });
+      expect(sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: member.id,
+          message: expect.stringMatching(message),
+        }),
+      );
+    },
+  );
 
   it("logs suspended and failed members by id, not name", async () => {
     const suspended = await suspendable("logged", false);

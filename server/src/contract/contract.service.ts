@@ -413,6 +413,8 @@ export class ContractService {
       contractEvents: true,
       communities: { leaders: true, users: true },
       leaderOf: true,
+      referredBy: true,
+      referredByCampaign: true,
     });
     if (!user.hasActiveContract) {
       throw new BadRequestException("Member does not have an active contract.");
@@ -462,7 +464,7 @@ export class ContractService {
     if (!automatic) {
       await this.eventLogService.sendMessage({
         type: EventType.ContractSuspended,
-        message: `${user.name} suspended their contract :(`,
+        message: `${memberWithReferral(user)} suspended their contract :(`,
         userId: user.id,
         blob: null,
       });
