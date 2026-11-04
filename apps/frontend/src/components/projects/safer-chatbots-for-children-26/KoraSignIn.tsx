@@ -198,7 +198,7 @@ function NameStep({
   );
 }
 
-function SignedIn({
+export function KoraSignedIn({
   kora: { signOut },
   participant,
 }: {
@@ -308,7 +308,7 @@ export function KoraSignIn({
   if (participant) {
     return (
       <div className={card}>
-        <SignedIn kora={kora} participant={participant} />
+        <KoraSignedIn kora={kora} participant={participant} />
       </div>
     );
   }

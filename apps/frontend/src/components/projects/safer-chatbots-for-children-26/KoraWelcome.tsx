@@ -5,6 +5,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type ReactNode,
   type TransitionEvent,
 } from "react";
 import { DisplayHeading, SiteSubtitle, SubtitleSize } from "../../../site/ui";
@@ -108,6 +109,11 @@ function CategoryCycle() {
     const id = requestAnimationFrame(() => setAnimate(true));
     return () => cancelAnimationFrame(id);
   }, [animate]);
+  useEffect(() => {
+    if (!animate && (pos < COUNT || pos >= 2 * COUNT)) {
+      setPos(COUNT + (pos % COUNT));
+    }
+  }, [animate, pos]);
 
   // The track renders the list three times so it can keep sliding left; once
   // it settles outside the middle copy, it jumps without animation to the
@@ -116,7 +122,6 @@ function CategoryCycle() {
     if (event.target !== event.currentTarget) return;
     if (pos >= COUNT && pos < 2 * COUNT) return;
     setAnimate(false);
-    setPos(COUNT + (pos % COUNT));
   };
 
   const choose = (target: number) => {
@@ -125,6 +130,13 @@ function CategoryCycle() {
       return;
     }
     setPos(target);
+    setRotating(false);
+  };
+  // A mouse click focuses the chip in some browsers; only keyboard focus
+  // moves the track, so the click still toggles rotation.
+  const focus = (target: number, chip: HTMLButtonElement) => {
+    if (!chip.matches(":focus-visible")) return;
+    if (target % COUNT !== pos % COUNT) setPos(target);
     setRotating(false);
   };
 
@@ -160,15 +172,10 @@ function CategoryCycle() {
                 type="button"
                 aria-hidden={duplicate || undefined}
                 tabIndex={duplicate ? -1 : undefined}
-                aria-current={category === active || undefined}
-                title={
-                  category === active
-                    ? rotating
-                      ? "Pause"
-                      : "Play"
-                    : undefined
-                }
+                aria-current={(!duplicate && category === active) || undefined}
+                title={current ? (rotating ? "Pause" : "Play") : undefined}
                 onClick={() => choose(target)}
+                onFocus={(event) => focus(target, event.currentTarget)}
                 className={cn(
                   "site-sans inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors",
                   !current &&
@@ -234,7 +241,7 @@ function RemindMeToggle() {
   );
 }
 
-export function KoraWelcome() {
+export function KoraWelcome({ account }: { account: ReactNode }) {
   return (
     <div className="flex flex-col gap-8">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
@@ -264,7 +271,10 @@ export function KoraWelcome() {
         >
           Reviews start on November 17th.
         </p>
-        <RemindMeToggle />
+        <div className="flex flex-col gap-6">
+          <RemindMeToggle />
+          {account}
+        </div>
       </div>
     </div>
   );

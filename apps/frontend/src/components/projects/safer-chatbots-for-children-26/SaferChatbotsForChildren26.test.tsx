@@ -2,7 +2,7 @@ import { KORA_PROJECT_PATH } from "@alliance/common/kora";
 import type { KoraParticipantDto } from "@alliance/shared/client";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, expect, test } from "bun:test";
 import { MemoryRouter } from "react-router";
 import { AuthContext } from "../../../lib/AuthContext";
@@ -19,6 +19,7 @@ serveApi(
     "GET /kora/me": () =>
       Response.json({ participant, pendingCode: null, signupPending: false }),
     "POST /user/nmembers": () => Response.json({ count: 1000 }),
+    "POST /kora/sign-out": () => new Response(null, { status: 204 }),
   }),
 );
 
@@ -41,6 +42,15 @@ const renderPage = () =>
 
 const h1 = () => screen.getByRole("heading", { level: 1 }).textContent;
 
+test("shows neither page until the participant check answers", async () => {
+  participant = null;
+  renderPage();
+
+  expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+  expect(screen.getByRole("main").getAttribute("aria-busy")).toBe("true");
+  await screen.findByRole("button", { name: "Continue" });
+});
+
 test("shows a visitor who hasn't signed up the sign-up page", async () => {
   participant = null;
   renderPage();
@@ -58,4 +68,14 @@ test("welcomes a participant", async () => {
     name: "Thank you for joining the waitlist",
   });
   expect(screen.queryByRole("button", { name: "Continue" })).toBeNull();
+});
+
+test("a participant signs out back to the sign-up page", async () => {
+  participant = { id: "p1", name: "Test Person" };
+  renderPage();
+
+  await screen.findByText("You’re signed in as Test Person.");
+  fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
+  await screen.findByRole("button", { name: "Continue" });
+  expect(h1()).toBe("Make AI chatbots safer for kids");
 });

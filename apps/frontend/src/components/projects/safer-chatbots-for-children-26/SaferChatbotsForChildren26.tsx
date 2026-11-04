@@ -4,6 +4,7 @@ import { SiteFooter } from "../../../site/Footer";
 import { NAV_HEIGHT, Navbar } from "../../../site/Navbar";
 import { SiteRoot } from "../../../site/PageShell";
 import { SITE_COL } from "../../../site/ui";
+import { KoraSignedIn } from "./KoraSignIn";
 import { KoraSignUpPage } from "./KoraSignUpPage";
 import { KoraWelcome } from "./KoraWelcome";
 import { useKoraParticipant } from "./useKoraParticipant";
@@ -18,11 +19,20 @@ export function meta() {
 }
 
 export default function SaferChatbotsForChildren26() {
-  const { query } = useKoraParticipant();
-  return query.data?.participant ? <KoraWelcomePage /> : <KoraSignUpPage />;
-}
-
-function KoraWelcomePage() {
+  const kora = useKoraParticipant();
+  const { query } = kora;
+  if (query.isPending) {
+    return (
+      <SiteRoot className="bg-white">
+        <Navbar />
+        <main aria-busy className="min-h-svh" />
+      </SiteRoot>
+    );
+  }
+  const participant = query.data?.participant;
+  if (!participant) {
+    return <KoraSignUpPage />;
+  }
   return (
     <SiteRoot className="flex flex-col bg-white">
       <Navbar hideNavLinks />
@@ -30,7 +40,9 @@ function KoraWelcomePage() {
         className={cn(SITE_COL, "flex-1 pb-16")}
         style={{ paddingTop: `calc(${NAV_HEIGHT}px + 2.5rem)` }}
       >
-        <KoraWelcome />
+        <KoraWelcome
+          account={<KoraSignedIn kora={kora} participant={participant} />}
+        />
       </main>
       <SiteFooter collapsible />
     </SiteRoot>
