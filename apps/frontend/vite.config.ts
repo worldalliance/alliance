@@ -27,8 +27,7 @@ const ports = devPorts(PortCaller.Tooling);
 export default defineConfig({
   define: devViteDefine(),
   plugins: [
-    !isStorybook &&
-      webEnvPlugin(["VITE_PUBLIC_POSTHOG_KEY", "VITE_PUBLIC_POSTHOG_HOST"]),
+    !isStorybook && webEnvPlugin(),
     !isStorybook && reactRouter(),
     tailwindcss(),
     imagetools(),

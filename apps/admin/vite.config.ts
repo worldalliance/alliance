@@ -26,7 +26,7 @@ const ports = devPorts(PortCaller.Tooling);
 export default defineConfig({
   define: devViteDefine(),
   plugins: [
-    !isStorybook && webEnvPlugin([]),
+    !isStorybook && webEnvPlugin(),
     !isStorybook && reactRouter(),
     tailwindcss(),
   ],

@@ -3,7 +3,7 @@
 ## Shape of the committed config
 
 - `common/src/deployed-config.ts` holds one `DeployedConfig` per deployed environment, in a record typed per `NodeEnv`: staging and production must each hold a full `DeployedConfig`, the others `undefined`, so a new `NodeEnv` variant fails the build until it states whether it has one, and `deployedConfigFor` returns a defined config for a deployed environment named literally. A test ties the record to `isDeployed`. Its keys are the server's env var names, plus `DOMAIN_NAME` and `ALT_DOMAIN_NAME`, from which each app derives its URLs (`APP_URL` is `https://<DOMAIN_NAME>`, `ADMIN_URL` `https://admin.<DOMAIN_NAME>`, the web's `VITE_PUBLIC_POSTHOG_HOST` `https://<DOMAIN_NAME>/events/`), as the deploy did. Values carry their real types (number, boolean, list); a key one environment leaves unset (`WAITLIST_PUBLIC_MAIL_DAILY_CAP` in staging) is typed `| undefined` but still listed, so each environment states every setting.
-- `deployedConfigEnv` turns a config into the env strings the server parses, once for both readers of that form: the server's fallback and the script whose output the deploy exports. Each app maps the config onto its own keys as env strings (`committedEnv` in `server/src/config/env.ts`, `withCommittedWebEnv` in `common/src/web-env.ts`) and parses them through the schemas from ALL-1961, so committed and environment values share one validation path and the startup and build checks cover both. Tests parse each environment's committed values through the server and web schemas.
+- `deployedConfigEnv` turns a config into the env strings the server parses, once for both readers of that form: the server's fallback and the script whose output the deploy exports. Each app maps the config onto its own keys as env strings (`committedEnv` in `server/src/config/env.ts`, `withCommittedWebEnv` in `common/src/web-env-build.ts`) and parses them through the schemas from ALL-1961, so committed and environment values share one validation path and the startup and build checks cover both. Tests parse each environment's committed values through the server and web schemas.
 - Dev and test aren't in it: their URLs depend on each worktree's ports.
 
 ## An environment value overrides the committed one
@@ -22,9 +22,9 @@
 
 A `deployed-config` job runs `scripts/deployed-config.ts`, which prints `KEY=value` lines into `$GITHUB_OUTPUT`; jobs that need the domains or the PostHog project id list it in `needs`. One job rather than a step per job, since six jobs read it and only one needs `bun install`.
 
-## The web reader bundles both deployed environments' values
+## The web build defines its values from the committed config
 
-`sharedweb/lib/env.ts` picks the committed values by `import.meta.env.MODE`, so a bundle carries both environments' entries. Every value is public; selecting at build time instead would mean injecting them through Vite's env loading or `define`, a second path beside the reader.
+`webEnvPlugin`'s `config` hook, in `common/src/web-env-build.ts`, defines `import.meta.env.<key>` for each of the four web values in a staging or production build (REQUIREMENTS: each web bundle carries only its own environment's four web values). It reads the set values with Vite's `loadEnv`, from Vite's env dir, so a value from a `.env` file or the environment wins and a blank one falls through. `.gitignore` lists the apps' `.env.staging` and `.env.production`, the tracked files the committed values replaced, so a local override can't be committed back over them. `sharedweb/lib/env.ts` reads `import.meta.env` alone. The build check lives in `web-env-build.ts`, apart from `web-env.ts`, because it imports `vite` and the committed config, and browser code imports `web-env.ts`. In staging and production the build check requires the four values, from the same list the committed values are keyed by, so a blank committed value fails the build rather than shipping a bundle without it; the apps pass no deployed keys.
 
 ## Required-key lists
 
