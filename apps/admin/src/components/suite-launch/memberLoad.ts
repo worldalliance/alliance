@@ -1,5 +1,7 @@
 export const MAX_MEMBER_MINUTES = 15;
 
+export const isOverloaded = (minutes: number) => minutes > MAX_MEMBER_MINUTES;
+
 export type MemberLoad = {
   userId: number;
   actionIds: number[];

@@ -5,10 +5,14 @@ import {
   completionTime,
   type LaunchSchedule,
 } from "./launchSchedule";
-import { MAX_MEMBER_MINUTES, type MemberLoad } from "./memberLoad";
+import {
+  isOverloaded,
+  MAX_MEMBER_MINUTES,
+  type MemberLoad,
+} from "./memberLoad";
 
 export const overloadedMembers = (loads: MemberLoad[]) =>
-  loads.filter((load) => load.minutes > MAX_MEMBER_MINUTES);
+  loads.filter((load) => isOverloaded(load.minutes));
 
 /** Ways the launch would break the member contract's 15-minute blocks or 7-day completion period. */
 export function contractViolations(params: {

@@ -64,7 +64,7 @@ it("groups members by the actions they get and previews one from a group", async
     name: "Preview a member who gets these actions",
   });
   expect(mixes.map((button) => button.closest("tr")?.textContent)).toEqual([
-    "118Call, Write",
+    "118 over 15 minutesCall, Write",
     "110Call",
   ]);
   fireEvent.click(mixes[0]);

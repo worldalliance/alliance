@@ -35,7 +35,7 @@ import {
   type LaunchSchedule,
 } from "./launchSchedule";
 import { launchSuite } from "./launchSuite";
-import { MemberLoadCheck, MemberPreview } from "./MemberChecks";
+import { MemberPreview } from "./MemberChecks";
 import { actionMixes } from "./memberLoad";
 import TextFindingsCheck from "./TextFindingsCheck";
 import { useSuiteLaunchData } from "./useSuiteLaunchData";
@@ -313,11 +313,6 @@ const SuiteLaunchPanel = ({
                 return next;
               })
             }
-          />
-          <MemberLoadCheck
-            loads={data.loads}
-            actions={data.actions}
-            users={data.users}
           />
           <MemberPreview
             loads={data.loads}

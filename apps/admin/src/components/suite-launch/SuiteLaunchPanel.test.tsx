@@ -16,10 +16,15 @@ serveLaunchApi();
 it("flags overloaded members and text findings, and blocks launch until each is resolved", async () => {
   renderPanel();
 
+  const overload = await screen.findByText(
+    "1 of 2 members gets more than 15 minutes",
+  );
   expect(
-    (await screen.findByText(": 18 min (Call, Write)", { exact: false }))
-      .textContent,
-  ).toContain("Ben");
+    overload.parentElement?.querySelector('[aria-label="Needs attention"]'),
+  ).toBeTruthy();
+  expect(screen.getByText("18").className).toContain("text-red-600");
+  expect(screen.getByText("10").className).not.toContain("text-red-600");
+  expect(screen.getAllByText("over 15 minutes")).toHaveLength(1);
   expect(screen.getByText("Double space · Call · Body")).toBeTruthy();
   expect(screen.getByText("Possible misspelling · Write · Body")).toBeTruthy();
   expect(
@@ -35,6 +40,28 @@ it("flags overloaded members and text findings, and blocks launch until each is 
     expect(launchButton().hasAttribute("disabled")).toBe(false),
   );
   expect(launchButton().textContent).toContain("Launch and notify 2 members");
+});
+
+it("passes the members' actions check when no member gets more than 15 minutes", async () => {
+  api.served[2] = { ...api.served[2], timeEstimate: 5 };
+  renderPanel();
+
+  const summary = await screen.findByText(
+    "No member gets more than 15 minutes",
+  );
+  expect(
+    summary.parentElement?.querySelector('[aria-label="Passed"]'),
+  ).toBeTruthy();
+  expect(screen.queryByText("over 15 minutes")).toBeNull();
+});
+
+it("counts a single assigned member in the singular", async () => {
+  api.served[1] = { ...api.served[1], cohortExpression: manual([11]) };
+  renderPanel();
+
+  expect(
+    await screen.findByText("1 of 1 member gets more than 15 minutes"),
+  ).toBeTruthy();
 });
 
 it("lists each action's unfinished checklist items", async () => {
@@ -143,7 +170,7 @@ it("blocks launch, counting no one, when members' away dates fail to load", asyn
   expect(launchButton().textContent).toBe("Launch and notify ? members");
   expect(screen.queryByText("No member is assigned any action.")).toBeNull();
   expect(
-    screen.getByText("Unknown until every member count loads"),
+    screen.getByText("Minutes unknown until every member count loads"),
   ).toBeTruthy();
 });
 
