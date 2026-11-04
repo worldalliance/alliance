@@ -5,18 +5,77 @@ on:
     branches-ignore:
       - production
       - auto-fix/**
+  pull_request:
+    types: [ready_for_review]
 
 permissions:
   contents: read
 
 jobs:
-  review:
-    if: ${{ !contains(github.event.head_commit.message, 'Merge branch') }}
+  # Pushes skip review while their branch has an open draft PR; marking it ready reviews the head once.
+  gate:
+    if: >-
+      github.event_name == 'push'
+      || (github.event.pull_request.head.repo.full_name == github.repository
+        && !startsWith(github.head_ref, 'auto-fix/'))
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      review: ${{ steps.gate.outputs.review }}
+    steps:
+      - id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.head_ref || github.ref_name }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_MESSAGE: ${{ github.event.head_commit.message }}
+          PUSHED_AT: ${{ github.event.repository.pushed_at }}
+          PRS_QUERY: |
+            query($owner: String!, $name: String!, $head: String!) {
+              repository(owner: $owner, name: $name) {
+                pullRequests(headRefName: $head, states: OPEN, first: 10) {
+                  nodes {
+                    isDraft
+                    isCrossRepository
+                    timelineItems(itemTypes: [READY_FOR_REVIEW_EVENT], last: 1) { nodes { ... on ReadyForReviewEvent { createdAt } } }
+                  }
+                }
+              }
+            }
+          # A PR marked ready after this push counts as a draft, since its ready_for_review run reviews this head.
+          HELD_FILTER: >-
+            any(.data.repository.pullRequests.nodes[]; (.isCrossRepository | not)
+            and (.isDraft or (.timelineItems.nodes[0].createdAt as $ready
+            | $ready != null and ($ready | fromdateiso8601) > ($ENV.PUSHED_AT | tonumber))))
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            message=$(gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA" --jq .commit.message)
+          else
+            message=$HEAD_MESSAGE
+          fi
+          shopt -s nocasematch
+          if [[ "$message" == *"Merge branch"* ]]; then
+            review=false
+          elif [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            review=true
+          else
+            held=$(gh api graphql -f owner="${GITHUB_REPOSITORY%/*}" -f name="${GITHUB_REPOSITORY#*/}" \
+              -f head="$HEAD_REF" -f query="$PRS_QUERY" --jq "$HELD_FILTER")
+            if [ "$held" = true ]; then review=false; else review=true; fi
+          fi
+          echo "review=$review" >> "$GITHUB_OUTPUT"
 
+  review:
+    needs: gate
+    if: needs.gate.outputs.review == 'true'
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
 
       # --- Claude Code (Anthropic) ---

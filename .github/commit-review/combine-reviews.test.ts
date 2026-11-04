@@ -20,7 +20,7 @@ if (typeof script !== "string")
 test("reviewer markers control notification and every available review is summarized", () => {
   const scratch = join(import.meta.dir, "../../.scratch");
   mkdirSync(scratch, { recursive: true });
-  const dir = mkdtempSync(join(scratch, "review-gate-"));
+  const dir = mkdtempSync(join(scratch, "combine-reviews-"));
   writeFileSync(
     join(dir, "curl"),
     '#!/bin/sh\nprintf "%s\\n" "$COMBINER_RESPONSE"\nexit "${CURL_EXIT:-0}"\n',
