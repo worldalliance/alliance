@@ -234,15 +234,7 @@ export default [
   },
   {
     files: ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],
-    ignores: [
-      "**/*.test.*",
-      "**/*.spec.*",
-      "**/*-spec.*",
-      "**/test/**",
-      "**/migrations/**",
-      "**/*.gen.ts",
-      "**/*.typecheck.ts",
-    ],
+    ignores: ["**/migrations/**", "**/*.gen.ts"],
     plugins: {
       alliance: {
         rules: {
@@ -252,7 +244,7 @@ export default [
       },
     },
     rules: {
-      "alliance/max-lines": ["warn", { max: 500 }],
+      "alliance/max-lines": ["error", { max: 500 }],
       "alliance/no-max-lines-disable": "error",
     },
   },

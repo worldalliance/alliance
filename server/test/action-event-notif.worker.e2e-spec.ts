@@ -1,3 +1,4 @@
+/* alliance/max-lines 3150 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { Temporal } from "@js-temporal/polyfill";
 import { getRepositoryToken } from "@nestjs/typeorm";

@@ -1,3 +1,4 @@
+/* alliance/max-lines 2500 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import request from "supertest";
 import { In, Not, type Repository } from "typeorm";
 import { CommunityService } from "../src/community/community.service";

@@ -1,3 +1,4 @@
+/* alliance/max-lines 750 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options";

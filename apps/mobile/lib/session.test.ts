@@ -1,3 +1,4 @@
+/* alliance/max-lines 1700 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { R, type Result } from "@alliance/common/result";
 import { authMe } from "@alliance/shared/client";
 import { client } from "@alliance/shared/client/client.gen";

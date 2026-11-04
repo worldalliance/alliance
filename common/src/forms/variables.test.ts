@@ -1,3 +1,4 @@
+/* alliance/max-lines 1250 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import type { TextBlock } from "./display-blocks";
 import type {
   AnyField,

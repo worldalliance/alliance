@@ -1,3 +1,4 @@
+/* alliance/max-lines 1100 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { MessageSource } from "src/link-tracking/message-tracking.entity";
 import request from "supertest";
 import { In, IsNull, Not, type Repository } from "typeorm";

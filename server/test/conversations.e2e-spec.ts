@@ -1,3 +1,4 @@
+/* alliance/max-lines 1150 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { ConversationType } from "@alliance/common/conversationType";
 import { ParticipantRole } from "@alliance/common/participantRole";
 import { io } from "socket.io-client";

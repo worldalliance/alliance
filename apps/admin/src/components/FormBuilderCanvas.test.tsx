@@ -1,3 +1,4 @@
+/* alliance/max-lines 650 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { act, fireEvent, screen, within } from "@testing-library/react";

@@ -127,7 +127,11 @@ describe("envReadsOnlyIn", () => {
   });
 });
 
-const maxLinesMessages = (params: { waiver?: string; lines: number }) =>
+const maxLinesReports = (params: {
+  waiver?: string;
+  lines: number;
+  file?: string;
+}) =>
   new Linter({ configType: "flat" })
     .verify(
       [
@@ -135,12 +139,36 @@ const maxLinesMessages = (params: { waiver?: string; lines: number }) =>
         ...Array.from({ length: params.lines }, (_, i) => `f(${i});\n`),
       ].join("\n"),
       [tsFile, ...sharedRules],
-      "src/big.ts",
+      params.file ?? "src/big.ts",
     )
-    .filter((message) => message.ruleId === "alliance/max-lines")
-    .map((message) => message.message);
+    .filter((message) => message.ruleId === "alliance/max-lines");
+
+const maxLinesMessages = (params: Parameters<typeof maxLinesReports>[0]) =>
+  maxLinesReports(params).map((message) => message.message);
 
 describe("alliance/max-lines", () => {
+  it.each([
+    "src/big.test.ts",
+    "src/big.spec.ts",
+    "test/big.e2e-spec.ts",
+    "src/big.typecheck.ts",
+  ])("covers test file %s", (file) => {
+    expect(maxLinesMessages({ lines: 501, file })).toHaveLength(1);
+  });
+
+  it.each(["src/client/types.gen.ts", "src/migrations/1700000000000-Big.ts"])(
+    "skips %s",
+    (file) => {
+      expect(maxLinesMessages({ lines: 501, file })).toEqual([]);
+    },
+  );
+
+  it("reports at error, so CI blocks", () => {
+    expect(
+      maxLinesReports({ lines: 501 }).map((message) => message.severity),
+    ).toEqual([2]);
+  });
+
   it("counts non-blank lines only", () => {
     expect(maxLinesMessages({ lines: 500 })).toEqual([]);
   });

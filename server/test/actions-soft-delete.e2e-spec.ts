@@ -1,3 +1,4 @@
+/* alliance/max-lines 1100 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { NotFoundException } from "@nestjs/common";
 import { getRepositoryToken } from "@nestjs/typeorm";

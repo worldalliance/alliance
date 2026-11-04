@@ -1,3 +1,4 @@
+/* alliance/max-lines 3450 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { AnalyticsEvent } from "@alliance/common/analytics";
 import { publicDisplayName } from "@alliance/common/displayName";
 import { toE164 } from "@alliance/common/phone";

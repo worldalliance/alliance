@@ -1,3 +1,4 @@
+/* alliance/max-lines 850 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { milliseconds } from "date-fns";
 import { ActionSuspensionService } from "src/actions/action-suspension.service";

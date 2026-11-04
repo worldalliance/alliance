@@ -1,3 +1,4 @@
+/* alliance/max-lines 1050 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import {
   MOBILE_OAUTH_RETURN_URL,
   OAuthError,

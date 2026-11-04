@@ -1,3 +1,4 @@
+/* alliance/max-lines 5100 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import {
   ActionActivityType,
   MEMBER_ACTION_DEADLINE_PASSED,

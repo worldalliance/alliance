@@ -1,3 +1,4 @@
+/* alliance/max-lines 700 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { Logger } from "@nestjs/common";
 import request from "supertest";
 import type { EntityManager, Repository } from "typeorm";

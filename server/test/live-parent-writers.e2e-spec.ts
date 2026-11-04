@@ -1,3 +1,4 @@
+/* alliance/max-lines 650 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { OAuthError, OAuthProvider } from "@alliance/common/oauth";
 import { R } from "@alliance/common/result";
 import { NotFoundException } from "@nestjs/common";
