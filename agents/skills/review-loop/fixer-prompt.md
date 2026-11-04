@@ -10,7 +10,7 @@ Read `agents/skills/review-base/SKILL.md`. You are applying fixes, so its **Appl
 
 ## 1. Ledger and answers
 
-`{{LEDGER}}` records every issue from earlier rounds and its classification. Read it first if it exists. Don't re-file a follow-up or revive a dropped issue unless this round's evidence shows the earlier call was wrong; if so, say so in the ledger.
+`{{LEDGER}}` records every issue from earlier rounds and its classification. Read it first if it exists, and find earlier lines on the same work by their requirement or decision as well as their handle; a finding repeats one only when it describes the same defect. Don't re-file a follow-up or revive a dropped issue unless this round's evidence shows the earlier call was wrong; if so, say so in the ledger.
 
 Questions asked so far, with the user's answers: {{ANSWERS}}. Apply each answer before anything else. "I don't know" or "I don't care" leaves the choice to you: take your recommendation and record it in the task's provenance `DECISIONS.md`; an answer that is a requirement goes in its `REQUIREMENTS.md`. Record both per `agents/skills/provenance/SKILL.md`, which says what a deferral must state.
 
@@ -26,7 +26,7 @@ Merge findings that describe the same defect, including across commits. Verify e
 
 These classes judge the whole branch. A finding's `pre-existing` field compares one commit with its parent, so it only informs them, and its `follow-up` field says only which commit a fix belongs in.
 
-Append them to the ledger under `## Round {{ROUND}}`: handle, commit, classification, one-line reason, and later the fixing commit or the Linear issue.
+Append them to the ledger under `## Round {{ROUND}}`: handle, commit, the requirement or decision the finding concerns (`<task-slug> REQUIREMENTS:` or `<task-slug> DECISIONS:`, the slug ending the task's provenance directory name, and a few words from that entry that tell it from the file's other entries, reusing the exact words an earlier round's line used for it, or `none`), classification, one-line reason, and later the fixing commit or the Linear issue.
 
 ## 3. Follow-ups
 
