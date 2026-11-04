@@ -38,7 +38,7 @@ Fix every fix-now issue. Follow `AGENTS.md` and the skills it names, especially 
 
 Every commit you made or rewrote must pass its checks on its own, and so must the tip. Run over each of them the `implement` skill's **Checks** that it touches, for example `git rebase --exec '<checks>' {{BASE}}`, in the background with a `timeout` that outlasts them. Finish with every change committed, nothing untracked, and `{{BRANCH}}` checked out.
 
-You may change the task's provenance `DECISIONS.md` freely when a fix calls for it. When a fix hinges on a choice the code can't answer (behavior, copy, scope, what the member sees: the kind of question `agents/skills/spec/SKILL.md` says to ask), don't guess. Fix everything that doesn't depend on the answer, then ask in your report.
+You may change the task's provenance `DECISIONS.md` freely when a fix calls for it. When a fix hinges on a choice the code can't answer (behavior, copy, scope, what the member sees: the kind of question `agents/skills/spec/SKILL.md` says to ask), don't guess. Fix everything that doesn't depend on the answer, then ask in your report. A subject the user made conditional or said "I don't care" about is yours: decide its questions yourself and record each choice in `DECISIONS.md`.
 
 ## 5. Report
 
