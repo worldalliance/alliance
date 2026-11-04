@@ -1,3 +1,4 @@
+import { ConfigCommentParser } from "@eslint/plugin-kit";
 import { builtinRules } from "eslint/use-at-your-own-risk";
 
 const WAIVER = /^\*?\s*alliance\/max-lines\s+\d/;
@@ -91,6 +92,40 @@ const maxLines = {
             messageId: "belowWaiver",
             data: { actual, recorded, ceiling },
           });
+        }
+      },
+    };
+  },
+};
+
+const noMaxLinesDisable = {
+  meta: {
+    type: "problem",
+    schema: [],
+    messages: {
+      disable:
+        "Don't name alliance/max-lines in an eslint directive: disabling or reconfiguring it drops its ceiling. Follow the root AGENTS.md File size rule: split the file, or keep it whole with /* alliance/max-lines <ceiling> -- <why it is one unit> */ at its top.",
+    },
+  },
+  create(context) {
+    const parser = new ConfigCommentParser();
+    const names = (rules) => Object.hasOwn(rules, "alliance/max-lines");
+    return {
+      Program() {
+        const { sourceCode } = context;
+        for (const { node, value } of sourceCode.getDisableDirectives()
+          .directives) {
+          if (names(parser.parseListConfig(value))) {
+            context.report({ node, messageId: "disable" });
+          }
+        }
+        for (const node of sourceCode.getInlineConfigNodes()) {
+          const { label, value } = parser.parseDirective(node.value);
+          const parsed =
+            label === "eslint" && parser.parseJSONLikeConfig(value);
+          if (parsed && parsed.ok && names(parsed.config)) {
+            context.report({ node, messageId: "disable" });
+          }
         }
       },
     };
@@ -208,9 +243,17 @@ export default [
       "**/*.gen.ts",
       "**/*.typecheck.ts",
     ],
-    plugins: { alliance: { rules: { "max-lines": maxLines } } },
+    plugins: {
+      alliance: {
+        rules: {
+          "max-lines": maxLines,
+          "no-max-lines-disable": noMaxLinesDisable,
+        },
+      },
+    },
     rules: {
       "alliance/max-lines": ["warn", { max: 500 }],
+      "alliance/no-max-lines-disable": "error",
     },
   },
 ];

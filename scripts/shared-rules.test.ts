@@ -223,3 +223,32 @@ describe("alliance/max-lines", () => {
     for (const text of expected) expect(messages[0]).toContain(text);
   });
 });
+
+describe("alliance/no-max-lines-disable", () => {
+  const disableReports = (code: string) =>
+    new Linter({ configType: "flat" })
+      .verify(`${code}\nf();\n`, [tsFile, ...sharedRules], "src/big.ts")
+      .filter((message) => message.ruleId === "alliance/no-max-lines-disable");
+
+  it.each([
+    "/* eslint-disable alliance/max-lines -- one unit */",
+    "/* eslint-disable no-console, alliance/max-lines */",
+    '/* eslint-disable "alliance/max-lines" */',
+    "/* eslint-disable 'alliance/max-lines' -- one unit */",
+    "// eslint-disable-next-line alliance/max-lines",
+    "f(); // eslint-disable-line alliance/max-lines",
+    "/* eslint-enable alliance/max-lines */",
+    '/* eslint alliance/max-lines: ["error", { max: 9999 }] */',
+  ])("flags %s", (code) => {
+    expect(disableReports(code)).toHaveLength(1);
+  });
+
+  it.each([
+    "/* eslint-disable no-console -- see alliance/max-lines */",
+    "/* eslint-disable alliance/max-lines-legacy */",
+    "// eslint-disable alliance/max-lines",
+    "/* alliance/max-lines 650 -- one state machine */",
+  ])("allows %s", (code) => {
+    expect(disableReports(code)).toEqual([]);
+  });
+});
