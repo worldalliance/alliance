@@ -12,6 +12,7 @@ import { makeAction, makeProfile } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
+import { onlineManager } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, mock, setSystemTime } from "bun:test";
 import { MemoryRouter } from "react-router";
@@ -57,6 +58,7 @@ const initialState = () => ({
   awayRanges: [] as { userId: number; fromDay: number; toDay: number }[],
   awayRangesFail: false,
   formLoadFails: false,
+  offlineOnceActionLoads: false,
   formPages: [] as { id: string; title: string; fields: [] }[],
   /** Pages served for a form id instead of `formPages`. */
   formPagesById: {} as Record<
@@ -93,14 +95,24 @@ export const serveLaunchApi = () => {
     window.localStorage.clear();
     Object.assign(api, initialState());
   });
-  afterEach(() => setSystemTime());
+  afterEach(() => {
+    setSystemTime();
+    onlineManager.setOnline(true);
+  });
 
   serveApi(
     routes({
       "GET /actions/all": () => Response.json(api.actionList),
       "GET /user/tags": () => Response.json([]),
-      "GET /actions/adminslug/:id": ({ params }) =>
-        Response.json(api.served[Number(params.id)]),
+      "GET /actions/adminslug/:id": ({ params }) => {
+        if (api.offlineOnceActionLoads) {
+          api.offlineOnceActionLoads = false;
+          onlineManager.setOnline(false);
+        }
+        return Number(params.id) in api.served
+          ? Response.json(api.served[Number(params.id)])
+          : Response.json({ statusCode: 500 }, { status: 500 });
+      },
       "GET /tasks/adminForm/:id": ({ params }) =>
         Number.isInteger(Number(params.id)) && !api.formLoadFails
           ? Response.json({

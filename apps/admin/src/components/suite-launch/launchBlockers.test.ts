@@ -1,6 +1,12 @@
 import { describe, expect, it } from "bun:test";
 import { TextSource } from "./actionTextFindings";
-import { launchBlockers, LaunchSection } from "./launchBlockers";
+import {
+  actionChecklistDismissals,
+  checklistDismissKeys,
+  fixedChecklistDismissals,
+  launchBlockers,
+  LaunchSection,
+} from "./launchBlockers";
 import { TextIssueKind } from "./textChecks";
 
 const now = new Date("2026-01-15T18:00:00Z");
@@ -35,7 +41,7 @@ const ready = {
   reminderWindows: [],
   suiteEvents: [],
   checkedActionIds: new Set([1]),
-  dismissedFindingKeys: new Set(["d1"]),
+  dismissedKeys: new Set(["d1"]),
   violations: [],
   violationsAcknowledged: false,
   now,
@@ -45,6 +51,85 @@ const messages = (params: Parameters<typeof launchBlockers>[0]) =>
   launchBlockers(params).map(({ message }) => message);
 
 describe("launchBlockers", () => {
+  it("lets dismissed checklist items through, until another item goes missing", () => {
+    const body = { id: "body", label: "Full body content", isReady: false };
+    const project = {
+      id: "project",
+      label: "Part of a project",
+      isReady: false,
+    };
+    const entry = { action, unready: [body, project], ownMemberStart: null };
+    const dismissed = new Set([
+      ...ready.dismissedKeys,
+      ...checklistDismissKeys(entry),
+    ]);
+    const withUnready = (unready: (typeof entry)["unready"]) => ({
+      ...ready,
+      data: { ...ready.data, actions: [{ ...entry, unready }] },
+      dismissedKeys: dismissed,
+    });
+
+    expect(messages(withUnready([body, project]))).toEqual([]);
+    expect(messages(withUnready([project]))).toEqual([]);
+    expect(
+      messages(
+        withUnready([
+          body,
+          { id: "form", label: "Task form linked", isReady: false },
+        ]),
+      ),
+    ).toEqual(["1 action has unfinished checklist items."]);
+  });
+
+  it("finds dismissals of checklist items fixed since or of actions out of the suite, not of text findings", () => {
+    expect(
+      fixedChecklistDismissals(
+        [
+          {
+            action: { id: 1 },
+            unready: [{ id: "project" }],
+          },
+        ],
+        new Set([
+          "checklist:1:body",
+          "checklist:1:project",
+          "checklist:12:body",
+          "d1",
+        ]),
+      ),
+    ).toEqual(["checklist:1:body", "checklist:12:body"]);
+  });
+
+  it("lists every dismissed checklist key of one action, fixed items included", () => {
+    expect(
+      actionChecklistDismissals(
+        1,
+        new Set([
+          "checklist:1:body",
+          "checklist:1:project",
+          "checklist:12:body",
+          "d1",
+        ]),
+      ),
+    ).toEqual(["checklist:1:body", "checklist:1:project"]);
+  });
+
+  it("refuses an action that already has its own members taking action event", () => {
+    expect(
+      messages({
+        ...ready,
+        data: {
+          ...ready.data,
+          actions: [
+            { action, unready: [], ownMemberStart: "2026-01-10T03:00:00Z" },
+          ],
+        },
+      }),
+    ).toEqual([
+      "1 action already has its own members taking action event. Delete it, or take the action out of the suite, before launching.",
+    ]);
+  });
+
   it("allows launch once every check passes", () => {
     expect(messages(ready)).toEqual([]);
   });
@@ -129,7 +214,7 @@ describe("launchBlockers", () => {
           errors: ["Failed to load action A."],
         },
         checkedActionIds: new Set(),
-        dismissedFindingKeys: new Set(),
+        dismissedKeys: new Set(),
         violations: ["Over 15 minutes."],
       }),
     ).toEqual([
@@ -143,9 +228,9 @@ describe("launchBlockers", () => {
 
   it("dismisses a text finding by its dismissKey, not its key", () => {
     expect(messages(ready)).toEqual([]);
-    expect(
-      messages({ ...ready, dismissedFindingKeys: new Set(["f1"]) }),
-    ).toEqual(["1 text finding to fix or dismiss."]);
+    expect(messages({ ...ready, dismissedKeys: new Set(["f1"]) })).toEqual([
+      "1 text finding to fix or dismiss.",
+    ]);
   });
 
   it("lets acknowledged contract violations through", () => {

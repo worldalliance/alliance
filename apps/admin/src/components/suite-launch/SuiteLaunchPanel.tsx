@@ -18,7 +18,11 @@ import { iconControlClass } from "./ActionLinks";
 import ActionReviewCheck from "./ActionReviewCheck";
 import { contractViolations } from "./contractViolations";
 import ContractViolationsBanner from "./ContractViolationsBanner";
-import { launchBlockers, LaunchSection } from "./launchBlockers";
+import {
+  fixedChecklistDismissals,
+  launchBlockers,
+  LaunchSection,
+} from "./launchBlockers";
 import LaunchCheck from "./LaunchCheck";
 import {
   clearLaunchProgress,
@@ -42,11 +46,13 @@ import { useSuiteLaunchData } from "./useSuiteLaunchData";
 
 const toggled = <T,>(
   set: ReadonlySet<T>,
-  { item, on }: { item: T; on: boolean },
+  { items, on }: { items: T[]; on: boolean },
 ) => {
   const next = new Set(set);
-  if (on) next.add(item);
-  else next.delete(item);
+  for (const item of items) {
+    if (on) next.add(item);
+    else next.delete(item);
+  }
   return next;
 };
 
@@ -89,6 +95,17 @@ const SuiteLaunchPanel = ({
   const [dismissedKeys, setDismissedKeys] = useState<ReadonlySet<string>>(
     saved?.dismissedKeys ?? new Set(),
   );
+  const dismiss = (keys: string[]) =>
+    setDismissedKeys((prev) => toggled(prev, { items: keys, on: true }));
+  const restore = (keys: string[]) =>
+    setDismissedKeys((prev) => toggled(prev, { items: keys, on: false }));
+  const fixedDismissals =
+    data.loading || data.errors.length > 0
+      ? []
+      : fixedChecklistDismissals(data.actions, dismissedKeys);
+  // Set during render, React's pattern for state following other data, so a
+  // fixed item never renders as dismissed.
+  if (fixedDismissals.length > 0) restore(fixedDismissals);
   const [acceptedViolations, setAcceptedViolations] = useState<
     ReadonlySet<string>
   >(saved?.acceptedViolations ?? new Set());
@@ -159,7 +176,7 @@ const SuiteLaunchPanel = ({
     reminderWindows,
     suiteEvents: suite.events,
     checkedActionIds,
-    dismissedFindingKeys: dismissedKeys,
+    dismissedKeys,
     violations,
     violationsAcknowledged,
     now,
@@ -313,6 +330,9 @@ const SuiteLaunchPanel = ({
                 return next;
               })
             }
+            dismissedKeys={dismissedKeys}
+            onDismiss={dismiss}
+            onRestore={restore}
           />
           <MemberPreview
             loads={data.loads}
@@ -329,16 +349,8 @@ const SuiteLaunchPanel = ({
               findings={data.textFindings}
               actions={data.actions}
               dismissedKeys={dismissedKeys}
-              onDismiss={(key) =>
-                setDismissedKeys((prev) =>
-                  toggled(prev, { item: key, on: true }),
-                )
-              }
-              onRestore={(key) =>
-                setDismissedKeys((prev) =>
-                  toggled(prev, { item: key, on: false }),
-                )
-              }
+              onDismiss={(key) => dismiss([key])}
+              onRestore={(key) => restore([key])}
               onRecheck={data.refetch}
             />
           )}

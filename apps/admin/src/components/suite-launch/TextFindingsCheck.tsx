@@ -1,6 +1,6 @@
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
 import { cn } from "@alliance/shared/styles/util";
-import { RefreshCw, Undo2, X } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 import {
   EditActionLink,
@@ -12,6 +12,7 @@ import {
   TEXT_SOURCE_LABELS,
   type TextFinding,
 } from "./actionTextFindings";
+import DismissToggle from "./DismissToggle";
 import { LaunchSection } from "./launchBlockers";
 import LaunchCheck from "./LaunchCheck";
 import { TEXT_ISSUE_LABELS } from "./textChecks";
@@ -68,15 +69,11 @@ const FindingRow = ({
           );
         })}
       </div>
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-label={dismissed ? "Restore" : "Dismiss"}
-        title={dismissed ? "Restore" : "Dismiss"}
-        className={iconControlClass}
-      >
-        {dismissed ? <Undo2 className="size-4" /> : <X className="size-4" />}
-      </button>
+      <DismissToggle
+        dismissed={dismissed}
+        iconClassName="size-4"
+        onToggle={onToggle}
+      />
     </li>
   );
 };

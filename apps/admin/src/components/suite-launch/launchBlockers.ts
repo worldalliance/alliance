@@ -57,6 +57,49 @@ export function eventBeforeDeadline(
     : null;
 }
 
+const CHECKLIST_KEY_PREFIX = "checklist:";
+
+// One per missing item, so a newly missing item asks again and fixing one keeps the rest dismissed.
+export const checklistKey = (actionId: number, itemId: string) =>
+  `${CHECKLIST_KEY_PREFIX}${actionId}:${itemId}`;
+
+type ChecklistEntry = {
+  action: { id: number };
+  unready: readonly { id: string }[];
+};
+
+export const checklistDismissKeys = (entry: ChecklistEntry) =>
+  entry.unready.map((item) => checklistKey(entry.action.id, item.id));
+
+/** Every dismissed checklist key of the action, including those of items fixed since. */
+export const actionChecklistDismissals = (
+  actionId: number,
+  dismissedKeys: ReadonlySet<string>,
+) =>
+  [...dismissedKeys].filter((key) =>
+    key.startsWith(checklistKey(actionId, "")),
+  );
+
+/**
+ * Dismissed checklist keys whose items are no longer missing from `actions`,
+ * which must be every action in the suite: an action taken out of it loses
+ * its dismissals too.
+ */
+export const fixedChecklistDismissals = (
+  actions: readonly ChecklistEntry[],
+  dismissedKeys: ReadonlySet<string>,
+) => {
+  const missing = new Set(actions.flatMap(checklistDismissKeys));
+  return [...dismissedKeys].filter(
+    (key) => key.startsWith(CHECKLIST_KEY_PREFIX) && !missing.has(key),
+  );
+};
+
+export const checklistBlocks = (
+  entry: ChecklistEntry,
+  dismissedKeys: ReadonlySet<string>,
+) => checklistDismissKeys(entry).some((key) => !dismissedKeys.has(key));
+
 export function launchBlockers(params: {
   data: Pick<
     SuiteLaunchData,
@@ -74,7 +117,7 @@ export function launchBlockers(params: {
   reminderWindows: ReminderSendWindow[];
   suiteEvents: readonly Pick<ActionEventDto, "newStatus" | "date">[];
   checkedActionIds: ReadonlySet<number>;
-  dismissedFindingKeys: ReadonlySet<string>;
+  dismissedKeys: ReadonlySet<string>;
   violations: readonly string[];
   violationsAcknowledged: boolean;
   now: Date;
@@ -85,7 +128,7 @@ export function launchBlockers(params: {
     reminderWindows,
     suiteEvents,
     checkedActionIds,
-    dismissedFindingKeys,
+    dismissedKeys,
     violations,
     violationsAcknowledged,
     now,
@@ -127,7 +170,9 @@ export function launchBlockers(params: {
       `${plural(ownEvents.length, "action already has its", "actions already have their")} own members taking action event. Delete it, or take the action out of the suite, before launching.`,
     );
   }
-  const unready = data.actions.filter(({ unready }) => unready.length > 0);
+  const unready = data.actions.filter((entry) =>
+    checklistBlocks(entry, dismissedKeys),
+  );
   if (unready.length > 0) {
     block(
       LaunchSection.Actions,
@@ -152,7 +197,7 @@ export function launchBlockers(params: {
   const open = new Set(
     data.textFindings
       .map((finding) => finding.dismissKey)
-      .filter((key) => !dismissedFindingKeys.has(key)),
+      .filter((key) => !dismissedKeys.has(key)),
   );
   if (open.size > 0) {
     block(

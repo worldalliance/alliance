@@ -1,7 +1,9 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { onlineManager } from "@tanstack/react-query";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { expect, it, setSystemTime } from "bun:test";
 import {
   api,
+  launchButton,
   renderPanel,
   resolveEveryCheck,
   serveLaunchApi,
@@ -250,4 +252,74 @@ it("doesn't call a marked action edited while its task form fails to load", asyn
     await screen.findByText("Failed to load the task form for Call."),
   ).toBeTruthy();
   expect(screen.queryByText("Edited since it was marked ready")).toBeNull();
+});
+
+it("blocks launch again when a dismissed item, fixed since, goes missing again", async () => {
+  const complete = api.served[2];
+  const missing = { ...complete, project: null };
+  api.served[2] = missing;
+  const first = renderPanel();
+  await resolveEveryCheck();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Dismiss unfinished items" }),
+  );
+  first.unmount();
+
+  api.served[2] = complete;
+  const second = renderPanel();
+  expect(await screen.findByText("Checks are loading.")).toBeTruthy();
+  await waitFor(() =>
+    expect(screen.queryByText("Checks are loading.")).toBeNull(),
+  );
+  second.unmount();
+
+  api.served[2] = missing;
+  renderPanel();
+  expect(await screen.findByText("Unfinished: Part of a project")).toBeTruthy();
+  expect(
+    screen.getByText("1 action has unfinished checklist items."),
+  ).toBeTruthy();
+  expect(launchButton().hasAttribute("disabled")).toBe(true);
+});
+
+it("keeps a dismissal its task form decides while that form fails to load", async () => {
+  api.served[1] = { ...api.served[1], taskFormId: 7 };
+  api.formPagesById[7] = [
+    {
+      id: "p1",
+      title: "Call your representative today. ".repeat(500).trim(),
+      fields: [],
+    },
+  ];
+  const first = renderPanel();
+  await resolveEveryCheck();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Dismiss unfinished items" }),
+  );
+  first.unmount();
+
+  api.formLoadFails = true;
+  const failed = renderPanel();
+  expect(
+    await screen.findByText("Failed to load the task form for Call."),
+  ).toBeTruthy();
+  failed.unmount();
+
+  api.formLoadFails = false;
+  renderPanel();
+  expect(
+    await screen.findByText("Unfinished (dismissed): ", { exact: false }),
+  ).toBeTruthy();
+  expect(
+    screen.queryByText("1 action has unfinished checklist items."),
+  ).toBeNull();
+});
+
+it("keeps running checks while an action's load is paused offline", async () => {
+  api.offlineOnceActionLoads = true;
+  renderPanel();
+  await waitFor(() => expect(onlineManager.isOnline()).toBe(false));
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(screen.getByText("Running checks…", { selector: "p" })).toBeTruthy();
+  expect(screen.queryByText("Preview members' actions")).toBeNull();
 });

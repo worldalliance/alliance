@@ -1,6 +1,8 @@
 import { withCount } from "@alliance/common/plural";
 import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
+import { cn } from "@alliance/shared/styles/util";
 import { secondsInMinute } from "date-fns/constants";
+import { Fragment } from "react";
 import {
   cohortNames,
   cohortSegmentsText,
@@ -10,7 +12,14 @@ import { referencedActionFromListItem } from "../../lib/referencedAction";
 import { useTagsAdmin } from "../../lib/useTagsAdmin";
 import OpenReferenceWarning from "../OpenReferenceWarning";
 import { ActionLinks, EditTaskFormLink } from "./ActionLinks";
-import { LaunchSection } from "./launchBlockers";
+import DismissToggle from "./DismissToggle";
+import {
+  actionChecklistDismissals,
+  checklistBlocks,
+  checklistDismissKeys,
+  checklistKey,
+  LaunchSection,
+} from "./launchBlockers";
 import LaunchCheck from "./LaunchCheck";
 import { inLaunchZone, type LaunchSchedule } from "./launchSchedule";
 import type { LaunchAction } from "./useSuiteLaunchData";
@@ -36,12 +45,53 @@ const actionNotes = (params: {
   ].filter((note): note is string => !!note);
 };
 
+const UnfinishedItems = ({
+  items,
+  onToggle,
+}: {
+  items: { label: string; dismissed: boolean }[];
+  onToggle: (dismissed: boolean) => void;
+}) => {
+  const dismissed = items.every((item) => item.dismissed);
+  return (
+    <p
+      className={cn(
+        "flex items-center gap-1 text-xs",
+        dismissed ? "text-zinc-400" : "text-yellow-700",
+      )}
+    >
+      {dismissed ? "Unfinished (dismissed): " : "Unfinished: "}
+      {dismissed
+        ? items.map((item) => item.label).join(", ")
+        : items.map((item, index) => (
+            <Fragment key={item.label}>
+              {index > 0 && ", "}
+              {item.dismissed ? (
+                <span className="text-zinc-400">{item.label} (dismissed)</span>
+              ) : (
+                item.label
+              )}
+            </Fragment>
+          ))}
+      <DismissToggle
+        dismissed={dismissed}
+        what="unfinished items"
+        iconClassName="size-3.5"
+        onToggle={() => onToggle(!dismissed)}
+      />
+    </p>
+  );
+};
+
 const ActionReviewCheck = ({
   actions,
   checkedActionIds,
   changedActionIds,
   schedule,
   onCheckedChange,
+  dismissedKeys,
+  onDismiss,
+  onRestore,
 }: {
   actions: LaunchAction[];
   checkedActionIds: ReadonlySet<number>;
@@ -49,6 +99,9 @@ const ActionReviewCheck = ({
   changedActionIds: ReadonlySet<number>;
   schedule: LaunchSchedule;
   onCheckedChange: (entry: LaunchAction, checked: boolean) => void;
+  dismissedKeys: ReadonlySet<string>;
+  onDismiss: (keys: string[]) => void;
+  onRestore: (keys: string[]) => void;
 }) => {
   const { tags, isError: tagsFailed } = useTagsAdmin();
   const { data: allActions = [], isError: actionsFailed } = useActionsAdmin();
@@ -60,7 +113,9 @@ const ActionReviewCheck = ({
     // This suite's actions close at the office deadline this launch creates.
     ...(suiteActionIds.has(item.id) && { deadline: schedule.officeActionAt }),
   }));
-  const unready = actions.filter((entry) => entry.unready.length > 0).length;
+  const unready = actions.filter((entry) =>
+    checklistBlocks(entry, dismissedKeys),
+  ).length;
   const unchecked = actions.filter(
     ({ action }) => !checkedActionIds.has(action.id),
   ).length;
@@ -111,9 +166,21 @@ const ActionReviewCheck = ({
                   <p className="text-xs text-yellow-700">{notes.join(" · ")}</p>
                 )}
                 {unready.length > 0 && (
-                  <p className="text-xs text-yellow-700">
-                    Unfinished: {unready.map((item) => item.label).join(", ")}
-                  </p>
+                  <UnfinishedItems
+                    items={unready.map((item) => ({
+                      label: item.label,
+                      dismissed: dismissedKeys.has(
+                        checklistKey(action.id, item.id),
+                      ),
+                    }))}
+                    onToggle={(dismissed) =>
+                      dismissed
+                        ? onDismiss(checklistDismissKeys(entry))
+                        : onRestore(
+                            actionChecklistDismissals(action.id, dismissedKeys),
+                          )
+                    }
+                  />
                 )}
                 <OpenReferenceWarning
                   actionId={action.id}

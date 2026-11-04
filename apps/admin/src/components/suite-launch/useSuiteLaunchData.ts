@@ -297,6 +297,7 @@ export function useSuiteLaunchData(params: {
     ),
     textFindings,
     errors: [...loadErrors, ...errors],
+    // A disabled query stays idle and never loads; one paused offline still will.
     loading: [
       ...actionResults,
       ...formResults,
@@ -305,7 +306,7 @@ export function useSuiteLaunchData(params: {
       ...variantResults,
       users,
       awayRanges,
-    ].some((result) => result.isLoading),
+    ].some((result) => result.isPending && result.fetchStatus !== "idle"),
     spellcheckLoading: spellchecker.isLoading,
     refetch: () => {
       for (const result of [
