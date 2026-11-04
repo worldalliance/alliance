@@ -1,7 +1,7 @@
 import { type AnyField } from "@alliance/common/forms/form-schema";
 import { outputPublicToggle } from "@alliance/shared/forms/outputPublicToggle";
 import { View } from "react-native";
-import Checkbox from "../system/Checkbox";
+import Checkbox, { CheckboxSize } from "../system/Checkbox";
 
 export default function OutputPublicToggle({
   field,
@@ -23,6 +23,7 @@ export default function OutputPublicToggle({
         disabled={disabled}
         onChange={(next) => onChange(toggle.sharePubliclyWhen(next))}
         label={toggle.label}
+        size={CheckboxSize.Compact}
       />
     </View>
   );

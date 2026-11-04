@@ -6,6 +6,8 @@ import InlineLabelMarkdownWrapper from "../InlineLabelMarkdownWrapper";
 export enum CheckboxSize {
   Small = "sm",
   Medium = "md",
+  /** The small box beside small label text, for a secondary option. */
+  Compact = "compact",
 }
 
 // `mt-0.5` centers the smaller box on the label's first line; `md` is tall
@@ -13,11 +15,19 @@ export enum CheckboxSize {
 const boxClasses: Record<CheckboxSize, string> = {
   [CheckboxSize.Small]: "w-5 h-5 mt-0.5 mr-3",
   [CheckboxSize.Medium]: "w-6 h-6 mr-2",
+  [CheckboxSize.Compact]: "w-5 h-5 mr-2",
 };
 
 const iconSizes: Record<CheckboxSize, number> = {
   [CheckboxSize.Small]: 14,
   [CheckboxSize.Medium]: 16,
+  [CheckboxSize.Compact]: 14,
+};
+
+const smallLabel: Record<CheckboxSize, boolean> = {
+  [CheckboxSize.Small]: false,
+  [CheckboxSize.Medium]: false,
+  [CheckboxSize.Compact]: true,
 };
 
 type CheckboxProps = {
@@ -69,7 +79,9 @@ export default function Checkbox({
       </View>
       {label ? (
         <View className="flex-1">
-          <InlineLabelMarkdownWrapper>{label}</InlineLabelMarkdownWrapper>
+          <InlineLabelMarkdownWrapper small={smallLabel[size]}>
+            {label}
+          </InlineLabelMarkdownWrapper>
         </View>
       ) : null}
     </TouchableOpacity>

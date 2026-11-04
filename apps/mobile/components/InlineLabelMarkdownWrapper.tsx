@@ -17,7 +17,8 @@ const InlineLabelMarkdownWrapper: React.FC<{
   children: string;
   /** Mark links that leave the app, as form content does elsewhere. */
   markLinksLeavingApp?: boolean;
-}> = ({ children, markLinksLeavingApp = false }) => {
+  small?: boolean;
+}> = ({ children, markLinksLeavingApp = false, small = false }) => {
   const handleLinkPress = useHandleLinkPress();
   const textStyles = useMarkdownTextStyles();
 
@@ -64,12 +65,15 @@ const InlineLabelMarkdownWrapper: React.FC<{
 
   const markdownStyles = useMemo(
     () => ({
-      body: { ...textStyles.body, color: PALETTE.text },
+      body: {
+        ...(small ? textStyles.bodySmall : textStyles.body),
+        color: PALETTE.text,
+      },
       paragraph: { marginTop: 0, marginBottom: 0 },
       strong: textStyles.strong,
       link: { color: PALETTE.link, textDecorationLine: "underline" as const },
     }),
-    [textStyles.body, textStyles.strong],
+    [small, textStyles.body, textStyles.bodySmall, textStyles.strong],
   );
 
   return (
