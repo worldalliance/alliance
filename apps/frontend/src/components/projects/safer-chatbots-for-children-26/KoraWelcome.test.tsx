@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, jest, test } from "bun:test";
-import { REMIND_ME_KEY, ROTATE_MS, ReviewDashboard } from "./ReviewDashboard";
+import { KoraWelcome, REMIND_ME_KEY, ROTATE_MS } from "./KoraWelcome";
 
 const heading = () => screen.getByRole("heading", { level: 2 }).textContent;
 
@@ -11,7 +11,7 @@ beforeEach(() => {
 afterEach(() => jest.useRealTimers());
 
 test("clicking a category shows it and pauses rotation", () => {
-  render(<ReviewDashboard />);
+  render(<KoraWelcome />);
   expect(heading()).toBe("Privacy and personal data");
 
   act(() => jest.advanceTimersByTime(ROTATE_MS));
@@ -28,7 +28,7 @@ test("clicking a category shows it and pauses rotation", () => {
 });
 
 test("clicking the current category pauses, and again plays", () => {
-  render(<ReviewDashboard />);
+  render(<KoraWelcome />);
   const current = () =>
     screen.getByRole("button", { name: "Privacy and personal data" });
 
@@ -42,14 +42,14 @@ test("clicking the current category pauses, and again plays", () => {
 });
 
 test("only one copy of each category is exposed", () => {
-  render(<ReviewDashboard />);
+  render(<KoraWelcome />);
   expect(
     screen.getAllByRole("button", { name: "Homework honesty" }),
   ).toHaveLength(1);
 });
 
 test("remind me defaults on and remembers being turned off", () => {
-  const { unmount } = render(<ReviewDashboard />);
+  const { unmount } = render(<KoraWelcome />);
   const toggle = screen.getByRole("switch", { name: "Remind me" });
   expect(toggle.getAttribute("aria-checked")).toBe("true");
 
@@ -57,7 +57,7 @@ test("remind me defaults on and remembers being turned off", () => {
   expect(localStorage.getItem(REMIND_ME_KEY)).toBe("false");
   unmount();
 
-  render(<ReviewDashboard />);
+  render(<KoraWelcome />);
   expect(
     screen
       .getByRole("switch", { name: "Remind me" })

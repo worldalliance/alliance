@@ -1,18 +1,20 @@
 ---
 user: Alex Dorey
-task: In /projects/safer-chatbots-for-children, clear out the content and make the footer shrink to 12px but expandable with a click. Then build a light-mode dashboard for the KORA chatbot-safety project that introduces the project and cycles through the risk categories with what good and bad chatbot behavior looks like.
+task: In /projects/safer-chatbots-for-children, clear out the content and make the footer shrink to 12px but expandable with a click. Then build a light-mode welcome page for KORA participants that introduces the project and cycles through the risk categories with what good and bad chatbot behavior looks like.
 ---
 
 # Requirements
 
-- `/projects/safer-chatbots-for-children` renders the site navbar, the review dashboard, and the site footer. The previous hero, KORA sign-in form, participant bar, About sections, timeline, facts, and news collage are removed. (agent-proposed, user-approved)
-- On that page the footer is collapsed to a 12px-tall strip; clicking it expands the full footer. A lucide chevron shows that it toggles: up on the collapsed strip, down at the top of the expanded footer, where clicking collapses it again. (user-originated; collapsing again agent-proposed, implied by "toggleable")
-- The collapsed footer applies to that page only; every other page using the site footer keeps the full footer. (agent-proposed, user-approved)
+- `/projects/safer-chatbots-for-children` shows the welcome page only to a visitor the server reports as a KORA participant (`GET /kora/me` returns a participant), including right after they finish signing up. It is a landing page that welcomes participants, not a dashboard. (user-originated)
+- Every other visitor sees the sign-up page as it is on `main`: the hero with the KORA sign-in form, participant bar, About sections, timeline, facts, and news collage, with the full navbar and footer. (agent-proposed, user-approved)
+- The welcome page renders the site navbar, the welcome content below, and the site footer. (agent-proposed, user-approved)
+- On the welcome page the footer is collapsed to a 12px-tall strip; clicking it expands the full footer. A lucide chevron shows that it toggles: up on the collapsed strip, down at the top of the expanded footer, where clicking collapses it again. (user-originated; collapsing again agent-proposed, implied by "toggleable")
+- The collapsed footer applies to the welcome page only; every other page using the site footer keeps the full footer. (agent-proposed, user-approved)
 
-## Review dashboard
+## Welcome page
 
 - Light mode. (user-originated)
-- On this page the site navbar drops the People, Guide, Progress and Partner links, and with them the phone menu, which held nothing else; "The Alliance" logotype sits at the left, where "People" was, and Log In stays at the right. Other pages keep the full navbar. (user-originated; this-page-only and dropping the empty phone menu are agent decisions)
+- On the welcome page the site navbar drops the People, Guide, Progress and Partner links, and with them the phone menu, which held nothing else; "The Alliance" logotype sits at the left, where "People" was, and Log In stays at the right. Other pages keep the full navbar. (user-originated; this-page-only and dropping the empty phone menu are agent decisions)
 - The h1 reads "Thank you for joining the waitlist". Under it: "Our partner, KoraBench needs human reviewers to review scenarios and chatbot transcripts and provide insight about which chat services are failing to provide our children with proper guidance", with "KoraBench" linking to https://korabench.ai/. The heading and this text sit left-aligned in a block centered on the page, and the text spans the full width of the category chip row below it. (user-originated)
 - A post-it style announcement saying reviews start on November 17th, placed below the rotating category panel, with the "Remind me" toggle beside it; the row is centered and the post-it is tall, like a real sticky note. (user-originated)
 - A "Remind me" toggle, on by default, with small text: "We’ll notify you when the reviews are ready for your input." It is saved in the browser only and sends no notification yet. (wording user-originated; local saving agent-proposed, user-approved)

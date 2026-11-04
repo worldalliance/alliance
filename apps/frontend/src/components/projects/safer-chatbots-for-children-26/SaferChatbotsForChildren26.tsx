@@ -4,7 +4,9 @@ import { SiteFooter } from "../../../site/Footer";
 import { NAV_HEIGHT, Navbar } from "../../../site/Navbar";
 import { SiteRoot } from "../../../site/PageShell";
 import { SITE_COL } from "../../../site/ui";
-import { ReviewDashboard } from "./ReviewDashboard";
+import { KoraSignUpPage } from "./KoraSignUpPage";
+import { KoraWelcome } from "./KoraWelcome";
+import { useKoraParticipant } from "./useKoraParticipant";
 
 export function meta() {
   return socialPreviewMeta({
@@ -16,6 +18,11 @@ export function meta() {
 }
 
 export default function SaferChatbotsForChildren26() {
+  const { query } = useKoraParticipant();
+  return query.data?.participant ? <KoraWelcomePage /> : <KoraSignUpPage />;
+}
+
+function KoraWelcomePage() {
   return (
     <SiteRoot className="flex flex-col bg-white">
       <Navbar hideNavLinks />
@@ -23,7 +30,7 @@ export default function SaferChatbotsForChildren26() {
         className={cn(SITE_COL, "flex-1 pb-16")}
         style={{ paddingTop: `calc(${NAV_HEIGHT}px + 2.5rem)` }}
       >
-        <ReviewDashboard />
+        <KoraWelcome />
       </main>
       <SiteFooter collapsible />
     </SiteRoot>
