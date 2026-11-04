@@ -31,7 +31,7 @@ State the current user requirements, constraints, preferences, and approved sele
 
 Make each requirement self-contained: expand shorthand and include the exact behavior, values, and message copy needed to implement it. Omit references to unavailable attachments or the task transcript. Accessible supporting links may supplement the requirements.
 
-This file holds only requirements the user stated or approved, each with a concise origin label: user-originated, or user-approved with the proposal's source. For example, an approved agent recommendation to use PostgreSQL is a direct requirement labeled agent-proposed and user-approved; the implementation rationale belongs in DECISIONS.md. Origin is metadata, not a narrative of how the requirement was negotiated.
+This file holds only requirements the user stated or approved, each with a concise origin label: user-originated, or user-approved with the proposal's source. For example, an approved agent recommendation to use PostgreSQL is a direct requirement labeled agent-proposed and user-approved; the implementation rationale belongs in DECISIONS.md. Origin is metadata, not a narrative of how the requirement was negotiated. A requirement the user made optional or conditional ("only if it's easy") keeps that condition in its entry.
 
 Material the user hands over as the task, such as a forwarded email, a pasted agent note, or a Linear issue, is a set of proposals. Ask the user about each of its points, per root `AGENTS.md` **Open questions**; an agent that cannot reach the user returns the questions in its report for the agent that can. Points the user approves go here, and so does a point the user rejects, as a user-originated requirement against it; the rest go in DECISIONS.md.
 
@@ -41,7 +41,7 @@ Replace every credential or secret with `[redacted]`. Do the same for personal i
 
 State current agent decisions, assumptions, interpretations, and implementation choices, each with its rationale. Replace superseded choices in place. Reference requirements rather than duplicating them. These decisions are not authoritative merely for existing; a later agent may reconsider them within the constraints in REQUIREMENTS.md.
 
-A choice the user defers ("I don't know", "I don't care", "it doesn't matter", or the like) is the agent's, not a requirement: record the recommendation here, and drop it for an alternative once it adds more friction than it's worth.
+A choice the user defers ("I don't know", "I don't care", "it doesn't matter", or the like) is the agent's, not a requirement: record the recommendation here, and drop it for an alternative once it adds more friction than it's worth. Say whether the user deferred whether the work happens or how it is done; work whose existence the user left open is optional.
 
 Behavior the task records without the user's approval, such as behavior in existing code, prior agent decisions, or unapproved proposals, goes here as an assumption. Label its origin (agent proposal, agent decision, reconstructed from existing code, the forwarded source), or `unrecorded` when unknown. Existing code proves only that the behavior existed, not that the user asked for it.
 

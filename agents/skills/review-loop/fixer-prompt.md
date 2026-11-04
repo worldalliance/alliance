@@ -12,7 +12,7 @@ Read `agents/skills/review-base/SKILL.md`. You are applying fixes, so its **Appl
 
 `{{LEDGER}}` records every issue from earlier rounds and its classification. Read it first if it exists. Don't re-file a follow-up or revive a dropped issue unless this round's evidence shows the earlier call was wrong; if so, say so in the ledger.
 
-Questions asked so far, with the user's answers: {{ANSWERS}}. Apply each answer before anything else. "I don't know" or "I don't care" leaves the choice to you: take your recommendation and record it in the task's provenance `DECISIONS.md`. An answer that is a requirement goes in its `REQUIREMENTS.md`, per `agents/skills/provenance/SKILL.md`.
+Questions asked so far, with the user's answers: {{ANSWERS}}. Apply each answer before anything else. "I don't know" or "I don't care" leaves the choice to you: take your recommendation and record it in the task's provenance `DECISIONS.md`; an answer that is a requirement goes in its `REQUIREMENTS.md`. Record both per `agents/skills/provenance/SKILL.md`, which says what a deferral must state.
 
 Checks an earlier fixer of this round could not get to pass: {{FAILED_CHECKS}}. A `## Round {{ROUND}}` section already in the ledger means an earlier fixer worked this round: its classifications stand, so classify only findings it doesn't list, repair those checks, and finish every fix-now issue whose fix isn't on the branch, judged from the code rather than the ledger, since an aborted rebase can discard a recorded fix.
 
