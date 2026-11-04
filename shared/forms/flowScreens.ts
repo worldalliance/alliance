@@ -1,92 +1,48 @@
-import {
-  type DisplayKind,
-  type HeaderBlock,
-} from "@alliance/common/forms/display-blocks";
+import { type HeaderBlock } from "@alliance/common/forms/display-blocks";
 import {
   isQuestionField,
   type FormSchema,
   type PageItem,
 } from "@alliance/common/forms/form-schema";
 import { interpolateDisplayBlock } from "@alliance/common/forms/variable-interpolation";
+import { withCount } from "@alliance/common/plural";
 import { resolveDisplayBlockForUser } from "../formrenderer";
 import { taskFlowFallbackTitle } from "../lib/copy";
 import { type FormVisibility } from "../useFormRenderer";
 
-const MAX_INPUTS_PER_SCREEN = 2;
-
-const isHeader = (element: PageItem) =>
+const isHeader = (element: PageItem): element is HeaderBlock =>
   !isQuestionField(element) && element.kind === "header";
 
 export type FlowScreen = {
   pageIndex: number;
-  /** The header the screen opens with, or continues from when the input cap split it. */
+  /** The page's first header block, shown as the screen's title. */
   heading: HeaderBlock | null;
   elements: PageItem[];
 };
 
-/**
- * Splits each page into screens of the full-screen task flow: a new screen at
- * every page and every header block, and at most two inputs per screen.
- * Blocks after a screen's last allowed input move on with the next input,
- * since they introduce it. Headers stacked directly under a screen's opening
- * header stay on that screen, and headers that end a page join the page's
- * last screen, so no header is lost.
- */
+/** One screen of the full-screen task flow per form page. */
 export function buildFlowScreens(schema: FormSchema): FlowScreen[] {
-  const screens: FlowScreen[] = [];
-
-  schema.pages.forEach((page, pageIndex) => {
-    let heading: HeaderBlock | null = null;
-    let current: PageItem[] = [];
-    let inputs = 0;
-    let carried: PageItem[] = [];
-
-    const flush = () => {
-      if (current.length > 0) {
-        screens.push({ pageIndex, heading, elements: current });
-      }
-      current = [];
-      inputs = 0;
+  return schema.pages.map((page, pageIndex) => {
+    const heading = page.fields.find(isHeader) ?? null;
+    return {
+      pageIndex,
+      heading,
+      elements: page.fields.filter((element) => element !== heading),
     };
-
-    for (const element of page.fields) {
-      if (isQuestionField(element)) {
-        if (inputs === MAX_INPUTS_PER_SCREEN) {
-          flush();
-          current = carried;
-          carried = [];
-        }
-        current.push(element);
-        inputs += 1;
-      } else if (element.kind === "header") {
-        if (heading !== null && current.every(isHeader)) {
-          current.push(element);
-          continue;
-        }
-        current.push(...carried);
-        carried = [];
-        flush();
-        heading = element;
-      } else if (inputs === MAX_INPUTS_PER_SCREEN) {
-        carried.push(element);
-      } else {
-        current.push(element);
-      }
-    }
-    current.push(...carried);
-    if (heading !== null && current.every(isHeader)) {
-      const last = screens.at(-1);
-      if (last?.pageIndex === pageIndex) {
-        last.elements.push(heading, ...current);
-        current = [];
-      } else if (current.length === 0) {
-        screens.push({ pageIndex, heading, elements: [] });
-      }
-    }
-    flush();
   });
+}
 
-  return screens;
+/** Drops each header block whose section, the blocks up to the next header, has blocks and shows none of them. */
+export function withoutEmptySections(
+  elements: PageItem[],
+  isElementVisible: (element: PageItem) => boolean,
+): PageItem[] {
+  return elements.filter((element, index) => {
+    if (!isHeader(element)) return true;
+    const end = elements.findIndex((next, i) => i > index && isHeader(next));
+    const section = elements.slice(index + 1, end === -1 ? undefined : end);
+    return section.length === 0 || section.some(isElementVisible);
+  });
 }
 
 export function visibleFlowScreenIndices(params: {
@@ -99,26 +55,12 @@ export function visibleFlowScreenIndices(params: {
     visiblePageIndices.includes(screen.pageIndex) &&
     (screen.elements.length === 0
       ? screen.heading !== null && isElementVisible(screen.heading)
-      : screen.elements.some(isElementVisible))
+      : withoutEmptySections(screen.elements, isElementVisible).some(
+          isElementVisible,
+        ))
       ? [index]
       : [],
   );
-}
-
-/** The first visible screen when it asks for nothing, which the intro shows instead. */
-export function backgroundScreenIndex(params: {
-  screens: FlowScreen[];
-  visibleIndices: number[];
-  isElementVisible: (element: PageItem) => boolean;
-}): number | null {
-  const { screens, visibleIndices, isElementVisible } = params;
-  const first = visibleIndices[0];
-  if (first === undefined) return null;
-  return screens[first].elements.some(
-    (element) => isQuestionField(element) && isElementVisible(element),
-  )
-    ? null
-    : first;
 }
 
 export function flowResumeIndex(params: {
@@ -134,67 +76,87 @@ export function flowResumeIndex(params: {
   );
 }
 
+/** The share of visible screens finished before `screenIndex`, so it fills only on completion. */
 export function flowProgress(params: {
   visibleIndices: number[];
   screenIndex: number;
 }): number {
   const { visibleIndices, screenIndex } = params;
   if (visibleIndices.length === 0) return 0;
-  const reached = visibleIndices.filter((i) => i <= screenIndex).length;
-  return (reached / visibleIndices.length) * 100;
+  const finished = visibleIndices.filter((i) => i < screenIndex).length;
+  return (finished / visibleIndices.length) * 100;
 }
 
-/** The screen's opening header, or a generic title when it has none showing. */
+/** The form state a screen's title reads, which both platforms' states satisfy. */
+export type FlowTitleFormState = Pick<
+  FormVisibility,
+  "isElementCurrentlyVisible" | "variableValues"
+> & { activeUserKey: string | undefined };
+
+/** The screen's opening header, or a generic title when no header is showing. */
 export function flowScreenTitle(params: {
   screen: FlowScreen;
-  activeUserKey: string | undefined;
-  isElementCurrentlyVisible: FormVisibility["isElementCurrentlyVisible"];
-  variableValues: FormVisibility["variableValues"];
+  form: FlowTitleFormState;
 }): string {
-  const { screen, activeUserKey, isElementCurrentlyVisible, variableValues } =
-    params;
+  const { screen, form } = params;
+  const { activeUserKey, isElementCurrentlyVisible, variableValues } = form;
   const heading =
     screen.heading && resolveDisplayBlockForUser(screen.heading, activeUserKey);
   if (heading && isElementCurrentlyVisible(heading)) {
     return interpolateDisplayBlock(heading, variableValues).text;
   }
-  return screen.elements.some(
-    (element) => isQuestionField(element) && isElementCurrentlyVisible(element),
-  )
-    ? taskFlowFallbackTitle.questions
-    : taskFlowFallbackTitle.reading;
+  return fallbackFlowTitle(
+    screen.elements.some(
+      (element) =>
+        isQuestionField(element) && isElementCurrentlyVisible(element),
+    ),
+  );
+}
+
+const fallbackFlowTitle = (hasQuestion: boolean) =>
+  hasQuestion ? taskFlowFallbackTitle.questions : taskFlowFallbackTitle.reading;
+
+const ADD_A_HEADER = "Open the page with a level-1 header in active voice.";
+
+const MAX_INPUTS_PER_STEP = 2;
+
+/** How a form page shows in the task flow, assuming every page and element shows. */
+export type FlowStepPreview = {
+  label: string;
+  warnings: string[];
+};
+
+/** Each page's step in the task flow, for authors; null for an empty page, which never shows. */
+export function flowStepPreviews(
+  schema: FormSchema,
+): (FlowStepPreview | null)[] {
+  const screens = buildFlowScreens(schema);
+  const shows = (screen: FlowScreen) =>
+    screen.heading !== null || screen.elements.length > 0;
+  let step = 0;
+  return screens.map((screen) => {
+    if (!shows(screen)) return null;
+    const inputs = screen.elements.filter(isQuestionField).length;
+    step += 1;
+    const fallback = fallbackFlowTitle(inputs > 0);
+    const warnings = [
+      ...(screen.heading === null
+        ? [
+            `No header block, so this step is titled "${fallback}". ${ADD_A_HEADER}`,
+          ]
+        : []),
+      ...(inputs > MAX_INPUTS_PER_STEP
+        ? [
+            `${withCount(inputs, "question")} on one step. Keep each page to ${MAX_INPUTS_PER_STEP} or fewer.`,
+          ]
+        : []),
+    ];
+    return {
+      label: `Step ${step}: ${screen.heading?.text ?? fallback}`,
+      warnings,
+    };
+  });
 }
 
 export const missingHeaderWarning = (screen: FlowScreen, title: string) =>
-  `Task flow: a screen on page ${screen.pageIndex + 1} has no header (first element: ${screen.elements[0]?.id}), so it shows "${title}". Open it with a level-1 header in active voice.`;
-
-const IS_MEDIA: Record<DisplayKind, boolean> = {
-  header: false,
-  text: false,
-  label: false,
-  divider: false,
-  spacer: false,
-  html: false,
-  images: true,
-  video: true,
-  quote: false,
-  biglink: false,
-  copytext: false,
-  previousAnswer: false,
-  userLocation: false,
-  chatTranscript: false,
-  accordion: false,
-};
-
-/** The background page shows the opening media above the opening text. */
-export function splitBackground(background: PageItem[]): {
-  media: PageItem[];
-  reading: PageItem[];
-} {
-  const isMedia = (element: PageItem) =>
-    !isQuestionField(element) && IS_MEDIA[element.kind];
-  return {
-    media: background.filter(isMedia),
-    reading: background.filter((element) => !isMedia(element)),
-  };
-}
+  `Task flow: page ${screen.pageIndex + 1} has no header (first element: ${screen.elements[0]?.id}), so it shows "${title}". ${ADD_A_HEADER}`;

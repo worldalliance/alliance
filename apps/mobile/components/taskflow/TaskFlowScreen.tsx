@@ -5,44 +5,26 @@ import {
 } from "@alliance/shared/forms/flowScreens";
 import { FlowButtonKind } from "@alliance/shared/forms/flowStyle";
 import { draftSaveFailed, taskFlow } from "@alliance/shared/lib/copy";
-import { X } from "lucide-react-native";
+import { ArrowLeft, ArrowRight, Check } from "lucide-react-native";
 import { useEffect, type ReactNode } from "react";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "../../lib/style/colors";
 import { FormElements } from "../forms/FormElements";
 import { StickyAccordionScrollView } from "../forms/StickyAccordion";
 import { type MobileFormState } from "../forms/useMobileFormState";
-import Text from "../system/Text";
+import Text, { FontWeight } from "../system/Text";
 import FlowButton from "./FlowButton";
 
-const FOOTER_HEIGHT = 120;
-
-export function TaskFlowCloseButton({
-  onPress,
-  disabled,
-}: {
-  onPress: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <FlowButton
-      kind={FlowButtonKind.Icon}
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityLabel={taskFlow.closeTask}
-      hitSlop={8}
-    >
-      <X size={20} color={colors.text.icon} />
-    </FlowButton>
-  );
-}
+// Breathing room between the focused field and the keyboard, which now
+// covers the footer rather than lifting it.
+const FIELD_KEYBOARD_GAP = 16;
 
 export function TaskFlowTitle({ children }: { children: ReactNode }) {
   return (
     <Text
       accessibilityRole="header"
       className="text-3xl text-zinc-900 mt-2 mb-4"
+      weight={FontWeight.Semibold}
       selectable
     >
       {children}
@@ -51,35 +33,29 @@ export function TaskFlowTitle({ children }: { children: ReactNode }) {
 }
 
 export function TaskFlowPage({
-  headerEnd,
-  onClose,
-  closeDisabled,
   bottomOffset,
   footer,
   children,
 }: {
-  headerEnd?: ReactNode;
-  onClose: () => void;
-  closeDisabled?: boolean;
   bottomOffset?: number;
   footer?: ReactNode;
   children: ReactNode;
 }) {
   const insets = useSafeAreaInsets();
   return (
-    <View className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
-      <View className="flex-row items-center justify-between px-4 py-2">
-        <TaskFlowCloseButton onPress={onClose} disabled={closeDisabled} />
-        {headerEnd}
-      </View>
+    <View className="flex-1 bg-white">
       <StickyAccordionScrollView
         bottomOffset={bottomOffset}
+        keyboardDismissMode="interactive"
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
       >
         {children}
       </StickyAccordionScrollView>
       {footer ? (
-        <View className="px-4 py-3 gap-y-3 border-t border-zinc-100">
+        <View
+          className="px-4 pt-3 gap-y-3 border-t border-zinc-100"
+          style={{ paddingBottom: insets.bottom + 12 }}
+        >
           {footer}
         </View>
       ) : null}
@@ -92,8 +68,8 @@ export default function TaskFlowScreen({
   screen,
   nextReady,
   nextLabel,
+  nextIsLast,
   error,
-  onClose,
   onBack,
   onNext,
 }: {
@@ -101,16 +77,14 @@ export default function TaskFlowScreen({
   screen: FlowScreen;
   nextReady: boolean;
   nextLabel: string;
+  nextIsLast: boolean;
   error: string | null;
-  onClose: () => void;
   onBack: () => void;
   onNext: () => void;
 }) {
   const title = flowScreenTitle({
     screen,
-    activeUserKey: form.activeUserKey,
-    isElementCurrentlyVisible: form.isElementCurrentlyVisible,
-    variableValues: form.variableValues,
+    form,
   });
 
   useEffect(() => {
@@ -121,9 +95,7 @@ export default function TaskFlowScreen({
 
   return (
     <TaskFlowPage
-      onClose={onClose}
-      closeDisabled={form.submitting}
-      bottomOffset={FOOTER_HEIGHT}
+      bottomOffset={FIELD_KEYBOARD_GAP}
       footer={
         <>
           {form.saveFailed ? (
@@ -137,6 +109,7 @@ export default function TaskFlowScreen({
               className="flex-1"
               disabled={form.submitting}
               title={taskFlow.back}
+              iconLeft={ArrowLeft}
             />
             <FlowButton
               kind={FlowButtonKind.Primary}
@@ -145,6 +118,7 @@ export default function TaskFlowScreen({
               loading={form.submitting}
               disabled={form.imageUpload.uploadingAny}
               title={nextLabel}
+              iconRight={nextIsLast ? Check : ArrowRight}
             />
           </View>
         </>

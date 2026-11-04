@@ -16,25 +16,23 @@ import { taskFlow } from "../lib/copy";
 import { useMarkTaskCompleting } from "../lib/TaskFlowCompletionContext";
 import { type FormVisibility } from "../useFormRenderer";
 import {
-  backgroundScreenIndex,
   buildFlowScreens,
   flowProgress,
   flowResumeIndex,
   visibleFlowScreenIndices,
+  withoutEmptySections,
 } from "./flowScreens";
 import { type SubmitOutcome } from "./submitOutcome";
 import { type FlowPosition } from "./useFlowPosition";
 
 export enum FlowStage {
   Closed = "closed",
-  Background = "background",
   Screens = "screens",
   Complete = "complete",
 }
 
 const IS_OPEN: Record<FlowStage, boolean> = {
   [FlowStage.Closed]: false,
-  [FlowStage.Background]: true,
   [FlowStage.Screens]: true,
   [FlowStage.Complete]: false,
 };
@@ -57,6 +55,8 @@ export const TASK_FLOW_MODE_RULES: Record<
     /** The member can withdraw from the action. */
     withdraws: boolean;
     beginLabel: string;
+    /** The begin label once the member has started. */
+    resumeLabel: string;
     lastLabel: string;
   }
 > = {
@@ -65,6 +65,7 @@ export const TASK_FLOW_MODE_RULES: Record<
     readOnly: false,
     withdraws: true,
     beginLabel: taskFlow.begin,
+    resumeLabel: taskFlow.continue,
     lastLabel: taskFlow.submit,
   },
   [TaskFlowMode.Preview]: {
@@ -72,6 +73,7 @@ export const TASK_FLOW_MODE_RULES: Record<
     readOnly: false,
     withdraws: false,
     beginLabel: taskFlow.begin,
+    resumeLabel: taskFlow.continue,
     lastLabel: taskFlow.submit,
   },
   [TaskFlowMode.ReadOnly]: {
@@ -79,6 +81,7 @@ export const TASK_FLOW_MODE_RULES: Record<
     readOnly: true,
     withdraws: false,
     beginLabel: taskFlow.view,
+    resumeLabel: taskFlow.view,
     lastLabel: taskFlow.done,
   },
 };
@@ -121,8 +124,7 @@ export type TaskFlowFormState = Pick<
 
 /**
  * The full-screen task flow's stage and screen, over the form's own answer
- * state. Screens come from `buildFlowScreens`; the first one becomes the
- * background page when it asks for nothing.
+ * state. Screens come from `buildFlowScreens`, one per form page.
  */
 export function useTaskFlow(params: {
   actionId: number;
@@ -168,24 +170,20 @@ export function useTaskFlow(params: {
     [screens, form.visiblePageIndices, isElementVisible],
   );
 
-  const backgroundIndex = backgroundScreenIndex({
-    screens,
-    visibleIndices,
-    isElementVisible,
-  });
-  const flowIndices = visibleIndices.filter((i) => i !== backgroundIndex);
-  const backgroundScreen =
-    backgroundIndex === null ? null : screens[backgroundIndex];
-  const background = backgroundScreen
-    ? [
-        ...(backgroundScreen.heading ? [backgroundScreen.heading] : []),
-        ...backgroundScreen.elements,
-      ]
-    : [];
-
   const screen = screens[screenIndex];
-  const nextIndex = getNextVisiblePageIndex(flowIndices, screenIndex);
-  const previousIndex = getPreviousVisiblePageIndex(flowIndices, screenIndex);
+  const visibleScreen = useMemo(
+    () =>
+      screen && {
+        ...screen,
+        elements: withoutEmptySections(screen.elements, isElementVisible),
+      },
+    [screen, isElementVisible],
+  );
+  const nextIndex = getNextVisiblePageIndex(visibleIndices, screenIndex);
+  const previousIndex = getPreviousVisiblePageIndex(
+    visibleIndices,
+    screenIndex,
+  );
   const screenFields = screen?.elements.filter(isQuestionField) ?? [];
   const nextReady =
     rules.readOnly ||
@@ -196,13 +194,22 @@ export function useTaskFlow(params: {
           form.validateFieldValue(field, form.effectiveFormData[field.id]) ===
             null,
       ));
-  const progress = flowProgress({
-    visibleIndices,
-    screenIndex:
-      stage === FlowStage.Background && backgroundIndex !== null
-        ? backgroundIndex
-        : screenIndex,
-  });
+  // Both set on each move rather than derived, so answering doesn't move the
+  // bar or take the auto-save note away mid-step.
+  const [pastFirstStep, setPastFirstStep] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const showProgressAt = (index: number, { forward }: { forward: boolean }) => {
+    // Before visibility settles the step list is still missing pages, and a
+    // share written from it would stick; the effect below writes it instead.
+    if (!form.visibilitySettled) return;
+    const reached = flowProgress({ visibleIndices, screenIndex: index });
+    setProgress((shown) => (forward ? Math.max(shown, reached) : reached));
+  };
+
+  useEffect(() => {
+    if (!form.visibilitySettled || !IS_OPEN[stage]) return;
+    setProgress(flowProgress({ visibleIndices, screenIndex }));
+  }, [form.visibilitySettled]);
 
   // Back and close count as moves, so a step awaited before them doesn't
   // carry the member anywhere afterwards.
@@ -212,17 +219,13 @@ export function useTaskFlow(params: {
     setStage(FlowStage.Closed);
   }, []);
 
-  const goTo = (index: number) => {
+  const goTo = (index: number, { forward }: { forward: boolean }) => {
     setScreenIndex(index);
+    setPastFirstStep(visibleIndices.indexOf(index) > 0);
     form.setCurrentPageIndex(screens[index].pageIndex);
     position.save(index);
+    showProgressAt(index, { forward });
     setStage(FlowStage.Screens);
-  };
-
-  const showBackground = () => {
-    if (backgroundIndex === null) return;
-    position.save(backgroundIndex);
-    setStage(FlowStage.Background);
   };
 
   const complete = () => {
@@ -253,10 +256,10 @@ export function useTaskFlow(params: {
         return;
       }
       if (moves.current !== since) return;
-      const invalidScreen = flowIndices.find(
+      const invalidScreen = visibleIndices.find(
         (i) => screens[i].pageIndex === outcome.firstInvalidPageIndex,
       );
-      if (invalidScreen !== undefined) goTo(invalidScreen);
+      if (invalidScreen !== undefined) goTo(invalidScreen, { forward: true });
     } finally {
       setSubmitting(false);
     }
@@ -273,18 +276,6 @@ export function useTaskFlow(params: {
     }
   };
 
-  /** Leaves the background page for the screen the draft reached. */
-  const start = () =>
-    advance(async () => {
-      const resumeAt = flowResumeIndex({
-        screens,
-        visibleIndices: flowIndices,
-        pageIndex: form.currentPageIndex,
-      });
-      if (resumeAt === null) await submit();
-      else goTo(resumeAt);
-    });
-
   /** Opens the flow where the member left off; it never submits on its own. */
   const begin = () => {
     if (!position.loaded) {
@@ -299,8 +290,7 @@ export function useTaskFlow(params: {
       screens[saved] !== undefined &&
       (visibleIndices.includes(saved) || !form.visibilitySettled)
     ) {
-      if (saved === backgroundIndex) showBackground();
-      else goTo(saved);
+      goTo(saved, { forward: false });
       return;
     }
     // The draft's page may not show as visible yet either, and the fallback
@@ -311,21 +301,14 @@ export function useTaskFlow(params: {
     }
     const resumeAt = flowResumeIndex({
       screens,
-      visibleIndices: flowIndices,
+      visibleIndices,
       pageIndex: form.currentPageIndex,
     });
-    if (
-      backgroundScreen &&
-      (resumeAt === null || form.currentPageIndex <= backgroundScreen.pageIndex)
-    ) {
-      showBackground();
-      return;
-    }
     if (resumeAt === null) {
       console.error("Task flow has no visible screen to open");
       return;
     }
-    goTo(resumeAt);
+    goTo(resumeAt, { forward: false });
   };
 
   const [beginOnSettle, setBeginOnSettle] = useState(false);
@@ -337,35 +320,24 @@ export function useTaskFlow(params: {
 
   const back = () => {
     moves.current += 1;
-    if (previousIndex !== null) goTo(previousIndex);
-    else if (backgroundScreen) showBackground();
+    if (previousIndex !== null) goTo(previousIndex, { forward: false });
     else onExit();
   };
 
   // `begin` can open the flow before visibility settles; settling, or a later
-  // answer, may hide the open screen or change which screen is the background.
+  // answer, may hide the open screen.
   const stranded =
     form.visibilitySettled &&
-    ((stage === FlowStage.Screens && !flowIndices.includes(screenIndex)) ||
-      (stage === FlowStage.Background && backgroundIndex === null));
+    stage === FlowStage.Screens &&
+    !visibleIndices.includes(screenIndex);
   useEffect(() => {
     if (!stranded) return;
-    if (stage === FlowStage.Screens && screenIndex === backgroundIndex) {
-      showBackground();
-      return;
-    }
-    const fallback =
-      stage === FlowStage.Background
-        ? flowResumeIndex({
-            screens,
-            visibleIndices: flowIndices,
-            pageIndex: form.currentPageIndex,
-          })
-        : getFallbackVisiblePageIndex(flowIndices, screenIndex);
-    if (fallback !== null) goTo(fallback);
-    else if (backgroundScreen) showBackground();
+    const fallback = getFallbackVisiblePageIndex(visibleIndices, screenIndex);
+    if (fallback !== null) goTo(fallback, { forward: true });
     else onExit();
   }, [stranded]);
+
+  const nextIsLast = nextIndex === null;
 
   const next = () =>
     advance(async () => {
@@ -375,23 +347,27 @@ export function useTaskFlow(params: {
       }
       if (moves.current !== since) return;
       if (nextIndex === null) await submit();
-      else goTo(nextIndex);
+      else goTo(nextIndex, { forward: true });
     });
 
   return {
     stage,
     open: IS_OPEN[stage],
-    screen,
+    screen: visibleScreen,
     screenIndex,
-    background,
-    nextLabel: nextIndex !== null ? taskFlow.next : rules.lastLabel,
-    startLabel: flowIndices.length === 0 ? rules.lastLabel : taskFlow.next,
-    beginLabel: rules.beginLabel,
+    progressSaved:
+      rules.records && stage === FlowStage.Screens && pastFirstStep,
+    nextLabel: nextIsLast ? rules.lastLabel : taskFlow.next,
+    nextIsLast,
+    beginLabel:
+      position.screenIndex !== null ||
+      form.currentPageIndex > (form.visiblePageIndices[0] ?? 0)
+        ? rules.resumeLabel
+        : rules.beginLabel,
     nextReady,
     progress,
     submittedAnswers,
     begin,
-    start,
     back,
     next,
     close,

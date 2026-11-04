@@ -104,6 +104,7 @@
 }
 
 html {
+  accent-color: var(--color-green);
   overflow-x: hidden;
   font-size: 15px;
   background-color: var(--color-page);
@@ -274,8 +275,8 @@ hr {
   }
 }
 
-html[data-immersive],
-html[data-immersive] body {
+html[data-flow-panel],
+html[data-flow-panel] body {
   overflow: hidden;
   scrollbar-gutter: auto;
 }

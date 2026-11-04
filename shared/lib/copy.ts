@@ -322,6 +322,8 @@ export const cancelAllImageUploads = "Stop uploading";
 
 export const withdrawFromAction = "Withdraw from action";
 
+export const withdrawalOptions = "Withdrawal options";
+
 export const imageUploadFailed = "Failed to upload image";
 
 export const draftSaveFailed =
@@ -352,19 +354,29 @@ export const taskFlowFallbackTitle = {
 
 export const taskFlow = {
   begin: "Begin",
+  continue: "Continue",
   view: "View task",
   next: "Next",
   back: "Back",
-  submit: "Submit",
+  submit: "Complete",
   done: "Done",
-  background: "Project background",
+  progress: "Task progress",
   complete: "Task complete!",
   completeUpdate:
     "We'll share a progress update on this project with all members in the coming weeks.",
   closeTask: "Close task",
+  taskDetails: "Details",
+  viewTasks: "View tasks",
+  progressSaved: "Progress auto-saved",
   inviteFriend: "Invite a friend",
+  contributors: "Contributors",
   staff: "Staff",
   expert: "Expert",
+} as const;
+
+export const linkHints = {
+  opensInNewTab: "opens in new tab",
+  opensInBrowser: "Opens in your browser",
 } as const;
 
 export const outputFieldPublicToggle = {

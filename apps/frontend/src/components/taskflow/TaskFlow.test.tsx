@@ -1,77 +1,111 @@
-import { useActionHandlers } from "@alliance/shared/lib/actionPage";
-import { actionStore } from "@alliance/shared/lib/actionStore";
 import {
-  hasViewerCompletedAction,
-  withOptimisticRelation,
-} from "@alliance/shared/lib/actionUtils";
-import { taskFlow, withdrawFromAction } from "@alliance/shared/lib/copy";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
+  draftSaveFailed,
+  taskFlow,
+  taskFlowFallbackTitle,
+  withdrawFromAction,
+} from "@alliance/shared/lib/copy";
 import { makeAction } from "@alliance/shared/lib/testFixtures";
-import { seedActions } from "@alliance/shared/lib/testing/seedActions";
-import { QueryClient } from "@tanstack/react-query";
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
-import { useState } from "react";
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import { useState, type ReactNode } from "react";
 import { useLocation } from "react-router";
 import ActionTaskPanelForm from "../ActionTaskPanelForm";
+import { CardMenuSlotContext } from "./CardMenuSlot";
 import {
   action,
-  backgroundOnlySchema,
   CLOSE_TIMEOUT,
   holdSubmit,
   navigate,
   openFirstQuestionScreen,
+  readingOnlySchema,
   renderFlow,
   serveTaskFlow,
+  setDraftSaveStatus,
   setServedSchema,
-  setServerAction,
   setSubmitStatus,
-  submitFlow,
+  taskSchema,
 } from "./TaskFlow.testing";
 
 serveTaskFlow();
 
-/** The action page's panel: the flow until the action reads as completed. */
-function ActionPagePanel() {
-  const { action: pageAction, onCompleteAction } = useActionHandlers(
-    1,
-    true,
-    () => {},
-  );
-  if (!pageAction) return null;
-  if (hasViewerCompletedAction(pageAction)) return <p>Completed panel</p>;
-  return (
-    <ActionTaskPanelForm
-      taskFormId={9}
-      onCompleteAction={() => void onCompleteAction()}
-      onFormStarted={() => {}}
-      onDeadlinePassed={() => {}}
-      action={pageAction}
-    />
-  );
-}
-
-it("opens the project background, then screens of at most two questions", async () => {
+it("opens one screen per page, starting on the first", async () => {
   renderFlow();
 
   fireEvent.click(await screen.findByRole("button", { name: taskFlow.begin }));
 
   expect(
-    await screen.findByRole("heading", { name: taskFlow.background }),
+    await screen.findByRole("heading", {
+      name: taskFlowFallbackTitle.reading,
+    }),
   ).toBeTruthy();
   expect(screen.getByText("Why this project matters")).toBeTruthy();
-  expect(screen.getByText("Sam Reviewer")).toBeTruthy();
-  expect(screen.getByText("Expert")).toBeTruthy();
+  expect(screen.queryByText("Sam Reviewer")).toBeNull();
+  expect(screen.queryByText(taskFlow.progressSaved)).toBeNull();
 
-  fireEvent.click(screen.getByRole("button", { name: "Next" }));
+  fireEvent.click(screen.getByRole("button", { name: taskFlow.next }));
   await screen.findByRole("heading", { name: "Rate the chatbot" });
   expect(screen.getAllByRole("textbox")).toHaveLength(2);
+  expect(screen.getByText(taskFlow.progressSaved)).toBeTruthy();
+});
+
+it("says progress is saved from the second step on", async () => {
+  setServedSchema({ ...taskSchema, pages: taskSchema.pages.slice(1) });
+  renderFlow();
+
+  fireEvent.click(await screen.findByRole("button", { name: taskFlow.begin }));
+  fireEvent.change(
+    await screen.findByRole("textbox", { name: /First impression/ }),
+    { target: { value: "Helpful" } },
+  );
+  expect(screen.queryByText(taskFlow.progressSaved)).toBeNull();
+
+  fireEvent.click(screen.getByRole("button", { name: taskFlow.next }));
+  await screen.findByRole("textbox", { name: /Anything else/ });
+  expect(screen.getByText(taskFlow.progressSaved)).toBeTruthy();
+});
+
+it("puts the progress bar above the close button", async () => {
+  renderFlow();
+  await openFirstQuestionScreen();
+
+  const inFlow = [...screen.getByRole("dialog").querySelectorAll("*")];
+  const bar = screen.getByRole("progressbar", { name: taskFlow.progress });
+  const close = screen.getByRole("button", { name: taskFlow.closeTask });
+  expect(inFlow.indexOf(bar)).toBeLessThan(inFlow.indexOf(close));
+  expect(inFlow.indexOf(bar)).toBeGreaterThanOrEqual(0);
+});
+
+it("drops the auto-saved note while the draft can't reach the account", async () => {
+  setDraftSaveStatus(500);
+  renderFlow();
+  await openFirstQuestionScreen();
+
+  fireEvent.change(screen.getByRole("textbox", { name: /First impression/ }), {
+    target: { value: "Helpful" },
+  });
+  expect(
+    await screen.findByText(draftSaveFailed, {}, { timeout: 4000 }),
+  ).toBeTruthy();
+  expect(screen.queryByText(taskFlow.progressSaved)).toBeNull();
+});
+
+it("puts a right arrow on the button that opens the flow", async () => {
+  renderFlow();
+
+  const begin = await screen.findByRole("button", { name: taskFlow.begin });
+  expect(begin.querySelector("svg.lucide-arrow-right")).toBeTruthy();
 });
 
 it("keeps the member on a screen until its required answers are in", async () => {
   renderFlow();
   await openFirstQuestionScreen();
 
-  fireEvent.click(screen.getByRole("button", { name: "Next" }));
+  fireEvent.click(screen.getByRole("button", { name: taskFlow.next }));
   await waitFor(() =>
     expect(screen.getByRole("textbox", { name: /First impression/ })).toBe(
       document.activeElement,
@@ -82,7 +116,7 @@ it("keeps the member on a screen until its required answers are in", async () =>
   fireEvent.change(screen.getByRole("textbox", { name: /First impression/ }), {
     target: { value: "Helpful" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Next" }));
+  fireEvent.click(screen.getByRole("button", { name: taskFlow.next }));
   await waitFor(() =>
     expect(screen.getByRole("textbox", { name: /Anything else/ })).toBeTruthy(),
   );
@@ -96,18 +130,18 @@ it("stays on the last screen with the error when the submit fails", async () => 
   fireEvent.change(screen.getByRole("textbox", { name: /First impression/ }), {
     target: { value: "Helpful" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Next" }));
-  fireEvent.click(await screen.findByRole("button", { name: "Submit" }));
+  fireEvent.click(screen.getByRole("button", { name: taskFlow.next }));
+  fireEvent.click(await screen.findByRole("button", { name: taskFlow.submit }));
 
   expect(await screen.findByText("Failed to submit action.")).toBeTruthy();
-  expect(screen.getByRole("button", { name: "Submit" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: taskFlow.submit })).toBeTruthy();
   expect(screen.queryByRole("heading", { name: taskFlow.complete })).toBeNull();
   expect(onCompleteAction).not.toHaveBeenCalled();
 });
 
 it("shows why a broken form can't open in place of its screens", async () => {
   setServedSchema({
-    ...backgroundOnlySchema,
+    ...readingOnlySchema,
     variables: [{ name: "total", inputs: {}, formula: "this" }],
   });
   renderFlow();
@@ -115,7 +149,7 @@ it("shows why a broken form can't open in place of its screens", async () => {
 
   expect(await screen.findByText("This form can't be displayed")).toBeTruthy();
   expect(
-    screen.queryByRole("heading", { name: taskFlow.background }),
+    screen.queryByRole("heading", { name: taskFlowFallbackTitle.reading }),
   ).toBeNull();
 });
 
@@ -126,8 +160,8 @@ it("stays open while the submit is in flight", async () => {
   fireEvent.change(screen.getByRole("textbox", { name: /First impression/ }), {
     target: { value: "Helpful" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Next" }));
-  fireEvent.click(await screen.findByRole("button", { name: "Submit" }));
+  fireEvent.click(screen.getByRole("button", { name: taskFlow.next }));
+  fireEvent.click(await screen.findByRole("button", { name: taskFlow.submit }));
 
   const close = screen.getByRole("button", { name: taskFlow.closeTask });
   await waitFor(() => expect(close).toHaveProperty("disabled", true));
@@ -137,112 +171,6 @@ it("stays open while the submit is in flight", async () => {
   expect(
     await screen.findByRole("heading", { name: taskFlow.complete }),
   ).toBeTruthy();
-});
-
-it("completes the action only once the member closes the completion card", async () => {
-  const onCompleteAction = jest.fn();
-  const queryClient = new QueryClient();
-  seedActions(queryClient, [makeAction({ id: 1 })]);
-  renderFlow({ onCompleteAction, queryClient });
-  await submitFlow();
-
-  expect(onCompleteAction).not.toHaveBeenCalled();
-  expect(actionStore(queryClient).get(1)?.viewer?.relation).not.toBe(
-    "completed",
-  );
-
-  fireEvent.click(screen.getByRole("button", { name: taskFlow.closeTask }));
-
-  await waitFor(() => expect(onCompleteAction).toHaveBeenCalledTimes(1), {
-    timeout: CLOSE_TIMEOUT,
-  });
-  expect(actionStore(queryClient).get(1)?.viewer?.relation).toBe("completed");
-});
-
-it("keeps the completion card up when a refetch reports the action completed", async () => {
-  const queryClient = new QueryClient();
-  renderFlow({ queryClient, page: <ActionPagePanel /> });
-  await submitFlow();
-
-  setServerAction(withOptimisticRelation(action, "completed"));
-  await act(async () => {
-    await queryClient.refetchQueries({ queryKey: queryKeys.action(1) });
-    await new Promise((resolve) => setTimeout(resolve, 10));
-  });
-
-  expect(screen.getByRole("heading", { name: taskFlow.complete })).toBeTruthy();
-  expect(screen.queryByText("Completed panel")).toBeNull();
-
-  fireEvent.click(screen.getByRole("button", { name: taskFlow.closeTask }));
-  expect(
-    await screen.findByText("Completed panel", {}, { timeout: CLOSE_TIMEOUT }),
-  ).toBeTruthy();
-});
-
-it("completes the action when Escape closes the completion card", async () => {
-  const onCompleteAction = jest.fn();
-  renderFlow({ onCompleteAction });
-  await submitFlow();
-
-  fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
-
-  await waitFor(() => expect(onCompleteAction).toHaveBeenCalledTimes(1), {
-    timeout: CLOSE_TIMEOUT,
-  });
-  expect(screen.queryByRole("dialog")).toBeNull();
-});
-
-it("completes the action when the member leaves the completion card through the nav", async () => {
-  const onCompleteAction = jest.fn();
-  renderFlow({ onCompleteAction });
-  await submitFlow();
-
-  act(() => navigate("/forum"));
-  await screen.findByText("Forum");
-
-  expect(onCompleteAction).toHaveBeenCalledTimes(1);
-});
-
-it("completes the action when the member leaves through the nav mid-submit", async () => {
-  const release = holdSubmit();
-  const onCompleteAction = jest.fn();
-  renderFlow({ onCompleteAction });
-  await openFirstQuestionScreen();
-  fireEvent.change(screen.getByRole("textbox", { name: /First impression/ }), {
-    target: { value: "Helpful" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Next" }));
-  fireEvent.click(await screen.findByRole("button", { name: "Submit" }));
-  const close = screen.getByRole("button", { name: taskFlow.closeTask });
-  await waitFor(() => expect(close).toHaveProperty("disabled", true));
-
-  act(() => navigate("/forum"));
-  await screen.findByText("Forum");
-  release();
-  await waitFor(() => expect(onCompleteAction).toHaveBeenCalledTimes(1));
-
-  act(() => navigate("/actions/1"));
-  expect(
-    await screen.findByRole("button", { name: taskFlow.begin }),
-  ).toBeTruthy();
-  await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
-  expect(screen.queryByRole("dialog")).toBeNull();
-});
-
-it("turns the nav back from green before the completion card shrinks away", async () => {
-  renderFlow();
-  await submitFlow();
-  expect(screen.getByText("nav green")).toBeTruthy();
-
-  fireEvent.click(screen.getByRole("button", { name: taskFlow.closeTask }));
-
-  expect(await screen.findByText("nav plain")).toBeTruthy();
-  expect(screen.getByText("nav collapsed")).toBeTruthy();
-  expect(screen.getByRole("dialog")).toBeTruthy();
-  expect(
-    await screen.findByText("nav expanded", {}, { timeout: CLOSE_TIMEOUT }),
-  ).toBeTruthy();
-  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 });
 
 it("reopens the screen the member navigated away from when they come back", async () => {
@@ -268,7 +196,7 @@ it("doesn't reopen on the task's page a flow left from the home card", async () 
   act(() => navigate("/actions/1"));
 
   expect(
-    await screen.findByRole("button", { name: taskFlow.begin }),
+    await screen.findByRole("button", { name: taskFlow.continue }),
   ).toBeTruthy();
   await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
   expect(
@@ -304,7 +232,7 @@ it("doesn't reopen a flow that unmounted without the member leaving the page", a
     fireEvent.click(screen.getByRole("button", { name: "Toggle panel" }));
 
     expect(
-      await screen.findByRole("button", { name: taskFlow.begin }),
+      await screen.findByRole("button", { name: taskFlow.continue }),
     ).toBeTruthy();
     await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
     expect(
@@ -315,7 +243,7 @@ it("doesn't reopen a flow that unmounted without the member leaving the page", a
   }
 });
 
-it("collapses the nav while the flow is open", async () => {
+it("collapses the nav while the flow is open, and widens it before the panel closes", async () => {
   renderFlow();
   expect(await screen.findByText("nav expanded")).toBeTruthy();
 
@@ -324,7 +252,12 @@ it("collapses the nav while the flow is open", async () => {
 
   fireEvent.click(screen.getByRole("button", { name: taskFlow.closeTask }));
   expect(await screen.findByText("nav expanded")).toBeTruthy();
+  expect(screen.getByRole("dialog")).toBeTruthy();
+  // The root keeps its gutter off and its scroll locked until the panel goes,
+  // so no strip of the page shows beside it while it shrinks.
+  expect("flowPanel" in document.documentElement.dataset).toBe(true);
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect("flowPanel" in document.documentElement.dataset).toBe(false);
 });
 
 function PanelForRoute() {
@@ -347,10 +280,10 @@ it("starts closed on another action's page rather than carrying the flow over", 
   act(() => navigate("/actions/2"));
 
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-  expect(screen.getByRole("button", { name: taskFlow.begin })).toBeTruthy();
+  expect(screen.getByRole("button", { name: taskFlow.continue })).toBeTruthy();
 });
 
-const openWithdrawMenu = async (onAbandonAction: () => void = () => {}) => {
+const renderWithdrawable = (onAbandonAction: () => void = () => {}) =>
   renderFlow({
     page: (
       <ActionTaskPanelForm
@@ -363,8 +296,11 @@ const openWithdrawMenu = async (onAbandonAction: () => void = () => {}) => {
       />
     ),
   });
+
+const openWithdrawMenu = async (onAbandonAction: () => void = () => {}) => {
+  renderWithdrawable(onAbandonAction);
   fireEvent.click(await screen.findByRole("button", { name: taskFlow.begin }));
-  await screen.findByRole("heading", { name: taskFlow.background });
+  await screen.findByRole("heading", { name: taskFlowFallbackTitle.reading });
   fireEvent.click(screen.getByRole("button", { name: withdrawFromAction }));
 };
 
@@ -379,7 +315,70 @@ it("closes the flow and forgets its screen when the member withdraws", async () 
   await waitFor(() => expect(onAbandonAction).toHaveBeenCalledTimes(1));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(await screen.findByText("nav expanded")).toBeTruthy();
-  expect(window.localStorage.getItem("taskflow-screen:9")).toBeNull();
+  expect(window.localStorage.getItem("taskflow-step:9")).toBeNull();
+});
+
+it("offers withdrawing on every step, including a one-page task's only step", async () => {
+  setServedSchema({ pages: [taskSchema.pages[1]], outputViews: [] });
+  renderWithdrawable();
+  fireEvent.click(await screen.findByRole("button", { name: taskFlow.begin }));
+
+  await screen.findByRole("heading", { name: "Rate the chatbot" });
+  expect(screen.getByRole("button", { name: withdrawFromAction })).toBeTruthy();
+});
+
+it("offers withdrawing beside Begin while the flow is closed", async () => {
+  const onAbandonAction = jest.fn();
+  renderWithdrawable(onAbandonAction);
+  await screen.findByRole("button", { name: taskFlow.begin });
+
+  fireEvent.click(screen.getByRole("button", { name: withdrawFromAction }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Took more than 15 minutes" }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Withdraw" }));
+
+  await waitFor(() => expect(onAbandonAction).toHaveBeenCalledTimes(1));
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+function InCard({ children }: { children: ReactNode }) {
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  return (
+    <>
+      <header ref={setSlot} />
+      <CardMenuSlotContext.Provider value={slot}>
+        {children}
+      </CardMenuSlotContext.Provider>
+    </>
+  );
+}
+
+it("puts the withdraw menu in the card's header inside a task card", async () => {
+  renderFlow({
+    page: (
+      <InCard>
+        <ActionTaskPanelForm
+          taskFormId={9}
+          onCompleteAction={() => {}}
+          onAbandonAction={() => {}}
+          onFormStarted={() => {}}
+          onDeadlinePassed={() => {}}
+          action={action}
+        />
+      </InCard>
+    ),
+  });
+  await screen.findByRole("button", { name: taskFlow.begin });
+
+  expect(
+    within(screen.getByRole("banner")).getByRole("button", {
+      name: withdrawFromAction,
+    }),
+  ).toBeTruthy();
+  expect(
+    screen.getAllByRole("button", { name: withdrawFromAction }),
+  ).toHaveLength(1);
 });
 
 it("closes only the withdraw menu when Escape dismisses it", async () => {

@@ -1,6 +1,7 @@
 export interface ProgressBarProps {
   progress: number;
   total: number;
+  label: string;
   /** A CSS `transition` for the fill's width; off under reduced motion. */
   fillTransition?: string;
 }
@@ -8,11 +9,19 @@ export interface ProgressBarProps {
 const ProgressBar: React.FC<ProgressBarProps> = ({
   progress,
   total,
+  label,
   fillTransition,
 }: ProgressBarProps) => {
   const percentage = (progress / total) * 100;
   return (
-    <div className="flex flex-col gap-x-2 flex-1 relative">
+    <div
+      className="flex flex-col gap-x-2 flex-1 relative"
+      role="progressbar"
+      aria-label={label}
+      aria-valuenow={progress}
+      aria-valuemin={0}
+      aria-valuemax={total}
+    >
       <div className="w-full h-3 bg-zinc-100 rounded-[3px]">
         <div
           className="h-3 bg-green rounded-[3px] motion-reduce:transition-none!"

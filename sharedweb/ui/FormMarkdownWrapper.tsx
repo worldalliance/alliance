@@ -1,9 +1,16 @@
+import { linkHints } from "@alliance/shared/lib/copy";
 import { cn } from "@alliance/shared/styles/util";
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import { useMarkdownUrlTransform } from "../lib/markdownUrl";
 import ActionLink, { getActionIdFromHref } from "./ActionLink";
 import ExternalLinkPreview from "./ExternalLinkPreview";
+import NewTabMark from "./NewTabMark";
+
+// An in-page anchor would open a blank tab, and a mailto: hands the href to
+// the mail client, so neither is a new tab to open or to announce.
+const opensNewTab = (href: string | undefined) =>
+  href !== undefined && !href.startsWith("#") && !href.startsWith("mailto:");
 
 interface FormMarkdownWrapper {
   markdownContent: string;
@@ -70,17 +77,27 @@ const FormMarkdownWrapper: React.FC<FormMarkdownWrapper> = ({
         // `text-link`, a raw unlayered CSS class (apps' index.css) that
         // outranks every layered Tailwind utility in the cascade — only an
         // !important utility reliably overrides its green.
-        a: ({ node: _node, ...props }) =>
-          getActionIdFromHref(props.href) != null ? (
+        a: ({ node: _node, children, ...props }) => {
+          const newTab = opensNewTab(props.href);
+          const tab = newTab
+            ? ({ target: "_blank", rel: "noreferrer" } as const)
+            : {};
+          // An action link already ends in its flag, so a second glyph beside
+          // it would read as a rendering fault; it gets the words instead.
+          return getActionIdFromHref(props.href) != null ? (
             <ActionLink
               className={cn(
                 inverted ? "!text-white underline" : undefined,
                 inlineClass,
               )}
               {...props}
-              target="_blank"
-              rel="noreferrer"
-            />
+              {...tab}
+            >
+              {children}
+              {newTab ? (
+                <span className="sr-only"> {linkHints.opensInNewTab}</span>
+              ) : null}
+            </ActionLink>
           ) : (
             <ExternalLinkPreview
               className={cn(
@@ -88,10 +105,13 @@ const FormMarkdownWrapper: React.FC<FormMarkdownWrapper> = ({
                 inlineClass,
               )}
               {...props}
-              target="_blank"
-              rel="noreferrer"
-            />
-          ),
+              {...tab}
+            >
+              {children}
+              {newTab ? <NewTabMark /> : null}
+            </ExternalLinkPreview>
+          );
+        },
         code: ({ node: _node, className: _className, ...props }) => (
           <code
             className={cn(

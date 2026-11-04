@@ -37,6 +37,7 @@ import {
   View,
 } from "react-native";
 import { KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
+import FeedSeparator from "../../components/FeedSeparator";
 import FollowUpFormPanel from "../../components/FollowUpFormPanel";
 import HomeFeedItem from "../../components/HomeFeedItem";
 import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
@@ -434,12 +435,9 @@ export default function HomeScreen() {
               paddingBottom: 40,
             }}
             ListHeaderComponent={
-              <>
-                <View onLayout={handleHomeBodyLayout}>{homeBody}</View>
-                <View className="px-4 pt-4 pb-2 bg-white">
-                  <Text className="text-xl">Activity</Text>
-                </View>
-              </>
+              <FeedSeparator onLayout={handleHomeBodyLayout}>
+                {homeBody}
+              </FeedSeparator>
             }
             ListFooterComponent={
               homeFeedFetchingNextPage ? (

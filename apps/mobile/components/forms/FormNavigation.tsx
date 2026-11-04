@@ -1,6 +1,7 @@
 import {
   cancelAllImageUploads,
   draftSaveFailed,
+  taskFlow,
   waitingForImageUpload,
   withdrawFromAction,
 } from "@alliance/shared/lib/copy";
@@ -120,9 +121,9 @@ export function FormNavigation({
                 >
                   {isLastPage
                     ? preview
-                      ? "Complete (Preview Mode)"
-                      : "Complete"
-                    : "Next"}
+                      ? `${taskFlow.submit} (Preview Mode)`
+                      : taskFlow.submit
+                    : taskFlow.next}
                 </Text>
               </>
             )}

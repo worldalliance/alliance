@@ -23,7 +23,7 @@ function CopyTextBody({ block }: { block: CopyTextBlock }) {
       return <Text>{block.text}</Text>;
     case CopyTextFormat.Markdown:
       return (
-        <AppMarkdownWrapper markdownit={commonMarkParser}>
+        <AppMarkdownWrapper markdownit={commonMarkParser} markLinksLeavingApp>
           {block.text}
         </AppMarkdownWrapper>
       );

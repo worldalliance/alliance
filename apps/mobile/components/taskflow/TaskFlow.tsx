@@ -18,10 +18,15 @@ import {
   useTaskFlowReturn,
 } from "@alliance/shared/lib/TaskFlowReturnContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router, useIsFocused, useLocalSearchParams } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import {
+  router,
+  useIsFocused,
+  useLocalSearchParams,
+  usePathname,
+} from "expo-router";
+import { ArrowRight } from "lucide-react-native";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Modal, useWindowDimensions, View } from "react-native";
-import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -32,10 +37,12 @@ import { formBlockedView } from "../forms/FormElements";
 import { useMobileFormState } from "../forms/useMobileFormState";
 import WithdrawalModal from "../forms/WithdrawalModal";
 import ProgressBar from "../system/ProgressBar";
+import { CardWithdrawContext } from "./CardWithdrawContext";
 import FlowButton from "./FlowButton";
 import { animateTo, timingFor } from "./flowMotion";
+import TaskAnswersCard from "./TaskAnswersCard";
 import TaskFlowComplete from "./TaskFlowComplete";
-import TaskFlowIntro from "./TaskFlowIntro";
+import TaskFlowHeader, { TaskFlowWithdrawButton } from "./TaskFlowHeader";
 import TaskFlowScreen, { TaskFlowPage, TaskFlowTitle } from "./TaskFlowScreen";
 
 const PROGRESS_TIMING = timingFor(flowMotion.progress);
@@ -111,10 +118,21 @@ export default function TaskFlow({
     onExit: () => void close(),
   });
   const isFocused = useIsFocused();
+  const pathname = usePathname();
   const { id: pageActionId } = useLocalSearchParams<{ id?: string }>();
   const onTaskPage = pageActionId === String(action.id);
   const { leaveTask } = useTaskFlowReturn();
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const placeWithdraw = useContext(CardWithdrawContext);
+  const openWithdraw = useCallback(() => setWithdrawOpen(true), []);
+  // Only while the flow is closed, so one withdraw control shows at a time.
+  const cardCanWithdraw =
+    withdraw !== undefined && flow.stage === FlowStage.Closed;
+  useEffect(() => {
+    if (!placeWithdraw) return;
+    placeWithdraw(cardCanWithdraw ? openWithdraw : null);
+    return () => placeWithdraw(null);
+  }, [placeWithdraw, cardCanWithdraw, openWithdraw]);
 
   useReopenLeftTask({
     actionId: action.id,
@@ -187,11 +205,11 @@ export default function TaskFlow({
     leaveTask,
   ]);
 
+  const blocked = formBlockedView(form);
   const renderStage = () => {
-    const blocked = formBlockedView(form);
     if (blocked !== null && flow.stage !== FlowStage.Complete) {
       return (
-        <TaskFlowPage onClose={() => void close()}>
+        <TaskFlowPage>
           <TaskFlowTitle>{action.name}</TaskFlowTitle>
           {blocked}
         </TaskFlowPage>
@@ -200,19 +218,6 @@ export default function TaskFlow({
     switch (flow.stage) {
       case FlowStage.Closed:
         return null;
-      case FlowStage.Background:
-        return (
-          <TaskFlowIntro
-            action={action}
-            form={form}
-            background={flow.background}
-            onClose={() => void close()}
-            onWithdraw={withdraw ? () => setWithdrawOpen(true) : null}
-            onNext={() => void flow.start()}
-            nextLabel={flow.startLabel}
-            error={error}
-          />
-        );
       case FlowStage.Screens:
         if (!flow.screen) return null;
         return (
@@ -222,8 +227,8 @@ export default function TaskFlow({
             screen={flow.screen}
             nextReady={flow.nextReady}
             nextLabel={flow.nextLabel}
+            nextIsLast={flow.nextIsLast}
             error={error}
-            onClose={() => void close()}
             onBack={flow.back}
             onNext={() => void flow.next()}
           />
@@ -235,8 +240,12 @@ export default function TaskFlow({
               schema={form.schema}
               answers={flow.submittedAnswers ?? {}}
               user={user}
-              onClose={() => void finish()}
-              onInvite={() => void finish(() => router.push("/invites"))}
+              onClose={() =>
+                void finish(
+                  pathname === "/" ? undefined : () => router.navigate("/"),
+                )
+              }
+              onInvite={() => router.push("/invites")}
             />
           </Animated.View>
         );
@@ -245,14 +254,48 @@ export default function TaskFlow({
     }
   };
 
+  const withdrawalModal = (visible: boolean) =>
+    withdraw ? (
+      <WithdrawalModal
+        visible={visible}
+        onClose={() => setWithdrawOpen(false)}
+        disabled={form.submitting}
+        onWithdraw={(withdrawal) => {
+          form.handleAbandon(withdrawal);
+          position.clear();
+          setWithdrawOpen(false);
+          flow.close();
+        }}
+      />
+    ) : null;
+
   return (
     <View>
-      <FlowButton
-        kind={FlowButtonKind.Primary}
-        onPress={flow.begin}
-        loading={!position.loaded}
-        title={flow.beginLabel}
-      />
+      <View className="flex-row items-center gap-x-3">
+        <FlowButton
+          kind={readOnly ? FlowButtonKind.Secondary : FlowButtonKind.Primary}
+          onPress={flow.begin}
+          loading={!position.loaded}
+          title={flow.beginLabel}
+          iconRight={ArrowRight}
+          className="flex-1"
+        />
+        {withdraw && !placeWithdraw ? (
+          <TaskFlowWithdrawButton onPress={openWithdraw} />
+        ) : null}
+      </View>
+      {completedFormResponse ? (
+        <TaskAnswersCard
+          className="mt-4 border border-zinc-200"
+          output={{
+            schema,
+            submission: completedFormResponse,
+            submitterId: user?.id,
+          }}
+          user={user}
+        />
+      ) : null}
+      {withdrawalModal(withdrawOpen && !shown)}
       <Modal
         visible={shown}
         transparent
@@ -266,34 +309,27 @@ export default function TaskFlow({
           style={panelStyle}
           onLayout={enter}
         >
-          <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-            <View className="flex-1">{renderStage()}</View>
-            {flow.open ? (
-              <View
-                className="px-4"
-                style={{ paddingBottom: insets.bottom + 8 }}
-              >
+          {flow.open ? (
+            <>
+              <View className="px-4" style={{ paddingTop: insets.top + 8 }}>
                 <ProgressBar
                   percentage={flow.progress}
                   fillTiming={PROGRESS_TIMING}
                 />
               </View>
-            ) : null}
-          </KeyboardAvoidingView>
+              <TaskFlowHeader
+                onClose={() => void close()}
+                disabled={form.submitting}
+                progressSaved={
+                  blocked === null && !form.saveFailed && flow.progressSaved
+                }
+                onWithdraw={withdraw && blocked === null ? openWithdraw : null}
+              />
+            </>
+          ) : null}
+          <View className="flex-1">{renderStage()}</View>
         </Animated.View>
-        {withdraw ? (
-          <WithdrawalModal
-            visible={withdrawOpen}
-            onClose={() => setWithdrawOpen(false)}
-            disabled={form.submitting}
-            onWithdraw={(withdrawal) => {
-              form.handleAbandon(withdrawal);
-              position.clear();
-              setWithdrawOpen(false);
-              flow.close();
-            }}
-          />
-        ) : null}
+        {withdrawalModal(withdrawOpen && shown)}
       </Modal>
     </View>
   );

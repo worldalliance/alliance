@@ -11,8 +11,9 @@ import * as globalFeedModule from "@alliance/shared/lib/useGlobalFeed";
 import * as aggregateViewsModule from "@alliance/shared/lib/useTaskFormAggregateViews";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { addDays } from "date-fns";
+import { useEffect } from "react";
 import { MemoryRouter } from "react-router";
 import * as followUpFormPanelModule from "../../components/FollowUpFormPanel";
 import * as homeFeedModule from "../../components/HomeFeed";
@@ -26,6 +27,10 @@ import { authValue } from "../../testing/authValue";
 import HomePage from "./HomePage";
 import * as largeActionCardModule from "./LargeActionCard";
 import * as taskNavigatorRowModule from "./TaskNavigatorRow";
+
+declare const happyDOM: {
+  setViewport: (viewport: { width: number }) => void;
+};
 
 let actions: ActionWithAwayStatus[] | null = [];
 let generalUpdatesFailure: LoadFailure | null = null;
@@ -116,6 +121,34 @@ describe("HomePage task list", () => {
 
     expect(screen.queryByText("Upcoming")).not.toBeNull();
     expect(screen.queryByText("Visible task")).not.toBeNull();
+  });
+});
+
+describe("HomePage resizing", () => {
+  it("keeps the current task card mounted when the window crosses the two-column width", () => {
+    happyDOM.setViewport({ width: 1024 });
+    let mounts = 0;
+    jest.spyOn(largeActionCardModule, "default").mockImplementation(() => {
+      useEffect(() => {
+        mounts += 1;
+      }, []);
+      return <div />;
+    });
+    actions = [makeAction({ id: 1, name: "Task", events: deadlineInDays(3) })];
+
+    renderHomePage();
+    expect(mounts).toBe(1);
+    expect(screen.queryByText("No recent activity")).toBeNull();
+
+    try {
+      act(() => happyDOM.setViewport({ width: 1280 }));
+      // The sidebar's feed, so a breakpoint that moved out of 1024..1280
+      // fails here rather than leaving the test exercising nothing.
+      expect(screen.queryByText("No recent activity")).not.toBeNull();
+      expect(mounts).toBe(1);
+    } finally {
+      happyDOM.setViewport({ width: 1024 });
+    }
   });
 });
 

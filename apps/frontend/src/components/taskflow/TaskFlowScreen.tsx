@@ -8,62 +8,31 @@ import { cn } from "@alliance/shared/styles/util";
 import { FormElements } from "@alliance/sharedweb/forms/FormElements";
 import { type WebFormState } from "@alliance/sharedweb/forms/useWebFormState";
 import { ModalTitle } from "@alliance/sharedweb/ui/Modal";
-import { X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { useEffect, type ReactNode, type RefObject } from "react";
 import FlowButton, { FlowButtonKind } from "./FlowButton";
 
 export const FLOW_COLUMN = "mx-auto w-full max-w-[640px] px-4";
 
-export function TaskFlowCloseButton({
-  onClick,
-  disabled,
-}: {
-  onClick: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <FlowButton
-      kind={FlowButtonKind.Icon}
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={taskFlow.closeTask}
-    >
-      <X size={20} aria-hidden />
-    </FlowButton>
-  );
-}
-
 export function TaskFlowTitle({ children }: { children: ReactNode }) {
   return (
-    <ModalTitle className="mt-2 mb-4 text-3xl text-zinc-900">
+    <ModalTitle className="mt-2 mb-4 text-3xl font-semibold text-zinc-900">
       {children}
     </ModalTitle>
   );
 }
 
 export function TaskFlowPage({
-  headerEnd,
-  onClose,
-  closeDisabled,
   scrollRef,
   footer,
   children,
 }: {
-  headerEnd?: ReactNode;
-  onClose: () => void;
-  closeDisabled?: boolean;
   scrollRef?: RefObject<HTMLDivElement | null>;
   footer?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div
-        className={cn(FLOW_COLUMN, "flex items-center justify-between py-3")}
-      >
-        <TaskFlowCloseButton onClick={onClose} disabled={closeDisabled} />
-        {headerEnd}
-      </div>
       <div
         ref={scrollRef}
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
@@ -86,9 +55,9 @@ export default function TaskFlowScreen({
   screen,
   nextReady,
   nextLabel,
+  nextIsLast,
   error,
   scrollRef,
-  onClose,
   onBack,
   onNext,
 }: {
@@ -96,17 +65,15 @@ export default function TaskFlowScreen({
   screen: FlowScreen;
   nextReady: boolean;
   nextLabel: string;
+  nextIsLast: boolean;
   error: string | null;
   scrollRef: RefObject<HTMLDivElement | null>;
-  onClose: () => void;
   onBack: () => void;
   onNext: () => void;
 }) {
   const title = flowScreenTitle({
     screen,
-    activeUserKey: form.activeUserKey,
-    isElementCurrentlyVisible: form.isElementCurrentlyVisible,
-    variableValues: form.variableValues,
+    form,
   });
 
   useEffect(() => {
@@ -126,8 +93,6 @@ export default function TaskFlowScreen({
       className="flex min-h-0 flex-1 flex-col"
     >
       <TaskFlowPage
-        onClose={onClose}
-        closeDisabled={form.submitting}
         scrollRef={scrollRef}
         footer={
           <>
@@ -142,6 +107,7 @@ export default function TaskFlowScreen({
                 className="flex-1"
                 disabled={form.submitting}
                 onClick={onBack}
+                iconLeft={ArrowLeft}
               >
                 {taskFlow.back}
               </FlowButton>
@@ -151,6 +117,7 @@ export default function TaskFlowScreen({
                 className={cn("flex-1", !nextReady && "opacity-50")}
                 loading={form.submitting}
                 disabled={form.imageUpload.uploadingAny}
+                iconRight={nextIsLast ? Check : ArrowRight}
               >
                 {nextLabel}
               </FlowButton>

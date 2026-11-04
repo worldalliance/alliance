@@ -1,6 +1,5 @@
 import { ParsedHomeFeedItemDto } from "@alliance/shared/lib/feedHelpers";
-import { View } from "react-native";
-import { colors } from "../lib/style/colors";
+import FeedSeparator from "./FeedSeparator";
 import ForumCommentCard from "./ForumCommentCard";
 import UserActivityCard from "./UserActivityCard";
 
@@ -19,12 +18,12 @@ export default function HomeFeedItem({
     case "activity": {
       if (!item.activity) return null;
       return (
-        <View className={`border-b-3`} style={{ borderColor: colors.grey[1] }}>
+        <FeedSeparator>
           <UserActivityCard
             activity={item.activity}
             handleLike={onLikeActivity}
           />
-        </View>
+        </FeedSeparator>
       );
     }
     case "forum_comment": {
@@ -32,7 +31,7 @@ export default function HomeFeedItem({
       if (!fc) return null;
       const { comment, postId, postTitle, likedByMe, likesCount } = fc;
       return (
-        <View className={`border-b-3`} style={{ borderColor: colors.grey[1] }}>
+        <FeedSeparator>
           <ForumCommentCard
             comment={comment}
             postId={postId}
@@ -41,7 +40,7 @@ export default function HomeFeedItem({
             likesCount={likesCount}
             handleLike={() => onLikeForumComment(comment.id)}
           />
-        </View>
+        </FeedSeparator>
       );
     }
     default: {

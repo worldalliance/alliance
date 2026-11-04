@@ -11,13 +11,17 @@ import {
 const renderImmersive = (immersive: boolean) =>
   renderHook(
     ({ immersive }) => {
-      useImmersiveNavbar({ immersive, tone: ImmersiveTone.Success });
+      useImmersiveNavbar({
+        immersive,
+        panelUp: immersive,
+        tone: ImmersiveTone.Success,
+      });
       return useContext(NavbarOptionsContext)?.options;
     },
     { wrapper: NavbarOptionsProvider, initialProps: { immersive } },
   );
 
-const rootImmersive = () => "immersive" in document.documentElement.dataset;
+const rootPanel = () => "flowPanel" in document.documentElement.dataset;
 
 describe("useImmersiveNavbar", () => {
   it("collapses the nav and locks the root's scroll while asked", () => {
@@ -26,23 +30,23 @@ describe("useImmersiveNavbar", () => {
       immersive: true,
       immersiveTone: ImmersiveTone.Success,
     });
-    expect(rootImmersive()).toBe(true);
+    expect(rootPanel()).toBe(true);
 
     hook.rerender({ immersive: false });
     expect(hook.result.current?.immersive).toBe(false);
-    expect(rootImmersive()).toBe(false);
+    expect(rootPanel()).toBe(false);
   });
 
   it("restores the nav and the root's scroll on unmount", () => {
     const hook = renderImmersive(true);
     hook.unmount();
-    expect(rootImmersive()).toBe(false);
+    expect(rootPanel()).toBe(false);
   });
 
   it("leaves the nav alone when not asked", () => {
     const hook = renderImmersive(false);
     expect(hook.result.current?.immersive).toBeUndefined();
-    expect(rootImmersive()).toBe(false);
+    expect(rootPanel()).toBe(false);
   });
 });
 

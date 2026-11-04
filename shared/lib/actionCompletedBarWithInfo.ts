@@ -15,6 +15,9 @@ export interface ActionCompletedBarWithInfoPropsShared {
   friendActivities: ActionActivityDto[] | null;
 }
 
+/** Few enough faces that they and the completion count share one line. */
+export const MAX_COMPLETED_FACES = 3;
+
 export const selectCompletedFriends = (
   friendActivities: ActionActivityDto[] | null,
 ): ProfileDto[] =>

@@ -65,22 +65,30 @@ export function useNavbarOptions(opts: NavbarOptions) {
 export function useImmersiveNavbar({
   immersive,
   tone,
+  panelUp,
 }: {
   immersive: boolean;
   tone: ImmersiveTone;
+  /** Whether a full-screen panel covers the page, which outlasts the nav's own immersive mode while the flow closes. */
+  panelUp: boolean;
 }) {
   const setOptions = useContext(NavbarOptionsContext)?.setOptions;
 
   useEffect(() => {
     if (!setOptions || !immersive) return;
     setOptions({ immersive: true, immersiveTone: tone });
-    // Fixed panels can't cover the root's reserved scrollbar gutter.
-    document.documentElement.dataset.immersive = "";
-    return () => {
-      setOptions({ immersive: false, immersiveTone: undefined });
-      delete document.documentElement.dataset.immersive;
-    };
+    return () => setOptions({ immersive: false, immersiveTone: undefined });
   }, [immersive, tone, setOptions]);
+
+  useEffect(() => {
+    if (!panelUp) return;
+    // A fixed panel can't cover the root's reserved scrollbar gutter, and the
+    // page behind it must not scroll under it.
+    document.documentElement.dataset.flowPanel = "";
+    return () => {
+      delete document.documentElement.dataset.flowPanel;
+    };
+  }, [panelUp]);
 }
 
 const SUCCESS_CHROME: Record<ImmersiveTone, boolean> = {

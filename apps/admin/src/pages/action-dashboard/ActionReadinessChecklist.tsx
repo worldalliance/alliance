@@ -85,6 +85,16 @@ const ActionReadinessChecklist: React.FC<ActionReadinessChecklistProps> = ({
         label: "Task form linked",
         isReady: Boolean(action.taskFormId),
       },
+      {
+        id: "image",
+        label: "Image set",
+        isReady: Boolean(action.image),
+      },
+      {
+        id: "outputView",
+        label: "Task form has an output view, for the completion card",
+        isReady: (taskForm?.schema.outputViews.length ?? 0) > 0,
+      },
     ];
 
     let descriptionWords = 0;

@@ -13,7 +13,10 @@ export type FlowPosition = {
   clear: () => void;
 };
 
-const storageKey = (taskFormId: number) => `taskflow-screen:${taskFormId}`;
+const storageKey = (taskFormId: number) => `taskflow-step:${taskFormId}`;
+// BACKCOMPAT(taskflow-screen): drop once every member who opened a flow before
+// the step split has had this run, which clears their dead entry.
+const oldStorageKey = (taskFormId: number) => `taskflow-screen:${taskFormId}`;
 
 /**
  * The flow screen a member last had open on this device, kept per form
@@ -36,6 +39,9 @@ export function useFlowPosition(params: {
     changed.current = false;
     setScreenIndex(null);
     setLoaded(false);
+    storage
+      .removeItem(oldStorageKey(taskFormId))
+      .catch((e) => console.error("Failed to clear old task flow position", e));
     storage
       .getItem(storageKey(taskFormId))
       .then((raw) => {

@@ -1,6 +1,11 @@
-import { taskFlow, withdrawFromAction } from "@alliance/shared/lib/copy";
+import {
+  taskFlow,
+  taskFlowFallbackTitle,
+  withdrawFromAction,
+} from "@alliance/shared/lib/copy";
 import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { testAuthUser } from "../../stories/testData";
 import { authValue } from "../../testing/authValue";
 import ActionTaskPanelForm from "../ActionTaskPanelForm";
 import {
@@ -33,6 +38,7 @@ it("runs a staff preview through to the completion card without submitting or st
     ),
   });
   await openFirstQuestionScreen();
+  expect(screen.queryByText(taskFlow.progressSaved)).toBeNull();
   fireEvent.change(screen.getByRole("textbox", { name: /First impression/ }), {
     target: { value: "Helpful" },
   });
@@ -60,8 +66,10 @@ it("walks a task the member can't submit read-only, closing from its last screen
       />
     ),
   });
-  fireEvent.click(await screen.findByRole("button", { name: taskFlow.view }));
-  await screen.findByRole("heading", { name: taskFlow.background });
+  const greyView = await screen.findByRole("button", { name: taskFlow.view });
+  expect(greyView.className).toContain("bg-zinc-200");
+  fireEvent.click(greyView);
+  await screen.findByRole("heading", { name: taskFlowFallbackTitle.reading });
   expect(screen.queryByRole("button", { name: withdrawFromAction })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: taskFlow.next }));
   await screen.findByRole("heading", { name: "Rate the chatbot" });
@@ -108,6 +116,8 @@ it("shows a guest the completion card before completing a public task and redire
     await waitFor(() => expect(onCompleteAction).toHaveBeenCalledTimes(1), {
       timeout: CLOSE_TIMEOUT,
     });
+    // The guest's hard redirect, not a client-side navigation it could race.
+    expect(screen.getByText("at /actions/1 default")).toBeTruthy();
     expect(window.location.pathname).toBe("/actions/completed");
   } finally {
     happyDOM.setURL(startHref);
@@ -130,7 +140,7 @@ it("offers a guest on a public task no withdraw", async () => {
     ),
   });
   fireEvent.click(await screen.findByRole("button", { name: taskFlow.begin }));
-  await screen.findByRole("heading", { name: taskFlow.background });
+  await screen.findByRole("heading", { name: taskFlowFallbackTitle.reading });
   expect(screen.queryByRole("button", { name: withdrawFromAction })).toBeNull();
 });
 
@@ -153,9 +163,89 @@ it("opens a submitted response read-only, with the member's answers", async () =
     ),
   });
   fireEvent.click(await screen.findByRole("button", { name: taskFlow.view }));
-  await screen.findByRole("heading", { name: taskFlow.background });
+  await screen.findByRole("heading", { name: taskFlowFallbackTitle.reading });
   fireEvent.click(screen.getByRole("button", { name: taskFlow.next }));
   await screen.findByRole("heading", { name: "Rate the chatbot" });
 
   expect(screen.getByDisplayValue("Helpful")).toBeTruthy();
+});
+
+it("shows a submitted task's answers card under its View task button", async () => {
+  renderFlow({
+    page: (
+      <ActionTaskPanelForm
+        taskFormId={9}
+        onCompleteAction={() => {}}
+        onFormStarted={() => {}}
+        onDeadlinePassed={() => {}}
+        formResponse={makeFormResponse({
+          formId: 9,
+          formSnapshotId: 3,
+          schemaSnapshot: {
+            ...taskSchema,
+            outputViews: [
+              {
+                type: "default",
+                id: "v1",
+                blocks: [{ id: "b1", fieldId: "a", showLabel: true }],
+              },
+            ],
+          },
+          answers: { a: "Helpful" },
+        })}
+        action={action}
+      />
+    ),
+  });
+
+  const view = await screen.findByRole("button", { name: taskFlow.view });
+  const name = await screen.findByText(testAuthUser.name);
+  expect(
+    view.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+});
+
+it("resolves a random-backed variable in the answers card it shows", async () => {
+  renderFlow({
+    page: (
+      <ActionTaskPanelForm
+        taskFormId={9}
+        onCompleteAction={() => {}}
+        onFormStarted={() => {}}
+        onDeadlinePassed={() => {}}
+        formResponse={makeFormResponse({
+          formId: 9,
+          formSnapshotId: 3,
+          schemaSnapshot: {
+            ...taskSchema,
+            variables: [
+              {
+                name: "pick",
+                inputs: { input1: { kind: "random" } },
+                formula: '["Red"][input1 % 1]',
+              },
+            ],
+            outputViews: [
+              {
+                type: "default",
+                id: "v1",
+                blocks: [
+                  {
+                    id: "b1",
+                    type: "display",
+                    kind: "text",
+                    text: "Your pick: #{pick}",
+                  },
+                ],
+              },
+            ],
+          },
+          answers: { a: "Helpful" },
+        })}
+        action={action}
+      />
+    ),
+  });
+
+  expect(await screen.findByText("Your pick: Red")).toBeTruthy();
 });

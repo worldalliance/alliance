@@ -45,6 +45,8 @@ const begin = async () =>
 
 const reported = recordExceptions();
 
+beforeEach(() => localStorage.clear());
+
 const api = serveApi(
   routes({
     "GET /tasks/slug/:id": () =>
@@ -220,7 +222,7 @@ const submitNote = async () => {
 const submitAndClose = async () => {
   await submitNote();
   await screen.findByRole("heading", { name: taskFlow.complete });
-  fireEvent.click(screen.getByRole("button", { name: taskFlow.closeTask }));
+  fireEvent.click(screen.getByRole("button", { name: taskFlow.viewTasks }));
 };
 
 const submitRefusedWith = async (

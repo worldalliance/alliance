@@ -1,5 +1,5 @@
 import type { ActionDto } from "@alliance/shared/client";
-import { taskFlow } from "@alliance/shared/lib/copy";
+import { taskFlow, taskFlowFallbackTitle } from "@alliance/shared/lib/copy";
 import { TaskFlowCompletionProvider } from "@alliance/shared/lib/TaskFlowCompletionContext";
 import { TaskFlowReturnProvider } from "@alliance/shared/lib/TaskFlowReturnContext";
 import {
@@ -16,6 +16,7 @@ import {
   MemoryRouter,
   Route,
   Routes,
+  useLocation,
   useNavigate,
   type NavigateFunction,
 } from "react-router";
@@ -43,7 +44,7 @@ export const taskSchema = {
       id: "p1",
       fields: [
         {
-          id: "bg",
+          id: "intro",
           type: "display",
           kind: "text",
           text: "Why this project matters",
@@ -61,6 +62,17 @@ export const taskSchema = {
         },
         textInput("a", "First impression", true),
         textInput("b", "Tone"),
+      ],
+    },
+    {
+      id: "p3",
+      fields: [
+        {
+          id: "h2",
+          type: "display",
+          kind: "header",
+          text: "Rate the chatbot",
+        },
         textInput("c", "Anything else"),
       ],
     },
@@ -77,6 +89,7 @@ let serverAction = action;
 let servedSchema: unknown = taskSchema;
 let submissions = 0;
 let submitStatus = 201;
+let draftSaveStatus = 200;
 let submitHeld = Promise.resolve();
 
 /** Serves the flow's task form and action for every test in the calling file,
@@ -95,7 +108,9 @@ export const serveTaskFlow = () => {
       "GET /tasks/draft/:id": () => Response.json({}),
       "GET /tasks/formDraft/:id": () => Response.json({}),
       "PUT /tasks/formDraft/:id": () =>
-        Response.json({ updatedAt: "2026-10-26T00:00:00.000Z" }),
+        draftSaveStatus === 200
+          ? Response.json({ updatedAt: "2026-10-26T00:00:00.000Z" })
+          : Response.json({ message: "nope" }, { status: draftSaveStatus }),
       "POST /tasks/submitForm/:id": async () => {
         submissions += 1;
         await submitHeld;
@@ -116,6 +131,7 @@ export const serveTaskFlow = () => {
     servedSchema = taskSchema;
     submissions = 0;
     submitStatus = 201;
+    draftSaveStatus = 200;
     submitHeld = Promise.resolve();
   });
 };
@@ -124,6 +140,13 @@ export let navigate: NavigateFunction;
 function CaptureNavigate() {
   navigate = useNavigate();
   return null;
+}
+
+// react-router keys the initial entry "default" and every navigation afresh,
+// so a navigation to the path already shown is visible here.
+function CaptureLocation() {
+  const { pathname, key } = useLocation();
+  return <p>{`at ${pathname} ${key}`}</p>;
 }
 
 function NavMode() {
@@ -173,12 +196,20 @@ export function renderFlow({
                 <TaskFlowCompletionProvider>
                   <NavbarOptionsProvider>
                     <CaptureNavigate />
+                    <CaptureLocation />
                     <NavMode />
                     <Routes>
                       <Route path="/actions/1" element={pageElement} />
                       <Route path="/actions/2" element={pageElement} />
                       <Route path="/" element={pageElement} />
+                      <Route
+                        path="/tasks"
+                        element={
+                          path === "/tasks" ? pageElement : <p>Tasks home</p>
+                        }
+                      />
                       <Route path="/forum" element={<p>Forum</p>} />
+                      <Route path="/invites" element={<p>Invites</p>} />
                     </Routes>
                   </NavbarOptionsProvider>
                 </TaskFlowCompletionProvider>
@@ -193,8 +224,8 @@ export function renderFlow({
 
 export const openFirstQuestionScreen = async () => {
   fireEvent.click(await screen.findByRole("button", { name: taskFlow.begin }));
-  await screen.findByRole("heading", { name: taskFlow.background });
-  fireEvent.click(screen.getByRole("button", { name: "Next" }));
+  await screen.findByRole("heading", { name: taskFlowFallbackTitle.reading });
+  fireEvent.click(screen.getByRole("button", { name: taskFlow.next }));
   await screen.findByRole("heading", { name: "Rate the chatbot" });
 };
 
@@ -206,8 +237,8 @@ export const submitFlow = async () => {
   fireEvent.change(screen.getByRole("textbox", { name: /First impression/ }), {
     target: { value: "Helpful" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Next" }));
-  fireEvent.click(await screen.findByRole("button", { name: "Submit" }));
+  fireEvent.click(screen.getByRole("button", { name: taskFlow.next }));
+  fireEvent.click(await screen.findByRole("button", { name: taskFlow.submit }));
   await screen.findByRole("heading", { name: taskFlow.complete });
 };
 
@@ -219,6 +250,11 @@ export const setServerAction = (next: ActionDto) => {
 /** Sets the status the submit answers with until the next test. */
 export const setSubmitStatus = (status: number) => {
   submitStatus = status;
+};
+
+/** Sets the status a draft save answers with until the next test. */
+export const setDraftSaveStatus = (status: number) => {
+  draftSaveStatus = status;
 };
 
 /** Holds the submit's response until the returned release is called. */
@@ -235,7 +271,7 @@ export const setServedSchema = (schema: unknown) => {
   servedSchema = schema;
 };
 
-export const backgroundOnlySchema = {
+export const readingOnlySchema = {
   pages: [taskSchema.pages[0]],
   outputViews: [],
 };
@@ -246,4 +282,4 @@ export const submissionCount = () => submissions;
 export const storedDraftKeys = () =>
   Array.from({ length: window.localStorage.length }, (_, i) =>
     window.localStorage.key(i),
-  ).filter((key) => !key?.startsWith("taskflow-screen:"));
+  ).filter((key) => !key?.startsWith("taskflow-step:"));

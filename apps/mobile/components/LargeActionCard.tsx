@@ -1,7 +1,8 @@
-import type { ReactNode } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { useCallback, useState, type ReactNode } from "react";
+import { View } from "react-native";
 
-import { taskHeaders } from "@alliance/shared/lib/copy";
+import { FlowButtonKind } from "@alliance/shared/forms/flowStyle";
+import { taskFlow, taskHeaders } from "@alliance/shared/lib/copy";
 import {
   getNextEvent,
   LargeActionCardPropsShared,
@@ -12,17 +13,25 @@ import useActivities, {
 import { cn } from "@alliance/shared/styles/util";
 import { router } from "expo-router";
 import { ArrowRight, Eye } from "lucide-react-native";
+import { colors } from "../lib/style/colors";
 import { ActionCompletedBarWithInfo } from "./ActionCompletedBarWithInfo";
 import ActionTaskPanel from "./ActionTaskPanel";
 import Button, { ButtonColor } from "./system/Button";
-import Card from "./system/Card";
+import Card, { CardStyle } from "./system/Card";
 import Text, { FontFamily, FontWeight } from "./system/Text";
+import TaskContributors from "./TaskContributors";
+import { CardWithdrawContext } from "./taskflow/CardWithdrawContext";
+import FlowButton from "./taskflow/FlowButton";
+import { TaskFlowWithdrawButton } from "./taskflow/TaskFlowHeader";
 import TaskTimeInfo from "./TaskTimeInfo";
 
 export interface LargeActionCardProps extends LargeActionCardPropsShared {
   onCompleteAction?: () => void;
   onAlreadySubmitted: () => void;
 }
+
+// text-zinc-900, which the banner's heading uses; the icon has to take a value.
+const ZINC_900 = "#18181b";
 
 function Banner({
   icon,
@@ -36,12 +45,12 @@ function Banner({
   children?: ReactNode;
 }) {
   const headerText = (
-    <Text className="text-sky-800" weight={FontWeight.Semibold}>
+    <Text className="text-zinc-900" weight={FontWeight.Semibold}>
       {header}
     </Text>
   );
   return (
-    <View className="-mx-4 -mt-4 mb-3 bg-sky-100 border-b border-sky-300 px-4 py-3">
+    <Card cardStyle={CardStyle.Alert} className="mb-3 rounded-md px-4 py-3">
       {icon ? (
         <View className="flex-row items-center gap-x-2">
           {icon}
@@ -50,11 +59,11 @@ function Banner({
       ) : (
         headerText
       )}
-      <Text className={cn("text-sky-700 mt-1", children && "mb-3")}>
+      <Text className={cn("text-zinc-900 mt-1", children && "mb-3")}>
         {message}
       </Text>
       {children}
-    </View>
+    </Card>
   );
 }
 
@@ -88,6 +97,11 @@ export default function LargeActionCard({
   onCompleteAction = onUpdateActionState,
 }: LargeActionCardProps) {
   const nextEvent = getNextEvent(action);
+  const [openWithdraw, setOpenWithdraw] = useState<(() => void) | null>(null);
+  const placeWithdraw = useCallback(
+    (open: (() => void) | null) => setOpenWithdraw(() => open),
+    [],
+  );
   const { activities: friendActivities } = useActivities({
     list: ActivityList.FriendsForAction,
     objectId: action.id,
@@ -96,61 +110,68 @@ export default function LargeActionCard({
   });
   return (
     <Card className="p-4!">
-      <View>
-        {action.viewer?.staffPreview && (
-          <Banner
-            icon={<Eye size={16} color="#075985" />}
-            header={taskHeaders.staffPreview.title}
-            message={taskHeaders.staffPreview.description}
-          />
-        )}
-        {dismissProps && (
-          <DismissBanner
-            header={dismissProps.header}
-            message={dismissProps.message}
-            onDismiss={dismissProps.onDismiss}
-          />
-        )}
-        <View className="flex flex-row items-center justify-between mb-4">
+      {action.viewer?.staffPreview && (
+        <Banner
+          icon={<Eye size={16} color={ZINC_900} />}
+          header={taskHeaders.staffPreview.title}
+          message={taskHeaders.staffPreview.description}
+        />
+      )}
+      {dismissProps && (
+        <DismissBanner
+          header={dismissProps.header}
+          message={dismissProps.message}
+          onDismiss={dismissProps.onDismiss}
+        />
+      )}
+      <View className="flex-row items-start gap-x-4">
+        <View className="flex-1 gap-y-2">
+          <Text
+            className="text-2xl"
+            family={FontFamily.Serif}
+            weight={FontWeight.Semibold}
+          >
+            {action.name}
+          </Text>
           <TaskTimeInfo
             action={action}
             nextEvent={nextEvent}
-            className="flex-row items-center gap-x-1"
-            filled={true}
+            className="flex-row flex-wrap gap-x-4"
           />
-          <TouchableOpacity
-            onPress={() => {
-              router.push(`/actions/${action.id}`);
-            }}
-            className="mr-2 flex flex-row items-center gap-x-1"
-          >
-            <ArrowRight size={20} />
-          </TouchableOpacity>
         </View>
-        <Text
-          className="text-xl mb-2"
-          family={FontFamily.Serif}
-          weight={FontWeight.Bold}
-        >
-          {action.name}
-        </Text>
+        <View className="flex-row items-center gap-x-2">
+          {openWithdraw ? (
+            <TaskFlowWithdrawButton onPress={openWithdraw} />
+          ) : null}
+          <FlowButton
+            kind={FlowButtonKind.Icon}
+            onPress={() => router.push(`/actions/${action.id}`)}
+            accessibilityLabel={taskFlow.taskDetails}
+            hitSlop={8}
+          >
+            <ArrowRight size={20} color={colors.text.icon} />
+          </FlowButton>
+        </View>
       </View>
-      <Text className="text-base text-zinc-500 mb-4">
+      <Text className="text-base text-zinc-900 my-4">
         {action.shortDescription}
       </Text>
       <ActionCompletedBarWithInfo
         action={action}
         friendActivities={friendActivities}
       />
-      <View className="mt-6 border-t border-zinc-200 pt-6">
-        <ActionTaskPanel
-          key={action.id}
-          action={action}
-          onCompleteAction={onCompleteAction}
-          onOptOutAction={onUpdateActionState}
-          onDeadlinePassed={onDeadlinePassed}
-          onAlreadySubmitted={onAlreadySubmitted}
-        />
+      <TaskContributors action={action} />
+      <View className="mt-6">
+        <CardWithdrawContext.Provider value={placeWithdraw}>
+          <ActionTaskPanel
+            key={action.id}
+            action={action}
+            onCompleteAction={onCompleteAction}
+            onOptOutAction={onUpdateActionState}
+            onDeadlinePassed={onDeadlinePassed}
+            onAlreadySubmitted={onAlreadySubmitted}
+          />
+        </CardWithdrawContext.Provider>
       </View>
     </Card>
   );

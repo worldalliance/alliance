@@ -172,7 +172,7 @@ export function RadioInputField({
                 )}
               </View>
               <View className="flex-1">
-                <InlineLabelMarkdownWrapper>
+                <InlineLabelMarkdownWrapper markLinksLeavingApp>
                   {option.label}
                 </InlineLabelMarkdownWrapper>
               </View>
@@ -359,7 +359,7 @@ export function MultiSelectInputField({
                   className="max-w-full flex-row items-center gap-1 rounded-full bg-zinc-100 px-3 py-1"
                 >
                   <View className="shrink">
-                    <InlineLabelMarkdownWrapper>
+                    <InlineLabelMarkdownWrapper markLinksLeavingApp>
                       {option.label}
                     </InlineLabelMarkdownWrapper>
                   </View>

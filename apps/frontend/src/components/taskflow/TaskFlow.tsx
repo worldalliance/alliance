@@ -15,6 +15,7 @@ import {
   type TaskFlowMode,
 } from "@alliance/shared/forms/useTaskFlow";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
+import { taskFlow } from "@alliance/shared/lib/copy";
 import {
   useReopenLeftTask,
   useTaskFlowReturn,
@@ -25,18 +26,25 @@ import { formBlockedView } from "@alliance/sharedweb/forms/FormElements";
 import { useWebFormState } from "@alliance/sharedweb/forms/useWebFormState";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import { Dialog } from "@base-ui/react/dialog";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { matchPath, useLocation, useNavigate } from "react-router";
+import { ArrowRight } from "lucide-react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { href, matchPath, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../../lib/AuthContext";
 import {
   ImmersiveTone,
   useImmersiveNavbar,
 } from "../../lib/NavbarOptionsContext";
 import ProgressBar from "../system/ProgressBar";
+import { CardMenuSlotContext } from "./CardMenuSlot";
 import FlowButton, { FlowButtonKind } from "./FlowButton";
 import { afterMotion, flowMotion, transition } from "./flowMotion";
+import TaskAnswersCard from "./TaskAnswersCard";
 import TaskFlowComplete from "./TaskFlowComplete";
-import TaskFlowIntro from "./TaskFlowIntro";
+import TaskFlowHeader, {
+  TaskFlowWithdrawMenu,
+  type FlowWithdrawHandler,
+} from "./TaskFlowHeader";
 import TaskFlowScreen, {
   FLOW_COLUMN,
   TaskFlowPage,
@@ -45,6 +53,7 @@ import TaskFlowScreen, {
 import { useExpandingPanel } from "./useExpandingPanel";
 
 const PROGRESS_TRANSITION = transition(flowMotion.progress, "width");
+const TASKS_PATH = href("/tasks");
 
 const isTaskPage = (path: string, actionId: number) =>
   matchPath("/actions/:id", path)?.params.id === String(actionId);
@@ -98,6 +107,7 @@ export default function TaskFlow({
   onAbandonAction,
 }: TaskFlowProps) {
   const { user, isAuthenticated, loading: userLoading } = useAuth();
+  const menuSlot = useContext(CardMenuSlotContext);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { records, readOnly, withdraws } = TASK_FLOW_MODE_RULES[mode];
   const withdraw = withdraws && !publicAction ? onAbandonAction : undefined;
@@ -203,10 +213,11 @@ export default function TaskFlow({
   const { panel, panelRef, collapse } = useExpandingPanel(anchorRef);
   const closing = useRef(false);
   const [recoloring, setRecoloring] = useState(false);
-  const [shrunk, setShrunk] = useState(false);
-  const shown = flow.stage !== FlowStage.Closed && !shrunk;
+  const [navReleased, setNavReleased] = useState(false);
+  const shown = flow.stage !== FlowStage.Closed;
   useImmersiveNavbar({
-    immersive: shown,
+    immersive: shown && !navReleased,
+    panelUp: shown,
     tone:
       flow.stage === FlowStage.Complete && !recoloring
         ? ImmersiveTone.Success
@@ -222,16 +233,15 @@ export default function TaskFlow({
       setRecoloring(true);
       await afterMotion(flowMotion.recolor);
     }
+    // The nav widens before the panel shrinks, so the panel shrinks into the
+    // card where it will rest, and completing the task, which re-renders the
+    // page behind, can't stall the nav's width transition.
+    setNavReleased(true);
+    await afterMotion(flowMotion.nav, flowMotion.fade);
     await collapse();
-    if (complete) {
-      // Completing re-renders the page behind, which would stall the nav's
-      // width transition, so the stage and the held page wait for it.
-      setShrunk(true);
-      await afterMotion(flowMotion.nav, flowMotion.fade);
-    }
     closing.current = false;
     setRecoloring(false);
-    setShrunk(false);
+    setNavReleased(false);
     flow.close();
     then?.();
   };
@@ -241,11 +251,19 @@ export default function TaskFlow({
       then?.();
     });
 
+  const onWithdraw: FlowWithdrawHandler | null = withdraw
+    ? (withdrawal) => {
+        form.handleAbandon(withdrawal);
+        position.clear();
+        flow.close();
+      }
+    : null;
+
+  const blocked = formBlockedView(form);
   const renderStage = () => {
-    const blocked = formBlockedView(form);
     if (blocked !== null && flow.stage !== FlowStage.Complete) {
       return (
-        <TaskFlowPage onClose={() => void close()}>
+        <TaskFlowPage>
           <TaskFlowTitle>{action.name}</TaskFlowTitle>
           {blocked}
         </TaskFlowPage>
@@ -254,27 +272,6 @@ export default function TaskFlow({
     switch (flow.stage) {
       case FlowStage.Closed:
         return null;
-      case FlowStage.Background:
-        return (
-          <TaskFlowIntro
-            action={action}
-            form={form}
-            background={flow.background}
-            onClose={() => void close()}
-            onWithdraw={
-              withdraw
-                ? (withdrawal) => {
-                    form.handleAbandon(withdrawal);
-                    position.clear();
-                    flow.close();
-                  }
-                : null
-            }
-            onNext={() => void flow.start()}
-            nextLabel={flow.startLabel}
-            error={submitError}
-          />
-        );
       case FlowStage.Screens:
         if (!flow.screen) return null;
         return (
@@ -284,9 +281,9 @@ export default function TaskFlow({
             screen={flow.screen}
             nextReady={flow.nextReady}
             nextLabel={flow.nextLabel}
+            nextIsLast={flow.nextIsLast}
             error={submitError}
             scrollRef={scrollRef}
-            onClose={() => void close()}
             onBack={flow.back}
             onNext={() => void flow.next()}
           />
@@ -298,12 +295,15 @@ export default function TaskFlow({
             answers={flow.submittedAnswers ?? {}}
             user={user}
             fading={recoloring}
-            onClose={() => void finish()}
-            onInvite={
-              isAuthenticated
-                ? () => void finish(() => navigate("/invites"))
-                : null
+            leavesToTasks={isAuthenticated}
+            onClose={() =>
+              void finish(
+                isAuthenticated && pathname !== TASKS_PATH
+                  ? () => navigate(TASKS_PATH)
+                  : undefined,
+              )
             }
+            onInvite={isAuthenticated ? () => navigate(href("/invites")) : null}
           />
         );
       default:
@@ -311,19 +311,46 @@ export default function TaskFlow({
     }
   };
 
+  const withdrawMenu =
+    onWithdraw && flow.stage === FlowStage.Closed ? (
+      <TaskFlowWithdrawMenu
+        disabled={form.submitting}
+        onWithdraw={onWithdraw}
+      />
+    ) : null;
+
   return (
     <div ref={anchorRef}>
-      <FlowButton
-        kind={FlowButtonKind.Primary}
+      <div
         className={cn(
-          "w-full",
+          "flex gap-x-3",
           flow.stage === FlowStage.Complete && "invisible",
         )}
-        onClick={flow.begin}
-        disabled={!position.loaded}
       >
-        {flow.beginLabel}
-      </FlowButton>
+        <FlowButton
+          kind={readOnly ? FlowButtonKind.Secondary : FlowButtonKind.Primary}
+          className="flex-1"
+          onClick={flow.begin}
+          disabled={!position.loaded}
+          iconRight={ArrowRight}
+        >
+          {flow.beginLabel}
+        </FlowButton>
+        {menuSlot === undefined
+          ? withdrawMenu
+          : menuSlot && withdrawMenu && createPortal(withdrawMenu, menuSlot)}
+      </div>
+      {completedFormResponse ? (
+        <TaskAnswersCard
+          className="mt-4 border border-zinc-200"
+          output={{
+            schema,
+            submission: completedFormResponse,
+            submitterId: user?.id,
+          }}
+          user={user}
+        />
+      ) : null}
       <Dialog.Root
         open={shown}
         modal={false}
@@ -348,18 +375,29 @@ export default function TaskFlow({
               "fixed inset-0 flex flex-col bg-white outline-none md:top-[var(--navbar-top-bar-height)] md:left-[var(--nav-width)]",
             )}
           >
+            {flow.open ? (
+              <>
+                <div className={cn(FLOW_COLUMN, "pt-8")}>
+                  <ProgressBar
+                    progress={flow.progress}
+                    total={100}
+                    label={taskFlow.progress}
+                    fillTransition={PROGRESS_TRANSITION}
+                  />
+                </div>
+                <TaskFlowHeader
+                  onClose={() => void close()}
+                  disabled={form.submitting}
+                  progressSaved={
+                    blocked === null && !form.saveFailed && flow.progressSaved
+                  }
+                  onWithdraw={blocked === null ? onWithdraw : null}
+                />
+              </>
+            ) : null}
             <StickyAccordionTitles.Provider value>
               {renderStage()}
             </StickyAccordionTitles.Provider>
-            {flow.open ? (
-              <div className={cn(FLOW_COLUMN, "pb-4")}>
-                <ProgressBar
-                  progress={flow.progress}
-                  total={100}
-                  fillTransition={PROGRESS_TRANSITION}
-                />
-              </div>
-            ) : null}
           </Dialog.Popup>
         </Dialog.Portal>
       </Dialog.Root>

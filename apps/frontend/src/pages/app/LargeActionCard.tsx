@@ -1,7 +1,7 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { UserActionRelation } from "@alliance/shared/client";
 import { mustSignContractFirst } from "@alliance/shared/lib/actionPageTaskPanel";
-import { taskHeaders } from "@alliance/shared/lib/copy";
+import { taskFlow, taskHeaders } from "@alliance/shared/lib/copy";
 import {
   getNextEvent,
   LargeActionCardPropsShared,
@@ -13,10 +13,15 @@ import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import { ArrowRight, ChevronRight, Eye } from "lucide-react";
+import { ArrowRight, Eye } from "lucide-react";
 import { useCallback, useEffect, useState, type RefObject } from "react";
 import { href, Link, useNavigate } from "react-router";
 import ActionTaskPanel from "../../components/ActionTaskPanel";
+import TaskContributors from "../../components/TaskContributors";
+import { CardMenuSlotContext } from "../../components/taskflow/CardMenuSlot";
+import FlowButton, {
+  FlowButtonKind,
+} from "../../components/taskflow/FlowButton";
 import { TASK_FLOW_ORIGIN } from "../../components/taskflow/useExpandingPanel";
 import { useAuth } from "../../lib/AuthContext";
 import ActionCompletedBarWithInfo from "./ActionCompletedBarWithInfo";
@@ -55,6 +60,7 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
   const contractSigned = user?.hasActiveContract ?? false;
   const showSignContractFirst = mustSignContractFirst(action, contractSigned);
 
+  const [menuSlot, setMenuSlot] = useState<HTMLDivElement | null>(null);
   const [state, setState] = useState<LargeActionCardState>(
     LargeActionCardState.Default,
   );
@@ -128,21 +134,23 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
           </Card>
         )}
         <div className="p-0 sm:p-2">
-          <div className="flex sm:flex-row gap-4 items-start flex-col-reverse">
+          <div className="flex gap-4 items-start">
             <div className="flex flex-col flex-1 gap-y-2">
               <p className="text-title text-2xl!">{action.name}</p>
               <TaskTimeInfo action={action} nextEvent={nextEvent} />
             </div>
-            {showDetails && (
-              <Button
-                color={ButtonColor.Grey}
-                onClick={goToActionPage}
-                className="!px-4 flex gap-x-1 text-sm font-normal"
-              >
-                Details
-                <ChevronRight size="15" className="-mr-1" />
-              </Button>
-            )}
+            <div className="flex items-center gap-x-2">
+              <div ref={setMenuSlot} className="empty:hidden" />
+              {showDetails && (
+                <FlowButton
+                  kind={FlowButtonKind.Icon}
+                  onClick={goToActionPage}
+                  aria-label={taskFlow.taskDetails}
+                >
+                  <ArrowRight size={20} aria-hidden />
+                </FlowButton>
+              )}
+            </div>
           </div>
           <p className="my-4">{action.shortDescription}</p>
           <ActionCompletedBarWithInfo
@@ -150,7 +158,8 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
             action={action}
             textSize="base"
           />
-          <div className="mt-6 border-t border-zinc-200 pt-6">
+          <TaskContributors action={action} />
+          <div className="mt-6">
             {showSignContractFirst && (
               <div className="mb-4 flex flex-row justify-between items-center gap-x-2 rounded-md border border-zinc-200 bg-zinc-50 p-4">
                 <p>{taskHeaders.actionPage.onboardingSignContractFirst}</p>
@@ -163,18 +172,20 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
                 </Link>
               </div>
             )}
-            <ActionTaskPanel
-              key={action.id}
-              action={action}
-              userRelation={userRelation}
-              onCompleteAction={handleCompleteAction}
-              onOptOutAction={handleUpdateActionState}
-              onDeadlinePassed={onDeadlinePassed}
-              scrollContainerRef={scrollContainerRef}
-              disabled={showSignContractFirst}
-              staticTaskFormSchema={staticTaskFormSchema}
-              staticTaskInitialPageIndex={staticTaskInitialPageIndex}
-            />
+            <CardMenuSlotContext.Provider value={menuSlot}>
+              <ActionTaskPanel
+                key={action.id}
+                action={action}
+                userRelation={userRelation}
+                onCompleteAction={handleCompleteAction}
+                onOptOutAction={handleUpdateActionState}
+                onDeadlinePassed={onDeadlinePassed}
+                scrollContainerRef={scrollContainerRef}
+                disabled={showSignContractFirst}
+                staticTaskFormSchema={staticTaskFormSchema}
+                staticTaskInitialPageIndex={staticTaskInitialPageIndex}
+              />
+            </CardMenuSlotContext.Provider>
           </div>
         </div>
       </Card>

@@ -3,16 +3,44 @@ import {
   type FormValue,
 } from "@alliance/common/forms/form-schema";
 import { type UserDto } from "@alliance/shared/client";
-import { formatUserLocationDisplayValue } from "@alliance/shared/formrenderer";
 import { FlowButtonKind } from "@alliance/shared/forms/flowStyle";
-import { useCurrentUserLocation } from "@alliance/shared/forms/useCurrentUserLocation";
 import { taskFlow } from "@alliance/shared/lib/copy";
-import { ScrollView, View } from "react-native";
+import { ListTodo, UserPlus } from "lucide-react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import OutputRenderer from "../OutputRenderer";
-import ProfileImage from "../ProfileImage";
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
+import { colors } from "../../lib/style/colors";
 import Text, { FontWeight } from "../system/Text";
 import FlowButton from "./FlowButton";
+import TaskAnswersCard from "./TaskAnswersCard";
+
+const FADE_HEIGHT = 48;
+
+// Takes the tap, so it doesn't reach the background, which closes the screen.
+// It goes on a View: a Text that takes the responder becomes pressable, with
+// an iOS press highlight and a link role.
+const KEEPS_OPEN = { onStartShouldSetResponder: () => true };
+
+// SVG rather than a native gradient module: adding one invalidates every
+// installed dev client's fingerprint. Same reason as onboarding's Scrim.
+function BottomFade() {
+  return (
+    <Svg
+      pointerEvents="none"
+      style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}
+      width="100%"
+      height={FADE_HEIGHT}
+    >
+      <Defs>
+        <LinearGradient id="complete-fade" x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0" stopColor={colors.green} stopOpacity="0" />
+          <Stop offset="1" stopColor={colors.green} stopOpacity="1" />
+        </LinearGradient>
+      </Defs>
+      <Rect width="100%" height="100%" fill="url(#complete-fade)" />
+    </Svg>
+  );
+}
 
 export default function TaskFlowComplete({
   schema,
@@ -28,41 +56,43 @@ export default function TaskFlowComplete({
   onInvite: () => void;
 }) {
   const insets = useSafeAreaInsets();
-  const { userLocationDisplayValue } = useCurrentUserLocation({
-    enabled: !!user,
-    user,
-  });
-  const location = formatUserLocationDisplayValue(userLocationDisplayValue);
 
   return (
-    <View className="flex-1 bg-green" style={{ paddingTop: insets.top }}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 48 }}>
-        <Text accessibilityRole="header" className="text-4xl text-white">
-          {taskFlow.complete}
-        </Text>
-        <Text className="text-base text-white mt-3">
-          {taskFlow.completeUpdate}
-        </Text>
-        <View className="mt-6 rounded-md bg-white p-6 gap-y-4">
-          {user ? (
-            <View className="flex-row items-center gap-x-3">
-              <ProfileImage pfp={user.profilePicture} size="medium" />
-              <View className="flex-1">
-                <Text
-                  className="text-base text-zinc-900"
-                  weight={FontWeight.Semibold}
-                >
-                  {user.name}
-                </Text>
-                {location ? (
-                  <Text className="text-base text-zinc-500">{location}</Text>
-                ) : null}
-              </View>
-            </View>
-          ) : null}
-          <OutputRenderer schema={schema} answers={answers} ownView />
-        </View>
-      </ScrollView>
+    <Pressable
+      className="flex-1 bg-green"
+      style={{ paddingTop: insets.top }}
+      onPress={onClose}
+      accessible={false}
+    >
+      <View className="flex-1">
+        <ScrollView
+          contentContainerStyle={{
+            padding: 16,
+            paddingTop: 48,
+            paddingBottom: FADE_HEIGHT,
+          }}
+        >
+          <View {...KEEPS_OPEN}>
+            <Text
+              accessibilityRole="header"
+              className="text-4xl text-white"
+              weight={FontWeight.Semibold}
+            >
+              {taskFlow.complete}
+            </Text>
+            <Text className="text-base text-white mt-3">
+              {taskFlow.completeUpdate}
+            </Text>
+          </View>
+          <TaskAnswersCard
+            className="mt-6"
+            output={{ schema, answers }}
+            user={user}
+            {...KEEPS_OPEN}
+          />
+        </ScrollView>
+        <BottomFade />
+      </View>
       <View
         className="px-4 pt-4 gap-y-3"
         style={{ paddingBottom: insets.bottom + 8 }}
@@ -70,14 +100,16 @@ export default function TaskFlowComplete({
         <FlowButton
           kind={FlowButtonKind.Inverse}
           onPress={onClose}
-          title={taskFlow.closeTask}
+          title={taskFlow.viewTasks}
+          iconLeft={ListTodo}
         />
         <FlowButton
-          kind={FlowButtonKind.Secondary}
+          kind={FlowButtonKind.InverseSecondary}
           onPress={onInvite}
           title={taskFlow.inviteFriend}
+          iconLeft={UserPlus}
         />
       </View>
-    </View>
+    </Pressable>
   );
 }

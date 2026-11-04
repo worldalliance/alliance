@@ -10,13 +10,13 @@ import type {
 } from "@alliance/common/forms/form-schema";
 import { taskFlowFallbackTitle } from "../lib/copy";
 import {
-  backgroundScreenIndex,
   buildFlowScreens,
   flowProgress,
   flowResumeIndex,
   flowScreenTitle,
-  splitBackground,
+  flowStepPreviews,
   visibleFlowScreenIndices,
+  withoutEmptySections,
   type FlowScreen,
 } from "./flowScreens";
 
@@ -56,7 +56,7 @@ const ids = (schema: FormSchema) =>
   ]);
 
 describe("buildFlowScreens", () => {
-  it("starts a screen at every page", () => {
+  it("makes one screen per page", () => {
     const screens = buildFlowScreens(
       schemaOf(page("p1", [text("a")]), page("p2", [input("q")])),
     );
@@ -66,117 +66,78 @@ describe("buildFlowScreens", () => {
     ]);
   });
 
-  it("starts a screen at each header, unless the screen is still empty", () => {
+  it("keeps a page's headers and inputs on one screen", () => {
     expect(
       ids(
         schemaOf(
-          page("p1", [header("h1"), text("a"), header("h2"), text("b")]),
+          page("p1", [
+            header("h1"),
+            input("q1"),
+            header("h2"),
+            input("q2"),
+            input("q3"),
+          ]),
         ),
       ),
-    ).toEqual([
-      ["# h1", "a"],
-      ["# h2", "b"],
-    ]);
+    ).toEqual([["# h1", "q1", "h2", "q2", "q3"]]);
   });
 
-  it("keeps a header stacked under the screen's title", () => {
+  it("titles a screen with the page's first header, wherever it sits", () => {
     expect(
-      ids(
-        schemaOf(
-          page("p1", [header("h1"), header("h2"), header("h3"), text("a")]),
-        ),
-      ),
-    ).toEqual([["# h1", "h2", "h3", "a"]]);
-  });
-
-  it("puts a header that ends a page on the page's last screen", () => {
-    expect(
-      ids(
-        schemaOf(
-          page("p1", [header("h1"), text("a"), header("h2")]),
-          page("p2", [text("b")]),
-        ),
-      ),
-    ).toEqual([["# h1", "a", "h2"], ["b"]]);
-  });
-
-  it("puts every header that ends a page on the page's last screen", () => {
-    expect(
-      ids(
-        schemaOf(
-          page("p1", [header("h1"), text("a"), header("h2"), header("h3")]),
-        ),
-      ),
-    ).toEqual([["# h1", "a", "h2", "h3"]]);
-  });
-
-  it("keeps a page that holds only stacked headers", () => {
-    expect(ids(schemaOf(page("p1", [header("h1"), header("h2")])))).toEqual([
-      ["# h1", "h2"],
-    ]);
+      ids(schemaOf(page("p1", [text("a"), header("h"), input("q")]))),
+    ).toEqual([["# h", "a", "q"]]);
   });
 
   it("keeps a page that holds only a header", () => {
     expect(ids(schemaOf(page("p1", [header("h")])))).toEqual([["# h"]]);
   });
 
-  it("carries the heading onto a screen split off by the input cap", () => {
-    expect(
-      ids(
-        schemaOf(
-          page("p1", [header("h"), input("q1"), input("q2"), input("q3")]),
-        ),
-      ),
-    ).toEqual([
-      ["# h", "q1", "q2"],
-      ["# h", "q3"],
-    ]);
-  });
-
-  it("puts at most two inputs on a screen", () => {
-    expect(
-      ids(schemaOf(page("p1", [input("q1"), input("q2"), input("q3")]))),
-    ).toEqual([["q1", "q2"], ["q3"]]);
-  });
-
-  it("moves blocks after the second input onto the screen of the input they introduce", () => {
-    expect(
-      ids(
-        schemaOf(
-          page("p1", [
-            text("intro"),
-            input("q1"),
-            text("between"),
-            input("q2"),
-            text("before-q3"),
-            input("q3"),
-          ]),
-        ),
-      ),
-    ).toEqual([
-      ["intro", "q1", "between", "q2"],
-      ["before-q3", "q3"],
-    ]);
-  });
-
-  it("keeps trailing blocks on the last screen when no input follows", () => {
-    expect(
-      ids(schemaOf(page("p1", [input("q1"), input("q2"), text("after")]))),
-    ).toEqual([["q1", "q2", "after"]]);
-  });
-
-  it("drops an empty page", () => {
+  it("keeps an empty page, so screens line up with pages", () => {
     expect(ids(schemaOf(page("p1", []), page("p2", [text("a")])))).toEqual([
+      [],
       ["a"],
     ]);
+  });
+});
+
+describe("withoutEmptySections", () => {
+  const elements = [
+    input("q"),
+    header("plan"),
+    text("plan-text"),
+    input("plan-q"),
+    header("end"),
+  ];
+  const shownIds = (hidden: string[]) =>
+    withoutEmptySections(
+      elements,
+      (element) => !hidden.some((id) => id === element.id),
+    ).map((element) => element.id);
+
+  it("drops a header once everything under it is hidden", () => {
+    expect(shownIds(["plan-text", "plan-q"])).toEqual([
+      "q",
+      "plan-text",
+      "plan-q",
+      "end",
+    ]);
+  });
+
+  it("keeps a header while anything under it shows", () => {
+    expect(shownIds(["plan-text"])).toEqual(elements.map(({ id }) => id));
+  });
+
+  it("keeps a header with nothing under it", () => {
+    expect(shownIds([])).toContain("end");
   });
 });
 
 describe("visibleFlowScreenIndices", () => {
   const screens = buildFlowScreens(
     schemaOf(
-      page("p1", [header("h1"), text("a"), header("h2"), text("b")]),
-      page("p2", [input("q")]),
+      page("p1", [header("h1"), text("a")]),
+      page("p2", [header("h2"), text("b")]),
+      page("p3", [input("q")]),
     ),
   );
 
@@ -184,10 +145,22 @@ describe("visibleFlowScreenIndices", () => {
     expect(
       visibleFlowScreenIndices({
         screens,
-        visiblePageIndices: [0],
+        visiblePageIndices: [0, 2],
         isElementVisible: () => true,
       }),
-    ).toEqual([0, 1]);
+    ).toEqual([0, 2]);
+  });
+
+  it("skips an empty page", () => {
+    expect(
+      visibleFlowScreenIndices({
+        screens: buildFlowScreens(
+          schemaOf(page("p1", []), page("p2", [text("a")])),
+        ),
+        visiblePageIndices: [0, 1],
+        isElementVisible: () => true,
+      }),
+    ).toEqual([1]);
   });
 
   it("shows a header-only screen while its header shows", () => {
@@ -202,11 +175,23 @@ describe("visibleFlowScreenIndices", () => {
     expect(visible(false)).toEqual([]);
   });
 
+  it("skips a screen whose only showing block heads a hidden section", () => {
+    expect(
+      visibleFlowScreenIndices({
+        screens: buildFlowScreens(
+          schemaOf(page("p1", [header("h"), header("sub"), text("a")])),
+        ),
+        visiblePageIndices: [0],
+        isElementVisible: (element) => element.id !== "a",
+      }),
+    ).toEqual([]);
+  });
+
   it("skips screens whose elements are all hidden", () => {
     expect(
       visibleFlowScreenIndices({
         screens,
-        visiblePageIndices: [0, 1],
+        visiblePageIndices: [0, 1, 2],
         isElementVisible: (element) => element.id !== "b",
       }),
     ).toEqual([0, 2]);
@@ -242,8 +227,8 @@ describe("flowResumeIndex", () => {
 });
 
 describe("flowProgress", () => {
-  it("counts the current screen as reached", () => {
-    expect(flowProgress({ visibleIndices: [0, 2, 3, 5], screenIndex: 2 })).toBe(
+  it("counts the screens finished before the current one", () => {
+    expect(flowProgress({ visibleIndices: [0, 2, 3, 5], screenIndex: 3 })).toBe(
       50,
     );
   });
@@ -253,39 +238,15 @@ describe("flowProgress", () => {
   });
 });
 
-describe("backgroundScreenIndex", () => {
-  const screens = buildFlowScreens(
-    schemaOf(
-      page("p1", [text("a"), header("h"), input("q")]),
-      page("p2", [text("b")]),
-    ),
-  );
-
-  const background = (
-    visibleIndices: number[],
-    isElementVisible: (element: PageItem) => boolean = () => true,
-  ) => backgroundScreenIndex({ screens, visibleIndices, isElementVisible });
-
-  it("is the first visible screen when it has no inputs", () => {
-    expect(background([0, 1, 2])).toBe(0);
-  });
-
-  it("is null when the first visible screen asks for input", () => {
-    expect(background([1, 2])).toBeNull();
-  });
-
-  it("is the first visible screen when its questions are hidden", () => {
-    expect(background([1, 2], (element) => element.id !== "q")).toBe(1);
-  });
-});
-
 describe("flowScreenTitle", () => {
   const title = (screen: FlowScreen, visible = true) =>
     flowScreenTitle({
       screen,
-      activeUserKey: undefined,
-      isElementCurrentlyVisible: () => visible,
-      variableValues: new Map(),
+      form: {
+        activeUserKey: undefined,
+        isElementCurrentlyVisible: () => visible,
+        variableValues: new Map(),
+      },
     });
 
   it("uses the screen's header", () => {
@@ -314,25 +275,54 @@ describe("flowScreenTitle", () => {
           heading: null,
           elements: [text("a"), input("q")],
         },
-        activeUserKey: undefined,
-        isElementCurrentlyVisible: (element) => element.id !== "q",
-        variableValues: new Map(),
+        form: {
+          activeUserKey: undefined,
+          isElementCurrentlyVisible: (element) => element.id !== "q",
+          variableValues: new Map(),
+        },
       }),
     ).toBe(taskFlowFallbackTitle.reading);
   });
 });
 
-describe("splitBackground", () => {
-  it("puts media ahead of the text it came with", () => {
-    const video: DisplayBlock = {
-      id: "v",
-      type: "display",
-      kind: "video",
-      src: "https://example.com/v.mp4",
-    };
-    expect(splitBackground([text("a"), video, text("b")])).toEqual({
-      media: [video],
-      reading: [text("a"), text("b")],
-    });
+describe("flowStepPreviews", () => {
+  it("numbers an opening page that asks nothing as its own step", () => {
+    expect(
+      flowStepPreviews(
+        schemaOf(
+          page("p1", []),
+          page("p2", [header("Why it matters"), text("a")]),
+          page("p3", [header("Rate"), input("q")]),
+        ),
+      ),
+    ).toEqual([
+      null,
+      { label: "Step 1: Why it matters", warnings: [] },
+      { label: "Step 2: Rate", warnings: [] },
+    ]);
+  });
+
+  it("warns about a page without a header or with more than two inputs", () => {
+    const [step] = flowStepPreviews(
+      schemaOf(page("p1", [input("a"), input("b"), input("c")])),
+    );
+    expect(step?.label).toBe(`Step 1: ${taskFlowFallbackTitle.questions}`);
+    expect(step?.warnings).toHaveLength(2);
+  });
+
+  it("skips an empty page, which never shows", () => {
+    expect(
+      flowStepPreviews(
+        schemaOf(
+          page("p1", [input("a")]),
+          page("p2", []),
+          page("p3", [header("h"), input("b")]),
+        ),
+      ).map((step) => step?.label ?? null),
+    ).toEqual([
+      `Step 1: ${taskFlowFallbackTitle.questions}`,
+      null,
+      "Step 2: h",
+    ]);
   });
 });

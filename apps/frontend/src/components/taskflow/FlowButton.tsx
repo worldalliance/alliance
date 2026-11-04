@@ -22,6 +22,10 @@ const KINDS: Record<
     variant: BaseButtonVariant.White,
     className: "text-zinc-900",
   },
+  [FlowButtonKind.InverseSecondary]: {
+    variant: BaseButtonVariant.Black,
+    className: "bg-navy hover:bg-navy/90",
+  },
   [FlowButtonKind.Icon]: {
     variant: BaseButtonVariant.Grey,
     className:
@@ -35,6 +39,7 @@ export default function FlowButton({
   loading = false,
   disabled,
   className,
+  iconRight,
   children,
   ...props
 }: Omit<BaseButtonProps, "variant" | "size"> & {
@@ -54,6 +59,7 @@ export default function FlowButton({
       )}
       disabled={disabled || loading}
       aria-busy={loading}
+      iconRight={loading ? undefined : iconRight}
       {...props}
     >
       {loading ? (
