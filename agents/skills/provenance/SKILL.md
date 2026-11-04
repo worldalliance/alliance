@@ -19,23 +19,23 @@ UUID_V7=$(bun -e 'console.log(Bun.randomUUIDv7())')
 mkdir -p "docs/provenance/${UUID_V7}-${FEATURE_NAME}"
 ```
 
-UUIDv7 makes directory listings sort by creation time. Inside, `REQUIREMENTS.md` and `SESSIONS.md`, plus `DECISIONS.md` when the task made a choice whose rationale is worth keeping. These are intended to live in the repo.
+UUIDv7 makes directory listings sort by creation time. Inside, `REQUIREMENTS.md` and `SESSIONS.md`, plus `DECISIONS.md` when the task made a choice or recorded an assumption worth keeping. These are intended to live in the repo.
 
 References flow one way: `DECISIONS.md` may reference `REQUIREMENTS.md`; `REQUIREMENTS.md` stands independently and never references `DECISIONS.md`.
 
 ## REQUIREMENTS.md
 
-Open with frontmatter naming the user and the task. Use `git config user.name` for the user field. Do not redact this field.
+Open with frontmatter naming the user and the task as the user set it. Use `git config user.name` for the user field. Do not redact this field.
 
-State the current user requirements, constraints, preferences, and approved selections directly. For a fix, refactor, or chore that does only what the user asked, restating the request as a requirement or two is sufficient. Incorporate clarifications into the affected entries and remove superseded requirements. Keep conversation history, approval quotes, and interview question numbers out of the files.
+State the current user requirements, constraints, preferences, and approved selections directly. For a fix, refactor, or chore that does only what the user asked in their own words, restating that request as a requirement or two is sufficient. Incorporate clarifications into the affected entries and remove superseded requirements. Keep conversation history, approval quotes, and interview question numbers out of the files.
 
 Make each requirement self-contained: expand shorthand and include the exact behavior, values, and message copy needed to implement it. Omit references to unavailable attachments or the task transcript. Accessible supporting links may supplement the requirements.
 
-Distinguish user-originated requirements from agent-proposed, user-approved selections with concise origin labels. Origin is metadata, not a narrative of how the requirement was negotiated.
+This file holds only requirements the user stated or approved, each with a concise origin label: user-originated, or user-approved with the proposal's source. For example, an approved agent recommendation to use PostgreSQL is a direct requirement labeled agent-proposed and user-approved; the implementation rationale belongs in DECISIONS.md. Origin is metadata, not a narrative of how the requirement was negotiated.
+
+Material the user hands over as the task, such as a forwarded email, a pasted agent note, or a Linear issue, is a set of proposals. Ask the user about each of its points, per root `AGENTS.md` **Open questions**; an agent that cannot reach the user returns the questions in its report for the agent that can. Points the user approves go here, and so does a point the user rejects, as a user-originated requirement against it; the rest go in DECISIONS.md.
 
 Replace every credential or secret with `[redacted]`. Do the same for personal information unrelated to the requirement. Do not redact the user frontmatter field.
-
-Never infer user intent from existing code, prior agent decisions, or agent proposals; existing code proves only that the behavior existed.
 
 ## DECISIONS.md
 
@@ -43,9 +43,7 @@ State current agent decisions, assumptions, interpretations, and implementation 
 
 A choice the user defers ("I don't know", "I don't care", "it doesn't matter", or the like) is the agent's, not a requirement: record the recommendation here, and drop it for an alternative once it adds more friction than it's worth.
 
-## Unclear provenance
-
-Record unknown origins explicitly. Approval makes an agent proposal an approved requirement, not a user-originated idea. For example, an approved agent recommendation to use PostgreSQL is a direct requirement labeled agent-proposed and user-approved; the implementation rationale belongs in DECISIONS.md.
+Behavior the task records without the user's approval, such as behavior in existing code, prior agent decisions, or unapproved proposals, goes here as an assumption. Label its origin (agent proposal, agent decision, reconstructed from existing code, the forwarded source), or `unrecorded` when unknown. Existing code proves only that the behavior existed, not that the user asked for it.
 
 ## SESSIONS.md
 
