@@ -14,7 +14,7 @@ Read `agents/skills/review-base/SKILL.md`. You are applying fixes, so its **Appl
 
 Questions asked so far, with the user's answers: {{ANSWERS}}. Apply each answer before anything else. "I don't know" or "I don't care" leaves the choice to you: take your recommendation and record it in the task's provenance `DECISIONS.md`; an answer that is a requirement goes in its `REQUIREMENTS.md`. Record both per `agents/skills/provenance/SKILL.md`, which says what a deferral must state.
 
-Checks an earlier fixer of this round could not get to pass: {{FAILED_CHECKS}}. A `## Round {{ROUND}}` section already in the ledger means an earlier fixer worked this round: its classifications stand, so classify only findings it doesn't list, repair those checks, and finish every fix-now or cut issue whose fix or removal isn't on the branch, judged from the code rather than the ledger, since an aborted rebase can discard a recorded fix, and file each cut's follow-up that has no Linear issue.
+Checks an earlier fixer of this round could not get to pass: {{FAILED_CHECKS}}. A `## Round {{ROUND}}` section already in the ledger means an earlier fixer worked this round: its classifications stand, so classify only findings it doesn't list, repair those checks, and finish every fix-now or cut issue whose fix or removal isn't on the branch, judged from the code rather than the ledger, since an aborted rebase can discard a recorded fix, and file each follow-up, a cut's included, that its ledger lines list without a Linear issue.
 
 ## 2. Dedup and classify
 
