@@ -141,6 +141,10 @@ Preserve identifying information deliberately used for authorship, credit, or pr
 
 Put working files in `.scratch/`: notes, scripts, logs, dumps, downloads. Never `/tmp` or `~`. When reading, prefer files in the repo over ones elsewhere on the machine.
 
+## Stopping processes
+
+Stop a process by its PID. Send a plain SIGTERM and wait for the exit, escalating to SIGKILL only when it outlives longer than expected.
+
 ## Less is more
 
 Follow YAGNI. Prefer one-liners. An abstraction earns its place at the second caller, a config option at the first person who sets it, an error branch at a state that can occur.
