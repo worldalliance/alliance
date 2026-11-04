@@ -40,7 +40,10 @@ import { CardMenuSlotContext } from "./CardMenuSlot";
 import FlowButton, { FlowButtonKind } from "./FlowButton";
 import { afterMotion, flowMotion, transition } from "./flowMotion";
 import TaskAnswersCard from "./TaskAnswersCard";
-import TaskFlowComplete from "./TaskFlowComplete";
+import TaskFlowComplete, {
+  COMPLETION_TONE,
+  useCompletionPhase,
+} from "./TaskFlowComplete";
 import TaskFlowHeader, {
   TaskFlowWithdrawMenu,
   type FlowWithdrawHandler,
@@ -215,20 +218,22 @@ export default function TaskFlow({
   const [recoloring, setRecoloring] = useState(false);
   const [navReleased, setNavReleased] = useState(false);
   const shown = flow.stage !== FlowStage.Closed;
+  const complete = flow.stage === FlowStage.Complete;
+  const completionPhase = useCompletionPhase(complete);
+  const tone =
+    complete && !recoloring
+      ? COMPLETION_TONE[completionPhase]
+      : ImmersiveTone.Plain;
   useImmersiveNavbar({
     immersive: shown && !navReleased,
     panelUp: shown,
-    tone:
-      flow.stage === FlowStage.Complete && !recoloring
-        ? ImmersiveTone.Success
-        : ImmersiveTone.Plain,
+    tone,
   });
 
   // A submit that lands mid-close would complete the task behind a closed flow.
   const close = async (then?: () => void) => {
     if (closing.current || form.submitting) return;
     closing.current = true;
-    const complete = flow.stage === FlowStage.Complete;
     if (complete) {
       setRecoloring(true);
       await afterMotion(flowMotion.recolor);
@@ -294,6 +299,7 @@ export default function TaskFlow({
             schema={form.schema}
             answers={flow.submittedAnswers ?? {}}
             user={user}
+            phase={completionPhase}
             fading={recoloring}
             leavesToTasks={isAuthenticated}
             onClose={() =>

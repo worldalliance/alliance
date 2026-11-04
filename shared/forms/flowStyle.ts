@@ -26,10 +26,13 @@ export const flowMotion = {
   /** The web panel fading out as it shrinks. */
   collapseFade: { durationMs: 200, easing: EASE_OUT_QUART },
   /**
-   * The completion screen turning back to the usual colours before the flow
-   * closes, and on web the side nav and top band turning green and back.
+   * The completion screen fading out before the flow closes, the green
+   * leaving it on narrow web screens, and on web the side nav and top band
+   * turning green and back.
    */
   recolor: { durationMs: 200, easing: EASE_OUT_QUART },
+  /** The green fading in over the completion screen on narrow web screens. */
+  success: { durationMs: 500, easing: EASE_OUT_QUART },
   /** The web side nav narrowing to its icon rail, and widening back. */
   nav: { durationMs: 200, easing: EASE_OUT_QUART },
   /** The web nav labels and the top bar's search and notifications fading. */

@@ -12,6 +12,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { testAuthUser } from "../../stories/testData";
 import ActionTaskPanelForm from "../ActionTaskPanelForm";
+import { flowMotion, SUCCESS_HOLD_MS } from "./flowMotion";
 import {
   action,
   CLOSE_TIMEOUT,
@@ -27,6 +28,27 @@ import {
 } from "./TaskFlow.testing";
 
 serveTaskFlow();
+
+afterEach(() => jest.restoreAllMocks());
+
+const narrowViewport = () =>
+  jest.spyOn(window, "matchMedia").mockImplementation((media) =>
+    Object.assign(new EventTarget(), {
+      matches: false,
+      media,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+    }),
+  );
+
+const completionBackground = () => {
+  const background = screen
+    .getByText(taskFlow.completeUpdate)
+    .closest(".bg-green, .bg-white");
+  if (!background) throw new Error("completion text has no background");
+  return background;
+};
 
 function ActionPagePanel() {
   const { action: pageAction, onCompleteAction } = useActionHandlers(
@@ -236,11 +258,7 @@ it("closes the completion screen on a tap on its background, not its content", a
   await act(() => new Promise((resolve) => setTimeout(resolve, CLOSE_TIMEOUT)));
   expect(onCompleteAction).not.toHaveBeenCalled();
 
-  const background = screen
-    .getByText(taskFlow.completeUpdate)
-    .closest(".bg-green");
-  if (!background) throw new Error("completion text has no green background");
-  fireEvent.click(background);
+  fireEvent.click(completionBackground());
   await waitFor(() => expect(onCompleteAction).toHaveBeenCalledTimes(1), {
     timeout: CLOSE_TIMEOUT,
   });
@@ -251,20 +269,20 @@ it("keeps the completion screen open when a selection drag ends on it", async ()
   renderFlow({ onCompleteAction, path: "/tasks" });
   await submitFlow();
 
-  const title = screen.getByRole("heading", { name: taskFlow.complete });
-  const background = title.closest(".bg-green");
-  if (!background) throw new Error("completion text has no green background");
-  fireEvent.pointerDown(title);
-  fireEvent.click(background);
+  fireEvent.pointerDown(
+    screen.getByRole("heading", { name: taskFlow.complete }),
+  );
+  fireEvent.click(completionBackground());
 
   await act(() => new Promise((resolve) => setTimeout(resolve, CLOSE_TIMEOUT)));
   expect(onCompleteAction).not.toHaveBeenCalled();
 });
 
 it("turns the nav back from green before the completion card shrinks away", async () => {
+  narrowViewport();
   renderFlow();
   await submitFlow();
-  expect(screen.getByText("nav green")).toBeTruthy();
+  expect(await screen.findByText("nav green")).toBeTruthy();
 
   fireEvent.click(screen.getByRole("button", { name: taskFlow.viewTasks }));
 
@@ -276,4 +294,43 @@ it("turns the nav back from green before the completion card shrinks away", asyn
   ).toBeTruthy();
   expect(screen.getByRole("dialog")).toBeTruthy();
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+});
+
+it("holds the completion screen and the nav green on a narrow screen, then turns them white with a green title, staying open", async () => {
+  narrowViewport();
+  renderFlow();
+  await submitFlow();
+  const title = screen.getByRole("heading", { name: taskFlow.complete });
+  expect(await screen.findByText("nav green")).toBeTruthy();
+  expect(title.classList.contains("text-white")).toBe(true);
+
+  await act(
+    () =>
+      new Promise((resolve) =>
+        setTimeout(
+          resolve,
+          flowMotion.success.durationMs + SUCCESS_HOLD_MS * 0.75,
+        ),
+      ),
+  );
+  expect(screen.getByText("nav green")).toBeTruthy();
+
+  expect(
+    await screen.findByText("nav plain", {}, { timeout: SUCCESS_HOLD_MS }),
+  ).toBeTruthy();
+  expect(title.classList.contains("text-green")).toBe(true);
+  expect(screen.getByRole("dialog")).toBeTruthy();
+  expect(screen.getByText("nav collapsed")).toBeTruthy();
+});
+
+it("shows the completion screen in its white colours on a wide screen, without the green", async () => {
+  renderFlow();
+  await submitFlow();
+  const title = screen.getByRole("heading", { name: taskFlow.complete });
+
+  expect(title.classList.contains("text-green")).toBe(true);
+  expect(completionBackground().classList.contains("bg-white")).toBe(true);
+  await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
+  expect(screen.getByText("nav plain")).toBeTruthy();
+  expect(title.classList.contains("text-green")).toBe(true);
 });

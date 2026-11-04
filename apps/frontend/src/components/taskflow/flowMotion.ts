@@ -3,6 +3,12 @@ import { prefersReducedMotion } from "@alliance/sharedweb/lib/reducedMotion";
 
 export { flowMotion };
 
+export const SUCCESS_HOLD_MS = 2000;
+
+/** The completion screen's green comes in over `success` and leaves over `recolor`; pass whether the element is green now. */
+export const greenMotion = (green: boolean): Motion =>
+  green ? flowMotion.success : flowMotion.recolor;
+
 export const transition = (
   motion: Motion,
   property: string,

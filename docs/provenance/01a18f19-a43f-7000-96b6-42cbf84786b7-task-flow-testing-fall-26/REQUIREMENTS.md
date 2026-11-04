@@ -195,5 +195,5 @@ Superseded by "No background page" below: the flow has no background page, so a 
 ## Out of scope
 
 - A date picker for date fields on mobile is separate work. (User)
-- The "Task complete!" screen keeps its green full-screen treatment. (User)
+- The "Task complete!" screen keeps its green full-screen treatment on mobile; on web it is green only on narrow screens, and only for a few seconds (see [task-flow-completion-recolor](../01a1a7bb-e1b8-7000-b747-04e999c1f4e8-task-flow-completion-recolor/REQUIREMENTS.md)). (User)
 - "Invite a friend" keeps going to the generic invites page; a task-specific invite page is separate work. (User)
