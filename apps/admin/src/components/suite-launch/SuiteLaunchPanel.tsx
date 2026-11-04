@@ -17,7 +17,7 @@ import { iconControlClass } from "./ActionLinks";
 import ActionReviewCheck from "./ActionReviewCheck";
 import { contractViolations } from "./contractViolations";
 import ContractViolationsBanner from "./ContractViolationsBanner";
-import { launchBlockers } from "./launchBlockers";
+import { launchBlockers, LaunchSection } from "./launchBlockers";
 import LaunchCheck from "./LaunchCheck";
 import {
   clearLaunchProgress,
@@ -35,6 +35,7 @@ import {
 } from "./launchSchedule";
 import { launchSuite } from "./launchSuite";
 import { MemberLoadCheck, MemberPreview } from "./MemberChecks";
+import { actionMixes } from "./memberLoad";
 import TextFindingsCheck from "./TextFindingsCheck";
 import { useSuiteLaunchData } from "./useSuiteLaunchData";
 
@@ -51,9 +52,11 @@ const toggled = <T,>(
 const SuiteLaunchPanel = ({
   suite,
   addEvent,
+  fetchSuite,
   onClose,
 }: {
   suite: ActionSuiteDto;
+  fetchSuite: () => Promise<ActionSuiteDto>;
   /** Resolves `null` when staff decline to move a deadline earlier. */
   addEvent: (body: CreateActionEventDto) => Promise<ActionSuiteDto | null>;
   onClose: () => void;
@@ -62,9 +65,13 @@ const SuiteLaunchPanel = ({
   const createReminders = useActionReminderGroupsAdmin(null).create;
   const [read] = useState(() => readLaunchProgress(suite.id));
   const saved = read.ok ? read.value : null;
-  const [schedule, setSchedule] = useState<LaunchSchedule>(
-    () => saved?.schedule ?? defaultLaunchSchedule(new Date()),
+  const [defaultSchedule] = useState(() => defaultLaunchSchedule(new Date()));
+  const [pickedSchedule, setPickedSchedule] = useState(() =>
+    saved?.schedule && saved.schedule.memberActionAt > new Date()
+      ? saved.schedule
+      : null,
   );
+  const schedule = pickedSchedule ?? defaultSchedule;
   const data = useSuiteLaunchData({ suite, schedule });
   const reminderBodies = defaultReminderBodies({
     suiteId: suite.id,
@@ -74,31 +81,31 @@ const SuiteLaunchPanel = ({
     bodies: reminderBodies,
     schedule,
   });
-  const [checkedActionIds, setCheckedActionIds] = useState<ReadonlySet<number>>(
-    saved?.checkedActionIds ?? new Set(),
-  );
+  const [readyActionVersions, setReadyActionVersions] = useState<
+    ReadonlyMap<number, string>
+  >(saved?.readyActionVersions ?? new Map());
   const [dismissedKeys, setDismissedKeys] = useState<ReadonlySet<string>>(
     saved?.dismissedKeys ?? new Set(),
   );
-  const [violationsAcknowledged, setViolationsAcknowledged] = useState(
-    saved?.violationsAcknowledged ?? false,
-  );
+  const [acceptedViolations, setAcceptedViolations] = useState<
+    ReadonlySet<string>
+  >(saved?.acceptedViolations ?? new Set());
   useEffect(() => {
     writeLaunchProgress({
       suiteId: suite.id,
       progress: {
-        schedule,
-        checkedActionIds,
+        schedule: pickedSchedule,
+        readyActionVersions,
         dismissedKeys,
-        violationsAcknowledged,
+        acceptedViolations,
       },
     });
   }, [
     suite.id,
-    schedule,
-    checkedActionIds,
+    pickedSchedule,
+    readyActionVersions,
     dismissedKeys,
-    violationsAcknowledged,
+    acceptedViolations,
   ]);
   const [launching, setLaunching] = useState(false);
   const [launchError, setLaunchError] = useState<string | null>(null);
@@ -107,13 +114,39 @@ const SuiteLaunchPanel = ({
     (field: keyof LaunchSchedule) =>
     ({ utcValue }: DateTimePickerChange) => {
       if (utcValue) {
-        setSchedule((prev) => ({ ...prev, [field]: new Date(utcValue) }));
+        setPickedSchedule((prev) => ({
+          ...(prev ?? defaultSchedule),
+          [field]: new Date(utcValue),
+        }));
       }
     };
 
   const violations = data.loading
     ? []
     : contractViolations({ loads: data.loads, schedule });
+  const violationsAcknowledged = violations.every((violation) =>
+    acceptedViolations.has(violation),
+  );
+  const markedReady = data.actions.filter(({ action }) =>
+    readyActionVersions.has(action.id),
+  );
+  // A failed load leaves parts out of a version, so a mark is taken as it is
+  // until every check loads.
+  const versionsKnown = data.errors.length === 0;
+  const checkedActionIds = new Set(
+    markedReady
+      .filter(
+        ({ action, reviewVersion }) =>
+          !versionsKnown ||
+          readyActionVersions.get(action.id) === reviewVersion,
+      )
+      .map(({ action }) => action.id),
+  );
+  const changedActionIds = new Set(
+    markedReady
+      .map(({ action }) => action.id)
+      .filter((actionId) => !checkedActionIds.has(actionId)),
+  );
   const now = new Date();
   const scheduleValid = scheduleProblems(schedule, now).length === 0;
   const blockers = launchBlockers({
@@ -125,6 +158,7 @@ const SuiteLaunchPanel = ({
     ),
     checkedActionIds,
     dismissedFindingKeys: dismissedKeys,
+    violations,
     violationsAcknowledged,
     now,
   });
@@ -141,7 +175,7 @@ const SuiteLaunchPanel = ({
       : "";
     const ok = await confirm({
       title: "Launch suite?",
-      message: `This creates the members taking action and office taking action events and the default reminders, which will notify ${withCount(recipientCount, "member")}.${groupLeadsNote}`,
+      message: `Members start ${inLaunchZone(schedule.memberActionAt)} and have until ${inLaunchZone(schedule.officeActionAt)}, ${completionTime(schedule)}. This creates both events and ${reminderBodies.length} reminders, notifying ${withCount(recipientCount, "member")}.${groupLeadsNote}`,
       confirmLabel: "Launch",
       cancelLabel: "Cancel",
       mode: ConfirmMode.Fullscreen,
@@ -157,7 +191,7 @@ const SuiteLaunchPanel = ({
     setLaunching(true);
     setLaunchError(null);
     const result = await launchSuite({
-      suite,
+      fetchSuite,
       schedule,
       addEvent,
       reminderBodies,
@@ -197,10 +231,16 @@ const SuiteLaunchPanel = ({
         <ContractViolationsBanner
           violations={violations}
           acknowledged={violationsAcknowledged}
-          onAcknowledgedChange={setViolationsAcknowledged}
+          onAcknowledgedChange={(acknowledged) =>
+            setAcceptedViolations(new Set(acknowledged ? violations : []))
+          }
         />
       )}
-      <LaunchCheck title="Schedule" passed={scheduleValid}>
+      <LaunchCheck
+        id={LaunchSection.Schedule}
+        title="Schedule"
+        passed={scheduleValid}
+      >
         {scheduleValid && (
           <p className="text-sm text-black">
             Members have {completionTime(schedule)} to complete their actions
@@ -229,7 +269,15 @@ const SuiteLaunchPanel = ({
           </label>
         </div>
       </LaunchCheck>
-      <LaunchRemindersCheck windows={reminderWindows} schedule={schedule} />
+      <LaunchRemindersCheck
+        bodies={reminderBodies}
+        windows={reminderWindows}
+        schedule={schedule}
+        timeZones={data.recipientTimeZones}
+        mixes={actionMixes(data.loads ?? [])}
+        actions={data.actions}
+        users={data.users}
+      />
 
       {data.errors.length > 0 && (
         <ul className="text-sm text-red-500">
@@ -245,10 +293,15 @@ const SuiteLaunchPanel = ({
           <ActionReviewCheck
             actions={data.actions}
             checkedActionIds={checkedActionIds}
-            onCheckedChange={(actionId, checked) =>
-              setCheckedActionIds((prev) =>
-                toggled(prev, { item: actionId, on: checked }),
-              )
+            changedActionIds={changedActionIds}
+            schedule={schedule}
+            onCheckedChange={({ action, reviewVersion }, checked) =>
+              setReadyActionVersions((prev) => {
+                const next = new Map(prev);
+                if (checked) next.set(action.id, reviewVersion);
+                else next.delete(action.id);
+                return next;
+              })
             }
           />
           <MemberLoadCheck
@@ -276,6 +329,11 @@ const SuiteLaunchPanel = ({
                   toggled(prev, { item: key, on: true }),
                 )
               }
+              onRestore={(key) =>
+                setDismissedKeys((prev) =>
+                  toggled(prev, { item: key, on: false }),
+                )
+              }
               onRecheck={data.refetch}
             />
           )}
@@ -284,8 +342,24 @@ const SuiteLaunchPanel = ({
 
       {blockers.length > 0 && (
         <ul className="list-disc pl-5 text-sm text-yellow-800">
-          {blockers.map((blocker) => (
-            <li key={blocker}>{blocker}</li>
+          {blockers.map(({ message, section }) => (
+            <li key={message}>
+              {section ? (
+                <button
+                  type="button"
+                  className="text-left underline"
+                  onClick={() =>
+                    document
+                      .getElementById(section)
+                      ?.scrollIntoView({ behavior: "smooth" })
+                  }
+                >
+                  {message}
+                </button>
+              ) : (
+                message
+              )}
+            </li>
           ))}
         </ul>
       )}
@@ -299,9 +373,11 @@ const SuiteLaunchPanel = ({
       >
         {launching
           ? "Launching…"
-          : data.recipientCount === null
-            ? "Launch and notify ? members"
-            : `Launch and notify ${withCount(data.recipientCount, "member")}`}
+          : data.loading || data.spellcheckLoading
+            ? "Running checks…"
+            : data.recipientCount === null
+              ? "Launch and notify ? members"
+              : `Launch and notify ${withCount(data.recipientCount, "member")}`}
       </Button>
     </section>
   );

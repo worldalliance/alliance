@@ -1,39 +1,72 @@
 import { withCount } from "@alliance/common/plural";
 import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
+import { secondsInMinute } from "date-fns/constants";
 import {
   cohortNames,
   cohortSegmentsText,
   describeCohortExpression,
 } from "../../lib/describeCohortExpression";
+import { referencedActionFromListItem } from "../../lib/referencedAction";
 import { useTagsAdmin } from "../../lib/useTagsAdmin";
+import OpenReferenceWarning from "../OpenReferenceWarning";
 import { ActionLinks, EditTaskFormLink } from "./ActionLinks";
+import { LaunchSection } from "./launchBlockers";
 import LaunchCheck from "./LaunchCheck";
+import { inLaunchZone, type LaunchSchedule } from "./launchSchedule";
 import type { LaunchAction } from "./useSuiteLaunchData";
 
-const actionNotes = ({ action, memberCount }: LaunchAction) =>
-  [
+const readingOverEstimate = ({ action, readingSeconds }: LaunchAction) =>
+  action.timeEstimate != null &&
+  readingSeconds > action.timeEstimate * secondsInMinute &&
+  `Reading alone takes about ${Math.ceil(readingSeconds / secondsInMinute)} min, more than its ${action.timeEstimate} min estimate`;
+
+const actionNotes = (params: {
+  entry: LaunchAction;
+  changedSinceReady: boolean;
+}) => {
+  const { entry, changedSinceReady } = params;
+  const { action, memberCount, ownMemberStart } = entry;
+  return [
+    ownMemberStart &&
+      `Already has its own members taking action event (${inLaunchZone(new Date(ownMemberStart))})`,
+    changedSinceReady && "Edited since it was marked ready",
+    readingOverEstimate(entry),
     action.archived && "Archived",
     memberCount === 0 && "No members in its cohort",
   ].filter((note): note is string => !!note);
+};
 
 const ActionReviewCheck = ({
   actions,
   checkedActionIds,
+  changedActionIds,
+  schedule,
   onCheckedChange,
 }: {
   actions: LaunchAction[];
   checkedActionIds: ReadonlySet<number>;
-  onCheckedChange: (actionId: number, checked: boolean) => void;
+  /** Marked ready, then edited. */
+  changedActionIds: ReadonlySet<number>;
+  schedule: LaunchSchedule;
+  onCheckedChange: (entry: LaunchAction, checked: boolean) => void;
 }) => {
   const { tags, isError: tagsFailed } = useTagsAdmin();
   const { data: allActions = [], isError: actionsFailed } = useActionsAdmin();
   const names = cohortNames({ tags, actions: allActions });
+  const suiteActionIds = new Set(actions.map(({ action }) => action.id));
+  const referencedActions = allActions.map((item) => ({
+    ...referencedActionFromListItem(item),
+    name: item.name,
+    // This suite's actions close at the office deadline this launch creates.
+    ...(suiteActionIds.has(item.id) && { deadline: schedule.officeActionAt }),
+  }));
   const unready = actions.filter((entry) => entry.unready.length > 0).length;
   const unchecked = actions.filter(
     ({ action }) => !checkedActionIds.has(action.id),
   ).length;
   return (
     <LaunchCheck
+      id={LaunchSection.Actions}
       title="Actions"
       passed={unready === 0 && unchecked === 0}
       summary={`${unready} with unfinished checklist items · ${unchecked} not yet marked ready`}
@@ -51,7 +84,10 @@ const ActionReviewCheck = ({
       <ul className="divide-y divide-zinc-100">
         {actions.map((entry) => {
           const { action, unready, memberCount } = entry;
-          const notes = actionNotes(entry);
+          const notes = actionNotes({
+            entry,
+            changedSinceReady: changedActionIds.has(action.id),
+          });
           return (
             <li key={action.id} className="flex items-start gap-3 py-2">
               <div className="flex-1">
@@ -79,6 +115,14 @@ const ActionReviewCheck = ({
                     Unfinished: {unready.map((item) => item.label).join(", ")}
                   </p>
                 )}
+                <OpenReferenceWarning
+                  actionId={action.id}
+                  expression={action.cohortExpression}
+                  prerequisiteActionIds={action.prerequisiteActionIds}
+                  memberActionStart={schedule.memberActionAt}
+                  memberActionDeadline={schedule.officeActionAt}
+                  actions={referencedActions}
+                />
               </div>
               <ActionLinks actionId={action.id} />
               {action.taskFormId && (
@@ -88,7 +132,7 @@ const ActionReviewCheck = ({
                 <input
                   type="checkbox"
                   checked={checkedActionIds.has(action.id)}
-                  onChange={(e) => onCheckedChange(action.id, e.target.checked)}
+                  onChange={(e) => onCheckedChange(entry, e.target.checked)}
                 />
                 Ready to launch
               </label>

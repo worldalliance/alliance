@@ -24,6 +24,11 @@ const SuiteLaunchPage = () => {
       <SuiteLaunchPanel
         suite={suite}
         addEvent={addEvent.mutateAsync}
+        fetchSuite={async () => {
+          const { data, error } = await suiteQuery.refetch();
+          if (!data) throw error;
+          return data;
+        }}
         onClose={() => navigate(`/suites/${suiteId}`)}
       />
     </div>

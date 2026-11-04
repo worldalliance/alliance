@@ -4,6 +4,7 @@ import {
 } from "@alliance/common/forms/form-schema";
 import type { ActionSuiteDto, UserDto } from "@alliance/shared/client";
 import { actionAdminQuery } from "@alliance/shared/lib/useActionAdmin";
+import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
 import { adminTaskFormQuery } from "@alliance/shared/lib/useTaskForm";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
 import {
@@ -13,12 +14,14 @@ import {
   type QueryKey,
 } from "@tanstack/react-query";
 import { addYears, max } from "date-fns";
+import { omit } from "es-toolkit";
 import { useState } from "react";
 import { useAwayRangesInWindowAdmin } from "../../lib/useAwayRangesInWindowAdmin";
 import { cohortEvaluationQuery } from "../../lib/useCohortEvaluationAdmin";
 import { useUsersAdmin } from "../../lib/useUsersAdmin";
 import {
   actionReadinessItems,
+  readingTime,
   type ReadinessCheckItem,
 } from "../../pages/action-dashboard/actionReadiness";
 import { actionTextFindings, type TextFinding } from "./actionTextFindings";
@@ -30,6 +33,12 @@ export type LaunchAction = {
   action: ParsedActionDto;
   unready: ReadinessCheckItem[];
   memberCount: number | null;
+  /** Changes whenever the action or its task form is saved. */
+  reviewVersion: string;
+  /** The longest read any member gets, across the task form and its variants. */
+  readingSeconds: number;
+  /** When the action's own members taking action event starts, if it has one. */
+  ownMemberStart: string | null;
 };
 
 export type SuiteLaunchData = {
@@ -40,12 +49,50 @@ export type SuiteLaunchData = {
   recipientCount: number | null;
   users: UserDto[];
   usersLoadFailed: boolean;
+  /** Each recipient's saved zone, null when they've saved none. */
+  recipientTimeZones: (string | null)[];
   textFindings: TextFinding[];
   errors: string[];
   loading: boolean;
   spellcheckLoading: boolean;
   refetch: () => void;
 };
+
+// Leaves out what changes without a staff edit (counts, timestamps, events,
+// status), what depends on who is viewing, relations the readiness checklist
+// re-checks on every load or no launch check reads, and `storedImage` and
+// `storedSquareThumbnailImage`, which `image` and `squareThumbnailImage`
+// repeat, so any other field, including one added later, clears a ready mark.
+const reviewedFields = (action: ParsedActionDto) => ({
+  ...omit(action, [
+    "createdAt",
+    "updatedAt",
+    "usersJoined",
+    "usersCompleted",
+    "computedAutocompleteAt",
+    "customStatValue",
+    "priority",
+    "events",
+    "status",
+    "updates",
+    "memberActionStart",
+    "memberActionDeadline",
+    "canParticipate",
+    "shouldParticipate",
+    "userRelation",
+    "awayStatus",
+    "viewer",
+    "reqAuthenticated",
+    "suite",
+    "project",
+    "authors",
+    "reviewers",
+    "followUpForms",
+    "storedImage",
+    "storedSquareThumbnailImage",
+  ]),
+  followUpForms: action.followUpForms.map((form) => omit(form, ["form"])),
+});
 
 /** Each distinct query once, and each entry's slot among them. */
 function distinctQueries<T extends { queryKey: QueryKey }>(queries: T[]) {
@@ -78,8 +125,24 @@ export function useSuiteLaunchData(params: {
   const cohorts = distinctQueries(cohortQueries);
   const cohortResults = useQueries({ queries: cohorts.queries });
   const cohortResultOf = (index: number) => cohortResults[cohorts.slots[index]];
+  const actionList = useActionsAdmin();
+  const variantFormIdsByAction = new Map(
+    (actionList.data ?? []).map((item) => [item.id, item.variantFormIds]),
+  );
+  const variantFormIds = suite.actions.flatMap(
+    (action) => variantFormIdsByAction.get(action.id) ?? [],
+  );
+  const variantResults = useQueries({
+    queries: variantFormIds.map((formId) => adminTaskFormQuery(formId)),
+  });
+  const variantFormById = new Map(
+    variantFormIds.map((formId, index) => [formId, variantResults[index].data]),
+  );
   const spellchecker = useQuery(spellcheckerQuery);
   const users = useUsersAdmin();
+  const timeZoneByUserId = new Map(
+    (users.data ?? []).map((user) => [user.id, user.timeZone]),
+  );
   const idsWhere = (keep: (user: UserDto) => boolean) =>
     new Set((users.data ?? []).filter(keep).map((user) => user.id));
   const contracted = idsWhere((user) => user.hasActiveContract);
@@ -123,6 +186,24 @@ export function useSuiteLaunchData(params: {
       if (parsedSchema.success) schema = parsedSchema.data;
       else errors.push(`${action.name}: its task form's schema is invalid.`);
     }
+    const variantForms = (variantFormIdsByAction.get(action.id) ?? []).flatMap(
+      (formId) => {
+        const variant = variantFormById.get(formId);
+        if (!variant) return [];
+        const parsedSchema = formSchema.safeParse(variant.schema);
+        if (!parsedSchema.success) {
+          errors.push(`${action.name}: a variant form's schema is invalid.`);
+          return [];
+        }
+        return [
+          {
+            formId,
+            schema: parsedSchema.data,
+            snapshotId: variant.formSnapshotId,
+          },
+        ];
+      },
+    );
     const evaluated = action.cohortExpression
       ? cohortResultOf(index).data?.userIds
       : [];
@@ -145,11 +226,24 @@ export function useSuiteLaunchData(params: {
         (item) => !item.isReady,
       ),
       memberCount: cohort ? cohort.length : null,
+      reviewVersion: JSON.stringify([
+        reviewedFields(action),
+        form?.formSnapshotId ?? null,
+        variantForms.map(({ formId, snapshotId }) => [formId, snapshotId]),
+      ]),
+      readingSeconds: Math.max(
+        ...[schema, ...variantForms.map((variant) => variant.schema)].map(
+          (read) => readingTime(action, read).totalSeconds,
+        ),
+      ),
+      ownMemberStart: action.memberActionStart,
     });
     textFindings.push(
       ...actionTextFindings({
         action,
         taskFormSchema: schema,
+        taskFormId: action.taskFormId,
+        variantForms,
         isKnownWord: spellchecker.data,
       }),
     );
@@ -179,6 +273,12 @@ export function useSuiteLaunchData(params: {
         ? [`Failed to evaluate the cohort for ${action.name}.`]
         : [],
     ),
+    ...(actionList.isError
+      ? ["Failed to load the actions' variant forms."]
+      : []),
+    ...variantResults.flatMap((result) =>
+      result.isError ? ["Failed to load a variant form."] : [],
+    ),
     ...(users.isError ? ["Failed to load members' contract status."] : []),
     ...(awayRanges.isError ? ["Failed to load members' away dates."] : []),
     ...(spellchecker.isError
@@ -192,18 +292,31 @@ export function useSuiteLaunchData(params: {
     recipientCount: loads ? loads.length : null,
     users: users.data ?? [],
     usersLoadFailed: users.isError,
+    recipientTimeZones: (loads ?? []).map(
+      ({ userId }) => timeZoneByUserId.get(userId) ?? null,
+    ),
     textFindings,
     errors: [...loadErrors, ...errors],
     loading: [
       ...actionResults,
       ...formResults,
       ...cohortResults,
+      actionList,
+      ...variantResults,
       users,
       awayRanges,
     ].some((result) => result.isLoading),
     spellcheckLoading: spellchecker.isLoading,
     refetch: () => {
-      for (const result of [...actionResults, ...formResults, ...cohortResults])
+      for (const result of [
+        ...actionResults,
+        ...formResults,
+        ...cohortResults,
+        actionList,
+        ...variantResults,
+        users,
+        awayRanges,
+      ])
         // A disabled (skipToken) query rejects a refetch with "Missing queryFn".
         if (!(result.isPending && result.fetchStatus === "idle"))
           void result.refetch();

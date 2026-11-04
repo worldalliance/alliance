@@ -9,7 +9,8 @@ import { defaultEventNames } from "../CreateEventForm";
 import type { LaunchSchedule } from "./launchSchedule";
 
 export async function launchSuite(params: {
-  suite: Pick<ActionSuiteDto, "id" | "events">;
+  /** Reads the suite fresh, so a launch from another tab or person shows. */
+  fetchSuite: () => Promise<Pick<ActionSuiteDto, "events">>;
   schedule: LaunchSchedule;
   reminderBodies: CreateReminderGroupDto[];
   /** Resolves `null` when staff decline to move a deadline earlier. */
@@ -19,8 +20,24 @@ export async function launchSuite(params: {
     bodies: CreateReminderGroupDto[];
   }) => Promise<unknown>;
 }): Promise<Result<void, string>> {
-  const { suite, schedule, addEvent, reminderBodies, createReminders } = params;
-  const existingEventIds = new Set(suite.events.map((event) => event.id));
+  const { fetchSuite, schedule, addEvent, reminderBodies, createReminders } =
+    params;
+  const latest = await R.fromPromise(fetchSuite());
+  if (!latest.ok) {
+    return R.failure(
+      `${adminRefusalMessage(latest.error, "Couldn't reload the suite to check it hasn't already launched")}. Nothing was launched.`,
+    );
+  }
+  if (
+    latest.value.events.some((event) => event.newStatus === "member_action")
+  ) {
+    return R.failure(
+      "Someone launched this suite since this page loaded. Nothing was created.",
+    );
+  }
+  const existingEventIds = new Set(
+    latest.value.events.map((event) => event.id),
+  );
 
   const withMemberEvent = await R.fromPromise(
     addEvent({
@@ -73,7 +90,7 @@ export async function launchSuite(params: {
   );
   if (!reminders.ok) {
     return R.failure(
-      `Created both events, but not all default reminders (${adminRefusalMessage(reminders.error, "they failed")}). Check the reminders below and add the missing ones.`,
+      `Created both events, but not all default reminders (${adminRefusalMessage(reminders.error, "they failed")}). Add the missing ones in Reminders on the suite page.`,
     );
   }
   return R.success(undefined);

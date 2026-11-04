@@ -1,3 +1,4 @@
+import type { CohortExpression } from "@alliance/common/cohort-expression";
 // eslint-disable-next-line api-client/named-hooks-only -- stands in for the page's addEvent against the mocked API; no query cache holds it
 import {
   actionSuitesAddSuiteEventAdmin,
@@ -15,6 +16,11 @@ import { afterEach, beforeEach, mock, setSystemTime } from "bun:test";
 import { MemoryRouter } from "react-router";
 import { spellcheckerQuery } from "./spellchecker";
 import SuiteLaunchPanel from "./SuiteLaunchPanel";
+
+export const manual = (userIds: number[]): CohortExpression => ({
+  type: "Manual",
+  userIds,
+});
 
 const adminAction = (params: {
   id: number;
@@ -38,10 +44,9 @@ const adminAction = (params: {
       : params.project,
   authors: [makeProfile(1)],
   taskFormId: params.taskFormId === undefined ? 5 : params.taskFormId,
-  cohortExpression: params.memberIds && {
-    type: "Manual",
-    userIds: params.memberIds,
-  },
+  cohortExpression: params.memberIds && manual(params.memberIds),
+  prerequisiteActionIds: [],
+  memberActionStart: null as string | null,
 });
 
 const initialState = () => ({
@@ -50,7 +55,14 @@ const initialState = () => ({
   userListFails: false,
   awayRanges: [] as { userId: number; fromDay: number; toDay: number }[],
   awayRangesFail: false,
+  formLoadFails: false,
   formPages: [] as { id: string; title: string; fields: [] }[],
+  /** Pages served for a form id instead of `formPages`. */
+  formPagesById: {} as Record<
+    number,
+    { id: string; title: string; fields: [] }[]
+  >,
+  formSnapshotIdById: {} as Record<number, number>,
   served: {
     1: adminAction({
       id: 1,
@@ -68,6 +80,7 @@ const initialState = () => ({
     }),
   } as Record<number, ReturnType<typeof adminAction>>,
   suiteEvents: [] as ActionEventDto[],
+  actionList: [] as unknown[],
   createdEvents: [] as CreateActionEventDto[],
   reminderEventIds: [] as string[],
 });
@@ -83,25 +96,26 @@ export const serveLaunchApi = () => {
 
   serveApi(
     routes({
-      "GET /actions/all": () => Response.json([]),
+      "GET /actions/all": () => Response.json(api.actionList),
       "GET /user/tags": () => Response.json([]),
       "GET /actions/adminslug/:id": ({ params }) =>
         Response.json(api.served[Number(params.id)]),
       "GET /tasks/adminForm/:id": ({ params }) =>
-        Number.isInteger(Number(params.id))
+        Number.isInteger(Number(params.id)) && !api.formLoadFails
           ? Response.json({
               id: 5,
               title: "Form",
+              formSnapshotId: api.formSnapshotIdById[Number(params.id)] ?? 1,
               schema: {
-                pages: api.formPages,
+                pages: api.formPagesById[Number(params.id)] ?? api.formPages,
                 outputViews: [{ type: "card", id: "card", blocks: [] }],
               },
             })
           : Response.json({ statusCode: 400 }, { status: 400 }),
       "POST /actions/evaluate-cohort": async ({ request }) => {
-        const { expression }: { expression: { userIds: number[] } } =
+        const { expression }: { expression: { userIds?: number[] } } =
           await request.json();
-        return Response.json({ userIds: expression.userIds });
+        return Response.json({ userIds: expression.userIds ?? [] });
       },
       "GET /user/admin/awayranges": () =>
         api.awayRangesFail
@@ -128,6 +142,7 @@ export const serveLaunchApi = () => {
                 name: "Ana",
                 profilePicture: null,
                 hasActiveContract: true,
+                timeZone: "America/New_York",
               },
               {
                 id: 11,
@@ -175,7 +190,7 @@ const suiteWith = (events: ActionEventDto[]): ActionSuiteDto => ({
 
 export const onClose = mock(() => {});
 
-export const renderPanel = () => {
+export const renderPanel = ({ dictionaryLoads = false } = {}) => {
   const addEvent = (body: CreateActionEventDto) =>
     actionSuitesAddSuiteEventAdmin({
       path: { suiteId: 3 },
@@ -184,16 +199,24 @@ export const renderPanel = () => {
     }).then((res) => res.data);
   const query = queryWrapper();
   // The dictionary loads through Vite's `?raw` imports, which bun can't resolve.
-  query.client.setQueryData(
-    spellcheckerQuery.queryKey,
-    () => (word: string) => word !== "teh",
-  );
+  if (dictionaryLoads) {
+    void query.client.prefetchQuery({
+      queryKey: spellcheckerQuery.queryKey,
+      queryFn: () => new Promise<never>(() => {}),
+    });
+  } else {
+    query.client.setQueryData(
+      spellcheckerQuery.queryKey,
+      () => (word: string) => word !== "teh",
+    );
+  }
   return render(
     <MemoryRouter>
       <ToastProvider>
         <SuiteLaunchPanel
           suite={suiteWith([])}
           addEvent={addEvent}
+          fetchSuite={async () => suiteWith(api.suiteEvents)}
           onClose={onClose}
         />
       </ToastProvider>

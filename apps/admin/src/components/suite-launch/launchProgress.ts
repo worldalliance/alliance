@@ -3,21 +3,27 @@ import { z } from "zod";
 import type { LaunchSchedule } from "./launchSchedule";
 
 const storedProgressSchema = z.object({
-  memberActionAt: z.iso.datetime(),
-  officeActionAt: z.iso.datetime(),
-  checkedActionIds: z.array(z.number()),
+  schedule: z
+    .object({
+      memberActionAt: z.iso.datetime(),
+      officeActionAt: z.iso.datetime(),
+    })
+    .nullable(),
+  readyActionVersions: z.array(z.tuple([z.number(), z.string()])),
   dismissedKeys: z.array(z.string()),
-  violationsAcknowledged: z.boolean(),
+  acceptedViolations: z.array(z.string()),
 });
 
 export type LaunchProgress = {
-  schedule: LaunchSchedule;
-  checkedActionIds: ReadonlySet<number>;
+  /** `null` until staff edit it, so each visit pre-fills the default afresh. */
+  schedule: LaunchSchedule | null;
+  /** Action id → the `reviewVersion` staff marked ready. */
+  readyActionVersions: ReadonlyMap<number, string>;
   dismissedKeys: ReadonlySet<string>;
-  violationsAcknowledged: boolean;
+  acceptedViolations: ReadonlySet<string>;
 };
 
-const storageKey = (suiteId: number) => `alliance.suiteLaunch.v1.${suiteId}`;
+const storageKey = (suiteId: number) => `alliance.suiteLaunch.v2.${suiteId}`;
 
 /** `null` when nothing is saved for the suite. */
 export function readLaunchProgress(
@@ -29,13 +35,13 @@ export function readLaunchProgress(
     storedProgressSchema.parse(JSON.parse(raw)),
   );
   return R.map(parsed, (stored) => ({
-    schedule: {
-      memberActionAt: new Date(stored.memberActionAt),
-      officeActionAt: new Date(stored.officeActionAt),
+    schedule: stored.schedule && {
+      memberActionAt: new Date(stored.schedule.memberActionAt),
+      officeActionAt: new Date(stored.schedule.officeActionAt),
     },
-    checkedActionIds: new Set(stored.checkedActionIds),
+    readyActionVersions: new Map(stored.readyActionVersions),
     dismissedKeys: new Set(stored.dismissedKeys),
-    violationsAcknowledged: stored.violationsAcknowledged,
+    acceptedViolations: new Set(stored.acceptedViolations),
   }));
 }
 
@@ -48,11 +54,13 @@ export function writeLaunchProgress(params: {
     window.localStorage.setItem(
       storageKey(suiteId),
       JSON.stringify({
-        memberActionAt: progress.schedule.memberActionAt.toISOString(),
-        officeActionAt: progress.schedule.officeActionAt.toISOString(),
-        checkedActionIds: [...progress.checkedActionIds],
+        schedule: progress.schedule && {
+          memberActionAt: progress.schedule.memberActionAt.toISOString(),
+          officeActionAt: progress.schedule.officeActionAt.toISOString(),
+        },
+        readyActionVersions: [...progress.readyActionVersions],
         dismissedKeys: [...progress.dismissedKeys],
-        violationsAcknowledged: progress.violationsAcknowledged,
+        acceptedViolations: [...progress.acceptedViolations],
       } satisfies z.infer<typeof storedProgressSchema>),
     ),
   );

@@ -54,7 +54,7 @@ describe("launchSuite", () => {
 
     const result = await launchSuite({
       reminderBodies,
-      suite: suiteWith([draftEvent]),
+      fetchSuite: async () => suiteWith([draftEvent]),
       schedule,
       addEvent,
       createReminders,
@@ -93,7 +93,7 @@ describe("launchSuite", () => {
 
     const result = await launchSuite({
       reminderBodies,
-      suite: suiteWith([]),
+      fetchSuite: async () => suiteWith([]),
       schedule,
       addEvent,
       createReminders,
@@ -108,7 +108,7 @@ describe("launchSuite", () => {
   it("reports a declined member event as cancelled", async () => {
     const result = await launchSuite({
       reminderBodies,
-      suite: suiteWith([]),
+      fetchSuite: async () => suiteWith([]),
       schedule,
       addEvent: async () => null,
       createReminders: async () => [],
@@ -130,7 +130,7 @@ describe("launchSuite", () => {
 
     const result = await launchSuite({
       reminderBodies,
-      suite: suiteWith([]),
+      fetchSuite: async () => suiteWith([]),
       schedule,
       addEvent,
       createReminders,
@@ -145,7 +145,7 @@ describe("launchSuite", () => {
   it("says what exists when the reminders fail", async () => {
     const result = await launchSuite({
       reminderBodies,
-      suite: suiteWith([]),
+      fetchSuite: async () => suiteWith([]),
       schedule,
       addEvent: appendingAddEvent([]),
       createReminders: async () => {
@@ -156,5 +156,50 @@ describe("launchSuite", () => {
     expect(!result.ok && result.error).toStartWith(
       "Created both events, but not all default reminders",
     );
+    expect(!result.ok && result.error).toEndWith(
+      "Add the missing ones in Reminders on the suite page.",
+    );
+  });
+
+  it("refuses when someone launched the suite since the page loaded", async () => {
+    const memberEvent = event(2, {
+      title: "Members taking action",
+      description: "",
+      newStatus: "member_action",
+      date: "2026-01-16T03:00:00Z",
+    });
+    const addEvent = appendingAddEvent([memberEvent]);
+
+    const result = await launchSuite({
+      reminderBodies,
+      fetchSuite: async () => suiteWith([memberEvent]),
+      schedule,
+      addEvent,
+      createReminders: async () => [],
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error:
+        "Someone launched this suite since this page loaded. Nothing was created.",
+    });
+    expect(addEvent).not.toHaveBeenCalled();
+  });
+
+  it("creates nothing when it can't reload the suite to check", async () => {
+    const addEvent = appendingAddEvent([]);
+
+    const result = await launchSuite({
+      reminderBodies,
+      fetchSuite: async () => {
+        throw new Error("offline");
+      },
+      schedule,
+      addEvent,
+      createReminders: async () => [],
+    });
+
+    expect(!result.ok && result.error).toEndWith("Nothing was launched.");
+    expect(addEvent).not.toHaveBeenCalled();
   });
 });
