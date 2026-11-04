@@ -1,7 +1,7 @@
 import { milliseconds } from "date-fns";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-const MAX_INT32 = 2 ** 31 - 1;
+export const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 
 /**
  * Milliseconds until the soonest timestamp strictly after `now`, or null when
@@ -38,13 +38,13 @@ export function useOnNextTimestamp(
     if (remainingMs === null) return;
     // setTimeout stores its delay in a 32-bit signed int; a delay past ~24.8
     // days overflows and fires almost immediately, so cap the wait.
-    const overflow = remainingMs > MAX_INT32;
+    const overflow = remainingMs > MAX_TIMEOUT_MS;
     const timeoutId = setTimeout(
       () => {
         if (!overflow) onPassed();
         setTick((t) => t + 1);
       },
-      overflow ? MAX_INT32 : remainingMs,
+      overflow ? MAX_TIMEOUT_MS : remainingMs,
     );
     return () => clearTimeout(timeoutId);
   }, [timestamps, onPassed, tick]);
