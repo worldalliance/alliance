@@ -217,7 +217,9 @@ const NavbarVertical: React.FC<{
           !noBorder && "border-r border-zinc-200",
           collapsed && "md:border-r-transparent",
           "z-30 overflow-y-auto",
-          collapsed && "md:w-[4.75rem] md:overflow-visible",
+          // The collapsed rail's logo overhangs the top bar, which takes
+          // md:z-35 while immersive, so the rail stays a step above it.
+          collapsed && "md:w-[4.75rem] md:overflow-visible md:z-36",
           "md:shadow-none",
           open ? "translate-x-0" : "-translate-x-full md:translate-x-0",
           REDUCED_MOTION,

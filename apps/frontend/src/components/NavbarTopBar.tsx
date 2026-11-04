@@ -114,8 +114,9 @@ export function NavbarTopBar({
       className={cn(
         "z-20 flex items-center justify-between gap-2.5 px-3 py-2 md:px-4",
         // From md the flow panel (zIndex.drawer) sits below the bar, not over
-        // it; the bar's menus drop over the panel only if the bar outranks it,
-        // and it stays under zIndex.modal.
+        // it; the bar's menus drop over the panel only if the bar outranks it.
+        // It stays under the collapsed rail (md:z-36), whose logo overhangs
+        // it, and under zIndex.modal.
         immersive && "md:z-35",
         whiteBackground && !immersive ? "bg-white" : "bg-page",
         immersive && "shadow-[inset_0_-1px_0_var(--color-zinc-200)]",
