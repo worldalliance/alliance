@@ -14,6 +14,8 @@ apps/mobile/uniwind-types.d.ts
 shared/client
 apps/*/public/assets/world.js
 apps/*/public/assets/world.json
+# infisical init writes 4-space indent; Prettier would rewrite it to 2
+server/.infisical.yaml
 
 # Vendored native dependencies
 apps/mobile/ios
