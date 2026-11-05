@@ -13,21 +13,18 @@ const run = (...args: string[]) =>
   Bun.spawnSync(["bun", SCRIPT, ...args], { stderr: "pipe" });
 
 describe("deployed-config.ts", () => {
-  test("prints the environment's config as GITHUB_OUTPUT lines", () => {
+  test("prints the values the deploy workflow reads as GITHUB_OUTPUT lines", () => {
     for (const nodeEnv of [NodeEnv.Staging, NodeEnv.Production] as const) {
-      const expected = Object.entries(
-        deployedConfigEnv(deployedConfigFor(nodeEnv)),
-      )
-        .filter(([, value]) => value !== undefined)
-        .map(([key, value]) => `${key}=${value}`);
-      expect(run(nodeEnv).stdout.toString().trim().split("\n")).toEqual(
-        expected,
-      );
+      const config = deployedConfigFor(nodeEnv);
+      expect(run(nodeEnv).stdout.toString().trim().split("\n")).toEqual([
+        `DOMAIN_NAME=${config.DOMAIN_NAME}`,
+        `ALT_DOMAIN_NAME=${config.ALT_DOMAIN_NAME}`,
+        `POSTHOG_PROJECT_ID=${config.POSTHOG_PROJECT_ID}`,
+      ]);
     }
-    expect(run(NodeEnv.Staging).stdout.toString()).not.toContain("WAITLIST_");
   });
 
-  test("prints every key the deployed-config action reads", () => {
+  test("prints exactly the keys the deployed-config action reads", () => {
     const action = z
       .object({
         outputs: z.record(
@@ -59,10 +56,10 @@ describe("deployed-config.ts", () => {
         .trim()
         .split("\n")
         .map((line) => line.split("=")[0]);
-      expect(printed).toEqual(
-        expect.arrayContaining(
-          Object.values(action.outputs).map((output) => output.value),
-        ),
+      expect(printed.toSorted()).toEqual(
+        Object.values(action.outputs)
+          .map((output) => output.value)
+          .toSorted(),
       );
     }
   });
