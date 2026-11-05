@@ -6,7 +6,7 @@ The repo root is a **Bun** workspace (hoisted `node_modules`, see `bunfig.toml`)
 
 **to install frontend deps**
 
-Install [Bun](https://bun.sh) 1.3.6: `curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.6"`
+Install [Bun](https://bun.sh) 1.4.4: `curl -fsSL https://bun.sh/install | bash -s "bun-v1.4.4"`
 
 In root dir: `bun install`
 
