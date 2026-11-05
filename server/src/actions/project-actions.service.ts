@@ -15,8 +15,10 @@ import { isUniqueViolation } from "src/utils/db-errors";
 import { DataSource, Repository } from "typeorm";
 import { ActionParticipantsService } from "./action-participants.service";
 import { ActionsService } from "./actions.service";
+import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
 import type {
   CreateProjectActionDto,
+  RescheduleReleaseDto,
   ScheduleReleaseDto,
 } from "./dto/project-action.dto";
 import { ActionEvent, ActionStatus } from "./entities/action-event.entity";
@@ -36,6 +38,20 @@ import { sharesSuite } from "./sole-action-suite";
 
 const ALREADY_SCHEDULED = "This action is already scheduled";
 
+function assertReleaseDates(params: {
+  launch: Date;
+  deadline: Date | null;
+  launchMoved: boolean;
+}): void {
+  const { launch, deadline, launchMoved } = params;
+  if (launchMoved && launch <= new Date()) {
+    throw new BadRequestException("The launch must be in the future");
+  }
+  if (deadline && deadline <= launch) {
+    throw new BadRequestException("The deadline must be after the launch");
+  }
+}
+
 @Injectable()
 export class ProjectActionsService {
   constructor(
@@ -45,6 +61,7 @@ export class ProjectActionsService {
     private readonly generalUpdates: GeneralUpdatesService,
     private readonly reminderGroupService: ReminderGroupService,
     private readonly formSnapshotService: FormSnapshotService,
+    private readonly cohortDecisionStaff: CohortDecisionStaffService,
     @InjectRepository(Project)
     private readonly projectRepository: Repository<Project>,
     @InjectRepository(Action)
@@ -131,12 +148,11 @@ export class ProjectActionsService {
     if (body.launch.newStatus !== ActionStatus.MemberAction) {
       throw new BadRequestException("The launch must start member action");
     }
-    if (body.launch.date <= new Date()) {
-      throw new BadRequestException("The launch must be in the future");
-    }
-    if (body.deadline && body.deadline.date <= body.launch.date) {
-      throw new BadRequestException("The deadline must be after the launch");
-    }
+    assertReleaseDates({
+      launch: body.launch.date,
+      deadline: body.deadline?.date ?? null,
+      launchMoved: true,
+    });
 
     await this.dataSource
       .transaction(async (em) => {
@@ -165,6 +181,59 @@ export class ProjectActionsService {
         }
         throw error;
       });
+    return this.afterEventsChanged({ actionId, suiteId: suite.id });
+  }
+
+  async rescheduleRelease(params: {
+    actionId: number;
+    body: RescheduleReleaseDto;
+    acknowledgeDeadlineShortening: boolean;
+  }): Promise<ParsedAction> {
+    const { actionId, body } = params;
+    const action = await this.findWithSuite(actionId);
+    const suite = this.ownSuiteOrThrow(action);
+    const { event, deadlineEvent } = memberActionPhase(action.events ?? []);
+    if (!event) throw new BadRequestException("This action isn't scheduled");
+    const now = new Date();
+    const launchMoved =
+      body.launch !== undefined &&
+      body.launch.getTime() !== event.date.getTime();
+    if (launchMoved && event.date <= now) {
+      throw new BadRequestException("The launch is locked once it has passed");
+    }
+    if (body.deadline !== undefined) {
+      if (!deadlineEvent) {
+        throw new BadRequestException("This release has no deadline");
+      }
+      if (deadlineEvent.date <= now) {
+        throw new BadRequestException("The deadline has already passed");
+      }
+    }
+    assertReleaseDates({
+      launch: body.launch ?? event.date,
+      deadline: body.deadline ?? deadlineEvent?.date ?? null,
+      launchMoved,
+    });
+
+    await this.cohortDecisionStaff.guardDeadlineShortening({
+      actionIds: [actionId],
+      acknowledged: params.acknowledgeDeadlineShortening,
+      change: async (em) => {
+        await assertLive(em, {
+          rows: [{ target: Action, id: actionId }],
+          gone: () => new NotFoundException("Action not found"),
+        });
+        if (launchMoved) {
+          await em.update(ActionEvent, event.id, { date: body.launch });
+        }
+        if (body.deadline !== undefined && deadlineEvent) {
+          await em.update(ActionEvent, deadlineEvent.id, {
+            date: body.deadline,
+          });
+        }
+        await assertPrerequisitesValid({ em, actionIds: [actionId] });
+      },
+    });
     return this.afterEventsChanged({ actionId, suiteId: suite.id });
   }
 

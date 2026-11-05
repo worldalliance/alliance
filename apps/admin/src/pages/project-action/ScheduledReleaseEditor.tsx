@@ -2,11 +2,9 @@ import {
   hasTakenEffect,
   memberActionPhase,
 } from "@alliance/common/actionEvent";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import {
@@ -14,17 +12,14 @@ import {
   releaseOrderError,
   toPacificInput,
 } from "../../lib/releaseDates";
-import { useActionSuiteAdmin } from "../../lib/useActionSuiteAdmin";
 import { useActionReleaseAdmin } from "../../lib/useProjectsAdmin";
 import PacificDateTimeInput from "./PacificDateTimeInput";
 
 const ScheduledReleaseEditor = ({
   action,
-  suiteId,
   disabled,
 }: {
   action: ParsedActionDto;
-  suiteId: number;
   disabled: boolean;
 }) => {
   const now = new Date();
@@ -39,23 +34,29 @@ const ScheduledReleaseEditor = ({
     deadlineEvent ? toPacificInput(new Date(deadlineEvent.date)) : "",
   );
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
   const { confirm } = useToast();
-  const queryClient = useQueryClient();
-  const { updateEvent } = useActionSuiteAdmin(suiteId);
-  const { unschedule } = useActionReleaseAdmin(action.id);
+  const { reschedule, unschedule } = useActionReleaseAdmin(action.id);
 
   if (!event) return null;
 
-  const changes = [
-    { event, value: launch, editable: !launched },
-    { event: deadlineEvent, value: deadline, editable: !deadlinePassed },
-  ].flatMap(({ event, value, editable }) => {
-    if (!event || !editable) return [];
-    const date = fromPacificInput(value);
-    return date && date.getTime() !== new Date(event.date).getTime()
-      ? [{ eventId: event.id, date }]
-      : [];
+  const changedDate = (params: {
+    event: { date: string } | null;
+    value: string;
+    editable: boolean;
+  }) => {
+    const date = fromPacificInput(params.value);
+    return params.event &&
+      params.editable &&
+      date &&
+      date.getTime() !== new Date(params.event.date).getTime()
+      ? date
+      : null;
+  };
+  const launchChange = changedDate({ event, value: launch, editable: !launched });
+  const deadlineChange = changedDate({
+    event: deadlineEvent,
+    value: deadline,
+    editable: !deadlinePassed,
   });
 
   const saveDates = async () => {
@@ -67,22 +68,13 @@ const ScheduledReleaseEditor = ({
     const orderError = releaseOrderError(launchAt, deadlineAt);
     if (orderError) return setError(orderError);
     setError(null);
-    setSaving(true);
     try {
-      for (const { eventId, date } of changes) {
-        const updated = await updateEvent.mutateAsync({
-          eventId,
-          body: { date: date.toISOString() },
-        });
-        if (!updated) break;
-      }
+      await reschedule.mutateAsync({
+        launch: launchChange?.toISOString(),
+        deadline: deadlineChange?.toISOString(),
+      });
     } catch (thrown) {
       setError(adminRefusalMessage(thrown, "Failed to change the dates."));
-    } finally {
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.actionAdminAll(),
-      });
-      setSaving(false);
     }
   };
 
@@ -130,9 +122,13 @@ const ScheduledReleaseEditor = ({
           <Button
             color={ButtonColor.Black}
             onClick={saveDates}
-            disabled={disabled || saving || changes.length === 0}
+            disabled={
+              disabled ||
+              reschedule.isPending ||
+              (launchChange === null && deadlineChange === null)
+            }
           >
-            {saving ? "Saving…" : "Save dates"}
+            {reschedule.isPending ? "Saving…" : "Save dates"}
           </Button>
         )}
         {!launched && (

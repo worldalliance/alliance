@@ -4,6 +4,7 @@ import {
   type AdminProjectDto,
   type CreateProjectActionDto,
   projectActionsCreateAdmin,
+  projectActionsRescheduleReleaseAdmin,
   projectActionsScheduleReleaseAdmin,
   projectActionsUnscheduleReleaseAdmin,
   projectsAssignActionAdmin,
@@ -12,11 +13,17 @@ import {
   projectsFindOneAdmin,
   projectsRemoveAdmin,
   projectsUpdateAdmin,
+  type RescheduleReleaseDto,
   type ScheduleReleaseDto,
   type UpdateProjectDto,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  dataOrThrow,
+  sendConfirmingDeadlineShortening,
+} from "./confirmDeadlineShortening";
 
 export function useProjectsAdmin() {
   return useQuery({
@@ -162,6 +169,20 @@ export function useActionReleaseAdmin(actionId: number) {
       }),
     onSuccess: () => invalidate(),
   });
+  const { confirm } = useToast();
+  const reschedule = useMutation({
+    mutationFn: (body: RescheduleReleaseDto) =>
+      sendConfirmingDeadlineShortening({
+        send: (query) =>
+          projectActionsRescheduleReleaseAdmin({
+            path: { id: actionId },
+            body,
+            query,
+          }),
+        confirm,
+      }).then(dataOrThrow),
+    onSuccess: () => invalidate(),
+  });
   const unschedule = useMutation({
     mutationFn: () =>
       projectActionsUnscheduleReleaseAdmin({
@@ -170,7 +191,7 @@ export function useActionReleaseAdmin(actionId: number) {
       }),
     onSuccess: () => invalidate(),
   });
-  return { schedule, unschedule };
+  return { schedule, reschedule, unschedule };
 }
 
 export function useStartStaffTestingAdmin(params: {

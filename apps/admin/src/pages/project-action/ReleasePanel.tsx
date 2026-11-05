@@ -57,7 +57,6 @@ const SuiteRelease = ({
         <ScheduledReleaseEditor
           key={action.events.map(({ id, date }) => `${id}:${date}`).join()}
           action={action}
-          suiteId={suiteId}
           disabled={disabled}
         />
       );

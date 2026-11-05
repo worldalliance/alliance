@@ -3762,6 +3762,11 @@ export type ScheduleReleaseDto = {
     reminders: Array<CreateReminderGroupDto>;
 };
 
+export type RescheduleReleaseDto = {
+    launch?: string;
+    deadline?: string;
+};
+
 export type CreateEditableContentDto = {
     /**
      * Markdown or plain text body
@@ -12428,6 +12433,32 @@ export type ProjectActionsUnscheduleReleaseAdminResponses = {
 };
 
 export type ProjectActionsUnscheduleReleaseAdminResponse = ProjectActionsUnscheduleReleaseAdminResponses[keyof ProjectActionsUnscheduleReleaseAdminResponses];
+
+export type ProjectActionsRescheduleReleaseAdminData = {
+    body: RescheduleReleaseDto;
+    path: {
+        id: number;
+    };
+    query?: {
+        acknowledgeDeadlineShortening?: boolean;
+    };
+    url: '/actions/{id}/release';
+};
+
+export type ProjectActionsRescheduleReleaseAdminErrors = {
+    /**
+     * Moves the member-action deadline earlier for assigned members; resend with acknowledgeDeadlineShortening=true.
+     */
+    409: HeyApiError;
+};
+
+export type ProjectActionsRescheduleReleaseAdminError = ProjectActionsRescheduleReleaseAdminErrors[keyof ProjectActionsRescheduleReleaseAdminErrors];
+
+export type ProjectActionsRescheduleReleaseAdminResponses = {
+    200: AdminActionDto;
+};
+
+export type ProjectActionsRescheduleReleaseAdminResponse = ProjectActionsRescheduleReleaseAdminResponses[keyof ProjectActionsRescheduleReleaseAdminResponses];
 
 export type ProjectActionsScheduleReleaseAdminData = {
     body: ScheduleReleaseDto;

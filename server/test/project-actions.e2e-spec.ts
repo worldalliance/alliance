@@ -263,6 +263,56 @@ describe("Project actions (e2e)", () => {
     ).toBe(0);
   });
 
+  const reschedule = (actionId: number, body: object) =>
+    asAdmin(request(server()).patch(`/actions/${actionId}/release`)).send(body);
+
+  const eventDates = async (actionId: number) =>
+    Object.fromEntries(
+      (await liveEvents(actionId)).map((e) => [e.newStatus, e.date.getTime()]),
+    );
+
+  it("moves the launch and deadline together, or neither", async () => {
+    const project = await projectRepo.save({ name: "Rescheduling" });
+    const { body } = await createInProject(project.id, "Moved").expect(201);
+    await schedule(body.id, releaseBody(addDays(new Date(), 5))).expect(201);
+    const before = await eventDates(body.id);
+
+    const launch = addDays(new Date(), 10);
+    await reschedule(body.id, {
+      launch,
+      deadline: addDays(launch, -1),
+    }).expect(400);
+    expect(await eventDates(body.id)).toEqual(before);
+
+    await reschedule(body.id, {
+      launch,
+      deadline: addDays(launch, 7),
+    }).expect(200);
+    expect(await eventDates(body.id)).toEqual({
+      [ActionStatus.MemberAction]: launch.getTime(),
+      [ActionStatus.OfficeAction]: addDays(launch, 7).getTime(),
+    });
+  });
+
+  it("locks the launch once it has passed, but not the deadline", async () => {
+    const project = await projectRepo.save({ name: "Locked launch" });
+    const { body } = await createInProject(project.id, "Locked").expect(201);
+    await schedule(body.id, releaseBody(addDays(new Date(), 5))).expect(201);
+    const launched = addDays(new Date(), -1);
+    await eventRepo.update(
+      { action: { id: body.id }, newStatus: ActionStatus.MemberAction },
+      { date: launched },
+    );
+
+    await reschedule(body.id, { launch: addDays(new Date(), 2) }).expect(400);
+    const deadline = addDays(new Date(), 9);
+    await reschedule(body.id, { deadline }).expect(200);
+    expect(await eventDates(body.id)).toEqual({
+      [ActionStatus.MemberAction]: launched.getTime(),
+      [ActionStatus.OfficeAction]: deadline.getTime(),
+    });
+  });
+
   it("refuses to unschedule after launch", async () => {
     const project = await projectRepo.save({ name: "Launched" });
     const { body } = await createInProject(project.id, "Live").expect(201);

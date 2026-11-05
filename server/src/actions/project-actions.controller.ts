@@ -4,14 +4,20 @@ import {
   Delete,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   UseGuards,
 } from "@nestjs/common";
 import { ApiOkResponse } from "@nestjs/swagger";
 import { AdminGuard } from "src/auth/guards/admin.guard";
+import {
+  AcknowledgeDeadlineShortening,
+  ApiAcknowledgeDeadlineShortening,
+} from "./acknowledge-deadline-shortening";
 import { AdminActionDto } from "./dto/admin-action.dto";
 import {
   CreateProjectActionDto,
+  RescheduleReleaseDto,
   ScheduleReleaseDto,
 } from "./dto/project-action.dto";
 import { ProjectActionsService } from "./project-actions.service";
@@ -40,6 +46,24 @@ export class ProjectActionsController {
   ): Promise<AdminActionDto> {
     return new AdminActionDto(
       await this.projectActionsService.scheduleRelease({ actionId, body }),
+    );
+  }
+
+  @Patch("actions/:id/release")
+  @ApiOkResponse({ type: AdminActionDto })
+  @ApiAcknowledgeDeadlineShortening()
+  async rescheduleReleaseAdmin(
+    @Param("id", ParseIntPipe) actionId: number,
+    @Body() body: RescheduleReleaseDto,
+    @AcknowledgeDeadlineShortening()
+    acknowledgeDeadlineShortening: boolean,
+  ): Promise<AdminActionDto> {
+    return new AdminActionDto(
+      await this.projectActionsService.rescheduleRelease({
+        actionId,
+        body,
+        acknowledgeDeadlineShortening,
+      }),
     );
   }
 
