@@ -21,7 +21,6 @@ import {
 } from "./dto/messaging.dto";
 import { Conversation } from "./entities/conversation.entity";
 import { ParticipantState } from "./entities/participant.entity";
-import { loadConversation } from "./load-conversation";
 import { emitConversationUpdated } from "./messaging.events";
 
 const PARTICIPANTS_MISSING = "One or more participants were not found.";
@@ -134,15 +133,11 @@ export class ConversationCreationService {
       },
     );
 
-    const hydratedConversation = await loadConversation(
-      this.conversationRepository,
+    emitConversationUpdated(this.eventEmitter, conversation.id);
+    return this.conversationService.getConversationForUser(
       conversation.id,
+      userId,
     );
-    emitConversationUpdated(this.eventEmitter, hydratedConversation.id);
-    return new ConversationDto({
-      conversation: hydratedConversation,
-      contextUserId: userId,
-    });
   }
 
   async createOrGetGroupConversation(
@@ -230,14 +225,10 @@ export class ConversationCreationService {
       },
     );
 
-    const hydratedConversation = await loadConversation(
-      this.conversationRepository,
+    emitConversationUpdated(this.eventEmitter, conversation.id);
+    return this.conversationService.getConversationForUser(
       conversation.id,
+      userId,
     );
-    emitConversationUpdated(this.eventEmitter, hydratedConversation.id);
-    return new ConversationDto({
-      conversation: hydratedConversation,
-      contextUserId: userId,
-    });
   }
 }

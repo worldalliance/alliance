@@ -262,15 +262,11 @@ export class ConversationMembershipService {
       );
     }
     await this.touchConversation(conversationId);
-    const updatedConversation = await loadConversation(
-      this.conversationRepository,
+    emitConversationUpdated(this.eventEmitter, conversationId);
+    return this.conversationService.getConversationForUser(
       conversationId,
+      actingUserId,
     );
-    emitConversationUpdated(this.eventEmitter, updatedConversation.id);
-    return new ConversationDto({
-      conversation: updatedConversation,
-      contextUserId: actingUserId,
-    });
   }
 
   async removeParticipantFromConversation(
@@ -308,15 +304,21 @@ export class ConversationMembershipService {
 
     await this.softDeleteParticipants([targetParticipant]);
     await this.touchConversation(conversationId);
-    const updatedConversation = await loadConversation(
-      this.conversationRepository,
+    emitConversationUpdated(this.eventEmitter, conversationId);
+    if (targetUserId === actingUserId) {
+      // No longer a participant, so there is no unread count to send.
+      return new ConversationDto({
+        conversation: await loadConversation(
+          this.conversationRepository,
+          conversationId,
+        ),
+        contextUserId: actingUserId,
+      });
+    }
+    return this.conversationService.getConversationForUser(
       conversationId,
+      actingUserId,
     );
-    emitConversationUpdated(this.eventEmitter, updatedConversation.id);
-    return new ConversationDto({
-      conversation: updatedConversation,
-      contextUserId: actingUserId,
-    });
   }
 
   private async softDeleteParticipants(
