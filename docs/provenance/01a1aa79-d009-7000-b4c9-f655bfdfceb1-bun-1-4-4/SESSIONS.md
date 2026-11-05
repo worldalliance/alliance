@@ -1,2 +1,7 @@
 - claude:5f540d74-163f-4383-91c2-4822d4a757b9
 - claude:9e344619-c2dc-4047-ab6f-f8cb77c07b92
+- claude:3dafe566-6557-46ee-9c5f-5d44c89ca3f9
+- claude:756d40c5-a765-470a-bc80-ac1cb892c59a
+- claude:a8f8540a-9030-4543-b336-4b788e7cde94
+- claude:ee4c5097-5026-4147-ac42-490ff7e295a9
+- claude:3fdebae5-3381-43fc-85dc-419a3c5e47e7
