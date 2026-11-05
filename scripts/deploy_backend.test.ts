@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
   chmodSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -70,6 +71,12 @@ const STUBS: Record<string, string> = {
       save) ;;
       *) echo "unexpected pm2 $*" >&2; exit 2;;
     esac`,
+  mv: `
+    [ "$1" != nest-backend-deploy-backup ] || [ "\${PUT_BACK:-ok}" = ok ] || exit 1
+    exec /bin/mv "$@"`,
+  rm: `
+    [ "$2" != nest-backend ] || [ "\${REMOVE:-ok}" = ok ] || exit 1
+    exec /bin/rm "$@"`,
   curl: `
     running=$(cat "$STATE/pm2")
     echo "health $running" >> "$STATE/log"
@@ -109,14 +116,15 @@ function deploy(env: Record<string, string> = {}) {
       ...env,
     },
   });
-  const read = (file: string) => readFileSync(join(state, file), "utf8").trim();
+  const read = (file: string) => readFileSync(file, "utf8").trim();
+  const releaseFile = join(home, "nest-backend", "release");
   return {
     exitCode: result.exitCode,
     output: result.stdout.toString() + result.stderr.toString(),
-    log: read("log").split("\n"),
-    running: read("pm2"),
-    db: read("db"),
-    release: readFileSync(join(home, "nest-backend", "release"), "utf8").trim(),
+    log: read(join(state, "log")).split("\n"),
+    running: read(join(state, "pm2")),
+    db: read(join(state, "db")),
+    release: existsSync(releaseFile) ? read(releaseFile) : "",
   };
 }
 
@@ -165,6 +173,28 @@ describe.each(["absent", "applied"] as const)(
         "start old",
       ]);
       expect(result).toMatchObject({ running: "old", release: "old" });
+    });
+
+    test("a failed health check with a new release that can't be removed says the backend is left stopped", () => {
+      const result = deploy({ HEALTH: "fail", REMOVE: "fail" });
+      expect(result.exitCode).toBe(1);
+      expect(result.output).toContain("The backend is left stopped");
+      expect(result.running).toBe("");
+    });
+
+    test("a failed health check with an old release that won't restart says the backend is left stopped", () => {
+      const result = deploy({ HEALTH: "fail", START_OLD: "fail" });
+      expect(result.exitCode).toBe(1);
+      expect(result.output).toContain("The backend is left stopped");
+      expect(result.running).toBe("");
+    });
+
+    test("a failed health check with a new backend that can't be stopped or removed says so", () => {
+      const result = deploy({ HEALTH: "fail", STOP: "fail", REMOVE: "fail" });
+      expect(result.exitCode).toBe(1);
+      expect(result.output).toContain("the new backend could not be stopped");
+      expect(result.output).not.toContain("left stopped");
+      expect(result.running).toBe("new");
     });
   },
 );
@@ -257,6 +287,16 @@ describe("deploy_backend.sh with the removal pending", () => {
     expect(result.output).toContain("The backend is left stopped");
     expect(result).toMatchObject({ running: "", db: "pending" });
   });
+
+  test.each(["REMOVE", "PUT_BACK"])(
+    "an old release that can't be put back after the guard fails says the backend is left stopped (%s fails)",
+    (name) => {
+      const result = deploy({ MIGRATE: "guard", [name]: "fail" });
+      expect(result.exitCode).toBe(1);
+      expect(result.output).toContain("The backend is left stopped");
+      expect(result.log.filter((line) => line.startsWith("start"))).toEqual([]);
+    },
+  );
 
   test("a failed health check reverts the removal before restarting the old release", () => {
     const result = deploy({ HEALTH: "fail" });

@@ -40,7 +40,7 @@ restore_old_release () {
   cd ~/ || return 1
   pm2 delete nest-app 9>&- || true
   if [ -d "nest-backend-deploy-backup" ]; then
-    rm -rf nest-backend
+    rm -rf nest-backend || return 1
     mv nest-backend-deploy-backup nest-backend
     cd ~/nest-backend/server || return 1
     start_backend
@@ -50,7 +50,12 @@ restore_old_release () {
 rollback () {
   trap - ERR
   echo "Deployment failed - rolling back"
-  restore_old_release
+  restore_old_release && exit 1
+  if stop_backend; then
+    echo "::error::Could not restart the old release. The backend is left stopped; start a release by hand."
+  else
+    echo "::error::Could not restart the old release, and the new backend could not be stopped; check \`pm2 list\`."
+  fi
   exit 1
 }
 trap rollback ERR
