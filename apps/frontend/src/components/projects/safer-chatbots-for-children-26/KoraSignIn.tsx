@@ -28,7 +28,6 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
-import { useAuth } from "../../../lib/AuthContext";
 import { getApiUrl } from "../../../lib/config";
 import { posthogRequestContext } from "../../../lib/posthogRequestContext";
 import { useWebOtpCode } from "../../../lib/useWebOtpCode";
@@ -234,7 +233,6 @@ export function KoraSignIn({
   className?: string;
   note: ReactNode;
 }) {
-  const member = useAuth();
   const kora = useKoraParticipant();
   const { query, sendCode, abandonCode, verifyCode, completeSignup } = kora;
   const contact = useContactField();
@@ -244,20 +242,10 @@ export function KoraSignIn({
   const origin = useAppOrigin(getBaseUrl());
   const card = cn("flex flex-col gap-2.5 text-[var(--site-ink)]", className);
 
-  if (member.loading || query.isPending) {
+  if (query.isPending) {
     return (
       <div className={cn(card, "min-h-40")} aria-busy>
         <p className="text-base text-[var(--site-ink)]/70">Loading…</p>
-      </div>
-    );
-  }
-  if (member.isAuthenticated) {
-    return (
-      <div className={card}>
-        <p className="text-lg">
-          Alliance members will participate in this project through weekly
-          tasks.
-        </p>
       </div>
     );
   }

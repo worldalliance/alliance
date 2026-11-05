@@ -1,4 +1,5 @@
 import { cn } from "@alliance/shared/styles/util";
+import { useAuth } from "../../../lib/AuthContext";
 import { socialPreviewMeta } from "../../../lib/socialPreviewMeta";
 import { SiteFooter } from "../../../site/Footer";
 import { NAV_HEIGHT, Navbar } from "../../../site/Navbar";
@@ -6,7 +7,7 @@ import { SiteRoot } from "../../../site/PageShell";
 import { SITE_COL } from "../../../site/ui";
 import { KoraSignedIn } from "./KoraSignIn";
 import { KoraSignUpPage } from "./KoraSignUpPage";
-import { KoraWelcome } from "./KoraWelcome";
+import { KoraViewer, KoraWelcome } from "./KoraWelcome";
 import { useKoraParticipant } from "./useKoraParticipant";
 
 export function meta() {
@@ -19,9 +20,10 @@ export function meta() {
 }
 
 export default function SaferChatbotsForChildren26() {
+  const member = useAuth();
   const kora = useKoraParticipant();
   const { query } = kora;
-  if (query.isPending) {
+  if (member.loading || query.isPending) {
     return (
       <SiteRoot className="bg-white">
         <Navbar />
@@ -30,7 +32,7 @@ export default function SaferChatbotsForChildren26() {
     );
   }
   const participant = query.data?.participant;
-  if (!participant) {
+  if (!participant && !member.isAuthenticated) {
     return <KoraSignUpPage />;
   }
   return (
@@ -41,7 +43,14 @@ export default function SaferChatbotsForChildren26() {
         style={{ paddingTop: `calc(${NAV_HEIGHT}px + 2.5rem)` }}
       >
         <KoraWelcome
-          account={<KoraSignedIn kora={kora} participant={participant} />}
+          viewer={
+            member.isAuthenticated ? KoraViewer.Member : KoraViewer.Participant
+          }
+          account={
+            participant && (
+              <KoraSignedIn kora={kora} participant={participant} />
+            )
+          }
         />
       </main>
       <SiteFooter collapsible />

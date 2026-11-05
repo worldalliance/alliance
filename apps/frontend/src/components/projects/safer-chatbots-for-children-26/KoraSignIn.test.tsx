@@ -10,8 +10,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, mock, onTestFinished, test } from "bun:test";
 import { MemoryRouter } from "react-router";
-import { AuthContext, type AuthContextType } from "../../../lib/AuthContext";
-import { testAuthUser } from "../../../stories/testData";
 import { KoraSignIn } from "./KoraSignIn";
 
 declare const happyDOM: { setURL: (url: string) => void };
@@ -77,24 +75,11 @@ beforeEach(() => {
   timeZones = [];
 });
 
-const signedOutMember: AuthContextType = {
-  isAuthenticated: false,
-  user: undefined,
-  isImpersonation: false,
-  refreshUser: () => Promise.resolve(),
-  login: () => Promise.resolve(),
-  onLogin: () => Promise.resolve(),
-  logout: () => Promise.resolve(),
-  loading: false,
-};
-
-const renderCard = (member: Partial<AuthContextType> = {}, search = "") =>
+const renderCard = (search = "") =>
   render(
     <MemoryRouter initialEntries={[`${KORA_PROJECT_PATH}${search}`]}>
       <QueryClientProvider client={new QueryClient()}>
-        <AuthContext.Provider value={{ ...signedOutMember, ...member }}>
-          <KoraSignIn note="Starts soon" />
-        </AuthContext.Provider>
+        <KoraSignIn note="Starts soon" />
       </QueryClientProvider>
     </MemoryRouter>,
   );
@@ -347,20 +332,6 @@ test("offers a retry when the sign-in state cannot load", async () => {
   await screen.findByLabelText("Email or mobile number");
 });
 
-test("a signed-in member sees only the member message", async () => {
-  state = {
-    participant: { id: "p1", name: "Participant" },
-    pendingCode: null,
-    signupPending: false,
-  };
-  renderCard({ isAuthenticated: true, user: testAuthUser });
-  await screen.findByText(
-    "Alliance members will participate in this project through weekly tasks.",
-  );
-  expect(screen.queryByText(/signed in as/)).toBeNull();
-  expect(screen.queryByLabelText("Email or mobile number")).toBeNull();
-});
-
 test("signs out, and keeps the signed-in view when sign-out fails", async () => {
   state = {
     participant: { id: "p1", name: "Participant" },
@@ -395,14 +366,14 @@ test("starts Google and Apple sign-in back to the project page", async () => {
 });
 
 test("says why the provider sign-in came back without signing in", async () => {
-  renderCard({}, "?googleError=cancelled");
+  renderCard("?googleError=cancelled");
   expect((await screen.findByRole("alert")).textContent).toBe(
     "Google sign-in was cancelled.",
   );
 });
 
 test("drops the provider's refusal once the participant uses the form", async () => {
-  renderCard({}, "?googleError=cancelled");
+  renderCard("?googleError=cancelled");
   await screen.findByText("Google sign-in was cancelled.");
   await submitContact("person@example.com");
   fireEvent.click(

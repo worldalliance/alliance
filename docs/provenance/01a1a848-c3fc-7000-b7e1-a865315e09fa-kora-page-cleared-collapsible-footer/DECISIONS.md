@@ -2,7 +2,7 @@
 
 - The collapsed footer strip is a `<button>` with an `aria-label` and `aria-expanded`, so it is reachable by keyboard and announced by screen readers (agent decision; root `AGENTS.md` requires icon-only controls to carry an `aria-label`). It uses `h-[12px]` because the site's root font size makes `h-3` 11.25px.
 - The route component picks the page from `useKoraParticipant`'s `/kora/me` query: `KoraWelcome` inside the trimmed navbar and collapsible footer for a participant, otherwise `KoraSignUpPage`, which is `main`'s page unchanged. A failed query shows the sign-up page, whose card reports the failure with a retry (agent decision).
-- A signed-in Alliance member who isn't a KORA participant sees the sign-up page, whose card tells them members take part through weekly tasks, as on `main` (reconstructed from existing code).
+- A logged-in member without a KORA session gets no KORA sign-out, since they have nothing to sign out of; one who is also a KORA participant gets it. The sign-up card's message telling members they take part through weekly tasks is deleted, since members no longer reach the sign-up page (agent decision).
 - The welcome page reuses the sign-up card's signed-in view, exported as `KoraSignedIn`, for its sign-out, handed to `KoraWelcome` as an `account` node so the welcome content stays free of the participant query (agent decision).
 - The images in `apps/frontend/public/assets/chatbot-safety/` stay although no code references them; that folder is being edited outside this task (agent decision).
 - "Fear and distress" has no hue in the user's list; it uses 270 (agent decision).
@@ -16,3 +16,4 @@
 - The chip row uses `overflow: clip`, not `hidden`, so focus or scripted scrolling cannot scroll it and break the centering (agent decision).
 - The shared column is `max-w-3xl`, which at desktop widths puts the post-it row's edges within about 12px of the column's (agent decision).
 - The h1 uses the old page's hero heading size, `text-5xl sm:text-6xl lg:text-7xl` (agent decision).
+- A logged-in member who is also a KORA participant counts as a member for the heading and the locked reminder. The locked switch is a disabled `role="switch"` that reads on regardless of a stored "off" from an earlier visit (agent decision).

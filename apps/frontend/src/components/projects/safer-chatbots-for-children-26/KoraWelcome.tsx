@@ -12,6 +12,29 @@ import { DisplayHeading, SiteSubtitle, SubtitleSize } from "../../../site/ui";
 import { RISK_CATEGORIES, RiskCategory } from "./riskCategories";
 
 export const REMIND_ME_KEY = "kora.remindMe";
+
+export enum KoraViewer {
+  Participant = "participant",
+  Member = "member",
+}
+
+const HEADING: Record<KoraViewer, string> = {
+  [KoraViewer.Participant]: "Thank you for joining the waitlist",
+  [KoraViewer.Member]:
+    "Alliance members will help shape how children interact with AI chatbots",
+};
+
+const REMIND_ME_NOTE: Record<KoraViewer, string> = {
+  [KoraViewer.Participant]:
+    "We’ll notify you when the reviews are ready for your input.",
+  [KoraViewer.Member]:
+    "Alliance members will be notified when the reviews launch.",
+};
+
+const REMIND_ME_LOCKED: Record<KoraViewer, boolean> = {
+  [KoraViewer.Participant]: false,
+  [KoraViewer.Member]: true,
+};
 export const ROTATE_MS = 5000;
 
 const CATEGORIES = Object.values(RiskCategory);
@@ -198,8 +221,10 @@ function CategoryCycle() {
   );
 }
 
-function RemindMeToggle() {
-  const [on, setOn] = useState(true);
+function RemindMeToggle({ viewer }: { viewer: KoraViewer }) {
+  const locked = REMIND_ME_LOCKED[viewer];
+  const [stored, setOn] = useState(true);
+  const on = locked || stored;
   useEffect(() => {
     if (localStorage.getItem(REMIND_ME_KEY) === "false") setOn(false);
   }, []);
@@ -216,8 +241,9 @@ function RemindMeToggle() {
         aria-labelledby="kora-remind-me"
         aria-describedby="kora-remind-me-note"
         onClick={toggle}
+        disabled={locked}
         className={cn(
-          "relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors",
+          "relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed",
           on ? "bg-green" : "bg-zinc-300",
         )}
       >
@@ -234,19 +260,25 @@ function RemindMeToggle() {
           Remind me
         </span>
         <span id="kora-remind-me-note" className="text-sm text-zinc-500">
-          We’ll notify you when the reviews are ready for your input.
+          {REMIND_ME_NOTE[viewer]}
         </span>
       </div>
     </div>
   );
 }
 
-export function KoraWelcome({ account }: { account: ReactNode }) {
+export function KoraWelcome({
+  viewer,
+  account,
+}: {
+  viewer: KoraViewer;
+  account: ReactNode;
+}) {
   return (
     <div className="flex flex-col gap-8">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
         <DisplayHeading as="h1" className="text-5xl sm:text-6xl lg:text-7xl">
-          Thank you for joining the waitlist
+          {HEADING[viewer]}
         </DisplayHeading>
         <SiteSubtitle size={SubtitleSize.Page} className="max-w-none">
           Our partner,{" "}
@@ -257,10 +289,10 @@ export function KoraWelcome({ account }: { account: ReactNode }) {
             className="underline"
           >
             KoraBench
-          </a>{" "}
-          needs human reviewers to review scenarios and chatbot transcripts and
-          provide insight about which chat services are failing to provide our
-          children with proper guidance
+          </a>
+          , needs human reviewers to review scenarios and chatbot transcripts
+          and provide insight about which chat services are failing to provide
+          our children with proper guidance
         </SiteSubtitle>
       </div>
       <CategoryCycle />
@@ -272,7 +304,7 @@ export function KoraWelcome({ account }: { account: ReactNode }) {
           Reviews start on November 17th.
         </p>
         <div className="flex flex-col gap-6">
-          <RemindMeToggle />
+          <RemindMeToggle viewer={viewer} />
           {account}
         </div>
       </div>

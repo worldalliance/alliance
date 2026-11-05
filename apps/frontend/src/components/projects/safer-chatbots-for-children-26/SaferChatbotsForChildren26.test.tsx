@@ -7,6 +7,7 @@ import { beforeEach, expect, test } from "bun:test";
 import { MemoryRouter } from "react-router";
 import { AuthContext } from "../../../lib/AuthContext";
 import { InviteSessionProvider } from "../../../site/invite/InviteSession";
+import { testAuthUser } from "../../../stories/testData";
 import { authValue } from "../../../testing/authValue";
 import SaferChatbotsForChildren26 from "./SaferChatbotsForChildren26";
 
@@ -27,11 +28,11 @@ beforeEach(() =>
   happyDOM.setURL(`https://worldalliance.org${KORA_PROJECT_PATH}`),
 );
 
-const renderPage = () =>
+const renderPage = (member: Parameters<typeof authValue>[0] = {}) =>
   render(
     <MemoryRouter initialEntries={[KORA_PROJECT_PATH]}>
       <QueryClientProvider client={new QueryClient()}>
-        <AuthContext.Provider value={authValue({})}>
+        <AuthContext.Provider value={authValue(member)}>
           <InviteSessionProvider>
             <SaferChatbotsForChildren26 />
           </InviteSessionProvider>
@@ -78,4 +79,18 @@ test("a participant signs out back to the sign-up page", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
   await screen.findByRole("button", { name: "Continue" });
   expect(h1()).toBe("Make AI chatbots safer for kids");
+});
+
+test("welcomes a signed-in member, with their tasks and profile in the bar", async () => {
+  participant = null;
+  renderPage({ user: testAuthUser });
+
+  await screen.findByRole("heading", {
+    level: 1,
+    name: "Alliance members will help shape how children interact with AI chatbots",
+  });
+  expect(screen.getByRole("link", { name: /My tasks/ })).toBeTruthy();
+  expect(screen.getByRole("link", { name: "Go to profile" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Continue" })).toBeNull();
 });

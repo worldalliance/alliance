@@ -1,13 +1,13 @@
 ---
 user: Alex Dorey
-task: In /projects/safer-chatbots-for-children, clear out the content and make the footer shrink to 12px but expandable with a click. Then build a light-mode welcome page for KORA participants that introduces the project and cycles through the risk categories with what good and bad chatbot behavior looks like.
+task: In /projects/safer-chatbots-for-children, clear out the content and make the footer shrink to 12px but expandable with a click. Then build a light-mode welcome page for KORA participants and logged-in Alliance members that introduces the project and cycles through the risk categories with what good and bad chatbot behavior looks like.
 ---
 
 # Requirements
 
-- `/projects/safer-chatbots-for-children` shows the welcome page only to a visitor the server reports as a KORA participant (`GET /kora/me` returns a participant), including right after they finish signing up. It is a landing page that welcomes participants, not a dashboard. (user-originated)
+- `/projects/safer-chatbots-for-children` shows the welcome page only to a visitor the server reports as a KORA participant (`GET /kora/me` returns a participant), including right after they finish signing up, and to a logged-in Alliance member, who sees the same welcome page. It is a landing page that welcomes them, not a dashboard. (user-originated)
 - Every other visitor sees the sign-up page as it is on `main`: the hero with the KORA sign-in form, participant bar, About sections, timeline, facts, and news collage, with the full navbar and footer. (agent-proposed, user-approved)
-- Until `GET /kora/me` answers, including in the server render, the page shows the full navbar above an empty body marked busy, so neither a participant nor anyone else sees the other page first. (agent-proposed, user-approved)
+- Until both the Alliance login check and `GET /kora/me` answer, including in the server render, the page shows the full navbar above an empty body marked busy, so neither a participant nor anyone else sees the other page first. (agent-proposed, user-approved)
 - The welcome page renders the site navbar, the welcome content below, and the site footer. (agent-proposed, user-approved)
 - On the welcome page the footer is collapsed to a 12px-tall strip; clicking it expands the full footer. A lucide chevron shows that it toggles: up on the collapsed strip, down at the top of the expanded footer, where clicking collapses it again. (user-originated; collapsing again agent-proposed, implied by "toggleable")
 - The collapsed footer applies to the welcome page only; every other page using the site footer keeps the full footer. (agent-proposed, user-approved)
@@ -16,10 +16,12 @@ task: In /projects/safer-chatbots-for-children, clear out the content and make t
 
 - Light mode. (user-originated)
 - On the welcome page the site navbar drops the People, Guide, Progress and Partner links, and with them the phone menu, which held nothing else; "The Alliance" logotype sits at the left, where "People" was, and Log In stays at the right. Other pages keep the full navbar. (user-originated; this-page-only and dropping the empty phone menu are agent decisions)
-- The h1 reads "Thank you for joining the waitlist". Under it: "Our partner, KoraBench needs human reviewers to review scenarios and chatbot transcripts and provide insight about which chat services are failing to provide our children with proper guidance", with "KoraBench" linking to https://korabench.ai/. The heading and this text sit left-aligned in a block centered on the page, and the text spans the full width of the category chip row below it. (user-originated)
+- For a logged-in Alliance member, the right of that navbar shows the "My tasks" button with its arrow, linking to their Tasks, and their avatar, linking to their profile, as the site navbar shows them elsewhere. (user-originated)
+- The h1 reads "Thank you for joining the waitlist" for a KORA participant and "Alliance members will help shape how children interact with AI chatbots" for a logged-in Alliance member. Under it, for everyone: "Our partner, KoraBench, needs human reviewers to review scenarios and chatbot transcripts and provide insight about which chat services are failing to provide our children with proper guidance", with "KoraBench" linking to https://korabench.ai/. The heading and this text sit left-aligned in a block centered on the page, and the text spans the full width of the category chip row below it. (user-originated)
 - A post-it style announcement saying reviews start on November 17th, placed below the rotating category panel, with the "Remind me" toggle beside it; the row is centered and the post-it is tall, like a real sticky note. (user-originated)
 - A "Remind me" toggle, on by default, with small text: "We’ll notify you when the reviews are ready for your input." It is saved in the browser only and sends no notification yet. (wording user-originated; local saving agent-proposed, user-approved)
-- Beside "Remind me", the participant sees "You’re signed in as {name}." with a sign-out icon button, as the sign-up page showed it; signing out returns them to the sign-up page. (agent-proposed placement beside Remind me chosen by the user)
+- For a logged-in Alliance member the toggle's small text reads "Alliance members will be notified when the reviews launch.", and the toggle stays on and can't be turned off. (user-originated)
+- Beside "Remind me", a KORA participant sees "You’re signed in as {name}." with a sign-out icon button, as the sign-up page showed it; signing out returns them to the sign-up page. (agent-proposed placement beside Remind me chosen by the user)
 - A panel cycles through the ten risk categories, each showing its label, the good chatbot behavior, and the bad chatbot behavior, from KORA's placeholder risk config (`examples/koraRisks.json`, outside this repo):
 
   | id                                          | label                       | good                                                                   | bad                                                          |
