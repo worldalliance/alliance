@@ -20,11 +20,28 @@ const compose = async (subject: string, body: string) => {
   fireEvent.change(screen.getByLabelText("Body"), { target: { value: body } });
 };
 
+const previewRequested = (draft: { subject: string; body: string }) =>
+  waitFor(() => expect(api.previews.at(-1)).toMatchObject(draft), {
+    timeout: 3000,
+  });
+
+const composePreviewed = async (subject: string, body: string) => {
+  await compose(subject, body);
+  await previewRequested({ subject, body });
+};
+
+const sendEnabled = (name = "Send email") =>
+  waitFor(() =>
+    expect(screen.getByRole("button", { name }).hasAttribute("disabled")).toBe(
+      false,
+    ),
+  );
+
 const confirmDialog = () => screen.getByRole("dialog");
 
 it("previews the email for the selection and sends it after confirming", async () => {
   api.previewServed = emailPreview({ unsubscribed: 1, selected: 3 });
-  await compose("Hi #{name}", "Welcome");
+  await composePreviewed("Hi #{name}", "Welcome");
 
   expect(
     await screen.findByText(
@@ -97,12 +114,8 @@ it("sends to the entries selected when the confirmation opened", async () => {
   fireEvent.change(screen.getByLabelText("Body"), {
     target: { value: "Welcome" },
   });
-  await waitFor(() =>
-    expect(screen.getByRole("button", { name: "Send email" })).toHaveProperty(
-      "disabled",
-      false,
-    ),
-  );
+  await previewRequested({ subject: "Hi", body: "Welcome" });
+  await sendEnabled();
   fireEvent.click(screen.getByRole("button", { name: "Send email" }));
   release();
   expect(await screen.findByText("3 entries are selected")).toBeTruthy();
@@ -118,9 +131,10 @@ it("sends to the entries selected when the confirmation opened", async () => {
 
 it("resends a failed send with its request id, so it can't send twice", async () => {
   api.sendStatus = 502;
-  await compose("Hi", "Welcome");
+  await composePreviewed("Hi", "Welcome");
   await screen.findByText(/would get this email/);
   const confirmSend = async () => {
+    await sendEnabled();
     fireEvent.click(screen.getByRole("button", { name: "Send email" }));
     fireEvent.click(await screen.findByRole("button", { name: "Confirm" }));
   };
@@ -139,19 +153,13 @@ it("resends a failed send with its request id, so it can't send twice", async ()
 
 it("keeps a failed send's request id after another send is opened and cancelled", async () => {
   api.sendStatus = 502;
-  await compose("Hi", "Welcome");
+  await composePreviewed("Hi", "Welcome");
   await screen.findByText(/would get this email/);
   fireEvent.click(screen.getByRole("button", { name: "Send email" }));
   fireEvent.click(await screen.findByRole("button", { name: "Confirm" }));
   expect(await screen.findByText("Could not send the email.")).toBeTruthy();
 
-  await waitFor(() =>
-    expect(
-      screen
-        .getByRole("button", { name: "Send email and mark as mobilized" })
-        .hasAttribute("disabled"),
-    ).toBe(false),
-  );
+  await sendEnabled("Send email and mark as mobilized");
   fireEvent.click(
     screen.getByRole("button", { name: "Send email and mark as mobilized" }),
   );
@@ -168,7 +176,7 @@ it("keeps a failed send's request id after another send is opened and cancelled"
 });
 
 it("waits for a preview of the current draft before sending", async () => {
-  await compose("Hi", "Welcome");
+  await composePreviewed("Hi", "Welcome");
   await screen.findByText(/would get this email/);
   const sendButton = () => screen.getByRole("button", { name: "Send email" });
   expect(sendButton().hasAttribute("disabled")).toBe(false);
@@ -177,12 +185,8 @@ it("waits for a preview of the current draft before sending", async () => {
     target: { value: "Hello" },
   });
   expect(sendButton().hasAttribute("disabled")).toBe(true);
-  await waitFor(() =>
-    expect(api.previews.at(-1)).toMatchObject({ subject: "Hello" }),
-  );
-  await waitFor(() =>
-    expect(sendButton().hasAttribute("disabled")).toBe(false),
-  );
+  await previewRequested({ subject: "Hello", body: "Welcome" });
+  await sendEnabled();
   fireEvent.click(sendButton());
   expect(
     within(confirmDialog()).getByText(/Email “Hello” to 2 recipients now/),
@@ -190,7 +194,7 @@ it("waits for a preview of the current draft before sending", async () => {
 });
 
 it("waits for a preview of a changed selection before sending", async () => {
-  await compose("Hi", "Welcome");
+  await composePreviewed("Hi", "Welcome");
   await screen.findByText(/would get this email/);
   const sendButton = () => screen.getByRole("button", { name: "Send email" });
 
@@ -199,9 +203,7 @@ it("waits for a preview of a changed selection before sending", async () => {
   await waitFor(() =>
     expect(api.previews.at(-1)).toMatchObject({ entryIds: [1] }),
   );
-  await waitFor(() =>
-    expect(sendButton().hasAttribute("disabled")).toBe(false),
-  );
+  await sendEnabled();
 
   fireEvent.click(screen.getByLabelText("Select Person 1"));
   await new Promise((resolve) => setTimeout(resolve, 500));
@@ -209,7 +211,7 @@ it("waits for a preview of a changed selection before sending", async () => {
 });
 
 it("previews and sends to people who claimed an invite once included", async () => {
-  await compose("Hi", "Welcome");
+  await composePreviewed("Hi", "Welcome");
   await screen.findByText(/would get this email/);
   fireEvent.click(
     screen.getByLabelText("Include people who already claimed an invite"),
@@ -217,13 +219,7 @@ it("previews and sends to people who claimed an invite once included", async () 
   await waitFor(() =>
     expect(api.previews.at(-1)).toMatchObject({ includeClaimed: true }),
   );
-  await waitFor(() =>
-    expect(
-      screen
-        .getByRole("button", { name: "Send email" })
-        .hasAttribute("disabled"),
-    ).toBe(false),
-  );
+  await sendEnabled();
   fireEvent.click(screen.getByRole("button", { name: "Send email" }));
   fireEvent.click(await screen.findByRole("button", { name: "Confirm" }));
   await waitFor(() =>
@@ -233,7 +229,7 @@ it("previews and sends to people who claimed an invite once included", async () 
 
 it("refreshes the repeat-send count after a failed send", async () => {
   api.sendStatus = 502;
-  await compose("Hi", "Welcome");
+  await composePreviewed("Hi", "Welcome");
   await screen.findByText(/would get this email/);
   fireEvent.click(screen.getByRole("button", { name: "Send email" }));
   api.previewServed = emailPreview({ alreadySent: 2 });
@@ -254,7 +250,7 @@ it("refreshes the repeat-send count after a failed send", async () => {
 
 it("keeps sending off while a preview after a failed send fails", async () => {
   api.sendStatus = 502;
-  await compose("Hi", "Welcome");
+  await composePreviewed("Hi", "Welcome");
   await screen.findByText(/would get this email/);
   fireEvent.click(screen.getByRole("button", { name: "Send email" }));
   api.previewStatus = 500;
@@ -283,7 +279,7 @@ it("asks before discarding a written draft", async () => {
 });
 
 it("mentions a sample signup link only when the email has one", async () => {
-  await compose("Hi", "Welcome");
+  await composePreviewed("Hi", "Welcome");
   await screen.findByText(/would get this email/);
   expect(screen.queryByText(/sample signup link/)).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Send test to me" }));
@@ -295,7 +291,7 @@ it("mentions a sample signup link only when the email has one", async () => {
 });
 
 it("warns when mobilizing with an email that has no signup link", async () => {
-  await compose("You're in", "Welcome");
+  await composePreviewed("You're in", "Welcome");
   await screen.findByText(/would get this email/);
 
   fireEvent.click(
@@ -312,7 +308,7 @@ it("warns when mobilizing with an email that has no signup link", async () => {
 
 it("won't send #{organizationName} to recipients without an organization", async () => {
   api.previewServed = emailPreview({ withoutOrganization: 1 });
-  await compose("From #{organizationName}", "Hi");
+  await composePreviewed("From #{organizationName}", "Hi");
 
   expect(
     await screen.findByText(
@@ -336,7 +332,7 @@ it("lists warnings and says which values a recipient lacks", async () => {
       missing: ["organizationName"],
     },
   });
-  await compose("Hi", "From #{organizationName}");
+  await composePreviewed("Hi", "From #{organizationName}");
 
   expect(
     await screen.findByText(
@@ -376,7 +372,7 @@ it("keeps inserting placeholders where the last one went", async () => {
 });
 
 it("steps the preview through recipients", async () => {
-  await compose("Hi", "Welcome");
+  await composePreviewed("Hi", "Welcome");
   await screen.findByText(/Person 1 <person1@example.com> · 1 of 2/);
   fireEvent.click(screen.getByRole("button", { name: "Next recipient" }));
   await waitFor(() =>
@@ -385,7 +381,7 @@ it("steps the preview through recipients", async () => {
 });
 
 it("sends a test to the staff member after confirming", async () => {
-  await compose("Hi", "Welcome");
+  await composePreviewed("Hi", "Welcome");
   await screen.findByText(/would get this email/);
   fireEvent.click(screen.getByRole("button", { name: "Send test to me" }));
   expect(
