@@ -1,5 +1,9 @@
 import { RecognitionGroup } from "@alliance/common/action-update-copy";
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import {
+  ApiHideProperty,
+  ApiProperty,
+  ApiPropertyOptional,
+} from "@nestjs/swagger";
 import { IsEnum, IsOptional, IsString } from "class-validator";
 import type { RecognitionPreviewCounts } from "../action-update-recognition";
 import {
@@ -16,14 +20,23 @@ export class AdminActionUpdateDto extends ActionUpdateDto {
   })
   notificationMode: ActionUpdateNotificationMode;
 
-  @ApiProperty()
+  // BACKCOMPAT(split-collective-result): an admin bundle from before the
+  // result always split seeds its edit form from these two. Without the flag
+  // it shows the update unsplit and saves with no flag for the input guard to
+  // refuse; without `uninvolvedResult` it shows uninvolved members getting
+  // nothing. Drop with that guard.
+  @ApiHideProperty()
   splitCollectiveResult: boolean;
+
+  /**
+   * `nonCompleterResult`, what recognition updates send uninvolved members;
+   * the stored column isn't read.
+   */
+  @ApiHideProperty()
+  uninvolvedResult: string | null;
 
   @ApiProperty({ type: String, nullable: true })
   nonCompleterResult: string | null;
-
-  @ApiProperty({ type: String, nullable: true })
-  uninvolvedResult: string | null;
 
   @ApiProperty({ type: Date, nullable: true })
   recognitionPreparedAt: Date | null;
@@ -36,7 +49,7 @@ export class AdminActionUpdateDto extends ActionUpdateDto {
     this.notificationMode = input.notificationMode;
     this.splitCollectiveResult = input.splitCollectiveResult;
     this.nonCompleterResult = input.nonCompleterResult;
-    this.uninvolvedResult = input.uninvolvedResult;
+    this.uninvolvedResult = input.nonCompleterResult;
     this.recognitionPreparedAt = input.recognitionPreparedAt;
     this.notificationHeldReason = input.notificationHeldReason;
   }

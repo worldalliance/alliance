@@ -37,7 +37,6 @@ const defaultNewUpdate: CreateActionUpdateDto = {
   date: new Date().toISOString(),
   notifyType: "none",
   shortNotifString: "",
-  splitCollectiveResult: true,
 };
 
 const ActionUpdatesTab = ({
@@ -66,9 +65,7 @@ const ActionUpdatesTab = ({
     setNewUpdate({
       ...newUpdate,
       ...next,
-      splitCollectiveResult: true,
       nonCompleterResult: next.nonCompleterResult || null,
-      uninvolvedResult: next.nonCompleterResult || null,
     });
   const isSubmitDisabled =
     creating ||

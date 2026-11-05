@@ -92,6 +92,9 @@ export class ActionUpdatesService {
             em.create(ActionUpdate, {
               ...createActionUpdateDto,
               notificationMode: ActionUpdateNotificationMode.Normal,
+              splitCollectiveResult: true,
+              uninvolvedResult:
+                createActionUpdateDto.nonCompleterResult ?? null,
               schemaSnapshotId: emptySnapshot.id,
               visibleAt: null,
               action,
@@ -148,6 +151,8 @@ export class ActionUpdatesService {
       expectedSchemaSnapshotId,
       tagId,
       associatedEventId,
+      splitCollectiveResult: _splitGuard,
+      uninvolvedResult: _uninvolvedGuard,
       ...rest
     } = dto;
 
@@ -165,20 +170,12 @@ export class ActionUpdatesService {
     // The freeze takes its own pool connections, so it runs before the
     // transaction rather than while holding one.
     if (
-      rest.shortNotifString !== undefined ||
-      rest.nonCompleterResult !== undefined
+      rest.shortNotifString !== undefined &&
+      rest.shortNotifString !==
+        (await this.actionUpdateRepository.findOneByOrFail({ id }))
+          .shortNotifString
     ) {
-      const current = await this.actionUpdateRepository.findOneByOrFail({
-        id,
-      });
-      if (
-        (rest.shortNotifString !== undefined &&
-          rest.shortNotifString !== current.shortNotifString) ||
-        (rest.nonCompleterResult !== undefined &&
-          rest.nonCompleterResult !== current.nonCompleterResult)
-      ) {
-        await this.notifsService.freezeActionUpdateCopy(id);
-      }
+      await this.notifsService.freezeActionUpdateCopy(id);
     }
 
     // Same locking rationale as `updateGeneralUpdate`: `save` writes back every
@@ -201,6 +198,14 @@ export class ActionUpdatesService {
       const actionUpdate = await this.lockActionUpdate(id, em);
       // Before the schema write, so publishing sees the `date` this request sets.
       Object.assign(actionUpdate, rest);
+      if (rest.nonCompleterResult !== undefined) {
+        actionUpdate.uninvolvedResult = rest.nonCompleterResult;
+        if (
+          actionUpdate.notificationMode !== ActionUpdateNotificationMode.Legacy
+        ) {
+          actionUpdate.splitCollectiveResult = true;
+        }
+      }
       const now = new Date();
       if (
         rest.date !== undefined &&

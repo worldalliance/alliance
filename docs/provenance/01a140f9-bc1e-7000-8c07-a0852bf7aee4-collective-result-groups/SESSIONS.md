@@ -1,2 +1,7 @@
 - cursor:ace30911-65d4-42ee-b651-1cffed96d141
 - cursor:76cc2a5b-b929-4d82-8eac-d11f8139ec93
+- claude:c8df9546-2c10-46d2-8a17-cb6d54e2d7c3
+- claude:d66ba7eb-a64d-4c4b-bcaf-d605af664b6c
+- claude:ea12534b-6763-4e0a-b927-e292a6aacb9b
+- claude:a5792a8c-1e00-40db-8315-6a52cd8a3161
+- claude:19d2a971-f05c-4f77-9de1-a1ce179e24e3

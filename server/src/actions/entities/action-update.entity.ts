@@ -123,8 +123,10 @@ export class ActionUpdate {
   @ApiProperty()
   shortNotifString: string;
 
-  // BACKCOMPAT(split-collective-result): sending always uses two texts.
-  // Drop once nothing reads this column.
+  // BACKCOMPAT(split-collective-result): updates are created with true and
+  // edits set it on non-legacy rows, so a server from before the result always
+  // split reads the same texts, and AdminActionUpdateDto returns it to older
+  // admin bundles. Drop once neither runs.
   @Column({ default: false })
   @IsBoolean()
   @ApiProperty()
@@ -137,8 +139,9 @@ export class ActionUpdate {
   @ApiProperty({ type: String, nullable: true })
   nonCompleterResult: string | null;
 
-  // BACKCOMPAT(uninvolved-result): uninvolved members read nonCompleterResult.
-  // Drop once nothing reads this column.
+  // BACKCOMPAT(uninvolved-result): creates and edits mirror nonCompleterResult
+  // here for a server from before uninvolved members read it. Drop once no
+  // such server runs.
   @Column({ type: "text", nullable: true })
   @IsOptional()
   @IsString()
