@@ -29,6 +29,13 @@ migrate () {
   bunx typeorm-ts-node-commonjs --dataSource src/datasources/dataSource.ts migration:run
 }
 
+put_back_old_release () {
+  cd ~/ || return 1
+  [ -d nest-backend-deploy-backup ] || return 1
+  rm -rf nest-backend || return 1
+  mv nest-backend-deploy-backup nest-backend
+}
+
 stop_backend () {
   local list
   pm2 delete nest-app 9>&- || true
@@ -39,12 +46,10 @@ stop_backend () {
 restore_old_release () {
   cd ~/ || return 1
   pm2 delete nest-app 9>&- || true
-  if [ -d "nest-backend-deploy-backup" ]; then
-    rm -rf nest-backend || return 1
-    mv nest-backend-deploy-backup nest-backend
-    cd ~/nest-backend/server || return 1
-    start_backend
-  fi
+  [ -d nest-backend-deploy-backup ] || return 0
+  put_back_old_release || return 1
+  cd ~/nest-backend/server || return 1
+  start_backend
 }
 
 backup_note () {
