@@ -73,3 +73,4 @@ task: Spec an Alliance-specific desktop app that wraps the `claude` and `codex` 
 ## Delivery
 
 - The build is split into many small PRs. (user-originated)
+- Running the app's automated tests locally puts no window on the developer's screen. (user-originated)

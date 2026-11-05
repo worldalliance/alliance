@@ -6,6 +6,7 @@
   },
   // `../scripts` and `../agents` have no package.json. Keeping their TypeScript
   // in this config avoids a workspace package that deploy.yaml would also need
-  // to ship to EC2.
-  "include": ["src", "scripts", "../scripts", "../agents"]
+  // to ship to EC2. `../agents/desktop` is its own package and typechecks itself.
+  "include": ["src", "scripts", "../scripts", "../agents"],
+  "exclude": ["../agents/desktop"]
 }

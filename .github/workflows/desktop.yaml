@@ -1,0 +1,48 @@
+name: Desktop
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - agents/desktop/**
+      - eslint/**
+      - package.json
+      - bun.lock
+      - .github/workflows/desktop.yaml
+
+jobs:
+  desktop:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agents/desktop
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # The root install provides the packages eslint/shared-rules.mjs imports.
+      - name: Install Dependencies
+        run: |
+          (cd ../.. && bun install --frozen-lockfile)
+          bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      # Ubuntu 24.04's AppArmor blocks the unprivileged user namespaces
+      # Electron's sandbox needs, so Electron would abort at launch.
+      - name: Allow Electron's Sandbox
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      - name: Test
+        run: xvfb-run --auto-servernum bun run test
