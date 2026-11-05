@@ -5,7 +5,7 @@ import {
   getCountries,
   getCountryCallingCode,
 } from "libphonenumber-js/max";
-import { COUNTRY_NAMES } from "./country-names";
+import { COUNTRY_NAMES } from "./country-names.gen";
 import { R } from "./result";
 
 export type PhoneCountry = {

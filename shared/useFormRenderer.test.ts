@@ -1,3 +1,4 @@
+/* alliance/max-lines 600 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import {
   type AnyField,
   type FormSchema,

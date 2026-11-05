@@ -1,3 +1,4 @@
+/* alliance/max-lines 1050 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { AuthService } from "src/auth/auth.service";
 import { SignUpDto } from "src/auth/dto/sign-up.dto";
 import { ACCESS_COOKIE, JWTTokenType, REFRESH_COOKIE } from "src/auth/tokens";

@@ -1,3 +1,4 @@
+/* alliance/max-lines 600 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import type { FormSchema, PageItem } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";

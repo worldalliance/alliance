@@ -1,3 +1,4 @@
+/* alliance/max-lines 700 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { R } from "../result";
 import { MATH_FUNCTION_NAMES } from "./formula-allowlist";
 import {

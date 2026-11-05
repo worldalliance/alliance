@@ -1,3 +1,4 @@
+/* alliance/max-lines 750 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 import type { Assert, Equal, Extends } from "@alliance/common/types";
 import type {

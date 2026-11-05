@@ -9,21 +9,19 @@ import sharedRules, {
   webEnvReads,
 } from "../eslint/shared-rules.mjs";
 
+const tsFile = {
+  files: ["**/*.ts"],
+  languageOptions: { parser: tseslint.parser },
+  plugins: { "@typescript-eslint": tseslint.plugin },
+};
+
 const RULE = "zod/named-import";
 
 const flagged = (code: string) =>
   new Linter({ configType: "flat" })
     .verify(
       `${code}\nexport const schema = z.string();`,
-      [
-        {
-          files: ["**/*.ts"],
-          languageOptions: { parser: tseslint.parser },
-          plugins: { "@typescript-eslint": tseslint.plugin },
-        },
-        ...sharedRules,
-        ...apiClientRules,
-      ],
+      [tsFile, ...sharedRules, ...apiClientRules],
       "src/schema.ts",
     )
     .some((message) => message.ruleId === RULE);
@@ -126,5 +124,159 @@ describe("envReadsOnlyIn", () => {
         file: "src/env.ts",
       }),
     ).toBe(false);
+  });
+});
+
+const maxLinesReports = (params: {
+  waiver?: string;
+  lines: number;
+  file?: string;
+}) =>
+  new Linter({ configType: "flat" })
+    .verify(
+      [
+        ...(params.waiver ? [params.waiver] : []),
+        ...Array.from({ length: params.lines }, (_, i) => `f(${i});\n`),
+      ].join("\n"),
+      [tsFile, ...sharedRules],
+      params.file ?? "src/big.ts",
+    )
+    .filter((message) => message.ruleId === "alliance/max-lines");
+
+const maxLinesMessages = (params: Parameters<typeof maxLinesReports>[0]) =>
+  maxLinesReports(params).map((message) => message.message);
+
+describe("alliance/max-lines", () => {
+  it.each([
+    "src/big.test.ts",
+    "src/big.spec.ts",
+    "test/big.e2e-spec.ts",
+    "src/big.typecheck.ts",
+  ])("covers test file %s", (file) => {
+    expect(maxLinesMessages({ lines: 501, file })).toHaveLength(1);
+  });
+
+  it.each(["src/client/types.gen.ts", "src/migrations/1700000000000-Big.ts"])(
+    "skips %s",
+    (file) => {
+      expect(maxLinesMessages({ lines: 501, file })).toEqual([]);
+    },
+  );
+
+  it("reports at error, so CI blocks", () => {
+    expect(
+      maxLinesReports({ lines: 501 }).map((message) => message.severity),
+    ).toEqual([2]);
+  });
+
+  it("counts non-blank lines only", () => {
+    expect(maxLinesMessages({ lines: 500 })).toEqual([]);
+  });
+
+  it("flags a file past 500 with no waiver, offering one", () => {
+    expect(maxLinesMessages({ lines: 501 })).toEqual([
+      expect.stringContaining(
+        "/* alliance/max-lines 550 -- <why it is one unit> */",
+      ),
+    ]);
+  });
+
+  it.each([501, 549, 550])(
+    "accepts the waiver it offers at %i lines",
+    (lines) => {
+      const [message] = maxLinesMessages({ lines });
+      expect(message).toBeDefined();
+      const waiver = message?.match(/\/\* alliance\/max-lines .*? \*\//)?.[0];
+      expect(maxLinesMessages({ waiver, lines })).toEqual([]);
+    },
+  );
+
+  it("flags a second waiver", () => {
+    expect(
+      maxLinesMessages({
+        waiver:
+          "/* alliance/max-lines 650 -- one state machine */\n/* alliance/max-lines 9999 -- stale */",
+        lines: 618,
+      }),
+    ).toEqual([expect.stringContaining("Only the first")]);
+  });
+
+  it.each([
+    ["/* alliance/max-lines 650 -- one state machine */", 649, []],
+    ["/* alliance/max-lines 650 -- one state machine */", 600, []],
+    [
+      "/* alliance/max-lines 650 -- one state machine */",
+      598,
+      ["Lower the waiver to 600"],
+    ],
+    [
+      "/* alliance/max-lines 650 -- one state machine */",
+      650,
+      ["past the 650 its waiver records", "raise the waiver to 700"],
+    ],
+    ["/* alliance/max-lines 650 */", 600, ["Write the waiver as"]],
+    [
+      "/** alliance/max-lines 650 -- one state machine */",
+      600,
+      ["Write the waiver as /* alliance/max-lines 650"],
+    ],
+    [
+      "/* alliance/max-lines 620 -- one state machine */",
+      600,
+      ["/* alliance/max-lines 650 -- <why it is one unit> */"],
+    ],
+    ["/* alliance/max-lines 500 -- small */", 600, ["Write the waiver as"]],
+    ["// alliance/max-lines 400 -- small", 600, ["Write the waiver as"]],
+    [
+      "// alliance/max-lines 650 -- one state machine",
+      600,
+      ["Write the waiver as /* alliance/max-lines 650"],
+    ],
+    ["/* alliance/max-lines 300 -- small */", 299, ["Remove the waiver"]],
+    [
+      "/* alliance/max-lines 550 -- one state machine */",
+      500,
+      ["the file has 500 non-blank lines", "Remove the waiver"],
+    ],
+    ["// alliance/max-lines counts non-blank lines", 100, []],
+    ["// alliance/max-lines-legacy 400 -- note", 100, []],
+    [
+      "/* alliance/max-lines 650 -- one state machine */",
+      499,
+      ["Remove the waiver"],
+    ],
+  ])("%#: %s at %i more lines", (waiver, lines, expected) => {
+    const messages = maxLinesMessages({ waiver, lines });
+    expect(messages).toHaveLength(expected.length ? 1 : 0);
+    for (const text of expected) expect(messages[0]).toContain(text);
+  });
+});
+
+describe("alliance/no-max-lines-disable", () => {
+  const disableReports = (code: string) =>
+    new Linter({ configType: "flat" })
+      .verify(`${code}\nf();\n`, [tsFile, ...sharedRules], "src/big.ts")
+      .filter((message) => message.ruleId === "alliance/no-max-lines-disable");
+
+  it.each([
+    "/* eslint-disable alliance/max-lines -- one unit */",
+    "/* eslint-disable no-console, alliance/max-lines */",
+    '/* eslint-disable "alliance/max-lines" */',
+    "/* eslint-disable 'alliance/max-lines' -- one unit */",
+    "// eslint-disable-next-line alliance/max-lines",
+    "f(); // eslint-disable-line alliance/max-lines",
+    "/* eslint-enable alliance/max-lines */",
+    '/* eslint alliance/max-lines: ["error", { max: 9999 }] */',
+  ])("flags %s", (code) => {
+    expect(disableReports(code)).toHaveLength(1);
+  });
+
+  it.each([
+    "/* eslint-disable no-console -- see alliance/max-lines */",
+    "/* eslint-disable alliance/max-lines-legacy */",
+    "// eslint-disable alliance/max-lines",
+    "/* alliance/max-lines 650 -- one state machine */",
+  ])("allows %s", (code) => {
+    expect(disableReports(code)).toEqual([]);
   });
 });

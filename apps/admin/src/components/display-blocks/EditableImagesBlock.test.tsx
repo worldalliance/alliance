@@ -1,3 +1,4 @@
+/* alliance/max-lines 650 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import type { ImagesBlock } from "@alliance/common/forms/display-blocks";
 import { R, type Result } from "@alliance/common/result";
 import { pending, type Pending } from "@alliance/shared/lib/testing/pending";

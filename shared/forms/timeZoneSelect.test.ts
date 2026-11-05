@@ -1,3 +1,4 @@
+/* alliance/max-lines 1500 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { R } from "@alliance/common/result";
 import { TIME_ZONE_CATALOG } from "@alliance/common/timezone-catalog.gen";
 import { act, renderHook } from "@testing-library/react";

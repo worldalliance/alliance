@@ -1,3 +1,4 @@
+/* alliance/max-lines 750 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { ExceptionEvent } from "@alliance/common/analytics";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { CommentDto, CommentParentObject } from "../client";

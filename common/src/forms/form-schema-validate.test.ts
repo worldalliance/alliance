@@ -1,3 +1,4 @@
+/* alliance/max-lines 950 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import type { AccordionBlock, ImagesBlock, LabelBlock } from "./display-blocks";
 import type {
   FormSchema,

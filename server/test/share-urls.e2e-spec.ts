@@ -1,3 +1,4 @@
+/* alliance/max-lines 1100 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { DEFAULT_INVITE_MESSAGE_TEMPLATE } from "@alliance/common/inviteMessage";
 import { milliseconds } from "date-fns";
 import request from "supertest";

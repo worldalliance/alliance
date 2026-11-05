@@ -1,3 +1,4 @@
+/* alliance/max-lines 750 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { recognitionCopySchema } from "@alliance/common/action-update-copy";
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { addDays, milliseconds } from "date-fns";

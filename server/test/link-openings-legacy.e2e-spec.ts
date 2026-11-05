@@ -1,3 +1,4 @@
+/* alliance/max-lines 700 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { AnalyticsEvent } from "@alliance/common/analytics";
 import { LinkOpeningPlatform } from "@alliance/common/linkOpening";
 import { randomUUID } from "crypto";

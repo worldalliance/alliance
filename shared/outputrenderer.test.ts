@@ -1,3 +1,4 @@
+/* alliance/max-lines 1150 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { ExceptionEvent } from "@alliance/common/analytics";
 import type {
   AnyField,

@@ -1,3 +1,4 @@
+/* alliance/max-lines 700 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { Temporal } from "@js-temporal/polyfill";
 import { secondsInDay, secondsInHour } from "date-fns/constants";
 import { ActionDto } from "src/actions/dto/action.dto";
