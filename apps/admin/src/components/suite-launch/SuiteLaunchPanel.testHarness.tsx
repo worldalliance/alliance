@@ -1,4 +1,5 @@
 import type { CohortExpression } from "@alliance/common/cohort-expression";
+import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { R } from "@alliance/common/result";
 // eslint-disable-next-line api-client/named-hooks-only -- stands in for the page's addEvent against the mocked API; no query cache holds it
 import {
@@ -59,13 +60,20 @@ const initialState = () => ({
   awayRangesFail: false,
   formLoadFails: false,
   offlineOnceActionLoads: false,
+  profilesFail: false,
   formPages: [] as { id: string; title: string; fields: [] }[],
   /** Pages served for a form id instead of `formPages`. */
   formPagesById: {} as Record<
     number,
-    { id: string; title: string; fields: [] }[]
+    {
+      id: string;
+      title: string;
+      fields: [];
+      visibleIfFormula?: VisibleIfFormula;
+    }[]
   >,
   formSnapshotIdById: {} as Record<number, number>,
+  visibilityProfileRequests: [] as { userIds: number[] }[],
   served: {
     1: adminAction({
       id: 1,
@@ -83,7 +91,9 @@ const initialState = () => ({
     }),
   } as Record<number, ReturnType<typeof adminAction>>,
   suiteEvents: [] as ActionEventDto[],
-  actionList: [] as unknown[],
+  actionList: [] as { id: number; variantFormIds: number[] }[],
+  variantName: "Variant",
+  variantSplit: 0.25,
   createdEvents: [] as CreateActionEventDto[],
   reminderEventIds: [] as string[],
 });
@@ -103,6 +113,21 @@ export const serveLaunchApi = () => {
   serveApi(
     routes({
       "GET /actions/all": () => Response.json(api.actionList),
+      "GET /actions/:id/form-variants": ({ params }) => {
+        const item = api.actionList.find(
+          (entry) => entry.id === Number(params.id),
+        );
+        return Response.json({
+          variants: (item?.variantFormIds ?? []).map((formId) => ({
+            id: formId,
+            actionId: Number(params.id),
+            formId,
+            name: `${api.variantName} ${formId}`,
+            splitValue: api.variantSplit,
+          })),
+          stats: [],
+        });
+      },
       "GET /user/tags": () => Response.json([]),
       "GET /actions/adminslug/:id": ({ params }) => {
         if (api.offlineOnceActionLoads) {
@@ -146,6 +171,26 @@ export const serveLaunchApi = () => {
                 ).toISOString(),
               })),
             ),
+      "POST /tasks/visibilityProfiles": async ({ request }) => {
+        if (api.profilesFail) {
+          return Response.json({ statusCode: 500 }, { status: 500 });
+        }
+        const { userIds }: { userIds: number[] } = await request.json();
+        api.visibilityProfileRequests.push({ userIds });
+        return Response.json({
+          profiles: userIds.map((userId) => ({
+            results: [userId === 10],
+            userIds: [userId],
+          })),
+        });
+      },
+      "GET /user/:id/visibilitycontext": ({ params }) =>
+        Response.json({
+          userHasCity: params.id === "10",
+          userPropertyHasValue: {},
+          firstContractSignedAt: null,
+          completedActionCount: 0,
+        }),
       "GET /user/list": () =>
         api.userListFails
           ? Response.json({ statusCode: 500 }, { status: 500 })

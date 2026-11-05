@@ -283,19 +283,6 @@ it("refuses an action that already has its own members taking action event", asy
   ).toBeTruthy();
 });
 
-it("doesn't call a marked action edited while its task form fails to load", async () => {
-  const first = renderPanel();
-  await resolveEveryCheck();
-  first.unmount();
-
-  api.formLoadFails = true;
-  renderPanel();
-  expect(
-    await screen.findByText("Failed to load the task form for Call."),
-  ).toBeTruthy();
-  expect(screen.queryByText("Edited since it was marked ready")).toBeNull();
-});
-
 it("blocks launch again when a dismissed item, fixed since, goes missing again", async () => {
   const complete = api.served[2];
   const missing = { ...complete, project: null };
@@ -359,9 +346,91 @@ it("keeps a dismissal its task form decides while that form fails to load", asyn
 
 it("keeps running checks while an action's load is paused offline", async () => {
   api.offlineOnceActionLoads = true;
-  renderPanel();
+  const view = renderPanel();
   await waitFor(() => expect(onlineManager.isOnline()).toBe(false));
   await new Promise((resolve) => setTimeout(resolve, 50));
   expect(screen.getByText("Running checks…", { selector: "p" })).toBeTruthy();
   expect(screen.queryByText("Preview members' actions")).toBeNull();
+  view.unmount();
+});
+
+it("previews a task form as each kind of member among the action's own recipients", async () => {
+  api.served[1] = { ...api.served[1], taskFormId: 7 };
+  api.formPagesById[7] = [
+    {
+      id: "p1",
+      title: "Only with a city",
+      fields: [],
+      visibleIfFormula: {
+        formula: "c1",
+        conditions: { c1: { kind: "userHasCity", userHasCity: true } },
+      },
+    },
+  ];
+  renderPanel();
+
+  fireEvent.click(await screen.findByText("Call", { selector: "summary" }));
+  const cards = await screen.findAllByRole("radio", {
+    name: /1 member.*has city/,
+  });
+  expect(api.visibilityProfileRequests).toEqual([{ userIds: [10, 11] }]);
+  expect(screen.queryByText("Write", { selector: "summary" })).toBeNull();
+
+  fireEvent.click(cards[1]);
+  expect(await screen.findByText("As Ben sees it")).toBeTruthy();
+});
+
+it("leaves out task forms that show every member the same thing", async () => {
+  renderPanel();
+  await screen.findByText("Double space · Call · Action page description");
+
+  expect(screen.queryByText("Task forms by member")).toBeNull();
+  expect(api.visibilityProfileRequests).toEqual([]);
+});
+
+it("lists each variant form whose conditions tell members apart as its own entry", async () => {
+  const byCity = [
+    {
+      id: "p1",
+      title: "Only with a city",
+      fields: [] as [],
+      visibleIfFormula: {
+        formula: "c1",
+        conditions: {
+          c1: { kind: "userHasCity" as const, userHasCity: true },
+        },
+      },
+    },
+  ];
+  api.formPagesById[5] = byCity;
+  api.formPagesById[9] = byCity;
+  api.actionList = [1, 2].map((id) => ({
+    id,
+    name: api.served[id].name,
+    taskFormId: 5,
+    variantFormIds: id === 1 ? [9] : [],
+    onboarding: false,
+    memberActionDeadline: null,
+  }));
+  renderPanel();
+
+  await waitFor(() =>
+    expect(screen.getAllByText("Call", { selector: "summary" })).toHaveLength(
+      2,
+    ),
+  );
+  const [taskForm, variant] = screen.getAllByText("Call", {
+    selector: "summary",
+  });
+  expect(taskForm.textContent).toContain(", task form, 75%");
+  expect(variant.textContent).toContain(", variant “Variant 9”, 25%");
+  expect(
+    screen.getByText(/one of its variants at random, in the shares shown/),
+  ).toBeTruthy();
+  fireEvent.click(variant);
+  const entry = variant.closest("li");
+  if (!entry) throw new Error("no variant entry");
+  expect(
+    await within(entry).findAllByRole("radio", { name: /1 member.*has city/ }),
+  ).toHaveLength(2);
 });

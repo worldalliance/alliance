@@ -147,6 +147,8 @@ export const queryKeys = {
   myReusableInvites: () => ["shareUrlsMyInvites"] as const,
   inviteMessageTemplate: () => ["shareUrlsInviteMessageTemplate"] as const,
   myVisibilityContext: () => ["userMyVisibilityContext"] as const,
+  userVisibilityContextAdmin: (userId: number) =>
+    ["userVisibilityContextAdmin", userId] as const,
   /** Prefixes the lists and unread count, so invalidating it invalidates
    * them all. */
   notifications: () => ["notifications"] as const,
@@ -370,6 +372,10 @@ export const queryKeys = {
   videoAdmin: (videoId: number) =>
     ["videosGetVideoDetailsAdmin", videoId] as const,
   videosAdmin: () => ["videosListVideosAdmin"] as const,
+  visibilityProfilesAdmin: (
+    conditionsKey: string,
+    userIds: readonly number[],
+  ) => ["tasksVisibilityProfilesAdmin", conditionsKey, userIds] as const,
   welcomeQueueAdmin: () => ["actionsGetWelcomeQueueAdmin"] as const,
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

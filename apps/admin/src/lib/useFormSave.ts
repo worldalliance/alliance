@@ -4,6 +4,7 @@ import {
   type FormSchemaValidationContext,
 } from "@alliance/common/forms/form-schema-validate";
 import { syncSchemaListInputs } from "@alliance/common/forms/variable-scope";
+import { isDraftValidatorId } from "@alliance/common/forms/visible-if-formula";
 import { R, type Result } from "@alliance/common/result";
 import { type FormDto } from "@alliance/shared/client";
 import { useCreateFormAdmin } from "@alliance/shared/lib/useFormsAdmin";
@@ -14,7 +15,6 @@ import {
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback, useState } from "react";
-import { isDraftValidatorId } from "../components/form-fields/customValidatorDrafts";
 import {
   customValidatorIds,
   mapCustomValidatorIds,

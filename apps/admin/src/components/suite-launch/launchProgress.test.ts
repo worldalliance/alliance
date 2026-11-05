@@ -46,10 +46,10 @@ describe("launch progress", () => {
   });
 
   it("fails to read stored progress it can't parse", () => {
-    window.localStorage.setItem("alliance.suiteLaunch.v2.3", "{not json");
+    window.localStorage.setItem("alliance.suiteLaunch.v3.3", "{not json");
     expect(readLaunchProgress(3).ok).toBe(false);
     window.localStorage.setItem(
-      "alliance.suiteLaunch.v2.3",
+      "alliance.suiteLaunch.v3.3",
       JSON.stringify({ schedule: { memberActionAt: "soon" } }),
     );
     expect(readLaunchProgress(3).ok).toBe(false);

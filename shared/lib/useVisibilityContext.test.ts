@@ -1,4 +1,11 @@
-import { hasSettledSinceMount } from "./useVisibilityContext";
+import type { FormSchema } from "@alliance/common/forms/form-schema";
+import { renderHook, waitFor } from "@testing-library/react";
+import { queryWrapper } from "./testing/queryWrapper";
+import { routes, serveApi } from "./testing/serveApi";
+import {
+  hasSettledSinceMount,
+  useVisibilityContext,
+} from "./useVisibilityContext";
 
 const MOUNTED_AT = 1_000_000;
 
@@ -59,5 +66,53 @@ describe("hasSettledSinceMount", () => {
         MOUNTED_AT,
       ),
     ).toBe(false);
+  });
+});
+
+describe("useVisibilityContext", () => {
+  const context = (completedActionCount: number) =>
+    Response.json({
+      userHasCity: false,
+      userPropertyHasValue: {},
+      firstContractSignedAt: null,
+      completedActionCount,
+    });
+  serveApi(
+    routes({
+      "GET /user/myvisibilitycontext": () => context(1),
+      "GET /user/7/visibilitycontext": () => context(7),
+    }),
+  );
+  const schema: FormSchema = {
+    pages: [
+      {
+        id: "p1",
+        fields: [],
+        visibleIfFormula: {
+          conditions: { c1: { kind: "completedActionCount", atLeast: 3 } },
+          formula: "c1",
+        },
+      },
+    ],
+    outputViews: [],
+  };
+
+  const countFor = async (previewUserId?: string | number) => {
+    const { result } = renderHook(
+      () => useVisibilityContext(schema, { enabled: true, previewUserId }),
+      queryWrapper(),
+    );
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    return result.current.completedActionCount;
+  };
+
+  it("reads the previewed member's account rather than the admin's", async () => {
+    expect(await countFor(7)).toBe(7);
+    expect(await countFor("7")).toBe(7);
+  });
+
+  it("reads the viewer's own account without a member to preview", async () => {
+    expect(await countFor()).toBe(1);
+    expect(await countFor("preview")).toBe(1);
   });
 });

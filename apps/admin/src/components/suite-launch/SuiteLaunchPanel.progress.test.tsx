@@ -76,6 +76,37 @@ it.each([
 );
 
 it.each([
+  ["share", { variantSplit: 0.5 }],
+  ["name", { variantName: "Version" }],
+])(
+  "unmarks an action whose variant's %s changed after it was marked ready",
+  async (_, edit) => {
+    api.actionList = [1, 2].map((id) => ({
+      id,
+      name: api.served[id].name,
+      taskFormId: 5,
+      variantFormIds: id === 2 ? [9] : [],
+      onboarding: false,
+      memberActionDeadline: null,
+    }));
+    const first = renderPanel();
+    await resolveEveryCheck();
+    await waitFor(() =>
+      expect(launchButton().hasAttribute("disabled")).toBe(false),
+    );
+    first.unmount();
+
+    Object.assign(api, edit);
+    renderPanel();
+
+    expect(
+      await screen.findByText("Edited since it was marked ready"),
+    ).toBeTruthy();
+    expect(launchButton().hasAttribute("disabled")).toBe(true);
+  },
+);
+
+it.each([
   ["task form", 5],
   ["variant form", 9],
 ])(
@@ -128,6 +159,19 @@ it("keeps an action marked ready when only its timestamp and counts change", asy
   expect(screen.queryByText("Edited since it was marked ready")).toBeNull();
 });
 
+it("doesn't call a marked action edited while its task form fails to load", async () => {
+  const first = renderPanel();
+  await resolveEveryCheck();
+  first.unmount();
+
+  api.formLoadFails = true;
+  renderPanel();
+  expect(
+    await screen.findByText("Failed to load the task form for Call."),
+  ).toBeTruthy();
+  expect(screen.queryByText("Edited since it was marked ready")).toBeNull();
+});
+
 it("says so when the browser won't save progress", async () => {
   const restore = blockStorage();
   try {
@@ -144,7 +188,7 @@ it("says so when the browser won't save progress", async () => {
 });
 
 it("says saved progress it can't read starts over, without claiming it isn't saving", async () => {
-  window.localStorage.setItem("alliance.suiteLaunch.v2.3", "{not json");
+  window.localStorage.setItem("alliance.suiteLaunch.v3.3", "{not json");
   renderPanel();
 
   expect(

@@ -1,8 +1,6 @@
+import { isDraftValidatorId } from "@alliance/common/forms/visible-if-formula";
 import { useCustomValidatorAdmin } from "../../lib/useCustomValidatorAdmin";
-import {
-  isDraftValidatorId,
-  useCustomValidatorDrafts,
-} from "./customValidatorDrafts";
+import { useCustomValidatorDrafts } from "./customValidatorDrafts";
 
 /** The settings a validator id stands for: an unsaved draft's from the
  * editor, a saved validator's from the server. */

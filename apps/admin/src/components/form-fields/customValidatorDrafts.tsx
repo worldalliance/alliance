@@ -25,6 +25,3 @@ export const useCustomValidatorDrafts =
     }
     return context;
   };
-
-export const isDraftValidatorId = (id?: number): id is number =>
-  typeof id === "number" && id < 0;

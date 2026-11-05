@@ -18,6 +18,7 @@ import { omit } from "es-toolkit";
 import { useState } from "react";
 import { useAwayRangesInWindowAdmin } from "../../lib/useAwayRangesInWindowAdmin";
 import { cohortEvaluationQuery } from "../../lib/useCohortEvaluationAdmin";
+import { formVariantsQuery } from "../../lib/useFormVariantsAdmin";
 import { useUsersAdmin } from "../../lib/useUsersAdmin";
 import {
   actionReadinessItems,
@@ -29,14 +30,27 @@ import type { LaunchSchedule } from "./launchSchedule";
 import { memberLoads, type MemberLoad } from "./memberLoad";
 import { spellcheckerQuery } from "./spellchecker";
 
+export type LaunchVariantForm = {
+  formId: number;
+  name: string;
+  /** The share of the action's members assigned this form, from 0 to 1. */
+  share: number;
+  schema: FormSchema;
+  snapshotId: number;
+};
+
 export type LaunchAction = {
   action: ParsedActionDto;
   unready: ReadinessCheckItem[];
   memberCount: number | null;
-  /** Changes whenever the action or its task form is saved. */
+  /** Changes whenever what staff review changes: the action's content or its forms. */
   reviewVersion: string;
   /** The longest read any member gets, across the task form and its variants. */
   readingSeconds: number;
+  taskFormSchema: FormSchema | null;
+  variantForms: LaunchVariantForm[];
+  /** Null until the cohort is evaluated. */
+  memberIds: number[] | null;
   /** When the action's own members taking action event starts, if it has one. */
   ownMemberStart: string | null;
 };
@@ -126,17 +140,31 @@ export function useSuiteLaunchData(params: {
   const cohortResults = useQueries({ queries: cohorts.queries });
   const cohortResultOf = (index: number) => cohortResults[cohorts.slots[index]];
   const actionList = useActionsAdmin();
-  const variantFormIdsByAction = new Map(
-    (actionList.data ?? []).map((item) => [item.id, item.variantFormIds]),
+  const listItemById = new Map(
+    (actionList.data ?? []).map((item) => [item.id, item]),
   );
-  const variantFormIds = suite.actions.flatMap(
-    (action) => variantFormIdsByAction.get(action.id) ?? [],
-  );
+  const variantFormIds = [
+    ...new Set(
+      suite.actions.flatMap(
+        (action) => listItemById.get(action.id)?.variantFormIds ?? [],
+      ),
+    ),
+  ];
   const variantResults = useQueries({
     queries: variantFormIds.map((formId) => adminTaskFormQuery(formId)),
   });
   const variantFormById = new Map(
     variantFormIds.map((formId, index) => [formId, variantResults[index].data]),
+  );
+  const variantListResults = useQueries({
+    queries: suite.actions
+      .filter((action) => listItemById.get(action.id)?.variantFormIds.length)
+      .map((action) => formVariantsQuery(action.id)),
+  });
+  const variantByFormId = new Map(
+    variantListResults.flatMap((result) =>
+      (result.data?.variants ?? []).map((variant) => [variant.formId, variant]),
+    ),
   );
   const spellchecker = useQuery(spellcheckerQuery);
   const users = useUsersAdmin();
@@ -186,10 +214,12 @@ export function useSuiteLaunchData(params: {
       if (parsedSchema.success) schema = parsedSchema.data;
       else errors.push(`${action.name}: its task form's schema is invalid.`);
     }
-    const variantForms = (variantFormIdsByAction.get(action.id) ?? []).flatMap(
-      (formId) => {
+    const listItem = listItemById.get(action.id);
+    const variantForms = (listItem?.variantFormIds ?? []).flatMap(
+      (formId): LaunchVariantForm[] => {
         const variant = variantFormById.get(formId);
-        if (!variant) return [];
+        const assignment = variantByFormId.get(formId);
+        if (!variant || !assignment) return [];
         const parsedSchema = formSchema.safeParse(variant.schema);
         if (!parsedSchema.success) {
           errors.push(`${action.name}: a variant form's schema is invalid.`);
@@ -198,6 +228,8 @@ export function useSuiteLaunchData(params: {
         return [
           {
             formId,
+            name: assignment.name,
+            share: assignment.splitValue,
             schema: parsedSchema.data,
             snapshotId: variant.formSnapshotId,
           },
@@ -229,13 +261,21 @@ export function useSuiteLaunchData(params: {
       reviewVersion: JSON.stringify([
         reviewedFields(action),
         form?.formSnapshotId ?? null,
-        variantForms.map(({ formId, snapshotId }) => [formId, snapshotId]),
+        variantForms.map(({ formId, snapshotId, name, share }) => [
+          formId,
+          snapshotId,
+          name,
+          share,
+        ]),
       ]),
       readingSeconds: Math.max(
         ...[schema, ...variantForms.map((variant) => variant.schema)].map(
           (read) => readingTime(action, read).totalSeconds,
         ),
       ),
+      taskFormSchema: schema,
+      variantForms,
+      memberIds: cohort ?? null,
       ownMemberStart: action.memberActionStart,
     });
     textFindings.push(
@@ -279,6 +319,9 @@ export function useSuiteLaunchData(params: {
     ...variantResults.flatMap((result) =>
       result.isError ? ["Failed to load a variant form."] : [],
     ),
+    ...(variantListResults.some((result) => result.isError)
+      ? ["Failed to load the actions' variants."]
+      : []),
     ...(users.isError ? ["Failed to load members' contract status."] : []),
     ...(awayRanges.isError ? ["Failed to load members' away dates."] : []),
     ...(spellchecker.isError
@@ -304,6 +347,7 @@ export function useSuiteLaunchData(params: {
       ...cohortResults,
       actionList,
       ...variantResults,
+      ...variantListResults,
       users,
       awayRanges,
     ].some((result) => result.isPending && result.fetchStatus !== "idle"),
@@ -315,6 +359,7 @@ export function useSuiteLaunchData(params: {
         ...cohortResults,
         actionList,
         ...variantResults,
+        ...variantListResults,
         users,
         awayRanges,
       ])

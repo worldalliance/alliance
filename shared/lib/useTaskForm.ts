@@ -15,21 +15,16 @@ import {
   type FormDto,
   type UpdateFormDto,
 } from "../client";
+import { statusError } from "./hey-api";
 import { queryKeys } from "./queryKeys";
 import { useInvalidateFormsAdmin } from "./useFormsAdmin";
 
 const readForm = async (get: typeof tasksGetForm, formId: number) => {
   const response = await get({ path: { id: formId } });
   if (!response.data) {
-    // The status lets retryUnlessRefused skip a refusal.
-    throw Object.assign(
-      new Error(
-        errorMessage({
-          error: response.error,
-          fallback: "Unable to load form",
-        }),
-      ),
-      { statusCode: response.response.status },
+    throw statusError(
+      errorMessage({ error: response.error, fallback: "Unable to load form" }),
+      response.response,
     );
   }
   return response.data;

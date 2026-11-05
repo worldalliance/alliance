@@ -23,7 +23,7 @@ export type LaunchProgress = {
   acceptedViolations: ReadonlySet<string>;
 };
 
-const storageKey = (suiteId: number) => `alliance.suiteLaunch.v2.${suiteId}`;
+const storageKey = (suiteId: number) => `alliance.suiteLaunch.v3.${suiteId}`;
 
 /** `null` when nothing is saved for the suite. */
 export function readLaunchProgress(
