@@ -9,11 +9,7 @@ import { LinkPreview } from "./link-preview.dto";
  * the first 1024 bytes — legacy non-UTF-8 pages usually declare their
  * charset only in the markup, not the header. Defaults to UTF-8 (not the
  * spec's windows-1252: a missing declaration on the modern web almost
- * always means UTF-8). iconv-lite rather than TextDecoder because Bun (the
- * production runtime) covers most but not all WHATWG encoding labels (e.g.
- * no iso-8859-2 as of Bun 1.3.6), and a constructor throw per unsupported
- * label is a worse seam than iconv-lite's queryable `encodingExists`; the
- * rare sniffed encoding iconv-lite lacks falls back to UTF-8.
+ * always means UTF-8).
  */
 export function decodeHtmlBody(
   bytes: Buffer,

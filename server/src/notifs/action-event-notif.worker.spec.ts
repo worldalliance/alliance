@@ -1,4 +1,5 @@
 /* alliance/max-lines 700 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
+import { setEnv } from "@alliance/common/set-env";
 import { Temporal } from "@js-temporal/polyfill";
 import { secondsInDay, secondsInHour } from "date-fns/constants";
 import { ActionDto } from "src/actions/dto/action.dto";
@@ -42,7 +43,7 @@ describe("ActionEventNotifWorker.processCustomReminderText", () => {
   });
 
   afterAll(() => {
-    process.env.APP_URL = originalAppUrl;
+    setEnv("APP_URL", originalAppUrl);
   });
 
   beforeEach(() => {

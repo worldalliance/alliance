@@ -1,3 +1,4 @@
+import { setEnv } from "@alliance/common/set-env";
 import { ForbiddenException } from "@nestjs/common";
 import { ExecutionContextHost } from "@nestjs/core/helpers/execution-context-host";
 import { AllowedOriginGuard } from "./allowed-origin.guard";
@@ -15,8 +16,7 @@ describe("AllowedOriginGuard", () => {
     process.env.APP_URL = APP_URL;
   });
   afterAll(() => {
-    if (previous === undefined) delete process.env.APP_URL;
-    else process.env.APP_URL = previous;
+    setEnv("APP_URL", previous);
   });
 
   it("lets the site's own pages through", () => {

@@ -1,3 +1,4 @@
+import { setEnv } from "@alliance/common/set-env";
 import { client } from "@alliance/shared/client/client.gen";
 import { afterAll, afterEach, beforeAll, expect, it } from "bun:test";
 import {
@@ -21,7 +22,7 @@ afterEach(() => {
 });
 
 afterAll(() => {
-  process.env.EXPO_PUBLIC_ALLIANCE_API_PORT = originalPort;
+  setEnv("EXPO_PUBLIC_ALLIANCE_API_PORT", originalPort);
 });
 
 it("points every deployment URL at staging during a review session", () => {

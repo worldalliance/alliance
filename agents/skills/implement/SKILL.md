@@ -47,6 +47,8 @@ Run typechecking for affected packages that provide a typecheck script, followin
 
 `bun run test` from the repo root; scope by package: `bun run test apps/admin sharedweb`. From inside a package, run bare `bun test`.
 
+A test that restores an env var it saved, which may have been unset, does so with `setEnv` from `@alliance/common/set-env`. From Bun 1.4, as in Node, assigning `undefined` to a `process.env` key stores the string `"undefined"`, which leaks into later test files.
+
 ### Duplication
 
 `bun run dupcheck` from the repo root after a change, alongside typecheck. It lists copied code, and text of five or more words repeated verbatim, that the working tree has and its merge-base with `origin/main` doesn't. Matches are exact, so it errs both ways. Some hits look alike but should stay separate, or are an edit inside existing duplication; judge each. It misses the same rule or message written differently, so a clean run leaves the search for an existing implementation still yours to do.

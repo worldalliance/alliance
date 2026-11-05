@@ -1,3 +1,4 @@
+import { setEnv } from "@alliance/common/set-env";
 import type { HostedDocDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
@@ -197,7 +198,7 @@ test("copies the URL on this environment's site", async () => {
     );
     await screen.findByText("Link copied.");
   } finally {
-    process.env.VITE_ALT_APP_URL = priorAlt;
+    setEnv("VITE_ALT_APP_URL", priorAlt);
   }
   expect(writeText).toHaveBeenCalledWith(
     "https://staging.thealliance.org/docs/2026-Pilot.pdf",

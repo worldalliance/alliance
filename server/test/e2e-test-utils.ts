@@ -240,7 +240,7 @@ export async function createTestApp(
     bodyParser: false,
   });
   configureApp(app);
-  await app.init();
+  await app.listen(0, "127.0.0.1");
 
   const dataSource = moduleFixture.get(DataSource);
 

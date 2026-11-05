@@ -1,3 +1,4 @@
+import { setEnv } from "@alliance/common/set-env";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import type { Repository } from "src/utils/Repository";
 import { EventLog, EventType } from "./event-log.entity";
@@ -52,8 +53,8 @@ describe("EventLogService.sendMessage", () => {
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
-    process.env.NODE_ENV = originalEnv.NODE_ENV;
-    process.env.SLACK_WEBHOOK_URL = originalEnv.SLACK_WEBHOOK_URL;
+    setEnv("NODE_ENV", originalEnv.NODE_ENV);
+    setEnv("SLACK_WEBHOOK_URL", originalEnv.SLACK_WEBHOOK_URL);
   });
 
   it("returns failure and does not forward when the event-log write fails", async () => {

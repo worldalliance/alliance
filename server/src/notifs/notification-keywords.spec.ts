@@ -1,3 +1,4 @@
+import { setEnv } from "@alliance/common/set-env";
 import { Action } from "src/actions/entities/action.entity";
 import { User } from "src/user/entities/user.entity";
 import { processKeywordReplacements } from "./notification-keywords";
@@ -11,7 +12,7 @@ describe("processKeywordReplacements", () => {
   });
 
   afterAll(() => {
-    process.env.APP_URL = originalAppUrl;
+    setEnv("APP_URL", originalAppUrl);
   });
 
   const baseContext = {
@@ -66,7 +67,7 @@ describe("processKeywordReplacements", () => {
           "Link: https://alt.example.org/tasks Group: https://alt.example.org/groups?tab=members",
         );
       } finally {
-        process.env.ALT_APP_URL = originalAltAppUrl;
+        setEnv("ALT_APP_URL", originalAltAppUrl);
       }
     });
 

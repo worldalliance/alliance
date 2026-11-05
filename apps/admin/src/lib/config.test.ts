@@ -1,3 +1,4 @@
+import { setEnv } from "@alliance/common/set-env";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { getSiteUrl } from "./config";
@@ -14,7 +15,7 @@ describe("getSiteUrl", () => {
     process.env.VITE_ALT_APP_URL = "https://staging.thealliance.org";
   });
   afterEach(() => {
-    process.env.VITE_ALT_APP_URL = priorAlt;
+    setEnv("VITE_ALT_APP_URL", priorAlt);
     window.happyDOM.setURL("http://localhost:3000/");
   });
 

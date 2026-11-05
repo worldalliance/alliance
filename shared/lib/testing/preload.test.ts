@@ -1,4 +1,5 @@
 import { renderHook, waitFor } from "@testing-library/react/pure";
+import * as nodeTimers from "node:timers";
 import { useEffect } from "react";
 
 it("prints a DOM node in a failed expectation as its markup", () => {
@@ -72,4 +73,11 @@ describe("fake timers", () => {
 
     await waitFor(() => expect(ready).toBe(true));
   });
+});
+
+it("gives node:timers Bun's own timers, which engine.io refreshes", () => {
+  const timer = nodeTimers.setTimeout(() => {}, 0);
+  nodeTimers.clearTimeout(timer);
+
+  expect(timer.refresh).toBeInstanceOf(Function);
 });

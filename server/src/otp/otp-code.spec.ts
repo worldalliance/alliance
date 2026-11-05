@@ -1,3 +1,4 @@
+import { setEnv } from "@alliance/common/set-env";
 import { generateOtpCode, ipRateKey, otpCodeDigest } from "./otp-code";
 
 describe("generateOtpCode", () => {
@@ -39,7 +40,7 @@ describe("otpCodeDigest", () => {
     try {
       expect(otpCodeDigest(base)).not.toBe(before);
     } finally {
-      process.env.JWT_SECRET = secret;
+      setEnv("JWT_SECRET", secret);
     }
   });
 });
