@@ -16,8 +16,8 @@ const BACKUP_NOTE =
   "The old release is in ~/nest-backend-deploy-backup, which the next deploy replaces.";
 
 // Each stub logs what it was asked to do. The database is one word in
-// state/db, the running release one word in state/pm2, and a release is the
-// word in its directory's `release` file.
+// state/db, the running release one word in state/pm2 and its pid in state/pid,
+// and a release is the word in its directory's `release` file.
 const STUBS: Record<string, string> = {
   flock: `
     echo flock >> "$STATE/log"
@@ -27,11 +27,13 @@ const STUBS: Record<string, string> = {
     dir="\${@: -1}"
     mkdir -p "$dir/server"
     echo new > "$dir/release"
-    echo unzip >> "$STATE/log"`,
+    echo unzip >> "$STATE/log"
+    [ "\${UNZIP:-ok}" = ok ]`,
   bun: `
     case "$1 \${2:-}" in
       "install --frozen-lockfile")
         echo install >> "$STATE/log"
+        [ -z "\${AUTORESTART:-}" ] || { echo new > "$STATE/pm2"; echo 101 > "$STATE/pid"; }
         [ "\${INSTALL:-ok}" = ok ];;
       "scripts/streak-recognition-removal.ts state")
         [ ! -e "$STATE/unreadable" ] || exit 1
@@ -67,7 +69,19 @@ const STUBS: Record<string, string> = {
         release=$(cat ../release)
         echo "start $release" >> "$STATE/log"
         [ "$release" != old ] || [ "\${START_OLD:-ok}" = ok ] || exit 1
-        echo "$release" > "$STATE/pm2";;
+        echo "$release" > "$STATE/pm2"
+        echo $(( $(cat "$STATE/pid") + 1 )) > "$STATE/pid";;
+      restart)
+        release=$(cat "$HOME/nest-backend/release")
+        echo "restart $release" >> "$STATE/log"
+        [ "\${RESTART:-ok}" = ok ] || exit 1
+        echo "$release" > "$STATE/pm2"
+        echo $(( $(cat "$STATE/pid") + 1 )) > "$STATE/pid";;
+      pid)
+        [ "\${PID:-ok}" = ok ] || exit 1
+        [ "\${LATE_PID:-ok}" = ok ] || ! grep -qx install "$STATE/log" || exit 1
+        [ ! -e "$STATE/cold" ] || { rm "$STATE/cold"; echo "[PM2] Spawning PM2 daemon"; echo "[PM2] PM2 Successfully daemonized"; }
+        cat "$STATE/pid";;
       jlist)
         if [ -n "$(cat "$STATE/pm2")" ]; then echo '[{"name":"nest-app"}]'; else echo '[]'; fi;;
       save) ;;
@@ -98,6 +112,7 @@ beforeEach(() => {
   mkdirSync(join(home, "nest-backend", "server"), { recursive: true });
   writeFileSync(join(home, "nest-backend", "release"), "old\n");
   writeFileSync(join(state, "pm2"), "old\n");
+  writeFileSync(join(state, "pid"), "100\n");
   writeFileSync(join(state, "log"), "");
   for (const [name, body] of Object.entries(STUBS)) {
     writeFileSync(join(bin, name), `#!/usr/bin/env bash\n${body}\n`);
@@ -153,16 +168,23 @@ describe.each(["absent", "applied"] as const)(
       expect(result.running).toBe("new");
     });
 
-    test("a failed install restarts the old release without migrating", () => {
+    test("a failed install leaves the old backend running, unmigrated", () => {
       const result = deploy({ INSTALL: "fail" });
       expect(result.exitCode).toBe(1);
-      expect(result.log).not.toContainEqual(expect.stringMatching(/^migrate/));
+      expect(result.log).toEqual(["flock", "unzip", "install"]);
       expect(result).toMatchObject({ running: "old", release: "old" });
     });
 
-    test("a failed migration restarts the old release", () => {
+    test("a failed migration leaves the old backend running", () => {
       const result = deploy({ MIGRATE: "fail" });
       expect(result.exitCode).toBe(1);
+      expect(result.log).toEqual([
+        "flock",
+        "unzip",
+        "install",
+        "migrate while running: old",
+      ]);
+      expect(result.output).toContain("The old backend is still running.");
       expect(result).toMatchObject({ running: "old", release: "old" });
     });
 
@@ -203,12 +225,12 @@ describe.each(["absent", "applied"] as const)(
   },
 );
 
-test("deploy_backend.sh fails on an unreadable removal state without migrating", () => {
+test("deploy_backend.sh leaves the old backend running on an unreadable removal state", () => {
   setDb("pending");
   writeFileSync(join(state, "unreadable"), "");
   const result = deploy();
   expect(result.exitCode).toBe(1);
-  expect(result.log).not.toContainEqual(expect.stringMatching(/^migrate/));
+  expect(result.log).toEqual(["flock", "unzip", "install"]);
   expect(result).toMatchObject({
     running: "old",
     release: "old",
@@ -216,15 +238,15 @@ test("deploy_backend.sh fails on an unreadable removal state without migrating",
   });
 });
 
-test("deploy_backend.sh fails on an unrecognized removal state without migrating", () => {
+test("deploy_backend.sh leaves the old backend running on an unrecognized removal state", () => {
   setDb("pending");
   writeFileSync(join(state, "slow"), "");
   const result = deploy();
   expect(result.exitCode).toBe(1);
   expect(result.output).toContain(
-    "Unexpected streak recognition removal state",
+    "::error::Unexpected streak recognition removal state. The old backend is still running.",
   );
-  expect(result.log).not.toContainEqual(expect.stringMatching(/^migrate/));
+  expect(result.log).toEqual(["flock", "unzip", "install"]);
   expect(result).toMatchObject({
     running: "old",
     release: "old",
@@ -254,7 +276,7 @@ describe("deploy_backend.sh with the removal pending", () => {
   test("a preparation failure keeps the old backend and migrates nothing", () => {
     const result = deploy({ INSTALL: "fail" });
     expect(result.exitCode).toBe(1);
-    expect(result.log).not.toContainEqual(expect.stringMatching(/^migrate/));
+    expect(result.log).toEqual(["flock", "unzip", "install"]);
     expect(result).toMatchObject({
       running: "old",
       release: "old",
@@ -392,6 +414,96 @@ describe("deploy_backend.sh with the removal pending", () => {
     expect(result.log).not.toContain("revert");
     expect(result.running).toBe("");
   });
+});
+
+test("deploy_backend.sh leaves the old backend running when unzipping fails", () => {
+  setDb("pending");
+  const result = deploy({ UNZIP: "fail" });
+  expect(result.exitCode).toBe(1);
+  expect(result.output).toContain("The old backend is still running.");
+  expect(result.log).toEqual(["flock", "unzip"]);
+  expect(result).toMatchObject({ running: "old", release: "old" });
+});
+
+test("deploy_backend.sh says so when a preparation failure can't put the old release back", () => {
+  setDb("pending");
+  const result = deploy({ INSTALL: "fail", REMOVE: "fail" });
+  expect(result.exitCode).toBe(1);
+  expect(result.output).toContain(
+    `The previous release could not be put back. ${BACKUP_NOTE}`,
+  );
+  expect(result.log).toEqual(["flock", "unzip", "install"]);
+});
+
+test("deploy_backend.sh says so when a first deploy fails with no release to put back", () => {
+  setDb("pending");
+  rmSync(join(home, "nest-backend"), { recursive: true });
+  const result = deploy({ INSTALL: "fail" });
+  expect(result.exitCode).toBe(1);
+  expect(result.output).toContain("There was no previous release to put back.");
+  expect(result.output).not.toContain("still running");
+  expect(result.log).toEqual(["flock", "unzip", "install"]);
+});
+
+test.each([false, true])(
+  "deploy_backend.sh starts nothing when no backend was running before the deploy (pm2 daemon spawned: %p)",
+  (cold) => {
+    setDb("pending");
+    writeFileSync(join(state, "pm2"), "");
+    writeFileSync(join(state, "pid"), "");
+    if (cold) writeFileSync(join(state, "cold"), "");
+    const result = deploy({ INSTALL: "fail" });
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain(
+      "pm2 reported no running backend as the deploy began or since",
+    );
+    expect(result.output).not.toContain("still running");
+    expect(result.log).not.toContain("restart old");
+    expect(result).toMatchObject({ running: "", release: "old" });
+  },
+);
+
+test.each(["100", ""])(
+  "deploy_backend.sh restarts the old backend when pm2 brought it back on the new release (pid at start: %p)",
+  (pid) => {
+    setDb("pending");
+    writeFileSync(join(state, "pid"), `${pid}\n`);
+    const result = deploy({ AUTORESTART: "1", INSTALL: "fail" });
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain("restarted again from the old release.");
+    expect(result.log).toEqual(["flock", "unzip", "install", "restart old"]);
+    expect(result).toMatchObject({ running: "old", release: "old" });
+  },
+);
+
+test("deploy_backend.sh says so when it can't restart an old backend pm2 brought back", () => {
+  setDb("pending");
+  const result = deploy({ AUTORESTART: "1", INSTALL: "fail", RESTART: "fail" });
+  expect(result.exitCode).toBe(1);
+  expect(result.output).toContain(
+    "could not be restarted from the old release.",
+  );
+  expect(result.output).not.toContain("still running");
+});
+
+test("deploy_backend.sh restarts nothing when pm2 can't report the pid after a preparation failure", () => {
+  setDb("pending");
+  const result = deploy({ INSTALL: "fail", LATE_PID: "fail" });
+  expect(result.exitCode).toBe(1);
+  expect(result.output).toContain(
+    "pm2 could not report whether the old backend is still running; check it by hand.",
+  );
+  expect(result.log).toEqual(["flock", "unzip", "install"]);
+  expect(result).toMatchObject({ running: "old", release: "old" });
+});
+
+test("deploy_backend.sh quits without touching the release when pm2 can't report the backend's pid", () => {
+  setDb("pending");
+  const result = deploy({ PID: "fail" });
+  expect(result.exitCode).toBe(1);
+  expect(result.output).toContain("Could not read the backend's pid from pm2");
+  expect(result.log).toEqual(["flock"]);
+  expect(result).toMatchObject({ running: "old", release: "old" });
 });
 
 test("deploy_backend.sh quits without touching the release when it can't take the lock", () => {

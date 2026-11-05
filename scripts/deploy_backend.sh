@@ -17,6 +17,14 @@ cd ~/ || exit 1
 exec 9>>~/migrate.lock
 flock -w 300 9 || { echo "could not take ~/migrate.lock; a prod → staging sync may hold it"; exit 1; }
 
+# pm2 prints its banner to stdout when the call spawns its daemon.
+backend_pid () {
+  local out
+  out=$(pm2 pid nest-app 9>&-) || return 1
+  grep -xE '[1-9][0-9]*' <<< "$out" || true
+}
+
+old_pid=$(backend_pid) || { echo "::error::Could not read the backend's pid from pm2; nothing was changed."; exit 1; }
 rm -rf nest-backend-deploy-backup || true
 mv nest-backend nest-backend-deploy-backup || true
 
@@ -34,6 +42,31 @@ put_back_old_release () {
   [ -d nest-backend-deploy-backup ] || return 1
   rm -rf nest-backend || return 1
   mv nest-backend-deploy-backup nest-backend
+}
+
+# Only for failures before the old backend is stopped. A process that exits
+# meanwhile, or was between restarts as the deploy began, comes back from the
+# path pm2 recorded, ~/nest-backend/server, which holds the new release until
+# the old one is moved back; a changed pid shows it.
+keep_old_release () {
+  local new_pid
+  trap - ERR
+  if [ ! -d ~/nest-backend-deploy-backup ]; then
+    echo "::error::$1 There was no previous release to put back."
+  elif ! put_back_old_release; then
+    echo "::error::$1 The previous release could not be put back.$(backup_note)"
+  elif ! new_pid=$(backend_pid); then
+    echo "::error::$1 The previous release is back, but pm2 could not report whether the old backend is still running; check it by hand."
+  elif [ -z "$old_pid$new_pid" ]; then
+    echo "::error::$1 pm2 reported no running backend as the deploy began or since, so none was started; check \`pm2 list\`."
+  elif [ "$new_pid" = "$old_pid" ]; then
+    echo "::error::$1 The old backend is still running."
+  elif pm2 restart nest-app 9>&-; then
+    echo "::error::$1 The old backend restarted during the deploy, so it was restarted again from the old release."
+  else
+    echo "::error::$1 The old backend restarted during the deploy and could not be restarted from the old release."
+  fi
+  exit 1
 }
 
 stop_backend () {
@@ -69,7 +102,7 @@ rollback () {
   fi
   exit 1
 }
-trap rollback ERR
+trap 'keep_old_release "Preparing the new release failed."' ERR
 
 health_check () {
   sleep 10
@@ -81,16 +114,19 @@ health_check () {
 mkdir -p ~/nest-backend
 unzip -o ~/nest-build.zip -d ~/nest-backend
 
-cd ~/nest-backend || rollback
+cd ~/nest-backend || keep_old_release "Could not enter the new release."
 bun install --frozen-lockfile
 
-cd ~/nest-backend/server || rollback
-# set -E would run rollback inside the substitution too, then again out here.
-removal=$(trap - ERR; bun scripts/streak-recognition-removal.ts state) || rollback
+cd ~/nest-backend/server || keep_old_release "Could not enter the new release."
+
+# set -E would run the ERR trap inside the substitution too, then again out here.
+removal=$(trap - ERR; bun scripts/streak-recognition-removal.ts state) \
+  || keep_old_release "Could not read the streak recognition removal state."
 
 case "$removal" in
   absent|applied)
-    migrate
+    migrate || keep_old_release "Migrations failed."
+    trap rollback ERR
     start_backend
     pm2 save 9>&-
     health_check
@@ -98,8 +134,8 @@ case "$removal" in
     ;;
   pending) ;;
   *)
-    echo "Unexpected streak recognition removal state: $removal"
-    rollback
+    echo "Streak recognition removal state: $removal"
+    keep_old_release "Unexpected streak recognition removal state."
     ;;
 esac
 
