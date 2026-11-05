@@ -73,13 +73,13 @@ it("a failed communities fetch reports an error", async () => {
 });
 
 it("a failed communities refetch keeps the communities it had", async () => {
-  const { client, wrapper } = queryWrapper();
-  client.setQueryData(queryKeys.myCommunities(), cached);
+  const { hook } = await renderLoaded();
+  myGroups = failed;
 
-  const hook = renderHook(() => useMyCommunities(), { wrapper });
+  await act(() => hook.result.current.refetch());
 
   await waitFor(() => expect(hook.result.current.isError).toBe(true));
-  expect(hook.result.current.communities).toBe(cached);
+  expect(hook.result.current.communities).toEqual(cached);
   expect(hook.result.current.didFail).toBe(false);
 });
 
@@ -119,7 +119,7 @@ it("a left group stays gone when the groups refetch fails", async () => {
 it("joining a public group resolves once the user's groups are refetched", async () => {
   const joined = { id: 2, name: "Public group", users: [] };
   membershipWrite = () => Response.json(joined);
-  const { hook, client, invalidated } = await renderLoaded();
+  const { hook, invalidated } = await renderLoaded();
   const refetch = Promise.withResolvers<Response>();
   myGroups = () => refetch.promise;
   let result: unknown;
@@ -137,7 +137,9 @@ it("joining a public group resolves once the user's groups are refetched", async
   });
 
   expect(result).toEqual(joined);
-  expect(client.getQueryData(queryKeys.myCommunities())).toEqual([joined]);
+  await waitFor(() =>
+    expect(hook.result.current.communities).toEqual([joined]),
+  );
 });
 
 const newGroup = {

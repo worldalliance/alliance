@@ -1,8 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { communityGetPublicCommunities } from "../client";
+import { communityGetPublicCommunities, type CommunityDto } from "../client";
+import { useCommunityList } from "./communityStore";
 import { queryKeys } from "./queryKeys";
-
-const QUERY_KEY = queryKeys.publicCommunities();
 
 /**
  * Single source of truth for public communities a user can join. Wraps
@@ -13,14 +11,14 @@ export function usePublicCommunities(params?: { enabled?: boolean }) {
   const { enabled = true } = params ?? {};
 
   const {
-    data: publicCommunities = [],
+    data: publicCommunities = NO_COMMUNITIES,
     isLoading,
     isFetching,
     isError,
     refetch,
-  } = useQuery({
-    queryKey: QUERY_KEY,
-    queryFn: ({ signal }) =>
+  } = useCommunityList({
+    queryKey: queryKeys.publicCommunities(),
+    fetch: (signal) =>
       communityGetPublicCommunities({ throwOnError: true, signal }).then(
         (response) => response.data,
       ),
@@ -35,3 +33,5 @@ export function usePublicCommunities(params?: { enabled?: boolean }) {
     refetch,
   };
 }
+
+const NO_COMMUNITIES: CommunityDto[] = [];

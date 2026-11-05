@@ -1,7 +1,6 @@
 import {
   type QueryClient,
   useMutation,
-  useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
@@ -17,8 +16,10 @@ import {
   CreateCommunityDto,
   UpdateCommunityDto,
 } from "../client";
+import { communityStore, useCommunityList } from "./communityStore";
 import { failedToLoad } from "./failedToLoad";
 import { queryKeys } from "./queryKeys";
+import { currentSession } from "./sessionStores";
 
 const QUERY_KEY = queryKeys.myCommunities();
 
@@ -57,10 +58,11 @@ function findCommunityById(
  * is de-duplicated and cache mutations stay consistent across screens.
  *
  * Creating, saving, deleting, leaving, or joining a group, and removing a
- * member, throw when refused. Creating or saving puts the group in the cache at
- * once, deleting or leaving drops it, and removing a member drops them from it.
- * Joining resolves only once the user's groups have been refetched, since the
- * server also removes the user from every group they don't lead.
+ * member, throw when refused. The group a write returns replaces the group
+ * everywhere it shows, creating adds it to the user's groups, leaving drops it
+ * from them, and deleting drops it from every list. Joining resolves only once
+ * the user's groups have been refetched, since the server also removes the user
+ * from every group they don't lead.
  */
 export function useMyCommunities(params?: {
   selectedCommunityId?: number | null;
@@ -69,16 +71,18 @@ export function useMyCommunities(params?: {
   const { selectedCommunityId = null, enabled = true } = params ?? {};
   const queryClient = useQueryClient();
 
-  const query = useQuery({
+  const store = communityStore(queryClient);
+
+  const query = useCommunityList({
     queryKey: QUERY_KEY,
-    queryFn: () =>
-      communityGetMyCommunities({ throwOnError: true }).then(
+    fetch: (signal) =>
+      communityGetMyCommunities({ throwOnError: true, signal }).then(
         (response) => response.data,
       ),
     enabled,
   });
   const {
-    data: communities = [],
+    data: communities = NO_COMMUNITIES,
     isLoading,
     isFetching,
     isError,
@@ -94,120 +98,94 @@ export function useMyCommunities(params?: {
     await queryClient.invalidateQueries({ queryKey: QUERY_KEY });
   }, [queryClient]);
 
-  const removeCommunity = useCallback(
-    (communityId: number) => {
-      queryClient.setQueryData<CommunityDto[]>(QUERY_KEY, (old) =>
-        old ? old.filter((community) => community.id !== communityId) : [],
-      );
-    },
-    [queryClient],
-  );
-
-  const removeMemberFromCommunity = useCallback(
-    (communityId: number, memberId: number) => {
-      queryClient.setQueryData<CommunityDto[]>(QUERY_KEY, (old) =>
-        old
-          ? old.map((community) =>
-              community.id === communityId
-                ? {
-                    ...community,
-                    users: community.users.filter(
-                      (user) => user.id !== memberId,
-                    ),
-                  }
-                : community,
-            )
-          : [],
-      );
-    },
-    [queryClient],
-  );
-
-  /** Upsert a single community into the cached list. */
-  const updateCommunity = useCallback(
-    (community: CommunityDto) => {
-      queryClient.setQueryData<CommunityDto[]>(QUERY_KEY, (old) => {
-        if (old && old.some((c) => c.id === community.id)) {
-          return old.map((c) => (c.id === community.id ? community : c));
-        }
-        return [...(old ?? []), community];
-      });
-    },
-    [queryClient],
-  );
-
   const { mutateAsync: createCommunity } = useMutation({
-    mutationFn: (body: CreateCommunityDto) =>
-      communityCreateCommunity({ body, throwOnError: true }).then(
-        (response) => response.data,
-      ),
+    mutationFn: async (body: CreateCommunityDto) => {
+      const session = currentSession(queryClient);
+      const { data: community } = await communityCreateCommunity({
+        body,
+        throwOnError: true,
+      });
+      store.created({ session, community });
+      void refreshMemberships(queryClient);
+      return community;
+    },
     // Offline, the create fails its form at once instead of pausing.
     networkMode: "always",
-    onSuccess: (community) => {
-      updateCommunity(community);
-      void refreshMemberships(queryClient);
-    },
   });
 
   const { mutateAsync: saveCommunity } = useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       communityId,
       body,
     }: {
       communityId: number;
       body: UpdateCommunityDto;
-    }) =>
-      communityUpdate({ path: { communityId }, body, throwOnError: true }).then(
-        (response) => response.data,
-      ),
+    }) => {
+      const session = currentSession(queryClient);
+      const { data: community } = await communityUpdate({
+        path: { communityId },
+        body,
+        throwOnError: true,
+      });
+      store.saved({ session, community });
+      // Saving can make the group public or private.
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.publicCommunities(),
+      });
+      return community;
+    },
     networkMode: "always",
-    onSuccess: updateCommunity,
   });
 
   const { mutateAsync: deleteCommunity } = useMutation({
-    mutationFn: (communityId: number) =>
-      communityDelete({ path: { communityId }, throwOnError: true }),
-    networkMode: "always",
-    onSuccess: (_, communityId) => {
-      removeCommunity(communityId);
+    mutationFn: async (communityId: number) => {
+      const session = currentSession(queryClient);
+      await communityDelete({ path: { communityId }, throwOnError: true });
+      store.deleted({ session, communityId });
       void refreshMemberships(queryClient);
     },
+    networkMode: "always",
   });
 
   const { mutateAsync: removeMember } = useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       communityId,
       memberId,
     }: {
       communityId: number;
       memberId: number;
-    }) =>
-      communityRemoveMember({
+    }) => {
+      const session = currentSession(queryClient);
+      const { data: community } = await communityRemoveMember({
         path: { communityId },
         body: { userId: memberId },
         throwOnError: true,
-      }),
+      });
+      store.saved({ session, community });
+    },
     networkMode: "always",
-    onSuccess: (_, { communityId, memberId }) =>
-      removeMemberFromCommunity(communityId, memberId),
   });
 
   const { mutateAsync: leaveCommunity, isPending: isLeaving } = useMutation({
-    mutationFn: (communityId: number) =>
-      communityLeave({ path: { communityId }, throwOnError: true }),
-    onSuccess: (_, communityId) => {
-      removeCommunity(communityId);
+    mutationFn: async (communityId: number) => {
+      const session = currentSession(queryClient);
+      await communityLeave({ path: { communityId }, throwOnError: true });
+      store.left({ session, communityId });
       void refreshMemberships(queryClient);
     },
   });
 
   const { mutateAsync: joinPublicCommunity } = useMutation({
-    mutationFn: (communityId: number) =>
-      communityJoinPublicCommunity({
+    mutationFn: async (communityId: number) => {
+      const session = currentSession(queryClient);
+      const { data: community } = await communityJoinPublicCommunity({
         path: { communityId },
         throwOnError: true,
-      }).then((response) => response.data),
-    onSuccess: () => refreshMemberships(queryClient),
+      });
+      store.saved({ session, community });
+      await refreshMemberships(queryClient);
+      return community;
+    },
   });
 
   const selectedCommunity = useMemo(
@@ -234,3 +212,5 @@ export function useMyCommunities(params?: {
     selectedCommunity,
   };
 }
+
+const NO_COMMUNITIES: CommunityDto[] = [];
