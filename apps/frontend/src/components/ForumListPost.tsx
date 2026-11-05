@@ -15,14 +15,15 @@ import { Link, href, useNavigate } from "react-router";
 export interface ForumListPostProps {
   post: PostDto;
   commentFeature?: CommentDto;
-  showReply?: boolean;
+  /** The comment count and last reply, which only the forum index loads. */
+  showThread?: boolean;
   showContentPreview?: boolean;
 }
 
 const ForumListPost = ({
   post,
   commentFeature,
-  showReply = true,
+  showThread = true,
   showContentPreview = false,
 }: ForumListPostProps) => {
   const navigate = useNavigate();
@@ -60,16 +61,18 @@ const ForumListPost = ({
                 />
               )}
               <p className="text-lg font-medium">{post.title}</p>
-              {post.commentCount != null && post.commentCount > 0 && (
-                <>
-                  <MessageCircle
-                    size={14}
-                    className="text-zinc-500 ml-1"
-                    strokeWidth={2.5}
-                  />
-                  <span className="text-zinc-500">{post.commentCount}</span>
-                </>
-              )}
+              {showThread &&
+                post.commentCount != null &&
+                post.commentCount > 0 && (
+                  <>
+                    <MessageCircle
+                      size={14}
+                      className="text-zinc-500 ml-1"
+                      strokeWidth={2.5}
+                    />
+                    <span className="text-zinc-500">{post.commentCount}</span>
+                  </>
+                )}
             </div>
             {isPrivateFuturePost && (
               <span className="text-sm text-blue">
@@ -125,7 +128,7 @@ const ForumListPost = ({
           </span>
         </div>
 
-        {post.lastComment && showReply && (
+        {post.lastComment && showThread && (
           <div className="flex items-center gap-x-1">
             <span onClick={lastCommentAuthorClick}>
               <UserDisplayName

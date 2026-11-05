@@ -17,7 +17,6 @@ import {
   UserCommentDto,
   actionsUserCompletedCount,
   forumFindCommentsByUser,
-  forumFindPostsByUser,
   userFindOne,
   userFriendAcceptFriendRequest,
   userFriendDeclineFriendRequest,
@@ -33,6 +32,7 @@ import {
 import { failedToLoad } from "./failedToLoad";
 import { thrownRefusalMessage } from "./hey-api";
 import { queryKeys } from "./queryKeys";
+import { useUserForumPosts } from "./useForumPosts";
 import { myLocationCache } from "./useMyLocation";
 import { useInvalidateVisibilityContext } from "./useVisibilityContext";
 
@@ -90,11 +90,6 @@ const defaultQueryEnabled = (
 
 type UserProfileQueryOptions = Omit<
   UseQueryOptions<ProfileDto | null>,
-  "queryKey" | "queryFn" | "enabled"
-> & { enabled?: boolean };
-
-type UserPostsQueryOptions = Omit<
-  UseQueryOptions<PostDto[], unknown>,
   "queryKey" | "queryFn" | "enabled"
 > & { enabled?: boolean };
 
@@ -176,24 +171,6 @@ export const useUserCompletedActionCountQuery = (userId: number) =>
     enabled: Boolean(userId),
   });
 
-export const useUserForumPostsQuery = (
-  userId: number,
-  options?: UserPostsQueryOptions,
-) =>
-  useQuery({
-    ...options,
-    queryKey: queryKeys.forumPostsByUser(userId),
-    queryFn: async () => {
-      if (!userId) return [];
-      const response = await forumFindPostsByUser({
-        path: { id: userId },
-        throwOnError: true,
-      });
-      return response.data;
-    },
-    enabled: defaultQueryEnabled(userId, options?.enabled),
-  });
-
 export const useUserForumCommentsQuery = (
   userId: number,
   options?: UserCommentsQueryOptions,
@@ -213,7 +190,7 @@ export const useUserForumCommentsQuery = (
   });
 
 export const useUserForumActivity = (userId: number) => {
-  const postsQuery = useUserForumPostsQuery(userId);
+  const postsQuery = useUserForumPosts(userId);
   const commentsQuery = useUserForumCommentsQuery(userId);
   const didPostsFail = failedToLoad(postsQuery);
   const didCommentsFail = failedToLoad(commentsQuery);

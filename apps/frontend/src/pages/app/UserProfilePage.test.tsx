@@ -5,6 +5,10 @@ import type {
   UserCommentDto,
   UserCompletedActionsCountDto,
 } from "@alliance/shared/client";
+import {
+  forumPostStore,
+  PostFields,
+} from "@alliance/shared/lib/forumPostStore";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { pending, type Pending } from "@alliance/shared/lib/testing/pending";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
@@ -326,6 +330,20 @@ it("keeps Try again enabled while only the loaded forum query refetches", async 
   await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
   expect(refetches).toHaveLength(1);
   expect(screen.getByText("Try again").closest("button")?.disabled).toBe(false);
+});
+
+it("shows no comment count on a post card, even one the forum index loaded", async () => {
+  api.alsoServing({ [POSTS_ROUTE]: () => Response.json([POST]) });
+  const { client } = renderProfile();
+  await forumPostStore(client).load({
+    carries: [PostFields.Thread],
+    signal: new AbortController().signal,
+    fetch: async () => [{ ...POST, commentCount: 3 }],
+  });
+  fireEvent.click((await screen.findAllByText("post"))[0]);
+
+  const title = await screen.findByText(POST.title);
+  expect(title.parentElement?.textContent).toBe(POST.title);
 });
 
 it("shows how many actions the member completed", async () => {

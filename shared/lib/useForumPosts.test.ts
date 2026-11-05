@@ -3,10 +3,11 @@ import { milliseconds } from "date-fns";
 import { queryKeys } from "./queryKeys";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
-import { useForumPosts } from "./useForumPosts";
+import { useForumPosts, useUserForumPosts } from "./useForumPosts";
 
 const posts = [{ id: 7, title: "Hello" }];
 let requests = 0;
+let userRequests: number[] = [];
 let getResponse: () => Response;
 
 serveApi(
@@ -15,11 +16,16 @@ serveApi(
       requests += 1;
       return getResponse();
     },
+    "GET /forum/posts/user/:id": ({ params }) => {
+      userRequests.push(Number(params.id));
+      return getResponse();
+    },
   }),
 );
 
 beforeEach(() => {
   requests = 0;
+  userRequests = [];
   getResponse = () => Response.json(posts);
 });
 
@@ -55,15 +61,49 @@ it("reloads a cached list on mount whatever the client's staleTime", async () =>
   expect(requests).toBe(1);
 });
 
-it("a failed reload keeps the cached list and reports an error", async () => {
+it("a failed reload keeps the loaded list and reports an error", async () => {
+  const { wrapper } = queryWrapper();
+  const hook = renderHook(() => useForumPosts(), { wrapper });
+  await waitFor(() => expect(hook.result.current.posts).toEqual(posts));
   getResponse = () =>
     Response.json({ message: "Internal server error" }, { status: 500 });
-  const { client, wrapper } = queryWrapper();
-  client.setQueryData(queryKeys.forumPosts(), posts);
 
-  const hook = renderHook(() => useForumPosts(), { wrapper });
+  void hook.result.current.refetch();
 
   await waitFor(() => expect(hook.result.current.isError).toBe(true));
-  expect(hook.result.current.posts).toBe(posts);
+  expect(hook.result.current.posts).toEqual(posts);
   expect(hook.result.current.didFail).toBe(false);
+});
+
+it("loads a user's posts", async () => {
+  const { wrapper } = queryWrapper();
+
+  const hook = renderHook(() => useUserForumPosts(3), { wrapper });
+
+  await waitFor(() => expect(hook.result.current.data).toEqual(posts));
+  expect(userRequests).toEqual([3]);
+});
+
+it("a failed fetch of a user's posts errors instead of showing none", async () => {
+  getResponse = () =>
+    Response.json({ message: "Internal server error" }, { status: 500 });
+  const { wrapper } = queryWrapper();
+
+  const hook = renderHook(() => useUserForumPosts(3), { wrapper });
+
+  await waitFor(() => expect(hook.result.current.isError).toBe(true));
+  expect(hook.result.current.data).toBeUndefined();
+});
+
+it("a failed reload of a user's posts keeps the loaded list and reports an error", async () => {
+  const { wrapper } = queryWrapper();
+  const hook = renderHook(() => useUserForumPosts(3), { wrapper });
+  await waitFor(() => expect(hook.result.current.data).toEqual(posts));
+  getResponse = () =>
+    Response.json({ message: "Internal server error" }, { status: 500 });
+
+  void hook.result.current.refetch();
+
+  await waitFor(() => expect(hook.result.current.isError).toBe(true));
+  expect(hook.result.current.data).toEqual(posts);
 });

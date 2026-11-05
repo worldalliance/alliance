@@ -12,7 +12,6 @@ import {
   useSendFriendRequestMutation,
   useUpdateProfileMutation,
   useUserForumCommentsQuery,
-  useUserForumPostsQuery,
   useUserFriendStatusQuery,
   useUserFriendsQuery,
   useUserReceivedFriendRequestsQuery,
@@ -77,7 +76,6 @@ const failingReads: RouteTable = {
   "GET /user/friends/requests/received": serverError,
   "GET /user/friends/requests/sent": serverError,
   "GET /user/listMessageableUsers": serverError,
-  "GET /forum/posts/user/:id": serverError,
   "GET /forum/posts/user/:id/comments": serverError,
 };
 
@@ -265,12 +263,6 @@ const erroringQueries = [
     cachedList,
   ],
   [
-    "forum posts",
-    () => useUserForumPostsQuery(ALLOWED_USER),
-    queryKeys.forumPostsByUser(ALLOWED_USER),
-    cachedList,
-  ],
-  [
     "forum comments",
     () => useUserForumCommentsQuery(ALLOWED_USER),
     userQueryKeys.forumComments(ALLOWED_USER),
@@ -284,7 +276,6 @@ const servedReads: RouteTable = {
   "GET /user/friends/requests/received": () => Response.json(cachedList),
   "GET /user/friends/requests/sent": () => Response.json(cachedList),
   "GET /user/listMessageableUsers": () => Response.json(cachedList),
-  "GET /forum/posts/user/:id": () => Response.json(cachedList),
   "GET /forum/posts/user/:id/comments": () => Response.json(cachedList),
 };
 

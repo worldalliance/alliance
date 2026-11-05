@@ -17,6 +17,7 @@ import type {
   OnetimeInviteDto,
   ParticipantDto,
   ParticipantRole,
+  PostDto,
   ProfileDto,
   ShareUrlMineDto,
   TagDto,
@@ -201,6 +202,34 @@ export function makeComment(overrides: Partial<CommentDto> = {}): CommentDto {
     likes: [],
     likesCount: 0,
     editableContent: { body: "A comment", attachments: [] },
+    ...overrides,
+  };
+}
+
+export function makePost(overrides: Partial<PostDto> = {}): PostDto {
+  return {
+    id: 7,
+    title: "A post",
+    authorId: 1,
+    actionId: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    pinned: false,
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    visibleAt: "2026-01-01T00:00:00.000Z",
+    qaMode: false,
+    expertLabel: null,
+    expertIds: [],
+    authorIds: [1],
+    notifyForReplies: true,
+    showClusterTags: false,
+    deleted: false,
+    author: makeProfile(1),
+    editableContent: { body: "Body", attachments: [] },
+    likes: [],
+    likedByMe: false,
+    likeCount: 0,
+    authors: [makeProfile(1)],
+    tags: [],
     ...overrides,
   };
 }

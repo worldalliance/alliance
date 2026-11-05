@@ -1,4 +1,5 @@
 import type { PostDto } from "@alliance/shared/client";
+import { forumPostStore } from "@alliance/shared/lib/forumPostStore";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
@@ -220,10 +221,12 @@ describe("PostFormPage", () => {
 
   it("waits for a reload before filling the form from a cached post, however fresh", async () => {
     const query = queryWrapper({ staleTime: Infinity });
-    query.client.setQueryData(
-      queryKeys.forumPost("7"),
-      savedPost("Stale title"),
-    );
+    await forumPostStore(query.client).load({
+      carries: [],
+      signal: new AbortController().signal,
+      fetch: async () => [savedPost("Stale title")],
+    });
+    query.client.setQueryData(queryKeys.forumPost("7"), 7);
     const reload = Promise.withResolvers<Response>();
     findPost = () => reload.promise;
 
@@ -260,7 +263,7 @@ describe("PostFormPage", () => {
 
     expect(await screen.findByText("the published thread")).toBeDefined();
     expect(updatedBodies).toMatchObject([{ title: "My edit" }]);
-    expect(client.getQueryData(queryKeys.forumPost("7"))).toMatchObject({
+    expect(forumPostStore(client).getPost(7)).toMatchObject({
       title: "My edit",
     });
   });

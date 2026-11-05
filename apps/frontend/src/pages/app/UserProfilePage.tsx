@@ -250,7 +250,7 @@ const UserProfilePage: React.FC = () => {
                         <ForumListPost
                           post={item.post}
                           key={`post-${item.post.id}`}
-                          showReply={false}
+                          showThread={false}
                           showContentPreview
                         />
                       );
