@@ -1,5 +1,5 @@
 import type {
-  ProjectDto,
+  AdminProjectDto,
   ProjectWithStepsDto,
   UpdateProjectDto,
 } from "@alliance/shared/client";
@@ -18,7 +18,7 @@ import {
 } from "./useProjectsAdmin";
 
 const project = (id: number, name: string) =>
-  ({ id, name, category: [] }) satisfies ProjectDto;
+  ({ id, name, slug: `project-${id}`, category: [] }) satisfies AdminProjectDto;
 
 const ACTION_ID = 10;
 
@@ -28,13 +28,13 @@ const step = {
   memberActionAt: "2026-01-02T00:00:00.000Z",
 };
 
-const withSteps = (stored: ProjectDto) =>
+const withSteps = (stored: AdminProjectDto) =>
   ({
     ...stored,
     steps: stored.id === assignedProjectId ? [step] : [],
   }) satisfies ProjectWithStepsDto;
 
-let stored: ProjectDto[] = [];
+let stored: AdminProjectDto[] = [];
 let assignedProjectId: number | null = null;
 let requests: string[] = [];
 
@@ -153,7 +153,7 @@ describe("useCreateActionProjectAdmin", () => {
     const view = renderProjects(query);
     const onSuccess = mock(() =>
       query.client
-        .getQueryData<ProjectDto[]>(queryKeys.projectsAdmin())
+        .getQueryData<AdminProjectDto[]>(queryKeys.projectsAdmin())
         ?.map((p) => p.name),
     );
     const create = renderHook(
@@ -186,7 +186,7 @@ describe("useUpdateProjectAdmin", () => {
     const view = renderProjects(query);
     const onSuccess = mock(() => [
       query.client
-        .getQueryData<ProjectDto[]>(queryKeys.projectsAdmin())
+        .getQueryData<AdminProjectDto[]>(queryKeys.projectsAdmin())
         ?.find((p) => p.id === 1)?.name,
       query.client.getQueryData<ProjectWithStepsDto>(queryKeys.projectAdmin(1))
         ?.name,
@@ -227,7 +227,7 @@ describe("useDeleteProjectAdmin", () => {
     await remove.result.current.mutateAsync(1);
 
     expect(
-      query.client.getQueryData<ProjectDto[]>(queryKeys.projectsAdmin()),
+      query.client.getQueryData<AdminProjectDto[]>(queryKeys.projectsAdmin()),
     ).toEqual([project(2, "Clean water")]);
     expect(
       query.client.getQueryState(queryKeys.projectAdmin(1))?.isInvalidated,

@@ -84,6 +84,8 @@ export class ActionImportExportService {
       project: _project,
       // Action ids name different actions in another environment.
       prerequisiteActionIds: _prerequisiteActionIds,
+      // Regenerated, so importing a copy beside its original can't conflict.
+      slug: _slug,
       ...actionCols
     } = importaction;
 

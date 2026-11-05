@@ -57,6 +57,7 @@ function renderCommands() {
             created.push(body);
             return Promise.resolve({
               ...makeAction({ id: 2 }),
+              slug: "copy",
               staffPreview: false,
               cohortExpression: null,
               prerequisiteActionIds: [],

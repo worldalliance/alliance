@@ -12,6 +12,13 @@ function hasSqlState(error: unknown, sqlState: string): boolean {
   );
 }
 
-export function isUniqueViolation(error: unknown): boolean {
-  return hasSqlState(error, UNIQUE_VIOLATION);
+export function isUniqueViolation(
+  error: unknown,
+  constraint?: string,
+): boolean {
+  return (
+    hasSqlState(error, UNIQUE_VIOLATION) &&
+    (constraint === undefined ||
+      (error as { constraint?: string }).constraint === constraint)
+  );
 }

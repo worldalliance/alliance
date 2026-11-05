@@ -16,6 +16,10 @@ import { AdminFollowUpFormDto } from "./follow-up-form.dto";
  * which members and logged-out clients receive.
  */
 export class AdminActionDto extends ActionDto {
+  @ApiProperty()
+  @IsDefined()
+  slug: string;
+
   @ApiProperty({
     description: "Cohort expression tree defining who participates",
     nullable: true,
@@ -78,6 +82,7 @@ export class AdminActionDto extends ActionDto {
 
   constructor(action: ParsedAction, extra?: ActionDtoExtra) {
     super(action, extra);
+    this.slug = action.slug;
     this.cohortExpression = action.cohortExpression;
     this.prerequisiteActionIds = action.prerequisiteActionIds;
     this.memberActionStart = action.memberActionPhase.event?.date ?? null;

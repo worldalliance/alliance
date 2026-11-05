@@ -12,6 +12,7 @@ import {
   MaxLength,
   ValidateIf,
 } from "class-validator";
+import { OptionalSlugField, slugGiven } from "src/datasources/slug-column";
 import { Project } from "../entities/project.entity";
 import type { ProjectStep, ProjectWithSteps } from "../projects.service";
 
@@ -23,6 +24,16 @@ export class ProjectDto extends PickType(Project, ["id", "name", "category"]) {
     this.id = input.id;
     this.name = input.name;
     this.category = input.category;
+  }
+}
+
+export class AdminProjectDto extends ProjectDto {
+  @ApiProperty()
+  slug: string;
+
+  constructor(input: Project) {
+    super(input);
+    this.slug = input.slug;
   }
 }
 
@@ -43,7 +54,7 @@ export class ProjectStepDto {
   }
 }
 
-export class ProjectWithStepsDto extends ProjectDto {
+export class ProjectWithStepsDto extends AdminProjectDto {
   @ApiProperty({
     type: () => ProjectStepDto,
     isArray: true,
@@ -66,9 +77,19 @@ export class ProjectNameDto {
   name: string;
 }
 
+export class CreateProjectDto extends ProjectNameDto {
+  @OptionalSlugField()
+  @ValidateIf(slugGiven)
+  slug?: string;
+}
+
 export class UpdateProjectDto extends PartialType(
   IntersectionType(ProjectNameDto, PickType(Project, ["category"])),
-) {}
+) {
+  @OptionalSlugField()
+  @ValidateIf(slugGiven)
+  slug?: string;
+}
 
 export class AssignProjectDto {
   @ApiProperty({ type: Number, nullable: true })

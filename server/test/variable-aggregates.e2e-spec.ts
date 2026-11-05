@@ -132,7 +132,7 @@ describe("Variable aggregates (e2e)", () => {
     responseId: number;
   }) => {
     const [{ id: actionId }] = await responseRepo.query(
-      `INSERT INTO action (name, category, body) VALUES ('Action', '{}', 'Body') RETURNING id`,
+      `INSERT INTO action (name, slug, category, body) VALUES ('Action', 'action', '{}', 'Body') RETURNING id`,
     );
     await responseRepo.query(
       `INSERT INTO action_activity ("actionId", "userId", type, "taskFormResponseId") VALUES ($1, $2, $3, $4)`,

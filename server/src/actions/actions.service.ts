@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { throwIfSlugTaken } from "src/datasources/slug-column";
 import {
   softDeleteWhere,
   updateLive,
@@ -43,6 +44,7 @@ import { ActionReviewer } from "./entities/action-reviewer.entity";
 import { ActionSuite } from "./entities/action-suite.entity";
 import {
   Action,
+  ACTION_SLUG_INDEX,
   parseAction,
   type ParsedAction,
 } from "./entities/action.entity";
@@ -139,6 +141,13 @@ export class ActionsService {
         await assertPrerequisitesValid({ em, actionIds: [inserted.id] });
         return inserted;
       },
+    }).catch((error: unknown) => {
+      throwIfSlugTaken({
+        error,
+        indexName: ACTION_SLUG_INDEX,
+        slug: rest.slug,
+      });
+      throw error;
     });
     await shiftPrioritiesAfterInsertion(this.actionRepository.manager);
     await this.generalUpdates.syncGeneralUpdateDatesForSuites([
@@ -220,6 +229,15 @@ export class ActionsService {
 
     const actionMap = new Map(actionsWithRelations.map((a) => [a.id, a]));
     return actionIds.map((id) => parseAction(actionMap.get(id)!));
+  }
+
+  async findIdBySlug(slug: string): Promise<number> {
+    const action = await this.actionRepository.findOne({
+      where: { slug },
+      select: { id: true },
+    });
+    if (!action) throw new NotFoundException(`Action "${slug}" not found`);
+    return action.id;
   }
 
   async findOneOrFail(params: {
@@ -390,6 +408,13 @@ export class ActionsService {
           await assertPrerequisitesValid({ em, actionIds: [id] });
         }
       },
+    }).catch((error: unknown) => {
+      throwIfSlugTaken({
+        error,
+        indexName: ACTION_SLUG_INDEX,
+        slug: rest.slug,
+      });
+      throw error;
     });
     const newSuiteId = action.suite?.id;
     await this.generalUpdates.syncGeneralUpdateDatesForSuites([
