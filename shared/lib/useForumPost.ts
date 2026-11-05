@@ -17,7 +17,7 @@ import {
   type UpdatePostDto,
 } from "../client";
 import { queryKeys } from "./queryKeys";
-import { dropForumPost, invalidateForumPosts } from "./useForumPosts";
+import { dropForumPost, invalidateForumPostLists } from "./useForumPosts";
 
 /** One forum post and its writes. An undefined `postId` fetches nothing, for
  * the create form; `update` and `remove` throw then. `refetchOnMount:
@@ -85,7 +85,7 @@ export function useForumPost(
     mutationFn: (body: CreatePostDto) =>
       forumCreatePost({ body, throwOnError: true }).then((r) => r.data),
     onSuccess: () => {
-      void invalidateForumPosts(queryClient);
+      void invalidateForumPostLists(queryClient);
     },
   });
 

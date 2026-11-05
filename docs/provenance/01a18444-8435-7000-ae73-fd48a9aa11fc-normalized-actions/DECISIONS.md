@@ -36,6 +36,10 @@
 - Records stay until the session ends, as in the action and notification stores, so a long session keeps every activity it loaded after its queries are garbage-collected (deferred choice). Evicting records no cached query references belongs in `sessionStores.ts` for all three stores.
 - The grouped global feed (`useGlobalFeed`) stays separate: its items summarize several activities rather than carrying records.
 
+## Forum posts
+
+- The forum index's and every user's post list's query keys share the `forumPostListsAll` prefix, so a new post refetches the index and every profile list (ALL-1585).
+
 # Further migrations
 
 These are recommendations from the repository audit, not approved implementation scope.

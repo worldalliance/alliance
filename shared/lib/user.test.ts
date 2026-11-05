@@ -267,7 +267,7 @@ const erroringQueries = [
   [
     "forum posts",
     () => useUserForumPostsQuery(ALLOWED_USER),
-    userQueryKeys.forumPosts(ALLOWED_USER),
+    queryKeys.forumPostsByUser(ALLOWED_USER),
     cachedList,
   ],
   [

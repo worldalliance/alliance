@@ -14,6 +14,7 @@ import type { UseActivitiesProps } from "./useActivities";
 
 const activitiesAll = () => ["useActivities"] as const;
 const globalFeedAll = () => ["actionFeedGetGlobalFeed"] as const;
+const forumPostListsAll = () => ["forumPosts", "list"] as const;
 
 const communityOnetimeInvitesAll = () =>
   ["userOnetimeInviteGetOnetimeInvitesByCommunity"] as const;
@@ -114,7 +115,12 @@ export const queryKeys = {
   currentContract: () => ["contractGetCurrent"] as const,
   forumPost: (postId: string | undefined) =>
     ["forumFindOnePost", postId] as const,
-  forumPosts: () => ["forumFindAllPosts"] as const,
+  /** Prefixes the forum index and every user's post list, so a new post can
+   * refetch them all. */
+  forumPostListsAll,
+  forumPosts: () => [...forumPostListsAll(), "index"] as const,
+  forumPostsByUser: (userId: number) =>
+    [...forumPostListsAll(), "user", userId] as const,
   generalUpdatesAll: () => ["generalUpdatesAllGeneralUpdates"] as const,
   generalUpdatesUnread: () => ["actions", "generalUpdates", "unread"] as const,
   globalFeedAll,

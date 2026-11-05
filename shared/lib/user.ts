@@ -39,7 +39,6 @@ import { useInvalidateVisibilityContext } from "./useVisibilityContext";
 export const userQueryKeys = {
   profile: (userId: number) => ["user", userId, "profile"] as const,
   friendStatus: (userId: number) => ["user", userId, "friendStatus"] as const,
-  forumPosts: (userId: number) => ["user", userId, "forumPosts"] as const,
   forumComments: (userId: number) => ["user", userId, "forumComments"] as const,
   completedActionCount: (userId: number) =>
     ["user", userId, "completedActionCount"] as const,
@@ -183,7 +182,7 @@ export const useUserForumPostsQuery = (
 ) =>
   useQuery({
     ...options,
-    queryKey: userQueryKeys.forumPosts(userId),
+    queryKey: queryKeys.forumPostsByUser(userId),
     queryFn: async () => {
       if (!userId) return [];
       const response = await forumFindPostsByUser({

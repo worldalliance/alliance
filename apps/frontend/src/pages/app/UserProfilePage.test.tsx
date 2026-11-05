@@ -5,6 +5,7 @@ import type {
   UserCommentDto,
   UserCompletedActionsCountDto,
 } from "@alliance/shared/client";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { pending, type Pending } from "@alliance/shared/lib/testing/pending";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
@@ -320,7 +321,7 @@ it("keeps Try again enabled while only the loaded forum query refetches", async 
   const refetches: Pending<Response>[] = [];
   api.alsoServing({ [POSTS_ROUTE]: () => pending(refetches) });
   void client.invalidateQueries({
-    queryKey: userQueryKeys.forumPosts(GRACE.id),
+    queryKey: queryKeys.forumPostsByUser(GRACE.id),
   });
   await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
   expect(refetches).toHaveLength(1);

@@ -4,6 +4,7 @@ import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 import { useForumPost } from "./useForumPost";
 import { useForumPosts } from "./useForumPosts";
+import { useUserForumPostsQuery } from "./user";
 
 const post = { id: 7, title: "Hello", likedByMe: false, likeCount: 2 };
 let requests: string[] = [];
@@ -12,10 +13,12 @@ let getResponse: () => Response | Promise<Response>;
 let updateResponse: () => Response;
 let removeResponse: () => Response;
 let listResponse: () => Response | Promise<Response>;
+let profileResponse: () => Response;
 
 serveApi(
   routes({
     "GET /forum/posts": () => listResponse(),
+    "GET /forum/posts/user/:id": () => profileResponse(),
     "GET /forum/posts/7": () => {
       requests.push("get");
       return getResponse();
@@ -50,6 +53,7 @@ beforeEach(() => {
   updateResponse = () => Response.json(renamed);
   removeResponse = () => new Response(null);
   listResponse = () => Response.json([post]);
+  profileResponse = () => Response.json([post]);
 });
 
 const renamed = { ...post, title: "Renamed" };
@@ -194,6 +198,31 @@ it("creates a post without caching it, and reloads the list", async () => {
   );
   expect(requests).toEqual(["create"]);
   expect(client.getQueryData(["forumFindOnePost", "8"])).toBeUndefined();
+});
+
+it("reloads the profile list after a new post", async () => {
+  const { wrapper } = queryWrapper();
+  const created = { ...post, id: 8, title: "New" };
+  const hook = renderHook(
+    () => ({
+      profile: useUserForumPostsQuery(1),
+      one: useForumPost(undefined),
+    }),
+    { wrapper },
+  );
+  await waitFor(() => expect(hook.result.current.profile.data).toEqual([post]));
+  profileResponse = () => Response.json([created, post]);
+
+  await act(() =>
+    hook.result.current.one.create({
+      title: "New",
+      editableContent: { body: "Hi", attachments: [] },
+    }),
+  );
+
+  await waitFor(() =>
+    expect(hook.result.current.profile.data).toEqual([created, post]),
+  );
 });
 
 it("caches the post an update saved", async () => {
