@@ -1,3 +1,4 @@
+import { setEnv } from "@alliance/common/set-env";
 import { webEnvFields, type WebEnvKey } from "@alliance/common/web-env";
 import { afterEach, describe, expect, it } from "bun:test";
 import { requireWebEnv, webEnv } from "./env";
@@ -9,7 +10,7 @@ afterEach(() => {
   for (const key of Object.keys(process.env)) {
     if (!(key in saved)) delete process.env[key];
   }
-  Object.assign(process.env, saved);
+  for (const [key, value] of Object.entries(saved)) setEnv(key, value);
 });
 
 describe("webEnv", () => {

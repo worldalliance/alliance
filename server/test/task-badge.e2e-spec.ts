@@ -1,4 +1,5 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
+import { setEnv } from "@alliance/common/set-env";
 import { milliseconds } from "date-fns";
 import {
   Expo,
@@ -146,7 +147,7 @@ describe("Task badge sync (e2e)", () => {
   });
 
   afterAll(async () => {
-    process.env.SEND_DEV_NOTIFS = previousSendDevNotifs;
+    setEnv("SEND_DEV_NOTIFS", previousSendDevNotifs);
     await ctx?.app.close();
   });
 

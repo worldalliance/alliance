@@ -1,3 +1,4 @@
+import { setEnv } from "@alliance/common/set-env";
 import {
   decideClaim,
   MailClaim,
@@ -19,11 +20,7 @@ describe("publicMailDailyCap", () => {
   const saved = process.env.WAITLIST_PUBLIC_MAIL_DAILY_CAP;
 
   afterEach(() => {
-    if (saved === undefined) {
-      delete process.env.WAITLIST_PUBLIC_MAIL_DAILY_CAP;
-    } else {
-      process.env.WAITLIST_PUBLIC_MAIL_DAILY_CAP = saved;
-    }
+    setEnv("WAITLIST_PUBLIC_MAIL_DAILY_CAP", saved);
   });
 
   it("is off until the cap is set", () => {

@@ -1,3 +1,4 @@
+import { setEnv } from "@alliance/common/set-env";
 import { Logger } from "@nestjs/common";
 import { EventType } from "src/eventlog/event-log.entity";
 import type { EventLogService } from "src/eventlog/eventlog.service";
@@ -34,8 +35,7 @@ const withEnv = async <T>(
   );
   const assign = (values: Record<string, string | undefined>) => {
     for (const [key, value] of Object.entries(values)) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
+      setEnv(key, value);
     }
   };
   assign(env);
@@ -137,7 +137,7 @@ describe("MmsService sendMms", () => {
         },
       });
     } finally {
-      process.env.APP_URL = appUrl;
+      setEnv("APP_URL", appUrl);
     }
 
     expect(saved).toEqual([
@@ -459,8 +459,7 @@ describe("MmsService constructor", () => {
 
   afterEach(() => {
     for (const [key, value] of Object.entries(previous)) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
+      setEnv(key, value);
     }
     jest.restoreAllMocks();
   });

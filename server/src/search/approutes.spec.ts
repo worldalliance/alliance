@@ -1,3 +1,4 @@
+import { setEnv } from "@alliance/common/set-env";
 import { passwordResetUrl, verifyEmailUrl } from "./approutes";
 
 describe("account email links", () => {
@@ -12,8 +13,8 @@ describe("account email links", () => {
   });
 
   afterEach(() => {
-    process.env.APP_URL = originalAppUrl;
-    process.env.ALT_APP_URL = originalAltAppUrl;
+    setEnv("APP_URL", originalAppUrl);
+    setEnv("ALT_APP_URL", originalAltAppUrl);
   });
 
   it("sends email verification to ALT_APP_URL", () => {

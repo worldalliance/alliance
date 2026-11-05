@@ -1,3 +1,4 @@
+import { setEnv } from "@alliance/common/set-env";
 import { PostHog } from "posthog-node";
 import { posthogClientIfEnabled } from "./posthog-client";
 
@@ -10,10 +11,8 @@ describe("posthogClientIfEnabled", () => {
   });
 
   afterEach(() => {
-    if (nodeEnv === undefined) delete process.env.NODE_ENV;
-    else process.env.NODE_ENV = nodeEnv;
-    if (apiKey === undefined) delete process.env.POSTHOG_KEY;
-    else process.env.POSTHOG_KEY = apiKey;
+    setEnv("NODE_ENV", nodeEnv);
+    setEnv("POSTHOG_KEY", apiKey);
   });
 
   it("creates a client in production", async () => {

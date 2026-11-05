@@ -10,6 +10,7 @@ import {
   REVIEW_ACCOUNT_MESSAGE,
   REVIEW_SIGN_IN_FAILED_PARAM,
 } from "@alliance/common/review-account";
+import { setEnv } from "@alliance/common/set-env";
 import { io } from "socket.io-client";
 import { AuthService } from "src/auth/auth.service";
 import { TokenMode } from "src/auth/dto/signin.dto";
@@ -72,7 +73,7 @@ describe("Review accounts (e2e)", () => {
   }, 50000);
 
   afterEach(() => {
-    process.env.NODE_ENV = env;
+    setEnv("NODE_ENV", env);
     jest.restoreAllMocks();
   });
 

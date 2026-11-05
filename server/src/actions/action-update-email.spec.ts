@@ -1,3 +1,4 @@
+import { setEnv } from "@alliance/common/set-env";
 import { actionUpdateEmailHtml } from "./action-update-email";
 
 describe("actionUpdateEmailHtml", () => {
@@ -7,8 +8,8 @@ describe("actionUpdateEmailHtml", () => {
     delete process.env.ALT_APP_URL;
   });
   afterEach(() => {
-    process.env.APP_URL = APP_URL;
-    process.env.ALT_APP_URL = ALT_APP_URL;
+    setEnv("APP_URL", APP_URL);
+    setEnv("ALT_APP_URL", ALT_APP_URL);
   });
 
   it("points site paths and upload keys at the site", () => {

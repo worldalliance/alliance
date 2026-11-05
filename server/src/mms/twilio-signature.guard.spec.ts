@@ -1,3 +1,4 @@
+import { setEnv } from "@alliance/common/set-env";
 import type { ExecutionContext } from "@nestjs/common";
 import { ForbiddenException } from "@nestjs/common";
 import { milliseconds } from "date-fns";
@@ -27,12 +28,7 @@ const withEnv = <T>(
 ): T => {
   const previous = { ...process.env };
   for (const [key, value] of Object.entries(env)) {
-    // Assignment can stringify undefined.
-    if (value === undefined) {
-      delete process.env[key];
-    } else {
-      process.env[key] = value;
-    }
+    setEnv(key, value);
   }
   try {
     return run();

@@ -1,3 +1,4 @@
+import { setEnv } from "@alliance/common/set-env";
 import { client } from "@alliance/shared/client/client.gen";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { afterAll, afterEach, beforeAll, expect, it, mock } from "bun:test";
@@ -28,7 +29,7 @@ afterEach(async () => {
 });
 
 afterAll(() => {
-  process.env.EXPO_PUBLIC_ALLIANCE_API_PORT = originalPort;
+  setEnv("EXPO_PUBLIC_ALLIANCE_API_PORT", originalPort);
 });
 
 const recordUnlinks = (pathname: string) => {

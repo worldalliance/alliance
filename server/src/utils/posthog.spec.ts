@@ -3,6 +3,7 @@ import {
   SEND_TO_SLACK,
   SLACK_PROPERTY,
 } from "@alliance/common/analytics";
+import { setEnv } from "@alliance/common/set-env";
 import { PostHog } from "posthog-node";
 import { captureEvent, captureException } from "./posthog";
 import { requestContext } from "./request-context";
@@ -23,10 +24,8 @@ describe("backend PostHog event sessions", () => {
       process.env.POSTHOG_KEY = "test-key";
       logger = new AppTypeOrmLogger();
     } finally {
-      if (nodeEnv === undefined) delete process.env.NODE_ENV;
-      else process.env.NODE_ENV = nodeEnv;
-      if (apiKey === undefined) delete process.env.POSTHOG_KEY;
-      else process.env.POSTHOG_KEY = apiKey;
+      setEnv("NODE_ENV", nodeEnv);
+      setEnv("POSTHOG_KEY", apiKey);
     }
     const sessionId = "01900000-0000-7000-8000-000000000001";
     requestContext.run(

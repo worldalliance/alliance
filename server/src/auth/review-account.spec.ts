@@ -1,10 +1,11 @@
+import { setEnv } from "@alliance/common/set-env";
 import { refusesReviewAccounts } from "./review-account";
 
 describe("refusesReviewAccounts", () => {
   const env = process.env.NODE_ENV;
 
   afterEach(() => {
-    process.env.NODE_ENV = env;
+    setEnv("NODE_ENV", env);
   });
 
   it.each([

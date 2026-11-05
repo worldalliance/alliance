@@ -1,3 +1,4 @@
+import { setEnv } from "@alliance/common/set-env";
 import type { ActionSuite } from "src/actions/entities/action-suite.entity";
 import { Action } from "src/actions/entities/action.entity";
 import type { ReminderGroup } from "src/actions/entities/reminder-group.entity";
@@ -45,7 +46,7 @@ describe("missedSuiteNoticeTemplates", () => {
   });
 
   afterAll(() => {
-    process.env.APP_URL = originalAppUrl;
+    setEnv("APP_URL", originalAppUrl);
   });
 
   it("sends the control the group's configured copy", () => {

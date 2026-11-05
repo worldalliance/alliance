@@ -4,6 +4,7 @@ import {
   SEND_TO_SLACK,
   SLACK_PROPERTY,
 } from "@alliance/common/analytics";
+import { setEnv } from "@alliance/common/set-env";
 import { PostHog } from "posthog-node";
 import { requestContext } from "../utils/request-context";
 import { PosthogService } from "./posthog.service";
@@ -26,10 +27,8 @@ describe("PosthogService request attribution", () => {
       process.env.POSTHOG_KEY = "test-key";
       service = new PosthogService();
     } finally {
-      if (nodeEnv === undefined) delete process.env.NODE_ENV;
-      else process.env.NODE_ENV = nodeEnv;
-      if (apiKey === undefined) delete process.env.POSTHOG_KEY;
-      else process.env.POSTHOG_KEY = apiKey;
+      setEnv("NODE_ENV", nodeEnv);
+      setEnv("POSTHOG_KEY", apiKey);
     }
 
     const error = new Error("malformed test answer");

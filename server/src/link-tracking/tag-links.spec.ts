@@ -1,3 +1,4 @@
+import { setEnv } from "@alliance/common/set-env";
 import { tagHtmlLinks, tagTextLinks, tagUrl } from "./tag-links";
 
 describe("tag links", () => {
@@ -7,7 +8,7 @@ describe("tag links", () => {
     process.env.APP_URL = "https://app.example.org";
   });
   afterAll(() => {
-    process.env.APP_URL = originalAppUrl;
+    setEnv("APP_URL", originalAppUrl);
   });
 
   it("tags app links and keeps their parameters and fragment", () => {

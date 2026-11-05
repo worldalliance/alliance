@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { deployedConfigFor } from "./deployed-config";
 import { NodeEnv } from "./node-env";
+import { setEnv } from "./set-env";
 import { validateWebEnv, webEnvPlugin } from "./web-env-build";
 
 const deployed = {
@@ -92,8 +93,7 @@ describe("webEnvPlugin", () => {
     });
     afterEach(() => {
       for (const [key, value] of saved) {
-        if (value === undefined) delete process.env[key];
-        else process.env[key] = value;
+        setEnv(key, value);
       }
     });
     const define = (mode: string) =>

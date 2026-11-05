@@ -1,3 +1,4 @@
+import { setEnv } from "@alliance/common/set-env";
 import * as analyticsModule from "@alliance/shared/lib/analytics";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
@@ -36,8 +37,7 @@ function setProd(prod: boolean) {
 }
 
 afterEach(() => {
-  if (initialProd === undefined) delete process.env.PROD;
-  else process.env.PROD = initialProd;
+  setEnv("PROD", initialProd);
 });
 
 describe("ErrorBoundary in production", () => {

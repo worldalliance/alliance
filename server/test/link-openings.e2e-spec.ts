@@ -1,5 +1,6 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
 import { LinkOpeningPlatform } from "@alliance/common/linkOpening";
+import { setEnv } from "@alliance/common/set-env";
 import { randomUUID } from "crypto";
 import { milliseconds } from "date-fns";
 import { LinkOpening } from "src/link-tracking/link-opening.entity";
@@ -113,7 +114,7 @@ describe("Link openings (e2e)", () => {
   });
 
   afterAll(async () => {
-    process.env.APP_URL = previousAppUrl;
+    setEnv("APP_URL", previousAppUrl);
     await ctx.app.close();
   });
 

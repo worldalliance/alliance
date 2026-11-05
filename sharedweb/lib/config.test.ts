@@ -1,3 +1,4 @@
+import { setEnv } from "@alliance/common/set-env";
 import { describe, expect, it } from "bun:test";
 import { getApiUrl } from "./config";
 
@@ -12,7 +13,7 @@ describe("getApiUrl", () => {
     try {
       expect(() => getApiUrl()).toThrow("VITE_API_URL: missing");
     } finally {
-      process.env.VITE_API_URL = saved;
+      setEnv("VITE_API_URL", saved);
     }
   });
 });

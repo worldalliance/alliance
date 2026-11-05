@@ -1,3 +1,4 @@
+import { setEnv } from "@alliance/common/set-env";
 import { afterEach, expect, it } from "bun:test";
 import { mobileEnv, type MobileEnvKey } from "./env";
 
@@ -28,11 +29,7 @@ const keys = Object.keys(samples).filter(
 const original = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
 
 afterEach(() => {
-  for (const key of keys) {
-    const value = original[key];
-    if (value === undefined) delete process.env[key];
-    else process.env[key] = value;
-  }
+  for (const key of keys) setEnv(key, original[key]);
 });
 
 it("reads each key from its own variable", () => {
