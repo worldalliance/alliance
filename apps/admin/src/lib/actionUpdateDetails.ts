@@ -46,9 +46,7 @@ export const detailsBody = (form: ActionUpdateForm): UpdateActionUpdateDto => ({
     ? Number(form.associatedEventId)
     : null,
   ...(usesRecognition(form.notificationMode) && {
-    splitCollectiveResult: true,
     nonCompleterResult: form.nonCompleterResult || null,
-    uninvolvedResult: form.nonCompleterResult || null,
   }),
 });
 

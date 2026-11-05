@@ -3273,8 +3273,6 @@ export type CreateActionUpdateDto = {
     shortNotifString: string;
     notifyType: ActionUpdateNotifyType;
     nonCompleterResult?: string | null;
-    splitCollectiveResult?: boolean;
-    uninvolvedResult?: string | null;
     associatedEventId?: number;
     tagId?: string;
 };
@@ -3305,9 +3303,7 @@ export type AdminActionUpdateDto = {
     };
     actionName?: string;
     notificationMode: ActionUpdateNotificationMode;
-    splitCollectiveResult: boolean;
     nonCompleterResult: string | null;
-    uninvolvedResult: string | null;
     recognitionPreparedAt: string | null;
     notificationHeldReason: string | null;
 };
@@ -3321,8 +3317,6 @@ export type UpdateActionUpdateDto = {
     shortNotifString?: string;
     nonCompleterResult?: string | null;
     notifyType?: ActionUpdateNotifyType;
-    splitCollectiveResult?: boolean;
-    uninvolvedResult?: string | null;
     associatedEventId?: number | null;
     tagId?: string | null;
     schema?: {

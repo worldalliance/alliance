@@ -1,5 +1,6 @@
 import type { DisplayOnlySchema } from "@alliance/common/forms/display-only-schema";
 import {
+  ApiHideProperty,
   ApiProperty,
   ApiPropertyOptional,
   IntersectionType,
@@ -72,14 +73,14 @@ const RELOAD_ADMIN = "Reload the admin to save this update.";
 // the result always split, which would save non-completers as skipped or
 // drop a separate uninvolved text. Drop once no such bundle can still be open.
 class SplitCollectiveResultInput {
-  @ApiPropertyOptional({ type: Boolean })
+  @ApiHideProperty()
   @ValidateIf(
     (o: SplitCollectiveResultInput) => o.splitCollectiveResult !== undefined,
   )
   @Equals(true, { message: RELOAD_ADMIN })
   splitCollectiveResult?: true;
 
-  @ApiPropertyOptional({ type: String, nullable: true })
+  @ApiHideProperty()
   @ValidateIf(
     (o: SplitCollectiveResultInput) =>
       o.uninvolvedResult !== undefined &&

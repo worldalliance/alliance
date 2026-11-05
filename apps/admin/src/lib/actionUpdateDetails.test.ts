@@ -16,9 +16,7 @@ const update = (
   date: "2026-10-01T00:00:00.000Z",
   visibleAt: null,
   shortNotifString: "a hearing on the bill",
-  splitCollectiveResult: false,
   nonCompleterResult: null,
-  uninvolvedResult: null,
   associatedEventId: null,
   notifyType: "all_members",
   notifiedAt: null,
@@ -30,19 +28,15 @@ const update = (
 });
 
 describe("detailsBody", () => {
-  it("saves the didn't-complete text for uninvolved members too", () => {
+  it("saves the didn't-complete text", () => {
     expect(
       detailsBody(formOf(update({ nonCompleterResult: "without you" }))),
-    ).toMatchObject({
-      splitCollectiveResult: true,
-      nonCompleterResult: "without you",
-      uninvolvedResult: "without you",
-    });
+    ).toMatchObject({ nonCompleterResult: "without you" });
   });
 
   it("sends no recognition fields for a legacy update", () => {
     const body = detailsBody(formOf(update({ notificationMode: "legacy" })));
-    expect(body).not.toHaveProperty("splitCollectiveResult");
+    expect(body).not.toHaveProperty("nonCompleterResult");
   });
 });
 

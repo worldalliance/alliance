@@ -187,9 +187,7 @@ describe("ActionUpdatesTab", () => {
     expect(await screen.findByText("Update 9")).toBeTruthy();
     expect(body).toMatchObject({
       shortNotifString: "",
-      splitCollectiveResult: true,
       nonCompleterResult: "a hearing; there's still time",
-      uninvolvedResult: "a hearing; there's still time",
     });
   });
 

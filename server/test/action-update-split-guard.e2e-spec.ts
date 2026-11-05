@@ -49,6 +49,16 @@ describe("action update split guard (e2e)", () => {
     await ctx.app.close();
   });
 
+  it("creates the didn't-complete text in the split shape older servers read", async () => {
+    const id = await createUpdate({ nonCompleterResult: "without you" });
+    expect(
+      await ctx.dataSource.getRepository(ActionUpdate).findOneByOrFail({ id }),
+    ).toMatchObject({
+      splitCollectiveResult: true,
+      uninvolvedResult: "without you",
+    });
+  });
+
   it("accepts an older admin bundle's split save when its two texts match", async () => {
     const id = await createUpdate({
       splitCollectiveResult: true,
@@ -148,7 +158,7 @@ describe("action update split guard (e2e)", () => {
     );
   });
 
-  it("returns the uninvolved text an older admin bundle seeds its edit form from", async () => {
+  it("returns the split fields an older admin bundle seeds its edit form from", async () => {
     const id = await createUpdate({ nonCompleterResult: "without you" });
     await ctx.dataSource
       .getRepository(ActionUpdate)
@@ -156,6 +166,9 @@ describe("action update split guard (e2e)", () => {
     const saved = await admin("patch", `/actions/updateUpdate/${id}`, {
       title: "Renamed",
     }).expect(200);
-    expect(saved.body.uninvolvedResult).toBe("without you");
+    expect(saved.body).toMatchObject({
+      splitCollectiveResult: true,
+      uninvolvedResult: "without you",
+    });
   });
 });

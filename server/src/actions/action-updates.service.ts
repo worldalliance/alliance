@@ -92,6 +92,9 @@ export class ActionUpdatesService {
             em.create(ActionUpdate, {
               ...createActionUpdateDto,
               notificationMode: ActionUpdateNotificationMode.Normal,
+              splitCollectiveResult: true,
+              uninvolvedResult:
+                createActionUpdateDto.nonCompleterResult ?? null,
               schemaSnapshotId: emptySnapshot.id,
               visibleAt: null,
               action,
