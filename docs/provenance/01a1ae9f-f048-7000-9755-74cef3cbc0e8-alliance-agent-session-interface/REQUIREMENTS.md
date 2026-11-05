@@ -4,3 +4,4 @@ task: Do ALL-2028, PR 3 of the Alliance agent desktop app plan: the agent sessio
 ---
 
 - Build PR 3 (ALL-2028) of the Alliance agent desktop app specified in `docs/provenance/01a1a949-c8f1-7000-9631-5610045dff02-alliance-agent-desktop-app/`: the app's backend-neutral agent session interface, its event types, and a scripted fake backend, within that directory's requirements. (user-originated)
+- This PR adds no check that the `test-unit` matrices in `.github/workflows/ci.yaml` and `deploy.yaml` match `scripts/test-all.sh`'s `PACKAGES`, the `agents/hooks` and `agents/skills` entries that replace `agents` included; ALL-2064 covers that check. (agent-proposed, user-approved)

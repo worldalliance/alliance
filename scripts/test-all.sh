@@ -7,18 +7,18 @@
 # same one locally and in CI. PACKAGES mirrors the test-unit matrices in
 # .github/workflows/ci.yaml and deploy.yaml, so a new directory with tests goes
 # in all three. The typecheck matrices in those two files list every package
-# here except scripts, .github and agents, which have no tsconfig.
+# here except scripts, .github, agents/hooks and agents/skills, which have no
+# tsconfig.
 #
 # agents/desktop installs from its own lockfile, which those matrices never
-# install, so desktop.yaml runs its tests. They are *.e2e.ts, which bun test
-# doesn't discover; a test there that bun test would find needs agents narrowed
-# here and in the matrices so it stays out of these runs.
+# install, so desktop.yaml runs its tests, and agents is listed here by
+# subdirectory to leave agents/desktop out.
 #
 #   scripts/test-all.sh              # every package below
 #   scripts/test-all.sh apps/admin   # only the named packages
 set -u
 
-PACKAGES=(server common shared sharedweb apps/frontend apps/admin apps/mobile scripts .github citesting agents)
+PACKAGES=(server common shared sharedweb apps/frontend apps/admin apps/mobile scripts .github citesting agents/hooks agents/skills)
 
 script_dir="$(cd "$(dirname "$0")" && pwd)" || exit 1
 cd "$script_dir/.." || exit 1
