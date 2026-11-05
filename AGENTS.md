@@ -143,7 +143,7 @@ Put working files in `.scratch/`: notes, scripts, logs, dumps, downloads. Never 
 
 ## Stopping processes
 
-Stop a process by its PID. Send a plain SIGTERM and wait for the exit, escalating to SIGKILL only when it outlives longer than expected.
+Stop a process by its PID. Without one, list the candidates with `pgrep -fl '<pattern>'` (`pgrep -af` on Linux, where `-l` prints only the process name), options before the pattern, and stop only the PIDs you checked. Send a plain SIGTERM and wait for the exit, escalating to SIGKILL only when it outlives longer than expected.
 
 ## Less is more
 
