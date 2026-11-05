@@ -147,11 +147,13 @@ export class ForumService {
   // Loads the to-many relations with one query each; joining them onto the
   // list query returns a row per combination of them.
   private async loadListRelations(posts: Post[]): Promise<void> {
+    if (!posts.length) return;
     const withRelations = await this.postRepository.find({
       where: { id: In(posts.map((p) => p.id)) },
       relations: {
         authors: true,
         likes: true,
+        tags: true,
         action: { reviewers: true },
       },
       relationLoadStrategy: "query",
@@ -162,6 +164,7 @@ export class ForumService {
       post.authors = loaded?.authors ?? [];
       post.likes = loaded?.likes ?? [];
       post.likesIds = loaded?.likesIds ?? [];
+      post.tags = loaded?.tags ?? [];
       if (post.action) {
         post.action.reviewers = loaded?.action?.reviewers;
       }
@@ -296,15 +299,15 @@ export class ForumService {
       .createQueryBuilder("post")
       .leftJoinAndSelect("post.author", "author")
       .leftJoinAndSelect("post.action", "action")
-      .leftJoinAndSelect("action.reviewers", "actionReviewer")
       .leftJoinAndSelect("post.editableContent", "editableContent")
-      .leftJoinAndSelect("post.authors", "authors")
       .leftJoin("post.authors", "coAuthor")
       .andWhere("(post.authorId = :authorId OR coAuthor.id = :authorId)", {
         authorId,
       });
     this.addPostVisibilityFilter(qb, "post", requestingUserId);
-    return (await qb.getMany()).map(parsePost);
+    const posts = await qb.getMany();
+    await this.loadListRelations(posts);
+    return posts.map(parsePost);
   }
 
   async findPostsByTitle(params: {
