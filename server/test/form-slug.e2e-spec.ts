@@ -184,6 +184,32 @@ describe("Form slugs (e2e)", () => {
     expect(await slugOf(form.id)).toBe("v1");
   });
 
+  it("renumbers a form with a system-assigned slug when another action takes it", async () => {
+    const first = await newAction("first-owner");
+    const second = await newAction("second-owner");
+    const moved = await newForm();
+    await followUps.createFollowUpForm(first.id, {
+      actionId: first.id,
+      formId: moved.id,
+    });
+    const resident = await newForm();
+    await followUps.createFollowUpForm(second.id, {
+      actionId: second.id,
+      formId: resident.id,
+    });
+    expect(await slugOf(moved.id)).toBe("f1");
+
+    await followUps.createFollowUpForm(second.id, {
+      actionId: second.id,
+      formId: moved.id,
+    });
+    expect(await slugOf(moved.id)).toBe("f2");
+
+    const third = await newAction("third-owner");
+    await setTaskForm(third.id, moved.id);
+    expect(await slugOf(moved.id)).toBe("v1");
+  });
+
   it("lets two actions share a slug, but not two forms of one action", async () => {
     const first = await newAction("first");
     const second = await newAction("second");

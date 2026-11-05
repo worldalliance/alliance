@@ -2,6 +2,7 @@ import {
   displayFormSlug,
   FormSlugSequence,
   isDefaultOrphanSlug,
+  isSystemAssignedSlug,
   nextSequenceSlug,
 } from "./form-slug";
 
@@ -41,5 +42,19 @@ describe("displayFormSlug", () => {
       displayFormSlug({ slug: "v1", actionSlug: "grantmaking-prep-2" }),
     ).toBe("grantmaking-prep-2::v1");
     expect(displayFormSlug({ slug: "3f", actionSlug: undefined })).toBe("3f");
+  });
+});
+
+describe("isSystemAssignedSlug", () => {
+  it("covers the no-action default and the v and f sequences", () => {
+    for (const slug of ["3f", "3f-2", "v1", "v12", "f3"]) {
+      expect(isSystemAssignedSlug({ id: 123, slug })).toBe(true);
+    }
+  });
+
+  it("leaves other slugs as staff renames", () => {
+    for (const slug of ["intake", "v1-b", "v", "control", "f1x"]) {
+      expect(isSystemAssignedSlug({ id: 123, slug })).toBe(false);
+    }
   });
 });

@@ -36,6 +36,15 @@ export function isDefaultOrphanSlug(form: Pick<Form, "id" | "slug">): boolean {
   return new RegExp(`^${orphanFormSlug(form.id)}(-\\d+)?$`).test(form.slug);
 }
 
+const SEQUENCE_SLUG = new RegExp(
+  `^(${Object.values(FormSlugSequence).join("|")})\\d+$`,
+);
+
+/** A slug the server picked rather than one staff chose: a sequence number or the no-action default. */
+export function isSystemAssignedSlug(form: Pick<Form, "id" | "slug">): boolean {
+  return SEQUENCE_SLUG.test(form.slug) || isDefaultOrphanSlug(form);
+}
+
 export function nextSequenceSlug(
   sequence: FormSlugSequence,
   taken: readonly string[],
@@ -146,9 +155,9 @@ export async function insertForm(
 }
 
 /**
- * Call once the form is linked to the action. A form whose slug is still its
- * no-action default takes the next number in the sequence; any other keeps its
- * slug, which must be free in the action.
+ * Call once the form is linked to the action. A form with a system-assigned
+ * slug takes the next number in the sequence; one staff renamed keeps its slug,
+ * which must be free in the action.
  */
 export async function slugFormForAction(
   em: EntityManager,
@@ -163,7 +172,7 @@ export async function slugFormForAction(
     actionId: params.actionId,
     exceptFormId: form.id,
   });
-  if (!isDefaultOrphanSlug(form)) {
+  if (!isSystemAssignedSlug(form)) {
     assertSlugFree(form.slug, taken);
     return;
   }
