@@ -52,7 +52,11 @@ const ScheduledReleaseEditor = ({
       ? date
       : null;
   };
-  const launchChange = changedDate({ event, value: launch, editable: !launched });
+  const launchChange = changedDate({
+    event,
+    value: launch,
+    editable: !launched,
+  });
   const deadlineChange = changedDate({
     event: deadlineEvent,
     value: deadline,
