@@ -10,7 +10,7 @@ import DateTimePicker, {
 } from "@alliance/sharedweb/ui/DateTimePicker";
 import { ConfirmMode, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { ArrowLeft } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { notifyRealMembersText } from "../../lib/notifyRealMembers";
 import { useActionReminderGroupsAdmin } from "../../lib/useActionReminderGroupsAdmin";
 import { defaultReminderBodies } from "../reminders/presets";
@@ -66,6 +66,7 @@ const SuiteLaunchPanel = ({
   const createReminders = useActionReminderGroupsAdmin(null).create;
   const [read] = useState(() => readLaunchProgress(suite.id));
   const saved = read.ok ? read.value : null;
+  const [saving, setSaving] = useState(true);
   const [defaultSchedule] = useState(() => defaultLaunchSchedule(new Date()));
   const [pickedSchedule, setPickedSchedule] = useState(() =>
     saved?.schedule && saved.schedule.memberActionAt > new Date()
@@ -91,8 +92,9 @@ const SuiteLaunchPanel = ({
   const [acceptedViolations, setAcceptedViolations] = useState<
     ReadonlySet<string>
   >(saved?.acceptedViolations ?? new Set());
-  useEffect(() => {
-    writeLaunchProgress({
+  // Before paint, so blocked storage doesn't flash the "couldn't be read" notice.
+  useLayoutEffect(() => {
+    const written = writeLaunchProgress({
       suiteId: suite.id,
       progress: {
         schedule: pickedSchedule,
@@ -101,6 +103,7 @@ const SuiteLaunchPanel = ({
         acceptedViolations,
       },
     });
+    setSaving(written.ok);
   }, [
     suite.id,
     pickedSchedule,
@@ -220,9 +223,17 @@ const SuiteLaunchPanel = ({
         </button>
         <h2 className="text-lg font-semibold">Launch {suite.name}</h2>
       </div>
-      {!read.ok && (
+      {saving ? (
+        !read.ok && (
+          <p className="text-sm text-yellow-800">
+            {"Saved launch progress couldn't be read, so this starts over."}
+          </p>
+        )
+      ) : (
         <p className="text-sm text-yellow-800">
-          {"Saved launch progress couldn't be read, so this starts over."}
+          {
+            "This browser isn't saving launch progress, so a reload starts over."
+          }
         </p>
       )}
 

@@ -1,5 +1,6 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { expect, it, setSystemTime } from "bun:test";
+import { blockStorage } from "../../lib/testing/blockStorage";
 import {
   api,
   launchButton,
@@ -381,7 +382,22 @@ it("pre-fills the schedule afresh on a later visit when staff left it untouched"
   );
 });
 
-it("says saved progress it can't read starts over", async () => {
+it("says so when the browser won't save progress", async () => {
+  const restore = blockStorage();
+  try {
+    renderPanel();
+    expect(
+      await screen.findByText(
+        "This browser isn't saving launch progress, so a reload starts over.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/couldn't be read/)).toBeNull();
+  } finally {
+    restore();
+  }
+});
+
+it("says saved progress it can't read starts over, without claiming it isn't saving", async () => {
   window.localStorage.setItem("alliance.suiteLaunch.v2.3", "{not json");
   renderPanel();
 
@@ -390,6 +406,7 @@ it("says saved progress it can't read starts over", async () => {
       "Saved launch progress couldn't be read, so this starts over.",
     ),
   ).toBeTruthy();
+  expect(screen.queryByText(/isn't saving launch progress/)).toBeNull();
 });
 
 it("states how long members have to complete their actions", async () => {

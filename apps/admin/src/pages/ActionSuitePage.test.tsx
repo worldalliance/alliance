@@ -111,6 +111,18 @@ it("opens the launch page from the suite and goes back", async () => {
   ).toBeTruthy();
 });
 
+it("says why a suite with an office taking action event can't launch", async () => {
+  suiteLoad = unlaunchedSuite([makeEvent({ newStatus: "office_action" })]);
+  renderPage();
+
+  expect(
+    await screen.findByText(/already has an office taking action event/),
+  ).toBeTruthy();
+  expect(
+    screen.queryByRole("button", { name: "Begin launch process" }),
+  ).toBeNull();
+});
+
 it("offers no launch once the suite has launched", async () => {
   renderPage();
 

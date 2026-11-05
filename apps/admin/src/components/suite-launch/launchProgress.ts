@@ -29,28 +29,32 @@ const storageKey = (suiteId: number) => `alliance.suiteLaunch.v2.${suiteId}`;
 export function readLaunchProgress(
   suiteId: number,
 ): Result<LaunchProgress | null, Error> {
-  const raw = window.localStorage.getItem(storageKey(suiteId));
-  if (raw === null) return R.success(null);
-  const parsed = R.fromThrowable(() =>
-    storedProgressSchema.parse(JSON.parse(raw)),
-  );
-  return R.map(parsed, (stored) => ({
-    schedule: stored.schedule && {
-      memberActionAt: new Date(stored.schedule.memberActionAt),
-      officeActionAt: new Date(stored.schedule.officeActionAt),
+  return R.flatMap(
+    R.fromThrowable(() => window.localStorage.getItem(storageKey(suiteId))),
+    (raw) => {
+      if (raw === null) return R.success(null);
+      const parsed = R.fromThrowable(() =>
+        storedProgressSchema.parse(JSON.parse(raw)),
+      );
+      return R.map(parsed, (stored) => ({
+        schedule: stored.schedule && {
+          memberActionAt: new Date(stored.schedule.memberActionAt),
+          officeActionAt: new Date(stored.schedule.officeActionAt),
+        },
+        readyActionVersions: new Map(stored.readyActionVersions),
+        dismissedKeys: new Set(stored.dismissedKeys),
+        acceptedViolations: new Set(stored.acceptedViolations),
+      }));
     },
-    readyActionVersions: new Map(stored.readyActionVersions),
-    dismissedKeys: new Set(stored.dismissedKeys),
-    acceptedViolations: new Set(stored.acceptedViolations),
-  }));
+  );
 }
 
 export function writeLaunchProgress(params: {
   suiteId: number;
   progress: LaunchProgress;
-}): void {
+}): Result<void, Error> {
   const { suiteId, progress } = params;
-  R.fromThrowable(() =>
+  return R.fromThrowable(() =>
     window.localStorage.setItem(
       storageKey(suiteId),
       JSON.stringify({
@@ -66,6 +70,8 @@ export function writeLaunchProgress(params: {
   );
 }
 
-export function clearLaunchProgress(suiteId: number): void {
-  window.localStorage.removeItem(storageKey(suiteId));
+export function clearLaunchProgress(suiteId: number): Result<void, Error> {
+  return R.fromThrowable(() =>
+    window.localStorage.removeItem(storageKey(suiteId)),
+  );
 }

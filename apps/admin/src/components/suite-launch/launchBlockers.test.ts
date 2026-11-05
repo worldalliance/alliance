@@ -65,7 +65,7 @@ describe("launchBlockers", () => {
         suiteEvents: [{ newStatus: "office_action", date: past }],
       }),
     ).toEqual([
-      "This suite already has an office taking action event. Delete it on the suite page, then launch.",
+      "This suite already has an office taking action event. Delete it from the suite's events, then launch.",
     ]);
   });
 

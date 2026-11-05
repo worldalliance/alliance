@@ -8,6 +8,10 @@ import ActionListCard from "../components/ActionListCard";
 import ActionTimeline from "../components/ActionTimeline";
 import GeneralUpdateCard from "../components/GeneralUpdateCard";
 import ActionRemindersTab from "../components/reminders/ActionRemindersTab";
+import {
+  existingLaunchEvent,
+  hasLaunched,
+} from "../components/suite-launch/launchBlockers";
 import SuiteEventList from "../components/SuiteEventList";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import {
@@ -91,6 +95,8 @@ const ActionSuitePage = () => {
     );
   }
 
+  const launched = hasLaunched(suite.events);
+  const launchRefusal = existingLaunchEvent(suite.events);
   return (
     <div className="p-6 flex flex-col gap-6">
       <ActionTimeline
@@ -100,16 +106,19 @@ const ActionSuitePage = () => {
         className="-m-6 mb-0"
         onReminderClick={handleHighlightReminder}
       />
-      {!suite.events.some((event) => event.newStatus === "member_action") && (
-        <Button
-          color={ButtonColor.Green}
-          size="large"
-          className="w-full text-lg"
-          onClick={() => navigate(`/suites/${suiteId}/launch`)}
-        >
-          Begin launch process
-        </Button>
-      )}
+      {!launched &&
+        (launchRefusal ? (
+          <p className="text-sm text-zinc-500">{launchRefusal}</p>
+        ) : (
+          <Button
+            color={ButtonColor.Green}
+            size="large"
+            className="w-full text-lg"
+            onClick={() => navigate(`/suites/${suiteId}/launch`)}
+          >
+            Begin launch process
+          </Button>
+        ))}
       <SuiteEventList
         addToSuite={addEvent.mutateAsync}
         events={suite.events}

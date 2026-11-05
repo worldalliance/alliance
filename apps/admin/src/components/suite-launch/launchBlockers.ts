@@ -22,15 +22,19 @@ export type LaunchBlocker = { message: string; section: LaunchSection | null };
 const plural = (count: number, one: string, many: string) =>
   `${count} ${pickForCount(count, one, many)}`;
 
+export const hasLaunched = (
+  events: readonly Pick<ActionEventDto, "newStatus">[],
+) => events.some((event) => event.newStatus === "member_action");
+
 /** Why the suite's own events already rule out launching, if they do. */
 export function existingLaunchEvent(
   events: readonly Pick<ActionEventDto, "newStatus">[],
 ): string | null {
-  if (events.some((event) => event.newStatus === "member_action")) {
+  if (hasLaunched(events)) {
     return "This suite already has a members taking action event.";
   }
   if (events.some((event) => event.newStatus === "office_action")) {
-    return "This suite already has an office taking action event. Delete it on the suite page, then launch.";
+    return "This suite already has an office taking action event. Delete it from the suite's events, then launch.";
   }
   return null;
 }
