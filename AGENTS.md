@@ -124,7 +124,7 @@ Operations that can fail (parsing, validation, fallible IO) return `Result<T, E>
 import { R, type Result } from "@alliance/common/result";
 ```
 
-Use the `R.*` helpers (`R.fromPromise`, `R.match`, …) rather than hand-rolling `{ ok, ... }`. Throwing is still right where the framework expects it, e.g. NestJS controllers behind exception filters.
+Use the `R.*` helpers (`R.fromPromise`, `R.match`, …) rather than hand-rolling `{ ok, ... }`. `agents/desktop`, which imports nothing from `common/`, has its own copy in `agents/desktop/src/main/result.ts`; a change to one copy goes in both. Throwing is still right where the framework expects it, e.g. NestJS controllers behind exception filters.
 
 ## UI affordances
 
