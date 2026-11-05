@@ -23,6 +23,7 @@ const renderSubmission = () => {
   const { client, wrapper } = queryWrapper();
   seedActions(client, [makeAction({ id: 1, taskFormId: 7 })]);
   client.setQueryData(queryKeys.myVisibilityContext(), {});
+  client.setQueryData(queryKeys.allianceMemberCount(), 1200);
   client.setQueryData(queryKeys.taskFormAggregateViews(7), []);
   const view = renderHook(() => useTaskFormSubmission(), { wrapper });
   return {
@@ -30,6 +31,8 @@ const renderSubmission = () => {
     cachedRelation: () => actionStore(client).get(1)?.viewer?.relation,
     visibilityInvalidated: () =>
       client.getQueryState(queryKeys.myVisibilityContext())?.isInvalidated,
+    memberCountInvalidated: () =>
+      client.getQueryState(queryKeys.allianceMemberCount())?.isInvalidated,
     aggregateViewsInvalidated: () =>
       client.getQueryState(queryKeys.taskFormAggregateViews(7))?.isInvalidated,
   };
@@ -51,6 +54,7 @@ describe("submit", () => {
     expect(result.response.ok).toBe(true);
     expect(s.cachedRelation()).toBe("completed");
     expect(s.visibilityInvalidated()).toBe(true);
+    expect(s.memberCountInvalidated()).toBe(true);
     expect(s.aggregateViewsInvalidated()).toBe(true);
   });
 
@@ -99,6 +103,7 @@ describe("submit", () => {
     expect(sentToken).toBe("guest-token");
     expect(s.cachedRelation()).toBe("none");
     expect(s.visibilityInvalidated()).toBe(false);
+    expect(s.memberCountInvalidated()).toBe(false);
     expect(s.aggregateViewsInvalidated()).toBe(true);
   });
 
@@ -113,6 +118,7 @@ describe("submit", () => {
     expect(result.response.status).toBe(400);
     expect(s.cachedRelation()).toBe("none");
     expect(s.visibilityInvalidated()).toBe(false);
+    expect(s.memberCountInvalidated()).toBe(false);
     expect(s.aggregateViewsInvalidated()).toBe(false);
   });
   it("returns a guest's refusal through a client that throws on one, touching no cache", async () => {

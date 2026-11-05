@@ -6,6 +6,7 @@ import {
   contractSuspendContract,
   type ContractEventDateDto,
 } from "../client";
+import { useInvalidateAllianceMemberCount } from "./useAllianceMemberCount";
 import { meCache } from "./useMe";
 import { useInvalidateVisibilityContext } from "./useVisibilityContext";
 
@@ -16,6 +17,7 @@ import { useInvalidateVisibilityContext } from "./useVisibilityContext";
 export function useContractSignature() {
   const queryClient = useQueryClient();
   const invalidateVisibilityContext = useInvalidateVisibilityContext();
+  const invalidateMemberCount = useInvalidateAllianceMemberCount();
   return useMemo(() => {
     const me = meCache(queryClient);
     const written = async (
@@ -33,6 +35,7 @@ export function useContractSignature() {
         );
         if (signed.ok) {
           invalidateVisibilityContext();
+          invalidateMemberCount();
           await me.refresh();
         }
         return signed;
@@ -41,9 +44,12 @@ export function useContractSignature() {
         const suspended = await written(
           contractSuspendContract({ throwOnError: true }),
         );
-        if (suspended.ok) await me.refresh();
+        if (suspended.ok) {
+          invalidateMemberCount();
+          await me.refresh();
+        }
         return suspended;
       },
     };
-  }, [queryClient, invalidateVisibilityContext]);
+  }, [queryClient, invalidateVisibilityContext, invalidateMemberCount]);
 }

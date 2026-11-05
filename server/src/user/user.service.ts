@@ -469,10 +469,9 @@ export class UserService {
   }
 
   async signedMembersCount(): Promise<number> {
-    return (
-      await this.userRepository.find({
-        relations: { contractEvents: true },
-      })
-    ).filter((user) => user.hasActiveContract).length;
+    return this.userRepository
+      .createQueryBuilder("u")
+      .where(sqlUserHasActiveContractAt("u.id", "NOW()"))
+      .getCount();
   }
 }

@@ -37,15 +37,23 @@ const setup = () => {
   client.setQueryData(queryKeys.myVisibilityContext(), {
     firstContractSignedAt: null,
   });
+  client.setQueryData(queryKeys.allianceMemberCount(), 1200);
   const { result } = renderHook(() => useContractSignature(), { wrapper });
   const visibilityStale = () =>
     client.getQueryState(queryKeys.myVisibilityContext())?.isInvalidated;
-  return { client, signature: result.current, visibilityStale };
+  const memberCountStale = () =>
+    client.getQueryState(queryKeys.allianceMemberCount())?.isInvalidated;
+  return {
+    client,
+    signature: result.current,
+    visibilityStale,
+    memberCountStale,
+  };
 };
 
 describe("useContractSignature", () => {
-  it("reloads the member and the visibility context after signing", async () => {
-    const { client, signature, visibilityStale } = setup();
+  it("reloads the member, the visibility context and the count after signing", async () => {
+    const { client, signature, visibilityStale, memberCountStale } = setup();
 
     const signed = await signature.sign({ contractId: 2, signedName: "Jane" });
 
@@ -55,21 +63,23 @@ describe("useContractSignature", () => {
       true,
     );
     expect(visibilityStale()).toBe(true);
+    expect(memberCountStale()).toBe(true);
   });
 
-  it("reloads only the member after suspending", async () => {
-    const { signature, visibilityStale } = setup();
+  it("reloads the member and the count, not the visibility context, after suspending", async () => {
+    const { signature, visibilityStale, memberCountStale } = setup();
 
     const suspended = await signature.suspend();
 
     expect(suspended).toEqual({ ok: true, value: { date: DATE } });
     expect(meRequests).toBe(1);
     expect(visibilityStale()).toBe(false);
+    expect(memberCountStale()).toBe(true);
   });
 
   it("leaves the caches alone when the server refuses", async () => {
     refusal = 400;
-    const { signature, visibilityStale } = setup();
+    const { signature, visibilityStale, memberCountStale } = setup();
 
     const signed = await signature.sign({ contractId: 2, signedName: "Jane" });
     const suspended = await signature.suspend();
@@ -78,5 +88,6 @@ describe("useContractSignature", () => {
     expect(suspended.ok).toBe(false);
     expect(meRequests).toBe(0);
     expect(visibilityStale()).toBe(false);
+    expect(memberCountStale()).toBe(false);
   });
 });

@@ -20,6 +20,7 @@ import { invalidateActions, useRecordActionRelation } from "./actionsListPage";
 import { captureException } from "./analytics";
 import { queryKeys } from "./queryKeys";
 import { currentSession } from "./sessionStores";
+import { useInvalidateAllianceMemberCount } from "./useAllianceMemberCount";
 import { useResetHomeFeed } from "./useHomeFeed";
 import { myLocationCache } from "./useMyLocation";
 import { useInvalidateTaskFormAggregateViews } from "./useTaskFormAggregateViews";
@@ -38,6 +39,7 @@ export function useTaskFormSubmission() {
   const recordRelation = useRecordActionRelation();
   const submittedSession = useRef(currentSession(queryClient));
   const invalidateVisibilityContext = useInvalidateVisibilityContext();
+  const invalidateMemberCount = useInvalidateAllianceMemberCount();
   const invalidateAggregateViews = useInvalidateTaskFormAggregateViews();
 
   const submit = useCallback(
@@ -76,6 +78,8 @@ export function useTaskFormSubmission() {
           // Bumped `completedActionCount` (and `firstContractSignedAt` for a
           // contract-signing action).
           invalidateVisibilityContext();
+          // A form with a contract field can add a signed member.
+          invalidateMemberCount();
           // Answers the form auto-extracts can set the member's city.
           void myLocationCache(queryClient).invalidate();
           if (!deferCompletion)
@@ -90,6 +94,7 @@ export function useTaskFormSubmission() {
     },
     [
       invalidateAggregateViews,
+      invalidateMemberCount,
       invalidateVisibilityContext,
       queryClient,
       recordRelation,

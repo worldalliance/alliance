@@ -1,6 +1,7 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { withCount } from "@alliance/common/plural";
 import { ActionActivityDto, ActionDto, ProfileDto } from "../client/types.gen";
+import { useAllianceMemberCount } from "./useAllianceMemberCount";
 
 export interface ActionCompletedBarWithInfoPropsShared {
   action: Pick<
@@ -25,25 +26,61 @@ export const selectCompletedFriends = (
     .filter((activity) => activity.type === ActionActivityType.USER_COMPLETED)
     .map((activity) => activity.user);
 
-export function getCompletedPercentage(
-  action: ActionCompletedBarWithInfoPropsShared["action"],
-) {
-  const value = action.usersCompleted;
-  const threshold = action.usersJoined;
+export interface ActionDisplayCount {
+  count: number | undefined;
+  isError: boolean;
+}
 
-  if (!threshold) {
-    return { labelString: "", percentage: null };
+export function useActionDisplayCount(
+  action: Pick<ActionDto, "onboarding" | "usersCompleted">,
+): ActionDisplayCount {
+  const { data, isError } = useAllianceMemberCount({
+    enabled: action.onboarding,
+  });
+  return action.onboarding
+    ? { count: data, isError }
+    : { count: action.usersCompleted, isError: false };
+}
+
+export function getCompletedPercentage(
+  action: Pick<ActionDto, "onboarding" | "optional" | "usersJoined">,
+  { count, isError }: ActionDisplayCount,
+) {
+  if (count === undefined) {
+    return {
+      labelString: isError ? "Member count unavailable" : "... members",
+      percentage: isError ? 0 : 100,
+      hasDenominator: false,
+    };
   }
 
-  const safeThreshold = Math.max(threshold, value);
+  const threshold = action.onboarding ? count : action.usersJoined;
 
-  const noDenominator = action.optional || action.onboarding;
+  if (!threshold) {
+    return { labelString: "", percentage: null, hasDenominator: false };
+  }
 
-  const labelString = noDenominator
-    ? `${withCount(value, "member")} completed`
-    : `${value} / ${withCount(safeThreshold, "member")} completed`;
+  if (action.onboarding) {
+    return {
+      labelString: withCount(count, "member"),
+      percentage: 100,
+      hasDenominator: false,
+    };
+  }
 
-  const percentage = noDenominator ? 100 : (value / safeThreshold) * 100;
+  if (action.optional) {
+    return {
+      labelString: `${withCount(count, "member")} completed`,
+      percentage: 100,
+      hasDenominator: false,
+    };
+  }
 
-  return { labelString, percentage };
+  const safeThreshold = Math.max(threshold, count);
+
+  return {
+    labelString: `${count} / ${withCount(safeThreshold, "member")} completed`,
+    percentage: (count / safeThreshold) * 100,
+    hasDenominator: true,
+  };
 }

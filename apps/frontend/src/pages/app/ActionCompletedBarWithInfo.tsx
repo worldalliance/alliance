@@ -2,6 +2,7 @@ import {
   ActionCompletedBarWithInfoPropsShared,
   getCompletedPercentage,
   selectCompletedFriends,
+  useActionDisplayCount,
 } from "@alliance/shared/lib/actionCompletedBarWithInfo";
 import { cn } from "@alliance/shared/styles/util";
 import CompletedBar from "@alliance/sharedweb/ui/CompletedBar";
@@ -35,7 +36,10 @@ const ActionCompletedBarWithInfo: React.FC<ActionCompletedBarWithInfoProps> = ({
   barClassName,
   barFillClassName,
 }: ActionCompletedBarWithInfoProps) => {
-  const { labelString, percentage } = getCompletedPercentage(action);
+  const { labelString, percentage, hasDenominator } = getCompletedPercentage(
+    action,
+    useActionDisplayCount(action),
+  );
 
   const completedFriends = useMemo(
     () => selectCompletedFriends(friendActivities),
@@ -53,7 +57,7 @@ const ActionCompletedBarWithInfo: React.FC<ActionCompletedBarWithInfoProps> = ({
           <p className={cn(`text-${textSize}`, `text-${textColor}`)}>
             {labelString}
           </p>
-          {showInfoTooltip && (
+          {showInfoTooltip && hasDenominator && (
             <InfoTooltip
               content={
                 <p>
