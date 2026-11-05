@@ -16,11 +16,13 @@ import {
 } from "lucide-react";
 import React, { useMemo } from "react";
 import type { FormWithSchema } from "../../components/FormResponsesView";
+import { STAFF_TESTING_REQUIREMENTS } from "../../lib/staffTestingGate";
 
 type ReadinessCheckItem = {
   id: string;
   label: string;
   isReady: boolean;
+  required?: boolean;
 };
 
 const countWords = (text: string | null | undefined): number => {
@@ -46,20 +48,14 @@ const ActionReadinessChecklist: React.FC<ActionReadinessChecklistProps> = ({
       return [];
     }
 
-    const trimmedShortDescription = action.shortDescription?.trim() ?? "";
-    const trimmedBody = action.body?.trim() ?? "";
     const partOfSuite = Boolean(action.suite?.id);
     const items: ReadinessCheckItem[] = [
-      {
-        id: "shortDescription",
-        label: "Short description",
-        isReady: trimmedShortDescription.length > 0,
-      },
-      {
-        id: "body",
-        label: "Full body content",
-        isReady: trimmedBody.length > 0,
-      },
+      ...STAFF_TESTING_REQUIREMENTS.map((requirement) => ({
+        id: requirement.id,
+        label: requirement.label,
+        isReady: requirement.isReady(action),
+        required: true,
+      })),
       {
         id: "timeEstimate",
         label: "Time estimate set",
@@ -71,19 +67,9 @@ const ActionReadinessChecklist: React.FC<ActionReadinessChecklistProps> = ({
         isReady: partOfSuite,
       },
       {
-        id: "cohort",
-        label: "Cohort expression set",
-        isReady: !!action.cohortExpression,
-      },
-      {
         id: "authors",
         label: "Action authors set",
         isReady: (action.authors?.length ?? 0) > 0,
-      },
-      {
-        id: "taskForm",
-        label: "Task form linked",
-        isReady: Boolean(action.taskFormId),
       },
       {
         id: "image",
@@ -192,6 +178,11 @@ const ActionReadinessChecklist: React.FC<ActionReadinessChecklistProps> = ({
                 <AlertTriangle className="h-5 w-5 text-yellow-600" />
               )}
               <p className="text-sm font-medium text-gray-900">{item.label}</p>
+              {item.required && (
+                <span className="text-xs text-gray-500">
+                  Required for staff testing
+                </span>
+              )}
             </li>
           ))}
         </ul>

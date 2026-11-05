@@ -4,11 +4,12 @@ import { optionSections } from "@alliance/shared/forms/optionSections";
 import SearchableSelect from "@alliance/sharedweb/forms/SearchableSelect";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Pencil, Plus, Trash2 } from "lucide-react";
 import React, { useId, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { ActionCategoryPicker } from "../components/ActionCategoryIcons";
 import ConfirmDialog from "../components/ConfirmDialog";
+import NewProjectActionDialog from "../components/NewProjectActionDialog";
 import ProjectCardBody, {
   ProjectCounts,
   startedText,
@@ -18,6 +19,7 @@ import { buildProjectCard, isProjectStep } from "../lib/projectCards";
 import {
   useAssignActionProjectAdmin,
   useDeleteProjectAdmin,
+  useStartStaffTestingAdmin,
   useUpdateProjectAdmin,
 } from "../lib/useProjectsAdmin";
 import { ProjectsLoad, useProjectsPageData } from "../lib/useProjectsPageData";
@@ -145,6 +147,13 @@ const ProjectDetailPage: React.FC = () => {
   const toast = useToast();
   const addLabelId = useId();
   const data = useProjectsPageData();
+  const [creating, setCreating] = useState(false);
+  const startStaffTesting = useStartStaffTestingAdmin({
+    onError: (error) =>
+      toast.error(
+        errorMessage({ error, fallback: "Could not start staff testing" }),
+      ),
+  });
   const assign = useAssignActionProjectAdmin({
     onError: (error) =>
       toast.error(
@@ -206,9 +215,23 @@ const ProjectDetailPage: React.FC = () => {
           onRemoveStep={(step) =>
             assign.mutate({ actionId: step.id, projectId: null })
           }
+          onStartStaffTesting={(step) => startStaffTesting.mutate(step.id)}
         />
       </div>
       <div className="flex items-center gap-x-2">
+        <Button
+          color={ButtonColor.Black}
+          onClick={() => setCreating(true)}
+          className="!px-3 !py-1.5 !text-sm gap-x-1"
+        >
+          <Plus size={14} />
+          New action
+        </Button>
+        <NewProjectActionDialog
+          projectId={project.id}
+          open={creating}
+          onClose={() => setCreating(false)}
+        />
         <span id={addLabelId} className="text-sm text-zinc-600">
           Add action
         </span>

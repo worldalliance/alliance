@@ -14,7 +14,8 @@ import {
 } from "class-validator";
 import { OptionalSlugField, slugGiven } from "src/datasources/slug-column";
 import { Project } from "../entities/project.entity";
-import type { ProjectStep, ProjectWithSteps } from "../projects.service";
+import type { ProjectStep } from "../project-steps";
+import type { ProjectWithSteps } from "../projects.service";
 
 export const PROJECT_NAME_MAX_LENGTH = 100;
 

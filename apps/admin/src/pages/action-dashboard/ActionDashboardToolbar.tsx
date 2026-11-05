@@ -5,8 +5,9 @@ import Dropdown from "@alliance/sharedweb/ui/Dropdown";
 import LargeCheckbox from "@alliance/sharedweb/ui/LargeCheckbox";
 import { Copy } from "lucide-react";
 import React from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { ActionProjectControls } from "../../components/ActionProjectControls";
+import { stepPath } from "../../components/ProjectStepRows";
 import { imageUploadingMessage } from "./actionSaveErrors";
 import type { ActionExport } from "./useActionExport";
 
@@ -44,6 +45,14 @@ const ActionDashboardToolbar: React.FC<ActionDashboardToolbarProps> = ({
         actionId={action.id}
         project={action.project ?? null}
       />
+      {action.project && (
+        <Link
+          to={stepPath(action)}
+          className="flex items-center gap-x-1 rounded border border-gray-300 bg-white px-3 text-sm hover:bg-gray-50"
+        >
+          Open in project
+        </Link>
+      )}
       {action.suite !== undefined && (
         <Button
           onClick={() => {

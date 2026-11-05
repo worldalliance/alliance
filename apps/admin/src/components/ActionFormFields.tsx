@@ -205,7 +205,7 @@ const ActionFormFields: React.FC<
         <label
           key={String(f.name)}
           className={cn(
-            "flex items-start gap-3 p-3 rounded-md border cursor-pointer transition-colors",
+            "flex items-start justify-between gap-3 p-3 rounded-md border cursor-pointer transition-colors",
             isChecked
               ? "border-blue-400 bg-blue-50"
               : "border-gray-200 hover:border-gray-300 bg-white",
@@ -213,11 +213,12 @@ const ActionFormFields: React.FC<
         >
           <input
             type="checkbox"
+            role="switch"
             id={String(f.name)}
             name={String(f.name)}
             checked={isChecked}
             onChange={handleChange}
-            className="mt-0.5 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            className="peer sr-only"
           />
           <span className="flex flex-col min-w-0">
             <span className="text-sm font-medium text-gray-900">{f.label}</span>
@@ -225,6 +226,10 @@ const ActionFormFields: React.FC<
               <span className="text-xs text-gray-500 mt-0.5">{f.helpText}</span>
             )}
           </span>
+          <span
+            aria-hidden
+            className="relative mt-0.5 h-5 w-9 shrink-0 rounded-full bg-gray-300 transition-colors peer-checked:bg-blue-600 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-500 peer-focus-visible:ring-offset-2 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-4"
+          />
         </label>
       );
     }

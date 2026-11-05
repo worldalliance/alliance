@@ -18,7 +18,13 @@ import type {
   Relations,
   Repository as TypedRepository,
 } from "src/utils/Repository";
-import { DeepPartial, ILike, In, type Repository } from "typeorm";
+import {
+  DeepPartial,
+  type EntityManager,
+  ILike,
+  In,
+  type Repository,
+} from "typeorm";
 import { UserService } from "../user/user.service";
 import { ActionFormLinksService } from "./action-form-links.service";
 import { dropEchoedImages, rewriteRenderedImages } from "./action-image-input";
@@ -56,6 +62,7 @@ import {
   assertPrerequisitesValid,
 } from "./prerequisite-validation";
 import { shiftPrioritiesAfterInsertion } from "./priority-order";
+import { renameSoleActionSuite } from "./sole-action-suite";
 
 const ACTION_PARENT_GONE = "That suite, author or form is gone";
 
@@ -72,8 +79,6 @@ export class ActionsService {
     private readonly editableContentRepository: TypedRepository<EditableContent>,
     @InjectRepository(GeneralUpdate)
     private readonly generalUpdateRepository: Repository<GeneralUpdate>,
-    @InjectRepository(ActionSuite)
-    private readonly actionSuiteRepository: Repository<ActionSuite>,
     private userService: UserService,
     private readonly cohortResolverService: CohortResolverService,
     private readonly cohortDecisionStaffService: CohortDecisionStaffService,
@@ -99,6 +104,19 @@ export class ActionsService {
   }
 
   async create(createActionDto: CreateActionDto): Promise<ParsedAction> {
+    const saved = await this.insertAction(
+      this.actionRepository.manager,
+      createActionDto,
+    );
+    await this.afterActionInserted(saved);
+    return parseAction(saved);
+  }
+
+  /** Joins `em`'s transaction when one is active; then call `afterActionInserted`. */
+  async insertAction(
+    em: EntityManager,
+    createActionDto: CreateActionDto,
+  ): Promise<Action> {
     const { suiteId, authorIds, reviewers, ...rest } = createActionDto;
     rewriteRenderedImages(rest, this.logger);
     if (rest.cohortExpression != null) {
@@ -116,7 +134,7 @@ export class ActionsService {
     action.events = [];
 
     if (suiteId) {
-      const suite = await this.actionSuiteRepository.findOneOrFail({
+      const suite = await em.findOneOrFail(ActionSuite, {
         where: { id: suiteId },
       });
       action.suite = suite;
@@ -128,7 +146,7 @@ export class ActionsService {
         : [];
     }
 
-    const saved = await writeUnderLive(this.actionRepository.manager, {
+    return writeUnderLive(em, {
       parents: [
         ...(action.suite ? [{ target: ActionSuite, id: action.suite.id }] : []),
         ...(action.authors ?? []).map(({ id }) => ({ target: User, id })),
@@ -157,11 +175,13 @@ export class ActionsService {
       });
       throw error;
     });
+  }
+
+  async afterActionInserted(saved: Action): Promise<void> {
     await shiftPrioritiesAfterInsertion(this.actionRepository.manager);
     await this.generalUpdates.syncGeneralUpdateDatesForSuites([
       saved.suite?.id,
     ]);
-    return parseAction(saved);
   }
 
   async findAll(): Promise<ParsedAction[]> {
@@ -412,6 +432,13 @@ export class ActionsService {
           });
         }
         await em.save(Action, action);
+        if (rest.name !== undefined && suiteId != null) {
+          await renameSoleActionSuite(em, {
+            suiteId,
+            actionId: id,
+            name: rest.name,
+          });
+        }
         if (rest.prerequisiteActionIds !== undefined) {
           await assertPrerequisitesValid({ em, actionIds: [id] });
         }

@@ -97,6 +97,8 @@ import { GeneralUpdatesService } from "./general-updates.service";
 import { GlobalFeedService } from "./global-feed.service";
 import { HomeFeedService } from "./home-feed.service";
 import { MemberActionsService } from "./member-actions.service";
+import { ProjectActionsController } from "./project-actions.controller";
+import { ProjectActionsService } from "./project-actions.service";
 import { ProjectsController } from "./projects.controller";
 import { ProjectsService } from "./projects.service";
 import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
@@ -164,11 +166,13 @@ import { WelcomeQueueService } from "./welcome-queue.service";
     ActionFormsController,
     CohortDecisionsController,
     ProjectsController,
+    ProjectActionsController,
   ],
   providers: [
     ActionsService,
     ActionResponseCountsService,
     ProjectsService,
+    ProjectActionsService,
     ActionFormVariantService,
     ActionsGateway,
     ActionEventNotifWorker,

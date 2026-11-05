@@ -24,7 +24,13 @@ import ActionReminderCard from "./ActionReminderCard";
 import ActionReminderGroupForm from "./ActionReminderGroupForm";
 import { describeGroupSchedule, groupSendStart } from "./groupSchedule";
 import PresetPicker from "./PresetPicker";
-import { ReminderPreset, ReminderPresetName, reminderPresets } from "./presets";
+import {
+  defaultReminderPresetNames,
+  NOTIFY_MANY_MEMBERS_CONFIRMATION,
+  ReminderPreset,
+  ReminderPresetName,
+  reminderPresets,
+} from "./presets";
 import { ActionReminderGroupFormInitialValues } from "./reminderGroupDraft";
 import { ActionReminderGroupFormSubmitPayload } from "./reminderGroupRequest";
 
@@ -32,15 +38,6 @@ interface ActionRemindersTabProps {
   suite: ActionSuiteDto;
   highlightedReminder?: number;
 }
-
-const defaultDeadlinePresets: ReminderPresetName[] = [
-  "Two Day Range",
-  "One Day Range",
-  "Three Hour",
-  "Missed Deadline",
-  "Group Leads 3 days",
-  "Group Leads 2 days",
-];
 
 const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
   suite,
@@ -181,7 +178,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
         confirmLabel: "Create",
         cancelLabel: "Cancel",
         mode: ConfirmMode.Fullscreen,
-        requiredText: `I am going to notify many real members`,
+        requiredText: NOTIFY_MANY_MEMBERS_CONFIRMATION,
       });
       if (!ok) {
         return;
@@ -191,14 +188,10 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
     setCreateError(null);
     setCreateSuccess(null);
     const hasDeadline = deadlineEventOf(selectedEventId) !== null;
-    const presets: ReminderPresetName[] = [
-      "Announcement",
-      ...(hasDeadline ? defaultDeadlinePresets : []),
-    ];
     try {
       await createGroups.mutateAsync({
         eventId: selectedEventId,
-        bodies: presets.map((preset) => ({
+        bodies: defaultReminderPresetNames(hasDeadline).map((preset) => ({
           suiteId: suite.id,
           ...reminderPresets[preset],
         })),

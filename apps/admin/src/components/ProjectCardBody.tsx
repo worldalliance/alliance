@@ -2,6 +2,8 @@ import { format, formatDistanceToNowStrict, isFuture } from "date-fns";
 import { TriangleAlert } from "lucide-react";
 import type { CohortSegment } from "../lib/describeCohortExpression";
 import {
+  COUNT_COLORS,
+  COUNT_LABELS,
   ProjectFlagKind,
   StepCountBucket,
   type ProjectCard,
@@ -10,22 +12,6 @@ import {
 } from "../lib/projectCards";
 import ProjectMiniTimeline from "./ProjectMiniTimeline";
 import ProjectStepRows from "./ProjectStepRows";
-
-const COUNT_LABELS: Record<StepCountBucket, string> = {
-  [StepCountBucket.Live]: "live",
-  [StepCountBucket.Planned]: "planned",
-  [StepCountBucket.Draft]: "draft",
-  [StepCountBucket.WrappingUp]: "wrapping up",
-  [StepCountBucket.Done]: "done",
-};
-
-const COUNT_COLORS: Record<StepCountBucket, string> = {
-  [StepCountBucket.Live]: "bg-purple-100 text-purple-800",
-  [StepCountBucket.Planned]: "bg-blue-100 text-blue-800",
-  [StepCountBucket.Draft]: "bg-zinc-100 text-zinc-700",
-  [StepCountBucket.WrappingUp]: "bg-orange-100 text-orange-800",
-  [StepCountBucket.Done]: "bg-green-100 text-green-800",
-};
 
 const day = (date: Date) => format(date, "MMM d");
 const relative = (date: Date) =>
@@ -70,11 +56,13 @@ const ProjectCardBody = ({
   participantsById,
   detailed,
   onRemoveStep,
+  onStartStaffTesting,
 }: {
   card: ProjectCard;
   participantsById: ReadonlyMap<number, CohortSegment[]>;
   detailed: boolean;
   onRemoveStep?: (step: ProjectStep) => void;
+  onStartStaffTesting?: (step: ProjectStep) => void;
 }) => {
   const completions = card.funnel.reduce((sum, f) => sum + f.completions, 0);
   return (
@@ -105,6 +93,7 @@ const ProjectCardBody = ({
         participantsById={participantsById}
         detailed={detailed}
         onRemove={onRemoveStep}
+        onStartStaffTesting={onStartStaffTesting}
       />
       <div className="flex gap-x-3 border-t border-zinc-100 pt-2 text-xs text-zinc-500">
         <span>

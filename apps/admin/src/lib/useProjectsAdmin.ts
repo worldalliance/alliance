@@ -1,11 +1,18 @@
 import {
+  actionsUpdateAdmin,
+  type AdminActionDto,
   type AdminProjectDto,
+  type CreateProjectActionDto,
+  projectActionsCreateAdmin,
+  projectActionsScheduleReleaseAdmin,
+  projectActionsUnscheduleReleaseAdmin,
   projectsAssignActionAdmin,
   projectsCreateAdmin,
   projectsFindAllAdmin,
   projectsFindOneAdmin,
   projectsRemoveAdmin,
   projectsUpdateAdmin,
+  type ScheduleReleaseDto,
   type UpdateProjectDto,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
@@ -123,5 +130,61 @@ export function useDeleteProjectAdmin(params: {
       await invalidate({ includeDetails: false });
     },
     onError,
+  });
+}
+
+export function useCreateProjectActionAdmin(params: {
+  onSuccess: (created: AdminActionDto) => void;
+}) {
+  const invalidate = useInvalidateProjects();
+  return useMutation({
+    mutationFn: (input: { projectId: number; body: CreateProjectActionDto }) =>
+      projectActionsCreateAdmin({
+        path: { projectId: input.projectId },
+        body: input.body,
+        throwOnError: true,
+      }).then((res) => res.data),
+    onSuccess: (created) => {
+      void invalidate();
+      params.onSuccess(created);
+    },
+  });
+}
+
+export function useActionReleaseAdmin(actionId: number) {
+  const invalidate = useInvalidateProjects();
+  const schedule = useMutation({
+    mutationFn: (body: ScheduleReleaseDto) =>
+      projectActionsScheduleReleaseAdmin({
+        path: { id: actionId },
+        body,
+        throwOnError: true,
+      }),
+    onSuccess: () => invalidate(),
+  });
+  const unschedule = useMutation({
+    mutationFn: () =>
+      projectActionsUnscheduleReleaseAdmin({
+        path: { id: actionId },
+        throwOnError: true,
+      }),
+    onSuccess: () => invalidate(),
+  });
+  return { schedule, unschedule };
+}
+
+export function useStartStaffTestingAdmin(params: {
+  onError: (err: Error) => void;
+}) {
+  const invalidate = useInvalidateProjects();
+  return useMutation({
+    mutationFn: (actionId: number) =>
+      actionsUpdateAdmin({
+        path: { id: actionId },
+        body: { staffPreview: true },
+        throwOnError: true,
+      }),
+    onSuccess: () => invalidate(),
+    onError: params.onError,
   });
 }

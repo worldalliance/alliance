@@ -1,5 +1,8 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import type { ActionFieldDef } from "../lib/actionFieldDefs";
+import {
+  ActionFieldSection,
+  type ActionFieldDef,
+} from "../lib/actionFieldDefs";
 import { createActionForm } from "../lib/testing/createActionForm";
 import ActionFormFields from "./ActionFormFields";
 
@@ -34,16 +37,21 @@ describe("ActionFormFields", () => {
           name: "optional",
           label: "Optional",
           type: "checkbox",
-          section: "settings",
+          section: ActionFieldSection.Completion,
         },
         {
           name: "timeEstimate",
           label: "Time",
           type: "number",
-          section: "settings",
+          section: ActionFieldSection.Completion,
           gridCol: true,
         },
-        { name: "name", label: "Name", type: "text", section: "content" },
+        {
+          name: "name",
+          label: "Name",
+          type: "text",
+          section: ActionFieldSection.Content,
+        },
       ],
     });
 
@@ -61,7 +69,12 @@ describe("ActionFormFields", () => {
   it("forwards edits to onInputChange", () => {
     const onInputChange = renderFields({
       fields: [
-        { name: "name", label: "Name", type: "text", section: "content" },
+        {
+          name: "name",
+          label: "Name",
+          type: "text",
+          section: ActionFieldSection.Content,
+        },
       ],
     });
 
@@ -74,7 +87,12 @@ describe("ActionFormFields", () => {
 
   it("shows the current cover image only when editing", () => {
     const fields: ActionFieldDef[] = [
-      { name: "image", label: "Cover image", type: "file", section: "content" },
+      {
+        name: "image",
+        label: "Cover image",
+        type: "file",
+        section: ActionFieldSection.Content,
+      },
     ];
 
     renderFields({ fields });

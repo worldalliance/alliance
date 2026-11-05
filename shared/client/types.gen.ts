@@ -3737,6 +3737,23 @@ export type AssignProjectDto = {
     projectId: number | null;
 };
 
+export type CreateProjectActionDto = {
+    /**
+     * Name of the action
+     */
+    name: string;
+    /**
+     * Short description shown in cards
+     */
+    shortDescription: string;
+};
+
+export type ScheduleReleaseDto = {
+    launch: CreateActionEventDto;
+    deadline?: CreateActionEventDto | null;
+    reminders: Array<CreateReminderGroupDto>;
+};
+
 export type CreateEditableContentDto = {
     /**
      * Markdown or plain text body
@@ -12355,6 +12372,78 @@ export type ProjectsAssignActionAdminResponses = {
 };
 
 export type ProjectsAssignActionAdminResponse = ProjectsAssignActionAdminResponses[keyof ProjectsAssignActionAdminResponses];
+
+export type ProjectActionsCreateAdminData = {
+    body: CreateProjectActionDto;
+    path: {
+        projectId: number;
+    };
+    query?: never;
+    url: '/projects/{projectId}/actions';
+};
+
+export type ProjectActionsCreateAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ProjectActionsCreateAdminError = ProjectActionsCreateAdminErrors[keyof ProjectActionsCreateAdminErrors];
+
+export type ProjectActionsCreateAdminResponses = {
+    200: AdminActionDto;
+};
+
+export type ProjectActionsCreateAdminResponse = ProjectActionsCreateAdminResponses[keyof ProjectActionsCreateAdminResponses];
+
+export type ProjectActionsUnscheduleReleaseAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/{id}/release';
+};
+
+export type ProjectActionsUnscheduleReleaseAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ProjectActionsUnscheduleReleaseAdminError = ProjectActionsUnscheduleReleaseAdminErrors[keyof ProjectActionsUnscheduleReleaseAdminErrors];
+
+export type ProjectActionsUnscheduleReleaseAdminResponses = {
+    200: AdminActionDto;
+};
+
+export type ProjectActionsUnscheduleReleaseAdminResponse = ProjectActionsUnscheduleReleaseAdminResponses[keyof ProjectActionsUnscheduleReleaseAdminResponses];
+
+export type ProjectActionsScheduleReleaseAdminData = {
+    body: ScheduleReleaseDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/{id}/release';
+};
+
+export type ProjectActionsScheduleReleaseAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ProjectActionsScheduleReleaseAdminError = ProjectActionsScheduleReleaseAdminErrors[keyof ProjectActionsScheduleReleaseAdminErrors];
+
+export type ProjectActionsScheduleReleaseAdminResponses = {
+    200: AdminActionDto;
+};
+
+export type ProjectActionsScheduleReleaseAdminResponse = ProjectActionsScheduleReleaseAdminResponses[keyof ProjectActionsScheduleReleaseAdminResponses];
 
 export type ForumFindAllPostsData = {
     body?: never;

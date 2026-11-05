@@ -17,6 +17,9 @@ import {
 import { CreateReminderGroupDto } from "@alliance/shared/client";
 import { secondsInDay, secondsInHour } from "date-fns/constants";
 
+export const NOTIFY_MANY_MEMBERS_CONFIRMATION =
+  "I am going to notify many real members";
+
 export const presetNames = [
   "Announcement",
   "Catch-up late joiners",
@@ -149,3 +152,19 @@ export const reminderPresets: Record<ReminderPresetName, ReminderPreset> = {
     excludePreviouslyNotified: false,
   },
 };
+
+const DEFAULT_DEADLINE_PRESETS: ReminderPresetName[] = [
+  "Two Day Range",
+  "One Day Range",
+  "Three Hour",
+  "Missed Deadline",
+  "Group Leads 3 days",
+  "Group Leads 2 days",
+];
+
+export const defaultReminderPresetNames = (
+  hasDeadline: boolean,
+): ReminderPresetName[] => [
+  "Announcement",
+  ...(hasDeadline ? DEFAULT_DEADLINE_PRESETS : []),
+];

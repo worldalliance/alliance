@@ -6,6 +6,10 @@ export default [
     layout("sidebar.tsx", [
       route("/projects", "pages/ProjectsPage.tsx"),
       route("/projects/:projectId", "pages/ProjectDetailPage.tsx"),
+      route(
+        "/projects/:projectId/action/:actionId",
+        "pages/ProjectActionPage.tsx",
+      ),
       route("/actions", "pages/Actions.tsx"),
       route("/timeline", "pages/NewTimelinePage.tsx"),
       route("/invite-links", "pages/InviteLinksPage.tsx"),

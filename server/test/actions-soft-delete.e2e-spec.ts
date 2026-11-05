@@ -847,12 +847,12 @@ describe("Action writers under a deleted parent (e2e)", () => {
   it("creates no action in a suite deleted after it loads", async () => {
     const suites = ctx.dataSource.getRepository(ActionSuite);
     const suite = await suites.save(suites.create({ name: "Doomed suite" }));
-    const repo = ctx.app.get<Repository<ActionSuite>>(
-      getRepositoryToken(ActionSuite),
-    );
-    const load = repo.findOneOrFail.bind(repo);
+    const manager = ctx.app.get<Repository<Action>>(
+      getRepositoryToken(Action),
+    ).manager;
+    const load = manager.findOneOrFail.bind(manager);
     jest
-      .spyOn(repo, "findOneOrFail")
+      .spyOn(manager, "findOneOrFail")
       .mockImplementationOnce(
         deleteAfter(load, () => suites.softDelete(suite.id)),
       );

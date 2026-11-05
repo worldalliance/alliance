@@ -41,6 +41,22 @@ export const STEP_COUNT_BUCKET: Record<ActionStatus, StepCountBucket> = {
   abandoned: StepCountBucket.Done,
 };
 
+export const COUNT_LABELS: Record<StepCountBucket, string> = {
+  [StepCountBucket.Live]: "live",
+  [StepCountBucket.Planned]: "planned",
+  [StepCountBucket.Draft]: "draft",
+  [StepCountBucket.WrappingUp]: "wrapping up",
+  [StepCountBucket.Done]: "done",
+};
+
+export const COUNT_COLORS: Record<StepCountBucket, string> = {
+  [StepCountBucket.Live]: "bg-purple-100 text-purple-800",
+  [StepCountBucket.Planned]: "bg-blue-100 text-blue-800",
+  [StepCountBucket.Draft]: "bg-zinc-100 text-zinc-700",
+  [StepCountBucket.WrappingUp]: "bg-orange-100 text-orange-800",
+  [StepCountBucket.Done]: "bg-green-100 text-green-800",
+};
+
 export enum ProjectFlagKind {
   Stuck = "stuck",
   NoUpdate = "no_update",
@@ -71,6 +87,11 @@ export type ProjectStep = Pick<
   | "memberActionStart"
   | "memberActionDeadline"
   | "variantFormIds"
+  | "staffPreview"
+  | "shortDescription"
+  | "body"
+  | "taskFormId"
+  | "cohortExpression"
 >;
 
 export type ProjectFlag = {

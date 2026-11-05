@@ -11,8 +11,12 @@ import { type EntityManager, Repository } from "typeorm";
 import type { ActionCategory } from "./action-category";
 import { Action } from "./entities/action.entity";
 import { Project, PROJECT_SLUG_INDEX } from "./entities/project.entity";
+import {
+  byProjectStepOrder,
+  type ProjectStep,
+  toProjectStep,
+} from "./project-steps";
 
-export type ProjectStep = { action: Action; memberActionAt: Date | null };
 export type ProjectWithSteps = { project: Project; steps: ProjectStep[] };
 
 @Injectable()
@@ -42,16 +46,8 @@ export class ProjectsService {
     if (!project) throw new NotFoundException(`Project ${id} not found`);
 
     const steps = (project.actions ?? [])
-      .map((action) => ({
-        action,
-        memberActionAt: action.memberActionPhase.event?.date ?? null,
-      }))
-      .sort(
-        (a, b) =>
-          (a.memberActionAt?.getTime() ?? Infinity) -
-            (b.memberActionAt?.getTime() ?? Infinity) ||
-          a.action.id - b.action.id,
-      );
+      .map(toProjectStep)
+      .sort(byProjectStepOrder);
     return { project, steps };
   }
 

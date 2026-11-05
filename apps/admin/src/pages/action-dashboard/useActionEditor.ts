@@ -37,6 +37,19 @@ function emptyActionDraft(suiteId: number | undefined): CreateActionDto {
   };
 }
 
+const draftOf = (input: {
+  form: CreateActionDto;
+  reviewerRows: ReviewerRow[];
+  cohortExpression: CohortExpression | null;
+  imageKey: string | null;
+}) =>
+  JSON.stringify({
+    ...input.form,
+    reviewers: input.reviewerRows.map(({ key: _key, ...row }) => row),
+    cohortExpression: input.cohortExpression,
+    imageKey: input.imageKey,
+  });
+
 export function useActionEditor(params: {
   admin: Pick<
     ReturnType<typeof useActionAdmin>,
@@ -77,6 +90,7 @@ export function useActionEditor(params: {
     emptyActionDraft(undefined),
   );
   const [reviewerRows, setReviewerRows] = useState<ReviewerRow[]>([]);
+  const [savedDraft, setSavedDraft] = useState<string | null>(null);
 
   useEffect(() => {
     if (isNew) {
@@ -102,8 +116,28 @@ export function useActionEditor(params: {
       if (!result.ok) {
         setError("Failed to update action form");
         console.error(result.error);
+        return;
       }
+      setSavedDraft(
+        (prev) =>
+          prev && JSON.stringify({ ...JSON.parse(prev), taskFormId: formId }),
+      );
     }
+  };
+
+  const setStaffPreview = async (staffPreview: boolean) => {
+    const result = await R.fromPromise(
+      updateAction({ staffPreview }),
+      logActionError(),
+    );
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setForm((prev) => ({ ...prev, staffPreview }));
+    setSavedDraft(
+      (prev) => prev && JSON.stringify({ ...JSON.parse(prev), staffPreview }),
+    );
   };
 
   // Seed the editable draft state (form fields, reviewers, cohort expression,
@@ -131,17 +165,26 @@ export function useActionEditor(params: {
     const authors = parsedAction.authors ?? [];
     const authorIds = authors.map((user) => user.id);
 
-    setForm({
+    const seededForm = {
       ...formData,
       taskFormId: parsedAction.taskFormId,
       suiteId: suite?.id,
       authorIds,
-    });
-    setReviewerRows(reviewers.map((r) => ({ ...r, key: makeTempId() })));
-
-    setCohortExpression(parsedAction.cohortExpression);
-
+    };
+    const seededRows = reviewers.map((r) => ({ ...r, key: makeTempId() }));
+    const seededCohort = parsedAction.cohortExpression ?? null;
+    setForm(seededForm);
+    setReviewerRows(seededRows);
+    setCohortExpression(seededCohort);
     resetCoverImage(parsedAction.image ?? null);
+    setSavedDraft(
+      draftOf({
+        form: seededForm,
+        reviewerRows: seededRows,
+        cohortExpression: seededCohort,
+        imageKey: null,
+      }),
+    );
   }, [action, actionFetching, seededActionId, resetCoverImage]);
 
   const handleActionCreated = useNavigateToCreatedAction();
@@ -245,16 +288,31 @@ export function useActionEditor(params: {
     } else if (actionId) {
       // The mutation invalidates the action query, so fresh data is
       // refetched before this resolves.
+      const submitted = draftOf({
+        form,
+        reviewerRows,
+        cohortExpression,
+        imageKey,
+      });
       const result = await R.fromPromise(
         updateAction(formData),
         logActionError(),
       );
-      if (!result.ok) setError(result.error);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setSavedDraft(submitted);
     }
   };
 
   return {
     draftSeeded: seededActionId === actionId,
+    dirty:
+      savedDraft !== null &&
+      draftOf({ form, reviewerRows, cohortExpression, imageKey }) !==
+        savedDraft,
+    setStaffPreview,
     form,
     reviewerRows,
     setReviewerRows,
