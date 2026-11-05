@@ -14,6 +14,8 @@ import {
 } from "@alliance/common/env";
 import { isDeployed, NodeEnv } from "@alliance/common/node-env";
 import { type Result } from "@alliance/common/result";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { z } from "zod";
 
 const text = z.string();
@@ -87,6 +89,13 @@ const fields = {
 export type ServerEnvKey = keyof typeof fields;
 export type ServerEnv = z.output<z.ZodObject<typeof fields>>;
 
+// AWS's public CA bundle for RDS in us-west-2, from
+// https://truststore.pki.rds.amazonaws.com/us-west-2/us-west-2-bundle.pem
+const rdsCaBundle = readFileSync(
+  join(__dirname, "rds-us-west-2-bundle.pem"),
+  "utf8",
+);
+
 function committedEnv(nodeEnv: NodeEnv): Partial<Record<ServerEnvKey, string>> {
   const config = deployedConfigFor(nodeEnv);
   if (!config) return {};
@@ -94,6 +103,7 @@ function committedEnv(nodeEnv: NodeEnv): Partial<Record<ServerEnvKey, string>> {
     deployedConfigEnv(config);
   return {
     ...committed,
+    DB_CA_CERT: rdsCaBundle,
     APP_URL: `https://${DOMAIN_NAME}`,
     ALT_APP_URL: `https://${ALT_DOMAIN_NAME}`,
     ADMIN_URL: `https://admin.${DOMAIN_NAME}`,
@@ -150,8 +160,8 @@ export function twilioSignatureEnforcedFor(nodeEnv: NodeEnv): boolean {
   return isDeployed(nodeEnv);
 }
 
-// ADMIN_USER and ADMIN_PASSWORD are in Infisical but the deploy never hands
-// them to the server, which reads them only outside production.
+// ADMIN_USER and ADMIN_PASSWORD are in Infisical but not in the server's
+// parameters, so deployed servers never seed an admin.
 const deployedSet = [
   "APPLE_BUNDLE_ID",
   "APPLE_KEY_ID",
@@ -180,8 +190,9 @@ const deployedSet = [
   "TWILIO_PHONE_NUMBER",
 ] as const satisfies ServerEnvKey[];
 
-// The keys Infisical's `alliance` project or the committed config sets in the
-// matching environment, flags aside; test has no Infisical environment.
+// The keys the committed config or the environment's store sets (Infisical's
+// `alliance` project in development, Parameter Store when deployed), flags
+// aside; test has no store.
 const setFor: Record<NodeEnv, readonly ServerEnvKey[]> = {
   [NodeEnv.Development]: [
     "ADMIN_PASSWORD",
@@ -230,7 +241,7 @@ function conditionallyRequired(config: Partial<ServerEnv>): ServerEnvKey[] {
   if (nodeEnv === undefined) return [...cloudfront];
   return [
     ...setFor[nodeEnv],
-    // The committed config sets the URLs, and the deploy the bucket.
+    // The committed config sets the URLs, and Parameter Store the bucket.
     ...(isDeployed(nodeEnv)
       ? ([
           "APP_URL",

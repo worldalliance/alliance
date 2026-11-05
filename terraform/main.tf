@@ -474,9 +474,7 @@ resource "aws_iam_role_policy" "ec2_s3_policy" {
       Effect   = "Allow"
       Resource = [
         aws_s3_bucket.assets.arn,
-        "${aws_s3_bucket.assets.arn}/*",
-        aws_s3_bucket.dev_assets.arn,
-        "${aws_s3_bucket.dev_assets.arn}/*"
+        "${aws_s3_bucket.assets.arn}/*"
       ]
     }]
   })
