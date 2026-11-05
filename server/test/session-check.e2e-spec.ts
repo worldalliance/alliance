@@ -45,7 +45,6 @@ describe("Session checks (e2e)", () => {
   beforeAll(async () => {
     ctx = await createTestApp([MessagingModule, EventLogModule, TasksModule]);
     userRepo = ctx.dataSource.getRepository(User);
-    await ctx.app.listen(0);
     url = await ctx.app.getUrl();
   }, 50000);
 

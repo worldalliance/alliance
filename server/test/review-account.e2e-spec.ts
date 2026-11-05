@@ -68,7 +68,6 @@ describe("Review accounts (e2e)", () => {
   beforeAll(async () => {
     ctx = await createTestApp([MessagingModule]);
     userRepo = ctx.dataSource.getRepository(User);
-    await ctx.app.listen(0);
     url = await ctx.app.getUrl();
   }, 50000);
 

@@ -40,7 +40,6 @@ describe("Socket gateway auth (e2e)", () => {
 
   beforeAll(async () => {
     ctx = await createTestApp([MessagingModule, EventLogModule]);
-    await ctx.app.listen(0);
     url = await ctx.app.getUrl();
   }, 50000);
 

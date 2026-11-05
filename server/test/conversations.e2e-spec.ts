@@ -65,7 +65,6 @@ describe("ConversationController (e2e)", () => {
 
   beforeAll(async () => {
     ctx = await createTestApp([MessagingModule]);
-    await ctx.app.listen(0);
     userRepo = ctx.dataSource.getRepository(User);
     conversationRepo = ctx.dataSource.getRepository(Conversation);
     participantRepo = ctx.dataSource.getRepository(Participant);
