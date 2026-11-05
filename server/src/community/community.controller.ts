@@ -23,7 +23,10 @@ import { CommunityInviteRequestsService } from "./community-invite-requests.serv
 import { CommunityInvitesService } from "./community-invites.service";
 import { CommunityParticipationService } from "./community-participation.service";
 import { CommunityPlacementService } from "./community-placement.service";
-import { CommunityService } from "./community.service";
+import {
+  COMMUNITY_RECORD_RELATIONS,
+  CommunityService,
+} from "./community.service";
 import {
   CommunityInviteDto,
   CreateCommunityInviteDto,
@@ -48,6 +51,15 @@ export class CommunityController {
     private readonly communityInviteRequestsService: CommunityInviteRequestsService,
     private readonly posthog: PosthogService,
   ) {}
+
+  private async communityRecord(communityId: number): Promise<CommunityDto> {
+    return new CommunityDto(
+      await this.communityService.findOneOrFail(
+        communityId,
+        COMMUNITY_RECORD_RELATIONS,
+      ),
+    );
+  }
 
   @Post("create/admin")
   @UseGuards(AdminGuard)
@@ -78,7 +90,7 @@ export class CommunityController {
         communityId: community.id,
       },
     });
-    return new CommunityDto(community);
+    return this.communityRecord(community.id);
   }
 
   @Get("list")
@@ -116,11 +128,10 @@ export class CommunityController {
     @Request() req: JwtRequest,
     @Param("communityId", ParseIntPipe) communityId: number,
   ): Promise<CommunityDto> {
-    const community =
-      await this.communityParticipationService.joinPublicCommunity(
-        req.user.sub,
-        communityId,
-      );
+    await this.communityParticipationService.joinPublicCommunity(
+      req.user.sub,
+      communityId,
+    );
     this.posthog.capture({
       event: AnalyticsEvent.CommunityJoined,
       distinctId: String(req.user.sub),
@@ -129,7 +140,7 @@ export class CommunityController {
         via: "public",
       },
     });
-    return new CommunityDto(community);
+    return this.communityRecord(communityId);
   }
 
   @Patch(":communityId")
@@ -140,13 +151,12 @@ export class CommunityController {
     @Body() body: UpdateCommunityDto,
     @Request() req: JwtRequest,
   ): Promise<CommunityDto> {
-    return new CommunityDto(
-      await this.communityService.updateCommunity(
-        communityId,
-        body,
-        req.user.sub,
-      ),
+    await this.communityService.updateCommunity(
+      communityId,
+      body,
+      req.user.sub,
     );
+    return this.communityRecord(communityId);
   }
 
   @Post(":communityId/removeMember")
@@ -157,13 +167,12 @@ export class CommunityController {
     @Param("communityId", ParseIntPipe) communityId: number,
     @Body() body: CommunityMemberDto,
   ): Promise<CommunityDto> {
-    return new CommunityDto(
-      await this.communityParticipationService.removeUserFromCommunity({
-        userId: req.user.sub,
-        removeeId: body.userId,
-        communityId,
-      }),
-    );
+    await this.communityParticipationService.removeUserFromCommunity({
+      userId: req.user.sub,
+      removeeId: body.userId,
+      communityId,
+    });
+    return this.communityRecord(communityId);
   }
 
   @Post(":communityId/removeMember/admin")

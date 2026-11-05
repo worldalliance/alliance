@@ -44,6 +44,14 @@ export const COMMUNITY_DEFAULT_RELATIONS: Readonly<Relations<Community>> =
     leaders: true,
   });
 
+/** The responses that feed the client's per-community store (the public and
+ * My Groups lists and the member-facing writes) load members this way, so a
+ * newer response never drops contract events an older one had. */
+export const COMMUNITY_RECORD_RELATIONS = {
+  users: { contractEvents: true },
+  leaders: true,
+} as const satisfies Relations<Community>;
+
 @Injectable()
 export class CommunityService {
   constructor(
@@ -118,10 +126,7 @@ export class CommunityService {
 
   async findAllCommunities(): Promise<Community[]> {
     const communities = await this.communityRepository.find({
-      relations: {
-        ...COMMUNITY_DEFAULT_RELATIONS,
-        users: { contractEvents: true } as const,
-      },
+      relations: COMMUNITY_RECORD_RELATIONS,
     });
     return communities.sort((a, b) => a.name.localeCompare(b.name));
   }
@@ -131,7 +136,7 @@ export class CommunityService {
       where: {
         public: true,
       },
-      relations: COMMUNITY_DEFAULT_RELATIONS,
+      relations: COMMUNITY_RECORD_RELATIONS,
     });
     return communities.sort((a, b) => a.name.localeCompare(b.name));
   }
@@ -140,7 +145,7 @@ export class CommunityService {
     communityId: number,
     body: UpdateCommunityDto,
     userId: number,
-  ): Promise<Community> {
+  ): Promise<void> {
     const user = await this.userRepository.findOneOrFail({
       where: { id: userId },
     });
@@ -182,7 +187,6 @@ export class CommunityService {
     await this.communityConversationService.syncCommunityConversationMembers(
       communityId,
     );
-    return community;
   }
 
   async deleteCommunity(userId: number, communityId: number): Promise<void> {
@@ -226,12 +230,7 @@ export class CommunityService {
         id: userId,
       },
       relations: {
-        communities: {
-          users: {
-            contractEvents: true,
-          },
-          leaders: true,
-        },
+        communities: COMMUNITY_RECORD_RELATIONS,
       },
     });
     function leaderKey(community: Community) {

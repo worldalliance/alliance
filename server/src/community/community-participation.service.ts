@@ -45,7 +45,7 @@ export class CommunityParticipationService {
   async joinPublicCommunity(
     userId: number,
     communityId: number,
-  ): Promise<Community> {
+  ): Promise<void> {
     const community = await this.communityRepository.findOneOrFail({
       where: {
         id: communityId,
@@ -93,15 +93,13 @@ export class CommunityParticipationService {
       ),
       this.communityMembershipService.leaveOtherCommunitiesOnJoin(user),
     ]);
-
-    return { ...community, users: [...loadedCommunityUsers(community), user] };
   }
 
   async removeUserFromCommunity(params: {
     userId: number;
     removeeId: number;
     communityId: number;
-  }) {
+  }): Promise<void> {
     const { userId, removeeId, communityId } = params;
 
     const user = await this.userRepository.findOneOrFail({
@@ -123,7 +121,7 @@ export class CommunityParticipationService {
       }),
     ]);
 
-    const updatedCommunityP =
+    const removal =
       this.communityMembershipService.removeUserFromCommunityAndRefreshConversation(
         {
           user: removee,
@@ -165,12 +163,7 @@ export class CommunityParticipationService {
       }),
       associatedUsers: [user],
     };
-    const [updatedCommunity] = await Promise.all([
-      updatedCommunityP,
-      this.notifsService.sendNotif(notif),
-    ]);
-
-    return updatedCommunity;
+    await Promise.all([removal, this.notifsService.sendNotif(notif)]);
   }
 
   async removeUserFromCommunityAdmin(
