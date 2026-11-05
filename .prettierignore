@@ -24,6 +24,8 @@ apps/mobile/android
 # Tool-managed, and only listed in a nested .gitignore, which Prettier doesn't read
 .react-router
 expo-env.d.ts
+agents/desktop/out
+agents/desktop/test-results
 
 # Consumed verbatim by external tooling, or a data blob with no reason to reflow
 apps/mobile/google-services-dev.json
