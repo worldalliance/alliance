@@ -159,6 +159,8 @@ export function useActionEditor(params: {
       suite,
       reviewers,
       followUpForms: _followUpForms,
+      // Saved inline on its own; a stale copy here would undo that save.
+      slug: _slug,
       ...formData
     } = parsedAction;
 

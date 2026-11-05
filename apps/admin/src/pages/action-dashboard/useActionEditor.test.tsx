@@ -75,4 +75,15 @@ describe("useActionEditor", () => {
       }),
     );
   });
+
+  it("leaves the slug, which saves inline, out of the details form's save", async () => {
+    const { result, updateAction } = renderEditor();
+    await waitFor(() => expect(result.current.draftSeeded).toBe(true));
+
+    act(() => result.current.handleCohortExpressionChange(allMembers));
+    await act(() => result.current.handleSubmit(submitEvent));
+    expect(updateAction).toHaveBeenLastCalledWith(
+      expect.not.objectContaining({ slug: expect.anything() }),
+    );
+  });
 });
