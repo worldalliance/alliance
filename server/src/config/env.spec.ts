@@ -150,6 +150,7 @@ describe("validateServerEnv", () => {
   });
 
   const committed = new Set([
+    "DB_CA_CERT",
     "DB_NAME",
     "DB_PORT",
     "SEND_DEV_NOTIFS",
@@ -299,6 +300,7 @@ describe("env", () => {
       committed.WAITLIST_PUBLIC_MAIL_DAILY_CAP,
     );
     expect(env("APPLE_BUNDLE_ID")).toEqual(committed.APPLE_BUNDLE_ID);
+    expect(env("DB_CA_CERT")).toStartWith("-----BEGIN CERTIFICATE-----");
     process.env.DB_NAME = "alliance_sync";
     expect(env("DB_NAME")).toBe("alliance_sync");
     process.env.NODE_ENV = "development";

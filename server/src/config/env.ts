@@ -14,6 +14,8 @@ import {
 } from "@alliance/common/env";
 import { isDeployed, NodeEnv } from "@alliance/common/node-env";
 import { type Result } from "@alliance/common/result";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { z } from "zod";
 
 const text = z.string();
@@ -87,6 +89,13 @@ const fields = {
 export type ServerEnvKey = keyof typeof fields;
 export type ServerEnv = z.output<z.ZodObject<typeof fields>>;
 
+// AWS's public CA bundle for RDS in us-west-2, from
+// https://truststore.pki.rds.amazonaws.com/us-west-2/us-west-2-bundle.pem
+const rdsCaBundle = readFileSync(
+  join(__dirname, "rds-us-west-2-bundle.pem"),
+  "utf8",
+);
+
 function committedEnv(nodeEnv: NodeEnv): Partial<Record<ServerEnvKey, string>> {
   const config = deployedConfigFor(nodeEnv);
   if (!config) return {};
@@ -94,6 +103,7 @@ function committedEnv(nodeEnv: NodeEnv): Partial<Record<ServerEnvKey, string>> {
     deployedConfigEnv(config);
   return {
     ...committed,
+    DB_CA_CERT: rdsCaBundle,
     APP_URL: `https://${DOMAIN_NAME}`,
     ALT_APP_URL: `https://${ALT_DOMAIN_NAME}`,
     ADMIN_URL: `https://admin.${DOMAIN_NAME}`,

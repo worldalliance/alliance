@@ -81,12 +81,6 @@ skipping this one."
   exit 0
 fi
 
-DB_CA_FILE=/home/ec2-user/db-ca.pem
-if [ ! -s "$DB_CA_FILE" ]; then
-  abort_before_start "${DB_CA_FILE} is missing or empty; the backend deploy \
-writes it from DB_CA_CERT."
-fi
-
 # cleanup reads paths built further down, so it can't be the trap yet. This one
 # reports a db-sync.env that loads but doesn't hold what the sync needs.
 report_startup_failure() {
@@ -236,7 +230,6 @@ unlocked env -C /home/ec2-user/nest-backend/server \
   DB_NAME="$SCRATCH_DB" \
   DB_USERNAME="$STAGING_DB_USER" \
   DB_PASSWORD="$STAGING_DB_PASSWORD" \
-  DB_CA_CERT="$(cat "$DB_CA_FILE")" \
   /home/ec2-user/.bun/bin/bunx typeorm-ts-node-commonjs \
   --dataSource src/datasources/dataSource.ts migration:run
 

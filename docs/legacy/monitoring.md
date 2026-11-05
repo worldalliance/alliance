@@ -177,7 +177,7 @@ For node-exporter, we need to update `prometheus.yml` on the monitoring instance
 
 `scripts/sync_prod_to_staging.sh` runs nightly from cron on the staging host, and the backend deploy reinstalls it as `~/sync_prod_to_staging.sh` on every non-production branch. It reports each run twice, to Slack and to a dead man's switch.
 
-Before swapping the copy in, it runs the migrations of the backend deployed at `~/nest-backend/server` against it, since prod's schema lags staging's code. That connects with the CA in `~/db-ca.pem`, which the deploy writes from `DB_CA_CERT`. From that migration through the swap it holds `~/migrate.lock`, which the backend deploy holds from replacing `~/nest-backend` until the new code passes its health check or rolls back, so a deploy can't migrate the database the swap drops.
+Before swapping the copy in, it runs the migrations of the backend deployed at `~/nest-backend/server` against it, since prod's schema lags staging's code. From that migration through the swap it holds `~/migrate.lock`, which the backend deploy holds from replacing `~/nest-backend` until the new code passes its health check or rolls back, so a deploy can't migrate the database the swap drops.
 
 Slack covers the runs that live long enough to post. The switch covers the ones that don't: a SIGKILL, a dead host, a cron that never fires, a `db-sync.env` that won't source. All of those send nothing, and the check alerts on the ping that never arrives.
 
