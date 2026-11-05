@@ -20,15 +20,11 @@ const FloatingChatPanel = ({
 
   const { messages: convoMessages, sendMessage } = useLiveConvoMessages(
     conversation?.id ?? null,
-    {
-      onIncomingMessage: () => {},
-      onConversationUpdated: storeConversation,
-    },
   );
 
   useEffect(() => {
     if (conversation?.id) {
-      markRead(conversation.id);
+      void markRead(conversation.id);
     }
   }, [conversation?.id, markRead]);
 

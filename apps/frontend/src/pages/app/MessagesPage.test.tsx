@@ -1,6 +1,5 @@
 import { R } from "@alliance/common/result";
 import type { ConversationDto, ProfileDto } from "@alliance/shared/client";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { retryUnlessRefused } from "@alliance/shared/lib/retryQuery";
 import {
   makeConversation,
@@ -8,6 +7,7 @@ import {
   makeParticipant,
 } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
+import { seedConversations } from "@alliance/shared/lib/testing/seedConversations";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { useMyConversations } from "@alliance/shared/lib/useMyConversations";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -35,7 +35,8 @@ const ALAN: ProfileDto = { ...GRACE, id: 3, displayName: "Alan" };
 
 const conversationsHook = (conversations: ConversationDto[]) => ({
   conversations,
-  setConversations: () => {},
+  storeConversation: () => {},
+  storeLastMessage: () => {},
   loading: false,
   reloadFailed: false,
   refreshConversations: async () => {},
@@ -80,7 +81,11 @@ serveApi(
       Response.json(answered),
     "POST /messaging/conversations/:conversationId/read": ({ params }) => {
       markedRead.push(params.conversationId);
-      return new Response(null, { status: 201 });
+      return Response.json(
+        [...listed, answered].find(
+          (conversation) => conversation?.id === Number(params.conversationId),
+        ),
+      );
     },
   }),
 );
@@ -109,7 +114,7 @@ const renderPage = (
 ) => {
   const { wrapper: QueryWrapper, client } = queryWrapper(queries);
   if (cachedConversations) {
-    client.setQueryData(queryKeys.myConversations(), cachedConversations);
+    seedConversations(client, cachedConversations);
   }
   render(
     <QueryWrapper>

@@ -1,54 +1,42 @@
-import {
-  skipToken,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
-import {
-  conversationGetCommunityConversations,
-  conversationMarkRead,
-  type ConversationDto,
-} from "../client";
+import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
+import { conversationGetCommunityConversations } from "../client";
+import { conversationStore, selectConversation } from "./conversationStore";
 import { queryKeys } from "./queryKeys";
+import { useMyConversations } from "./useMyConversations";
+import { useStoreState } from "./useStoreState";
 
-/** A group's chat. `storeConversation` and `markRead` drop a result for any
- * conversation other than the one cached for the group, such as one that lands
- * after the group changed. */
+/** A group's chat, read from the same record as the viewer's list. */
 export function useCommunityConversation(communityId: number | null) {
-  const queryClient = useQueryClient();
-  const queryKey = queryKeys.communityConversation(communityId);
-
+  const store = conversationStore(useQueryClient());
+  const state = useStoreState(conversationStore);
+  const select = useCallback(
+    (id: number) => selectConversation(state, id),
+    [state],
+  );
   const { data: conversation, isPending } = useQuery({
-    queryKey,
+    queryKey: queryKeys.communityConversation(communityId),
     queryFn:
       communityId === null
         ? skipToken
-        : () =>
-            conversationGetCommunityConversations({
-              path: { communityId },
-              throwOnError: true,
-            }).then((res) => res.data),
+        : async ({ signal }) => {
+            const [loaded] = await store.load({
+              signal,
+              fetch: () =>
+                conversationGetCommunityConversations({
+                  path: { communityId },
+                  throwOnError: true,
+                  signal,
+                }).then(({ data }) => ({
+                  conversations: [data],
+                  isViewerList: false,
+                })),
+            });
+            return loaded.id;
+          },
+    select,
   });
-
-  const storeConversation = async (updated: ConversationDto) => {
-    if (
-      queryClient.getQueryData<ConversationDto>(queryKey)?.id !== updated.id
-    ) {
-      return;
-    }
-    // A refetch in flight would land an older copy over the update.
-    await queryClient.cancelQueries({ queryKey });
-    queryClient.setQueryData(queryKey, updated);
-  };
-
-  const { mutate: markRead } = useMutation({
-    mutationFn: (conversationId: number) =>
-      conversationMarkRead({
-        path: { conversationId },
-        throwOnError: true,
-      }).then((res) => res.data),
-    onSuccess: storeConversation,
-  });
+  const { storeConversation, markRead } = useMyConversations({ load: false });
 
   return { conversation, isPending, storeConversation, markRead };
 }

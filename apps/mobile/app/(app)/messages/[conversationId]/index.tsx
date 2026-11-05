@@ -1,9 +1,5 @@
 import { withCount } from "@alliance/common/plural";
-import {
-  ConversationDto,
-  MessageDto,
-  ProfileDto,
-} from "@alliance/shared/client";
+import { ProfileDto } from "@alliance/shared/client";
 import { getParticipantState } from "@alliance/shared/lib/conversations";
 import { LegendList, LegendListRef } from "@legendapp/list";
 import { milliseconds } from "date-fns";
@@ -23,8 +19,6 @@ import BackButton from "../../../../components/system/BackButton";
 import Text, { FontWeight } from "../../../../components/system/Text";
 import { useAuth } from "../../../../lib/AuthContext";
 import {
-  mergeConversationUpdate,
-  updateConversationsForLastMessage,
   useConversations,
   useLiveConvoMessages,
 } from "../../../../lib/messages";
@@ -48,7 +42,7 @@ export default function ConversationScreen() {
   const { user } = useAuth();
   const {
     conversations,
-    setConversations,
+    storeConversation,
     loading,
     acceptInvite,
     declineInvite,
@@ -62,31 +56,8 @@ export default function ConversationScreen() {
     [conversations, convoId],
   );
 
-  const handleConversationUpdated = useCallback(
-    (updatedConversation: ConversationDto) => {
-      setConversations((prev) =>
-        mergeConversationUpdate(prev, updatedConversation),
-      );
-    },
-    [setConversations],
-  );
-
-  const handleIncomingMessage = useCallback(
-    (incoming: MessageDto) => {
-      setConversations((prev) =>
-        updateConversationsForLastMessage(prev, incoming),
-      );
-    },
-    [setConversations],
-  );
-
-  const { messages: convoMessages, sendMessage } = useLiveConvoMessages(
-    convoId,
-    {
-      onIncomingMessage: handleIncomingMessage,
-      onConversationUpdated: handleConversationUpdated,
-    },
-  );
+  const { messages: convoMessages, sendMessage } =
+    useLiveConvoMessages(convoId);
 
   const [message, setMessage] = useState("");
   const [attachments, setAttachments] = useState<string[]>([]);
@@ -186,7 +157,7 @@ export default function ConversationScreen() {
       return;
     }
     if (amInvited) {
-      handleConversationUpdated({
+      storeConversation({
         ...selectedConvo,
         participants: selectedConvo.participants.map((participant) =>
           participant.user.id === user?.id
@@ -198,7 +169,7 @@ export default function ConversationScreen() {
   }, [
     amInvited,
     attachments,
-    handleConversationUpdated,
+    storeConversation,
     isSending,
     message,
     replyingTo,
