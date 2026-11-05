@@ -112,3 +112,8 @@ output "agent_chats_secret_access_key" {
   value     = aws_iam_access_key.agent_chats.secret
   sensitive = true
 }
+
+output "deploy_artifacts_bucket_name" {
+  description = "S3 bucket the deploy hands build artifacts to the hosts through"
+  value       = aws_s3_bucket.deploy_artifacts.bucket
+}

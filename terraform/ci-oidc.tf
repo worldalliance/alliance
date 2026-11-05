@@ -75,6 +75,23 @@ locals {
       parameters           = concat(local.ci_shared_parameters, local.ci_deploy_parameters, ["ci/visual-regression/SLACK_BOT_TOKEN"])
       max_session_duration = 3600
     }
+    # Run Command is a root shell on the host, so only deploy.yaml's jobs
+    # deploying to a host can assume these. run-on-host polls for over two
+    # hours on one session.
+    staging-hosts = {
+      test                 = "StringEquals"
+      trust                = { "${local.github_sub_prefix}:environment:staging-hosts" = ["refs/heads/main"] }
+      workflows            = { "${local.github_sub_prefix}:environment:staging-hosts" = "${local.github_repo}/.github/workflows/deploy.yaml@refs/heads/main" }
+      parameters           = []
+      max_session_duration = 10800
+    }
+    production-hosts = {
+      test                 = "StringEquals"
+      trust                = { "${local.github_sub_prefix}:environment:production-hosts" = ["refs/heads/production"] }
+      workflows            = { "${local.github_sub_prefix}:environment:production-hosts" = "${local.github_repo}/.github/workflows/deploy.yaml@refs/heads/production" }
+      parameters           = []
+      max_session_duration = 10800
+    }
   }
 }
 
@@ -145,7 +162,7 @@ resource "aws_iam_role" "ci" {
 # By name, so a parameter added later under the same prefix stays unreadable
 # until it is granted here.
 resource "aws_iam_role_policy" "ci_parameters" {
-  for_each = local.ci_roles
+  for_each = { for k, v in local.ci_roles : k => v if length(v.parameters) > 0 }
 
   name = "ci-parameters-read"
   role = aws_iam_role.ci[each.key].id
@@ -186,4 +203,49 @@ resource "aws_iam_role_policy" "ci_storage" {
   name   = "ci-storage"
   role   = aws_iam_role.ci[each.key].id
   policy = data.aws_iam_policy_document.ci_storage_policy.json
+}
+
+resource "aws_iam_role_policy" "ci_deploy" {
+  for_each = local.deploy_hosts
+
+  name = "ci-deploy"
+  role = aws_iam_role.ci["${each.key}-hosts"].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "DeployArtifacts"
+        Action   = ["s3:PutObject", "s3:GetObject"]
+        Effect   = "Allow"
+        Resource = ["${aws_s3_bucket.deploy_artifacts.arn}/${each.key}/*"]
+      },
+      {
+        Sid       = "ListDeployOutput"
+        Action    = ["s3:ListBucket"]
+        Effect    = "Allow"
+        Resource  = [aws_s3_bucket.deploy_artifacts.arn]
+        Condition = { StringLike = { "s3:prefix" = ["${each.key}/*"] } }
+      },
+      {
+        Sid    = "RunOnHost"
+        Action = ["ssm:SendCommand"]
+        Effect = "Allow"
+        # IAM may check the output bucket too: the service authorization
+        # reference lists it among SendCommand's resources.
+        Resource = [
+          each.value.instance,
+          "arn:aws:ssm:us-west-2::document/AWS-RunShellScript",
+          aws_s3_bucket.deploy_artifacts.arn,
+        ]
+      },
+      {
+        # GetCommandInvocation has no resource-level permissions.
+        Sid      = "ReadCommandResult"
+        Action   = ["ssm:GetCommandInvocation"]
+        Effect   = "Allow"
+        Resource = ["*"]
+      },
+    ]
+  })
 }
