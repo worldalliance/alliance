@@ -23,8 +23,8 @@ jobs:
         with:
           check: ${{ github.ref_name == 'production' && 'empty' || 'exists' }}
 
-  # An artifact, not job outputs: the backend deploy ships the file itself, and
-  # Actions drops a job output that matches any secret's value.
+  # An artifact, not job outputs: Actions drops a job output that matches any
+  # secret's value.
   deployed-config:
     runs-on: ubuntu-latest
     steps:
@@ -720,16 +720,11 @@ jobs:
 
   deploy-nest-backend:
     runs-on: ubuntu-latest
-    needs:
-      - deployed-config
-      - checks
+    needs: checks
     environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
-      - name: Download deployed config
-        uses: ./.github/actions/deployed-config
 
       - name: Zip backend deploy workspace
         run: |
@@ -745,7 +740,6 @@ jobs:
             server/src \
             server/migrations \
             server/scripts \
-            deployed-config.env \
             scripts/deploy_backend.sh \
             scripts/secrets_run.sh \
             scripts/sync_prod_to_staging.sh \
@@ -803,24 +797,6 @@ jobs:
             cd ~/
 
             export NODE_ENV=${{ github.ref_name == 'production' && 'production' || 'staging' }}
-            # BACKCOMPAT(ALL-2011): a rollback restarts the previous release in
-            # this shell, and a release from before the server's committed-config
-            # fallback needs these exported. Remove once each environment's
-            # running release has that fallback.
-            deployed_config=$(unzip -p ~/nest-build.zip deployed-config.env) || { echo "could not extract deployed-config.env"; exit 1; }
-            while IFS='=' read -r key value; do
-              export "$key=$value"
-            done <<< "$deployed_config"
-            export APP_URL="https://$DOMAIN_NAME"
-            export ALT_APP_URL="https://$ALT_DOMAIN_NAME"
-            export ADMIN_URL="https://admin.$DOMAIN_NAME"
-            export ALT_ADMIN_URL="https://admin.$ALT_DOMAIN_NAME"
-            # BACKCOMPAT(ALL-1963): a rollback restarts the previous release in
-            # this shell, and a release from before the server read the committed
-            # RDS CA bundle needs DB_CA_CERT exported. Remove once each
-            # environment's running release reads the bundle.
-            DB_CA_CERT=$(unzip -p ~/nest-build.zip server/src/config/rds-us-west-2-bundle.pem) || { echo "could not extract the RDS CA bundle"; exit 1; }
-            export DB_CA_CERT
 
             # In memory, so a later deploy can't rewrite the file under a run still going.
             deploy_backend=$(unzip -p ~/nest-build.zip scripts/deploy_backend.sh) || { echo "could not extract deploy_backend.sh"; exit 1; }

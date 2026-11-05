@@ -37,7 +37,7 @@ Run by `deploy.yaml` on the backend host, not locally. Swaps `~/nest-build.zip` 
 Run on the backend host, not locally; the deploy installs it as `~/secrets_run.sh`. Runs the command with the parameters under `/alliance/<env>/server/` in AWS SSM Parameter Store as env vars, `<env>` picked by `NODE_ENV`, read with the host's instance role. Setup, rotation and running without Parameter Store: `docs/backend-secrets.md`.
 
 `deployed-config.ts <staging|production>`
-Prints that environment's committed config from `common/src/deployed-config.ts` as `KEY=value` lines, the env strings the server parses, for the deploy workflow.
+Prints the values from `common/src/deployed-config.ts` the deploy workflow's web build and verification jobs read, as `KEY=value` lines for `GITHUB_OUTPUT`.
 
 ## Other
 

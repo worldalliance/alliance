@@ -8,7 +8,7 @@
 
 ## An environment value overrides the committed one
 
-`envWithFallback` in `common/src/env.ts` layers a set environment value over the committed one; a blank value falls through, matching how ALL-1961 reads blanks as unset. `scripts/sync_prod_to_staging.sh` runs migrations with `NODE_ENV=staging` and `DB_NAME` pointed at a scratch database; with committed values winning, it would migrate the live staging database instead. Environment over config file is also the common layering (12-factor config, Vite's own `.env` handling). The backend deploy exports the committed values themselves, so a deploy overrides nothing.
+`envWithFallback` in `common/src/env.ts` layers a set environment value over the committed one; a blank value falls through, matching how ALL-1961 reads blanks as unset. `scripts/sync_prod_to_staging.sh` runs migrations with `NODE_ENV=staging` and `DB_NAME` pointed at a scratch database; with committed values winning, it would migrate the live staging database instead. Environment over config file is also the common layering (12-factor config, Vite's own `.env` handling). The backend deploy exports none of the committed values, so a deploy overrides nothing.
 
 ## What moved and what didn't
 
@@ -20,11 +20,11 @@
 
 ## How the workflow reads it
 
-A `deployed-config` job runs `scripts/deployed-config.ts` into a `deployed-config.env` artifact of `KEY=value` lines. Each job that needs it calls the `.github/actions/deployed-config` composite action, which downloads it and reads its lines into step outputs; `deploy-nest-backend` ships it to the host inside `nest-build.zip`. One job rather than a step per job, since seven jobs read it and only one needs `bun install`. An artifact rather than job outputs: the backend deploy needs the file itself, and Actions drops a job output that holds the value of any secret in scope, environment- or repo-level, and the repo-level `RDS_PORT` is `5432`, the committed `DB_PORT`; another repo-level secret, such as `RDS_USERNAME`, could match part of a domain. A step output is only masked in logs. Tests in `scripts/deployed-config.test.ts` fail on any reference under `.github` to the `vars` context, whole-object reads such as `toJSON(vars)` included, or any read of a secret the config replaced, in dot or index syntax, so the old path can't grow back, and on an action output naming a key the script doesn't print, which would otherwise read as empty.
+A `deployed-config` job runs `scripts/deployed-config.ts` into a `deployed-config.env` artifact of `KEY=value` lines. Each job that needs it calls the `.github/actions/deployed-config` composite action, which downloads it and reads its lines into step outputs; the host doesn't need it, since the server reads the committed config itself. One job rather than a step per job, since seven jobs read it and only one needs `bun install`. An artifact rather than job outputs: Actions drops a job output that holds the value of any secret in scope, environment- or repo-level, and the repo-level `RDS_PORT` is `5432`, the committed `DB_PORT`; another repo-level secret, such as `RDS_USERNAME`, could match part of a domain. A step output is only masked in logs. Tests in `scripts/deployed-config.test.ts` fail on any reference under `.github` to the `vars` context, whole-object reads such as `toJSON(vars)` included, or any read of a secret the config replaced, in dot or index syntax, so the old path can't grow back, and on an action output naming a key the script doesn't print, which would otherwise read as empty.
 
-## The backend deploy keeps exporting the committed keys, for now
+## The backend deploy exports only NODE_ENV
 
-`scripts/deploy_backend.sh` rolls a failed release back by restarting the previous one in the deploy's shell. On each environment's first deploy of this change that release predates the server's committed-config fallback, and its startup check fails without the committed keys exported. So `deploy-nest-backend` exports every line of `deployed-config.env`, plus the four URLs derived from the domains, under `BACKCOMPAT(ALL-2011)`: the deploy reads no GitHub variable for them, and the old release can still start. ALL-2011 removes the exports once each environment runs a release with the fallback.
+`scripts/deploy_backend.sh` rolls a failed release back by restarting the previous one in the deploy's shell. Until each environment ran a release with the server's committed-config fallback, that previous release needed the committed keys exported, so `deploy-nest-backend` exported every line of `deployed-config.env` and the four URLs under `BACKCOMPAT(ALL-2011)`. ALL-2011 removed those exports once staging and production both ran such a release.
 
 ## The web build defines its values from the committed config
 
