@@ -4,6 +4,7 @@ import {
 } from "src/actions/entities/action-update.entity";
 import { Action, VisibilityMode } from "src/actions/entities/action.entity";
 import request from "supertest";
+import { UnsplitCollectiveResultToNonCompleters1793827479825 } from "../migrations/1793827479825-UnsplitCollectiveResultToNonCompleters";
 import { createTestApp, type TestContext } from "./e2e-test-utils";
 
 describe("action update split guard (e2e)", () => {
@@ -169,6 +170,57 @@ describe("action update split guard (e2e)", () => {
     expect(saved.body).toMatchObject({
       splitCollectiveResult: true,
       uninvolvedResult: "without you",
+    });
+  });
+
+  it("carries unsplit rows' collective result over to non-completers", async () => {
+    const repo = ctx.dataSource.getRepository(ActionUpdate);
+    const unsplitRow = async (
+      fields: Partial<
+        Pick<
+          ActionUpdate,
+          "shortNotifString" | "nonCompleterResult" | "notificationMode"
+        >
+      >,
+    ) => {
+      const id = await createUpdate({ nonCompleterResult: "split text" });
+      await repo.update(id, { splitCollectiveResult: false, ...fields });
+      return id;
+    };
+    const unsplit = await unsplitRow({
+      shortNotifString: "We won",
+      nonCompleterResult: "stale",
+    });
+    const empty = await unsplitRow({ shortNotifString: "" });
+    const split = await createUpdate({ nonCompleterResult: "split text" });
+    const legacy = await unsplitRow({
+      notificationMode: ActionUpdateNotificationMode.Legacy,
+    });
+
+    const queryRunner = ctx.dataSource.createQueryRunner();
+    await new UnsplitCollectiveResultToNonCompleters1793827479825().up(
+      queryRunner,
+    );
+    await queryRunner.release();
+
+    const read = (id: number) => repo.findOneByOrFail({ id });
+    expect(await read(unsplit)).toMatchObject({
+      splitCollectiveResult: true,
+      nonCompleterResult: "We won",
+      uninvolvedResult: "We won",
+    });
+    expect(await read(empty)).toMatchObject({
+      splitCollectiveResult: true,
+      nonCompleterResult: null,
+      uninvolvedResult: null,
+    });
+    expect(await read(split)).toMatchObject({
+      splitCollectiveResult: true,
+      nonCompleterResult: "split text",
+    });
+    expect(await read(legacy)).toMatchObject({
+      splitCollectiveResult: false,
+      nonCompleterResult: "split text",
     });
   });
 });
