@@ -38,17 +38,40 @@ const NextStep = ({
   phase: ActionPhase;
   onStartStaffTesting?: (step: ProjectStep) => void;
 }) => {
-  if (phase === ActionPhase.StaffTesting) {
-    return (
-      <Link
-        to={`${stepPath(step)}#${ActionEditorSection.Release}`}
-        className="rounded border border-zinc-300 px-2 py-0.5 text-xs hover:bg-zinc-50"
-      >
-        Schedule release
-      </Link>
-    );
+  switch (phase) {
+    case ActionPhase.StaffTesting:
+      return (
+        <Link
+          to={`${stepPath(step)}#${ActionEditorSection.Release}`}
+          className="rounded border border-zinc-300 px-2 py-0.5 text-xs hover:bg-zinc-50"
+        >
+          Schedule release
+        </Link>
+      );
+    case ActionPhase.Draft:
+      return onStartStaffTesting ? (
+        <StartStaffTestingButton
+          step={step}
+          onStartStaffTesting={onStartStaffTesting}
+        />
+      ) : null;
+    case ActionPhase.Scheduled:
+    case ActionPhase.Live:
+    case ActionPhase.Closed:
+      return null;
+    default:
+      phase satisfies never;
+      return null;
   }
-  if (phase !== ActionPhase.Draft || !onStartStaffTesting) return null;
+};
+
+const StartStaffTestingButton = ({
+  step,
+  onStartStaffTesting,
+}: {
+  step: ProjectStep;
+  onStartStaffTesting: (step: ProjectStep) => void;
+}) => {
   const missing = missingForStaffTesting(step);
   return (
     <button

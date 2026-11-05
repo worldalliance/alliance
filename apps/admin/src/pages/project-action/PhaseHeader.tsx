@@ -4,6 +4,28 @@ import ActionPhasePill from "../../components/ActionPhasePill";
 import { ActionPhase } from "../../lib/actionPhase";
 import { missingForStaffTesting } from "../../lib/staffTestingGate";
 
+type StaffPreviewToggle = {
+  staffPreview: boolean;
+  label: string;
+  color: ButtonColor;
+};
+
+const STAFF_PREVIEW_TOGGLE: Record<ActionPhase, StaffPreviewToggle | null> = {
+  [ActionPhase.Draft]: {
+    staffPreview: true,
+    label: "Start staff testing",
+    color: ButtonColor.Black,
+  },
+  [ActionPhase.StaffTesting]: {
+    staffPreview: false,
+    label: "Stop staff testing",
+    color: ButtonColor.White,
+  },
+  [ActionPhase.Scheduled]: null,
+  [ActionPhase.Live]: null,
+  [ActionPhase.Closed]: null,
+};
+
 const PhaseHeader = ({
   action,
   phase,
@@ -18,26 +40,19 @@ const PhaseHeader = ({
   onStaffPreviewChange: (staffPreview: boolean) => void;
 }) => {
   const missing = missingForStaffTesting(action);
+  const toggle = STAFF_PREVIEW_TOGGLE[phase];
+  const blocked = toggle?.staffPreview === true && missing.length > 0;
   return (
     <div className="flex flex-col gap-y-2">
       <div className="flex flex-wrap items-center gap-3">
         <ActionPhasePill phase={phase} status={action.status} />
-        {phase === ActionPhase.Draft && (
+        {toggle && (
           <Button
-            color={ButtonColor.Black}
-            onClick={() => onStaffPreviewChange(true)}
-            disabled={busy || unsaved || missing.length > 0}
+            color={toggle.color}
+            onClick={() => onStaffPreviewChange(toggle.staffPreview)}
+            disabled={busy || unsaved || blocked}
           >
-            Start staff testing
-          </Button>
-        )}
-        {phase === ActionPhase.StaffTesting && (
-          <Button
-            color={ButtonColor.White}
-            onClick={() => onStaffPreviewChange(false)}
-            disabled={busy || unsaved}
-          >
-            Stop staff testing
+            {toggle.label}
           </Button>
         )}
         {unsaved && (
@@ -46,7 +61,7 @@ const PhaseHeader = ({
           </span>
         )}
       </div>
-      {phase === ActionPhase.Draft && missing.length > 0 && (
+      {blocked && (
         <p className="text-sm text-zinc-600">
           Needed before staff testing:{" "}
           {missing.map((requirement, index) => (

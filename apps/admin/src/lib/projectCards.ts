@@ -135,23 +135,23 @@ const time = (date: string | null) =>
 const byStepOrder = (a: ProjectStep, b: ProjectStep) =>
   time(a.memberActionStart) - time(b.memberActionStart) || a.id - b.id;
 
-const LIFECYCLE_RULES: [ProjectLifecycle, (status: ActionStatus) => boolean][] =
-  [
-    [ProjectLifecycle.Live, (status) => status === "member_action"],
-    [ProjectLifecycle.Upcoming, (status) => status === "planned"],
-    [ProjectLifecycle.InTheWorks, (status) => status === "draft"],
-    [
-      ProjectLifecycle.Awaiting,
-      (status) => status === "office_action" || status === "resolution",
-    ],
-  ];
+const BUCKET_LIFECYCLE: Record<StepCountBucket, ProjectLifecycle> = {
+  [StepCountBucket.Live]: ProjectLifecycle.Live,
+  [StepCountBucket.Planned]: ProjectLifecycle.Upcoming,
+  [StepCountBucket.Draft]: ProjectLifecycle.InTheWorks,
+  [StepCountBucket.WrappingUp]: ProjectLifecycle.Awaiting,
+  [StepCountBucket.Done]: ProjectLifecycle.Done,
+};
 
 const lifecycleOf = (steps: ProjectStep[]): ProjectLifecycle => {
   if (steps.length === 0) return ProjectLifecycle.InTheWorks;
-  const match = LIFECYCLE_RULES.find(([, applies]) =>
-    steps.some((step) => applies(step.status)),
+  const present = new Set(
+    steps.map((step) => BUCKET_LIFECYCLE[STEP_COUNT_BUCKET[step.status]]),
   );
-  return match ? match[0] : ProjectLifecycle.Done;
+  return (
+    PROJECT_LIFECYCLE_ORDER.find((lifecycle) => present.has(lifecycle)) ??
+    ProjectLifecycle.Done
+  );
 };
 
 const postedUpdateTimes = (step: ProjectStep, now: Date) =>
