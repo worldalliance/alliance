@@ -224,7 +224,7 @@ describe("Project actions (e2e)", () => {
     expect(await liveEvents(body.id)).toEqual([]);
   });
 
-  it("refuses a deadline before launch, a second schedule and a shared suite", async () => {
+  it("refuses a deadline before launch, a past launch, a second schedule and a shared suite", async () => {
     const project = await projectRepo.save({ name: "Refusals" });
     const { body } = await createInProject(project.id, "Refused").expect(201);
     const launchAt = addDays(new Date(), 5);
@@ -233,6 +233,8 @@ describe("Project actions (e2e)", () => {
       ...releaseBody(launchAt),
       deadline: { ...releaseBody(launchAt).deadline, date: launchAt },
     }).expect(400);
+    await schedule(body.id, releaseBody(addDays(new Date(), -1))).expect(400);
+    expect(await liveEvents(body.id)).toEqual([]);
     await schedule(body.id, releaseBody(launchAt)).expect(201);
     await schedule(body.id, releaseBody(launchAt)).expect(400);
 
@@ -264,7 +266,11 @@ describe("Project actions (e2e)", () => {
   it("refuses to unschedule after launch", async () => {
     const project = await projectRepo.save({ name: "Launched" });
     const { body } = await createInProject(project.id, "Live").expect(201);
-    await schedule(body.id, releaseBody(addDays(new Date(), -1))).expect(201);
+    await schedule(body.id, releaseBody(addDays(new Date(), 5))).expect(201);
+    await eventRepo.update(
+      { action: { id: body.id }, newStatus: ActionStatus.MemberAction },
+      { date: addDays(new Date(), -1) },
+    );
 
     await asAdmin(
       request(server()).delete(`/actions/${body.id}/release`),

@@ -131,6 +131,9 @@ export class ProjectActionsService {
     if (body.launch.newStatus !== ActionStatus.MemberAction) {
       throw new BadRequestException("The launch must start member action");
     }
+    if (body.launch.date <= new Date()) {
+      throw new BadRequestException("The launch must be in the future");
+    }
     if (body.deadline && body.deadline.date <= body.launch.date) {
       throw new BadRequestException("The deadline must be after the launch");
     }
