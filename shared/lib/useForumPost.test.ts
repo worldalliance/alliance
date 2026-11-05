@@ -99,7 +99,7 @@ it("does not fetch without an id", async () => {
 });
 
 it("likes the post in the cache, then refetches it", async () => {
-  const { wrapper, client } = queryWrapper();
+  const { wrapper } = queryWrapper();
   const hook = renderHook(() => useForumPost("7", { userId: 1 }), { wrapper });
   await waitFor(() => expect(hook.result.current.post).toEqual(post));
   const answer = Promise.withResolvers<Response>();
@@ -119,13 +119,13 @@ it("likes the post in the cache, then refetches it", async () => {
   answer.resolve(Response.json({}));
   await act(() => like);
   await waitFor(() => expect(requests).toEqual(["get", "like", "get"]));
-  expect(client.getQueryData(["forumFindOnePost", "7"])).toEqual(post);
+  await waitFor(() => expect(hook.result.current.post).toEqual(post));
 });
 
 it("unlikes a liked post without counting below zero", async () => {
   const liked = { ...post, likedByMe: true, likeCount: 0 };
   getResponse = () => Response.json(liked);
-  const { wrapper, client } = queryWrapper();
+  const { wrapper } = queryWrapper();
   const hook = renderHook(() => useForumPost("7", { userId: 1 }), { wrapper });
   await waitFor(() => expect(hook.result.current.post).toEqual(liked));
   const answer = Promise.withResolvers<Response>();
@@ -137,7 +137,7 @@ it("unlikes a liked post without counting below zero", async () => {
   });
 
   await waitFor(() => expect(requests).toEqual(["get", "unlike"]));
-  expect(client.getQueryData(["forumFindOnePost", "7"])).toEqual({
+  expect(hook.result.current.post).toEqual({
     ...liked,
     likedByMe: false,
     likeCount: 0,
@@ -148,7 +148,7 @@ it("unlikes a liked post without counting below zero", async () => {
 });
 
 it("restores the post when the like never reaches the server", async () => {
-  const { wrapper, client } = queryWrapper();
+  const { wrapper } = queryWrapper();
   const hook = renderHook(() => useForumPost("7", { userId: 1 }), { wrapper });
   await waitFor(() => expect(hook.result.current.post).toEqual(post));
   likeResponse = Promise.reject(new TypeError("offline"));
@@ -157,7 +157,7 @@ it("restores the post when the like never reaches the server", async () => {
   await act(() => hook.result.current.handleLike().catch(() => {}));
 
   await waitFor(() => expect(requests).toEqual(["get", "like", "get"]));
-  expect(client.getQueryData(["forumFindOnePost", "7"])).toEqual(post);
+  await waitFor(() => expect(hook.result.current.post).toEqual(post));
 });
 
 it("does nothing without a signed-in user", async () => {
@@ -193,7 +193,7 @@ it("creates a post without caching it, and reloads the list", async () => {
     expect(hook.result.current.list.posts).toEqual([post, created]),
   );
   expect(requests).toEqual(["create"]);
-  expect(client.getQueryData(["forumFindOnePost", "8"])).toBeUndefined();
+  expect(client.getQueryData(queryKeys.forumPost("8"))).toBeUndefined();
 });
 
 it("caches the post an update saved", async () => {
@@ -213,7 +213,7 @@ it("keeps an update over a reload that read the post before it", async () => {
   await waitFor(() => expect(hook.result.current.post).toEqual(post));
   const reload = Promise.withResolvers<Response>();
   getResponse = () => reload.promise;
-  void client.refetchQueries({ queryKey: ["forumFindOnePost", "7"] });
+  void client.refetchQueries({ queryKey: queryKeys.forumPost("7") });
   await waitFor(() => expect(requests).toEqual(["get", "get"]));
 
   void hook.result.current.update(body);
@@ -260,16 +260,21 @@ it("forgets the post it removed", async () => {
   expect(requests).toEqual(["get", "remove"]);
 });
 
-it("drops the post it removed from the cached forum list", async () => {
-  const { wrapper, client } = queryWrapper();
+it("drops the post it removed from the forum list", async () => {
+  const { wrapper } = queryWrapper();
   const other = { ...post, id: 8 };
-  client.setQueryData(queryKeys.forumPosts(), [post, other]);
-  const hook = renderHook(() => useForumPost("7"), { wrapper });
-  await waitFor(() => expect(hook.result.current.post).toEqual(post));
+  listResponse = () => Response.json([post, other]);
+  const hook = renderHook(
+    () => ({ list: useForumPosts(), one: useForumPost("7") }),
+    { wrapper },
+  );
+  await waitFor(() =>
+    expect(hook.result.current.list.posts).toEqual([post, other]),
+  );
 
-  await act(() => hook.result.current.remove());
+  await act(() => hook.result.current.one.remove());
 
-  expect(client.getQueryData(queryKeys.forumPosts())).toEqual([other]);
+  await waitFor(() => expect(hook.result.current.list.posts).toEqual([other]));
 });
 
 it("keeps a removal over a list reload that read the post before it", async () => {
@@ -289,8 +294,7 @@ it("keeps a removal over a list reload that read the post before it", async () =
   await act(() => hook.result.current.one.remove());
   reload.resolve(Response.json([post, other]));
 
-  await new Promise((resolve) => setTimeout(resolve, 20));
-  expect(hook.result.current.list.posts).toEqual([]);
+  await waitFor(() => expect(hook.result.current.list.posts).toEqual([other]));
 });
 
 it("keeps a removal over a reload that read the post before it", async () => {
@@ -299,7 +303,7 @@ it("keeps a removal over a reload that read the post before it", async () => {
   await waitFor(() => expect(hook.result.current.post).toEqual(post));
   const reload = Promise.withResolvers<Response>();
   getResponse = () => reload.promise;
-  void client.refetchQueries({ queryKey: ["forumFindOnePost", "7"] });
+  void client.refetchQueries({ queryKey: queryKeys.forumPost("7") });
   await waitFor(() => expect(requests).toEqual(["get", "get"]));
 
   void hook.result.current.remove();

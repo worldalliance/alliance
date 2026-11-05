@@ -12,6 +12,7 @@ import {
 } from "./actionActivity";
 import { mergeOwned, type Owned } from "./ownedFields";
 import { queryKeys } from "./queryKeys";
+import { likeTurns } from "./sendLike";
 import { currentSession, sessionLoads, sessionStore } from "./sessionStores";
 
 /** Fields only some activity responses send; one that leaves a group out
@@ -122,15 +123,7 @@ function createActivityStore(queryClient: QueryClient) {
     queryClient,
     queryKey: queryKeys.activitiesAll(),
   });
-  let turns = new Map<
-    string,
-    {
-      turn: number;
-      unanswered: number;
-      settled: boolean;
-      latestRefused: boolean;
-    }
-  >();
+  const turns = likeTurns();
 
   const all = (): ActivityLoad => {
     const { activities, forumComments } = store.getState();
@@ -154,7 +147,7 @@ function createActivityStore(queryClient: QueryClient) {
     getForumComment: (commentId: number) =>
       store.getState().forumComments.entities[commentId]?.forumComment,
     clear: () => {
-      turns = new Map();
+      turns.reset();
       store.dispatch(slice.actions.cleared());
     },
     load: async (load: {
@@ -192,37 +185,7 @@ function createActivityStore(queryClient: QueryClient) {
       );
       store.dispatch(slice.actions.written(applyChange(change, all())));
     },
-    /** Starts a like or unlike of `target`, which shows `shown` while no
-     * other is unanswered. `latest` says whether no later one has started
-     * since. `answer` takes the state the server applied, or undefined for a
-     * refusal, and once every one is answered after the latest was refused,
-     * returns the state the server last confirmed to show instead. */
-    takeTurn: (target: string, shown: boolean) => {
-      const entry = turns.get(target) ?? {
-        turn: 0,
-        unanswered: 0,
-        settled: shown,
-        latestRefused: false,
-      };
-      if (entry.unanswered === 0) entry.settled = shown;
-      entry.turn++;
-      entry.unanswered++;
-      entry.latestRefused = false;
-      turns.set(target, entry);
-      const { turn } = entry;
-      return {
-        latest: () => entry.turn === turn,
-        answer: (applied: boolean | undefined): boolean | undefined => {
-          entry.unanswered--;
-          if (applied === undefined) {
-            if (entry.turn === turn) entry.latestRefused = true;
-          } else entry.settled = applied;
-          if (entry.unanswered > 0 || !entry.latestRefused) return undefined;
-          entry.latestRefused = false;
-          return entry.settled;
-        },
-      };
-    },
+    takeTurn: turns.take,
   };
 }
 
