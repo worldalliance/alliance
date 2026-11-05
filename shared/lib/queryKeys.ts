@@ -17,6 +17,7 @@ const globalFeedAll = () => ["actionFeedGetGlobalFeed"] as const;
 const forumPostsAll = () => ["forumPosts"] as const;
 const forumPostListsAll = () => [...forumPostsAll(), "list"] as const;
 const forumPostDetailsAll = () => [...forumPostsAll(), "post"] as const;
+const communitiesAll = () => ["communities"] as const;
 
 const communityOnetimeInvitesAll = () =>
   ["userOnetimeInviteGetOnetimeInvitesByCommunity"] as const;
@@ -94,6 +95,7 @@ export const queryKeys = {
       search.latitude ?? null,
       search.longitude ?? null,
     ] as const,
+  communitiesAll,
   communityConversation: (communityId: number | null) =>
     ["conversationGetCommunityConversations", communityId] as const,
   communityCompletedActionsCount: (communityId: number | null) =>
@@ -138,7 +140,7 @@ export const queryKeys = {
   members: () => ["userMembers"] as const,
   membersWithFriends: () => ["userMembersWithFriends"] as const,
   myAwayRanges: () => ["userAwayRangeGetAwayRanges"] as const,
-  myCommunities: () => ["communityGetMyCommunities"] as const,
+  myCommunities: () => [...communitiesAll(), "my"] as const,
   myConversations: () => ["conversationGetMyConversations"] as const,
   myReusableInvites: () => ["shareUrlsMyInvites"] as const,
   inviteMessageTemplate: () => ["shareUrlsInviteMessageTemplate"] as const,
@@ -155,7 +157,7 @@ export const queryKeys = {
     ["userOnetimeInviteOnetimeInvite", code] as const,
   onetimeInvitesOverview: () =>
     ["userOnetimeInviteGetOnetimeInvitesOverview"] as const,
-  publicCommunities: () => ["communityGetPublicCommunities"] as const,
+  publicCommunities: () => [...communitiesAll(), "public"] as const,
   publicMembers: () => ["userMembersPublic"] as const,
   publicProfile: (userId: number) => ["userFindOne", userId] as const,
   referrerProfile: (code: string | null) =>

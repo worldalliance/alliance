@@ -12,3 +12,4 @@ task: Normalize shared action and notification state, and assess further entity 
 - User preference: Where the user leaves a choice open, prefer what makes the platform smoother and the code higher quality.
 - User requirement: Migrate activities to normalized records next, including the forum comments that appear in the home and profile feeds, so every activity list, feed, and activity detail screen (web and mobile) shows the same state for the same activity or comment. Open a PR for it.
 - User requirement: Migrate forum posts to normalized records next, so the forum index, post detail, and user-profile post lists (web and mobile) show the same state for the same post. Track it as Linear issue ALL-2023 and open a PR for it.
+- Agent-proposed, user-approved: Migrate communities to normalized records next, so My Groups and the public groups list (web and mobile) show the same state for the same group. Track it as Linear issue ALL-2057 and open a PR for it.

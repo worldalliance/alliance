@@ -1,10 +1,4 @@
-import {
-  type QueryClient,
-  type QueryKey,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
-import { useCallback } from "react";
+import { type QueryClient, type QueryKey } from "@tanstack/react-query";
 import {
   forumFindAllPosts,
   forumFindPostsByUser,
@@ -13,7 +7,7 @@ import {
 import { failedToLoad } from "./failedToLoad";
 import { forumPostStore, PostFields, selectPost } from "./forumPostStore";
 import { queryKeys } from "./queryKeys";
-import { useStoreState } from "./useStoreState";
+import { useEntityList } from "./useEntityList";
 
 export function invalidateForumPostLists(queryClient: QueryClient) {
   return queryClient.invalidateQueries({
@@ -29,23 +23,12 @@ function usePostList(params: {
   staleTime?: number;
 }) {
   const { carries, fetch, ...options } = params;
-  const queryClient = useQueryClient();
-  const state = useStoreState(forumPostStore);
-  const select = useCallback(
-    (ids: number[]) => ids.map((id) => selectPost(state, id)),
-    [state],
-  );
-  return useQuery({
+  return useEntityList({
     ...options,
-    queryFn: async ({ signal }) => {
-      const posts = await forumPostStore(queryClient).load({
-        carries,
-        signal,
-        fetch: () => fetch(signal),
-      });
-      return posts.map(({ id }) => id);
-    },
-    select,
+    store: forumPostStore,
+    select: selectPost,
+    load: ({ store, signal }) =>
+      store.load({ carries, signal, fetch: () => fetch(signal) }),
   });
 }
 
