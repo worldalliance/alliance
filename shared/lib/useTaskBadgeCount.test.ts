@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { expect, it, mock } from "bun:test";
+import { expect, it, mock, spyOn } from "bun:test";
 import { milliseconds } from "date-fns";
 import type { ActionDto } from "../client";
 import { useRecordActionRelation } from "./actionsListPage";
@@ -67,6 +67,28 @@ it("drops an action at its deadline without a refetch", async () => {
 
   expect(view.result.current).toBe(2);
   await waitFor(() => expect(view.result.current).toBe(1));
+});
+
+it("drops an action whose deadline passes before the timer is armed", async () => {
+  const { client, wrapper } = queryWrapper({ staleTime: Infinity });
+  const deadlineAt = new Date(Date.now() + milliseconds({ seconds: 0.05 }));
+  seedActions(client, [
+    makeAction({ id: 1 }),
+    makeAction({
+      id: 2,
+      viewer: makeViewer({ deadlineAt: deadlineAt.toISOString() }),
+    }),
+  ]);
+  const lateNow = deadlineAt.getTime() + milliseconds({ seconds: 0.1 });
+  const clock = spyOn(Date, "now").mockReturnValue(lateNow);
+  try {
+    const view = renderCount(wrapper);
+
+    expect(view.result.current).toBe(2);
+    await waitFor(() => expect(view.result.current).toBe(1));
+  } finally {
+    clock.mockRestore();
+  }
 });
 const refetchIntervalOf = (
   client: ReturnType<typeof queryWrapper>["client"],

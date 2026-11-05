@@ -38,8 +38,11 @@ export function Navbar({
   signupHref,
   announcement,
   offerInvite = true,
+  hideNavLinks = false,
 }: {
   overPrimary?: boolean;
+  /** Drops the People/Guide/Progress and Partner links and the phone menu, and moves the logotype to the left. */
+  hideNavLinks?: boolean;
   announcement?: ReactNode;
   /** Off where the page is itself the signup an invitation leads to. */
   offerInvite?: boolean;
@@ -113,25 +116,30 @@ export function Navbar({
       <div
         className={cn(
           SITE_COL,
-          "flex items-center justify-between gap-6 max-[350px]:gap-3 transition-[padding] duration-300 lg:grid lg:grid-cols-[1fr_auto_1fr]",
+          "flex items-center justify-between gap-6 max-[350px]:gap-3 transition-[padding] duration-300",
+          !hideNavLinks && "lg:grid lg:grid-cols-[1fr_auto_1fr]",
           scrolled ? "py-3" : "py-5 lg:py-7",
         )}
       >
-        <nav
-          className="hidden items-center gap-8 text-base md:flex"
-          aria-label="Primary"
-        >
-          {NAV_LINKS.map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              aria-current={location.pathname === link.to ? "page" : undefined}
-              className="inline-flex min-h-11 items-center hover:underline font-medium"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
+        {!hideNavLinks && (
+          <nav
+            className="hidden items-center gap-8 text-base md:flex"
+            aria-label="Primary"
+          >
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.to}
+                to={link.to}
+                aria-current={
+                  location.pathname === link.to ? "page" : undefined
+                }
+                className="inline-flex min-h-11 items-center hover:underline font-medium"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+        )}
 
         <Link
           to={HOME_HREF}
@@ -155,15 +163,17 @@ export function Navbar({
             )}
             aria-hidden={loading}
           >
-            <Link
-              to={PARTNER_HREF}
-              className={cn(
-                "hidden md:inline-flex min-h-11 items-center hover:underline font-medium text-base",
-                light ? "text-white" : "text-black",
-              )}
-            >
-              {NAV_PARTNER}
-            </Link>
+            {!hideNavLinks && (
+              <Link
+                to={PARTNER_HREF}
+                className={cn(
+                  "hidden md:inline-flex min-h-11 items-center hover:underline font-medium text-base",
+                  light ? "text-white" : "text-black",
+                )}
+              >
+                {NAV_PARTNER}
+              </Link>
+            )}
             <Link
               to={accountHref}
               className={cn(
@@ -233,24 +243,26 @@ export function Navbar({
               </Link>
             )}
           </div>
-          <button
-            type="button"
-            /* -ml-2.5 cancels the icon's inset inside its 44px tap target, so
-               the flex gap beside it reads as the gap you see. */
-            className={cn(
-              "-mr-2 -ml-2.5 inline-flex size-11 shrink-0 items-center justify-center md:hidden",
-              light ? "text-white" : "text-black",
-            )}
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((open) => !open)}
-          >
-            {menuOpen ? (
-              <X className="size-6" aria-hidden />
-            ) : (
-              <Menu className="size-6" aria-hidden />
-            )}
-          </button>
+          {!hideNavLinks && (
+            <button
+              type="button"
+              /* -ml-2.5 cancels the icon's inset inside its 44px tap target, so
+                 the flex gap beside it reads as the gap you see. */
+              className={cn(
+                "-mr-2 -ml-2.5 inline-flex size-11 shrink-0 items-center justify-center md:hidden",
+                light ? "text-white" : "text-black",
+              )}
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              {menuOpen ? (
+                <X className="size-6" aria-hidden />
+              ) : (
+                <Menu className="size-6" aria-hidden />
+              )}
+            </button>
+          )}
         </div>
       </div>
 

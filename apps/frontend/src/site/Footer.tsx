@@ -1,6 +1,7 @@
 import { cn } from "@alliance/shared/styles/util";
 import { SiteArrow } from "@alliance/sharedweb/ui/SiteArrow";
-import { Fragment } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { Fragment, useState } from "react";
 import { Link } from "react-router";
 import { CONTACT_EMAIL, FOOTER_TAGLINE } from "./content";
 import { useInviteSession } from "./invite/InviteSession";
@@ -49,9 +50,36 @@ function LegalRow() {
   );
 }
 
-export function SiteFooter() {
+export function SiteFooter({ collapsible = false }: { collapsible?: boolean }) {
+  const [expanded, setExpanded] = useState(!collapsible);
+  if (!expanded) {
+    return (
+      <footer>
+        <button
+          type="button"
+          aria-label="Show footer"
+          aria-expanded={false}
+          onClick={() => setExpanded(true)}
+          className="flex h-[12px] w-full cursor-pointer items-center justify-center bg-black text-white hover:bg-neutral-800"
+        >
+          <ChevronUp aria-hidden className="size-3" />
+        </button>
+      </footer>
+    );
+  }
   return (
     <footer className="relative isolate overflow-hidden bg-black text-white">
+      {collapsible && (
+        <button
+          type="button"
+          aria-label="Hide footer"
+          aria-expanded
+          onClick={() => setExpanded(false)}
+          className="absolute inset-x-0 top-0 z-20 flex h-[12px] cursor-pointer items-center justify-center text-white/70 hover:text-white"
+        >
+          <ChevronDown aria-hidden className="size-3" />
+        </button>
+      )}
       <div
         className={cn(SITE_COL, "relative z-10 pb-8 lg:pb-10 pt-10 lg:pt-12")}
       >

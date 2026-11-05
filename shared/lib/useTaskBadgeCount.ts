@@ -6,7 +6,7 @@ import { milliseconds } from "date-fns";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useActionsQuery } from "./actionsListPage";
 import { isRefused } from "./retryQuery";
-import { useOnNextTimestamp } from "./useOnNextDeadline";
+import { MAX_TIMEOUT_MS } from "./useOnNextDeadline";
 
 const TASK_BADGE_REFRESH_MS = milliseconds({ minutes: 1 });
 
@@ -38,7 +38,17 @@ export function useTaskBadgeCount(): number | null {
       ),
     };
   }, [actions, deadlineTick]);
-  useOnNextTimestamp(deadlines, onDeadlinePassed);
+  // Every deadline here was future when counted, so arm even for one the
+  // clock has passed since: re-filtering by `Date.now()` would never recount.
+  useEffect(() => {
+    if (!deadlines?.length) return;
+    const delay = Math.max(0, Math.min(...deadlines) - Date.now());
+    const timeoutId = setTimeout(
+      onDeadlinePassed,
+      Math.min(delay, MAX_TIMEOUT_MS),
+    );
+    return () => clearTimeout(timeoutId);
+  }, [deadlines, onDeadlinePassed]);
 
   return count;
 }
