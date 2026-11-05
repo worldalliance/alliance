@@ -12,6 +12,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const SCRIPT = join(import.meta.dir, "deploy_backend.sh");
+const BACKUP_NOTE =
+  "The old release is in ~/nest-backend-deploy-backup, which the next deploy replaces.";
 
 // Each stub logs what it was asked to do. The database is one word in
 // state/db, the running release one word in state/pm2, and a release is the
@@ -179,6 +181,7 @@ describe.each(["absent", "applied"] as const)(
       const result = deploy({ HEALTH: "fail", REMOVE: "fail" });
       expect(result.exitCode).toBe(1);
       expect(result.output).toContain("The backend is left stopped");
+      expect(result.output).toContain(BACKUP_NOTE);
       expect(result.running).toBe("");
     });
 
@@ -193,6 +196,7 @@ describe.each(["absent", "applied"] as const)(
       const result = deploy({ HEALTH: "fail", STOP: "fail", REMOVE: "fail" });
       expect(result.exitCode).toBe(1);
       expect(result.output).toContain("the new backend could not be stopped");
+      expect(result.output).toContain(BACKUP_NOTE);
       expect(result.output).not.toContain("left stopped");
       expect(result.running).toBe("new");
     });
@@ -285,6 +289,7 @@ describe("deploy_backend.sh with the removal pending", () => {
     const result = deploy({ MIGRATE: "guard", START_OLD: "fail" });
     expect(result.exitCode).toBe(1);
     expect(result.output).toContain("The backend is left stopped");
+    expect(result.output).not.toContain(BACKUP_NOTE);
     expect(result).toMatchObject({ running: "", db: "pending" });
   });
 
@@ -294,6 +299,7 @@ describe("deploy_backend.sh with the removal pending", () => {
       const result = deploy({ MIGRATE: "guard", [name]: "fail" });
       expect(result.exitCode).toBe(1);
       expect(result.output).toContain("The backend is left stopped");
+      expect(result.output).toContain(BACKUP_NOTE);
       expect(result.log.filter((line) => line.startsWith("start"))).toEqual([]);
     },
   );

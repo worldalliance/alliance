@@ -47,14 +47,20 @@ restore_old_release () {
   fi
 }
 
+backup_note () {
+  if [ -d ~/nest-backend-deploy-backup ]; then
+    echo " The old release is in ~/nest-backend-deploy-backup, which the next deploy replaces."
+  fi
+}
+
 rollback () {
   trap - ERR
   echo "Deployment failed - rolling back"
   restore_old_release && exit 1
   if stop_backend; then
-    echo "::error::Could not restart the old release. The backend is left stopped; start a release by hand."
+    echo "::error::Could not restart the old release. The backend is left stopped; start a release by hand.$(backup_note)"
   else
-    echo "::error::Could not restart the old release, and the new backend could not be stopped; check \`pm2 list\`."
+    echo "::error::Could not restart the old release, and the new backend could not be stopped; check \`pm2 list\`.$(backup_note)"
   fi
   exit 1
 }
@@ -95,7 +101,7 @@ esac
 trap - ERR
 
 fail_stopped () {
-  echo "::error::$1 The backend is left stopped; restore the schema and start a release by hand."
+  echo "::error::$1 The backend is left stopped; restore the schema and start a release by hand.$(backup_note)"
   stop_backend || true
   exit 1
 }
