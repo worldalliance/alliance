@@ -50,6 +50,10 @@
 - The `postTitle` that feed forum comments carry is a projection in the activity store and is not patched by an edit; it updates on the next feed load.
 - Admin post views (`getPostsForAdmin`) stay separate.
 
+## Communities
+
+- `usePublicCommunities` loads with `throwOnError: true`, so a refusal carries its status and `retryUnlessRefused` stops retrying it (ALL-1336).
+
 # Further migrations
 
 These are recommendations from the repository audit, not approved implementation scope.
@@ -78,4 +82,5 @@ These are recommendations from the repository audit, not approved implementation
 - Unit suites pass in shared, sharedweb, frontend, admin, and mobile. Typechecks pass in the same packages; frontend and admin need `react-router typegen` in a fresh worktree first.
 - Activities (`shared/lib/activityNormalization.test.ts`): each regression was checked by reintroducing its defect. They cover a like from a home feed card shown in an activity list and on the detail, a refused like taken back everywhere, comments kept when a list without comments loads later, a newer response kept over an older one that lands later, a like kept in a feed load in flight and in one started before the like is answered, a later unlike kept when an earlier like answers after it, a like and an unlike both refused in either order returning to the confirmed state, an earlier like's success kept when a later unlike is refused first, mounted lists, feeds, and the detail rendering when the session ends, a like answered after a session end not patching the next session, and a feed forum comment like shown in the profile feed and taken back on refusal.
 - Forum posts (`shared/lib/forumPostNormalization.test.ts`): every regression except the session-end rendering and profile-reload cases fails on the previous hooks; the profile-reload case moved here from `useForumPost.test.ts` with `useUserForumPosts`, and the late-edit case fails without the store's session check. They cover a like from the post page shown in the forum index and the profile list, a saved edit shown in both, the index's comment count kept across an edit and a profile-list load, a deletion dropped from both lists and the detail, the profile list reloaded after a new post, a like kept over a post load that read the post first, a refused like taken back on the post it was made on after moving to another post without refetching the new one, the post page showing a record the index loaded, mounted surfaces rendering when the session ends, and an edit answered after a sign-in change not patching the next session. A deleted post reopened after its detail query is collected shows nothing; that case fails when the store keeps the deleted record. A post whose detail answers 404 leaves both lists and does not show when reopened; that case fails without the drop. The existing `useForumPost` tests were ported; a removal over a list reload now keeps the reload's other posts.
+- Public groups (`shared/lib/usePublicCommunities.test.ts`): the refused-load case fails on the previous hook, which retried the refusal.
 - `dupcheck` reports one repeated phrase, the missing-record invariant message shared by `selectAction`, `selectNotification`, the activity selectors, and `selectPost`; kept separate per store. `format:check` passes.

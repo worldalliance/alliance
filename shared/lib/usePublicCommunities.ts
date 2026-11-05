@@ -20,15 +20,10 @@ export function usePublicCommunities(params?: { enabled?: boolean }) {
     refetch,
   } = useQuery({
     queryKey: QUERY_KEY,
-    queryFn: async () => {
-      const response = await communityGetPublicCommunities();
-      if (!response.data) {
-        throw new Error(
-          response.response.statusText || "Unable to load public groups.",
-        );
-      }
-      return response.data;
-    },
+    queryFn: ({ signal }) =>
+      communityGetPublicCommunities({ throwOnError: true, signal }).then(
+        (response) => response.data,
+      ),
     enabled,
   });
 
