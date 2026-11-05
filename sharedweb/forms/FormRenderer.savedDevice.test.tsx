@@ -7,6 +7,8 @@ import { MemoryRouter } from "react-router";
 import { SiteAppProvider } from "../ui/SiteAppProvider";
 import FormRenderer from "./FormRenderer";
 
+declare const happyDOM: { setViewport: (viewport: { width: number }) => void };
+
 serveApi(routes({}));
 
 const schema: FormSchema = {
@@ -59,12 +61,12 @@ it("shows a completed response as the device it was submitted from", () => {
 
 it("shows a completed response with no recognized device as the viewer's device", () => {
   const width = window.innerWidth;
-  window.innerWidth = 400;
+  happyDOM.setViewport({ width: 400 });
   try {
     renderCompleted("watch");
 
     expect(screen.getByText("Tap your photo")).toBeTruthy();
   } finally {
-    window.innerWidth = width;
+    happyDOM.setViewport({ width });
   }
 });
