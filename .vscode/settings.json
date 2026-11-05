@@ -3,7 +3,8 @@
     "apps/frontend",
     "apps/admin",
     "apps/mobile",
-    "server"
+    "server",
+    "agents/desktop"
   ],
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode",

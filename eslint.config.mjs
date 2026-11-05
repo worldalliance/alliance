@@ -7,6 +7,7 @@ import sharedRules, {
 } from "./eslint/shared-rules.mjs";
 
 export default tseslint.config([
+  { ignores: ["agents/desktop/"] },
   ...tseslint.configs.recommended,
   sharedRules,
   envReadsOnlyIn({

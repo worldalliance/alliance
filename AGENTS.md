@@ -13,7 +13,8 @@ The project is the Alliance, and `alliance` is its identifier wherever a name ca
 - `sharedweb/`: shared by admin + frontend
 - `shared/`: shared by admin + frontend + mobile
 - `common/`: shared by all apps + server
-- `agents/`: skills and hooks for the coding agents, nothing the apps ship
+- `agents/`: skills and hooks for the coding agents
+- `agents/desktop/`: Alliance agent, the desktop app employees work with coding agents through
 
 ## Nested AGENTS.md
 
@@ -50,7 +51,7 @@ Read before the matching task:
 
 ## Dependencies
 
-Non-standard workspace: every web package installs from `apps/frontend/package.json`. A dependency used in `apps/admin`, `sharedweb`, `common`, … must also be declared there, same version range. `bun install` after editing.
+Non-standard workspace: every web package installs from `apps/frontend/package.json`. A dependency used in `apps/admin`, `sharedweb`, `common`, … must also be declared there, same version range. `bun install` after editing. `agents/desktop` is the exception: it declares its own dependencies and installs from its own lockfile, so removing it is deleting the folder plus the few root edits `agents/README.md` points to.
 
 Reach for a maintained npm package over hand-rolling parsing, sanitization, date handling, retries. Inside the repo, reuse or extract a shared util instead of duplicating one.
 

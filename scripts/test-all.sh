@@ -10,6 +10,11 @@
 # here except scripts, .github and agents, which have no tsconfig, and can list
 # packages that are absent here; citesting is typechecked but has no tests.
 #
+# agents/desktop installs from its own lockfile, which those matrices never
+# install, so desktop.yaml runs its tests. They are *.e2e.ts, which bun test
+# doesn't discover; a test there that bun test would find needs agents narrowed
+# here and in the matrices so it stays out of these runs.
+#
 #   scripts/test-all.sh              # every package below
 #   scripts/test-all.sh apps/admin   # only the named packages
 set -u

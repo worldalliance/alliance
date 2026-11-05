@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2024",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "types": [],
+    "jsx": "react-jsx",
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["src/renderer"]
+}
