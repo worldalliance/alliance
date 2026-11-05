@@ -22,6 +22,10 @@ export class AdminActionUpdateDto extends ActionUpdateDto {
   @ApiProperty({ type: String, nullable: true })
   nonCompleterResult: string | null;
 
+  /**
+   * `nonCompleterResult`, what recognition updates send uninvolved members;
+   * the stored column isn't read.
+   */
   @ApiProperty({ type: String, nullable: true })
   uninvolvedResult: string | null;
 
@@ -36,7 +40,7 @@ export class AdminActionUpdateDto extends ActionUpdateDto {
     this.notificationMode = input.notificationMode;
     this.splitCollectiveResult = input.splitCollectiveResult;
     this.nonCompleterResult = input.nonCompleterResult;
-    this.uninvolvedResult = input.uninvolvedResult;
+    this.uninvolvedResult = input.nonCompleterResult;
     this.recognitionPreparedAt = input.recognitionPreparedAt;
     this.notificationHeldReason = input.notificationHeldReason;
   }

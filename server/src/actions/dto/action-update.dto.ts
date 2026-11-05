@@ -9,9 +9,11 @@ import {
 import { Type } from "class-transformer";
 import {
   Allow,
+  Equals,
   IsInt,
   IsObject,
   IsOptional,
+  ValidateBy,
   ValidateIf,
 } from "class-validator";
 import { displayOnlySchemaOf } from "src/tasks/display-only-snapshot";
@@ -64,15 +66,45 @@ export class ActionUpdateDto extends PickType(ActionUpdate, [
   }
 }
 
+const RELOAD_ADMIN = "Reload the admin to save this update.";
+
+// BACKCOMPAT(split-collective-result): refuses an admin bundle from before
+// the result always split, which would save non-completers as skipped or
+// drop a separate uninvolved text. Drop once no such bundle can still be open.
+class SplitCollectiveResultInput {
+  @ApiPropertyOptional({ type: Boolean })
+  @ValidateIf(
+    (o: SplitCollectiveResultInput) => o.splitCollectiveResult !== undefined,
+  )
+  @Equals(true, { message: RELOAD_ADMIN })
+  splitCollectiveResult?: true;
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @ValidateIf(
+    (o: SplitCollectiveResultInput) =>
+      o.uninvolvedResult !== undefined &&
+      (o.splitCollectiveResult === undefined ||
+        o.splitCollectiveResult === true),
+  )
+  @ValidateBy(
+    {
+      name: "matchesNonCompleterResult",
+      validator: {
+        validate: (value, args) =>
+          args !== undefined &&
+          "nonCompleterResult" in args.object &&
+          value === args.object.nonCompleterResult,
+      },
+    },
+    { message: RELOAD_ADMIN },
+  )
+  uninvolvedResult?: string | null;
+}
+
 export class CreateActionUpdateDto extends IntersectionType(
   PickType(ActionUpdate, ["title", "date", "notifyType", "shortNotifString"]),
-  PartialType(
-    PickType(ActionUpdate, [
-      "splitCollectiveResult",
-      "nonCompleterResult",
-      "uninvolvedResult",
-    ]),
-  ),
+  PartialType(PickType(ActionUpdate, ["nonCompleterResult"])),
+  SplitCollectiveResultInput,
 ) {
   @ApiPropertyOptional({ type: Number })
   @IsOptional()
@@ -83,16 +115,17 @@ export class CreateActionUpdateDto extends IntersectionType(
   tagId?: string;
 }
 
-export class UpdateActionUpdateDto extends PartialType(
-  PickType(ActionUpdate, [
-    "title",
-    "date",
-    "notifyType",
-    "shortNotifString",
-    "splitCollectiveResult",
-    "nonCompleterResult",
-    "uninvolvedResult",
-  ]),
+export class UpdateActionUpdateDto extends IntersectionType(
+  PartialType(
+    PickType(ActionUpdate, [
+      "title",
+      "date",
+      "notifyType",
+      "shortNotifString",
+      "nonCompleterResult",
+    ]),
+  ),
+  SplitCollectiveResultInput,
 ) {
   @ApiPropertyOptional({ type: Number, nullable: true })
   @IsOptional()

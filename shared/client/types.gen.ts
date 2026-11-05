@@ -3272,8 +3272,8 @@ export type CreateActionUpdateDto = {
     date: string;
     shortNotifString: string;
     notifyType: ActionUpdateNotifyType;
-    splitCollectiveResult?: boolean;
     nonCompleterResult?: string | null;
+    splitCollectiveResult?: boolean;
     uninvolvedResult?: string | null;
     associatedEventId?: number;
     tagId?: string;
@@ -3319,10 +3319,10 @@ export type UpdateActionUpdateDto = {
      */
     date?: string;
     shortNotifString?: string;
-    splitCollectiveResult?: boolean;
     nonCompleterResult?: string | null;
-    uninvolvedResult?: string | null;
     notifyType?: ActionUpdateNotifyType;
+    splitCollectiveResult?: boolean;
+    uninvolvedResult?: string | null;
     associatedEventId?: number | null;
     tagId?: string | null;
     schema?: {

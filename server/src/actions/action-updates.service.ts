@@ -148,6 +148,8 @@ export class ActionUpdatesService {
       expectedSchemaSnapshotId,
       tagId,
       associatedEventId,
+      splitCollectiveResult: _splitGuard,
+      uninvolvedResult: _uninvolvedGuard,
       ...rest
     } = dto;
 
@@ -201,6 +203,14 @@ export class ActionUpdatesService {
       const actionUpdate = await this.lockActionUpdate(id, em);
       // Before the schema write, so publishing sees the `date` this request sets.
       Object.assign(actionUpdate, rest);
+      if (rest.nonCompleterResult !== undefined) {
+        actionUpdate.uninvolvedResult = rest.nonCompleterResult;
+        if (
+          actionUpdate.notificationMode !== ActionUpdateNotificationMode.Legacy
+        ) {
+          actionUpdate.splitCollectiveResult = true;
+        }
+      }
       const now = new Date();
       if (
         rest.date !== undefined &&
