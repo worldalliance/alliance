@@ -124,6 +124,24 @@ describe("Form slugs (e2e)", () => {
     expect(await slugOf(next.formId)).toBe("v8");
   });
 
+  it("numbers follow-ups created at the same time without deadlocking", async () => {
+    const action = await newAction("concurrent");
+    const forms = await Promise.all(Array.from({ length: 6 }, () => newForm()));
+
+    const results = await Promise.allSettled(
+      forms.map((form) =>
+        followUps.createFollowUpForm(action.id, {
+          actionId: action.id,
+          formId: form.id,
+        }),
+      ),
+    );
+
+    expect(results.filter((r) => r.status === "rejected")).toEqual([]);
+    const slugs = await Promise.all(forms.map((form) => slugOf(form.id)));
+    expect(slugs.sort()).toEqual(["f1", "f2", "f3", "f4", "f5", "f6"]);
+  });
+
   it("keeps a renamed slug on attach, and refuses one taken in the action", async () => {
     const action = await newAction("keep");
     const taskForm = await newForm();
