@@ -114,21 +114,7 @@ export class ForumService {
       },
     );
 
-    const postsWithAuthors = await this.postRepository.find({
-      where: { id: In(postIds) },
-      relations: { authors: true, likes: true, action: { reviewers: true } },
-      relationLoadStrategy: "query",
-    });
-    const relationsByPostId = new Map(postsWithAuthors.map((p) => [p.id, p]));
-    for (const post of posts) {
-      const loaded = relationsByPostId.get(post.id);
-      post.authors = loaded?.authors ?? [];
-      post.likes = loaded?.likes ?? [];
-      post.likesIds = loaded?.likesIds ?? [];
-      if (post.action) {
-        post.action.reviewers = loaded?.action?.reviewers;
-      }
-    }
+    await this.loadListRelations(posts);
 
     // 3) Fetch last comment per post in one query using DISTINCT ON (Postgres)
     const lastComments = await this.commentRepository
@@ -156,6 +142,30 @@ export class ForumService {
         lastComment: lastCommentByPostId.get(post.id) ?? undefined,
       }))
       .sort(byForumListOrder);
+  }
+
+  // Loads the to-many relations with one query each; joining them onto the
+  // list query returns a row per combination of them.
+  private async loadListRelations(posts: Post[]): Promise<void> {
+    const withRelations = await this.postRepository.find({
+      where: { id: In(posts.map((p) => p.id)) },
+      relations: {
+        authors: true,
+        likes: true,
+        action: { reviewers: true },
+      },
+      relationLoadStrategy: "query",
+    });
+    const relationsByPostId = new Map(withRelations.map((p) => [p.id, p]));
+    for (const post of posts) {
+      const loaded = relationsByPostId.get(post.id);
+      post.authors = loaded?.authors ?? [];
+      post.likes = loaded?.likes ?? [];
+      post.likesIds = loaded?.likesIds ?? [];
+      if (post.action) {
+        post.action.reviewers = loaded?.action?.reviewers;
+      }
+    }
   }
 
   async findPostsByAction(params: {
