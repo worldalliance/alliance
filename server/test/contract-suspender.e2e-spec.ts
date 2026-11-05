@@ -21,7 +21,7 @@ import {
   ContractEventType,
 } from "src/user/entities/contract-event.entity";
 import { UserDevice } from "src/user/entities/user-device.entity";
-import { User } from "src/user/entities/user.entity";
+import { ReferralSource, User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
 import {
@@ -204,6 +204,49 @@ describe("ContractSuspenderWorker (e2e)", () => {
           emailType: EmailType.ContractSuspended,
         }),
       ).toBe(mailed);
+    },
+  );
+
+  it.each([
+    {
+      kind: "automatic",
+      suspend: () => ctx.app.get(ContractSuspenderWorker).processSuspensions(),
+      message:
+        /^\[\w+\]: Suspending contract for Suspended Member \(invited by Inviting Member\)\. failure code /,
+    },
+    {
+      kind: "manual",
+      suspend: (userId: number) =>
+        ctx.app.get(ContractService).suspendContract({ userId }),
+      message:
+        /^Suspended Member \(invited by Inviting Member\) suspended their contract :\($/,
+    },
+  ])(
+    "names who invited the member in the $kind suspension alert",
+    async ({ kind, suspend, message }) => {
+      const { member } = await suspendable(`invited-${kind}`, false);
+      const referrer = await ctx.app.get(UserService).create({
+        email: `suspension-referrer-${kind}@example.com`,
+        password: "Password123!",
+        name: "Inviting Member",
+        tags: [ctx.defaultTag],
+      });
+      await ctx.dataSource.getRepository(User).update(member.id, {
+        referredById: referrer.id,
+        referralSource: ReferralSource.ReferralLink,
+      });
+      const sendMessage = jest
+        .spyOn(ctx.app.get(EventLogService), "sendMessage")
+        .mockResolvedValue(R.success(undefined));
+
+      await suspend(member.id);
+
+      expect(sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: member.id,
+          message: expect.stringMatching(message),
+        }),
+      );
     },
   );
 

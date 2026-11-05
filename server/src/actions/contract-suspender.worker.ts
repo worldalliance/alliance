@@ -13,9 +13,10 @@ import { NotificationChannel } from "src/notifs/notif-utils";
 import { sendBestEffort } from "src/notifs/send-best-effort";
 import { suspensionMessage } from "src/notifs/textnotifcontents";
 import { PushService } from "src/push/push.service";
-import { textReachable } from "src/user/user.utils";
+import { User } from "src/user/entities/user.entity";
+import { memberWithReferral, textReachable } from "src/user/user.utils";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
-import { DataSource } from "typeorm";
+import { DataSource, In } from "typeorm";
 import { env } from "../config/env";
 import { LOCK_KEYS } from "../notifs/lock-keys";
 import { withPgAdvisoryLock } from "../notifs/lock-utils";
@@ -52,15 +53,23 @@ export class ContractSuspenderWorker {
 
         const candidates = await this.suspensionService.findUsersToSuspend(now);
 
-        if (candidates.length > 0) {
-          this.logger.log(
-            `Suspending contracts for user(s) ${candidates.map(({ user }) => user.id).join(", ")}`,
-          );
-        }
+        if (candidates.length === 0) return;
+        const userIds = candidates.map(({ user }) => user.id);
+        this.logger.log(
+          `Suspending contracts for user(s) ${userIds.join(", ")}`,
+        );
         const preferences = await this.preferences.load({
-          userIds: candidates.map(({ user }) => user.id),
+          userIds,
           kinds: [NotificationKind.ContractSuspended],
         });
+        const membersWithReferral = new Map(
+          (
+            await this.dataSource.getRepository(User).find({
+              where: { id: In(userIds) },
+              relations: { referredBy: true, referredByCampaign: true },
+            })
+          ).map((user) => [user.id, memberWithReferral(user)]),
+        );
 
         for (const { user, reasonKey } of candidates) {
           const suspension = await R.fromPromiseFn(() =>
@@ -86,7 +95,7 @@ export class ContractSuspenderWorker {
             send: () =>
               this.eventLogService.sendMessage({
                 type: EventType.ContractSuspended,
-                message: `[${env("NODE_ENV")}]: Suspending contract for ${user.name}. failure code ${reasonKey}`,
+                message: `[${env("NODE_ENV")}]: Suspending contract for ${membersWithReferral.get(user.id) ?? user.name}. failure code ${reasonKey}`,
                 userId: user.id,
                 blob: {
                   suspendReason: reasonKey,

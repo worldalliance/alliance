@@ -57,7 +57,7 @@ import {
 } from "./entities/onetime-invite.entity";
 import { User } from "./entities/user.entity";
 import { CLAIMABLE_INVITE } from "./invite-claim";
-import { referralLabel } from "./user.utils";
+import { memberWithReferral } from "./user.utils";
 
 @Injectable()
 export class UserService {
@@ -129,9 +129,7 @@ export class UserService {
     });
     await this.eventLogService.sendMessage({
       type: EventType.AccountCreated,
-      message: [user.name, referralLabel(user), "created an account."]
-        .filter(Boolean)
-        .join(" "),
+      message: `${memberWithReferral(user)} created an account.`,
       userId: user.id,
       blob: null,
     });

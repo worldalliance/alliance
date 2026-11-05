@@ -23,3 +23,9 @@ export function referralLabel(
   }
   return "";
 }
+
+export function memberWithReferral(
+  user: Pick<User, "name" | "referredBy" | "referredByCampaign">,
+): string {
+  return [user.name, referralLabel(user)].filter(Boolean).join(" ");
+}
