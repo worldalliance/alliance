@@ -2098,10 +2098,9 @@ export type ActionReviewerResponseDto = {
     icon?: ActionReviewerIcon;
 };
 
-export type Form = {
+export type FollowUpFormFormDto = {
     id: number;
     title: string;
-    slug: string;
     formSnapshotId: number;
     createdAt: string;
     updatedAt: string;
@@ -2115,7 +2114,7 @@ export type FollowUpFormDto = {
     instructions: string | null;
     actionId: number;
     formId: number;
-    form?: Form;
+    form?: FollowUpFormFormDto;
 };
 
 export type ActionEventDto = {
@@ -2363,7 +2362,7 @@ export type AdminFollowUpFormDto = {
     instructions: string | null;
     actionId: number;
     formId: number;
-    form?: Form;
+    form?: FollowUpFormFormDto;
     /**
      * Cohort expression tree defining who the form targets
      */
@@ -3017,6 +3016,15 @@ export type CreateActionActivityDto = {
     type: ActionActivityType;
     actionId: number;
     userId: number;
+};
+
+export type Form = {
+    id: number;
+    title: string;
+    slug: string;
+    formSnapshotId: number;
+    createdAt: string;
+    updatedAt: string;
 };
 
 export type ExportActionDto = {
