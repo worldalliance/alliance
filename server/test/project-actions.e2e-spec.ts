@@ -311,4 +311,17 @@ describe("Project actions (e2e)", () => {
       "New name",
     );
   });
+
+  it("keeps a sole-action suite's name when a save leaves the action's name as it was", async () => {
+    const project = await projectRepo.save({ name: "Unchanged name" });
+    const { body } = await createInProject(project.id, "Same name").expect(201);
+    await suiteRepo.update(body.suite.id, { name: "Week 2: curated" });
+
+    await asAdmin(request(server()).patch(`/actions/${body.id}`))
+      .send({ name: "Same name", suiteId: body.suite.id, body: "Edited" })
+      .expect(200);
+    expect((await suiteRepo.findOneByOrFail({ id: body.suite.id })).name).toBe(
+      "Week 2: curated",
+    );
+  });
 });

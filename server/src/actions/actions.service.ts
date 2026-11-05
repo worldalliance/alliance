@@ -403,6 +403,7 @@ export class ActionsService {
     }
 
     const previousTaskFormId = action.taskFormId;
+    const newName = rest.name === action.name ? undefined : rest.name;
     Object.assign(action, rest);
 
     // Replacing reviewers soft-deletes the dropped ones before the save;
@@ -432,11 +433,11 @@ export class ActionsService {
           });
         }
         await em.save(Action, action);
-        if (rest.name !== undefined && suiteId != null) {
+        if (newName !== undefined && suiteId != null) {
           await renameSoleActionSuite(em, {
             suiteId,
             actionId: id,
-            name: rest.name,
+            name: newName,
           });
         }
         if (rest.prerequisiteActionIds !== undefined) {
