@@ -13,7 +13,7 @@ resource "aws_instance" "app_server_staging" {
   instance_type               = "t3a.medium"
   subnet_id                   = module.vpc.public_subnets[0]
   vpc_security_group_ids      = [aws_security_group.ec2_security_group.id] # reuse shared EC2 SG
-  iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name  # reuse same profile
+  iam_instance_profile        = aws_iam_instance_profile.ec2_profile_staging.name
   associate_public_ip_address = true
   key_name                    = "ssh-key"
 
@@ -166,24 +166,42 @@ resource "aws_s3_bucket_versioning" "staging_assets" {
   }
 }
 
-# ----------------------------------------------------
-# Attach staging bucket access to the SAME EC2 role
-# (so prod/dev policy remains unchanged)
-# ----------------------------------------------------
+# Apart from production's role, so staging can't write production's bucket.
+resource "aws_iam_role" "ec2_role_staging" {
+  name               = "alliance-ec2-role-staging"
+  assume_role_policy = data.aws_iam_policy_document.ec2_assume.json
+}
+
+resource "aws_iam_instance_profile" "ec2_profile_staging" {
+  name = "alliance-ec2-profile-staging"
+  role = aws_iam_role.ec2_role_staging.name
+}
+
 resource "aws_iam_role_policy" "ec2_s3_policy_staging" {
   name = "ec2-s3-access-staging"
-  role = aws_iam_role.ec2_role.id
+  role = aws_iam_role.ec2_role_staging.id
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Action = ["s3:GetObject", "s3:PutObject", "s3:ListBucket", "s3:AbortMultipartUpload"]
-      Effect   = "Allow"
-      Resource = [
-        aws_s3_bucket.staging_assets.arn,
-        "${aws_s3_bucket.staging_assets.arn}/*"
-      ]
-    }]
+    Statement = [
+      {
+        Action = ["s3:GetObject", "s3:PutObject", "s3:ListBucket", "s3:AbortMultipartUpload", "s3:DeleteObject"]
+        Effect = "Allow"
+        Resource = [
+          aws_s3_bucket.staging_assets.arn,
+          "${aws_s3_bucket.staging_assets.arn}/*"
+        ]
+      },
+      {
+        # Read-only, for the nightly prod → staging copy.
+        Action = ["s3:GetObject", "s3:ListBucket"]
+        Effect = "Allow"
+        Resource = [
+          aws_s3_bucket.assets.arn,
+          "${aws_s3_bucket.assets.arn}/*"
+        ]
+      }
+    ]
   })
 }
 
