@@ -156,7 +156,7 @@ const ActionsList: React.FC = () => {
             <CreateActionMenu />
           </div>
         }
-        mostRecentFirst
+        latestLaunchFirst
         participantsById={participantsById}
         className="flex-shrink-0 max-h-[50vh] border border-zinc-200"
       />

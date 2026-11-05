@@ -1,13 +1,14 @@
-import { Action } from "@alliance/shared/client";
+import { cn } from "@alliance/shared/styles/util";
 import { startOfDay } from "date-fns";
 import { millisecondsInDay } from "date-fns/constants";
 import React from "react";
 import { useNavigate } from "react-router";
 import { ACTION_STATUS_LABELS } from "../lib/actionStatusDisplay";
-import type { PhaseSegment } from "../lib/actionTimelineData";
+import type { PhaseSegment, TimelineRow } from "../lib/actionTimelineData";
+import { swatchColors } from "../lib/identitySwatch";
 
 interface ActionTimelineBarProps {
-  action: Pick<Action, "id" | "name" | "status">;
+  action: TimelineRow["action"];
   phases: PhaseSegment[];
   globalStartDate: Date;
   pixelsPerDay: number;
@@ -15,6 +16,8 @@ interface ActionTimelineBarProps {
   rowIndex: number;
   scrollLeft?: number;
   containerWidth?: number;
+  projectHovered: boolean;
+  onProjectHover: (projectId: number | null) => void;
 }
 
 const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
@@ -26,8 +29,13 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
   rowIndex,
   scrollLeft = 0,
   containerWidth = 800,
+  projectHovered,
+  onProjectHover,
 }) => {
   const navigate = useNavigate();
+  const memberActionColor = swatchColors(
+    action.project?.name ?? action.slug ?? action.name,
+  ).from;
   const calculateStickyLabelPosition = (
     barLeft: number,
     barWidth: number,
@@ -83,8 +91,13 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
 
   return (
     <div
-      className="absolute border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+      className={cn(
+        "absolute border-b border-gray-100 hover:bg-gray-50 cursor-pointer",
+        projectHovered && "bg-gray-50",
+      )}
       onClick={() => navigate(`/actions/${action.id}`)}
+      onMouseEnter={() => onProjectHover(action.project?.id ?? null)}
+      onMouseLeave={() => onProjectHover(null)}
       style={{
         height: "64px",
         top: `${50 + rowIndex * 64}px`,
@@ -117,7 +130,8 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
         );
 
         // Shared background color
-        const barColor = phase.status === "member_action" ? "#75ba30" : "#ddd"; // gray-100
+        const barColor =
+          phase.status === "member_action" ? memberActionColor : "#ddd"; // gray-100
 
         // Check if this is the last phase and if it extends beyond current time
         const isLastPhase = phaseIndex === phases.length - 1;
