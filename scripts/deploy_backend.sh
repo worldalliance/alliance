@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
 # Swaps ~/nest-build.zip in as ~/nest-backend and migrates. The deploy workflow
-# runs it on the backend host with the app's environment exported.
+# runs it on the backend host with NODE_ENV exported; everything that reads the
+# app's secrets runs through secrets_run.sh.
 #
 # A release that applies RemoveStreakRecognition stops the old backend before
 # migrating, because the old code writes the columns that migration drops, and
@@ -28,13 +29,17 @@ old_pid=$(backend_pid) || { echo "::error::Could not read the backend's pid from
 rm -rf nest-backend-deploy-backup || true
 mv nest-backend nest-backend-deploy-backup || true
 
+with_secrets () {
+  ~/secrets_run.sh "$@"
+}
+
 start_backend () {
   pm2 delete nest-app 9>&- || true
-  pm2 start "bun src/main.ts" --name nest-app --interpreter none 9>&-
+  pm2 start ~/secrets_run.sh --name nest-app --interpreter bash --exp-backoff-restart-delay=1000 9>&- -- bun src/main.ts
 }
 
 migrate () {
-  bunx typeorm-ts-node-commonjs --dataSource src/datasources/dataSource.ts migration:run
+  with_secrets bunx typeorm-ts-node-commonjs --dataSource src/datasources/dataSource.ts migration:run
 }
 
 put_back_old_release () {
@@ -108,7 +113,7 @@ health_check () {
   sleep 10
   # The public /api/ path goes through the nginx vhost deploy-react-app owns,
   # not this job; verify-api covers it.
-  curl --silent --fail --show-error --max-time 10 http://localhost:3005/ > /dev/null
+  curl --silent --fail --show-error --max-time 10 --retry 10 --retry-delay 3 --retry-connrefused http://localhost:3005/ > /dev/null
 }
 
 mkdir -p ~/nest-backend
@@ -118,9 +123,15 @@ cd ~/nest-backend || keep_old_release "Could not enter the new release."
 bun install --frozen-lockfile
 
 cd ~/nest-backend/server || keep_old_release "Could not enter the new release."
+# The running backend restarts through ~/secrets_run.sh, so the new copy
+# replaces it only once it has loaded the new config.
+bash ../scripts/secrets_run.sh bun src/config/validate-env.ts \
+  || keep_old_release "The new release's config failed to load from Parameter Store."
+install -m 755 ../scripts/secrets_run.sh ~/secrets_run.sh.new
+mv -f ~/secrets_run.sh.new ~/secrets_run.sh
 
 # set -E would run the ERR trap inside the substitution too, then again out here.
-removal=$(trap - ERR; bun scripts/streak-recognition-removal.ts state) \
+removal=$(trap - ERR; with_secrets bun scripts/streak-recognition-removal.ts state) \
   || keep_old_release "Could not read the streak recognition removal state."
 
 case "$removal" in
@@ -152,7 +163,7 @@ recover_after_cleanup () {
   echo "Deployment failed after streak recognition's removal committed - reverting it"
   cd ~/nest-backend/server || fail_stopped "Could not enter the new release."
   stop_backend || fail_stopped "Could not stop the new backend."
-  bun scripts/streak-recognition-removal.ts revert || fail_stopped "Could not revert the streak recognition removal."
+  with_secrets bun scripts/streak-recognition-removal.ts revert || fail_stopped "Could not revert the streak recognition removal."
   restore_old_release || fail_stopped "Reverted the removal but could not restart the old release."
   exit 1
 }
@@ -161,7 +172,8 @@ recover_after_cleanup () {
 recover_by_record () {
   trap '' HUP INT TERM PIPE
   cd ~/nest-backend/server || fail_stopped "$1 and the new release could not be entered."
-  removal=$(bun scripts/streak-recognition-removal.ts state) || removal=""
+  removal=$(with_secrets bun scripts/streak-recognition-removal.ts state) \
+    || fail_stopped "$1 and the removal's outcome could not be read; check that this host can reach Parameter Store and the database."
   case "$removal" in
     pending)
       echo "$1 before streak recognition's removal committed - restoring the old release"
@@ -169,7 +181,10 @@ recover_by_record () {
       exit 1
       ;;
     applied) recover_after_cleanup ;;
-    *) fail_stopped "$1 and the removal's outcome could not be read." ;;
+    *)
+      echo "Streak recognition removal state: $removal"
+      fail_stopped "$1 and the removal's outcome was not recognized."
+      ;;
   esac
 }
 

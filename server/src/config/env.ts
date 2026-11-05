@@ -160,8 +160,8 @@ export function twilioSignatureEnforcedFor(nodeEnv: NodeEnv): boolean {
   return isDeployed(nodeEnv);
 }
 
-// ADMIN_USER and ADMIN_PASSWORD are in Infisical but the deploy never hands
-// them to the server, which reads them only outside production.
+// ADMIN_USER and ADMIN_PASSWORD are in Infisical but not in the server's
+// parameters, so deployed servers never seed an admin.
 const deployedSet = [
   "APPLE_BUNDLE_ID",
   "APPLE_KEY_ID",
@@ -190,8 +190,9 @@ const deployedSet = [
   "TWILIO_PHONE_NUMBER",
 ] as const satisfies ServerEnvKey[];
 
-// The keys Infisical's `alliance` project or the committed config sets in the
-// matching environment, flags aside; test has no Infisical environment.
+// The keys the committed config or the environment's store sets (Infisical's
+// `alliance` project in development, Parameter Store when deployed), flags
+// aside; test has no store.
 const setFor: Record<NodeEnv, readonly ServerEnvKey[]> = {
   [NodeEnv.Development]: [
     "ADMIN_PASSWORD",
@@ -240,7 +241,7 @@ function conditionallyRequired(config: Partial<ServerEnv>): ServerEnvKey[] {
   if (nodeEnv === undefined) return [...cloudfront];
   return [
     ...setFor[nodeEnv],
-    // The committed config sets the URLs, and the deploy the bucket.
+    // The committed config sets the URLs, and Parameter Store the bucket.
     ...(isDeployed(nodeEnv)
       ? ([
           "APP_URL",

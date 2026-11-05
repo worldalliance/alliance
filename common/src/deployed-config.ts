@@ -3,7 +3,7 @@ import { NodeEnv } from "./node-env";
 type DeployedNodeEnv = NodeEnv.Staging | NodeEnv.Production;
 
 // The repo is public: only values that grant no access on their own belong
-// here. Secrets live in Infisical.
+// here. The backends read their secrets from AWS SSM Parameter Store.
 export type DeployedConfig = {
   DOMAIN_NAME: string;
   ALT_DOMAIN_NAME: string;

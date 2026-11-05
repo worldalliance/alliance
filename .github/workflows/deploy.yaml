@@ -802,13 +802,6 @@ jobs:
 
             cd ~/
 
-            export DB_HOST=${{ secrets.RDS_HOSTNAME }}
-            export DB_USERNAME=${{ secrets.RDS_USERNAME }}
-            export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-            export JWT_SECRET=${{ secrets.JWT_SECRET }}
-            export JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}
-            export GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
-            export APPLE_PRIVATE_KEY_BASE64=${{ secrets.APPLE_PRIVATE_KEY_BASE64 }}
             export NODE_ENV=${{ github.ref_name == 'production' && 'production' || 'staging' }}
             # BACKCOMPAT(ALL-2011): a rollback restarts the previous release in
             # this shell, and a release from before the server's committed-config
@@ -822,20 +815,6 @@ jobs:
             export ALT_APP_URL="https://$ALT_DOMAIN_NAME"
             export ADMIN_URL="https://admin.$DOMAIN_NAME"
             export ALT_ADMIN_URL="https://admin.$ALT_DOMAIN_NAME"
-            export SMTP_HOST=${{ secrets.SMTP_HOST }}
-            export SMTP_USER=${{ secrets.SMTP_USER }}
-            export SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
-            export ASSETS_BUCKET=${{ secrets.ASSETS_BUCKET_NAME }}
-            export TWILIO_PHONE_NUMBER=${{ secrets.TWILIO_PHONE_NUMBER }}
-            export TWILIO_ACCOUNT_SID=${{ secrets.TWILIO_ACCOUNT_SID }}
-            export TWILIO_AUTH_TOKEN=${{ secrets.TWILIO_AUTH_TOKEN }}
-            export POSTHOG_QUERY_KEY=${{ secrets.POSTHOG_QUERY_KEY }}
-            export MAILGUN_SIGNING_KEY=${{ secrets.MAILGUN_SIGNING_KEY }}
-            export NOTIF_TEST_PHONE_NUMBER=${{ secrets.NOTIF_TEST_PHONE_NUMBER }}
-            export NOTIF_TEST_EMAIL=${{ secrets.NOTIF_TEST_EMAIL }}
-            export SLACK_WEBHOOK_URL=${{ secrets.SLACK_WEBHOOK_URL }}
-            export PANGRAM_API_KEY=${{ secrets.PANGRAM_API_KEY }}
-            export EXPO_ACCESS_TOKEN=${{ secrets.EXPO_ACCESS_TOKEN }}
             # BACKCOMPAT(ALL-1963): a rollback restarts the previous release in
             # this shell, and a release from before the server read the committed
             # RDS CA bundle needs DB_CA_CERT exported. Remove once each

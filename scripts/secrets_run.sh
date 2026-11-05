@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+#
+# The deploy installs this as ~/secrets_run.sh, outside any release, so a
+# rollback starts the previous release through it too.
 
 set -euo pipefail
 

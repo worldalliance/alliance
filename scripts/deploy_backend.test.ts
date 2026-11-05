@@ -77,6 +77,7 @@ describe.each(["absent", "applied"] as const)(
         "flock",
         "unzip",
         "install",
+        "validate",
         "migrate while running: old",
         "delete old",
         "start new",
@@ -92,6 +93,23 @@ describe.each(["absent", "applied"] as const)(
       expect(result).toMatchObject({ running: "old", release: "old" });
     });
 
+    test.each([
+      ["Parameter Store is unreachable", { SECRETS: "fail" }],
+      ["the config is invalid", { CONFIG: "fail" }],
+    ])("leaves the old backend and its wrapper when %s", (_, env) => {
+      writeFileSync(join(home, "secrets_run.sh"), "previous\n");
+      const result = deploy(env);
+      expect(result.exitCode).toBe(1);
+      expect(result.output).toContain("The old backend is still running.");
+      expect(result.log).not.toContainEqual(
+        expect.stringMatching(/^(migrate|delete)/),
+      );
+      expect(result).toMatchObject({ running: "old", release: "old" });
+      expect(readFileSync(join(home, "secrets_run.sh"), "utf8")).toBe(
+        "previous\n",
+      );
+    });
+
     test("a failed migration leaves the old backend running", () => {
       const result = deploy({ MIGRATE: "fail" });
       expect(result.exitCode).toBe(1);
@@ -99,6 +117,7 @@ describe.each(["absent", "applied"] as const)(
         "flock",
         "unzip",
         "install",
+        "validate",
         "migrate while running: old",
       ]);
       expect(result.output).toContain("The old backend is still running.");
@@ -147,7 +166,7 @@ test("deploy_backend.sh leaves the old backend running on an unreadable removal 
   writeFileSync(join(state, "unreadable"), "");
   const result = deploy();
   expect(result.exitCode).toBe(1);
-  expect(result.log).toEqual(["flock", "unzip", "install"]);
+  expect(result.log).toEqual(["flock", "unzip", "install", "validate"]);
   expect(result).toMatchObject({
     running: "old",
     release: "old",
@@ -163,7 +182,7 @@ test("deploy_backend.sh leaves the old backend running on an unrecognized remova
   expect(result.output).toContain(
     "::error::Unexpected streak recognition removal state. The old backend is still running.",
   );
-  expect(result.log).toEqual(["flock", "unzip", "install"]);
+  expect(result.log).toEqual(["flock", "unzip", "install", "validate"]);
   expect(result).toMatchObject({
     running: "old",
     release: "old",
@@ -181,6 +200,7 @@ describe("deploy_backend.sh with the removal pending", () => {
       "flock",
       "unzip",
       "install",
+      "validate",
       "delete old",
       "migrate while running: ",
       "delete ",
@@ -319,7 +339,7 @@ describe("deploy_backend.sh with the removal pending", () => {
   test("an unrecognized outcome after a failed migration leaves the backend stopped", () => {
     const result = deploy({ MIGRATE: "slow" });
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain("outcome could not be read");
+    expect(result.output).toContain("outcome was not recognized");
     expect(result.log).not.toContain("revert");
     expect(result.running).toBe("");
   });
@@ -327,7 +347,9 @@ describe("deploy_backend.sh with the removal pending", () => {
   test("an unreadable outcome after a failed migration leaves the backend stopped", () => {
     const result = deploy({ MIGRATE: "unknown" });
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain("outcome could not be read");
+    expect(result.output).toContain(
+      "outcome could not be read; check that this host can reach Parameter Store and the database.",
+    );
     expect(result.log).not.toContain("revert");
     expect(result.running).toBe("");
   });
