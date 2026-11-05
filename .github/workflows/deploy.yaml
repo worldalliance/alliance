@@ -747,6 +747,7 @@ jobs:
             server/scripts \
             deployed-config.env \
             scripts/deploy_backend.sh \
+            scripts/secrets_run.sh \
             scripts/sync_prod_to_staging.sh \
             scripts/anonymize \
             common/package.json \
