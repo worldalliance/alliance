@@ -2,6 +2,10 @@
 // as a preload — see `[test] preload` in the bunfig.toml of every package
 // that runs React tests.
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
+// node:timers copies globalThis.setTimeout when first loaded. Loading it before
+// register() and before any test pins Bun's own timers, whose refresh()
+// engine.io calls, rather than happy-dom's or a test's stub.
+import "node:timers";
 
 GlobalRegistrator.register();
 
