@@ -1,4 +1,5 @@
 import type { AdminActionDto } from "@alliance/shared/client";
+import { useFormDisplaySlugs } from "@alliance/shared/lib/useFormsAdmin";
 import { parseActionDto } from "@alliance/shared/parsed-dtos";
 import { useMemo } from "react";
 import {
@@ -11,10 +12,12 @@ export function useActionParticipants(
   actions: AdminActionDto[],
 ): ReadonlyMap<number, CohortSegment[]> {
   const { tags } = useTagsAdmin();
+  const formDisplaySlugs = useFormDisplaySlugs();
   return useMemo(() => {
     const names = {
       tagNames: new Map(tags.map((tag) => [tag.id, tag.name])),
       actionNames: new Map(actions.map((action) => [action.id, action.name])),
+      formDisplaySlugs,
     };
     return new Map(
       actions.map((dto) => {
@@ -27,5 +30,5 @@ export function useActionParticipants(
         ];
       }),
     );
-  }, [actions, tags]);
+  }, [actions, tags, formDisplaySlugs]);
 }

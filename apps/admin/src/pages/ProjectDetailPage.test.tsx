@@ -30,6 +30,7 @@ serveApi(
       ]),
     "GET /projects": () => Response.json([cleanAir]),
     "GET /user/tags": () => Response.json([]),
+    "GET /tasks/listForms": () => Response.json([]),
     "PUT /projects/actions/:actionId": async ({ request, params }) => {
       const { projectId }: { projectId: number | null } = await request.json();
       requests.push(`assign ${params.actionId} to ${projectId}`);

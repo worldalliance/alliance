@@ -2,6 +2,7 @@ import type {
   CohortExpression,
   LeafCondition,
 } from "@alliance/common/cohort-expression";
+import { formLabel } from "@alliance/shared/lib/useFormsAdmin";
 
 export const LEAF_LABELS: Record<LeafCondition["type"], string> = {
   Tag: "Tag",
@@ -21,6 +22,7 @@ export type CohortSegment = { text: string; leaf?: LeafCondition["type"] };
 export interface CohortNames {
   tagNames: ReadonlyMap<string, string>;
   actionNames: ReadonlyMap<number, string>;
+  formDisplaySlugs: ReadonlyMap<number, string>;
 }
 
 const describeLeaf = (expr: LeafCondition, names: CohortNames): string => {
@@ -35,7 +37,7 @@ const describeLeaf = (expr: LeafCondition, names: CohortNames): string => {
         names.actionNames.get(expr.actionId) ?? `#${expr.actionId}`
       }`;
     case "FormFieldValue":
-      return `Form #${expr.formId} answer`;
+      return `${formLabel(names.formDisplaySlugs, expr.formId)} answer`;
     case "GroupLead":
     case "USMember":
     case "NonUSMember":

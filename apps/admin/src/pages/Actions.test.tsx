@@ -23,6 +23,7 @@ serveApi(
         ? Response.json(served)
         : Response.json({}, { status: loadStatus }),
     "GET /user/tags": () => Response.json([]),
+    "GET /tasks/listForms": () => Response.json([]),
   }),
 );
 

@@ -3,7 +3,7 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, it, spyOn } from "bun:test";
-import { ActionSlugField } from "./ActionSlugField";
+import { SlugField } from "./SlugField";
 
 let saved: unknown[] = [];
 
@@ -30,7 +30,7 @@ beforeEach(() => {
 const renderField = (slug = "food-bank") =>
   render(
     <ToastProvider>
-      <ActionSlugField
+      <SlugField
         slug={slug}
         saving={false}
         onSave={(next) =>

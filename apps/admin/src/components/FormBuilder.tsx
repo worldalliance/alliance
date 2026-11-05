@@ -388,6 +388,7 @@ export function FormBuilder(props: FormBuilderProps) {
                   isLoading,
                   hasUnsavedChanges,
                 }}
+                formId={formId}
               />
               <FormBuilderBanners
                 isLoading={isLoading}

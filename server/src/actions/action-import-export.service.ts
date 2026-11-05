@@ -18,6 +18,7 @@ import {
   parseAction,
   type ParsedAction,
 } from "./entities/action.entity";
+import { FormSlugSequence, insertForm } from "./form-slug";
 import { GeneralUpdatesService } from "./general-updates.service";
 
 @Injectable()
@@ -114,7 +115,6 @@ export class ActionImportExportService {
       async (em) => {
         const actionRepo = em.getRepository(Action);
         const suiteRepo = em.getRepository(ActionSuite);
-        const formRepo = em.getRepository(Form);
         const eventRepo = em.getRepository(ActionEvent);
 
         const inserted = await actionRepo.insert({
@@ -171,9 +171,10 @@ export class ActionImportExportService {
         }
 
         if (taskForm) {
-          const newTaskForm = await formRepo.save(
-            formRepo.create({ ...taskForm, id: undefined }),
-          );
+          const newTaskForm = await insertForm(em, {
+            form: taskForm,
+            placement: { actionId, sequence: FormSlugSequence.Main },
+          });
           await actionRepo.update(actionId, { taskFormId: newTaskForm.id });
         }
 

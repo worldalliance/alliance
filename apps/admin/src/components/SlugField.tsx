@@ -3,9 +3,9 @@ import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Copy } from "lucide-react";
 import { useState } from "react";
-import { logActionError } from "./actionSaveErrors";
+import { logActionError } from "../pages/action-dashboard/actionSaveErrors";
 
-export function ActionSlugField({
+export function SlugField({
   slug,
   saving,
   onSave,

@@ -10,7 +10,6 @@ import {
 import type { AggregateViewSchema } from "@alliance/common/forms/form-schema";
 import type { FormulaChoices } from "@alliance/common/forms/formula-choices";
 import type { AssignedRow } from "@alliance/common/forms/row-list-schema";
-import { MIGRATE_RESPONSE_SNAPSHOTS_MAX_BATCH } from "@alliance/common/forms/snapshot-migration";
 import type { VisibilityValidatorResults } from "@alliance/common/forms/visibility";
 import {
   ApiProperty,
@@ -34,6 +33,7 @@ import type { LinkedAction } from "src/actions/action-form-links.service";
 import { Action } from "src/actions/entities/action.entity";
 import { AiDetectionResultDto } from "src/ai-detection/dto/ai-detection-result.dto";
 import { AiDetectionResult } from "src/ai-detection/entities/ai-detection-result.entity";
+import { SlugField } from "src/datasources/slug-column";
 import { UserDto } from "src/user/dto/user.dto";
 import { Form, loadedFormSnapshot } from "./entities/form.entity";
 import {
@@ -45,7 +45,6 @@ import {
   FormResponseDraft,
   type ParsedFormResponseDraft,
 } from "./entities/formresponsedraft.entity";
-import { FormSnapshot } from "./entities/formsnapshot.entity";
 import { memberSnapshotSchema } from "./form-snapshot-schema";
 
 export class CreateFormDto extends PickType(Form, ["title"]) {
@@ -66,6 +65,11 @@ export class UpdateFormDto extends PickType(CreateFormDto, ["schema"]) {
   @IsOptional()
   @IsInt()
   expectedFormSnapshotId?: number;
+}
+
+export class UpdateFormSlugDto {
+  @SlugField()
+  slug: string;
 }
 
 export class FormulaSourceDto {
@@ -194,6 +198,9 @@ export class FormSchemaCountsDto {
 export type FormSummary = {
   id: number;
   title: string;
+  slug: string;
+  /** `<action slug>::<form slug>`, or the bare slug for a form with no action. */
+  displaySlug: string;
   formSnapshotId: number;
   /** Absent when the stored schema no longer parses. */
   schemaCounts?: FormSchemaCounts;
@@ -209,8 +216,14 @@ export type FormSummary = {
 export class FormSummaryDto extends PickType(Form, [
   "id",
   "title",
+  "slug",
   "formSnapshotId",
 ]) {
+  @ApiProperty()
+  @IsString()
+  @IsDefined()
+  displaySlug: string;
+
   @ApiPropertyOptional({ type: () => FormSchemaCountsDto })
   @IsOptional()
   @Type(() => FormSchemaCountsDto)
@@ -225,6 +238,8 @@ export class FormSummaryDto extends PickType(Form, [
     super();
     this.id = input.id;
     this.title = input.title;
+    this.slug = input.slug;
+    this.displaySlug = input.displaySlug;
     this.formSnapshotId = input.formSnapshotId;
     this.schemaCounts =
       input.schemaCounts && new FormSchemaCountsDto(input.schemaCounts);
@@ -393,119 +408,6 @@ export class MaybeFormDraftDto {
 
   constructor(draft: FormDraft | null) {
     this.draft = draft ? new FormDraftDto(draft) : undefined;
-  }
-}
-
-export class FormSnapshotDto extends PickType(FormSnapshot, [
-  "id",
-  "hash",
-  "createdAt",
-]) {
-  @ApiProperty()
-  @IsDefined()
-  @Type(() => Object)
-  schema: Record<string, unknown>;
-
-  constructor(snapshot: FormSnapshot) {
-    super();
-    this.id = snapshot.id;
-    this.hash = snapshot.hash;
-    this.createdAt = snapshot.createdAt;
-    this.schema = snapshot.schema;
-  }
-}
-
-export class SnapshotResponseSummaryDto extends PickType(FormResponse, [
-  "id",
-  "createdAt",
-]) {
-  @ApiPropertyOptional()
-  @IsOptional()
-  userName?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  userId?: number;
-
-  constructor(response: FormResponse) {
-    super();
-    this.id = response.id;
-    this.createdAt = response.createdAt;
-    this.userName = response.user?.name;
-    this.userId = response.user?.id;
-  }
-}
-
-export type SnapshotResponseGroup = {
-  snapshot: FormSnapshot;
-  responses: FormResponse[];
-};
-
-export class SnapshotResponseGroupDto {
-  @ApiProperty({ type: () => FormSnapshotDto })
-  @IsDefined()
-  @Type(() => FormSnapshotDto)
-  snapshot: FormSnapshotDto;
-
-  @ApiProperty({ type: () => SnapshotResponseSummaryDto, isArray: true })
-  @IsArray()
-  @Type(() => SnapshotResponseSummaryDto)
-  responses: SnapshotResponseSummaryDto[];
-
-  constructor(input: SnapshotResponseGroup) {
-    this.snapshot = new FormSnapshotDto(input.snapshot);
-    this.responses = input.responses.map(
-      (r) => new SnapshotResponseSummaryDto(r),
-    );
-  }
-}
-
-export type FormSnapshotMigration = {
-  form: Form;
-  groups: SnapshotResponseGroup[];
-};
-
-export class FormSnapshotMigrationDto {
-  @ApiProperty()
-  @IsString()
-  formTitle: string;
-
-  @ApiProperty({ type: () => FormSnapshotDto })
-  @IsDefined()
-  @Type(() => FormSnapshotDto)
-  latestSnapshot: FormSnapshotDto;
-
-  @ApiProperty({ type: () => SnapshotResponseGroupDto, isArray: true })
-  @IsArray()
-  @Type(() => SnapshotResponseGroupDto)
-  groups: SnapshotResponseGroupDto[];
-
-  constructor(input: FormSnapshotMigration) {
-    this.formTitle = input.form.title;
-    this.latestSnapshot = new FormSnapshotDto(loadedFormSnapshot(input.form));
-    this.groups = input.groups.map((g) => new SnapshotResponseGroupDto(g));
-  }
-}
-
-export class MigrateResponseSnapshotsDto {
-  @ApiProperty({ type: Number, isArray: true })
-  @IsArray()
-  @ArrayNotEmpty()
-  @ArrayMaxSize(MIGRATE_RESPONSE_SNAPSHOTS_MAX_BATCH)
-  @IsInt({ each: true })
-  responseIds: number[];
-
-  @ApiProperty()
-  @IsInt()
-  targetSnapshotId: number;
-}
-
-export class MigrateResponseSnapshotsResultDto {
-  @ApiProperty()
-  updatedCount: number;
-
-  constructor(updatedCount: number) {
-    this.updatedCount = updatedCount;
   }
 }
 

@@ -68,6 +68,7 @@ serveApi(
       return Response.json(null);
     },
     "GET /user/tags": () => Response.json([]),
+    "GET /tasks/listForms": () => Response.json([]),
   }),
 );
 

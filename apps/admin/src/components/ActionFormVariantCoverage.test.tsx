@@ -1,4 +1,6 @@
 import type { ActionFormVariantStatsDto } from "@alliance/shared/client/types.gen";
+import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
+import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import ActionFormVariantCoverage from "./ActionFormVariantCoverage";
@@ -22,6 +24,21 @@ const stats: ActionFormVariantStatsDto[] = [
   },
 ];
 
+serveApi(
+  routes({
+    "GET /tasks/listForms": () =>
+      Response.json([
+        { id: 1, title: "Original", slug: "v1", displaySlug: "food-drive::v1" },
+        {
+          id: 2,
+          title: "Variant A",
+          slug: "v2",
+          displaySlug: "food-drive::v2",
+        },
+      ]),
+  }),
+);
+
 const renderCoverage = (params: {
   percentageSum: number;
   hasVariants: boolean;
@@ -30,9 +47,16 @@ const renderCoverage = (params: {
     <MemoryRouter>
       <ActionFormVariantCoverage stats={stats} {...params} />
     </MemoryRouter>,
+    queryWrapper(),
   );
 
 describe("ActionFormVariantCoverage", () => {
+  it("names each group's form by its display slug", async () => {
+    renderCoverage({ percentageSum: 40, hasVariants: true });
+    expect(await screen.findByText("food-drive::v1")).toBeTruthy();
+    expect(screen.getByText("food-drive::v2")).toBeTruthy();
+  });
+
   it("totals assignments and submissions across groups", () => {
     renderCoverage({ percentageSum: 40, hasVariants: true });
     expect(screen.getByText("12 users assigned")).toBeTruthy();

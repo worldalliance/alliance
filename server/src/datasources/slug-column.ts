@@ -35,6 +35,10 @@ export function SlugColumn(indexName: string) {
   );
 }
 
+export function SlugField() {
+  return applyDecorators(ApiProperty(slugApiOptions), ...slugValidators());
+}
+
 /** A request's slug. Pair with `@ValidateIf(slugGiven)` so null fails validation. */
 export function OptionalSlugField() {
   return applyDecorators(

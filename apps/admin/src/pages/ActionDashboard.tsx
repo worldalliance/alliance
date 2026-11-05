@@ -18,6 +18,7 @@ import ActionMergedResponsesTab from "../components/ActionMergedResponsesTab";
 import ActionUpdatesTab from "../components/ActionUpdatesTab";
 import EventManagementTab from "../components/EventManagementTab";
 import { FormBuilder } from "../components/FormBuilder";
+import { SlugField } from "../components/SlugField";
 import { getSiteUrl } from "../lib/config";
 import { useActionSuitesAdmin } from "../lib/useActionSuitesAdmin";
 import { useAllActions } from "../lib/useAllActions";
@@ -26,7 +27,6 @@ import { useTagsAdmin } from "../lib/useTagsAdmin";
 import ActionEditor from "./action-dashboard/ActionEditor";
 import ActionOverviewTab from "./action-dashboard/ActionOverviewTab";
 import ActionReadinessChecklist from "./action-dashboard/ActionReadinessChecklist";
-import { ActionSlugField } from "./action-dashboard/ActionSlugField";
 import { useActionCommands } from "./action-dashboard/useActionCommands";
 import { useActionEditor } from "./action-dashboard/useActionEditor";
 import { useActionExport } from "./action-dashboard/useActionExport";
@@ -198,7 +198,7 @@ const ActionDashboard: React.FC = () => {
                 {isNew ? "Create New Action" : `${action?.name}`}
               </h1>
               {action && (
-                <ActionSlugField
+                <SlugField
                   slug={action.slug}
                   saving={isUpdating}
                   onSave={(slug) => admin.updateAction({ slug })}

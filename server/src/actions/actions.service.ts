@@ -49,6 +49,7 @@ import {
   type ParsedAction,
 } from "./entities/action.entity";
 import { GeneralUpdate } from "./entities/general-update.entity";
+import { FormSlugSequence, slugFormForAction } from "./form-slug";
 import { GeneralUpdatesService } from "./general-updates.service";
 import {
   assertNotAPrerequisite,
@@ -139,6 +140,13 @@ export class ActionsService {
       write: async (em) => {
         const inserted = await em.save(Action, action);
         await assertPrerequisitesValid({ em, actionIds: [inserted.id] });
+        if (rest.taskFormId != null) {
+          await slugFormForAction(em, {
+            formId: rest.taskFormId,
+            actionId: inserted.id,
+            sequence: FormSlugSequence.Main,
+          });
+        }
         return inserted;
       },
     }).catch((error: unknown) => {
@@ -406,6 +414,13 @@ export class ActionsService {
         await em.save(Action, action);
         if (rest.prerequisiteActionIds !== undefined) {
           await assertPrerequisitesValid({ em, actionIds: [id] });
+        }
+        if (rest.taskFormId != null && rest.taskFormId !== previousTaskFormId) {
+          await slugFormForAction(em, {
+            formId: rest.taskFormId,
+            actionId: id,
+            sequence: FormSlugSequence.Main,
+          });
         }
       },
     }).catch((error: unknown) => {

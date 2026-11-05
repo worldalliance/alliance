@@ -2101,6 +2101,7 @@ export type ActionReviewerResponseDto = {
 export type Form = {
     id: number;
     title: string;
+    slug: string;
     formSnapshotId: number;
     createdAt: string;
     updatedAt: string;
@@ -4143,7 +4144,9 @@ export type FormLinkedActionDto = {
 export type FormSummaryDto = {
     id: number;
     title: string;
+    slug: string;
     formSnapshotId: number;
+    displaySlug: string;
     schemaCounts?: FormSchemaCountsDto;
     usedInAction?: FormLinkedActionDto;
 };
@@ -4284,6 +4287,13 @@ export type UpdateFormDto = {
     };
     title?: string;
     expectedFormSnapshotId?: number;
+};
+
+export type UpdateFormSlugDto = {
+    /**
+     * Stable, human-readable identifier for tooling
+     */
+    slug: string;
 };
 
 export type OptOutActionDto = {
@@ -14159,6 +14169,32 @@ export type TasksUpdateFormAdminResponses = {
 };
 
 export type TasksUpdateFormAdminResponse = TasksUpdateFormAdminResponses[keyof TasksUpdateFormAdminResponses];
+
+export type TasksUpdateFormSlugAdminData = {
+    body: UpdateFormSlugDto;
+    path: {
+        formId: number;
+    };
+    query?: never;
+    url: '/tasks/forms/{formId}/slug';
+};
+
+export type TasksUpdateFormSlugAdminErrors = {
+    /**
+     * Another live form of the same action, or with no action, has the slug.
+     */
+    409: HeyApiError;
+};
+
+export type TasksUpdateFormSlugAdminError = TasksUpdateFormSlugAdminErrors[keyof TasksUpdateFormSlugAdminErrors];
+
+export type TasksUpdateFormSlugAdminResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type TasksUpdateFormSlugAdminResponse = TasksUpdateFormSlugAdminResponses[keyof TasksUpdateFormSlugAdminResponses];
 
 export type TasksDeleteFormAdminData = {
     body?: never;

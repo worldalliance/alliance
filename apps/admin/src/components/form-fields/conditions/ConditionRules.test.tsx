@@ -20,7 +20,8 @@ import {
 
 const api = serveApi(
   routes({
-    "GET /tasks/listForms": () => Response.json([{ id: 9, title: "Intake" }]),
+    "GET /tasks/listForms": () =>
+      Response.json([{ id: 9, title: "Intake", displaySlug: "survey::v1" }]),
     "GET /tasks/customValidators": () => Response.json([]),
   }),
 );
@@ -121,7 +122,9 @@ describe("answer rules", () => {
         loads += 1;
         return loads === 1
           ? Response.json({ message: "boom" }, { status: 500 })
-          : Response.json([{ id: 9, title: "Intake" }]);
+          : Response.json([
+              { id: 9, title: "Intake", displaySlug: "survey::v1" },
+            ]);
       },
       "GET /tasks/adminForm/:id": () =>
         Response.json({ message: "Form not found" }, { status: 404 }),
@@ -216,8 +219,8 @@ it("starts a cross-form rule over afresh when its source form changes", async ()
   api.alsoServing({
     "GET /tasks/listForms": () =>
       Response.json([
-        { id: 9, title: "Intake" },
-        { id: 12, title: "Follow-up" },
+        { id: 9, title: "Intake", displaySlug: "survey::v1" },
+        { id: 12, title: "Follow-up", displaySlug: "follow-up::v1" },
       ]),
     "GET /tasks/adminForm/:id": ({ params }) =>
       Response.json({
@@ -237,7 +240,7 @@ it("starts a cross-form rule over afresh when its source form changes", async ()
       formula: "c1",
     },
   });
-  await rule("c1").findByRole("option", { name: "Follow-up (#12)" });
+  await rule("c1").findByRole("option", { name: "Follow-up (follow-up::v1)" });
 
   fireEvent.change(rule("c1").getByRole("combobox", { name: "Source form" }), {
     target: { value: "12" },
