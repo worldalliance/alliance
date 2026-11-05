@@ -30,4 +30,20 @@ The pointer and the skill's description name `sharedweb/` and `shared/` beside t
 
 ## Invocation
 
-The skill is model-invoked with a root `AGENTS.md` pointer, so an agent reaches the guidelines before UI work on its own (agent decision).
+Both skills are model-invoked with a root `AGENTS.md` pointer, so an agent reaches the guidelines before UI work on its own, and a request phrased as "compare our UI with …" reaches the comparison skill in every harness (agent decision).
+
+## Comparison run mechanics
+
+Agent decisions, revisable if they cause friction:
+
+- A run lives in `.scratch/ux-compare/<surface-slug>-<YYYYMMDD>/`, so screenshots of signed-in accounts and prototype captures stay out of the repository. Prompts carry its absolute path, since builders run from their own worktrees, where a relative `.scratch/` path points elsewhere. Every subagent name and prototype worktree name carries the run's directory name, and a run name that a worktree from another checkout or an earlier run already carries is bumped, so a rerun never finds an earlier run's subagent files or worktrees.
+- The capture of our surface is a script in the run that seeds the data and drives every state, so each prototype builder captures its variant from the same data and steps, though its worktree's database starts from the main checkout's; the builder runs the migrations first, since that copy lacks any the branch adds. The script takes its ports, database and secrets from the checkout it runs from, so a builder running the parent's script never writes to the parent's database. It only adds rows, since a run from the main checkout seeds the developer's own database. Every state shows only records the script creates, since ours is captured from this checkout's database and each variant from a copy of the main checkout's, which differ when the run starts in a worktree; a state that can't be scoped that way is named, and the report flags its data as differing.
+- The report ends with the `scripts/rm-worktree.sh` command for each prototype worktree, so the user can clean up once they have compared.
+- The judges' shared material is the captures, `context.md`, the guidelines skill and the surface's source code. `context.md` holds facts only, since it is the one thing the running agent writes that all four judges read.
+- Codex judges run with `-s read-only` and the captures attached, since they only read; their final messages are their reviews.
+- Each template tells its agent to skip the `ux-compare` skill, since the root `AGENTS.md` pointer matches a judge's, merger's or builder's task too, and following it would start a nested run.
+- A fresh Claude agent merges the reviews, so the running agent, which wrote `context.md`, doesn't also rank the findings.
+- Prototype builders alternate between Claude and Codex across variants, and each captures its own variant in its own worktree, since only it knows when its change is ready to capture.
+- The capture script runs under Node for every surface, not only the desktop app, which needs it, so every run has one runtime, and is a `.mts` file, which Node loads as an ES module without first trying CommonJS and warning.
+- The report renders as markdown with relative image links, so it opens in place in an editor.
+- The user's choice of items in step 4 approves the prototype worktrees and the builders' commits in them, so the skill waives the root `AGENTS.md` rule to ask before git writes for those, as `review-loop` does for its own; builders run without a user to ask.
