@@ -69,7 +69,7 @@ jobs:
             scripts,
             .github,
             citesting,
-            agents,
+            agents/hooks,
           ]
     uses: ./.github/workflows/test-unit.yaml
     with:
