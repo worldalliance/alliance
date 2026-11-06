@@ -1,0 +1,21 @@
+name: PostHog CLI
+description: >-
+  Put PostHog's CLI on an x86_64 Linux runner's PATH from its release
+  tarball, checked against a committed sha256. Its npm package's install
+  script downloads the same tarball from a GitHub release without checking
+  it, and release assets can be replaced.
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        URL: https://github.com/PostHog/posthog/releases/download/posthog-cli-v0.4.6/posthog-cli-x86_64-unknown-linux-gnu.tar.gz
+        SHA256: f2eb84b26ae8901a55bab8d2ced01f666c8b7d86500dbd18fb618dbbd15b9ec5
+      run: |
+        dir="$RUNNER_TEMP/posthog-cli"
+        mkdir -p "$dir"
+        curl -fsSL -o "$dir/cli.tar.gz" "$URL"
+        echo "$SHA256  $dir/cli.tar.gz" | sha256sum -c -
+        tar -xzf "$dir/cli.tar.gz" -C "$dir" --strip-components 1
+        echo "$dir" >> "$GITHUB_PATH"
