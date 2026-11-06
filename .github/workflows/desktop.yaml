@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - agents/desktop/**
+      - common/src/result.ts
       - eslint/**
       - package.json
       - bun.lock

@@ -5,8 +5,11 @@ import { BUN_TEST_FILE, testPackages } from "./lib/test-packages";
 
 const repoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-test("every test bun test discovers is in a test-all.sh package", () => {
-  const packages = testPackages(repoRoot);
+// desktop.yaml runs these, since they need the app's own install.
+const OWN_CI = ["agents/desktop"];
+
+test("every test bun test discovers runs in test-all.sh or desktop.yaml", () => {
+  const covered = [...testPackages(repoRoot), ...OWN_CI];
   const testFiles = execFileSync("git", ["ls-files"], {
     cwd: repoRoot,
     encoding: "utf8",
@@ -16,7 +19,7 @@ test("every test bun test discovers is in a test-all.sh package", () => {
 
   expect(
     testFiles.filter(
-      (file) => !packages.some((dir) => file.startsWith(`${dir}/`)),
+      (file) => !covered.some((dir) => file.startsWith(`${dir}/`)),
     ),
   ).toEqual([]);
 });
