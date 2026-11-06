@@ -124,7 +124,7 @@ export class SearchService {
       }
       case SearchItemType.Post: {
         const post = await nullIfNotFound(
-          this.forumService.findOnePostFull(search.objectId, userId),
+          this.forumService.findOneVisiblePost(search.objectId, userId),
         );
         return post && this.postToSearchItem(post);
       }

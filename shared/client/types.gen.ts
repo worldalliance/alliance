@@ -12313,30 +12313,6 @@ export type ForumCreatePostResponses = {
 
 export type ForumCreatePostResponse = ForumCreatePostResponses[keyof ForumCreatePostResponses];
 
-export type ForumFindPostsByActionData = {
-    body?: never;
-    path: {
-        actionId: string;
-    };
-    query?: never;
-    url: '/forum/posts/action/{actionId}';
-};
-
-export type ForumFindPostsByActionErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ForumFindPostsByActionError = ForumFindPostsByActionErrors[keyof ForumFindPostsByActionErrors];
-
-export type ForumFindPostsByActionResponses = {
-    200: Array<PostDto>;
-};
-
-export type ForumFindPostsByActionResponse = ForumFindPostsByActionResponses[keyof ForumFindPostsByActionResponses];
-
 export type ForumRemovePostData = {
     body?: never;
     path: {

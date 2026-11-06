@@ -9,6 +9,7 @@ import {
   type Repository,
   type SelectQueryBuilder,
 } from "typeorm";
+import { FacepileService } from "../likes/facepile.service";
 import { User } from "../user/entities/user.entity";
 import { CreatePostDto, PostDtoArgs, UpdatePostDto } from "./dto/post.dto";
 import { Comment, CommentParentObject } from "./entities/comment.entity";
@@ -30,6 +31,7 @@ export class ForumService {
     private userRepository: Repository<User>,
     @InjectRepository(EditableContent)
     private editableContentRepository: TypedRepository<EditableContent>,
+    private readonly facepileService: FacepileService,
   ) {}
 
   async createPost(
@@ -114,7 +116,7 @@ export class ForumService {
       },
     );
 
-    await this.loadListRelations(posts);
+    const facepiles = await this.loadListRelationsAndFacepiles(posts);
 
     // 3) Fetch last comment per post in one query using DISTINCT ON (Postgres)
     const lastComments = await this.commentRepository
@@ -138,6 +140,7 @@ export class ForumService {
     return posts
       .map((post) => ({
         post: parsePost(post),
+        facepile: facepiles(post.id),
         commentCount: commentCounts.get(post.id) ?? 0,
         lastComment: lastCommentByPostId.get(post.id) ?? undefined,
       }))
@@ -146,48 +149,34 @@ export class ForumService {
 
   // Loads the to-many relations with one query each; joining them onto the
   // list query returns a row per combination of them.
-  private async loadListRelations(posts: Post[]): Promise<void> {
-    if (!posts.length) return;
-    const withRelations = await this.postRepository.find({
-      where: { id: In(posts.map((p) => p.id)) },
-      relations: {
-        authors: true,
-        likes: true,
-        tags: true,
-        action: { reviewers: true },
-      },
-      relationLoadStrategy: "query",
-    });
+  private async loadListRelationsAndFacepiles(
+    posts: Post[],
+  ): Promise<(id: number) => User[]> {
+    if (!posts.length) return () => [];
+    const ids = posts.map((p) => p.id);
+    const [withRelations, facepiles] = await Promise.all([
+      this.postRepository.find({
+        where: { id: In(ids) },
+        relations: {
+          authors: true,
+          tags: true,
+          action: { reviewers: true },
+        },
+        relationLoadStrategy: "query",
+      }),
+      this.facepileService.loadFacepiles(Post, ids),
+    ]);
     const relationsByPostId = new Map(withRelations.map((p) => [p.id, p]));
     for (const post of posts) {
       const loaded = relationsByPostId.get(post.id);
       post.authors = loaded?.authors ?? [];
-      post.likes = loaded?.likes ?? [];
       post.likesIds = loaded?.likesIds ?? [];
       post.tags = loaded?.tags ?? [];
       if (post.action) {
         post.action.reviewers = loaded?.action?.reviewers;
       }
     }
-  }
-
-  async findPostsByAction(params: {
-    actionId: number;
-    requestingUserId?: number;
-  }): Promise<ParsedPost[]> {
-    const { actionId, requestingUserId } = params;
-    const qb = this.postRepository
-      .createQueryBuilder("post")
-      .leftJoinAndSelect("post.author", "author")
-      .leftJoinAndSelect("post.action", "action")
-      .leftJoinAndSelect("action.reviewers", "actionReviewer")
-      .leftJoinAndSelect("post.editableContent", "editableContent")
-      .leftJoinAndSelect("post.authors", "authors")
-      .leftJoinAndSelect("post.likes", "likes")
-      .where("post.actionId = :actionId", { actionId })
-      .orderBy("post.updatedAt", "DESC");
-    this.addPostVisibilityFilter(qb, "post", requestingUserId);
-    return (await qb.getMany()).map(parsePost);
+    return facepiles;
   }
 
   private visiblePostQuery(id: number, userId?: number) {
@@ -200,17 +189,13 @@ export class ForumService {
     );
   }
 
-  private async findOneVisiblePost(
-    id: number,
-    userId?: number,
-  ): Promise<ParsedPost> {
+  async findOneVisiblePost(id: number, userId?: number): Promise<ParsedPost> {
     const post = await this.visiblePostQuery(id, userId)
       .leftJoinAndSelect("post.author", "author")
       .leftJoinAndSelect("post.action", "action")
       .leftJoinAndSelect("action.reviewers", "actionReviewer")
       .leftJoinAndSelect("post.editableContent", "editableContent")
       .leftJoinAndSelect("post.authors", "authors")
-      .leftJoinAndSelect("post.likes", "likes")
       .leftJoinAndSelect("post.tags", "tags")
       .getOne();
     if (!post) {
@@ -229,20 +214,18 @@ export class ForumService {
     }
   }
 
-  async findOnePostFull(id: number, userId?: number): Promise<ParsedPost> {
-    return this.findOneVisiblePost(id, userId);
-  }
-
-  async findOnePost(id: number, userId?: number): Promise<ParsedPost> {
-    return this.findOneVisiblePost(id, userId);
+  async findOnePost(id: number, userId?: number): Promise<PostDtoArgs> {
+    const post = await this.findOneVisiblePost(id, userId);
+    const facepiles = await this.facepileService.loadFacepiles(Post, [id]);
+    return { post, facepile: facepiles(id) };
   }
 
   async updatePost(
     id: number,
     updatePostDto: UpdatePostDto,
     userId: number,
-  ): Promise<ParsedPost> {
-    const post = await this.findOnePost(id, userId);
+  ): Promise<PostDtoArgs> {
+    const post = await this.findOneVisiblePost(id, userId);
 
     if (!isPostAuthor(post, userId)) {
       throw new NotFoundException("You can only edit your own posts");
@@ -278,7 +261,7 @@ export class ForumService {
   }
 
   async removePost(id: number, userId: number): Promise<void> {
-    const post = await this.findOnePost(id, userId);
+    const post = await this.findOneVisiblePost(id, userId);
 
     if (!isPostAuthor(post, userId)) {
       throw new NotFoundException("You can only delete your own posts");
@@ -293,7 +276,7 @@ export class ForumService {
   async findPostsByUser(params: {
     authorId: number;
     requestingUserId?: number;
-  }): Promise<ParsedPost[]> {
+  }): Promise<PostDtoArgs[]> {
     const { authorId, requestingUserId } = params;
     const qb = this.postRepository
       .createQueryBuilder("post")
@@ -306,8 +289,11 @@ export class ForumService {
       });
     this.addPostVisibilityFilter(qb, "post", requestingUserId);
     const posts = await qb.getMany();
-    await this.loadListRelations(posts);
-    return posts.map(parsePost);
+    const facepiles = await this.loadListRelationsAndFacepiles(posts);
+    return posts.map((post) => ({
+      post: parsePost(post),
+      facepile: facepiles(post.id),
+    }));
   }
 
   async findPostsByTitle(params: {
