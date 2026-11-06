@@ -66,7 +66,9 @@ test("a live pid with a different start time reads as dead, as after pid reuse",
 
 test("a zombie has no stamp", () => {
   const result = bash(
-    `exec 3< <(sh -c 'true & echo $!; exec sleep 3'); read -r p <&3; sleep 0.5; [[ "$(ps -o stat= -p $p)" == Z* ]] || exit 2; process_stamp $p`,
+    `exec 3< <(sh -c 'sleep 0.5 & echo $!; exec sleep 10' 2>/dev/null); read -r p <&3
+    for _ in {1..30}; do [[ "$(ps -o stat= -p $p)" == Z* ]] && break; sleep 0.1; done
+    [[ "$(ps -o stat= -p $p)" == Z* ]] || exit 2; process_stamp $p`,
   );
 
   expect(result.status).toBe(1);
