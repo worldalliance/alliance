@@ -10,7 +10,10 @@ import {
   findLatestTerminalActivities,
   TERMINAL_ACTIVITY_TYPES,
 } from "./action-activity-status";
+import { CohortAdmissionService } from "./cohort-admission.service";
+import { readsSavedDecisions } from "./cohort-decision";
 import { CohortResolutionSession } from "./cohort-resolution-session";
+import { CohortResolverService } from "./cohort-resolver.service";
 import { ActionActivity } from "./entities/action-activity.entity";
 import { ActionEvent } from "./entities/action-event.entity";
 import {
@@ -30,6 +33,8 @@ export class ActionParticipantsService {
     private readonly actionEventRecipientService: ActionEventRecipientService,
     private readonly prerequisiteProgressService: PrerequisiteProgressService,
     private readonly userService: UserService,
+    private readonly cohortResolverService: CohortResolverService,
+    private readonly cohortAdmissionService: CohortAdmissionService,
   ) {}
 
   async findParticipantIdsForActionById(actionId: number): Promise<number[]> {
@@ -42,10 +47,7 @@ export class ActionParticipantsService {
     return parseAction(
       await this.actionRepository.findOneOrFail({
         where: { id: actionId },
-        relations: {
-          events: true,
-          activities: true,
-        },
+        relations: { events: true },
       }),
     );
   }
@@ -68,13 +70,13 @@ export class ActionParticipantsService {
    * i.e. "could this user have done it at all?"
    *
    * Batched: fetches the shared data in a handful of bulk queries instead of
-   * per-action. Returns a map of actionId -> participant userIds.
+   * per-action. Returns a map of actionId -> participant userIds. Without a
+   * `session`, the users load as the roster projection.
    */
   async findParticipantIdsForActions(
     actions: ParsedAction[],
     params: { session?: CohortResolutionSession } = {},
   ): Promise<Map<number, number[]>> {
-    const { session = new CohortResolutionSession() } = params;
     // Build entries for actions that have a MemberAction event
     const entries: Array<{ action: ParsedAction; event: ActionEvent }> = [];
     for (const action of actions) {
@@ -89,6 +91,23 @@ export class ActionParticipantsService {
     }
 
     const actionIds = entries.map((e) => e.action.id);
+    const session = params.session ?? new CohortResolutionSession();
+    const now = new Date();
+    await Promise.all([
+      // The users never leave this method, and every predicate it runs reads
+      // only what the roster projection loads.
+      params.session
+        ? undefined
+        : this.cohortResolverService.primeActiveUsers(session, () =>
+            this.userService.findActiveUsersForRoster(),
+          ),
+      this.cohortAdmissionService.prefetchAdmittedMemberIds(
+        entries.flatMap(({ action }) =>
+          readsSavedDecisions(action, now) ? [action.id] : [],
+        ),
+        session,
+      ),
+    ]);
 
     // 1. Batched base users (1 user query, deduplicated cohorts)
     const baseUsersByAction =
@@ -105,6 +124,13 @@ export class ActionParticipantsService {
       where: {
         actionId: In(actionIds),
         type: In(TERMINAL_ACTIVITY_TYPES),
+      },
+      select: {
+        id: true,
+        actionId: true,
+        userId: true,
+        createdAt: true,
+        type: true,
       },
     });
     const completionsByAction = new Map<number, number[]>();
@@ -187,17 +213,7 @@ export class ActionParticipantsService {
   }
 
   async findIncompleteUsersForAction(actionId: number): Promise<User[]> {
-    const action = parseAction(
-      await this.actionRepository.findOneOrFail({
-        where: { id: actionId },
-        relations: {
-          events: true,
-          activities: true,
-        },
-      }),
-    );
-
-    const joinedUserIds = await this.findParticipantIdsForAction(action);
+    const joinedUserIds = await this.findParticipantIdsForActionById(actionId);
 
     const completions = await this.prerequisiteProgressService.loadCompletions({
       actionId,
