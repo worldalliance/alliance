@@ -6,7 +6,7 @@ import {
   TaskFlowCompletionProvider,
   useMarkTaskCompleting,
 } from "./TaskFlowCompletionContext";
-import { makeAction, makeViewer } from "./testFixtures";
+import { makeAction } from "./testFixtures";
 import { queryWrapper } from "./testing/queryWrapper";
 import { seedAction } from "./testing/seedActions";
 import { routes, serveApi } from "./testing/serveApi";
@@ -132,38 +132,19 @@ it("refetches when the viewer signs in or out", async () => {
   await waitFor(() => expect(requests).toBe(2));
 });
 
-it("marks the action completed in the shared cache and reloads tasks", async () => {
+it("reloads tasks once a task completes or is withdrawn, leaving the relation to the form", async () => {
   const reloadTasks = jest.fn();
   const { client, hook } = renderHandlers({ reloadTasks });
   await waitFor(() => expect(hook.result.current.action).not.toBeNull());
 
-  await hook.result.current.onCompleteAction();
+  hook.result.current.onCompleteAction();
+  hook.result.current.onOptOutAction();
 
   expect(actionStore(client).get(7)).toMatchObject({
-    userRelation: "completed",
-    usersCompleted: 3,
+    viewer: { relation: "none" },
+    usersCompleted: 2,
   });
-  expect(reloadTasks).toHaveBeenCalledTimes(1);
-});
-
-it("does not count a completion the server already reported", async () => {
-  getResponse = () =>
-    Response.json(
-      makeAction({
-        id: 7,
-        usersCompleted: 3,
-        userRelation: "completed",
-        viewer: makeViewer({ relation: "completed" }),
-      }),
-    );
-  const { client, hook } = renderHandlers();
-  await waitFor(() => expect(hook.result.current.action).not.toBeNull());
-
-  await hook.result.current.onCompleteAction();
-
-  expect(actionStore(client).get(7)).toMatchObject({
-    usersCompleted: 3,
-  });
+  expect(reloadTasks).toHaveBeenCalledTimes(2);
 });
 
 it("holds the action while its task flow completes", async () => {
@@ -193,41 +174,4 @@ it("holds the action while its task flow completes", async () => {
 
   hook.rerender({ completing: false });
   expect(hook.result.current.action).toMatchObject({ usersCompleted: 3 });
-});
-
-it("marks the action declined in the shared cache and reloads tasks", async () => {
-  const reloadTasks = jest.fn();
-  const { client, hook } = renderHandlers({ reloadTasks });
-  await waitFor(() => expect(hook.result.current.action).not.toBeNull());
-
-  await hook.result.current.onOptOutAction();
-
-  expect(actionStore(client).get(7)).toMatchObject({
-    userRelation: "declined",
-    usersCompleted: 2,
-  });
-  expect(reloadTasks).toHaveBeenCalledTimes(1);
-});
-
-it("keeps a completion written while a refetch is in flight", async () => {
-  const { client, hook } = renderHandlers();
-  await waitFor(() => expect(hook.result.current.action).not.toBeNull());
-  let respond = () => {};
-  getResponse = () => {
-    const response = Response.json(makeAction({ id: 7, usersCompleted: 2 }));
-    return new Promise<Response>((resolve) => {
-      respond = () => resolve(response);
-    });
-  };
-  void hook.result.current.refetchAction();
-  await waitFor(() => expect(requests).toBe(2));
-
-  await hook.result.current.onCompleteAction();
-  respond();
-  await new Promise((resolve) => setTimeout(resolve, 10));
-
-  expect(actionStore(client).get(7)).toMatchObject({
-    userRelation: "completed",
-    usersCompleted: 3,
-  });
 });

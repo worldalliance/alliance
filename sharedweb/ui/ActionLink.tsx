@@ -85,7 +85,7 @@ export default function ActionLink({
 
   // Only fetch once the user actually hovers, so a page full of action
   // links doesn't fan out into a request per link on mount.
-  const { data, isError } = useAction(actionId, { enabled: open }).query;
+  const { data, isError } = useAction(actionId, { enabled: open });
 
   if (actionId == null) {
     return (

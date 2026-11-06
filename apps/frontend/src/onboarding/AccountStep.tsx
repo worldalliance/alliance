@@ -85,6 +85,7 @@ export function AccountStep({
     pending: invitePending,
     unresolved: inviteUnresolved,
     inviter,
+    campaignInvite,
   } = useInvite(referralCode);
   // A code that names nothing cannot create an account, and the server only
   // says so after the provider round-trip. Refusing it here costs the member
@@ -233,6 +234,19 @@ export function AccountStep({
                 </span>{" "}
                 invited you to the Alliance
               </span>
+            </div>
+          )}
+          {campaignInvite && (
+            <div className="mt-3 flex flex-row items-center justify-center gap-x-2 text-center text-base text-zinc-500">
+              {campaignInvite.picture && (
+                <AvatarProfile
+                  pfp={campaignInvite.picture}
+                  size="override"
+                  alt=""
+                  className="size-6 shrink-0 rounded-[5px]"
+                />
+              )}
+              <span>{campaignInvite.description}</span>
             </div>
           )}
           {alert && (

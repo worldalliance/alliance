@@ -1,3 +1,4 @@
+import type { QueryClient } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import {
   actionsQuery,
@@ -7,7 +8,7 @@ import {
 import { actionStore } from "./actionStore";
 import { queryKeys } from "./queryKeys";
 import { currentSession } from "./sessionStores";
-import { makeAction, makeProfile } from "./testFixtures";
+import { makeAction, makeProfile, makeViewer } from "./testFixtures";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 import { useAction } from "./useAction";
@@ -39,14 +40,10 @@ it("shares a detail response with an already loaded list", async () => {
   await waitFor(() => expect(list.result.current.data?.[0]?.name).toBe("List"));
 
   const detail = renderHook(() => useAction(7), { wrapper });
-  await waitFor(() =>
-    expect(detail.result.current.query.data?.name).toBe("Detail"),
-  );
+  await waitFor(() => expect(detail.result.current.data?.name).toBe("Detail"));
 
   await waitFor(() =>
-    expect(list.result.current.data?.[0]).toEqual(
-      detail.result.current.query.data,
-    ),
+    expect(list.result.current.data?.[0]).toEqual(detail.result.current.data),
   );
   expect(listRequests).toBe(1);
 });
@@ -54,17 +51,13 @@ it("shares a detail response with an already loaded list", async () => {
 it("shares a list response with an already loaded detail", async () => {
   const { wrapper } = queryWrapper();
   const detail = renderHook(() => useAction(7), { wrapper });
-  await waitFor(() =>
-    expect(detail.result.current.query.data?.name).toBe("Detail"),
-  );
+  await waitFor(() => expect(detail.result.current.data?.name).toBe("Detail"));
 
   const list = renderHook(() => useActionsQuery(), { wrapper });
   await waitFor(() => expect(list.result.current.data?.[0]?.name).toBe("List"));
 
   await waitFor(() =>
-    expect(detail.result.current.query.data).toEqual(
-      list.result.current.data?.[0],
-    ),
+    expect(detail.result.current.data).toEqual(list.result.current.data?.[0]),
   );
 });
 
@@ -74,7 +67,7 @@ it("keeps the detail's relations when a later list response omits them", async (
   const { wrapper } = queryWrapper();
   const detail = renderHook(() => useAction(7), { wrapper });
   await waitFor(() =>
-    expect(detail.result.current.query.data?.authors).toHaveLength(1),
+    expect(detail.result.current.data?.authors).toHaveLength(1),
   );
 
   listResponse = () =>
@@ -82,8 +75,8 @@ it("keeps the detail's relations when a later list response omits them", async (
   const list = renderHook(() => useActionsQuery(), { wrapper });
   await waitFor(() => expect(list.result.current.data?.[0]?.name).toBe("List"));
 
-  expect(detail.result.current.query.data?.name).toBe("List");
-  expect(detail.result.current.query.data?.authors).toEqual([makeProfile(3)]);
+  expect(detail.result.current.data?.name).toBe("List");
+  expect(detail.result.current.data?.authors).toEqual([makeProfile(3)]);
 });
 
 it("keeps the newer detail when an older list request finishes last", async () => {
@@ -97,9 +90,7 @@ it("keeps the newer detail when an older list request finishes last", async () =
   const list = renderHook(() => useActionsQuery(), { wrapper });
   await waitFor(() => expect(listRequests).toBe(1));
   const detail = renderHook(() => useAction(7), { wrapper });
-  await waitFor(() =>
-    expect(detail.result.current.query.data?.name).toBe("Detail"),
-  );
+  await waitFor(() => expect(detail.result.current.data?.name).toBe("Detail"));
 
   act(finish);
 
@@ -112,9 +103,7 @@ it("keeps an older detail's relations when a newer list finishes first", async (
   const pending = Promise.withResolvers<Response>();
   detailResponse = () => pending.promise;
   const detail = renderHook(() => useAction(7), { wrapper });
-  await waitFor(() =>
-    expect(detail.result.current.query.isFetching).toBe(true),
-  );
+  await waitFor(() => expect(detail.result.current.isFetching).toBe(true));
   listResponse = () =>
     Response.json([makeAction({ id: 7, name: "List", authors: [] })]);
   const list = renderHook(() => useActionsQuery(), { wrapper });
@@ -127,21 +116,31 @@ it("keeps an older detail's relations when a newer list finishes first", async (
   );
 
   await waitFor(() =>
-    expect(detail.result.current.query.data?.authors).toEqual([makeProfile(3)]),
+    expect(detail.result.current.data?.authors).toEqual([makeProfile(3)]),
   );
-  expect(detail.result.current.query.data?.name).toBe("List");
+  expect(detail.result.current.data?.name).toBe("List");
 });
 
+const completeAction7 = (client: QueryClient) =>
+  act(
+    () =>
+      void actionStore(client).recordRelation({
+        actionId: 7,
+        relation: "completed",
+        session: currentSession(client),
+      }),
+  );
+
 it("applies a completion to both views without double-counting repeated confirmations", async () => {
-  const { wrapper } = queryWrapper();
+  const { client, wrapper } = queryWrapper();
   const list = renderHook(() => useActionsQuery(), { wrapper });
   await waitFor(() => expect(list.result.current.isSuccess).toBe(true));
   const detail = renderHook(() => useAction(7), { wrapper });
-  await waitFor(() => expect(detail.result.current.query.isSuccess).toBe(true));
-  const completedBefore = detail.result.current.query.data!.usersCompleted;
+  await waitFor(() => expect(detail.result.current.isSuccess).toBe(true));
+  const completedBefore = detail.result.current.data!.usersCompleted;
 
-  await act(() => detail.result.current.markCompleted());
-  await act(() => detail.result.current.markCompleted());
+  completeAction7(client);
+  completeAction7(client);
 
   await waitFor(() =>
     expect(list.result.current.data?.[0]?.viewer?.relation).toBe("completed"),
@@ -149,10 +148,70 @@ it("applies a completion to both views without double-counting repeated confirma
   expect(list.result.current.data?.[0]?.usersCompleted).toBe(
     completedBefore + 1,
   );
-  expect(detail.result.current.query.data?.usersCompleted).toBe(
-    completedBefore + 1,
-  );
+  expect(detail.result.current.data?.usersCompleted).toBe(completedBefore + 1);
 });
+
+it("does not count a completion the server already reported", async () => {
+  detailResponse = () =>
+    Response.json(
+      makeAction({
+        id: 7,
+        usersCompleted: 3,
+        userRelation: "completed",
+        viewer: makeViewer({ relation: "completed" }),
+      }),
+    );
+  const { client, wrapper } = queryWrapper();
+  const detail = renderHook(() => useAction(7), { wrapper });
+  await waitFor(() => expect(detail.result.current.isSuccess).toBe(true));
+
+  completeAction7(client);
+
+  expect(actionStore(client).get(7)?.usersCompleted).toBe(3);
+});
+
+const views: {
+  view: string;
+  useView: () => { isSuccess: boolean; refetch: () => Promise<unknown> };
+}[] = [
+  { view: "list", useView: useActionsQuery },
+  { view: "detail", useView: () => useAction(7) },
+];
+
+it.each(views)(
+  "keeps a $view load's content for an action completed while it loads",
+  async ({ useView }) => {
+    const { client, wrapper } = queryWrapper();
+    const view = renderHook(useView, { wrapper });
+    await waitFor(() => expect(view.result.current.isSuccess).toBe(true));
+    const pending = Promise.withResolvers<void>();
+    let requested = false;
+    const edited = makeAction({ id: 7, name: "Edited" });
+    listResponse = async () => {
+      requested = true;
+      await pending.promise;
+      return Response.json([edited]);
+    };
+    detailResponse = async () => {
+      requested = true;
+      await pending.promise;
+      return Response.json(edited);
+    };
+    void view.result.current.refetch();
+    await waitFor(() => expect(requested).toBe(true));
+
+    completeAction7(client);
+    pending.resolve();
+
+    await waitFor(() =>
+      expect(actionStore(client).get(7)?.name).toBe("Edited"),
+    );
+    expect(actionStore(client).get(7)).toMatchObject({
+      viewer: { relation: "completed" },
+      usersCompleted: 1,
+    });
+  },
+);
 
 it("keeps a confirmation made while the first list is still loading", async () => {
   const { client, wrapper } = queryWrapper();
@@ -183,13 +242,13 @@ it("keeps a confirmation made while the first list is still loading", async () =
 it("retains a detail when a list no longer includes its action", async () => {
   const { wrapper } = queryWrapper();
   const detail = renderHook(() => useAction(7), { wrapper });
-  await waitFor(() => expect(detail.result.current.query.isSuccess).toBe(true));
+  await waitFor(() => expect(detail.result.current.isSuccess).toBe(true));
   listResponse = () => Response.json([]);
 
   const list = renderHook(() => useActionsQuery(), { wrapper });
 
   await waitFor(() => expect(list.result.current.data).toEqual([]));
-  expect(detail.result.current.query.data?.name).toBe("Detail");
+  expect(detail.result.current.data?.name).toBe("Detail");
 });
 
 it("accepts an older successful load when the newer request fails", async () => {
@@ -200,14 +259,14 @@ it("accepts an older successful load when the newer request fails", async () => 
   await waitFor(() => expect(listRequests).toBe(1));
   detailResponse = () => Response.json({}, { status: 500 });
   const detail = renderHook(() => useAction(7), { wrapper });
-  await waitFor(() => expect(detail.result.current.query.isError).toBe(true));
+  await waitFor(() => expect(detail.result.current.isError).toBe(true));
 
   pending.resolve(Response.json([makeAction({ id: 7, name: "Available" })]));
 
   await waitFor(() =>
     expect(list.result.current.data?.[0]?.name).toBe("Available"),
   );
-  expect(detail.result.current.query.isError).toBe(true);
+  expect(detail.result.current.isError).toBe(true);
 });
 
 it("keeps different clients' viewer state separate", async () => {
@@ -216,15 +275,13 @@ it("keeps different clients' viewer state separate", async () => {
   const a = renderHook(() => useAction(7), { wrapper: first.wrapper });
   const b = renderHook(() => useAction(7), { wrapper: second.wrapper });
   await waitFor(() =>
-    expect(
-      a.result.current.query.isSuccess && b.result.current.query.isSuccess,
-    ).toBe(true),
+    expect(a.result.current.isSuccess && b.result.current.isSuccess).toBe(true),
   );
 
-  await act(() => a.result.current.markCompleted());
+  completeAction7(first.client);
 
-  expect(a.result.current.query.data?.viewer?.relation).toBe("completed");
-  expect(b.result.current.query.data?.viewer?.relation).toBe("none");
+  expect(a.result.current.data?.viewer?.relation).toBe("completed");
+  expect(b.result.current.data?.viewer?.relation).toBe("none");
 });
 
 it("clears mounted action consumers at a session boundary", async () => {
@@ -233,26 +290,13 @@ it("clears mounted action consumers at a session boundary", async () => {
     wrapper,
     initialProps: { enabled: true },
   });
-  await waitFor(() => expect(detail.result.current.query.isSuccess).toBe(true));
+  await waitFor(() => expect(detail.result.current.isSuccess).toBe(true));
   detail.rerender({ enabled: false });
 
   act(() => meCache(client).clear());
 
-  await waitFor(() => expect(detail.result.current.query.data).toBeUndefined());
+  await waitFor(() => expect(detail.result.current.data).toBeUndefined());
   expect(actionStore(client).get(7)).toBeUndefined();
-});
-
-it("ignores a detail callback from the previous session", async () => {
-  const { client, wrapper } = queryWrapper();
-  const detail = renderHook(() => useAction(7), { wrapper });
-  await waitFor(() => expect(detail.result.current.query.isSuccess).toBe(true));
-  const oldConfirmation = detail.result.current.markCompleted;
-
-  act(() => meCache(client).clear());
-  await waitFor(() => expect(actionStore(client).get(7)).toBeDefined());
-  await act(oldConfirmation);
-
-  expect(actionStore(client).get(7)?.viewer?.relation).toBe("none");
 });
 
 it("discards a cancelled list response even when the transport ignores abort", async () => {
@@ -286,9 +330,9 @@ it("does not replace an authenticated record with an optional-auth fallback", as
 
   const detail = renderHook(() => useAction(7), { wrapper });
 
-  await waitFor(() => expect(detail.result.current.query.isSuccess).toBe(true));
-  expect(detail.result.current.query.data?.name).toBe("List");
-  expect(detail.result.current.query.data?.viewer).toBeDefined();
+  await waitFor(() => expect(detail.result.current.isSuccess).toBe(true));
+  expect(detail.result.current.data?.name).toBe("List");
+  expect(detail.result.current.data?.viewer).toBeDefined();
 });
 
 it("discards an old session's response after a new session has loaded the same id", async () => {

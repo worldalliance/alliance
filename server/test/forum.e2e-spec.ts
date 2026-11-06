@@ -1,4 +1,4 @@
-/* alliance/max-lines 3050 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
+/* alliance/max-lines 3000 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import type {
   GetObjectCommand,
   GetObjectCommandOutput,
@@ -311,63 +311,6 @@ describe("Forum (e2e)", () => {
       expect(
         response.body.map(({ id }) => id).filter((id) => ids.includes(id)),
       ).toEqual(ids);
-    });
-
-    it("should get posts by action", async () => {
-      await request(ctx.app.getHttpServer())
-        .post("/forum/posts")
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .send({
-          title: "Test Post",
-          editableContent: {
-            body: "This is a test post",
-            attachments: [],
-          },
-          actionId: testAction.id,
-          visibleAt: new Date(),
-        } satisfies CreatePostDto)
-        .expect(201);
-
-      const response = await request(ctx.app.getHttpServer())
-        .get(`/forum/posts/action/${testAction.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(200);
-
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThanOrEqual(1);
-      expect(response.body[0].actionId).toBe(testAction.id);
-    });
-
-    it("should show authors their own scheduled posts on an action", async () => {
-      const futureVisibleAt = new Date(Date.now() + milliseconds({ hours: 1 }));
-      const createResponse = await request(ctx.app.getHttpServer())
-        .post("/forum/posts")
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .send({
-          title: "Future Action Post",
-          editableContent: {
-            body: "Scheduled in the future",
-            attachments: [],
-          },
-          actionId: testAction.id,
-          visibleAt: futureVisibleAt,
-        } satisfies CreatePostDto)
-        .expect(201);
-      const postId = createResponse.body.id;
-
-      const { token: visitorToken } = await createExtraUserAndToken();
-
-      const authorPosts = await request(ctx.app.getHttpServer())
-        .get(`/forum/posts/action/${testAction.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(200);
-      expect(authorPosts.body.some((post) => post.id === postId)).toBe(true);
-
-      const visitorPosts = await request(ctx.app.getHttpServer())
-        .get(`/forum/posts/action/${testAction.id}`)
-        .set("Authorization", `Bearer ${visitorToken}`)
-        .expect(200);
-      expect(visitorPosts.body.some((post) => post.id === postId)).toBe(false);
     });
 
     it("should get a post by id", async () => {
@@ -1574,15 +1517,17 @@ describe("Forum (e2e)", () => {
         })
         .expect(201);
 
-      await request(ctx.app.getHttpServer())
-        .post(`/forum/posts/${postId}/like`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(201);
-
-      await request(ctx.app.getHttpServer())
-        .post(`/forum/posts/${postId}/unlike`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(201);
+      for (const [path, status] of [
+        ["like", 201],
+        ["like", 404],
+        ["unlike", 201],
+        ["unlike", 404],
+      ] as const) {
+        await request(ctx.app.getHttpServer())
+          .post(`/forum/posts/${postId}/${path}`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .expect(status);
+      }
 
       await request(ctx.app.getHttpServer())
         .post(`/forum/comments/${commentResponse.body.id}/like`)

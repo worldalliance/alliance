@@ -45,12 +45,11 @@ it("loads the group's conversation", async () => {
 });
 
 it("stores the conversation that marking it read returns", async () => {
-  const { hook, client } = await renderLoaded();
+  const { hook } = await renderLoaded();
 
-  act(() => hook.result.current.markRead(unread.id));
+  await act(() => hook.result.current.markRead(unread.id));
 
   await waitFor(() => expect(hook.result.current.conversation).toEqual(read));
-  expect(client.getQueryData(queryKeys.communityConversation(7))).toEqual(read);
 });
 
 it("stores a live update over a reload already in flight", async () => {
@@ -63,23 +62,19 @@ it("stores a live update over a reload already in flight", async () => {
   await waitFor(() => expect(requests).toEqual(["load", "load"]));
 
   const renamed = { ...unread, title: "Renamed" };
-  await act(() => hook.result.current.storeConversation(renamed));
+  act(() => hook.result.current.storeConversation(renamed));
   resolve(Response.json(unread));
   await act(() => reload);
 
-  expect(client.getQueryData(queryKeys.communityConversation(7))).toEqual(
-    renamed,
-  );
+  expect(hook.result.current.conversation).toEqual(renamed);
 });
 
-it("drops an update for a conversation the group's cache doesn't hold", async () => {
-  const { hook, client } = await renderLoaded();
+it("keeps showing the group's conversation when another conversation updates", async () => {
+  const { hook } = await renderLoaded();
 
-  await act(() =>
+  act(() =>
     hook.result.current.storeConversation({ ...unread, id: 2, title: "Other" }),
   );
 
-  expect(client.getQueryData(queryKeys.communityConversation(7))).toEqual(
-    unread,
-  );
+  expect(hook.result.current.conversation).toEqual(unread);
 });

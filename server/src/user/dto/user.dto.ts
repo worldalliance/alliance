@@ -145,9 +145,7 @@ export class ProfileDto extends PickType(User, [
 }
 
 /**
- * Who referred a signup, for display on the signup page. Either a referring
- * user or a userless campaign (`kind` tells the client which copy to show —
- * "Invited by {name}" vs "Invited via {name}").
+ * Who referred a signup, for display on the signup page. A user or a campaign.
  */
 export class ReferrerProfileDto {
   @ApiProperty({ enum: ["user", "campaign"], enumName: "ReferrerKind" })
@@ -159,6 +157,14 @@ export class ReferrerProfileDto {
   @ApiProperty({ type: String, nullable: true })
   profilePicture: string | null;
 
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
+      "Campaign line under Create an account. Null for a user, or a campaign that has none.",
+  })
+  invitePageDescription: string | null;
+
   constructor(input: ReferrerResolution) {
     switch (input.kind) {
       case "user":
@@ -167,6 +173,7 @@ export class ReferrerProfileDto {
         this.profilePicture = input.user.profilePicture
           ? getImageSource(input.user.profilePicture)
           : null;
+        this.invitePageDescription = null;
         break;
       case "campaign":
         this.kind = "campaign";
@@ -174,6 +181,7 @@ export class ReferrerProfileDto {
         this.profilePicture = input.campaign.picture
           ? getImageSource(input.campaign.picture)
           : null;
+        this.invitePageDescription = input.campaign.invitePageDescription;
         break;
       default:
         throw new Error(`unknown referrer kind: ${input satisfies never}`);

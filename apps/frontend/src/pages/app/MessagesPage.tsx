@@ -1,11 +1,9 @@
-import { ConversationDto, MessageDto } from "@alliance/shared/client";
+import { ConversationDto } from "@alliance/shared/client";
 import {
   buildGroupConversationTitle,
   findMatchingConversation,
   getJoinedConversations,
   getPendingInvites,
-  mergeConversationUpdate,
-  updateConversationsForLastMessage,
 } from "@alliance/shared/lib/conversations";
 import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import { useMessageableUsersQuery } from "@alliance/shared/lib/user";
@@ -32,7 +30,7 @@ const MessagesPage = () => {
 
   const {
     conversations,
-    setConversations,
+    storeConversation,
     loading,
     reloadFailed,
     refreshConversations,
@@ -61,31 +59,8 @@ const MessagesPage = () => {
 
   const { user } = useAuth();
 
-  const setConvoLastMessage = useCallback(
-    (message: MessageDto) => {
-      setConversations((prev) =>
-        updateConversationsForLastMessage(prev, message),
-      );
-    },
-    [setConversations],
-  );
-
-  const handleConversationUpdated = useCallback(
-    (updatedConversation: ConversationDto) => {
-      setConversations((prev) =>
-        mergeConversationUpdate(prev, updatedConversation),
-      );
-    },
-    [setConversations],
-  );
-
-  const { messages: convoMessages, sendMessage } = useLiveConvoMessages(
-    selectedConvoId,
-    {
-      onIncomingMessage: setConvoLastMessage,
-      onConversationUpdated: handleConversationUpdated,
-    },
-  );
+  const { messages: convoMessages, sendMessage } =
+    useLiveConvoMessages(selectedConvoId);
 
   const messageableUsersQuery = useMessageableUsersQuery({
     enabled: !!user,
@@ -327,7 +302,7 @@ const MessagesPage = () => {
               messagesContainerRef={messagesContainerRef}
               handleAcceptMessageRequest={handleAcceptMessageRequest}
               handleDeclineMessageRequest={handleDeclineMessageRequest}
-              handleConversationUpdated={handleConversationUpdated}
+              handleConversationUpdated={storeConversation}
               sendingNewMessageToIds={null}
               setSendingNewMessageToIds={null}
               handleCreateConversation={null}
@@ -350,7 +325,7 @@ const MessagesPage = () => {
               selectedConvo={null}
               convoMessages={convoMessages}
               messagesContainerRef={messagesContainerRef}
-              handleConversationUpdated={handleConversationUpdated}
+              handleConversationUpdated={storeConversation}
               handleAcceptMessageRequest={null}
               handleDeclineMessageRequest={null}
               friends={messageableUsers}

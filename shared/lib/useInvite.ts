@@ -110,6 +110,7 @@ export function useInvite(referralCode: string | null) {
     unresolved,
     availability,
     inviter: refusal ? null : namedInviter(referrer ?? null),
+    campaignInvite: refusal ? null : campaignInvitePageLine(referrer ?? null),
     onetimeInvite: refusal ? null : (invite ?? null),
     forgetLookups,
   };
@@ -122,7 +123,6 @@ const REFUSAL_BY_STATUS: Record<OnetimeInviteStatus, InviteRefusal | null> = {
   link_used: InviteRefusal.Used,
 };
 
-/** A campaign signs nothing and invites nobody by name, so it gets no line. */
 export function namedInviter(
   referrer: ReferrerProfileDto | null,
 ): ReferrerProfileDto | null {
@@ -132,6 +132,30 @@ export function namedInviter(
       return referrer;
     case "campaign":
       return null;
+    default:
+      throw new Error(
+        `unknown referrer kind: ${referrer.kind satisfies never}`,
+      );
+  }
+}
+
+export type CampaignInvitePageLine = {
+  description: string;
+  picture: string | null;
+};
+
+export function campaignInvitePageLine(
+  referrer: ReferrerProfileDto | null,
+): CampaignInvitePageLine | null {
+  if (!referrer) return null;
+  switch (referrer.kind) {
+    case "user":
+      return null;
+    case "campaign": {
+      const description = referrer.invitePageDescription?.trim() ?? "";
+      if (!description) return null;
+      return { description, picture: referrer.profilePicture };
+    }
     default:
       throw new Error(
         `unknown referrer kind: ${referrer.kind satisfies never}`,

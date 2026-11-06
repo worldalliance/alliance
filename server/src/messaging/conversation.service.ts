@@ -198,7 +198,7 @@ export class ConversationService {
       notFound: "Conversation not found",
     });
     emitConversationUpdated(this.eventEmitter, conversation.id);
-    return new ConversationDto({ conversation, contextUserId: userId });
+    return this.buildConversationDto(conversationId, userId);
   }
 
   async markConversationRead(

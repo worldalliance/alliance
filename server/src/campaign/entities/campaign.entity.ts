@@ -1,3 +1,7 @@
+import {
+  INVITE_PAGE_DESCRIPTION_HELP,
+  INVITE_PAGE_DESCRIPTION_MAX_LENGTH,
+} from "@alliance/common/invitePageDescription";
 import { ApiProperty } from "@nestjs/swagger";
 import { Community } from "src/community/entities/community.entity";
 import {
@@ -70,6 +74,18 @@ export class Campaign {
     description: "Image key for the campaign avatar, shown on the signup page",
   })
   picture: string | null;
+
+  @Column({
+    type: "varchar",
+    length: INVITE_PAGE_DESCRIPTION_MAX_LENGTH,
+    nullable: true,
+  })
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: INVITE_PAGE_DESCRIPTION_HELP,
+  })
+  invitePageDescription: string | null;
 
   @Column({ type: "enum", enum: CampaignKind, default: CampaignKind.Campaign })
   kind: CampaignKind;

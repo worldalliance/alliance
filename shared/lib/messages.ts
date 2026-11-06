@@ -1,22 +1,18 @@
 import type { ConversationDto, MessageDto } from "@alliance/shared/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { Socket } from "socket.io-client";
-import {
-  type ConversationUnreadPayload,
-  mergeConversationUnreadPayload,
-} from "./conversations";
+import { conversationStore } from "./conversationStore";
 import {
   connectMessagingSocket,
   type MessagingConnectionConfig,
 } from "./messagingSocket";
+import { currentSession } from "./sessionStores";
 import { useConversationMessages } from "./useConversationMessages";
 import { useMyConversations } from "./useMyConversations";
 import { useUnreadMessageCount } from "./useUnreadMessageCount";
 
-export interface UseLiveConvoMessagesOptions {
-  onIncomingMessage?: (message: MessageDto) => void;
-  onConversationUpdated?: (conversation: ConversationDto) => void;
-}
+type ConversationUnreadPayload = { conversation: ConversationDto };
 
 export type UseLiveConvoMessagesResult = Pick<
   ReturnType<typeof useConversationMessages>,
@@ -24,13 +20,13 @@ export type UseLiveConvoMessagesResult = Pick<
 >;
 
 export const createMessagingHooks = (config: MessagingConnectionConfig) => {
-  // Every mounted screen's socket merges into the one cached list, so each
-  // must zero the unread count of any conversation a screen has open.
+  // Every mounted screen's socket writes the same records, so each must zero
+  // the unread count of any conversation a screen has open.
   const openConversations = new Map<number, number>();
 
   const useConversations = (activeConversationId?: number | null) => {
+    const queryClient = useQueryClient();
     const myConversations = useMyConversations();
-    const { setConversations } = myConversations;
 
     useEffect(() => {
       if (activeConversationId == null) return;
@@ -57,16 +53,13 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
 
         socket.on(
           "conversation:unread",
-          (payload: ConversationUnreadPayload) => {
-            setConversations((prev) =>
-              mergeConversationUnreadPayload(
-                prev,
-                payload,
-                openConversations.has(payload.conversationId)
-                  ? payload.conversationId
-                  : null,
-              ),
-            );
+          ({ conversation }: ConversationUnreadPayload) => {
+            conversationStore(queryClient).listed({
+              session: currentSession(queryClient),
+              conversation: openConversations.has(conversation.id)
+                ? { ...conversation, unreadCount: 0 }
+                : conversation,
+            });
           },
         );
 
@@ -79,29 +72,21 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
         cancelled = true;
         close?.();
       };
-    }, [config, setConversations]);
+    }, [config, queryClient]);
 
     return myConversations;
   };
 
   const useLiveConvoMessages = (
     conversationId: number | null,
-    options?: UseLiveConvoMessagesOptions,
   ): UseLiveConvoMessagesResult => {
     const { messages, receiveMessage, sendMessage } =
       useConversationMessages(conversationId);
-    const { markRead } = useMyConversations({ load: false });
+    const { markRead, storeConversation, storeLastMessage } =
+      useMyConversations({ load: false });
     const socketRef = useRef<Socket | null>(null);
     const joinedConversationRef = useRef<number | null>(null);
     const activeConversationRef = useRef<number | null>(conversationId);
-    const handlersRef = useRef<UseLiveConvoMessagesOptions | undefined>(
-      options,
-    );
-
-    useEffect(() => {
-      handlersRef.current = options;
-    }, [options]);
-
     useEffect(() => {
       let cancelled = false;
       let socket: Socket | null = null;
@@ -122,14 +107,12 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
             return;
           }
 
-          handlersRef.current?.onIncomingMessage?.(incoming);
+          storeLastMessage(incoming);
 
           void markRead(incoming.conversationId);
         });
 
-        socket.on("conversation:updated", (conversation: ConversationDto) => {
-          handlersRef.current?.onConversationUpdated?.(conversation);
-        });
+        socket.on("conversation:updated", storeConversation);
 
         socket.on("connect", () => {
           if (activeConversationRef.current) {
@@ -151,7 +134,7 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
         socketRef.current = null;
         joinedConversationRef.current = null;
       };
-    }, [config, receiveMessage, markRead]);
+    }, [config, receiveMessage, markRead, storeConversation, storeLastMessage]);
 
     useEffect(() => {
       activeConversationRef.current = conversationId;

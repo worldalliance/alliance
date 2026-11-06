@@ -1,3 +1,4 @@
+import { INVITE_PAGE_DESCRIPTION_MAX_LENGTH } from "@alliance/common/invitePageDescription";
 import type { CampaignDto } from "@alliance/shared/client/types.gen";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import React from "react";
@@ -9,6 +10,8 @@ const CampaignPicker: React.FC<{
   onSelect: (id: number | null) => void;
   newCampaignName: string;
   onNewCampaignNameChange: (value: string) => void;
+  newCampaignInvitePageDescription: string;
+  onNewCampaignInvitePageDescriptionChange: (value: string) => void;
   onCreateCampaign: () => void;
   creatingCampaign: boolean;
   picturePreview: string | null;
@@ -20,6 +23,8 @@ const CampaignPicker: React.FC<{
   onSelect,
   newCampaignName,
   onNewCampaignNameChange,
+  newCampaignInvitePageDescription,
+  onNewCampaignInvitePageDescriptionChange,
   onCreateCampaign,
   creatingCampaign,
   picturePreview,
@@ -74,6 +79,20 @@ const CampaignPicker: React.FC<{
             {creatingCampaign ? "Creating…" : "Create"}
           </Button>
         </div>
+        <label className="text-xs font-medium text-zinc-700 mt-2">
+          Invite page description
+          <input
+            type="text"
+            className="border border-zinc-300 rounded px-3 py-2 text-sm w-full mt-1 font-normal"
+            placeholder="Shown under Create an account — e.g. Join us this spring"
+            value={newCampaignInvitePageDescription}
+            onChange={(event) =>
+              onNewCampaignInvitePageDescriptionChange(event.target.value)
+            }
+            disabled={creatingCampaign}
+            maxLength={INVITE_PAGE_DESCRIPTION_MAX_LENGTH}
+          />
+        </label>
         <div className="flex flex-row items-center gap-3 mt-1">
           {picturePreview && (
             <img

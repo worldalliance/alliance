@@ -680,6 +680,10 @@ export type Campaign = {
      * Image key for the campaign avatar, shown on the signup page
      */
     picture: string | null;
+    /**
+     * Optional line under Create an account on the signup page, in place of Invited by X
+     */
+    invitePageDescription: string | null;
     createdAt: string;
     updatedAt: string;
 };
@@ -1343,6 +1347,10 @@ export type ReferrerProfileDto = {
     kind: ReferrerKind;
     displayName: string;
     profilePicture: string | null;
+    /**
+     * Campaign line under Create an account. Null for a user, or a campaign that has none.
+     */
+    invitePageDescription: string | null;
 };
 
 export type FriendStatus = 'pending' | 'accepted' | 'declined' | 'none';
@@ -1633,6 +1641,7 @@ export type CampaignDto = {
     name: string;
     code: string;
     picture: string | null;
+    invitePageDescription: string | null;
     kind: CampaignKind;
     /**
      * An organization's accountability group
@@ -1649,6 +1658,10 @@ export type CreateCampaignDto = {
      */
     picture?: string;
     kind?: CampaignKind;
+    /**
+     * Optional line under Create an account on the signup page, in place of Invited by X
+     */
+    invitePageDescription?: string | null;
 };
 
 export type UpdateCampaignDto = {
@@ -1659,6 +1672,10 @@ export type UpdateCampaignDto = {
      * Only an organization has a group
      */
     communityId?: number | null;
+    /**
+     * Optional line under Create an account on the signup page, in place of Invited by X
+     */
+    invitePageDescription?: string | null;
 };
 
 export type PushOpenedDto = {
@@ -12527,30 +12544,6 @@ export type ForumCreatePostResponses = {
 };
 
 export type ForumCreatePostResponse = ForumCreatePostResponses[keyof ForumCreatePostResponses];
-
-export type ForumFindPostsByActionData = {
-    body?: never;
-    path: {
-        actionId: string;
-    };
-    query?: never;
-    url: '/forum/posts/action/{actionId}';
-};
-
-export type ForumFindPostsByActionErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ForumFindPostsByActionError = ForumFindPostsByActionErrors[keyof ForumFindPostsByActionErrors];
-
-export type ForumFindPostsByActionResponses = {
-    200: Array<PostDto>;
-};
-
-export type ForumFindPostsByActionResponse = ForumFindPostsByActionResponses[keyof ForumFindPostsByActionResponses];
 
 export type ForumRemovePostData = {
     body?: never;

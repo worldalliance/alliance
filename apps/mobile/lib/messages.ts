@@ -7,8 +7,6 @@ import {
   getJoinedConversations,
   getMessageRequestPreview,
   getPendingInvites,
-  mergeConversationUpdate,
-  updateConversationsForLastMessage,
 } from "@alliance/shared/lib/conversations";
 import { createMessagingHooks } from "@alliance/shared/lib/messages";
 import { getWebSocketUrl } from "./config";
@@ -43,8 +41,6 @@ export {
   getJoinedConversations,
   getMessageRequestPreview,
   getPendingInvites,
-  mergeConversationUpdate,
-  updateConversationsForLastMessage,
   useConversations,
   useLiveConvoMessages,
   useMessagingUnread,

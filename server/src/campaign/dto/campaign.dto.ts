@@ -1,14 +1,35 @@
+import {
+  INVITE_PAGE_DESCRIPTION_HELP,
+  INVITE_PAGE_DESCRIPTION_MAX_LENGTH,
+} from "@alliance/common/invitePageDescription";
+import { applyDecorators } from "@nestjs/common";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Transform } from "class-transformer";
 import {
   IsEnum,
   IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
+  MaxLength,
   ValidateIf,
 } from "class-validator";
 import { getImageSource } from "src/images/images.service";
+import { trimToNull } from "src/utils/transforms";
 import { Campaign, CampaignKind } from "../entities/campaign.entity";
+
+const InvitePageDescriptionField = () =>
+  applyDecorators(
+    ApiPropertyOptional({
+      type: String,
+      nullable: true,
+      maxLength: INVITE_PAGE_DESCRIPTION_MAX_LENGTH,
+      description: INVITE_PAGE_DESCRIPTION_HELP,
+    }),
+    Transform(trimToNull),
+    IsString(),
+    MaxLength(INVITE_PAGE_DESCRIPTION_MAX_LENGTH),
+  );
 
 export class CampaignDto {
   @ApiProperty()
@@ -22,6 +43,9 @@ export class CampaignDto {
 
   @ApiProperty({ type: String, nullable: true })
   picture: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  invitePageDescription: string | null;
 
   @ApiProperty({ enum: CampaignKind, enumName: "CampaignKind" })
   kind: CampaignKind;
@@ -44,6 +68,7 @@ export class CampaignDto {
     this.name = input.name;
     this.code = input.code;
     this.picture = input.picture ? getImageSource(input.picture) : null;
+    this.invitePageDescription = input.invitePageDescription;
     this.kind = input.kind;
     this.communityId = input.communityId;
     this.createdAt = input.createdAt;
@@ -68,6 +93,10 @@ export class CreateCampaignDto {
   @ValidateIf((_object, value) => value !== undefined)
   @IsEnum(CampaignKind)
   kind?: CampaignKind;
+
+  @InvitePageDescriptionField()
+  @IsOptional()
+  invitePageDescription?: string | null;
 }
 
 export class UpdateCampaignDto {
@@ -95,4 +124,8 @@ export class UpdateCampaignDto {
   @IsOptional()
   @IsInt()
   communityId?: number | null;
+
+  @InvitePageDescriptionField()
+  @IsOptional()
+  invitePageDescription?: string | null;
 }

@@ -287,7 +287,7 @@ export class FeedMembersService {
     requestingUserId?: number,
   ): Promise<ProfileDto[]> {
     const oneWeekAgo = globalFeedWindowStart();
-    await this.forumService.findOnePost(postId, requestingUserId);
+    await this.forumService.assertPostVisible(postId, requestingUserId);
     const rankedSql = `
       SELECT "userId", "latestAt", "latestId"
       FROM (
