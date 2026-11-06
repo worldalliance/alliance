@@ -5,6 +5,7 @@ import type {
 } from "@alliance/shared/client/types.gen";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { makeTag, makeUser } from "@alliance/shared/lib/testFixtures";
+import { pending, type Pending } from "@alliance/shared/lib/testing/pending";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { renderHook, waitFor } from "@testing-library/react";
@@ -27,7 +28,8 @@ let detailStatus: number;
 let rolesStatus: number;
 let suspendStatus: number;
 let detailLoads: number;
-let detailDelay: number;
+let holdDetail: boolean;
+let heldDetails: Pending<void>[];
 let suspended: string[];
 let tagStatus: number;
 let tagWrites: unknown[];
@@ -39,7 +41,7 @@ serveApi(
     "GET /user/userdetail/:id": async () => {
       detailLoads += 1;
       const snapshot = stored;
-      await new Promise((resolve) => setTimeout(resolve, detailDelay));
+      if (holdDetail) await pending(heldDetails);
       return detailStatus === 200
         ? Response.json(snapshot)
         : Response.json(
@@ -97,7 +99,8 @@ beforeEach(() => {
   rolesStatus = 200;
   suspendStatus = 200;
   detailLoads = 0;
-  detailDelay = 0;
+  holdDetail = false;
+  heldDetails = [];
   suspended = [];
   tagStatus = 200;
   tagWrites = [];
@@ -163,11 +166,13 @@ describe("useUserDetailAdmin", () => {
 
   it("settles a suspension only once a refetch that replaced its own lands", async () => {
     const { client, view } = await renderLoaded();
-    detailDelay = 100;
+    holdDetail = true;
 
     const suspending = view.result.current.suspendContract.mutateAsync();
-    await waitFor(() => expect(detailLoads).toBe(2));
+    await waitFor(() => expect(heldDetails).toHaveLength(1));
     void view.result.current.refresh();
+    await waitFor(() => expect(heldDetails).toHaveLength(2));
+    heldDetails[1].resolve();
     await suspending;
 
     expect(detailLoads).toBe(3);
@@ -251,15 +256,17 @@ describe("useUserDetailAdmin", () => {
 
   it("keeps a suspension whose refetch a tag change interrupts", async () => {
     const { client, view } = await renderLoaded();
-    detailDelay = 100;
+    holdDetail = true;
 
     const suspending = view.result.current.suspendContract.mutateAsync();
-    await waitFor(() => expect(detailLoads).toBe(2));
-    await view.result.current.setTagMembership.mutateAsync({
+    await waitFor(() => expect(heldDetails).toHaveLength(1));
+    const adding = view.result.current.setTagMembership.mutateAsync({
       tagId: "tag-1",
       member: true,
     });
-    await suspending;
+    await waitFor(() => expect(heldDetails).toHaveLength(2));
+    heldDetails[1].resolve();
+    await Promise.all([adding, suspending]);
 
     expect(client.getQueryData(queryKeys.userDetailAdmin(7))).toEqual({
       ...member,
@@ -270,17 +277,20 @@ describe("useUserDetailAdmin", () => {
 
   it("settles a tag change only once the refetch that replaced its own lands", async () => {
     const { client, view } = await renderLoaded();
-    detailDelay = 100;
+    holdDetail = true;
 
     const adding = view.result.current.setTagMembership.mutateAsync({
       tagId: "tag-1",
       member: true,
     });
-    await waitFor(() => expect(detailLoads).toBe(2));
+    await waitFor(() => expect(heldDetails).toHaveLength(1));
     void view.result.current.setTagMembership.mutateAsync({
       tagId: "tag-1",
       member: false,
     });
+    await waitFor(() => expect(heldDetails).toHaveLength(2));
+    // Load 2 stays held, so an `adding` that settled on it instead of load 3 never resolves.
+    heldDetails[1].resolve();
     await adding;
 
     expect(detailLoads).toBe(3);
@@ -293,7 +303,7 @@ describe("useUserDetailAdmin", () => {
     const { client, view } = await renderLoaded();
     client.setQueryData(queryKeys.usersAdmin(), [member]);
     detailStatus = 404;
-    detailDelay = 100;
+    holdDetail = true;
     const body = {
       reason: "Asked by email",
       confirmationEmail: member.email,
@@ -309,6 +319,8 @@ describe("useUserDetailAdmin", () => {
     expect(
       client.getQueryState(queryKeys.userDetailAdmin(7))?.fetchStatus,
     ).toBe("fetching");
+    await waitFor(() => expect(heldDetails).toHaveLength(1));
+    heldDetails[0].resolve();
     await waitFor(() => expect(view.result.current.query.isError).toBe(true));
   });
 
