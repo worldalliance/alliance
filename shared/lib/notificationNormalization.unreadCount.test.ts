@@ -386,3 +386,36 @@ it("keeps a pending read's count-down when a content read follows it", async () 
   await unreadCountIdle(client);
   expect(count.result.current).toBe(2);
 });
+
+it("keeps a pending read's count-down when another read is refused", async () => {
+  const { client, wrapper } = queryWrapper();
+  seedNotifications({
+    client,
+    notifications: [makeNotification({ id: 1 }), makeNotification({ id: 2 })],
+  });
+  client.setQueryData(queryKeys.notificationsUnreadCount(), 2);
+  let serverCount = 2;
+  const pendingRead = held();
+  let readsSent = 0;
+  api.readResponse = () =>
+    readsSent++ === 0
+      ? pendingRead.until(null).then(() => {
+          serverCount--;
+          return accepted();
+        })
+      : new Response(null, { status: 500 });
+  api.counted = () => Response.json({ unreadCount: serverCount });
+  const count = renderHook(() => useUnreadNotificationCount(), { wrapper });
+  const cache = notificationsCache(client);
+
+  const pending = cache.markRead([makeNotification({ id: 1 })]);
+  await act(() =>
+    cache.markRead([makeNotification({ id: 2 })]).catch(() => {}),
+  );
+  await unreadCountIdle(client);
+
+  expect(count.result.current).toBe(0);
+  pendingRead.release();
+  await act(() => pending);
+  await waitFor(() => expect(count.result.current).toBe(1));
+});

@@ -57,7 +57,7 @@ export function notificationsCache(queryClient: QueryClient) {
   // A count load in flight may predate a write to the server's count or hold a
   // stale decrement, and invalidation alone neither replaces it for a count with
   // no data nor stops it landing on an inactive one, so it is cancelled first.
-  const refreshIn = async (session: number, queryKey: QueryKey = ROOT_KEY) => {
+  const refreshIn = async (session: number, queryKey: QueryKey) => {
     if (session !== currentSession(queryClient)) return;
     if (partialMatchKey(UNREAD_COUNT_KEY, queryKey))
       await queryClient.cancelQueries({
@@ -66,6 +66,13 @@ export function notificationsCache(queryClient: QueryClient) {
       });
     if (session === currentSession(queryClient))
       void queryClient.invalidateQueries({ queryKey });
+  };
+  const refreshAfter = async (
+    session: number,
+    lastCountDown: () => boolean,
+  ) => {
+    await refreshIn(session, queryKeys.notificationsLists());
+    if (lastCountDown()) await refreshIn(session, UNREAD_COUNT_KEY);
   };
 
   return {
@@ -156,7 +163,7 @@ export function notificationsCache(queryClient: QueryClient) {
       try {
         await confirmation;
       } catch (error) {
-        await refreshIn(session);
+        await refreshAfter(session, lastCountDown);
         throw error;
       }
       if (unlisted) await refreshIn(session, queryKeys.notificationsLists());
@@ -220,7 +227,7 @@ export function notificationsCache(queryClient: QueryClient) {
         update: (count) => Math.min(count, store.unread().length),
         confirmation,
       });
-      store.trackCountDown(confirmation);
+      const lastCountDown = store.trackCountDown(confirmation);
 
       try {
         await confirmation;
@@ -235,12 +242,12 @@ export function notificationsCache(queryClient: QueryClient) {
         });
         if (previousCount !== undefined)
           store.writeUnreadCount({ session, update: () => previousCount });
-        await refreshIn(session);
+        await refreshAfter(session, lastCountDown);
         return;
       }
       // Rows that came due after the load stay unread, so the list and
       // count refetch to show them.
-      await refreshIn(session);
+      await refreshAfter(session, lastCountDown);
     },
   };
 }
