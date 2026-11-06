@@ -1,3 +1,4 @@
+import { isMissedSuiteReminderGroup } from "@alliance/common/missedSuiteNotice";
 import {
   ApiProperty,
   ApiPropertyOptional,
@@ -13,7 +14,6 @@ import {
   IsOptional,
   IsString,
 } from "class-validator";
-import { isMissedSuiteReminderGroup } from "src/notifs/missed-suite-notice";
 import { ActionEvent } from "../entities/action-event.entity";
 import {
   loadedReminderGroupMemberActionEvent,

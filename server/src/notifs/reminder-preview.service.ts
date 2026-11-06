@@ -1,4 +1,5 @@
 import { memberActionPhase } from "@alliance/common/actionEvent";
+import { reminderEmailHtml } from "@alliance/common/reminderKeywords";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
@@ -100,7 +101,7 @@ export class ReminderPreviewService {
     const html = await this.mailService.renderHtml(
       EmailType.CustomActionReminder,
       {
-        customMessage: replacedMessage.replace(/\n/g, "<br>"),
+        customMessage: reminderEmailHtml(replacedMessage),
       },
     );
 

@@ -11,7 +11,7 @@ import {
   User,
 } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
-import { IsNull, type Repository } from "typeorm";
+import { In, IsNull, type Repository } from "typeorm";
 import {
   CustomValidatorResponse,
   CustomValidatorTypeDtoArgs,
@@ -167,12 +167,37 @@ export class CustomValidatorService {
     const validator = await this.customValidatorRepository.findOneOrFail({
       where: { id },
     });
-    const user = await this.userService.findOneOrFail(userId, {
+    return this.checkValidator({
+      validator,
+      user: await this.validatedUser(userId),
+      fieldValue,
+    });
+  }
+
+  /** An id that matches no validator is left out. */
+  async findValidators(ids: number[]): Promise<Map<number, CustomValidator>> {
+    if (ids.length === 0) return new Map();
+    const validators = await this.customValidatorRepository.find({
+      where: { id: In(ids) },
+    });
+    return new Map(validators.map((validator) => [validator.id, validator]));
+  }
+
+  /** The member with the relations `checkValidator` reads. */
+  validatedUser(userId: number): Promise<User> {
+    return this.userService.findOneOrFail(userId, {
       tags: true,
       communities: true,
       contractEvents: true,
     });
+  }
 
+  async checkValidator(params: {
+    validator: CustomValidator;
+    user: User;
+    fieldValue?: string;
+  }): Promise<CustomValidatorResponse> {
+    const { validator, user, fieldValue } = params;
     switch (validator.type) {
       case CustomValidatorType.UploadedPhoto:
         if (!hasProfilePicture(user)) {

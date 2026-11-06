@@ -16,6 +16,7 @@ import React, {
   useState,
 } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
+import { notifyRealMembersText } from "../../lib/notifyRealMembers";
 import { useActionReminderGroupsAdmin } from "../../lib/useActionReminderGroupsAdmin";
 import { useReminderAnchorCandidatesAdmin } from "../../lib/useReminderAnchorCandidatesAdmin";
 import { useTagsAdmin } from "../../lib/useTagsAdmin";
@@ -25,8 +26,7 @@ import ActionReminderGroupForm from "./ActionReminderGroupForm";
 import { describeGroupSchedule, groupSendStart } from "./groupSchedule";
 import PresetPicker from "./PresetPicker";
 import {
-  defaultReminderPresetNames,
-  NOTIFY_MANY_MEMBERS_CONFIRMATION,
+  defaultReminderBodies,
   ReminderPreset,
   ReminderPresetName,
   reminderPresets,
@@ -178,7 +178,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
         confirmLabel: "Create",
         cancelLabel: "Cancel",
         mode: ConfirmMode.Fullscreen,
-        requiredText: NOTIFY_MANY_MEMBERS_CONFIRMATION,
+        requiredText: notifyRealMembersText("many"),
       });
       if (!ok) {
         return;
@@ -191,10 +191,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
     try {
       await createGroups.mutateAsync({
         eventId: selectedEventId,
-        bodies: defaultReminderPresetNames(hasDeadline).map((preset) => ({
-          suiteId: suite.id,
-          ...reminderPresets[preset],
-        })),
+        bodies: defaultReminderBodies({ suiteId: suite.id, hasDeadline }),
       });
     } catch (err) {
       console.error(err);
@@ -226,7 +223,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
         confirmLabel: "Create",
         cancelLabel: "Cancel",
         mode: ConfirmMode.Fullscreen,
-        requiredText: `I am going to notify ${recipientCount} real members`,
+        requiredText: notifyRealMembersText(recipientCount),
       });
       if (!ok) {
         return;

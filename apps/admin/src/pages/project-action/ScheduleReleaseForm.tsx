@@ -5,7 +5,6 @@ import { ConfirmMode, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useMemo, useState } from "react";
 import {
   defaultReminderPresetNames,
-  NOTIFY_MANY_MEMBERS_CONFIRMATION,
   reminderPresets,
 } from "../../components/reminders/presets";
 import {
@@ -13,6 +12,7 @@ import {
   DEFAULT_EVENT_NAMES,
 } from "../../lib/actionStatusDisplay";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
+import { notifyRealMembersText } from "../../lib/notifyRealMembers";
 import {
   defaultReleaseDates,
   formatPacific,
@@ -75,7 +75,7 @@ const ScheduleReleaseForm = ({
       confirmLabel: "Schedule",
       cancelLabel: "Cancel",
       mode: ConfirmMode.Fullscreen,
-      requiredText: NOTIFY_MANY_MEMBERS_CONFIRMATION,
+      requiredText: notifyRealMembersText("many"),
     });
     if (!ok) return;
     const body: ScheduleReleaseDto = {

@@ -3,6 +3,7 @@ import { useFormDisplaySlugs } from "@alliance/shared/lib/useFormsAdmin";
 import { parseActionDto } from "@alliance/shared/parsed-dtos";
 import { useMemo } from "react";
 import {
+  cohortNames,
   describeCohortExpression,
   type CohortSegment,
 } from "./describeCohortExpression";
@@ -14,11 +15,7 @@ export function useActionParticipants(
   const { tags } = useTagsAdmin();
   const formDisplaySlugs = useFormDisplaySlugs();
   return useMemo(() => {
-    const names = {
-      tagNames: new Map(tags.map((tag) => [tag.id, tag.name])),
-      actionNames: new Map(actions.map((action) => [action.id, action.name])),
-      formDisplaySlugs,
-    };
+    const names = cohortNames({ tags, actions, formDisplaySlugs });
     return new Map(
       actions.map((dto) => {
         const { action, cohortExpressionError } = parseActionDto(dto);

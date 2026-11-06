@@ -49,6 +49,33 @@ export type DependentEntry =
 
 type Governed = ConditionHolder["formulas"];
 
+/** Where each page, element, list sub-field, and accordion part is, by id. */
+export function placesById(pages: readonly Page[]): Map<string, FormPlace> {
+  const places = new Map<string, FormPlace>();
+  const add = (id: string | undefined, place: FormPlace) => {
+    if (id && !places.has(id)) places.set(id, place);
+  };
+  for (const { place, question } of conditionHolders(pages)) {
+    const page = pages[place.pageIndex]!;
+    if (place.kind === PlaceKind.Page) {
+      add(page.id, place);
+      continue;
+    }
+    if (place.kind === PlaceKind.SubField) {
+      add(question?.id, place);
+      continue;
+    }
+    const element = page.fields[place.index]!;
+    add(element.id, place);
+    if (element.kind !== "accordion") continue;
+    for (const section of element.sections) {
+      add(section.id, place);
+      for (const block of section.blocks) add(block.id, place);
+    }
+  }
+  return places;
+}
+
 /**
  * Where the question with `fieldId` sits, top-level or in a list. Of
  * duplicates, the last wins, as in `collectFieldLookup`, so a link reaches the
@@ -64,6 +91,13 @@ export function findQuestion(
   }
   return found;
 }
+
+/** The place a `formEditorPath` link to `id` selects. */
+export const placeForSelect = (
+  pages: readonly Page[],
+  id: string,
+): FormPlace | null =>
+  findQuestion(pages, id) ?? placesById(pages).get(id) ?? null;
 
 const ROLE_FORMULA: Record<DependencyRole, keyof Governed> = {
   [DependencyRole.Visibility]: "visibleIfFormula",

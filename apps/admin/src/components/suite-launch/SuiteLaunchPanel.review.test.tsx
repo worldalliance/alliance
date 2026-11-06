@@ -1,0 +1,489 @@
+import { onlineManager } from "@tanstack/react-query";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { expect, it, setSystemTime } from "bun:test";
+import { LaunchSection } from "./launchBlockers";
+import {
+  api,
+  launchButton,
+  renderPanel,
+  resolveEveryCheck,
+  serveLaunchApi,
+} from "./SuiteLaunchPanel.testHarness";
+
+serveLaunchApi();
+
+const actionsCheck = async () =>
+  within(
+    await waitFor(() => {
+      const section = document.getElementById(LaunchSection.Actions);
+      if (!section) throw new Error("The Actions check isn't rendered");
+      return section;
+    }),
+  );
+
+it("links a task form finding to the form and a body finding to its text in the action", async () => {
+  api.formPages = [{ id: "p1", title: "Page  one", fields: [] }];
+  renderPanel();
+
+  const formFinding = (
+    await screen.findAllByText("Double space · Call · Task form")
+  )[0].closest("li");
+  const bodyFinding = screen
+    .getByText("Double space · Call · Action page description")
+    .closest("li");
+  expect(
+    formFinding
+      ?.querySelector('[aria-label="Edit this text in the form"]')
+      ?.getAttribute("href"),
+  ).toBe("/forms/5?select=p1");
+  expect(
+    bodyFinding
+      ?.querySelector('[aria-label="Edit this text"]')
+      ?.getAttribute("href"),
+  ).toBe("/actions/1?tab=details&field=body&from=4&to=6&text=++");
+});
+
+it("previews the actions assigned to a picked member", async () => {
+  renderPanel();
+  await screen.findByText("Double space · Call · Action page description");
+
+  fireEvent.change(screen.getByPlaceholderText("Search by name"), {
+    target: { value: "Ana" },
+  });
+  fireEvent.click(await screen.findByRole("button", { name: /Ana/ }));
+
+  const row = (
+    await screen.findByRole("link", { name: "Log in as this member" })
+  ).closest("li");
+  expect(row?.textContent).toContain("Ana10 min");
+  expect(row?.textContent).toContain("Call");
+  expect(row?.textContent).not.toContain("Write");
+  expect(
+    screen
+      .getByRole("link", { name: "Log in as this member" })
+      .getAttribute("href"),
+  ).toEndWith("/auth/impersonate/10");
+  expect(
+    screen.getByText(/Logging in as a member signs this browser out/),
+  ).toBeTruthy();
+  expect(
+    row
+      ?.querySelector('[aria-label="Preview task form as this member"]')
+      ?.getAttribute("href"),
+  ).toBe("/forms/5?previewAs=10");
+});
+
+it("previews each of an action's variant forms as a picked member", async () => {
+  api.actionList = [1, 2].map((id) => ({
+    id,
+    name: api.served[id].name,
+    taskFormId: 5,
+    variantFormIds: id === 1 ? [9] : [],
+    onboarding: false,
+    memberActionDeadline: null,
+  }));
+  renderPanel();
+  await screen.findByText("Double space · Call · Action page description");
+
+  fireEvent.change(screen.getByPlaceholderText("Search by name"), {
+    target: { value: "Ana" },
+  });
+  fireEvent.click(await screen.findByRole("button", { name: /Ana/ }));
+
+  expect(
+    (
+      await screen.findByRole("link", {
+        name: "Preview variant “Variant 9” as this member",
+      })
+    ).getAttribute("href"),
+  ).toBe("/forms/9?previewAs=10");
+});
+
+it("groups members by the actions they get and previews one from a group", async () => {
+  renderPanel();
+  await screen.findByText("Double space · Call · Action page description");
+
+  const mixes = screen.getAllByRole("button", {
+    name: "Preview a member who gets these actions",
+  });
+  const mixRow = (button: HTMLElement) => {
+    const [members, minutes, actions] = [
+      ...(button.closest("tr")?.querySelectorAll("td") ?? []),
+    ];
+    return {
+      members: members?.textContent,
+      minutes: minutes?.textContent,
+      actions: actions
+        ? within(actions)
+            .getAllByRole("listitem")
+            .map((item) => item.textContent)
+        : [],
+    };
+  };
+  expect(mixes.map(mixRow)).toEqual([
+    { members: "1", minutes: "18 over 15 minutes", actions: ["Call", "Write"] },
+    { members: "1", minutes: "10", actions: ["Call"] },
+  ]);
+  fireEvent.click(mixes[0]);
+
+  const row = (
+    await screen.findByRole("link", { name: "Log in as this member" })
+  ).closest("li");
+  expect(row?.textContent).toContain("Ben18 min");
+});
+
+it("lists the reminders the launch creates", async () => {
+  renderPanel();
+  expect(await screen.findByText("7 created on launch")).toBeTruthy();
+  expect(screen.getByText("Member Action announcement")).toBeTruthy();
+  expect(screen.getByText("Missed deadline message")).toBeTruthy();
+});
+
+it("shows each action's audience, task form link, and what to look at before checking it", async () => {
+  api.served[2] = { ...api.served[2], image: null, archived: true };
+  renderPanel();
+
+  const write = (
+    await (await actionsCheck()).findByText(/^1 member ·/)
+  ).closest("li");
+  expect(write?.textContent).not.toContain("cover image");
+  expect(write?.textContent).toContain("Image set");
+  expect(write?.textContent).toContain("Archived");
+  expect(
+    write?.querySelector('[aria-label="Edit task form"]')?.getAttribute("href"),
+  ).toBe("/forms/5");
+  expect(screen.getByText(/^2 members ·/)).toBeTruthy();
+});
+
+it("counts only members with an active contract, as the server admits them", async () => {
+  api.benSigned = false;
+  renderPanel();
+
+  expect(
+    await screen.findByRole("button", { name: "Launch and notify 1 member" }),
+  ).toBeTruthy();
+  expect((await actionsCheck()).getByText(/^1 member ·/)).toBeTruthy();
+  expect(screen.getByText(/^0 members ·/)).toBeTruthy();
+});
+
+it("notes the reminders that reach members at night in their own zone", async () => {
+  // 9am Pacific, so the default start is 7pm the same day.
+  setSystemTime(new Date("2026-10-28T16:00:00Z"));
+  renderPanel();
+
+  const note = await screen.findByText(
+    "Reaches 2 members between 10pm and 8am their time",
+  );
+  expect(note.closest("li")?.textContent).toContain("Missed deadline message");
+  expect(
+    screen.getByText("24-48h reminder").closest("li")?.textContent,
+  ).not.toContain("their time");
+});
+
+it("notes an action that takes longer to read than its time estimate", async () => {
+  api.served[2] = {
+    ...api.served[2],
+    timeEstimate: 1,
+    body: "Write the letter. ".repeat(70),
+  };
+  renderPanel();
+
+  expect(
+    await screen.findByText(
+      "Reading alone takes about 2 min, more than its 1 min estimate",
+    ),
+  ).toBeTruthy();
+  expect(screen.getAllByText(/Reading alone takes/)).toHaveLength(1);
+});
+
+it("warns when a cohort reads another action that's still open at launch", async () => {
+  api.served[2] = {
+    ...api.served[2],
+    cohortExpression: { type: "CompletedAction", actionId: 1 },
+  };
+  api.actionList = [1, 2].map((id) => ({
+    id,
+    name: api.served[id].name,
+    taskFormId: 5,
+    variantFormIds: [],
+    onboarding: false,
+    memberActionDeadline: null,
+  }));
+  renderPanel();
+
+  const warning = await screen.findByText(
+    /These conditions read "Call", still open when members are decided at launch/,
+  );
+  expect(warning.closest("li")?.textContent).toContain("Write");
+});
+
+it("shows each reminder as the picked group of members gets it", async () => {
+  renderPanel();
+
+  const announcement = (
+    await screen.findByText("New Alliance tasks: Call, Write", { exact: false })
+  ).closest("li");
+  expect(announcement?.textContent).toContain("Member Action announcement");
+  expect(announcement?.textContent).toContain("As Ben gets it");
+  if (!announcement) throw new Error("no announcement");
+  const preview = within(announcement);
+  expect(preview.getByTitle("Email body").getAttribute("srcdoc")).toContain(
+    "2 new Alliance tasks are ready for you to complete",
+  );
+  expect(
+    preview.getByRole("figure", { name: "Push notification" }).textContent,
+  ).toContain("New tasks: Call, Write");
+  expect(
+    preview.getByText("Text Message").closest("figure")?.textContent,
+  ).toContain("New Alliance tasks: Call, Write. Complete within");
+
+  const mixes = within(
+    screen.getByRole("group", { name: "Preview as" }),
+  ).getAllByRole("radio");
+  expect(mixes.map((mix) => mix.closest("label")?.textContent)).toEqual([
+    "1 member · 2 tasks · 18 minCallWrite",
+    "1 member · 1 task · 10 minCall",
+  ]);
+  fireEvent.click(mixes[1]);
+  expect(
+    await screen.findByText("New Alliance task: Call", { exact: false }),
+  ).toBeTruthy();
+  expect(screen.getAllByText("As Ana gets it").length).toBeGreaterThan(0);
+});
+
+it("checks the text of each variant form, linking to that form", async () => {
+  api.formPages = [{ id: "p1", title: "Page  one", fields: [] }];
+  api.actionList = [1, 2].map((id) => ({
+    id,
+    name: api.served[id].name,
+    taskFormId: 5,
+    variantFormIds: id === 1 ? [9] : [],
+    onboarding: false,
+    memberActionDeadline: null,
+  }));
+  renderPanel();
+
+  const variantFinding = (
+    await screen.findAllByText("Double space · Call · Variant form")
+  )[0].closest("li");
+  expect(
+    variantFinding
+      ?.querySelector('[aria-label="Edit this text in the form"]')
+      ?.getAttribute("href"),
+  ).toBe("/forms/9?select=p1");
+});
+
+it("notes reading time from the longest variant form", async () => {
+  api.served[2] = { ...api.served[2], timeEstimate: 1 };
+  api.formPagesById[9] = [
+    { id: "p1", title: "Write the letter. ".repeat(70), fields: [] },
+  ];
+  api.actionList = [1, 2].map((id) => ({
+    id,
+    name: api.served[id].name,
+    taskFormId: 5,
+    variantFormIds: id === 2 ? [9] : [],
+    onboarding: false,
+    memberActionDeadline: null,
+  }));
+  renderPanel();
+
+  expect(
+    await screen.findByText(
+      "Reading alone takes about 2 min, more than its 1 min estimate",
+    ),
+  ).toBeTruthy();
+});
+
+it("refuses an action that already has its own members taking action event", async () => {
+  api.served[2] = {
+    ...api.served[2],
+    memberActionStart: "2026-10-01T02:00:00.000Z",
+  };
+  renderPanel();
+
+  const note = await screen.findByText(
+    /^Already has its own members taking action event \(Sep 30, 2026 at 7:00 PM PT\)/,
+  );
+  expect(note.closest("li")?.textContent).toContain("Write");
+  expect(screen.getAllByText(/Already has its own/)).toHaveLength(1);
+  expect(
+    screen.getByText(
+      "1 action already has its own members taking action event. Delete it, or take the action out of the suite, before launching.",
+    ),
+  ).toBeTruthy();
+});
+
+it("blocks launch again when a dismissed item, fixed since, goes missing again", async () => {
+  const complete = api.served[2];
+  const missing = { ...complete, project: null };
+  api.served[2] = missing;
+  const first = renderPanel();
+  await resolveEveryCheck();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Dismiss unfinished items" }),
+  );
+  first.unmount();
+
+  api.served[2] = complete;
+  const second = renderPanel();
+  expect(await screen.findByText("Checks are loading.")).toBeTruthy();
+  await waitFor(() =>
+    expect(screen.queryByText("Checks are loading.")).toBeNull(),
+  );
+  second.unmount();
+
+  api.served[2] = missing;
+  renderPanel();
+  expect(await screen.findByText("Unfinished: Part of a project")).toBeTruthy();
+  expect(
+    screen.getByText("1 action has unfinished checklist items."),
+  ).toBeTruthy();
+  expect(launchButton().hasAttribute("disabled")).toBe(true);
+});
+
+it("keeps a dismissal its task form decides while that form fails to load", async () => {
+  api.served[1] = { ...api.served[1], taskFormId: 7 };
+  api.formPagesById[7] = [
+    {
+      id: "p1",
+      title: "Call your representative today. ".repeat(500).trim(),
+      fields: [],
+    },
+  ];
+  const first = renderPanel();
+  await resolveEveryCheck();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Dismiss unfinished items" }),
+  );
+  first.unmount();
+
+  api.formLoadFails = true;
+  const failed = renderPanel();
+  expect(
+    await screen.findByText("Failed to load the task form for Call."),
+  ).toBeTruthy();
+  failed.unmount();
+
+  api.formLoadFails = false;
+  renderPanel();
+  expect(
+    await screen.findByText("Unfinished (dismissed): ", { exact: false }),
+  ).toBeTruthy();
+  expect(
+    screen.queryByText("1 action has unfinished checklist items."),
+  ).toBeNull();
+});
+
+it("keeps running checks while an action's load is paused offline", async () => {
+  api.offlineOnceActionLoads = true;
+  const view = renderPanel();
+  await waitFor(() => expect(onlineManager.isOnline()).toBe(false));
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(screen.getByText("Running checks…", { selector: "p" })).toBeTruthy();
+  expect(screen.queryByText("Preview members' actions")).toBeNull();
+  view.unmount();
+});
+
+it("says so beside a task form when grouping its members fails", async () => {
+  api.profilesFail = true;
+  api.served[1] = { ...api.served[1], taskFormId: 7 };
+  api.formPagesById[7] = [
+    {
+      id: "p1",
+      title: "Only with a city",
+      fields: [],
+      visibleIfFormula: {
+        formula: "c1",
+        conditions: { c1: { kind: "userHasCity", userHasCity: true } },
+      },
+    },
+  ];
+  renderPanel();
+
+  expect(
+    (await screen.findByText("Couldn't group members")).getAttribute("title"),
+  ).toBe("Couldn't group members by what they see.");
+});
+
+it("previews a task form as each kind of member among the action's own recipients", async () => {
+  api.served[1] = { ...api.served[1], taskFormId: 7 };
+  api.formPagesById[7] = [
+    {
+      id: "p1",
+      title: "Only with a city",
+      fields: [],
+      visibleIfFormula: {
+        formula: "c1",
+        conditions: { c1: { kind: "userHasCity", userHasCity: true } },
+      },
+    },
+  ];
+  renderPanel();
+
+  expect(await screen.findByText("2 member variants")).toBeTruthy();
+  fireEvent.click(screen.getByText("Call", { selector: "summary" }));
+  const cards = await screen.findAllByRole("link", {
+    name: /1 member.*has city/,
+  });
+  expect(api.visibilityProfileRequests).toEqual([{ userIds: [10, 11] }]);
+  expect(screen.queryByText("Write", { selector: "summary" })).toBeNull();
+  expect(cards[1].getAttribute("href")).toBe("/forms/7?previewAs=11");
+  expect(cards[1].getAttribute("target")).toBe("_blank");
+});
+
+it("lists each variant form whose conditions tell members apart as its own entry", async () => {
+  const byCity = [
+    {
+      id: "p1",
+      title: "Only with a city",
+      fields: [] as [],
+      visibleIfFormula: {
+        formula: "c1",
+        conditions: {
+          c1: { kind: "userHasCity" as const, userHasCity: true },
+        },
+      },
+    },
+  ];
+  api.formPagesById[5] = byCity;
+  api.formPagesById[9] = byCity;
+  api.actionList = [1, 2].map((id) => ({
+    id,
+    name: api.served[id].name,
+    taskFormId: 5,
+    variantFormIds: id === 1 ? [9] : [],
+    onboarding: false,
+    memberActionDeadline: null,
+  }));
+  renderPanel();
+
+  await waitFor(() =>
+    expect(screen.getAllByText("Call", { selector: "summary" })).toHaveLength(
+      2,
+    ),
+  );
+  const [taskForm, variant] = screen.getAllByText("Call", {
+    selector: "summary",
+  });
+  expect(taskForm.textContent).toContain(", task form, 75%");
+  expect(variant.textContent).toContain(", variant “Variant 9”, 25%");
+  expect(
+    screen.getByText(/one of its variants at random, in the shares shown/),
+  ).toBeTruthy();
+  fireEvent.click(variant);
+  const entry = variant.closest("li");
+  if (!entry) throw new Error("no variant entry");
+  const cards = await within(entry).findAllByRole("link", {
+    name: /1 member.*has city/,
+  });
+  expect(cards[1].getAttribute("href")).toBe("/forms/9?previewAs=11");
+});
+
+it("leaves out task forms that show every member the same thing", async () => {
+  renderPanel();
+  await screen.findByText("Double space · Call · Action page description");
+
+  expect(screen.queryByText("Task forms by member")).toBeNull();
+  expect(api.visibilityProfileRequests).toEqual([]);
+});

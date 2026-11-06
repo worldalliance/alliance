@@ -12,6 +12,15 @@ import { useInvalidateFormsIndex } from "@alliance/shared/lib/useFormsAdmin";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminRefusalMessage } from "./adminRefusal";
 
+export const formVariantsQuery = (actionId: number) => ({
+  queryKey: queryKeys.formVariantsAdmin(actionId),
+  queryFn: () =>
+    actionFormsListFormVariantsAdmin({
+      path: { id: actionId },
+      throwOnError: true,
+    }).then((res) => res.data),
+});
+
 export const formVariantsLoadError = (error: unknown) =>
   adminRefusalMessage(error, "Failed to load variants.");
 
@@ -23,18 +32,10 @@ export function useFormVariantsAdmin<T>(
 ) {
   const queryClient = useQueryClient();
   const invalidateFormsIndex = useInvalidateFormsIndex();
-  const queryKey = queryKeys.formVariantsAdmin(actionId);
+  const { queryKey } = formVariantsQuery(actionId);
   const invalidate = () => queryClient.invalidateQueries({ queryKey });
 
-  const variants = useQuery({
-    queryKey,
-    queryFn: () =>
-      actionFormsListFormVariantsAdmin({
-        path: { id: actionId },
-        throwOnError: true,
-      }).then((res) => res.data),
-    select,
-  });
+  const variants = useQuery({ ...formVariantsQuery(actionId), select });
 
   /** Creates the drafts in order, stopping at the first that fails. */
   const publishVariants = useMutation({

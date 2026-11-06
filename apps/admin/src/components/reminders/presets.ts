@@ -17,9 +17,6 @@ import {
 import { CreateReminderGroupDto } from "@alliance/shared/client";
 import { secondsInDay, secondsInHour } from "date-fns/constants";
 
-export const NOTIFY_MANY_MEMBERS_CONFIRMATION =
-  "I am going to notify many real members";
-
 export const presetNames = [
   "Announcement",
   "Catch-up late joiners",
@@ -153,7 +150,7 @@ export const reminderPresets: Record<ReminderPresetName, ReminderPreset> = {
   },
 };
 
-const DEFAULT_DEADLINE_PRESETS: ReminderPresetName[] = [
+const defaultDeadlinePresets: ReminderPresetName[] = [
   "Two Day Range",
   "One Day Range",
   "Three Hour",
@@ -166,5 +163,14 @@ export const defaultReminderPresetNames = (
   hasDeadline: boolean,
 ): ReminderPresetName[] => [
   "Announcement",
-  ...(hasDeadline ? DEFAULT_DEADLINE_PRESETS : []),
+  ...(hasDeadline ? defaultDeadlinePresets : []),
 ];
+
+export const defaultReminderBodies = (params: {
+  suiteId: number;
+  hasDeadline: boolean;
+}): CreateReminderGroupDto[] =>
+  defaultReminderPresetNames(params.hasDeadline).map((preset) => ({
+    suiteId: params.suiteId,
+    ...reminderPresets[preset],
+  }));

@@ -77,12 +77,21 @@ describe.each(["absent", "applied"] as const)(
         "flock",
         "unzip",
         "install",
+        "cache-rm",
         "validate",
         "migrate while running: old",
         "delete old",
         "start new",
         "health new",
       ]);
+      expect(result.running).toBe("new");
+    });
+
+    test("a failed cache clear warns and still deploys", () => {
+      const result = deploy({ CACHE_RM: "fail" });
+      expect(result.exitCode).toBe(0);
+      expect(result.output).toContain("::warning::bun pm cache rm failed");
+      expect(result.log).toContain("cache-rm");
       expect(result.running).toBe("new");
     });
 
@@ -117,6 +126,7 @@ describe.each(["absent", "applied"] as const)(
         "flock",
         "unzip",
         "install",
+        "cache-rm",
         "validate",
         "migrate while running: old",
       ]);
@@ -166,7 +176,13 @@ test("deploy_backend.sh leaves the old backend running on an unreadable removal 
   writeFileSync(join(state, "unreadable"), "");
   const result = deploy();
   expect(result.exitCode).toBe(1);
-  expect(result.log).toEqual(["flock", "unzip", "install", "validate"]);
+  expect(result.log).toEqual([
+    "flock",
+    "unzip",
+    "install",
+    "cache-rm",
+    "validate",
+  ]);
   expect(result).toMatchObject({
     running: "old",
     release: "old",
@@ -182,7 +198,13 @@ test("deploy_backend.sh leaves the old backend running on an unrecognized remova
   expect(result.output).toContain(
     "::error::Unexpected streak recognition removal state. The old backend is still running.",
   );
-  expect(result.log).toEqual(["flock", "unzip", "install", "validate"]);
+  expect(result.log).toEqual([
+    "flock",
+    "unzip",
+    "install",
+    "cache-rm",
+    "validate",
+  ]);
   expect(result).toMatchObject({
     running: "old",
     release: "old",
@@ -200,6 +222,7 @@ describe("deploy_backend.sh with the removal pending", () => {
       "flock",
       "unzip",
       "install",
+      "cache-rm",
       "validate",
       "delete old",
       "migrate while running: ",

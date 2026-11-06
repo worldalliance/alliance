@@ -8,6 +8,7 @@ import {
   dependentsOutside,
   findQuestion,
   groupDependents,
+  placesById,
   sourcesOf,
 } from "./formDependencies";
 import { deriveVisibilityGroups } from "./visibilityGroups";
@@ -66,6 +67,25 @@ const pages: Page[] = [
 ];
 
 describe("formDependencies", () => {
+  it("finds a page or any element by id, questions or not", () => {
+    expect(placesById(pages).get("p2")).toEqual({
+      kind: PlaceKind.Page,
+      pageIndex: 1,
+    });
+    expect(placesById(pages).get("list")).toEqual({
+      kind: PlaceKind.Element,
+      pageIndex: 0,
+      index: 1,
+    });
+    expect(placesById(pages).get("sub2")).toEqual({
+      kind: PlaceKind.SubField,
+      pageIndex: 0,
+      index: 1,
+      subIndex: 1,
+    });
+    expect(placesById(pages).get("gone")).toBeUndefined();
+  });
+
   it("finds top-level and list questions", () => {
     expect(findQuestion(pages, "a")).toEqual({
       kind: PlaceKind.Element,

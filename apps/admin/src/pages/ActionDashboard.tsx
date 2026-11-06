@@ -12,6 +12,7 @@ import EventManagementTab from "../components/EventManagementTab";
 import { FormBuilder } from "../components/FormBuilder";
 import { SlugField } from "../components/SlugField";
 import { getSiteUrl } from "../lib/config";
+import { useLinkedSelection } from "../lib/linkedSelection";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
 import ActionEditor from "./action-dashboard/ActionEditor";
 import ActionOverviewTab from "./action-dashboard/ActionOverviewTab";
@@ -97,6 +98,12 @@ const ActionDashboard: React.FC = () => {
     (!isNew && !actionLoadFailed && (actionPending || !editor.draftSeeded)) ||
     isRemoving;
 
+  useLinkedSelection({
+    ready: selectedTab === "details" && !loading && !actionLoadFailed,
+    searchParams,
+    setSearchParams,
+    onError: setError,
+  });
   const { handleDuplicate, handleArchive, handleDelete } = useActionCommands({
     admin,
     actionId,

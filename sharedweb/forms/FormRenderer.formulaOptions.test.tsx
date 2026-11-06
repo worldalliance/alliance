@@ -361,7 +361,7 @@ describe("keeps a restored draft's selections once a visibility input fails", ()
           formula: "c1",
         },
       },
-      route: "GET /user/myvisibilitycontext",
+      route: "GET /user/:id/visibilitycontext",
     },
     "a validator": {
       localSource: {

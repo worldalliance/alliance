@@ -1,8 +1,9 @@
 import type { AnyField } from "@alliance/common/forms/form-schema";
-import type {
-  Condition,
-  FormulaNode,
-  VisibleIfFormula,
+import {
+  isDraftValidatorId,
+  type Condition,
+  type FormulaNode,
+  type VisibleIfFormula,
 } from "@alliance/common/forms/visible-if-formula";
 import {
   formulaConditionNames,
@@ -10,10 +11,7 @@ import {
 } from "@alliance/shared/forms/visibilityFormula";
 import { cn } from "@alliance/shared/styles/util";
 import { useMemo, useState } from "react";
-import {
-  isDraftValidatorId,
-  useCustomValidatorDrafts,
-} from "../customValidatorDrafts";
+import { useCustomValidatorDrafts } from "../customValidatorDrafts";
 import { AddRuleMenu } from "./AddRuleMenu";
 import {
   buildFormula,

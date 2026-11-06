@@ -1,3 +1,4 @@
+import { isMissedSuiteReminderGroup } from "@alliance/common/missedSuiteNotice";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ActionSuspensionService } from "src/actions/action-suspension.service";
@@ -12,7 +13,6 @@ import {
 import { ActionEventNotif } from "./entities/action-event-notif.entity";
 import {
   getsMissedSuiteNotice,
-  isMissedSuiteReminderGroup,
   missedSuiteNoticeKey,
   MissedSuitePlanKind,
   resolveMissedSuitePlan,

@@ -1,10 +1,13 @@
+import { formSchema } from "@alliance/common/forms/form-schema";
 import { GUEST_HEADER } from "@alliance/common/guest";
+import { describeSchemaIssues } from "@alliance/common/zod-issues";
 import {
   BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   ParseIntPipe,
   Patch,
@@ -54,6 +57,11 @@ import {
   UpdateFormDto,
   UpdateFormSlugDto,
 } from "./form.dto";
+import {
+  VisibilityProfilesDto,
+  VisibilityProfilesRequestDto,
+} from "./member-visibility.dto";
+import { MemberVisibilityService } from "./member-visibility.service";
 import { TasksService } from "./tasks.service";
 import {
   CountVariableAggregatesDto,
@@ -74,7 +82,32 @@ export class TasksController {
     private readonly formSubmissionService: FormSubmissionService,
     private readonly formDraftService: FormDraftService,
     private readonly authService: AuthService,
+    private readonly memberVisibilityService: MemberVisibilityService,
   ) {}
+
+  @Post("visibilityProfiles")
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: VisibilityProfilesDto })
+  async visibilityProfilesAdmin(
+    @Body() body: VisibilityProfilesRequestDto,
+  ): Promise<VisibilityProfilesDto> {
+    const schema = formSchema.safeParse(body.schema);
+    if (!schema.success) {
+      throw new BadRequestException(
+        `The form schema is invalid: ${describeSchemaIssues(schema.error).join("; ")}`,
+      );
+    }
+    const profiles = await this.memberVisibilityService.profiles({
+      schema: schema.data,
+      userIds: body.userIds,
+    });
+    if (!profiles.ok) {
+      throw new NotFoundException(
+        `No user has id ${profiles.error.unknownUserIds.join(", ")}`,
+      );
+    }
+    return new VisibilityProfilesDto({ profiles: profiles.value });
+  }
 
   @Post("submitForm/:id")
   @UseGuards(AuthGuard)
