@@ -38,6 +38,9 @@ jobs:
         with:
           ref: ${{ env.visual_regression_ref }}
 
+      - name: Record the Tested Commit
+        run: echo "TESTED_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
       - name: Capture Xcode Version
         id: xcode-version
         run: |
@@ -136,7 +139,7 @@ jobs:
         run: |
           aws s3 sync \
             ${{ github.workspace }}/screenshots-mobile/current/ \
-            s3://${{ secrets.VISUAL_REGRESSION_BUCKET }}/visual-regression/mobile/ios/${{ env.env_name }}/${{ github.sha }}/
+            "s3://${{ secrets.VISUAL_REGRESSION_BUCKET }}/visual-regression/mobile/ios/${{ env.env_name }}/$TESTED_SHA/"
 
       - name: Download iOS Baseline from S3
         run: |
@@ -180,7 +183,7 @@ jobs:
         if: steps.mobile-ai-review.outcome == 'failure'
         run: |
           RESULTS="${{ github.workspace }}/screenshots-mobile/ai-review-results.json"
-          SHA="${{ github.sha }}"
+          SHA="$TESTED_SHA"
           ENV_NAME="${{ env.env_name }}"
           BASELINE_DIR="${{ github.workspace }}/screenshots-mobile/baseline"
           CURRENT_DIR="${{ github.workspace }}/screenshots-mobile/current"
@@ -280,7 +283,7 @@ jobs:
             exit 0
           fi
 
-          SHA="${{ github.sha }}"
+          SHA="$TESTED_SHA"
           ENV_NAME="${{ env.env_name }}"
           BASELINE_DIR="${{ github.workspace }}/screenshots-mobile/baseline"
           CURRENT_DIR="${{ github.workspace }}/screenshots-mobile/current"
