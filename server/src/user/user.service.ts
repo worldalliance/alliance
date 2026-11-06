@@ -50,11 +50,15 @@ import {
   type Repository,
 } from "typeorm";
 import { UpdateProfileDto } from "./dto/user.dto";
-import { sqlUserHasActiveContractAt } from "./entities/contract-event.entity";
+import {
+  ContractEvent,
+  sqlUserHasActiveContractAt,
+} from "./entities/contract-event.entity";
 import {
   OnetimeInvite,
   OnetimeInviteStatus,
 } from "./entities/onetime-invite.entity";
+import { UserAwayRange } from "./entities/user-away-range.entity";
 import { User } from "./entities/user.entity";
 import { CLAIMABLE_INVITE } from "./invite-claim";
 import { memberWithReferral } from "./user.utils";
@@ -426,17 +430,42 @@ export class UserService {
   /**
    * Same population as {@link findActiveUsersWithTags}, but hydrating only
    * what the assignment predicates (`computeIsAssignedAndPresent`,
-   * `computeIsAwayDuringWindow`) read: `id`, `contractEvents`, and
-   * `awayRanges`. Every other scalar column is left unselected — hydrating
+   * `computeIsAwayDuringWindow`) read: `id`, and the `id`, `date`, and `type`
+   * of `contractEvents` and the `id`, `startDate`, and `endDate` of
+   * `awayRanges`. Every other column is left unselected — hydrating
    * ~50 columns for every user is the dominant cost of the full load, and
    * it's pure event-loop CPU. Only use where the consumers are known.
    */
   async findActiveUsersForRoster(): Promise<User[]> {
-    return this.userRepository.find({
-      select: { id: true },
-      relations: { awayRanges: true, contractEvents: true },
-      relationLoadStrategy: "query",
-    });
+    // Three column-only queries joined here, since TypeORM's relation
+    // loading costs several times the CPU for the same rows.
+    const [users, contractEvents, awayRanges] = await Promise.all([
+      this.userRepository.find({ select: { id: true } }),
+      this.dataSource
+        .getRepository(ContractEvent)
+        .createQueryBuilder("ce")
+        .select("ce.id", "id")
+        .addSelect("ce.date", "date")
+        .addSelect("ce.type", "type")
+        .addSelect('ce."userId"', "userId")
+        .getRawMany<
+          Pick<ContractEvent, "id" | "date" | "type"> & { userId: number }
+        >(),
+      this.dataSource.getRepository(UserAwayRange).find({
+        select: { id: true, userId: true, startDate: true, endDate: true },
+      }),
+    ]);
+    const contractEventsByUser = Map.groupBy(
+      contractEvents,
+      (event) => event.userId,
+    );
+    const awayRangesByUser = Map.groupBy(awayRanges, (range) => range.userId);
+    return users.map((user) =>
+      Object.assign(user, {
+        contractEvents: contractEventsByUser.get(user.id) ?? [],
+        awayRanges: awayRangesByUser.get(user.id) ?? [],
+      }),
+    );
   }
 
   /**
