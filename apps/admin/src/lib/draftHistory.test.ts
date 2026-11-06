@@ -130,6 +130,25 @@ describe("draftHistoryReducer", () => {
       undo,
       { kind: HistoryActionKind.Reset, draft: "z" },
     ]);
-    expect(history).toEqual(startHistory("z"));
+    expect(history).toEqual({ ...startHistory("z"), epoch: 2 });
   });
+
+  it.each([
+    ["undo", [commit("b", { task: 1, run: null })], undo],
+    ["redo", [commit("b", { task: 1, run: null }), undo], redo],
+    ["reset", [], { kind: HistoryActionKind.Reset, draft: "z" }],
+  ] satisfies [string, HistoryAction<string>[], HistoryAction<string>][])(
+    "drops an amendment made before the %s, keeping one made after",
+    (_name, setup, overtaking) => {
+      const before = run(setup);
+      const after = run([overtaking], before);
+      const amend = (epoch: number): HistoryAction<string> => ({
+        kind: HistoryActionKind.Amend,
+        update: () => "amended",
+        epoch,
+      });
+      expect(run([amend(before.epoch)], after)).toBe(after);
+      expect(run([amend(after.epoch)], after).present).toBe("amended");
+    },
+  );
 });

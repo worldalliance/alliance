@@ -12,6 +12,11 @@ export type DraftHistory<T> = {
   present: T;
   future: T[];
   lastStep: StepTag | null;
+  /**
+   * Counts undos, redos and resets. Commits and mapAll leave it alone, so an
+   * amendment made before one still applies after it.
+   */
+  epoch: number;
 };
 
 export enum HistoryActionKind {
@@ -26,8 +31,11 @@ export enum HistoryActionKind {
 
 export type HistoryAction<T> =
   | { kind: HistoryActionKind.Commit; update: (draft: T) => T; step: StepTag }
-  /** Rewrites the present without adding a step. */
-  | { kind: HistoryActionKind.Amend; update: (draft: T) => T }
+  /**
+   * Rewrites the present without adding a step. With `epoch`, it is dropped
+   * once an undo, redo or reset has replaced the present it was made against.
+   */
+  | { kind: HistoryActionKind.Amend; update: (draft: T) => T; epoch?: number }
   /** Makes the next commit start a step of its own. */
   | { kind: HistoryActionKind.EndStep }
   | { kind: HistoryActionKind.Undo }
@@ -41,6 +49,7 @@ export const startHistory = <T>(draft: T): DraftHistory<T> => ({
   present: draft,
   future: [],
   lastStep: null,
+  epoch: 0,
 });
 
 const continuesStep = (last: StepTag | null, step: StepTag) =>
@@ -62,9 +71,13 @@ export function draftHistoryReducer<T>(
         present,
         future: [],
         lastStep: action.step,
+        epoch: state.epoch,
       };
     }
     case HistoryActionKind.Amend: {
+      if (action.epoch !== undefined && action.epoch !== state.epoch) {
+        return state;
+      }
       const present = action.update(state.present);
       return isEqual(present, state.present) ? state : { ...state, present };
     }
@@ -78,6 +91,7 @@ export function draftHistoryReducer<T>(
         present: previous,
         future: [state.present, ...state.future],
         lastStep: null,
+        epoch: state.epoch + 1,
       };
     }
     case HistoryActionKind.Redo: {
@@ -88,16 +102,18 @@ export function draftHistoryReducer<T>(
         present: next,
         future,
         lastStep: null,
+        epoch: state.epoch + 1,
       };
     }
     case HistoryActionKind.Reset:
-      return startHistory(action.draft);
+      return { ...startHistory(action.draft), epoch: state.epoch + 1 };
     case HistoryActionKind.MapAll:
       return {
         past: state.past.map(action.map),
         present: action.map(state.present),
         future: state.future.map(action.map),
         lastStep: state.lastStep,
+        epoch: state.epoch,
       };
     default:
       throw new Error(`unknown history action: ${action satisfies never}`);
