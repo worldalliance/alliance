@@ -57,7 +57,7 @@ Reach for a maintained npm package over hand-rolling parsing, sanitization, date
 
 ## Established practice
 
-Prefer established standards and widely adopted practices that fit the stack and task. Research before choosing when the applicable practice is unclear, unfamiliar, or may have changed, starting with standards bodies and official framework or library documentation. Distinguish formal standards, common practice, and vendor recommendations; cite sources for researched choices. Explicit requirements and concrete compatibility constraints take precedence. Explain material departures from established practice and the constraint that warrants them.
+Prefer established standards and widely adopted practices that fit the stack and task. Research before choosing when the applicable practice is unclear, unfamiliar, or may have changed, starting with standards bodies and vendor documentation. Distinguish formal standards, vendor recommendations (official guidance from a platform, framework or library), research-backed practice (supported by published empirical studies, such as usability research), and common practice; cite sources for researched choices. Explicit requirements and concrete compatibility constraints take precedence. Explain material departures from established practice and the constraint that warrants them.
 
 ## Breaking changes
 
