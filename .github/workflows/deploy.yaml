@@ -68,15 +68,10 @@ jobs:
 
   build-react-app:
     runs-on: ubuntu-latest
-    needs: deployed-config
     environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
-      - name: Read deployed config
-        id: config
-        uses: ./.github/actions/deployed-config
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -104,12 +99,16 @@ jobs:
         continue-on-error: true
         uses: ./.github/actions/posthog-cli
 
-      - name: Inject & upload source maps to PostHog
+      - name: Inject source map ids
         continue-on-error: true
-        env:
-          POSTHOG_CLI_ENV_ID: ${{ steps.config.outputs.POSTHOG_PROJECT_ID }}
-          POSTHOG_CLI_TOKEN: ${{ secrets.POSTHOG_SOURCEMAP_KEY }}
-        run: posthog-cli sourcemap process --directory ./apps/frontend/build/client/assets/
+        run: posthog-cli sourcemap inject --directory ./apps/frontend/build/client/assets/
+
+      - name: Upload Assets For Source Maps
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: react-assets
+          path: apps/frontend/build/client/assets/
 
       - name: create output folder
         run: |
@@ -156,6 +155,37 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "react-build.zip"
           target: "~/"
+
+  # Source maps never fail the run, which publish-mobile-ota would read as this deploy not being live.
+  upload-react-sourcemaps:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    needs:
+      - deployed-config
+      - build-react-app
+    environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Read deployed config
+        id: config
+        uses: ./.github/actions/deployed-config
+
+      - name: Download Assets
+        uses: actions/download-artifact@v4
+        with:
+          name: react-assets
+          path: react-assets
+
+      - name: Install PostHog CLI
+        uses: ./.github/actions/posthog-cli
+
+      - name: Upload source maps to PostHog
+        env:
+          POSTHOG_CLI_ENV_ID: ${{ steps.config.outputs.POSTHOG_PROJECT_ID }}
+          POSTHOG_CLI_TOKEN: ${{ secrets.POSTHOG_SOURCEMAP_KEY }}
+        run: posthog-cli sourcemap upload --directory react-assets
 
   build-admin-frontend:
     runs-on: ubuntu-latest
