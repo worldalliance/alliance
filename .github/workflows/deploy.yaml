@@ -6,8 +6,6 @@ on:
 
 env:
   AWS_REGION: us-west-2
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   env_name: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
 
 concurrency:
@@ -156,7 +154,9 @@ jobs:
           source: "react-build.zip"
           target: "~/"
 
-  # Source maps never fail the run, which publish-mobile-ota would read as this deploy not being live.
+  # Apart from build-react-app, so the frontend's build dependencies never
+  # run where id-token: write reaches the environment role's Expo token. It
+  # never fails the run, which publish-mobile-ota would read as not live.
   upload-react-sourcemaps:
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -164,6 +164,9 @@ jobs:
       - deployed-config
       - build-react-app
     environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -171,6 +174,13 @@ jobs:
       - name: Read deployed config
         id: config
         uses: ./.github/actions/deployed-config
+
+      - name: Read CI secrets
+        id: aws
+        uses: ./.github/actions/aws
+        with:
+          role: ${{ env.env_name }}
+          parameters: ci/deploy/POSTHOG_SOURCEMAP_KEY
 
       - name: Download Assets
         uses: actions/download-artifact@v4
@@ -184,7 +194,7 @@ jobs:
       - name: Upload source maps to PostHog
         env:
           POSTHOG_CLI_ENV_ID: ${{ steps.config.outputs.POSTHOG_PROJECT_ID }}
-          POSTHOG_CLI_TOKEN: ${{ secrets.POSTHOG_SOURCEMAP_KEY }}
+          POSTHOG_CLI_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets).POSTHOG_SOURCEMAP_KEY }}
         run: posthog-cli sourcemap upload --directory react-assets
 
   build-admin-frontend:
@@ -461,12 +471,15 @@ jobs:
 
   mobile-fingerprint-check:
     uses: ./.github/workflows/mobile-fingerprint-check.yaml
-    secrets:
-      SLACK_WEBHOOK_URL_DEPLOYMENT: ${{ secrets.SLACK_WEBHOOK_URL_DEPLOYMENT }}
+    permissions:
+      contents: read
+      id-token: write
 
   visual-regression:
     runs-on: ubuntu-24.04
-    environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
+    permissions:
+      contents: read
+      id-token: write
     services:
       postgres:
         image: postgres:17
@@ -483,6 +496,18 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Read CI secrets
+        if: github.ref_name == 'production'
+        id: aws
+        uses: ./.github/actions/aws
+        with:
+          role: visual-regression
+          export-credentials: true
+          parameters: |
+            ci/visual-regression/GEMINI_API_KEY
+            ci/visual-regression/ANTHROPIC_API_KEY
+            ci/visual-regression/SLACK_BOT_TOKEN
 
       - name: Setup Bun
         if: github.ref_name == 'production'
@@ -525,7 +550,7 @@ jobs:
           DB_USERNAME: postgres
           DB_PASSWORD: postgres
           CITESTING_DB_NAME: citesting
-          ASSETS_BUCKET: ${{ secrets.CI_ASSETS_BUCKET }}
+          ASSETS_BUCKET: ${{ env.CI_ASSETS_BUCKET }}
           NODE_ENV: test
           SCREENSHOT_OUTPUT_DIR: ${{ github.workspace }}/screenshots/current
 
@@ -534,14 +559,14 @@ jobs:
         run: |
           aws s3 sync \
             ${{ github.workspace }}/screenshots/current/ \
-            s3://${{ secrets.VISUAL_REGRESSION_BUCKET }}/visual-regression/${{ env.env_name }}/${{ github.sha }}/
+            "s3://$VISUAL_REGRESSION_BUCKET/visual-regression/${{ env.env_name }}/${{ github.sha }}/"
 
       - name: Download Baseline from S3
         if: github.ref_name == 'production'
         run: |
           mkdir -p ${{ github.workspace }}/screenshots/baseline
           aws s3 sync \
-            s3://${{ secrets.VISUAL_REGRESSION_BUCKET }}/visual-regression/${{ env.env_name }}/latest/ \
+            "s3://$VISUAL_REGRESSION_BUCKET/visual-regression/${{ env.env_name }}/latest/" \
             ${{ github.workspace }}/screenshots/baseline/ \
             || echo "No baseline found — first run"
 
@@ -573,20 +598,21 @@ jobs:
             echo "No baseline — skipping AI review"
           fi
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ fromJSON(steps.aws.outputs.secrets).GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ fromJSON(steps.aws.outputs.secrets).ANTHROPIC_API_KEY }}
           AI_REVIEW_OUTPUT: ${{ github.workspace }}/screenshots/ai-review-results.json
 
       - name: Notify Slack on Visual Regression
         if: github.ref_name == 'production' && steps.ai-review.outcome == 'failure'
+        env:
+          TOKEN: ${{ fromJSON(steps.aws.outputs.secrets).SLACK_BOT_TOKEN }}
         run: |
           RESULTS="${{ github.workspace }}/screenshots/ai-review-results.json"
           SHA="${{ github.sha }}"
           ENV_NAME="${{ env.env_name }}"
           BASELINE_DIR="${{ github.workspace }}/screenshots/baseline"
           CURRENT_DIR="${{ github.workspace }}/screenshots/current"
-          TOKEN="${{ secrets.SLACK_BOT_TOKEN }}"
-          CHANNEL="${{ secrets.SLACK_DEPLOY_CHANNEL_ID }}"
+          CHANNEL="$SLACK_DEPLOY_CHANNEL_ID"
 
           # Upload a file to Slack via v2 API (without channel) and return its permalink
           upload_to_slack() {
@@ -666,6 +692,8 @@ jobs:
 
       - name: Notify Slack on AI-Approved Changes
         if: github.ref_name == 'production' && steps.ai-review.outcome != 'failure'
+        env:
+          TOKEN: ${{ fromJSON(steps.aws.outputs.secrets).SLACK_BOT_TOKEN }}
         run: |
           RESULTS="${{ github.workspace }}/screenshots/ai-review-results.json"
 
@@ -686,8 +714,7 @@ jobs:
           SHA="${{ github.sha }}"
           BASELINE_DIR="${{ github.workspace }}/screenshots/baseline"
           CURRENT_DIR="${{ github.workspace }}/screenshots/current"
-          TOKEN="${{ secrets.SLACK_BOT_TOKEN }}"
-          CHANNEL="${{ secrets.SLACK_VISUAL_REGRESSION_CHANNEL_ID }}"
+          CHANNEL="$SLACK_VISUAL_REGRESSION_CHANNEL_ID"
 
           upload_to_slack() {
             local filepath="$1"
@@ -767,7 +794,7 @@ jobs:
         run: |
           aws s3 sync \
             ${{ github.workspace }}/screenshots/current/ \
-            s3://${{ secrets.VISUAL_REGRESSION_BUCKET }}/visual-regression/${{ env.env_name }}/latest/ \
+            "s3://$VISUAL_REGRESSION_BUCKET/visual-regression/${{ env.env_name }}/latest/" \
             --delete
 
       - name: Fail if regressions detected
@@ -992,11 +1019,28 @@ jobs:
       - verify-api
       - mobile-fingerprint-check
       - publish-mobile-ota
-    if: always()
+    if: >-
+      ${{ always() && (needs.deployed-config.result != 'success'
+      || needs.deploy-nest-backend.result != 'success'
+      || needs.verify-deployment.result != 'success'
+      || needs.verify-https.result != 'success'
+      || needs.verify-api.result != 'success'
+      || needs.mobile-fingerprint-check.result != 'success'
+      || needs.publish-mobile-ota.result != 'success') }}
     environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Read CI secrets
+        id: aws
+        uses: ./.github/actions/aws
+        with:
+          role: ${{ env.env_name }}
+          parameters: ci/shared/SLACK_WEBHOOK_URL_DEPLOYMENT
 
       - name: Compute Slack mention
         id: slack_mention
@@ -1004,17 +1048,9 @@ jobs:
         with:
           github-username: ${{ github.actor }}
 
-      - name: Post webhook if any upstream did not succeed
-        if: >-
-          ${{ always() && (needs.deployed-config.result != 'success'
-          || needs.deploy-nest-backend.result != 'success'
-          || needs.verify-deployment.result != 'success'
-          || needs.verify-https.result != 'success'
-          || needs.verify-api.result != 'success'
-          || needs.mobile-fingerprint-check.result != 'success'
-          || needs.publish-mobile-ota.result != 'success') }}
+      - name: Post webhook
         env:
-          WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL_DEPLOYMENT }}
+          WEBHOOK: ${{ fromJSON(steps.aws.outputs.secrets).SLACK_WEBHOOK_URL_DEPLOYMENT }}
           MENTION: ${{ steps.slack_mention.outputs.mention }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -1033,6 +1069,9 @@ jobs:
     needs:
       - deploy-nest-backend
     uses: ./.github/workflows/publish-mobile-ota.yaml
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
     with:
       environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
-    secrets: inherit

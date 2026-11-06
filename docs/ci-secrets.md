@@ -1,6 +1,6 @@
 # CI secrets
 
-`./.github/actions/aws` lets a job assume an IAM role through GitHub's OIDC token and read the secrets it uses from AWS SSM Parameter Store. Values that aren't secret, such as bucket names and Slack channel ids, are committed in `.github/ci.env`.
+No workflow reads an AWS key from GitHub; the old repository secrets stay until ALL-1965 deletes them. A job that needs AWS assumes an IAM role through GitHub's OIDC token and reads the secrets it uses from AWS SSM Parameter Store. Values that aren't secret, such as bucket names and Slack channel ids, are committed in `.github/ci.env`.
 
 ## Roles
 
@@ -37,7 +37,19 @@ The job needs `permissions: id-token: write`, and since naming any permission dr
     OPENAI_API_KEY: ${{ fromJSON(steps.aws.outputs.secrets).OPENAI_API_KEY }}
 ```
 
-The action masks every value in the logs, failing if a name is missing from Parameter Store, and loads `.github/ci.env` into the job's environment. The role's AWS credentials stay inside the action unless `export-credentials: true`, which jobs calling S3 or Run Command themselves set. `id-token: write` still lets any step in the job assume the role and read everything it is granted, so code the job runs, such as dependencies' install scripts or an agent, can too. A secret such code must not reach gets its own role behind a GitHub environment that only the job holding it names, as `PR_SCREENSHOTS_GH_TOKEN` and Run Command on the hosts do. The visual regression jobs, whose code is third-party or, for an iOS dispatch, from any ref, get a role holding only the visual regression buckets and keys, trusted only for their workflows on `main` and `production`; like any job on a branch that names no environment, they can also assume the review role.
+The action masks every value in the logs, failing if a name is missing from Parameter Store, and loads `.github/ci.env` into the job's environment. The role's AWS credentials stay inside the action unless `export-credentials: true`, which jobs calling S3 or Run Command themselves set. `id-token: write` still lets any step in the job assume the role and read everything it is granted, so code the job runs, such as dependencies' install scripts or an agent, can too. A secret such code must not reach gets its own role behind a GitHub environment that only the job holding it names, as `PR_SCREENSHOTS_GH_TOKEN` and Run Command on the hosts do. The visual regression jobs, whose code is third-party or, for an iOS dispatch, from any ref, get a role holding only the visual regression buckets and keys, trusted only for their workflows on `main` and `production`; like any job on a branch that names no environment, they can also assume the review role. The deploy's React build has no role; `upload-react-sourcemaps`, a job of its own, uploads its source maps with the environment's. The mobile builds, the staging store build and `publish-mobile-ota`, run the app's dependencies in jobs holding their environment's role, so that code can read everything the role grants (the Expo token, the PostHog sourcemap key, the Slack tokens and, for staging, the App Store Connect and Play keys) and write the CI storage bucket, visual regression baselines included. It could reach the store keys before too, through `eas submit`, which loads the app's config plugins with those keys in its environment (ALL-2082).
+
+## Adding or rotating a secret
+
+Signed in to AWS as an admin, put the parameter as a SecureString, from a file only you can read with no trailing newline (`docs/backend-secrets.md`):
+
+```bash
+aws ssm put-parameter --region us-west-2 --type SecureString --overwrite \
+  --name /alliance/ci/<review|pr-screenshots|visual-regression|shared|deploy>/<NAME> --value file://value.txt
+rm value.txt
+```
+
+Staging's app store keys live under `/alliance/staging/ci/`. The next workflow run reads the new value. A new name also needs adding to its role in `terraform/ci-oidc.tf`.
 
 ## When it fails
 

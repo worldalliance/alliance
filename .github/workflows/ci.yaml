@@ -82,5 +82,6 @@ jobs:
 
   mobile-fingerprint-check:
     uses: ./.github/workflows/mobile-fingerprint-check.yaml
-    secrets:
-      SLACK_WEBHOOK_URL_DEPLOYMENT: ${{ secrets.SLACK_WEBHOOK_URL_DEPLOYMENT }}
+    permissions:
+      contents: read
+      id-token: write
