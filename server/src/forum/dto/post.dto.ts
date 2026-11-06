@@ -1,4 +1,3 @@
-import { byLikeOrder, LIKE_FACEPILE_LIMIT } from "@alliance/common/likeOrder";
 import {
   ApiProperty,
   ApiPropertyOptional,
@@ -23,6 +22,7 @@ import {
 } from "class-validator";
 import { ActionDto } from "src/actions/dto/action.dto";
 import { ProfileDto } from "../../user/dto/user.dto";
+import { User } from "../../user/entities/user.entity";
 import { Comment } from "../entities/comment.entity";
 import { Post, type ParsedPost } from "../entities/post.entity";
 import { CommentDto } from "./comment.dto";
@@ -91,6 +91,7 @@ export class PostDto extends PickType(Post, [
 
   constructor({
     post,
+    facepile,
     commentCount,
     lastComment,
     requestingUserId,
@@ -122,12 +123,7 @@ export class PostDto extends PickType(Post, [
     this.commentCount = commentCount;
     this.editableContent = new EditableContentDto(post.editableContent);
     const likerIds = post.likesIds ?? post.likes?.map((like) => like.id);
-    this.likes = post.likes
-      ? post.likes
-          .map((like) => new ProfileDto(like))
-          .sort(byLikeOrder(post.id))
-          .slice(0, LIKE_FACEPILE_LIMIT)
-      : undefined;
+    this.likes = facepile?.map((like) => new ProfileDto(like));
     this.likedByMe =
       requestingUserId !== undefined
         ? (likerIds?.includes(requestingUserId) ?? false)
@@ -152,6 +148,8 @@ export class PostDto extends PickType(Post, [
 
 export type PostDtoArgs = {
   post: ParsedPost;
+  /** Truncated display data; it cannot answer liker membership questions. */
+  facepile?: User[];
   commentCount?: number;
   lastComment?: Comment;
   requestingUserId?: number;

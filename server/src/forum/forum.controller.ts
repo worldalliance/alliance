@@ -67,7 +67,7 @@ export class ForumController {
         postId: post.id,
       },
     });
-    return new PostDto({ post, requestingUserId: user.sub });
+    return new PostDto({ post, facepile: [], requestingUserId: user.sub });
   }
 
   @Get("posts")
@@ -90,7 +90,7 @@ export class ForumController {
     @Request() req: JwtRequest,
   ): Promise<PostDto> {
     return new PostDto({
-      post: await this.forumService.findOnePost(+id, req.user?.sub),
+      ...(await this.forumService.findOnePost(+id, req.user?.sub)),
       requestingUserId: req.user?.sub,
     });
   }
@@ -162,7 +162,7 @@ export class ForumController {
       .findPostsByUser({ authorId: id, requestingUserId: req.user?.sub })
       .then((posts) =>
         posts.map(
-          (post) => new PostDto({ post, requestingUserId: req.user?.sub }),
+          (args) => new PostDto({ ...args, requestingUserId: req.user?.sub }),
         ),
       );
   }
@@ -213,7 +213,7 @@ export class ForumController {
     @ReqUser() user: JwtPayload,
   ): Promise<PostDto> {
     return new PostDto({
-      post: await this.forumService.updatePost(id, updatePostDto, user.sub),
+      ...(await this.forumService.updatePost(id, updatePostDto, user.sub)),
       requestingUserId: user.sub,
     });
   }
