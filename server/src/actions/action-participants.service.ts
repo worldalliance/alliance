@@ -200,9 +200,28 @@ export class ActionParticipantsService {
   }
 
   async reloadAllActionUsersJoined(): Promise<void> {
-    const actions = await this.actionRepository.find();
-    for (const action of actions) {
-      await this.reloadUsersJoinedForAction(action.id);
+    const actions = (
+      await this.actionRepository.find({ relations: { events: true } })
+    ).map(parseAction);
+    const participantIds = await this.findParticipantIdsForActions(actions);
+    const changed = Map.groupBy(
+      actions.flatMap((action) => {
+        const usersJoined = participantIds.get(action.id)?.length ?? 0;
+        return usersJoined === action.usersJoined
+          ? []
+          : [{ id: action.id, read: action.usersJoined, usersJoined }];
+      }),
+      ({ read, usersJoined }) => `${read}:${usersJoined}`,
+    );
+    // Matching the count read skips a row a request rewrote during the sweep.
+    // A request that wrote back the read count is still overwritten, until
+    // the next sweep or recompute.
+    for (const group of changed.values()) {
+      const { read, usersJoined } = group[0];
+      await this.actionRepository.update(
+        { id: In(group.map((action) => action.id)), usersJoined: read },
+        { usersJoined },
+      );
     }
   }
 

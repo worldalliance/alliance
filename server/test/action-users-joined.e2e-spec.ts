@@ -4,6 +4,7 @@ import type { Repository } from "typeorm";
 import { ActionActivityService } from "../src/actions/action-activity.service";
 import { ActionParticipantsService } from "../src/actions/action-participants.service";
 import { CohortResolutionSession } from "../src/actions/cohort-resolution-session";
+import { ActionActivity } from "../src/actions/entities/action-activity.entity";
 import { ActionCohortDecision } from "../src/actions/entities/action-cohort-decision.entity";
 import { Action, parseAction } from "../src/actions/entities/action.entity";
 import {
@@ -60,10 +61,12 @@ describe("Action.usersJoined recomputation (e2e)", () => {
       start: addDays(now, -10),
       deadline: addDays(now, 3),
     });
-    const notStarted = await createAction({
+    const notStartedWindow = {
       start: addDays(now, 5),
       deadline: addDays(now, 10),
-    });
+    };
+    const notStarted = await createAction(notStartedWindow);
+    const notStartedTwin = await createAction(notStartedWindow);
     await saveLiveCohortDecisions(ctx);
     const decisions = ctx.dataSource.getRepository(ActionCohortDecision);
     await decisions.update(
@@ -95,9 +98,11 @@ describe("Action.usersJoined recomputation (e2e)", () => {
     return {
       open,
       notStarted,
+      notStartedTwin,
       expected: {
         [open.id]: [plain, completedOutsideCohort, savedAdmitted],
         [notStarted.id]: [plain, away, withdrawn, savedExcluded],
+        [notStartedTwin.id]: [plain, away, withdrawn, savedExcluded],
       },
     };
   };
@@ -195,5 +200,54 @@ describe("Action.usersJoined recomputation (e2e)", () => {
     await participants.findParticipantIdsForActions(actions.map(parseAction));
 
     expect(decisionFind.mock.calls.length).toBe(1);
+  });
+
+  it("loads the user population once and writes only changed counts", async () => {
+    const { open, notStarted, notStartedTwin } = await setUp();
+    await ctx.dataSource.query(`UPDATE action SET "usersJoined" = -1`);
+    const userService = ctx.app.get(UserService);
+    const fullLoad = jest.spyOn(userService, "findActiveUsersWithTags");
+    const rosterLoad = jest.spyOn(userService, "findActiveUsersForRoster");
+    const update = jest.spyOn(
+      ctx.app.get<Repository<Action>>(getRepositoryToken(Action)),
+      "update",
+    );
+
+    await participants.reloadAllActionUsersJoined();
+    const firstRunUpdates = update.mock.calls.length;
+    await participants.reloadAllActionUsersJoined();
+
+    expect({
+      fullLoads: fullLoad.mock.calls.length,
+      rosterLoads: rosterLoad.mock.calls.length,
+      firstRunUpdates,
+      secondRunUpdates: update.mock.calls.length - firstRunUpdates,
+      stored: await storedCounts(),
+    }).toEqual({
+      fullLoads: 0,
+      rosterLoads: 2,
+      firstRunUpdates: 2,
+      secondRunUpdates: 0,
+      stored: { [open.id]: 3, [notStarted.id]: 4, [notStartedTwin.id]: 4 },
+    });
+  });
+
+  it("keeps a count written while the sweep computes", async () => {
+    const { open } = await setUp();
+    await ctx.dataSource.query(`UPDATE action SET "usersJoined" = -1`);
+    const activities = ctx.app.get<Repository<ActionActivity>>(
+      getRepositoryToken(ActionActivity),
+    );
+    const find = activities.find.bind(activities);
+    jest.spyOn(activities, "find").mockImplementationOnce(async (options) => {
+      await ctx.dataSource
+        .getRepository(Action)
+        .update(open.id, { usersJoined: 99 });
+      return find(options);
+    });
+
+    await participants.reloadAllActionUsersJoined();
+
+    expect((await storedCounts())[open.id]).toBe(99);
   });
 });
