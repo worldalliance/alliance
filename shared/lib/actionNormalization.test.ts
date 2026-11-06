@@ -1,3 +1,4 @@
+import type { QueryClient } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import {
   actionsQuery,
@@ -132,6 +133,16 @@ it("keeps an older detail's relations when a newer list finishes first", async (
   expect(detail.result.current.query.data?.name).toBe("List");
 });
 
+const completeAction7 = (client: QueryClient) =>
+  act(
+    () =>
+      void actionStore(client).recordRelation({
+        actionId: 7,
+        relation: "completed",
+        session: currentSession(client),
+      }),
+  );
+
 it("applies a completion to both views without double-counting repeated confirmations", async () => {
   const { wrapper } = queryWrapper();
   const list = renderHook(() => useActionsQuery(), { wrapper });
@@ -153,6 +164,49 @@ it("applies a completion to both views without double-counting repeated confirma
     completedBefore + 1,
   );
 });
+
+const views: {
+  view: string;
+  useView: () => { isSuccess: boolean; refetch: () => Promise<unknown> };
+}[] = [
+  { view: "list", useView: useActionsQuery },
+  { view: "detail", useView: () => useAction(7).query },
+];
+
+it.each(views)(
+  "keeps a $view load's content for an action completed while it loads",
+  async ({ useView }) => {
+    const { client, wrapper } = queryWrapper();
+    const view = renderHook(useView, { wrapper });
+    await waitFor(() => expect(view.result.current.isSuccess).toBe(true));
+    const pending = Promise.withResolvers<void>();
+    let requested = false;
+    const edited = makeAction({ id: 7, name: "Edited" });
+    listResponse = async () => {
+      requested = true;
+      await pending.promise;
+      return Response.json([edited]);
+    };
+    detailResponse = async () => {
+      requested = true;
+      await pending.promise;
+      return Response.json(edited);
+    };
+    void view.result.current.refetch();
+    await waitFor(() => expect(requested).toBe(true));
+
+    completeAction7(client);
+    pending.resolve();
+
+    await waitFor(() =>
+      expect(actionStore(client).get(7)?.name).toBe("Edited"),
+    );
+    expect(actionStore(client).get(7)).toMatchObject({
+      viewer: { relation: "completed" },
+      usersCompleted: 1,
+    });
+  },
+);
 
 it("keeps a confirmation made while the first list is still loading", async () => {
   const { client, wrapper } = queryWrapper();

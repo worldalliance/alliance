@@ -1,0 +1,3 @@
+# Decisions
+
+- Action writes go through a `written` reducer that replaces the record's value and keeps its revision and group revisions, as the notification store does. A record's revision stays the start of the load that last set it, and that load's value already holds writes made while it was in flight, so no separate touch revision is needed, unlike ALL-1935's suggested fix. Keeping the group revisions leaves `mergeOwned`'s detail-group ownership unchanged; the write patches the current value, detail fields included. Mutation responses still enter through `receive` with a fresh revision.
