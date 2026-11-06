@@ -121,6 +121,8 @@ unzip -o ~/nest-build.zip -d ~/nest-backend
 
 cd ~/nest-backend || keep_old_release "Could not enter the new release."
 bun install --frozen-lockfile
+# Installs hardlink out of the cache, so node_modules survives this.
+bun pm cache rm || echo "::warning::bun pm cache rm failed; the disk fills up unless the Bun cache is cleared"
 
 cd ~/nest-backend/server || keep_old_release "Could not enter the new release."
 # The running backend restarts through ~/secrets_run.sh, so the new copy
