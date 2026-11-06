@@ -5,11 +5,11 @@ description: Read before making a repository change intended to be kept, or dete
 
 # Provenance
 
-These files hold the current requirements and agent decisions, with their origins distinguished. Create `REQUIREMENTS.md` at the start of a task and revise the files in place as requirements change.
+A task's files hold its requirements and agent decisions as they stood when it was implemented, with their origins distinguished. They record that task, not the repository's current rules. Create `REQUIREMENTS.md` at the start of a task and revise its files in place as its requirements change while it is in progress, as **When** defines. A later task leaves an earlier task's files as written: where it changes one of their requirements or decisions, it records the new one in its own files, naming the earlier task's directory it supersedes. Its one edit to them replaces secrets or incidental personal information with `[redacted]`, because the repository is open source; the root `AGENTS.md` **Secrets and personal information** says what that covers. Before relying on a task's files, search `docs/provenance` for its directory name to find later tasks that supersede them. Where an `AGENTS.md` or skill rule added or changed after a task conflicts with one of its entries, the rule wins.
 
 ## When
 
-Every repository change intended to be kept gets a directory, however small: code, tests, config, scripts, docs, and skills. Create it before editing, even when committing has not been requested. Temporary experiments and working files need none. A change continuing an existing task revises that task's directory instead. A change touching only `docs/provenance/` needs none.
+Every repository change intended to be kept gets a directory, however small: code, tests, config, scripts, docs, and skills. Create it before editing, even when committing has not been requested. Temporary experiments and working files need none. Each PR is its own task. A change continuing a task whose directory is not yet on `main` revises that directory instead. `main` squash-merges, so a branch's commits never land on it: a PR has merged once its directory is on `main` (`git fetch -q origin main && { git cat-file -e FETCH_HEAD:docs/provenance/<task-dir> 2>/dev/null && echo merged || echo unmerged; }`). The next PR of a plan gets its own directory naming the earlier one, even while that one is unmerged. A change that only redacts earlier tasks' provenance needs none.
 
 ## Layout
 
@@ -27,7 +27,7 @@ References flow one way: `DECISIONS.md` may reference `REQUIREMENTS.md`; `REQUIR
 
 Open with frontmatter naming the user and the task as the user set it. Use `git config user.name` for the user field. Do not redact this field.
 
-State the current user requirements, constraints, preferences, and approved selections directly. For a fix, refactor, or chore that does only what the user asked in their own words, restating that request as a requirement or two is sufficient. Incorporate clarifications into the affected entries and remove superseded requirements. Keep conversation history, approval quotes, and interview question numbers out of the files.
+State the task's user requirements, constraints, preferences, and approved selections directly. For a fix, refactor, or chore that does only what the user asked in their own words, restating that request as a requirement or two is sufficient. Incorporate clarifications into the affected entries and remove requirements the user superseded during the task. Keep conversation history, approval quotes, and interview question numbers out of the files.
 
 Make each requirement self-contained: expand shorthand and include the exact behavior, values, and message copy needed to implement it. Omit references to unavailable attachments or the task transcript. Accessible supporting links may supplement the requirements.
 
@@ -39,7 +39,7 @@ Replace every credential or secret with `[redacted]`. Do the same for personal i
 
 ## DECISIONS.md
 
-State current agent decisions, assumptions, interpretations, and implementation choices, each with its rationale. Replace superseded choices in place. Reference requirements rather than duplicating them. These decisions are not authoritative merely for existing; a later agent may reconsider them within the constraints in REQUIREMENTS.md.
+State the task's agent decisions, assumptions, interpretations, and implementation choices, each with its rationale. Replace choices superseded during the task in place. Reference requirements rather than duplicating them. These decisions are not authoritative merely for existing; a later agent may reconsider them within the constraints in REQUIREMENTS.md, recording its new choice in its own task's files.
 
 A choice the user defers ("I don't know", "I don't care", "it doesn't matter", or the like) is the agent's, not a requirement: record the recommendation here, and drop it for an alternative once it adds more friction than it's worth. Say whether the user deferred whether the work happens or how it is done; work whose existence the user left open is optional.
 
