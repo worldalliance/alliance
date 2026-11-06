@@ -4,6 +4,10 @@ import {
   ConversationType,
   ParticipantRole,
 } from "@alliance/shared/client";
+import {
+  conversationStore,
+  selectConversation,
+} from "@alliance/shared/lib/conversationStore";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import {
   makeConversation,
@@ -12,6 +16,7 @@ import {
 } from "@alliance/shared/lib/testFixtures";
 import { pending, type Pending } from "@alliance/shared/lib/testing/pending";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
+import { seedConversations } from "@alliance/shared/lib/testing/seedConversations";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import {
   act,
@@ -100,12 +105,16 @@ const renderListed = (
   convo: ConversationDto,
   props: Partial<ConversationInfoPanelProps> = {},
 ) => {
-  query.client.setQueryData(queryKeys.myConversations(), [convo]);
+  seedConversations(query.client, [convo]);
   render(panel(convo, props));
 };
 
 const listedConversations = () =>
-  query.client.getQueryData<ConversationDto[]>(queryKeys.myConversations());
+  query.client
+    .getQueryData<number[]>(queryKeys.myConversations())
+    ?.map((id) =>
+      selectConversation(conversationStore(query.client).getState(), id),
+    );
 
 const groupWith = (
   viewerRole: ParticipantRole,

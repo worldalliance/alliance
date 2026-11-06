@@ -1,10 +1,6 @@
 import { type Result } from "@alliance/common/result";
-import {
-  type QueryClient,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
-import { useCallback } from "react";
+import { type QueryClient, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useMemo } from "react";
 import {
   conversationAcceptInvite,
   conversationAddParticipant,
@@ -18,65 +14,54 @@ import {
   conversationRemoveParticipant,
   conversationUpdateInfo,
   type CreateGroupConversationDto,
+  type MessageDto,
   type UpdateConversationDto,
 } from "../client";
-import { mergeConversationUpdate, sortConversations } from "./conversations";
+import { conversationStore, selectConversation } from "./conversationStore";
+import { sortConversations } from "./conversations";
 import { queryKeys } from "./queryKeys";
 import { type Explanation, sendOrExplain } from "./sendOrExplain";
+import { currentSession } from "./sessionStores";
+import { useEntityList } from "./useEntityList";
 import { refreshUnreadMessageCount } from "./useUnreadMessageCount";
-import { writesDuringLoads } from "./writesDuringLoads";
-
-type ConversationsUpdate = (
-  prev: ConversationDto[] | null,
-) => ConversationDto[] | null;
-
-const reloads = writesDuringLoads<ConversationDto[]>();
 
 // A write through setQueryData clears the query's error, so whether the
 // latest reload failed is judged against the last reload that succeeded.
 const lastLoadedAt = new WeakMap<QueryClient, number>();
 
 /** The viewer's conversations, shared by every screen that lists or opens
- * one, and every write to that list. A screen that only writes passes
+ * one, and every write to a conversation. A screen that only writes passes
  * `load: false` so mounting it doesn't reload the list. */
 export function useMyConversations({ load = true }: { load?: boolean } = {}) {
   const queryClient = useQueryClient();
-  const query = useQuery({
+  const store = conversationStore(queryClient);
+  const query = useEntityList({
+    store: conversationStore,
+    select: selectConversation,
     queryKey: queryKeys.myConversations(),
     enabled: load,
-    queryFn: () =>
-      reloads.load({
-        queryClient,
-        queryKey: queryKeys.myConversations(),
+    load: ({ store, signal }) =>
+      store.load({
+        signal,
         fetch: async () => {
           const { data } = await conversationGetMyConversations({
             throwOnError: true,
+            signal,
           }).catch((error: unknown) => {
             console.error("Failed to load conversations", error);
             throw error;
           });
           lastLoadedAt.set(queryClient, Date.now());
-          return data.sort(sortConversations);
+          return { conversations: data, isViewerList: true };
         },
       }),
     // Sockets keep the list current only while a messaging screen is open.
     staleTime: 0,
     refetchOnWindowFocus: false,
   });
-
-  const setConversations = useCallback(
-    (update: ConversationsUpdate) => {
-      reloads.record({
-        queryClient,
-        queryKey: queryKeys.myConversations(),
-        update: (list) => update(list) ?? list,
-      });
-      queryClient.setQueryData<ConversationDto[]>(
-        queryKeys.myConversations(),
-        (prev) => update(prev ?? null) ?? undefined,
-      );
-    },
-    [queryClient],
+  const conversations = useMemo(
+    () => (query.data ? [...query.data].sort(sortConversations) : null),
+    [query.data],
   );
 
   const { refetch } = query;
@@ -84,140 +69,161 @@ export function useMyConversations({ load = true }: { load?: boolean } = {}) {
     await refetch();
   }, [refetch]);
 
-  const storeConversation = (
-    sent: Result<ConversationDto, Explanation>,
-  ): Result<ConversationDto, Explanation> => {
-    if (sent.ok) {
-      setConversations((prev) => mergeConversationUpdate(prev, sent.value));
-    }
+  const storeConversation = useCallback(
+    (conversation: ConversationDto) =>
+      store.saved({ session: currentSession(queryClient), conversation }),
+    [queryClient, store],
+  );
+
+  const storeLastMessage = useCallback(
+    (message: MessageDto) =>
+      store.messageReceived({ session: currentSession(queryClient), message }),
+    [queryClient, store],
+  );
+
+  const send = async (params: {
+    sent: () => Promise<Result<ConversationDto, Explanation>>;
+    store: (params: { session: number; conversation: ConversationDto }) => void;
+  }) => {
+    const session = currentSession(queryClient);
+    const sent = await params.sent();
+    if (sent.ok) params.store({ session, conversation: sent.value });
     return sent;
   };
 
-  const storeCreated = (
-    sent: Result<ConversationDto, Explanation>,
-  ): Result<ConversationDto, Explanation> => {
-    if (sent.ok) {
-      setConversations((prev) =>
-        [
-          sent.value,
-          ...(prev ?? []).filter(({ id }) => id !== sent.value.id),
-        ].sort(sortConversations),
-      );
-    }
-    return sent;
-  };
-
-  const createDirectConversation = async (targetUserId: number) =>
-    storeCreated(
-      await sendOrExplain({
-        send: conversationCreateDirectConversation,
-        options: { body: { targetUserId } },
-        action: "start the chat",
-      }),
-    );
-
-  const createGroupConversation = async (body: CreateGroupConversationDto) =>
-    storeCreated(
-      await sendOrExplain({
-        send: conversationCreateGroupConversation,
-        options: { body },
-        action: "start the group chat",
-      }),
-    );
-
-  const acceptInvite = async (conversationId: number) =>
-    storeConversation(
-      await sendOrExplain({
-        send: conversationAcceptInvite,
-        options: { path: { conversationId } },
-        action: "accept the request",
-      }),
-    );
-
-  const declineInvite = async (conversationId: number) => {
-    const declined = await sendOrExplain({
-      send: conversationDeclineInvite,
-      options: { path: { conversationId } },
-      action: "decline the request",
+  const createDirectConversation = (targetUserId: number) =>
+    send({
+      sent: () =>
+        sendOrExplain({
+          send: conversationCreateDirectConversation,
+          options: { body: { targetUserId } },
+          action: "start the chat",
+        }),
+      store: store.listed,
     });
-    // The server can't announce a decline or leave to the viewer over the
-    // overview socket, since they're no longer a participant.
-    if (declined.ok) void refreshUnreadMessageCount(queryClient);
-    return storeConversation(declined);
+
+  const createGroupConversation = (body: CreateGroupConversationDto) =>
+    send({
+      sent: () =>
+        sendOrExplain({
+          send: conversationCreateGroupConversation,
+          options: { body },
+          action: "start the group chat",
+        }),
+      store: store.listed,
+    });
+
+  const acceptInvite = (conversationId: number) =>
+    send({
+      sent: () =>
+        sendOrExplain({
+          send: conversationAcceptInvite,
+          options: { path: { conversationId } },
+          action: "accept the request",
+        }),
+      store: store.saved,
+    });
+
+  // The decliner and leaver are no longer participants, so the server
+  // neither lists the conversation for them nor announces the change to them
+  // over the overview socket.
+  const departed = async (params: {
+    conversationId: number;
+    send: () => Promise<Result<unknown, Explanation>>;
+  }) => {
+    const session = currentSession(queryClient);
+    const sent = await params.send();
+    if (sent.ok) {
+      void refreshUnreadMessageCount(queryClient);
+      store.dropped({ session, conversationId: params.conversationId });
+    }
+    return sent;
   };
+
+  const declineInvite = (conversationId: number) =>
+    departed({
+      conversationId,
+      send: () =>
+        sendOrExplain({
+          send: conversationDeclineInvite,
+          options: { path: { conversationId } },
+          action: "decline the request",
+        }),
+    });
+
+  const leave = (conversationId: number) =>
+    departed({
+      conversationId,
+      send: () =>
+        sendOrExplain({
+          send: conversationLeave,
+          options: { path: { conversationId } },
+          action: "leave the group",
+        }),
+    });
 
   const markRead = useCallback(
-    (conversationId: number) =>
-      sendOrExplain({
+    async (conversationId: number) => {
+      const session = currentSession(queryClient);
+      const sent = await sendOrExplain({
         send: conversationMarkRead,
         options: { path: { conversationId } },
         action: "mark the chat read",
-      }),
-    [],
+      });
+      if (sent.ok) store.read({ session, conversation: sent.value });
+      return sent;
+    },
+    [queryClient, store],
   );
 
-  const updateInfo = async (
-    conversationId: number,
-    body: UpdateConversationDto,
-  ) =>
-    storeConversation(
-      await sendOrExplain({
-        send: conversationUpdateInfo,
-        options: { path: { conversationId }, body },
-        action: "save the group",
-      }),
-    );
-
-  const addParticipant = async (params: {
-    conversationId: number;
-    userId: number;
-  }) =>
-    storeConversation(
-      await sendOrExplain({
-        send: conversationAddParticipant,
-        options: {
-          path: { conversationId: params.conversationId },
-          body: { userId: params.userId },
-        },
-        action: "add that member",
-      }),
-    );
-
-  const removeParticipant = async (params: {
-    conversationId: number;
-    userId: number;
-  }) =>
-    storeConversation(
-      await sendOrExplain({
-        send: conversationRemoveParticipant,
-        options: { path: params },
-        action: "remove that member",
-      }),
-    );
-
-  const leave = async (conversationId: number) => {
-    const left = await sendOrExplain({
-      send: conversationLeave,
-      options: { path: { conversationId } },
-      action: "leave the group",
+  const updateInfo = (conversationId: number, body: UpdateConversationDto) =>
+    send({
+      sent: () =>
+        sendOrExplain({
+          send: conversationUpdateInfo,
+          options: { path: { conversationId }, body },
+          action: "save the group",
+        }),
+      store: store.saved,
     });
-    if (left.ok) {
-      void refreshUnreadMessageCount(queryClient);
-      setConversations(
-        (prev) => prev?.filter(({ id }) => id !== conversationId) ?? null,
-      );
-    }
-    return left;
-  };
+
+  const addParticipant = (params: { conversationId: number; userId: number }) =>
+    send({
+      sent: () =>
+        sendOrExplain({
+          send: conversationAddParticipant,
+          options: {
+            path: { conversationId: params.conversationId },
+            body: { userId: params.userId },
+          },
+          action: "add that member",
+        }),
+      store: store.saved,
+    });
+
+  const removeParticipant = (params: {
+    conversationId: number;
+    userId: number;
+  }) =>
+    send({
+      sent: () =>
+        sendOrExplain({
+          send: conversationRemoveParticipant,
+          options: { path: params },
+          action: "remove that member",
+        }),
+      store: store.saved,
+    });
 
   return {
-    conversations: query.data ?? null,
+    conversations,
     loading: query.isFetching,
     reloadFailed:
       query.data !== undefined &&
       query.errorUpdatedAt > (lastLoadedAt.get(queryClient) ?? 0),
-    setConversations,
     refreshConversations,
+    storeConversation,
+    storeLastMessage,
     createDirectConversation,
     createGroupConversation,
     acceptInvite,
