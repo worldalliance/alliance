@@ -40,8 +40,7 @@ export class LikesService {
     afterId: number | undefined,
     requestingUserId: number | undefined,
   ): Promise<User[]> {
-    // Reuse post-detail visibility so hidden posts don't leak likers.
-    await this.forumService.findOnePost(postId, requestingUserId);
+    await this.forumService.assertPostVisible(postId, requestingUserId);
     return this.getLikers(Post, postId, limit, afterId);
   }
 
@@ -96,7 +95,7 @@ export class LikesService {
 
     switch (comment.parentObjectType) {
       case CommentParentObject.Post:
-        await this.forumService.findOnePost(
+        await this.forumService.assertPostVisible(
           comment.parentObjectId,
           requestingUserId,
         );

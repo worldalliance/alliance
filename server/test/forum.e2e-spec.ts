@@ -1517,15 +1517,17 @@ describe("Forum (e2e)", () => {
         })
         .expect(201);
 
-      await request(ctx.app.getHttpServer())
-        .post(`/forum/posts/${postId}/like`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(201);
-
-      await request(ctx.app.getHttpServer())
-        .post(`/forum/posts/${postId}/unlike`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(201);
+      for (const [path, status] of [
+        ["like", 201],
+        ["like", 404],
+        ["unlike", 201],
+        ["unlike", 404],
+      ] as const) {
+        await request(ctx.app.getHttpServer())
+          .post(`/forum/posts/${postId}/${path}`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .expect(status);
+      }
 
       await request(ctx.app.getHttpServer())
         .post(`/forum/comments/${commentResponse.body.id}/like`)
