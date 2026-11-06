@@ -5,7 +5,7 @@ description: Read before making a repository change intended to be kept, or dete
 
 # Provenance
 
-These files hold the current requirements and agent decisions, with their origins distinguished. Create `REQUIREMENTS.md` at the start of a task and revise the files in place as requirements change.
+These files hold the current requirements, agent decisions and the research behind them, with their origins distinguished. Create `REQUIREMENTS.md` at the start of a task and revise the files in place as requirements change.
 
 ## When
 
@@ -19,9 +19,9 @@ UUID_V7=$(bun -e 'console.log(Bun.randomUUIDv7())')
 mkdir -p "docs/provenance/${UUID_V7}-${FEATURE_NAME}"
 ```
 
-UUIDv7 makes directory listings sort by creation time. Inside, `REQUIREMENTS.md` and `SESSIONS.md`, plus `DECISIONS.md` when the task made a choice or recorded an assumption worth keeping. These are intended to live in the repo.
+UUIDv7 makes directory listings sort by creation time. Inside, `REQUIREMENTS.md` and `SESSIONS.md`, plus `DECISIONS.md` when the task made a choice or recorded an assumption worth keeping, and `EVIDENCE.md` when it researched sources outside the repository or a decision rests on its own measurements, incidents or experiments. These are intended to live in the repo.
 
-References flow one way: `DECISIONS.md` may reference `REQUIREMENTS.md`; `REQUIREMENTS.md` stands independently and never references `DECISIONS.md`.
+References flow one way: `DECISIONS.md` may reference `REQUIREMENTS.md` and `EVIDENCE.md`; `REQUIREMENTS.md` never references `DECISIONS.md` or rests on `EVIDENCE.md`'s findings, and the research and measurements in `EVIDENCE.md` reference neither file.
 
 ## REQUIREMENTS.md
 
@@ -44,6 +44,10 @@ State current agent decisions, assumptions, interpretations, and implementation 
 A choice the user defers ("I don't know", "I don't care", "it doesn't matter", or the like) is the agent's, not a requirement: record the recommendation here, and drop it for an alternative once it adds more friction than it's worth. Say whether the user deferred whether the work happens or how it is done; work whose existence the user left open is optional.
 
 Behavior the task records without the user's approval, such as behavior in existing code, prior agent decisions, or unapproved proposals, goes here as an assumption. Label its origin (agent proposal, agent decision, reconstructed from existing code, the forwarded source), or `unrecorded` when unknown. Existing code proves only that the behavior existed, not that the user asked for it.
+
+## EVIDENCE.md
+
+The task's research into sources outside the repository, such as standards, documentation and studies, whoever did it, a subagent's report included: the question, the findings with a source link for each claim, each source's status per root `AGENTS.md` **Established practice**, and the date it was checked. Measurements, incidents and experiments a decision rests on, such as how a dependency behaves or what the repository's own code does, go in a section of their own, each with its method, the versions involved and the date. `DECISIONS.md` cites its sections instead of restating them. Revise it in place when research is redone, so it holds current findings only. Checks that only verify the task's own change go in the handoff, per `(root)/agents/skills/implement/SKILL.md`; a run of the change that a decision rests on is an experiment and stays here. An `EVIDENCE.md` that already holds something else, such as a log of the checks its task ran or a reference to `DECISIONS.md`, keeps it; add research to it under its own heading.
 
 ## SESSIONS.md
 
