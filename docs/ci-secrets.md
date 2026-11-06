@@ -1,6 +1,6 @@
 # CI secrets
 
-No workflow reads a GitHub secret other than the `GITHUB_TOKEN` Actions issues each run; the old repository secrets stay until ALL-1965 deletes them. Each job that needs AWS assumes an IAM role through GitHub's OIDC token and reads the secrets it uses from AWS SSM Parameter Store. Values that aren't secret, such as bucket names, Slack channel ids and the hosts' instance ids, are committed in `.github/ci.env`.
+No workflow reads a GitHub secret other than the `GITHUB_TOKEN` Actions issues each run; the old repository secrets stay until ALL-1965 deletes them. The actionlint job fails on any other use of the `secrets` context in the workflow and action YAML under `.github/`, in any case, `secrets: inherit` included, unless the expression splits it across lines or puts a space after its dot. Each job that needs AWS assumes an IAM role through GitHub's OIDC token and reads the secrets it uses from AWS SSM Parameter Store. Values that aren't secret, such as bucket names, Slack channel ids and the hosts' instance ids, are committed in `.github/ci.env`.
 
 ## Roles
 
