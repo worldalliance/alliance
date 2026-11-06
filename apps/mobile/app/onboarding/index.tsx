@@ -124,7 +124,11 @@ const OnboardingScreen = () => {
   const { data: latestContract, isPending: contractPending } =
     useCurrentContract();
 
-  const { refusal: inviteRefusal, inviter } = useInvite(referralCode ?? null);
+  const {
+    refusal: inviteRefusal,
+    inviter,
+    campaignInvite,
+  } = useInvite(referralCode ?? null);
   const contractSignature = useContractSignature();
 
   // A signed-in member opens a browser session only to connect an account, so
@@ -344,6 +348,7 @@ const OnboardingScreen = () => {
             onContinueWithProvider={continueWithProvider}
             inviteRefusal={inviteRefusal}
             inviter={inviter}
+            campaignInvite={campaignInvite}
           />
         );
       case OnboardingStep.Community:

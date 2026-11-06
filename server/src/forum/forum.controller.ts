@@ -67,7 +67,7 @@ export class ForumController {
         postId: post.id,
       },
     });
-    return new PostDto({ post, requestingUserId: user.sub });
+    return new PostDto({ post, facepile: [], requestingUserId: user.sub });
   }
 
   @Get("posts")
@@ -81,26 +81,6 @@ export class ForumController {
     );
   }
 
-  @Get("posts/action/:actionId")
-  @ApiOperation({ summary: "Get posts for a specific action" })
-  @ApiOkResponse({ type: [PostDto] })
-  @UseGuards(AuthGuard)
-  async findPostsByAction(
-    @Param("actionId") actionId: string,
-    @Request() req: JwtRequest,
-  ): Promise<PostDto[]> {
-    return this.forumService
-      .findPostsByAction({
-        actionId: +actionId,
-        requestingUserId: req.user?.sub,
-      })
-      .then((posts) =>
-        posts.map(
-          (post) => new PostDto({ post, requestingUserId: req.user?.sub }),
-        ),
-      );
-  }
-
   @Get("posts/:id")
   @ApiOperation({ summary: "Get a specific post with its comments" })
   @ApiOkResponse({ type: PostDto })
@@ -110,7 +90,7 @@ export class ForumController {
     @Request() req: JwtRequest,
   ): Promise<PostDto> {
     return new PostDto({
-      post: await this.forumService.findOnePost(+id, req.user?.sub),
+      ...(await this.forumService.findOnePost(+id, req.user?.sub)),
       requestingUserId: req.user?.sub,
     });
   }
@@ -182,7 +162,7 @@ export class ForumController {
       .findPostsByUser({ authorId: id, requestingUserId: req.user?.sub })
       .then((posts) =>
         posts.map(
-          (post) => new PostDto({ post, requestingUserId: req.user?.sub }),
+          (args) => new PostDto({ ...args, requestingUserId: req.user?.sub }),
         ),
       );
   }
@@ -233,7 +213,7 @@ export class ForumController {
     @ReqUser() user: JwtPayload,
   ): Promise<PostDto> {
     return new PostDto({
-      post: await this.forumService.updatePost(id, updatePostDto, user.sub),
+      ...(await this.forumService.updatePost(id, updatePostDto, user.sub)),
       requestingUserId: user.sub,
     });
   }

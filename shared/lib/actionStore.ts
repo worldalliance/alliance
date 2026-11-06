@@ -76,6 +76,10 @@ const slice = createSlice({
         if (merged) adapter.setOne(state, merged);
       }
     },
+    written: (state, { payload }: PayloadAction<ActionDto>) => {
+      const current = state.entities[payload.id];
+      if (current) current.value = payload;
+    },
     cleared: () => adapter.getInitialState(),
   },
 });
@@ -112,7 +116,7 @@ function createActionStore(queryClient: QueryClient) {
       ),
     );
     const current = store.getState().entities[params.actionId]?.value;
-    if (current) receive([params.patch(current)], ActionSource.List);
+    if (current) store.dispatch(slice.actions.written(params.patch(current)));
     return true;
   };
 

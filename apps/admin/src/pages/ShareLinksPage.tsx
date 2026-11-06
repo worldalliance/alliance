@@ -61,6 +61,10 @@ const ShareLinksPage: React.FC = () => {
   }, [ownerKind, selectedUser, selectedCampaign]);
 
   const [newCampaignName, setNewCampaignName] = useState<string>("");
+  const [
+    newCampaignInvitePageDescription,
+    setNewCampaignInvitePageDescription,
+  ] = useState("");
   const [newCampaignPicture, setNewCampaignPicture] = useState<string | null>(
     null,
   );
@@ -100,6 +104,7 @@ const ShareLinksPage: React.FC = () => {
     onSuccess: (created) => {
       setSelectedCampaignId(created.id);
       setNewCampaignName("");
+      setNewCampaignInvitePageDescription("");
       setNewCampaignPicture(null);
       setNewCampaignPicturePreview(null);
       success("Campaign created");
@@ -109,8 +114,14 @@ const ShareLinksPage: React.FC = () => {
 
   const handleCreateCampaign = () => {
     const name = newCampaignName.trim();
+    const invitePageDescription =
+      newCampaignInvitePageDescription.trim() || undefined;
     if (name)
-      createCampaign.mutate({ name, picture: newCampaignPicture ?? undefined });
+      createCampaign.mutate({
+        name,
+        picture: newCampaignPicture ?? undefined,
+        invitePageDescription,
+      });
   };
 
   const handleCopy = useCallback(
@@ -180,6 +191,12 @@ const ShareLinksPage: React.FC = () => {
                 onSelect={setSelectedCampaignId}
                 newCampaignName={newCampaignName}
                 onNewCampaignNameChange={setNewCampaignName}
+                newCampaignInvitePageDescription={
+                  newCampaignInvitePageDescription
+                }
+                onNewCampaignInvitePageDescriptionChange={
+                  setNewCampaignInvitePageDescription
+                }
                 onCreateCampaign={handleCreateCampaign}
                 creatingCampaign={createCampaign.isPending}
                 picturePreview={newCampaignPicturePreview}

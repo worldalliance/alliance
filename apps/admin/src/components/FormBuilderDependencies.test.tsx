@@ -1,7 +1,7 @@
 import type { FormSchema, PageItem } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import {
   canvas,
   canvasButton,
@@ -87,6 +87,26 @@ const listSchema: FormSchema = {
 const savedForms: Record<string, FormSchema> = {
   1: schema,
   2: { ...listSchema, pages: [schema.pages[1]!, ...listSchema.pages] },
+  3: {
+    ...schema,
+    pages: [
+      {
+        id: "p1",
+        title: "One",
+        fields: [
+          { id: "intro", type: "display", kind: "text", text: "Welcome" },
+          text("twin"),
+        ],
+      },
+      {
+        id: "p2",
+        title: "Two",
+        fields: [
+          { id: "twin", type: "input", kind: "text", label: "Second twin" },
+        ],
+      },
+    ],
+  },
 };
 
 serveApi(
@@ -214,10 +234,36 @@ describe("FormBuilder dependency links", () => {
     });
   });
 
-  it("says when the form lacks the question a link names", async () => {
+  it("selects the last question of a duplicated id, as conditions read it", async () => {
+    renderSavedFormBuilder(3, "/?select=twin");
+    expect(
+      await screen.findByRole("heading", { name: "Text Field: Second twin" }),
+    ).toBeTruthy();
+  });
+
+  it("selects the page a link names", async () => {
+    renderSavedFormBuilder(3, "/?select=p2");
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("button", { name: "Page settings: Two" })
+          .getAttribute("aria-pressed"),
+      ).toBe("true"),
+    );
+    expect(heading()).toBe("Page settings");
+  });
+
+  it("selects the display element a link names", async () => {
+    renderSavedFormBuilder(3, "/?select=intro");
+    expect(
+      await screen.findByRole("heading", { name: "Text Block: Welcome" }),
+    ).toBeTruthy();
+  });
+
+  it("says when the form lacks the page or element a link names", async () => {
     renderSavedFormBuilder(1, "/?select=gone");
     expect(
-      await screen.findByText('This form has no question "gone"'),
+      await screen.findByText('This form has no page or element "gone"'),
     ).toBeTruthy();
     expect(heading()).toBe("Page settings");
   });

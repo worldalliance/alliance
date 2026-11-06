@@ -4,14 +4,7 @@ import {
   conversationTypesWithEditableMembers,
 } from "@alliance/common/conversationType";
 import { rolesWithAdminPowers } from "@alliance/common/participantRole";
-import { ConversationDto, MessageDto } from "@alliance/shared/client";
-
-export type ConversationUnreadPayload = {
-  conversationId: number;
-  unreadCount: number;
-  lastMessage?: MessageDto;
-  conversation?: ConversationDto;
-};
+import { ConversationDto } from "@alliance/shared/client";
 
 export const sortConversations = (
   a: ConversationDto,
@@ -179,97 +172,4 @@ export const getMessageRequestPreview = (conversation: ConversationDto) => {
   return conversation.type === "direct"
     ? "Wants to start a conversation"
     : "You were invited to a group";
-};
-
-export const updateConversationsForLastMessage = (
-  conversations: ConversationDto[] | null,
-  message: MessageDto,
-) => {
-  if (!conversations) return conversations;
-  const existing = conversations.find(
-    (conversation) => conversation.id === message.conversationId,
-  );
-  if (!existing) {
-    return conversations;
-  }
-  const updated = { ...existing, lastMessage: message };
-  return [
-    updated,
-    ...conversations.filter((conversation) => conversation.id !== updated.id),
-  ];
-};
-
-export const mergeConversationUpdate = (
-  conversations: ConversationDto[] | null,
-  updatedConversation: ConversationDto,
-) => {
-  if (!conversations) {
-    return conversations;
-  }
-  const existing = conversations.find(
-    (conversation) => conversation.id === updatedConversation.id,
-  );
-  if (!existing) {
-    return conversations;
-  }
-  const merged = { ...existing, ...updatedConversation };
-  return [
-    merged,
-    ...conversations.filter((conversation) => conversation.id !== merged.id),
-  ].sort(sortConversations);
-};
-
-export const mergeConversationUnreadPayload = (
-  conversations: ConversationDto[] | null,
-  payload: ConversationUnreadPayload,
-  activeConversationId: number | null,
-) => {
-  const isActive = activeConversationId === payload.conversationId;
-
-  const mergePayload = (
-    base: ConversationDto | undefined | null,
-  ): ConversationDto | undefined => {
-    if (!base && !payload.conversation) return undefined;
-    const mergedBase = base ?? payload.conversation!;
-    return {
-      ...mergedBase,
-      ...(payload.conversation ?? {}),
-      lastMessage:
-        payload.lastMessage ??
-        payload.conversation?.lastMessage ??
-        mergedBase.lastMessage,
-      unreadCount: isActive
-        ? 0
-        : (payload.unreadCount ??
-          payload.conversation?.unreadCount ??
-          mergedBase.unreadCount),
-    };
-  };
-
-  if (!conversations) {
-    const merged = mergePayload(null);
-    return merged ? [merged] : conversations;
-  }
-
-  const existingIndex = conversations.findIndex(
-    (conversation) => conversation.id === payload.conversationId,
-  );
-  if (existingIndex === -1) {
-    const merged = mergePayload(payload.conversation ?? null);
-    if (!merged) return conversations;
-    const updated = [merged, ...conversations];
-    return updated.sort(sortConversations);
-  }
-
-  const existing = conversations[existingIndex];
-  const merged = mergePayload(existing);
-  if (!merged) return conversations;
-
-  const updated = [
-    merged,
-    ...conversations.filter(
-      (conversation) => conversation.id !== payload.conversationId,
-    ),
-  ];
-  return updated.sort(sortConversations);
 };

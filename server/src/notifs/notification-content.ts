@@ -1,5 +1,9 @@
 import { publicDisplayName } from "@alliance/common/displayName";
 import { nameParts } from "@alliance/common/nameParts";
+import {
+  ActionListStyle,
+  formatActionList,
+} from "@alliance/common/reminderKeywords";
 import { z } from "zod";
 
 /** Chooses how a row's message renders; read from the row, never inferred. */
@@ -33,11 +37,6 @@ export enum SegmentType {
   Participant = "participant",
   CommentExcerpt = "comment_excerpt",
   ActionUpdateText = "action_update_text",
-}
-
-export enum ActionListStyle {
-  Comma = "comma",
-  Numbered = "numbered",
 }
 
 export enum ContentTargetType {
@@ -335,22 +334,6 @@ function renderSegment(segment: Segment, input: RenderInput): string | null {
       return input.actionUpdateText;
     default:
       throw new Error(`unknown segment: ${segment satisfies never}`);
-  }
-}
-
-export function formatActionList(
-  names: string[],
-  style: ActionListStyle,
-): string {
-  switch (style) {
-    case ActionListStyle.Comma:
-      return names.join(", ");
-    case ActionListStyle.Numbered:
-      return names.length === 1
-        ? names.join(", ")
-        : names.map((name, index) => `${index + 1}. ${name}`).join("\n");
-    default:
-      throw new Error(`unknown action list style: ${style satisfies never}`);
   }
 }
 

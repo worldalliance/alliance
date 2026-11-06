@@ -18,6 +18,7 @@ const forumPostsAll = () => ["forumPosts"] as const;
 const forumPostListsAll = () => [...forumPostsAll(), "list"] as const;
 const forumPostDetailsAll = () => [...forumPostsAll(), "post"] as const;
 const communitiesAll = () => ["communities"] as const;
+const conversationsAll = () => ["conversations"] as const;
 
 const communityOnetimeInvitesAll = () =>
   ["userOnetimeInviteGetOnetimeInvitesByCommunity"] as const;
@@ -97,7 +98,7 @@ export const queryKeys = {
     ] as const,
   communitiesAll,
   communityConversation: (communityId: number | null) =>
-    ["conversationGetCommunityConversations", communityId] as const,
+    [...conversationsAll(), "community", communityId] as const,
   communityCompletedActionsCount: (communityId: number | null) =>
     ["actionsCommunityCompletedActionsCount", communityId] as const,
   communityInvites: (communityId: number) =>
@@ -113,6 +114,7 @@ export const queryKeys = {
     [...communityOnetimeInvitesAll(), communityId] as const,
   contractById: (contractId: number | null) =>
     ["contractGetById", contractId] as const,
+  conversationsAll,
   conversationMessages: (conversationId: number | null) =>
     ["messageGetMessages", conversationId] as const,
   conversationUnreadSummary: () => ["conversationGetUnreadSummary"] as const,
@@ -141,10 +143,12 @@ export const queryKeys = {
   membersWithFriends: () => ["userMembersWithFriends"] as const,
   myAwayRanges: () => ["userAwayRangeGetAwayRanges"] as const,
   myCommunities: () => [...communitiesAll(), "my"] as const,
-  myConversations: () => ["conversationGetMyConversations"] as const,
+  myConversations: () => [...conversationsAll(), "my"] as const,
   myReusableInvites: () => ["shareUrlsMyInvites"] as const,
   inviteMessageTemplate: () => ["shareUrlsInviteMessageTemplate"] as const,
   myVisibilityContext: () => ["userMyVisibilityContext"] as const,
+  userVisibilityContextAdmin: (userId: number) =>
+    ["userVisibilityContextAdmin", userId] as const,
   /** Prefixes the lists and unread count, so invalidating it invalidates
    * them all. */
   notifications: () => ["notifications"] as const,
@@ -222,6 +226,7 @@ export const queryKeys = {
   clustersAdmin: () => ["clusterListAdmin"] as const,
   cohortEvaluationAdmin: (expression: CohortExpression | null) =>
     ["actionsEvaluateCohortAdmin", expression] as const,
+  spellcheckerAdmin: () => ["spellcheckerAdmin"] as const,
   communitiesAdmin: () => ["communityGetCommunitiesAdmin"] as const,
   communityMemberInfoAdminAll,
   communityMemberInfoAdmin: (communityId: number | null) =>
@@ -367,6 +372,10 @@ export const queryKeys = {
   videoAdmin: (videoId: number) =>
     ["videosGetVideoDetailsAdmin", videoId] as const,
   videosAdmin: () => ["videosListVideosAdmin"] as const,
+  visibilityProfilesAdmin: (
+    conditionsKey: string,
+    userIds: readonly number[],
+  ) => ["tasksVisibilityProfilesAdmin", conditionsKey, userIds] as const,
   welcomeQueueAdmin: () => ["actionsGetWelcomeQueueAdmin"] as const,
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -672,6 +672,10 @@ export type Campaign = {
      * Image key for the campaign avatar, shown on the signup page
      */
     picture: string | null;
+    /**
+     * Optional line under Create an account on the signup page, in place of Invited by X
+     */
+    invitePageDescription: string | null;
     createdAt: string;
     updatedAt: string;
 };
@@ -1335,6 +1339,10 @@ export type ReferrerProfileDto = {
     kind: ReferrerKind;
     displayName: string;
     profilePicture: string | null;
+    /**
+     * Campaign line under Create an account. Null for a user, or a campaign that has none.
+     */
+    invitePageDescription: string | null;
 };
 
 export type FriendStatus = 'pending' | 'accepted' | 'declined' | 'none';
@@ -1625,6 +1633,7 @@ export type CampaignDto = {
     name: string;
     code: string;
     picture: string | null;
+    invitePageDescription: string | null;
     kind: CampaignKind;
     /**
      * An organization's accountability group
@@ -1640,12 +1649,20 @@ export type CreateCampaignDto = {
      * Image key (from POST /images/uploadImage) for the avatar.
      */
     picture?: string;
+    /**
+     * Optional line under Create an account on the signup page, in place of Invited by X
+     */
+    invitePageDescription?: string | null;
     kind?: CampaignKind;
 };
 
 export type UpdateCampaignDto = {
     name?: string;
     picture?: string | null;
+    /**
+     * Optional line under Create an account on the signup page, in place of Invited by X
+     */
+    invitePageDescription?: string | null;
     kind?: CampaignKind;
     /**
      * Only an organization has a group
@@ -3968,6 +3985,22 @@ export type UpdateHostedDocDto = {
     notes: string;
 };
 
+export type VisibilityProfilesRequestDto = {
+    schema: {
+        [key: string]: unknown;
+    };
+    userIds: Array<number>;
+};
+
+export type VisibilityProfileDto = {
+    results: Array<boolean>;
+    userIds: Array<number>;
+};
+
+export type VisibilityProfilesDto = {
+    profiles: Array<VisibilityProfileDto>;
+};
+
 export type FormulaSourceDto = {
     formId: number;
     responseIds: Array<number>;
@@ -5847,6 +5880,30 @@ export type UserMyVisibilityContextResponses = {
 };
 
 export type UserMyVisibilityContextResponse = UserMyVisibilityContextResponses[keyof UserMyVisibilityContextResponses];
+
+export type UserVisibilityContextAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/{id}/visibilitycontext';
+};
+
+export type UserVisibilityContextAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserVisibilityContextAdminError = UserVisibilityContextAdminErrors[keyof UserVisibilityContextAdminErrors];
+
+export type UserVisibilityContextAdminResponses = {
+    200: MyVisibilityContextDto;
+};
+
+export type UserVisibilityContextAdminResponse = UserVisibilityContextAdminResponses[keyof UserVisibilityContextAdminResponses];
 
 export type UserListMessageableUsersData = {
     body?: never;
@@ -12296,30 +12353,6 @@ export type ForumCreatePostResponses = {
 
 export type ForumCreatePostResponse = ForumCreatePostResponses[keyof ForumCreatePostResponses];
 
-export type ForumFindPostsByActionData = {
-    body?: never;
-    path: {
-        actionId: string;
-    };
-    query?: never;
-    url: '/forum/posts/action/{actionId}';
-};
-
-export type ForumFindPostsByActionErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ForumFindPostsByActionError = ForumFindPostsByActionErrors[keyof ForumFindPostsByActionErrors];
-
-export type ForumFindPostsByActionResponses = {
-    200: Array<PostDto>;
-};
-
-export type ForumFindPostsByActionResponse = ForumFindPostsByActionResponses[keyof ForumFindPostsByActionResponses];
-
 export type ForumRemovePostData = {
     body?: never;
     path: {
@@ -13519,6 +13552,28 @@ export type DocsServeResponses = {
 };
 
 export type DocsServeResponse = DocsServeResponses[keyof DocsServeResponses];
+
+export type TasksVisibilityProfilesAdminData = {
+    body: VisibilityProfilesRequestDto;
+    path?: never;
+    query?: never;
+    url: '/tasks/visibilityProfiles';
+};
+
+export type TasksVisibilityProfilesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type TasksVisibilityProfilesAdminError = TasksVisibilityProfilesAdminErrors[keyof TasksVisibilityProfilesAdminErrors];
+
+export type TasksVisibilityProfilesAdminResponses = {
+    200: VisibilityProfilesDto;
+};
+
+export type TasksVisibilityProfilesAdminResponse = TasksVisibilityProfilesAdminResponses[keyof TasksVisibilityProfilesAdminResponses];
 
 export type TasksSubmitFormData = {
     body: SubmitFormDto;

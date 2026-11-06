@@ -101,6 +101,11 @@ const thrownStatusSchema = z.object({
 export const thrownStatus = (error: unknown): number | undefined =>
   thrownStatusSchema.safeParse(error).data?.statusCode;
 
+/** An Error for a failed SDK call, carrying the response's status so
+ * retryUnlessRefused skips a refusal. */
+export const statusError = (message: string, response: Response): Error =>
+  Object.assign(new Error(message), { statusCode: response.status });
+
 /** Rejection handler for a delete: a 404 means another client already
  * deleted it, so the caller carries on as if its own delete worked. */
 export const rethrowUnlessNotFound = (error: unknown): void => {

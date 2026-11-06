@@ -20,6 +20,7 @@ interface UserSelectProps {
 }
 
 const nameOf = (user: UserSelectUser) => user.name;
+const displayName = (user: UserSelectUser) => user.name ?? `User #${user.id}`;
 const missingUser = (id: number): UserSelectUser => ({
   id,
   name: `User #${id}`,
@@ -89,9 +90,7 @@ const UserSelect: React.FC<UserSelectProps> = ({
               onClick={() => addUser(user.id)}
             >
               <AvatarProfile pfp={user.profilePicture} size="medium" />
-              <span className="font-medium">
-                {user.name ?? `User #${user.id}`}
-              </span>
+              <span className="font-medium">{displayName(user)}</span>
             </button>
           ))}
         </div>
@@ -146,13 +145,12 @@ const UserSelect: React.FC<UserSelectProps> = ({
           >
             <div className="flex items-center gap-x-2 min-w-0">
               <AvatarProfile pfp={user.profilePicture} size="medium" />
-              <p className="font-medium truncate">
-                {user.name ?? `User #${user.id}`}
-              </p>
+              <p className="font-medium truncate">{displayName(user)}</p>
             </div>
             <button
               type="button"
               onClick={() => removeUser(user.id)}
+              aria-label={`Remove ${displayName(user)}`}
               className="text-xs text-red-600 hover:text-red-700 flex-shrink-0 ml-1"
             >
               ✕

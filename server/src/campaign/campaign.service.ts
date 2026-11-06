@@ -66,6 +66,7 @@ export class CampaignService {
         name: dto.name,
         code: generateCampaignCode(),
         picture: dto.picture ?? null,
+        invitePageDescription: dto.invitePageDescription ?? null,
         kind: dto.kind ?? CampaignKind.Campaign,
       });
       try {
@@ -130,6 +131,9 @@ export class CampaignService {
         }
         if (dto.name !== undefined) campaign.name = dto.name;
         if (dto.picture !== undefined) campaign.picture = dto.picture;
+        if (dto.invitePageDescription !== undefined) {
+          campaign.invitePageDescription = dto.invitePageDescription;
+        }
         if (dto.kind !== undefined) campaign.kind = dto.kind;
         if (dto.communityId !== undefined) {
           campaign.communityId = dto.communityId;

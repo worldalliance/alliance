@@ -281,4 +281,30 @@ describe("Chat updates to a row deleted after its load (e2e)", () => {
       ).toMatchObject([{ state: ParticipantState.Joined }]);
     });
   });
+
+  it("refuses to mark an empty chat read for a reader deleted before the unread count", async () => {
+    const [leader, reader] = await Promise.all([member(), member()]);
+    const community = await ctx.dataSource.getRepository(Community).save({
+      name: "Quiet group",
+      description: "Quiet",
+      leaders: [leader],
+      users: [leader, reader],
+    });
+    const { id: conversationId } = await ctx.app
+      .get(CommunityConversationService)
+      .syncCommunityConversationMembers(community.id);
+    const conversations = ctx.app.get(ConversationService);
+    const load = conversations.getParticipantOrFail.bind(conversations);
+    jest
+      .spyOn(conversations, "getParticipantOrFail")
+      .mockImplementationOnce(async (lookup) => {
+        const loaded = await load(lookup);
+        await ctx.dataSource.getRepository(Participant).softDelete(loaded.id);
+        return loaded;
+      });
+
+    await expect(
+      conversations.markConversationRead(conversationId, reader.id),
+    ).rejects.toThrow(ForbiddenException);
+  });
 });

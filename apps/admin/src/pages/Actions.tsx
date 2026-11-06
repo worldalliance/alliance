@@ -2,6 +2,8 @@ import { eventInEffectAt } from "@alliance/common/actionEvent";
 import { ActionDto, AdminActionListItemDto } from "@alliance/shared/client";
 import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
 import { parseActionDto } from "@alliance/shared/parsed-dtos";
+import { cn } from "@alliance/shared/styles/util";
+import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import React, { useMemo, useState } from "react";
 import { Link } from "react-router";
 import ActionListCard from "../components/ActionListCard";
@@ -9,11 +11,16 @@ import ActionStatusBucketFilter from "../components/ActionStatusBucketFilter";
 import ActionTimeline from "../components/ActionTimeline";
 import CreateActionMenu from "../components/CreateActionMenu";
 import {
+  ACTION_STATUS_BUCKET_LABELS,
   ActionStatusBucket,
   actionStatusBucket,
 } from "../lib/actionStatusBucket";
 import { actionsLoadError } from "../lib/actionsLoadError";
-import { describeCohortExpression } from "../lib/describeCohortExpression";
+import {
+  cohortNames,
+  describeCohortExpression,
+} from "../lib/describeCohortExpression";
+import { inProgressSuites } from "../lib/inProgressSuites";
 import { useTagsAdmin } from "../lib/useTagsAdmin";
 
 export const getLastPastEventDate = (
@@ -51,10 +58,7 @@ const ActionsList: React.FC = () => {
   );
 
   const participantsById = useMemo(() => {
-    const names = {
-      tagNames: new Map(tags.map((tag) => [tag.id, tag.name])),
-      actionNames: new Map(actions.map((action) => [action.id, action.name])),
-    };
+    const names = cohortNames({ tags, actions });
     return new Map(
       actions.map((dto) => {
         const { action, cohortExpressionError } = parseActionDto(dto);
@@ -67,6 +71,8 @@ const ActionsList: React.FC = () => {
       }),
     );
   }, [actions, tags]);
+
+  const suitesInProgress = useMemo(() => inProgressSuites(actions), [actions]);
 
   const groupedActions = useMemo<ActionSuiteGroup[]>(() => {
     if (actions.length === 0) {
@@ -179,6 +185,62 @@ const ActionsList: React.FC = () => {
         participantsById={participantsById}
         className="flex-shrink-0 max-h-[50vh] border border-zinc-200"
       />
+      {suitesInProgress.length > 0 && (
+        <section className="flex-shrink-0 space-y-3 py-2">
+          <h2 className="text-sm font-semibold ml-2">
+            Suites with draft or active actions
+          </h2>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(360px,1fr))] gap-4">
+            {suitesInProgress.map((suite) => (
+              <div
+                key={suite.id}
+                className="relative flex flex-col gap-3 rounded-lg border border-zinc-200 bg-white p-4 text-sm hover:border-green has-[li_a:hover]:border-zinc-200"
+              >
+                <div>
+                  <Link
+                    to={`/suites/${suite.id}`}
+                    className="font-semibold after:absolute after:inset-0"
+                  >
+                    {suite.name}
+                  </Link>
+                  <span className="ml-2 text-xs text-zinc-500">
+                    {Object.values(ActionStatusBucket)
+                      .map((bucket) => {
+                        const count = suite.actions.filter(
+                          (action) => action.bucket === bucket,
+                        ).length;
+                        return (
+                          count > 0 &&
+                          `${count} ${ACTION_STATUS_BUCKET_LABELS[bucket].toLowerCase()}`
+                        );
+                      })
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                </div>
+                <ul className="space-y-2">
+                  {suite.actions.map((action) => (
+                    <li key={action.id}>
+                      <Link
+                        to={`/actions/${action.id}`}
+                        className={cn(
+                          "relative flex items-start gap-2 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 hover:border-green hover:bg-white",
+                          zIndex.raised,
+                        )}
+                      >
+                        <span className="mt-0.5 rounded bg-zinc-200 px-1 text-[10px] uppercase text-zinc-600">
+                          {ACTION_STATUS_BUCKET_LABELS[action.bucket]}
+                        </span>
+                        {action.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
       <p className="text-sm text-zinc-500 flex-shrink-0">
         Grouped by suite and ordered by latest event (most recent first)
       </p>

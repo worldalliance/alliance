@@ -48,13 +48,19 @@ const visibilityModeOptions: { value: VisibilityMode; label: string }[] = [
   { value: "public", label: "Public" },
 ];
 
+export const ACTION_TEXT_FIELD_LABELS = {
+  name: "Name",
+  shortDescription: "Short description",
+  body: "Action page description",
+} as const;
+
 export function actionFieldDefs(
   params: Parameters<typeof suiteOptions>[0],
 ): ActionFieldDef[] {
   return [
     {
       name: "name",
-      label: "Name",
+      label: ACTION_TEXT_FIELD_LABELS.name,
       type: "textarea",
       section: ActionFieldSection.Content,
       required: true,
@@ -62,7 +68,7 @@ export function actionFieldDefs(
     },
     {
       name: "shortDescription",
-      label: "Short description",
+      label: ACTION_TEXT_FIELD_LABELS.shortDescription,
       type: "textarea",
       section: ActionFieldSection.Content,
       required: true,
@@ -70,7 +76,7 @@ export function actionFieldDefs(
     },
     {
       name: "body",
-      label: "Action page description",
+      label: ACTION_TEXT_FIELD_LABELS.body,
       type: "markdowntextarea",
       section: ActionFieldSection.Content,
       required: true,

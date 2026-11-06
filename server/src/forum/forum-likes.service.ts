@@ -57,7 +57,7 @@ export class ForumLikesService {
           })
         : await this.postRepository.findOne({
             where: { id },
-            relations: { likes: true, author: true, authors: true },
+            relations: { author: true, authors: true },
           });
 
     if (
@@ -79,12 +79,15 @@ export class ForumLikesService {
       where: { id: userId },
     });
 
-    const likes = object.likes ?? [];
+    const liked =
+      "parentObjectType" in object
+        ? (object.likes ?? []).some((like) => like.id === userId)
+        : object.likesIds.includes(userId);
     if (unlike) {
-      if (!likes.some((like) => like.id === userId)) {
+      if (!liked) {
         throw new NotFoundException(`User has not liked this ${type}`);
       }
-    } else if (likes.some((like) => like.id === userId)) {
+    } else if (liked) {
       throw new NotFoundException(`User has already liked this ${type}`);
     }
     const likeRows = this.postRepository.manager

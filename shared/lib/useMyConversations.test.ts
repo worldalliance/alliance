@@ -4,6 +4,7 @@ import type { ConversationDto } from "../client";
 import { queryKeys } from "./queryKeys";
 import { makeConversation, makeParticipant } from "./testFixtures";
 import { queryWrapper } from "./testing/queryWrapper";
+import { seedConversations } from "./testing/seedConversations";
 import { routes, serveApi } from "./testing/serveApi";
 import { useMyConversations } from "./useMyConversations";
 
@@ -78,15 +79,13 @@ it("shows a write from one screen on every screen holding the list", async () =>
   await waitFor(() => expect(query.client.isFetching()).toBe(0));
 
   act(() =>
-    first.result.current.setConversations(
-      (prev) => prev?.map((c) => ({ ...c, title: "Renamed" })) ?? null,
-    ),
+    first.result.current.storeConversation({ ...older, title: "Renamed" }),
   );
 
   await waitFor(() =>
     expect(
       second.result.current.conversations?.map(({ title }) => title),
-    ).toEqual(["Renamed", "Renamed"]),
+    ).toEqual(["Group 2", "Renamed"]),
   );
 });
 
@@ -128,7 +127,7 @@ it("reports loading while a screen reloads a cached list that lacks its conversa
 
 it("keeps the cached list and reports the failure when a reload fails", async () => {
   const query = queryWrapper();
-  query.client.setQueryData(queryKeys.myConversations(), [older]);
+  seedConversations(query.client, [older]);
   listFails = true;
 
   const { result } = renderHook(useMyConversations, query);
@@ -139,19 +138,13 @@ it("keeps the cached list and reports the failure when a reload fails", async ()
 
 it("keeps reporting a failed reload through later writes, until a reload works", async () => {
   const query = queryWrapper();
-  query.client.setQueryData(queryKeys.myConversations(), [older]);
+  seedConversations(query.client, [older]);
   listFails = true;
   const { result } = renderHook(useMyConversations, query);
   await waitFor(() => expect(result.current.reloadFailed).toBe(true));
 
-  act(() =>
-    result.current.setConversations(
-      (prev) => prev?.map((c) => ({ ...c, unreadCount: 5 })) ?? null,
-    ),
-  );
-  await waitFor(() =>
-    expect(result.current.conversations?.[0].unreadCount).toBe(5),
-  );
+  await act(() => result.current.createDirectConversation(3));
+  await waitFor(() => expect(result.current.conversations).toHaveLength(2));
   expect(result.current.reloadFailed).toBe(true);
 
   listFails = false;

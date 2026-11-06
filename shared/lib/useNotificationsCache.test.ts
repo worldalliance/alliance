@@ -1,5 +1,6 @@
 import { NOTIFS_LOADED_AT_HEADER } from "@alliance/common/notifs";
 import { QueryClient } from "@tanstack/react-query";
+import { waitFor } from "@testing-library/react";
 import { notificationStore, type NotificationList } from "./notificationStore";
 import { queryKeys } from "./queryKeys";
 import { makeNotification } from "./testFixtures";
@@ -199,13 +200,17 @@ it("marks the cached notifications for the read content, and only those", () => 
   ]);
 });
 
-it("refetches the unread count after marking content read", () => {
+it("refetches the unread count after marking content read", async () => {
   const queryClient = new QueryClient();
   queryClient.setQueryData<number>(UNREAD_COUNT_KEY, 3);
 
   notificationsCache(queryClient).markCachedReadByContent("forum_reply", [10]);
 
-  expect(queryClient.getQueryState(UNREAD_COUNT_KEY)?.isInvalidated).toBe(true);
+  await waitFor(() =>
+    expect(queryClient.getQueryState(UNREAD_COUNT_KEY)?.isInvalidated).toBe(
+      true,
+    ),
+  );
 });
 
 it("leaves an unloaded list unloaded when marking content read", () => {

@@ -1,0 +1,67 @@
+import { describe, expect, it } from "bun:test";
+import { contractViolations } from "./contractViolations";
+
+const schedule = {
+  memberActionAt: new Date("2026-11-01T02:00:00Z"),
+  officeActionAt: new Date("2026-11-08T07:59:00Z"),
+};
+
+describe("contractViolations", () => {
+  it("finds none in a 15-minute block over at least 7 days", () => {
+    expect(
+      contractViolations({
+        loads: [{ userId: 1, actionIds: [1], minutes: 15 }],
+        schedule,
+      }),
+    ).toEqual([]);
+  });
+
+  it("flags members past 15 minutes and a completion period under 7 days", () => {
+    expect(
+      contractViolations({
+        loads: [
+          { userId: 1, actionIds: [1, 2], minutes: 16 },
+          { userId: 2, actionIds: [1, 2], minutes: 20 },
+          { userId: 3, actionIds: [1], minutes: 10 },
+        ],
+        schedule: {
+          ...schedule,
+          officeActionAt: new Date("2026-11-04T02:00:00Z"),
+        },
+      }),
+    ).toEqual([
+      "2 members are assigned more than 15 minutes. The contract assigns tasks in 15-minute blocks.",
+      "Members get 2 days 23 hours to finish. The contract promises a 7-day completion period.",
+    ]);
+  });
+
+  it("skips the 15-minute check while loads are unknown", () => {
+    expect(contractViolations({ loads: null, schedule })).toEqual([]);
+  });
+
+  it("spells out a period just under 7 days rather than rounding it up", () => {
+    expect(
+      contractViolations({
+        loads: [],
+        schedule: {
+          ...schedule,
+          officeActionAt: new Date("2026-11-08T01:00:00Z"),
+        },
+      }),
+    ).toEqual([
+      "Members get 6 days 22 hours to finish. The contract promises a 7-day completion period.",
+    ]);
+  });
+
+  it("counts 7 days by Pacific wall-clock time across a daylight saving change", () => {
+    expect(
+      contractViolations({
+        loads: [],
+        schedule: {
+          memberActionAt: new Date("2027-03-14T07:00:00Z"),
+          officeActionAt: new Date("2027-03-21T06:59:00Z"),
+        },
+      }),
+    ).toEqual([]);
+  });
+});

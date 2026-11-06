@@ -3,6 +3,7 @@ import type { ReferrerProfileDto } from "@alliance/shared/client";
 import { forgotPassword as forgotPasswordCopy } from "@alliance/shared/lib/copy";
 import {
   INVITE_REFUSAL_HEADING,
+  type CampaignInvitePageLine,
   type InviteRefusal,
 } from "@alliance/shared/lib/useInvite";
 import { ArrowRight } from "lucide-react-native";
@@ -42,6 +43,28 @@ const FAILURE_INK: Record<FailureTone, string> = {
 const FIELD =
   "min-h-12 rounded-lg border border-white/40 bg-white/12 px-3.5 text-base text-white";
 
+export type AccountFieldsProps = {
+  mode: AccountMode;
+  email: string;
+  onEmailChange: (email: string) => void;
+  password: string;
+  onPasswordChange: (password: string) => void;
+  onSubmit: () => void;
+  error: string | null;
+  notice: string | null;
+  submitting: boolean;
+  onForgotPassword: () => void;
+  pendingProvider: OAuthProvider | null;
+  providerFailure: ProviderFailure | null;
+  onContinueWithProvider: (provider: OAuthProvider) => void;
+  inviteRefusal: InviteRefusal | null;
+  inviter: ReferrerProfileDto | null;
+  campaignInvite: CampaignInvitePageLine | null;
+  /** Both fields report focus, so the keyboard handling can tell a swap from a dismissal. */
+  onFieldFocus: () => void;
+  onFieldBlur: () => void;
+};
+
 export function AccountFields({
   mode,
   email,
@@ -58,28 +81,10 @@ export function AccountFields({
   onContinueWithProvider,
   inviteRefusal,
   inviter,
+  campaignInvite,
   onFieldFocus,
   onFieldBlur,
-}: {
-  mode: AccountMode;
-  email: string;
-  onEmailChange: (email: string) => void;
-  password: string;
-  onPasswordChange: (password: string) => void;
-  onSubmit: () => void;
-  error: string | null;
-  notice: string | null;
-  submitting: boolean;
-  onForgotPassword: () => void;
-  pendingProvider: OAuthProvider | null;
-  providerFailure: ProviderFailure | null;
-  onContinueWithProvider: (provider: OAuthProvider) => void;
-  inviteRefusal: InviteRefusal | null;
-  inviter: ReferrerProfileDto | null;
-  /** Both fields report focus, so the keyboard handling can tell a swap from a dismissal. */
-  onFieldFocus: () => void;
-  onFieldBlur: () => void;
-}) {
+}: AccountFieldsProps) {
   const scale = useOnboardingScale();
   const [showPassword, setShowPassword] = useState(false);
 
@@ -119,6 +124,16 @@ export function AccountFields({
               {inviter.displayName}
             </Text>{" "}
             invited you to the Alliance
+          </Text>
+        </View>
+      )}
+      {campaignInvite && (
+        <View className="flex-row items-center gap-x-2">
+          {campaignInvite.picture && (
+            <ProfileImage pfp={campaignInvite.picture} size="small" />
+          )}
+          <Text className="text-white/80" style={{ fontSize: scale.caption }}>
+            {campaignInvite.description}
           </Text>
         </View>
       )}

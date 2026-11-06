@@ -1,7 +1,7 @@
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, mock, spyOn } from "bun:test";
 import { Manager, type Socket } from "socket.io-client";
-import type { ConversationDto, MessageDto } from "../client";
+import type { ConversationDto } from "../client";
 import { createMessagingHooks } from "./messages";
 import * as messagingSocket from "./messagingSocket";
 import { makeConversation, makeMessage, makeParticipant } from "./testFixtures";
@@ -63,7 +63,11 @@ const { useConversations, useLiveConvoMessages } = createMessagingHooks({
 
 const unread = (socket: Socket, unreadCount: number) => {
   for (const listener of socket.listeners("conversation:unread"))
-    listener({ conversationId: group.id, unreadCount });
+    listener({
+      conversationId: group.id,
+      unreadCount,
+      conversation: { ...group, unreadCount },
+    });
 };
 
 it("shows an unread update from the socket to every reader of the list", async () => {
@@ -141,13 +145,8 @@ it("lets a reload land however many socket updates arrive while it runs", async 
 
 it("shows a message from the socket once, however many screens hear it", async () => {
   const query = queryWrapper();
-  const heard: MessageDto[] = [];
-  const options = { onIncomingMessage: (m: MessageDto) => heard.push(m) };
-  const first = renderHook(
-    () => useLiveConvoMessages(group.id, options),
-    query,
-  );
-  renderHook(() => useLiveConvoMessages(group.id, options), query);
+  const first = renderHook(() => useLiveConvoMessages(group.id), query);
+  renderHook(() => useLiveConvoMessages(group.id), query);
   await waitFor(() => expect(first.result.current.messages).toEqual([]));
   const incoming = makeMessage({ conversationId: group.id });
 
@@ -160,7 +159,6 @@ it("shows a message from the socket once, however many screens hear it", async (
   await waitFor(() =>
     expect(first.result.current.messages).toEqual([incoming]),
   );
-  expect(heard).toEqual([incoming]);
   await waitFor(() => expect(markedRead).toBe(1));
   expect(fetches).toBe(0);
 });

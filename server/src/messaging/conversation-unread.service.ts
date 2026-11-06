@@ -4,6 +4,7 @@ import type { Repository } from "typeorm";
 import { UnreadMessageSummary } from "./dto/messaging.dto";
 import { Message } from "./entities/message.entity";
 import { Participant, ParticipantState } from "./entities/participant.entity";
+import { notInConversation } from "./not-in-conversation";
 import { loadHiddenReadCursors, UNREAD_SQL } from "./read-cursor";
 
 @Injectable()
@@ -41,13 +42,14 @@ export class ConversationUnreadService {
     conversationId: number,
     userId: number,
   ): Promise<number> {
-    const participant = await this.participantRepository.findOneOrFail({
+    const participant = await this.participantRepository.findOne({
       where: {
         conversation: { id: conversationId },
         user: { id: userId },
       },
       relations: { lastReadMessage: true },
     });
+    if (!participant) throw notInConversation();
     await loadHiddenReadCursors(this.messageRepository, [participant]);
 
     const since =

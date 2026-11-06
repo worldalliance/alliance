@@ -20,17 +20,17 @@ import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { adminActionListItem } from "../lib/testing/adminActionListItem";
 import ShareLinksPage from "./ShareLinksPage";
 
-const campaign = (id: number, name: string) =>
-  ({
-    id,
-    name,
-    code: `spring${id}`,
-    picture: null,
-    kind: "campaign",
-    communityId: null,
-    createdAt: "2026-01-02T00:00:00.000Z",
-    updatedAt: "2026-01-02T00:00:00.000Z",
-  }) satisfies CampaignDto;
+const campaign = (id: number, name: string): CampaignDto => ({
+  id,
+  name,
+  code: `spring${id}`,
+  picture: null,
+  invitePageDescription: null,
+  kind: "campaign",
+  communityId: null,
+  createdAt: "2026-01-02T00:00:00.000Z",
+  updatedAt: "2026-01-02T00:00:00.000Z",
+});
 
 let actionsStatus = 200;
 let targetsStatus = 200;
@@ -96,8 +96,15 @@ serveApi(
     "POST /campaigns": async ({ request }) => {
       if (createCampaignStatus !== 200)
         return Response.json({}, { status: createCampaignStatus });
-      const { name }: { name: string } = await request.json();
-      const created = campaign(8, name);
+      const {
+        name,
+        invitePageDescription,
+      }: { name: string; invitePageDescription?: string | null } =
+        await request.json();
+      const created = {
+        ...campaign(8, name),
+        invitePageDescription: invitePageDescription ?? null,
+      };
       campaigns = [...campaigns, created];
       return Response.json(created);
     },
@@ -315,6 +322,9 @@ it("lists and selects a campaign it creates", async () => {
   fireEvent.change(screen.getByPlaceholderText(/Campaign name/), {
     target: { value: "Fall drive" },
   });
+  fireEvent.change(screen.getByLabelText("Invite page description"), {
+    target: { value: "Join us this fall" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Create" }));
 
   expect(
@@ -323,6 +333,9 @@ it("lists and selects a campaign it creates", async () => {
   expect(
     screen.getByRole("option", { name: "Spring fundraiser" }),
   ).toBeTruthy();
+  expect(campaigns.find((c) => c.name === "Fall drive")).toMatchObject({
+    invitePageDescription: "Join us this fall",
+  });
 });
 
 it("says when it cannot create a campaign", async () => {

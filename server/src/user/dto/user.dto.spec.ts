@@ -1,9 +1,10 @@
+import { Campaign } from "src/campaign/entities/campaign.entity";
 import {
   ContractEvent,
   ContractEventType,
 } from "../entities/contract-event.entity";
 import { User } from "../entities/user.entity";
-import { ProfileDto, UserDto } from "./user.dto";
+import { ProfileDto, ReferrerProfileDto, UserDto } from "./user.dto";
 
 function userWithTiedEvents(): User {
   const date = new Date("2026-03-01T00:00:00Z");
@@ -28,6 +29,35 @@ function userWithTiedEvents(): User {
     contractEvents: [signed, suspended],
   });
 }
+
+describe("ReferrerProfileDto", () => {
+  it("carries a campaign invite page description", () => {
+    const campaign = Object.assign(new Campaign(), {
+      name: "Open Day",
+      picture: null,
+      invitePageDescription: "Join us Saturday",
+    });
+    expect(
+      new ReferrerProfileDto({ kind: "campaign", campaign }),
+    ).toMatchObject({
+      kind: "campaign",
+      displayName: "Open Day",
+      invitePageDescription: "Join us Saturday",
+    });
+  });
+
+  it("has no invite page description for a member", () => {
+    const user = Object.assign(new User(), {
+      name: "Alex",
+      anonymous: false,
+      profilePicture: null,
+    });
+    expect(new ReferrerProfileDto({ kind: "user", user })).toMatchObject({
+      kind: "user",
+      invitePageDescription: null,
+    });
+  });
+});
 
 describe("lastContractEvent", () => {
   it("breaks a same-instant tie by the higher id on UserDto and ProfileDto", () => {

@@ -1,6 +1,3 @@
-import type { OAuthProvider } from "@alliance/common/oauth";
-import type { ReferrerProfileDto } from "@alliance/shared/client";
-import type { InviteRefusal } from "@alliance/shared/lib/useInvite";
 import { Image } from "expo-image";
 import { memo, useEffect, useRef } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
@@ -13,19 +10,17 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
-import type { ProviderFailure } from "../../lib/oauthResult";
 import {
   GATE_SUBLINE,
   GATE_TITLE,
   WELCOME_IMAGE,
 } from "../../lib/onboarding/content";
-import { AccountMode } from "../../lib/onboarding/flow";
 import {
   onboardingColors,
   useOnboardingScale,
 } from "../../lib/onboarding/scale";
 import Text, { FontFamily, FontWeight } from "../system/Text";
-import { AccountFields } from "./AccountFields";
+import { AccountFields, type AccountFieldsProps } from "./AccountFields";
 
 /**
  * The photo is a bright field, so white type needs its own ground at both
@@ -179,23 +174,8 @@ export function WelcomeGate({
   onContinueWithProvider,
   inviteRefusal,
   inviter,
-}: {
-  mode: AccountMode;
-  email: string;
-  onEmailChange: (email: string) => void;
-  password: string;
-  onPasswordChange: (password: string) => void;
-  onSubmit: () => void;
-  error: string | null;
-  notice: string | null;
-  submitting: boolean;
-  onForgotPassword: () => void;
-  pendingProvider: OAuthProvider | null;
-  providerFailure: ProviderFailure | null;
-  onContinueWithProvider: (provider: OAuthProvider) => void;
-  inviteRefusal: InviteRefusal | null;
-  inviter: ReferrerProfileDto | null;
-}) {
+  campaignInvite,
+}: Omit<AccountFieldsProps, "onFieldFocus" | "onFieldBlur">) {
   const insets = useSafeAreaInsets();
   const scale = useOnboardingScale();
   const viewportHeight = useViewportHeight();
@@ -249,6 +229,7 @@ export function WelcomeGate({
           onContinueWithProvider={onContinueWithProvider}
           inviteRefusal={inviteRefusal}
           inviter={inviter}
+          campaignInvite={campaignInvite}
           onFieldFocus={onFieldFocus}
           onFieldBlur={onFieldBlur}
         />

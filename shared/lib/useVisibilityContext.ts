@@ -5,8 +5,9 @@ import {
 } from "@alliance/common/forms/user-properties";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useRef } from "react";
-import { userMyVisibilityContext } from "../client";
+import { userMyVisibilityContext, userVisibilityContextAdmin } from "../client";
 import { schemaNeedsVisibilityContext } from "../formrenderer";
+import { previewedMemberId } from "../forms/previewedMemberId";
 import { queryKeys } from "./queryKeys";
 import { retryUnlessRefused } from "./retryQuery";
 
@@ -53,29 +54,41 @@ export function hasSettledSinceMount(
 /**
  * The viewer's account-derived values consumed by form visibility conditions
  * (`userHasCity`, `userPropertyHasValue`, `firstContractSigned`,
- * `completedActionCount`), fetched from
- * `GET /user/myvisibilitycontext` — the same values the server uses when
- * stripping hidden answers at submission. Only fetches when the schema
- * actually contains such a condition and `enabled` is true (pass the presence
- * of a logged-in user); otherwise returns defaults without a request, which
- * match the guest/never-signed evaluation semantics.
+ * `completedActionCount`): the viewer's from `GET /user/myvisibilitycontext`,
+ * or, for an admin previewing as a member (`previewUserId`), that member's
+ * from `GET /user/:id/visibilitycontext` — the same values the server uses
+ * when stripping hidden answers at submission. Only fetches when the schema
+ * actually contains such a condition and `enabled` is true (whenever there is
+ * someone to read values for: a logged-in viewer or a previewed member);
+ * otherwise returns defaults without a request, which match the
+ * guest/never-signed evaluation semantics.
  *
  * `isLoading` means "this mount hasn't seen fresh values yet", not react-query's
  * "there is no data" — see below. Callers gate the whole form on it.
  */
 export function useVisibilityContext(
   schema: FormSchema,
-  { enabled }: { enabled: boolean },
+  {
+    enabled,
+    previewUserId,
+  }: { enabled: boolean; previewUserId?: string | number },
 ): VisibilityContext {
   const needsContext = useMemo(
     () => schemaNeedsVisibilityContext(schema),
     [schema],
   );
 
+  const previewedId = previewedMemberId(previewUserId);
   const { data, dataUpdatedAt, errorUpdatedAt } = useQuery({
-    queryKey: queryKeys.myVisibilityContext(),
+    queryKey:
+      previewedId === null
+        ? queryKeys.myVisibilityContext()
+        : queryKeys.userVisibilityContextAdmin(previewedId),
     queryFn: async () => {
-      const response = await userMyVisibilityContext();
+      const response =
+        previewedId === null
+          ? await userMyVisibilityContext()
+          : await userVisibilityContextAdmin({ path: { id: previewedId } });
       if (response.error) {
         throw response.error;
       }

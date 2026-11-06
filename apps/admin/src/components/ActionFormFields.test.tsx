@@ -1,8 +1,10 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import {
   ActionFieldSection,
+  actionFieldDefs,
   type ActionFieldDef,
 } from "../lib/actionFieldDefs";
+import { LinkedField } from "../lib/linkedSelection";
 import { createActionForm } from "../lib/testing/createActionForm";
 import ActionFormFields from "./ActionFormFields";
 
@@ -103,5 +105,17 @@ describe("ActionFormFields", () => {
     cleanup();
     renderFields({ fields, isNew: true });
     expect(screen.queryByAltText("Current")).toBeNull();
+  });
+
+  it("gives each linked text field's textarea the id a link selects in", () => {
+    renderFields({
+      fields: actionFieldDefs({ suites: [], loading: false, failed: false }),
+    });
+
+    for (const field of Object.values(LinkedField)) {
+      expect(document.getElementById(field)).toBeInstanceOf(
+        HTMLTextAreaElement,
+      );
+    }
   });
 });

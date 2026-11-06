@@ -18,6 +18,10 @@ export const STUBS: Record<string, string> = {
     echo unzip >> "$STATE/log"
     [ "\${UNZIP:-ok}" = ok ]`,
   bun: `
+    if [ "$*" = "pm cache rm" ]; then
+      echo cache-rm >> "$STATE/log"
+      [ "\${CACHE_RM:-ok}" = ok ]; exit
+    fi
     [ "$1" = install ] || [ -n "\${FROM_SECRETS:-}" ] || { echo "bun $* without secrets" >&2; exit 2; }
     case "$1 \${2:-}" in
       "install --frozen-lockfile")

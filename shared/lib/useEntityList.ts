@@ -22,6 +22,7 @@ export function useEntityList<
   queryKey: QueryKey;
   enabled?: boolean;
   staleTime?: number;
+  refetchOnWindowFocus?: boolean;
 }) {
   const { store, select: selectRecord, load, ...options } = params;
   const queryClient = useQueryClient();
