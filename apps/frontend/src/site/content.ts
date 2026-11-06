@@ -226,7 +226,7 @@ export const HOME_TESTIMONIAL = {
   memberId: 96,
   role: "Alliance member",
   quoteLead:
-    "I am convinced that the Alliance offers the platform for maximizing the impact of my time and energy contribution to the world over time. I want to be part of it and grow with it. They take your commitment seriously and will hold your feet to the fire. But ",
+    "I am convinced that the Alliance offers the platform for maximizing the impact of my time. I want to be part of it and grow with it. They take your commitment seriously and will hold your feet to the fire. But ",
   quoteEmphasis:
     "it's just a few minutes per week and I've found every project thus far to be self-enriching and meaningful.",
 };
