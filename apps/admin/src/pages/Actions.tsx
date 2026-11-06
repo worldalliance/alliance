@@ -15,8 +15,8 @@ import {
   actionStatusBucket,
 } from "../lib/actionStatusBucket";
 import { actionsLoadError } from "../lib/actionsLoadError";
-import { useActionParticipants } from "../lib/useActionParticipants";
 import { inProgressSuites } from "../lib/inProgressSuites";
+import { useActionParticipants } from "../lib/useActionParticipants";
 
 export const getLastPastEventDate = (
   action: Pick<ActionDto, "events">,
