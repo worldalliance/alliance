@@ -81,26 +81,6 @@ export class ForumController {
     );
   }
 
-  @Get("posts/action/:actionId")
-  @ApiOperation({ summary: "Get posts for a specific action" })
-  @ApiOkResponse({ type: [PostDto] })
-  @UseGuards(AuthGuard)
-  async findPostsByAction(
-    @Param("actionId") actionId: string,
-    @Request() req: JwtRequest,
-  ): Promise<PostDto[]> {
-    return this.forumService
-      .findPostsByAction({
-        actionId: +actionId,
-        requestingUserId: req.user?.sub,
-      })
-      .then((posts) =>
-        posts.map(
-          (post) => new PostDto({ post, requestingUserId: req.user?.sub }),
-        ),
-      );
-  }
-
   @Get("posts/:id")
   @ApiOperation({ summary: "Get a specific post with its comments" })
   @ApiOkResponse({ type: PostDto })

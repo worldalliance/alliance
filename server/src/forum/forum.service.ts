@@ -171,25 +171,6 @@ export class ForumService {
     }
   }
 
-  async findPostsByAction(params: {
-    actionId: number;
-    requestingUserId?: number;
-  }): Promise<ParsedPost[]> {
-    const { actionId, requestingUserId } = params;
-    const qb = this.postRepository
-      .createQueryBuilder("post")
-      .leftJoinAndSelect("post.author", "author")
-      .leftJoinAndSelect("post.action", "action")
-      .leftJoinAndSelect("action.reviewers", "actionReviewer")
-      .leftJoinAndSelect("post.editableContent", "editableContent")
-      .leftJoinAndSelect("post.authors", "authors")
-      .leftJoinAndSelect("post.likes", "likes")
-      .where("post.actionId = :actionId", { actionId })
-      .orderBy("post.updatedAt", "DESC");
-    this.addPostVisibilityFilter(qb, "post", requestingUserId);
-    return (await qb.getMany()).map(parsePost);
-  }
-
   private visiblePostQuery(id: number, userId?: number) {
     return this.addPostVisibilityFilter(
       this.postRepository
