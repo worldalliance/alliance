@@ -1,0 +1,3 @@
+# Decisions
+
+- **Contract default re-checks on every run.** `EditableContractField` defaults its contract whenever its effect runs with the field's contract missing and the current contract loaded, rather than once per mount, so a default that didn't land is written again on the effect's next run. That run comes from a dependency change, which in the form builder is every render, since `FormBuilderSettings` passes a fresh `updateElementAt(index)` as `onUpdate`. The once-per-mount guard lost no default on its own: undo, redo and reset remount the sidebar editors (keyed on `schemaLoads`), which reset it. (agent decision)
