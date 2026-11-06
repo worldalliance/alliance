@@ -89,6 +89,7 @@ describe("Campaigns (e2e)", () => {
       const campaign = await createCampaign("Spring fundraiser");
       expect(campaign.id).toBeGreaterThan(0);
       expect(campaign.code).toBeTruthy();
+      expect(campaign.invitePageDescription).toBeNull();
 
       const list = await request(server())
         .get("/campaigns")
@@ -97,6 +98,27 @@ describe("Campaigns (e2e)", () => {
       expect((list.body as Campaign[]).some((c) => c.id === campaign.id)).toBe(
         true,
       );
+    });
+
+    it("stores an invite page description", async () => {
+      const res = await request(server())
+        .post("/campaigns")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          name: "Fall drive",
+          invitePageDescription: "  Join us this fall  ",
+        })
+        .expect(201);
+      expect(res.body.invitePageDescription).toBe("Join us this fall");
+    });
+
+    it("stores a blank invite page description as null", async () => {
+      const res = await request(server())
+        .post("/campaigns")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ name: "Blank line", invitePageDescription: "   " })
+        .expect(201);
+      expect(res.body.invitePageDescription).toBeNull();
     });
   });
 
@@ -207,6 +229,24 @@ describe("Campaigns (e2e)", () => {
         .expect(200);
       expect(res.body.kind).toBe("campaign");
       expect(res.body.displayName).toBe("Open Day");
+      expect(res.body.invitePageDescription).toBeNull();
+    });
+
+    it("returns a campaign's invite page description", async () => {
+      const res = await request(server())
+        .post("/campaigns")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          name: "Open Day",
+          invitePageDescription: "Join us Saturday",
+        })
+        .expect(201);
+      const campaign = res.body as Campaign;
+
+      const profile = await request(server())
+        .get(`/user/referrerProfile/${campaign.code}`)
+        .expect(200);
+      expect(profile.body.invitePageDescription).toBe("Join us Saturday");
     });
   });
 
@@ -418,6 +458,26 @@ describe("Campaigns (e2e)", () => {
       it("refuses a null name", async () => {
         const campaign = await createCampaign("Keeps its name");
         await patch(campaign.id, { name: null }).expect(400);
+      });
+
+      it("sets and clears an invite page description", async () => {
+        const campaign = await createCampaign("Editable line");
+        expect(campaign.invitePageDescription).toBeNull();
+
+        const set = await patch(campaign.id, {
+          invitePageDescription: "  Join us Saturday  ",
+        }).expect(200);
+        expect(set.body.invitePageDescription).toBe("Join us Saturday");
+
+        const omitted = await patch(campaign.id, {
+          name: "Still has a line",
+        }).expect(200);
+        expect(omitted.body.invitePageDescription).toBe("Join us Saturday");
+
+        const cleared = await patch(campaign.id, {
+          invitePageDescription: null,
+        }).expect(200);
+        expect(cleared.body.invitePageDescription).toBeNull();
       });
     });
   });

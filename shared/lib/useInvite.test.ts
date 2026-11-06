@@ -5,6 +5,7 @@ import { makeOnetimeInvite } from "./testFixtures";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 import {
+  campaignInvitePageLine,
   InviteAvailability,
   InviteRefusal,
   namedInviter,
@@ -15,6 +16,14 @@ const user: ReferrerProfileDto = {
   kind: "user",
   displayName: "Mark Xu",
   profilePicture: null,
+  invitePageDescription: null,
+};
+
+const campaign: ReferrerProfileDto = {
+  kind: "campaign",
+  displayName: "Democratic Grantmaking",
+  profilePicture: null,
+  invitePageDescription: null,
 };
 
 describe("namedInviter", () => {
@@ -25,13 +34,7 @@ describe("namedInviter", () => {
   // A campaign signs nothing and invites nobody by name, so "X invited you to
   // the Alliance" would be a lie.
   it("names nobody for a campaign code", () => {
-    expect(
-      namedInviter({
-        kind: "campaign",
-        displayName: "Democratic Grantmaking",
-        profilePicture: null,
-      }),
-    ).toBeNull();
+    expect(namedInviter(campaign)).toBeNull();
   });
 
   it("names nobody when the code resolved to nothing", () => {
@@ -39,20 +42,48 @@ describe("namedInviter", () => {
   });
 });
 
+describe("campaignInvitePageLine", () => {
+  it("uses a campaign's invite page description", () => {
+    expect(
+      campaignInvitePageLine({
+        ...campaign,
+        invitePageDescription: "Join us this spring",
+        profilePicture: "https://example.com/c.png",
+      }),
+    ).toEqual({
+      description: "Join us this spring",
+      picture: "https://example.com/c.png",
+    });
+  });
+
+  it("has no line when the campaign left the description blank", () => {
+    expect(campaignInvitePageLine(campaign)).toBeNull();
+    expect(
+      campaignInvitePageLine({ ...campaign, invitePageDescription: "   " }),
+    ).toBeNull();
+  });
+
+  it("has no line for a member invite", () => {
+    expect(campaignInvitePageLine(user)).toBeNull();
+  });
+});
+
 let status: OnetimeInviteStatus = "link_unused";
 let referrerStatus = 200;
 let inviteStatus = 200;
+let referrer: ReferrerProfileDto = {
+  kind: "user",
+  displayName: "Jane Smith",
+  profilePicture: null,
+  invitePageDescription: null,
+};
 
 serveApi(
   routes({
     "GET /user/referrerProfile/:code": () =>
       referrerStatus !== 200
         ? Response.json({}, { status: referrerStatus })
-        : Response.json({
-            kind: "user",
-            displayName: "Jane Smith",
-            profilePicture: null,
-          }),
+        : Response.json(referrer),
     "GET /user/onetimeInvite/:code": ({ params }) =>
       inviteStatus !== 200
         ? Response.json({}, { status: inviteStatus })
@@ -77,6 +108,12 @@ describe("useInvite", () => {
     status = "link_unused";
     referrerStatus = 200;
     inviteStatus = 200;
+    referrer = {
+      kind: "user",
+      displayName: "Jane Smith",
+      profilePicture: null,
+      invitePageDescription: null,
+    };
   });
 
   it("offers an unused invite and names its inviter", async () => {
@@ -84,6 +121,23 @@ describe("useInvite", () => {
     expect(invite.refusal).toBeNull();
     expect(invite.inviter?.displayName).toBe("Jane Smith");
     expect(invite.onetimeInvite?.code).toBe("CODE");
+    expect(invite.availability).toBe(InviteAvailability.Available);
+  });
+
+  it("offers a campaign invite page description", async () => {
+    inviteStatus = 404;
+    referrer = {
+      kind: "campaign",
+      displayName: "Spring fundraiser",
+      profilePicture: null,
+      invitePageDescription: "Join us this spring",
+    };
+    const invite = await settle();
+    expect(invite.inviter).toBeNull();
+    expect(invite.campaignInvite).toEqual({
+      description: "Join us this spring",
+      picture: null,
+    });
     expect(invite.availability).toBe(InviteAvailability.Available);
   });
 

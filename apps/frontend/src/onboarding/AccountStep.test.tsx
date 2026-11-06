@@ -31,7 +31,9 @@ const signedIn = () => new Response(null, { status: 200 });
 let loginReply: () => Response = signedIn;
 
 /** What the two lookups behind the code in the URL come back with. */
-let inviteState: "valid" | "used" | "pending" | "unknown" = "valid";
+let inviteState: "valid" | "used" | "pending" | "unknown" | "campaign" =
+  "valid";
+let campaignDescription: string | null = "Join us this spring";
 
 const INVITE_STATUS = {
   valid: "link_unused",
@@ -50,13 +52,21 @@ serveApi(
     "GET /user/referrerProfile/:code": () =>
       inviteState === "unknown"
         ? notFound()
-        : Response.json({
-            kind: "user",
-            displayName: "Alex Dorey",
-            profilePicture: null,
-          }),
+        : inviteState === "campaign"
+          ? Response.json({
+              kind: "campaign",
+              displayName: "Spring fundraiser",
+              profilePicture: null,
+              invitePageDescription: campaignDescription,
+            })
+          : Response.json({
+              kind: "user",
+              displayName: "Alex Dorey",
+              profilePicture: null,
+              invitePageDescription: null,
+            }),
     "GET /user/onetimeInvite/:code": () =>
-      inviteState === "unknown"
+      inviteState === "unknown" || inviteState === "campaign"
         ? notFound()
         : Response.json({
             code: "invite-code",
@@ -83,6 +93,7 @@ afterEach(() => {
   loginBodies = [];
   loginReply = signedIn;
   inviteState = "valid";
+  campaignDescription = "Join us this spring";
   window.sessionStorage.clear();
   window.happyDOM.setURL("https://test.alliance/login");
 });
@@ -195,6 +206,31 @@ describe("AccountStep", () => {
 
     await waitFor(() => expect(providerButtons()).toBeGreaterThan(0));
     expect(screen.getByLabelText("Email")).toBeDefined();
+    expect(screen.getByText("Alex Dorey")).toBeDefined();
+    expect(screen.getByText(/invited you to the Alliance/)).toBeDefined();
+  });
+
+  it("shows a campaign invite page description under Create an account", async () => {
+    inviteState = "campaign";
+    render(<SignUpWithCode />);
+
+    await waitFor(() =>
+      expect(screen.getByText("Create an account")).toBeDefined(),
+    );
+    expect(screen.getByText("Join us this spring")).toBeDefined();
+    expect(screen.queryByText(/invited you to the Alliance/)).toBeNull();
+  });
+
+  it("shows no invite line for a campaign without a description", async () => {
+    inviteState = "campaign";
+    campaignDescription = null;
+    render(<SignUpWithCode />);
+
+    await waitFor(() =>
+      expect(screen.getByText("Create an account")).toBeDefined(),
+    );
+    expect(screen.queryByText(/invited you to the Alliance/)).toBeNull();
+    expect(screen.queryByText("Join us this spring")).toBeNull();
   });
 
   it("logs in from a password-manager fill that never fires change", async () => {
