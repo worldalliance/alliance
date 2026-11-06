@@ -52,6 +52,10 @@ const conditionValidatorSchema = z.strictObject({
   resultEquals: z.boolean().optional(),
 });
 
+/** A validator the form builder created and hasn't saved yet. */
+export const isDraftValidatorId = (id?: number): id is number =>
+  typeof id === "number" && id < 0;
+
 const conditionDeviceTypeSchema = z.strictObject({
   kind: z.literal("deviceType"),
   deviceType: z.array(deviceVisibilityTargetSchema),

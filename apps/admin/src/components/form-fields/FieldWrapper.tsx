@@ -2,6 +2,7 @@ import type {
   AnyField,
   CheckboxExtractionTarget,
 } from "@alliance/common/forms/form-schema";
+import { isDraftValidatorId } from "@alliance/common/forms/visible-if-formula";
 import { CustomValidatorType } from "@alliance/shared/client";
 import { useEffect, useState } from "react";
 import { SectionPanels } from "../form-canvas/sidebarSections";
@@ -10,10 +11,7 @@ import {
   OutputPrivateByDefaultToggle,
 } from "./CommonControls";
 import { ElementConditions } from "./conditions/VisibilityConditions";
-import {
-  isDraftValidatorId,
-  useCustomValidatorDrafts,
-} from "./customValidatorDrafts";
+import { useCustomValidatorDrafts } from "./customValidatorDrafts";
 import { CustomValidatorSelect } from "./CustomValidatorSelect";
 import {
   getExtractionLabel,

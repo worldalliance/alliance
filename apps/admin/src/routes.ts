@@ -20,6 +20,7 @@ export default [
       ),
       route("/scheduled", "pages/ScheduledPlansPage.tsx"),
       route("/suites/:suiteId", "pages/ActionSuitePage.tsx"),
+      route("/suites/:suiteId/launch", "pages/SuiteLaunchPage.tsx"),
       route("/new-suite", "pages/NewActionSuitePage.tsx"),
       route("/", "pages/StatsPage.tsx"),
       route("/forms", "pages/FormsList.tsx"),

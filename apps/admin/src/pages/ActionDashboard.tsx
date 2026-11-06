@@ -19,6 +19,7 @@ import ActionUpdatesTab from "../components/ActionUpdatesTab";
 import EventManagementTab from "../components/EventManagementTab";
 import { FormBuilder } from "../components/FormBuilder";
 import { getSiteUrl } from "../lib/config";
+import { useLinkedSelection } from "../lib/linkedSelection";
 import { useActionSuitesAdmin } from "../lib/useActionSuitesAdmin";
 import { useAllActions } from "../lib/useAllActions";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
@@ -136,6 +137,12 @@ const ActionDashboard: React.FC = () => {
     (!isNew && !actionLoadFailed && (actionPending || !editor.draftSeeded)) ||
     isRemoving;
 
+  useLinkedSelection({
+    ready: selectedTab === "details" && !loading && !actionLoadFailed,
+    searchParams,
+    setSearchParams,
+    onError: setError,
+  });
   const { handleDuplicate, handleArchive, handleDelete } = useActionCommands({
     admin,
     actionId,

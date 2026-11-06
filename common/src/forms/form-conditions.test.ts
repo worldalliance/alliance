@@ -3,6 +3,7 @@ import {
   collectSourceFormIds,
   conditionHolders,
   forEachCondition,
+  memberConditions,
   PlaceKind,
 } from "./form-conditions";
 import type { AnyField, FormSchema, Page, TextField } from "./form-schema";
@@ -247,5 +248,63 @@ describe("collectSourceFormIds", () => {
       outputViews: [],
     };
     expect(collectSourceFormIds(schema).sort()).toEqual([7, 9]);
+  });
+});
+
+describe("memberConditions", () => {
+  it("lists each condition that depends on the member once, skipping answer-based ones", () => {
+    const city: Condition = { kind: "userHasCity", userHasCity: true };
+    const validator: Condition = { kind: "validator", validatorId: 4 };
+    const earlierForm: Condition = {
+      kind: "hasValue",
+      when: "q",
+      hasValue: true,
+      sourceFormId: 9,
+    };
+    const thisForm: Condition = { kind: "hasValue", when: "q", hasValue: true };
+    const formula = (conditions: Record<string, Condition>) => ({
+      formula: Object.keys(conditions).join(" AND "),
+      conditions,
+    });
+    const schema: FormSchema = {
+      pages: [
+        {
+          id: "p1",
+          visibleIfFormula: formula({ a: city, b: thisForm }),
+          fields: [
+            {
+              id: "q",
+              type: "input",
+              kind: "text",
+              label: "Q",
+              visibleIfFormula: formula({ a: validator, b: city }),
+              requiredIfFormula: formula({ a: earlierForm }),
+            },
+          ],
+        },
+      ],
+      outputViews: [],
+    };
+    expect(memberConditions(schema)).toEqual([city, validator, earlierForm]);
+  });
+
+  it("counts a condition once whatever order its keys come in", () => {
+    const schema: FormSchema = {
+      pages: [
+        {
+          id: "p1",
+          visibleIfFormula: {
+            formula: "a AND b",
+            conditions: {
+              a: { kind: "userHasCity", userHasCity: true },
+              b: { userHasCity: true, kind: "userHasCity" },
+            },
+          },
+          fields: [],
+        },
+      ],
+      outputViews: [],
+    };
+    expect(memberConditions(schema)).toHaveLength(1);
   });
 });

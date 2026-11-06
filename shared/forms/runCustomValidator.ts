@@ -3,6 +3,7 @@ import {
   customValidatorRunValidator,
   customValidatorRunValidatorAsUserAdmin,
 } from "../client";
+import { previewedMemberId } from "./previewedMemberId";
 
 /**
  * Runs for the member an admin previews as, or for the caller when there's
@@ -16,13 +17,15 @@ export const runCustomValidator = ({
   validatorId: number;
   fieldValue?: string;
   previewUserId?: string | number | null;
-}) =>
-  previewUserId != null && /^\d+$/.test(String(previewUserId))
-    ? customValidatorRunValidatorAsUserAdmin({
-        path: { id: validatorId, userId: Number(previewUserId) },
-        body: { fieldValue },
-      })
-    : customValidatorRunValidator({
+}) => {
+  const memberId = previewedMemberId(previewUserId);
+  return memberId === null
+    ? customValidatorRunValidator({
         path: { id: validatorId },
         body: { fieldValue },
+      })
+    : customValidatorRunValidatorAsUserAdmin({
+        path: { id: validatorId, userId: memberId },
+        body: { fieldValue },
       });
+};

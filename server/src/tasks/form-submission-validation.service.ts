@@ -1,8 +1,5 @@
 import { elementInternalDescriptor } from "@alliance/common/forms/element-descriptors";
-import {
-  collectSourceFormIds,
-  forEachCondition,
-} from "@alliance/common/forms/form-conditions";
+import { forEachCondition } from "@alliance/common/forms/form-conditions";
 import {
   type FormAnswers,
   readFormAnswers,
@@ -36,25 +33,15 @@ import {
   stripHiddenAnswers,
   visibleListSubFields,
 } from "@alliance/common/forms/visibility";
-import {
-  type AccountDerivedConditionKind,
-  isAccountDerivedConditionKind,
-  isKnownConditionKind,
-} from "@alliance/common/forms/visible-if-formula";
+import { isKnownConditionKind } from "@alliance/common/forms/visible-if-formula";
 import { withCount } from "@alliance/common/plural";
 import { R } from "@alliance/common/result";
 import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
-  Logger,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
 import { isNull, omitBy } from "es-toolkit";
-import { UserVisibilityContextService } from "src/user/user-visibility-context.service";
-import { type Repository } from "typeorm";
-import { CustomValidatorService } from "./customvalidator.service";
-import { FormResponse } from "./entities/formresponse.entity";
 import { FormResponseQueryService } from "./form-response-query.service";
 import { type FormulaSourceDto, SubmitFormDto } from "./form.dto";
 import {
@@ -62,6 +49,7 @@ import {
   formulaSourcesOrThrow,
   loadFormulaSources,
 } from "./formula-sources";
+import { MemberVisibilityService } from "./member-visibility.service";
 
 export function parseSubmittedAnswers(
   value: Record<string, unknown>,
@@ -97,13 +85,9 @@ export function readListAnswer(
 
 @Injectable()
 export class FormSubmissionValidationService {
-  private readonly logger = new Logger(FormSubmissionValidationService.name);
   constructor(
-    private readonly customValidatorService: CustomValidatorService,
     private readonly formResponseQueryService: FormResponseQueryService,
-    @InjectRepository(FormResponse)
-    private formResponseRepository: Repository<FormResponse>,
-    private readonly userVisibilityContextService: UserVisibilityContextService,
+    private readonly memberVisibilityService: MemberVisibilityService,
   ) {}
 
   /** Returns true if value satisfies required validation for the field. Used for both top-level and list sub-field validation. */
@@ -175,93 +159,23 @@ export class FormSubmissionValidationService {
   }> {
     const answers = parseSubmittedAnswers(submitFormDto.answers);
 
-    const validatorIds = new Set<number>();
-    const accountConditionKinds = new Set<AccountDerivedConditionKind>();
-
     // A stored snapshot can outlive the server that wrote it (a rollback, a
     // mid-deploy instance). Evaluating a kind we don't know would strip the
     // answers it gates instead of erroring, so refuse the submission whole.
     this.assertConditionKindsSupported(schema);
 
-    forEachCondition(schema, (condition) => {
-      if (condition.kind === "validator") {
-        validatorIds.add(condition.validatorId);
-      }
-      if (isAccountDerivedConditionKind(condition.kind)) {
-        accountConditionKinds.add(condition.kind);
-      }
+    const memberExtras = await this.memberVisibilityService.memberExtras({
+      schema,
+      userId,
     });
-
-    const validatorResults: Record<number, boolean> = {};
-    if (validatorIds.size > 0) {
-      const results = await Promise.all(
-        Array.from(validatorIds).map(async (validatorId) => {
-          try {
-            const result = await this.customValidatorService.runValidator(
-              validatorId,
-              userId,
-            );
-            return [validatorId, result.isValid] as const;
-          } catch (error) {
-            this.logger.error(
-              `Failed to evaluate visibility validator ${validatorId}: ${String(error)}`,
-            );
-            return [validatorId, false] as const;
-          }
-        }),
-      );
-      for (const [id, value] of results) {
-        validatorResults[id] = value;
-      }
-    }
-
-    // Fetch previous form responses for cross-form visibility conditions
-    const sourceFormIds = collectSourceFormIds(schema);
-    const previousAnswerData: Record<number, Record<string, unknown>> = {};
-    if (sourceFormIds.length > 0) {
-      const entries = await Promise.all(
-        sourceFormIds.map(async (formId) => {
-          try {
-            const response = await this.formResponseRepository.findOne({
-              where: { formId, user: { id: userId } },
-              order: { createdAt: "DESC" },
-            });
-            if (response?.answers) {
-              return [formId, response.answers] as const;
-            }
-          } catch {
-            // form response not found
-          }
-          return null;
-        }),
-      );
-      for (const entry of entries) {
-        if (entry) previousAnswerData[entry[0]] = entry[1];
-      }
-    }
-    // Fetches only the values this schema's conditions actually read; an empty
-    // set costs no queries and yields the same defaults as before.
-    const visibilityContext =
-      await this.userVisibilityContextService.getVisibilityContext(
-        userId,
-        accountConditionKinds,
-      );
+    const validatorResults = memberExtras.visibilityValidatorResults;
 
     const fieldLookup = collectFieldLookup(schema.pages);
 
     const visibilityExtras: ConditionExtras = {
+      ...memberExtras,
       deviceType: submitFormDto.deviceType,
-      visibilityValidatorResults: validatorResults,
       fieldLookup,
-      previousAnswerData:
-        Object.keys(previousAnswerData).length > 0
-          ? previousAnswerData
-          : undefined,
-      userHasCity: visibilityContext.userHasCity,
-      userPropertyHasValue: visibilityContext.userPropertyHasValue,
-      firstContractSignedAt:
-        visibilityContext.firstContractSignedAt?.toISOString() ?? null,
-      completedActionCount: visibilityContext.completedActionCount,
     };
 
     const effectiveAnswers = stripHiddenAnswers(

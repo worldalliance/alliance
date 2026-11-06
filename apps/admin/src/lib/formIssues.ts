@@ -6,7 +6,6 @@ import {
 import {
   collectFieldLookup,
   type FormSchema,
-  type Page,
 } from "@alliance/common/forms/form-schema";
 import {
   ValidatedFormula,
@@ -26,6 +25,7 @@ import {
   typedText,
   type ExpressionBuffer,
 } from "../components/form-fields/conditions/expressionBuffers";
+import { placesById } from "./formDependencies";
 import type { VisibilityGroups } from "./visibilityGroups";
 
 export enum IssueTargetKind {
@@ -57,33 +57,6 @@ const ROLE_LABEL: Record<ValidatedFormula, string> = {
   [ValidatedFormula.Visibility]: "Visibility",
   [ValidatedFormula.RequiredIf]: "Required-if",
 };
-
-/** Where each page, element, list sub-field, and accordion part is, by id. */
-function placesById(pages: readonly Page[]): Map<string, FormPlace> {
-  const places = new Map<string, FormPlace>();
-  const add = (id: string | undefined, place: FormPlace) => {
-    if (id && !places.has(id)) places.set(id, place);
-  };
-  for (const { place, question } of conditionHolders(pages)) {
-    const page = pages[place.pageIndex]!;
-    if (place.kind === PlaceKind.Page) {
-      add(page.id, place);
-      continue;
-    }
-    if (place.kind === PlaceKind.SubField) {
-      add(question?.id, place);
-      continue;
-    }
-    const element = page.fields[place.index]!;
-    add(element.id, place);
-    if (element.kind !== "accordion") continue;
-    for (const section of element.sections) {
-      add(section.id, place);
-      for (const block of section.blocks) add(block.id, place);
-    }
-  }
-  return places;
-}
 
 function locate({
   error,

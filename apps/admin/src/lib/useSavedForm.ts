@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useBeforeUnload, useBlocker } from "react-router";
 import { adminRefusalMessage } from "./adminRefusal";
 import { ensurePages } from "./ensureFormSchema";
-import { findQuestion } from "./formDependencies";
+import { placeForSelect } from "./formDependencies";
 import { useSelectOnLoad } from "./formEditorLink";
 
 type FormConflict = {
@@ -45,7 +45,9 @@ export function useSavedForm({
     initialSnapshotId,
   );
   const [conflict, setConflict] = useState<FormConflict | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(
+    () => !displayOnly && Boolean(formId) && !initialSchema,
+  );
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const { error: showErrorToast } = useToast();
@@ -98,11 +100,13 @@ export function useSavedForm({
           const selectOnLoad = selectOnLoadRef.current;
           selectOnLoadRef.current = null;
           if (selectOnLoad !== null) {
-            const place = findQuestion(nextSchema.pages, selectOnLoad);
+            const place = placeForSelect(nextSchema.pages, selectOnLoad);
             if (place) {
               selectPlace(place);
             } else {
-              showErrorToast(`This form has no question "${selectOnLoad}"`);
+              showErrorToast(
+                `This form has no page or element "${selectOnLoad}"`,
+              );
             }
           }
           markSaved(nextSchema, form.formSnapshotId);

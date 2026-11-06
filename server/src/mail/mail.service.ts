@@ -1,6 +1,7 @@
 import { thrownMessage, thrownStack } from "@alliance/common/errorMessage";
 import { nameParts } from "@alliance/common/nameParts";
 import { NodeEnv } from "@alliance/common/node-env";
+import { reminderEmailHtml } from "@alliance/common/reminderKeywords";
 import { R, type Result } from "@alliance/common/result";
 import { TIMED_OUT, withTimeout } from "@alliance/common/timeout";
 import { ISendMailOptions, MailerService } from "@nestjs-modules/mailer";
@@ -445,7 +446,7 @@ export class MailService {
     const { message, ...rest } = params;
     return this.sendCustomHtmlEmail({
       ...rest,
-      html: message.replace(/\n/g, "<br>"),
+      html: reminderEmailHtml(message),
     });
   }
 

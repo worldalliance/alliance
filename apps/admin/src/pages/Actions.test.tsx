@@ -107,3 +107,34 @@ it("offers the create menu when no actions are unarchived", async () => {
   await screen.findByText("No actions found.");
   expect(screen.getByRole("button", { name: "Create" })).toBeTruthy();
 });
+
+it("links an in-progress suite card to its suite and each action to itself, nesting no link", async () => {
+  const suite = {
+    id: 5,
+    name: "Fall push",
+    createdAt: "2026-01-02T00:00:00.000Z",
+    updatedAt: "2026-01-02T00:00:00.000Z",
+    events: [],
+  };
+  served = [
+    adminActionListItem(1, "Call your rep", { suite }),
+    adminActionListItem(3, "Write a letter", { suite }),
+    adminActionListItem(4, "Rally", { suite, status: "member_action" }),
+  ];
+  renderPage();
+  const section = (
+    await screen.findByText("Suites with draft or active actions")
+  ).closest("section");
+  if (!section) throw new Error("no in-progress suites section");
+  const hrefs = [...section.querySelectorAll("a")].map((link) =>
+    link.getAttribute("href"),
+  );
+  expect(hrefs).toEqual([
+    "/suites/5",
+    "/actions/1",
+    "/actions/3",
+    "/actions/4",
+  ]);
+  expect(section.querySelector("a a")).toBeNull();
+  expect(section.textContent).toContain("1 active · 2 draft");
+});

@@ -1,7 +1,9 @@
 import {
-  action,
   ActionListStyle,
   formatActionList,
+} from "@alliance/common/reminderKeywords";
+import {
+  action,
   joinMessage,
   type Labeled,
   member,

@@ -1,0 +1,317 @@
+import { describe, expect, it } from "bun:test";
+import { TextSource } from "./actionTextFindings";
+import {
+  actionChecklistDismissals,
+  checklistDismissKeys,
+  fixedChecklistDismissals,
+  launchBlockers,
+  LaunchSection,
+} from "./launchBlockers";
+import { TextIssueKind } from "./textChecks";
+
+const now = new Date("2026-01-15T18:00:00Z");
+const past = "2026-01-01T00:00:00.000Z";
+const schedule = {
+  memberActionAt: new Date("2026-01-16T03:00:00Z"),
+  officeActionAt: new Date("2026-01-23T07:59:00Z"),
+};
+const action = { id: 1 };
+const finding = {
+  key: "f1",
+  dismissKey: "d1",
+  actionId: 1,
+  source: TextSource.Body,
+  formId: null,
+  formElementId: null,
+  text: "a  b",
+  kind: TextIssueKind.DoubleSpace,
+  start: 1,
+  end: 3,
+};
+
+const ready = {
+  data: {
+    actions: [{ action, unready: [], ownMemberStart: null }],
+    recipientCount: 1,
+    textFindings: [finding],
+    errors: [],
+    loading: false,
+    spellcheckLoading: false,
+  },
+  schedule,
+  reminderWindows: [],
+  suiteEvents: [],
+  checkedActionIds: new Set([1]),
+  dismissedKeys: new Set(["d1"]),
+  violations: [],
+  violationsAcknowledged: false,
+  now,
+};
+
+const messages = (params: Parameters<typeof launchBlockers>[0]) =>
+  launchBlockers(params).map(({ message }) => message);
+
+describe("launchBlockers", () => {
+  it("lets dismissed checklist items through, until another item goes missing", () => {
+    const body = { id: "body", label: "Full body content", isReady: false };
+    const project = {
+      id: "project",
+      label: "Part of a project",
+      isReady: false,
+    };
+    const entry = { action, unready: [body, project], ownMemberStart: null };
+    const dismissed = new Set([
+      ...ready.dismissedKeys,
+      ...checklistDismissKeys(entry),
+    ]);
+    const withUnready = (unready: (typeof entry)["unready"]) => ({
+      ...ready,
+      data: { ...ready.data, actions: [{ ...entry, unready }] },
+      dismissedKeys: dismissed,
+    });
+
+    expect(messages(withUnready([body, project]))).toEqual([]);
+    expect(messages(withUnready([project]))).toEqual([]);
+    expect(
+      messages(
+        withUnready([
+          body,
+          { id: "form", label: "Task form linked", isReady: false },
+        ]),
+      ),
+    ).toEqual(["1 action has unfinished checklist items."]);
+  });
+
+  it("finds dismissals of checklist items fixed since or of actions out of the suite, not of text findings", () => {
+    expect(
+      fixedChecklistDismissals(
+        [
+          {
+            action: { id: 1 },
+            unready: [{ id: "project" }],
+          },
+        ],
+        new Set([
+          "checklist:1:body",
+          "checklist:1:project",
+          "checklist:12:body",
+          "d1",
+        ]),
+      ),
+    ).toEqual(["checklist:1:body", "checklist:12:body"]);
+  });
+
+  it("lists every dismissed checklist key of one action, fixed items included", () => {
+    expect(
+      actionChecklistDismissals(
+        1,
+        new Set([
+          "checklist:1:body",
+          "checklist:1:project",
+          "checklist:12:body",
+          "d1",
+        ]),
+      ),
+    ).toEqual(["checklist:1:body", "checklist:1:project"]);
+  });
+
+  it("refuses an action that already has its own members taking action event", () => {
+    expect(
+      messages({
+        ...ready,
+        data: {
+          ...ready.data,
+          actions: [
+            { action, unready: [], ownMemberStart: "2026-01-10T03:00:00Z" },
+          ],
+        },
+      }),
+    ).toEqual([
+      "1 action already has its own members taking action event. Delete it, or take the action out of the suite, before launching.",
+    ]);
+  });
+
+  it("allows launch once every check passes", () => {
+    expect(messages(ready)).toEqual([]);
+  });
+
+  it("never launches a suite twice", () => {
+    expect(
+      messages({
+        ...ready,
+        suiteEvents: [{ newStatus: "member_action", date: past }],
+      }),
+    ).toEqual(["This suite already has a members taking action event."]);
+  });
+
+  it("refuses a suite that already has its deadline event", () => {
+    expect(
+      messages({
+        ...ready,
+        suiteEvents: [{ newStatus: "office_action", date: past }],
+      }),
+    ).toEqual([
+      "This suite already has an office taking action event. Delete it from the suite's events, then launch.",
+    ]);
+  });
+
+  it("blocks an event between members' start and the office deadline", () => {
+    expect(
+      launchBlockers({
+        ...ready,
+        suiteEvents: [
+          { newStatus: "draft", date: past },
+          { newStatus: "resolution", date: "2026-01-20T00:00:00.000Z" },
+        ],
+      }),
+    ).toEqual([
+      {
+        message:
+          'This suite has a "Resolution" event before the office deadline, which would end members\' time early. Move office taking action before it, or delete it on the suite page.',
+        section: LaunchSection.Schedule,
+      },
+    ]);
+  });
+
+  it("lets through events before members start or after the office deadline", () => {
+    expect(
+      messages({
+        ...ready,
+        suiteEvents: [
+          { newStatus: "draft", date: "2026-01-15T20:00:00.000Z" },
+          { newStatus: "resolution", date: "2026-03-20T00:00:00.000Z" },
+        ],
+      }),
+    ).toEqual([]);
+  });
+
+  it("waits for checks to load", () => {
+    expect(
+      messages({ ...ready, data: { ...ready.data, loading: true } }),
+    ).toEqual(["Checks are loading."]);
+    expect(
+      messages({
+        ...ready,
+        data: { ...ready.data, spellcheckLoading: true },
+      }),
+    ).toEqual(["Checks are loading."]);
+  });
+
+  it("blocks on each unresolved check", () => {
+    expect(
+      messages({
+        ...ready,
+        data: {
+          ...ready.data,
+          actions: [
+            {
+              action,
+              unready: [
+                { id: "body", label: "Full body content", isReady: false },
+              ],
+              ownMemberStart: null,
+            },
+          ],
+          errors: ["Failed to load action A."],
+        },
+        checkedActionIds: new Set(),
+        dismissedKeys: new Set(),
+        violations: ["Over 15 minutes."],
+      }),
+    ).toEqual([
+      "Some checks failed to load.",
+      "1 action has unfinished checklist items.",
+      "1 contract violation to fix or accept.",
+      "1 action isn't marked ready to launch.",
+      "1 text finding to fix or dismiss.",
+    ]);
+  });
+
+  it("dismisses a text finding by its dismissKey, not its key", () => {
+    expect(messages(ready)).toEqual([]);
+    expect(messages({ ...ready, dismissedKeys: new Set(["f1"]) })).toEqual([
+      "1 text finding to fix or dismiss.",
+    ]);
+  });
+
+  it("lets acknowledged contract violations through", () => {
+    expect(
+      messages({
+        ...ready,
+        violations: ["Over 15 minutes."],
+        violationsAcknowledged: true,
+      }),
+    ).toEqual([]);
+  });
+
+  it("blocks reminders that would send before members start", () => {
+    expect(
+      messages({
+        ...ready,
+        reminderWindows: [
+          {
+            name: "Early",
+            start: new Date("2026-01-16T02:00:00Z"),
+            end: new Date("2026-01-17T02:00:00Z"),
+          },
+        ],
+      }),
+    ).toEqual([
+      "1 reminder would send before members start. Move office taking action later.",
+    ]);
+  });
+
+  it("says no member is assigned only when the count is known", () => {
+    const failed = {
+      ...ready.data,
+      errors: ["Failed to load the spelling dictionary."],
+    };
+    expect(
+      messages({ ...ready, data: { ...failed, recipientCount: 0 } }),
+    ).toContain("No member is assigned any action.");
+    expect(
+      messages({ ...ready, data: { ...failed, recipientCount: null } }),
+    ).not.toContain("No member is assigned any action.");
+  });
+
+  it("blocks an unknown member count even when nothing failed to load", () => {
+    expect(
+      launchBlockers({
+        ...ready,
+        data: { ...ready.data, recipientCount: null },
+      }),
+    ).toEqual([
+      {
+        message: "The member count is unknown.",
+        section: LaunchSection.Actions,
+      },
+    ]);
+  });
+
+  it("blocks a schedule in the past or out of order, and an empty audience", () => {
+    expect(
+      messages({
+        ...ready,
+        data: { ...ready.data, recipientCount: 0 },
+        schedule: {
+          memberActionAt: now,
+          officeActionAt: new Date("2026-01-15T17:00:00Z"),
+        },
+      }),
+    ).toEqual([
+      "Members taking action must start in the future.",
+      "Office taking action must come after members start.",
+      "No member is assigned any action.",
+    ]);
+  });
+
+  it("points each blocker at the section that resolves it", () => {
+    expect(
+      launchBlockers({
+        ...ready,
+        checkedActionIds: new Set(),
+        schedule: { ...schedule, memberActionAt: now },
+      }).map(({ section }) => section),
+    ).toEqual([LaunchSection.Schedule, LaunchSection.Actions]);
+  });
+});

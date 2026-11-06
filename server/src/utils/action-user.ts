@@ -453,7 +453,8 @@ export function computeIsAssignedFromCohortSet(params: {
  * for every consumer of the participation roster — notification recipients
  * (`ActionEventRecipientService`) and missed-suite streaks
  * (`ActionSuspensionService`) — so a user the roster/pill counts as away is
- * consistently excluded everywhere.
+ * consistently excluded everywhere. The admin suite launch page mirrors it
+ * to count who a launch notifies (`useSuiteLaunchData`).
  * `user` must have `awayRanges` loaded.
  */
 export function computeIsAssignedAndPresent(
