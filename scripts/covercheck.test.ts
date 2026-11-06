@@ -102,6 +102,17 @@ test("names an untracked file no test loads", () => {
   expect(runCheck().output).toContain("no unit test loads\n  pkg/other.ts");
 });
 
+test.each(["mjs", "cjs", "mts", "cts"])(
+  "runs a package whose only test is .%s",
+  (extension) => {
+    write("untested/math.ts", MATH);
+    write(`untested/math.test.${extension}`, MATH_TEST);
+    const { status, output } = runCheck();
+    expect(status).toBe(0);
+    expect(output).toMatch(/([1-9]\d*) of \1 changed/);
+  },
+);
+
 test("names a changed file in a package without tests", () => {
   write("untested/lib.ts", UNUSED);
   expect(runCheck().output).toContain("no unit test loads\n  untested/lib.ts");

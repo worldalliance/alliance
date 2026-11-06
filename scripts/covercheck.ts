@@ -17,7 +17,7 @@ import {
 } from "./lib/source-files";
 
 // test-all.sh's discovery rule, which is bun's.
-const BUN_TEST_FILE = /[._](test|spec)\.(js|ts|jsx|tsx)$/;
+const BUN_TEST_FILE = /[._](test|spec)\.([cm]?[jt]s|[jt]sx)$/;
 // Also `-test` and `-spec`, so e2e suites aren't reported as untested source.
 const TEST_FILE = /[._-](test|spec)\.(js|ts|jsx|tsx)$/;
 
