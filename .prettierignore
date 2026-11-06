@@ -31,3 +31,6 @@ agents/desktop/test-results
 apps/mobile/google-services-dev.json
 apps/*/public/.well-known
 apps/frontend/src/components/projects/plant-based-study/data.json
+
+# A task's provenance stays as written once it merges, so a Prettier upgrade must not reflow it
+docs/provenance

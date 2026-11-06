@@ -136,7 +136,7 @@ Icon-only controls carry a tooltip or `aria-label`. Destructive or irreversible 
 
 Secrets stay in the environment, out of context. Read `.env*` files through a filter that redacts values; to use a secret, pipe it into the command from a script.
 
-Preserve identifying information deliberately used for authorship, credit, or project responsibility. Redact secrets and incidental personal information as `[redacted]` before writing repo files or capturing artifacts, including provenance, ignored files, and `.scratch/` artifacts. The session transcripts the `agents/chats/` hooks upload to their private bucket stay raw. Use synthetic data for fixtures and examples. Before handing off, check every file you created or changed for secrets and incidental personal information.
+This repository is open source, so anything written in it may become public: redact what shouldn't be public. Information anyone viewing the repository can already see needs none, such as contributors' names and handles on their commits, or identifying information deliberately used for authorship, credit, or project responsibility. Committing secrets or incidental personal information doesn't exempt them: they still get redacted, even in an earlier task's provenance. Redact secrets and incidental personal information as `[redacted]` before writing repo files or capturing artifacts, including provenance, ignored files, and `.scratch/` artifacts. The session transcripts the `agents/chats/` hooks upload to their private bucket stay raw. Use synthetic data for fixtures and examples. Before handing off, check every file you created or changed for secrets and incidental personal information.
 
 ## Working files
 
