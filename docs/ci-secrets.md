@@ -1,6 +1,6 @@
 # CI secrets
 
-No workflow reads an AWS key from GitHub; the old repository secrets stay until ALL-1965 deletes them. A job that needs AWS assumes an IAM role through GitHub's OIDC token and reads the secrets it uses from AWS SSM Parameter Store. Values that aren't secret, such as bucket names and Slack channel ids, are committed in `.github/ci.env`.
+No workflow reads an AWS key from GitHub; the old repository secrets stay until ALL-1965 deletes them. A job that needs AWS assumes an IAM role through GitHub's OIDC token and reads the secrets it uses from AWS SSM Parameter Store. Values that aren't secret, such as bucket names, Slack channel ids and the hosts' instance ids, are committed in `.github/ci.env`.
 
 ## Roles
 
@@ -39,6 +39,14 @@ The job needs `permissions: id-token: write`, and since naming any permission dr
 
 The action masks every value in the logs, failing if a name is missing from Parameter Store, and loads `.github/ci.env` into the job's environment. The role's AWS credentials stay inside the action unless `export-credentials: true`, which jobs calling S3 or Run Command themselves set. `id-token: write` still lets any step in the job assume the role and read everything it is granted, so code the job runs, such as dependencies' install scripts or an agent, can too. A secret such code must not reach gets its own role behind a GitHub environment that only the job holding it names, as `PR_SCREENSHOTS_GH_TOKEN` and Run Command on the hosts do. The visual regression jobs, whose code is third-party or, for an iOS dispatch, from any ref, get a role holding only the visual regression buckets and keys, trusted only for their workflows on `main` and `production`; like any job on a branch that names no environment, they can also assume the review role. The deploy's React build has no role; `upload-react-sourcemaps`, a job of its own, uploads its source maps with the environment's. The mobile builds, the staging store build and `publish-mobile-ota`, run the app's dependencies in jobs holding their environment's role, so that code can read everything the role grants (the Expo token, the PostHog sourcemap key, the Slack tokens and, for staging, the App Store Connect and Play keys) and write the CI storage bucket, visual regression baselines included. It could reach the store keys before too, through `eas submit`, which loads the app's config plugins with those keys in its environment (ALL-2082).
 
+## Deploying to the hosts
+
+`./.github/actions/run-on-host` hands a job's files and script to a host. The job names the `staging-hosts` or `production-hosts` environment, whose role alone may run commands on the host. The action assumes that role for three hours, uploads them to the deploy artifacts bucket (objects expire after a day), then runs SSM Run Command (`AWS-RunShellScript`) on the environment's instance. On the host, the script runs from `~/` as `ec2-user` in a login shell, with the artifacts copied into `~/`. The step prints the script's output once it ends and fails if the script exited nonzero or timed out. A script that reaches its timeout gets SIGTERM and 15 minutes to exit, long enough for `deploy_backend.sh` to restore the backend on its stop-first path, the only one that traps signals (ALL-2052).
+
+Cancelling the GitHub job doesn't stop a script already running on the host; the next run's same job waits for it before copying its files. A waiting command exits without deploying once it gets the lock if the same job sent another command after it, from a newer run or a re-run, so a cancelled older run never lands after a newer one, even when the host's SSM agent was offline and receives both at once. To watch one: **Systems Manager → Run Command → Command history**, or `aws ssm list-commands --instance-id <id>`. `aws ssm cancel-command` marks it Cancelled, but the script runs on in the process group `timeout` gives it, holding the host lock, until it exits or reaches its timeout and recovery window. Its output goes to `/tmp/run-on-host-<job>.*` on the host, where a cancelled command leaves it. To stop it sooner, send SIGTERM to that `timeout` process on the host, which leaves `deploy_backend.sh` the recovery its stop-first path has.
+
+For Run Command, each host's role gets only the SSM agent's actions, read access to its own environment's prefix of the artifacts bucket, and write access there for Run Command's output (`terraform/deploy.tf`). It doesn't use AWS's `AmazonSSMManagedInstanceCore` policy, which would let the staging host read production's parameters.
+
 ## Adding or rotating a secret
 
 Signed in to AWS as an admin, put the parameter as a SecureString, from a file only you can read with no trailing newline (`docs/backend-secrets.md`):
@@ -56,3 +64,4 @@ Staging's app store keys live under `/alliance/staging/ci/`. The next workflow r
 - `Could not assume role` / `Not authorized to perform sts:AssumeRoleWithWebIdentity`: the job's branch, environment or event doesn't match the role's trust policy, or the job lacks `id-token: write`.
 - `not in Parameter Store: …`: the parameter is missing, or misspelled in the workflow.
 - `AccessDeniedException` on `GetParameters`: the role isn't granted that name in `terraform/ci-oidc.tf`.
+- `send-command` fails with `InvalidInstanceId`, or the deploy step ends `TimedOut (DeliveryTimedOut, exit -1)`: the host's SSM agent isn't registered or online. Check **Systems Manager → Fleet Manager**; on the host, `sudo systemctl status amazon-ssm-agent`.
