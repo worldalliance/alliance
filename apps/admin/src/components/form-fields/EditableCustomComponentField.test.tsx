@@ -1,12 +1,8 @@
 import type { CustomComponentField } from "@alliance/common/forms/form-schema";
 import type { ExternalShareTargetDto } from "@alliance/shared/client";
-import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
-import { EditorSidebar } from "../../lib/testing/EditorSidebar";
-import { CustomValidatorDraftsContext } from "./customValidatorDrafts";
+import { screen } from "@testing-library/react";
+import { renderInEditorSidebar } from "../../lib/testing/renderInEditorSidebar";
 import { EditableCustomComponentField } from "./EditableCustomComponentField";
 
 let loadStatus = 200;
@@ -45,24 +41,8 @@ const field: CustomComponentField = {
 };
 
 const renderField = () =>
-  render(
-    <MemoryRouter>
-      <SiteAppProvider>
-        <CustomValidatorDraftsContext.Provider
-          value={{
-            drafts: {},
-            setDraft() {},
-            removeDraft() {},
-            createDraftId: () => -1,
-          }}
-        >
-          <EditorSidebar>
-            <EditableCustomComponentField field={field} onUpdate={() => {}} />
-          </EditorSidebar>
-        </CustomValidatorDraftsContext.Provider>
-      </SiteAppProvider>
-    </MemoryRouter>,
-    queryWrapper(),
+  renderInEditorSidebar(
+    <EditableCustomComponentField field={field} onUpdate={() => {}} />,
   );
 
 it("offers the loaded share targets", async () => {
