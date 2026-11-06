@@ -1,27 +1,11 @@
 import { NotificationDto } from "@alliance/shared/client";
 import { isClearedByContentRead } from "./notificationIdentity";
+import { makeNotification } from "./testFixtures";
 
 const SENT = "2026-09-23T12:00:00.000Z";
 
-const notification = (
-  overrides: Partial<NotificationDto> = {},
-): NotificationDto => ({
-  id: 1,
-  category: "forum_reply",
-  message: "A reply",
-  priority: "low",
-  webAppLocation: "/",
-  mobileAppLocation: null,
-  readAt: null,
-  createdAt: SENT,
-  updatedAt: SENT,
-  sendTime: SENT,
-  associatedUsers: [],
-  sourceType: "unread_content",
-  contentType: "forum_reply",
-  contentId: 10,
-  ...overrides,
-});
+const notification = (overrides: Partial<NotificationDto> = {}) =>
+  makeNotification({ id: 1, contentId: 10, ...overrides });
 
 const clears = (n: NotificationDto) =>
   isClearedByContentRead({
