@@ -9,11 +9,8 @@ export function useActionHandlers(
   isAuthenticated: boolean,
   reloadTasks: () => unknown,
 ) {
-  const {
-    query: { data, dataUpdatedAt, isPending, error, errorUpdatedAt, refetch },
-    markCompleted,
-    markDeclined,
-  } = useAction(actionId, { staleTime: 0 });
+  const { data, dataUpdatedAt, isPending, error, errorUpdatedAt, refetch } =
+    useAction(actionId, { staleTime: 0 });
 
   // A 404 reports absence only when it answers the load this page started on
   // mount or on an id or auth change, before any load since then succeeded. A
@@ -54,23 +51,17 @@ export function useActionHandlers(
   }, [refetch]);
   useOnNextActionEvent(action, refetchOnEventBoundary);
 
-  const onCompleteAction = useCallback(async () => {
-    await markCompleted();
-    reloadTasks();
-  }, [markCompleted, reloadTasks]);
-
-  const onOptOutAction = useCallback(async () => {
-    await markDeclined();
-    reloadTasks();
-  }, [markDeclined, reloadTasks]);
+  // The task form records the relation with the session its submission
+  // started in, before calling these.
+  const onTaskSettled = useCallback(() => void reloadTasks(), [reloadTasks]);
 
   return {
     action,
     loading: isPending,
     notFound,
     refetchAction: refetch,
-    onCompleteAction,
-    onOptOutAction,
+    onCompleteAction: onTaskSettled,
+    onOptOutAction: onTaskSettled,
     onDeadlinePassed: refetchOnEventBoundary,
   };
 }

@@ -4,7 +4,6 @@ import { useCallback } from "react";
 import { actionsFindOne } from "../client";
 import { ActionSource, actionStore, selectAction } from "./actionStore";
 import { queryKeys } from "./queryKeys";
-import { currentSession } from "./sessionStores";
 import { useStoreState } from "./useStoreState";
 
 export function useAction(
@@ -19,9 +18,8 @@ export function useAction(
   const queryClient = useQueryClient();
   const store = actionStore(queryClient);
   const state = useStoreState(actionStore);
-  const session = currentSession(queryClient);
   const select = useCallback((id: number) => selectAction(state, id), [state]);
-  const query = useQuery({
+  return useQuery({
     queryKey: queryKeys.action(actionId),
     queryFn:
       actionId === null
@@ -43,16 +41,4 @@ export function useAction(
     enabled,
     staleTime,
   });
-
-  const markCompleted = useCallback(async () => {
-    if (actionId !== null)
-      store.recordRelation({ actionId, relation: "completed", session });
-  }, [store, actionId, session]);
-
-  const markDeclined = useCallback(async () => {
-    if (actionId !== null)
-      store.recordRelation({ actionId, relation: "declined", session });
-  }, [store, actionId, session]);
-
-  return { query, markCompleted, markDeclined };
 }

@@ -25,7 +25,7 @@ beforeEach(() => {
 it("loads the action", async () => {
   const { wrapper } = queryWrapper();
 
-  const hook = renderHook(() => useAction(3).query, { wrapper });
+  const hook = renderHook(() => useAction(3), { wrapper });
 
   await waitFor(() => expect(hook.result.current.isSuccess).toBe(true));
   expect(hook.result.current.data?.name).toBe("Action 3");
@@ -35,7 +35,7 @@ it("loads the action", async () => {
 it("requests nothing without an action id", async () => {
   const { wrapper } = queryWrapper();
 
-  const hook = renderHook(() => useAction(null).query, { wrapper });
+  const hook = renderHook(() => useAction(null), { wrapper });
 
   await new Promise((resolve) => setTimeout(resolve, 0));
   expect(hook.result.current.fetchStatus).toBe("idle");
@@ -45,7 +45,7 @@ it("requests nothing without an action id", async () => {
 it("waits until enabled, then fetches", async () => {
   const { wrapper } = queryWrapper();
 
-  const hook = renderHook(({ enabled }) => useAction(3, { enabled }).query, {
+  const hook = renderHook(({ enabled }) => useAction(3, { enabled }), {
     wrapper,
     initialProps: { enabled: false },
   });
@@ -60,7 +60,7 @@ it("waits until enabled, then fetches", async () => {
 
 it("reuses a fresh load instead of refetching when re-enabled", async () => {
   const { wrapper } = queryWrapper();
-  const hook = renderHook(({ enabled }) => useAction(3, { enabled }).query, {
+  const hook = renderHook(({ enabled }) => useAction(3, { enabled }), {
     wrapper,
     initialProps: { enabled: true },
   });
@@ -77,7 +77,7 @@ it("surfaces a refused load as an error carrying its status", async () => {
   respond = () => Response.json({ message: "Not Found" }, { status: 404 });
   const { wrapper } = queryWrapper();
 
-  const hook = renderHook(() => useAction(3).query, { wrapper });
+  const hook = renderHook(() => useAction(3), { wrapper });
 
   await waitFor(() => expect(hook.result.current.isError).toBe(true));
   expect(hook.result.current.error).toMatchObject({ statusCode: 404 });

@@ -1,4 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { useActionHandlers } from "./actionPage";
 import { useDismissActionMutation } from "./actionsListPage";
 import { actionStore } from "./actionStore";
 import { queryKeys } from "./queryKeys";
@@ -93,3 +94,39 @@ it.each(mutations)(
     );
   },
 );
+
+it("ignores the action page's completion callback after a sign-in change", async () => {
+  api.alsoServing({
+    "POST /tasks/submitForm/:id": () => Response.json(makeFormResponse()),
+    "GET /actions/slug/1": () => Response.json(makeAction({ id: 1 })),
+  });
+  const { client, wrapper } = queryWrapper();
+  const hook = renderHook(
+    () => ({
+      submission: useTaskFormSubmission(),
+      page: useActionHandlers(1, true, () => {}),
+    }),
+    { wrapper },
+  );
+  await waitFor(() => expect(hook.result.current.page.action).not.toBeNull());
+  await act(() =>
+    hook.result.current.submission.submit({
+      taskFormId: 7,
+      body: { actionId: 1, answers: {}, deviceType: "mobile" },
+      isMember: true,
+      deferCompletion: true,
+    }),
+  );
+
+  act(() => meCache(client).clear());
+  await waitFor(() => expect(actionStore(client).get(1)).toBeDefined());
+  act(() => {
+    hook.result.current.submission.recordCompleted({
+      actionId: 1,
+      isMember: true,
+    });
+    hook.result.current.page.onCompleteAction();
+  });
+
+  expect(actionStore(client).get(1)?.viewer?.relation).toBe("none");
+});
