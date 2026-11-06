@@ -8,7 +8,7 @@
 # .github/workflows/ci.yaml and deploy.yaml, so a new directory with tests goes
 # in all three. The typecheck matrices in those two files list every package
 # here except scripts, .github and agents, which have no tsconfig, and can list
-# packages that are absent here; citesting is typechecked but has no tests.
+# packages that are absent here.
 #
 # agents/desktop installs from its own lockfile, which those matrices never
 # install, so desktop.yaml runs its tests. They are *.e2e.ts, which bun test
@@ -19,7 +19,7 @@
 #   scripts/test-all.sh apps/admin   # only the named packages
 set -u
 
-PACKAGES=(server common shared sharedweb apps/frontend apps/admin apps/mobile scripts .github agents)
+PACKAGES=(server common shared sharedweb apps/frontend apps/admin apps/mobile scripts .github citesting agents)
 
 script_dir="$(cd "$(dirname "$0")" && pwd)" || exit 1
 cd "$script_dir/.." || exit 1
