@@ -1,4 +1,4 @@
-import { waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { getNotificationIdentityKey } from "./notificationIdentity";
 import { notificationStore } from "./notificationStore";
 import { queryKeys } from "./queryKeys";
@@ -11,7 +11,11 @@ import {
 import { held } from "./testing/pending";
 import { queryWrapper } from "./testing/queryWrapper";
 import { seedNotifications } from "./testing/seedNotifications";
-import { notificationsCache } from "./useNotificationsCache";
+import { unreadCountIdle } from "./testing/unreadCountIdle";
+import {
+  notificationsCache,
+  useUnreadNotificationCount,
+} from "./useNotificationsCache";
 
 const api = serveNotifications();
 
@@ -215,4 +219,69 @@ it("replaces a count load in flight with a refetch when mark-all-read fails", as
   expect(
     client.getQueryState(queryKeys.notificationsUnreadCount())?.isInvalidated,
   ).toBe(true);
+});
+
+it("keeps a pending read's count-down when mark-all-read fails", async () => {
+  const { client, wrapper } = queryWrapper();
+  seedNotifications({
+    client,
+    notifications: [makeNotification({ id: 1 }), makeNotification({ id: 2 })],
+  });
+  client.setQueryData(queryKeys.notificationsUnreadCount(), 2);
+  let serverCount = 3;
+  const read = held();
+  api.readResponse = () =>
+    read.until(null).then(() => {
+      serverCount--;
+      return accepted();
+    });
+  api.readAllResponse = () => new Response(null, { status: 500 });
+  api.counted = () => Response.json({ unreadCount: serverCount });
+  const count = renderHook(() => useUnreadNotificationCount(), { wrapper });
+  const cache = notificationsCache(client);
+
+  const marked = cache.markRead([makeNotification({ id: 1 })]);
+  await act(() => cache.markAllRead());
+  await unreadCountIdle(client);
+
+  expect(count.result.current).toBe(1);
+  read.release();
+  await act(() => marked);
+  await waitFor(() => expect(count.result.current).toBe(2));
+});
+
+it("keeps a pending read's count-down past the cutoff when mark-all-read succeeds", async () => {
+  const { client, wrapper } = queryWrapper();
+  seedNotifications({
+    client,
+    notifications: [
+      makeNotification({ id: 1 }),
+      makeNotification({ id: 2, sendTime: AFTER_LOAD, createdAt: AFTER_LOAD }),
+    ],
+    loadedAt: LOADED_AT,
+  });
+  client.setQueryData(queryKeys.notificationsUnreadCount(), 2);
+  let serverCount = 3;
+  const read = held();
+  api.readResponse = () =>
+    read.until(null).then(() => {
+      serverCount--;
+      return accepted();
+    });
+  api.readAllResponse = () => {
+    serverCount--;
+    return accepted();
+  };
+  api.counted = () => Response.json({ unreadCount: serverCount });
+  const count = renderHook(() => useUnreadNotificationCount(), { wrapper });
+  const cache = notificationsCache(client);
+
+  const marked = cache.markRead([makeNotification({ id: 2 })]);
+  await act(() => cache.markAllRead());
+  await unreadCountIdle(client);
+
+  expect(count.result.current).toBe(0);
+  read.release();
+  await act(() => marked);
+  await waitFor(() => expect(count.result.current).toBe(1));
 });

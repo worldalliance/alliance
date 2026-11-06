@@ -1,0 +1,6 @@
+# Decisions
+
+- The refused-read and read-all refetches share one helper (`refreshAfter` in `shared/lib/useNotificationsCache.ts`): lists always, count only when the write's `trackCountDown` check passes. `markRead`'s success path keeps its own sequence because it refetches lists only for unlisted reads. Agent decision.
+- A refused read whose loaded records were all already read skips the count refetch, since it never counted the count down. Agent decision.
+- Beyond the issue's failed-read-all test, the refused-read and successful-read-all paths each got a test, so every path the fix changes has one; each fails without the `trackCountDown` check. The content-read test fails with a plain `invalidateQueries` call in place of `refreshIn`. Agent decision.
+- A content read skips its count refetch while a read or read-all that lowered the count is pending (`countDownPending` on the notification store), since a refetch then reads a server count that does not yet reflect that write, undoing its decrement (or, through cancelling a first count load in flight, dropping its replayed decrement), and the pending write refetches the count when it settles. Agent decision, from review of ALL-1943's fix.
