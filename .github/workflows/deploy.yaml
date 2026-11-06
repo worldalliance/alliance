@@ -100,13 +100,16 @@ jobs:
           VITE_APP_GIT_SHA: ${{ github.sha }}
           VITE_APP_VERSION: ${{ github.ref_name }}
 
+      - name: Install PostHog CLI
+        continue-on-error: true
+        uses: ./.github/actions/posthog-cli
+
       - name: Inject & upload source maps to PostHog
         continue-on-error: true
-        uses: PostHog/upload-source-maps@v0.4.6
-        with:
-          directory: ./apps/frontend/build/client/assets/
-          env-id: ${{ steps.config.outputs.POSTHOG_PROJECT_ID }}
-          cli-token: ${{ secrets.POSTHOG_SOURCEMAP_KEY }}
+        env:
+          POSTHOG_CLI_ENV_ID: ${{ steps.config.outputs.POSTHOG_PROJECT_ID }}
+          POSTHOG_CLI_TOKEN: ${{ secrets.POSTHOG_SOURCEMAP_KEY }}
+        run: posthog-cli sourcemap process --directory ./apps/frontend/build/client/assets/
 
       - name: create output folder
         run: |
