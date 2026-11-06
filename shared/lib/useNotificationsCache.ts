@@ -54,9 +54,9 @@ const isThroughCutoff =
 
 export function notificationsCache(queryClient: QueryClient) {
   const store = notificationStore(queryClient);
-  // A count load in flight may hold a stale decrement, and invalidation alone
-  // neither replaces it for a count with no data nor stops it landing on an
-  // inactive one, so it is cancelled first.
+  // A count load in flight may predate a write to the server's count or hold a
+  // stale decrement, and invalidation alone neither replaces it for a count with
+  // no data nor stops it landing on an inactive one, so it is cancelled first.
   const refreshIn = async (session: number, queryKey: QueryKey = ROOT_KEY) => {
     if (session !== currentSession(queryClient)) return;
     if (partialMatchKey(UNREAD_COUNT_KEY, queryKey))
@@ -183,10 +183,10 @@ export function notificationsCache(queryClient: QueryClient) {
           new Date().toISOString(),
         ),
       });
-      void queryClient.invalidateQueries({
-        queryKey: UNREAD_COUNT_KEY,
-        exact: true,
-      });
+      // A pending count-down refetches the count once it settles; refetching
+      // now would undo it.
+      if (!store.countDownPending())
+        void refreshIn(currentSession(queryClient), UNREAD_COUNT_KEY);
     },
 
     /** Bounded by the load time of the list with this limit. */

@@ -149,6 +149,7 @@ function createNotificationStore(queryClient: QueryClient) {
       void confirmation.then(settle, settle);
       return () => pending.size === 0;
     },
+    countDownPending: () => countDowns.size > 0,
     writeUnreadCount: (params: {
       session: number;
       update: (count: number) => number;

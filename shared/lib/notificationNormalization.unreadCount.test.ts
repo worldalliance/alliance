@@ -6,6 +6,7 @@ import { accepted, serveNotifications } from "./testing/notificationApi";
 import { held } from "./testing/pending";
 import { queryWrapper } from "./testing/queryWrapper";
 import { seedNotifications } from "./testing/seedNotifications";
+import { unreadCountIdle } from "./testing/unreadCountIdle";
 import {
   notificationsCache,
   useUnreadNotificationCount,
@@ -48,11 +49,7 @@ it("takes the server's count after a read it may have counted down twice", async
   api.readResponse = () => confirmation.until(accepted());
   api.counted = () => Response.json({ unreadCount: 2 });
   const count = renderHook(() => useUnreadNotificationCount(), { wrapper });
-  await waitFor(() =>
-    expect(
-      client.getQueryState(queryKeys.notificationsUnreadCount())?.fetchStatus,
-    ).toBe("idle"),
-  );
+  await unreadCountIdle(client);
 
   const response = held();
   api.counted = () => response.until(Response.json({ unreadCount: 1 }));
@@ -185,11 +182,7 @@ it("keeps the count of a read still pending when another read settles", async ()
   const second = cache.markRead([makeNotification({ id: 2 })]);
   reads[0]!.release();
   await act(() => first);
-  await waitFor(() =>
-    expect(
-      client.getQueryState(queryKeys.notificationsUnreadCount())?.fetchStatus,
-    ).toBe("idle"),
-  );
+  await unreadCountIdle(client);
 
   expect(count.result.current).toBe(0);
   reads[1]!.release();
@@ -225,11 +218,7 @@ it("keeps mark-all-read's count when a read settles while it is pending", async 
   await waitFor(() => expect(count.result.current).toBe(0));
   read.release();
   await act(() => marked);
-  await waitFor(() =>
-    expect(
-      client.getQueryState(queryKeys.notificationsUnreadCount())?.fetchStatus,
-    ).toBe("idle"),
-  );
+  await unreadCountIdle(client);
 
   expect(count.result.current).toBe(0);
   readAll.release();
@@ -266,11 +255,7 @@ it("keeps a pending read's count-down when a read of an unloaded notification se
   reads[0]!.release();
   reads[1]!.release();
   await act(() => mixed);
-  await waitFor(() =>
-    expect(
-      client.getQueryState(queryKeys.notificationsUnreadCount())?.fetchStatus,
-    ).toBe("idle"),
-  );
+  await unreadCountIdle(client);
 
   expect(count.result.current).toBe(0);
   reads[2]!.release();
@@ -320,11 +305,7 @@ it("keeps a pending read's count-down when a read of only unloaded notifications
 
   const pending = cache.markRead([makeNotification({ id: 1 })]);
   await act(() => cache.markRead([makeNotification({ id: 3 })]));
-  await waitFor(() =>
-    expect(
-      client.getQueryState(queryKeys.notificationsUnreadCount())?.fetchStatus,
-    ).toBe("idle"),
-  );
+  await unreadCountIdle(client);
 
   expect(count.result.current).toBe(1);
   pendingRead.release();
@@ -355,4 +336,53 @@ it("keeps a first count load in flight when a read of unloaded notifications ref
   await waitFor(() => expect(count.result.current).toBe(2));
   pendingRead.release();
   await act(() => pending);
+});
+
+it("takes the server's count after a content read during the first count load", async () => {
+  const { client, wrapper } = queryWrapper();
+  const response = held();
+  api.counted = () => response.until(Response.json({ unreadCount: 2 }));
+  const count = renderHook(() => useUnreadNotificationCount(), { wrapper });
+  await waitFor(() =>
+    expect(
+      client.getQueryState(queryKeys.notificationsUnreadCount())?.fetchStatus,
+    ).toBe("fetching"),
+  );
+
+  act(() =>
+    notificationsCache(client).markCachedReadByContent("forum_reply", [10]),
+  );
+  api.counted = () => Response.json({ unreadCount: 1 });
+  response.release();
+
+  await waitFor(() => expect(count.result.current).toBe(1));
+});
+
+it("keeps a pending read's count-down when a content read follows it", async () => {
+  const { client, wrapper } = queryWrapper();
+  seedNotifications({
+    client,
+    notifications: [makeNotification({ id: 1 }), makeNotification({ id: 2 })],
+  });
+  let serverCount = 3;
+  const read = held();
+  api.readResponse = () =>
+    read.until(null).then(() => {
+      serverCount--;
+      return accepted();
+    });
+  api.counted = () => Response.json({ unreadCount: serverCount });
+  const count = renderHook(() => useUnreadNotificationCount(), { wrapper });
+  await unreadCountIdle(client);
+  const cache = notificationsCache(client);
+
+  const pending = cache.markRead([makeNotification({ id: 1 })]);
+  act(() => cache.markCachedReadByContent("forum_reply", [99]));
+  await unreadCountIdle(client);
+
+  expect(count.result.current).toBe(2);
+  read.release();
+  await act(() => pending);
+  await unreadCountIdle(client);
+  expect(count.result.current).toBe(2);
 });
