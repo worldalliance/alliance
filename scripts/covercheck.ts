@@ -15,24 +15,13 @@ import {
   scannedFiles,
   type SourceConfig,
 } from "./lib/source-files";
+import { BUN_TEST_FILE, testPackages } from "./lib/test-packages";
 
-// test-all.sh's discovery rule, which is bun's.
-const BUN_TEST_FILE = /[._](test|spec)\.([cm]?[jt]s|[jt]sx)$/;
 // Also `-test` and `-spec`, so e2e suites aren't reported as untested source.
 const TEST_FILE = /[._-](test|spec)\.([cm]?[jt]s|[jt]sx)$/;
 
 // Mostly loaded by other packages' tests, so a change here runs them all.
 const SHARED_PACKAGES = new Set(["common", "shared", "sharedweb"]);
-
-function testPackages(repoRoot: string): string[] {
-  const testAll = fs.readFileSync(
-    path.join(repoRoot, "scripts/test-all.sh"),
-    "utf8",
-  );
-  const list = /^PACKAGES=\((.*)\)$/m.exec(testAll);
-  if (!list) throw new Error("no PACKAGES=(...) line in scripts/test-all.sh");
-  return list[1].split(/\s+/);
-}
 
 function changedLines({
   repoRoot,

@@ -6,8 +6,9 @@
 # CI runs each package back through this script, so the skip rule below is the
 # same one locally and in CI. PACKAGES mirrors the test-unit matrices in
 # .github/workflows/ci.yaml and deploy.yaml, so a new directory with tests goes
-# in all three. The typecheck matrices in those two files list every package
-# here except scripts, .github and agents, which have no tsconfig, and can list
+# in all three; scripts/test-all.test.ts fails on a test file outside
+# PACKAGES. The typecheck matrices in those two files list every package here
+# except scripts, .github and agents, which have no tsconfig, and can list
 # packages that are absent here.
 #
 # agents/desktop installs from its own lockfile, which those matrices never
