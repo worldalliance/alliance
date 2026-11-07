@@ -33,8 +33,6 @@ Run the checks under **Checks** that the change touches and the behavioral check
 
 Finish when the requirements and applicable criteria are satisfied and checks pass, or identify the exact blocker and unfinished work. Once checks pass and the task's work is done, continue with `(root)/agents/skills/review-loop/SKILL.md`, whose opening says when to skip it. In the handoff, name the implementation reused or consolidated, commands and results, and remaining uncertainty. Link code and evidence rather than asserting compliance. The user's independent review remains a separate handoff.
 
-Label every recommendation, number and claim shown to the owner in chat as researched (name the research page or source and what it actually checked) or agent judgement. A recommendation on a research page can still be agent judgement; say which.
-
 ## Checks
 
 Run the checks below that the change touches, in as few shell calls as possible, with full output to a log under `.scratch/` and only each check's pass/fail line and the tail of a failure read back. `dupcheck` and `covercheck` exit 0 with findings, so read their output whole.
