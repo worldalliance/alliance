@@ -110,7 +110,7 @@ jobs:
       - name: Review changes
         id: review
         env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets).CLAUDE_CODE_OAUTH_TOKEN }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets || '{}').CLAUDE_CODE_OAUTH_TOKEN }}
           BASH_DEFAULT_TIMEOUT_MS: "600000"
         run: |
           set -euo pipefail
@@ -138,7 +138,7 @@ jobs:
         id: redact
         if: always() && steps.review.outcome != 'skipped'
         env:
-          TOKEN: ${{ steps.aws.outputs.secrets && fromJSON(steps.aws.outputs.secrets).CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          TOKEN: ${{ fromJSON(steps.aws.outputs.secrets || '{}').CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
           if [ -n "$TOKEN" ] && [ -d "$OUTPUT_DIR" ]; then
             find "$OUTPUT_DIR" -type f -exec perl -pi -e 's/\Q$ENV{TOKEN}\E/[redacted]/g' {} +

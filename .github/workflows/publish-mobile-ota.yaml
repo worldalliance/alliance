@@ -103,4 +103,4 @@ jobs:
           # variant. It must resolve the same app config as the store build, or
           # the fingerprint runtimeVersion won't match any installed build and
           # the OTA never applies.
-          EXPO_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets).EXPO_ACCESS_TOKEN }}
+          EXPO_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets || '{}').EXPO_ACCESS_TOKEN }}

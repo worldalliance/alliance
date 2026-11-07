@@ -34,7 +34,7 @@ outputs:
   secrets:
     description: >-
       JSON object of the parameters' values keyed by each name's last segment,
-      e.g. fromJSON(steps.aws.outputs.secrets).OPENAI_API_KEY. Every value is
+      e.g. fromJSON(steps.aws.outputs.secrets || '{}').OPENAI_API_KEY. Every value is
       masked in logs.
     value: ${{ steps.read.outputs.secrets }}
 
