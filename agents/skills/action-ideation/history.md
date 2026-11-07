@@ -1,0 +1,11 @@
+# History inputs
+
+Prefer an existing sanitized history export with a known date. Include earlier ad hoc idea-generation outputs as labeled prior proposals in this file; `--previous` accepts only completed runs in this skill’s format. Otherwise use authorized read-only database access; [../local-db/SKILL.md](../local-db/SKILL.md) covers the local database. Loading staging into a local database overwrites it and is unnecessary for this workflow. Use the current connection tooling with credentials kept in the environment.
+
+[history.sql](history.sql) selects action content and aggregate statistics in a read-only transaction. Through the authorized connection, use `psql -X -q -A -t -v ON_ERROR_STOP=1 -f agents/skills/action-ideation/history.sql` so a query failure cannot look like a successful export. It does not select members, submissions, contact lists or credentials. Review and redact incidental personal information before saving history under `.scratch/`, including ignored artifacts. Do not commit operational exports. Record the source environment and export date in the sanitized history file.
+
+Retain action IDs, descriptions, task-form IDs, prerequisites, lifecycle information, optional/onboarding/archive flags and the statistics' calculation dates. Group related action steps into campaign families for comparison without deleting source IDs. A short description can omit priority restrictions: inspect the associated form and variants before labeling a historical action out of scope, and append a sanitized summary of the relevant instructions to the history file.
+
+For completion analysis, inspect the current `server/src/analytics/action-stats-analytics.service.ts` and the specific admin chart being compared. Record the numerator, denominator and its meaning, calculation timestamp, action window and exclusion criteria. An old snapshot may use different semantics. Counts from different campaign stages or cohorts are not independent evidence; completion does not establish enjoyment, ease or impact. If denominator semantics are unknown, show counts without a rate.
+
+With no history access, explicitly label the input as unavailable and limit novelty claims to supplied prior ideas.
