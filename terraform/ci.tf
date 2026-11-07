@@ -6,8 +6,6 @@ resource "aws_s3_bucket_public_access_block" "ci_storage" {
   restrict_public_buckets = true
 }
 
-# Grant the dev IAM user read/write access to the CI storage bucket
-# so the GitHub Actions workflow can sync screenshots.
 data "aws_iam_policy_document" "ci_storage_policy" {
   statement {
     sid    = "AllowCIStorageAccess"

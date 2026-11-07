@@ -190,8 +190,8 @@ recover_by_record () {
   esac
 }
 
-# A cancelled job or a closed SSH session would otherwise leave the backend
-# stopped with nothing in the log saying so.
+# A signal ending the run would otherwise leave the backend stopped with
+# nothing in the log saying so.
 trap 'recover_by_record "The deploy was interrupted"' HUP INT TERM PIPE
 
 echo "This release removes streak recognition; stopping the backend before migrating"

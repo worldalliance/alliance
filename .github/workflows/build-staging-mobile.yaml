@@ -184,6 +184,7 @@ jobs:
     environment: staging
     permissions:
       contents: read
+      id-token: write
     env:
       EAS_CLI: eas-cli@18.5.0
     concurrency:
@@ -235,10 +236,31 @@ jobs:
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
+      # The workspace holds the built commit, which may predate the action.
+      - name: Checkout CI tools
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .scratch/ci-tools
+          sparse-checkout: .github
+          persist-credentials: false
+
+      - name: Read CI secrets
+        id: aws
+        uses: ./.scratch/ci-tools/.github/actions/aws
+        with:
+          role: staging
+          parameters: |
+            ci/deploy/EXPO_ACCESS_TOKEN
+            staging/ci/ASC_API_KEY_ID
+            staging/ci/ASC_API_ISSUER_ID
+            staging/ci/ASC_API_KEY_P8_BASE64
+            staging/ci/PLAY_SERVICE_ACCOUNT_JSON
+
       - name: Build
         working-directory: apps/mobile
         env:
-          EXPO_TOKEN: ${{ secrets.EXPO_ACCESS_TOKEN }}
+          EXPO_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets).EXPO_ACCESS_TOKEN }}
           PLATFORM: ${{ matrix.platform }}
           OUTPUT: ${{ runner.temp }}/staging.${{ matrix.artifact }}
         run: |
@@ -263,14 +285,14 @@ jobs:
       - name: Submit
         working-directory: apps/mobile
         env:
-          EXPO_TOKEN: ${{ secrets.EXPO_ACCESS_TOKEN }}
+          EXPO_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets).EXPO_ACCESS_TOKEN }}
           PLATFORM: ${{ matrix.platform }}
           OUTPUT: ${{ runner.temp }}/staging.${{ matrix.artifact }}
-          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
-          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
-          ASC_API_KEY_P8_BASE64: ${{ secrets.ASC_API_KEY_P8_BASE64 }}
+          ASC_API_KEY_ID: ${{ fromJSON(steps.aws.outputs.secrets).ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ fromJSON(steps.aws.outputs.secrets).ASC_API_ISSUER_ID }}
+          ASC_API_KEY_P8_BASE64: ${{ fromJSON(steps.aws.outputs.secrets).ASC_API_KEY_P8_BASE64 }}
           ASC_API_KEY_PATH: ${{ runner.temp }}/asc-api-key.p8
-          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ fromJSON(steps.aws.outputs.secrets).PLAY_SERVICE_ACCOUNT_JSON }}
           PLAY_SERVICE_ACCOUNT_KEY_PATH: ${{ runner.temp }}/play-service-account.json
         run: |
           set -euo pipefail
@@ -352,9 +374,17 @@ jobs:
       contents: read
       actions: read
       checks: read
+      id-token: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Read Slack webhook
+        id: aws
+        uses: ./.github/actions/aws
+        with:
+          role: review
+          parameters: ci/shared/SLACK_WEBHOOK_URL_DEPLOYMENT
 
       - name: Compute Slack mention
         id: slack_mention
@@ -365,7 +395,7 @@ jobs:
       - name: Post webhook if a job failed
         env:
           GH_TOKEN: ${{ github.token }}
-          WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL_DEPLOYMENT }}
+          WEBHOOK: ${{ fromJSON(steps.aws.outputs.secrets).SLACK_WEBHOOK_URL_DEPLOYMENT }}
           MENTION: ${{ steps.slack_mention.outputs.mention }}
           COMMIT_MESSAGE: ${{ github.event.workflow_run.head_commit.message || 'a manual run' }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

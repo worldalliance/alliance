@@ -26,8 +26,6 @@ on:
 
 env:
   AWS_REGION: us-west-2
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   SHA: ${{ inputs.sha }}
   ENV_NAME: ${{ inputs.environment }}
   SUITE: ${{ inputs.suite }}
@@ -36,9 +34,22 @@ jobs:
   approve-baseline:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Read CI secrets
+        id: aws
+        uses: ./.github/actions/aws
+        with:
+          role: ${{ inputs.environment }}
+          export-credentials: true
+          parameters: |
+            ci/visual-regression/SLACK_BOT_TOKEN
+            ci/shared/SLACK_WEBHOOK_URL_DEPLOYMENT
 
       - name: Validate SHA screenshots exist
         run: |
@@ -55,7 +66,7 @@ jobs:
             PREFIX="visual-regression/${ENV_NAME}"
           fi
 
-          COUNT=$(aws s3 ls "s3://${{ secrets.VISUAL_REGRESSION_BUCKET }}/${PREFIX}/${SHA}/" | wc -l)
+          COUNT=$(aws s3 ls "s3://$VISUAL_REGRESSION_BUCKET/${PREFIX}/${SHA}/" | wc -l)
           if [ "$COUNT" -eq 0 ]; then
             echo "No screenshots found for SHA ${SHA} in ${ENV_NAME} (${SUITE})"
             exit 1
@@ -72,19 +83,21 @@ jobs:
 
           mkdir -p /tmp/vr-baseline /tmp/vr-current
           aws s3 sync \
-            "s3://${{ secrets.VISUAL_REGRESSION_BUCKET }}/${PREFIX}/latest/" \
+            "s3://$VISUAL_REGRESSION_BUCKET/${PREFIX}/latest/" \
             /tmp/vr-baseline/ \
             || echo "No existing baseline found"
           aws s3 sync \
-            "s3://${{ secrets.VISUAL_REGRESSION_BUCKET }}/${PREFIX}/${SHA}/" \
+            "s3://$VISUAL_REGRESSION_BUCKET/${PREFIX}/${SHA}/" \
             /tmp/vr-current/
 
       - name: Notify visual regression channel
+        env:
+          SLACK_BOT_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets).SLACK_BOT_TOKEN }}
         run: |
           BASELINE_DIR="/tmp/vr-baseline"
           CURRENT_DIR="/tmp/vr-current"
-          TOKEN="${{ secrets.SLACK_BOT_TOKEN }}"
-          CHANNEL="${{ secrets.SLACK_VISUAL_REGRESSION_CHANNEL_ID }}"
+          TOKEN="$SLACK_BOT_TOKEN"
+          CHANNEL="$SLACK_VISUAL_REGRESSION_CHANNEL_ID"
 
           # Find pages with changed screenshots by comparing checksums
           CHANGED_PAGES=()
@@ -186,14 +199,14 @@ jobs:
           fi
 
           aws s3 sync \
-            "s3://${{ secrets.VISUAL_REGRESSION_BUCKET }}/${PREFIX}/${SHA}/" \
-            "s3://${{ secrets.VISUAL_REGRESSION_BUCKET }}/${PREFIX}/latest/" \
+            "s3://$VISUAL_REGRESSION_BUCKET/${PREFIX}/${SHA}/" \
+            "s3://$VISUAL_REGRESSION_BUCKET/${PREFIX}/latest/" \
             --delete
           echo "${ENV_NAME} (${SUITE}) baseline updated to SHA ${SHA}"
 
       - name: Notify deployment channel
         env:
-          WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL_DEPLOYMENT }}
+          WEBHOOK: ${{ fromJSON(steps.aws.outputs.secrets).SLACK_WEBHOOK_URL_DEPLOYMENT }}
         run: |
           . .github/scripts/slack.sh
           slack_post "$WEBHOOK" \

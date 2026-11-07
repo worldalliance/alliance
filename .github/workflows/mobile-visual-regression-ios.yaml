@@ -19,8 +19,6 @@ on:
 
 env:
   AWS_REGION: us-west-2
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   env_name: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'production' }}
   visual_regression_ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || 'production' }}
 
@@ -30,13 +28,24 @@ concurrency:
 jobs:
   mobile-visual-regression-ios:
     runs-on: macos-26
-    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'production' }}
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
+      - name: Require a dispatch from main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Dispatch from main, which the visual regression role trusts; the ref input picks what to test."
+          exit 1
+
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
           ref: ${{ env.visual_regression_ref }}
+
+      - name: Record the Tested Commit
+        run: echo "TESTED_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
       - name: Capture Xcode Version
         id: xcode-version
@@ -104,6 +113,28 @@ jobs:
             mobile-ios-derived-data-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode-version.outputs.version }}-${{ hashFiles('bun.lock', 'apps/mobile/package.json', 'apps/mobile/app.json') }}-
             mobile-ios-derived-data-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode-version.outputs.version }}-
 
+      # The workspace holds the tested ref, which may predate the action.
+      - name: Checkout CI tools
+        uses: actions/checkout@v4
+        with:
+          path: .scratch/ci-tools
+          sparse-checkout: .github
+          persist-credentials: false
+
+      # Taking screenshots builds the app first, so the uploads after it can
+      # come more than an hour after this.
+      - name: Read CI secrets
+        id: aws
+        uses: ./.scratch/ci-tools/.github/actions/aws
+        with:
+          role: visual-regression
+          export-credentials: true
+          role-duration-seconds: 10800
+          parameters: |
+            ci/visual-regression/GEMINI_API_KEY
+            ci/visual-regression/ANTHROPIC_API_KEY
+            ci/visual-regression/SLACK_BOT_TOKEN
+
       - name: Take iOS Screenshots
         run: bun run --cwd citesting take:mobile:ios
         env:
@@ -112,7 +143,7 @@ jobs:
           DB_USERNAME: postgres
           DB_PASSWORD: postgres
           CITESTING_DB_NAME: citesting
-          ASSETS_BUCKET: ${{ secrets.CI_ASSETS_BUCKET }}
+          ASSETS_BUCKET: ${{ env.CI_ASSETS_BUCKET }}
           SCREENSHOT_OUTPUT_DIR: ${{ github.workspace }}/screenshots-mobile/current
 
       - name: Save CocoaPods Cache
@@ -136,13 +167,13 @@ jobs:
         run: |
           aws s3 sync \
             ${{ github.workspace }}/screenshots-mobile/current/ \
-            s3://${{ secrets.VISUAL_REGRESSION_BUCKET }}/visual-regression/mobile/ios/${{ env.env_name }}/${{ github.sha }}/
+            "s3://$VISUAL_REGRESSION_BUCKET/visual-regression/mobile/ios/${{ env.env_name }}/$TESTED_SHA/"
 
       - name: Download iOS Baseline from S3
         run: |
           mkdir -p ${{ github.workspace }}/screenshots-mobile/baseline
           aws s3 sync \
-            s3://${{ secrets.VISUAL_REGRESSION_BUCKET }}/visual-regression/mobile/ios/${{ env.env_name }}/latest/ \
+            "s3://$VISUAL_REGRESSION_BUCKET/visual-regression/mobile/ios/${{ env.env_name }}/latest/" \
             ${{ github.workspace }}/screenshots-mobile/baseline/ \
             || echo "No baseline found — first run"
 
@@ -172,20 +203,22 @@ jobs:
             echo "No baseline — skipping AI review"
           fi
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ fromJSON(steps.aws.outputs.secrets).GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ fromJSON(steps.aws.outputs.secrets).ANTHROPIC_API_KEY }}
           AI_REVIEW_OUTPUT: ${{ github.workspace }}/screenshots-mobile/ai-review-results.json
 
       - name: Notify Slack on iOS Visual Regression
         if: steps.mobile-ai-review.outcome == 'failure'
+        env:
+          SLACK_BOT_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets).SLACK_BOT_TOKEN }}
         run: |
           RESULTS="${{ github.workspace }}/screenshots-mobile/ai-review-results.json"
-          SHA="${{ github.sha }}"
+          SHA="$TESTED_SHA"
           ENV_NAME="${{ env.env_name }}"
           BASELINE_DIR="${{ github.workspace }}/screenshots-mobile/baseline"
           CURRENT_DIR="${{ github.workspace }}/screenshots-mobile/current"
-          TOKEN="${{ secrets.SLACK_BOT_TOKEN }}"
-          CHANNEL="${{ secrets.SLACK_DEPLOY_CHANNEL_ID }}"
+          TOKEN="$SLACK_BOT_TOKEN"
+          CHANNEL="$SLACK_DEPLOY_CHANNEL_ID"
 
           upload_to_slack() {
             local filepath="$1"
@@ -264,6 +297,8 @@ jobs:
 
       - name: Notify Slack on AI-Approved iOS Changes
         if: steps.mobile-ai-review.outcome != 'failure'
+        env:
+          SLACK_BOT_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets).SLACK_BOT_TOKEN }}
         run: |
           RESULTS="${{ github.workspace }}/screenshots-mobile/ai-review-results.json"
 
@@ -280,12 +315,12 @@ jobs:
             exit 0
           fi
 
-          SHA="${{ github.sha }}"
+          SHA="$TESTED_SHA"
           ENV_NAME="${{ env.env_name }}"
           BASELINE_DIR="${{ github.workspace }}/screenshots-mobile/baseline"
           CURRENT_DIR="${{ github.workspace }}/screenshots-mobile/current"
-          TOKEN="${{ secrets.SLACK_BOT_TOKEN }}"
-          CHANNEL="${{ secrets.SLACK_VISUAL_REGRESSION_CHANNEL_ID }}"
+          TOKEN="$SLACK_BOT_TOKEN"
+          CHANNEL="$SLACK_VISUAL_REGRESSION_CHANNEL_ID"
 
           upload_to_slack() {
             local filepath="$1"
@@ -365,7 +400,7 @@ jobs:
         run: |
           aws s3 sync \
             ${{ github.workspace }}/screenshots-mobile/current/ \
-            s3://${{ secrets.VISUAL_REGRESSION_BUCKET }}/visual-regression/mobile/ios/${{ env.env_name }}/latest/ \
+            "s3://$VISUAL_REGRESSION_BUCKET/visual-regression/mobile/ios/${{ env.env_name }}/latest/" \
             --delete
 
       - name: Fail if iOS regressions detected

@@ -1,0 +1,46 @@
+name: Run on host
+description: >-
+  Copy files into ec2-user's home on an environment's app host and run a
+  script there as ec2-user, through S3 and SSM Run Command. Assumes the
+  environment's hosts role for three hours, since waiting on an earlier run's
+  script and then this one's can take over two hours; the job needs
+  `id-token: write` and the staging-hosts or production-hosts environment.
+  Fails when the script exits nonzero, after printing its output. Waits for
+  a script from an earlier run of the same job, which a cancel leaves running,
+  and fails without deploying when a later run's same job sent its command
+  after this one's, which the caller's concurrency group, one run per
+  environment in progress, allows only when this run was cancelled. One job
+  may have one call in flight at a time: parallel calls, such as matrix
+  legs, would wait on and then refuse each other.
+
+inputs:
+  environment:
+    description: staging or production
+    required: true
+  files:
+    description: Local files to copy to the host's ~/, one per line; each keeps its base name.
+    default: ""
+  script:
+    description: Bash script to run from ~/ as ec2-user, without `set -e` unless it sets it.
+    required: true
+  timeout-minutes:
+    description: How long the script may run on the host before it gets SIGTERM, which leaves it 15 minutes to exit. At most 62, so the wait, the uploads before it and the output download after it fit the role session.
+    default: "30"
+
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/aws
+      with:
+        role: ${{ inputs.environment }}-hosts
+        export-credentials: true
+        role-duration-seconds: 10800 # ROLE_DURATION_SECONDS below
+
+    - shell: bash
+      env:
+        ENVIRONMENT: ${{ inputs.environment }}
+        FILES: ${{ inputs.files }}
+        SCRIPT: ${{ inputs.script }}
+        TIMEOUT_MINUTES: ${{ inputs.timeout-minutes }}
+        ROLE_DURATION_SECONDS: "10800" # the aws step's role-duration-seconds
+      run: bash "$GITHUB_ACTION_PATH/run.sh"

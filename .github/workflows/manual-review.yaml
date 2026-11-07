@@ -30,6 +30,9 @@ jobs:
   review:
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    permissions:
+      contents: read
+      id-token: write
     services:
       postgres:
         image: postgres:17
@@ -97,17 +100,20 @@ jobs:
       - name: Install Claude Code
         run: npm i -g @anthropic-ai/claude-code
 
+      - name: Read CI secrets
+        id: aws
+        uses: ./review-tools/.github/actions/aws
+        with:
+          role: review
+          parameters: ci/review/CLAUDE_CODE_OAUTH_TOKEN
+
       - name: Review changes
         id: review
         env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets).CLAUDE_CODE_OAUTH_TOKEN }}
           BASH_DEFAULT_TIMEOUT_MS: "600000"
         run: |
           set -euo pipefail
-          if [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
-            echo "::error::CLAUDE_CODE_OAUTH_TOKEN is not set"
-            exit 1
-          fi
           mkdir -p "$OUTPUT_DIR"
           jq -n \
             --arg checkout "$(git rev-parse HEAD)" \
@@ -132,7 +138,7 @@ jobs:
         id: redact
         if: always() && steps.review.outcome != 'skipped'
         env:
-          TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          TOKEN: ${{ steps.aws.outputs.secrets && fromJSON(steps.aws.outputs.secrets).CLAUDE_CODE_OAUTH_TOKEN || '' }}
         run: |
           if [ -n "$TOKEN" ] && [ -d "$OUTPUT_DIR" ]; then
             find "$OUTPUT_DIR" -type f -exec perl -pi -e 's/\Q$ENV{TOKEN}\E/[redacted]/g' {} +

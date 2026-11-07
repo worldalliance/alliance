@@ -13,11 +13,24 @@ jobs:
   review:
     if: ${{ !contains(github.event.head_commit.message, 'Merge branch') }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
+      - name: Read CI secrets
+        id: aws
+        uses: ./.github/actions/aws
+        with:
+          role: review
+          parameters: |
+            ci/review/CLAUDE_CODE_OAUTH_TOKEN
+            ci/review/OPENAI_API_KEY
+            ci/review/SLACK_WEBHOOK_URL_CLA
 
       # --- Claude Code (Anthropic) ---
 
@@ -32,7 +45,7 @@ jobs:
       - name: Run Claude Code (headless, Opus)
         id: run_claude
         env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets).CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
           set -euox pipefail
 
@@ -60,7 +73,7 @@ jobs:
         continue-on-error: true
         uses: openai/codex-action@v1
         with:
-          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          openai-api-key: ${{ fromJSON(steps.aws.outputs.secrets).OPENAI_API_KEY }}
           model: gpt-5.5
           prompt-file: .github/commit-review/prompt.md
           sandbox: read-only
@@ -79,7 +92,7 @@ jobs:
       - name: Combine reviews with OpenAI
         id: combine_reviews
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_API_KEY: ${{ fromJSON(steps.aws.outputs.secrets).OPENAI_API_KEY }}
           CLAUDE_FINAL_MESSAGE: ${{ steps.run_claude.outputs.final_message }}
           CODEX_FINAL_MESSAGE: ${{ steps.run_codex.outputs.final-message }}
         run: |
@@ -149,7 +162,7 @@ jobs:
       - name: Linkify file references for Cursor
         id: linkify_cursors
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_API_KEY: ${{ fromJSON(steps.aws.outputs.secrets).OPENAI_API_KEY }}
           REVIEW_TEXT: ${{ steps.combine_reviews.outputs.combined_final_message }}
           CURSOR_FILE_PREFIX: "cursor://file//Users/charles/github/alliance"
         run: |
@@ -296,7 +309,7 @@ jobs:
       - name: Post to Slack (NEEDS_REVIEW)
         if: ${{ steps.combine_reviews.outputs.needs_review == 'true' && (success() || failure()) }}
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_CLA }}
+          SLACK_WEBHOOK_URL: ${{ fromJSON(steps.aws.outputs.secrets).SLACK_WEBHOOK_URL_CLA }}
         run: |
           . .github/scripts/slack.sh
           slack_post_payload "$SLACK_WEBHOOK_URL" < slack.json
