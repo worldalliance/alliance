@@ -1,14 +1,6 @@
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
-import { useMembers } from "@alliance/shared/lib/useMembers";
 import { cn } from "@alliance/shared/styles/util";
-import { useSelectableUsers } from "@alliance/sharedweb/ui/UserSelect";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { ActionCategoryIcons } from "../components/ActionCategoryIcons";
 import ActionCohortDecisionsTab from "../components/ActionCohortDecisionsTab";
@@ -18,17 +10,16 @@ import ActionMergedResponsesTab from "../components/ActionMergedResponsesTab";
 import ActionUpdatesTab from "../components/ActionUpdatesTab";
 import EventManagementTab from "../components/EventManagementTab";
 import { FormBuilder } from "../components/FormBuilder";
+import { SlugField } from "../components/SlugField";
 import { getSiteUrl } from "../lib/config";
 import { useLinkedSelection } from "../lib/linkedSelection";
-import { useActionSuitesAdmin } from "../lib/useActionSuitesAdmin";
-import { useAllActions } from "../lib/useAllActions";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
-import { useTagsAdmin } from "../lib/useTagsAdmin";
 import ActionEditor from "./action-dashboard/ActionEditor";
 import ActionOverviewTab from "./action-dashboard/ActionOverviewTab";
 import ActionReadinessChecklist from "./action-dashboard/ActionReadinessChecklist";
 import { useActionCommands } from "./action-dashboard/useActionCommands";
 import { useActionEditor } from "./action-dashboard/useActionEditor";
+import { useActionEditorLookups } from "./action-dashboard/useActionEditorLookups";
 import { useActionExport } from "./action-dashboard/useActionExport";
 import { useActionReporting } from "./action-dashboard/useActionReporting";
 
@@ -64,8 +55,18 @@ const ActionDashboard: React.FC = () => {
   const cohortParseFailed = cohortExpressionError != null;
   const saving = isCreating || isUpdating;
   const [error, setError] = useState<string | null>(null);
-  const { allActions, allActionsLoading, allActionsLoadFailed } =
-    useAllActions();
+  const lookups = useActionEditorLookups();
+  const {
+    availableTags,
+    tagsLoading,
+    tagsError,
+    availableUsers,
+    usersLoading,
+    usersError,
+    allActions,
+    allActionsLoading,
+    allActionsLoadFailed,
+  } = lookups;
   const errorMessage =
     error ??
     (actionLoadFailed
@@ -79,46 +80,6 @@ const ActionDashboard: React.FC = () => {
       errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [errorMessage]);
-  const {
-    tags: availableTags,
-    isLoading: tagsLoading,
-    isLoadingError: tagsError,
-  } = useTagsAdmin();
-  const {
-    suites: {
-      data: availableSuites,
-      isPending: suitesLoading,
-      isLoadingError: suitesError,
-    },
-  } = useActionSuitesAdmin();
-  const {
-    users: availableUsers,
-    isLoading: usersLoading,
-    isLoadingError: usersError,
-  } = useSelectableUsers();
-  const { data: members } = useMembers();
-  const activeContractUserIds = useMemo(
-    () =>
-      new Set(
-        (members ?? []).filter((m) => m.hasActiveContract).map((m) => m.id),
-      ),
-    [members],
-  );
-  const lookups = {
-    availableTags,
-    tagsLoading,
-    tagsError,
-    availableSuites,
-    suitesLoading,
-    suitesError,
-    availableUsers,
-    usersLoading,
-    usersError,
-    activeContractUserIds,
-    allActions,
-    allActionsLoading,
-    allActionsLoadFailed,
-  };
 
   const reporting = useActionReporting(action, actionId);
   const [incompleteUsersExpanded, setIncompleteUsersExpanded] = useState(false);
@@ -199,9 +160,18 @@ const ActionDashboard: React.FC = () => {
                 </span>
               )}
             </div>
-            <h1 className="text-[#111] text-[16pt] font-bold">
-              {isNew ? "Create New Action" : `${action?.name}`}
-            </h1>
+            <div className="flex flex-col">
+              <h1 className="text-[#111] text-[16pt] font-bold">
+                {isNew ? "Create New Action" : `${action?.name}`}
+              </h1>
+              {action && (
+                <SlugField
+                  slug={action.slug}
+                  saving={isUpdating}
+                  onSave={(slug) => admin.updateAction({ slug })}
+                />
+              )}
+            </div>
             {action && !action.project && (
               <div className="flex items-center">
                 <ActionCategoryIcons categories={action.category} />

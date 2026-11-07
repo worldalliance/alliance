@@ -15,11 +15,13 @@ import { SnapshotHistoryOwner } from "src/tasks/entities/formsnapshot.entity";
 import { FormSnapshotService } from "src/tasks/formsnapshot.service";
 import { User } from "src/user/entities/user.entity";
 import type { Repository as TypedRepository } from "src/utils/Repository";
-import { EntityManager, In, QueryFailedError, Repository } from "typeorm";
+import { In, QueryFailedError, Repository } from "typeorm";
 import { ActionEvent } from "./entities/action-event.entity";
 import { ActionFormAssignment } from "./entities/action-form-assignment.entity";
 import { ActionFormVariant } from "./entities/action-form-variant.entity";
 import { Action } from "./entities/action.entity";
+import { FormSlugSequence, insertForm } from "./form-slug";
+import { lockActionRow } from "./lock-action-row";
 import { liveAssignments, variantForNewAssignment } from "./new-assignment";
 
 export interface CreateVariantInput {
@@ -135,21 +137,21 @@ export class ActionFormVariantService {
     if (!sourceForm) throw new NotFoundException("Source form not found");
 
     return this.variantRepo.manager.transaction(async (em) => {
-      await this.lockActionRow(em, actionId);
+      await lockActionRow(em, actionId);
       const variantTxRepo = em.getRepository(ActionFormVariant);
       await this.assertSplitTotalValid(
         actionId,
         { addValue: input.splitValue },
         variantTxRepo,
       );
-      const formTxRepo = em.getRepository(Form);
-      const newForm = await formTxRepo.save(
-        formTxRepo.create({
+      const newForm = await insertForm(em, {
+        form: {
           title: sourceForm.title,
           formSnapshotId: sourceForm.formSnapshotId,
           formSnapshot: sourceForm.formSnapshot,
-        }),
-      );
+        },
+        placement: { actionId, sequence: FormSlugSequence.Main },
+      });
       await this.formSnapshotService.recordHistorical({
         owner: SnapshotHistoryOwner.Form,
         ownerId: newForm.id,
@@ -180,7 +182,7 @@ export class ActionFormVariantService {
     this.assertSplitValid(nextValue);
 
     return this.variantRepo.manager.transaction(async (em) => {
-      await this.lockActionRow(em, variant.actionId);
+      await lockActionRow(em, variant.actionId);
       return writeUnderLive(em, {
         saved: {
           target: ActionFormVariant,
@@ -526,21 +528,6 @@ export class ActionFormVariantService {
       throw new BadRequestException(
         "splitValue must be a number between 0 and 1",
       );
-    }
-  }
-
-  private async lockActionRow(
-    em: EntityManager,
-    actionId: number,
-  ): Promise<void> {
-    const action = await em
-      .getRepository(Action)
-      .createQueryBuilder("a")
-      .setLock("pessimistic_write")
-      .where("a.id = :id", { id: actionId })
-      .getOne();
-    if (!action) {
-      throw new NotFoundException("Action not found");
     }
   }
 

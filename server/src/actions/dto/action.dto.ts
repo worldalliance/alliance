@@ -16,8 +16,10 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  ValidateIf,
   ValidateNested,
 } from "class-validator";
+import { OptionalSlugField, slugGiven } from "src/datasources/slug-column";
 import { getImageSource } from "src/images/images.service";
 import { Form } from "src/tasks/entities/form.entity";
 import { ProfileDto } from "src/user/dto/user.dto";
@@ -314,6 +316,10 @@ export class CreateActionDto extends IntersectionType(
   @ArrayUnique()
   @IsInt({ each: true })
   prerequisiteActionIds?: number[];
+
+  @OptionalSlugField()
+  @ValidateIf(slugGiven)
+  slug?: string;
 }
 
 export class UpdateActionDto extends PartialType(CreateActionDto, {

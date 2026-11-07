@@ -83,6 +83,7 @@ describe("Projects (e2e)", () => {
     expect(created.body).toEqual({
       id: expect.any(Number),
       name: "Water quality",
+      slug: "water-quality",
       category: [],
     });
 
@@ -109,7 +110,12 @@ describe("Projects (e2e)", () => {
     const renamed = await asAdmin(request(server()).patch(`/projects/${a.id}`))
       .send({ name: "A2" })
       .expect(200);
-    expect(renamed.body).toEqual({ id: a.id, name: "A2", category: [] });
+    expect(renamed.body).toEqual({
+      id: a.id,
+      name: "A2",
+      slug: "a",
+      category: [],
+    });
 
     await asAdmin(request(server()).patch(`/projects/${a.id}`))
       .send({ name: "B" })
@@ -130,6 +136,7 @@ describe("Projects (e2e)", () => {
     expect(set.body).toEqual({
       id: project.id,
       name: "Categorized",
+      slug: "categorized",
       category: [ActionCategory.Poverty, ActionCategory.Meta],
     });
 

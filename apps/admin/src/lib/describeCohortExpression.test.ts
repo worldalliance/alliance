@@ -12,11 +12,27 @@ const describeText = (
 const names: CohortNames = {
   tagNames: new Map([["tag-uuid", "Volunteers"]]),
   actionNames: new Map([[7, "Call your rep"]]),
+  formDisplaySlugs: new Map([[4, "call-your-rep::v1"]]),
 };
 
 describe("describeCohortExpression", () => {
   it("labels a single condition", () => {
     expect(describeText({ type: "NonUSMember" }, names)).toBe("Non-US Member");
+  });
+
+  it("names a form by its display slug, or its id when unknown", () => {
+    expect(
+      describeText(
+        {
+          type: "OR",
+          children: [
+            { type: "FormFieldValue", formId: 4, fieldId: "f" },
+            { type: "FormFieldValue", formId: 9, fieldId: "f" },
+          ],
+        },
+        names,
+      ),
+    ).toBe("call-your-rep::v1 answer or Form #9 answer");
   });
 
   it("says None without an expression", () => {

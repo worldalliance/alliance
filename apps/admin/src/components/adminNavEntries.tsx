@@ -5,6 +5,7 @@ import {
   CirclePile,
   FileText,
   Film,
+  FolderKanban,
   Handshake,
   ImageUp,
   Link as LinkIcon,
@@ -54,6 +55,7 @@ export const navEntries = (counts: {
   pendingOutreachPartnershipCount: number;
 }): NavEntry[] => [
   { to: "/", label: "Stats", icon: <BarChart2 size={16} /> },
+  { to: "/projects", label: "Projects", icon: <FolderKanban size={16} /> },
   { to: "/actions", label: "Actions", icon: <SquareActivity size={16} /> },
   {
     folder: SidebarFolder.ActionPlanning,

@@ -30,6 +30,7 @@ type ActionEditorMode =
       cohortParseFailed: boolean;
       onDelete: () => void;
       checklist: React.ReactNode;
+      hideStaffPreview?: boolean;
     };
 
 type ActionEditorProps = {
@@ -104,6 +105,7 @@ const ActionEditor: React.FC<ActionEditorProps> = ({
         actionId={action?.id}
         onDelete={mode.onDelete}
         baseUrl={getApiUrl()}
+        hideStaffPreview={mode.hideStaffPreview}
       />
     </div>
   );

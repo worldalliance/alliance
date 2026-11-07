@@ -64,7 +64,7 @@ function SourceFormSelect({
         )}
         {options.map((form) => (
           <option key={form.id} value={form.id}>
-            {form.title} (#{form.id})
+            {form.title} ({form.displaySlug})
           </option>
         ))}
       </select>

@@ -21,3 +21,14 @@ export const ACTION_STATUS_COLORS: Record<ActionStatus, string> = {
   failed: "bg-red-100 text-red-800",
   abandoned: "bg-gray-100 text-gray-600",
 };
+
+export const DEFAULT_EVENT_NAMES: Record<ActionStatus, string> = {
+  draft: "Draft",
+  office_action: "Office taking action",
+  member_action: "Members taking action",
+  resolution: "Pending office resolution",
+  completed: "Action completed",
+  failed: "Action failed",
+  abandoned: "Action dropped",
+  planned: "Planned",
+};

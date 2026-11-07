@@ -136,8 +136,8 @@ export function SourceFormPicker({
       )}
       {forms.map((form) => (
         <option key={form.id} value={form.id}>
-          {form === sources.ownForm ? "This form's submissions" : form.title} (#
-          {form.id})
+          {form === sources.ownForm ? "This form's submissions" : form.title} (
+          {form.displaySlug})
         </option>
       ))}
     </select>

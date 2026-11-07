@@ -42,8 +42,8 @@ const api = serveApi(
   routes({
     "GET /tasks/listForms": () =>
       Response.json([
-        { id: 1, title: "This one" },
-        { id: 9, title: "Survey" },
+        { id: 1, title: "This one", displaySlug: "this-one::v1" },
+        { id: 9, title: "Survey", displaySlug: "survey::v1" },
       ]),
     "GET /tasks/adminForm/:id": ({ params }) =>
       Response.json({
@@ -86,7 +86,7 @@ describe("VariableBuilder aggregate counts", () => {
     );
 
     const mode = await screen.findByLabelText("What input1 reads");
-    await screen.findByText("Survey (#9)");
+    await screen.findByText("Survey (survey::v1)");
     fireEvent.change(mode, { target: { value: "counts" } });
     expect(saved.at(-1)?.variables?.[0].inputs.input1).toEqual({
       kind: "aggregate",
@@ -98,7 +98,10 @@ describe("VariableBuilder aggregate counts", () => {
         ...(screen.getByLabelText("Form read by input1") as HTMLSelectElement)
           .options,
       ].map((option) => option.text),
-    ).toEqual(["This form's submissions (#1)", "Survey (#9)"]);
+    ).toEqual([
+      "This form's submissions (this-one::v1)",
+      "Survey (survey::v1)",
+    ]);
 
     fireEvent.change(screen.getByLabelText("Form read by input1"), {
       target: { value: "9" },
@@ -165,7 +168,7 @@ describe("VariableBuilder aggregate counts", () => {
     );
 
     const mode = await screen.findByLabelText("What input1 reads");
-    await screen.findByText("Survey (#9)");
+    await screen.findByText("Survey (survey::v1)");
     fireEvent.change(mode, { target: { value: "counts" } });
     expect(saved.at(-1)?.variables?.[0].inputs.input1).toEqual({
       kind: "aggregate",
@@ -177,7 +180,8 @@ describe("VariableBuilder aggregate counts", () => {
 
   it("counts the first other form from a form not saved yet", async () => {
     api.alsoServing({
-      "GET /tasks/listForms": () => Response.json([{ id: 9, title: "Survey" }]),
+      "GET /tasks/listForms": () =>
+        Response.json([{ id: 9, title: "Survey", displaySlug: "survey::v1" }]),
     });
     const saved: FormSchema[] = [];
     render(
@@ -189,7 +193,7 @@ describe("VariableBuilder aggregate counts", () => {
     );
 
     const mode = await screen.findByLabelText("What input1 reads");
-    await screen.findByText("Survey (#9)");
+    await screen.findByText("Survey (survey::v1)");
     fireEvent.change(mode, { target: { value: "counts" } });
     expect(saved.at(-1)?.variables?.[0].inputs.input1).toEqual({
       kind: "aggregate",

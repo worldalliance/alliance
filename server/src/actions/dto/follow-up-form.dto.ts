@@ -3,6 +3,7 @@ import {
   ApiProperty,
   ApiPropertyOptional,
   IntersectionType,
+  OmitType,
   PartialType,
   PickType,
 } from "@nestjs/swagger";
@@ -14,6 +15,9 @@ import {
   type ParsedFollowUpForm,
 } from "../entities/follow-up-form.entity";
 
+/** A slug is an admin label, so members get the form without it. */
+export class FollowUpFormFormDto extends OmitType(Form, ["slug"]) {}
+
 export class FollowUpFormDto extends PickType(FollowUpForm, [
   "id",
   "name",
@@ -23,10 +27,10 @@ export class FollowUpFormDto extends PickType(FollowUpForm, [
   "actionId",
   "formId",
 ]) {
-  @ApiPropertyOptional({ type: () => Form })
+  @ApiPropertyOptional({ type: () => FollowUpFormFormDto })
   @IsOptional()
-  @Type(() => Form)
-  form?: Form;
+  @Type(() => FollowUpFormFormDto)
+  form?: FollowUpFormFormDto;
 
   constructor(followUpForm: FollowUpForm) {
     super();
@@ -37,7 +41,10 @@ export class FollowUpFormDto extends PickType(FollowUpForm, [
     this.instructions = followUpForm.instructions;
     this.actionId = followUpForm.actionId;
     this.formId = followUpForm.formId;
-    this.form = followUpForm.form;
+    if (followUpForm.form) {
+      const { slug: _slug, ...form } = followUpForm.form;
+      this.form = form;
+    }
   }
 }
 

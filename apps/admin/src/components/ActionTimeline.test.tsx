@@ -79,6 +79,55 @@ describe("ActionTimeline", () => {
     ).toBeTruthy();
   });
 
+  it("colors member action bars by project, falling back to name", () => {
+    const project = { id: 1, name: "Shared project", category: [] };
+    const withEvents = (id: number, name: string) => ({
+      ...running,
+      id,
+      name,
+      events: [timelineEvent(id, -10, "member_action")],
+    });
+    renderTimeline({
+      actions: [
+        { ...withEvents(10, "First"), project },
+        { ...withEvents(11, "Second"), project },
+        withEvents(12, "Third"),
+      ],
+    });
+    const barColor = (name: string) =>
+      /#[0-9a-f]{6}/.exec(
+        screen.getByTitle(new RegExp(`^${name}:`)).style.cssText,
+      )?.[0];
+
+    expect(barColor("First")).toBeDefined();
+    expect(barColor("First")).toBe(barColor("Second"));
+    expect(barColor("Third")).not.toBe(barColor("First"));
+  });
+
+  it("highlights every row of the hovered action's project", () => {
+    const project = { id: 1, name: "Shared project", category: [] };
+    renderTimeline({
+      actions: [
+        { ...finished, project },
+        { ...running, project },
+        { ...running, id: 3, name: "Loner" },
+      ],
+    });
+    const nameRow = (name: string) => screen.getByText(name).closest("a")!;
+
+    fireEvent.mouseEnter(nameRow("Finished action"));
+
+    expect(nameRow("Running action").className).toContain(" bg-zinc-50");
+    expect(nameRow("Loner").className).not.toContain(" bg-zinc-50");
+    expect(
+      screen.getByTitle(/^Running action:/).parentElement!.className,
+    ).toContain(" bg-gray-50");
+
+    fireEvent.mouseLeave(nameRow("Finished action"));
+
+    expect(nameRow("Running action").className).not.toContain(" bg-zinc-50");
+  });
+
   it("scrolls a week's header to the first action with a bar that week", () => {
     const { container } = renderTimeline();
     const today = startOfDay(new Date());

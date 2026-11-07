@@ -30,3 +30,10 @@ export async function sendConfirmingDeadlineShortening<
   });
   return confirmed ? send({ acknowledgeDeadlineShortening: true }) : null;
 }
+
+/** Resolves `null` when staff decline, and rejects with the refusal. */
+export const dataOrThrow = <T>(sent: { data?: T; error?: unknown } | null) => {
+  if (!sent) return null;
+  if (sent.data === undefined) throw sent.error;
+  return sent.data;
+};
