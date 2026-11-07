@@ -14,8 +14,6 @@ export const HERO_HEADLINE_PARTS = {
 export const HERO_SUBHEAD =
   "To combat global problems, we commit 15 minutes each week to projects that depend on everyone’s participation. We are in an experimental phase.";
 
-const CHATBOTS_PROJECT_TITLE = "Make AI chatbots safer for kids";
-
 export type Priority = {
   id: string;
   /** Line breaks are authored, so the four titles stay visually balanced. */
@@ -201,7 +199,7 @@ export const nearMilestones: Milestone[] = [
     members: 100,
     label: "Encourage a small business to adopt a sustainability policy",
   },
-  { members: 500, label: CHATBOTS_PROJECT_TITLE },
+  { members: 500, label: "Provide a public review of an AI safety benchmark" },
   {
     members: 1000,
     label: nextMilestone.action,
