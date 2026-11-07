@@ -1,0 +1,149 @@
+{
+  "version": 1,
+  "atoms": [
+    {
+      "id": "A01",
+      "mechanism": "Assign different targets to members and combine standardized contributions into broad coverage.",
+      "basis": "observed",
+      "source_action_ids": [91, 121, 135, 148]
+    },
+    {
+      "id": "A02",
+      "mechanism": "Pool independent judgments on concrete cases to identify problems missed by one reviewer.",
+      "basis": "extension",
+      "source_action_ids": [32, 138, 139]
+    },
+    {
+      "id": "A03",
+      "mechanism": "Turn documented discrepancies into specific corrections delivered to the responsible organization.",
+      "basis": "extension",
+      "source_action_ids": [145]
+    },
+    {
+      "id": "A04",
+      "mechanism": "Exchange useful member services or attention for a specific verifiable organizational commitment.",
+      "basis": "observed",
+      "source_action_ids": [14, 95]
+    },
+    {
+      "id": "A05",
+      "mechanism": "Activate conditional commitments only when participation and counterparty terms reach a stated threshold.",
+      "basis": "extension",
+      "source_action_ids": []
+    },
+    {
+      "id": "A06",
+      "mechanism": "Group compatible jobs, needs, locations, or schedules into batches a provider can serve economically.",
+      "basis": "extension",
+      "source_action_ids": []
+    },
+    {
+      "id": "A07",
+      "mechanism": "Match otherwise unused goods, capacity, or skills to verified unmet needs.",
+      "basis": "extension",
+      "source_action_ids": [143, 169, 173]
+    },
+    {
+      "id": "A08",
+      "mechanism": "Pool resources to acquire an asset or permission that becomes usable by people beyond the contributors.",
+      "basis": "extension",
+      "source_action_ids": []
+    },
+    {
+      "id": "A09",
+      "mechanism": "Have multiple members independently verify the same claim and reconcile discrepancies.",
+      "basis": "extension",
+      "source_action_ids": [139, 145]
+    },
+    {
+      "id": "A10",
+      "mechanism": "Separate a short preparation step from later execution with a specific follow-through trigger.",
+      "basis": "observed",
+      "source_action_ids": [53, 54, 60, 64, 70, 86]
+    },
+    {
+      "id": "A11",
+      "mechanism": "Collect reusable firsthand experiences or examples that help others make a practical choice.",
+      "basis": "observed",
+      "source_action_ids": [131, 141]
+    },
+    {
+      "id": "A12",
+      "mechanism": "Let members deliberate or vote over a real shared resource allocation.",
+      "basis": "observed",
+      "source_action_ids": [47, 49, 174]
+    },
+    {
+      "id": "A13",
+      "mechanism": "Distribute useful material through trusted venues that also benefit from hosting it.",
+      "basis": "observed",
+      "source_action_ids": [132]
+    },
+    {
+      "id": "A14",
+      "mechanism": "Track responses to commitments and verify whether the promised change actually occurs.",
+      "basis": "extension",
+      "source_action_ids": [172, 175]
+    },
+    {
+      "id": "A15",
+      "mechanism": "Help members recover or save resources and offer an optional route to a shared purpose.",
+      "basis": "observed",
+      "source_action_ids": [70, 86, 84, 87]
+    },
+    {
+      "id": "A16",
+      "mechanism": "Test realistic user pathways and fix one shared obstacle across multiple service operators.",
+      "basis": "extension",
+      "source_action_ids": [32, 145]
+    },
+    {
+      "id": "A17",
+      "mechanism": "Produce small pieces of translation, design, or accessibility work for a partner-defined operational need, with qualified quality control.",
+      "basis": "extension",
+      "source_action_ids": []
+    },
+    {
+      "id": "A18",
+      "mechanism": "Divide a useful operational backlog into brief tasks and deliver verified usable outputs to its owner.",
+      "basis": "extension",
+      "source_action_ids": []
+    },
+    {
+      "id": "A19",
+      "mechanism": "Make a hidden personal risk legible and provide a concrete consent-based action to reduce it.",
+      "basis": "observed",
+      "source_action_ids": [130, 147]
+    },
+    {
+      "id": "A20",
+      "mechanism": "Secure adoption of a better default or workflow by addressing the operator\u2019s specific cost or friction.",
+      "basis": "extension",
+      "source_action_ids": [80, 81]
+    },
+    {
+      "id": "A21",
+      "mechanism": "Aggregate people\u2019s demand or preferences into credible information for a provider deciding whether to change an offer.",
+      "basis": "observed",
+      "source_action_ids": [138]
+    },
+    {
+      "id": "A22",
+      "mechanism": "Pool member questions for expert input, then turn the answers into a reusable decision aid.",
+      "basis": "extension",
+      "source_action_ids": [146, 153]
+    },
+    {
+      "id": "A23",
+      "mechanism": "Publish verified examples of good practice so adopters gain recognition and others have an actionable model.",
+      "basis": "extension",
+      "source_action_ids": []
+    },
+    {
+      "id": "A24",
+      "mechanism": "Connect a time-limited opportunity with eligible people who want it, verifying usability with the receiving organization.",
+      "basis": "extension",
+      "source_action_ids": [122, 123]
+    }
+  ]
+}
