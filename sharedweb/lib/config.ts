@@ -1,3 +1,5 @@
+import type { DevUrl } from "@alliance/common/dev-ports";
+import { adminOrigin } from "@alliance/common/url";
 import { requireWebEnv, webEnv } from "./env";
 
 const mode = import.meta.env.MODE;
@@ -5,9 +7,7 @@ const mode = import.meta.env.MODE;
 const prodUrl = (): string => requireWebEnv("VITE_API_URL");
 
 // A missing value must fail rather than send a worktree to the main database.
-const devUrl = (
-  name: "ALLIANCE_DEV_API_URL" | "ALLIANCE_DEV_APP_URL",
-): string => {
+const devUrl = (name: `${DevUrl}`): string => {
   const url = webEnv(name);
 
   if (!url) {
@@ -42,6 +42,11 @@ export const getBaseUrl = (): string => {
     return prodUrl();
   }
 };
+
+export const getAdminUrl = (): string =>
+  mode === "development"
+    ? devUrl("ALLIANCE_DEV_ADMIN_URL")
+    : adminOrigin(prodUrl());
 
 export const getInviteBaseUrl = (): string =>
   webEnv("VITE_ALT_APP_URL") ?? getBaseUrl();

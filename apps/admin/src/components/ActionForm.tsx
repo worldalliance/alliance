@@ -7,17 +7,27 @@ import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import React, { useMemo } from "react";
 import {
+  ActionFieldSection,
   actionFieldDefs,
-  type ActionFieldSection,
+  type ActionFieldDef,
 } from "../lib/actionFieldDefs";
 import ActionFormFields, { type ActionFieldInputs } from "./ActionFormFields";
 import ActionReviewersEditor, {
   type ReviewerRow,
 } from "./ActionReviewersEditor";
 import CohortExpressionBuilder from "./CohortExpressionBuilder";
-import FormSection from "./FormSection";
+import FormSection, { CollapsibleFormSection } from "./FormSection";
 import OpenReferenceWarning from "./OpenReferenceWarning";
 import PrerequisitePicker from "./PrerequisitePicker";
+
+const COLLAPSIBLE_TITLES: Record<ActionFieldSection, string | null> = {
+  [ActionFieldSection.Content]: null,
+  [ActionFieldSection.Settings]: null,
+  [ActionFieldSection.Audience]: "Audience",
+  [ActionFieldSection.Completion]: "Completion",
+  [ActionFieldSection.Forum]: "Forum participation",
+  [ActionFieldSection.CustomStat]: "Custom stat",
+};
 
 interface ActionFormProps extends ActionFieldInputs {
   onSubmit: (e: React.FormEvent) => void;
@@ -120,8 +130,10 @@ const ActionForm: React.FC<ActionFormProps> = ({
     onCategoryChange,
   };
 
-  const contentFields = getFieldsBySection("content");
-  const settingsFields = getFieldsBySection("settings");
+  const contentFields = getFieldsBySection(ActionFieldSection.Content);
+  const settingsFields = getFieldsBySection(ActionFieldSection.Settings);
+  const inUse = (fields: ActionFieldDef[]) =>
+    fields.some((f) => (f.isSet ? f.isSet(form) : !!form[f.name]));
 
   return (
     <form onSubmit={onSubmit} className="space-y-6 pb-6">
@@ -160,6 +172,23 @@ const ActionForm: React.FC<ActionFormProps> = ({
           <ActionFormFields fields={settingsFields} {...fieldInputs} />
         </div>
       </FormSection>
+
+      {Object.values(ActionFieldSection).map((section) => {
+        const title = COLLAPSIBLE_TITLES[section];
+        if (title === null) return null;
+        const fields = getFieldsBySection(section);
+        return (
+          <CollapsibleFormSection
+            key={section}
+            title={title}
+            inUse={inUse(fields)}
+          >
+            <div className="space-y-4">
+              <ActionFormFields fields={fields} {...fieldInputs} />
+            </div>
+          </CollapsibleFormSection>
+        );
+      })}
 
       <FormSection
         title="Prerequisites"

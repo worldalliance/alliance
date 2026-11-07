@@ -7,6 +7,7 @@ import {
   assertWorktreePorts,
   DevDatabase,
   DevUrl,
+  devViteDefine,
   PortCaller,
   reseedDatabase,
   resolveDevPorts,
@@ -421,6 +422,7 @@ describe("resolveDevUrl", () => {
   it.each([
     [DevUrl.Api, "http://localhost:3305"],
     [DevUrl.App, "http://localhost:5473"],
+    [DevUrl.Admin, "http://localhost:5474"],
   ])("builds %s from this checkout's port", (which, expected) => {
     expect(
       resolveDevUrl({ ports: WORKTREE_PORTS, which, override: undefined }),
@@ -453,6 +455,28 @@ describe("resolveDevUrl", () => {
     expect(
       resolveDevUrl({ ports: WORKTREE_PORTS, which: DevUrl.App, override: "" }),
     ).toBe("http://localhost:5473");
+  });
+});
+
+describe("devViteDefine", () => {
+  it("defines one localhost URL per DevUrl", () => {
+    const saved = Object.values(DevUrl).map((which) => process.env[which]);
+    for (const which of Object.values(DevUrl)) process.env[which] = "";
+    try {
+      const define = devViteDefine();
+      expect(Object.keys(define)).toEqual(
+        Object.values(DevUrl).map((which) => `import.meta.env.${which}`),
+      );
+      for (const value of Object.values(define)) {
+        expect(JSON.parse(value)).toMatch(/^http:\/\/localhost:\d+$/);
+      }
+    } finally {
+      Object.values(DevUrl).forEach((which, i) => {
+        const value = saved[i];
+        if (value === undefined) delete process.env[which];
+        else process.env[which] = value;
+      });
+    }
   });
 });
 
