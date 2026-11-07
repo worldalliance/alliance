@@ -59,6 +59,8 @@ Reach for a maintained npm package over hand-rolling parsing, sanitization, date
 
 Prefer established standards and widely adopted practices that fit the stack and task. Research before choosing when the applicable practice is unclear, unfamiliar, or may have changed, starting with standards bodies and vendor documentation. Distinguish formal standards, vendor recommendations (official guidance from a platform, framework or library), research-backed practice (supported by published empirical studies, such as usability research), and common practice; cite sources for researched choices, and when the task has a provenance directory, record the research there in `EVIDENCE.md`. Explicit requirements and concrete compatibility constraints take precedence. Explain material departures from established practice and the constraint that warrants them.
 
+Label every recommendation, number and claim shown to the owner in chat as researched (name the research page or source and what it actually checked) or agent judgement. A recommendation on a research page can still be agent judgement; say which.
+
 ## Breaking changes
 
 Change a shape that stored data, installed clients, or code outside the change depend on, or adopt a rule existing code breaks, by expand-migrate-contract, with a ratchet so the old shape can't grow back. Mark a fallback awaiting its contract step `BACKCOMPAT(<tag>)` with the condition for removing it.
