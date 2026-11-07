@@ -186,7 +186,7 @@ jobs:
 
       - name: Take screenshots
         env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets).CLAUDE_CODE_OAUTH_TOKEN }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets || '{}').CLAUDE_CODE_OAUTH_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -224,7 +224,7 @@ jobs:
         id: redact
         if: always()
         env:
-          TOKEN: ${{ steps.aws.outputs.secrets && fromJSON(steps.aws.outputs.secrets).CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          TOKEN: ${{ fromJSON(steps.aws.outputs.secrets || '{}').CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
           shopt -s nullglob
           for file in "$RUNNER_TEMP/transcript.jsonl" "$TOOLS_DIR"/run/*.log; do
@@ -276,7 +276,7 @@ jobs:
       - name: Comment on PR
         working-directory: out
         env:
-          GH_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets).PR_SCREENSHOTS_GH_TOKEN }}
+          GH_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets || '{}').PR_SCREENSHOTS_GH_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           attachments=()

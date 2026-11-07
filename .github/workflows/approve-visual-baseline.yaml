@@ -92,7 +92,7 @@ jobs:
 
       - name: Notify visual regression channel
         env:
-          SLACK_BOT_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets).SLACK_BOT_TOKEN }}
+          SLACK_BOT_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets || '{}').SLACK_BOT_TOKEN }}
         run: |
           BASELINE_DIR="/tmp/vr-baseline"
           CURRENT_DIR="/tmp/vr-current"
@@ -206,7 +206,7 @@ jobs:
 
       - name: Notify deployment channel
         env:
-          WEBHOOK: ${{ fromJSON(steps.aws.outputs.secrets).SLACK_WEBHOOK_URL_DEPLOYMENT }}
+          WEBHOOK: ${{ fromJSON(steps.aws.outputs.secrets || '{}').SLACK_WEBHOOK_URL_DEPLOYMENT }}
         run: |
           . .github/scripts/slack.sh
           slack_post "$WEBHOOK" \

@@ -78,7 +78,7 @@ jobs:
 
       - name: Notify Slack on drift
         env:
-          WEBHOOK: ${{ steps.aws.outputs.secrets && fromJSON(steps.aws.outputs.secrets).SLACK_WEBHOOK_URL_DEPLOYMENT || '' }}
+          WEBHOOK: ${{ fromJSON(steps.aws.outputs.secrets || '{}').SLACK_WEBHOOK_URL_DEPLOYMENT }}
           # Exactly one of the PR / commit groups is populated: pull_request
           # events carry no head_commit, push events carry no pull_request.
           PR_TITLE: ${{ github.event.pull_request.title }}

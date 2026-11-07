@@ -171,7 +171,7 @@ jobs:
       - name: Upload source maps to PostHog
         env:
           POSTHOG_CLI_ENV_ID: ${{ steps.config.outputs.POSTHOG_PROJECT_ID }}
-          POSTHOG_CLI_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets).POSTHOG_SOURCEMAP_KEY }}
+          POSTHOG_CLI_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets || '{}').POSTHOG_SOURCEMAP_KEY }}
         run: posthog-cli sourcemap upload --directory react-assets
 
   build-admin-frontend:
@@ -560,14 +560,14 @@ jobs:
             echo "No baseline — skipping AI review"
           fi
         env:
-          GEMINI_API_KEY: ${{ fromJSON(steps.aws.outputs.secrets).GEMINI_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ fromJSON(steps.aws.outputs.secrets).ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ fromJSON(steps.aws.outputs.secrets || '{}').GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ fromJSON(steps.aws.outputs.secrets || '{}').ANTHROPIC_API_KEY }}
           AI_REVIEW_OUTPUT: ${{ github.workspace }}/screenshots/ai-review-results.json
 
       - name: Notify Slack on Visual Regression
         if: github.ref_name == 'production' && steps.ai-review.outcome == 'failure'
         env:
-          TOKEN: ${{ fromJSON(steps.aws.outputs.secrets).SLACK_BOT_TOKEN }}
+          TOKEN: ${{ fromJSON(steps.aws.outputs.secrets || '{}').SLACK_BOT_TOKEN }}
         run: |
           RESULTS="${{ github.workspace }}/screenshots/ai-review-results.json"
           SHA="${{ github.sha }}"
@@ -655,7 +655,7 @@ jobs:
       - name: Notify Slack on AI-Approved Changes
         if: github.ref_name == 'production' && steps.ai-review.outcome != 'failure'
         env:
-          TOKEN: ${{ fromJSON(steps.aws.outputs.secrets).SLACK_BOT_TOKEN }}
+          TOKEN: ${{ fromJSON(steps.aws.outputs.secrets || '{}').SLACK_BOT_TOKEN }}
         run: |
           RESULTS="${{ github.workspace }}/screenshots/ai-review-results.json"
 
@@ -1002,7 +1002,7 @@ jobs:
 
       - name: Post webhook
         env:
-          WEBHOOK: ${{ fromJSON(steps.aws.outputs.secrets).SLACK_WEBHOOK_URL_DEPLOYMENT }}
+          WEBHOOK: ${{ fromJSON(steps.aws.outputs.secrets || '{}').SLACK_WEBHOOK_URL_DEPLOYMENT }}
           MENTION: ${{ steps.slack_mention.outputs.mention }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

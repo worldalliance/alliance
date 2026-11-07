@@ -36,6 +36,12 @@ describe("reject-github-secrets.sh", () => {
     `secrets: 'inherit'`,
     `secrets : "inherit"`,
     `# keys, secrets, and tokens`,
+    `key: \${{ fromJSON(steps.aws.outputs.secrets).KEY }}`,
+    `key: \${{ fromJson( steps.aws.outputs.secrets ).KEY }}`,
+    `key: \${{ fromJSON(steps.aws.outputs.secrets || '').KEY }}`,
+    `key: \${{ fromJSON(steps.hosts.outputs.secrets && '{}').KEY }}`,
+    `key: \${{ fromJSON(steps.aws.outputs['secrets']).KEY }}`,
+    `key: \${{ fromJSON(steps.aws.outputs[ 'secrets' ]).KEY }}`,
   ])("fails on %s", (line) => {
     expect(check(line)).toBe(1);
   });
@@ -44,6 +50,9 @@ describe("reject-github-secrets.sh", () => {
     `token: \${{ secrets.GITHUB_TOKEN }}`,
     `token: \${{ secrets.github_token }}`,
     `value: \${{ steps.aws.outputs.secrets }}`,
+    `key: \${{ fromJSON(steps.aws.outputs.secrets || '{}').KEY }}`,
+    `key: \${{ fromJSON(steps.aws.outputs.secrets||'{}' ).KEY }}`,
+    `key: \${{ fromJSON(steps.aws.outputs['secrets'] || '{}').KEY }}`,
     `# see docs/ci-secrets.md`,
     `# read from Parameter Store, not GitHub secrets.`,
     `# secrets, then variables`,

@@ -203,14 +203,14 @@ jobs:
             echo "No baseline — skipping AI review"
           fi
         env:
-          GEMINI_API_KEY: ${{ fromJSON(steps.aws.outputs.secrets).GEMINI_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ fromJSON(steps.aws.outputs.secrets).ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ fromJSON(steps.aws.outputs.secrets || '{}').GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ fromJSON(steps.aws.outputs.secrets || '{}').ANTHROPIC_API_KEY }}
           AI_REVIEW_OUTPUT: ${{ github.workspace }}/screenshots-mobile/ai-review-results.json
 
       - name: Notify Slack on iOS Visual Regression
         if: steps.mobile-ai-review.outcome == 'failure'
         env:
-          SLACK_BOT_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets).SLACK_BOT_TOKEN }}
+          SLACK_BOT_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets || '{}').SLACK_BOT_TOKEN }}
         run: |
           RESULTS="${{ github.workspace }}/screenshots-mobile/ai-review-results.json"
           SHA="$TESTED_SHA"
@@ -298,7 +298,7 @@ jobs:
       - name: Notify Slack on AI-Approved iOS Changes
         if: steps.mobile-ai-review.outcome != 'failure'
         env:
-          SLACK_BOT_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets).SLACK_BOT_TOKEN }}
+          SLACK_BOT_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets || '{}').SLACK_BOT_TOKEN }}
         run: |
           RESULTS="${{ github.workspace }}/screenshots-mobile/ai-review-results.json"
 
