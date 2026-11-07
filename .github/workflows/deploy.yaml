@@ -66,7 +66,6 @@ jobs:
 
   build-react-app:
     runs-on: ubuntu-latest
-    environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -126,33 +125,11 @@ jobs:
           zip -r react-build.zip output
         working-directory: ./apps/frontend
 
-      - name: Move Build Artifacts
-        run: |
-          mv apps/frontend/react-build.zip ./react-build.zip
-
-      - name: Check free disk space on EC2
-        uses: appleboy/ssh-action@v1.2.5
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
         with:
-          version: 1.8.4
-          host: ${{ secrets.INSTANCE_IP }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            df -h ~
-            df -hi ~
-            avail_kb=$(df --output=avail -k ~ | tail -1)
-            [ "$avail_kb" -ge 3145728 ] || { echo "::error::Under 3G free on the EC2 host; the upload and install would fail. Free space there before deploying."; exit 1; }
-            avail_inodes=$(df --output=iavail ~ | tail -1)
-            [ "$avail_inodes" -ge 100000 ] || { echo "::error::Under 100k free inodes on the EC2 host; the upload and install would fail. Free inodes there before deploying."; exit 1; }
-
-      - name: Upload React Build to EC2
-        uses: appleboy/scp-action@v0.1.3
-        with:
-          host: ${{ secrets.INSTANCE_IP }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "react-build.zip"
-          target: "~/"
+          name: react-build
+          path: apps/frontend/react-build.zip
 
   # Apart from build-react-app, so the frontend's build dependencies never
   # run where id-token: write reaches the environment role's Expo token. It
@@ -277,7 +254,10 @@ jobs:
       - deployed-config
       - checks
       - deploy-nest-backend
-    environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
+    environment: ${{ github.ref_name == 'production' && 'production-hosts' || 'staging-hosts' }}
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -286,26 +266,26 @@ jobs:
         id: config
         uses: ./.github/actions/deployed-config
 
-      - name: Upload nginx vhost to EC2
-        uses: appleboy/scp-action@v0.1.3
+      - name: Download React Build Artifact
+        uses: actions/download-artifact@v4
         with:
-          host: ${{ secrets.INSTANCE_IP }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "deploy/nginx/alliance.conf"
-          target: "~/"
-          strip_components: 2
+          name: react-build
 
-      - name: SSH and Deploy frontend SSR on EC2
-        uses: appleboy/ssh-action@v1.2.5
+      - name: Deploy frontend SSR on EC2
+        uses: ./.github/actions/run-on-host
         with:
-          # v1.2.5 defaults to drone-ssh 1.8.2, which stops forwarding output
-          # for good once one line outgrows its scanner. 1.8.3+ has no limit.
-          version: 1.8.4
-          host: ${{ secrets.INSTANCE_IP }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
+          environment: ${{ env.env_name }}
+          files: |
+            deploy/nginx/alliance.conf
+            react-build.zip
           script: |
+            df -h ~
+            df -hi ~
+            avail_kb=$(df --output=avail -k ~ | tail -1)
+            [ "$avail_kb" -ge 3145728 ] || { echo "::error::Under 3G free on the EC2 host; the unzip and install would fail. Free space there before deploying."; exit 1; }
+            avail_inodes=$(df --output=iavail ~ | tail -1)
+            [ "$avail_inodes" -ge 100000 ] || { echo "::error::Under 100k free inodes on the EC2 host; the unzip and install would fail. Free inodes there before deploying."; exit 1; }
+
             sudo yum install -y unzip nginx
 
             # Install Bun
@@ -335,8 +315,7 @@ jobs:
             # node_modules isn't in the zip; clear it so the frozen install
             # builds a clean tree
             rm -rf node_modules
-            # appleboy/ssh-action runs this script without `set -e`
-            # Make it fatal explicitly.
+            # The script runs without `set -e`; make it fatal explicitly.
             bun install --frozen-lockfile --production || { echo "bun install failed"; exit 1; }
             # Installs hardlink out of the cache, so node_modules survives this.
             bun pm cache rm || echo "::warning::bun pm cache rm failed; the disk fills up unless the Bun cache is cleared"
@@ -378,7 +357,10 @@ jobs:
       - checks
       - deploy-nest-backend
       - deploy-react-app
-    environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
+    environment: ${{ github.ref_name == 'production' && 'production-hosts' || 'staging-hosts' }}
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -392,34 +374,14 @@ jobs:
         with:
           name: admin-build
 
-      - name: Upload nginx vhost to EC2
-        uses: appleboy/scp-action@v0.1.3
+      - name: Deploy admin on EC2
+        uses: ./.github/actions/run-on-host
         with:
-          host: ${{ secrets.INSTANCE_IP }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "deploy/nginx/alliance_admin.conf,deploy/nginx/alliance_admin_http.conf"
-          target: "~/"
-          strip_components: 2
-
-      - name: Upload Admin Build to EC2
-        uses: appleboy/scp-action@v0.1.3
-        with:
-          host: ${{ secrets.INSTANCE_IP }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "admin-build.zip"
-          target: "~/"
-
-      - name: SSH and Deploy on EC2
-        uses: appleboy/ssh-action@v1.2.5
-        with:
-          # v1.2.5 defaults to drone-ssh 1.8.2, which stops forwarding output
-          # for good once one line outgrows its scanner. 1.8.3+ has no limit.
-          version: 1.8.4
-          host: ${{ secrets.INSTANCE_IP }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
+          environment: ${{ env.env_name }}
+          files: |
+            deploy/nginx/alliance_admin.conf
+            deploy/nginx/alliance_admin_http.conf
+            admin-build.zip
           script: |
             sudo yum install -y unzip nginx
 
@@ -806,7 +768,10 @@ jobs:
   deploy-nest-backend:
     runs-on: ubuntu-latest
     needs: checks
-    environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
+    environment: ${{ github.ref_name == 'production' && 'production-hosts' || 'staging-hosts' }}
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -839,24 +804,12 @@ jobs:
             shared/package.json \
             sharedweb/package.json
 
-      - name: Upload to EC2
-        uses: appleboy/scp-action@v0.1.3
+      - name: Deploy Backend on EC2
+        uses: ./.github/actions/run-on-host
         with:
-          host: ${{ secrets.INSTANCE_IP }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "nest-build.zip"
-          target: "~/"
-
-      - name: SSH and Deploy Backend on EC2
-        uses: appleboy/ssh-action@v1.2.5
-        with:
-          # v1.2.5 defaults to drone-ssh 1.8.2, which stops forwarding output
-          # for good once one line outgrows its scanner. 1.8.3+ has no limit.
-          version: 1.8.4
-          host: ${{ secrets.INSTANCE_IP }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
+          environment: ${{ env.env_name }}
+          files: nest-build.zip
+          timeout-minutes: 45
           script: |
             set -Euo pipefail
 
@@ -883,7 +836,6 @@ jobs:
 
             export NODE_ENV=${{ github.ref_name == 'production' && 'production' || 'staging' }}
 
-            # In memory, so a later deploy can't rewrite the file under a run still going.
             deploy_backend=$(unzip -p ~/nest-build.zip scripts/deploy_backend.sh) || { echo "could not extract deploy_backend.sh"; exit 1; }
             bash -c "$deploy_backend" || exit 1
 
