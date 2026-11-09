@@ -43,6 +43,7 @@ interface ActionTaskPanelFormProps {
   onSubmitted?: (formResponse: FormResponseDto) => void;
   /** Editable but unsubmittable, and nothing typed outlives the page. */
   preview?: boolean;
+  signupHref?: string;
 }
 
 const ActionTaskPanelForm = ({
@@ -59,6 +60,7 @@ const ActionTaskPanelForm = ({
   redirectOnComplete = publicAction,
   onSubmitted,
   preview = false,
+  signupHref,
 }: ActionTaskPanelFormProps) => {
   const [error, setError] = useState<string | null>(null);
   const {
@@ -180,6 +182,7 @@ const ActionTaskPanelForm = ({
         onCompleteAction={completeAction ?? noop}
         onFormStarted={onFormStarted}
         onAbandonAction={onAbandonAction}
+        signupHref={signupHref}
       />
     </Wrapper>
   );

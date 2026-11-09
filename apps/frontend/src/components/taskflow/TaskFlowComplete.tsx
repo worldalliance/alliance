@@ -119,6 +119,7 @@ export default function TaskFlowComplete({
   leavesToTasks,
   onClose,
   onInvite,
+  onSignUp,
 }: {
   schema: FormSchema;
   answers: Record<string, FormValue>;
@@ -130,9 +131,14 @@ export default function TaskFlowComplete({
   onClose: () => void;
   /** Null for a guest, who has no one to invite. */
   onInvite: (() => void) | null;
+  /** Offered to a guest in place of the invite. */
+  onSignUp: (() => void) | null;
 }) {
   const pressStartedInside = useRef(false);
   const palette = PALETTES[phase];
+  const invite = onInvite
+    ? { onClick: onInvite, label: taskFlow.inviteFriend }
+    : onSignUp && { onClick: onSignUp, label: taskFlow.joinAlliance };
   const recolor = {
     transition: transition(
       greenMotion(palette.green),
@@ -217,15 +223,15 @@ export default function TaskFlowComplete({
         >
           {leavesToTasks ? taskFlow.viewTasks : taskFlow.closeTask}
         </FlowButton>
-        {onInvite ? (
+        {invite ? (
           <FlowButton
             kind={palette.invite}
             className={REDUCED_MOTION}
             style={recolor}
-            onClick={onInvite}
+            onClick={invite.onClick}
             iconLeft={UserPlus}
           >
-            {taskFlow.inviteFriend}
+            {invite.label}
           </FlowButton>
         ) : null}
       </div>

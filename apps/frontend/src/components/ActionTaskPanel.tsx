@@ -26,6 +26,7 @@ export type ActionTaskPanelProps = ActionTaskPanelPropsShared & {
   scrollContainerRef?: RefObject<HTMLElement | null>;
   staticTaskFormSchema?: FormSchema;
   staticTaskInitialPageIndex?: number;
+  signupHref?: string;
 };
 
 const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
@@ -43,6 +44,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
   scrollContainerRef,
   staticTaskFormSchema,
   staticTaskInitialPageIndex,
+  signupHref,
 }: ActionTaskPanelProps) => {
   const handleCompleteAction = useCallback(async () => {
     const didSucceed = await onCompleteAction();
@@ -153,6 +155,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
         redirectOnComplete={redirectOnComplete}
         onSubmitted={onFormSubmitted}
         disabled={disabled || !canSubmit}
+        signupHref={signupHref}
       />
     );
   }

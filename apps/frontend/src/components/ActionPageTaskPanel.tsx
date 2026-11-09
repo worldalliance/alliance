@@ -156,7 +156,7 @@ const ActionPageTaskPanel = () => {
   const refCode = referralCode ?? null;
   const signupHref = refCode
     ? `/signup?ref=${encodeURIComponent(refCode)}`
-    : null;
+    : undefined;
 
   const fetchedGuestFormResponse = useGuestTaskForm(action, !isAuthenticated);
   const guestFormResponse =
@@ -302,14 +302,6 @@ const ActionPageTaskPanel = () => {
                         </p>
                       </>
                     )}
-                    {!guestCompleted && (
-                      <Link
-                        to={signupHref}
-                        className="mt-5 block w-full rounded-full bg-green px-6 py-3 text-center text-base font-medium text-white"
-                      >
-                        Sign up
-                      </Link>
-                    )}
                   </div>
                 </div>
               )}
@@ -354,6 +346,7 @@ const ActionPageTaskPanel = () => {
           disabled={formDisabledByState}
           formResponse={effectiveFormResponse}
           guestMode={guestMode}
+          signupHref={guestMode ? signupHref : undefined}
           forceRenderTask={guestMode || formDisabledByState}
           redirectOnComplete={!guestMode}
           onFormSubmitted={

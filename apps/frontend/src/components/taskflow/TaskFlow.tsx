@@ -85,6 +85,8 @@ type TaskFlowProps = {
   onCompleteAction: () => void;
   onFormStarted: () => void;
   onAbandonAction?: (withdrawal: ActionWithdrawal) => void;
+  /** Where a guest's completion screen offers to sign up. */
+  signupHref?: string;
 };
 
 /**
@@ -108,6 +110,7 @@ export default function TaskFlow({
   onCompleteAction,
   onFormStarted,
   onAbandonAction,
+  signupHref,
 }: TaskFlowProps) {
   const { user, isAuthenticated, loading: userLoading } = useAuth();
   const menuSlot = useContext(CardMenuSlotContext);
@@ -310,6 +313,9 @@ export default function TaskFlow({
               )
             }
             onInvite={isAuthenticated ? () => navigate(href("/invites")) : null}
+            onSignUp={
+              !isAuthenticated && signupHref ? () => navigate(signupHref) : null
+            }
           />
         );
       default:
