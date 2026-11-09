@@ -5,6 +5,7 @@ import type {
   AdminProjectDto,
 } from "@alliance/shared/client";
 import { addDays, addHours, isAfter, isBefore } from "date-fns";
+import { ActionPhase, actionPhase } from "./actionPhase";
 
 export enum ProjectLifecycle {
   Live = "live",
@@ -143,10 +144,15 @@ const BUCKET_LIFECYCLE: Record<StepCountBucket, ProjectLifecycle> = {
   [StepCountBucket.Done]: ProjectLifecycle.Done,
 };
 
-const lifecycleOf = (steps: ProjectStep[]): ProjectLifecycle => {
+const stepBucket = (step: ProjectStep, now: Date): StepCountBucket =>
+  actionPhase(step, now) === ActionPhase.Scheduled
+    ? StepCountBucket.Planned
+    : STEP_COUNT_BUCKET[step.status];
+
+const lifecycleOf = (steps: ProjectStep[], now: Date): ProjectLifecycle => {
   if (steps.length === 0) return ProjectLifecycle.InTheWorks;
   const present = new Set(
-    steps.map((step) => BUCKET_LIFECYCLE[STEP_COUNT_BUCKET[step.status]]),
+    steps.map((step) => BUCKET_LIFECYCLE[stepBucket(step, now)]),
   );
   return (
     PROJECT_LIFECYCLE_ORDER.find((lifecycle) => present.has(lifecycle)) ??
@@ -250,14 +256,14 @@ const summarize = (params: {
   const { key, name, withGapFlag, now } = params;
   const steps = [...params.steps].sort(byStepOrder);
   const counts = emptyCounts();
-  for (const step of steps) counts[STEP_COUNT_BUCKET[step.status]]++;
+  for (const step of steps) counts[stepBucket(step, now)]++;
   const firstStart = steps[0]?.memberActionStart ?? null;
   const gap = withGapFlag ? gapFlag(steps) : null;
   return {
     key,
     name,
     steps,
-    lifecycle: lifecycleOf(steps),
+    lifecycle: lifecycleOf(steps, now),
     startedAt: firstStart ? new Date(firstStart) : null,
     counts,
     funnel: funnelOf(steps),

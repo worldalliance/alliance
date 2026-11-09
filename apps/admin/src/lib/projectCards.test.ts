@@ -151,6 +151,25 @@ describe("buildProjectCards", () => {
     });
   });
 
+  it("counts a draft with a launch ahead as planned, so its project is upcoming", () => {
+    const card = only(
+      cards({
+        projects: [project(1)],
+        actions: [
+          step(1, {
+            projectId: 1,
+            status: "draft",
+            events: [event("member_action", day(3))],
+          }),
+        ],
+      }),
+    );
+
+    expect(card.counts[StepCountBucket.Planned]).toBe(1);
+    expect(card.counts[StepCountBucket.Draft]).toBe(0);
+    expect(card.lifecycle).toBe(ProjectLifecycle.Upcoming);
+  });
+
   it("builds the funnel from completions and totals withdrawals and dismissals", () => {
     const card = only(
       cards({
