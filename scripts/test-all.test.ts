@@ -2,8 +2,11 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { git } from "./lib/git";
+import { BUN_TEST_FILE, testPackages } from "./lib/test-packages";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.dirname(scriptDir);
 const fixtureRoot = path.join(scriptDir, ".tmp-test", "test-all");
 
 afterAll(() => {
@@ -37,3 +40,17 @@ test.each(["js", "ts", "jsx", "tsx", "mjs", "cjs", "mts", "cts"])(
     expect(status).toBe(0);
   },
 );
+
+test("every test bun test discovers runs in test-all.sh", () => {
+  const packages = testPackages(repoRoot);
+  const testFiles = git({ repoRoot, args: ["ls-files", "-z"] })
+    .toString("utf8")
+    .split("\0")
+    .filter((file) => BUN_TEST_FILE.test(file));
+
+  expect(
+    testFiles.filter(
+      (file) => !packages.some((dir) => file.startsWith(`${dir}/`)),
+    ),
+  ).toEqual([]);
+});
