@@ -2,7 +2,13 @@ import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { SiteArrow } from "@alliance/sharedweb/ui/SiteArrow";
 import { Menu, RotateCw, X } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { href, Link, useLocation } from "react-router";
 import { useAuth } from "../lib/AuthContext";
 import { InviteState, useInviteSession } from "./invite/InviteSession";
@@ -61,6 +67,23 @@ export function Navbar({
   const location = useLocation();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
+
+  // Lets fixed overlays, such as the task flow, start below the bar.
+  useLayoutEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+    const root = document.documentElement.style;
+    const publish = () =>
+      root.setProperty("--site-nav-height", `${header.offsetHeight}px`);
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(header);
+    return () => {
+      observer.disconnect();
+      root.setProperty("--site-nav-height", "0px");
+    };
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > SOLID_AFTER);
@@ -103,6 +126,7 @@ export function Navbar({
 
   return (
     <header
+      ref={headerRef}
       className={cn(
         "fixed inset-x-0 top-0 z-[90] w-full",
         "transition-[background-color,padding,box-shadow] duration-300",

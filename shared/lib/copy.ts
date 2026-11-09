@@ -369,6 +369,7 @@ export const taskFlow = {
   viewTasks: "View tasks",
   progressSaved: "Progress auto-saved",
   inviteFriend: "Invite a friend",
+  joinAlliance: "Join the Alliance",
 } as const;
 
 export const linkHints = {

@@ -1,3 +1,8 @@
+import { cn } from "@alliance/shared/styles/util";
+import {
+  BaseButtonVariant,
+  baseButtonVariants,
+} from "@alliance/sharedweb/ui/BaseButton";
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router";
 
@@ -35,10 +40,13 @@ const AllianceSignupPitch = ({ signupHref }: { signupHref: string }) => {
       </p>
       <Link
         to={signupHref}
-        className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-green px-6 py-3 text-base font-semibold text-white transition hover:opacity-90"
+        className={cn(
+          baseButtonVariants({ variant: BaseButtonVariant.Green }),
+          "mt-5 flex h-11 w-full rounded-md",
+        )}
       >
-        Join us
-        <ArrowRight className="h-4 w-4" />
+        <span>Join us</span>
+        <ArrowRight size={18} className="shrink-0" />
       </Link>
     </div>
   );

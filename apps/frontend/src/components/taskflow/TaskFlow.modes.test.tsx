@@ -124,6 +124,35 @@ it("shows a guest the completion card before completing a public task and redire
   }
 });
 
+it("offers a referred guest signup in place of an invite, completing the task on the way", async () => {
+  const onSubmitted = jest.fn();
+  renderFlow({
+    auth: authValue(),
+    page: (
+      <ActionTaskPanelForm
+        taskFormId={9}
+        onCompleteAction={() => {}}
+        onFormStarted={() => {}}
+        onDeadlinePassed={() => {}}
+        publicAction
+        redirectOnComplete={false}
+        onSubmitted={onSubmitted}
+        signupHref="/signup?ref=abc"
+        action={action}
+      />
+    ),
+  });
+  await submitFlow();
+  expect(
+    screen.queryByRole("button", { name: taskFlow.inviteFriend }),
+  ).toBeNull();
+
+  fireEvent.click(screen.getByRole("button", { name: taskFlow.joinAlliance }));
+
+  expect(await screen.findByText("Signup")).toBeTruthy();
+  expect(onSubmitted).toHaveBeenCalledTimes(1);
+});
+
 it("offers a guest on a public task no withdraw", async () => {
   renderFlow({
     auth: authValue(),
