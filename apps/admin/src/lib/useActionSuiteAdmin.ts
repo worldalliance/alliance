@@ -11,7 +11,10 @@ import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { queryOptions, useMutation, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { adminRefusalMessage } from "./adminRefusal";
-import { sendConfirmingDeadlineShortening } from "./confirmDeadlineShortening";
+import {
+  dataOrThrow,
+  sendConfirmingDeadlineShortening,
+} from "./confirmDeadlineShortening";
 import { usePatchQueryData } from "./usePatchQueryData";
 
 export const suiteLoadError = (error: unknown) =>
@@ -26,13 +29,6 @@ const suiteQuery = (suiteId: number) =>
         throwOnError: true,
       }).then((r) => r.data),
   });
-
-/** Resolves `null` when staff decline, and rejects with the refusal. */
-const dataOrThrow = <T>(sent: { data?: T; error?: unknown } | null) => {
-  if (!sent) return null;
-  if (sent.data === undefined) throw sent.error;
-  return sent.data;
-};
 
 export function useActionSuiteAdmin(suiteId: number) {
   const { confirm } = useToast();

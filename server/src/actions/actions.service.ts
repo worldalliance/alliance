@@ -1,4 +1,3 @@
-import { echoesStoredKey } from "@alliance/common/image-src";
 import {
   BadRequestException,
   Injectable,
@@ -6,22 +5,29 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { throwIfSlugTaken } from "src/datasources/slug-column";
 import {
   softDeleteWhere,
   updateLive,
   writeUnderLive,
 } from "src/datasources/soft-delete";
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
-import { renderedImageKey } from "src/images/images.service";
 import { Form } from "src/tasks/entities/form.entity";
 import { User } from "src/user/entities/user.entity";
 import type {
   Relations,
   Repository as TypedRepository,
 } from "src/utils/Repository";
-import { DeepPartial, ILike, In, type Repository } from "typeorm";
+import {
+  DeepPartial,
+  type EntityManager,
+  ILike,
+  In,
+  type Repository,
+} from "typeorm";
 import { UserService } from "../user/user.service";
 import { ActionFormLinksService } from "./action-form-links.service";
+import { dropEchoedImages, rewriteRenderedImages } from "./action-image-input";
 import { replaceReviewers } from "./action-reviewers";
 import { isActionUpdatePublished } from "./action-update-visibility";
 import { ActionVisibilityService } from "./action-visibility.service";
@@ -44,16 +50,19 @@ import { ActionReviewer } from "./entities/action-reviewer.entity";
 import { ActionSuite } from "./entities/action-suite.entity";
 import {
   Action,
+  ACTION_SLUG_INDEX,
   parseAction,
   type ParsedAction,
 } from "./entities/action.entity";
 import { GeneralUpdate } from "./entities/general-update.entity";
+import { FormSlugSequence, slugFormForAction } from "./form-slug";
 import { GeneralUpdatesService } from "./general-updates.service";
 import {
   assertNotAPrerequisite,
   assertPrerequisitesValid,
 } from "./prerequisite-validation";
 import { shiftPrioritiesAfterInsertion } from "./priority-order";
+import { renameSoleActionSuite } from "./sole-action-suite";
 
 const ACTION_PARENT_GONE = "That suite, author or form is gone";
 
@@ -70,8 +79,6 @@ export class ActionsService {
     private readonly editableContentRepository: TypedRepository<EditableContent>,
     @InjectRepository(GeneralUpdate)
     private readonly generalUpdateRepository: Repository<GeneralUpdate>,
-    @InjectRepository(ActionSuite)
-    private readonly actionSuiteRepository: Repository<ActionSuite>,
     private userService: UserService,
     private readonly cohortResolverService: CohortResolverService,
     private readonly cohortDecisionStaffService: CohortDecisionStaffService,
@@ -96,33 +103,22 @@ export class ActionsService {
     );
   }
 
-  /**
-   * A new action has no stored value to compare against, so a url counts as one
-   * this api rendered only when it renders back to itself. Keeping the key it
-   * names rather than dropping the field is what a duplicate wants, since the
-   * copy then points at the same upload as the original.
-   */
-  private rewriteRenderedImages(
-    next: Pick<CreateActionDto, "image" | "squareThumbnailImage">,
-  ): void {
-    for (const column of ["image", "squareThumbnailImage"] as const) {
-      const value = next[column];
-      if (typeof value !== "string") {
-        continue;
-      }
-      const key = renderedImageKey(value);
-      if (key) {
-        this.logger.warn(
-          `Rewrote an action ${column} url back to its upload key: ${value.slice(0, 100)}`,
-        );
-        next[column] = key;
-      }
-    }
+  async create(createActionDto: CreateActionDto): Promise<ParsedAction> {
+    const saved = await this.insertAction(
+      this.actionRepository.manager,
+      createActionDto,
+    );
+    await this.afterActionInserted(saved);
+    return parseAction(saved);
   }
 
-  async create(createActionDto: CreateActionDto): Promise<ParsedAction> {
+  /** Joins `em`'s transaction when one is active; then call `afterActionInserted`. */
+  async insertAction(
+    em: EntityManager,
+    createActionDto: CreateActionDto,
+  ): Promise<Action> {
     const { suiteId, authorIds, reviewers, ...rest } = createActionDto;
-    this.rewriteRenderedImages(rest);
+    rewriteRenderedImages(rest, this.logger);
     if (rest.cohortExpression != null) {
       rest.cohortExpression = await parseCohortExpressionForSaveOrThrow({
         em: this.actionRepository.manager,
@@ -138,7 +134,7 @@ export class ActionsService {
     action.events = [];
 
     if (suiteId) {
-      const suite = await this.actionSuiteRepository.findOneOrFail({
+      const suite = await em.findOneOrFail(ActionSuite, {
         where: { id: suiteId },
       });
       action.suite = suite;
@@ -150,7 +146,7 @@ export class ActionsService {
         : [];
     }
 
-    const saved = await writeUnderLive(this.actionRepository.manager, {
+    return writeUnderLive(em, {
       parents: [
         ...(action.suite ? [{ target: ActionSuite, id: action.suite.id }] : []),
         ...(action.authors ?? []).map(({ id }) => ({ target: User, id })),
@@ -162,14 +158,30 @@ export class ActionsService {
       write: async (em) => {
         const inserted = await em.save(Action, action);
         await assertPrerequisitesValid({ em, actionIds: [inserted.id] });
+        if (rest.taskFormId != null) {
+          await slugFormForAction(em, {
+            formId: rest.taskFormId,
+            actionId: inserted.id,
+            sequence: FormSlugSequence.Main,
+          });
+        }
         return inserted;
       },
+    }).catch((error: unknown) => {
+      throwIfSlugTaken({
+        error,
+        indexName: ACTION_SLUG_INDEX,
+        slug: rest.slug,
+      });
+      throw error;
     });
+  }
+
+  async afterActionInserted(saved: Action): Promise<void> {
     await shiftPrioritiesAfterInsertion(this.actionRepository.manager);
     await this.generalUpdates.syncGeneralUpdateDatesForSuites([
       saved.suite?.id,
     ]);
-    return parseAction(saved);
   }
 
   async findAll(): Promise<ParsedAction[]> {
@@ -245,6 +257,15 @@ export class ActionsService {
 
     const actionMap = new Map(actionsWithRelations.map((a) => [a.id, a]));
     return actionIds.map((id) => parseAction(actionMap.get(id)!));
+  }
+
+  async findIdBySlug(slug: string): Promise<number> {
+    const action = await this.actionRepository.findOne({
+      where: { slug },
+      select: { id: true },
+    });
+    if (!action) throw new NotFoundException(`Action "${slug}" not found`);
+    return action.id;
   }
 
   async findOneOrFail(params: {
@@ -328,30 +349,6 @@ export class ActionsService {
     ]);
   }
 
-  /**
-   * Both image columns are served as urls, so an editor seeded from the api
-   * sends one back on its next save. Dropping the echo keeps the upload key,
-   * which renders correctly in every environment.
-   */
-  private dropEchoedImages(
-    next: Pick<UpdateActionDto, "image" | "squareThumbnailImage">,
-    stored: Partial<Pick<Action, "image" | "squareThumbnailImage">>,
-  ): void {
-    for (const column of ["image", "squareThumbnailImage"] as const) {
-      const value = next[column];
-      // null clears the column, so only a string can be an echo.
-      if (typeof value !== "string") {
-        continue;
-      }
-      if (echoesStoredKey({ next: value, stored: stored[column] })) {
-        this.logger.warn(
-          `Ignored an action ${column} that echoes the stored key: ${value.slice(0, 100)}`,
-        );
-        delete next[column];
-      }
-    }
-  }
-
   async update(
     id: number,
     updateActionDto: UpdateActionDto,
@@ -372,7 +369,7 @@ export class ActionsService {
     const oldSuiteId = action.suite?.id;
 
     const { suiteId, authorIds, reviewers, ...rest } = updateActionDto;
-    this.dropEchoedImages(rest, action);
+    dropEchoedImages({ next: rest, stored: action, logger: this.logger });
     if (rest.cohortExpression != null) {
       rest.cohortExpression = await parseCohortExpressionForSaveOrThrow({
         em: this.actionRepository.manager,
@@ -406,6 +403,7 @@ export class ActionsService {
     }
 
     const previousTaskFormId = action.taskFormId;
+    const newName = rest.name === action.name ? undefined : rest.name;
     Object.assign(action, rest);
 
     // Replacing reviewers soft-deletes the dropped ones before the save;
@@ -435,10 +433,31 @@ export class ActionsService {
           });
         }
         await em.save(Action, action);
+        if (newName !== undefined && suiteId != null) {
+          await renameSoleActionSuite(em, {
+            suiteId,
+            actionId: id,
+            name: newName,
+          });
+        }
         if (rest.prerequisiteActionIds !== undefined) {
           await assertPrerequisitesValid({ em, actionIds: [id] });
         }
+        if (rest.taskFormId != null && rest.taskFormId !== previousTaskFormId) {
+          await slugFormForAction(em, {
+            formId: rest.taskFormId,
+            actionId: id,
+            sequence: FormSlugSequence.Main,
+          });
+        }
       },
+    }).catch((error: unknown) => {
+      throwIfSlugTaken({
+        error,
+        indexName: ACTION_SLUG_INDEX,
+        slug: rest.slug,
+      });
+      throw error;
     });
     const newSuiteId = action.suite?.id;
     await this.generalUpdates.syncGeneralUpdateDatesForSuites([

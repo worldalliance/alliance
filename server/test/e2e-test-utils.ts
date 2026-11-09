@@ -9,6 +9,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import type { Expo } from "expo-server-sdk";
+import { insertForm } from "src/actions/form-slug";
 import { JWTTokenType, sessionTokenPayload } from "src/auth/tokens";
 import { Contract } from "src/contract/entities/contract.entity";
 import { testConnectionOptions } from "src/datasources/dataSourceTest";
@@ -344,9 +345,11 @@ export async function createFormWithSnapshot(
   },
 ): Promise<{ form: Form; snapshot: FormSnapshot }> {
   const snapshot = await createFormSnapshot(dataSource, data.schema);
-  const formRepo = dataSource.getRepository(Form);
-  const form = await formRepo.save(
-    formRepo.create({ title: data.title, formSnapshotId: snapshot.id }),
+  const form = await dataSource.transaction((em) =>
+    insertForm(em, {
+      form: { title: data.title, formSnapshotId: snapshot.id },
+      placement: null,
+    }),
   );
   await attachFormSnapshot(dataSource, form.id, snapshot.id);
   return { form, snapshot };

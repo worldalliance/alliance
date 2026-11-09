@@ -33,6 +33,11 @@ import { extractGuestToken, type JwtRequest } from "src/auth/tokens";
 import { FormDraftService } from "./form-draft.service";
 import { FormResponseHistoryDto } from "./form-response-history.dto";
 import { FormResponseQueryService } from "./form-response-query.service";
+import {
+  FormSnapshotMigrationDto,
+  MigrateResponseSnapshotsDto,
+  MigrateResponseSnapshotsResultDto,
+} from "./form-snapshot-migration.dto";
 import { FormSubmissionService } from "./form-submission.service";
 import {
   CreateFormDto,
@@ -42,17 +47,15 @@ import {
   FormResponseCountDto,
   FormResponseDto,
   FormResponsesByFormsDto,
-  FormSnapshotMigrationDto,
   FormSummaryDto,
   GuestFormResponseDto,
   LinkedGuestDraftDto,
   MaybeFormDraftDto,
-  MigrateResponseSnapshotsDto,
-  MigrateResponseSnapshotsResultDto,
   SaveFormDraftDto,
   SubmitFollowUpFormDto,
   SubmitFormDto,
   UpdateFormDto,
+  UpdateFormSlugDto,
 } from "./form.dto";
 import {
   VisibilityProfilesDto,
@@ -440,6 +443,21 @@ export class TasksController {
     @Body() body: UpdateFormDto,
   ): Promise<FormDto> {
     return new FormDto(await this.tasksService.updateForm(+formId, body));
+  }
+
+  @Patch("forms/:formId/slug")
+  @UseGuards(AdminGuard)
+  @ApiOkResponse()
+  @ApiResponse({
+    status: 409,
+    description:
+      "Another live form of the same action, or with no action, has the slug.",
+  })
+  async updateFormSlugAdmin(
+    @Param("formId", ParseIntPipe) formId: number,
+    @Body() body: UpdateFormSlugDto,
+  ): Promise<void> {
+    await this.tasksService.renameFormSlug({ formId, slug: body.slug });
   }
 
   @Delete(":id")

@@ -20,6 +20,12 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ActionFormLinksService } from "src/actions/action-form-links.service";
+import {
+  displayFormSlug,
+  findFormOwners,
+  insertForm,
+  renameFormSlug,
+} from "src/actions/form-slug";
 import { ContractService } from "src/contract/contract.service";
 import { softDeleteCascade } from "src/datasources/soft-delete";
 import { In, type Repository } from "typeorm";
@@ -33,18 +39,16 @@ import {
   SnapshotHistoryOwner,
 } from "./entities/formsnapshot.entity";
 import { FormRowAssignmentService } from "./form-row-assignment.service";
+import type {
+  FormSnapshotMigration,
+  SnapshotResponseGroup,
+} from "./form-snapshot-migration.dto";
 import {
   cloneFormSnapshotWithSchema,
   formSchemaOf,
   snapshotForRow,
 } from "./form-snapshot-schema";
-import {
-  CreateFormDto,
-  type FormSnapshotMigration,
-  type FormSummary,
-  type SnapshotResponseGroup,
-  UpdateFormDto,
-} from "./form.dto";
+import { CreateFormDto, type FormSummary, UpdateFormDto } from "./form.dto";
 import { FormSnapshotService } from "./formsnapshot.service";
 import {
   findFormsReadingForm,
@@ -70,6 +74,7 @@ const FIELD_COUNT = `(
 type FormIndexRow = {
   id: number;
   title: string;
+  slug: string;
   formSnapshotId: number;
   pagesType: string | null;
   pageCount: number;
@@ -95,11 +100,16 @@ export class TasksService {
       undefined,
     );
     const snapshot = await this.formSnapshotService.findOrCreate(schema);
-    const form = await this.formRepository.save({
-      title: createFormDto.title,
-      formSnapshotId: snapshot.id,
-      formSnapshot: snapshot,
-    });
+    const form = await this.formRepository.manager.transaction((em) =>
+      insertForm(em, {
+        form: {
+          title: createFormDto.title,
+          formSnapshotId: snapshot.id,
+          formSnapshot: snapshot,
+        },
+        placement: null,
+      }),
+    );
     await this.formSnapshotService.recordHistorical({
       owner: SnapshotHistoryOwner.Form,
       ownerId: form.id,
@@ -341,18 +351,24 @@ export class TasksService {
       .innerJoin(FormSnapshot, "snapshot", "snapshot.id = form.formSnapshotId")
       .select("form.id", "id")
       .addSelect("form.title", "title")
+      .addSelect("form.slug", "slug")
       .addSelect("form.formSnapshotId", "formSnapshotId")
       .addSelect(`jsonb_typeof(${STORED_PAGES})`, "pagesType")
       .addSelect(`jsonb_array_length(${READABLE_PAGES})`, "pageCount")
       .addSelect(FIELD_COUNT, "fieldCount")
       .orderBy("form.id", "DESC")
       .getRawMany<FormIndexRow>();
-    const actionsByFormId = await this.formLinks.findActionsByFormIds(
-      rows.map((row) => row.id),
-    );
+    const formIds = rows.map((row) => row.id);
+    const actionsByFormId = await this.formLinks.findActionsByFormIds(formIds);
+    const owners = await findFormOwners(this.formRepository.manager, formIds);
     return rows.map((row) => ({
       id: row.id,
       title: row.title,
+      slug: row.slug,
+      displaySlug: displayFormSlug({
+        slug: row.slug,
+        actionSlug: owners.get(row.id)?.actionSlug,
+      }),
       formSnapshotId: row.formSnapshotId,
       // Counted leniently: a form the strict schema rejects still shows its
       // size in the index, and a snapshot too malformed to read at all keeps
@@ -363,6 +379,15 @@ export class TasksService {
           : undefined,
       usedInAction: actionsByFormId.get(row.id),
     }));
+  }
+
+  async renameFormSlug(params: {
+    formId: number;
+    slug: string;
+  }): Promise<void> {
+    await this.formRepository.manager.transaction((em) =>
+      renameFormSlug(em, params),
+    );
   }
 
   async deleteForm(formId: number): Promise<void> {

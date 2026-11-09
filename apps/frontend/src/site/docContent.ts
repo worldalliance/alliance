@@ -12,13 +12,13 @@ export enum GuideSectionKind {
   Resources = "resources",
 }
 
-export type GuideSectionCopy = {
+export type DocSectionCopy = {
   /** Shown in the table of contents. */
   label: string;
   markdown: string;
 };
 
-export const GUIDE_SECTIONS: Record<GuideSectionKind, GuideSectionCopy> = {
+export const GUIDE_SECTIONS: Record<GuideSectionKind, DocSectionCopy> = {
   [GuideSectionKind.Introduction]: {
     label: "Introduction",
     markdown: `
@@ -151,33 +151,69 @@ export const ACTION_CATEGORIES: ActionCategory[] = [
   },
 ];
 
-export const FOUNDATION_MARKDOWN = `
+export enum FoundationSectionKind {
+  Principle = "principle",
+  Aims = "aims",
+  Priorities = "priorities",
+}
+
+export const FOUNDATION_SECTIONS: Record<
+  FoundationSectionKind,
+  DocSectionCopy
+> = {
+  [FoundationSectionKind.Principle]: {
+    label: "Principle",
+    markdown: `
 The Alliance is founded on a moral principle shared by nearly all cultures: we should not treat others in ways that we do not want to be treated.
 
 Our modern, interconnected world is shaped by decisions made by billions of people. If we do not want others to disregard how their decisions impact us, we cannot disregard how our decisions impact them.
 
 The Alliance holds itself and others accountable to this principle. At times, we will seek to change external institutions and individuals; at other times, we will change ourselves.
-
+`,
+  },
+  [FoundationSectionKind.Aims]: {
+    label: "Aims",
+    markdown: `
 Given this principle, the initial aim of the Alliance is to create a world in which:
 
 1. Every person has the resources and freedom to achieve happiness and fulfillment, as most people do not want others to deprive them of such opportunity;
 2. Every person lives free of political, economic, and environmental insecurity, as most people do not want others to impose such conditions upon them;
 3. Decisions of great importance for humanity are made with substantive democratic input, as most people do not want others to exclude them from choices which determine their future.
-
+`,
+  },
+  [FoundationSectionKind.Priorities]: {
+    label: "Priorities",
+    markdown: `
 Therefore, the initial priorities of the Alliance are to address the following global crises, which represent great differences between our world and the world we seek to create: extreme poverty, environmental destruction, the decline of democratic institutions, and dangerous technological development.
-`;
+`,
+  },
+};
 
-export const GOVERNANCE_MARKDOWN_BEFORE = `
-## Membership
+export const FOUNDATION_SECTION_ORDER: FoundationSectionKind[] = [
+  FoundationSectionKind.Principle,
+  FoundationSectionKind.Aims,
+  FoundationSectionKind.Priorities,
+];
 
+export enum GovernanceSectionKind {
+  Membership = "membership",
+  Office = "office",
+  Oversight = "oversight",
+}
+
+export const GOVERNANCE_SECTIONS: Record<
+  GovernanceSectionKind,
+  DocSectionCopy
+> = {
+  [GovernanceSectionKind.Membership]: {
+    label: "Membership",
+    markdown: `
 Members of the Alliance are individuals that have signed and abide by the following membership contract.
-`;
-
-export const GOVERNANCE_MARKDOWN_AFTER = `
-This membership contract may be revised with signed members' consent. Additional membership contracts can be offered at the office's discretion.
-
-## Strategic office
-
+`,
+  },
+  [GovernanceSectionKind.Office]: {
+    label: "Strategic office",
+    markdown: `
 The office of the Alliance is the set of members responsible for ensuring the Alliance will fulfill its purpose given that members abide by their contracts.
 
 In particular, the office is responsible for:
@@ -190,9 +226,11 @@ In designing actions, the office aims to satisfy both:
 
 1. The collective interests of members, as can be reasonably determined through internal democratic processes.
 2. The collective interests of humanity, as can be reasonably determined using available data about global preferences.
-
-## Oversight
-
+`,
+  },
+  [GovernanceSectionKind.Oversight]: {
+    label: "Oversight",
+    markdown: `
 These procedures are in effect until they are modified by a governance review process that requires the participation of all members. The office will schedule this review process at its discretion.
 
 The Alliance meets its approval threshold when more than 3/4 of members indicate that they want the Alliance to continue to operate as it currently does.
@@ -206,6 +244,18 @@ The office will run an oversight process if either:
 
 1. 6 months have passed since the last oversight process.
 2. More than 1/4 of Alliance members request an oversight process.
+`,
+  },
+};
+
+export const GOVERNANCE_SECTION_ORDER: GovernanceSectionKind[] = [
+  GovernanceSectionKind.Membership,
+  GovernanceSectionKind.Office,
+  GovernanceSectionKind.Oversight,
+];
+
+export const GOVERNANCE_MEMBERSHIP_AFTER = `
+This membership contract may be revised with signed members' consent. Additional membership contracts can be offered at the office's discretion.
 `;
 
 export type FaqItem = { id: string; question: string; answer: string };

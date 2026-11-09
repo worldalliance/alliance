@@ -486,11 +486,10 @@ it("drops expression text on returning to all/any rules", async () => {
 it("undoes a contract question with the contract it defaults to", async () => {
   renderFormBuilder(twoPages, 1);
   insertElement(button("Add element"), "Contract Field");
-  await screen.findByDisplayValue("Pledge");
-  await nextTask();
+  // The preview shows the markdown once the default contract is on the field.
+  await screen.findByText("I pledge");
 
   fireEvent.click(button("Undo"));
-  await nextTask();
   expect(screen.queryByDisplayValue("Sign the contract?")).toBeNull();
   expect(button("Undo").disabled).toBe(true);
 });

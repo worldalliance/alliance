@@ -59,6 +59,7 @@ interface ActionFormProps extends ActionFieldInputs {
   allActionsLoadFailed: boolean;
   memberActionStart: Date | null;
   memberActionDeadline: Date | null;
+  hideStaffPreview?: boolean;
 }
 
 const ActionForm: React.FC<ActionFormProps> = ({
@@ -101,6 +102,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
   allActionsLoadFailed,
   memberActionStart,
   memberActionDeadline,
+  hideStaffPreview = false,
 }) => {
   const fieldDefs = useMemo(
     () =>
@@ -115,7 +117,8 @@ const ActionForm: React.FC<ActionFormProps> = ({
   const getFieldsBySection = (section: ActionFieldSection) =>
     fieldDefs
       .filter((f) => f.section === section)
-      .filter((f) => (f.show ? f.show(form) : true));
+      .filter((f) => (f.show ? f.show(form) : true))
+      .filter((f) => !(hideStaffPreview && f.name === "staffPreview"));
 
   const fieldInputs = {
     form,

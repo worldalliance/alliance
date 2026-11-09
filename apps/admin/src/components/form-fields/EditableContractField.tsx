@@ -1,6 +1,6 @@
 import type { ContractField } from "@alliance/common/forms/form-schema";
 import { useCurrentContract } from "@alliance/shared/lib/useCurrentContract";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import { useContractsAdmin } from "../../lib/useContractsAdmin";
 import { RequiredToggle } from "./CommonControls";
 import { useDerivedWrite } from "./derivedWrite";
@@ -18,17 +18,13 @@ export function EditableContractField({
   const { data: currentContract } = useCurrentContract();
   const derivedWrite = useDerivedWrite();
 
-  // Default to current contract when none selected (once per field)
-  const hasDefaulted = useRef(false);
   useEffect(() => {
     if (
-      hasDefaulted.current ||
       !currentContract ||
       (field.contractId !== null && field.contractId !== undefined)
     ) {
       return;
     }
-    hasDefaulted.current = true;
     derivedWrite(() => onUpdate({ contractId: currentContract.id }));
   }, [currentContract, derivedWrite, field.contractId, onUpdate]);
 

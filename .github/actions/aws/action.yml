@@ -1,0 +1,66 @@
+name: AWS
+description: >-
+  Assume this job's CI role through GitHub OIDC, load the committed CI config
+  in .github/ci.env into the job's environment, and read the named Parameter
+  Store secrets into the `secrets` output. The job needs `id-token: write`.
+  See docs/ci-secrets.md.
+
+inputs:
+  role:
+    description: >-
+      review, pr-screenshots, visual-regression, staging, production,
+      staging-hosts or production-hosts.
+      terraform/ci-oidc.tf decides which jobs may assume each role and which
+      parameters it reads.
+    required: true
+  parameters:
+    description: >-
+      Parameter names under /alliance/, one per line, e.g.
+      ci/review/OPENAI_API_KEY.
+    default: ""
+  export-credentials:
+    description: >-
+      true leaves the role's credentials in the environment for the job's later
+      steps, for jobs that call S3 or Run Command themselves. Otherwise they
+      never leave this action.
+    default: "false"
+  role-duration-seconds:
+    description: >-
+      How long the credentials last. terraform/ci-oidc.tf caps each role's
+      maximum; asking for more fails.
+    default: "3600"
+
+outputs:
+  secrets:
+    description: >-
+      JSON object of the parameters' values keyed by each name's last segment,
+      e.g. fromJSON(steps.aws.outputs.secrets || '{}').OPENAI_API_KEY. Every value is
+      masked in logs.
+    value: ${{ steps.read.outputs.secrets }}
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: cat "$GITHUB_ACTION_PATH/../../ci.env" >> "$GITHUB_ENV"
+
+    - id: credentials
+      uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+      with:
+        role-to-assume: arn:aws:iam::751910243706:role/alliance-ci-${{ inputs.role }}
+        role-session-name: gha-${{ github.run_id }}-${{ github.run_attempt }}
+        aws-region: us-west-2
+        role-duration-seconds: ${{ inputs.role-duration-seconds }}
+        output-credentials: true
+        output-env-credentials: ${{ inputs.export-credentials }}
+
+    - id: read
+      if: inputs.parameters != ''
+      shell: bash
+      env:
+        AWS_ACCESS_KEY_ID: ${{ steps.credentials.outputs.aws-access-key-id }}
+        AWS_SECRET_ACCESS_KEY: ${{ steps.credentials.outputs.aws-secret-access-key }}
+        AWS_SESSION_TOKEN: ${{ steps.credentials.outputs.aws-session-token }}
+        AWS_REGION: us-west-2
+        PARAMETERS: ${{ inputs.parameters }}
+      run: bash "$GITHUB_ACTION_PATH/read-parameters.sh"

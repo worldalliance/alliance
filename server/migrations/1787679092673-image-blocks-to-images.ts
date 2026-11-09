@@ -15,9 +15,9 @@ import {
 // comes back as `""` rather than absent. Neither is recoverable from what `up`
 // leaves behind.
 //
-// The deployment command has a 10-minute timeout that also covers install,
-// restart, and health checks. A timeout bypasses the deploy script's rollback,
-// so batches keep locks short and avoid loading the full table on db.t3.micro.
+// The deploy's backend step, which also covers install, restart and health
+// checks, can time out, and a timeout bypasses the deploy script's rollback, so
+// batches keep locks short and avoid loading the full table on db.t3.micro.
 
 const BATCH_SIZE = 200;
 

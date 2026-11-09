@@ -191,12 +191,17 @@ describe("buildTimelineData", () => {
     event(5, "2026-01-25T00:00:00.000Z", "planned"),
     event(6, "2026-02-12T00:00:00.000Z", "member_action"),
   ]);
+  const resolved = action(5, [
+    event(7, "2026-02-03T00:00:00.000Z", "member_action"),
+    event(8, "2026-02-20T00:00:00.000Z", "resolution"),
+  ]);
+  const unlaunched = action(6, [event(9, "2026-02-25T00:00:00.000Z", "draft")]);
 
   it("builds phases ending at the next event, or a week past now", () => {
     const { timelineData } = buildTimelineData({
       actions: [early],
       normalizedReminders: [],
-      mostRecentFirst: false,
+      latestLaunchFirst: false,
     });
 
     expect(
@@ -221,19 +226,19 @@ describe("buildTimelineData", () => {
     ]);
   });
 
-  it("orders by first event, or by latest event when most recent first, with eventless actions last", () => {
-    const order = (mostRecentFirst: boolean) =>
+  it("orders by first event, or by latest launch when latest launch first, with eventless actions last", () => {
+    const order = (latestLaunchFirst: boolean) =>
       buildTimelineData({
-        actions: [eventless, early, late, middle],
+        actions: [eventless, unlaunched, early, resolved, late, middle],
         normalizedReminders: [],
-        mostRecentFirst,
+        latestLaunchFirst,
       }).timelineData.map(({ action }) => action.id);
 
-    expect(order(false)).toEqual([2, 4, 1, 3]);
-    expect(order(true)).toEqual([4, 1, 2, 3]);
+    expect(order(false)).toEqual([2, 4, 1, 5, 6, 3]);
+    expect(order(true)).toEqual([4, 1, 2, 5, 6, 3]);
   });
 
-  it("puts drafts first when most recent first", () => {
+  it("puts drafts first when latest launch first", () => {
     const draft = action(
       5,
       [event(7, "2026-01-01T00:00:00.000Z", "draft")],
@@ -243,7 +248,7 @@ describe("buildTimelineData", () => {
     const { timelineData } = buildTimelineData({
       actions: [eventless, early, eventlessDraft, draft, middle],
       normalizedReminders: [],
-      mostRecentFirst: true,
+      latestLaunchFirst: true,
     });
 
     expect(timelineData.map(({ action }) => action.id)).toEqual([
@@ -259,7 +264,7 @@ describe("buildTimelineData", () => {
     const { globalStartDate, globalEndDate, totalDays } = buildTimelineData({
       actions: [early],
       normalizedReminders: [point],
-      mostRecentFirst: false,
+      latestLaunchFirst: false,
     });
 
     expect(globalStartDate.toISOString()).toBe("2026-01-09T00:00:00.000Z");
@@ -276,7 +281,7 @@ describe("buildTimelineData", () => {
       buildTimelineData({
         actions: [],
         normalizedReminders: [],
-        mostRecentFirst: false,
+        latestLaunchFirst: false,
       }).globalStartDate.toISOString(),
     ).toBe(new Date(NOW.getTime() - milliseconds({ days: 2 })).toISOString());
   });

@@ -11,6 +11,7 @@ import {
   type SourceCheck,
 } from "./form-canvas/IssueList";
 import { FormJsonButton } from "./FormJsonButton";
+import FormSlugEditor from "./FormSlugEditor";
 import { HistoryControls } from "./HistoryControls";
 
 export type FormEditorTab =
@@ -48,6 +49,7 @@ export function FormBuilderHeader({
   activeEditor,
   onActiveEditorChange,
   save,
+  formId,
 }: {
   schema: FormSchema;
   issues: readonly FormIssue[];
@@ -71,6 +73,7 @@ export function FormBuilderHeader({
     isLoading: boolean;
     hasUnsavedChanges: boolean;
   };
+  formId: number | undefined;
 }) {
   const { onSave, isSaving, isLoading, hasUnsavedChanges } = save;
 
@@ -96,6 +99,11 @@ export function FormBuilderHeader({
   return (
     <div className="bg-white border-b border-gray-200 p-4">
       <div className="flex items-center justify-end gap-4 flex-wrap xl:flex-nowrap">
+        {formId !== undefined && (
+          <div className="mr-auto">
+            <FormSlugEditor formId={formId} />
+          </div>
+        )}
         <div className="flex items-center space-x-2">
           <IssueList
             rows={issues.map((issue) => ({

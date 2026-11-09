@@ -1,5 +1,9 @@
 import { withCount } from "@alliance/common/plural";
 import type { ActionFormVariantStatsDto } from "@alliance/shared/client/types.gen";
+import {
+  formLabel,
+  useFormDisplaySlugs,
+} from "@alliance/shared/lib/useFormsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
 import Card from "@alliance/sharedweb/ui/Card";
 import { useNavigate } from "react-router";
@@ -17,6 +21,7 @@ export default function ActionFormVariantCoverage({
   hasVariants,
 }: ActionFormVariantCoverageProps) {
   const navigate = useNavigate();
+  const displaySlugs = useFormDisplaySlugs();
   const totalAssigned = stats.reduce((sum, s) => sum + s.assigned, 0);
   const totalSubmitted = stats.reduce((sum, s) => sum + s.submitted, 0);
 
@@ -69,7 +74,7 @@ export default function ActionFormVariantCoverage({
                     className="text-blue-600 hover:underline"
                     onClick={() => navigate(`/forms/${s.formId}`)}
                   >
-                    Form #{s.formId}
+                    {formLabel(displaySlugs, s.formId)}
                   </button>
                 ) : (
                   <span className="text-zinc-400">—</span>

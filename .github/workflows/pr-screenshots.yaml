@@ -40,6 +40,9 @@ jobs:
     if: github.event.label.name == 'screenshots' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    permissions:
+      contents: read
+      id-token: write
     services:
       postgres:
         image: postgres:17
@@ -165,9 +168,25 @@ jobs:
       - name: Install Claude Code
         run: npm i -g @anthropic-ai/claude-code
 
+      # The workspace holds the PR head, which may predate the action; under
+      # .scratch, git ignores the checkout.
+      - name: Checkout CI tools
+        uses: actions/checkout@v4
+        with:
+          path: .scratch/ci-tools
+          sparse-checkout: .github
+          persist-credentials: false
+
+      - name: Read CI secrets
+        id: aws
+        uses: ./.scratch/ci-tools/.github/actions/aws
+        with:
+          role: review
+          parameters: ci/review/CLAUDE_CODE_OAUTH_TOKEN
+
       - name: Take screenshots
         env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets || '{}').CLAUDE_CODE_OAUTH_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -205,7 +224,7 @@ jobs:
         id: redact
         if: always()
         env:
-          TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          TOKEN: ${{ fromJSON(steps.aws.outputs.secrets || '{}').CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
           shopt -s nullglob
           for file in "$RUNNER_TEMP/transcript.jsonl" "$TOOLS_DIR"/run/*.log; do
@@ -229,8 +248,25 @@ jobs:
   post:
     needs: capture
     runs-on: ubuntu-latest
-    permissions: {}
+    # Only this environment's role reads the user token, so the capture job's untrusted code can't.
+    environment: pr-screenshots
+    permissions:
+      contents: read
+      id-token: write
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github
+          persist-credentials: false
+
+      - name: Read screenshots token
+        id: aws
+        uses: ./.github/actions/aws
+        with:
+          role: pr-screenshots
+          parameters: ci/pr-screenshots/PR_SCREENSHOTS_GH_TOKEN
+
       - name: Download screenshots
         uses: actions/download-artifact@v4
         with:
@@ -240,13 +276,9 @@ jobs:
       - name: Comment on PR
         working-directory: out
         env:
-          GH_TOKEN: ${{ secrets.PR_SCREENSHOTS_GH_TOKEN }}
+          GH_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets || '{}').PR_SCREENSHOTS_GH_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          if [ -z "$GH_TOKEN" ]; then
-            echo "::error::PR_SCREENSHOTS_GH_TOKEN is not set; gh pr comment --attach needs a user token"
-            exit 1
-          fi
           attachments=()
           for file in *; do
             [ "$file" = comment.md ] || attachments+=(--attach "./$file")

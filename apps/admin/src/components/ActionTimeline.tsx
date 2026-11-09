@@ -16,6 +16,7 @@ import {
   parseReminderDate,
   type TimelineAction,
   type TimelineReminder,
+  type TimelineRow,
   weekTicks,
 } from "../lib/actionTimelineData";
 import type { CohortSegment } from "../lib/describeCohortExpression";
@@ -30,7 +31,7 @@ interface ActionTimelineProps {
   reminders?: TimelineReminder[];
   onReminderClick?: (reminderId: number) => void;
   focusOnDate?: Date | string | number | null;
-  mostRecentFirst?: boolean;
+  latestLaunchFirst?: boolean;
   participantsById?: ReadonlyMap<number, CohortSegment[]>;
 }
 
@@ -44,11 +45,14 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
   reminders,
   onReminderClick,
   focusOnDate,
-  mostRecentFirst = false,
+  latestLaunchFirst = false,
   participantsById,
 }) => {
   const [scrollLeft, setScrollLeft] = useState(0);
   const [containerWidth, setContainerWidth] = useState(800);
+  const [hoveredProjectId, setHoveredProjectId] = useState<number | null>(null);
+  const isProjectHovered = (action: TimelineRow["action"]) =>
+    action.project != null && action.project.id === hoveredProjectId;
   const [focusIndicator, setFocusIndicator] = useState<{
     timestamp: number;
     visible: boolean;
@@ -92,8 +96,9 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
   );
 
   const { timelineData, globalStartDate, globalEndDate, totalDays } = useMemo(
-    () => buildTimelineData({ actions, normalizedReminders, mostRecentFirst }),
-    [actions, normalizedReminders, mostRecentFirst],
+    () =>
+      buildTimelineData({ actions, normalizedReminders, latestLaunchFirst }),
+    [actions, normalizedReminders, latestLaunchFirst],
   );
 
   const focusTimestamp = focusDate ? focusDate.getTime() : null;
@@ -240,8 +245,15 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                 <Link
                   key={action.id}
                   to={`/actions/${action.id}`}
-                  className="border-b border-zinc-100 py-3 pr-4 flex flex-col justify-center bg-white hover:bg-zinc-50 pl-5"
+                  className={cn(
+                    "border-b border-zinc-100 py-3 pr-4 flex flex-col justify-center bg-white hover:bg-zinc-50 pl-5",
+                    isProjectHovered(action) && "bg-zinc-50",
+                  )}
                   style={{ height: "64px" }}
+                  onMouseEnter={() =>
+                    setHoveredProjectId(action.project?.id ?? null)
+                  }
+                  onMouseLeave={() => setHoveredProjectId(null)}
                 >
                   <div className="text-sm font-medium text-black truncate">
                     {action.name}
@@ -477,6 +489,8 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                   rowIndex={index}
                   scrollLeft={scrollLeft}
                   containerWidth={containerWidth}
+                  projectHovered={isProjectHovered(action)}
+                  onProjectHover={setHoveredProjectId}
                 />
               ))}
             </div>

@@ -1,4 +1,3 @@
-import { cn } from "@alliance/shared/styles/util";
 import { SiteArrow } from "@alliance/sharedweb/ui/SiteArrow";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
@@ -13,15 +12,9 @@ import {
   GUIDE_SECTIONS,
   GuideSectionKind,
 } from "../../site/docContent";
-import { DocProse } from "../../site/DocProse";
-import { InlineToc, StickyToc, useActiveSection } from "../../site/GuideToc";
+import { DocPage, docPageSections } from "../../site/DocPage";
 import { FAQ_HREF, FOUNDATION_HREF, GOVERNANCE_HREF } from "../../site/links";
 import { ContractCard, ImpactCard } from "../../site/PageCards";
-import { BandHeading, BandHeadingSize, PageShell } from "../../site/PageShell";
-import { SITE_COL } from "../../site/ui";
-
-/** Lines the title up with the centered text: its 45rem plus SITE_COL's padding. */
-const GUIDE_HEADER_COLUMN = "lg:max-w-216";
 
 export function meta() {
   return socialPreviewMeta({
@@ -33,12 +26,6 @@ export function meta() {
 
 const GUIDE_TITLE = "Guide to the Alliance";
 const GUIDE_LEDE = "Our goals, how we divide work, and our next steps.";
-/** Names the table of contents for screen readers; nothing draws it. */
-const GUIDE_TOC_LABEL = "Sections";
-const TOC_SECTIONS = GUIDE_SECTION_ORDER.map((kind) => ({
-  id: kind,
-  label: GUIDE_SECTIONS[kind].label,
-}));
 
 const GUIDE_QUOTE = {
   lead: "The world is not going in the right direction. We need new ideas. The Alliance is just that,",
@@ -177,7 +164,6 @@ function ResourceLinks() {
   );
 }
 
-/** Whatever follows a section's prose. */
 const guideExtras: Record<GuideSectionKind, ReactNode> = {
   [GuideSectionKind.Introduction]: null,
   [GuideSectionKind.Structure]: (
@@ -207,54 +193,19 @@ const guideExtras: Record<GuideSectionKind, ReactNode> = {
   [GuideSectionKind.Resources]: <ResourceLinks />,
 };
 
-export default function GuidePage() {
-  const active = useActiveSection(TOC_SECTIONS);
+const sections = docPageSections(
+  GUIDE_SECTION_ORDER,
+  GUIDE_SECTIONS,
+  guideExtras,
+);
 
+export default function GuidePage() {
   return (
-    <PageShell
+    <DocPage
       title={GUIDE_TITLE}
       subtitle={GUIDE_LEDE}
-      columnClassName={GUIDE_HEADER_COLUMN}
-    >
-      <StickyToc
-        sections={TOC_SECTIONS}
-        active={active}
-        label={GUIDE_TOC_LABEL}
-      />
-      <div className={cn(SITE_COL, "pt-7 pb-20 lg:pt-20 lg:pb-28")}>
-        <div className="grid gap-12 lg:grid-cols-[minmax(8rem,1fr)_minmax(0,45rem)_minmax(8rem,1fr)] lg:gap-x-16 2xl:gap-x-42">
-          <InlineToc
-            sections={TOC_SECTIONS}
-            active={active}
-            label={GUIDE_TOC_LABEL}
-          />
-
-          <div className="flex flex-col gap-16">
-            <GuideQuote />
-            {GUIDE_SECTION_ORDER.map((kind) => {
-              const section = GUIDE_SECTIONS[kind];
-              return (
-                <section
-                  key={kind}
-                  id={kind}
-                  className="flex scroll-mt-36 flex-col gap-6 lg:scroll-mt-28"
-                >
-                  <BandHeading size={BandHeadingSize.Section}>
-                    {section.label}
-                  </BandHeading>
-                  {section.markdown.trim() && (
-                    <DocProse
-                      markdown={section.markdown}
-                      className="*:not-first:mt-6 [&_:is(p,ul,ol)]:text-(--site-ink)"
-                    />
-                  )}
-                  {guideExtras[kind]}
-                </section>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </PageShell>
+      preamble={<GuideQuote />}
+      sections={sections}
+    />
   );
 }

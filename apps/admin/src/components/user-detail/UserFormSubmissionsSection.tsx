@@ -1,4 +1,8 @@
 import { FormResponseDto } from "@alliance/shared/client/types.gen";
+import {
+  formLabel,
+  useFormDisplaySlugs,
+} from "@alliance/shared/lib/useFormsAdmin";
 import { UseQueryResult } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { SectionLoadState, SectionRefreshError } from "./SectionQueryState";
@@ -8,6 +12,7 @@ export default function UserFormSubmissionsSection({
 }: {
   query: UseQueryResult<FormResponseDto[]>;
 }) {
+  const displaySlugs = useFormDisplaySlugs();
   if (!formResponses) {
     return <SectionLoadState noun="form submissions" isError={isError} />;
   }
@@ -34,7 +39,7 @@ export default function UserFormSubmissionsSection({
                   to={`/forms/${response.formId}/responses`}
                   className="font-medium text-blue-600 hover:underline"
                 >
-                  Form #{response.formId}
+                  {formLabel(displaySlugs, response.formId)}
                 </Link>
                 <span className="text-zinc-400">
                   {new Date(response.createdAt).toLocaleDateString()}

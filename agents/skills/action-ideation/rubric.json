@@ -1,0 +1,15 @@
+{
+  "weights": {
+    "value": 3,
+    "novelty": 2,
+    "member_experience": 2,
+    "feasibility": 1
+  },
+  "anchors": {
+    "value": "1: weak causal path or artificial member work; 3: plausible useful change with important assumptions; 5: substantial priority-related change with a credible member contribution.",
+    "novelty": "1: same intervention as a previous action or proposal; 3: meaningful recombination; 5: substantially different mechanism relative to the supplied history. Worldwide novelty is unknown.",
+    "member_experience": "1: confusing, burdensome or clerical filler; 3: understandable and useful; 5: engaging, accessible and meaningful with modest burden.",
+    "feasibility": "1: unresolved barriers dominate; 3: a credible pilot depends on partner/office preparation; 5: a practical pilot with known resources and delivery path."
+  },
+  "interpretation": "Subjective 1\u20135 judgments, not calibrated impact forecasts. Equal totals remain tied. Office effort affects feasibility rather than creating a hard constraint. Requirements come only from requirements.md and explicit user directions."
+}

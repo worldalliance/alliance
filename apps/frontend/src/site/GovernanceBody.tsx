@@ -1,14 +1,35 @@
 import {
-  GOVERNANCE_MARKDOWN_AFTER,
-  GOVERNANCE_MARKDOWN_BEFORE,
+  GOVERNANCE_MEMBERSHIP_AFTER,
+  GOVERNANCE_SECTION_ORDER,
+  GOVERNANCE_SECTIONS,
+  GovernanceSectionKind,
+  type DocSectionCopy,
 } from "./docContent";
 import { DocProse, DocProseSize } from "./DocProse";
 import { ContractCard } from "./PageCards";
 
-/**
- * What the governance page says, in the order it says it. The agreement dialog
- * renders this too, so a section added or moved here reaches both.
- */
+function headed(section: DocSectionCopy): string {
+  return `## ${section.label}\n\n${section.markdown}`;
+}
+
+function afterContractMarkdown(): string {
+  const chunks: string[] = [GOVERNANCE_MEMBERSHIP_AFTER];
+  for (const kind of GOVERNANCE_SECTION_ORDER) {
+    switch (kind) {
+      case GovernanceSectionKind.Membership:
+        break;
+      case GovernanceSectionKind.Office:
+      case GovernanceSectionKind.Oversight:
+        chunks.push(headed(GOVERNANCE_SECTIONS[kind]));
+        break;
+      default:
+        throw new Error(`unknown kind: ${kind satisfies never}`);
+    }
+  }
+  return chunks.join("\n");
+}
+
+/** Compact markdown headings for the agreement dialog; the public page uses DocPage. */
 export function GovernanceBody({
   size = DocProseSize.Default,
 }: {
@@ -16,9 +37,12 @@ export function GovernanceBody({
 }) {
   return (
     <>
-      <DocProse markdown={GOVERNANCE_MARKDOWN_BEFORE} size={size} />
+      <DocProse
+        markdown={headed(GOVERNANCE_SECTIONS[GovernanceSectionKind.Membership])}
+        size={size}
+      />
       <ContractCard size={size} />
-      <DocProse markdown={GOVERNANCE_MARKDOWN_AFTER} size={size} />
+      <DocProse markdown={afterContractMarkdown()} size={size} />
     </>
   );
 }

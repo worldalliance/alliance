@@ -6,8 +6,6 @@ on:
 
 env:
   AWS_REGION: us-west-2
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   env_name: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
 
 concurrency:
@@ -68,15 +66,9 @@ jobs:
 
   build-react-app:
     runs-on: ubuntu-latest
-    needs: deployed-config
-    environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
-      - name: Read deployed config
-        id: config
-        uses: ./.github/actions/deployed-config
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -100,13 +92,20 @@ jobs:
           VITE_APP_GIT_SHA: ${{ github.sha }}
           VITE_APP_VERSION: ${{ github.ref_name }}
 
-      - name: Inject & upload source maps to PostHog
+      - name: Install PostHog CLI
         continue-on-error: true
-        uses: PostHog/upload-source-maps@v0.4.6
+        uses: ./.github/actions/posthog-cli
+
+      - name: Inject source map ids
+        continue-on-error: true
+        run: posthog-cli sourcemap inject --directory ./apps/frontend/build/client/assets/
+
+      - name: Upload Assets For Source Maps
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
         with:
-          directory: ./apps/frontend/build/client/assets/
-          env-id: ${{ steps.config.outputs.POSTHOG_PROJECT_ID }}
-          cli-token: ${{ secrets.POSTHOG_SOURCEMAP_KEY }}
+          name: react-assets
+          path: apps/frontend/build/client/assets/
 
       - name: create output folder
         run: |
@@ -126,33 +125,54 @@ jobs:
           zip -r react-build.zip output
         working-directory: ./apps/frontend
 
-      - name: Move Build Artifacts
-        run: |
-          mv apps/frontend/react-build.zip ./react-build.zip
-
-      - name: Check free disk space on EC2
-        uses: appleboy/ssh-action@v1.2.5
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
         with:
-          version: 1.8.4
-          host: ${{ secrets.INSTANCE_IP }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            df -h ~
-            df -hi ~
-            avail_kb=$(df --output=avail -k ~ | tail -1)
-            [ "$avail_kb" -ge 3145728 ] || { echo "::error::Under 3G free on the EC2 host; the upload and install would fail. Free space there before deploying."; exit 1; }
-            avail_inodes=$(df --output=iavail ~ | tail -1)
-            [ "$avail_inodes" -ge 100000 ] || { echo "::error::Under 100k free inodes on the EC2 host; the upload and install would fail. Free inodes there before deploying."; exit 1; }
+          name: react-build
+          path: apps/frontend/react-build.zip
 
-      - name: Upload React Build to EC2
-        uses: appleboy/scp-action@v0.1.3
+  # Apart from build-react-app, so the frontend's build dependencies never
+  # run where id-token: write reaches the environment role's Expo token. It
+  # never fails the run, which publish-mobile-ota would read as not live.
+  upload-react-sourcemaps:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    needs:
+      - deployed-config
+      - build-react-app
+    environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Read deployed config
+        id: config
+        uses: ./.github/actions/deployed-config
+
+      - name: Read CI secrets
+        id: aws
+        uses: ./.github/actions/aws
         with:
-          host: ${{ secrets.INSTANCE_IP }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "react-build.zip"
-          target: "~/"
+          role: ${{ env.env_name }}
+          parameters: ci/deploy/POSTHOG_SOURCEMAP_KEY
+
+      - name: Download Assets
+        uses: actions/download-artifact@v4
+        with:
+          name: react-assets
+          path: react-assets
+
+      - name: Install PostHog CLI
+        uses: ./.github/actions/posthog-cli
+
+      - name: Upload source maps to PostHog
+        env:
+          POSTHOG_CLI_ENV_ID: ${{ steps.config.outputs.POSTHOG_PROJECT_ID }}
+          POSTHOG_CLI_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets || '{}').POSTHOG_SOURCEMAP_KEY }}
+        run: posthog-cli sourcemap upload --directory react-assets
 
   build-admin-frontend:
     runs-on: ubuntu-latest
@@ -234,7 +254,10 @@ jobs:
       - deployed-config
       - checks
       - deploy-nest-backend
-    environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
+    environment: ${{ github.ref_name == 'production' && 'production-hosts' || 'staging-hosts' }}
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -243,26 +266,26 @@ jobs:
         id: config
         uses: ./.github/actions/deployed-config
 
-      - name: Upload nginx vhost to EC2
-        uses: appleboy/scp-action@v0.1.3
+      - name: Download React Build Artifact
+        uses: actions/download-artifact@v4
         with:
-          host: ${{ secrets.INSTANCE_IP }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "deploy/nginx/alliance.conf"
-          target: "~/"
-          strip_components: 2
+          name: react-build
 
-      - name: SSH and Deploy frontend SSR on EC2
-        uses: appleboy/ssh-action@v1.2.5
+      - name: Deploy frontend SSR on EC2
+        uses: ./.github/actions/run-on-host
         with:
-          # v1.2.5 defaults to drone-ssh 1.8.2, which stops forwarding output
-          # for good once one line outgrows its scanner. 1.8.3+ has no limit.
-          version: 1.8.4
-          host: ${{ secrets.INSTANCE_IP }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
+          environment: ${{ env.env_name }}
+          files: |
+            deploy/nginx/alliance.conf
+            react-build.zip
           script: |
+            df -h ~
+            df -hi ~
+            avail_kb=$(df --output=avail -k ~ | tail -1)
+            [ "$avail_kb" -ge 3145728 ] || { echo "::error::Under 3G free on the EC2 host; the unzip and install would fail. Free space there before deploying."; exit 1; }
+            avail_inodes=$(df --output=iavail ~ | tail -1)
+            [ "$avail_inodes" -ge 100000 ] || { echo "::error::Under 100k free inodes on the EC2 host; the unzip and install would fail. Free inodes there before deploying."; exit 1; }
+
             sudo yum install -y unzip nginx
 
             # Install Bun
@@ -292,8 +315,7 @@ jobs:
             # node_modules isn't in the zip; clear it so the frozen install
             # builds a clean tree
             rm -rf node_modules
-            # appleboy/ssh-action runs this script without `set -e`
-            # Make it fatal explicitly.
+            # The script runs without `set -e`; make it fatal explicitly.
             bun install --frozen-lockfile --production || { echo "bun install failed"; exit 1; }
             # Installs hardlink out of the cache, so node_modules survives this.
             bun pm cache rm || echo "::warning::bun pm cache rm failed; the disk fills up unless the Bun cache is cleared"
@@ -335,7 +357,10 @@ jobs:
       - checks
       - deploy-nest-backend
       - deploy-react-app
-    environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
+    environment: ${{ github.ref_name == 'production' && 'production-hosts' || 'staging-hosts' }}
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -349,34 +374,14 @@ jobs:
         with:
           name: admin-build
 
-      - name: Upload nginx vhost to EC2
-        uses: appleboy/scp-action@v0.1.3
+      - name: Deploy admin on EC2
+        uses: ./.github/actions/run-on-host
         with:
-          host: ${{ secrets.INSTANCE_IP }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "deploy/nginx/alliance_admin.conf,deploy/nginx/alliance_admin_http.conf"
-          target: "~/"
-          strip_components: 2
-
-      - name: Upload Admin Build to EC2
-        uses: appleboy/scp-action@v0.1.3
-        with:
-          host: ${{ secrets.INSTANCE_IP }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "admin-build.zip"
-          target: "~/"
-
-      - name: SSH and Deploy on EC2
-        uses: appleboy/ssh-action@v1.2.5
-        with:
-          # v1.2.5 defaults to drone-ssh 1.8.2, which stops forwarding output
-          # for good once one line outgrows its scanner. 1.8.3+ has no limit.
-          version: 1.8.4
-          host: ${{ secrets.INSTANCE_IP }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
+          environment: ${{ env.env_name }}
+          files: |
+            deploy/nginx/alliance_admin.conf
+            deploy/nginx/alliance_admin_http.conf
+            admin-build.zip
           script: |
             sudo yum install -y unzip nginx
 
@@ -428,12 +433,15 @@ jobs:
 
   mobile-fingerprint-check:
     uses: ./.github/workflows/mobile-fingerprint-check.yaml
-    secrets:
-      SLACK_WEBHOOK_URL_DEPLOYMENT: ${{ secrets.SLACK_WEBHOOK_URL_DEPLOYMENT }}
+    permissions:
+      contents: read
+      id-token: write
 
   visual-regression:
     runs-on: ubuntu-24.04
-    environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
+    permissions:
+      contents: read
+      id-token: write
     services:
       postgres:
         image: postgres:17
@@ -450,6 +458,18 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Read CI secrets
+        if: github.ref_name == 'production'
+        id: aws
+        uses: ./.github/actions/aws
+        with:
+          role: visual-regression
+          export-credentials: true
+          parameters: |
+            ci/visual-regression/GEMINI_API_KEY
+            ci/visual-regression/ANTHROPIC_API_KEY
+            ci/visual-regression/SLACK_BOT_TOKEN
 
       - name: Setup Bun
         if: github.ref_name == 'production'
@@ -492,7 +512,7 @@ jobs:
           DB_USERNAME: postgres
           DB_PASSWORD: postgres
           CITESTING_DB_NAME: citesting
-          ASSETS_BUCKET: ${{ secrets.CI_ASSETS_BUCKET }}
+          ASSETS_BUCKET: ${{ env.CI_ASSETS_BUCKET }}
           NODE_ENV: test
           SCREENSHOT_OUTPUT_DIR: ${{ github.workspace }}/screenshots/current
 
@@ -501,14 +521,14 @@ jobs:
         run: |
           aws s3 sync \
             ${{ github.workspace }}/screenshots/current/ \
-            s3://${{ secrets.VISUAL_REGRESSION_BUCKET }}/visual-regression/${{ env.env_name }}/${{ github.sha }}/
+            "s3://$VISUAL_REGRESSION_BUCKET/visual-regression/${{ env.env_name }}/${{ github.sha }}/"
 
       - name: Download Baseline from S3
         if: github.ref_name == 'production'
         run: |
           mkdir -p ${{ github.workspace }}/screenshots/baseline
           aws s3 sync \
-            s3://${{ secrets.VISUAL_REGRESSION_BUCKET }}/visual-regression/${{ env.env_name }}/latest/ \
+            "s3://$VISUAL_REGRESSION_BUCKET/visual-regression/${{ env.env_name }}/latest/" \
             ${{ github.workspace }}/screenshots/baseline/ \
             || echo "No baseline found — first run"
 
@@ -540,20 +560,21 @@ jobs:
             echo "No baseline — skipping AI review"
           fi
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ fromJSON(steps.aws.outputs.secrets || '{}').GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ fromJSON(steps.aws.outputs.secrets || '{}').ANTHROPIC_API_KEY }}
           AI_REVIEW_OUTPUT: ${{ github.workspace }}/screenshots/ai-review-results.json
 
       - name: Notify Slack on Visual Regression
         if: github.ref_name == 'production' && steps.ai-review.outcome == 'failure'
+        env:
+          TOKEN: ${{ fromJSON(steps.aws.outputs.secrets || '{}').SLACK_BOT_TOKEN }}
         run: |
           RESULTS="${{ github.workspace }}/screenshots/ai-review-results.json"
           SHA="${{ github.sha }}"
           ENV_NAME="${{ env.env_name }}"
           BASELINE_DIR="${{ github.workspace }}/screenshots/baseline"
           CURRENT_DIR="${{ github.workspace }}/screenshots/current"
-          TOKEN="${{ secrets.SLACK_BOT_TOKEN }}"
-          CHANNEL="${{ secrets.SLACK_DEPLOY_CHANNEL_ID }}"
+          CHANNEL="$SLACK_DEPLOY_CHANNEL_ID"
 
           # Upload a file to Slack via v2 API (without channel) and return its permalink
           upload_to_slack() {
@@ -633,6 +654,8 @@ jobs:
 
       - name: Notify Slack on AI-Approved Changes
         if: github.ref_name == 'production' && steps.ai-review.outcome != 'failure'
+        env:
+          TOKEN: ${{ fromJSON(steps.aws.outputs.secrets || '{}').SLACK_BOT_TOKEN }}
         run: |
           RESULTS="${{ github.workspace }}/screenshots/ai-review-results.json"
 
@@ -653,8 +676,7 @@ jobs:
           SHA="${{ github.sha }}"
           BASELINE_DIR="${{ github.workspace }}/screenshots/baseline"
           CURRENT_DIR="${{ github.workspace }}/screenshots/current"
-          TOKEN="${{ secrets.SLACK_BOT_TOKEN }}"
-          CHANNEL="${{ secrets.SLACK_VISUAL_REGRESSION_CHANNEL_ID }}"
+          CHANNEL="$SLACK_VISUAL_REGRESSION_CHANNEL_ID"
 
           upload_to_slack() {
             local filepath="$1"
@@ -734,7 +756,7 @@ jobs:
         run: |
           aws s3 sync \
             ${{ github.workspace }}/screenshots/current/ \
-            s3://${{ secrets.VISUAL_REGRESSION_BUCKET }}/visual-regression/${{ env.env_name }}/latest/ \
+            "s3://$VISUAL_REGRESSION_BUCKET/visual-regression/${{ env.env_name }}/latest/" \
             --delete
 
       - name: Fail if regressions detected
@@ -746,7 +768,10 @@ jobs:
   deploy-nest-backend:
     runs-on: ubuntu-latest
     needs: checks
-    environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
+    environment: ${{ github.ref_name == 'production' && 'production-hosts' || 'staging-hosts' }}
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -779,24 +804,12 @@ jobs:
             shared/package.json \
             sharedweb/package.json
 
-      - name: Upload to EC2
-        uses: appleboy/scp-action@v0.1.3
+      - name: Deploy Backend on EC2
+        uses: ./.github/actions/run-on-host
         with:
-          host: ${{ secrets.INSTANCE_IP }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "nest-build.zip"
-          target: "~/"
-
-      - name: SSH and Deploy Backend on EC2
-        uses: appleboy/ssh-action@v1.2.5
-        with:
-          # v1.2.5 defaults to drone-ssh 1.8.2, which stops forwarding output
-          # for good once one line outgrows its scanner. 1.8.3+ has no limit.
-          version: 1.8.4
-          host: ${{ secrets.INSTANCE_IP }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
+          environment: ${{ env.env_name }}
+          files: nest-build.zip
+          timeout-minutes: 45
           script: |
             set -Euo pipefail
 
@@ -823,7 +836,6 @@ jobs:
 
             export NODE_ENV=${{ github.ref_name == 'production' && 'production' || 'staging' }}
 
-            # In memory, so a later deploy can't rewrite the file under a run still going.
             deploy_backend=$(unzip -p ~/nest-build.zip scripts/deploy_backend.sh) || { echo "could not extract deploy_backend.sh"; exit 1; }
             bash -c "$deploy_backend" || exit 1
 
@@ -959,11 +971,28 @@ jobs:
       - verify-api
       - mobile-fingerprint-check
       - publish-mobile-ota
-    if: always()
+    if: >-
+      ${{ always() && (needs.deployed-config.result != 'success'
+      || needs.deploy-nest-backend.result != 'success'
+      || needs.verify-deployment.result != 'success'
+      || needs.verify-https.result != 'success'
+      || needs.verify-api.result != 'success'
+      || needs.mobile-fingerprint-check.result != 'success'
+      || needs.publish-mobile-ota.result != 'success') }}
     environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Read CI secrets
+        id: aws
+        uses: ./.github/actions/aws
+        with:
+          role: ${{ env.env_name }}
+          parameters: ci/shared/SLACK_WEBHOOK_URL_DEPLOYMENT
 
       - name: Compute Slack mention
         id: slack_mention
@@ -971,17 +1000,9 @@ jobs:
         with:
           github-username: ${{ github.actor }}
 
-      - name: Post webhook if any upstream did not succeed
-        if: >-
-          ${{ always() && (needs.deployed-config.result != 'success'
-          || needs.deploy-nest-backend.result != 'success'
-          || needs.verify-deployment.result != 'success'
-          || needs.verify-https.result != 'success'
-          || needs.verify-api.result != 'success'
-          || needs.mobile-fingerprint-check.result != 'success'
-          || needs.publish-mobile-ota.result != 'success') }}
+      - name: Post webhook
         env:
-          WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL_DEPLOYMENT }}
+          WEBHOOK: ${{ fromJSON(steps.aws.outputs.secrets || '{}').SLACK_WEBHOOK_URL_DEPLOYMENT }}
           MENTION: ${{ steps.slack_mention.outputs.mention }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -1000,6 +1021,9 @@ jobs:
     needs:
       - deploy-nest-backend
     uses: ./.github/workflows/publish-mobile-ota.yaml
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
     with:
       environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
-    secrets: inherit

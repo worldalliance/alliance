@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useReducer,
+  useRef,
+} from "react";
 import {
   draftHistoryReducer,
   HistoryActionKind,
@@ -46,6 +53,12 @@ export function useDraftHistory<T>(initial: () => T) {
   // drains microtasks between the listeners of a user's own event.
   const editEventRef = useRef<Event | null>(null);
   const amendingRef = useRef(false);
+  // An effect's write closes over the draft its render showed, so it is stale
+  // once an undo dispatched before the effect ran replaces that draft.
+  const renderedEpochRef = useRef(history.epoch);
+  useLayoutEffect(() => {
+    renderedEpochRef.current = history.epoch;
+  }, [history.epoch]);
   useEffect(() => {
     const onFocusIn = () => {
       focusRunRef.current += 1;
@@ -87,10 +100,17 @@ export function useDraftHistory<T>(initial: () => T) {
       commit: (update: (draft: T) => T) =>
         dispatch(
           amendingRef.current
-            ? { kind: HistoryActionKind.Amend, update }
+            ? {
+                kind: HistoryActionKind.Amend,
+                update,
+                epoch: renderedEpochRef.current,
+              }
             : { kind: HistoryActionKind.Commit, update, step: currentStep() },
         ),
-      /** Turns the commits `write` makes into amendments of the present. */
+      /**
+       * Turns the commits `write` makes into amendments of the present, which
+       * are dropped if an undo, redo or reset lands after the last render.
+       */
       withoutStep: (write: () => void) => {
         amendingRef.current = true;
         try {

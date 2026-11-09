@@ -212,6 +212,16 @@ describe("ActionForm", () => {
     expect(open("Custom stat")).toBe(false);
   });
 
+  it("leaves out Staff Preview when the page controls it", () => {
+    renderForm({ props: { hideStaffPreview: true } });
+
+    expect(fieldNames("Settings")).toEqual([
+      "suiteId",
+      "visibilityMode",
+      "timeEstimate",
+    ]);
+  });
+
   it("hides the custom stat fields without a stat type and shows the forum override on forum participation actions", () => {
     renderForm({
       form: { customStatType: "none", isForumParticipationAction: true },

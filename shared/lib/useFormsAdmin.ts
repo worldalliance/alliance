@@ -14,6 +14,7 @@ import {
   tasksDeleteFormAdmin,
   tasksGetFormResponseCountsAdmin,
   tasksListFormsAdmin,
+  tasksUpdateFormSlugAdmin,
 } from "../client";
 import type {
   CreateFormDto,
@@ -92,7 +93,36 @@ export function useCreateFormAdmin() {
   return { createForm };
 }
 
-export type FormOption = { id: number; title: string };
+export function useUpdateFormSlugAdmin() {
+  const invalidateFormsIndex = useInvalidateFormsIndex();
+  return useMutation({
+    mutationFn: (params: { formId: number; slug: string }) =>
+      tasksUpdateFormSlugAdmin({
+        path: { formId: params.formId },
+        body: { slug: params.slug },
+        throwOnError: true,
+      }),
+    onSuccess: invalidateFormsIndex,
+  });
+}
+
+export function useFormDisplaySlugs(): ReadonlyMap<number, string> {
+  const { data } = useFormsQuery();
+  return useMemo(
+    () =>
+      new Map((data ?? NO_FORMS).map((form) => [form.id, form.displaySlug])),
+    [data],
+  );
+}
+
+export function formLabel(
+  displaySlugs: ReadonlyMap<number, string>,
+  formId: number,
+): string {
+  return displaySlugs.get(formId) ?? `Form #${formId}`;
+}
+
+export type FormOption = { id: number; title: string; displaySlug: string };
 
 export function useFormOptions(): {
   options: FormOption[];
@@ -106,9 +136,10 @@ export function useFormOptions(): {
     () =>
       forms.map((form) => ({
         id: form.id,
-        // Every picker renders this as `{title} (#{id})`, so the fallback for
-        // a form saved without one must not repeat the id back.
+        // Every picker renders this as `{title} ({displaySlug})`, so the
+        // fallback for a form saved without one must not repeat the slug back.
         title: form.title || "Untitled",
+        displaySlug: form.displaySlug,
       })),
     [forms],
   );

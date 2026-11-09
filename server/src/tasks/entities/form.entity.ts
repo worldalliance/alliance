@@ -14,6 +14,7 @@ import {
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
+import { SLUG_MAX_LENGTH, SLUG_PATTERN } from "src/utils/slug";
 import {
   Column,
   Entity,
@@ -41,6 +42,12 @@ export class Form {
   @ApiProperty()
   @IsDefined()
   title: string;
+
+  /** Unique among the live forms of its action, or among live forms with no action. */
+  @Column({ type: "varchar", length: SLUG_MAX_LENGTH })
+  @ApiProperty({ maxLength: SLUG_MAX_LENGTH, pattern: SLUG_PATTERN.source })
+  @Allow()
+  slug: string;
 
   @Column()
   @ApiProperty()

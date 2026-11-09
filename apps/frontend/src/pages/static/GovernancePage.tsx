@@ -1,9 +1,14 @@
-import { cn } from "@alliance/shared/styles/util";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
 import { ApprovedBy } from "../../site/ApprovedBy";
-import { GovernanceBody } from "../../site/GovernanceBody";
-import { PageShell } from "../../site/PageShell";
-import { SITE_COL } from "../../site/ui";
+import {
+  GOVERNANCE_MEMBERSHIP_AFTER,
+  GOVERNANCE_SECTION_ORDER,
+  GOVERNANCE_SECTIONS,
+  GovernanceSectionKind,
+} from "../../site/docContent";
+import { DOC_PROSE_CLASS, DocPage, docPageSections } from "../../site/DocPage";
+import { DocProse } from "../../site/DocProse";
+import { ContractCard } from "../../site/PageCards";
 
 export function meta() {
   return socialPreviewMeta({
@@ -12,17 +17,28 @@ export function meta() {
   });
 }
 
+const sections = docPageSections(
+  GOVERNANCE_SECTION_ORDER,
+  GOVERNANCE_SECTIONS,
+  {
+    [GovernanceSectionKind.Membership]: (
+      <>
+        <ContractCard />
+        <DocProse
+          markdown={GOVERNANCE_MEMBERSHIP_AFTER}
+          className={DOC_PROSE_CLASS}
+        />
+      </>
+    ),
+  },
+);
+
 export default function GovernancePage() {
   return (
-    <PageShell
+    <DocPage
       title="Governance"
       subtitle={<ApprovedBy what="governance procedures" />}
-    >
-      <div className={cn(SITE_COL, "pt-16 pb-20 lg:pt-20 lg:pb-28")}>
-        <div className="flex max-w-[46rem] flex-col gap-8">
-          <GovernanceBody />
-        </div>
-      </div>
-    </PageShell>
+      sections={sections}
+    />
   );
 }

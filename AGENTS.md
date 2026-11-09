@@ -43,6 +43,7 @@ Read before the matching task:
 - Finishing a branch, once its work is done and its checks pass and before pushing or opening its PR, or when its PR's CI fails → `(root)/agents/skills/review-loop/SKILL.md`. Skip it when `REVIEW_LOOP_ROLE` is set.
 - Spawning a subagent, which goes through the `claude` or `codex` CLI in place of your harness's built-in agent tool → `(root)/agents/skills/subagents/SKILL.md`
 - Verifying a change in the browser, driving the mobile app, calling the API, or authenticating as an admin → `(root)/agents/skills/playwright/SKILL.md`
+- Designing or changing UI in `apps/`, `sharedweb/`, `shared/` or `agents/desktop`, or judging a UI's quality → `(root)/agents/skills/ux-guidelines/SKILL.md`
 - Writing or editing any doc an agent reads (`SKILL.md`, `AGENTS.md`, `CLAUDE.md`, docs those point at) → `(root)/agents/skills/writing-for-agents/SKILL.md`
 
 ## Typechecking
@@ -57,7 +58,9 @@ Reach for a maintained npm package over hand-rolling parsing, sanitization, date
 
 ## Established practice
 
-Prefer established standards and widely adopted practices that fit the stack and task. Research before choosing when the applicable practice is unclear, unfamiliar, or may have changed, starting with standards bodies and official framework or library documentation. Distinguish formal standards, common practice, and vendor recommendations; cite sources for researched choices. Explicit requirements and concrete compatibility constraints take precedence. Explain material departures from established practice and the constraint that warrants them.
+Prefer established standards and widely adopted practices that fit the stack and task. Research before choosing when the applicable practice is unclear, unfamiliar, or may have changed, starting with standards bodies and vendor documentation. Distinguish formal standards, vendor recommendations (official guidance from a platform, framework or library), research-backed practice (supported by published empirical studies, such as usability research), and common practice; cite sources for researched choices, and when the task has a provenance directory, record the research there in `EVIDENCE.md`. Explicit requirements and concrete compatibility constraints take precedence. Explain material departures from established practice and the constraint that warrants them.
+
+Label every recommendation, number and claim shown to the owner in chat as researched (name the research page or source and what it actually checked) or agent judgement. A recommendation on a research page can still be agent judgement; say which.
 
 ## Breaking changes
 
@@ -125,12 +128,6 @@ import { R, type Result } from "@alliance/common/result";
 ```
 
 Use the `R.*` helpers (`R.fromPromise`, `R.match`, …) rather than hand-rolling `{ ok, ... }`. Throwing is still right where the framework expects it, e.g. NestJS controllers behind exception filters.
-
-## UI affordances
-
-Icons and direct interaction over words: a `lucide-react` icon button (`lucide-react-native` on mobile) over a text button, an inline edit over an "Edit" mode toggle. Text labels only where nothing else reads unambiguously.
-
-Icon-only controls carry a tooltip or `aria-label`. Destructive or irreversible actions say what they do in words.
 
 ## Secrets and personal information
 

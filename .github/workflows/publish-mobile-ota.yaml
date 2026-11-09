@@ -27,6 +27,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: ${{ inputs.environment || 'production' }}
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
     env:
       APP_VARIANT: ${{ inputs.environment || 'production' }}
     steps:
@@ -84,6 +88,13 @@ jobs:
           (cd release/apps/mobile && bun run fingerprint:check)
           git -C release checkout -- common/src/mobileFingerprints.gen.ts
 
+      - name: Read Expo token
+        id: aws
+        uses: ./.github/actions/aws
+        with:
+          role: ${{ inputs.environment || 'production' }}
+          parameters: ci/deploy/EXPO_ACCESS_TOKEN
+
       - name: Publish EAS Update
         run: bunx eas-cli@16.5.0 update --branch "$APP_VARIANT" --message "$(git log -1 --format=%B)" --non-interactive
         working-directory: ./release/apps/mobile
@@ -92,4 +103,4 @@ jobs:
           # variant. It must resolve the same app config as the store build, or
           # the fingerprint runtimeVersion won't match any installed build and
           # the OTA never applies.
-          EXPO_TOKEN: ${{ secrets.EXPO_ACCESS_TOKEN }}
+          EXPO_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets || '{}').EXPO_ACCESS_TOKEN }}
