@@ -1,0 +1,6 @@
+- Persona fields are role and apps, goals, context, comfort with technology, access needs and concerns, the traits that change how a person meets a UI; demographics are left out for that reason. Agent judgement, not researched.
+- Every persona trait is one the user stated or approved, and every journey step maps to a screen read in the code, which is how the two approved grounds become checkable. Agent decision.
+- Scenario journey steps cite the route and the component file, and the skill's check lists cited paths that no longer exist, since those references break silently when files move. Agent decision.
+- The scenario's `personas:` frontmatter makes the persona link checkable by script. Agent decision.
+- Personas are synthetic and carry no personal information, following root `AGENTS.md` **Secrets and personal information**. Agent decision.
+- The library directories are created by the skill's first run rather than by this task, which writes no personas. Agent decision.
