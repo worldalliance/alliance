@@ -794,6 +794,7 @@ jobs:
             scripts/secrets_run.sh \
             scripts/sync_prod_to_staging.sh \
             scripts/anonymize \
+            deploy/systemd \
             common/package.json \
             common/tsconfig.json \
             common/src \
@@ -840,14 +841,37 @@ jobs:
             bash -c "$deploy_backend" || exit 1
 
             # The prod → staging sync runs from this box, outside the app, so
-            # ship its script with the deploy. Staging only. Never fails the
-            # deploy
+            # ship its script and schedule with the deploy. Staging only. Never
+            # fails the deploy
             if [ "${{ github.ref_name }}" != 'production' ]; then
               install -m 755 ~/nest-backend/scripts/sync_prod_to_staging.sh \
                 ~/sync_prod_to_staging.sh.new \
                 && mv -f ~/sync_prod_to_staging.sh.new ~/sync_prod_to_staging.sh \
                 && echo "installed ~/sync_prod_to_staging.sh" \
                 || echo "WARNING: could not install sync_prod_to_staging.sh"
+
+              # BACKCOMPAT(sync-timer): delete once staging's crontab no longer
+              # lists the sync.
+              remove_sync_from_crontab () {
+                command -v crontab > /dev/null || return 0
+                local entries
+                entries=$(crontab -l 2>&1) || {
+                  [[ $entries == *'no crontab for'* ]] && return 0
+                  echo "$entries"
+                  return 1
+                }
+                grep -q sync_prod_to_staging.sh <<<"$entries" || return 0
+                sed '/sync_prod_to_staging\.sh/d' <<<"$entries" | crontab -
+              }
+
+              sudo install -m 644 ~/nest-backend/deploy/systemd/alliance-prod-to-staging-sync.{service,timer} \
+                /etc/systemd/system/ \
+                && sudo systemctl daemon-reload \
+                && sudo systemctl enable alliance-prod-to-staging-sync.timer \
+                && sudo systemctl restart alliance-prod-to-staging-sync.timer \
+                && echo "installed alliance-prod-to-staging-sync.timer" \
+                && { remove_sync_from_crontab || echo "::warning::timer installed, but could not remove the sync from ec2-user's crontab"; } \
+                || echo "::warning::could not install alliance-prod-to-staging-sync.timer"
             fi
 
   verify-deployment:
