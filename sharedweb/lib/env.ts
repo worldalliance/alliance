@@ -24,6 +24,9 @@ const source = () =>
     ALLIANCE_DEV_APP_URL: dev()
       ? import.meta.env.ALLIANCE_DEV_APP_URL
       : undefined,
+    ALLIANCE_DEV_ADMIN_URL: dev()
+      ? import.meta.env.ALLIANCE_DEV_ADMIN_URL
+      : undefined,
   }) satisfies Record<WebEnvKey, unknown>;
 
 /** Reads `import.meta.env` on every call, so a value a test sets is seen. */

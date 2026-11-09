@@ -1,6 +1,7 @@
 import { formatBadgeCount } from "@alliance/shared/lib/badgeCount";
 import { useIncomingCommunityInvites } from "@alliance/shared/lib/useIncomingCommunityInvites";
 import { cn } from "@alliance/shared/styles/util";
+import { adminPathFor } from "@alliance/sharedweb/lib/zoneLinks";
 import BottomSpacer from "@alliance/sharedweb/ui/BottomSpacer";
 import {
   BookText,
@@ -8,6 +9,7 @@ import {
   Layers,
   ListTodo,
   MessageSquare,
+  Settings,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -21,6 +23,7 @@ import {
 } from "react";
 import { href, Link, useLocation } from "react-router";
 import { useAuth } from "../lib/AuthContext";
+import { getAdminUrl } from "../lib/config";
 import {
   NavbarOptionsContext,
   useImmersiveChrome,
@@ -101,7 +104,7 @@ const NavbarVertical: React.FC<{
   onMobileNavOpenChange: (open: boolean) => void;
   whiteBackground?: boolean;
 }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const navbarOptions = useContext(NavbarOptionsContext);
   const noBorder = navbarOptions?.options?.noBorder ?? false;
   const { immersive: collapsed, success } = useImmersiveChrome();
@@ -354,6 +357,17 @@ const NavbarVertical: React.FC<{
 
           <BottomSpacer />
         </div>
+
+        {user?.admin && (
+          <a
+            href={`${getAdminUrl()}${adminPathFor(location.pathname)}`}
+            aria-label="Open in admin panel"
+            title="Open in admin panel"
+            className="sticky bottom-0 mt-auto self-start p-2 text-zinc-400 hover:text-black"
+          >
+            <Settings size={16} />
+          </a>
+        )}
       </aside>
     </>
   );

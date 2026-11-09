@@ -1,5 +1,5 @@
 import { defineConfig } from "@hey-api/openapi-ts";
-import { devApiUrl } from "../common/src/dev-ports";
+import { DevUrl, devUrl } from "../common/src/dev-ports";
 
 /** Hey API resolves output paths from the caller's working directory. */
 export function defineAllianceApiConfig(params: {
@@ -7,7 +7,7 @@ export function defineAllianceApiConfig(params: {
   runtimeConfigPath: string;
 }) {
   return defineConfig({
-    input: `${devApiUrl()}/openapi.yaml`,
+    input: `${devUrl(DevUrl.Api)}/openapi.yaml`,
     output: params.output,
     plugins: [
       {
