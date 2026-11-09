@@ -40,7 +40,9 @@ export const CollapsibleFormSection: React.FC<
   FormSectionProps & { inUse: boolean }
 > = ({ title, description, children, inUse }) => {
   const [toggled, setToggled] = useState<boolean | null>(null);
-  const open = toggled ?? inUse;
+  const [wasInUse, setWasInUse] = useState(inUse);
+  if (inUse && !wasInUse) setWasInUse(true);
+  const open = toggled ?? wasInUse;
   return (
     <details
       open={open}
