@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# This script runs in the staging host via cronjob
+# This script runs on the staging host from deploy/systemd/alliance-prod-to-staging-sync.timer
 
 set -euo pipefail
 
@@ -37,7 +37,7 @@ notify_slack() {
 }
 
 # A Slack message only reports a run that lived long enough to send it. A
-# SIGKILL, a dead host, or a cron that never fires sends nothing at all, so the
+# SIGKILL, a dead host, or a timer that never fires sends nothing at all, so the
 # ping that never arrives has to be what raises the alarm.
 #
 # The startup trap fires above the HEALTHCHECK_URL check, so an unset variable

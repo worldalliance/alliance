@@ -1,0 +1,7 @@
+[Unit]
+Description=Copy prod's database and assets to staging
+
+[Service]
+Type=oneshot
+User=ec2-user
+ExecStart=/home/ec2-user/sync_prod_to_staging.sh

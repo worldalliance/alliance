@@ -1,0 +1,10 @@
+[Unit]
+Description=Nightly prod to staging sync
+
+[Timer]
+OnCalendar=*-*-* 10:30:00 UTC
+# A catch-up run after downtime could swap staging's database mid-workday.
+Persistent=false
+
+[Install]
+WantedBy=timers.target
