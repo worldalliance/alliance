@@ -378,7 +378,7 @@ export default function TaskFlow({
             initialFocus={panel}
             className={cn(
               zIndex.drawer,
-              "fixed inset-0 flex flex-col bg-white outline-none md:top-[var(--navbar-top-bar-height)] md:left-[var(--nav-width)]",
+              "fixed inset-0 top-[var(--site-nav-height)] flex flex-col bg-white outline-none md:top-[calc(var(--navbar-top-bar-height)+var(--site-nav-height))] md:left-[var(--nav-width)]",
             )}
           >
             {flow.open ? (

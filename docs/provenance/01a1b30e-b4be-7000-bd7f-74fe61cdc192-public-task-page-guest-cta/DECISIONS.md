@@ -1,0 +1,1 @@
+- The site navbar publishes its measured height as `--site-nav-height`, as the member top bar publishes `--navbar-top-bar-height`, and the flow panel's top edge adds it. `NAV_HEIGHT` is not used for this: the bar's real height varies with scroll position, breakpoint, and announcement.
