@@ -1,0 +1,7 @@
+## How `gh pr ready` treats a PR already in the target state
+
+Checked 2026-11-09 against `pkg/cmd/pr/ready/ready.go` on the default branch of [cli/cli](https://github.com/cli/cli/blob/trunk/pkg/cmd/pr/ready/ready.go), which is vendor source; installed version gh 2.100.0. On an open PR, `gh pr ready` on a non-draft and `gh pr ready --undo` on a draft print a warning and return success without changing the PR. On a closed or merged PR both exit nonzero.
+
+## How this repository's workflows treat draft PRs
+
+Read from `.github/workflows/` on 2026-11-09. `ci.yaml`, `desktop.yaml` and `seed-load-check.yaml` trigger on `pull_request` with no `types` and no condition on `draft`, so they run on drafts and marking a PR ready starts no new run: by default a `pull_request` workflow runs only on `opened`, `synchronize` and `reopened` ([GitHub Actions docs](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows), vendor documentation, checked 2026-11-09). `pr-screenshots.yaml`'s `pull_request` trigger is limited to `labeled`. This repository already has draft PRs (`gh pr list --state all --draft`, 2026-11-09), and a PR can be converted to a draft at any time ([GitHub pull request docs](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/changing-the-stage-of-a-pull-request), vendor documentation, checked 2026-11-09).

@@ -7,7 +7,7 @@ description: Read once a branch's checks pass, before pushing it or opening its 
 
 Skip this skill when `REVIEW_LOOP_ROLE` is set: another agent spawned you, so hand back to it, since the loop needs the user to answer questions. Skip it too when the user asked to leave the change uncommitted or unpushed.
 
-Done means the PR is open and its CI passed. The root `AGENTS.md` rule to ask before git writes does not apply to this skill's commits, worktrees, rewrites, pushes, the PR and PR edits; **Push and open the PR** says when a push needs asking.
+Done means the PR's CI passed and it is marked ready for review. The root `AGENTS.md` rule to ask before git writes does not apply to this skill's commits, worktrees, rewrites, pushes, the PR and PR edits; **Push and open the PR** says when a push needs asking.
 
 Work from the repo root of the main checkout or of a worktree `scripts/new-worktree.sh` created, since it refuses to create a worktree from any other. Arriving because the PR's CI failed, start at **CI**.
 
@@ -25,11 +25,13 @@ flowchart TD
   ask -->|answers| fix
   questions -->|no| due
   due -->|yes, next round| review
-  due -->|no| push["Push and open the PR: ask once only if no instruction covered it"]
+  due -->|no| push["Push and open the PR as a draft: ask once only if no instruction covered it"]
   push -->|declined or told no PR| noPr(["Stop: no PR"])
   push --> ci{"CI"}
   ci -->|not finished: wait or rerun| ci
-  ci -->|passed or merged| finished(["Done"])
+  ci -->|passed| ready["Mark the PR ready for review"]
+  ready --> finished(["Done"])
+  ci -->|merged| finished
   ci -->|branch caused failure| ciFix["Fix in the commit that caused it"]
   ciFix --> review
   ci -->|main caused failure or conflict| moved["main moved on: ask the user"]
@@ -75,7 +77,7 @@ Due a review: in a branch's first round every commit; afterwards every commit wi
 
 ## Push and open the PR
 
-An instruction from the user that asked for a PR or a push, at any point in the task, approves every push, the PR and every PR edit this skill makes, apart from the question in **`main` moved on**. When no instruction covered either, list the commits for the user and ask once, before the first push; their approval covers the same, and if they decline, stop with the commits on the branch. Once approved, push: `git push -u origin HEAD` while the branch is not on origin, otherwise `git push --force-with-lease --force-if-includes origin HEAD`, on the task's own PR branch only, since the loop may have rewritten pushed commits. A rejected push goes to the user, since someone else may have pushed to the branch. On the first pass, `gh pr create` with a description written from the commits. Before writing or editing a PR description that names a Linear issue, read `agents/skills/linear/SKILL.md`. A user who asked for no PR gets none: stop after an approved push, otherwise with the commits on the branch. Later pushes and PR edits go ahead without asking. On a later pass, `gh pr edit` the description only where the branch's changes since the last push made it wrong.
+An instruction from the user that asked for a PR or a push, at any point in the task, approves every push, the PR and every PR edit this skill makes, apart from the question in **`main` moved on**. When no instruction covered either, list the commits for the user and ask once, before the first push; their approval covers the same, and if they decline, stop with the commits on the branch. Once approved, with a PR already open, first `gh pr ready --undo`, since the commits about to land have not passed CI. Then push: `git push -u origin HEAD` while the branch is not on origin, otherwise `git push --force-with-lease --force-if-includes origin HEAD`, on the task's own PR branch only, since the loop may have rewritten pushed commits. A rejected push goes to the user, since someone else may have pushed to the branch. On the first pass, `gh pr create --draft` with a description written from the commits. Before writing or editing a PR description that names a Linear issue, read `agents/skills/linear/SKILL.md`. A user who asked for no PR gets none: stop after an approved push, otherwise with the commits on the branch. Later pushes and PR edits go ahead without asking. On a later pass, `gh pr edit` the description only where the branch's changes since the last push made it wrong.
 
 ## CI
 
@@ -87,11 +89,11 @@ One blocking wait, in the background with your harness's longest time limit; run
 
 Exit 0 covers only checks that ran to an end: gh counts a cancelled check as neither failed nor pending, and GitHub starts no `pull_request` workflow on a conflicted PR. On a PR with no checks the watch and every `gh pr checks` fail with `no checks reported`. So whatever the watch's exit, start with `gh pr view --json state,mergeable`, which needs no checks:
 
-- `MERGED`: done. `CLOSED`: tell the user and stop. `CONFLICTING`: **`main` moved on**. `UNKNOWN`: read it again in a minute.
+- `MERGED`: done. `CLOSED`: tell the user and stop. `CONFLICTING`: `gh pr ready --undo`, then **`main` moved on**. `UNKNOWN`: read it again in a minute.
 - Open and `MERGEABLE` after `no checks reported`: run the wait again; a second time goes to the user.
-- Open and `MERGEABLE` otherwise: `gh pr checks --json name,bucket,link --jq '.[] | select(.bucket | IN("fail", "cancel", "pending"))'` lists failed, cancelled and pending checks with the run id in each link. None listed is done. Any `fail` is a failure, below. Any `pending` means the watch stopped early: run the wait again. Otherwise `gh run rerun <run-id>` each cancelled run once and watch again; a check cancelled twice, or with no run to rerun, goes to the user.
+- Open and `MERGEABLE` otherwise: `gh pr checks --json name,bucket,link --jq '.[] | select(.bucket | IN("fail", "cancel", "pending"))'` lists failed, cancelled and pending checks with the run id in each link. None listed: `gh pr ready`, and it is done. Any `fail` is a failure, below. Any `pending` means the watch stopped early: run the wait again. Otherwise `gh run rerun <run-id>` each cancelled run once and watch again; a check cancelled twice, or with no run to rerun, goes to the user.
 
-On a failure, `gh run view <run-id> --log-failed > .scratch/ci-failure-<run-id>.log` keeps the log; read its tail. A failure the branch caused: fix it in the commit that caused it, per review-base's **Applying fixes**; run the `implement` skill's **Checks** over that commit and each one above it, for example `git rebase --exec '<checks>' <fixed-sha>^`; run **The loop**; push. A failure from changes on `main`: **`main` moved on**. Anything else, a runner outage or a missing secret, goes to the user.
+On a failure, `gh pr ready --undo`; `gh run view <run-id> --log-failed > .scratch/ci-failure-<run-id>.log` keeps the log; read its tail. A failure the branch caused: fix it in the commit that caused it, per review-base's **Applying fixes**; run the `implement` skill's **Checks** over that commit and each one above it, for example `git rebase --exec '<checks>' <fixed-sha>^`; run **The loop**; push as **Push and open the PR** says. A failure from changes on `main`: **`main` moved on**. Anything else, a runner outage or a missing secret, goes to the user.
 
 ## `main` moved on
 
