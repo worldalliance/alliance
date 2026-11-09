@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { OAuthClientsModule } from "src/auth/oauth/oauth-clients.module";
 import { OtpModule } from "src/otp/otp.module";
+import { KoraAbandonedSignup } from "./entities/kora-abandoned-signup.entity";
 import { KoraParticipantOAuthIdentity } from "./entities/kora-participant-oauth-identity.entity";
 import { KoraParticipantSession } from "./entities/kora-participant-session.entity";
 import { KoraParticipantSignup } from "./entities/kora-participant-signup.entity";
@@ -15,6 +16,7 @@ import { KoraController } from "./kora.controller";
 @Module({
   imports: [
     TypeOrmModule.forFeature([
+      KoraAbandonedSignup,
       KoraParticipant,
       KoraParticipantOAuthIdentity,
       KoraParticipantSession,

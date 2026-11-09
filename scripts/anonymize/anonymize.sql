@@ -97,6 +97,15 @@ BEGIN
   END IF;
 END $$;
 
+-- Abandoned Kora signups hold the real contacts of people who never finished
+-- signing up, and no foreign key brings them under the CASCADE above.
+DO $$
+BEGIN
+  IF to_regclass('kora_abandoned_signup') IS NOT NULL THEN
+    TRUNCATE "kora_abandoned_signup";
+  END IF;
+END $$;
+
 UPDATE "waitlist_entry"
 SET "email" = 'waitlist'||id||'@example.com'
 WHERE "email" IS NOT NULL;
