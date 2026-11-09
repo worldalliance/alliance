@@ -1,3 +1,4 @@
+import { emptyTaskFormSchema } from "@alliance/common/forms/empty-task-form-schema";
 import { type FormSchema } from "@alliance/common/forms/form-schema";
 import { syncSchemaListInputs } from "@alliance/common/forms/variable-scope";
 import { cn } from "@alliance/shared/styles/util";
@@ -52,6 +53,7 @@ import { VariableBuilder } from "./VariableBuilder";
 type FormBuilderProps = {
   initialSchema?: FormSchema;
   setFormId: (formId: number) => void;
+  onUnsavedChangesChange?: (unsaved: boolean) => void;
 } & (
   | {
       displayOnly: true;
@@ -83,7 +85,7 @@ const REGROUPS_ON_JSON_APPLY: Record<JsonScopeKind, boolean> = {
 };
 
 export function FormBuilder(props: FormBuilderProps) {
-  const { initialSchema, setFormId } = props;
+  const { initialSchema, setFormId, onUnsavedChangesChange } = props;
   // Destructuring the union would drop the correlation between these, so they
   // are pulled off `props` while it is still narrowable.
   const displayOnly = props.displayOnly ?? false;
@@ -97,21 +99,7 @@ export function FormBuilder(props: FormBuilderProps) {
   const newFormTitle = actionName ? actionName + " form" : "Untitled Form";
 
   const buildInitialSchema = () =>
-    initialSchema
-      ? ensurePages(initialSchema)
-      : {
-          description: "",
-          pages: [
-            {
-              id: "page-1",
-              title: "Page 1",
-              fields: [],
-            },
-          ],
-          submit: { label: "Complete" },
-          outputViews: [],
-          aggregateViews: [],
-        };
+    initialSchema ? ensurePages(initialSchema) : emptyTaskFormSchema();
 
   const formDraft = useFormDraft(buildInitialSchema);
   const {
@@ -151,6 +139,9 @@ export function FormBuilder(props: FormBuilderProps) {
   });
   const { hasUnsavedChanges, conflict, isLoading, loadError, retryLoad } =
     saved;
+  useEffect(() => {
+    onUnsavedChangesChange?.(hasUnsavedChanges);
+  }, [hasUnsavedChanges, onUnsavedChangesChange]);
 
   const {
     sourceForms,
@@ -404,6 +395,7 @@ export function FormBuilder(props: FormBuilderProps) {
                   isLoading,
                   hasUnsavedChanges,
                 }}
+                formId={formId}
               />
               <FormBuilderBanners
                 isLoading={isLoading}

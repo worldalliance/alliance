@@ -1,5 +1,5 @@
 import type {
-  ProjectDto,
+  AdminProjectDto,
   ProjectWithStepsDto,
   UpdateProjectDto,
 } from "@alliance/shared/client";
@@ -10,7 +10,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 import {
   useAssignActionProjectAdmin,
-  useCreateActionProjectAdmin,
+  useCreateProjectAdmin,
   useDeleteProjectAdmin,
   useProjectAdmin,
   useProjectsAdmin,
@@ -18,7 +18,7 @@ import {
 } from "./useProjectsAdmin";
 
 const project = (id: number, name: string) =>
-  ({ id, name, category: [] }) satisfies ProjectDto;
+  ({ id, name, slug: `project-${id}`, category: [] }) satisfies AdminProjectDto;
 
 const ACTION_ID = 10;
 
@@ -28,13 +28,13 @@ const step = {
   memberActionAt: "2026-01-02T00:00:00.000Z",
 };
 
-const withSteps = (stored: ProjectDto) =>
+const withSteps = (stored: AdminProjectDto) =>
   ({
     ...stored,
     steps: stored.id === assignedProjectId ? [step] : [],
   }) satisfies ProjectWithStepsDto;
 
-let stored: ProjectDto[] = [];
+let stored: AdminProjectDto[] = [];
 let assignedProjectId: number | null = null;
 let requests: string[] = [];
 
@@ -132,12 +132,15 @@ describe("useAssignActionProjectAdmin", () => {
     const query = queryWrapper();
     const view = renderProjects(query);
     const assign = renderHook(
-      () => useAssignActionProjectAdmin({ actionId: ACTION_ID, onError }),
+      () => useAssignActionProjectAdmin({ onError }),
       query,
     );
     await loaded(view);
 
-    await assign.result.current.mutateAsync(2);
+    await assign.result.current.mutateAsync({
+      actionId: ACTION_ID,
+      projectId: 2,
+    });
 
     expect(
       query.client.getQueryData<ProjectWithStepsDto>(queryKeys.projectAdmin(1))
@@ -147,27 +150,25 @@ describe("useAssignActionProjectAdmin", () => {
   });
 });
 
-describe("useCreateActionProjectAdmin", () => {
+describe("useCreateProjectAdmin", () => {
   it("creates the project, assigns the action to it, and reports success once the list has it", async () => {
     const query = queryWrapper();
     const view = renderProjects(query);
     const onSuccess = mock(() =>
       query.client
-        .getQueryData<ProjectDto[]>(queryKeys.projectsAdmin())
+        .getQueryData<AdminProjectDto[]>(queryKeys.projectsAdmin())
         ?.map((p) => p.name),
     );
     const create = renderHook(
-      () =>
-        useCreateActionProjectAdmin({
-          actionId: ACTION_ID,
-          onSuccess,
-          onError,
-        }),
+      () => useCreateProjectAdmin({ onSuccess, onError }),
       query,
     );
     await loaded(view);
 
-    await create.result.current.mutateAsync("Clean soil");
+    await create.result.current.mutateAsync({
+      name: "Clean soil",
+      actionId: ACTION_ID,
+    });
 
     expect(requests).toEqual([
       "create Clean soil",
@@ -178,6 +179,28 @@ describe("useCreateActionProjectAdmin", () => {
     ]);
     expect(actionInvalidated(query)).toBe(true);
   });
+
+  it("creates a project without assigning an action and refetches the action list", async () => {
+    const query = queryWrapper();
+    const view = renderProjects(query);
+    query.client.setQueryData(queryKeys.actionsAllAdmin(), []);
+    const onSuccess = mock((created: AdminProjectDto) => created.name);
+    const create = renderHook(
+      () => useCreateProjectAdmin({ onSuccess, onError }),
+      query,
+    );
+    await loaded(view);
+
+    await create.result.current.mutateAsync({ name: "Clean soil" });
+
+    expect(requests).toEqual(["create Clean soil"]);
+    expect(onSuccess.mock.results).toEqual([
+      { type: "return", value: "Clean soil" },
+    ]);
+    expect(
+      query.client.getQueryState(queryKeys.actionsAllAdmin())?.isInvalidated,
+    ).toBe(true);
+  });
 });
 
 describe("useUpdateProjectAdmin", () => {
@@ -186,13 +209,13 @@ describe("useUpdateProjectAdmin", () => {
     const view = renderProjects(query);
     const onSuccess = mock(() => [
       query.client
-        .getQueryData<ProjectDto[]>(queryKeys.projectsAdmin())
+        .getQueryData<AdminProjectDto[]>(queryKeys.projectsAdmin())
         ?.find((p) => p.id === 1)?.name,
       query.client.getQueryData<ProjectWithStepsDto>(queryKeys.projectAdmin(1))
         ?.name,
     ]);
     const update = renderHook(
-      () => useUpdateProjectAdmin({ actionId: ACTION_ID, onSuccess, onError }),
+      () => useUpdateProjectAdmin({ onSuccess, onError }),
       query,
     );
     await loaded(view);
@@ -216,7 +239,6 @@ describe("useDeleteProjectAdmin", () => {
     const remove = renderHook(
       () =>
         useDeleteProjectAdmin({
-          actionId: ACTION_ID,
           onSuccess: () => {},
           onError,
         }),
@@ -227,7 +249,7 @@ describe("useDeleteProjectAdmin", () => {
     await remove.result.current.mutateAsync(1);
 
     expect(
-      query.client.getQueryData<ProjectDto[]>(queryKeys.projectsAdmin()),
+      query.client.getQueryData<AdminProjectDto[]>(queryKeys.projectsAdmin()),
     ).toEqual([project(2, "Clean water")]);
     expect(
       query.client.getQueryState(queryKeys.projectAdmin(1))?.isInvalidated,

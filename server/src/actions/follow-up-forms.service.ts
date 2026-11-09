@@ -15,6 +15,7 @@ import {
   parseFollowUpForm,
   type ParsedFollowUpForm,
 } from "./entities/follow-up-form.entity";
+import { FormSlugSequence, slugFormForAction } from "./form-slug";
 
 @Injectable()
 export class FollowUpFormsService {
@@ -55,7 +56,15 @@ export class FollowUpFormsService {
         { target: Form, id: form.id },
       ],
       notFound: "Action or form not found",
-      write: async (em) => parseFollowUpForm(await em.save(followUpForm)),
+      write: async (em) => {
+        const saved = await em.save(followUpForm);
+        await slugFormForAction(em, {
+          formId: form.id,
+          actionId,
+          sequence: FormSlugSequence.FollowUp,
+        });
+        return parseFollowUpForm(saved);
+      },
     });
   }
 
@@ -73,6 +82,8 @@ export class FollowUpFormsService {
         stored: followUpForm.cohortExpression,
       });
     }
+    const formChanged =
+      dto.formId !== undefined && dto.formId !== followUpForm.formId;
     Object.assign(followUpForm, dto);
     return writeUnderLive(this.followUpFormRepository.manager, {
       parents:
@@ -82,7 +93,17 @@ export class FollowUpFormsService {
         id: followUpFormId,
         notFound: "Follow-up form not found",
       },
-      write: async (em) => parseFollowUpForm(await em.save(followUpForm)),
+      write: async (em) => {
+        const saved = await em.save(followUpForm);
+        if (formChanged) {
+          await slugFormForAction(em, {
+            formId: followUpForm.formId,
+            actionId: followUpForm.actionId,
+            sequence: FormSlugSequence.FollowUp,
+          });
+        }
+        return parseFollowUpForm(saved);
+      },
     });
   }
 

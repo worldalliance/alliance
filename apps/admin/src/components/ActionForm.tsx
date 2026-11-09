@@ -7,17 +7,34 @@ import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import React, { useMemo } from "react";
 import {
+  ActionFieldSection,
   actionFieldDefs,
-  type ActionFieldSection,
+  type ActionFieldDef,
 } from "../lib/actionFieldDefs";
 import ActionFormFields, { type ActionFieldInputs } from "./ActionFormFields";
 import ActionReviewersEditor, {
   type ReviewerRow,
 } from "./ActionReviewersEditor";
 import CohortExpressionBuilder from "./CohortExpressionBuilder";
-import FormSection from "./FormSection";
+import FormSection, { CollapsibleFormSection } from "./FormSection";
 import OpenReferenceWarning from "./OpenReferenceWarning";
 import PrerequisitePicker from "./PrerequisitePicker";
+
+const RARE_SECTIONS = [
+  ActionFieldSection.Audience,
+  ActionFieldSection.Completion,
+  ActionFieldSection.Forum,
+  ActionFieldSection.CustomStat,
+] as const;
+
+const RARE_SECTION_TITLES: Record<(typeof RARE_SECTIONS)[number], string> = {
+  [ActionFieldSection.Audience]: "Audience",
+  [ActionFieldSection.Completion]: "Completion",
+  [ActionFieldSection.Forum]: "Forum participation",
+  [ActionFieldSection.CustomStat]: "Custom stat",
+};
+
+const isSet = (value: unknown) => !!value && value !== "none";
 
 interface ActionFormProps extends ActionFieldInputs {
   onSubmit: (e: React.FormEvent) => void;
@@ -49,6 +66,7 @@ interface ActionFormProps extends ActionFieldInputs {
   allActionsLoadFailed: boolean;
   memberActionStart: Date | null;
   memberActionDeadline: Date | null;
+  hideStaffPreview?: boolean;
 }
 
 const ActionForm: React.FC<ActionFormProps> = ({
@@ -91,6 +109,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
   allActionsLoadFailed,
   memberActionStart,
   memberActionDeadline,
+  hideStaffPreview = false,
 }) => {
   const fieldDefs = useMemo(
     () =>
@@ -105,7 +124,8 @@ const ActionForm: React.FC<ActionFormProps> = ({
   const getFieldsBySection = (section: ActionFieldSection) =>
     fieldDefs
       .filter((f) => f.section === section)
-      .filter((f) => (f.show ? f.show(form) : true));
+      .filter((f) => (f.show ? f.show(form) : true))
+      .filter((f) => !(hideStaffPreview && f.name === "staffPreview"));
 
   const fieldInputs = {
     form,
@@ -120,8 +140,10 @@ const ActionForm: React.FC<ActionFormProps> = ({
     onCategoryChange,
   };
 
-  const contentFields = getFieldsBySection("content");
-  const settingsFields = getFieldsBySection("settings");
+  const contentFields = getFieldsBySection(ActionFieldSection.Content);
+  const settingsFields = getFieldsBySection(ActionFieldSection.Settings);
+  const inUse = (fields: ActionFieldDef[]) =>
+    fields.some((f) => f.name !== "image" && isSet(form[f.name]));
 
   return (
     <form onSubmit={onSubmit} className="space-y-6 pb-6">
@@ -160,6 +182,19 @@ const ActionForm: React.FC<ActionFormProps> = ({
           <ActionFormFields fields={settingsFields} {...fieldInputs} />
         </div>
       </FormSection>
+
+      {RARE_SECTIONS.map((section) => {
+        const fields = getFieldsBySection(section);
+        return (
+          <CollapsibleFormSection
+            key={section}
+            title={RARE_SECTION_TITLES[section]}
+            inUse={inUse(fields)}
+          >
+            <ActionFormFields fields={fields} {...fieldInputs} />
+          </CollapsibleFormSection>
+        );
+      })}
 
       <FormSection
         title="Prerequisites"

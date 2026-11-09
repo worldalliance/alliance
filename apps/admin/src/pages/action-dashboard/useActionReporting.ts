@@ -17,6 +17,12 @@ import { formResponsesAdminQuery } from "../../lib/useFormResponsesAdmin";
 
 export type ActionReporting = ReturnType<typeof useActionReporting>;
 
+export const taskFormWithSchema = (
+  taskForm: ReturnType<typeof useAdminTaskForm>,
+) =>
+  // Unparsed: the server validates a form's schema before storing it.
+  (taskForm.data ?? null) as unknown as FormWithSchema | null;
+
 const LISTS_INCOMPLETE_USERS: Record<ActionStatus, boolean> = {
   draft: false,
   planned: false,
@@ -122,8 +128,7 @@ export function useActionReporting(
       (loadsShareUrlStats && shareUrlStats.data) || NO_SHARE_URL_STATS,
     shareUrlStatsLoading: shareUrlStats.isLoading,
     actionStats: actionStats.data ?? null,
-    // Unparsed: the server validates a form's schema before storing it.
-    taskForm: (taskForm.data ?? null) as unknown as FormWithSchema | null,
+    taskForm: taskFormWithSchema(taskForm),
     formResponses: formResponses.data ?? NO_RESPONSES,
     incompleteUsers: (listsIncompleteUsers && incompleteUsers.data) || NO_USERS,
     failedLoads,

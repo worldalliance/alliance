@@ -11,7 +11,10 @@ import DateTimePicker, {
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { milliseconds } from "date-fns";
 import { useState } from "react";
-import { ACTION_STATUS_LABELS } from "../lib/actionStatusDisplay";
+import {
+  ACTION_STATUS_LABELS,
+  DEFAULT_EVENT_NAMES,
+} from "../lib/actionStatusDisplay";
 import { sendConfirmingDeadlineShortening } from "../lib/confirmDeadlineShortening";
 
 export type AddActionEvent = ReturnType<typeof useActionAdmin>["addEvent"];
@@ -37,17 +40,6 @@ export type CreateEventFormProps = {
       ) => Promise<ActionSuiteDto | null>;
     }
 );
-
-export const defaultEventNames: Record<ActionStatus, string> = {
-  draft: "Draft",
-  office_action: "Office taking action",
-  member_action: "Members taking action",
-  resolution: "Pending office resolution",
-  completed: "Action completed",
-  failed: "Action failed",
-  abandoned: "Action dropped",
-  planned: "Planned",
-};
 
 const CreateEventForm = (props: CreateEventFormProps) => {
   const {
@@ -129,7 +121,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
         ...eventForm,
         title: useCustomName
           ? eventForm.title
-          : defaultEventNames[eventForm.newStatus as ActionStatus],
+          : DEFAULT_EVENT_NAMES[eventForm.newStatus as ActionStatus],
         description: useCustomName ? eventForm.description : "",
         date: launchNow
           ? new Date().toISOString()
@@ -155,7 +147,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
         eventForm.newStatus === "member_action"
       ) {
         const officeActionEvent = {
-          title: defaultEventNames[deadlineEventStatus],
+          title: DEFAULT_EVENT_NAMES[deadlineEventStatus],
           date: deadlineEventDate,
           newStatus: deadlineEventStatus,
           description: "",
@@ -257,7 +249,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
           <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
             <p className="text-sm text-blue-800">
               <strong>Using default title:</strong>{" "}
-              {defaultEventNames[eventForm.newStatus as ActionStatus] ||
+              {DEFAULT_EVENT_NAMES[eventForm.newStatus as ActionStatus] ||
                 "No default name for this status"}
             </p>
           </div>

@@ -28,7 +28,7 @@ import {
 import { Tag } from "src/user/entities/tag.entity";
 import { TagService } from "src/user/tag.service";
 import { UserService } from "src/user/user.service";
-import { In, type Repository } from "typeorm";
+import { type EntityManager, In, type Repository } from "typeorm";
 import {
   ActionEvent,
   ActionStatus,
@@ -58,8 +58,6 @@ export class ReminderGroupService {
     private readonly eventRepository: Repository<ActionEvent>,
     @InjectRepository(ReminderGroup)
     private readonly reminderGroupRepository: Repository<ReminderGroup>,
-    @InjectRepository(ActionSuite)
-    private readonly actionSuiteRepository: Repository<ActionSuite>,
     @InjectRepository(Action)
     private readonly actionRepository: Repository<Action>,
     @InjectRepository(FollowUpForm)
@@ -72,11 +70,12 @@ export class ReminderGroupService {
 
   private async attachDeadlineEvent(
     group: ReminderGroup,
+    em: EntityManager,
   ): Promise<ReminderGroup> {
     if (group.deadlineEvent) {
       return group;
     }
-    const events = await this.eventRepository.find({
+    const events = await em.find(ActionEvent, {
       where: {
         action: {
           id: loadedActionEventAction(
@@ -274,8 +273,9 @@ export class ReminderGroupService {
 
   async attachSendableDeadlineEvent(
     group: ReminderGroup,
+    em: EntityManager = this.eventRepository.manager,
   ): Promise<ReminderGroup> {
-    const withDeadline = await this.attachDeadlineEvent(group);
+    const withDeadline = await this.attachDeadlineEvent(group, em);
     assertReminderGroupSendable(withDeadline);
     return withDeadline;
   }
@@ -283,8 +283,9 @@ export class ReminderGroupService {
   async createReminderGroup(
     eventId: number,
     dto: CreateReminderGroupDto,
+    em: EntityManager = this.eventRepository.manager,
   ): Promise<ReminderGroup> {
-    const event = await this.eventRepository.findOneOrFail({
+    const event = await em.findOneOrFail(ActionEvent, {
       where: { id: eventId },
       relations: { action: true },
     });
@@ -292,26 +293,29 @@ export class ReminderGroupService {
 
     let actionSuite: ActionSuite | undefined = undefined;
     if (dto.suiteId) {
-      actionSuite = await this.actionSuiteRepository.findOneOrFail({
+      actionSuite = await em.findOneOrFail(ActionSuite, {
         where: { id: dto.suiteId },
       });
     }
 
-    return this.saveUnderLiveParents(
-      this.reminderGroupRepository.create({
+    return this.saveUnderLiveParents({
+      group: this.reminderGroupRepository.create({
         ...fields,
         memberActionEvent: event,
         actionSuite,
       }),
-    );
+      em,
+    });
   }
 
-  private async saveUnderLiveParents(
-    group: ReminderGroup,
-    saved?: LiveRow & { notFound: string },
-  ): Promise<ReminderGroup> {
-    const withDeadline = await this.attachSendableDeadlineEvent(group);
-    return writeUnderLive(this.reminderGroupRepository.manager, {
+  private async saveUnderLiveParents(params: {
+    group: ReminderGroup;
+    saved?: LiveRow & { notFound: string };
+    em?: EntityManager;
+  }): Promise<ReminderGroup> {
+    const { group, saved, em = this.reminderGroupRepository.manager } = params;
+    const withDeadline = await this.attachSendableDeadlineEvent(group, em);
+    return writeUnderLive(em, {
       parents: reminderGroupParents(withDeadline),
       notFound: REMINDER_GROUP_PARENT_GONE,
       saved,
@@ -335,10 +339,13 @@ export class ReminderGroupService {
       ),
     );
 
-    return this.saveUnderLiveParents(group, {
-      target: ReminderGroup,
-      id: groupId,
-      notFound: "Reminder group not found",
+    return this.saveUnderLiveParents({
+      group,
+      saved: {
+        target: ReminderGroup,
+        id: groupId,
+        notFound: "Reminder group not found",
+      },
     });
   }
 

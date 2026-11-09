@@ -129,6 +129,7 @@ export const serveLaunchApi = () => {
         });
       },
       "GET /user/tags": () => Response.json([]),
+      "GET /tasks/listForms": () => Response.json([]),
       "GET /actions/adminslug/:id": ({ params }) => {
         if (api.offlineOnceActionLoads) {
           api.offlineOnceActionLoads = false;

@@ -1,7 +1,6 @@
 import { eventInEffectAt } from "@alliance/common/actionEvent";
 import { ActionDto, AdminActionListItemDto } from "@alliance/shared/client";
 import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
-import { parseActionDto } from "@alliance/shared/parsed-dtos";
 import { cn } from "@alliance/shared/styles/util";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import React, { useMemo, useState } from "react";
@@ -16,12 +15,8 @@ import {
   actionStatusBucket,
 } from "../lib/actionStatusBucket";
 import { actionsLoadError } from "../lib/actionsLoadError";
-import {
-  cohortNames,
-  describeCohortExpression,
-} from "../lib/describeCohortExpression";
 import { inProgressSuites } from "../lib/inProgressSuites";
-import { useTagsAdmin } from "../lib/useTagsAdmin";
+import { useActionParticipants } from "../lib/useActionParticipants";
 
 export const getLastPastEventDate = (
   action: Pick<ActionDto, "events">,
@@ -45,7 +40,6 @@ const ActionsList: React.FC = () => {
     [list.data],
   );
   const error = list.isError ? actionsLoadError(list.error) : null;
-  const { tags } = useTagsAdmin();
   const [shownBuckets, setShownBuckets] = useState<
     ReadonlySet<ActionStatusBucket>
   >(
@@ -57,20 +51,7 @@ const ActionsList: React.FC = () => {
       ]),
   );
 
-  const participantsById = useMemo(() => {
-    const names = cohortNames({ tags, actions });
-    return new Map(
-      actions.map((dto) => {
-        const { action, cohortExpressionError } = parseActionDto(dto);
-        return [
-          dto.id,
-          cohortExpressionError
-            ? [{ text: "Invalid cohort expression" }]
-            : describeCohortExpression(action.cohortExpression, names),
-        ];
-      }),
-    );
-  }, [actions, tags]);
+  const participantsById = useActionParticipants(actions);
 
   const suitesInProgress = useMemo(() => inProgressSuites(actions), [actions]);
 
@@ -181,7 +162,7 @@ const ActionsList: React.FC = () => {
             <CreateActionMenu />
           </div>
         }
-        mostRecentFirst
+        latestLaunchFirst
         participantsById={participantsById}
         className="flex-shrink-0 max-h-[50vh] border border-zinc-200"
       />

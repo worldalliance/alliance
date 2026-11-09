@@ -1,14 +1,29 @@
 import {
+  actionsUpdateAdmin,
+  type AdminActionDto,
+  type AdminProjectDto,
+  type CreateProjectActionDto,
+  projectActionsCreateAdmin,
+  projectActionsRescheduleReleaseAdmin,
+  projectActionsScheduleReleaseAdmin,
+  projectActionsUnscheduleReleaseAdmin,
   projectsAssignActionAdmin,
   projectsCreateAdmin,
   projectsFindAllAdmin,
   projectsFindOneAdmin,
   projectsRemoveAdmin,
   projectsUpdateAdmin,
+  type RescheduleReleaseDto,
+  type ScheduleReleaseDto,
   type UpdateProjectDto,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  dataOrThrow,
+  sendConfirmingDeadlineShortening,
+} from "./confirmDeadlineShortening";
 
 export function useProjectsAdmin() {
   return useQuery({
@@ -29,7 +44,8 @@ export function useProjectAdmin(projectId: number) {
   });
 }
 
-function useInvalidateProjects(actionId: number) {
+// Every action query shows the action's project, so a project write refetches them all.
+function useInvalidateProjects() {
   const queryClient = useQueryClient();
   return (params?: { includeDetails: boolean }) =>
     Promise.all([
@@ -39,64 +55,62 @@ function useInvalidateProjects(actionId: number) {
             ? queryKeys.projectsAdmin()
             : queryKeys.projectsAdminAll(),
       }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.actionAdmin(actionId),
-      }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.actionAdminAll() }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.actionsAllAdmin() }),
     ]);
 }
 
 export function useAssignActionProjectAdmin(params: {
-  actionId: number;
   onError: (err: Error) => void;
 }) {
-  const { actionId, onError } = params;
-  const invalidate = useInvalidateProjects(actionId);
+  const invalidate = useInvalidateProjects();
   return useMutation({
-    mutationFn: (projectId: number | null) =>
+    mutationFn: (assignment: { actionId: number; projectId: number | null }) =>
       projectsAssignActionAdmin({
-        path: { actionId },
-        body: { projectId },
+        path: { actionId: assignment.actionId },
+        body: { projectId: assignment.projectId },
         throwOnError: true,
       }),
     onSuccess: () => invalidate(),
-    onError,
+    onError: params.onError,
   });
 }
 
-export function useCreateActionProjectAdmin(params: {
-  actionId: number;
-  onSuccess: () => void;
+export function useCreateProjectAdmin(params: {
+  onSuccess: (created: AdminProjectDto) => void;
   onError: (err: Error) => void;
 }) {
-  const { actionId, onSuccess, onError } = params;
-  const invalidate = useInvalidateProjects(actionId);
+  const { onSuccess, onError } = params;
+  const invalidate = useInvalidateProjects();
   return useMutation({
-    mutationFn: async (name: string) => {
+    mutationFn: async (input: { name: string; actionId?: number }) => {
       const { data: created } = await projectsCreateAdmin({
-        body: { name },
+        body: { name: input.name },
         throwOnError: true,
       });
-      await projectsAssignActionAdmin({
-        path: { actionId },
-        body: { projectId: created.id },
-        throwOnError: true,
-      });
+      if (input.actionId !== undefined) {
+        await projectsAssignActionAdmin({
+          path: { actionId: input.actionId },
+          body: { projectId: created.id },
+          throwOnError: true,
+        });
+      }
+      return created;
     },
-    onSuccess: async () => {
+    onSuccess: async (created) => {
       await invalidate();
-      onSuccess();
+      onSuccess(created);
     },
     onError,
   });
 }
 
 export function useUpdateProjectAdmin(params: {
-  actionId: number;
   onSuccess?: () => void;
   onError: (err: Error) => void;
 }) {
-  const { actionId, onSuccess, onError } = params;
-  const invalidate = useInvalidateProjects(actionId);
+  const { onSuccess, onError } = params;
+  const invalidate = useInvalidateProjects();
   return useMutation({
     mutationFn: ({ id, body }: { id: number; body: UpdateProjectDto }) =>
       projectsUpdateAdmin({ path: { id }, body, throwOnError: true }),
@@ -109,12 +123,11 @@ export function useUpdateProjectAdmin(params: {
 }
 
 export function useDeleteProjectAdmin(params: {
-  actionId: number;
   onSuccess: () => void;
   onError: (err: Error) => void;
 }) {
-  const { actionId, onSuccess, onError } = params;
-  const invalidate = useInvalidateProjects(actionId);
+  const { onSuccess, onError } = params;
+  const invalidate = useInvalidateProjects();
   return useMutation({
     mutationFn: (id: number) =>
       projectsRemoveAdmin({ path: { id }, throwOnError: true }),
@@ -124,5 +137,75 @@ export function useDeleteProjectAdmin(params: {
       await invalidate({ includeDetails: false });
     },
     onError,
+  });
+}
+
+export function useCreateProjectActionAdmin(params: {
+  onSuccess: (created: AdminActionDto) => void;
+}) {
+  const invalidate = useInvalidateProjects();
+  return useMutation({
+    mutationFn: (input: { projectId: number; body: CreateProjectActionDto }) =>
+      projectActionsCreateAdmin({
+        path: { projectId: input.projectId },
+        body: input.body,
+        throwOnError: true,
+      }).then((res) => res.data),
+    onSuccess: (created) => {
+      void invalidate();
+      params.onSuccess(created);
+    },
+  });
+}
+
+export function useActionReleaseAdmin(actionId: number) {
+  const invalidate = useInvalidateProjects();
+  const schedule = useMutation({
+    mutationFn: (body: ScheduleReleaseDto) =>
+      projectActionsScheduleReleaseAdmin({
+        path: { id: actionId },
+        body,
+        throwOnError: true,
+      }),
+    onSuccess: () => invalidate(),
+  });
+  const { confirm } = useToast();
+  const reschedule = useMutation({
+    mutationFn: (body: RescheduleReleaseDto) =>
+      sendConfirmingDeadlineShortening({
+        send: (query) =>
+          projectActionsRescheduleReleaseAdmin({
+            path: { id: actionId },
+            body,
+            query,
+          }),
+        confirm,
+      }).then(dataOrThrow),
+    onSuccess: () => invalidate(),
+  });
+  const unschedule = useMutation({
+    mutationFn: () =>
+      projectActionsUnscheduleReleaseAdmin({
+        path: { id: actionId },
+        throwOnError: true,
+      }),
+    onSuccess: () => invalidate(),
+  });
+  return { schedule, reschedule, unschedule };
+}
+
+export function useStartStaffTestingAdmin(params: {
+  onError: (err: Error) => void;
+}) {
+  const invalidate = useInvalidateProjects();
+  return useMutation({
+    mutationFn: (actionId: number) =>
+      actionsUpdateAdmin({
+        path: { id: actionId },
+        body: { staffPreview: true },
+        throwOnError: true,
+      }),
+    onSuccess: () => invalidate(),
+    onError: params.onError,
   });
 }

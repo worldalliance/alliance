@@ -33,8 +33,8 @@ serveApi(
       formListFails
         ? Response.json({ message: "down" }, { status: 500 })
         : Response.json([
-            { id: 1, title: "This one" },
-            { id: 9, title: "Survey" },
+            { id: 1, title: "This one", displaySlug: "this-one::v1" },
+            { id: 9, title: "Survey", displaySlug: "survey::v1" },
           ]),
     "GET /tasks/adminForm/:id": ({ params }) =>
       params.id === "9"
@@ -70,7 +70,7 @@ describe("VariableBuilder inputs from another form", () => {
     const formPicker = await screen.findByLabelText("Form read by input1");
     expect(
       [...(formPicker as HTMLSelectElement).options].map((o) => o.text),
-    ).toEqual(["This form", "Survey (#9)"]);
+    ).toEqual(["This form", "Survey (survey::v1)"]);
     fireEvent.change(formPicker, { target: { value: "9" } });
     expect(saved.at(-1)?.variables?.[0].inputs.input1).toEqual({
       kind: "sourceField",

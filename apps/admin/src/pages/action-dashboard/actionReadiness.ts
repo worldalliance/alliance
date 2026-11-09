@@ -11,11 +11,13 @@ import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
 import { secondsInMinute } from "date-fns/constants";
 import { isEqual } from "es-toolkit";
 import { placeForSelect } from "../../lib/formDependencies";
+import { STAFF_TESTING_REQUIREMENTS } from "../../lib/staffTestingGate";
 
 export type ReadinessCheckItem = {
   id: string;
   label: string;
   isReady: boolean;
+  required?: boolean;
 };
 
 const countWords = (text: string | null | undefined): number => {
@@ -96,20 +98,22 @@ export function actionReadinessItems(
   action: ParsedActionDto,
   taskFormSchema: FormSchema | null,
 ): ReadinessCheckItem[] {
-  const trimmedShortDescription = action.shortDescription?.trim() ?? "";
-  const trimmedBody = action.body?.trim() ?? "";
   const partOfSuite = Boolean(action.suite?.id);
+  const staffTestingItem = (id: string): ReadinessCheckItem => {
+    const requirement = STAFF_TESTING_REQUIREMENTS.find((r) => r.id === id);
+    if (!requirement) {
+      throw new Error(`unknown staff testing requirement: ${id}`);
+    }
+    return {
+      id,
+      label: requirement.label,
+      isReady: requirement.isReady(action),
+      required: true,
+    };
+  };
   const items: ReadinessCheckItem[] = [
-    {
-      id: "shortDescription",
-      label: "Short description",
-      isReady: trimmedShortDescription.length > 0,
-    },
-    {
-      id: "body",
-      label: "Full body content",
-      isReady: trimmedBody.length > 0,
-    },
+    staffTestingItem("shortDescription"),
+    staffTestingItem("body"),
     {
       id: "timeEstimate",
       label: "Time estimate set",
@@ -125,21 +129,13 @@ export function actionReadinessItems(
       label: "Part of a project",
       isReady: Boolean(action.project),
     },
-    {
-      id: "cohort",
-      label: "Cohort expression set",
-      isReady: !!action.cohortExpression,
-    },
+    staffTestingItem("cohort"),
     {
       id: "authors",
       label: "Action authors set",
       isReady: (action.authors?.length ?? 0) > 0,
     },
-    {
-      id: "taskForm",
-      label: "Task form linked",
-      isReady: Boolean(action.taskFormId),
-    },
+    staffTestingItem("taskForm"),
     {
       id: "image",
       label: "Image set",

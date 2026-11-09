@@ -12,6 +12,7 @@ import {
 import { DataSource } from "typeorm";
 import { PostgresConnectionOptions } from "typeorm/driver/postgres/PostgresConnectionOptions";
 import { AppTypeOrmLogger } from "../utils/typeorm-logger";
+import { SlugSubscriber } from "./slug.subscriber";
 
 export const connectionOptions = (): PostgresConnectionOptions => {
   // The TypeORM CLI bypasses main.ts, and dotenv preserves an exported DB_NAME.
@@ -32,6 +33,7 @@ export const connectionOptions = (): PostgresConnectionOptions => {
     maxQueryExecutionTime: 100,
     logging: ["error", "warn"],
     logger: new AppTypeOrmLogger(),
+    subscribers: [SlugSubscriber],
   };
 
   return env("NODE_ENV") === NodeEnv.Production ||

@@ -44,7 +44,7 @@ const sources: InputSources = {
   fieldsFor: (sourceFormId) =>
     sourceFormId === SOURCE ? [colors] : [ownPick, otherColors],
   statusOf: () => undefined,
-  forms: [{ id: SOURCE, title: "Colors form" }],
+  forms: [{ id: SOURCE, title: "Colors form", displaySlug: "colors::v1" }],
   ownForm: undefined,
   formsLoaded: true,
   scope: variableFieldScope(

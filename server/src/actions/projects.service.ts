@@ -4,14 +4,19 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { throwIfSlugTaken } from "src/datasources/slug-column";
 import { assertLive, softDeleteCascade } from "src/datasources/soft-delete";
 import { isUniqueViolation } from "src/utils/db-errors";
 import { type EntityManager, Repository } from "typeorm";
 import type { ActionCategory } from "./action-category";
 import { Action } from "./entities/action.entity";
-import { Project } from "./entities/project.entity";
+import { Project, PROJECT_SLUG_INDEX } from "./entities/project.entity";
+import {
+  byProjectStepOrder,
+  type ProjectStep,
+  toProjectStep,
+} from "./project-steps";
 
-export type ProjectStep = { action: Action; memberActionAt: Date | null };
 export type ProjectWithSteps = { project: Project; steps: ProjectStep[] };
 
 @Injectable()
@@ -27,6 +32,12 @@ export class ProjectsService {
     return this.projectRepository.find({ order: { name: "ASC" } });
   }
 
+  async findOneBySlug(slug: string): Promise<Project> {
+    const project = await this.projectRepository.findOneBy({ slug });
+    if (!project) throw new NotFoundException(`Project "${slug}" not found`);
+    return project;
+  }
+
   async findOneWithSteps(id: number): Promise<ProjectWithSteps> {
     const project = await this.projectRepository.findOne({
       where: { id },
@@ -35,27 +46,20 @@ export class ProjectsService {
     if (!project) throw new NotFoundException(`Project ${id} not found`);
 
     const steps = (project.actions ?? [])
-      .map((action) => ({
-        action,
-        memberActionAt: action.memberActionPhase.event?.date ?? null,
-      }))
-      .sort(
-        (a, b) =>
-          (a.memberActionAt?.getTime() ?? Infinity) -
-            (b.memberActionAt?.getTime() ?? Infinity) ||
-          a.action.id - b.action.id,
-      );
+      .map(toProjectStep)
+      .sort(byProjectStepOrder);
     return { project, steps };
   }
 
-  async create(name: string): Promise<Project> {
-    return this.saveName(this.projectRepository.create({ name }));
+  async create(params: { name: string; slug?: string }): Promise<Project> {
+    return this.saveName(this.projectRepository.create(params));
   }
 
   async update(params: {
     id: number;
     name?: string;
     category?: ActionCategory[];
+    slug?: string;
   }): Promise<Project> {
     return this.projectRepository.manager.transaction(async (em) => {
       const project = await em.findOne(Project, {
@@ -67,6 +71,7 @@ export class ProjectsService {
       }
       if (params.name !== undefined) project.name = params.name;
       if (params.category !== undefined) project.category = params.category;
+      if (params.slug !== undefined) project.slug = params.slug;
       return this.saveName(project, em);
     });
   }
@@ -113,6 +118,11 @@ export class ProjectsService {
     try {
       return await em.save(project);
     } catch (error) {
+      throwIfSlugTaken({
+        error,
+        indexName: PROJECT_SLUG_INDEX,
+        slug: project.slug,
+      });
       if (isUniqueViolation(error)) {
         throw new ConflictException(
           `A project named "${project.name}" already exists`,

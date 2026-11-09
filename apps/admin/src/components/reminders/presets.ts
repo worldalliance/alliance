@@ -159,13 +159,18 @@ const defaultDeadlinePresets: ReminderPresetName[] = [
   "Group Leads 2 days",
 ];
 
+export const defaultReminderPresetNames = (
+  hasDeadline: boolean,
+): ReminderPresetName[] => [
+  "Announcement",
+  ...(hasDeadline ? defaultDeadlinePresets : []),
+];
+
 export const defaultReminderBodies = (params: {
   suiteId: number;
   hasDeadline: boolean;
 }): CreateReminderGroupDto[] =>
-  (
-    [
-      "Announcement",
-      ...(params.hasDeadline ? defaultDeadlinePresets : []),
-    ] satisfies ReminderPresetName[]
-  ).map((preset) => ({ suiteId: params.suiteId, ...reminderPresets[preset] }));
+  defaultReminderPresetNames(params.hasDeadline).map((preset) => ({
+    suiteId: params.suiteId,
+    ...reminderPresets[preset],
+  }));

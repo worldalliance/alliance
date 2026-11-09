@@ -1,5 +1,6 @@
 import { withCount } from "@alliance/common/plural";
 import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
+import { useFormDisplaySlugs } from "@alliance/shared/lib/useFormsAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import { secondsInMinute } from "date-fns/constants";
 import { Fragment } from "react";
@@ -106,7 +107,12 @@ const ActionReviewCheck = ({
 }) => {
   const { tags, isError: tagsFailed } = useTagsAdmin();
   const { data: allActions = [], isError: actionsFailed } = useActionsAdmin();
-  const names = cohortNames({ tags, actions: allActions });
+  const formDisplaySlugs = useFormDisplaySlugs();
+  const names = cohortNames({
+    tags,
+    actions: allActions,
+    formDisplaySlugs,
+  });
   const suiteActionIds = new Set(actions.map(({ action }) => action.id));
   const referencedActions = allActions.map((item) => ({
     ...referencedActionFromListItem(item),

@@ -9,6 +9,7 @@ import { NodeEnv } from "@alliance/common/node-env";
 import { TypeOrmModuleOptions } from "@nestjs/typeorm";
 import path from "node:path";
 import { env } from "../config/env";
+import { SlugSubscriber } from "./slug.subscriber";
 
 const repoRoot = path.resolve(__dirname, "..", "..", "..");
 
@@ -44,6 +45,7 @@ export const testConnectionOptions = (): TypeOrmModuleOptions => {
     password: env("DB_PASSWORD"),
     database,
     autoLoadEntities: true,
+    subscribers: [SlugSubscriber],
     synchronize: true,
     dropSchema: true,
   };

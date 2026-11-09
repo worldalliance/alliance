@@ -4,8 +4,8 @@ import type {
   CreateActionEventDto,
   CreateReminderGroupDto,
 } from "@alliance/shared/client";
+import { DEFAULT_EVENT_NAMES } from "../../lib/actionStatusDisplay";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
-import { defaultEventNames } from "../CreateEventForm";
 import { eventBeforeDeadline, existingLaunchEvent } from "./launchBlockers";
 import type { LaunchSchedule } from "./launchSchedule";
 
@@ -43,7 +43,7 @@ export async function launchSuite(params: {
 
   const withMemberEvent = await R.fromPromise(
     addEvent({
-      title: defaultEventNames.member_action,
+      title: DEFAULT_EVENT_NAMES.member_action,
       description: "",
       newStatus: "member_action",
       date: schedule.memberActionAt.toISOString(),
@@ -69,7 +69,7 @@ export async function launchSuite(params: {
 
   const withOfficeEvent = await R.fromPromise(
     addEvent({
-      title: defaultEventNames.office_action,
+      title: DEFAULT_EVENT_NAMES.office_action,
       description: "",
       newStatus: "office_action",
       date: schedule.officeActionAt.toISOString(),

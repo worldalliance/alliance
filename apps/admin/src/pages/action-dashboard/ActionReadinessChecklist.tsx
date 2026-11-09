@@ -81,6 +81,11 @@ const ActionReadinessChecklist: React.FC<ActionReadinessChecklistProps> = ({
                 <AlertTriangle className="h-5 w-5 text-yellow-600" />
               )}
               <p className="text-sm font-medium text-gray-900">{item.label}</p>
+              {item.required && (
+                <span className="text-xs text-gray-500">
+                  Required for staff testing
+                </span>
+              )}
             </li>
           ))}
         </ul>
