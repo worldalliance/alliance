@@ -42,10 +42,15 @@ function assertReleaseDates(params: {
   launch: Date;
   deadline: Date | null;
   launchMoved: boolean;
+  deadlineMoved: boolean;
 }): void {
-  const { launch, deadline, launchMoved } = params;
-  if (launchMoved && launch <= new Date()) {
+  const { launch, deadline, launchMoved, deadlineMoved } = params;
+  const now = new Date();
+  if (launchMoved && launch <= now) {
     throw new BadRequestException("The launch must be in the future");
+  }
+  if (deadlineMoved && deadline && deadline <= now) {
+    throw new BadRequestException("The deadline must be in the future");
   }
   if (deadline && deadline <= launch) {
     throw new BadRequestException("The deadline must be after the launch");
@@ -152,6 +157,7 @@ export class ProjectActionsService {
       launch: body.launch.date,
       deadline: body.deadline?.date ?? null,
       launchMoved: true,
+      deadlineMoved: true,
     });
 
     await this.dataSource
@@ -213,6 +219,7 @@ export class ProjectActionsService {
       launch: body.launch ?? event.date,
       deadline: body.deadline ?? deadlineEvent?.date ?? null,
       launchMoved,
+      deadlineMoved: body.deadline !== undefined,
     });
 
     await this.cohortDecisionStaff.guardDeadlineShortening({

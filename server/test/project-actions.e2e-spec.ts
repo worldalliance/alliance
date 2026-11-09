@@ -305,6 +305,9 @@ describe("Project actions (e2e)", () => {
     );
 
     await reschedule(body.id, { launch: addDays(new Date(), 2) }).expect(400);
+    await reschedule(body.id, { deadline: addDays(new Date(), -1) }).expect(
+      400,
+    );
     const deadline = addDays(new Date(), 9);
     await reschedule(body.id, { deadline }).expect(200);
     expect(await eventDates(body.id)).toEqual({
