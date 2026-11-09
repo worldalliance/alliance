@@ -240,7 +240,8 @@ describe("Project actions (e2e)", () => {
 
     const other = await createInProject(project.id, "Other").expect(201);
     await actionRepo.update(other.body.id, { suite: { id: body.suite.id } });
-    await schedule(other.body.id, releaseBody(launchAt)).expect(409);
+    await schedule(other.body.id, releaseBody(launchAt)).expect(400);
+    await reschedule(body.id, { deadline: addDays(launchAt, 8) }).expect(400);
   });
 
   it("unschedules before launch, removing events and reminders", async () => {

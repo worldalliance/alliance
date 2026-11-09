@@ -2,7 +2,6 @@ import { memberActionPhase } from "@alliance/common/actionEvent";
 import { emptyTaskFormSchema } from "@alliance/common/forms/empty-task-form-schema";
 import {
   BadRequestException,
-  ConflictException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -277,7 +276,7 @@ export class ProjectActionsService {
       throw new BadRequestException("This action has no suite");
     }
     if (sharesSuite(action.suite, action.id)) {
-      throw new ConflictException(
+      throw new BadRequestException(
         "This action shares its suite with other actions; schedule it from the suite page",
       );
     }
