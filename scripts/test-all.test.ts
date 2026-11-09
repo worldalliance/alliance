@@ -9,6 +9,8 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.dirname(scriptDir);
 const fixtureRoot = path.join(scriptDir, ".tmp-test", "test-all");
 
+const OWN_CI = ["agents/desktop"];
+
 afterAll(() => {
   fs.rmSync(fixtureRoot, { recursive: true, force: true });
 });
@@ -41,8 +43,8 @@ test.each(["js", "ts", "jsx", "tsx", "mjs", "cjs", "mts", "cts"])(
   },
 );
 
-test("every test bun test discovers runs in test-all.sh", () => {
-  const packages = testPackages(repoRoot);
+test("every test bun test discovers runs in test-all.sh or desktop.yaml", () => {
+  const covered = [...testPackages(repoRoot), ...OWN_CI];
   const testFiles = git({ repoRoot, args: ["ls-files", "-z"] })
     .toString("utf8")
     .split("\0")
@@ -50,7 +52,7 @@ test("every test bun test discovers runs in test-all.sh", () => {
 
   expect(
     testFiles.filter(
-      (file) => !packages.some((dir) => file.startsWith(`${dir}/`)),
+      (file) => !covered.some((dir) => file.startsWith(`${dir}/`)),
     ),
   ).toEqual([]);
 });

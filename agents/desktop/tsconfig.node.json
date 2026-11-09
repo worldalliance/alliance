@@ -14,5 +14,6 @@
     "playwright.config.ts",
     "src/main",
     "e2e"
-  ]
+  ],
+  "exclude": ["src/**/*.test.ts"]
 }

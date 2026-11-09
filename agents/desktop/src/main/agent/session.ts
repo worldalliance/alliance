@@ -57,7 +57,7 @@ export interface AgentSession {
   send(message: AgentMessage): Result<void, Error>;
   /** Asks the running turn to stop. Emits no event before returning, and send fails until the turn's TurnEnded. The interrupt itself emits no Error. A no-op between turns. */
   interrupt(): void;
-  /** Delivers only events after the call; nothing is replayed. A listener that throws is logged; the other listeners and the turn's TurnEnded still arrive. */
+  /** Delivers only events after the call; nothing is replayed. A listener that throws is logged; the other listeners and the turn's TurnEnded still arrive. Each call is its own subscription: one added during a dispatch first hears the next event, and one removed during a dispatch before its delivery doesn't hear the event in flight. */
   subscribe(listener: AgentEventListener): () => void;
 }
 

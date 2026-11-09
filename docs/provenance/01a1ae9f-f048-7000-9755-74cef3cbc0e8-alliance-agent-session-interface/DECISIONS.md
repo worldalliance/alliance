@@ -9,12 +9,16 @@ This task builds on the Alliance agent spec in `docs/provenance/01a1a949-c8f1-70
 
 - `citesting`'s tests ran in neither `scripts/test-all.sh`'s `PACKAGES` nor the `test-unit` matrices of `ci.yaml` and `deploy.yaml`, so all three list it, and `test-unit.yaml` installs Chromium for its browser tests (agent decision).
 - `scripts/covercheck.ts` and `test-all.sh` match every extension `bun test` discovers, `.mjs`, `.cjs`, `.mts` and `.cts` included (agent decision).
-- `scripts/test-all.test.ts` fails on any tracked file `bun test` would discover outside `PACKAGES` so a package's tests can't drop out of `bun run test` silently; it checks `PACKAGES` only, and ALL-2064 covers checking the matrices. It shares the `PACKAGES` parse and the discovery rule with `covercheck` through `scripts/lib/test-packages.ts` (agent decision).
+- `scripts/test-all.test.ts` fails on any tracked file `bun test` would discover outside `PACKAGES` and `agents/desktop`, whose own `bun run test` runs `bun test` before Playwright in `desktop.yaml`, so a package's tests can't drop out of `bun run test` silently; it checks `PACKAGES` only, and ALL-2064 covers checking the matrices. It shares the `PACKAGES` parse and the discovery rule with `covercheck` through `scripts/lib/test-packages.ts` (agent decision).
 - The lists name `agents/hooks` rather than `agents`, so the app's `*.test.ts` unit tests stay out of runs that install only the root lockfile, and `desktop.yaml`, which installs the app's, runs them. This replaces the spec's choice to keep listing `agents` until the app's first test `bun test` discovers (agent decision).
 
 ## `Result` import
 
 The app imports `common/src/result.ts` by relative path and keeps no copy. That is the one exception to the spec's requirement that it imports nothing from `common/`, and it replaces the spec's decision to keep a copy of the helper; the requirement and the reasons for it are in `docs/provenance/01a1c1c6-c974-7000-895b-83e96db89f15-alliance-agent-real-path-first/`. The import arrives with this PR's session interface, whose `start` and `resume` can fail to spawn a CLI, as the spec planned for the first fallible operation. `desktop.yaml`'s path filter includes that file, since the app depends on it.
+
+## Bun unit tests
+
+The app's `bun run test` runs `bun test` before Playwright. Only `tsconfig.test.json`, which typechecks the `*.test.ts` files, has Bun's types, so main-process code, which runs on Electron's Node, can't typecheck a Bun global (agent decision). The `agents/desktop` exemption (`OWN_CI`) in `scripts/test-all.test.ts` joins the spec's list of edits outside `agents/desktop` under Location, so removing the app reverts it (agent decision).
 
 ## Session interface
 
@@ -31,3 +35,7 @@ The interface lives in `agents/desktop/src/main/agent/session.ts` (agent decisio
 - A tool-started event's `name` and `input` carry each CLI's own vocabulary, for generic display, which narrows the spec's "the UI never sees vendor types" to the event shape. A normalized tool kind waits for the thin path's captures of both CLIs to show what the UI needs (agent decision).
 - An image is its media type (PNG, JPEG, GIF or WebP, the formats Claude accepts) and its bytes, which survive Electron's structured-clone IPC. The Claude adapter base64-encodes them; the Codex adapter writes them to a file for its `localImage` input.
 - This PR adds no preload script or IPC channel, since nothing in the renderer uses a session yet; PR 7, the first renderer that needs the main process, adds them.
+
+## Listener dispatch
+
+`SessionListeners` (`listeners.ts`) is the dispatcher every backend delegates `subscribe` to, so the Claude and Codex backends can't drift from what `session.ts` promises. It is extracted before its second caller because the real backends are the next work (agent decision). It dispatches as DOM event dispatch does (https://dom.spec.whatwg.org/#concept-event-listener-inner-invoke): to the listeners subscribed when the event fires, skipping any removed since, and a listener that throws is logged while the others still hear the event, so one faulty listener can't leave a session mid-turn for good. Each `subscribe` is its own subscription, so a listener re-subscribed mid-dispatch first hears the next event and an old unsubscribe can't end a later subscription (agent decision).
