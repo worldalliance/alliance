@@ -261,6 +261,7 @@ export const CATEGORY_KIND: Record<NotificationCategory, NotificationKind> = {
   [NotificationCategory.NewMemberReferred]: NotificationKind.NewMemberReferred,
   [NotificationCategory.AmbassadorInviteGoal]: NotificationKind.RecruitingGoals,
   [NotificationCategory.GroupMemberJoined]: NotificationKind.GroupMemberJoined,
+  [NotificationCategory.ActionBranchMoved]: NotificationKind.ActionUpdates,
   [NotificationCategory.ContractReinstated]:
     NotificationKind.ContractReinstated,
   [NotificationCategory.CommunityInviteCreated]:

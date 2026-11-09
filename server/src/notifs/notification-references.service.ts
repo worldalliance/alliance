@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { isActionUpdatePublished } from "src/actions/action-update-visibility";
 import { ActionVisibilityService } from "src/actions/action-visibility.service";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
+import { ActionFormAssignment } from "src/actions/entities/action-form-assignment.entity";
 import { ActionUpdate } from "src/actions/entities/action-update.entity";
 import { Action } from "src/actions/entities/action.entity";
 import { Community } from "src/community/entities/community.entity";
@@ -18,6 +19,8 @@ import {
   type EntityManager,
   type FindOperator,
   In,
+  IsNull,
+  Not,
   type ObjectLiteral,
   type Repository,
 } from "typeorm";
@@ -38,6 +41,8 @@ export type RecipientAccess = {
 };
 
 export type NotificationReferences = ResolvedReferences & {
+  /** These references with each action named as the recipient's branch names it. */
+  referencesFor: (recipientId: number) => ResolvedReferences;
   activityActionIds: ReadonlyMap<number, number>;
   accessFor: (recipientId: number) => RecipientAccess;
   /** Legacy rows keep their old check: the content still exists. */
@@ -187,6 +192,34 @@ export class NotificationReferencesService {
         ),
       ]);
 
+    const branchAssignments =
+      actions.length && recipientIds.length
+        ? await repo(this.actionRepository).manager.find(ActionFormAssignment, {
+            where: {
+              actionId: In(actions.map((a) => a.id)),
+              userId: In(recipientIds),
+              branch: { nameOverride: Not(IsNull()) },
+            },
+            relations: { branch: true },
+          })
+        : [];
+    const actionById = new Map(actions.map((a) => [a.id, a]));
+    const assignmentsByRecipient = Map.groupBy(
+      branchAssignments,
+      (assignment) => assignment.userId,
+    );
+    const actionsFor = (recipientId: number) => {
+      const assignments = assignmentsByRecipient.get(recipientId);
+      if (!assignments) return actionById;
+      const named = new Map<number, { name: string }>(actionById);
+      for (const { actionId, branch } of assignments) {
+        if (branch?.nameOverride) {
+          named.set(actionId, { name: branch.nameOverride });
+        }
+      }
+      return named;
+    };
+
     const activityActionIds = new Map(
       activities.map((activity) => [activity.id, activity.actionId]),
     );
@@ -314,10 +347,17 @@ export class NotificationReferencesService {
       ]),
     );
 
+    const usersById = new Map(users.map((user) => [user.id, user]));
+    const communitiesById = new Map(communities.map((c) => [c.id, c]));
     return {
-      users: new Map(users.map((user) => [user.id, user])),
-      communities: new Map(communities.map((c) => [c.id, c])),
-      actions: new Map(actions.map((a) => [a.id, a])),
+      users: usersById,
+      communities: communitiesById,
+      actions: actionById,
+      referencesFor: (recipientId) => ({
+        users: usersById,
+        communities: communitiesById,
+        actions: actionsFor(recipientId),
+      }),
       activityActionIds,
       legacyAccess: {
         comments: commentById,

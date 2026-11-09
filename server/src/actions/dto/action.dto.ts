@@ -377,6 +377,7 @@ export class ExportActionDto extends OmitType(Action, [
   "usersJoined",
   "usersCompleted",
   "formVariants",
+  "branches",
   "legacyReviewers",
 ]) {
   @ApiPropertyOptional({ type: () => Form })

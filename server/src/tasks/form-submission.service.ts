@@ -19,7 +19,7 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ActionActivityService } from "src/actions/action-activity.service";
-import { ActionFormVariantService } from "src/actions/action-form-variant.service";
+import { ActionFormAssignmentService } from "src/actions/action-form-assignment.service";
 import { Action, parseAction } from "src/actions/entities/action.entity";
 import {
   FollowUpForm,
@@ -94,7 +94,7 @@ export class FormSubmissionService {
     private readonly actionActivityService: ActionActivityService,
     private contractService: ContractService,
     private formSnapshotService: FormSnapshotService,
-    private actionFormVariantService: ActionFormVariantService,
+    private actionFormAssignmentService: ActionFormAssignmentService,
     private singleMemberCohortService: SingleMemberCohortService,
     private prerequisiteProgressService: PrerequisiteProgressService,
   ) {}
@@ -109,7 +109,7 @@ export class FormSubmissionService {
       optInMms: true,
     });
 
-    const valid = await this.actionFormVariantService.validateFormIdForUser({
+    const valid = await this.actionFormAssignmentService.validateFormIdForUser({
       actionId: submitFormDto.actionId,
       userId,
       formId,
@@ -127,7 +127,7 @@ export class FormSubmissionService {
     if (action) {
       assertNotInStaffPreview(action);
     }
-    await assertActionNotSubmitted(this.actionFormVariantService, {
+    await assertActionNotSubmitted(this.actionFormAssignmentService, {
       actionId: submitFormDto.actionId,
       userId,
     });

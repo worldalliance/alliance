@@ -10,6 +10,7 @@ export const referencedActionFromListItem = (
     | "id"
     | "taskFormId"
     | "variantFormIds"
+    | "branchFormIds"
     | "onboarding"
     | "memberActionDeadline"
   >,

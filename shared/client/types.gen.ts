@@ -57,7 +57,7 @@ export type OnetimeInviteStatus = 'request_pending' | 'request_rejected' | 'link
 
 export type CommunityInviteStatus = 'request_pending' | 'request_rejected' | 'invitee_pending' | 'invitee_accepted' | 'invitee_rejected' | 'cancelled';
 
-export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_request' | 'friend_request_accepted' | 'action_update' | 'likes' | 'removed_from_community' | 'removed_from_community_for_leader' | 'member_left_community' | 'member_suspended_removed_from_community' | 'member_joined_community' | 'community_assigned' | 'new_member_referred' | 'group_member_joined' | 'contract_reinstated' | 'community_invite_created' | 'community_invite_rejected' | 'community_invite_accepted' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected' | 'community_invite_request_created' | 'community_invite_request_approved' | 'community_invite_request_rejected' | 'ambassador_invite_goal';
+export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_request' | 'friend_request_accepted' | 'action_update' | 'likes' | 'removed_from_community' | 'removed_from_community_for_leader' | 'member_left_community' | 'member_suspended_removed_from_community' | 'member_joined_community' | 'community_assigned' | 'new_member_referred' | 'group_member_joined' | 'action_branch_moved' | 'contract_reinstated' | 'community_invite_created' | 'community_invite_rejected' | 'community_invite_accepted' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected' | 'community_invite_request_created' | 'community_invite_request_approved' | 'community_invite_request_rejected' | 'ambassador_invite_goal';
 
 export type NotifPriority = 'low' | 'high';
 
@@ -201,6 +201,26 @@ export type ActionFormVariant = {
     formId: number;
     name: string;
     splitValue: number;
+    createdAt: string;
+    updatedAt: string;
+};
+
+export type ActionBranch = {
+    id: number;
+    actionId: number;
+    formId: number;
+    name: string;
+    rule: {
+        [key: string]: unknown;
+    };
+    position: number;
+    nameOverride: string | null;
+    shortDescriptionOverride: string | null;
+    bodyOverride: string | null;
+    timeEstimateOverride: number | null;
+    imageOverride: string | null;
+    squareThumbnailImageOverride: string | null;
+    squareThumbnailImageAltOverride: string | null;
     createdAt: string;
     updatedAt: string;
 };
@@ -502,6 +522,7 @@ export type Action = {
     updates?: Array<ActionUpdate>;
     followUpForms?: Array<FollowUpForm>;
     formVariants?: Array<ActionFormVariant>;
+    branches?: Array<ActionBranch>;
     suite?: ActionSuite;
     project?: Project;
     authors?: Array<User>;
@@ -2533,6 +2554,10 @@ export type AdminActionListItemDto = {
      */
     variantFormIds: Array<number>;
     /**
+     * Forms of the action's branches, besides its task form.
+     */
+    branchFormIds: Array<number>;
+    /**
      * Members whose latest response is a withdrawal.
      */
     usersWontComplete: number;
@@ -3678,6 +3703,132 @@ export type UpdateActionFormVariantDto = {
      * Fraction of new joiners (0-1).
      */
     splitValue?: number;
+};
+
+export type ActionBranchDto = {
+    id: number;
+    actionId: number;
+    formId: number;
+    name: string;
+    rule: {
+        [key: string]: unknown;
+    };
+    position: number;
+    nameOverride: string | null;
+    shortDescriptionOverride: string | null;
+    bodyOverride: string | null;
+    timeEstimateOverride: number | null;
+    imageOverride: string | null;
+    squareThumbnailImageOverride: string | null;
+    squareThumbnailImageAltOverride: string | null;
+    createdAt: string;
+    updatedAt: string;
+};
+
+export type ActionBranchStatsDto = {
+    branchId: number;
+    assigned: number;
+    submitted: number;
+};
+
+export type ActionBranchesListDto = {
+    branches: Array<ActionBranchDto>;
+    stats: Array<ActionBranchStatsDto>;
+};
+
+export type CreateActionBranchDto = {
+    nameOverride?: string | null;
+    shortDescriptionOverride?: string | null;
+    bodyOverride?: string | null;
+    timeEstimateOverride?: number | null;
+    imageOverride?: string | null;
+    squareThumbnailImageOverride?: string | null;
+    squareThumbnailImageAltOverride?: string | null;
+    name: string;
+    /**
+     * Cohort expression routing members to this branch; the first matching branch wins.
+     */
+    rule: {
+        [key: string]: unknown;
+    };
+    /**
+     * Form to clone for this branch. Defaults to the action's task form.
+     */
+    sourceFormId?: number | null;
+};
+
+export type UpdateActionBranchDto = {
+    nameOverride?: string | null;
+    shortDescriptionOverride?: string | null;
+    bodyOverride?: string | null;
+    timeEstimateOverride?: number | null;
+    imageOverride?: string | null;
+    squareThumbnailImageOverride?: string | null;
+    squareThumbnailImageAltOverride?: string | null;
+    name?: string;
+    rule?: {
+        [key: string]: unknown;
+    };
+};
+
+export type ReorderActionBranchesDto = {
+    branchIds: Array<number>;
+};
+
+export type PreviewBranchRoutingDto = {
+    /**
+     * Branch rules in routing order.
+     */
+    rules: Array<{
+        [key: string]: unknown;
+    }>;
+};
+
+export type BranchRoutingPreviewItemDto = {
+    userIds: Array<number>;
+};
+
+export type BranchRoutingPreviewDto = {
+    /**
+     * The members each rule would get, in the order sent.
+     */
+    branches: Array<BranchRoutingPreviewItemDto>;
+};
+
+export type RerouteMoveDto = {
+    userId: number;
+    fromBranchId: number;
+    toBranchId: number;
+};
+
+export type RerouteMovesDto = {
+    moves: Array<RerouteMoveDto>;
+};
+
+export type RerouteActionBranchesDto = {
+    notify: boolean;
+};
+
+export type MoveToBranchDto = {
+    userId: number;
+    branchId: number;
+    notify: boolean;
+};
+
+export type MoveToVariantDto = {
+    userId: number;
+    variantId: number;
+    notify: boolean;
+};
+
+export type ActionFormAssignmentDto = {
+    userId: number;
+    variantId: number | null;
+    branchId: number | null;
+    assignedAt: string;
+    overriddenAt: string | null;
+    userName: string;
+    overriddenByName: string | null;
 };
 
 export type CohortDecisionReason = 'launch' | 'signing' | 'resolved_after_deadline' | 'backfill' | 'staff_correction' | 'prerequisites_resolved';
@@ -12225,6 +12376,278 @@ export type ActionFormsUpdateFormVariantAdminResponses = {
 };
 
 export type ActionFormsUpdateFormVariantAdminResponse = ActionFormsUpdateFormVariantAdminResponses[keyof ActionFormsUpdateFormVariantAdminResponses];
+
+export type ActionBranchesListBranchesAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/{id}/branches';
+};
+
+export type ActionBranchesListBranchesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionBranchesListBranchesAdminError = ActionBranchesListBranchesAdminErrors[keyof ActionBranchesListBranchesAdminErrors];
+
+export type ActionBranchesListBranchesAdminResponses = {
+    200: ActionBranchesListDto;
+};
+
+export type ActionBranchesListBranchesAdminResponse = ActionBranchesListBranchesAdminResponses[keyof ActionBranchesListBranchesAdminResponses];
+
+export type ActionBranchesCreateBranchAdminData = {
+    body: CreateActionBranchDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/{id}/branches';
+};
+
+export type ActionBranchesCreateBranchAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionBranchesCreateBranchAdminError = ActionBranchesCreateBranchAdminErrors[keyof ActionBranchesCreateBranchAdminErrors];
+
+export type ActionBranchesCreateBranchAdminResponses = {
+    200: ActionBranchDto;
+};
+
+export type ActionBranchesCreateBranchAdminResponse = ActionBranchesCreateBranchAdminResponses[keyof ActionBranchesCreateBranchAdminResponses];
+
+export type ActionBranchesDeleteBranchAdminData = {
+    body?: never;
+    path: {
+        branchId: number;
+    };
+    query?: never;
+    url: '/actions/branches/{branchId}';
+};
+
+export type ActionBranchesDeleteBranchAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionBranchesDeleteBranchAdminError = ActionBranchesDeleteBranchAdminErrors[keyof ActionBranchesDeleteBranchAdminErrors];
+
+export type ActionBranchesDeleteBranchAdminResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type ActionBranchesDeleteBranchAdminResponse = ActionBranchesDeleteBranchAdminResponses[keyof ActionBranchesDeleteBranchAdminResponses];
+
+export type ActionBranchesUpdateBranchAdminData = {
+    body: UpdateActionBranchDto;
+    path: {
+        branchId: number;
+    };
+    query?: never;
+    url: '/actions/branches/{branchId}';
+};
+
+export type ActionBranchesUpdateBranchAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionBranchesUpdateBranchAdminError = ActionBranchesUpdateBranchAdminErrors[keyof ActionBranchesUpdateBranchAdminErrors];
+
+export type ActionBranchesUpdateBranchAdminResponses = {
+    200: ActionBranchDto;
+};
+
+export type ActionBranchesUpdateBranchAdminResponse = ActionBranchesUpdateBranchAdminResponses[keyof ActionBranchesUpdateBranchAdminResponses];
+
+export type ActionBranchesReorderBranchesAdminData = {
+    body: ReorderActionBranchesDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/{id}/branches/order';
+};
+
+export type ActionBranchesReorderBranchesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionBranchesReorderBranchesAdminError = ActionBranchesReorderBranchesAdminErrors[keyof ActionBranchesReorderBranchesAdminErrors];
+
+export type ActionBranchesReorderBranchesAdminResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type ActionBranchesReorderBranchesAdminResponse = ActionBranchesReorderBranchesAdminResponses[keyof ActionBranchesReorderBranchesAdminResponses];
+
+export type ActionBranchesPreviewBranchRoutingAdminData = {
+    body: PreviewBranchRoutingDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/{id}/branches/routing-preview';
+};
+
+export type ActionBranchesPreviewBranchRoutingAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionBranchesPreviewBranchRoutingAdminError = ActionBranchesPreviewBranchRoutingAdminErrors[keyof ActionBranchesPreviewBranchRoutingAdminErrors];
+
+export type ActionBranchesPreviewBranchRoutingAdminResponses = {
+    200: BranchRoutingPreviewDto;
+};
+
+export type ActionBranchesPreviewBranchRoutingAdminResponse = ActionBranchesPreviewBranchRoutingAdminResponses[keyof ActionBranchesPreviewBranchRoutingAdminResponses];
+
+export type ActionBranchesPreviewRerouteAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/{id}/branches/reroute';
+};
+
+export type ActionBranchesPreviewRerouteAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionBranchesPreviewRerouteAdminError = ActionBranchesPreviewRerouteAdminErrors[keyof ActionBranchesPreviewRerouteAdminErrors];
+
+export type ActionBranchesPreviewRerouteAdminResponses = {
+    200: RerouteMovesDto;
+};
+
+export type ActionBranchesPreviewRerouteAdminResponse = ActionBranchesPreviewRerouteAdminResponses[keyof ActionBranchesPreviewRerouteAdminResponses];
+
+export type ActionBranchesRerouteAdminData = {
+    body: RerouteActionBranchesDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/{id}/branches/reroute';
+};
+
+export type ActionBranchesRerouteAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionBranchesRerouteAdminError = ActionBranchesRerouteAdminErrors[keyof ActionBranchesRerouteAdminErrors];
+
+export type ActionBranchesRerouteAdminResponses = {
+    200: RerouteMovesDto;
+};
+
+export type ActionBranchesRerouteAdminResponse = ActionBranchesRerouteAdminResponses[keyof ActionBranchesRerouteAdminResponses];
+
+export type ActionBranchesMoveToBranchAdminData = {
+    body: MoveToBranchDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/{id}/branches/move';
+};
+
+export type ActionBranchesMoveToBranchAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionBranchesMoveToBranchAdminError = ActionBranchesMoveToBranchAdminErrors[keyof ActionBranchesMoveToBranchAdminErrors];
+
+export type ActionBranchesMoveToBranchAdminResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type ActionBranchesMoveToBranchAdminResponse = ActionBranchesMoveToBranchAdminResponses[keyof ActionBranchesMoveToBranchAdminResponses];
+
+export type ActionBranchesMoveToVariantAdminData = {
+    body: MoveToVariantDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/{id}/form-variants/move';
+};
+
+export type ActionBranchesMoveToVariantAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionBranchesMoveToVariantAdminError = ActionBranchesMoveToVariantAdminErrors[keyof ActionBranchesMoveToVariantAdminErrors];
+
+export type ActionBranchesMoveToVariantAdminResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type ActionBranchesMoveToVariantAdminResponse = ActionBranchesMoveToVariantAdminResponses[keyof ActionBranchesMoveToVariantAdminResponses];
+
+export type ActionBranchesListFormAssignmentsAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/{id}/form-assignments';
+};
+
+export type ActionBranchesListFormAssignmentsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionBranchesListFormAssignmentsAdminError = ActionBranchesListFormAssignmentsAdminErrors[keyof ActionBranchesListFormAssignmentsAdminErrors];
+
+export type ActionBranchesListFormAssignmentsAdminResponses = {
+    200: Array<ActionFormAssignmentDto>;
+};
+
+export type ActionBranchesListFormAssignmentsAdminResponse = ActionBranchesListFormAssignmentsAdminResponses[keyof ActionBranchesListFormAssignmentsAdminResponses];
 
 export type CohortDecisionsListForActionAdminData = {
     body?: never;

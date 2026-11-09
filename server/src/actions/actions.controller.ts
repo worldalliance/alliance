@@ -135,6 +135,7 @@ export class ActionsController {
         suite: true,
         reviewers: true,
         formVariants: true,
+        branches: true,
         followUpForms: true,
         project: true,
       }),

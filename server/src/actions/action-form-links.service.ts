@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { In, type Repository } from "typeorm";
 import { sqlIsLatestWithdrawal } from "./action-activity-status";
 import { ActionActivity } from "./entities/action-activity.entity";
+import { ActionBranch } from "./entities/action-branch.entity";
 import { ActionFormVariant } from "./entities/action-form-variant.entity";
 import { Action } from "./entities/action.entity";
 
@@ -22,6 +23,8 @@ export class ActionFormLinksService {
     private readonly actionActivityRepository: Repository<ActionActivity>,
     @InjectRepository(ActionFormVariant)
     private readonly actionFormVariantRepository: Repository<ActionFormVariant>,
+    @InjectRepository(ActionBranch)
+    private readonly actionBranchRepository: Repository<ActionBranch>,
   ) {}
 
   async findActionByFormId(formId: number): Promise<LinkedAction | null> {
@@ -29,8 +32,8 @@ export class ActionFormLinksService {
     return byFormId.get(formId) ?? null;
   }
 
-  /** Resolves all form IDs in at most three queries. Direct task forms take
-   * precedence over variants. Narrow because listing every form would
+  /** Resolves all form IDs in at most four queries. Direct task forms take
+   * precedence over variants and branches. Narrow because listing every form would
    * otherwise materialize every linked action's markdown and image columns. */
   async findActionsByFormIds(
     formIds: number[],
@@ -52,15 +55,22 @@ export class ActionFormLinksService {
     if (remaining.length === 0) {
       return byFormId;
     }
-    const variants = await this.actionFormVariantRepository.find({
-      where: { formId: In(remaining) },
-      select: { formId: true, actionId: true },
-    });
-    if (variants.length === 0) {
+    const select = { formId: true, actionId: true } as const;
+    const owners = [
+      ...(await this.actionFormVariantRepository.find({
+        where: { formId: In(remaining) },
+        select,
+      })),
+      ...(await this.actionBranchRepository.find({
+        where: { formId: In(remaining) },
+        select,
+      })),
+    ];
+    if (owners.length === 0) {
       return byFormId;
     }
     const actions = await this.actionRepository.find({
-      where: { id: In(variants.map((variant) => variant.actionId)) },
+      where: { id: In(owners.map((owner) => owner.actionId)) },
       select: { id: true, name: true },
     });
     const actionById = new Map(
@@ -69,10 +79,10 @@ export class ActionFormLinksService {
         { id: action.id, name: action.name },
       ]),
     );
-    for (const variant of variants) {
-      const action = actionById.get(variant.actionId);
+    for (const owner of owners) {
+      const action = actionById.get(owner.actionId);
       if (action) {
-        byFormId.set(variant.formId, action);
+        byFormId.set(owner.formId, action);
       }
     }
     return byFormId;
@@ -85,6 +95,14 @@ export class ActionFormLinksService {
     if (variant) {
       throw new BadRequestException(
         `Form ${formId} is already used as a variant form for action ${variant.actionId}`,
+      );
+    }
+    const branch = await this.actionBranchRepository.findOne({
+      where: { formId },
+    });
+    if (branch) {
+      throw new BadRequestException(
+        `Form ${formId} is already used as a branch form for action ${branch.actionId}`,
       );
     }
   }

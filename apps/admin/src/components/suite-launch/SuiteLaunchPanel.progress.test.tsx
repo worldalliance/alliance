@@ -86,6 +86,7 @@ it.each([
       name: api.served[id].name,
       taskFormId: 5,
       variantFormIds: id === 2 ? [9] : [],
+      branchFormIds: [],
       onboarding: false,
       memberActionDeadline: null,
     }));
@@ -117,6 +118,7 @@ it.each([
       name: api.served[id].name,
       taskFormId: 5,
       variantFormIds: id === 2 ? [9] : [],
+      branchFormIds: [],
       onboarding: false,
       memberActionDeadline: null,
     }));

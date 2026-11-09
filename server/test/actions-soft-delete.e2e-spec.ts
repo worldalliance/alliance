@@ -6,6 +6,7 @@ import { ActionPartnershipsModule } from "src/action-partnerships/action-partner
 import { ActionPartnershipsService } from "src/action-partnerships/action-partnerships.service";
 import { ActionPartnershipResponse } from "src/action-partnerships/entities/action-partnership-response.entity";
 import { ActionActivityService } from "src/actions/action-activity.service";
+import { ActionFormAssignmentService } from "src/actions/action-form-assignment.service";
 import { ActionFormVariantService } from "src/actions/action-form-variant.service";
 import { ActionSuitesService } from "src/actions/action-suites.service";
 import { ActionUpdatesService } from "src/actions/action-updates.service";
@@ -586,11 +587,13 @@ describe("Action writers under a deleted parent (e2e)", () => {
 
   describe("form variants", () => {
     let variants: ActionFormVariantService;
+    let assigner: ActionFormAssignmentService;
     let variantRepo: Repository<ActionFormVariant>;
     let assignments: Repository<ActionFormAssignment>;
 
     beforeAll(() => {
       variants = ctx.app.get(ActionFormVariantService);
+      assigner = ctx.app.get(ActionFormAssignmentService);
       variantRepo = ctx.dataSource.getRepository(ActionFormVariant);
       assignments = ctx.dataSource.getRepository(ActionFormAssignment);
     });
@@ -614,13 +617,10 @@ describe("Action writers under a deleted parent (e2e)", () => {
       const { action } = await variantOfDeletedAction();
 
       expect(
-        await variants.getOrCreateAssignedFormId(action.id, ctx.testUserId),
+        await assigner.getOrCreateAssignedFormId(action.id, ctx.testUserId),
       ).toBeNull();
       expect(
-        await variants.getOrCreateAssignedFormIdsForActions(
-          [action.id],
-          ctx.testUserId,
-        ),
+        await assigner.getOrCreateAssignedForms([action.id], ctx.testUserId),
       ).toEqual(new Map());
       expect(
         await assignments.count({
@@ -1098,10 +1098,10 @@ describe("Action writers under a deleted parent (e2e)", () => {
 
     /** Runs `remove` after the submitted-form check a draft save makes. */
     const deleteAfterDraftSubmittedCheck = (remove: () => Promise<unknown>) => {
-      const variants = ctx.app.get(ActionFormVariantService);
-      const load = variants.findSubmittedFormIds.bind(variants);
+      const assigner = ctx.app.get(ActionFormAssignmentService);
+      const load = assigner.findSubmittedFormIds.bind(assigner);
       jest
-        .spyOn(variants, "findSubmittedFormIds")
+        .spyOn(assigner, "findSubmittedFormIds")
         .mockImplementationOnce(deleteAfter(load, remove));
     };
 

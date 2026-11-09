@@ -49,6 +49,7 @@ export const adminActionListItem = (
   prerequisiteActionIds: [],
   storedImage: null,
   variantFormIds: [],
+  branchFormIds: [],
   memberActionStart: null,
   memberActionDeadline: null,
   storedSquareThumbnailImage: null,

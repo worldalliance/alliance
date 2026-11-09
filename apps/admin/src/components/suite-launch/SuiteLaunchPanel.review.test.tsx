@@ -79,6 +79,7 @@ it("previews each of an action's variant forms as a picked member", async () => 
     name: api.served[id].name,
     taskFormId: 5,
     variantFormIds: id === 1 ? [9] : [],
+    branchFormIds: [],
     onboarding: false,
     memberActionDeadline: null,
   }));
@@ -206,6 +207,7 @@ it("warns when a cohort reads another action that's still open at launch", async
     name: api.served[id].name,
     taskFormId: 5,
     variantFormIds: [],
+    branchFormIds: [],
     onboarding: false,
     memberActionDeadline: null,
   }));
@@ -258,6 +260,7 @@ it("checks the text of each variant form, linking to that form", async () => {
     name: api.served[id].name,
     taskFormId: 5,
     variantFormIds: id === 1 ? [9] : [],
+    branchFormIds: [],
     onboarding: false,
     memberActionDeadline: null,
   }));
@@ -283,6 +286,7 @@ it("notes reading time from the longest variant form", async () => {
     name: api.served[id].name,
     taskFormId: 5,
     variantFormIds: id === 2 ? [9] : [],
+    branchFormIds: [],
     onboarding: false,
     memberActionDeadline: null,
   }));
@@ -453,6 +457,7 @@ it("lists each variant form whose conditions tell members apart as its own entry
     name: api.served[id].name,
     taskFormId: 5,
     variantFormIds: id === 1 ? [9] : [],
+    branchFormIds: [],
     onboarding: false,
     memberActionDeadline: null,
   }));

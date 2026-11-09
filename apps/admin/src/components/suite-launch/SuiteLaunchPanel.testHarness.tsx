@@ -91,7 +91,11 @@ const initialState = () => ({
     }),
   } as Record<number, ReturnType<typeof adminAction>>,
   suiteEvents: [] as ActionEventDto[],
-  actionList: [] as { id: number; variantFormIds: number[] }[],
+  actionList: [] as {
+    id: number;
+    variantFormIds: number[];
+    branchFormIds: number[];
+  }[],
   variantName: "Variant",
   variantSplit: 0.25,
   createdEvents: [] as CreateActionEventDto[],

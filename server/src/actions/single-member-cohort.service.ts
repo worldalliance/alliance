@@ -10,6 +10,7 @@ import {
   computeMissedActionDeadline,
 } from "src/utils/action-user";
 import type { Repository } from "typeorm";
+import { ActionBranchService } from "./action-branch.service";
 import { CohortAdmissionService } from "./cohort-admission.service";
 import { readsSavedDecisions } from "./cohort-decision";
 import {
@@ -42,6 +43,7 @@ export class SingleMemberCohortService {
     private readonly userRepository: Repository<User>,
     private readonly prerequisiteProgressService: PrerequisiteProgressService,
     private readonly cohortAdmissionService: CohortAdmissionService,
+    private readonly actionBranchService: ActionBranchService,
   ) {}
 
   private loadActionWithEvents(
@@ -65,7 +67,10 @@ export class SingleMemberCohortService {
    */
   async computeIsInActionCohort(params: {
     user: User;
-    action: Pick<ParsedAction, "cohortExpression" | "prerequisiteActionIds">;
+    action: Pick<
+      ParsedAction,
+      "id" | "cohortExpression" | "prerequisiteActionIds"
+    >;
     visitedActionIds?: Set<number>;
     session?: CohortResolutionSession;
   }): Promise<boolean> {
@@ -74,7 +79,11 @@ export class SingleMemberCohortService {
     if (
       !(await this.computeIsInCohortExpression({
         user,
-        cohortExpression: action.cohortExpression,
+        cohortExpression:
+          await this.actionBranchService.loadRoutedCohortExpression(
+            action,
+            session,
+          ),
         visitedActionIds,
         session,
       }))

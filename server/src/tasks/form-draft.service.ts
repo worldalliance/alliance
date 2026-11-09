@@ -14,7 +14,7 @@ import {
   Injectable,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { ActionFormVariantService } from "src/actions/action-form-variant.service";
+import { ActionFormAssignmentService } from "src/actions/action-form-assignment.service";
 import { Action } from "src/actions/entities/action.entity";
 import { softDeleteWhere, writeUnderLive } from "src/datasources/soft-delete";
 import { User } from "src/user/entities/user.entity";
@@ -49,7 +49,7 @@ export class FormDraftService {
     @InjectRepository(FormResponseDraft)
     private formResponseDraftRepository: Repository<FormResponseDraft>,
     private formSnapshotService: FormSnapshotService,
-    private actionFormVariantService: ActionFormVariantService,
+    private actionFormAssignmentService: ActionFormAssignmentService,
   ) {}
 
   /**
@@ -67,7 +67,7 @@ export class FormDraftService {
     const { userId, formId, dto } = params;
     const form = await this.tasksService.getForm(formId);
 
-    const valid = await this.actionFormVariantService.validateFormIdForUser({
+    const valid = await this.actionFormAssignmentService.validateFormIdForUser({
       actionId: dto.actionId,
       userId,
       formId,
@@ -78,7 +78,7 @@ export class FormDraftService {
       );
     }
 
-    await assertActionNotSubmitted(this.actionFormVariantService, {
+    await assertActionNotSubmitted(this.actionFormAssignmentService, {
       actionId: dto.actionId,
       userId,
     });

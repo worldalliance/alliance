@@ -32,7 +32,11 @@ import {
 } from "@alliance/common/forms/visibility";
 import { R, type Result } from "@alliance/common/result";
 import type { ZodError } from "zod";
-import type { AdminActionDto, AdminFollowUpFormDto } from "./client/types.gen";
+import type {
+  ActionBranchDto,
+  AdminActionDto,
+  AdminFollowUpFormDto,
+} from "./client/types.gen";
 
 export type ParsedActionDto = Omit<AdminActionDto, "cohortExpression"> & {
   cohortExpression: CohortExpression | null;
@@ -72,6 +76,22 @@ export function parseActionDto(dto: AdminActionDto): {
     action: { ...dto, cohortExpression: expression },
     cohortExpressionError: error,
   };
+}
+
+export type ParsedActionBranchDto = Omit<ActionBranchDto, "rule"> & {
+  rule: CohortExpression | null;
+};
+
+/** A branch whose stored rule fails to parse comes back with `rule: null` and the error. */
+export function parseActionBranchDto(dto: ActionBranchDto): {
+  branch: ParsedActionBranchDto;
+  ruleError: ZodError | null;
+} {
+  const { expression, error } = parseCohortExpressionField(
+    dto.rule,
+    `branch ${dto.id}`,
+  );
+  return { branch: { ...dto, rule: expression }, ruleError: error };
 }
 
 export function parseFollowUpFormDto(dto: AdminFollowUpFormDto): {

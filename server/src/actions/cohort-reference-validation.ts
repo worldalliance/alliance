@@ -8,6 +8,7 @@ import { BadRequestException } from "@nestjs/common";
 import { isUUID } from "class-validator";
 import { In, type EntityManager } from "typeorm";
 import { Tag } from "../user/entities/tag.entity";
+import { loadedActionBranches } from "./entities/action-branch.entity";
 import {
   Action,
   loadedActionFollowUpForms,
@@ -26,12 +27,13 @@ export async function assertNotInACohort(params: {
   const { em, actionId } = params;
   const actions = (
     await em.find(Action, {
-      relations: { followUpForms: true },
+      relations: { followUpForms: true, branches: true },
       select: {
         id: true,
         name: true,
         cohortExpression: true,
         followUpForms: { id: true, cohortExpression: true },
+        branches: { id: true, rule: true },
       },
       order: { id: "ASC" },
     })
@@ -44,6 +46,9 @@ export async function assertNotInACohort(params: {
       names(form.cohortExpression),
     )
       ? [`a follow-up form of "${action.name}"`]
+      : []),
+    ...(loadedActionBranches(action).some((branch) => names(branch.rule))
+      ? [`a branch of "${action.name}"`]
       : []),
   ]);
   if (referrers.length > 0) {

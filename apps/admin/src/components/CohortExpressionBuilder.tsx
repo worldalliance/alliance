@@ -21,6 +21,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import type { BranchRouting } from "../lib/useBranchRoutingPreviewAdmin";
 import type { CohortLeafEditorSources } from "./CohortLeafEditors";
 import CohortVisualization from "./CohortVisualization";
 import ExpressionNodeEditor from "./ExpressionNodeEditor";
@@ -30,6 +31,7 @@ interface CohortExpressionBuilderProps extends CohortLeafEditorSources {
   onChange: (value: CohortExpression | null) => void;
   activeContractUserIds?: Set<number>;
   onboarding?: boolean;
+  routing?: BranchRouting;
 }
 
 const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
@@ -253,6 +255,7 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
           selectedSubExpression={selectedSubExpr}
           users={visualizationUsers}
           compareExpression={compareExpression}
+          routing={props.routing}
         />
       </div>
       <div className="space-y-2">

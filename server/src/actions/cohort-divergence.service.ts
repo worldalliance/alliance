@@ -9,6 +9,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { groupBy, partition } from "es-toolkit";
 import { UserService } from "src/user/user.service";
 import { In, Not, type Repository } from "typeorm";
+import { ActionBranchService } from "./action-branch.service";
 import {
   CohortEnrollmentState,
   formatIdSample,
@@ -17,6 +18,7 @@ import {
 import { CohortDecisionService } from "./cohort-decision.service";
 import { CohortResolutionSession } from "./cohort-resolution-session";
 import { CohortResolverService } from "./cohort-resolver.service";
+import { loadedActionBranches } from "./entities/action-branch.entity";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
 import { Action, loadedActionFormVariants } from "./entities/action.entity";
 import { CohortDecisionReason } from "./entities/cohort-decision-reason";
@@ -33,6 +35,7 @@ export class CohortDivergenceService {
     private readonly cohortResolverService: CohortResolverService,
     private readonly userService: UserService,
     private readonly cohortDecisionService: CohortDecisionService,
+    private readonly actionBranchService: ActionBranchService,
   ) {}
 
   /**
@@ -65,11 +68,14 @@ export class CohortDivergenceService {
     for (const { action } of actions) {
       const decisions = rowsByAction[action.id];
       if (!decisions) continue;
-      const result = await R.fromPromiseFn(() =>
-        this.cohortResolverService.resolveCohortMemberIds(
-          action.cohortExpression,
-          session,
-        ),
+      const result = await R.fromPromiseFn(
+        async () =>
+          (
+            await this.cohortResolverService.resolveRoutedCohort(
+              action,
+              session,
+            )
+          ).cohort,
       );
       if (R.isFailure(result)) {
         this.logger.error(
@@ -87,7 +93,10 @@ export class CohortDivergenceService {
         .map((row) => row.userId);
       if (nowIn.length === 0 && nowOut.length === 0) continue;
       const { actionIds, formIds } = collectCohortDependencies(
-        action.cohortExpression,
+        await this.actionBranchService.loadRoutedCohortExpression(
+          action,
+          session,
+        ),
       );
       const bucket =
         actionIds.size + formIds.size > 0
@@ -108,7 +117,7 @@ export class CohortDivergenceService {
     const [resolvable, actions] = await Promise.all([
       this.cohortDecisionService.findResolvableActions(now),
       this.actionRepository.find({
-        relations: { events: true, formVariants: true },
+        relations: { events: true, formVariants: true, branches: true },
       }),
     ]);
     const referenced = actions.map((action) => ({
@@ -118,6 +127,9 @@ export class CohortDivergenceService {
         variantFormIds: loadedActionFormVariants(action).map(
           (variant) => variant.formId,
         ),
+        branchFormIds: loadedActionBranches(action).map(
+          (branch) => branch.formId,
+        ),
       }),
       deadline: action.memberActionPhase.deadlineEvent?.date ?? null,
       onboarding: action.onboarding,
@@ -125,6 +137,7 @@ export class CohortDivergenceService {
     const onboardingIds = new Set(
       actions.filter((action) => action.onboarding).map((action) => action.id),
     );
+    const session = new CohortResolutionSession();
     let checked = 0;
     let flagged = 0;
     for (const { action, enrollment } of resolvable) {
@@ -139,7 +152,10 @@ export class CohortDivergenceService {
       checked += 1;
       const open = findUnawaitedOpenReferences({
         actionId: action.id,
-        expression: action.cohortExpression,
+        expression: await this.actionBranchService.loadRoutedCohortExpression(
+          action,
+          session,
+        ),
         prerequisiteActionIds: action.prerequisiteActionIds,
         decidedAt: launch,
         actions: referenced,

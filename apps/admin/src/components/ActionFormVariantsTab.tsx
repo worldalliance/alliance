@@ -12,13 +12,16 @@ import Card from "@alliance/sharedweb/ui/Card";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
+import { FormArmKind } from "../lib/formArm";
 import { formatPct } from "../lib/formatPct";
 import { makeTempId } from "../lib/tempId";
+import { useBranchesAdmin } from "../lib/useBranchesAdmin";
 import {
   formVariantsLoadError,
   useFormVariantsAdmin,
 } from "../lib/useFormVariantsAdmin";
 import { useRefusalToast } from "../lib/useRefusalToast";
+import ActionFormMembersPanel from "./ActionFormMembersPanel";
 import ActionFormVariantCoverage from "./ActionFormVariantCoverage";
 
 export interface ActionFormVariantsTabProps {
@@ -47,6 +50,8 @@ const asPercentages = (list: ActionFormVariantsListDto) => ({
   })),
 });
 
+const countBranches = (list: { branches: unknown[] }) => list.branches.length;
+
 const NO_VARIANTS: ActionFormVariantDto[] = [];
 
 export default function ActionFormVariantsTab({
@@ -66,6 +71,8 @@ export default function ActionFormVariantsTab({
   const [savingIds, setSavingIds] = useState<Set<number>>(new Set());
   const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
   const publishing = publishVariants.isPending;
+  const { branches: branchCount } = useBranchesAdmin(action.id, countBranches);
+  const hasBranches = (branchCount.data ?? 0) > 0;
 
   const variants = variantsQuery.data?.variants ?? NO_VARIANTS;
   const stats = variantsQuery.data?.stats ?? [];
@@ -197,7 +204,7 @@ export default function ActionFormVariantsTab({
     }
   };
 
-  if (variantsQuery.isPending) {
+  if (variantsQuery.isPending || branchCount.isPending) {
     return <div className="text-zinc-500">Loading variants…</div>;
   }
   // A failed refetch keeps the list and the staged drafts on screen.
@@ -215,6 +222,13 @@ export default function ActionFormVariantsTab({
         <div className="text-red-500">
           {formVariantsLoadError(variantsQuery.error)}
         </div>
+      )}
+      {hasBranches && (
+        <Card style={CardStyle.Alert} className="p-4 text-sm">
+          This action routes members by branch rules on the Branches tab, so it
+          can&apos;t also split them into random variants. Delete its branches
+          there to add variants.
+        </Card>
       )}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
@@ -236,7 +250,7 @@ export default function ActionFormVariantsTab({
           <BaseButton
             variant={BaseButtonVariant.BlueOutline}
             onClick={handleAddStaged}
-            disabled={publishing || !action.taskFormId}
+            disabled={publishing || !action.taskFormId || hasBranches}
           >
             Add variant
           </BaseButton>
@@ -377,6 +391,16 @@ export default function ActionFormVariantsTab({
               );
             })}
           </div>
+        </Card>
+      )}
+      {variants.length > 0 && (
+        <Card style={CardStyle.White} className="p-4">
+          <ActionFormMembersPanel
+            actionId={action.id}
+            kind={FormArmKind.Variant}
+            arms={variants}
+            defaultLabel="Default form"
+          />
         </Card>
       )}
     </div>

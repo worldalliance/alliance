@@ -8,7 +8,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { ActionFormVariantService } from "src/actions/action-form-variant.service";
+import { ActionFormAssignmentService } from "src/actions/action-form-assignment.service";
 import { AiDetectionQueryService } from "src/ai-detection/ai-detection-query.service";
 import { DetectableEntity } from "src/ai-detection/entities/ai-detection-result.entity";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
@@ -37,7 +37,7 @@ export class FormResponseQueryService {
     private formResponseRepository: Repository<FormResponse>,
     private aiDetectionQueryService: AiDetectionQueryService,
     private formSnapshotService: FormSnapshotService,
-    private actionFormVariantService: ActionFormVariantService,
+    private actionFormAssignmentService: ActionFormAssignmentService,
     private shareUrlsService: ShareUrlsService,
   ) {}
 
@@ -188,7 +188,7 @@ export class FormResponseQueryService {
     actionId: number;
   }): Promise<ParsedFormResponse | null> {
     const { userId, formId, actionId } = params;
-    const owners = await this.actionFormVariantService.findActionIdByFormId([
+    const owners = await this.actionFormAssignmentService.findActionIdByFormId([
       actionId,
     ]);
     if (owners.get(formId) !== actionId) {
@@ -198,10 +198,11 @@ export class FormResponseQueryService {
     }
     // If the user has already submitted this action as an authenticated user,
     // any linked-guest draft is stale and shouldn't be surfaced as a prefill.
-    const submitted = await this.actionFormVariantService.findSubmittedFormIds({
-      actionIds: [actionId],
-      userId,
-    });
+    const submitted =
+      await this.actionFormAssignmentService.findSubmittedFormIds({
+        actionIds: [actionId],
+        userId,
+      });
     if (submitted.has(actionId)) {
       return null;
     }

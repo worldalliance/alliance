@@ -1,28 +1,24 @@
-/* alliance/max-lines 550 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
-import { hasMemberActionStarted } from "@alliance/common/actionEvent";
-import { actionFormIds } from "@alliance/common/cohort-expression";
 import {
   BadRequestException,
   Injectable,
-  InternalServerErrorException,
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { softDeleteWhere, writeUnderLive } from "src/datasources/soft-delete";
-import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
-import { SnapshotHistoryOwner } from "src/tasks/entities/formsnapshot.entity";
 import { FormSnapshotService } from "src/tasks/formsnapshot.service";
-import { User } from "src/user/entities/user.entity";
 import type { Repository as TypedRepository } from "src/utils/Repository";
-import { In, QueryFailedError, Repository } from "typeorm";
-import { ActionEvent } from "./entities/action-event.entity";
+import { Repository } from "typeorm";
+import {
+  cloneFormIntoAction,
+  findSourceForm,
+  isUnlaunchedAndUnanswered,
+} from "./action-arm-forms";
+import { ActionBranch } from "./entities/action-branch.entity";
 import { ActionFormAssignment } from "./entities/action-form-assignment.entity";
 import { ActionFormVariant } from "./entities/action-form-variant.entity";
 import { Action } from "./entities/action.entity";
-import { FormSlugSequence, insertForm } from "./form-slug";
 import { lockActionRow } from "./lock-action-row";
-import { liveAssignments, variantForNewAssignment } from "./new-assignment";
 
 export interface CreateVariantInput {
   name: string;
@@ -53,10 +49,6 @@ export class ActionFormVariantService {
     private readonly assignmentRepo: Repository<ActionFormAssignment>,
     @InjectRepository(Action)
     private readonly actionRepo: Repository<Action>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
-    @InjectRepository(Form)
-    private readonly formRepo: Repository<Form>,
     private readonly formSnapshotService: FormSnapshotService,
   ) {}
 
@@ -65,54 +57,6 @@ export class ActionFormVariantService {
       where: { actionId },
       order: { id: "ASC" },
     });
-  }
-
-  /** The action owning each form of these actions: its task form or a variant's. */
-  async findActionIdByFormId(
-    actionIds: number[],
-  ): Promise<Map<number, number>> {
-    if (actionIds.length === 0) return new Map();
-    const [actions, variants] = await Promise.all([
-      this.actionRepo.find({
-        where: { id: In(actionIds) },
-        select: { id: true, taskFormId: true },
-      }),
-      this.variantRepo.find({ where: { actionId: In(actionIds) } }),
-    ]);
-    const actionIdByFormId = new Map<number, number>();
-    for (const action of actions) {
-      const formIds = actionFormIds({
-        taskFormId: action.taskFormId,
-        variantFormIds: variants
-          .filter((v) => v.actionId === action.id)
-          .map((v) => v.formId),
-      });
-      for (const formId of formIds) actionIdByFormId.set(formId, action.id);
-    }
-    return actionIdByFormId;
-  }
-
-  /** Each action's form the member submitted: its task form or a variant's. */
-  async findSubmittedFormIds(params: {
-    actionIds: number[];
-    userId: number;
-  }): Promise<Map<number, number>> {
-    const actionIdByFormId = await this.findActionIdByFormId(params.actionIds);
-    if (actionIdByFormId.size === 0) return new Map();
-
-    const responses = await this.variantRepo.manager.find(FormResponse, {
-      where: {
-        formId: In([...actionIdByFormId.keys()]),
-        user: { id: params.userId },
-      },
-      select: { formId: true },
-    });
-    const submitted = new Map<number, number>();
-    for (const { formId } of responses) {
-      const actionId = actionIdByFormId.get(formId);
-      if (actionId !== undefined) submitted.set(actionId, formId);
-    }
-    return submitted;
   }
 
   async createVariant(
@@ -124,39 +68,28 @@ export class ActionFormVariantService {
     const action = await this.actionRepo.findOne({ where: { id: actionId } });
     if (!action) throw new NotFoundException("Action not found");
 
-    const sourceFormId = input.sourceFormId ?? action.taskFormId;
-    if (sourceFormId == null) {
-      throw new BadRequestException(
-        "Action has no form to clone. Set the action form first or pass sourceFormId.",
-      );
-    }
-    const sourceForm = await this.formRepo.findOne({
-      where: { id: sourceFormId },
-      relations: { formSnapshot: true },
+    const sourceForm = await findSourceForm(this.variantRepo.manager, {
+      action,
+      sourceFormId: input.sourceFormId,
     });
-    if (!sourceForm) throw new NotFoundException("Source form not found");
 
     return this.variantRepo.manager.transaction(async (em) => {
       await lockActionRow(em, actionId);
+      if (await em.existsBy(ActionBranch, { actionId })) {
+        throw new BadRequestException(
+          "This action routes members by branch rules, so it can't also take a random split. Delete its branches first.",
+        );
+      }
       const variantTxRepo = em.getRepository(ActionFormVariant);
       await this.assertSplitTotalValid(
         actionId,
         { addValue: input.splitValue },
         variantTxRepo,
       );
-      const newForm = await insertForm(em, {
-        form: {
-          title: sourceForm.title,
-          formSnapshotId: sourceForm.formSnapshotId,
-          formSnapshot: sourceForm.formSnapshot,
-        },
-        placement: { actionId, sequence: FormSlugSequence.Main },
-      });
-      await this.formSnapshotService.recordHistorical({
-        owner: SnapshotHistoryOwner.Form,
-        ownerId: newForm.id,
-        snapshotId: sourceForm.formSnapshotId,
-        em,
+      const newForm = await cloneFormIntoAction(em, {
+        sourceForm,
+        actionId,
+        formSnapshotService: this.formSnapshotService,
       });
       return variantTxRepo.save(
         variantTxRepo.create({
@@ -214,19 +147,7 @@ export class ActionFormVariantService {
       where: { id: variantId },
     });
     if (!variant) throw new NotFoundException("Variant not found");
-    const events = await this.variantRepo.manager.findBy(ActionEvent, {
-      action: { id: variant.actionId },
-    });
-
-    // Clients only submit once member_action starts, so a response means
-    // members were assigned after a launch whose member_action event later
-    // moved or was deleted.
-    if (
-      !hasMemberActionStarted(events, new Date()) &&
-      !(await this.variantRepo.manager.existsBy(FormResponse, {
-        formId: variant.formId,
-      }))
-    ) {
+    if (await isUnlaunchedAndUnanswered(this.variantRepo.manager, variant)) {
       await this.variantRepo.manager.transaction(async (em) => {
         // Waits out an assignment being written, so the deletion below sees it.
         await em.findOne(ActionFormVariant, {
@@ -263,177 +184,6 @@ export class ActionFormVariantService {
     }
   }
 
-  async getOrCreateAssignedFormId(
-    actionId: number,
-    userId: number,
-  ): Promise<number | null> {
-    if (!(await this.userExists(userId))) return null;
-
-    const variants = await this.listForAction(actionId);
-    if (variants.length === 0) return null;
-
-    const existing = await this.assignmentRepo.findOne({
-      where: { actionId, userId },
-    });
-    if (existing) {
-      if (existing.variantId === null) return null;
-      const v = variants.find((x) => x.id === existing.variantId);
-      return v?.formId ?? null;
-    }
-
-    const submitted = await this.findSubmittedFormIds({
-      actionIds: [actionId],
-      userId,
-    });
-    const chosenVariantId = variantForNewAssignment({
-      variants,
-      submittedFormId: submitted.get(actionId),
-    });
-    try {
-      const inserted = await this.assignmentRepo.manager.transaction(
-        async (em) => {
-          const [live] = await liveAssignments(em, [
-            { actionId, userId, variantId: chosenVariantId },
-          ]);
-          if (!live) return false;
-          await em.insert(ActionFormAssignment, live);
-          return true;
-        },
-      );
-      if (!inserted) return null;
-    } catch (err) {
-      if (
-        !(err instanceof QueryFailedError) ||
-        (err as { code?: string }).code !== "23505"
-      ) {
-        throw err;
-      }
-      const fresh = await this.assignmentRepo.findOne({
-        where: { actionId, userId },
-      });
-      if (!fresh) {
-        throw new InternalServerErrorException(
-          "Assignment lookup failed after unique-violation race",
-        );
-      }
-      if (fresh.variantId === null) return null;
-      const v = variants.find((x) => x.id === fresh.variantId);
-      return v?.formId ?? null;
-    }
-    if (chosenVariantId === null) return null;
-    const v = variants.find((x) => x.id === chosenVariantId);
-    return v?.formId ?? null;
-  }
-
-  async getOrCreateAssignedFormIdsForActions(
-    actionIds: number[],
-    userId: number,
-  ): Promise<Map<number, number>> {
-    if (actionIds.length === 0) return new Map();
-    if (!(await this.userExists(userId))) return new Map();
-
-    const [allVariants, existingAssignments] = await Promise.all([
-      this.variantRepo.find({
-        where: { actionId: In(actionIds) },
-        order: { id: "ASC" },
-      }),
-      this.assignmentRepo.find({
-        where: { actionId: In(actionIds), userId },
-      }),
-    ]);
-
-    const variantsByAction = new Map<number, ActionFormVariant[]>();
-    for (const v of allVariants) {
-      const list = variantsByAction.get(v.actionId) ?? [];
-      list.push(v);
-      variantsByAction.set(v.actionId, list);
-    }
-    const assignmentByAction = new Map<number, ActionFormAssignment>();
-    for (const a of existingAssignments) {
-      assignmentByAction.set(a.actionId, a);
-    }
-
-    const submitted = await this.findSubmittedFormIds({
-      actionIds: actionIds.filter(
-        (id) => variantsByAction.has(id) && !assignmentByAction.has(id),
-      ),
-      userId,
-    });
-
-    const result = new Map<number, number>();
-    const inserts: {
-      actionId: number;
-      userId: number;
-      variantId: number | null;
-    }[] = [];
-
-    for (const actionId of actionIds) {
-      const variants = variantsByAction.get(actionId);
-      if (!variants || variants.length === 0) continue;
-
-      const existing = assignmentByAction.get(actionId);
-      if (existing) {
-        if (existing.variantId === null) continue;
-        const v = variants.find((x) => x.id === existing.variantId);
-        if (v) result.set(actionId, v.formId);
-        continue;
-      }
-
-      const chosenVariantId = variantForNewAssignment({
-        variants,
-        submittedFormId: submitted.get(actionId),
-      });
-      inserts.push({ actionId, userId, variantId: chosenVariantId });
-      if (chosenVariantId !== null) {
-        const v = variants.find((x) => x.id === chosenVariantId);
-        if (v) result.set(actionId, v.formId);
-      }
-    }
-
-    if (inserts.length === 0) return result;
-
-    // ON CONFLICT DO NOTHING for the live-row (actionId, userId) unique
-    // index — a parallel request may have inserted first. After the upsert,
-    // re-read to learn the canonical assignment for the conflicted rows.
-    await this.assignmentRepo.manager.transaction(async (em) => {
-      const live = await liveAssignments(em, inserts);
-      if (live.length === 0) return;
-      await em
-        .createQueryBuilder()
-        .insert()
-        .into(ActionFormAssignment)
-        .values(live)
-        .orIgnore()
-        .execute();
-    });
-
-    const insertedActionIds = inserts.map((i) => i.actionId);
-    const finalAssignments = await this.assignmentRepo.find({
-      where: { actionId: In(insertedActionIds), userId },
-    });
-    const finalByAction = new Map<number, ActionFormAssignment>();
-    for (const a of finalAssignments) finalByAction.set(a.actionId, a);
-
-    for (const i of inserts) {
-      const final = finalByAction.get(i.actionId);
-      if (!final) {
-        result.delete(i.actionId);
-        continue;
-      }
-      const variants = variantsByAction.get(i.actionId);
-      if (!variants) continue;
-      if (final.variantId === null) {
-        result.delete(i.actionId);
-        continue;
-      }
-      const v = variants.find((x) => x.id === final.variantId);
-      if (v) result.set(i.actionId, v.formId);
-      else result.delete(i.actionId);
-    }
-
-    return result;
-  }
-
   async getStatsForAction(actionId: number): Promise<VariantStats[]> {
     const action = await this.actionRepo.findOne({ where: { id: actionId } });
     if (!action) throw new NotFoundException("Action not found");
@@ -445,6 +195,7 @@ export class ActionFormVariantService {
       .select("a.variantId", "variantId")
       .addSelect("COUNT(*)::int", "count")
       .where("a.actionId = :actionId", { actionId })
+      .andWhere('a."branchId" IS NULL')
       .groupBy("a.variantId")
       .getRawMany()) as { variantId: number | null; count: number }[];
     const assignedByVariant = new Map<number | null, number>();
@@ -464,6 +215,7 @@ export class ActionFormVariantService {
       .select("a.variantId", "variantId")
       .addSelect("COUNT(*)::int", "count")
       .where("a.actionId = :actionId", { actionId })
+      .andWhere('a."branchId" IS NULL')
       .groupBy("a.variantId")
       .getRawMany()) as { variantId: number | null; count: number }[];
     const submittedByVariant = new Map<number | null, number>();
@@ -491,31 +243,6 @@ export class ActionFormVariantService {
       });
     }
     return stats;
-  }
-
-  async validateFormIdForUser(params: {
-    actionId: number;
-    userId: number;
-    formId: number;
-  }): Promise<boolean> {
-    const { actionId, userId, formId } = params;
-    const action = await this.actionRepo.findOne({ where: { id: actionId } });
-    if (!action) return false;
-
-    const variants = await this.listForAction(actionId);
-    if (variants.length === 0) {
-      return action.taskFormId === formId;
-    }
-    const assignedFormId = await this.getOrCreateAssignedFormId(
-      actionId,
-      userId,
-    );
-    if (assignedFormId === null) return action.taskFormId === formId;
-    return assignedFormId === formId;
-  }
-
-  private async userExists(userId: number): Promise<boolean> {
-    return this.userRepo.exists({ where: { id: userId } });
   }
 
   private assertSplitValid(splitValue: number): void {

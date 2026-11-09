@@ -25,6 +25,9 @@ let created: string[] = [];
 serveApi(
   routes({
     "GET /tasks/listForms": () => Response.json([]),
+    "GET /actions/:id/branches": () =>
+      Response.json({ branches: [], stats: [] }),
+    "GET /actions/:id/form-assignments": () => Response.json([]),
     "GET /actions/:id/form-variants": () =>
       loadStatus === 200
         ? Response.json({ variants: [variant], stats: [] })

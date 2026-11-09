@@ -4,6 +4,7 @@ import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { Search } from "lucide-react";
 import React, { useMemo, useRef, useState } from "react";
 import { adminRefusalMessage } from "../lib/adminRefusal";
+import type { BranchRouting } from "../lib/useBranchRoutingPreviewAdmin";
 import { useCohortEvaluationAdmin } from "../lib/useCohortEvaluationAdmin";
 
 interface CohortVisualizationProps {
@@ -11,6 +12,8 @@ interface CohortVisualizationProps {
   selectedSubExpression: CohortExpression | null;
   users: UserSelectUser[];
   compareExpression?: CohortExpression | null;
+  /** On a branch's rule: the members routed to it. The rest it matches show lighter. */
+  routing?: BranchRouting;
 }
 
 const DOT_SIZE = 10;
@@ -21,6 +24,7 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
   selectedSubExpression,
   users,
   compareExpression,
+  routing,
 }) => {
   const {
     userIds: evaluatedIds,
@@ -51,8 +55,13 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
   // The grid unmounts on a failed evaluation, so no mouseleave clears the hover.
   if (matchError && hoveredUser) setHoveredUser(null);
 
+  const isRouted = (userId: number) => !routing || routing.userIds.has(userId);
+
   const sortedUsers = useMemo(() => {
+    const routedFirst = (userId: number) =>
+      routing && !routing.userIds.has(userId) ? 1 : 0;
     return [...users].sort((a, b) => {
+      const routedOrder = routedFirst(a.id) - routedFirst(b.id);
       const aMatch = matchedIds.has(a.id);
       const bMatch = matchedIds.has(b.id);
       const aCompare = compareExpression ? compareMatchedIds.has(a.id) : false;
@@ -62,13 +71,23 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
       const aScore = aMatch && aCompare ? 0 : aMatch ? 1 : aCompare ? 2 : 3;
       const bScore = bMatch && bCompare ? 0 : bMatch ? 1 : bCompare ? 2 : 3;
       if (aScore !== bScore) return aScore - bScore;
+      if (routedOrder !== 0) return routedOrder;
       return a.name.localeCompare(b.name);
     });
-  }, [users, matchedIds, compareMatchedIds, compareExpression]);
+  }, [users, matchedIds, compareMatchedIds, compareExpression, routing]);
 
   const matchCount = useMemo(
     () => users.filter((u) => matchedIds.has(u.id)).length,
     [users, matchedIds],
+  );
+
+  const routedCount = useMemo(
+    () =>
+      routing
+        ? users.filter((u) => matchedIds.has(u.id) && routing.userIds.has(u.id))
+            .length
+        : 0,
+    [users, matchedIds, routing],
   );
 
   const subMatchCount = useMemo(
@@ -125,6 +144,28 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
             </span>
           ) : loading ? (
             "Evaluating..."
+          ) : expression && routing ? (
+            routing.error ? (
+              <span className="text-red-600">
+                {adminRefusalMessage(
+                  routing.error,
+                  "Failed to preview the branch routing.",
+                )}
+              </span>
+            ) : routing.evaluating ? (
+              "Previewing routing..."
+            ) : (
+              <span className="flex gap-3">
+                <span>
+                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 mr-1 align-middle" />
+                  {routedCount} of {users.length} routed to this branch
+                </span>
+                <span>
+                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500/30 mr-1 align-middle" />
+                  {matchCount - routedCount} match its rule but go elsewhere
+                </span>
+              </span>
+            )
           ) : expression ? (
             <>
               <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 mr-1 align-middle" />
@@ -213,12 +254,22 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
                     <span
                       className={cn(
                         "text-xs px-1.5 py-0.5 rounded-full",
-                        inCohort
+                        inCohort && isRouted(user.id)
                           ? "bg-emerald-100 text-emerald-700"
-                          : "bg-gray-100 text-gray-500",
+                          : inCohort
+                            ? "bg-emerald-50 text-emerald-600"
+                            : "bg-gray-100 text-gray-500",
                       )}
                     >
-                      {inCohort ? "in cohort" : "not in cohort"}
+                      {!inCohort
+                        ? routing
+                          ? "doesn't match"
+                          : "not in cohort"
+                        : !routing
+                          ? "in cohort"
+                          : isRouted(user.id)
+                            ? "routed here"
+                            : "matches, goes elsewhere"}
                     </span>
                   ) : (
                     <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
@@ -267,7 +318,9 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
                   "repeating-linear-gradient(45deg, #10b981, #10b981 2px, #8b5cf6 2px, #8b5cf6 4px)",
               };
             } else if (isMatched) {
-              bgColor = "bg-emerald-500";
+              bgColor = isRouted(user.id)
+                ? "bg-emerald-500"
+                : "bg-emerald-500/30";
             } else if (isCompareMatched) {
               bgColor = "bg-violet-500";
             } else {

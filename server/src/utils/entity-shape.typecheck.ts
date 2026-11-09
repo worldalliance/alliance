@@ -2,6 +2,7 @@ import type { Assert } from "@alliance/common/types";
 import type { ActionPartnershipNote } from "src/action-partnerships/entities/action-partnership-note.entity";
 import type { ActionPartnershipResponse } from "src/action-partnerships/entities/action-partnership-response.entity";
 import type { ActionActivity } from "src/actions/entities/action-activity.entity";
+import type { ActionBranch } from "src/actions/entities/action-branch.entity";
 import type { ActionEvent } from "src/actions/entities/action-event.entity";
 import type { ActionFormAssignment } from "src/actions/entities/action-form-assignment.entity";
 import type { ActionFormVariant } from "src/actions/entities/action-form-variant.entity";
@@ -63,6 +64,7 @@ import type { EntityShape } from "./Repository";
  */
 type _typecheck_EntityShapes =
   | Assert<EntityShape<ActionActivity>>
+  | Assert<EntityShape<ActionBranch>>
   | Assert<EntityShape<ActionEvent>>
   | Assert<EntityShape<ActionEventNotif>>
   | Assert<EntityShape<ActionFormAssignment>>

@@ -15,6 +15,7 @@ import { withoutHiddenComments } from "src/forum/hidden-comments";
 import { displayOnlySchemaOf } from "src/tasks/display-only-snapshot";
 import { ProfileDto } from "src/user/dto/user.dto";
 import { MoreThan, Not, type Repository } from "typeorm";
+import { ActionFormAssignmentService } from "./action-form-assignment.service";
 import {
   isActionUpdatePublished,
   publishedActionUpdateWhere,
@@ -63,6 +64,7 @@ export class GlobalFeedService {
     @InjectRepository(Post)
     private readonly postRepository: Repository<Post>,
     private readonly actionVisibility: ActionVisibilityService,
+    private readonly actionFormAssignmentService: ActionFormAssignmentService,
     private readonly forumService: ForumService,
     private readonly feedMembers: FeedMembersService,
   ) {}
@@ -380,6 +382,13 @@ export class GlobalFeedService {
         ],
         userId,
       });
+    await this.actionFormAssignmentService.applyAssignedForms(
+      [
+        ...events.map(loadedActionEventAction),
+        ...actionUpdates.flatMap((update) => update.action ?? []),
+      ].filter((action) => visibleActionIds.has(action.id)),
+      userId,
+    );
 
     for (const event of events) {
       const action = loadedActionEventAction(event);

@@ -107,7 +107,7 @@ export class NotificationRenderService {
         }
         const rendered = renderNotificationContent({
           content,
-          references,
+          references: references.referencesFor(recipientId),
           count: notif.groupingCount,
           participant: notif.associatedUsers?.[0],
         });
@@ -187,7 +187,7 @@ export class NotificationRenderService {
             comment?.editableContent &&
             renderNotificationContent({
               content,
-              references,
+              references: references.referencesFor(recipientId),
               count: null,
               participant: loadedCommentAuthor(comment),
               commentExcerpt: getPreviewText(comment.editableContent.body),

@@ -3,10 +3,10 @@ import { R } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { countBy, partition } from "es-toolkit";
-import { lockLiveIds } from "src/datasources/soft-delete";
 import { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { In, type Repository } from "typeorm";
+import { ActionBranchService } from "./action-branch.service";
 import {
   admissionReason,
   belongsToBackfill,
@@ -22,9 +22,13 @@ import {
   readsDecisionsOf,
   type CohortEnrollment,
 } from "./cohort-decision";
+import { insertDecisions, type DecisionRow } from "./cohort-decision-insert";
 import { logCohortPathDisagreements } from "./cohort-path-disagreements";
 import { CohortResolutionSession } from "./cohort-resolution-session";
-import { CohortResolverService } from "./cohort-resolver.service";
+import {
+  CohortResolverService,
+  type RoutedCohort,
+} from "./cohort-resolver.service";
 import { ActionCohortDecisionCorrection } from "./entities/action-cohort-decision-correction.entity";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
 import {
@@ -35,13 +39,6 @@ import {
 import { CohortDecisionReason } from "./entities/cohort-decision-reason";
 import { PrerequisiteProgressService } from "./prerequisite-progress.service";
 import { SingleMemberCohortService } from "./single-member-cohort.service";
-
-const INSERT_CHUNK_SIZE = 1000;
-
-type DecisionRow = Pick<
-  ActionCohortDecision,
-  "actionId" | "userId" | "included" | "reason" | "resolvedAt"
->;
 
 @Injectable()
 export class CohortDecisionService {
@@ -58,6 +55,7 @@ export class CohortDecisionService {
     private readonly userService: UserService,
     private readonly prerequisiteProgressService: PrerequisiteProgressService,
     private readonly singleMemberCohortService: SingleMemberCohortService,
+    private readonly actionBranchService: ActionBranchService,
   ) {}
 
   /**
@@ -158,7 +156,7 @@ export class CohortDecisionService {
     resolve: () => Promise<DecisionRow[]>,
   ): Promise<boolean> {
     const result = await R.fromPromiseFn(async () =>
-      this.insert(await resolve()),
+      insertDecisions(this.decisionRepository.manager, await resolve()),
     );
     if (R.isFailure(result)) {
       this.logger.error(
@@ -212,7 +210,7 @@ export class CohortDecisionService {
     action: ParsedAction,
     failedClosed: ReadonlySet<number>,
   ): boolean {
-    if (!readsDecisionsOf(action.cohortExpression, failedClosed)) return false;
+    if (!readsDecisionsOf(action, failedClosed)) return false;
     this.logger.warn(
       `Skipped deciding cohort for action ${action.id}: it reads an action that failed`,
     );
@@ -257,14 +255,15 @@ export class CohortDecisionService {
           now,
         });
         if (pending.length === 0) return [];
-        const cohort = await this.cohortResolverService.resolveCohortMemberIds(
-          action.cohortExpression,
+        const routed = await this.cohortResolverService.resolveRoutedCohort(
+          action,
           session,
         );
         return this.decide({
           action,
           users: pending,
-          included: (user) => cohort.has(user.id),
+          routed,
+          included: (user) => routed.cohort.has(user.id),
           reason: (user) =>
             admissionReason({ action, user, start: enrollment.start }),
           now,
@@ -295,16 +294,17 @@ export class CohortDecisionService {
           users: pending.filter(obligated),
           deadline: enrollment.deadline,
         });
-        const cohort = pending.some((user) => !obligated(user))
-          ? await this.cohortResolverService.resolveCohortMemberIds(
-              action.cohortExpression,
+        const routed = pending.some((user) => !obligated(user))
+          ? await this.cohortResolverService.resolveRoutedCohort(
+              action,
               session,
             )
-          : new Set<number>();
+          : { cohort: new Set<number>(), branchIdByUser: null };
         return this.decide({
           action,
           users: pending,
-          included: (user) => !obligated(user) && cohort.has(user.id),
+          routed,
+          included: (user) => !obligated(user) && routed.cohort.has(user.id),
           reason: (user) =>
             obligated(user)
               ? CohortDecisionReason.ResolvedAfterDeadline
@@ -373,19 +373,25 @@ export class CohortDecisionService {
     // No pass revisits a backfilled action, so wait out a recent signer's
     // request rather than decide the others without them.
     if (pending.some((user) => !settled.has(user))) return [];
-    const cohort = await this.cohortResolverService.resolveCohortMemberIds(
-      action.cohortExpression,
+    const routed = await this.cohortResolverService.resolveRoutedCohort(
+      action,
       session,
     );
     const rows = this.decide({
       action,
       users: pending,
-      included: (user) => cohort.has(user.id),
+      routed,
+      included: (user) => routed.cohort.has(user.id),
       reason: () => CohortDecisionReason.Backfill,
       now,
     });
     await logCohortPathDisagreements({
       action,
+      cohortExpression:
+        await this.actionBranchService.loadRoutedCohortExpression(
+          action,
+          session,
+        ),
       rows,
       session,
       userService: this.userService,
@@ -449,12 +455,13 @@ export class CohortDecisionService {
       users: settled,
       now,
     });
-    if (readsDecisionsOf(action.cohortExpression, failed)) {
+    if (readsDecisionsOf(action, failed)) {
       throw new Error(
         `Failed to decide the closed actions action ${action.id} reads`,
       );
     }
-    await this.insert(
+    await insertDecisions(
+      this.decisionRepository.manager,
       await this.resolveAction({
         action,
         enrollment,
@@ -481,13 +488,14 @@ export class CohortDecisionService {
   }): Promise<Set<number>> {
     const { actions, users, now } = params;
     if (users.length === 0) return new Set();
+    await this.actionBranchService.attachBranches(actions);
     const closed = await findReadClosedEnrollments({
       actions,
       load: async (ids) =>
         (
           await this.actionRepository.find({
             where: { id: In(ids), publicOnly: false },
-            relations: { events: true },
+            relations: { events: true, branches: true },
           })
         ).map(parseAction),
       now,
@@ -642,25 +650,32 @@ export class CohortDecisionService {
       }
       rows.push(...result.value);
     }
-    await this.insert(rows);
+    await insertDecisions(this.decisionRepository.manager, rows);
     return failed;
   }
 
   private decide(params: {
     action: ParsedAction;
     users: User[];
+    routed: RoutedCohort;
     included: (user: User) => boolean;
     reason: (user: User) => CohortDecisionReason;
     now: Date;
   }): DecisionRow[] {
-    const { action, users, included, reason, now } = params;
-    const rows = users.map((user) => ({
-      actionId: action.id,
-      userId: user.id,
-      included: included(user),
-      reason: reason(user),
-      resolvedAt: now,
-    }));
+    const { action, users, routed, included, reason, now } = params;
+    const rows = users.map((user) => {
+      const isIncluded = included(user);
+      return {
+        actionId: action.id,
+        userId: user.id,
+        included: isIncluded,
+        reason: reason(user),
+        resolvedAt: now,
+        branchId: isIncluded
+          ? (routed.branchIdByUser?.get(user.id) ?? null)
+          : null,
+      };
+    });
     for (const [rowReason, count] of Object.entries(
       countBy(rows, (row) => row.reason),
     )) {
@@ -676,7 +691,7 @@ export class CohortDecisionService {
   ): Promise<{ action: ParsedAction; enrollment: CohortEnrollment }[]> {
     const actions = await this.actionRepository.find({
       where: { publicOnly: false },
-      relations: { events: true },
+      relations: { events: true, branches: true },
     });
     return actions.map(parseAction).map((action) => ({
       action,
@@ -725,36 +740,5 @@ export class CohortDecisionService {
       userIds.add(userId);
     }
     return byAction;
-  }
-
-  /**
-   * All or nothing, so a later pass never skips a half-backfilled action. A
-   * concurrent writer's row wins; decisions are final once written. Rows for
-   * an action or account deleted since the pass loaded them are dropped.
-   */
-  private async insert(rows: DecisionRow[]): Promise<void> {
-    if (rows.length === 0) return;
-    await this.decisionRepository.manager.transaction(async (manager) => {
-      const liveActionIds = await lockLiveIds(manager, {
-        target: Action,
-        ids: [...new Set(rows.map((row) => row.actionId))],
-      });
-      const liveUserIds = await lockLiveIds(manager, {
-        target: User,
-        ids: [...new Set(rows.map((row) => row.userId))],
-      });
-      const live = rows.filter(
-        (row) => liveActionIds.has(row.actionId) && liveUserIds.has(row.userId),
-      );
-      for (let i = 0; i < live.length; i += INSERT_CHUNK_SIZE) {
-        await manager
-          .createQueryBuilder()
-          .insert()
-          .into(ActionCohortDecision)
-          .values(live.slice(i, i + INSERT_CHUNK_SIZE))
-          .orIgnore()
-          .execute();
-      }
-    });
   }
 }

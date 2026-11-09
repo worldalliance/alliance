@@ -7,7 +7,11 @@ import {
   computeContractSignedAfterOnboardingStart,
   hasMemberActionDeadlinePassed,
 } from "src/utils/action-user";
-import type { Action, ParsedAction } from "./entities/action.entity";
+import {
+  type ParsedActionBranch,
+  loadedActionBranches,
+} from "./entities/action-branch.entity";
+import { type Action, type ParsedAction } from "./entities/action.entity";
 import { CohortDecisionReason } from "./entities/cohort-decision-reason";
 
 /**
@@ -230,24 +234,36 @@ export function decisionReadActionIds(
   }
 }
 
-/** Whether the expression reads the decisions of any of `actionIds`. */
+type DecidingAction = Pick<ParsedAction, "id" | "cohortExpression"> & {
+  branches?: readonly Pick<ParsedActionBranch, "rule">[];
+};
+
+/** The actions whose saved decisions the action's cohort expression and branch rules read. */
+export function actionDecisionReadIds(action: DecidingAction): number[] {
+  return [
+    action.cohortExpression,
+    ...loadedActionBranches(action).map((branch) => branch.rule),
+  ].flatMap(decisionReadActionIds);
+}
+
+/** Whether the action reads the decisions of any of `actionIds`. */
 export function readsDecisionsOf(
-  expr: CohortExpression | null | undefined,
+  action: DecidingAction,
   actionIds: ReadonlySet<number>,
 ): boolean {
-  return decisionReadActionIds(expr).some((id) => actionIds.has(id));
+  return actionDecisionReadIds(action).some((id) => actionIds.has(id));
 }
 
 /**
  * Orders `items` so each follows the ones whose decisions its expression
  * reads. Within a cycle, the lowest id follows the others.
  */
-export function orderByDecisionReads<
-  T extends { action: Pick<ParsedAction, "id" | "cohortExpression"> },
->(items: T[]): T[] {
+export function orderByDecisionReads<T extends { action: DecidingAction }>(
+  items: T[],
+): T[] {
   const byId = new Map(items.map((item) => [item.action.id, item]));
   const reads = (item: T) =>
-    decisionReadActionIds(item.action.cohortExpression).flatMap((id) => {
+    actionDecisionReadIds(item.action).flatMap((id) => {
       const read = byId.get(id);
       return read ? [read] : [];
     });
@@ -326,30 +342,24 @@ export function closedEnrollmentsInCatchUp<
  * through each other.
  */
 export async function findReadClosedEnrollments<
-  T extends Pick<
-    ParsedAction,
-    "id" | "cohortExpression" | "onboarding" | "memberActionPhase"
-  >,
+  T extends DecidingAction &
+    Pick<ParsedAction, "onboarding" | "memberActionPhase">,
 >(params: {
-  actions: Pick<ParsedAction, "cohortExpression">[];
+  actions: DecidingAction[];
   load: (ids: number[]) => Promise<T[]>;
   now: Date;
 }): Promise<ReturnType<typeof closedEnrollmentsInCatchUp<T>>> {
   const { actions, load, now } = params;
   const closed: ReturnType<typeof closedEnrollmentsInCatchUp<T>> = [];
   const seen = new Set<number>();
-  let reads = actions.flatMap(({ cohortExpression }) =>
-    decisionReadActionIds(cohortExpression),
-  );
+  let reads = actions.flatMap(actionDecisionReadIds);
   while (reads.length > 0) {
     const ids = [...new Set(reads)].filter((id) => !seen.has(id));
     ids.forEach((id) => seen.add(id));
     if (ids.length === 0) break;
     const found = closedEnrollmentsInCatchUp({ actions: await load(ids), now });
     closed.push(...found);
-    reads = found.flatMap(({ action }) =>
-      decisionReadActionIds(action.cohortExpression),
-    );
+    reads = found.flatMap(({ action }) => actionDecisionReadIds(action));
   }
   return closed;
 }

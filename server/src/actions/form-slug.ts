@@ -26,6 +26,10 @@ const LIVE_FORM_OWNERS = `
     FROM action_form_variant v JOIN action a ON a.id = v."actionId"
     WHERE v."deletedAt" IS NULL AND a."deletedAt" IS NULL
   UNION ALL
+  SELECT b."formId", a.id, a.slug, 1
+    FROM action_branch b JOIN action a ON a.id = b."actionId"
+    WHERE b."deletedAt" IS NULL AND a."deletedAt" IS NULL
+  UNION ALL
   SELECT f."formId", a.id, a.slug, 2
     FROM follow_up_form f JOIN action a ON a.id = f."actionId"
     WHERE f."deletedAt" IS NULL AND a."deletedAt" IS NULL`;

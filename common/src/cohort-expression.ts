@@ -251,7 +251,7 @@ export function collectCohortDependencies(
 
 export type ReferencedAction = {
   id: number;
-  /** The task form and every variant's form. */
+  /** The task form and every variant's and branch's form. */
   formIds: number[];
   deadline: Date | null;
   onboarding: boolean;
@@ -260,10 +260,12 @@ export type ReferencedAction = {
 export function actionFormIds(action: {
   taskFormId?: number | null;
   variantFormIds: readonly number[];
+  branchFormIds: readonly number[];
 }): number[] {
   return [
     ...(action.taskFormId == null ? [] : [action.taskFormId]),
     ...action.variantFormIds,
+    ...action.branchFormIds,
   ];
 }
 

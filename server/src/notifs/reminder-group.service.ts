@@ -6,6 +6,10 @@ import {
   CreateReminderGroupDto,
   ReminderAnchorCandidate,
 } from "src/actions/dto/reminder-group.dto";
+import {
+  ActionBranch,
+  loadedActionBranches,
+} from "src/actions/entities/action-branch.entity";
 import { ActionFormVariant } from "src/actions/entities/action-form-variant.entity";
 import {
   ActionSuite,
@@ -64,6 +68,8 @@ export class ReminderGroupService {
     private readonly followUpFormRepository: Repository<FollowUpForm>,
     @InjectRepository(ActionFormVariant)
     private readonly actionFormVariantRepository: Repository<ActionFormVariant>,
+    @InjectRepository(ActionBranch)
+    private readonly actionBranchRepository: Repository<ActionBranch>,
     private readonly userService: UserService,
     private readonly tagService: TagService,
   ) {}
@@ -114,50 +120,59 @@ export class ReminderGroupService {
   private async findAnchorCandidatesForAction(
     action: Action,
   ): Promise<ReminderAnchorCandidate[]> {
-    const { suite } = await this.actionRepository.findOneOrFail({
+    const loaded = await this.actionRepository.findOneOrFail({
       where: { id: action.id },
-      relations: { suite: { actions: true } },
+      relations: { suite: { actions: { branches: true } }, branches: true },
     });
     // Parse the jsonb cohortExpressions right at the fetch.
     const scopeActions = (
-      suite ? loadedActionSuiteActions(suite) : [action]
+      loaded.suite ? loadedActionSuiteActions(loaded.suite) : [loaded]
     ).map(parseAction);
 
     const actionIds = new Set<number>();
     const formIds = new Set<number>();
-    for (const scopeAction of scopeActions) {
-      const dependencies = collectCohortDependencies(
-        scopeAction.cohortExpression,
-      );
+    for (const expression of scopeActions.flatMap((scopeAction) => [
+      scopeAction.cohortExpression,
+      ...loadedActionBranches(scopeAction).map((branch) => branch.rule),
+    ])) {
+      const dependencies = collectCohortDependencies(expression);
       for (const id of dependencies.actionIds) actionIds.add(id);
       for (const id of dependencies.formIds) formIds.add(id);
     }
 
-    const [taskFormActions, followUpForms, formVariants] = await Promise.all([
-      formIds.size > 0
-        ? this.actionRepository.find({
-            where: { taskFormId: In([...formIds]) },
-            select: { id: true },
-          })
-        : [],
-      formIds.size > 0
-        ? this.followUpFormRepository.find({
-            where: { formId: In([...formIds]) },
-            select: { actionId: true },
-          })
-        : [],
-      formIds.size > 0
-        ? this.actionFormVariantRepository.find({
-            where: { formId: In([...formIds]) },
-            select: { actionId: true },
-          })
-        : [],
-    ]);
+    const [taskFormActions, followUpForms, formVariants, formBranches] =
+      await Promise.all([
+        formIds.size > 0
+          ? this.actionRepository.find({
+              where: { taskFormId: In([...formIds]) },
+              select: { id: true },
+            })
+          : [],
+        formIds.size > 0
+          ? this.followUpFormRepository.find({
+              where: { formId: In([...formIds]) },
+              select: { actionId: true },
+            })
+          : [],
+        formIds.size > 0
+          ? this.actionFormVariantRepository.find({
+              where: { formId: In([...formIds]) },
+              select: { actionId: true },
+            })
+          : [],
+        formIds.size > 0
+          ? this.actionBranchRepository.find({
+              where: { formId: In([...formIds]) },
+              select: { actionId: true },
+            })
+          : [],
+      ]);
     for (const taskFormAction of taskFormActions)
       actionIds.add(taskFormAction.id);
     for (const followUpForm of followUpForms)
       actionIds.add(followUpForm.actionId);
     for (const variant of formVariants) actionIds.add(variant.actionId);
+    for (const branch of formBranches) actionIds.add(branch.actionId);
     for (const scopeAction of scopeActions) actionIds.delete(scopeAction.id);
 
     if (actionIds.size === 0) return [];

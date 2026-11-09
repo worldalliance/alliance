@@ -2,6 +2,7 @@ import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
+import ActionBranchesTab from "../components/ActionBranchesTab";
 import { ActionCategoryIcons } from "../components/ActionCategoryIcons";
 import ActionCohortDecisionsTab from "../components/ActionCohortDecisionsTab";
 import ActionFollowUpFormsTab from "../components/ActionFollowUpFormsTab";
@@ -29,6 +30,7 @@ const tabs = [
   "events",
   "form",
   "form-variants",
+  "branches",
   "updates",
   "follow-up-forms",
   "responses",
@@ -63,6 +65,7 @@ const ActionDashboard: React.FC = () => {
     availableUsers,
     usersLoading,
     usersError,
+    activeContractUserIds,
     allActions,
     allActionsLoading,
     allActionsLoadFailed,
@@ -129,6 +132,7 @@ const ActionDashboard: React.FC = () => {
       ? [
           { key: "form" as Tab, label: "Task Form" },
           { key: "form-variants" as Tab, label: "Form Variants" },
+          { key: "branches" as Tab, label: "Branches" },
         ]
       : []),
     { key: "follow-up-forms", label: "Follow-up Forms" },
@@ -295,6 +299,24 @@ const ActionDashboard: React.FC = () => {
 
             {activeTab === "form-variants" && action && (
               <ActionFormVariantsTab action={action} />
+            )}
+
+            {activeTab === "branches" && action && (
+              <ActionBranchesTab
+                action={action}
+                activeContractUserIds={activeContractUserIds}
+                sources={{
+                  availableTags,
+                  tagsLoading,
+                  tagsError,
+                  availableActions: allActions,
+                  actionsLoading: allActionsLoading,
+                  actionsError: allActionsLoadFailed,
+                  availableUsers,
+                  usersLoading,
+                  usersError,
+                }}
+              />
             )}
 
             {activeTab === "events" && action && (

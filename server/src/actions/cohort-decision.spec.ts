@@ -162,8 +162,31 @@ describe("readsDecisionsOf", () => {
       ],
     };
 
-    expect(readsDecisionsOf(expr, new Set([2]))).toBe(true);
-    expect(readsDecisionsOf(expr, new Set([1]))).toBe(false);
+    const action = { id: 9, cohortExpression: expr, branches: [] };
+
+    expect(readsDecisionsOf(action, new Set([2]))).toBe(true);
+    expect(readsDecisionsOf(action, new Set([1]))).toBe(false);
+  });
+
+  it("reads through a branch rule", () => {
+    const action = {
+      id: 9,
+      cohortExpression: { type: "AllMembers" as const },
+      branches: [
+        { rule: { type: "MissedActionDeadline" as const, actionId: 4 } },
+      ],
+    };
+
+    expect(readsDecisionsOf(action, new Set([4]))).toBe(true);
+  });
+
+  it("refuses an action whose branches aren't loaded", () => {
+    expect(() =>
+      readsDecisionsOf(
+        { id: 9, cohortExpression: { type: "AllMembers" } },
+        new Set([4]),
+      ),
+    ).toThrow("branches of action 9 not loaded");
   });
 });
 
@@ -178,6 +201,7 @@ describe("orderByDecisionReads", () => {
           actionId,
         })),
       },
+      branches: [],
     },
   });
 
@@ -220,6 +244,21 @@ describe("orderByDecisionReads", () => {
     ]);
     expect(orderByDecisionReads([low, high])).toEqual([high, low]);
   });
+
+  it("puts an action after the ones its branch rules read", () => {
+    const reader = {
+      action: {
+        id: 1,
+        cohortExpression: { type: "AllMembers" as const },
+        branches: [
+          { rule: { type: "MissedActionDeadline" as const, actionId: 2 } },
+        ],
+      },
+    };
+    const read = item(2, []);
+
+    expect(orderByDecisionReads([reader, read])).toEqual([read, reader]);
+  });
 });
 
 describe("findReadClosedEnrollments", () => {
@@ -233,6 +272,7 @@ describe("findReadClosedEnrollments", () => {
         actionId,
       })),
     },
+    branches: [],
   });
 
   it("follows reads through closed actions", async () => {
@@ -243,7 +283,11 @@ describe("findReadClosedEnrollments", () => {
 
     const closed = await findReadClosedEnrollments({
       actions: [
-        { cohortExpression: { type: "MissedActionDeadline", actionId: 2 } },
+        {
+          id: 1,
+          cohortExpression: { type: "MissedActionDeadline", actionId: 2 },
+          branches: [],
+        },
       ],
       load: async (ids) => {
         loaded.push(ids);

@@ -1,5 +1,6 @@
 import type { UsMembership } from "src/geo/us-membership";
 import type { User } from "src/user/entities/user.entity";
+import type { ParsedActionBranch } from "./entities/action-branch.entity";
 import type { Action } from "./entities/action.entity";
 import type { PrerequisiteProgress } from "./prerequisites";
 
@@ -65,6 +66,10 @@ export class CohortResolutionSession {
   readonly admittedUserIdsByAction = new Map<number, Promise<Set<number>>>();
   readonly decisionsByUser = new Map<number, Promise<Map<number, boolean>>>();
   readonly decisionsByAction = new Map<number, Promise<Map<number, boolean>>>();
+  readonly branchesByActionId = new Map<
+    number,
+    Promise<ParsedActionBranch[]>
+  >();
   readonly memberPrerequisiteProgress = new Map<
     string,
     Promise<PrerequisiteProgress>

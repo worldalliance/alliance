@@ -1,6 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { IsDefined } from "class-validator";
 import type { ActionResponseCounts } from "../action-response-counts.service";
+import { loadedActionBranches } from "../entities/action-branch.entity";
 import {
   loadedActionFormVariants,
   type ParsedAction,
@@ -22,6 +23,14 @@ export class AdminActionListItemDto extends AdminActionDto {
   variantFormIds: number[];
 
   @ApiProperty({
+    type: Number,
+    isArray: true,
+    description: "Forms of the action's branches, besides its task form.",
+  })
+  @IsDefined()
+  branchFormIds: number[];
+
+  @ApiProperty({
     description: "Members whose latest response is a withdrawal.",
   })
   @IsDefined()
@@ -38,6 +47,9 @@ export class AdminActionListItemDto extends AdminActionDto {
     super(input.action);
     this.variantFormIds = loadedActionFormVariants(input.action).map(
       (variant) => variant.formId,
+    );
+    this.branchFormIds = loadedActionBranches(input.action).map(
+      (branch) => branch.formId,
     );
     this.usersWontComplete = input.responseCounts.usersWontComplete;
     this.usersDismissed = input.responseCounts.usersDismissed;

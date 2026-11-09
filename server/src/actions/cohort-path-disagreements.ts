@@ -1,3 +1,4 @@
+import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { R } from "@alliance/common/result";
 import type { Logger } from "@nestjs/common";
 import { chunk } from "es-toolkit";
@@ -14,6 +15,8 @@ const SINGLE_MEMBER_CONCURRENCY = 20;
 
 type Params = {
   action: ParsedAction;
+  /** The action's routed cohort expression, which the rows were decided by. */
+  cohortExpression: CohortExpression | null;
   rows: Pick<ActionCohortDecision, "userId" | "included">[];
   session: CohortResolutionSession;
   userService: UserService;
@@ -48,8 +51,13 @@ export async function logCohortPathDisagreements(
 }
 
 async function findCohortPathDisagreements(params: Params): Promise<number[]> {
-  const { action, rows, session, userService, singleMemberCohortService } =
-    params;
+  const {
+    cohortExpression,
+    rows,
+    session,
+    userService,
+    singleMemberCohortService,
+  } = params;
   const users = new Map(
     (
       await Promise.all(
@@ -78,7 +86,7 @@ async function findCohortPathDisagreements(params: Params): Promise<number[]> {
         }
         return singleMemberCohortService.computeIsInCohortExpression({
           user,
-          cohortExpression: action.cohortExpression,
+          cohortExpression,
           session,
         });
       }),

@@ -36,8 +36,12 @@ import { Tag } from "../user/entities/tag.entity";
 import { User } from "../user/entities/user.entity";
 import { UserModule } from "../user/user.module";
 import { ActionActivityService } from "./action-activity.service";
+import { ActionBranchAdminService } from "./action-branch-admin.service";
+import { ActionBranchesController } from "./action-branches.controller";
 import { ActionFeedController } from "./action-feed.controller";
+import { ActionFormAssignmentService } from "./action-form-assignment.service";
 import { ActionFormLinksService } from "./action-form-links.service";
+import { ActionFormRoutingService } from "./action-form-routing.service";
 import { ActionFormVariantService } from "./action-form-variant.service";
 import { ActionFormsController } from "./action-forms.controller";
 import { ActionImportExportService } from "./action-import-export.service";
@@ -74,6 +78,7 @@ import { ContractReinstatedListener } from "./contract-reinstated.listener";
 import { ContractReminderWorker } from "./contract-reminder.worker";
 import { ContractSuspenderWorker } from "./contract-suspender.worker";
 import { ActionActivity } from "./entities/action-activity.entity";
+import { ActionBranch } from "./entities/action-branch.entity";
 import { ActionCohortDecisionCorrection } from "./entities/action-cohort-decision-correction.entity";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
 import { ActionEvent } from "./entities/action-event.entity";
@@ -116,6 +121,7 @@ import { WelcomeQueueService } from "./welcome-queue.service";
       ActionCohortDecisionCorrection,
       ActionEvent,
       ActionEventNotif,
+      ActionBranch,
       ActionFormAssignment,
       ActionFormVariant,
       ActionReviewer,
@@ -164,6 +170,7 @@ import { WelcomeQueueService } from "./welcome-queue.service";
     ActionSuitesController,
     ActionFeedController,
     ActionFormsController,
+    ActionBranchesController,
     CohortDecisionsController,
     ProjectsController,
     ProjectActionsController,
@@ -174,6 +181,9 @@ import { WelcomeQueueService } from "./welcome-queue.service";
     ProjectsService,
     ProjectActionsService,
     ActionFormVariantService,
+    ActionFormAssignmentService,
+    ActionFormRoutingService,
+    ActionBranchAdminService,
     ActionsGateway,
     ActionEventNotifWorker,
     ActionEventNotifDeliveryService,
@@ -226,6 +236,7 @@ import { WelcomeQueueService } from "./welcome-queue.service";
     ActionFormLinksService,
     ActionVisibilityModule,
     ActionFormVariantService,
+    ActionFormAssignmentService,
     ActionEventRecipientService,
     CohortResolverService,
   ],

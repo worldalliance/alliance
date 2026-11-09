@@ -46,6 +46,11 @@ import {
 } from "typeorm";
 import { ActionCategory } from "../action-category";
 import { ActionActivity } from "./action-activity.entity";
+import {
+  ActionBranch,
+  parseActionBranch,
+  type ParsedActionBranch,
+} from "./action-branch.entity";
 import { ActionEvent, ActionStatus } from "./action-event.entity";
 import { ActionFormVariant } from "./action-form-variant.entity";
 import { ActionReviewer } from "./action-reviewer.entity";
@@ -420,6 +425,12 @@ export class Action {
   @Type(() => ActionFormVariant)
   formVariants?: Relation<ActionFormVariant>[];
 
+  @OneToMany(() => ActionBranch, (branch) => branch.action)
+  @ApiPropertyOptional({ type: () => ActionBranch, isArray: true })
+  @IsOptional()
+  @Type(() => ActionBranch)
+  branches?: Relation<ActionBranch>[];
+
   @ManyToOne(() => ActionSuite, (suite) => suite.actions, { nullable: true })
   @ApiPropertyOptional({ type: () => ActionSuite })
   @Type(() => ActionSuite)
@@ -502,6 +513,7 @@ export class Action {
 export interface ParsedAction extends Action {
   cohortExpression: CohortExpression | null;
   followUpForms?: ParsedFollowUpForm[];
+  branches?: ParsedActionBranch[];
 }
 
 export function parseAction(action: Action): ParsedAction {
@@ -510,6 +522,7 @@ export function parseAction(action: Action): ParsedAction {
       ? null
       : cohortExpressionSchema.parse(action.cohortExpression);
   action.followUpForms = action.followUpForms?.map(parseFollowUpForm);
+  action.branches = action.branches?.map(parseActionBranch);
   // Mutate-and-cast (rather than spread) to keep the entity's getters; the
   // assignments above just validated the only fields the cast narrows.
   return action as ParsedAction;

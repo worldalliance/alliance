@@ -41,6 +41,7 @@ export enum NotificationCategory {
   CommunityAssigned = "community_assigned",
   NewMemberReferred = "new_member_referred",
   GroupMemberJoined = "group_member_joined",
+  ActionBranchMoved = "action_branch_moved",
   ContractReinstated = "contract_reinstated",
 
   // Legacy
@@ -77,6 +78,7 @@ export const NOTIFICATION_CATEGORY_PRIORITIES = {
   [NotificationCategory.CommunityAssigned]: NotifPriority.High,
   [NotificationCategory.NewMemberReferred]: NotifPriority.High,
   [NotificationCategory.GroupMemberJoined]: NotifPriority.High,
+  [NotificationCategory.ActionBranchMoved]: NotifPriority.High,
   [NotificationCategory.ContractReinstated]: NotifPriority.High,
 
   // Legacy
