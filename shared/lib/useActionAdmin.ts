@@ -121,8 +121,7 @@ export function useActionAdmin(
   const invalidateActionAndList = () =>
     Promise.all([invalidate(), invalidateList()]);
 
-  // Follow-up forms and events are on the all-actions list but not in the
-  // forms index.
+  // Events are on the all-actions list but not in the forms index.
   const invalidateActionAndActionsList = () =>
     Promise.all([invalidate(), invalidateActionsList()]);
 
@@ -204,7 +203,7 @@ export function useActionAdmin(
         body,
         throwOnError: true,
       }).then((r) => r.data),
-    onSuccess: invalidateActionAndActionsList,
+    onSuccess: invalidateActionAndList,
   });
 
   // A single useMutation only exposes the latest call's `variables`, but
@@ -236,7 +235,7 @@ export function useActionAdmin(
     onSettled: (_result, _error, { followUpFormId }) => {
       setSavingFollowUpFormIds((ids) => withRemoved(ids, followUpFormId));
     },
-    onSuccess: invalidateActionAndActionsList,
+    onSuccess: invalidateActionAndList,
   });
 
   const deleteFollowUpFormMutation = useMutation({
@@ -251,7 +250,7 @@ export function useActionAdmin(
     onSettled: (_result, _error, followUpFormId) => {
       setDeletingFollowUpFormIds((ids) => withRemoved(ids, followUpFormId));
     },
-    onSuccess: invalidateActionAndActionsList,
+    onSuccess: invalidateActionAndList,
   });
 
   return {

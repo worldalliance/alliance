@@ -101,9 +101,10 @@ describe("useActionAdmin", () => {
     expect(acknowledged).toEqual([null, "true"]);
   });
 
-  it("marks the all-actions list stale when a follow-up form is saved", async () => {
+  it("marks the all-actions list and the forms index stale when a follow-up form is saved", async () => {
     const query = queryWrapper();
     query.client.setQueryData(queryKeys.actionsAllAdmin(), []);
+    query.client.setQueryData(queryKeys.formsAdmin(), []);
     const { result } = renderHook(() => useActionAdmin(1), query);
     await waitFor(() => expect(result.current.action).toBeDefined());
 
@@ -111,9 +112,12 @@ describe("useActionAdmin", () => {
       result.current.updateFollowUpForm({ followUpFormId: 7, body: {} }),
     );
 
-    expect(
-      query.client.getQueryState(queryKeys.actionsAllAdmin())?.isInvalidated,
-    ).toBe(true);
+    for (const queryKey of [
+      queryKeys.actionsAllAdmin(),
+      queryKeys.formsAdmin(),
+    ]) {
+      expect(query.client.getQueryState(queryKey)?.isInvalidated).toBe(true);
+    }
   });
 
   it("marks the all-actions list and the forms index stale after a paste", async () => {
