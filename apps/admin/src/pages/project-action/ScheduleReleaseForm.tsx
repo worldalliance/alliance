@@ -53,9 +53,11 @@ const ScheduleReleaseForm = ({
   const [error, setError] = useState<string | null>(null);
   const { confirm } = useToast();
   const { schedule } = useActionReleaseAdmin(action.id);
-  const { userIds, evaluating } = useCohortEvaluationAdmin(
-    action.cohortExpression,
-  );
+  const {
+    userIds,
+    evaluating,
+    error: evaluationError,
+  } = useCohortEvaluationAdmin(action.cohortExpression);
 
   const launchAt = fromPacificInput(launch);
   const deadlineAt = withDeadline ? fromPacificInput(deadline) : null;
@@ -152,6 +154,14 @@ const ScheduleReleaseForm = ({
           ? `Notify ${reach} members on ${formatPacific(launchAt)}`
           : "Pick a launch date"}
       </p>
+      {evaluationError && (
+        <p role="alert" className="text-sm text-red-600">
+          {adminRefusalMessage(
+            evaluationError,
+            "Couldn't count the members this release notifies.",
+          )}
+        </p>
+      )}
       {error && (
         <p role="alert" className="text-sm text-red-600">
           {error}
@@ -160,7 +170,12 @@ const ScheduleReleaseForm = ({
       <Button
         color={ButtonColor.Black}
         onClick={submit}
-        disabled={disabled || schedule.isPending}
+        disabled={
+          disabled ||
+          schedule.isPending ||
+          evaluating ||
+          evaluationError !== null
+        }
         className="w-fit"
       >
         {schedule.isPending ? "Scheduling…" : "Schedule release"}
