@@ -26,6 +26,7 @@ import {
   type Repository,
 } from "typeorm";
 import { UserService } from "../user/user.service";
+import { assertCanBePublicOnly } from "./action-branches";
 import { ActionFormLinksService } from "./action-form-links.service";
 import { dropEchoedImages, rewriteRenderedImages } from "./action-image-input";
 import { replaceReviewers } from "./action-reviewers";
@@ -35,10 +36,8 @@ import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
 import {
   assertNotInACohort,
   parseCohortExpressionForSaveOrThrow,
-  parseCohortExpressionOrThrow,
 } from "./cohort-reference-validation";
 import { CohortResolutionSession } from "./cohort-resolution-session";
-import { CohortResolverService } from "./cohort-resolver.service";
 import { ActionReviewerDto } from "./dto/action-reviewer.dto";
 import {
   CreateActionDto,
@@ -80,7 +79,6 @@ export class ActionsService {
     @InjectRepository(GeneralUpdate)
     private readonly generalUpdateRepository: Repository<GeneralUpdate>,
     private userService: UserService,
-    private readonly cohortResolverService: CohortResolverService,
     private readonly cohortDecisionStaffService: CohortDecisionStaffService,
     private readonly actionVisibility: ActionVisibilityService,
     private readonly generalUpdates: GeneralUpdatesService,
@@ -387,6 +385,9 @@ export class ActionsService {
         "Optional can't change to mandatory once members have cohort decisions for this action.",
       );
     }
+    if (rest.publicOnly) {
+      await assertCanBePublicOnly(this.actionRepository.manager, id);
+    }
 
     if (rest.taskFormId != null && rest.taskFormId !== action.taskFormId) {
       await this.formLinks.assertFormIdNotUsedAsVariant(rest.taskFormId);
@@ -527,12 +528,5 @@ export class ActionsService {
         relations: { reviewers: true, events: true, followUpForms: true },
       }),
     );
-  }
-
-  async evaluateCohortExpressionBatch(expression: unknown): Promise<number[]> {
-    const parsed = parseCohortExpressionOrThrow(expression);
-    const result =
-      await this.cohortResolverService.resolveCohortMemberIds(parsed);
-    return Array.from(result);
   }
 }

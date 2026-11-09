@@ -207,6 +207,26 @@ describe("Action branches: routing and copy (e2e)", () => {
 
       expect(res.status).toBe(400);
     });
+
+    it("refuses to make an action with branches public-only", async () => {
+      const action = await launchedAction();
+      await addBranch({
+        actionId: action.id,
+        name: "A",
+        rule: { type: "AllMembers" },
+      });
+
+      const res = await admin()
+        .patch(`/actions/${action.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ publicOnly: true });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toContain("branch");
+      expect(
+        (await actionRepo.findOneByOrFail({ id: action.id })).publicOnly,
+      ).toBe(false);
+    });
   });
 
   describe("branch copy", () => {

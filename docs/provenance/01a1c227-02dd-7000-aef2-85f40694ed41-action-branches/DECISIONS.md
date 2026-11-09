@@ -46,6 +46,16 @@ The decision insert, which now also writes branch assignments in the same transa
 
 The move control for A/B variant members stays on the Form Variants tab. The Branches tab has its own members table with the move control.
 
+## Submitting again after a move
+
+Every staff move withdraws the member's completion (REQUIREMENTS.md, Staff moves), so for a member staff moved, only a response to their current form created after the move (`overriddenAt`) counts as submitted. Without that, a member moved away from a form they submitted and back again had no completion and was refused resubmission. Counting the old response as their completion would need the withdrawn activity restored, but `softDeleteCascade` has no restore. Multiple responses per member and form are already allowed, and response reads take the newest. `overriddenAt` comes from the server clock and `createdAt` from the database's clock, so a skew between them matters only for a submission within that skew of the move.
+
+## Public-only
+
+Besides branch creation refusing a public-only action, `ActionsService.update` refuses to set `publicOnly` on an action with live branches (`assertCanBePublicOnly` in `action-branches.ts`). Neither path takes a lock against the other, which leaves a race between a concurrent branch create and public-only save; it's accepted as admin-only and rare.
+
+The guard would have taken `actions.service.ts` past its 500-line limit. A codex read-only pass proposed splitting out an `ActionQueryService` or an `ActionOrderingService`; neither was taken, since each restructures code this task doesn't otherwise touch. Instead, `evaluateCohortExpressionBatch`, a pass-through to `CohortResolverService` with one caller, moved into `ActionsController.evaluateCohortAdmin`, where the branches controller already parses cohort expressions the same way.
+
 ## Dependency analyses
 
 `ParsedAction` carries parsed `branches` when loaded, like `followUpForms`, and `loadedActionBranches` throws when they aren't. These read the routed expression, or every branch rule, instead of `action.cohortExpression` alone:

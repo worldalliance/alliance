@@ -63,6 +63,26 @@ describe("Action branches: moves and re-routes (e2e)", () => {
         .post(`/actions/${actionId}/branches/move`)
         .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send(body);
+    const submitBranchForm = async (params: {
+      branchId: number;
+      userId: number;
+    }) => {
+      const { formId } = await branchRepo.findOneByOrFail({
+        id: params.branchId,
+      });
+      const { formSnapshotId } = await ctx.dataSource
+        .getRepository("form")
+        .findOneByOrFail({ id: formId });
+      const responses = ctx.dataSource.getRepository(FormResponse);
+      await responses.save(
+        responses.create({
+          formId,
+          user: { id: params.userId },
+          answers: {},
+          formSnapshotId,
+        }),
+      );
+    };
 
     it("moves a completed member, withdraws the completion, and notifies them", async () => {
       const member = await createUser({ signedAt });
@@ -212,19 +232,7 @@ describe("Action branches: moves and re-routes (e2e)", () => {
         rule: { type: "Manual", userIds: [] },
       });
       await decisions.resolveAll(now);
-      const responses = ctx.dataSource.getRepository(FormResponse);
-      const oldForm = await branchRepo.findOneByOrFail({ id: a.id });
-      const { formSnapshotId } = await ctx.dataSource
-        .getRepository("form")
-        .findOneByOrFail({ id: oldForm.formId });
-      await responses.save(
-        responses.create({
-          formId: oldForm.formId,
-          user: { id: member.id },
-          answers: {},
-          formSnapshotId,
-        }),
-      );
+      await submitBranchForm({ branchId: a.id, userId: member.id });
       const formAssignments = ctx.app.get(ActionFormAssignmentService);
       const params = { actionId: action.id, userId: member.id };
       expect(await formAssignments.hasSubmittedAssignedForm(params)).toBe(true);
@@ -238,6 +246,43 @@ describe("Action branches: moves and re-routes (e2e)", () => {
       expect(await formAssignments.hasSubmittedAssignedForm(params)).toBe(
         false,
       );
+    });
+
+    it("lets a member moved back to a form they submitted submit it again", async () => {
+      const member = await createUser({ signedAt });
+      const action = await launchedAction();
+      const a = await addBranch({
+        actionId: action.id,
+        name: "A",
+        rule: manual(member),
+      });
+      const b = await addBranch({
+        actionId: action.id,
+        name: "B",
+        rule: { type: "Manual", userIds: [] },
+      });
+      await decisions.resolveAll(now);
+      await submitBranchForm({ branchId: a.id, userId: member.id });
+      const formAssignments = ctx.app.get(ActionFormAssignmentService);
+      const params = { actionId: action.id, userId: member.id };
+
+      for (const branchId of [b.id, a.id]) {
+        expect(
+          (
+            await move(action.id, {
+              userId: member.id,
+              branchId,
+              notify: false,
+            })
+          ).status,
+        ).toBe(201);
+      }
+      expect(await formAssignments.hasSubmittedAssignedForm(params)).toBe(
+        false,
+      );
+
+      await submitBranchForm({ branchId: a.id, userId: member.id });
+      expect(await formAssignments.hasSubmittedAssignedForm(params)).toBe(true);
     });
   });
 

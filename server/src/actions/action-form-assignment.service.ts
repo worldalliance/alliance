@@ -3,7 +3,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { User } from "src/user/entities/user.entity";
-import { In, type Repository } from "typeorm";
+import { In, MoreThan, type Repository } from "typeorm";
 import { type AssignedForm, applyAssignedForm } from "./action-branches";
 import { ActionBranch } from "./entities/action-branch.entity";
 import { ActionFormAssignment } from "./entities/action-form-assignment.entity";
@@ -206,7 +206,9 @@ export class ActionFormAssignmentService {
 
   /**
    * Whether the member submitted the action: any of its forms, or for a
-   * member staff moved, the form they're on now, so they can submit its form.
+   * member staff moved, the form they're on now since the move. A move
+   * withdraws the member's completion, so a response from before it, even to
+   * the same form, must not block the submission that completes it again.
    */
   async hasSubmittedAssignedForm(params: {
     actionId: number;
@@ -217,16 +219,21 @@ export class ActionFormAssignmentService {
       where: params,
       relations: { variant: true, branch: true },
     });
-    const movedToFormId = assignment?.overriddenAt
+    const movedAt = assignment?.overriddenAt;
+    const movedToFormId = movedAt
       ? (assignment.branch?.formId ?? assignment.variant?.formId)
       : undefined;
-    if (movedToFormId === undefined) {
+    if (!movedAt || movedToFormId === undefined) {
       return (
         await this.findSubmittedFormIds({ actionIds: [actionId], userId })
       ).has(actionId);
     }
     return this.assignmentRepo.manager.exists(FormResponse, {
-      where: { formId: movedToFormId, user: { id: userId } },
+      where: {
+        formId: movedToFormId,
+        user: { id: userId },
+        createdAt: MoreThan(movedAt),
+      },
     });
   }
 

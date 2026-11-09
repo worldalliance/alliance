@@ -1,9 +1,22 @@
 import type { CohortExpression } from "@alliance/common/cohort-expression";
-import type {
+import { BadRequestException } from "@nestjs/common";
+import type { EntityManager } from "typeorm";
+import {
   ActionBranch,
-  ParsedActionBranch,
+  type ParsedActionBranch,
 } from "./entities/action-branch.entity";
 import type { Action } from "./entities/action.entity";
+
+export async function assertCanBePublicOnly(
+  em: EntityManager,
+  actionId: number,
+): Promise<void> {
+  if (await em.existsBy(ActionBranch, { actionId })) {
+    throw new BadRequestException(
+      "This action routes members by branch rules, so it can't be public-only. Delete its branches first.",
+    );
+  }
+}
 
 /** An action's cohort as decisions apply it: on a branched action, a member must also match a branch. */
 export function routedCohortExpression(

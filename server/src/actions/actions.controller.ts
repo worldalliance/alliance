@@ -48,6 +48,8 @@ import { ActionShareService } from "./action-share.service";
 import { ActionSuitesService } from "./action-suites.service";
 import { ActionSuspensionService } from "./action-suspension.service";
 import { ActionsService } from "./actions.service";
+import { parseCohortExpressionOrThrow } from "./cohort-reference-validation";
+import { CohortResolverService } from "./cohort-resolver.service";
 import {
   ActionActivityDto,
   ActionWithdrawalDto,
@@ -96,6 +98,7 @@ export class ActionsController {
     private readonly forumActionCompleterWorker: ForumActionCompleterWorker,
     private readonly shareUrlsService: ShareUrlsService,
     private readonly userVisibilityContextService: UserVisibilityContextService,
+    private readonly cohortResolverService: CohortResolverService,
   ) {}
 
   @Get("loggedIn")
@@ -271,10 +274,10 @@ export class ActionsController {
   async evaluateCohortAdmin(
     @Body() dto: EvaluateCohortExpressionDto,
   ): Promise<EvaluateCohortExpressionResponseDto> {
-    const userIds = await this.actionsService.evaluateCohortExpressionBatch(
-      dto.expression,
+    const userIds = await this.cohortResolverService.resolveCohortMemberIds(
+      parseCohortExpressionOrThrow(dto.expression),
     );
-    return new EvaluateCohortExpressionResponseDto(userIds);
+    return new EvaluateCohortExpressionResponseDto([...userIds]);
   }
 
   @Post("create")
