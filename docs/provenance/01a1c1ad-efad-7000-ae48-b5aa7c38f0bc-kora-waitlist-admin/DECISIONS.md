@@ -20,7 +20,7 @@ Agent decision. An abandoned signup is recovered when a participant with the sam
 
 ## D5. Deletion
 
-Agent decision. Deleting a participant asks for confirmation, then removes the row; sessions and OAuth identities cascade. It also deletes abandoned-signup records with the same contact, since a removal or privacy request covers all stored contact details. Abandoned records can be deleted on their own too.
+Agent decision. Deleting a participant asks for confirmation, then removes the row; sessions and OAuth identities cascade. It also deletes the abandoned record and any pending signups with the same contact, since a removal or privacy request covers all stored contact details, and a pending signup left in another browser would otherwise record the contact as abandoned again when it ended. Deleting an abandoned record on its own also deletes that contact's pending signups, for the same reason. A delete answered 404, as when another admin already removed the row, counts as done, as every other admin delete does through `rethrowUnlessNotFound`; any other failure is reported and refreshes the list.
 
 ## D6. Signups per day
 

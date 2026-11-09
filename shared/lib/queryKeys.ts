@@ -137,6 +137,7 @@ export const queryKeys = {
   globalFeed: (limit: number) => [...globalFeedAll(), limit] as const,
   incomingCommunityInvites: () =>
     ["communityGetIncomingCommunityInvitesForUser"] as const,
+  koraParticipantsAdmin: () => ["koraAdminOverview"] as const,
   linkedGuestDraft: (taskFormId: number) =>
     ["tasksGetLinkedGuestDraft", taskFormId] as const,
   koraState: () => ["koraState"] as const,

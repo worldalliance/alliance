@@ -1,4 +1,5 @@
 import {
+  Baby,
   BarChart2,
   Building2,
   Calendar,
@@ -56,6 +57,11 @@ export const navEntries = (counts: {
 }): NavEntry[] => [
   { to: "/", label: "Stats", icon: <BarChart2 size={16} /> },
   { to: "/projects", label: "Projects", icon: <FolderKanban size={16} /> },
+  {
+    to: "/kora-participants",
+    label: "Kora participants",
+    icon: <Baby size={16} />,
+  },
   { to: "/actions", label: "Actions", icon: <SquareActivity size={16} /> },
   {
     folder: SidebarFolder.ActionPlanning,
