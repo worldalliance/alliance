@@ -6,3 +6,9 @@
 - claude:716172d2-706c-45e9-8a05-fcad0d9445d1
 - claude:24a1563d-95c5-425a-8296-213b07dbce48
 - claude:cd6393a0-b03d-43b4-9e4b-e19b05fc3f24
+- claude:ae236f69-4bcc-4c33-b6c8-f1d2c186e6ca
+- claude:2d0b21e5-4707-4ddb-b9c5-f71a1a2caa1f
+- claude:f7e47520-1a7e-45d7-905d-452ec8c88268
+- claude:007156be-9a98-4ee6-a766-268c4bc25933
+- claude:44316992-70e0-4ef5-9866-d830ce35974f
+- claude:7ba90d40-f7df-40eb-9eaf-b2b14674792c
