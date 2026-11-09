@@ -17,6 +17,7 @@ export function SlugField({
   const toast = useToast();
   const [draft, setDraft] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const cancel = () => {
     setDraft(null);
@@ -25,10 +26,12 @@ export function SlugField({
 
   const save = async (value: string) => {
     if (value === slug) return cancel();
+    setSubmitting(true);
     const result = await R.fromPromise(
       onSave(value),
       logActionError("Failed to save the slug"),
     );
+    setSubmitting(false);
     if (result.ok) cancel();
     else setError(result.error);
   };
@@ -46,10 +49,15 @@ export function SlugField({
           aria-label="Slug"
           className="w-96 border border-gray-2 rounded px-2 py-0.5 font-mono text-sm"
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={(event) => {
+            setDraft(event.target.value);
+            setError(null);
+          }}
           readOnly={saving}
           autoFocus
-          onBlur={cancel}
+          onBlur={() => {
+            if (!submitting) cancel();
+          }}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
               event.preventDefault();
