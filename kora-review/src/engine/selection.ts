@@ -1,7 +1,36 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment -- typed in the next step of the engine split */
-// @ts-nocheck
+import type { Late, SelectionCtx } from "./context.js";
+import type { TimerId } from "./runtime.js";
 
-export function createSelection(ctx) {
+type Pointer = {
+  mi: number;
+  id: number;
+  lastX: number;
+  lastY: number;
+  raf?: number | TimerId;
+};
+/** A press on a word: a tap, or a sweep once it moves or is held. */
+type Press = Pointer & {
+  handle?: undefined;
+  dy?: undefined;
+  t: number;
+  x: number;
+  y: number;
+  mouse: boolean;
+  moved: boolean;
+  sweeping: boolean;
+  timer: TimerId | null;
+};
+type HandleDrag = Pointer & {
+  handle: "start" | "end";
+  dy: number;
+  sweeping?: undefined;
+  timer?: undefined;
+};
+
+const targetEl = (e: Event) =>
+  e.target instanceof Element ? e.target : null;
+
+export function createSelection(ctx: SelectionCtx) {
   const {
     $$,
     S,
@@ -21,11 +50,12 @@ export function createSelection(ctx) {
     sheetEl,
     win,
   } = ctx;
-  const closeSheet: Late["closeSheet"] = (...args) => ctx.closeSheet(...args);
-  const openSheet: Late["openSheet"] = (...args) => ctx.openSheet(...args);
+  const closeSheet: Late["closeSheet"] = (...args) => ctx.late().closeSheet(...args);
+  const openSheet: Late["openSheet"] = (...args) => ctx.late().openSheet(...args);
 
   /* ---------- Selection ---------- */
-  function selRange() {
+  function selRange(): [number, number] {
+    if (!S.sel) throw new Error("no selection");
     const { anchor: a, focus: f } = S.sel;
     return [Math.min(a, f), Math.max(a, f)];
   }
@@ -47,6 +77,7 @@ export function createSelection(ctx) {
     $$(".handle").forEach((e) => e.remove());
   }
   function placeHandles() {
+    if (!S.sel) return;
     const v = S.views[S.sel.mi],
       [lo, hi] = selRange(),
       bub = v.bubble;
@@ -58,8 +89,8 @@ export function createSelection(ctx) {
       bRects = v.tokens[hi].el.getClientRects(),
       b = bRects[bRects.length - 1];
     if (!a || !b) return;
-    const put = (cls, x, y, ht) => {
-      let el = bub.querySelector(".handle." + cls);
+    const put = (cls: "start" | "end", x: number, y: number, ht: number) => {
+      let el = bub.querySelector<HTMLElement>(".handle." + cls);
       if (!el) {
         el = h("span", { class: "handle " + cls, "aria-hidden": "true" });
         el.addEventListener("pointerdown", (e) => onHandleDown(e, cls));
@@ -81,7 +112,7 @@ export function createSelection(ctx) {
     renderAnns();
     closeSheet();
   }
-  function newSelection(mi, t) {
+  function newSelection(mi: number, t: number) {
     S.editing = null;
     S.noteDraft = "";
     S.sel = { mi, anchor: t, focus: t };
@@ -89,12 +120,12 @@ export function createSelection(ctx) {
     renderAnns();
     renderSel();
   }
-  function annAtToken(mi, t) {
+  function annAtToken(mi: number, t: number) {
     const v = S.views[mi];
     return v && v.tokens[t] ? v.tokens[t].ann : null;
   }
   // While a selection is open it can be stretched or moved; only +1, −1, a note, ✕ or Escape closes it.
-  function onTap(mi, t) {
+  function onTap(mi: number, t: number) {
     if (S.sel) {
       if (S.sel.mi === mi) {
         const [lo, hi] = selRange();
@@ -122,14 +153,14 @@ export function createSelection(ctx) {
   }
 
   /* ---------- Pointer gestures: tap, long-press sweep, handle drag ---------- */
-  let G = null;
+  let G: Press | HandleDrag | null = null;
   on(doc, "pointerdown", (e) => {
     if (S.screen !== "review" || e.button > 0) return;
-    const tk = e.target.closest && e.target.closest(".layer:not(.locked) .tk");
+    const tk = targetEl(e)?.closest<HTMLElement>(".layer:not(.locked) .tk");
     if (!tk || !rootEl.contains(tk)) return;
-    const mi = +tk.dataset.m,
-      t = +tk.dataset.t;
-    G = {
+    const mi = Number(tk.dataset.m),
+      t = Number(tk.dataset.t);
+    const press: Press = {
       mi,
       t,
       id: e.pointerId,
@@ -142,12 +173,13 @@ export function createSelection(ctx) {
       sweeping: false,
       timer: null,
     };
-    if (G.mouse) e.preventDefault();
+    G = press;
+    if (press.mouse) e.preventDefault();
     else
-      G.timer = later(() => {
-        if (G && !G.moved) {
-          G.sweeping = true;
-          startSweep();
+      press.timer = later(() => {
+        if (G === press && !press.moved) {
+          press.sweeping = true;
+          startSweep(press);
           if (navigator.vibrate)
             try {
               navigator.vibrate(8);
@@ -166,7 +198,7 @@ export function createSelection(ctx) {
     if (Math.hypot(e.clientX - G.x, e.clientY - G.y) > 8) {
       if (G.mouse) {
         G.sweeping = true;
-        startSweep();
+        startSweep(G);
         updateDrag();
       } else {
         G.moved = true;
@@ -200,20 +232,20 @@ export function createSelection(ctx) {
     },
     { passive: false },
   );
-  function startSweep() {
-    if (!(S.sel && S.sel.mi === G.mi)) newSelection(G.mi, G.t);
+  function startSweep(g: Press) {
+    if (!(S.sel && S.sel.mi === g.mi)) newSelection(g.mi, g.t);
     else {
-      S.sel = { mi: G.mi, anchor: G.t, focus: G.t };
+      S.sel = { mi: g.mi, anchor: g.t, focus: g.t };
       renderSel();
     }
-    beginDragUI();
+    beginDragUI(g);
   }
-  function onHandleDown(e, which) {
+  function onHandleDown(e: PointerEvent, which: "start" | "end") {
     if (!S.sel) return;
     e.preventDefault();
     e.stopPropagation();
     try {
-      e.target.releasePointerCapture(e.pointerId);
+      targetEl(e)?.releasePointerCapture(e.pointerId);
     } catch {}
     const [lo, hi] = selRange();
     S.sel = {
@@ -222,7 +254,7 @@ export function createSelection(ctx) {
       focus: which === "start" ? lo : hi,
     };
     const r = S.views[S.sel.mi].tokens[S.sel.focus].el.getBoundingClientRect();
-    G = {
+    const drag: HandleDrag = {
       handle: which,
       mi: S.sel.mi,
       id: e.pointerId,
@@ -230,29 +262,30 @@ export function createSelection(ctx) {
       lastX: e.clientX,
       lastY: e.clientY,
     };
-    beginDragUI();
+    G = drag;
+    beginDragUI(drag);
   }
   const headBottom = () => {
     const hd = rootEl.querySelector(".rhead");
     return hd ? hd.getBoundingClientRect().bottom : 0;
   };
-  function beginDragUI() {
+  function beginDragUI(g: Press | HandleDrag) {
     rootEl.classList.add("dragging");
     sheetEl.classList.add("lowered");
     const loop = () => {
-      if (isDestroyed() || !G || !(G.sweeping || G.handle)) return;
+      if (isDestroyed() || G !== g || !(g.sweeping || g.handle)) return;
       const top = headBottom() + 40,
         bottom = win.innerHeight - 110;
       let d = 0;
-      if (G.lastY < top) d = -Math.min(18, (top - G.lastY) / 3);
-      else if (G.lastY > bottom) d = Math.min(18, (G.lastY - bottom) / 3);
+      if (g.lastY < top) d = -Math.min(18, (top - g.lastY) / 3);
+      else if (g.lastY > bottom) d = Math.min(18, (g.lastY - bottom) / 3);
       if (d) {
         win.scrollBy(0, d);
         updateDrag();
       }
-      G.raf = raf(loop);
+      g.raf = raf(loop);
     };
-    G.raf = raf(loop);
+    g.raf = raf(loop);
   }
   let dragEndedAt = 0;
   function endDrag() {
@@ -264,21 +297,21 @@ export function createSelection(ctx) {
       openSheet("new");
     }
   }
-  function tokenAt(x, y, mi) {
+  function tokenAt(x: number, y: number, mi: number) {
     const v = S.views[mi];
     if (!v) return null;
     const el = doc.elementFromPoint ? doc.elementFromPoint(x, y) : null;
-    if (el && el.closest) {
-      const tk = el.closest(".tk");
-      if (tk && +tk.dataset.m === mi) return +tk.dataset.t;
-      const g = el.closest(".gap");
-      if (g && +g.dataset.m === mi) {
-        const k = +g.dataset.after;
+    if (el) {
+      const tk = el.closest<HTMLElement>(".tk");
+      if (tk && Number(tk.dataset.m) === mi) return Number(tk.dataset.t);
+      const g = el.closest<HTMLElement>(".gap");
+      if (g && Number(g.dataset.m) === mi) {
+        const k = Number(g.dataset.after);
         const fwd = S.sel && S.sel.focus >= S.sel.anchor;
         return clamp(fwd ? k : k + 1, 0, v.tokens.length - 1);
       }
     }
-    let best = null,
+    let best: number | null = null,
       bd = Infinity;
     for (const tk of v.tokens) {
       const r = tk.el.getBoundingClientRect();
@@ -287,7 +320,7 @@ export function createSelection(ctx) {
       const d = dy * 4 + dx;
       if (d < bd) {
         bd = d;
-        best = +tk.el.dataset.t;
+        best = Number(tk.el.dataset.t);
       }
     }
     return best;
@@ -305,12 +338,13 @@ export function createSelection(ctx) {
     doc,
     "click",
     (e) => {
+      const target = targetEl(e);
       if (
         S.screen !== "review" ||
         !S.sel ||
-        !e.target.closest ||
-        !rootEl.contains(e.target) ||
-        !e.target.closest(".rhead button,.rfoot button,.anns button")
+        !target ||
+        !rootEl.contains(target) ||
+        !target.closest(".rhead button,.rfoot button,.anns button")
       )
         return;
       e.preventDefault();
@@ -320,16 +354,17 @@ export function createSelection(ctx) {
     true,
   );
   on(doc, "click", (e) => {
+    const target = targetEl(e);
     if (
       S.screen !== "review" ||
       !(S.sel || S.editing) ||
-      !e.target.isConnected ||
+      !target?.isConnected ||
       Date.now() - dragEndedAt < 400
     )
       return;
-    if (!rootEl.contains(e.target)) return;
+    if (!rootEl.contains(target)) return;
     if (
-      e.target.closest(".tk,.handle,.kr-sheet,.kr-toasts,.anns,.rhead,.rfoot")
+      target.closest(".tk,.handle,.kr-sheet,.kr-toasts,.anns,.rhead,.rfoot")
     )
       return;
     if (S.sel) {

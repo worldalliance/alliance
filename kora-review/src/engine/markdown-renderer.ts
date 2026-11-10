@@ -1,6 +1,6 @@
 import type { MarkdownRendererCtx } from "./context.js";
 import type { Inline } from "./markdown-parser.js";
-import type { View } from "./types.js";
+import type { Words } from "./types.js";
 
 type Segment = { text: string; index: number; word: boolean };
 
@@ -30,8 +30,8 @@ export function createMarkdownRenderer(ctx: MarkdownRendererCtx) {
     src: string,
     mi: number,
     tokenize: boolean,
-  ): View {
-    const view: View = { mi, tokens: [], gaps: {}, content: src };
+  ): Words {
+    const view: Words = { mi, tokens: [], gaps: {}, content: src };
     let blk = 0;
     const emit = (parent: HTMLElement, text: string, start: number) => {
       if (!tokenize) {
@@ -186,7 +186,7 @@ export function createMarkdownRenderer(ctx: MarkdownRendererCtx) {
     }
     return view;
   }
-  function spanText(v: View, lo: number, hi: number) {
+  function spanText(v: Words, lo: number, hi: number) {
     let s = "";
     for (let k = lo; k <= hi; k++) {
       s += v.tokens[k].text;

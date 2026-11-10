@@ -1,7 +1,10 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment -- typed in the next step of the engine split */
-// @ts-nocheck
+import type { SheetCtx } from "./context.js";
+import type { TimerId } from "./runtime.js";
+import type { SheetMode, SheetOpts } from "./types.js";
 
-export function createSheet(ctx) {
+type SheetPart = HTMLElement | HTMLElement[] | null;
+
+export function createSheet(ctx: SheetCtx) {
   const {
     $,
     S,
@@ -42,8 +45,8 @@ export function createSheet(ctx) {
 
   // The sheet stays up for NOTE_PROMPT_MS offering a note, then slides away on its own.
   const NOTE_PROMPT_MS = 2000;
-  let notePromptT = null;
-  function promptNote(id) {
+  let notePromptT: TimerId | null = null;
+  function promptNote(id: string) {
     openSheet("noteprompt", { annId: id });
     notePromptT = later(() => {
       if (
@@ -55,15 +58,20 @@ export function createSheet(ctx) {
     }, NOTE_PROMPT_MS);
   }
   /* ---------- Bottom sheet ---------- */
-  const MODAL = new Set(["confirm"]);
-  let sheetReturn = null;
-  function openSheet(mode, opts = {}) {
+  const MODAL = new Set<SheetMode>(["confirm"]);
+  let sheetReturn: HTMLElement | null = null;
+  function openSheet(mode: SheetMode, opts: SheetOpts = {}) {
     stopAdvance();
     cancel(notePromptT);
     const a = doc.activeElement;
-    if (!S.sheet && a && rootEl.contains(a) && !sheetEl.contains(a))
+    if (
+      !S.sheet &&
+      a instanceof HTMLElement &&
+      rootEl.contains(a) &&
+      !sheetEl.contains(a)
+    )
       sheetReturn = a;
-    S.sheet = Object.assign({ mode }, opts);
+    S.sheet = { mode, ...opts };
     renderSheet();
     sheetEl.hidden = false;
     scrim.hidden = !MODAL.has(mode);
@@ -77,7 +85,7 @@ export function createSheet(ctx) {
     });
     if (MODAL.has(mode) && S.mounted)
       later(() => {
-        const f = sheetEl.querySelector("button,select,textarea");
+        const f = sheetEl.querySelector<HTMLElement>("button,select,textarea");
         if (f) f.focus({ preventScroll: true });
       }, 30);
   }
@@ -97,7 +105,7 @@ export function createSheet(ctx) {
   function syncSheetH() {
     setVar("--sheet-h", S.sheet ? sheetEl.offsetHeight + "px" : "0px");
   }
-  let ro = null;
+  let ro: ResizeObserver | null = null;
   if (win.ResizeObserver) {
     ro = new win.ResizeObserver(syncSheetH);
     ro.observe(sheetEl);
@@ -117,7 +125,7 @@ export function createSheet(ctx) {
   function focusNote() {
     later(() => {
       const n = $("note");
-      if (n) {
+      if (n instanceof HTMLTextAreaElement) {
         n.focus();
         n.setSelectionRange(n.value.length, n.value.length);
       }
@@ -128,7 +136,7 @@ export function createSheet(ctx) {
   });
   const NOTE_PLACEHOLDER =
     "Tell us why you feel positive or negative about this part of the chat.";
-  function noteField(onEnter, onInput) {
+  function noteField(onEnter: (() => void) | null, onInput?: () => void) {
     const ta = h("textarea", {
       id: "note",
       maxlength: 140,
@@ -162,33 +170,25 @@ export function createSheet(ctx) {
   }
   function renderSheet() {
     if (!S.sheet) return;
-    const m = S.sheet.mode;
-    const parts =
-      m === "new"
-        ? sheetNew()
-        : m === "edit"
-          ? sheetEdit()
-          : m === "note"
-            ? sheetNote()
-            : m === "noteprompt"
-              ? sheetNotePrompt()
-              : sheetConfirmPair();
+    const sheet = SHEETS[S.sheet.mode];
     sheetIn.replaceChildren(
       h("div", { class: "grip", "aria-hidden": "true" }),
-      ...parts.flat().filter(Boolean),
+      ...sheet
+        .parts()
+        .flat()
+        .filter((p) => p !== null),
     );
-    sheetEl.setAttribute(
-      "aria-label",
-      {
-        new: "Mark selection",
-        edit: "Edit mark",
-        note: "Note",
-        noteprompt: "Add a note",
-        confirm: "Rank A vs B",
-      }[m],
-    );
+    sheetEl.setAttribute("aria-label", sheet.label);
   }
-  function sheetNew() {
+  const SHEETS: Record<SheetMode, { label: string; parts: () => SheetPart[] }> =
+    {
+      new: { label: "Mark selection", parts: sheetNew },
+      edit: { label: "Edit mark", parts: sheetEdit },
+      note: { label: "Note", parts: sheetNote },
+      noteprompt: { label: "Add a note", parts: sheetNotePrompt },
+      confirm: { label: "Rank A vs B", parts: sheetConfirmPair },
+    };
+  function sheetNew(): SheetPart[] {
     if (!S.sel) return [];
     const v = S.views[S.sel.mi],
       [lo, hi] = selRange();
@@ -237,7 +237,7 @@ export function createSheet(ctx) {
             `This replaces ${plural(over, "existing mark")}.`,
           )
         : null,
-      S.sheet.kb
+      S.sheet?.kb
         ? h(
             "p",
             { class: "sh-warn" },
@@ -266,8 +266,8 @@ export function createSheet(ctx) {
       ),
     ];
   }
-  function sheetEdit() {
-    const a = findAnn(S.editing);
+  function sheetEdit(): SheetPart[] {
+    const a = S.editing ? findAnn(S.editing) : undefined;
     if (!a) return [];
     return [
       h(
@@ -336,8 +336,8 @@ export function createSheet(ctx) {
       ),
     ];
   }
-  function sheetNotePrompt() {
-    const a = findAnn(S.sheet.annId);
+  function sheetNotePrompt(): SheetPart[] {
+    const a = sheetAnn();
     if (!a) return [];
     return [
       h(
@@ -367,8 +367,8 @@ export function createSheet(ctx) {
       ),
     ];
   }
-  function sheetNote() {
-    const a = findAnn(S.sheet.annId);
+  function sheetNote(): SheetPart[] {
+    const a = sheetAnn();
     if (!a) return [];
     return [
       h("p", { class: "sh-prev" }, `“${clip(a.text, 120)}”`),
@@ -388,6 +388,10 @@ export function createSheet(ctx) {
         ),
       ),
     ];
+  }
+  function sheetAnn() {
+    const id = S.sheet?.annId;
+    return id ? findAnn(id) : undefined;
   }
   /* ---------- Keyboard-aware sheet position on phones ---------- */
   if (win.visualViewport) {

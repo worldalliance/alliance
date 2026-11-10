@@ -1,7 +1,8 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment -- typed in the next step of the engine split */
-// @ts-nocheck
+import type { Late, ReviewCtx } from "./context.js";
+import type { Message, Result, Side, Transcript } from "./types.js";
+import { q1Parts } from "./types.js";
 
-export function createReview(ctx) {
+export function createReview(ctx: ReviewCtx) {
   const {
     $,
     $$,
@@ -34,9 +35,9 @@ export function createReview(ctx) {
     sign,
     vcls,
   } = ctx;
-  const openSheet: Late["openSheet"] = (...args) => ctx.openSheet(...args);
-  const renderAnns: Late["renderAnns"] = (...args) => ctx.renderAnns(...args);
-  const undo: Late["undo"] = (...args) => ctx.undo(...args);
+  const openSheet: Late["openSheet"] = (...args) => ctx.late().openSheet(...args);
+  const renderAnns: Late["renderAnns"] = (...args) => ctx.late().renderAnns(...args);
+  const undo: Late["undo"] = (...args) => ctx.late().undo(...args);
 
   /* ---------- Review ---------- */
   function renderReview() {
@@ -204,7 +205,7 @@ export function createReview(ctx) {
     $$(".tk.pulse").forEach((e) => e.classList.remove("pulse"));
   }
   // The scenario every pair starts from: the child's background, then the situation, then the two rules.
-  function renderContext(t) {
+  function renderContext(t: Transcript) {
     const c = t.context;
     return h(
       "section",
@@ -234,7 +235,7 @@ export function createReview(ctx) {
             "details",
             { class: "ctx-more" },
             h("summary", {}, "The situation"),
-            c.scenario.split(/\n\s*\n/).map((p) => h("p", {}, p)),
+            c.scenario.split(/\n\s*\n/).map((p: string) => h("p", {}, p)),
           )
         : null,
       h(
@@ -250,7 +251,7 @@ export function createReview(ctx) {
     );
   }
   // The child's first message is the same on both sides, so it's shown once, centred above the two chats.
-  function renderPair(t, locked) {
+  function renderPair(t: Transcript, locked: boolean) {
     const a0 = t.messages[0],
       b0 = t.messages[t.pair.na];
     const shared =
@@ -291,7 +292,13 @@ export function createReview(ctx) {
     first.classList.add("shared");
     return h("div", { class: "pair-wrap" }, first, cols);
   }
-  function renderMessage(t, m, mi, locked, who) {
+  function renderMessage(
+    t: Transcript,
+    m: Message,
+    mi: number,
+    locked: boolean,
+    who: string,
+  ) {
     const isAI = m.role === "assistant";
     const bubble = h("div", {
       class:
@@ -310,7 +317,6 @@ export function createReview(ctx) {
       bubble,
     );
     if (annotatable && view.tokens.length) {
-      view.bubble = bubble;
       // Keyboard path: a reply takes focus, and the arrow keys select words in it.
       if (!locked) {
         bubble.setAttribute("tabindex", "0");
@@ -320,24 +326,24 @@ export function createReview(ctx) {
           `${who}, turn ${aiTurn(t, mi)}. Use the left and right arrow keys to select words to mark, Shift with an arrow to extend.`,
         );
       }
-      view.list = h("ul", {
+      const list = h("ul", {
         class: "anns",
         "aria-label": `Marks on ${who}, turn ${aiTurn(t, mi)}`,
       });
-      wrap.append(view.list);
-      S.views[mi] = view;
+      wrap.append(list);
+      S.views[mi] = { ...view, bubble, list };
       bubble.addEventListener("contextmenu", (e) => e.preventDefault());
     }
     return wrap;
   }
-  let lastScore = null;
+  let lastScore: string | null = null;
   // A pair has a live score per AI: on each column's heading, and both together in the header chip.
-  function renderScore(initial) {
+  function renderScore(initial?: boolean) {
     const el = $("score");
     if (!el) return;
     const t = cur(),
       nets = sideNets(t, res(t));
-    const part = (side) => {
+    const part = (side: Side) => {
       const s = sign(nets[side].net);
       return [
         h("b", { class: "sl" }, letter(t, side)),
@@ -356,7 +362,7 @@ export function createReview(ctx) {
       h("span", { class: "dim", "aria-hidden": "true" }, "·"),
       ...part(R),
     );
-    const say = (side) => `AI ${letter(t, side)} net ${fmtNet(nets[side].net)}`;
+    const say = (side: Side) => `AI ${letter(t, side)} net ${fmtNet(nets[side].net)}`;
     el.setAttribute("aria-label", `${say(L)}, ${say(R)}`);
     for (const side of [L, R]) {
       const c = $("score-" + side);
@@ -399,9 +405,13 @@ export function createReview(ctx) {
       pairSummary(t, r),
     );
   }
-  function pairSummary(t, r) {
+  function pairSummary(t: Transcript, r: Result) {
     const j = r.answers,
-      failing = j.q1 ? other(j.q1.split("_")[1]) : null;
+      failing = j.q1 ? other(q1Parts(j.q1).side) : null;
+    const safetyLabel = (side: Side) => {
+      const v = side === "a" ? j.q0_a : j.q0_b;
+      return v ? Q0_LABEL[v] : "—";
+    };
     return h(
       "ul",
       { class: "psum" },
@@ -410,7 +420,7 @@ export function createReview(ctx) {
           "li",
           {},
           h("b", {}, `AI ${letter(t, side)}: `),
-          Q0_LABEL[j["q0_" + side]] || "—",
+          safetyLabel(side),
         ),
       ),
       failing
@@ -428,7 +438,7 @@ export function createReview(ctx) {
   }
   function updateUndo() {
     const b = $("undo");
-    if (!b) return;
+    if (!(b instanceof HTMLButtonElement)) return;
     const st = S.history[cur().id];
     b.disabled = res(cur()).status === "done" || !st || !st.length;
   }

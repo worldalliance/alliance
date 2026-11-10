@@ -266,6 +266,39 @@ describe("mountKoraReview", () => {
     expect(opts.onComplete).toHaveBeenCalledTimes(1);
   });
 
+  it("marks words from the keyboard, then flips, undoes and removes the mark", async () => {
+    mount();
+    button("Start reviewing").click();
+    await tick(10);
+    button("Got it", el.querySelector(".kr-intro")!).click();
+    await tick(1300);
+    const reply = el.querySelector<HTMLElement>('.bubble[tabindex="0"]')!;
+    reply.focus();
+    const press = (key: string, target: Element = reply) =>
+      target.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+    press("ArrowRight");
+    expect(sheet().hidden).toBe(false);
+    press("+");
+    await tick(10);
+    expect(el.querySelectorAll(".tk.pos")).toHaveLength(1);
+    expect(el.querySelectorAll(".anns .ann")).toHaveLength(1);
+
+    button("Flip").click();
+    await tick(10);
+    expect(el.querySelectorAll(".tk.pos")).toHaveLength(0);
+    expect(el.querySelectorAll(".tk.neg")).toHaveLength(1);
+
+    press("u");
+    await tick(10);
+    expect(el.querySelectorAll(".tk.pos")).toHaveLength(1);
+
+    button("Remove").click();
+    await tick(10);
+    expect(el.querySelectorAll(".tk.pos,.tk.neg")).toHaveLength(0);
+    await handle!.flush();
+    expect(saves.at(-1)!.results[0]!.annotations).toEqual([]);
+  });
+
   it("warns before a sensitive pair, and records skipping it or its whole category", async () => {
     mount({ assignment: assignment(["SAMPLE-03", "SAMPLE-04", "SAMPLE-05"]) });
     button("Start reviewing").click();

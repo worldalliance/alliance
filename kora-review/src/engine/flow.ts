@@ -28,16 +28,16 @@ export function createFlow(ctx: FlowCtx) {
     rootEl,
     win,
   } = ctx;
-  const closeSheet: Late["closeSheet"] = (...args) => ctx.closeSheet(...args);
-  const needsWarning: Late["needsWarning"] = (...args) => ctx.needsWarning(...args);
-  const openSheet: Late["openSheet"] = (...args) => ctx.openSheet(...args);
-  const renderExit: Late["renderExit"] = (...args) => ctx.renderExit(...args);
-  const renderFinish: Late["renderFinish"] = (...args) => ctx.renderFinish(...args);
-  const renderProfile: Late["renderProfile"] = (...args) => ctx.renderProfile(...args);
-  const renderQueue: Late["renderQueue"] = (...args) => ctx.renderQueue(...args);
-  const renderReview: Late["renderReview"] = (...args) => ctx.renderReview(...args);
-  const renderWarning: Late["renderWarning"] = (...args) => ctx.renderWarning(...args);
-  const renderWelcome: Late["renderWelcome"] = (...args) => ctx.renderWelcome(...args);
+  const closeSheet: Late["closeSheet"] = (...args) => ctx.late().closeSheet(...args);
+  const needsWarning: Late["needsWarning"] = (...args) => ctx.late().needsWarning(...args);
+  const openSheet: Late["openSheet"] = (...args) => ctx.late().openSheet(...args);
+  const renderExit: Late["renderExit"] = (...args) => ctx.late().renderExit(...args);
+  const renderFinish: Late["renderFinish"] = (...args) => ctx.late().renderFinish(...args);
+  const renderProfile: Late["renderProfile"] = (...args) => ctx.late().renderProfile(...args);
+  const renderQueue: Late["renderQueue"] = (...args) => ctx.late().renderQueue(...args);
+  const renderReview: Late["renderReview"] = (...args) => ctx.late().renderReview(...args);
+  const renderWarning: Late["renderWarning"] = (...args) => ctx.late().renderWarning(...args);
+  const renderWelcome: Late["renderWelcome"] = (...args) => ctx.late().renderWelcome(...args);
 
   const changed = () => {
     if (!isDestroyed() && S.mounted) o.onChange();

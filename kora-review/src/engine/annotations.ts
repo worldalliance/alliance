@@ -1,7 +1,7 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment -- typed in the next step of the engine split */
-// @ts-nocheck
+import type { AnnotationsCtx, Late } from "./context.js";
+import type { Annotation, Result } from "./types.js";
 
-export function createAnnotations(ctx) {
+export function createAnnotations(ctx: AnnotationsCtx) {
   const {
     S,
     announce,
@@ -30,12 +30,12 @@ export function createAnnotations(ctx) {
     updateUndo,
     vcls,
   } = ctx;
-  const closeSheet: Late["closeSheet"] = (...args) => ctx.closeSheet(...args);
-  const focusNote: Late["focusNote"] = (...args) => ctx.focusNote(...args);
-  const openSheet: Late["openSheet"] = (...args) => ctx.openSheet(...args);
-  const promptNote: Late["promptNote"] = (...args) => ctx.promptNote(...args);
-  const renderSel: Late["renderSel"] = (...args) => ctx.renderSel(...args);
-  const selRange: Late["selRange"] = (...args) => ctx.selRange(...args);
+  const closeSheet: Late["closeSheet"] = (...args) => ctx.late().closeSheet(...args);
+  const focusNote: Late["focusNote"] = (...args) => ctx.late().focusNote(...args);
+  const openSheet: Late["openSheet"] = (...args) => ctx.late().openSheet(...args);
+  const promptNote: Late["promptNote"] = (...args) => ctx.late().promptNote(...args);
+  const renderSel: Late["renderSel"] = (...args) => ctx.late().renderSel(...args);
+  const selRange: Late["selRange"] = (...args) => ctx.late().selRange(...args);
 
   function renderAnns() {
     if (S.screen !== "review") return;
@@ -143,12 +143,12 @@ export function createAnnotations(ctx) {
     }
   }
   /* ---------- Mutations + undo ---------- */
-  function pushHist(tid, anns) {
+  function pushHist(tid: string, anns: Annotation[]) {
     const st = (S.history[tid] ||= []);
     st.push(clone(anns));
     if (st.length > 200) st.shift();
   }
-  function mutate(fn) {
+  function mutate(fn: (r: Result) => void) {
     const t = cur(),
       r = ensure(t);
     if (r.status === "done") return;
@@ -163,10 +163,11 @@ export function createAnnotations(ctx) {
   }
   function undo() {
     const t = cur(),
-      r = res(t),
-      st = S.history[t.id];
-    if (r.status === "done" || !st || !st.length) return;
-    r.annotations = st.pop();
+      r = res(t);
+    if (r.status === "done") return;
+    const previous = S.history[t.id]?.pop();
+    if (!previous) return;
+    r.annotations = previous;
     recompute(r);
     changed();
     S.sel = null;
@@ -178,12 +179,12 @@ export function createAnnotations(ctx) {
     updateUndo();
     toast("Undone");
   }
-  function overlapping(mi, s, e) {
+  function overlapping(mi: number, s: number, e: number) {
     return res(cur()).annotations.filter(
       (a) => a.messageIndex === mi && !a.orphaned && a.start < e && s < a.end,
     );
   }
-  function applyNew(v) {
+  function applyNew(v: Annotation["value"]) {
     if (!S.sel) return;
     const note = S.noteDraft.trim().slice(0, 140);
     if (!v && !note) {
@@ -193,7 +194,7 @@ export function createAnnotations(ctx) {
     const view = S.views[S.sel.mi],
       [lo, hi] = selRange();
     const kb = S.sheet && S.sheet.kb;
-    const ann = {
+    const ann: Annotation = {
       id: newId(),
       messageIndex: S.sel.mi,
       start: view.tokens[lo].start,
@@ -233,7 +234,7 @@ export function createAnnotations(ctx) {
     if (v < 0 && !note && isFirstMinus(ann)) promptNote(ann.id);
   }
   // The first −1 per AI is the one that seeds the lock-in reason, so it's worth a nudge to say why.
-  function isFirstMinus(ann) {
+  function isFirstMinus(ann: Annotation) {
     const t = cur(),
       side = sideOf(t, ann.messageIndex);
     return !res(t).annotations.some(
@@ -244,7 +245,7 @@ export function createAnnotations(ctx) {
         sideOf(t, a.messageIndex) === side,
     );
   }
-  function editNote(id) {
+  function editNote(id: string) {
     const a = findAnn(id);
     if (!a) return;
     S.sel = null;
@@ -255,8 +256,13 @@ export function createAnnotations(ctx) {
     openSheet("note", { annId: id });
     focusNote();
   }
-  const findAnn = (id) => res(cur()).annotations.find((a) => a.id === id);
-  function openEdit(id) {
+  function annIn(r: Result, id: string) {
+    const a = r.annotations.find((z) => z.id === id);
+    if (!a) throw new Error(`no annotation ${id}`);
+    return a;
+  }
+  const findAnn = (id: string) => res(cur()).annotations.find((a) => a.id === id);
+  function openEdit(id: string) {
     const a = findAnn(id);
     S.sel = null;
     S.editing = id;
@@ -266,27 +272,27 @@ export function createAnnotations(ctx) {
     openSheet("edit");
   }
   // Saves the edit sheet's note box if it changed. An emptied neutral note keeps its old text, since a note is all it is.
-  function commitNote(id) {
+  function commitNote(id: string) {
     const a = findAnn(id);
     if (!a) return;
     const note = S.noteDraft.trim().slice(0, 140);
     if (note === (a.note || "") || (!note && !a.value)) return;
     mutate((r) => {
-      const x = r.annotations.find((z) => z.id === id);
+      const x = annIn(r, id);
       if (note) x.note = note;
       else delete x.note;
     });
   }
-  function flip(id) {
+  function flip(id: string) {
     const a = findAnn(id);
     if (!a) return;
-    setValue(id, -a.value, `Flipped to ${fmt(-a.value)}`);
+    const to = a.value === 1 ? -1 : a.value === -1 ? 1 : 0;
+    setValue(id, to, `Flipped to ${fmt(to)}`);
   }
-  function setValue(id, to, msg) {
+  function setValue(id: string, to: Annotation["value"], msg?: string) {
     if (S.sheet && S.sheet.mode === "edit") commitNote(id);
     mutate((r) => {
-      const x = r.annotations.find((z) => z.id === id);
-      x.value = to;
+      annIn(r, id).value = to;
     });
     S.editing = null;
     S.noteDraft = "";
@@ -296,7 +302,7 @@ export function createAnnotations(ctx) {
   }
   // Tapping away doesn't drop an open selection (only ✕ or Escape does): it points at the choices instead.
   function nudgeChoice() {
-    const acts = sheetEl.querySelector(".sh-acts");
+    const acts = sheetEl.querySelector<HTMLElement>(".sh-acts");
     if (acts) {
       acts.classList.remove("nudge");
       void acts.offsetWidth;
@@ -304,7 +310,7 @@ export function createAnnotations(ctx) {
     }
     toast("Pick +1, −1, a note, or ✕ to cancel");
   }
-  function removeAnn(id) {
+  function removeAnn(id: string) {
     const a = findAnn(id);
     if (!a) return;
     S.noteDraft = "";
@@ -317,11 +323,11 @@ export function createAnnotations(ctx) {
     toast(`Removed ${fmt(a.value)}`, undo);
   }
   function saveNote() {
-    const { annId } = S.sheet;
-    if (!findAnn(annId)) return;
+    const annId = S.sheet?.annId;
+    if (!annId || !findAnn(annId)) return;
     const note = S.noteDraft.trim().slice(0, 140);
     mutate((r) => {
-      const x = r.annotations.find((z) => z.id === annId);
+      const x = annIn(r, annId);
       if (note) x.note = note;
       else delete x.note;
     });

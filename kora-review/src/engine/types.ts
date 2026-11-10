@@ -89,13 +89,15 @@ export type Token = {
 };
 
 /** One rendered message's words, for selecting and marking them. */
-export type View = {
+export type Words = {
   mi: number;
   tokens: Token[];
   gaps: Record<number, HTMLElement[]>;
   content: string;
-  bubble?: HTMLElement;
 };
+
+/** A reply on the review screen, with its bubble and its list of marks. */
+export type View = Words & { bubble: HTMLElement; list: HTMLElement };
 
 /** Token indexes within one message. */
 export type Selection = { mi: number; anchor: number; focus: number };

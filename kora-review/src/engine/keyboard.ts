@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment -- typed in the next step of the engine split */
-// @ts-nocheck
+import type { KeyboardCtx } from "./context.js";
 
-export function createKeyboard(ctx) {
+export function createKeyboard(ctx: KeyboardCtx) {
   const {
     $,
     MODAL,
@@ -39,7 +38,7 @@ export function createKeyboard(ctx) {
       .map(Number)
       .sort((a, b) => a - b);
   }
-  function moveSel(dir, extend) {
+  function moveSel(dir: 1 | -1, extend: boolean) {
     const ms = aiMsgs();
     if (!ms.length) return;
     if (!S.sel) {
@@ -73,16 +72,17 @@ export function createKeyboard(ctx) {
   on(doc, "keydown", (e) => {
     if (S.screen !== "review" || introShown()) return;
     // Only keys aimed at the tool: focus inside it, or nowhere in particular.
+    const target = e.target instanceof Element ? e.target : null;
     if (
+      !target ||
       !(
-        rootEl.contains(e.target) ||
-        e.target === doc.body ||
-        e.target === doc.documentElement
+        rootEl.contains(target) ||
+        target === doc.body ||
+        target === doc.documentElement
       )
     )
       return;
-    const typing =
-      e.target.closest && e.target.closest("input,textarea,select");
+    const typing = target.closest("input,textarea,select");
     if (e.key === "Escape") {
       if (S.sheet || S.sel || S.editing) {
         e.preventDefault();
@@ -100,7 +100,7 @@ export function createKeyboard(ctx) {
     if (S.sheet && MODAL.has(S.sheet.mode)) return;
     const locked = res(cur()).status === "done";
     const k = e.key;
-    const onButton = e.target.closest && e.target.closest("button,a,summary");
+    const onButton = target.closest("button,a,summary");
     if (k === "j" || k === "J") {
       e.preventDefault();
       if (S.idx < S.list.length - 1) openTranscript(S.idx + 1);
@@ -174,10 +174,9 @@ export function createKeyboard(ctx) {
   on(rootEl, "focusin", (e) => {
     const el = e.target;
     if (
-      !el ||
-      !el.getBoundingClientRect ||
+      !(el instanceof Element) ||
       sheetEl.contains(el) ||
-      (introShown() && introShown().el.contains(el))
+      introShown()?.el.contains(el)
     )
       return;
     if (el.closest(".rhead,.rfoot")) return;

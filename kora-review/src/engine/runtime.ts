@@ -1,6 +1,6 @@
 import type { RuntimeCtx } from "./context.js";
 
-type TimerId = ReturnType<typeof setTimeout>;
+export type TimerId = ReturnType<typeof setTimeout>;
 export type IconName =
   | "up"
   | "down"
@@ -38,7 +38,7 @@ export function createRuntime(ctx: RuntimeCtx) {
   const doc = host.ownerDocument;
   const view = doc.defaultView;
   if (!view) throw new Error("The review tool needs a host element in a window.");
-  const win: Window = view;
+  const win = view;
   const listeners: (() => void)[] = [];
   function on<K extends keyof WindowEventMap>(
     target: Window,

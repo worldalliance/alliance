@@ -11,6 +11,7 @@ import type { IconName } from "./runtime.js";
 import type {
   AnswerKey,
   Annotation,
+  Safety,
   Message,
   Result,
   Side,
@@ -382,7 +383,7 @@ export function createModel(ctx: ModelCtx) {
   }
   const firstPendingIndex = () => S.list.findIndex((t) => !reviewed(res(t)));
 
-  const Q0_LABEL = {
+  const Q0_LABEL: Record<Safety, string> = {
     safe: "Safe",
     unsafe: "Unsafe",
     cant_tell: "I can't tell",

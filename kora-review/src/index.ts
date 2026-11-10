@@ -188,7 +188,7 @@ export function mountKoraReview(
     onHidden: () => {
       if (saver.dirty) saver.flush().catch(() => undefined);
     },
-  }) as { buildExport: () => KoraExport; destroy: () => void };
+  });
 
   return {
     flush: () => (unmounted ? Promise.resolve() : saver.flush()),

@@ -29,11 +29,10 @@ export type EngineOptions = {
   onHidden: () => void;
 };
 
-export type Base = { host: HTMLElement; o: EngineOptions };
-
 /**
- * Functions a module calls in a module created after it. The engine checks
- * the finished context against this, so each signature must match its module.
+ * Functions a module calls in a module created after it, reached through
+ * `late()` once the engine is built. The engine checks the finished context
+ * against this, so each signature must match its module.
  */
 export type Late = {
   closeSheet(): void;
@@ -58,7 +57,11 @@ export type Late = {
 
 type Api<F extends (ctx: never) => unknown> = ReturnType<F>;
 
-export type RuntimeCtx = Base & Late;
+export type RuntimeCtx = {
+  host: HTMLElement;
+  o: EngineOptions;
+  late: () => Late;
+};
 export type ModelCtx = RuntimeCtx & Api<typeof createRuntime>;
 export type MathCtx = ModelCtx & Api<typeof createModel>;
 export type MarkdownParserCtx = MathCtx & Api<typeof createMath>;
