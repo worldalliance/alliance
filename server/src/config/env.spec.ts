@@ -1,4 +1,7 @@
-import { deployedConfigFor } from "@alliance/common/deployed-config";
+import {
+  deployedConfigFor,
+  developmentEnv,
+} from "@alliance/common/deployed-config";
 import { NodeEnv } from "@alliance/common/node-env";
 import { afterEach, describe, expect, it } from "bun:test";
 import { env, requireEnv, validateServerEnv } from "./env";
@@ -47,8 +50,6 @@ const development = {
   ADMIN_USER: "admin@example.com",
   ADMIN_PASSWORD: "password",
   DB_PORT: "5432",
-  AWS_REGION: "us-west-2",
-  PANGRAM_API_URL: "https://pangram.example.com",
 };
 
 const deployed = {
@@ -172,15 +173,17 @@ describe("validateServerEnv", () => {
   ]);
   const uncommitted = (config: Record<string, string>) =>
     Object.fromEntries(
-      Object.entries(config).filter(([key]) => !committed.has(key)),
+      Object.entries(config).filter(([key]) =>
+        config.NODE_ENV === "development"
+          ? !(key in developmentEnv)
+          : !committed.has(key),
+      ),
     );
 
   it("requires each environment's keys, less what the committed config sets", () => {
     for (const [NODE_ENV, config] of Object.entries(complete)) {
-      const supplied =
-        NODE_ENV === "development" ? config : uncommitted(config);
       expect(problems({ ...base, NODE_ENV }).sort()).toEqual(
-        Object.keys(supplied)
+        Object.keys(uncommitted(config))
           .filter((key) => !(key in base))
           .map((key) => `${key}: missing`)
           .sort(),

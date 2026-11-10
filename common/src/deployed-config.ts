@@ -107,6 +107,20 @@ export function domainMove(
       };
 }
 
+/** Non-secret development settings, which a non-blank environment variable overrides. */
+export const developmentEnv = {
+  APPLE_TEAM_ID: shared.APPLE_TEAM_ID,
+  APPLE_KEY_ID: shared.APPLE_KEY_ID,
+  APPLE_SERVICES_ID: shared.APPLE_SERVICES_ID,
+  APPLE_BUNDLE_ID: deployedConfig[NodeEnv.Production].APPLE_BUNDLE_ID.join(","),
+  GOOGLE_CLIENT_ID: shared.GOOGLE_CLIENT_ID,
+  MAIL_FROM: shared.MAIL_FROM,
+  SMTP_HOST: "smtp.mailgun.org",
+  POSTHOG_KEY: "phc_9SGaaNrCkymPO9uVEKnjgv6IAZkzg4Fhv4xC0CJACOR",
+  POSTHOG_PROJECT_ID: "188181",
+  ASSETS_BUCKET: "alliance-assets-dev-32a7c624",
+};
+
 export function deployedConfigFor<E extends NodeEnv>(
   nodeEnv: E,
 ): (typeof deployedConfig)[E] {

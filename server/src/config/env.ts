@@ -1,6 +1,7 @@
 import {
   deployedConfigEnv,
   deployedConfigFor,
+  developmentEnv,
 } from "@alliance/common/deployed-config";
 import {
   envWithFallback,
@@ -96,7 +97,14 @@ const rdsCaBundle = readFileSync(
   "utf8",
 );
 
+// A plain annotation skips excess-key checks on a named object, so a
+// misspelled developmentEnv key would compile and be ignored.
+const developmentCommitted: {
+  [K in keyof typeof developmentEnv]: K extends ServerEnvKey ? string : never;
+} = developmentEnv;
+
 function committedEnv(nodeEnv: NodeEnv): Partial<Record<ServerEnvKey, string>> {
+  if (nodeEnv === NodeEnv.Development) return developmentCommitted;
   const config = deployedConfigFor(nodeEnv);
   if (!config) return {};
   const { DOMAIN_NAME, ALT_DOMAIN_NAME, ...committed } =
@@ -129,8 +137,8 @@ const committedSource = (key: ServerEnvKey) =>
     fallback: { [key]: committedByEnv.get(process.env.NODE_ENV)?.[key] },
   });
 
-/** Reads `process.env` on every call, so a value a test sets is seen. In
- * staging and production, the committed config fills what it leaves unset. */
+/** Reads `process.env` on every call, so a value a test sets is seen. Outside
+ * tests, the committed config fills what it leaves unset. */
 export function env<K extends ServerEnvKey>(
   key: K,
 ): z.output<(typeof fields)[K]> {
@@ -205,7 +213,6 @@ const setFor: Record<NodeEnv, readonly ServerEnvKey[]> = {
     "APPLE_SERVICES_ID",
     "APPLE_TEAM_ID",
     "ASSETS_BUCKET",
-    "AWS_REGION",
     "DB_PASSWORD",
     "DB_PORT",
     "EXPO_ACCESS_TOKEN",
@@ -214,7 +221,6 @@ const setFor: Record<NodeEnv, readonly ServerEnvKey[]> = {
     "MAIL_FROM",
     "MAILGUN_SIGNING_KEY",
     "PANGRAM_API_KEY",
-    "PANGRAM_API_URL",
     "POSTHOG_KEY",
     "POSTHOG_PROJECT_ID",
     "POSTHOG_QUERY_KEY",
