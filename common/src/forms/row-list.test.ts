@@ -350,9 +350,9 @@ describe("memberSchema", () => {
     });
   });
 
-  it("leaves a form without a list untouched", () => {
+  it("leaves a form without a list unfilled", () => {
     const plain = formFor({ rowList: undefined });
-    expect(memberSchema(plain, { assignedRow: null, userId: null })).toBe(
+    expect(memberSchema(plain, { assignedRow: null, userId: null })).toEqual(
       plain,
     );
   });

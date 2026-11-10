@@ -96,7 +96,7 @@ export class FormSnapshotService {
     /** As TasksService.getForm serves it: contracts filled in, which the history fallback does not rebuild. */
     form: Form;
     dto: { formSnapshotId?: number; schemaSnapshot?: Record<string, unknown> };
-    /** Who was served the schema filled from their row. */
+    /** Who was served the schema filled from their row and narrowed to their content. */
     member: SchemaMember;
   }) {
     if (dto.formSnapshotId !== undefined) {
@@ -114,8 +114,7 @@ export class FormSnapshotService {
     const echoedHash = hashFormSchema(echoed);
     if (
       echoedHash === hashFormSchema(served.schema) ||
-      (member.assignedRow !== null &&
-        echoedHash === hashFormSchema(memberSnapshot(served, member).schema))
+      echoedHash === hashFormSchema(memberSnapshot(served, member).schema)
     ) {
       return served;
     }
@@ -128,8 +127,8 @@ export class FormSnapshotService {
 
   // Snapshot rows never change, so a snapshot's served hash is computed once.
   private readonly servedHashes = new Map<number, string>();
-  // Snapshots whose served schema memberSchema changes; a miss reloads only
-  // these to hash them as served to the member.
+  // Snapshots whose served schema memberSchema changes, by row or per-member
+  // content; a miss reloads only these to hash them as served to the member.
   private readonly memberDependent = new Set<number>();
 
   /** A legacy client echoes the schema getForm served, media rewrites

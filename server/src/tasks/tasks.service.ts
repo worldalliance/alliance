@@ -171,22 +171,21 @@ export class TasksService {
   }
 
   /**
-   * The form as `userId` is served it: for a form with a row list, filled from
-   * their row, which is assigned on their first fetch. Members only.
+   * The form as `userId` is served it: holding only their per-member content,
+   * and for a form with a row list, filled from their row, which is assigned on
+   * their first fetch. A guest is refused only a form with a row list.
    */
   async getMemberForm(formId: number, userId: number | null): Promise<Form> {
     const form = await this.getForm(formId);
-    if (formSchemaOf(loadedFormSnapshot(form)).rowList === undefined) {
-      return form;
-    }
-    if (userId === null) {
+    const snapshot = loadedFormSnapshot(form);
+    if (userId === null && formSchemaOf(snapshot).rowList !== undefined) {
       throw new ForbiddenException("Sign in to open this form");
     }
-    const row = await this.formRowAssignmentService.memberRow(form, userId);
-    form.formSnapshot = memberSnapshot(loadedFormSnapshot(form), {
-      assignedRow: row,
-      userId,
-    });
+    const assignedRow =
+      userId === null
+        ? null
+        : await this.formRowAssignmentService.memberRow(form, userId);
+    form.formSnapshot = memberSnapshot(snapshot, { assignedRow, userId });
     return form;
   }
 
