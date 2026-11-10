@@ -1,3 +1,7 @@
+import { KORA_PROJECT_PATH } from "@alliance/common/kora";
+import { R } from "@alliance/common/result";
+import { GoogleOAuthClient } from "src/auth/oauth/google-oauth.client";
+import type { OAuthProfile } from "src/auth/oauth/oauth-client";
 import { KoraModule } from "src/kora/kora.module";
 import request from "supertest";
 import type TestAgent from "supertest/lib/agent";
@@ -30,6 +34,8 @@ export type KoraHarness = {
     contact: Contact,
     name?: string,
   ) => Promise<{ id: string; name: string }>;
+  /** Abandons this browser's code and any signup awaiting a name. */
+  backOut: (browser: TestAgent) => Promise<unknown>;
   skipResendWait: () => Promise<void>;
   failDelivery: () => void;
 };
@@ -70,8 +76,30 @@ export async function koraHarness(): Promise<KoraHarness> {
       await harness.verified(browser, contact);
       return (await harness.signup(browser, { name }).expect(200)).body;
     },
+    backOut: (browser) =>
+      browser.delete("/kora/code").set("Origin", ORIGIN).expect(204),
     skipResendWait: () => skipResendWait(ctx),
     failDelivery: sent.failDelivery,
   };
   return harness;
+}
+
+/** Google returns whatever `profileOf` gives at callback time. */
+export function stubGoogle(ctx: TestContext, profileOf: () => OAuthProfile) {
+  const google = ctx.app.get(GoogleOAuthClient);
+  google.authorizationUrl = ({ state }) =>
+    `https://consent.example.com/?state=${state}`;
+  google.exchangeCode = () => Promise.resolve(R.success(profileOf()));
+}
+
+export async function signInWithGoogle(browser: TestAgent): Promise<void> {
+  const started = await browser
+    .get("/kora/google/start")
+    .query({ returnTo: `${ORIGIN}${KORA_PROJECT_PATH}` })
+    .expect(302);
+  const state = new URL(started.headers.location).searchParams.get("state");
+  await browser
+    .get("/kora/google/callback")
+    .query({ code: "code", state: String(state) })
+    .expect(302);
 }

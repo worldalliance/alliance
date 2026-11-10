@@ -28,6 +28,9 @@ import {
 const PHYSICALLY_DELETED = [
   "AiDetectionResult",
   "Cluster",
+  "KoraAbandonedSignup",
+  "KoraParticipant",
+  "KoraParticipantOAuthIdentity",
   "KoraParticipantSession",
   "KoraParticipantSignup",
   "NotificationPreference",
@@ -40,12 +43,7 @@ const PHYSICALLY_DELETED = [
 ];
 
 /** Rows no code deletes, which therefore need no deletedAt. */
-const NEVER_DELETED = [
-  "EditableContent",
-  "FormRowAssignment",
-  "KoraParticipant",
-  "KoraParticipantOAuthIdentity",
-];
+const NEVER_DELETED = ["EditableContent", "FormRowAssignment"];
 
 describe("softDeleteCascade (e2e)", () => {
   let ctx: TestContext;

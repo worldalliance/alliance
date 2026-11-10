@@ -5287,6 +5287,45 @@ export type CompleteKoraSignupDto = {
     name: string;
 };
 
+export type KoraAdminParticipantDto = {
+    id: string;
+    name: string;
+    email: string | null;
+    /**
+     * E.164
+     */
+    phoneNumber: string | null;
+    timeZone: string | null;
+    createdAt: string;
+    /**
+     * Providers connected besides the contact's own code
+     */
+    providers: Array<OAuthProvider>;
+};
+
+export type KoraAdminAbandonedSignupDto = {
+    id: string;
+    channel: OtpChannel;
+    /**
+     * The email address or E.164 mobile number
+     */
+    destination: string;
+    /**
+     * Set when a provider, not a code, verified the contact
+     */
+    provider: OAuthProvider | null;
+    verifiedAt: string;
+    /**
+     * The contact has since become a participant
+     */
+    recovered: boolean;
+};
+
+export type KoraAdminOverviewDto = {
+    participants: Array<KoraAdminParticipantDto>;
+    abandonedSignups: Array<KoraAdminAbandonedSignupDto>;
+};
+
 export type HeyApiError = {
     statusCode: number;
     message: string | Array<string>;
@@ -16164,6 +16203,80 @@ export type KoraOAuthCallbackFormResponses = {
 };
 
 export type KoraOAuthCallbackFormResponse = KoraOAuthCallbackFormResponses[keyof KoraOAuthCallbackFormResponses];
+
+export type KoraAdminOverviewData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/participants';
+};
+
+export type KoraAdminOverviewErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminOverviewError = KoraAdminOverviewErrors[keyof KoraAdminOverviewErrors];
+
+export type KoraAdminOverviewResponses = {
+    200: KoraAdminOverviewDto;
+};
+
+export type KoraAdminOverviewResponse = KoraAdminOverviewResponses[keyof KoraAdminOverviewResponses];
+
+export type KoraAdminDeleteParticipantData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/participants/{id}';
+};
+
+export type KoraAdminDeleteParticipantErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminDeleteParticipantError = KoraAdminDeleteParticipantErrors[keyof KoraAdminDeleteParticipantErrors];
+
+export type KoraAdminDeleteParticipantResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type KoraAdminDeleteParticipantResponse = KoraAdminDeleteParticipantResponses[keyof KoraAdminDeleteParticipantResponses];
+
+export type KoraAdminDeleteAbandonedSignupData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/abandoned-signups/{id}';
+};
+
+export type KoraAdminDeleteAbandonedSignupErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminDeleteAbandonedSignupError = KoraAdminDeleteAbandonedSignupErrors[keyof KoraAdminDeleteAbandonedSignupErrors];
+
+export type KoraAdminDeleteAbandonedSignupResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type KoraAdminDeleteAbandonedSignupResponse = KoraAdminDeleteAbandonedSignupResponses[keyof KoraAdminDeleteAbandonedSignupResponses];
 
 export type ClientOptions = {
     baseUrl: string;

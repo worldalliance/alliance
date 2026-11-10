@@ -21,7 +21,6 @@ import {
   type EntityManager,
   type FindOptionsWhere,
   IsNull,
-  LessThan,
   MoreThan,
 } from "typeorm";
 import { KoraParticipantOAuthIdentity } from "./entities/kora-participant-oauth-identity.entity";
@@ -303,14 +302,60 @@ export class KoraParticipantService {
   async forgetSignup(req: Request, res: Response): Promise<void> {
     const signupToken = readCookie(req, KoraCookie.Signup);
     if (signupToken) {
-      await this.signups.delete({ tokenHash: hashToken(signupToken) });
+      await this.abandonSignups({ tokenHash: hashToken(signupToken) });
     }
     clearCookie(res, KoraCookie.Signup);
   }
 
   @Cron(CronExpression.EVERY_HOUR)
   async forgetExpiredSignups(): Promise<void> {
-    await this.signups.delete({ expiresAt: LessThan(new Date()) });
+    await this.abandonSignups({ expiredBefore: new Date() });
+  }
+
+  /**
+   * Ends the signups, recording each of their contacts as abandoned unless,
+   * when the signup ended (its expiry, or now), the contact had a participant
+   * or a newer signup open.
+   */
+  private async abandonSignups(
+    ended: { tokenHash: string } | { expiredBefore: Date },
+  ): Promise<void> {
+    const [where, value] =
+      "tokenHash" in ended
+        ? [`"tokenHash" = $1`, ended.tokenHash]
+        : [`"expiresAt" < $1`, ended.expiredBefore];
+    // The CTE's deleted rows stay visible to the rest of the statement, so the
+    // open-signup check also sees signups this run ended, skipping only the one
+    // being judged.
+    await this.dataSource.query(
+      `WITH ended AS (
+         DELETE FROM "kora_participant_signup" WHERE ${where}
+         RETURNING "tokenHash", "channel", "destination", "provider", "createdAt",
+           LEAST("expiresAt", now()) AS "endedAt"
+       )
+       INSERT INTO "kora_abandoned_signup" ("channel", "destination", "provider", "verifiedAt")
+       SELECT DISTINCT ON (e."channel", e."destination")
+         e."channel", e."destination", e."provider", e."createdAt"
+       FROM ended e
+       WHERE NOT EXISTS (
+         SELECT 1 FROM "kora_participant" p
+         WHERE ((e."channel" = $2 AND p."email" = e."destination")
+            OR (e."channel" = $3 AND p."phoneNumber" = e."destination"))
+           AND p."createdAt" <= e."endedAt"
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM "kora_participant_signup" s
+         WHERE s."channel" = e."channel" AND s."destination" = e."destination"
+           AND s."tokenHash" <> e."tokenHash"
+           AND s."createdAt" >= e."createdAt"
+           AND s."createdAt" <= e."endedAt"
+       )
+       ORDER BY e."channel", e."destination", e."createdAt" DESC
+       ON CONFLICT ("channel", "destination") DO UPDATE
+         SET "provider" = EXCLUDED."provider", "verifiedAt" = EXCLUDED."verifiedAt"
+         WHERE "kora_abandoned_signup"."verifiedAt" < EXCLUDED."verifiedAt"`,
+      [value, OtpChannel.Email, OtpChannel.Sms],
+    );
   }
 
   private async openSignup(params: {

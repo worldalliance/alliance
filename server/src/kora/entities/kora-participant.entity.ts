@@ -27,6 +27,7 @@ export class KoraParticipant {
 
   @Index({ unique: true })
   @Column({ type: "citext", nullable: true })
+  @ApiProperty({ type: String, nullable: true })
   email: string | null;
 
   @Index({ unique: true })
@@ -35,14 +36,17 @@ export class KoraParticipant {
     nullable: true,
     transformer: phoneNumberTransformer,
   })
+  @ApiProperty({ type: String, nullable: true, description: "E.164" })
   phoneNumber: string | null;
 
   @Column({ type: "varchar", nullable: true })
+  @ApiProperty({ type: String, nullable: true })
   timeZone: string | null;
 
   @Column({ type: "timestamptz" })
   contactVerifiedAt: Date;
 
   @CreateDateColumnTz()
+  @ApiProperty({ type: Date })
   createdAt: Date;
 }

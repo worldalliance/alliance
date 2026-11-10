@@ -6,6 +6,7 @@ export default [
     layout("sidebar.tsx", [
       route("/projects", "pages/ProjectsPage.tsx"),
       route("/projects/:projectId", "pages/ProjectDetailPage.tsx"),
+      route("/kora-participants", "pages/KoraParticipantsPage.tsx"),
       route(
         "/projects/:projectId/action/:actionId",
         "pages/ProjectActionPage.tsx",
