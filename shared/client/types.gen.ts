@@ -5384,6 +5384,54 @@ export type KoraTranscriptPreviewDto = {
     contentHash: string;
 };
 
+export type KoraReviewPhase = 'reviewing' | 'finished' | 'none_left' | 'not_active';
+
+export type KoraReviewAssignmentDto = {
+    /**
+     * The batchId the review tool echoes
+     */
+    id: string;
+    /**
+     * Requested after finishing an earlier one
+     */
+    extra: boolean;
+    transcripts: Array<KoraTranscriptPreviewDto>;
+    savedExport: {
+        [key: string]: unknown;
+    } | null;
+};
+
+export type KoraReviewStateDto = {
+    phase: KoraReviewPhase;
+    /**
+     * Opaque; the only identity the tool sees
+     */
+    reviewerId: string;
+    collectProfile: boolean;
+    /**
+     * Has finished at least one assignment
+     */
+    reviewed: boolean;
+    /**
+     * Reviews finished in extra assignments
+     */
+    extraReviews: number;
+    assignment?: KoraReviewAssignmentDto;
+};
+
+export type SaveKoraExportDto = {
+    export: {
+        [key: string]: unknown;
+    };
+};
+
+export type KoraExportSavedDto = {
+    /**
+     * Every transcript is done or opted out
+     */
+    completed: boolean;
+};
+
 export type HeyApiError = {
     statusCode: number;
     message: string | Array<string>;
@@ -16515,6 +16563,74 @@ export type KoraBatchesRandomTranscriptResponses = {
 };
 
 export type KoraBatchesRandomTranscriptResponse = KoraBatchesRandomTranscriptResponses[keyof KoraBatchesRandomTranscriptResponses];
+
+export type KoraReviewStateData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/review';
+};
+
+export type KoraReviewStateErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraReviewStateError = KoraReviewStateErrors[keyof KoraReviewStateErrors];
+
+export type KoraReviewStateResponses = {
+    200: KoraReviewStateDto;
+};
+
+export type KoraReviewStateResponse = KoraReviewStateResponses[keyof KoraReviewStateResponses];
+
+export type KoraReviewMoreData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/review/more';
+};
+
+export type KoraReviewMoreErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraReviewMoreError = KoraReviewMoreErrors[keyof KoraReviewMoreErrors];
+
+export type KoraReviewMoreResponses = {
+    200: KoraReviewStateDto;
+};
+
+export type KoraReviewMoreResponse = KoraReviewMoreResponses[keyof KoraReviewMoreResponses];
+
+export type KoraReviewSaveData = {
+    body: SaveKoraExportDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/review/assignments/{id}/export';
+};
+
+export type KoraReviewSaveErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraReviewSaveError = KoraReviewSaveErrors[keyof KoraReviewSaveErrors];
+
+export type KoraReviewSaveResponses = {
+    200: KoraExportSavedDto;
+};
+
+export type KoraReviewSaveResponse = KoraReviewSaveResponses[keyof KoraReviewSaveResponses];
 
 export type ClientOptions = {
     baseUrl: string;

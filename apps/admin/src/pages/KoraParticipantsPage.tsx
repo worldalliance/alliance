@@ -129,7 +129,7 @@ const KoraParticipantsPage: React.FC = () => {
       kind: KoraRecordKind.Participant,
       id: participant.id,
       title: `Delete ${participant.name}?`,
-      message: `Deletes ${participant.name}'s participant account and any abandoned signup or signup in progress for ${contactOf(participant)}, and signs them out on every device. This can't be undone.`,
+      message: `Deletes ${participant.name}'s participant account, their reviews and profile answers, and any abandoned signup or signup in progress for ${contactOf(participant)}, and signs them out on every device. This can't be undone.`,
       done: `Deleted ${participant.name}`,
     });
   const askDeleteAbandoned = (signup: KoraAdminAbandonedSignupDto) =>

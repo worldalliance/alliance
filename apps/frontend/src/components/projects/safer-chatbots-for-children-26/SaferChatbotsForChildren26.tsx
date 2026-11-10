@@ -1,5 +1,6 @@
-import { KoraProjectStatus } from "@alliance/common/kora";
+import { KORA_REVIEW_PATH, KoraProjectStatus } from "@alliance/common/kora";
 import { cn } from "@alliance/shared/styles/util";
+import { Navigate, useSearchParams } from "react-router";
 import { useAuth } from "../../../lib/AuthContext";
 import { socialPreviewMeta } from "../../../lib/socialPreviewMeta";
 import { SiteFooter } from "../../../site/Footer";
@@ -25,6 +26,8 @@ export default function SaferChatbotsForChildren26() {
   const kora = useKoraParticipant();
   const { query } = kora;
   const project = useKoraProject();
+  const [searchParams] = useSearchParams();
+  const returningToReview = searchParams.get("next") === "review";
   if (member.loading || query.isPending || project.isPending) {
     return (
       <SiteRoot className="bg-white">
@@ -48,8 +51,12 @@ export default function SaferChatbotsForChildren26() {
       </SiteRoot>
     );
   }
-  const closed = project.data.status === KoraProjectStatus.Closed;
+  const status = project.data.status;
+  const closed = status === KoraProjectStatus.Closed;
   const participant = query.data?.participant;
+  if ((participant || member.isAuthenticated) && returningToReview) {
+    return <Navigate to={KORA_REVIEW_PATH} replace />;
+  }
   if (!participant && !member.isAuthenticated) {
     return <KoraSignUpPage closed={closed} />;
   }
@@ -69,7 +76,7 @@ export default function SaferChatbotsForChildren26() {
               <KoraSignedIn kora={kora} participant={participant} />
             )
           }
-          closed={closed}
+          status={status}
         />
       </main>
       <SiteFooter collapsible />

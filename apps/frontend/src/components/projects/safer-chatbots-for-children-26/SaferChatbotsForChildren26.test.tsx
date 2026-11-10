@@ -1,4 +1,8 @@
-import { KORA_PROJECT_PATH, KoraProjectStatus } from "@alliance/common/kora";
+import {
+  KORA_PROJECT_PATH,
+  KORA_REVIEW_PATH,
+  KoraProjectStatus,
+} from "@alliance/common/kora";
 import type { KoraParticipantDto } from "@alliance/shared/client";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -160,16 +164,14 @@ test("thanks a member once the project has closed", async () => {
   expect(h1()).toBe("Thank you for taking part");
 });
 
-test("shows the waitlist while the project is active", async () => {
+test("invites a signed-in participant to start once the project is active", async () => {
   participant = { id: "p1", name: "Test Person" };
   status = KoraProjectStatus.Active;
   renderPage();
 
-  await screen.findByRole("heading", {
-    level: 1,
-    name: "Thank you for joining the waitlist",
-  });
-  expect(screen.queryByText(CLOSED)).toBeNull();
+  const start = await screen.findByRole("link", { name: "Start reviewing" });
+  expect(start.getAttribute("href")).toBe(KORA_REVIEW_PATH);
+  expect(screen.queryByText("Reviews start on November 17th.")).toBeNull();
 });
 
 test("says so when the project status can't load", async () => {

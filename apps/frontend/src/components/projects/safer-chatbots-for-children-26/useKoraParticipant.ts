@@ -1,5 +1,5 @@
 import { GENERIC_FAILURE } from "@alliance/common/errorMessage";
-import { KoraError } from "@alliance/common/kora";
+import { KoraError, KoraProjectStatus } from "@alliance/common/kora";
 import { OtpError } from "@alliance/common/otp";
 import {
   koraAbandonCode,
@@ -127,7 +127,10 @@ export function useKoraParticipant() {
 export function useKoraProject() {
   return useQuery({
     queryKey: queryKeys.koraProject(),
-    queryFn: () => koraProject({ throwOnError: true }).then((res) => res.data),
+    queryFn: () =>
+      koraProject({ throwOnError: true }).then((res) => ({
+        status: z.enum(KoraProjectStatus).parse(res.data.status),
+      })),
     retry: retryUnlessRefused(1),
   });
 }

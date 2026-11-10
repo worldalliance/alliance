@@ -24,6 +24,20 @@ export const KORA_UPLOAD_NEEDS_BOTH_FILES =
 export const KORA_NOTIFY_NEEDS_ACTIVE =
   "Make the project active before notifying the waitlist.";
 
+/** Where a reviewer is: reviewing an assignment, finished, out of transcripts, or before the project is active. */
+export enum KoraReviewPhase {
+  Reviewing = "reviewing",
+  Finished = "finished",
+  NoneLeft = "none_left",
+  NotActive = "not_active",
+}
+
+export enum KoraReviewStatus {
+  Pending = "pending",
+  Done = "done",
+  OptedOut = "opted_out",
+}
+
 /** The `error` field of a refused Kora participant request, for clients to branch on. */
 export enum KoraError {
   SignupExpired = "kora_signup_expired",

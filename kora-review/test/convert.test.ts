@@ -3,7 +3,8 @@ import Ajv2020 from "ajv/dist/2020.js";
 import { describe, expect, it } from "bun:test";
 import sample from "../samples/transcript.json";
 import { fromKoraPair, readKoraPairs } from "../src/convert.js";
-import { parseKoraTranscript } from "../src/parse.js";
+import { parseKoraExport, parseKoraTranscript } from "../src/parse.js";
+import { SAMPLE_EXPORT } from "../src/sample-export.js";
 import { transcriptSchema } from "../src/schemas.js";
 
 const ajv = new Ajv2020({ strict: true, allErrors: true });
@@ -82,6 +83,15 @@ describe("parseKoraTranscript", () => {
     expect<unknown>(parseKoraTranscript(sample)).toEqual(sample);
     expect(() =>
       parseKoraTranscript({ ...sample, category: "nope" }),
+    ).toThrow();
+  });
+});
+
+describe("parseKoraExport", () => {
+  it("returns a stored export and refuses one from another schema version", () => {
+    expect<unknown>(parseKoraExport(SAMPLE_EXPORT)).toEqual(SAMPLE_EXPORT);
+    expect(() =>
+      parseKoraExport({ ...SAMPLE_EXPORT, schemaVersion: 1 }),
     ).toThrow();
   });
 });

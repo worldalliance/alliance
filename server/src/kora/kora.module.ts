@@ -5,12 +5,15 @@ import { MailModule } from "src/mail/mail.module";
 import { MmsModule } from "src/mms/mms.module";
 import { OtpModule } from "src/otp/otp.module";
 import { KoraAbandonedSignup } from "./entities/kora-abandoned-signup.entity";
+import { KoraAssignmentTranscript } from "./entities/kora-assignment-transcript.entity";
+import { KoraAssignment } from "./entities/kora-assignment.entity";
 import { KoraBatch } from "./entities/kora-batch.entity";
 import { KoraParticipantOAuthIdentity } from "./entities/kora-participant-oauth-identity.entity";
 import { KoraParticipantSession } from "./entities/kora-participant-session.entity";
 import { KoraParticipantSignup } from "./entities/kora-participant-signup.entity";
 import { KoraParticipant } from "./entities/kora-participant.entity";
 import { KoraProject } from "./entities/kora-project.entity";
+import { KoraReviewer } from "./entities/kora-reviewer.entity";
 import { KoraTranscript } from "./entities/kora-transcript.entity";
 import { KoraAdminController } from "./kora-admin.controller";
 import { KoraAdminService } from "./kora-admin.service";
@@ -21,6 +24,8 @@ import { KoraOAuthStateService } from "./kora-oauth-state.service";
 import { KoraOAuthController } from "./kora-oauth.controller";
 import { KoraParticipantService } from "./kora-participant.service";
 import { KoraProjectService } from "./kora-project.service";
+import { KoraReviewController } from "./kora-review.controller";
+import { KoraReviewService } from "./kora-review.service";
 import { KoraSessionService } from "./kora-session.service";
 import { KoraController } from "./kora.controller";
 
@@ -28,12 +33,15 @@ import { KoraController } from "./kora.controller";
   imports: [
     TypeOrmModule.forFeature([
       KoraAbandonedSignup,
+      KoraAssignment,
+      KoraAssignmentTranscript,
       KoraBatch,
       KoraParticipant,
       KoraParticipantOAuthIdentity,
       KoraParticipantSession,
       KoraParticipantSignup,
       KoraProject,
+      KoraReviewer,
       KoraTranscript,
     ]),
     OtpModule,
@@ -49,12 +57,14 @@ import { KoraController } from "./kora.controller";
     KoraProjectService,
     KoraNotifyService,
     KoraBatchService,
+    KoraReviewService,
   ],
   controllers: [
     KoraController,
     KoraOAuthController,
     KoraAdminController,
     KoraBatchesController,
+    KoraReviewController,
   ],
 })
 export class KoraModule {}

@@ -29,6 +29,7 @@ const PHYSICALLY_DELETED = [
   "AiDetectionResult",
   "Cluster",
   "KoraAbandonedSignup",
+  "KoraAssignmentTranscript",
   "KoraParticipant",
   "KoraParticipantOAuthIdentity",
   "KoraParticipantSession",

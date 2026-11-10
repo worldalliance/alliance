@@ -1,3 +1,4 @@
+import { KoraProjectStatus } from "@alliance/common/kora";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, jest, spyOn, test } from "bun:test";
 import {
@@ -24,7 +25,7 @@ test("clicking a category shows it and pauses rotation", () => {
     <KoraWelcome
       viewer={KoraViewer.Participant}
       account={null}
-      closed={false}
+      status={KoraProjectStatus.Pending}
     />,
   );
   expect(heading()).toBe("Privacy and personal data");
@@ -47,7 +48,7 @@ test("clicking the current category pauses, and again plays", () => {
     <KoraWelcome
       viewer={KoraViewer.Participant}
       account={null}
-      closed={false}
+      status={KoraProjectStatus.Pending}
     />,
   );
   const current = () =>
@@ -67,7 +68,7 @@ test("only one copy of each category is exposed", () => {
     <KoraWelcome
       viewer={KoraViewer.Participant}
       account={null}
-      closed={false}
+      status={KoraProjectStatus.Pending}
     />,
   );
   expect(
@@ -80,7 +81,7 @@ test("remind me defaults on and remembers being turned off", () => {
     <KoraWelcome
       viewer={KoraViewer.Participant}
       account={null}
-      closed={false}
+      status={KoraProjectStatus.Pending}
     />,
   );
   const toggle = screen.getByRole("switch", { name: "Remind me" });
@@ -94,7 +95,7 @@ test("remind me defaults on and remembers being turned off", () => {
     <KoraWelcome
       viewer={KoraViewer.Participant}
       account={null}
-      closed={false}
+      status={KoraProjectStatus.Pending}
     />,
   );
   expect(
@@ -109,7 +110,7 @@ test("a participant is thanked for joining the waitlist", () => {
     <KoraWelcome
       viewer={KoraViewer.Participant}
       account={null}
-      closed={false}
+      status={KoraProjectStatus.Pending}
     />,
   );
   expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
@@ -128,7 +129,11 @@ test("a participant is thanked for joining the waitlist", () => {
 test("a member gets the member heading and a reminder they can't turn off", () => {
   localStorage.setItem(REMIND_ME_KEY, "false");
   render(
-    <KoraWelcome viewer={KoraViewer.Member} account={null} closed={false} />,
+    <KoraWelcome
+      viewer={KoraViewer.Member}
+      account={null}
+      status={KoraProjectStatus.Pending}
+    />,
   );
   expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
     "Alliance members will help shape how children interact with AI chatbots",
@@ -151,7 +156,7 @@ test("focusing a chip by keyboard shows it and pauses rotation", () => {
     <KoraWelcome
       viewer={KoraViewer.Participant}
       account={null}
-      closed={false}
+      status={KoraProjectStatus.Pending}
     />,
   );
   const chip = screen.getByRole("button", { name: "Homework honesty" });
@@ -167,7 +172,7 @@ test("focusing the current chip pauses without toggling", () => {
     <KoraWelcome
       viewer={KoraViewer.Participant}
       account={null}
-      closed={false}
+      status={KoraProjectStatus.Pending}
     />,
   );
   const current = screen.getByRole("button", {
@@ -185,7 +190,7 @@ test("with reduced motion, a resumed track keeps a real chip current", () => {
       <KoraWelcome
         viewer={KoraViewer.Participant}
         account={null}
-        closed={false}
+        status={KoraProjectStatus.Pending}
       />,
     );
     fireEvent.click(
@@ -210,7 +215,7 @@ test("a slide that ends past the middle copy jumps back to it", () => {
       <KoraWelcome
         viewer={KoraViewer.Participant}
         account={null}
-        closed={false}
+        status={KoraProjectStatus.Pending}
       />,
     );
     act(() => jest.advanceTimersByTime(ROTATE_MS * 10));

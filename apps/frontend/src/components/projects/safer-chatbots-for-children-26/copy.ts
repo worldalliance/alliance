@@ -184,3 +184,16 @@ export const CLOSED_HEADING = "Thank you for taking part";
 
 export const CLOSED_MESSAGE =
   "The project has closed. Thank you to everyone who took part.";
+
+// Placeholder copy for the review section; the project lead will supply the final wording.
+export const REVIEW_COPY = {
+  thanksHeading: "Thank you for your reviews",
+  thanksBody: "Your ratings will help KORA test how chatbots treat children.",
+  reviewMore: "Review more",
+  extraReviews: (n: number) => `You’ve reviewed ${n} more.`,
+  noneLeft:
+    "There are no more transcripts right now. We’ll let you know if we need more reviews.",
+  saveFailed: "Your last change couldn’t be saved.",
+  retrySave: "Try again",
+  loadFailed: "We couldn’t load your reviews. Reload to try again.",
+};
