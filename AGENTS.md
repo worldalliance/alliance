@@ -44,6 +44,7 @@ Read before the matching task:
 - Spawning a subagent, which goes through the `claude` or `codex` CLI in place of your harness's built-in agent tool → `(root)/agents/skills/subagents/SKILL.md`
 - Verifying a change in the browser, driving the mobile app, calling the API, or authenticating as an admin → `(root)/agents/skills/playwright/SKILL.md`
 - Designing or changing UI in `apps/`, `sharedweb/`, `shared/` or `agents/desktop`, or judging a UI's quality → `(root)/agents/skills/ux-guidelines/SKILL.md`
+- Changing a form, a native screen, keyboard shortcuts, loading or URL state, or choosing colour, type, spacing or motion values, in those folders, or judging a UI's quality → `(root)/agents/skills/ux-forms-platform/SKILL.md`
 - Writing or editing any doc an agent reads (`SKILL.md`, `AGENTS.md`, `CLAUDE.md`, docs those point at) → `(root)/agents/skills/writing-for-agents/SKILL.md`
 
 ## Typechecking
