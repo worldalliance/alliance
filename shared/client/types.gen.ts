@@ -5359,6 +5359,31 @@ export type KoraAdminOverviewDto = {
     abandonedSignups: Array<KoraAdminAbandonedSignupDto>;
 };
 
+export type KoraBatchDto = {
+    id: string;
+    transcriptsPerAssignment: number;
+    reviewsPerTranscript: number;
+    createdAt: string;
+    transcriptCount: number;
+};
+
+export type KoraRejectedLineDto = {
+    line: number;
+    problems: Array<string>;
+};
+
+export type KoraUploadRejectedDto = {
+    message: string;
+    rejected: Array<KoraRejectedLineDto>;
+};
+
+export type KoraTranscriptPreviewDto = {
+    transcript: {
+        [key: string]: unknown;
+    };
+    contentHash: string;
+};
+
 export type HeyApiError = {
     statusCode: number;
     message: string | Array<string>;
@@ -16420,6 +16445,76 @@ export type KoraAdminDeleteAbandonedSignupResponses = {
 };
 
 export type KoraAdminDeleteAbandonedSignupResponse = KoraAdminDeleteAbandonedSignupResponses[keyof KoraAdminDeleteAbandonedSignupResponses];
+
+export type KoraBatchesListData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/batches';
+};
+
+export type KoraBatchesListErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraBatchesListError = KoraBatchesListErrors[keyof KoraBatchesListErrors];
+
+export type KoraBatchesListResponses = {
+    200: Array<KoraBatchDto>;
+};
+
+export type KoraBatchesListResponse = KoraBatchesListResponses[keyof KoraBatchesListResponses];
+
+export type KoraBatchesUploadData = {
+    body: {
+        transcripts: Blob | File;
+        exportSchema: Blob | File;
+        transcriptsPerAssignment: number;
+        reviewsPerTranscript: number;
+    };
+    path?: never;
+    query?: never;
+    url: '/kora/admin/batches';
+};
+
+export type KoraBatchesUploadErrors = {
+    400: KoraUploadRejectedDto;
+};
+
+export type KoraBatchesUploadError = KoraBatchesUploadErrors[keyof KoraBatchesUploadErrors];
+
+export type KoraBatchesUploadResponses = {
+    200: KoraBatchDto;
+};
+
+export type KoraBatchesUploadResponse = KoraBatchesUploadResponses[keyof KoraBatchesUploadResponses];
+
+export type KoraBatchesRandomTranscriptData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/batches/{id}/random-transcript';
+};
+
+export type KoraBatchesRandomTranscriptErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraBatchesRandomTranscriptError = KoraBatchesRandomTranscriptErrors[keyof KoraBatchesRandomTranscriptErrors];
+
+export type KoraBatchesRandomTranscriptResponses = {
+    200: KoraTranscriptPreviewDto;
+};
+
+export type KoraBatchesRandomTranscriptResponse = KoraBatchesRandomTranscriptResponses[keyof KoraBatchesRandomTranscriptResponses];
 
 export type ClientOptions = {
     baseUrl: string;

@@ -1,0 +1,200 @@
+import { KORA_UPLOAD_NEEDS_BOTH_FILES } from "@alliance/common/kora";
+import type { KoraBatchDto } from "@alliance/shared/client";
+import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import { useState, type FormEvent } from "react";
+import { Link } from "react-router";
+import { adminRefusalMessage } from "../lib/adminRefusal";
+import { formatKoraDate } from "../lib/koraParticipants";
+import {
+  koraUploadRejection,
+  useKoraBatchesAdmin,
+  useUploadKoraBatch,
+} from "../lib/useKoraBatchesAdmin";
+
+const CELL = "px-3 py-2 align-top";
+const FIELD = "mt-1 block rounded border border-zinc-300 bg-white px-2 py-1";
+
+const previewPath = (batchId: string) =>
+  `/kora-participants/preview/${batchId}`;
+
+function UploadError({ error }: { error: Error }) {
+  const rejection = koraUploadRejection(error);
+  return (
+    <div role="alert" className="space-y-1 text-red-700">
+      <p>
+        {rejection?.message ??
+          adminRefusalMessage(error, "Couldn't upload. Try again.")}
+      </p>
+      {rejection && (
+        <ul className="list-disc pl-5">
+          {rejection.rejected.map(({ line, problems }) => (
+            <li key={line}>
+              Line {line}: {problems.join("; ")}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function UploadForm() {
+  const [uploaded, setUploaded] = useState<KoraBatchDto | null>(null);
+  const [transcripts, setTranscripts] = useState<File | null>(null);
+  const [exportSchema, setExportSchema] = useState<File | null>(null);
+  const [missingFile, setMissingFile] = useState(false);
+  const upload = useUploadKoraBatch({ onSuccess: setUploaded });
+
+  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setMissingFile(!transcripts || !exportSchema);
+    if (!transcripts || !exportSchema) return;
+    const form = new FormData(event.currentTarget);
+    setUploaded(null);
+    upload.mutate({
+      transcripts,
+      exportSchema,
+      transcriptsPerAssignment: Number(form.get("transcriptsPerAssignment")),
+      reviewsPerTranscript: Number(form.get("reviewsPerTranscript")),
+    });
+  };
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-3 text-sm">
+      <div className="flex flex-wrap gap-4">
+        <label>
+          Transcripts file from KORA (.jsonl)
+          <input
+            name="transcripts"
+            type="file"
+            onChange={(e) => setTranscripts(e.target.files?.[0] ?? null)}
+            accept=".jsonl,.json,application/json"
+            className="mt-1 block"
+          />
+        </label>
+        <label>
+          Export schema (.json)
+          <input
+            name="exportSchema"
+            type="file"
+            onChange={(e) => setExportSchema(e.target.files?.[0] ?? null)}
+            accept=".json,application/json"
+            className="mt-1 block"
+          />
+        </label>
+        <label>
+          Transcripts per assignment
+          <input
+            name="transcriptsPerAssignment"
+            type="number"
+            min={1}
+            max={100}
+            defaultValue={10}
+            required
+            className={FIELD}
+          />
+        </label>
+        <label>
+          Reviews per transcript
+          <input
+            name="reviewsPerTranscript"
+            type="number"
+            min={1}
+            max={50}
+            defaultValue={3}
+            required
+            className={FIELD}
+          />
+        </label>
+      </div>
+      <Button
+        type="submit"
+        color={ButtonColor.Black}
+        size="small"
+        disabled={upload.isPending}
+      >
+        {upload.isPending ? "Uploading…" : "Upload"}
+      </Button>
+      <div aria-live="polite">
+        {uploaded && (
+          <p>
+            Read {uploaded.transcriptCount} transcripts.{" "}
+            <Link className="underline" to={previewPath(uploaded.id)}>
+              Preview a random transcript
+            </Link>
+          </p>
+        )}
+      </div>
+      {missingFile && (
+        <p role="alert" className="text-red-700">
+          {KORA_UPLOAD_NEEDS_BOTH_FILES}
+        </p>
+      )}
+      {upload.isError && <UploadError error={upload.error} />}
+    </form>
+  );
+}
+
+function BatchList() {
+  const batches = useKoraBatchesAdmin();
+  if (batches.isPending) return <p className="text-sm">Loading batches…</p>;
+  if (batches.isError) {
+    return (
+      <p className="text-sm text-red-600" role="alert">
+        {adminRefusalMessage(
+          batches.error,
+          "Couldn't load the batches. Reload to try again.",
+        )}
+      </p>
+    );
+  }
+  if (batches.data.length === 0) {
+    return (
+      <p className="text-sm text-zinc-600">
+        No transcripts yet. Upload KORA&apos;s file to make the project active.
+      </p>
+    );
+  }
+  return (
+    <table className="text-sm">
+      <thead className="text-left text-zinc-500">
+        <tr>
+          <th className={CELL}>Uploaded</th>
+          <th className={CELL}>Transcripts</th>
+          <th className={CELL}>Per assignment</th>
+          <th className={CELL}>Reviews each</th>
+          <th className={CELL}>
+            <span className="sr-only">Preview</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {batches.data.map((batch) => (
+          <tr key={batch.id} className="border-t border-zinc-200">
+            <td className={CELL}>{formatKoraDate(batch.createdAt)}</td>
+            <td className={CELL}>{batch.transcriptCount}</td>
+            <td className={CELL}>{batch.transcriptsPerAssignment}</td>
+            <td className={CELL}>{batch.reviewsPerTranscript}</td>
+            <td className={CELL}>
+              <Link className="underline" to={previewPath(batch.id)}>
+                Preview a random transcript
+              </Link>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+export function KoraBatches() {
+  return (
+    <section aria-labelledby="kora-batches" className="space-y-3">
+      <h2 id="kora-batches" className="font-semibold">
+        Transcripts
+      </h2>
+      <BatchList />
+      <UploadForm />
+    </section>
+  );
+}

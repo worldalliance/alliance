@@ -37,3 +37,9 @@ This task implements the rest of the spec in `docs/provenance/01a1c67a-0156-7000
 - Someone who opens `/projects/safer-chatbots-for-children/review` while signed out goes to the project page to sign in, then returns to the review page. If the project isn't Active, they go to the project page. (agent-proposed, user-approved)
 - A member who opens the review page directly gets the same assignment as through their action, and finishing it completes the action. (agent-proposed, user-approved)
 - The user will write the thank-you copy. Until then it uses placeholders. (user)
+
+## Batch upload
+
+- A transcript id already uploaded in an earlier batch is a rejected line, listed as already uploaded, and the whole file is rejected. (agent-proposed, user-approved)
+- A new assignment uses the newest batch's assignment size. Each transcript keeps the review target its own batch set. (agent-proposed, user-approved)
+- After an upload, "Preview a random transcript" opens an admin page that mounts the real review tool with one randomly picked transcript of that batch, saving nothing. (agent-proposed, user-approved)

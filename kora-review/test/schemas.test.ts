@@ -2,7 +2,6 @@ import addFormats from "ajv-formats";
 import Ajv2020 from "ajv/dist/2020.js";
 import { describe, expect, it } from "bun:test";
 import { execFileSync } from "node:child_process";
-import sampleExport from "../samples/export.json";
 import sampleTranscript from "../samples/transcript.json";
 import samplePairs from "../samples/transcripts.json";
 import {
@@ -11,6 +10,7 @@ import {
   SCHEMA_VERSION,
   transcriptSchema,
 } from "../src/index.js";
+import { SAMPLE_EXPORT as sampleExport } from "../src/sample-export.js";
 
 // The same setup a host would use: ajv's draft 2020-12 build, strict mode on, with date-time formats.
 function compile() {

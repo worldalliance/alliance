@@ -43,7 +43,13 @@ const PHYSICALLY_DELETED = [
 ];
 
 /** Rows no code deletes, which therefore need no deletedAt. */
-const NEVER_DELETED = ["EditableContent", "FormRowAssignment", "KoraProject"];
+const NEVER_DELETED = [
+  "EditableContent",
+  "FormRowAssignment",
+  "KoraBatch",
+  "KoraProject",
+  "KoraTranscript",
+];
 
 describe("softDeleteCascade (e2e)", () => {
   let ctx: TestContext;

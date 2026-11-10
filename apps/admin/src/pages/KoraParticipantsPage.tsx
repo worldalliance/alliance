@@ -8,6 +8,7 @@ import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { format } from "date-fns";
 import React, { useMemo, useState } from "react";
 import ConfirmDialog from "../components/ConfirmDialog";
+import { KoraBatches } from "../components/KoraBatches";
 import { KoraNotifyWaitlist } from "../components/KoraNotifyWaitlist";
 import { KoraProjectStatusControl } from "../components/KoraProjectStatusControl";
 import SortHeader from "../components/SortHeader";
@@ -16,6 +17,7 @@ import {
   abandonedMethod,
   buildKoraCsv,
   contactOf,
+  formatKoraDate,
   matchesSearch,
   participantMethods,
   ParticipantSort,
@@ -39,7 +41,6 @@ type Deleting = {
 
 const TITLE = <title>Kora participants - Admin</title>;
 const CELL = "px-3 py-2 align-top";
-const formatDate = (iso: string) => format(new Date(iso), "MMM d, yyyy h:mm a");
 
 const KoraParticipantsPage: React.FC = () => {
   const overview = useKoraParticipantsAdmin();
@@ -166,6 +167,8 @@ const KoraParticipantsPage: React.FC = () => {
 
       <KoraProjectStatusControl />
 
+      <KoraBatches />
+
       <KoraNotifyWaitlist />
 
       <dl className="flex flex-wrap gap-6 text-sm">
@@ -262,7 +265,7 @@ const KoraParticipantsPage: React.FC = () => {
                     </td>
                     <td className={CELL}>{participant.timeZone ?? "—"}</td>
                     <td className={CELL}>
-                      {formatDate(participant.createdAt)}
+                      {formatKoraDate(participant.createdAt)}
                     </td>
                     <td className={CELL}>
                       <Button
@@ -315,7 +318,9 @@ const KoraParticipantsPage: React.FC = () => {
                   <tr key={signup.id}>
                     <td className={CELL}>{signup.destination}</td>
                     <td className={CELL}>{abandonedMethod(signup)}</td>
-                    <td className={CELL}>{formatDate(signup.verifiedAt)}</td>
+                    <td className={CELL}>
+                      {formatKoraDate(signup.verifiedAt)}
+                    </td>
                     <td className={CELL}>
                       {signup.recovered ? "Came back" : "Abandoned"}
                     </td>

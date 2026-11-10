@@ -3,6 +3,10 @@ import { type RouteConfig, layout, route } from "@react-router/dev/routes";
 export default [
   layout("adminlayout.tsx", [
     route("/invite-feed", "pages/InviteFeedPage.tsx"),
+    route(
+      "/kora-participants/preview/:batchId",
+      "pages/KoraTranscriptPreviewPage.tsx",
+    ),
     layout("sidebar.tsx", [
       route("/projects", "pages/ProjectsPage.tsx"),
       route("/projects/:projectId", "pages/ProjectDetailPage.tsx"),

@@ -138,6 +138,9 @@ export const queryKeys = {
   incomingCommunityInvites: () =>
     ["communityGetIncomingCommunityInvitesForUser"] as const,
   koraParticipantsAdmin: () => ["koraAdminOverview"] as const,
+  koraBatchesAdmin: () => ["koraBatchesList"] as const,
+  koraRandomTranscript: (batchId: string) =>
+    ["koraBatchesRandomTranscript", batchId] as const,
   koraProject: () => ["koraProject"] as const,
   koraProjectAdmin: () => ["koraAdminProject"] as const,
   linkedGuestDraft: (taskFormId: number) =>

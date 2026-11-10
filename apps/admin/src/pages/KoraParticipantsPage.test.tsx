@@ -13,6 +13,7 @@ const deleted: string[] = [];
 
 serveApi(
   routes({
+    "GET /kora/admin/batches": () => Response.json([]),
     "GET /kora/admin/project": () =>
       Response.json({ status: "pending", canActivate: false, toNotify: 0 }),
     "GET /kora/admin/participants": () =>

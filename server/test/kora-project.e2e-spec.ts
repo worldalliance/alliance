@@ -2,6 +2,7 @@ import {
   KORA_ACTIVE_NEEDS_TRANSCRIPTS,
   KoraProjectStatus,
 } from "@alliance/common/kora";
+import { KoraBatch } from "src/kora/entities/kora-batch.entity";
 import { KoraModule } from "src/kora/kora.module";
 import request from "supertest";
 import { createTestApp, type TestContext } from "./e2e-test-utils";
@@ -50,7 +51,8 @@ describe("Kora project status (e2e)", () => {
     );
   });
 
-  it("refuses Active until transcripts can be uploaded", async () => {
+  it("refuses Active until transcripts are uploaded", async () => {
+    await ctx.dataSource.getRepository(KoraBatch).deleteAll();
     const res = await setStatus(KoraProjectStatus.Active).expect(400);
     expect(res.body.message).toBe(KORA_ACTIVE_NEEDS_TRANSCRIPTS);
     expect((await server().get("/kora/project").expect(200)).body.status).toBe(

@@ -5,6 +5,7 @@ import type {
   OAuthProvider,
   OtpChannel,
 } from "@alliance/shared/client";
+import { format } from "date-fns";
 import Papa from "papaparse";
 
 const CHANNEL_LABEL: Record<OtpChannel, string> = {
@@ -123,3 +124,6 @@ export function buildKoraCsv(overview: KoraAdminOverviewDto): string {
     escapeFormulae: FORMULA_START,
   });
 }
+
+export const formatKoraDate = (iso: string) =>
+  format(new Date(iso), "MMM d, yyyy h:mm a");

@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@alliance/common": "workspace:*",
+    "@alliance/kora-review": "workspace:*",
     "@alliance/shared": "workspace:*",
     "@alliance/sharedweb": "workspace:*",
     "@date-fns/tz": "^1.4.1",

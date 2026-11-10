@@ -3,7 +3,6 @@ import addFormats from "ajv-formats";
 import Ajv2020 from "ajv/dist/2020.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
 import { createHash } from "node:crypto";
-import sampleExport from "../samples/export.json";
 import samplePairs from "../samples/transcripts.json";
 import {
   exportSchema,
@@ -15,6 +14,7 @@ import {
   type KoraReviewOptions,
   type KoraTranscript,
 } from "../src/index.js";
+import { SAMPLE_EXPORT as sampleExport } from "../src/sample-export.js";
 import { advanceTimersByTimeAsync } from "./timers";
 
 const ajv = new Ajv2020({ strict: true, allErrors: true });
