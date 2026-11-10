@@ -148,3 +148,12 @@ export class StartKoraOAuthDto extends PickType(OAuthStartDto, [
   "posthogSessionId",
   "posthogDistinctId",
 ]) {}
+
+export class KoraParticipantCountDto {
+  @ApiProperty()
+  count: number;
+
+  constructor(count: number) {
+    this.count = count;
+  }
+}

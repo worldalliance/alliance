@@ -88,6 +88,22 @@ describe("Kora signup and login (e2e)", () => {
     ).toBe(0);
   });
 
+  it("counts participants publicly, leaving out a contact still waiting on a name", async () => {
+    const count = async () =>
+      (
+        await request(h.ctx.app.getHttpServer())
+          .get("/kora/participants/count")
+          .expect(200)
+      ).body;
+    const before = (await count()).count;
+
+    await h.verified(h.browser(), { email: uniqueEmail() });
+    expect(await count()).toEqual({ count: before });
+
+    await h.signedUp(h.browser(), { email: uniqueEmail() });
+    expect(await count()).toEqual({ count: before + 1 });
+  });
+
   it("signs up by phone with no email or timezone, then signs in again without a name", async () => {
     const phoneNumber = uniquePhone();
     const first = await h.signedUp(

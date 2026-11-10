@@ -1,4 +1,3 @@
-import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { cn } from "@alliance/shared/styles/util";
 import { Link } from "react-router";
 import { SiteFooter } from "../../../site/Footer";
@@ -21,19 +20,23 @@ import { KoraSignIn } from "./KoraSignIn";
 import { NewsCollage } from "./NewsCollage";
 import { ParticipantsBar } from "./ParticipantsBar";
 import { ProjectTimeline } from "./ProjectTimeline";
+import { useKoraParticipantCount } from "./useKoraParticipant";
 
 const PROJECT_COL = cn(SITE_COL, "lg:max-w-[1400px]");
 
 function ProjectProgress() {
-  const members = useAllianceMemberCount();
-  if (members.data !== undefined) {
+  const participants = useKoraParticipantCount();
+  if (participants.data !== undefined) {
     return (
-      <ParticipantsBar participants={members.data} goal={PARTICIPANT_GOAL} />
+      <ParticipantsBar
+        participants={participants.data}
+        goal={PARTICIPANT_GOAL}
+      />
     );
   }
   return (
     <p className="site-sans text-base text-[var(--site-ink)]/70">
-      {members.isError
+      {participants.isError
         ? "Participant count unavailable"
         : "Loading participant count…"}
     </p>

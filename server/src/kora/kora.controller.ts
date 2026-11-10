@@ -17,6 +17,8 @@ import {
 import { ApiNoContentResponse, ApiOkResponse } from "@nestjs/swagger";
 import type { Request, Response } from "express";
 import { AllowedOriginGuard } from "src/auth/guards/allowed-origin.guard";
+import { AuthOptionalGuard } from "src/auth/guards/authoptional.guard";
+import { Public } from "src/auth/public.decorator";
 import { OtpChannel, OtpPurpose } from "src/otp/otp-copy";
 import { OTP_TTL_MS } from "src/otp/otp-limits";
 import { otpRefusalException } from "src/otp/otp-refusal";
@@ -26,6 +28,7 @@ import {
   CompleteKoraSignupDto,
   INVALID_CONTACT,
   KoraCodeVerifiedDto,
+  KoraParticipantCountDto,
   KoraParticipantDto,
   KoraParticipantStateDto,
   PendingKoraCodeDto,
@@ -67,6 +70,14 @@ export class KoraController {
     private readonly sessionService: KoraSessionService,
     private readonly otpService: OtpService,
   ) {}
+
+  @Get("participants/count")
+  @UseGuards(AuthOptionalGuard)
+  @Public()
+  @ApiOkResponse({ type: KoraParticipantCountDto })
+  async participantCount(): Promise<KoraParticipantCountDto> {
+    return new KoraParticipantCountDto(await this.participantService.count());
+  }
 
   /** Everything the sign-in card needs to resume after a reload. */
   @Get("me")

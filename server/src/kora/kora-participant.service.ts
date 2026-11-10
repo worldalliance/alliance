@@ -281,6 +281,10 @@ export class KoraParticipantService {
     });
   }
 
+  async count(): Promise<number> {
+    return this.participants.count();
+  }
+
   async signupPending(signupToken: string): Promise<boolean> {
     return this.signups.existsBy({
       tokenHash: hashToken(signupToken),

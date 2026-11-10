@@ -4,6 +4,7 @@ import { OtpError } from "@alliance/common/otp";
 import {
   koraAbandonCode,
   koraCompleteSignup,
+  koraParticipantCount,
   koraSendCode,
   koraSignOut,
   koraState,
@@ -41,6 +42,15 @@ export function koraRefusalMessage(error: unknown): string {
 }
 
 const timeZone = () => signupTimeZone(deviceTimeZone());
+
+export function useKoraParticipantCount() {
+  return useQuery({
+    queryKey: queryKeys.koraParticipantCount(),
+    queryFn: () =>
+      koraParticipantCount({ throwOnError: true }).then((r) => r.data.count),
+    retry: retryUnlessRefused(1),
+  });
+}
 
 export function useKoraParticipant() {
   const queryClient = useQueryClient();
