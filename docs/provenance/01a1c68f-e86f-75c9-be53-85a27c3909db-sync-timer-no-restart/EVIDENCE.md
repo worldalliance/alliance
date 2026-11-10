@@ -19,3 +19,7 @@ Checked 2026-11-10 against github.com/systemd/systemd. The host's systemd versio
 - `6546045` was backported to systemd-stable's `v252-stable` as [48445d27](https://github.com/systemd/systemd-stable/commit/48445d27c7), first in v252.11, and no `v252-stable` change to `src/core/timer.c` after 2023-07 brings the fix. Amazon Linux 2023's core repository metadata (cdn.amazonlinux.com) lists `systemd-252.23-15.amzn2023` as its newest systemd, and its RPM changelog names no timer patch through 2026-10-13. So an up-to-date AL2023 host carries `6546045` and not #38868. Vendor (upstream tags, distro repository metadata); the SRPM itself wasn't unpacked.
 - `last_trigger` is serialized across `daemon-reload` (`timer_serialize`/`timer_deserialize_item` in the v252 file above). After reload, `timer_coldplug` re-enters waiting from it, so a reload with unchanged units computes the next 10:30 after the last run. Primary source.
 - [systemd/systemd#16732](https://github.com/systemd/systemd/issues/16732), open: after `daemon-reload` with an edited `OnCalendar=` whose next time after the last trigger has passed, the timer fires at once. [#43659](https://github.com/systemd/systemd/pull/43659), open, proposes `CatchUp=` to turn that off. Vendor issue tracker.
+
+## Staging crontab
+
+Observed 2026-11-10 on the staging host by the user: `crontab -l` as `ec2-user` printed nothing.
