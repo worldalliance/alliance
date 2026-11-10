@@ -310,3 +310,56 @@ describe("resume", () => {
     expect(result).toEqual(R.failure(new Error("no fake session nope")));
   });
 });
+
+describe("close", () => {
+  test("ends a running turn with TurnEnded and no Error", async () => {
+    const { session } = await startDemo(5);
+    const order: (AgentEventKind | "closed")[] = [];
+    session.subscribe((event) => order.push(event.kind));
+    const ended = nextTurn(session, text("Look around"));
+    await session.close();
+    order.push("closed");
+    expect(order).toEqual([AgentEventKind.TurnEnded, "closed"]);
+    expect(await ended).toEqual([{ kind: AgentEventKind.TurnEnded }]);
+    expect(session.turnRunning).toBe(false);
+  });
+
+  test("leaves the session no longer live", async () => {
+    const { session } = await startDemo();
+    await session.close();
+    expect(await nextTurn(session, text("Hello"))).toEqual([
+      {
+        kind: AgentEventKind.Error,
+        message: `The fake session ${session.id} is closed.`,
+      },
+      { kind: AgentEventKind.TurnEnded },
+    ]);
+  });
+
+  test("resume while closing waits for it, then continues from the turn it reached", async () => {
+    const { backend, session } = await startDemo(5);
+    const order: (AgentEventKind | "resumed")[] = [];
+    session.subscribe((event) => order.push(event.kind));
+    const ended = nextTurn(session, text("Look around"));
+    void session.close();
+    const sessionId = session.id;
+    const [a, b] = await Promise.all([
+      backend.resume({ cwd: "/repo", sessionId }),
+      backend.resume({ cwd: "/repo", sessionId }),
+    ]);
+    order.push("resumed");
+    expect(order).toEqual([AgentEventKind.TurnEnded, "resumed"]);
+    expect(await ended).toEqual([{ kind: AgentEventKind.TurnEnded }]);
+    const resumed = R.unwrap(a);
+    expect(R.unwrap(b)).toBe(resumed);
+    expect(resumed).not.toBe(session);
+    expect(resumed.id).toBe(sessionId);
+    const [reply] = await nextTurn(resumed, text("Here's my screenshot"));
+    expect(reply).toMatchObject({ text: expect.stringContaining("image") });
+  });
+
+  test("returns the first call's promise when called again", async () => {
+    const { session } = await startDemo();
+    expect(session.close()).toBe(session.close());
+  });
+});
