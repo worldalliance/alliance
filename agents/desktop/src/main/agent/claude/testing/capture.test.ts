@@ -2,9 +2,10 @@ import { expect, test } from "bun:test";
 import { readdirSync } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
+import { CLAUDE_CODE_VERSION } from "../protocol";
 import { CaptureRecordKind, captureDir, readCapture } from "./capture";
 
-const dir = captureDir("2.1.322");
+const dir = captureDir(CLAUDE_CODE_VERSION);
 const files = readdirSync(dir).filter((file) => file.endsWith(".jsonl"));
 
 test("the captures folder holds captures", () => {
