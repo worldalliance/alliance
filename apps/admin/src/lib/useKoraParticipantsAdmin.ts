@@ -1,7 +1,10 @@
+import type { KoraProjectStatus } from "@alliance/common/kora";
 import {
   koraAdminDeleteAbandonedSignup,
   koraAdminDeleteParticipant,
   koraAdminOverview,
+  koraAdminProject,
+  koraAdminUpdateProject,
 } from "@alliance/shared/client";
 import { rethrowUnlessNotFound } from "@alliance/shared/lib/hey-api";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
@@ -45,5 +48,30 @@ export function useDeleteKoraRecordAdmin(params: {
       queryClient.invalidateQueries({
         queryKey: queryKeys.koraParticipantsAdmin(),
       }),
+  });
+}
+
+export function useKoraProjectAdmin() {
+  return useQuery({
+    queryKey: queryKeys.koraProjectAdmin(),
+    queryFn: () => koraAdminProject({ throwOnError: true }).then((r) => r.data),
+  });
+}
+
+export function useSetKoraProjectStatus(params: {
+  onSuccess: () => void;
+  onError: (err: Error) => void;
+}) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (status: KoraProjectStatus) =>
+      koraAdminUpdateProject({ body: { status }, throwOnError: true }).then(
+        (r) => r.data,
+      ),
+    onSuccess: (project) => {
+      queryClient.setQueryData(queryKeys.koraProjectAdmin(), project);
+      params.onSuccess();
+    },
+    onError: params.onError,
   });
 }

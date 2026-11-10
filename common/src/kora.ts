@@ -7,6 +7,15 @@ import {
 
 export const KORA_PROJECT_PATH = "/projects/safer-chatbots-for-children";
 
+export enum KoraProjectStatus {
+  Pending = "pending",
+  Active = "active",
+  Closed = "closed",
+}
+
+export const KORA_ACTIVE_NEEDS_TRANSCRIPTS =
+  "Upload transcripts before making the project active.";
+
 /** The `error` field of a refused Kora participant request, for clients to branch on. */
 export enum KoraError {
   SignupExpired = "kora_signup_expired",

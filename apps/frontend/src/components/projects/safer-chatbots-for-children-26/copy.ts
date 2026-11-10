@@ -179,3 +179,8 @@ export const NEWS_ARTICLES: NewsArticle[] = [
       "https://www.gse.harvard.edu/sites/default/files/styles/social_share_cropped/public/2024-10/child-phone-chatbot-ai-stock_0.jpg?h=3a0a8094&itok=rpkocs_p",
   },
 ];
+
+export const CLOSED_HEADING = "Thank you for taking part";
+
+export const CLOSED_MESSAGE =
+  "The project has closed. Thank you to everyone who took part.";

@@ -138,6 +138,8 @@ export const queryKeys = {
   incomingCommunityInvites: () =>
     ["communityGetIncomingCommunityInvitesForUser"] as const,
   koraParticipantsAdmin: () => ["koraAdminOverview"] as const,
+  koraProject: () => ["koraProject"] as const,
+  koraProjectAdmin: () => ["koraAdminProject"] as const,
   linkedGuestDraft: (taskFormId: number) =>
     ["tasksGetLinkedGuestDraft", taskFormId] as const,
   koraParticipantCount: () => ["koraParticipantCount"] as const,

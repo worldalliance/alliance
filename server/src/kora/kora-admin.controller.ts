@@ -1,4 +1,7 @@
+import { KORA_ACTIVE_NEEDS_TRANSCRIPTS } from "@alliance/common/kora";
 import {
+  BadRequestException,
+  Body,
   Controller,
   Delete,
   Get,
@@ -7,17 +10,49 @@ import {
   NotFoundException,
   Param,
   ParseUUIDPipe,
+  Put,
   UseGuards,
 } from "@nestjs/common";
 import { ApiNoContentResponse, ApiOkResponse } from "@nestjs/swagger";
 import { AdminGuard } from "src/auth/guards/admin.guard";
 import { KoraAdminOverviewDto } from "./dto/kora-admin.dto";
+import {
+  KoraAdminProjectDto,
+  UpdateKoraProjectDto,
+} from "./dto/kora-project.dto";
 import { KoraAdminService } from "./kora-admin.service";
+import { KoraProjectError, KoraProjectService } from "./kora-project.service";
 
 @Controller("kora/admin")
 @UseGuards(AdminGuard)
 export class KoraAdminController {
-  constructor(private readonly adminService: KoraAdminService) {}
+  constructor(
+    private readonly adminService: KoraAdminService,
+    private readonly projectService: KoraProjectService,
+  ) {}
+
+  @Get("project")
+  @ApiOkResponse({ type: KoraAdminProjectDto })
+  async project(): Promise<KoraAdminProjectDto> {
+    return new KoraAdminProjectDto(await this.projectService.adminProject());
+  }
+
+  @Put("project")
+  @ApiOkResponse({ type: KoraAdminProjectDto })
+  async updateProject(
+    @Body() body: UpdateKoraProjectDto,
+  ): Promise<KoraAdminProjectDto> {
+    const updated = await this.projectService.setStatus(body.status);
+    if (!updated.ok) {
+      switch (updated.error) {
+        case KoraProjectError.NeedsTranscripts:
+          throw new BadRequestException(KORA_ACTIVE_NEEDS_TRANSCRIPTS);
+        default:
+          throw new Error(`unknown error: ${updated.error satisfies never}`);
+      }
+    }
+    return new KoraAdminProjectDto(updated.value);
+  }
 
   @Get("participants")
   @ApiOkResponse({ type: KoraAdminOverviewDto })

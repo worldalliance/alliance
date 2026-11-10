@@ -1,3 +1,4 @@
+import { KoraProjectStatus } from "@alliance/common/kora";
 import { cn } from "@alliance/shared/styles/util";
 import { useAuth } from "../../../lib/AuthContext";
 import { socialPreviewMeta } from "../../../lib/socialPreviewMeta";
@@ -8,7 +9,7 @@ import { SITE_COL } from "../../../site/ui";
 import { KoraSignedIn } from "./KoraSignIn";
 import { KoraSignUpPage } from "./KoraSignUpPage";
 import { KoraViewer, KoraWelcome } from "./KoraWelcome";
-import { useKoraParticipant } from "./useKoraParticipant";
+import { useKoraParticipant, useKoraProject } from "./useKoraParticipant";
 
 export function meta() {
   return socialPreviewMeta({
@@ -23,7 +24,8 @@ export default function SaferChatbotsForChildren26() {
   const member = useAuth();
   const kora = useKoraParticipant();
   const { query } = kora;
-  if (member.loading || query.isPending) {
+  const project = useKoraProject();
+  if (member.loading || query.isPending || project.isPending) {
     return (
       <SiteRoot className="bg-white">
         <Navbar />
@@ -31,9 +33,25 @@ export default function SaferChatbotsForChildren26() {
       </SiteRoot>
     );
   }
+  if (project.isError) {
+    return (
+      <SiteRoot className="bg-white">
+        <Navbar />
+        <main
+          className={SITE_COL}
+          style={{ paddingTop: `calc(${NAV_HEIGHT}px + 2.5rem)` }}
+        >
+          <p role="alert" className="text-red-600">
+            Couldn&apos;t load the project. Reload to try again.
+          </p>
+        </main>
+      </SiteRoot>
+    );
+  }
+  const closed = project.data.status === KoraProjectStatus.Closed;
   const participant = query.data?.participant;
   if (!participant && !member.isAuthenticated) {
-    return <KoraSignUpPage />;
+    return <KoraSignUpPage closed={closed} />;
   }
   return (
     <SiteRoot className="flex flex-col bg-white">
@@ -51,6 +69,7 @@ export default function SaferChatbotsForChildren26() {
               <KoraSignedIn kora={kora} participant={participant} />
             )
           }
+          closed={closed}
         />
       </main>
       <SiteFooter collapsible />

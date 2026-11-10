@@ -5,6 +5,7 @@ import {
   koraAbandonCode,
   koraCompleteSignup,
   koraParticipantCount,
+  koraProject,
   koraSendCode,
   koraSignOut,
   koraState,
@@ -113,4 +114,12 @@ export function useKoraParticipant() {
     completeSignup,
     signOut,
   };
+}
+
+export function useKoraProject() {
+  return useQuery({
+    queryKey: queryKeys.koraProject(),
+    queryFn: () => koraProject({ throwOnError: true }).then((res) => res.data),
+    retry: retryUnlessRefused(1),
+  });
 }

@@ -16,6 +16,7 @@ import {
 } from "./copy";
 import { ExpertList } from "./ExpertList";
 import { FactBlocks } from "./FactBlocks";
+import { KoraClosedNotice } from "./KoraClosedNotice";
 import { KoraSignIn } from "./KoraSignIn";
 import { NewsCollage } from "./NewsCollage";
 import { ParticipantsBar } from "./ParticipantsBar";
@@ -43,7 +44,7 @@ function ProjectProgress() {
   );
 }
 
-function HeroScreen() {
+function HeroScreen({ closed }: { closed: boolean }) {
   return (
     <section
       aria-label="Sign up"
@@ -83,7 +84,11 @@ function HeroScreen() {
             to improve the safety of chatbots for children worldwide.
           </p>
           <ExpertList />
-          <KoraSignIn className="mt-2 w-full" note={SIGNUP_NOTE} />
+          {closed ? (
+            <KoraClosedNotice className="mt-2 w-full" />
+          ) : (
+            <KoraSignIn className="mt-2 w-full" note={SIGNUP_NOTE} />
+          )}
         </div>
         <div className="flex justify-center lg:justify-end">
           <WaitlistHeroImages images={HERO_IMAGES} />
@@ -93,12 +98,12 @@ function HeroScreen() {
   );
 }
 
-export function KoraSignUpPage() {
+export function KoraSignUpPage({ closed }: { closed: boolean }) {
   return (
     <SiteRoot className="bg-white">
       <Navbar />
       <main>
-        <HeroScreen />
+        <HeroScreen closed={closed} />
         <div
           className={cn(
             PROJECT_COL,

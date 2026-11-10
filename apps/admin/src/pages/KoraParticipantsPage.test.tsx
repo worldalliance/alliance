@@ -13,6 +13,8 @@ const deleted: string[] = [];
 
 serveApi(
   routes({
+    "GET /kora/admin/project": () =>
+      Response.json({ status: "pending", canActivate: false }),
     "GET /kora/admin/participants": () =>
       loadStatus === 200
         ? Response.json(overview)

@@ -5228,6 +5228,12 @@ export type KoraParticipantCountDto = {
     count: number;
 };
 
+export type KoraProjectStatus = 'pending' | 'active' | 'closed';
+
+export type KoraProjectDto = {
+    status: KoraProjectStatus;
+};
+
 export type KoraParticipantDto = {
     id: string;
     name: string;
@@ -5289,6 +5295,18 @@ export type CompleteKoraSignupDto = {
      */
     timeZone?: string | null;
     name: string;
+};
+
+export type KoraAdminProjectDto = {
+    status: KoraProjectStatus;
+    /**
+     * Whether the project may be made active now
+     */
+    canActivate: boolean;
+};
+
+export type UpdateKoraProjectDto = {
+    status: KoraProjectStatus;
 };
 
 export type KoraAdminParticipantDto = {
@@ -16000,6 +16018,28 @@ export type KoraParticipantCountResponses = {
 
 export type KoraParticipantCountResponse = KoraParticipantCountResponses[keyof KoraParticipantCountResponses];
 
+export type KoraProjectData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/project';
+};
+
+export type KoraProjectErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraProjectError = KoraProjectErrors[keyof KoraProjectErrors];
+
+export type KoraProjectResponses = {
+    200: KoraProjectDto;
+};
+
+export type KoraProjectResponse = KoraProjectResponses[keyof KoraProjectResponses];
+
 export type KoraStateData = {
     body?: never;
     path?: never;
@@ -16229,6 +16269,50 @@ export type KoraOAuthCallbackFormResponses = {
 };
 
 export type KoraOAuthCallbackFormResponse = KoraOAuthCallbackFormResponses[keyof KoraOAuthCallbackFormResponses];
+
+export type KoraAdminProjectData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/project';
+};
+
+export type KoraAdminProjectErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminProjectError = KoraAdminProjectErrors[keyof KoraAdminProjectErrors];
+
+export type KoraAdminProjectResponses = {
+    200: KoraAdminProjectDto;
+};
+
+export type KoraAdminProjectResponse = KoraAdminProjectResponses[keyof KoraAdminProjectResponses];
+
+export type KoraAdminUpdateProjectData = {
+    body: UpdateKoraProjectDto;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/project';
+};
+
+export type KoraAdminUpdateProjectErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminUpdateProjectError = KoraAdminUpdateProjectErrors[keyof KoraAdminUpdateProjectErrors];
+
+export type KoraAdminUpdateProjectResponses = {
+    200: KoraAdminProjectDto;
+};
+
+export type KoraAdminUpdateProjectResponse = KoraAdminUpdateProjectResponses[keyof KoraAdminUpdateProjectResponses];
 
 export type KoraAdminOverviewData = {
     body?: never;

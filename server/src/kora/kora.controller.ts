@@ -35,8 +35,10 @@ import {
   StartKoraCodeDto,
   VerifyKoraCodeDto,
 } from "./dto/kora-participant.dto";
+import { KoraProjectDto } from "./dto/kora-project.dto";
 import { clearCookie, KoraCookie, setCookie } from "./kora-cookies";
 import { KoraParticipantService } from "./kora-participant.service";
+import { KoraProjectService } from "./kora-project.service";
 import { KoraSessionService } from "./kora-session.service";
 
 const PURPOSE = OtpPurpose.KoraSignIn;
@@ -69,6 +71,7 @@ export class KoraController {
     private readonly participantService: KoraParticipantService,
     private readonly sessionService: KoraSessionService,
     private readonly otpService: OtpService,
+    private readonly projectService: KoraProjectService,
   ) {}
 
   @Get("participants/count")
@@ -77,6 +80,14 @@ export class KoraController {
   @ApiOkResponse({ type: KoraParticipantCountDto })
   async participantCount(): Promise<KoraParticipantCountDto> {
     return new KoraParticipantCountDto(await this.participantService.count());
+  }
+
+  @Get("project")
+  @UseGuards(AuthOptionalGuard)
+  @Public()
+  @ApiOkResponse({ type: KoraProjectDto })
+  async project(): Promise<KoraProjectDto> {
+    return new KoraProjectDto(await this.projectService.project());
   }
 
   /** Everything the sign-in card needs to resume after a reload. */
