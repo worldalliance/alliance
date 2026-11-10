@@ -1,5 +1,6 @@
-import { expect, test } from "bun:test";
-import { claudeEnvironment } from "./process";
+import { expect, onTestFinished, test } from "bun:test";
+import { spawn } from "node:child_process";
+import { claudeEnvironment, closePipesAfterExit } from "./process";
 
 test("the CLI's environment drops its inherited namespaces and other credentials and turns off nonessential traffic", () => {
   const env = claudeEnvironment("/config", {
@@ -30,4 +31,17 @@ test("the CLI's environment drops its inherited namespaces and other credentials
     DISABLE_FEEDBACK_COMMAND: "1",
     DISABLE_UPDATES: "1",
   });
+});
+
+test("closes the pipes of an exited CLI that a process it started still holds", async () => {
+  // Under load Bun can miss both the output and the exit of a child that exits at once, so the shell lingers.
+  const child = spawn("sh", ["-c", "sleep 30 & echo $!; sleep 0.5"]);
+  closePipesAfterExit(child);
+  let stdout = "";
+  child.stdout.setEncoding("utf8").on("data", (chunk) => (stdout += chunk));
+  onTestFinished(() => {
+    if (/^\d+\n$/.test(stdout)) process.kill(Number(stdout));
+  });
+  await new Promise((resolve) => child.once("close", resolve));
+  expect(stdout).toMatch(/^\d+\n$/);
 });
