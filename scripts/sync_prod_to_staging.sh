@@ -59,6 +59,54 @@ abort_before_start() {
   exit 1
 }
 
+# systemd can start the service off schedule: a deploy that edits OnCalendar=,
+# or starts a timer someone stopped. Only the service unit sets
+# SYNC_SCHEDULED_AT, so a run outside it, such as through systemd-run, is never
+# skipped. No healthcheck ping on a skip, so a schedule that drifts from
+# SYNC_SCHEDULED_AT skips every run and the switch alerts.
+if [ -n "${SYNC_SCHEDULED_AT:-}" ]; then
+  if [[ ! $SYNC_SCHEDULED_AT =~ ^([01][0-9]|2[0-3]):([0-5][0-9])$ ]]; then
+    abort_before_start "SYNC_SCHEDULED_AT=${SYNC_SCHEDULED_AT} in the service \
+unit is not HH:MM; skipping this run."
+  fi
+  scheduled=$((10#${BASH_REMATCH[1]} * 60 + 10#${BASH_REMATCH[2]}))
+  # A failed arithmetic expansion abandons this whole block without exiting,
+  # which would run the sync unguarded.
+  now_epoch=$(date -u +%s)
+  if [[ ! $now_epoch =~ ^[0-9]+$ ]]; then
+    abort_before_start "date -u +%s printed '${now_epoch}', not a number; \
+skipping this run."
+  fi
+  now_epoch_minute=$((now_epoch / 60))
+  now=$(printf '%02d:%02d' $((now_epoch_minute % 1440 / 60)) $((now_epoch_minute % 60)))
+  minutes_late=$(((now_epoch_minute % 1440 - scheduled + 1440) % 1440))
+  WINDOW_MINUTES=5
+  RUN_NOW="sudo systemd-run --uid=ec2-user --collect \
+--unit=alliance-prod-to-staging-sync-manual /home/ec2-user/sync_prod_to_staging.sh"
+  if [ "$minutes_late" -ge "$WINDOW_MINUTES" ]; then
+    echo "[$(date)] ==> systemd started this run at ${now} UTC, outside its \
+window of ${WINDOW_MINUTES} minutes from ${SYNC_SCHEDULED_AT} UTC; skipping it."
+    notify_slack ":no_entry: prod → staging: skipped a run systemd started at \
+${now} UTC, outside its window of ${WINDOW_MINUTES} minutes from \
+${SYNC_SCHEDULED_AT} UTC. To sync now, run \`${RUN_NOW}\` on the staging host."
+    exit 0
+  fi
+  slot_day=$(((now_epoch_minute - minutes_late) / 1440))
+  SLOT_FILE=/home/ec2-user/sync_prod_to_staging.slot
+  if [ "$(cat "$SLOT_FILE" 2>/dev/null)" = "$slot_day" ]; then
+    echo "[$(date)] ==> systemd started this run at ${now} UTC, after that \
+day's run had already started; skipping it."
+    notify_slack ":no_entry: prod → staging: skipped a run systemd started at \
+${now} UTC, after that day's run had already started. To sync again, run \
+\`${RUN_NOW}\` on the staging host."
+    exit 0
+  fi
+  if ! echo "$slot_day" >"$SLOT_FILE"; then
+    abort_before_start "cannot write ${SLOT_FILE}; the sync needs it to run \
+once a day."
+  fi
+fi
+
 if ! command -v flock >/dev/null; then
   abort_before_start "flock is not installed; the sync needs it to stop two \
 runs from overlapping."
