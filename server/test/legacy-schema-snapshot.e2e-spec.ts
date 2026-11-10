@@ -391,7 +391,11 @@ describe("Legacy schemaSnapshot submissions (e2e)", () => {
       "findBy",
     );
     const lookUp = () =>
-      snapshots.findHistoricalBySchemaOrThrow(form.body.id, {});
+      snapshots.findHistoricalBySchemaOrThrow({
+        formId: form.body.id,
+        schema: {},
+        member: { assignedRow: null, userId: null },
+      });
 
     await expect(lookUp()).rejects.toThrow(
       "Submitted schema does not match any historical snapshot for this form",

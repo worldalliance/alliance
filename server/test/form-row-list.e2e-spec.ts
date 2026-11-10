@@ -233,6 +233,43 @@ describe("Forms with a row list (e2e)", () => {
       expect(response.body.assignedRow.values).toEqual(emailRow);
     });
 
+    it.each([
+      { cache: "cold", warm: false },
+      { cache: "warm", warm: true },
+    ])(
+      "accepts a build echoing the schema it was served before the form was edited, on a $cache hash cache",
+      async ({ warm }) => {
+        const created = await createAction(schemaWithRows([emailRow]));
+        const served = await fetchAs(created.formId, ctx.accessToken).expect(
+          200,
+        );
+        await request(server())
+          .put(`/tasks/updateForm/${created.formId}`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .send({
+            schema: { ...schemaWithRows([emailRow]), description: "Edited" },
+          })
+          .expect(200);
+        const echo = (schemaSnapshot: FormSchema) =>
+          request(server())
+            .post(`/tasks/submitForm/${created.formId}`)
+            .set("Authorization", `Bearer ${ctx.accessToken}`)
+            .send({
+              answers: { sentTo: "records@county.example.gov", note: "Filed" },
+              schemaSnapshot,
+              actionId: created.actionId,
+              deviceType: "desktop" as const,
+            });
+        if (warm) {
+          await echo({ ...served.body.schema, description: "Unknown" }).expect(
+            400,
+          );
+        }
+        const response = await echo(served.body.schema).expect(201);
+        expect(response.body.formSnapshotId).toBe(created.formSnapshotId);
+      },
+    );
+
     it("requires a field the row shows", async () => {
       const created = await createAction(schemaWithRows([emailRow]));
       await submit({ ...created, answers: { note: "Filed" } }).expect(400);
