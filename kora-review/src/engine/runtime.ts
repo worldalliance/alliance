@@ -1,21 +1,80 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment -- typed in the next step of the engine split */
-// @ts-nocheck
+import type { RuntimeCtx } from "./context.js";
+
+type TimerId = ReturnType<typeof setTimeout>;
+export type IconName =
+  | "up"
+  | "down"
+  | "undo"
+  | "list"
+  | "lock"
+  | "left"
+  | "right"
+  | "flip"
+  | "trash"
+  | "x"
+  | "pencil"
+  | "scale"
+  | "skip";
+type Listener<E> = (e: E) => void;
+type ListenOpts = boolean | AddEventListenerOptions;
+
+/** Event handlers by property name, so `onkeydown` gets a KeyboardEvent. */
+type Handlers = {
+  [K in keyof HTMLElementEventMap as `on${K}`]?: Listener<HTMLElementEventMap[K]>;
+};
+export type Props = Handlers & { [attr: string]: unknown };
+export type Kid = Node | string | number | boolean | null | undefined | Kid[];
 
 let instances = 0;
 
-export function createRuntime(ctx) {
+function flatKids(kids: Kid[]): Exclude<Kid, Kid[]>[] {
+  return kids.flatMap((kid) => (Array.isArray(kid) ? flatKids(kid) : [kid]));
+}
+
+export function createRuntime(ctx: RuntimeCtx) {
   const { host } = ctx;
 
   const P = `kr${++instances}-`; // id prefix, unique per mount
   const doc = host.ownerDocument;
-  const win = doc.defaultView;
-  const listeners = [];
-  const on = (target, type, fn, opts) => {
+  const view = doc.defaultView;
+  if (!view) throw new Error("The review tool needs a host element in a window.");
+  const win: Window = view;
+  const listeners: (() => void)[] = [];
+  function on<K extends keyof WindowEventMap>(
+    target: Window,
+    type: K,
+    fn: Listener<WindowEventMap[K]>,
+    opts?: ListenOpts,
+  ): void;
+  function on<K extends keyof DocumentEventMap>(
+    target: Document,
+    type: K,
+    fn: Listener<DocumentEventMap[K]>,
+    opts?: ListenOpts,
+  ): void;
+  function on<K extends keyof HTMLElementEventMap>(
+    target: HTMLElement,
+    type: K,
+    fn: Listener<HTMLElementEventMap[K]>,
+    opts?: ListenOpts,
+  ): void;
+  function on(
+    target: EventTarget,
+    type: string,
+    fn: Listener<Event>,
+    opts?: ListenOpts,
+  ): void;
+  function on(
+    target: EventTarget,
+    type: string,
+    fn: Listener<Event>,
+    opts?: ListenOpts,
+  ): void {
     target.addEventListener(type, fn, opts);
     listeners.push(() => target.removeEventListener(type, fn, opts));
-  };
-  const timers = new Set();
-  const later = (fn, ms) => {
+  }
+  const timers = new Set<TimerId>();
+  const later = (fn: () => void, ms: number): TimerId => {
     const id = setTimeout(() => {
       timers.delete(id);
       fn();
@@ -23,25 +82,30 @@ export function createRuntime(ctx) {
     timers.add(id);
     return id;
   };
-  const cancel = (id) => {
+  const cancel = (id: TimerId | null | undefined) => {
     if (id != null) {
       clearTimeout(id);
       timers.delete(id);
     }
   };
-  const raf = (fn) =>
+  const raf = (fn: () => void) =>
     win.requestAnimationFrame
       ? win.requestAnimationFrame(fn)
       : setTimeout(fn, 16);
   let destroyed = false;
 
   /* ---------- Small helpers ---------- */
-  function h(tag, props, ...kids) {
+  function h<K extends keyof HTMLElementTagNameMap>(
+    tag: K,
+    props?: Props | null,
+    ...kids: Kid[]
+  ): HTMLElementTagNameMap[K] {
     const e = doc.createElement(tag);
     for (const [k, v] of Object.entries(props || {})) {
       if (v == null || v === false) continue;
-      if (k === "class") e.className = v;
-      else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+      if (k === "class") e.className = String(v);
+      else if (k.startsWith("on") && typeof v === "function")
+        e.addEventListener(k.slice(2), (ev) => v(ev));
       else if (
         k === "id" ||
         k === "for" ||
@@ -55,14 +119,14 @@ export function createRuntime(ctx) {
             .map((x) => P + x)
             .join(" "),
         );
-      else e.setAttribute(k, v === true ? "" : v);
+      else e.setAttribute(k, v === true ? "" : String(v));
     }
-    for (const kid of kids.flat(Infinity))
+    for (const kid of flatKids(kids))
       if (kid != null && kid !== false)
-        e.append(kid.nodeType ? kid : String(kid));
+        e.append(typeof kid === "object" ? kid : String(kid));
     return e;
   }
-  const ICONS = {
+  const ICONS: Record<IconName, string> = {
     up: '<path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/>',
     down: '<g transform="rotate(180 12 12)"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></g>',
     undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
@@ -80,7 +144,7 @@ export function createRuntime(ctx) {
       '<path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>',
     skip: '<path d="m5 4 10 8-10 8V4z"/><path d="M19 5v14"/>',
   };
-  function icon(name) {
+  function icon(name: IconName) {
     const s = doc.createElementNS("http://www.w3.org/2000/svg", "svg");
     s.setAttribute("viewBox", "0 0 24 24");
     s.setAttribute("fill", "none");
@@ -118,11 +182,11 @@ export function createRuntime(ctx) {
   });
   rootEl.append(app, scrim, sheetEl, toasts, live);
   host.append(rootEl);
-  const $ = (id) => rootEl.querySelector("#" + P + id);
-  const $$ = (sel) => rootEl.querySelectorAll(sel);
-  const setVar = (k, v) => rootEl.style.setProperty(k, v);
+  const $ = (id: string) => rootEl.querySelector<HTMLElement>("#" + P + id);
+  const $$ = (sel: string) => rootEl.querySelectorAll<HTMLElement>(sel);
+  const setVar = (k: string, v: string) => rootEl.style.setProperty(k, v);
 
-  function announce(msg) {
+  function announce(msg: string) {
     live.textContent = "";
     later(() => {
       live.textContent = msg;
