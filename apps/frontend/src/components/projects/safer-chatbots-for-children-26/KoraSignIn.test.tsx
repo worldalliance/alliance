@@ -1,4 +1,8 @@
-import { KORA_PROJECT_PATH, KoraError } from "@alliance/common/kora";
+import {
+  KORA_PROJECT_PATH,
+  KORA_SIGNUPS_CLOSED,
+  KoraError,
+} from "@alliance/common/kora";
 import { OtpError } from "@alliance/common/otp";
 import type {
   KoraParticipantStateDto,
@@ -305,6 +309,31 @@ test("a code no longer valid returns to contact entry with its copy", async () =
   await screen.findByLabelText("Code");
   expect(sends).toEqual([{ email: "person@example.com" }]);
   expect(screen.queryByText(copy)).toBeNull();
+});
+
+test("a new contact on a closed project returns to contact entry with the closed copy", async () => {
+  verify = () => refusal(400, KoraError.ProjectClosed, KORA_SIGNUPS_CLOSED);
+  state = {
+    participant: null,
+    pendingCode: pendingCode(),
+    signupPending: false,
+  };
+  renderCard();
+  await enterCode("123456");
+  await screen.findByText(KORA_SIGNUPS_CLOSED);
+  screen.getByLabelText("Email or mobile number");
+});
+
+test("a signup the project closed on returns to contact entry with the closed copy", async () => {
+  signup = () => refusal(400, KoraError.ProjectClosed, KORA_SIGNUPS_CLOSED);
+  state = { participant: null, pendingCode: null, signupPending: true };
+  renderCard();
+  fireEvent.change(await screen.findByLabelText("Full name"), {
+    target: { value: "Test Person" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+  await screen.findByText(KORA_SIGNUPS_CLOSED);
+  screen.getByLabelText("Email or mobile number");
 });
 
 test("resumes a pending code after a reload, without a resend it cannot address", async () => {

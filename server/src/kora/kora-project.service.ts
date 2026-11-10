@@ -6,6 +6,8 @@ import type { Repository } from "src/utils/Repository";
 import type { KoraAdminProject } from "./dto/kora-project.dto";
 import { KORA_PROJECT_ID, KoraProject } from "./entities/kora-project.entity";
 
+export type KoraProjectState = Omit<KoraAdminProject, "toNotify">;
+
 export enum KoraProjectError {
   NeedsTranscripts = "needs_transcripts",
 }
@@ -21,13 +23,13 @@ export class KoraProjectService {
     return this.projectRepo.findOneByOrFail({ id: KORA_PROJECT_ID });
   }
 
-  async adminProject(): Promise<KoraAdminProject> {
+  async adminProject(): Promise<KoraProjectState> {
     return { project: await this.project(), canActivate: canActivate() };
   }
 
   async setStatus(
     status: KoraProjectStatus,
-  ): Promise<Result<KoraAdminProject, KoraProjectError>> {
+  ): Promise<Result<KoraProjectState, KoraProjectError>> {
     if (status === KoraProjectStatus.Active && !canActivate()) {
       return R.failure(KoraProjectError.NeedsTranscripts);
     }

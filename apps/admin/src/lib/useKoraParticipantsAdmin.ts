@@ -2,6 +2,7 @@ import type { KoraProjectStatus } from "@alliance/common/kora";
 import {
   koraAdminDeleteAbandonedSignup,
   koraAdminDeleteParticipant,
+  koraAdminNotifyWaitlist,
   koraAdminOverview,
   koraAdminProject,
   koraAdminUpdateProject,
@@ -73,5 +74,22 @@ export function useSetKoraProjectStatus(params: {
       params.onSuccess();
     },
     onError: params.onError,
+  });
+}
+
+export function useNotifyKoraWaitlist(params: {
+  onSuccess: (queued: number) => void;
+  onError: (err: Error) => void;
+}) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      koraAdminNotifyWaitlist({ throwOnError: true }).then((r) => r.data),
+    onSuccess: ({ queued }) => params.onSuccess(queued),
+    onError: params.onError,
+    onSettled: () =>
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.koraProjectAdmin(),
+      }),
   });
 }

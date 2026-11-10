@@ -1,4 +1,7 @@
-import { KORA_ACTIVE_NEEDS_TRANSCRIPTS } from "@alliance/common/kora";
+import {
+  KORA_ACTIVE_NEEDS_TRANSCRIPTS,
+  KORA_NOTIFY_NEEDS_ACTIVE,
+} from "@alliance/common/kora";
 import {
   BadRequestException,
   Body,
@@ -10,6 +13,7 @@ import {
   NotFoundException,
   Param,
   ParseUUIDPipe,
+  Post,
   Put,
   UseGuards,
 } from "@nestjs/common";
@@ -18,10 +22,16 @@ import { AdminGuard } from "src/auth/guards/admin.guard";
 import { KoraAdminOverviewDto } from "./dto/kora-admin.dto";
 import {
   KoraAdminProjectDto,
+  KoraNotifyQueuedDto,
   UpdateKoraProjectDto,
 } from "./dto/kora-project.dto";
 import { KoraAdminService } from "./kora-admin.service";
-import { KoraProjectError, KoraProjectService } from "./kora-project.service";
+import { KoraNotifyError, KoraNotifyService } from "./kora-notify.service";
+import {
+  KoraProjectError,
+  KoraProjectService,
+  type KoraProjectState,
+} from "./kora-project.service";
 
 @Controller("kora/admin")
 @UseGuards(AdminGuard)
@@ -29,12 +39,22 @@ export class KoraAdminController {
   constructor(
     private readonly adminService: KoraAdminService,
     private readonly projectService: KoraProjectService,
+    private readonly notifyService: KoraNotifyService,
   ) {}
+
+  private async projectDto(
+    state: KoraProjectState,
+  ): Promise<KoraAdminProjectDto> {
+    return new KoraAdminProjectDto({
+      ...state,
+      toNotify: await this.notifyService.toNotify(),
+    });
+  }
 
   @Get("project")
   @ApiOkResponse({ type: KoraAdminProjectDto })
   async project(): Promise<KoraAdminProjectDto> {
-    return new KoraAdminProjectDto(await this.projectService.adminProject());
+    return this.projectDto(await this.projectService.adminProject());
   }
 
   @Put("project")
@@ -51,7 +71,23 @@ export class KoraAdminController {
           throw new Error(`unknown error: ${updated.error satisfies never}`);
       }
     }
-    return new KoraAdminProjectDto(updated.value);
+    return this.projectDto(updated.value);
+  }
+
+  @Post("notify-waitlist")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: KoraNotifyQueuedDto })
+  async notifyWaitlist(): Promise<KoraNotifyQueuedDto> {
+    const started = await this.notifyService.notifyWaitlist();
+    if (!started.ok) {
+      switch (started.error) {
+        case KoraNotifyError.NotActive:
+          throw new BadRequestException(KORA_NOTIFY_NEEDS_ACTIVE);
+        default:
+          throw new Error(`unknown error: ${started.error satisfies never}`);
+      }
+    }
+    return new KoraNotifyQueuedDto(started.value);
   }
 
   @Get("participants")

@@ -84,7 +84,11 @@ export function useKoraParticipant() {
     onSuccess: ({ participant }) =>
       update({ participant, pendingCode: null, signupPending: !participant }),
     onError: (error) => {
-      if (thrownKoraError(error) === OtpError.CodeInvalid) {
+      const refused = thrownKoraError(error);
+      if (
+        refused === OtpError.CodeInvalid ||
+        refused === KoraError.ProjectClosed
+      ) {
         update({ pendingCode: null });
       }
     },
@@ -97,7 +101,11 @@ export function useKoraParticipant() {
       }).then((res) => res.data),
     onSuccess: (participant) => update({ participant, signupPending: false }),
     onError: (error) => {
-      if (thrownKoraError(error) === KoraError.SignupExpired) {
+      const refused = thrownKoraError(error);
+      if (
+        refused === KoraError.SignupExpired ||
+        refused === KoraError.ProjectClosed
+      ) {
         update({ signupPending: false });
       }
     },

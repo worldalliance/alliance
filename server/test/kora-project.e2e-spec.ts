@@ -2,13 +2,10 @@ import {
   KORA_ACTIVE_NEEDS_TRANSCRIPTS,
   KoraProjectStatus,
 } from "@alliance/common/kora";
-import {
-  KORA_PROJECT_ID,
-  KoraProject,
-} from "src/kora/entities/kora-project.entity";
 import { KoraModule } from "src/kora/kora.module";
 import request from "supertest";
 import { createTestApp, type TestContext } from "./e2e-test-utils";
+import { setKoraProjectStatus } from "./kora-fixtures";
 
 describe("Kora project status (e2e)", () => {
   let ctx: TestContext;
@@ -25,10 +22,7 @@ describe("Kora project status (e2e)", () => {
   }, 50000);
 
   beforeEach(async () => {
-    // Tests synchronize the schema, so the row the migration inserts is seeded here.
-    await ctx.dataSource
-      .getRepository(KoraProject)
-      .save({ id: KORA_PROJECT_ID, status: KoraProjectStatus.Pending });
+    await setKoraProjectStatus(ctx, KoraProjectStatus.Pending);
   });
 
   afterAll(async () => {
@@ -42,7 +36,7 @@ describe("Kora project status (e2e)", () => {
 
   it("lets an admin close the project and reopen it", async () => {
     const closed = await setStatus(KoraProjectStatus.Closed).expect(200);
-    expect(closed.body).toEqual({
+    expect(closed.body).toMatchObject({
       status: KoraProjectStatus.Closed,
       canActivate: false,
     });

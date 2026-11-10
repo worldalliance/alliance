@@ -321,10 +321,14 @@ export function KoraSignIn({
     );
   }
 
+  const signupError = thrownKoraError(completeSignup.error);
+  const verifyError = thrownKoraError(verifyCode.error);
   const sentBack =
-    thrownKoraError(completeSignup.error) === KoraError.SignupExpired
+    signupError === KoraError.SignupExpired ||
+    signupError === KoraError.ProjectClosed
       ? completeSignup.error
-      : thrownKoraError(verifyCode.error) === OtpError.CodeInvalid
+      : verifyError === OtpError.CodeInvalid ||
+          verifyError === KoraError.ProjectClosed
         ? verifyCode.error
         : null;
   const error = sentBack ?? sendCode.error;

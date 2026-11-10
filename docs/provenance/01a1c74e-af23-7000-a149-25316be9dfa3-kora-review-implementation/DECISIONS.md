@@ -10,3 +10,19 @@
 - **Single ajv.** The lockfile held a stale nested `ajv@8.18.0` under `ajv-formats`, which made the two ajv type trees incompatible. It was removed, so `ajv-formats` resolves to the root `ajv@8.20.0`, which its `^8.0.0` range allows. (agent decision)
 - **Converter as functions.** `readKoraPairs(text)` splits KORA's file into records numbered from 1, reporting a line that doesn't parse rather than stopping. `fromKoraPair(record)` maps one pair's fields and validates nothing, so the server reports every invalid line through `transcriptSchema`. The CLI script wraps the two. The script's duplicate-`pair_id` check moved to the server's upload, which checks `transcriptId` uniqueness across the whole file. (agent decision)
 - **`engine.ts` waivers.** It carries an `alliance/max-lines 4300` waiver (about 1,700 lines as imported, 4,280 after Prettier) and an `eslint-disable` for `ban-ts-comment`, both naming the follow-up in REQUIREMENTS.md. One `prefer-const` warning in it was fixed. (agent decision)
+
+## Closing sign-ups
+
+- **Where the rule sits.** The participant service refuses a new participant at the three points one could be created: verifying a code for an unknown contact, finishing a signup, and a provider sign-in with no participant. Existing participants are never refused. A code is still sent to an unknown contact while Closed, because refusing at send time would reveal which contacts already have a participant. (agent decision)
+- **Provider sign-in reuses `OAuthError.NoAccount`.** Kora's provider flow never produced it before, so it now means "no participant, and the project is closed", and `koraOAuthErrorMessage` shows the closed copy for it. That avoids adding a variant to the shared `OAuthError` that the member flow would have to handle. (agent decision)
+- **The closed refusal goes back to contact entry,** like an expired code or signup, since the contact can't continue. (agent decision)
+- **Closed page.** The sign-in under the thank-you starts collapsed behind its link, and starts open when the visitor is returning from a provider sign-in, so that refusal's message is visible. (agent decision)
+
+## Notify waitlist
+
+- **Who counts as notified.** Each participant has a `launchNotifiedAt` timestamp, set only once a message is delivered. The count shown to the admin, and each send, cover participants without one. (agent decision)
+- **Sending.** Each participant is claimed (`launchNotifiedAt` set) under `FOR UPDATE SKIP LOCKED` before the message goes out, and the claim is cleared again if delivery fails. Two sends at once, even from different server processes, never message the same person. A failure is skipped for the rest of that run and retried on the next. (agent decision)
+- **In the background.** The endpoint returns how many are waiting and sends after responding, so a long list can't time out the admin's request. A server restart mid-run loses nothing: unsent participants keep a null `launchNotifiedAt`, and the next send picks them up. (agent decision)
+- **Only while Active.** The server refuses with "Make the project active before notifying the waitlist.", so nobody is told the reviews are open while they aren't. Until batch upload lands, Active can't be chosen, so the send can't be used yet. (agent decision)
+- **Channel and delivery gate.** Email or SMS to the participant's one contact, through the same unrecorded senders as sign-in codes, so the existing delivery gate applies. The link is `APP_URL` plus the review path. (agent decision)
+- **Migration.** Adding `kora_launch` to `EmailType` recreates the enum, as the `otp_code` migration did. The same unrelated `friend` generated-column drift as in the project-status migration was removed. A second `migration:generate` showed no Kora changes left. (agent decision)

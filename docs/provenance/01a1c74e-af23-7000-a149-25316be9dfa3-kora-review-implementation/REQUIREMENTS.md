@@ -21,6 +21,7 @@ This task implements the rest of the spec in `docs/provenance/01a1c67a-0156-7000
 ## Closed project
 
 - When the project is Closed, returning participants can still sign in, but the server refuses new participant sign-ups. (agent-proposed, user-approved)
+- On the Closed project page, signed-out visitors see the thank-you and below it "Already taking part? Sign in to finish your reviews", which opens the usual sign-in. A contact with no participant is refused with "The project has closed, so it isn't taking new sign-ups." (agent-proposed, user-approved)
 
 ## Notify waitlist
 

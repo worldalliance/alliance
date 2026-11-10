@@ -46,6 +46,10 @@ export class KoraParticipant {
   @Column({ type: "timestamptz" })
   contactVerifiedAt: Date;
 
+  /** When the "reviews are open" message was sent; null until it is delivered. */
+  @Column({ type: "timestamptz", nullable: true })
+  launchNotifiedAt: Date | null;
+
   @CreateDateColumnTz()
   @ApiProperty({ type: Date })
   createdAt: Date;

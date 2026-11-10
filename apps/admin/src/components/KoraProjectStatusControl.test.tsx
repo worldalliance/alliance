@@ -17,7 +17,7 @@ serveApi(
   routes({
     "GET /kora/admin/project": () =>
       loadStatus === 200
-        ? Response.json({ status, canActivate: false })
+        ? Response.json({ status, canActivate: false, toNotify: 0 })
         : Response.json({}, { status: loadStatus }),
     "PUT /kora/admin/project": async ({ request }) => {
       if (saveStatus !== 200) {
@@ -26,7 +26,7 @@ serveApi(
       const body = (await request.json()) as { status: KoraProjectStatus };
       saved.push(body.status);
       status = body.status;
-      return Response.json({ status, canActivate: false });
+      return Response.json({ status, canActivate: false, toNotify: 0 });
     },
   }),
 );

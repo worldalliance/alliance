@@ -1,4 +1,6 @@
 import { cn } from "@alliance/shared/styles/util";
+import { useOAuthNotice } from "@alliance/sharedweb/lib/oauth";
+import { useState } from "react";
 import { Link } from "react-router";
 import { SiteFooter } from "../../../site/Footer";
 import { NAV_HEIGHT, Navbar } from "../../../site/Navbar";
@@ -44,6 +46,27 @@ function ProjectProgress() {
   );
 }
 
+function ClosedSignIn() {
+  const returningFromProvider = useOAuthNotice() !== null;
+  const [open, setOpen] = useState(returningFromProvider);
+  return (
+    <div className="mt-2 flex w-full flex-col gap-4">
+      <KoraClosedNotice />
+      {open ? (
+        <KoraSignIn className="w-full" note={null} />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="site-sans min-h-6 self-start text-base underline"
+        >
+          Already taking part? Sign in to finish your reviews
+        </button>
+      )}
+    </div>
+  );
+}
+
 function HeroScreen({ closed }: { closed: boolean }) {
   return (
     <section
@@ -85,7 +108,7 @@ function HeroScreen({ closed }: { closed: boolean }) {
           </p>
           <ExpertList />
           {closed ? (
-            <KoraClosedNotice className="mt-2 w-full" />
+            <ClosedSignIn />
           ) : (
             <KoraSignIn className="mt-2 w-full" note={SIGNUP_NOTE} />
           )}

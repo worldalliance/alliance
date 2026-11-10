@@ -231,7 +231,7 @@ export type ActionEventNotifType = 'announcement' | 'misseddeadline' | 'reminder
 
 export type EmailStatus = 'pending' | 'sent' | 'failed';
 
-export type EmailType = 'verification' | 'password_reset' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'forum_reply' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder' | 'contract_suspended' | 'contract_reinstated' | 'contract_reminder' | 'waitlist_confirmation' | 'waitlist_link' | 'waitlist_staff' | 'otp_code';
+export type EmailType = 'verification' | 'password_reset' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'forum_reply' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder' | 'contract_suspended' | 'contract_reinstated' | 'contract_reminder' | 'waitlist_confirmation' | 'waitlist_link' | 'waitlist_staff' | 'otp_code' | 'kora_launch';
 
 export type Mail = {
     id: number;
@@ -5303,10 +5303,21 @@ export type KoraAdminProjectDto = {
      * Whether the project may be made active now
      */
     canActivate: boolean;
+    /**
+     * Participants not yet told the reviews are open
+     */
+    toNotify: number;
 };
 
 export type UpdateKoraProjectDto = {
     status: KoraProjectStatus;
+};
+
+export type KoraNotifyQueuedDto = {
+    /**
+     * Participants the launch message is being sent to
+     */
+    queued: number;
 };
 
 export type KoraAdminParticipantDto = {
@@ -16313,6 +16324,28 @@ export type KoraAdminUpdateProjectResponses = {
 };
 
 export type KoraAdminUpdateProjectResponse = KoraAdminUpdateProjectResponses[keyof KoraAdminUpdateProjectResponses];
+
+export type KoraAdminNotifyWaitlistData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/notify-waitlist';
+};
+
+export type KoraAdminNotifyWaitlistErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminNotifyWaitlistError = KoraAdminNotifyWaitlistErrors[keyof KoraAdminNotifyWaitlistErrors];
+
+export type KoraAdminNotifyWaitlistResponses = {
+    200: KoraNotifyQueuedDto;
+};
+
+export type KoraAdminNotifyWaitlistResponse = KoraAdminNotifyWaitlistResponses[keyof KoraAdminNotifyWaitlistResponses];
 
 export type KoraAdminOverviewData = {
     body?: never;

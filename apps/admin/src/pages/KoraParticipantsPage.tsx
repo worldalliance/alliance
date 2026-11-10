@@ -8,6 +8,7 @@ import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { format } from "date-fns";
 import React, { useMemo, useState } from "react";
 import ConfirmDialog from "../components/ConfirmDialog";
+import { KoraNotifyWaitlist } from "../components/KoraNotifyWaitlist";
 import { KoraProjectStatusControl } from "../components/KoraProjectStatusControl";
 import SortHeader from "../components/SortHeader";
 import { adminRefusalMessage } from "../lib/adminRefusal";
@@ -164,6 +165,8 @@ const KoraParticipantsPage: React.FC = () => {
       </div>
 
       <KoraProjectStatusControl />
+
+      <KoraNotifyWaitlist />
 
       <dl className="flex flex-wrap gap-6 text-sm">
         <div>

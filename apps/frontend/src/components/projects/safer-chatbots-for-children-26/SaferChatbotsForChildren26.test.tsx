@@ -122,6 +122,20 @@ test("closes sign-up for a visitor once the project has closed", async () => {
   expect(screen.queryByRole("button", { name: "Continue" })).toBeNull();
 });
 
+test("lets a returning participant sign in under the closed thank-you", async () => {
+  participant = null;
+  status = KoraProjectStatus.Closed;
+  renderPage();
+
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: "Already taking part? Sign in to finish your reviews",
+    }),
+  );
+  await screen.findByRole("button", { name: "Continue" });
+  expect(screen.getByText(CLOSED)).toBeTruthy();
+});
+
 test("thanks a participant once the project has closed, keeping sign-out", async () => {
   participant = { id: "p1", name: "Test Person" };
   status = KoraProjectStatus.Closed;
