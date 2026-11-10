@@ -4,6 +4,7 @@ import { LogOut, PanelLeft } from "lucide-react";
 import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { Outlet } from "react-router";
 import AdminSearch from "./components/AdminSearch";
+import MemberZoneLink from "./components/MemberZoneLink";
 import SidebarNav from "./components/SidebarNav";
 import { useAuth } from "./lib/AuthContext";
 import { useGroupAssignmentMembersAdmin } from "./lib/useGroupAssignmentAdmin";
@@ -79,7 +80,7 @@ const Sidebar: React.FC = () => {
           />
         </div>
         {isSidebarOpen && (
-          <div className="flex flex-row justify-between items-center p-3 px-5">
+          <div className="flex flex-row justify-between items-center p-3 px-5 pb-8">
             <p className="text-sm text-gray-800 truncate">{user?.email}</p>
             <button
               type="button"
@@ -103,6 +104,7 @@ const Sidebar: React.FC = () => {
           <PanelLeft className="h-5 w-5" />
         </div>
       </div>
+      <MemberZoneLink />
       <div className="flex-1 overflow-y-scroll max-h-screen">
         <div
           className="flex flex-col gap-y-5 min-h-0 flex-1 h-fit"

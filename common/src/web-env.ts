@@ -12,6 +12,7 @@ export const webEnvFields = {
   // so a `.env` file can't override them.
   ALLIANCE_DEV_API_URL: optionalEnv(httpUrl),
   ALLIANCE_DEV_APP_URL: optionalEnv(httpUrl),
+  ALLIANCE_DEV_ADMIN_URL: optionalEnv(httpUrl),
 };
 
 export type WebEnvKey = keyof typeof webEnvFields;
