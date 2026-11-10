@@ -19,8 +19,6 @@ import {
   CustomValidatorResponseDto,
   CustomValidatorTypeDto,
   RunValidatorDto,
-  TestCustomExpressionDto,
-  TestCustomExpressionResponseDto,
 } from "./customvalidator.dto";
 import { CustomValidatorService } from "./customvalidator.service";
 
@@ -93,22 +91,7 @@ export class CustomValidatorController {
       await this.customValidatorService.findOrCreateCustomValidator({
         type: body.type,
         idArgument: body.idArgument,
-        expression: body.expression,
       });
     return new CreateCustomValidatorResponseDto(validator.id);
-  }
-
-  @Post("testCustomExpression")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: TestCustomExpressionResponseDto })
-  async testCustomExpressionAdmin(
-    @Body() body: TestCustomExpressionDto,
-  ): Promise<TestCustomExpressionResponseDto> {
-    return new TestCustomExpressionResponseDto(
-      await this.customValidatorService.testCustomExpression(
-        body.expression,
-        body.userId,
-      ),
-    );
   }
 }

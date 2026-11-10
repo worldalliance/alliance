@@ -4,7 +4,6 @@ import { createContext, useContext } from "react";
 export type CustomValidatorDraft = {
   type: CustomValidatorType;
   idArgument: string | null;
-  expression: string | null;
 };
 
 export type CustomValidatorDraftsContextValue = {

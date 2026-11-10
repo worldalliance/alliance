@@ -252,7 +252,6 @@ describe("an editor in the settings sidebar", () => {
           id: Number(params.id),
           type: "HasPhoneNumber",
           idArgument: null,
-          expression: null,
         }),
     });
     renderSidebar({

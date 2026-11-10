@@ -26,14 +26,13 @@ export function ValidatorRule({
         <CustomValidatorSelect
           type={config?.type}
           idArgument={config?.idArgument ?? null}
-          expression={config?.expression ?? null}
-          onChange={({ validatorType, idArgument, expression }) => {
+          onChange={({ validatorType, idArgument }) => {
             if (!validatorType) {
               onRemove();
               return;
             }
             const draftId = isDraft ? validatorId : createDraftId();
-            setDraft(draftId, { type: validatorType, idArgument, expression });
+            setDraft(draftId, { type: validatorType, idArgument });
             onChange({ ...condition, validatorId: draftId });
           }}
           filter={(validator) => validator.usableForVisibility}
