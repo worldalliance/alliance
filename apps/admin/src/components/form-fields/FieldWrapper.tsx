@@ -56,9 +56,8 @@ export function FieldWrapper<T extends AnyField>({
   const handleValidatorChange = async (params: {
     validatorType: CustomValidatorType | undefined;
     idArgument: string | null;
-    expression: string | null;
   }) => {
-    const { validatorType, idArgument, expression } = params;
+    const { validatorType, idArgument } = params;
     if (!validatorType) {
       if (
         field.customValidatorId &&
@@ -77,7 +76,7 @@ export function FieldWrapper<T extends AnyField>({
     if (!isDraftValidatorId(existingValidatorId)) {
       onUpdate({ customValidatorId: draftId } as Partial<T>);
     }
-    setDraft(draftId, { type: validatorType, idArgument, expression });
+    setDraft(draftId, { type: validatorType, idArgument });
   };
 
   const handleVisibilityChange = (updates: {
@@ -92,7 +91,6 @@ export function FieldWrapper<T extends AnyField>({
       handleValidatorChange({
         validatorType: undefined,
         idArgument: null,
-        expression: null,
       });
     }
   };
@@ -176,7 +174,6 @@ export function FieldWrapper<T extends AnyField>({
     <CustomValidatorSelect
       type={validatorConfig?.type}
       idArgument={validatorConfig?.idArgument ?? null}
-      expression={validatorConfig?.expression ?? null}
       onChange={handleValidatorChange}
     />
   );

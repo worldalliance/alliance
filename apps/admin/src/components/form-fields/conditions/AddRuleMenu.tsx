@@ -80,7 +80,6 @@ export function AddRuleMenu({
             setDraft(draftId, {
               type: defaultValidator.id,
               idArgument: null,
-              expression: null,
             });
             return {
               kind: "validator",

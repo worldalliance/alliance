@@ -1,4 +1,3 @@
-import { thrownMessage } from "@alliance/common/errorMessage";
 import { toE164 } from "@alliance/common/phone";
 import { hasProfilePicture } from "@alliance/common/profilePicture";
 import { R } from "@alliance/common/result";
@@ -15,7 +14,6 @@ import { In, IsNull, type Repository } from "typeorm";
 import {
   CustomValidatorResponse,
   CustomValidatorTypeDtoArgs,
-  TestCustomExpressionResponse,
 } from "./customvalidator.dto";
 import {
   CustomValidator,
@@ -47,21 +45,18 @@ export class CustomValidatorService {
   async findOrCreateCustomValidator(params: {
     type: CustomValidatorType;
     idArgument: string | null;
-    expression: string | null;
   }): Promise<CustomValidator> {
-    const { type, idArgument, expression } = params;
+    const { type, idArgument } = params;
     let validator = await this.customValidatorRepository.findOne({
       where: {
         type,
         idArgument: idArgument ?? IsNull(),
-        expression: expression ?? IsNull(),
       },
     });
     if (!validator) {
       validator = this.customValidatorRepository.create({
         type,
         idArgument,
-        expression,
       });
       await this.customValidatorRepository.save(validator);
     }
@@ -70,93 +65,6 @@ export class CustomValidatorService {
 
   async findOneCustomValidator(id: number): Promise<CustomValidator> {
     return this.customValidatorRepository.findOneOrFail({ where: { id } });
-  }
-
-  async testCustomExpression(
-    expression: string,
-    userId?: number,
-  ): Promise<TestCustomExpressionResponse> {
-    if (!expression?.trim()) {
-      throw new BadRequestException("Expression is empty");
-    }
-
-    let expressionFn: (user: User) => unknown;
-    try {
-      expressionFn = eval(expression) as (user: User) => unknown;
-    } catch (error) {
-      throw new BadRequestException(
-        `Failed to evaluate expression: ${thrownMessage(error)}`,
-      );
-    }
-
-    if (typeof expressionFn !== "function") {
-      throw new BadRequestException("Expression must evaluate to a function");
-    }
-
-    const runForUser = (user: User): boolean => {
-      let result: unknown;
-      try {
-        result = expressionFn(user);
-      } catch (error) {
-        throw new BadRequestException(
-          `Expression failed for user ${user.id}: ${thrownMessage(error)}`,
-        );
-      }
-      if (typeof result !== "boolean") {
-        throw new BadRequestException(
-          `Expression must return a boolean (user ${user.id}).`,
-        );
-      }
-      return result;
-    };
-
-    let selectedUserResult: boolean | undefined;
-    if (typeof userId === "number") {
-      const selectedUser = await this.userService.findOneOrFail(userId, {
-        tags: true,
-        communities: true,
-        contractEvents: true,
-      });
-      if (!selectedUser.hasActiveContract) {
-        throw new BadRequestException(
-          "Selected user does not have an active contract",
-        );
-      }
-      selectedUserResult = runForUser(selectedUser);
-    }
-
-    const users = (
-      await this.userService.findAll({
-        tags: true,
-        communities: true,
-        contractEvents: true,
-      })
-    ).filter((user) => user.hasActiveContract);
-
-    let passCount = 0;
-    let failCount = 0;
-    const passUsers: User[] = [];
-    const failUsers: User[] = [];
-    for (const user of users) {
-      const isValid = runForUser(user);
-      if (isValid) {
-        passCount += 1;
-        passUsers.push(user);
-      } else {
-        failCount += 1;
-        failUsers.push(user);
-      }
-    }
-
-    return {
-      passCount,
-      failCount,
-      totalCount: users.length,
-      passUsers,
-      failUsers,
-      selectedUserId: userId,
-      selectedUserResult,
-    };
   }
 
   async runValidator(
@@ -312,16 +220,8 @@ export class CustomValidatorService {
           return { isValid: false };
         }
         return { isValid: true };
-      case CustomValidatorType.CustomExpression:
-        if (!validator.expression) {
-          throw new BadRequestException("Validator has no expression");
-        }
-        const expressionFn = eval(validator.expression) as (
-          user: User,
-        ) => unknown;
-        return { isValid: expressionFn(user) as boolean };
       default:
-        console.warn(
+        throw new Error(
           `Unknown validator type: ${validator.type satisfies never}`,
         );
     }

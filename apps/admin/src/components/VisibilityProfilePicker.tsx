@@ -41,7 +41,7 @@ const ValidatorConditionText = ({
   const argument =
     saved.type === "MemberTag"
       ? tags.find((tag) => String(tag.id) === saved.idArgument)?.name
-      : (saved.idArgument ?? saved.expression);
+      : saved.idArgument;
   return `${name}${argument ? ` (${argument})` : ""} ${condition.resultEquals === false ? "fails" : "passes"}`;
 };
 
