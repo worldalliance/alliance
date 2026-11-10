@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
+import { R } from "../../../../../../../common/src/result";
 
 export enum CaptureRecordKind {
   Start = "start",
@@ -31,7 +32,8 @@ const captureRecord = z.discriminatedUnion("kind", [
 
 export type CaptureRecord = z.infer<typeof captureRecord>;
 
-const readCaptureLine = (line: string): CaptureRecord =>
+/** Throws on a line that isn't a capture record. */
+export const readCaptureLine = (line: string): CaptureRecord =>
   captureRecord.parse(JSON.parse(line));
 
 /** One CLI process's records, in the order the recorder saw them. Throws on a line that isn't a capture record, naming the file and line. */
@@ -52,3 +54,18 @@ export function readCapture(file: string): CaptureRecord[] {
 
 export const captureDir = (version: string) =>
   fileURLToPath(new URL(`./captures/${version}/`, import.meta.url));
+
+const stdinLine = z.object({
+  type: z.string(),
+  request: z.object({ subtype: z.string() }).partial().optional(),
+});
+
+export const stdinShape = (text: string): string =>
+  R.match(
+    R.fromThrowable(() => stdinLine.parse(JSON.parse(text))),
+    {
+      success: (value) =>
+        [value.type, value.request?.subtype].filter(Boolean).join("/"),
+      failure: () => `unreadable line ${JSON.stringify(text)}`,
+    },
+  );

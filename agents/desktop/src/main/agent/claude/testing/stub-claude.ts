@@ -2,9 +2,7 @@
 // Stands in for the claude executable in tests: replays the capture whose arguments match its own.
 import path from "node:path";
 import { createInterface } from "node:readline";
-import { z } from "zod";
-import { R } from "../../../../../../../common/src/result";
-import { CaptureRecordKind, readCapture } from "./capture";
+import { CaptureRecordKind, readCapture, stdinShape } from "./capture";
 import { stubCapturesVariable } from "./stub";
 
 const uuid = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g;
@@ -36,19 +34,6 @@ if (capture.at(-1)?.kind !== CaptureRecordKind.Exit) {
 
 const lines = createInterface({ input: process.stdin });
 const stdin = lines[Symbol.asyncIterator]();
-const stdinLine = z.object({
-  type: z.string(),
-  request: z.object({ subtype: z.string() }).partial().optional(),
-});
-const shape = (text: string): string =>
-  R.match(
-    R.fromThrowable(() => stdinLine.parse(JSON.parse(text))),
-    {
-      success: (value) =>
-        [value.type, value.request?.subtype].filter(Boolean).join("/"),
-      failure: () => `unreadable line ${JSON.stringify(text)}`,
-    },
-  );
 
 replay: for (const entry of capture.slice(1)) {
   switch (entry.kind) {
@@ -63,9 +48,9 @@ replay: for (const entry of capture.slice(1)) {
     case CaptureRecordKind.In: {
       const next = await stdin.next();
       if (next.done) break replay;
-      if (shape(next.value) !== shape(entry.text)) {
+      if (stdinShape(next.value) !== stdinShape(entry.text)) {
         process.stderr.write(
-          `stub-claude: expected ${shape(entry.text)} on stdin, got ${shape(next.value)}\n`,
+          `stub-claude: expected ${stdinShape(entry.text)} on stdin, got ${stdinShape(next.value)}\n`,
         );
         process.exitCode = 3;
         break replay;
@@ -76,7 +61,7 @@ replay: for (const entry of capture.slice(1)) {
       const next = await stdin.next();
       if (!next.done) {
         process.stderr.write(
-          `stub-claude: unexpected ${shape(next.value)} on stdin after the recorded input\n`,
+          `stub-claude: unexpected ${stdinShape(next.value)} on stdin after the recorded input\n`,
         );
         process.exitCode = 3;
         break replay;
