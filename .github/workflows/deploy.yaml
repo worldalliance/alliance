@@ -60,6 +60,7 @@ jobs:
             citesting,
             agents/hooks,
             agents/skills,
+            agents/chats,
           ]
     uses: ./.github/workflows/test-unit.yaml
     with:
