@@ -344,7 +344,7 @@ export function EditableListField({
               <option value="">None</option>
               {prefillForms.map((f) => (
                 <option key={f.id} value={f.id}>
-                  {f.title} (#{f.id})
+                  {f.title} ({f.displaySlug})
                 </option>
               ))}
             </select>

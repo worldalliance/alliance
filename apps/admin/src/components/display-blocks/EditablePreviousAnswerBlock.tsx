@@ -94,7 +94,7 @@ export function EditablePreviousAnswerBlock({
               <option value="">Select a form...</option>
               {forms.map((f) => (
                 <option key={f.id} value={f.id}>
-                  {f.title} (#{f.id})
+                  {f.title} ({f.displaySlug})
                 </option>
               ))}
             </select>

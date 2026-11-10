@@ -82,6 +82,19 @@ it("keeps the input open with the server's refusal", async () => {
   consoleError.mockRestore();
 });
 
+it("keeps the refusal of a save that settles after the input loses focus", async () => {
+  const consoleError = spyOn(console, "error").mockImplementation(() => {});
+  renderField();
+  const input = edit("taken");
+  fireEvent.keyDown(input, { key: "Enter" });
+  fireEvent.blur(input);
+
+  await screen.findByText('The slug "taken" is already taken');
+  fireEvent.change(input, { target: { value: "taken-2" } });
+  expect(screen.queryByText('The slug "taken" is already taken')).toBeNull();
+  consoleError.mockRestore();
+});
+
 it("copies the slug", async () => {
   const writeText = spyOn(navigator.clipboard, "writeText").mockResolvedValue();
   renderField();

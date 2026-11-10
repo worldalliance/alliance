@@ -173,7 +173,7 @@ const FormFieldEditor: React.FC<{
         <option value="">Select form...</option>
         {availableForms.map((f) => (
           <option key={f.id} value={f.id}>
-            {f.title} (#{f.id})
+            {f.title} ({f.displaySlug})
           </option>
         ))}
       </select>
