@@ -12,7 +12,9 @@ const env = (key: string): string => {
 
 const userId = Number(process.argv[2]);
 if (!Number.isInteger(userId)) {
-  throw new Error("usage: bun agents/skills/demo-action/mint-token.ts <userId>");
+  throw new Error(
+    "usage: bun agents/skills/demo-action/mint-token.ts <userId>",
+  );
 }
 
 const row = execFileSync(
