@@ -51,12 +51,18 @@ const ActivityGroupItem = ({ item, date }: ActivityGroupItemProps) => {
           />
         )}
         <span className="text-zinc-500 align-middle"> {verb} </span>
-        <Link
-          to={href("/actions/:id", { id: item.actionId.toString() })}
-          className="text-green font-medium hover:underline align-middle"
-        >
-          {item.actionName}
-        </Link>
+        {item.combinedSplitId === null ? (
+          <Link
+            to={href("/actions/:id", { id: item.actionId.toString() })}
+            className="text-green font-medium hover:underline align-middle"
+          >
+            {item.actionName}
+          </Link>
+        ) : (
+          <span className="text-green font-medium align-middle">
+            {item.actionName}
+          </span>
+        )}
         <span className="text-zinc-500 align-middle">
           {" "}
           {formatTime(new Date(date), { addSuffix: true })}

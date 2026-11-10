@@ -1,6 +1,7 @@
 import { actionActivityTransitiveVerb } from "@alliance/common/actionActivity";
 import { FeedActionActivityDto } from "@alliance/shared/lib/actionActivity";
 import { formatTime } from "@alliance/shared/lib/utils";
+import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { MessageCircle } from "lucide-react";
 import { href, Link, useNavigate } from "react-router";
@@ -26,6 +27,8 @@ const ActionActivityFeedItem = ({
   const navigate = useNavigate();
 
   const verb = actionActivityTransitiveVerb[activity.type];
+  // A combined split's arm page opens only for members routed to it.
+  const opensAction = activity.combinedSplitId === null;
 
   if (card) {
     return (
@@ -51,8 +54,12 @@ const ActionActivityFeedItem = ({
     return (
       <div
         key={activity.id}
-        className="rounded-md border-zinc-200 cursor-pointer"
+        className={cn(
+          "rounded-md border-zinc-200",
+          opensAction && "cursor-pointer",
+        )}
         onClick={() => {
+          if (!opensAction) return;
           navigate(
             href("/actions/:id/activity/:activityId", {
               id: activity.actionId.toString(),
@@ -98,18 +105,20 @@ const ActionActivityFeedItem = ({
             likers={activity.likes}
             onLike={() => handleLike(activity)}
           >
-            <LikeBarButton
-              icon={MessageCircle}
-              label="Comment"
-              onPress={() =>
-                navigate(
-                  href("/actions/:id/activity/:activityId", {
-                    id: activity.actionId.toString(),
-                    activityId: activity.id.toString(),
-                  }),
-                )
-              }
-            />
+            {opensAction && (
+              <LikeBarButton
+                icon={MessageCircle}
+                label="Comment"
+                onPress={() =>
+                  navigate(
+                    href("/actions/:id/activity/:activityId", {
+                      id: activity.actionId.toString(),
+                      activityId: activity.id.toString(),
+                    }),
+                  )
+                }
+              />
+            )}
           </LikeFooter>
         )}
       </div>

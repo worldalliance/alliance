@@ -27,15 +27,18 @@ const UserActivityCard = ({ activity, handleLike }: UserActivityCardProps) => {
   const verb = actionActivityTransitiveVerb[activity.type];
   const commentable = actionActivityCommentable[activity.type];
 
+  // A combined split's arm page opens only for members routed to it.
+  const opensAction = activity.combinedSplitId === null;
+
   const handleActivityClick = useCallback(() => {
-    if (showCommentForm) return;
+    if (showCommentForm || !opensAction) return;
     navigate(
       href("/actions/:id/activity/:activityId", {
         id: activity.actionId.toString(),
         activityId: activity.id.toString(),
       }),
     );
-  }, [activity.actionId, activity.id, navigate, showCommentForm]);
+  }, [activity.actionId, activity.id, navigate, showCommentForm, opensAction]);
 
   const timeSinceCompleted = formatTime(new Date(activity.createdAt), {
     addSuffix: true,
@@ -48,6 +51,7 @@ const UserActivityCard = ({ activity, handleLike }: UserActivityCardProps) => {
           "block p-4 -m-4 text-[11pt] transition-colors duration-100 flex-1 gap-y-2 bg-white",
           // Child controls do not open activity; keep card hover off there.
           !showCommentForm &&
+            opensAction &&
             "hover:bg-grey-1 [&:has(a:hover)]:bg-white [&:has(button:hover)]:bg-white cursor-pointer",
         )}
         onClick={handleActivityClick}
@@ -67,7 +71,11 @@ const UserActivityCard = ({ activity, handleLike }: UserActivityCardProps) => {
           </Link>
           <span className="whitespace-pre text-zinc-900">{` ${verb} `}</span>
 
-          {activity.actionName ? (
+          {activity.actionName && !opensAction ? (
+            <span className="text-green font-medium">
+              {activity.actionName}
+            </span>
+          ) : activity.actionName ? (
             <Link
               to={href("/actions/:id", { id: activity.actionId.toString() })}
               className="text-green hover:underline font-medium"

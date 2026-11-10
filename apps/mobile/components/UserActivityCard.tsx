@@ -29,14 +29,18 @@ export default function UserActivityCard({
   const verb = actionActivityTransitiveVerb[activity.type];
   const commentable = actionActivityCommentable[activity.type];
 
+  // A combined split's arm page opens only for members routed to it.
+  const opensAction = activity.combinedSplitId === null;
+
   const handleActionPress = useCallback(() => {
+    if (!opensAction) return;
     router.push(`/actions/${activity.actionId}`);
-  }, [activity.actionId]);
+  }, [activity.actionId, opensAction]);
 
   const handleActivityPress = useCallback(() => {
-    if (showCommentForm) return;
+    if (showCommentForm || !opensAction) return;
     router.push(`/actions/${activity.actionId}/activity/${activity.id}`);
-  }, [activity.actionId, activity.id, showCommentForm]);
+  }, [activity.actionId, activity.id, showCommentForm, opensAction]);
 
   const handleUserPress = useCallback(() => {
     router.push(`/member/${activity.user.id}`);
@@ -49,9 +53,9 @@ export default function UserActivityCard({
   return (
     <View className="bg-white p-4">
       <TouchableOpacity
-        activeOpacity={showCommentForm ? 1 : 0.7}
+        activeOpacity={showCommentForm || !opensAction ? 1 : 0.7}
         onPress={handleActivityPress}
-        disabled={showCommentForm}
+        disabled={showCommentForm || !opensAction}
       >
         <View className="flex-row items-start flex-wrap">
           <TouchableOpacity onPress={handleUserPress} activeOpacity={0.7}>
