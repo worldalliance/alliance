@@ -7,19 +7,18 @@
 # same one locally and in CI. PACKAGES mirrors the test-unit matrices in
 # .github/workflows/ci.yaml and deploy.yaml, so a new directory with tests goes
 # in all three. The typecheck matrices in those two files list every package
-# here except scripts, .github and agents, which have no tsconfig, and can list
-# packages that are absent here; citesting is typechecked but has no tests.
+# here except scripts, .github, agents/hooks and agents/skills, which have no
+# tsconfig.
 #
 # agents/desktop installs from its own lockfile, which those matrices never
-# install, so desktop.yaml runs its tests. They are *.e2e.ts, which bun test
-# doesn't discover; a test there that bun test would find needs agents narrowed
-# here and in the matrices so it stays out of these runs.
+# install, so desktop.yaml runs its tests, and agents is listed here by
+# subdirectory to leave agents/desktop out.
 #
 #   scripts/test-all.sh              # every package below
 #   scripts/test-all.sh apps/admin   # only the named packages
 set -u
 
-PACKAGES=(server common shared sharedweb apps/frontend apps/admin apps/mobile scripts .github agents)
+PACKAGES=(server common shared sharedweb apps/frontend apps/admin apps/mobile scripts .github citesting agents/hooks agents/skills)
 
 script_dir="$(cd "$(dirname "$0")" && pwd)" || exit 1
 cd "$script_dir/.." || exit 1
@@ -44,14 +43,15 @@ for pkg in "${PACKAGES[@]}"; do
     continue
   fi
 
-  # Mirrors bun test's discovery glob: **{.test,_test,.spec,_spec}.{js,ts,jsx,tsx}.
+  # Mirrors bun test's discovery glob:
+  # **{.test,_test,.spec,_spec}.{js,ts,jsx,tsx,mjs,cjs,mts,cts}.
   # The separator before `test`/`spec` is either a dot or an underscore, so
   # `foo_test.ts` counts but `foo.e2e-spec.ts` does not — matching bun, which
   # leaves the server's `-spec.ts` e2e suites to `bun run test:e2e`.
   # No `pipefail` here — `grep -q` exits on its first match and leaves `find`
   # writing to a closed pipe, which would read as "no test files".
   if ! find "$pkg" -name node_modules -prune -o -type f -print |
-    grep -Eq '[._](test|spec)\.(js|ts|jsx|tsx)$'; then
+    grep -Eq '[._](test|spec)\.([cm]?[jt]s|[jt]sx)$'; then
     echo "==> $pkg — no test files, skipping"
     continue
   fi

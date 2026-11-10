@@ -14,7 +14,8 @@ on:
 jobs:
   test-unit:
     environment: ${{ inputs.environment }}
-    runs-on: ubuntu-latest
+    # Playwright can't install Chromium on ubuntu-latest (26.04).
+    runs-on: ${{ inputs.package == 'citesting' && 'ubuntu-24.04' || 'ubuntu-latest' }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -26,6 +27,10 @@ jobs:
 
       - name: Install Dependencies
         run: bun install --frozen-lockfile
+
+      - name: Install Playwright
+        if: inputs.package == 'citesting'
+        run: npx playwright install --with-deps chromium
 
       # Runs through scripts/test-all.sh so the discovery/skip rule lives in one
       # place and `bun run test` locally behaves identically to CI.

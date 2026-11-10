@@ -68,7 +68,9 @@ jobs:
             apps/mobile,
             scripts,
             .github,
-            agents,
+            citesting,
+            agents/hooks,
+            agents/skills,
           ]
     uses: ./.github/workflows/test-unit.yaml
     with:
