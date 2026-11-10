@@ -1,36 +1,14 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment -- typed in the next step of the engine split */
-// @ts-nocheck
+import type { KoraCategory } from "../types.gen.js";
+import type { ScreensCtx } from "./context.js";
+import type { Transcript } from "./types.js";
 import { CONTENT_WARNING } from "../categories.js";
 
-export function createScreens(ctx) {
-  const {
-    CAT,
-    S,
-    announce,
-    app,
-    brandMark,
-    callOf,
-    catChip,
-    catLabel,
-    changed,
-    ensure,
-    finishFlow,
-    firstPendingIndex,
-    h,
-    icon,
-    openTranscript,
-    plural,
-    progressText,
-    refreshList,
-    renderMarkdown,
-    res,
-    reviewed,
-    startReviewing,
-  } = ctx;
+export function createScreens(ctx: ScreensCtx) {
+  const { CAT, S, announce, app, brandMark, callOf, catChip, catLabel, category, changed, ensure, finishFlow, firstPendingIndex, h, icon, openTranscript, plural, progressText, refreshList, renderMarkdown, res, reviewed, startReviewing, transcript } = ctx;
 
   /* ---------- Content warning before sensitive pairs ---------- */
   // Shown before each pending pair in a sensitive category the reviewer hasn't opened yet and hasn't skipped.
-  function needsWarning(t) {
+  function needsWarning(t: Transcript) {
     const c = CAT.get(t.category),
       r = res(t);
     return !!(
@@ -42,12 +20,12 @@ export function createScreens(ctx) {
       S.warned !== t.id
     );
   }
-  const pendingIn = (id) =>
+  const pendingIn = (id: string) =>
     S.list.filter((t) => t.category === id && !reviewed(res(t))).length;
-  function renderWarning({ then }) {
+  function renderWarning({ then }: { then: string }) {
     const w = CONTENT_WARNING,
-      t = S.all.find((x) => x.id === then),
-      c = CAT.get(t.category);
+      t = transcript(then),
+      c = category(t.category);
     const label = c.label,
       n = pendingIn(c.id);
     app.replaceChildren(
@@ -104,12 +82,12 @@ export function createScreens(ctx) {
       ),
     );
   }
-  function continueWarning(id) {
-    const t = S.all.find((x) => x.id === id);
+  function continueWarning(id: string) {
+    const t = transcript(id);
     S.warned = id;
     openTranscript(S.list.indexOf(t));
   }
-  function afterSkip(msg) {
+  function afterSkip(msg: string) {
     refreshList();
     changed();
     announce(`${msg} ${progressText()}.`);
@@ -117,12 +95,12 @@ export function createScreens(ctx) {
     if (i === -1) finishFlow();
     else openTranscript(i);
   }
-  function skipOne(id) {
-    const t = S.all.find((x) => x.id === id);
+  function skipOne(id: string) {
+    const t = transcript(id);
     ensure(t).optedOut = true;
     afterSkip("Skipped this pair.");
   }
-  function skipCategory(cid) {
+  function skipCategory(cid: KoraCategory) {
     if (!S.optOutCats.includes(cid)) S.optOutCats.push(cid);
     for (const t of S.all)
       if (t.category === cid && res(t).status !== "done")
@@ -139,7 +117,7 @@ export function createScreens(ctx) {
       0,
       true,
     );
-    const markRange = (from, to, cls) => {
+    const markRange = (from: number, to: number, cls: string) => {
       const tk = demoView.tokens;
       for (let k = from; k <= to; k++) {
         tk[k].el.classList.add(cls);
@@ -147,7 +125,7 @@ export function createScreens(ctx) {
           (demoView.gaps[k] || []).forEach((g) => g.classList.add(cls));
       }
     };
-    const idxOf = (w) => demoView.tokens.findIndex((t) => t.text === w);
+    const idxOf = (w: string) => demoView.tokens.findIndex((t) => t.text === w);
     markRange(idxOf("I’ll"), idxOf("answers"), "neg");
     markRange(idxOf("If"), demoView.tokens.length - 1, "pos");
     app.replaceChildren(

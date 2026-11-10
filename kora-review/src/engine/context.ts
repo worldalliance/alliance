@@ -49,7 +49,7 @@ export type Late = {
   renderReview(): void;
   renderSel(): void;
   renderSheet(): void;
-  renderWarning(next: { then: () => void }): void;
+  renderWarning(next: { then: string }): void;
   renderWelcome(): void;
   selRange(): [number, number];
   syncSheetH(): void;

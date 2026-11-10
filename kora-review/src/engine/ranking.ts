@@ -29,9 +29,9 @@ export function createRanking(ctx) {
     sideOf,
     startAdvance,
   } = ctx;
-  const closeSheet = (...args) => ctx.closeSheet(...args);
-  const renderSheet = (...args) => ctx.renderSheet(...args);
-  const syncSheetH = (...args) => ctx.syncSheetH(...args);
+  const closeSheet: Late["closeSheet"] = (...args) => ctx.closeSheet(...args);
+  const renderSheet: Late["renderSheet"] = (...args) => ctx.renderSheet(...args);
+  const syncSheetH: Late["syncSheetH"] = (...args) => ctx.syncSheetH(...args);
 
   function lockIn() {
     const t = cur(),

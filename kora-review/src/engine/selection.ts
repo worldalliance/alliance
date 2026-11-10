@@ -21,8 +21,8 @@ export function createSelection(ctx) {
     sheetEl,
     win,
   } = ctx;
-  const closeSheet = (...args) => ctx.closeSheet(...args);
-  const openSheet = (...args) => ctx.openSheet(...args);
+  const closeSheet: Late["closeSheet"] = (...args) => ctx.closeSheet(...args);
+  const openSheet: Late["openSheet"] = (...args) => ctx.openSheet(...args);
 
   /* ---------- Selection ---------- */
   function selRange() {

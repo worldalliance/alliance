@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment -- typed in the next step of the engine split */
-// @ts-nocheck
+import type { FeedbackCtx } from "./context.js";
 
-export function createFeedback(ctx) {
+export function createFeedback(ctx: FeedbackCtx) {
   const {
     $$,
     cancel,
@@ -18,8 +17,8 @@ export function createFeedback(ctx) {
   } = ctx;
 
   /* ---------- Toast ---------- */
-  let toastTimer = null;
-  function toast(msg, undoFn) {
+  let toastTimer: ReturnType<typeof setTimeout> | null = null;
+  function toast(msg: string, undoFn?: () => void) {
     const el = h(
       "div",
       { class: "toast", role: "status" },
@@ -44,7 +43,7 @@ export function createFeedback(ctx) {
     toastTimer = later(() => el.remove(), 5000);
   }
   // Just the value, hovering up from the rated words for a moment and fading out. Positioned inside the root.
-  function floatValue(v, first, last) {
+  function floatValue(v: number, first: HTMLElement, last: HTMLElement) {
     $$(".toast-v").forEach((el) => el.remove());
     const el = h(
       "div",

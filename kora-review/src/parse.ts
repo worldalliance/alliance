@@ -1,6 +1,11 @@
 import { z } from "zod";
-import { SCHEMA_VERSION, transcriptSchema } from "./schemas.js";
-import type { KoraExport, KoraTranscript } from "./types.gen.js";
+import { exportSchema, SCHEMA_VERSION, transcriptSchema } from "./schemas.js";
+import type {
+  KoraExitSurvey,
+  KoraExport,
+  KoraProfile,
+  KoraTranscript,
+} from "./types.gen.js";
 
 const transcriptShape = z.fromJSONSchema(transcriptSchema);
 const transcript = z.custom<KoraTranscript>(
@@ -27,3 +32,30 @@ export function parseKoraTranscript(value: unknown): KoraTranscript {
 export function parseKoraExport(value: unknown): KoraExport {
   return exported.parse(value);
 }
+
+const fields = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? Object.fromEntries(Object.entries(value))
+    : null;
+
+function exportDef(name: string): Record<string, unknown> {
+  const def = fields(fields(exportSchema.$defs)?.[name]);
+  if (!def) throw new Error(`exportSchema has no $defs.${name}.`);
+  return def;
+}
+
+const profileShape = z.fromJSONSchema(exportDef("profile"));
+const profile = z.custom<KoraProfile>(
+  (value) => profileShape.safeParse(value).success,
+);
+const exitSurveyShape = z.fromJSONSchema(exportDef("exitSurvey"));
+const exitSurvey = z.custom<KoraExitSurvey>(
+  (value) => exitSurveyShape.safeParse(value).success,
+);
+
+/** Checks the survey's answers against the export schema before they are stored. */
+export const parseKoraProfile = (value: unknown): KoraProfile =>
+  profile.parse(value);
+
+export const parseKoraExitSurvey = (value: unknown): KoraExitSurvey =>
+  exitSurvey.parse(value);

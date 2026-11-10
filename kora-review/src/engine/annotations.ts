@@ -30,12 +30,12 @@ export function createAnnotations(ctx) {
     updateUndo,
     vcls,
   } = ctx;
-  const closeSheet = (...args) => ctx.closeSheet(...args);
-  const focusNote = (...args) => ctx.focusNote(...args);
-  const openSheet = (...args) => ctx.openSheet(...args);
-  const promptNote = (...args) => ctx.promptNote(...args);
-  const renderSel = (...args) => ctx.renderSel(...args);
-  const selRange = (...args) => ctx.selRange(...args);
+  const closeSheet: Late["closeSheet"] = (...args) => ctx.closeSheet(...args);
+  const focusNote: Late["focusNote"] = (...args) => ctx.focusNote(...args);
+  const openSheet: Late["openSheet"] = (...args) => ctx.openSheet(...args);
+  const promptNote: Late["promptNote"] = (...args) => ctx.promptNote(...args);
+  const renderSel: Late["renderSel"] = (...args) => ctx.renderSel(...args);
+  const selRange: Late["selRange"] = (...args) => ctx.selRange(...args);
 
   function renderAnns() {
     if (S.screen !== "review") return;

@@ -1,7 +1,20 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment -- typed in the next step of the engine split */
-// @ts-nocheck
+import { parseKoraExitSurvey, parseKoraProfile } from "../parse.js";
+import type { SurveysCtx } from "./context.js";
 
-export function createSurveys(ctx) {
+type SurveyAnswers = Record<string, string | string[] | undefined>;
+
+type SurveyField = {
+  id: string;
+  q: string;
+  opts?: Record<string, string>;
+  multi?: boolean;
+  req?: boolean;
+  text?: boolean;
+  long?: boolean;
+  when?: (a: SurveyAnswers) => boolean;
+};
+
+export function createSurveys(ctx: SurveysCtx) {
   const { P, S, app, brandMark, changed, complete, h, icon, startReviewing } =
     ctx;
 
@@ -9,7 +22,7 @@ export function createSurveys(ctx) {
   // Every profile question offers "Prefer not to say". Free-text questions get it as a checkbox.
   const PNTS = "prefer_not_to_say",
     PNTS_LABEL = "Prefer not to say";
-  const PROFILE = [
+  const PROFILE_FIELDS: SurveyField[] = [
     {
       id: "is_parent",
       q: "Are you the parent or guardian of a child under 18?",
@@ -79,14 +92,15 @@ export function createSurveys(ctx) {
       q: "Do you work with children professionally? (optional)",
       opts: { yes: "Yes", no: "No" },
     },
-  ].map((f) =>
+  ];
+  const PROFILE: SurveyField[] = PROFILE_FIELDS.map((f) =>
     f.text
       ? f
       : Object.assign(f, {
           opts: Object.assign({}, f.opts, { [PNTS]: PNTS_LABEL }),
         }),
   );
-  const EXIT = [
+  const EXIT: SurveyField[] = [
     {
       id: "exit_q1",
       q: "Was the guide clear? (optional)",
@@ -144,7 +158,11 @@ export function createSurveys(ctx) {
       long: true,
     },
   ];
-  function surveyField(f, ans, onChange) {
+  function surveyField(
+    f: SurveyField,
+    ans: SurveyAnswers,
+    onChange: (repaint: boolean, from: HTMLInputElement) => void,
+  ) {
     if (f.text) {
       const inp = h(f.long ? "textarea" : "input", {
         id: "sv-" + f.id,
@@ -153,7 +171,8 @@ export function createSurveys(ctx) {
         maxlength: f.long ? 2000 : 100,
         autocomplete: "off",
       });
-      inp.value = ans[f.id] && ans[f.id] !== PNTS ? ans[f.id] : "";
+      const given = ans[f.id];
+      inp.value = typeof given === "string" && given !== PNTS ? given : "";
       inp.addEventListener("input", () => {
         ans[f.id] = inp.value.trim();
       });
@@ -196,7 +215,7 @@ export function createSurveys(ctx) {
       h(
         "div",
         { class: "opts" },
-        Object.entries(f.opts).map(([v, label]) =>
+        Object.entries(f.opts ?? {}).map(([v, label]) =>
           h(
             "label",
             { class: "opt" },
@@ -208,23 +227,25 @@ export function createSurveys(ctx) {
                 ? (ans[f.id] || []).includes(v)
                 : ans[f.id] === v,
               onchange: (e) => {
+                const input = e.target;
+                if (!(input instanceof HTMLInputElement)) return;
                 if (f.multi) {
                   // "Prefer not to say" excludes the age bands, and an age band clears it.
                   let s = new Set(ans[f.id] || []);
-                  if (e.target.checked) {
+                  if (input.checked) {
                     if (v === PNTS) s = new Set();
                     else s.delete(PNTS);
                     s.add(v);
                   } else s.delete(v);
                   ans[f.id] = [...s];
-                  e.target
+                  input
                     .closest(".opts")
-                    .querySelectorAll("input")
+                    ?.querySelectorAll("input")
                     .forEach((i) => {
                       i.checked = s.has(i.value);
                     });
                 } else ans[f.id] = v;
-                onChange(f.id === "is_parent", e.target);
+                onChange(f.id === "is_parent", input);
               },
             }),
             h("span", {}, label),
@@ -234,7 +255,7 @@ export function createSurveys(ctx) {
     );
   }
   function renderProfile() {
-    const ans = {},
+    const ans: SurveyAnswers = {},
       err = h("p", { class: "err", role: "alert" });
     const box = h("div", { class: "form" });
     const paint = () =>
@@ -243,7 +264,7 @@ export function createSurveys(ctx) {
           surveyField(f, ans, (repaint, from) => {
             if (!repaint) return;
             paint();
-            const again = box.querySelector(
+            const again = box.querySelector<HTMLElement>(
               `input[name="${from.name}"][value="${from.value}"]`,
             );
             if (again) again.focus();
@@ -251,7 +272,7 @@ export function createSurveys(ctx) {
         ),
       );
     paint();
-    const submit = (e) => {
+    const submit = (e: SubmitEvent) => {
       e.preventDefault();
       const missing = PROFILE.filter(
         (f) =>
@@ -267,12 +288,14 @@ export function createSurveys(ctx) {
         err.focus();
         return;
       }
-      S.profile = Object.fromEntries(
+      S.profile = parseKoraProfile(
+        Object.fromEntries(
         PROFILE.map((f) => {
-          let v = ans[f.id];
+          let v: string | string[] | null | undefined = ans[f.id];
           if (f.multi) v = ans.is_parent === "yes" && v && v.length ? v : null;
           return [f.id, v == null || v === "" ? null : v];
         }),
+        ),
       );
       changed();
       startReviewing();
@@ -309,14 +332,16 @@ export function createSurveys(ctx) {
     );
   }
   function renderExit() {
-    const ans = {};
-    const submit = (e) => {
+    const ans: SurveyAnswers = {};
+    const submit = (e: SubmitEvent) => {
       e.preventDefault();
-      S.exitSurvey = Object.fromEntries(
+      S.exitSurvey = parseKoraExitSurvey(
+        Object.fromEntries(
         EXIT.map((f) => [
           f.id,
           ans[f.id] == null || ans[f.id] === "" ? null : ans[f.id],
         ]),
+        ),
       );
       complete();
     };

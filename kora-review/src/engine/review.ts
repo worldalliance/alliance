@@ -34,9 +34,9 @@ export function createReview(ctx) {
     sign,
     vcls,
   } = ctx;
-  const openSheet = (...args) => ctx.openSheet(...args);
-  const renderAnns = (...args) => ctx.renderAnns(...args);
-  const undo = (...args) => ctx.undo(...args);
+  const openSheet: Late["openSheet"] = (...args) => ctx.openSheet(...args);
+  const renderAnns: Late["renderAnns"] = (...args) => ctx.renderAnns(...args);
+  const undo: Late["undo"] = (...args) => ctx.undo(...args);
 
   /* ---------- Review ---------- */
   function renderReview() {

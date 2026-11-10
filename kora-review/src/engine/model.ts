@@ -7,6 +7,7 @@ import type {
   KoraResult,
 } from "../types.gen.js";
 import type { ModelCtx } from "./context.js";
+import type { IconName } from "./runtime.js";
 import type {
   AnswerKey,
   Annotation,
@@ -99,6 +100,16 @@ export function createModel(ctx: ModelCtx) {
     mounted: false,
   };
   const cur = () => S.list[S.idx];
+  function transcript(id: string): Transcript {
+    const t = S.all.find((x) => x.id === id);
+    if (!t) throw new Error(`No transcript ${id} in this assignment.`);
+    return t;
+  }
+  function category(id: string) {
+    const c = CAT.get(id);
+    if (!c) throw new Error(`Unknown category ${id}.`);
+    return c;
+  }
   function blankResult(t: Transcript): Result {
     return {
       transcriptId: t.id,
@@ -170,7 +181,10 @@ export function createModel(ctx: ModelCtx) {
       )
       .filter((m) => m.role === "assistant").length;
   // How a locked pair reads on stamps: its comparison, such as "A ≫ B", in screen letters.
-  function callOf(t: Transcript, r: Result) {
+  function callOf(
+    t: Transcript,
+    r: Result,
+  ): { text: string; cls: string; icon: IconName } {
     if (r.optedOut && r.status !== "done")
       return { text: "Skipped", cls: "dim", icon: "skip" };
     if (!r.answers.q1) return { text: "Done", cls: "v-pair", icon: "lock" };
@@ -375,6 +389,8 @@ export function createModel(ctx: ModelCtx) {
   };
 
   return {
+    transcript,
+    category,
     CAT,
     Q0_LABEL,
     S,

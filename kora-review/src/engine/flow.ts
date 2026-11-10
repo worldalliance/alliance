@@ -1,7 +1,7 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment -- typed in the next step of the engine split */
-// @ts-nocheck
+import type { FlowCtx, Late } from "./context.js";
+import type { Screen, Transcript } from "./types.js";
 
-export function createFlow(ctx) {
+export function createFlow(ctx: FlowCtx) {
   const {
     o,
     S,
@@ -28,23 +28,23 @@ export function createFlow(ctx) {
     rootEl,
     win,
   } = ctx;
-  const closeSheet = (...args) => ctx.closeSheet(...args);
-  const needsWarning = (...args) => ctx.needsWarning(...args);
-  const openSheet = (...args) => ctx.openSheet(...args);
-  const renderExit = (...args) => ctx.renderExit(...args);
-  const renderFinish = (...args) => ctx.renderFinish(...args);
-  const renderProfile = (...args) => ctx.renderProfile(...args);
-  const renderQueue = (...args) => ctx.renderQueue(...args);
-  const renderReview = (...args) => ctx.renderReview(...args);
-  const renderWarning = (...args) => ctx.renderWarning(...args);
-  const renderWelcome = (...args) => ctx.renderWelcome(...args);
+  const closeSheet: Late["closeSheet"] = (...args) => ctx.closeSheet(...args);
+  const needsWarning: Late["needsWarning"] = (...args) => ctx.needsWarning(...args);
+  const openSheet: Late["openSheet"] = (...args) => ctx.openSheet(...args);
+  const renderExit: Late["renderExit"] = (...args) => ctx.renderExit(...args);
+  const renderFinish: Late["renderFinish"] = (...args) => ctx.renderFinish(...args);
+  const renderProfile: Late["renderProfile"] = (...args) => ctx.renderProfile(...args);
+  const renderQueue: Late["renderQueue"] = (...args) => ctx.renderQueue(...args);
+  const renderReview: Late["renderReview"] = (...args) => ctx.renderReview(...args);
+  const renderWarning: Late["renderWarning"] = (...args) => ctx.renderWarning(...args);
+  const renderWelcome: Late["renderWelcome"] = (...args) => ctx.renderWelcome(...args);
 
   const changed = () => {
     if (!isDestroyed() && S.mounted) o.onChange();
   };
 
   /* ---------- Router ---------- */
-  function go(screen, opts = {}) {
+  function go(screen: Screen, opts?: { then: string }) {
     bankTime();
     const was = S.screen;
     S.screen = screen;
@@ -56,7 +56,7 @@ export function createFlow(ctx) {
     if (screen === "welcome") renderWelcome();
     else if (screen === "queue") renderQueue();
     else if (screen === "finish") renderFinish();
-    else if (screen === "warning") renderWarning(opts);
+    else if (screen === "warning" && opts) renderWarning(opts);
     else if (screen === "profile") renderProfile();
     else if (screen === "exit") renderExit();
     toTop();
@@ -73,10 +73,10 @@ export function createFlow(ctx) {
     if (!S.mounted) return;
     const a = doc.activeElement;
     if (a && a !== doc.body && !rootEl.contains(a)) return;
-    const t = app.querySelector("[data-focus]");
+    const t = app.querySelector<HTMLElement>("[data-focus]");
     if (t) t.focus({ preventScroll: true });
   }
-  function openTranscript(i) {
+  function openTranscript(i: number) {
     if (!S.list.length) return;
     const target = S.list[clamp(i, 0, S.list.length - 1)];
     if (needsWarning(target)) {
@@ -110,8 +110,11 @@ export function createFlow(ctx) {
   }
 
   /* ---------- Question intro: full screen when the question changes, then a fade ---------- */
-  let intro = null;
-  function showIntro(t) {
+  let intro: {
+    el: HTMLElement;
+    timer: ReturnType<typeof setTimeout> | null;
+  } | null = null;
+  function showIntro(t: Transcript) {
     closeIntro();
     const el = h("div", {
       class: "kr-intro",
@@ -177,7 +180,7 @@ export function createFlow(ctx) {
     intro = null;
   }
   // Time on each pair: visible time with it open, banked into its result when the reviewer leaves it, hides the page, or locks it.
-  let openedAt = null;
+  let openedAt: number | null = null;
   function bankTime() {
     const at = openedAt;
     openedAt = null;
@@ -235,7 +238,7 @@ export function createFlow(ctx) {
 
   // After locking, the stamp shows for ADVANCE_MS and then the tool moves on. Opening a sheet or leaving cancels it.
   const ADVANCE_MS = 750;
-  let advance = null;
+  let advance: ReturnType<typeof setTimeout> | null = null;
   function startAdvance() {
     stopAdvance();
     advance = later(() => {

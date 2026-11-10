@@ -121,7 +121,10 @@ export type State = {
   history: Record<string, Annotation[][]>;
   screen: Screen;
   idx: number;
-  filter: { status: string; category: string };
+  filter: {
+    status: "all" | "pending" | "done";
+    category: KoraCategory | "all";
+  };
   views: Record<number, View>;
   sel: Selection | null;
   editing: string | null;

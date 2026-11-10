@@ -1,7 +1,7 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment -- typed in the next step of the engine split */
-// @ts-nocheck
+import type { QueueCtx } from "./context.js";
+import type { State } from "./types.js";
 
-export function createQueue(ctx) {
+export function createQueue(ctx: QueueCtx) {
   const {
     S,
     app,
@@ -29,7 +29,8 @@ export function createQueue(ctx) {
       total = S.all.length;
     const cats = [...new Set(ts.map((t) => t.category))];
     const f = S.filter;
-    if (f.category !== "all" && !cats.includes(f.category)) f.category = "all";
+    if (f.category !== "all" && !cats.some((c) => c === f.category))
+      f.category = "all";
     const rows = ts
       .map((t, i) => ({ t, i, r: res(t) }))
       .filter(
@@ -37,7 +38,7 @@ export function createQueue(ctx) {
           (f.status === "all" || (f.status === "done") === reviewed(r)) &&
           (f.category === "all" || t.category === f.category),
       );
-    const segBtn = (val, label) =>
+    const segBtn = (val: State["filter"]["status"], label: string) =>
       h(
         "button",
         {
@@ -50,7 +51,7 @@ export function createQueue(ctx) {
         },
         label,
       );
-    const catBtn = (val, label) =>
+    const catBtn = (val: State["filter"]["category"], label: string) =>
       h(
         "button",
         {
