@@ -1,9 +1,11 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import {
   aggregateSourceKey,
+  answeredSourceKey,
   variableAggregateSources,
-  type VariableAggregateCounts,
+  variableAnsweredSources,
   type VariableAggregateSource,
+  type VariableCount,
 } from "@alliance/common/forms/variable-aggregates";
 import { skipToken, useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
@@ -40,7 +42,7 @@ export enum VariableAggregatesStatus {
   Ready = "ready",
 }
 
-type AggregateCounts = ReadonlyMap<string, VariableAggregateCounts>;
+type AggregateCounts = ReadonlyMap<string, VariableCount>;
 
 export type VariableAggregates =
   | { status: VariableAggregatesStatus.Loading }
@@ -86,16 +88,21 @@ export function evaluatedAggregates(
   }
 }
 
+type CountSources = {
+  sources: VariableAggregateSource[];
+  answeredSources: VariableAggregateSource[];
+};
+
 async function fetchAggregates(
   target: AggregateTarget,
-  sources: VariableAggregateSource[],
+  body: CountSources,
 ): Promise<VariableAggregatesDto> {
   const { reader } = target;
   switch (reader) {
     case AggregateReader.Admin:
       return (
         await tasksCountVariableAggregatesAdmin({
-          body: { sources },
+          body,
           throwOnError: true,
         })
       ).data;
@@ -123,21 +130,23 @@ export function useVariableAggregates(params: {
   target: AggregateTarget | undefined;
 }): VariableAggregates {
   const { schema, target } = params;
-  const sources = useMemo(
-    () =>
-      variableAggregateSources(schema.variables).filter(
-        (source) => source.fieldId !== "",
-      ),
-    [schema.variables],
-  );
+  const counted = useMemo((): CountSources => {
+    const picked = (source: VariableAggregateSource) => source.fieldId !== "";
+    return {
+      sources: variableAggregateSources(schema.variables).filter(picked),
+      answeredSources: variableAnsweredSources(schema.variables).filter(picked),
+    };
+  }, [schema.variables]);
+  const none =
+    counted.sources.length === 0 && counted.answeredSources.length === 0;
 
   const untargeted = target === undefined;
   const { data, isError, refetch } = useQuery({
-    queryKey: ["variableAggregates", target, sources],
+    queryKey: ["variableAggregates", target, counted],
     queryFn:
-      target !== undefined && sources.length > 0
+      target !== undefined && !none
         ? () =>
-            fetchAggregates(target, sources).catch((error: unknown) => {
+            fetchAggregates(target, counted).catch((error: unknown) => {
               console.error("Failed to load aggregate counts", error);
               throw error;
             })
@@ -148,7 +157,7 @@ export function useVariableAggregates(params: {
   const retry = useCallback(() => void refetch(), [refetch]);
 
   return useMemo((): VariableAggregates => {
-    if (sources.length === 0) {
+    if (none) {
       return { status: VariableAggregatesStatus.Ready, aggregates: new Map() };
     }
     if (untargeted) {
@@ -159,17 +168,26 @@ export function useVariableAggregates(params: {
     }
     if (isError) return { status: VariableAggregatesStatus.Failed, retry };
     if (!data) return { status: VariableAggregatesStatus.Loading };
-    const aggregates = new Map<string, VariableAggregateCounts>();
+    const aggregates = new Map<string, VariableCount>();
     for (const aggregate of data.aggregates) {
       if (aggregate.counts !== null) {
         aggregates.set(aggregateSourceKey(aggregate), aggregate.counts);
       }
     }
-    const complete = sources.every((source) =>
-      aggregates.has(aggregateSourceKey(source)),
-    );
+    for (const answered of data.answered) {
+      if (answered.count !== null) {
+        aggregates.set(answeredSourceKey(answered), answered.count);
+      }
+    }
+    const complete =
+      counted.sources.every((source) =>
+        aggregates.has(aggregateSourceKey(source)),
+      ) &&
+      counted.answeredSources.every((source) =>
+        aggregates.has(answeredSourceKey(source)),
+      );
     return complete
       ? { status: VariableAggregatesStatus.Ready, aggregates }
       : { status: VariableAggregatesStatus.SourceUnavailable, aggregates };
-  }, [sources, untargeted, isError, data, retry]);
+  }, [counted, none, untargeted, isError, data, retry]);
 }

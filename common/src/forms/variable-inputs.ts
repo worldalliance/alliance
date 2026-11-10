@@ -51,6 +51,12 @@ const variableAggregateInputSchema = z.strictObject({
   fieldId: z.string(),
 });
 
+const variableAnsweredCountInputSchema = z.strictObject({
+  kind: z.literal("answeredCount"),
+  sourceFormId: sourceFormIdSchema,
+  fieldId: z.string(),
+});
+
 const variableRandomInputSchema = z.strictObject({
   kind: z.literal("random"),
 });
@@ -61,6 +67,7 @@ export const variableInputSchema = z.discriminatedUnion("kind", [
   variableSourceFieldInputSchema,
   variableSourceListInputSchema,
   variableAggregateInputSchema,
+  variableAnsweredCountInputSchema,
   variableRandomInputSchema,
 ]);
 export type VariableInput = z.infer<typeof variableInputSchema>;
@@ -77,9 +84,9 @@ export type VariableSourceInput = Extract<
   VariableInput,
   { kind: "sourceField" | "sourceList" }
 >;
-export type VariableAggregateInput = Extract<
+export type VariableCountInput = Extract<
   VariableInput,
-  { kind: "aggregate" }
+  { kind: "aggregate" | "answeredCount" }
 >;
 
 const LIST_INPUT_KINDS: Record<VariableInput["kind"], boolean> = {
@@ -88,6 +95,7 @@ const LIST_INPUT_KINDS: Record<VariableInput["kind"], boolean> = {
   sourceField: false,
   sourceList: true,
   aggregate: false,
+  answeredCount: false,
   random: false,
 };
 
@@ -101,6 +109,7 @@ const SOURCE_INPUT_KINDS: Record<VariableInput["kind"], boolean> = {
   sourceField: true,
   sourceList: true,
   aggregate: false,
+  answeredCount: false,
   random: false,
 };
 
@@ -109,6 +118,22 @@ export function isSourceInput(
   input: VariableInput,
 ): input is VariableSourceInput {
   return SOURCE_INPUT_KINDS[input.kind];
+}
+
+const COUNT_INPUT_KINDS: Record<VariableInput["kind"], boolean> = {
+  field: false,
+  list: false,
+  sourceField: false,
+  sourceList: false,
+  aggregate: true,
+  answeredCount: true,
+  random: false,
+};
+
+export function isCountInput(
+  input: VariableInput,
+): input is VariableCountInput {
+  return COUNT_INPUT_KINDS[input.kind];
 }
 
 /** The stored form an input reads, or `undefined` for this form's live answers. */
@@ -122,6 +147,7 @@ export function inputSourceFormId(input: VariableInput): number | undefined {
     case "sourceField":
     case "sourceList":
     case "aggregate":
+    case "answeredCount":
       return input.sourceFormId;
     default:
       // Evaluation fails an input kind this build predates.

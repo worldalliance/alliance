@@ -112,6 +112,7 @@ function dependencies(
       case "sourceField":
       case "sourceList":
       case "aggregate":
+      case "answeredCount":
       case "random":
         return [];
       case "list":

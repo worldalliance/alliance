@@ -4,10 +4,7 @@ import { R, type Result } from "../result";
 import type { FormValue } from "./form-schema";
 import { withStepBudget } from "./formula-step-budget";
 import { isListRow } from "./list-rows";
-import {
-  aggregateSourceKey,
-  type VariableAggregateCounts,
-} from "./variable-aggregates";
+import { countInputKey, type VariableCount } from "./variable-aggregates";
 import {
   evaluateVariableExpression,
   type ExprRecord,
@@ -17,7 +14,7 @@ import type { ExprNode } from "./variable-expression-ast";
 import { compileVariableExpression } from "./variable-expression-compile";
 import {
   isListInput,
-  type VariableAggregateInput,
+  type VariableCountInput,
   type VariableFieldInput,
   type VariableInput,
   type VariableListInput,
@@ -58,10 +55,10 @@ export type VariableResolutionContext = {
    */
   sources?: ReadonlyMap<number, VariableSourceHistory>;
   /**
-   * Keyed by `aggregateSourceKey`. An input whose counts are missing here
-   * fails, so a caller that never loaded them cannot pass them off as zeros.
+   * Keyed by `countInputKey`. An input whose counts are missing here fails,
+   * so a caller that never loaded them cannot pass them off as zeros.
    */
-  aggregates?: ReadonlyMap<string, VariableAggregateCounts>;
+  aggregates?: ReadonlyMap<string, VariableCount>;
   /**
    * Seeds `random` inputs: the member's key, so each member keeps one pick.
    * A `random` input fails without it rather than giving everyone the same pick.
@@ -181,11 +178,11 @@ function resolveSourceInput(
   return R.success(values);
 }
 
-function resolveAggregateInput(
-  input: VariableAggregateInput,
+function resolveCountInput(
+  input: VariableCountInput,
   aggregates: VariableResolutionContext["aggregates"],
 ): Result<ExprValue, string> {
-  const counts = aggregates?.get(aggregateSourceKey(input));
+  const counts = aggregates?.get(countInputKey(input));
   return counts === undefined
     ? R.failure(
         `Counts for question "${input.fieldId}" of form ${input.sourceFormId} are not loaded`,
@@ -221,7 +218,8 @@ function resolveInput(params: {
     case "sourceList":
       return resolveSourceInput(input, context.sources);
     case "aggregate":
-      return resolveAggregateInput(input, context.aggregates);
+    case "answeredCount":
+      return resolveCountInput(input, context.aggregates);
     case "random":
       return resolveRandomInput(context.randomizationKey, params.seedScope);
     default:
