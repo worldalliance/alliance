@@ -37,7 +37,7 @@ export type Exited = {
   stderr: string;
 };
 
-const cancelKillAfterMs = 2_000;
+export const cancelKillAfterMs = 2_000;
 const pipesCloseAfterExitMs = 1_000;
 
 /** A descendant can hold the CLI's pipes open after it exits, which keeps "close" from firing; this ends them shortly after the exit. */

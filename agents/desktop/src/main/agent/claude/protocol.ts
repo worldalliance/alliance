@@ -4,6 +4,17 @@ import { type AgentEvent, AgentEventKind, type AgentMessage } from "../session";
 
 export const CLAUDE_CODE_VERSION = "2.1.322";
 
+export const claudeSessionArgs = [
+  "-p",
+  "--input-format",
+  "stream-json",
+  "--output-format",
+  "stream-json",
+  "--verbose",
+  "--include-partial-messages",
+  "--dangerously-skip-permissions",
+] as const;
+
 export enum ClaudeLineKind {
   Events = "events",
   TurnEnded = "turn_ended",
