@@ -44,6 +44,7 @@ Read before the matching task:
 - Spawning a subagent, which goes through the `claude` or `codex` CLI in place of your harness's built-in agent tool → `(root)/agents/skills/subagents/SKILL.md`
 - Verifying a change in the browser, driving the mobile app, calling the API, or authenticating as an admin → `(root)/agents/skills/playwright/SKILL.md`
 - Designing or changing UI in `apps/`, `sharedweb/`, `shared/` or `agents/desktop`, or judging a UI's quality → `(root)/agents/skills/ux-guidelines/SKILL.md`
+- Changing a form, a native screen, keyboard shortcuts, loading or URL state, or choosing colour, type, spacing or motion values, in those folders, or judging a UI's quality → `(root)/agents/skills/ux-forms-platform/SKILL.md`
 - Writing or editing any doc an agent reads (`SKILL.md`, `AGENTS.md`, `CLAUDE.md`, docs those point at) → `(root)/agents/skills/writing-for-agents/SKILL.md`
 
 ## Typechecking
@@ -65,6 +66,10 @@ Label every recommendation, number and claim shown to the owner in chat as resea
 ## Breaking changes
 
 Change a shape that stored data, installed clients, or code outside the change depend on, or adopt a rule existing code breaks, by expand-migrate-contract, with a ratchet so the old shape can't grow back. Mark a fallback awaiting its contract step `BACKCOMPAT(<tag>)` with the condition for removing it.
+
+## Capitalisation
+
+User-facing titles, headings, buttons, menu items, tabs and labels capitalise only the first word and proper nouns: "Try again", not "Try Again". This holds in every channel, emails and notifications included, and on every platform, iOS and macOS included, where Apple's guidance for some elements, such as buttons, uses title case.
 
 ## Issue tracking
 
