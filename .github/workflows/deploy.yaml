@@ -50,6 +50,7 @@ jobs:
           [
             server,
             common,
+            kora-review,
             shared,
             sharedweb,
             apps/frontend,
@@ -220,6 +221,7 @@ jobs:
           [
             server,
             common,
+            kora-review,
             shared,
             sharedweb,
             apps/frontend,
@@ -800,6 +802,10 @@ jobs:
             common/package.json \
             common/tsconfig.json \
             common/src \
+            kora-review/package.json \
+            kora-review/bunfig.toml \
+            kora-review/tsconfig.json \
+            kora-review/src \
             apps/admin/package.json \
             apps/frontend/package.json \
             apps/mobile/package.json \

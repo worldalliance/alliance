@@ -1,11 +1,12 @@
 // Public API of korabench-review: mount KORA's transcript review tool into a host page.
 // The host owns identity, storage and networking. The tool reads only what it is given and writes only through save().
 import { createEngine } from "./engine.js";
-import type { KoraExport, KoraTranscript } from "./generated/types.js";
 import { createSaver } from "./saver.js";
 import { CATEGORY_IDS, SCHEMA_VERSION } from "./schemas.js";
+import type { KoraExport, KoraTranscript } from "./types.gen.js";
 
-export { KoraCategory } from "./generated/types.js";
+export { exportSchema, SCHEMA_VERSION, transcriptSchema } from "./schemas.js";
+export { KoraCategory } from "./types.gen.js";
 export type {
   KoraAnnotation,
   KoraConversation,
@@ -16,8 +17,7 @@ export type {
   KoraReviewer,
   KoraTranscript,
   KoraTurn,
-} from "./generated/types.js";
-export { exportSchema, SCHEMA_VERSION, transcriptSchema } from "./schemas.js";
+} from "./types.gen.js";
 
 export interface KoraReviewOptions {
   /** Opaque id the host generates. Never a name, email or phone number. */

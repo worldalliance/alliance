@@ -1,5 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
 import { createSaver } from "../src/saver.js";
+import { advanceTimersByTimeAsync } from "./timers";
 
 function deferred() {
   let resolve!: () => void, reject!: (e: unknown) => void;
@@ -30,11 +31,11 @@ describe("createSaver", () => {
       onRecovered: vi.fn(),
     });
     s.changed();
-    await vi.advanceTimersByTimeAsync(1500);
+    await advanceTimersByTimeAsync(1500);
     s.changed();
-    await vi.advanceTimersByTimeAsync(1500);
+    await advanceTimersByTimeAsync(1500);
     expect(save).not.toHaveBeenCalled();
-    await vi.advanceTimersByTimeAsync(600);
+    await advanceTimersByTimeAsync(600);
     expect(save).toHaveBeenCalledTimes(1);
     expect(save).toHaveBeenLastCalledWith(1);
   });
@@ -61,19 +62,19 @@ describe("createSaver", () => {
       onRecovered: vi.fn(),
     });
     s.changed();
-    await vi.advanceTimersByTimeAsync(2000);
+    await advanceTimersByTimeAsync(2000);
     expect(save).toHaveBeenCalledTimes(1);
 
     s.changed(); // arrives mid-save
-    await vi.advanceTimersByTimeAsync(5000); // its debounce fires while the first save is still in flight
+    await advanceTimersByTimeAsync(5000); // its debounce fires while the first save is still in flight
     expect(save).toHaveBeenCalledTimes(1);
 
     pending[0]!.resolve();
-    await vi.advanceTimersByTimeAsync(0);
+    await advanceTimersByTimeAsync(0);
     expect(save).toHaveBeenCalledTimes(2); // saved again as soon as the first settled
     expect(save).toHaveBeenLastCalledWith(2);
     pending[1]!.resolve();
-    await vi.advanceTimersByTimeAsync(5000);
+    await advanceTimersByTimeAsync(5000);
     expect(save).toHaveBeenCalledTimes(2);
     expect(maxInFlight).toBe(1);
   });
@@ -94,21 +95,21 @@ describe("createSaver", () => {
       onRecovered,
     });
     s.changed();
-    await vi.advanceTimersByTimeAsync(2000);
+    await advanceTimersByTimeAsync(2000);
     expect(onFailed).toHaveBeenCalledTimes(1);
     expect(s.dirty).toBe(true);
-    await vi.advanceTimersByTimeAsync(60_000); // no retry loop on its own
+    await advanceTimersByTimeAsync(60_000); // no retry loop on its own
     expect(n).toBe(1);
 
     fail = false;
     s.changed();
-    await vi.advanceTimersByTimeAsync(2000);
+    await advanceTimersByTimeAsync(2000);
     expect(saved).toEqual([2]);
     expect(onRecovered).toHaveBeenCalledTimes(1);
     expect(s.dirty).toBe(false);
 
     s.changed();
-    await vi.advanceTimersByTimeAsync(2000);
+    await advanceTimersByTimeAsync(2000);
     expect(onRecovered).toHaveBeenCalledTimes(1); // only after a failure
   });
 

@@ -1,7 +1,7 @@
 import addFormats from "ajv-formats";
 import Ajv2020 from "ajv/dist/2020.js";
+import { describe, expect, it } from "bun:test";
 import { execFileSync } from "node:child_process";
-import { describe, expect, it } from "vitest";
 import sampleExport from "../samples/export.json";
 import sampleTranscript from "../samples/transcript.json";
 import samplePairs from "../samples/transcripts.json";
@@ -94,7 +94,7 @@ describe("schemas", () => {
   });
 
   it("list exactly the ten category ids", () => {
-    expect(Object.values(KoraCategory).sort()).toEqual([
+    expect<string[]>(Object.values(KoraCategory).sort()).toEqual([
       "academic_dishonesty_and_misuse",
       "cognitive_atrophy_and_dependency",
       "cognitive_mismatch",

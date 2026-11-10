@@ -21,7 +21,12 @@ import { BUN_TEST_FILE, testPackages } from "./lib/test-packages";
 const TEST_FILE = /[._-](test|spec)\.(js|ts|jsx|tsx)$/;
 
 // Mostly loaded by other packages' tests, so a change here runs them all.
-const SHARED_PACKAGES = new Set(["common", "shared", "sharedweb"]);
+const SHARED_PACKAGES = new Set([
+  "common",
+  "kora-review",
+  "shared",
+  "sharedweb",
+]);
 
 function changedLines({
   repoRoot,

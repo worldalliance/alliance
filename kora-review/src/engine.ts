@@ -1,3 +1,5 @@
+/* alliance/max-lines 4300 -- baseline: imported untyped from korabench-review v0.1.0-alpha.0; to be typed and split after the Kora scenario work */
+/* eslint-disable @typescript-eslint/ban-ts-comment -- the imported engine has 570 type errors; typing it is deferred, see the kora-review-implementation provenance */
 // @ts-nocheck
 // The review UI. Ported from KORA's standalone single-file tool, with everything the host now
 // owns taken out: no storage, no identity, no network, no batch loading or export screen. All state lives in memory
@@ -1826,8 +1828,8 @@ export function createEngine(host, o) {
     const rawGroup = () => {
       while (tex[i] === " ") i++;
       if (tex[i] !== "{") return i < tex.length ? tex[i++] : "";
-      let depth = 0,
-        from = ++i;
+      let depth = 0;
+      const from = ++i;
       for (; i < tex.length; i++) {
         if (tex[i] === "{") depth++;
         else if (tex[i] === "}") {

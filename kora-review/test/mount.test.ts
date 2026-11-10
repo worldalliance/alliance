@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import addFormats from "ajv-formats";
 import Ajv2020 from "ajv/dist/2020.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
 import { createHash } from "node:crypto";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import sampleExport from "../samples/export.json";
 import samplePairs from "../samples/transcripts.json";
 import {
@@ -15,6 +15,7 @@ import {
   type KoraReviewOptions,
   type KoraTranscript,
 } from "../src/index.js";
+import { advanceTimersByTimeAsync } from "./timers";
 
 const ajv = new Ajv2020({ strict: true, allErrors: true });
 addFormats(ajv);
@@ -73,7 +74,9 @@ const button = (text: string | RegExp, root: ParentNode = el) => {
   return b;
 };
 const sheet = () => el.querySelector(".kr-sheet") as HTMLElement;
-const tick = (ms = 0) => vi.advanceTimersByTimeAsync(ms);
+const tick = (ms = 0) => advanceTimersByTimeAsync(ms);
+
+const realFetch = globalThis.fetch;
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -81,17 +84,14 @@ beforeEach(() => {
   document.body.innerHTML = "";
   el = document.createElement("div");
   document.body.append(el);
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(() => {
-      throw new Error("The tool must not make network requests.");
-    }),
-  );
+  globalThis.fetch = vi.fn(() => {
+    throw new Error("The tool must not make network requests.");
+  }) as unknown as typeof fetch;
 });
 afterEach(() => {
   handle?.unmount();
   handle = null;
-  vi.unstubAllGlobals();
+  globalThis.fetch = realFetch;
   vi.useRealTimers();
 });
 

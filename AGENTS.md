@@ -13,6 +13,7 @@ The project is the Alliance, and `alliance` is its identifier wherever a name ca
 - `sharedweb/`: shared by admin + frontend
 - `shared/`: shared by admin + frontend + mobile
 - `common/`: shared by all apps + server
+- `kora-review/`: KORA's transcript review tool, mounted by frontend; its schemas and converter are used by server
 - `agents/`: skills and hooks for the coding agents
 - `agents/desktop/`: Alliance agent, the desktop app employees work with coding agents through
 

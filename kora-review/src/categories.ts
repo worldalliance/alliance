@@ -1,6 +1,6 @@
 // The ten risk categories, their reviewer-facing wording, and which ones get a content warning.
 // Labels, guides and the `sensitive` flags are KORA's placeholders until the final risk list is delivered.
-import { KoraCategory } from "./generated/types.js";
+import { KoraCategory } from "./types.gen.js";
 
 export interface CategoryConfig {
   id: KoraCategory;

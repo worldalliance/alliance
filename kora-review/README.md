@@ -1,31 +1,30 @@
-# korabench-review
+# @alliance/kora-review
 
-KORA's chatbot-transcript review tool, packaged so a host site can mount it on its own page.
+KORA's chatbot-transcript review tool, which the Alliance site mounts on its review page. It was copied from `korabench-review` v0.1.0-alpha.0 (github.com/worldalliance/korabench-review) and is maintained here.
 
 A reviewer reads a **pair**: one simulated child talking to two AI chatbots, side by side. They mark words in each AI's replies +1 or −1, then say whether each AI was safe, which was safer, and where the weaker one went wrong.
 
 The host owns everything outside the tool. It gives the tool a reviewer's assigned transcripts and the last export it stored, and it receives the tool's export every time it changes. The tool makes no network requests, stores nothing in the browser (no `localStorage`, `sessionStorage`, cookies or IndexedDB), loads no remote fonts or images, and never navigates the page.
 
-- ESM only, with TypeScript declarations. Builds under Vite 6 and type-checks under TypeScript 5.9 `strict`.
-- No runtime dependencies, and no React: the tool is plain DOM, so it can't bring a second copy of React. The example app shows a ten-line React 19 wrapper.
+- A workspace package imported as TypeScript source, like `@alliance/common`. `src/engine.ts` is not type-checked yet (`@ts-nocheck`).
+- No runtime dependencies, and no React: the tool is plain DOM.
 - Styles are scoped to the tool's own root element and themeable with CSS custom properties.
 - MIT licence. Bundled fonts are under the SIL Open Font License 1.1.
 
-## Install
+## Use it
 
-The package is installed from GitHub, not the npm registry. Pin a tag:
+The frontend mounts the tool, and the server imports the schemas and the converter:
 
-```bash
-npm install github:worldalliance/korabench-review#v0.1.0-alpha.0
-```
-
-The built files (`dist/`) are committed, so installing runs no build step.
+- `@alliance/kora-review`: `mountKoraReview` and the types
+- `@alliance/kora-review/style.css`
+- `@alliance/kora-review/schemas`: `transcriptSchema`, `exportSchema`, `SCHEMA_VERSION`
+- `@alliance/kora-review/convert`: `readKoraPairs` and `fromKoraPair`
 
 ## Mount it
 
 ```ts
-import { mountKoraReview, KoraSaveState } from "korabench-review";
-import "korabench-review/style.css";
+import { mountKoraReview, KoraSaveState } from "@alliance/kora-review";
+import "@alliance/kora-review/style.css";
 
 const handle = mountKoraReview(document.getElementById("review")!, {
   reviewerId: "rv_8f3a2c71", // opaque; never a name, email or phone number
@@ -105,7 +104,7 @@ The host validates every uploaded transcript line against `transcriptSchema` and
 ```ts
 import Ajv2020 from "ajv/dist/2020";
 import addFormats from "ajv-formats";
-import { exportSchema, transcriptSchema } from "korabench-review";
+import { exportSchema, transcriptSchema } from "@alliance/kora-review/schemas";
 
 const ajv = new Ajv2020({ strict: true });
 addFormats(ajv);
@@ -117,17 +116,17 @@ const validateExport = ajv.compile(exportSchema);
 
 **Export**: `schemaVersion`, `batchId`, `reviewer: { id }`, `exportedAt`, `currentTranscriptId`, `results` (one per assigned pair, in assignment order), `profile` and `exitSurvey` (null until answered), `optOutCategories`, `isDone`. A pending result may hold some of `q0_a`, `q0_b`, `q1`, `q2_turn` and `q3_text` and not others; a done result holds all of them. Annotations give `side`, `messageIndex` (into that side's conversation), `turn`, UTF-16 `start`/`end` offsets into the turn's text, the rendered `text`, `value` (−1, 0 for a neutral note, +1) and an optional `note`.
 
-The TypeScript types are generated from the schemas (`npm run gen:types`), and a test fails if they drift. `SCHEMA_VERSION` is bumped whenever either schema changes shape.
+The TypeScript types are generated from the schemas (`bun run gen:types`), and a test fails if they drift. `SCHEMA_VERSION` is bumped whenever either schema changes shape.
 
-Synthetic samples ship with the package: [`samples/transcript.json`](samples/transcript.json), [`samples/export.json`](samples/export.json) (with a partly answered pending result) and [`samples/transcripts.json`](samples/transcripts.json) (five pairs). None of them is real reviewer data or a real child's conversation.
+Synthetic samples are in `samples/`: [`samples/transcript.json`](samples/transcript.json), [`samples/export.json`](samples/export.json) (with a partly answered pending result) and [`samples/transcripts.json`](samples/transcripts.json) (five pairs). None of them is real reviewer data or a real child's conversation.
 
 ### Converting KORA's pair files
 
-```bash
-node scripts/kora-to-transcripts.mjs pairs.jsonl > transcripts.jsonl
-```
+The server converts KORA's native files on upload with `readKoraPairs` and `fromKoraPair` from `@alliance/kora-review/convert`, then validates each result against `transcriptSchema`. They map KORA's Annex B fields (`pair_id`, `risk_id`, `conversation_a`, …) to transcript fields and drop everything else. To check a file by hand:
 
-This maps KORA's Annex B fields (`pair_id`, `risk_id`, `conversation_a`, …) to transcript lines and drops everything else.
+```bash
+bun scripts/kora-to-transcripts.mjs pairs.jsonl > transcripts.jsonl
+```
 
 ## Accessibility
 
@@ -142,18 +141,7 @@ This maps KORA's Annex B fields (`pair_id`, `risk_id`, `conversation_a`, …) to
 ## Development
 
 ```bash
-npm install
-npm test            # schemas (ajv), saving, resume, failure recovery, completion
-npm run typecheck
-npm run build       # dist/ (commit it: installs from GitHub use it as is)
-npm --prefix example install
-npm run example     # Vite + React 19 host with an in-memory adapter at http://localhost:5175
+bun test               # from kora-review/: schemas, converter, saving, resume, failure recovery, completion
+bun run typecheck
+bun run gen:types      # after changing src/schemas.ts
 ```
-
-The example app has a switch that makes saves fail, a "simulate reload" button that remounts from the stored export, and two reviewer ids to show they never see each other's work.
-
-## Releasing
-
-1. Update `CHANGELOG.md` and the version in `package.json`.
-2. `npm test && npm run build`, and commit `dist/`.
-3. Tag `vX.Y.Z` and push the tag.

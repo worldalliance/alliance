@@ -1,6 +1,6 @@
 // The contract between this package and its host. The host validates every uploaded transcript line against
 // transcriptSchema and every saved export against exportSchema, so both use additionalProperties: false throughout.
-// TypeScript types are generated from these objects (npm run gen:types → src/generated/types.ts), and a test fails
+// TypeScript types are generated from these objects (bun run gen:types → src/types.gen.ts), and a test fails
 // if the generated file is out of date, so the two cannot drift.
 //
 // Bump SCHEMA_VERSION whenever either schema changes shape.
