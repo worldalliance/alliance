@@ -46,7 +46,7 @@ import type {
 import {
   cloneFormSnapshotWithSchema,
   formSchemaOf,
-  snapshotForRow,
+  memberSnapshot,
 } from "./form-snapshot-schema";
 import { CreateFormDto, type FormSummary, UpdateFormDto } from "./form.dto";
 import { FormSnapshotService } from "./formsnapshot.service";
@@ -183,7 +183,10 @@ export class TasksService {
       throw new ForbiddenException("Sign in to open this form");
     }
     const row = await this.formRowAssignmentService.memberRow(form, userId);
-    form.formSnapshot = snapshotForRow(loadedFormSnapshot(form), row);
+    form.formSnapshot = memberSnapshot(loadedFormSnapshot(form), {
+      assignedRow: row,
+      userId,
+    });
     return form;
   }
 

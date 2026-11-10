@@ -1,4 +1,4 @@
-import type { AssignedRow } from "@alliance/common/forms/row-list-schema";
+import type { SchemaMember } from "@alliance/common/forms/row-list";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { createHash } from "crypto";
@@ -12,7 +12,7 @@ import {
   SNAPSHOT_HISTORY_OWNERS,
   SnapshotHistoryOwner,
 } from "./entities/formsnapshot.entity";
-import { snapshotForRow } from "./form-snapshot-schema";
+import { memberSnapshot } from "./form-snapshot-schema";
 import { servedSchema, withServedVideoSources } from "./served-schema";
 
 export function hashFormSchema(schema: Record<string, unknown>): string {
@@ -88,13 +88,13 @@ export class FormSnapshotService {
   async resolveSubmissionSnapshot({
     form,
     dto,
-    assignedRow,
+    member,
   }: {
     /** As TasksService.getForm serves it: contracts filled in, which the history fallback does not rebuild. */
     form: Form;
     dto: { formSnapshotId?: number; schemaSnapshot?: Record<string, unknown> };
-    /** The member's row; they were served the schema filled from it. */
-    assignedRow: AssignedRow | null;
+    /** Who was served the schema filled from their row. */
+    member: SchemaMember;
   }) {
     if (dto.formSnapshotId !== undefined) {
       return dto.formSnapshotId === form.formSnapshotId
@@ -111,9 +111,8 @@ export class FormSnapshotService {
     const echoedHash = hashFormSchema(echoed);
     if (
       echoedHash === hashFormSchema(served.schema) ||
-      (assignedRow !== null &&
-        echoedHash ===
-          hashFormSchema(snapshotForRow(served, assignedRow).schema))
+      (member.assignedRow !== null &&
+        echoedHash === hashFormSchema(memberSnapshot(served, member).schema))
     ) {
       return served;
     }

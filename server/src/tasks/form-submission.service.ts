@@ -43,7 +43,7 @@ import { FormProfileAnswersService } from "./form-profile-answers.service";
 import { FormResponseQueryService } from "./form-response-query.service";
 import { FormResponseWriterService } from "./form-response-writer.service";
 import { FormRowAssignmentService } from "./form-row-assignment.service";
-import { formSchemaOf, snapshotForRow } from "./form-snapshot-schema";
+import { formSchemaOf, memberSnapshot } from "./form-snapshot-schema";
 import {
   FormSubmissionValidationService,
   parseSubmittedAnswers,
@@ -148,13 +148,14 @@ export class FormSubmissionService {
       form,
       userId,
     );
-    const submittedSnapshot = snapshotForRow(
+    const member = { assignedRow, userId };
+    const submittedSnapshot = memberSnapshot(
       await this.formSnapshotService.resolveSubmissionSnapshot({
         form,
         dto: submitFormDto,
-        assignedRow,
+        member,
       }),
-      assignedRow,
+      member,
     );
     const submittedSchema = formSchemaOf(submittedSnapshot);
 
@@ -256,13 +257,14 @@ export class FormSubmissionService {
       form,
       userId,
     );
-    const submittedSnapshot = snapshotForRow(
+    const member = { assignedRow, userId };
+    const submittedSnapshot = memberSnapshot(
       await this.formSnapshotService.resolveSubmissionSnapshot({
         form,
         dto: submitFollowUpFormDto,
-        assignedRow,
+        member,
       }),
-      assignedRow,
+      member,
     );
     const { validatorResults, effectiveAnswers, formulaChoices } =
       await this.formSubmissionValidationService.validateFormSubmission({
@@ -319,7 +321,7 @@ export class FormSubmissionService {
     const snapshot = await this.formSnapshotService.resolveSubmissionSnapshot({
       form,
       dto: submitFormDto,
-      assignedRow: null,
+      member: { assignedRow: null, userId: null },
     });
     const schema = formSchemaOf(snapshot);
     const validatorResults = parseSubmittedValidatorResults(
@@ -373,13 +375,14 @@ export class FormSubmissionService {
       form,
       userId,
     );
-    const snapshot = snapshotForRow(
+    const member = { assignedRow, userId };
+    const snapshot = memberSnapshot(
       await this.formSnapshotService.resolveSubmissionSnapshot({
         form,
         dto: partialFormData,
-        assignedRow,
+        member,
       }),
-      assignedRow,
+      member,
     );
     const schema = formSchemaOf(snapshot);
     const savedForm =

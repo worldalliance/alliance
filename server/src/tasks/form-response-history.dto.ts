@@ -25,7 +25,7 @@ export class FormResponseHistoryEntryDto extends PickType(FormResponse, [
     this.formulaChoices = input.formulaChoices;
     this.schemaSnapshot = memberSnapshotSchema(
       loadedFormResponseSnapshot(input),
-      null,
+      { assignedRow: null, userId: null },
     );
   }
 }
@@ -46,7 +46,10 @@ export class FormResponseHistoryDto {
   responses: FormResponseHistoryEntryDto[];
 
   constructor(input: FormResponseHistory) {
-    this.schema = memberSnapshotSchema(loadedFormSnapshot(input.form), null);
+    this.schema = memberSnapshotSchema(loadedFormSnapshot(input.form), {
+      assignedRow: null,
+      userId: null,
+    });
     this.responses = input.responses.map(
       (response) => new FormResponseHistoryEntryDto(response),
     );

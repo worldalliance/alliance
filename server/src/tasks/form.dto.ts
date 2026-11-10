@@ -315,7 +315,7 @@ export class FormResponseDto extends PickType(FormResponse, [
     this.answers = response.answers;
     this.schemaSnapshot = memberSnapshotSchema(
       loadedFormResponseSnapshot(response),
-      response.assignedRow,
+      { assignedRow: response.assignedRow, userId: null },
     );
     this.visibilityValidatorResults = response.visibilityValidatorResults;
     this.formulaChoices = response.formulaChoices;
