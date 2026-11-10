@@ -21,7 +21,7 @@ Origin: user, except where marked.
 
 KORA develops the review tool separately. The Alliance hosts it on its own site, inside the review section, and does not render its own review form (hosting agent-proposed, user-approved).
 
-KORA publishes the tool as a versioned npm package, declared in `apps/frontend/package.json` (agent-proposed, user-approved).
+KORA publishes the tool as the package `korabench-review`, declared in `apps/frontend/package.json` (agent-proposed, user-approved). Until KORA publishes it to the npm registry, it installs from a pinned tag of the `worldalliance/korabench-review` GitHub repository (agent-proposed, user-approved). It mounts with a plain-DOM `mountKoraReview` and has no React dependency (KORA-proposed, user-approved).
 
 The tool's output is an export of this shape. The sample below is abbreviated to one result and one annotation, with the reviewer's contact details and profile answers redacted:
 
@@ -107,7 +107,7 @@ Origin: agent-proposed, user-approved.
 
 - Priya uploads each batch on the Kora admin page: a `.jsonl` file of transcripts, one per line, and the export JSON Schema for that batch. Every stored export records the schema it was checked against.
 - At upload she sets how many transcripts each assignment holds, for example 10, and how many reviews each transcript needs, for example 3.
-- Each `.jsonl` line is validated against a transcript JSON Schema exported by KORA's package, and `transcriptId` must be unique. A file with any invalid line is rejected whole, and the rejected lines are listed by line number. This is in addition to the requirements in `docs/provenance/01a1c2d5-81d8-7000-b5d7-a91f45b37fb2-kora-upload-activate-scenario`.
+- Priya uploads KORA's native transcript file as KORA sends it. The server converts each line with the converter KORA's package exports, then validates it against the package's transcript JSON Schema, and `transcriptId` must be unique across the upload (agent-proposed, user-approved). A file with any invalid line is rejected whole, and the rejected lines are listed by line number. This is in addition to the requirements in `docs/provenance/01a1c2d5-81d8-7000-b5d7-a91f45b37fb2-kora-upload-activate-scenario`.
 - Project status:
   - **Pending**: the project page shows the waitlist.
   - **Active**: assignments are handed out.
@@ -125,12 +125,17 @@ Origin: agent-proposed, user-approved.
 - The section lives at `/projects/safer-chatbots-for-children/review`.
 - Our API serves the transcripts from Priya's uploads, giving each reviewer only their assigned transcripts. It checks each export result's `contentHash` against the transcript it served.
 - Assignment favors the transcripts furthest from their review target and never gives a reviewer the same transcript twice.
-- The tool receives an opaque reviewer ID instead of a name or email. Exports that contain contact details are rejected.
+- An assignment groups its transcripts by category and takes at most 3 from any one category. The order of the category groups is shuffled per reviewer (user). When too few categories remain to fill an assignment under that cap, the assignment goes past 3 per category to reach its full count (user-chose from agent options).
+- The tool receives an opaque reviewer ID instead of a name or email. An export whose reviewer block holds anything other than that ID is rejected.
+- KORA makes the profile's country and gender fixed choices rather than free text, and the server also removes email addresses and phone numbers from the remaining free text before storing (agent-proposed from KORA's option, user-approved).
+- Each result's `timeMs` and `startedAt` are kept in what is stored and sent to KORA (agent-proposed, user-approved).
+- The transcript category list becomes KORA's final risk list when it arrives, replacing the ten categories the project page shows today, and the project page's categories change to match (user-chose from agent options).
+- The text-annotation path that uses the tool's own word tokens, with no native text selection, is accepted, on condition that KORA's screen-reader and contrast audit happens before 0.1.0 (agent-proposed, user-approved).
 - The tool saves its whole export to our API a couple of seconds after any change. Resuming restores the exact review, including a half-done rating.
 - An assignment is complete when every transcript in it has `"status": "done"` or was opted out, through `optedOut` or `optOutCategories`.
 - After completing an assignment, both participants and members can keep reviewing. Extra reviews save as they are submitted and add to a running count the reviewer can see. They can stop at any time.
 - When every transcript has met its review target or was already reviewed by that person, the continue option is hidden. The thank-you says there are no more transcripts right now and that they'll be notified when more are needed. A reviewer asking for a first assignment sees the same message.
-- A save that fails our checks is rejected: the export doesn't match the batch's schema, it contains contact details, or a `contentHash` doesn't match. Nothing is stored. The API returns the reason, the section shows "Your last change couldn't be saved" with a retry, and the error is logged.
+- A save that fails our checks is rejected: the export doesn't match the batch's schema, its reviewer block holds anything other than the reviewer ID, or a `contentHash` doesn't match. Nothing is stored. The API returns the reason, the section shows "Your last change couldn't be saved" with a retry, and the error is logged.
 - A person who is both a member and a participant has two separate reviewer IDs. The active session decides which applies, and a member session wins, as on the project page today. Linking the two is out of scope.
 
 ## R5. Profile and exit-survey data
