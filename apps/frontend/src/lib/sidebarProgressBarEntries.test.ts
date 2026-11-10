@@ -8,6 +8,7 @@ describe("sidebarProgressFormIds", () => {
   it("follows viewer.assigned past a false shouldParticipate", () => {
     const action = makeAction({
       taskFormId: 7,
+      taskKind: "form",
       shouldParticipate: false,
     });
 
@@ -17,6 +18,7 @@ describe("sidebarProgressFormIds", () => {
   it("drops an action the viewer is not assigned", () => {
     const action = makeAction({
       taskFormId: 7,
+      taskKind: "form",
       viewer: makeViewer({ assigned: false }),
     });
 
@@ -58,6 +60,7 @@ describe("buildSidebarProgressBarEntries", () => {
   it("drops an action the viewer is not assigned", () => {
     const action = makeAction({
       taskFormId: 7,
+      taskKind: "form",
       viewer: makeViewer({ assigned: false }),
     });
 

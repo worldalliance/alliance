@@ -5,6 +5,7 @@ import {
 } from "@alliance/common/kora";
 import { R, type Result } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import type { ValidateFunction } from "ajv/dist/2020";
 import { DataSource, type EntityManager, IsNull, Not } from "typeorm";
 import type {
@@ -17,6 +18,7 @@ import { KoraBatch } from "./entities/kora-batch.entity";
 import { KoraReviewer } from "./entities/kora-reviewer.entity";
 import { KoraTranscript } from "./entities/kora-transcript.entity";
 import { type Candidate, pickAssignment } from "./kora-assignment-pick";
+import { KORA_MEMBER_REVIEWED, type KoraMemberReviewed } from "./kora-events";
 import { checkExport } from "./kora-export-check";
 import { KoraProjectService } from "./kora-project.service";
 import { redactExport } from "./kora-redact";
@@ -48,6 +50,7 @@ export class KoraReviewService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly projectService: KoraProjectService,
+    private readonly events: EventEmitter2,
   ) {}
 
   async state(identity: KoraIdentity): Promise<KoraReviewState> {
@@ -146,6 +149,16 @@ export class KoraReviewService {
         );
       }
     });
+    if (
+      completed &&
+      assignment.completedAt === null &&
+      !assignment.extra &&
+      reviewer.userId !== null
+    ) {
+      this.events.emit(KORA_MEMBER_REVIEWED, {
+        userId: reviewer.userId,
+      } satisfies KoraMemberReviewed);
+    }
     return R.success({ completed });
   }
 

@@ -41,6 +41,7 @@ const PHYSICALLY_DELETED = [
   "SpentToken",
   "WaitlistBrowser",
   "WaitlistEntryTag",
+  "WebHandoff",
 ];
 
 /** Rows no code deletes, which therefore need no deletedAt. */

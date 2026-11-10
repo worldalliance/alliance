@@ -78,6 +78,7 @@ export function makeAction(
     timeEstimate: null,
     squareThumbnailImage: null,
     taskFormId: null,
+    taskKind: "form",
     squareThumbnailImageAlt: null,
     customStatType: "none",
     customStatValue: null,

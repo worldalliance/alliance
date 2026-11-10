@@ -21,6 +21,7 @@ export const exampleMemberTaskAction: ActionWithAwayStatus = {
   timeEstimate: 5,
   squareThumbnailImage: null,
   taskFormId: null,
+  taskKind: "form",
   squareThumbnailImageAlt: null,
   customStatType: "none",
   customStatValue: null,

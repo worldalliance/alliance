@@ -134,6 +134,7 @@ describe("ActionForm", () => {
     expect(fieldNames("Settings")).toEqual([
       "suiteId",
       "visibilityMode",
+      "taskKind",
       "timeEstimate",
       "staffPreview",
     ]);
@@ -163,6 +164,7 @@ describe("ActionForm", () => {
     expect(fieldKinds("Settings")).toEqual([
       "select",
       "select",
+      "select",
       "number",
       "checkbox",
     ]);
@@ -186,7 +188,7 @@ describe("ActionForm", () => {
       ["squareThumbnailImage", "squareThumbnailImageAlt"],
     ]);
     expect(gridNames("Settings")).toEqual([
-      ["suiteId", "visibilityMode", "timeEstimate"],
+      ["suiteId", "visibilityMode", "taskKind", "timeEstimate"],
       ["staffPreview"],
     ]);
 
@@ -218,6 +220,7 @@ describe("ActionForm", () => {
     expect(fieldNames("Settings")).toEqual([
       "suiteId",
       "visibilityMode",
+      "taskKind",
       "timeEstimate",
     ]);
   });
@@ -261,6 +264,8 @@ describe("ActionForm", () => {
       "Category",
       "Suite",
       "Visibility Mode",
+      "Task",
+      "Kora review sends members to review chatbot transcripts; the action completes when they finish their first assignment.",
       "Time Estimate (min)",
       "Staff Preview",
       "Staff see it on their home pages until the Member Action event starts, or indefinitely if none is scheduled. Until then, nobody can submit, complete, withdraw, dismiss, like, or comment.",

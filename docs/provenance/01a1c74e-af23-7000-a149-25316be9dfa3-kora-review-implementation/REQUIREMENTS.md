@@ -43,3 +43,8 @@ This task implements the rest of the spec in `docs/provenance/01a1c67a-0156-7000
 - A transcript id already uploaded in an earlier batch is a rejected line, listed as already uploaded, and the whole file is rejected. (agent-proposed, user-approved)
 - A new assignment uses the newest batch's assignment size. Each transcript keeps the review target its own batch set. (agent-proposed, user-approved)
 - After an upload, "Preview a random transcript" opens an admin page that mounts the real review tool with one randomly picked transcript of that batch, saving nothing. (agent-proposed, user-approved)
+
+## Member action
+
+- An admin makes an action a Kora review action with a new "Task" choice in the action editor: "Form", today's behaviour, or "Kora review". (agent-proposed, user-approved)
+- The mobile app signs the member into the webview with a single-use handoff code. The app gets the code from the API and the webview exchanges it for the member's web session. The member never sees it. (agent-proposed, user-approved)

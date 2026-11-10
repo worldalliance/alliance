@@ -25,6 +25,7 @@ const api = serveApi(
       Response.json({
         id: 2,
         taskFormId: null,
+        taskKind: "form",
         events: [
           {
             id: 5,

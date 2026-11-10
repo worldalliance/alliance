@@ -66,6 +66,8 @@ export type NotifPriority = 'low' | 'high';
  */
 export type ActionCategory = 'meta' | 'environment' | 'poverty' | 'democracy' | 'technology';
 
+export type ActionTaskKind = 'form' | 'kora_review';
+
 export type VisibilityMode = 'public' | 'all_members' | 'participating_groups';
 
 export type CustomActionStat = 'none' | 'users_invited';
@@ -417,6 +419,7 @@ export type Action = {
      * Time estimate in minutes
      */
     timeEstimate: number | null;
+    taskKind: ActionTaskKind;
     /**
      * Form associated with the action
      */
@@ -915,6 +918,13 @@ export type OAuthLinkDto = {
 export type MobileOAuthLinkHandoffDto = {
     handoff: string;
     proof: string;
+};
+
+export type WebHandoffDto = {
+    /**
+     * Single use, valid for 60 seconds
+     */
+    code: string;
 };
 
 export type ClusterSummaryDto = {
@@ -2263,6 +2273,7 @@ export type ActionDto = {
      * Time estimate in minutes
      */
     timeEstimate: number | null;
+    taskKind: ActionTaskKind;
     /**
      * Form associated with the action
      */
@@ -2425,6 +2436,7 @@ export type AdminActionListItemDto = {
      * Time estimate in minutes
      */
     timeEstimate: number | null;
+    taskKind: ActionTaskKind;
     /**
      * Form associated with the action
      */
@@ -2596,6 +2608,7 @@ export type AdminActionDto = {
      * Time estimate in minutes
      */
     timeEstimate: number | null;
+    taskKind: ActionTaskKind;
     /**
      * Form associated with the action
      */
@@ -2808,6 +2821,7 @@ export type CreateActionDto = {
      * Time estimate in minutes
      */
     timeEstimate?: number | null;
+    taskKind?: ActionTaskKind;
     /**
      * Form associated with the action
      */
@@ -2906,6 +2920,7 @@ export type UpdateActionDto = {
      * Time estimate in minutes
      */
     timeEstimate?: number | null;
+    taskKind?: ActionTaskKind;
     /**
      * Form associated with the action
      */
@@ -3085,6 +3100,7 @@ export type ExportActionDto = {
      * Time estimate in minutes
      */
     timeEstimate: number | null;
+    taskKind: ActionTaskKind;
     /**
      * Form associated with the action
      */
@@ -6005,6 +6021,56 @@ export type OAuthLinkRedeemHandoffResponses = {
 };
 
 export type OAuthLinkRedeemHandoffResponse = OAuthLinkRedeemHandoffResponses[keyof OAuthLinkRedeemHandoffResponses];
+
+export type WebHandoffCreateData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/auth/web-handoff';
+};
+
+export type WebHandoffCreateErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WebHandoffCreateError = WebHandoffCreateErrors[keyof WebHandoffCreateErrors];
+
+export type WebHandoffCreateResponses = {
+    200: WebHandoffDto;
+};
+
+export type WebHandoffCreateResponse = WebHandoffCreateResponses[keyof WebHandoffCreateResponses];
+
+export type WebHandoffRedeemData = {
+    body?: never;
+    path?: never;
+    query: {
+        code: string;
+        next?: string;
+    };
+    url: '/auth/web-handoff/redeem';
+};
+
+export type WebHandoffRedeemErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WebHandoffRedeemError = WebHandoffRedeemErrors[keyof WebHandoffRedeemErrors];
+
+export type WebHandoffRedeemResponses = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WebHandoffRedeemResponse = WebHandoffRedeemResponses[keyof WebHandoffRedeemResponses];
 
 export type UserFindMeData = {
     body?: never;
