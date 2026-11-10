@@ -38,6 +38,7 @@ import {
 import { ActionActivityService } from "./action-activity.service";
 import { ActionFormLinksService } from "./action-form-links.service";
 import { ActionImportExportService } from "./action-import-export.service";
+import { ActionMutationsService } from "./action-mutations.service";
 import { ActionParticipantsService } from "./action-participants.service";
 import { ActionRelationsService } from "./action-relations.service";
 import {
@@ -81,6 +82,7 @@ import { WelcomeQueueService } from "./welcome-queue.service";
 export class ActionsController {
   constructor(
     private readonly actionsService: ActionsService,
+    private readonly actionMutations: ActionMutationsService,
     private readonly actionResponseCountsService: ActionResponseCountsService,
     private readonly actionActivityService: ActionActivityService,
     private readonly memberActions: MemberActionsService,
@@ -283,7 +285,7 @@ export class ActionsController {
     @Body() createActionDto: CreateActionDto,
   ): Promise<AdminActionDto> {
     return new AdminActionDto(
-      await this.actionsService.create(createActionDto),
+      await this.actionMutations.create(createActionDto),
     );
   }
 
@@ -296,7 +298,7 @@ export class ActionsController {
     @Request() req: JwtRequest,
   ): Promise<AdminActionDto> {
     return new AdminActionDto(
-      await this.actionsService.update(id, updateActionDto, req.user.sub),
+      await this.actionMutations.update(id, updateActionDto, req.user.sub),
     );
   }
 
@@ -304,7 +306,7 @@ export class ActionsController {
   @UseGuards(AdminGuard)
   @ApiOkResponse()
   removeAdmin(@Param("id", ParseIntPipe) id: number): Promise<void> {
-    return this.actionsService.remove(id);
+    return this.actionMutations.remove(id);
   }
 
   @Get("userCompletedCount/:id")
@@ -372,7 +374,7 @@ export class ActionsController {
   async archiveAdmin(
     @Param("id", ParseIntPipe) id: number,
   ): Promise<AdminActionDto> {
-    return new AdminActionDto(await this.actionsService.archive(id));
+    return new AdminActionDto(await this.actionMutations.archive(id));
   }
 
   @Post("unarchive/:id")
@@ -381,7 +383,7 @@ export class ActionsController {
   async unarchiveAdmin(
     @Param("id", ParseIntPipe) id: number,
   ): Promise<AdminActionDto> {
-    return new AdminActionDto(await this.actionsService.unarchive(id));
+    return new AdminActionDto(await this.actionMutations.unarchive(id));
   }
 
   @Get("export/:id")

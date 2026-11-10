@@ -34,6 +34,7 @@ import {
 } from "./entities/action.entity";
 import { type ParsedFollowUpForm } from "./entities/follow-up-form.entity";
 import { SingleMemberCohortService } from "./single-member-cohort.service";
+import { SuiteSplitsService } from "./suite-splits.service";
 import {
   CompletionBlock,
   computeCanCompleteAction,
@@ -64,6 +65,7 @@ export class MemberActionsService {
     private readonly singleMemberCohortService: SingleMemberCohortService,
     private readonly cohortAdmissionService: CohortAdmissionService,
     private readonly actionFormVariantService: ActionFormVariantService,
+    private readonly suiteSplits: SuiteSplitsService,
   ) {}
 
   private async applyAssignedFormIds(
@@ -212,6 +214,9 @@ export class MemberActionsService {
 
     // Index viewer's activities once, rather than rescanning per action.
     const userActivities = user ? new CachedFilter(user.activities!) : null;
+    const combinedCounts = await this.suiteSplits.findCombinedCounts(
+      filtered.map((action) => action.id),
+    );
 
     return await Promise.all(
       filtered.map(async (action) => {
@@ -238,6 +243,7 @@ export class MemberActionsService {
         });
 
         return new ActionDto(action, {
+          combinedCounts: combinedCounts.get(action.id),
           canParticipate: user
             ? computeCanCompleteAction({
                 action,
@@ -336,7 +342,11 @@ export class MemberActionsService {
       undecidedActionIds,
     });
 
+    const combinedCounts = await this.suiteSplits.findCombinedCounts([
+      action.id,
+    ]);
     return new ActionDto(action, {
+      combinedCounts: combinedCounts.get(action.id),
       canParticipate: user
         ? computeCanCompleteAction({
             action,

@@ -1,5 +1,5 @@
 import { ActionFormVariantService } from "src/actions/action-form-variant.service";
-import { ActionsService } from "src/actions/actions.service";
+import { ActionMutationsService } from "src/actions/action-mutations.service";
 import { Action, VisibilityMode } from "src/actions/entities/action.entity";
 import { FollowUpFormsService } from "src/actions/follow-up-forms.service";
 import { Form } from "src/tasks/entities/form.entity";
@@ -14,14 +14,14 @@ const SCHEMA = { pages: [], outputViews: [] };
 describe("Form slugs (e2e)", () => {
   let ctx: TestContext;
   let tasks: TasksService;
-  let actions: ActionsService;
+  let actions: ActionMutationsService;
   let followUps: FollowUpFormsService;
   let variants: ActionFormVariantService;
 
   beforeAll(async () => {
     ctx = await createTestApp([TasksModule]);
     tasks = ctx.app.get(TasksService);
-    actions = ctx.app.get(ActionsService);
+    actions = ctx.app.get(ActionMutationsService);
     followUps = ctx.app.get(FollowUpFormsService);
     variants = ctx.app.get(ActionFormVariantService);
   }, 50000);

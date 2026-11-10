@@ -65,6 +65,7 @@ function renderCommands() {
               memberActionStart: null,
               memberActionDeadline: null,
               storedSquareThumbnailImage: null,
+              splitId: null,
               followUpForms: [],
             });
           },

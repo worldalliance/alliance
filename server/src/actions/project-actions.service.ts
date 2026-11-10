@@ -12,6 +12,7 @@ import { SnapshotHistoryOwner } from "src/tasks/entities/formsnapshot.entity";
 import { FormSnapshotService } from "src/tasks/formsnapshot.service";
 import { isUniqueViolation } from "src/utils/db-errors";
 import { DataSource, Repository } from "typeorm";
+import { ActionMutationsService } from "./action-mutations.service";
 import { ActionParticipantsService } from "./action-participants.service";
 import { ActionsService } from "./actions.service";
 import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
@@ -61,6 +62,7 @@ export class ProjectActionsService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly actionsService: ActionsService,
+    private readonly actionMutations: ActionMutationsService,
     private readonly participants: ActionParticipantsService,
     private readonly generalUpdates: GeneralUpdatesService,
     private readonly reminderGroupService: ReminderGroupService,
@@ -110,7 +112,7 @@ export class ProjectActionsService {
         snapshotId: snapshot.id,
         em,
       });
-      const inserted = await this.actionsService.insertAction(em, {
+      const inserted = await this.actionMutations.insertAction(em, {
         name: body.name,
         shortDescription: body.shortDescription,
         body: "",
@@ -131,7 +133,7 @@ export class ProjectActionsService {
       await em.update(Action, inserted.id, { project: { id: projectId } });
       return inserted;
     });
-    await this.actionsService.afterActionInserted(action);
+    await this.actionMutations.afterActionInserted(action);
     return this.actionsService.findOneOrFail({
       id: action.id,
       serverSide: true,

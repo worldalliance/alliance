@@ -41,6 +41,7 @@ import { ActionFormLinksService } from "./action-form-links.service";
 import { ActionFormVariantService } from "./action-form-variant.service";
 import { ActionFormsController } from "./action-forms.controller";
 import { ActionImportExportService } from "./action-import-export.service";
+import { ActionMutationsService } from "./action-mutations.service";
 import { ActionParticipantsService } from "./action-participants.service";
 import { ActionRelationsService } from "./action-relations.service";
 import { ActionRemindersController } from "./action-reminders.controller";
@@ -63,7 +64,9 @@ import { ActionsService } from "./actions.service";
 import { ActivityFeedService } from "./activity-feed.service";
 import { ActivityLikeService } from "./activity-like.service";
 import { ActivityOutputService } from "./activity-output.service";
+import { CohortDecisionActionsService } from "./cohort-decision-actions.service";
 import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
+import { CohortDecisionStoreService } from "./cohort-decision-store.service";
 import { CohortDecisionListener } from "./cohort-decision.listener";
 import { CohortDecisionService } from "./cohort-decision.service";
 import { CohortDecisionWorker } from "./cohort-decision.worker";
@@ -80,6 +83,8 @@ import { ActionEvent } from "./entities/action-event.entity";
 import { ActionFormAssignment } from "./entities/action-form-assignment.entity";
 import { ActionFormVariant } from "./entities/action-form-variant.entity";
 import { ActionReviewer } from "./entities/action-reviewer.entity";
+import { ActionSuiteSplitArm } from "./entities/action-suite-split-arm.entity";
+import { ActionSuiteSplit } from "./entities/action-suite-split.entity";
 import { ActionSuite } from "./entities/action-suite.entity";
 import { ActionUpdateExposure } from "./entities/action-update-exposure.entity";
 import { ActionUpdate } from "./entities/action-update.entity";
@@ -103,6 +108,7 @@ import { ProjectsController } from "./projects.controller";
 import { ProjectsService } from "./projects.service";
 import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
 import { SchemaWriteService } from "./schema-write.service";
+import { SuiteSplitsService } from "./suite-splits.service";
 import { TaskBadgeService } from "./task-badge.service";
 import { WelcomeQueueService } from "./welcome-queue.service";
 
@@ -120,6 +126,8 @@ import { WelcomeQueueService } from "./welcome-queue.service";
       ActionFormVariant,
       ActionReviewer,
       ActionSuite,
+      ActionSuiteSplit,
+      ActionSuiteSplitArm,
       ActionUpdate,
       ActionUpdateExposure,
       Comment,
@@ -170,6 +178,7 @@ import { WelcomeQueueService } from "./welcome-queue.service";
   ],
   providers: [
     ActionsService,
+    ActionMutationsService,
     ActionResponseCountsService,
     ProjectsService,
     ProjectActionsService,
@@ -194,6 +203,8 @@ import { WelcomeQueueService } from "./welcome-queue.service";
     ActionStatsService,
     CohortDecisionListener,
     CohortDecisionService,
+    CohortDecisionActionsService,
+    CohortDecisionStoreService,
     CohortDecisionStaffService,
     CohortDecisionWorker,
     TaskBadgeService,
@@ -208,6 +219,7 @@ import { WelcomeQueueService } from "./welcome-queue.service";
     ActionSuspensionService,
     ActionShareService,
     SchemaWriteService,
+    SuiteSplitsService,
     GeneralUpdatesService,
     ActionUpdatesService,
     ActionUpdateNotifyService,

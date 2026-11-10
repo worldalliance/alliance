@@ -27,6 +27,8 @@ import {
   loadedActionActivityAction,
   loadedActionActivityUser,
 } from "../entities/action-activity.entity";
+import { combinedSplitOf } from "../suite-split";
+import { COMBINED_SPLIT_ID_PROPERTY } from "./suite-split.dto";
 
 export class OptOutActionDto {
   @ApiProperty({ type: Number })
@@ -98,6 +100,10 @@ export class ActionActivityDto extends PickType(ActionActivity, [
   @Allow()
   actionName: string;
 
+  @ApiProperty(COMBINED_SPLIT_ID_PROPERTY)
+  @IsOptional()
+  combinedSplitId: number | null;
+
   @ApiPropertyOptional({ type: () => ProfileDto, isArray: true })
   @Type(() => ProfileDto)
   @IsOptional()
@@ -138,7 +144,10 @@ export class ActionActivityDto extends PickType(ActionActivity, [
     this.createdAt = actionActivity.createdAt;
     this.actionId = actionActivity.actionId;
     this.likesCount = actionActivity.likesCount;
-    this.actionName = loadedActionActivityAction(actionActivity).name;
+    const action = loadedActionActivityAction(actionActivity);
+    const split = combinedSplitOf(action);
+    this.actionName = split?.title ?? action.name;
+    this.combinedSplitId = split?.id ?? null;
     this.user = new ProfileDto(loadedActionActivityUser(actionActivity));
     const likers = extra?.facepile ?? actionActivity.likes;
     if (likers !== undefined) {

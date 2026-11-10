@@ -1,6 +1,7 @@
 import { isPostAuthor } from "@alliance/common/postAuthors";
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { selectSplitDisplay } from "src/actions/suite-split";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import {
   In,
@@ -95,6 +96,7 @@ export class ForumService {
       .leftJoinAndSelect("post.action", "action")
       .leftJoinAndSelect("post.editableContent", "editableContent")
       .orderBy("post.updatedAt", "DESC");
+    selectSplitDisplay(qb, "action");
     this.addPostVisibilityFilter(qb, "post", userId);
 
     const posts = await qb.getMany();
@@ -190,14 +192,16 @@ export class ForumService {
   }
 
   async findOneVisiblePost(id: number, userId?: number): Promise<ParsedPost> {
-    const post = await this.visiblePostQuery(id, userId)
-      .leftJoinAndSelect("post.author", "author")
-      .leftJoinAndSelect("post.action", "action")
-      .leftJoinAndSelect("action.reviewers", "actionReviewer")
-      .leftJoinAndSelect("post.editableContent", "editableContent")
-      .leftJoinAndSelect("post.authors", "authors")
-      .leftJoinAndSelect("post.tags", "tags")
-      .getOne();
+    const post = await selectSplitDisplay(
+      this.visiblePostQuery(id, userId)
+        .leftJoinAndSelect("post.author", "author")
+        .leftJoinAndSelect("post.action", "action")
+        .leftJoinAndSelect("action.reviewers", "actionReviewer")
+        .leftJoinAndSelect("post.editableContent", "editableContent")
+        .leftJoinAndSelect("post.authors", "authors")
+        .leftJoinAndSelect("post.tags", "tags"),
+      "action",
+    ).getOne();
     if (!post) {
       throw new NotFoundException(`Post with ID "${id}" not found`);
     }
@@ -287,6 +291,7 @@ export class ForumService {
       .andWhere("(post.authorId = :authorId OR coAuthor.id = :authorId)", {
         authorId,
       });
+    selectSplitDisplay(qb, "action");
     this.addPostVisibilityFilter(qb, "post", requestingUserId);
     const posts = await qb.getMany();
     const facepiles = await this.loadListRelationsAndFacepiles(posts);

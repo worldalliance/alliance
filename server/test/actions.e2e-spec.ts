@@ -7,7 +7,7 @@ import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { milliseconds } from "date-fns";
 import { ActionActivityService } from "src/actions/action-activity.service";
 import { ActionCategory } from "src/actions/action-category";
-import { ActionsService } from "src/actions/actions.service";
+import { ActionMutationsService } from "src/actions/action-mutations.service";
 import { CohortResolverService } from "src/actions/cohort-resolver.service";
 import type { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { GLOBAL_FEED_FACEPILE_LIMIT } from "src/actions/feed-members.service";
@@ -4047,7 +4047,7 @@ describe("Actions (e2e)", () => {
       const sends = jest
         .spyOn(notifs, "createActionUpdateNotifs")
         .mockImplementation(async (params) => {
-          archived = ctx.app.get(ActionsService).archive(action.id);
+          archived = ctx.app.get(ActionMutationsService).archive(action.id);
           await waitForLockWait(ctx.dataSource);
           return createNotifs(params);
         });

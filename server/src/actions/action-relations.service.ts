@@ -31,10 +31,13 @@ import { ActionParticipantsService } from "./action-participants.service";
 import { ActionsService } from "./actions.service";
 import { CohortResolutionSession } from "./cohort-resolution-session";
 import { CohortResolverService } from "./cohort-resolver.service";
+import { collapseCombinedArms } from "./combined-split-relations";
 import { ActionActivity } from "./entities/action-activity.entity";
 import { ActionStatus } from "./entities/action-event.entity";
 import { ActionSuite } from "./entities/action-suite.entity";
 import { type ParsedAction } from "./entities/action.entity";
+import { isActionOptional } from "./suite-split";
+import { SuiteSplitsService } from "./suite-splits.service";
 import { resolveUserActionPillStatus } from "./user-action-pill-status";
 
 @Injectable()
@@ -51,6 +54,7 @@ export class ActionRelationsService {
     private readonly communityService: CommunityService,
     private readonly cohortResolverService: CohortResolverService,
     private readonly participants: ActionParticipantsService,
+    private readonly suiteSplits: SuiteSplitsService,
   ) {}
 
   async findActionRelationsForUsers(
@@ -239,7 +243,7 @@ export class ActionRelationsService {
         detail.status = resolveUserActionPillStatus({
           isJoined: detail.isJoined,
           isAway: detail.isAway,
-          optional: action.optional,
+          optional: isActionOptional(action),
           deadlinePassed: hasMemberActionDeadlinePassed(
             action.memberActionPhase?.deadlineEvent?.date,
             now,
@@ -332,7 +336,15 @@ export class ActionRelationsService {
       throw new NotFoundException("User is not a member of this community");
     }
 
-    return this.findActionRelationsForUsers(Promise.resolve(members));
+    const relations = await this.findActionRelationsForUsers(
+      Promise.resolve(members),
+    );
+    return collapseCombinedArms({
+      relations,
+      splitOfArm: await this.suiteSplits.findCombinedSplitsByArm(
+        relations.actions.map((action) => action.id),
+      ),
+    });
   }
 
   async countCommunityCompletedActions(

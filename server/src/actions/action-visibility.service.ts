@@ -15,6 +15,7 @@ import {
 } from "./entities/action.entity";
 import { SingleMemberCohortService } from "./single-member-cohort.service";
 import { isStaffPreviewActiveFor } from "./staff-preview";
+import { combinedSplitOf } from "./suite-split";
 
 const ACTION_VISIBILITY_USER_RELATIONS = {
   tags: true,
@@ -27,6 +28,11 @@ type ActionAccessParams = {
   user: User | null;
   session?: CohortResolutionSession;
   now?: Date;
+  /**
+   * Judge an arm of a combined split by its own visibility, for feeds that show
+   * it under the split's title. Its page opens only for members routed to it.
+   */
+  asSplit?: boolean;
 };
 
 @Injectable()
@@ -46,7 +52,7 @@ export class ActionVisibilityService {
   }
 
   async userCanSeeAction(params: ActionAccessParams): Promise<boolean> {
-    const { action, user, session, now = new Date() } = params;
+    const { action, user, session, now = new Date(), asSplit } = params;
     if (user?.admin) {
       return true;
     }
@@ -61,14 +67,15 @@ export class ActionVisibilityService {
     ) {
       return false;
     }
-    if (action.visibilityMode === VisibilityMode.Public) {
+    const routedOnly = !asSplit && combinedSplitOf(action) !== null;
+    if (action.visibilityMode === VisibilityMode.Public && !routedOnly) {
       return true;
     }
 
     if (!user) {
       return false;
     }
-    if (action.visibilityMode === VisibilityMode.AllMembers) {
+    if (action.visibilityMode === VisibilityMode.AllMembers && !routedOnly) {
       return true;
     }
 
@@ -149,7 +156,10 @@ export class ActionVisibilityService {
     user?: User | null;
     userId?: number;
     session?: CohortResolutionSession;
+    /** False for items that show an arm as itself rather than as its split. */
+    asSplit?: boolean;
   }): Promise<Set<number>> {
+    const { asSplit = true } = params;
     const uniqueIds = [...new Set(params.actionIds)];
     if (uniqueIds.length === 0) {
       return new Set();
@@ -165,7 +175,7 @@ export class ActionVisibilityService {
       actions: await this.loadActionsForVisibility(uniqueIds),
       user,
       session,
-      allows: (access) => this.userCanSeeAction(access),
+      allows: (access) => this.userCanSeeAction({ ...access, asSplit }),
     });
   }
 

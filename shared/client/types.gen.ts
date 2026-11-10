@@ -2529,6 +2529,10 @@ export type AdminActionListItemDto = {
      */
     memberActionDeadline: string | null;
     /**
+     * The split this action is an arm of, which sets its cohort expression and whether it's optional
+     */
+    splitId: number | null;
+    /**
      * Forms of the action's variants, besides its task form.
      */
     variantFormIds: Array<number>;
@@ -2699,6 +2703,10 @@ export type AdminActionDto = {
      * The first event after memberActionStart.
      */
     memberActionDeadline: string | null;
+    /**
+     * The split this action is an arm of, which sets its cohort expression and whether it's optional
+     */
+    splitId: number | null;
 };
 
 export type WelcomeQueueMemberDto = {
@@ -3019,6 +3027,10 @@ export type ActionActivityDto = {
     likesCount: number;
     user: ProfileDto;
     actionName: string;
+    /**
+     * Set when other members see the action as an arm of this combined split; actionName is then the split's title
+     */
+    combinedSplitId: number | null;
     likes?: Array<ProfileDto>;
     likedByMe?: boolean;
     comments: Array<CommentDto>;
@@ -3538,6 +3550,51 @@ export type UpdateActionEventDto = {
     date?: string;
 };
 
+export type SplitVisibilityMode = 'per_arm' | 'combined';
+
+export type SuiteSplitArmDto = {
+    id: number;
+    actionId: number;
+    /**
+     * Null on the last arm, which catches everyone else
+     */
+    rule: {
+        [key: string]: unknown;
+    } | null;
+    optional: boolean;
+};
+
+export type SuiteSplitDto = {
+    id: number;
+    title: string;
+    visibilityMode: SplitVisibilityMode;
+    filterExpression: {
+        [key: string]: unknown;
+    } | null;
+    arms: Array<SuiteSplitArmDto>;
+    /**
+     * Whether the arms have launched, after which only the title, visibility mode and optional flags change
+     */
+    launched: boolean;
+};
+
+export type SaveSuiteSplitArmDto = {
+    actionId: number;
+    rule: {
+        [key: string]: unknown;
+    } | null;
+    optional: boolean;
+};
+
+export type SaveSuiteSplitDto = {
+    title: string;
+    visibilityMode: SplitVisibilityMode;
+    filterExpression: {
+        [key: string]: unknown;
+    } | null;
+    arms: Array<SaveSuiteSplitArmDto>;
+};
+
 export type GlobalFeedItemType = 'activity_group' | 'action_update' | 'new_members' | 'forum_comments';
 
 export type GlobalFeedActivityTypes = 'user_completed' | 'user_submitted_follow_up_form';
@@ -3546,6 +3603,10 @@ export type GlobalFeedActivityGroupDto = {
     users: Array<ProfileDto>;
     actionId: number;
     actionName: string;
+    /**
+     * Set when other members see the action as an arm of this combined split; actionName is then the split's title
+     */
+    combinedSplitId: number | null;
     activityType: GlobalFeedActivityTypes;
     count: number;
 };
@@ -3559,6 +3620,10 @@ export type GlobalFeedActionUpdateDto = {
     date: string;
     actionId: number;
     actionName: string;
+    /**
+     * Set when other members see the action as an arm of this combined split; actionName is then the split's title
+     */
+    combinedSplitId: number | null;
 };
 
 export type GlobalFeedNewMembersDto = {
@@ -3701,7 +3766,23 @@ export type CohortDecisionDto = {
 };
 
 export type CorrectCohortDecisionDto = {
+    /**
+     * Why staff are correcting the decision
+     */
+    note: string;
     included: boolean;
+};
+
+export type ArmMovePreviewDto = {
+    /**
+     * The arm the member is in now, or null when they're in none
+     */
+    currentArmActionId: number | null;
+    hasCompletion: boolean;
+    hasSubmittedResponse: boolean;
+};
+
+export type CohortDecisionNoteDto = {
     /**
      * Why staff are correcting the decision
      */
@@ -11685,6 +11766,104 @@ export type ActionSuitesDeleteSuiteEventAdminResponses = {
 
 export type ActionSuitesDeleteSuiteEventAdminResponse = ActionSuitesDeleteSuiteEventAdminResponses[keyof ActionSuitesDeleteSuiteEventAdminResponses];
 
+export type ActionSuitesSuiteSplitsAdminData = {
+    body?: never;
+    path: {
+        suiteId: number;
+    };
+    query?: never;
+    url: '/actions/suite/{suiteId}/splits';
+};
+
+export type ActionSuitesSuiteSplitsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionSuitesSuiteSplitsAdminError = ActionSuitesSuiteSplitsAdminErrors[keyof ActionSuitesSuiteSplitsAdminErrors];
+
+export type ActionSuitesSuiteSplitsAdminResponses = {
+    200: Array<SuiteSplitDto>;
+};
+
+export type ActionSuitesSuiteSplitsAdminResponse = ActionSuitesSuiteSplitsAdminResponses[keyof ActionSuitesSuiteSplitsAdminResponses];
+
+export type ActionSuitesCreateSuiteSplitAdminData = {
+    body: SaveSuiteSplitDto;
+    path: {
+        suiteId: number;
+    };
+    query?: never;
+    url: '/actions/suite/{suiteId}/splits';
+};
+
+export type ActionSuitesCreateSuiteSplitAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionSuitesCreateSuiteSplitAdminError = ActionSuitesCreateSuiteSplitAdminErrors[keyof ActionSuitesCreateSuiteSplitAdminErrors];
+
+export type ActionSuitesCreateSuiteSplitAdminResponses = {
+    200: Array<SuiteSplitDto>;
+};
+
+export type ActionSuitesCreateSuiteSplitAdminResponse = ActionSuitesCreateSuiteSplitAdminResponses[keyof ActionSuitesCreateSuiteSplitAdminResponses];
+
+export type ActionSuitesDeleteSuiteSplitAdminData = {
+    body?: never;
+    path: {
+        suiteId: number;
+        splitId: number;
+    };
+    query?: never;
+    url: '/actions/suite/{suiteId}/splits/{splitId}';
+};
+
+export type ActionSuitesDeleteSuiteSplitAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionSuitesDeleteSuiteSplitAdminError = ActionSuitesDeleteSuiteSplitAdminErrors[keyof ActionSuitesDeleteSuiteSplitAdminErrors];
+
+export type ActionSuitesDeleteSuiteSplitAdminResponses = {
+    200: Array<SuiteSplitDto>;
+};
+
+export type ActionSuitesDeleteSuiteSplitAdminResponse = ActionSuitesDeleteSuiteSplitAdminResponses[keyof ActionSuitesDeleteSuiteSplitAdminResponses];
+
+export type ActionSuitesUpdateSuiteSplitAdminData = {
+    body: SaveSuiteSplitDto;
+    path: {
+        suiteId: number;
+        splitId: number;
+    };
+    query?: never;
+    url: '/actions/suite/{suiteId}/splits/{splitId}';
+};
+
+export type ActionSuitesUpdateSuiteSplitAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionSuitesUpdateSuiteSplitAdminError = ActionSuitesUpdateSuiteSplitAdminErrors[keyof ActionSuitesUpdateSuiteSplitAdminErrors];
+
+export type ActionSuitesUpdateSuiteSplitAdminResponses = {
+    200: Array<SuiteSplitDto>;
+};
+
+export type ActionSuitesUpdateSuiteSplitAdminResponse = ActionSuitesUpdateSuiteSplitAdminResponses[keyof ActionSuitesUpdateSuiteSplitAdminResponses];
+
 export type ActionFeedGetActivityFeedData = {
     body?: never;
     path?: never;
@@ -12317,6 +12496,85 @@ export type CohortDecisionsCorrectAdminResponses = {
 };
 
 export type CohortDecisionsCorrectAdminResponse = CohortDecisionsCorrectAdminResponses[keyof CohortDecisionsCorrectAdminResponses];
+
+export type CohortDecisionsArmMovePreviewAdminData = {
+    body?: never;
+    path: {
+        actionId: number;
+        userId: number;
+    };
+    query?: never;
+    url: '/cohort-decisions/action/{actionId}/user/{userId}/arm-move';
+};
+
+export type CohortDecisionsArmMovePreviewAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type CohortDecisionsArmMovePreviewAdminError = CohortDecisionsArmMovePreviewAdminErrors[keyof CohortDecisionsArmMovePreviewAdminErrors];
+
+export type CohortDecisionsArmMovePreviewAdminResponses = {
+    200: ArmMovePreviewDto;
+};
+
+export type CohortDecisionsArmMovePreviewAdminResponse = CohortDecisionsArmMovePreviewAdminResponses[keyof CohortDecisionsArmMovePreviewAdminResponses];
+
+export type CohortDecisionsMoveToArmAdminData = {
+    body: CohortDecisionNoteDto;
+    path: {
+        actionId: number;
+        userId: number;
+    };
+    query?: never;
+    url: '/cohort-decisions/action/{actionId}/user/{userId}/move-to-arm';
+};
+
+export type CohortDecisionsMoveToArmAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type CohortDecisionsMoveToArmAdminError = CohortDecisionsMoveToArmAdminErrors[keyof CohortDecisionsMoveToArmAdminErrors];
+
+export type CohortDecisionsMoveToArmAdminResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type CohortDecisionsMoveToArmAdminResponse = CohortDecisionsMoveToArmAdminResponses[keyof CohortDecisionsMoveToArmAdminResponses];
+
+export type CohortDecisionsRemoveFromSplitAdminData = {
+    body: CohortDecisionNoteDto;
+    path: {
+        actionId: number;
+        userId: number;
+    };
+    query?: never;
+    url: '/cohort-decisions/action/{actionId}/user/{userId}/remove-from-split';
+};
+
+export type CohortDecisionsRemoveFromSplitAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type CohortDecisionsRemoveFromSplitAdminError = CohortDecisionsRemoveFromSplitAdminErrors[keyof CohortDecisionsRemoveFromSplitAdminErrors];
+
+export type CohortDecisionsRemoveFromSplitAdminResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type CohortDecisionsRemoveFromSplitAdminResponse = CohortDecisionsRemoveFromSplitAdminResponses[keyof CohortDecisionsRemoveFromSplitAdminResponses];
 
 export type ProjectsFindAllAdminData = {
     body?: never;

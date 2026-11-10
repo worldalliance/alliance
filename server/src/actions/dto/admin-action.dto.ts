@@ -4,6 +4,7 @@ import { Type } from "class-transformer";
 import { Allow, IsDefined, IsOptional } from "class-validator";
 import {
   loadedActionFollowUpForms,
+  loadedSplitArms,
   type ParsedAction,
 } from "../entities/action.entity";
 import { ActionDto, type ActionDtoExtra } from "./action.dto";
@@ -79,8 +80,18 @@ export class AdminActionDto extends ActionDto {
   @IsOptional()
   memberActionDeadline: Date | null;
 
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description:
+      "The split this action is an arm of, which sets its cohort expression and whether it's optional",
+  })
+  @IsOptional()
+  splitId: number | null;
+
   constructor(action: ParsedAction, extra?: ActionDtoExtra) {
     super(action, extra);
+    this.splitId = loadedSplitArms(action)[0]?.splitId ?? null;
     this.slug = action.slug;
     this.cohortExpression = action.cohortExpression;
     this.prerequisiteActionIds = action.prerequisiteActionIds;

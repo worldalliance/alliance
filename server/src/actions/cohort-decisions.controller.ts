@@ -13,7 +13,9 @@ import type { JwtRequest } from "src/auth/tokens";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
 import {
+  ArmMovePreviewDto,
   CohortDecisionDto,
+  CohortDecisionNoteDto,
   CorrectCohortDecisionDto,
 } from "./dto/cohort-decision.dto";
 
@@ -53,5 +55,56 @@ export class CohortDecisionsController {
         now: new Date(),
       }),
     );
+  }
+
+  @Get("action/:actionId/user/:userId/arm-move")
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: ArmMovePreviewDto })
+  async armMovePreviewAdmin(
+    @Param("actionId", ParseIntPipe) actionId: number,
+    @Param("userId", ParseIntPipe) userId: number,
+  ): Promise<ArmMovePreviewDto> {
+    return new ArmMovePreviewDto(
+      await this.cohortDecisionStaffService.findArmMovePreview({
+        actionId,
+        userId,
+      }),
+    );
+  }
+
+  @Post("action/:actionId/user/:userId/move-to-arm")
+  @UseGuards(AdminGuard)
+  @ApiOkResponse()
+  async moveToArmAdmin(
+    @Param("actionId", ParseIntPipe) actionId: number,
+    @Param("userId", ParseIntPipe) userId: number,
+    @Body() body: CohortDecisionNoteDto,
+    @Request() req: JwtRequest,
+  ): Promise<void> {
+    await this.cohortDecisionStaffService.moveToArm({
+      actionId,
+      userId,
+      note: body.note,
+      staffUserId: req.user.sub,
+      now: new Date(),
+    });
+  }
+
+  @Post("action/:actionId/user/:userId/remove-from-split")
+  @UseGuards(AdminGuard)
+  @ApiOkResponse()
+  async removeFromSplitAdmin(
+    @Param("actionId", ParseIntPipe) actionId: number,
+    @Param("userId", ParseIntPipe) userId: number,
+    @Body() body: CohortDecisionNoteDto,
+    @Request() req: JwtRequest,
+  ): Promise<void> {
+    await this.cohortDecisionStaffService.removeFromSplit({
+      actionId,
+      userId,
+      note: body.note,
+      staffUserId: req.user.sub,
+      now: new Date(),
+    });
   }
 }

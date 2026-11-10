@@ -384,7 +384,7 @@ describe("computeMissedActionDeadline", () => {
   ): boolean {
     const { optional = false, openEnded = false, ...rest } = overrides;
     return computeMissedActionDeadline({
-      action: { ...makeAction({ openEnded }), optional },
+      action: { ...makeAction({ openEnded }), id: 1, splitArms: [], optional },
       user: missedUser(),
       inCohort: true,
       hasTerminalActivity: false,

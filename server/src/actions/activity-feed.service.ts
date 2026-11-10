@@ -18,6 +18,7 @@ import {
   ActionActivity,
   loadedActionActivityLikes,
 } from "./entities/action-activity.entity";
+import { selectSplitDisplay } from "./suite-split";
 
 @Injectable()
 export class ActivityFeedService {
@@ -236,7 +237,8 @@ export class ActivityFeedService {
         "taskFormResponse.deviceType",
         "taskFormSnapshot.id",
         "taskFormSnapshot.schema",
-      ])
+      ]);
+    selectSplitDisplay(qb, "action")
       .loadRelationIdAndMap("user.leaderOfIds", "user.leaderOf")
       .where("activity.type IN (:...types)", {
         types: ACTION_ACTIVITY_FEED_VISIBLE_TYPES,

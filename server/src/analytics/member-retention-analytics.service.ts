@@ -10,6 +10,7 @@ import {
   parseAction,
   type ParsedAction,
 } from "src/actions/entities/action.entity";
+import { isActionOptional } from "src/actions/suite-split";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
 import {
   ContractEvent,
@@ -107,7 +108,7 @@ export class MemberRetentionAnalyticsService {
     for (const action of actions) {
       if (
         !countsTowardMemberAnalytics(action) ||
-        (!includeOptional && action.optional)
+        (!includeOptional && isActionOptional(action))
       ) {
         continue;
       }

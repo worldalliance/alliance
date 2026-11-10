@@ -13,6 +13,7 @@ import {
   parseAction,
   type ParsedAction,
 } from "src/actions/entities/action.entity";
+import { isActionOptional } from "src/actions/suite-split";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
 import { ContractEventType } from "src/user/entities/contract-event.entity";
 import { yieldToEventLoop } from "src/utils/event-loop";
@@ -108,7 +109,7 @@ export class PlatformTenureAnalyticsService {
       memberActionEndEvent: ActionEvent | undefined;
     }[] = [];
     for (const action of actions) {
-      if (!countsTowardMemberAnalytics(action) || action.optional) {
+      if (!countsTowardMemberAnalytics(action) || isActionOptional(action)) {
         continue;
       }
 

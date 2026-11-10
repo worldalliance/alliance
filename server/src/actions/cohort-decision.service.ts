@@ -1,12 +1,9 @@
-/* alliance/max-lines 750 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
+/* alliance/max-lines 650 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { R } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
 import { countBy, partition } from "es-toolkit";
-import { lockLiveIds } from "src/datasources/soft-delete";
 import { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
-import { In, type Repository } from "typeorm";
 import {
   admissionReason,
   belongsToBackfill,
@@ -22,42 +19,34 @@ import {
   readsDecisionsOf,
   type CohortEnrollment,
 } from "./cohort-decision";
+import { CohortDecisionActionsService } from "./cohort-decision-actions.service";
+import {
+  CohortDecisionStoreService,
+  type DecisionRow,
+} from "./cohort-decision-store.service";
 import { logCohortPathDisagreements } from "./cohort-path-disagreements";
 import { CohortResolutionSession } from "./cohort-resolution-session";
 import { CohortResolverService } from "./cohort-resolver.service";
-import { ActionCohortDecisionCorrection } from "./entities/action-cohort-decision-correction.entity";
-import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
-import {
-  Action,
-  parseAction,
-  type ParsedAction,
-} from "./entities/action.entity";
+import { type ParsedAction } from "./entities/action.entity";
 import { CohortDecisionReason } from "./entities/cohort-decision-reason";
 import { PrerequisiteProgressService } from "./prerequisite-progress.service";
 import { SingleMemberCohortService } from "./single-member-cohort.service";
-
-const INSERT_CHUNK_SIZE = 1000;
-
-type DecisionRow = Pick<
-  ActionCohortDecision,
-  "actionId" | "userId" | "included" | "reason" | "resolvedAt"
->;
+import { groupSplitArms, splitIdByArm } from "./split-decision";
+import { isActionOptional } from "./suite-split";
+import { SuiteSplitsService } from "./suite-splits.service";
 
 @Injectable()
 export class CohortDecisionService {
   private readonly logger = new Logger(CohortDecisionService.name);
 
   constructor(
-    @InjectRepository(Action)
-    private readonly actionRepository: Repository<Action>,
-    @InjectRepository(ActionCohortDecision)
-    private readonly decisionRepository: Repository<ActionCohortDecision>,
-    @InjectRepository(ActionCohortDecisionCorrection)
-    private readonly correctionRepository: Repository<ActionCohortDecisionCorrection>,
+    private readonly store: CohortDecisionStoreService,
+    private readonly cohortActions: CohortDecisionActionsService,
     private readonly cohortResolverService: CohortResolverService,
     private readonly userService: UserService,
     private readonly prerequisiteProgressService: PrerequisiteProgressService,
     private readonly singleMemberCohortService: SingleMemberCohortService,
+    private readonly suiteSplits: SuiteSplitsService,
   ) {}
 
   /**
@@ -72,7 +61,8 @@ export class CohortDecisionService {
    * failing action is logged and skipped so it cannot hold back the others.
    */
   async resolveAll(now: Date): Promise<void> {
-    const actions = await this.findResolvableActions(now);
+    const { items: actions, splitIds } =
+      await this.cohortActions.findResolvable(now);
     const closed = actions.flatMap(({ action, enrollment }) => {
       switch (enrollment.state) {
         case CohortEnrollmentState.Closed:
@@ -94,8 +84,9 @@ export class CohortDecisionService {
     );
     if (backfill.length === 0 && catchUp.length === 0) return;
 
-    const decidedByAction = await this.findDecidedUserIds(
+    const decidedByAction = await this.store.findDecidedUserIds(
       catchUp.map(({ action }) => action.id),
+      { splitIds },
     );
     const session = new CohortResolutionSession();
     const users = await this.cohortResolverService.primeActiveUsers(
@@ -114,6 +105,7 @@ export class CohortDecisionService {
       users: settledUsers,
       population: users,
       decidedByAction,
+      splitIds,
       now,
     });
 
@@ -147,9 +139,13 @@ export class CohortDecisionService {
           }),
       })),
     ];
-    for (const { action, resolve } of work) {
-      if (this.readsFailed(action, failedClosed)) continue;
-      await this.tryDecide(action, resolve);
+    for (const group of groupSplitArms(work, splitIds)) {
+      if (group.some(({ action }) => this.readsFailed(action, failedClosed))) {
+        continue;
+      }
+      await this.tryDecide(group[0].action, async () =>
+        (await Promise.all(group.map(({ resolve }) => resolve()))).flat(),
+      );
     }
   }
 
@@ -158,7 +154,7 @@ export class CohortDecisionService {
     resolve: () => Promise<DecisionRow[]>,
   ): Promise<boolean> {
     const result = await R.fromPromiseFn(async () =>
-      this.insert(await resolve()),
+      this.store.insert(await resolve()),
     );
     if (R.isFailure(result)) {
       this.logger.error(
@@ -180,26 +176,35 @@ export class CohortDecisionService {
     users: User[];
     population: User[];
     decidedByAction: Map<number, Set<number>>;
+    splitIds: ReadonlyMap<number, number>;
     now: Date;
   }): Promise<Set<number>> {
-    const { closed, users, population, decidedByAction, now } = params;
+    const { closed, users, population, decidedByAction, splitIds, now } =
+      params;
     const failed = new Set<number>();
-    for (const { action, enrollment } of closed) {
-      if (this.readsFailed(action, failed)) {
-        failed.add(action.id);
+    for (const group of groupSplitArms(closed, splitIds)) {
+      const ids = group.map(({ action }) => action.id);
+      if (group.some(({ action }) => this.readsFailed(action, failed))) {
+        ids.forEach((id) => failed.add(id));
         continue;
       }
-      const decided = decidedByAction.get(action.id) ?? new Set<number>();
-      const decidedNow = await this.tryDecide(action, async () =>
-        this.resolveAction({
-          action,
-          enrollment,
-          users: users.filter((user) => !decided.has(user.id)),
-          session: await this.sessionFor(population),
-          now,
-        }),
-      );
-      if (!decidedNow) failed.add(action.id);
+      const decidedNow = await this.tryDecide(group[0].action, async () => {
+        const session = await this.sessionFor(population);
+        const rows = await Promise.all(
+          group.map(({ action, enrollment }) => {
+            const decided = decidedByAction.get(action.id);
+            return this.resolveAction({
+              action,
+              enrollment,
+              users: users.filter((user) => !decided?.has(user.id)),
+              session,
+              now,
+            });
+          }),
+        );
+        return rows.flat();
+      });
+      if (!decidedNow) ids.forEach((id) => failed.add(id));
     }
     return failed;
   }
@@ -224,8 +229,10 @@ export class CohortDecisionService {
     T extends { action: ParsedAction; enrollment: { start: Date } },
   >(closed: T[]): Promise<[T[], T[]]> {
     const [withDecisions, cutover] = await Promise.all([
-      this.findActionIdsWithDecisions(closed.map(({ action }) => action.id)),
-      this.findCutover(),
+      this.store.findActionIdsWithDecisions(
+        closed.map(({ action }) => action.id),
+      ),
+      this.store.findCutover(),
     ]);
     return partition(closed, ({ action, enrollment }) =>
       belongsToBackfill({
@@ -285,7 +292,7 @@ export class CohortDecisionService {
         // could miss it. Anyone else was only ever optional, so deciding them
         // late creates no missed obligation.
         const obligated = (user: User) =>
-          !action.optional &&
+          !isActionOptional(action) &&
           user.hasActiveContractInFullRange({
             startDate: enrollment.start,
             endDate: enrollment.deadline,
@@ -396,36 +403,6 @@ export class CohortDecisionService {
   }
 
   /**
-   * When the resolver first ran: its earliest ordinary decision, counting one
-   * staff have since corrected.
-   */
-  private async findCutover(): Promise<Date | null> {
-    const ordinary = In([
-      CohortDecisionReason.Launch,
-      CohortDecisionReason.Signing,
-      CohortDecisionReason.PrerequisitesResolved,
-    ]);
-    const [decision, correction] = await Promise.all([
-      this.decisionRepository.findOne({
-        where: { reason: ordinary },
-        order: { resolvedAt: "ASC" },
-        select: { resolvedAt: true },
-      }),
-      this.correctionRepository.findOne({
-        where: { previousReason: ordinary },
-        order: { previousResolvedAt: "ASC" },
-        select: { previousResolvedAt: true },
-      }),
-    ]);
-    const times = [decision?.resolvedAt, correction?.previousResolvedAt].filter(
-      (time) => time !== undefined,
-    );
-    return times.length === 0
-      ? null
-      : new Date(Math.min(...times.map((time) => time.getTime())));
-  }
-
-  /**
    * The pass's catch-up for one open action, for a one-shot reader that
    * cannot wait for the next pass. Unlike the pass it throws on failure, so
    * the reader fails rather than read an undecided cohort as empty.
@@ -435,34 +412,43 @@ export class CohortDecisionService {
     if (action.publicOnly || enrollment.state !== CohortEnrollmentState.Open) {
       return;
     }
+    const { actions, splitIds } = await this.cohortActions.loadWithSplitArms([
+      action.id,
+    ]);
     const session = new CohortResolutionSession();
     const [users, decidedByAction] = await Promise.all([
       this.cohortResolverService.primeActiveUsers(session, () =>
         this.userService.findActiveUsersForRoster(),
       ),
-      this.findDecidedUserIds([action.id]),
+      this.store.findDecidedUserIds(
+        actions.map(({ id }) => id),
+        { splitIds },
+      ),
     ]);
-    const decided = decidedByAction.get(action.id) ?? new Set<number>();
     const settled = users.filter((user) => isSettled(user, now));
     const failed = await this.decideReadClosedActions({
-      actions: [action],
+      actions,
       users: settled,
       now,
     });
-    if (readsDecisionsOf(action.cohortExpression, failed)) {
+    if (actions.some((arm) => readsDecisionsOf(arm.cohortExpression, failed))) {
       throw new Error(
         `Failed to decide the closed actions action ${action.id} reads`,
       );
     }
-    await this.insert(
-      await this.resolveAction({
-        action,
-        enrollment,
-        users: settled.filter((user) => !decided.has(user.id)),
-        session,
-        now,
+    const rows = await Promise.all(
+      actions.map((arm) => {
+        const decided = decidedByAction.get(arm.id);
+        return this.resolveAction({
+          action: arm,
+          enrollment,
+          users: settled.filter((user) => !decided?.has(user.id)),
+          session,
+          now,
+        });
       }),
     );
+    await this.store.insert(rows.flat());
   }
 
   /**
@@ -484,23 +470,19 @@ export class CohortDecisionService {
     const closed = await findReadClosedEnrollments({
       actions,
       load: async (ids) =>
-        (
-          await this.actionRepository.find({
-            where: { id: In(ids), publicOnly: false },
-            relations: { events: true },
-          })
-        ).map(parseAction),
+        (await this.cohortActions.loadWithSplitArms(ids)).actions,
       now,
     });
+    const splitIds = splitIdByArm(await this.suiteSplits.findAll());
     const admissible = closed.filter(({ action, enrollment }) =>
       users.some((user) =>
         isCohortAdmissible({ action, user, at: enrollment.deadline }),
       ),
     );
     if (admissible.length === 0) return new Set();
-    const decidedByAction = await this.findDecidedUserIds(
+    const decidedByAction = await this.store.findDecidedUserIds(
       admissible.map(({ action }) => action.id),
-      users.length === 1 ? users[0].id : undefined,
+      { onlyUserId: users.length === 1 ? users[0].id : undefined, splitIds },
     );
     const pending = new Set(
       admissible.filter(({ action }) => {
@@ -519,6 +501,7 @@ export class CohortDecisionService {
       users,
       population: users,
       decidedByAction,
+      splitIds,
       now,
     });
   }
@@ -533,8 +516,8 @@ export class CohortDecisionService {
 
   /** Decide a member who just became admissible by signing. */
   async resolveForUser(userId: number, now: Date): Promise<void> {
-    const [actions, user] = await Promise.all([
-      this.findResolvableActions(now),
+    const [{ items: actions }, user] = await Promise.all([
+      this.cohortActions.findResolvable(now),
       this.userService.findOneOrFail(userId, {
         contractEvents: true,
         awayRanges: true,
@@ -567,27 +550,12 @@ export class CohortDecisionService {
       return this.decideForUser({ user, actions: decidable, now });
     }
     const open = openEnrollments(decidable, now);
-    const decided = await this.loadDecidedActionIds(user.id, open);
+    const decided = await this.store.loadDecidedActionIds(user.id, open);
     return new Set(
       open
         .map(({ action }) => action.id)
         .filter((actionId) => !decided.has(actionId)),
     );
-  }
-
-  private async loadDecidedActionIds(
-    userId: number,
-    open: Array<{ action: ParsedAction }>,
-  ): Promise<Set<number>> {
-    if (open.length === 0) return new Set();
-    const rows = await this.decisionRepository.find({
-      where: {
-        userId,
-        actionId: In(open.map(({ action }) => action.id)),
-      },
-      select: { actionId: true },
-    });
-    return new Set(rows.map((row) => row.actionId));
   }
 
   /**
@@ -600,11 +568,26 @@ export class CohortDecisionService {
     actions: ParsedAction[];
     now: Date;
   }): Promise<Set<number>> {
-    const { user, actions, now } = params;
+    const { user, now } = params;
+    const splitIds = splitIdByArm(await this.suiteSplits.findAll());
+    const armIds = params.actions
+      .map(({ id }) => id)
+      .filter((id) => splitIds.has(id));
+    const actions = [
+      ...params.actions.filter(({ id }) => !splitIds.has(id)),
+      ...(armIds.length === 0
+        ? []
+        : (await this.cohortActions.loadWithSplitArms(armIds)).actions),
+    ];
     const open = openEnrollments(actions, now);
     if (open.length === 0) return new Set();
-    const decided = await this.loadDecidedActionIds(user.id, open);
-    const undecided = open.filter(({ action }) => !decided.has(action.id));
+    // An action outside a split is its own group.
+    const groupOf = (actionId: number) => splitIds.get(actionId) ?? -actionId;
+    const decided = await this.store.loadDecidedActionIds(user.id, open);
+    const decidedGroups = new Set([...decided].map(groupOf));
+    const undecided = open.filter(
+      ({ action }) => !decidedGroups.has(groupOf(action.id)),
+    );
     if (undecided.length === 0) return new Set();
     const admissible = undecided.filter(({ action }) =>
       isCohortAdmissible({ action, user, at: now }),
@@ -614,35 +597,44 @@ export class CohortDecisionService {
       users: [user],
       now,
     });
+    const blockedSplits = new Set(
+      admissible
+        .filter(({ action }) => this.readsFailed(action, failedClosed))
+        .map(({ action }) => groupOf(action.id)),
+    );
     const [blocked, decidable] = partition(admissible, ({ action }) =>
-      this.readsFailed(action, failedClosed),
+      blockedSplits.has(groupOf(action.id)),
     );
     // The pass's population evaluator, over a population of one, so both
     // writers apply the same cohort rules.
     const session = await this.sessionFor([user]);
     const rows: DecisionRow[] = [];
     const failed = new Set(blocked.map(({ action }) => action.id));
-    for (const { action, enrollment } of decidable) {
+    for (const group of groupSplitArms(decidable, splitIds)) {
       const result = await R.fromPromiseFn(() =>
-        this.resolveAction({
-          action,
-          enrollment,
-          users: [user],
-          session,
-          now,
-        }),
+        Promise.all(
+          group.map(({ action, enrollment }) =>
+            this.resolveAction({
+              action,
+              enrollment,
+              users: [user],
+              session,
+              now,
+            }),
+          ),
+        ),
       );
       if (R.isFailure(result)) {
         this.logger.error(
-          `Failed to decide cohort for action ${action.id}, user ${user.id}`,
+          `Failed to decide cohort for action ${group[0].action.id}, user ${user.id}`,
           result.error,
         );
-        failed.add(action.id);
+        group.forEach(({ action }) => failed.add(action.id));
         continue;
       }
-      rows.push(...result.value);
+      rows.push(...result.value.flat());
     }
-    await this.insert(rows);
+    await this.store.insert(rows);
     return failed;
   }
 
@@ -669,92 +661,5 @@ export class CohortDecisionService {
       );
     }
     return rows;
-  }
-
-  async findResolvableActions(
-    now: Date,
-  ): Promise<{ action: ParsedAction; enrollment: CohortEnrollment }[]> {
-    const actions = await this.actionRepository.find({
-      where: { publicOnly: false },
-      relations: { events: true },
-    });
-    return actions.map(parseAction).map((action) => ({
-      action,
-      enrollment: computeCohortEnrollment(action, now),
-    }));
-  }
-
-  async findActionsInCatchUp(
-    now: Date,
-  ): Promise<{ action: ParsedAction; enrollment: CohortEnrollment }[]> {
-    return (await this.findResolvableActions(now)).filter(({ enrollment }) =>
-      isInCatchUp(enrollment, now),
-    );
-  }
-
-  private async findActionIdsWithDecisions(
-    actionIds: number[],
-  ): Promise<Set<number>> {
-    if (actionIds.length === 0) return new Set();
-    const rows = await this.decisionRepository
-      .createQueryBuilder("decision")
-      .select('DISTINCT decision."actionId"', "actionId")
-      .where('decision."actionId" IN (:...actionIds)', { actionIds })
-      .getRawMany<{ actionId: number }>();
-    return new Set(rows.map((row) => row.actionId));
-  }
-
-  private async findDecidedUserIds(
-    actionIds: number[],
-    onlyUserId?: number,
-  ): Promise<Map<number, Set<number>>> {
-    const rows = await this.decisionRepository.find({
-      where: {
-        actionId: In(actionIds),
-        ...(onlyUserId === undefined ? {} : { userId: onlyUserId }),
-      },
-      select: { actionId: true, userId: true },
-    });
-    const byAction = new Map<number, Set<number>>();
-    for (const { actionId, userId } of rows) {
-      let userIds = byAction.get(actionId);
-      if (!userIds) {
-        userIds = new Set();
-        byAction.set(actionId, userIds);
-      }
-      userIds.add(userId);
-    }
-    return byAction;
-  }
-
-  /**
-   * All or nothing, so a later pass never skips a half-backfilled action. A
-   * concurrent writer's row wins; decisions are final once written. Rows for
-   * an action or account deleted since the pass loaded them are dropped.
-   */
-  private async insert(rows: DecisionRow[]): Promise<void> {
-    if (rows.length === 0) return;
-    await this.decisionRepository.manager.transaction(async (manager) => {
-      const liveActionIds = await lockLiveIds(manager, {
-        target: Action,
-        ids: [...new Set(rows.map((row) => row.actionId))],
-      });
-      const liveUserIds = await lockLiveIds(manager, {
-        target: User,
-        ids: [...new Set(rows.map((row) => row.userId))],
-      });
-      const live = rows.filter(
-        (row) => liveActionIds.has(row.actionId) && liveUserIds.has(row.userId),
-      );
-      for (let i = 0; i < live.length; i += INSERT_CHUNK_SIZE) {
-        await manager
-          .createQueryBuilder()
-          .insert()
-          .into(ActionCohortDecision)
-          .values(live.slice(i, i + INSERT_CHUNK_SIZE))
-          .orIgnore()
-          .execute();
-      }
-    });
   }
 }

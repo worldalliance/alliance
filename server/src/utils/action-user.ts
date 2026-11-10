@@ -7,6 +7,7 @@ import {
 import { isAwayRangeActiveAt } from "@alliance/common/awayRange";
 import type { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { Action, loadedActionEvents } from "src/actions/entities/action.entity";
+import { isActionOptional } from "src/actions/suite-split";
 import type { Community } from "src/community/entities/community.entity";
 import type { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { loadedUserTags, User } from "src/user/entities/user.entity";
@@ -259,11 +260,11 @@ export function hasMemberActionDeadlinePassed(
  * show `optional_task` rather than `missed_deadline`.
  */
 export function canMissActionDeadline(
-  action: Pick<Action, "optional" | "memberActionPhase">,
+  action: Pick<Action, "id" | "optional" | "splitArms" | "memberActionPhase">,
   now: Date,
 ): boolean {
   return (
-    !action.optional &&
+    !isActionOptional(action) &&
     hasMemberActionDeadlinePassed(
       action.memberActionPhase.deadlineEvent?.date,
       now,
@@ -276,7 +277,7 @@ export function canMissActionDeadline(
  * required and present ({@link computeIsAssignedAndPresent}).
  */
 export function computeMissedRequiredAction(params: {
-  action: Pick<Action, "optional" | "memberActionPhase">;
+  action: Pick<Action, "id" | "optional" | "splitArms" | "memberActionPhase">;
   hasTerminalActivity: boolean;
   now: Date;
 }): boolean {
@@ -291,7 +292,8 @@ export function computeMissedRequiredAction(params: {
  * count; it is a view-only overlay offered on past-deadline cards.
  */
 export function computeMissedActionDeadline(params: {
-  action: SelfViewParams["action"] & Pick<Action, "optional">;
+  action: SelfViewParams["action"] &
+    Pick<Action, "id" | "optional" | "splitArms">;
   user: NonNullable<SelfViewParams["user"]> &
     Pick<User, "awayRanges" | "isAwayAtAnyPointInRange">;
   inCohort: boolean;

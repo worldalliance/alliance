@@ -95,6 +95,7 @@ export class ProjectsService {
       const actionExists = await em.exists(Action, {
         where: { id: actionId },
         lock: { mode: "for_no_key_update" },
+        loadEagerRelations: false,
       });
       if (!actionExists) {
         throw new NotFoundException(`Action ${actionId} not found`);

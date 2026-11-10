@@ -1,5 +1,5 @@
 import { type FeedActionActivity } from "@alliance/common/actionActivity";
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import {
@@ -16,7 +16,9 @@ import {
 import { User } from "src/user/entities/user.entity";
 import { sqlUserHasProfilePicture } from "src/user/profile-picture";
 import { In, type Repository } from "typeorm";
+import { ActionVisibilityService } from "./action-visibility.service";
 import { ActionsService } from "./actions.service";
+import { SuiteSplitsService } from "./suite-splits.service";
 
 /** Facepile preview size; member-list endpoints paginate full lists. */
 export const GLOBAL_FEED_FACEPILE_LIMIT = 8;
@@ -53,6 +55,8 @@ export class FeedMembersService {
     private readonly userRepository: Repository<User>,
     private readonly actionsService: ActionsService,
     private readonly forumService: ForumService,
+    private readonly suiteSplits: SuiteSplitsService,
+    private readonly actionVisibility: ActionVisibilityService,
   ) {}
 
   private buildRecentNewMembersRankedQuery(
@@ -232,10 +236,7 @@ export class FeedMembersService {
     afterId?: number,
     requestingUserId?: number,
   ): Promise<ProfileDto[]> {
-    await this.actionsService.findOneOrFail({
-      id: actionId,
-      userId: requestingUserId,
-    });
+    const actionIds = await this.groupActionIds(actionId, requestingUserId);
     const oneWeekAgo = globalFeedWindowStart();
     const rankedSql = `
       SELECT "userId", "latestAt", "latestId"
@@ -246,7 +247,7 @@ export class FeedMembersService {
           activity.id AS "latestId"
         FROM "action_activity" activity
         INNER JOIN "action" action_entity ON action_entity.id = activity."actionId"
-        WHERE activity."actionId" = $1
+        WHERE activity."actionId" = ANY($1)
           AND activity.type = $2
           AND action_entity.onboarding = false
           AND activity."createdAt" > $3
@@ -257,11 +258,39 @@ export class FeedMembersService {
 
     const pageIds = await this.queryFeedMemberPageIds({
       rankedSql,
-      params: [actionId, activityType, oneWeekAgo],
+      params: [actionIds, activityType, oneWeekAgo],
       limit,
       afterId,
     });
     return this.hydrateFeedMemberProfiles(pageIds);
+  }
+
+  /**
+   * The actions a global-feed activity group covers: every arm of a combined
+   * split, which the feed shows as one group, or the action alone.
+   */
+  private async groupActionIds(
+    actionId: number,
+    requestingUserId?: number,
+  ): Promise<number[]> {
+    const split = (
+      await this.suiteSplits.findCombinedSplitsByArm([actionId])
+    ).get(actionId);
+    if (!split) {
+      await this.actionsService.findOneOrFail({
+        id: actionId,
+        userId: requestingUserId,
+      });
+      return [actionId];
+    }
+    const visible = await this.actionVisibility.visibleActionIdsForUser({
+      actionIds: [actionId],
+      userId: requestingUserId,
+    });
+    if (!visible.has(actionId)) {
+      throw new NotFoundException("Action not found");
+    }
+    return split.arms.map((arm) => arm.actionId);
   }
 
   async getNewMembers(limit: number, afterId?: number): Promise<ProfileDto[]> {

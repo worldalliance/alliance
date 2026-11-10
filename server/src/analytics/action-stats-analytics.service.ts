@@ -15,6 +15,7 @@ import {
   loadedActionEvents,
   parseAction,
 } from "src/actions/entities/action.entity";
+import { isActionOptional } from "src/actions/suite-split";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import { In, type Repository } from "typeorm";
 import { ActionCompletionCurve } from "./action-completion-curve.dto";
@@ -186,12 +187,13 @@ export class ActionStatsAnalyticsService {
     const actions = await this.actionRepository.find({
       where: { id: In(actionIds) },
       select: { id: true, onboarding: true, optional: true },
+      relations: { splitArms: true },
     });
     const onboardingByActionId = new Map<number, boolean>();
     const optionalByActionId = new Map<number, boolean>();
     for (const action of actions) {
       onboardingByActionId.set(action.id, action.onboarding);
-      optionalByActionId.set(action.id, action.optional);
+      optionalByActionId.set(action.id, isActionOptional(action));
     }
 
     return records.map((record) => ({
@@ -215,12 +217,13 @@ export class ActionStatsAnalyticsService {
     const action = await this.actionRepository.findOne({
       where: { id: actionId },
       select: { id: true, onboarding: true, optional: true },
+      relations: { splitArms: true },
     });
 
     return {
       actionStatsRecord: record,
       onboarding: action?.onboarding ?? false,
-      optional: action?.optional ?? false,
+      optional: action ? isActionOptional(action) : false,
     };
   }
 

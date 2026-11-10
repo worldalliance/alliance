@@ -30,6 +30,7 @@ const activityItem: ParsedHomeFeedItemDto = {
     user: author,
     actionId: 3,
     actionName: "Test Action",
+    combinedSplitId: null,
     likes: [],
     likesCount: 0,
     comments: [],

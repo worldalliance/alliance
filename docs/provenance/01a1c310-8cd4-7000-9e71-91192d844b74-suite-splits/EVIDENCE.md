@@ -25,3 +25,10 @@ Method: same database and date.
 - 219 members have a cohort decision on 158, and 27 are included.
 - 21 automatic-suspension keys (`contract_event."autoSuspendKey"`) include suite 64.
 - `ActionSuspensionService.buildSuspendPlanContext` (`server/src/actions/action-suspension.service.ts`) recomputes closed suites' outcomes on each run and skips optional actions. So flipping 158 would change past standings, but not the suspension events already stored.
+
+## Conversion migration against staging
+
+Method: ran `ConvertHandBuiltSuiteSplits1794275385336` against the local database loaded with staging data (pii-pruned prod), 2026-11-09, then counted each member's included arms per split from `action_cohort_decision`.
+
+- The md5 and schedule checks passed for all six suites. The migration created six `per_arm` splits and wrote each arm's routing expression and optional flag.
+- Every member with decisions holds exactly one included arm in suites 60 (221), 64 (219), 66 (237), 69 (249) and 71 (257). In suite 65, 221 hold one and 1 holds none.

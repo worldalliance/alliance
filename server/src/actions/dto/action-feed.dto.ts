@@ -12,10 +12,12 @@ import { ProfileDto } from "src/user/dto/user.dto";
 import { ActionEvent } from "../entities/action-event.entity";
 import { ActionUpdate } from "../entities/action-update.entity";
 import { type ParsedAction } from "../entities/action.entity";
+import type { CombinedCounts } from "../suite-split";
 import { ActionActivityDto } from "./action-activity.dto";
 import { ActionEventDto } from "./action-event.dto";
 import { ActionUpdateDto } from "./action-update.dto";
 import { ActionDto } from "./action.dto";
+import { COMBINED_SPLIT_ID_PROPERTY } from "./suite-split.dto";
 
 export enum GlobalFeedItemType {
   ActivityGroup = "activity_group",
@@ -34,6 +36,9 @@ export class GlobalFeedActivityGroupDto {
 
   @ApiProperty()
   actionName: string;
+
+  @ApiProperty(COMBINED_SPLIT_ID_PROPERTY)
+  combinedSplitId: number | null;
 
   @ApiProperty({
     enum: ACTION_ACTIVITY_FEED_VISIBLE_TYPES,
@@ -64,6 +69,9 @@ export class GlobalFeedActionUpdateDto {
 
   @ApiProperty()
   actionName: string;
+
+  @ApiProperty(COMBINED_SPLIT_ID_PROPERTY)
+  combinedSplitId: number | null;
 }
 
 export class GlobalFeedNewMembersDto {
@@ -179,6 +187,7 @@ export enum TimelineFeedItemType {
 export type TimelineFeedItem = {
   date: Date;
   action: ParsedAction;
+  combinedCounts?: CombinedCounts;
 } & (
   | {
       type: TimelineFeedItemType.ActionEvent;
@@ -220,7 +229,9 @@ export class TimelineFeedItemDto {
   constructor(input: TimelineFeedItem) {
     this.type = input.type;
     this.date = input.date;
-    this.action = new ActionDto(input.action);
+    this.action = new ActionDto(input.action, {
+      combinedCounts: input.combinedCounts,
+    });
     switch (input.type) {
       case TimelineFeedItemType.ActionEvent:
         this.actionEvent = new ActionEventDto(input.actionEvent);

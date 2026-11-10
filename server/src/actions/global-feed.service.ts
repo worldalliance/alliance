@@ -42,12 +42,14 @@ import {
   loadedActionEventAction,
 } from "./entities/action-event.entity";
 import { ActionUpdate } from "./entities/action-update.entity";
-import { parseAction } from "./entities/action.entity";
+import { parseAction, type Action } from "./entities/action.entity";
 import {
   FeedMembersService,
   GLOBAL_FEED_FACEPILE_LIMIT,
   globalFeedWindowStart,
 } from "./feed-members.service";
+import { combinedSplitOf, selectSplitDisplay } from "./suite-split";
+import { SuiteSplitsService } from "./suite-splits.service";
 
 @Injectable()
 export class GlobalFeedService {
@@ -63,6 +65,7 @@ export class GlobalFeedService {
     @InjectRepository(Post)
     private readonly postRepository: Repository<Post>,
     private readonly actionVisibility: ActionVisibilityService,
+    private readonly suiteSplits: SuiteSplitsService,
     private readonly forumService: ForumService,
     private readonly feedMembers: FeedMembersService,
   ) {}
@@ -79,26 +82,29 @@ export class GlobalFeedService {
     const user =
       await this.actionVisibility.loadUserForActionVisibility(userId);
 
-    const recentActivities = (await this.actionActivityRepository
-      .createQueryBuilder("activity")
-      .leftJoinAndSelect("activity.user", "user")
-      .leftJoinAndSelect("activity.action", "action")
-      .select([
-        "activity.id",
-        "activity.type",
-        "activity.actionId",
-        "activity.createdAt",
-        "user.id",
-        "user.name",
-        "user.profilePicture",
-        "user.anonymous",
-        "user.admin",
-        "user.staff",
-        "user.profileDescription",
-        "action.id",
-        "action.name",
-        "action.onboarding",
-      ])
+    const recentActivities = (await selectSplitDisplay(
+      this.actionActivityRepository
+        .createQueryBuilder("activity")
+        .leftJoinAndSelect("activity.user", "user")
+        .leftJoinAndSelect("activity.action", "action")
+        .select([
+          "activity.id",
+          "activity.type",
+          "activity.actionId",
+          "activity.createdAt",
+          "user.id",
+          "user.name",
+          "user.profilePicture",
+          "user.anonymous",
+          "user.admin",
+          "user.staff",
+          "user.profileDescription",
+          "action.id",
+          "action.name",
+          "action.onboarding",
+        ]),
+      "action",
+    )
       .loadRelationIdAndMap("user.leaderOfIds", "user.leaderOf")
       .where("activity.type IN (:...types)", {
         types: ACTION_ACTIVITY_FEED_VISIBLE_TYPES,
@@ -138,6 +144,7 @@ export class GlobalFeedService {
         activities: ActionActivity[];
         actionId: number;
         actionName: string;
+        combinedSplitId: number | null;
         type: FeedActionActivity;
         latestDate: Date;
       }
@@ -147,13 +154,16 @@ export class GlobalFeedService {
       if (!visibleActionIds.has(activity.actionId)) {
         continue;
       }
-      const key = `${activity.actionId}-${activity.type}`;
+      const action = loadedActionActivityAction(activity);
+      const split = combinedSplitOf(action);
+      const key = `${split ? `split-${split.id}` : activity.actionId}-${activity.type}`;
 
       if (!activityGroups.has(key)) {
         activityGroups.set(key, {
           activities: [],
           actionId: activity.actionId,
-          actionName: loadedActionActivityAction(activity).name,
+          actionName: split?.title ?? action.name,
+          combinedSplitId: split?.id ?? null,
           type: activity.type,
           latestDate: activity.createdAt,
         });
@@ -179,6 +189,7 @@ export class GlobalFeedService {
         users: users.slice(0, GLOBAL_FEED_FACEPILE_LIMIT),
         actionId: group.actionId,
         actionName: group.actionName,
+        combinedSplitId: group.combinedSplitId,
         activityType: group.type,
         count: uniqueUsers.size,
       };
@@ -207,7 +218,7 @@ export class GlobalFeedService {
           }),
           date: update.date,
           actionId: update.actionId,
-          actionName: update.action?.name || "Unknown Action",
+          ...updateActionLabel(update.action),
         };
 
         feedItems.push(
@@ -379,8 +390,12 @@ export class GlobalFeedService {
           ...actionUpdates.map((update) => update.actionId),
         ],
         userId,
+        asSplit: false,
       });
 
+    const combinedCounts = await this.suiteSplits.findCombinedCounts([
+      ...visibleActionIds,
+    ]);
     for (const event of events) {
       const action = loadedActionEventAction(event);
       if (!visibleActionIds.has(action.id)) {
@@ -391,6 +406,7 @@ export class GlobalFeedService {
           type: TimelineFeedItemType.ActionEvent,
           date: event.date,
           action: parseAction(action),
+          combinedCounts: combinedCounts.get(action.id),
           actionEvent: event,
         }),
       );
@@ -410,6 +426,7 @@ export class GlobalFeedService {
           type: TimelineFeedItemType.ActionUpdate,
           date: actionUpdate.date,
           action: parseAction(actionUpdate.action),
+          combinedCounts: combinedCounts.get(actionUpdate.actionId),
           actionUpdate,
         }),
       );
@@ -419,4 +436,15 @@ export class GlobalFeedService {
 
     return feedItems.slice(0, limit);
   }
+}
+
+function updateActionLabel(action: Action | undefined): {
+  actionName: string;
+  combinedSplitId: number | null;
+} {
+  const split = action ? combinedSplitOf(action) : null;
+  return {
+    actionName: split?.title ?? action?.name ?? "Unknown Action",
+    combinedSplitId: split?.id ?? null,
+  };
 }

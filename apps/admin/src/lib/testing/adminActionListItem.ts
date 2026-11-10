@@ -52,5 +52,6 @@ export const adminActionListItem = (
   memberActionStart: null,
   memberActionDeadline: null,
   storedSquareThumbnailImage: null,
+  splitId: null,
   ...overrides,
 });

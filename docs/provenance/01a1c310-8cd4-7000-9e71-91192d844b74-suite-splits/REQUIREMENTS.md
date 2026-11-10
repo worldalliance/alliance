@@ -12,7 +12,7 @@ Origin labels: (user) the user stated it; (user-selected) the user picked it ove
 - A suite can hold any number of splits alongside actions that aren't in any split. An action belongs to at most one split. (agent-proposed, user-approved)
 - The last arm of every split catches everyone the split reaches who didn't match an earlier arm, so each member the split reaches gets exactly one arm. (agent-proposed, user-approved)
 - A split has an optional split-level filter expression that decides who the split reaches at all. A member it doesn't reach gets none of the split's arms. (agent-proposed, user-approved)
-- An arm takes its members only from the split: the arm action's own `cohortExpression` is cleared and can't be edited while the action is in a split. (agent-proposed, user-approved)
+- An arm takes its members only from the split: while the action is in a split, its own `cohortExpression` holds the arm's routing expression, which the server derives from the split's filter and rules and writes whenever the split is saved. Staff can't edit it while the action is in a split, and the admin shows it read-only. (agent-proposed, user-approved)
 - Only regular actions can be arms. The server rejects onboarding, public-only, contract-signing and staff-preview actions as arms. Forum-participation actions are allowed. (agent-proposed, user-approved)
 
 ## Routing
@@ -45,7 +45,7 @@ Origin labels: (user) the user stated it; (user-selected) the user picked it ove
 ## Existing hand-built splits
 
 - A data migration converts the hand-built splits in suites 60 (actions 149/152), 64 (157/158), 65 (160/161), 66 (162/163/164), 69 (169/171) and 71 (174/176) into splits. Other actions in those suites, such as 159, 173 and 175, stay unsplit. (user-selected: convert by migration; agent-proposed, user-approved: these six)
-- The migration creates split and arm rows with rules that reproduce today's routing, copies each action's `optional` flag to its arm, and clears the arm actions' own `optional` flags and cohort expressions. It doesn't change any saved cohort decision. (agent-proposed, user-approved)
+- The migration creates split and arm rows with rules that reproduce today's routing, copies each action's `optional` flag to its arm, and clears the arm actions' own `optional` flags and writes their routing expressions. It doesn't change any saved cohort decision. (agent-proposed, user-approved)
 - Action 158's arm stays required (flag false), as the action was when its suite ran, even though its title begins "Optionally". (agent-proposed, user-approved)
 - Converted splits use the **Per arm** visibility mode. (agent-proposed, user-approved)
 

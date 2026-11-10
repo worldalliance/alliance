@@ -32,6 +32,7 @@ const action: ParsedActionDto = {
   memberActionDeadline: deadlineAt.toISOString(),
   storedImage: null,
   storedSquareThumbnailImage: null,
+  splitId: null,
   cohortExpression: null,
 };
 

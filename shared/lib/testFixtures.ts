@@ -176,6 +176,7 @@ export function makeActivity(
     type: "user_completed",
     actionId: 1,
     actionName: "Test action",
+    combinedSplitId: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     likesCount: 0,
     likedByMe: false,

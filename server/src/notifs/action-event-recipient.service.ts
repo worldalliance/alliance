@@ -12,6 +12,7 @@ import {
   ReminderCohortType,
   ReminderGroup,
 } from "src/actions/entities/reminder-group.entity";
+import { isActionOptional } from "src/actions/suite-split";
 import { CommunityService } from "src/community/community.service";
 import { loadedTagUsers } from "src/user/entities/tag.entity";
 import { computeIsAssignedAndPresent } from "src/utils/action-user";
@@ -167,7 +168,7 @@ export class ActionEventRecipientService {
     const eventAction = loaded(rawEventAction.id);
     const pre_actions = scopeIds.map(loaded);
     const actions = excludeOptionalActions
-      ? pre_actions.filter((action) => !action.optional)
+      ? pre_actions.filter((action) => !isActionOptional(action))
       : pre_actions;
 
     const session = new CohortResolutionSession();

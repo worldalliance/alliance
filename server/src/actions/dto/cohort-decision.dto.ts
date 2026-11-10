@@ -1,5 +1,6 @@
 import { ApiProperty, PickType } from "@nestjs/swagger";
 import { IsBoolean, IsString, Matches } from "class-validator";
+import type { ArmMovePreview } from "../cohort-decision-staff.service";
 import { ActionCohortDecisionCorrection } from "../entities/action-cohort-decision-correction.entity";
 import { ActionCohortDecision } from "../entities/action-cohort-decision.entity";
 
@@ -58,13 +59,36 @@ export class CohortDecisionDto extends PickType(ActionCohortDecision, [
   }
 }
 
-export class CorrectCohortDecisionDto {
-  @ApiProperty()
-  @IsBoolean()
-  included: boolean;
-
+export class CohortDecisionNoteDto {
   @ApiProperty({ description: "Why staff are correcting the decision" })
   @IsString()
   @Matches(/\S/, { message: "note must not be blank" })
   note: string;
+}
+
+export class CorrectCohortDecisionDto extends CohortDecisionNoteDto {
+  @ApiProperty()
+  @IsBoolean()
+  included: boolean;
+}
+
+export class ArmMovePreviewDto {
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description: "The arm the member is in now, or null when they're in none",
+  })
+  currentArmActionId: number | null;
+
+  @ApiProperty()
+  hasCompletion: boolean;
+
+  @ApiProperty()
+  hasSubmittedResponse: boolean;
+
+  constructor(input: ArmMovePreview) {
+    this.currentArmActionId = input.currentArmActionId;
+    this.hasCompletion = input.hasCompletion;
+    this.hasSubmittedResponse = input.hasSubmittedResponse;
+  }
 }

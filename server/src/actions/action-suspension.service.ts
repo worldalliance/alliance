@@ -23,6 +23,7 @@ import {
   trailingMissedSuiteIds,
   type SuiteOutcome,
 } from "./missed-suite-streak";
+import { isActionOptional } from "./suite-split";
 
 type SuspendPlanContext = {
   /** In close order. */
@@ -52,7 +53,8 @@ export class ActionSuspensionService {
   ): Promise<SuspendPlanContext> {
     const actionsBySuite = new Map<number, ParsedAction[]>();
     for (const action of actions) {
-      if (!action.suite || action.onboarding || action.optional) continue;
+      if (!action.suite || action.onboarding || isActionOptional(action))
+        continue;
       const suiteActions = actionsBySuite.get(action.suite.id) ?? [];
       suiteActions.push(action);
       actionsBySuite.set(action.suite.id, suiteActions);

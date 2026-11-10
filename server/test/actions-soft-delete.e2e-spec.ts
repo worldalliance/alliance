@@ -9,6 +9,7 @@ import { ActionActivityService } from "src/actions/action-activity.service";
 import { ActionFormVariantService } from "src/actions/action-form-variant.service";
 import { ActionSuitesService } from "src/actions/action-suites.service";
 import { ActionUpdatesService } from "src/actions/action-updates.service";
+import { ActionMutationsService } from "src/actions/action-mutations.service";
 import { ActionsService } from "src/actions/actions.service";
 import { CreateActionDto } from "src/actions/dto/action.dto";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
@@ -76,6 +77,7 @@ const deleteAfter =
 describe("Action writers under a deleted parent (e2e)", () => {
   let ctx: TestContext;
   let actions: ActionsService;
+  let writer: ActionMutationsService;
   let generalUpdates: GeneralUpdatesService;
   let actionUpdates: ActionUpdatesService;
   let actionSuites: ActionSuitesService;
@@ -124,6 +126,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
   beforeAll(async () => {
     ctx = await createTestApp([TasksModule, ActionPartnershipsModule]);
     actions = ctx.app.get(ActionsService);
+    writer = ctx.app.get(ActionMutationsService);
     generalUpdates = ctx.app.get(GeneralUpdatesService);
     actionUpdates = ctx.app.get(ActionUpdatesService);
     actionSuites = ctx.app.get(ActionSuitesService);
@@ -347,7 +350,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
     });
     await ctx.app.get(TasksService).deleteForm(taskForm.id);
 
-    await actions.update(
+    await writer.update(
       action.id,
       { name: "Renamed", taskFormId: taskForm.id },
       ctx.adminUserId,
@@ -364,7 +367,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
     await suites.softDelete(suite.id);
 
     await expect(
-      actions.update(action.id, { suiteId: suite.id }, ctx.adminUserId),
+      writer.update(action.id, { suiteId: suite.id }, ctx.adminUserId),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(
       await actionRepo.findOneOrFail({
@@ -378,7 +381,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
     const action = await createAction();
     await actionRepo.softDelete(action.id);
 
-    await expect(actions.archive(action.id)).rejects.toBeInstanceOf(
+    await expect(writer.archive(action.id)).rejects.toBeInstanceOf(
       NotFoundException,
     );
     expect(
@@ -542,7 +545,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
       );
 
     await expect(
-      actions.update(action.id, { name: "Renamed" }, ctx.adminUserId),
+      writer.update(action.id, { name: "Renamed" }, ctx.adminUserId),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(
       await actionRepo.findOneOrFail({
@@ -858,7 +861,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
       );
 
     await expect(
-      actions.create({ ...actionDto("Suite orphan"), suiteId: suite.id }),
+      writer.create({ ...actionDto("Suite orphan"), suiteId: suite.id }),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(
       await actionRepo.count({
@@ -886,7 +889,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
       );
 
     await expect(
-      actions.create({ ...actionDto("Author orphan"), authorIds: [author.id] }),
+      writer.create({ ...actionDto("Author orphan"), authorIds: [author.id] }),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(
       await actionRepo.count({
@@ -901,7 +904,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
     await ctx.dataSource.getRepository(Form).softDelete(taskForm.id);
 
     await expect(
-      actions.create({ ...actionDto("Form orphan"), taskFormId: taskForm.id }),
+      writer.create({ ...actionDto("Form orphan"), taskFormId: taskForm.id }),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(
       await actionRepo.count({
@@ -924,7 +927,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
         ),
       ),
     );
-    const created = await actions.create({
+    const created = await writer.create({
       ...actionDto("Authored action"),
       authorIds: [first.id],
     });
@@ -939,7 +942,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
         .sort((a, b) => a - b);
 
     expect(await authorIds()).toEqual([first.id]);
-    await actions.update(
+    await writer.update(
       created.id,
       { authorIds: [first.id, second.id] },
       ctx.adminUserId,

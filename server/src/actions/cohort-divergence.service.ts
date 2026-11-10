@@ -14,7 +14,7 @@ import {
   formatIdSample,
   isInCatchUp,
 } from "./cohort-decision";
-import { CohortDecisionService } from "./cohort-decision.service";
+import { CohortDecisionActionsService } from "./cohort-decision-actions.service";
 import { CohortResolutionSession } from "./cohort-resolution-session";
 import { CohortResolverService } from "./cohort-resolver.service";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
@@ -32,7 +32,7 @@ export class CohortDivergenceService {
     private readonly decisionRepository: Repository<ActionCohortDecision>,
     private readonly cohortResolverService: CohortResolverService,
     private readonly userService: UserService,
-    private readonly cohortDecisionService: CohortDecisionService,
+    private readonly cohortDecisionActions: CohortDecisionActionsService,
   ) {}
 
   /**
@@ -43,7 +43,7 @@ export class CohortDivergenceService {
    * progress. A failing action is logged and skipped.
    */
   async logDivergences(now: Date): Promise<void> {
-    const actions = await this.cohortDecisionService.findActionsInCatchUp(now);
+    const actions = await this.cohortDecisionActions.findActionsInCatchUp(now);
     const rows = await this.decisionRepository.find({
       where: {
         actionId: In(actions.map(({ action }) => action.id)),
@@ -106,7 +106,7 @@ export class CohortDivergenceService {
    */
   async logUnawaitedOpenReferences(now: Date): Promise<void> {
     const [resolvable, actions] = await Promise.all([
-      this.cohortDecisionService.findResolvableActions(now),
+      this.cohortDecisionActions.findResolvableActions(now),
       this.actionRepository.find({
         relations: { events: true, formVariants: true },
       }),

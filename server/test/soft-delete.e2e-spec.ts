@@ -1,6 +1,6 @@
 import { NotFoundException } from "@nestjs/common";
 import { ActionFormVariantService } from "src/actions/action-form-variant.service";
-import { ActionsService } from "src/actions/actions.service";
+import { ActionMutationsService } from "src/actions/action-mutations.service";
 import { ActionFormAssignment } from "src/actions/entities/action-form-assignment.entity";
 import { ActionFormVariant } from "src/actions/entities/action-form-variant.entity";
 import { Action } from "src/actions/entities/action.entity";
@@ -284,7 +284,7 @@ describe("softDeleteCascade (e2e)", () => {
         ids: [action.id],
       });
       const edited = ctx.app
-        .get(ActionsService)
+        .get(ActionMutationsService)
         .update(action.id, { name: "Renamed" }, ctx.adminUserId)
         .then(
           () => "edited",

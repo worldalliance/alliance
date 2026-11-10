@@ -49,6 +49,7 @@ import { ActionActivity } from "./action-activity.entity";
 import { ActionEvent, ActionStatus } from "./action-event.entity";
 import { ActionFormVariant } from "./action-form-variant.entity";
 import { ActionReviewer } from "./action-reviewer.entity";
+import { ActionSuiteSplitArm } from "./action-suite-split-arm.entity";
 import { ActionSuite } from "./action-suite.entity";
 import { ActionUpdate } from "./action-update.entity";
 import {
@@ -426,6 +427,16 @@ export class Action {
   @IsOptional()
   suite?: Relation<ActionSuite> | null;
 
+  /**
+   * At most one live row: the arm this action is in. Eager so every read of
+   * optionality through `isActionOptional` finds it.
+   */
+  @OneToMany(() => ActionSuiteSplitArm, (arm) => arm.action, { eager: true })
+  @IsOptional()
+  @IsEmpty()
+  @Type(() => ActionSuiteSplitArm)
+  splitArms?: Relation<ActionSuiteSplitArm>[];
+
   @ManyToOne(() => Project, (project) => project.actions, { nullable: true })
   @ApiPropertyOptional({ type: () => Project })
   @Type(() => Project)
@@ -540,4 +551,13 @@ export function loadedActionFormVariants(
     throw new Error(`formVariants of action ${action.id} not loaded`);
   }
   return action.formVariants;
+}
+
+export function loadedSplitArms(
+  action: Pick<Action, "id" | "splitArms">,
+): Relation<ActionSuiteSplitArm>[] {
+  if (!action.splitArms) {
+    throw new Error(`splitArms of action ${action.id} not loaded`);
+  }
+  return action.splitArms;
 }

@@ -30,6 +30,7 @@ import { ACTION_REVIEWERS_MAX } from "../entities/action-reviewer.entity";
 import { Action, type ParsedAction } from "../entities/action.entity";
 import { GeneralUpdate } from "../entities/general-update.entity";
 import { ReminderGroup } from "../entities/reminder-group.entity";
+import { isActionOptional, type CombinedCounts } from "../suite-split";
 import { type UserActionStatus } from "../user-action-status";
 import { ActionEventDto } from "./action-event.dto";
 import {
@@ -84,6 +85,8 @@ export type ActionDtoExtra = {
   awayStatus?: TaskAwayStatus;
   viewer?: UserActionStatus;
   reqAuthenticated?: boolean;
+  /** Summed across a combined split's arms, which members see in place of the arm's own. */
+  combinedCounts?: CombinedCounts;
 };
 
 export class ActionDto extends PickType(Action, [
@@ -193,12 +196,13 @@ export class ActionDto extends PickType(Action, [
     this.updatedAt = action.updatedAt;
     this.isContractSigningAction = action.isContractSigningAction;
     this.visibilityMode = action.visibilityMode;
-    this.usersJoined = action.usersJoined;
-    this.usersCompleted = action.usersCompleted || 0;
+    this.usersJoined = extra?.combinedCounts?.usersJoined ?? action.usersJoined;
+    this.usersCompleted =
+      extra?.combinedCounts?.usersCompleted ?? (action.usersCompleted || 0);
     this.onboarding = action.onboarding;
     this.archived = action.archived;
     this.priority = action.priority;
-    this.optional = action.optional;
+    this.optional = isActionOptional(action);
     this.preventCompletion = action.preventCompletion;
     this.publicOnly = action.publicOnly;
     this.shouldCompleteAfterDeadline = action.shouldCompleteAfterDeadline;
@@ -378,6 +382,7 @@ export class ExportActionDto extends OmitType(Action, [
   "usersCompleted",
   "formVariants",
   "legacyReviewers",
+  "splitArms",
 ]) {
   @ApiPropertyOptional({ type: () => Form })
   @Type(() => Form)

@@ -384,6 +384,8 @@ export async function lockForSave(
   return manager.exists(row.target, {
     where: { id: row.id },
     lock: { mode: "for_no_key_update" },
+    // Postgres can't lock rows on the nullable side of an eager outer join.
+    loadEagerRelations: false,
   });
 }
 

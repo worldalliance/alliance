@@ -27,6 +27,7 @@ import {
 import { Action, loadedActionEvents } from "./entities/action.entity";
 import { GeneralUpdatesService } from "./general-updates.service";
 import { assertPrerequisitesValid } from "./prerequisite-validation";
+import { SuiteSplitsService } from "./suite-splits.service";
 
 @Injectable()
 export class ActionSuitesService {
@@ -39,6 +40,7 @@ export class ActionSuitesService {
     private readonly participants: ActionParticipantsService,
     private readonly cohortDecisionStaffService: CohortDecisionStaffService,
     private readonly generalUpdates: GeneralUpdatesService,
+    private readonly suiteSplits: SuiteSplitsService,
   ) {}
 
   async addEvent(params: {
@@ -87,10 +89,9 @@ export class ActionSuitesService {
             });
             events.push(await manager.save(newEvent));
           }
-          await assertPrerequisitesValid({
-            em: manager,
-            actionIds: actions.map((action) => action.id),
-          });
+          const actionIds = actions.map((action) => action.id);
+          await assertPrerequisitesValid({ em: manager, actionIds });
+          await this.suiteSplits.assertSchedulesMatch(manager, actionIds);
           return events;
         },
       });
@@ -199,6 +200,7 @@ export class ActionSuitesService {
           await em.update(ActionEvent, id, body);
         }
         await assertPrerequisitesValid({ em, actionIds });
+        await this.suiteSplits.assertSchedulesMatch(em, actionIds);
       },
     });
     await this.generalUpdates.syncGeneralUpdateDatesForSuites([suiteId]);
@@ -262,10 +264,9 @@ export class ActionSuitesService {
           });
         }
       }
-      await assertPrerequisitesValid({
-        em,
-        actionIds: suiteActions.map((action) => action.id),
-      });
+      const actionIds = suiteActions.map((action) => action.id);
+      await assertPrerequisitesValid({ em, actionIds });
+      await this.suiteSplits.assertSchedulesMatch(em, actionIds);
     });
     await this.generalUpdates.syncGeneralUpdateDatesForSuites([suiteId]);
     return this.findSuite(suiteId);

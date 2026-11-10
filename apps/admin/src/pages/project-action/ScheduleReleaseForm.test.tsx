@@ -16,6 +16,7 @@ const action: ParsedActionDto = {
   memberActionDeadline: null,
   storedImage: null,
   storedSquareThumbnailImage: null,
+  splitId: null,
   cohortExpression: { type: "Staff" },
 };
 

@@ -18,6 +18,7 @@ const activity = (
   likesCount: 0,
   user: makeProfile(id),
   actionName: "Call your representative",
+  combinedSplitId: null,
   comments: [],
   editableContent: { body: "", attachments: [] },
 });

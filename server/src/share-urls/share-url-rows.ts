@@ -152,6 +152,7 @@ export async function buildAndSaveShareUrl(
           const action = await manager.findOne(Action, {
             where: { id: input.actionId },
             lock: { mode: "for_key_share" },
+            loadEagerRelations: false,
           });
           if (!action) {
             throw new NotFoundException(NOT_FOUND_MESSAGE[input.kind]);

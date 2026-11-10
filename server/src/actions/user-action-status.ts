@@ -19,6 +19,7 @@ import { findLatestTerminalActivity } from "./action-activity-status";
 import type { ActionActivity } from "./entities/action-activity.entity";
 import { loadedActionEvents, type Action } from "./entities/action.entity";
 import { isStaffPreviewActiveFor } from "./staff-preview";
+import { isActionOptional } from "./suite-split";
 import { resolveUserActionPillStatus } from "./user-action-pill-status";
 
 /**
@@ -221,10 +222,12 @@ export type ViewerCohort = {
 export function resolveUserActionStatus(params: {
   action: Pick<
     Action,
+    | "id"
     | "events"
     | "memberActionPhase"
     | "onboarding"
     | "optional"
+    | "splitArms"
     | "preventCompletion"
     | "shouldCompleteAfterDeadline"
     | "staffPreview"
@@ -287,7 +290,7 @@ export function resolveUserActionStatus(params: {
     now,
   });
   const assigned = assignment !== ActionAssignment.Unassigned;
-  const optionality: ViewerOptionality = action.optional
+  const optionality: ViewerOptionality = isActionOptional(action)
     ? { optional: true, optionalReason: null }
     : assignment === ActionAssignment.Optional
       ? { optional: true, optionalReason: ViewerOptionalReason.ContractGap }

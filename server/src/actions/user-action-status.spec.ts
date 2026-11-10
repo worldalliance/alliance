@@ -50,6 +50,8 @@ function makeAction(
 ): ResolveParams["action"] {
   const events = overrides.events ?? makeEvents();
   return {
+    id: 1,
+    splitArms: [],
     onboarding: false,
     optional: false,
     preventCompletion: false,
