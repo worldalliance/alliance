@@ -26,6 +26,10 @@ beforeEach(() => {
     join(import.meta.dir, "with-secrets.sh"),
     join(repo, "scripts/with-secrets.sh"),
   );
+  cpSync(
+    join(import.meta.dir, "aws-login-errors.json"),
+    join(repo, "scripts/aws-login-errors.json"),
+  );
   writeFileSync(
     join(repo, "scripts/dev-secrets.json"),
     JSON.stringify({

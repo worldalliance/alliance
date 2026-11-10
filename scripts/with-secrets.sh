@@ -148,11 +148,13 @@ except FileNotFoundError:
     fail("the aws CLI is not installed; see docs/local-secrets.md")
 if fetched.returncode:
     detail = fetched.stderr.strip()
-    if "could not be found" in detail:
+    with open(os.path.join(repo_root, "scripts/aws-login-errors.json")) as patterns:
+        login_errors = json.load(patterns)
+    if login_errors["profileMissing"] in detail:
         fail(f"the {profile} AWS profile is not set up; see docs/local-secrets.md\n{detail}")
-    if re.search(r"AccessDenied|not authorized|ForbiddenException", detail):
+    if re.search(login_errors["accessDenied"], detail):
         fail(f"your {profile} login may not read {prefix}; ask an admin to check your {profile} assignment\n{detail}")
-    if re.search(r"Token has expired|Error loading SSO Token|refresh failed|ExpiredToken|SSO session|aws sso login|Session token not found or invalid", detail):
+    if re.search(login_errors["loginExpired"], detail):
         fail(f"your AWS login has expired or is missing; run: {login}\n{detail}")
     fail(f"could not read {prefix} from Parameter Store\n{detail}")
 

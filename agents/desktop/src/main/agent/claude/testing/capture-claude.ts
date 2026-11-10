@@ -208,7 +208,7 @@ for (const { target, content } of captures)
   writeFileSync(path.join(out, target), content);
 console.log(`captures written to ${out}`);
 
-// Last, so a run without the chats bucket's keys still writes its captures.
+// Last, so a run without a working transcript login still writes its captures.
 if (process.env.ALLIANCE_AGENT_CHATS === "off") {
   console.log("transcript upload skipped: ALLIANCE_AGENT_CHATS is off");
 } else {

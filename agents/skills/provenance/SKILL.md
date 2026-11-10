@@ -65,7 +65,7 @@ Run the check your CLI's session-start hook runs as well. Codex's hooks run the 
 bun "$(git rev-parse --show-toplevel)/agents/chats/chats.ts" check   # Codex: bun "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/agents/chats/chats.ts" check
 ```
 
-When it says uploads are not set up, or the script is missing, tell the user that this session's transcript is not being stored and that `agents/README.md` has the setup, then carry on.
+When it says uploads are not working, or the script is missing, tell the user that this session's transcript is not being stored and that `agents/README.md` has the setup, then carry on.
 
 This list is the link from a task to its transcripts; commits carry none. `.gitattributes` merges these files by union, so appends from two branches don't conflict.
 

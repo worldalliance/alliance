@@ -30,6 +30,7 @@ A login lasts 24 hours. An admin sets that in the Identity Center console under 
 - `your alliance-dev login may not read`: an admin checks that you are in the `alliance-dev` group in the IAM Identity Center console, under Groups.
 - `/alliance/dev/<consumer>/ is missing X`: the key is in `scripts/dev-secrets.json` but not in the store. Add it (below).
 - `ignoring X ..., which scripts/dev-secrets.json does not list`: a newer checkout uses X; the command runs without it.
+- `did not return SSO session credentials`: the `alliance-dev` profile holds static keys; recreate it with `aws configure sso` (setup above).
 - `X already set in this shell`: unset it, so the store is the only source.
 - `unset AWS_ACCESS_KEY_ID` or `remove AWS_ACCESS_KEY_ID from <env file>`: static keys would replace your login for everything the command starts. For the server, the wrapper checks `server/.env` and the `.local`, `.development` and `.development.local` files beside it, which Bun loads too.
 
@@ -60,6 +61,6 @@ The daily login can't read them; [backend-secrets.md](backend-secrets.md) covers
 
 The rollout fills `/alliance/dev/` with every key `scripts/dev-secrets.json` lists before the wrapper reaches `main`.
 
-`ALLIANCE_SECRETS_ENV_FALLBACK=1` skips Parameter Store and uses the secrets in your `.env` files, printing each key it falls back on. The server reads `server/.env` itself, so for it the wrapper only prints, naming the file Bun takes each key from: `server/.env` or its `.local`, `.development` or `.development.local` sibling. For other consumers it reads the env file with bash's `source`, as the Linear skill did with `.env.devtools`, exports each listed key the shell leaves unset or empty, and fails when bash reports an error in the file or a listed key is missing or empty. It goes away once everyone has run without it.
+`ALLIANCE_SECRETS_ENV_FALLBACK=1` skips Parameter Store and uses the secrets in your `.env` files, printing each key it falls back on, and switches transcript uploads back to the keys `agents/README.md` names. The server reads `server/.env` itself, so for it the wrapper only prints, naming the file Bun takes each key from: `server/.env` or its `.local`, `.development` or `.development.local` sibling. For other consumers it reads the env file with bash's `source`, as the Linear skill did with `.env.devtools`, exports each listed key the shell leaves unset or empty, and fails when bash reports an error in the file or a listed key is missing or empty. It goes away once everyone has run without it.
 
-To run without it, first delete `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` from `server/.env`, which the wrapper refuses. Once that works, delete from `server/.env` every key `server/.env.example` doesn't list, and `LINEAR_CLIENT_ID` and `LINEAR_CLIENT_SECRET` from `.env.devtools`. Do the same in each worktree, since `scripts/new-worktree.sh` copies both files.
+To run without it, first delete `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` from `server/.env`, which the wrapper refuses. Once that works, delete from `server/.env` every key `server/.env.example` doesn't list, and `LINEAR_CLIENT_ID`, `LINEAR_CLIENT_SECRET`, `AGENT_CHATS_AWS_ACCESS_KEY_ID` and `AGENT_CHATS_AWS_SECRET_ACCESS_KEY` from `.env.devtools`. Do the same in each worktree, since `scripts/new-worktree.sh` copies both files.
