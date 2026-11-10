@@ -1,12 +1,6 @@
 import { afterEach, describe, expect, onTestFinished, test } from "bun:test";
 import { spawn } from "node:child_process";
-import {
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { R } from "../../../../../../common/src/result";
@@ -20,7 +14,13 @@ import {
 } from "./process";
 import { CLAUDE_CODE_VERSION } from "./protocol";
 import { CaptureRecordKind, captureDir } from "./testing/capture";
-import { replay, stopReplay, stubCli, writeCapture } from "./testing/stub";
+import {
+  hangingCli,
+  replay,
+  stopReplay,
+  stubCli,
+  writeCapture,
+} from "./testing/stub";
 
 const bun: ClaudeCli = { executable: process.execPath, configDir: "/config" };
 
@@ -354,18 +354,8 @@ describe("the version check", () => {
   });
 
   test("gives up on a version run that hangs", async () => {
-    const dir = mkdtempSync(path.join(tmpdir(), "claude-process-test-"));
-    const executable = path.join(dir, "claude");
-    writeFileSync(executable, "#!/bin/sh\nexec sleep 30\n", { mode: 0o755 });
-    try {
-      expect(
-        await checkClaudeVersion(
-          { executable, configDir: "/config" },
-          AbortSignal.timeout(100),
-        ),
-      ).toEqual(R.failure(new Error("claude --version timed out")));
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
+    expect(
+      await checkClaudeVersion(hangingCli(), AbortSignal.timeout(100)),
+    ).toEqual(R.failure(new Error("claude --version timed out")));
   });
 });

@@ -26,9 +26,23 @@ export function stopReplay(): void {
   scratch = undefined;
 }
 
-export function writeCapture(records: CaptureRecord[]): string {
+function writeScratch(name: string, text: string, mode?: number): string {
   scratch ??= mkdtempSync(path.join(tmpdir(), "claude-stub-"));
-  const file = path.join(scratch, `${randomUUID()}.jsonl`);
-  writeFileSync(file, records.map((r) => JSON.stringify(r)).join("\n"));
+  const file = path.join(scratch, name);
+  writeFileSync(file, text, { mode });
   return file;
+}
+
+export function writeCapture(records: CaptureRecord[]): string {
+  return writeScratch(
+    `${randomUUID()}.jsonl`,
+    records.map((r) => JSON.stringify(r)).join("\n"),
+  );
+}
+
+export function hangingCli(): ClaudeCli {
+  return {
+    executable: writeScratch(randomUUID(), "#!/bin/sh\nexec sleep 30\n", 0o755),
+    configDir: "/config",
+  };
 }
