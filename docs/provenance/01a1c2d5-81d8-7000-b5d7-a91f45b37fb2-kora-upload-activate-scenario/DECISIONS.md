@@ -1,0 +1,4 @@
+- Unbuilt journey steps name no route or component, so the library check doesn't flag paths that don't exist yet. When the feature lands, the steps should gain their real routes and components. (agent decision)
+- The final step, where she checks the public page on her phone, comes from the persona's context (checking the public page on her own phone), not from a separate answer. (agent decision)
+- After a rejected upload, the project stays Pending. This follows from the requirements that nothing is imported and that Active needs transcripts. (agent decision)
+- No branch had a Kora transcript upload or project status as of 2026-11-09. Checked: `main` and every local and `origin` branch whose name contains `kora`. The closest existing admin surface is `/kora-participants` on `origin/kora-participants-admin`. (reconstructed from existing code)
