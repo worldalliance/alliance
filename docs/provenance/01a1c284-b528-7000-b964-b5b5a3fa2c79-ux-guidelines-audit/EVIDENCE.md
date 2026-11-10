@@ -50,6 +50,15 @@ No opened study tests conditional rules in a file like this one, so none sets a 
 - [ESLint bulk suppressions](https://eslint.org/docs/latest/use/suppressions) enforce a rule on new code and baseline existing failures (V).
 - Design systems separate text and button roles from the brand colour ([Atlassian](https://atlassian.design/components/tokens/all-tokens), [Carbon](https://carbondesignsystem.com/elements/color/tokens/), [USWDS](https://designsystem.digital.gov/design-tokens/color/overview/), C).
 
+## 8. Capitalisation
+
+Checked on 2026-11-09 from Apple's HIG page data and the local copies in `agents/skills/ux-guidelines/sources/`.
+
+- Apple leaves the choice to each app: "Adopt capitalization rules that align with your app's style, then apply them consistently" ([Writing](https://developer.apple.com/design/human-interface-guidelines/writing), V). Its element pages use title-style capitalization for button titles and alert titles that are fragments ([Buttons](https://developer.apple.com/design/human-interface-guidelines/buttons), [Alerts](https://developer.apple.com/design/human-interface-guidelines/alerts), V).
+- GOV.UK writes button text in sentence case (`govuk-button.md`, V). Fluent follows sentence-style capitalization because it is easier to read and to localise, and adapts where an operating system's guidance differs (`fluent-content-design.md`, V).
+
+Applying sentence case on iOS and macOS too is the user's requirement, not a source's.
+
 ## Measurements of this repository
 
 Method: text searches and reading of sources at commit 65f4984d18, on 2026-11-09, with no app run. Counts are grep approximations. The audit found rules broken for color-only meaning, contrast, failure feedback and native modal handling (`onRequestClose` missing in 2 of 7 `apps/mobile` files with a `Modal`); the defects are tracked in Linear ALL-2092 to ALL-2100 and ALL-2102. Native large text is an unconfirmed risk: `apps/mobile` overrides no font scaling, and the audit counted 40 `numberOfLines` uses and about 111 fixed-height matches in `apps/mobile/components`, none run at a large size.

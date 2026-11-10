@@ -67,6 +67,10 @@ Label every recommendation, number and claim shown to the owner in chat as resea
 
 Change a shape that stored data, installed clients, or code outside the change depend on, or adopt a rule existing code breaks, by expand-migrate-contract, with a ratchet so the old shape can't grow back. Mark a fallback awaiting its contract step `BACKCOMPAT(<tag>)` with the condition for removing it.
 
+## Capitalisation
+
+User-facing titles, headings, buttons, menu items, tabs and labels capitalise only the first word and proper nouns: "Try again", not "Try Again". This holds in every channel, emails and notifications included, and on every platform, iOS and macOS included, where Apple's guidance for some elements, such as buttons, uses title case.
+
 ## Issue tracking
 
 Issues live in Linear.

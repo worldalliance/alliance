@@ -13,8 +13,13 @@ This task's skill changes build on `docs/provenance/01a1b363-ecb5-7000-b89b-20da
 - The rest extend existing rules: colour never the only carrier of state, status colours reserved, inline links underlined, chart series distinguishable, focus and placeholder contrast and `outline-hidden`; focus after view changes and native `onRequestClose`; tooltips holding short text only; gesture alternatives by single pointer; an absent value never showing as 0; a placeholder not serving as a label and digit identifiers as text; how to check, naming only tooling the repository has. (agent-proposed, user-approved)
 - A failure's information stays available, rather than toasts being limited to confirmations, and the rule against `type="number"` covers digit identifiers rather than all numeric fields. (agent-proposed, user-approved)
 
+## Capitalisation
+
+- All Alliance user-facing copy capitalises only the first word and proper nouns in titles and similar text: "Try again", not "Try Again". This holds on every platform, iOS and macOS included. (user-originated)
+- The capitalisation rule ships without a ratchet, as a waiver of the root `AGENTS.md` **Breaking changes** ratchet requirement, with the migration of existing copy and its lint tracked in Linear issue ALL-2105. (agent-proposed, user-approved)
+
 ## Existing code that breaks the new rules
 
-- This change touches the skill only. It ships without a ratchet, as a waiver of the root `AGENTS.md` **Breaking changes** ratchet requirement for this change, and lint for the mechanically checkable rules goes in Linear issues. (agent-proposed, user-approved)
+- The skill changes touch agent instructions only. They ship without a ratchet, as a waiver of the root `AGENTS.md` **Breaking changes** ratchet requirement for them, and lint for the mechanically checkable rules goes in Linear issues. (agent-proposed, user-approved)
 - Color tokens are not migrated in this change. (agent-proposed, user-approved)
 - Session replay's capture of private text is filed as a Linear issue, with no change to PostHog or replay configuration in this task. (agent-proposed, user-approved)
