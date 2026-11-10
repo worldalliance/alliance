@@ -20,21 +20,14 @@ import FormSection, { CollapsibleFormSection } from "./FormSection";
 import OpenReferenceWarning from "./OpenReferenceWarning";
 import PrerequisitePicker from "./PrerequisitePicker";
 
-const RARE_SECTIONS = [
-  ActionFieldSection.Audience,
-  ActionFieldSection.Completion,
-  ActionFieldSection.Forum,
-  ActionFieldSection.CustomStat,
-] as const;
-
-const RARE_SECTION_TITLES: Record<(typeof RARE_SECTIONS)[number], string> = {
+const COLLAPSIBLE_TITLES: Record<ActionFieldSection, string | null> = {
+  [ActionFieldSection.Content]: null,
+  [ActionFieldSection.Settings]: null,
   [ActionFieldSection.Audience]: "Audience",
   [ActionFieldSection.Completion]: "Completion",
   [ActionFieldSection.Forum]: "Forum participation",
   [ActionFieldSection.CustomStat]: "Custom stat",
 };
-
-const isSet = (value: unknown) => !!value && value !== "none";
 
 interface ActionFormProps extends ActionFieldInputs {
   onSubmit: (e: React.FormEvent) => void;
@@ -143,7 +136,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
   const contentFields = getFieldsBySection(ActionFieldSection.Content);
   const settingsFields = getFieldsBySection(ActionFieldSection.Settings);
   const inUse = (fields: ActionFieldDef[]) =>
-    fields.some((f) => f.name !== "image" && isSet(form[f.name]));
+    fields.some((f) => (f.isSet ? f.isSet(form) : !!form[f.name]));
 
   return (
     <form onSubmit={onSubmit} className="space-y-6 pb-6">
@@ -183,15 +176,19 @@ const ActionForm: React.FC<ActionFormProps> = ({
         </div>
       </FormSection>
 
-      {RARE_SECTIONS.map((section) => {
+      {Object.values(ActionFieldSection).map((section) => {
+        const title = COLLAPSIBLE_TITLES[section];
+        if (title === null) return null;
         const fields = getFieldsBySection(section);
         return (
           <CollapsibleFormSection
             key={section}
-            title={RARE_SECTION_TITLES[section]}
+            title={title}
             inUse={inUse(fields)}
           >
-            <ActionFormFields fields={fields} {...fieldInputs} />
+            <div className="space-y-4">
+              <ActionFormFields fields={fields} {...fieldInputs} />
+            </div>
           </CollapsibleFormSection>
         );
       })}

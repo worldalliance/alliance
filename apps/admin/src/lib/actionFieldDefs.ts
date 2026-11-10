@@ -28,6 +28,8 @@ export type ActionFieldDef = {
   section: ActionFieldSection;
   required?: boolean;
   show?: (f: CreateActionDto) => boolean;
+  /** Whether the field holds a value; defaults to truthiness. */
+  isSet?: (f: CreateActionDto) => boolean;
   helpText?: string;
   options?: { value: string | number | undefined; label: string }[];
   rows?: number;
@@ -170,6 +172,7 @@ export function actionFieldDefs(
       type: "select",
       section: ActionFieldSection.CustomStat,
       options: customStatTypeOptions,
+      isSet: (f) => tracksCustomStat(f.customStatType),
       gridCol: true,
     },
     {

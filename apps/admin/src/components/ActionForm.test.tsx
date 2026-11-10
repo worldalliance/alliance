@@ -83,8 +83,10 @@ const renderForm = (
 
 const section = (title: string) => {
   const heading = screen.getByRole("heading", { name: title });
-  const container =
-    heading.closest("details") ?? heading.parentElement?.parentElement;
+  const toggle = heading.querySelector("button[aria-controls]");
+  const container = toggle
+    ? document.getElementById(toggle.getAttribute("aria-controls") ?? "")
+    : heading.parentElement?.parentElement;
   if (!container) throw new Error(`no section for ${title}`);
   return container;
 };
@@ -194,13 +196,11 @@ describe("ActionForm", () => {
     expect(within(section("Settings")).getByText("Category")).toBeTruthy();
   });
 
-  it("opens a rarely used section only while one of its fields is set", () => {
+  it("opens a rarely used section when one of its fields is set", () => {
     renderForm();
 
-    const open = (title: string) => {
-      const el = section(title);
-      return el instanceof HTMLDetailsElement && el.open;
-    };
+    const open = (title: string) =>
+      screen.queryByRole("button", { name: title, expanded: true }) !== null;
     expect(open("Audience")).toBe(false);
     expect(open("Completion")).toBe(true);
     expect(open("Forum participation")).toBe(false);
