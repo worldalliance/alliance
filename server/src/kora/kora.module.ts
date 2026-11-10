@@ -4,6 +4,7 @@ import { OAuthClientsModule } from "src/auth/oauth/oauth-clients.module";
 import { MailModule } from "src/mail/mail.module";
 import { MmsModule } from "src/mms/mms.module";
 import { OtpModule } from "src/otp/otp.module";
+import { PushModule } from "src/push/push.module";
 import { KoraAbandonedSignup } from "./entities/kora-abandoned-signup.entity";
 import { KoraAssignmentTranscript } from "./entities/kora-assignment-transcript.entity";
 import { KoraAssignment } from "./entities/kora-assignment.entity";
@@ -24,6 +25,8 @@ import { KoraOAuthStateService } from "./kora-oauth-state.service";
 import { KoraOAuthController } from "./kora-oauth.controller";
 import { KoraParticipantService } from "./kora-participant.service";
 import { KoraProjectService } from "./kora-project.service";
+import { KoraResultsController } from "./kora-results.controller";
+import { KoraResultsService } from "./kora-results.service";
 import { KoraReviewController } from "./kora-review.controller";
 import { KoraReviewService } from "./kora-review.service";
 import { KoraSessionService } from "./kora-session.service";
@@ -47,6 +50,7 @@ import { KoraController } from "./kora.controller";
     OtpModule,
     MailModule,
     MmsModule,
+    PushModule,
     OAuthClientsModule,
   ],
   providers: [
@@ -58,6 +62,7 @@ import { KoraController } from "./kora.controller";
     KoraNotifyService,
     KoraBatchService,
     KoraReviewService,
+    KoraResultsService,
   ],
   controllers: [
     KoraController,
@@ -65,6 +70,7 @@ import { KoraController } from "./kora.controller";
     KoraAdminController,
     KoraBatchesController,
     KoraReviewController,
+    KoraResultsController,
   ],
 })
 export class KoraModule {}

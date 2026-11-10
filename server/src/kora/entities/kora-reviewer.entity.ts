@@ -45,6 +45,10 @@ export class KoraReviewer {
   @Column({ type: "timestamptz", nullable: true })
   profileAnsweredAt: Date | null;
 
+  /** When the reviewer was last told more reviews are ready; resent after each newer batch. */
+  @Column({ type: "timestamptz", nullable: true })
+  moreNotifiedAt: Date | null;
+
   @CreateDateColumnTz()
   createdAt: Date;
 

@@ -6,7 +6,8 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { KoraNotifyWaitlist } from "./KoraNotifyWaitlist";
+import { KoraNoticeKind } from "../lib/useKoraParticipantsAdmin";
+import { KoraNotify } from "./KoraNotify";
 
 let status = KoraProjectStatus.Active;
 let toNotify = 3;
@@ -16,7 +17,7 @@ let notified = 0;
 serveApi(
   routes({
     "GET /kora/admin/project": () =>
-      Response.json({ status, canActivate: true, toNotify }),
+      Response.json({ status, canActivate: true, toNotify, moreToNotify: 0 }),
     "POST /kora/admin/notify-waitlist": () => {
       if (notifyStatus !== 200) {
         return Response.json({}, { status: notifyStatus });
@@ -39,7 +40,7 @@ beforeEach(() => {
 const renderControl = () =>
   render(
     <ToastProvider>
-      <KoraNotifyWaitlist />
+      <KoraNotify notice={KoraNoticeKind.Launch} />
     </ToastProvider>,
     queryWrapper(),
   );
@@ -101,4 +102,17 @@ test("says so when sending can't start", async () => {
     within(screen.getByRole("dialog")).getByRole("button", { name: "Send" }),
   );
   await screen.findByText("Couldn't start sending. Try again.");
+});
+
+test("tells earlier reviewers there's more, from its own count", async () => {
+  toNotify = 0;
+  render(
+    <ToastProvider>
+      <KoraNotify notice={KoraNoticeKind.More} />
+    </ToastProvider>,
+    queryWrapper(),
+  );
+  await screen.findByText(
+    "Every reviewer who finished has been told about the newest transcripts.",
+  );
 });

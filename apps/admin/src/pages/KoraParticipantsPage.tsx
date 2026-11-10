@@ -9,8 +9,9 @@ import { format } from "date-fns";
 import React, { useMemo, useState } from "react";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { KoraBatches } from "../components/KoraBatches";
-import { KoraNotifyWaitlist } from "../components/KoraNotifyWaitlist";
+import { KoraNotify } from "../components/KoraNotify";
 import { KoraProjectStatusControl } from "../components/KoraProjectStatusControl";
+import { KoraResults } from "../components/KoraResults";
 import SortHeader from "../components/SortHeader";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import {
@@ -26,6 +27,7 @@ import {
   sortParticipants,
 } from "../lib/koraParticipants";
 import {
+  KoraNoticeKind,
   KoraRecordKind,
   useDeleteKoraRecordAdmin,
   useKoraParticipantsAdmin,
@@ -169,7 +171,11 @@ const KoraParticipantsPage: React.FC = () => {
 
       <KoraBatches />
 
-      <KoraNotifyWaitlist />
+      <KoraNotify notice={KoraNoticeKind.Launch} />
+
+      <KoraNotify notice={KoraNoticeKind.More} />
+
+      <KoraResults />
 
       <dl className="flex flex-wrap gap-6 text-sm">
         <div>

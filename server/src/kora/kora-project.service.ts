@@ -7,7 +7,10 @@ import type { KoraAdminProject } from "./dto/kora-project.dto";
 import { KORA_PROJECT_ID, KoraProject } from "./entities/kora-project.entity";
 import { KoraBatchService } from "./kora-batch.service";
 
-export type KoraProjectState = Omit<KoraAdminProject, "toNotify">;
+export type KoraProjectState = Omit<
+  KoraAdminProject,
+  "toNotify" | "moreToNotify"
+>;
 
 export enum KoraProjectError {
   NeedsTranscripts = "needs_transcripts",

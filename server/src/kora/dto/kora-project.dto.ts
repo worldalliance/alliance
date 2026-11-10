@@ -14,6 +14,7 @@ export type KoraAdminProject = {
   project: KoraProject;
   canActivate: boolean;
   toNotify: number;
+  moreToNotify: number;
 };
 
 export class KoraAdminProjectDto extends PickType(KoraProject, ["status"]) {
@@ -25,11 +26,18 @@ export class KoraAdminProjectDto extends PickType(KoraProject, ["status"]) {
   })
   toNotify: number;
 
+  @ApiProperty({
+    description:
+      "Reviewers who finished and haven't been told about the newest batch",
+  })
+  moreToNotify: number;
+
   constructor(input: KoraAdminProject) {
     super();
     this.status = input.project.status;
     this.canActivate = input.canActivate;
     this.toNotify = input.toNotify;
+    this.moreToNotify = input.moreToNotify;
   }
 }
 

@@ -5,7 +5,7 @@ import {
 } from "@alliance/common/kora";
 import { R } from "@alliance/common/result";
 import { KoraParticipant } from "src/kora/entities/kora-participant.entity";
-import { KoraNotifyService } from "src/kora/kora-notify.service";
+import { KoraNotice, KoraNotifyService } from "src/kora/kora-notify.service";
 import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
 import { DeliveryFailure } from "src/utils/notif-delivery";
@@ -137,7 +137,10 @@ describe("Kora launch notice (e2e)", () => {
     );
     const notify = h.ctx.app.get(KoraNotifyService);
 
-    await Promise.all([notify.sendAll(), notify.sendAll()]);
+    await Promise.all([
+      notify.sendAll(KoraNotice.Launch),
+      notify.sendAll(KoraNotice.Launch),
+    ]);
 
     expect(sent).toHaveLength(6);
     expect(new Set(sent.map((s) => s.to)).size).toBe(6);

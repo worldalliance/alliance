@@ -233,7 +233,7 @@ export type ActionEventNotifType = 'announcement' | 'misseddeadline' | 'reminder
 
 export type EmailStatus = 'pending' | 'sent' | 'failed';
 
-export type EmailType = 'verification' | 'password_reset' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'forum_reply' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder' | 'contract_suspended' | 'contract_reinstated' | 'contract_reminder' | 'waitlist_confirmation' | 'waitlist_link' | 'waitlist_staff' | 'otp_code' | 'kora_launch';
+export type EmailType = 'verification' | 'password_reset' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'forum_reply' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder' | 'contract_suspended' | 'contract_reinstated' | 'contract_reminder' | 'waitlist_confirmation' | 'waitlist_link' | 'waitlist_staff' | 'otp_code' | 'kora_launch' | 'kora_more_reviews';
 
 export type Mail = {
     id: number;
@@ -5323,6 +5323,10 @@ export type KoraAdminProjectDto = {
      * Participants not yet told the reviews are open
      */
     toNotify: number;
+    /**
+     * Reviewers who finished and haven't been told about the newest batch
+     */
+    moreToNotify: number;
 };
 
 export type UpdateKoraProjectDto = {
@@ -5446,6 +5450,38 @@ export type KoraExportSavedDto = {
      * Every transcript is done or opted out
      */
     completed: boolean;
+};
+
+export type KoraExportsDto = {
+    /**
+     * Each export as stored, keyed by its opaque reviewer id
+     */
+    exports: Array<{
+        [key: string]: unknown;
+    }>;
+};
+
+export type KoraAnswerCountDto = {
+    value: string;
+    count: number;
+};
+
+export type KoraQuestionCountsDto = {
+    question: string;
+    answers: Array<KoraAnswerCountDto>;
+};
+
+export type KoraAnswerCountsDto = {
+    /**
+     * Reviewers who answered the profile
+     */
+    profiles: number;
+    profile: Array<KoraQuestionCountsDto>;
+    /**
+     * Exit surveys answered
+     */
+    exitSurveys: number;
+    exitSurvey: Array<KoraQuestionCountsDto>;
 };
 
 export type HeyApiError = {
@@ -16486,6 +16522,28 @@ export type KoraAdminNotifyWaitlistResponses = {
 
 export type KoraAdminNotifyWaitlistResponse = KoraAdminNotifyWaitlistResponses[keyof KoraAdminNotifyWaitlistResponses];
 
+export type KoraAdminNotifyMoreData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/notify-more';
+};
+
+export type KoraAdminNotifyMoreErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminNotifyMoreError = KoraAdminNotifyMoreErrors[keyof KoraAdminNotifyMoreErrors];
+
+export type KoraAdminNotifyMoreResponses = {
+    200: KoraNotifyQueuedDto;
+};
+
+export type KoraAdminNotifyMoreResponse = KoraAdminNotifyMoreResponses[keyof KoraAdminNotifyMoreResponses];
+
 export type KoraAdminOverviewData = {
     body?: never;
     path?: never;
@@ -16697,6 +16755,50 @@ export type KoraReviewSaveResponses = {
 };
 
 export type KoraReviewSaveResponse = KoraReviewSaveResponses[keyof KoraReviewSaveResponses];
+
+export type KoraResultsExportsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/results/exports';
+};
+
+export type KoraResultsExportsErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraResultsExportsError = KoraResultsExportsErrors[keyof KoraResultsExportsErrors];
+
+export type KoraResultsExportsResponses = {
+    200: KoraExportsDto;
+};
+
+export type KoraResultsExportsResponse = KoraResultsExportsResponses[keyof KoraResultsExportsResponses];
+
+export type KoraResultsAnswersData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/results/answers';
+};
+
+export type KoraResultsAnswersErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraResultsAnswersError = KoraResultsAnswersErrors[keyof KoraResultsAnswersErrors];
+
+export type KoraResultsAnswersResponses = {
+    200: KoraAnswerCountsDto;
+};
+
+export type KoraResultsAnswersResponse = KoraResultsAnswersResponses[keyof KoraResultsAnswersResponses];
 
 export type ClientOptions = {
     baseUrl: string;

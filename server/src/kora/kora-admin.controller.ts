@@ -26,7 +26,11 @@ import {
   UpdateKoraProjectDto,
 } from "./dto/kora-project.dto";
 import { KoraAdminService } from "./kora-admin.service";
-import { KoraNotifyError, KoraNotifyService } from "./kora-notify.service";
+import {
+  KoraNotice,
+  KoraNotifyError,
+  KoraNotifyService,
+} from "./kora-notify.service";
 import {
   KoraProjectError,
   KoraProjectService,
@@ -45,10 +49,11 @@ export class KoraAdminController {
   private async projectDto(
     state: KoraProjectState,
   ): Promise<KoraAdminProjectDto> {
-    return new KoraAdminProjectDto({
-      ...state,
-      toNotify: await this.notifyService.toNotify(),
-    });
+    const [toNotify, moreToNotify] = await Promise.all([
+      this.notifyService.toNotify(KoraNotice.Launch),
+      this.notifyService.toNotify(KoraNotice.More),
+    ]);
+    return new KoraAdminProjectDto({ ...state, toNotify, moreToNotify });
   }
 
   @Get("project")
@@ -78,7 +83,18 @@ export class KoraAdminController {
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: KoraNotifyQueuedDto })
   async notifyWaitlist(): Promise<KoraNotifyQueuedDto> {
-    const started = await this.notifyService.notifyWaitlist();
+    return this.startNotice(KoraNotice.Launch);
+  }
+
+  @Post("notify-more")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: KoraNotifyQueuedDto })
+  async notifyMore(): Promise<KoraNotifyQueuedDto> {
+    return this.startNotice(KoraNotice.More);
+  }
+
+  private async startNotice(notice: KoraNotice): Promise<KoraNotifyQueuedDto> {
+    const started = await this.notifyService.notify(notice);
     if (!started.ok) {
       switch (started.error) {
         case KoraNotifyError.NotActive:

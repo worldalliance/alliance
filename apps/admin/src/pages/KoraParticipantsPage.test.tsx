@@ -14,8 +14,20 @@ const deleted: string[] = [];
 serveApi(
   routes({
     "GET /kora/admin/batches": () => Response.json([]),
+    "GET /kora/admin/results/answers": () =>
+      Response.json({
+        profiles: 0,
+        profile: [],
+        exitSurveys: 0,
+        exitSurvey: [],
+      }),
     "GET /kora/admin/project": () =>
-      Response.json({ status: "pending", canActivate: false, toNotify: 0 }),
+      Response.json({
+        status: "pending",
+        canActivate: false,
+        toNotify: 0,
+        moreToNotify: 0,
+      }),
     "GET /kora/admin/participants": () =>
       loadStatus === 200
         ? Response.json(overview)

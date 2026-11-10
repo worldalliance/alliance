@@ -2,6 +2,7 @@ import type { KoraProjectStatus } from "@alliance/common/kora";
 import {
   koraAdminDeleteAbandonedSignup,
   koraAdminDeleteParticipant,
+  koraAdminNotifyMore,
   koraAdminNotifyWaitlist,
   koraAdminOverview,
   koraAdminProject,
@@ -77,14 +78,26 @@ export function useSetKoraProjectStatus(params: {
   });
 }
 
-export function useNotifyKoraWaitlist(params: {
+export enum KoraNoticeKind {
+  Launch = "launch",
+  More = "more",
+}
+
+const SEND_NOTICE: Record<KoraNoticeKind, () => Promise<{ queued: number }>> = {
+  [KoraNoticeKind.Launch]: () =>
+    koraAdminNotifyWaitlist({ throwOnError: true }).then((r) => r.data),
+  [KoraNoticeKind.More]: () =>
+    koraAdminNotifyMore({ throwOnError: true }).then((r) => r.data),
+};
+
+export function useSendKoraNotice(params: {
+  notice: KoraNoticeKind;
   onSuccess: (queued: number) => void;
   onError: (err: Error) => void;
 }) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () =>
-      koraAdminNotifyWaitlist({ throwOnError: true }).then((r) => r.data),
+    mutationFn: SEND_NOTICE[params.notice],
     onSuccess: ({ queued }) => params.onSuccess(queued),
     onError: params.onError,
     onSettled: () =>

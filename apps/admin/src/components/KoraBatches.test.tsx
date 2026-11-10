@@ -21,7 +21,12 @@ serveApi(
   routes({
     "GET /kora/admin/batches": () => Response.json(batches),
     "GET /kora/admin/project": () =>
-      Response.json({ status: "pending", canActivate: true, toNotify: 0 }),
+      Response.json({
+        status: "pending",
+        canActivate: true,
+        toNotify: 0,
+        moreToNotify: 0,
+      }),
     "POST /kora/admin/batches": async ({ request }) => {
       uploads.push(await request.formData());
       return uploadResponse();
