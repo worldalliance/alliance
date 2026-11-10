@@ -19,7 +19,7 @@ serveApi(
   routes({
     "GET /kora/me": () =>
       Response.json({ participant, pendingCode: null, signupPending: false }),
-    "POST /user/nmembers": () => Response.json({ count: 1000 }),
+    "GET /kora/participants/count": () => Response.json({ count: 123 }),
     "POST /kora/sign-out": () => new Response(null, { status: 204 }),
   }),
 );
@@ -58,6 +58,13 @@ test("shows a visitor who hasn't signed up the sign-up page", async () => {
 
   await screen.findByRole("button", { name: "Continue" });
   expect(h1()).toBe("Make AI chatbots safer for kids");
+});
+
+test("counts Kora participants, not Alliance members, toward the goal", async () => {
+  participant = null;
+  renderPage();
+
+  await screen.findByText("123 participants");
 });
 
 test("welcomes a participant", async () => {

@@ -140,6 +140,7 @@ export const queryKeys = {
   koraParticipantsAdmin: () => ["koraAdminOverview"] as const,
   linkedGuestDraft: (taskFormId: number) =>
     ["tasksGetLinkedGuestDraft", taskFormId] as const,
+  koraParticipantCount: () => ["koraParticipantCount"] as const,
   koraState: () => ["koraState"] as const,
   linkPreview: (url: string) => ["linkPreviewGetPreview", url] as const,
   members: () => ["userMembers"] as const,

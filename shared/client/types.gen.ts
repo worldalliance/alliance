@@ -5224,6 +5224,10 @@ export type SaveWaitlistEmailTemplateDto = {
     name: string;
 };
 
+export type KoraParticipantCountDto = {
+    count: number;
+};
+
 export type KoraParticipantDto = {
     id: string;
     name: string;
@@ -15973,6 +15977,28 @@ export type WaitlistEmailAdminUpdateTemplateAdminResponses = {
 };
 
 export type WaitlistEmailAdminUpdateTemplateAdminResponse = WaitlistEmailAdminUpdateTemplateAdminResponses[keyof WaitlistEmailAdminUpdateTemplateAdminResponses];
+
+export type KoraParticipantCountData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/participants/count';
+};
+
+export type KoraParticipantCountErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraParticipantCountError = KoraParticipantCountErrors[keyof KoraParticipantCountErrors];
+
+export type KoraParticipantCountResponses = {
+    200: KoraParticipantCountDto;
+};
+
+export type KoraParticipantCountResponse = KoraParticipantCountResponses[keyof KoraParticipantCountResponses];
 
 export type KoraStateData = {
     body?: never;
