@@ -1,6 +1,6 @@
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
-import { render } from "@testing-library/react";
+import { render, type RenderResult } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 import { CustomValidatorDraftsContext } from "../../components/form-fields/customValidatorDrafts";
@@ -26,7 +26,7 @@ function InEditorSidebar({ children }: { children: ReactNode }) {
 }
 
 /** Renders a field editor in its settings sidebar; `rerender` wraps the same way. */
-export function renderInEditorSidebar(editor: ReactNode) {
+export function renderInEditorSidebar(editor: ReactNode): RenderResult {
   const result = render(
     <InEditorSidebar>{editor}</InEditorSidebar>,
     queryWrapper(),
