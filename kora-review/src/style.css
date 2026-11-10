@@ -1,0 +1,553 @@
+/*
+ * korabench-review styles. Import once: import "korabench-review/style.css".
+ * Every rule is scoped to .kora-review, the element the tool adds inside the host's mount element.
+ * There are no global resets and nothing styles html, body or bare elements outside the tool.
+ *
+ * Theming: set any of these custom properties on the mount element or any ancestor. Unset ones use KORA's look.
+ *   --kora-color-background  --kora-color-surface  --kora-color-text  --kora-color-text-muted  --kora-color-border
+ *   --kora-color-accent  --kora-color-accent-text  --kora-color-accent-soft  --kora-color-child-bubble  --kora-color-code
+ *   --kora-color-positive  --kora-color-positive-soft  --kora-color-negative  --kora-color-negative-soft
+ *   --kora-color-neutral  --kora-color-on-semantic  --kora-color-highlight
+ *   --kora-radius (controls, 12px)  --kora-radius-large (cards and sheets, 18px)
+ *   --kora-font-family  --kora-font-family-display  --kora-font-family-mono
+ *   --kora-top-offset (height of a sticky host header, 0px)  --kora-z-index (base for the tool's layers, 0)
+ * Colour scheme follows prefers-color-scheme. Force one with data-kora-theme="light" or "dark" on an ancestor.
+ * Host colour overrides apply in both schemes, so a host that sets colours should also set data-kora-theme.
+ *
+ * Fonts are bundled (SIL Open Font License 1.1, see fonts/OFL-*.txt) under names that can't clash with the host's.
+ */
+@font-face{font-family:"Kora Atkinson Hyperlegible";font-style:normal;font-weight:400;font-display:swap;src:url("./fonts/atkinson-hyperlegible-latin-400-normal.woff2") format("woff2")}
+@font-face{font-family:"Kora Atkinson Hyperlegible";font-style:italic;font-weight:400;font-display:swap;src:url("./fonts/atkinson-hyperlegible-latin-400-italic.woff2") format("woff2")}
+@font-face{font-family:"Kora Atkinson Hyperlegible";font-style:normal;font-weight:700;font-display:swap;src:url("./fonts/atkinson-hyperlegible-latin-700-normal.woff2") format("woff2")}
+@font-face{font-family:"Kora Bricolage Grotesque";font-style:normal;font-weight:200 800;font-display:swap;src:url("./fonts/bricolage-grotesque-latin-opsz-normal.woff2") format("woff2-variations"),url("./fonts/bricolage-grotesque-latin-opsz-normal.woff2") format("woff2")}
+@font-face{font-family:"Kora JetBrains Mono";font-style:normal;font-weight:500;font-display:swap;src:url("./fonts/jetbrains-mono-latin-500-normal.woff2") format("woff2")}
+@font-face{font-family:"Kora JetBrains Mono";font-style:normal;font-weight:700;font-display:swap;src:url("./fonts/jetbrains-mono-latin-700-normal.woff2") format("woff2")}
+
+.kora-review{
+  --r:var(--kora-radius,12px);
+  --r-lg:var(--kora-radius-large,18px);
+  --f-display:var(--kora-font-family-display,"Kora Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif);
+  --f-body:var(--kora-font-family,"Kora Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif);
+  --f-mono:var(--kora-font-family-mono,"Kora JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);
+  --kb:0px;
+  --sheet-h:0px;
+}
+.kora-review,[data-kora-theme="light"] .kora-review{
+  --paper:var(--kora-color-background,#F1F3F8);
+  --card:var(--kora-color-surface,#FFFFFF);
+  --ink:var(--kora-color-text,#151A2D);
+  --muted:var(--kora-color-text-muted,#566079);
+  --line:var(--kora-color-border,#D6DBE6);
+  --user:var(--kora-color-child-bubble,#E2E6F0);
+  --code-bg:var(--kora-color-code,#ECEFF6);
+  --accent:var(--kora-color-accent,#2B45D2);
+  --accent-ink:var(--kora-color-accent-text,#FFFFFF);
+  --accent-soft:var(--kora-color-accent-soft,#E1E6FF);
+  --plus:var(--kora-color-positive,#0A7A54);
+  --plus-tint:var(--kora-color-positive-soft,#CBEEDD);
+  --minus:var(--kora-color-negative,#BE2235);
+  --minus-tint:var(--kora-color-negative-soft,#FAD6DA);
+  --zero:var(--kora-color-neutral,#876000);
+  --on-sem:var(--kora-color-on-semantic,#FFFFFF);
+  --hl:var(--kora-color-highlight,#FFE14D);
+  --hl-ink:#151A2D;
+  --dot-l:46%;
+  --scrim:rgb(21 26 45 / .38);
+  --shadow:0 1px 2px rgb(21 26 45 / .06), 0 12px 32px rgb(21 26 45 / .12);
+  --shadow-sm:0 1px 2px rgb(21 26 45 / .06);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  .kora-review{
+  --paper:var(--kora-color-background,#0D1020);
+  --card:var(--kora-color-surface,#161A2D);
+  --ink:var(--kora-color-text,#E7EAF6);
+  --muted:var(--kora-color-text-muted,#9AA2BD);
+  --line:var(--kora-color-border,#2A3150);
+  --user:var(--kora-color-child-bubble,#222947);
+  --code-bg:var(--kora-color-code,#0F1326);
+  --accent:var(--kora-color-accent,#8D9CFF);
+  --accent-ink:var(--kora-color-accent-text,#0D1020);
+  --accent-soft:var(--kora-color-accent-soft,#252D58);
+  --plus:var(--kora-color-positive,#43D79C);
+  --plus-tint:var(--kora-color-positive-soft,#123D2E);
+  --minus:var(--kora-color-negative,#FF7584);
+  --minus-tint:var(--kora-color-negative-soft,#4B1B26);
+  --zero:var(--kora-color-neutral,#F2C94C);
+  --on-sem:var(--kora-color-on-semantic,#0D1020);
+  --hl:var(--kora-color-highlight,#F2CF3A);
+  --hl-ink:#151A2D;
+  --dot-l:68%;
+  --scrim:rgb(0 0 0 / .55);
+  --shadow:0 1px 2px rgb(0 0 0 / .3), 0 12px 32px rgb(0 0 0 / .4);
+  --shadow-sm:0 1px 2px rgb(0 0 0 / .3);
+  color-scheme:dark;
+  }
+  [data-kora-theme="light"] .kora-review{
+  --paper:var(--kora-color-background,#F1F3F8);
+  --card:var(--kora-color-surface,#FFFFFF);
+  --ink:var(--kora-color-text,#151A2D);
+  --muted:var(--kora-color-text-muted,#566079);
+  --line:var(--kora-color-border,#D6DBE6);
+  --user:var(--kora-color-child-bubble,#E2E6F0);
+  --code-bg:var(--kora-color-code,#ECEFF6);
+  --accent:var(--kora-color-accent,#2B45D2);
+  --accent-ink:var(--kora-color-accent-text,#FFFFFF);
+  --accent-soft:var(--kora-color-accent-soft,#E1E6FF);
+  --plus:var(--kora-color-positive,#0A7A54);
+  --plus-tint:var(--kora-color-positive-soft,#CBEEDD);
+  --minus:var(--kora-color-negative,#BE2235);
+  --minus-tint:var(--kora-color-negative-soft,#FAD6DA);
+  --zero:var(--kora-color-neutral,#876000);
+  --on-sem:var(--kora-color-on-semantic,#FFFFFF);
+  --hl:var(--kora-color-highlight,#FFE14D);
+  --hl-ink:#151A2D;
+  --dot-l:46%;
+  --scrim:rgb(21 26 45 / .38);
+  --shadow:0 1px 2px rgb(21 26 45 / .06), 0 12px 32px rgb(21 26 45 / .12);
+  --shadow-sm:0 1px 2px rgb(21 26 45 / .06);
+  color-scheme:light;
+  }
+}
+[data-kora-theme="dark"] .kora-review{
+  --paper:var(--kora-color-background,#0D1020);
+  --card:var(--kora-color-surface,#161A2D);
+  --ink:var(--kora-color-text,#E7EAF6);
+  --muted:var(--kora-color-text-muted,#9AA2BD);
+  --line:var(--kora-color-border,#2A3150);
+  --user:var(--kora-color-child-bubble,#222947);
+  --code-bg:var(--kora-color-code,#0F1326);
+  --accent:var(--kora-color-accent,#8D9CFF);
+  --accent-ink:var(--kora-color-accent-text,#0D1020);
+  --accent-soft:var(--kora-color-accent-soft,#252D58);
+  --plus:var(--kora-color-positive,#43D79C);
+  --plus-tint:var(--kora-color-positive-soft,#123D2E);
+  --minus:var(--kora-color-negative,#FF7584);
+  --minus-tint:var(--kora-color-negative-soft,#4B1B26);
+  --zero:var(--kora-color-neutral,#F2C94C);
+  --on-sem:var(--kora-color-on-semantic,#0D1020);
+  --hl:var(--kora-color-highlight,#F2CF3A);
+  --hl-ink:#151A2D;
+  --dot-l:68%;
+  --scrim:rgb(0 0 0 / .55);
+  --shadow:0 1px 2px rgb(0 0 0 / .3), 0 12px 32px rgb(0 0 0 / .4);
+  --shadow-sm:0 1px 2px rgb(0 0 0 / .3);
+  color-scheme:dark;
+}
+
+.kora-review{position:relative;background:var(--paper);color:var(--ink);font:16px/1.55 var(--f-body);-webkit-text-size-adjust:100%;text-align:left;scroll-margin-top:var(--kora-top-offset,0px)}
+.kora-review *{box-sizing:border-box}
+.kora-review h1,.kora-review h2,.kora-review h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.1}
+.kora-review p{margin:0}
+.kora-review button{font:inherit;color:inherit}
+.kora-review .wrap{max-width:640px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.kora-review .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.kora-review .grow{flex:1}
+.kora-review .ic{width:20px;height:20px;flex:none}
+.kora-review :focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+/* Buttons */
+.kora-review .btn{min-height:48px;padding:0 18px;border-radius:var(--r);border:1.5px solid var(--line);background:var(--card);font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;text-decoration:none}
+.kora-review .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.kora-review .btn:disabled{opacity:.45;cursor:not-allowed}
+.kora-review .iconbtn{width:44px;height:44px;border-radius:var(--r);border:0;background:transparent;display:grid;place-items:center;cursor:pointer;flex:none}
+.kora-review .iconbtn:disabled{opacity:.3;cursor:default}
+.kora-review .iconbtn:not(:disabled):active{background:var(--accent-soft)}
+.kora-review .link{background:none;border:0;color:var(--accent);font-weight:700;min-height:44px;padding:0 6px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.kora-review .link.quiet{color:var(--muted)}
+.kora-review .big{flex:1;min-height:56px;padding:0 14px;border-radius:var(--r-lg);border:0;font:800 20px/1 var(--f-display);display:inline-flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;font-variant-numeric:tabular-nums}
+.kora-review .big .ic{width:22px;height:22px}
+.kora-review .big.plus{background:var(--plus);color:var(--on-sem)}
+.kora-review .big.minus{background:var(--minus);color:var(--on-sem)}
+.kora-review .big.primary{background:var(--accent);color:var(--accent-ink)}
+.kora-review .big.ghost{background:transparent;border:1.5px solid var(--line);color:var(--ink);font-size:17px}
+.kora-review .big:disabled{opacity:.4;cursor:not-allowed}
+.kora-review .big:not(:disabled):active{transform:translateY(1px)}
+/* Brand + chips */
+.kora-review .mark{display:inline-flex;border-radius:8px;overflow:hidden;font:800 13px/1 var(--f-display);box-shadow:var(--shadow-sm)}
+.kora-review .mark b{padding:6px 7px}
+.kora-review .mark .p{background:var(--plus);color:var(--on-sem)}
+.kora-review .mark .n{background:var(--minus);color:var(--on-sem)}
+.kora-review .chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;background:var(--card);border:1px solid var(--line);font:700 12px/1.4 var(--f-mono);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.kora-review .chip .dot{width:8px;height:8px;border-radius:50%;background:hsl(var(--h,228) 62% var(--dot-l));flex:none}
+.kora-review .v-pos{color:var(--plus)}
+.kora-review .v-neg{color:var(--minus)}
+.kora-review .v-zero{color:var(--zero)}
+.kora-review .dim{color:var(--muted)}
+.kora-review .cicon{display:inline-flex;align-items:center;gap:3px;padding:0 6px;border-radius:6px;font:700 13px/1.5 var(--f-mono);vertical-align:1px;white-space:nowrap}
+.kora-review .cicon .ic{width:15px;height:15px}
+.kora-review .cicon.v-pos{background:var(--plus-tint)}
+.kora-review .cicon.v-neg{background:var(--minus-tint)}
+/* Welcome */
+.kora-review .welcome{padding-block:28px 48px;display:flex;flex-direction:column;gap:22px}
+.kora-review .brand{display:flex;align-items:center;gap:10px;font:700 14px var(--f-mono);letter-spacing:.04em;color:var(--muted)}
+.kora-review .hero{font-size:clamp(34px,9vw,52px);font-weight:800;letter-spacing:-.02em;line-height:1.02}
+.kora-review .m-pos{background:var(--plus-tint);text-decoration:underline solid var(--plus) 4px;text-underline-offset:6px;border-radius:6px;padding:0 4px}
+.kora-review .m-neg{background:var(--minus-tint);text-decoration:underline wavy var(--minus) 2.5px;text-underline-offset:7px;border-radius:6px;padding:0 4px}
+.kora-review .lede{font-size:18px;color:var(--muted);max-width:60ch}
+.kora-review .demo{display:flex;flex-direction:column;gap:8px}
+.kora-review .demo .bubble{font-size:17px}
+.kora-review .demo-cap{font-size:14px;color:var(--muted);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.kora-review .steps{list-style:none;margin:0;padding:0;display:grid;gap:10px;counter-reset:s}
+.kora-review .steps li{display:grid;grid-template-columns:32px 1fr;gap:12px;align-items:start;counter-increment:s}
+.kora-review .steps li::before{content:counter(s);width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--ink);color:var(--paper);font:800 15px var(--f-display)}
+.kora-review .steps b{display:block;font-family:var(--f-display);font-size:18px}
+.kora-review .steps span{color:var(--muted)}
+.kora-review .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px;box-shadow:var(--shadow-sm)}
+.kora-review .form{display:grid;gap:14px}
+.kora-review .field{display:grid;gap:6px}
+.kora-review .field label{font-weight:700}
+.kora-review .field input,.kora-review textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:var(--r);padding:12px 14px;width:100%;min-height:48px}
+.kora-review .field input:focus,.kora-review textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.kora-review .err{color:var(--minus);font-size:14px;font-weight:700}
+.kora-review .fine{font-size:14px;color:var(--muted)}
+.kora-review .back-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+/* Queue */
+.kora-review .qhead{padding-block:18px 14px;border-bottom:1px solid var(--line);background:var(--paper)}
+.kora-review .qhead .wrap{display:flex;flex-direction:column;gap:14px}
+.kora-review .qtop{display:flex;align-items:center;gap:10px;min-width:0}
+.kora-review .qtitle{font-size:clamp(26px,6.5vw,34px);font-weight:800;letter-spacing:-.01em}
+.kora-review .meter{display:flex;align-items:center;gap:12px;font:700 13px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.kora-review .meter-bar{flex:1;height:10px;border-radius:99px;background:var(--line);overflow:hidden}
+.kora-review .meter-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--plus));border-radius:inherit;transition:width .4s}
+.kora-review .qacts{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px}
+.kora-review .qacts .btn.primary{grid-column:1/-1}
+.kora-review .qacts .btn:not(.primary){min-width:0;padding:0 8px;font-size:14px;white-space:nowrap}
+.kora-review .qmain{padding-block:16px 48px;display:flex;flex-direction:column;gap:14px}
+.kora-review .filters{display:flex;flex-direction:column;gap:10px}
+.kora-review .seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:3px;gap:3px}
+.kora-review .seg button{flex:1;min-height:40px;border:0;border-radius:9px;background:transparent;font-weight:700;cursor:pointer;color:var(--muted)}
+.kora-review .seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.kora-review .cats{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.kora-review .cats::-webkit-scrollbar{display:none}
+.kora-review .cats button{min-height:40px;padding:0 12px;cursor:pointer;flex:none;max-width:none}
+.kora-review .cats button[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.kora-review .cats button[aria-pressed="true"] .dot{box-shadow:0 0 0 2px var(--paper)}
+.kora-review .qlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.kora-review .qlist li{content-visibility:auto;contain-intrinsic-size:auto 88px}
+.kora-review .qi{width:100%;text-align:left;display:flex;align-items:center;gap:12px;padding:14px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);cursor:pointer}
+.kora-review .qi:active{transform:translateY(1px)}
+.kora-review .qi.cur{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.kora-review .qi-l{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.kora-review .qi-meta{display:flex;align-items:center;gap:8px;min-width:0}
+.kora-review .qi-id{font:700 12px var(--f-mono);color:var(--muted)}
+.kora-review .qi-snip{color:var(--ink);font-size:15px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.kora-review .badge{flex:none;font:700 12px var(--f-mono);padding:5px 9px;border-radius:999px;border:1.5px dashed var(--line);color:var(--muted);white-space:nowrap}
+.kora-review .badge.wip{border-style:solid;border-color:var(--accent);color:var(--accent)}
+.kora-review .mini-stamp{flex:none;display:inline-flex;align-items:center;gap:4px;font:800 15px var(--f-display);border:2.5px solid currentColor;border-radius:8px;padding:3px 8px;transform:rotate(-5deg)}
+.kora-review .mini-stamp .ic{width:14px;height:14px}
+.kora-review .empty-note{color:var(--muted);text-align:center;padding:24px 8px}
+.kora-review .warnbox{border:1.5px solid var(--line);border-radius:var(--r-lg);padding:12px 14px;font-size:14px;display:grid;gap:4px;background:var(--card)}
+.kora-review .warnbox b{font-family:var(--f-display);font-size:15px}
+.kora-review .warnbox ul{margin:0;padding-left:18px;color:var(--muted)}
+/* Review header */
+.kora-review .rhead{position:sticky;top:calc(var(--kora-top-offset,0px) + env(safe-area-inset-top,0px));z-index:calc(var(--kora-z-index,0) + 20);background:color-mix(in srgb,var(--paper) 92%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.kora-review .rrow{display:flex;align-items:center;gap:6px;min-height:52px;min-width:0}
+.kora-review .rrow .iconbtn:first-child{margin-left:-10px}
+.kora-review .rrow .chip{min-width:0;flex:0 1 auto}
+.kora-review .prog{font:700 13px var(--f-mono);color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.kora-review .score{display:inline-flex;align-items:center;gap:6px;padding:2px 11px;border-radius:999px;border:2px solid currentColor;min-height:36px;flex:none}
+.kora-review .score .sv{display:flex}
+.kora-review .score .sv .ic{width:21px;height:21px;stroke-width:2.3}
+.kora-review .score .sn{font:700 12px/1 var(--f-mono);font-variant-numeric:tabular-nums}
+.kora-review .score.pop{animation:kora-pop .38s cubic-bezier(.3,1.6,.5,1)}
+@keyframes kora-pop{0%{transform:scale(1)}40%{transform:scale(1.18)}100%{transform:scale(1)}}
+.kora-review .challenge{background:var(--accent-soft);border-radius:var(--r);padding:7px 12px 8px;margin-bottom:8px;font:700 15px/1.3 var(--f-display);color:var(--ink)}
+.kora-review .challenge .clabel{font:700 10px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);display:flex;justify-content:space-between;gap:8px;margin-bottom:2px}
+.kora-review .challenge .clabel .prog{font-size:10px;color:var(--muted)}
+.kora-review .challenge .clabel .ctag{font:800 13px/1.2 var(--f-display);letter-spacing:.06em;color:var(--accent)}
+.kora-review .challenge .clabel-l{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;min-width:0}
+.kora-review .challenge .cage{font:700 12px/1.2 var(--f-body);letter-spacing:0;text-transform:none;color:var(--accent-ink);background:var(--accent);border-radius:999px;padding:2px 9px;white-space:nowrap}
+.kora-review .challenge p{font-weight:400}
+.kora-review .challenge b,.kora-review .intro-q b{font-weight:800}
+.kora-review .cspan,.kora-review .cspan.v-pos,.kora-review .cspan.v-neg,.kora-review .cspan.v-zero{color:inherit}
+.kora-review .cspan{box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:4px;padding:0 3px}
+.kora-review .cspan.v-pos{background:var(--plus-tint);text-decoration:underline solid var(--plus) 2px;text-underline-offset:4px}
+.kora-review .cspan.v-neg{background:var(--minus-tint);text-decoration:underline wavy var(--minus) 1.5px;text-underline-offset:4px}
+.kora-review .cspan.v-zero{background:var(--accent-soft)}
+.kora-review .cthumb{display:inline-flex;vertical-align:-2px;margin-left:2px}
+.kora-review .cthumb .ic{width:1em;height:1em}
+.kora-review .challenge .cicon{font-size:11px;vertical-align:1px;padding:0 4px}
+.kora-review .challenge .cicon .ic{width:12px;height:12px}
+/* Full-screen question intro, shown when the question changes */
+.kora-review .intro-in{margin:auto;width:100%;max-width:640px;display:flex;flex-direction:column;gap:22px;padding:max(32px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(32px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.kora-review .intro-label{display:flex;justify-content:space-between;align-items:center;gap:10px;font:700 12px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.kora-review .intro-q{font-size:clamp(28px,7.5vw,40px);font-weight:400;line-height:1.2;letter-spacing:-.01em}
+.kora-review .intro-q .cicon{font-size:.55em;vertical-align:.25em;padding:2px 8px}
+.kora-review .intro-q .cicon .ic{width:1.1em;height:1.1em}
+.kora-review .intro-q .cspan.v-pos{text-decoration-thickness:3px;text-underline-offset:7px}
+.kora-review .intro-q .cspan.v-neg{text-decoration-thickness:2.5px;text-underline-offset:7px}
+.kora-review .intro-q .cthumb{vertical-align:-.1em}
+.kora-review .intro-hint{font-size:17px;color:var(--muted)}
+.kora-review .intro-tag{font:800 clamp(20px,5vw,26px)/1.1 var(--f-display);letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:-12px}
+/* Thread */
+.kora-review .thread{display:flex;flex-direction:column;gap:18px;padding-block:18px calc(120px + var(--sheet-h) + env(safe-area-inset-bottom,0px))}
+.kora-review .msg{display:flex;flex-direction:column;gap:5px;min-width:0}
+.kora-review .msg.user{align-items:flex-end}
+.kora-review .who{font:700 11px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding-inline:8px}
+.kora-review .bubble{position:relative;padding:12px 16px;font-size:17px;line-height:1.7;min-width:0;overflow-wrap:anywhere}
+.kora-review .msg.user .bubble{background:var(--user);border-radius:20px 20px 6px 20px;max-width:86%}
+.kora-review .msg.ai .bubble{background:var(--card);border:1px solid var(--line);border-radius:20px 20px 20px 6px;box-shadow:var(--shadow-sm)}
+.kora-review .bubble>*+*{margin-top:10px}
+.kora-review .bubble ul,.kora-review .bubble ol{margin-block:0;padding-left:22px}
+.kora-review .bubble li+li{margin-top:4px}
+.kora-review .bubble pre{margin-block:0;background:var(--code-bg);border-radius:10px;padding:10px 12px;overflow-x:auto;font:14px/1.6 var(--f-mono);white-space:pre}
+.kora-review .bubble code{font-family:var(--f-mono);font-size:.86em;background:var(--code-bg);border-radius:5px;padding:1px 4px}
+.kora-review .bubble pre code{background:none;padding:0;font-size:inherit}
+.kora-review .bubble em{font-style:italic}
+.kora-review .bubble .md-h{font-family:var(--f-display);font-weight:800;line-height:1.3}
+.kora-review .bubble .md-h1{font-size:22px}
+.kora-review .bubble .md-h2{font-size:20px}
+.kora-review .bubble .md-h3{font-size:18px}
+.kora-review .bubble .md-h4{font-size:17px}
+.kora-review .bubble hr{border:0;border-top:1px solid var(--line);margin-block:14px}
+.kora-review .bubble blockquote{margin:0;padding-left:12px;border-left:3px solid var(--line);color:var(--muted)}
+.kora-review .bubble blockquote p+p{margin-top:6px}
+.kora-review .bubble li.sub{margin-left:22px;list-style-type:circle}
+.kora-review .bubble .md-table{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+.kora-review .bubble .md-table table{font-size:15px;line-height:1.5;min-width:100%}
+.kora-review .bubble .md-table th,.kora-review .bubble .md-table td{white-space:normal;vertical-align:top;padding:6px 10px;min-width:96px}
+.kora-review .bubble .md-table th{font:700 14px/1.4 var(--f-body);text-transform:none;letter-spacing:0;color:var(--ink);background:var(--code-bg)}
+.kora-review .bubble .md-table tr:last-child td{border-bottom:0}
+.kora-review .lnk{color:var(--accent);text-decoration:underline;text-underline-offset:2px;cursor:not-allowed}
+.kora-review .empty{color:var(--muted)}
+.kora-review .sys{border:1.5px dashed var(--line);border-radius:var(--r-lg);padding:4px 14px;font-size:15px;color:var(--muted)}
+.kora-review .sys summary{cursor:pointer;min-height:40px;display:flex;align-items:center;font:700 12px var(--f-mono);letter-spacing:.06em;text-transform:uppercase}
+.kora-review .sys p{padding-bottom:10px}
+/* Tokens */
+.kora-review .layer{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.kora-review .math{font-family:"Cambria Math","STIX Two Math","Latin Modern Math",Cambria,"Times New Roman",serif;font-size:1.08em}
+.kora-review .math .mfrac,.kora-review .math .mbox,.kora-review .math .msqrt{white-space:nowrap}
+.kora-review .math i{font-style:italic;padding-right:.04em}
+.kora-review .math .mo{padding:0 .22em}
+.kora-review .math .mfn,.kora-review .math .mtext{font-family:var(--f-body);font-size:.93em;font-style:normal}
+.kora-review .math .mfrac{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;font-size:.9em;line-height:1.15;margin:0 .1em}
+.kora-review .math .mnum{padding:0 .15em .05em;border-bottom:1.5px solid currentColor}
+.kora-review .math .mden{padding:.05em .15em 0}
+.kora-review .math .mbox{border:1.5px solid currentColor;border-radius:4px;padding:.1em .35em;margin:0 .1em}
+.kora-review .math .mrad,.kora-review .math .mover{border-top:1.5px solid currentColor;padding-top:.05em}
+.kora-review .math sup,.kora-review .math sub{font-size:.72em}
+.kora-review .math.display{display:block;width:fit-content;max-width:100%;overflow-x:auto;margin:.5em auto;padding:.15em .4em;font-size:1.15em;white-space:nowrap}
+.kora-review .layer .tk{border-radius:4px;padding-block:3px;cursor:pointer;-webkit-tap-highlight-color:transparent;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.kora-review .layer.locked .tk{cursor:default}
+.kora-review .tk.pos,.kora-review .gap.pos{background:var(--plus-tint);text-decoration:underline solid var(--plus) 2px;text-underline-offset:5px;padding-block:3px}
+.kora-review .tk.neg,.kora-review .gap.neg{background:var(--minus-tint);text-decoration:underline wavy var(--minus) 1.5px;text-underline-offset:5px;padding-block:3px}
+.kora-review .tk.note,.kora-review .gap.note{background:var(--accent-soft);text-decoration:underline dotted var(--accent) 2px;text-underline-offset:5px;padding-block:3px;box-shadow:-1px 0 0 var(--accent-soft),1px 0 0 var(--accent-soft);border-radius:0}
+.kora-review .tk.focus,.kora-review .gap.focus{outline:2px solid var(--accent);outline-offset:0}
+.kora-review .tk.sel,.kora-review .gap.sel{background:var(--hl);color:var(--hl-ink);padding-block:3px}
+.kora-review .tk.sel,.kora-review .tk.pos,.kora-review .tk.neg{border-radius:0}
+.kora-review .tk.pos,.kora-review .gap.pos{box-shadow:-1px 0 0 var(--plus-tint),1px 0 0 var(--plus-tint)}
+.kora-review .tk.neg,.kora-review .gap.neg{box-shadow:-1px 0 0 var(--minus-tint),1px 0 0 var(--minus-tint)}
+.kora-review .tk.sel,.kora-review .gap.sel{box-shadow:-1px 0 0 var(--hl),1px 0 0 var(--hl)}
+.kora-review .tk.pulse{animation:kora-pulse 1.6s ease-in-out infinite}
+@keyframes kora-pulse{0%,100%{box-shadow:0 0 0 0 var(--hl)}50%{box-shadow:0 0 0 5px var(--hl)}}
+.kora-review .handle{position:absolute;width:2px;background:var(--accent);z-index:calc(var(--kora-z-index,0) + 3);touch-action:none;margin-left:-1px;border-radius:1px}
+.kora-review .handle::before{content:"";position:absolute;left:50%;width:18px;height:18px;border-radius:50%;background:var(--accent);transform:translateX(-50%);border:2px solid var(--card);box-shadow:var(--shadow-sm)}
+.kora-review .handle.start::before{top:-16px}
+.kora-review .handle.end::before{bottom:-16px}
+.kora-review .handle::after{content:"";position:absolute;left:50%;width:48px;height:56px;transform:translateX(-50%)}
+.kora-review .handle.start::after{top:-36px}
+.kora-review .handle.end::after{bottom:-36px}
+.kora-review.dragging .handle{pointer-events:none}
+.kora-review.dragging{cursor:grabbing}
+/* Annotation list under each assistant reply */
+.kora-review .anns{list-style:none;margin:2px 0 0;padding:0 0 0 8px;display:flex;flex-direction:column;gap:6px}
+.kora-review .ann{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:14px;line-height:1.4;min-width:0}
+.kora-review .ann-v{font:800 13px/1 var(--f-display);padding:4px 6px;border-radius:6px;flex:none;font-variant-numeric:tabular-nums}
+.kora-review .ann-v.v-pos{background:var(--plus-tint)}
+.kora-review .ann-v.v-neg{background:var(--minus-tint)}
+.kora-review .ann-v.v-note,.kora-review .vbadge.v-note{background:var(--accent-soft);color:var(--accent);display:inline-grid;place-items:center}
+.kora-review .ann-v.v-note .ic{width:13px;height:13px}
+.kora-review .vbadge.v-note .ic{width:18px;height:18px}
+.kora-review .sh-x{width:36px;height:36px;margin:-6px -8px 0 0;color:var(--muted)}
+.kora-review .sh-x .ic{width:20px;height:20px}
+.kora-review .big.note-btn{flex:0 0 56px;padding:0;background:var(--accent-soft);color:var(--accent)}
+.kora-review .sh-acts.nudge{animation:kora-nudge .4s ease}
+@keyframes kora-nudge{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.kora-review .ann-q{background:none;border:0;padding:4px 0;text-align:left;color:var(--ink);cursor:pointer;min-width:0;flex:1 1 140px;font-size:14px}
+.kora-review .ann-n{color:var(--muted);flex:1 1 100%;padding-left:2px;font-style:italic}
+.kora-review .ann-act{display:flex;gap:4px;margin-left:auto}
+.kora-review .mini{min-height:32px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);font-size:13px;font-weight:700;cursor:pointer;color:var(--muted)}
+.kora-review .pencil{display:inline-grid;place-items:center;width:32px;height:32px;margin:-6px 0 -6px 2px;border:0;background:none;color:var(--muted);cursor:pointer;vertical-align:middle;border-radius:8px}
+.kora-review .pencil .ic{width:16px;height:16px}
+.kora-review .pencil:hover{color:var(--accent);background:var(--accent-soft)}
+.kora-review .tag{font:700 11px var(--f-mono);padding:2px 6px;border-radius:6px;background:var(--line);color:var(--ink)}
+/* Banners */
+.kora-review .banner{border-radius:var(--r-lg);padding:12px 14px;font-size:15px;display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1.5px solid var(--line)}
+.kora-review .banner.coach{border-color:var(--hl);background:color-mix(in srgb,var(--hl) 22%,var(--card))}
+.kora-review .banner .grow{min-width:0}
+.kora-review .banner .link{min-height:32px}
+/* Footer */
+.kora-review .rfoot{position:fixed;left:0;right:0;bottom:0;z-index:calc(var(--kora-z-index,0) + 20);background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.kora-review .rfoot-in{display:flex;align-items:center;gap:10px;padding-block:10px}
+.kora-review .rfoot .btn.primary{flex:1;min-height:52px;font-family:var(--f-display);font-size:18px;font-weight:800;white-space:nowrap;padding:0 14px}
+/* The pair label is longer, so on narrow phones it may wrap to two lines rather than push the footer off screen */
+.kora-review .rfoot .btn.primary{min-width:0;white-space:normal;line-height:1.1;text-align:center}
+@media (max-width:420px){
+.kora-review .rfoot .btn.primary{font-size:16px;padding:0 10px}
+}
+.kora-review .rfoot .btn.prev{min-width:52px;min-height:52px;padding:0 12px;flex:none}
+.kora-review .savestat{font:700 11px/1.3 var(--f-mono);color:var(--muted);text-align:center;max-width:84px;flex:none}
+/* Reveal card at the end of a locked transcript */
+.kora-review .reveal{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px;display:flex;flex-direction:column;gap:12px}
+.kora-review .reveal h2,.kora-review .sh-title{font-size:22px;font-weight:800}
+.kora-review .stamp-wrap{display:flex;justify-content:center;padding:6px 0 2px}
+.kora-review .stamp{display:inline-flex;align-items:center;gap:10px;font:800 26px/1 var(--f-display);letter-spacing:.06em;text-transform:uppercase;border:4px solid currentColor;border-radius:var(--r);padding:10px 18px;transform:rotate(-6deg);background:color-mix(in srgb,currentColor 8%,transparent)}
+.kora-review .stamp b{font-size:34px;letter-spacing:0}
+.kora-review .stamp.thunk{animation:kora-thunk .5s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes kora-thunk{0%{transform:rotate(-14deg) scale(2.4);opacity:0}55%{transform:rotate(-6deg) scale(.9);opacity:1}100%{transform:rotate(-6deg) scale(1)}}
+/* Bottom sheet */
+.kora-review .kr-scrim{position:fixed;inset:0;background:var(--scrim);z-index:calc(var(--kora-z-index,0) + 39)}
+.kora-review .kr-sheet{position:fixed;left:0;right:0;bottom:var(--kb);z-index:calc(var(--kora-z-index,0) + 40);transform:translateY(105%);transition:transform .22s cubic-bezier(.2,.8,.2,1);pointer-events:none}
+.kora-review .kr-sheet.open{transform:none;pointer-events:auto}
+.kora-review .kr-sheet.lowered{transform:translateY(105%)}
+.kora-review .sheet-card{background:var(--card);border-radius:22px 22px 0 0;box-shadow:0 -10px 40px rgb(0 0 0 / .18);border:1px solid var(--line);border-bottom:0;max-width:672px;margin:0 auto;max-height:calc(100dvh - 40px - env(safe-area-inset-top,0px));overflow-y:auto}
+.kora-review .sheet-in{display:flex;flex-direction:column;gap:12px;padding-block:10px calc(14px + env(safe-area-inset-bottom,0px))}
+.kora-review .grip{width:40px;height:5px;border-radius:9px;background:var(--line);margin:0 auto 2px}
+.kora-review .sh-top{display:flex;align-items:flex-start;gap:10px}
+.kora-review .sh-prev{flex:1;min-width:0;font-size:16px;line-height:1.45;max-height:4.4em;overflow:hidden}
+.kora-review .sh-count{font:700 11px var(--f-mono);color:var(--muted);white-space:nowrap;padding-top:3px}
+.kora-review .sh-warn{font-size:14px;color:var(--muted)}
+.kora-review .sh-acts{display:flex;gap:10px}
+.kora-review .sh-sub{display:flex;justify-content:space-between;align-items:center;margin-top:-4px}
+.kora-review .sh-note{display:grid;gap:6px;position:relative}
+.kora-review .sh-note label{font-weight:700;font-size:15px}
+.kora-review .sh-note textarea{resize:none;min-height:64px;line-height:1.4}
+@media (max-width:520px){
+.kora-review .sh-note textarea{min-height:88px}
+}
+/* room for the whole placeholder on phones */
+.kora-review .cnt{position:absolute;right:10px;bottom:8px;font:700 11px var(--f-mono);color:var(--muted)}
+.kora-review .sh-notetext{font-style:italic;color:var(--muted);font-size:15px}
+.kora-review .sh-body{font-size:16px}
+.kora-review .vbadge{font:800 18px/1 var(--f-display);padding:6px 9px;border-radius:8px;flex:none}
+.kora-review .vbadge.v-pos{background:var(--plus-tint)}
+.kora-review .vbadge.v-neg{background:var(--minus-tint)}
+/* Toasts */
+.kora-review .kr-toasts{position:fixed;left:0;right:0;z-index:calc(var(--kora-z-index,0) + 50);display:flex;justify-content:center;pointer-events:none;bottom:calc(max(var(--sheet-h),var(--fh,0px)) + 12px + env(safe-area-inset-bottom,0px))}
+.kora-review.has-foot .kr-toasts{--fh:74px}
+.kora-review .toast{pointer-events:auto;display:flex;align-items:center;gap:6px;background:var(--ink);color:var(--paper);border-radius:var(--r);padding:4px 6px 4px 14px;min-height:44px;font-weight:700;font-size:15px;box-shadow:var(--shadow);max-width:calc(100% - 32px);animation:kora-rise .2s ease-out}
+.kora-review .toast .link{color:var(--hl)}
+@keyframes kora-rise{from{transform:translateY(10px);opacity:0}}
+.kora-review .toast-v{position:absolute;z-index:calc(var(--kora-z-index,0) + 50);pointer-events:none;font:800 30px/1 var(--f-display);padding:8px 16px;border-radius:var(--r-lg);box-shadow:var(--shadow);font-variant-numeric:tabular-nums;animation:kora-hover-fade 1.6s ease-out both}
+.kora-review .toast-v.v-pos{background:var(--plus-tint)}
+.kora-review .toast-v.v-neg{background:var(--minus-tint)}
+@keyframes kora-hover-fade{0%{transform:translateY(8px);opacity:0}12%{transform:translateY(0);opacity:1}65%{transform:translateY(-10px);opacity:1}100%{transform:translateY(-22px);opacity:0}}
+/* Note prompt: a thin bar drains while the prompt is up */
+.kora-review .np-bar{height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+.kora-review .np-bar i{display:block;height:100%;background:var(--accent);border-radius:inherit;transform-origin:right;animation:kora-drain 2s linear both}
+@keyframes kora-drain{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+.kora-review .sum-eq{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px 10px;padding-top:2px;font:800 17px/1 var(--f-display);font-variant-numeric:tabular-nums}
+.kora-review .sum-eq>span{display:inline-flex;align-items:center;gap:4px}
+.kora-review .sum-eq .ic{width:17px;height:17px}
+.kora-review .sum-eq .eq{color:var(--muted)}
+.kora-review .big .ic.lg{width:30px;height:30px}
+/* Finish */
+.kora-review .optout{padding-block:28px 56px;display:flex;flex-direction:column;gap:18px}
+.kora-review .finish{padding-block:28px 56px;display:flex;flex-direction:column;gap:20px}
+.kora-review .flist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.kora-review .frow{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:10px 12px;min-width:0}
+.kora-review .frow .qi-meta{flex-wrap:wrap}
+/* Responses table (owner) */
+.kora-review table{border-collapse:collapse;font-size:14px;min-width:100%}
+.kora-review th,.kora-review td{padding:10px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+.kora-review th{font:700 11px var(--f-mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+/* Review timer */
+/* Narrow phones: a smaller timer and, for pairs, just the two icons in the header chip (the nets stay on each chat's heading) */
+@media (max-width:520px){
+.kora-review .rrow{gap:4px}
+.kora-review .pairscore{padding:2px 8px;gap:3px}
+.kora-review .pairscore .sn{display:none}
+}
+/* Pairs: the scenario, then two AIs side by side (stacked on narrow screens) */
+.kora-review .wrap.wide{max-width:1180px}
+.kora-review .v-pair{color:var(--accent)}
+.kora-review .ctx{display:flex;flex-direction:column;gap:10px;font-size:16px}
+.kora-review .ctx-top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.kora-review .ctx h1,.kora-review .ctx h2{font-size:20px}
+/* Collapsed sections of the scenario card: [+] opens, [-] closes */
+.kora-review .ctx-more summary{cursor:pointer;font-weight:700;color:var(--accent);min-height:36px;display:flex;align-items:center;gap:8px;list-style:none}
+.kora-review .ctx-more summary::-webkit-details-marker{display:none}
+.kora-review .ctx-more summary::after{content:"[+]";font:700 14px var(--f-mono)}
+.kora-review .ctx-more[open] summary::after{content:"[−]"}
+.kora-review .ctx-more p+p{margin-top:10px}
+.kora-review .ctx-bg p{color:var(--muted)}
+.kora-review .rules{margin:0;padding-left:20px;font-size:14px;color:var(--muted)}
+.kora-review .pair{display:grid;gap:32px}
+@media (min-width:900px){
+.kora-review .pair{grid-template-columns:1fr 1fr;gap:24px}
+}
+.kora-review .pair-wrap{display:flex;flex-direction:column;gap:22px}
+.kora-review .msg.user.shared{align-items:center;text-align:left}
+.kora-review .msg.user.shared .bubble{max-width:min(640px,100%);border-radius:var(--r-lg)}
+.kora-review .side{display:flex;flex-direction:column;gap:18px;min-width:0}
+.kora-review .side-h{display:flex;align-items:center;gap:10px;padding-bottom:8px;border-bottom:2px solid var(--ink)}
+.kora-review .side-h h2{font-size:22px;font-weight:800;flex:1}
+.kora-review .score.sm{min-height:30px;padding:0 9px}
+.kora-review .score.sm .sv .ic,.kora-review .pairscore .sv .ic{width:18px;height:18px}
+.kora-review .pairscore{gap:4px;color:var(--ink);border-color:var(--line)}
+.kora-review .pairscore .sl{font:800 14px var(--f-display)}
+.kora-review .psum{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:15px;text-align:center}
+.kora-review .sum-eq .sum-side{gap:6px}
+.kora-review .sum-eq .sum-side+.sum-side{margin-left:14px}
+.kora-review .q{display:grid;gap:6px}
+.kora-review .q-l{font-weight:700;font-size:15px;line-height:1.35}
+.kora-review .q-hint{font-size:14px;color:var(--zero);font-weight:700}
+.kora-review .q .seg button{font-size:14px;min-height:44px;padding:0 4px;line-height:1.2}
+.kora-review .q select{font:inherit;font-size:16px;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:var(--r);padding:0 12px;min-height:48px;width:100%}
+.kora-review .svq{border:0;padding:0;margin:0;min-width:0}
+.kora-review .svq legend{font-weight:700;padding:0;margin-bottom:6px}
+.kora-review .opts{display:flex;flex-wrap:wrap;gap:8px}
+.kora-review .opt{position:relative}
+.kora-review .opt input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.kora-review .opt span{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border-radius:var(--r);border:1.5px solid var(--line);background:var(--card);font-weight:700;font-size:15px}
+.kora-review .opt input:checked+span{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.kora-review .opt input:focus-visible+span{outline:3px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){
+.kora-review *,.kora-review *::before,.kora-review *::after{animation:none!important;transition:none!important}
+}
+
+
+/* ---------- Added for the packaged tool ---------- */
+.kora-review [hidden]{display:none!important}
+.kora-review .sr{clip-path:inset(50%);margin:-1px;padding:0;border:0}
+.kora-review button,.kora-review input,.kora-review select,.kora-review textarea{font-family:inherit;letter-spacing:normal;text-transform:none}
+
+/* Text-labelled header buttons (only close and delete are icon-only) */
+.kora-review .tbtn{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 10px;border-radius:var(--r);border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:700 14px/1 var(--f-body);cursor:pointer;flex:none;white-space:nowrap}
+.kora-review .tbtn .ic{width:18px;height:18px}
+.kora-review .tbtn:disabled{opacity:.45;cursor:default}
+.kora-review .rrow .tbtn:first-child{margin-left:0}
+.kora-review .rfoot .btn.prev{gap:4px;padding:0 12px 0 8px}
+.kora-review .mini{display:inline-flex;align-items:center;gap:4px}
+.kora-review .mini .ic{width:14px;height:14px}
+.kora-review .note-btn{gap:6px;font-size:16px}
+.kora-review .big.note-btn{flex:0 0 auto;padding:0 14px}
+@media (max-width:480px){
+  .kora-review .rrow>.chip{display:none}
+}
+@media (max-width:360px){
+  .kora-review .tbtn{padding:0 8px;gap:4px}
+}
+
+/* Reply bubbles take keyboard focus to start a selection */
+.kora-review .bubble.layer[tabindex]:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+
+/* Content warning, profile and exit survey */
+.kora-review .oo-acts{display:flex;flex-direction:column;gap:10px}
+.kora-review .oo-acts .big{flex:none;width:100%}
+.kora-review .chk{display:inline-flex;align-items:center;gap:10px;min-height:44px;font-weight:700;font-size:15px;cursor:pointer}
+.kora-review .chk input{width:22px;height:22px;margin:0;accent-color:var(--accent)}
+.kora-review .field input:disabled{opacity:.5}
+.kora-review .err:empty{display:none}
+.kora-review .finish .form .big{flex:none;width:100%}
+
+/* Full-screen question intro, shown when the question changes */
+.kora-review .kr-intro{position:fixed;inset:0;z-index:calc(var(--kora-z-index,0) + 60);background:var(--paper);overflow-y:auto;display:flex;transition:opacity 1.25s ease}
+.kora-review .kr-intro.fading{opacity:0;pointer-events:none}
+
+/* Touch devices: every target at least 44 × 44 */
+@media (pointer: coarse){
+  .kora-review .mini,.kora-review .link,.kora-review .ann-q,.kora-review .seg button,.kora-review .cats button,.kora-review .ctx-more summary{min-height:44px}
+  .kora-review .sh-x{width:44px;height:44px}
+  .kora-review .opt span{min-height:48px}
+}
