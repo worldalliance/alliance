@@ -50,7 +50,7 @@ export enum KoraCategory {
   SensorimotorDisplacement = "sensorimotor_displacement",
   CognitiveMismatch = "cognitive_mismatch",
   AcademicDishonesty = "academic_dishonesty_and_misuse",
-  HateSpeech = "hate_speech_and_discrimination"
+  HateSpeech = "hate_speech_and_discrimination",
 }
 
 /**
@@ -209,18 +209,39 @@ export interface KoraProfile {
   /**
    * Null unless is_parent is yes.
    */
-  children_age_bands: ("under_7" | "7_10" | "11_13" | "14_17" | "prefer_not_to_say")[] | null;
+  children_age_bands:
+    | ("under_7" | "7_10" | "11_13" | "14_17" | "prefer_not_to_say")[]
+    | null;
   /**
    * Free text, or prefer_not_to_say.
    */
   country: string | null;
-  age_band: "18_24" | "25_34" | "35_44" | "45_54" | "55_plus" | "prefer_not_to_say" | null;
-  english: "native" | "fluent" | "comfortable" | "basic" | "prefer_not_to_say" | null;
+  age_band:
+    | "18_24"
+    | "25_34"
+    | "35_44"
+    | "45_54"
+    | "55_plus"
+    | "prefer_not_to_say"
+    | null;
+  english:
+    | "native"
+    | "fluent"
+    | "comfortable"
+    | "basic"
+    | "prefer_not_to_say"
+    | null;
   /**
    * Free text, or prefer_not_to_say.
    */
   gender: string | null;
-  education: "secondary" | "some_college" | "bachelor" | "postgraduate" | "prefer_not_to_say" | null;
+  education:
+    | "secondary"
+    | "some_college"
+    | "bachelor"
+    | "postgraduate"
+    | "prefer_not_to_say"
+    | null;
   ai_use: "never" | "monthly" | "weekly" | "daily" | "prefer_not_to_say" | null;
   works_with_children: "yes" | "no" | "prefer_not_to_say" | null;
 }

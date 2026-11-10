@@ -35,20 +35,32 @@ export function createSaver<T>(o: SaverOptions<T>): Saver {
   let changedDuringFlight = false;
   let lastError: unknown = null;
 
-  const clearTimer = () => { if (timer !== null) { clearTimeout(timer); timer = null; } };
+  const clearTimer = () => {
+    if (timer !== null) {
+      clearTimeout(timer);
+      timer = null;
+    }
+  };
 
   function run(): Promise<SaveOutcome> {
     if (inflight) return inflight;
     dirty = false;
     changedDuringFlight = false;
     let value: T;
-    try { value = o.build(); }
-    catch (e) { dirty = true; return Promise.reject(e); }
+    try {
+      value = o.build();
+    } catch (e) {
+      dirty = true;
+      return Promise.reject(e);
+    }
     const p = (async (): Promise<SaveOutcome> => {
       try {
         await o.save(value);
         lastError = null;
-        if (failed) { failed = false; if (!disposed) o.onRecovered(); }
+        if (failed) {
+          failed = false;
+          if (!disposed) o.onRecovered();
+        }
         return "saved";
       } catch (e) {
         lastError = e;
@@ -59,12 +71,17 @@ export function createSaver<T>(o: SaverOptions<T>): Saver {
       }
     })();
     inflight = p;
-    p.then(outcome => {
+    p.then((outcome) => {
       inflight = null;
       if (disposed) return;
       // Changes arrived mid-save and their debounce has already fired: save them now.
       // After a failure, only a change made during the failed save triggers the retry.
-      if (dirty && timer === null && (outcome === "saved" || changedDuringFlight)) void run();
+      if (
+        dirty &&
+        timer === null &&
+        (outcome === "saved" || changedDuringFlight)
+      )
+        void run();
     });
     return p;
   }
@@ -75,7 +92,10 @@ export function createSaver<T>(o: SaverOptions<T>): Saver {
       dirty = true;
       if (inflight) changedDuringFlight = true;
       clearTimer();
-      timer = setTimeout(() => { timer = null; if (!inflight) void run(); }, delay);
+      timer = setTimeout(() => {
+        timer = null;
+        if (!inflight) void run();
+      }, delay);
     },
     async flush() {
       clearTimer();
@@ -88,7 +108,12 @@ export function createSaver<T>(o: SaverOptions<T>): Saver {
       const outcome = await run();
       if (outcome === "failed") throw lastError ?? new Error("Save failed.");
     },
-    dispose() { disposed = true; clearTimer(); },
-    get dirty() { return dirty; },
+    dispose() {
+      disposed = true;
+      clearTimer();
+    },
+    get dirty() {
+      return dirty;
+    },
   };
 }

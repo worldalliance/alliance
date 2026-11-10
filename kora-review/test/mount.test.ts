@@ -1,25 +1,39 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createHash } from "node:crypto";
-import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
-import {
-  mountKoraReview, exportSchema, KoraSaveState,
-  type KoraAssignment, type KoraExport, type KoraReviewHandle, type KoraReviewOptions, type KoraTranscript,
-} from "../src/index.js";
-import samplePairs from "../samples/transcripts.json";
+import Ajv2020 from "ajv/dist/2020.js";
+import { createHash } from "node:crypto";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import sampleExport from "../samples/export.json";
+import samplePairs from "../samples/transcripts.json";
+import {
+  exportSchema,
+  KoraSaveState,
+  mountKoraReview,
+  type KoraAssignment,
+  type KoraExport,
+  type KoraReviewHandle,
+  type KoraReviewOptions,
+  type KoraTranscript,
+} from "../src/index.js";
 
 const ajv = new Ajv2020({ strict: true, allErrors: true });
 addFormats(ajv);
 const validExport = ajv.compile(exportSchema);
-const expectValid = (e: KoraExport) => expect(validExport(e), JSON.stringify(validExport.errors)).toBe(true);
+const expectValid = (e: KoraExport) =>
+  expect(validExport(e), JSON.stringify(validExport.errors)).toBe(true);
 
 const pairs = samplePairs as KoraTranscript[];
-const hash = (t: KoraTranscript) => "sha256:" + createHash("sha256").update(JSON.stringify(t)).digest("hex");
-const assignment = (ids: string[], batchId = "sample-assignment-1"): KoraAssignment => ({
+const hash = (t: KoraTranscript) =>
+  "sha256:" + createHash("sha256").update(JSON.stringify(t)).digest("hex");
+const assignment = (
+  ids: string[],
+  batchId = "sample-assignment-1",
+): KoraAssignment => ({
   batchId,
-  transcripts: ids.map(id => { const t = pairs.find(p => p.transcriptId === id)!; return { transcript: t, contentHash: hash(t) }; }),
+  transcripts: ids.map((id) => {
+    const t = pairs.find((p) => p.transcriptId === id)!;
+    return { transcript: t, contentHash: hash(t) };
+  }),
 });
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
 
@@ -33,7 +47,9 @@ function mount(over: Partial<KoraReviewOptions> = {}) {
     savedExport: null,
     collectProfile: false,
     collectExitSurvey: false,
-    save: vi.fn(async (e: KoraExport) => { saves.push(clone(e)); }),
+    save: vi.fn(async (e: KoraExport) => {
+      saves.push(clone(e));
+    }),
     onComplete: vi.fn(),
     onSaveStateChange: vi.fn(),
     ...over,
@@ -43,8 +59,17 @@ function mount(over: Partial<KoraReviewOptions> = {}) {
 }
 const buttons = (root: ParentNode = el) => [...root.querySelectorAll("button")];
 const button = (text: string | RegExp, root: ParentNode = el) => {
-  const b = buttons(root).find(x => typeof text === "string" ? x.textContent?.trim() === text : text.test(x.textContent ?? ""));
-  if (!b) throw new Error(`No button "${String(text)}". Have: ${buttons(root).map(x => x.textContent?.trim()).join(" | ")}`);
+  const b = buttons(root).find((x) =>
+    typeof text === "string"
+      ? x.textContent?.trim() === text
+      : text.test(x.textContent ?? ""),
+  );
+  if (!b)
+    throw new Error(
+      `No button "${String(text)}". Have: ${buttons(root)
+        .map((x) => x.textContent?.trim())
+        .join(" | ")}`,
+    );
   return b;
 };
 const sheet = () => el.querySelector(".kr-sheet") as HTMLElement;
@@ -56,7 +81,12 @@ beforeEach(() => {
   document.body.innerHTML = "";
   el = document.createElement("div");
   document.body.append(el);
-  vi.stubGlobal("fetch", vi.fn(() => { throw new Error("The tool must not make network requests."); }));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => {
+      throw new Error("The tool must not make network requests.");
+    }),
+  );
 });
 afterEach(() => {
   handle?.unmount();
@@ -75,11 +105,15 @@ describe("mountKoraReview", () => {
     expect(el.querySelector(".ctx h1")?.textContent).toBe("Essay due tomorrow");
     expect(sheet().hidden).toBe(false);
     // Saved answers are restored; the comparison isn't answered yet, so it shows the pre-fill from the marks.
-    const groups = [...sheet().querySelectorAll(".seg")].map(g => g.querySelector('[aria-pressed="true"]')?.textContent);
+    const groups = [...sheet().querySelectorAll(".seg")].map(
+      (g) => g.querySelector('[aria-pressed="true"]')?.textContent,
+    );
     expect(groups.slice(0, 2).sort()).toEqual(["Safe", "Unsafe"]);
     // The saved mark is drawn, with its note in the list.
     expect(el.querySelectorAll(".tk.neg").length).toBeGreaterThan(0);
-    expect(el.querySelector(".ann-n")?.textContent).toContain("Tells the child to hand in its work");
+    expect(el.querySelector(".ann-n")?.textContent).toContain(
+      "Tells the child to hand in its work",
+    );
     expect(el.textContent).toContain("1 of 3 reviewed");
 
     // Nothing is saved just for mounting.
@@ -87,23 +121,37 @@ describe("mountKoraReview", () => {
     expect(saves).toHaveLength(0);
 
     // Re-picking an answer the reviewer already gave is a change: the export round-trips.
-    const safe = [...sheet().querySelectorAll('button[aria-pressed="true"]')].find(b => b.textContent === "Safe") as HTMLButtonElement;
+    const safe = [
+      ...sheet().querySelectorAll('button[aria-pressed="true"]'),
+    ].find((b) => b.textContent === "Safe") as HTMLButtonElement;
     safe.click();
     await handle!.flush();
     expect(saves).toHaveLength(1);
     const out = saves[0]!;
     expectValid(out);
-    const strip = (e: KoraExport) => ({ ...e, exportedAt: "", results: e.results.map(r => ({ ...r, timeMs: 0 })) });
+    const strip = (e: KoraExport) => ({
+      ...e,
+      exportedAt: "",
+      results: e.results.map((r) => ({ ...r, timeMs: 0 })),
+    });
     expect(strip(out)).toEqual(strip(saved));
   });
 
   it("debounces saves to about two seconds after the last change, one in flight at a time", async () => {
     let release!: () => void;
-    let inFlight = 0, max = 0;
+    let inFlight = 0,
+      max = 0;
     const opts = mount({
       save: vi.fn((e: KoraExport) => {
-        saves.push(clone(e)); inFlight++; max = Math.max(max, inFlight);
-        return new Promise<void>(res => { release = () => { inFlight--; res(); }; });
+        saves.push(clone(e));
+        inFlight++;
+        max = Math.max(max, inFlight);
+        return new Promise<void>((res) => {
+          release = () => {
+            inFlight--;
+            res();
+          };
+        });
       }),
     });
     button("Start reviewing").click();
@@ -128,13 +176,18 @@ describe("mountKoraReview", () => {
     await tick(0);
     expect(max).toBe(1);
     expectValid(saves[1]!);
-    expect(Object.keys(saves[1]!.results[0]!).filter(k => k.startsWith("q"))).toHaveLength(1);
+    expect(
+      Object.keys(saves[1]!.results[0]!).filter((k) => k.startsWith("q")),
+    ).toHaveLength(1);
   });
 
   it("keeps working after a failed save, and reports Failed then Saved", async () => {
     let refuse = true;
     const opts = mount({
-      save: vi.fn(async (e: KoraExport) => { if (refuse) throw new Error("refused"); saves.push(clone(e)); }),
+      save: vi.fn(async (e: KoraExport) => {
+        if (refuse) throw new Error("refused");
+        saves.push(clone(e));
+      }),
     });
     button("Start reviewing").click();
     await tick(10);
@@ -148,7 +201,9 @@ describe("mountKoraReview", () => {
     await tick(50);
     button("Unsafe", sheet()).click();
     await tick(2100);
-    expect(opts.onSaveStateChange).toHaveBeenLastCalledWith(KoraSaveState.Saved);
+    expect(opts.onSaveStateChange).toHaveBeenLastCalledWith(
+      KoraSaveState.Saved,
+    );
     expect(opts.onSaveStateChange).toHaveBeenCalledTimes(2);
     expect(saves).toHaveLength(1);
     expect(saves[0]!.results[0]!.startedAt).not.toBeNull(); // nothing from before the failure was lost
@@ -156,7 +211,10 @@ describe("mountKoraReview", () => {
   });
 
   it("fires onComplete exactly once, after the exit survey and a save", async () => {
-    const opts = mount({ assignment: assignment(["SAMPLE-01"]), collectExitSurvey: true });
+    const opts = mount({
+      assignment: assignment(["SAMPLE-01"]),
+      collectExitSurvey: true,
+    });
     button("Start reviewing").click();
     await tick(10);
     button("Got it").click();
@@ -164,7 +222,12 @@ describe("mountKoraReview", () => {
     button("Ready to Rank A vs B").click();
     await tick(50);
     // Both AIs: Safe. Then which was safer, then why.
-    for (const b of [...sheet().querySelectorAll("button")].filter(x => x.textContent === "Safe")) { b.click(); await tick(0); }
+    for (const b of [...sheet().querySelectorAll("button")].filter(
+      (x) => x.textContent === "Safe",
+    )) {
+      b.click();
+      await tick(0);
+    }
     button("Clearly A", sheet()).click();
     await tick(0);
     const reason = sheet().querySelector("textarea") as HTMLTextAreaElement;
@@ -187,8 +250,13 @@ describe("mountKoraReview", () => {
     expect(last.results[0]!.status).toBe("done");
     expectValid(last);
     // onComplete came after the save that holds isDone.
-    const saveOrder = (opts.save as ReturnType<typeof vi.fn>).mock.invocationCallOrder.at(-1)!;
-    expect(saveOrder).toBeLessThan((opts.onComplete as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0]!);
+    const saveOrder = (
+      opts.save as ReturnType<typeof vi.fn>
+    ).mock.invocationCallOrder.at(-1)!;
+    expect(saveOrder).toBeLessThan(
+      (opts.onComplete as ReturnType<typeof vi.fn>).mock
+        .invocationCallOrder[0]!,
+    );
 
     // Looking back at the pair and finishing again doesn't fire it twice.
     button("Open").click();
@@ -202,18 +270,26 @@ describe("mountKoraReview", () => {
     mount({ assignment: assignment(["SAMPLE-03", "SAMPLE-04", "SAMPLE-05"]) });
     button("Start reviewing").click();
     await tick(10);
-    expect(el.querySelector("h1")?.textContent).toContain("Violence and physical harm");
+    expect(el.querySelector("h1")?.textContent).toContain(
+      "Violence and physical harm",
+    );
     button("Skip this pair").click();
     await tick(50);
     expect(el.querySelector("h1")?.textContent).toContain("Fear and distress");
-    expect(el.querySelector('[aria-live="polite"]')?.textContent).toContain("Skipped this pair. 1 of 3 reviewed.");
+    expect(el.querySelector('[aria-live="polite"]')?.textContent).toContain(
+      "Skipped this pair. 1 of 3 reviewed.",
+    );
     button("Continue").click();
     await tick(10);
-    expect(el.querySelector(".ctx h1")?.textContent).toBe("Alone during a storm");
+    expect(el.querySelector(".ctx h1")?.textContent).toBe(
+      "Alone during a storm",
+    );
     await handle!.flush();
     const e = saves.at(-1)!;
     expectValid(e);
-    expect(e.results.find(r => r.transcriptId === "SAMPLE-03")!.optedOut).toBe(true);
+    expect(
+      e.results.find((r) => r.transcriptId === "SAMPLE-03")!.optedOut,
+    ).toBe(true);
     expect(e.optOutCategories).toEqual([]);
   });
 
@@ -222,7 +298,8 @@ describe("mountKoraReview", () => {
     button("Start reviewing").click();
     await tick(10);
     const groups = [...el.querySelectorAll("fieldset")];
-    for (const g of groups) expect(g.textContent).toContain("Prefer not to say");
+    for (const g of groups)
+      expect(g.textContent).toContain("Prefer not to say");
     expect(el.querySelectorAll(".chk").length).toBe(2); // the two free-text questions
     button("Continue").click();
     expect(el.querySelector(".err")?.textContent).toMatch(/Please answer/);

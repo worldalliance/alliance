@@ -113,9 +113,7 @@
   ],
   "profile": {
     "is_parent": "yes",
-    "children_age_bands": [
-      "7_10"
-    ],
+    "children_age_bands": ["7_10"],
     "country": "prefer_not_to_say",
     "age_band": "35_44",
     "english": "fluent",

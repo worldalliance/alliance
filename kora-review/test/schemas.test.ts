@@ -1,17 +1,25 @@
-import { describe, expect, it } from "vitest";
-import { execFileSync } from "node:child_process";
-import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
-import { exportSchema, transcriptSchema, SCHEMA_VERSION, KoraCategory } from "../src/index.js";
-import sampleTranscript from "../samples/transcript.json";
+import Ajv2020 from "ajv/dist/2020.js";
+import { execFileSync } from "node:child_process";
+import { describe, expect, it } from "vitest";
 import sampleExport from "../samples/export.json";
+import sampleTranscript from "../samples/transcript.json";
 import samplePairs from "../samples/transcripts.json";
+import {
+  exportSchema,
+  KoraCategory,
+  SCHEMA_VERSION,
+  transcriptSchema,
+} from "../src/index.js";
 
 // The same setup a host would use: ajv's draft 2020-12 build, strict mode on, with date-time formats.
 function compile() {
   const ajv = new Ajv2020({ strict: true, allErrors: true });
   addFormats(ajv);
-  return { transcript: ajv.compile(transcriptSchema), exported: ajv.compile(exportSchema) };
+  return {
+    transcript: ajv.compile(transcriptSchema),
+    exported: ajv.compile(exportSchema),
+  };
 }
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
 
@@ -24,13 +32,21 @@ describe("schemas", () => {
   });
 
   it("accept the sample transcript and every sample pair", () => {
-    expect(v.transcript(sampleTranscript), JSON.stringify(v.transcript.errors)).toBe(true);
-    for (const t of samplePairs) expect(v.transcript(t), JSON.stringify(v.transcript.errors)).toBe(true);
+    expect(
+      v.transcript(sampleTranscript),
+      JSON.stringify(v.transcript.errors),
+    ).toBe(true);
+    for (const t of samplePairs)
+      expect(v.transcript(t), JSON.stringify(v.transcript.errors)).toBe(true);
   });
 
   it("accept the sample export, which holds a partly answered pending result", () => {
-    expect(v.exported(sampleExport), JSON.stringify(v.exported.errors)).toBe(true);
-    const pending = sampleExport.results.find(r => r.status === "pending" && "q0_a" in r);
+    expect(v.exported(sampleExport), JSON.stringify(v.exported.errors)).toBe(
+      true,
+    );
+    const pending = sampleExport.results.find(
+      (r) => r.status === "pending" && "q0_a" in r,
+    );
     expect(pending).toBeTruthy();
     expect(pending).not.toHaveProperty("q1");
   });
@@ -69,7 +85,9 @@ describe("schemas", () => {
   });
 
   it("reject an unknown category and a malformed contentHash", () => {
-    expect(v.transcript({ ...clone(sampleTranscript), category: "homework-help" })).toBe(false);
+    expect(
+      v.transcript({ ...clone(sampleTranscript), category: "homework-help" }),
+    ).toBe(false);
     const e = clone(sampleExport);
     e.results[0].contentHash = "abc";
     expect(v.exported(e)).toBe(false);
@@ -77,15 +95,25 @@ describe("schemas", () => {
 
   it("list exactly the ten category ids", () => {
     expect(Object.values(KoraCategory).sort()).toEqual([
-      "academic_dishonesty_and_misuse", "cognitive_atrophy_and_dependency", "cognitive_mismatch",
-      "factual_hallucinations_and_misinformation", "fear_trauma_and_distress", "hate_speech_and_discrimination",
-      "privacy_and_personal_data_protection", "sensorimotor_displacement", "undermining_authority_and_trust",
+      "academic_dishonesty_and_misuse",
+      "cognitive_atrophy_and_dependency",
+      "cognitive_mismatch",
+      "factual_hallucinations_and_misinformation",
+      "fear_trauma_and_distress",
+      "hate_speech_and_discrimination",
+      "privacy_and_personal_data_protection",
+      "sensorimotor_displacement",
+      "undermining_authority_and_trust",
       "violence_and_physical_harm",
     ]);
     expect(sampleExport.schemaVersion).toBe(SCHEMA_VERSION);
   });
 
   it("have generated types that match the schemas", () => {
-    expect(() => execFileSync(process.execPath, ["scripts/gen-types.mjs", "--check"], { stdio: "pipe" })).not.toThrow();
+    expect(() =>
+      execFileSync(process.execPath, ["scripts/gen-types.mjs", "--check"], {
+        stdio: "pipe",
+      }),
+    ).not.toThrow();
   });
 });

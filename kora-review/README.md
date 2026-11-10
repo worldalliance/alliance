@@ -28,19 +28,19 @@ import { mountKoraReview, KoraSaveState } from "korabench-review";
 import "korabench-review/style.css";
 
 const handle = mountKoraReview(document.getElementById("review")!, {
-  reviewerId: "rv_8f3a2c71",          // opaque; never a name, email or phone number
+  reviewerId: "rv_8f3a2c71", // opaque; never a name, email or phone number
   assignment: {
-    batchId: "asg_2026_11_10_001",   // echoed as the export's batchId
+    batchId: "asg_2026_11_10_001", // echoed as the export's batchId
     transcripts: [
       { transcript, contentHash: "sha256:…" }, // one per assigned pair, in the order to show them
     ],
   },
-  savedExport: storedExportOrNull,   // resume exactly where the reviewer left off
-  collectProfile: true,              // false once this reviewer has answered the profile questions
+  savedExport: storedExportOrNull, // resume exactly where the reviewer left off
+  collectProfile: true, // false once this reviewer has answered the profile questions
   collectExitSurvey: true,
-  save: exported => api.saveExport(exported),             // reject to refuse; the tool keeps everything and retries
-  onComplete: () => showThankYou(),                       // once per mount
-  onSaveStateChange: s => setSaveError(s === KoraSaveState.Failed),
+  save: (exported) => api.saveExport(exported), // reject to refuse; the tool keeps everything and retries
+  onComplete: () => showThankYou(), // once per mount
+  onSaveStateChange: (s) => setSaveError(s === KoraSaveState.Failed),
 });
 
 // Before navigating away:
@@ -52,17 +52,17 @@ In React, own only the container and mount in an effect. See [example/src/KoraRe
 
 ### API
 
-| Export | What it is |
-| --- | --- |
-| `mountKoraReview(element, options)` | Adds the tool inside `element` and returns a `KoraReviewHandle`. Throws a `TypeError` for malformed options, a `savedExport` from another `reviewerId` or `batchId`, or a `schemaVersion` it can't read. |
-| `KoraReviewOptions` | `reviewerId`, `assignment`, `savedExport`, `collectProfile`, `collectExitSurvey`, `save`, `onComplete`, `onSaveStateChange`. |
-| `KoraAssignment`, `KoraAssignedTranscript` | `{ batchId, transcripts: [{ transcript, contentHash }] }`. `contentHash` is `"sha256:<64 hex>"` and is echoed unchanged. |
-| `KoraReviewHandle` | `flush()` saves anything pending now and rejects if that save fails. `unmount()` removes the tool and its listeners; unsaved changes are dropped, so flush first. |
-| `KoraSaveState` | `Saved` and `Failed`. |
-| `transcriptSchema`, `exportSchema` | JSON Schema draft 2020-12 objects. |
-| `SCHEMA_VERSION` | `2`. |
-| `KoraCategory` | Enum of the ten category ids. |
-| `KoraTranscript`, `KoraExport` and their parts | Types generated from the schemas. |
+| Export                                         | What it is                                                                                                                                                                                               |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mountKoraReview(element, options)`            | Adds the tool inside `element` and returns a `KoraReviewHandle`. Throws a `TypeError` for malformed options, a `savedExport` from another `reviewerId` or `batchId`, or a `schemaVersion` it can't read. |
+| `KoraReviewOptions`                            | `reviewerId`, `assignment`, `savedExport`, `collectProfile`, `collectExitSurvey`, `save`, `onComplete`, `onSaveStateChange`.                                                                             |
+| `KoraAssignment`, `KoraAssignedTranscript`     | `{ batchId, transcripts: [{ transcript, contentHash }] }`. `contentHash` is `"sha256:<64 hex>"` and is echoed unchanged.                                                                                 |
+| `KoraReviewHandle`                             | `flush()` saves anything pending now and rejects if that save fails. `unmount()` removes the tool and its listeners; unsaved changes are dropped, so flush first.                                        |
+| `KoraSaveState`                                | `Saved` and `Failed`.                                                                                                                                                                                    |
+| `transcriptSchema`, `exportSchema`             | JSON Schema draft 2020-12 objects.                                                                                                                                                                       |
+| `SCHEMA_VERSION`                               | `2`.                                                                                                                                                                                                     |
+| `KoraCategory`                                 | Enum of the ten category ids.                                                                                                                                                                            |
+| `KoraTranscript`, `KoraExport` and their parts | Types generated from the schemas.                                                                                                                                                                        |
 
 ### Behaviour
 
@@ -78,21 +78,21 @@ In React, own only the container and mount in an effect. See [example/src/KoraRe
 
 Set any of these on the mount element or an ancestor. Unset ones keep KORA's look.
 
-| Property | Default (light) | Used for |
-| --- | --- | --- |
-| `--kora-color-background` | `#F1F3F8` | Page background |
-| `--kora-color-surface` | `#FFFFFF` | Cards, AI replies, sheets |
-| `--kora-color-text` / `--kora-color-text-muted` | `#151A2D` / `#566079` | Text |
-| `--kora-color-border` | `#D6DBE6` | Borders |
-| `--kora-color-accent` / `--kora-color-accent-text` / `--kora-color-accent-soft` | `#2B45D2` / `#FFFFFF` / `#E1E6FF` | Primary buttons, focus, links |
-| `--kora-color-positive` / `--kora-color-positive-soft` | `#0A7A54` / `#CBEEDD` | +1 marks |
-| `--kora-color-negative` / `--kora-color-negative-soft` | `#BE2235` / `#FAD6DA` | −1 marks |
-| `--kora-color-neutral`, `--kora-color-on-semantic`, `--kora-color-highlight` | `#876000`, `#FFFFFF`, `#FFE14D` | Hints, text on +1/−1 buttons, the selection |
-| `--kora-color-child-bubble`, `--kora-color-code` | `#E2E6F0`, `#ECEFF6` | Child messages, code |
-| `--kora-radius` / `--kora-radius-large` | `12px` / `18px` | Controls / cards and sheets |
-| `--kora-font-family` / `--kora-font-family-display` / `--kora-font-family-mono` | Atkinson Hyperlegible / Bricolage Grotesque / JetBrains Mono (bundled) | Text |
-| `--kora-top-offset` | `0px` | Height of a sticky host header, so the tool's sticky header sits below it |
-| `--kora-z-index` | `0` | Base added to the tool's layers (sticky header 20, footer 20, sheet 40, toasts 50, question intro 60) |
+| Property                                                                        | Default (light)                                                        | Used for                                                                                              |
+| ------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `--kora-color-background`                                                       | `#F1F3F8`                                                              | Page background                                                                                       |
+| `--kora-color-surface`                                                          | `#FFFFFF`                                                              | Cards, AI replies, sheets                                                                             |
+| `--kora-color-text` / `--kora-color-text-muted`                                 | `#151A2D` / `#566079`                                                  | Text                                                                                                  |
+| `--kora-color-border`                                                           | `#D6DBE6`                                                              | Borders                                                                                               |
+| `--kora-color-accent` / `--kora-color-accent-text` / `--kora-color-accent-soft` | `#2B45D2` / `#FFFFFF` / `#E1E6FF`                                      | Primary buttons, focus, links                                                                         |
+| `--kora-color-positive` / `--kora-color-positive-soft`                          | `#0A7A54` / `#CBEEDD`                                                  | +1 marks                                                                                              |
+| `--kora-color-negative` / `--kora-color-negative-soft`                          | `#BE2235` / `#FAD6DA`                                                  | −1 marks                                                                                              |
+| `--kora-color-neutral`, `--kora-color-on-semantic`, `--kora-color-highlight`    | `#876000`, `#FFFFFF`, `#FFE14D`                                        | Hints, text on +1/−1 buttons, the selection                                                           |
+| `--kora-color-child-bubble`, `--kora-color-code`                                | `#E2E6F0`, `#ECEFF6`                                                   | Child messages, code                                                                                  |
+| `--kora-radius` / `--kora-radius-large`                                         | `12px` / `18px`                                                        | Controls / cards and sheets                                                                           |
+| `--kora-font-family` / `--kora-font-family-display` / `--kora-font-family-mono` | Atkinson Hyperlegible / Bricolage Grotesque / JetBrains Mono (bundled) | Text                                                                                                  |
+| `--kora-top-offset`                                                             | `0px`                                                                  | Height of a sticky host header, so the tool's sticky header sits below it                             |
+| `--kora-z-index`                                                                | `0`                                                                    | Base added to the tool's layers (sticky header 20, footer 20, sheet 40, toasts 50, question intro 60) |
 
 The colour scheme follows `prefers-color-scheme`. To force one, put `data-kora-theme="light"` or `"dark"` on an ancestor. Colour overrides apply in both schemes, so a host that sets colours should also set `data-kora-theme`.
 
