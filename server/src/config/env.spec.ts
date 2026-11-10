@@ -4,6 +4,9 @@ import {
 } from "@alliance/common/deployed-config";
 import { NodeEnv } from "@alliance/common/node-env";
 import { afterEach, describe, expect, it } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { z } from "zod";
 import { env, requireEnv, validateServerEnv } from "./env";
 
 const base = {
@@ -189,6 +192,34 @@ describe("validateServerEnv", () => {
           .sort(),
       );
     }
+  });
+
+  it("lists exactly development's secrets in scripts/dev-secrets.json", () => {
+    const local = new Set([
+      "DB_HOST",
+      "DB_NAME",
+      "DB_PASSWORD",
+      "DB_PORT",
+      "DB_USERNAME",
+      "APP_URL",
+      "ADMIN_URL",
+    ]);
+    const manifest = z
+      .object({ server: z.object({ secrets: z.array(z.string()) }) })
+      .parse(
+        JSON.parse(
+          readFileSync(
+            join(__dirname, "../../../scripts/dev-secrets.json"),
+            "utf8",
+          ),
+        ),
+      );
+    const missing = problems({ NODE_ENV: "development" }).map(
+      (line) => line.split(":")[0],
+    );
+    expect(manifest.server.secrets.sort()).toEqual(
+      missing.filter((key) => !local.has(key)).sort(),
+    );
   });
 
   it("parses each deployed environment's committed values", () => {

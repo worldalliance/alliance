@@ -28,6 +28,11 @@ Drops and recreates the local db named by `server/.env`, then restores the dump 
 `disable_action_update_texts_emails.sh [staging|prod] [--apply]`
 Turns "Action updates" texts and emails off for every account, except where the member chose a setting themselves. Runs over SSH from the staging host, which holds both databases' credentials. Without `--apply` it rolls back and only prints before/after counts. Override `SSH_HOST_ALIAS`, `REMOTE_ENV_FILE`.
 
+## Secrets
+
+`with-secrets.sh <consumer> <command...>`
+Runs a command with the consumer's dev secrets from `/alliance/dev/<consumer>/` in AWS SSM Parameter Store, read with the person's `alliance-dev` login. `dev-secrets.json` lists each consumer's keys. Setup, adding a secret and the fallback flag: `docs/local-secrets.md`.
+
 ## Deploy
 
 `deploy_backend.sh`
