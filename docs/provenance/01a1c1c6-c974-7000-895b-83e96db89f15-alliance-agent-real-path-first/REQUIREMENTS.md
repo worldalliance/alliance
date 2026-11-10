@@ -3,7 +3,7 @@ user: Charles Lien
 task: Go with the build order and test strategy the research agents recommended for the Alliance agent desktop app's agent sessions
 ---
 
-This task supersedes the order of the PR plan in `docs/provenance/01a1a949-c8f1-7000-9631-5610045dff02-alliance-agent-desktop-app/`, and the hand-written scripts of the fake backend in `docs/provenance/01a1ae9f-f048-7000-9755-74cef3cbc0e8-alliance-agent-session-interface/` once it replays captures.
+This task supersedes the order of the PR plan and, for `common/src/result.ts` only, the requirement that the app imports nothing from `common/`, both in `docs/provenance/01a1a949-c8f1-7000-9631-5610045dff02-alliance-agent-desktop-app/`, and the hand-written scripts of the fake backend in `docs/provenance/01a1ae9f-f048-7000-9755-74cef3cbc0e8-alliance-agent-session-interface/` once it replays captures.
 
 ## Build order
 
@@ -17,3 +17,7 @@ This task supersedes the order of the PR plan in `docs/provenance/01a1a949-c8f1-
 - Every PR that runs the desktop app's CI runs parser tests on the captures, Playwright tests of the built app against the fake backend, and a schema comparison against the pinned Codex version. (agent-proposed, user-approved)
 - Every such PR also runs a few scenarios of the real pinned CLI against a stub model endpoint, if a spike shows both CLIs can finish a turn against a stub without a login. (agent-proposed, user-approved)
 - Each CLI version bump, and a schedule once CI has a credential, runs live smoke tests against the real service and recaptures output, comparing event shape rather than text. (agent-proposed, user-approved)
+
+## Shared code
+
+- The desktop app imports the `Result` helper from `common/src/result.ts` by relative import and keeps no copy. This replaces, for this one file only, the requirement in `docs/provenance/01a1a949-c8f1-7000-9631-5610045dff02-alliance-agent-desktop-app/` that the app imports nothing from `common/`. Everything else in `common/` stays off limits. (agent-proposed, user-approved)

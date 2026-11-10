@@ -47,6 +47,55 @@ opcode has Rust unit tests in two source files, none of the practices above, and
 
 Sources disagree on live tests: the Claude Agent Python SDK runs them on same-repo PRs, while [Codex](https://github.com/openai/codex/blob/27fcd7cbed/codex-rs/core/tests/suite/live_cli.rs) ignores them by default "so CI stays deterministic and free".
 
+## Research: how an isolated app consumes one shared helper
+
+Question: how should a separately installed desktop app inside a monorepo use one small helper from the repository's shared package: a file symlink, a relative import, a workspace or local package dependency, a copy kept in step by an equality test or a sync script, a copy allowed to diverge, or a published package? One Codex agent researched it on 2026-11-09, from a brief that did not name a recommended option. It found no industry standard prescribing this. It read four projects, as historical snapshots through `gh api` rather than a prevalence survey, and they are too unlike the question to show a majority for any mechanism. It verified no example of keeping copies in step with an equality test.
+
+### Guidance
+
+| Finding | Status | Source |
+| --- | --- | --- |
+| Project linking and internal packages favor named packages; Turborepo also supports unpublished internal packages | Vendor recommendation | [Nx](https://nx.dev/docs/kb/typescript-project-linking), [Turborepo](https://turborepo.dev/docs/core-concepts/internal-packages) |
+| Dependencies must be declared | Vendor recommendation | [Bazel dependencies](https://bazel.build/concepts/dependencies), [visibility](https://bazel.build/concepts/visibility) |
+| Separately installed tooling is supported, though autoinstallers don't build source | Vendor documentation | [Rush](https://rushjs.io/pages/maintainer/autoinstallers/) |
+| Package managers differ on local dependencies: Bun's `file:` copies and installs dependencies and its `link:` doesn't install them, pnpm's `file:` hard-links, Yarn's `link:` can't target packages and its `portal:` can | Vendor documentation | [npm workspaces](https://docs.npmjs.com/cli/v11/using-npm/workspaces/), [pnpm workspaces](https://pnpm.io/workspaces/), [Bun workspaces](https://bun.com/docs/pm/workspaces), [Yarn workspaces](https://yarnpkg.com/features/workspaces), [Bun `file:`](https://bun.com/docs/pm/cli/link#linking-a-directory-by-path), [pnpm `file:`](https://pnpm.io/cli/link), [Yarn `link:`](https://yarnpkg.com/protocol/link), [Yarn `portal:`](https://yarnpkg.com/protocol/portal) |
+| `rootDir` governs emission, not inclusion; project references require composite projects and declarations | Vendor documentation | [`rootDir`](https://www.typescriptlang.org/tsconfig/rootDir.html), [project references](https://www.typescriptlang.org/docs/handbook/project-references.html) |
+| Preserving symlinks changes module resolution and identity | Vendor documentation | [TypeScript](https://www.typescriptlang.org/tsconfig/preserveSymlinks.html), [Vite](https://vite.dev/config/shared-options.html#resolve-preservesymlinks), [Rollup](https://rollupjs.org/configuration-options/#preservesymlinks) |
+| Electron packaging describes which files ship, and electron-vite externalizes main and preload production dependencies by default | Vendor documentation | [Electron ASAR](https://www.electronjs.org/docs/latest/tutorial/asar-archives), [electron-builder v26](https://www.electron.build/v26/docs/contents/), [electron-vite](https://electron-vite.org/guide/dependency-handling) |
+| Git symlinks on Windows may need configuration or privileges, and `core.symlinks=false` produces text files | Vendor documentation | [Git for Windows](https://gitforwindows.org/symbolic-links.html), [git-config](https://git-scm.com/docs/git-config#Documentation/git-config.txt-coresymlinks) |
+| One repository supports discoverability and coordinated updates, with selection and tooling bias acknowledged. Read: abstract, introduction and validity section. It does not compare these options | Research-backed | [Google case study](https://storage.googleapis.com/gweb-research2023-media/pubtools/4479.pdf) |
+| Monorepos share source and dependencies | Common practice (published experience reports from Google and Meta) | [Google 2016](https://research.google/pubs/why-google-stores-billions-of-lines-of-code-in-a-single-repository/), [Meta](https://engineering.fb.com/2025/10/16/developer-tools/branching-in-a-sapling-monorepo/) |
+| DRY favors one authoritative representation of knowledge, while the other three tolerate copying under different conditions. These are heuristics rather than measured thresholds, and the synthesis is the agent's | Common practice (published practitioner guidance) | [DRY chapter](https://media.pragprog.com/titles/tpp20/dry.pdf), [Pike](https://go-proverbs.github.io/), [Fowler, *Refactoring* (1999), ch. 2, "The Rule of Three"](https://martinfowler.com/books/refactoring.html), [Metz](https://sandimetz.com/blog/2016/1/20/the-wrong-abstraction) |
+
+### Common practice
+
+Four projects, read at the given versions.
+
+| Project | Mechanism | Source |
+| --- | --- | --- |
+| VS Code 1.95.3 | Separate, centrally orchestrated installs, with a relative import of `../../automation` | [test/smoke/package.json](https://github.com/microsoft/vscode/blob/1.95.3/test/smoke/package.json), [src/main.ts](https://github.com/microsoft/vscode/blob/1.95.3/test/smoke/src/main.ts), [build/npm/postinstall.js](https://github.com/microsoft/vscode/blob/1.95.3/build/npm/postinstall.js) |
+| React v19.0.0 | `react-devtools` declares and uses `react-devtools-core` as a workspace package | [package.json](https://github.com/facebook/react/blob/v19.0.0/packages/react-devtools/package.json), [preload.js](https://github.com/facebook/react/blob/v19.0.0/packages/react-devtools/preload.js) |
+| Vite v6.0.0 | Explicitly copies Rollup helpers | [build.ts](https://github.com/vitejs/vite/blob/v6.0.0/packages/vite/src/node/build.ts#L1251) |
+| Puppeteer v23.9.0 | Re-exports `mitt` from `third_party` and bundles it during the build | [mitt.ts](https://github.com/puppeteer/puppeteer/blob/puppeteer-v23.9.0/packages/puppeteer-core/third_party/mitt/mitt.ts), [Herebyfile.mjs](https://github.com/puppeteer/puppeteer/blob/puppeteer-v23.9.0/packages/puppeteer-core/Herebyfile.mjs) |
+
+Only VS Code has the question's shape, a separately installed package importing code from elsewhere in its repository, and that package is a test harness rather than a shipped app. React's `react-devtools` is a member of the root workspace, and Vite and Puppeteer handle third-party code. VS Code runs against the named-package preference, and Vite shows deliberate copying.
+
+### Costs of each option
+
+Agent judgement, the researching agent's, inferred from the sources above.
+
+| Option | Tooling and CI | Packaging and cross-platform behavior | Removability and discoverability |
+| --- | --- | --- | --- |
+| File symlink | Resolution settings; track target changes | Bundle target; generally supported on Linux and macOS, with the Windows and `core.symlinks` limits above | Easy deletion; manifest hides the dependency |
+| Relative import | Folder-sensitive; CI must track the shared source | Bundle the import; repository checkout needed during the build; no Git symlink prerequisite | Easy deletion; explicit source path, absent from the manifest |
+| Workspace, `file:` or `link:` | Manifest graph; install and lockfile changes; the shared package's own dependencies may come along | Check externalization and manager-specific linking | Workspace membership adds cleanup; named imports improve discovery |
+| Copy with equality test | CI detects textual drift and humans recopy; equality does not establish correctness | Portable local source; the comparison needs the original | Easy if the check stays inside the app; mark the origin |
+| Copy with sync or codegen | Maintain a deterministic script and a CI freshness check | Committed output builds independently; regeneration needs the original | Keep the machinery local; identify the authoritative source |
+| Copy allowed to diverge | Own fixes and tests; upstream corrections need deliberate adoption | Self-contained ordinary source | Easy removal; identify the fork and its owner |
+| Published internal package | Release, version, registry and upgrade pipeline | Bundle or ship the dependency; no repository-relative paths | The app removes cleanly; the package lifecycle remains; named API |
+
+A narrow unpublished package avoids publication overhead but keeps local-install configuration. The researching agent recommended a relative import bundled into the release: an outward source dependency preserves separate installation and cheap deletion, at the cost of repository-layout coupling, CI triggers for the shared file and verification of the packaged application. That departs from Nx's general preference, to avoid package machinery for one isolated helper. Desktop-only checkout or build requirements would favor synchronized vendoring, and growing shared code or independent consumers would favor a small package.
+
 ## Measurements
 
 Spot checks on 2026-11-09 of claims the choice leans on, through `gh api` for other projects' code and locally for the rest:

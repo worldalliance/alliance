@@ -23,6 +23,12 @@ PR #923 was closed on 2026-11-06 and now conflicts with `main`, so the work retu
 
 Known gaps in the restored interface, assumed from the transcript review of the PR #923 sessions and unverified against the real CLIs: `start` takes only `cwd`, so the model and effort picker needs another parameter; sessions have no `close()`, deferred to ALL-2090, which ALL-2035 and ALL-2036 need; and `--session-id`, text block shape and interrupt behaviour come from reading vendor docs. The thin path checks the last group.
 
+## `Result` helper
+
+PR #923's copy of `common/src/result.ts` stays out, and the app imports the original (REQUIREMENTS.md, Shared code). The copy needed an equality test and a pointer in the root `AGENTS.md` to stay in step. The research found no industry standard, and of the four projects it read only VS Code, in its smoke-test harness, has this shape, with a relative import (EVIDENCE.md, "Research: how an isolated app consumes one shared helper"). Agent judgement from that research: a source import keeps the app's separate install and cheap deletion, with the dependency written where it is used, and spares one small helper a package's machinery. The helper already exists, so the reasons the sources give for tolerating a copy until an abstraction is proven don't apply. This departs from Nx's and Turborepo's preference for named packages, for that reason.
+
+The cost: the app is tied to the repository layout, so moving either side breaks the import and a build needs the whole checkout, and the import is unverified in a packaged build until ALL-2042 (macOS release), because nothing the app bundles imports the file yet. A desktop-only checkout would favor a synchronized copy, and more shared code or independent consumers would favor a small package.
+
 ## Stub endpoint tier
 
 The stub tier stays conditional because neither vendor documents base-URL overrides for test stubs, and it means emulating two wire protocols. If a pinned CLI can't finish a turn against a stub without a login, that tier drops for that CLI, leaving captures and live runs (agent proposal, from the research).
