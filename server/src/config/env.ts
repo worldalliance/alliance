@@ -103,7 +103,9 @@ const developmentCommitted: {
   [K in keyof typeof developmentEnv]: K extends ServerEnvKey ? string : never;
 } = developmentEnv;
 
-function committedEnv(nodeEnv: NodeEnv): Partial<Record<ServerEnvKey, string>> {
+export function committedEnv(
+  nodeEnv: NodeEnv,
+): Partial<Record<ServerEnvKey, string>> {
   if (nodeEnv === NodeEnv.Development) return developmentCommitted;
   const config = deployedConfigFor(nodeEnv);
   if (!config) return {};
@@ -168,8 +170,6 @@ export function twilioSignatureEnforcedFor(nodeEnv: NodeEnv): boolean {
   return isDeployed(nodeEnv);
 }
 
-// The staging and prod parameters hold no ADMIN_USER or ADMIN_PASSWORD, so
-// deployed servers never seed an admin.
 const deployedSet = [
   "APPLE_BUNDLE_ID",
   "APPLE_KEY_ID",
@@ -197,6 +197,64 @@ const deployedSet = [
   "TWILIO_AUTH_TOKEN",
   "TWILIO_PHONE_NUMBER",
 ] as const satisfies ServerEnvKey[];
+
+// Which keys /alliance/staging/server/ and /alliance/prod/server/ may hold:
+// never committed config, NODE_ENV (secrets_run.sh refuses to override it), dev
+// and test keys, or keys whose schema defaults suffice; ADMIN_USER there would
+// seed an admin on staging.
+const inDeployedStore: Record<ServerEnvKey, boolean> = {
+  NODE_ENV: false,
+  DB_HOST: true,
+  DB_PORT: false,
+  DB_USERNAME: true,
+  DB_PASSWORD: true,
+  DB_NAME: false,
+  TEST_DB_NAME: false,
+  DB_CA_CERT: false,
+  JWT_SECRET: true,
+  JWT_REFRESH_SECRET: true,
+  APP_URL: false,
+  ALT_APP_URL: false,
+  ADMIN_URL: false,
+  ALT_ADMIN_URL: false,
+  ADMIN_USER: false,
+  ADMIN_PASSWORD: false,
+  SEND_DEV_NOTIFS: false,
+  NOTIF_TEST_PHONE_NUMBER: true,
+  MAIL_FROM: false,
+  SMTP_HOST: true,
+  SMTP_USER: true,
+  SMTP_PASSWORD: true,
+  MAILGUN_SIGNING_KEY: true,
+  WAITLIST_PUBLIC_MAIL_DAILY_CAP: false,
+  TWILIO_ACCOUNT_SID: true,
+  TWILIO_AUTH_TOKEN: true,
+  TWILIO_PHONE_NUMBER: true,
+  EXPO_ACCESS_TOKEN: true,
+  SLACK_WEBHOOK_URL: true,
+  AWS_REGION: false,
+  ASSETS_BUCKET: true,
+  USE_CLOUDFRONT: false,
+  CLOUDFRONT_DOMAIN: false,
+  POSTHOG_KEY: false,
+  POSTHOG_QUERY_KEY: true,
+  POSTHOG_PROJECT_ID: false,
+  DEV_POSTHOG_ANALYTICS: false,
+  PANGRAM_API_KEY: true,
+  PANGRAM_API_URL: false,
+  USE_DEV_AI_DETECTION: false,
+  GOOGLE_CLIENT_ID: false,
+  GOOGLE_CLIENT_SECRET: true,
+  APPLE_TEAM_ID: false,
+  APPLE_KEY_ID: false,
+  APPLE_SERVICES_ID: false,
+  APPLE_BUNDLE_ID: false,
+  APPLE_PRIVATE_KEY_BASE64: true,
+};
+
+export const deployedStoreKeys = Object.entries(inDeployedStore).flatMap(
+  ([key, allowed]) => (allowed ? [key] : []),
+);
 
 // The keys the committed config, a checkout's own server/.env or Parameter
 // Store sets, flags aside; test has no store.

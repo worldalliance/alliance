@@ -52,6 +52,20 @@ The parameters hold only what the server reads, under the server's own names (`s
 
 Signed in to AWS as an admin (IAM Identity Center), set the parameter for each environment, then restart the backend (`pm2 restart nest-app`) or deploy; a running process keeps the values it started with.
 
+A new name also goes in the server's schema, `server/src/config/env.ts`. The `parameter-drift` workflow, run on PRs that change the schema and on every push to `main`, fails when `/alliance/<env>/server/` lacks a key the schema requires there or holds one that `inDeployedStore`, in the same file, leaves out of those paths. Nothing reruns it after a store edit, so dispatch it on `main` (Actions, Parameter drift, Run workflow) once you add or delete a parameter. Add a key in three steps, so neither the workflow nor a deploy fails in between:
+
+1. Merge its field as optional, with `inDeployedStore` true.
+2. Set the parameter in each environment.
+3. Make it required, in `deployedSet` or `setFor`.
+
+Remove a key the other way:
+
+1. Make it optional, until `bun scripts/check-parameter-drift.ts --required`, which needs no login, no longer lists it for that path (which can mean editing `fields` or `conditionallyRequired` as well as `deployedSet` or `setFor`), and stop reading it, then deploy.
+2. Delete the parameter.
+3. Remove its field and `inDeployedStore` entry.
+
+The startup check fails on a required key that's gone, and the workflow on one `inDeployedStore` no longer lists. Once the parameter is gone, a rollback to a release from before the first step fails at startup.
+
 In the console: **Systems Manager → Parameter Store**, open the parameter and **Edit**, or **Create parameter** with name `/alliance/<staging|prod>/server/<NAME>`, tier Standard, type SecureString, KMS key `alias/aws/ssm`. Parameter Store keeps each parameter's last 100 versions.
 
 From the CLI, keep the value out of shell history and argv by putting it in a file only you can read, with no trailing newline, and passing the file:

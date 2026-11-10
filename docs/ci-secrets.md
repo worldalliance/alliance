@@ -58,7 +58,7 @@ aws ssm put-parameter --region us-west-2 --type SecureString --overwrite \
 rm value.txt
 ```
 
-Staging's app store keys live under `/alliance/staging/ci/`. The next workflow run reads the new value. A new name also needs adding to its role in `terraform/ci-oidc.tf`.
+Staging's app store keys live under `/alliance/staging/ci/`. The next workflow run reads the new value. A new name also needs adding to its role in `terraform/ci-oidc.tf`. A name outside `/alliance/ci/` and `/alliance/staging/ci/` also needs adding to `CI_PATH` in `scripts/check-parameter-drift.ts`, or the `parameter-drift` workflow reports it as under no known consumer.
 
 ## When it fails
 

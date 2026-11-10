@@ -22,3 +22,8 @@
 - claude:c0dc6112-4a8b-4a62-bc1b-a58222c1dd32
 - claude:90b41bcb-72de-41bb-a87d-43c2edd8d944
 - claude:9a9d95fa-6812-4c3b-b7de-22b85404b4ad
+- claude:fdbd2d95-8ba8-42aa-bca6-49d78da5bc2d
+- claude:62a19c43-6d35-4a17-9b85-2b9fd69ff3fb
+- claude:b5d2df31-50c8-4961-b580-afd39b5fb82d
+- claude:00f15dab-8f11-4aa5-8e9c-2b83e1fb9ffc
+- claude:77980bec-9cfe-4fd7-8724-ab58d2f982b4
