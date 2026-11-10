@@ -1,5 +1,6 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { R, type Result } from "../../../../../../common/src/result";
+import { CLAUDE_CODE_VERSION } from "./protocol";
 
 export type ClaudeCli = {
   executable: string;
@@ -111,4 +112,49 @@ export function runClaude(
       ),
     );
   });
+}
+
+function withOutput(message: string, output: string): Error {
+  const tail = output.trim().slice(-2000);
+  return new Error(tail ? `${message}: ${tail}` : message);
+}
+
+export function failureOutput(command: string, exited: Exited): Error {
+  const ending =
+    exited.code === null
+      ? `was killed by ${exited.signal}`
+      : `exited with code ${exited.code}`;
+  return withOutput(
+    `${command} ${ending}`,
+    exited.stderr.trim() || exited.stdout,
+  );
+}
+
+export const queryTimeoutMs = 10_000;
+
+export async function checkClaudeVersion(
+  cli: ClaudeCli,
+  signal = AbortSignal.timeout(queryTimeoutMs),
+): Promise<Result<void, Error>> {
+  const exited = await runClaude(cli, { args: ["--version"], signal });
+  if (!exited.ok) return exited;
+  if (exited.value.code !== 0)
+    return R.failure(
+      failureOutput(`${cli.executable} --version`, exited.value),
+    );
+  const found = /^(\S+) \(Claude Code\)$/m.exec(exited.value.stdout)?.[1];
+  if (!found)
+    return R.failure(
+      withOutput(
+        `${cli.executable} --version printed no Claude Code version`,
+        exited.value.stdout.trim() || exited.value.stderr,
+      ),
+    );
+  return found === CLAUDE_CODE_VERSION
+    ? R.success(undefined)
+    : R.failure(
+        new Error(
+          `${cli.executable} is Claude Code ${found}, but Alliance agent supports only ${CLAUDE_CODE_VERSION}`,
+        ),
+      );
 }

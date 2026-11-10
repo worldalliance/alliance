@@ -1,0 +1,4 @@
+{"kind":"start","args":["--version"]}
+{"kind":"stdin_closed"}
+{"kind":"out","text":"2.1.322 (Claude Code)"}
+{"kind":"exit","code":0}

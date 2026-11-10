@@ -1,15 +1,26 @@
-import { expect, onTestFinished, test } from "bun:test";
+import { afterEach, describe, expect, onTestFinished, test } from "bun:test";
 import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { R } from "../../../../../../common/src/result";
 import {
   type ClaudeCli,
+  checkClaudeVersion,
   claudeEnvironment,
   closePipesAfterExit,
+  failureOutput,
   runClaude,
 } from "./process";
+import { CLAUDE_CODE_VERSION } from "./protocol";
+import { CaptureRecordKind, captureDir } from "./testing/capture";
+import { replay, stopReplay, stubCli, writeCapture } from "./testing/stub";
 
 const bun: ClaudeCli = { executable: process.execPath, configDir: "/config" };
 
@@ -199,4 +210,162 @@ test("reports a cancelled run of an executable it can't start as cancelled", asy
       { args: ["--version"], signal: AbortSignal.abort() },
     ),
   ).toEqual(R.failure(new Error("claude --version was cancelled")));
+});
+
+test("a failure names the exit code, with stdout when stderr is empty", () => {
+  expect(
+    failureOutput("claude x", {
+      code: 1,
+      signal: null,
+      stdout: "out",
+      stderr: "",
+    }),
+  ).toEqual(new Error("claude x exited with code 1: out"));
+});
+
+test("a failure names the signal that killed the CLI, with stderr over stdout", () => {
+  expect(
+    failureOutput("claude auth login", {
+      code: null,
+      signal: "SIGTERM",
+      stdout: "out",
+      stderr: "bye",
+    }),
+  ).toEqual(new Error("claude auth login was killed by SIGTERM: bye"));
+});
+
+test("a failure keeps the last 2000 characters of the output", () => {
+  expect(
+    failureOutput("claude x", {
+      code: 1,
+      signal: null,
+      stdout: "",
+      stderr: `a${"b".repeat(2000)}`,
+    }),
+  ).toEqual(new Error(`claude x exited with code 1: ${"b".repeat(2000)}`));
+});
+
+describe("the version check", () => {
+  afterEach(stopReplay);
+
+  test("accepts the version the captures came from", async () => {
+    replay(path.join(captureDir(CLAUDE_CODE_VERSION), "version.jsonl"));
+    expect(await checkClaudeVersion(stubCli)).toEqual(R.success(undefined));
+  });
+
+  test("refuses another version, naming both", async () => {
+    replay(
+      writeCapture([
+        { kind: CaptureRecordKind.Start, args: ["--version"] },
+        { kind: CaptureRecordKind.Out, text: "9.9.9 (Claude Code)" },
+        { kind: CaptureRecordKind.Exit, code: 0 },
+      ]),
+    );
+    expect(await checkClaudeVersion(stubCli)).toEqual(
+      R.failure(
+        new Error(
+          `${stubCli.executable} is Claude Code 9.9.9, but Alliance agent supports only ${CLAUDE_CODE_VERSION}`,
+        ),
+      ),
+    );
+  });
+
+  test("refuses output that names no Claude Code version", async () => {
+    replay(
+      writeCapture([
+        { kind: CaptureRecordKind.Start, args: ["--version"] },
+        { kind: CaptureRecordKind.Out, text: "usage: other-tool" },
+        { kind: CaptureRecordKind.Exit, code: 0 },
+      ]),
+    );
+    expect(await checkClaudeVersion(stubCli)).toEqual(
+      R.failure(
+        new Error(
+          `${stubCli.executable} --version printed no Claude Code version: usage: other-tool`,
+        ),
+      ),
+    );
+  });
+
+  test("refuses empty output", async () => {
+    replay(
+      writeCapture([
+        { kind: CaptureRecordKind.Start, args: ["--version"] },
+        { kind: CaptureRecordKind.Exit, code: 0 },
+      ]),
+    );
+    expect(await checkClaudeVersion(stubCli)).toEqual(
+      R.failure(
+        new Error(
+          `${stubCli.executable} --version printed no Claude Code version`,
+        ),
+      ),
+    );
+  });
+
+  test("refuses output that names no Claude Code version with its stderr", async () => {
+    replay(
+      writeCapture([
+        { kind: CaptureRecordKind.Start, args: ["--version"] },
+        { kind: CaptureRecordKind.Stderr, text: "Cannot find module" },
+        { kind: CaptureRecordKind.Exit, code: 0 },
+      ]),
+    );
+    expect(await checkClaudeVersion(stubCli)).toEqual(
+      R.failure(
+        new Error(
+          `${stubCli.executable} --version printed no Claude Code version: Cannot find module`,
+        ),
+      ),
+    );
+  });
+
+  test("refuses output that names no Claude Code version with its stdout over its stderr", async () => {
+    replay(
+      writeCapture([
+        { kind: CaptureRecordKind.Start, args: ["--version"] },
+        { kind: CaptureRecordKind.Stderr, text: "ExperimentalWarning" },
+        { kind: CaptureRecordKind.Out, text: "Claude Code 3.0.0" },
+        { kind: CaptureRecordKind.Exit, code: 0 },
+      ]),
+    );
+    expect(await checkClaudeVersion(stubCli)).toEqual(
+      R.failure(
+        new Error(
+          `${stubCli.executable} --version printed no Claude Code version: Claude Code 3.0.0`,
+        ),
+      ),
+    );
+  });
+
+  test("reports a version run that fails", async () => {
+    replay(
+      writeCapture([
+        { kind: CaptureRecordKind.Start, args: ["--version"] },
+        { kind: CaptureRecordKind.Stderr, text: "boom" },
+        { kind: CaptureRecordKind.Exit, code: 1 },
+      ]),
+    );
+    expect(await checkClaudeVersion(stubCli)).toEqual(
+      R.failure(
+        new Error(`${stubCli.executable} --version exited with code 1: boom`),
+      ),
+    );
+  });
+
+  test("gives up on a version run that hangs", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "claude-process-test-"));
+    const executable = path.join(dir, "claude");
+    writeFileSync(executable, "#!/bin/sh\nexec sleep 30\n", { mode: 0o755 });
+    try {
+      expect(
+        await checkClaudeVersion(
+          { executable, configDir: "/config" },
+          AbortSignal.timeout(100),
+        ),
+      ).toEqual(R.failure(new Error("claude --version timed out")));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
