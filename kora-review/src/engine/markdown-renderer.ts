@@ -1,31 +1,39 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment -- typed in the next step of the engine split */
-// @ts-nocheck
+import type { MarkdownRendererCtx } from "./context.js";
+import type { Inline } from "./markdown-parser.js";
+import type { View } from "./types.js";
 
-export function createMarkdownRenderer(ctx) {
+type Segment = { text: string; index: number; word: boolean };
+
+export function createMarkdownRenderer(ctx: MarkdownRendererCtx) {
   const { h, mathNodes, mathText, parseBlocks, parseTex } = ctx;
 
   const segmenter =
     typeof Intl !== "undefined" && Intl.Segmenter
       ? new Intl.Segmenter(undefined, { granularity: "word" })
       : null;
-  function segments(text) {
+  function segments(text: string): Segment[] {
     if (segmenter)
       return Array.from(segmenter.segment(text), (s) => ({
         text: s.segment,
         index: s.index,
         word: !!s.isWordLike,
       }));
-    const out = [];
+    const out: Segment[] = [];
     const re = /\S+|\s+/g;
-    let m;
+    let m: RegExpExecArray | null;
     while ((m = re.exec(text)))
       out.push({ text: m[0], index: m.index, word: /\S/.test(m[0]) });
     return out;
   }
-  function renderMarkdown(container, src, mi, tokenize) {
-    const view = { mi, tokens: [], gaps: {}, content: src };
+  function renderMarkdown(
+    container: HTMLElement,
+    src: string,
+    mi: number,
+    tokenize: boolean,
+  ): View {
+    const view: View = { mi, tokens: [], gaps: {}, content: src };
     let blk = 0;
-    const emit = (parent, text, start) => {
+    const emit = (parent: HTMLElement, text: string, start: number) => {
       if (!tokenize) {
         parent.append(text);
         return;
@@ -57,7 +65,7 @@ export function createMarkdownRenderer(ctx) {
         }
       }
     };
-    const inl = (parent, nodes) => {
+    const inl = (parent: HTMLElement, nodes: Inline[]) => {
       for (const n of nodes) {
         if (n.type === "text") emit(parent, n.text, n.start);
         else if (n.type === "strong") {
@@ -86,8 +94,8 @@ export function createMarkdownRenderer(ctx) {
           );
           if (tokenize) {
             el.classList.add("tk");
-            el.dataset.m = mi;
-            el.dataset.t = view.tokens.length;
+            el.dataset.m = String(mi);
+            el.dataset.t = String(view.tokens.length);
             view.tokens.push({ start: n.start, end: n.end, text, el, blk });
           }
           parent.append(el);
@@ -133,7 +141,7 @@ export function createMarkdownRenderer(ctx) {
         container.append(q);
       } else if (b.type === "table") {
         // Every cell is its own block, so a mark across cells reads with a space between them.
-        const cells = (row, tag) =>
+        const cells = (row: Inline[][], tag: "th" | "td") =>
           h(
             "tr",
             {},
@@ -178,7 +186,7 @@ export function createMarkdownRenderer(ctx) {
     }
     return view;
   }
-  function spanText(v, lo, hi) {
+  function spanText(v: View, lo: number, hi: number) {
     let s = "";
     for (let k = lo; k <= hi; k++) {
       s += v.tokens[k].text;

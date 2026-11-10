@@ -1,10 +1,9 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment -- typed in the next step of the engine split */
-// @ts-nocheck
+import type { PresentationCtx } from "./context.js";
 
-export function createPresentation(ctx) {
+export function createPresentation(ctx: PresentationCtx) {
   const { catLabel, fmt, h, hueOf, icon, vcls } = ctx;
 
-  function catChip(c) {
+  function catChip(c: string) {
     return h(
       "span",
       { class: "chip", style: `--h:${hueOf(c)}`, title: catLabel(c) },
@@ -23,8 +22,8 @@ export function createPresentation(ctx) {
 
   // Challenge markup. [ … ] marks a clause the way a +1 or −1 mark looks in a reply, coloured by the :+1: or :-1: inside it,
   // which shows there as a small thumb. *text* is bold. Outside brackets, :+1: and :-1: are "+1"/"−1" chips.
-  function challengeNodes(text) {
-    const thumb = (v, small) =>
+  function challengeNodes(text: string) {
+    const thumb = (v: number, small: boolean) =>
       small
         ? h(
             "span",
@@ -41,7 +40,7 @@ export function createPresentation(ctx) {
             icon(v > 0 ? "up" : "down"),
             v > 0 ? "+1" : "−1",
           );
-    const inline = (str, small) =>
+    const inline = (str: string, small: boolean) =>
       str
         .split(/(\*[^*\n]+\*|:\+1:|:-1:)/)
         .filter(Boolean)
@@ -66,8 +65,8 @@ export function createPresentation(ctx) {
   }
 
   // A mark is +1, −1, or 0: a neutral note, shown with a pencil and counted towards neither side.
-  const markCls = (v) => (v > 0 ? "pos" : v < 0 ? "neg" : "note");
-  const markBadge = (v, cls) =>
+  const markCls = (v: number) => (v > 0 ? "pos" : v < 0 ? "neg" : "note");
+  const markBadge = (v: number, cls: string) =>
     v
       ? h(
           "span",

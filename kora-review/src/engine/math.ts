@@ -1,13 +1,26 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment -- typed in the next step of the engine split */
-// @ts-nocheck
+import type { MathCtx } from "./context.js";
 
-export function createMath(ctx) {
+/** A parsed TeX expression: characters and names as strings, structures as nodes. */
+export type TexNode =
+  | string
+  | { t: "frac"; num: TexNode[]; den: TexNode[] }
+  | { t: "sqrt" | "box" | "over" | "grp" | "sup" | "sub"; body: TexNode[] }
+  | { t: "text"; text: string };
+
+export type MathSpan = {
+  start: number;
+  end: number;
+  tex: string;
+  display: boolean;
+};
+
+export function createMath(ctx: MathCtx) {
   const { h } = ctx;
 
   /* ---------- Math: a small LaTeX subset (what chat models write for school maths) ---------- */
   // \( \) and $ $ are inline; \[ \] and $$ $$ are display. A single $ counts as maths only when it reads like a formula,
   // so prices ("$40k", "$10 = pick my loadout") stay as text.
-  const MATH_SYM = {
+  const MATH_SYM: Record<string, string> = {
     cdot: "·",
     times: "×",
     div: "÷",
@@ -103,9 +116,9 @@ export function createMath(ctx) {
     "mathit",
     "operatorname",
   ]);
-  function mathAt(src, i, e) {
+  function mathAt(src: string, i: number, e: number): MathSpan | null {
     const c = src[i];
-    const pairs = [
+    const pairs: [string, string, boolean][] = [
       ["\\(", "\\)", false],
       ["\\[", "\\]", true],
       ["$$", "$$", true],
@@ -158,9 +171,9 @@ export function createMath(ctx) {
     return { start: i, end: close + 1, tex, display: false };
   }
   // Parses the TeX into a small tree: strings, {t:'frac'|'sup'|'sub'|'sqrt'|'text'|'box', ...}.
-  function parseTex(tex) {
+  function parseTex(tex: string): TexNode[] {
     let i = 0;
-    const group = () => {
+    const group = (): TexNode[] => {
       while (tex[i] === " ") i++;
       if (tex[i] === "{") {
         i++;
@@ -174,7 +187,7 @@ export function createMath(ctx) {
       }
       return i < tex.length ? [tex[i++]] : [];
     };
-    const rawGroup = () => {
+    const rawGroup = (): string => {
       while (tex[i] === " ") i++;
       if (tex[i] !== "{") return i < tex.length ? tex[i++] : "";
       let depth = 0;
@@ -188,10 +201,15 @@ export function createMath(ctx) {
       }
       return tex.slice(from, i++);
     };
-    const atom = () => {
+    const atom = (): TexNode | null => {
       const c = tex[i];
       if (c === "\\") {
         const m = /^\\([a-zA-Z]+|.)/.exec(tex.slice(i));
+        // A backslash ending the expression names nothing; skip it.
+        if (!m) {
+          i++;
+          return null;
+        }
         i += m[0].length;
         const name = m[1];
         if (name === "frac" || name === "dfrac" || name === "tfrac") {
@@ -224,8 +242,8 @@ export function createMath(ctx) {
       i++;
       return c === "-" ? "−" : c === "*" ? "×" : c;
     };
-    const seq = (end) => {
-      const out = [];
+    const seq = (end: string | null): TexNode[] => {
+      const out: TexNode[] = [];
       while (i < tex.length && tex[i] !== end) {
         if (tex[i] === "^" || tex[i] === "_") {
           const t = tex[i++] === "^" ? "sup" : "sub";
@@ -254,10 +272,10 @@ export function createMath(ctx) {
     return seq(null);
   }
   // The tree as nodes for the page, and as plain text (what a mark's quoted text and the export show).
-  function mathNodes(tree) {
-    const out = [];
-    let prev = null;
-    const operand = (x) =>
+  function mathNodes(tree: TexNode[]): (Node | string)[] {
+    const out: (Node | string)[] = [];
+    let prev: string | null = null;
+    const operand = (x: string | null) =>
       x != null &&
       x !== " " &&
       !(typeof x === "string" && (MATH_OPS.has(x) || x === "(" || x === "["));
@@ -319,7 +337,7 @@ export function createMath(ctx) {
     }
     return out;
   }
-  const SUP = {
+  const SUP: Record<string, string> = {
     "0": "⁰",
     "1": "¹",
     "2": "²",
@@ -334,14 +352,14 @@ export function createMath(ctx) {
     "+": "⁺",
     n: "ⁿ",
   };
-  function mathText(tree) {
+  function mathText(tree: TexNode[]): string {
     let s = "",
-      prev = null;
-    const operand = (x) =>
+      prev: string | null = null;
+    const operand = (x: string | null) =>
       x != null &&
       x !== " " &&
       !(typeof x === "string" && (MATH_OPS.has(x) || x === "(" || x === "["));
-    const wrap = (t) => (t.length > 1 && /[^\w.]/.test(t) ? `(${t})` : t);
+    const wrap = (t: string) => (t.length > 1 && /[^\w.]/.test(t) ? `(${t})` : t);
     for (const x of tree) {
       if (typeof x === "string") {
         const unary = (x === "−" || x === "+" || x === "±") && !operand(prev);
@@ -350,7 +368,7 @@ export function createMath(ctx) {
         continue;
       }
       prev = "x";
-      const body = x.body && mathText(x.body).trim();
+      const body = "body" in x ? mathText(x.body).trim() : "";
       if (x.t === "frac")
         s += `${wrap(mathText(x.num).trim())}/${wrap(mathText(x.den).trim())}`;
       else if (x.t === "sup")

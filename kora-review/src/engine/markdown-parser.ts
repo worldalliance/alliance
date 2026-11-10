@@ -1,11 +1,33 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment -- typed in the next step of the engine split */
-// @ts-nocheck
+import type { MarkdownParserCtx } from "./context.js";
+import type { MathSpan } from "./math.js";
 
-export function createMarkdownParser(ctx) {
+/** Inline Markdown, keeping each text run's offset into the source. */
+export type Inline =
+  | { type: "text"; start: number; text: string }
+  | { type: "code"; start: number; text: string }
+  | ({ type: "math" } & MathSpan)
+  | { type: "strong"; children: Inline[] }
+  | { type: "em"; children: Inline[] }
+  | { type: "link"; href: string; children: Inline[] };
+
+export type ListItem = { num?: number; sub: boolean; inl: Inline[] };
+
+export type Block =
+  | { type: "code"; start: number; text: string }
+  | { type: "hr" }
+  | { type: "h"; level: number; inl: Inline[] }
+  | { type: "quote"; lines: Inline[][] }
+  | { type: "table"; head: Inline[][]; rows: Inline[][][] }
+  | { type: "ol" | "ul"; items: ListItem[] }
+  | { type: "p"; inl: Inline[] };
+
+type Line = { text: string; start: number };
+
+export function createMarkdownParser(ctx: MarkdownParserCtx) {
   const { mathAt } = ctx;
 
   /* ---------- Limited Markdown with source offsets ---------- */
-  function listMatch(t) {
+  function listMatch(t: string) {
     let m = t.match(/^(\s*)([-*+])\s+/);
     if (m) return { ordered: false, indent: m[1].length, prefix: m[0].length };
     m = t.match(/^(\s*)(\d{1,3})[.)]\s+/);
@@ -23,8 +45,8 @@ export function createMarkdownParser(ctx) {
     QUOTE = /^\s{0,3}>\s?/;
   const TABLE_SEP = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/;
   // Cells of a table row as [start, end) offsets into src, trimmed, with the outer pipes dropped.
-  function tableCells(L) {
-    const cells = [];
+  function tableCells(L: Line) {
+    const cells: [number, number][] = [];
     let from = 0;
     const t = L.text;
     for (let k = 0; k <= t.length; k++) {
@@ -40,30 +62,30 @@ export function createMarkdownParser(ctx) {
     if (/\|\s*$/.test(t)) cells.pop();
     return cells;
   }
-  function parseBlocks(src) {
-    const lines = [];
+  function parseBlocks(src: string): Block[] {
+    const lines: Line[] = [];
     let pos = 0;
     for (const text of src.split("\n")) {
       lines.push({ text, start: pos });
       pos += text.length + 1;
     }
-    const blank = (l) => /^\s*$/.test(l.text),
-      fence = (l) => /^\s*```/.test(l.text);
-    const tableAt = (i) =>
+    const blank = (l: Line) => /^\s*$/.test(l.text),
+      fence = (l: Line) => /^\s*```/.test(l.text);
+    const tableAt = (i: number) =>
       lines[i].text.includes("|") &&
       i + 1 < lines.length &&
       TABLE_SEP.test(lines[i + 1].text) &&
       lines[i + 1].text.includes("-");
-    const startsBlock = (i) =>
+    const startsBlock = (i: number) =>
       fence(lines[i]) ||
       HR.test(lines[i].text) ||
       HEADING.test(lines[i].text) ||
       QUOTE.test(lines[i].text) ||
       !!listMatch(lines[i].text) ||
       tableAt(i);
-    const lineInl = (L, skip) =>
+    const lineInl = (L: Line, skip: number) =>
       parseInline(src, L.start + skip, L.start + L.text.trimEnd().length);
-    const blocks = [];
+    const blocks: Block[] = [];
     let i = 0;
     while (i < lines.length) {
       const L = lines[i];
@@ -99,16 +121,18 @@ export function createMarkdownParser(ctx) {
         continue;
       }
       if (QUOTE.test(L.text)) {
-        const q = { type: "quote", lines: [] };
+        const q: Block = { type: "quote", lines: [] };
         for (; i < lines.length && QUOTE.test(lines[i].text); i++)
-          q.lines.push(lineInl(lines[i], lines[i].text.match(QUOTE)[0].length));
+          q.lines.push(
+            lineInl(lines[i], (lines[i].text.match(QUOTE)?.[0] ?? "").length),
+          );
         blocks.push(q);
         continue;
       }
       if (tableAt(i)) {
-        const row = (l) =>
+        const row = (l: Line) =>
           tableCells(l).map(([a, b]) => parseInline(src, a, b));
-        const t = { type: "table", head: row(L), rows: [] };
+        const t: Block = { type: "table", head: row(L), rows: [] };
         for (
           i += 2;
           i < lines.length && !blank(lines[i]) && lines[i].text.includes("|");
@@ -121,7 +145,7 @@ export function createMarkdownParser(ctx) {
       const lm = listMatch(L.text);
       if (lm) {
         // One level of nesting: an indented item, of either kind, is shown as a sub-item of the list it sits in.
-        const list = { type: lm.ordered ? "ol" : "ul", items: [] };
+        const list: Block = { type: lm.ordered ? "ol" : "ul", items: [] };
         while (i < lines.length) {
           const m = listMatch(lines[i].text);
           if (!m || (m.indent < 2 && m.ordered !== lm.ordered)) break;
@@ -150,15 +174,15 @@ export function createMarkdownParser(ctx) {
     }
     return blocks;
   }
-  function parseInline(src, s, e) {
-    const out = [];
+  function parseInline(src: string, s: number, e: number): Inline[] {
+    const out: Inline[] = [];
     let i = s,
       from = s;
-    const flush = (to) => {
+    const flush = (to: number) => {
       if (to > from)
         out.push({ type: "text", start: from, text: src.slice(from, to) });
     };
-    const word = (ch) => ch && /[\p{L}\p{N}]/u.test(ch);
+    const word = (ch: string | undefined) => !!ch && /[\p{L}\p{N}]/u.test(ch);
     while (i < e) {
       const c = src[i];
       if (c === "\\" || c === "$") {
