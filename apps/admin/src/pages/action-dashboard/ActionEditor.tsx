@@ -106,6 +106,7 @@ const ActionEditor: React.FC<ActionEditorProps> = ({
         onDelete={mode.onDelete}
         baseUrl={getApiUrl()}
         hideStaffPreview={mode.hideStaffPreview}
+        splitId={action?.splitId ?? null}
       />
     </div>
   );

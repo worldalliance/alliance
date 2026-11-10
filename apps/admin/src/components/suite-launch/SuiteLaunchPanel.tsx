@@ -329,6 +329,7 @@ const SuiteLaunchPanel = ({
           <MemberPreview
             loads={data.loads}
             actions={data.actions}
+            splits={data.splits}
             users={data.users}
             usersLoadFailed={data.usersLoadFailed}
           />

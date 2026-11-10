@@ -19,6 +19,7 @@ import { useState } from "react";
 import { useAwayRangesInWindowAdmin } from "../../lib/useAwayRangesInWindowAdmin";
 import { cohortEvaluationQuery } from "../../lib/useCohortEvaluationAdmin";
 import { formVariantsQuery } from "../../lib/useFormVariantsAdmin";
+import { suiteSplitsQuery } from "../../lib/useSuiteSplitsAdmin";
 import { useUsersAdmin } from "../../lib/useUsersAdmin";
 import {
   actionReadinessItems,
@@ -29,6 +30,7 @@ import { actionTextFindings, type TextFinding } from "./actionTextFindings";
 import type { LaunchSchedule } from "./launchSchedule";
 import { memberLoads, type MemberLoad } from "./memberLoad";
 import { spellcheckerQuery } from "./spellchecker";
+import { splitPreview, type SplitPreview } from "./splitPreview";
 
 export type LaunchVariantForm = {
   formId: number;
@@ -61,6 +63,8 @@ export type SuiteLaunchData = {
   loads: MemberLoad[] | null;
   /** Null while any action's member count is unknown. */
   recipientCount: number | null;
+  /** Null while the splits or any of their counts are unknown. */
+  splits: SplitPreview[] | null;
   users: UserDto[];
   usersLoadFailed: boolean;
   /** Each recipient's saved zone, null when they've saved none. */
@@ -166,6 +170,12 @@ export function useSuiteLaunchData(params: {
       (result.data?.variants ?? []).map((variant) => [variant.formId, variant]),
     ),
   );
+  const splitsResult = useQuery(suiteSplitsQuery(suite.id));
+  const splitFilterResults = useQueries({
+    queries: (splitsResult.data ?? []).map((split) =>
+      cohortEvaluationQuery(split.filterExpression),
+    ),
+  });
   const spellchecker = useQuery(spellcheckerQuery);
   const users = useUsersAdmin();
   const timeZoneByUserId = new Map(
@@ -288,6 +298,27 @@ export function useSuiteLaunchData(params: {
       }),
     );
   });
+  // Arms are regular actions, so their members are contracted ones.
+  const reachable =
+    users.data && awayData
+      ? users.data
+          .filter((user) => contracted.has(user.id) && !away.has(user.id))
+          .map((user) => user.id)
+      : null;
+  const reachableIds = new Set(reachable);
+  const splitPreviews = (splitsResult.data ?? []).map((split, index) => {
+    const filtered = split.filterExpression
+      ? splitFilterResults[index].data?.userIds
+      : reachable;
+    return splitPreview({
+      split,
+      cohortByActionId,
+      reached:
+        reachable && filtered
+          ? filtered.filter((userId) => reachableIds.has(userId))
+          : null,
+    });
+  });
   const loads =
     actions.length === suite.actions.length &&
     actions.every(({ memberCount }) => memberCount !== null)
@@ -323,6 +354,12 @@ export function useSuiteLaunchData(params: {
       ? ["Failed to load the actions' variants."]
       : []),
     ...(users.isError ? ["Failed to load members' contract status."] : []),
+    ...(splitsResult.isError ? ["Failed to load the suite's splits."] : []),
+    ...(splitsResult.data ?? []).flatMap((split, index) =>
+      splitFilterResults[index].isError
+        ? [`Failed to evaluate the filter of the split ${split.title}.`]
+        : [],
+    ),
     ...(awayRanges.isError ? ["Failed to load members' away dates."] : []),
     ...(spellchecker.isError
       ? ["Failed to load the spelling dictionary."]
@@ -333,6 +370,13 @@ export function useSuiteLaunchData(params: {
     actions,
     loads,
     recipientCount: loads ? loads.length : null,
+    splits:
+      splitsResult.data &&
+      splitPreviews.every(
+        (preview): preview is SplitPreview => preview !== null,
+      )
+        ? splitPreviews
+        : null,
     users: users.data ?? [],
     usersLoadFailed: users.isError,
     recipientTimeZones: (loads ?? []).map(
@@ -350,6 +394,8 @@ export function useSuiteLaunchData(params: {
       ...variantListResults,
       users,
       awayRanges,
+      splitsResult,
+      ...splitFilterResults,
     ].some((result) => result.isPending && result.fetchStatus !== "idle"),
     spellcheckLoading: spellchecker.isLoading,
     refetch: () => {
@@ -362,6 +408,8 @@ export function useSuiteLaunchData(params: {
         ...variantListResults,
         users,
         awayRanges,
+        splitsResult,
+        ...splitFilterResults,
       ])
         // A disabled (skipToken) query rejects a refetch with "Missing queryFn".
         if (!(result.isPending && result.fetchStatus === "idle"))

@@ -8,6 +8,7 @@ import {
   type ActionSuiteDto,
   type CreateActionEventDto,
   type ProjectDto,
+  type SuiteSplitDto,
 } from "@alliance/shared/client";
 import { makeAction, makeProfile } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
@@ -94,6 +95,8 @@ const initialState = () => ({
   actionList: [] as { id: number; variantFormIds: number[] }[],
   variantName: "Variant",
   variantSplit: 0.25,
+  splits: [] as SuiteSplitDto[],
+  splitsFail: false,
   createdEvents: [] as CreateActionEventDto[],
   reminderEventIds: [] as string[],
 });
@@ -129,6 +132,10 @@ export const serveLaunchApi = () => {
         });
       },
       "GET /user/tags": () => Response.json([]),
+      "GET /actions/suite/:suiteId/splits": () =>
+        api.splitsFail
+          ? Response.json({ statusCode: 500 }, { status: 500 })
+          : Response.json(api.splits),
       "GET /tasks/listForms": () => Response.json([]),
       "GET /actions/adminslug/:id": ({ params }) => {
         if (api.offlineOnceActionLoads) {

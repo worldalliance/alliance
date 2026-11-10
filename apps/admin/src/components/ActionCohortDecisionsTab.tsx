@@ -4,6 +4,8 @@ import {
   type CohortDecisionReason,
 } from "@alliance/shared/client";
 import { formatDateTime } from "@alliance/shared/lib/dateFormatters";
+import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
+import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import InlineError from "@alliance/sharedweb/ui/InlineError";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import {
@@ -11,10 +13,16 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@alliance/sharedweb/ui/Tooltip";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeftRight } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
-import { useCohortDecisionsAdmin } from "../lib/useCohortDecisionsAdmin";
+import {
+  ArmChangeKind,
+  useCohortDecisionsAdmin,
+} from "../lib/useCohortDecisionsAdmin";
+import { suiteSplitsQuery } from "../lib/useSuiteSplitsAdmin";
+import { ArmChangeModal, type SplitArmOption } from "./ArmChangeModal";
 import { CohortDecisionCorrectionModal } from "./CohortDecisionCorrectionModal";
 
 const REASON_LABELS: Record<CohortDecisionReason, string> = {
@@ -33,15 +41,48 @@ const decisionLabel = (included: boolean) =>
 
 export default function ActionCohortDecisionsTab({
   actionId,
+  split,
 }: {
   actionId: number;
+  split: { suiteId: number; splitId: number } | null;
 }) {
   const [search, setSearch] = useState("");
   const [correcting, setCorrecting] = useState<CohortDecisionDto | null>(null);
+  const [changingArm, setChangingArm] = useState<{
+    kind: ArmChangeKind;
+    decision: CohortDecisionDto;
+  } | null>(null);
 
   const decisions = useCohortDecisionsAdmin(actionId);
+  const splits = useQuery({
+    ...suiteSplitsQuery(split?.suiteId ?? 0),
+    enabled: split !== null,
+  });
+  const actionList = useActionsAdmin();
+  const arms: SplitArmOption[] | undefined = splits.data
+    ?.find((candidate) => candidate.id === split?.splitId)
+    ?.arms.map((arm) => ({
+      actionId: arm.actionId,
+      name:
+        actionList.data?.find((action) => action.id === arm.actionId)?.name ??
+        `Action #${arm.actionId}`,
+    }));
 
-  if (decisions.isPending) return <Spinner />;
+  if (decisions.isPending || (split && splits.isPending)) return <Spinner />;
+  if (split && (splits.isError || !arms)) {
+    return (
+      <InlineError
+        message={
+          splits.isError
+            ? errorMessage({
+                error: splits.error,
+                fallback: "Could not load the action's split",
+              })
+            : "This action's split is gone. Reload the page."
+        }
+      />
+    );
+  }
   if (decisions.isError) {
     return (
       <InlineError
@@ -113,21 +154,52 @@ export default function ActionCohortDecisionsTab({
               <td>{REASON_LABELS[row.reason]}</td>
               <td>{formatTime(row.resolvedAt)}</td>
               <td className="text-right">
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <button
-                        type="button"
-                        aria-label={`Correct ${row.userName}'s decision`}
-                        onClick={() => setCorrecting(row)}
-                        className="rounded p-1.5 text-zinc-600 hover:bg-zinc-100"
-                      />
-                    }
-                  >
-                    <ArrowLeftRight size={16} />
-                  </TooltipTrigger>
-                  <TooltipContent>Correct decision</TooltipContent>
-                </Tooltip>
+                {arms ? (
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      color={ButtonColor.White}
+                      size="small"
+                      aria-label={`Move ${row.userName} to another arm`}
+                      onClick={() =>
+                        setChangingArm({
+                          kind: ArmChangeKind.Move,
+                          decision: row,
+                        })
+                      }
+                    >
+                      Move to arm
+                    </Button>
+                    <Button
+                      color={ButtonColor.White}
+                      size="small"
+                      aria-label={`Remove ${row.userName} from the split`}
+                      onClick={() =>
+                        setChangingArm({
+                          kind: ArmChangeKind.Remove,
+                          decision: row,
+                        })
+                      }
+                    >
+                      Remove from split
+                    </Button>
+                  </div>
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <button
+                          type="button"
+                          aria-label={`Correct ${row.userName}'s decision`}
+                          onClick={() => setCorrecting(row)}
+                          className="rounded p-1.5 text-zinc-600 hover:bg-zinc-100"
+                        />
+                      }
+                    >
+                      <ArrowLeftRight size={16} />
+                    </TooltipTrigger>
+                    <TooltipContent>Correct decision</TooltipContent>
+                  </Tooltip>
+                )}
               </td>
             </tr>
           ))}
@@ -138,6 +210,15 @@ export default function ActionCohortDecisionsTab({
           actionId={actionId}
           decision={correcting}
           onClose={() => setCorrecting(null)}
+        />
+      )}
+      {changingArm && arms && (
+        <ArmChangeModal
+          kind={changingArm.kind}
+          actionId={actionId}
+          decision={changingArm.decision}
+          arms={arms}
+          onClose={() => setChangingArm(null)}
         />
       )}
     </div>

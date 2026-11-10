@@ -444,4 +444,30 @@ describe("ActionForm", () => {
 
     expect(screen.queryByAltText("Current")).toBeNull();
   });
+
+  it("shows an arm's cohort read-only and hides its optional flag, both of which its split sets", () => {
+    renderForm({
+      form: { suiteId: 3 },
+      props: {
+        isNew: false,
+        splitId: 4,
+        cohortExpression: { type: "USMember" },
+      },
+    });
+
+    expect(fieldNames("Completion")).toEqual([
+      "shouldCompleteAfterDeadline",
+      "preventCompletion",
+    ]);
+    const participating = within(section("Participating users"));
+    expect(participating.getByText("US Member")).toBeTruthy();
+    expect(
+      participating.queryByRole("button", { name: /Add Condition/ }),
+    ).toBeNull();
+    expect(
+      participating
+        .getByRole("link", { name: "suite page" })
+        .getAttribute("href"),
+    ).toBe("/suites/3");
+  });
 });

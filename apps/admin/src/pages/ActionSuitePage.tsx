@@ -12,6 +12,7 @@ import {
   existingLaunchEvent,
   hasLaunched,
 } from "../components/suite-launch/launchBlockers";
+import SuiteSplitsSection from "../components/suite-splits/SuiteSplitsSection";
 import SuiteEventList from "../components/SuiteEventList";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import {
@@ -125,6 +126,7 @@ const ActionSuitePage = () => {
         onEdit={handleEditEvent}
         onDelete={handleDeleteEvent}
       />
+      <SuiteSplitsSection suiteId={suiteId} suiteActions={suite.actions} />
       <Card className="!p-0">
         <div className="p-3 border-b border-zinc-200 flex items-center justify-between gap-2">
           <h2 className="font-semibold text-sm">General updates</h2>

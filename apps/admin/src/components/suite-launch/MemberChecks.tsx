@@ -18,6 +18,8 @@ import {
   MAX_MEMBER_MINUTES,
   type MemberLoad,
 } from "./memberLoad";
+import SplitCounts from "./SplitCounts";
+import type { SplitPreview } from "./splitPreview";
 import type { LaunchAction } from "./useSuiteLaunchData";
 
 const nameOf = (users: Map<number, UserDto>, userId: number) =>
@@ -26,11 +28,13 @@ const nameOf = (users: Map<number, UserDto>, userId: number) =>
 export const MemberPreview = ({
   loads,
   actions,
+  splits,
   users,
   usersLoadFailed,
 }: {
   loads: MemberLoad[] | null;
   actions: LaunchAction[];
+  splits: SplitPreview[] | null;
   users: UserDto[];
   usersLoadFailed: boolean;
 }) => {
@@ -42,6 +46,9 @@ export const MemberPreview = ({
     actions.map(({ action, variantForms }) => [action.id, variantForms]),
   );
   const overloaded = loads ? overloadedMembers(loads).length : 0;
+  const unrouted = (splits ?? []).some(
+    (split) => split.unroutedUserIds.length > 0,
+  );
   const preview = (userIds: number[]) => {
     const userId = userIds.find((id) => !selectedUserIds.includes(id));
     if (userId !== undefined) setSelectedUserIds([...selectedUserIds, userId]);
@@ -49,7 +56,9 @@ export const MemberPreview = ({
   return (
     <LaunchCheck
       title="Preview members' actions"
-      passed={loads !== null && overloaded === 0}
+      passed={
+        loads !== null && overloaded === 0 && splits !== null && !unrouted
+      }
       summary={
         !loads
           ? "Minutes unknown until every member count loads"
@@ -113,6 +122,13 @@ export const MemberPreview = ({
           ))}
         </tbody>
       </table>
+      {splits === null ? (
+        <p className="text-sm text-zinc-500">
+          Split counts unknown until every count loads
+        </p>
+      ) : (
+        <SplitCounts splits={splits} actions={actions} users={users} />
+      )}
       <UserSelect
         users={users}
         selectedUserIds={selectedUserIds}

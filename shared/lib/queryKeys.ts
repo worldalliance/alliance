@@ -212,6 +212,15 @@ export const queryKeys = {
   actionSuiteAdmin: (suiteId: number) =>
     ["actionSuitesSuiteAdmin", suiteId] as const,
   actionSuitesAdmin: () => ["actionSuitesSuitesAdmin"] as const,
+  suiteSplitsAdmin: (suiteId: number) =>
+    ["actionSuitesSuiteSplitsAdmin", suiteId] as const,
+  armMovePreviewsAdmin: () => ["cohortDecisionsArmMovePreviewAdmin"] as const,
+  armMovePreviewAdmin: (params: { actionId: number; userId: number }) =>
+    [
+      "cohortDecisionsArmMovePreviewAdmin",
+      params.actionId,
+      params.userId,
+    ] as const,
   actionsAllAdmin: () => ["actionsFindAllWithDraftsAdmin"] as const,
   actionCohortDecisionsAdmin: (actionId: number) =>
     ["cohortDecisionsListForActionAdmin", actionId] as const,

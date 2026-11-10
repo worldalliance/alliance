@@ -330,7 +330,14 @@ const ActionDashboard: React.FC = () => {
               />
             )}
             {activeTab === "cohort-decisions" && action && (
-              <ActionCohortDecisionsTab actionId={action.id} />
+              <ActionCohortDecisionsTab
+                actionId={action.id}
+                split={
+                  action.splitId !== null && action.suite
+                    ? { suiteId: action.suite.id, splitId: action.splitId }
+                    : null
+                }
+              />
             )}
           </div>
         </div>

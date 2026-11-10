@@ -32,7 +32,12 @@ import {
 } from "@alliance/common/forms/visibility";
 import { R, type Result } from "@alliance/common/result";
 import type { ZodError } from "zod";
-import type { AdminActionDto, AdminFollowUpFormDto } from "./client/types.gen";
+import type {
+  AdminActionDto,
+  AdminFollowUpFormDto,
+  SuiteSplitArmDto,
+  SuiteSplitDto,
+} from "./client/types.gen";
 
 export type ParsedActionDto = Omit<AdminActionDto, "cohortExpression"> & {
   cohortExpression: CohortExpression | null;
@@ -135,3 +140,31 @@ export function parseFormulaChoices(value: unknown): FormulaChoices {
 export function parseAssignedRow(value: unknown): AssignedRow | null {
   return assignedRowSchema.nullable().parse(value);
 }
+
+export type ParsedSuiteSplitArm = Omit<SuiteSplitArmDto, "rule"> & {
+  rule: CohortExpression | null;
+};
+
+export type ParsedSuiteSplit = Omit<
+  SuiteSplitDto,
+  "filterExpression" | "arms"
+> & {
+  filterExpression: CohortExpression | null;
+  arms: ParsedSuiteSplitArm[];
+};
+
+const nullableExpression = cohortExpressionSchema.nullable();
+
+/**
+ * Unlike the helpers above, throws on a stored rule or filter that isn't a
+ * valid cohort expression, so the split fails to load rather than show an
+ * arm without its rule, which saving would then write back.
+ */
+export const parseSuiteSplit = (split: SuiteSplitDto): ParsedSuiteSplit => ({
+  ...split,
+  filterExpression: nullableExpression.parse(split.filterExpression),
+  arms: split.arms.map((arm) => ({
+    ...arm,
+    rule: nullableExpression.parse(arm.rule),
+  })),
+});

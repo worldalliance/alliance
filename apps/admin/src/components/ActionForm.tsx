@@ -16,6 +16,7 @@ import ActionReviewersEditor, {
   type ReviewerRow,
 } from "./ActionReviewersEditor";
 import CohortExpressionBuilder from "./CohortExpressionBuilder";
+import CohortExpressionText from "./CohortExpressionText";
 import FormSection, { CollapsibleFormSection } from "./FormSection";
 import OpenReferenceWarning from "./OpenReferenceWarning";
 import PrerequisitePicker from "./PrerequisitePicker";
@@ -60,6 +61,7 @@ interface ActionFormProps extends ActionFieldInputs {
   memberActionStart: Date | null;
   memberActionDeadline: Date | null;
   hideStaffPreview?: boolean;
+  splitId?: number | null;
 }
 
 const ActionForm: React.FC<ActionFormProps> = ({
@@ -103,6 +105,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
   memberActionStart,
   memberActionDeadline,
   hideStaffPreview = false,
+  splitId = null,
 }) => {
   const fieldDefs = useMemo(
     () =>
@@ -118,7 +121,8 @@ const ActionForm: React.FC<ActionFormProps> = ({
     fieldDefs
       .filter((f) => f.section === section)
       .filter((f) => (f.show ? f.show(form) : true))
-      .filter((f) => !(hideStaffPreview && f.name === "staffPreview"));
+      .filter((f) => !(hideStaffPreview && f.name === "staffPreview"))
+      .filter((f) => !(splitId !== null && f.name === "optional"));
 
   const fieldInputs = {
     form,
@@ -211,21 +215,44 @@ const ActionForm: React.FC<ActionFormProps> = ({
         title="Participating users"
         description="Define which users should participate in this action using conditions and operators."
       >
-        <CohortExpressionBuilder
-          value={cohortExpression}
-          onChange={onCohortExpressionChange}
-          availableTags={availableTags}
-          tagsLoading={tagsLoading}
-          tagsError={tagsError}
-          availableActions={allActions}
-          actionsLoading={allActionsLoading}
-          actionsError={allActionsLoadFailed}
-          availableUsers={availableUsers}
-          usersLoading={usersLoading}
-          usersError={usersError}
-          activeContractUserIds={activeContractUserIds}
-          onboarding={onboarding}
-        />
+        {splitId === null ? (
+          <CohortExpressionBuilder
+            value={cohortExpression}
+            onChange={onCohortExpressionChange}
+            availableTags={availableTags}
+            tagsLoading={tagsLoading}
+            tagsError={tagsError}
+            availableActions={allActions}
+            actionsLoading={allActionsLoading}
+            actionsError={allActionsLoadFailed}
+            availableUsers={availableUsers}
+            usersLoading={usersLoading}
+            usersError={usersError}
+            activeContractUserIds={activeContractUserIds}
+            onboarding={onboarding}
+          />
+        ) : (
+          <div className="space-y-2 text-sm">
+            <p>
+              <CohortExpressionText
+                expression={cohortExpression ?? null}
+                tags={availableTags}
+                actions={allActions}
+              />
+            </p>
+            <p className="text-zinc-600">
+              This action is an arm of a split, which sets who participates and
+              whether it&apos;s optional. Change them in the split on the{" "}
+              <a
+                href={`/suites/${form.suiteId}`}
+                className="text-blue-600 underline"
+              >
+                suite page
+              </a>
+              .
+            </p>
+          </div>
+        )}
         <OpenReferenceWarning
           actionId={actionId}
           expression={cohortExpression}
