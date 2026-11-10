@@ -864,11 +864,13 @@ jobs:
                 sed '/sync_prod_to_staging\.sh/d' <<<"$entries" | crontab -
               }
 
+              # No restart: on the host's systemd, restarting the timer runs
+              # the sync at once if a scheduled time passed since the timer's
+              # previous start. daemon-reload applies edited units.
               sudo install -m 644 ~/nest-backend/deploy/systemd/alliance-prod-to-staging-sync.{service,timer} \
                 /etc/systemd/system/ \
                 && sudo systemctl daemon-reload \
-                && sudo systemctl enable alliance-prod-to-staging-sync.timer \
-                && sudo systemctl restart alliance-prod-to-staging-sync.timer \
+                && sudo systemctl enable --now alliance-prod-to-staging-sync.timer \
                 && echo "installed alliance-prod-to-staging-sync.timer" \
                 && { remove_sync_from_crontab || echo "::warning::timer installed, but could not remove the sync from ec2-user's crontab"; } \
                 || echo "::warning::could not install alliance-prod-to-staging-sync.timer"
