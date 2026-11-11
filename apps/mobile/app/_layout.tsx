@@ -14,6 +14,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import DeviceRegistration from "../components/DeviceRegistration";
 import { KeyboardExtenderPortalProvider } from "../components/KeyboardExtenderPortal";
+import OtaUpdateBanner from "../components/OtaUpdateBanner";
 import OtaUpdateGate from "../components/OtaUpdateGate";
 import PushNotificationResponseHandler from "../components/PushNotificationResponseHandler";
 import UpdateAvailableModal from "../components/UpdateAvailableModal";
@@ -89,6 +90,7 @@ export default function RootLayout() {
                     <UpdateAvailableModal />
                     <StatusBar style="dark" />
                     <Slot />
+                    <OtaUpdateBanner />
                   </KeyboardExtenderPortalProvider>
                 </AuthProvider>
               </OtaUpdateGate>

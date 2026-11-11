@@ -1,0 +1,26 @@
+# Decisions
+
+## Mobile
+
+- **Restart is `Updates.reloadAsync()`, not a native process restart.** It reloads the JS runtime into the downloaded update, which is all an EAS update needs; iOS has no supported way for an app to terminate itself (EVIDENCE.md, Hard relaunch). Agent decision.
+- **The banner appears only once the update is downloaded (`isUpdatePending`), not when one is found.** A tap then restarts straight away instead of waiting on a download, matching the Play flexible flow's "downloaded, RESTART" prompt (EVIDENCE.md, Mobile UX). Agent decision.
+- **15-minute minimum between foreground checks, counted from launch.** No source gives a number; Expo says to check on foreground and avoid frequent polling. The launch already ran expo-updates' own startup check, so the first foreground check waits the interval too. Agent judgement.
+- **The banner floats over content below the status bar instead of pushing screens down.** Screens apply their own top safe-area inset, so a banner in the layout flow would double that padding on every screen. Agent decision.
+- **Copy and controls:** "A new version of Alliance is ready." with a "Restart" button and an icon-only close button labelled "Close" for screen readers (close is on the ux-guidelines list of icons that may stand alone). "Restart" follows the Android and Slack convention of naming the effect (EVIDENCE.md, Mobile UX). If the reload fails to start, the banner says "Couldn’t restart. Close and reopen Alliance to update." Agent decision.
+- **The banner is announced to screen readers when it appears** (`AccessibilityInfo.announceForAccessibility`), per WCAG status messages. Agent decision.
+- **The splash-styled reload screen options moved to `constants/splash.ts`, and the rule for when OTA updates run (`Updates.isEnabled && !__DEV__`) to `lib/otaUpdates.ts`,** so the cold-start gate and the banner share one definition of each. Agent decision.
+- **"Returns to the foreground" means an AppState change from `background` to `active` (`onAppForegrounded`), for both the update check and re-showing a dismissed banner.** iOS also goes `inactive` -> `active` without leaving the foreground (Notification Center, the app switcher, an incoming call); counting that would bring back a banner the user just closed. Android reports any Activity pause as `background`, so there closing a permission dialog, share sheet or picker also brings a dismissed banner back. React Native exposes nothing finer, and a minimum time in the background would misjudge a long share as much as a short trip away; a closed banner coming back is the cheaper error. Agent decision.
+- **No analytics on the banner yet.** Not asked for; easy to add if adoption needs measuring. Agent decision.
+- **Failures are reported with `captureException`:** `OtaRestartFailed` when Restart's reload fails, which means the feature is broken and goes to Slack, and `OtaForegroundUpdateFailed` when a foreground check or download fails, which flaky networks make common, so it stays out of Slack. Agent decision.
+
+## Web
+
+- **The deployed SHA comes from a React Router resource route, `/build-version`,** whose loader returns the `VITE_APP_GIT_SHA` compiled into the server build, with `Cache-Control: no-store`. The client compares it to the same variable compiled into its own bundle. CI already sets `VITE_APP_GIT_SHA` for deployed builds; local dev builds lack it, so the check is off there. Agent decision.
+- **`build-version` is added to `CUSTOM_LINK_RESERVED_SLUGS`,** as every top-level route is, so no custom link can claim the path. Agent decision, enforced by `customLinkRoutes.test.ts`.
+- **Checks run when the tab becomes visible and every 15 minutes while it is visible.** No check on page load, since the page just loaded the current build. Agent judgement, following SvelteKit's focus-plus-interval approach (EVIDENCE.md, Web).
+- **The next navigation is intercepted with React Router's `useBlocker` and replayed as `location.assign` (or `location.replace` for a replace navigation).** The app has no React Router form submissions, so no POST is turned into a GET. Agent decision.
+- **Only navigations to a different pathname are turned into document loads.** A search-param change on the same page (filters, tabs) keeps its in-page state. Back and forward stay in-app, since a document load there would push a history entry. Agent decision.
+- **A failed check (offline, server restarting) is ignored and retried at the next check; a malformed response logs `console.error`.** Agent decision.
+- **No "two checks in a row" guard against flicker during a rolling deploy.** The frontend runs as one pm2 process on one host (`deploy.yaml`), so old and new servers never answer side by side. Reconstructed from existing code.
+- **Keeping the previous build's assets needed no change.** The deploy unzips with `unzip -o -DD`, keeping earlier builds' hashed files, and prunes them after 7 days; nginx serves `/assets/` from that directory (`deploy.yaml`, `deploy/nginx/alliance.conf`). The research note that only the current build's assets are served looked at `server.js` alone. Reconstructed from existing code.
+- **Admin (`apps/admin`) is out of scope.** The request covered the user-facing web app. Agent decision.
