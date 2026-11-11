@@ -149,7 +149,7 @@ describe("Variable aggregates (e2e)", () => {
     request(ctx.app.getHttpServer())
       .post("/tasks/variableAggregates")
       .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-      .send({ sources });
+      .send({ sources, answeredSources: [] });
 
   const day = (n: number) => new Date(Date.UTC(2026, 0, n));
 

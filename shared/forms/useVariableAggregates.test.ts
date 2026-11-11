@@ -30,6 +30,12 @@ const counting = (...fieldIds: string[]): FormVariable => ({
   formula: "0",
 });
 
+const answering = (fieldId: string): FormVariable => ({
+  name: `answered-${fieldId}`,
+  inputs: { input1: { kind: "answeredCount", sourceFormId: 7, fieldId } },
+  formula: "input1",
+});
+
 const schemaWith = (variables: FormVariable[]): FormSchema => ({
   pages: [{ id: "p1", fields: [] }],
   outputViews: [],
@@ -61,7 +67,7 @@ serveApi(
 );
 
 beforeEach(() => {
-  answer = async () => json({ aggregates: [] });
+  answer = async () => json({ aggregates: [], answered: [] });
   requests = [];
 });
 
@@ -105,7 +111,10 @@ describe("useVariableAggregates", () => {
 
   it("loads every count in one request, however many inputs read them", async () => {
     answer = async () =>
-      json({ aggregates: [aggregate("a", { x: 2 }), aggregate("b", {})] });
+      json({
+        aggregates: [aggregate("a", { x: 2 }), aggregate("b", {})],
+        answered: [],
+      });
     const { result, rerender } = render(
       schemaWith([counting("a", "b"), counting("a")]),
       FORM_VERSION,
@@ -121,13 +130,14 @@ describe("useVariableAggregates", () => {
   });
 
   it("sends an admin's own schema's questions", async () => {
-    answer = async () => json({ aggregates: [aggregate("a", {})] });
+    answer = async () =>
+      json({ aggregates: [aggregate("a", {})], answered: [] });
     render(schemaWith([counting("a"), counting("a")]), {
       reader: AggregateReader.Admin,
     });
     await settle();
     expect(requests).toEqual([
-      { sources: [{ sourceFormId: 7, fieldId: "a" }] },
+      { sources: [{ sourceFormId: 7, fieldId: "a" }], answeredSources: [] },
     ]);
   });
 
@@ -136,14 +146,17 @@ describe("useVariableAggregates", () => {
     answer = () =>
       new Promise((resolve) => {
         releaseFirst = () =>
-          resolve(json({ aggregates: [aggregate("a", { x: 1 })] }));
+          resolve(
+            json({ aggregates: [aggregate("a", { x: 1 })], answered: [] }),
+          );
       });
     const { result, rerender } = render(schemaWith([counting("a")]), {
       reader: AggregateReader.Admin,
     });
     await settle();
 
-    answer = async () => json({ aggregates: [aggregate("b", { x: 2 })] });
+    answer = async () =>
+      json({ aggregates: [aggregate("b", { x: 2 })], answered: [] });
     rerender({ schema: schemaWith([counting("b")]) });
     await settle();
     releaseFirst();
@@ -154,13 +167,14 @@ describe("useVariableAggregates", () => {
   });
 
   it("leaves an input with no question picked yet out of the request", async () => {
-    answer = async () => json({ aggregates: [aggregate("a", {})] });
+    answer = async () =>
+      json({ aggregates: [aggregate("a", {})], answered: [] });
     const { result } = render(schemaWith([counting("a", "")]), {
       reader: AggregateReader.Admin,
     });
     await settle();
     expect(requests).toEqual([
-      { sources: [{ sourceFormId: 7, fieldId: "a" }] },
+      { sources: [{ sourceFormId: 7, fieldId: "a" }], answeredSources: [] },
     ]);
     expect(result.current.status).toBe(VariableAggregatesStatus.Ready);
   });
@@ -174,7 +188,8 @@ describe("useVariableAggregates", () => {
       throw new Error(`expected a failure, got ${failed.status}`);
     }
 
-    answer = async () => json({ aggregates: [aggregate("a", { x: 1 })] });
+    answer = async () =>
+      json({ aggregates: [aggregate("a", { x: 1 })], answered: [] });
     act(() => failed.retry());
     await settle();
     expect(countsOf(result.current, "7:a")).toEqual({ x: 1 });
@@ -222,11 +237,13 @@ describe("useVariableAggregates", () => {
   });
 
   it("keeps an open form's counts when the window regains focus", async () => {
-    answer = async () => json({ aggregates: [aggregate("a", { x: 1 })] });
+    answer = async () =>
+      json({ aggregates: [aggregate("a", { x: 1 })], answered: [] });
     const { result } = render(schemaWith([counting("a")]), FORM_VERSION);
     await settle();
 
-    answer = async () => json({ aggregates: [aggregate("a", { x: 2 })] });
+    answer = async () =>
+      json({ aggregates: [aggregate("a", { x: 2 })], answered: [] });
     act(() => {
       focusManager.setFocused(false);
       focusManager.setFocused(true);
@@ -239,13 +256,15 @@ describe("useVariableAggregates", () => {
 
   it("loads the counts afresh when the form reopens, whatever the app's staleTime", async () => {
     const { wrapper } = queryWrapper({ staleTime: 5 * 60 * 1000 });
-    answer = async () => json({ aggregates: [aggregate("a", { x: 1 })] });
+    answer = async () =>
+      json({ aggregates: [aggregate("a", { x: 1 })], answered: [] });
     const first = render(schemaWith([counting("a")]), FORM_VERSION, wrapper);
     await settle();
     first.unmount();
     await settle();
 
-    answer = async () => json({ aggregates: [aggregate("a", { x: 2 })] });
+    answer = async () =>
+      json({ aggregates: [aggregate("a", { x: 2 })], answered: [] });
     const second = render(schemaWith([counting("a")]), FORM_VERSION, wrapper);
     expect(second.result.current.status).toBe(VariableAggregatesStatus.Loading);
     await settle();
@@ -255,7 +274,10 @@ describe("useVariableAggregates", () => {
 
   it("reports a question the server couldn't count as unavailable, not zero", async () => {
     answer = async () =>
-      json({ aggregates: [aggregate("a", null), aggregate("b", { x: 0 })] });
+      json({
+        aggregates: [aggregate("a", null), aggregate("b", { x: 0 })],
+        answered: [],
+      });
     const { result } = render(
       schemaWith([counting("a"), counting("b")]),
       FORM_VERSION,
@@ -292,5 +314,38 @@ describe("aggregateTarget", () => {
     expect(
       aggregateTarget({ admin: false, formId: 3, formSnapshotId: 0 }),
     ).toBeUndefined();
+  });
+
+  it("loads members-who-answered counts with the option counts", async () => {
+    answer = async () =>
+      json({
+        aggregates: [aggregate("a", { x: 2 })],
+        answered: [{ sourceFormId: 7, fieldId: "a", count: 5 }],
+      });
+    const { result } = render(schemaWith([counting("a"), answering("a")]), {
+      reader: AggregateReader.Admin,
+    });
+    await settle();
+    expect(requests).toEqual([
+      {
+        sources: [{ sourceFormId: 7, fieldId: "a" }],
+        answeredSources: [{ sourceFormId: 7, fieldId: "a" }],
+      },
+    ]);
+    expect(countsOf(result.current, "7:a")).toEqual({ x: 2 });
+    expect(countsOf(result.current, "answered:7:a")).toBe(5);
+  });
+
+  it("reports a members-who-answered question the server couldn't count as unavailable", async () => {
+    answer = async () =>
+      json({
+        aggregates: [],
+        answered: [{ sourceFormId: 7, fieldId: "a", count: null }],
+      });
+    const { result } = render(schemaWith([answering("a")]), FORM_VERSION);
+    await settle();
+    expect(result.current.status).toBe(
+      VariableAggregatesStatus.SourceUnavailable,
+    );
   });
 });

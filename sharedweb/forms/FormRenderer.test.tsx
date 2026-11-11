@@ -940,6 +940,7 @@ describe("aggregate counts", () => {
   const counts = (value: Record<string, number> | null) => () =>
     Response.json({
       aggregates: [{ sourceFormId: 7, fieldId: "employers", counts: value }],
+      answered: [],
     });
 
   it("counts from the form's saved version, without refetching as answers change", async () => {

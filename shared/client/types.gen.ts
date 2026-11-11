@@ -4287,8 +4287,15 @@ export type VariableAggregateDto = {
     } | null;
 };
 
+export type VariableAnsweredCountDto = {
+    sourceFormId: number;
+    fieldId: string;
+    count: number | null;
+};
+
 export type VariableAggregatesDto = {
     aggregates: Array<VariableAggregateDto>;
+    answered: Array<VariableAnsweredCountDto>;
 };
 
 export type VariableAggregateSourceDto = {
@@ -4298,6 +4305,7 @@ export type VariableAggregateSourceDto = {
 
 export type CountVariableAggregatesDto = {
     sources: Array<VariableAggregateSourceDto>;
+    answeredSources: Array<VariableAggregateSourceDto>;
 };
 
 export type GuestFormResponseDto = {

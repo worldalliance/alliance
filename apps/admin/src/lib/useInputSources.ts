@@ -36,6 +36,9 @@ export function useInputSources(params: {
         sourceFormId === undefined
           ? eligibleFields
           : readableVariableInputFields(sourceForms.get(sourceFormId) ?? []),
+      questionsFor: (sourceFormId) => [
+        ...(sourceForms.get(sourceFormId) ?? []),
+      ],
       statusOf: (sourceFormId) => statusByForm[sourceFormId],
       forms: options.filter(({ id }) => id !== formId),
       ownForm: options.find(({ id }) => id === formId),

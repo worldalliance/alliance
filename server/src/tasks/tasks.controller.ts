@@ -306,13 +306,12 @@ export class TasksController {
     @Param("formId", ParseIntPipe) formId: number,
     @Param("formSnapshotId", ParseIntPipe) formSnapshotId: number,
   ): Promise<VariableAggregatesDto> {
-    return new VariableAggregatesDto({
-      aggregates:
-        await this.formResponseQueryService.countFormVersionAggregates({
-          formId,
-          formSnapshotId,
-        }),
-    });
+    return new VariableAggregatesDto(
+      await this.formResponseQueryService.countFormVersionAggregates({
+        formId,
+        formSnapshotId,
+      }),
+    );
   }
 
   /** Counts any questions, for previewing a form not yet saved. */
@@ -322,11 +321,9 @@ export class TasksController {
   async countVariableAggregatesAdmin(
     @Body() body: CountVariableAggregatesDto,
   ): Promise<VariableAggregatesDto> {
-    return new VariableAggregatesDto({
-      aggregates: await this.formResponseQueryService.countVariableAggregates(
-        body.sources,
-      ),
-    });
+    return new VariableAggregatesDto(
+      await this.formResponseQueryService.countVariableAggregates(body),
+    );
   }
 
   @Get("guestResponse/:id")

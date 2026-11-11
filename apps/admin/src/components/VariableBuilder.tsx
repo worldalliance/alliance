@@ -70,6 +70,7 @@ const exampleFormula = (input: VariableInput): string => {
     case "list":
     case "sourceList":
     case "aggregate":
+    case "answeredCount":
     case "random":
       return answerHelp(input, undefined).example("input1");
     default:
