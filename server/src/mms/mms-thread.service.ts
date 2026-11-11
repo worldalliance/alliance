@@ -39,6 +39,7 @@ export class MmsThreadService {
           errorCode: null,
           errorMessage: null,
           cid: null,
+          sentById: null,
         })
         .orIgnore()
         .returning(["id"])

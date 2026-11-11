@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import { softDeleteCascade } from "src/datasources/soft-delete";
 import { MmsMedia } from "src/mms/mms-media.entity";
 import { MmsMediaService } from "src/mms/mms-media.service";
 import { Mms, MmsDirection, MmsKeyword } from "src/mms/mms.entity";
@@ -209,5 +210,30 @@ describe("Inbound media URLs (e2e)", () => {
         contentType: "image/png",
       }),
     ]);
+  });
+});
+
+describe("Staff text senders (e2e)", () => {
+  it("keeps the sender of a staff text after their account is deleted", async () => {
+    const staff = await createMember("+14155558601");
+    const text = await mmsRepo.save(
+      mmsRepo.create({
+        to: "+14155558602",
+        from: TWILIO_NUMBER,
+        body: "Hi from the team",
+        status: "delivered",
+        twilioSid: randomUUID(),
+        sentById: staff.id,
+      }),
+    );
+
+    await softDeleteCascade(ctx.dataSource.manager, {
+      target: User,
+      ids: [staff.id],
+    });
+
+    expect((await mmsRepo.findOneByOrFail({ id: text.id })).sentById).toBe(
+      staff.id,
+    );
   });
 });

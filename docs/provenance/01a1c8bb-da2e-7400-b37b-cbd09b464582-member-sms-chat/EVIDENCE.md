@@ -50,3 +50,10 @@ There is no formal standard for the UI. Rules exist for what may be sent and whe
 ## 5. Real-time delivery to the admin UI
 
 - Twilio's tutorials push webhook events over Socket.IO or Twilio Sync. Polling is adequate at low staff counts. (vendor recommendation for the push examples; common practice for polling) [Socket.IO tutorial](https://www.twilio.com/en-us/blog/getting-started-with-socket-io-adding-real-time-events-to-your-node-js-express-app-html), [Twilio Sync](https://www.twilio.com/docs/serverless/functions-assets/quickstart/real-time-data-sync)
+
+## `Mms.sentBy` type cycle (experiment)
+
+Method: on 2026-11-12, at the branch tip after its rebase onto `main` 8196603b37 (TypeScript 5.9.3, TypeORM 0.3.28, macOS), `tsc --noEmit` in `server/` was run fresh (`--incremental false`) and incrementally after appending a comment line to one file at a time.
+
+- With `sentBy?: Relation<User> | null`, the fresh run passed, but an incremental run after editing `src/notifs/record-delivery.ts` or `src/mms/mms.entity.ts` failed, and kept failing once the edit was undone: TS2322 at `record-delivery.ts:27` and TS2345 at `action-update-recognition.service.ts:405`, each tracing `_QueryDeepPartialEntity` through `Mms.sentBy` → `User.optInMms` → `Mms`. Editing `action-update-recognition.service.ts` alone passed. The result depends on the order tsc checks files, not on the code in them.
+- With `sentBy?: Relation<Pick<User, "name">> | null`, the fresh run and the incremental runs after editing each of `record-delivery.ts`, `mms.entity.ts`, `action-update-recognition.service.ts` and `user.entity.ts` all passed.

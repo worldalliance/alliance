@@ -1,7 +1,16 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { DeleteDateColumnTz } from "src/datasources/basecolumns";
+import type { User } from "src/user/entities/user.entity";
+import type { Relation } from "src/utils/Repository";
 import type { MessageStatus } from "twilio/lib/rest/api/v2010/account/message";
-import { Column, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
+import {
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from "typeorm";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
@@ -68,6 +77,18 @@ export class Mms {
     comment: "The STOP or START keyword the inbound webhook acted on",
   })
   keyword: MmsKeyword | null;
+
+  // Named by string: a value import of User fails at load, as the cycle
+  // through user.entity reaches action-event-notif.entity's eager
+  // `type: Mms` before Mms is defined. Typed as the fields read: a full User
+  // closes the type cycle User.optInMms -> Mms, on which tsc rejects
+  // TypeORM's update types for Mms depending on the order it checks files.
+  @ManyToOne("User", { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "sentById" })
+  sentBy?: Relation<Pick<User, "name">> | null;
+
+  @Column({ type: "int", nullable: true, comment: "Staff member who wrote it" })
+  sentById: number | null;
 
   @Column({ type: "text" })
   @ApiProperty({ type: String })
