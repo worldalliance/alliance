@@ -164,6 +164,14 @@ export function loadedFormResponseSnapshot(
   return response.formSnapshot;
 }
 
+/** The respondent's user id; null for a guest's response. */
+export function respondentId(response: FormResponse): number | null {
+  if (response.user === undefined) {
+    throw new Error(`user of form response ${response.id} not loaded`);
+  }
+  return response.user?.id ?? null;
+}
+
 export function parseFormResponse(response: FormResponse): ParsedFormResponse {
   // A row written before the submission boundary validated this column isn't
   // worth failing a whole feed over: drop what won't read, and log it.

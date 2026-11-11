@@ -259,6 +259,8 @@ export class FormAggregateViewsDto {
 
 export type FormResponseDtoArgs = {
   response: ParsedFormResponse;
+  /** The member whose per-member content the schema keeps, or null to keep none. */
+  memberId: number | null;
   aiDetectionResults?: AiDetectionResult[];
 };
 
@@ -308,14 +310,14 @@ export class FormResponseDto extends PickType(FormResponse, [
 
   constructor(input: FormResponseDtoArgs) {
     super();
-    const { response, aiDetectionResults } = input;
+    const { response, memberId, aiDetectionResults } = input;
     this.id = response.id;
     this.formId = response.formId;
     this.formSnapshotId = response.formSnapshotId;
     this.answers = response.answers;
     this.schemaSnapshot = memberSnapshotSchema(
       loadedFormResponseSnapshot(response),
-      response.assignedRow,
+      { assignedRow: response.assignedRow, userId: memberId },
     );
     this.visibilityValidatorResults = response.visibilityValidatorResults;
     this.formulaChoices = response.formulaChoices;
@@ -333,14 +335,23 @@ export class FormResponseDto extends PickType(FormResponse, [
   }
 }
 
+export type LinkedGuestDraft = {
+  draft: ParsedFormResponse | null;
+  /** The member continuing the guest's draft. */
+  userId: number;
+};
+
 export class LinkedGuestDraftDto {
   @ApiPropertyOptional({ type: () => FormResponseDto })
   @IsOptional()
   @Type(() => FormResponseDto)
   draft?: FormResponseDto;
 
-  constructor(draft?: ParsedFormResponse | null) {
-    this.draft = draft ? new FormResponseDto({ response: draft }) : undefined;
+  constructor(input: LinkedGuestDraft) {
+    const { draft, userId } = input;
+    this.draft = draft
+      ? new FormResponseDto({ response: draft, memberId: userId })
+      : undefined;
   }
 }
 
@@ -445,6 +456,8 @@ export class GuestFormResponseDto {
   response?: FormResponseDto;
 
   constructor(response?: ParsedFormResponse | null) {
-    this.response = response ? new FormResponseDto({ response }) : undefined;
+    this.response = response
+      ? new FormResponseDto({ response, memberId: null })
+      : undefined;
   }
 }

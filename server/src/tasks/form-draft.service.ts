@@ -86,7 +86,13 @@ export class FormDraftService {
     const snapshot = await this.formSnapshotService.resolveSubmissionSnapshot({
       form,
       dto,
-      assignedRow: await this.formRowAssignmentService.memberRow(form, userId),
+      member: {
+        assignedRow: await this.formRowAssignmentService.memberRow(
+          form,
+          userId,
+        ),
+        userId,
+      },
     });
     const answers = readFormAnswers(dto.answers);
     if (R.isFailure(answers)) {

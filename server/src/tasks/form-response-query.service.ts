@@ -19,6 +19,7 @@ import {
   FormResponse,
   type ParsedFormResponse,
   parseFormResponse,
+  respondentId,
 } from "./entities/formresponse.entity";
 import { type FormResponseHistory } from "./form-response-history.dto";
 import { formSchemaOf } from "./form-snapshot-schema";
@@ -95,6 +96,7 @@ export class FormResponseQueryService {
       (response) =>
         new FormResponseDto({
           response: parseFormResponse(response),
+          memberId: respondentId(response),
           aiDetectionResults: aiDetectionByResponseId.get(response.id),
         }),
     );
@@ -130,7 +132,7 @@ export class FormResponseQueryService {
       relations: { formSnapshot: true },
       order: { createdAt: "ASC", id: "ASC" },
     });
-    return { form, responses };
+    return { form, responses, userId };
   }
 
   formulaSourceHistoryLoader(
@@ -226,7 +228,7 @@ export class FormResponseQueryService {
     }
     const responses = await this.formResponseRepository.find({
       where: { sid: In(sids) },
-      relations: { formSnapshot: true },
+      relations: { formSnapshot: true, user: true },
     });
     return responses.map(parseFormResponse);
   }

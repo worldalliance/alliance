@@ -1,4 +1,7 @@
-import type { AssignedRow } from "@alliance/common/forms/row-list-schema";
+import {
+  memberSchema,
+  type SchemaMember,
+} from "@alliance/common/forms/row-list";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { createHash } from "crypto";
@@ -12,7 +15,7 @@ import {
   SNAPSHOT_HISTORY_OWNERS,
   SnapshotHistoryOwner,
 } from "./entities/formsnapshot.entity";
-import { snapshotForRow } from "./form-snapshot-schema";
+import { memberSnapshot } from "./form-snapshot-schema";
 import { servedSchema, withServedVideoSources } from "./served-schema";
 
 export function hashFormSchema(schema: Record<string, unknown>): string {
@@ -88,13 +91,13 @@ export class FormSnapshotService {
   async resolveSubmissionSnapshot({
     form,
     dto,
-    assignedRow,
+    member,
   }: {
     /** As TasksService.getForm serves it: contracts filled in, which the history fallback does not rebuild. */
     form: Form;
     dto: { formSnapshotId?: number; schemaSnapshot?: Record<string, unknown> };
-    /** The member's row; they were served the schema filled from it. */
-    assignedRow: AssignedRow | null;
+    /** Who was served the schema filled from their row and narrowed to their content. */
+    member: SchemaMember;
   }) {
     if (dto.formSnapshotId !== undefined) {
       return dto.formSnapshotId === form.formSnapshotId
@@ -111,33 +114,45 @@ export class FormSnapshotService {
     const echoedHash = hashFormSchema(echoed);
     if (
       echoedHash === hashFormSchema(served.schema) ||
-      (assignedRow !== null &&
-        echoedHash ===
-          hashFormSchema(snapshotForRow(served, assignedRow).schema))
+      echoedHash === hashFormSchema(memberSnapshot(served, member).schema)
     ) {
       return served;
     }
-    return this.findHistoricalBySchemaOrThrow(form.id, echoed);
+    return this.findHistoricalBySchemaOrThrow({
+      formId: form.id,
+      schema: echoed,
+      member,
+    });
   }
 
   // Snapshot rows never change, so a snapshot's served hash is computed once.
   private readonly servedHashes = new Map<number, string>();
+  // Snapshots whose served schema memberSchema changes, by row or per-member
+  // content; a miss reloads only these to hash them as served to the member.
+  private readonly memberDependent = new Set<number>();
 
   /** A legacy client echoes the schema getForm served, media rewrites
    * included, instead of the stored one. The rewrites are today's, so a client
    * that fetched a form before a rewrite changed gets a 400.
    * BACKCOMPAT(form-snapshot): a miss hashes the form's uncached history
-   * versions, a cost that goes with the schemaSnapshot branch. */
-  async findHistoricalBySchemaOrThrow(
-    formId: number,
-    schema: Record<string, unknown>,
-  ): Promise<FormSnapshot> {
+   * versions and reloads its member-dependent ones, a cost that goes with the
+   * schemaSnapshot branch. */
+  async findHistoricalBySchemaOrThrow(params: {
+    formId: number;
+    schema: Record<string, unknown>;
+    member: SchemaMember;
+  }): Promise<FormSnapshot> {
+    const { formId, schema, member } = params;
     const hash = hashFormSchema(schema);
     const snapshot =
       (await this.historyOf(formId)
         .andWhere("s.hash = :hash", { hash })
         .getOne()) ??
-      (await this.findByServedHash(this.historyOf(formId), hash));
+      (await this.findByServedHash({
+        candidates: this.historyOf(formId),
+        hash,
+        member,
+      }));
     if (!snapshot) {
       throw new BadRequestException(
         "Submitted schema does not match any historical snapshot for this form",
@@ -157,27 +172,54 @@ export class FormSnapshotService {
       .where('fhs."formId" = :formId', { formId });
   }
 
-  private async findByServedHash(
-    candidates: SelectQueryBuilder<FormSnapshot>,
-    hash: string,
-  ): Promise<FormSnapshot | null> {
+  private async findByServedHash(params: {
+    candidates: SelectQueryBuilder<FormSnapshot>;
+    hash: string;
+    member: SchemaMember;
+  }): Promise<FormSnapshot | null> {
+    const { candidates, hash, member } = params;
     const ids = (
       await candidates.select("s.id", "id").getRawMany<{ id: number }>()
     ).map((row) => row.id);
     const uncached = ids.filter((id) => !this.servedHashes.has(id));
+    const loaded = new Map<number, FormSnapshot>();
     if (uncached.length > 0) {
       for (const snapshot of await this.snapshotRepository.findBy({
         id: In(uncached),
       })) {
-        this.servedHashes.set(
-          snapshot.id,
-          hashFormSchema(servedSchema(snapshot)),
-        );
+        loaded.set(snapshot.id, snapshot);
+        const served = servedSchema(snapshot);
+        const hashed = hashFormSchema(served);
+        this.servedHashes.set(snapshot.id, hashed);
+        const unassigned = memberSchema(served, {
+          assignedRow: null,
+          userId: null,
+        });
+        if (hashFormSchema(unassigned) !== hashed) {
+          this.memberDependent.add(snapshot.id);
+        }
       }
     }
     const match = ids.find((id) => this.servedHashes.get(id) === hash);
-    return match === undefined
-      ? null
-      : this.snapshotRepository.findOneByOrFail({ id: match });
+    if (match !== undefined) {
+      return this.snapshotRepository.findOneByOrFail({ id: match });
+    }
+    const dependent = ids.filter((id) => this.memberDependent.has(id));
+    if (dependent.length === 0) {
+      return null;
+    }
+    const unloaded = dependent.filter((id) => !loaded.has(id));
+    const candidatesForMember = [
+      ...dependent.flatMap((id) => loaded.get(id) ?? []),
+      ...(unloaded.length > 0
+        ? await this.snapshotRepository.findBy({ id: In(unloaded) })
+        : []),
+    ];
+    return (
+      candidatesForMember.find(
+        (snapshot) =>
+          hashFormSchema(memberSchema(servedSchema(snapshot), member)) === hash,
+      ) ?? null
+    );
   }
 }

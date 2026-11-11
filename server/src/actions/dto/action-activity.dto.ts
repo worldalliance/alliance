@@ -77,7 +77,7 @@ export class FormResponseOutputDto extends PickType(FormResponse, [
     this.publicAnswers = formResponse.publicAnswers;
     this.schemaSnapshot = memberSnapshotSchema(
       loadedFormResponseSnapshot(formResponse),
-      formResponse.assignedRow,
+      { assignedRow: formResponse.assignedRow, userId: null },
     );
   }
 }
