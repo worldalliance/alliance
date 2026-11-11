@@ -5,6 +5,13 @@ export enum DropPosition {
   After = "after",
 }
 
+export const positionIn = (event: React.DragEvent) => {
+  const rect = event.currentTarget.getBoundingClientRect();
+  return event.clientY < rect.top + rect.height / 2
+    ? DropPosition.Before
+    : DropPosition.After;
+};
+
 export const insertionOffset: Record<DropPosition, number> = {
   [DropPosition.Before]: 0,
   [DropPosition.After]: 1,
@@ -128,13 +135,8 @@ export function useDragReorder<T>(items: T[], setItems: (items: T[]) => void) {
       e.preventDefault();
       e.dataTransfer.dropEffect = "move";
       if (draggedIndex === null) return;
-      const rect = e.currentTarget.getBoundingClientRect();
-      const midpoint = rect.top + rect.height / 2;
       setDragOverIndex(index);
-      setDropPosition(
-        position ??
-          (e.clientY < midpoint ? DropPosition.Before : DropPosition.After),
-      );
+      setDropPosition(position ?? positionIn(e));
     };
 
   const performDrop = useCallback(

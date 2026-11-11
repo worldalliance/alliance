@@ -1,5 +1,5 @@
 import { useState, type DragEvent } from "react";
-import { DropPosition } from "../../lib/useDragReorder";
+import { DropPosition, positionIn } from "../../lib/useDragReorder";
 
 export type ListMove = {
   from: number;
@@ -65,11 +65,7 @@ export function useListDrag<L>(onMove: (list: L, move: ListMove) => void) {
         }
         event.preventDefault();
         event.dataTransfer.dropEffect = "move";
-        const rect = event.currentTarget.getBoundingClientRect();
-        const position =
-          event.clientY < rect.top + rect.height / 2
-            ? DropPosition.Before
-            : DropPosition.After;
+        const position = positionIn(event);
         setDropTarget((current) =>
           current?.list === list &&
           current.index === index &&
