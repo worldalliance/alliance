@@ -22,7 +22,7 @@ import {
 } from "../../lib/moveElements";
 import { reorderPages } from "../../lib/reorderPages";
 import { updatePageElement } from "../../lib/updatePageElement";
-import { moveItem, type ListMove } from "../../lib/useDragReorder";
+import { itemMove, type ListMove } from "../../lib/useDragReorder";
 import {
   deriveVisibilityGroups,
   type GroupedPages,
@@ -216,21 +216,19 @@ export function useCanvasEdits({
     });
   };
 
-  const replaceFields = (fields: PageItem[], pageIndex = selectedPageIndex) => {
-    const before = schema.pages[pageIndex];
-    if (!before) return;
+  const replaceFields = (fields: PageItem[]) => {
     updateSchema({
       ...schema,
       pages: schema.pages.map((page, idx) =>
-        idx === pageIndex ? { ...page, fields } : page,
+        idx === selectedPageIndex ? { ...page, fields } : page,
       ),
     });
     setSelection((current) =>
-      current.pageId === before.id
+      current.pageId === currentPage.id
         ? {
             ...current,
             target: followElement({
-              before: before.fields,
+              before: currentPage.fields,
               after: fields,
               target: current.target,
             }),
@@ -298,17 +296,9 @@ export function useCanvasEdits({
     });
   };
 
-  const moveElement = (
-    { from, dropIndex, position }: ListMove,
-    pageIndex = selectedPageIndex,
-  ) => {
-    const moved = moveItem({
-      items: schema.pages[pageIndex]?.fields ?? [],
-      draggedIndex: from,
-      dropIndex,
-      position,
-    });
-    if (moved) replaceFields(moved.items, pageIndex);
+  const moveElement = (move: ListMove, pageIndex = selectedPageIndex) => {
+    const { start, end, index } = itemMove(move);
+    moveElementsTo({ pageIndex, start, end }, { pageIndex, index });
   };
 
   const duplicateElement = (index: number) => {
