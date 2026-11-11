@@ -5,7 +5,7 @@ export enum DropPosition {
   After = "after",
 }
 
-const insertionOffset: Record<DropPosition, number> = {
+export const insertionOffset: Record<DropPosition, number> = {
   [DropPosition.Before]: 0,
   [DropPosition.After]: 1,
 };
