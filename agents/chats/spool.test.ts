@@ -14,11 +14,13 @@ import { join } from "node:path";
 import { R } from "../../common/src/result";
 import {
   discard,
+  drain,
   listRequests,
   publish,
   runPass,
   takeWake,
   type UploadRequest,
+  wakeSet,
 } from "./spool";
 
 let dir: string;
@@ -31,6 +33,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  chmodSync(dir, 0o700);
   if (existsSync(join(dir, "requests")))
     chmodSync(join(dir, "requests"), 0o700);
   rmSync(dir, { recursive: true });
@@ -39,6 +42,9 @@ afterEach(() => {
 const requests = () => R.unwrap(listRequests(dir)).requests;
 const ok = async () => R.success(undefined);
 const goneCause = "gone";
+const unexpected = (error: Error) => {
+  throw error;
+};
 
 test("each publish adds a request of its own and sets the wakeup marker", () => {
   R.unwrap(publish(dir, { key: "claude/a.jsonl", file: transcript }));
@@ -349,4 +355,105 @@ test("discard deletes only the named key's requests", async () => {
     R.success(undefined),
   );
   expect(readdirSync(join(dir, "requests"))).toEqual([]);
+});
+
+test("drain passes again for a wakeup during a pass, then releases", async () => {
+  R.unwrap(publish(dir, { key: "claude/a.jsonl", file: transcript }));
+  let passes = 0;
+  let released = false;
+  const drained = await drain({
+    dir,
+    pass: async () => {
+      if (++passes > 5) throw new Error("drain did not stop");
+      if (passes === 1)
+        R.unwrap(publish(dir, { key: "claude/b.jsonl", file: transcript }));
+    },
+    report: unexpected,
+    release: () => {
+      released = true;
+    },
+  });
+  expect({ drained, passes, released }).toEqual({
+    drained: R.success(false),
+    passes: 2,
+    released: true,
+  });
+});
+
+test("drain reports a wakeup that arrives after its last check", async () => {
+  const drained = await drain({
+    dir,
+    pass: async () => {},
+    report: unexpected,
+    release: () =>
+      R.unwrap(publish(dir, { key: "claude/a.jsonl", file: transcript })),
+  });
+  expect(drained).toEqual(R.success(true));
+  expect(wakeSet(dir)).toEqual(R.success(true));
+});
+
+test("drain makes one pass, reports a wakeup it cannot clear, then releases", async () => {
+  mkdirSync(join(dir, "wake", "inside"), { recursive: true });
+  const events: string[] = [];
+  const drained = await drain({
+    dir,
+    pass: async () => {
+      if (events.push("pass") > 5) throw new Error("drain did not stop");
+    },
+    report: () => events.push("report"),
+    release: () => events.push("release"),
+  });
+  expect({ drained, events }).toEqual({
+    drained: R.success(false),
+    events: ["pass", "report", "release"],
+  });
+});
+
+test("drain reports a wakeup it cannot check after a pass, then releases", async () => {
+  const events: string[] = [];
+  const drained = await drain({
+    dir,
+    pass: async () => {
+      events.push("pass");
+      chmodSync(dir, 0o000);
+    },
+    report: () => events.push("report"),
+    release: () => events.push("release"),
+  });
+  expect({ drained, events }).toEqual({
+    drained: R.success(false),
+    events: ["pass", "report", "release"],
+  });
+});
+
+test("drain fails when it cannot check for a wakeup after releasing", async () => {
+  const drained = await drain({
+    dir,
+    pass: async () => {},
+    report: unexpected,
+    release: () => chmodSync(dir, 0o000),
+  });
+  expect(drained.ok).toBe(false);
+});
+
+test("drain releases when a pass throws", async () => {
+  let released = false;
+  const drained = drain({
+    dir,
+    pass: async () => {
+      throw new Error("boom");
+    },
+    report: unexpected,
+    release: () => {
+      released = true;
+    },
+  });
+  await expect(drained).rejects.toThrow("boom");
+  expect(released).toBe(true);
+});
+
+test("wakeSet fails when the marker cannot be checked", () => {
+  writeFileSync(join(dir, "wake"), "");
+  chmodSync(dir, 0o000);
+  expect(wakeSet(dir).ok).toBe(false);
 });

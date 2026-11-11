@@ -62,11 +62,51 @@ export function publish(
   return R.success({ wakeError: woke.ok ? undefined : woke.error });
 }
 
+function wakeMarkerOp(
+  dir: string,
+  op: (wake: string) => unknown,
+): Result<boolean, Error> {
+  const done = R.fromThrowable(() => op(wakePath(dir)));
+  if (done.ok) return R.success(true);
+  return isMissing(done.error) ? R.success(false) : done;
+}
+
 /** Clears the wakeup marker, returning whether it was set. */
-export function takeWake(dir: string): Result<boolean, Error> {
-  const removed = R.fromThrowable(() => rmSync(wakePath(dir)));
-  if (removed.ok) return R.success(true);
-  return isMissing(removed.error) ? R.success(false) : removed;
+export const takeWake = (dir: string) =>
+  wakeMarkerOp(dir, (wake) => rmSync(wake));
+
+/** Whether the wakeup marker is set; leaves it in place. */
+export const wakeSet = (dir: string) =>
+  wakeMarkerOp(dir, (wake) => statSync(wake));
+
+/** Makes passes until no wakeup arrives during one, then calls `release`,
+ * also when a pass throws. Returns whether the wakeup marker is set after the
+ * release, which then needs a successor worker, or the failure to check it.
+ * A marker it can't clear or check ends the passes: its error goes to `report`
+ * after the pass and before the release, and drain returns false, since a
+ * successor would meet the same marker. Run it only while holding the worker
+ * lock. */
+export async function drain(params: {
+  dir: string;
+  pass: () => Promise<void>;
+  report: (error: Error) => void;
+  release: () => void;
+}): Promise<Result<boolean, Error>> {
+  try {
+    for (;;) {
+      const woke = takeWake(params.dir);
+      await params.pass();
+      const again = woke.ok ? wakeSet(params.dir) : woke;
+      if (!again.ok) {
+        params.report(again.error);
+        return R.success(false);
+      }
+      if (!again.value) break;
+    }
+  } finally {
+    params.release();
+  }
+  return wakeSet(params.dir);
 }
 
 function namesEnding(dir: string, suffix: string): Result<string[], Error> {
