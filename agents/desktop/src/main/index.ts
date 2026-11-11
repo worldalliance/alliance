@@ -59,6 +59,20 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
+// The lock belongs to the user data folder, so each checkout's unpackaged app keeps its own, inside the checkout so it goes when the checkout does.
+if (!app.isPackaged && !app.commandLine.hasSwitch("user-data-dir"))
+  app.setPath("userData", path.join(app.getAppPath(), ".scratch/user-data"));
+
+// One process owns the files in the user data folder, so writes serialised in memory can't interleave.
+if (!app.requestSingleInstanceLock()) app.exit();
+
+app.on("second-instance", () => {
+  const [window] = BrowserWindow.getAllWindows();
+  if (!window) return createWindow();
+  if (window.isMinimized()) window.restore();
+  window.focus();
+});
+
 void app.whenReady().then(() => {
   if (headless) app.dock?.hide();
   protocol.handle("app", serveRenderer);

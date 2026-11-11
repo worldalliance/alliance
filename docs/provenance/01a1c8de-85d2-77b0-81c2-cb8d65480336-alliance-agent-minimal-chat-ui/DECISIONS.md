@@ -13,7 +13,7 @@ The Claude adapter task planned its merge after the thin path ran through this U
 
 ## Folder and conversations
 
-- The main process keeps the conversations it started (session id, folder, first message as title, start time) in `conversations.json`, so a conversation can be resumed after a relaunch, since Claude Code keys sessions to their folder. Writes are serialised and replace the file whole through `write-file-atomic`, which syncs a uniquely named temporary file before renaming it over the list. A file that doesn't parse fails loudly rather than reading as empty (agent decision, per the root `AGENTS.md` fail-loudly rule).
+- The main process keeps the conversations it started (session id, folder, first message as title, start time) in `conversations.json`, so a conversation can be resumed after a relaunch, since Claude Code keys sessions to their folder. Writes are serialised and replace the file whole through `write-file-atomic`, which syncs a uniquely named temporary file before renaming it over the list, and the app holds Electron's single-instance lock, so one process owns the file. The lock belongs to the user data folder, so an unpackaged app keeps its own per checkout, in the checkout's ignored `.scratch/user-data`, and each checkout's dev app runs beside the others, its data going when the checkout is removed. A file that doesn't parse fails loudly rather than reading as empty (agent decision, per the root `AGENTS.md` fail-loudly rule).
 
 ## Finding the CLI until it is bundled
 
