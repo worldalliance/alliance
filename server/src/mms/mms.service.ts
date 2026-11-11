@@ -107,18 +107,7 @@ export class MmsService {
       ? tagTextLinks({ text: params.body, trackingId: cid })
       : params.body;
     if (!canText(to)) {
-      const mms = this.mmsRepository.create({
-        to: to,
-        from: "+15555550100",
-        body: body,
-        direction: MmsDirection.Outbound,
-        status: "sent",
-        twilioSid: "test-sid",
-        errorCode: null,
-        errorMessage: null,
-        cid,
-      });
-      return this.mmsRepository.save(mms);
+      return this.saveUndelivered({ to, body, cid });
     }
     this.logger.log(
       `Attempting to send MMS to user ${userId} with ${mediaUrls.length} media items.`,
@@ -216,15 +205,19 @@ export class MmsService {
       text: `Failed to send MMS to user ${userId}: ${errorMessage}`,
       error,
     });
-    if (env("NODE_ENV") === NodeEnv.Production) {
-      this.eventLogService.sendMessage({
-        type: EventType.SmsFailure,
-        message: `Failed to send MMS to ${to}: ${errorMessage}`,
-        blob: { errorMessage, to, from: this.senderFor(to) },
-        userId: null,
-      });
-    }
+    this.alertFailure({ to, errorMessage });
     return null;
+  }
+
+  private alertFailure(params: { to: string; errorMessage: string }) {
+    const { to, errorMessage } = params;
+    if (env("NODE_ENV") !== NodeEnv.Production) return;
+    this.eventLogService.sendMessage({
+      type: EventType.SmsFailure,
+      message: `Failed to send MMS to ${to}: ${errorMessage}`,
+      blob: { errorMessage, to, from: this.senderFor(to) },
+      userId: null,
+    });
   }
 
   /** Twilio's error text quotes the number it rejected. */
@@ -255,6 +248,28 @@ export class MmsService {
         status: message.status,
         errorCode: message.errorCode,
         errorMessage: message.errorMessage,
+        cid,
+      }),
+    );
+  }
+
+  /** Stands in for a send where delivery is off or the number is anonymized. */
+  private saveUndelivered(params: {
+    to: string;
+    body: string;
+    cid: string | null;
+  }): Promise<Mms> {
+    const { to, body, cid } = params;
+    return this.mmsRepository.save(
+      this.mmsRepository.create({
+        to,
+        from: "+15555550100",
+        body,
+        direction: MmsDirection.Outbound,
+        status: "sent",
+        twilioSid: "test-sid",
+        errorCode: null,
+        errorMessage: null,
         cid,
       }),
     );
