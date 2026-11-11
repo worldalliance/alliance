@@ -27,3 +27,9 @@ The renderer reaches the main process only through a preload script exposing one
 ## Tests replay captures through the real adapter
 
 The real-path-first REQUIREMENTS.md asks for Playwright tests of the built app against a fake backend that replays the captures. The Claude adapter task's stub CLI (`stub-claude.ts`) already replays them, so the Playwright tests run the built app with the real Claude adapter spawning that stub, rather than teaching `fake-backend.ts` to replay captures. That runs the adapter's real parsing, interrupt and close paths under the UI, and needs no second replay implementation. `fake-backend.ts` stays for the hand-scripted states captures can't produce (agent decision).
+
+## UI choices
+
+Applied from the `ux-guidelines` and `ux-forms-platform` skills (agent decisions):
+
+- Colours are CSS variables with light and dark values, on a 4 px spacing scale, with 14 px dense text and 16 px body text at 1.5 line height. Controls share a 32 px minimum height token, which fits a line of dense text with its padding and border and clears WCAG 2.2's 24 px minimum target size.

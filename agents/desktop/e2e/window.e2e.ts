@@ -73,6 +73,15 @@ test("the CSP blocks inline scripts", async () => {
   await violation;
 });
 
+test("the stylesheet loads, with its dark colours", async () => {
+  const background = () =>
+    page.evaluate("getComputedStyle(document.body).backgroundColor");
+  await page.emulateMedia({ colorScheme: "light" });
+  expect(await background()).toBe("rgb(255, 255, 255)");
+  await page.emulateMedia({ colorScheme: "dark" });
+  expect(await background()).toBe("rgb(13, 17, 23)");
+});
+
 test("the page can't read local files", async () => {
   await expect(page.evaluate("fetch('file:///etc/hosts')")).rejects.toThrow();
 });
