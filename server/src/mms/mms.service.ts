@@ -24,7 +24,7 @@ import { isAnonymizedPhoneNumber } from "src/utils/phone";
 import Twilio from "twilio";
 import type { MessageStatus } from "twilio/lib/rest/api/v2010/account/message";
 import { env } from "../config/env";
-import { Mms } from "./mms.entity";
+import { Mms, MmsDirection } from "./mms.entity";
 
 /** Twilio delivers to UK numbers only from an alphanumeric sender. */
 const UK_SENDER_ID = "The Alliance";
@@ -111,6 +111,7 @@ export class MmsService {
         to: to,
         from: "+15555550100",
         body: body,
+        direction: MmsDirection.Outbound,
         status: "sent",
         twilioSid: "test-sid",
         errorCode: null,
@@ -249,6 +250,7 @@ export class MmsService {
         to: to,
         from: this.senderFor(to),
         body: body,
+        direction: MmsDirection.Outbound,
         twilioSid: message.sid,
         status: message.status,
         errorCode: message.errorCode,

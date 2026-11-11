@@ -147,6 +147,7 @@ BEGIN
       ('onetime_invite', 'info', 'text'),
       ('waitlist_entry', 'reason', 'text'),
       ('waitlist_entry', 'nonprofitNominations', 'text'),
+      ('mms', 'body', 'text'),
       ('mms_optout', 'rawBody', 'text'),
       ('ambassador_program_interaction', 'text', 'text'),
       ('user_away_range', 'note', 'text'),

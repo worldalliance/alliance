@@ -245,11 +245,15 @@ export type Mail = {
     clickedLink: boolean;
 };
 
+export type MmsDirection = 'inbound' | 'outbound';
+
 export type Mms = {
     id: number;
     to: string;
     from: string;
     body: string;
+    direction: MmsDirection;
+    memberPhoneNumber: string;
     status: string;
     twilioSid: string;
     errorCode: number | null;

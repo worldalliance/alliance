@@ -4,6 +4,7 @@ import { EventLogModule } from "src/eventlog/eventlog.module";
 import { LinkTrackingModule } from "src/link-tracking/link-tracking.module";
 import { User } from "src/user/entities/user.entity";
 import { MmsOptout } from "./mms-optout.entity";
+import { MmsThreadService } from "./mms-thread.service";
 import { MmsUnsubService } from "./mms-unsub.service";
 import { MmsController } from "./mms.controller";
 import { Mms } from "./mms.entity";
@@ -16,7 +17,12 @@ import { TwilioStatusWorker } from "./twiliostatus.worker";
     forwardRef(() => EventLogModule),
     LinkTrackingModule,
   ],
-  providers: [MmsService, TwilioStatusWorker, MmsUnsubService],
+  providers: [
+    MmsService,
+    TwilioStatusWorker,
+    MmsUnsubService,
+    MmsThreadService,
+  ],
   controllers: [MmsController],
   exports: [MmsService],
 })

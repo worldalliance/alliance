@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { EventLog, EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { MmsOptout } from "src/mms/mms-optout.entity";
@@ -174,7 +175,7 @@ describe("Inbound MMS keywords (e2e)", () => {
     supertest(ctx.app.getHttpServer())
       .post("/mms/inbound")
       .type("form")
-      .send({ From: from, To: to, Body: body });
+      .send({ From: from, To: to, Body: body, MessageSid: randomUUID() });
 
   const unsubscribed = async () =>
     (await userRepo.findOneByOrFail({ id: memberId })).phoneNumberUnsubscribed;
@@ -429,10 +430,12 @@ describe("Inbound MMS keywords for a shared number (e2e)", () => {
   const SHARED = "+14155559002";
 
   const inbound = (from: string, body: string) =>
-    supertest(ctx.app.getHttpServer())
-      .post("/mms/inbound")
-      .type("form")
-      .send({ From: from, To: "+15555550100", Body: body });
+    supertest(ctx.app.getHttpServer()).post("/mms/inbound").type("form").send({
+      From: from,
+      To: "+15555550100",
+      Body: body,
+      MessageSid: randomUUID(),
+    });
 
   const unsubscribedFlags = async () =>
     Promise.all(

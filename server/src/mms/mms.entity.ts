@@ -7,7 +7,21 @@ import {
   UpdateDateColumnTz,
 } from "../datasources/basecolumns";
 
+export enum MmsDirection {
+  Inbound = "inbound",
+  Outbound = "outbound",
+}
+
+export enum MmsKeyword {
+  Stop = "stop",
+  Start = "start",
+}
+
 @Entity()
+@Index(["twilioSid"], {
+  unique: true,
+  where: `"direction" = 'inbound'`,
+})
 export class Mms {
   @PrimaryGeneratedColumn()
   @ApiProperty()
@@ -30,6 +44,30 @@ export class Mms {
   @Column()
   @ApiProperty()
   body: string;
+
+  /** BACKCOMPAT(mms-direction): the default serves the inserts of the release
+   * before this column; drop it once no such release writes to mms. */
+  @Column({ type: "enum", enum: MmsDirection, default: MmsDirection.Outbound })
+  @ApiProperty({ enum: MmsDirection, enumName: "MmsDirection" })
+  direction: MmsDirection;
+
+  @Column({
+    generatedType: "STORED",
+    insert: false,
+    update: false,
+    asExpression: `CASE WHEN "direction" = 'inbound' THEN "from" ELSE "to" END`,
+    comment: "The member's side of the message",
+  })
+  @ApiProperty()
+  memberPhoneNumber: string;
+
+  @Column({
+    type: "enum",
+    enum: MmsKeyword,
+    nullable: true,
+    comment: "The STOP or START keyword the inbound webhook acted on",
+  })
+  keyword: MmsKeyword | null;
 
   @Column({ type: "text" })
   @ApiProperty({ type: String })
