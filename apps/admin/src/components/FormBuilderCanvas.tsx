@@ -68,6 +68,7 @@ export function FormBuilderCanvas({
     addPage,
     movePage,
     moveElement,
+    moveElementsTo,
     updateElementAt,
   } = edits;
   const availableElements = displayOnly
@@ -141,7 +142,7 @@ export function FormBuilderCanvas({
           issues={issueIndex}
           onAddPage={addPage}
           onMovePage={movePage}
-          onMoveElement={(pageIndex, move) => moveElement(move, pageIndex)}
+          onMoveElements={moveElementsTo}
         />
       }
       revealPending={revealPending}

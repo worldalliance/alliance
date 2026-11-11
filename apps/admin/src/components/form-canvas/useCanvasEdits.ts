@@ -291,13 +291,13 @@ export function useCanvasEdits({
     });
   };
 
-  const moveElement = (
-    { from, dropIndex, position }: ListMove,
-    pageIndex = selectedPageIndex,
-  ) =>
+  const moveElement = ({ from, dropIndex, position }: ListMove) =>
     moveElementsTo(
-      { pageIndex, start: from, end: from + 1 },
-      { pageIndex, index: dropIndex + insertionOffset[position] },
+      { pageIndex: selectedPageIndex, start: from, end: from + 1 },
+      {
+        pageIndex: selectedPageIndex,
+        index: dropIndex + insertionOffset[position],
+      },
     );
 
   const duplicateElement = (index: number) => {

@@ -4,6 +4,8 @@ import { cn } from "@alliance/shared/styles/util";
 import { Plus } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { IssueTargetKind, type IssueIndex } from "../../lib/formIssues";
+import type { ElementDrop, ElementSpan } from "../../lib/moveElements";
+import { DropPosition } from "../../lib/useDragReorder";
 import {
   pageSegments,
   SegmentKind,
@@ -27,12 +29,12 @@ import {
   checkStateOf,
   inRange,
   rangeFocus,
+  selectedSpan,
   toggleChecked,
   type Span,
 } from "./rangeSelection";
-import { useListDrag, type ListDrag, type ListMove } from "./useListDrag";
-
-const PAGES = "pages";
+import type { ListDrag, ListMove } from "./useListDrag";
+import { useOutlineDrag, type DropZone } from "./useOutlineDrag";
 
 const pageKey = (page: Page) => `page:${page.id}`;
 const groupKey = (key: string) => `group:${key}`;
@@ -78,7 +80,7 @@ type FormOutlineProps = {
   issues: IssueIndex;
   onAddPage: () => void;
   onMovePage: (move: ListMove) => void;
-  onMoveElement: (pageIndex: number, move: ListMove) => void;
+  onMoveElements: (from: ElementSpan, to: ElementDrop) => void;
 };
 
 /**
@@ -100,7 +102,7 @@ export function FormOutline({
   issues,
   onAddPage,
   onMovePage,
-  onMoveElement,
+  onMoveElements,
 }: FormOutlineProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState<ReadonlyMap<string, boolean>>(
@@ -155,13 +157,11 @@ export function FormOutline({
     )?.scrollIntoView({ block: "nearest" });
   }, [selectionKey]);
 
-  const { acceptDrop, drop, dragFor } = useListDrag<string>((list, move) => {
-    if (list === PAGES) {
-      onMovePage(move);
-    } else {
-      const index = pages.findIndex((page) => pageKey(page) === list);
-      if (index !== -1) onMoveElement(index, move);
-    }
+  const span = selectedSpan(selected);
+  const { acceptDrop, drop, forPage, forElement, forGroup } = useOutlineDrag({
+    selection: span && { pageIndex, ...span },
+    onMovePage,
+    onMoveElements,
   });
 
   const renderElements = (page: Page, index: number) => {
@@ -215,7 +215,7 @@ export function FormOutline({
                 }
               : undefined
           }
-          drag={dragFor(pageKey(page), at)}
+          drag={forElement({ pageIndex: index, index: at })}
           issues={issues.inElement(index, at)}
           {...(container && {
             expanded: open,
@@ -249,34 +249,47 @@ export function FormOutline({
               const { key, start, end } = segment;
               const open = isExpanded(groupKey(key), true);
               const group: CanvasTarget = { kind: CanvasTargetKind.Group, key };
+              const before = forGroup({ pageIndex: index, start, end });
               return (
-                <li key={key}>
-                  <OutlineRow
-                    label={`Shared visibility · ${withCount(end - start, "element")}`}
-                    current={
-                      onPage &&
-                      selected.kind === CanvasTargetKind.Group &&
-                      selected.key === key
-                    }
-                    onSelect={() => onSelect(index, group)}
-                    onExtend={
-                      onPage && onExtend
-                        ? () => onExtend({ start, end }, group)
-                        : undefined
-                    }
-                    expanded={open}
-                    onToggle={() => toggle(groupKey(key), true)}
-                    issues={page.fields.slice(start, end).reduce(
-                      (count, _, offset) =>
-                        count + issues.inElement(index, start + offset),
-                      issues.at({
-                        kind: IssueTargetKind.Group,
-                        pageIndex: index,
-                        key,
-                      }).length,
-                    )}
-                    className="text-amber-800"
-                  />
+                <li key={key} className="relative">
+                  {before.active && (
+                    <DropLine
+                      position={DropPosition.Before}
+                      before="-top-px"
+                      after="-bottom-px"
+                    />
+                  )}
+                  <div
+                    onDragOver={before.onDragOver}
+                    className={cn(before.dragging && "opacity-50")}
+                  >
+                    <OutlineRow
+                      label={`Shared visibility · ${withCount(end - start, "element")}`}
+                      current={
+                        onPage &&
+                        selected.kind === CanvasTargetKind.Group &&
+                        selected.key === key
+                      }
+                      onSelect={() => onSelect(index, group)}
+                      onExtend={
+                        onPage && onExtend
+                          ? () => onExtend({ start, end }, group)
+                          : undefined
+                      }
+                      expanded={open}
+                      onToggle={() => toggle(groupKey(key), true)}
+                      issues={page.fields.slice(start, end).reduce(
+                        (count, _, offset) =>
+                          count + issues.inElement(index, start + offset),
+                        issues.at({
+                          kind: IssueTargetKind.Group,
+                          pageIndex: index,
+                          key,
+                        }).length,
+                      )}
+                      className="text-amber-800"
+                    />
+                  </div>
                   {open && (
                     <ul className="ml-3 border-l border-dashed border-amber-300 pl-1">
                       {page.fields
@@ -327,6 +340,7 @@ export function FormOutline({
           <ul>
             {pages.map((page, index) => {
               const open = isExpanded(pageKey(page), index === pageIndex);
+              const drag = forPage({ index, length: page.fields.length });
               return (
                 <OutlineEntry
                   key={page.id}
@@ -338,7 +352,8 @@ export function FormOutline({
                   onSelect={() =>
                     onSelect(index, { kind: CanvasTargetKind.Page })
                   }
-                  drag={dragFor(PAGES, index)}
+                  drag={drag}
+                  into={drag.into}
                   expanded={open}
                   onToggle={() => toggle(pageKey(page), index === pageIndex)}
                   issues={issues.onPage(index)}
@@ -347,7 +362,10 @@ export function FormOutline({
                   {open && (
                     <div className="ml-3 pl-1">
                       {page.fields.length === 0 ? (
-                        <p className="px-2 py-1 text-xs text-gray-400">
+                        <p
+                          className="px-2 py-1 text-xs text-gray-400"
+                          onDragOver={drag.into.onDragOver}
+                        >
                           No elements
                         </p>
                       ) : (
@@ -367,9 +385,10 @@ export function FormOutline({
 
 function OutlineEntry({
   drag,
+  into,
   children,
   ...row
-}: RowProps & { drag: ListDrag; children?: ReactNode }) {
+}: RowProps & { drag: ListDrag; into?: DropZone; children?: ReactNode }) {
   return (
     <li
       className={cn("relative", drag.dragging && "opacity-50")}
@@ -382,7 +401,16 @@ function OutlineEntry({
           after="-bottom-px"
         />
       )}
-      <div draggable onDragStart={drag.onDragStart} onDragEnd={drag.onDragEnd}>
+      <div
+        draggable
+        onDragStart={drag.onDragStart}
+        onDragEnd={drag.onDragEnd}
+        onDragOver={into?.onDragOver}
+        className={cn(
+          "rounded-md",
+          into?.active && "ring-2 ring-inset ring-blue-500",
+        )}
+      >
         <OutlineRow {...row} draggable />
       </div>
       {children}

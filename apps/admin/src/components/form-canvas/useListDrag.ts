@@ -15,20 +15,17 @@ export type ListDrag = {
   dropPosition: DropPosition | null;
 };
 
-type ListItem<L> = { list: L; index: number };
-
 /**
- * Drag-to-reorder across items in one or more lists, each move staying
- * within its list. The drop line sits in the gap between items, so the
- * container accepts the drop and commits the last target an item reported.
- * Passing over an item of another list clears that target, unless an item of
- * the dragged list inside it already took the event.
+ * Drag-to-reorder within one list. The drop line sits in the gap between
+ * items, so the container accepts the drop and commits the last target an
+ * item reported.
  */
-export function useListDrag<L>(onMove: (list: L, move: ListMove) => void) {
-  const [dragged, setDragged] = useState<ListItem<L> | null>(null);
-  const [dropTarget, setDropTarget] = useState<
-    (ListItem<L> & { position: DropPosition }) | null
-  >(null);
+export function useListDrag(onMove: (move: ListMove) => void) {
+  const [dragged, setDragged] = useState<number | null>(null);
+  const [dropTarget, setDropTarget] = useState<{
+    index: number;
+    position: DropPosition;
+  } | null>(null);
 
   const endDrag = () => {
     setDragged(null);
@@ -41,8 +38,8 @@ export function useListDrag<L>(onMove: (list: L, move: ListMove) => void) {
   const drop = (event: DragEvent) => {
     event.preventDefault();
     if (dragged !== null && dropTarget !== null) {
-      onMove(dragged.list, {
-        from: dragged.index,
+      onMove({
+        from: dragged,
         dropIndex: dropTarget.index,
         position: dropTarget.position,
       });
@@ -50,40 +47,29 @@ export function useListDrag<L>(onMove: (list: L, move: ListMove) => void) {
     endDrag();
   };
 
-  const dragFor = (list: L, index: number): ListDrag => {
-    const isDragged = dragged?.list === list && dragged.index === index;
-    return {
-      onDragStart: (event: DragEvent) => {
-        event.dataTransfer.effectAllowed = "move";
-        setDragged({ list, index });
-      },
-      onDragEnd: endDrag,
-      onDragOver: (event: DragEvent) => {
-        if (dragged?.list !== list) {
-          if (!event.defaultPrevented) setDropTarget(null);
-          return;
-        }
-        event.preventDefault();
-        event.dataTransfer.dropEffect = "move";
-        const position = positionIn(event);
-        setDropTarget((current) =>
-          current?.list === list &&
-          current.index === index &&
-          current.position === position
-            ? current
-            : { list, index, position },
-        );
-      },
-      dragging: isDragged,
-      dropPosition:
-        dragged?.list === list &&
-        !isDragged &&
-        dropTarget?.list === list &&
-        dropTarget.index === index
-          ? dropTarget.position
-          : null,
-    };
-  };
+  const dragFor = (index: number): ListDrag => ({
+    onDragStart: (event: DragEvent) => {
+      event.dataTransfer.effectAllowed = "move";
+      setDragged(index);
+    },
+    onDragEnd: endDrag,
+    onDragOver: (event: DragEvent) => {
+      if (dragged === null) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      const position = positionIn(event);
+      setDropTarget((current) =>
+        current?.index === index && current.position === position
+          ? current
+          : { index, position },
+      );
+    },
+    dragging: dragged === index,
+    dropPosition:
+      dragged !== null && dragged !== index && dropTarget?.index === index
+        ? dropTarget.position
+        : null,
+  });
 
   return { acceptDrop, drop, dragFor };
 }

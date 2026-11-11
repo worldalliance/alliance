@@ -224,13 +224,67 @@ describe("the form outline", () => {
     expect(pageTitle().value).toBe("One");
   });
 
-  it("keeps an element from dropping onto another page", () => {
+  it("moves an element to a gap on another page", () => {
     renderFormBuilder(schema);
     fireEvent.click(contents("Two"));
+    drag(entry("Text Field: Town"), entry("Text Field: Food").closest("li")!);
+    expect(entries()).toEqual([
+      "One",
+      "Text Block: Welcome",
+      "Two",
+      "Shared visibility · 2 elements",
+      "Text Field: Pet",
+      "Text Field: Vet",
+      "Text Field: Food",
+      "Text Field: Town",
+    ]);
+    expect(pageTitle().value).toBe("One");
+  });
+
+  it("moves an element dropped on a page's row to that page's end", () => {
+    renderFormBuilder(schema);
+    drag(entry("Text Field: Town"), entry("Two").parentElement!.parentElement!);
+    fireEvent.click(contents("Two"));
+    expect(entries().slice(1)).toEqual([
+      "Text Block: Welcome",
+      "Two",
+      "Shared visibility · 2 elements",
+      "Text Field: Pet",
+      "Text Field: Vet",
+      "Text Field: Food",
+      "Text Field: Town",
+    ]);
+  });
+
+  it("moves the selected elements together, keeping them selected on their new page", () => {
+    renderFormBuilder(schema);
+    fireEvent.click(entry("Text Field: Town"));
+    fireEvent.click(entry("Text Block: Welcome"), { shiftKey: true });
+    drag(
+      entry("Text Block: Welcome"),
+      entry("Two").parentElement!.parentElement!,
+    );
+    expect(entries()).toEqual([
+      "One",
+      "Two",
+      "Shared visibility · 2 elements",
+      "Text Field: Pet",
+      "Text Field: Vet",
+      "Text Field: Food",
+      "Text Field: Town",
+      "Text Block: Welcome",
+    ]);
+    for (const name of ["Text Field: Town", "Text Block: Welcome"]) {
+      expect(entry(name).getAttribute("aria-current")).toBe("true");
+    }
+  });
+
+  it("drops nothing once an element passes off the rows onto a page's contents", () => {
+    renderFormBuilder(schema);
     drag(
       entry("Text Field: Town"),
       entry("Text Block: Welcome").closest("li")!,
-      entry("Text Field: Pet").closest("li")!,
+      entry("Two").closest("li")!,
     );
     expect(entries().slice(1, 3)).toEqual([
       "Text Field: Town",
@@ -238,21 +292,152 @@ describe("the form outline", () => {
     ]);
   });
 
-  it("moves an element within a page whose id is pages", () => {
+  it("drags a selected group whole, keeping it selected on its new page", () => {
+    renderFormBuilder(schema);
+    fireEvent.click(contents("Two"));
+    fireEvent.click(entry("Shared visibility · 2 elements"));
+    drag(entry("Text Field: Pet"), entry("One").parentElement!.parentElement!);
+    expect(entries()).toEqual([
+      "One",
+      "Text Field: Town",
+      "Text Block: Welcome",
+      "Shared visibility · 2 elements",
+      "Text Field: Pet",
+      "Text Field: Vet",
+      "Two",
+      "Text Field: Food",
+    ]);
+    expect(heading()).toBe("Shared visibility");
+  });
+
+  it("leaves a selection on another page behind when an element moves", () => {
     renderFormBuilder({
       ...schema,
-      pages: [{ ...schema.pages[0]!, id: "pages" }, schema.pages[1]!],
+      pages: [...schema.pages, { id: "p3", title: "Three", fields: [] }],
     });
+    fireEvent.click(entry("Text Field: Town"));
+    fireEvent.click(contents("Two"));
+    drag(
+      entry("Text Field: Pet"),
+      entry("Three").parentElement!.parentElement!,
+    );
+    expect(heading()).toBe("Text Field: Town");
+    expect(entry("Text Field: Town").getAttribute("aria-current")).toBe("true");
+  });
+
+  it("fades a dragged group's header with its members", () => {
+    renderFormBuilder(schema);
+    fireEvent.click(contents("Two"));
+    fireEvent.click(entry("Shared visibility · 2 elements"));
+    const header = entry("Shared visibility · 2 elements").parentElement!
+      .parentElement!;
+    expect(header.className).not.toContain("opacity-50");
+    fireEvent.dragStart(
+      entry("Text Field: Pet").parentElement!.parentElement!,
+      {
+        dataTransfer: dataTransfer(),
+      },
+    );
+    expect(header.className).toContain("opacity-50");
+  });
+
+  it("drags an element outside the selection alone", () => {
+    renderFormBuilder(schema);
+    fireEvent.click(entry("Text Field: Town"));
+    fireEvent.click(entry("Text Block: Welcome"), { shiftKey: true });
+    fireEvent.click(contents("Two"));
+    drag(
+      entry("Text Field: Food"),
+      entry("Text Block: Welcome").closest("li")!,
+    );
+    expect(entries()).toEqual([
+      "One",
+      "Text Field: Town",
+      "Text Block: Welcome",
+      "Text Field: Food",
+      "Two",
+      "Shared visibility · 2 elements",
+      "Text Field: Pet",
+      "Text Field: Vet",
+    ]);
+    expect(
+      ["Text Field: Town", "Text Block: Welcome", "Text Field: Food"].map(
+        (name) => entry(name).getAttribute("aria-current"),
+      ),
+    ).toEqual(["true", "true", "false"]);
+  });
+
+  it("drops nothing once an element passes off the rows onto the pages heading", () => {
+    renderFormBuilder(schema);
     drag(
       entry("Text Field: Town"),
       entry("Text Block: Welcome").closest("li")!,
+      outline().getByRole("heading", { name: "Pages" }),
     );
-    drag(entry("Text Field: Town"), entry("Two").closest("li")!);
+    expect(entries().slice(1, 3)).toEqual([
+      "Text Field: Town",
+      "Text Block: Welcome",
+    ]);
+  });
+
+  it("moves an element dropped on a group's header to before the group", () => {
+    renderFormBuilder(schema);
+    fireEvent.click(contents("Two"));
+    drag(
+      entry("Text Field: Town"),
+      entry("Shared visibility · 2 elements").parentElement!.parentElement!,
+    );
+    expect(entries().slice(2)).toEqual([
+      "Two",
+      "Text Field: Town",
+      "Shared visibility · 2 elements",
+      "Text Field: Pet",
+      "Text Field: Vet",
+      "Text Field: Food",
+    ]);
+  });
+
+  it("shows a drop line only where a drop moves something", () => {
+    renderFormBuilder(schema);
+    const linesWhile = (from: HTMLElement, over: HTMLElement) => {
+      const transfer = dataTransfer();
+      const handle = from.parentElement!.parentElement!;
+      fireEvent.dragStart(handle, { dataTransfer: transfer });
+      fireEvent.dragOver(over, { dataTransfer: transfer });
+      const lines = screen
+        .getByLabelText("Outline")
+        .querySelectorAll(".bg-blue-500").length;
+      fireEvent.dragEnd(handle);
+      return lines;
+    };
+    expect(
+      linesWhile(
+        entry("Text Field: Town"),
+        entry("Text Block: Welcome").closest("li")!,
+      ),
+    ).toBe(1);
+    expect(
+      linesWhile(
+        entry("Text Block: Welcome"),
+        entry("Text Field: Town").closest("li")!,
+      ),
+    ).toBe(0);
+    expect(linesWhile(entry("One"), entry("Two").closest("li")!)).toBe(1);
+    expect(linesWhile(entry("Two"), entry("One").closest("li")!)).toBe(0);
+  });
+
+  it("moves an element onto an empty page", () => {
+    renderFormBuilder({
+      ...schema,
+      pages: [schema.pages[0]!, { id: "p3", title: "Three", fields: [] }],
+    });
+    fireEvent.click(contents("Three"));
+    drag(entry("Text Field: Town"), outline().getByText("No elements"));
     expect(entries()).toEqual([
       "One",
       "Text Block: Welcome",
+      "Three",
       "Text Field: Town",
-      "Two",
     ]);
   });
 });
