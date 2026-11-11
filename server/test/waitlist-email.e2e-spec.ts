@@ -30,7 +30,12 @@ import {
 import { WaitlistEmailSkipReason } from "../src/waitlist/waitlist-email-audience";
 import { WaitlistEmailSender } from "../src/waitlist/waitlist-email-sender.service";
 import { WaitlistModule } from "../src/waitlist/waitlist.module";
-import { createTestApp, TestContext, waitForLockWait } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  TestContext,
+  waitForLockWait,
+} from "./e2e-test-utils";
 
 describe("Waitlist email admin (e2e)", () => {
   let ctx: TestContext;
@@ -160,7 +165,7 @@ describe("Waitlist email admin (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   describe("templates", () => {

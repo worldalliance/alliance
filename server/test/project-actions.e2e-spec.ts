@@ -10,7 +10,11 @@ import { Action } from "../src/actions/entities/action.entity";
 import { Project } from "../src/actions/entities/project.entity";
 import { ReminderGroup } from "../src/actions/entities/reminder-group.entity";
 import { Form } from "../src/tasks/entities/form.entity";
-import { createTestApp, type TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  type TestContext,
+} from "./e2e-test-utils";
 
 const announcement = {
   name: "Member Action announcement",
@@ -82,7 +86,7 @@ describe("Project actions (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("rejects non-admins", async () => {

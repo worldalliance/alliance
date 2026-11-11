@@ -16,7 +16,12 @@ import { NotifPushDispatcherWorker } from "src/push/notif-push-dispatcher.worker
 import { UserDevice } from "src/user/entities/user-device.entity";
 import type { User } from "src/user/entities/user.entity";
 import { Not } from "typeorm";
-import { createTestApp, setPreference, TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  setPreference,
+  TestContext,
+} from "./e2e-test-utils";
 import { GroupJoinFixtures } from "./group-join-fixtures";
 
 describe("Group join notifications: delivery (e2e)", () => {
@@ -50,7 +55,7 @@ describe("Group join notifications: delivery (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("names an anonymous joiner by their public name in the entry and the text", async () => {

@@ -6,6 +6,7 @@ import { KoraParticipantSignup } from "src/kora/entities/kora-participant-signup
 import { KoraParticipant } from "src/kora/entities/kora-participant.entity";
 import { KoraParticipantService } from "src/kora/kora-participant.service";
 import request from "supertest";
+import { closeTestApp } from "./e2e-test-utils";
 import {
   koraHarness,
   signInWithGoogle,
@@ -66,7 +67,7 @@ describe("Kora admin (e2e)", () => {
   });
 
   afterAll(async () => {
-    await h.ctx.app.close();
+    await closeTestApp(h.ctx.app);
   });
 
   it("lists participants with their contact, newest first", async () => {

@@ -8,7 +8,12 @@ import { Post } from "src/forum/entities/post.entity";
 import { ForumCommentService } from "src/forum/forum-comment.service";
 import { ForumService } from "src/forum/forum.service";
 import { User } from "src/user/entities/user.entity";
-import { createTestApp, TestContext, waitForLockWait } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  TestContext,
+  waitForLockWait,
+} from "./e2e-test-utils";
 import { createForumSoftDeleteFixtures } from "./forum-soft-delete-fixtures";
 
 describe("Forum deletion concurrency (e2e)", () => {
@@ -22,7 +27,7 @@ describe("Forum deletion concurrency (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("takes concurrent comments on one post", async () => {

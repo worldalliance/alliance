@@ -4,7 +4,7 @@ import { CreatePostDto } from "src/forum/dto/post.dto";
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import TestAgent from "supertest/lib/agent";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Auth via Http-Only cookies (e2e)", () => {
   let ctx: TestContext;
@@ -183,6 +183,6 @@ describe("Auth via Http-Only cookies (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 });

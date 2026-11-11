@@ -19,7 +19,7 @@ import {
 } from "../src/user/entities/onetime-invite.entity";
 import { ReferralSource, User } from "../src/user/entities/user.entity";
 import { OnetimeInviteService } from "../src/user/onetime-invite.service";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("accepted invites (e2e)", () => {
   let ctx: TestContext;
@@ -37,7 +37,7 @@ describe("accepted invites (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("counts only undeleted, claimed invites in every invite stat", async () => {

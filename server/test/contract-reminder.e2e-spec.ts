@@ -21,6 +21,7 @@ import { ReferralSource, User } from "src/user/entities/user.entity";
 import { Repository } from "typeorm";
 import { ContractReminderSentAt1792141515694 } from "../migrations/1792141515694-ContractReminderSentAt";
 import {
+  closeTestApp,
   createTestApp,
   giveActiveContract,
   TestContext,
@@ -35,7 +36,7 @@ describe("ContractReminderWorker (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const hoursAgo = (hours: number) =>

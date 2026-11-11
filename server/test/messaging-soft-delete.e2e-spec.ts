@@ -22,6 +22,7 @@ import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import {
+  closeTestApp,
   createTestApp,
   signAccessToken,
   TestContext,
@@ -139,7 +140,7 @@ describe("Messaging soft deletion (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("hides deleted messages from lists, previews, and reply quotes", async () => {

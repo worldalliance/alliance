@@ -8,6 +8,7 @@ import { TasksModule } from "../src/tasks/tasks.module";
 import { Tag } from "../src/user/entities/tag.entity";
 import { User } from "../src/user/entities/user.entity";
 import {
+  closeTestApp,
   createFormWithSnapshot,
   createTestApp,
   TestContext,
@@ -38,7 +39,7 @@ describe("Grouping members by what a form shows them (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const showingIf = (conditions: Record<string, unknown>[]) => ({

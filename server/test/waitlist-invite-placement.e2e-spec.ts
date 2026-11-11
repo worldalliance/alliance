@@ -7,7 +7,7 @@ import {
 } from "../src/user/entities/onetime-invite.entity";
 import { ReferralSource, User } from "../src/user/entities/user.entity";
 import { WaitlistEntry } from "../src/waitlist/entities/waitlist-entry.entity";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Waitlist invite placement (e2e)", () => {
   let ctx: TestContext;
@@ -69,7 +69,7 @@ describe("Waitlist invite placement (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("leaves a waitlist invite's claimant for staff when its group is full", async () => {

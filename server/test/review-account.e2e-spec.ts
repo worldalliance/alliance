@@ -24,7 +24,12 @@ import { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  signAccessToken,
+  TestContext,
+} from "./e2e-test-utils";
 
 const PASSWORD = "review-password";
 
@@ -77,8 +82,7 @@ describe("Review accounts (e2e)", () => {
   });
 
   afterAll(async () => {
-    ctx.app.getHttpServer().closeAllConnections();
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   describe("in production", () => {

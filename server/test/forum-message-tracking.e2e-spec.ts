@@ -15,6 +15,7 @@ import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import { Raw } from "typeorm";
 import {
+  closeTestApp,
   createTestApp,
   eventually,
   giveActiveContract,
@@ -95,7 +96,7 @@ describe("forum message tracking (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("attributes a reply's email to the member replied to", async () => {

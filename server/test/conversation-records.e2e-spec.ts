@@ -6,7 +6,12 @@ import { Participant } from "src/messaging/entities/participant.entity";
 import { MessagingModule } from "src/messaging/messaging.module";
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
-import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  signAccessToken,
+  TestContext,
+} from "./e2e-test-utils";
 
 describe("Conversation records across endpoints (e2e)", () => {
   let ctx: TestContext;
@@ -17,8 +22,7 @@ describe("Conversation records across endpoints (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    ctx.app.getHttpServer().closeAllConnections();
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const send = (params: {

@@ -2,7 +2,7 @@ import { MailService } from "src/mail/mail.service";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import { User } from "../src/user/entities/user.entity";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Forgot password (e2e)", () => {
   let ctx: TestContext;
@@ -14,7 +14,7 @@ describe("Forgot password (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it.each([

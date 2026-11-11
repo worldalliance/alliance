@@ -1,6 +1,6 @@
 import request from "supertest";
 import { TasksModule } from "../src/tasks/tasks.module";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Running a stored validator of a removed type (e2e)", () => {
   let ctx: TestContext;
@@ -15,7 +15,7 @@ describe("Running a stored validator of a removed type (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("fails instead of passing", async () => {

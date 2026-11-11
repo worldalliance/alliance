@@ -8,7 +8,11 @@ import { CustomLink } from "../src/custom-links/entities/custom-link.entity";
 import { WaitlistEntry } from "../src/waitlist/entities/waitlist-entry.entity";
 import { WaitlistLink } from "../src/waitlist/entities/waitlist-link.entity";
 import { WaitlistModule } from "../src/waitlist/waitlist.module";
-import { createTestApp, type TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  type TestContext,
+} from "./e2e-test-utils";
 
 describe("Custom links (e2e)", () => {
   let ctx: TestContext;
@@ -36,7 +40,7 @@ describe("Custom links (e2e)", () => {
     await ctx.dataSource.getRepository(CustomLink).clear();
   });
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("restricts management to admins but permits anonymous arrivals", async () => {

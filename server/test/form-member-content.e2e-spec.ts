@@ -15,7 +15,11 @@ import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { TasksModule } from "src/tasks/tasks.module";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { createTestApp, type TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  type TestContext,
+} from "./e2e-test-utils";
 
 describe("Per-member display block content (e2e)", () => {
   let ctx: TestContext;
@@ -34,7 +38,7 @@ describe("Per-member display block content (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const personalized = (): FormSchema => {

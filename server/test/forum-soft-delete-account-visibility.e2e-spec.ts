@@ -15,7 +15,7 @@ import { ForumCommentQueryService } from "src/forum/forum-comment-query.service"
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 import { createForumSoftDeleteFixtures } from "./forum-soft-delete-fixtures";
 
 describe("Forum account visibility (e2e)", () => {
@@ -30,7 +30,7 @@ describe("Forum account visibility (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("drops a soft-deleted account's comments and the replies under them", async () => {

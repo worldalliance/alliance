@@ -2,7 +2,7 @@ import { io } from "socket.io-client";
 import { AuthService } from "src/auth/auth.service";
 import { EventLogModule } from "src/eventlog/eventlog.module";
 import { MessagingModule } from "src/messaging/messaging.module";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 const NAMESPACES = ["/messaging", "/messaging/overview", "/event-log"];
 
@@ -44,8 +44,7 @@ describe("Socket gateway auth (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    ctx.app.getHttpServer().closeAllConnections();
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it.each(NAMESPACES)("accepts an access token on %s", async (namespace) => {

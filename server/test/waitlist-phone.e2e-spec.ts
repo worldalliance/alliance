@@ -23,7 +23,7 @@ import { WaitlistEmailSkipReason } from "../src/waitlist/waitlist-email-audience
 import { WaitlistEmailSender } from "../src/waitlist/waitlist-email-sender.service";
 import { WaitlistMailService } from "../src/waitlist/waitlist-mail.service";
 import { WaitlistModule } from "../src/waitlist/waitlist.module";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Waitlist phone contact (e2e)", () => {
   let ctx: TestContext;
@@ -93,7 +93,7 @@ describe("Waitlist phone contact (e2e)", () => {
 
   afterAll(async () => {
     delete process.env.WAITLIST_PUBLIC_MAIL_DAILY_CAP;
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   describe("signup", () => {

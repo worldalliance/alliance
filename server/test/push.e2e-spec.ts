@@ -5,7 +5,12 @@ import { EXPO_CLIENT, PushService } from "src/push/push.service";
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  signAccessToken,
+  TestContext,
+} from "./e2e-test-utils";
 
 describe("Push (e2e)", () => {
   let ctx: TestContext;
@@ -49,7 +54,7 @@ describe("Push (e2e)", () => {
 
   afterAll(async () => {
     if (ctx?.app) {
-      await ctx.app.close();
+      await closeTestApp(ctx.app);
     }
   });
 

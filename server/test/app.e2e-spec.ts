@@ -2,6 +2,7 @@ import { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { AppController } from "src/app.controller";
 import request from "supertest";
+import { closeTestApp } from "./e2e-test-utils";
 
 describe("App Controller (e2e)", () => {
   let app: INestApplication;
@@ -16,7 +17,7 @@ describe("App Controller (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await app.close();
+    await closeTestApp(app);
   });
 
   it("exposes a health check endpoint", async () => {

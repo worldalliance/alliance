@@ -20,7 +20,12 @@ import { notifMessage } from "src/notifs/notification-content";
 import { NotifsService } from "src/notifs/notifs.service";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
-import { createTestApp, setPreference, TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  setPreference,
+  TestContext,
+} from "./e2e-test-utils";
 
 describe("In-app visibility (e2e)", () => {
   let ctx: TestContext;
@@ -83,7 +88,7 @@ describe("In-app visibility (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("keeps a kind with in-app off out of the inbox and the unread count", async () => {

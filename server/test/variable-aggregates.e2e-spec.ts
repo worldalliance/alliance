@@ -8,6 +8,7 @@ import request from "supertest";
 import type { Repository } from "typeorm";
 import {
   attachFormSnapshot,
+  closeTestApp,
   createFormSnapshot,
   createFormWithSnapshot,
   createTestApp,
@@ -82,7 +83,7 @@ describe("Variable aggregates (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const createMember = async (): Promise<number> => {

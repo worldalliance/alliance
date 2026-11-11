@@ -34,6 +34,7 @@ import { User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
 import {
+  closeTestApp,
   createFormWithSnapshot,
   createTestApp,
   TestContext,
@@ -81,7 +82,7 @@ describe("ForumActionCompleterWorker (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const createUser = async (email: string, name: string) => {

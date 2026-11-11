@@ -18,7 +18,7 @@ import {
   type CohortDecisionFixtures,
   saveLiveCohortDecisions,
 } from "./cohort-decision-fixtures";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Action.usersJoined recomputation (e2e)", () => {
   let ctx: TestContext;
@@ -40,7 +40,7 @@ describe("Action.usersJoined recomputation (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const setUp = async () => {

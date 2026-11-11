@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import type { Repository } from "typeorm";
 import { User } from "../src/user/entities/user.entity";
 import { sqlUserHasProfilePicture } from "../src/user/profile-picture";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Profile picture presence (e2e)", () => {
   let ctx: TestContext;
@@ -15,7 +15,7 @@ describe("Profile picture presence (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it.each([null, "", "  ", "\t\n", "key.webp"])(

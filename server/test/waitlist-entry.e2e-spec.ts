@@ -15,7 +15,7 @@ import {
 } from "../src/waitlist/entities/waitlist-entry.entity";
 import { WaitlistLink } from "../src/waitlist/entities/waitlist-link.entity";
 import { WaitlistModule } from "../src/waitlist/waitlist.module";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Waitlist entry (e2e)", () => {
   let ctx: TestContext;
@@ -74,7 +74,7 @@ describe("Waitlist entry (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   describe("POST /waitlist/entries", () => {

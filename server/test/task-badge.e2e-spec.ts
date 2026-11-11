@@ -28,6 +28,7 @@ import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import {
+  closeTestApp,
   createTestApp,
   eventually,
   signAccessToken,
@@ -148,7 +149,9 @@ describe("Task badge sync (e2e)", () => {
 
   afterAll(async () => {
     setEnv("SEND_DEV_NOTIFS", previousSendDevNotifs);
-    await ctx?.app.close();
+    if (ctx) {
+      await closeTestApp(ctx.app);
+    }
   });
 
   it("sends a quiet badge-only push with the count, once per change", async () => {
