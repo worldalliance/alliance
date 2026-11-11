@@ -96,12 +96,11 @@ class FakeSession implements AgentSession {
       this.listeners.emit(event);
     }
     if (!signal.aborted) await setTimeout(this.params.stepDelayMs);
-    this.endTurn();
-  }
-
-  private endTurn(): void {
     this.turn = undefined;
-    this.listeners.emit({ kind: AgentEventKind.TurnEnded });
+    this.listeners.emit({
+      kind: AgentEventKind.TurnEnded,
+      interrupted: signal.aborted,
+    });
   }
 }
 

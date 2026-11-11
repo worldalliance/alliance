@@ -64,7 +64,10 @@ describe("a captured session", () => {
       }),
     });
     expect(kinds(interrupted)).not.toContain(AgentEventKind.Error);
-    expect(kinds(interrupted).at(-1)).toBe(AgentEventKind.TurnEnded);
+    expect(interrupted.at(-1)).toEqual({
+      kind: AgentEventKind.TurnEnded,
+      interrupted: true,
+    });
     const pong = await turn({ session, message: text("pong") });
     expect(pong).toContainEqual({
       kind: AgentEventKind.AssistantText,
@@ -312,7 +315,7 @@ test("a CLI that exits mid-turn reports its stderr, then ends the turn, and a se
       kind: AgentEventKind.Error,
       message: "Claude Code exited (code 7).\nout of memory",
     },
-    { kind: AgentEventKind.TurnEnded },
+    { kind: AgentEventKind.TurnEnded, interrupted: false },
   ]);
   const next = turn({ session, message: text("Again") });
   await session.close();
