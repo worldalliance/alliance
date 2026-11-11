@@ -13,6 +13,8 @@
     "electron.vite.config.ts",
     "playwright.config.ts",
     "src/main",
+    "src/preload",
+    "src/shared",
     "e2e"
   ],
   "exclude": ["src/**/*.test.ts"]

@@ -52,6 +52,9 @@ export function readCapture(file: string): CaptureRecord[] {
     });
 }
 
+export const formatCapture = (records: CaptureRecord[]): string =>
+  records.map((record) => JSON.stringify(record)).join("\n");
+
 export const captureDir = (version: string) =>
   fileURLToPath(new URL(`./captures/${version}/`, import.meta.url));
 
