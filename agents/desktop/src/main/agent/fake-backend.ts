@@ -21,12 +21,26 @@ export type FakeBackendParams = {
 };
 
 class FakeSession implements AgentSession {
-  readonly id = randomUUID();
-  private nextTurn = 0;
+  readonly id: string;
+  private nextTurn: number;
   private turn: AbortController | undefined;
-  private readonly listeners = new SessionListeners(this.id);
+  private playing: Promise<void> = Promise.resolve();
+  private closing: Promise<void> | undefined;
+  private readonly params: FakeBackendParams;
+  private readonly onClosing: (session: FakeSession) => void;
+  private readonly listeners: SessionListeners;
 
-  constructor(private readonly params: FakeBackendParams) {}
+  constructor(init: {
+    params: FakeBackendParams;
+    onClosing: (session: FakeSession) => void;
+    resumes?: FakeSession;
+  }) {
+    this.params = init.params;
+    this.onClosing = init.onClosing;
+    this.id = init.resumes?.id ?? randomUUID();
+    this.nextTurn = init.resumes?.nextTurn ?? 0;
+    this.listeners = new SessionListeners(this.id);
+  }
 
   get turnRunning(): boolean {
     return this.turn !== undefined;
@@ -35,17 +49,8 @@ class FakeSession implements AgentSession {
   send(message: AgentMessage): Result<void, Error> {
     if (this.turn)
       return R.failure(new Error(`session ${this.id} is mid-turn`));
-    const turn = this.params.script[this.nextTurn++];
-    const events: readonly AgentEvent[] = turn
-      ? turn(message)
-      : [
-          {
-            kind: AgentEventKind.Error,
-            message: "The fake session's script has no more turns.",
-          },
-        ];
     this.turn = new AbortController();
-    void this.play(events, this.turn.signal);
+    this.playing = this.play(this.eventsFor(message), this.turn.signal);
     return R.success(undefined);
   }
 
@@ -55,6 +60,30 @@ class FakeSession implements AgentSession {
 
   subscribe(listener: AgentEventListener): () => void {
     return this.listeners.subscribe(listener);
+  }
+
+  close(): Promise<void> {
+    if (!this.closing) {
+      this.closing = this.shutDown();
+      this.onClosing(this);
+    }
+    return this.closing;
+  }
+
+  private async shutDown(): Promise<void> {
+    this.turn?.abort();
+    await this.playing;
+  }
+
+  private eventsFor(message: AgentMessage): readonly AgentEvent[] {
+    const error = (text: string): AgentEvent[] => [
+      { kind: AgentEventKind.Error, message: text },
+    ];
+    if (this.closing) return error(`The fake session ${this.id} is closed.`);
+    const turn = this.params.script[this.nextTurn++];
+    return turn
+      ? turn(message)
+      : error("The fake session's script has no more turns.");
   }
 
   private async play(
@@ -77,20 +106,27 @@ class FakeSession implements AgentSession {
 }
 
 export function createFakeBackend(params: FakeBackendParams): AgentBackend {
-  const sessions = new Map<string, FakeSession>();
+  const live = new Map<string, FakeSession>();
+  const closed = new Map<string, FakeSession>();
+  const onClosing = (session: FakeSession) => {
+    live.delete(session.id);
+    closed.set(session.id, session);
+  };
+  const open = (resumes?: FakeSession): Result<AgentSession, Error> => {
+    const session = new FakeSession({ params, onClosing, resumes });
+    live.set(session.id, session);
+    return R.success(session);
+  };
   return {
-    start: () => {
-      const session = new FakeSession(params);
-      sessions.set(session.id, session);
-      return Promise.resolve(R.success(session));
-    },
-    resume: ({ sessionId }) => {
-      const session = sessions.get(sessionId);
-      return Promise.resolve(
-        session
-          ? R.success(session)
-          : R.failure(new Error(`no fake session ${sessionId}`)),
-      );
+    start: () => Promise.resolve(open()),
+    resume: async ({ sessionId }) => {
+      const session = live.get(sessionId);
+      if (session) return R.success(session);
+      const ended = closed.get(sessionId);
+      if (!ended) return R.failure(new Error(`no fake session ${sessionId}`));
+      await ended.close();
+      const resumed = live.get(sessionId);
+      return resumed ? R.success(resumed) : open(ended);
     },
   };
 }
