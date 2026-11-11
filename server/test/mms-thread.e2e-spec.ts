@@ -1,4 +1,6 @@
 import { randomUUID } from "crypto";
+import { MmsMedia } from "src/mms/mms-media.entity";
+import { MmsMediaService } from "src/mms/mms-media.service";
 import { Mms, MmsDirection, MmsKeyword } from "src/mms/mms.entity";
 import { MmsModule } from "src/mms/mms.module";
 import { ReferralSource, User } from "src/user/entities/user.entity";
@@ -7,14 +9,23 @@ import type { Repository } from "typeorm";
 import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 const TWILIO_NUMBER = "+15555550100";
+const MEDIA_URL =
+  "https://api.twilio.com/2010-04-01/Accounts/AC123/Messages/MM123/Media/ME123";
 
 let ctx: TestContext;
 let mmsRepo: Repository<Mms>;
 let userRepo: Repository<User>;
+let mediaService: MmsMediaService;
+let copyToS3: jest.SpyInstance;
 
 const server = () => ctx.app.getHttpServer();
 
-const inbound = (params: { from: string; body: string; sid?: string }) =>
+const inbound = (params: {
+  from: string;
+  body: string;
+  sid?: string;
+  media?: { url: string; contentType: string }[];
+}) =>
   supertest(server())
     .post("/mms/inbound")
     .type("form")
@@ -23,6 +34,13 @@ const inbound = (params: { from: string; body: string; sid?: string }) =>
       To: TWILIO_NUMBER,
       Body: params.body,
       MessageSid: params.sid ?? randomUUID(),
+      NumMedia: String(params.media?.length ?? 0),
+      ...Object.fromEntries(
+        (params.media ?? []).flatMap(({ url, contentType }, index) => [
+          [`MediaUrl${index}`, url],
+          [`MediaContentType${index}`, contentType],
+        ]),
+      ),
     });
 
 const createMember = (phoneNumber: string | null) =>
@@ -43,6 +61,8 @@ beforeAll(async () => {
   ctx = await createTestApp([MmsModule]);
   mmsRepo = ctx.dataSource.getRepository(Mms);
   userRepo = ctx.dataSource.getRepository(User);
+  mediaService = ctx.app.get(MmsMediaService);
+  copyToS3 = jest.spyOn(mediaService, "copyToS3").mockResolvedValue();
 }, 50000);
 
 afterAll(async () => {
@@ -129,5 +149,65 @@ describe("Inbound texts (e2e)", () => {
       .expect(201);
 
     expect(await textsWith("+14155558011")).toEqual([]);
+  });
+
+  it("records MMS attachments as pending and starts copying them", async () => {
+    copyToS3.mockClear();
+    await inbound({
+      from: "+14155558004",
+      body: "",
+      media: [{ url: MEDIA_URL, contentType: "image/jpeg" }],
+    }).expect(201);
+
+    const [message] = await textsWith("+14155558004");
+    expect(
+      await ctx.dataSource
+        .getRepository(MmsMedia)
+        .findBy({ mmsId: message.id }),
+    ).toEqual([
+      expect.objectContaining({
+        twilioUrl: MEDIA_URL,
+        contentType: "image/jpeg",
+        s3Key: null,
+      }),
+    ]);
+    expect(copyToS3).toHaveBeenCalledWith([
+      expect.objectContaining({ twilioUrl: MEDIA_URL }),
+    ]);
+  });
+});
+
+describe("Inbound media URLs (e2e)", () => {
+  const mediaOf = async (from: string) => {
+    const [message] = await textsWith(from);
+    return ctx.dataSource.getRepository(MmsMedia).findBy({ mmsId: message.id });
+  };
+
+  it.each([
+    ["hosted anywhere but Twilio", "https://example.com/x.jpg", "+14155558501"],
+    [
+      "Twilio would serve without TLS",
+      MEDIA_URL.replace("https:", "http:"),
+      "+14155558502",
+    ],
+  ])("records the text but not media %s", async (_, url, from) => {
+    await inbound({
+      from,
+      body: "photo",
+      media: [
+        { url, contentType: "image/jpeg" },
+        { url: MEDIA_URL, contentType: "image/png" },
+      ],
+    }).expect(201);
+
+    expect(await textsWith(from)).toEqual([
+      expect.objectContaining({ body: "photo" }),
+    ]);
+    expect(await mediaOf(from)).toEqual([
+      expect.objectContaining({
+        twilioUrl: MEDIA_URL,
+        contentType: "image/png",
+      }),
+    ]);
   });
 });
