@@ -1,21 +1,6 @@
 import { expect, it, mock } from "bun:test";
-import type { AppStateStatus } from "react-native";
+import { fakeAppState } from "./fakeAppState";
 import { onAppActive } from "./onAppActive";
-
-const fakeAppState = () => {
-  let listener: (state: AppStateStatus) => void = () => {};
-  const remove = mock(() => {});
-  return {
-    appState: {
-      addEventListener: (_type: "change", next: typeof listener) => {
-        listener = next;
-        return { remove };
-      },
-    },
-    change: (state: AppStateStatus) => listener(state),
-    remove,
-  };
-};
 
 it("calls back each time the app becomes active, until stopped", () => {
   const { appState, change, remove } = fakeAppState();
