@@ -11,6 +11,10 @@ The real-path-first REQUIREMENTS.md has ALL-2032 start as the minimal UI the thi
 
 The Claude adapter task planned its merge after the thin path ran through this UI on a stacked branch; it merged first, so this PR is where that check happens. It ran against the real Claude Code 2.1.322 (see Verification in the PR).
 
+## Folder and conversations
+
+- The main process keeps the conversations it started (session id, folder, first message as title, start time) in `conversations.json`, so a conversation can be resumed after a relaunch, since Claude Code keys sessions to their folder. Writes are serialised and replace the file whole through `write-file-atomic`, which syncs a uniquely named temporary file before renaming it over the list. A file that doesn't parse fails loudly rather than reading as empty (agent decision, per the root `AGENTS.md` fail-loudly rule).
+
 ## Finding the CLI until it is bundled
 
 Until ALL-2029 bundles the CLI, an unpackaged app runs the `claude` it finds on `PATH`, or the executable `ALLIANCE_AGENT_CLAUDE_EXECUTABLE` names, which the Playwright tests point at the stub. A packaged app reports that the CLI isn't included. The adapter's version check still refuses any version but the pinned one. The variable is read only when unpackaged, as `ELECTRON_RENDERER_URL` is (agent decision).
