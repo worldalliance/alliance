@@ -19,6 +19,7 @@ task: Run local dev through a Parameter Store wrapper, with test fakes and a dri
 ## Developer tool credentials
 
 - Agent transcripts upload with each person's own login, and the `alliance-agent-chats` IAM user is deleted. On an expired login the transcript stays on disk, a warning appears, and the upload retries after login. (agent-proposed after research, user-approved)
+- Agent transcript uploads honour `HTTPS_PROXY` and `NO_PROXY` through a maintained proxy-agent package, keeping the existing connect and idle timeouts. (agent-proposed, user-approved)
 - Linear's credentials move to Parameter Store under `/alliance/dev/devtools/`. (agent-proposed after research, user-approved)
 
 ## The server's local AWS access

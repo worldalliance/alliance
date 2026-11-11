@@ -1,9 +1,9 @@
-import { S3Client } from "bun";
 import path from "node:path";
 import { z } from "zod";
 import { envFileValue } from "../../common/src/dev-database";
 import { R, type Result } from "../../common/src/result";
 import awsLoginErrors from "../../scripts/aws-login-errors.json";
+import type { S3Credentials } from "./s3";
 
 enum Command {
   Upload = "upload",
@@ -16,7 +16,6 @@ enum Tool {
   Codex = "codex",
 }
 
-const bucket = "alliance-agent-chats";
 const envFile = path.resolve(import.meta.dir, "../../.env.devtools");
 const keyNames = {
   accessKeyId: "AGENT_CHATS_AWS_ACCESS_KEY_ID",
@@ -34,13 +33,6 @@ const exportedCredentials = z.object({
   SecretAccessKey: z.string(),
   SessionToken: z.string(),
 });
-type S3Credentials = {
-  accessKeyId: string;
-  secretAccessKey: string;
-  sessionToken?: string;
-};
-
-const s3Error = z.object({ code: z.string() });
 
 const hookInput = z.object({
   session_id: z.string().min(1),
@@ -133,35 +125,18 @@ function envFileCredentials(): Result<S3Credentials, string> {
   return R.success({ accessKeyId, secretAccessKey });
 }
 
-const usesFallback = () => process.env.ALLIANCE_SECRETS_ENV_FALLBACK === "1";
-
 function credentials(): Result<S3Credentials, string> {
   const fallback = process.env.ALLIANCE_SECRETS_ENV_FALLBACK;
-  if (fallback !== undefined && !usesFallback())
+  if (fallback !== undefined && fallback !== "1")
     return R.failure(
       `ALLIANCE_SECRETS_ENV_FALLBACK is ${fallback}; set it to 1 or unset it`,
     );
-  return usesFallback() ? envFileCredentials() : loginCredentials();
-}
-
-function client(creds: S3Credentials): S3Client {
-  return new S3Client({
-    ...creds,
-    region: "us-west-2",
-    endpoint: "https://s3.us-west-2.amazonaws.com",
-    bucket,
-  });
+  return fallback === "1" ? envFileCredentials() : loginCredentials();
 }
 
 function fail(message: string): number {
   console.error(`agents/chats/chats.ts: ${message}`);
   return 1;
-}
-
-function s3Failure(error: unknown): string {
-  const code = s3Error.safeParse(error);
-  const message = R.toError(error).message;
-  return code.success ? `${code.data.code}: ${message}` : message;
 }
 
 function hookDone(): number {
@@ -186,22 +161,22 @@ async function upload(tool: Tool): Promise<number> {
   const creds = credentials();
   if (!creds.ok)
     return fail(`upload of ${key} failed: ${creds.error}; ${setupHint}`);
-  try {
-    await client(creds.value).write(key, Bun.file(file));
-  } catch (error) {
-    return fail(`upload of ${key} failed: ${s3Failure(error)}`);
-  }
-  return hookDone();
+  const { chatsClient, putLatest } = await import("./s3");
+  const s3 = chatsClient(creds.value);
+  if (!s3.ok) return fail(`upload of ${key} failed: ${s3.error}`);
+  const put = await putLatest({ s3: s3.value, key, file });
+  return put.ok ? hookDone() : fail(`upload of ${key} failed: ${put.error}`);
 }
 
 async function download(key: string): Promise<number> {
   const creds = credentials();
   if (!creds.ok) return fail(`${creds.error}; ${setupHint}`);
-  try {
-    await Bun.write(Bun.stdout, client(creds.value).file(key));
-  } catch (error) {
-    return fail(`fetch of ${key} failed: ${s3Failure(error)}`);
-  }
+  const { chatsClient, getObject } = await import("./s3");
+  const s3 = chatsClient(creds.value);
+  if (!s3.ok) return fail(`fetch of ${key} failed: ${s3.error}`);
+  const got = await getObject({ s3: s3.value, key });
+  if (!got.ok) return fail(`fetch of ${key} failed: ${got.error}`);
+  await Bun.write(Bun.stdout, got.value);
   return 0;
 }
 
@@ -244,25 +219,4 @@ async function main(): Promise<number> {
   }
 }
 
-const tokenVars = ["AWS_SESSION_TOKEN", "S3_SESSION_TOKEN"];
-
-// BACKCOMPAT(ALL-1964): remove with envFileCredentials. Bun.S3Client sends an
-// environment session token alongside the fallback's static keys, which AWS
-// rejects, and reads it only at launch.
-async function withoutAmbientToken(): Promise<number> {
-  const env = {
-    ...process.env,
-    ...Object.fromEntries(tokenVars.map((name) => [name, ""])),
-  };
-  const child = Bun.spawn([process.execPath, ...process.argv.slice(1)], {
-    env,
-    stdio: ["inherit", "inherit", "inherit"],
-  });
-  return child.exited;
-}
-
-process.exit(
-  await (usesFallback() && tokenVars.some((name) => process.env[name])
-    ? withoutAmbientToken()
-    : main()),
-);
+process.exit(await main());

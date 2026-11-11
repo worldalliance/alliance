@@ -9,6 +9,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fakeS3 } from "./fake-s3";
 
 const SCRIPT = join(import.meta.dir, "chats.ts");
 
@@ -188,4 +189,65 @@ test("the fallback flag never runs aws", () => {
     run(["check"], "", { ALLIANCE_SECRETS_ENV_FALLBACK: "1" }),
   ).toMatchObject({ exitCode: 0, stderr: "" });
   expect(existsSync(join(dir, "ran"))).toBe(false);
+});
+
+test("a hook uploads the transcript with the login's credentials", async () => {
+  fakeAws({ stdout: JSON.stringify(exported), exitCode: 0 });
+  const s3 = fakeS3();
+  const transcript = join(dir, "session.jsonl");
+  writeFileSync(transcript, "{}\n");
+  const child = Bun.spawn([process.execPath, SCRIPT, "upload", "claude"], {
+    stdin: Buffer.from(
+      JSON.stringify({ session_id: "abc", transcript_path: transcript }),
+    ),
+    env: {
+      PATH: `${dir}:${process.env.PATH}`,
+      HOME: dir,
+      ALLIANCE_AGENT_CHATS_S3_ENDPOINT: s3.endpoint,
+    },
+  });
+  const exitCode = await child.exited;
+  s3.stop();
+  expect(exitCode).toBe(0);
+  expect(s3.body("claude/abc.jsonl")).toBe("{}\n");
+  expect(s3.signers).toEqual([
+    {
+      authorization: expect.stringContaining("Credential=ASIAEXAMPLE/"),
+      token: "token",
+    },
+  ]);
+});
+
+test("fetch prints a stored transcript and names S3's error for a missing one", async () => {
+  fakeAws({ stdout: JSON.stringify(exported), exitCode: 0 });
+  const s3 = fakeS3();
+  s3.store("claude/abc.jsonl", "hello\n");
+  const fetch = async (key: string) => {
+    const child = Bun.spawn([process.execPath, SCRIPT, "fetch", key], {
+      stdout: "pipe",
+      stderr: "pipe",
+      env: {
+        PATH: `${dir}:${process.env.PATH}`,
+        HOME: dir,
+        ALLIANCE_AGENT_CHATS_S3_ENDPOINT: s3.endpoint,
+      },
+    });
+    const [exitCode, stdout, stderr] = await Promise.all([
+      child.exited,
+      new Response(child.stdout).text(),
+      new Response(child.stderr).text(),
+    ]);
+    return { exitCode, stdout, stderr };
+  };
+  const stored = await fetch("claude/abc.jsonl");
+  const missing = await fetch("claude/none.jsonl");
+  s3.stop();
+  expect(stored).toEqual({ exitCode: 0, stdout: "hello\n", stderr: "" });
+  expect(missing).toMatchObject({
+    exitCode: 1,
+    stdout: "",
+    stderr: expect.stringContaining(
+      "fetch of claude/none.jsonl failed: NoSuchKey",
+    ),
+  });
 });

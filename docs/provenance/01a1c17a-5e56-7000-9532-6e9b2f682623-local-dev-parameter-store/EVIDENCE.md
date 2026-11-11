@@ -673,8 +673,40 @@ Phishing-resistant MFA protects sign-in, not a token stolen afterwards, and CLI 
 27. [Zscaler/Red Canary](https://www.zscaler.com/blogs/cybersecurity-best-practices/aws-sso-access-tokens): cache contents, attack path
 28. [Security Hub CIS mapping](https://docs.aws.amazon.com/securityhub/latest/userguide/cis-aws-foundations-benchmark.html)
 
+## S3 conditional writes
+
+### Question
+
+How S3 conditional PUTs behave, which the conditional-PUT upload rests on. Read 2026-11-10 by a fetch subagent and checked against the page fetched directly.
+
+### Findings
+
+- **S3 conditional writes** (vendor documentation, [conditional writes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html)). With `If-None-Match: *`, a PUT to an existing key "fails, resulting in a `412 Precondition Failed` response"; with `If-Match`, "If the ETag doesn't match, the write operation fails with a `412 Precondition Failed` response." "You can also receive a `409 Conflict` response in the case of concurrent requests", and "uploads may be retried after receiving a `409 Conflict` error." Under `If-Match`, a concurrent delete gives 404: "You should reupload the object when you receive a `404 Not Found` response." On versioned buckets the conditions apply to the current version. `If-Match` needs "the `s3:PutObject` and `s3:GetObject` permissions".
+
 ## Measurements
 
 ### A failed credential refresh under Bun (2026-11-09)
 
 Bun 1.3.6 and `@aws-sdk/credential-provider-node` 3.972.29. A script ran the SDK's `memoizeChain` with a provider that returned credentials expiring in 2 minutes, inside the SDK's 5-minute refresh window, then threw `Token is expired. To refresh this SSO session run 'aws sso login'`. The second call returned the still-valid credentials, the background refresh rejected with no handler, and the process printed the error and exited 1. `server/src` has no `unhandledRejection` handler. A real session expiry was not exercised end to end.
+
+### Response timeouts and proxies under Bun (2026-11-11)
+
+Bun 1.4.4, `@smithy/node-http-handler` 4.5.1 (under `@aws-sdk/client-s3` 3.1023.0), `https-proxy-agent` 9.1.0 and `proxy-from-env` 2.1.0, which the client no longer uses.
+
+- A local HTTP server answered a GET with headers and one of ten body bytes, then stalled, and answered a HEAD with 403. `chatsClient` with a 6-second idle timeout ran `getObject` and `putLatest` against it. Without the body timer both were still pending after 20 seconds; with it the GET failed after 6 seconds with the body-idle error and `putLatest` returned the HEAD's 403. With timeouts under 6 seconds the handler installs its socket timeout at once and the stall fails anyway, so the test uses 6 seconds. The handler's source explains why (see Proxies and response timeouts).
+- With `HTTPS_PROXY` naming a local TCP listener, a request through `chatsClient` reached it as `CONNECT alliance-agent-chats.s3.us-west-2.amazonaws.com:443 HTTP/1.1`. With `NO_PROXY=localhost,.amazonaws.com`, or with only `ALL_PROXY` set, the proxy listener saw nothing and the request, redirected to a second local listener, opened with a TLS handshake record. Before this change Codex's probe found the SDK client connected directly whatever `HTTPS_PROXY` said, also with `NODE_USE_ENV_PROXY=1`.
+- `HTTPS_PROXY=127.0.0.1:<port>`, with no scheme, made AWS CLI 2 (`aws s3 ls --no-sign-request`) send `CONNECT example-bucket.s3.us-west-2.amazonaws.com:443` in plain text to a local listener. Given the same value, `proxy-from-env` 2.1.0 returns `https://127.0.0.1:<port>`, and through `https-proxy-agent` the listener received a TLS handshake record; with `http://` added first it received the CONNECT.
+- With `HTTPS_PROXY` naming a local listener (2026-11-11, AWS CLI 2.34.57, `aws s3 ls s3://example-bucket --no-sign-request`), `NO_PROXY=amazonaws.com`, `s3.us-west-2.amazonaws.com` or `*` sent the request direct, while `zonaws.com` and `*.amazonaws.com` sent `CONNECT example-bucket.s3.us-west-2.amazonaws.com:443` to the listener. Python 3's `urllib.request.proxy_bypass_environment` gives the same answers for the bucket's host, and also bypasses for `.amazonaws.com` and `AMAZONAWS.COM`. `proxy-from-env` 2.1.0's `getProxyForUrl` proxied for `amazonaws.com` and `s3.us-west-2.amazonaws.com` (reviewer's probe, round 36), since it matches an entry without a leading `.` or `*` only exactly.
+
+## Proxies and response timeouts
+
+### Question
+
+What the transcript client's proxy support and response-body timer rest on. Read 2026-11-11 by a fetch subagent.
+
+### Findings
+
+- **Smithy's socket timeout** (vendor source, [set-socket-timeout.ts](https://raw.githubusercontent.com/smithy-lang/smithy-typescript/@smithy%2Fnode-http-handler@4.5.1/packages/node-http-handler/src/set-socket-timeout.ts) and [node-http-handler.ts](https://raw.githubusercontent.com/smithy-lang/smithy-typescript/@smithy%2Fnode-http-handler@4.5.1/packages/node-http-handler/src/node-http-handler.ts), 4.5.1). A timeout above 0 and under 6000 ms is registered at once (`if (0 < timeoutInMs && timeoutInMs < 6000)`); any other is registered by a timer after `DEFER_EVENT_LISTENER_TIME` (3000 ms). That timer's handle goes in `timeouts`, which the response callback's `resolve` clears (`timeouts.forEach(timing.clearTimeout)`), so headers arriving within 3 seconds leave the socket with no idle timeout.
+- **AWS CLI proxies** (vendor documentation, [Using an HTTP proxy](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-proxy.html)). It names `HTTP_PROXY` and `HTTPS_PROXY`, and `NO_PROXY` for the instance metadata service; it never mentions `ALL_PROXY` or SOCKS. "If you specify a variable twice using different cases, the lowercase letters take precedence."
+- **https-proxy-agent** (common practice, [README](https://github.com/TooTallNate/proxy-agents/tree/main/packages/https-proxy-agent)). An `http.Agent` that tunnels HTTPS through an HTTP or HTTPS proxy with `CONNECT`; it takes the proxy URL as an argument and reads no environment variables.
+- **proxy-from-env** (common practice, [README](https://github.com/Rob--W/proxy-from-env)). `getProxyForUrl` picks the proxy variable by the URL's protocol, falls back to `ALL_PROXY`, and returns an empty string when the URL matches `NO_PROXY`.
