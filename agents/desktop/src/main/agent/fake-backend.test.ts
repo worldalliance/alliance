@@ -64,7 +64,7 @@ describe("the fake backend's demo session", () => {
         kind: AgentEventKind.AssistantText,
         text: "I can see your image (image/png).",
       },
-      { kind: AgentEventKind.TurnEnded },
+      { kind: AgentEventKind.TurnEnded, interrupted: false },
     ]);
     expect(third.map((event) => event.kind)).toEqual([
       AgentEventKind.AssistantTextDelta,
@@ -112,7 +112,7 @@ describe("the fake backend's demo session", () => {
         kind: AgentEventKind.Error,
         message: "The fake session's script has no more turns.",
       },
-      { kind: AgentEventKind.TurnEnded },
+      { kind: AgentEventKind.TurnEnded, interrupted: false },
     ]);
   });
 });
@@ -151,7 +151,7 @@ describe("interrupt", () => {
         kind: AgentEventKind.AssistantText,
         text: "I don't see an image. Paste or drop a screenshot and send it again.",
       },
-      { kind: AgentEventKind.TurnEnded },
+      { kind: AgentEventKind.TurnEnded, interrupted: false },
     ]);
   });
 
@@ -168,7 +168,10 @@ describe("interrupt", () => {
     await lastText;
     expect(session.turnRunning).toBe(true);
     session.interrupt();
-    await ended;
+    expect((await ended).at(-1)).toEqual({
+      kind: AgentEventKind.TurnEnded,
+      interrupted: true,
+    });
     await nextTurn(session, text("Never mind"));
     expect(kinds.slice(6)).toEqual([
       AgentEventKind.TurnEnded,
@@ -320,7 +323,9 @@ describe("close", () => {
     await session.close();
     order.push("closed");
     expect(order).toEqual([AgentEventKind.TurnEnded, "closed"]);
-    expect(await ended).toEqual([{ kind: AgentEventKind.TurnEnded }]);
+    expect(await ended).toEqual([
+      { kind: AgentEventKind.TurnEnded, interrupted: true },
+    ]);
     expect(session.turnRunning).toBe(false);
   });
 
@@ -332,7 +337,7 @@ describe("close", () => {
         kind: AgentEventKind.Error,
         message: `The fake session ${session.id} is closed.`,
       },
-      { kind: AgentEventKind.TurnEnded },
+      { kind: AgentEventKind.TurnEnded, interrupted: false },
     ]);
   });
 
@@ -349,7 +354,9 @@ describe("close", () => {
     ]);
     order.push("resumed");
     expect(order).toEqual([AgentEventKind.TurnEnded, "resumed"]);
-    expect(await ended).toEqual([{ kind: AgentEventKind.TurnEnded }]);
+    expect(await ended).toEqual([
+      { kind: AgentEventKind.TurnEnded, interrupted: true },
+    ]);
     const resumed = R.unwrap(a);
     expect(R.unwrap(b)).toBe(resumed);
     expect(resumed).not.toBe(session);

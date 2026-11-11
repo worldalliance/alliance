@@ -23,6 +23,60 @@ const scratch = mkdtempSync(
 
 afterAll(() => rmSync(scratch, { recursive: true, force: true }));
 
+test("a turn that finishes before its interrupt reaches the CLI ends as not interrupted", async () => {
+  const session = R.unwrap(
+    await createClaudeBackend(
+      shellCli(
+        `read message; read interrupt; echo '{"type":"result","subtype":"success","is_error":false}'; read eof`,
+      ),
+    ).start({ cwd: scratch }),
+  );
+  const ended = new Promise<AgentEvent>((resolve) =>
+    session.subscribe((event) => {
+      if (event.kind === AgentEventKind.TurnEnded) resolve(event);
+    }),
+  );
+  R.unwrap(session.send(text("Hello")));
+  session.interrupt();
+  expect(await ended).toEqual({
+    kind: AgentEventKind.TurnEnded,
+    interrupted: false,
+  });
+  await session.close();
+});
+
+test("a turn the CLI fails without an interrupt ends as not interrupted", async () => {
+  const session = R.unwrap(
+    await createClaudeBackend(
+      shellCli(
+        `read message; echo '{"type":"result","subtype":"error_during_execution","is_error":true,"errors":["boom"]}'; read eof`,
+      ),
+    ).start({ cwd: scratch }),
+  );
+  expect(await turn({ session, message: text("Hello") })).toEqual([
+    { kind: AgentEventKind.Error, message: "boom" },
+    { kind: AgentEventKind.TurnEnded, interrupted: false },
+  ]);
+  await session.close();
+});
+
+test("a CLI that exits after an interrupt but before its result ends the turn as not interrupted", async () => {
+  const session = R.unwrap(
+    await createClaudeBackend(
+      shellCli("read message; read interrupt; echo boom >&2; exit 3"),
+    ).start({ cwd: scratch }),
+  );
+  const events = turn({ session, message: text("Hello") });
+  session.interrupt();
+  expect(await events).toEqual([
+    {
+      kind: AgentEventKind.Error,
+      message: "Claude Code exited (code 3).\nboom",
+    },
+    { kind: AgentEventKind.TurnEnded, interrupted: false },
+  ]);
+});
+
 function shellCli(session: string): ClaudeCli {
   const executable = path.join(scratch, `${randomUUID()}.sh`);
   writeFileSync(
@@ -52,7 +106,7 @@ test("a CLI that exits while a process it started holds its output open still en
       kind: AgentEventKind.Error,
       message: "Claude Code exited (code 1).\ngone",
     },
-    { kind: AgentEventKind.TurnEnded },
+    { kind: AgentEventKind.TurnEnded, interrupted: false },
   ]);
 });
 
@@ -70,7 +124,9 @@ test("close kills a CLI that ignores both stdin closing and SIGTERM", async () =
   R.unwrap(session.send(text("Hello")));
   await session.close();
   expect(isRunning(Number(readFileSync(pidFile, "utf8")))).toBe(false);
-  expect(events).toEqual([{ kind: AgentEventKind.TurnEnded }]);
+  expect(events).toEqual([
+    { kind: AgentEventKind.TurnEnded, interrupted: true },
+  ]);
 });
 
 test("close sends SIGTERM to an idle CLI that outlives its stdin closing", async () => {
@@ -121,6 +177,8 @@ test("close reports no Error for output the CLI can't read as it stops", async (
   await session.close();
   const logs = logged.mock.calls.length;
   logged.mockRestore();
-  expect(events).toEqual([{ kind: AgentEventKind.TurnEnded }]);
+  expect(events).toEqual([
+    { kind: AgentEventKind.TurnEnded, interrupted: true },
+  ]);
   expect(logs).toBe(1);
 });

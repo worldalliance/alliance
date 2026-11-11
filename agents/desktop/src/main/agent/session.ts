@@ -42,7 +42,11 @@ export type AgentEvent =
       output: string;
       isError: boolean;
     }
-  | { kind: AgentEventKind.TurnEnded }
+  | {
+      kind: AgentEventKind.TurnEnded;
+      /** True when an interrupt or close stopped the turn. */
+      interrupted: boolean;
+    }
   | { kind: AgentEventKind.Error; message: string };
 
 export type AgentEventListener = (event: AgentEvent) => void;
