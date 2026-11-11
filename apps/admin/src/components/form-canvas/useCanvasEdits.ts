@@ -39,6 +39,7 @@ import {
   type AvailableElement,
   type InsertLoc,
 } from "./InsertPoint";
+import { selectedSpan } from "./rangeSelection";
 import { SidebarSection } from "./sidebarSections";
 import type { CanvasSelectionState } from "./useCanvasSelection";
 import { useGuardedDeletion } from "./useGuardedDeletion";
@@ -69,6 +70,7 @@ export function useCanvasEdits({
     showPage,
     selectFromOutline,
     setFocusPending,
+    reveal,
   } = canvas;
 
   const [insertion, setInsertion] = useState<{
@@ -252,6 +254,26 @@ export function useCanvasEdits({
     const pages = moveElements({ pages: schema.pages, from, to });
     if (!pages) return;
     updateSchema({ ...schema, pages });
+    const span = selectedSpan(resolvedTarget);
+    const carried =
+      from.pageIndex !== to.pageIndex &&
+      selectedPageIndex === from.pageIndex &&
+      span !== null &&
+      span.start >= from.start &&
+      span.end <= from.end;
+    if (carried) {
+      setSelectedPageIndex(to.pageIndex);
+      reveal();
+      setSelection((current) => ({
+        pageId: pages[to.pageIndex]!.id,
+        target: followElement({
+          before: schema.pages[from.pageIndex]!.fields,
+          after: pages[to.pageIndex]!.fields,
+          target: current.target,
+        }),
+      }));
+      return;
+    }
     setSelection((current) => {
       const at = [from.pageIndex, to.pageIndex].find(
         (index) => schema.pages[index]!.id === current.pageId,
@@ -327,6 +349,7 @@ export function useCanvasEdits({
     removePage,
     deleteElement,
     moveElement,
+    moveElementsTo,
     duplicateElement,
     applyGrouped,
     updateElementAt,
