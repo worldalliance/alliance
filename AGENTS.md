@@ -64,7 +64,18 @@ Label every recommendation, number and claim shown to the owner in chat as resea
 
 ## Breaking changes
 
-Change a shape that stored data, installed clients, or code outside the change depend on, or adopt a rule existing code breaks, by expand-migrate-contract, with a ratchet so the old shape can't grow back. Mark a fallback awaiting its contract step `BACKCOMPAT(<tag>)` with the condition for removing it.
+Change a shape by expand-migrate-contract when something depending on it can't switch at the same moment: stored or in-flight data, running or installed clients, other services, code outside the change. Adopting a rule existing code breaks takes the same steps, with the code that breaks it as the old shape.
+
+1. Old shape only.
+2. Expand reads: read both shapes.
+3. Expand writes: support writing the new shape.
+4. Ratchet: remove writing the old shape and block it from coming back, so every new write uses the new one.
+5. Migrate: move each existing old-shape item to the new shape.
+6. Contract: remove the old shape, reads included.
+
+Each step starts once the previous one is live everywhere that depends on it, installed clients included (shown by a forced minimum version or by no traffic from older builds); consecutive steps may ship together only where they land atomically, and a database migration and the server deploy land at different times.
+
+Mark a fallback awaiting its contract step `BACKCOMPAT(<tag>)` with the condition for removing it.
 
 ## Issue tracking
 
