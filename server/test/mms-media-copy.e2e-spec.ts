@@ -4,7 +4,6 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
-import { randomUUID } from "crypto";
 import { MmsMedia } from "src/mms/mms-media.entity";
 import {
   MAX_COPY_ATTEMPTS,
@@ -12,17 +11,12 @@ import {
   MmsMediaService,
   MmsMediaStatus,
 } from "src/mms/mms-media.service";
-import { Mms, MmsDirection } from "src/mms/mms.entity";
 import { MmsModule } from "src/mms/mms.module";
 import { IsNull, type Repository } from "typeorm";
 import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
-
-const TWILIO_NUMBER = "+15555550100";
-const MEDIA_URL =
-  "https://api.twilio.com/2010-04-01/Accounts/AC123/Messages/MM123/Media/ME123";
+import { MEDIA_URL, saveInboundMedia } from "./mms-fixtures";
 
 let ctx: TestContext;
-let mmsRepo: Repository<Mms>;
 let mediaService: MmsMediaService;
 const savedEnv = {
   ASSETS_BUCKET: process.env.ASSETS_BUCKET,
@@ -33,7 +27,6 @@ const savedEnv = {
 beforeAll(async () => {
   process.env.ASSETS_BUCKET = "test-bucket";
   ctx = await createTestApp([MmsModule]);
-  mmsRepo = ctx.dataSource.getRepository(Mms);
   mediaService = ctx.app.get(MmsMediaService);
 }, 50000);
 
@@ -47,43 +40,8 @@ describe("Inbound media copy (e2e)", () => {
   let s3Send: jest.Mock;
   let fetchMock: jest.SpyInstance;
 
-  const saveMedia = async (
-    params: { from: string } & Partial<
-      Pick<
-        MmsMedia,
-        | "createdAt"
-        | "copyAttempts"
-        | "lastCopyAttemptAt"
-        | "s3Key"
-        | "twilioDeleteAttempts"
-        | "lastTwilioDeleteAttemptAt"
-      >
-    >,
-  ) => {
-    const mms = await mmsRepo.save(
-      mmsRepo.create({
-        to: TWILIO_NUMBER,
-        from: params.from,
-        direction: MmsDirection.Inbound,
-        body: "",
-        status: "received",
-        twilioSid: randomUUID(),
-      }),
-    );
-    return mediaRepo.save(
-      mediaRepo.create({
-        mmsId: mms.id,
-        twilioUrl: MEDIA_URL,
-        contentType: "image/png",
-        s3Key: params.s3Key ?? null,
-        copyAttempts: params.copyAttempts ?? 0,
-        lastCopyAttemptAt: params.lastCopyAttemptAt ?? null,
-        twilioDeleteAttempts: params.twilioDeleteAttempts ?? 0,
-        lastTwilioDeleteAttemptAt: params.lastTwilioDeleteAttemptAt ?? null,
-        createdAt: params.createdAt,
-      }),
-    );
-  };
+  const saveMedia = (params: Parameters<typeof saveInboundMedia>[1]) =>
+    saveInboundMedia(ctx.dataSource, params);
   const twilioAnswers = (fetchStatus: number, deleteStatus = 204) =>
     fetchMock.mockImplementation(async (_url, init) =>
       init?.method === "DELETE"

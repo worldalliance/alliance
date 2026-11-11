@@ -8,10 +8,7 @@ import { ReferralSource, User } from "src/user/entities/user.entity";
 import supertest from "supertest";
 import type { Repository } from "typeorm";
 import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
-
-const TWILIO_NUMBER = "+15555550100";
-const MEDIA_URL =
-  "https://api.twilio.com/2010-04-01/Accounts/AC123/Messages/MM123/Media/ME123";
+import { MEDIA_URL, TWILIO_NUMBER } from "./mms-fixtures";
 
 let ctx: TestContext;
 let mmsRepo: Repository<Mms>;
@@ -264,7 +261,9 @@ describe("Inbound texts in the member's thread (e2e)", () => {
     await supertest(server())
       .post("/mms/inbound")
       .type("form")
-      .send("From=%2B14155558011&To=%2B15555550100&Body[x]=hi&MessageSid=SM11")
+      .send(
+        `From=%2B14155558011&To=${encodeURIComponent(TWILIO_NUMBER)}&Body[x]=hi&MessageSid=SM11`,
+      )
       .expect(201);
 
     expect((await thread(member.id)).body.messages).toEqual([]);

@@ -14,6 +14,7 @@ import {
   eventually,
   TestContext,
 } from "./e2e-test-utils";
+import { TWILIO_NUMBER } from "./mms-fixtures";
 
 let ctx: TestContext;
 const pendingEventLogs = new Set<ReturnType<EventLogService["sendMessage"]>>();
@@ -168,8 +169,6 @@ describe("Inbound MMS keywords (e2e)", () => {
   let optoutRepo: Repository<MmsOptout>;
   let eventLogRepo: Repository<EventLog>;
   let memberId: number;
-
-  const TWILIO_NUMBER = "+15555550100";
 
   const inbound = (from: string, body: string, to = TWILIO_NUMBER) =>
     supertest(ctx.app.getHttpServer())
@@ -432,7 +431,7 @@ describe("Inbound MMS keywords for a shared number (e2e)", () => {
   const inbound = (from: string, body: string) =>
     supertest(ctx.app.getHttpServer()).post("/mms/inbound").type("form").send({
       From: from,
-      To: "+15555550100",
+      To: TWILIO_NUMBER,
       Body: body,
       MessageSid: randomUUID(),
     });
