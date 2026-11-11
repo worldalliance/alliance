@@ -168,8 +168,8 @@ export function twilioSignatureEnforcedFor(nodeEnv: NodeEnv): boolean {
   return isDeployed(nodeEnv);
 }
 
-// ADMIN_USER and ADMIN_PASSWORD are in Infisical but not in the server's
-// parameters, so deployed servers never seed an admin.
+// The staging and prod parameters hold no ADMIN_USER or ADMIN_PASSWORD, so
+// deployed servers never seed an admin.
 const deployedSet = [
   "APPLE_BUNDLE_ID",
   "APPLE_KEY_ID",
@@ -198,9 +198,8 @@ const deployedSet = [
   "TWILIO_PHONE_NUMBER",
 ] as const satisfies ServerEnvKey[];
 
-// The keys the committed config or the environment's store sets (Infisical's
-// `alliance` project in development, Parameter Store when deployed), flags
-// aside; test has no store.
+// The keys the committed config, a checkout's own server/.env or Parameter
+// Store sets, flags aside; test has no store.
 const setFor: Record<NodeEnv, readonly ServerEnvKey[]> = {
   [NodeEnv.Development]: [
     "ADMIN_PASSWORD",

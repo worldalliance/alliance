@@ -7,7 +7,7 @@ description: "Read before driving the locally running apps: verifying a change i
 
 ## Already running — check, don't start
 
-- API: `bun --watch src/main.ts` in `server/`, hot-reloads on edit, OpenAPI at `/openapi.yaml`
+- API: `bun --watch src/main.ts` in `server/`, started by `bun run dev`, hot-reloads on edit, OpenAPI at `/openapi.yaml`
 - Admin (vite): routes in `apps/admin/src/routes.ts`
 - Frontend (vite)
 
@@ -17,9 +17,9 @@ Mobile is the exception. [`MOBILE.md`](MOBILE.md) has its start command, selecto
 
 ## Authenticating as admin
 
-Auth is a JWT in the `access_token` cookie (or `Authorization: Bearer`), signed with `JWT_SECRET` from `server/.env`, payload `{ sub: <userId>, email, tokenType: "access" }` — see `server/src/auth/tokens.ts`. Get an id from the local db (`(root)/agents/skills/local-db/SKILL.md`): `SELECT id, email FROM "user" WHERE admin = true LIMIT 1;`
+Auth is a JWT in the `access_token` cookie (or `Authorization: Bearer`), signed with the server's `JWT_SECRET`, payload `{ sub: <userId>, email, tokenType: "access" }` — see `server/src/auth/tokens.ts`. Get an id from the local db (`(root)/agents/skills/local-db/SKILL.md`): `SELECT id, email FROM "user" WHERE admin = true LIMIT 1;`
 
-Mint it in a bun script with `jsonwebtoken` from the root `node_modules`. Keep `JWT_SECRET` and the minted token out of anything you print.
+Mint it in a bun script with `jsonwebtoken` from the root `node_modules`, reading `process.env.JWT_SECRET`, and run it from `server/` as `../scripts/with-secrets.sh server bun <script>`, which supplies it from Parameter Store, or under the fallback flag leaves it to bun's load of `server/.env`. Keep `JWT_SECRET` and the minted token out of anything you print.
 
 - API: `curl -H "Authorization: Bearer $TOKEN" http://localhost:<api port>/...`
 - Admin GUI: set cookie `{ name: "access_token", value: token, domain: "localhost", path: "/" }` on the browser context, then `goto http://localhost:<admin port>/<route>`. Cookies cross ports on `localhost`, so the app's calls to the API authenticate.

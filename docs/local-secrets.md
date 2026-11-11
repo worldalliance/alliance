@@ -1,6 +1,6 @@
 # Local secrets
 
-Local dev and agents read secrets from AWS SSM Parameter Store under `/alliance/dev/<consumer>/`, using each person's IAM Identity Center login. `scripts/with-secrets.sh <consumer> <command>` reads them when the command starts and runs it with them as env vars. It keeps no copy. No command calls it yet, so the server still reads `server/.env`. Frontend, admin and tests need no login.
+Local dev and agents read secrets from AWS SSM Parameter Store under `/alliance/dev/<consumer>/`, using each person's IAM Identity Center login. `scripts/with-secrets.sh <consumer> <command>` reads them when the command starts and runs it with them as env vars. It keeps no copy. The commands that need secrets already call it: the root `server:dev`, and `dev` and `repl` in `server/`. Frontend, admin, migrations and tests need no login.
 
 Consumers and their keys are listed in `scripts/dev-secrets.json`: `server`.
 
@@ -61,3 +61,5 @@ The daily login can't read them; [backend-secrets.md](backend-secrets.md) covers
 The rollout fills `/alliance/dev/` with every key `scripts/dev-secrets.json` lists before the wrapper reaches `main`.
 
 `ALLIANCE_SECRETS_ENV_FALLBACK=1` skips Parameter Store and uses the secrets in your `.env` files. The server reads `server/.env` itself, so the wrapper only prints each key it falls back on, naming the file Bun takes it from: `server/.env` or its `.local`, `.development` or `.development.local` sibling. It goes away once everyone has run without it.
+
+To run without it, first delete `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` from `server/.env`, which the wrapper refuses. Once that works, delete from it every key `server/.env.example` doesn't list. Do the same in each worktree's `server/.env`, since `scripts/new-worktree.sh` copies it.

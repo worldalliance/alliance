@@ -66,7 +66,7 @@ const startBackend = () => {
     SMTP_PASSWORD: process.env.SMTP_PASSWORD ?? "ci-password",
   };
 
-  return spawnProcess("bun", ["dev"], {
+  return spawnProcess("bun", ["run", "start:prod"], {
     cwd: path.join(repoRoot, "server"),
     env,
   });
