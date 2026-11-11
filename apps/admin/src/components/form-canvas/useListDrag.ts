@@ -1,5 +1,10 @@
 import { useState, type DragEvent } from "react";
-import { DropPosition, positionIn } from "../../lib/useDragReorder";
+import {
+  DropPosition,
+  insertionOffset,
+  leavesInPlace,
+  positionIn,
+} from "../../lib/useDragReorder";
 
 export type ListMove = {
   from: number;
@@ -55,9 +60,20 @@ export function useListDrag(onMove: (move: ListMove) => void) {
     onDragEnd: endDrag,
     onDragOver: (event: DragEvent) => {
       if (dragged === null) return;
+      const position = positionIn(event);
+      if (
+        leavesInPlace({
+          start: dragged,
+          end: dragged + 1,
+          index: index + insertionOffset[position],
+        })
+      ) {
+        event.stopPropagation();
+        setDropTarget(null);
+        return;
+      }
       event.preventDefault();
       event.dataTransfer.dropEffect = "move";
-      const position = positionIn(event);
       setDropTarget((current) =>
         current?.index === index && current.position === position
           ? current
@@ -66,7 +82,7 @@ export function useListDrag(onMove: (move: ListMove) => void) {
     },
     dragging: dragged === index,
     dropPosition:
-      dragged !== null && dragged !== index && dropTarget?.index === index
+      dragged !== null && dropTarget?.index === index
         ? dropTarget.position
         : null,
   });
