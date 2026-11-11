@@ -24,7 +24,7 @@ export type RouteHandler = (input: {
 export class UnroutedRequest extends Error {
   constructor(request: Request) {
     super(
-      `unrouted request: ${request.method} ${new URL(request.url).pathname}`,
+      `unrouted request: ${request.method} ${new URL(request.url).pathname}. If this test never sends it, an earlier test in this file scheduled it for after it ended.`,
     );
     this.name = "UnroutedRequest";
   }
