@@ -32,6 +32,7 @@ import { posthogRequestContext } from "./lib/posthogRequestContext";
 import { queryClient } from "./lib/queryClient";
 import { ShareLinkViewerFromAuth } from "./lib/ShareLinkViewerFromAuth";
 import { socialPreviewMeta } from "./lib/socialPreviewMeta";
+import { useFullLoadOnNewBuild } from "./lib/useFullLoadOnNewBuild";
 import { InviteSessionProvider } from "./site/invite/InviteSession";
 import { NOT_FOUND_TITLE } from "./site/NotFoundPage";
 
@@ -140,5 +141,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function Root() {
+  useFullLoadOnNewBuild(webEnv("VITE_APP_GIT_SHA"));
   return <Outlet />;
 }

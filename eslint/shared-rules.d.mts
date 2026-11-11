@@ -14,3 +14,8 @@ export declare const serverEnvReads: EnvReads;
 export declare const webEnvReads: EnvReads;
 export declare const mobileEnvReads: EnvReads;
 export declare const sharedEnvReads: EnvReads;
+export declare const frontendBlockerImport: {
+  name: string;
+  importNames: string[];
+  message: string;
+};
