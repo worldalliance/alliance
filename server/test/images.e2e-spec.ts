@@ -65,6 +65,13 @@ describe("Images (e2e)", () => {
     expect(res.body).toBeInstanceOf(Buffer);
   });
 
+  it("refuses keys below the bucket root, such as members' MMS attachments", async () => {
+    await request(ctx.app.getHttpServer())
+      .get(`/images/${encodeURIComponent("mms-media/0b7f")}`)
+      .expect(404);
+    expect(mockSend).not.toHaveBeenCalled();
+  });
+
   describe("GET /images/:key/download", () => {
     const key = "123.webp";
 

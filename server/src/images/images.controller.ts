@@ -46,7 +46,7 @@ export class ImagesController {
     @Param("key") key: string,
     @Res() res: Response,
   ): Promise<void> {
-    if (!key) throw new NotFoundException();
+    if (!isUploadKey(key)) throw new NotFoundException();
 
     await pipeS3Object({ s3: this.s3, bucket: this.bucket, key, res });
   }
