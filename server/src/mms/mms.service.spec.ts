@@ -111,6 +111,7 @@ describe("MmsService sendMms", () => {
         from: "+15555550100",
         body: BODY,
         direction: MmsDirection.Outbound,
+        sentById: null,
         twilioSid: "SM0123456789",
         status: "queued",
         errorCode: null,
@@ -268,6 +269,7 @@ describe("MmsService sendMms", () => {
       userId: USER_ID,
       body: BODY,
       cid: "cid-1",
+      sentById: null,
     });
     await delay(0);
 
@@ -277,6 +279,7 @@ describe("MmsService sendMms", () => {
         from: "+15555550100",
         body: BODY,
         direction: MmsDirection.Outbound,
+        sentById: null,
         twilioSid: "SM0123456789",
         status: "queued",
         errorCode: null,
@@ -296,6 +299,7 @@ describe("MmsService sendMms", () => {
       userId: USER_ID,
       body: BODY,
       cid: "cid-1",
+      sentById: null,
     });
     await delay(0);
 
@@ -329,6 +333,7 @@ describe("MmsService sendMms", () => {
         userId: USER_ID,
         body: BODY,
         cid: null,
+        sentById: null,
       });
     }
     await delay(0);
