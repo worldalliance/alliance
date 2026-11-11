@@ -9,12 +9,14 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from "typeorm";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
 } from "../datasources/basecolumns";
+import { MmsMedia } from "./mms-media.entity";
 
 export enum MmsDirection {
   Inbound = "inbound",
@@ -27,6 +29,7 @@ export enum MmsKeyword {
 }
 
 @Entity()
+@Index(["memberPhoneNumber", "createdAt"])
 @Index(["twilioSid"], {
   unique: true,
   where: `"direction" = 'inbound'`,
@@ -89,6 +92,9 @@ export class Mms {
 
   @Column({ type: "int", nullable: true, comment: "Staff member who wrote it" })
   sentById: number | null;
+
+  @OneToMany(() => MmsMedia, (media) => media.mms)
+  media?: Relation<MmsMedia>[];
 
   @Column({ type: "text" })
   @ApiProperty({ type: String })

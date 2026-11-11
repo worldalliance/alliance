@@ -1743,6 +1743,43 @@ export type NotifClickResponseDto = {
     mms: boolean;
 };
 
+export type MmsMediaStatus = 'copying' | 'ready' | 'unavailable';
+
+export type MmsMediaDto = {
+    id: number;
+    contentType: string;
+    status: MmsMediaStatus;
+};
+
+export type MmsMessageDto = {
+    id: number;
+    body: string;
+    direction: MmsDirection;
+    status: string;
+    errorCode: number | null;
+    errorMessage: string | null;
+    createdAt: string;
+    /**
+     * True for texts staff wrote, even once the sender is deleted; false for automated and inbound texts
+     */
+    sentByStaff: boolean;
+    sentByName: string | null;
+    media: Array<MmsMediaDto>;
+};
+
+export type MmsThreadDto = {
+    phoneNumber: string | null;
+    optedOut: boolean;
+    /**
+     * Up to 100 texts, oldest first: the newest, or those sent before `before`
+     */
+    messages: Array<MmsMessageDto>;
+    /**
+     * Older texts can be loaded with `before`
+     */
+    hasOlder: boolean;
+};
+
 export type EventType = 'account_created' | 'contract_signed' | 'contract_suspended' | 'sms_unsubscribe' | 'sms_resubscribe' | 'sms_inbound' | 'sms_failure' | 'forum_action_autocomplete' | 'action_comment' | 'forum_reply_notif_failure' | 'action_opt_out' | 'account_deletion_requested' | 'account_deleted' | 'join_request' | 'admin_role_changed' | 'waitlist_mail_cap_reached';
 
 export type EventLogUserDto = {
@@ -8625,6 +8662,32 @@ export type MmsHandleInboundMmsResponses = {
 };
 
 export type MmsHandleInboundMmsResponse = MmsHandleInboundMmsResponses[keyof MmsHandleInboundMmsResponses];
+
+export type MmsThreadGetThreadAdminData = {
+    body?: never;
+    path: {
+        userId: number;
+    };
+    query?: {
+        /**
+         * Return texts sent before the text with this id
+         */
+        before?: number;
+    };
+    url: '/mms-threads/{userId}';
+};
+
+export type MmsThreadGetThreadAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadGetThreadAdminError = MmsThreadGetThreadAdminErrors[keyof MmsThreadGetThreadAdminErrors];
+
+export type MmsThreadGetThreadAdminResponses = {
+    200: MmsThreadDto;
+};
+
+export type MmsThreadGetThreadAdminResponse = MmsThreadGetThreadAdminResponses[keyof MmsThreadGetThreadAdminResponses];
 
 export type EventLogFindAllAdminData = {
     body?: never;

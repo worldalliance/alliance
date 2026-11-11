@@ -29,6 +29,19 @@ const backedOff = (attemptsColumn: string) =>
     { maxMinutes: MAX_BACKOFF_MINUTES },
   );
 
+export enum MmsMediaStatus {
+  Copying = "copying",
+  Ready = "ready",
+  Unavailable = "unavailable",
+}
+
+export const mediaStatus = (media: MmsMedia): MmsMediaStatus => {
+  if (media.s3Key !== null) return MmsMediaStatus.Ready;
+  return media.copyAttempts >= MAX_COPY_ATTEMPTS
+    ? MmsMediaStatus.Unavailable
+    : MmsMediaStatus.Copying;
+};
+
 const REMOTE_CALL_TIMEOUT_MS = milliseconds({ seconds: 30 });
 
 enum CopyFailureKind {

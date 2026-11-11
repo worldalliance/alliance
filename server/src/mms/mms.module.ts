@@ -7,6 +7,7 @@ import { User } from "src/user/entities/user.entity";
 import { MmsMedia } from "./mms-media.entity";
 import { MmsMediaService } from "./mms-media.service";
 import { MmsOptout } from "./mms-optout.entity";
+import { MmsThreadController } from "./mms-thread.controller";
 import { MmsThreadService } from "./mms-thread.service";
 import { MmsUnsubService } from "./mms-unsub.service";
 import { MmsController } from "./mms.controller";
@@ -28,7 +29,7 @@ import { TwilioStatusWorker } from "./twiliostatus.worker";
     MmsThreadService,
     MmsMediaService,
   ],
-  controllers: [MmsController],
+  controllers: [MmsController, MmsThreadController],
   exports: [MmsService],
 })
 export class MmsModule {}

@@ -6,7 +6,12 @@ import {
 } from "@aws-sdk/client-s3";
 import { randomUUID } from "crypto";
 import { MmsMedia } from "src/mms/mms-media.entity";
-import { MAX_COPY_ATTEMPTS, MmsMediaService } from "src/mms/mms-media.service";
+import {
+  MAX_COPY_ATTEMPTS,
+  mediaStatus,
+  MmsMediaService,
+  MmsMediaStatus,
+} from "src/mms/mms-media.service";
 import { Mms, MmsDirection } from "src/mms/mms.entity";
 import { MmsModule } from "src/mms/mms.module";
 import { IsNull, type Repository } from "typeorm";
@@ -132,6 +137,7 @@ describe("Inbound media copy (e2e)", () => {
       [MEDIA_URL, undefined],
       [`${MEDIA_URL}.json`, "DELETE"],
     ]);
+    expect(mediaStatus(await reload(media.id))).toBe(MmsMediaStatus.Ready);
   });
 
   it("retries deleting the Twilio copy when Twilio refused it", async () => {
@@ -386,7 +392,9 @@ describe("Inbound media copy (e2e)", () => {
 
     await mediaService.copyToS3([media]);
 
-    expect((await reload(media.id)).copyAttempts).toBe(MAX_COPY_ATTEMPTS);
+    const reloaded = await reload(media.id);
+    expect(reloaded.copyAttempts).toBe(MAX_COPY_ATTEMPTS);
+    expect(mediaStatus(reloaded)).toBe(MmsMediaStatus.Unavailable);
   });
 
   it("logs nothing when another copy finished the row and deleted Twilio's file", async () => {

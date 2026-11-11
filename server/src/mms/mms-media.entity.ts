@@ -22,7 +22,7 @@ export class MmsMedia {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => Mms, {
+  @ManyToOne(() => Mms, (mms) => mms.media, {
     nullable: false,
     onDelete: "CASCADE",
   })
