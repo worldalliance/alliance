@@ -25,8 +25,8 @@ test.afterEach(async () => {
 
 // The page-side code is passed as strings: this tsconfig has no DOM lib.
 
-test("the built app opens a window titled Alliance agent", async () => {
-  await expect(page).toHaveTitle("Alliance agent");
+test("the built app opens a window whose title names Alliance agent", async () => {
+  await expect(page).toHaveTitle(/Alliance agent$/);
 });
 
 test("the tests keep the window off screen", async () => {

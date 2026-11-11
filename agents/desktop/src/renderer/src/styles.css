@@ -89,3 +89,17 @@ button[aria-disabled="true"] {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+.panel {
+  padding: var(--space-6);
+  max-width: 75ch;
+}
+
+.error {
+  color: var(--danger);
+}
+
+.output {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
