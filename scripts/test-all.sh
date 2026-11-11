@@ -43,7 +43,7 @@ for pkg in "${PACKAGES[@]}"; do
     continue
   fi
 
-  # Mirrors bun test's discovery glob:
+  # Mirrors bun test's discovery glob, which bun matches case-insensitively:
   # **{.test,_test,.spec,_spec}.{js,ts,jsx,tsx,mjs,cjs,mts,cts}.
   # The separator before `test`/`spec` is either a dot or an underscore, so
   # `foo_test.ts` counts but `foo.e2e-spec.ts` does not — matching bun, which
@@ -51,7 +51,7 @@ for pkg in "${PACKAGES[@]}"; do
   # No `pipefail` here — `grep -q` exits on its first match and leaves `find`
   # writing to a closed pipe, which would read as "no test files".
   if ! find "$pkg" -name node_modules -prune -o -type f -print |
-    grep -Eq '[._](test|spec)\.([cm]?[jt]s|[jt]sx)$'; then
+    grep -Eiq '[._](test|spec)\.([cm]?[jt]s|[jt]sx)$'; then
     echo "==> $pkg — no test files, skipping"
     continue
   fi
