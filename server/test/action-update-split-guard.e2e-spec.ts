@@ -5,7 +5,11 @@ import {
 import { Action, VisibilityMode } from "src/actions/entities/action.entity";
 import request from "supertest";
 import { UnsplitCollectiveResultToNonCompleters1793827479825 } from "../migrations/1793827479825-UnsplitCollectiveResultToNonCompleters";
-import { createTestApp, type TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  type TestContext,
+} from "./e2e-test-utils";
 
 describe("action update split guard (e2e)", () => {
   let ctx: TestContext;
@@ -47,7 +51,7 @@ describe("action update split guard (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("creates the didn't-complete text in the split shape older servers read", async () => {

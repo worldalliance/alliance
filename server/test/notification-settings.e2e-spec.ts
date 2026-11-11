@@ -13,7 +13,12 @@ import { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import request from "supertest";
 import { In, type Repository } from "typeorm";
-import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  signAccessToken,
+  TestContext,
+} from "./e2e-test-utils";
 
 type Cell = {
   channel: NotificationChannel;
@@ -76,7 +81,7 @@ describe("Notification settings (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("starts a new account with every default on and no overrides", async () => {

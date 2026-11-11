@@ -10,7 +10,7 @@ import { ForumCommentQueryService } from "src/forum/forum-comment-query.service"
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 import { createForumSoftDeleteFixtures } from "./forum-soft-delete-fixtures";
 
 describe("Forum deletion lifecycle (e2e)", () => {
@@ -25,7 +25,7 @@ describe("Forum deletion lifecycle (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("keeps a deleted comment in its thread without its content", async () => {

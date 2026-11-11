@@ -8,7 +8,7 @@ import {
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 /** `YYYY-MM-DD`, `offsetDays` from today. Creation rejects past start dates. */
 function day(offsetDays: number): string {
@@ -43,7 +43,7 @@ describe("Away ranges (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   describe("note normalization", () => {

@@ -7,6 +7,7 @@ import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import {
+  closeTestApp,
   createTestApp,
   giveActiveContract,
   TestContext,
@@ -25,7 +26,7 @@ describe("POST /user/nmembers (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const count = async (): Promise<number> => {

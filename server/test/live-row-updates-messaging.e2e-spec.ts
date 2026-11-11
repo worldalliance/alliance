@@ -19,6 +19,7 @@ import { LikeNotificationService } from "src/notifs/like-notification.service";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
 import {
+  closeTestApp,
   createTestApp,
   TestContext,
   writeDuringDeletion,
@@ -55,7 +56,7 @@ describe("Chat updates to a row deleted after its load (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("leaves a group chat deleted while its info is edited", async () => {

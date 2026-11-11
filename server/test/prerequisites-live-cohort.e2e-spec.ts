@@ -18,7 +18,7 @@ import {
   cohortDecisionFixtures,
   type CohortDecisionFixtures,
 } from "./cohort-decision-fixtures";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Live cohort with prerequisites (e2e)", () => {
   let ctx: TestContext;
@@ -50,7 +50,7 @@ describe("Live cohort with prerequisites (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const load = async (id: number): Promise<ParsedAction> =>

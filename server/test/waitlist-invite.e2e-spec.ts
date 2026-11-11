@@ -11,7 +11,12 @@ import { WaitlistInvitePlacement } from "../src/waitlist/dto/waitlist-entry-admi
 import { WaitlistEntry } from "../src/waitlist/entities/waitlist-entry.entity";
 import { WaitlistInviteService } from "../src/waitlist/waitlist-invite.service";
 import { WaitlistModule } from "../src/waitlist/waitlist.module";
-import { createTestApp, TestContext, waitForLockWait } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  TestContext,
+  waitForLockWait,
+} from "./e2e-test-utils";
 
 describe("Waitlist entry invite (e2e)", () => {
   let ctx: TestContext;
@@ -52,7 +57,7 @@ describe("Waitlist entry invite (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("issues one invite for an entry, reusing it, and sends nothing", async () => {

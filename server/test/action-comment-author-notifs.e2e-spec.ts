@@ -15,7 +15,12 @@ import { SegmentType, UserNameForm } from "src/notifs/notification-content";
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  signAccessToken,
+  TestContext,
+} from "./e2e-test-utils";
 
 type InboxEntry = {
   contentId: number;
@@ -122,7 +127,7 @@ describe("Action comment author notifications (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("notifies action authors and visible linked post authors, never the commenter", async () => {

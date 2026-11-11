@@ -12,7 +12,12 @@ import { TasksModule } from "src/tasks/tasks.module";
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  signAccessToken,
+  TestContext,
+} from "./e2e-test-utils";
 
 describe("Session checks (e2e)", () => {
   let ctx: TestContext;
@@ -49,8 +54,7 @@ describe("Session checks (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    ctx.app.getHttpServer().closeAllConnections();
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("refuses the tokens of a deleted account", async () => {

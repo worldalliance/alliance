@@ -61,7 +61,7 @@ import {
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 const sampleSchema: FormSchema = {
   pages: [
@@ -171,7 +171,7 @@ describe("Tasks (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   /** A live (non-draft) member action; link a form via actionRepo.update(id, { taskFormId }). */

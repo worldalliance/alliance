@@ -17,7 +17,12 @@ import {
 } from "../src/user/entities/onetime-invite.entity";
 import { Tag } from "../src/user/entities/tag.entity";
 import { User } from "../src/user/entities/user.entity";
-import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  signAccessToken,
+  TestContext,
+} from "./e2e-test-utils";
 
 describe("Auth (e2e)", () => {
   let userRepository: Repository<User>;
@@ -1165,6 +1170,6 @@ describe("Auth (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 });

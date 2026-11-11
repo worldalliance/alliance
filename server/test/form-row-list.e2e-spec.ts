@@ -11,7 +11,11 @@ import { FormRowAssignment } from "src/tasks/entities/form-row-assignment.entity
 import { TasksModule } from "src/tasks/tasks.module";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { createTestApp, type TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  type TestContext,
+} from "./e2e-test-utils";
 
 const websiteRow = {
   jurisdiction: "Springfield",
@@ -76,7 +80,7 @@ describe("Forms with a row list (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const createForm = (schema: FormSchema) =>

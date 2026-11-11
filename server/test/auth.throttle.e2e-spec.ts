@@ -3,7 +3,7 @@ import {
   OAUTH_THROTTLE,
   SIGNUP_THROTTLE,
 } from "../src/auth/signup-throttle.config";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Auth rate limiting (e2e)", () => {
   let ctx: TestContext;
@@ -16,7 +16,7 @@ describe("Auth rate limiting (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const register = (n: number) =>

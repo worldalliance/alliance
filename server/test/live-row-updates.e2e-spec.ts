@@ -37,6 +37,7 @@ import {
   type ObjectLiteral,
 } from "typeorm";
 import {
+  closeTestApp,
   createFormWithSnapshot,
   createTestApp,
   TestContext,
@@ -127,7 +128,7 @@ describe("Updates to a row deleted after its load (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("leaves a friend request deleted while its addressee accepts it", async () => {

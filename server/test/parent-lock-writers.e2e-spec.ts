@@ -15,6 +15,7 @@ import { FriendService } from "src/user/friend.service";
 import { UserService } from "src/user/user.service";
 import type { Repository } from "typeorm";
 import {
+  closeTestApp,
   createTestApp,
   TestContext,
   writeDuringDeletion,
@@ -44,7 +45,7 @@ describe("Writers locking the parents they attach to (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("refuses a friend request to an account deleted after it loads", async () => {

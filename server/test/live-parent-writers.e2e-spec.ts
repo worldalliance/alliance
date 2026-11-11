@@ -41,6 +41,7 @@ import { UserDeviceService } from "src/user/user-device.service";
 import { UserService } from "src/user/user.service";
 import type { Repository } from "typeorm";
 import {
+  closeTestApp,
   createTestApp,
   deleteAfterUserLoad,
   giveActiveContract,
@@ -87,7 +88,7 @@ describe("Writers beside a deletion (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("locks more ids than a statement takes parameters", async () => {

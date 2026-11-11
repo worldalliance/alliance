@@ -3,7 +3,7 @@ import { EventLogService } from "src/eventlog/eventlog.service";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import { User } from "../src/user/entities/user.entity";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Admin account deletion (e2e)", () => {
   let ctx: TestContext;
@@ -22,7 +22,7 @@ describe("Admin account deletion (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("deletes the account and everything keyed to it", async () => {

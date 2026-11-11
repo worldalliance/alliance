@@ -3,7 +3,7 @@ import {
   withPgAdvisoryLock,
   withPgSessionLock,
 } from "../src/notifs/lock-utils";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 const KEY = [918273, 1] as const;
 
@@ -47,7 +47,7 @@ describe("withPgSessionLock (e2e)", () => {
 
   afterAll(async () => {
     await dataSource.query("DROP TABLE lock_utils_probe");
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("runs outside a transaction while holding the lock, then releases it", async () => {

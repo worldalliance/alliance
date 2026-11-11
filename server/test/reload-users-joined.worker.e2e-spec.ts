@@ -2,7 +2,7 @@ import { Logger } from "@nestjs/common";
 import { milliseconds } from "date-fns";
 import { ActionParticipantsService } from "../src/actions/action-participants.service";
 import { ReloadUsersJoinedWorker } from "../src/actions/reload-users-joined.worker";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("ReloadUsersJoinedWorker (e2e)", () => {
   let ctx: TestContext;
@@ -18,7 +18,7 @@ describe("ReloadUsersJoinedWorker (e2e)", () => {
   afterEach(() => jest.restoreAllMocks());
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("skips a run that starts while another holds the lock", async () => {
