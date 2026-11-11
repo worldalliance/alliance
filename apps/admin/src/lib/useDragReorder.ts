@@ -5,6 +5,11 @@ export enum DropPosition {
   After = "after",
 }
 
+export const positionIn = (clientY: number, rect: DOMRect) =>
+  clientY < rect.top + rect.height / 2
+    ? DropPosition.Before
+    : DropPosition.After;
+
 const insertionOffset: Record<DropPosition, number> = {
   [DropPosition.Before]: 0,
   [DropPosition.After]: 1,
@@ -107,12 +112,7 @@ export function useDragReorder<T>(items: T[], setItems: (items: T[]) => void) {
       for (let i = 0; i < rects.length; i++) {
         const r = rects[i];
         if (clientY >= r.top && clientY <= r.bottom) {
-          const midpoint = r.top + r.height / 2;
-          return {
-            index: i,
-            position:
-              clientY < midpoint ? DropPosition.Before : DropPosition.After,
-          };
+          return { index: i, position: positionIn(clientY, r) };
         }
         if (
           i < rects.length - 1 &&
@@ -143,12 +143,10 @@ export function useDragReorder<T>(items: T[], setItems: (items: T[]) => void) {
       e.preventDefault();
       e.dataTransfer.dropEffect = "move";
       if (draggedIndex === null) return;
-      const rect = e.currentTarget.getBoundingClientRect();
-      const midpoint = rect.top + rect.height / 2;
       setDragOverIndex(index);
       setDropPosition(
         position ??
-          (e.clientY < midpoint ? DropPosition.Before : DropPosition.After),
+          positionIn(e.clientY, e.currentTarget.getBoundingClientRect()),
       );
     };
 
