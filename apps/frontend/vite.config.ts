@@ -33,7 +33,12 @@ export default defineConfig({
     imagetools(),
   ],
   optimizeDeps: {
-    exclude: ["@alliance/shared", "@alliance/sharedweb", "@alliance/common"],
+    exclude: [
+      "@alliance/shared",
+      "@alliance/sharedweb",
+      "@alliance/common",
+      "@alliance/kora-review",
+    ],
   },
   build: {
     sourcemap: "hidden",

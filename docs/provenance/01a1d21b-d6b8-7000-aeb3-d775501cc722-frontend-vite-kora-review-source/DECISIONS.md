@@ -1,0 +1,4 @@
+# Decisions
+
+- Cause: `apps/frontend/vite.config.ts` sets `resolve.preserveSymlinks: true`, so `@alliance/kora-review` resolves through `node_modules/@alliance/kora-review` and the dev server pre-bundles it as a third-party dependency. The pre-bundle in `node_modules/.vite/deps` kept the old ten category ids after `kora-review/src/risk-ids.ts` moved to KORA's 26, so the browser rejected transcripts in the new categories (participant 0505's batch has `cybersecurity`, `risky_online_behaviors_and_commercial_exploitation` and others), while the server, reading the source, accepted them. (agent decision, from the stale chunk's contents)
+- Fix: add `@alliance/kora-review` to `optimizeDeps.exclude`, as the config already does for `@alliance/shared`, `@alliance/sharedweb` and `@alliance/common`, so the dev server serves it as source and picks up edits. Admin sets `preserveSymlinks: false`, which already treats it as source, so its config is unchanged. (agent decision)
