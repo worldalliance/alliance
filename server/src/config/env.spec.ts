@@ -204,10 +204,10 @@ describe("validateServerEnv", () => {
     };
     expect(parsed(deployed)).toMatchObject({
       ...committedFor(NodeEnv.Staging),
-      APP_URL: "https://staging.worldalliance.org",
-      ALT_APP_URL: "https://staging.thealliance.org",
-      ADMIN_URL: "https://admin.staging.worldalliance.org",
-      ALT_ADMIN_URL: "https://admin.staging.thealliance.org",
+      APP_URL: "https://staging.thealliance.org",
+      ALT_APP_URL: "https://staging.worldalliance.org",
+      ADMIN_URL: "https://admin.staging.thealliance.org",
+      ALT_ADMIN_URL: "https://admin.staging.worldalliance.org",
     });
     expect(parsed(production)).toMatchObject({
       ...committedFor(NodeEnv.Production),

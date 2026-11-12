@@ -41,8 +41,8 @@ const deployedConfig: {
 } = {
   [NodeEnv.Staging]: {
     ...shared,
-    DOMAIN_NAME: "staging.worldalliance.org",
-    ALT_DOMAIN_NAME: "staging.thealliance.org",
+    DOMAIN_NAME: "staging.thealliance.org",
+    ALT_DOMAIN_NAME: "staging.worldalliance.org",
     APPLE_BUNDLE_ID: [
       "com.alliancefoundation.alliancemobile",
       "com.alliancefoundation.alliancemobile.dev",
