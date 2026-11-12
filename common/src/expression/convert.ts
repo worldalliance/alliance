@@ -30,10 +30,20 @@ const UNDEFINED_UNSUPPORTED = `\`undefined\` isn't supported. ${IS_UNKNOWN_HINT}
 
 const MATH_FUNCTIONS: ReadonlySet<string> = new Set(MATH_FUNCTION_NAMES);
 
+/**
+ * Every tree node mapped to the TypeScript node it was converted from. A
+ * parenthesized part maps to the parenthesized node, parentheses included.
+ */
+export type Converted = {
+  tree: Expr;
+  source: ReadonlyMap<Expr, ts.Expression>;
+};
+
 /** A function (`x => …`) is accepted only as a method's first argument. */
 type Position = { lambdaAllowed: boolean };
 
 class Converter {
+  readonly source = new Map<Expr, ts.Expression>();
   readonly diagnostics: Diagnostic[] = [];
   private readonly params: string[][] = [];
   private readonly functions: ReadonlySet<string>;
@@ -81,8 +91,14 @@ class Converter {
     node: ts.Expression,
     position: Position = { lambdaAllowed: false },
   ): Expr {
+    const tree = this.convertNode(node, position);
+    this.source.set(tree, node);
+    return tree;
+  }
+
+  private convertNode(node: ts.Expression, position: Position): Expr {
     if (ts.isParenthesizedExpression(node)) {
-      return this.convert(node.expression, position);
+      return this.convertNode(node.expression, position);
     }
     if (ts.isNumericLiteral(node)) {
       const value = Number(node.text);
@@ -441,12 +457,12 @@ export function convertExpression({
   node: ts.Expression;
   file: ts.SourceFile;
   scope: Scope;
-}): Result<Expr, Diagnostic[]> {
+}): Result<Converted, Diagnostic[]> {
   const converter = new Converter(file, scope);
   const tree = converter.convert(node);
   return converter.diagnostics.length > 0
     ? R.failure(converter.diagnostics)
-    : R.success(tree);
+    : R.success({ tree, source: converter.source });
 }
 
 /** Significant digits and exponent, so `0.50` and `5e-1` compare equal. */

@@ -114,7 +114,7 @@ export function parseExpression(
     scope,
   });
   if (!converted.ok) return R.failure(converted.error.map(shift));
-  const tree = converted.value;
+  const { tree } = converted.value;
   // Whether TypeScript reads a `<` and a later `>` as type arguments turns on
   // parentheses the printer doesn't keep, so the printed text is tried too.
   const printed = printExpression(tree, {

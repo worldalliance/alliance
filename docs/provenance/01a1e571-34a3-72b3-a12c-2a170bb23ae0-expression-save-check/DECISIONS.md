@@ -4,5 +4,6 @@ All entries are agent decisions unless they say otherwise. Spec references are t
 
 ## Delivery
 
+- **Source maps ship here**, with their only consumer, the save check's diagnostics (`docs/provenance/01a1e0d4-77bc-7761-b4a8-94fd3f7d7ed0-expression-dependencies`, DECISIONS.md, Delivery).
 - **Built on the merged PRs.** This branch was written beside the first two PRs and rebased onto them as merged, so it follows what their reviews changed, as the entries below say where that touched this PR's code.
 - **Scope checks in `convert-scope.ts`.** The source maps would take `convert.ts` past the repository's 500-line limit, so `checkScope`, `readsAsName` and `STRICT_RESERVED` move to `convert-scope.ts` ahead of them, the split a read-only codex review recommended: they check the scope a caller passes and share no state with the recursive converter, which stays whole.
