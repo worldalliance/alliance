@@ -9,6 +9,9 @@
 - claude:97469dc3-1672-46c5-b014-11c578315b22
 - claude:6f912db8-008d-48e4-8836-193b4714c63f
 - claude:1b04f581-537e-4ca0-99c2-0711f603bb2e
+- claude:bb61aac6-512f-42c5-823f-1a4030c4c9d2
+- claude:62b66c3f-3f59-4c30-a385-ae3c8b5d6523
+- claude:089b0c8d-d38f-4eaf-9714-2365e626c3aa
 - claude:ed94585e-5321-43ee-9f1d-abeb3470bf77
 - claude:54971cb1-d6fb-4975-a215-59433785ff09
 - claude:9b2055c0-5ce6-4e6c-9499-ff0c7dafc97e

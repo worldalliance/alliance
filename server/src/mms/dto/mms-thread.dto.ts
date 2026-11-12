@@ -16,7 +16,11 @@ import {
   mediaStatus,
   MmsMediaStatus,
 } from "../mms-media.service";
-import { type MmsThread, THREAD_PAGE_SIZE } from "../mms-thread.service";
+import {
+  type MmsThread,
+  type NeedsReplyMember,
+  THREAD_PAGE_SIZE,
+} from "../mms-thread.service";
 import { Mms } from "../mms.entity";
 
 export class MmsMediaDto {
@@ -134,4 +138,32 @@ export class SendStaffTextDto {
   })
   @Matches(/\S/, { message: "body must not be blank" })
   body: string;
+}
+
+export class NeedsReplyMemberDto {
+  @ApiProperty()
+  userId: number;
+
+  @ApiProperty()
+  name: string;
+
+  @ApiProperty({
+    description:
+      "The member's latest text that still needs a reply; STOP and START texts are skipped",
+  })
+  lastMessageBody: string;
+
+  @ApiProperty({
+    type: Date,
+    description:
+      "When the member's oldest text no staff reply has followed arrived",
+  })
+  waitingSince: Date;
+
+  constructor(input: NeedsReplyMember) {
+    this.userId = input.user.id;
+    this.name = input.user.name;
+    this.lastMessageBody = input.lastMessageBody;
+    this.waitingSince = input.waitingSince;
+  }
 }

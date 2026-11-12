@@ -1743,6 +1743,19 @@ export type NotifClickResponseDto = {
     mms: boolean;
 };
 
+export type NeedsReplyMemberDto = {
+    userId: number;
+    name: string;
+    /**
+     * The member's latest text that still needs a reply; STOP and START texts are skipped
+     */
+    lastMessageBody: string;
+    /**
+     * When the member's oldest text no staff reply has followed arrived
+     */
+    waitingSince: string;
+};
+
 export type MmsMediaStatus = 'copying' | 'ready' | 'unavailable';
 
 export type MmsMediaDto = {
@@ -8674,6 +8687,25 @@ export type MmsHandleInboundMmsResponses = {
 };
 
 export type MmsHandleInboundMmsResponse = MmsHandleInboundMmsResponses[keyof MmsHandleInboundMmsResponses];
+
+export type MmsThreadNeedsReplyAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/mms-threads/needs-reply';
+};
+
+export type MmsThreadNeedsReplyAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadNeedsReplyAdminError = MmsThreadNeedsReplyAdminErrors[keyof MmsThreadNeedsReplyAdminErrors];
+
+export type MmsThreadNeedsReplyAdminResponses = {
+    200: Array<NeedsReplyMemberDto>;
+};
+
+export type MmsThreadNeedsReplyAdminResponse = MmsThreadNeedsReplyAdminResponses[keyof MmsThreadNeedsReplyAdminResponses];
 
 export type MmsThreadMediaAdminData = {
     body?: never;

@@ -7,6 +7,7 @@ import { env } from "src/config/env";
 import { User } from "src/user/entities/user.entity";
 import { isAnonymizedPhoneNumber } from "src/utils/phone";
 import type { Repository } from "src/utils/Repository";
+import type { MessageStatus } from "twilio/lib/rest/api/v2010/account/message";
 import { In } from "typeorm";
 import { z } from "zod";
 import { MmsMedia } from "./mms-media.entity";
@@ -38,11 +39,37 @@ export enum ThreadRefusal {
   BeforeNotInThread = "before_not_in_thread",
 }
 
+export type NeedsReplyMember = {
+  user: User;
+  lastMessageBody: string;
+  waitingSince: Date;
+};
+
 export enum StaffTextRefusal {
   NoPhoneNumber = "no_phone_number",
   InvalidNumber = "invalid_number",
   OptedOut = "opted_out",
 }
+
+const ANSWERS_MEMBER: Record<MessageStatus, boolean> = {
+  queued: true,
+  sending: true,
+  sent: true,
+  delivered: true,
+  accepted: true,
+  scheduled: true,
+  read: true,
+  partially_delivered: true,
+  failed: false,
+  undelivered: false,
+  canceled: false,
+  receiving: false,
+  received: false,
+};
+
+const ANSWERING_STATUSES = Object.entries(ANSWERS_MEMBER)
+  .filter(([, answers]) => answers)
+  .map(([status]) => status);
 
 /** Staging's anonymized numbers pass there, so staff texting can be tried on
  * staging; in production they are unassigned 555 numbers no text would reach. */
@@ -229,6 +256,91 @@ export class MmsThreadService {
       rawBody: "",
     });
     return R.success(undefined);
+  }
+
+  /** Longest-waiting first, timed from each number's oldest unanswered text.
+   * STOP and START texts, which the webhook acts on and Twilio answers, neither
+   * list a member nor hide an earlier text that needs a reply. */
+  async needsReply(): Promise<NeedsReplyMember[]> {
+    const oldestTexts = await this.unansweredTexts();
+    if (oldestTexts.length === 0) return [];
+    const users = await this.subscribedMembers()
+      .andWhere("member.phoneNumber = ANY(:phoneNumbers)", {
+        phoneNumbers: oldestTexts.map((m) => m.memberPhoneNumber),
+      })
+      .orderBy("member.id")
+      .getMany();
+    const usersByNumber = Map.groupBy(users, (user) => user.phoneNumber);
+    return oldestTexts
+      .toSorted(
+        (a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id - b.id,
+      )
+      .flatMap((oldest) =>
+        (usersByNumber.get(oldest.memberPhoneNumber) ?? []).map((user) => ({
+          user,
+          lastMessageBody: oldest.lastMessageBody,
+          waitingSince: oldest.createdAt,
+        })),
+      );
+  }
+
+  /** Per subscribed number, its oldest inbound text that no staff reply has
+   * followed, with the latest such text's body as `lastMessageBody`. The window
+   * runs before `DISTINCT ON` keeps each number's first row. */
+  private async unansweredTexts() {
+    const rows = await this.mmsRepository
+      .createQueryBuilder("inbound")
+      .select("inbound.id", "id")
+      .addSelect("inbound.memberPhoneNumber", "memberPhoneNumber")
+      .addSelect("inbound.createdAt", "createdAt")
+      .distinctOn(["inbound.memberPhoneNumber"])
+      .addSelect(
+        `first_value(inbound.body) OVER (
+          PARTITION BY inbound."memberPhoneNumber"
+          ORDER BY inbound."createdAt" DESC, inbound.id DESC
+        )`,
+        "lastMessageBody",
+      )
+      .where("inbound.direction = :inbound", {
+        inbound: MmsDirection.Inbound,
+      })
+      .andWhere("inbound.keyword IS NULL")
+      .andWhere(
+        `NOT EXISTS (
+          SELECT 1 FROM mms reply
+          WHERE reply."memberPhoneNumber" = inbound."memberPhoneNumber"
+            AND reply."deletedAt" IS NULL
+            AND (reply."createdAt", reply.id) > (inbound."createdAt", inbound.id)
+            AND reply."sentById" IS NOT NULL
+            AND reply.status IN (:...answering)
+        )`,
+        { answering: ANSWERING_STATUSES },
+      )
+      .andWhere(
+        `inbound."memberPhoneNumber" IN (${this.subscribedMembers()
+          .select("member.phoneNumber")
+          .getQuery()})`,
+      )
+      .orderBy("inbound.memberPhoneNumber")
+      .addOrderBy("inbound.createdAt", "ASC")
+      .addOrderBy("inbound.id", "ASC")
+      .getRawMany();
+    return z
+      .array(
+        z.object({
+          id: z.number(),
+          memberPhoneNumber: z.string(),
+          createdAt: z.date(),
+          lastMessageBody: z.string(),
+        }),
+      )
+      .parse(rows);
+  }
+
+  private subscribedMembers() {
+    return this.userRepository
+      .createQueryBuilder("member")
+      .where("member.phoneNumberUnsubscribed = false");
   }
 
   private async findMember(

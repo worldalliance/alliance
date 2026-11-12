@@ -30,6 +30,10 @@ export enum MmsKeyword {
 
 @Entity()
 @Index(["memberPhoneNumber", "createdAt"])
+// Needs Reply's inbound texts and the staff texts that can answer them.
+@Index(["memberPhoneNumber", "createdAt", "id"], {
+  where: `"direction" = 'inbound' OR "sentById" IS NOT NULL`,
+})
 @Index(["twilioSid"], {
   unique: true,
   where: `"direction" = 'inbound'`,
