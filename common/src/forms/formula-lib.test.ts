@@ -104,8 +104,8 @@ describe("declares nothing the evaluator cannot run", () => {
   });
 });
 
-// `variable-formula-check.ts` answers 2684, a `this` mismatch, with advice
-// about `join`.
+// `formula-messages.ts` answers 2684, a `this` mismatch, with advice about
+// `join`.
 it("gives only join a `this` type that can fail to match", () => {
   const thisTypes = [
     ...FORMULA_LIB.matchAll(/^\s*(\w+)[^(\n]*\(this: ([^,)]+)/gm),
