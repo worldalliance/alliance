@@ -927,13 +927,19 @@ jobs:
           curl --fail --silent --show-error https://${{ steps.config.outputs.ALT_DOMAIN_NAME }} > /dev/null
           echo "other domain https ok"
 
-      - name: Check Android app links file
+      # Apple and Android fetch each host's association file without following
+      # redirects.
+      - name: Check app association files
+        env:
+          HOSTS: ${{ steps.config.outputs.LEGACY_DOMAIN_NAME }} ${{ steps.config.outputs.NEW_DOMAIN_NAME }}
         run: |
-          for host in ${{ steps.config.outputs.DOMAIN_NAME }} ${{ steps.config.outputs.ALT_DOMAIN_NAME }}; do
-            echo "Checking assetlinks.json on $host..."
-            curl --fail --silent --show-error https://$host/.well-known/assetlinks.json > /dev/null
+          for host in $HOSTS; do
+            for path in .well-known/assetlinks.json .well-known/apple-app-site-association; do
+              status=$(curl --silent --show-error -o /dev/null -w '%{http_code}' "https://$host/$path")
+              if [ "$status" != 200 ]; then echo "https://$host/$path answered $status"; exit 1; fi
+            done
           done
-          echo "assetlinks.json ok"
+          echo "association files ok"
 
       - name: Check admin app
         run: |
@@ -949,10 +955,16 @@ jobs:
 
       # nginx -t can pass while every /events/ request fails, e.g. on PostHog's
       # certificate. Last, so a PostHog outage doesn't skip the checks above.
+      # Installed apps send analytics to the legacy domain.
       - name: Check PostHog proxy
+        env:
+          HOSTS: ${{ steps.config.outputs.LEGACY_DOMAIN_NAME }} ${{ steps.config.outputs.NEW_DOMAIN_NAME }}
         run: |
-          echo "Checking PostHog proxy..."
-          curl --fail --silent --show-error --max-time 30 https://${{ steps.config.outputs.DOMAIN_NAME }}/events/static/array.js > /dev/null
+          for host in $HOSTS; do
+            echo "Checking PostHog proxy on $host..."
+            status=$(curl --silent --show-error --max-time 30 -o /dev/null -w '%{http_code}' "https://$host/events/static/array.js")
+            if [ "$status" != 200 ]; then echo "https://$host/events/static/array.js answered $status"; exit 1; fi
+          done
           echo "PostHog proxy https ok"
 
   verify-api:
@@ -971,10 +983,16 @@ jobs:
         id: config
         uses: ./.github/actions/deployed-config
 
+      # Installed apps call the API on the legacy domain.
       - name: Check API health
+        env:
+          HOSTS: ${{ steps.config.outputs.LEGACY_DOMAIN_NAME }} ${{ steps.config.outputs.NEW_DOMAIN_NAME }}
         run: |
-          echo "Checking API health..."
-          curl --fail --silent --show-error https://${{ steps.config.outputs.DOMAIN_NAME }}/api/ > /dev/null
+          for host in $HOSTS; do
+            echo "Checking API health on $host..."
+            status=$(curl --silent --show-error -o /dev/null -w '%{http_code}' "https://$host/api/")
+            if [ "$status" != 200 ]; then echo "https://$host/api/ answered $status"; exit 1; fi
+          done
           echo "API health ok"
 
   notify:
