@@ -34,23 +34,23 @@ export type ReleaseTarget = {
 };
 
 const PRODUCTION: ReleaseTarget = {
-  apiUrl: "https://worldalliance.org/api",
+  apiUrl: `https://${ALLIANCE_DOMAIN}/api`,
   siteUrl: `https://${ALLIANCE_DOMAIN}`,
   env: NodeEnv.Production,
   posthog: {
     apiKey: "phc_4Bkir1Px9qIRnMQfMWQPcGIq6wjodf9jtme8fty3ZLt",
-    host: "https://worldalliance.org/events/",
+    host: `https://${ALLIANCE_DOMAIN}/events/`,
   },
 };
 
 /** Also where any binary takes an app-store review account's session. */
 export const STAGING: ReleaseTarget = {
-  apiUrl: "https://staging.worldalliance.org/api",
+  apiUrl: `${STAGING_SITE_URL}/api`,
   siteUrl: STAGING_SITE_URL,
   env: NodeEnv.Staging,
   posthog: {
     apiKey: "phc_Af7iQMRPzZS1T0MkYp20WgXyThUnWkNChHuYhuxomPS",
-    host: "https://staging.worldalliance.org/events/",
+    host: `${STAGING_SITE_URL}/events/`,
   },
 };
 

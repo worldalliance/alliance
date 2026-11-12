@@ -1,5 +1,6 @@
 import { resolveUploadSrc, uploadSrc } from "@alliance/common/image-src";
 import { R } from "@alliance/common/result";
+import { ALLIANCE_DOMAIN } from "@alliance/common/url";
 import { client } from "@alliance/shared/client/client.gen";
 import * as Application from "expo-application";
 import { NativeModules, Platform } from "react-native";
@@ -64,7 +65,7 @@ export const getBinaryApiUrl = (): string => {
 
 export const getBaseUrl = (): string => {
   const apiUrl = getApiUrl();
-  return apiUrl.replace(/\/api\/?$/, "") || "https://worldalliance.org";
+  return apiUrl.replace(/\/api\/?$/, "") || `https://${ALLIANCE_DOMAIN}`;
 };
 
 /**

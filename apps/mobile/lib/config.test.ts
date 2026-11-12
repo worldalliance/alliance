@@ -31,7 +31,7 @@ it("points every deployment URL at staging during a review session", () => {
   expect(getApiUrl()).toBe(STAGING.apiUrl);
   expect(client.getConfig().baseUrl).toBe(STAGING.apiUrl);
   expect(getSiteUrl()).toBe(STAGING.siteUrl);
-  expect(getWebSocketUrl()).toBe("wss://staging.worldalliance.org");
+  expect(getWebSocketUrl()).toBe("wss://staging.thealliance.org");
 });
 
 it("returns to the binary's deployment once the review session ends", () => {
