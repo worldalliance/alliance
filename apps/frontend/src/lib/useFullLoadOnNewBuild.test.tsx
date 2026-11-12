@@ -166,7 +166,7 @@ it("keeps back and forward in-app", async () => {
   expect(replaceSpy).not.toHaveBeenCalled();
 });
 
-it("keeps a navigation to a page nginx moves to the alt domain in-app", async () => {
+it("keeps a navigation to a page nginx moves to the new domain in-app", async () => {
   window.happyDOM.setURL("https://worldalliance.org/a");
   const router = renderAt("/a");
   deployNewBuild();
@@ -176,7 +176,7 @@ it("keeps a navigation to a page nginx moves to the alt domain in-app", async ()
   expect(assignSpy).not.toHaveBeenCalled();
 });
 
-it("loads a page nginx moves as a document once on the alt domain", async () => {
+it("loads a page nginx moves as a document once on the new domain", async () => {
   window.happyDOM.setURL("https://thealliance.org/a");
   renderAt("/a");
   deployNewBuild();
@@ -185,7 +185,7 @@ it("loads a page nginx moves as a document once on the alt domain", async () => 
   expect(assignSpy).toHaveBeenCalledWith("/people");
 });
 
-it("keeps an invite signup in-app on the primary domain", async () => {
+it("keeps an invite signup in-app on the legacy domain", async () => {
   window.happyDOM.setURL("https://worldalliance.org/a");
   const router = renderAt("/a");
   deployNewBuild();
@@ -195,7 +195,7 @@ it("keeps an invite signup in-app on the primary domain", async () => {
   expect(assignSpy).not.toHaveBeenCalled();
 });
 
-it("loads an invite signup as a document on the alt domain", async () => {
+it("loads an invite signup as a document on the new domain", async () => {
   window.happyDOM.setURL("https://thealliance.org/a");
   renderAt("/a");
   deployNewBuild();

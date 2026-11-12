@@ -1,4 +1,5 @@
 import { NodeEnv } from "./node-env";
+import { ALLIANCE_LEGACY_DOMAIN, isLegacyAllianceHost } from "./url";
 
 type DeployedNodeEnv = NodeEnv.Staging | NodeEnv.Production;
 
@@ -40,8 +41,8 @@ const deployedConfig: {
 } = {
   [NodeEnv.Staging]: {
     ...shared,
-    DOMAIN_NAME: "staging.worldalliance.org",
-    ALT_DOMAIN_NAME: "staging.thealliance.org",
+    DOMAIN_NAME: "staging.thealliance.org",
+    ALT_DOMAIN_NAME: "staging.worldalliance.org",
     APPLE_BUNDLE_ID: [
       "com.alliancefoundation.alliancemobile",
       "com.alliancefoundation.alliancemobile.dev",
@@ -70,6 +71,41 @@ const deployedConfig: {
   [NodeEnv.Development]: undefined,
   [NodeEnv.Test]: undefined,
 };
+
+export enum DomainMove {
+  /** Only invite links and the public pages leave the legacy domain. */
+  OptIn = "opt-in",
+  /** Every page load leaves the legacy domain. */
+  CutOver = "cut-over",
+}
+
+/**
+ * The legacy domain is whichever of the two is on {@link ALLIANCE_LEGACY_DOMAIN},
+ * so swapping `DOMAIN_NAME` and `ALT_DOMAIN_NAME` is what cuts an environment
+ * over. `DOMAIN_NAME` names the TLS certificate lineages and the API host.
+ */
+export function domainMove(
+  config: Pick<DeployedConfig, "DOMAIN_NAME" | "ALT_DOMAIN_NAME">,
+): { move: DomainMove; legacyDomain: string; newDomain: string } {
+  const { DOMAIN_NAME, ALT_DOMAIN_NAME } = config;
+  const legacy = [DOMAIN_NAME, ALT_DOMAIN_NAME].filter(isLegacyAllianceHost);
+  if (legacy.length !== 1) {
+    throw new Error(
+      `exactly one of ${DOMAIN_NAME} and ${ALT_DOMAIN_NAME} must be on ${ALLIANCE_LEGACY_DOMAIN}`,
+    );
+  }
+  return legacy[0] === ALT_DOMAIN_NAME
+    ? {
+        move: DomainMove.CutOver,
+        legacyDomain: ALT_DOMAIN_NAME,
+        newDomain: DOMAIN_NAME,
+      }
+    : {
+        move: DomainMove.OptIn,
+        legacyDomain: DOMAIN_NAME,
+        newDomain: ALT_DOMAIN_NAME,
+      };
+}
 
 export function deployedConfigFor<E extends NodeEnv>(
   nodeEnv: E,
