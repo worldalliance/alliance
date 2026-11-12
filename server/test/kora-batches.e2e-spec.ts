@@ -3,7 +3,11 @@ import { randomUUID } from "node:crypto";
 import { KoraBatch } from "src/kora/entities/kora-batch.entity";
 import { KoraModule } from "src/kora/kora.module";
 import request from "supertest";
-import { createTestApp, type TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  type TestContext,
+} from "./e2e-test-utils";
 import { setKoraProjectStatus } from "./kora-fixtures";
 import { EXPORT_SCHEMA_TEXT, koraPair, koraPairsFile } from "./kora-pairs";
 
@@ -54,7 +58,7 @@ describe("Kora transcript batches (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("stores a valid upload, lists it, and lets the project become active", async () => {

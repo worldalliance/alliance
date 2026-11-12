@@ -9,7 +9,12 @@ import request from "supertest";
 import { HostedDoc } from "../src/hosted-docs/entities/hosted-doc.entity";
 import { HostedDocsModule } from "../src/hosted-docs/hosted-docs.module";
 import { HostedDocsService } from "../src/hosted-docs/hosted-docs.service";
-import { createTestApp, eventually, type TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  eventually,
+  type TestContext,
+} from "./e2e-test-utils";
 
 const PDF = Buffer.from("%PDF-1.7\nfake pdf body");
 
@@ -74,9 +79,7 @@ describe("Hosted docs (e2e)", () => {
     mockSend.mockClear();
   });
   afterAll(async () => {
-    // Bun's server.close() waits on open connections, so app.close() would hang.
-    ctx.app.getHttpServer().closeAllConnections();
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("restricts management to admins", async () => {

@@ -24,6 +24,7 @@ import request from "supertest";
 import type { Repository } from "typeorm";
 import type { ActionDto } from "../src/actions/dto/action.dto";
 import {
+  closeTestApp,
   createFormWithSnapshot,
   createTestApp,
   giveActiveContract,
@@ -153,7 +154,7 @@ describe("Staff preview (e2e)", () => {
 
   afterAll(async () => {
     await actionRepo.query("DELETE FROM action");
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   describe("visibility", () => {

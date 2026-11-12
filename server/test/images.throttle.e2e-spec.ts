@@ -1,7 +1,7 @@
 import { IMAGE_DOWNLOAD_THROTTLE } from "src/images/image-download-throttle.config";
 import { ImagesModule } from "src/images/images.module";
 import request from "supertest";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Image download rate limiting (e2e)", () => {
   let ctx: TestContext;
@@ -12,7 +12,7 @@ describe("Image download rate limiting (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const download = () =>

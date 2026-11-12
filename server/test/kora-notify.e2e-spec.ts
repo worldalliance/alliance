@@ -10,6 +10,7 @@ import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
 import { DeliveryFailure } from "src/utils/notif-delivery";
 import request from "supertest";
+import { closeTestApp } from "./e2e-test-utils";
 import {
   koraHarness,
   setKoraProjectStatus,
@@ -69,7 +70,7 @@ describe("Kora launch notice (e2e)", () => {
   });
 
   afterAll(async () => {
-    await h.ctx.app.close();
+    await closeTestApp(h.ctx.app);
   });
 
   it("refuses until the project is active, and sends nothing", async () => {

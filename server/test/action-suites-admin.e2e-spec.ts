@@ -4,7 +4,7 @@ import type { CreateActionEventDto } from "../src/actions/dto/action-event.dto";
 import { ActionStatus } from "../src/actions/entities/action-event.entity";
 import { ActionSuite } from "../src/actions/entities/action-suite.entity";
 import { Action } from "../src/actions/entities/action.entity";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Admin action suites (e2e)", () => {
   let ctx: TestContext;
@@ -23,7 +23,7 @@ describe("Admin action suites (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const admin = (req: request.Test) =>

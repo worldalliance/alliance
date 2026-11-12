@@ -16,7 +16,7 @@ import {
   UnreadContentType,
 } from "src/notifs/entities/unread-content.entity";
 import request from "supertest";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Action update visibility (e2e)", () => {
   let ctx: TestContext;
@@ -47,7 +47,7 @@ describe("Action update visibility (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const displaySchema = (text: string) => ({

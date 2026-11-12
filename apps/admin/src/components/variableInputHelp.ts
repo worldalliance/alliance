@@ -11,6 +11,7 @@ import { VariableInputMode } from "@alliance/common/forms/variables";
 import { RANDOM_INPUT_HELP } from "./RandomInput";
 import {
   AGGREGATE_INPUT_HELP,
+  ANSWERED_COUNT_INPUT_HELP,
   INPUT_MODE_HELP,
   LIST_INPUT_HELP,
   SOURCE_INPUT_HELP,
@@ -66,6 +67,8 @@ export const answerHelp = (
         example: (name) => AGGREGATE_INPUT_HELP.example(name, value),
       };
     }
+    case "answeredCount":
+      return ANSWERED_COUNT_INPUT_HELP;
     case "random":
       return RANDOM_INPUT_HELP;
     default:

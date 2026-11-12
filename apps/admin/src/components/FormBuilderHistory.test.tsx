@@ -63,7 +63,6 @@ serveApi(
           id: 42,
           type: "HasPhoneNumber",
           idArgument: null,
-          expression: null,
         }),
       "PUT /tasks/updateForm/:formId": async ({ request }) => {
         await saveGate;

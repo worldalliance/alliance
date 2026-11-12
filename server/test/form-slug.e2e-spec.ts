@@ -7,7 +7,11 @@ import type { FormSummaryDto } from "src/tasks/form.dto";
 import { TasksModule } from "src/tasks/tasks.module";
 import { TasksService } from "src/tasks/tasks.service";
 import request from "supertest";
-import { createTestApp, type TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  type TestContext,
+} from "./e2e-test-utils";
 
 const SCHEMA = { pages: [], outputViews: [] };
 
@@ -34,7 +38,7 @@ describe("Form slugs (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const newForm = (title = "Form") =>

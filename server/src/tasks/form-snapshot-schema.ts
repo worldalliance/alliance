@@ -2,8 +2,10 @@ import {
   formSchema,
   type FormSchema,
 } from "@alliance/common/forms/form-schema";
-import { memberSchema } from "@alliance/common/forms/row-list";
-import type { AssignedRow } from "@alliance/common/forms/row-list-schema";
+import {
+  memberSchema,
+  type SchemaMember,
+} from "@alliance/common/forms/row-list";
 import { Logger } from "@nestjs/common";
 import { FormSnapshot } from "./entities/formsnapshot.entity";
 
@@ -30,9 +32,9 @@ export function formSchemaOf(snapshot: FormSnapshot): FormSchema {
 /** A snapshot's schema as a member is sent it; see `memberSchema`. */
 export function memberSnapshotSchema(
   snapshot: FormSnapshot,
-  assignedRow: AssignedRow | null,
+  member: SchemaMember,
 ): FormSchema {
-  return memberSchema(formSchemaOf(snapshot), assignedRow);
+  return memberSchema(formSchemaOf(snapshot), member);
 }
 
 export function cloneFormSnapshotWithSchema(
@@ -42,12 +44,12 @@ export function cloneFormSnapshotWithSchema(
   return Object.assign(new FormSnapshot(), snapshot, { schema });
 }
 
-export function snapshotForRow(
+export function memberSnapshot(
   snapshot: FormSnapshot,
-  row: AssignedRow | null,
+  member: SchemaMember,
 ): FormSnapshot {
   return cloneFormSnapshotWithSchema(
     snapshot,
-    memberSnapshotSchema(snapshot, row),
+    memberSnapshotSchema(snapshot, member),
   );
 }

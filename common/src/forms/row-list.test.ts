@@ -328,8 +328,11 @@ describe("schemaForRow on a list field", () => {
 describe("memberSchema", () => {
   it("fills from the saved row", () => {
     const served = memberSchema(formFor(), {
-      key: rowKey(springfieldCounty, ["jurisdiction", "type"]),
-      values: springfieldCounty,
+      assignedRow: {
+        key: rowKey(springfieldCounty, ["jurisdiction", "type"]),
+        values: springfieldCounty,
+      },
+      userId: null,
     });
     expect(served.pages[0].fields[0]).toMatchObject({
       text: "File with Springfield (County). Email: records@county.example.gov",
@@ -337,16 +340,21 @@ describe("memberSchema", () => {
   });
 
   it("strips the list and blanks placeholders without a row", () => {
-    const served = memberSchema(formFor(), null);
+    const served = memberSchema(formFor(), {
+      assignedRow: null,
+      userId: null,
+    });
     expect(served.rowList).toBeUndefined();
     expect(served.pages[0].fields[0]).toMatchObject({
       text: "File with  (). Email: ",
     });
   });
 
-  it("leaves a form without a list untouched", () => {
+  it("leaves a form without a list unfilled", () => {
     const plain = formFor({ rowList: undefined });
-    expect(memberSchema(plain, null)).toBe(plain);
+    expect(memberSchema(plain, { assignedRow: null, userId: null })).toEqual(
+      plain,
+    );
   });
 });
 

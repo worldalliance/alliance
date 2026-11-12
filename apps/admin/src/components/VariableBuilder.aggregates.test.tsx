@@ -22,6 +22,7 @@ const surveySchema: FormSchema = {
       id: "p1",
       fields: [
         scoreField,
+        { id: "photos", type: "input", kind: "file", label: "Photos" },
         {
           id: "employers",
           type: "input",
@@ -274,5 +275,38 @@ describe("VariableBuilder aggregate counts", () => {
       kind: "field",
       fieldId: "town",
     });
+  });
+
+  it("counts members who answered any question, a file upload included, previewed with a sample number", async () => {
+    const saved: FormSchema[] = [];
+    render(
+      <Harness initial={destination} onSave={(next) => saved.push(next)} />,
+    );
+
+    const mode = await screen.findByLabelText("What input1 reads");
+    await screen.findByText("Survey (survey::v1)");
+    fireEvent.change(mode, { target: { value: "answered" } });
+    fireEvent.change(screen.getByLabelText("Form read by input1"), {
+      target: { value: "9" },
+    });
+    await screen.findByText("Photos (file) — photos");
+    fireEvent.change(screen.getByLabelText("Field read by input1"), {
+      target: { value: "photos" },
+    });
+    expect(saved.at(-1)?.variables?.[0].inputs.input1).toEqual({
+      kind: "answeredCount",
+      sourceFormId: 9,
+      fieldId: "photos",
+    });
+    expect(screen.getByText("input1: number")).toBeTruthy();
+
+    fireEvent.change(formulaBox(), {
+      target: { value: "input1 === 1 ? '1 member' : input1 + ' members'" },
+    });
+    expect(result()).toContain("Result: 0 members");
+    fireEvent.change(screen.getByLabelText("Preview with, for input1"), {
+      target: { value: "1" },
+    });
+    expect(result()).toContain("Result: 1 member");
   });
 });

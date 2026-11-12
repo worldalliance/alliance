@@ -11,6 +11,7 @@ import { ReferralService } from "src/user/referral.service";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import {
+  closeTestApp,
   createTestApp,
   eventually,
   giveActiveContract,
@@ -80,7 +81,7 @@ describe("Accepted friendship in either direction (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("lists friends on both sides of the request, without pending ones", async () => {

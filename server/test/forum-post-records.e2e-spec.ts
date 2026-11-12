@@ -7,6 +7,7 @@ import { ContractEventType } from "src/user/entities/contract-event.entity";
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import {
+  closeTestApp,
   createTestApp,
   giveActiveContract,
   type TestContext,
@@ -61,7 +62,7 @@ describe("Forum post records across endpoints (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const get = (path: string) =>

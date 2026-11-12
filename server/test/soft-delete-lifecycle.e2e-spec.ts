@@ -27,6 +27,7 @@ import { FriendService } from "src/user/friend.service";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import {
+  closeTestApp,
   createTestApp,
   signAccessToken,
   TestContext,
@@ -83,7 +84,7 @@ describe("Soft-deleted records' lifecycle (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("frees a deleted account's email for a new account", async () => {

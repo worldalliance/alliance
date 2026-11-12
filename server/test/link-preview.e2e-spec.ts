@@ -9,7 +9,7 @@ import {
 import { LinkPreviewModule } from "src/link-preview/link-preview.module";
 import { LINK_PREVIEW_TRANSPORT } from "src/link-preview/link-preview.service";
 import request from "supertest";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 // Pins the endpoint end to end: auth-only access, rejection of URLs the
 // SSRF-guarded fetcher would never attempt, the 200 path through the real
@@ -51,7 +51,7 @@ describe("Link preview (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const getPreview = (query: string, token?: string) => {

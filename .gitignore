@@ -53,7 +53,6 @@ uploads/
 **/tsconfig.tsbuildinfo
 /db_dumps/
 
-citesting/screenshots/
 shared/tsconfig.tsbuildinfo
 
 # Worktrees

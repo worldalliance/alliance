@@ -12,7 +12,12 @@ import { GroupAssignmentService } from "src/user/group-assignment.service";
 import { UserService } from "src/user/user.service";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { createTestApp, TestContext, waitForLockWait } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  TestContext,
+  waitForLockWait,
+} from "./e2e-test-utils";
 
 describe("Account soft deletion (e2e)", () => {
   let ctx: TestContext;
@@ -57,7 +62,7 @@ describe("Account soft deletion (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("hides the account and what it owned while keeping the rows", async () => {

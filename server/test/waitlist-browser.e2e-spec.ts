@@ -4,7 +4,7 @@ import { WaitlistBrowser } from "../src/waitlist/entities/waitlist-browser.entit
 import { WaitlistEntry } from "../src/waitlist/entities/waitlist-entry.entity";
 import { WaitlistBrowserService } from "../src/waitlist/waitlist-browser.service";
 import { WaitlistModule } from "../src/waitlist/waitlist.module";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Waitlist browser state (e2e)", () => {
   let ctx: TestContext;
@@ -36,7 +36,7 @@ describe("Waitlist browser state (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("remembers a new entry's share link in an HttpOnly, strict session cookie", async () => {

@@ -222,7 +222,6 @@ it("names a saved validator and the tag it checks", async () => {
         id: 4,
         type: "MemberTag",
         idArgument: "9",
-        expression: null,
       }),
     "GET /tasks/customValidators": () =>
       Response.json([
@@ -247,43 +246,5 @@ it("names a saved validator and the tag it checks", async () => {
 
   expect(
     (await screen.findAllByText("Member has tag (non-US) fails")).length,
-  ).toBe(2);
-});
-
-it("names a custom expression by its expression", async () => {
-  api.alsoServing({
-    "GET /tasks/findOneCustomValidator/:id": () =>
-      Response.json({
-        id: 4,
-        type: "CustomExpression",
-        idArgument: null,
-        expression: "completedActionCount >= 3",
-      }),
-    "GET /tasks/customValidators": () =>
-      Response.json([
-        {
-          name: "Custom expression",
-          id: "CustomExpression",
-          withIdField: false,
-          usableForVisibility: true,
-        },
-      ]),
-  });
-  profiles = [
-    { results: [false], userIds: [1, 2] },
-    { results: [true], userIds: [3] },
-  ];
-  renderPicker({
-    schema: gatedBy([
-      { kind: "validator", validatorId: 4, resultEquals: true },
-    ]),
-  });
-
-  expect(
-    (
-      await screen.findAllByText(
-        "Custom expression (completedActionCount >= 3) passes",
-      )
-    ).length,
   ).toBe(2);
 });

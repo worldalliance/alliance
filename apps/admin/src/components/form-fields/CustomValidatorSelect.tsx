@@ -6,16 +6,13 @@ import { cn } from "@alliance/shared/styles/util";
 import { useMemo, type ChangeEvent } from "react";
 import { useCustomValidatorTypesAdmin } from "../../lib/useCustomValidatorTypesAdmin";
 import { useTagsAdmin } from "../../lib/useTagsAdmin";
-import { CustomExpressionEditor } from "./CustomExpressionEditor";
 
 type CustomValidatorSelectProps = {
   type?: CustomValidatorType;
   idArgument: string | null;
-  expression: string | null;
   onChange: (params: {
     validatorType: CustomValidatorType | undefined;
     idArgument: string | null;
-    expression: string | null;
   }) => void;
   className?: string;
   label?: string;
@@ -25,7 +22,6 @@ type CustomValidatorSelectProps = {
 export function CustomValidatorSelect({
   type,
   idArgument,
-  expression,
   onChange,
   className = "",
   label = "Custom validator",
@@ -57,13 +53,12 @@ export function CustomValidatorSelect({
   const handleChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const nextValue = event.target.value;
     if (!nextValue) {
-      onChange({ validatorType: undefined, idArgument, expression });
+      onChange({ validatorType: undefined, idArgument });
       return;
     }
     onChange({
       validatorType: nextValue as CustomValidatorType,
       idArgument,
-      expression,
     });
   };
 
@@ -98,7 +93,6 @@ export function CustomValidatorSelect({
                 onChange({
                   validatorType: type,
                   idArgument: e.target.value === "" ? null : e.target.value,
-                  expression,
                 })
               }
               className="px-2 py-1 text-xs border border-gray-300 rounded bg-white w-32"
@@ -121,25 +115,12 @@ export function CustomValidatorSelect({
                 onChange({
                   validatorType: type,
                   idArgument: e.target.value === "" ? null : e.target.value,
-                  expression,
                 })
               }
               className="px-2 py-1 text-xs border border-gray-300 rounded bg-white w-24"
             />
           ))}
       </div>
-      {type === "CustomExpression" && (
-        <CustomExpressionEditor
-          expression={expression}
-          onExpressionChange={(nextExpression) =>
-            onChange({
-              validatorType: type,
-              idArgument,
-              expression: nextExpression,
-            })
-          }
-        />
-      )}
       {loading && (
         <p className="text-[11px] text-gray-500">Loading validators…</p>
       )}

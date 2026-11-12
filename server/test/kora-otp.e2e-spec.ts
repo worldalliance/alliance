@@ -3,6 +3,7 @@ import { KoraParticipantSession } from "src/kora/entities/kora-participant-sessi
 import { KoraParticipantSignup } from "src/kora/entities/kora-participant-signup.entity";
 import { KoraParticipantService } from "src/kora/kora-participant.service";
 import { KoraSessionService } from "src/kora/kora-session.service";
+import { closeTestApp } from "./e2e-test-utils";
 import { ORIGIN, koraHarness, type KoraHarness } from "./kora-fixtures";
 import {
   forgetRateEvents,
@@ -23,7 +24,7 @@ describe("Kora one-time codes (e2e)", () => {
   });
 
   afterAll(async () => {
-    await h.ctx.app.close();
+    await closeTestApp(h.ctx.app);
   });
 
   it("accepts four wrong codes, then refuses the code after the fifth", async () => {

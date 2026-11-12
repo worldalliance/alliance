@@ -42,7 +42,12 @@ import { EXPO_CLIENT, PushService } from "src/push/push.service";
 import { UserDevice } from "src/user/entities/user-device.entity";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
-import { createTestApp, setPreference, TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  setPreference,
+  TestContext,
+} from "./e2e-test-utils";
 
 describe("NotifPushDispatcher – new device filtering (e2e)", () => {
   let ctx: TestContext;
@@ -192,7 +197,7 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
 
   afterAll(async () => {
     if (ctx?.app) {
-      await ctx.app.close();
+      await closeTestApp(ctx.app);
     }
   });
 

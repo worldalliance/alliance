@@ -11,6 +11,7 @@ import { KoraParticipantService } from "src/kora/kora-participant.service";
 import { PosthogService } from "src/posthog/posthog.service";
 import { User } from "src/user/entities/user.entity";
 import type TestAgent from "supertest/lib/agent";
+import { closeTestApp } from "./e2e-test-utils";
 import { ORIGIN, koraHarness, type KoraHarness } from "./kora-fixtures";
 import { forgetRateEvents, uniqueEmail } from "./otp-fixtures";
 
@@ -85,7 +86,7 @@ describe("Kora OAuth sign-in (e2e)", () => {
   });
 
   afterAll(async () => {
-    await h.ctx.app.close();
+    await closeTestApp(h.ctx.app);
   });
 
   it("signs up with the provider's name and email, returning to the project page", async () => {

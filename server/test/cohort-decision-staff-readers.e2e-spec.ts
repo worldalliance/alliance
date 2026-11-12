@@ -24,7 +24,7 @@ import {
   cohortDecisionFixtures,
   type CohortDecisionFixtures,
 } from "./cohort-decision-fixtures";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Staff-facing reads of cohort decisions (e2e)", () => {
   let ctx: TestContext;
@@ -48,7 +48,7 @@ describe("Staff-facing reads of cohort decisions (e2e)", () => {
   afterEach(() => cleanUp());
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const admin = (path: string) =>

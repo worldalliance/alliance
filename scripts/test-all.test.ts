@@ -15,9 +15,17 @@ afterAll(() => {
   fs.rmSync(fixtureRoot, { recursive: true, force: true });
 });
 
-test.each(["js", "ts", "jsx", "tsx", "mjs", "cjs", "mts", "cts"])(
-  "test-all.sh runs a package whose only test is .%s",
-  (extension) => {
+test.each([
+  ...["js", "ts", "jsx", "tsx", "mjs", "cjs", "mts", "cts"].map(
+    (extension) => `only.test.${extension}`,
+  ),
+  "only.TEST.ts",
+  "only_Spec.ts",
+  "only.test.TSX",
+])(
+  "test-all.sh and BUN_TEST_FILE count a package whose only test is %s",
+  (file) => {
+    expect(BUN_TEST_FILE.test(file)).toBe(true);
     fs.mkdirSync(fixtureRoot, { recursive: true });
     const sandbox = fs.mkdtempSync(path.join(fixtureRoot, "run-"));
     fs.mkdirSync(path.join(sandbox, "scripts"));
@@ -27,7 +35,7 @@ test.each(["js", "ts", "jsx", "tsx", "mjs", "cjs", "mts", "cts"])(
       path.join(sandbox, "scripts/test-all.sh"),
     );
     fs.writeFileSync(
-      path.join(sandbox, `pkg/only.test.${extension}`),
+      path.join(sandbox, `pkg/${file}`),
       'test("only", () => expect(1).toBe(1));\n',
     );
 

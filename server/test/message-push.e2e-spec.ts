@@ -9,6 +9,7 @@ import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import {
+  closeTestApp,
   createTestApp,
   eventually,
   setPreference,
@@ -128,7 +129,7 @@ describe("Message Push Notifications (e2e)", () => {
 
   afterAll(async () => {
     if (ctx?.app) {
-      await ctx.app.close();
+      await closeTestApp(ctx.app);
     }
   });
 

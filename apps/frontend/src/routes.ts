@@ -7,6 +7,7 @@ import {
   prefix,
   route,
 } from "@react-router/dev/routes";
+import { BUILD_VERSION_PATH } from "./lib/buildVersion";
 
 export default [
   route("/", "pages/static/PrelaunchLandingPage.tsx"),
@@ -114,5 +115,6 @@ export default [
     route("/signup", "onboarding/OnboardingPage.tsx", { id: "signup" }),
     route("/resetpassword", "pages/app/ResetPasswordPage.tsx"),
   ]),
+  route(BUILD_VERSION_PATH, "pages/BuildVersionRoute.ts"),
   route("/:customLinkSlug", "pages/static/CustomLinkRedirect.tsx"),
 ] satisfies RouteConfig;

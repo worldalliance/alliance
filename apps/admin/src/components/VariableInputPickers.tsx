@@ -14,10 +14,12 @@ import { inputText } from "./VariableSamples";
 export type InputSources = {
   /** Readable fields of a source form, or of this form for `undefined`. */
   fieldsFor: (sourceFormId: number | undefined) => AnyField[];
+  /** Every question outside a list on a stored form, readable or not. */
+  questionsFor: (sourceFormId: number) => AnyField[];
   statusOf: (sourceFormId: number) => FormFieldsStatus | undefined;
   /** Every form but this one. */
   forms: FormOption[];
-  /** This form, once saved, for an aggregate counting its own answers. */
+  /** This form, once saved, for a count input counting its own answers. */
   ownForm: FormOption | undefined;
   /** False while `forms` is loading or failed to load. */
   formsLoaded: boolean;
@@ -28,15 +30,28 @@ export const fieldChoices = (
   input: FieldReadingInput,
   sources: InputSources,
 ) => {
-  const fields = sources.fieldsFor(inputSourceFormId(input));
-  return input.kind === "aggregate"
-    ? fields.filter((field) => field.kind === "multiselect")
-    : fields;
+  const { kind } = input;
+  switch (kind) {
+    case "field":
+    case "list":
+    case "sourceField":
+    case "sourceList":
+      return sources.fieldsFor(inputSourceFormId(input));
+    case "aggregate":
+      return sources
+        .fieldsFor(input.sourceFormId)
+        .filter((field) => field.kind === "multiselect");
+    case "answeredCount":
+      return sources.questionsFor(input.sourceFormId);
+    default:
+      throw new Error(`unknown input kind: ${kind satisfies never}`);
+  }
 };
 
 export enum InputMode {
   Answers = "answers",
   Counts = "counts",
+  Answered = "answered",
   Random = "random",
 }
 
@@ -46,6 +61,7 @@ const KIND_INPUT_MODE: Record<VariableInput["kind"], InputMode> = {
   sourceField: InputMode.Answers,
   sourceList: InputMode.Answers,
   aggregate: InputMode.Counts,
+  answeredCount: InputMode.Answered,
   random: InputMode.Random,
 };
 
@@ -81,6 +97,9 @@ export function InputModePicker({
       <option value={InputMode.Answers}>Answers</option>
       <option value={InputMode.Counts} disabled={!countsAvailable}>
         Aggregate counts
+      </option>
+      <option value={InputMode.Answered} disabled={!countsAvailable}>
+        Members who answered
       </option>
       <option value={InputMode.Random} disabled={!randomAvailable}>
         Random number (stable per member)

@@ -105,6 +105,12 @@ export const AGGREGATE_INPUT_HELP = {
     `${input}[${JSON.stringify(value ?? "option-value")}] ?? 0`,
 };
 
+export const ANSWERED_COUNT_INPUT_HELP: InputModeHelp = {
+  notes:
+    "How many members answered the question in their latest submission. A blank answer, an unticked box or an empty upload doesn't count. Guests and withdrawals don't count. The count stays put while the form is open.",
+  example: (input) => `${input} === 1 ? '1 member' : ${input} + ' members'`,
+};
+
 const MODE_IS_DOCUMENTED: Record<VariableInputMode, boolean> = {
   [VariableInputMode.Number]: true,
   [VariableInputMode.Text]: true,

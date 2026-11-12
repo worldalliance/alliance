@@ -4,6 +4,9 @@
   "workspaces": {
     "": {
       "name": "alliance-agent",
+      "dependencies": {
+        "zod": "^4.3.6",
+      },
       "devDependencies": {
         "@playwright/test": "~1.64.1",
         "@types/bun": "^1.4.4",

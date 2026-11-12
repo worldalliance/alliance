@@ -35,7 +35,12 @@ import { UserDevice } from "src/user/entities/user-device.entity";
 import { ReferralSource, User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
-import { createTestApp, stubExpoClient, TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  stubExpoClient,
+  TestContext,
+} from "./e2e-test-utils";
 
 describe("reminder social proof (e2e)", () => {
   let ctx: TestContext;
@@ -210,7 +215,7 @@ describe("reminder social proof (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   beforeEach(async () => {

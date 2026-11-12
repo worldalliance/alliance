@@ -47,7 +47,7 @@ describe("VariableBuilder random numbers", () => {
       target: { value: `["Bob", "Suzie", "Pam"][input1 % 3]` },
     });
     expect(result()).toContain("Result: Bob ");
-    fireEvent.change(screen.getByLabelText("Sample number for input1"), {
+    fireEvent.change(screen.getByLabelText("Preview with, for input1"), {
       target: { value: "4" },
     });
     expect(result()).toContain("Result: Suzie ");

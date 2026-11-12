@@ -9,7 +9,11 @@ import { Action } from "src/actions/entities/action.entity";
 import { Community } from "src/community/entities/community.entity";
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
-import { createTestApp, type TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  type TestContext,
+} from "./e2e-test-utils";
 
 // Clients keep one record per activity whatever endpoint sent it, so every
 // endpoint has to send the same note and author.
@@ -56,7 +60,7 @@ describe("Activity records across endpoints (e2e)", () => {
   afterAll(async () => {
     await ctx.dataSource.getRepository(Action).delete(action.id);
     await ctx.dataSource.getRepository(Community).delete(community.id);
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const get = (path: string) =>

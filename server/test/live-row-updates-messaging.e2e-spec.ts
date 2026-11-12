@@ -1,6 +1,7 @@
 import { ConversationType } from "@alliance/common/conversationType";
 import { ParticipantRole } from "@alliance/common/participantRole";
 import { ForbiddenException, NotFoundException } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { Community } from "src/community/entities/community.entity";
 import { ImagesService } from "src/images/images.service";
@@ -18,6 +19,7 @@ import { LikeNotificationService } from "src/notifs/like-notification.service";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
 import {
+  closeTestApp,
   createTestApp,
   TestContext,
   writeDuringDeletion,
@@ -43,12 +45,18 @@ describe("Chat updates to a row deleted after its load (e2e)", () => {
     userRepo = ctx.dataSource.getRepository(User);
   }, 50000);
 
+  // Event listeners run detached reads through the same repositories and
+  // services these tests mock once, and can consume the mock first.
+  beforeEach(() => {
+    jest.spyOn(ctx.app.get(EventEmitter2), "emit").mockReturnValue(true);
+  });
+
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("leaves a group chat deleted while its info is edited", async () => {

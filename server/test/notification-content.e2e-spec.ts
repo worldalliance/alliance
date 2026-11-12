@@ -51,6 +51,7 @@ import { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import type { Repository } from "typeorm";
 import {
+  closeTestApp,
   createTestApp,
   giveActiveContract,
   TestContext,
@@ -182,7 +183,7 @@ describe("Notification content stability (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("names the current member and group around the wording it was sent with, read or not", async () => {

@@ -39,6 +39,7 @@ import { ReferralSource, User } from "src/user/entities/user.entity";
 import request from "supertest";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
 import {
+  closeTestApp,
   createTestApp,
   giveActiveContract,
   setPreference,
@@ -172,7 +173,7 @@ describe("action update recognition (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   beforeEach(async () => {

@@ -312,6 +312,14 @@ export async function createTestApp(
   };
 }
 
+export async function closeTestApp(app: INestApplication): Promise<void> {
+  // Bun's server.close() doesn't call back while a request is in flight, so
+  // app.close() alone can hang until the hook timeout.
+  app.getHttpServer().closeAllConnections();
+  // eslint-disable-next-line test-app/close -- the one place app.close() runs
+  await app.close();
+}
+
 function snapshotService(dataSource: DataSource): FormSnapshotService {
   return new FormSnapshotService(dataSource.getRepository(FormSnapshot));
 }

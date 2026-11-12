@@ -7,6 +7,7 @@ it("starts where the flag starts", () => {
 });
 
 it("holds on after a flag that drops at once", async () => {
+  jest.spyOn(Date, "now").mockReturnValue(0);
   const { result, rerender } = renderHook(
     ({ active }: { active: boolean }) => useHeldOn(active, 50),
     { initialProps: { active: false } },
@@ -32,14 +33,16 @@ it("drops with a flag that was up long enough to be seen", async () => {
 });
 
 it("holds on from the newest raise rather than the first", async () => {
+  const now = jest.spyOn(Date, "now").mockReturnValue(0);
   const { result, rerender } = renderHook(
     ({ active }: { active: boolean }) => useHeldOn(active, 60),
     { initialProps: { active: true } },
   );
 
+  now.mockReturnValue(40);
   rerender({ active: false });
   rerender({ active: true });
-  await act(() => new Promise((resolve) => setTimeout(resolve, 40)));
+  now.mockReturnValue(70);
   rerender({ active: false });
 
   expect(result.current).toBe(true);

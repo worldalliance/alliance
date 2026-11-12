@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 // Bun's discovery rule, which test-all.sh's grep repeats.
-export const BUN_TEST_FILE = /[._](test|spec)\.([cm]?[jt]s|[jt]sx)$/;
+export const BUN_TEST_FILE = /[._](test|spec)\.([cm]?[jt]s|[jt]sx)$/i;
 
 export function testPackages(repoRoot: string): string[] {
   const testAll = fs.readFileSync(

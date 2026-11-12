@@ -14,7 +14,12 @@ import { MessagingModule } from "src/messaging/messaging.module";
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  signAccessToken,
+  TestContext,
+} from "./e2e-test-utils";
 
 describe("ConversationController (e2e)", () => {
   let ctx: TestContext;
@@ -72,10 +77,7 @@ describe("ConversationController (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    if (ctx?.app) {
-      ctx.app.getHttpServer().closeAllConnections();
-      await ctx.app.close();
-    }
+    if (ctx?.app) await closeTestApp(ctx.app);
   });
 
   describe("direct conversations", () => {

@@ -16,7 +16,7 @@ import {
 } from "src/user/entities/onetime-invite.entity";
 import { ReferralSource, User } from "src/user/entities/user.entity";
 import { GroupAssignmentService } from "src/user/group-assignment.service";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 import { GroupJoinFixtures } from "./group-join-fixtures";
 
 describe("Group join notifications: audience and triggers (e2e)", () => {
@@ -46,7 +46,7 @@ describe("Group join notifications: audience and triggers (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("tells every existing member once, with the copy and destination, and neither the leaders nor the joiner", async () => {

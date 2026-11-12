@@ -6,7 +6,12 @@ import { OtpRateEvent } from "src/otp/otp-rate-event.entity";
 import { OtpModule } from "src/otp/otp.module";
 import { type OtpContact, OtpService } from "src/otp/otp.service";
 import { randomToken } from "src/utils/random";
-import { createTestApp, eventually, type TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  eventually,
+  type TestContext,
+} from "./e2e-test-utils";
 import {
   captureSentCodes,
   forgetRateEvents,
@@ -89,7 +94,7 @@ describe("One-time codes (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("refuses a code after four wrong guesses and a fifth", async () => {

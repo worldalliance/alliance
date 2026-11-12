@@ -53,6 +53,7 @@ import { TagService } from "src/user/tag.service";
 import { UserService } from "src/user/user.service";
 import { QueryFailedError, type Repository } from "typeorm";
 import {
+  closeTestApp,
   createFormWithSnapshot,
   createTestApp,
   type TestContext,
@@ -137,7 +138,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("refuses an event for an action deleted after it loads", async () => {

@@ -1,5 +1,6 @@
 import eslintNestJs from "@darraghor/eslint-plugin-nestjs-typed";
 import parser from "@typescript-eslint/parser";
+import { builtinRules } from "eslint/use-at-your-own-risk";
 import tseslint from "typescript-eslint";
 import sharedRules, {
   envReadsOnlyIn,
@@ -50,6 +51,25 @@ export default tseslint.config([
         { checkThenables: true },
       ],
       "local-rules/no-returned-thenable": "error",
+    },
+  },
+  {
+    files: ["test/**/*.ts"],
+    plugins: {
+      "test-app": {
+        rules: { close: builtinRules.get("no-restricted-syntax") },
+      },
+    },
+    rules: {
+      "test-app/close": [
+        "error",
+        {
+          selector:
+            "CallExpression[callee.property.name='close']:matches([callee.object.name='app'], [callee.object.property.name='app'])",
+          message:
+            "Close the app with closeTestApp(app) from e2e-test-utils: app.close() alone can hang under Bun while a request is in flight.",
+        },
+      ],
     },
   },
 ]);

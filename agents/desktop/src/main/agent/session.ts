@@ -47,7 +47,7 @@ export type AgentEvent =
 
 export type AgentEventListener = (event: AgentEvent) => void;
 
-/** One conversation with a CLI in one worktree. Every turn ends with exactly one TurnEnded event, an interrupted or failed one included, and it closes any tool still open, since a ToolStarted can go without a ToolFinished. Every other event arrives during a turn, so a CLI that exits between turns is reported on the next send, as Error then TurnEnded. A session whose CLI has exited is no longer live, and its sends keep reporting that way; a caller recovers from any Error by resuming, which returns this same session if its CLI is still running. A text block arrives as any number of AssistantTextDelta events, each extending it, then one AssistantText holding the whole block, which replaces those deltas. TurnEnded also closes a block left without its AssistantText, as an interrupted turn can do. */
+/** One conversation with a CLI in one worktree. Every turn ends with exactly one TurnEnded event, an interrupted or failed one included, and it closes any tool still open, since a ToolStarted can go without a ToolFinished. Every other event arrives during a turn, so a CLI that exits between turns is reported on the next send, as Error then TurnEnded. A session whose CLI has exited is no longer live, and its sends keep reporting that way; a caller recovers from any Error by resuming, which returns this same session while it is still live. A text block arrives as any number of AssistantTextDelta events, each extending it, then one AssistantText holding the whole block, which replaces those deltas. TurnEnded also closes a block left without its AssistantText, as an interrupted turn can do. */
 export interface AgentSession {
   /** The CLI's own session id, unchanged by resume. */
   readonly id: string;
@@ -59,6 +59,8 @@ export interface AgentSession {
   interrupt(): void;
   /** Delivers only events after the call; nothing is replayed. A listener that throws is logged; the other listeners and the turn's TurnEnded still arrive. Each call is its own subscription: one added during a dispatch first hears the next event, and one removed during a dispatch before its delivery doesn't hear the event in flight. */
   subscribe(listener: AgentEventListener): () => void;
+  /** Ends the CLI and resolves once it has exited. A running turn ends with its TurnEnded, and no Error, before the promise resolves. The session is no longer live from the call on: resume waits for the CLI to exit, then starts it again, and sends report Error then TurnEnded. Later calls return the first call's promise. */
+  close(): Promise<void>;
 }
 
 export interface AgentBackend {

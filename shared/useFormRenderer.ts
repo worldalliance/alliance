@@ -23,10 +23,7 @@ import {
   emptyUserPropertyPresence,
   type UserPropertyPresence,
 } from "@alliance/common/forms/user-properties";
-import {
-  aggregateSourceKey,
-  variableAggregateSources,
-} from "@alliance/common/forms/variable-aggregates";
+import { variableCountKeys } from "@alliance/common/forms/variable-aggregates";
 import { resolveVariableValues } from "@alliance/common/forms/variable-evaluation";
 import { EMPTY_HISTORY } from "@alliance/common/forms/variable-source-history";
 import { variableHistoryFormIds } from "@alliance/common/forms/variables";
@@ -314,10 +311,7 @@ export function useFormVisibility(args: {
       (variable) =>
         variableHistoryFormIds([variable]).every(
           (id) => !deletedFormIds.has(id),
-        ) &&
-        variableAggregateSources([variable]).every((source) =>
-          aggregates.has(aggregateSourceKey(source)),
-        ),
+        ) && variableCountKeys([variable]).every((key) => aggregates.has(key)),
     );
     return resolveVariableValues(resolvable, {
       answers: effectiveFormData,

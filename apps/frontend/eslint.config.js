@@ -6,8 +6,11 @@ import tseslint from "typescript-eslint";
 import apiClientRules from "../../eslint/api-client-rules.mjs";
 import sharedRules, {
   envReadsOnlyIn,
+  frontendBlockerImport,
   webEnvReads,
 } from "../../eslint/shared-rules.mjs";
+
+const restrictedImportPatterns = ["../../../shared/*"];
 
 export default defineConfig([
   {
@@ -39,8 +42,18 @@ export default defineConfig([
       "no-restricted-imports": [
         "error",
         {
-          patterns: ["../../../shared/*"],
+          patterns: restrictedImportPatterns,
+          paths: [frontendBlockerImport],
         },
+      ],
+    },
+  },
+  {
+    files: ["src/lib/useFullLoadOnNewBuild.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        { patterns: restrictedImportPatterns },
       ],
     },
   },

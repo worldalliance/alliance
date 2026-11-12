@@ -9,6 +9,7 @@ import {
   type CohortDecisionFixtures,
 } from "./cohort-decision-fixtures";
 import {
+  closeTestApp,
   createFormWithSnapshot,
   createTestApp,
   TestContext,
@@ -36,7 +37,7 @@ describe("Deleting an action a cohort names (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const deleteAction = (actionId: number) =>

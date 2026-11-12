@@ -8,7 +8,10 @@ import {
   IsString,
   ValidateNested,
 } from "class-validator";
-import type { VariableAggregate } from "./variable-aggregates";
+import type {
+  VariableAggregate,
+  VariableAnsweredCount,
+} from "./variable-aggregates";
 
 const MAX_AGGREGATE_SOURCES = 100;
 
@@ -30,6 +33,14 @@ export class CountVariableAggregatesDto {
   @ValidateNested({ each: true })
   @Type(() => VariableAggregateSourceDto)
   sources: VariableAggregateSourceDto[];
+
+  /** Questions to count the members who answered. */
+  @ApiProperty({ type: () => VariableAggregateSourceDto, isArray: true })
+  @IsArray()
+  @ArrayMaxSize(MAX_AGGREGATE_SOURCES)
+  @ValidateNested({ each: true })
+  @Type(() => VariableAggregateSourceDto)
+  answeredSources: VariableAggregateSourceDto[];
 }
 
 export class VariableAggregateDto {
@@ -57,15 +68,45 @@ export class VariableAggregateDto {
   }
 }
 
-export type VariableAggregates = { aggregates: VariableAggregate[] };
+export class VariableAnsweredCountDto {
+  @ApiProperty()
+  sourceFormId: number;
+
+  @ApiProperty()
+  fieldId: string;
+
+  /**
+   * Members whose latest submission answered the question. `null` when the
+   * form is gone or no longer has that question.
+   */
+  @ApiProperty({ type: "number", nullable: true })
+  count: number | null;
+
+  constructor(input: VariableAnsweredCount) {
+    this.sourceFormId = input.sourceFormId;
+    this.fieldId = input.fieldId;
+    this.count = input.count;
+  }
+}
+
+export type VariableAggregates = {
+  aggregates: VariableAggregate[];
+  answered: VariableAnsweredCount[];
+};
 
 export class VariableAggregatesDto {
   @ApiProperty({ type: () => VariableAggregateDto, isArray: true })
   aggregates: VariableAggregateDto[];
 
+  @ApiProperty({ type: () => VariableAnsweredCountDto, isArray: true })
+  answered: VariableAnsweredCountDto[];
+
   constructor(input: VariableAggregates) {
     this.aggregates = input.aggregates.map(
       (aggregate) => new VariableAggregateDto(aggregate),
+    );
+    this.answered = input.answered.map(
+      (answered) => new VariableAnsweredCountDto(answered),
     );
   }
 }

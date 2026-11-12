@@ -7,7 +7,7 @@ import sharp from "sharp";
 import { Readable } from "stream";
 import request from "supertest";
 import { ImagesModule } from "../src/images/images.module";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Images (e2e)", () => {
   let ctx: TestContext;
@@ -40,7 +40,7 @@ describe("Images (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   // Unauthenticated on purpose: a public form is filled by visitors who have no

@@ -41,6 +41,7 @@ import { ReferralSource, User } from "src/user/entities/user.entity";
 import supertest from "supertest";
 import { In } from "typeorm";
 import {
+  closeTestApp,
   createTestApp,
   TestContext,
   writeDuringDeletion,
@@ -83,7 +84,7 @@ describe("Legacy link openings (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const saveAction = () =>

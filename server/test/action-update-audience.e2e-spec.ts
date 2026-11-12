@@ -15,6 +15,7 @@ import {
 import { ReferralSource, User } from "src/user/entities/user.entity";
 import request from "supertest";
 import {
+  closeTestApp,
   createTestApp,
   giveActiveContract,
   TestContext,
@@ -43,7 +44,7 @@ describe("Action update audience (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const createUser = (name: string) => {

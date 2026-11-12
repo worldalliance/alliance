@@ -376,8 +376,8 @@ const TerminologyPage: React.FC = () => {
         <p>
           If you have an idea for an action, or information that might help us
           develop an action, please email the office at{" "}
-          <Link to="mailto:contact@worldalliance.org" className="text-link">
-            contact@worldalliance.org
+          <Link to="mailto:contact@thealliance.org" className="text-link">
+            contact@thealliance.org
           </Link>{" "}
           or message a{" "}
           <Link to={"/members?filter=Staff"} className="text-link">

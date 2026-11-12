@@ -41,6 +41,7 @@ import request from "supertest";
 import type { Repository } from "typeorm";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
 import {
+  closeTestApp,
   createFormSnapshot,
   createFormWithSnapshot,
   createTestApp,
@@ -149,7 +150,9 @@ describe("Raw SQL reads skip soft-deleted rows (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx?.app.close();
+    if (ctx) {
+      await closeTestApp(ctx.app);
+    }
   });
 
   // Runs first: it clusters every member with an active contract, and two

@@ -32,6 +32,7 @@ import { posthogRequestContext } from "./lib/posthogRequestContext";
 import { queryClient } from "./lib/queryClient";
 import { ShareLinkViewerFromAuth } from "./lib/ShareLinkViewerFromAuth";
 import { socialPreviewMeta } from "./lib/socialPreviewMeta";
+import { useFullLoadOnNewBuild } from "./lib/useFullLoadOnNewBuild";
 import { InviteSessionProvider } from "./site/invite/InviteSession";
 import { NOT_FOUND_TITLE } from "./site/NotFoundPage";
 
@@ -86,8 +87,7 @@ export const ErrorBoundary = RootErrorBoundary;
 export function Layout({ children }: { children: React.ReactNode }) {
   useNumberInputScrollGuard();
   const { pathname } = useLocation();
-  // A deployed build can't lack the key (webEnvPlugin). `citesting take`
-  // builds with `--mode development`: a production bundle without it.
+  // A deployed build can't lack the key (webEnvPlugin).
   const posthogKey =
     import.meta.env.PROD && pathname !== MOBILE_OAUTH_RETURN_PATH
       ? webEnv("VITE_PUBLIC_POSTHOG_KEY")
@@ -140,5 +140,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function Root() {
+  useFullLoadOnNewBuild(webEnv("VITE_APP_GIT_SHA"));
   return <Outlet />;
 }

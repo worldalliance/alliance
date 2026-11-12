@@ -16,7 +16,7 @@ import {
   cohortDecisionFixtures,
   type CohortDecisionFixtures,
 } from "./cohort-decision-fixtures";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Prerequisite validation (e2e)", () => {
   let ctx: TestContext;
@@ -42,7 +42,7 @@ describe("Prerequisite validation (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const admin = () => `Bearer ${ctx.adminAccessToken}`;

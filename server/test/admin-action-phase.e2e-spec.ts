@@ -12,6 +12,7 @@ import {
   type CohortDecisionFixtures,
 } from "./cohort-decision-fixtures";
 import {
+  closeTestApp,
   createFormWithSnapshot,
   createTestApp,
   TestContext,
@@ -33,7 +34,7 @@ describe("Admin action member-action phase (e2e)", () => {
   afterEach(() => cleanUp());
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const fetchAdmin = (actionId: number) =>

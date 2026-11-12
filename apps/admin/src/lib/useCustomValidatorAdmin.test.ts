@@ -26,7 +26,6 @@ const saved = (id: number) =>
     id,
     type: "HasPhoneNumber",
     idArgument: null,
-    expression: null,
   });
 
 beforeEach(() => {
@@ -43,7 +42,6 @@ describe("useCustomValidatorAdmin", () => {
       expect(view.result.current.query.data).toEqual({
         type: "HasPhoneNumber",
         idArgument: null,
-        expression: null,
       }),
     );
   });
@@ -91,7 +89,6 @@ describe("useCustomValidatorAdmin", () => {
     const draft = {
       type: "MemberTag" as const,
       idArgument: "3",
-      expression: null,
     };
 
     expect(await creator.result.current.create(draft)).toBe(42);

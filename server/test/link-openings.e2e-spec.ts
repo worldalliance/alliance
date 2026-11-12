@@ -33,6 +33,7 @@ import { ReferralSource, User } from "src/user/entities/user.entity";
 import { WaitlistEntry } from "src/waitlist/entities/waitlist-entry.entity";
 import supertest from "supertest";
 import {
+  closeTestApp,
   createTestApp,
   TestContext,
   writeDuringDeletion,
@@ -115,7 +116,7 @@ describe("Link openings (e2e)", () => {
 
   afterAll(async () => {
     setEnv("APP_URL", previousAppUrl);
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("gives each channel its own ID and credits an opening only to its own", async () => {

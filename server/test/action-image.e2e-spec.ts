@@ -7,7 +7,7 @@ import {
   getActionAsAdmin,
   patchActionAsAdmin,
 } from "./action-requests";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 const NAME_PREFIX = "action-image e2e";
 const coverKey = "1770253186000.webp";
@@ -26,7 +26,7 @@ describe("Action image (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const create = (body: Partial<CreateActionDto>) =>

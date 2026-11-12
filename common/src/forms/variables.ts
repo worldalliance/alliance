@@ -395,6 +395,8 @@ function inputType(
       return listInputType(input, field);
     case "aggregate":
       return field?.kind === "multiselect" ? AGGREGATE_INPUT_TYPE : "any";
+    case "answeredCount":
+      return "number";
     default:
       input satisfies never;
       return variableInputType(undefined);

@@ -24,7 +24,6 @@ const customValidatorQuery = (id: number) =>
       return {
         type: data.type,
         idArgument: data.idArgument,
-        expression: data.expression,
       };
     },
     // A saved validator never changes: editing one saves a new id.
@@ -50,7 +49,6 @@ export function useCustomValidatorAdmin(id: number | null) {
         body: {
           type: draft.type,
           idArgument: draft.idArgument,
-          expression: draft.expression,
         },
       });
       if (!response.data) {

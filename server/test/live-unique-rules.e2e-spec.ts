@@ -1,5 +1,5 @@
 import type { ColumnMetadata } from "typeorm/metadata/ColumnMetadata";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 /** Unique rules on soft-deleted tables that also hold against deleted rows:
  * keys on a parent id that is never reused, values minted fresh for each row,
@@ -52,7 +52,7 @@ describe("Live-row unique rules (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("scopes every other unique rule on a soft-deleted table to live rows", () => {

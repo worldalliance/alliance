@@ -1,6 +1,6 @@
 import request from "supertest";
 import { Tag } from "../src/user/entities/tag.entity";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Admin tags (e2e)", () => {
   let ctx: TestContext;
@@ -16,7 +16,7 @@ describe("Admin tags (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const post = (path: string, body: object) =>

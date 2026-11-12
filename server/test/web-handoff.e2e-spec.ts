@@ -4,7 +4,11 @@ import { WebHandoff } from "src/auth/entities/web-handoff.entity";
 import { sitePath } from "src/auth/web-handoff.service";
 import { hashToken } from "src/utils/random";
 import request from "supertest";
-import { createTestApp, type TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  type TestContext,
+} from "./e2e-test-utils";
 
 const APP_URL = "https://app.example.org";
 
@@ -34,7 +38,7 @@ describe("Web handoff (e2e)", () => {
 
   afterAll(async () => {
     setEnv("APP_URL", previousAppUrl);
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("signs the member in on the web and lands on the requested page", async () => {

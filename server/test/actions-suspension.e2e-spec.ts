@@ -21,7 +21,12 @@ import {
 import { User } from "../src/user/entities/user.entity";
 import { UserService } from "../src/user/user.service";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
-import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  signAccessToken,
+  TestContext,
+} from "./e2e-test-utils";
 
 const addDays = (date: Date, days: number) =>
   new Date(date.getTime() + days * millisecondsInDay);
@@ -178,7 +183,7 @@ describe("findUsersToSuspend (e2e)", () => {
 
   afterAll(async () => {
     await userRepo.query('DELETE FROM "user"');
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("returns suspension plans from the admin endpoint", async () => {

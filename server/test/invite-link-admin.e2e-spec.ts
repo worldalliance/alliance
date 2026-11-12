@@ -13,7 +13,11 @@ import {
   OnetimeInviteStatus,
 } from "../src/user/entities/onetime-invite.entity";
 import { ReferralSource, User } from "../src/user/entities/user.entity";
-import { createTestApp, type TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  type TestContext,
+} from "./e2e-test-utils";
 
 describe("Invite link admin (e2e)", () => {
   let ctx: TestContext;
@@ -137,7 +141,7 @@ describe("Invite link admin (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("requires an admin and validates filters, sorting, and page bounds", async () => {

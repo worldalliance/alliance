@@ -22,7 +22,12 @@ import {
 } from "src/user/entities/contract-event.entity";
 import { User } from "src/user/entities/user.entity";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
-import { createTestApp, stubExpoClient, TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  stubExpoClient,
+  TestContext,
+} from "./e2e-test-utils";
 
 const SEND_BEFORE_DEADLINE_SECONDS = 36 * 60 * 60;
 
@@ -73,7 +78,7 @@ describe("suite reminder after a run of completed suites (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("sends ordinary copy once, with no experiment arm or in-app entry", async () => {

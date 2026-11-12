@@ -76,10 +76,10 @@ const Footer: React.FC<FooterProps> = ({ className }) => {
             <FooterLinkGroup>
               <li>
                 <a
-                  href="mailto:contact@worldalliance.org"
+                  href="mailto:contact@thealliance.org"
                   className="text-sm text-white/85 hover:underline sm:text-base"
                 >
-                  contact@worldalliance.org
+                  contact@thealliance.org
                 </a>
               </li>
             </FooterLinkGroup>

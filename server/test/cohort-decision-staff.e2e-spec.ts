@@ -14,7 +14,12 @@ import {
   cohortDecisionFixtures,
   type CohortDecisionFixtures,
 } from "./cohort-decision-fixtures";
-import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  signAccessToken,
+  TestContext,
+} from "./e2e-test-utils";
 
 describe("Cohort decision staff tooling (e2e)", () => {
   let ctx: TestContext;
@@ -46,7 +51,7 @@ describe("Cohort decision staff tooling (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const patchAction = (actionId: number, body: object) =>

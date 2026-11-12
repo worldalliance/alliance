@@ -79,6 +79,7 @@ import { getImageSource } from "../src/images/images.service";
 import { User } from "../src/user/entities/user.entity";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
 import {
+  closeTestApp,
   createFormWithSnapshot,
   createTestApp,
   signAccessToken,
@@ -5726,6 +5727,6 @@ describe("Actions (e2e)", () => {
 
   afterAll(async () => {
     await actionRepo.query("DELETE FROM action");
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 });

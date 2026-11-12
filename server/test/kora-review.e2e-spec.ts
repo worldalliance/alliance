@@ -5,6 +5,7 @@ import { KoraBatch } from "src/kora/entities/kora-batch.entity";
 import { KoraReviewer } from "src/kora/entities/kora-reviewer.entity";
 import { REDACTED } from "src/kora/kora-redact";
 import request from "supertest";
+import { closeTestApp } from "./e2e-test-utils";
 import {
   koraHarness,
   setKoraProjectStatus,
@@ -32,7 +33,7 @@ describe("Kora reviews (e2e)", () => {
   });
 
   afterAll(async () => {
-    await h.ctx.app.close();
+    await closeTestApp(h.ctx.app);
   });
 
   it("asks a signed-out visitor to sign in", async () => {

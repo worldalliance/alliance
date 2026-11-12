@@ -43,6 +43,7 @@ const otherColors: AnyField = { ...colors, id: "other", label: "Other" };
 const sources: InputSources = {
   fieldsFor: (sourceFormId) =>
     sourceFormId === SOURCE ? [colors] : [ownPick, otherColors],
+  questionsFor: () => [colors],
   statusOf: () => undefined,
   forms: [{ id: SOURCE, title: "Colors form", displaySlug: "colors::v1" }],
   ownForm: undefined,

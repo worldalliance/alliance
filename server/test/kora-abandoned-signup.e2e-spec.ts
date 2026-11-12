@@ -5,6 +5,7 @@ import { KoraParticipantSignup } from "src/kora/entities/kora-participant-signup
 import { KoraParticipant } from "src/kora/entities/kora-participant.entity";
 import { KoraParticipantService } from "src/kora/kora-participant.service";
 import { OtpChannel } from "src/otp/otp-copy";
+import { closeTestApp } from "./e2e-test-utils";
 import {
   koraHarness,
   signInWithGoogle,
@@ -39,7 +40,7 @@ describe("Kora abandoned signups (e2e)", () => {
   });
 
   afterAll(async () => {
-    await h.ctx.app.close();
+    await closeTestApp(h.ctx.app);
   });
 
   it("records a signup backed out of before the name", async () => {

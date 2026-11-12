@@ -18,19 +18,30 @@ export class FormResponseHistoryEntryDto extends PickType(FormResponse, [
   @Type(() => Object)
   schemaSnapshot: Record<string, unknown>;
 
-  constructor(input: FormResponse) {
+  constructor(input: FormResponseHistoryEntry) {
     super();
-    this.id = input.id;
-    this.answers = input.answers;
-    this.formulaChoices = input.formulaChoices;
+    const { response, userId } = input;
+    this.id = response.id;
+    this.answers = response.answers;
+    this.formulaChoices = response.formulaChoices;
     this.schemaSnapshot = memberSnapshotSchema(
-      loadedFormResponseSnapshot(input),
-      null,
+      loadedFormResponseSnapshot(response),
+      { assignedRow: null, userId },
     );
   }
 }
 
-export type FormResponseHistory = { form: Form; responses: FormResponse[] };
+export type FormResponseHistoryEntry = {
+  response: FormResponse;
+  userId: number;
+};
+
+export type FormResponseHistory = {
+  form: Form;
+  responses: FormResponse[];
+  /** The member whose responses these are. */
+  userId: number;
+};
 
 export class FormResponseHistoryDto {
   /** The form's current schema. */
@@ -46,9 +57,13 @@ export class FormResponseHistoryDto {
   responses: FormResponseHistoryEntryDto[];
 
   constructor(input: FormResponseHistory) {
-    this.schema = memberSnapshotSchema(loadedFormSnapshot(input.form), null);
-    this.responses = input.responses.map(
-      (response) => new FormResponseHistoryEntryDto(response),
+    const { form, responses, userId } = input;
+    this.schema = memberSnapshotSchema(loadedFormSnapshot(form), {
+      assignedRow: null,
+      userId,
+    });
+    this.responses = responses.map(
+      (response) => new FormResponseHistoryEntryDto({ response, userId }),
     );
   }
 }

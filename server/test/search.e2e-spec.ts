@@ -12,7 +12,12 @@ import { Tag } from "src/user/entities/tag.entity";
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  signAccessToken,
+  TestContext,
+} from "./e2e-test-utils";
 
 describe("Search (e2e)", () => {
   let ctx: TestContext;
@@ -82,7 +87,7 @@ describe("Search (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("returns matching users, actions, and posts for a search query", async () => {

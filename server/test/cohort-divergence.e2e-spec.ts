@@ -17,6 +17,7 @@ import {
   type CohortDecisionFixtures,
 } from "./cohort-decision-fixtures";
 import {
+  closeTestApp,
   createFormWithSnapshot,
   createTestApp,
   TestContext,
@@ -51,7 +52,7 @@ describe("CohortDivergenceService (e2e)", () => {
   afterEach(() => cleanUp());
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   let warn: jest.SpyInstance;

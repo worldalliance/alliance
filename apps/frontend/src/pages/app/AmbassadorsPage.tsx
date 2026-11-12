@@ -59,8 +59,8 @@ const AmbassadorsPage: React.FC = () => {
         </p>
         <p className="font-semibold">
           To join, email Grant at{" "}
-          <a href="mailto:grant@worldalliance.org" className="text-link">
-            grant@worldalliance.org
+          <a href="mailto:grant@thealliance.org" className="text-link">
+            grant@thealliance.org
           </a>
           .
         </p>
@@ -101,8 +101,8 @@ const AmbassadorsPage: React.FC = () => {
         </h3>
         <p>
           Email Grant (
-          <a href="mailto:grant@worldalliance.org" className="text-link">
-            grant@worldalliance.org
+          <a href="mailto:grant@thealliance.org" className="text-link">
+            grant@thealliance.org
           </a>
           ) to set up a brief onboarding call.
         </p>

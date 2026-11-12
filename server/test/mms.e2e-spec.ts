@@ -7,7 +7,12 @@ import { MmsService } from "src/mms/mms.service";
 import { ReferralSource, User } from "src/user/entities/user.entity";
 import supertest from "supertest";
 import type { Repository } from "typeorm";
-import { createTestApp, eventually, TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  eventually,
+  TestContext,
+} from "./e2e-test-utils";
 
 let ctx: TestContext;
 const pendingEventLogs = new Set<ReturnType<EventLogService["sendMessage"]>>();
@@ -37,7 +42,7 @@ afterEach(async () => {
 
 afterAll(async () => {
   await drainEventLogs();
-  await ctx.app.close();
+  await closeTestApp(ctx.app);
 });
 
 describe("Mms Twilio address columns (e2e)", () => {

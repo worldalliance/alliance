@@ -1,7 +1,7 @@
 import { CommentParentObject } from "src/forum/entities/comment.entity";
 import { LegacyDeletedFlagService } from "src/forum/legacy-deleted-flag.service";
 import request from "supertest";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Legacy forum deleted flag (e2e)", () => {
   let ctx: TestContext;
@@ -16,7 +16,7 @@ describe("Legacy forum deleted flag (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const createPost = async (): Promise<number> =>

@@ -18,7 +18,7 @@ import {
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Admin reminder readers name the member event's action (e2e)", () => {
   let ctx: TestContext;
@@ -70,7 +70,7 @@ describe("Admin reminder readers name the member event's action (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("names the action of each scheduled reminder", async () => {

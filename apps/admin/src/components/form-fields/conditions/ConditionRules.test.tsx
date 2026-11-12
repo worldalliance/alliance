@@ -287,9 +287,8 @@ describe("other rules", () => {
           ? Response.json({ message: "boom" }, { status: 500 })
           : Response.json({
               id: 4,
-              type: "CustomExpression",
+              type: "HasPhoneNumber",
               idArgument: null,
-              expression: "true",
             });
       },
     });
@@ -327,8 +326,8 @@ describe("other rules", () => {
       "GET /tasks/customValidators": () =>
         Response.json([
           {
-            name: "Custom expression",
-            id: "CustomExpression",
+            name: "Has phone number",
+            id: "HasPhoneNumber",
             withIdField: false,
             usableForVisibility: true,
           },
@@ -336,9 +335,8 @@ describe("other rules", () => {
       "GET /tasks/findOneCustomValidator/:id": () =>
         Response.json({
           id: 4,
-          type: "CustomExpression",
+          type: "HasPhoneNumber",
           idArgument: null,
-          expression: "true",
         }),
     });
     const formula = formulaOf("NOT v OR c1");
@@ -381,7 +379,6 @@ describe("other rules", () => {
           id: 4,
           type: "HasPhoneNumber",
           idArgument: null,
-          expression: null,
         }),
     });
     const setDraft = jest.fn();
@@ -401,7 +398,6 @@ describe("other rules", () => {
     expect(setDraft).toHaveBeenCalledWith(-9, {
       type: "UploadedPhoto",
       idArgument: null,
-      expression: null,
     });
     expect(latest()).toEqual({
       conditions: { v: { kind: "validator", validatorId: -9 } },
@@ -434,7 +430,6 @@ describe("other rules", () => {
     expect(setDraft).toHaveBeenCalledWith(-7, {
       type: "HasPhoneNumber",
       idArgument: null,
-      expression: null,
     });
     expect(latest()?.conditions.condition1).toEqual({
       kind: "validator",
