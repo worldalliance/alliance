@@ -194,6 +194,13 @@ export const sharedEnvReads = {
   reader: "the app's webEnv() or mobileEnv(), and pass the value in",
 };
 
+export const frontendBlockerImport = {
+  name: "react-router",
+  importNames: ["useBlocker", "unstable_usePrompt"],
+  message:
+    "React Router runs only one blocker; merge into the one in apps/frontend/src/lib/useFullLoadOnNewBuild.ts.",
+};
+
 export default [
   { linterOptions: { reportUnusedDisableDirectives: "error" } },
   {

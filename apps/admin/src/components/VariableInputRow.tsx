@@ -5,6 +5,7 @@ import type {
 } from "@alliance/common/forms/form-schema";
 import {
   inputSourceFormId,
+  isCountInput,
   isListInput,
   isSourceInput,
   type VariableInput,
@@ -12,7 +13,7 @@ import {
 } from "@alliance/common/forms/variable-inputs";
 import { X } from "lucide-react";
 import { CountSamples, type CountSample } from "./CountSamples";
-import { RandomSample } from "./RandomInput";
+import { NumberSample } from "./NumberSample";
 import {
   fieldChoices,
   FieldPicker,
@@ -92,7 +93,7 @@ export function VariableInputRow({
           onChange={onModeChange}
         />
         {input.kind === "random" ? (
-          <RandomSample
+          <NumberSample
             inputName={name}
             value={sample}
             onChange={onSampleChange}
@@ -102,7 +103,7 @@ export function VariableInputRow({
             <SourceFormPicker
               inputName={name}
               sourceFormId={sourceFormId}
-              counting={input.kind === "aggregate"}
+              counting={isCountInput(input)}
               sources={sources}
               onChange={onSourceChange}
             />
@@ -115,6 +116,13 @@ export function VariableInputRow({
               onPick={onFieldPick}
             />
           </>
+        )}
+        {input.kind === "answeredCount" && field && (
+          <NumberSample
+            inputName={name}
+            value={sample}
+            onChange={onSampleChange}
+          />
         )}
         {input.kind === "field" && (
           <SampleAnswer

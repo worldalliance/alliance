@@ -7,7 +7,12 @@ import {
 import { Action, VisibilityMode } from "../src/actions/entities/action.entity";
 import { Community } from "../src/community/entities/community.entity";
 import { User } from "../src/user/entities/user.entity";
-import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  signAccessToken,
+  TestContext,
+} from "./e2e-test-utils";
 
 describe("Community member info (e2e)", () => {
   let ctx: TestContext;
@@ -72,7 +77,7 @@ describe("Community member info (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const memberIds = (res: request.Response) =>

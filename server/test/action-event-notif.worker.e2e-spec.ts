@@ -54,6 +54,7 @@ import type {
 import { QueryFailedError, type Repository } from "typeorm";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
 import {
+  closeTestApp,
   createFormWithSnapshot,
   createTestApp,
   setPreference,
@@ -113,7 +114,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const setUserContractSigned = async (userId: number, signedDate: Date) => {

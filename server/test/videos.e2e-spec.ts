@@ -1,6 +1,6 @@
 import { Readable } from "stream";
 import request from "supertest";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 import {
   GetObjectCommand,
@@ -43,7 +43,7 @@ describe("Videos (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("uploads a video", async () => {

@@ -8,13 +8,14 @@ import {
 import { getLastNotificationResponse } from "expo-notifications";
 import * as Updates from "expo-updates";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { SPLASH_BACKGROUND_COLOR, SPLASH_IMAGE } from "../constants/splash";
+import { SPLASH_RELOAD_SCREEN } from "../constants/splash";
 import {
   deadlineFor,
   nextStep,
   OtaGatePhase,
   OtaGateStepKind,
 } from "./otaGateMachine";
+import { OTA_UPDATES_ENABLED } from "./otaUpdates";
 
 // posthog persists its queue asynchronously and reloadAsync tears down the JS
 // runtime, so the `applied` event races the reload it describes. Bounded
@@ -60,7 +61,7 @@ export function useOtaUpdateGate(): OtaUpdateGate {
     restartCount,
   } = Updates.useUpdates();
 
-  const enabled = Updates.isEnabled && !__DEV__;
+  const enabled = OTA_UPDATES_ENABLED;
   const [phase, setPhase] = useState(
     enabled ? OtaGatePhase.Checking : OtaGatePhase.Open,
   );
@@ -134,16 +135,7 @@ export function useOtaUpdateGate(): OtaUpdateGate {
     }
 
     const result = await R.fromPromise(
-      Updates.reloadAsync({
-        // The same stand-in the splash and the gate use, so the restart reads
-        // as one continuous launch rather than a flash of white.
-        reloadScreenOptions: {
-          backgroundColor: SPLASH_BACKGROUND_COLOR,
-          image: SPLASH_IMAGE,
-          imageResizeMode: "contain",
-          fade: true,
-        },
-      }),
+      Updates.reloadAsync({ reloadScreenOptions: SPLASH_RELOAD_SCREEN }),
     );
 
     // The reload never started, so this runtime is still live and still hidden

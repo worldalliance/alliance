@@ -12,7 +12,7 @@ In this time, we learned about factors that affect members’ reliability, built
 
 The reliability of members is foundational to the Alliance. Among many benefits, **reliability enables the office to make effective action plans** because we know exactly how many people we can depend on to participate in those plans.
 
-The first action that every member took on our platform was to sign our [membership contract](https://worldalliance.org/governance). The contract sets a formal expectation of reliability. This expectation is reinforced by other methods designed to build a general culture of reliability.
+The first action that every member took on our platform was to sign our [membership contract](https://thealliance.org/governance). The contract sets a formal expectation of reliability. This expectation is reinforced by other methods designed to build a general culture of reliability.
 
 Members largely adhere to the contract. Only around 10% of people who signed the contract since we launched the platform have suspended their contract or had their contract suspended because they failed to complete their assigned tasks.
 
@@ -27,7 +27,7 @@ Other methods we employed to build a culture of reliability included:
 **Overall, task completion rates are 95% on average.** Most non-completions come from new members who are unfamiliar with our expectations. We hope that action completion rates will increase as we strengthen our culture and the proportion of members who are familiar with our expectations increases.
 
 ![completion graph](https://dj92mxbdjuclo.cloudfront.net/1767912985953.webp)
-_Task completions throughout the week for [“Decide how to allocate $1,000 next week.”](https://worldalliance.org/actions/47) Typically, members complete tasks immediately or close to the deadline._
+_Task completions throughout the week for [“Decide how to allocate $1,000 next week.”](https://thealliance.org/actions/47) Typically, members complete tasks immediately or close to the deadline._
 
 Member reliability has been enormously helpful in our current quest to properly set up the Alliance. If we need feedback, want to run an experiment, gather testimonials, announce new features, or interact with members in any way, all we have to do is launch an action.
 
@@ -35,14 +35,14 @@ Member reliability has been enormously helpful in our current quest to properly 
 
 Working closely with early members has enabled us to improve how members encounter, understand, and experience the Alliance. While our primary goal at this stage is learning rather than growth in membership, **we want to prepare our communications, processes, and platform so that they can accommodate future growth.**
 
-We now have 62 members. Early members were friends and family of Alliance staff. Later, we asked several Alliance members (especially group leads) to invite some of their own friends and family. A handful of members also joined the Alliance after learning about it through [“Invite friends and family to fill out our AI privacy survey.”](https://worldalliance.org/actions/56)
+We now have 62 members. Early members were friends and family of Alliance staff. Later, we asked several Alliance members (especially group leads) to invite some of their own friends and family. A handful of members also joined the Alliance after learning about it through [“Invite friends and family to fill out our AI privacy survey.”](https://thealliance.org/actions/56)
 
 In response to new members’ questions and comments, we took a number of steps to improve our invitations and communications. For example:
 
-1. We simplified our [guide](https://worldalliance.org/guide) and moved more formal materials into separate documents.
+1. We simplified our [guide](https://thealliance.org/guide) and moved more formal materials into separate documents.
 2. We combined our sign-up page with an invitation letter that provides basic information about the Alliance.
 3. We included examples of past actions on our website (and suggested that inviters include them in verbal descriptions), which help prospective members understand the Alliance much more efficiently.
-4. We gathered and answered frequently asked questions in a public [FAQ](https://worldalliance.org/faq).
+4. We gathered and answered frequently asked questions in a public [FAQ](https://thealliance.org/faq).
 
 We chose to tie growth to the smaller Alliance groups we mentioned above: we currently require group leads to approve member invitations. While we need a more scalable solution to group assignment in the future, this constraint has ensured that most new members are accountable to and assisted by an existing member.
 
@@ -72,11 +72,11 @@ Ultimately, action plans must satisfy a complex set of criteria. Some of these c
 
 More importantly, at this stage, we want each action to test a specific hypothesis so that we can derive unique learning value. For instance:
 
-- In [“Sign a letter requesting news coverage of a bring-your-own-cup cafe coalition”](https://worldalliance.org/actions/14) we learned that some businesses will make policy changes in exchange for assistance in acquiring media coverage.
-- In [“Answer questions about nonprofit website copy and design”](https://worldalliance.org/actions/32) we learned that we can begin to build relationships with potential future partners by providing small-scale help.
-- In [“Participate in an experiment to measure AI \+ follow-up friends and family campaign”](https://worldalliance.org/actions/52) we learned that Alliance members spend greater effort completing actions than external participants.
+- In [“Sign a letter requesting news coverage of a bring-your-own-cup cafe coalition”](https://thealliance.org/actions/14) we learned that some businesses will make policy changes in exchange for assistance in acquiring media coverage.
+- In [“Answer questions about nonprofit website copy and design”](https://thealliance.org/actions/32) we learned that we can begin to build relationships with potential future partners by providing small-scale help.
+- In [“Participate in an experiment to measure AI \+ follow-up friends and family campaign”](https://thealliance.org/actions/52) we learned that Alliance members spend greater effort completing actions than external participants.
 
-We have also paid attention to the diversity and coherence of our full action sequence. We wanted actions to balance with and build on one another. For example, in [“Decide how to allocate $1,000 next week,”](https://worldalliance.org/actions/47) many members suggested that we donate to GiveDirectly, a non-profit they learned about in [“Read and discuss an article about global inequality.”](https://worldalliance.org/actions/26)
+We have also paid attention to the diversity and coherence of our full action sequence. We wanted actions to balance with and build on one another. For example, in [“Decide how to allocate $1,000 next week,”](https://thealliance.org/actions/47) many members suggested that we donate to GiveDirectly, a non-profit they learned about in [“Read and discuss an article about global inequality.”](https://thealliance.org/actions/26)
 
 ## Other updates
 

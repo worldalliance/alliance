@@ -5,7 +5,7 @@ import {
   ContractEventType,
 } from "../src/user/entities/contract-event.entity";
 import { Tag } from "../src/user/entities/tag.entity";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("General update tags (e2e)", () => {
   let ctx: TestContext;
@@ -30,7 +30,7 @@ describe("General update tags (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const create = (body: object) =>

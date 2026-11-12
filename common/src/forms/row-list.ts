@@ -6,6 +6,7 @@ import {
   type OutputBlock,
   type PageItem,
 } from "./form-schema";
+import { schemaWithMemberContent } from "./member-content";
 import {
   RowConditionKind,
   type AssignedRow,
@@ -225,15 +226,23 @@ export function rowListErrors(schema: FormSchema): RowListError[] {
   return errors;
 }
 
+export type SchemaMember = {
+  assignedRow: AssignedRow | null;
+  userId: number | null;
+};
+
 /**
  * Any schema a member is sent: filled from the response's saved row, or with
- * the list stripped and placeholders blank where there is no row to fill from.
+ * the list stripped and placeholders blank where there is no row to fill from,
+ * and holding only `userId`'s per-member content.
  */
 export function memberSchema(
   schema: FormSchema,
-  assignedRow: AssignedRow | null,
+  member: SchemaMember,
 ): FormSchema {
-  return schema.rowList === undefined
-    ? schema
-    : schemaForRow(schema, assignedRow?.values ?? {});
+  const filled =
+    schema.rowList === undefined
+      ? schema
+      : schemaForRow(schema, member.assignedRow?.values ?? {});
+  return schemaWithMemberContent(filled, member.userId);
 }

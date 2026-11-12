@@ -13,7 +13,11 @@ import { KoraReviewer } from "src/kora/entities/kora-reviewer.entity";
 import { KoraBatchService } from "src/kora/kora-batch.service";
 import { KoraModule } from "src/kora/kora.module";
 import request from "supertest";
-import { createTestApp, type TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  type TestContext,
+} from "./e2e-test-utils";
 import { koraAdminActor, ORIGIN, setKoraProjectStatus } from "./kora-fixtures";
 import {
   EXPORT_SCHEMA_TEXT,
@@ -62,7 +66,7 @@ describe("Kora review actions (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("completes a member's Kora actions when they finish their first assignment", async () => {

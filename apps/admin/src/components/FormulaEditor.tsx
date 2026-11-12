@@ -10,6 +10,7 @@ import {
 } from "@alliance/common/forms/variable-formula-check";
 import {
   inputSourceFormId,
+  isCountInput,
   isListInput,
   isSourceInput,
   type VariableFieldInput,
@@ -29,7 +30,7 @@ import { renameKeys } from "../lib/renameKeys";
 import { readCountSample, type CountSample } from "./CountSamples";
 import { FormulaResult } from "./formulaResult";
 import { ResultPreview, type Preview } from "./FormulaResultPreview";
-import { readRandomSample } from "./RandomInput";
+import { readNumberSample } from "./NumberSample";
 import { VariableHelpModal, type FormulaHelpInput } from "./VariableHelpModal";
 import { inputHelp, optionsRecipes } from "./variableInputHelp";
 import {
@@ -170,8 +171,8 @@ export function FormulaEditor({
           const input = formula.inputs[name];
           const field = fieldOf(input);
           const reading =
-            input.kind === "random"
-              ? readRandomSample(samples[name])
+            input.kind === "random" || input.kind === "answeredCount"
+              ? readNumberSample(samples[name])
               : input.kind === "aggregate"
                 ? readCountSample(field, countSamples[name] ?? {})
                 : isSourceInput(input)
@@ -285,11 +286,9 @@ export function FormulaEditor({
   // always waits on a pick instead.
   const setInputSource = (name: string, sourceFormId: number | undefined) => {
     clearSamples(name);
-    if (
-      formula.inputs[name].kind === "aggregate" &&
-      sourceFormId !== undefined
-    ) {
-      setInput(name, { kind: "aggregate", sourceFormId, fieldId: "" });
+    const current = formula.inputs[name];
+    if (isCountInput(current) && sourceFormId !== undefined) {
+      setInput(name, { kind: current.kind, sourceFormId, fieldId: "" });
       return;
     }
     const first = sourceFormId === undefined ? localFields[0] : undefined;
@@ -306,7 +305,7 @@ export function FormulaEditor({
     const sourceFormId = inputSourceFormId(current) ?? countedForm?.id;
     switch (mode) {
       case InputMode.Answers:
-        if (current.kind === "aggregate" || current.kind === "random") {
+        if (isCountInput(current) || current.kind === "random") {
           setInputSource(name, undefined);
         }
         return;
@@ -314,6 +313,13 @@ export function FormulaEditor({
         if (current.kind === "aggregate" || sourceFormId === undefined) return;
         clearSamples(name);
         setInput(name, { kind: "aggregate", sourceFormId, fieldId: "" });
+        return;
+      case InputMode.Answered:
+        if (current.kind === "answeredCount" || sourceFormId === undefined) {
+          return;
+        }
+        clearSamples(name);
+        setInput(name, { kind: "answeredCount", sourceFormId, fieldId: "" });
         return;
       case InputMode.Random:
         if (current.kind === "random") return;
@@ -410,7 +416,7 @@ export function FormulaEditor({
                 onFieldPick={(picked) =>
                   setInput(
                     name,
-                    input.kind === "aggregate"
+                    isCountInput(input)
                       ? { ...input, fieldId: picked.id }
                       : inputForField(picked, sourceFormId),
                   )

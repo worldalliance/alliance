@@ -30,6 +30,7 @@ import {
   saveLiveCohortDecisions,
 } from "./cohort-decision-fixtures";
 import {
+  closeTestApp,
   createFormWithSnapshot,
   createTestApp,
   setPreference,
@@ -66,7 +67,7 @@ describe("Contract reinstated notifications (e2e)", () => {
   beforeEach(() => stubExpoClient(ctx));
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   afterEach(() => jest.restoreAllMocks());

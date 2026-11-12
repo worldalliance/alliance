@@ -119,7 +119,7 @@ HOME = f"""
   </div>
   <div class="spacer"></div>
   <div class="footer" style="justify-content:flex-end;">
-    <div class="url">worldalliance.org</div>
+    <div class="url">thealliance.org</div>
   </div>
 </div>
 """
@@ -144,7 +144,7 @@ SIGNUP = f"""
   <div class="spacer"></div>
   <div class="footer">
     <div class="pill">Join the Alliance</div>
-    <div class="url">worldalliance.org/signup</div>
+    <div class="url">thealliance.org/signup</div>
   </div>
 </div>
 """

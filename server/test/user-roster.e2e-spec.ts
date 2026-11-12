@@ -13,7 +13,7 @@ import {
   cohortDecisionFixtures,
   type CohortDecisionFixtures,
 } from "./cohort-decision-fixtures";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("UserService.findActiveUsersForRoster (e2e)", () => {
   let ctx: TestContext;
@@ -30,7 +30,7 @@ describe("UserService.findActiveUsersForRoster (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const loaded = <T>(rows: T[] | undefined) => {

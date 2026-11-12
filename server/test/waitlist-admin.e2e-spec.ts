@@ -5,7 +5,12 @@ import {
   CampaignKind,
 } from "../src/campaign/entities/campaign.entity";
 import { WaitlistModule } from "../src/waitlist/waitlist.module";
-import { createTestApp, TestContext, waitForLockWait } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  TestContext,
+  waitForLockWait,
+} from "./e2e-test-utils";
 
 describe("Waitlist admin (e2e)", () => {
   let ctx: TestContext;
@@ -53,7 +58,7 @@ describe("Waitlist admin (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   describe("links", () => {

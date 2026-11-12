@@ -49,6 +49,7 @@ export const CUSTOM_LINK_RESERVED_SLUGS = new Set([
   "api",
   "assets",
   "build",
+  "build-version",
   "src",
   "node_modules",
   ".well-known",

@@ -1,0 +1,32 @@
+name: Mobile Bundle Check
+
+# Bundles the production mobile app offline, so a Metro or Hermes error fails
+# the PR and the deploy gate instead of first surfacing in the OTA publish,
+# after the backend has deployed.
+
+on:
+  workflow_call:
+
+jobs:
+  mobile-bundle-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Export production bundle
+        working-directory: ./apps/mobile
+        env:
+          APP_VARIANT: production
+        run: bunx expo export --platform ios --platform android --output-dir "$RUNNER_TEMP/mobile-export"

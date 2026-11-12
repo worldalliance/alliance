@@ -26,7 +26,7 @@ import {
   UnreadContent,
   UnreadContentType,
 } from "../src/notifs/entities/unread-content.entity";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Notifications (e2e)", () => {
   let ctx: TestContext;
@@ -103,7 +103,7 @@ describe("Notifications (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("user can list their notifications from both entities", async () => {

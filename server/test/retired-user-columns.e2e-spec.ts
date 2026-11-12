@@ -1,5 +1,5 @@
 import { ReferralSource, User } from "src/user/entities/user.entity";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Retired user columns (e2e)", () => {
   let ctx: TestContext;
@@ -9,7 +9,7 @@ describe("Retired user columns (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   // The deploy that drops these columns migrates while this release still serves.

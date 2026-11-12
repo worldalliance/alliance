@@ -2,7 +2,7 @@ import { Like } from "typeorm";
 import { CreateActionDto } from "../src/actions/dto/action.dto";
 import { Action } from "../src/actions/entities/action.entity";
 import { createActionAsAdmin, patchActionAsAdmin } from "./action-requests";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 const NAME_PREFIX = "action-short-description e2e";
 
@@ -20,7 +20,7 @@ describe("Action short description (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const create = (body: Partial<CreateActionDto>) =>

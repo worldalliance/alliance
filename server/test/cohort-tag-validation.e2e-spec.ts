@@ -12,6 +12,7 @@ import {
   type CohortDecisionFixtures,
 } from "./cohort-decision-fixtures";
 import {
+  closeTestApp,
   createFormWithSnapshot,
   createTestApp,
   TestContext,
@@ -41,7 +42,7 @@ describe("Saving a cohort that names a tag (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const admin = () => request(ctx.app.getHttpServer());

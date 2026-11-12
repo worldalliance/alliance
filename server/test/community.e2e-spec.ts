@@ -24,6 +24,7 @@ import {
 } from "../src/notifs/entities/notification.entity";
 import { User } from "../src/user/entities/user.entity";
 import {
+  closeTestApp,
   createTestApp,
   giveActiveContract,
   signAccessToken,
@@ -106,7 +107,7 @@ describe("Community (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const communityIdsOf = async (userId: number) =>

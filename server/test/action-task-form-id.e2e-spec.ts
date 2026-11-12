@@ -8,7 +8,7 @@ import {
   getActionAsAdmin,
   patchActionAsAdmin,
 } from "./action-requests";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 const schema: FormSchema = {
   pages: [
@@ -36,7 +36,7 @@ describe("Action task form id (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const create = (body: Partial<CreateActionDto>) =>

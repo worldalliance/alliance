@@ -14,7 +14,6 @@ export enum CustomValidatorType {
   MemberTag = "MemberTag",
   MemberCommunity = "MemberCommunity",
   AnyCommunity = "AnyCommunity",
-  CustomExpression = "CustomExpression",
 }
 
 export const typeName: Record<CustomValidatorType, string> = {
@@ -29,7 +28,6 @@ export const typeName: Record<CustomValidatorType, string> = {
   [CustomValidatorType.MemberTag]: "Member has tag",
   [CustomValidatorType.MemberCommunity]: "Member is in specific community",
   [CustomValidatorType.AnyCommunity]: "Member is in any community",
-  [CustomValidatorType.CustomExpression]: "Custom expression",
 };
 
 export const typeUsesIdArgument: Record<CustomValidatorType, boolean> = {
@@ -43,7 +41,6 @@ export const typeUsesIdArgument: Record<CustomValidatorType, boolean> = {
   [CustomValidatorType.MemberTag]: true,
   [CustomValidatorType.MemberCommunity]: true,
   [CustomValidatorType.AnyCommunity]: false,
-  [CustomValidatorType.CustomExpression]: false,
 };
 
 export const typeUsableForVisibility: Record<CustomValidatorType, boolean> = {
@@ -57,7 +54,6 @@ export const typeUsableForVisibility: Record<CustomValidatorType, boolean> = {
   [CustomValidatorType.MemberTag]: true,
   [CustomValidatorType.MemberCommunity]: true,
   [CustomValidatorType.AnyCommunity]: true,
-  [CustomValidatorType.CustomExpression]: true,
 };
 
 @Entity()
@@ -80,8 +76,10 @@ export class CustomValidator {
   @IsOptional()
   idArgument: string | null;
 
+  // BACKCOMPAT(custom-validator-expression): unused; drop the column once a
+  // release without CustomExpression validators is deployed everywhere, since
+  // the release before it still selects it.
   @Column({ type: "varchar", nullable: true })
-  @ApiProperty({ nullable: true })
   @IsOptional()
   expression: string | null;
 

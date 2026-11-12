@@ -25,6 +25,7 @@ import { ReferralSource, User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
 import {
+  closeTestApp,
   createTestApp,
   setPreference,
   stubExpoClient,
@@ -42,7 +43,7 @@ describe("ContractSuspenderWorker (e2e)", () => {
   beforeEach(() => stubExpoClient(ctx));
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   afterEach(() => jest.restoreAllMocks());

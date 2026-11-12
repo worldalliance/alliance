@@ -6,7 +6,7 @@ import {
 import { TasksModule } from "../src/tasks/tasks.module";
 import { Tag } from "../src/user/entities/tag.entity";
 import { User } from "../src/user/entities/user.entity";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Running a validator as a previewed member (e2e)", () => {
   let ctx: TestContext;
@@ -36,7 +36,7 @@ describe("Running a validator as a previewed member (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const run = (path: string, token: string) =>

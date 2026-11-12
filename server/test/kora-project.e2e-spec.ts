@@ -5,7 +5,11 @@ import {
 import { KoraBatch } from "src/kora/entities/kora-batch.entity";
 import { KoraModule } from "src/kora/kora.module";
 import request from "supertest";
-import { createTestApp, type TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  type TestContext,
+} from "./e2e-test-utils";
 import { setKoraProjectStatus } from "./kora-fixtures";
 
 describe("Kora project status (e2e)", () => {
@@ -27,7 +31,7 @@ describe("Kora project status (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("shows the status to anyone, signed in or not", async () => {

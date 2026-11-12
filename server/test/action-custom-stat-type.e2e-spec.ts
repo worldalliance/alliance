@@ -10,7 +10,7 @@ import {
   getActionAsAdmin,
   patchActionAsAdmin,
 } from "./action-requests";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 const NAME_PREFIX = "action-custom-stat-type e2e";
 
@@ -28,7 +28,7 @@ describe("Action custom stat type (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("stores none for an action created without a stat type", async () => {

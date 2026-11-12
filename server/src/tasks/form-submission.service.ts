@@ -33,6 +33,7 @@ import { UserService } from "src/user/user.service";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import { type Repository } from "typeorm";
 import { assertActionNotSubmitted } from "./assert-action-not-submitted";
+import { assertAssignedForm } from "./assert-assigned-form";
 import { loadedFormSnapshot } from "./entities/form.entity";
 import {
   FormResponse,
@@ -43,7 +44,7 @@ import { FormProfileAnswersService } from "./form-profile-answers.service";
 import { FormResponseQueryService } from "./form-response-query.service";
 import { FormResponseWriterService } from "./form-response-writer.service";
 import { FormRowAssignmentService } from "./form-row-assignment.service";
-import { formSchemaOf, snapshotForRow } from "./form-snapshot-schema";
+import { formSchemaOf, memberSnapshot } from "./form-snapshot-schema";
 import {
   FormSubmissionValidationService,
   parseSubmittedAnswers,
@@ -109,16 +110,11 @@ export class FormSubmissionService {
       optInMms: true,
     });
 
-    const valid = await this.actionFormVariantService.validateFormIdForUser({
+    await assertAssignedForm(this.actionFormVariantService, {
       actionId: submitFormDto.actionId,
       userId,
       formId,
     });
-    if (!valid) {
-      throw new ForbiddenException(
-        "This form is not the variant assigned to you for this action",
-      );
-    }
 
     const action = await this.actionRepository.findOne({
       where: { id: submitFormDto.actionId },
@@ -148,13 +144,14 @@ export class FormSubmissionService {
       form,
       userId,
     );
-    const submittedSnapshot = snapshotForRow(
+    const member = { assignedRow, userId };
+    const submittedSnapshot = memberSnapshot(
       await this.formSnapshotService.resolveSubmissionSnapshot({
         form,
         dto: submitFormDto,
-        assignedRow,
+        member,
       }),
-      assignedRow,
+      member,
     );
     const submittedSchema = formSchemaOf(submittedSnapshot);
 
@@ -256,13 +253,14 @@ export class FormSubmissionService {
       form,
       userId,
     );
-    const submittedSnapshot = snapshotForRow(
+    const member = { assignedRow, userId };
+    const submittedSnapshot = memberSnapshot(
       await this.formSnapshotService.resolveSubmissionSnapshot({
         form,
         dto: submitFollowUpFormDto,
-        assignedRow,
+        member,
       }),
-      assignedRow,
+      member,
     );
     const { validatorResults, effectiveAnswers, formulaChoices } =
       await this.formSubmissionValidationService.validateFormSubmission({
@@ -319,7 +317,7 @@ export class FormSubmissionService {
     const snapshot = await this.formSnapshotService.resolveSubmissionSnapshot({
       form,
       dto: submitFormDto,
-      assignedRow: null,
+      member: { assignedRow: null, userId: null },
     });
     const schema = formSchemaOf(snapshot);
     const validatorResults = parseSubmittedValidatorResults(
@@ -361,6 +359,11 @@ export class FormSubmissionService {
     }
     const form = await this.tasksService.getForm(formId);
     const user = await this.userService.findOneOrFail(userId);
+    await assertAssignedForm(this.actionFormVariantService, {
+      actionId,
+      userId,
+      formId,
+    });
     const action = await this.actionRepository.findOne({
       where: { id: actionId },
       relations: { events: true },
@@ -368,18 +371,23 @@ export class FormSubmissionService {
     if (action) {
       assertNotInStaffPreview(action);
     }
+    await assertActionNotSubmitted(this.actionFormVariantService, {
+      actionId,
+      userId,
+    });
 
     const assignedRow = await this.formRowAssignmentService.memberRow(
       form,
       userId,
     );
-    const snapshot = snapshotForRow(
+    const member = { assignedRow, userId };
+    const snapshot = memberSnapshot(
       await this.formSnapshotService.resolveSubmissionSnapshot({
         form,
         dto: partialFormData,
-        assignedRow,
+        member,
       }),
-      assignedRow,
+      member,
     );
     const schema = formSchemaOf(snapshot);
     const savedForm =

@@ -19,6 +19,7 @@ import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { ReferralSource, User } from "src/user/entities/user.entity";
 import {
+  closeTestApp,
   createFormWithSnapshot,
   createTestApp,
   TestContext,
@@ -92,7 +93,7 @@ describe("softDeleteCascade (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("covers every entity but the physically and never deleted ones", () => {

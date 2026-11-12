@@ -67,7 +67,7 @@ const EXAMPLE_PROJECTS = [
     title: "Creating a bring-your-own-cup coalition",
     description:
       "We asked 11 cafe locations to adopt bring-your-own-cup policies, and in return we helped them attain media recognition.",
-    imgSrc: "https://worldalliance.org/api/images/1759964091349.webp",
+    imgSrc: "https://thealliance.org/api/images/1759964091349.webp",
   },
   {
     title: "Adjusting personal habits for collective donation",
@@ -347,10 +347,7 @@ const LandingTestPage: React.FC = () => {
               <h2 className={TITLE_CLASS}>Request an invite</h2>
               <p className={SUBTITLE_CLASS}>
                 Membership is by invitation. Send us an{" "}
-                <a
-                  href="mailto:contact@worldalliance.org"
-                  className="text-link"
-                >
+                <a href="mailto:contact@thealliance.org" className="text-link">
                   email
                 </a>{" "}
                 with a short description of yourself, and we&apos;ll be in

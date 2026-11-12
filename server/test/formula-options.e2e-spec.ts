@@ -18,6 +18,7 @@ import { TasksModule } from "src/tasks/tasks.module";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import {
+  closeTestApp,
   createFormWithSnapshot,
   createTestApp,
   type TestContext,
@@ -78,7 +79,7 @@ describe("Options formulas (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const createSource = async () => {

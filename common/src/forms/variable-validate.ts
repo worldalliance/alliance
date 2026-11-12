@@ -19,7 +19,9 @@ import {
 import { storedQuestionFields } from "./stored-schema";
 import {
   aggregateSourceKey,
+  answeredSourceKey,
   variableAggregateSources,
+  variableAnsweredSources,
 } from "./variable-aggregates";
 import {
   evaluateVariable,
@@ -30,7 +32,11 @@ import {
   checkOptionsFormulaType,
   checkVariableFormulaType,
 } from "./variable-formula-check";
-import { inputSourceFormId, isSourceInput } from "./variable-inputs";
+import {
+  inputSourceFormId,
+  isSourceInput,
+  type FieldReadingInput,
+} from "./variable-inputs";
 import { variableFieldScope, type SourceFormFields } from "./variable-scope";
 import {
   isFieldKindReadableByFieldInput,
@@ -111,12 +117,14 @@ export function collectVariableErrors(
         { fields, responses: [] },
       ]),
     ),
-    aggregates: new Map(
-      variableAggregateSources(variables).map((source) => [
-        aggregateSourceKey(source),
-        {},
-      ]),
-    ),
+    aggregates: new Map([
+      ...variableAggregateSources(variables).map(
+        (source) => [aggregateSourceKey(source), {}] as const,
+      ),
+      ...variableAnsweredSources(variables).map(
+        (source) => [answeredSourceKey(source), 0] as const,
+      ),
+    ]),
     randomizationKey: "validation",
   };
   const scope: FormulaCheckScope = {
@@ -165,7 +173,7 @@ export function collectVariableErrors(
       pushInputError: push,
       pushFormulaError: push,
       rejectInput: (inputName, input) => {
-        if (input.kind === "aggregate") {
+        if (input.kind === "aggregate" || input.kind === "answeredCount") {
           return `Input "${inputName}" counts members' answers, which an options formula can't read`;
         }
         if (input.kind === "random") {
@@ -268,6 +276,17 @@ function readsPendingForm(
   );
 }
 
+const READ_THE_LIST = "Read the whole list instead";
+
+const INSIDE_LIST_ADVICE: Record<FieldReadingInput["kind"], string> = {
+  field: READ_THE_LIST,
+  list: READ_THE_LIST,
+  sourceField: READ_THE_LIST,
+  sourceList: READ_THE_LIST,
+  aggregate: "Only a multiselect outside a list can be counted",
+  answeredCount: "Only a question outside a list can be counted",
+};
+
 function checkFormulaInputs(
   formula: Formula,
   scope: FieldKindScope,
@@ -276,7 +295,7 @@ function checkFormulaInputs(
   for (const [inputName, input] of Object.entries(formula.inputs)) {
     if (input.kind === "random") continue;
     const sourceFormId = inputSourceFormId(input);
-    // An aggregate may count this form's own submissions.
+    // A count input may count this form's own submissions.
     if (isSourceInput(input) && sourceFormId === scope.formId) {
       push(
         `Input "${inputName}" reads this form as another form. Pick "This form" instead`,
@@ -310,7 +329,7 @@ function checkFormulaInputs(
       }
       if (field.insideList) {
         push(
-          `Input "${inputName}" reads field "${input.fieldId}", which is inside a list. ${input.kind === "aggregate" ? "Only a multiselect outside a list can be counted" : "Read the whole list instead"}`,
+          `Input "${inputName}" reads field "${input.fieldId}", which is inside a list. ${INSIDE_LIST_ADVICE[input.kind]}`,
         );
         return undefined;
       }
@@ -370,6 +389,9 @@ function checkFormulaInputs(
         }
         break;
       }
+      case "answeredCount":
+        topLevelField();
+        break;
       default:
         push(
           `Input "${inputName}" has a kind (${kind satisfies never}) this build doesn't know. Reload the page`,

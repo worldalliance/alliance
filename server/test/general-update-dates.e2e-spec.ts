@@ -1,7 +1,7 @@
 import request from "supertest";
 import { Like } from "typeorm";
 import { GeneralUpdate } from "../src/actions/entities/general-update.entity";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 const NAME_PREFIX = "general-update-dates e2e";
 
@@ -19,7 +19,7 @@ describe("General update dates (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const create = (body: object) =>

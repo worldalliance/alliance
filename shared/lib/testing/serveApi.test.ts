@@ -53,6 +53,14 @@ it("records a request no route matched, and throws it from the restore", async (
   expect(() => endServedTest()).toThrow(UnroutedRequest);
 });
 
+it("says an unrouted request may come from an earlier test in the file", async () => {
+  await client.get({ url: "/nowhere" }).catch(() => {});
+
+  expect(() => endServedTest()).toThrow(
+    "unrouted request: GET /nowhere. If this test never sends it, an earlier test in this file scheduled it",
+  );
+});
+
 it("records a request the table names under another verb", async () => {
   await client.post({ url: "/probe/one" }).catch(() => {});
 

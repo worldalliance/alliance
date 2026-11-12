@@ -4,7 +4,7 @@ import { UserService } from "src/user/user.service";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import { User } from "../src/user/entities/user.entity";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Admin role toggles (e2e)", () => {
   let ctx: TestContext;
@@ -34,7 +34,7 @@ describe("Admin role toggles (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("grants admin to another member", async () => {

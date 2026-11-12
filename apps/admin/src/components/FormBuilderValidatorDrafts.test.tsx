@@ -53,7 +53,6 @@ describe("FormBuilder save with a draft validator", () => {
           id: 42,
           type: "HasPhoneNumber",
           idArgument: null,
-          expression: null,
         });
       },
       "PUT /tasks/updateForm/:formId": async ({ request }) => {

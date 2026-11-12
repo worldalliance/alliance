@@ -7,6 +7,7 @@ import {
 import { OAuthError, OAuthProvider } from "@alliance/common/oauth";
 import type { OAuthProfile } from "src/auth/oauth/oauth-client";
 import { KoraParticipant } from "src/kora/entities/kora-participant.entity";
+import { closeTestApp } from "./e2e-test-utils";
 import {
   koraHarness,
   ORIGIN,
@@ -35,7 +36,7 @@ describe("Kora sign-up once the project has closed (e2e)", () => {
   });
 
   afterAll(async () => {
-    await h.ctx.app.close();
+    await closeTestApp(h.ctx.app);
   });
 
   it("refuses a new contact's code with the closed copy", async () => {

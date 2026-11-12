@@ -48,6 +48,7 @@ import { getImageSource } from "../src/images/images.service";
 import { Friend, FriendStatus } from "../src/user/entities/friend.entity";
 import { ReferralSource, User } from "../src/user/entities/user.entity";
 import {
+  closeTestApp,
   createTestApp,
   giveActiveContract,
   signAccessToken,
@@ -3923,6 +3924,6 @@ describe("Users (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 });

@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import { LINK_OPENING_THROTTLE } from "src/link-tracking/link-opening-throttle.config";
 import { LinkTrackingModule } from "src/link-tracking/link-tracking.module";
 import request from "supertest";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Link opening rate limiting (e2e)", () => {
   let ctx: TestContext;
@@ -14,7 +14,7 @@ describe("Link opening rate limiting (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const post = () =>

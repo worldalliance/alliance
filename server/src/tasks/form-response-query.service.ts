@@ -1,6 +1,7 @@
 import {
   type VariableAggregateSource,
   variableAggregateSources,
+  variableAnsweredSources,
 } from "@alliance/common/forms/variable-aggregates";
 import {
   ForbiddenException,
@@ -18,6 +19,7 @@ import {
   FormResponse,
   type ParsedFormResponse,
   parseFormResponse,
+  respondentId,
 } from "./entities/formresponse.entity";
 import { type FormResponseHistory } from "./form-response-history.dto";
 import { formSchemaOf } from "./form-snapshot-schema";
@@ -25,8 +27,9 @@ import { type FormResponseCount, FormResponseDto } from "./form.dto";
 import { FormSnapshotService } from "./formsnapshot.service";
 import {
   countVariableAggregates,
-  type VariableAggregate,
+  countVariableAnswered,
 } from "./variable-aggregates";
+import { type VariableAggregates } from "./variable-aggregates.dto";
 
 @Injectable()
 export class FormResponseQueryService {
@@ -93,6 +96,7 @@ export class FormResponseQueryService {
       (response) =>
         new FormResponseDto({
           response: parseFormResponse(response),
+          memberId: respondentId(response),
           aiDetectionResults: aiDetectionByResponseId.get(response.id),
         }),
     );
@@ -128,7 +132,7 @@ export class FormResponseQueryService {
       relations: { formSnapshot: true },
       order: { createdAt: "ASC", id: "ASC" },
     });
-    return { form, responses };
+    return { form, responses, userId };
   }
 
   formulaSourceHistoryLoader(
@@ -144,30 +148,34 @@ export class FormResponseQueryService {
   }
 
   /**
-   * Counts the aggregate inputs of one version of a form. The version, not the
+   * Counts the count inputs of one version of a form. The version, not the
    * caller, decides which questions are counted.
    */
   async countFormVersionAggregates(params: {
     formId: number;
     formSnapshotId: number;
-  }): Promise<VariableAggregate[]> {
+  }): Promise<VariableAggregates> {
     const snapshot = await this.formSnapshotService.findHistoricalOrThrow(
       params.formId,
       params.formSnapshotId,
     );
-    return countVariableAggregates({
-      em: this.formRepository.manager,
-      sources: variableAggregateSources(formSchemaOf(snapshot).variables),
+    const { variables } = formSchemaOf(snapshot);
+    return this.countVariableAggregates({
+      sources: variableAggregateSources(variables),
+      answeredSources: variableAnsweredSources(variables),
     });
   }
 
-  countVariableAggregates(
-    sources: readonly VariableAggregateSource[],
-  ): Promise<VariableAggregate[]> {
-    return countVariableAggregates({
-      em: this.formRepository.manager,
-      sources,
-    });
+  async countVariableAggregates(params: {
+    sources: readonly VariableAggregateSource[];
+    answeredSources: readonly VariableAggregateSource[];
+  }): Promise<VariableAggregates> {
+    const em = this.formRepository.manager;
+    const [aggregates, answered] = await Promise.all([
+      countVariableAggregates({ em, sources: params.sources }),
+      countVariableAnswered({ em, sources: params.answeredSources }),
+    ]);
+    return { aggregates, answered };
   }
 
   async getGuestFormResponse(
@@ -220,7 +228,7 @@ export class FormResponseQueryService {
     }
     const responses = await this.formResponseRepository.find({
       where: { sid: In(sids) },
-      relations: { formSnapshot: true },
+      relations: { formSnapshot: true, user: true },
     });
     return responses.map(parseFormResponse);
   }

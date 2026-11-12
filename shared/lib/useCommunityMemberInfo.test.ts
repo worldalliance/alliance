@@ -55,7 +55,9 @@ it("does not fetch without a community id", async () => {
 });
 
 it("refetches once the next member-action deadline passes", async () => {
-  deadline = Date.now() + 50;
+  // A clock still short of the deadline at the refetch re-arms the timer.
+  jest.spyOn(Date, "now").mockImplementation(() => (requests < 2 ? 0 : 50));
+  deadline = 50;
   const { wrapper } = queryWrapper();
 
   renderHook(() => useCommunityMemberInfo({ communityId: 4, userId: 1 }), {

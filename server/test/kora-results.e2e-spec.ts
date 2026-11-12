@@ -8,6 +8,7 @@ import { MailService } from "src/mail/mail.service";
 import { PushService } from "src/push/push.service";
 import request from "supertest";
 import type TestAgent from "supertest/lib/agent";
+import { closeTestApp } from "./e2e-test-utils";
 import {
   koraAdminActor,
   koraHarness,
@@ -137,7 +138,7 @@ describe("Kora results and the more-reviews notice (e2e)", () => {
   });
 
   afterAll(async () => {
-    await h.ctx.app.close();
+    await closeTestApp(h.ctx.app);
   });
 
   it("tells reviewers who finished, once per new batch, and not those still reviewing", async () => {

@@ -4303,8 +4303,15 @@ export type VariableAggregateDto = {
     } | null;
 };
 
+export type VariableAnsweredCountDto = {
+    sourceFormId: number;
+    fieldId: string;
+    count: number | null;
+};
+
 export type VariableAggregatesDto = {
     aggregates: Array<VariableAggregateDto>;
+    answered: Array<VariableAnsweredCountDto>;
 };
 
 export type VariableAggregateSourceDto = {
@@ -4314,6 +4321,7 @@ export type VariableAggregateSourceDto = {
 
 export type CountVariableAggregatesDto = {
     sources: Array<VariableAggregateSourceDto>;
+    answeredSources: Array<VariableAggregateSourceDto>;
 };
 
 export type GuestFormResponseDto = {
@@ -4385,7 +4393,7 @@ export type OptOutActionDto = {
     };
 };
 
-export type CustomValidatorType = 'UploadedPhoto' | 'SignedContract' | 'AddedProfileDescription' | 'RepliedToForumPost' | 'RepliedToForumPostOrChild' | 'HasPhoneNumber' | 'IsPhoneNumberValid' | 'MemberTag' | 'MemberCommunity' | 'AnyCommunity' | 'CustomExpression';
+export type CustomValidatorType = 'UploadedPhoto' | 'SignedContract' | 'AddedProfileDescription' | 'RepliedToForumPost' | 'RepliedToForumPostOrChild' | 'HasPhoneNumber' | 'IsPhoneNumberValid' | 'MemberTag' | 'MemberCommunity' | 'AnyCommunity';
 
 export type CustomValidatorTypeDto = {
     name: string;
@@ -4407,38 +4415,15 @@ export type CustomValidatorDto = {
     id: number;
     type: CustomValidatorType;
     idArgument: string | null;
-    expression: string | null;
 };
 
 export type CreateCustomValidatorDto = {
     type: CustomValidatorType;
     idArgument: string | null;
-    expression: string | null;
 };
 
 export type CreateCustomValidatorResponseDto = {
     id: number;
-};
-
-export type TestCustomExpressionDto = {
-    expression: string;
-    userId?: number;
-};
-
-export type CustomExpressionUserDto = {
-    id: number;
-    name: string;
-    anonymous: boolean;
-};
-
-export type TestCustomExpressionResponseDto = {
-    passCount: number;
-    failCount: number;
-    totalCount: number;
-    passUsers: Array<CustomExpressionUserDto>;
-    failUsers: Array<CustomExpressionUserDto>;
-    selectedUserId?: number;
-    selectedUserResult?: boolean;
 };
 
 export type TimeSpentForUserDto = {
@@ -14856,28 +14841,6 @@ export type CustomValidatorCreateCustomValidatorAdminResponses = {
 };
 
 export type CustomValidatorCreateCustomValidatorAdminResponse = CustomValidatorCreateCustomValidatorAdminResponses[keyof CustomValidatorCreateCustomValidatorAdminResponses];
-
-export type CustomValidatorTestCustomExpressionAdminData = {
-    body: TestCustomExpressionDto;
-    path?: never;
-    query?: never;
-    url: '/tasks/testCustomExpression';
-};
-
-export type CustomValidatorTestCustomExpressionAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type CustomValidatorTestCustomExpressionAdminError = CustomValidatorTestCustomExpressionAdminErrors[keyof CustomValidatorTestCustomExpressionAdminErrors];
-
-export type CustomValidatorTestCustomExpressionAdminResponses = {
-    200: TestCustomExpressionResponseDto;
-};
-
-export type CustomValidatorTestCustomExpressionAdminResponse = CustomValidatorTestCustomExpressionAdminResponses[keyof CustomValidatorTestCustomExpressionAdminResponses];
 
 export type AnalyticsGetTimeSpentPerUserAdminData = {
     body?: never;

@@ -4,4 +4,7 @@ Description=Copy prod's database and assets to staging
 [Service]
 Type=oneshot
 User=ec2-user
+# OnCalendar= in alliance-prod-to-staging-sync.timer, in UTC;
+# scripts/sync_prod_to_staging.test.ts fails when they differ.
+Environment=SYNC_SCHEDULED_AT=10:30
 ExecStart=/home/ec2-user/sync_prod_to_staging.sh

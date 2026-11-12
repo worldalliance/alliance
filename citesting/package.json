@@ -9,26 +9,16 @@
     "react-markdown": "*"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.39.0",
     "@playwright/test": "^1.50.0",
     "date-fns": "^4.1.0",
-    "glob": "^11.0.0",
-    "pixelmatch": "^5.3.0",
-    "pngjs": "^7.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.6.0"
   },
   "devDependencies": {
-    "@types/node": "^22.10.7",
-    "@types/pixelmatch": "^5.2.6",
-    "@types/pngjs": "^6.0.5"
+    "@types/node": "^22.10.7"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json && eslint .",
-    "take": "ts-node src/take-screenshots.ts",
-    "take:mobile": "ts-node src/take-mobile-screenshots.ts",
-    "take:mobile:ios": "ts-node src/take-mobile-screenshots.ts",
-    "compare": "ts-node src/compare-screenshots.ts",
-    "ai-review": "ts-node src/ai-review.ts"
+    "take:mobile": "ts-node src/take-mobile-screenshots.ts"
   }
 }

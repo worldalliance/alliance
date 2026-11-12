@@ -121,7 +121,7 @@ const ReminderKeywordHelp: React.FC = () => {
               </tr>
               <tr>
                 <td>{"#{link}"}</td>
-                <td>https://worldalliance.org/tasks?cid=123</td>
+                <td>https://thealliance.org/tasks?cid=123</td>
                 <td>
                   The link to the user&apos;s tasks page, with tracking CID
                   included

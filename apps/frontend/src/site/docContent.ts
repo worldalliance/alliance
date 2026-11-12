@@ -400,7 +400,7 @@ Initial funding for the Alliance was provided by [Elizabeth Barnes](https://barn
   },
 ];
 
-export const PRIVACY_UPDATED = "Last updated 15 September 2026";
+export const PRIVACY_UPDATED = "Last updated 11 November 2026";
 
 export const PRIVACY_MARKDOWN = `
 Alliance Foundation ("Alliance," "we," "our," or "us") operates the Alliance Platform (the "Platform"). This privacy policy explains how our organization uses the personal data we collect from you when you use our website and services.
@@ -454,10 +454,10 @@ Alliance keeps its privacy policy under regular review and places any updates on
 
 ## How to contact us
 
-If you have any questions about Alliance's privacy policy, the data we hold on you, or you would like to exercise one of your data protection rights, please contact us at [support@worldalliance.org](mailto:support@worldalliance.org).
+If you have any questions about Alliance's privacy policy, the data we hold on you, or you would like to exercise one of your data protection rights, please contact us at [support@thealliance.org](mailto:support@thealliance.org).
 `;
 
-export const TERMS_UPDATED = "Last updated 25 August 2025";
+export const TERMS_UPDATED = "Last updated 11 November 2026";
 
 export const TERMS_MARKDOWN = `
 These Terms & Conditions ("Terms") govern the use of email and SMS/text message notifications ("Messaging Services") offered by **Alliance Foundation** ("Alliance," "we," "our," or "us") through the **Alliance Platform** (the "Platform"). By opting in to receive notifications, you agree to these Terms and our [privacy policy](/privacypolicy).
@@ -481,7 +481,7 @@ The number and type of messages you receive will vary based on your activity on 
 
 ## 4. Customer support and contact
 
-For questions, concerns, or assistance regarding Messaging Services, contact us at [support@worldalliance.org](mailto:support@worldalliance.org).
+For questions, concerns, or assistance regarding Messaging Services, contact us at [support@thealliance.org](mailto:support@thealliance.org).
 
 ## 5. Messaging costs and carrier liability
 

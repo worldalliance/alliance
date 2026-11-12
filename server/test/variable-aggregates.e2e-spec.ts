@@ -8,6 +8,7 @@ import request from "supertest";
 import type { Repository } from "typeorm";
 import {
   attachFormSnapshot,
+  closeTestApp,
   createFormSnapshot,
   createFormWithSnapshot,
   createTestApp,
@@ -82,7 +83,7 @@ describe("Variable aggregates (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const createMember = async (): Promise<number> => {
@@ -149,7 +150,7 @@ describe("Variable aggregates (e2e)", () => {
     request(ctx.app.getHttpServer())
       .post("/tasks/variableAggregates")
       .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-      .send({ sources });
+      .send({ sources, answeredSources: [] });
 
   const day = (n: number) => new Date(Date.UTC(2026, 0, n));
 

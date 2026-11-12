@@ -7,7 +7,7 @@ import {
   getActionAsAdmin,
   patchActionAsAdmin,
 } from "./action-requests";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 const NAME_PREFIX = "action-custom-stat-value e2e";
 
@@ -25,7 +25,7 @@ describe("Action custom stat value (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const stored = (id: number) =>

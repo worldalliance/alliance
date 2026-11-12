@@ -30,6 +30,7 @@ import { AuthGuard } from "src/auth/guards/auth.guard";
 import { AuthOptionalGuard } from "src/auth/guards/authoptional.guard";
 import { Public } from "src/auth/public.decorator";
 import { extractGuestToken, type JwtRequest } from "src/auth/tokens";
+import { respondentId } from "./entities/formresponse.entity";
 import { FormDraftService } from "./form-draft.service";
 import { FormResponseHistoryDto } from "./form-response-history.dto";
 import { FormResponseQueryService } from "./form-response-query.service";
@@ -124,6 +125,7 @@ export class TasksController {
         req.user.sub,
         body,
       ),
+      memberId: req.user.sub,
     });
   }
 
@@ -154,6 +156,7 @@ export class TasksController {
         submitFormDto: body,
         guestId,
       }),
+      memberId: null,
     });
   }
 
@@ -172,6 +175,7 @@ export class TasksController {
         req.user.sub,
         body,
       ),
+      memberId: req.user.sub,
     });
   }
 
@@ -265,6 +269,7 @@ export class TasksController {
         req.user.sub,
         id,
       ),
+      memberId: req.user.sub,
     });
   }
 
@@ -306,13 +311,12 @@ export class TasksController {
     @Param("formId", ParseIntPipe) formId: number,
     @Param("formSnapshotId", ParseIntPipe) formSnapshotId: number,
   ): Promise<VariableAggregatesDto> {
-    return new VariableAggregatesDto({
-      aggregates:
-        await this.formResponseQueryService.countFormVersionAggregates({
-          formId,
-          formSnapshotId,
-        }),
-    });
+    return new VariableAggregatesDto(
+      await this.formResponseQueryService.countFormVersionAggregates({
+        formId,
+        formSnapshotId,
+      }),
+    );
   }
 
   /** Counts any questions, for previewing a form not yet saved. */
@@ -322,11 +326,9 @@ export class TasksController {
   async countVariableAggregatesAdmin(
     @Body() body: CountVariableAggregatesDto,
   ): Promise<VariableAggregatesDto> {
-    return new VariableAggregatesDto({
-      aggregates: await this.formResponseQueryService.countVariableAggregates(
-        body.sources,
-      ),
-    });
+    return new VariableAggregatesDto(
+      await this.formResponseQueryService.countVariableAggregates(body),
+    );
   }
 
   @Get("guestResponse/:id")
@@ -359,13 +361,15 @@ export class TasksController {
     @Query("actionId", ParseIntPipe) actionId: number,
     @Request() req: JwtRequest,
   ): Promise<LinkedGuestDraftDto> {
-    return new LinkedGuestDraftDto(
-      await this.formResponseQueryService.getLinkedGuestDraftFormResponse({
-        userId: req.user.sub,
-        formId: id,
-        actionId,
-      }),
-    );
+    return new LinkedGuestDraftDto({
+      draft:
+        await this.formResponseQueryService.getLinkedGuestDraftFormResponse({
+          userId: req.user.sub,
+          formId: id,
+          actionId,
+        }),
+      userId: req.user.sub,
+    });
   }
 
   @Put("formDraft/:id")
@@ -505,7 +509,8 @@ export class TasksController {
     @Param("userId", ParseIntPipe) userId: number,
   ): Promise<FormResponseDto[]> {
     return (await this.formResponseQueryService.getFormsForUserSID(userId)).map(
-      (response) => new FormResponseDto({ response }),
+      (response) =>
+        new FormResponseDto({ response, memberId: respondentId(response) }),
     );
   }
 }

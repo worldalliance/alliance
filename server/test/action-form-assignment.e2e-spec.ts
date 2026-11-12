@@ -12,7 +12,7 @@ import { TasksModule } from "src/tasks/tasks.module";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import { KeepSubmittersOnTaskForm1791762748605 } from "../migrations/1791762748605-KeepSubmittersOnTaskForm";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 const schema: FormSchema = {
   pages: [
@@ -46,7 +46,7 @@ describe("Form variant assignment (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   /** A live action on a task form, with a variant every new member draws. */

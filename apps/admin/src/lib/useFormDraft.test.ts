@@ -6,7 +6,6 @@ import { resolveValidatorDrafts, startFormDraft } from "./useFormDraft";
 const phone: CustomValidatorDraft = {
   type: "HasPhoneNumber",
   idArgument: null,
-  expression: null,
 };
 const withValidator = (validatorId: number): FormSchema => ({
   pages: [
@@ -41,7 +40,7 @@ describe("resolveValidatorDrafts", () => {
   });
 
   it("keeps a draft whose settings differ from the created one", () => {
-    const edited = { ...phone, expression: "other" };
+    const edited = { ...phone, idArgument: "other" };
     const draft = {
       ...startFormDraft(withValidator(-1)),
       validatorDrafts: { [-1]: edited },

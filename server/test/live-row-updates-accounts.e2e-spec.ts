@@ -32,6 +32,7 @@ import { UserDeviceService } from "src/user/user-device.service";
 import { UserService } from "src/user/user.service";
 import type { EntityManager, Repository } from "typeorm";
 import {
+  closeTestApp,
   createTestApp,
   deleteAfterUserLoad,
   TestContext,
@@ -64,7 +65,7 @@ describe("Account and group updates to a row deleted after its load (e2e)", () =
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("leaves a deleted guest unlinked", async () => {

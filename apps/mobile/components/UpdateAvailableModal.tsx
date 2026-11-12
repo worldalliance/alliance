@@ -9,6 +9,7 @@ import * as Application from "expo-application";
 import * as Updates from "expo-updates";
 import { useEffect, useState } from "react";
 import { Linking, Modal, Platform, View } from "react-native";
+import { OTA_UPDATES_ENABLED } from "../lib/otaUpdates";
 import Button, { ButtonColor } from "./system/Button";
 import Text, { FontWeight } from "./system/Text";
 
@@ -83,9 +84,7 @@ const UpdateAvailableModal = () => {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (__DEV__ || !Updates.isEnabled || Updates.channel !== "production") {
-      return;
-    }
+    if (!OTA_UPDATES_ENABLED || Updates.channel !== "production") return;
 
     const timer = setTimeout(async () => {
       try {

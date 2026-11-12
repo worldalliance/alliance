@@ -1,7 +1,7 @@
 import request from "supertest";
 import { Tag } from "../src/user/entities/tag.entity";
 import { User } from "../src/user/entities/user.entity";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Admin user detail tags (e2e)", () => {
   let ctx: TestContext;
@@ -35,7 +35,7 @@ describe("Admin user detail tags (e2e)", () => {
   }, 50000);
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const tagIdsOf = (body: { tags: { id: string }[] }) =>

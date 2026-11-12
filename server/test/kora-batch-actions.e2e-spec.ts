@@ -10,6 +10,7 @@ import { KoraBatchEvent } from "src/kora/entities/kora-batch-event.entity";
 import { KoraBatch } from "src/kora/entities/kora-batch.entity";
 import { KoraReviewer } from "src/kora/entities/kora-reviewer.entity";
 import request from "supertest";
+import { closeTestApp } from "./e2e-test-utils";
 import {
   koraHarness,
   setKoraProjectStatus,
@@ -45,7 +46,7 @@ describe("Kora batch retire, reactivate and delete (e2e)", () => {
   });
 
   afterAll(async () => {
-    await h.ctx.app.close();
+    await closeTestApp(h.ctx.app);
   });
 
   it("retires a batch: unrated pairs leave, new assignments skip it, and reactivating brings it back", async () => {

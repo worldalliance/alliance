@@ -20,6 +20,7 @@ import {
   type CohortDecisionFixtures,
 } from "./cohort-decision-fixtures";
 import {
+  closeTestApp,
   createFormWithSnapshot,
   createTestApp,
   eventually,
@@ -56,7 +57,7 @@ describe("CohortDecisionService (e2e)", () => {
   afterEach(() => cleanUp());
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const signedAt = addDays(now, -30);

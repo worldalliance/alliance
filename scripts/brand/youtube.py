@@ -103,7 +103,7 @@ BANNER = f"""
     <div class="wordmark">THE ALLIANCE</div>
   </div>
   <div class="tagline">A global group of people cooperating to improve the world</div>
-  <div class="url">worldalliance.org</div>
+  <div class="url">thealliance.org</div>
 </div>
 """
 

@@ -29,6 +29,7 @@ import {
   saveLiveCohortDecisions,
 } from "./cohort-decision-fixtures";
 import {
+  closeTestApp,
   createFormWithSnapshot,
   createTestApp,
   TestContext,
@@ -50,7 +51,7 @@ describe("A member's latest completion or withdrawal decides completion (e2e)", 
   afterEach(() => cleanUp());
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   const setUp = async (

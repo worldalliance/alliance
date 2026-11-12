@@ -11,6 +11,7 @@ import { User } from "src/user/entities/user.entity";
 import { WaitlistEntry } from "src/waitlist/entities/waitlist-entry.entity";
 import request from "supertest";
 import type TestAgent from "supertest/lib/agent";
+import { closeTestApp } from "./e2e-test-utils";
 import { ORIGIN, koraHarness, type KoraHarness } from "./kora-fixtures";
 import { forgetRateEvents, uniqueEmail, uniquePhone } from "./otp-fixtures";
 
@@ -36,7 +37,7 @@ describe("Kora signup and login (e2e)", () => {
   });
 
   afterAll(async () => {
-    await h.ctx.app.close();
+    await closeTestApp(h.ctx.app);
   });
 
   it("signs up by email, asking for the name only after the code, and records nothing else", async () => {

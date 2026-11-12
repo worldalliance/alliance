@@ -8,7 +8,11 @@ import {
 } from "../src/actions/entities/action-event.entity";
 import { Action } from "../src/actions/entities/action.entity";
 import { Project } from "../src/actions/entities/project.entity";
-import { createTestApp, type TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  type TestContext,
+} from "./e2e-test-utils";
 
 describe("Projects (e2e)", () => {
   let ctx: TestContext;
@@ -61,7 +65,7 @@ describe("Projects (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   it("rejects non-admins", async () => {

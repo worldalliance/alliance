@@ -14,7 +14,11 @@ import { FormSnapshotService } from "src/tasks/formsnapshot.service";
 import { TasksModule } from "src/tasks/tasks.module";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { createTestApp, type TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  type TestContext,
+} from "./e2e-test-utils";
 
 // BACKCOMPAT(form-snapshot): clients from before the cutover submit the schema they were served.
 describe("Legacy schemaSnapshot submissions (e2e)", () => {
@@ -41,7 +45,7 @@ describe("Legacy schemaSnapshot submissions (e2e)", () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await closeTestApp(ctx.app);
   });
 
   /** A live (non-draft) member action; link a form via actionRepo.update(id, { taskFormId }). */
@@ -391,7 +395,11 @@ describe("Legacy schemaSnapshot submissions (e2e)", () => {
       "findBy",
     );
     const lookUp = () =>
-      snapshots.findHistoricalBySchemaOrThrow(form.body.id, {});
+      snapshots.findHistoricalBySchemaOrThrow({
+        formId: form.body.id,
+        schema: {},
+        member: { assignedRow: null, userId: null },
+      });
 
     await expect(lookUp()).rejects.toThrow(
       "Submitted schema does not match any historical snapshot for this form",
