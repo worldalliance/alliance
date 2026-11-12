@@ -2,7 +2,11 @@ import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { IsInt, IsOptional, Max, Min } from "class-validator";
 import { MmsMedia } from "../mms-media.entity";
-import { mediaStatus, MmsMediaStatus } from "../mms-media.service";
+import {
+  inlineContentType,
+  mediaStatus,
+  MmsMediaStatus,
+} from "../mms-media.service";
 import { type MmsThread, THREAD_PAGE_SIZE } from "../mms-thread.service";
 import { Mms } from "../mms.entity";
 
@@ -16,10 +20,14 @@ export class MmsMediaDto {
   @ApiProperty({ enum: MmsMediaStatus, enumName: "MmsMediaStatus" })
   status: MmsMediaStatus;
 
+  @ApiProperty({ description: "Safe to render in an <img>" })
+  inline: boolean;
+
   constructor(input: MmsMedia) {
     this.id = input.id;
     this.contentType = input.contentType;
     this.status = mediaStatus(input);
+    this.inline = inlineContentType(input.contentType) !== undefined;
   }
 }
 

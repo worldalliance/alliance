@@ -12,6 +12,7 @@ export async function saveInboundMedia(
   params: { from: string } & Partial<
     Pick<
       MmsMedia,
+      | "contentType"
       | "createdAt"
       | "copyAttempts"
       | "lastCopyAttemptAt"

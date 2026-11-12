@@ -275,7 +275,10 @@ describe("Inbound texts in the member's thread (e2e)", () => {
     await inbound({
       from: "+14155558004",
       body: "",
-      media: [{ url: MEDIA_URL, contentType: "image/jpeg" }],
+      media: [
+        { url: MEDIA_URL, contentType: "image/jpeg" },
+        { url: MEDIA_URL, contentType: "video/mp4" },
+      ],
     }).expect(201);
 
     const [message] = (await thread(member.id)).body.messages;
@@ -283,9 +286,12 @@ describe("Inbound texts in the member's thread (e2e)", () => {
       expect.objectContaining({
         contentType: "image/jpeg",
         status: MmsMediaStatus.Copying,
+        inline: true,
       }),
+      expect.objectContaining({ contentType: "video/mp4", inline: false }),
     ]);
     expect(copyToS3).toHaveBeenCalledWith([
+      expect.objectContaining({ twilioUrl: MEDIA_URL }),
       expect.objectContaining({ twilioUrl: MEDIA_URL }),
     ]);
   });

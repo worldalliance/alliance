@@ -1749,6 +1749,10 @@ export type MmsMediaDto = {
     id: number;
     contentType: string;
     status: MmsMediaStatus;
+    /**
+     * Safe to render in an <img>
+     */
+    inline: boolean;
 };
 
 export type MmsMessageDto = {
@@ -8662,6 +8666,21 @@ export type MmsHandleInboundMmsResponses = {
 };
 
 export type MmsHandleInboundMmsResponse = MmsHandleInboundMmsResponses[keyof MmsHandleInboundMmsResponses];
+
+export type MmsThreadMediaAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/mms-threads/media/{id}';
+};
+
+export type MmsThreadMediaAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadMediaAdminError = MmsThreadMediaAdminErrors[keyof MmsThreadMediaAdminErrors];
 
 export type MmsThreadGetThreadAdminData = {
     body?: never;

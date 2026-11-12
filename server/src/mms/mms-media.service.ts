@@ -2,14 +2,16 @@ import { thrownMessage, thrownStack } from "@alliance/common/errorMessage";
 import { R, type Result } from "@alliance/common/result";
 import {
   DeleteObjectCommand,
+  GetObjectCommand,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { randomUUID } from "crypto";
-import { milliseconds } from "date-fns";
+import { milliseconds, minutesToSeconds } from "date-fns";
 import { requireEnv } from "src/config/env";
 import { LOCK_KEYS } from "src/notifs/lock-keys";
 import { withPgSessionLock } from "src/notifs/lock-utils";
@@ -17,6 +19,15 @@ import { notifDeliveryEnabled } from "src/utils/notif-delivery";
 import type { Repository } from "src/utils/Repository";
 import { DataSource, IsNull, LessThan, Not, Raw } from "typeorm";
 import { MmsMedia } from "./mms-media.entity";
+
+// image/jpg isn't a registered type, but Twilio's accepted MMS types list it.
+const INLINE_CONTENT_TYPES = new Map([
+  ["image/jpeg", "image/jpeg"],
+  ["image/jpg", "image/jpeg"],
+  ["image/png", "image/png"],
+  ["image/gif", "image/gif"],
+  ["image/webp", "image/webp"],
+]);
 
 export const MAX_COPY_ATTEMPTS = 30;
 
@@ -35,12 +46,19 @@ export enum MmsMediaStatus {
   Unavailable = "unavailable",
 }
 
+export const inlineContentType = (contentType: string): string | undefined =>
+  INLINE_CONTENT_TYPES.get(contentType.split(";")[0].trim().toLowerCase());
+
 export const mediaStatus = (media: MmsMedia): MmsMediaStatus => {
   if (media.s3Key !== null) return MmsMediaStatus.Ready;
   return media.copyAttempts >= MAX_COPY_ATTEMPTS
     ? MmsMediaStatus.Unavailable
     : MmsMediaStatus.Copying;
 };
+
+export enum MediaRefusal {
+  NoCopy = "no_copy",
+}
 
 const REMOTE_CALL_TIMEOUT_MS = milliseconds({ seconds: 30 });
 
@@ -193,6 +211,23 @@ export class MmsMediaService {
         );
       },
     );
+  }
+
+  async signedUrl(id: number): Promise<Result<string, MediaRefusal>> {
+    const media = await this.mediaRepository.findOneBy({ id });
+    if (!media?.s3Key) return R.failure(MediaRefusal.NoCopy);
+    const inline = inlineContentType(media.contentType);
+    const url = await getSignedUrl(
+      this.s3,
+      new GetObjectCommand({
+        Bucket: requireEnv("ASSETS_BUCKET"),
+        Key: media.s3Key,
+        ResponseContentType: inline ?? media.contentType,
+        ResponseContentDisposition: inline ? "inline" : "attachment",
+      }),
+      { expiresIn: minutesToSeconds(5) },
+    );
+    return R.success(url);
   }
 
   /**
