@@ -16646,7 +16646,6 @@ export type KoraBatchesListResponse = KoraBatchesListResponses[keyof KoraBatches
 export type KoraBatchesUploadData = {
     body: {
         transcripts: Blob | File;
-        exportSchema: Blob | File;
         transcriptsPerAssignment: number;
         reviewsPerTranscript: number;
     };

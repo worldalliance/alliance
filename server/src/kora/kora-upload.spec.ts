@@ -1,13 +1,5 @@
-import {
-  EXPORT_SCHEMA_TEXT,
-  koraPair,
-  koraPairsFile,
-} from "../../test/kora-pairs";
-import {
-  checkExportSchema,
-  checkTranscripts,
-  contentHash,
-} from "./kora-upload";
+import { koraPair, koraPairsFile } from "../../test/kora-pairs";
+import { checkTranscripts, contentHash } from "./kora-upload";
 
 const check = (text: string, existing: string[] = [], retired: string[] = []) =>
   checkTranscripts({
@@ -74,31 +66,5 @@ describe("checkTranscripts", () => {
 
   it("rejects an empty file", () => {
     expect(check("\n\n").ok).toBe(false);
-  });
-});
-
-const otherVersion = () => {
-  const schema = JSON.parse(EXPORT_SCHEMA_TEXT);
-  schema.properties.schemaVersion = { const: 99 };
-  return JSON.stringify(schema);
-};
-
-describe("checkExportSchema", () => {
-  it("accepts the review tool's own export schema", () => {
-    expect(checkExportSchema(EXPORT_SCHEMA_TEXT).ok).toBe(true);
-  });
-
-  it("refuses text that isn't JSON, a schema that doesn't compile, and one that rejects the tool's exports", () => {
-    const messages = [
-      "not json",
-      JSON.stringify({ type: "not-a-type" }),
-      otherVersion(),
-    ].map((text) => {
-      const result = checkExportSchema(text);
-      return result.ok ? null : result.error;
-    });
-    expect(messages[0]).toContain("isn't valid JSON");
-    expect(messages[1]).toContain("isn't a valid JSON Schema");
-    expect(messages[2]).toContain("rejects the review tool's exports");
   });
 });

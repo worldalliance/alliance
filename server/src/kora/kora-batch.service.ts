@@ -7,20 +7,7 @@ import { DataSource } from "typeorm";
 import { KoraBatch } from "./entities/kora-batch.entity";
 import { KoraTranscript } from "./entities/kora-transcript.entity";
 import { type KoraActor, logBatchEvent } from "./kora-batch-actions.service";
-import {
-  checkExportSchema,
-  checkTranscripts,
-  type RejectedLine,
-} from "./kora-upload";
-
-export enum KoraUploadError {
-  ExportSchema = "export_schema",
-  Lines = "lines",
-}
-
-export type KoraUploadRefusal =
-  | { error: KoraUploadError.ExportSchema; message: string }
-  | { error: KoraUploadError.Lines; rejected: RejectedLine[] };
+import { checkTranscripts, type RejectedLine } from "./kora-upload";
 
 export type KoraBatchSummary = { batch: KoraBatch; transcriptCount: number };
 
@@ -53,18 +40,10 @@ export class KoraBatchService {
 
   async upload(params: {
     transcriptsText: string;
-    exportSchemaText: string;
     transcriptsPerAssignment: number;
     reviewsPerTranscript: number;
     actor: KoraActor;
-  }): Promise<Result<KoraBatchSummary, KoraUploadRefusal>> {
-    const schema = checkExportSchema(params.exportSchemaText);
-    if (!schema.ok) {
-      return R.failure({
-        error: KoraUploadError.ExportSchema,
-        message: schema.error,
-      });
-    }
+  }): Promise<Result<KoraBatchSummary, RejectedLine[]>> {
     const existing = await this.transcripts.find({
       select: { id: true, batch: { retiredAt: true } },
       relations: { batch: true },
@@ -77,16 +56,12 @@ export class KoraBatchService {
       ),
     });
     if (!checked.ok) {
-      return R.failure({
-        error: KoraUploadError.Lines,
-        rejected: checked.error,
-      });
+      return R.failure(checked.error);
     }
     const batch = await this.dataSource.transaction(async (manager) => {
       const saved = await manager.save(KoraBatch, {
         transcriptsPerAssignment: params.transcriptsPerAssignment,
         reviewsPerTranscript: params.reviewsPerTranscript,
-        exportSchema: schema.value.schema,
       });
       await manager.insert(
         KoraTranscript,

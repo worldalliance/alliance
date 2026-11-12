@@ -1,4 +1,4 @@
-import { KORA_UPLOAD_NEEDS_BOTH_FILES } from "@alliance/common/kora";
+import { KORA_UPLOAD_NEEDS_TRANSCRIPTS } from "@alliance/common/kora";
 import type { KoraBatchDto } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { Play, Shuffle } from "lucide-react";
@@ -57,19 +57,17 @@ function UploadError({ error }: { error: Error }) {
 function UploadForm() {
   const [uploaded, setUploaded] = useState<KoraBatchDto | null>(null);
   const [transcripts, setTranscripts] = useState<File | null>(null);
-  const [exportSchema, setExportSchema] = useState<File | null>(null);
   const [missingFile, setMissingFile] = useState(false);
   const upload = useUploadKoraBatch({ onSuccess: setUploaded });
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setMissingFile(!transcripts || !exportSchema);
-    if (!transcripts || !exportSchema) return;
+    setMissingFile(!transcripts);
+    if (!transcripts) return;
     const form = new FormData(event.currentTarget);
     setUploaded(null);
     upload.mutate({
       transcripts,
-      exportSchema,
       transcriptsPerAssignment: Number(form.get("transcriptsPerAssignment")),
       reviewsPerTranscript: Number(form.get("reviewsPerTranscript")),
     });
@@ -85,16 +83,6 @@ function UploadForm() {
             type="file"
             onChange={(e) => setTranscripts(e.target.files?.[0] ?? null)}
             accept=".jsonl,.json,.yaml,.yml,application/json,application/yaml"
-            className={FILE_FIELD}
-          />
-        </label>
-        <label>
-          Export schema (.json)
-          <input
-            name="exportSchema"
-            type="file"
-            onChange={(e) => setExportSchema(e.target.files?.[0] ?? null)}
-            accept=".json,application/json"
             className={FILE_FIELD}
           />
         </label>
@@ -141,7 +129,7 @@ function UploadForm() {
       </div>
       {missingFile && (
         <p role="alert" className="text-red-700">
-          {KORA_UPLOAD_NEEDS_BOTH_FILES}
+          {KORA_UPLOAD_NEEDS_TRANSCRIPTS}
         </p>
       )}
       {upload.isError && <UploadError error={upload.error} />}

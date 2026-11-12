@@ -16,12 +16,7 @@ import {
   setKoraProjectStatus,
   type KoraHarness,
 } from "./kora-fixtures";
-import {
-  EXPORT_SCHEMA_TEXT,
-  koraExport,
-  koraPair,
-  koraPairsFile,
-} from "./kora-pairs";
+import { koraExport, koraPair, koraPairsFile } from "./kora-pairs";
 import { forgetRateEvents, uniqueEmail } from "./otp-fixtures";
 
 type State = {
@@ -53,7 +48,6 @@ describe("Kora results and the more-reviews notice (e2e)", () => {
       transcriptsText: koraPairsFile(
         ...[1, 2, 3, 4].map((n) => koraPair(`M${batchNumber}-${n}`)),
       ),
-      exportSchemaText: EXPORT_SCHEMA_TEXT,
       transcriptsPerAssignment: 2,
       reviewsPerTranscript: 3,
       actor: koraAdminActor(h.ctx),

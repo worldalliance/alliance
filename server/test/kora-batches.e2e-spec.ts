@@ -1,4 +1,7 @@
-import { KoraProjectStatus } from "@alliance/common/kora";
+import {
+  KORA_UPLOAD_NEEDS_TRANSCRIPTS,
+  KoraProjectStatus,
+} from "@alliance/common/kora";
 import { randomUUID } from "node:crypto";
 import { KoraBatch } from "src/kora/entities/kora-batch.entity";
 import { KoraModule } from "src/kora/kora.module";
@@ -9,18 +12,14 @@ import {
   type TestContext,
 } from "./e2e-test-utils";
 import { setKoraProjectStatus } from "./kora-fixtures";
-import { EXPORT_SCHEMA_TEXT, koraPair, koraPairsFile } from "./kora-pairs";
+import { koraPair, koraPairsFile } from "./kora-pairs";
 
 describe("Kora transcript batches (e2e)", () => {
   let ctx: TestContext;
   let prefix: string;
 
   const server = () => request(ctx.app.getHttpServer());
-  const upload = (params: {
-    transcripts?: string;
-    exportSchema?: string;
-    token?: string;
-  }) => {
+  const upload = (params: { transcripts?: string; token?: string }) => {
     let req = server()
       .post("/kora/admin/batches")
       .set("Authorization", `Bearer ${params.token ?? ctx.adminAccessToken}`)
@@ -31,13 +30,6 @@ describe("Kora transcript batches (e2e)", () => {
         "transcripts",
         Buffer.from(params.transcripts),
         "pairs.jsonl",
-      );
-    }
-    if (params.exportSchema !== undefined) {
-      req = req.attach(
-        "exportSchema",
-        Buffer.from(params.exportSchema),
-        "export.schema.json",
       );
     }
     return req;
@@ -67,7 +59,6 @@ describe("Kora transcript batches (e2e)", () => {
         koraPair(`${prefix}-1`),
         koraPair(`${prefix}-2`),
       ),
-      exportSchema: EXPORT_SCHEMA_TEXT,
     }).expect(201);
 
     expect(res.body).toMatchObject({
@@ -106,7 +97,6 @@ describe("Kora transcript batches (e2e)", () => {
         JSON.stringify(koraPair(`${prefix}-bad`, { risk_id: "nope" })),
         "{oops",
       ].join("\n"),
-      exportSchema: EXPORT_SCHEMA_TEXT,
     }).expect(400);
 
     expect(res.body.message).toBe(
@@ -121,12 +111,10 @@ describe("Kora transcript batches (e2e)", () => {
   it("rejects a transcript id uploaded in an earlier batch", async () => {
     await upload({
       transcripts: koraPairsFile(koraPair(`${prefix}-once`)),
-      exportSchema: EXPORT_SCHEMA_TEXT,
     }).expect(201);
 
     const res = await upload({
       transcripts: koraPairsFile(koraPair(`${prefix}-once`)),
-      exportSchema: EXPORT_SCHEMA_TEXT,
     }).expect(400);
 
     expect(res.body.rejected[0].problems).toEqual([
@@ -134,26 +122,20 @@ describe("Kora transcript batches (e2e)", () => {
     ]);
   });
 
-  it("refuses an export schema that rejects the tool's exports", async () => {
-    const schema = JSON.parse(EXPORT_SCHEMA_TEXT);
-    schema.properties.schemaVersion = { const: 99 };
-    const res = await upload({
-      transcripts: koraPairsFile(koraPair(`${prefix}-1`)),
-      exportSchema: JSON.stringify(schema),
-    }).expect(400);
-    expect(res.body.message).toContain("rejects the review tool's exports");
+  it("asks for the transcripts file", async () => {
+    const res = await upload({}).expect(400);
+    expect(res.body.message).toBe(KORA_UPLOAD_NEEDS_TRANSCRIPTS);
   });
 
-  it("asks for both files", async () => {
-    await upload({
-      transcripts: koraPairsFile(koraPair(`${prefix}-1`)),
-    }).expect(400);
+  it("refuses a file in a field it doesn't take", async () => {
+    await upload({ transcripts: koraPairsFile(koraPair(`${prefix}-1`)) })
+      .attach("exportSchema", Buffer.from("{}"), "export.schema.json")
+      .expect(400);
   });
 
   it("keeps uploads and previews from non-admins, and 404s an unknown batch", async () => {
     await upload({
       transcripts: koraPairsFile(koraPair(`${prefix}-1`)),
-      exportSchema: EXPORT_SCHEMA_TEXT,
       token: ctx.accessToken,
     }).expect(401);
     await asAdmin(

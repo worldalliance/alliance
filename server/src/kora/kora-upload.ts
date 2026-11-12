@@ -1,12 +1,8 @@
 import { R, type Result } from "@alliance/common/result";
 import { fromKoraPair, readKoraPairs } from "@alliance/kora-review/convert";
-import { SAMPLE_EXPORT } from "@alliance/kora-review/sample-export";
 import { transcriptSchema } from "@alliance/kora-review/schemas";
 import addFormats from "ajv-formats";
-import Ajv2020, {
-  type ErrorObject,
-  type ValidateFunction,
-} from "ajv/dist/2020";
+import Ajv2020, { type ErrorObject } from "ajv/dist/2020";
 import { createHash } from "node:crypto";
 
 export type RejectedLine = { line: number; problems: string[] };
@@ -92,35 +88,4 @@ export function checkTranscripts(params: {
     ]);
   }
   return R.success(checked);
-}
-
-/** The export schema must compile and must accept the review tool's own sample export. */
-export function checkExportSchema(
-  text: string,
-): Result<{ schema: object; validate: ValidateFunction }, string> {
-  let schema: unknown;
-  try {
-    schema = JSON.parse(text);
-  } catch (e) {
-    return R.failure(
-      `The export schema isn't valid JSON: ${e instanceof Error ? e.message : String(e)}`,
-    );
-  }
-  if (!schema || typeof schema !== "object" || Array.isArray(schema)) {
-    return R.failure("The export schema must be a JSON Schema object.");
-  }
-  let validate: ValidateFunction;
-  try {
-    validate = koraAjv().compile(schema);
-  } catch (e) {
-    return R.failure(
-      `The export schema isn't a valid JSON Schema: ${e instanceof Error ? e.message : String(e)}`,
-    );
-  }
-  if (!validate(SAMPLE_EXPORT)) {
-    return R.failure(
-      `The export schema rejects the review tool's exports: ${ajvProblems(validate.errors).join("; ")}`,
-    );
-  }
-  return R.success({ schema, validate });
 }

@@ -2,12 +2,7 @@ import type { KoraReviewPhase } from "@alliance/common/kora";
 import { KoraBatchService } from "src/kora/kora-batch.service";
 import type TestAgent from "supertest/lib/agent";
 import { koraAdminActor, ORIGIN, type KoraHarness } from "./kora-fixtures";
-import {
-  EXPORT_SCHEMA_TEXT,
-  koraExport,
-  koraPair,
-  koraPairsFile,
-} from "./kora-pairs";
+import { koraExport, koraPair, koraPairsFile } from "./kora-pairs";
 import { uniqueEmail } from "./otp-fixtures";
 
 export type ReviewAssignment = {
@@ -80,7 +75,6 @@ export function koraReviewClient(harness: () => KoraHarness) {
           }),
         ),
       ),
-      exportSchemaText: EXPORT_SCHEMA_TEXT,
       transcriptsPerAssignment: options.perAssignment ?? 3,
       reviewsPerTranscript: options.reviews ?? 2,
       actor: koraAdminActor(ctx),

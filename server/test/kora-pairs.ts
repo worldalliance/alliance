@@ -1,5 +1,4 @@
 import { SAMPLE_EXPORT } from "@alliance/kora-review/sample-export";
-import { exportSchema } from "@alliance/kora-review/schemas";
 
 /** A synthetic pair in KORA's native format, as Priya would upload it. */
 export function koraPair(id: string, overrides: Record<string, unknown> = {}) {
@@ -27,8 +26,6 @@ export function koraPair(id: string, overrides: Record<string, unknown> = {}) {
 
 export const koraPairsFile = (...pairs: object[]) =>
   pairs.map((p) => JSON.stringify(p)).join("\n") + "\n";
-
-export const EXPORT_SCHEMA_TEXT = JSON.stringify(exportSchema);
 
 type Assigned = {
   transcript: { transcriptId: string; category: string };

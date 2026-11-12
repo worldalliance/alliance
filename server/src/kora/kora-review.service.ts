@@ -5,9 +5,9 @@ import {
   KoraReviewStatus,
 } from "@alliance/common/kora";
 import { R, type Result } from "@alliance/common/result";
+import { exportSchema } from "@alliance/kora-review/schemas";
 import { Injectable, Logger } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
-import type { ValidateFunction } from "ajv/dist/2020";
 import { DataSource, type EntityManager, In, IsNull, Not } from "typeorm";
 import type {
   KoraLoadedAssignment,
@@ -44,6 +44,8 @@ export type KoraSaveRefusal =
 
 export const KORA_RELEASE_AFTER_DAYS = 7;
 
+const validExport = koraAjv().compile(exportSchema);
+
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object" && !Array.isArray(value)
     ? Object.fromEntries(Object.entries(value))
@@ -52,7 +54,6 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
 @Injectable()
 export class KoraReviewService {
   private readonly logger = new Logger(KoraReviewService.name);
-  private readonly validators = new Map<string, ValidateFunction>();
 
   constructor(
     private readonly dataSource: DataSource,
@@ -116,7 +117,7 @@ export class KoraReviewService {
     );
     const checked = checkExport({
       exported,
-      validate: await this.validatorFor(assignment.schemaBatchId),
+      validate: validExport,
       reviewerId: reviewer.id,
       assignmentId: assignment.id,
       transcripts: rows.map((row) => ({
@@ -222,17 +223,6 @@ export class KoraReviewService {
       where: { reviewerId, completedAt: IsNull() },
       order: { createdAt: "DESC" },
     });
-  }
-
-  private async validatorFor(batchId: string): Promise<ValidateFunction> {
-    const cached = this.validators.get(batchId);
-    if (cached) return cached;
-    const batch = await this.dataSource.manager.findOneByOrFail(KoraBatch, {
-      id: batchId,
-    });
-    const validate = koraAjv().compile(asRecord(batch.exportSchema) ?? {});
-    this.validators.set(batchId, validate);
-    return validate;
   }
 
   private async summary(

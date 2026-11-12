@@ -65,9 +65,6 @@ const fillAndUpload = () => {
       target: { files: [new File(['{"pair_id":"P1"}'], "pairs.jsonl")] },
     },
   );
-  fireEvent.change(screen.getByLabelText("Export schema (.json)"), {
-    target: { files: [new File(["{}"], "export.schema.json")] },
-  });
   fireEvent.change(screen.getByLabelText("Transcripts per assignment"), {
     target: { value: "8" },
   });
@@ -81,7 +78,7 @@ test("says why the list is empty and what to do", async () => {
   );
 });
 
-test("uploads both files with the settings, then offers a preview", async () => {
+test("uploads the transcripts file with the settings, then offers a preview", async () => {
   renderBatches();
   await screen.findByText(/No transcripts yet/);
   fillAndUpload();
@@ -91,6 +88,7 @@ test("uploads both files with the settings, then offers a preview", async () => 
   expect(sent.get("transcriptsPerAssignment")).toBe("8");
   expect(sent.get("reviewsPerTranscript")).toBe("3");
   expect(sent.get("transcripts")).toBeInstanceOf(File);
+  expect(sent.has("exportSchema")).toBe(false);
   const links = await screen.findAllByRole("link", {
     name: "Preview a random transcript",
   });
@@ -102,13 +100,11 @@ test("uploads both files with the settings, then offers a preview", async () => 
   );
 });
 
-test("asks for both files before uploading", async () => {
+test("asks for the transcripts file before uploading", async () => {
   renderBatches();
   await screen.findByText(/No transcripts yet/);
   fireEvent.click(screen.getByRole("button", { name: "Upload" }));
-  const missing = await screen.findByText(
-    "Choose both the transcripts file and the export schema.",
-  );
+  const missing = await screen.findByText("Choose the transcripts file.");
   expect(missing.getAttribute("role")).toBe("alert");
   expect(uploads).toEqual([]);
 });

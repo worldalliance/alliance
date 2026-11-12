@@ -128,14 +128,14 @@ describe("Kora batch retire, reactivate and delete (e2e)", () => {
 
     await admin("post", `/batches/${newer}/retire`).expect(200);
     const kept = ids(loaded.assignment).filter((id) => id.startsWith("A"));
+    const removed = ids(loaded.assignment).filter((id) => id.startsWith("B"));
 
     expect(
       (
-        await save(
-          reviewer,
-          loaded.assignment?.id ?? "",
-          exportOf(loaded, { done: ids(loaded.assignment) }),
-        ).expect(200)
+        await save(reviewer, loaded.assignment?.id ?? "", {
+          ...exportOf(loaded, { done: ids(loaded.assignment) }),
+          currentTranscriptId: removed[0],
+        }).expect(200)
       ).body,
     ).toEqual({ completed: true });
     const stored = await h.ctx.dataSource
@@ -143,7 +143,7 @@ describe("Kora batch retire, reactivate and delete (e2e)", () => {
       .findOneByOrFail({ id: loaded.assignment?.id });
     const results = JSON.stringify(stored.export);
     for (const id of kept) expect(results).toContain(`"${id}"`);
-    expect(results).not.toContain('"B1"');
+    for (const id of removed) expect(results).not.toContain(`"${id}"`);
   });
 
   it("marks each exported line with its batches and whether they're retired", async () => {

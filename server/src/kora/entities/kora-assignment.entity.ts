@@ -32,7 +32,7 @@ export class KoraAssignment {
   @Column({ type: "boolean" })
   extra: boolean;
 
-  /** Exports are checked against this batch's export schema: the newest when the assignment was made. */
+  /** The newest batch when the assignment was made; deleting that batch deletes the assignment. */
   @Column({ type: "uuid" })
   schemaBatchId: string;
 

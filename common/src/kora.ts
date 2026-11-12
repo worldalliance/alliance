@@ -18,8 +18,7 @@ export enum KoraProjectStatus {
 export const KORA_ACTIVE_NEEDS_TRANSCRIPTS =
   "Upload transcripts before making the project active.";
 
-export const KORA_UPLOAD_NEEDS_BOTH_FILES =
-  "Choose both the transcripts file and the export schema.";
+export const KORA_UPLOAD_NEEDS_TRANSCRIPTS = "Choose the transcripts file.";
 
 export const KORA_NOTIFY_NEEDS_ACTIVE =
   "Make the project active before notifying the waitlist.";

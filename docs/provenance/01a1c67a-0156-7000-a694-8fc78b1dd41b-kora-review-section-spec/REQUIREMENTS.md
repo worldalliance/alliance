@@ -99,13 +99,13 @@ The tool's output is an export of this shape. The sample below is abbreviated to
 
 A result not yet reviewed has `"status": "pending"`. A result the reviewer opted out of has `"optedOut": true`.
 
-KORA provides a JSON Schema for the export. The Alliance stores response data only if it matches that schema.
+The export JSON Schema is the one KORA's package (`kora-review`) exports. The Alliance stores response data only if it matches that schema.
 
 ## R3. Upload and status (Priya)
 
 Origin: agent-proposed, user-approved.
 
-- Priya uploads each batch on the Kora admin page: a `.jsonl` file of transcripts, one per line, and the export JSON Schema for that batch. Every stored export records the schema it was checked against.
+- Priya uploads each batch on the Kora admin page: one file of transcripts, as JSON Lines, a JSON array or a YAML list. She uploads no export schema; saves are checked against the package's export schema (user-originated).
 - At upload she sets how many transcripts each assignment holds, for example 10, and how many reviews each transcript needs, for example 3.
 - Priya uploads KORA's native transcript file as KORA sends it. The server converts each line with the converter KORA's package exports, then validates it against the package's transcript JSON Schema, and `transcriptId` must be unique across the upload (agent-proposed, user-approved). A file with any invalid line is rejected whole, and the rejected lines are listed by line number. This is in addition to the requirements in `docs/provenance/01a1c2d5-81d8-7000-b5d7-a91f45b37fb2-kora-upload-activate-scenario`.
 - Project status:
@@ -135,7 +135,7 @@ Origin: agent-proposed, user-approved.
 - An assignment is complete when every transcript in it has `"status": "done"` or was opted out, through `optedOut` or `optOutCategories`.
 - After completing an assignment, both participants and members can keep reviewing. Extra reviews save as they are submitted and add to a running count the reviewer can see. They can stop at any time.
 - When every transcript has met its review target or was already reviewed by that person, the continue option is hidden. The thank-you says there are no more transcripts right now and that they'll be notified when more are needed. A reviewer asking for a first assignment sees the same message.
-- A save that fails our checks is rejected: the export doesn't match the batch's schema, its reviewer block holds anything other than the reviewer ID, or a `contentHash` doesn't match. Nothing is stored. The API returns the reason, the section shows "Your last change couldn't be saved" with a retry, and the error is logged.
+- A save that fails our checks is rejected: the export doesn't match the export schema, its reviewer block holds anything other than the reviewer ID, or a `contentHash` doesn't match. Nothing is stored. The API returns the reason, the section shows "Your last change couldn't be saved" with a retry, and the error is logged.
 - A person who is both a member and a participant has two separate reviewer IDs. The active session decides which applies, and a member session wins, as on the project page today. Linking the two is out of scope.
 
 ## R5. Profile and exit-survey data

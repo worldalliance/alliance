@@ -19,12 +19,7 @@ import {
   type TestContext,
 } from "./e2e-test-utils";
 import { koraAdminActor, ORIGIN, setKoraProjectStatus } from "./kora-fixtures";
-import {
-  EXPORT_SCHEMA_TEXT,
-  koraExport,
-  koraPair,
-  koraPairsFile,
-} from "./kora-pairs";
+import { koraExport, koraPair, koraPairsFile } from "./kora-pairs";
 
 describe("Kora review actions (e2e)", () => {
   let ctx: TestContext;
@@ -72,7 +67,6 @@ describe("Kora review actions (e2e)", () => {
   it("completes a member's Kora actions when they finish their first assignment", async () => {
     const uploaded = await ctx.app.get(KoraBatchService).upload({
       transcriptsText: koraPairsFile(koraPair("A1"), koraPair("A2")),
-      exportSchemaText: EXPORT_SCHEMA_TEXT,
       transcriptsPerAssignment: 2,
       reviewsPerTranscript: 1,
       actor: koraAdminActor(ctx),
