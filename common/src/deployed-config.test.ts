@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { deployedConfigEnv, deployedConfigFor } from "./deployed-config";
+import {
+  deployedConfigEnv,
+  deployedConfigFor,
+  domainMove,
+} from "./deployed-config";
 import { isDeployed, NodeEnv } from "./node-env";
 
 describe("deployedConfigFor", () => {
@@ -38,5 +42,41 @@ describe("deployedConfigEnv", () => {
         WAITLIST_PUBLIC_MAIL_DAILY_CAP: undefined,
       }).WAITLIST_PUBLIC_MAIL_DAILY_CAP,
     ).toBeUndefined();
+  });
+});
+
+describe("domainMove", () => {
+  test("neither environment has swapped its domains", () => {
+    expect(domainMove(deployedConfigFor(NodeEnv.Staging))).toEqual({
+      legacyDomain: "staging.worldalliance.org",
+      newDomain: "staging.thealliance.org",
+    });
+    expect(domainMove(deployedConfigFor(NodeEnv.Production))).toEqual({
+      legacyDomain: "worldalliance.org",
+      newDomain: "thealliance.org",
+    });
+  });
+
+  test("swapping the two domains keeps which one is legacy", () => {
+    expect(
+      domainMove({
+        DOMAIN_NAME: "thealliance.org",
+        ALT_DOMAIN_NAME: "worldalliance.org",
+      }),
+    ).toEqual({
+      legacyDomain: "worldalliance.org",
+      newDomain: "thealliance.org",
+    });
+  });
+
+  test("throws unless exactly one domain is legacy", () => {
+    for (const [DOMAIN_NAME, ALT_DOMAIN_NAME] of [
+      ["thealliance.org", "staging.thealliance.org"],
+      ["worldalliance.org", "staging.worldalliance.org"],
+    ]) {
+      expect(() => domainMove({ DOMAIN_NAME, ALT_DOMAIN_NAME })).toThrow(
+        "exactly one",
+      );
+    }
   });
 });

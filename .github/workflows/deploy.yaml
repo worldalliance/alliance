@@ -290,12 +290,13 @@ jobs:
             [ "$avail_inodes" -ge 100000 ] || { echo "::error::Under 100k free inodes on the EC2 host; the unzip and install would fail. Free inodes there before deploying."; exit 1; }
 
             DOMAIN='${{ steps.config.outputs.DOMAIN_NAME }}'
-            ALT_DOMAIN='${{ steps.config.outputs.ALT_DOMAIN_NAME }}'
+            LEGACY_DOMAIN='${{ steps.config.outputs.LEGACY_DOMAIN_NAME }}'
+            NEW_DOMAIN='${{ steps.config.outputs.NEW_DOMAIN_NAME }}'
             # This runs before anything on the host changes. CERT_NAMES mirrors
             # alliance.conf's server_name, minus staging's www. names, which its
             # DNS doesn't serve.
-            CERT_NAMES="$DOMAIN $ALT_DOMAIN"
-            [ '${{ env.env_name }}' = production ] && CERT_NAMES="$CERT_NAMES www.$DOMAIN www.$ALT_DOMAIN"
+            CERT_NAMES="$LEGACY_DOMAIN $NEW_DOMAIN"
+            [ '${{ env.env_name }}' = production ] && CERT_NAMES="$CERT_NAMES www.$LEGACY_DOMAIN www.$NEW_DOMAIN"
             sudo bash ~/check-cert.sh "$DOMAIN" $CERT_NAMES || exit 1
 
             sudo yum install -y unzip nginx
@@ -355,7 +356,8 @@ jobs:
             # Source of truth is deploy/nginx/alliance.conf, uploaded to
             # ~/alliance.conf; substitute the per-environment domains into
             # server_name + cert paths.
-            sed -e "s/__DOMAIN__/$DOMAIN/g" -e "s/__ALT_DOMAIN__/$ALT_DOMAIN/g" ~/alliance.conf \
+            sed -e "s/__DOMAIN__/$DOMAIN/g" -e "s/__LEGACY_DOMAIN__/$LEGACY_DOMAIN/g" \
+              -e "s/__NEW_DOMAIN__/$NEW_DOMAIN/g" ~/alliance.conf \
               | sudo tee /etc/nginx/conf.d/alliance.conf > /dev/null
             sudo nginx -t || { echo "nginx config invalid"; exit 1; }
             sudo systemctl reload nginx
@@ -403,11 +405,13 @@ jobs:
             chmod o+x /home/ec2-user
 
             DOMAIN='${{ steps.config.outputs.DOMAIN_NAME }}'
-            ALT_DOMAIN='${{ steps.config.outputs.ALT_DOMAIN_NAME }}'
+            LEGACY_DOMAIN='${{ steps.config.outputs.LEGACY_DOMAIN_NAME }}'
+            NEW_DOMAIN='${{ steps.config.outputs.NEW_DOMAIN_NAME }}'
             sudo mkdir -p /var/www/certbot
 
             render () {
-              sed -e "s/__DOMAIN__/$DOMAIN/g" -e "s/__ALT_DOMAIN__/$ALT_DOMAIN/g" "$HOME/$1" \
+              sed -e "s/__DOMAIN__/$DOMAIN/g" -e "s/__LEGACY_DOMAIN__/$LEGACY_DOMAIN/g" \
+                -e "s/__NEW_DOMAIN__/$NEW_DOMAIN/g" "$HOME/$1" \
                 | sudo tee "/etc/nginx/conf.d/$1" > /dev/null
             }
 
@@ -424,7 +428,7 @@ jobs:
             sudo rm -f /etc/nginx/conf.d/admin.conf
             reload
 
-            sudo bash ~/check-cert.sh "admin.$DOMAIN" "admin.$DOMAIN" "admin.$ALT_DOMAIN" || exit 1
+            sudo bash ~/check-cert.sh "admin.$DOMAIN" "admin.$LEGACY_DOMAIN" "admin.$NEW_DOMAIN" || exit 1
 
             render alliance_admin.conf
             reload
@@ -884,11 +888,11 @@ jobs:
           curl --fail --silent --show-error http://${{ steps.config.outputs.DOMAIN_NAME }} > /dev/null
           echo "main app is reachable"
 
-      - name: Check main app on alt domain
+      - name: Check main app on the other domain
         run: |
           echo "Checking main app on ${{ steps.config.outputs.ALT_DOMAIN_NAME }}..."
           curl --fail --silent --show-error http://${{ steps.config.outputs.ALT_DOMAIN_NAME }} > /dev/null
-          echo "main app is reachable on the alt domain"
+          echo "main app is reachable on the other domain"
 
       - name: Check admin app
         run: |
@@ -917,11 +921,11 @@ jobs:
           curl --fail --silent --show-error https://${{ steps.config.outputs.DOMAIN_NAME }} > /dev/null
           echo "main app https ok"
 
-      - name: Check main app https on alt domain
+      - name: Check main app https on the other domain
         run: |
           echo "Checking main app https on ${{ steps.config.outputs.ALT_DOMAIN_NAME }}..."
           curl --fail --silent --show-error https://${{ steps.config.outputs.ALT_DOMAIN_NAME }} > /dev/null
-          echo "alt domain https ok"
+          echo "other domain https ok"
 
       - name: Check Android app links file
         run: |
@@ -937,11 +941,11 @@ jobs:
           curl --fail --silent --show-error https://admin.${{ steps.config.outputs.DOMAIN_NAME }} > /dev/null
           echo "admin app https ok"
 
-      - name: Check admin app on alt domain
+      - name: Check admin app on the other domain
         run: |
           echo "Checking admin app on admin.${{ steps.config.outputs.ALT_DOMAIN_NAME }}..."
           curl --fail --silent --show-error https://admin.${{ steps.config.outputs.ALT_DOMAIN_NAME }} > /dev/null
-          echo "admin alt domain https ok"
+          echo "admin other domain https ok"
 
       # nginx -t can pass while every /events/ request fails, e.g. on PostHog's
       # certificate. Last, so a PostHog outage doesn't skip the checks above.

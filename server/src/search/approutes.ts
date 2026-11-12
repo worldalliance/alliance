@@ -1,5 +1,5 @@
 import { commentPath } from "@alliance/common/commentPath";
-import { appendQueryParam } from "@alliance/common/url";
+import { appendQueryParam, preferNewDomain } from "@alliance/common/url";
 import {
   waitlistShareUrl,
   waitlistUnsubscribeUrl,
@@ -38,7 +38,9 @@ export function signupUrl(full = false) {
 }
 
 export function siteBaseUrl() {
-  return env("ALT_APP_URL") ?? env("APP_URL");
+  return (
+    preferNewDomain([env("ALT_APP_URL"), env("APP_URL")]) ?? env("APP_URL")
+  );
 }
 
 export function verifyEmailUrl(token: string) {
