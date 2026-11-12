@@ -110,6 +110,7 @@ describe("the fake backend's demo session", () => {
       {
         kind: AgentEventKind.Error,
         message: "The fake session's script has no more turns.",
+        needsResume: false,
       },
       { kind: AgentEventKind.TurnEnded, interrupted: false },
     ]);
@@ -335,6 +336,7 @@ describe("close", () => {
       {
         kind: AgentEventKind.Error,
         message: `The fake session ${session.id} is closed.`,
+        needsResume: true,
       },
       { kind: AgentEventKind.TurnEnded, interrupted: false },
     ]);

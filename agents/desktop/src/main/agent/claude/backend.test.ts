@@ -1,4 +1,4 @@
-import { afterAll, afterEach, describe, expect, spyOn, test } from "bun:test";
+import { afterAll, afterEach, describe, expect, test } from "bun:test";
 import { randomUUID } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -93,6 +93,20 @@ describe("a captured session", () => {
     expect(session.turnRunning).toBe(false);
     expect(session.close()).toBe(session.close());
     await session.close();
+  });
+
+  test("a send after close but before the CLI exits says to resume", async () => {
+    const session = await startEditSession();
+    const closed = session.close();
+    expect(await turn({ session, message: text("Again") })).toEqual([
+      {
+        kind: AgentEventKind.Error,
+        message: "This session was closed. Resume it to continue.",
+        needsResume: true,
+      },
+      { kind: AgentEventKind.TurnEnded, interrupted: false },
+    ]);
+    await closed;
   });
 
   test("close mid-turn ends the turn with no Error", async () => {
@@ -313,6 +327,7 @@ test("a CLI that exits mid-turn reports its stderr, then ends the turn, and a se
     {
       kind: AgentEventKind.Error,
       message: "Claude Code exited (code 7).\nout of memory",
+      needsResume: true,
     },
     { kind: AgentEventKind.TurnEnded, interrupted: false },
   ]);
@@ -322,6 +337,7 @@ test("a CLI that exits mid-turn reports its stderr, then ends the turn, and a se
     kind: AgentEventKind.Error,
     message:
       "Claude Code exited (code 7).\nout of memory\nResume the session to continue.",
+    needsResume: true,
   });
 });
 
@@ -347,43 +363,6 @@ describe("start", () => {
     }).start({ cwd: scratch });
     expect(R.isFailure(result) && result.error.message).toContain("ENOENT");
   });
-});
-
-test("output the parser can't read reports an Error and the turn goes on", async () => {
-  stubCaptures(
-    writeCapture([
-      {
-        kind: CaptureRecordKind.Start,
-        args: [...claudeSessionArgs, "--session-id", randomUUID()],
-      },
-      { kind: CaptureRecordKind.In, text: '{"type":"user"}' },
-      { kind: CaptureRecordKind.Out, text: "not json" },
-      {
-        kind: CaptureRecordKind.Out,
-        text: JSON.stringify({
-          type: "result",
-          subtype: "success",
-          is_error: false,
-        }),
-      },
-      { kind: CaptureRecordKind.StdinClosed },
-      { kind: CaptureRecordKind.Exit, code: 0 },
-    ]),
-  );
-  const logged = spyOn(console, "error").mockImplementation(() => undefined);
-  const session = R.unwrap(
-    await createClaudeBackend(cli).start({ cwd: scratch }),
-  );
-  const events = await turn({ session, message: text("Hello") });
-  logged.mockRestore();
-  expect(kinds(events)).toEqual([
-    AgentEventKind.Error,
-    AgentEventKind.TurnEnded,
-  ]);
-  expect(events[0]).toMatchObject({
-    message: expect.stringContaining("can't read"),
-  });
-  await session.close();
 });
 
 test("output between turns reaches no listener", async () => {

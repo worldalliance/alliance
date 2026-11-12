@@ -80,7 +80,8 @@ class ClaudeSession implements AgentSession {
         this.exitMessage = `Claude Code exited (${signal ?? `code ${code}`}).${stderr ? `\n${stderr}` : ""}`;
         init.onExit();
         if (this.turn) {
-          if (!this.closing) this.emitError(this.exitMessage);
+          if (!this.closing)
+            this.emitError({ message: this.exitMessage, needsResume: true });
           this.endTurn({ interrupted: this.closing !== undefined });
         }
         resolve();
@@ -101,7 +102,7 @@ class ClaudeSession implements AgentSession {
         ? "This session was closed. Resume it to continue."
         : `${this.exitMessage}\nResume the session to continue.`;
       queueMicrotask(() => {
-        this.emitError(message);
+        this.emitError({ message, needsResume: true });
         this.endTurn({ interrupted: false });
       });
     } else {
@@ -156,9 +157,10 @@ class ClaudeSession implements AgentSession {
     if (!parsed.ok) {
       console.error(`session ${this.id}: ${parsed.error.message}`, line);
       if (this.turn && !this.turn.interrupted)
-        this.emitError(
-          `Claude Code sent output Alliance agent can't read: ${parsed.error.message}`,
-        );
+        this.emitError({
+          message: `Claude Code sent output Alliance agent can't read: ${parsed.error.message}`,
+          needsResume: false,
+        });
       return;
     }
     if (!this.turn) return;
@@ -172,7 +174,7 @@ class ClaudeSession implements AgentSession {
         return;
       case ClaudeLineKind.TurnEnded:
         if (claudeLine.error && !this.turn.interrupted)
-          this.emitError(claudeLine.error);
+          this.emitError({ message: claudeLine.error, needsResume: false });
         this.endTurn({
           interrupted: this.turn.interrupted && claudeLine.error !== undefined,
         });
@@ -182,8 +184,8 @@ class ClaudeSession implements AgentSession {
     }
   }
 
-  private emitError(message: string): void {
-    this.listeners.emit({ kind: AgentEventKind.Error, message });
+  private emitError(error: { message: string; needsResume: boolean }): void {
+    this.listeners.emit({ kind: AgentEventKind.Error, ...error });
   }
 
   private endTurn({ interrupted }: { interrupted: boolean }): void {
