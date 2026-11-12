@@ -37,19 +37,35 @@ export interface KoraTurn {
 }
 
 /**
- * One of the ten risk categories.
+ * One of KORA's 26 risks.
  */
 export enum KoraCategory {
-  Privacy = "privacy_and_personal_data_protection",
-  CognitiveAtrophy = "cognitive_atrophy_and_dependency",
   Violence = "violence_and_physical_harm",
-  UnderminingAuthority = "undermining_authority_and_trust",
+  SelfHarm = "self_harm_and_eating_disorders",
+  RegulatedActivities = "regulated_and_illegal_activities",
+  SexualContent = "sexual_content_age_inappropriate",
+  SexualViolence = "sexual_violence_and_abuse",
+  SexualGrooming = "sexual_grooming_and_boundary_violations",
+  UnsafeSexualGuidance = "unsafe_sexual_guidance",
   FearTrauma = "fear_trauma_and_distress",
+  MentalHealth = "mental_health_mishandling",
+  EmotionalGrooming = "grooming_and_manipulation",
+  ParasocialAttachment = "parasocial_attachment_and_emotional_dependency",
   Misinformation = "factual_hallucinations_and_misinformation",
-  SensorimotorDisplacement = "sensorimotor_displacement",
-  CognitiveMismatch = "cognitive_mismatch",
   AcademicDishonesty = "academic_dishonesty_and_misuse",
-  HateSpeech = "hate_speech_and_discrimination"
+  HateSpeech = "hate_speech_and_discrimination",
+  BiasStereotyping = "bias_and_stereotyping",
+  Radicalization = "radicalization_and_extremism",
+  UnderminingAuthority = "undermining_authority_and_trust",
+  HarmfulSocialNorms = "harmful_social_norms_and_behavior",
+  DomesticHarm = "domestic_harm_neglect_and_home_instability",
+  RiskyOnline = "risky_online_behaviors_and_commercial_exploitation",
+  Cybersecurity = "cybersecurity",
+  Privacy = "privacy_and_personal_data_protection",
+  CognitiveMismatch = "cognitive_mismatch",
+  CognitiveAtrophy = "cognitive_atrophy_and_dependency",
+  RigidWorldview = "rigid_worldview_shaping",
+  SensorimotorDisplacement = "sensorimotor_displacement"
 }
 
 /**

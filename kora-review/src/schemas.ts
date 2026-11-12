@@ -5,41 +5,17 @@
 //
 // Bump SCHEMA_VERSION whenever either schema changes shape.
 
+import { CATEGORY_IDS } from "./risk-ids.js";
+
+export { CATEGORY_ENUM_NAMES, CATEGORY_IDS } from "./risk-ids.js";
+
 export const SCHEMA_VERSION = 2 as const;
-
-/** The ten category ids the host already uses. Order is the order categories are listed in. */
-export const CATEGORY_IDS = [
-  "privacy_and_personal_data_protection",
-  "cognitive_atrophy_and_dependency",
-  "violence_and_physical_harm",
-  "undermining_authority_and_trust",
-  "fear_trauma_and_distress",
-  "factual_hallucinations_and_misinformation",
-  "sensorimotor_displacement",
-  "cognitive_mismatch",
-  "academic_dishonesty_and_misuse",
-  "hate_speech_and_discrimination",
-] as const;
-
-/** TypeScript enum member names for CATEGORY_IDS, in the same order. Used only by the type generator. */
-export const CATEGORY_ENUM_NAMES = [
-  "Privacy",
-  "CognitiveAtrophy",
-  "Violence",
-  "UnderminingAuthority",
-  "FearTrauma",
-  "Misinformation",
-  "SensorimotorDisplacement",
-  "CognitiveMismatch",
-  "AcademicDishonesty",
-  "HateSpeech",
-] as const;
 
 const BASE = "https://github.com/worldalliance/korabench-review/schemas";
 
 const category = {
   title: "KoraCategory",
-  description: "One of the ten risk categories.",
+  description: "One of KORA's 26 risks.",
   type: "string",
   enum: [...CATEGORY_IDS],
 };

@@ -275,7 +275,9 @@ describe("mountKoraReview", () => {
     const reply = el.querySelector<HTMLElement>('.bubble[tabindex="0"]')!;
     reply.focus();
     const press = (key: string, target: Element = reply) =>
-      target.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+      target.dispatchEvent(
+        new KeyboardEvent("keydown", { key, bubbles: true }),
+      );
     press("ArrowRight");
     expect(sheet().hidden).toBe(false);
     press("+");

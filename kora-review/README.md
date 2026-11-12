@@ -60,7 +60,7 @@ In React, own only the container and mount in an effect. See [example/src/KoraRe
 | `KoraSaveState`                                | `Saved` and `Failed`.                                                                                                                                                                                    |
 | `transcriptSchema`, `exportSchema`             | JSON Schema draft 2020-12 objects.                                                                                                                                                                       |
 | `SCHEMA_VERSION`                               | `2`.                                                                                                                                                                                                     |
-| `KoraCategory`                                 | Enum of the ten category ids.                                                                                                                                                                            |
+| `KoraCategory`                                 | Enum of KORA's 26 risk ids.                                                                                                                                                                              |
 | `KoraTranscript`, `KoraExport` and their parts | Types generated from the schemas.                                                                                                                                                                        |
 
 ### Behaviour
@@ -112,7 +112,7 @@ const validateTranscript = ajv.compile(transcriptSchema);
 const validateExport = ajv.compile(exportSchema);
 ```
 
-**Transcript** (one upload line): `transcriptId` (unique within an upload; the schema can't check that across lines), `category` (one of the ten ids), `scenarioTitle`, `childAge`, and `conversationA` and `conversationB`, each a list of `{ role: "child" | "ai", text }` with at least one `ai` turn. Optional: `pairType`, `ageBand`, `childBackground`, `scenario`. AI text may use a small Markdown subset and LaTeX maths.
+**Transcript** (one upload line): `transcriptId` (unique within an upload; the schema can't check that across lines), `category` (one of the 26 risk ids), `scenarioTitle`, `childAge`, and `conversationA` and `conversationB`, each a list of `{ role: "child" | "ai", text }` with at least one `ai` turn. Optional: `pairType`, `ageBand`, `childBackground`, `scenario`. AI text may use a small Markdown subset and LaTeX maths.
 
 **Export**: `schemaVersion`, `batchId`, `reviewer: { id }`, `exportedAt`, `currentTranscriptId`, `results` (one per assigned pair, in assignment order), `profile` and `exitSurvey` (null until answered), `optOutCategories`, `isDone`. A pending result may hold some of `q0_a`, `q0_b`, `q1`, `q2_turn` and `q3_text` and not others; a done result holds all of them. Annotations give `side`, `messageIndex` (into that side's conversation), `turn`, UTF-16 `start`/`end` offsets into the turn's text, the rendered `text`, `value` (−1, 0 for a neutral note, +1) and an optional `note`.
 

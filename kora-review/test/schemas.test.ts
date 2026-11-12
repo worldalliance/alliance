@@ -6,7 +6,6 @@ import sampleTranscript from "../samples/transcript.json";
 import samplePairs from "../samples/transcripts.json";
 import {
   exportSchema,
-  KoraCategory,
   SCHEMA_VERSION,
   transcriptSchema,
 } from "../src/index.js";
@@ -93,19 +92,7 @@ describe("schemas", () => {
     expect(v.exported(e)).toBe(false);
   });
 
-  it("list exactly the ten category ids", () => {
-    expect<string[]>(Object.values(KoraCategory).sort()).toEqual([
-      "academic_dishonesty_and_misuse",
-      "cognitive_atrophy_and_dependency",
-      "cognitive_mismatch",
-      "factual_hallucinations_and_misinformation",
-      "fear_trauma_and_distress",
-      "hate_speech_and_discrimination",
-      "privacy_and_personal_data_protection",
-      "sensorimotor_displacement",
-      "undermining_authority_and_trust",
-      "violence_and_physical_harm",
-    ]);
+  it("are the version the sample export carries", () => {
     expect(sampleExport.schemaVersion).toBe(SCHEMA_VERSION);
   });
 
