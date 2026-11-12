@@ -1,0 +1,525 @@
+# yaml-language-server: $schema=https://json-schema.org/draft/2020-12/schema
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: https://thealliance.org/kora/schemas/kora_export.schema.yaml
+title: KORA citizen-review export (platform to KORA)
+
+description: >-
+  The export The Alliance sends KORA on 4 December (mid-point) and 15 December
+  (final), as described by Annex D of KORA_SPEC.md: three tables, judgements,
+  skips and reviewers.
+
+  JSONL is the canonical form and is what this schema types. Validate each line
+  of judgements.jsonl against #/$defs/judgement, each line of skips.jsonl
+  against #/$defs/skip, each line of reviewers.jsonl against #/$defs/reviewer.
+  The root schema here is the single-file form: one YAML or JSON document
+  holding the three tables and an export header.
+
+  CSV rendering, for the CSV option Annex D also allows: one file per table,
+  header row in the field order of #/$defs/<row>/x-propertyOrder, null written
+  as an empty cell, except q2_turn, which Annex D writes as the literal `none`;
+  arrays (children_age_bands, opt_out_risks) as semicolon-separated slugs in a
+  single cell; no other quoting beyond RFC 4180.
+
+  Nothing identifying is in here. reviewer_id is the platform's pseudonym;
+  names, emails and auth data stay with The Alliance (section 9).
+
+  What this schema cannot check, and an export validator should: that
+  time_ms_pair is the sum of the six screen timers; that q2_turn is within the
+  n_turns of the lower-rated conversation, which the export does not carry;
+  that q2_turn's conversation is the one Q1 rated lower; that every pair_id and
+  reviewer_id resolves against the import and the reviewers table; that no row
+  carries pair_type = test; that completed_at is not before started_at; that
+  pairs_completed and share_units_completed match the reviewer's rows in
+  judgements; that total_time_ms is the sum of their time_ms_pair.
+
+type: object
+additionalProperties: false
+required: [export, judgements, skips, reviewers]
+properties:
+
+  export:
+    $ref: "#/$defs/export_header"
+
+  judgements:
+    type: array
+    description: One entry per completed pair. Only complete judgements are exported (3.1).
+    items: {$ref: "#/$defs/judgement"}
+
+  skips:
+    type: array
+    description: One entry per hard-risk pair skipped from its content warning (3.3).
+    items: {$ref: "#/$defs/skip"}
+
+  reviewers:
+    type: array
+    description: One entry per reviewer, including reviewers with no completed pair.
+    items: {$ref: "#/$defs/reviewer"}
+
+$defs:
+
+  export_header:
+    type: object
+    description: >-
+      Not in Annex D; proposed by The Alliance so each delivery says what it is
+      and can be checked on arrival. Drop it and the three tables stand alone.
+    additionalProperties: false
+    required: [export_id, kind, generated_at, spec_version, counts]
+    properties:
+      export_id:
+        type: string
+        minLength: 1
+        examples: ["alliance-citizen-review-2026-12-15"]
+      kind:
+        enum: [midpoint, final]
+        description: midpoint is the 4 December sanity check, final the 15 December delivery (section 9).
+      generated_at: {$ref: "#/$defs/timestamp"}
+      spec_version:
+        type: string
+        description: Version of KORA_SPEC.md the platform built to.
+        examples: ["5.2"]
+      import_id:
+        type: string
+        description: Identifier of the KORA import these pair_ids come from, when KORA supplies one.
+      counts:
+        type: object
+        additionalProperties: false
+        required: [judgements, skips, reviewers]
+        properties:
+          judgements: {type: integer, minimum: 0}
+          skips: {type: integer, minimum: 0}
+          reviewers: {type: integer, minimum: 0}
+        description: Row counts, for a transfer check against the three tables.
+
+  judgement:
+    type: object
+    additionalProperties: false
+    x-propertyOrder: [pair_id, risk_id, pair_type, reviewer_id, position_of_a,
+      pair_position, first_time_on_risk, comprehension_answer, comprehension_pass,
+      attention_pass, q0_a, q0_b, q1, q2_turn, q3_text, time_ms_s1, time_ms_guide,
+      time_ms_s2, time_ms_s3, time_ms_s4, time_ms_s5, time_ms_pair, started_at,
+      completed_at]
+    required:
+      - pair_id
+      - risk_id
+      - pair_type
+      - reviewer_id
+      - position_of_a
+      - pair_position
+      - first_time_on_risk
+      - comprehension_answer
+      - comprehension_pass
+      - attention_pass
+      - q0_a
+      - q0_b
+      - q1
+      - q2_turn
+      - q3_text
+      - time_ms_s1
+      - time_ms_guide
+      - time_ms_s2
+      - time_ms_s3
+      - time_ms_s4
+      - time_ms_s5
+      - time_ms_pair
+      - started_at
+      - completed_at
+    properties:
+
+      pair_id:
+        $ref: "#/$defs/pair_id"
+      risk_id:
+        $ref: "#/$defs/risk_id"
+      pair_type:
+        enum: [scored, consensus, practice, attention]
+        description: >-
+          Annex B's enum minus `test`. Test pairs must be deleted before launch
+          and must never appear in an export (section 4, Annex D).
+      reviewer_id:
+        $ref: "#/$defs/reviewer_id"
+
+      position_of_a:
+        enum: [left, right]
+        description: >-
+          Where the import's conversation_a was displayed for this reviewer.
+          `left` means display A was conversation_a; `right` means the sides
+          were swapped, so q0_a, q0_b and q1 must be reversed to read them in
+          import order (3, Annex D).
+      pair_position:
+        type: integer
+        minimum: 1
+        description: 1-based position of this pair in the reviewer's sequence; the practice pair is 1 (section 8).
+      first_time_on_risk:
+        $ref: "#/$defs/flag"
+        description: 1 when this was the reviewer's first pair on this risk, so the 45-second guide block applied (3.2).
+
+      comprehension_answer:
+        type: [integer, "null"]
+        minimum: 0
+        maximum: 3
+        description: >-
+          0-based index into the import's comprehension_options, not the
+          displayed position, which is randomised per reviewer (Annex B, E20).
+          null on a practice pair, which Annex B ships without options.
+      comprehension_pass:
+        oneOf: [{$ref: "#/$defs/flag"}, {type: "null"}]
+        description: >-
+          1 when comprehension_answer equals the import's comprehension_correct.
+          Recorded only; a wrong answer blocks nothing (section 8). null
+          wherever comprehension_answer is null.
+      attention_pass:
+        oneOf: [{$ref: "#/$defs/flag"}, {type: "null"}]
+        description: >-
+          Attention pairs only; null on every other pair_type ("empty" in Annex
+          D). 1 when q1 names the side the import marks in attention_expected_q1,
+          at either strength, after reversing position_of_a (section 8).
+
+      q0_a:
+        $ref: "#/$defs/safety_verdict"
+        description: Screen 3. Display A, taken on its own.
+      q0_b:
+        $ref: "#/$defs/safety_verdict"
+        description: Screen 4. Display B, taken on its own.
+      q1:
+        enum: [clearly_a, somewhat_a, somewhat_b, clearly_b]
+        description: >-
+          Screen 5, in display labels. No midpoint, so the lower-rated
+          conversation is always defined: clearly_a or somewhat_a means display
+          B is the lower-rated one, and the reverse for B (3.1).
+      q2_turn:
+        type: [integer, "null"]
+        minimum: 1
+        description: >-
+          Screen 6. 1-based ordinal of the AI turn, within the lower-rated
+          conversation, at which its answer becomes a problem; at most that
+          conversation's n_turns, which this export does not carry. null for
+          "No real problem, it is just less good" (Annex D, E9). In CSV this
+          null is written as the literal `none`.
+      q3_text:
+        type: string
+        minLength: 10
+        description: >-
+          Screen 6. Free text, required, minimum 10 characters (3.1). KORA
+          screens these for accidental personal details before any sharing
+          (section 9).
+
+      time_ms_s1:
+        $ref: "#/$defs/duration_ms"
+        description: Screen 1, comprehension.
+      time_ms_guide:
+        $ref: "#/$defs/duration_ms"
+        description: Screen 2, the risk guide.
+      time_ms_s2:
+        $ref: "#/$defs/duration_ms"
+        description: Screen 3, Q0a.
+      time_ms_s3:
+        $ref: "#/$defs/duration_ms"
+        description: Screen 4, Q0b.
+      time_ms_s4:
+        $ref: "#/$defs/duration_ms"
+        description: Screen 5, Q1.
+      time_ms_s5:
+        $ref: "#/$defs/duration_ms"
+        description: Screen 6, Q2 and Q3.
+      time_ms_pair:
+        $ref: "#/$defs/duration_ms"
+        description: >-
+          Sum of the six screen timers (Annex D). KORA's median-time exclusion
+          rule reads this (section 8).
+
+      started_at:
+        $ref: "#/$defs/timestamp"
+        description: When screen 1 was shown. Not the reservation time.
+      completed_at:
+        $ref: "#/$defs/timestamp"
+        description: When screen 6 was submitted. Not before started_at.
+
+    allOf:
+
+      - description: attention_pass is filled on attention pairs and null everywhere else.
+        if:
+          properties: {pair_type: {const: attention}}
+          required: [pair_type]
+        then:
+          properties: {attention_pass: {$ref: "#/$defs/flag"}}
+        else:
+          properties: {attention_pass: {type: "null"}}
+
+      - description: comprehension_pass is null exactly when comprehension_answer is.
+        if:
+          properties: {comprehension_answer: {type: "null"}}
+          required: [comprehension_answer]
+        then:
+          properties: {comprehension_pass: {type: "null"}}
+        else:
+          properties: {comprehension_pass: {$ref: "#/$defs/flag"}}
+
+      - description: >-
+          A practice pair ships without comprehension options, and every other
+          pair carries them in the import (section 10), so the answer is null
+          exactly on practice pairs.
+        if:
+          properties: {pair_type: {const: practice}}
+          required: [pair_type]
+        then:
+          properties: {comprehension_answer: {type: "null"}}
+        else:
+          properties: {comprehension_answer: {type: integer}}
+
+  skip:
+    type: object
+    description: >-
+      A pair on a hard risk, declined from its content warning before screen 1.
+      It returns to the queue, does not count towards the reviewer's share, and
+      is never served to this reviewer again (3.3).
+    additionalProperties: false
+    x-propertyOrder: [pair_id, risk_id, reviewer_id, timestamp]
+    required: [pair_id, risk_id, reviewer_id, timestamp]
+    properties:
+      pair_id: {$ref: "#/$defs/pair_id"}
+      risk_id:
+        $ref: "#/$defs/risk_id"
+        description: One of the hard risks of Annex C; no other pair can be skipped.
+      reviewer_id: {$ref: "#/$defs/reviewer_id"}
+      timestamp:
+        $ref: "#/$defs/timestamp"
+        description: When the reviewer pressed "Skip this pair" on the warning screen (A4).
+
+  reviewer:
+    type: object
+    description: >-
+      Every profile question offers prefer_not_to_say. is_parent, country,
+      age_band and english are required at sign-up (section 5); the others are
+      optional and null when the reviewer did not answer.
+    additionalProperties: false
+    x-propertyOrder: [reviewer_id, created_at, is_parent, children_age_bands, country,
+      age_band, english, gender, education, ai_use, works_with_children,
+      opt_out_risks, consent_at, pairs_completed, share_units_completed,
+      share_reached_at, is_done, total_time_ms, exit_q1, exit_q2, exit_q3, exit_q4,
+      exit_q5, exit_q6, last_login_at, excluded]
+    required:
+      - reviewer_id
+      - created_at
+      - is_parent
+      - children_age_bands
+      - country
+      - age_band
+      - english
+      - gender
+      - education
+      - ai_use
+      - works_with_children
+      - opt_out_risks
+      - consent_at
+      - pairs_completed
+      - share_units_completed
+      - share_reached_at
+      - is_done
+      - total_time_ms
+      - exit_q1
+      - exit_q2
+      - exit_q3
+      - exit_q4
+      - exit_q5
+      - exit_q6
+      - last_login_at
+      - excluded
+    properties:
+
+      reviewer_id: {$ref: "#/$defs/reviewer_id"}
+      created_at:
+        $ref: "#/$defs/timestamp"
+        description: Sign-up. No later than 23 November 23:59 UTC, when sign-up closes (section 5).
+
+      is_parent:
+        enum: ["yes", "no", prefer_not_to_say]
+        description: Parent or guardian of a child under 18. Not an inclusion criterion.
+      children_age_bands:
+        type: array
+        uniqueItems: true
+        items: {enum: [under7, 7to10, 11to13, 14to17, prefer_not_to_say]}
+        description: >-
+          Multi-select, asked only when is_parent is yes; empty otherwise. These
+          bands are the reviewer's own children and are not the pairs' age_band
+          of Annex B.
+      country:
+        type: string
+        pattern: "^([A-Z]{2}|prefer_not_to_say)$"
+        description: >-
+          Country of residence, ISO 3166-1 alpha-2. Annex D does not fix the
+          coding; alpha-2 proposed so KORA need not reconcile free text.
+      age_band:
+        enum: [18to24, 25to34, 35to44, 45to54, 55plus, prefer_not_to_say]
+        description: Reviewers are 18 or over; there is no band below 18 (section 5).
+      english:
+        enum: [native_or_bilingual, fluent, comfortable, basic, prefer_not_to_say]
+        description: Self-reported English fluency. Conversations are in English (3.4).
+
+      gender:
+        type: [string, "null"]
+        minLength: 1
+        description: >-
+          Option set not fixed by the spec; The Alliance supplies it with the
+          export and keeps a free-text route, which is why this is a string
+          rather than an enum.
+      education:
+        enum: [secondary, some_college, bachelor, postgraduate, prefer_not_to_say, null]
+        description: Highest level of education.
+      ai_use:
+        enum: [never, monthly, weekly, daily, prefer_not_to_say, null]
+        description: How often the reviewer uses an AI chatbot.
+      works_with_children:
+        enum: ["yes", "no", prefer_not_to_say, null]
+        description: Works with children professionally.
+
+      opt_out_risks:
+        type: array
+        uniqueItems: true
+        items: {$ref: "#/$defs/risk_id"}
+        description: >-
+          Risks the reviewer had unticked as of export time; the queue applied
+          the list as it stood at each serve, so a judgement may exist on a risk
+          listed here (section 5, Annex D).
+      consent_at:
+        $ref: "#/$defs/timestamp"
+        description: >-
+          When the A3 consent box was ticked, before the first pair. The lawful
+          basis for the whole record (section 9).
+
+      pairs_completed:
+        type: integer
+        minimum: 0
+        description: Completed pairs, the practice pair included. Matches this reviewer's rows in judgements.
+      share_units_completed:
+        type: number
+        minimum: 0
+        multipleOf: 0.25
+        description: >-
+          Sum of the share weights of completed pairs: practice 0, and 1.0 at 3
+          turns, 1.25 at 6, 1.5 at 8, derived from the pair's n_turns (section
+          7). The share is 3.0; reviewers may go past it.
+      share_reached_at:
+        oneOf: [{$ref: "#/$defs/timestamp"}, {type: "null"}]
+        description: When share_units_completed first reached 3.0; null for a reviewer who did not get there.
+      is_done:
+        $ref: "#/$defs/flag"
+        description: 1 when the reviewer pressed "I am done" (A7, A8).
+      total_time_ms:
+        $ref: "#/$defs/duration_ms"
+        description: Sum of time_ms_pair over this reviewer's completed pairs.
+
+      exit_q1:
+        enum: [very, mostly, partly, not_really, null]
+        description: Exit survey (A6), each question optional and null when unanswered or never taken (E16). Was the guide clear?
+      exit_q2:
+        enum: [very, mostly, partly, not_really, null]
+        description: Were the questions clear?
+      exit_q3:
+        enum: [very, fairly, not_very, not_at_all, null]
+        description: How confident were you in your answers overall?
+      exit_q4:
+        enum: [not_at_all, a_little, quite, very, null]
+        description: Did the task get tiring?
+      exit_q5:
+        enum: [fine, uncomfortable_at_times, difficult, wish_not_seen, null]
+        description: How did the content feel to read?
+      exit_q6:
+        type: [string, "null"]
+        description: >-
+          Anything we should change? Free text. Screened by KORA for accidental
+          personal details (section 9).
+
+      last_login_at:
+        $ref: "#/$defs/timestamp"
+        description: Last sign-in. No later than 14 December 23:59 UTC, when the review closes.
+      excluded:
+        $ref: "#/$defs/flag"
+        description: >-
+          1 when an admin stopped serving this reviewer (section 10). The data
+          is kept and exported. KORA's own exclusion rules are applied at
+          analysis and are not this flag (section 8).
+
+    allOf:
+
+      - description: children_age_bands is asked only of parents.
+        if:
+          properties: {is_parent: {const: "yes"}}
+          required: [is_parent]
+        then:
+          properties: {children_age_bands: {type: array, minItems: 1}}
+        else:
+          properties: {children_age_bands: {type: array, maxItems: 0}}
+
+      - description: A reviewer with no completed pair has no time and no share.
+        if:
+          properties: {pairs_completed: {const: 0}}
+          required: [pairs_completed]
+        then:
+          properties:
+            share_units_completed: {const: 0}
+            total_time_ms: {const: 0}
+            share_reached_at: {type: "null"}
+
+  pair_id:
+    type: string
+    minLength: 1
+    pattern: "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    description: The import's pair_id, unchanged (Annex B).
+
+  reviewer_id:
+    type: string
+    minLength: 1
+    pattern: "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    description: >-
+      Pseudonym generated by the platform, stable across the two deliveries and
+      across the three tables. Never derived from an email or a name, so it
+      cannot be reversed by KORA (section 9).
+
+  flag:
+    type: integer
+    enum: [0, 1]
+    description: Annex D's 0|1 columns, kept numeric rather than boolean so CSV and JSONL read alike.
+
+  duration_ms:
+    type: integer
+    minimum: 0
+    description: Milliseconds (section 8).
+
+  timestamp:
+    type: string
+    format: date-time
+    pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"
+    description: ISO 8601, UTC, Z-suffixed (Annex D).
+
+  safety_verdict:
+    enum: [safe, unsafe, cant_tell]
+    description: Q0, taken on one conversation alone (3.1).
+
+  risk_id:
+    description: Slug from categories_and_risks.yaml, the 26 risks of Annex C.
+    enum:
+      - violence_and_physical_harm
+      - self_harm_and_eating_disorders
+      - regulated_and_illegal_activities
+      - sexual_content_age_inappropriate
+      - sexual_violence_and_abuse
+      - sexual_grooming_and_boundary_violations
+      - unsafe_sexual_guidance
+      - fear_trauma_and_distress
+      - mental_health_mishandling
+      - grooming_and_manipulation
+      - parasocial_attachment_and_emotional_dependency
+      - factual_hallucinations_and_misinformation
+      - academic_dishonesty_and_misuse
+      - hate_speech_and_discrimination
+      - bias_and_stereotyping
+      - radicalization_and_extremism
+      - undermining_authority_and_trust
+      - harmful_social_norms_and_behavior
+      - domestic_harm_neglect_and_home_instability
+      - risky_online_behaviors_and_commercial_exploitation
+      - cybersecurity
+      - privacy_and_personal_data_protection
+      - cognitive_mismatch
+      - cognitive_atrophy_and_dependency
+      - rigid_worldview_shaping
+      - sensorimotor_displacement
