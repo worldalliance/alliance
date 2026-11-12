@@ -22,10 +22,10 @@ describe("releaseTargetFor", () => {
       const target = releaseTargetFor(applicationId);
 
       expect(target.ok && target.value).toMatchObject({
-        apiUrl: "https://staging.worldalliance.org/api",
+        apiUrl: "https://staging.thealliance.org/api",
         siteUrl: "https://staging.thealliance.org",
         env: NodeEnv.Staging,
-        posthog: { host: "https://staging.worldalliance.org/events/" },
+        posthog: { host: "https://staging.thealliance.org/events/" },
       });
     },
   );
@@ -37,9 +37,10 @@ describe("releaseTargetFor", () => {
     const target = releaseTargetFor(applicationId);
 
     expect(target.ok && target.value).toMatchObject({
-      apiUrl: "https://worldalliance.org/api",
+      apiUrl: "https://thealliance.org/api",
       siteUrl: "https://thealliance.org",
       env: NodeEnv.Production,
+      posthog: { host: "https://thealliance.org/events/" },
     });
   });
 

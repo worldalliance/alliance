@@ -109,8 +109,8 @@ export class AuthController {
       await this.authService.login(signInDto.email, signInDto.password);
 
     // A cookie session cannot follow them to the new domain, so signing them in
-    // here only to have the web app bounce them is a loop. Header sessions are
-    // the mobile app, which has one API host and never moves.
+    // here only to have the web app bounce them is a loop. Header sessions carry
+    // their tokens with them, so they sign in on either domain.
     if (
       MODE_USES_COOKIES[signInDto.mode] &&
       switchedDomainAt !== null &&
