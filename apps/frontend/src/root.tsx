@@ -87,8 +87,7 @@ export const ErrorBoundary = RootErrorBoundary;
 export function Layout({ children }: { children: React.ReactNode }) {
   useNumberInputScrollGuard();
   const { pathname } = useLocation();
-  // A deployed build can't lack the key (webEnvPlugin). `citesting take`
-  // builds with `--mode development`: a production bundle without it.
+  // A deployed build can't lack the key (webEnvPlugin).
   const posthogKey =
     import.meta.env.PROD && pathname !== MOBILE_OAUTH_RETURN_PATH
       ? webEnv("VITE_PUBLIC_POSTHOG_KEY")
