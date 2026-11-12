@@ -8,7 +8,7 @@ description: >-
 inputs:
   role:
     description: >-
-      review, pr-screenshots, visual-regression, staging, production,
+      review, pr-screenshots, staging, production,
       staging-hosts or production-hosts.
       terraform/ci-oidc.tf decides which jobs may assume each role and which
       parameters it reads.

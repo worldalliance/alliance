@@ -4,17 +4,16 @@ No workflow reads a GitHub secret other than the `GITHUB_TOKEN` Actions issues e
 
 ## Roles
 
-`terraform/ci-oidc.tf` defines seven roles. A role's trust policy decides which jobs can assume it; GitHub's environment branch rules gate the same jobs on GitHub's side.
+`terraform/ci-oidc.tf` defines six roles. A role's trust policy decides which jobs can assume it; GitHub's environment branch rules gate the same jobs on GitHub's side.
 
-| Role                            | Assumed by                                                                                       | Can read                                                                             |
-| ------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
-| `alliance-ci-review`            | any run on a branch ref (push, dispatch, schedule, …), and pull requests from this repo          | `ci/review/*`, `ci/shared/*`                                                         |
-| `alliance-ci-pr-screenshots`    | the PR screenshots `post` job, in the `pr-screenshots` environment                               | `ci/pr-screenshots/*`                                                                |
-| `alliance-ci-visual-regression` | only deploy runs of commits from before visual regression was removed; ALL-2169 removes the role | `ci/visual-regression/*`                                                             |
-| `alliance-ci-staging`           | jobs in the `staging` environment running on `main`                                              | `ci/deploy/*`, `ci/visual-regression/SLACK_BOT_TOKEN`, `ci/shared/*`, `staging/ci/*` |
-| `alliance-ci-production`        | jobs in the `production` environment on `main` or `production`                                   | `ci/deploy/*`, `ci/visual-regression/SLACK_BOT_TOKEN`, `ci/shared/*`                 |
-| `alliance-ci-staging-hosts`     | the host-deploy jobs, in the `staging-hosts` environment on `main`                               | nothing; runs Run Command on the staging host                                        |
-| `alliance-ci-production-hosts`  | the host-deploy jobs, in the `production-hosts` environment on `production`                      | nothing; runs Run Command on the production host                                     |
+| Role                           | Assumed by                                                                              | Can read                                         |
+| ------------------------------ | --------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `alliance-ci-review`           | any run on a branch ref (push, dispatch, schedule, …), and pull requests from this repo | `ci/review/*`, `ci/shared/*`                     |
+| `alliance-ci-pr-screenshots`   | the PR screenshots `post` job, in the `pr-screenshots` environment                      | `ci/pr-screenshots/*`                            |
+| `alliance-ci-staging`          | jobs in the `staging` environment running on `main`                                     | `ci/deploy/*`, `ci/shared/*`, `staging/ci/*`     |
+| `alliance-ci-production`       | jobs in the `production` environment on `main` or `production`                          | `ci/deploy/*`, `ci/shared/*`                     |
+| `alliance-ci-staging-hosts`    | the host-deploy jobs, in the `staging-hosts` environment on `main`                      | nothing; runs Run Command on the staging host    |
+| `alliance-ci-production-hosts` | the host-deploy jobs, in the `production-hosts` environment on `production`             | nothing; runs Run Command on the production host |
 
 Every trust policy also pins the repository and its owner by numeric id. A pull request from a fork gets no OIDC token, so it reads nothing. No CI role reads the backends' secrets under `/alliance/<env>/server/` (see `docs/backend-secrets.md`).
 
@@ -37,7 +36,7 @@ The job needs `permissions: id-token: write`, and since naming any permission dr
     OPENAI_API_KEY: ${{ fromJSON(steps.aws.outputs.secrets || '{}').OPENAI_API_KEY }}
 ```
 
-Keep the `|| '{}'`: GitHub evaluates a step's `env` even when its `if` skips it, so a lookup whose `aws` step was skipped would otherwise fail the job on `fromJSON('')`. The action masks every value in the logs, failing if a name is missing from Parameter Store, and loads `.github/ci.env` into the job's environment. The role's AWS credentials stay inside the action unless `export-credentials: true`, which jobs calling S3 or Run Command themselves set. `id-token: write` still lets any step in the job assume the role and read everything it is granted, so code the job runs, such as dependencies' install scripts or an agent, can too. A secret such code must not reach gets its own role behind a GitHub environment that only the job holding it names, as `PR_SCREENSHOTS_GH_TOKEN` and Run Command on the hosts do. The deploy's React build has no role; `upload-react-sourcemaps`, a job of its own, uploads its source maps with the environment's. The mobile builds, the staging store build and `publish-mobile-ota`, run the app's dependencies in jobs holding their environment's role, so that code can read everything the role grants (the Expo token, the PostHog sourcemap key, the Slack tokens and, for staging, the App Store Connect and Play keys) and write the CI storage bucket, visual regression baselines included. It could reach the store keys before too, through `eas submit`, which loads the app's config plugins with those keys in its environment (ALL-2082).
+Keep the `|| '{}'`: GitHub evaluates a step's `env` even when its `if` skips it, so a lookup whose `aws` step was skipped would otherwise fail the job on `fromJSON('')`. The action masks every value in the logs, failing if a name is missing from Parameter Store, and loads `.github/ci.env` into the job's environment. The role's AWS credentials stay inside the action unless `export-credentials: true`, which jobs calling S3 or Run Command themselves set. `id-token: write` still lets any step in the job assume the role and read everything it is granted, so code the job runs, such as dependencies' install scripts or an agent, can too. A secret such code must not reach gets its own role behind a GitHub environment that only the job holding it names, as `PR_SCREENSHOTS_GH_TOKEN` and Run Command on the hosts do. The deploy's React build has no role; `upload-react-sourcemaps`, a job of its own, uploads its source maps with the environment's. The mobile builds, the staging store build and `publish-mobile-ota`, run the app's dependencies in jobs holding their environment's role, so that code can read everything the role grants (the Expo token, the PostHog sourcemap key, the Slack webhook and, for staging, the App Store Connect and Play keys). It could reach the store keys before too, through `eas submit`, which loads the app's config plugins with those keys in its environment (ALL-2082).
 
 ## Deploying to the hosts
 
@@ -53,7 +52,7 @@ Signed in to AWS as an admin, put the parameter as a SecureString, from a file o
 
 ```bash
 aws ssm put-parameter --region us-west-2 --type SecureString --overwrite \
-  --name /alliance/ci/<review|pr-screenshots|visual-regression|shared|deploy>/<NAME> --value file://value.txt
+  --name /alliance/ci/<review|pr-screenshots|shared|deploy>/<NAME> --value file://value.txt
 rm value.txt
 ```
 

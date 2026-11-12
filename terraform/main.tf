@@ -245,15 +245,6 @@ resource "aws_s3_bucket" "dev_assets" {
 }
 
 
-resource "aws_s3_bucket" "ci_storage" {
-  bucket        = "alliance-ci-storage-${random_id.bucket_suffix.hex}"
-  force_destroy = true
-  tags = {
-    Name        = "alliance-ci-storage"
-    Environment = "prod"
-  }
-}
-
 resource "aws_s3_bucket_public_access_block" "assets" {
   bucket                  = aws_s3_bucket.assets.id
   block_public_policy     = true
