@@ -14,7 +14,11 @@ import {
   isDraftValidatorId,
 } from "@alliance/common/forms/visible-if-formula";
 import { R, type Result } from "@alliance/common/result";
-import { Injectable, Logger } from "@nestjs/common";
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { User } from "src/user/entities/user.entity";
 import { UserVisibilityContextService } from "src/user/user-visibility-context.service";
@@ -61,10 +65,10 @@ export class MemberVisibilityService {
     userId: number;
     /** Validators already logged as failing, so a batch logs each once. */
     loggedFailures?: Set<number>;
-    /** Fail a builder's unsaved validator, whose id is a negative placeholder,
-     * without looking it up. Elsewhere one is looked up, logged as missing,
-     * and fails, since a stored schema shouldn't hold one. */
-    skipUnsavedValidators?: boolean;
+    /** For the admin preview: fail a builder's unsaved validator, whose id
+     * is a negative placeholder, without looking it up, and count one that
+     * throws as failed, logging it, instead of rejecting. */
+    preview?: boolean;
     /** The schema's validators, loaded once for a batch of members. */
     validators?: ReadonlyMap<number, CustomValidator>;
   }): Promise<MemberVisibilityExtras> {
@@ -72,12 +76,11 @@ export class MemberVisibilityService {
       schema,
       userId,
       loggedFailures = new Set<number>(),
-      skipUnsavedValidators = false,
+      preview = false,
     } = params;
     const { validatorIds, accountConditionKinds } = conditionInputs(schema);
     const runIds = [...validatorIds].filter(
-      (validatorId) =>
-        !(skipUnsavedValidators && isDraftValidatorId(validatorId)),
+      (validatorId) => !(preview && isDraftValidatorId(validatorId)),
     );
     const validators =
       params.validators ??
@@ -87,7 +90,7 @@ export class MemberVisibilityService {
     const validatorResults: Record<number, boolean> = Object.fromEntries(
       await Promise.all(
         Array.from(validatorIds).map(async (validatorId) => {
-          if (skipUnsavedValidators && isDraftValidatorId(validatorId)) {
+          if (preview && isDraftValidatorId(validatorId)) {
             return [validatorId, false] as const;
           }
           try {
@@ -106,6 +109,12 @@ export class MemberVisibilityService {
               loggedFailures.add(validatorId);
               this.logger.error(
                 `Failed to evaluate visibility validator ${validatorId}: ${String(error)}`,
+              );
+            }
+            if (!preview) {
+              throw new InternalServerErrorException(
+                `Visibility validator ${validatorId} failed`,
+                { cause: error },
               );
             }
             return [validatorId, false] as const;
@@ -186,7 +195,7 @@ export class MemberVisibilityService {
               schema,
               userId,
               loggedFailures,
-              skipUnsavedValidators: true,
+              preview: true,
               validators,
             })),
             deviceType: "desktop",

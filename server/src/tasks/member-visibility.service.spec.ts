@@ -99,19 +99,34 @@ describe("MemberVisibilityService.profiles", () => {
 });
 
 describe("MemberVisibilityService.memberExtras", () => {
-  it.each([-1, 0])(
-    "runs validator %i for a member's own form, logging its failure",
+  it("fails when a validator throws for a member's own form, logging the cause without sending it", async () => {
+    const { visibility, logged } = await service();
+    const failure = visibility.memberExtras({
+      schema: gatedBy([4]),
+      userId: 1,
+    });
+    await expect(failure).rejects.toThrow("Visibility validator 4 failed");
+    await expect(failure).rejects.toMatchObject({
+      response: expect.not.objectContaining({
+        message: expect.stringContaining("misconfigured"),
+      }),
+    });
+    expect(logged).toHaveBeenCalledWith(
+      expect.stringContaining("misconfigured"),
+    );
+  });
+
+  it.each([-1, 4])(
+    "fails when a member's own form names validator %i that doesn't exist",
     async (validatorId) => {
-      const { visibility, validatorService, logged } = await service();
-      const extras = await visibility.memberExtras({
-        schema: gatedBy([validatorId]),
-        userId: 1,
-      });
-      expect(extras.visibilityValidatorResults).toEqual({
-        [validatorId]: false,
-      });
-      expect(validatorService.checkValidator).toHaveBeenCalledTimes(1);
-      expect(logged).toHaveBeenCalledTimes(1);
+      const { visibility } = await service();
+      await expect(
+        visibility.memberExtras({
+          schema: gatedBy([validatorId]),
+          userId: 1,
+          validators: new Map(),
+        }),
+      ).rejects.toThrow(`Visibility validator ${validatorId} failed`);
     },
   );
 

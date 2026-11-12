@@ -2538,9 +2538,7 @@ describe("Tasks (e2e)", () => {
         .expect(400);
     });
 
-    // Validator -1 never resolves to a row, so the server reads it as false —
-    // a verdict a client can be caught disagreeing with.
-    const draftValidatorSchema: FormSchema = {
+    const gatedBy = (validatorId: number): FormSchema => ({
       pages: [
         {
           id: "page-1",
@@ -2551,9 +2549,7 @@ describe("Tasks (e2e)", () => {
               kind: "text",
               label: "Proof",
               visibleIfFormula: {
-                conditions: {
-                  condition1: { kind: "validator", validatorId: -1 },
-                },
+                conditions: { condition1: { kind: "validator", validatorId } },
                 formula: "condition1",
               },
             },
@@ -2562,20 +2558,24 @@ describe("Tasks (e2e)", () => {
       ],
       outputViews: [],
       aggregateViews: [],
-    };
+    });
 
-    it("accepts the draft validator ids an admin-built schema can keep", async () => {
-      const action = await createAction("Validator Action Four");
+    const submitGatedForm = async (params: {
+      title: string;
+      validatorId: number;
+      claimed?: Record<string, boolean>;
+      status: number;
+    }) => {
+      const action = await createAction(params.title);
       const form = await request(ctx.app.getHttpServer())
         .post("/tasks/createForm")
         .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ title: "Validator Visibility 4", schema: draftValidatorSchema })
+        .send({ title: params.title, schema: gatedBy(params.validatorId) })
         .expect(201);
       await actionRepo.update(action.id, {
         taskFormId: form.body.id as number,
       });
-
-      const submit = await request(ctx.app.getHttpServer())
+      return request(ctx.app.getHttpServer())
         .post(`/tasks/submitForm/${form.body.id}`)
         .set("Authorization", `Bearer ${ctx.accessToken}`)
         .send({
@@ -2583,40 +2583,31 @@ describe("Tasks (e2e)", () => {
           formSnapshotId: form.body.formSnapshotId as number,
           actionId: action.id,
           deviceType: "desktop" as const,
+          visibilityValidatorResults: params.claimed,
         })
-        .expect(201);
-      expect(submit.body.visibilityValidatorResults["-1"]).toBe(false);
+        .expect(params.status);
+    };
 
-      const read = await request(ctx.app.getHttpServer())
-        .get(`/tasks/myResponse/${form.body.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(200);
-      expect(read.body.visibilityValidatorResults["-1"]).toBe(false);
+    it("refuses a submission whose schema keeps a draft validator id", async () => {
+      await submitGatedForm({
+        title: "Validator Visibility 4",
+        validatorId: -1,
+        status: 500,
+      });
     });
 
     it("stores the verdicts the server ran, not the ones the client claims", async () => {
-      const action = await createAction("Validator Action Six");
-      const form = await request(ctx.app.getHttpServer())
-        .post("/tasks/createForm")
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ title: "Validator Visibility 6", schema: draftValidatorSchema })
-        .expect(201);
-      await actionRepo.update(action.id, {
-        taskFormId: form.body.id as number,
+      await userRepo.update(ctx.testUserId, { phoneNumber: null });
+      const validatorId = await createValidator(
+        CustomValidatorType.HasPhoneNumber,
+      );
+      const submit = await submitGatedForm({
+        title: "Validator Visibility 6",
+        validatorId,
+        claimed: { [validatorId]: true },
+        status: 201,
       });
-
-      const submit = await request(ctx.app.getHttpServer())
-        .post(`/tasks/submitForm/${form.body.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .send({
-          answers: {},
-          formSnapshotId: form.body.formSnapshotId as number,
-          actionId: action.id,
-          deviceType: "desktop" as const,
-          visibilityValidatorResults: { "-1": true },
-        })
-        .expect(201);
-      expect(submit.body.visibilityValidatorResults["-1"]).toBe(false);
+      expect(submit.body.visibilityValidatorResults[validatorId]).toBe(false);
     });
 
     it("drops unreadable stored verdicts instead of failing the read", async () => {
