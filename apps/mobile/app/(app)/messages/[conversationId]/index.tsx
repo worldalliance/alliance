@@ -275,7 +275,6 @@ export default function ConversationScreen() {
                 listRef.current?.scrollToEnd?.({ animated: false });
               }}
               contentContainerStyle={{
-                paddingVertical: 12,
                 paddingBottom: 16,
                 flexGrow: 1,
                 justifyContent: "flex-end",
