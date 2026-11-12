@@ -1,4 +1,5 @@
 import { commentPath } from "@alliance/common/commentPath";
+import { KORA_PROJECT_PATH } from "@alliance/common/kora";
 import { appendQueryParam } from "@alliance/common/url";
 import {
   waitlistShareUrl,
@@ -16,20 +17,24 @@ export function actionUrl(actionId: number, full = false) {
   return full ? `${siteBaseUrl()}${path}` : path;
 }
 
-function waitlistBaseUrl() {
+function requiredSiteBaseUrl() {
   const baseUrl = siteBaseUrl();
   if (!baseUrl) {
-    throw new Error("APP_URL is not set, so a waitlist link has no host");
+    throw new Error("APP_URL is not set, so a full link has no host");
   }
   return baseUrl;
 }
 
 export function waitlistShareLink(code: string) {
-  return waitlistShareUrl(waitlistBaseUrl(), code);
+  return waitlistShareUrl(requiredSiteBaseUrl(), code);
 }
 
 export function waitlistUnsubscribeLink(token: string) {
-  return waitlistUnsubscribeUrl(waitlistBaseUrl(), token);
+  return waitlistUnsubscribeUrl(requiredSiteBaseUrl(), token);
+}
+
+export function koraProjectUrl() {
+  return `${requiredSiteBaseUrl()}${KORA_PROJECT_PATH}`;
 }
 
 export function signupUrl(full = false) {

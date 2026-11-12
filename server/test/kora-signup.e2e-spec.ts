@@ -1,5 +1,5 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
-import { KoraError } from "@alliance/common/kora";
+import { KORA_PROJECT_PATH, KoraError } from "@alliance/common/kora";
 import { KoraParticipantSession } from "src/kora/entities/kora-participant-session.entity";
 import { KoraParticipantSignup } from "src/kora/entities/kora-participant-signup.entity";
 import { KoraParticipant } from "src/kora/entities/kora-participant.entity";
@@ -16,6 +16,7 @@ import { ORIGIN, koraHarness, type KoraHarness } from "./kora-fixtures";
 import { forgetRateEvents, uniqueEmail, uniquePhone } from "./otp-fixtures";
 
 const INVALID_CONTACT = "Enter a valid email address or mobile number.";
+const PROJECT_URL = `${process.env.APP_URL}${KORA_PROJECT_PATH}`;
 
 function cookieFrom(res: request.Response, name: string): string | undefined {
   const cookies: string[] = [res.headers["set-cookie"] ?? []].flat();
@@ -87,6 +88,9 @@ describe("Kora signup and login (e2e)", () => {
     expect(
       await h.ctx.dataSource.getRepository(Mail).countBy({ to: email }),
     ).toBe(0);
+    const [confirmation] = await h.messagesTo(email, 1);
+    expect(confirmation.text).toContain("Ada Participant");
+    expect(confirmation.text).toContain(PROJECT_URL);
   });
 
   it("counts participants publicly, leaving out a contact still waiting on a name", async () => {
@@ -118,6 +122,9 @@ describe("Kora signup and login (e2e)", () => {
     expect(
       await h.ctx.dataSource.getRepository(Mms).countBy({ to: phoneNumber }),
     ).toBe(0);
+    const [confirmation] = await h.messagesTo(phoneNumber, 1);
+    expect(confirmation.text).toContain("Hi Phone Person");
+    expect(confirmation.text).toContain(PROJECT_URL);
 
     const later = h.browser();
     await h.sendCode(later, { phoneNumber }).expect(200);
@@ -129,6 +136,7 @@ describe("Kora signup and login (e2e)", () => {
     expect(
       (await participants().findOneByOrFail({ id: first.id })).timeZone,
     ).toBe("Asia/Tokyo");
+    expect(await h.messagesTo(phoneNumber, 2)).toHaveLength(1);
   });
 
   it("counts a code signup and a later code sign-in by their channel", async () => {
@@ -265,6 +273,7 @@ describe("Kora signup and login (e2e)", () => {
     const stored = await participants().findOneByOrFail({ email });
     expect(stored.name).toBe(first.body.name);
     expect(await participants().countBy({ email })).toBe(1);
+    expect(await h.messagesTo(email, 2)).toHaveLength(1);
     expect(
       capture.mock.calls.map(([{ event, properties }]) => ({
         event,
