@@ -1,9 +1,12 @@
 import { expect, spyOn, test } from "bun:test";
+import { type AgentEvent, AgentEventKind } from "../../shared/agent-event";
 import { SessionListeners } from "./listeners";
-import { type AgentEvent, AgentEventKind } from "./session";
 
 const first: AgentEvent = { kind: AgentEventKind.AssistantText, text: "one" };
-const second: AgentEvent = { kind: AgentEventKind.TurnEnded };
+const second: AgentEvent = {
+  kind: AgentEventKind.TurnEnded,
+  interrupted: false,
+};
 
 function setup() {
   const listeners = new SessionListeners("session-1");

@@ -25,8 +25,8 @@ test.afterEach(async () => {
 
 // The page-side code is passed as strings: this tsconfig has no DOM lib.
 
-test("the built app opens a window titled Alliance agent", async () => {
-  await expect(page).toHaveTitle("Alliance agent");
+test("the built app opens a window whose title names Alliance agent", async () => {
+  await expect(page).toHaveTitle(/Alliance agent$/);
 });
 
 test("the tests keep the window off screen", async () => {
@@ -73,6 +73,41 @@ test("the CSP blocks inline scripts", async () => {
   await violation;
 });
 
+test("the stylesheet loads, with its dark colours", async () => {
+  const background = () =>
+    page.evaluate("getComputedStyle(document.body).backgroundColor");
+  await page.emulateMedia({ colorScheme: "light" });
+  expect(await background()).toBe("rgb(255, 255, 255)");
+  await page.emulateMedia({ colorScheme: "dark" });
+  expect(await background()).toBe("rgb(13, 17, 23)");
+});
+
+test("a button marked aria-disabled reads as inactive and shows no press", async () => {
+  await page.evaluate(`{
+    document.body.innerHTML =
+      '<button>a</button><button aria-disabled="true">b</button><button class="primary">c</button><button class="primary" aria-disabled="true">d</button>';
+    window.look = (name) => {
+      const button = [...document.querySelectorAll("button")].find((b) => b.textContent === name);
+      const { opacity, backgroundColor, filter } = getComputedStyle(button);
+      return { opacity, backgroundColor, filter };
+    };
+  }`);
+  const look = (name: string) => page.evaluate(`look("${name}")`);
+  const pressed = async (name: string) => {
+    await page.getByRole("button", { name }).hover();
+    await page.mouse.down();
+    const looks = await look(name);
+    await page.mouse.up();
+    return looks;
+  };
+  for (const name of ["b", "d"]) {
+    expect(await look(name)).toMatchObject({ opacity: "0.7" });
+    expect(await pressed(name)).toEqual(await look(name));
+  }
+  for (const name of ["a", "c"])
+    expect(await pressed(name)).not.toEqual(await look(name));
+});
+
 test("the page can't read local files", async () => {
   await expect(page.evaluate("fetch('file:///etc/hosts')")).rejects.toThrow();
 });
@@ -105,4 +140,57 @@ test("the app protocol serves files whose names need percent-encoding", async ()
   } finally {
     await rm(script);
   }
+});
+
+test("reopening a closed window on macOS reloads a crashed page", async () => {
+  test.skip(process.platform !== "darwin", "only macOS keeps the app open");
+  await app.evaluate(async ({ app, BrowserWindow }) => {
+    const [window] = BrowserWindow.getAllWindows();
+    if (!window) throw new Error("the app has no window");
+    const gone = new Promise((resolve) =>
+      window.webContents.once("render-process-gone", resolve),
+    );
+    window.webContents.forcefullyCrashRenderer();
+    await gone;
+    Object.assign(window, { show: () => undefined, focus: () => undefined });
+    window.close();
+    app.emit("activate");
+  });
+  await expect
+    .poll(() =>
+      app.evaluate(({ BrowserWindow }) => {
+        const contents = BrowserWindow.getAllWindows()[0]?.webContents;
+        return contents && !contents.isCrashed() && !contents.isLoading();
+      }),
+    )
+    .toBe(true);
+});
+
+test("closing a fullscreen window on macOS leaves fullscreen before it hides, unless it is reopened first", async () => {
+  test.skip(process.platform !== "darwin", "only macOS keeps the app open");
+  // A headless window can't go fullscreen, so its fullscreen state is stubbed.
+  const calls = await app.evaluate(({ app, BrowserWindow }) => {
+    const [window] = BrowserWindow.getAllWindows();
+    if (!window) throw new Error("the app has no window");
+    const calls: string[] = [];
+    Object.assign(window, {
+      isFullScreen: () => true,
+      setFullScreen: (fullScreen: boolean) =>
+        calls.push(`setFullScreen ${fullScreen}`),
+      show: () => calls.push("show"),
+      hide: () => calls.push("hide"),
+    });
+    window.close();
+    window.emit("leave-full-screen");
+    window.close();
+    app.emit("activate");
+    window.emit("leave-full-screen");
+    return calls;
+  });
+  expect(calls).toEqual([
+    "setFullScreen false",
+    "hide",
+    "setFullScreen false",
+    "show",
+  ]);
 });

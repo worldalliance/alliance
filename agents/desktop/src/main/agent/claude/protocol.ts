@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { R, type Result } from "../../../../../../common/src/result";
-import { type AgentEvent, AgentEventKind, type AgentMessage } from "../session";
+import { type AgentEvent, AgentEventKind } from "../../../shared/agent-event";
+import { describeError } from "../../describe-error";
+import { type AgentMessage } from "../session";
 
 export const CLAUDE_CODE_VERSION = "2.1.322";
 
@@ -86,23 +88,18 @@ const events = (list: TurnEvent[]): ClaudeLine => ({
   events: list,
 });
 
-const describe = (error: unknown): string =>
-  error instanceof z.ZodError
-    ? z.prettifyError(error)
-    : R.toError(error).message;
-
 /** Lines of a type the adapter doesn't use map to no events, so a CLI that adds one keeps working. */
 export function parseClaudeLine(line: string): Result<ClaudeLine, Error> {
   return R.flatMap(
     R.fromThrowable(
       () => typed.parse(JSON.parse(line)),
-      (error) => new Error(`not a stream-json event: ${describe(error)}`),
+      (error) => new Error(`not a stream-json event: ${describeError(error)}`),
     ),
     (value) =>
       R.fromThrowable(
         () => toClaudeLine(value),
         (error) =>
-          new Error(`unexpected ${value.type} event: ${describe(error)}`),
+          new Error(`unexpected ${value.type} event: ${describeError(error)}`),
       ),
   );
 }

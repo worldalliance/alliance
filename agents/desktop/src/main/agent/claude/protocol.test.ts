@@ -2,7 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { readdirSync } from "node:fs";
 import path from "node:path";
 import { R } from "../../../../../../common/src/result";
-import { AgentEventKind, ImageMediaType } from "../session";
+import { AgentEventKind } from "../../../shared/agent-event";
+import { ImageMediaType } from "../session";
 import {
   CLAUDE_CODE_VERSION,
   ClaudeLineKind,

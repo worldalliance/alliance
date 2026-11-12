@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ClaudeCli } from "../process";
-import type { CaptureRecord } from "./capture";
+import { type CaptureRecord, formatCapture } from "./capture";
 
 export const stubCapturesVariable = "ALLIANCE_AGENT_CLAUDE_STUB_CAPTURES";
 
@@ -34,10 +34,7 @@ function writeScratch(name: string, text: string, mode?: number): string {
 }
 
 export function writeCapture(records: CaptureRecord[]): string {
-  return writeScratch(
-    `${randomUUID()}.jsonl`,
-    records.map((r) => JSON.stringify(r)).join("\n"),
-  );
+  return writeScratch(`${randomUUID()}.jsonl`, formatCapture(records));
 }
 
 export function hangingCli(): ClaudeCli {

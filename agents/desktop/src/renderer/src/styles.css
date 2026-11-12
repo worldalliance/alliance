@@ -1,0 +1,379 @@
+:root {
+  color-scheme: light dark;
+  --font: system-ui, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --text: #1f2328;
+  --text-muted: #59636e;
+  --background: #ffffff;
+  --surface: #f6f8fa;
+  --border: #d1d9e0;
+  --control-border: #818b98;
+  --accent: #0b57d0;
+  --accent-text: #ffffff;
+  --danger: #b3261e;
+  --danger-surface: #fdecea;
+  --success: #1a7f37;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --radius: 8px;
+  --control-height: 32px;
+  --dense: 14px;
+  --body: 16px;
+  --heading: 20px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #e6edf3;
+    --text-muted: #9198a1;
+    --background: #0d1117;
+    --surface: #161b22;
+    --border: #3d444d;
+    --control-border: #656c76;
+    --accent: #4493f8;
+    --accent-text: #0d1117;
+    --danger: #ff7b72;
+    --danger-surface: #2d1214;
+    --success: #3fb950;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font: var(--body) / 1.5 var(--font);
+  color: var(--text);
+  background: var(--background);
+}
+
+h1 {
+  font-size: var(--heading);
+  margin: 0 0 var(--space-3);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+h2,
+h3 {
+  font-size: var(--dense);
+  margin: 0 0 var(--space-2);
+}
+
+button {
+  font: inherit;
+  font-size: var(--dense);
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-1) var(--space-3);
+  min-height: var(--control-height);
+}
+
+button.primary {
+  color: var(--accent-text);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+button:not([aria-disabled="true"]):active {
+  background: var(--border);
+}
+
+button.primary:not([aria-disabled="true"]):active {
+  background: var(--accent);
+  filter: brightness(0.85);
+}
+
+button[aria-disabled="true"] {
+  opacity: 0.7;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+pre {
+  font: var(--dense) / 1.4 var(--mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0 0 var(--space-2);
+}
+
+.app {
+  display: flex;
+  height: 100vh;
+}
+
+.sidebar {
+  flex: 0 0 260px;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  padding: var(--space-4) var(--space-3);
+  overflow-y: auto;
+  font-size: var(--dense);
+}
+
+.sidebar ul {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+}
+
+.sidebar li button,
+.sidebar .new {
+  display: block;
+  width: 100%;
+  text-align: start;
+  border-color: transparent;
+  background: transparent;
+  padding: var(--space-2);
+}
+
+.sidebar .new {
+  border-color: var(--border);
+  background: var(--background);
+}
+
+.sidebar button[aria-current="page"] {
+  background: var(--background);
+  border-color: var(--border);
+  font-weight: 600;
+}
+
+.sidebar .title,
+.sidebar .meta {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar .meta {
+  color: var(--text-muted);
+  font-weight: normal;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100vh;
+}
+
+@media (max-width: 40rem) {
+  .app {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    flex: none;
+    max-height: 30vh;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .main {
+    height: auto;
+    min-height: 0;
+  }
+}
+
+.panel,
+.start {
+  padding: var(--space-6);
+  max-width: 75ch;
+}
+
+.start {
+  flex: 1;
+}
+
+.folder {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.folder-label {
+  font-weight: 600;
+}
+
+.folder-path {
+  font-family: var(--mono);
+  font-size: var(--dense);
+  overflow-wrap: anywhere;
+}
+
+.hint,
+.note,
+.turn-status {
+  color: var(--text-muted);
+  font-size: var(--dense);
+  margin: var(--space-2) 0;
+}
+
+.hint.problem,
+.error {
+  color: var(--danger);
+}
+
+.transcript {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-6);
+}
+
+.items {
+  list-style: none;
+  margin: 0 auto;
+  padding: 0;
+  max-width: 75ch;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.output,
+.user,
+.assistant {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.user {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+  margin-left: auto;
+  max-width: 85%;
+}
+
+.tool {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: var(--dense);
+}
+
+.tool summary {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+
+/* A flex summary loses Chromium's disclosure marker, so the card draws its own. */
+.tool summary::before {
+  content: "▸" / "";
+  color: var(--text-muted);
+}
+
+.tool[open] summary::before {
+  content: "▾" / "";
+}
+
+.tool-name {
+  font-weight: 600;
+}
+
+.tool-target {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-status {
+  color: var(--text-muted);
+}
+
+.tool[data-status="failed"] .tool-status {
+  color: var(--danger);
+}
+
+.tool[data-status="done"] .tool-status {
+  color: var(--success);
+}
+
+.tool-body {
+  border-top: 1px solid var(--border);
+  padding: var(--space-2) var(--space-3);
+}
+
+div.error {
+  background: var(--danger-surface);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+  color: var(--text);
+}
+
+div.error p {
+  margin: 0 0 var(--space-2);
+}
+
+.stopped {
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 0;
+}
+
+.jump {
+  position: sticky;
+  bottom: var(--space-3);
+  display: block;
+  margin: var(--space-3) auto 0;
+}
+
+.turn-status {
+  padding: 0 var(--space-6);
+  min-height: 1.5em;
+}
+
+.composer {
+  border-top: 1px solid var(--border);
+  padding: var(--space-3) var(--space-6) var(--space-4);
+}
+
+.composer label {
+  display: block;
+  font-size: var(--dense);
+  font-weight: 600;
+  margin-bottom: var(--space-1);
+}
+
+.composer textarea {
+  display: block;
+  width: 100%;
+  font: inherit;
+  color: var(--text);
+  background: var(--background);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+  resize: vertical;
+}
+
+.composer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}

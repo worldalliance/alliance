@@ -1,4 +1,5 @@
-import type { AgentEvent, AgentEventListener } from "./session";
+import type { AgentEvent } from "../../shared/agent-event";
+import type { AgentEventListener } from "./session";
 
 export class SessionListeners {
   private readonly subscriptions = new Set<{ listener: AgentEventListener }>();
