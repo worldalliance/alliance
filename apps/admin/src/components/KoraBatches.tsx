@@ -1,6 +1,7 @@
 import { KORA_UPLOAD_NEEDS_BOTH_FILES } from "@alliance/common/kora";
 import type { KoraBatchDto } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import { Play, Shuffle } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router";
 import { adminRefusalMessage } from "../lib/adminRefusal";
@@ -16,8 +17,19 @@ const FIELD = "mt-1 block rounded border border-zinc-300 bg-white px-2 py-1";
 const FILE_FIELD =
   "mt-1 block file:mr-2 file:cursor-pointer file:rounded file:border file:border-zinc-300 file:bg-white file:px-2 file:py-1 file:text-sm hover:file:bg-zinc-50";
 
-const previewPath = (batchId: string) =>
-  `/kora-participants/preview/${batchId}`;
+function PreviewLink({ batchId }: { batchId: string }) {
+  return (
+    <Link
+      to={`/kora-participants/preview/${batchId}`}
+      aria-label="Preview a random transcript"
+      title="Preview a random transcript"
+      className="inline-flex h-8 items-center gap-1 rounded-md border border-zinc-300 bg-white px-2 text-zinc-700 hover:bg-zinc-50"
+    >
+      <Play className="h-4 w-4" aria-hidden="true" />
+      <Shuffle className="h-4 w-4" aria-hidden="true" />
+    </Link>
+  );
+}
 
 function UploadError({ error }: { error: Error }) {
   const rejection = koraUploadRejection(error);
@@ -121,9 +133,7 @@ function UploadForm() {
         {uploaded && (
           <p>
             Read {uploaded.transcriptCount} transcripts.{" "}
-            <Link className="underline" to={previewPath(uploaded.id)}>
-              Preview a random transcript
-            </Link>
+            <PreviewLink batchId={uploaded.id} />
           </p>
         )}
       </div>
@@ -178,9 +188,7 @@ function BatchList() {
             <td className={CELL}>{batch.transcriptsPerAssignment}</td>
             <td className={CELL}>{batch.reviewsPerTranscript}</td>
             <td className={CELL}>
-              <Link className="underline" to={previewPath(batch.id)}>
-                Preview a random transcript
-              </Link>
+              <PreviewLink batchId={batch.id} />
             </td>
           </tr>
         ))}
