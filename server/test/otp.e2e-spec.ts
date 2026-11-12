@@ -292,6 +292,40 @@ describe("One-time codes (e2e)", () => {
     );
   });
 
+  describe("with a +1415555 test number", () => {
+    let n = 0;
+    const testPhone = (): OtpContact => ({
+      channel: OtpChannel.Sms,
+      destination: `+1415555${String(n++).padStart(4, "0")}`,
+    });
+    const tokenFor = async (contact: OtpContact) => {
+      const result = await start(contact);
+      if (!result.ok) throw new Error(`code not sent: ${result.error.error}`);
+      return result.value.browserToken;
+    };
+
+    it("sends no text and accepts 000000", async () => {
+      const before = sent.count();
+      const contact = testPhone();
+      const browserToken = await tokenFor(contact);
+      expect(sent.count()).toBe(before);
+      expect(await refusal(browserToken, "123456")).toBe(OtpError.WrongCode);
+      expect(await verify(browserToken, "000000")).toEqual(R.success(contact));
+    });
+
+    it("skips the rate limits, and counts nothing against real numbers", async () => {
+      const contact = testPhone();
+      for (let attempt = 0; attempt < 40; attempt++) {
+        await tokenFor(contact);
+      }
+      for (let attempt = 0; attempt < 40; attempt++) {
+        expect(await refusal(await tokenFor(testPhone()), "000000")).toBeNull();
+      }
+      const real = await started();
+      expect(await refusal(real.browserToken, real.code)).toBeNull();
+    });
+  });
+
   it("keeps no code in the database", async () => {
     const { code } = await started();
     const rows = JSON.stringify([
