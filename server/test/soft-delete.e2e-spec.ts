@@ -31,6 +31,7 @@ const PHYSICALLY_DELETED = [
   "Cluster",
   "KoraAbandonedSignup",
   "KoraAssignmentTranscript",
+  "KoraBatch",
   "KoraParticipant",
   "KoraParticipantOAuthIdentity",
   "KoraParticipantSession",
@@ -49,7 +50,7 @@ const PHYSICALLY_DELETED = [
 const NEVER_DELETED = [
   "EditableContent",
   "FormRowAssignment",
-  "KoraBatch",
+  "KoraBatchEvent",
   "KoraProject",
   "KoraTranscript",
 ];
