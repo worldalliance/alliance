@@ -64,7 +64,7 @@ serveApi(
 );
 
 beforeEach(() => {
-  participant = { id: "p1", name: "Test Person" };
+  participant = { id: "p1", name: "Test Person", maskedContact: "•••0042" };
   review = reviewing();
   moreRequests = 0;
 });

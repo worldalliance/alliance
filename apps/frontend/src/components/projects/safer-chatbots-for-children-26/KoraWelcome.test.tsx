@@ -24,7 +24,6 @@ test("clicking a category shows it and pauses rotation", () => {
   render(
     <KoraWelcome
       viewer={KoraViewer.Participant}
-      account={null}
       status={KoraProjectStatus.Pending}
     />,
   );
@@ -47,7 +46,6 @@ test("clicking the current category pauses, and again plays", () => {
   render(
     <KoraWelcome
       viewer={KoraViewer.Participant}
-      account={null}
       status={KoraProjectStatus.Pending}
     />,
   );
@@ -67,7 +65,6 @@ test("only one copy of each category is exposed", () => {
   render(
     <KoraWelcome
       viewer={KoraViewer.Participant}
-      account={null}
       status={KoraProjectStatus.Pending}
     />,
   );
@@ -80,7 +77,6 @@ test("remind me defaults on and remembers being turned off", () => {
   const { unmount } = render(
     <KoraWelcome
       viewer={KoraViewer.Participant}
-      account={null}
       status={KoraProjectStatus.Pending}
     />,
   );
@@ -94,7 +90,6 @@ test("remind me defaults on and remembers being turned off", () => {
   render(
     <KoraWelcome
       viewer={KoraViewer.Participant}
-      account={null}
       status={KoraProjectStatus.Pending}
     />,
   );
@@ -109,7 +104,6 @@ test("a participant is thanked for joining the waitlist", () => {
   render(
     <KoraWelcome
       viewer={KoraViewer.Participant}
-      account={null}
       status={KoraProjectStatus.Pending}
     />,
   );
@@ -131,7 +125,6 @@ test("a member gets the member heading and a reminder they can't turn off", () =
   render(
     <KoraWelcome
       viewer={KoraViewer.Member}
-      account={null}
       status={KoraProjectStatus.Pending}
     />,
   );
@@ -155,7 +148,6 @@ test("focusing a chip by keyboard shows it and pauses rotation", () => {
   render(
     <KoraWelcome
       viewer={KoraViewer.Participant}
-      account={null}
       status={KoraProjectStatus.Pending}
     />,
   );
@@ -171,7 +163,6 @@ test("focusing the current chip pauses without toggling", () => {
   render(
     <KoraWelcome
       viewer={KoraViewer.Participant}
-      account={null}
       status={KoraProjectStatus.Pending}
     />,
   );
@@ -189,7 +180,6 @@ test("with reduced motion, a resumed track keeps a real chip current", () => {
     render(
       <KoraWelcome
         viewer={KoraViewer.Participant}
-        account={null}
         status={KoraProjectStatus.Pending}
       />,
     );
@@ -214,7 +204,6 @@ test("a slide that ends past the middle copy jumps back to it", () => {
     render(
       <KoraWelcome
         viewer={KoraViewer.Participant}
-        account={null}
         status={KoraProjectStatus.Pending}
       />,
     );

@@ -3,7 +3,7 @@ import { useOAuthNotice } from "@alliance/sharedweb/lib/oauth";
 import { useState } from "react";
 import { Link } from "react-router";
 import { SiteFooter } from "../../../site/Footer";
-import { NAV_HEIGHT, Navbar } from "../../../site/Navbar";
+import { NAV_HEIGHT } from "../../../site/Navbar";
 import { SiteRoot } from "../../../site/PageShell";
 import { SITE_COL } from "../../../site/ui";
 import { WaitlistHeroImages } from "../democratic-grantmaking-26/DemocraticGrantmaking26";
@@ -19,6 +19,7 @@ import {
 import { ExpertList } from "./ExpertList";
 import { FactBlocks } from "./FactBlocks";
 import { KoraClosedNotice } from "./KoraClosedNotice";
+import { KoraNavbar } from "./KoraNavbar";
 import { KoraSignIn } from "./KoraSignIn";
 import { NewsCollage } from "./NewsCollage";
 import { ParticipantsBar } from "./ParticipantsBar";
@@ -124,7 +125,7 @@ function HeroScreen({ closed }: { closed: boolean }) {
 export function KoraSignUpPage({ closed }: { closed: boolean }) {
   return (
     <SiteRoot className="bg-white">
-      <Navbar />
+      <KoraNavbar />
       <main>
         <HeroScreen closed={closed} />
         <div

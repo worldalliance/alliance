@@ -5253,6 +5253,10 @@ export type KoraProjectDto = {
 export type KoraParticipantDto = {
     id: string;
     name: string;
+    /**
+     * The email or phone signed in with, partly hidden
+     */
+    maskedContact: string;
 };
 
 export type OtpChannel = 'email' | 'sms';

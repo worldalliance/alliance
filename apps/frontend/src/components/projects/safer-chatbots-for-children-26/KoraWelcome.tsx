@@ -6,7 +6,6 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-  type ReactNode,
   type TransitionEvent,
 } from "react";
 import { Link } from "react-router";
@@ -273,11 +272,9 @@ function RemindMeToggle({ viewer }: { viewer: KoraViewer }) {
 
 export function KoraWelcome({
   viewer,
-  account,
   status,
 }: {
   viewer: KoraViewer;
-  account: ReactNode;
   status: KoraProjectStatus;
 }) {
   const closed = status === KoraProjectStatus.Closed;
@@ -306,7 +303,6 @@ export function KoraWelcome({
       {closed ? (
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
           <KoraClosedNotice />
-          {account}
         </div>
       ) : (
         <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-center sm:gap-10">
@@ -330,7 +326,6 @@ export function KoraWelcome({
           )}
           <div className="flex flex-col gap-6">
             <RemindMeToggle viewer={viewer} />
-            {account}
           </div>
         </div>
       )}
