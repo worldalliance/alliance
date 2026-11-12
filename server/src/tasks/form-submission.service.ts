@@ -359,6 +359,11 @@ export class FormSubmissionService {
     }
     const form = await this.tasksService.getForm(formId);
     const user = await this.userService.findOneOrFail(userId);
+    await assertAssignedForm(this.actionFormVariantService, {
+      actionId,
+      userId,
+      formId,
+    });
     const action = await this.actionRepository.findOne({
       where: { id: actionId },
       relations: { events: true },
@@ -366,6 +371,10 @@ export class FormSubmissionService {
     if (action) {
       assertNotInStaffPreview(action);
     }
+    await assertActionNotSubmitted(this.actionFormVariantService, {
+      actionId,
+      userId,
+    });
 
     const assignedRow = await this.formRowAssignmentService.memberRow(
       form,
