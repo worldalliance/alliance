@@ -23,3 +23,7 @@
 - Electron issue [#39572](https://github.com/electron/electron/issues/39572), open and labelled confirmed, and [#20263](https://github.com/electron/electron/issues/20263), bug reports rather than documentation, report that `win.hide()` on a native-fullscreen window leaves a black screen. A maintainer on #39572 says the window "turns black and is removed from the active window list instead of being visibly hidden"; the workaround there, which leaves fullscreen first and then hides, is common practice.
 - No source found says `app.hide()`, as Cmd+H, takes a fullscreen window's Space with it; that rests on agent judgement, not checked on screen.
 - Apple's [`NSApplication.unhide(_:)`](https://developer.apple.com/documentation/appkit/nsapplication/unhide(_:)), vendor documentation, "Restores hidden windows to the screen and makes the receiver active", but no Apple or Electron doc found says the converse, that macOS shows a hidden app it activates, such as through Cmd+Tab or a dock click. That is commonly observed but undocumented (agent judgement).
+
+### The default double-click time
+
+Microsoft's `SetDoubleClickTime` reference (https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setdoubleclicktime, vendor documentation, checked 2026-11-12) gives Windows' default double-click time as 500 ms and caps a set one at 5000 ms.
