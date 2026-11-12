@@ -36,14 +36,14 @@ export const INFO_CONTACTS: readonly InfoContact[] = [
     id: InfoEntryId.Email,
     title: "Email",
     description: "Email the office with questions, feedback, or ideas.",
-    href: "mailto:contact@worldalliance.org",
+    href: "mailto:contact@thealliance.org",
   },
   {
     id: InfoEntryId.Visit,
     title: "Schedule a visit",
     description:
       "Schedule a visit to the Alliance's physical office in San Francisco, CA, USA.",
-    href: "mailto:contact@worldalliance.org?subject=Request to visit the office&body=I would like to schedule a visit to the Alliance's physical office on [DATE] at [TIME].",
+    href: "mailto:contact@thealliance.org?subject=Request to visit the office&body=I would like to schedule a visit to the Alliance's physical office on [DATE] at [TIME].",
   },
 ];
 

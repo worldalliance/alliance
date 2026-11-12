@@ -8,7 +8,7 @@ const ChildSafetyPage = () => {
         markdownContent={`
 # Child Safety Standards for Alliance
 
-_Last updated: March 23, 2026_
+_Last updated: November 11, 2026_
 
 Alliance Foundation is committed to preventing child sexual abuse and exploitation (CSAE) on **Alliance**. We have a zero-tolerance policy for any content, behavior, or activity that sexually exploits, abuses, or endangers children.
 
@@ -47,7 +47,7 @@ If you believe content or behavior on **Alliance** may involve child sexual abus
 
 Users can report concerns by:
 
-- Contacting us at **[support@worldalliance.org](mailto:support@worldalliance.org)**
+- Contacting us at **[support@thealliance.org](mailto:support@thealliance.org)**
 
 Please include as much detail as possible, such as:
 

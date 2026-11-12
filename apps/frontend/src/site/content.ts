@@ -233,4 +233,4 @@ export const CTA_BODY = "Make our next project more impactful";
 
 export const FOOTER_TAGLINE =
   "A global group of people cooperating to improve the world.";
-export const CONTACT_EMAIL = "contact@worldalliance.org";
+export const CONTACT_EMAIL = "contact@thealliance.org";
