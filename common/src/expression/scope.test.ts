@@ -30,6 +30,22 @@ describe("scope check", () => {
     },
   );
 
+  test.each(["eval", "arguments", "globalThis"])(
+    "throws for an input called `%s`, which `tsc` can't declare as a global",
+    (id) => {
+      const undeclarable: Scope = {
+        ...scope,
+        catalog: {
+          ...scope.catalog,
+          inputs: [{ id, label: id, type: { kind: TypeKind.String } }],
+        },
+      };
+      expect(() => parseExpression("1", undeclarable)).toThrow(
+        `\`${id}\` can't be declared as a global.`,
+      );
+    },
+  );
+
   test.each(["Math", "isUnknown", "undefined", "lookup", "isCalifornia"])(
     "throws for an input called `%s`",
     (id) => {

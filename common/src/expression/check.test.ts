@@ -1,0 +1,264 @@
+import { R } from "../result";
+import { TypeKind, type NamedExpression } from "./catalog";
+import { checkExpression } from "./check";
+import {
+  catalog,
+  condition,
+  named,
+  passes,
+  problems,
+  string,
+  variable,
+} from "./check-test-support";
+import { ExprKind } from "./tree";
+
+const METHOD_VALUE = "A method can't be used as a value. Call it with `(…)`.";
+
+test.each([
+  ['"a" - 1', "The left of this operator has to be a number."],
+  [
+    "items.join()",
+    "join works on a list of text, numbers or yes/no. Name a part of each item first, like .map(item => item.name).join(', '), or flatten a list of lists with .flat().",
+  ],
+])("%s gets the formula checker's wording", (text, message) => {
+  expect(problems(text, variable).map((problem) => problem.message)).toEqual([
+    message,
+  ]);
+});
+
+test("a catalog input that doesn't read as a name throws", () => {
+  expect(() =>
+    checkExpression({
+      source: "1",
+      scope: {
+        catalog: {
+          inputs: [{ id: "first-name", label: "First name", type: string }],
+          functions: [],
+        },
+        named: [],
+      },
+      rule: variable,
+    }),
+  ).toThrow("`first-name` doesn't read back as a name.");
+});
+
+test("lists the root's problems first, then each named expression's by name", () => {
+  const a = named({ id: "1", name: "a", text: '"a" - 1' });
+  const b = named({ id: "2", name: "b", text: '"b" - 1' });
+  const message = "The left of this operator has to be a number.";
+  expect(problems('"c" - 1 + b + a', { ...variable, named: [b, a] })).toEqual([
+    { message, at: '"c"' },
+    { message, at: "a@0" },
+    { message, at: "b@0" },
+  ]);
+});
+
+test("an input with no options can take no value", () => {
+  const checked = checkExpression({
+    source: "empty",
+    scope: {
+      catalog: {
+        inputs: [
+          {
+            id: "empty",
+            label: "Empty",
+            type: { kind: TypeKind.Choice, options: [] },
+          },
+        ],
+        functions: [],
+      },
+      named: [],
+    },
+    rule: variable,
+  });
+  expect(R.map(checked, ({ type }) => type)).toEqual(R.success("never"));
+});
+
+describe("types", () => {
+  test.each([
+    [
+      "items[0]?.nme",
+      "Property 'nme' does not exist on type '{ name: string; score: number | null; }'. Did you mean 'name'?",
+    ],
+    [
+      'usBased === "yse"',
+      'This comparison appears to be unintentional because the types \'"yes" | "no" | null\' and \'"yse"\' have no overlap.',
+    ],
+    [
+      'items.find(item => item.name === "a").name',
+      "Object is possibly 'undefined'.",
+    ],
+    [
+      "double(items[0]?.score)",
+      "Argument of type 'number | null | undefined' is not assignable to parameter of type 'number'. Type 'undefined' is not assignable to type 'number'.",
+    ],
+  ])("%s", (text, message) => {
+    expect(
+      problems(text, variable).map((problem) => problem.message),
+    ).toContain(message);
+  });
+
+  test("a parameter that accepts a missing value takes undefined as well as null", () => {
+    expect(passes("describe(items[0]?.score)", variable).type).toBe("string");
+  });
+
+  test.each(["marks[0]", 'items.find(item => item.name === "a")?.score'])(
+    "a missing lookup in %s fits a consumer that takes a missing value",
+    (text) => {
+      passes(text, {
+        type: { kind: TypeKind.Nullable, inner: { kind: TypeKind.Number } },
+      });
+    },
+  );
+
+  test("a missing lookup inside a list fits a list that takes missing items", () => {
+    passes("[marks[0]]", {
+      type: {
+        kind: TypeKind.List,
+        item: { kind: TypeKind.Nullable, inner: { kind: TypeKind.Number } },
+      },
+    });
+  });
+
+  test("a missing lookup fits a parameter taking missing items in a missing list", () => {
+    expect(passes("highest([marks[0]])", variable).type).toBe("number");
+  });
+
+  test("the result must fit the consumer's type", () => {
+    expect(problems("total", condition)).toEqual([
+      {
+        message: "Type 'number' is not assignable to type 'boolean'.",
+        at: "total",
+      },
+    ]);
+  });
+
+  test.each(['"x".trim', '[1]["map"]', "state?.trim"])(
+    "reading the method %s as a value fails",
+    (method) => {
+      expect(problems(`({ m: ${method} })`, variable)).toEqual([
+        { message: METHOD_VALUE, at: method },
+      ]);
+      const value = named({ id: "5", name: "value", text: method });
+      expect(
+        problems("isUnknown(value)", { ...condition, named: [value] }),
+      ).toEqual([{ message: METHOD_VALUE, at: "value@0" }]);
+    },
+  );
+
+  test("a method called, or a field named like one, passes", () => {
+    passes('[" x".trim(), ({ trim: "v" }).trim]', variable);
+  });
+});
+
+test("a catalog name starting with __ is the check's own and throws", () => {
+  expect(() =>
+    checkExpression({
+      source: "1",
+      scope: {
+        catalog: {
+          inputs: [{ id: "__result", label: "Result", type: string }],
+          functions: [],
+        },
+        named: [],
+      },
+      rule: variable,
+    }),
+  ).toThrow("`__result` starts with `__`");
+});
+
+test("a named expression whose name isn't an identifier throws naming it", () => {
+  expect(() =>
+    checkExpression({
+      source: { kind: ExprKind.Ref, id: "1" },
+      scope: {
+        catalog,
+        named: [
+          { id: "1", name: "a b", tree: { kind: ExprKind.Literal, value: 1 } },
+        ],
+      },
+      rule: variable,
+    }),
+  ).toThrow("`a b` doesn't read back as a name.");
+});
+
+describe("named expressions", () => {
+  const scores = named({
+    id: "2",
+    name: "scores",
+    text: "items.map(item => item.score ?? 0)",
+  });
+
+  test("isUnknown narrows a named expression inside a list callback", () => {
+    const x = named({ id: "3", name: "x", text: "state" });
+    passes("!isUnknown(x) && items.some(item => x.length > 1)", {
+      ...condition,
+      named: [x],
+    });
+  });
+
+  test("a named expression can read another named expression", () => {
+    const top = named({
+      id: "3",
+      name: "top",
+      text: "scores.some(score => score > 5)",
+      others: [scores],
+    });
+    expect(
+      passes("top && total > 1", { ...condition, named: [top, scores] }).type,
+    ).toBe("boolean");
+  });
+
+  test("a named constant has its value's type, not its literal's", () => {
+    const region = named({ id: "5", name: "region", text: '"US"' });
+    const scope = { named: [region] };
+    expect(passes('region === "EU"', { ...condition, ...scope }).type).toBe(
+      "boolean",
+    );
+    expect(passes("region", { ...variable, ...scope }).type).toBe("string");
+    expect(passes('"US"', variable).type).toBe("string");
+  });
+
+  test("a removed input a named expression reads is reported under its name", () => {
+    const broken = named({ id: "4", name: "broken", text: "total + 1" });
+    const brokenCatalog = {
+      ...catalog,
+      inputs: catalog.inputs.filter((input) => input.id !== "total"),
+    };
+    const result = checkExpression({
+      source: "broken > 1",
+      scope: { catalog: brokenCatalog, named: [broken] },
+      rule: condition,
+    });
+    expect(result).toEqual(
+      R.failure([
+        {
+          message: "This uses an input that no longer exists.",
+          start: 0,
+          end: 9,
+          namedExpression: "broken",
+        },
+      ]),
+    );
+  });
+
+  test("a loop is reported", () => {
+    const a: NamedExpression = {
+      id: "a",
+      name: "a",
+      tree: { kind: ExprKind.Ref, id: "b" },
+    };
+    const b: NamedExpression = {
+      id: "b",
+      name: "b",
+      tree: { kind: ExprKind.Ref, id: "a" },
+    };
+    expect(problems("a", { ...variable, named: [a, b] })).toEqual([
+      {
+        message:
+          "These named expressions refer to each other in a loop: a → b → a.",
+        at: "a",
+      },
+    ]);
+  });
+});

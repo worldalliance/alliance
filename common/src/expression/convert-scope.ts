@@ -19,6 +19,14 @@ export const STRICT_RESERVED: ReadonlySet<string> = new Set([
   "yield",
 ]);
 
+// `tsc` can't declare these as globals: `eval` and `arguments` in strict
+// mode, which the save check runs in, and `globalThis` in any mode.
+const UNDECLARABLE: ReadonlySet<string> = new Set([
+  "eval",
+  "arguments",
+  "globalThis",
+]);
+
 export function checkScope(scope: Scope): void {
   const names = [
     ...scope.catalog.functions.map((fn) => fn.name),
@@ -31,6 +39,9 @@ export function checkScope(scope: Scope): void {
       // It would print as something else, such as `true`, or as text that
       // doesn't parse.
       throw new Error(`\`${name}\` doesn't read back as a name.`);
+    }
+    if (UNDECLARABLE.has(name)) {
+      throw new Error(`\`${name}\` can't be declared as a global.`);
     }
     if (taken.has(name)) {
       // Text can't tell the two apart, so a parsed tree wouldn't print back.

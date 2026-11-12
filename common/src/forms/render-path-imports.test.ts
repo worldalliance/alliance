@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 // Form renderers and the expression interpreter and printer must not import the
 // several-megabyte TypeScript compiler. Only the variable builder, the schema
-// validator and the expression parser need it.
+// validator and the expression parser and save check need it.
 const RENDER_PATH_ENTRIES = [
   "./variables.ts",
   "./variable-evaluation.ts",

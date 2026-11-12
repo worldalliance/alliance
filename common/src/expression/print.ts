@@ -203,7 +203,7 @@ const LOGICAL: Record<BinaryOp, boolean> = {
 const IDENTIFIER = /^[\p{ID_Start}$_][\p{ID_Continue}$\u200C\u200D]*$/u;
 // A record key can be any text, and the engine's Unicode tables can be newer
 // than the parser's, so only ASCII keys are written bare.
-const BARE_KEY = /^[A-Za-z_$][\w$]*$/;
+export const BARE_KEY = /^[A-Za-z_$][\w$]*$/;
 
 export type PrintNames = {
   /**

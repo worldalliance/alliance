@@ -30,14 +30,20 @@ export type ValueType =
   | { kind: TypeKind.Record; fields: Readonly<Record<string, ValueType>> }
   | { kind: TypeKind.Nullable; inner: ValueType };
 
-/** An input engineers define in code. `id` is stable and is its name in text. */
+/**
+ * An input engineers define in code. `id` is stable and is its name in text;
+ * it doesn't start with `__`, which the save check keeps for its own names.
+ */
 export type InputDefinition = {
   id: string;
   label: string;
   type: ValueType;
 };
 
-/** An engineer-defined function's signature; hosts bind its implementation. */
+/**
+ * An engineer-defined function's signature; hosts bind its implementation.
+ * Its name doesn't start with `__`, as an input id doesn't.
+ */
 export type FunctionDefinition = {
   name: string;
   params: readonly { name: string; type: ValueType }[];
@@ -51,14 +57,21 @@ export type Catalog = {
 
 export type NamedExpression = {
   id: string;
+  /**
+   * The save check declares it as a variable, so callers keep it an
+   * identifier that isn't a reserved word, `Math`, `undefined`, `eval`,
+   * `arguments` or `globalThis`, doesn't start with `__`, and no input,
+   * function, `isUnknown` or other named expression uses.
+   */
   name: string;
   tree: Expr;
 };
 
 /**
  * Function names, input ids and named-expression names read back as names,
- * which `true`, `class` or `my-name` don't, and differ from each other and
- * from `Math`, `isUnknown` and `undefined`; the parser throws if not.
+ * which `true`, `class` or `my-name` don't, aren't `eval`, `arguments` or
+ * `globalThis`, and differ from each other and from `Math`, `isUnknown` and
+ * `undefined`; the parser throws if not.
  */
 export type Scope = {
   catalog: Catalog;
@@ -70,6 +83,8 @@ export type Diagnostic = {
   message: string;
   start: number;
   end: number;
+  /** Set when the problem is inside this named expression's printed text. */
+  namedExpression?: string;
 };
 
 export const IS_UNKNOWN = "isUnknown";

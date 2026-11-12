@@ -449,6 +449,7 @@ class Converter {
   }
 }
 
+/** Diagnostic spans are offsets into `file`. */
 export function convertExpression({
   node,
   file,

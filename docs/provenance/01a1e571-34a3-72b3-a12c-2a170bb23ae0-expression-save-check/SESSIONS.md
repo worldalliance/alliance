@@ -23,3 +23,7 @@
 - claude:02993401-a1a1-43ef-826b-0e6f2d477767
 - claude:b5232ad4-e5e6-49f3-83b2-7a9fc0cb1297
 - claude:ca2522d7-bd04-4aac-8777-02a58d4fcf6c
+- claude:99b488d8-e16a-4288-bd77-2d9c4a902c77
+- claude:f530cbc5-dba9-42bd-983c-7712d5e2932b
+- claude:8d09fe17-c30c-4aa7-a5b5-726411048db1
+- claude:c8d5f068-7838-4b43-a8d1-65328df15769
