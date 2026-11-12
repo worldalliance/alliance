@@ -1,215 +1,39 @@
-import { afterEach, beforeEach, expect, test } from "bun:test";
+import { expect, test } from "bun:test";
 import {
   chmodSync,
   existsSync,
   mkdirSync,
-  mkdtempSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fakeS3 } from "./fake-s3";
+import { R } from "../../common/src/result";
+import {
+  awsScript,
+  dir,
+  expired,
+  fakeAws,
+  hook,
+  loggedIn,
+  replaceS3,
+  requests,
+  run,
+  s3,
+  spool,
+  transcript,
+  until,
+  useChatsFixture,
+} from "./chats-fixture";
+import { publish } from "./spool";
 
-const SCRIPT = join(import.meta.dir, "chats.ts");
+useChatsFixture();
 
-let dir: string;
-
-function fakeAws(params: {
-  stderr?: string;
-  stdout?: string;
-  exitCode: number;
-}) {
-  writeFileSync(join(dir, "stdout"), params.stdout ?? "");
-  writeFileSync(
-    join(dir, "aws"),
-    `#!/usr/bin/env bash
-cat "${join(dir, "stdout")}"
-echo "${params.stderr ?? ""}" >&2
-exit ${params.exitCode}
-`,
-  );
-  chmodSync(join(dir, "aws"), 0o755);
-}
-
-const expired = {
-  stderr: "Token has expired and refresh failed",
-  exitCode: 254,
-};
-
-beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "chats-"));
-  fakeAws(expired);
-});
-
-afterEach(() => {
-  rmSync(dir, { recursive: true });
-});
-
-function run(args: string[], stdin = "", env: Record<string, string> = {}) {
-  const result = Bun.spawnSync([process.execPath, SCRIPT, ...args], {
-    stdin: Buffer.from(stdin),
-    env: { PATH: `${dir}:${process.env.PATH}`, HOME: dir, ...env },
-  });
-  return {
-    exitCode: result.exitCode,
-    stdout: result.stdout.toString(),
-    stderr: result.stderr.toString(),
-  };
-}
-
-test("an expired login fails the upload naming the login command", () => {
-  const transcript = join(dir, "session.jsonl");
-  writeFileSync(transcript, "{}\n");
-  const { exitCode, stderr } = run(
-    ["upload", "claude"],
-    JSON.stringify({ session_id: "abc", transcript_path: transcript }),
-  );
-  expect(exitCode).toBe(1);
-  expect(stderr).toContain("aws sso login --profile alliance-dev");
-});
-
-test("check warns the session when the login is expired", () => {
-  const { exitCode, stdout } = run(["check"]);
-  expect(exitCode).toBe(0);
-  const { systemMessage } = JSON.parse(stdout);
-  expect(systemMessage).toContain("aws sso login");
-  expect(systemMessage.split("agents/README.md")).toHaveLength(2);
-});
-
-test("check names the login command for a revoked login", () => {
-  fakeAws({
-    stderr:
-      "An error occurred (UnauthorizedException) when calling the GetRoleCredentials operation: Session token not found or invalid",
-    exitCode: 255,
-  });
-  const { systemMessage } = JSON.parse(run(["check"]).stdout);
-  expect(systemMessage).toContain("aws sso login --profile alliance-dev");
-});
-
-test("check points at the setup doc when the profile does not exist", () => {
-  fakeAws({
-    stderr: "The config profile (alliance-dev) could not be found",
-    exitCode: 255,
-  });
-  const { stdout } = run(["check"]);
-  const { systemMessage } = JSON.parse(stdout);
-  expect(systemMessage).toContain("profile is not set up");
-  expect(systemMessage).not.toContain("aws sso login");
-});
-
-test("check sends an unassigned login to an admin", () => {
-  fakeAws({
-    stderr:
-      "An error occurred (ForbiddenException) when calling the GetRoleCredentials operation: No access",
-    exitCode: 255,
-  });
-  const { systemMessage } = JSON.parse(run(["check"]).stdout);
-  expect(systemMessage).toContain(
-    "ask an admin to check your alliance-dev assignment",
-  );
-});
-
-test("check names a missing aws CLI", () => {
-  const empty = join(dir, "empty");
-  mkdirSync(empty);
-  const { stdout } = run(["check"], "", { PATH: empty });
-  expect(JSON.parse(stdout).systemMessage).toContain(
-    "could not run the aws CLI: ",
-  );
-});
-
-test("check reports any other aws failure", () => {
-  fakeAws({ stderr: "Could not connect to the endpoint URL", exitCode: 255 });
-  const { stdout } = run(["check"]);
-  expect(JSON.parse(stdout).systemMessage).toContain(
-    "Could not connect to the endpoint URL",
-  );
-});
-
-function awsScript(body: string) {
-  writeFileSync(join(dir, "aws"), `#!/usr/bin/env bash\n${body}\n`);
-  chmodSync(join(dir, "aws"), 0o755);
-}
-
-test("check reports an aws CLI that runs past its 8s", () => {
-  awsScript("exec sleep 9");
-  const { stdout } = run(["check"]);
-  expect(JSON.parse(stdout).systemMessage).toContain(
-    "aws configure export-credentials did not finish in 8s",
-  );
-}, 15_000);
-
-test("check reports an aws CLI killed by a signal", () => {
-  awsScript("kill -KILL $$");
-  const { stdout } = run(["check"]);
-  expect(JSON.parse(stdout).systemMessage).toContain(
-    "aws was killed by SIGKILL",
-  );
-});
-
-const exported = {
-  Version: 1,
-  AccessKeyId: "ASIAEXAMPLE",
-  SecretAccessKey: "secret",
-  SessionToken: "token",
-  Expiration: "2030-01-01T00:00:00Z",
-};
-
-test("check is silent when the login exports session credentials", () => {
-  fakeAws({ stdout: JSON.stringify(exported), exitCode: 0 });
-  expect(run(["check"])).toMatchObject({ exitCode: 0, stdout: "" });
-});
-
-test("check names a profile that returns no session token", () => {
-  const { SessionToken: _, ...tokenless } = exported;
-  fakeAws({ stdout: JSON.stringify(tokenless), exitCode: 0 });
-  expect(JSON.parse(run(["check"]).stdout).systemMessage).toContain(
-    "did not return SSO session credentials",
-  );
-});
-
-test("check names aws output that is not JSON", () => {
-  fakeAws({ stdout: "not json", exitCode: 0 });
-  expect(JSON.parse(run(["check"]).stdout).systemMessage).toContain(
-    "aws configure export-credentials printed something other than JSON",
-  );
-});
-
-test("check names a fallback flag other than 1", () => {
-  const { systemMessage } = JSON.parse(
-    run(["check"], "", { ALLIANCE_SECRETS_ENV_FALLBACK: "true" }).stdout,
-  );
-  expect(systemMessage).toContain("ALLIANCE_SECRETS_ENV_FALLBACK is true");
-});
-
-test("the fallback flag never runs aws", () => {
-  writeFileSync(join(dir, "aws"), `#!/usr/bin/env bash\ntouch "${dir}/ran"\n`);
-  expect(
-    run(["check"], "", { ALLIANCE_SECRETS_ENV_FALLBACK: "1" }),
-  ).toMatchObject({ exitCode: 0, stderr: "" });
-  expect(existsSync(join(dir, "ran"))).toBe(false);
-});
-
-test("a hook uploads the transcript with the login's credentials", async () => {
-  fakeAws({ stdout: JSON.stringify(exported), exitCode: 0 });
-  const s3 = fakeS3();
-  const transcript = join(dir, "session.jsonl");
-  writeFileSync(transcript, "{}\n");
-  const child = Bun.spawn([process.execPath, SCRIPT, "upload", "claude"], {
-    stdin: Buffer.from(
-      JSON.stringify({ session_id: "abc", transcript_path: transcript }),
-    ),
-    env: {
-      PATH: `${dir}:${process.env.PATH}`,
-      HOME: dir,
-      ALLIANCE_AGENT_CHATS_S3_ENDPOINT: s3.endpoint,
-    },
-  });
-  const exitCode = await child.exited;
-  s3.stop();
-  expect(exitCode).toBe(0);
-  expect(s3.body("claude/abc.jsonl")).toBe("{}\n");
+test("a hook records the transcript and a background worker uploads it", async () => {
+  fakeAws(loggedIn);
+  expect(await hook("Stop")).toMatchObject({ exitCode: 0, stdout: "{}\n" });
+  await until(() => s3.body("claude/abc.jsonl") !== undefined);
+  await until(() => requests().length === 0);
   expect(s3.signers).toEqual([
     {
       authorization: expect.stringContaining("Credential=ASIAEXAMPLE/"),
@@ -218,32 +42,322 @@ test("a hook uploads the transcript with the login's credentials", async () => {
   ]);
 });
 
+test("a request published while the worker uploads gets a pass without a retry", async () => {
+  fakeAws(loggedIn);
+  let published = false;
+  replaceS3({
+    beforePut: () => {
+      if (published) return;
+      published = true;
+      R.unwrap(publish(spool(), { key: "claude/def.jsonl", file: transcript }));
+    },
+  });
+  await hook("SubagentStop");
+  await until(() => s3.body("claude/def.jsonl") !== undefined);
+  expect(s3.body("claude/abc.jsonl")).toBe("{}\n");
+  await until(() => requests().length === 0);
+});
+
+test("an expired login keeps the transcript, warns at Stop, and goes up after login", async () => {
+  await hook("SubagentStop");
+  const retried = await run(["retry"]);
+  expect(retried.exitCode).toBe(1);
+  expect(retried.stderr).toContain("still need attention");
+  expect(retried.stderr).toContain("aws sso login --profile alliance-dev");
+  expect(retried.stderr).not.toContain("chats.ts retry");
+  expect(requests()).toMatchObject([
+    { key: "claude/abc.jsonl", file: transcript },
+  ]);
+  for (const event of ["SubagentStop", "PreCompact", "SessionEnd"])
+    expect((await hook(event)).stdout).toBe("{}\n");
+  const stop = await hook("Stop");
+  const { systemMessage } = JSON.parse(stop.stdout);
+  expect(systemMessage).toContain(
+    "The last upload attempt failed for claude/abc.jsonl: your AWS login has expired",
+  );
+  expect(systemMessage).toContain("retrying now");
+  expect(systemMessage).toContain("bun agents/chats/chats.ts retry");
+  fakeAws(loggedIn);
+  expect(await run(["retry"])).toMatchObject({ exitCode: 0 });
+  expect(s3.body("claude/abc.jsonl")).toBe("{}\n");
+  expect(requests()).toEqual([]);
+});
+
+test("a deleted transcript warns until it is discarded", async () => {
+  await hook("SubagentStop");
+  rmSync(transcript);
+  fakeAws(loggedIn);
+  const retried = await run(["retry"]);
+  expect(retried.exitCode).toBe(1);
+  expect(retried.stderr).toContain("is gone; restore it");
+  expect(await run(["discard", "claude/abc.jsonl"])).toMatchObject({
+    exitCode: 0,
+    stdout: "Stopped uploading claude/abc.jsonl; deleted requests: 1.\n",
+  });
+  expect(await run(["retry"])).toMatchObject({ exitCode: 0 });
+});
+
+test("retry names every deleted transcript's key", async () => {
+  fakeAws(loggedIn);
+  const keys = ["a", "b", "c", "d"].map((name) => `claude/${name}.jsonl`);
+  for (const key of keys)
+    R.unwrap(publish(spool(), { key, file: join(dir, "deleted.jsonl") }));
+  const retried = await run(["retry"]);
+  expect(retried.exitCode).toBe(1);
+  for (const key of keys) expect(retried.stderr).toContain(key);
+});
+
+test("discard starts a worker for a request published while it held the lock", async () => {
+  fakeAws(loggedIn);
+  R.unwrap(publish(spool(), { key: "claude/abc.jsonl", file: transcript }));
+  R.unwrap(publish(spool(), { key: "claude/gone.jsonl", file: transcript }));
+  expect(await run(["discard", "claude/gone.jsonl"])).toMatchObject({
+    exitCode: 0,
+  });
+  await until(() => s3.body("claude/abc.jsonl") !== undefined);
+});
+
+test("discard fails for a key with no requests", async () => {
+  fakeAws(loggedIn);
+  expect(await run(["discard", "gone.jsonl"])).toMatchObject({
+    exitCode: 1,
+    stderr: expect.stringContaining(
+      "no upload request for gone.jsonl; `bun agents/chats/chats.ts retry` names",
+    ),
+  });
+});
+
+async function holdLock() {
+  mkdirSync(spool(), { recursive: true });
+  const holder = Bun.spawn(
+    [
+      "perl",
+      "-MFcntl=:flock",
+      "-e",
+      'open(my $f, ">>", $ARGV[0]) or die; flock($f, LOCK_EX) or die; print "held\\n"; STDOUT->flush; sleep 30',
+      join(spool(), "lock"),
+    ],
+    { stdout: "pipe" },
+  );
+  await holder.stdout.getReader().read();
+  return holder;
+}
+
+test("a worker that finds the lock held leaves the request to the holder", async () => {
+  fakeAws(loggedIn);
+  const holder = await holdLock();
+  await hook("SubagentStop");
+  await Bun.sleep(1000);
+  expect(s3.puts).toEqual([]);
+  expect(requests()).toHaveLength(1);
+  holder.kill();
+  await holder.exited;
+  await Bun.sleep(1000);
+  expect(s3.puts).toEqual([]);
+  expect(await run(["retry"])).toMatchObject({ exitCode: 0 });
+  expect(s3.puts).toEqual(["claude/abc.jsonl"]);
+});
+
+test("an unreadable request joins the Stop warning without failing the hook", async () => {
+  mkdirSync(join(spool(), "requests"), { recursive: true });
+  writeFileSync(join(spool(), "requests", "junk.json"), "not json");
+  const stop = await hook("Stop");
+  expect(stop.exitCode).toBe(0);
+  expect(JSON.parse(stop.stdout).systemMessage).toContain(
+    "Unreadable, so delete them",
+  );
+});
+
+test("a wakeup it cannot set still records the request and says so", async () => {
+  mkdirSync(join(spool(), "wake"), { recursive: true });
+  const stop = await hook("SubagentStop");
+  expect(stop.exitCode).toBe(0);
+  expect(JSON.parse(stop.stdout).systemMessage).toContain(
+    "claude/abc.jsonl is recorded for upload, but its wakeup",
+  );
+  expect(requests()).toMatchObject([{ key: "claude/abc.jsonl" }]);
+});
+
+test("Stop doesn't say retrying now when its wakeup couldn't be set", async () => {
+  await hook("SubagentStop");
+  rmSync(transcript);
+  fakeAws(loggedIn);
+  await run(["retry"]);
+  writeFileSync(transcript, "{}\n");
+  rmSync(join(spool(), "wake"), { force: true });
+  mkdirSync(join(spool(), "wake"));
+  const { systemMessage } = JSON.parse((await hook("Stop")).stdout);
+  expect(systemMessage).toContain("Upload failed for claude/abc.jsonl");
+  expect(systemMessage).not.toContain("retrying now");
+});
+
+test("a spool it cannot write still uploads once and says retry is off", async () => {
+  fakeAws(loggedIn);
+  writeFileSync(spool(), "");
+  const stop = await hook("Stop");
+  expect(stop.exitCode).toBe(0);
+  const { systemMessage } = JSON.parse(stop.stdout);
+  expect(systemMessage).toContain("could not be recorded for upload");
+  expect(systemMessage).toContain("chats.ts fetch claude/abc.jsonl");
+  await until(() => s3.body("claude/abc.jsonl") !== undefined);
+});
+
+test("check warns about failed uploads and starts the worker", async () => {
+  await hook("SubagentStop");
+  rmSync(transcript);
+  fakeAws(loggedIn);
+  await run(["retry"]);
+  const { systemMessage } = JSON.parse((await run(["check"])).stdout);
+  expect(systemMessage).toContain("Upload failed for claude/abc.jsonl");
+  writeFileSync(transcript, "{}\n");
+  await until(() => s3.body("claude/abc.jsonl") !== undefined);
+});
+
+test("once logged in, check leaves out uploads that failed on the login", async () => {
+  await hook("SubagentStop");
+  await run(["retry"]);
+  fakeAws(loggedIn);
+  expect(await run(["check"])).toMatchObject({ exitCode: 0, stdout: "" });
+  await until(() => s3.body("claude/abc.jsonl") !== undefined);
+});
+
+test("check sets the wakeup, so a worker holding the lock makes another pass", async () => {
+  await hook("SubagentStop");
+  await run(["retry"]);
+  fakeAws(loggedIn);
+  const holder = await holdLock();
+  expect(await run(["check"])).toMatchObject({ exitCode: 0, stdout: "" });
+  expect(existsSync(join(spool(), "wake"))).toBe(true);
+  holder.kill();
+  await holder.exited;
+});
+
+test("a pass that cannot update its requests warns until a clean pass", async () => {
+  await hook("SubagentStop");
+  chmodSync(join(spool(), "requests"), 0o500);
+  const retried = await run(["retry"]);
+  expect(retried.exitCode).toBe(1);
+  expect(retried.stderr.split("could not update").length).toBe(2);
+  const { systemMessage } = JSON.parse((await run(["check"])).stdout);
+  chmodSync(join(spool(), "requests"), 0o700);
+  expect(systemMessage).toContain("The uploader failed: could not update");
+  fakeAws(loggedIn);
+  expect(await run(["retry"])).toMatchObject({ exitCode: 0 });
+  expect(await run(["check"])).toMatchObject({ stdout: "" });
+});
+
+test("retry succeeds when a later pass clears an earlier pass's failure", async () => {
+  R.unwrap(publish(spool(), { key: "claude/abc.jsonl", file: transcript }));
+  const requestsDir = join(spool(), "requests");
+  const calls = join(dir, "calls");
+  writeFileSync(join(dir, "stdout"), loggedIn.stdout);
+  awsScript(`if [ -e "${calls}" ]; then chmod 700 "${requestsDir}"; cat "${join(dir, "stdout")}"; exit 0; fi
+touch "${calls}" "${join(spool(), "wake")}"; chmod 500 "${requestsDir}"
+echo "${expired.stderr}" >&2; exit ${expired.exitCode}`);
+  const retried = await run(["retry"]);
+  expect(retried).toMatchObject({
+    exitCode: 0,
+    stdout: "Every agent transcript upload is done.\n",
+  });
+  expect(s3.body("claude/abc.jsonl")).toBeDefined();
+});
+
+test("check retries an uploader failure with no requests left", async () => {
+  mkdirSync(spool(), { recursive: true });
+  writeFileSync(join(spool(), "worker-error"), "could not update x");
+  fakeAws(loggedIn);
+  const { systemMessage } = JSON.parse((await run(["check"])).stdout);
+  expect(systemMessage).toContain("The uploader failed: could not update x");
+  await until(() => !existsSync(join(spool(), "worker-error")));
+});
+
+test("an unreadable worker state is a warning, not a clean bill", async () => {
+  mkdirSync(spool(), { recursive: true });
+  writeFileSync(join(spool(), "worker-error"), "boom");
+  chmodSync(join(spool(), "worker-error"), 0o000);
+  const { systemMessage } = JSON.parse((await run(["check"])).stdout);
+  expect(systemMessage).toContain(
+    "The uploader failed: its state can't be read",
+  );
+});
+
+test("retry says it is waiting while a worker holds the lock", async () => {
+  mkdirSync(spool(), { recursive: true });
+  const holder = Bun.spawn(
+    [
+      "perl",
+      "-MFcntl=:flock",
+      "-e",
+      'open(my $f, ">>", $ARGV[0]) or die; flock($f, LOCK_EX) or die; print "held\\n"; STDOUT->flush; sleep 1',
+      join(spool(), "lock"),
+    ],
+    { stdout: "pipe" },
+  );
+  const reader = holder.stdout.getReader();
+  await reader.read();
+  const retried = await run(["retry"]);
+  await holder.exited;
+  expect(retried).toMatchObject({ exitCode: 0 });
+  expect(retried.stderr).toContain("waiting for the running upload worker");
+}, 15_000);
+
+test("a wakeup marker the worker cannot clear is recorded as the uploader's failure, and check names it apart", async () => {
+  mkdirSync(join(spool(), "wake", "inside"), { recursive: true });
+  expect((await run(["retry"])).exitCode).toBe(1);
+  const { systemMessage } = JSON.parse((await run(["check"])).stdout);
+  rmSync(join(spool(), "wake"), { recursive: true });
+  expect(systemMessage).toContain("wakeup in ");
+  expect(systemMessage).toContain("couldn't be set");
+  expect(systemMessage).toMatch(/The uploader failed: .*EISDIR/);
+  expect(systemMessage).not.toContain("could not start");
+});
+
+test("a pass that throws is recorded as the uploader's failure", async () => {
+  fakeAws(loggedIn);
+  await hook("SubagentStop");
+  const unparsable = { ALLIANCE_AGENT_CHATS_S3_ENDPOINT: "not a url" };
+  expect((await run(["retry"], "", unparsable)).exitCode).toBe(1);
+  const { systemMessage } = JSON.parse(
+    (await run(["check"], "", unparsable)).stdout,
+  );
+  expect(systemMessage).toContain("The uploader failed: Invalid URL");
+});
+
+test("retry names a missing perl", async () => {
+  const empty = join(dir, "empty");
+  mkdirSync(empty);
+  const { exitCode, stderr } = await run(["retry"], "", { PATH: empty });
+  expect(exitCode).toBe(1);
+  expect(stderr).toContain("could not take the upload lock: ");
+});
+
+test("a worker that can't start is named at Stop and check, not called retrying", async () => {
+  const bin = join(dir, "bin");
+  mkdirSync(bin);
+  symlinkSync("/bin/bash", join(bin, "bash"));
+  const withoutPerl = { PATH: `${dir}:${bin}` };
+  const stopInput = JSON.stringify({
+    session_id: "abc",
+    hook_event_name: "Stop",
+    transcript_path: transcript,
+  });
+  for (const args of [["upload", "claude"], ["check"]]) {
+    const { stdout } = await run(args, stopInput, withoutPerl);
+    const { systemMessage } = JSON.parse(stdout);
+    expect(systemMessage).toContain("The uploader failed: could not start: ");
+    expect(systemMessage).not.toContain("retrying now");
+  }
+});
+
 test("fetch prints a stored transcript and names S3's error for a missing one", async () => {
-  fakeAws({ stdout: JSON.stringify(exported), exitCode: 0 });
-  const s3 = fakeS3();
+  fakeAws(loggedIn);
   s3.store("claude/abc.jsonl", "hello\n");
-  const fetch = async (key: string) => {
-    const child = Bun.spawn([process.execPath, SCRIPT, "fetch", key], {
-      stdout: "pipe",
-      stderr: "pipe",
-      env: {
-        PATH: `${dir}:${process.env.PATH}`,
-        HOME: dir,
-        ALLIANCE_AGENT_CHATS_S3_ENDPOINT: s3.endpoint,
-      },
-    });
-    const [exitCode, stdout, stderr] = await Promise.all([
-      child.exited,
-      new Response(child.stdout).text(),
-      new Response(child.stderr).text(),
-    ]);
-    return { exitCode, stdout, stderr };
-  };
-  const stored = await fetch("claude/abc.jsonl");
-  const missing = await fetch("claude/none.jsonl");
-  s3.stop();
-  expect(stored).toEqual({ exitCode: 0, stdout: "hello\n", stderr: "" });
-  expect(missing).toMatchObject({
+  expect(await run(["fetch", "claude/abc.jsonl"])).toEqual({
+    exitCode: 0,
+    stdout: "hello\n",
+    stderr: "",
+  });
+  expect(await run(["fetch", "claude/none.jsonl"])).toMatchObject({
     exitCode: 1,
     stdout: "",
     stderr: expect.stringContaining(

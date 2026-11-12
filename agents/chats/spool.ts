@@ -17,8 +17,12 @@ const uploadRequest = z.object({
   key: z.string(),
   file: z.string(),
   error: z.string().optional(),
+  credentialsFailed: z.boolean().optional(),
 });
 export type UploadRequest = z.infer<typeof uploadRequest>;
+/** `credentialsFailed` marks a failure of the credential lookup, which a later
+ * successful lookup makes stale. */
+export type UploadFailure = { error: string; credentialsFailed?: boolean };
 export type Captured = UploadRequest & { path: string; ageMs: number };
 
 export type Listing = { requests: Captured[]; unreadable: string[] };
@@ -26,10 +30,10 @@ export type Listing = { requests: Captured[]; unreadable: string[] };
 const requestsDir = (dir: string) => path.join(dir, "requests");
 const wakePath = (dir: string) => path.join(dir, "wake");
 
-const isMissing = (error: unknown) =>
+export const isMissing = (error: unknown) =>
   z.object({ code: z.literal("ENOENT") }).safeParse(error).success;
 
-function writeAtomically(params: {
+export function writeAtomically(params: {
   target: string;
   contents: string;
   times?: { atime: Date; mtime: Date };
@@ -56,11 +60,13 @@ export function publish(
     });
   });
   if (!recorded.ok) return recorded;
-  const woke = R.fromThrowable(() =>
-    writeFileSync(wakePath(dir), "", { mode: 0o600 }),
-  );
+  const woke = wake(dir);
   return R.success({ wakeError: woke.ok ? undefined : woke.error });
 }
+
+/** Sets the wakeup marker, so a running worker makes another pass. */
+export const wake = (dir: string) =>
+  R.fromThrowable(() => writeFileSync(wakePath(dir), "", { mode: 0o600 }));
 
 function wakeMarkerOp(
   dir: string,
@@ -183,7 +189,7 @@ function removeStaleTemps(dir: string): string[] {
 export async function runPass(params: {
   dir: string;
   goneCause: string;
-  upload: (request: UploadRequest) => Promise<Result<void, string>>;
+  upload: (request: UploadRequest) => Promise<Result<void, UploadFailure>>;
 }): Promise<Result<void, Error>> {
   const unrecorded = removeStaleTemps(params.dir);
   const listing = listRequests(params.dir);
@@ -198,14 +204,14 @@ export async function runPass(params: {
     const uploaded =
       found.ok || !isMissing(found.error)
         ? await params.upload({ key, file })
-        : R.failure(params.goneCause);
+        : R.failure({ error: params.goneCause });
     const recorded = uploaded.ok
       ? R.fromThrowable(() => rmSync(newest.path, { force: true }))
       : R.fromThrowable(() => {
           // A key's requests are ordered by mtime, so the rewrite keeps it.
           writeAtomically({
             target: newest.path,
-            contents: JSON.stringify({ key, file, error: uploaded.error }),
+            contents: JSON.stringify({ key, file, ...uploaded.error }),
             times: statSync(newest.path),
           });
         });

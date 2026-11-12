@@ -1,6 +1,6 @@
 # Evidence
 
-Six research subagents, checked 2026-11-09. Each section holds the question as briefed and the report as returned; each report labels its findings as formal standard, vendor recommendation, research-backed practice or common practice. Comparisons with the options are agent judgement.
+Research subagents, checked 2026-11-09 unless a section gives another date. Each section holds the question as briefed and the report as returned; each report labels its findings as formal standard, vendor recommendation, research-backed practice or common practice. Comparisons with the options are agent judgement.
 
 ## Developer and agent access across environments
 
@@ -672,6 +672,223 @@ Phishing-resistant MFA protects sign-in, not a token stolen afterwards, and CLI 
 26. [Wiz](https://www.wiz.io/blog/infostealer-incursion-cloud-ai-credentials): cache claims; its appendix contradicts them on lifetime
 27. [Zscaler/Red Canary](https://www.zscaler.com/blogs/cybersecurity-best-practices/aws-sso-access-tokens): cache contents, attack path
 28. [Security Hub CIS mapping](https://docs.aws.amazon.com/securityhub/latest/userguide/cis-aws-foundations-benchmark.html)
+
+## Persisting and retrying uploads from short-lived processes
+
+### Question
+
+Transcripts upload as whole-file S3 PutObjects to fixed keys, so a repeat upload is idempotent and the latest upload wins. Many short-lived hook processes on one machine upload them. When the person's SSO login expires, every upload fails until they log in again.
+
+How do established tools persist and retry uploads or reports from short-lived or crash-prone processes when the network or credentials are unavailable? What do they do when several processes on one machine write and retry at once? Three questions follow:
+
+1. Is there an industry-standard pattern for this shape of problem?
+2. Which of its mechanisms does this problem need, given idempotent latest-wins uploads?
+3. What design is recommended?
+
+All sources below were checked on 2026-11-10. Statuses follow root `AGENTS.md` **Established practice**. I found no research-backed (empirical-study) sources on this topic, so no finding carries that status.
+
+### Findings
+
+#### Crash reporters
+
+**Crashpad report database.** Status: common practice. This is a vendor implementation documented in its source; Chromium and Sentry Native both use it.
+
+- Reports move through three states: new, pending and completed ("1. New: A crash report is created with PrepareNewCrashReport()…", "3. Completed: The report has been locally processed, either by uploading…"). The report body (the minidump) is copied into the database, because the crashing process is about to die. [crash_report_database.h](https://chromium.googlesource.com/crashpad/crashpad/+/HEAD/client/crash_report_database.h)
+- To upload a report, a process takes a lock on it: GetReportForUploading "Obtains and locks a report object for uploading". A concurrent operation gets `kBusyError`. CleanDatabase "Cleans the database of expired lockfiles". [crash_report_database.h](https://chromium.googlesource.com/crashpad/crashpad/+/HEAD/client/crash_report_database.h)
+- On the generic backend (Linux and others), the lock is a `<uuid>.lock` file. It is created with create-or-fail and stamped with a time, and it expires after a TTL. A scan skips reports whose lock it can't take rather than waiting for them. A report is finished by writing its `.meta` file and then moving it from `new/` to `pending/`. [crash_report_database_generic.cc](https://chromium.googlesource.com/crashpad/crashpad/+/HEAD/client/crash_report_database_generic.cc)
+    - My reading of the code, not documented behaviour: an expired lock is removed together with its report, so a report whose uploader died is deleted rather than requeued.
+- A single handler thread uploads, rescanning every 15 minutes (`kRetryWorkIntervalSeconds = 15 * 60`) so that "pending reports written by other processes" are picked up. Uploads are rate-limited to one an hour database-wide (`kUploadAttemptIntervalSeconds`). When a report is busy or missing, the thread moves on: "Someone else may have gotten to it first." [crash_report_upload_thread.cc](https://chromium.googlesource.com/crashpad/crashpad/+/HEAD/handler/crash_report_upload_thread.cc)
+- On desktop, a failed upload is not retried. The report is moved to completed with `kUploadFailed`, under a TODO "Deal with retries properly". Only iOS retries, up to 5 times with exponential backoff from 15 minutes. [crash_report_upload_thread.cc](https://chromium.googlesource.com/crashpad/crashpad/+/HEAD/handler/crash_report_upload_thread.cc)
+
+**Sentry Native SDK.** Status: vendor documentation.
+
+- Envelopes are persisted "as `<uuid>.envelope` files" in the database path's cache. "The SDK retries each envelope up to 6 times with exponential backoff, starting at 15 minutes and doubling up to 8 hours." [transports](https://docs.sentry.io/platforms/native/configuration/transports.md)
+- "It doesn't detect network connectivity, but checks for pending envelopes every 15 minutes while it runs." Also: "On the next start, the SDK sends any envelopes still pending from the previous run." [transports](https://docs.sentry.io/platforms/native/configuration/transports.md)
+- "The SDK doesn't retry HTTP error responses, including `5xx` status codes." When the retries run out, the envelope is discarded, or kept if caching is enabled. On startup the cache is trimmed to item, size and age limits (`cache_max_items` defaults to 30). [transports](https://docs.sentry.io/platforms/native/configuration/transports.md), [options](https://docs.sentry.io/platforms/native/configuration/options/)
+- Neither page describes coordination between processes that share a database path.
+
+**Sentry JavaScript offline transport.** Status: vendor documentation.
+
+- It queues events in IndexedDB. "Once your application comes back online, all events will be sent together." The queue is bounded by `maxQueueSize` (default 30), and `flushAtStartup` flushes it shortly after startup. The page says nothing about multi-tab coordination. [offline caching](https://docs.sentry.io/platforms/javascript/best-practices/offline-caching/)
+
+#### Telemetry agents and job schedulers
+
+**OpenTelemetry Collector persistent queue.** Status: vendor documentation.
+
+- Setting a storage extension "enables persistence… There is no in-memory queue when set." The README says: "If the collector instance is killed while having some items in the persistent queue, on restart the items will be picked and the exporting is continued." [exporterhelper README](https://github.com/open-telemetry/opentelemetry-collector/blob/main/exporter/exporterhelper/README.md)
+- Retries use exponential backoff from 5s to 30s, giving up after `max_elapsed_time` (300s by default). Data that can't be queued "is typically dropped". [exporterhelper README](https://github.com/open-telemetry/opentelemetry-collector/blob/main/exporter/exporterhelper/README.md)
+- The file storage extension keeps each component's state in its own bbolt file. `timeout` is "the maximum time to wait for a file lock". The `recreate` option's corruption recovery "may lead to data duplication or loss of component state". The page doesn't say whether two collectors may share a directory. [filestorage README](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/extension/storage/filestorage/README.md)
+
+**Fluent Bit.** Status: vendor documentation.
+
+- "Fluent Bit stores each chunk of buffered data in the filesystem through mmap(2)." When an output's disk limit is reached, "the oldest chunk from its queue will be discarded". [buffering and storage](https://docs.fluentbit.io/manual/administration/buffering-and-storage)
+- Failed flushes back off exponentially with jitter (`scheduler.base` 5s, `scheduler.cap` 2000s). `Retry_Limit` defaults to 1. "When a chunk exhausts all retry attempts or retries are disabled, the data is discarded by default", unless `storage.keep.rejected` keeps it in a dead-letter queue. An `Error` result means "the engine shouldn't try to flush that data again". [scheduling and retries](https://docs.fluentbit.io/manual/administration/scheduling-and-retries)
+
+**Android WorkManager.** Status: vendor documentation.
+
+- Unique work "guarantees that you only have one instance of work with a particular *name* at a time". `ExistingWorkPolicy.REPLACE` cancels the existing work in favour of the new; `KEEP` ignores the new work. [manage work](https://developer.android.com/develop/background-work/background-tasks/persistent/how-to/manage-work)
+- Constraints such as `NetworkType` gate when work runs. If a constraint stops holding mid-run, "The work will then be retried when all the constraints are met." `Result.retry()` reschedules with backoff of at least 10 seconds, exponential by default. [define work](https://developer.android.com/develop/background-work/background-tasks/persistent/getting-started/define-work)
+
+**PostHog iOS SDK.** Status: vendor documentation.
+
+- "The events are stored in a queue in the device's file storage and are flushed when the device is online." When the queue is full, "the oldest event is deleted first." [PostHog iOS](https://posthog.com/docs/libraries/ios)
+- Segment's library docs returned HTTP 403 and were not checked.
+
+#### Mail spools and file-system primitives
+
+**Maildir.** Status: common practice. This is the format author's specification, used by qmail, Postfix, Dovecot and others.
+
+- The case for it: "Two words: no locks." Also: "each message is stored in a separate file with a unique name, so it isn't affected by operations on other messages." And: "each message is safely written to disk in the tmp subdirectory before it is moved to new." "Every delivery to this maildir must have its own unique name." [maildir](https://cr.yp.to/proto/maildir.html)
+- The fetch tool couldn't parse this server's response, so the page was read with curl. The 36-hour cleanup of stale `tmp` files comes from qmail's maildir(5) and was not checked here.
+
+**POSIX.1-2017.** Status: formal standard.
+
+- `rename()`: "If the link named by the new argument exists, it shall be removed and old renamed to new." Also: "a link named new shall remain visible to other threads throughout the renaming operation". [rename](https://pubs.opengroup.org/onlinepubs/9699919799/functions/rename.html)
+- `link()`: "shall atomically create a new link for the existing file". It fails with EEXIST when the target exists. [link](https://pubs.opengroup.org/onlinepubs/9699919799/functions/link.html)
+- `open()` with O_CREAT|O_EXCL: "The check for the existence of the file and the creation of the file if it does not exist shall be atomic". [open](https://pubs.opengroup.org/onlinepubs/9699919799/functions/open.html)
+- `fcntl()` locks: "All locks associated with a file for a given process shall be removed when a file descriptor for that file is closed by that process or the process holding that file descriptor terminates." Locks like these clean up after a crash without staleness timers. Node and Bun expose no fcntl or flock locking, so using them would need FFI or a dependency. That last point is agent judgement from the Node `fs` API, not a source. [fcntl](https://pubs.opengroup.org/onlinepubs/9699919799/functions/fcntl.html)
+- `unlink()` of a missing name fails with ENOENT "and the named file shall not be changed", so concurrent deleters are harmless to each other. [unlink](https://pubs.opengroup.org/onlinepubs/9699919799/functions/unlink.html)
+
+#### Transactional outbox and idempotent consumer
+
+Status: common practice (Chris Richardson's pattern catalogue). The AWS Prescriptive Guidance page returned 404.
+
+- The outbox pattern is to "first store the message in the database as part of the transaction that updates the business entities". A "Message relay" sends what the outbox holds. "The Message relay might publish a message more than once", so "a message consumer must be idempotent". [transactional outbox](https://microservices.io/patterns/data/transactional-outbox.html)
+- An idempotent consumer records processed message IDs so that duplicates are ignored. [idempotent consumer](https://microservices.io/patterns/communication-style/idempotent-consumer.html)
+
+#### S3 and AWS guidance
+
+Status: vendor documentation for the S3, SDK and IAM Identity Center pages; vendor recommendation for the Builders' Library.
+
+- "Amazon S3 never adds partial objects; if you receive a success response, Amazon S3 added the entire object to the bucket." Also: "If it receives multiple write requests for the same object simultaneously, it overwrites all but the last object written." [PutObject](https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html)
+- "Updates to a single key are atomic." Also: "Amazon S3 does not support object locking for concurrent writers. If two PUT requests are simultaneously made to the same key, the request with the latest timestamp wins." And: "The best way to determine the final value is to perform a read after both writes have been acknowledged." [consistency model](https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html#ConsistencyModel)
+    - So a slower upload of older bytes can overwrite a newer one. That is an inference from the quoted text.
+- Conditional writes: `If-Match` (an ETag compare-and-set) and `If-None-Match` (create-only) return 412 when their precondition fails. [conditional writes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html)
+- S3 docs never call PutObject "idempotent". Repeating the same bytes to the same key on an unversioned bucket leaves the same object, which follows from atomic whole-object overwrite (agent inference). The Builders' Library defines an idempotent operation as "one where a request can be retransmitted or retried with no additional side effects". It adds: "APIs with side effects aren't safe to retry unless they provide idempotency." It also says "client errors should not be retried with the same request because they aren't going to succeed later". [idempotent APIs](https://builder.aws.com/content/3Ev0BENTyBr0XxzRk5FDZzgNYos/making-retries-safe-with-idempotent-apis), [timeouts, retries, backoff](https://builder.aws.com/content/3EumjoZascWd1oZiEgL8ORlv3qE/timeouts-retries-and-backoff-with-jitter)
+- The SDK retry modes retry transient, throttling and I/O errors. Errors such as `AccessDeniedException` "are returned to your code immediately". The page doesn't list expired-credential errors as retryable. [SDK retry behavior](https://docs.aws.amazon.com/sdkref/latest/guide/feature-retry-behavior.html)
+- "If your IAM Identity Center credentials expire, you must explicitly renew them by logging in to your IAM Identity Center account again." [CLI SSO](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html)
+- The default interactive session lasts 8 hours and can be set from 15 minutes to 90 days. The problem's "up to 24 hours" is this organisation's setting. [interactive sessions](https://docs.aws.amazon.com/singlesignon/latest/userguide/user-interactive-sessions.html)
+
+### Answers
+
+#### 1. Is there an industry-standard pattern?
+
+Short answer: no formal standard, but a consistent common practice. The pattern is store-and-forward with at-least-once delivery. Every tool above follows these steps:
+
+1. Persist a record of the work before or instead of sending it. Outbox, Crashpad's new→pending move, Sentry's envelope cache, OTel's persistent queue and Fluent Bit's chunks all do this.
+2. Retry it later from a store that survives the process: on the next start (Sentry, OTel), on a periodic rescan (Crashpad and Sentry every 15 minutes), or when a condition holds again (WorkManager constraints).
+3. Rely on the receiver tolerating duplicates (outbox, idempotent consumer).
+4. Bound the backlog and give up on items that fail permanently (Sentry's 6 tries and cache limits, Fluent Bit's `Retry_Limit` and oldest-chunk eviction, OTel's `max_elapsed_time`, PostHog's oldest-first eviction).
+
+These are vendor-documented behaviours; describing them as one pattern is agent judgement.
+
+Concurrency is the part where this problem differs from the tools. Almost all of them have one long-lived owner process per store: Crashpad's handler, the in-process Sentry SDK, an OTel Collector with a bbolt file lock, and Fluent Bit. Crashpad lets many processes write but has one uploader, and it still needs per-report lock files with a TTL. The one widely used design for many unrelated writers and readers sharing a directory with no long-lived owner is maildir: one file per item under a unique name, published atomically, so that no operation touches another item's file.
+
+Credential expiry is not covered by any tool's retry policy. AWS says an expired SSO login needs a new `aws sso login`, and SDKs don't retry authentication failures. So the standard answer is to stop retrying, keep the record, and resume after an external event (sourced). For this problem, that event is the next hook or session start once the person has logged in (agent judgement).
+
+#### 2. Which mechanisms are needed here?
+
+All of the needed/not-needed judgements below are agent judgement, drawing on the sources above.
+
+Needed:
+
+- **A durable record written before the attempt.** This is the outbox's ordering. A hook killed at its 3s or 10s timeout, or failing on credentials, must leave something a later process can find.
+- **An atomic publish of that record**, so that nobody reads a half-written one: maildir's tmp→new, POSIX `rename`/`link`, or a single `symlink()` call.
+- **A retry trigger outside the failing process.** Here the store has no owner process, so the trigger is the next hook or session start; there is no daemon or timer. Crashpad's rescan exists for the same reason: the writers are not the uploader.
+- **A visible signal** while records are stuck. The repo requires failing loudly, and the requirement asks for a warning on expired login. Fluent Bit and Sentry discard silently once retries run out, which is not acceptable here.
+- **Handling for a record whose transcript is gone.** This is the one permanent failure here, and it should be reported rather than retried forever.
+
+Not needed, because uploads are idempotent and latest-wins:
+
+- **A copy of the payload.** Crashpad and Sentry copy reports because the source is in memory or about to vanish. A transcript persists on disk, so a reference (key plus path) is enough.
+- **Message IDs, deduplication and exactly-once.** Outbox consumers need these because their effects aren't idempotent. A repeated PutObject of the current file is harmless.
+- **Ordering, and one record per version.** Only the current file matters, so any number of records for one key collapse into a single upload.
+- **Per-item claims or locks to prevent double upload.** Crashpad locks each report so that two uploaders don't both send one. Here a double upload wastes bandwidth and is otherwise harmless. Claims and their recovery (staleness TTLs, pid reuse, put-back) are where most of the current queue's review findings came from.
+- **Per-item attempt counters and backoff.** The failure here is global (one login), not per item. Retries are naturally paced by hook frequency, and no item fails on its own except a gone file.
+- **Size and age eviction**, beyond reporting old records. Records are tiny references, and dropping one would silently lose a transcript.
+
+What concurrency still requires: **a deleter must never remove a record a concurrent writer created after the deleter's upload started reading the file.** If it does, a transcript that changed after that point can lose its last record. Maildir's unique names provide this without locks, as part 3 shows.
+
+#### 3. Recommended design
+
+Everything in this part is agent judgement. It is built from maildir's unique-name publish, the outbox's write-before-send ordering, and Crashpad's rescan-by-others.
+
+**State.** One directory in the home directory, as today; worktrees get deleted, so the state can't live in one. It holds one marker per failed or in-progress upload attempt, never rewritten. The marker name is the URL-encoded key, a separator, and a random UUID, so names never collide and no process ever overwrites or renames another's marker. The marker records the key and the transcript path. It is published atomically in one of two ways:
+
+- **Recommended: a symlink to the transcript.** `symlink()` is a single call, so there's no tmp file to clean up and no partial content. A dangling link shows directly that the transcript is gone.
+- **Alternative: write-tmp-then-rename**, as maildir does.
+
+**Upload a key.** One routine, used by both the hook and the retry sweep:
+
+1. List the markers whose name starts with this key.
+2. Upload the transcript file. The upload starts reading the file only after the listing.
+3. On success, unlink exactly the markers listed in step 1, ignoring ENOENT.
+4. On failure, unlink nothing.
+
+The invariant: a marker is removed only by a process whose successful upload began reading the file after that marker existed. That upload's content is therefore at least as new as whatever the marker's writer wanted uploaded. Markers created after the listing survive, and lead at worst to one redundant upload. No claims, ids, put-back or staleness timers are involved.
+
+**Hook.**
+
+1. Publish its own marker first, before the credential lookup, so that a hook killed at its timeout still leaves one.
+2. Get credentials. If that fails, print the login warning (the systemMessage, as today) and exit 0, leaving the marker.
+3. Run "upload a key" for its own key. This also clears that key's markers left by earlier turns. If the upload fails, fail loudly with the S3 error, leaving the markers.
+4. If markers for other keys are older than a short age (about a minute), spawn a detached sweep.
+
+That age only keeps the sweep from re-uploading transcripts whose own hooks are mid-upload. It affects redundancy, never correctness.
+
+**Sweep.** A detached process, triggered by a successful hook as above and by the SessionStart `check` when credentials work and markers exist.
+
+1. Group the markers by key.
+2. Run "upload a key" once per key, skipping keys whose transcript is gone.
+
+Concurrent sweeps are safe: at worst they upload the same key twice, and their unlinks of the same markers don't interfere. A sweep killed mid-run leaves markers for the next trigger to pick up, with nothing stale to recover. No lock is recommended. If redundant sweeps prove costly, an O_EXCL lock file whose holder may die would bring back the staleness problem, so prefer accepting duplicates (YAGNI).
+
+**Warnings.** The markers themselves are the error state, so no per-entry error field is needed.
+
+- The SessionStart `check` reaches the user. When markers exist and credentials fail, it says how many transcripts are waiting and gives the login command.
+- When credentials work but markers older than some threshold remain (say an hour), it names them; each upload hook names them too.
+- A marker whose transcript is gone is reported with the marker to delete. That keeps the current loud behaviour and avoids silently dropping it.
+
+**Failure cases handled.**
+
+- **A hook killed at its timeout, or dying at any point.** The marker was published first, and the sweep retries it.
+- **An expired login.** The hook keeps its marker and warns. After `aws sso login`, the next hook in any session clears its own key and spawns a sweep for the rest, and the next session start sweeps too.
+- **Several turns of one session failing.** Several markers for one key collapse into one upload when the key next succeeds.
+- **A hook and a sweep uploading the same key at once.** Duplicate PUTs; each deletes only markers it listed before reading, so a newer turn's marker survives if its upload failed.
+- **Two sweeps at once.** Duplicate PUTs; ENOENT on unlink is ignored.
+- **A sweep dying mid-run.** Its markers stay; there are no claims to expire.
+- **A deleted worktree.** The state lives in the home directory.
+- **A transcript gone.** A dangling link is reported, never retried silently or forever.
+- **A marker corrupted or vanishing mid-listing.** It can't be corrupt: a symlink is created atomically, and a rename-published marker is never partially visible. A marker unlinked between `readdir` and `readlink` gives ENOENT and is skipped.
+
+**Residual risk, outside the queue.** S3 is last-writer-wins by the time it receives a request, not by content. Two overlapping uploads of one key can leave the older snapshot in S3 after both have succeeded and cleared their markers. The likely case is a session's last async Stop upload overlapping its SessionEnd upload. The current code has the same exposure. Possible remedies:
+
+- **Accept it**, since the next upload of that key fixes it. This is the simplest option.
+- **Have the sweep compare** a HeadObject `ContentLength` with the local size before treating a key as done. This costs one request per key.
+- **Use conditional `If-Match` writes.** This adds read-then-write chains to every hook.
+
+I'd accept it for now and record it as a known limitation.
+
+**Compared with the current `pending.ts`.** The design removes:
+
+- claim files and their pid, staleness TTL and link-not-rename put-back;
+- entry ids;
+- per-entry error recording;
+- the "hook owns" age as a correctness rule (it survives only as an efficiency filter).
+
+By construction, it leaves these review findings no state to occur in: orphaned-claim (no claims), spurious-failing-warning (no stored errors), vanished-entry-unreadable (ENOENT is a skip), and the release race (nothing is released). duplicate-inflight-upload becomes harmless waste rather than a correctness question. I checked this against the ledger's round 4 and 5 entries, not every round's findings JSON.
+
+## Hook output and kernel locks
+
+### Question
+
+The sources the upload worker's design rests on: where each CLI shows a hook's `systemMessage` and how a `flock` lock behaves across `exec` and process death. Read 2026-11-10 by a fetch subagent and checked against the pages fetched directly.
+
+### Findings
+
+- **Claude Code hooks** (vendor documentation, [hooks reference](https://code.claude.com/docs/en/hooks)). The common output fields: "`systemMessage` | none | Warning message shown to the user." For hooks run with `async: true`: "After the background process exits, Claude Code delivers the `additionalContext` and `systemMessage` fields from the hook's JSON response to Claude on the next conversation turn ... Unlike a synchronous hook's `systemMessage`, neither field is shown to you." On timeouts: "Claude Code doesn't enforce it on a command hook you run with `async: true`", the command default is 600 seconds, and "`SessionEnd` hooks share a 1.5-second budget; if your settings set a longer per-hook `timeout`, Claude Code raises the budget to match, up to 60 seconds". The Stop input example includes `"hook_event_name": "Stop"`.
+- **Codex hooks** (vendor documentation, [hooks](https://learn.chatgpt.com/docs/hooks); `developers.openai.com/codex/hooks` redirects there). `systemMessage` is "Surfaced as a warning in the UI or event stream." "By default, Codex waits for a command hook to finish before continuing." The input carries `hook_event_name`, and the events include `SessionStart`, `Stop`, `SubagentStop`, `PreCompact` and `SessionEnd`.
+- **flock(2)** (Linux man-pages, common practice for the BSD/Linux call perl's `flock` wraps, [flock(2)](https://www.man7.org/linux/man-pages/man2/flock.2.html)). "Locks created by flock() are associated with an open file description"; duplicate descriptors "refer to the same lock", which is released "when all such file descriptors have been closed"; "Locks created by flock() are preserved across an execve(2)." With `LOCK_NB`, a held lock fails with EWOULDBLOCK.
 
 ## S3 conditional writes
 

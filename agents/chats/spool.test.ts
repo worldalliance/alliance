@@ -153,7 +153,7 @@ test("a failed upload keeps its request with the cause and other keys still uplo
     goneCause,
     upload: async ({ key }) =>
       key === "claude/a.jsonl"
-        ? R.failure("ExpiredToken")
+        ? R.failure({ error: "ExpiredToken" })
         : R.success(undefined),
   });
   expect(pass.ok).toBe(true);
@@ -166,11 +166,32 @@ test("a key that keeps failing holds one request with the latest cause", async (
   for (const cause of ["ExpiredToken", "NetworkError"]) {
     R.unwrap(publish(dir, { key: "claude/a.jsonl", file: transcript }));
     R.unwrap(publish(dir, { key: "claude/a.jsonl", file: transcript }));
-    await runPass({ dir, goneCause, upload: async () => R.failure(cause) });
+    await runPass({
+      dir,
+      goneCause,
+      upload: async () => R.failure({ error: cause }),
+    });
   }
   expect(requests()).toMatchObject([
     { key: "claude/a.jsonl", error: "NetworkError" },
   ]);
+});
+
+test("a later failure for another cause clears the credential-lookup mark", async () => {
+  R.unwrap(publish(dir, { key: "claude/a.jsonl", file: transcript }));
+  await runPass({
+    dir,
+    goneCause,
+    upload: async () => R.failure({ error: "login", credentialsFailed: true }),
+  });
+  expect(requests()[0]?.credentialsFailed).toBe(true);
+  await runPass({
+    dir,
+    goneCause,
+    upload: async () => R.failure({ error: "AccessDenied" }),
+  });
+  expect(requests()).toMatchObject([{ error: "AccessDenied" }]);
+  expect(requests()[0]?.credentialsFailed).toBeUndefined();
 });
 
 test("the newest request by mtime is the one uploaded, however slowly the listing reads", async () => {
@@ -219,7 +240,7 @@ test("a failed upload keeps its request older than one published during it", asy
     goneCause,
     upload: async () => {
       R.unwrap(publish(dir, { key: "claude/k.jsonl", file: newer }));
-      return R.failure("offline");
+      return R.failure({ error: "offline" });
     },
   });
   const uploaded: string[] = [];
@@ -280,7 +301,7 @@ test("a transcript that can't be checked uploads and records the upload's cause"
     goneCause,
     upload: async () => {
       called = true;
-      return R.failure("EACCES");
+      return R.failure({ error: "EACCES" });
     },
   });
   chmodSync(locked, 0o700);
@@ -294,7 +315,7 @@ test("a pass that cannot record a failure fails and leaves the request", async (
   const pass = await runPass({
     dir,
     goneCause,
-    upload: async () => R.failure("denied"),
+    upload: async () => R.failure({ error: "denied" }),
   });
   expect(pass.ok).toBe(false);
   expect(pass.ok ? "" : pass.error.message).toContain("could not update");
