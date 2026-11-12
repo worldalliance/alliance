@@ -10,7 +10,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { R } from "../../../../../../common/src/result";
-import { type AgentEvent, AgentEventKind } from "../session";
+import { type AgentEvent, AgentEventKind } from "../../../shared/agent-event";
 import { createClaudeBackend } from "./backend";
 import type { ClaudeCli } from "./process";
 import { CLAUDE_CODE_VERSION } from "./protocol";

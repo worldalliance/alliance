@@ -2,9 +2,8 @@ import { R } from "../../../../../../../common/src/result";
 import {
   type AgentEvent,
   AgentEventKind,
-  type AgentMessage,
-  type AgentSession,
-} from "../../session";
+} from "../../../../shared/agent-event";
+import { type AgentMessage, type AgentSession } from "../../session";
 
 export type TurnObserver = (event: AgentEvent, events: AgentEvent[]) => void;
 

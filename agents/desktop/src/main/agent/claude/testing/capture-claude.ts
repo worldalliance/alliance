@@ -13,8 +13,12 @@ import { constants, homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { R } from "../../../../../../../common/src/result";
+import {
+  type AgentEvent,
+  AgentEventKind,
+} from "../../../../shared/agent-event";
 import { devClaudeConfigDir } from "../../../dev-app-data";
-import { type AgentEvent, AgentEventKind, ImageMediaType } from "../../session";
+import { ImageMediaType } from "../../session";
 import { isSignedInToClaude, signInToClaude } from "../auth";
 import { createClaudeBackend } from "../backend";
 import { type ClaudeCli, checkClaudeVersion } from "../process";

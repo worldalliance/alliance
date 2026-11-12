@@ -2,8 +2,8 @@ import { expect, type Page, test } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { AgentEventKind } from "../src/main/agent/session";
 import { claudeExecutableVariable } from "../src/main/claude-executable";
+import { AgentEventKind } from "../src/shared/agent-event";
 import { type AgentApi, IpcChannel } from "../src/shared/ipc";
 import { firstMessage, start } from "./ipc-helpers";
 import {

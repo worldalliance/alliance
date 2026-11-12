@@ -1,5 +1,5 @@
 import type { Result } from "../../../../common/src/result";
-import type { AgentEvent } from "../main/agent/session";
+import type { AgentEvent } from "./agent-event";
 import type { Conversation } from "./conversation";
 
 export type { Conversation } from "./conversation";

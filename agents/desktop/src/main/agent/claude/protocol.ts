@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { R, type Result } from "../../../../../../common/src/result";
+import { type AgentEvent, AgentEventKind } from "../../../shared/agent-event";
 import { describeError } from "../../describe-error";
-import { type AgentEvent, AgentEventKind, type AgentMessage } from "../session";
+import { type AgentMessage } from "../session";
 
 export const CLAUDE_CODE_VERSION = "2.1.322";
 

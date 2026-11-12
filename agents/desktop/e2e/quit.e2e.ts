@@ -14,8 +14,8 @@ import {
 } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
-import { AgentEventKind } from "../src/main/agent/session";
 import { claudeExecutableVariable } from "../src/main/claude-executable";
+import { AgentEventKind } from "../src/shared/agent-event";
 import { type AgentApi } from "../src/shared/ipc";
 import { appArgs } from "./app-args";
 import { firstMessage, start } from "./ipc-helpers";

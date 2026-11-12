@@ -1,9 +1,8 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import { R, type Result } from "../../../../../common/src/result";
+import { type AgentEvent, AgentEventKind } from "../../shared/agent-event";
 import { createFakeBackend, demoScript } from "./fake-backend";
 import {
-  type AgentEvent,
-  AgentEventKind,
   type AgentMessage,
   type AgentSession,
   ImageMediaType,

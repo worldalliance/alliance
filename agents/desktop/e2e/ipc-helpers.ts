@@ -1,5 +1,5 @@
 import { type Page } from "@playwright/test";
-import { AgentEventKind } from "../src/main/agent/session";
+import { AgentEventKind } from "../src/shared/agent-event";
 import { type AgentApi } from "../src/shared/ipc";
 import { workFolder } from "./launch";
 
