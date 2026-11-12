@@ -5,7 +5,7 @@ import {
   test,
 } from "@playwright/test";
 import { execFileSync } from "node:child_process";
-import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { CLAUDE_CODE_VERSION } from "../src/main/agent/claude/protocol";
 import {
@@ -59,6 +59,7 @@ export async function launch(params: {
   claude?: string;
   /** The app looks for claude on this PATH in place of running the stub. */
   path?: string;
+  env?: Record<string, string>;
 }): Promise<{ app: ElectronApplication; page: Page }> {
   const app = await electron.launch({
     args: appArgs(),
@@ -72,6 +73,7 @@ export async function launch(params: {
         [claudeExecutableVariable]: "",
         PATH: params.path,
       }),
+      ...params.env,
     },
   });
   return { app, page: await app.firstWindow() };
@@ -88,11 +90,18 @@ export function trackedClaude(): string {
   const file = test.info().outputPath("claude");
   writeFileSync(
     file,
-    `#!/bin/sh\n"${process.env[claudeExecutableVariable]}" "$@"\nstatus=$?\nsleep 1\nexit $status\n`,
+    `#!/bin/sh\n"${process.env[claudeExecutableVariable]}" "$@"\nstatus=$?\nsleep 1\n${noteOutlivedApp(file)}\nexit $status\n`,
   );
   chmodSync(file, 0o755);
   return file;
 }
+
+/** Shell for a wrapper's last step that notes when the CLI outlived the app that started it, which a quit waiting for its CLIs never lets happen. */
+export const noteOutlivedApp = (claude: string): string =>
+  `kill -0 $PPID 2>/dev/null || touch "${claude}.outlived-app"`;
+
+export const outlivedApp = (claude: string): boolean =>
+  existsSync(`${claude}.outlived-app`);
 
 export const runningCount = (claude: string): number =>
   execFileSync("ps", ["-ax", "-o", "command="], { encoding: "utf8" })

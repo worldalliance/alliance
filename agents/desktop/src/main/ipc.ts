@@ -7,6 +7,7 @@ import {
 } from "electron";
 import { stat } from "node:fs/promises";
 import path from "node:path";
+import { setTimeout } from "node:timers/promises";
 import { z } from "zod";
 import { R, type Result } from "../../../../common/src/result";
 import {
@@ -65,15 +66,19 @@ function broadcast(sessionEvent: SessionEvent): void {
     window.webContents.send(IpcChannel.Event, sessionEvent);
 }
 
-/** Registers the renderer's handlers. findClaude runs on each call until it first succeeds, so a CLI installed while the app runs is found. */
+/** Registers the renderer's handlers and returns the quit step: once called, it aborts a running sign-in, Start, Resume and SignIn fail, and it resolves when every live session's CLI has exited, waiting at most openingWaitMs for sessions still starting and for new sessions' first events; one that finishes starting after that is waited for only while others still close. findClaude runs on each call until it first succeeds, so a CLI installed while the app runs is found. */
 export function registerIpc(params: {
   findClaude: () => Result<Claude, Error>;
   conversations: ConversationStore;
   /** The URL the window loads; only its top-level page may call. */
   rendererUrl: string;
-}): void {
-  const { findClaude, conversations, rendererUrl } = params;
+  openingWaitMs: number;
+}): () => Promise<void> {
+  const { findClaude, conversations, rendererUrl, openingWaitMs } = params;
   const live = new Map<string, AgentSession>();
+  const opening = new Set<Promise<unknown>>();
+  const unreplied = new Map<AgentSession, Promise<void>>();
+  let closing = false;
   let signIn: AbortController | undefined;
   let claude: Result<Claude, Error> | undefined;
 
@@ -84,10 +89,30 @@ export function registerIpc(params: {
     return toIpc(claude.ok ? await run(claude.value) : claude);
   };
 
+  const quittingError = () => new Error("Alliance agent is quitting.");
+  const quitting = <T>(): IpcResult<T> => toIpc(R.failure(quittingError()));
+
+  const openSession = <T>(
+    open: () => Promise<IpcResult<T>>,
+  ): Promise<IpcResult<T>> => {
+    if (closing) return Promise.resolve(quitting());
+    const opened = open();
+    opening.add(opened);
+    void Promise.allSettled([opened]).then(() => opening.delete(opened));
+    return opened;
+  };
+
   const attach = (session: AgentSession) => {
     if (live.get(session.id) === session) return;
     live.set(session.id, session);
     session.subscribe((event) => broadcast({ sessionId: session.id, event }));
+  };
+
+  // A session that finishes opening once the quit began joins live, so the quit closes it, and waits for it unless the opening wait has run out and the other sessions have closed.
+  const refuse = (session: AgentSession) => {
+    attach(session);
+    void session.close();
+    return R.failure(quittingError());
   };
 
   // Per Electron's security checklist, so a frame that slips past the CSP or navigation lock can't run Claude.
@@ -121,11 +146,13 @@ export function registerIpc(params: {
   );
 
   handle(IpcChannel.SignIn, () =>
-    withClaude(({ cli }) => {
-      signIn?.abort();
-      signIn = new AbortController();
-      return signInToClaude(cli, signIn.signal);
-    }),
+    closing
+      ? quitting()
+      : withClaude(({ cli }) => {
+          signIn?.abort();
+          signIn = new AbortController();
+          return signInToClaude(cli, signIn.signal);
+        }),
   );
 
   on(IpcChannel.CancelSignIn, () => signIn?.abort());
@@ -149,13 +176,15 @@ export function registerIpc(params: {
     const args = parseArg(startArgs, input);
     if (!args.ok) return toIpc(args);
     const { folder, firstMessage } = args.value;
-    return withClaude(
-      async ({ backend }): Promise<Result<Conversation, Error>> => {
+    return openSession(() =>
+      withClaude(async ({ backend }): Promise<Result<Conversation, Error>> => {
         const usable = await checkFolder(folder);
         if (!usable.ok) return usable;
+        if (closing) return R.failure(quittingError());
         const started = await backend.start({ cwd: folder });
         if (!started.ok) return started;
         const session = started.value;
+        if (closing) return refuse(session);
         const conversation: Conversation = {
           id: session.id,
           folder,
@@ -169,13 +198,24 @@ export function registerIpc(params: {
           return saved;
         }
         attach(session);
+        // Claude Code keeps no transcript for a CLI closed before it reads its first message, so the quit closes this session only after its first event.
+        unreplied.set(
+          session,
+          new Promise<void>((resolve) => {
+            const stop = session.subscribe(() => {
+              stop();
+              unreplied.delete(session);
+              resolve();
+            });
+          }),
+        );
         const sent = session.send({ text: firstMessage, images: [] });
         if (!sent.ok)
           throw new Error(
             `A new session refused its first message: ${sent.error.message}`,
           );
         return R.success(conversation);
-      },
+      }),
     );
   });
 
@@ -183,25 +223,29 @@ export function registerIpc(params: {
     const parsed = parseArg(idArg, sessionId);
     if (!parsed.ok) return toIpc(parsed);
     const id = parsed.value;
-    return withClaude(async ({ backend }) => {
-      const found = await conversations.find(id);
-      if (!found.ok) return found;
-      const conversation = found.value;
-      if (!conversation)
-        return R.failure(new Error(`No saved conversation has id ${id}.`));
-      const usable = await checkFolder(conversation.folder);
-      if (!usable.ok) return usable;
-      const resumed = await backend.resume({
-        cwd: conversation.folder,
-        sessionId: id,
-      });
-      if (!resumed.ok) return resumed;
-      attach(resumed.value);
-      return R.success({
-        conversation,
-        turnRunning: resumed.value.turnRunning,
-      });
-    });
+    return openSession(() =>
+      withClaude(async ({ backend }) => {
+        const found = await conversations.find(id);
+        if (!found.ok) return found;
+        const conversation = found.value;
+        if (!conversation)
+          return R.failure(new Error(`No saved conversation has id ${id}.`));
+        const usable = await checkFolder(conversation.folder);
+        if (!usable.ok) return usable;
+        if (closing) return R.failure(quittingError());
+        const resumed = await backend.resume({
+          cwd: conversation.folder,
+          sessionId: id,
+        });
+        if (!resumed.ok) return resumed;
+        if (closing) return refuse(resumed.value);
+        attach(resumed.value);
+        return R.success({
+          conversation,
+          turnRunning: resumed.value.turnRunning,
+        });
+      }),
+    );
   });
 
   // No await may precede session.send: an Interrupt sent right after Send must find the turn started.
@@ -222,4 +266,34 @@ export function registerIpc(params: {
     if (!id.ok) return console.error(`Interrupt: ${id.error.message}`);
     live.get(id.value)?.interrupt();
   });
+
+  return async () => {
+    closing = true;
+    signIn?.abort();
+    const waitEnded = setTimeout(openingWaitMs, false);
+    const waited = new Set<AgentSession>();
+    const closeUnwaited = async (): Promise<boolean> => {
+      const unclosed = [...live.values()].filter((s) => !waited.has(s));
+      for (const session of unclosed) waited.add(session);
+      await Promise.all(
+        unclosed.map(async (session) => {
+          await Promise.race([unreplied.get(session), waitEnded]);
+          await session.close();
+        }),
+      );
+      return unclosed.length > 0;
+    };
+    // Closing stops a running turn, which would otherwise go on unseen while starting sessions are waited for.
+    const liveClosed = closeUnwaited();
+    const opened = await Promise.race([
+      Promise.allSettled(opening).then(() => true),
+      waitEnded,
+    ]);
+    if (!opened)
+      console.error(
+        `Quitting without waiting further for ${opening.size} session(s) still starting after ${openingWaitMs / 1000} s.`,
+      );
+    await liveClosed;
+    while (await closeUnwaited());
+  };
 }
