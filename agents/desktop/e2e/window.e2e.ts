@@ -82,6 +82,32 @@ test("the stylesheet loads, with its dark colours", async () => {
   expect(await background()).toBe("rgb(13, 17, 23)");
 });
 
+test("a button marked aria-disabled reads as inactive and shows no press", async () => {
+  await page.evaluate(`{
+    document.body.innerHTML =
+      '<button>a</button><button aria-disabled="true">b</button><button class="primary">c</button><button class="primary" aria-disabled="true">d</button>';
+    window.look = (name) => {
+      const button = [...document.querySelectorAll("button")].find((b) => b.textContent === name);
+      const { opacity, backgroundColor, filter } = getComputedStyle(button);
+      return { opacity, backgroundColor, filter };
+    };
+  }`);
+  const look = (name: string) => page.evaluate(`look("${name}")`);
+  const pressed = async (name: string) => {
+    await page.getByRole("button", { name }).hover();
+    await page.mouse.down();
+    const looks = await look(name);
+    await page.mouse.up();
+    return looks;
+  };
+  for (const name of ["b", "d"]) {
+    expect(await look(name)).toMatchObject({ opacity: "0.7" });
+    expect(await pressed(name)).toEqual(await look(name));
+  }
+  for (const name of ["a", "c"])
+    expect(await pressed(name)).not.toEqual(await look(name));
+});
+
 test("the page can't read local files", async () => {
   await expect(page.evaluate("fetch('file:///etc/hosts')")).rejects.toThrow();
 });

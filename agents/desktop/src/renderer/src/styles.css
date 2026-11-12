@@ -72,13 +72,17 @@ button.primary {
   border-color: var(--accent);
 }
 
-button:active {
+button:not([aria-disabled="true"]):active {
   background: var(--border);
 }
 
-button.primary:active {
+button.primary:not([aria-disabled="true"]):active {
   background: var(--accent);
   filter: brightness(0.85);
+}
+
+button[aria-disabled="true"] {
+  opacity: 0.7;
 }
 
 :focus-visible {
