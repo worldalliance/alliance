@@ -2,7 +2,8 @@
 # Usage: sudo bash check-cert.sh <lineage> <name>...
 # Fails unless the lineage's certificate covers every name, printing the
 # certbot command that issues it. That command's -d list replaces the
-# lineage's names, so pass every name the vhost serves. Run it before
+# lineage's names, so pass every name the vhost serves that resolves to this
+# box; one that doesn't fails the whole request. Run it before
 # rendering a vhost: one pointing at a missing lineage fails every later
 # `nginx -t`, other vhosts' deploys included, and one whose cert lacks a
 # server_name passes `nginx -t` and then fails TLS in the browser.
