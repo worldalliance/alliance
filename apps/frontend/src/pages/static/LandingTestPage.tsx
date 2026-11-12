@@ -347,10 +347,7 @@ const LandingTestPage: React.FC = () => {
               <h2 className={TITLE_CLASS}>Request an invite</h2>
               <p className={SUBTITLE_CLASS}>
                 Membership is by invitation. Send us an{" "}
-                <a
-                  href="mailto:contact@worldalliance.org"
-                  className="text-link"
-                >
+                <a href="mailto:contact@thealliance.org" className="text-link">
                   email
                 </a>{" "}
                 with a short description of yourself, and we&apos;ll be in
