@@ -1,12 +1,17 @@
+import { NodeEnv } from "@alliance/common/node-env";
+import { isCanonicalE164 } from "@alliance/common/phone";
 import { R, type Result } from "@alliance/common/result";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { env } from "src/config/env";
 import { User } from "src/user/entities/user.entity";
+import { isAnonymizedPhoneNumber } from "src/utils/phone";
 import type { Repository } from "src/utils/Repository";
 import { In } from "typeorm";
 import { z } from "zod";
 import { MmsMedia } from "./mms-media.entity";
 import { Mms, MmsDirection, type MmsKeyword } from "./mms.entity";
+import { MmsService, type StaffSendFailure } from "./mms.service";
 
 export type InboundText = {
   sid: string;
@@ -19,6 +24,7 @@ export type InboundText = {
 
 export type MmsThread = {
   phoneNumber: string | null;
+  textable: boolean;
   optedOut: boolean;
   messages: Mms[];
   hasOlder: boolean;
@@ -31,6 +37,47 @@ export enum ThreadRefusal {
   BeforeNotInThread = "before_not_in_thread",
 }
 
+export enum StaffTextRefusal {
+  NoPhoneNumber = "no_phone_number",
+  InvalidNumber = "invalid_number",
+  OptedOut = "opted_out",
+}
+
+/** Staging's anonymized numbers pass there, so staff texting can be tried on
+ * staging; in production they are unassigned 555 numbers no text would reach. */
+const ANONYMIZED_NUMBERS_TEXTABLE: Record<NodeEnv, boolean> = {
+  [NodeEnv.Production]: false,
+  [NodeEnv.Staging]: true,
+  [NodeEnv.Development]: true,
+  [NodeEnv.Test]: true,
+};
+
+const textableNumber = (phoneNumber: string): boolean =>
+  isCanonicalE164(phoneNumber) ||
+  (ANONYMIZED_NUMBERS_TEXTABLE[env("NODE_ENV")] &&
+    isAnonymizedPhoneNumber(phoneNumber));
+
+const memberNumber = (
+  user: User,
+): Result<
+  string,
+  StaffTextRefusal.NoPhoneNumber | StaffTextRefusal.InvalidNumber
+> => {
+  if (!user.phoneNumber) return R.failure(StaffTextRefusal.NoPhoneNumber);
+  if (!textableNumber(user.phoneNumber)) {
+    return R.failure(StaffTextRefusal.InvalidNumber);
+  }
+  return R.success(user.phoneNumber);
+};
+
+const staffTextableNumber = (user: User): Result<string, StaffTextRefusal> => {
+  const number = memberNumber(user);
+  if (number.ok && user.phoneNumberUnsubscribed) {
+    return R.failure(StaffTextRefusal.OptedOut);
+  }
+  return number;
+};
+
 @Injectable()
 export class MmsThreadService {
   constructor(
@@ -38,6 +85,7 @@ export class MmsThreadService {
     private readonly mmsRepository: Repository<Mms>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly mmsService: MmsService,
   ) {}
 
   /** Twilio retries a webhook it timed out on, so a repeat SID records nothing. */
@@ -91,6 +139,7 @@ export class MmsThreadService {
     if (!page.ok) return page;
     return R.success({
       phoneNumber: user.value.phoneNumber,
+      textable: memberNumber(user.value).ok,
       optedOut: user.value.phoneNumberUnsubscribed,
       ...page.value,
     });
@@ -134,6 +183,35 @@ export class MmsThreadService {
       order: { createdAt: "ASC", id: "ASC", media: { id: "ASC" } },
     });
     return R.success({ messages, hasOlder: ids.length > THREAD_PAGE_SIZE });
+  }
+
+  async send(params: {
+    userId: number;
+    body: string;
+    adminId: number;
+  }): Promise<
+    Result<
+      Mms,
+      ThreadRefusal.MemberNotFound | StaffTextRefusal | StaffSendFailure
+    >
+  > {
+    const { userId, body, adminId } = params;
+    const user = await this.findMember(userId);
+    if (!user.ok) return user;
+    const to = staffTextableNumber(user.value);
+    if (!to.ok) return to;
+    const sent = await this.mmsService.sendStaffText({
+      to: to.value,
+      userId,
+      body,
+      sentById: adminId,
+    });
+    if (!sent.ok) return sent;
+    const mms = await this.mmsRepository.findOneOrFail({
+      where: { id: sent.value.id },
+      relations: { sentBy: true, media: true },
+    });
+    return R.success(mms);
   }
 
   private async findMember(

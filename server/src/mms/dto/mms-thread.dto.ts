@@ -1,6 +1,15 @@
+import { STAFF_TEXT_MAX_LENGTH } from "@alliance/common/staffText";
 import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { IsInt, IsOptional, Max, Min } from "class-validator";
+import {
+  IsInt,
+  IsOptional,
+  IsString,
+  Matches,
+  Max,
+  Min,
+  ValidateBy,
+} from "class-validator";
 import { MmsMedia } from "../mms-media.entity";
 import {
   inlineContentType,
@@ -71,6 +80,12 @@ export class MmsThreadDto {
   @ApiProperty({ type: String, nullable: true })
   phoneNumber: string | null;
 
+  @ApiProperty({
+    description:
+      "False when the member has no phone number or one staff can't text; opt-out is reported separately in optedOut",
+  })
+  textable: boolean;
+
   @ApiProperty()
   optedOut: boolean;
 
@@ -86,6 +101,7 @@ export class MmsThreadDto {
 
   constructor(input: MmsThread) {
     this.phoneNumber = input.phoneNumber;
+    this.textable = input.textable;
     this.optedOut = input.optedOut;
     this.messages = input.messages.map((message) => new MmsMessageDto(message));
     this.hasOlder = input.hasOlder;
@@ -102,4 +118,20 @@ export class MmsThreadQueryDto {
   @Min(1)
   @Max(2_147_483_647)
   before?: number;
+}
+
+export class SendStaffTextDto {
+  @ApiProperty({ minLength: 1, maxLength: STAFF_TEXT_MAX_LENGTH })
+  @IsString()
+  @ValidateBy({
+    name: "maxCodeUnits",
+    validator: {
+      validate: (value) =>
+        typeof value === "string" && value.length <= STAFF_TEXT_MAX_LENGTH,
+      defaultMessage: () =>
+        `body must be at most ${STAFF_TEXT_MAX_LENGTH} characters`,
+    },
+  })
+  @Matches(/\S/, { message: "body must not be blank" })
+  body: string;
 }

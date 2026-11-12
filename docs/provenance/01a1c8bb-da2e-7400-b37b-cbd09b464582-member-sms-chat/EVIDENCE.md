@@ -57,3 +57,7 @@ Method: on 2026-11-12, at the branch tip after its rebase onto `main` 8196603b37
 
 - With `sentBy?: Relation<User> | null`, the fresh run passed, but an incremental run after editing `src/notifs/record-delivery.ts` or `src/mms/mms.entity.ts` failed, and kept failing once the edit was undone: TS2322 at `record-delivery.ts:27` and TS2345 at `action-update-recognition.service.ts:405`, each tracing `_QueryDeepPartialEntity` through `Mms.sentBy` → `User.optInMms` → `Mms`. Editing `action-update-recognition.service.ts` alone passed. The result depends on the order tsc checks files, not on the code in them.
 - With `sentBy?: Relation<Pick<User, "name">> | null`, the fresh run and the incremental runs after editing each of `record-delivery.ts`, `mms.entity.ts`, `action-update-recognition.service.ts` and `user.entity.ts` all passed.
+
+## Staff text length limit (vendor documentation)
+
+Twilio's page for error 21617, "The concatenated message body exceeds the 1600 character limit" (https://www.twilio.com/docs/api/errors/21617), read on 2026-11-12, says the `Body` of an outgoing message can be up to 1,600 characters, and that for SMS, characters outside GSM-7, such as emoji, "can use more space than standard GSM characters and cause the message to exceed the limit sooner than expected." It does not say exactly how Twilio counts them. class-validator's `@Length`, through validator's `isLength`, counts a surrogate pair as one character, so `'😎'.repeat(1600)`, 3,200 UTF-16 code units, passes it (a round 22 reviewer's run).

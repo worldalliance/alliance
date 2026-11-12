@@ -1,9 +1,13 @@
+import { R } from "@alliance/common/result";
+import { setEnv } from "@alliance/common/set-env";
+import { STAFF_TEXT_MAX_LENGTH } from "@alliance/common/staffText";
 import { randomUUID } from "crypto";
 import { softDeleteCascade } from "src/datasources/soft-delete";
 import { MmsMediaService, MmsMediaStatus } from "src/mms/mms-media.service";
 import { THREAD_PAGE_SIZE } from "src/mms/mms-thread.service";
 import { Mms, MmsDirection, MmsKeyword } from "src/mms/mms.entity";
 import { MmsModule } from "src/mms/mms.module";
+import { MmsService, StaffSendFailureKind } from "src/mms/mms.service";
 import { ReferralSource, User } from "src/user/entities/user.entity";
 import supertest from "supertest";
 import type { Repository } from "typeorm";
@@ -46,6 +50,12 @@ const thread = (userId: number) =>
   supertest(server())
     .get(`/mms-threads/${userId}`)
     .set("Authorization", admin());
+
+const send = (userId: number, body: string) =>
+  supertest(server())
+    .post(`/mms-threads/${userId}`)
+    .set("Authorization", admin())
+    .send({ body });
 
 const createMember = (phoneNumber: string | null) =>
   userRepo.save(
@@ -308,6 +318,7 @@ describe("Inbound texts in the member's thread (e2e)", () => {
     const member = await createMember(null);
     expect((await thread(member.id).expect(200)).body).toEqual({
       phoneNumber: null,
+      textable: false,
       optedOut: false,
       messages: [],
       hasOlder: false,
@@ -318,6 +329,140 @@ describe("Inbound texts in the member's thread (e2e)", () => {
 
   it("is not found for an unknown member", async () => {
     await thread(2_000_000_000).expect(404);
+  });
+});
+
+describe("Staff texts (e2e)", () => {
+  it("sends from the thread and names the staff member", async () => {
+    const member = await createMember("+14155558101");
+
+    const { body } = await send(member.id, "Hi from the team").expect(201);
+
+    expect(body).toMatchObject({
+      direction: MmsDirection.Outbound,
+      body: "Hi from the team",
+      sentByStaff: true,
+      sentByName: expect.any(String),
+    });
+    const row = await mmsRepo.findOneByOrFail({ id: body.id });
+    expect(row.sentById).toBe(ctx.adminUserId);
+    expect(row.memberPhoneNumber).toBe("+14155558101");
+  });
+
+  it("passes on Twilio's reason when it rejects a text", async () => {
+    const member = await createMember("+14155558106");
+    const sendStaffText = jest
+      .spyOn(ctx.app.get(MmsService), "sendStaffText")
+      .mockResolvedValueOnce(
+        R.failure({
+          kind: StaffSendFailureKind.Rejected,
+          reason: "this number is not a mobile number",
+        }),
+      );
+
+    const { body } = await send(member.id, "Hello?").expect(422);
+
+    expect(body.message).toBe("this number is not a mobile number");
+    sendStaffText.mockRestore();
+  });
+
+  it("reports a send Twilio didn't answer in time as a timeout", async () => {
+    const member = await createMember("+14155558107");
+    const sendStaffText = jest
+      .spyOn(ctx.app.get(MmsService), "sendStaffText")
+      .mockResolvedValueOnce(
+        R.failure({ kind: StaffSendFailureKind.TimedOut }),
+      );
+
+    await send(member.id, "Hello?").expect(504);
+    sendStaffText.mockRestore();
+  });
+
+  it("reports a send that failed for any other reason as a bad gateway", async () => {
+    const member = await createMember("+14155558108");
+    const sendStaffText = jest
+      .spyOn(ctx.app.get(MmsService), "sendStaffText")
+      .mockResolvedValueOnce(R.failure({ kind: StaffSendFailureKind.Failed }));
+
+    await send(member.id, "Hello?").expect(502);
+    sendStaffText.mockRestore();
+  });
+
+  it("refuses to text an opted-out member", async () => {
+    const member = await createMember("+14155558102");
+    await userRepo.update(member.id, { phoneNumberUnsubscribed: true });
+
+    await send(member.id, "Hello?").expect(409);
+    expect(await mmsRepo.countBy({ memberPhoneNumber: "+14155558102" })).toBe(
+      0,
+    );
+    expect((await thread(member.id)).body).toMatchObject({
+      textable: true,
+      optedOut: true,
+    });
+  });
+
+  it("is not found for an unknown member", async () => {
+    await send(2_000_000_000, "Hello?").expect(404);
+  });
+
+  it("refuses a member with no phone number", async () => {
+    const member = await createMember(null);
+    await send(member.id, "Hello?").expect(400);
+  });
+
+  it("refuses a member whose phone number isn't valid", async () => {
+    const member = await createMember("12345");
+    expect(member.phoneNumber).toBe("12345");
+
+    const { body } = await send(member.id, "Hello?").expect(400);
+
+    expect(body.message).toBe("This member's phone number isn't valid.");
+    expect((await thread(member.id)).body.textable).toBe(false);
+  });
+
+  it("accepts a staging member's anonymized number outside production", async () => {
+    const member = await createMember("+15550000123");
+
+    const { body } = await send(member.id, "Hello?").expect(201);
+
+    expect(body).toMatchObject({ body: "Hello?", status: "sent" });
+    expect((await thread(member.id)).body.textable).toBe(true);
+  });
+
+  it("refuses an anonymized-looking number in production", async () => {
+    const member = await createMember("+15550000124");
+    const nodeEnv = process.env.NODE_ENV;
+    setEnv("NODE_ENV", "production");
+    try {
+      await send(member.id, "Hello?").expect(400);
+      expect((await thread(member.id)).body.textable).toBe(false);
+    } finally {
+      setEnv("NODE_ENV", nodeEnv);
+    }
+  });
+
+  it("refuses an empty or blank text", async () => {
+    const member = await createMember("+14155558103");
+    await send(member.id, "").expect(400);
+    await send(member.id, " \n ").expect(400);
+    expect(await mmsRepo.countBy({ memberPhoneNumber: "+14155558103" })).toBe(
+      0,
+    );
+  });
+
+  it("refuses a text over the length limit", async () => {
+    const member = await createMember("+14155558113");
+    await send(member.id, "a".repeat(STAFF_TEXT_MAX_LENGTH + 1)).expect(400);
+    await send(member.id, "a".repeat(STAFF_TEXT_MAX_LENGTH)).expect(201);
+  });
+
+  it("counts an emoji toward the length limit as two characters", async () => {
+    const member = await createMember("+14155558114");
+    await send(member.id, "😎".repeat(STAFF_TEXT_MAX_LENGTH / 2 + 1)).expect(
+      400,
+    );
+    await send(member.id, "😎".repeat(STAFF_TEXT_MAX_LENGTH / 2)).expect(201);
   });
 });
 

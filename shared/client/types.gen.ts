@@ -1773,6 +1773,10 @@ export type MmsMessageDto = {
 
 export type MmsThreadDto = {
     phoneNumber: string | null;
+    /**
+     * False when the member has no phone number or one staff can't text; opt-out is reported separately in optedOut
+     */
+    textable: boolean;
     optedOut: boolean;
     /**
      * Up to 100 texts, oldest first: the newest, or those sent before `before`
@@ -1782,6 +1786,10 @@ export type MmsThreadDto = {
      * Older texts can be loaded with `before`
      */
     hasOlder: boolean;
+};
+
+export type SendStaffTextDto = {
+    body: string;
 };
 
 export type EventType = 'account_created' | 'contract_signed' | 'contract_suspended' | 'sms_unsubscribe' | 'sms_resubscribe' | 'sms_inbound' | 'sms_failure' | 'forum_action_autocomplete' | 'action_comment' | 'forum_reply_notif_failure' | 'action_opt_out' | 'account_deletion_requested' | 'account_deleted' | 'join_request' | 'admin_role_changed' | 'waitlist_mail_cap_reached';
@@ -8707,6 +8715,27 @@ export type MmsThreadGetThreadAdminResponses = {
 };
 
 export type MmsThreadGetThreadAdminResponse = MmsThreadGetThreadAdminResponses[keyof MmsThreadGetThreadAdminResponses];
+
+export type MmsThreadSendTextAdminData = {
+    body: SendStaffTextDto;
+    path: {
+        userId: number;
+    };
+    query?: never;
+    url: '/mms-threads/{userId}';
+};
+
+export type MmsThreadSendTextAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadSendTextAdminError = MmsThreadSendTextAdminErrors[keyof MmsThreadSendTextAdminErrors];
+
+export type MmsThreadSendTextAdminResponses = {
+    200: MmsMessageDto;
+};
+
+export type MmsThreadSendTextAdminResponse = MmsThreadSendTextAdminResponses[keyof MmsThreadSendTextAdminResponses];
 
 export type EventLogFindAllAdminData = {
     body?: never;

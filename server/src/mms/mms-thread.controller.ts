@@ -1,12 +1,19 @@
 import {
+  BadGatewayException,
   BadRequestException,
+  Body,
+  ConflictException,
   Controller,
+  GatewayTimeoutException,
   Get,
   NotFoundException,
   Param,
   ParseIntPipe,
+  Post,
   Query,
+  Request,
   Res,
+  UnprocessableEntityException,
   UseGuards,
 } from "@nestjs/common";
 import {
@@ -16,15 +23,48 @@ import {
 } from "@nestjs/swagger";
 import type { Response } from "express";
 import { AdminGuard } from "src/auth/guards/admin.guard";
-import { MmsThreadDto, MmsThreadQueryDto } from "./dto/mms-thread.dto";
+import type { JwtRequest } from "src/auth/tokens";
+import {
+  MmsMessageDto,
+  MmsThreadDto,
+  MmsThreadQueryDto,
+  SendStaffTextDto,
+} from "./dto/mms-thread.dto";
 import { MediaRefusal, MmsMediaService } from "./mms-media.service";
-import { MmsThreadService, ThreadRefusal } from "./mms-thread.service";
+import {
+  MmsThreadService,
+  StaffTextRefusal,
+  ThreadRefusal,
+} from "./mms-thread.service";
+import { type StaffSendFailure, StaffSendFailureKind } from "./mms.service";
 
-const refusalException: Record<ThreadRefusal | MediaRefusal, () => Error> = {
+const sendFailureException = (failure: StaffSendFailure): Error => {
+  switch (failure.kind) {
+    case StaffSendFailureKind.Rejected:
+      return new UnprocessableEntityException(failure.reason);
+    case StaffSendFailureKind.Failed:
+      return new BadGatewayException();
+    case StaffSendFailureKind.TimedOut:
+      return new GatewayTimeoutException();
+    default:
+      throw new Error(`unknown failure: ${failure satisfies never}`);
+  }
+};
+
+const refusalException: Record<
+  ThreadRefusal | StaffTextRefusal | MediaRefusal,
+  () => Error
+> = {
   [ThreadRefusal.MemberNotFound]: () =>
     new NotFoundException("Member not found"),
   [ThreadRefusal.BeforeNotInThread]: () =>
     new BadRequestException("That text isn't in this thread."),
+  [StaffTextRefusal.NoPhoneNumber]: () =>
+    new BadRequestException("This member has no phone number."),
+  [StaffTextRefusal.InvalidNumber]: () =>
+    new BadRequestException("This member's phone number isn't valid."),
+  [StaffTextRefusal.OptedOut]: () =>
+    new ConflictException("This member has opted out of texts."),
   [MediaRefusal.NoCopy]: () => new NotFoundException(),
 };
 
@@ -63,5 +103,22 @@ export class MmsThreadController {
     });
     if (!thread.ok) throw refusalException[thread.error]();
     return new MmsThreadDto(thread.value);
+  }
+
+  @Post(":userId")
+  @ApiOkResponse({ type: MmsMessageDto })
+  async sendTextAdmin(
+    @Param("userId", ParseIntPipe) userId: number,
+    @Body() body: SendStaffTextDto,
+    @Request() req: JwtRequest,
+  ): Promise<MmsMessageDto> {
+    const sent = await this.threadService.send({
+      userId,
+      body: body.body,
+      adminId: req.user.sub,
+    });
+    if (sent.ok) return new MmsMessageDto(sent.value);
+    if (typeof sent.error === "string") throw refusalException[sent.error]();
+    throw sendFailureException(sent.error);
   }
 }
