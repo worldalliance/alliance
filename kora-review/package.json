@@ -17,6 +17,7 @@
     "gen:types": "bun scripts/gen-types.mjs"
   },
   "dependencies": {
+    "yaml": "^2.8.3",
     "zod": "^4.3.6"
   },
   "devDependencies": {

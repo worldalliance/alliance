@@ -1,3 +1,5 @@
+import { isNode, isSeq, LineCounter, parseDocument } from "yaml";
+
 // Reads KORA's pair export (pair_id, risk_id, conversation_a/b with child and ai turns) and converts each
 // pair into a transcript line for transcriptSchema. Fields the schema doesn't name (model names,
 // comprehension_options, feedback_text, note, risk_category_id, ...) are dropped. The converter checks
@@ -7,9 +9,39 @@ export type KoraPairRecord =
   | { line: number; ok: true; record: unknown }
   | { line: number; ok: false; error: string };
 
-/** Splits KORA's file into records numbered from 1: JSON Lines, or a JSON array (one element per number). */
+function readYaml(text: string): KoraPairRecord[] {
+  const lineCounter = new LineCounter();
+  const doc = parseDocument(text, { lineCounter });
+  if (doc.errors.length > 0) {
+    return doc.errors.map((e) => ({
+      line: e.linePos?.[0].line ?? 1,
+      ok: false,
+      error: e.message,
+    }));
+  }
+  if (doc.contents === null) return [];
+  if (!isSeq(doc.contents)) {
+    return [
+      { line: 1, ok: false, error: "a YAML file must be a list of pairs" },
+    ];
+  }
+  return doc.contents.items.map((item) => ({
+    line:
+      isNode(item) && item.range ? lineCounter.linePos(item.range[0]).line : 1,
+    ok: true,
+    record: isNode(item) ? item.toJS(doc) : item,
+  }));
+}
+
+/**
+ * Splits KORA's file into records: JSON Lines numbered by line, a JSON array numbered by element, or a YAML
+ * list numbered by the line each pair starts on. The first character that isn't whitespace or a YAML comment
+ * picks the format.
+ */
 export function readKoraPairs(text: string): KoraPairRecord[] {
   const trimmed = text.trim();
+  const first = trimmed.replace(/^(#.*(\n|$)|\s+)*/, "")[0];
+  if (first !== "[" && first !== "{") return first ? readYaml(text) : [];
   if (trimmed.startsWith("[")) {
     try {
       const parsed: unknown = JSON.parse(trimmed);

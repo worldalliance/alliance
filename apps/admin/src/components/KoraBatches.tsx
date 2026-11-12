@@ -79,12 +79,12 @@ function UploadForm() {
     <form onSubmit={onSubmit} className="space-y-3 text-sm">
       <div className="flex flex-wrap gap-4">
         <label>
-          Transcripts file from KORA (.jsonl)
+          Transcripts file from KORA (.jsonl, .json or .yaml)
           <input
             name="transcripts"
             type="file"
             onChange={(e) => setTranscripts(e.target.files?.[0] ?? null)}
-            accept=".jsonl,.json,application/json"
+            accept=".jsonl,.json,.yaml,.yml,application/json,application/yaml"
             className={FILE_FIELD}
           />
         </label>

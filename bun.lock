@@ -382,6 +382,7 @@
       "name": "@alliance/kora-review",
       "version": "0.1.0-alpha.0",
       "dependencies": {
+        "yaml": "^2.8.3",
         "zod": "^4.3.6",
       },
       "devDependencies": {

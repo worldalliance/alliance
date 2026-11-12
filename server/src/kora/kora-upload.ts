@@ -52,7 +52,7 @@ export function checkTranscripts(params: {
     if (!record.ok) {
       rejected.push({
         line: record.line,
-        problems: [`isn't valid JSON: ${record.error}`],
+        problems: [`couldn't be read: ${record.error}`],
       });
       continue;
     }

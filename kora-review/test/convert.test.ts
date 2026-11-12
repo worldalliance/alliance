@@ -59,6 +59,39 @@ describe("readKoraPairs", () => {
     ].join("\n");
     expect(readKoraPairs(split).filter((r) => r.ok).length).toBe(2);
   });
+
+  it("reads a YAML list, numbering each pair by the line it starts on", () => {
+    const yaml = [
+      "# KORA pairs",
+      "- pair_id: P1",
+      "  risk_id: cybersecurity",
+      "",
+      "- pair_id: P2",
+      "  risk_id: cybersecurity",
+    ].join("\n");
+    expect(readKoraPairs(yaml)).toEqual([
+      {
+        line: 2,
+        ok: true,
+        record: { pair_id: "P1", risk_id: "cybersecurity" },
+      },
+      {
+        line: 5,
+        ok: true,
+        record: { pair_id: "P2", risk_id: "cybersecurity" },
+      },
+    ]);
+  });
+
+  it("reports a YAML syntax error at its line, and refuses YAML that isn't a list", () => {
+    expect(readKoraPairs("- pair_id: P1\n- pair_id: [P2\n")).toMatchObject([
+      { line: 3, ok: false },
+    ]);
+    expect(readKoraPairs("pair_id: P1")).toEqual([
+      { line: 1, ok: false, error: "a YAML file must be a list of pairs" },
+    ]);
+    expect(readKoraPairs("# nothing yet\n")).toEqual([]);
+  });
 });
 
 describe("fromKoraPair", () => {

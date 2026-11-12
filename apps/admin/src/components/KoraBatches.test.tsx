@@ -58,7 +58,9 @@ const renderBatches = () =>
 
 const fillAndUpload = () => {
   fireEvent.change(
-    screen.getByLabelText("Transcripts file from KORA (.jsonl)"),
+    screen.getByLabelText(
+      "Transcripts file from KORA (.jsonl, .json or .yaml)",
+    ),
     {
       target: { files: [new File(['{"pair_id":"P1"}'], "pairs.jsonl")] },
     },
@@ -121,7 +123,7 @@ test("lists every rejected line by number", async () => {
             line: 2,
             problems: ["/category must be equal to one of the allowed values"],
           },
-          { line: 5, problems: ["isn't valid JSON: Unexpected token"] },
+          { line: 5, problems: ["couldn't be read: Unexpected token"] },
         ],
       },
       { status: 400 },
@@ -137,5 +139,5 @@ test("lists every rejected line by number", async () => {
   expect(alert.textContent).toContain(
     "Line 2: /category must be equal to one of the allowed values",
   );
-  expect(alert.textContent).toContain("Line 5: isn't valid JSON");
+  expect(alert.textContent).toContain("Line 5: couldn't be read");
 });
