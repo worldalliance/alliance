@@ -29,7 +29,11 @@ beforeEach(() => {
   writeFileSync(
     join(repo, "scripts/dev-secrets.json"),
     JSON.stringify({
-      server: { envFile: "server.env", secrets: ["ONE", "TWO"] },
+      server: {
+        envFile: "server.env",
+        loadsEnvFile: false,
+        secrets: ["ONE", "TWO"],
+      },
     }),
   );
   writeFileSync(
@@ -180,10 +184,23 @@ test.each([
   expect(log).toBe("");
 });
 
+const loadingEnvFile = () =>
+  writeFileSync(
+    join(repo, "scripts/dev-secrets.json"),
+    JSON.stringify({
+      server: {
+        envFile: "server.env",
+        loadsEnvFile: true,
+        secrets: ["ONE", "TWO"],
+      },
+    }),
+  );
+
 test.each([
   ["export AWS_ACCESS_KEY_ID=static"],
   ["AWS_ACCESS_KEY_ID = static"],
 ])("refuses static AWS credentials in the consumer's env file: %s", (line) => {
+  loadingEnvFile();
   writeFileSync(join(repo, "server.env"), `${line}\n`);
   const { exitCode, stderr, log } = run({});
   expect(exitCode).toBe(1);
@@ -196,11 +213,19 @@ test.each([
   ["server.env.development"],
   ["server.env.development.local"],
 ])("refuses static AWS credentials in %s, which Bun also loads", (name) => {
+  loadingEnvFile();
   writeFileSync(join(repo, name), "AWS_SECRET_ACCESS_KEY=static\n");
   const { exitCode, stderr, log } = run({});
   expect(exitCode).toBe(1);
   expect(stderr).toContain(`remove AWS_SECRET_ACCESS_KEY from ${name}`);
   expect(log).toBe("");
+});
+
+test("ignores static AWS credentials in an env file nothing loads", () => {
+  writeFileSync(join(repo, "server.env"), "AWS_ACCESS_KEY_ID=static\n");
+  const { exitCode, log } = run({});
+  expect(exitCode).toBe(0);
+  expect(log).toContain("aws ssm");
 });
 
 test("refuses a different AWS profile", () => {
@@ -309,21 +334,25 @@ test("refuses a fallback flag other than 1", () => {
   expect(log).toBe("");
 });
 
-test("the fallback flag skips AWS and names each key it falls back on", () => {
-  writeFileSync(join(repo, "server.env"), "ONE=local\nOTHER=x\n");
+test("the fallback flag skips AWS and loads and prints each key it falls back on", () => {
+  writeFileSync(
+    join(repo, "server.env"),
+    'ONE=local\nTWO="two words" # note\nOTHER=x\n',
+  );
   const { exitCode, stderr, log } = run({
     env: { ALLIANCE_SECRETS_ENV_FALLBACK: "1", AWS_ACCESS_KEY_ID: "static" },
   });
   expect(exitCode).toBe(0);
   expect(log).not.toContain("aws ssm");
-  expect(log).toContain("ONE=unset TWO=unset");
+  expect(log).toContain("ONE=local TWO=two words");
   expect(stderr).toContain("using ONE from server.env");
-  expect(stderr).not.toContain("TWO");
+  expect(stderr).toContain("using TWO from server.env");
   expect(stderr).not.toContain("OTHER");
   expect(stderr).not.toContain("local");
 });
 
 test("the fallback flag names the file Bun takes each key from", () => {
+  loadingEnvFile();
   writeFileSync(join(repo, "server.env"), "ONE=a\n");
   writeFileSync(join(repo, "server.env.development"), "TWO=d\n");
   writeFileSync(join(repo, "server.env.local"), "TWO=b\n");
@@ -337,6 +366,7 @@ test("the fallback flag names the file Bun takes each key from", () => {
 });
 
 test("the fallback flag names no key the shell already sets", () => {
+  loadingEnvFile();
   writeFileSync(join(repo, "server.env"), "ONE=local\nTWO=local\n");
   const { exitCode, stderr, log } = run({
     env: { ALLIANCE_SECRETS_ENV_FALLBACK: "1", ONE: "shell" },
@@ -345,6 +375,118 @@ test("the fallback flag names no key the shell already sets", () => {
   expect(log).toContain("ONE=shell");
   expect(stderr).not.toContain("using ONE");
   expect(stderr).toContain("using TWO from server.env");
+});
+
+test.each([
+  ["abc#def", "abc#def"],
+  ["abc #def", "abc"],
+  ["'a # b' # note", "a # b"],
+  ['"it\'s" #x', "it's"],
+  ["a\\ #b", "a #b"],
+  ["#all", "#all"],
+  ['"a\\$b"', "a$b"],
+])("the fallback flag reads %s as bash would", (value, expected) => {
+  const out = join(dir, "value");
+  writeFileSync(join(repo, "server.env"), `ONE=${value}\nTWO=2\n`);
+  const { exitCode } = run({
+    env: { ALLIANCE_SECRETS_ENV_FALLBACK: "1" },
+    args: ["server", "bash", "-c", `printf %s "$ONE" > "${out}"`],
+  });
+  expect(exitCode).toBe(0);
+  expect(readFileSync(out, "utf8")).toBe(expected);
+});
+
+test.each([
+  // bash 5.3 reports only line 1; earlier versions add line 3's end of file.
+  ["ONE='unterminated\nTWO=x\n", "unterminated", "1(, 3)?"],
+  ["ONE=x\nsecret-value\nTWO=y\n", "secret-value", 2],
+])(
+  "the fallback flag fails on an env file bash cannot source, naming the line without quoting it",
+  (contents, value, line) => {
+    writeFileSync(join(repo, "server.env"), contents);
+    const { exitCode, stderr, log } = run({
+      env: { ALLIANCE_SECRETS_ENV_FALLBACK: "1" },
+    });
+    expect(exitCode).toBe(1);
+    expect(stderr).toMatch(
+      new RegExp(`bash cannot source server\\.env at line ${line};`),
+    );
+    expect(stderr).not.toContain(value);
+    expect(log).toBe("");
+  },
+);
+
+test("the fallback flag only names the keys of a consumer that loads its own env file", () => {
+  loadingEnvFile();
+  writeFileSync(join(repo, "server.env"), "ONE=a\\b\n");
+  const { exitCode, stderr, log } = run({
+    env: { ALLIANCE_SECRETS_ENV_FALLBACK: "1" },
+  });
+  expect(exitCode).toBe(0);
+  expect(log).toContain("ONE=unset");
+  expect(stderr).toContain("using ONE from server.env");
+});
+
+test("the fallback flag fails when the env file lacks a listed key", () => {
+  writeFileSync(join(repo, "server.env"), "ONE=local\n");
+  const { exitCode, stderr, log } = run({
+    env: { ALLIANCE_SECRETS_ENV_FALLBACK: "1" },
+  });
+  expect(exitCode).toBe(1);
+  expect(stderr).toContain("server.env is missing TWO");
+  expect(log).toBe("");
+});
+
+test("the fallback flag fails on a key the env file leaves empty", () => {
+  writeFileSync(join(repo, "server.env"), "ONE=1\nTWO=\n");
+  const { exitCode, stderr, log } = run({
+    env: { ALLIANCE_SECRETS_ENV_FALLBACK: "1" },
+  });
+  expect(exitCode).toBe(1);
+  expect(stderr).toContain("server.env is missing TWO");
+  expect(log).toBe("");
+});
+
+test("the fallback flag leaves a listed key the shell already sets", () => {
+  writeFileSync(join(repo, "server.env"), "ONE=file\n");
+  const { exitCode, stderr, log } = run({
+    env: { ALLIANCE_SECRETS_ENV_FALLBACK: "1", ONE: "shell", TWO: "shell2" },
+  });
+  expect(exitCode).toBe(0);
+  expect(log).toContain("ONE=shell TWO=shell2");
+  expect(stderr).not.toContain("using ONE");
+});
+
+test("the fallback flag reads a listed key the shell leaves empty from the env file", () => {
+  writeFileSync(join(repo, "server.env"), "ONE=1\nTWO=2\n");
+  const { exitCode, stderr, log } = run({
+    env: { ALLIANCE_SECRETS_ENV_FALLBACK: "1", ONE: "" },
+  });
+  expect(exitCode).toBe(0);
+  expect(log).toContain("ONE=1 TWO=2");
+  expect(stderr).toContain("using ONE from server.env");
+});
+
+test("the fallback flag reads on past a command that fails, as a bare source does", () => {
+  writeFileSync(
+    join(repo, "server.env"),
+    "ONE=1\nfalse\nTWO=2\n[ -f nowhere ] && X=1\n",
+  );
+  const { exitCode, log } = run({
+    env: { ALLIANCE_SECRETS_ENV_FALLBACK: "1" },
+  });
+  expect(exitCode).toBe(0);
+  expect(log).toContain("ONE=1 TWO=2");
+});
+
+test("the fallback flag fails on a key the env file unsets", () => {
+  writeFileSync(join(repo, "server.env"), "ONE=1\nTWO=2\nunset TWO\n");
+  const { exitCode, stderr, log } = run({
+    env: { ALLIANCE_SECRETS_ENV_FALLBACK: "1" },
+  });
+  expect(exitCode).toBe(1);
+  expect(stderr).toContain("server.env is missing TWO");
+  expect(log).toBe("");
 });
 
 test("the fallback flag fails when the env file is absent", () => {
@@ -360,6 +502,38 @@ test("rejects an unknown consumer", () => {
   const { exitCode, stderr } = run({ args: ["nope", "app"] });
   expect(exitCode).toBe(1);
   expect(stderr).toContain("unknown consumer nope; expected one of server\n");
+});
+
+test("rejects a consumer whose manifest entry leaves out a field", () => {
+  writeFileSync(
+    join(repo, "scripts/dev-secrets.json"),
+    JSON.stringify({ server: { envFile: "server.env", secrets: ["ONE"] } }),
+  );
+  const { exitCode, stderr, log } = run({});
+  expect(exitCode).toBe(1);
+  expect(stderr).toBe(
+    "with-secrets.sh: scripts/dev-secrets.json: consumer server lacks loadsEnvFile\n",
+  );
+  expect(log).toBe("");
+});
+
+test("rejects a loadsEnvFile that is not a boolean", () => {
+  writeFileSync(
+    join(repo, "scripts/dev-secrets.json"),
+    JSON.stringify({
+      server: {
+        envFile: "server.env",
+        loadsEnvFile: "false",
+        secrets: ["ONE"],
+      },
+    }),
+  );
+  const { exitCode, stderr, log } = run({});
+  expect(exitCode).toBe(1);
+  expect(stderr).toContain(
+    "consumer server loadsEnvFile must be true or false",
+  );
+  expect(log).toBe("");
 });
 
 test("needs a consumer and a command", () => {

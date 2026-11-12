@@ -12,6 +12,7 @@ fi
 
 # Python, not bash, sets the variables: values may hold any character, and
 # the decrypted response never touches argv or a file.
+# shellcheck disable=SC2016
 exec python3 -I -c '
 import json, os, re, subprocess, sys
 
@@ -48,8 +49,15 @@ with open(os.path.join(repo_root, "scripts/dev-secrets.json")) as manifest:
     consumers = json.load(manifest)
 if consumer not in consumers:
     fail(f"unknown consumer {consumer}; expected one of {listed(sorted(consumers))}")
-expected = set(consumers[consumer]["secrets"])
-env_file = consumers[consumer]["envFile"]
+entry = consumers[consumer]
+missing_fields = [key for key in ("secrets", "envFile", "loadsEnvFile") if key not in entry]
+if missing_fields:
+    fail(f"scripts/dev-secrets.json: consumer {consumer} lacks {listed(missing_fields)}")
+if not isinstance(entry["loadsEnvFile"], bool):
+    fail(f"scripts/dev-secrets.json: consumer {consumer} loadsEnvFile must be true or false")
+expected = set(entry["secrets"])
+env_file = entry["envFile"]
+loads_env_file = entry["loadsEnvFile"]
 
 
 def env_file_entries(name=env_file):
@@ -61,23 +69,51 @@ def env_file_entries(name=env_file):
 bun_env_files = [env_file + suffix for suffix in ("", ".development", ".local", ".development.local")]
 
 
-# BACKCOMPAT(ALL-1964): remove with the contract step, once everyone has run
-# without this flag. The server loads its own env file, so this only names the
-# keys it falls back on.
+# BACKCOMPAT(ALL-1964): remove from here through the fallback block with the
+# contract step, once everyone has run without this flag. A consumer that loads
+# its own env file gets nothing exported, since shell quoting differs from the
+# dotenv parse it does itself.
+
+# The env file was written for `source`, so bash reads it, and as with a bare
+# `source` a failing command does not stop it. Parameter Store holds no empty
+# value, so empty counts as absent. Values return over a pipe to stay out of
+# argv, and the errors from bash, which can quote a value, are cut to line
+# numbers.
+def sourced(names):
+    path = os.path.join(repo_root, env_file)
+    script = "set -a; source \"$1\" >/dev/null; shift; for name; do if [ -n \"${!name:-}\" ]; then printf \"%s=%s\\\\0\" \"$name\" \"${!name}\"; fi; done"
+    result = subprocess.run(["bash", "-c", script, "_", path, *names], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    lines = sorted(set(re.findall(re.escape(path).encode() + rb": line (\d+):", result.stderr)), key=int)
+    if result.returncode != 0 or lines:
+        at = f" at line {listed(line.decode() for line in lines)}" if lines else ""
+        fail(f"bash cannot source {env_file}{at}; fix it or unset ALLIANCE_SECRETS_ENV_FALLBACK")
+    return dict(pair.partition("=")[::2] for pair in result.stdout.decode().split("\0") if pair)
+
+
 fallback = os.environ.get("ALLIANCE_SECRETS_ENV_FALLBACK")
 if fallback not in (None, "1"):
     fail(f"ALLIANCE_SECRETS_ENV_FALLBACK is {fallback}; set it to 1 or unset it")
 if fallback == "1":
-    try:
-        found = {name: env_file for name in env_file_entries()}
-    except FileNotFoundError:
+    if not os.path.exists(os.path.join(repo_root, env_file)):
         fail(f"ALLIANCE_SECRETS_ENV_FALLBACK is set but {env_file} does not exist")
-    for file in bun_env_files[1:]:
-        try:
-            found |= {name: file for name in env_file_entries(file)}
-        except FileNotFoundError:
-            continue
-    for name in sorted(expected & found.keys() - os.environ.keys()):
+    if loads_env_file:
+        found = {name: env_file for name in env_file_entries()}
+        for file in bun_env_files[1:]:
+            try:
+                found |= {name: file for name in env_file_entries(file)}
+            except FileNotFoundError:
+                continue
+        falling_back = sorted((expected - os.environ.keys()) & found.keys())
+    else:
+        unset = {name for name in expected if not os.environ.get(name)}
+        values = sourced(sorted(unset))
+        absent = sorted(unset - values.keys())
+        if absent:
+            fail(f"{env_file} is missing {listed(absent)}; add them or unset ALLIANCE_SECRETS_ENV_FALLBACK to read Parameter Store")
+        os.environ.update(values)
+        found = dict.fromkeys(values, env_file)
+        falling_back = sorted(values)
+    for name in falling_back:
         print(f"with-secrets.sh: using {name} from {found[name]}, not Parameter Store", file=sys.stderr)
     run_command(loaded)
 
@@ -85,7 +121,8 @@ takeover = f"secrets are read with the {profile} login, and static keys would ta
 static = [name for name in static_keys if name in os.environ]
 if static:
     fail(f"unset {listed(static)}; {takeover}")
-for name in bun_env_files:
+# Static keys in an env file reach only a consumer that loads it.
+for name in bun_env_files if loads_env_file else ():
     try:
         in_file = sorted(set(static_keys) & env_file_entries(name).keys())
     except FileNotFoundError:

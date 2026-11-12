@@ -13,7 +13,7 @@ Run `/hooks` in a Codex session and trust the repository's hooks, and again when
 
 ## Set up uploads, once per machine
 
-Add the `alliance-agent-chats` IAM user's keys to `.env.devtools` at the repository root, the gitignored file that already holds the Linear and PostHog keys. `scripts/new-worktree.sh` copies it into every new worktree; add the keys to each existing worktree's copy too.
+Add the `alliance-agent-chats` IAM user's keys to `.env.devtools` at the repository root, the gitignored file that already holds `POSTHOG_API_KEY`. `scripts/new-worktree.sh` copies it into every new worktree; add the keys to each existing worktree's copy too.
 
 ```
 AGENT_CHATS_AWS_ACCESS_KEY_ID=...
