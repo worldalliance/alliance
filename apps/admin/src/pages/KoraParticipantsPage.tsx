@@ -147,24 +147,24 @@ const KoraParticipantsPage: React.FC = () => {
   return (
     <div className="p-5 space-y-6 max-w-6xl">
       {TITLE}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+      <div>
+        <div className="flex items-baseline gap-2">
           <h1 className="font-bold text-lg">Kora participants</h1>
-          <p className="text-sm text-zinc-600">
-            People who signed up on the Safer Chatbots for Children project
-            page.
-          </p>
+          <button
+            type="button"
+            onClick={exportCsv}
+            disabled={
+              data.participants.length + data.abandonedSignups.length === 0
+            }
+            className="text-sm font-normal text-blue-700 underline hover:text-blue-900 disabled:text-zinc-400 disabled:no-underline"
+          >
+            <span aria-hidden="true">[</span>export csv
+            <span aria-hidden="true">]</span>
+          </button>
         </div>
-        <Button
-          color={ButtonColor.Black}
-          size="small"
-          onClick={exportCsv}
-          disabled={
-            data.participants.length + data.abandonedSignups.length === 0
-          }
-        >
-          Export CSV
-        </Button>
+        <p className="text-sm text-zinc-600">
+          People who signed up on the Safer Chatbots for Children project page.
+        </p>
       </div>
 
       <KoraProjectStatusControl />

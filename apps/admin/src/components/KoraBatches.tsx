@@ -13,6 +13,8 @@ import {
 
 const CELL = "px-3 py-2 align-top";
 const FIELD = "mt-1 block rounded border border-zinc-300 bg-white px-2 py-1";
+const FILE_FIELD =
+  "mt-1 block file:mr-2 file:cursor-pointer file:rounded file:border file:border-zinc-300 file:bg-white file:px-2 file:py-1 file:text-sm hover:file:bg-zinc-50";
 
 const previewPath = (batchId: string) =>
   `/kora-participants/preview/${batchId}`;
@@ -69,7 +71,7 @@ function UploadForm() {
             type="file"
             onChange={(e) => setTranscripts(e.target.files?.[0] ?? null)}
             accept=".jsonl,.json,application/json"
-            className="mt-1 block"
+            className={FILE_FIELD}
           />
         </label>
         <label>
@@ -79,7 +81,7 @@ function UploadForm() {
             type="file"
             onChange={(e) => setExportSchema(e.target.files?.[0] ?? null)}
             accept=".json,application/json"
-            className="mt-1 block"
+            className={FILE_FIELD}
           />
         </label>
         <label>

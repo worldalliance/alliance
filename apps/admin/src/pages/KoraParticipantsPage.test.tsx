@@ -211,7 +211,7 @@ it("says when no one has signed up, rather than showing an empty table", async (
   renderPage();
   expect(await screen.findByText("No one has signed up yet.")).toBeTruthy();
   expect(
-    screen.getByRole("button", { name: "Export CSV" }).hasAttribute("disabled"),
+    screen.getByRole("button", { name: "export csv" }).hasAttribute("disabled"),
   ).toBe(true);
 });
 
