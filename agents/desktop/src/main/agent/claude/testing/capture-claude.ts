@@ -13,6 +13,7 @@ import { constants, homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { R } from "../../../../../../../common/src/result";
+import { devClaudeConfigDir } from "../../../dev-app-data";
 import { type AgentEvent, AgentEventKind, ImageMediaType } from "../../session";
 import { isSignedInToClaude, signInToClaude } from "../auth";
 import { createClaudeBackend } from "../backend";
@@ -29,16 +30,14 @@ const scratch = path.join(repo, ".scratch/claude-capture");
 const recordDir = path.join(scratch, "raw");
 const workFile = path.join(scratch, "a.txt");
 const xdgConfigHome = process.env.XDG_CONFIG_HOME;
-// The XDG Base Directory spec treats an empty or relative XDG_CONFIG_HOME as unset.
-const configDir =
+// Electron's appData, which takes any non-empty XDG_CONFIG_HOME, a relative one included.
+const configDir = devClaudeConfigDir(
   process.platform === "darwin"
-    ? path.join(homedir(), "Library/Application Support/Alliance agent/claude")
-    : path.join(
-        xdgConfigHome && path.isAbsolute(xdgConfigHome)
-          ? xdgConfigHome
-          : path.join(homedir(), ".config"),
-        "Alliance agent/claude",
-      );
+    ? path.join(homedir(), "Library/Application Support")
+    : xdgConfigHome
+      ? path.resolve(xdgConfigHome)
+      : path.join(homedir(), ".config"),
+);
 
 rmSync(scratch, { recursive: true, force: true });
 // The raw recordings hold what redaction removes, so no run leaves them behind, failed, interrupted or not. A signal skips exit handlers unless it is turned into an exit.
