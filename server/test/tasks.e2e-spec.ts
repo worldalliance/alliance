@@ -1958,6 +1958,25 @@ describe("Tasks (e2e)", () => {
         .expect(403);
     });
 
+    it("turns away a submission of a form that isn't the action's", async () => {
+      const other = await request(ctx.app.getHttpServer())
+        .post("/tasks/createForm")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: "Unlinked", schema: sampleSchema })
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${other.body.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { "full-name": "Wrong form" },
+          formSnapshotId: other.body.formSnapshotId,
+          actionId: draftActionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(403);
+    });
+
     it("turns away a signed-out caller", async () => {
       await request(ctx.app.getHttpServer())
         .put(`/tasks/formDraft/${draftFormId}`)

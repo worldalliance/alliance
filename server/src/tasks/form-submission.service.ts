@@ -33,6 +33,7 @@ import { UserService } from "src/user/user.service";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import { type Repository } from "typeorm";
 import { assertActionNotSubmitted } from "./assert-action-not-submitted";
+import { assertAssignedForm } from "./assert-assigned-form";
 import { loadedFormSnapshot } from "./entities/form.entity";
 import {
   FormResponse,
@@ -109,16 +110,11 @@ export class FormSubmissionService {
       optInMms: true,
     });
 
-    const valid = await this.actionFormVariantService.validateFormIdForUser({
+    await assertAssignedForm(this.actionFormVariantService, {
       actionId: submitFormDto.actionId,
       userId,
       formId,
     });
-    if (!valid) {
-      throw new ForbiddenException(
-        "This form is not the variant assigned to you for this action",
-      );
-    }
 
     const action = await this.actionRepository.findOne({
       where: { id: submitFormDto.actionId },
