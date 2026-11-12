@@ -54,7 +54,7 @@ test("a turn the CLI fails without an interrupt ends as not interrupted", async 
     ).start({ cwd: scratch }),
   );
   expect(await turn({ session, message: text("Hello") })).toEqual([
-    { kind: AgentEventKind.Error, message: "boom" },
+    { kind: AgentEventKind.Error, message: "boom", needsResume: false },
     { kind: AgentEventKind.TurnEnded, interrupted: false },
   ]);
   await session.close();
@@ -72,6 +72,7 @@ test("a CLI that exits after an interrupt but before its result ends the turn as
     {
       kind: AgentEventKind.Error,
       message: "Claude Code exited (code 3).\nboom",
+      needsResume: true,
     },
     { kind: AgentEventKind.TurnEnded, interrupted: false },
   ]);
@@ -105,6 +106,7 @@ test("a CLI that exits while a process it started holds its output open still en
     {
       kind: AgentEventKind.Error,
       message: "Claude Code exited (code 1).\ngone",
+      needsResume: true,
     },
     { kind: AgentEventKind.TurnEnded, interrupted: false },
   ]);

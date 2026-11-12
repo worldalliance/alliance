@@ -97,6 +97,20 @@ describe("a captured session", () => {
     await session.close();
   });
 
+  test("a send after close but before the CLI exits says to resume", async () => {
+    const session = await startEditSession();
+    const closed = session.close();
+    expect(await turn({ session, message: text("Again") })).toEqual([
+      {
+        kind: AgentEventKind.Error,
+        message: "This session was closed. Resume it to continue.",
+        needsResume: true,
+      },
+      { kind: AgentEventKind.TurnEnded, interrupted: false },
+    ]);
+    await closed;
+  });
+
   test("close mid-turn ends the turn with no Error", async () => {
     const session = await startEditSession();
     await turn({ session, message: text("Edit the file") });
@@ -315,6 +329,7 @@ test("a CLI that exits mid-turn reports its stderr, then ends the turn, and a se
     {
       kind: AgentEventKind.Error,
       message: "Claude Code exited (code 7).\nout of memory",
+      needsResume: true,
     },
     { kind: AgentEventKind.TurnEnded, interrupted: false },
   ]);
@@ -324,6 +339,7 @@ test("a CLI that exits mid-turn reports its stderr, then ends the turn, and a se
     kind: AgentEventKind.Error,
     message:
       "Claude Code exited (code 7).\nout of memory\nResume the session to continue.",
+    needsResume: true,
   });
 });
 
@@ -384,6 +400,7 @@ test("output the parser can't read reports an Error and the turn goes on", async
   ]);
   expect(events[0]).toMatchObject({
     message: expect.stringContaining("can't read"),
+    needsResume: false,
   });
   await session.close();
 });

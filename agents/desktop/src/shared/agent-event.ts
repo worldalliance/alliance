@@ -28,4 +28,9 @@ export type AgentEvent =
       /** True when an interrupt or close stopped the turn. */
       interrupted: boolean;
     }
-  | { kind: AgentEventKind.Error; message: string };
+  | {
+      kind: AgentEventKind.Error;
+      message: string;
+      /** True when the session is no longer live, so it takes another message only once resumed. */
+      needsResume: boolean;
+    };

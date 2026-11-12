@@ -20,7 +20,7 @@ export type AgentMessage = {
 
 export type AgentEventListener = (event: AgentEvent) => void;
 
-/** One conversation with a CLI in one worktree, whose turns emit AgentEvents. A CLI that exits between turns is reported on the next send, as Error then TurnEnded. A session whose CLI has exited is no longer live, and its sends keep reporting that way; a caller recovers from any Error by resuming, which returns this same session while it is still live. */
+/** One conversation with a CLI in one worktree, whose turns emit AgentEvents. A CLI that exits between turns is reported on the next send, as Error then TurnEnded. A session whose CLI has exited is no longer live, and its sends keep reporting that way; an Error says whether it left the session so, and resume then returns a new live session. Resuming returns this same session while it is still live. */
 export interface AgentSession {
   /** The CLI's own session id, unchanged by resume. */
   readonly id: string;

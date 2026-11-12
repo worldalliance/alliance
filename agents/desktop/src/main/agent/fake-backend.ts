@@ -75,14 +75,24 @@ class FakeSession implements AgentSession {
   }
 
   private eventsFor(message: AgentMessage): readonly AgentEvent[] {
-    const error = (text: string): AgentEvent[] => [
-      { kind: AgentEventKind.Error, message: text },
-    ];
-    if (this.closing) return error(`The fake session ${this.id} is closed.`);
+    if (this.closing)
+      return [
+        {
+          kind: AgentEventKind.Error,
+          message: `The fake session ${this.id} is closed.`,
+          needsResume: true,
+        },
+      ];
     const turn = this.params.script[this.nextTurn++];
     return turn
       ? turn(message)
-      : error("The fake session's script has no more turns.");
+      : [
+          {
+            kind: AgentEventKind.Error,
+            message: "The fake session's script has no more turns.",
+            needsResume: false,
+          },
+        ];
   }
 
   private async play(
@@ -177,6 +187,7 @@ export const demoScript: readonly FakeTurn[] = [
     {
       kind: AgentEventKind.Error,
       message: "API Error: 529 Overloaded. Try again in a moment.",
+      needsResume: false,
     },
   ],
 ];
