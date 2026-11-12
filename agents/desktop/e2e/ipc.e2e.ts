@@ -5,6 +5,7 @@ import path from "node:path";
 import { AgentEventKind } from "../src/main/agent/session";
 import { claudeExecutableVariable } from "../src/main/claude-executable";
 import { type AgentApi, IpcChannel } from "../src/shared/ipc";
+import { firstMessage, start } from "./ipc-helpers";
 import {
   authStatusCapture,
   captured,
@@ -16,30 +17,6 @@ import {
 
 // page.evaluate callbacks run in the renderer, where the preload defines window.agent.
 declare const window: { agent: AgentApi };
-
-const firstMessage = "Change hello to goodbye in a.txt";
-
-/** Resolves to the started conversation's id once its first turn ends. */
-async function start(page: Page): Promise<string> {
-  const started = await page.evaluate(
-    async ({ input, turnEnded }) => {
-      const ended = new Promise<void>((resolve) => {
-        window.agent.onEvent(({ event }) => {
-          if (event.kind === turnEnded) resolve();
-        });
-      });
-      const result = await window.agent.start(input);
-      if (result.ok) await ended;
-      return result;
-    },
-    {
-      input: { folder: workFolder(), firstMessage },
-      turnEnded: AgentEventKind.TurnEnded,
-    },
-  );
-  if (!started.ok) throw new Error(started.error);
-  return started.value.id;
-}
 
 /** Sends text, interrupting right after when interrupt is set, and resolves to "turn ended", "turn stopped", "still running" after 5 s, or the send's error. */
 function sendTurn(
