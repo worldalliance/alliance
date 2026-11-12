@@ -9,7 +9,7 @@ import type { TestContext } from "./e2e-test-utils";
 let unique = 0;
 export const uniqueEmail = (): string =>
   `participant-${++unique}-${Math.random()}@example.com`;
-const AREA_CODES = ["415", "202", "312", "617", "646"];
+const AREA_CODES = ["510", "202", "312", "617", "646"];
 let phones = 0;
 /** 555-0100 to 555-0199, which no handset uses. */
 export const uniquePhone = (): string => {
@@ -23,6 +23,7 @@ export const wrongCode = (code: string): string =>
 export type SentCodes = {
   /** The code in the most recent message, by email or text. */
   lastCode: () => string;
+  count: () => number;
   failDelivery: () => void;
 };
 
@@ -56,6 +57,7 @@ export function captureSentCodes(ctx: TestContext): SentCodes {
       if (!code) throw new Error("no code was sent");
       return code;
     },
+    count: () => codes.length,
     failDelivery: () => {
       failNext = true;
     },
