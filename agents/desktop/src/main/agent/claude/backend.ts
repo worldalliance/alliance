@@ -3,10 +3,10 @@ import { randomUUID } from "node:crypto";
 import { createInterface } from "node:readline";
 import { z } from "zod";
 import { R, type Result } from "../../../../../../common/src/result";
+import { AgentEventKind } from "../../../shared/agent-event";
 import { SessionListeners } from "../listeners";
 import {
   type AgentBackend,
-  AgentEventKind,
   type AgentEventListener,
   type AgentMessage,
   type AgentSession,

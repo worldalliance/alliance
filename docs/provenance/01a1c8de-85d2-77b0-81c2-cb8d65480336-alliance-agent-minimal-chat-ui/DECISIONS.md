@@ -19,6 +19,8 @@ The Claude adapter task planned its merge after the thin path ran through this U
 
 Until ALL-2029 bundles the CLI, an unpackaged app runs the `claude` it finds on `PATH`, or the executable `ALLIANCE_AGENT_CLAUDE_EXECUTABLE` names, which the Playwright tests point at the stub. A packaged app reports that the CLI isn't included. The adapter's version check still refuses any version but the pinned one. The variable is read only when unpackaged, as `ELECTRON_RENDERER_URL` is (agent decision).
 
+A session's events, `AgentEvent` and `AgentEventKind`, live in `src/shared/agent-event.ts`, with the rules for how a turn's events arrive on `AgentEvent`'s doc comment, so the renderer imports the runtime enum without the main process's session code. This supersedes `src/main/agent/session.ts` as their home, given in `docs/provenance/01a1ae9f-f048-7000-9755-74cef3cbc0e8-alliance-agent-session-interface/`; the session and backend interfaces stay there (agent decision).
+
 ## Tests replay captures through the real adapter
 
 The real-path-first REQUIREMENTS.md asks for Playwright tests of the built app against a fake backend that replays the captures. The Claude adapter task's stub CLI (`stub-claude.ts`) already replays them, so the Playwright tests run the built app with the real Claude adapter spawning that stub, rather than teaching `fake-backend.ts` to replay captures. That runs the adapter's real parsing, interrupt and close paths under the UI, and needs no second replay implementation. `fake-backend.ts` stays for the hand-scripted states captures can't produce (agent decision).

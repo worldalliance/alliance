@@ -1,6 +1,6 @@
 import { expect, spyOn, test } from "bun:test";
+import { type AgentEvent, AgentEventKind } from "../../shared/agent-event";
 import { SessionListeners } from "./listeners";
-import { type AgentEvent, AgentEventKind } from "./session";
 
 const first: AgentEvent = { kind: AgentEventKind.AssistantText, text: "one" };
 const second: AgentEvent = {
