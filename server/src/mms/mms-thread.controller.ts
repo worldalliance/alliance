@@ -6,6 +6,8 @@ import {
   Controller,
   GatewayTimeoutException,
   Get,
+  HttpCode,
+  HttpStatus,
   NotFoundException,
   Param,
   ParseIntPipe,
@@ -17,6 +19,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import {
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiResponse,
   ApiUnauthorizedResponse,
@@ -120,5 +123,19 @@ export class MmsThreadController {
     if (sent.ok) return new MmsMessageDto(sent.value);
     if (typeof sent.error === "string") throw refusalException[sent.error]();
     throw sendFailureException(sent.error);
+  }
+
+  @Post(":userId/opt-out")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiNoContentResponse()
+  async markOptedOutAdmin(
+    @Param("userId", ParseIntPipe) userId: number,
+    @Request() req: JwtRequest,
+  ): Promise<void> {
+    const marked = await this.threadService.markOptedOut({
+      userId,
+      adminId: req.user.sub,
+    });
+    if (!marked.ok) throw refusalException[marked.error]();
   }
 }

@@ -3,7 +3,9 @@ import { setEnv } from "@alliance/common/set-env";
 import { STAFF_TEXT_MAX_LENGTH } from "@alliance/common/staffText";
 import { randomUUID } from "crypto";
 import { softDeleteCascade } from "src/datasources/soft-delete";
+import { EventLogService } from "src/eventlog/eventlog.service";
 import { MmsMediaStatus } from "src/mms/mms-media.service";
+import { MmsOptout } from "src/mms/mms-optout.entity";
 import { THREAD_PAGE_SIZE } from "src/mms/mms-thread.service";
 import { MmsDirection, MmsKeyword } from "src/mms/mms.entity";
 import { MmsService, StaffSendFailureKind } from "src/mms/mms.service";
@@ -18,6 +20,7 @@ const {
   mmsRepo,
   userRepo,
   server,
+  admin,
   inbound,
   thread,
   send,
@@ -399,6 +402,78 @@ describe("Staff texts (e2e)", () => {
       400,
     );
     await send(member.id, "😎".repeat(STAFF_TEXT_MAX_LENGTH / 2)).expect(201);
+  });
+});
+
+describe("Staff opt-outs (e2e)", () => {
+  it("is not found for an unknown member", async () => {
+    await supertest(server())
+      .post("/mms-threads/2000000000/opt-out")
+      .set("Authorization", admin())
+      .expect(404);
+  });
+
+  it("marks a member opted out through the STOP path", async () => {
+    const member = await createMember("+14155558105");
+    const logged = jest.spyOn(ctx().app.get(EventLogService), "sendMessage");
+
+    await supertest(server())
+      .post(`/mms-threads/${member.id}/opt-out`)
+      .set("Authorization", admin())
+      .expect(204);
+
+    expect(
+      (await userRepo().findOneByOrFail({ id: member.id }))
+        .phoneNumberUnsubscribed,
+    ).toBe(true);
+    const optout = await ctx()
+      .dataSource.getRepository(MmsOptout)
+      .findOneByOrFail({ user: { id: member.id } });
+    expect(optout.reason).toBe(`marked_by_staff:${ctx().adminUserId}`);
+    expect(logged).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: `Texter unsubscribed from SMS (marked_by_staff:${ctx().adminUserId})`,
+        userId: member.id,
+      }),
+    );
+    logged.mockRestore();
+  });
+
+  it("refuses a member with no phone number", async () => {
+    const member = await createMember(null);
+    await supertest(server())
+      .post(`/mms-threads/${member.id}/opt-out`)
+      .set("Authorization", admin())
+      .expect(400);
+  });
+
+  it("refuses a member whose stored number isn't normalized", async () => {
+    const member = await createMember("+14155558120");
+    await ctx().dataSource.query(
+      `UPDATE "user" SET "phoneNumber" = '(415) 555-8120' WHERE id = $1`,
+      [member.id],
+    );
+    await supertest(server())
+      .post(`/mms-threads/${member.id}/opt-out`)
+      .set("Authorization", admin())
+      .expect(400);
+    const stored = await userRepo().findOneByOrFail({ id: member.id });
+    expect(stored.phoneNumberUnsubscribed).toBe(false);
+  });
+
+  it("refuses a member who has already opted out", async () => {
+    const member = await createMember("+14155558109");
+    await userRepo().update(member.id, { phoneNumberUnsubscribed: true });
+
+    await supertest(server())
+      .post(`/mms-threads/${member.id}/opt-out`)
+      .set("Authorization", admin())
+      .expect(409);
+    expect(
+      await ctx()
+        .dataSource.getRepository(MmsOptout)
+        .countBy({ user: { id: member.id } }),
+    ).toBe(0);
   });
 });
 

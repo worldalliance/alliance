@@ -10,6 +10,7 @@ import type { Repository } from "src/utils/Repository";
 import { In } from "typeorm";
 import { z } from "zod";
 import { MmsMedia } from "./mms-media.entity";
+import { MmsUnsubService } from "./mms-unsub.service";
 import { Mms, MmsDirection, type MmsKeyword } from "./mms.entity";
 import { MmsService, type StaffSendFailure } from "./mms.service";
 
@@ -86,6 +87,7 @@ export class MmsThreadService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly mmsService: MmsService,
+    private readonly mmsUnsubService: MmsUnsubService,
   ) {}
 
   /** Twilio retries a webhook it timed out on, so a repeat SID records nothing. */
@@ -212,6 +214,21 @@ export class MmsThreadService {
       relations: { sentBy: true, media: true },
     });
     return R.success(mms);
+  }
+
+  async markOptedOut(params: {
+    userId: number;
+    adminId: number;
+  }): Promise<Result<void, ThreadRefusal.MemberNotFound | StaffTextRefusal>> {
+    const user = await this.findMember(params.userId);
+    if (!user.ok) return user;
+    const to = staffTextableNumber(user.value);
+    if (!to.ok) return to;
+    await this.mmsUnsubService.unsubFromMms(to.value, {
+      reason: `marked_by_staff:${params.adminId}`,
+      rawBody: "",
+    });
+    return R.success(undefined);
   }
 
   private async findMember(

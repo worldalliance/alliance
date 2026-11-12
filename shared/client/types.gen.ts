@@ -8737,6 +8737,29 @@ export type MmsThreadSendTextAdminResponses = {
 
 export type MmsThreadSendTextAdminResponse = MmsThreadSendTextAdminResponses[keyof MmsThreadSendTextAdminResponses];
 
+export type MmsThreadMarkOptedOutAdminData = {
+    body?: never;
+    path: {
+        userId: number;
+    };
+    query?: never;
+    url: '/mms-threads/{userId}/opt-out';
+};
+
+export type MmsThreadMarkOptedOutAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadMarkOptedOutAdminError = MmsThreadMarkOptedOutAdminErrors[keyof MmsThreadMarkOptedOutAdminErrors];
+
+export type MmsThreadMarkOptedOutAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type MmsThreadMarkOptedOutAdminResponse = MmsThreadMarkOptedOutAdminResponses[keyof MmsThreadMarkOptedOutAdminResponses];
+
 export type EventLogFindAllAdminData = {
     body?: never;
     path?: never;
