@@ -42,6 +42,7 @@ export function contentHash(content: unknown): string {
 export function checkTranscripts(params: {
   text: string;
   existingIds: ReadonlySet<string>;
+  retiredIds: ReadonlySet<string>;
 }): Result<CheckedTranscript[], RejectedLine[]> {
   const rejected: RejectedLine[] = [];
   const checked: CheckedTranscript[] = [];
@@ -63,6 +64,10 @@ export function checkTranscripts(params: {
     const earlier = seen.get(id);
     if (earlier !== undefined) {
       problems.push(`repeats transcript ${id} from line ${earlier}`);
+    } else if (params.retiredIds.has(id)) {
+      problems.push(
+        `transcript ${id} belongs to a retired batch, so reactivate that batch instead`,
+      );
     } else if (params.existingIds.has(id)) {
       problems.push(
         `transcript ${id} was already uploaded in an earlier batch`,

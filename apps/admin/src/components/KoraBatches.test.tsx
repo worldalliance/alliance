@@ -1,6 +1,7 @@
 import type { KoraBatchDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { KoraBatches } from "./KoraBatches";
@@ -14,12 +15,14 @@ const batch = (id: string, transcriptCount: number): KoraBatchDto => ({
   transcriptCount,
   transcriptsPerAssignment: 10,
   reviewsPerTranscript: 3,
+  retiredAt: null,
   createdAt: "2026-11-10T10:00:00.000Z",
 });
 
 serveApi(
   routes({
     "GET /kora/admin/batches": () => Response.json(batches),
+    "GET /kora/admin/batches/events": () => Response.json([]),
     "GET /kora/admin/project": () =>
       Response.json({
         status: "pending",
@@ -45,9 +48,11 @@ beforeEach(() => {
 
 const renderBatches = () =>
   render(
-    <MemoryRouter>
-      <KoraBatches />
-    </MemoryRouter>,
+    <ToastProvider>
+      <MemoryRouter>
+        <KoraBatches />
+      </MemoryRouter>
+    </ToastProvider>,
     queryWrapper(),
   );
 
@@ -99,9 +104,10 @@ test("asks for both files before uploading", async () => {
   renderBatches();
   await screen.findByText(/No transcripts yet/);
   fireEvent.click(screen.getByRole("button", { name: "Upload" }));
-  expect((await screen.findByRole("alert")).textContent).toBe(
+  const missing = await screen.findByText(
     "Choose both the transcripts file and the export schema.",
   );
+  expect(missing.getAttribute("role")).toBe("alert");
   expect(uploads).toEqual([]);
 });
 
@@ -124,10 +130,10 @@ test("lists every rejected line by number", async () => {
   await screen.findByText(/No transcripts yet/);
   fillAndUpload();
 
-  const alert = await screen.findByRole("alert");
-  expect(alert.textContent).toContain(
-    "2 lines were rejected, so nothing was uploaded.",
-  );
+  const alert = (
+    await screen.findByText("2 lines were rejected, so nothing was uploaded.")
+  ).closest('[role="alert"]');
+  if (!alert) throw new Error("the rejection isn't announced");
   expect(alert.textContent).toContain(
     "Line 2: /category must be equal to one of the allowed values",
   );

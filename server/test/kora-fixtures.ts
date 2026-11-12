@@ -6,6 +6,7 @@ import {
   KORA_PROJECT_ID,
   KoraProject,
 } from "src/kora/entities/kora-project.entity";
+import type { KoraActor } from "src/kora/kora-batch-actions.service";
 import { KoraModule } from "src/kora/kora.module";
 import request from "supertest";
 import type TestAgent from "supertest/lib/agent";
@@ -64,6 +65,11 @@ export async function setKoraProjectStatus(
     .getRepository(KoraProject)
     .save({ id: KORA_PROJECT_ID, status });
 }
+
+export const koraAdminActor = (ctx: TestContext): KoraActor => ({
+  id: ctx.adminUserId,
+  name: "Test Admin",
+});
 
 export async function koraHarness(): Promise<KoraHarness> {
   const ctx = await createTestApp([KoraModule]);

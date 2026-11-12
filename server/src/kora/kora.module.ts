@@ -5,9 +5,11 @@ import { MailModule } from "src/mail/mail.module";
 import { MmsModule } from "src/mms/mms.module";
 import { OtpModule } from "src/otp/otp.module";
 import { PushModule } from "src/push/push.module";
+import { User } from "src/user/entities/user.entity";
 import { KoraAbandonedSignup } from "./entities/kora-abandoned-signup.entity";
 import { KoraAssignmentTranscript } from "./entities/kora-assignment-transcript.entity";
 import { KoraAssignment } from "./entities/kora-assignment.entity";
+import { KoraBatchEvent } from "./entities/kora-batch-event.entity";
 import { KoraBatch } from "./entities/kora-batch.entity";
 import { KoraParticipantOAuthIdentity } from "./entities/kora-participant-oauth-identity.entity";
 import { KoraParticipantSession } from "./entities/kora-participant-session.entity";
@@ -18,6 +20,7 @@ import { KoraReviewer } from "./entities/kora-reviewer.entity";
 import { KoraTranscript } from "./entities/kora-transcript.entity";
 import { KoraAdminController } from "./kora-admin.controller";
 import { KoraAdminService } from "./kora-admin.service";
+import { KoraBatchActionsService } from "./kora-batch-actions.service";
 import { KoraBatchService } from "./kora-batch.service";
 import { KoraBatchesController } from "./kora-batches.controller";
 import { KoraNotifyService } from "./kora-notify.service";
@@ -39,6 +42,7 @@ import { KoraController } from "./kora.controller";
       KoraAssignment,
       KoraAssignmentTranscript,
       KoraBatch,
+      KoraBatchEvent,
       KoraParticipant,
       KoraParticipantOAuthIdentity,
       KoraParticipantSession,
@@ -46,6 +50,7 @@ import { KoraController } from "./kora.controller";
       KoraProject,
       KoraReviewer,
       KoraTranscript,
+      User,
     ]),
     OtpModule,
     MailModule,
@@ -61,6 +66,7 @@ import { KoraController } from "./kora.controller";
     KoraProjectService,
     KoraNotifyService,
     KoraBatchService,
+    KoraBatchActionsService,
     KoraReviewService,
     KoraResultsService,
   ],

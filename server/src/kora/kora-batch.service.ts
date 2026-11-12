@@ -1,3 +1,4 @@
+import { KoraBatchEventKind } from "@alliance/common/kora";
 import { R, type Result } from "@alliance/common/result";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -5,6 +6,7 @@ import type { Repository } from "src/utils/Repository";
 import { DataSource } from "typeorm";
 import { KoraBatch } from "./entities/kora-batch.entity";
 import { KoraTranscript } from "./entities/kora-transcript.entity";
+import { type KoraActor, logBatchEvent } from "./kora-batch-actions.service";
 import {
   checkExportSchema,
   checkTranscripts,
@@ -54,6 +56,7 @@ export class KoraBatchService {
     exportSchemaText: string;
     transcriptsPerAssignment: number;
     reviewsPerTranscript: number;
+    actor: KoraActor;
   }): Promise<Result<KoraBatchSummary, KoraUploadRefusal>> {
     const schema = checkExportSchema(params.exportSchemaText);
     if (!schema.ok) {
@@ -62,10 +65,16 @@ export class KoraBatchService {
         message: schema.error,
       });
     }
-    const existing = await this.transcripts.find({ select: { id: true } });
+    const existing = await this.transcripts.find({
+      select: { id: true, batch: { retiredAt: true } },
+      relations: { batch: true },
+    });
     const checked = checkTranscripts({
       text: params.transcriptsText,
       existingIds: new Set(existing.map((t) => t.id)),
+      retiredIds: new Set(
+        existing.filter((t) => t.batch?.retiredAt).map((t) => t.id),
+      ),
     });
     if (!checked.ok) {
       return R.failure({
@@ -87,6 +96,12 @@ export class KoraBatchService {
           position,
         })),
       );
+      await logBatchEvent(manager, {
+        kind: KoraBatchEventKind.Upload,
+        batch: saved,
+        actor: params.actor,
+        counts: { transcriptCount: checked.value.length },
+      });
       return saved;
     });
     return R.success({ batch, transcriptCount: checked.value.length });

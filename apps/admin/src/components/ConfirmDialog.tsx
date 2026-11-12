@@ -17,6 +17,8 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
   isLoading?: boolean;
+  /** Styles the confirm button as danger and drops the Enter shortcut, so the destructive step is never the default. */
+  destructive?: boolean;
 }
 
 const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
@@ -27,8 +29,10 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onConfirm,
   onCancel,
   isLoading = false,
+  destructive = false,
 }) => {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (destructive) return;
     // `e.repeat` guards the dialog's own opening keystroke: holding Enter on
     // the trigger keeps delivering keydowns, and repeats retarget to whatever
     // now has focus — by then, the panel.
@@ -77,7 +81,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             Cancel
           </Button>
           <Button
-            color={ButtonColor.Black}
+            color={destructive ? ButtonColor.Red : ButtonColor.Black}
             size="small"
             onClick={onConfirm}
             disabled={isLoading}

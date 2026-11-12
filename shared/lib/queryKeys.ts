@@ -139,6 +139,9 @@ export const queryKeys = {
     ["communityGetIncomingCommunityInvitesForUser"] as const,
   koraParticipantsAdmin: () => ["koraAdminOverview"] as const,
   koraBatchesAdmin: () => ["koraBatchesList"] as const,
+  koraBatchEventsAdmin: () => ["koraBatchesEvents"] as const,
+  koraAssignmentExport: (assignmentId: string) =>
+    ["koraResultsAssignment", assignmentId] as const,
   koraAnswersAdmin: () => ["koraResultsAnswers"] as const,
   koraRandomTranscript: (batchId: string) =>
     ["koraBatchesRandomTranscript", batchId] as const,
