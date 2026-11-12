@@ -358,7 +358,11 @@ describe("resolveFormulaOptions from this form's answers", () => {
         formulaSelect("b", { input1: { kind: "field", fieldId: "a" } }, "[]"),
       ],
     });
-    expect(R.isFailure(result) && result.error).toContain("a → b → a");
+    expect(result).toEqual(
+      R.failure(
+        "Options formulas read each other's answers in a loop: a → b → a",
+      ),
+    );
   });
 
   it("fails on a list sub-field reading its own list", () => {

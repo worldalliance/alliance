@@ -9,3 +9,7 @@ All entries are agent decisions unless they say otherwise.
 ## Tree
 
 - **One walk order.** `children` in `tree.ts` lists a node's direct subexpressions, so every walk over a tree visits the same parts, and adding a node kind fails the build there until its children are listed.
+
+## Dependencies
+
+- **Shared ordering.** The depth-first order that the options formulas used (`optionsFormulaOrder`) moves to `common/src/topological-order.ts` as `topologicalOrder`, which takes the roots, a lookup and each item's dependencies, since named expressions need the same walk and cycle report. The options formulas behave as before.
