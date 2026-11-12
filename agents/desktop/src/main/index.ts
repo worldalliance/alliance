@@ -41,6 +41,19 @@ function serveRenderer(request: Request): Promise<Response> {
   return net.fetch(pathToFileURL(file).toString());
 }
 
+// A close in fullscreen hides the window once it leaves fullscreen, unless it is revealed first.
+let hideOnLeavingFullScreen = false;
+
+function reveal(): void {
+  const [window] = BrowserWindow.getAllWindows();
+  if (!window) throw new Error("Alliance agent has no window to show");
+  hideOnLeavingFullScreen = false;
+  if (window.webContents.isCrashed()) window.webContents.reload();
+  if (window.isMinimized()) window.restore();
+  window.show();
+  window.focus();
+}
+
 function createWindow(): void {
   const window = new BrowserWindow({
     width: 1200,
@@ -51,6 +64,21 @@ function createWindow(): void {
     },
   });
   if (!headless) window.once("ready-to-show", () => window.show());
+  // On macOS the app and its sessions outlive a closed window, so it hides to keep the renderer's conversations and unsent messages.
+  if (process.platform === "darwin") {
+    window.on("close", (event) => {
+      event.preventDefault();
+      // Hiding a fullscreen window leaves its Space behind as a black screen.
+      if (!window.isFullScreen()) return window.hide();
+      hideOnLeavingFullScreen = true;
+      window.setFullScreen(false);
+    });
+    window.on("leave-full-screen", () => {
+      if (!hideOnLeavingFullScreen) return;
+      hideOnLeavingFullScreen = false;
+      window.hide();
+    });
+  }
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   window.webContents.on("will-navigate", (event, url) => {
     if (url !== window.webContents.getURL()) event.preventDefault();
@@ -97,13 +125,9 @@ const relaunchAfterQuit = () => {
   app.relaunch();
 };
 
-app.on("second-instance", () => {
-  if (closing) return relaunchAfterQuit();
-  const [window] = BrowserWindow.getAllWindows();
-  if (!window) return createWindow();
-  if (window.isMinimized()) window.restore();
-  window.focus();
-});
+const reopen = () => (closing ? relaunchAfterQuit() : reveal());
+
+app.on("second-instance", reopen);
 
 // Quitting waits for each CLI to exit, so its session-end hooks, such as the transcript upload, finish. The app and its windows hide meanwhile, so the quit looks done and nothing starts another session.
 app.on("before-quit", (event) => {
@@ -145,8 +169,5 @@ void app.whenReady().then(() => {
     openingWaitMs,
   });
   createWindow();
-  app.on("activate", () => {
-    if (closing) relaunchAfterQuit();
-    else if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
+  app.on("activate", reopen);
 });

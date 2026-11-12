@@ -141,3 +141,56 @@ test("the app protocol serves files whose names need percent-encoding", async ()
     await rm(script);
   }
 });
+
+test("reopening a closed window on macOS reloads a crashed page", async () => {
+  test.skip(process.platform !== "darwin", "only macOS keeps the app open");
+  await app.evaluate(async ({ app, BrowserWindow }) => {
+    const [window] = BrowserWindow.getAllWindows();
+    if (!window) throw new Error("the app has no window");
+    const gone = new Promise((resolve) =>
+      window.webContents.once("render-process-gone", resolve),
+    );
+    window.webContents.forcefullyCrashRenderer();
+    await gone;
+    Object.assign(window, { show: () => undefined, focus: () => undefined });
+    window.close();
+    app.emit("activate");
+  });
+  await expect
+    .poll(() =>
+      app.evaluate(({ BrowserWindow }) => {
+        const contents = BrowserWindow.getAllWindows()[0]?.webContents;
+        return contents && !contents.isCrashed() && !contents.isLoading();
+      }),
+    )
+    .toBe(true);
+});
+
+test("closing a fullscreen window on macOS leaves fullscreen before it hides, unless it is reopened first", async () => {
+  test.skip(process.platform !== "darwin", "only macOS keeps the app open");
+  // A headless window can't go fullscreen, so its fullscreen state is stubbed.
+  const calls = await app.evaluate(({ app, BrowserWindow }) => {
+    const [window] = BrowserWindow.getAllWindows();
+    if (!window) throw new Error("the app has no window");
+    const calls: string[] = [];
+    Object.assign(window, {
+      isFullScreen: () => true,
+      setFullScreen: (fullScreen: boolean) =>
+        calls.push(`setFullScreen ${fullScreen}`),
+      show: () => calls.push("show"),
+      hide: () => calls.push("hide"),
+    });
+    window.close();
+    window.emit("leave-full-screen");
+    window.close();
+    app.emit("activate");
+    window.emit("leave-full-screen");
+    return calls;
+  });
+  expect(calls).toEqual([
+    "setFullScreen false",
+    "hide",
+    "setFullScreen false",
+    "show",
+  ]);
+});

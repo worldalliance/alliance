@@ -453,6 +453,34 @@ test("each conversation keeps its unsent message when the window reloads", async
   await app.close();
 });
 
+test("closing the window on macOS keeps its conversations and unsent messages", async () => {
+  test.skip(process.platform !== "darwin", "only macOS keeps the app open");
+  const { app, page } = await launch({
+    captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
+  });
+  await finishFirstTurn(app, page);
+  await page.getByLabel("Message Claude").fill("Half a follow-up");
+  // A headless window stays off screen, so hiding and showing it are only recorded.
+  const reopened = await app.evaluate(({ app, BrowserWindow }) => {
+    const [window] = BrowserWindow.getAllWindows();
+    if (!window) throw new Error("the app has no window");
+    const calls: string[] = [];
+    Object.assign(window, {
+      hide: () => calls.push("hide"),
+      show: () => calls.push("show"),
+    });
+    window.close();
+    app.emit("activate");
+    return { windows: BrowserWindow.getAllWindows().length, calls };
+  });
+  expect(reopened).toEqual({ windows: 1, calls: ["hide", "show"] });
+  await expect(page.locator(".user")).toHaveCount(1);
+  await expect(page.getByLabel("Message Claude")).toHaveValue(
+    "Half a follow-up",
+  );
+  await app.close();
+});
+
 const distanceFromEnd = async (page: Page): Promise<number> =>
   Number(
     await page.evaluate(`(() => {
