@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   deployedConfigEnv,
   deployedConfigFor,
+  DomainMove,
   domainMove,
 } from "../common/src/deployed-config";
 import { NodeEnv } from "../common/src/node-env";
@@ -17,12 +18,13 @@ describe("deployed-config.ts", () => {
   test("prints the values the deploy workflow reads as GITHUB_OUTPUT lines", () => {
     for (const nodeEnv of [NodeEnv.Staging, NodeEnv.Production] as const) {
       const config = deployedConfigFor(nodeEnv);
-      const { legacyDomain, newDomain } = domainMove(config);
+      const { move, legacyDomain, newDomain } = domainMove(config);
       expect(run(nodeEnv).stdout.toString().trim().split("\n")).toEqual([
         `DOMAIN_NAME=${config.DOMAIN_NAME}`,
         `ALT_DOMAIN_NAME=${config.ALT_DOMAIN_NAME}`,
         `LEGACY_DOMAIN_NAME=${legacyDomain}`,
         `NEW_DOMAIN_NAME=${newDomain}`,
+        `DOMAIN_MOVE=${move}`,
         `POSTHOG_PROJECT_ID=${config.POSTHOG_PROJECT_ID}`,
       ]);
     }
@@ -91,4 +93,15 @@ test("no workflow reads a GitHub variable or a secret the committed config repla
   expect(
     files.filter((file) => pattern.test(readFileSync(file, "utf8"))),
   ).toEqual([]);
+});
+
+test("nginx and the page-load health check key on the cut-over value", () => {
+  const read = (file: string) =>
+    readFileSync(join(import.meta.dir, "..", file), "utf8");
+  expect(read("deploy/nginx/alliance.conf")).toContain(
+    `map "__DOMAIN_MOVE__:$http_sec_fetch_mode:$http_accept" $moved_host {\n    default                     "";\n    "~^${DomainMove.CutOver}:navigate:"      $new_host;\n    "~^${DomainMove.CutOver}::.*text/html"   $new_host;`,
+  );
+  expect(read(".github/workflows/deploy.yaml")).toContain(
+    `if [ "$MOVE" = ${DomainMove.CutOver} ]; then`,
+  );
 });

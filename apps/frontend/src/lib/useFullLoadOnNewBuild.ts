@@ -55,8 +55,10 @@ async function deployedSha(): Promise<
  * up the new build without reloading the page under the user. Back and forward
  * stay in-app, since a document load there would add a history entry, as do
  * navigations carrying router state, which a document load would drop, and
- * navigations nginx would redirect to the new domain, where a document load
- * arrives without the session and guest cookies.
+ * navigations nginx redirects to the new domain before the cutover, where a
+ * document load arrives without the session and guest cookies. After the
+ * cutover every page load on a legacy host redirects, so a tab loaded there
+ * moves to the new domain, signed out, at its first navigation once stale.
  *
  * It holds the router's only blocker: React Router runs just the last one
  * registered, so lint forbids `useBlocker` elsewhere in the frontend and

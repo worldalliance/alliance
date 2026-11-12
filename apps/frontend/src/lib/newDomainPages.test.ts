@@ -26,7 +26,7 @@ it("lists the same paths as nginx's static page redirect map", () => {
     });
   expect(patterns).toEqual(NEW_DOMAIN_PAGE_PATTERNS);
   expect(conf).toMatch(
-    /location \/ \{\s+if \(\$static_page_redirect_host\) \{/,
+    /location \/ \{\s+(?:if \(\$moved_host\) \{[^}]*\}\s+)?if \(\$static_page_redirect_host\) \{/,
   );
 });
 
@@ -36,7 +36,9 @@ it("matches nginx's invite redirect", () => {
     'default $new_host; "" "";',
   );
   expect(
-    conf.match(/location ~ (\S+) \{\s+if \(\$invite_redirect_host\)/)?.[1],
+    conf.match(
+      /location ~ (\S+) \{\s+(?:if \(\$moved_host\) \{[^}]*\}\s+)?if \(\$invite_redirect_host\)/,
+    )?.[1],
   ).toBe(INVITE_PAGE_PATTERN);
 });
 
@@ -74,4 +76,26 @@ it("moves nothing off the new domain", () => {
       search: "?ref=CODE",
     }),
   ).toBe(false);
+});
+
+it("moves every page-serving location off the legacy domain on cutover", () => {
+  const pages = ["~ ^/(signup)?$", "/", "/docs/"];
+  const notPages = [
+    "^~ /assets/",
+    "/api/",
+    "~ ^/api/videos/\\d+/[^/]+\\.(m3u8|ts|vtt)$",
+    "^~ /.well-known/",
+    "/socket.io/",
+    "/events/",
+  ];
+  const https = conf.slice(0, conf.indexOf("listen 80 default_server"));
+  const locations = [...https.matchAll(/^ {4}location (.+) \{$/gm)].map(
+    (m) => m[1],
+  );
+  expect(locations.sort()).toEqual([...pages, ...notPages].sort());
+  for (const location of pages) {
+    expect(conf).toContain(
+      `location ${location} {\n        if ($moved_host) {\n            return 302 https://$moved_host$request_uri;`,
+    );
+  }
 });

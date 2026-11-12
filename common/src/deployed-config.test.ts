@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   deployedConfigEnv,
   deployedConfigFor,
+  DomainMove,
   domainMove,
 } from "./deployed-config";
 import { isDeployed, NodeEnv } from "./node-env";
@@ -46,24 +47,27 @@ describe("deployedConfigEnv", () => {
 });
 
 describe("domainMove", () => {
-  test("neither environment has swapped its domains", () => {
+  test("neither environment has cut over", () => {
     expect(domainMove(deployedConfigFor(NodeEnv.Staging))).toEqual({
+      move: DomainMove.OptIn,
       legacyDomain: "staging.worldalliance.org",
       newDomain: "staging.thealliance.org",
     });
     expect(domainMove(deployedConfigFor(NodeEnv.Production))).toEqual({
+      move: DomainMove.OptIn,
       legacyDomain: "worldalliance.org",
       newDomain: "thealliance.org",
     });
   });
 
-  test("swapping the two domains keeps which one is legacy", () => {
+  test("swapping the two domains is the cutover", () => {
     expect(
       domainMove({
         DOMAIN_NAME: "thealliance.org",
         ALT_DOMAIN_NAME: "worldalliance.org",
       }),
     ).toEqual({
+      move: DomainMove.CutOver,
       legacyDomain: "worldalliance.org",
       newDomain: "thealliance.org",
     });

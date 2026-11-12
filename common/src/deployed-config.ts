@@ -72,6 +72,13 @@ const deployedConfig: {
   [NodeEnv.Test]: undefined,
 };
 
+export enum DomainMove {
+  /** Only invite links and the public pages leave the legacy domain. */
+  OptIn = "opt-in",
+  /** Every page load leaves the legacy domain. */
+  CutOver = "cut-over",
+}
+
 /**
  * The legacy domain is whichever of the two is on {@link ALLIANCE_LEGACY_DOMAIN},
  * so swapping `DOMAIN_NAME` and `ALT_DOMAIN_NAME` is what cuts an environment
@@ -79,7 +86,7 @@ const deployedConfig: {
  */
 export function domainMove(
   config: Pick<DeployedConfig, "DOMAIN_NAME" | "ALT_DOMAIN_NAME">,
-): { legacyDomain: string; newDomain: string } {
+): { move: DomainMove; legacyDomain: string; newDomain: string } {
   const { DOMAIN_NAME, ALT_DOMAIN_NAME } = config;
   const legacy = [DOMAIN_NAME, ALT_DOMAIN_NAME].filter(isLegacyAllianceHost);
   if (legacy.length !== 1) {
@@ -88,8 +95,16 @@ export function domainMove(
     );
   }
   return legacy[0] === ALT_DOMAIN_NAME
-    ? { legacyDomain: ALT_DOMAIN_NAME, newDomain: DOMAIN_NAME }
-    : { legacyDomain: DOMAIN_NAME, newDomain: ALT_DOMAIN_NAME };
+    ? {
+        move: DomainMove.CutOver,
+        legacyDomain: ALT_DOMAIN_NAME,
+        newDomain: DOMAIN_NAME,
+      }
+    : {
+        move: DomainMove.OptIn,
+        legacyDomain: DOMAIN_NAME,
+        newDomain: ALT_DOMAIN_NAME,
+      };
 }
 
 export function deployedConfigFor<E extends NodeEnv>(

@@ -18,9 +18,10 @@ const newDomainPages = NEW_DOMAIN_PAGE_PATTERNS.map((p) => new RegExp(p, "i"));
 const invitePage = new RegExp(INVITE_PAGE_PATTERN);
 
 /**
- * Whether nginx redirects a document load of this URL to the new domain.
- * Exact for the URLs the app builds; nginx also decodes the path, merges
- * slashes and matches `ref` case-insensitively.
+ * Whether nginx redirects a document load of this URL to the new domain
+ * before the environment cuts over. Once it has, nginx redirects every page
+ * load on a legacy host. Exact for the URLs the app builds; nginx also decodes
+ * the path, merges slashes and matches `ref` case-insensitively.
  */
 export const movesToNewDomain = (request: {
   hostname: string;
