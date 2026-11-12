@@ -31,11 +31,14 @@ export function withoutResultsFor(
   transcriptIds: ReadonlySet<string>,
 ): Record<string, unknown> {
   if (transcriptIds.size === 0) return exported;
+  const current = exported.currentTranscriptId;
   return {
     ...exported,
     results: resultsOf(exported).filter(
       (r) => !transcriptIds.has(String(r.transcriptId)),
     ),
+    ...(typeof current === "string" &&
+      transcriptIds.has(current) && { currentTranscriptId: null }),
   };
 }
 

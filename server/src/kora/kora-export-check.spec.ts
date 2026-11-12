@@ -1,7 +1,7 @@
 import { KoraReviewStatus } from "@alliance/common/kora";
 import { exportSchema } from "@alliance/kora-review/schemas";
 import { koraExport } from "../../test/kora-pairs";
-import { checkExport } from "./kora-export-check";
+import { checkExport, withoutResultsFor } from "./kora-export-check";
 import { koraAjv } from "./kora-upload";
 
 const validate = koraAjv().compile(exportSchema);
@@ -92,5 +92,22 @@ describe("checkExport", () => {
     expect(result.ok ? "" : result.error).toContain(
       "doesn't match the export schema",
     );
+  });
+});
+
+describe("withoutResultsFor", () => {
+  it("drops the removed pairs' results and stops pointing at a removed pair", () => {
+    const exported = { ...build(), currentTranscriptId: "T1" };
+    const kept = withoutResultsFor(exported, new Set(["T1"]));
+    expect(JSON.stringify(kept)).not.toContain('"T1"');
+    expect(kept.currentTranscriptId).toBeNull();
+    expect(validate(kept)).toBe(true);
+  });
+
+  it("keeps the open pair when it wasn't removed", () => {
+    const exported = { ...build(), currentTranscriptId: "T2" };
+    expect(
+      withoutResultsFor(exported, new Set(["T1"])).currentTranscriptId,
+    ).toBe("T2");
   });
 });
