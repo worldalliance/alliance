@@ -31,7 +31,7 @@ export const HTML_ACCEPT = "text/html,application/xhtml+xml";
 // Honest bot UA — sites like Wikipedia 403 spoofed crawler tokens
 // (e.g. a fake facebookexternalhit), so don't add any.
 const USER_AGENT =
-  "Mozilla/5.0 (compatible; AllianceLinkPreview/1.0; +https://worldalliance.org)";
+  "Mozilla/5.0 (compatible; AllianceLinkPreview/1.0; +https://thealliance.org)";
 
 /**
  * The fetcher's only two touchpoints with the network, injectable so tests

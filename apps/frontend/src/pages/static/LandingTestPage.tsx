@@ -67,7 +67,7 @@ const EXAMPLE_PROJECTS = [
     title: "Creating a bring-your-own-cup coalition",
     description:
       "We asked 11 cafe locations to adopt bring-your-own-cup policies, and in return we helped them attain media recognition.",
-    imgSrc: "https://worldalliance.org/api/images/1759964091349.webp",
+    imgSrc: "https://thealliance.org/api/images/1759964091349.webp",
   },
   {
     title: "Adjusting personal habits for collective donation",
