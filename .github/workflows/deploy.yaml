@@ -246,6 +246,7 @@ jobs:
       - format-check
       - gitignore-check
       - actionlint
+      - mobile-bundle-check
     steps:
       - run: echo "all checks passed"
 
@@ -431,6 +432,9 @@ jobs:
 
   migrations-drift-check:
     uses: ./.github/workflows/migrations-drift-check.yaml
+
+  mobile-bundle-check:
+    uses: ./.github/workflows/mobile-bundle-check.yaml
 
   mobile-fingerprint-check:
     uses: ./.github/workflows/mobile-fingerprint-check.yaml
