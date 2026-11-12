@@ -5,6 +5,7 @@ import { z } from "zod";
 import { R, type Result } from "../../../../common/src/result";
 import { type Conversation, conversationSchema } from "../shared/conversation";
 import { describeError } from "./describe-error";
+import { isNotFound } from "./fs-error";
 
 const stored = z.object({
   version: z.literal(1),
@@ -30,7 +31,7 @@ export class ConversationStore {
   async list(): Promise<Result<Conversation[], Error>> {
     const text = await R.fromPromise(readFile(this.file, "utf8"));
     if (!text.ok)
-      return "code" in text.error && text.error.code === "ENOENT"
+      return isNotFound(text.error)
         ? R.success([])
         : R.failure(
             new Error(`Can't read ${this.file}: ${text.error.message}`),
