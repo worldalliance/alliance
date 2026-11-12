@@ -4,10 +4,10 @@ import { Navigate, useSearchParams } from "react-router";
 import { useAuth } from "../../../lib/AuthContext";
 import { socialPreviewMeta } from "../../../lib/socialPreviewMeta";
 import { SiteFooter } from "../../../site/Footer";
-import { NAV_HEIGHT, Navbar } from "../../../site/Navbar";
+import { NAV_HEIGHT } from "../../../site/Navbar";
 import { SiteRoot } from "../../../site/PageShell";
 import { SITE_COL } from "../../../site/ui";
-import { KoraSignedIn } from "./KoraSignIn";
+import { KoraNavbar } from "./KoraNavbar";
 import { KoraSignUpPage } from "./KoraSignUpPage";
 import { KoraViewer, KoraWelcome } from "./KoraWelcome";
 import { useKoraParticipant, useKoraProject } from "./useKoraParticipant";
@@ -23,15 +23,14 @@ export function meta() {
 
 export default function SaferChatbotsForChildren26() {
   const member = useAuth();
-  const kora = useKoraParticipant();
-  const { query } = kora;
+  const { query } = useKoraParticipant();
   const project = useKoraProject();
   const [searchParams] = useSearchParams();
   const returningToReview = searchParams.get("next") === "review";
   if (member.loading || query.isPending || project.isPending) {
     return (
       <SiteRoot className="bg-white">
-        <Navbar />
+        <KoraNavbar />
         <main aria-busy className="min-h-svh" />
       </SiteRoot>
     );
@@ -39,7 +38,7 @@ export default function SaferChatbotsForChildren26() {
   if (project.isError) {
     return (
       <SiteRoot className="bg-white">
-        <Navbar />
+        <KoraNavbar />
         <main
           className={SITE_COL}
           style={{ paddingTop: `calc(${NAV_HEIGHT}px + 2.5rem)` }}
@@ -62,7 +61,7 @@ export default function SaferChatbotsForChildren26() {
   }
   return (
     <SiteRoot className="flex flex-col bg-white">
-      <Navbar hideNavLinks />
+      <KoraNavbar hideNavLinks />
       <main
         className={cn(SITE_COL, "flex-1 pb-16")}
         style={{ paddingTop: `calc(${NAV_HEIGHT}px + 2.5rem)` }}
@@ -70,11 +69,6 @@ export default function SaferChatbotsForChildren26() {
         <KoraWelcome
           viewer={
             member.isAuthenticated ? KoraViewer.Member : KoraViewer.Participant
-          }
-          account={
-            participant && (
-              <KoraSignedIn kora={kora} participant={participant} />
-            )
           }
           status={status}
         />

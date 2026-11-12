@@ -126,7 +126,7 @@ test("signs up a new participant by email code, then asks for a name", async () 
   });
   fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
-  await screen.findByText("You’re signed in as Test Person.");
+  await waitFor(() => expect(screen.queryByLabelText("Full name")).toBeNull());
   expect(timeZones).toHaveLength(3);
   expect(timeZones.every((zone) => typeof zone === "string")).toBe(true);
 });
@@ -139,7 +139,7 @@ test("signs a returning participant in by phone without asking for a name", asyn
   await submitContact("+44 7400 123456");
   await enterCode("123456");
 
-  await screen.findByText("You’re signed in as Returning.");
+  await waitFor(() => expect(screen.queryByLabelText("Code")).toBeNull());
   expect(sends).toEqual([{ phoneNumber: "+447400123456" }]);
   expect(screen.queryByLabelText("Full name")).toBeNull();
 });
@@ -358,23 +358,6 @@ test("offers a retry when the sign-in state cannot load", async () => {
   );
   stateFails = false;
   fireEvent.click(retry);
-  await screen.findByLabelText("Email or mobile number");
-});
-
-test("signs out, and keeps the signed-in view when sign-out fails", async () => {
-  state = {
-    participant: { id: "p1", name: "Participant" },
-    pendingCode: null,
-    signupPending: false,
-  };
-  signOut = () => new Response(null, { status: 500 });
-  renderCard();
-  fireEvent.click(await screen.findByRole("button", { name: "Sign out" }));
-  await screen.findByText("Something went wrong. Please try again.");
-  screen.getByText("You’re signed in as Participant.");
-
-  signOut = () => new Response(null, { status: 204 });
-  fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
   await screen.findByLabelText("Email or mobile number");
 });
 

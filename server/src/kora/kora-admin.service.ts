@@ -3,7 +3,6 @@ import { R, type Result } from "@alliance/common/result";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { OtpChannel } from "src/otp/otp-copy";
-import type { OtpContact } from "src/otp/otp.service";
 import type { Repository } from "src/utils/Repository";
 import { DataSource } from "typeorm";
 import type {
@@ -13,7 +12,10 @@ import type {
 import { KoraAbandonedSignup } from "./entities/kora-abandoned-signup.entity";
 import { KoraParticipantOAuthIdentity } from "./entities/kora-participant-oauth-identity.entity";
 import { KoraParticipantSignup } from "./entities/kora-participant-signup.entity";
-import { KoraParticipant } from "./entities/kora-participant.entity";
+import {
+  KoraParticipant,
+  participantContact,
+} from "./entities/kora-participant.entity";
 
 export enum KoraAdminError {
   NotFound = "not_found",
@@ -31,23 +33,13 @@ function contactKey(channel: OtpChannel, destination: string): string {
   }
 }
 
-function contactOf(participant: KoraParticipant): OtpContact {
-  if (participant.email !== null) {
-    return { channel: OtpChannel.Email, destination: participant.email };
-  }
-  if (participant.phoneNumber !== null) {
-    return { channel: OtpChannel.Sms, destination: participant.phoneNumber };
-  }
-  throw new Error(`participant ${participant.id} has no contact`);
-}
-
 function markRecovered(
   participants: KoraParticipant[],
   signups: KoraAbandonedSignup[],
 ): KoraAdminAbandonedSignup[] {
   const contacts = new Set(
     participants.map((participant) => {
-      const { channel, destination } = contactOf(participant);
+      const { channel, destination } = participantContact(participant);
       return contactKey(channel, destination);
     }),
   );
@@ -106,7 +98,7 @@ export class KoraAdminService {
       if (!participant) {
         return R.failure(KoraAdminError.NotFound);
       }
-      const contact = contactOf(participant);
+      const contact = participantContact(participant);
       await manager.delete(KoraParticipantSignup, contact);
       await manager.delete(KoraAbandonedSignup, contact);
       await manager.delete(KoraParticipant, { id });

@@ -17,10 +17,11 @@ import { Navigate } from "react-router";
 import { z } from "zod";
 import { useAuth } from "../../../lib/AuthContext";
 import { socialPreviewMeta } from "../../../lib/socialPreviewMeta";
-import { NAV_HEIGHT, Navbar } from "../../../site/Navbar";
+import { NAV_HEIGHT } from "../../../site/Navbar";
 import { SiteRoot } from "../../../site/PageShell";
 import { SITE_COL } from "../../../site/ui";
 import { REVIEW_COPY } from "./copy";
+import { KoraNavbar } from "./KoraNavbar";
 import { useKoraParticipant } from "./useKoraParticipant";
 import { saveKoraExport, useKoraReview } from "./useKoraReview";
 
@@ -151,7 +152,7 @@ export default function KoraReviewPage() {
   const review = useKoraReview(signedIn);
   const shell = (children: React.ReactNode, busy = false) => (
     <SiteRoot className="flex flex-col bg-white">
-      <Navbar hideNavLinks />
+      <KoraNavbar hideNavLinks />
       <main
         aria-busy={busy || undefined}
         className="flex-1"

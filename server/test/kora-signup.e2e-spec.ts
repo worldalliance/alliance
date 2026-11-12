@@ -65,6 +65,7 @@ describe("Kora signup and login (e2e)", () => {
     expect(res.body).toEqual({
       id: expect.any(String),
       name: "Ada Participant",
+      maskedContact: expect.stringMatching(/^\w•••@example\.com$/),
     });
     expect(await h.state(browser)).toEqual({
       participant: res.body,

@@ -5,10 +5,7 @@ import {
 } from "@alliance/common/kora";
 import { OTP_CODE_LENGTH, OtpError } from "@alliance/common/otp";
 import { R } from "@alliance/common/result";
-import type {
-  KoraParticipantDto,
-  PendingKoraCodeDto,
-} from "@alliance/shared/client";
+import type { PendingKoraCodeDto } from "@alliance/shared/client";
 import { readPosthogContext } from "@alliance/shared/lib/posthog-request";
 import { cn } from "@alliance/shared/styles/util";
 import { useAppOrigin } from "@alliance/sharedweb/lib/appOrigin";
@@ -19,7 +16,7 @@ import {
 } from "@alliance/sharedweb/lib/oauth";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import OAuthButtons from "@alliance/sharedweb/ui/OAuthButtons";
-import { LogOut, RotateCw } from "lucide-react";
+import { RotateCw } from "lucide-react";
 import posthog from "posthog-js";
 import {
   useEffect,
@@ -197,35 +194,6 @@ function NameStep({
   );
 }
 
-export function KoraSignedIn({
-  kora: { signOut },
-  participant,
-}: {
-  kora: Kora;
-  participant: KoraParticipantDto;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <p className="flex items-center gap-2 text-lg">
-        You’re signed in as {participant.name}.
-        <button
-          type="button"
-          aria-label="Sign out"
-          title="Sign out"
-          disabled={signOut.isPending}
-          onClick={() => signOut.mutate()}
-          className="rounded p-1 hover:bg-black/5"
-        >
-          <LogOut className="size-5" aria-hidden />
-        </button>
-      </p>
-      {signOut.isError && (
-        <ErrorText>{koraRefusalMessage(signOut.error)}</ErrorText>
-      )}
-    </div>
-  );
-}
-
 export function KoraSignIn({
   className,
   note,
@@ -294,11 +262,7 @@ export function KoraSignIn({
   );
   const { participant, pendingCode, signupPending } = query.data;
   if (participant) {
-    return (
-      <div className={card}>
-        <KoraSignedIn kora={kora} participant={participant} />
-      </div>
-    );
+    return null;
   }
   if (signupPending) {
     return (
