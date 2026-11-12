@@ -3,93 +3,27 @@ import { setEnv } from "@alliance/common/set-env";
 import { STAFF_TEXT_MAX_LENGTH } from "@alliance/common/staffText";
 import { randomUUID } from "crypto";
 import { softDeleteCascade } from "src/datasources/soft-delete";
-import { MmsMediaService, MmsMediaStatus } from "src/mms/mms-media.service";
+import { MmsMediaStatus } from "src/mms/mms-media.service";
 import { THREAD_PAGE_SIZE } from "src/mms/mms-thread.service";
-import { Mms, MmsDirection, MmsKeyword } from "src/mms/mms.entity";
-import { MmsModule } from "src/mms/mms.module";
+import { MmsDirection, MmsKeyword } from "src/mms/mms.entity";
 import { MmsService, StaffSendFailureKind } from "src/mms/mms.service";
-import { ReferralSource, User } from "src/user/entities/user.entity";
+import { User } from "src/user/entities/user.entity";
 import supertest from "supertest";
-import type { Repository } from "typeorm";
-import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 import { MEDIA_URL, TWILIO_NUMBER } from "./mms-fixtures";
+import { mmsThreadApp } from "./mms-thread-app";
 
-let ctx: TestContext;
-let mmsRepo: Repository<Mms>;
-let userRepo: Repository<User>;
-let mediaService: MmsMediaService;
-let copyToS3: jest.SpyInstance;
-
-const server = () => ctx.app.getHttpServer();
-const admin = () => `Bearer ${ctx.adminAccessToken}`;
-
-const inbound = (params: {
-  from: string;
-  body: string;
-  sid?: string;
-  media?: { url: string; contentType: string }[];
-}) =>
-  supertest(server())
-    .post("/mms/inbound")
-    .type("form")
-    .send({
-      From: params.from,
-      To: TWILIO_NUMBER,
-      Body: params.body,
-      MessageSid: params.sid ?? randomUUID(),
-      NumMedia: String(params.media?.length ?? 0),
-      ...Object.fromEntries(
-        (params.media ?? []).flatMap(({ url, contentType }, index) => [
-          [`MediaUrl${index}`, url],
-          [`MediaContentType${index}`, contentType],
-        ]),
-      ),
-    });
-
-const thread = (userId: number) =>
-  supertest(server())
-    .get(`/mms-threads/${userId}`)
-    .set("Authorization", admin());
-
-const send = (userId: number, body: string) =>
-  supertest(server())
-    .post(`/mms-threads/${userId}`)
-    .set("Authorization", admin())
-    .send({ body });
-
-const createMember = (phoneNumber: string | null) =>
-  userRepo.save(
-    userRepo.create({
-      email: `${randomUUID()}@example.com`,
-      password: "pass",
-      name: "Texter",
-      referralSource: ReferralSource.None,
-      phoneNumber,
-    }),
-  );
-
-const saveBroadcast = (to: string) =>
-  mmsRepo.save(
-    mmsRepo.create({
-      to,
-      from: TWILIO_NUMBER,
-      body: "New action live",
-      status: "delivered",
-      twilioSid: randomUUID(),
-    }),
-  );
-
-beforeAll(async () => {
-  ctx = await createTestApp([MmsModule]);
-  mmsRepo = ctx.dataSource.getRepository(Mms);
-  userRepo = ctx.dataSource.getRepository(User);
-  mediaService = ctx.app.get(MmsMediaService);
-  copyToS3 = jest.spyOn(mediaService, "copyToS3").mockResolvedValue();
-}, 50000);
-
-afterAll(async () => {
-  await closeTestApp(ctx.app);
-});
+const {
+  ctx,
+  copyToS3,
+  mmsRepo,
+  userRepo,
+  server,
+  inbound,
+  thread,
+  send,
+  createMember,
+  saveBroadcast,
+} = mmsThreadApp();
 
 describe("Inbound texts in the member's thread (e2e)", () => {
   it("shows past broadcasts and replies in order, matched by phone number", async () => {
@@ -111,7 +45,7 @@ describe("Inbound texts in the member's thread (e2e)", () => {
     ]);
     expect(body.messages[0].sentByStaff).toBe(false);
     expect(
-      await mmsRepo.findBy({
+      await mmsRepo().findBy({
         memberPhoneNumber: "+14155558001",
         direction: MmsDirection.Inbound,
       }),
@@ -126,20 +60,20 @@ describe("Inbound texts in the member's thread (e2e)", () => {
 
   // BACKCOMPAT(mms-direction): goes with the direction column's default.
   it("files the previous release's texts, written without direction or member number, under their recipient", async () => {
-    await ctx.dataSource.query(
+    await ctx().dataSource.query(
       `INSERT INTO "mms" ("to", "from", "body", "status", "twilioSid") VALUES ($1, $2, 'hi', 'sent', 'test-sid')`,
       ["+14155558009", TWILIO_NUMBER],
     );
 
-    expect(await mmsRepo.findBy({ memberPhoneNumber: "+14155558009" })).toEqual(
-      [expect.objectContaining({ direction: MmsDirection.Outbound })],
-    );
+    expect(
+      await mmsRepo().findBy({ memberPhoneNumber: "+14155558009" }),
+    ).toEqual([expect.objectContaining({ direction: MmsDirection.Outbound })]);
   });
 
   it("orders texts sent at the same moment, and their attachments, by id", async () => {
     const member = await createMember("+14155558012");
     const nextIds = async (table: string, count: number): Promise<number[]> => {
-      const rows: { id: string }[] = await ctx.dataSource.query(
+      const rows: { id: string }[] = await ctx().dataSource.query(
         `SELECT nextval(pg_get_serial_sequence($1, 'id')) AS id FROM generate_series(1, $2)`,
         [table, count],
       );
@@ -147,7 +81,7 @@ describe("Inbound texts in the member's thread (e2e)", () => {
     };
     const [firstText, secondText] = await nextIds("mms", 2);
     for (const id of [secondText, firstText]) {
-      await ctx.dataSource.query(
+      await ctx().dataSource.query(
         `INSERT INTO "mms" ("id", "to", "from", "body", "status", "twilioSid", "createdAt") VALUES ($1, $2, $3, 'hi', 'sent', 'test-sid', '2026-01-01T00:00:00Z')`,
         [id, "+14155558012", TWILIO_NUMBER],
       );
@@ -161,7 +95,7 @@ describe("Inbound texts in the member's thread (e2e)", () => {
       [firstMedia, firstText],
       [secondTextMedia, secondText],
     ]) {
-      await ctx.dataSource.query(
+      await ctx().dataSource.query(
         `INSERT INTO "mms_media" ("id", "mmsId", "twilioUrl", "contentType") VALUES ($1, $2, $3, 'image/jpeg')`,
         [id, mmsId, MEDIA_URL],
       );
@@ -181,7 +115,7 @@ describe("Inbound texts in the member's thread (e2e)", () => {
 
   it("pages the thread from the newest text back, ties included", async () => {
     const member = await createMember("+14155558013");
-    await ctx.dataSource.query(
+    await ctx().dataSource.query(
       `INSERT INTO "mms" ("to", "from", "body", "status", "twilioSid", "createdAt")
        SELECT $1, $2, 'text ' || n, 'sent', 'test-sid', '2026-01-01'::timestamptz + greatest(n, 3) * interval '1 minute'
        FROM generate_series(1, 102) n`,
@@ -211,7 +145,7 @@ describe("Inbound texts in the member's thread (e2e)", () => {
 
   it("has no older texts when the thread is exactly one page", async () => {
     const member = await createMember("+14155558016");
-    await ctx.dataSource.query(
+    await ctx().dataSource.query(
       `INSERT INTO "mms" ("to", "from", "body", "status", "twilioSid")
        SELECT $1, $2, 'text ' || n, 'sent', 'test-sid' FROM generate_series(1, $3) n`,
       ["+14155558016", TWILIO_NUMBER, THREAD_PAGE_SIZE],
@@ -240,17 +174,19 @@ describe("Inbound texts in the member's thread (e2e)", () => {
     expect(body.messages.map((m: { body: string }) => m.body)).toEqual([
       "STOP",
     ]);
-    expect(await mmsRepo.findBy({ memberPhoneNumber: "+14155558003" })).toEqual(
-      [expect.objectContaining({ keyword: MmsKeyword.Stop })],
-    );
+    expect(
+      await mmsRepo().findBy({ memberPhoneNumber: "+14155558003" }),
+    ).toEqual([expect.objectContaining({ keyword: MmsKeyword.Stop })]);
   });
 
   it("records a START reply as the keyword the webhook matched", async () => {
     await inbound({ from: "+14155558005", body: " yes\n" }).expect(201);
 
-    expect(await mmsRepo.findBy({ memberPhoneNumber: "+14155558005" })).toEqual(
-      [expect.objectContaining({ body: " yes\n", keyword: MmsKeyword.Start })],
-    );
+    expect(
+      await mmsRepo().findBy({ memberPhoneNumber: "+14155558005" }),
+    ).toEqual([
+      expect.objectContaining({ body: " yes\n", keyword: MmsKeyword.Start }),
+    ]);
   });
 
   it("opts the member out even when the text can't be recorded", async () => {
@@ -281,7 +217,7 @@ describe("Inbound texts in the member's thread (e2e)", () => {
 
   it("records MMS attachments as pending and starts copying them", async () => {
     const member = await createMember("+14155558004");
-    copyToS3.mockClear();
+    copyToS3().mockClear();
     await inbound({
       from: "+14155558004",
       body: "",
@@ -300,7 +236,7 @@ describe("Inbound texts in the member's thread (e2e)", () => {
       }),
       expect.objectContaining({ contentType: "video/mp4", inline: false }),
     ]);
-    expect(copyToS3).toHaveBeenCalledWith([
+    expect(copyToS3()).toHaveBeenCalledWith([
       expect.objectContaining({ twilioUrl: MEDIA_URL }),
       expect.objectContaining({ twilioUrl: MEDIA_URL }),
     ]);
@@ -310,7 +246,7 @@ describe("Inbound texts in the member's thread (e2e)", () => {
     const member = await createMember("+14155558104");
     await supertest(server())
       .get(`/mms-threads/${member.id}`)
-      .set("Authorization", `Bearer ${ctx.accessToken}`)
+      .set("Authorization", `Bearer ${ctx().accessToken}`)
       .expect(401);
   });
 
@@ -344,15 +280,15 @@ describe("Staff texts (e2e)", () => {
       sentByStaff: true,
       sentByName: expect.any(String),
     });
-    const row = await mmsRepo.findOneByOrFail({ id: body.id });
-    expect(row.sentById).toBe(ctx.adminUserId);
+    const row = await mmsRepo().findOneByOrFail({ id: body.id });
+    expect(row.sentById).toBe(ctx().adminUserId);
     expect(row.memberPhoneNumber).toBe("+14155558101");
   });
 
   it("passes on Twilio's reason when it rejects a text", async () => {
     const member = await createMember("+14155558106");
     const sendStaffText = jest
-      .spyOn(ctx.app.get(MmsService), "sendStaffText")
+      .spyOn(ctx().app.get(MmsService), "sendStaffText")
       .mockResolvedValueOnce(
         R.failure({
           kind: StaffSendFailureKind.Rejected,
@@ -369,7 +305,7 @@ describe("Staff texts (e2e)", () => {
   it("reports a send Twilio didn't answer in time as a timeout", async () => {
     const member = await createMember("+14155558107");
     const sendStaffText = jest
-      .spyOn(ctx.app.get(MmsService), "sendStaffText")
+      .spyOn(ctx().app.get(MmsService), "sendStaffText")
       .mockResolvedValueOnce(
         R.failure({ kind: StaffSendFailureKind.TimedOut }),
       );
@@ -381,7 +317,7 @@ describe("Staff texts (e2e)", () => {
   it("reports a send that failed for any other reason as a bad gateway", async () => {
     const member = await createMember("+14155558108");
     const sendStaffText = jest
-      .spyOn(ctx.app.get(MmsService), "sendStaffText")
+      .spyOn(ctx().app.get(MmsService), "sendStaffText")
       .mockResolvedValueOnce(R.failure({ kind: StaffSendFailureKind.Failed }));
 
     await send(member.id, "Hello?").expect(502);
@@ -390,10 +326,10 @@ describe("Staff texts (e2e)", () => {
 
   it("refuses to text an opted-out member", async () => {
     const member = await createMember("+14155558102");
-    await userRepo.update(member.id, { phoneNumberUnsubscribed: true });
+    await userRepo().update(member.id, { phoneNumberUnsubscribed: true });
 
     await send(member.id, "Hello?").expect(409);
-    expect(await mmsRepo.countBy({ memberPhoneNumber: "+14155558102" })).toBe(
+    expect(await mmsRepo().countBy({ memberPhoneNumber: "+14155558102" })).toBe(
       0,
     );
     expect((await thread(member.id)).body).toMatchObject({
@@ -446,7 +382,7 @@ describe("Staff texts (e2e)", () => {
     const member = await createMember("+14155558103");
     await send(member.id, "").expect(400);
     await send(member.id, " \n ").expect(400);
-    expect(await mmsRepo.countBy({ memberPhoneNumber: "+14155558103" })).toBe(
+    expect(await mmsRepo().countBy({ memberPhoneNumber: "+14155558103" })).toBe(
       0,
     );
   });
@@ -485,7 +421,7 @@ describe("Inbound media URLs (e2e)", () => {
     }).expect(201);
 
     expect(
-      await mmsRepo.find({
+      await mmsRepo().find({
         where: { memberPhoneNumber: from },
         relations: { media: true },
       }),
@@ -507,8 +443,8 @@ describe("Staff text senders (e2e)", () => {
   it("names the sender of a staff text, and keeps them after their account is deleted", async () => {
     const staff = await createMember("+14155558601");
     const member = await createMember("+14155558602");
-    const text = await mmsRepo.save(
-      mmsRepo.create({
+    const text = await mmsRepo().save(
+      mmsRepo().create({
         to: "+14155558602",
         from: TWILIO_NUMBER,
         body: "Hi from the team",
@@ -521,12 +457,12 @@ describe("Staff text senders (e2e)", () => {
       expect.objectContaining({ sentByStaff: true, sentByName: staff.name }),
     ]);
 
-    await softDeleteCascade(ctx.dataSource.manager, {
+    await softDeleteCascade(ctx().dataSource.manager, {
       target: User,
       ids: [staff.id],
     });
 
-    expect((await mmsRepo.findOneByOrFail({ id: text.id })).sentById).toBe(
+    expect((await mmsRepo().findOneByOrFail({ id: text.id })).sentById).toBe(
       staff.id,
     );
     expect((await thread(member.id)).body.messages).toEqual([
