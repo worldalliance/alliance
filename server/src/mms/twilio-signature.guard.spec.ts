@@ -12,6 +12,7 @@ import {
   TwilioSignatureGuard,
   twilioSignatureEnforced,
   twilioWebhookUrl,
+  twilioWebhookUrls,
 } from "./twilio-signature.guard";
 
 // Nest's non-exported metadata key for @UseGuards.
@@ -111,10 +112,45 @@ describe("twilioWebhookUrl", () => {
   });
 });
 
+describe("twilioWebhookUrls", () => {
+  const urlsFor = (env: Record<string, string | undefined>) =>
+    withEnv(env, () => twilioWebhookUrls());
+
+  it("adds the ALT_APP_URL one", () => {
+    expect(
+      urlsFor({ APP_URL: "https://thealliance.org", ALT_APP_URL: APP_URL }),
+    ).toEqual(["https://thealliance.org/api/mms/inbound", PUBLIC_URL]);
+  });
+
+  it("keeps only the APP_URL one without ALT_APP_URL", () => {
+    expect(
+      urlsFor({
+        NODE_ENV: "test",
+        APP_URL: "http://localhost:4005",
+        ALT_APP_URL: undefined,
+      }),
+    ).toEqual(["http://localhost:4005/api/mms/inbound"]);
+  });
+
+  it("takes both from a deployed environment's committed config", () => {
+    expect(
+      urlsFor({
+        NODE_ENV: "staging",
+        APP_URL: undefined,
+        ALT_APP_URL: undefined,
+      }),
+    ).toEqual([
+      "https://staging.worldalliance.org/api/mms/inbound",
+      "https://staging.thealliance.org/api/mms/inbound",
+    ]);
+  });
+});
+
 const enforcing = (env: Record<string, string | undefined> = {}) => ({
   NODE_ENV: "production",
   TWILIO_AUTH_TOKEN: AUTH_TOKEN,
   APP_URL,
+  ALT_APP_URL: "https://thealliance.org",
   ...env,
 });
 
@@ -154,6 +190,37 @@ describe("TwilioSignatureGuard", () => {
   it("rejects a signature made with a different token", () => {
     withEnv(enforcing({ TWILIO_AUTH_TOKEN: "someone-elses-token" }), () => {
       expect(() => guard.canActivate(contextFor(signedRequest()))).toThrow(
+        ForbiddenException,
+      );
+    });
+  });
+
+  it("accepts a signature for either domain, before and after the cutover", () => {
+    const domains = [APP_URL, "https://thealliance.org"];
+    for (const [appUrl, altAppUrl] of [domains, domains.toReversed()]) {
+      withEnv(enforcing({ APP_URL: appUrl, ALT_APP_URL: altAppUrl }), () => {
+        for (const signedFor of [
+          PUBLIC_URL,
+          "https://thealliance.org/api/mms/inbound",
+        ]) {
+          expect(guard.canActivate(contextFor(signedRequest(signedFor)))).toBe(
+            true,
+          );
+        }
+      });
+    }
+  });
+
+  it("rejects a signature for the other environment's URL", () => {
+    const staging = {
+      NODE_ENV: "staging",
+      APP_URL: undefined,
+      ALT_APP_URL: undefined,
+    };
+    withEnv(enforcing(staging), () => {
+      const req = signedRequest("https://thealliance.org/api/mms/inbound");
+
+      expect(() => guard.canActivate(contextFor(req))).toThrow(
         ForbiddenException,
       );
     });
@@ -221,7 +288,7 @@ describe("TwilioSignatureGuard", () => {
       );
     };
 
-    it("raises an alert naming the URL to check", () => {
+    it("raises an alert naming the URLs to check", () => {
       const { guard, sendMessage } = alertingGuard();
 
       withEnv(enforcing(), () => reject(guard));
@@ -231,8 +298,9 @@ describe("TwilioSignatureGuard", () => {
         [{ type: EventType; message: string; blob: Record<string, unknown> }],
       ];
       expect(event.type).toBe(EventType.SmsFailure);
-      expect(event.message).toContain(PUBLIC_URL);
-      expect(event.blob.url).toBe(PUBLIC_URL);
+      const urls = [PUBLIC_URL, "https://thealliance.org/api/mms/inbound"];
+      for (const url of urls) expect(event.message).toContain(url);
+      expect(event.blob.urls).toEqual(urls);
     });
 
     it("alerts once per window, reporting what it stood for", () => {
