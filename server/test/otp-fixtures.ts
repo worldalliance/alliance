@@ -1,4 +1,5 @@
 import { R } from "@alliance/common/result";
+import { EmailType } from "src/mail/mail.entity";
 import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
 import { OtpChallenge } from "src/otp/otp-challenge.entity";
@@ -20,15 +21,20 @@ export const uniquePhone = (): string => {
 export const wrongCode = (code: string): string =>
   String((Number(code) + 1) % 1_000_000).padStart(6, "0");
 
+export type SentMessage = { to: string; text: string };
+
 export type SentCodes = {
   /** The code in the most recent message, by email or text. */
   lastCode: () => string;
   failDelivery: () => void;
+  /** Messages sent that carry no code, email subject and body joined into `text`. */
+  otherMessages: () => SentMessage[];
 };
 
 /** Stubs email and text delivery, keeping each code sent. */
 export function captureSentCodes(ctx: TestContext): SentCodes {
   const codes: string[] = [];
+  const others: SentMessage[] = [];
   let failNext = false;
   const deliver = <T>(code: string, sent: T) => {
     if (failNext) {
@@ -40,16 +46,28 @@ export function captureSentCodes(ctx: TestContext): SentCodes {
   };
   jest
     .spyOn(ctx.app.get(MailService), "sendUnrecordedMail")
-    .mockImplementation(async ({ context }) =>
-      deliver(String((context as { code: string }).code), {
+    .mockImplementation(async ({ recipient, emailType, subject, context }) => {
+      if (emailType !== EmailType.OtpCode) {
+        others.push({
+          to: recipient,
+          text: [subject, ...Object.values(context ?? {})].join("\n"),
+        });
+        return R.success({ messageId: "message-id" });
+      }
+      return deliver(String((context as { code: string }).code), {
         messageId: "message-id",
-      }),
-    );
+      });
+    });
   jest
     .spyOn(ctx.app.get(MmsService), "sendUnrecordedText")
-    .mockImplementation(async ({ body }) =>
-      deliver(/#(\d{6})$/.exec(body)?.[1] ?? "", { sid: "sid" }),
-    );
+    .mockImplementation(async ({ to, body }) => {
+      const code = /#(\d{6})$/.exec(body)?.[1];
+      if (code === undefined) {
+        others.push({ to, text: body });
+        return R.success({ sid: "sid" });
+      }
+      return deliver(code, { sid: "sid" });
+    });
   return {
     lastCode: () => {
       const code = codes.at(-1);
@@ -59,6 +77,7 @@ export function captureSentCodes(ctx: TestContext): SentCodes {
     failDelivery: () => {
       failNext = true;
     },
+    otherMessages: () => others,
   };
 }
 

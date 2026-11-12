@@ -29,6 +29,7 @@ import {
   KORA_PARTICIPANT_NAME_MAX_LENGTH,
   KoraParticipant,
 } from "./entities/kora-participant.entity";
+import { KoraConfirmationService } from "./kora-confirmation.service";
 import { clearCookie, KoraCookie } from "./kora-cookies";
 
 const SIGNUP_TTL_MS = milliseconds({ minutes: 10 });
@@ -135,6 +136,7 @@ export class KoraParticipantService {
     @InjectRepository(KoraParticipantOAuthIdentity)
     private readonly identities: Repository<KoraParticipantOAuthIdentity>,
     private readonly otpService: OtpService,
+    private readonly confirmation: KoraConfirmationService,
   ) {}
 
   async verifyCode(params: {
@@ -237,6 +239,7 @@ export class KoraParticipantService {
         identity,
       }),
     );
+    this.confirmIfSignedUp(created);
     return R.success({ ...created, method: profile.provider });
   }
 
@@ -249,7 +252,7 @@ export class KoraParticipantService {
     name: string;
     timeZone: string | null;
   }): Promise<Result<SignedIn, KoraError.SignupExpired>> {
-    return this.dataSource.transaction(async (manager) => {
+    const completed = await this.dataSource.transaction(async (manager) => {
       const consumed = await manager
         .createQueryBuilder()
         .delete()
@@ -279,6 +282,19 @@ export class KoraParticipantService {
       });
       return R.success({ ...created, method: provider ?? signup.channel });
     });
+    if (completed.ok) {
+      this.confirmIfSignedUp(completed.value);
+    }
+    return completed;
+  }
+
+  private confirmIfSignedUp(created: {
+    participant: KoraParticipant;
+    signedUp: boolean;
+  }): void {
+    if (created.signedUp) {
+      this.confirmation.send(created.participant);
+    }
   }
 
   async count(): Promise<number> {

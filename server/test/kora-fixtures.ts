@@ -6,7 +6,11 @@ import { KoraModule } from "src/kora/kora.module";
 import request from "supertest";
 import type TestAgent from "supertest/lib/agent";
 import { createTestApp, type TestContext } from "./e2e-test-utils";
-import { captureSentCodes, skipResendWait } from "./otp-fixtures";
+import {
+  captureSentCodes,
+  type SentMessage,
+  skipResendWait,
+} from "./otp-fixtures";
 
 export const ORIGIN = "http://localhost:5473";
 
@@ -38,6 +42,8 @@ export type KoraHarness = {
   backOut: (browser: TestAgent) => Promise<unknown>;
   skipResendWait: () => Promise<void>;
   failDelivery: () => void;
+  /** Waits briefly for the non-code messages sent to `to`, since signup does not await them. */
+  messagesTo: (to: string, count: number) => Promise<SentMessage[]>;
 };
 
 export type KoraStateBody = {
@@ -80,6 +86,15 @@ export async function koraHarness(): Promise<KoraHarness> {
       browser.delete("/kora/code").set("Origin", ORIGIN).expect(204),
     skipResendWait: () => skipResendWait(ctx),
     failDelivery: sent.failDelivery,
+    messagesTo: async (to, count) => {
+      const deadline = Date.now() + 2000;
+      let found = sent.otherMessages().filter((m) => m.to === to);
+      while (found.length < count && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        found = sent.otherMessages().filter((m) => m.to === to);
+      }
+      return found;
+    },
   };
   return harness;
 }

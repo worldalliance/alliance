@@ -125,6 +125,8 @@ describe("Kora OAuth sign-in (e2e)", () => {
       properties: { method: OAuthProvider.Google },
     });
     expect(await h.ctx.dataSource.getRepository(User).count()).toBe(users);
+    const [confirmation] = await h.messagesTo(profile.email, 1);
+    expect(confirmation.text).toContain("Google Person");
     capture.mockRestore();
   });
 
@@ -156,6 +158,9 @@ describe("Kora OAuth sign-in (e2e)", () => {
 
     const again = await signIn();
     expect((await h.state(again.browser)).participant).toEqual(signedUp);
+    const confirmations = await h.messagesTo(profile.email, 2);
+    expect(confirmations).toHaveLength(1);
+    expect(confirmations[0].text).toContain("Apple Person");
     expect(capture.mock.calls.map(([call]) => call)).toEqual([
       {
         event: AnalyticsEvent.KoraParticipantSignedUp,
@@ -262,6 +267,7 @@ describe("Kora OAuth sign-in (e2e)", () => {
     expect(a.participant).toEqual(b.participant);
     expect(await participants().countBy({ email: profile.email })).toBe(1);
     expect(await identities().countBy({ subject: profile.subject })).toBe(1);
+    expect(await h.messagesTo(profile.email, 2)).toHaveLength(1);
   });
 
   it("refuses an email the provider has not verified", async () => {
