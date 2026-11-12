@@ -11,6 +11,8 @@ import {
   useKoraBatchesAdmin,
   useUploadKoraBatch,
 } from "../lib/useKoraBatchesAdmin";
+import { useKoraBatchActions } from "./KoraBatchActions";
+import { KoraBatchEvents } from "./KoraBatchEvents";
 
 const CELL = "px-3 py-2 align-top";
 const FIELD = "mt-1 block rounded border border-zinc-300 bg-white px-2 py-1";
@@ -167,33 +169,51 @@ function BatchList() {
       </p>
     );
   }
+  return <BatchTable batches={batches.data} />;
+}
+
+function BatchTable({ batches }: { batches: KoraBatchDto[] }) {
+  const actions = useKoraBatchActions(batches);
   return (
-    <table className="text-sm">
-      <thead className="text-left text-zinc-500">
-        <tr>
-          <th className={CELL}>Uploaded</th>
-          <th className={CELL}>Transcripts</th>
-          <th className={CELL}>Per assignment</th>
-          <th className={CELL}>Reviews each</th>
-          <th className={CELL}>
-            <span className="sr-only">Preview</span>
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        {batches.data.map((batch) => (
-          <tr key={batch.id} className="border-t border-zinc-200">
-            <td className={CELL}>{formatKoraDate(batch.createdAt)}</td>
-            <td className={CELL}>{batch.transcriptCount}</td>
-            <td className={CELL}>{batch.transcriptsPerAssignment}</td>
-            <td className={CELL}>{batch.reviewsPerTranscript}</td>
-            <td className={CELL}>
-              <PreviewLink batchId={batch.id} />
-            </td>
+    <>
+      <table className="text-sm">
+        <thead className="text-left text-zinc-500">
+          <tr>
+            <th className={CELL}>Uploaded</th>
+            <th className={CELL}>Transcripts</th>
+            <th className={CELL}>Per assignment</th>
+            <th className={CELL}>Reviews each</th>
+            <th className={CELL}>Status</th>
+            <th className={CELL}>
+              <span className="sr-only">Preview</span>
+            </th>
+            <th className={CELL}>
+              <span className="sr-only">Actions</span>
+            </th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {batches.map((batch) => (
+            <tr key={batch.id} className="border-t border-zinc-200">
+              <td className={CELL}>{formatKoraDate(batch.createdAt)}</td>
+              <td className={CELL}>{batch.transcriptCount}</td>
+              <td className={CELL}>{batch.transcriptsPerAssignment}</td>
+              <td className={CELL}>{batch.reviewsPerTranscript}</td>
+              <td className={CELL}>
+                {batch.retiredAt
+                  ? `Retired ${formatKoraDate(batch.retiredAt)}`
+                  : "Assigning"}
+              </td>
+              <td className={CELL}>
+                <PreviewLink batchId={batch.id} />
+              </td>
+              <td className={CELL}>{actions.actionsFor(batch)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {actions.dialog}
+    </>
   );
 }
 
@@ -205,6 +225,7 @@ export function KoraBatches() {
       </h2>
       <BatchList />
       <UploadForm />
+      <KoraBatchEvents />
     </section>
   );
 }

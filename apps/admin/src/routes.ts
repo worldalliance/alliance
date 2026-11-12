@@ -12,6 +12,10 @@ export default [
       route("/projects/:projectId", "pages/ProjectDetailPage.tsx"),
       route("/kora-participants", "pages/KoraParticipantsPage.tsx"),
       route(
+        "/kora-participants/assignments/:assignmentId",
+        "pages/KoraAssignmentExportPage.tsx",
+      ),
+      route(
         "/projects/:projectId/action/:actionId",
         "pages/ProjectActionPage.tsx",
       ),

@@ -1,4 +1,5 @@
 import {
+  KoraBatchEventKind,
   KoraProjectStatus,
   KoraReviewPhase,
   KoraReviewStatus,
@@ -7,21 +8,27 @@ import { R, type Result } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import type { ValidateFunction } from "ajv/dist/2020";
-import { DataSource, type EntityManager, IsNull, Not } from "typeorm";
+import { DataSource, type EntityManager, In, IsNull, Not } from "typeorm";
 import type {
   KoraLoadedAssignment,
   KoraReviewState,
 } from "./dto/kora-review.dto";
 import { KoraAssignmentTranscript } from "./entities/kora-assignment-transcript.entity";
 import { KoraAssignment } from "./entities/kora-assignment.entity";
+import { KoraBatchEvent } from "./entities/kora-batch-event.entity";
 import { KoraBatch } from "./entities/kora-batch.entity";
 import { KoraReviewer } from "./entities/kora-reviewer.entity";
 import { KoraTranscript } from "./entities/kora-transcript.entity";
 import { type Candidate, pickAssignment } from "./kora-assignment-pick";
 import { KORA_MEMBER_REVIEWED, type KoraMemberReviewed } from "./kora-events";
-import { checkExport } from "./kora-export-check";
+import {
+  checkExport,
+  resultTranscriptIds,
+  withoutResultsFor,
+} from "./kora-export-check";
 import { KoraProjectService } from "./kora-project.service";
 import { redactExport } from "./kora-redact";
+import { koraStagingTools } from "./kora-staging-tools";
 import { koraAjv } from "./kora-upload";
 
 export type KoraIdentity = { userId: number } | { participantId: string };
@@ -103,8 +110,12 @@ export class KoraReviewService {
       where: { assignmentId: assignment.id },
       relations: { transcript: true },
     });
+    const exported = withoutResultsFor(
+      params.exported,
+      await this.droppedFrom(params.exported, rows),
+    );
     const checked = checkExport({
-      exported: params.exported,
+      exported,
       validate: await this.validatorFor(assignment.schemaBatchId),
       reviewerId: reviewer.id,
       assignmentId: assignment.id,
@@ -129,7 +140,7 @@ export class KoraReviewService {
         KoraAssignment,
         { id: assignment.id },
         {
-          export: redactExport(params.exported),
+          export: redactExport(exported),
           lastActivityAt: now,
           completedAt: completed ? (assignment.completedAt ?? now) : null,
         },
@@ -140,6 +151,16 @@ export class KoraReviewService {
           { assignmentId: assignment.id, transcriptId },
           { status },
         );
+      }
+      if (completed && assignment.completedAt === null && koraStagingTools()) {
+        await manager.insert(KoraBatchEvent, {
+          kind: KoraBatchEventKind.AssignmentCompleted,
+          assignmentId: assignment.id,
+          reviewerId: reviewer.id,
+          ratingCount: [...statuses.values()].filter(
+            (s) => s === KoraReviewStatus.Done,
+          ).length,
+        });
       }
       if (profileAnswered && !reviewer.profileAnsweredAt) {
         await manager.update(
@@ -173,6 +194,27 @@ export class KoraReviewService {
       .orIgnore()
       .execute();
     return manager.findOneByOrFail(KoraReviewer, identity);
+  }
+
+  /**
+   * Results for transcripts a retire or delete took out of the assignment,
+   * which a reviewer whose tool loaded before it still sends.
+   */
+  private async droppedFrom(
+    exported: Record<string, unknown>,
+    rows: KoraAssignmentTranscript[],
+  ): Promise<Set<string>> {
+    const assigned = new Set(rows.map((row) => row.transcriptId));
+    const unassigned = resultTranscriptIds(exported).filter(
+      (id) => !assigned.has(id),
+    );
+    if (unassigned.length === 0) return new Set();
+    const live = await this.dataSource.manager.find(KoraTranscript, {
+      where: { id: In(unassigned), batch: { retiredAt: IsNull() } },
+      select: { id: true },
+    });
+    const liveIds = new Set(live.map((t) => t.id));
+    return new Set(unassigned.filter((id) => !liveIds.has(id)));
   }
 
   private unfinished(manager: EntityManager, reviewerId: string) {
@@ -251,7 +293,7 @@ export class KoraReviewService {
     extra: boolean,
   ): Promise<KoraReviewState> {
     const newest = await manager.findOne(KoraBatch, {
-      where: {},
+      where: { retiredAt: IsNull() },
       order: { createdAt: "DESC" },
     });
     const candidates = newest
@@ -309,7 +351,7 @@ export class KoraReviewService {
            ) AS "deficit"
          FROM "kora_transcript" t
          JOIN "kora_batch" b ON b."id" = t."batchId"
-         WHERE NOT EXISTS (
+         WHERE b."retiredAt" IS NULL AND NOT EXISTS (
            SELECT 1 FROM "kora_assignment_transcript" mine
            JOIN "kora_assignment" a ON a."id" = mine."assignmentId"
            WHERE mine."transcriptId" = t."id" AND a."reviewerId" = $1

@@ -19,6 +19,26 @@ function statusOf(result: Record<string, unknown>): KoraReviewStatus {
   return KoraReviewStatus.Pending;
 }
 
+const resultsOf = (exported: Record<string, unknown>) =>
+  Array.isArray(exported.results) ? exported.results.map(fields) : [];
+
+export const resultTranscriptIds = (
+  exported: Record<string, unknown>,
+): string[] => resultsOf(exported).map((r) => String(r.transcriptId));
+
+export function withoutResultsFor(
+  exported: Record<string, unknown>,
+  transcriptIds: ReadonlySet<string>,
+): Record<string, unknown> {
+  if (transcriptIds.size === 0) return exported;
+  return {
+    ...exported,
+    results: resultsOf(exported).filter(
+      (r) => !transcriptIds.has(String(r.transcriptId)),
+    ),
+  };
+}
+
 /** Checks a saved export belongs to this reviewer and assignment, and reviewed the content it was given. */
 export function checkExport(params: {
   exported: Record<string, unknown>;
@@ -39,9 +59,7 @@ export function checkExport(params: {
   if (exported.batchId !== params.assignmentId) {
     return R.failure("names a different assignment");
   }
-  const results = Array.isArray(exported.results)
-    ? exported.results.map(fields)
-    : [];
+  const results = resultsOf(exported);
   const expected = new Map(
     params.transcripts.map((t) => [t.id, t.contentHash]),
   );

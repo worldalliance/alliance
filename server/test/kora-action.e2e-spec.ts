@@ -14,7 +14,7 @@ import { KoraBatchService } from "src/kora/kora-batch.service";
 import { KoraModule } from "src/kora/kora.module";
 import request from "supertest";
 import { createTestApp, type TestContext } from "./e2e-test-utils";
-import { ORIGIN, setKoraProjectStatus } from "./kora-fixtures";
+import { koraAdminActor, ORIGIN, setKoraProjectStatus } from "./kora-fixtures";
 import {
   EXPORT_SCHEMA_TEXT,
   koraExport,
@@ -71,6 +71,7 @@ describe("Kora review actions (e2e)", () => {
       exportSchemaText: EXPORT_SCHEMA_TEXT,
       transcriptsPerAssignment: 2,
       reviewsPerTranscript: 1,
+      actor: koraAdminActor(ctx),
     });
     if (!uploaded.ok) throw new Error(JSON.stringify(uploaded.error));
     const kora = await liveAction(

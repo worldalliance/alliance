@@ -38,6 +38,14 @@ export enum KoraReviewStatus {
   OptedOut = "opted_out",
 }
 
+export enum KoraBatchEventKind {
+  Upload = "upload",
+  Retire = "retire",
+  Reactivate = "reactivate",
+  Delete = "delete",
+  AssignmentCompleted = "assignment_completed",
+}
+
 /** The `error` field of a refused Kora participant request, for clients to branch on. */
 export enum KoraError {
   SignupExpired = "kora_signup_expired",

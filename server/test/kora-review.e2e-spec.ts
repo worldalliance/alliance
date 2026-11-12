@@ -3,95 +3,22 @@ import { milliseconds } from "date-fns";
 import { KoraAssignment } from "src/kora/entities/kora-assignment.entity";
 import { KoraBatch } from "src/kora/entities/kora-batch.entity";
 import { KoraReviewer } from "src/kora/entities/kora-reviewer.entity";
-import { KoraBatchService } from "src/kora/kora-batch.service";
 import { REDACTED } from "src/kora/kora-redact";
 import request from "supertest";
-import type TestAgent from "supertest/lib/agent";
 import {
   koraHarness,
-  ORIGIN,
   setKoraProjectStatus,
   type KoraHarness,
 } from "./kora-fixtures";
-import {
-  EXPORT_SCHEMA_TEXT,
-  koraExport,
-  koraPair,
-  koraPairsFile,
-} from "./kora-pairs";
-import { forgetRateEvents, uniqueEmail } from "./otp-fixtures";
-
-type Assignment = {
-  id: string;
-  extra: boolean;
-  transcripts: {
-    transcript: { transcriptId: string; category: string };
-    contentHash: string;
-  }[];
-  savedExport: Record<string, unknown> | null;
-};
-type State = {
-  phase: KoraReviewPhase;
-  reviewerId: string;
-  collectProfile: boolean;
-  extraReviews: number;
-  assignment?: Assignment;
-};
+import { koraExport } from "./kora-pairs";
+import { koraReviewClient } from "./kora-review-fixtures";
+import { forgetRateEvents } from "./otp-fixtures";
 
 describe("Kora reviews (e2e)", () => {
   let h: KoraHarness;
 
-  const state = async (browser: TestAgent): Promise<State> =>
-    (await browser.get("/kora/review").expect(200)).body;
-  const more = async (browser: TestAgent): Promise<State> =>
-    (await browser.post("/kora/review/more").set("Origin", ORIGIN).expect(200))
-      .body;
-  const save = (browser: TestAgent, assignmentId: string, exported: object) =>
-    browser
-      .put(`/kora/review/assignments/${assignmentId}/export`)
-      .set("Origin", ORIGIN)
-      .send({ export: exported });
-  const ids = (a: Assignment | undefined) =>
-    (a?.transcripts ?? []).map((t) => t.transcript.transcriptId);
-  const exportOf = (
-    s: State,
-    options: { done?: string[]; optedOut?: string[]; note?: string } = {},
-  ) =>
-    koraExport({
-      reviewerId: s.reviewerId,
-      assignmentId: s.assignment?.id ?? "",
-      transcripts: s.assignment?.transcripts ?? [],
-      ...options,
-    });
-  const finish = (browser: TestAgent, s: State) =>
-    save(
-      browser,
-      s.assignment?.id ?? "",
-      exportOf(s, { done: ids(s.assignment) }),
-    ).expect(200);
-  const participant = async () => {
-    const browser = h.browser();
-    await h.signedUp(browser, { email: uniqueEmail() });
-    return browser;
-  };
-  const upload = async (count: number, perAssignment = 3, reviews = 2) => {
-    const uploaded = await h.ctx.app.get(KoraBatchService).upload({
-      transcriptsText: koraPairsFile(
-        ...Array.from({ length: count }, (_, i) =>
-          koraPair(`R${i + 1}`, {
-            risk_id:
-              i % 2
-                ? "fear_trauma_and_distress"
-                : "privacy_and_personal_data_protection",
-          }),
-        ),
-      ),
-      exportSchemaText: EXPORT_SCHEMA_TEXT,
-      transcriptsPerAssignment: perAssignment,
-      reviewsPerTranscript: reviews,
-    });
-    if (!uploaded.ok) throw new Error(JSON.stringify(uploaded.error));
-  };
+  const { state, more, save, ids, exportOf, finish, participant, upload } =
+    koraReviewClient(() => h);
 
   beforeAll(async () => {
     h = await koraHarness();
@@ -204,7 +131,7 @@ describe("Kora reviews (e2e)", () => {
   });
 
   it("says none are left once every transcript has its reviews", async () => {
-    await upload(2, 3, 1);
+    await upload(2, { reviews: 1 });
     const one = await participant();
     await finish(one, await state(one));
 
@@ -213,7 +140,7 @@ describe("Kora reviews (e2e)", () => {
   });
 
   it("releases an untouched assignment's transcripts after seven days", async () => {
-    await upload(2, 3, 1);
+    await upload(2, { reviews: 1 });
     const one = await participant();
     const held = await state(one);
     const two = await participant();

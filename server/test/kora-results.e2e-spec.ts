@@ -9,6 +9,7 @@ import { PushService } from "src/push/push.service";
 import request from "supertest";
 import type TestAgent from "supertest/lib/agent";
 import {
+  koraAdminActor,
   koraHarness,
   ORIGIN,
   setKoraProjectStatus,
@@ -54,6 +55,7 @@ describe("Kora results and the more-reviews notice (e2e)", () => {
       exportSchemaText: EXPORT_SCHEMA_TEXT,
       transcriptsPerAssignment: 2,
       reviewsPerTranscript: 3,
+      actor: koraAdminActor(h.ctx),
     });
     if (!uploaded.ok) throw new Error(JSON.stringify(uploaded.error));
   };

@@ -21,6 +21,11 @@ export class KoraBatch {
   @Column({ type: "jsonb" })
   exportSchema: unknown;
 
+  /** Set while retired: its transcripts are left out of new assignments. */
+  @Column({ type: "timestamptz", nullable: true })
+  @ApiProperty({ type: Date, nullable: true })
+  retiredAt: Date | null;
+
   @CreateDateColumnTz()
   @ApiProperty({ type: Date })
   createdAt: Date;

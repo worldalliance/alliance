@@ -6,7 +6,8 @@ export class KoraExportsDto {
     type: "object",
     additionalProperties: true,
     isArray: true,
-    description: "Each export as stored, keyed by its opaque reviewer id",
+    description:
+      "Each export as stored, keyed by its opaque reviewer id, with koraBatches: the upload batches its transcripts come from, each { id, retired }",
   })
   exports: Record<string, unknown>[];
 
@@ -54,5 +55,33 @@ export class KoraAnswerCountsDto {
     this.profile = input.profile;
     this.exitSurveys = input.exitSurveys;
     this.exitSurvey = input.exitSurvey;
+  }
+}
+
+export type KoraAssignmentExport = {
+  id: string;
+  reviewerId: string;
+  completedAt: Date | null;
+  export: Record<string, unknown> | null;
+};
+
+export class KoraAssignmentExportDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  reviewerId: string;
+
+  @ApiProperty({ type: Date, nullable: true })
+  completedAt: Date | null;
+
+  @ApiProperty({ type: "object", additionalProperties: true, nullable: true })
+  export: Record<string, unknown> | null;
+
+  constructor(input: KoraAssignmentExport) {
+    this.id = input.id;
+    this.reviewerId = input.reviewerId;
+    this.completedAt = input.completedAt;
+    this.export = input.export;
   }
 }

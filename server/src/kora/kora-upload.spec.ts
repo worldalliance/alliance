@@ -9,8 +9,12 @@ import {
   contentHash,
 } from "./kora-upload";
 
-const check = (text: string, existing: string[] = []) =>
-  checkTranscripts({ text, existingIds: new Set(existing) });
+const check = (text: string, existing: string[] = [], retired: string[] = []) =>
+  checkTranscripts({
+    text,
+    existingIds: new Set([...existing, ...retired]),
+    retiredIds: new Set(retired),
+  });
 
 describe("checkTranscripts", () => {
   it("converts every pair, keeping only the schema's fields, with a hash of what is stored", () => {
@@ -48,6 +52,14 @@ describe("checkTranscripts", () => {
         line: 1,
         problems: ["transcript OLD was already uploaded in an earlier batch"],
       },
+    ]);
+  });
+
+  it("points a transcript id from a retired batch to Reactivate", () => {
+    const result = check(koraPairsFile(koraPair("OLD")), [], ["OLD"]);
+    if (result.ok) throw new Error("expected rejection");
+    expect(result.error[0].problems).toEqual([
+      "transcript OLD belongs to a retired batch, so reactivate that batch instead",
     ]);
   });
 

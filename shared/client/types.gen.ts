@@ -5383,6 +5383,7 @@ export type KoraBatchDto = {
     id: string;
     transcriptsPerAssignment: number;
     reviewsPerTranscript: number;
+    retiredAt: string | null;
     createdAt: string;
     transcriptCount: number;
 };
@@ -5402,6 +5403,32 @@ export type KoraTranscriptPreviewDto = {
         [key: string]: unknown;
     };
     contentHash: string;
+};
+
+export type KoraBatchEventKind = 'upload' | 'retire' | 'reactivate' | 'delete' | 'assignment_completed';
+
+export type KoraBatchEventDto = {
+    id: string;
+    kind: KoraBatchEventKind;
+    batchId: string | null;
+    batchUploadedAt: string | null;
+    transcriptCount: number | null;
+    ratingCount: number | null;
+    assignmentCount: number | null;
+    assignmentId: string | null;
+    reviewerId: string | null;
+    adminName: string | null;
+    createdAt: string;
+    /**
+     * The event names an assignment that no longer exists
+     */
+    assignmentDeleted: boolean;
+};
+
+export type KoraDeletionImpactDto = {
+    transcriptCount: number;
+    ratingCount: number;
+    assignmentCount: number;
 };
 
 export type KoraReviewPhase = 'reviewing' | 'finished' | 'none_left' | 'not_active';
@@ -5454,7 +5481,7 @@ export type KoraExportSavedDto = {
 
 export type KoraExportsDto = {
     /**
-     * Each export as stored, keyed by its opaque reviewer id
+     * Each export as stored, keyed by its opaque reviewer id, with koraBatches: the upload batches its transcripts come from, each { id, retired }
      */
     exports: Array<{
         [key: string]: unknown;
@@ -5482,6 +5509,15 @@ export type KoraAnswerCountsDto = {
      */
     exitSurveys: number;
     exitSurvey: Array<KoraQuestionCountsDto>;
+};
+
+export type KoraAssignmentExportDto = {
+    id: string;
+    reviewerId: string;
+    completedAt: string | null;
+    export: {
+        [key: string]: unknown;
+    } | null;
 };
 
 export type HeyApiError = {
@@ -16688,6 +16724,126 @@ export type KoraBatchesRandomTranscriptResponses = {
 
 export type KoraBatchesRandomTranscriptResponse = KoraBatchesRandomTranscriptResponses[keyof KoraBatchesRandomTranscriptResponses];
 
+export type KoraBatchesEventsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/batches/events';
+};
+
+export type KoraBatchesEventsErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraBatchesEventsError = KoraBatchesEventsErrors[keyof KoraBatchesEventsErrors];
+
+export type KoraBatchesEventsResponses = {
+    200: Array<KoraBatchEventDto>;
+};
+
+export type KoraBatchesEventsResponse = KoraBatchesEventsResponses[keyof KoraBatchesEventsResponses];
+
+export type KoraBatchesRetireData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/batches/{id}/retire';
+};
+
+export type KoraBatchesRetireErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraBatchesRetireError = KoraBatchesRetireErrors[keyof KoraBatchesRetireErrors];
+
+export type KoraBatchesRetireResponses = {
+    200: KoraBatchDto;
+};
+
+export type KoraBatchesRetireResponse = KoraBatchesRetireResponses[keyof KoraBatchesRetireResponses];
+
+export type KoraBatchesReactivateData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/batches/{id}/reactivate';
+};
+
+export type KoraBatchesReactivateErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraBatchesReactivateError = KoraBatchesReactivateErrors[keyof KoraBatchesReactivateErrors];
+
+export type KoraBatchesReactivateResponses = {
+    200: KoraBatchDto;
+};
+
+export type KoraBatchesReactivateResponse = KoraBatchesReactivateResponses[keyof KoraBatchesReactivateResponses];
+
+export type KoraBatchesDeletionImpactData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/batches/{id}/deletion-impact';
+};
+
+export type KoraBatchesDeletionImpactErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraBatchesDeletionImpactError = KoraBatchesDeletionImpactErrors[keyof KoraBatchesDeletionImpactErrors];
+
+export type KoraBatchesDeletionImpactResponses = {
+    200: KoraDeletionImpactDto;
+};
+
+export type KoraBatchesDeletionImpactResponse = KoraBatchesDeletionImpactResponses[keyof KoraBatchesDeletionImpactResponses];
+
+export type KoraBatchesDeleteData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/batches/{id}';
+};
+
+export type KoraBatchesDeleteErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraBatchesDeleteError = KoraBatchesDeleteErrors[keyof KoraBatchesDeleteErrors];
+
+export type KoraBatchesDeleteResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type KoraBatchesDeleteResponse = KoraBatchesDeleteResponses[keyof KoraBatchesDeleteResponses];
+
 export type KoraReviewStateData = {
     body?: never;
     path?: never;
@@ -16799,6 +16955,30 @@ export type KoraResultsAnswersResponses = {
 };
 
 export type KoraResultsAnswersResponse = KoraResultsAnswersResponses[keyof KoraResultsAnswersResponses];
+
+export type KoraResultsAssignmentData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/results/assignments/{id}';
+};
+
+export type KoraResultsAssignmentErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraResultsAssignmentError = KoraResultsAssignmentErrors[keyof KoraResultsAssignmentErrors];
+
+export type KoraResultsAssignmentResponses = {
+    200: KoraAssignmentExportDto;
+};
+
+export type KoraResultsAssignmentResponse = KoraResultsAssignmentResponses[keyof KoraResultsAssignmentResponses];
 
 export type ClientOptions = {
     baseUrl: string;

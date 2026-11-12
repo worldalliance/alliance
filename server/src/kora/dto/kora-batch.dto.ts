@@ -1,14 +1,20 @@
 import { ApiProperty, PickType } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { IsInt, Max, Min } from "class-validator";
+import { KoraBatchEvent } from "../entities/kora-batch-event.entity";
 import { KoraBatch } from "../entities/kora-batch.entity";
 import type { KoraTranscript } from "../entities/kora-transcript.entity";
+import type {
+  KoraDeletionImpact,
+  KoraLoggedEvent,
+} from "../kora-batch-actions.service";
 import type { KoraBatchSummary } from "../kora-batch.service";
 
 export class KoraBatchDto extends PickType(KoraBatch, [
   "id",
   "transcriptsPerAssignment",
   "reviewsPerTranscript",
+  "retiredAt",
   "createdAt",
 ]) {
   @ApiProperty()
@@ -19,6 +25,7 @@ export class KoraBatchDto extends PickType(KoraBatch, [
     this.id = input.batch.id;
     this.transcriptsPerAssignment = input.batch.transcriptsPerAssignment;
     this.reviewsPerTranscript = input.batch.reviewsPerTranscript;
+    this.retiredAt = input.batch.retiredAt;
     this.createdAt = input.batch.createdAt;
     this.transcriptCount = input.transcriptCount;
   }
@@ -78,4 +85,57 @@ export function transcriptContent(
     throw new Error(`Kora transcript ${transcript.id} has no content object`);
   }
   return Object.fromEntries(Object.entries(content));
+}
+
+export class KoraDeletionImpactDto {
+  @ApiProperty()
+  transcriptCount: number;
+
+  @ApiProperty()
+  ratingCount: number;
+
+  @ApiProperty()
+  assignmentCount: number;
+
+  constructor(input: KoraDeletionImpact) {
+    this.transcriptCount = input.transcriptCount;
+    this.ratingCount = input.ratingCount;
+    this.assignmentCount = input.assignmentCount;
+  }
+}
+
+export class KoraBatchEventDto extends PickType(KoraBatchEvent, [
+  "id",
+  "kind",
+  "batchId",
+  "batchUploadedAt",
+  "transcriptCount",
+  "ratingCount",
+  "assignmentCount",
+  "assignmentId",
+  "reviewerId",
+  "adminName",
+  "createdAt",
+]) {
+  @ApiProperty({
+    description: "The event names an assignment that no longer exists",
+  })
+  assignmentDeleted: boolean;
+
+  constructor(input: KoraLoggedEvent) {
+    super();
+    const { event } = input;
+    this.assignmentDeleted = input.assignmentDeleted;
+    this.id = event.id;
+    this.kind = event.kind;
+    this.batchId = event.batchId;
+    this.batchUploadedAt = event.batchUploadedAt;
+    this.transcriptCount = event.transcriptCount;
+    this.ratingCount = event.ratingCount;
+    this.assignmentCount = event.assignmentCount;
+    this.assignmentId = event.assignmentId;
+    this.reviewerId = event.reviewerId;
+    this.adminName = event.adminName;
+    this.createdAt = event.createdAt;
+  }
 }

@@ -1,13 +1,18 @@
 import { KORA_UPLOAD_NEEDS_BOTH_FILES } from "@alliance/common/kora";
+import { R, type Result } from "@alliance/common/result";
 import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   NotFoundException,
   Param,
   ParseUUIDPipe,
   Post,
+  Request,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
@@ -17,16 +22,25 @@ import {
   ApiBadRequestResponse,
   ApiBody,
   ApiConsumes,
+  ApiNoContentResponse,
   ApiOkResponse,
 } from "@nestjs/swagger";
 import { AdminGuard } from "src/auth/guards/admin.guard";
+import type { JwtRequest } from "src/auth/tokens";
 import {
   KoraBatchDto,
+  KoraBatchEventDto,
+  KoraDeletionImpactDto,
   KoraTranscriptPreviewDto,
   KoraUploadRejectedDto,
   UploadKoraBatchDto,
 } from "./dto/kora-batch.dto";
+import {
+  KoraBatchActionError,
+  KoraBatchActionsService,
+} from "./kora-batch-actions.service";
 import { KoraBatchService, KoraUploadError } from "./kora-batch.service";
+import { koraStagingTools } from "./kora-staging-tools";
 
 const TRANSCRIPTS_MAX_BYTES = 50 * 1024 * 1024;
 
@@ -38,7 +52,10 @@ type UploadedBatchFiles = {
 @Controller("kora/admin/batches")
 @UseGuards(AdminGuard)
 export class KoraBatchesController {
-  constructor(private readonly batchService: KoraBatchService) {}
+  constructor(
+    private readonly batchService: KoraBatchService,
+    private readonly actions: KoraBatchActionsService,
+  ) {}
 
   @Get()
   @ApiOkResponse({ type: KoraBatchDto, isArray: true })
@@ -80,6 +97,7 @@ export class KoraBatchesController {
   async upload(
     @Body() dto: UploadKoraBatchDto,
     @UploadedFiles() files: UploadedBatchFiles,
+    @Request() req: JwtRequest,
   ): Promise<KoraBatchDto> {
     const transcripts = files.transcripts?.[0];
     const exportSchema = files.exportSchema?.[0];
@@ -91,6 +109,7 @@ export class KoraBatchesController {
       exportSchemaText: exportSchema.buffer.toString("utf8"),
       transcriptsPerAssignment: dto.transcriptsPerAssignment,
       reviewsPerTranscript: dto.reviewsPerTranscript,
+      actor: await this.actions.actor(req.user.sub),
     });
     if (!uploaded.ok) {
       const refusal = uploaded.error;
@@ -120,4 +139,84 @@ export class KoraBatchesController {
     }
     return new KoraTranscriptPreviewDto(transcript);
   }
+
+  @Get("events")
+  @ApiOkResponse({ type: KoraBatchEventDto, isArray: true })
+  async events(): Promise<KoraBatchEventDto[]> {
+    return (await this.actions.list()).map((e) => new KoraBatchEventDto(e));
+  }
+
+  @Post(":id/retire")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: KoraBatchDto })
+  async retire(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Request() req: JwtRequest,
+  ): Promise<KoraBatchDto> {
+    const retired = await this.actions.retire({
+      batchId: id,
+      actor: await this.actions.actor(req.user.sub),
+    });
+    return new KoraBatchDto(found(retired));
+  }
+
+  @Post(":id/reactivate")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: KoraBatchDto })
+  async reactivate(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Request() req: JwtRequest,
+  ): Promise<KoraBatchDto> {
+    const reactivated = await this.actions.reactivate({
+      batchId: id,
+      actor: await this.actions.actor(req.user.sub),
+    });
+    return new KoraBatchDto(found(reactivated));
+  }
+
+  @Get(":id/deletion-impact")
+  @ApiOkResponse({ type: KoraDeletionImpactDto })
+  async deletionImpact(
+    @Param("id", ParseUUIDPipe) id: string,
+  ): Promise<KoraDeletionImpactDto> {
+    requireStagingTools();
+    return new KoraDeletionImpactDto(
+      found(await this.actions.deletionImpact(id)),
+    );
+  }
+
+  /** Staging and local development only; 404 in production. */
+  @Delete(":id")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiNoContentResponse()
+  async delete(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Request() req: JwtRequest,
+  ): Promise<void> {
+    requireStagingTools();
+    found(
+      await this.actions.delete({
+        batchId: id,
+        actor: await this.actions.actor(req.user.sub),
+      }),
+    );
+  }
+}
+
+function requireStagingTools(): void {
+  if (!koraStagingTools()) throw new NotFoundException();
+}
+
+function found<T>(result: Result<T, KoraBatchActionError>): T {
+  return R.match(result, {
+    success: (value) => value,
+    failure: (error) => {
+      switch (error) {
+        case KoraBatchActionError.NotFound:
+          throw new NotFoundException("Batch not found");
+        default:
+          throw new Error(`unknown error: ${error satisfies never}`);
+      }
+    },
+  });
 }
