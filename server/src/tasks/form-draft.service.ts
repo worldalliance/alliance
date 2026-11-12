@@ -8,11 +8,7 @@ import {
   isQuestionField,
 } from "@alliance/common/forms/form-schema";
 import { R } from "@alliance/common/result";
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-} from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ActionFormVariantService } from "src/actions/action-form-variant.service";
 import { Action } from "src/actions/entities/action.entity";
@@ -20,6 +16,7 @@ import { softDeleteWhere, writeUnderLive } from "src/datasources/soft-delete";
 import { User } from "src/user/entities/user.entity";
 import { type Repository } from "typeorm";
 import { assertActionNotSubmitted } from "./assert-action-not-submitted";
+import { assertAssignedForm } from "./assert-assigned-form";
 import { Form } from "./entities/form.entity";
 import {
   FormResponseDraft,
@@ -67,16 +64,11 @@ export class FormDraftService {
     const { userId, formId, dto } = params;
     const form = await this.tasksService.getForm(formId);
 
-    const valid = await this.actionFormVariantService.validateFormIdForUser({
+    await assertAssignedForm(this.actionFormVariantService, {
       actionId: dto.actionId,
       userId,
       formId,
     });
-    if (!valid) {
-      throw new ForbiddenException(
-        "This form is not the variant assigned to you for this action",
-      );
-    }
 
     await assertActionNotSubmitted(this.actionFormVariantService, {
       actionId: dto.actionId,

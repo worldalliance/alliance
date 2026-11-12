@@ -33,6 +33,7 @@ import { UserService } from "src/user/user.service";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import { type Repository } from "typeorm";
 import { assertActionNotSubmitted } from "./assert-action-not-submitted";
+import { assertAssignedForm } from "./assert-assigned-form";
 import { loadedFormSnapshot } from "./entities/form.entity";
 import {
   FormResponse,
@@ -109,16 +110,11 @@ export class FormSubmissionService {
       optInMms: true,
     });
 
-    const valid = await this.actionFormVariantService.validateFormIdForUser({
+    await assertAssignedForm(this.actionFormVariantService, {
       actionId: submitFormDto.actionId,
       userId,
       formId,
     });
-    if (!valid) {
-      throw new ForbiddenException(
-        "This form is not the variant assigned to you for this action",
-      );
-    }
 
     const action = await this.actionRepository.findOne({
       where: { id: submitFormDto.actionId },
@@ -363,6 +359,11 @@ export class FormSubmissionService {
     }
     const form = await this.tasksService.getForm(formId);
     const user = await this.userService.findOneOrFail(userId);
+    await assertAssignedForm(this.actionFormVariantService, {
+      actionId,
+      userId,
+      formId,
+    });
     const action = await this.actionRepository.findOne({
       where: { id: actionId },
       relations: { events: true },
@@ -370,6 +371,10 @@ export class FormSubmissionService {
     if (action) {
       assertNotInStaffPreview(action);
     }
+    await assertActionNotSubmitted(this.actionFormVariantService, {
+      actionId,
+      userId,
+    });
 
     const assignedRow = await this.formRowAssignmentService.memberRow(
       form,
