@@ -6222,7 +6222,7 @@ export type UserSwitchDomainError = UserSwitchDomainErrors[keyof UserSwitchDomai
 
 export type UserSwitchDomainResponses = {
     /**
-     * Opted in to the new domain
+     * No-op since the cutover
      */
     200: {
         [key: string]: never;

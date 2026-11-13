@@ -4,11 +4,12 @@ No workflow reads a GitHub secret other than the `GITHUB_TOKEN` Actions issues e
 
 ## Roles
 
-`terraform/ci-oidc.tf` defines seven roles. A role's trust policy decides which jobs can assume it; GitHub's environment branch rules gate the same jobs on GitHub's side.
+`terraform/ci-oidc.tf` defines eight roles. A role's trust policy decides which jobs can assume it; GitHub's environment branch rules gate the same jobs on GitHub's side.
 
 | Role                            | Assumed by                                                                                       | Can read                                                                             |
 | ------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
 | `alliance-ci-review`            | any run on a branch ref (push, dispatch, schedule, …), and pull requests from this repo          | `ci/review/*`, `ci/shared/*`                                                         |
+| `alliance-ci-parameter-drift`   | `parameter-drift.yaml`, on `main` and in pull requests from this repo                            | every parameter's name and metadata (including who last changed it), never a value   |
 | `alliance-ci-pr-screenshots`    | the PR screenshots `post` job, in the `pr-screenshots` environment                               | `ci/pr-screenshots/*`                                                                |
 | `alliance-ci-visual-regression` | only deploy runs of commits from before visual regression was removed; ALL-2169 removes the role | `ci/visual-regression/*`                                                             |
 | `alliance-ci-staging`           | jobs in the `staging` environment running on `main`                                              | `ci/deploy/*`, `ci/visual-regression/SLACK_BOT_TOKEN`, `ci/shared/*`, `staging/ci/*` |
@@ -16,7 +17,7 @@ No workflow reads a GitHub secret other than the `GITHUB_TOKEN` Actions issues e
 | `alliance-ci-staging-hosts`     | the host-deploy jobs, in the `staging-hosts` environment on `main`                               | nothing; runs Run Command on the staging host                                        |
 | `alliance-ci-production-hosts`  | the host-deploy jobs, in the `production-hosts` environment on `production`                      | nothing; runs Run Command on the production host                                     |
 
-Every trust policy also pins the repository and its owner by numeric id. A pull request from a fork gets no OIDC token, so it reads nothing. No CI role reads the backends' secrets under `/alliance/<env>/server/` (see `docs/backend-secrets.md`).
+Every trust policy also pins the repository and its owner by numeric id. A pull request from a fork gets no OIDC token, so it reads nothing. No CI role reads the backends' secrets under `/alliance/<env>/server/` (see `docs/backend-secrets.md`); the parameter-drift role lists their names and metadata, including who last changed each, not their values. That role is pinned to `parameter-drift.yaml` rather than gated by an environment, so a pull request from this repo that edits that workflow or the code it runs can assume it; give it nothing a pull request author must not reach.
 
 Each role is granted its parameters by name, so a new parameter needs its name added to the role's list in `terraform/ci-oidc.tf`, and an apply, before any job can read it.
 
@@ -57,11 +58,11 @@ aws ssm put-parameter --region us-west-2 --type SecureString --overwrite \
 rm value.txt
 ```
 
-Staging's app store keys live under `/alliance/staging/ci/`. The next workflow run reads the new value. A new name also needs adding to its role in `terraform/ci-oidc.tf`.
+Staging's app store keys live under `/alliance/staging/ci/`. The next workflow run reads the new value. A new name also needs adding to its role in `terraform/ci-oidc.tf`. A name outside `/alliance/ci/` and `/alliance/staging/ci/` also needs adding to `CI_PATH` in `scripts/check-parameter-drift.ts`, or the `parameter-drift` workflow reports it as under no known consumer.
 
 ## When it fails
 
-- `Could not assume role` / `Not authorized to perform sts:AssumeRoleWithWebIdentity`: the job's branch, environment or event doesn't match the role's trust policy, or the job lacks `id-token: write`.
+- `Could not assume role` / `Not authorized to perform sts:AssumeRoleWithWebIdentity`: the job's branch, environment, event or workflow file doesn't match the role's trust policy, or the job lacks `id-token: write`.
 - `not in Parameter Store: …`: the parameter is missing, or misspelled in the workflow.
 - `AccessDeniedException` on `GetParameters`: the role isn't granted that name in `terraform/ci-oidc.tf`.
 - `send-command` fails with `InvalidInstanceId`, or the deploy step ends `TimedOut (DeliveryTimedOut, exit -1)`: the host's SSM agent isn't registered or online. Check **Systems Manager → Fleet Manager**; on the host, `sudo systemctl status amazon-ssm-agent`.

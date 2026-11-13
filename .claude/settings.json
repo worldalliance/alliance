@@ -63,7 +63,7 @@
           {
             "type": "command",
             "command": "bun \"$CLAUDE_PROJECT_DIR\"/agents/chats/chats.ts upload claude",
-            "async": true
+            "timeout": 10
           }
         ]
       }
@@ -74,7 +74,7 @@
           {
             "type": "command",
             "command": "bun \"$CLAUDE_PROJECT_DIR\"/agents/chats/chats.ts upload claude",
-            "async": true
+            "timeout": 10
           }
         ]
       }
@@ -85,7 +85,7 @@
           {
             "type": "command",
             "command": "bun \"$CLAUDE_PROJECT_DIR\"/agents/chats/chats.ts upload claude",
-            "async": true
+            "timeout": 10
           }
         ]
       }

@@ -25,6 +25,25 @@ locals {
       ])
       max_session_duration = 3600
     }
+    # DescribeParameters can't be limited by path, so the drift check's names
+    # and metadata stay off the review role, which any workflow on any branch
+    # can assume, agent jobs included. Any job on main or a pull request
+    # carries the same sub and ref, so this role is pinned to the workflow. A
+    # same-repo pull request that edits the workflow still assumes it, so
+    # grant it nothing a pull request author must not reach.
+    parameter-drift = {
+      test = "StringLike"
+      trust = {
+        "${local.github_sub_prefix}:ref:refs/heads/main" = ["refs/heads/main"]
+        "${local.github_sub_prefix}:pull_request"        = ["refs/pull/*/merge"]
+      }
+      workflows = {
+        "${local.github_sub_prefix}:ref:refs/heads/main" = "${local.github_repo}/.github/workflows/parameter-drift.yaml@refs/heads/main"
+        "${local.github_sub_prefix}:pull_request"        = "${local.github_repo}/.github/workflows/parameter-drift.yaml@refs/pull/*/merge"
+      }
+      parameters           = []
+      max_session_duration = 3600
+    }
     # The PR screenshots post job's environment, kept apart from review
     # because review jobs run untrusted code that can assume their role.
     pr-screenshots = {
@@ -142,7 +161,7 @@ data "aws_iam_policy_document" "ci_assume" {
       dynamic "condition" {
         for_each = contains(keys(each.value), "workflows") ? [each.value.workflows[statement.key]] : []
         content {
-          test     = "StringEquals"
+          test     = each.value.test
           variable = "${local.github_oidc}:job_workflow_ref"
           values   = [condition.value]
         }
@@ -173,6 +192,20 @@ resource "aws_iam_role_policy" "ci_parameters" {
       Action   = ["ssm:GetParameters"]
       Effect   = "Allow"
       Resource = [for p in each.value.parameters : "${local.ci_parameter_prefix}/${p}"]
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "ci_parameter_names" {
+  name = "ci-parameter-names"
+  role = aws_iam_role.ci["parameter-drift"].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action   = ["ssm:DescribeParameters"]
+      Effect   = "Allow"
+      Resource = "*"
     }]
   })
 }

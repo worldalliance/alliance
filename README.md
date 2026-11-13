@@ -45,6 +45,8 @@ Start the admin panel: `cd apps/admin && bun dev` (or `bun run admin:dev` from r
 
 #### First time only:
 
+Local secrets come from AWS: see `docs/local-secrets.md`.
+
 Run the migrations: `(cd server && bun migration:run)`
 
 _Note_ if you get an error `role "postgres" does not exist`, first run `createuser -s postgres`.
@@ -52,7 +54,7 @@ And if you get an error `database "alliance" does not exist`, first run `created
 
 Start the server: `cd server && bun dev` (or `bun server:dev` from root dir)
 
-When opening the app locally for the first time, you can log in with the account specified by `ADMIN_USER` and `ADMIN_PASSWORD` in your .env file (this account will be automatically added to the db on startup)
+When opening the app locally for the first time, you can log in with the account specified by `ADMIN_USER` and `ADMIN_PASSWORD` under `/alliance/dev/server/` in Parameter Store, which `scripts/with-secrets.sh server printenv ADMIN_USER ADMIN_PASSWORD` prints (this account will be automatically added to the db on startup)
 
 ### Loading data
 

@@ -140,8 +140,8 @@ describe("twilioWebhookUrls", () => {
         ALT_APP_URL: undefined,
       }),
     ).toEqual([
-      "https://staging.worldalliance.org/api/mms/inbound",
       "https://staging.thealliance.org/api/mms/inbound",
+      "https://staging.worldalliance.org/api/mms/inbound",
     ]);
   });
 });
