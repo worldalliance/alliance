@@ -43,7 +43,7 @@ You may change the task's provenance `DECISIONS.md` freely when a fix calls for 
 
 ## 5. Report
 
-Your final message, once every commit is final:
+Once every commit is final, stop every background task, monitor and wakeup you started, since `claude -p` waits on them before it exits and the round waits on you. Then your final message:
 
 - how many issues you classified fix-now, follow-up, drop and cut;
 - the commits you changed, and the unchanged commits that need another review: those a change below them affects, and those with a fix-now finding that you or an earlier fixer of this round fixed without changing their diff, such as in another commit or by a reword;

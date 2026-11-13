@@ -1,0 +1,12 @@
+# Evidence
+
+## Where review-loop time goes
+
+Method, 2026-11-12: two read-only codex subagents, on codex CLI 0.167.0, analysed 13 branches' saved reviews (`.scratch/review-loop/<branch>/round-<n>/<sha>.json`), fixer ledgers, worktree lifecycle logs and the timestamped Claude Code transcripts of their hubs, reviewers and fixers: 178 rounds, 1,009 saved reviews, 189 fixer sessions. The hub, reviewer and fixer sessions on `all-2032-chat-ui`, `envvars` and `member-sms-chat` ran Claude Code 2.1.316 through 2.1.323, read from the transcripts' `version` field; the other ten branches' versions weren't read. Phase times are elapsed intervals from tool launch to result, overlaps counted once, not CPU time. Three branches (`all-2032-chat-ui`, `envvars`, `member-sms-chat`) hold 87% of the time, so the sample is skewed.
+
+- Recorded round time was 157 hours: fixer phases 75 (48%), gaps between phases 47 (30%), reviewers 35 (22%).
+- Fixer sessions, timed by their own transcripts, ran 73 of those 75 hours: running checks 42.3 (58%), model work between tool calls 14.7 (20%), background waits 6.4, API failures and retries 5.6, and 2.6 hours in which eight fixers had finished their report but stayed alive until a fallback reminder or monitor fired.
+- Gaps (47.5 hours): waiting for the owner's answers 21.1 (44%), the machine asleep overnight 11.5, usage-limit interruptions 7.9, recovery after failed runs 3.0, worktree removal 2.4, hub orchestration 1.7. The largest single wait, 11.7 hours on `all-2032-chat-ui` round 13, followed the hub asking whether to keep running the no-cap loop; the owner answered "continue".
+- Worktrees: 737 measured creations took 3.3 hours (median about 12 seconds, p90 about 29) and 603 removals 4.0 hours (median about 17 seconds, p90 about 40), 7.15 hours after overlaps. `bun install` accounted for 1.44 of the creation hours; the rest is copying the development database, creating the test database, checkout and configuration. Removal drops both databases and deletes the checkout.
+- Reviewers (89 worker-hours, run in parallel): model work 42.9 (48%), checks 36.3 (41%; end-to-end 9.9, typecheck 9.8, unit tests 7.4, mixed 8.7), reading 6.0. Waiting on the slowest reviewer of each batch added 7.0 hours.
+- Load averages around 800 to 880 appear in `uptime` output inside `all-2032-chat-ui` fixer transcripts (rounds 21, 33, 39), alongside timing-test failures, on a 10-core machine.
