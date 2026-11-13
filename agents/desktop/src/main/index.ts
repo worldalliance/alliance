@@ -1,6 +1,7 @@
 import { app, BrowserWindow, dialog, net, protocol } from "electron";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { describeError } from "./describe-error";
 
 const rendererDir = path.join(import.meta.dirname, "../renderer");
 // Set by the e2e tests, so each test's app opens no window or dock icon on screen.
@@ -48,6 +49,11 @@ function createWindow(): void {
       exitUnloaded(`${errorDescription} (${errorCode}) loading ${url}`);
     },
   );
+  window.webContents.on("preload-error", (_event, preloadPath, error) => {
+    // The stack says where the preload threw, which the exit leaves no devtools to show.
+    if (error instanceof Error) console.error(error);
+    exitUnloaded(`${describeError(error)} in ${preloadPath}`);
+  });
 
   // did-fail-load reports failures; the promise also rejects for aborted loads.
   // A packaged app ignores ELECTRON_RENDERER_URL, so its launch environment can't load a remote page.
