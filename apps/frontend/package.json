@@ -98,6 +98,7 @@
     "unist-util-visit-parents": "^6.0.2",
     "validator": "^13.12.0",
     "web-vitals": "^4.2.4",
+    "yaml": "^2.8.3",
     "yet-another-react-lightbox": "^3.32.1",
     "zod": "^4.3.6"
   },
