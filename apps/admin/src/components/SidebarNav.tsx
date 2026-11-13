@@ -1,3 +1,4 @@
+import { formatBadgeCount } from "@alliance/shared/lib/badgeCount";
 import { cn } from "@alliance/shared/styles/util";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
@@ -20,18 +21,20 @@ const isOnPage = (pathname: string, to: string) =>
 const ROW =
   "flex items-center gap-2 text-[15px] text-gray-700 hover:text-black hover:bg-zinc-200/60 py-2 px-2 rounded transition-colors";
 
-const NotifBadge = ({ count }: { count?: number }) =>
-  count ? (
+const NotifBadge = ({ count }: { count?: number }) => {
+  const label = formatBadgeCount(count ?? 0);
+  return label ? (
     <>
       <span
         aria-hidden
-        className="font-semibold text-xs text-white bg-red-500 rounded-md flex justify-center items-center w-5 h-5"
+        className="shrink-0 font-semibold text-xs text-white bg-red-500 rounded-md flex justify-center items-center min-w-5 h-5 px-1"
       >
-        {count}
+        {label}
       </span>
-      <span className="sr-only"> ({count})</span>
+      <span className="sr-only"> ({label})</span>
     </>
   ) : null;
+};
 
 const NavLinkRow = ({ link, active }: { link: NavLink; active: boolean }) => (
   <Link
