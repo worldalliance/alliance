@@ -69,7 +69,7 @@ const UserDetailView: React.FC = () => {
   return (
     <div className="p-4">
       {isError ? (
-        <p className="text-red-500">
+        <p className="text-red-600">
           {notFound ? "Member not found" : "Failed to load member"}
         </p>
       ) : (

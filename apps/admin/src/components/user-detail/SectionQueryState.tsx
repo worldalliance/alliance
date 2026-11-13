@@ -8,7 +8,7 @@ export function SectionLoadState({
   isError: boolean;
 }) {
   return (
-    <p className={cn("text-sm", isError ? "text-red-500" : "text-zinc-500")}>
+    <p className={cn("text-sm", isError ? "text-red-600" : "text-zinc-500")}>
       {isError ? `Failed to load ${noun}` : `Loading ${noun}...`}
     </p>
   );
@@ -16,7 +16,7 @@ export function SectionLoadState({
 
 export function SectionRefreshError({ noun }: { noun: string }) {
   return (
-    <p className="text-xs text-red-500 mb-2">
+    <p className="text-xs text-red-600 mb-2">
       Could not refresh {noun}. Reload to see the latest.
     </p>
   );

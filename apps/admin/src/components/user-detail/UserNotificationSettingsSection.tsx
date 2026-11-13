@@ -101,7 +101,7 @@ export default function UserNotificationSettingsSection({
           </div>
         </div>
       ) : isError ? (
-        <p className="text-xs text-red-500">
+        <p className="text-xs text-red-600">
           Failed to load notification settings.
         </p>
       ) : (
