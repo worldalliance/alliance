@@ -14,7 +14,6 @@ export enum UserValueProperty {
   Over18 = "over18",
   ClusterId = "clusterId",
   StaffTitle = "staffTitle",
-  SwitchedDomainAt = "switchedDomainAt",
   ReferredById = "referredById",
   ShareInfoPublicly = "shareInfoPublicly",
 }
@@ -32,7 +31,6 @@ export const USER_VALUE_PROPERTY_LABELS = {
   [UserValueProperty.Over18]: "Over 18",
   [UserValueProperty.ClusterId]: "Cluster",
   [UserValueProperty.StaffTitle]: "Staff title",
-  [UserValueProperty.SwitchedDomainAt]: "Switched domain at",
   [UserValueProperty.ReferredById]: "Referred by",
   [UserValueProperty.ShareInfoPublicly]: "Public profile",
 } as const satisfies Record<UserValueProperty, string>;
@@ -54,7 +52,6 @@ export type UserValuePropertyBag = {
   over18: boolean | null | undefined;
   clusterId: number | null | undefined;
   staffTitle: string | null | undefined;
-  switchedDomainAt: Date | string | null | undefined;
   referredById: number | null | undefined;
   shareInfoPublicly: boolean | null | undefined;
 };
@@ -88,7 +85,6 @@ const EMPTY_PRESENCE: UserPropertyPresence = {
   [UserValueProperty.Over18]: false,
   [UserValueProperty.ClusterId]: false,
   [UserValueProperty.StaffTitle]: false,
-  [UserValueProperty.SwitchedDomainAt]: false,
   [UserValueProperty.ReferredById]: false,
   [UserValueProperty.ShareInfoPublicly]: false,
 };
@@ -116,7 +112,6 @@ export function userValuePropertyPresence(
     [UserValueProperty.Over18]: bag.over18 !== null && bag.over18 !== undefined,
     [UserValueProperty.ClusterId]: bag.clusterId != null,
     [UserValueProperty.StaffTitle]: isPresent(bag.staffTitle),
-    [UserValueProperty.SwitchedDomainAt]: isPresent(bag.switchedDomainAt),
     [UserValueProperty.ReferredById]: bag.referredById != null,
     [UserValueProperty.ShareInfoPublicly]: bag.shareInfoPublicly === true,
   };

@@ -990,7 +990,6 @@ export type UserPropertyPresenceDto = {
     over18: boolean;
     clusterId: boolean;
     staffTitle: boolean;
-    switchedDomainAt: boolean;
     referredById: boolean;
     shareInfoPublicly: boolean;
 };
