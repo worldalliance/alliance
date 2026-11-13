@@ -18,3 +18,7 @@ The Claude adapter task planned its merge after the thin path ran through this U
 ## Finding the CLI until it is bundled
 
 Until ALL-2029 bundles the CLI, an unpackaged app runs the `claude` it finds on `PATH`, or the executable `ALLIANCE_AGENT_CLAUDE_EXECUTABLE` names, which the Playwright tests point at the stub. A packaged app reports that the CLI isn't included. The adapter's version check still refuses any version but the pinned one. The variable is read only when unpackaged, as `ELECTRON_RENDERER_URL` is (agent decision).
+
+## Tests replay captures through the real adapter
+
+The real-path-first REQUIREMENTS.md asks for Playwright tests of the built app against a fake backend that replays the captures. The Claude adapter task's stub CLI (`stub-claude.ts`) already replays them, so the Playwright tests run the built app with the real Claude adapter spawning that stub, rather than teaching `fake-backend.ts` to replay captures. That runs the adapter's real parsing, interrupt and close paths under the UI, and needs no second replay implementation. `fake-backend.ts` stays for the hand-scripted states captures can't produce (agent decision).
