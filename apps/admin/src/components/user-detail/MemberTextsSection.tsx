@@ -12,13 +12,14 @@ import { deliveryStatus } from "../../lib/memberTexts";
 import { useMemberTextsAdmin } from "../../lib/useMemberTextsAdmin";
 import { useOlderMemberTexts } from "../../lib/useOlderMemberTexts";
 import { SectionLoadState, SectionRefreshError } from "./SectionQueryState";
+import TextComposer from "./TextComposer";
 
 export default function MemberTextsSection({
   member,
 }: {
-  member: { id: number; name: string };
+  member: { id: number; name: string; timeZone: string | null };
 }) {
-  const { thread } = useMemberTextsAdmin(member.id);
+  const { thread, send } = useMemberTextsAdmin(member.id);
 
   return (
     <section className="border border-zinc-200 rounded p-3">
@@ -38,24 +39,52 @@ export default function MemberTextsSection({
         )}
       </div>
       {thread.data ? (
-        <Thread
-          key={member.id}
-          userId={member.id}
-          thread={thread.data}
-          memberName={member.name}
-        />
+        <>
+          <Thread
+            key={member.id}
+            userId={member.id}
+            thread={thread.data}
+            memberName={member.name}
+            sentId={send.data?.id}
+          />
+          <div className={COMPOSER_AREA}>
+            {!thread.data.phoneNumber ? null : !thread.data.textable ? (
+              <p className="text-sm text-zinc-500">
+                This member&apos;s phone number isn&apos;t valid, so they
+                can&apos;t be texted.
+              </p>
+            ) : thread.data.optedOut ? (
+              <p className="text-sm text-zinc-500">
+                {member.name} opted out of texts. They can opt back in by
+                texting START.
+              </p>
+            ) : (
+              <TextComposer
+                key={member.id}
+                memberName={member.name}
+                timeZone={member.timeZone}
+                send={(body) => send.mutateAsync({ userId: member.id, body })}
+              />
+            )}
+          </div>
+        </>
       ) : (
-        <div className={THREAD_PANE}>
-          <SectionLoadState noun="texts" isError={thread.isError} />
-        </div>
+        <>
+          <div className={THREAD_PANE}>
+            <SectionLoadState noun="texts" isError={thread.isError} />
+          </div>
+          <div className={COMPOSER_AREA} />
+        </>
       )}
     </section>
   );
 }
 
-/** It keeps its size whatever loads into it, so the sections below don't
- * move when the thread arrives. */
+/** The thread pane keeps its size and the composer area reserves the idle
+ * composer's height (two-row box, two-line hint), so the sections below
+ * don't move when the thread arrives. */
 const THREAD_PANE = "h-[28rem]";
+const COMPOSER_AREA = "mt-3 min-h-[10.75rem]";
 
 const NEAR_BOTTOM_PX = 40;
 
@@ -63,15 +92,20 @@ function Thread({
   userId,
   thread,
   memberName,
+  sentId,
 }: {
   userId: number;
   thread: MmsThreadDto;
   memberName: string;
+  sentId: number | undefined;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const atBottom = useRef(true);
   const older = useOlderMemberTexts(userId, thread);
   const { messages } = older;
+  const sentShown =
+    sentId !== undefined && messages.some((text) => text.id === sentId);
+  const followedSent = useRef<number>(undefined);
   const place = useRef<Place | null>(null);
   const olderHadFocus = useRef(false);
 
@@ -94,8 +128,13 @@ function Thread({
 
   useLayoutEffect(() => {
     const element = scroller.current;
-    if (element && atBottom.current) element.scrollTop = element.scrollHeight;
-  }, [thread]);
+    if (!element) return;
+    if (sentShown && followedSent.current !== sentId) {
+      followedSent.current = sentId;
+      atBottom.current = true;
+    }
+    if (atBottom.current) element.scrollTop = element.scrollHeight;
+  }, [thread, sentId, sentShown]);
 
   useEffect(() => {
     const element = scroller.current;

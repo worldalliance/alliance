@@ -1,4 +1,6 @@
+import { R, type Result } from "@alliance/common/result";
 import type { MmsMessageDto } from "@alliance/shared/client/types.gen";
+import { format } from "date-fns";
 
 const DELIVERY: Record<string, { label: string; failed: boolean }> = {
   accepted: { label: "Sending", failed: false },
@@ -47,3 +49,42 @@ export const mergeTexts = ({
   [
     ...new Map([...older, ...newer].map((text) => [text.id, text])).values(),
   ].sort(compareTexts);
+
+const QUIET_HOURS = { start: 20, end: 8 } as const;
+
+const hourLabel = (hour: number) => format(new Date(2000, 0, 1, hour), "h a");
+
+export const QUIET_HOURS_LABEL = `${hourLabel(QUIET_HOURS.start)} and ${hourLabel(QUIET_HOURS.end)}`;
+
+export enum LocalTimeUnknown {
+  NoTimeZone = "no_time_zone",
+  InvalidTimeZone = "invalid_time_zone",
+}
+
+export const memberLocalTime = (
+  timeZone: string | null,
+  now: Date,
+): Result<{ label: string; quiet: boolean }, LocalTimeUnknown> => {
+  if (!timeZone) return R.failure(LocalTimeUnknown.NoTimeZone);
+  return R.fromThrowable(
+    () => {
+      const hour = Number(
+        new Intl.DateTimeFormat("en-US", {
+          timeZone,
+          hour: "numeric",
+          hourCycle: "h23",
+        }).format(now),
+      );
+      const label = new Intl.DateTimeFormat("en-US", {
+        timeZone,
+        hour: "numeric",
+        minute: "2-digit",
+      }).format(now);
+      return {
+        label,
+        quiet: hour >= QUIET_HOURS.start || hour < QUIET_HOURS.end,
+      };
+    },
+    () => LocalTimeUnknown.InvalidTimeZone,
+  );
+};

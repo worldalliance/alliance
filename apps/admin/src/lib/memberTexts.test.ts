@@ -1,5 +1,11 @@
+import { R } from "@alliance/common/result";
 import type { MmsMessageDto } from "@alliance/shared/client/types.gen";
-import { deliveryStatus, mergeTexts } from "./memberTexts";
+import {
+  deliveryStatus,
+  LocalTimeUnknown,
+  memberLocalTime,
+  mergeTexts,
+} from "./memberTexts";
 
 describe("deliveryStatus", () => {
   it("names a failure with Twilio's reason", () => {
@@ -31,6 +37,37 @@ describe("deliveryStatus", () => {
         errorMessage: null,
       }).label,
     ).toBe("teleported");
+  });
+});
+
+describe("memberLocalTime", () => {
+  const at = (iso: string) => new Date(iso);
+
+  it("flags 10 PM in the member's zone as quiet hours", () => {
+    expect(
+      memberLocalTime("America/Los_Angeles", at("2026-11-11T06:00:00Z")),
+    ).toEqual(R.success({ label: "10:00 PM", quiet: true }));
+  });
+
+  it("allows 8 AM, the start of the day", () => {
+    expect(
+      memberLocalTime("America/New_York", at("2026-11-11T13:00:00Z")),
+    ).toEqual(R.success({ label: "8:00 AM", quiet: false }));
+  });
+
+  it("treats 8 PM as quiet", () => {
+    expect(
+      memberLocalTime("America/New_York", at("2026-11-12T01:00:00Z")),
+    ).toEqual(R.success({ label: "8:00 PM", quiet: true }));
+  });
+
+  it("tells a missing zone from an invalid one", () => {
+    expect(memberLocalTime(null, new Date())).toEqual(
+      R.failure(LocalTimeUnknown.NoTimeZone),
+    );
+    expect(memberLocalTime("Not/AZone", new Date())).toEqual(
+      R.failure(LocalTimeUnknown.InvalidTimeZone),
+    );
   });
 });
 

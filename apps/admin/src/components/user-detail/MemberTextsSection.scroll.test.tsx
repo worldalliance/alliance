@@ -5,6 +5,7 @@ import type {
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   fireEvent,
   render,
@@ -66,7 +67,9 @@ const renderSection = () => {
   const { wrapper: Wrapper, client } = queryWrapper();
   render(
     <Wrapper>
-      <MemberTextsSection member={{ id: 7, name: "Sam" }} />
+      <ToastProvider>
+        <MemberTextsSection member={{ id: 7, name: "Sam", timeZone: null }} />
+      </ToastProvider>
     </Wrapper>,
   );
   return client;
