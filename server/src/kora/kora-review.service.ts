@@ -1,5 +1,4 @@
 import {
-  KoraBatchEventKind,
   KoraProjectStatus,
   KoraReviewPhase,
   KoraReviewStatus,
@@ -15,12 +14,15 @@ import type {
 } from "./dto/kora-review.dto";
 import { KoraAssignmentTranscript } from "./entities/kora-assignment-transcript.entity";
 import { KoraAssignment } from "./entities/kora-assignment.entity";
-import { KoraBatchEvent } from "./entities/kora-batch-event.entity";
 import { KoraBatch } from "./entities/kora-batch.entity";
 import { KoraReviewer } from "./entities/kora-reviewer.entity";
 import { KoraTranscript } from "./entities/kora-transcript.entity";
 import { type Candidate, pickAssignment } from "./kora-assignment-pick";
-import { KORA_MEMBER_REVIEWED, type KoraMemberReviewed } from "./kora-events";
+import {
+  emitMemberReviewed,
+  type KoraCompletion,
+  logCompletion,
+} from "./kora-completion";
 import {
   checkExport,
   resultTranscriptIds,
@@ -28,7 +30,6 @@ import {
 } from "./kora-export-check";
 import { KoraProjectService } from "./kora-project.service";
 import { redactExport } from "./kora-redact";
-import { koraStagingTools } from "./kora-staging-tools";
 import { koraAjv } from "./kora-upload";
 
 export type KoraIdentity = { userId: number } | { participantId: string };
@@ -135,6 +136,18 @@ export class KoraReviewService {
     const completed = [...statuses.values()].every(
       (s) => s !== KoraReviewStatus.Pending,
     );
+    const completion: KoraCompletion | null =
+      completed && assignment.completedAt === null
+        ? {
+            assignmentId: assignment.id,
+            reviewerId: reviewer.id,
+            userId: reviewer.userId,
+            extra: assignment.extra,
+            ratingCount: [...statuses.values()].filter(
+              (s) => s === KoraReviewStatus.Done,
+            ).length,
+          }
+        : null;
     await this.dataSource.transaction(async (manager) => {
       const now = new Date();
       await manager.update(
@@ -153,16 +166,7 @@ export class KoraReviewService {
           { status },
         );
       }
-      if (completed && assignment.completedAt === null && koraStagingTools()) {
-        await manager.insert(KoraBatchEvent, {
-          kind: KoraBatchEventKind.AssignmentCompleted,
-          assignmentId: assignment.id,
-          reviewerId: reviewer.id,
-          ratingCount: [...statuses.values()].filter(
-            (s) => s === KoraReviewStatus.Done,
-          ).length,
-        });
-      }
+      if (completion) await logCompletion(manager, completion);
       if (profileAnswered && !reviewer.profileAnsweredAt) {
         await manager.update(
           KoraReviewer,
@@ -171,16 +175,7 @@ export class KoraReviewService {
         );
       }
     });
-    if (
-      completed &&
-      assignment.completedAt === null &&
-      !assignment.extra &&
-      reviewer.userId !== null
-    ) {
-      this.events.emit(KORA_MEMBER_REVIEWED, {
-        userId: reviewer.userId,
-      } satisfies KoraMemberReviewed);
-    }
+    if (completion) emitMemberReviewed(this.events, completion);
     return R.success({ completed });
   }
 

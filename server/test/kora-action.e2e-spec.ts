@@ -10,6 +10,7 @@ import {
 import { Action, VisibilityMode } from "src/actions/entities/action.entity";
 import { KoraBatch } from "src/kora/entities/kora-batch.entity";
 import { KoraReviewer } from "src/kora/entities/kora-reviewer.entity";
+import { KoraBatchActionsService } from "src/kora/kora-batch-actions.service";
 import { KoraBatchService } from "src/kora/kora-batch.service";
 import { KoraModule } from "src/kora/kora.module";
 import request from "supertest";
@@ -64,7 +65,7 @@ describe("Kora review actions (e2e)", () => {
     await closeTestApp(ctx.app);
   });
 
-  it("completes a member's Kora actions when they finish their first assignment", async () => {
+  const uploadTwo = async () => {
     const uploaded = await ctx.app.get(KoraBatchService).upload({
       transcriptsText: koraPairsFile(koraPair("A1"), koraPair("A2")),
       transcriptsPerAssignment: 2,
@@ -72,37 +73,86 @@ describe("Kora review actions (e2e)", () => {
       actor: koraAdminActor(ctx),
     });
     if (!uploaded.ok) throw new Error(JSON.stringify(uploaded.error));
-    const kora = await liveAction(
-      "Review chatbot transcripts",
-      ActionTaskKind.KoraReview,
-    );
-    const other = await liveAction("Some form action", ActionTaskKind.Form);
-    const member = request
+    return uploaded.value.batch;
+  };
+  const member = () =>
+    request
       .agent(ctx.app.getHttpServer())
       .set("Authorization", `Bearer ${ctx.accessToken}`)
       .set("Origin", ORIGIN);
-
-    const state = (await member.get("/kora/review").expect(200)).body;
+  const rate = async (
+    agent: ReturnType<typeof member>,
+    pick: (ids: string[]) => string[],
+  ) => {
+    const state = (await agent.get("/kora/review").expect(200)).body;
     const transcripts = state.assignment.transcripts;
-    await member
+    await agent
       .put(`/kora/review/assignments/${state.assignment.id}/export`)
       .send({
         export: koraExport({
           reviewerId: state.reviewerId,
           assignmentId: state.assignment.id,
           transcripts,
-          done: transcripts.map(
-            (t: { transcript: { transcriptId: string } }) =>
-              t.transcript.transcriptId,
+          done: pick(
+            transcripts.map(
+              (t: { transcript: { transcriptId: string } }) =>
+                t.transcript.transcriptId,
+            ),
           ),
         }),
       })
       .expect(200);
-
-    for (let i = 0; i < 50 && !(await completed(kora.id)); i++) {
+  };
+  const eventuallyCompleted = async (actionId: number) => {
+    for (let i = 0; i < 50 && !(await completed(actionId)); i++) {
       await new Promise((resolve) => setTimeout(resolve, 20));
     }
-    expect(await completed(kora.id)).toBe(true);
+    return completed(actionId);
+  };
+
+  it("completes a member's Kora actions when they finish their first assignment", async () => {
+    await uploadTwo();
+    const kora = await liveAction(
+      "Review chatbot transcripts",
+      ActionTaskKind.KoraReview,
+    );
+    const other = await liveAction("Some form action", ActionTaskKind.Form);
+    await rate(member(), (ids) => ids);
+
+    expect(await eventuallyCompleted(kora.id)).toBe(true);
     expect(await completed(other.id)).toBe(false);
+  });
+
+  it("completes a member's Kora actions when a retire finishes their first assignment", async () => {
+    const batch = await uploadTwo();
+    const kora = await liveAction(
+      "Review chatbot transcripts",
+      ActionTaskKind.KoraReview,
+    );
+    await rate(member(), (ids) => ids.slice(0, 1));
+    expect(await completed(kora.id)).toBe(false);
+
+    const retired = await ctx.app
+      .get(KoraBatchActionsService)
+      .retire({ batchId: batch.id, actor: koraAdminActor(ctx) });
+    expect(retired.ok).toBe(true);
+
+    expect(await eventuallyCompleted(kora.id)).toBe(true);
+  });
+
+  it("leaves a member's Kora actions open when a retire empties an assignment they never rated", async () => {
+    const batch = await uploadTwo();
+    const kora = await liveAction(
+      "Review chatbot transcripts",
+      ActionTaskKind.KoraReview,
+    );
+    await member().get("/kora/review").expect(200);
+
+    await ctx.app
+      .get(KoraBatchActionsService)
+      .retire({ batchId: batch.id, actor: koraAdminActor(ctx) });
+
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(await completed(kora.id)).toBe(false);
   });
 });

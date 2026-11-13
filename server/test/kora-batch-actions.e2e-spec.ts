@@ -117,6 +117,14 @@ describe("Kora batch retire, reactivate and delete (e2e)", () => {
       .getRepository(KoraAssignment)
       .findOneByOrFail({ id: s.assignment?.id });
     expect(stored.completedAt).not.toBeNull();
+    expect(await events()).toContainEqual(
+      expect.objectContaining({
+        kind: KoraBatchEventKind.AssignmentCompleted,
+        assignmentId: s.assignment?.id,
+        reviewerId: s.reviewerId,
+        ratingCount: 0,
+      }),
+    );
   });
 
   it("accepts a save from a tool loaded before the retire, dropping the removed pairs", async () => {
