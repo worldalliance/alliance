@@ -4,7 +4,7 @@ import {
   type AgentApi,
   IpcChannel,
   type IpcReplies,
-  type SessionEvent,
+  type RendererEvents,
 } from "../shared/ipc";
 
 const invoke = <C extends keyof IpcReplies>(
@@ -14,6 +14,15 @@ const invoke = <C extends keyof IpcReplies>(
   ipcRenderer
     .invoke(channel, arg)
     .catch((error: unknown) => R.failure(R.toError(error).message));
+
+const listen = <C extends keyof RendererEvents>(
+  channel: C,
+  listener: (payload: RendererEvents[C]) => void,
+) => {
+  const handler = (_: unknown, payload: RendererEvents[C]) => listener(payload);
+  ipcRenderer.on(channel, handler);
+  return () => ipcRenderer.off(channel, handler);
+};
 
 const api: AgentApi = {
   claudeSignedIn: () => invoke(IpcChannel.ClaudeStatus),
@@ -25,11 +34,7 @@ const api: AgentApi = {
   resume: (sessionId) => invoke(IpcChannel.Resume, sessionId),
   send: (input) => invoke(IpcChannel.Send, input),
   interrupt: (sessionId) => ipcRenderer.send(IpcChannel.Interrupt, sessionId),
-  onEvent: (listener) => {
-    const handler = (_: unknown, event: SessionEvent) => listener(event);
-    ipcRenderer.on(IpcChannel.Event, handler);
-    return () => ipcRenderer.off(IpcChannel.Event, handler);
-  },
+  onEvent: (listener) => listen(IpcChannel.Event, listener),
 };
 
 contextBridge.exposeInMainWorld("agent", api);

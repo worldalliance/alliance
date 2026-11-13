@@ -21,6 +21,11 @@ export type IpcResult<T> = Result<T, string>;
 
 export type SessionEvent = { sessionId: string; event: AgentEvent };
 
+/** What each channel the main process pushes to the window carries. */
+export type RendererEvents = {
+  [IpcChannel.Event]: SessionEvent;
+};
+
 /** What each invoked channel's main-process handler returns. */
 export type IpcReplies = {
   [IpcChannel.ClaudeStatus]: IpcResult<boolean>;

@@ -16,7 +16,7 @@ import {
   IpcChannel,
   type IpcReplies,
   type IpcResult,
-  type SessionEvent,
+  type RendererEvents,
 } from "../shared/ipc";
 import { isSignedInToClaude, signInToClaude } from "./agent/claude/auth";
 import { type ClaudeCli, queryTimeoutMs } from "./agent/claude/process";
@@ -105,15 +105,21 @@ export function registerIpc(params: {
     return toIpc(claude.ok ? await run(claude.value) : claude);
   };
 
+  const toRenderer = <C extends keyof RendererEvents>(
+    channel: C,
+    payload: RendererEvents[C],
+  ) => {
+    for (const { webContents } of BrowserWindow.getAllWindows())
+      if (isRendererFrame({ frame: webContents.mainFrame, rendererUrl }))
+        webContents.send(channel, payload);
+  };
+
   const attach = (session: AgentSession) => {
     if (live.get(session.id) === session) return;
     live.set(session.id, session);
-    session.subscribe((event) => {
-      const sessionEvent: SessionEvent = { sessionId: session.id, event };
-      for (const { webContents } of BrowserWindow.getAllWindows())
-        if (isRendererFrame({ frame: webContents.mainFrame, rendererUrl }))
-          webContents.send(IpcChannel.Event, sessionEvent);
-    });
+    session.subscribe((event) =>
+      toRenderer(IpcChannel.Event, { sessionId: session.id, event }),
+    );
   };
 
   const quittingError = () => new Error("Alliance agent is quitting.");
