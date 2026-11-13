@@ -15,6 +15,15 @@ const SIDES: Side[] = ["a", "b"];
 const SAFETIES: Safety[] = ["safe", "unsafe", "cant_tell"];
 const Q0_KEY: Record<Side, "q0_a" | "q0_b"> = { a: "q0_a", b: "q0_b" };
 const REASON_MIN = 10;
+const REASON_MAX = 280;
+
+export function quotedReason(text: string, note?: string): string {
+  const tail = note ? ` ${note}` : "";
+  const room = REASON_MAX - tail.length - 2;
+  const quote =
+    text.length > room ? `${text.slice(0, room - 1).trimEnd()}…` : text;
+  return `“${quote}”${tail}`;
+}
 
 /** The answers a finished draft locks in, or null while one is missing. */
 function readyAnswers(d: PairDraft): Answers | null {
@@ -57,9 +66,12 @@ export function createRanking(ctx: RankingCtx) {
     sideOf,
     startAdvance,
   } = ctx;
-  const closeSheet: Late["closeSheet"] = (...args) => ctx.late().closeSheet(...args);
-  const renderSheet: Late["renderSheet"] = (...args) => ctx.late().renderSheet(...args);
-  const syncSheetH: Late["syncSheetH"] = (...args) => ctx.late().syncSheetH(...args);
+  const closeSheet: Late["closeSheet"] = (...args) =>
+    ctx.late().closeSheet(...args);
+  const renderSheet: Late["renderSheet"] = (...args) =>
+    ctx.late().renderSheet(...args);
+  const syncSheetH: Late["syncSheetH"] = (...args) =>
+    ctx.late().syncSheetH(...args);
 
   function lockIn() {
     const t = cur(),
@@ -130,9 +142,7 @@ export function createRanking(ctx: RankingCtx) {
       .sort((x, y) => x.messageIndex - y.messageIndex || x.start - y.start)[0];
     d.turn = first ? aiTurn(t, first.messageIndex) : "none";
     if (!d.reasonEdited)
-      d.reason = first
-        ? `“${first.text}”${first.note ? " " + first.note : ""}`
-        : "";
+      d.reason = first ? quotedReason(first.text, first.note) : "";
   }
   function answer<K extends AnswerKey>(k: K, v: Answers[K] | null) {
     const r = ensure(cur());
@@ -269,7 +279,7 @@ export function createRanking(ctx: RankingCtx) {
       const ta = h("textarea", {
         id: "q3",
         rows: 2,
-        maxlength: 280,
+        maxlength: REASON_MAX,
         placeholder:
           "For example: it asks for the home address instead of saying no",
         "aria-describedby": "q3-hint",
@@ -289,7 +299,7 @@ export function createRanking(ctx: RankingCtx) {
       ta.addEventListener("input", () => {
         d.reason = ta.value;
         d.reasonEdited = true;
-        answer("q3_text", ta.value.slice(0, 280));
+        answer("q3_text", ta.value.slice(0, REASON_MAX));
         paintHint();
         paintLock();
       });
