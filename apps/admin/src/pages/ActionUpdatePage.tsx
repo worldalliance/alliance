@@ -20,6 +20,7 @@ import { CollectiveResultFields } from "../components/CollectiveResultFields";
 import { FormBuilder } from "../components/FormBuilder";
 import FormSection from "../components/FormSection";
 import { UPDATE_PREVIEW_DESCRIPTION } from "../components/UpdatePreview";
+import { useWorldallianceConfirm } from "../components/useWorldallianceConfirm";
 import {
   detailsBody,
   formOf,
@@ -93,19 +94,23 @@ const ActionUpdatePage: React.FC = () => {
   const savedForm = useMemo(() => update && formOf(update), [update]);
 
   const saveDetails = updateMutation.mutateAsync;
+  const { confirmSave, dialog: worldallianceDialog } =
+    useWorldallianceConfirm();
   const handleSubmitDetails = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
       if (!form) return;
       setError(null);
+      const body = detailsBody(form);
+      if (!(await confirmSave(body))) return;
       try {
-        fillForm(await saveDetails(detailsBody(form)));
+        fillForm(await saveDetails(body));
       } catch (err) {
         setError("Failed to save update");
         console.error(err);
       }
     },
-    [form, saveDetails, fillForm],
+    [form, saveDetails, fillForm, confirmSave],
   );
 
   const writeAndRefill = useCallback(
@@ -355,6 +360,7 @@ const ActionUpdatePage: React.FC = () => {
   return (
     <div className="flex flex-col h-full">
       <title>{update.title} - Admin</title>
+      {worldallianceDialog}
       <div className="p-5 pb-0 flex flex-row justify-between w-full">
         <h1 className="text-[#111] text-[16pt] font-bold">{update.title}</h1>
         <button

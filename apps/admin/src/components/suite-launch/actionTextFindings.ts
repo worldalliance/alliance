@@ -1,6 +1,7 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
 import { ACTION_TEXT_FIELD_LABELS } from "../../lib/actionFieldDefs";
+import { textContext } from "../../lib/textContext";
 import { formTextPlaces } from "../../pages/action-dashboard/actionReadiness";
 import { findTextIssues, TextIssueKind, type TextIssue } from "./textChecks";
 
@@ -33,19 +34,6 @@ export type TextFinding = Pick<TextIssue, "kind" | "start" | "end"> & {
   formElementId: string | null;
   text: string;
 };
-
-const CONTEXT_CHARS = 20;
-
-export const findingContext = (
-  finding: Pick<TextFinding, "text" | "start" | "end">,
-) => ({
-  before: finding.text.slice(
-    Math.max(0, finding.start - CONTEXT_CHARS),
-    finding.start,
-  ),
-  flagged: finding.text.slice(finding.start, finding.end),
-  after: finding.text.slice(finding.end, finding.end + CONTEXT_CHARS),
-});
 
 export function actionTextFindings(params: {
   action: Pick<ParsedActionDto, "id" | "name" | "shortDescription" | "body">;
@@ -99,7 +87,7 @@ export function actionTextFindings(params: {
   const occurrences = new Map<string, number>();
   return texts.flatMap(({ source, text, formId, formElementId }) =>
     findTextIssues(text, isKnownWord).map((issue): TextFinding => {
-      const { before, flagged, after } = findingContext({
+      const { before, flagged, after } = textContext({
         text,
         start: issue.start,
         end: issue.end,

@@ -21,6 +21,7 @@ let groups: ({ id: number; name: string } & Record<string, unknown>)[] = [];
 let groupsStatus = 200;
 let deleteStatus = 200;
 let createStatus = 200;
+let updateRequests = 0;
 let anchorCandidatesStatus = 200;
 let anchorCandidates: ReminderAnchorCandidateDto[] = [];
 const previewRequests: unknown[] = [];
@@ -70,8 +71,10 @@ serveApi(
       previewRequests.push({ ...params, ...body });
       return Response.json({ text: `Rendered ${body.textMessage}` });
     },
-    "PATCH /actions/remindergroups/:groupId": () =>
-      Response.json({ message: "Reminder name taken" }, { status: 400 }),
+    "PATCH /actions/remindergroups/:groupId": () => {
+      updateRequests += 1;
+      return Response.json({ message: "Reminder name taken" }, { status: 400 });
+    },
     "DELETE /actions/reminders/:groupId": ({ params }) => {
       if (deleteStatus !== 200)
         return Response.json({}, { status: deleteStatus });
@@ -319,6 +322,38 @@ it("says why an edit was refused and keeps the form open", async () => {
   expect(await screen.findByText("Reminder name taken")).toBeTruthy();
   expect(screen.getByRole("button", { name: "Update Reminders" })).toBeTruthy();
 });
+
+it.each([
+  ["Save anyway", 1],
+  ["Cancel", 0],
+])(
+  "sends a reminder that mentions worldalliance on %s %i times",
+  async (choice, saves) => {
+    groups = [
+      { ...announcementGroup, textMessage: "See https://worldalliance.org/x" },
+    ];
+    updateRequests = 0;
+    renderTab();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    const submit = await screen.findByRole("button", {
+      name: "Update Reminders",
+    });
+    await waitFor(() => expect(submit).toHaveProperty("disabled", false));
+    fireEvent.click(submit);
+
+    expect((await screen.findByRole("dialog")).textContent).toContain(
+      "See https://worldalliance.org/x",
+    );
+    expect(updateRequests).toBe(0);
+    fireEvent.click(screen.getByRole("button", { name: choice }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(updateRequests).toBe(saves));
+    expect(
+      await screen.findByRole("button", { name: "Update Reminders" }),
+    ).toBeTruthy();
+  },
+);
 
 const openPresets = async () => {
   fireEvent.click(await screen.findByRole("button", { name: "New reminder" }));
