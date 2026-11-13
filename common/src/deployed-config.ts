@@ -56,8 +56,8 @@ const deployedConfig: {
   },
   [NodeEnv.Production]: {
     ...shared,
-    DOMAIN_NAME: "worldalliance.org",
-    ALT_DOMAIN_NAME: "thealliance.org",
+    DOMAIN_NAME: "thealliance.org",
+    ALT_DOMAIN_NAME: "worldalliance.org",
     APPLE_BUNDLE_ID: [
       "com.alliancefoundation.alliancemobile",
       "com.alliancefoundation.alliancemobile.dev",

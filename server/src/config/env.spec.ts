@@ -211,10 +211,10 @@ describe("validateServerEnv", () => {
     });
     expect(parsed(production)).toMatchObject({
       ...committedFor(NodeEnv.Production),
-      APP_URL: "https://worldalliance.org",
-      ALT_APP_URL: "https://thealliance.org",
-      ADMIN_URL: "https://admin.worldalliance.org",
-      ALT_ADMIN_URL: "https://admin.thealliance.org",
+      APP_URL: "https://thealliance.org",
+      ALT_APP_URL: "https://worldalliance.org",
+      ADMIN_URL: "https://admin.thealliance.org",
+      ALT_ADMIN_URL: "https://admin.worldalliance.org",
     });
   });
 

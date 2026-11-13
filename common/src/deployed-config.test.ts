@@ -47,14 +47,14 @@ describe("deployedConfigEnv", () => {
 });
 
 describe("domainMove", () => {
-  test("staging has cut over and production has not", () => {
+  test("both environments have cut over", () => {
     expect(domainMove(deployedConfigFor(NodeEnv.Staging))).toEqual({
       move: DomainMove.CutOver,
       legacyDomain: "staging.worldalliance.org",
       newDomain: "staging.thealliance.org",
     });
     expect(domainMove(deployedConfigFor(NodeEnv.Production))).toEqual({
-      move: DomainMove.OptIn,
+      move: DomainMove.CutOver,
       legacyDomain: "worldalliance.org",
       newDomain: "thealliance.org",
     });
