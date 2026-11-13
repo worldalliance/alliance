@@ -28,7 +28,7 @@ import { AuthOptionalGuard } from "src/auth/guards/authoptional.guard";
 import { Public } from "src/auth/public.decorator";
 import type { JwtRequest } from "src/auth/tokens";
 import { pipeS3Object } from "src/s3/pipe-s3-object";
-import { requireEnv } from "../config/env";
+import { assetsBucket } from "../s3/assets-bucket";
 import {
   CreateHostedDocDto,
   HostedDocDto,
@@ -124,10 +124,6 @@ export class DocsController {
     @Inject("S3_CLIENT") private readonly s3: S3Client,
   ) {}
 
-  private get bucket() {
-    return requireEnv("ASSETS_BUCKET");
-  }
-
   @Get(":slug")
   @Public()
   @UseGuards(AuthOptionalGuard)
@@ -159,7 +155,7 @@ export class DocsController {
 
     await pipeS3Object({
       s3: this.s3,
-      bucket: this.bucket,
+      bucket: assetsBucket(),
       key: doc.s3Key,
       res,
       contentType: "application/pdf",

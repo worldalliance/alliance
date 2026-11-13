@@ -13,7 +13,7 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { softDeleteCascade, updateLive } from "src/datasources/soft-delete";
 import type { Repository } from "src/utils/Repository";
-import { requireEnv } from "../config/env";
+import { assetsBucket } from "../s3/assets-bucket";
 import type { VideoDetailResponse } from "./dto/video-response.dto";
 import { Video } from "./entities/video.entity";
 
@@ -26,10 +26,6 @@ export class VideosService {
     private videoRepository: Repository<Video>,
     @Inject("S3_CLIENT") private readonly s3: S3Client,
   ) {}
-
-  private get bucket() {
-    return requireEnv("ASSETS_BUCKET");
-  }
 
   private contentTypeForFile(filename: string) {
     if (filename.endsWith(".m3u8")) {
@@ -58,7 +54,7 @@ export class VideosService {
       files.map((file) =>
         this.s3.send(
           new PutObjectCommand({
-            Bucket: this.bucket,
+            Bucket: assetsBucket(),
             Key: `${keyPrefix}/${file.originalname}`,
             Body: file.buffer,
             ContentType: this.contentTypeForFile(file.originalname),
@@ -71,7 +67,7 @@ export class VideosService {
   private async deletePrefix(keyPrefix: string): Promise<void> {
     const listResult = await this.s3.send(
       new ListObjectsV2Command({
-        Bucket: this.bucket,
+        Bucket: assetsBucket(),
         Prefix: `${keyPrefix}/`,
       }),
     );
@@ -81,7 +77,7 @@ export class VideosService {
     await Promise.all(
       contents.map((obj) =>
         this.s3.send(
-          new DeleteObjectCommand({ Bucket: this.bucket, Key: obj.Key! }),
+          new DeleteObjectCommand({ Bucket: assetsBucket(), Key: obj.Key! }),
         ),
       ),
     );
@@ -132,7 +128,7 @@ export class VideosService {
 
     const listResult = await this.s3.send(
       new ListObjectsV2Command({
-        Bucket: this.bucket,
+        Bucket: assetsBucket(),
         Prefix: `${video.key}/`,
       }),
     );
@@ -174,7 +170,7 @@ export class VideosService {
     const newFilenames = new Set(files.map((f) => f.originalname));
     const listResult = await this.s3.send(
       new ListObjectsV2Command({
-        Bucket: this.bucket,
+        Bucket: assetsBucket(),
         Prefix: `${video.key}/`,
       }),
     );
@@ -184,7 +180,7 @@ export class VideosService {
     await Promise.all(
       staleObjects.map((obj) =>
         this.s3.send(
-          new DeleteObjectCommand({ Bucket: this.bucket, Key: obj.Key! }),
+          new DeleteObjectCommand({ Bucket: assetsBucket(), Key: obj.Key! }),
         ),
       ),
     );

@@ -28,6 +28,7 @@ import convert from "heic-convert";
 import sharp from "sharp";
 import { AsyncSemaphore } from "src/utils/async-semaphore";
 import { env, requireEnv } from "../config/env";
+import { assetsBucket } from "../s3/assets-bucket";
 
 // A 108 MP phone photo fits; a small file with huge dimensions doesn't.
 const DOWNLOAD_MAX_PIXELS = 120_000_000;
@@ -43,11 +44,6 @@ export class ImagesService {
   private readonly logger = new Logger(ImagesService.name);
 
   constructor(@Inject("S3_CLIENT") private readonly s3: S3Client) {}
-
-  // TODO: separate dev bucket
-  private get bucket() {
-    return requireEnv("ASSETS_BUCKET");
-  }
 
   /**
    * The timestamp keeps keys roughly ordered; the uuid is what makes them
@@ -80,7 +76,7 @@ export class ImagesService {
   private async putImage(key: string, body: Buffer): Promise<void> {
     await this.s3.send(
       new PutObjectCommand({
-        Bucket: this.bucket,
+        Bucket: assetsBucket(),
         Key: key,
         Body: body,
         ContentType: "image/webp",
@@ -133,7 +129,7 @@ export class ImagesService {
   private async toJpeg(key: string): Promise<Buffer> {
     try {
       const object = await this.s3.send(
-        new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+        new GetObjectCommand({ Bucket: assetsBucket(), Key: key }),
       );
       if (!object.Body) throw new NotFoundException();
       const bytes = await object.Body.transformToByteArray();
