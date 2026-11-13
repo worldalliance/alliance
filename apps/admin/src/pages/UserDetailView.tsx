@@ -14,6 +14,7 @@ import { Route } from "../../.react-router/types/src/pages/+types/UserDetailView
 import DeleteAccountModal from "../components/DeleteAccountModal";
 import MemberGroupMoveSection from "../components/MemberGroupMoveSection";
 import UserAwayPeriodsSection from "../components/UserAwayPeriodsSection";
+import MemberTextsSection from "../components/user-detail/MemberTextsSection";
 import { SectionRefreshError } from "../components/user-detail/SectionQueryState";
 import UserActionsSection from "../components/user-detail/UserActionsSection";
 import UserFormSubmissionsSection from "../components/user-detail/UserFormSubmissionsSection";
@@ -214,6 +215,7 @@ const UserDetail = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <div className="lg:col-span-3 space-y-4">
+          <MemberTextsSection member={user} />
           <UserActionsSection userId={user.id} />
           <UserNotificationsSection query={notifs} />
         </div>

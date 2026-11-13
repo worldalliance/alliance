@@ -18,12 +18,17 @@ export function SectionLoadState({
 export function SectionRefreshError({
   noun,
   isError,
+  className,
 }: {
   noun: string;
   isError: boolean;
+  className?: string;
 }) {
   return (
-    <p role="status" className={cn("text-xs text-red-600", isError && "mb-2")}>
+    <p
+      role="status"
+      className={cn("text-xs text-red-600", isError && "mb-2", className)}
+    >
       {isError && `Could not refresh ${noun}. Reload to see the latest.`}
     </p>
   );

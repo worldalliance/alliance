@@ -71,3 +71,10 @@ Method: on 2026-11-12, at the branch tip after its rebase onto `main` 8196603b37
 ## Staff text length limit (vendor documentation)
 
 Twilio's page for error 21617, "The concatenated message body exceeds the 1600 character limit" (https://www.twilio.com/docs/api/errors/21617), read on 2026-11-12, says the `Body` of an outgoing message can be up to 1,600 characters, and that for SMS, characters outside GSM-7, such as emoji, "can use more space than standard GSM characters and cause the message to exceed the limit sooner than expected." It does not say exactly how Twilio counts them. class-validator's `@Length`, through validator's `isLength`, counts a surrogate pair as one character, so `'😎'.repeat(1600)`, 3,200 UTF-16 code units, passes it (a round 22 reviewer's run).
+
+## Scroll anchoring (experiment)
+
+Method: on 2026-11-12, Playwright's Chromium 147.0.7727.15 and WebKit 26.4 builds (macOS) loaded a 300 px tall `overflow-y: auto` pane of 50 px rows, scrolled it to 800 px, then grew an empty block at its top to 256 px, as an image loading above the reader does, and read `scrollTop` two frames later.
+
+- Chromium: 1056, so its scroll anchoring kept the reader's place.
+- WebKit: 800, so the rows in view moved down by the block's height.
