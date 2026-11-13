@@ -45,7 +45,7 @@ export const authStatusCapture = (loggedIn: boolean): string =>
   });
 
 export async function launch(
-  params: { captures: string[] } & (
+  params: { captures: string[]; env?: Record<string, string> } & (
     | {
         /** Runs in place of the stub that playwright.config.ts names. */
         claude?: string;
@@ -65,6 +65,7 @@ export async function launch(
     ),
     ...(params.claude && { [claudeExecutableVariable]: params.claude }),
     ...(params.path !== undefined && { PATH: params.path }),
+    ...params.env,
   };
   if (params.path !== undefined) delete env[claudeExecutableVariable];
   const app = await electron.launch({ args: appArgs(), env });
