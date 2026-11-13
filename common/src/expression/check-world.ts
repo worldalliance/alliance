@@ -148,12 +148,11 @@ function declarations(catalog: Catalog): string {
 /** Script files sharing one global scope, checked by one language service. */
 export class World {
   private readonly files = new Map<string, { text: string; version: number }>();
-  private readonly order: string[] = [];
   private readonly service: ts.LanguageService;
 
   constructor(catalog: Catalog) {
     const host: ts.LanguageServiceHost = {
-      getScriptFileNames: () => [LIB_FILE, ...this.order],
+      getScriptFileNames: () => [LIB_FILE, ...this.files.keys()],
       getScriptVersion: (name) => String(this.files.get(name)?.version ?? 0),
       getScriptSnapshot: (name) => {
         if (name === LIB_FILE) return LIB_SNAPSHOT;
@@ -183,7 +182,6 @@ export class World {
   }
 
   write(name: string, text: string): void {
-    this.order.push(name);
     const version = (this.files.get(name)?.version ?? 0) + 1;
     this.files.set(name, { text, version });
   }
