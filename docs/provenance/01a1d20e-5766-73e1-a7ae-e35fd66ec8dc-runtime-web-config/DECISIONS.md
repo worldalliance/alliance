@@ -1,0 +1,30 @@
+# Decisions
+
+All origin: agent decision, unless noted.
+
+## What moves to runtime
+
+- **Four values and the environment are runtime config:** `VITE_API_URL`, `VITE_ALT_APP_URL`, `VITE_PUBLIC_POSTHOG_KEY`, `VITE_PUBLIC_POSTHOG_HOST` and `environment` (a `NodeEnv`). They keep their `VITE_` names so `webEnv(key)` keeps its signature and its ~30 callers don't change. `webRuntimeConfigSchema` in `common/src/web-env.ts` requires all four in staging and production and none in development and test.
+- **`VITE_APP_GIT_SHA` stays build-time.** It is the same for every environment's build of one commit, so it doesn't stop a build from serving both. `VITE_APP_VERSION` was the branch name and is gone along with `app_version`.
+- **"Development" stays a build mode; staging versus production is runtime.** `import.meta.env.MODE === "development"` still gates the dev URLs and dev-only behaviour, since a dev server and a built bundle are different builds. Every staging-or-production branch reads `webEnvironment()` instead: `isStaging`, `isProduction`, `isFeatureEnabled` and the Android OAuth return package. Builds no longer pass `--mode`, so their `MODE` is `production` in both environments.
+- **The committed values come only from `deployedConfigFor`** (user deferred how it is done: asked whether a set environment value should still override the committed one, they didn't care). `webEnvPlugin` let a `.env` file or a build env var override them. Nothing in CI set one, and the frontend's lint allows `process.env` reads of `NODE_ENV` only, so the override is dropped. This supersedes two requirements in `docs/provenance/01a1a550-2dec-7000-a151-bb97e6da89e7-committed-deployed-config`: that a set environment value overrides the committed one, and that each web bundle carries only its own environment's four values. Bundles now carry none, and `web-env-build.ts` with its build check is deleted. A bad committed value now fails the `deployed-config` job (admin) and the frontend server's start, not the build.
+
+## One store, two sources
+
+- **`sharedweb/lib/runtimeConfig.ts` holds the config,** returning what the app set and throwing when read before then. It imports no committed config, so neither the client bundles nor their source maps carry it. The frontend's `entry.server.tsx` builds the server's copy once from `process.env.NODE_ENV` when it loads, which React Router's server build does before any route module, since `root.tsx` reads the API URL at module scope. Once per process meets the requirement to build it at request time: the config depends only on `NODE_ENV`, which doesn't change while the server runs. An earlier version branched on `import.meta.env.SSR` inside the store; the client JS dropped the branch, but its source map still embedded the committed config. The production build was checked (EVIDENCE.md).
+- **Frontend: the root loader returns `webRuntimeConfig()`, and `Layout` calls `setWebRuntimeConfig` during render** from `useRouteLoaderData("root")`, before any child reads it. Loader data isn't available to module-level code, so the PostHog `api_host` moved from module scope into `Layout`. `shouldRevalidate` is false because a server's config never changes while it runs.
+- **Admin: `entry.client.tsx` calls `start` (`apps/admin/src/start.tsx`), which fetches `/config.json` before `hydrateRoot`.** `start` takes the hydrate call as an argument so a test can check the config and API base URL are set before it runs, and the error screen when the fetch fails. In SPA mode the root route module evaluates before `entry.client`, so the root module reads no config: `client.setConfig` moved into `entry.client`, and the providers that read config moved from `Layout`, which the build prerenders, into `Root`. On failure it replaces the prerendered spinner with `ConfigErrorScreen`, which names the problem and offers Reload, with the cause behind "Details" (`agents/skills/ux-forms-platform` on errors). It also logs the cause to the console. The timeout is 10 seconds, through `AbortSignal.timeout`, which also covers reading the body.
+- **Tests get a test-environment config from a second preload,** `sharedweb/lib/testing/preload.ts`, reset before each test. It replaces the `VITE_API_URL` default that `shared/lib/testing/preload.ts` used to put in `process.env`. Storybook sets a development config in its preview.
+
+## Deploy
+
+- **`config.json` comes from `scripts/web-runtime-config.ts`, run in the `deployed-config` job,** and is uploaded in the same artifact the deploy jobs already download. The admin deploy installs it at `~/admin-config/config.json`, outside `~/admin-app`, so the week-old-file prune never deletes it. Promotion (ALL-2166) can write production's file beside staging's bundle the same way.
+- **The admin deploy unzips the new bundle after the final nginx reload.** The bundle needs the `/config.json` route, which lands only after the cert check. A failed check exits before the bundle lands and leaves the old bundle, which needs no route, live.
+- **The serving side ships in its own commit before the apps read it.** Writing, uploading, installing and serving `config.json` deploy alone, since nothing reads the file yet. The commit that switches the apps comes after it.
+- **nginx serves it with an exact `alias` location,** so a missing file is a 404 rather than the SPA fallback.
+- **The frontend deploy deletes `build/client/index.html` and `build/client/guide/index.html`.** `unzip -o` keeps earlier builds' files for up to a week, and `express.static` would serve those prerendered pages, with their baked-in config, ahead of SSR.
+- **`app_version` is unregistered on every load.** PostHog super-properties persist in the browser, so without this, browsers that ran an older build keep sending it. `environment` is registered beside `git_sha`.
+
+## Not changed
+
+- **The Terraform and AWS roles are untouched.** This PR needs no infrastructure change (user asked for work that doesn't wait on Terraform).
