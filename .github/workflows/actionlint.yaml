@@ -19,7 +19,7 @@ jobs:
       # callers pass, and stops there, so the scripts they run need their own pass.
       # A library a `run:` block sources is outside its reach the same way.
       - name: Lint Shell Scripts
-        run: shellcheck .github/actions/*/*.sh .github/scripts/*.sh scripts/deploy_backend.sh scripts/secrets_run.sh deploy/nginx/*.sh
+        run: shellcheck .github/actions/*/*.sh .github/scripts/*.sh scripts/deploy_backend.sh scripts/secrets_run.sh scripts/with-secrets.sh deploy/nginx/*.sh
 
       - name: Reject GitHub Secrets
         run: .github/scripts/reject-github-secrets.sh

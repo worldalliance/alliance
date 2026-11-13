@@ -1,0 +1,5 @@
+{
+  "profileMissing": "could not be found",
+  "accessDenied": "AccessDenied|not authorized|ForbiddenException",
+  "loginExpired": "Token has expired|Error loading SSO Token|refresh failed|ExpiredToken|SSO session|aws sso login|Session token not found or invalid"
+}

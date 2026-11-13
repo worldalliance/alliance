@@ -20,6 +20,10 @@ The project is the Alliance, and `alliance` is its identifier wherever a name ca
 
 Working under `server/**` → read `server/AGENTS.md`; under `apps/**` → `apps/AGENTS.md`. Those are the only nested ones.
 
+## Local secrets
+
+Commands that need secrets go through `scripts/with-secrets.sh`, using the person's AWS login. Login or setup failure → `docs/local-secrets.md`.
+
 ## Worktree
 
 If @.worktree/AGENTS.md exists, read it.

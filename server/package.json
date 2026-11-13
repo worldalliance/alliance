@@ -10,8 +10,8 @@
     "bun": ">= 1.4.4"
   },
   "scripts": {
-    "dev": "bun --watch src/main.ts",
-    "repl": "ts-node --project tsconfig.json -r dotenv/config -r ./src/intl-timezone.ts src/repl.ts",
+    "dev": "../scripts/with-secrets.sh server bun --watch src/main.ts",
+    "repl": "../scripts/with-secrets.sh server ts-node --project tsconfig.json -r dotenv/config -r ./src/intl-timezone.ts src/repl.ts",
     "start:prod": "bun src/main.ts",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "lint:check": "eslint \"{src,apps,libs,test}/**/*.ts\"",
