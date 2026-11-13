@@ -31,6 +31,8 @@ const KEPT_REFERENCES: ReadonlySet<string> = new Set([
   "Message.replyTo",
   // A signup keeps its invite link for the link's signup totals and a restore.
   "User.referredByShareUrl",
+  // A staff text keeps its sender, so it never reads as automated.
+  "Mms.sentBy",
 ]);
 
 function isKeptReference(foreignKey: ForeignKeyMetadata): boolean {

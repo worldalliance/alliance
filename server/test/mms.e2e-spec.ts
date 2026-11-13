@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { EventLog, EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { MmsOptout } from "src/mms/mms-optout.entity";
@@ -13,6 +14,7 @@ import {
   eventually,
   TestContext,
 } from "./e2e-test-utils";
+import { TWILIO_NUMBER } from "./mms-fixtures";
 
 let ctx: TestContext;
 const pendingEventLogs = new Set<ReturnType<EventLogService["sendMessage"]>>();
@@ -168,13 +170,11 @@ describe("Inbound MMS keywords (e2e)", () => {
   let eventLogRepo: Repository<EventLog>;
   let memberId: number;
 
-  const TWILIO_NUMBER = "+15555550100";
-
   const inbound = (from: string, body: string, to = TWILIO_NUMBER) =>
     supertest(ctx.app.getHttpServer())
       .post("/mms/inbound")
       .type("form")
-      .send({ From: from, To: to, Body: body });
+      .send({ From: from, To: to, Body: body, MessageSid: randomUUID() });
 
   const unsubscribed = async () =>
     (await userRepo.findOneByOrFail({ id: memberId })).phoneNumberUnsubscribed;
@@ -429,10 +429,12 @@ describe("Inbound MMS keywords for a shared number (e2e)", () => {
   const SHARED = "+14155559002";
 
   const inbound = (from: string, body: string) =>
-    supertest(ctx.app.getHttpServer())
-      .post("/mms/inbound")
-      .type("form")
-      .send({ From: from, To: "+15555550100", Body: body });
+    supertest(ctx.app.getHttpServer()).post("/mms/inbound").type("form").send({
+      From: from,
+      To: TWILIO_NUMBER,
+      Body: body,
+      MessageSid: randomUUID(),
+    });
 
   const unsubscribedFlags = async () =>
     Promise.all(

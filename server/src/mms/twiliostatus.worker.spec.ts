@@ -16,7 +16,7 @@ describe("TwilioStatusWorker", () => {
     // Safe: the worker only calls find, and the spied refreshMmsData never
     // reaches the service's own dependencies.
     const mmsRepository = {} as Repository<Mms>;
-    mmsRepository.find = jest.fn(() => Promise.resolve([queued, alsoQueued]));
+    mmsRepository.find = jest.fn().mockResolvedValue([queued, alsoQueued]);
     const mmsService = new MmsService(
       {} as Repository<Mms>,
       {} as EventLogService,

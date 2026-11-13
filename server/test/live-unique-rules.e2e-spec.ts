@@ -29,6 +29,7 @@ const UNIQUE_ACROSS_DELETED = [
   "Friend.sentNotif",
   "LinkOpening.openingId",
   "MessageTracking.trackingId",
+  "Mms.twilioSid",
   "Notification.reinstatedSuspensionId",
   "Post.editableContent",
   "Push.idempotencyKey",

@@ -14,6 +14,8 @@ import { Route } from "../../.react-router/types/src/pages/+types/UserDetailView
 import DeleteAccountModal from "../components/DeleteAccountModal";
 import MemberGroupMoveSection from "../components/MemberGroupMoveSection";
 import UserAwayPeriodsSection from "../components/UserAwayPeriodsSection";
+import MemberTextsSection from "../components/user-detail/MemberTextsSection";
+import { SectionRefreshError } from "../components/user-detail/SectionQueryState";
 import UserActionsSection from "../components/user-detail/UserActionsSection";
 import UserFormSubmissionsSection from "../components/user-detail/UserFormSubmissionsSection";
 import UserFriendsSection from "../components/user-detail/UserFriendsSection";
@@ -68,7 +70,7 @@ const UserDetailView: React.FC = () => {
   return (
     <div className="p-4">
       {isError ? (
-        <p className="text-red-500">
+        <p className="text-red-600">
           {notFound ? "Member not found" : "Failed to load member"}
         </p>
       ) : (
@@ -144,11 +146,7 @@ const UserDetail = ({
 
   return (
     <div className="p-4 max-w-7xl mx-auto">
-      {isRefetchError && (
-        <p className="text-xs text-red-500 mb-2">
-          Could not refresh this member. Reload to see their latest details.
-        </p>
-      )}
+      <SectionRefreshError noun="this member" isError={isRefetchError} />
       {/* Header */}
       <div className="flex items-start gap-4 pb-4 border-b border-zinc-200 mb-4">
         <AvatarProfile pfp={user.profilePicture} size="huge" />
@@ -217,6 +215,7 @@ const UserDetail = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <div className="lg:col-span-3 space-y-4">
+          <MemberTextsSection member={user} />
           <UserActionsSection userId={user.id} />
           <UserNotificationsSection query={notifs} />
         </div>

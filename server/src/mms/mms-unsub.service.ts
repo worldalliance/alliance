@@ -61,7 +61,7 @@ export class MmsUnsubService {
     for (const user of users) {
       this.eventLogService.sendMessage({
         type: EventType.SmsUnsubscribe,
-        message: `${user.name} keyword unsubscribed from SMS`,
+        message: `${user.name} unsubscribed from SMS (${reason})`,
         userId: user.id,
         blob: null,
       });

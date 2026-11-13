@@ -17,6 +17,7 @@ import {
   Map,
   Megaphone,
   MessageSquare,
+  MessageSquareReply,
   Network,
   Newspaper,
   Plane,
@@ -37,7 +38,8 @@ export type NavLink = {
   to: string;
   label: string;
   icon: React.ReactNode;
-  notifCount?: number;
+  /** null when the count couldn't load. */
+  notifCount?: number | null;
 };
 
 export type NavFolder = {
@@ -53,6 +55,7 @@ export const isFolder = (entry: NavEntry): entry is NavFolder =>
 
 export const navEntries = (counts: {
   groupAssignmentCount: number;
+  needsReplyCount: number | null;
   pendingOutreachPartnershipCount: number;
 }): NavEntry[] => [
   { to: "/", label: "Stats", icon: <BarChart2 size={16} /> },
@@ -144,6 +147,12 @@ export const navEntries = (counts: {
   },
   { to: "/members", label: "Members", icon: <Users size={16} /> },
   {
+    to: "/needs-reply",
+    label: "Needs reply",
+    icon: <MessageSquareReply size={16} />,
+    notifCount: counts.needsReplyCount,
+  },
+  {
     to: "/groups",
     label: "Groups",
     icon: <CirclePile size={16} />,
@@ -218,6 +227,7 @@ export const navEntries = (counts: {
 export const searchPages = (): SearchPage[] =>
   navEntries({
     groupAssignmentCount: 0,
+    needsReplyCount: 0,
     pendingOutreachPartnershipCount: 0,
   }).flatMap<SearchPage>((entry) =>
     isFolder(entry)
