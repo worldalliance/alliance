@@ -27,6 +27,7 @@ All origin: agent decision, unless noted.
 - **`location = /index.html` adds `no-cache` to admin's shell,** in its own commit since it doesn't depend on `config.json`. Both `index` and `try_files` reach it by internal redirect.
 - **The frontend deploy deletes `build/client/index.html` and `build/client/guide/index.html`.** `unzip -o` keeps earlier builds' files for up to a week, and `express.static` would serve those prerendered pages, with their baked-in config, ahead of SSR.
 - **`app_version` is unregistered on every load.** PostHog super-properties persist in the browser, so without this, browsers that ran an older build keep sending it. `environment` is registered beside `git_sha`.
+- **PostHog's build tags register in its `loaded` callback.** `PostHogProvider` initialises in its own effect, after its children's, and before then `register` and `unregister` do nothing, so the child effect that used to register `git_sha` and `app_version` did nothing on first mount.
 
 ## Not changed
 

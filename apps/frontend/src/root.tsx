@@ -8,7 +8,7 @@ import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInpu
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClientProvider } from "@tanstack/react-query";
-import posthog, { PostHogConfig } from "posthog-js";
+import posthog from "posthog-js";
 import "posthog-js/dist/exception-autocapture";
 import { PostHogProvider } from "posthog-js/react";
 import {
@@ -25,9 +25,9 @@ import {
   ErrorBoundary as RootErrorBoundary,
 } from "./ErrorBoundary";
 import { AuthProvider } from "./lib/AuthContext";
-import { getApiUrl, getPosthogHost } from "./lib/config";
-import { registerArrival, useLinkOpenings } from "./lib/linkOpenings";
-import PosthogBuildTag from "./lib/PosthogBuildTag";
+import { getApiUrl } from "./lib/config";
+import { useLinkOpenings } from "./lib/linkOpenings";
+import { posthogOptions } from "./lib/posthogOptions";
 import { posthogRequestContext } from "./lib/posthogRequestContext";
 import { queryClient } from "./lib/queryClient";
 import { ShareLinkViewerFromAuth } from "./lib/ShareLinkViewerFromAuth";
@@ -53,33 +53,6 @@ export function meta({ error }: { error?: unknown }) {
     title: isNotFound(error) ? NOT_FOUND_TITLE : "Alliance",
   });
 }
-
-const options: Partial<PostHogConfig> = {
-  api_host: getPosthogHost(),
-  loaded: registerArrival,
-  defaults: "2025-05-24",
-  capture_exceptions: {
-    capture_unhandled_errors: true,
-    capture_unhandled_rejections: true,
-    capture_console_errors: true,
-  },
-  session_recording: {
-    maskAllInputs: false,
-    maskInputFn: (text, element) => {
-      if (element?.nodeName === "TEXTAREA") {
-        return text;
-      }
-      return "*".repeat(text.length);
-    },
-    maskCapturedNetworkRequestFn: (request) => {
-      if (request.name.includes("auth")) {
-        request.requestBody = undefined;
-        return request;
-      }
-      return request;
-    },
-  },
-};
 
 // React Router passes `error` only to a declared export, not to a re-export.
 export const ErrorBoundary = RootErrorBoundary;
@@ -125,8 +98,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {/* PostHog records the full URL, and the mobile app's sign-in handoff
             arrives in this page's query string. */}
         {posthogKey !== undefined ? (
-          <PostHogProvider apiKey={posthogKey} options={options}>
-            <PosthogBuildTag />
+          <PostHogProvider apiKey={posthogKey} options={posthogOptions}>
             {inner}
           </PostHogProvider>
         ) : (
