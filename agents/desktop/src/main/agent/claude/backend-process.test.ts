@@ -182,3 +182,50 @@ test("close reports no Error for output the CLI can't read as it stops", async (
   ]);
   expect(logs).toBe(1);
 });
+
+const pendingAfter = <T>(promise: Promise<T>, ms: number) =>
+  Promise.race([
+    promise,
+    new Promise<"pending">((resolve) => setTimeout(resolve, ms, "pending")),
+  ]);
+
+test("the first message counts as read with the CLI's init line, not a hook's", async () => {
+  const session = R.unwrap(
+    await createClaudeBackend(
+      shellCli(
+        `read message; echo '{"type":"system","subtype":"hook_started"}'; read interrupt; echo '{"type":"system","subtype":"init"}'; echo '{"type":"result","subtype":"success","is_error":false}'; read eof`,
+      ),
+    ).start({ cwd: scratch }),
+  );
+  R.unwrap(session.send(text("Hello")));
+  expect(await pendingAfter(session.firstMessageRead, 500)).toBe("pending");
+  session.interrupt();
+  expect(await session.firstMessageRead).toBe(true);
+  await session.close();
+});
+
+test("a turn that ends in an API error has read its message", async () => {
+  const session = R.unwrap(
+    await createClaudeBackend(
+      shellCli(
+        `read message; echo '{"type":"system","subtype":"init"}'; echo '{"type":"assistant","parent_tool_use_id":null,"is_api_error_message":true,"message":{"content":[{"type":"text","text":"Invalid API key"}]}}'; echo '{"type":"result","subtype":"success","is_error":true,"result":"Invalid API key"}'; read eof`,
+      ),
+    ).start({ cwd: scratch }),
+  );
+  R.unwrap(session.send(text("Hello")));
+  expect(await session.firstMessageRead).toBe(true);
+  await session.close();
+});
+
+test("a CLI that exits before its init line hasn't read the first message", async () => {
+  const session = R.unwrap(
+    await createClaudeBackend(
+      shellCli(
+        `read message; echo '{"type":"system","subtype":"hook_started"}'`,
+      ),
+    ).start({ cwd: scratch }),
+  );
+  R.unwrap(session.send(text("Hello")));
+  expect(await session.firstMessageRead).toBe(false);
+  await session.close();
+});

@@ -40,6 +40,8 @@ class ClaudeSession implements AgentSession {
   private closing: Promise<void> | undefined;
   private stderrTail = "";
   readonly id: string;
+  readonly firstMessageRead: Promise<boolean>;
+  private readonly settleFirstMessageRead: (read: boolean) => void;
   private readonly child: ChildProcessWithoutNullStreams;
   private readonly onClosing: SessionHooks["onClosing"];
   private readonly killAfterMs: number;
@@ -59,6 +61,9 @@ class ClaudeSession implements AgentSession {
     this.onClosing = init.onClosing;
     this.killAfterMs = init.killAfterMs;
     this.listeners = new SessionListeners(id);
+    const firstMessageRead = Promise.withResolvers<boolean>();
+    this.firstMessageRead = firstMessageRead.promise;
+    this.settleFirstMessageRead = firstMessageRead.resolve;
     // Writes to a CLI that has just exited fail with EPIPE; its exit is reported instead.
     child.stdin.on("error", () => undefined);
     child.stderr.setEncoding("utf8").on("data", (chunk: string) => {
@@ -70,6 +75,7 @@ class ClaudeSession implements AgentSession {
     this.closed = new Promise((resolve) =>
       child.once("close", (code, signal) => {
         this.exited = true;
+        this.settleFirstMessageRead(false);
         const stderr = this.stderrTail.trim();
         this.exitMessage = `Claude Code exited (${signal ?? `code ${code}`}).${stderr ? `\n${stderr}` : ""}`;
         init.onExit();
@@ -158,6 +164,9 @@ class ClaudeSession implements AgentSession {
     if (!this.turn) return;
     const claudeLine = parsed.value;
     switch (claudeLine.kind) {
+      case ClaudeLineKind.MessageRead:
+        this.settleFirstMessageRead(true);
+        return;
       case ClaudeLineKind.Events:
         for (const event of claudeLine.events) this.listeners.emit(event);
         return;

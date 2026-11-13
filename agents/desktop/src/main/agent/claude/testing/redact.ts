@@ -287,6 +287,8 @@ function stdoutReading(text: string): string {
       );
     case ClaudeLineKind.TurnEnded:
       return `turn ended${parsed.value.error === undefined ? "" : " with an error"}`;
+    case ClaudeLineKind.MessageRead:
+      return "message read";
     default:
       throw new Error(`unknown line kind: ${parsed.value satisfies never}`);
   }
