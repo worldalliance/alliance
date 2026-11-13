@@ -109,6 +109,30 @@ describe("fromKoraPair", () => {
       ),
     ).toBe(false);
   });
+
+  it.each([
+    ["a turn role other than child or ai", { role: "assistant", text: "hi" }],
+    ["a turn with no text", { role: "ai" }],
+  ])("produces a transcript that fails validation from %s", (_, turn) => {
+    const pair = nativeOf(sample);
+    expect(
+      validTranscript(
+        fromKoraPair({
+          ...pair,
+          conversation_b: [...pair.conversation_b, turn],
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it.each(["pair_id", "scenario_title"])(
+    "produces a transcript that fails validation from a pair with no %s",
+    (field) => {
+      const pair: Record<string, unknown> = { ...nativeOf(sample) };
+      delete pair[field];
+      expect(validTranscript(fromKoraPair(pair))).toBe(false);
+    },
+  );
 });
 
 describe("parseKoraTranscript", () => {

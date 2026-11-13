@@ -3,7 +3,8 @@ import { isNode, isSeq, LineCounter, parseDocument } from "yaml";
 // Reads KORA's pair export (pair_id, risk_id, conversation_a/b with child and ai turns) and converts each
 // pair into a transcript line for transcriptSchema. Fields the schema doesn't name (model names,
 // comprehension_options, feedback_text, note, risk_category_id, ...) are dropped. The converter checks
-// nothing: validate its output against transcriptSchema.
+// nothing and passes required values through unchanged, so validating its output against transcriptSchema
+// catches a missing or malformed one.
 
 export type KoraPairRecord =
   | { line: number; ok: true; record: unknown }
@@ -80,21 +81,18 @@ const fields = (value: unknown): Record<string, unknown> =>
 const turns = (list: unknown) =>
   (Array.isArray(list) ? list : []).map((turn: unknown) => {
     const m = fields(turn);
-    return {
-      role: m.role === "ai" ? "ai" : "child",
-      text: String(m.text ?? ""),
-    };
+    return { role: m.role, text: m.text };
   });
 
 /** Maps one KORA pair onto transcriptSchema's field names. */
 export function fromKoraPair(record: unknown): Record<string, unknown> {
   const p = fields(record);
   return {
-    transcriptId: String(p.pair_id),
+    transcriptId: p.pair_id,
     category: p.risk_id,
     ...(p.pair_type ? { pairType: String(p.pair_type) } : {}),
-    scenarioTitle: String(p.scenario_title ?? p.pair_id),
-    childAge: Number(p.child_age),
+    scenarioTitle: p.scenario_title,
+    childAge: p.child_age,
     ...(p.age_band ? { ageBand: String(p.age_band) } : {}),
     ...(p.child_background
       ? { childBackground: String(p.child_background) }

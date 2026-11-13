@@ -56,7 +56,11 @@ export function checkTranscripts(params: {
     const problems = validTranscript(content)
       ? []
       : ajvProblems(validTranscript.errors);
-    const id = String(content.transcriptId);
+    const id = content.transcriptId;
+    if (typeof id !== "string") {
+      rejected.push({ line: record.line, problems });
+      continue;
+    }
     const earlier = seen.get(id);
     if (earlier !== undefined) {
       problems.push(`repeats transcript ${id} from line ${earlier}`);

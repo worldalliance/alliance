@@ -64,6 +64,17 @@ describe("checkTranscripts", () => {
     ]);
   });
 
+  it("rejects pairs with no pair_id without reporting them as repeats", () => {
+    const { pair_id: _, ...noId } = koraPair("P1");
+    const result = check(koraPairsFile(noId, noId));
+    if (result.ok) throw new Error("expected rejection");
+    expect(result.error.map((r) => r.line)).toEqual([1, 2]);
+    for (const { problems } of result.error) {
+      expect(problems.join()).not.toContain("repeats");
+      expect(problems.join()).toContain("transcriptId");
+    }
+  });
+
   it("rejects an empty file", () => {
     expect(check("\n\n").ok).toBe(false);
   });
