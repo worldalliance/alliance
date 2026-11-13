@@ -55,7 +55,8 @@ const FindingRow = ({
           {group.length === 1 ? place(group[0]) : `${group.length} places`}
         </p>
         {group.map((finding) => {
-          const { before, flagged, after } = textContext(finding);
+          const { before, flagged, after, cutBefore, cutAfter } =
+            textContext(finding);
           const field = SOURCE_FIELDS[finding.source];
           return (
             <div key={finding.key} className="flex items-center gap-2">
@@ -65,7 +66,8 @@ const FindingRow = ({
                     {place(finding)}
                   </span>
                 )}
-                …{before}
+                {cutBefore && "…"}
+                {before}
                 <mark
                   className={cn(
                     "font-mono",
@@ -74,7 +76,8 @@ const FindingRow = ({
                 >
                   {flagged.replaceAll(" ", "·")}
                 </mark>
-                {after}…
+                {after}
+                {cutAfter && "…"}
               </p>
               {finding.formId ? (
                 <EditTaskFormLink
