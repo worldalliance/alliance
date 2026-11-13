@@ -3,13 +3,13 @@ import { cn } from "@alliance/shared/styles/util";
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { LinkedField } from "../../lib/linkedSelection";
+import { textContext } from "../../lib/textContext";
 import {
   EditActionLink,
   EditTaskFormLink,
   iconControlClass,
 } from "./ActionLinks";
 import {
-  findingContext,
   TEXT_SOURCE_LABELS,
   TextSource,
   type TextFinding,
@@ -55,7 +55,7 @@ const FindingRow = ({
           {group.length === 1 ? place(group[0]) : `${group.length} places`}
         </p>
         {group.map((finding) => {
-          const { before, flagged, after } = findingContext(finding);
+          const { before, flagged, after } = textContext(finding);
           const field = SOURCE_FIELDS[finding.source];
           return (
             <div key={finding.key} className="flex items-center gap-2">
