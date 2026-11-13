@@ -22,9 +22,15 @@ const ROW =
 
 const NotifBadge = ({ count }: { count?: number }) =>
   count ? (
-    <div className="font-semibold text-xs text-white bg-red-500 rounded-md flex justify-center items-center w-5 h-5">
-      {count}
-    </div>
+    <>
+      <span
+        aria-hidden
+        className="font-semibold text-xs text-white bg-red-500 rounded-md flex justify-center items-center w-5 h-5"
+      >
+        {count}
+      </span>
+      <span className="sr-only"> ({count})</span>
+    </>
   ) : null;
 
 const NavLinkRow = ({ link, active }: { link: NavLink; active: boolean }) => (
