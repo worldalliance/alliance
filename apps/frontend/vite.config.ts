@@ -81,6 +81,7 @@ export default defineConfig({
       "@alliance/shared": sharedPkg,
       "@alliance/sharedweb": sharedWebPkg,
       "@alliance/common": path.join(commonPkg, "src"),
+      "@alliance/kora-review": path.join(monorepoRoot, "kora-review", "src"),
     },
   },
 });
