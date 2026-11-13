@@ -297,8 +297,8 @@ const setFor: Record<NodeEnv, readonly ServerEnvKey[]> = {
 };
 
 // What ALLIANCE_WITHOUT_TEAM_SECRETS stops development requiring: the keys in
-// /alliance/dev/server/ besides the JWT secrets and the seeded admin, which a
-// contributor generates.
+// /alliance/dev/server/ besides the JWT secrets and the seeded admin, which
+// scripts/setup-without-team-secrets.ts generates.
 export const teamOnlyKeys: ReadonlySet<ServerEnvKey> = new Set([
   "APPLE_PRIVATE_KEY_BASE64",
   "EXPO_ACCESS_TOKEN",

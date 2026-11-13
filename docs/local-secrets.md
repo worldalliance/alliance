@@ -57,7 +57,13 @@ Only secrets go in the store. Non-secret development settings are in `developmen
 
 ## Without team credentials
 
-Someone without an `alliance-dev` login, such as an outside contributor, runs the server without the team's secrets by adding to `server/.env` (copied from `server/.env.example`) `ALLIANCE_WITHOUT_TEAM_SECRETS=1`, random `JWT_SECRET` and `JWT_REFRESH_SECRET` values (for example from `openssl rand -hex 32`), and the `ADMIN_USER` and `ADMIN_PASSWORD` of the admin the server seeds.
+Someone without an `alliance-dev` login, such as an outside contributor, runs the server without the team's secrets:
+
+```bash
+bun scripts/setup-without-team-secrets.ts
+```
+
+It creates `server/.env` from `server/.env.example` if needed, then appends `ALLIANCE_WITHOUT_TEAM_SECRETS=1`, random `JWT_SECRET` and `JWT_REFRESH_SECRET`, and a seeded admin (`ADMIN_USER`, `ADMIN_PASSWORD`), printing the admin's login. It changes nothing if your shell, `server/.env` or its `.development`, `.local` or `.development.local` sibling already sets any of them, even to a blank value.
 
 With the flag set, `with-secrets.sh` skips Parameter Store, and development stops requiring the keys in `teamOnlyKeys` in `server/src/config/env.ts`. The server logs which of them are unset, and the code using each runs without it, as on any server missing that key. Stored files are off: uploads and reads answer 503, and post export leaves out images. `SEND_DEV_NOTIFS=1` still requires the mail and Twilio keys. Staging and production refuse to start with the flag, and tests ignore it.
 
