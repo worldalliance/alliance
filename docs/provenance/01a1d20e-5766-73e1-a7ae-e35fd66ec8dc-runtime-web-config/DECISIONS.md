@@ -22,6 +22,7 @@ All origin: agent decision, unless noted.
 - **The admin deploy unzips the new bundle after the final nginx reload.** The bundle needs the `/config.json` route, which lands only after the cert check. A failed check exits before the bundle lands and leaves the old bundle, which needs no route, live.
 - **The serving side ships in its own commit before the apps read it.** Writing, uploading, installing and serving `config.json` deploy alone, since nothing reads the file yet. The commit that switches the apps comes after it.
 - **nginx serves it with an exact `alias` location,** so a missing file is a 404 rather than the SPA fallback. Its `no-cache` header is `always`, since nginx otherwise leaves it off a 404.
+- **`location = /index.html` adds `no-cache` to admin's shell,** in its own commit since it doesn't depend on `config.json`. Both `index` and `try_files` reach it by internal redirect.
 - **The frontend deploy deletes `build/client/index.html` and `build/client/guide/index.html`.** `unzip -o` keeps earlier builds' files for up to a week, and `express.static` would serve those prerendered pages, with their baked-in config, ahead of SSR.
 - **`app_version` is unregistered on every load.** PostHog super-properties persist in the browser, so without this, browsers that ran an older build keep sending it. `environment` is registered beside `git_sha`.
 
