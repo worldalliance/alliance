@@ -1,6 +1,7 @@
 import {
   mmsThreadGetThreadAdmin,
   mmsThreadMarkOptedOutAdmin,
+  mmsThreadNeedsReplyAdmin,
   mmsThreadSendTextAdmin,
 } from "@alliance/shared/client";
 import { thrownStatus } from "@alliance/shared/lib/hey-api";
@@ -14,6 +15,25 @@ import {
 } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
 import { usePatchAnyQueryData } from "./usePatchQueryData";
+
+const needsReplyQuery = queryOptions({
+  queryKey: queryKeys.needsReplyAdmin(),
+  queryFn: () =>
+    mmsThreadNeedsReplyAdmin({ throwOnError: true }).then((r) => r.data),
+  refetchInterval: milliseconds({ seconds: 30 }),
+});
+
+export function useNeedsReplyAdmin() {
+  return useQuery(needsReplyQuery);
+}
+
+/** The Needs reply badge's count: null until the list first loads if that
+ * load fails, so a failure doesn't read as nobody waiting; a later failed
+ * poll keeps the last count. */
+export function useNeedsReplyCount(): number | null {
+  const { data, isError } = useNeedsReplyAdmin();
+  return data?.length ?? (isError ? null : 0);
+}
 
 const threadQuery = (userId: number) =>
   queryOptions({
@@ -34,6 +54,8 @@ export function useMemberTextsAdmin(userId: number) {
   const queryClient = useQueryClient();
   const thread = useQuery(threadQuery(userId));
   const patch = usePatchAnyQueryData();
+  const invalidateNeedsReply = () =>
+    queryClient.invalidateQueries({ queryKey: needsReplyQuery.queryKey });
 
   const send = useMutation({
     mutationFn: (input: { userId: number; body: string }) =>
@@ -42,12 +64,14 @@ export function useMemberTextsAdmin(userId: number) {
         body: { body: input.body },
         throwOnError: true,
       }).then((r) => r.data),
-    onSuccess: (message, input) =>
-      patch(threadQuery(input.userId).queryKey, (prev) =>
+    onSuccess: async (message, input) => {
+      await patch(threadQuery(input.userId).queryKey, (prev) =>
         prev.messages.some((m) => m.id === message.id)
           ? prev
           : { ...prev, messages: [...prev.messages, message] },
-      ),
+      );
+      void invalidateNeedsReply();
+    },
   });
 
   const markOptedOut = useMutation({
@@ -60,11 +84,13 @@ export function useMemberTextsAdmin(userId: number) {
         // This endpoint's only 409 is for a member who has already opted out.
         if (thrownStatus(thrown) !== 409) throw thrown;
       }),
-    onSuccess: (_, memberId) =>
-      patch(threadQuery(memberId).queryKey, (prev) => ({
+    onSuccess: async (_, memberId) => {
+      await patch(threadQuery(memberId).queryKey, (prev) => ({
         ...prev,
         optedOut: true,
-      })),
+      }));
+      void invalidateNeedsReply();
+    },
     onError: (_, memberId) =>
       queryClient.invalidateQueries({
         queryKey: threadQuery(memberId).queryKey,

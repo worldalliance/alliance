@@ -14,6 +14,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import { useNeedsReplyAdmin } from "../../lib/useMemberTextsAdmin";
 import MemberTextsSection from "./MemberTextsSection";
 
 const message = (overrides: Partial<MmsMessageDto>): MmsMessageDto => ({
@@ -35,6 +36,7 @@ let threadFails: boolean;
 let kimsThread: MmsThreadDto;
 let sentBodies: unknown[];
 let sendRefusal: string | null;
+let needsReplyGate: Promise<void>;
 let postSaved: () => void;
 let postGate: Promise<void>;
 
@@ -65,6 +67,10 @@ serveApi(
       await postGate;
       return Response.json(sent);
     },
+    "GET /mms-threads/needs-reply": async () => {
+      await needsReplyGate;
+      return Response.json([]);
+    },
   }),
 );
 
@@ -72,6 +78,7 @@ beforeEach(() => {
   threadFails = false;
   sentBodies = [];
   sendRefusal = null;
+  needsReplyGate = Promise.resolve();
   postSaved = () => {};
   postGate = Promise.resolve();
   thread = {
@@ -104,6 +111,7 @@ beforeEach(() => {
 
 const renderSection = () => {
   const { wrapper: Wrapper, client } = queryWrapper();
+  client.setQueryData(queryKeys.needsReplyAdmin(), []);
   render(
     <Wrapper>
       <ToastProvider>
@@ -127,8 +135,11 @@ it("shows who sent each text, and why one failed", async () => {
   ).toBeTruthy();
 });
 
-it("sends a text and adds it to the thread", async () => {
-  renderSection();
+const needsReplyInvalidated = (client: QueryClient) =>
+  client.getQueryState(queryKeys.needsReplyAdmin())?.isInvalidated;
+
+it("sends a text, adds it to the thread and refreshes Needs Reply", async () => {
+  const client = renderSection();
   fireEvent.change(await screen.findByLabelText("Text Sam"), {
     target: { value: "Happy to help" },
   });
@@ -136,6 +147,36 @@ it("sends a text and adds it to the thread", async () => {
 
   expect(await screen.findByText("Happy to help")).toBeTruthy();
   expect(sentBodies).toEqual([{ body: "Happy to help" }]);
+  await waitFor(() => expect(needsReplyInvalidated(client)).toBe(true));
+});
+
+it("frees the composer without waiting for Needs Reply to refresh", async () => {
+  needsReplyGate = new Promise(() => {});
+  const { wrapper: Wrapper } = queryWrapper();
+  const NeedsReplyObserver = () => {
+    useNeedsReplyAdmin();
+    return null;
+  };
+  render(
+    <Wrapper>
+      <ToastProvider>
+        <NeedsReplyObserver />
+        <MemberTextsSection member={{ id: 7, name: "Sam", timeZone: null }} />
+      </ToastProvider>
+    </Wrapper>,
+  );
+  fireEvent.change(await screen.findByLabelText("Text Sam"), {
+    target: { value: "Happy to help" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+  expect(await screen.findByText("Happy to help")).toBeTruthy();
+  await waitFor(() =>
+    expect(screen.getByLabelText<HTMLTextAreaElement>("Text Sam").value).toBe(
+      "",
+    ),
+  );
+  expect(screen.getByRole("button", { name: "Send" })).toBeTruthy();
 });
 
 it("shows a sent text once when a poll fetched it before the send answered", async () => {

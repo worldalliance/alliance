@@ -193,6 +193,7 @@ test("places Custom Links under the renamed Links folder", () => {
     <MemoryRouter initialEntries={["/custom-links"]}>
       <SidebarNav
         groupAssignmentCount={0}
+        needsReplyCount={0}
         pendingOutreachPartnershipCount={0}
       />
     </MemoryRouter>,

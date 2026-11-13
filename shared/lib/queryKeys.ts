@@ -295,6 +295,7 @@ export const queryKeys = {
   memberTextThreadAdmin: (userId: number) =>
     ["mmsThreadGetThreadAdmin", userId] as const,
   missedActionsAdmin: () => ["analyticsGetMissedActionsAdmin"] as const,
+  needsReplyAdmin: () => ["mmsThreadNeedsReplyAdmin"] as const,
   onetimeInvitesAdminAll,
   onetimeInvitesAdmin: (page: number, limit: number) =>
     [...onetimeInvitesAdminAll(), page, limit] as const,

@@ -21,8 +21,8 @@ const isOnPage = (pathname: string, to: string) =>
 const ROW =
   "flex items-center gap-2 text-[15px] text-gray-700 hover:text-black hover:bg-zinc-200/60 py-2 px-2 rounded transition-colors";
 
-const NotifBadge = ({ count }: { count?: number }) => {
-  const label = formatBadgeCount(count ?? 0);
+const NotifBadge = ({ count }: { count?: number | null }) => {
+  const label = count === null ? "!" : formatBadgeCount(count ?? 0);
   return label ? (
     <>
       <span
@@ -31,7 +31,10 @@ const NotifBadge = ({ count }: { count?: number }) => {
       >
         {label}
       </span>
-      <span className="sr-only"> ({label})</span>
+      <span className="sr-only">
+        {" "}
+        ({count === null ? "count couldn't load" : label})
+      </span>
     </>
   ) : null;
 };
@@ -50,9 +53,11 @@ const NavLinkRow = ({ link, active }: { link: NavLink; active: boolean }) => (
 
 const SidebarNav = ({
   groupAssignmentCount,
+  needsReplyCount,
   pendingOutreachPartnershipCount,
 }: {
   groupAssignmentCount: number;
+  needsReplyCount: number | null;
   pendingOutreachPartnershipCount: number;
 }) => {
   const { pathname } = useLocation();
@@ -60,6 +65,7 @@ const SidebarNav = ({
 
   const entries = navEntries({
     groupAssignmentCount,
+    needsReplyCount,
     pendingOutreachPartnershipCount,
   });
 

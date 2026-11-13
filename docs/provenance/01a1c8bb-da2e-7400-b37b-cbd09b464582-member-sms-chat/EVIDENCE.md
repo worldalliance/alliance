@@ -52,6 +52,15 @@ There is no formal standard for the UI. Rules exist for what may be sent and whe
 
 - Twilio's tutorials push webhook events over Socket.IO or Twilio Sync. Polling is adequate at low staff counts. (vendor recommendation for the push examples; common practice for polling) [Socket.IO tutorial](https://www.twilio.com/en-us/blog/getting-started-with-socket-io-adding-real-time-events-to-your-node-js-express-app-html), [Twilio Sync](https://www.twilio.com/docs/serverless/functions-assets/quickstart/real-time-data-sync)
 
+A second agent compared polling, server-sent events and WebSockets for the Needs reply list on 2026-11-12; the sources below marked checked were reread on 2026-11-12.
+
+- Running socket.io on more than one server needs sticky sessions and an adapter, such as Redis or Postgres, to forward broadcasts. (vendor recommendation; checked) [socket.io multiple nodes](https://socket.io/docs/v4/using-multiple-nodes/)
+- A TanStack Query maintainer recommends invalidating queries when a socket event arrives over patching the cache, keeping patching for large data sets with small, frequent changes. (vendor-adjacent: a maintainer's blog; checked) [TkDodo](https://tkdodo.eu/blog/using-web-sockets-with-react-query)
+- Server-sent events are one-way with automatic reconnect; the spec suggests a comment line about every 15 s so proxies don't drop idle connections. (formal standard; not rechecked) [WHATWG](https://html.spec.whatwg.org/multipage/server-sent-events.html). Over HTTP/1.1 a browser allows 6 such connections per domain across tabs. (vendor documentation; not rechecked) [MDN](https://developer.mozilla.org/en-US/docs/Web/API/EventSource)
+- Twilio's Conversations SDK and Chatwoot's dashboard push over WebSockets; no surveyed shared inbox documented polling or SSE as its main transport. (common practice; not rechecked) [Twilio Conversations](https://www.twilio.com/docs/conversations-classic/sdk-overview), [Chatwoot](https://www.chatwoot.com/docs/product/others/websocket-events)
+
+What the repository has (read 2026-11-12): socket.io registered server-wide, an admin-only `/event-log` gateway fed by `EventEmitter2` (`server/src/eventlog/eventlog.gateway.ts`), an admin invite feed that refetches on its `invite-created` signal and still polls every 10 s (`apps/admin/src/pages/InviteFeedPage.tsx`, `useInviteFeedAdmin.ts`), nginx proxying `/socket.io/` upgrades (`deploy/nginx/alliance.conf`), one server process on one host, and no Redis or `pg_notify`.
+
 ## 6. Needs Reply query cost (measurement)
 
 Method: in a copy of the e2e schema on local Postgres 18 (macOS), members, outbound broadcasts and inbound texts were loaded, and `EXPLAIN ANALYZE` was run on hand-written equivalents of the Needs Reply query. Production's row counts were not checked.
@@ -71,6 +80,16 @@ Method: on 2026-11-12, at the branch tip after its rebase onto `main` 8196603b37
 ## Staff text length limit (vendor documentation)
 
 Twilio's page for error 21617, "The concatenated message body exceeds the 1600 character limit" (https://www.twilio.com/docs/api/errors/21617), read on 2026-11-12, says the `Body` of an outgoing message can be up to 1,600 characters, and that for SMS, characters outside GSM-7, such as emoji, "can use more space than standard GSM characters and cause the message to exceed the limit sooner than expected." It does not say exactly how Twilio counts them. class-validator's `@Length`, through validator's `isLength`, counts a surrogate pair as one character, so `'😎'.repeat(1600)`, 3,200 UTF-16 code units, passes it (a round 22 reviewer's run).
+
+## 7. List rows that move during a refresh
+
+Question: what should a polled list do to rows that move or disappear under the pointer? Researched by a second agent on 2026-11-12; the sources marked checked were reread on 2026-11-12.
+
+- WCAG 2.2 SC 2.2.2 (level A): auto-updating information that starts automatically and is shown alongside other content needs "a mechanism for the user to pause, stop, or hide it or to control the frequency of the update". Its Note 3 says content need not preserve what arrived while paused, so showing current data on resume meets it. (formal standard; checked) [Understanding 2.2.2](https://www.w3.org/WAI/WCAG22/Understanding/pause-stop-hide.html)
+- Core Web Vitals' CLS counts a shift the user isn't expecting; shifts within 500 ms of a discrete input (tap, click, keypress) are flagged `hadRecentInput`, and scrolls don't count as input. Hover isn't mentioned. (vendor recommendation; checked) [web.dev CLS](https://web.dev/articles/cls)
+- Zendesk views refresh every minute, and "for bulk actions, auto-refresh pauses while rows are selected and resumes once the selection is cleared". Zendesk says nothing of pausing on hover. (vendor practice; checked) [Zendesk, "Announcing automatically-refreshing views", 2026-07-20](https://support.zendesk.com/hc/en-us/articles/11033239544602)
+- Holding new items behind a "show N new" control instead of inserting them is common in feeds, and practitioner guidance recommends it. (common practice; not rechecked) [Chromatic](https://www.chromatic.com/blog/design-for-realtime/)
+- No published usability study was found that measures mis-clicks caused by list reflow, and no guidance from Material, Apple HIG, GOV.UK, Atlassian, Polaris or Fluent; that is a gap in the search, not evidence either way.
 
 ## Scroll anchoring (experiment)
 

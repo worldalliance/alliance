@@ -3,6 +3,7 @@ import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
+import type { QueryClient } from "@tanstack/react-query";
 import {
   act,
   fireEvent,
@@ -71,6 +72,7 @@ const KIM = { id: 8, name: "Kim" };
 
 const renderSection = () => {
   const { wrapper: Wrapper, client } = queryWrapper();
+  client.setQueryData(queryKeys.needsReplyAdmin(), []);
   const section = (member: { id: number; name: string }) => (
     <Wrapper>
       <ToastProvider>
@@ -161,8 +163,11 @@ it("marks the member the opt-out was made for when it lands after the page moves
   expect(await screen.findByText("Opted out")).toBeTruthy();
 });
 
-it("marks a member opted out after confirming", async () => {
-  renderSection();
+const needsReplyInvalidated = (client: QueryClient) =>
+  client.getQueryState(queryKeys.needsReplyAdmin())?.isInvalidated;
+
+it("marks a member opted out after confirming and refreshes Needs Reply", async () => {
+  const { client } = renderSection();
   await confirmMarkOptedOut();
 
   await waitFor(() => expect(optOuts).toBe(1));
@@ -170,6 +175,7 @@ it("marks a member opted out after confirming", async () => {
   await waitFor(() =>
     expect(document.activeElement).toBe(screen.getByText("Opted out")),
   );
+  await waitFor(() => expect(needsReplyInvalidated(client)).toBe(true));
   expect(screen.queryByLabelText("Text Sam")).toBeNull();
 });
 
