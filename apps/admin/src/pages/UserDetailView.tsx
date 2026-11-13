@@ -14,6 +14,7 @@ import { Route } from "../../.react-router/types/src/pages/+types/UserDetailView
 import DeleteAccountModal from "../components/DeleteAccountModal";
 import MemberGroupMoveSection from "../components/MemberGroupMoveSection";
 import UserAwayPeriodsSection from "../components/UserAwayPeriodsSection";
+import { SectionRefreshError } from "../components/user-detail/SectionQueryState";
 import UserActionsSection from "../components/user-detail/UserActionsSection";
 import UserFormSubmissionsSection from "../components/user-detail/UserFormSubmissionsSection";
 import UserFriendsSection from "../components/user-detail/UserFriendsSection";
@@ -144,11 +145,7 @@ const UserDetail = ({
 
   return (
     <div className="p-4 max-w-7xl mx-auto">
-      {isRefetchError && (
-        <p className="text-xs text-red-500 mb-2">
-          Could not refresh this member. Reload to see their latest details.
-        </p>
-      )}
+      {isRefetchError && <SectionRefreshError noun="this member" />}
       {/* Header */}
       <div className="flex items-start gap-4 pb-4 border-b border-zinc-200 mb-4">
         <AvatarProfile pfp={user.profilePicture} size="huge" />

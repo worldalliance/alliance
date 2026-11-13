@@ -34,3 +34,4 @@
   - An attachment shows "Attachment still loading…" until it is copied, and "Attachment unavailable" once the copy is given up on.
 
   (agent decision; EVIDENCE.md §3)
+- **The member's own refresh error uses the sections' shared `SectionRefreshError`**, so it reads "Could not refresh this member. Reload to see the latest." like every section, and later changes to the shared line, such as its colour or how it is announced, reach it too. (agent decision)
