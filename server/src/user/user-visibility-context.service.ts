@@ -83,7 +83,6 @@ export class UserVisibilityContextService {
       over18: user.over18,
       clusterId: user.clusterId,
       staffTitle: user.staffTitle,
-      switchedDomainAt: user.switchedDomainAt,
       referredById: user.referredById,
       shareInfoPublicly: user.shareInfoPublicly,
     });
