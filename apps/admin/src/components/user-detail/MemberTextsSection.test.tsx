@@ -290,6 +290,7 @@ it("says a member whose number isn't valid can't be texted", async () => {
     ),
   ).toBeTruthy();
   expect(screen.queryByLabelText("Text Sam")).toBeNull();
+  expect(screen.queryByRole("button", { name: "Mark opted out" })).toBeNull();
 });
 
 it("dates a text from an earlier year with its year", async () => {

@@ -5,8 +5,10 @@ import type {
 } from "@alliance/shared/client/types.gen";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import { ToastVariant, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { format, isThisYear } from "date-fns";
 import { type MouseEvent, useEffect, useLayoutEffect, useRef } from "react";
+import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { getApiUrl } from "../../lib/config";
 import { deliveryStatus } from "../../lib/memberTexts";
 import { useMemberTextsAdmin } from "../../lib/useMemberTextsAdmin";
@@ -19,11 +21,54 @@ export default function MemberTextsSection({
 }: {
   member: { id: number; name: string; timeZone: string | null };
 }) {
-  const { thread, send } = useMemberTextsAdmin(member.id);
+  const { thread, send, markOptedOut, markingOptedOut } = useMemberTextsAdmin(
+    member.id,
+  );
+  const { confirm, showToast } = useToast();
+  const optedOutShown = Boolean(
+    thread.data?.phoneNumber && thread.data.optedOut,
+  );
+  const optedOutBadge = useRef<HTMLSpanElement>(null);
+  const focusBadgeFor = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (focusBadgeFor.current !== member.id) focusBadgeFor.current = null;
+    if (focusBadgeFor.current === null || !optedOutShown) return;
+    focusBadgeFor.current = null;
+    if (document.activeElement === document.body)
+      optedOutBadge.current?.focus();
+  }, [member.id, optedOutShown]);
+
+  const handleMarkOptedOut = async (event: MouseEvent<HTMLElement>) => {
+    const confirmed = await confirm({
+      anchorEl: event.currentTarget,
+      title: "Mark as opted out?",
+      message: `Use this when ${member.name} asked in their own words to stop getting texts. They will get no texts from the Alliance, automated or from staff, until they text START. Anyone else with this phone number is opted out too.`,
+      confirmLabel: "Mark opted out",
+    });
+    if (!confirmed) return;
+    focusBadgeFor.current = member.id;
+    try {
+      await markOptedOut.mutateAsync(member.id);
+    } catch (thrown) {
+      if (focusBadgeFor.current === member.id) focusBadgeFor.current = null;
+      showToast({
+        variant: ToastVariant.Error,
+        title: `Problem marking ${member.name} opted out`,
+        message: adminRefusalMessage(thrown, "Try again."),
+        durationMs: null,
+      });
+    }
+  };
 
   return (
     <section className="border border-zinc-200 rounded p-3">
-      <div className="flex items-center justify-between mx-1 mb-2 gap-2">
+      <div
+        className={cn(
+          "flex items-center justify-between mx-1 mb-2 gap-2",
+          HEADER_HEIGHT,
+        )}
+      >
         <div className="flex items-baseline gap-2 min-w-0">
           <h2 className="text-sm font-semibold text-zinc-700">Texts</h2>
           <SectionRefreshError
@@ -32,10 +77,25 @@ export default function MemberTextsSection({
             className="mb-0"
           />
         </div>
-        {thread.data?.phoneNumber && thread.data.optedOut && (
-          <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-800">
+        {optedOutShown ? (
+          <span
+            ref={optedOutBadge}
+            tabIndex={-1}
+            className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-800"
+          >
             Opted out
           </span>
+        ) : (
+          thread.data?.textable && (
+            <Button
+              size="small"
+              color={ButtonColor.White}
+              onClick={handleMarkOptedOut}
+              disabled={markingOptedOut}
+            >
+              {markingOptedOut ? "Marking opted out…" : "Mark opted out"}
+            </Button>
+          )
         )}
       </div>
       {thread.data ? (
@@ -79,6 +139,10 @@ export default function MemberTextsSection({
     </section>
   );
 }
+
+/** The small Button's height, so the header doesn't grow when the opt-out
+ * control arrives. */
+const HEADER_HEIGHT = "min-h-[2.125rem]";
 
 /** The thread pane keeps its size and the composer area reserves the idle
  * composer's height (two-row box, two-line hint), so the sections below
