@@ -35,6 +35,8 @@ const api: AgentApi = {
   send: (input) => invoke(IpcChannel.Send, input),
   interrupt: (sessionId) => ipcRenderer.send(IpcChannel.Interrupt, sessionId),
   onEvent: (listener) => listen(IpcChannel.Event, listener),
+  onConversationRemoved: (listener) =>
+    listen(IpcChannel.ConversationRemoved, listener),
 };
 
 contextBridge.exposeInMainWorld("agent", api);

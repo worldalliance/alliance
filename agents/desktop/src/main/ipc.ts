@@ -71,7 +71,7 @@ async function checkFolder(folder: string): Promise<Result<void, Error>> {
     : R.failure(new Error(`${folder} isn't a folder.`));
 }
 
-/** Registers the renderer's handlers and returns the quit step: once called, it aborts a running sign-in and sign-in check, Start, Resume, SignIn and ClaudeStatus fail, and it closes every live session, and resolves when each of those CLIs has exited, waiting at most openingWaitMs for sessions still starting; one that finishes starting after that is waited for only while other sessions or sign-in CLIs still close. findClaude runs on each call until it first succeeds, so a CLI installed while the app runs is found. */
+/** Registers the renderer's handlers and returns the quit step: once called, it aborts a running sign-in and sign-in check, Start, Resume, SignIn and ClaudeStatus fail, and it closes every live session, and resolves when each of those CLIs has exited, waiting at most openingWaitMs for sessions still starting; one that finishes starting after that is waited for only while other sessions or sign-in CLIs still close. A new session whose CLI exits without reading its first message has its saved conversation removed, though a quit exits without waiting for that. findClaude runs on each call until it first succeeds, so a CLI installed while the app runs is found. */
 export function registerIpc(params: {
   findClaude: () => Result<Claude, Error>;
   conversations: ConversationStore;
@@ -112,6 +112,19 @@ export function registerIpc(params: {
     for (const { webContents } of BrowserWindow.getAllWindows())
       if (isRendererFrame({ frame: webContents.mainFrame, rendererUrl }))
         webContents.send(channel, payload);
+  };
+
+  const removeIfUnread = async (session: AgentSession) => {
+    if (await session.firstMessageRead) return;
+    console.error(
+      `Removing conversation ${session.id}: its CLI exited before reading the first message.`,
+    );
+    const removed = await conversations.remove(session.id);
+    if (removed.ok) toRenderer(IpcChannel.ConversationRemoved, session.id);
+    else
+      console.error(
+        `Couldn't remove conversation ${session.id}: ${removed.error.message}`,
+      );
   };
 
   const attach = (session: AgentSession) => {
@@ -249,6 +262,8 @@ export function registerIpc(params: {
           await session.close();
           return saved;
         }
+        // Claude Code keeps no transcript for a CLI that exits before it reads its first message.
+        void removeIfUnread(session);
         attach(session);
         const sent = session.send({ text: firstMessage, images: [] });
         if (!sent.ok)

@@ -15,6 +15,7 @@ export enum IpcChannel {
   Send = "session:send",
   Interrupt = "session:interrupt",
   Event = "session:event",
+  ConversationRemoved = "conversation:removed",
 }
 
 export type IpcResult<T> = Result<T, string>;
@@ -24,6 +25,8 @@ export type SessionEvent = { sessionId: string; event: AgentEvent };
 /** What each channel the main process pushes to the window carries. */
 export type RendererEvents = {
   [IpcChannel.Event]: SessionEvent;
+  /** The id of a new conversation removed because its CLI exited before reading its first message. */
+  [IpcChannel.ConversationRemoved]: string;
 };
 
 /** What each invoked channel's main-process handler returns. */
@@ -61,4 +64,6 @@ export type AgentApi = {
   send(input: { sessionId: string; text: string }): Reply<IpcChannel.Send>;
   interrupt(sessionId: string): void;
   onEvent(listener: (event: SessionEvent) => void): () => void;
+  /** Hears the id of a new conversation removed because its CLI exited before reading its first message. */
+  onConversationRemoved(listener: (id: string) => void): () => void;
 };

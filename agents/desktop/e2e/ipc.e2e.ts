@@ -210,6 +210,34 @@ test("a canceled folder picker comes back as no folder", async () => {
   await app.close();
 });
 
+test("a new conversation whose CLI exits before reading its first message is removed, and the window told", async () => {
+  const claude = test.info().outputPath("claude");
+  const stub = process.env[claudeExecutableVariable];
+  writeFileSync(
+    claude,
+    `#!/bin/sh\ncase "$1" in --version|auth) exec "${stub}" "$@";; esac\nexit 1\n`,
+  );
+  chmodSync(claude, 0o755);
+  const { app, page } = await launch({ captures: [], claude });
+  const ids = await page.evaluate(
+    async (input) => {
+      const removed = new Promise<string>((resolve) =>
+        window.agent.onConversationRemoved(resolve),
+      );
+      const started = await window.agent.start(input);
+      if (!started.ok) throw new Error(started.error);
+      return { started: started.value.id, removed: await removed };
+    },
+    { folder: workFolder(), firstMessage },
+  );
+  expect(ids.removed).toBe(ids.started);
+  expect(await page.evaluate(() => window.agent.listConversations())).toEqual({
+    ok: true,
+    value: [],
+  });
+  await app.close();
+});
+
 test("an invalid argument comes back as an error, even without Claude Code", async () => {
   const { app, page } = await launch({
     captures: [],
