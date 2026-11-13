@@ -5,7 +5,7 @@ import {
   test,
 } from "@playwright/test";
 import { execFileSync } from "node:child_process";
-import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
   authStatusArgs,
@@ -78,7 +78,7 @@ export function workFolder(): string {
   return folder;
 }
 
-/** Runs the stub under this test's own path, so the test can count the CLIs it started, and exits a second after the stub, even one stopped by SIGTERM, as a CLI running its session-end hooks does. */
+/** Runs the stub under this test's own path, so the test can count the CLIs it started, and exits a second after the stub, even one stopped by SIGTERM, as a CLI running its session-end hooks does. On exit it notes for outlivedApp whether the app had already gone. */
 export function trackedClaude(): string {
   const file = test.info().outputPath("claude");
   writeFileSync(
@@ -100,12 +100,20 @@ if [ -z "$term" ]; then
   pid=
 fi
 sleep 1
+${noteOutlivedApp(file)}
 exit $status
 `,
   );
   chmodSync(file, 0o755);
   return file;
 }
+
+/** Shell for a wrapper's last step that notes when the CLI outlived the app that started it. */
+const noteOutlivedApp = (claude: string): string =>
+  `kill -0 $PPID 2>/dev/null || touch "${claude}.outlived-app"`;
+
+export const outlivedApp = (claude: string): boolean =>
+  existsSync(`${claude}.outlived-app`);
 
 // A busy machine's full process list can outgrow execFileSync's 1 MB default buffer.
 const psMaxBuffer = 256 * 1024 * 1024;
