@@ -19,3 +19,11 @@ Method: Twilio REST API (`IncomingPhoneNumbers`, Messaging `Services`), 2026-11-
 Method: the Mailgun dashboard, checked by the user, 2026-11-12.
 
 - Both sending domains, `mailgun.worldalliance.org` and `mg.thealliance.org`, already had their webhooks on `https://thealliance.org/api/mailgun/handle-event` before this task, with none on `worldalliance.org`. Mailgun's "Test webhook" got `201` on each. Staging has no Mailgun webhook.
+
+## Production nginx config, rendered
+
+Method: rendered `deploy/nginx/alliance.conf` with production's values, with TLS swapped for a plain listener, the upstreams for a stub that returns `200`, and the CA bundle path for macOS's, served from a local nginx 1.31.4 (Homebrew) and probed with `curl -H Host:`, 2026-11-12.
+
+- On `worldalliance.org` and `www.`, navigations (`Sec-Fetch-Mode: navigate`, or Safari's HTML `Accept` without it) to `/`, `/signup`, `/signup?ref=abc`, `/people`, `/tasks?a=1`, `/docs/x` and `/actions/1.data` returned `302` to the same path and query on `thealliance.org`.
+- On `worldalliance.org`, `/tasks` with `Sec-Fetch-Mode: cors`, with `Accept: */*` and with no headers, and `/signup?ref=abc` with no headers, answered `200`. `/api/x`, `/socket.io/x` and `/.well-known/apple-app-site-association` reached the upstream on a navigation, and `/assets/a.js` came from disk (`404`, no files locally). `/events/` answered `502` because its resolver is the AWS VPC DNS server; it was not redirected.
+- On `thealliance.org` and `www.`, every probe answered `200`.
