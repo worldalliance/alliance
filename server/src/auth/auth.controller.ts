@@ -108,9 +108,12 @@ export class AuthController {
     const { access_token, refresh_token, isAdmin, userId, switchedDomainAt } =
       await this.authService.login(signInDto.email, signInDto.password);
 
-    // A cookie session cannot follow them to the new domain, so signing them in
-    // here only to have the web app bounce them is a loop. Header sessions carry
-    // their tokens with them, so they sign in on either domain.
+    // BACKCOMPAT(ALL-2152): remove once no build loaded on a legacy host before
+    // the cutover still signs in there. A migrated account's cookie session
+    // cannot follow it to the new domain, where every legacy-host page load
+    // sends it, so a cookie sign-in here only strands it. switchedDomainAt is
+    // frozen at the accounts that opted in before the cutover. Header sessions
+    // carry their tokens with them, so they sign in on either domain.
     if (
       MODE_USES_COOKIES[signInDto.mode] &&
       switchedDomainAt !== null &&

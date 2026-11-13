@@ -16,9 +16,6 @@ outputs:
   NEW_DOMAIN_NAME:
     description: Whichever of the two domains is not on worldalliance.org.
     value: ${{ steps.read.outputs.NEW_DOMAIN_NAME }}
-  DOMAIN_MOVE:
-    description: opt-in while only some pages leave the legacy domain, cut-over once every page load does.
-    value: ${{ steps.read.outputs.DOMAIN_MOVE }}
   POSTHOG_PROJECT_ID:
     description: The environment's PostHog project id.
     value: ${{ steps.read.outputs.POSTHOG_PROJECT_ID }}

@@ -46,7 +46,6 @@ import {
   type EntityManager,
   ILike,
   In,
-  IsNull,
   type Repository,
 } from "typeorm";
 import { UpdateProfileDto } from "./dto/user.dto";
@@ -221,13 +220,6 @@ export class UserService {
       contractEvents: true,
       city: true,
     });
-  }
-
-  async markDomainSwitched(id: number): Promise<void> {
-    await this.userRepository.update(
-      { id, switchedDomainAt: IsNull(), deletedAt: IsNull() },
-      { switchedDomainAt: new Date() },
-    );
   }
 
   async setPassword(id: number, password: string): Promise<void> {

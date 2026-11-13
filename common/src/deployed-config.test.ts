@@ -2,7 +2,6 @@ import { describe, expect, test } from "bun:test";
 import {
   deployedConfigEnv,
   deployedConfigFor,
-  DomainMove,
   domainMove,
 } from "./deployed-config";
 import { isDeployed, NodeEnv } from "./node-env";
@@ -47,39 +46,25 @@ describe("deployedConfigEnv", () => {
 });
 
 describe("domainMove", () => {
-  test("staging has cut over and production has not", () => {
+  test("both environments have cut over", () => {
     expect(domainMove(deployedConfigFor(NodeEnv.Staging))).toEqual({
-      move: DomainMove.CutOver,
       legacyDomain: "staging.worldalliance.org",
       newDomain: "staging.thealliance.org",
     });
     expect(domainMove(deployedConfigFor(NodeEnv.Production))).toEqual({
-      move: DomainMove.OptIn,
       legacyDomain: "worldalliance.org",
       newDomain: "thealliance.org",
     });
   });
 
-  test("swapping the two domains is the cutover", () => {
-    expect(
-      domainMove({
-        DOMAIN_NAME: "thealliance.org",
-        ALT_DOMAIN_NAME: "worldalliance.org",
-      }),
-    ).toEqual({
-      move: DomainMove.CutOver,
-      legacyDomain: "worldalliance.org",
-      newDomain: "thealliance.org",
-    });
-  });
-
-  test("throws unless exactly one domain is legacy", () => {
+  test("throws unless ALT_DOMAIN_NAME alone is legacy", () => {
     for (const [DOMAIN_NAME, ALT_DOMAIN_NAME] of [
+      ["worldalliance.org", "thealliance.org"],
       ["thealliance.org", "staging.thealliance.org"],
       ["worldalliance.org", "staging.worldalliance.org"],
     ]) {
       expect(() => domainMove({ DOMAIN_NAME, ALT_DOMAIN_NAME })).toThrow(
-        "exactly one",
+        "must be on",
       );
     }
   });

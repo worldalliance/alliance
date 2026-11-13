@@ -1,5 +1,5 @@
 import { act, render } from "@testing-library/react";
-import { afterEach, beforeEach, expect, it, type Mock, spyOn } from "bun:test";
+import { beforeEach, expect, it, type Mock, spyOn } from "bun:test";
 import {
   createMemoryRouter,
   Link,
@@ -11,15 +11,6 @@ import {
   BUILD_CHECK_INTERVAL_MS,
   useFullLoadOnNewBuild,
 } from "./useFullLoadOnNewBuild";
-
-declare global {
-  interface Window {
-    happyDOM: { setURL: (url: string) => void };
-  }
-}
-
-const startUrl = window.location.href;
-afterEach(() => window.happyDOM.setURL(startUrl));
 
 const BUILT_SHA = "aaa";
 let builtSha: string | undefined;
@@ -49,7 +40,7 @@ beforeEach(() => {
 
 const renderAt = (...initialEntries: string[]) => {
   const router = createMemoryRouter(
-    ["/a", "/b", "/people", "/signup"].map((p) => ({
+    ["/a", "/b"].map((p) => ({
       path: p,
       Component: Page,
     })),
@@ -164,44 +155,6 @@ it("keeps back and forward in-app", async () => {
   expect(router.state.location.pathname).toBe("/b");
   expect(assignSpy).not.toHaveBeenCalled();
   expect(replaceSpy).not.toHaveBeenCalled();
-});
-
-it("keeps a navigation to a page nginx moves to the new domain in-app", async () => {
-  window.happyDOM.setURL("https://worldalliance.org/a");
-  const router = renderAt("/a");
-  deployNewBuild();
-  await becomeVisible();
-  await act(() => navigate("/people"));
-  expect(router.state.location.pathname).toBe("/people");
-  expect(assignSpy).not.toHaveBeenCalled();
-});
-
-it("loads a page nginx moves as a document once on the new domain", async () => {
-  window.happyDOM.setURL("https://thealliance.org/a");
-  renderAt("/a");
-  deployNewBuild();
-  await becomeVisible();
-  await act(() => navigate("/people"));
-  expect(assignSpy).toHaveBeenCalledWith("/people");
-});
-
-it("keeps an invite signup in-app on the legacy domain", async () => {
-  window.happyDOM.setURL("https://worldalliance.org/a");
-  const router = renderAt("/a");
-  deployNewBuild();
-  await becomeVisible();
-  await act(() => navigate("/signup?ref=CODE"));
-  expect(router.state.location.pathname).toBe("/signup");
-  expect(assignSpy).not.toHaveBeenCalled();
-});
-
-it("loads an invite signup as a document on the new domain", async () => {
-  window.happyDOM.setURL("https://thealliance.org/a");
-  renderAt("/a");
-  deployNewBuild();
-  await becomeVisible();
-  await act(() => navigate("/signup?ref=CODE"));
-  expect(assignSpy).toHaveBeenCalledWith("/signup?ref=CODE");
 });
 
 it("ignores a server build that carries no SHA", async () => {
