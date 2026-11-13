@@ -4,7 +4,7 @@ import {
   type Page,
   test,
 } from "@playwright/test";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
   authStatusArgs,
@@ -68,4 +68,10 @@ export async function launch(
   if (params.path !== undefined) delete env[claudeExecutableVariable];
   const app = await electron.launch({ args: appArgs(), env });
   return { app, page: await app.firstWindow() };
+}
+
+export function workFolder(): string {
+  const folder = test.info().outputPath("work");
+  mkdirSync(folder, { recursive: true });
+  return folder;
 }
