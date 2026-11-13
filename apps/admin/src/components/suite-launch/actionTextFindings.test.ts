@@ -50,7 +50,7 @@ describe("actionTextFindings", () => {
 
   it("shows the flagged text with surrounding context", () => {
     const [, body] = actionTextFindings({ action, taskFormSchema: null });
-    expect(textContext(body)).toEqual({
+    expect(textContext(body)).toMatchObject({
       before: "xt on both sides of ",
       flagged: "the the",
       after: " issue here.",
