@@ -37,7 +37,10 @@ export default function UserNotificationSettingsSection({
       <h2 id={headingId} className="text-sm font-semibold text-zinc-700 mb-2">
         Notification settings
       </h2>
-      {isRefetchError && <SectionRefreshError noun="notification settings" />}
+      <SectionRefreshError
+        noun="notification settings"
+        isError={isRefetchError}
+      />
       {settings ? (
         <div className="space-y-3 text-xs">
           <dl className="grid grid-cols-2 gap-1">

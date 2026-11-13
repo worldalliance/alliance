@@ -14,10 +14,17 @@ export function SectionLoadState({
   );
 }
 
-export function SectionRefreshError({ noun }: { noun: string }) {
+/** Stays mounted so screen readers announce the text when it appears. */
+export function SectionRefreshError({
+  noun,
+  isError,
+}: {
+  noun: string;
+  isError: boolean;
+}) {
   return (
-    <p className="text-xs text-red-600 mb-2">
-      Could not refresh {noun}. Reload to see the latest.
+    <p role="status" className={cn("text-xs text-red-600", isError && "mb-2")}>
+      {isError && `Could not refresh ${noun}. Reload to see the latest.`}
     </p>
   );
 }

@@ -83,7 +83,7 @@ function UserNotifications({
       <h2 className="text-sm font-semibold text-zinc-700 mb-2">
         Notifications ({notifs.length})
       </h2>
-      {isRefetchError && <SectionRefreshError noun="notifications" />}
+      <SectionRefreshError noun="notifications" isError={isRefetchError} />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Texts */}
         <div className="border border-zinc-200 rounded overflow-hidden">

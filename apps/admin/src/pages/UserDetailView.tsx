@@ -145,7 +145,7 @@ const UserDetail = ({
 
   return (
     <div className="p-4 max-w-7xl mx-auto">
-      {isRefetchError && <SectionRefreshError noun="this member" />}
+      <SectionRefreshError noun="this member" isError={isRefetchError} />
       {/* Header */}
       <div className="flex items-start gap-4 pb-4 border-b border-zinc-200 mb-4">
         <AvatarProfile pfp={user.profilePicture} size="huge" />
