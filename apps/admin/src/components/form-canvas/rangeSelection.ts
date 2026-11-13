@@ -13,7 +13,7 @@ import {
 export type Span = { start: number; end: number };
 
 /** The top-level elements the selection covers, or null for the page. */
-function selectedSpan(selected: ResolvedTarget): Span | null {
+export function selectedSpan(selected: ResolvedTarget): Span | null {
   switch (selected.kind) {
     case CanvasTargetKind.Page:
       return null;

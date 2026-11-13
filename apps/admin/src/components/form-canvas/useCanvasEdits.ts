@@ -13,9 +13,14 @@ import {
   copyPageWithUniqueIds,
   createUniqueFormBuilderId,
 } from "../../lib/copyWithUniqueIds";
+import {
+  moveElements,
+  type ElementDrop,
+  type ElementSpan,
+} from "../../lib/moveElements";
 import { reorderPages } from "../../lib/reorderPages";
 import { updatePageElement } from "../../lib/updatePageElement";
-import { moveItem } from "../../lib/useDragReorder";
+import { insertionOffset } from "../../lib/useDragReorder";
 import {
   deriveVisibilityGroups,
   type GroupedPages,
@@ -34,6 +39,7 @@ import {
   type AvailableElement,
   type InsertLoc,
 } from "./InsertPoint";
+import { selectedSpan } from "./rangeSelection";
 import { SidebarSection } from "./sidebarSections";
 import type { CanvasSelectionState } from "./useCanvasSelection";
 import { useGuardedDeletion } from "./useGuardedDeletion";
@@ -64,6 +70,7 @@ export function useCanvasEdits({
     showPage,
     selectFromOutline,
     setFocusPending,
+    reveal,
   } = canvas;
 
   const [insertion, setInsertion] = useState<{
@@ -206,21 +213,19 @@ export function useCanvasEdits({
     });
   };
 
-  const replaceFields = (fields: PageItem[], pageIndex = selectedPageIndex) => {
-    const before = schema.pages[pageIndex];
-    if (!before) return;
+  const replaceFields = (fields: PageItem[]) => {
     updateSchema({
       ...schema,
       pages: schema.pages.map((page, idx) =>
-        idx === pageIndex ? { ...page, fields } : page,
+        idx === selectedPageIndex ? { ...page, fields } : page,
       ),
     });
     setSelection((current) =>
-      current.pageId === before.id
+      current.pageId === currentPage.id
         ? {
             ...current,
             target: followElement({
-              before: before.fields,
+              before: currentPage.fields,
               after: fields,
               target: current.target,
             }),
@@ -245,18 +250,55 @@ export function useCanvasEdits({
       () => removeElement(index),
     );
 
-  const moveElement = (
-    { from, dropIndex, position }: ListMove,
-    pageIndex = selectedPageIndex,
-  ) => {
-    const moved = moveItem({
-      items: schema.pages[pageIndex]?.fields ?? [],
-      draggedIndex: from,
-      dropIndex,
-      position,
+  const moveElementsTo = (from: ElementSpan, to: ElementDrop) => {
+    const pages = moveElements({ pages: schema.pages, from, to });
+    if (!pages) return;
+    updateSchema({ ...schema, pages });
+    const span = selectedSpan(resolvedTarget);
+    const carried =
+      from.pageIndex !== to.pageIndex &&
+      selectedPageIndex === from.pageIndex &&
+      span !== null &&
+      span.start >= from.start &&
+      span.end <= from.end;
+    if (carried) {
+      setSelectedPageIndex(to.pageIndex);
+      reveal();
+      setSelection((current) => ({
+        pageId: pages[to.pageIndex]!.id,
+        target: followElement({
+          before: schema.pages[from.pageIndex]!.fields,
+          after: pages[to.pageIndex]!.fields,
+          target: current.target,
+        }),
+      }));
+      return;
+    }
+    setSelection((current) => {
+      const at = [from.pageIndex, to.pageIndex].find(
+        (index) => schema.pages[index]!.id === current.pageId,
+      );
+      return at === undefined
+        ? current
+        : {
+            ...current,
+            target: followElement({
+              before: schema.pages[at]!.fields,
+              after: pages[at]!.fields,
+              target: current.target,
+            }),
+          };
     });
-    if (moved) replaceFields(moved.items, pageIndex);
   };
+
+  const moveElement = ({ from, dropIndex, position }: ListMove) =>
+    moveElementsTo(
+      { pageIndex: selectedPageIndex, start: from, end: from + 1 },
+      {
+        pageIndex: selectedPageIndex,
+        index: dropIndex + insertionOffset[position],
+      },
+    );
 
   const duplicateElement = (index: number) => {
     const element = currentPage.fields[index];
@@ -307,6 +349,7 @@ export function useCanvasEdits({
     removePage,
     deleteElement,
     moveElement,
+    moveElementsTo,
     duplicateElement,
     applyGrouped,
     updateElementAt,
