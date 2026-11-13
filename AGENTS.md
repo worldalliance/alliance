@@ -43,6 +43,7 @@ Read before the matching task:
 - Verifying any change, including docs, skills, scripts, workflows, and reviews → **Checks** in `(root)/agents/skills/implement/SKILL.md`
 - Pulling PostHog session replays or other PostHog API data → `(root)/agents/skills/posthog/SKILL.md`
 - Querying the local Postgres db → `(root)/agents/skills/local-db/SKILL.md`
+- Creating demo staging data in the local db, never production: a demo action launched to every member → `(root)/agents/skills/demo-action/SKILL.md`; demo engagement on existing actions (members completing, withdrawing or dismissing, staff updates, closing old actions) → `(root)/agents/skills/demo-engagement/SKILL.md`
 - Using the Linear API, naming a branch for a Linear issue, or writing a commit or PR that names one → `(root)/agents/skills/linear/SKILL.md`
 - Finishing a branch, once its work is done and its checks pass and before pushing or opening its PR, or when its PR's CI fails → `(root)/agents/skills/review-loop/SKILL.md`. Skip it when `REVIEW_LOOP_ROLE` is set.
 - Spawning a subagent, which goes through the `claude` or `codex` CLI in place of your harness's built-in agent tool → `(root)/agents/skills/subagents/SKILL.md`
