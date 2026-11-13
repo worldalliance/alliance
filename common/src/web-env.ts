@@ -37,6 +37,7 @@ export const webRuntimeConfigSchema = z.discriminatedUnion("environment", [
 ]);
 
 export type WebRuntimeConfig = z.output<typeof webRuntimeConfigSchema>;
+export type WebRuntimeKey = Exclude<keyof WebRuntimeConfig, "environment">;
 
 // Fails to compile once a NodeEnv is in neither branch above.
 const _everyEnvironment: Record<
