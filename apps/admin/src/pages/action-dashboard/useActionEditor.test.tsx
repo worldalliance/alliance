@@ -1,9 +1,15 @@
-import { makeAction } from "@alliance/shared/lib/testFixtures";
+import { makeAction, makeProfile } from "@alliance/shared/lib/testFixtures";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
-import { act, renderHook, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type React from "react";
 import { MemoryRouter } from "react-router";
-import { useActionEditor } from "./useActionEditor";
+import { type ActionEditorState, useActionEditor } from "./useActionEditor";
 
 const action: ParsedActionDto = {
   ...makeAction({ id: 7, shortDescription: "Short", body: "Body" }),
@@ -18,26 +24,34 @@ const action: ParsedActionDto = {
   cohortExpression: null,
 };
 
-const renderEditor = () => {
+const renderEditor = (overrides: Partial<ParsedActionDto> = {}) => {
   const updateAction = jest.fn(async () => action);
-  const { result } = renderHook(
-    () =>
-      useActionEditor({
-        admin: {
-          action,
-          isFetching: false,
-          createAction: jest.fn(),
-          updateAction,
-        },
-        actionId: action.id,
-        isNew: false,
-        cohortParseFailed: false,
-        searchParams: new URLSearchParams(),
-        setError: jest.fn(),
-      }),
-    { wrapper: MemoryRouter },
-  );
-  return { result, updateAction };
+  let editor!: ActionEditorState;
+  const Harness = () => {
+    editor = useActionEditor({
+      admin: {
+        action: { ...action, ...overrides },
+        isFetching: false,
+        createAction: jest.fn(),
+        updateAction,
+      },
+      actionId: action.id,
+      isNew: false,
+      cohortParseFailed: false,
+      searchParams: new URLSearchParams(),
+      setError: jest.fn(),
+    });
+    return editor.worldallianceDialog;
+  };
+  render(<Harness />, { wrapper: MemoryRouter });
+  return {
+    result: {
+      get current() {
+        return editor;
+      },
+    },
+    updateAction,
+  };
 };
 
 const allMembers = { type: "AllMembers" } as const;
@@ -85,5 +99,51 @@ describe("useActionEditor", () => {
     expect(updateAction).toHaveBeenLastCalledWith(
       expect.not.objectContaining({ slug: expect.anything() }),
     );
+  });
+
+  it.each([
+    ["Save anyway", 1],
+    ["Cancel", 0],
+  ])(
+    "saves a body that mentions worldalliance on %s %i times",
+    async (choice, saves) => {
+      const { result, updateAction } = renderEditor({
+        body: "[Settings](https://worldalliance.org/settings)",
+      });
+      await waitFor(() => expect(result.current.draftSeeded).toBe(true));
+
+      let submitted!: Promise<void>;
+      act(() => {
+        submitted = result.current.handleSubmit(submitEvent);
+      });
+      fireEvent.click(await screen.findByRole("button", { name: choice }));
+      await act(() => submitted);
+
+      expect(updateAction).toHaveBeenCalledTimes(saves);
+      if (saves) {
+        expect(updateAction).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            body: "[Settings](https://worldalliance.org/settings)",
+          }),
+        );
+      }
+    },
+  );
+
+  it("saves without asking when only an author's bio mentions worldalliance", async () => {
+    const { result, updateAction } = renderEditor({
+      authors: [
+        {
+          ...makeProfile(1),
+          profileDescription: "Formerly at worldalliance.org",
+        },
+      ],
+    });
+    await waitFor(() => expect(result.current.draftSeeded).toBe(true));
+
+    await act(() => result.current.handleSubmit(submitEvent));
+
+    expect(screen.queryByRole("button", { name: "Save anyway" })).toBeNull();
+    expect(updateAction).toHaveBeenCalled();
   });
 });

@@ -25,6 +25,7 @@ import {
   type GeneralUpdateForm,
 } from "../components/general-update/generalUpdateForm";
 import GeneralUpdateScheduleFields from "../components/general-update/GeneralUpdateScheduleFields";
+import { useWorldallianceConfirm } from "../components/useWorldallianceConfirm";
 import { useActionSuitesAdmin } from "../lib/useActionSuitesAdmin";
 import { useGeneralUpdateAdmin } from "../lib/useGeneralUpdateAdmin";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
@@ -63,6 +64,8 @@ const GeneralUpdatePage: React.FC = () => {
   const createUpdate = create.mutateAsync;
   const saveUpdate = updateMutation.mutateAsync;
   const [error, setError] = useState<string | null>(null);
+  const { confirmSave, dialog: worldallianceDialog } =
+    useWorldallianceConfirm();
 
   const [form, setForm] = useState<GeneralUpdateForm>(emptyForm);
   const [formUpdateId, setFormUpdateId] = useState<number | null>(null);
@@ -127,6 +130,7 @@ const GeneralUpdatePage: React.FC = () => {
           tagIds: form.tagIds,
           suiteIds: form.suiteIds,
         } satisfies UpdateGeneralUpdateDto;
+        if (!(await confirmSave(body))) return;
         if (isNew) {
           const created = await createUpdate(body);
           navigate(`/general-updates/${created.id}`);
@@ -138,7 +142,16 @@ const GeneralUpdatePage: React.FC = () => {
         console.error(err);
       }
     },
-    [isNew, update, form, hasSuites, navigate, createUpdate, saveUpdate],
+    [
+      isNew,
+      update,
+      form,
+      hasSuites,
+      navigate,
+      createUpdate,
+      saveUpdate,
+      confirmSave,
+    ],
   );
 
   const formContent = (
@@ -277,6 +290,7 @@ const GeneralUpdatePage: React.FC = () => {
   return (
     <div className="flex flex-col h-full">
       <title>{pageTitle} - Admin</title>
+      {worldallianceDialog}
       <div className="p-5 pb-0 flex flex-row justify-between w-full">
         <h1 className="text-[#111] text-[16pt] font-bold">{pageTitle}</h1>
         <button
