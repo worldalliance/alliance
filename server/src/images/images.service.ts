@@ -127,9 +127,10 @@ export class ImagesService {
   }
 
   private async toJpeg(key: string): Promise<Buffer> {
+    const bucket = assetsBucket();
     try {
       const object = await this.s3.send(
-        new GetObjectCommand({ Bucket: assetsBucket(), Key: key }),
+        new GetObjectCommand({ Bucket: bucket, Key: key }),
       );
       if (!object.Body) throw new NotFoundException();
       const bytes = await object.Body.transformToByteArray();
@@ -202,6 +203,8 @@ export class ImagesService {
     file: string,
     resize?: { width: number; height: number },
   ): Promise<string> {
+    // Raises the 503 before the catch below turns any failure into a 400.
+    assetsBucket();
     const imgBuffer = await this.normalizeToSharpBuffer(file);
     let processed = await sharp(imgBuffer).rotate().webp({ effort: 3 });
 

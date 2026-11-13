@@ -57,7 +57,7 @@ export function withSecretsFixture() {
     writeFileSync(
       join(dir, "app"),
       `#!/usr/bin/env bash
-  printf 'app %s ONE=%s TWO=%s PROFILE=%s MARKER=%s\\n' "$*" "\${ONE-unset}" "\${TWO-unset}" "\${AWS_PROFILE-unset}" "\${ALLIANCE_SECRETS_LOADED-unset}" >> "$LOG"
+  printf 'app %s ONE=%s TWO=%s PROFILE=%s MARKER=%s FLAG=%s\\n' "$*" "\${ONE-unset}" "\${TWO-unset}" "\${AWS_PROFILE-unset}" "\${ALLIANCE_SECRETS_LOADED-unset}" "\${ALLIANCE_WITHOUT_TEAM_SECRETS-unset}" >> "$LOG"
   `,
     );
     chmodSync(join(dir, "aws"), 0o755);

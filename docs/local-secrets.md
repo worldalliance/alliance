@@ -1,6 +1,6 @@
 # Local secrets
 
-Local dev and agents read secrets from AWS SSM Parameter Store under `/alliance/dev/<consumer>/`, using each person's IAM Identity Center login. `scripts/with-secrets.sh <consumer> <command>` reads them when the command starts and runs it with them as env vars. It keeps no copy. The commands that need secrets already call it: the root `server:dev`, and `dev` and `repl` in `server/`. The Linear skill tells agents to run their Linear calls through it. Frontend, admin, migrations and tests need no login.
+Local dev and agents read secrets from AWS SSM Parameter Store under `/alliance/dev/<consumer>/`, using each person's IAM Identity Center login. `scripts/with-secrets.sh <consumer> <command>` reads them when the command starts and runs it with them as env vars. It keeps no copy. The commands that need secrets already call it: the root `server:dev`, and `dev` and `repl` in `server/`. The Linear skill tells agents to run their Linear calls through it. Frontend, admin, migrations and tests need no login. Without a login at all, see [Without team credentials](#without-team-credentials).
 
 Consumers and their keys are listed in `scripts/dev-secrets.json`: `server` and `devtools`.
 
@@ -47,13 +47,21 @@ aws ssm put-parameter --region us-west-2 --type SecureString --overwrite \
 rm .scratch/value.txt
 ```
 
-2. Add the name under its consumer in `scripts/dev-secrets.json`, and for `server` to the schema in `server/src/config/env.ts`, both its fields and `setFor[NodeEnv.Development]`, which a server test compares with the manifest.
+2. Add the name under its consumer in `scripts/dev-secrets.json`, and for `server` to the schema in `server/src/config/env.ts`, both its fields and `setFor[NodeEnv.Development]`, and to `teamOnlyKeys`, so contributors without team credentials don't need it. Server tests compare both lists with the manifest.
 
 The order matters because the store is shared: the wrapper fails when a key the manifest lists is missing from the store, and checkouts whose manifest doesn't list it yet ignore it. The daily login can only read, so step 1 needs an admin login. The `parameter-drift` workflow fails when the store and the schemas disagree, so it reports the new key until step 2 merges.
 
-To remove a secret, drop it from `scripts/dev-secrets.json`, and for `server` from `setFor[NodeEnv.Development]`, which the server test compares with the manifest, then delete the parameter once that merges: until then the wrapper on `main` requires it. Branches and worktrees from before the merge still list it, so deleting it stops their server from starting until they merge `main`; tell the team before you delete it. Remove it from the server schema too only if `inDeployedStore` in `server/src/config/env.ts` keeps it out of the staging and production paths; otherwise follow the removal steps in [backend-secrets.md](backend-secrets.md), since dropping the field makes those paths report it as not in `inDeployedStore`. The removal PR's own `parameter-drift` run, and `main`'s after it merges, report the key as not in `scripts/dev-secrets.json` until you delete it; that's expected. Dispatch the workflow on `main` afterwards to clear it.
+To remove a secret, drop it from `scripts/dev-secrets.json`, and for `server` from `setFor[NodeEnv.Development]` and `teamOnlyKeys`, which server tests compare with the manifest, then delete the parameter once that merges: until then the wrapper on `main` requires it. Branches and worktrees from before the merge still list it, so deleting it stops their server from starting until they merge `main`; tell the team before you delete it. Remove it from the server schema too only if `inDeployedStore` in `server/src/config/env.ts` keeps it out of the staging and production paths; otherwise follow the removal steps in [backend-secrets.md](backend-secrets.md), since dropping the field makes those paths report it as not in `inDeployedStore`. The removal PR's own `parameter-drift` run, and `main`'s after it merges, report the key as not in `scripts/dev-secrets.json` until you delete it; that's expected. Dispatch the workflow on `main` afterwards to clear it.
 
 Only secrets go in the store. Non-secret development settings are in `developmentEnv` in `common/src/deployed-config.ts`, and per-checkout keys (`DB_*`, `APP_URL`, `ADMIN_URL`, `NODE_ENV`, `TZ`) stay in `server/.env`. Per-person keys, such as `POSTHOG_API_KEY`, stay in `.env.devtools`.
+
+## Without team credentials
+
+Someone without an `alliance-dev` login, such as an outside contributor, runs the server without the team's secrets by adding to `server/.env` (copied from `server/.env.example`) `ALLIANCE_WITHOUT_TEAM_SECRETS=1`, random `JWT_SECRET` and `JWT_REFRESH_SECRET` values (for example from `openssl rand -hex 32`), and the `ADMIN_USER` and `ADMIN_PASSWORD` of the admin the server seeds.
+
+With the flag set, `with-secrets.sh` skips Parameter Store, and development stops requiring the keys in `teamOnlyKeys` in `server/src/config/env.ts`. The server logs which of them are unset, and the code using each runs without it, as on any server missing that key. Stored files are off: uploads and reads answer 503, and post export leaves out images. `SEND_DEV_NOTIFS=1` still requires the mail and Twilio keys. Staging and production refuse to start with the flag, and tests ignore it.
+
+A team member never sets it: a missing key should stay a startup error.
 
 ## Staging and production secrets
 

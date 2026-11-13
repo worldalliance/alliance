@@ -139,6 +139,8 @@ export class DocsController {
       return;
     }
 
+    // Raises the 503 before the cache headers, so it isn't cached or revalidated.
+    const bucket = assetsBucket();
     // Each upload gets a fresh key, so the key identifies the file's contents.
     const etag = `"${basename(doc.s3Key, ".pdf")}"`;
     const ifRange = req.headers["if-range"];
@@ -155,7 +157,7 @@ export class DocsController {
 
     await pipeS3Object({
       s3: this.s3,
-      bucket: assetsBucket(),
+      bucket,
       key: doc.s3Key,
       res,
       contentType: "application/pdf",

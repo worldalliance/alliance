@@ -267,3 +267,86 @@ test("rejects a loadsEnvFile that is not a boolean", () => {
 test("needs a consumer and a command", () => {
   expect(fx.run({ args: ["server"] }).exitCode).toBe(2);
 });
+
+test("ALLIANCE_WITHOUT_TEAM_SECRETS in the shell skips Parameter Store, saying so", () => {
+  const { exitCode, stderr, log } = fx.run({
+    env: { ALLIANCE_WITHOUT_TEAM_SECRETS: "1" },
+  });
+  expect(exitCode).toBe(0);
+  expect(stderr).toContain(
+    "ALLIANCE_WITHOUT_TEAM_SECRETS is set, so server runs without the secrets in Parameter Store",
+  );
+  expect(log).not.toContain("aws ");
+  expect(log).toContain("app x ONE=unset TWO=unset PROFILE=unset");
+});
+
+test.each([
+  ["server.env", "ALLIANCE_WITHOUT_TEAM_SECRETS=true\n"],
+  ["server.env.local", 'ALLIANCE_WITHOUT_TEAM_SECRETS="1"\n'],
+  ["server.env", "ALLIANCE_WITHOUT_TEAM_SECRETS=1 # contributor\n"],
+  ["server.env", "ALLIANCE_WITHOUT_TEAM_SECRETS=`1`\n"],
+  ["server.env", "CONTRIBUTOR=1\nALLIANCE_WITHOUT_TEAM_SECRETS=$CONTRIBUTOR\n"],
+])(
+  "ALLIANCE_WITHOUT_TEAM_SECRETS in %s skips Parameter Store and reaches a consumer that loads it",
+  (name, line) => {
+    fx.loadingEnvFile();
+    writeFileSync(join(fx.repo, name), line);
+    const { exitCode, log } = fx.run({});
+    expect(exitCode).toBe(0);
+    expect(log).not.toContain("aws ");
+    expect(log).toMatch(/ FLAG=(1|true)\n/);
+  },
+);
+
+test("a later env file turning ALLIANCE_WITHOUT_TEAM_SECRETS off wins, as in Bun", () => {
+  fx.loadingEnvFile();
+  writeFileSync(
+    join(fx.repo, "server.env"),
+    "ALLIANCE_WITHOUT_TEAM_SECRETS=1\n",
+  );
+  writeFileSync(
+    join(fx.repo, "server.env.local"),
+    "ALLIANCE_WITHOUT_TEAM_SECRETS=0\n",
+  );
+  const { log } = fx.run({});
+  expect(log).toContain("aws ssm get-parameters-by-path");
+  expect(log).toMatch(/ FLAG=0\n/);
+});
+
+test("ALLIANCE_WITHOUT_TEAM_SECRETS in an env file nothing loads is ignored", () => {
+  writeFileSync(
+    join(fx.repo, "server.env"),
+    "ALLIANCE_WITHOUT_TEAM_SECRETS=1\n",
+  );
+  expect(fx.run({}).log).toContain("aws ssm get-parameters-by-path");
+});
+
+test("refuses an ALLIANCE_WITHOUT_TEAM_SECRETS value the server's config would refuse", () => {
+  fx.loadingEnvFile();
+  writeFileSync(
+    join(fx.repo, "server.env"),
+    "ALLIANCE_WITHOUT_TEAM_SECRETS=yes\n",
+  );
+  const { exitCode, stderr, log } = fx.run({});
+  expect(exitCode).toBe(1);
+  expect(stderr).toContain(
+    "ALLIANCE_WITHOUT_TEAM_SECRETS is yes; set it to 1 or 0",
+  );
+  expect(log).toBe("");
+});
+
+test("ALLIANCE_WITHOUT_TEAM_SECRETS=0 still reads Parameter Store", () => {
+  const { log } = fx.run({ env: { ALLIANCE_WITHOUT_TEAM_SECRETS: "0" } });
+  expect(log).toContain("app x ONE=1 TWO=2");
+});
+
+test("a Bun failure reading the env files fails with Bun's error", () => {
+  fx.loadingEnvFile();
+  writeFileSync(join(fx.repo, "bunfig.toml"), 'preload = ["./missing.ts"]\n');
+  const { exitCode, stderr } = fx.run({});
+  expect(exitCode).toBe(1);
+  expect(stderr).toContain(
+    "with-secrets.sh: bun could not read ALLIANCE_WITHOUT_TEAM_SECRETS from the env files of server:",
+  );
+  expect(stderr).toContain("missing.ts");
+});
