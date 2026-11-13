@@ -1,7 +1,8 @@
 name: Deployed config
 description: >-
-  Download the deployed-config job's deployed-config.env into the workspace
-  and read its lines into outputs.
+  Download the deployed-config job's artifact into the workspace: its
+  deployed-config.env, read into outputs, and web-config.json, which the
+  admin deploy installs on the host as config.json.
 
 outputs:
   DOMAIN_NAME:

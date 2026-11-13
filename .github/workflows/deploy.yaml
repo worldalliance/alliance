@@ -32,10 +32,13 @@ jobs:
           bun-version: 1.4.4
       - run: bun install --frozen-lockfile
       - run: bun scripts/deployed-config.ts "$env_name" > deployed-config.env
+      - run: bun scripts/web-runtime-config.ts "$env_name" > web-config.json
       - uses: actions/upload-artifact@v4
         with:
           name: deployed-config
-          path: deployed-config.env
+          path: |
+            deployed-config.env
+            web-config.json
 
   test-backend-e2e:
     uses: ./.github/workflows/test-backend-e2e.yaml
@@ -396,8 +399,12 @@ jobs:
             deploy/nginx/alliance_admin_http.conf
             deploy/nginx/check-cert.sh
             admin-build.zip
+            web-config.json
           script: |
             sudo yum install -y unzip nginx
+
+            mkdir -p ~/admin-config
+            mv ~/web-config.json ~/admin-config/config.json || { echo "could not install config.json"; exit 1; }
 
             unzip -o -DD ~/admin-build.zip -d ~/admin-app
             # Same pruning as the frontend deploy's ~/output/build.
@@ -648,6 +655,12 @@ jobs:
           echo "Checking admin app on admin.${{ steps.config.outputs.ALT_DOMAIN_NAME }}..."
           curl --fail --silent --show-error https://admin.${{ steps.config.outputs.ALT_DOMAIN_NAME }} > /dev/null
           echo "admin other domain https ok"
+
+      - name: Check admin config
+        run: |
+          set -o pipefail
+          curl --fail --silent --show-error https://admin.${{ steps.config.outputs.DOMAIN_NAME }}/config.json | jq -e --slurpfile want web-config.json '. == $want[0]' > /dev/null
+          echo "admin config.json ok"
 
       # nginx -t can pass while every /events/ request fails, e.g. on PostHog's
       # certificate. Last, so a PostHog outage doesn't skip the checks above.

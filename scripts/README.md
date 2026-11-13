@@ -47,6 +47,9 @@ Run by `parameter-drift.yaml`. Lists the parameter names under `/alliance` in AW
 `deployed-config.ts <staging|production>`
 Prints the values from `common/src/deployed-config.ts` the deploy workflow's web build and verification jobs read, as `KEY=value` lines for `GITHUB_OUTPUT`.
 
+`web-runtime-config.ts <staging|production>`
+Prints the environment's web runtime config from `common/src/web-runtime-config.ts` as JSON. The deploy workflow uploads it, and the admin host serves it as `/config.json`.
+
 ## Other
 
 `check-gitignore.sh`
