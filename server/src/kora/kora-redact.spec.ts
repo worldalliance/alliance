@@ -47,4 +47,29 @@ describe("redactExport", () => {
       exitSurvey: { exit_q5: "fine", exit_q6: REDACTED },
     });
   });
+
+  it("redacts the profile's free-text country and gender", () => {
+    expect(
+      redactExport({
+        results: [],
+        profile: {
+          country: "mail me x@example.org",
+          gender: "call +1 555 555 0101",
+          age_band: "25_34",
+        },
+      }).profile,
+    ).toEqual({
+      country: `mail me ${REDACTED}`,
+      gender: `call ${REDACTED}`,
+      age_band: "25_34",
+    });
+  });
+
+  it("keeps a redacted field within the export schema's maxLength", () => {
+    const note = "mail a@b.co ".padEnd(140, "x");
+    const redacted = redactExport({ results: [{ annotations: [{ note }] }] });
+    expect(redacted.results).toEqual([
+      { annotations: [{ note: `mail ${REDACTED} ${"x".repeat(124)}` }] },
+    ]);
+  });
 });

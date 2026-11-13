@@ -1,3 +1,4 @@
+import { exportSchema } from "@alliance/kora-review/schemas";
 import { findPhoneNumbersInText } from "libphonenumber-js";
 import MarkdownIt from "markdown-it";
 
@@ -29,8 +30,43 @@ const fields = (value: unknown): Record<string, unknown> | null =>
     ? Object.fromEntries(Object.entries(value))
     : null;
 
-const redactString = (value: unknown) =>
-  typeof value === "string" ? redactContact(value) : value;
+function maxLength(def: string, property: string): number {
+  const limit = fields(
+    fields(fields(fields(exportSchema.$defs)?.[def])?.properties)?.[property],
+  )?.maxLength;
+  if (typeof limit !== "number") {
+    throw new Error(`exportSchema has no maxLength for ${def}.${property}`);
+  }
+  return limit;
+}
+
+const FREE_TEXT: Record<string, string[]> = {
+  result: ["q3_text"],
+  annotation: ["note"],
+  profile: ["country", "gender"],
+  exitSurvey: ["exit_q6"],
+};
+
+const LIMITS = new Map(
+  Object.entries(FREE_TEXT).map(([def, properties]) => [
+    def,
+    properties.map((p) => ({ property: p, limit: maxLength(def, p) })),
+  ]),
+);
+
+// A placeholder can be longer than what it replaced, so the result is cut back to the field's limit.
+function redactFields(value: unknown, def: string): unknown {
+  const object = fields(value);
+  if (!object) return value;
+  const out = { ...object };
+  for (const { property, limit } of LIMITS.get(def) ?? []) {
+    const text = out[property];
+    if (typeof text === "string") {
+      out[property] = redactContact(text).slice(0, limit);
+    }
+  }
+  return out;
+}
 
 /** Copies an export with contact details removed from its free-text answers. */
 export function redactExport(
@@ -38,37 +74,26 @@ export function redactExport(
 ): Record<string, unknown> {
   const results = Array.isArray(root.results)
     ? root.results.map((r: unknown) => {
-        const result = fields(r);
-        if (!result) return r;
-        return {
-          ...result,
-          ...("q3_text" in result
-            ? { q3_text: redactString(result.q3_text) }
-            : {}),
-          ...(Array.isArray(result.annotations)
-            ? {
-                annotations: result.annotations.map((a: unknown) => {
-                  const annotation = fields(a);
-                  return annotation && "note" in annotation
-                    ? { ...annotation, note: redactString(annotation.note) }
-                    : a;
-                }),
-              }
-            : {}),
-        };
+        const result = redactFields(r, "result");
+        const object = fields(result);
+        return object && Array.isArray(object.annotations)
+          ? {
+              ...object,
+              annotations: object.annotations.map((a: unknown) =>
+                redactFields(a, "annotation"),
+              ),
+            }
+          : result;
       })
     : root.results;
-  const exitSurvey = fields(root.exitSurvey);
   return {
     ...root,
     results,
-    ...(exitSurvey && "exit_q6" in exitSurvey
-      ? {
-          exitSurvey: {
-            ...exitSurvey,
-            exit_q6: redactString(exitSurvey.exit_q6),
-          },
-        }
+    ...("profile" in root
+      ? { profile: redactFields(root.profile, "profile") }
+      : {}),
+    ...("exitSurvey" in root
+      ? { exitSurvey: redactFields(root.exitSurvey, "exitSurvey") }
       : {}),
   };
 }
