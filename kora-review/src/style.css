@@ -8,7 +8,7 @@
  *   --kora-color-accent  --kora-color-accent-text  --kora-color-accent-soft  --kora-color-child-bubble  --kora-color-code
  *   --kora-color-positive  --kora-color-positive-soft  --kora-color-negative  --kora-color-negative-soft
  *   --kora-color-neutral  --kora-color-on-semantic  --kora-color-highlight
- *   --kora-radius (controls, 12px)  --kora-radius-large (cards and sheets, 18px)
+ *   --kora-radius (controls, 6px)  --kora-radius-large (cards and sheets, 8px)
  *   --kora-font-family  --kora-font-family-display  --kora-font-family-mono
  *   --kora-top-offset (height of a sticky host header, 0px)  --kora-z-index (base for the tool's layers, 0)
  * Colour scheme follows prefers-color-scheme. Force one with data-kora-theme="light" or "dark" on an ancestor.
@@ -66,8 +66,8 @@
 }
 
 .kora-review {
-  --r: var(--kora-radius, 12px);
-  --r-lg: var(--kora-radius-large, 18px);
+  --r: var(--kora-radius, 6px);
+  --r-lg: var(--kora-radius-large, 8px);
   --f-display: var(
     --kora-font-family-display,
     "Kora Bricolage Grotesque",
@@ -118,7 +118,6 @@
   --hl: var(--kora-color-highlight, #ffe14d);
   --hl-ink: #151a2d;
   --dot-l: 46%;
-  --scrim: rgb(21 26 45 / 0.38);
   --shadow: 0 1px 2px rgb(21 26 45 / 0.06), 0 12px 32px rgb(21 26 45 / 0.12);
   --shadow-sm: 0 1px 2px rgb(21 26 45 / 0.06);
   color-scheme: light;
@@ -144,7 +143,6 @@
     --hl: var(--kora-color-highlight, #f2cf3a);
     --hl-ink: #151a2d;
     --dot-l: 68%;
-    --scrim: rgb(0 0 0 / 0.55);
     --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 12px 32px rgb(0 0 0 / 0.4);
     --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
     color-scheme: dark;
@@ -169,7 +167,6 @@
     --hl: var(--kora-color-highlight, #ffe14d);
     --hl-ink: #151a2d;
     --dot-l: 46%;
-    --scrim: rgb(21 26 45 / 0.38);
     --shadow: 0 1px 2px rgb(21 26 45 / 0.06), 0 12px 32px rgb(21 26 45 / 0.12);
     --shadow-sm: 0 1px 2px rgb(21 26 45 / 0.06);
     color-scheme: light;
@@ -195,7 +192,6 @@
   --hl: var(--kora-color-highlight, #f2cf3a);
   --hl-ink: #151a2d;
   --dot-l: 68%;
-  --scrim: rgb(0 0 0 / 0.55);
   --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 12px 32px rgb(0 0 0 / 0.4);
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
   color-scheme: dark;
@@ -356,7 +352,7 @@
 /* Brand + chips */
 .kora-review .mark {
   display: inline-flex;
-  border-radius: 8px;
+  border-radius: 4px;
   overflow: hidden;
   font: 800 13px/1 var(--f-display);
   box-shadow: var(--shadow-sm);
@@ -410,7 +406,7 @@
   align-items: center;
   gap: 3px;
   padding: 0 6px;
-  border-radius: 6px;
+  border-radius: 3px;
   font: 700 13px/1.5 var(--f-mono);
   vertical-align: 1px;
   white-space: nowrap;
@@ -450,14 +446,14 @@
   background: var(--plus-tint);
   text-decoration: underline solid var(--plus) 4px;
   text-underline-offset: 6px;
-  border-radius: 6px;
+  border-radius: 3px;
   padding: 0 4px;
 }
 .kora-review .m-neg {
   background: var(--minus-tint);
-  text-decoration: underline wavy var(--minus) 2.5px;
+  text-decoration: underline dashed var(--minus) 2.5px;
   text-underline-offset: 7px;
-  border-radius: 6px;
+  border-radius: 3px;
   padding: 0 4px;
 }
 .kora-review .lede {
@@ -647,7 +643,7 @@
   flex: 1;
   min-height: 40px;
   border: 0;
-  border-radius: 9px;
+  border-radius: 5px;
   background: transparent;
   font-weight: 700;
   cursor: pointer;
@@ -760,7 +756,7 @@
   gap: 4px;
   font: 800 15px var(--f-display);
   border: 2.5px solid currentColor;
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 3px 8px;
   transform: rotate(-5deg);
 }
@@ -927,7 +923,7 @@
 }
 .kora-review .cspan.v-neg {
   background: var(--minus-tint);
-  text-decoration: underline wavy var(--minus) 1.5px;
+  text-decoration: underline dashed var(--minus) 1.5px;
   text-underline-offset: 4px;
 }
 .kora-review .cspan.v-zero {
@@ -1045,13 +1041,13 @@
 }
 .kora-review .msg.user .bubble {
   background: var(--user);
-  border-radius: 20px 20px 6px 20px;
+  border-radius: 10px 10px 3px 10px;
   max-width: 86%;
 }
 .kora-review .msg.ai .bubble {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 20px 20px 20px 6px;
+  border-radius: 10px 10px 10px 3px;
   box-shadow: var(--shadow-sm);
 }
 .kora-review .bubble > * + * {
@@ -1068,7 +1064,7 @@
 .kora-review .bubble pre {
   margin-block: 0;
   background: var(--code-bg);
-  border-radius: 10px;
+  border-radius: 5px;
   padding: 10px 12px;
   overflow-x: auto;
   font: 14px/1.6 var(--f-mono);
@@ -1078,7 +1074,7 @@
   font-family: var(--f-mono);
   font-size: 0.86em;
   background: var(--code-bg);
-  border-radius: 5px;
+  border-radius: 3px;
   padding: 1px 4px;
 }
 .kora-review .bubble pre code {
@@ -1127,7 +1123,7 @@
 .kora-review .bubble .md-table {
   overflow-x: auto;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 5px;
 }
 .kora-review .bubble .md-table table {
   font-size: 15px;
@@ -1271,7 +1267,7 @@
 .kora-review .tk.neg,
 .kora-review .gap.neg {
   background: var(--minus-tint);
-  text-decoration: underline wavy var(--minus) 1.5px;
+  text-decoration: underline dashed var(--minus) 1.5px;
   text-underline-offset: 5px;
   padding-block: 3px;
 }
@@ -1400,7 +1396,7 @@
 .kora-review .ann-v {
   font: 800 13px/1 var(--f-display);
   padding: 4px 6px;
-  border-radius: 6px;
+  border-radius: 3px;
   flex: none;
   font-variant-numeric: tabular-nums;
 }
@@ -1481,7 +1477,7 @@
 .kora-review .mini {
   min-height: 32px;
   padding: 0 10px;
-  border-radius: 8px;
+  border-radius: 4px;
   border: 1px solid var(--line);
   background: var(--card);
   font-size: 13px;
@@ -1500,7 +1496,7 @@
   color: var(--muted);
   cursor: pointer;
   vertical-align: middle;
-  border-radius: 8px;
+  border-radius: 4px;
 }
 .kora-review .pencil .ic {
   width: 16px;
@@ -1513,7 +1509,7 @@
 .kora-review .tag {
   font: 700 11px var(--f-mono);
   padding: 2px 6px;
-  border-radius: 6px;
+  border-radius: 3px;
   background: var(--line);
   color: var(--ink);
 }
@@ -1600,7 +1596,13 @@
   flex-direction: column;
   gap: 12px;
 }
+.kora-review .rank {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 .kora-review .reveal h2,
+.kora-review .rank-h,
 .kora-review .sh-title {
   font-size: 22px;
   font-weight: 800;
@@ -1644,12 +1646,6 @@
   }
 }
 /* Bottom sheet */
-.kora-review .kr-scrim {
-  position: fixed;
-  inset: 0;
-  background: var(--scrim);
-  z-index: calc(var(--kora-z-index, 0) + 39);
-}
 .kora-review .kr-sheet {
   position: fixed;
   left: 0;
@@ -1669,7 +1665,7 @@
 }
 .kora-review .sheet-card {
   background: var(--card);
-  border-radius: 22px 22px 0 0;
+  border-radius: 10px 10px 0 0;
   box-shadow: 0 -10px 40px rgb(0 0 0 / 0.18);
   border: 1px solid var(--line);
   border-bottom: 0;
@@ -1687,7 +1683,7 @@
 .kora-review .grip {
   width: 40px;
   height: 5px;
-  border-radius: 9px;
+  border-radius: 5px;
   background: var(--line);
   margin: 0 auto 2px;
 }
@@ -1762,7 +1758,7 @@
 .kora-review .vbadge {
   font: 800 18px/1 var(--f-display);
   padding: 6px 9px;
-  border-radius: 8px;
+  border-radius: 4px;
   flex: none;
 }
 .kora-review .vbadge.v-pos {
@@ -1804,9 +1800,6 @@
   max-width: calc(100% - 32px);
   animation: kora-rise 0.2s ease-out;
 }
-.kora-review .toast .link {
-  color: var(--hl);
-}
 @keyframes kora-rise {
   from {
     transform: translateY(10px);
@@ -1846,29 +1839,6 @@
   100% {
     transform: translateY(-22px);
     opacity: 0;
-  }
-}
-/* Note prompt: a thin bar drains while the prompt is up */
-.kora-review .np-bar {
-  height: 4px;
-  border-radius: 2px;
-  background: var(--line);
-  overflow: hidden;
-}
-.kora-review .np-bar i {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-  border-radius: inherit;
-  transform-origin: right;
-  animation: kora-drain 2s linear both;
-}
-@keyframes kora-drain {
-  from {
-    transform: scaleX(1);
-  }
-  to {
-    transform: scaleX(0);
   }
 }
 .kora-review .sum-eq {
@@ -2043,6 +2013,7 @@
 .kora-review .msg.user.shared .bubble {
   max-width: min(640px, 100%);
   border-radius: var(--r-lg);
+  font-size: 19.5px;
 }
 .kora-review .side {
   display: flex;

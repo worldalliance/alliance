@@ -1,5 +1,4 @@
 import type { SheetCtx } from "./context.js";
-import type { TimerId } from "./runtime.js";
 import type { SheetMode, SheetOpts } from "./types.js";
 
 type SheetPart = HTMLElement | HTMLElement[] | null;
@@ -9,12 +8,10 @@ export function createSheet(ctx: SheetCtx) {
     $,
     S,
     applyNew,
-    cancel,
     clearSel,
     clip,
     isDestroyed,
     doc,
-    editNote,
     findAnn,
     flip,
     fmt,
@@ -31,11 +28,9 @@ export function createSheet(ctx: SheetCtx) {
     removeAnn,
     rootEl,
     saveNote,
-    scrim,
     selRange,
     setValue,
     setVar,
-    sheetConfirmPair,
     sheetEl,
     sheetIn,
     spanText,
@@ -43,26 +38,10 @@ export function createSheet(ctx: SheetCtx) {
     win,
   } = ctx;
 
-  // The sheet stays up for NOTE_PROMPT_MS offering a note, then slides away on its own.
-  const NOTE_PROMPT_MS = 2000;
-  let notePromptT: TimerId | null = null;
-  function promptNote(id: string) {
-    openSheet("noteprompt", { annId: id });
-    notePromptT = later(() => {
-      if (
-        S.sheet &&
-        S.sheet.mode === "noteprompt" &&
-        !sheetEl.contains(doc.activeElement)
-      )
-        closeSheet();
-    }, NOTE_PROMPT_MS);
-  }
   /* ---------- Bottom sheet ---------- */
-  const MODAL = new Set<SheetMode>(["confirm"]);
   let sheetReturn: HTMLElement | null = null;
   function openSheet(mode: SheetMode, opts: SheetOpts = {}) {
     stopAdvance();
-    cancel(notePromptT);
     const a = doc.activeElement;
     if (
       !S.sheet &&
@@ -74,8 +53,6 @@ export function createSheet(ctx: SheetCtx) {
     S.sheet = { mode, ...opts };
     renderSheet();
     sheetEl.hidden = false;
-    scrim.hidden = !MODAL.has(mode);
-    sheetEl.setAttribute("aria-modal", String(MODAL.has(mode)));
     raf(() => {
       if (!isDestroyed()) {
         sheetEl.classList.add("open");
@@ -83,20 +60,13 @@ export function createSheet(ctx: SheetCtx) {
         keepSelVisible();
       }
     });
-    if (MODAL.has(mode) && S.mounted)
-      later(() => {
-        const f = sheetEl.querySelector<HTMLElement>("button,select,textarea");
-        if (f) f.focus({ preventScroll: true });
-      }, 30);
   }
   function closeSheet() {
     stopAdvance();
-    cancel(notePromptT);
     const hadFocus = sheetEl.contains(doc.activeElement);
     S.sheet = null;
     sheetEl.classList.remove("open", "lowered");
     sheetEl.hidden = true;
-    scrim.hidden = true;
     setVar("--sheet-h", "0px");
     if (hadFocus && sheetReturn && sheetReturn.isConnected)
       sheetReturn.focus({ preventScroll: true });
@@ -131,9 +101,6 @@ export function createSheet(ctx: SheetCtx) {
       }
     }, 60);
   }
-  scrim.addEventListener("click", () => {
-    if (S.sheet) closeSheet();
-  });
   const NOTE_PLACEHOLDER =
     "Tell us why you feel positive or negative about this part of the chat.";
   function noteField(onEnter: (() => void) | null, onInput?: () => void) {
@@ -185,8 +152,6 @@ export function createSheet(ctx: SheetCtx) {
       new: { label: "Mark selection", parts: sheetNew },
       edit: { label: "Edit mark", parts: sheetEdit },
       note: { label: "Note", parts: sheetNote },
-      noteprompt: { label: "Add a note", parts: sheetNotePrompt },
-      confirm: { label: "Rank A vs B", parts: sheetConfirmPair },
     };
   function sheetNew(): SheetPart[] {
     if (!S.sel) return [];
@@ -336,37 +301,6 @@ export function createSheet(ctx: SheetCtx) {
       ),
     ];
   }
-  function sheetNotePrompt(): SheetPart[] {
-    const a = sheetAnn();
-    if (!a) return [];
-    return [
-      h(
-        "div",
-        { class: "sh-top" },
-        markBadge(a.value, "vbadge"),
-        h("p", { class: "sh-prev" }, `“${clip(a.text, 160)}”`),
-      ),
-      h(
-        "div",
-        { class: "sh-acts" },
-        h(
-          "button",
-          {
-            type: "button",
-            class: "big primary",
-            onclick: () => editNote(a.id),
-          },
-          icon("pencil"),
-          "Add a note",
-        ),
-      ),
-      h(
-        "span",
-        { class: "np-bar", "aria-hidden": "true" },
-        h("i", { style: `animation-duration:${NOTE_PROMPT_MS}ms` }),
-      ),
-    ];
-  }
   function sheetNote(): SheetPart[] {
     const a = sheetAnn();
     if (!a) return [];
@@ -411,12 +345,10 @@ export function createSheet(ctx: SheetCtx) {
 
   return {
     disconnectResize,
-    MODAL,
     closeSheet,
     focusNote,
     keepSelVisible,
     openSheet,
-    promptNote,
     renderSheet,
     syncSheetH,
   };

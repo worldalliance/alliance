@@ -110,9 +110,9 @@ export type PairDraft = {
   reasonEdited: boolean;
 };
 
-export type SheetMode = "new" | "edit" | "note" | "noteprompt" | "confirm";
+export type SheetMode = "new" | "edit" | "note";
 
-export type SheetOpts = { kb?: boolean; annId?: string; d?: PairDraft };
+export type SheetOpts = { kb?: boolean; annId?: string };
 
 export type SheetState = { mode: SheetMode } & SheetOpts;
 

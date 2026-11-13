@@ -4,7 +4,6 @@ export type TimerId = ReturnType<typeof setTimeout>;
 export type IconName =
   | "up"
   | "down"
-  | "undo"
   | "list"
   | "lock"
   | "left"
@@ -20,7 +19,9 @@ type ListenOpts = boolean | AddEventListenerOptions;
 
 /** Event handlers by property name, so `onkeydown` gets a KeyboardEvent. */
 type Handlers = {
-  [K in keyof HTMLElementEventMap as `on${K}`]?: Listener<HTMLElementEventMap[K]>;
+  [K in keyof HTMLElementEventMap as `on${K}`]?: Listener<
+    HTMLElementEventMap[K]
+  >;
 };
 export type Props = Handlers & { [attr: string]: unknown };
 export type Kid = Node | string | number | boolean | null | undefined | Kid[];
@@ -37,7 +38,8 @@ export function createRuntime(ctx: RuntimeCtx) {
   const P = `kr${++instances}-`; // id prefix, unique per mount
   const doc = host.ownerDocument;
   const view = doc.defaultView;
-  if (!view) throw new Error("The review tool needs a host element in a window.");
+  if (!view)
+    throw new Error("The review tool needs a host element in a window.");
   const win = view;
   const listeners: (() => void)[] = [];
   function on<K extends keyof WindowEventMap>(
@@ -129,7 +131,6 @@ export function createRuntime(ctx: RuntimeCtx) {
   const ICONS: Record<IconName, string> = {
     up: '<path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/>',
     down: '<g transform="rotate(180 12 12)"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></g>',
-    undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
     list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
     lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
     left: '<path d="m15 18-6-6 6-6"/>',
@@ -161,7 +162,6 @@ export function createRuntime(ctx: RuntimeCtx) {
   /* ---------- DOM skeleton, all inside the host's element ---------- */
   const rootEl = h("div", { class: "kora-review", "data-kora-review": "" });
   const app = h("div", { class: "kr-app" });
-  const scrim = h("div", { class: "kr-scrim", hidden: true });
   const sheetIn = h("div", { class: "wrap sheet-in" });
   const sheetEl = h(
     "div",
@@ -180,7 +180,7 @@ export function createRuntime(ctx: RuntimeCtx) {
     "aria-live": "polite",
     "aria-atomic": "true",
   });
-  rootEl.append(app, scrim, sheetEl, toasts, live);
+  rootEl.append(app, sheetEl, toasts, live);
   host.append(rootEl);
   const $ = (id: string) => rootEl.querySelector<HTMLElement>("#" + P + id);
   const $$ = (sel: string) => rootEl.querySelectorAll<HTMLElement>(sel);
@@ -218,7 +218,6 @@ export function createRuntime(ctx: RuntimeCtx) {
     on,
     raf,
     rootEl,
-    scrim,
     setVar,
     sheetEl,
     sheetIn,

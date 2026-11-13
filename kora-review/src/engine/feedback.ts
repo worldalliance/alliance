@@ -18,26 +18,8 @@ export function createFeedback(ctx: FeedbackCtx) {
 
   /* ---------- Toast ---------- */
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
-  function toast(msg: string, undoFn?: () => void) {
-    const el = h(
-      "div",
-      { class: "toast", role: "status" },
-      h("span", {}, msg),
-      undoFn
-        ? h(
-            "button",
-            {
-              type: "button",
-              class: "link",
-              onclick: () => {
-                toasts.replaceChildren();
-                undoFn();
-              },
-            },
-            "Undo",
-          )
-        : null,
-    );
+  function toast(msg: string) {
+    const el = h("div", { class: "toast", role: "status" }, h("span", {}, msg));
     toasts.replaceChildren(el);
     cancel(toastTimer);
     toastTimer = later(() => el.remove(), 5000);

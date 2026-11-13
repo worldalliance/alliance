@@ -25,7 +25,7 @@ export function quotedReason(text: string, note?: string): string {
   return `“${quote}”${tail}`;
 }
 
-/** The answers a finished draft locks in, or null while one is missing. */
+/** The answers a finished draft saves, or null while one is missing. */
 function readyAnswers(d: PairDraft): Answers | null {
   if (!d.q0.a || !d.q0.b || !d.q1 || d.turn == null) return null;
   if (d.reason.trim().length < REASON_MIN) return null;
@@ -40,6 +40,7 @@ function readyAnswers(d: PairDraft): Answers | null {
 
 export function createRanking(ctx: RankingCtx) {
   const {
+    $,
     Q0_LABEL,
     S,
     aiTurn,
@@ -60,7 +61,6 @@ export function createRanking(ctx: RankingCtx) {
     recompute,
     renderReview,
     res,
-    sheetEl,
     shownSides,
     sideNets,
     sideOf,
@@ -68,16 +68,12 @@ export function createRanking(ctx: RankingCtx) {
   } = ctx;
   const closeSheet: Late["closeSheet"] = (...args) =>
     ctx.late().closeSheet(...args);
-  const renderSheet: Late["renderSheet"] = (...args) =>
-    ctx.late().renderSheet(...args);
-  const syncSheetH: Late["syncSheetH"] = (...args) =>
-    ctx.late().syncSheetH(...args);
 
-  function lockIn() {
+  function save() {
     const t = cur(),
       r = ensure(t);
     if (r.status === "done") return;
-    const answers = S.sheet?.d && readyAnswers(S.sheet.d);
+    const answers = readyAnswers(pairDraft(t, r));
     if (!answers) return;
     bankTime();
     r.answers = answers;
@@ -93,7 +89,7 @@ export function createRanking(ctx: RankingCtx) {
     renderReview();
     const next = nextPendingIndex();
     announce(
-      `Locked in ${callOf(t, r).text}. ${progressText()}. ${next === -1 ? "Finishing" : "Next pair"} shortly.`,
+      `Saved ${callOf(t, r).text}. ${progressText()}. ${next === -1 ? "Finishing" : "Next pair"} shortly.`,
     );
     startAdvance();
   }
@@ -101,7 +97,7 @@ export function createRanking(ctx: RankingCtx) {
   // Ranking a pair asks KORA's questions, pre-filled from the marks: each AI's net gives Safe (+), Unsafe (−) or
   // I can't tell (0); the gap between the nets gives which is safer (2+ apart is "Clearly"); the weaker AI's first −1
   // gives the turn where it goes wrong, and its words and note start the reason. The reviewer confirms or changes each.
-  // Answers the reviewer picks are saved as they go (as a pending result), so a half-answered sheet survives a reload.
+  // Answers the reviewer picks are saved as they go (as a pending result), so a half-answered ranking survives a reload.
   function pairDraft(t: Transcript, r: Result) {
     const n = sideNets(t, r),
       d: PairDraft = {
@@ -150,21 +146,24 @@ export function createRanking(ctx: RankingCtx) {
     else r.answers[k] = v;
     changed();
   }
-  function sheetConfirmPair() {
+  // Redrawn on every mark change, so the unanswered questions keep following the marks.
+  function renderRank(focusSel?: string) {
+    const sec = $("rank");
+    if (!sec) return;
     const t = cur(),
       r = res(t);
-    if (!S.sheet) throw new Error("no sheet open");
-    const d = (S.sheet.d ||= pairDraft(t, r)),
+    sec.replaceChildren(
+      ...rankParts(t, r)
+        .flat()
+        .filter((x) => x != null),
+    );
+    if (focusSel)
+      sec.querySelector<HTMLElement>(focusSel)?.focus({ preventScroll: true });
+  }
+  function rankParts(t: Transcript, r: Result) {
+    const d = pairDraft(t, r),
       [L, R] = shownSides(t),
       nets = sideNets(t, r);
-    const rerender = (focusSel?: string) => {
-      renderSheet();
-      syncSheetH();
-      if (focusSel) {
-        const b = sheetEl.querySelector<HTMLElement>(focusSel);
-        if (b) b.focus({ preventScroll: true });
-      }
-    };
     const seg = (
       key: string,
       label: string,
@@ -186,7 +185,7 @@ export function createRanking(ctx: RankingCtx) {
                 "aria-pressed": String(op.on),
                 onclick: () => {
                   op.pick();
-                  rerender(`[data-q="${key + i}"]`);
+                  renderRank(`[data-q="${key + i}"]`);
                 },
               },
               op.text,
@@ -232,23 +231,22 @@ export function createRanking(ctx: RankingCtx) {
         },
       })),
     );
-    const lock = h("button", {
+    const saveBtn = h("button", {
       type: "button",
       class: "big primary",
-      onclick: lockIn,
+      onclick: save,
     });
     // While only the reason is holding things up, the button says so instead of just greying out.
-    const paintLock = () => {
+    const paintSave = () => {
       const ready = !!readyAnswers(d),
         wantsReason =
           !ready && !!readyAnswers({ ...d, reason: "x".repeat(REASON_MIN) });
-      lock.disabled = !ready;
-      lock.replaceChildren(
-        icon("lock"),
-        wantsReason ? "Explain why to lock in" : "Lock in",
-      );
+      saveBtn.disabled = !ready;
+      saveBtn.textContent = wantsReason
+        ? "Explain why to continue"
+        : "Save and continue";
     };
-    paintLock();
+    paintSave();
     let failing: HTMLElement[] | null = null;
     if (d.q1) {
       const weaker = other(d.q1.side),
@@ -260,7 +258,7 @@ export function createRanking(ctx: RankingCtx) {
           onchange: () => {
             d.turn = sel.value === "none" ? "none" : Number(sel.value);
             answer("q2_turn", d.turn);
-            paintLock();
+            paintSave();
           },
         },
         Array.from({ length: aiTurns(t, weaker) }, (_, i) =>
@@ -301,7 +299,7 @@ export function createRanking(ctx: RankingCtx) {
         d.reasonEdited = true;
         answer("q3_text", ta.value.slice(0, REASON_MAX));
         paintHint();
-        paintLock();
+        paintSave();
       });
       paintHint();
       failing = [
@@ -325,6 +323,7 @@ export function createRanking(ctx: RankingCtx) {
       ];
     }
     return [
+      h("h2", { class: "rank-h", id: "rank-h" }, "Rank A vs B"),
       h(
         "p",
         { class: "sum-eq" },
@@ -354,18 +353,9 @@ export function createRanking(ctx: RankingCtx) {
       q0(R),
       q1,
       failing,
-      h(
-        "div",
-        { class: "sh-acts" },
-        lock,
-        h(
-          "button",
-          { type: "button", class: "big ghost", onclick: closeSheet },
-          "Keep editing",
-        ),
-      ),
+      h("div", { class: "sh-acts" }, saveBtn),
     ];
   }
 
-  return { sheetConfirmPair };
+  return { renderRank };
 }

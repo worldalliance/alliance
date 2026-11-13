@@ -35,9 +35,10 @@ export function createReview(ctx: ReviewCtx) {
     sign,
     vcls,
   } = ctx;
-  const openSheet: Late["openSheet"] = (...args) => ctx.late().openSheet(...args);
-  const renderAnns: Late["renderAnns"] = (...args) => ctx.late().renderAnns(...args);
-  const undo: Late["undo"] = (...args) => ctx.late().undo(...args);
+  const renderRank: Late["renderRank"] = (...args) =>
+    ctx.late().renderRank(...args);
+  const renderAnns: Late["renderAnns"] = (...args) =>
+    ctx.late().renderAnns(...args);
 
   /* ---------- Review ---------- */
   function renderReview() {
@@ -92,18 +93,6 @@ export function createReview(ctx: ReviewCtx) {
             h("span", { class: "sv", id: "score-v" }),
             h("span", { class: "sn", id: "score-net" }),
           ),
-          h(
-            "button",
-            {
-              type: "button",
-              class: "tbtn",
-              id: "undo",
-              title: "Undo (U)",
-              onclick: undo,
-            },
-            icon("undo"),
-            "Undo",
-          ),
         ),
         chal,
       ),
@@ -142,6 +131,14 @@ export function createReview(ctx: ReviewCtx) {
         ),
       );
     main.append(...banners, renderContext(t), renderPair(t, locked));
+    if (!locked)
+      main.append(
+        h("section", {
+          class: "rank card",
+          id: "rank",
+          "aria-labelledby": "rank-h",
+        }),
+      );
     main.append(
       h("section", { class: "reveal", id: "reveal", hidden: !locked }),
     );
@@ -180,10 +177,14 @@ export function createReview(ctx: ReviewCtx) {
               {
                 type: "button",
                 class: "btn primary",
-                onclick: () => openSheet("confirm"),
+                onclick: () => {
+                  const rank = $("rank");
+                  rank?.scrollIntoView({ block: "start" });
+                  rank?.querySelector("button")?.focus({ preventScroll: true });
+                },
               },
               icon("scale"),
-              "Ready to Rank A vs B",
+              "Ready to rank A vs B",
             ),
       ),
     );
@@ -193,9 +194,9 @@ export function createReview(ctx: ReviewCtx) {
       if (first && first.tokens[0]) first.tokens[0].el.classList.add("pulse");
     }
     renderAnns();
+    renderRank();
     renderScore(true);
     renderReveal();
-    updateUndo();
     paintSave();
   }
   function dismissCoach() {
@@ -362,7 +363,8 @@ export function createReview(ctx: ReviewCtx) {
       h("span", { class: "dim", "aria-hidden": "true" }, "·"),
       ...part(R),
     );
-    const say = (side: Side) => `AI ${letter(t, side)} net ${fmtNet(nets[side].net)}`;
+    const say = (side: Side) =>
+      `AI ${letter(t, side)} net ${fmtNet(nets[side].net)}`;
     el.setAttribute("aria-label", `${say(L)}, ${say(R)}`);
     for (const side of [L, R]) {
       const c = $("score-" + side);
@@ -416,12 +418,7 @@ export function createReview(ctx: ReviewCtx) {
       "ul",
       { class: "psum" },
       shownSides(t).map((side) =>
-        h(
-          "li",
-          {},
-          h("b", {}, `AI ${letter(t, side)}: `),
-          safetyLabel(side),
-        ),
+        h("li", {}, h("b", {}, `AI ${letter(t, side)}: `), safetyLabel(side)),
       ),
       failing
         ? h(
@@ -436,12 +433,6 @@ export function createReview(ctx: ReviewCtx) {
       j.q3_text ? h("li", { class: "dim" }, j.q3_text) : null,
     );
   }
-  function updateUndo() {
-    const b = $("undo");
-    if (!(b instanceof HTMLButtonElement)) return;
-    const st = S.history[cur().id];
-    b.disabled = res(cur()).status === "done" || !st || !st.length;
-  }
   // The footer's middle slot: the locked call, or nothing. Save status is the host's to show.
   function paintSave() {
     const el = $("savestat");
@@ -450,5 +441,5 @@ export function createReview(ctx: ReviewCtx) {
     el.textContent = r && r.status === "done" ? callOf(cur(), r).text : "";
   }
 
-  return { dismissCoach, renderReview, renderScore, updateUndo };
+  return { dismissCoach, renderReview, renderScore };
 }

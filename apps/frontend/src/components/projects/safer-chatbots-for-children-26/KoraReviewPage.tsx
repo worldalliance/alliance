@@ -98,7 +98,7 @@ function ReviewTool({
       <div
         ref={mountAt}
         data-kora-theme="light"
-        className="[--kora-font-family:var(--site-font-body)] [--kora-font-family-display:var(--site-font-display)] [--kora-top-offset:78px]"
+        className="[--kora-font-family:var(--site-font-body)] [--kora-font-family-display:var(--site-font-display)] [--kora-top-offset:var(--site-nav-height)]"
       />
     </>
   );

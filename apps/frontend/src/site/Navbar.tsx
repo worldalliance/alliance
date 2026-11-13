@@ -81,7 +81,10 @@ export function Navbar({
     if (!header) return;
     const root = document.documentElement.style;
     const publish = () =>
-      root.setProperty("--site-nav-height", `${header.offsetHeight}px`);
+      root.setProperty(
+        "--site-nav-height",
+        `${header.getBoundingClientRect().height}px`,
+      );
     publish();
     const observer = new ResizeObserver(publish);
     observer.observe(header);

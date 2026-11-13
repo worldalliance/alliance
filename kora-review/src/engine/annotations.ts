@@ -24,17 +24,20 @@ export function createAnnotations(ctx: AnnotationsCtx) {
     renderScore,
     res,
     sheetEl,
-    sideOf,
     spanText,
     toast,
-    updateUndo,
     vcls,
   } = ctx;
-  const closeSheet: Late["closeSheet"] = (...args) => ctx.late().closeSheet(...args);
-  const focusNote: Late["focusNote"] = (...args) => ctx.late().focusNote(...args);
-  const openSheet: Late["openSheet"] = (...args) => ctx.late().openSheet(...args);
-  const promptNote: Late["promptNote"] = (...args) => ctx.late().promptNote(...args);
-  const renderSel: Late["renderSel"] = (...args) => ctx.late().renderSel(...args);
+  const closeSheet: Late["closeSheet"] = (...args) =>
+    ctx.late().closeSheet(...args);
+  const focusNote: Late["focusNote"] = (...args) =>
+    ctx.late().focusNote(...args);
+  const openSheet: Late["openSheet"] = (...args) =>
+    ctx.late().openSheet(...args);
+  const renderRank: Late["renderRank"] = (...args) =>
+    ctx.late().renderRank(...args);
+  const renderSel: Late["renderSel"] = (...args) =>
+    ctx.late().renderSel(...args);
   const selRange: Late["selRange"] = (...args) => ctx.late().selRange(...args);
 
   function renderAnns() {
@@ -159,7 +162,7 @@ export function createAnnotations(ctx: AnnotationsCtx) {
     renderAnns();
     renderSel();
     renderScore();
-    updateUndo();
+    renderRank();
   }
   function undo() {
     const t = cur(),
@@ -176,7 +179,7 @@ export function createAnnotations(ctx: AnnotationsCtx) {
     renderAnns();
     renderSel();
     renderScore();
-    updateUndo();
+    renderRank();
     toast("Undone");
   }
   function overlapping(mi: number, s: number, e: number) {
@@ -231,19 +234,6 @@ export function createAnnotations(ctx: AnnotationsCtx) {
       `Marked ${fmt(v) === "0" ? "a note on" : fmt(v)} “${clip(ann.text, 60)}”.${replaced ? ` Replaced ${plural(replaced, "mark")}.` : ""}`,
     );
     if (kb) view.bubble.focus({ preventScroll: true });
-    if (v < 0 && !note && isFirstMinus(ann)) promptNote(ann.id);
-  }
-  // The first −1 per AI is the one that seeds the lock-in reason, so it's worth a nudge to say why.
-  function isFirstMinus(ann: Annotation) {
-    const t = cur(),
-      side = sideOf(t, ann.messageIndex);
-    return !res(t).annotations.some(
-      (a) =>
-        a.id !== ann.id &&
-        a.value < 0 &&
-        !a.orphaned &&
-        sideOf(t, a.messageIndex) === side,
-    );
   }
   function editNote(id: string) {
     const a = findAnn(id);
@@ -261,7 +251,8 @@ export function createAnnotations(ctx: AnnotationsCtx) {
     if (!a) throw new Error(`no annotation ${id}`);
     return a;
   }
-  const findAnn = (id: string) => res(cur()).annotations.find((a) => a.id === id);
+  const findAnn = (id: string) =>
+    res(cur()).annotations.find((a) => a.id === id);
   function openEdit(id: string) {
     const a = findAnn(id);
     S.sel = null;
@@ -298,7 +289,7 @@ export function createAnnotations(ctx: AnnotationsCtx) {
     S.noteDraft = "";
     renderAnns();
     closeSheet();
-    toast(msg || `Changed to ${fmt(to)}`, undo);
+    toast(msg || `Changed to ${fmt(to)}`);
   }
   // Tapping away doesn't drop an open selection (only ✕ or Escape does): it points at the choices instead.
   function nudgeChoice() {
@@ -320,7 +311,7 @@ export function createAnnotations(ctx: AnnotationsCtx) {
     S.editing = null;
     renderAnns();
     closeSheet();
-    toast(`Removed ${fmt(a.value)}`, undo);
+    toast(`Removed ${fmt(a.value)}`);
   }
   function saveNote() {
     const annId = S.sheet?.annId;
@@ -335,7 +326,7 @@ export function createAnnotations(ctx: AnnotationsCtx) {
     S.noteDraft = "";
     renderAnns();
     closeSheet();
-    toast(note ? "Note saved" : "Note removed", undo);
+    toast(note ? "Note saved" : "Note removed");
   }
 
   return {

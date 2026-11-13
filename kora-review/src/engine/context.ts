@@ -39,20 +39,17 @@ export type Late = {
   focusNote(): void;
   needsWarning(t: Transcript): boolean;
   openSheet(mode: SheetMode, opts?: SheetOpts): void;
-  promptNote(id: string): void;
   renderAnns(): void;
   renderExit(): void;
   renderFinish(): void;
   renderProfile(): void;
   renderQueue(): void;
+  renderRank(): void;
   renderReview(): void;
   renderSel(): void;
-  renderSheet(): void;
   renderWarning(next: { then: string }): void;
   renderWelcome(): void;
   selRange(): [number, number];
-  syncSheetH(): void;
-  undo(): void;
 };
 
 type Api<F extends (ctx: never) => unknown> = ReturnType<F>;

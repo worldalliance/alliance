@@ -3,7 +3,6 @@ import type { KeyboardCtx } from "./context.js";
 export function createKeyboard(ctx: KeyboardCtx) {
   const {
     $,
-    MODAL,
     S,
     applyNew,
     clamp,
@@ -97,7 +96,6 @@ export function createKeyboard(ctx: KeyboardCtx) {
       }
       return;
     }
-    if (S.sheet && MODAL.has(S.sheet.mode)) return;
     const locked = res(cur()).status === "done";
     const k = e.key;
     const onButton = target.closest("button,a,summary");
@@ -139,11 +137,6 @@ export function createKeyboard(ctx: KeyboardCtx) {
       if (n) n.focus();
       return;
     }
-    if (k === "u" || k === "U") {
-      e.preventDefault();
-      undo();
-      return;
-    }
     if (k === "Backspace" || k === "Delete") {
       if (S.editing) {
         e.preventDefault();
@@ -165,7 +158,7 @@ export function createKeyboard(ctx: KeyboardCtx) {
             r.annotations = r.annotations.filter((a) => !ids.has(a.id));
           });
           clearSel();
-          toast(`Removed ${plural(hits.length, "mark")}`, undo);
+          toast(`Removed ${plural(hits.length, "mark")}`);
         }
       }
     }

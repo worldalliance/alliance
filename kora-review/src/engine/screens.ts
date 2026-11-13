@@ -1,10 +1,35 @@
+import { CONTENT_WARNING } from "../categories.js";
 import type { KoraCategory } from "../types.gen.js";
 import type { ScreensCtx } from "./context.js";
 import type { Transcript } from "./types.js";
-import { CONTENT_WARNING } from "../categories.js";
 
 export function createScreens(ctx: ScreensCtx) {
-  const { CAT, S, announce, app, brandMark, callOf, catChip, catLabel, category, changed, ensure, finishFlow, firstPendingIndex, h, icon, openTranscript, plural, progressText, refreshList, renderMarkdown, res, reviewed, startReviewing, transcript } = ctx;
+  const {
+    CAT,
+    S,
+    announce,
+    app,
+    brandMark,
+    callOf,
+    catChip,
+    catLabel,
+    category,
+    changed,
+    ensure,
+    finishFlow,
+    firstPendingIndex,
+    h,
+    icon,
+    openTranscript,
+    plural,
+    progressText,
+    refreshList,
+    renderMarkdown,
+    res,
+    reviewed,
+    startReviewing,
+    transcript,
+  } = ctx;
 
   /* ---------- Content warning before sensitive pairs ---------- */
   // Shown before each pending pair in a sensitive category the reviewer hasn't opened yet and hasn't skipped.
@@ -193,7 +218,7 @@ export function createScreens(ctx: ScreensCtx) {
             h(
               "div",
               {},
-              h("b", {}, "Compare and lock in"),
+              h("b", {}, "Compare and save"),
               h(
                 "span",
                 {},

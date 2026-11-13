@@ -28,16 +28,24 @@ export function createFlow(ctx: FlowCtx) {
     rootEl,
     win,
   } = ctx;
-  const closeSheet: Late["closeSheet"] = (...args) => ctx.late().closeSheet(...args);
-  const needsWarning: Late["needsWarning"] = (...args) => ctx.late().needsWarning(...args);
-  const openSheet: Late["openSheet"] = (...args) => ctx.late().openSheet(...args);
-  const renderExit: Late["renderExit"] = (...args) => ctx.late().renderExit(...args);
-  const renderFinish: Late["renderFinish"] = (...args) => ctx.late().renderFinish(...args);
-  const renderProfile: Late["renderProfile"] = (...args) => ctx.late().renderProfile(...args);
-  const renderQueue: Late["renderQueue"] = (...args) => ctx.late().renderQueue(...args);
-  const renderReview: Late["renderReview"] = (...args) => ctx.late().renderReview(...args);
-  const renderWarning: Late["renderWarning"] = (...args) => ctx.late().renderWarning(...args);
-  const renderWelcome: Late["renderWelcome"] = (...args) => ctx.late().renderWelcome(...args);
+  const closeSheet: Late["closeSheet"] = (...args) =>
+    ctx.late().closeSheet(...args);
+  const needsWarning: Late["needsWarning"] = (...args) =>
+    ctx.late().needsWarning(...args);
+  const renderExit: Late["renderExit"] = (...args) =>
+    ctx.late().renderExit(...args);
+  const renderFinish: Late["renderFinish"] = (...args) =>
+    ctx.late().renderFinish(...args);
+  const renderProfile: Late["renderProfile"] = (...args) =>
+    ctx.late().renderProfile(...args);
+  const renderQueue: Late["renderQueue"] = (...args) =>
+    ctx.late().renderQueue(...args);
+  const renderReview: Late["renderReview"] = (...args) =>
+    ctx.late().renderReview(...args);
+  const renderWarning: Late["renderWarning"] = (...args) =>
+    ctx.late().renderWarning(...args);
+  const renderWelcome: Late["renderWelcome"] = (...args) =>
+    ctx.late().renderWelcome(...args);
 
   const changed = () => {
     if (!isDestroyed() && S.mounted) o.onChange();
@@ -179,7 +187,7 @@ export function createFlow(ctx: FlowCtx) {
     intro.el.remove();
     intro = null;
   }
-  // Time on each pair: visible time with it open, banked into its result when the reviewer leaves it, hides the page, or locks it.
+  // Time on each pair: visible time with it open, banked into its result when the reviewer leaves it, hides the page, or saves it.
   let openedAt: number | null = null;
   function bankTime() {
     const at = openedAt;
@@ -236,7 +244,7 @@ export function createFlow(ctx: FlowCtx) {
     o.onComplete();
   }
 
-  // After locking, the stamp shows for ADVANCE_MS and then the tool moves on. Opening a sheet or leaving cancels it.
+  // After saving, the stamp shows for ADVANCE_MS and then the tool moves on. Opening a sheet or leaving cancels it.
   const ADVANCE_MS = 750;
   let advance: ReturnType<typeof setTimeout> | null = null;
   function startAdvance() {
@@ -272,14 +280,6 @@ export function createFlow(ctx: FlowCtx) {
           : -1;
       if (i >= 0) {
         openTranscript(i);
-        // Reopen a half-answered ranking where the reviewer left it.
-        const r = res(cur());
-        if (
-          S.screen === "review" &&
-          r.status !== "done" &&
-          Object.keys(r.answers).length
-        )
-          openSheet("confirm");
       } else if (
         S.all.some((t) => res(t).startedAt || res(t).status === "done")
       )

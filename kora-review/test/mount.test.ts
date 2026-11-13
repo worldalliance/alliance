@@ -74,6 +74,7 @@ const button = (text: string | RegExp, root: ParentNode = el) => {
   return b;
 };
 const sheet = () => el.querySelector(".kr-sheet") as HTMLElement;
+const rank = () => el.querySelector(".rank") as HTMLElement;
 const tick = (ms = 0) => advanceTimersByTimeAsync(ms);
 
 const realFetch = globalThis.fetch;
@@ -101,11 +102,10 @@ describe("mountKoraReview", () => {
     mount({ savedExport: saved });
     await tick(50);
 
-    // Reopened on the same pair, with the half-answered ranking sheet open again.
+    // Reopened on the same pair, with the half-answered ranking below it.
     expect(el.querySelector(".ctx h1")?.textContent).toBe("Essay due tomorrow");
-    expect(sheet().hidden).toBe(false);
     // Saved answers are restored; the comparison isn't answered yet, so it shows the pre-fill from the marks.
-    const groups = [...sheet().querySelectorAll(".seg")].map(
+    const groups = [...rank().querySelectorAll(".seg")].map(
       (g) => g.querySelector('[aria-pressed="true"]')?.textContent,
     );
     expect(groups.slice(0, 2).sort()).toEqual(["Safe", "Unsafe"]);
@@ -122,7 +122,7 @@ describe("mountKoraReview", () => {
 
     // Re-picking an answer the reviewer already gave is a change: the export round-trips.
     const safe = [
-      ...sheet().querySelectorAll('button[aria-pressed="true"]'),
+      ...rank().querySelectorAll('button[aria-pressed="true"]'),
     ].find((b) => b.textContent === "Safe") as HTMLButtonElement;
     safe.click();
     await handle!.flush();
@@ -164,9 +164,7 @@ describe("mountKoraReview", () => {
     expect(saves[0]!.currentTranscriptId).toBe("SAMPLE-01");
 
     // A change while that save hangs: no second save until it settles.
-    button("Ready to Rank A vs B").click();
-    await tick(50);
-    button("Unsafe", sheet()).click();
+    button("Unsafe", rank()).click();
     await tick(10_000);
     expect(opts.save).toHaveBeenCalledTimes(1);
     release();
@@ -197,9 +195,7 @@ describe("mountKoraReview", () => {
     expect(el.textContent).not.toMatch(/fail|error|couldn't save/i); // the host shows the error, not the tool
 
     refuse = false;
-    button("Ready to Rank A vs B").click();
-    await tick(50);
-    button("Unsafe", sheet()).click();
+    button("Unsafe", rank()).click();
     await tick(2100);
     expect(opts.onSaveStateChange).toHaveBeenLastCalledWith(
       KoraSaveState.Saved,
@@ -219,23 +215,21 @@ describe("mountKoraReview", () => {
     await tick(10);
     button("Got it").click();
     await tick(1300);
-    button("Ready to Rank A vs B").click();
-    await tick(50);
     // Both AIs: Safe. Then which was safer, then why.
-    for (const b of [...sheet().querySelectorAll("button")].filter(
+    for (const b of [...rank().querySelectorAll("button")].filter(
       (x) => x.textContent === "Safe",
     )) {
       b.click();
       await tick(0);
     }
-    button("Clearly A", sheet()).click();
+    button("Clearly A", rank()).click();
     await tick(0);
-    const reason = sheet().querySelector("textarea") as HTMLTextAreaElement;
+    const reason = rank().querySelector("textarea") as HTMLTextAreaElement;
     reason.value = "AI B writes the whole essay for the child";
     reason.dispatchEvent(new Event("input"));
-    const lock = button("Lock in", sheet()) as HTMLButtonElement;
-    expect(lock.disabled).toBe(false);
-    lock.click();
+    const save = button("Save and continue", rank()) as HTMLButtonElement;
+    expect(save.disabled).toBe(false);
+    save.click();
     await tick(800);
 
     expect(el.textContent).toContain("A few questions about the task");
@@ -290,7 +284,9 @@ describe("mountKoraReview", () => {
     expect(el.querySelectorAll(".tk.pos")).toHaveLength(0);
     expect(el.querySelectorAll(".tk.neg")).toHaveLength(1);
 
-    press("u");
+    reply.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true }),
+    );
     await tick(10);
     expect(el.querySelectorAll(".tk.pos")).toHaveLength(1);
 
@@ -299,6 +295,30 @@ describe("mountKoraReview", () => {
     expect(el.querySelectorAll(".tk.pos,.tk.neg")).toHaveLength(0);
     await handle!.flush();
     expect(saves.at(-1)!.results[0]!.annotations).toEqual([]);
+  });
+
+  it("updates the ranking from a −1 without a note prompt or an Undo button", async () => {
+    mount();
+    button("Start reviewing").click();
+    await tick(10);
+    button("Got it", el.querySelector(".kr-intro")!).click();
+    await tick(1300);
+    const answers = () =>
+      [...rank().querySelectorAll(".seg")]
+        .slice(0, 2)
+        .map((g) => g.querySelector('[aria-pressed="true"]')?.textContent);
+    expect(answers()).toEqual(["I can't tell", "I can't tell"]);
+
+    const reply = el.querySelector<HTMLElement>('.bubble[tabindex="0"]')!;
+    reply.focus();
+    for (const key of ["ArrowRight", "-"])
+      reply.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+    await tick(3000);
+
+    expect(el.querySelectorAll(".tk.neg")).toHaveLength(1);
+    expect(sheet().hidden).toBe(true);
+    expect(buttons().some((b) => b.textContent?.trim() === "Undo")).toBe(false);
+    expect(answers()).toContain("Unsafe");
   });
 
   it("warns before a sensitive pair, and records skipping it or its whole category", async () => {
