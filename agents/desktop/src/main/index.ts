@@ -23,6 +23,15 @@ function serveRenderer(request: Request): Promise<Response> {
   return net.fetch(pathToFileURL(file).toString());
 }
 
+function exitUnloaded(cause: string): void {
+  const message = `Alliance agent couldn't load its window: ${cause}`;
+  console.error(message);
+  if (!headless) {
+    dialog.showErrorBox("Alliance agent couldn't load its window", message);
+  }
+  app.exit(1);
+}
+
 function createWindow(): void {
   const window = new BrowserWindow({ width: 1200, height: 800, show: false });
   if (!headless) window.once("ready-to-show", () => window.show());
@@ -36,12 +45,7 @@ function createWindow(): void {
     (_event, errorCode, errorDescription, url, isMainFrame) => {
       // -3 is ERR_ABORTED: a reload or navigation replaced the load before it finished.
       if (!isMainFrame || errorCode === -3) return;
-      const message = `Alliance agent couldn't load its window: ${errorDescription} (${errorCode}) loading ${url}`;
-      console.error(message);
-      if (!headless) {
-        dialog.showErrorBox("Alliance agent couldn't load its window", message);
-      }
-      app.exit(1);
+      exitUnloaded(`${errorDescription} (${errorCode}) loading ${url}`);
     },
   );
 
