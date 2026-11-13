@@ -1,0 +1,134 @@
+@media (prefers-reduced-motion: reduce) {
+  .kora-review *,
+  .kora-review *::before,
+  .kora-review *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ---------- Added for the packaged tool ---------- */
+.kora-review [hidden] {
+  display: none !important;
+}
+.kora-review .sr {
+  clip-path: inset(50%);
+  margin: -1px;
+  padding: 0;
+  border: 0;
+}
+.kora-review button,
+.kora-review input,
+.kora-review select,
+.kora-review textarea {
+  font-family: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.kora-review .mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.kora-review .mini .ic {
+  width: 14px;
+  height: 14px;
+}
+.kora-review .note-btn {
+  gap: 6px;
+  font-size: 16px;
+}
+.kora-review .big.note-btn {
+  flex: 0 0 auto;
+  padding: 0 14px;
+}
+@media (max-width: 480px) {
+  .kora-review .rrow {
+    flex-direction: column;
+    align-items: flex-start;
+    padding-block: 8px;
+  }
+  .kora-review .rrow .grow {
+    display: none;
+  }
+  .kora-review .rrow .chip {
+    white-space: normal;
+    border-radius: var(--r);
+  }
+}
+
+/* Reply bubbles take keyboard focus to start a selection */
+.kora-review .bubble.layer[tabindex]:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* Content warning, profile and exit survey */
+.kora-review .oo-acts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.kora-review .oo-acts .big {
+  flex: none;
+  width: 100%;
+}
+.kora-review .chk {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+}
+.kora-review .chk input {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+.kora-review .field input:disabled {
+  opacity: 0.5;
+}
+.kora-review .err:empty {
+  display: none;
+}
+.kora-review .finish .form .big {
+  flex: none;
+  width: 100%;
+}
+
+/* Full-screen question intro, shown when the question changes */
+.kora-review .kr-intro {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--kora-z-index, 0) + 60);
+  background: var(--paper);
+  overflow-y: auto;
+  display: flex;
+  transition: opacity 1.25s ease;
+}
+.kora-review .kr-intro.fading {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Touch devices: every target at least 44 × 44 */
+@media (pointer: coarse) {
+  .kora-review .mini,
+  .kora-review .link,
+  .kora-review .ann-q,
+  .kora-review .seg button,
+  .kora-review .ctx-more summary {
+    min-height: 44px;
+  }
+  .kora-review .sh-x {
+    width: 44px;
+    height: 44px;
+  }
+  .kora-review .opt span {
+    min-height: 48px;
+  }
+}

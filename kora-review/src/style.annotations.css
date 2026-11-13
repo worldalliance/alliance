@@ -1,0 +1,264 @@
+.kora-review .layer .tk {
+  border-radius: 4px;
+  padding-block: 3px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.kora-review .tk.pos,
+.kora-review .gap.pos {
+  background: var(--plus-tint);
+  text-decoration: underline solid var(--plus) 2px;
+  text-underline-offset: 5px;
+  padding-block: 3px;
+}
+.kora-review .tk.neg,
+.kora-review .gap.neg {
+  background: var(--minus-tint);
+  text-decoration: underline dashed var(--minus) 1.5px;
+  text-underline-offset: 5px;
+  padding-block: 3px;
+}
+.kora-review .tk.note,
+.kora-review .gap.note {
+  background: var(--accent-soft);
+  text-decoration: underline dotted var(--accent) 2px;
+  text-underline-offset: 5px;
+  padding-block: 3px;
+  box-shadow:
+    -1px 0 0 var(--accent-soft),
+    1px 0 0 var(--accent-soft);
+  border-radius: 0;
+}
+.kora-review .tk.focus,
+.kora-review .gap.focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+}
+.kora-review .tk.sel,
+.kora-review .gap.sel {
+  background: var(--hl);
+  color: var(--hl-ink);
+  padding-block: 3px;
+}
+.kora-review .tk.sel,
+.kora-review .tk.pos,
+.kora-review .tk.neg {
+  border-radius: 0;
+}
+.kora-review .tk.pos,
+.kora-review .gap.pos {
+  box-shadow:
+    -1px 0 0 var(--plus-tint),
+    1px 0 0 var(--plus-tint);
+}
+.kora-review .tk.neg,
+.kora-review .gap.neg {
+  box-shadow:
+    -1px 0 0 var(--minus-tint),
+    1px 0 0 var(--minus-tint);
+}
+.kora-review .tk.sel,
+.kora-review .gap.sel {
+  box-shadow:
+    -1px 0 0 var(--hl),
+    1px 0 0 var(--hl);
+}
+.kora-review .tk.pulse {
+  animation: kora-pulse 1.6s ease-in-out infinite;
+}
+@keyframes kora-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--hl);
+  }
+  50% {
+    box-shadow: 0 0 0 5px var(--hl);
+  }
+}
+.kora-review .handle {
+  position: absolute;
+  width: 2px;
+  background: var(--accent);
+  z-index: calc(var(--kora-z-index, 0) + 3);
+  touch-action: none;
+  margin-left: -1px;
+  border-radius: 1px;
+}
+.kora-review .handle::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  transform: translateX(-50%);
+  border: 2px solid var(--card);
+  box-shadow: var(--shadow-sm);
+}
+.kora-review .handle.start::before {
+  top: -16px;
+}
+.kora-review .handle.end::before {
+  bottom: -16px;
+}
+.kora-review .handle::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 48px;
+  height: 56px;
+  transform: translateX(-50%);
+}
+.kora-review .handle.start::after {
+  top: -36px;
+}
+.kora-review .handle.end::after {
+  bottom: -36px;
+}
+.kora-review.dragging .handle {
+  pointer-events: none;
+}
+.kora-review.dragging {
+  cursor: grabbing;
+}
+/* Annotation list under each assistant reply */
+.kora-review .anns {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.kora-review .ann {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 14px;
+  line-height: 1.4;
+  min-width: 0;
+}
+.kora-review .ann-v {
+  font: 800 13px/1 var(--f-display);
+  padding: 4px 6px;
+  border-radius: 3px;
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+.kora-review .ann-v.v-pos {
+  background: var(--plus-tint);
+}
+.kora-review .ann-v.v-neg {
+  background: var(--minus-tint);
+}
+.kora-review .ann-v.v-note,
+.kora-review .vbadge.v-note {
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: inline-grid;
+  place-items: center;
+}
+.kora-review .ann-v.v-note .ic {
+  width: 13px;
+  height: 13px;
+}
+.kora-review .vbadge.v-note .ic {
+  width: 18px;
+  height: 18px;
+}
+.kora-review .sh-x {
+  width: 36px;
+  height: 36px;
+  margin: -6px -8px 0 0;
+  color: var(--muted);
+}
+.kora-review .sh-x .ic {
+  width: 20px;
+  height: 20px;
+}
+.kora-review .big.note-btn {
+  flex: 0 0 56px;
+  padding: 0;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.kora-review .sh-acts.nudge {
+  animation: kora-nudge 0.4s ease;
+}
+@keyframes kora-nudge {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-6px);
+  }
+  75% {
+    transform: translateX(6px);
+  }
+}
+.kora-review .ann-q {
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  text-align: left;
+  color: var(--ink);
+  cursor: pointer;
+  min-width: 0;
+  flex: 1 1 140px;
+  font-size: 14px;
+}
+.kora-review .ann-n {
+  color: var(--muted);
+  flex: 1 1 100%;
+  padding-left: 2px;
+  font-style: italic;
+}
+.kora-review .ann-act {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.kora-review .mini {
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--muted);
+}
+.kora-review .pencil {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin: -6px 0 -6px 2px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  vertical-align: middle;
+  border-radius: 4px;
+}
+.kora-review .pencil .ic {
+  width: 16px;
+  height: 16px;
+}
+.kora-review .pencil:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.kora-review .tag {
+  font: 700 11px var(--f-mono);
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--line);
+  color: var(--ink);
+}
