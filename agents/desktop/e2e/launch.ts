@@ -43,20 +43,29 @@ export const authStatusCapture = (loggedIn: boolean): string =>
     records: authStatusReply(loggedIn),
   });
 
-export async function launch(params: {
-  captures: string[];
-  /** Runs in place of the stub that playwright.config.ts names. */
-  claude?: string;
-}): Promise<{ app: ElectronApplication; page: Page }> {
-  const app = await electron.launch({
-    args: appArgs(),
-    env: {
-      ...process.env,
-      [stubCapturesVariable]: [captured("version"), ...params.captures].join(
-        path.delimiter,
-      ),
-      ...(params.claude && { [claudeExecutableVariable]: params.claude }),
-    },
-  });
+export async function launch(
+  params: { captures: string[] } & (
+    | {
+        /** Runs in place of the stub that playwright.config.ts names. */
+        claude?: string;
+        path?: never;
+      }
+    | {
+        /** The app looks for claude on this PATH in place of running the stub. */
+        path: string;
+        claude?: never;
+      }
+  ),
+): Promise<{ app: ElectronApplication; page: Page }> {
+  const env = {
+    ...process.env,
+    [stubCapturesVariable]: [captured("version"), ...params.captures].join(
+      path.delimiter,
+    ),
+    ...(params.claude && { [claudeExecutableVariable]: params.claude }),
+    ...(params.path !== undefined && { PATH: params.path }),
+  };
+  if (params.path !== undefined) delete env[claudeExecutableVariable];
+  const app = await electron.launch({ args: appArgs(), env });
   return { app, page: await app.firstWindow() };
 }
