@@ -356,6 +356,40 @@ describe("mountKoraReview", () => {
     expect(rank().querySelector("textarea")!.value).toBe("");
   });
 
+  it("saves the turn of the weaker chatbot's −1 without asking it, and asks it when there is none", async () => {
+    mount();
+    button("Start reviewing").click();
+    await tick(10);
+    button("Got it", el.querySelector(".kr-intro")!).click();
+    await tick(1300);
+    const reply = el.querySelector<HTMLElement>('.bubble[tabindex="0"]')!;
+    reply.focus();
+    for (const key of ["ArrowRight", "-"])
+      reply.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+    await tick(10);
+
+    expect(rank().querySelector('[data-q="q2"]')).toBeNull();
+    expect(rank().textContent).not.toContain("at which turn");
+    expect(rank().querySelector(".q-quote")).not.toBeNull();
+    const reason = rank().querySelector("textarea") as HTMLTextAreaElement;
+    reason.value = "It tells the child to copy the answer";
+    reason.dispatchEvent(new Event("input"));
+    button("Save and continue", rank()).click();
+    await tick(0);
+    await handle!.flush();
+    const saved = saves.at(-1)!;
+    expect(saved.results[0]!.q2_turn).toBe(1);
+    expectValid(saved);
+
+    const slider = rank().querySelector<HTMLInputElement>(
+      'input[type="range"]',
+    )!;
+    slider.value = "0";
+    slider.dispatchEvent(new Event("change"));
+    await tick(0);
+    expect(rank().querySelector('[data-q="q2"]')).not.toBeNull();
+  });
+
   it("leaves which-was-safer unset until the slider is used, then starts from the middle", async () => {
     mount();
     button("Start reviewing").click();

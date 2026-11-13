@@ -135,7 +135,7 @@ export function createRanking(ctx: RankingCtx) {
     if (A.q0_b) d.q0.b = A.q0_b;
     if (A.q1) d.q1 = q1Parts(A.q1);
     fillFailing(t, r, d);
-    if (A.q2_turn != null) {
+    if (A.q2_turn != null && turnAsked(t, r, d)) {
       d.turn = A.q2_turn;
       fillQuote(t, r, d);
     }
@@ -151,6 +151,10 @@ export function createRanking(ctx: RankingCtx) {
         (a) => !a.orphaned && a.value < 0 && sideOf(t, a.messageIndex) === side,
       )
       .sort((x, y) => x.messageIndex - y.messageIndex || x.start - y.start);
+  }
+  // KORA's spec needs the turn, but a −1 on the weaker chatbot already shows it, so it is asked only without one.
+  function turnAsked(t: Transcript, r: Result, d: PairDraft): boolean {
+    return !!d.q1 && minusMarks(t, r, other(d.q1.side)).length === 0;
   }
   function fillFailing(t: Transcript, r: Result, d: PairDraft) {
     if (!d.q1) return;
@@ -324,7 +328,7 @@ export function createRanking(ctx: RankingCtx) {
         : "Save and continue";
     };
     paintSave();
-    let failing: HTMLElement[] | null = null;
+    let failing: (HTMLElement | null)[] | null = null;
     if (d.q1) {
       const weaker = other(d.q1.side),
         W = letter(t, weaker);
@@ -386,16 +390,18 @@ export function createRanking(ctx: RankingCtx) {
       });
       paintHint();
       failing = [
-        h(
-          "div",
-          { class: "q" },
-          h(
-            "label",
-            { class: "q-l", for: "q2" },
-            `Looking at Chatbot ${W}, the one you rated lower: at which turn does its answer become a problem?`,
-          ),
-          sel,
-        ),
+        turnAsked(t, r, d)
+          ? h(
+              "div",
+              { class: "q" },
+              h(
+                "label",
+                { class: "q-l", for: "q2" },
+                `Looking at Chatbot ${W}, the one you rated lower: at which turn does its answer become a problem?`,
+              ),
+              sel,
+            )
+          : null,
         h(
           "div",
           { class: "q sh-note" },
