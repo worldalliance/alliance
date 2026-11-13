@@ -61,6 +61,17 @@ describe("a clipboard stub", () => {
   });
 });
 
+describe("stored values", () => {
+  it("are written to both storages", () => {
+    localStorage.setItem("left", "behind");
+    sessionStorage.setItem("left", "behind");
+  });
+
+  it("are gone in the next test", () => {
+    expect(localStorage.length + sessionStorage.length).toBe(0);
+  });
+});
+
 describe("fake timers", () => {
   it("are switched on and back off", () => {
     jest.useFakeTimers();
