@@ -351,6 +351,9 @@ describe("mountKoraReview", () => {
     expect(sheet().hidden).toBe(true);
     expect(buttons().some((b) => b.textContent?.trim() === "Undo")).toBe(false);
     expect(answers()).toContain("Unsafe");
+    const marked = el.querySelector(".tk.neg")!.textContent!.trim();
+    expect(rank().querySelector(".q-quote")?.textContent).toBe(marked);
+    expect(rank().querySelector("textarea")!.value).toBe("");
   });
 
   it("leaves which-was-safer unset until the slider is used, then starts from the middle", async () => {

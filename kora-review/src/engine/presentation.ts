@@ -11,7 +11,13 @@ export function createPresentation(ctx: PresentationCtx) {
       catLabel(c),
     );
   }
-  function topBar(params: { chip?: Node; stage: string; below?: Node }) {
+  function topBar(params: {
+    chip?: Node;
+    age?: string;
+    pairId?: string;
+    stage: string;
+    below?: Node;
+  }) {
     return h(
       "header",
       { class: "rhead" },
@@ -22,7 +28,9 @@ export function createPresentation(ctx: PresentationCtx) {
           "div",
           { class: "rrow" },
           params.chip,
+          params.age ? h("span", { class: "cage" }, params.age) : null,
           h("span", { class: "grow" }),
+          params.pairId ? h("span", { class: "pair-id" }, params.pairId) : null,
           h("span", { class: "prog" }, params.stage),
         ),
         params.below,

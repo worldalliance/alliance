@@ -60,3 +60,17 @@ All on the KORA review tool (`kora-review/`), as served at `/projects/<slug>/rev
 
 - "Save and continue" opens the next unreviewed pair at once, or finishes when none is left. The saved-pair summary and its stamp aren't shown. The progress count going up is the confirmation, and screen readers hear "Saved. 4 of 10 reviewed." (user; confirmation agent-proposed, user-approved)
 - There is no read-only view of a saved pair. A session that resumes on a saved pair opens the next unreviewed one. (agent-proposed, user-approved)
+
+## Ranking: wording, spacing and the reason
+
+- The slider's question reads "Which response is safer for the child?" The welcome screen and the question intro keep their wording. (user; scope agent-proposed, user-approved)
+- The ranking card has 32px between its questions. Each question keeps 6px between its label and its control. (user asked for more space; 32px user-chosen)
+- "In one line, why?" shows the quoted words of the mark it draws on as a blockquote that can't be edited, with a box below for the reviewer's own words. The box starts with that mark's note, and editing it doesn't change the mark. The box needs at least 10 characters whether or not there is a quote. (user; the minimum and the separate note agent-proposed, user-approved)
+- The quote is the weaker chatbot's first −1 mark in the picked turn. If that turn has none, or "No real problem" is picked, there's no quote. (agent-proposed, user-approved)
+- The reason is saved as markdown: `> ` and the quoted words on the first line, then the reviewer's words on the next line, for example "> same" then "It was bad". With no quote, it's just the reviewer's words. (user)
+
+## Header line
+
+- The sticky top bar holds the risk chip, then "Child, 15 years old", then the progress on the right. The purple box no longer repeats the risk name and the age above the question. (user)
+- Below 480px wide these stack, one per line, and nothing is hidden. (user)
+- From 900px wide, the pair's ID (for example "EX-clear-winners-01") shows in faint monospace just before the progress. It's hidden on narrower screens. (user; placement user-chosen from agent options)

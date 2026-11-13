@@ -677,6 +677,17 @@
   min-width: 0;
   flex: 0 1 auto;
 }
+.kora-review .pair-id {
+  font: 500 12px var(--f-mono);
+  color: var(--muted);
+  white-space: nowrap;
+  margin-right: 8px;
+}
+@media (max-width: 899px) {
+  .kora-review .pair-id {
+    display: none;
+  }
+}
 .kora-review .prog {
   font: 700 18px var(--f-body);
   color: var(--ink);
@@ -713,32 +724,8 @@
   font: 700 15px/1.3 var(--f-display);
   color: var(--ink);
 }
-.kora-review .challenge .clabel {
-  font: 700 10px var(--f-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--accent);
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 2px;
-}
-.kora-review .challenge .clabel .ctag {
-  font: 800 13px/1.2 var(--f-display);
-  letter-spacing: 0.06em;
-  color: var(--accent);
-}
-.kora-review .challenge .clabel-l {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px 8px;
-  min-width: 0;
-}
-.kora-review .challenge .cage {
+.kora-review .rrow .cage {
   font: 700 12px/1.2 var(--f-body);
-  letter-spacing: 0;
-  text-transform: none;
   color: var(--accent-ink);
   background: var(--accent);
   border-radius: 999px;
@@ -1379,11 +1366,15 @@
 .kora-review .banner .link {
   min-height: 32px;
 }
-.kora-review .marks,
-.kora-review .rank {
+.kora-review .marks {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+.kora-review .rank {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
 }
 .kora-review .rank-h,
 .kora-review .sh-title {
@@ -1764,6 +1755,9 @@
   display: grid;
   gap: 12px;
 }
+.kora-review .rank .two-col {
+  row-gap: 32px;
+}
 @media (min-width: 900px) {
   .kora-review .two-col {
     grid-template-columns: 1fr 1fr;
@@ -1870,6 +1864,17 @@
   .kora-review .slider-ls span:nth-child(4) {
     text-align: right;
   }
+}
+.kora-review .q-quote {
+  margin: 0;
+  padding: 6px 12px;
+  border-left: 3px solid var(--minus);
+  background: var(--minus-tint);
+  border-radius: 0 var(--r) var(--r) 0;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 .kora-review .q-hint {
   font-size: 14px;
@@ -1987,8 +1992,17 @@
   padding: 0 14px;
 }
 @media (max-width: 480px) {
-  .kora-review .rrow > .chip {
+  .kora-review .rrow {
+    flex-direction: column;
+    align-items: flex-start;
+    padding-block: 8px;
+  }
+  .kora-review .rrow .grow {
     display: none;
+  }
+  .kora-review .rrow .chip {
+    white-space: normal;
+    border-radius: var(--r);
   }
 }
 

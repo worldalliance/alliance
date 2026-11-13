@@ -38,3 +38,11 @@
 - "Your marks" lives with the other mark lists in `annotations.ts` and redraws with them. Clicking an item scrolls the marked words to the centre of the view and opens the mark's edit sheet. A mark whose words can't be found shows "Not found" and isn't clickable. (agent decision)
 - With no saved-pair view, the review footer had nothing left to hold, so it is removed along with the stamp, the summary and the `locked` branches. The guards that stop a saved pair's marks or answers from changing stay. (agent decision)
 - The finish screen's per-pair "Open" links are removed, because they opened the saved-pair view. The finish list itself stays. (agent decision, applying the approved removal of that view)
+
+## Fourth meeting
+
+- On wide screens the 24px gap between the two safe/unsafe columns stays. Only the ranking card's vertical gaps, stacked columns included, go to 32px. (agent decision)
+- The quote is clipped to 137 characters ("…" included), so a full 140-character mark note still fits in the export's 280. Newlines in the quoted words become spaces, so the quote stays one markdown line. The box's character limit is whatever the quote line leaves. (agent decision)
+- A draft saved in the old format ("“quote” note") resumes with its whole text in the box and no quote. Only a reason that starts with "> " and has a second line is read as quote plus words. (agent decision)
+- The child's age keeps its accent pill and now sits in the top bar. The pair ID is 12px mono in the muted text colour, which passes 4.5:1. It's hidden below 900px, the width at which the chats stack. Survey bars show no ID. (agent decision)
+- When the bar stacks below 480px, the risk chip wraps instead of being cut off. (agent decision; seen at 375px in the frontend dev server)

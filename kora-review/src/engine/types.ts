@@ -105,6 +105,7 @@ export type PairDraft = {
   q0: Partial<Record<Side, Safety>>;
   q1: { side: Side; strength: Strength } | null;
   turn: number | "none" | null;
+  quote: string | null;
   reason: string;
   reasonEdited: boolean;
 };

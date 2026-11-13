@@ -40,28 +40,15 @@ export function createReview(ctx: ReviewCtx) {
     const chal = h(
       "div",
       { class: "challenge" },
-      h(
-        "div",
-        { class: "clabel" },
-        h(
-          "span",
-          { class: "clabel-l" },
-          t.tagline
-            ? h("span", { class: "ctag" }, t.tagline)
-            : h("span", {}, "The question"),
-          t.context.childAge != null
-            ? h(
-                "span",
-                { class: "cage" },
-                `Child, ${t.context.childAge} years old`,
-              )
-            : null,
-        ),
-      ),
       h("p", {}, challengeNodes(t.challenge)),
     );
     const header = topBar({
       chip: catChip(t.category),
+      age:
+        t.context.childAge != null
+          ? `Child, ${t.context.childAge} years old`
+          : undefined,
+      pairId: t.id,
       stage: progressText(),
       below: chal,
     });
