@@ -15,7 +15,7 @@ import {
 } from "react";
 import { zIndex } from "./zIndex";
 
-enum ToastVariant {
+export enum ToastVariant {
   Info = "info",
   Success = "success",
   Error = "error",
@@ -108,7 +108,7 @@ type ConfirmOptions = {
 
 type ToastOptions = Omit<ToastBase, "id" | "variant"> & {
   variant?: ToastVariant;
-  durationMs?: number;
+  durationMs?: number | null;
 };
 
 type ToastConfirm = Omit<ToastBase, "variant"> & {

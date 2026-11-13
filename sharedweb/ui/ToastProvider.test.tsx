@@ -1,6 +1,12 @@
 import { act, render, screen } from "@testing-library/react";
+import { milliseconds } from "date-fns";
 import { useEffect } from "react";
-import { ToastPlacement, ToastProvider, useToast } from "./ToastProvider";
+import {
+  ToastPlacement,
+  ToastProvider,
+  ToastVariant,
+  useToast,
+} from "./ToastProvider";
 
 let toast: ReturnType<typeof useToast>;
 
@@ -57,6 +63,27 @@ describe("ToastProvider", () => {
     act(() => toast.error("Could not copy"));
     expect(screen.getByRole("alert").textContent).toContain("Could not copy");
     expect(screen.getByRole("status").textContent).toBe("");
+  });
+
+  it("keeps a toast with a null duration until it is dismissed", () => {
+    jest.useFakeTimers();
+    renderProvider();
+    act(() =>
+      toast.showToast({
+        variant: ToastVariant.Error,
+        message: "Text not sent",
+        durationMs: null,
+      }),
+    );
+    act(() => toast.error("Could not copy"));
+    act(() => jest.advanceTimersByTime(milliseconds({ minutes: 1 })));
+
+    expect(screen.getByRole("alert").textContent).toContain("Text not sent");
+    expect(screen.getByRole("alert").textContent).not.toContain(
+      "Could not copy",
+    );
+    act(() => screen.getByRole("button", { name: "Dismiss" }).click());
+    expect(screen.getByRole("alert").textContent).toBe("");
   });
 
   it("keeps a confirm out of both live regions", () => {
