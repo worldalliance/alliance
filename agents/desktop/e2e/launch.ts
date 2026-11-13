@@ -4,7 +4,8 @@ import {
   type Page,
   test,
 } from "@playwright/test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
   authStatusArgs,
@@ -75,3 +76,43 @@ export function workFolder(): string {
   mkdirSync(folder, { recursive: true });
   return folder;
 }
+
+/** Runs the stub under this test's own path, so the test can count the CLIs it started, and exits a second after the stub, even one stopped by SIGTERM, as a CLI running its session-end hooks does. */
+export function trackedClaude(): string {
+  const file = test.info().outputPath("claude");
+  writeFileSync(
+    file,
+    `#!/bin/sh
+trap 'term=1; [ -z "$pid" ] || kill -TERM "$pid" 2>/dev/null' TERM
+# sh gives a background child /dev/null as stdin, so the stub reads this script's stdin from fd 3.
+exec 3<&0
+status=143
+if [ -z "$term" ]; then
+  # sh runs a trap only once its foreground child exits, so the stub runs in the background.
+  "${process.env[claudeExecutableVariable]}" "$@" <&3 3<&- &
+  pid=$!
+  # A SIGTERM that reaches the stub before it execs is lost; the stub still stops at the end of its stdin, which the app closes or never opens before any SIGTERM.
+  [ -z "$term" ] || kill -TERM "$pid" 2>/dev/null
+  wait "$pid"; status=$?
+  while kill -0 "$pid" 2>/dev/null; do wait "$pid"; status=$?; done
+  # The system can reuse a reaped pid, so a later SIGTERM leaves it alone.
+  pid=
+fi
+sleep 1
+exit $status
+`,
+  );
+  chmodSync(file, 0o755);
+  return file;
+}
+
+// A busy machine's full process list can outgrow execFileSync's 1 MB default buffer.
+const psMaxBuffer = 256 * 1024 * 1024;
+
+export const runningCount = (claude: string): number =>
+  execFileSync("ps", ["-A", "-ww", "-o", "command="], {
+    encoding: "utf8",
+    maxBuffer: psMaxBuffer,
+  })
+    .split("\n")
+    .filter((command) => command.includes(claude)).length;
