@@ -15,8 +15,18 @@ type SurveyField = {
 };
 
 export function createSurveys(ctx: SurveysCtx) {
-  const { P, S, app, brandMark, changed, complete, h, icon, startReviewing } =
-    ctx;
+  const {
+    P,
+    S,
+    app,
+    brandMark,
+    changed,
+    complete,
+    h,
+    icon,
+    topBar,
+    startReviewing,
+  } = ctx;
 
   /* ---------- Profile and exit survey ---------- */
   // Every profile question offers "Prefer not to say". Free-text questions get it as a checkbox.
@@ -290,11 +300,12 @@ export function createSurveys(ctx: SurveysCtx) {
       }
       S.profile = parseKoraProfile(
         Object.fromEntries(
-        PROFILE.map((f) => {
-          let v: string | string[] | null | undefined = ans[f.id];
-          if (f.multi) v = ans.is_parent === "yes" && v && v.length ? v : null;
-          return [f.id, v == null || v === "" ? null : v];
-        }),
+          PROFILE.map((f) => {
+            let v: string | string[] | null | undefined = ans[f.id];
+            if (f.multi)
+              v = ans.is_parent === "yes" && v && v.length ? v : null;
+            return [f.id, v == null || v === "" ? null : v];
+          }),
         ),
       );
       changed();
@@ -302,6 +313,7 @@ export function createSurveys(ctx: SurveysCtx) {
     };
     err.setAttribute("tabindex", "-1");
     app.replaceChildren(
+      topBar({ stage: "Pre-survey" }),
       h(
         "main",
         { class: "finish wrap" },
@@ -337,15 +349,16 @@ export function createSurveys(ctx: SurveysCtx) {
       e.preventDefault();
       S.exitSurvey = parseKoraExitSurvey(
         Object.fromEntries(
-        EXIT.map((f) => [
-          f.id,
-          ans[f.id] == null || ans[f.id] === "" ? null : ans[f.id],
-        ]),
+          EXIT.map((f) => [
+            f.id,
+            ans[f.id] == null || ans[f.id] === "" ? null : ans[f.id],
+          ]),
         ),
       );
       complete();
     };
     app.replaceChildren(
+      topBar({ stage: "Post-survey" }),
       h(
         "main",
         { class: "finish wrap" },

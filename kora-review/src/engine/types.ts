@@ -73,7 +73,6 @@ export type Screen =
   | "boot"
   | "welcome"
   | "profile"
-  | "queue"
   | "warning"
   | "review"
   | "exit"
@@ -123,10 +122,6 @@ export type State = {
   history: Record<string, Annotation[][]>;
   screen: Screen;
   idx: number;
-  filter: {
-    status: "all" | "pending" | "done";
-    category: KoraCategory | "all";
-  };
   views: Record<number, View>;
   sel: Selection | null;
   editing: string | null;

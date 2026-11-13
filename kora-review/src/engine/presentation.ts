@@ -11,6 +11,24 @@ export function createPresentation(ctx: PresentationCtx) {
       catLabel(c),
     );
   }
+  function topBar(params: { chip?: Node; stage: string; below?: Node }) {
+    return h(
+      "header",
+      { class: "rhead" },
+      h(
+        "div",
+        { class: "wrap wide" },
+        h(
+          "div",
+          { class: "rrow" },
+          params.chip,
+          h("span", { class: "grow" }),
+          h("span", { class: "prog" }, params.stage),
+        ),
+        params.below,
+      ),
+    );
+  }
   function brandMark() {
     return h(
       "span",
@@ -81,5 +99,5 @@ export function createPresentation(ctx: PresentationCtx) {
           h("span", { class: "sr" }, "Note:"),
         );
 
-  return { brandMark, catChip, challengeNodes, markBadge, markCls };
+  return { brandMark, catChip, challengeNodes, markBadge, markCls, topBar };
 }

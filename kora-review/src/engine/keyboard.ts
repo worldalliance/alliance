@@ -7,7 +7,6 @@ export function createKeyboard(ctx: KeyboardCtx) {
     applyNew,
     clamp,
     clearSel,
-    cur,
     doc,
     headBottom,
     introShown,
@@ -16,13 +15,11 @@ export function createKeyboard(ctx: KeyboardCtx) {
     newSelection,
     on,
     openSheet,
-    openTranscript,
     overlapping,
     placeHandles,
     plural,
     removeAnn,
     renderSel,
-    res,
     rootEl,
     selRange,
     sheetEl,
@@ -96,20 +93,8 @@ export function createKeyboard(ctx: KeyboardCtx) {
       }
       return;
     }
-    const locked = res(cur()).status === "done";
     const k = e.key;
     const onButton = target.closest("button,a,summary");
-    if (k === "j" || k === "J") {
-      e.preventDefault();
-      if (S.idx < S.list.length - 1) openTranscript(S.idx + 1);
-      return;
-    }
-    if (k === "k" || k === "K") {
-      e.preventDefault();
-      if (S.idx > 0) openTranscript(S.idx - 1);
-      return;
-    }
-    if (locked) return;
     if ((k === "ArrowRight" || k === "ArrowLeft") && !onButton) {
       e.preventDefault();
       moveSel(k === "ArrowRight" ? 1 : -1, e.shiftKey);
@@ -172,7 +157,7 @@ export function createKeyboard(ctx: KeyboardCtx) {
       introShown()?.el.contains(el)
     )
       return;
-    if (el.closest(".rhead,.rfoot")) return;
+    if (el.closest(".rhead")) return;
     let kb = true;
     try {
       kb = el.matches(":focus-visible");
@@ -180,15 +165,9 @@ export function createKeyboard(ctx: KeyboardCtx) {
     if (!kb) return;
     const r = el.getBoundingClientRect();
     const top = headBottom() + 8;
-    const ft = rootEl.querySelector(".rfoot");
     const bottom =
-      Math.min(
-        ft && rootEl.classList.contains("has-foot")
-          ? ft.getBoundingClientRect().top
-          : win.innerHeight,
-        S.sheet ? win.innerHeight - sheetEl.offsetHeight : win.innerHeight,
-      ) - 8;
-    // Only when it's entirely behind the header or footer (WCAG 2.4.11); a tall reply partly in view is left alone.
+      (S.sheet ? win.innerHeight - sheetEl.offsetHeight : win.innerHeight) - 8;
+    // Only when it's entirely behind the header or the sheet (WCAG 2.4.11); a tall reply partly in view is left alone.
     if (r.bottom <= top) win.scrollBy(0, r.top - top);
     else if (r.top >= bottom) win.scrollBy(0, r.bottom - bottom);
   });

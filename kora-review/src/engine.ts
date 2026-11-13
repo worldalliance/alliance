@@ -10,7 +10,6 @@ import { createMarkdownRenderer } from "./engine/markdown-renderer.js";
 import { createMath } from "./engine/math.js";
 import { createModel } from "./engine/model.js";
 import { createPresentation } from "./engine/presentation.js";
-import { createQueue } from "./engine/queue.js";
 import { createRanking } from "./engine/ranking.js";
 import { createReview } from "./engine/review.js";
 import { createRuntime } from "./engine/runtime.js";
@@ -39,13 +38,12 @@ export function createEngine(host: HTMLElement, o: EngineOptions): Engine {
   const c8 = { ...c7, ...createFlow(c7) };
   const c9 = { ...c8, ...createScreens(c8) };
   const c10 = { ...c9, ...createSurveys(c9) };
-  const c11 = { ...c10, ...createQueue(c10) };
-  const c12 = { ...c11, ...createReview(c11) };
-  const c13 = { ...c12, ...createAnnotations(c12) };
-  const c14 = { ...c13, ...createSelection(c13) };
-  const c15 = { ...c14, ...createRanking(c14) };
-  const c16 = { ...c15, ...createSheet(c15) };
-  const ctx = { ...c16, ...createKeyboard(c16) };
+  const c11 = { ...c10, ...createReview(c10) };
+  const c12 = { ...c11, ...createAnnotations(c11) };
+  const c13 = { ...c12, ...createSelection(c12) };
+  const c14 = { ...c13, ...createRanking(c13) };
+  const c15 = { ...c14, ...createSheet(c14) };
+  const ctx = { ...c15, ...createKeyboard(c15) };
   built = ctx;
   ctx.start();
   return {

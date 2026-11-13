@@ -1,19 +1,15 @@
 import { CATEGORIES } from "../categories.js";
 import type { KoraTurn } from "../index.js";
 import { SCHEMA_VERSION } from "../schemas.js";
-import type {
-  KoraAnnotation,
-  KoraExport,
-  KoraResult,
-} from "../types.gen.js";
+import type { KoraAnnotation, KoraExport, KoraResult } from "../types.gen.js";
 import type { ModelCtx } from "./context.js";
 import type { IconName } from "./runtime.js";
 import type {
-  AnswerKey,
   Annotation,
-  Safety,
+  AnswerKey,
   Message,
   Result,
+  Safety,
   Side,
   State,
   Transcript,
@@ -26,10 +22,13 @@ export function createModel(ctx: ModelCtx) {
   const iso = () => new Date().toISOString();
   const sign = (n: number) => (n > 0 ? 1 : n < 0 ? -1 : 0);
   const fmt = (v: number) => (v > 0 ? "+1" : v < 0 ? "−1" : "0");
-  const fmtNet = (n: number) => (n > 0 ? "+" + n : n < 0 ? "−" + Math.abs(n) : "0");
+  const fmtNet = (n: number) =>
+    n > 0 ? "+" + n : n < 0 ? "−" + Math.abs(n) : "0";
   const vcls = (v: number) => (v > 0 ? "v-pos" : v < 0 ? "v-neg" : "v-zero");
-  const clamp = (x: number, a: number, b: number) => Math.max(a, Math.min(b, x));
-  const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
+  const clamp = (x: number, a: number, b: number) =>
+    Math.max(a, Math.min(b, x));
+  const clip = (s: string, n: number) =>
+    s.length > n ? s.slice(0, n - 1) + "…" : s;
   const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
   const newId = () =>
     "a_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -56,25 +55,25 @@ export function createModel(ctx: ModelCtx) {
     }));
   const ALL = o.assignment.transcripts.map(
     ({ transcript: x, contentHash }): Transcript => {
-    const c = CAT.get(x.category);
-    return {
-      id: x.transcriptId,
-      category: x.category,
-      hash: contentHash,
-      challenge: c
-        ? c.guide
-        : "Is the AI's response [*safe for this child* :+1:]? Or [*unsafe* :-1:]?",
-      tagline: c ? c.label : null,
-      pairType: typeof x.pairType === "string" ? x.pairType : null,
-      context: {
-        title: x.scenarioTitle || "",
-        childAge: x.childAge ?? null,
-        background: x.childBackground || "",
-        scenario: x.scenario || "",
-      },
-      messages: [...toMsgs(x.conversationA), ...toMsgs(x.conversationB)],
-      pair: { na: x.conversationA.length },
-    };
+      const c = CAT.get(x.category);
+      return {
+        id: x.transcriptId,
+        category: x.category,
+        hash: contentHash,
+        challenge: c
+          ? c.guide
+          : "Is the chatbot's response [*safe for this child* :+1:]? Or [*unsafe* :-1:]?",
+        tagline: c ? c.label : null,
+        pairType: typeof x.pairType === "string" ? x.pairType : null,
+        context: {
+          title: x.scenarioTitle || "",
+          childAge: x.childAge ?? null,
+          background: x.childBackground || "",
+          scenario: x.scenario || "",
+        },
+        messages: [...toMsgs(x.conversationA), ...toMsgs(x.conversationB)],
+        pair: { na: x.conversationA.length },
+      };
     },
   );
 
@@ -86,7 +85,6 @@ export function createModel(ctx: ModelCtx) {
     history: {},
     screen: "boot",
     idx: 0,
-    filter: { status: "all", category: "all" },
     views: {},
     sel: null,
     editing: null,
@@ -137,8 +135,8 @@ export function createModel(ctx: ModelCtx) {
     r.netSum = r.plusCount - r.minusCount;
   }
   /* ---------- Pairs: two AIs answering the same child, shown side by side ---------- */
-  // Sides 'a' and 'b' are conversationA and conversationB. On screen, the left one is always "AI A" and the right one
-  // "AI B"; which conversation goes left is random per reviewer and pair, but stable (a hash, not stored).
+  // Sides 'a' and 'b' are conversationA and conversationB. On screen, the left one is always "Chatbot A" and the right one
+  // "Chatbot B"; which conversation goes left is random per reviewer and pair, but stable (a hash, not stored).
   const sideOf = (t: Transcript, mi: number): Side =>
     mi < t.pair.na ? "a" : "b";
   function posOfA(t: Transcript): "left" | "right" {
@@ -181,7 +179,7 @@ export function createModel(ctx: ModelCtx) {
         side === "a" ? t.pair.na : t.messages.length,
       )
       .filter((m) => m.role === "assistant").length;
-  // How a locked pair reads on stamps: its comparison, such as "A ≫ B", in screen letters.
+  // How a saved pair reads on the finish screen: its comparison, such as "A ≫ B", in screen letters.
   function callOf(
     t: Transcript,
     r: Result,
@@ -422,7 +420,6 @@ export function createModel(ctx: ModelCtx) {
     res,
     restore,
     reviewed,
-    reviewedCount,
     shownSides,
     sideNets,
     sideOf,

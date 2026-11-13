@@ -34,14 +34,12 @@ export function createSheet(ctx: SheetCtx) {
     sheetEl,
     sheetIn,
     spanText,
-    stopAdvance,
     win,
   } = ctx;
 
   /* ---------- Bottom sheet ---------- */
   let sheetReturn: HTMLElement | null = null;
   function openSheet(mode: SheetMode, opts: SheetOpts = {}) {
-    stopAdvance();
     const a = doc.activeElement;
     if (
       !S.sheet &&
@@ -62,7 +60,6 @@ export function createSheet(ctx: SheetCtx) {
     });
   }
   function closeSheet() {
-    stopAdvance();
     const hadFocus = sheetEl.contains(doc.activeElement);
     S.sheet = null;
     sheetEl.classList.remove("open", "lowered");

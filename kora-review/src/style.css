@@ -562,74 +562,10 @@
   align-items: center;
   gap: 8px 12px;
 }
-/* Queue */
-.kora-review .qhead {
-  padding-block: 18px 14px;
-  border-bottom: 1px solid var(--line);
-  background: var(--paper);
-}
-.kora-review .qhead .wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.kora-review .qtop {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
 .kora-review .qtitle {
   font-size: clamp(26px, 6.5vw, 34px);
   font-weight: 800;
   letter-spacing: -0.01em;
-}
-.kora-review .meter {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font: 700 13px var(--f-mono);
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-.kora-review .meter-bar {
-  flex: 1;
-  height: 10px;
-  border-radius: 99px;
-  background: var(--line);
-  overflow: hidden;
-}
-.kora-review .meter-bar i {
-  display: block;
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent), var(--plus));
-  border-radius: inherit;
-  transition: width 0.4s;
-}
-.kora-review .qacts {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
-  gap: 8px;
-}
-.kora-review .qacts .btn.primary {
-  grid-column: 1/-1;
-}
-.kora-review .qacts .btn:not(.primary) {
-  min-width: 0;
-  padding: 0 8px;
-  font-size: 14px;
-  white-space: nowrap;
-}
-.kora-review .qmain {
-  padding-block: 16px 48px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.kora-review .filters {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
 }
 .kora-review .seg {
   display: flex;
@@ -653,62 +589,6 @@
   background: var(--ink);
   color: var(--paper);
 }
-.kora-review .cats {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 2px;
-  scrollbar-width: none;
-}
-.kora-review .cats::-webkit-scrollbar {
-  display: none;
-}
-.kora-review .cats button {
-  min-height: 40px;
-  padding: 0 12px;
-  cursor: pointer;
-  flex: none;
-  max-width: none;
-}
-.kora-review .cats button[aria-pressed="true"] {
-  background: var(--ink);
-  color: var(--paper);
-  border-color: var(--ink);
-}
-.kora-review .cats button[aria-pressed="true"] .dot {
-  box-shadow: 0 0 0 2px var(--paper);
-}
-.kora-review .qlist {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.kora-review .qlist li {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 88px;
-}
-.kora-review .qi {
-  width: 100%;
-  text-align: left;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  cursor: pointer;
-}
-.kora-review .qi:active {
-  transform: translateY(1px);
-}
-.kora-review .qi.cur {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft);
-}
 .kora-review .qi-l {
   flex: 1;
   min-width: 0;
@@ -721,10 +601,6 @@
   align-items: center;
   gap: 8px;
   min-width: 0;
-}
-.kora-review .qi-id {
-  font: 700 12px var(--f-mono);
-  color: var(--muted);
 }
 .kora-review .qi-snip {
   color: var(--ink);
@@ -744,11 +620,6 @@
   color: var(--muted);
   white-space: nowrap;
 }
-.kora-review .badge.wip {
-  border-style: solid;
-  border-color: var(--accent);
-  color: var(--accent);
-}
 .kora-review .mini-stamp {
   flex: none;
   display: inline-flex;
@@ -763,11 +634,6 @@
 .kora-review .mini-stamp .ic {
   width: 14px;
   height: 14px;
-}
-.kora-review .empty-note {
-  color: var(--muted);
-  text-align: center;
-  padding: 24px 8px;
 }
 .kora-review .warnbox {
   border: 1.5px solid var(--line);
@@ -812,8 +678,8 @@
   flex: 0 1 auto;
 }
 .kora-review .prog {
-  font: 700 13px var(--f-mono);
-  color: var(--muted);
+  font: 700 18px var(--f-body);
+  color: var(--ink);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -839,20 +705,6 @@
   font: 700 12px/1 var(--f-mono);
   font-variant-numeric: tabular-nums;
 }
-.kora-review .score.pop {
-  animation: kora-pop 0.38s cubic-bezier(0.3, 1.6, 0.5, 1);
-}
-@keyframes kora-pop {
-  0% {
-    transform: scale(1);
-  }
-  40% {
-    transform: scale(1.18);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
 .kora-review .challenge {
   background: var(--accent-soft);
   border-radius: var(--r);
@@ -870,10 +722,6 @@
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 2px;
-}
-.kora-review .challenge .clabel .prog {
-  font-size: 10px;
-  color: var(--muted);
 }
 .kora-review .challenge .clabel .ctag {
   font: 800 13px/1.2 var(--f-display);
@@ -1254,9 +1102,6 @@
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
-.kora-review .layer.locked .tk {
-  cursor: default;
-}
 .kora-review .tk.pos,
 .kora-review .gap.pos {
   background: var(--plus-tint);
@@ -1534,116 +1379,16 @@
 .kora-review .banner .link {
   min-height: 32px;
 }
-/* Footer */
-.kora-review .rfoot {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: calc(var(--kora-z-index, 0) + 20);
-  background: var(--card);
-  border-top: 1px solid var(--line);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-}
-.kora-review .rfoot-in {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-block: 10px;
-}
-.kora-review .rfoot .btn.primary {
-  flex: 1;
-  min-height: 52px;
-  font-family: var(--f-display);
-  font-size: 18px;
-  font-weight: 800;
-  white-space: nowrap;
-  padding: 0 14px;
-}
-/* The pair label is longer, so on narrow phones it may wrap to two lines rather than push the footer off screen */
-.kora-review .rfoot .btn.primary {
-  min-width: 0;
-  white-space: normal;
-  line-height: 1.1;
-  text-align: center;
-}
-@media (max-width: 420px) {
-  .kora-review .rfoot .btn.primary {
-    font-size: 16px;
-    padding: 0 10px;
-  }
-}
-.kora-review .rfoot .btn.prev {
-  min-width: 52px;
-  min-height: 52px;
-  padding: 0 12px;
-  flex: none;
-}
-.kora-review .savestat {
-  font: 700 11px/1.3 var(--f-mono);
-  color: var(--muted);
-  text-align: center;
-  max-width: 84px;
-  flex: none;
-}
-/* Reveal card at the end of a locked transcript */
-.kora-review .reveal {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  padding: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
+.kora-review .marks,
 .kora-review .rank {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
-.kora-review .reveal h2,
 .kora-review .rank-h,
 .kora-review .sh-title {
   font-size: 22px;
   font-weight: 800;
-}
-.kora-review .stamp-wrap {
-  display: flex;
-  justify-content: center;
-  padding: 6px 0 2px;
-}
-.kora-review .stamp {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  font: 800 26px/1 var(--f-display);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  border: 4px solid currentColor;
-  border-radius: var(--r);
-  padding: 10px 18px;
-  transform: rotate(-6deg);
-  background: color-mix(in srgb, currentColor 8%, transparent);
-}
-.kora-review .stamp b {
-  font-size: 34px;
-  letter-spacing: 0;
-}
-.kora-review .stamp.thunk {
-  animation: kora-thunk 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
-}
-@keyframes kora-thunk {
-  0% {
-    transform: rotate(-14deg) scale(2.4);
-    opacity: 0;
-  }
-  55% {
-    transform: rotate(-6deg) scale(0.9);
-    opacity: 1;
-  }
-  100% {
-    transform: rotate(-6deg) scale(1);
-  }
 }
 /* Bottom sheet */
 .kora-review .kr-sheet {
@@ -1776,13 +1521,7 @@
   display: flex;
   justify-content: center;
   pointer-events: none;
-  bottom: calc(
-    max(var(--sheet-h), var(--fh, 0px)) + 12px +
-      env(safe-area-inset-bottom, 0px)
-  );
-}
-.kora-review.has-foot .kr-toasts {
-  --fh: 74px;
+  bottom: calc(var(--sheet-h) + 12px + env(safe-area-inset-bottom, 0px));
 }
 .kora-review .toast {
   pointer-events: auto;
@@ -1841,28 +1580,6 @@
     opacity: 0;
   }
 }
-.kora-review .sum-eq {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  padding-top: 2px;
-  font: 800 17px/1 var(--f-display);
-  font-variant-numeric: tabular-nums;
-}
-.kora-review .sum-eq > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.kora-review .sum-eq .ic {
-  width: 17px;
-  height: 17px;
-}
-.kora-review .sum-eq .eq {
-  color: var(--muted);
-}
 .kora-review .big .ic.lg {
   width: 30px;
   height: 30px;
@@ -1890,7 +1607,7 @@
 }
 .kora-review .frow {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr;
   align-items: center;
   gap: 12px;
   background: var(--card);
@@ -1926,13 +1643,6 @@
 @media (max-width: 520px) {
   .kora-review .rrow {
     gap: 4px;
-  }
-  .kora-review .pairscore {
-    padding: 2px 8px;
-    gap: 3px;
-  }
-  .kora-review .pairscore .sn {
-    display: none;
   }
 }
 /* Pairs: the scenario, then two AIs side by side (stacked on narrow screens) */
@@ -2037,33 +1747,9 @@
   min-height: 30px;
   padding: 0 9px;
 }
-.kora-review .score.sm .sv .ic,
-.kora-review .pairscore .sv .ic {
+.kora-review .score.sm .sv .ic {
   width: 18px;
   height: 18px;
-}
-.kora-review .pairscore {
-  gap: 4px;
-  color: var(--ink);
-  border-color: var(--line);
-}
-.kora-review .pairscore .sl {
-  font: 800 14px var(--f-display);
-}
-.kora-review .psum {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 4px;
-  font-size: 15px;
-  text-align: center;
-}
-.kora-review .sum-eq .sum-side {
-  gap: 6px;
-}
-.kora-review .sum-eq .sum-side + .sum-side {
-  margin-left: 14px;
 }
 .kora-review .q {
   display: grid;
@@ -2073,6 +1759,117 @@
   font-weight: 700;
   font-size: 15px;
   line-height: 1.35;
+}
+.kora-review .two-col {
+  display: grid;
+  gap: 12px;
+}
+@media (min-width: 900px) {
+  .kora-review .two-col {
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+}
+/* The label row is inset by half the thumb, so its 0, 1/3, 2/3 and 100% points sit under the stops. */
+.kora-review .slider {
+  --thumb: 24px;
+  display: grid;
+  gap: 6px;
+}
+.kora-review .slider input {
+  appearance: none;
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.kora-review .slider input::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--muted);
+}
+.kora-review .slider input::-moz-range-track {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--muted);
+}
+.kora-review .slider input::-webkit-slider-thumb {
+  appearance: none;
+  width: var(--thumb);
+  height: var(--thumb);
+  margin-top: calc((6px - var(--thumb)) / 2);
+  border-radius: 50%;
+  border: 3px solid var(--paper);
+  background: var(--ink);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+.kora-review .slider input::-moz-range-thumb {
+  width: var(--thumb);
+  height: var(--thumb);
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 3px solid var(--paper);
+  background: var(--ink);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+.kora-review .slider input[data-unset]::-webkit-slider-thumb {
+  opacity: 0;
+}
+.kora-review .slider input[data-unset]::-moz-range-thumb {
+  opacity: 0;
+}
+.kora-review .slider input:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r);
+}
+.kora-review .slider-ls {
+  position: relative;
+  height: 1.3em;
+  margin-inline: calc(var(--thumb) / 2);
+  font-size: 14px;
+  color: var(--muted);
+}
+.kora-review .slider-ls span {
+  position: absolute;
+  top: 0;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+.kora-review .slider-ls span:nth-child(1) {
+  left: 0;
+  transform: translateX(calc(var(--thumb) / -2));
+}
+.kora-review .slider-ls span:nth-child(2) {
+  left: calc(100% / 3);
+}
+.kora-review .slider-ls span:nth-child(3) {
+  left: calc(200% / 3);
+}
+.kora-review .slider-ls span:nth-child(4) {
+  right: 0;
+  transform: translateX(calc(var(--thumb) / 2));
+}
+.kora-review .slider-ls span.on {
+  color: var(--ink);
+  font-weight: 700;
+}
+@media (max-width: 400px) {
+  .kora-review .slider-ls {
+    height: 2.6em;
+  }
+  .kora-review .slider-ls span {
+    width: min-content;
+    white-space: normal;
+    text-align: center;
+  }
+  .kora-review .slider-ls span:nth-child(1) {
+    text-align: left;
+  }
+  .kora-review .slider-ls span:nth-child(4) {
+    text-align: right;
+  }
 }
 .kora-review .q-hint {
   font-size: 14px;
@@ -2172,37 +1969,6 @@
   text-transform: none;
 }
 
-/* Text-labelled header buttons (only close and delete are icon-only) */
-.kora-review .tbtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 0 10px;
-  border-radius: var(--r);
-  border: 1.5px solid var(--line);
-  background: var(--card);
-  color: var(--ink);
-  font: 700 14px/1 var(--f-body);
-  cursor: pointer;
-  flex: none;
-  white-space: nowrap;
-}
-.kora-review .tbtn .ic {
-  width: 18px;
-  height: 18px;
-}
-.kora-review .tbtn:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-.kora-review .rrow .tbtn:first-child {
-  margin-left: 0;
-}
-.kora-review .rfoot .btn.prev {
-  gap: 4px;
-  padding: 0 12px 0 8px;
-}
 .kora-review .mini {
   display: inline-flex;
   align-items: center;
@@ -2223,12 +1989,6 @@
 @media (max-width: 480px) {
   .kora-review .rrow > .chip {
     display: none;
-  }
-}
-@media (max-width: 360px) {
-  .kora-review .tbtn {
-    padding: 0 8px;
-    gap: 4px;
   }
 }
 
@@ -2295,7 +2055,6 @@
   .kora-review .link,
   .kora-review .ann-q,
   .kora-review .seg button,
-  .kora-review .cats button,
   .kora-review .ctx-more summary {
     min-height: 44px;
   }

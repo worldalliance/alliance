@@ -24,6 +24,7 @@ export function createFlow(ctx: FlowCtx) {
     progressText,
     refreshList,
     res,
+    reviewed,
     restore,
     rootEl,
     win,
@@ -38,8 +39,6 @@ export function createFlow(ctx: FlowCtx) {
     ctx.late().renderFinish(...args);
   const renderProfile: Late["renderProfile"] = (...args) =>
     ctx.late().renderProfile(...args);
-  const renderQueue: Late["renderQueue"] = (...args) =>
-    ctx.late().renderQueue(...args);
   const renderReview: Late["renderReview"] = (...args) =>
     ctx.late().renderReview(...args);
   const renderWarning: Late["renderWarning"] = (...args) =>
@@ -60,9 +59,7 @@ export function createFlow(ctx: FlowCtx) {
     S.editing = null;
     closeSheet();
     closeIntro();
-    rootEl.classList.toggle("has-foot", false);
     if (screen === "welcome") renderWelcome();
-    else if (screen === "queue") renderQueue();
     else if (screen === "finish") renderFinish();
     else if (screen === "warning" && opts) renderWarning(opts);
     else if (screen === "profile") renderProfile();
@@ -100,18 +97,12 @@ export function createFlow(ctx: FlowCtx) {
     S.noteDraft = "";
     closeSheet();
     const t = cur();
-    if (res(t).status !== "done") ensure(t).startedAt ||= iso();
-    rootEl.classList.add("has-foot");
+    ensure(t).startedAt ||= iso();
     renderReview();
     toTop();
     if (doc.visibilityState !== "hidden") openedAt = Date.now();
     // The question intro is shown when the question changes, but not for a pair the reviewer has opened before.
-    if (
-      t.challenge !== S.lastChallenge &&
-      res(t).status !== "done" &&
-      !wasStarted
-    )
-      showIntro(t);
+    if (t.challenge !== S.lastChallenge && !wasStarted) showIntro(t);
     else focusScreen();
     S.lastChallenge = t.challenge;
     changed();
@@ -155,7 +146,7 @@ export function createFlow(ctx: FlowCtx) {
         h(
           "p",
           { class: "intro-hint" },
-          "Two AIs answered the same child. Mark what each got right and wrong with thumbs, then say which responded more safely.",
+          "Two chatbots answered the same child. Mark what each got right and wrong with thumbs, then say which responded more safely.",
         ),
         gotIt,
       ),
@@ -244,23 +235,6 @@ export function createFlow(ctx: FlowCtx) {
     o.onComplete();
   }
 
-  // After saving, the stamp shows for ADVANCE_MS and then the tool moves on. Opening a sheet or leaving cancels it.
-  const ADVANCE_MS = 750;
-  let advance: ReturnType<typeof setTimeout> | null = null;
-  function startAdvance() {
-    stopAdvance();
-    advance = later(() => {
-      advance = null;
-      goNext();
-    }, ADVANCE_MS);
-  }
-  function stopAdvance() {
-    if (advance) {
-      cancel(advance);
-      advance = null;
-    }
-  }
-
   /* ---------- Boot ---------- */
   function start() {
     restore(o.savedExport);
@@ -278,7 +252,7 @@ export function createFlow(ctx: FlowCtx) {
         saved && saved.currentTranscriptId
           ? S.list.findIndex((t) => t.id === saved.currentTranscriptId)
           : -1;
-      if (i >= 0) {
+      if (i >= 0 && !reviewed(res(S.list[i]))) {
         openTranscript(i);
       } else if (
         S.all.some((t) => res(t).startedAt || res(t).status === "done")
@@ -301,8 +275,6 @@ export function createFlow(ctx: FlowCtx) {
     introShown,
     openTranscript,
     start,
-    startAdvance,
     startReviewing,
-    stopAdvance,
   };
 }

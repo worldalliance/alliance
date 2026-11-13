@@ -3,7 +3,9 @@ import type { Annotation, Result } from "./types.js";
 
 export function createAnnotations(ctx: AnnotationsCtx) {
   const {
+    $,
     S,
+    aiTurn,
     announce,
     changed,
     clip,
@@ -16,6 +18,7 @@ export function createAnnotations(ctx: AnnotationsCtx) {
     h,
     icon,
     iso,
+    letter,
     markBadge,
     markCls,
     newId,
@@ -24,6 +27,8 @@ export function createAnnotations(ctx: AnnotationsCtx) {
     renderScore,
     res,
     sheetEl,
+    shownSides,
+    sideOf,
     spanText,
     toast,
     vcls,
@@ -42,8 +47,7 @@ export function createAnnotations(ctx: AnnotationsCtx) {
 
   function renderAnns() {
     if (S.screen !== "review") return;
-    const r = res(cur()),
-      locked = r.status === "done";
+    const r = res(cur());
     for (const v of Object.values(S.views)) {
       for (const tk of v.tokens) {
         tk.el.classList.remove("pos", "neg", "note", "focus");
@@ -75,7 +79,7 @@ export function createAnnotations(ctx: AnnotationsCtx) {
             "li",
             { class: "ann " + vcls(a.value) },
             markBadge(a.value, "ann-v"),
-            locked || a.orphaned
+            a.orphaned
               ? h(
                   "span",
                   { class: "ann-q", style: "cursor:default" },
@@ -91,40 +95,38 @@ export function createAnnotations(ctx: AnnotationsCtx) {
                   `“${a.text}”`,
                 ),
             a.orphaned ? h("span", { class: "tag" }, "Not found") : null,
-            locked
-              ? null
-              : h(
-                  "span",
-                  { class: "ann-act" },
-                  a.value
-                    ? h(
-                        "button",
-                        {
-                          type: "button",
-                          class: "mini",
-                          onclick: () => flip(a.id),
-                          "aria-label": `Flip “${clip(a.text, 30)}” to ${fmt(-a.value)}`,
-                        },
-                        "Flip",
-                      )
-                    : null,
-                  h(
+            h(
+              "span",
+              { class: "ann-act" },
+              a.value
+                ? h(
                     "button",
                     {
                       type: "button",
                       class: "mini",
-                      onclick: () => removeAnn(a.id),
-                      "aria-label": `Remove mark on “${clip(a.text, 30)}”`,
+                      onclick: () => flip(a.id),
+                      "aria-label": `Flip “${clip(a.text, 30)}” to ${fmt(-a.value)}`,
                     },
-                    "Remove",
-                  ),
-                ),
+                    "Flip",
+                  )
+                : null,
+              h(
+                "button",
+                {
+                  type: "button",
+                  class: "mini",
+                  onclick: () => removeAnn(a.id),
+                  "aria-label": `Remove mark on “${clip(a.text, 30)}”`,
+                },
+                "Remove",
+              ),
+            ),
             a.note
               ? h(
                   "span",
                   { class: "ann-n" },
                   a.note,
-                  locked || a.orphaned
+                  a.orphaned
                     ? null
                     : h(
                         "button",
@@ -144,6 +146,75 @@ export function createAnnotations(ctx: AnnotationsCtx) {
       );
       v.list.hidden = !all.length;
     }
+    renderMarks();
+  }
+  function renderMarks() {
+    const box = $("marks");
+    if (!box) return;
+    const t = cur(),
+      anns = [...res(t).annotations].sort(
+        (x, y) => x.messageIndex - y.messageIndex || x.start - y.start,
+      );
+    box.replaceChildren(
+      h("h2", { class: "rank-h", id: "marks-h" }, "Your marks"),
+      h(
+        "div",
+        { class: "two-col" },
+        shownSides(t).map((side) => {
+          const name = "Chatbot " + letter(t, side),
+            mine = anns.filter((a) => sideOf(t, a.messageIndex) === side);
+          return h(
+            "div",
+            {},
+            h("h3", { class: "q-l" }, name),
+            mine.length
+              ? h(
+                  "ul",
+                  { class: "anns", "aria-label": `Marks on ${name}` },
+                  mine.map((a) => {
+                    const words = `“${a.text}”`;
+                    return h(
+                      "li",
+                      { class: "ann " + vcls(a.value) },
+                      markBadge(a.value, "ann-v"),
+                      h(
+                        "span",
+                        { class: "dim" },
+                        `Turn ${aiTurn(t, a.messageIndex)}`,
+                      ),
+                      a.orphaned
+                        ? h("span", { class: "ann-q" }, words)
+                        : h(
+                            "button",
+                            {
+                              type: "button",
+                              class: "ann-q",
+                              onclick: () => jumpTo(a.id),
+                            },
+                            words,
+                          ),
+                      a.orphaned
+                        ? h("span", { class: "tag" }, "Not found")
+                        : null,
+                      a.note ? h("span", { class: "ann-n" }, a.note) : null,
+                    );
+                  }),
+                )
+              : h("p", { class: "dim" }, `No marks on ${name}.`),
+          );
+        }),
+      ),
+    );
+  }
+  function jumpTo(id: string) {
+    for (const v of Object.values(S.views)) {
+      const tk = v.tokens.find((x) => x.ann?.id === id);
+      if (tk) {
+        tk.el.scrollIntoView({ block: "center" });
+        break;
+      }
+    }
+    openEdit(id);
   }
   /* ---------- Mutations + undo ---------- */
   function pushHist(tid: string, anns: Annotation[]) {

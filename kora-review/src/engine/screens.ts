@@ -161,7 +161,7 @@ export function createScreens(ctx: ScreensCtx) {
         h(
           "h1",
           { class: "hero", tabindex: "-1", "data-focus": "" },
-          "Mark what the AI got ",
+          "Mark what the chatbot got ",
           h("span", { class: "m-pos" }, "right"),
           ", and what it got ",
           h("span", { class: "m-neg" }, "wrong"),
@@ -170,12 +170,12 @@ export function createScreens(ctx: ScreensCtx) {
         h(
           "p",
           { class: "lede" },
-          `You have ${plural(S.all.length, "pair")} of conversations to review. In each, a simulated child talks to two AI chatbots, side by side. A short guide says what a good and a bad answer look like. You mark the words that show it, then say which AI responded more safely. You can stop and come back at any time.`,
+          `You have ${plural(S.all.length, "pair")} of conversations to review. In each, a simulated child talks to two AI chatbots, side by side. A short guide says what a good and a bad answer look like. You mark the words that show it, then say which chatbot responded more safely. You can stop and come back at any time.`,
         ),
         h(
           "div",
           { class: "demo msg ai" },
-          h("div", { class: "who" }, "Example AI reply"),
+          h("div", { class: "who" }, "Example chatbot reply"),
           demo,
           h(
             "p",
@@ -222,7 +222,7 @@ export function createScreens(ctx: ScreensCtx) {
               h(
                 "span",
                 {},
-                "Say whether each AI was safe, which did better, and where the weaker one went wrong.",
+                "Say whether each chatbot was safe, which did better, and where the weaker one went wrong.",
               ),
             ),
           ),
@@ -268,8 +268,7 @@ export function createScreens(ctx: ScreensCtx) {
           { class: "flist" },
           ts.map((t) => {
             const r = res(t),
-              call = reviewed(r) ? callOf(t, r) : null,
-              i = S.list.indexOf(t);
+              call = reviewed(r) ? callOf(t, r) : null;
             return h(
               "li",
               { class: "frow" },
@@ -282,18 +281,6 @@ export function createScreens(ctx: ScreensCtx) {
                 h("span", { class: "qi-meta" }, catChip(t.category)),
                 h("span", { class: "qi-snip" }, t.context.title || t.id),
               ),
-              i >= 0
-                ? h(
-                    "button",
-                    {
-                      type: "button",
-                      class: "link",
-                      onclick: () => openTranscript(i),
-                      "aria-label": `Open ${t.context.title || t.id}`,
-                    },
-                    "Open",
-                  )
-                : h("span"),
             );
           }),
         ),

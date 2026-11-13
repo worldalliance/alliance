@@ -27,8 +27,7 @@ type HandleDrag = Pointer & {
   timer?: undefined;
 };
 
-const targetEl = (e: Event) =>
-  e.target instanceof Element ? e.target : null;
+const targetEl = (e: Event) => (e.target instanceof Element ? e.target : null);
 
 export function createSelection(ctx: SelectionCtx) {
   const {
@@ -50,8 +49,10 @@ export function createSelection(ctx: SelectionCtx) {
     sheetEl,
     win,
   } = ctx;
-  const closeSheet: Late["closeSheet"] = (...args) => ctx.late().closeSheet(...args);
-  const openSheet: Late["openSheet"] = (...args) => ctx.late().openSheet(...args);
+  const closeSheet: Late["closeSheet"] = (...args) =>
+    ctx.late().closeSheet(...args);
+  const openSheet: Late["openSheet"] = (...args) =>
+    ctx.late().openSheet(...args);
 
   /* ---------- Selection ---------- */
   function selRange(): [number, number] {
@@ -156,7 +157,7 @@ export function createSelection(ctx: SelectionCtx) {
   let G: Press | HandleDrag | null = null;
   on(doc, "pointerdown", (e) => {
     if (S.screen !== "review" || e.button > 0) return;
-    const tk = targetEl(e)?.closest<HTMLElement>(".layer:not(.locked) .tk");
+    const tk = targetEl(e)?.closest<HTMLElement>(".layer .tk");
     if (!tk || !rootEl.contains(tk)) return;
     const mi = Number(tk.dataset.m),
       t = Number(tk.dataset.t);
@@ -344,7 +345,7 @@ export function createSelection(ctx: SelectionCtx) {
         !S.sel ||
         !target ||
         !rootEl.contains(target) ||
-        !target.closest(".rhead button,.rfoot button,.anns button")
+        !target.closest(".rhead button,.anns button")
       )
         return;
       e.preventDefault();
@@ -363,10 +364,7 @@ export function createSelection(ctx: SelectionCtx) {
     )
       return;
     if (!rootEl.contains(target)) return;
-    if (
-      target.closest(".tk,.handle,.kr-sheet,.kr-toasts,.anns,.rhead,.rfoot")
-    )
-      return;
+    if (target.closest(".tk,.handle,.kr-sheet,.kr-toasts,.anns,.rhead")) return;
     if (S.sel) {
       nudgeChoice();
       return;
