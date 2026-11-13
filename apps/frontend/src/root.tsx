@@ -1,9 +1,14 @@
 import { MOBILE_OAUTH_RETURN_PATH } from "@alliance/common/oauth";
+import type { WebRuntimeConfig } from "@alliance/common/web-env";
 import { client } from "@alliance/shared/client/client.gen";
 import { registerAnalytics } from "@alliance/shared/lib/analytics";
 import { registerErrorStatus } from "@alliance/shared/lib/hey-api";
 import { registerPosthogRequestContext } from "@alliance/shared/lib/posthog-request";
 import { webEnv } from "@alliance/sharedweb/lib/env";
+import {
+  setWebRuntimeConfig,
+  webRuntimeConfig,
+} from "@alliance/sharedweb/lib/runtimeConfig";
 import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInputScrollGuard";
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
@@ -18,6 +23,7 @@ import {
   Scripts,
   ScrollRestoration,
   useLocation,
+  useRouteLoaderData,
 } from "react-router";
 import { HtmlBackgroundManager } from "./components/HtmlBackgroundManager";
 import {
@@ -25,7 +31,7 @@ import {
   ErrorBoundary as RootErrorBoundary,
 } from "./ErrorBoundary";
 import { AuthProvider } from "./lib/AuthContext";
-import { getApiUrl } from "./lib/config";
+import { getApiUrl, getPosthogHost } from "./lib/config";
 import { useLinkOpenings } from "./lib/linkOpenings";
 import { posthogOptions } from "./lib/posthogOptions";
 import { posthogRequestContext } from "./lib/posthogRequestContext";
@@ -48,21 +54,36 @@ registerPosthogRequestContext({
   getContext: () => posthogRequestContext(posthog),
 });
 
-export function meta({ error }: { error?: unknown }) {
-  return socialPreviewMeta({
-    title: isNotFound(error) ? NOT_FOUND_TITLE : "Alliance",
-  });
+export function meta({
+  error,
+  loaderData,
+}: {
+  error?: unknown;
+  loaderData?: WebRuntimeConfig;
+}) {
+  const title = isNotFound(error) ? NOT_FOUND_TITLE : "Alliance";
+  return loaderData ? socialPreviewMeta({ title }) : [{ title }];
 }
+
+export function loader() {
+  return webRuntimeConfig();
+}
+
+export const shouldRevalidate = () => false;
 
 // React Router passes `error` only to a declared export, not to a re-export.
 export const ErrorBoundary = RootErrorBoundary;
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  // Set during render, before any child reads it. Absent when the root loader
+  // didn't run, as for a document POST that renders an error.
+  const config = useRouteLoaderData<typeof loader>("root");
+  if (config) setWebRuntimeConfig(config);
   useNumberInputScrollGuard();
   const { pathname } = useLocation();
-  // A deployed build can't lack the key (webEnvPlugin).
+  // A deployed environment's config can't lack the key (webRuntimeConfigSchema).
   const posthogKey =
-    import.meta.env.PROD && pathname !== MOBILE_OAUTH_RETURN_PATH
+    config && import.meta.env.PROD && pathname !== MOBILE_OAUTH_RETURN_PATH
       ? webEnv("VITE_PUBLIC_POSTHOG_KEY")
       : undefined;
   const withPosthog = posthogKey !== undefined;
@@ -98,7 +119,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {/* PostHog records the full URL, and the mobile app's sign-in handoff
             arrives in this page's query string. */}
         {posthogKey !== undefined ? (
-          <PostHogProvider apiKey={posthogKey} options={posthogOptions}>
+          <PostHogProvider
+            apiKey={posthogKey}
+            options={{ ...posthogOptions, api_host: getPosthogHost() }}
+          >
             {inner}
           </PostHogProvider>
         ) : (

@@ -1,3 +1,6 @@
+import { formatEnvProblems } from "@alliance/common/env";
+import { webRuntimeConfigFor } from "@alliance/common/web-runtime-config";
+import { setWebRuntimeConfig } from "@alliance/sharedweb/lib/runtimeConfig";
 import { milliseconds } from "date-fns";
 import { PassThrough } from "node:stream";
 
@@ -7,6 +10,20 @@ import type { RenderToPipeableStreamOptions } from "react-dom/server";
 import { renderToPipeableStream } from "react-dom/server";
 import type { EntryContext } from "react-router";
 import { ServerRouter } from "react-router";
+
+// Runs before the route modules evaluate, since React Router's server build
+// imports this entry first and root.tsx reads the API URL at module scope.
+// Kept out of sharedweb so client bundles never import the committed config.
+const config = webRuntimeConfigFor(process.env.NODE_ENV);
+if (!config.ok) {
+  throw new Error(
+    formatEnvProblems({
+      heading: "Invalid web runtime config",
+      problems: config.error,
+    }),
+  );
+}
+setWebRuntimeConfig(config.value);
 
 export const streamTimeout = milliseconds({ seconds: 5 });
 

@@ -93,7 +93,7 @@ jobs:
         working-directory: ./apps/frontend
 
       - name: Build React App
-        run: bun run --cwd apps/frontend build -- --mode "$env_name"
+        run: bun run --cwd apps/frontend build
         env:
           VITE_APP_GIT_SHA: ${{ github.sha }}
           VITE_APP_VERSION: ${{ github.ref_name }}
@@ -195,7 +195,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Build React App
-        run: bun run --cwd apps/admin build -- --mode "$env_name"
+        run: bun run --cwd apps/admin build
 
       - name: Zip Build Output
         run: zip -r admin-build.zip build/client
@@ -327,6 +327,11 @@ jobs:
             cd ~/
 
             unzip -o -DD ~/react-build.zip
+            # BACKCOMPAT(prerender): earlier builds prerendered these, and
+            # express.static would serve them, with that build's config, until
+            # the prune below. Remove once this has deployed to staging and
+            # production.
+            rm -f ~/output/build/client/index.html ~/output/build/client/guide/index.html
 
             cd ~/output
             # node_modules isn't in the zip; clear it so the frozen install

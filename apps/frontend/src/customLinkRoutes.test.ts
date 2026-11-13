@@ -6,7 +6,7 @@ function checkRoutes(entries: RouteConfigEntry[], parent = "") {
   for (const entry of entries) {
     const path = `${parent}/${entry.path ?? ""}`.replace(/\/+/g, "/");
     const firstSegment = path.split("/")[1].toLowerCase();
-    if (firstSegment && !firstSegment.startsWith(":")) {
+    if (firstSegment && !/^[:*]/.test(firstSegment)) {
       expect(CUSTOM_LINK_RESERVED_SLUGS.has(firstSegment)).toBe(true);
     }
     if (entry.children) checkRoutes(entry.children, path);

@@ -1,6 +1,5 @@
 import { webEnv } from "@alliance/sharedweb/lib/env";
 import type { PostHog, PostHogConfig } from "posthog-js";
-import { getPosthogHost } from "./config";
 import { registerArrival } from "./linkOpenings";
 
 // Before PostHog has loaded it has no persistence, and register does nothing.
@@ -12,7 +11,6 @@ function tagBuild(posthog: Pick<PostHog, "register">) {
 }
 
 export const posthogOptions: Partial<PostHogConfig> = {
-  api_host: getPosthogHost(),
   loaded: (instance) => {
     tagBuild(instance);
     registerArrival(instance);

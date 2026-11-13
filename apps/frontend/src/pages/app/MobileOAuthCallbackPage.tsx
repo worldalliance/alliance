@@ -1,4 +1,5 @@
 import { MOBILE_OAUTH_RETURN_PATH } from "@alliance/common/oauth";
+import { webEnvironment } from "@alliance/sharedweb/lib/runtimeConfig";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useLocation } from "react-router";
 import { oauthReturnAndroidPackage } from "../../lib/mobileApp";
@@ -10,7 +11,7 @@ const MobileOAuthCallbackPage = () => {
   const { search } = useLocation();
 
   const returnToApp = () => {
-    window.location.href = `intent://${window.location.host}${MOBILE_OAUTH_RETURN_PATH}${search}#Intent;scheme=https;package=${oauthReturnAndroidPackage(import.meta.env.MODE)};end`;
+    window.location.href = `intent://${window.location.host}${MOBILE_OAUTH_RETURN_PATH}${search}#Intent;scheme=https;package=${oauthReturnAndroidPackage(webEnvironment())};end`;
   };
 
   return (

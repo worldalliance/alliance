@@ -1,7 +1,7 @@
 import { setEnv } from "@alliance/common/set-env";
-import { webEnvFields, type WebEnvKey } from "@alliance/common/web-env";
 import { afterEach, describe, expect, it } from "bun:test";
 import { requireWebEnv, webEnv } from "./env";
+import { setTestWebRuntimeConfig } from "./testing/runtimeConfig";
 
 const saved = { ...process.env };
 
@@ -14,15 +14,15 @@ afterEach(() => {
 });
 
 describe("webEnv", () => {
-  it("reads each key from its own variable", () => {
-    process.env.MODE = "development";
-    const keys = Object.keys(webEnvFields).filter(
-      (key): key is WebEnvKey => key in webEnvFields,
-    );
-    const sample = (key: WebEnvKey) =>
-      `https://${key.toLowerCase().replaceAll("_", "-")}.test`;
-    for (const key of keys) process.env[key] = sample(key);
-    for (const key of keys) expect(webEnv(key)).toBe(sample(key));
+  it("reads the runtime keys from the runtime config", () => {
+    process.env.VITE_ALT_APP_URL = "https://build.test";
+    setTestWebRuntimeConfig({ VITE_ALT_APP_URL: "https://runtime.test" });
+    expect(webEnv("VITE_ALT_APP_URL")).toBe("https://runtime.test");
+  });
+
+  it("reads the git sha from the build", () => {
+    process.env.VITE_APP_GIT_SHA = "deadbeef";
+    expect(webEnv("VITE_APP_GIT_SHA")).toBe("deadbeef");
   });
 
   it("reads the dev URLs only in development", () => {
@@ -34,21 +34,21 @@ describe("webEnv", () => {
   });
 
   it("reads an empty value as unset", () => {
-    process.env.VITE_API_URL = "";
+    setTestWebRuntimeConfig({ VITE_API_URL: "" });
     expect(webEnv("VITE_API_URL")).toBeUndefined();
   });
 });
 
 describe("requireWebEnv", () => {
   it("throws naming a missing key", () => {
-    process.env.VITE_API_URL = "";
+    setTestWebRuntimeConfig({ VITE_API_URL: "" });
     expect(() => requireWebEnv("VITE_API_URL")).toThrow(
       "Invalid environment: VITE_API_URL: missing",
     );
   });
 
   it("throws naming a malformed key", () => {
-    process.env.VITE_API_URL = "not a url";
+    setTestWebRuntimeConfig({ VITE_API_URL: "not a url" });
     expect(() => requireWebEnv("VITE_API_URL")).toThrow(
       /^Invalid environment: VITE_API_URL: (?!missing)/,
     );
