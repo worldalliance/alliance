@@ -1,5 +1,5 @@
 import type { DevUrl } from "@alliance/common/dev-ports";
-import { adminOrigin } from "@alliance/common/url";
+import { adminOrigin, preferNewDomain } from "@alliance/common/url";
 import { requireWebEnv, webEnv } from "./env";
 
 const mode = import.meta.env.MODE;
@@ -49,7 +49,7 @@ export const getAdminUrl = (): string =>
     : adminOrigin(prodUrl());
 
 export const getInviteBaseUrl = (): string =>
-  webEnv("VITE_ALT_APP_URL") ?? getBaseUrl();
+  preferNewDomain([webEnv("VITE_ALT_APP_URL"), getBaseUrl()]) ?? getBaseUrl();
 
 export const getApiUrl = (): string => {
   if (mode === "development") {

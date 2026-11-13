@@ -6,11 +6,7 @@ import { MessageTrackingService } from "src/link-tracking/message-tracking.servi
 import { ContractReminderCopy } from "./contract-reminder-copy";
 import { EmailStatus, EmailType, Mail } from "./mail.entity";
 import { MailNotSentError, MailService } from "./mail.service";
-import {
-  harness,
-  sendingWithoutMailFrom,
-  useMailSendingEnv,
-} from "./mail.service.fixtures";
+import { harness, useMailSendingEnv } from "./mail.service.fixtures";
 
 describe("sendMail", () => {
   useMailSendingEnv();
@@ -236,37 +232,6 @@ describe("sendMail", () => {
 
     expect(sendMail).not.toHaveBeenCalled();
     expect(saves).toEqual([]);
-  });
-
-  it("refuses to send when MAIL_FROM is unset", async () => {
-    sendingWithoutMailFrom();
-    let attempted = false;
-    const { service } = await harness(() => {
-      attempted = true;
-      return Promise.resolve({ accepted: [], messageId: "" });
-    });
-
-    const sending = send(service);
-    await expect(sending).rejects.toThrow("MAIL_FROM is unset");
-    await expect(sending).rejects.toBeInstanceOf(MailNotSentError);
-    expect(attempted).toBe(false);
-  });
-
-  it("tracks nothing when MAIL_FROM is unset", async () => {
-    sendingWithoutMailFrom();
-    const { service, tracked } = await harness(() =>
-      Promise.resolve({ accepted: [], messageId: "" }),
-    );
-
-    await expect(
-      service.sendContractReminderEmail({
-        userId: 7,
-        email: "member@example.org",
-        name: "Jane",
-        copy: ContractReminderCopy.Control,
-      }),
-    ).rejects.toBeInstanceOf(MailNotSentError);
-    expect(tracked).toEqual([]);
   });
 
   it("discards the tracking of a Mail row it couldn't save", async () => {

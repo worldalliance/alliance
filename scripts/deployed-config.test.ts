@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   deployedConfigEnv,
   deployedConfigFor,
+  domainMove,
 } from "../common/src/deployed-config";
 import { NodeEnv } from "../common/src/node-env";
 
@@ -16,9 +17,12 @@ describe("deployed-config.ts", () => {
   test("prints the values the deploy workflow reads as GITHUB_OUTPUT lines", () => {
     for (const nodeEnv of [NodeEnv.Staging, NodeEnv.Production] as const) {
       const config = deployedConfigFor(nodeEnv);
+      const { legacyDomain, newDomain } = domainMove(config);
       expect(run(nodeEnv).stdout.toString().trim().split("\n")).toEqual([
         `DOMAIN_NAME=${config.DOMAIN_NAME}`,
         `ALT_DOMAIN_NAME=${config.ALT_DOMAIN_NAME}`,
+        `LEGACY_DOMAIN_NAME=${legacyDomain}`,
+        `NEW_DOMAIN_NAME=${newDomain}`,
         `POSTHOG_PROJECT_ID=${config.POSTHOG_PROJECT_ID}`,
       ]);
     }

@@ -7,7 +7,6 @@ import {
   NavigationType,
   useBlocker,
 } from "react-router";
-import { movesToAltDomain } from "./altDomainPages";
 import { BUILD_VERSION_PATH, buildVersionSchema } from "./buildVersion";
 
 export const BUILD_CHECK_INTERVAL_MS = milliseconds({ minutes: 15 });
@@ -54,9 +53,9 @@ async function deployedSha(): Promise<
  * next navigation to another page into a full document load, so the tab picks
  * up the new build without reloading the page under the user. Back and forward
  * stay in-app, since a document load there would add a history entry, as do
- * navigations carrying router state, which a document load would drop, and
- * navigations nginx would redirect to the alt domain, where a document load
- * arrives without the session and guest cookies.
+ * navigations carrying router state, which a document load would drop. Every
+ * page load on a legacy host redirects, so a tab loaded there moves to the new
+ * domain, signed out, at its first navigation once stale.
  *
  * It holds the router's only blocker: React Router runs just the last one
  * registered, so lint forbids `useBlocker` elsewhere in the frontend and
@@ -95,12 +94,7 @@ export function useFullLoadOnNewBuild(builtSha: string | undefined) {
         stale &&
         loadFor !== null &&
         nextLocation.state == null &&
-        currentLocation.pathname !== nextLocation.pathname &&
-        !movesToAltDomain({
-          hostname: window.location.hostname,
-          pathname: nextLocation.pathname,
-          search: nextLocation.search,
-        });
+        currentLocation.pathname !== nextLocation.pathname;
       if (block) load.current = loadFor;
       return block;
     },

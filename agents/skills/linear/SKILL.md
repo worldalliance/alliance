@@ -5,7 +5,7 @@ description: Read before touching Linear, our issue tracker, naming a branch for
 
 # Linear API
 
-OAuth client credentials live in `.env.devtools` as `LINEAR_CLIENT_ID` and `LINEAR_CLIENT_SECRET`. Load them with `source .env.devtools`.
+OAuth client credentials are `LINEAR_CLIENT_ID` and `LINEAR_CLIENT_SECRET`. Run your script through `scripts/with-secrets.sh devtools <command>`, which sets them in that command's environment only. Your own shell expands `$LINEAR_CLIENT_ID` in the wrapped command line before the wrapper runs, so it sends an empty value, which Linear rejects as `invalid_client`. Read the variables inside a `.scratch/` script instead, and send the secret in the request body, never on a command line, where `ps` shows it. Not logged in → `docs/local-secrets.md`.
 
 Linear accepts the `client_credentials` grant at `https://api.linear.app/oauth/token`, form-encoded.
 

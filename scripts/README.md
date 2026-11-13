@@ -28,6 +28,11 @@ Drops and recreates the local db named by `server/.env`, then restores the dump 
 `disable_action_update_texts_emails.sh [staging|prod] [--apply]`
 Turns "Action updates" texts and emails off for every account, except where the member chose a setting themselves. Runs over SSH from the staging host, which holds both databases' credentials. Without `--apply` it rolls back and only prints before/after counts. Override `SSH_HOST_ALIAS`, `REMOTE_ENV_FILE`.
 
+## Secrets
+
+`with-secrets.sh <consumer> <command...>`
+Runs a command with the consumer's dev secrets from `/alliance/dev/<consumer>/` in AWS SSM Parameter Store, read with the person's `alliance-dev` login. `dev-secrets.json` lists each consumer's keys. Setup, adding a secret and the fallback flag: `docs/local-secrets.md`.
+
 ## Deploy
 
 `deploy_backend.sh`
@@ -35,6 +40,9 @@ Run by `deploy.yaml` on the backend host, not locally. Swaps `~/nest-build.zip` 
 
 `secrets_run.sh <command...>`
 Run on the backend host, not locally; the deploy installs it as `~/secrets_run.sh`. Runs the command with the parameters under `/alliance/<env>/server/` in AWS SSM Parameter Store as env vars, `<env>` picked by `NODE_ENV`, read with the host's instance role. Setup, rotation and running without Parameter Store: `docs/backend-secrets.md`.
+
+`check-parameter-drift.ts [--required]`
+Run by `parameter-drift.yaml`. Lists the parameter names under `/alliance` in AWS SSM Parameter Store and fails when a path lacks a key its schema or `dev-secrets.json` requires, or holds one neither declares, or when a name outside the CI paths is under no path it checks. `--required` prints each path's required keys and needs no AWS login. See `docs/backend-secrets.md`.
 
 `deployed-config.ts <staging|production>`
 Prints the values from `common/src/deployed-config.ts` the deploy workflow's web build and verification jobs read, as `KEY=value` lines for `GITHUB_OUTPUT`.

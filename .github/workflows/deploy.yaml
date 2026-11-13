@@ -61,6 +61,7 @@ jobs:
             citesting,
             agents/hooks,
             agents/skills,
+            agents/chats,
           ]
     uses: ./.github/workflows/test-unit.yaml
     with:
@@ -281,6 +282,7 @@ jobs:
           environment: ${{ env.env_name }}
           files: |
             deploy/nginx/alliance.conf
+            deploy/nginx/check-cert.sh
             react-build.zip
           script: |
             df -h ~
@@ -289,6 +291,16 @@ jobs:
             [ "$avail_kb" -ge 3145728 ] || { echo "::error::Under 3G free on the EC2 host; the unzip and install would fail. Free space there before deploying."; exit 1; }
             avail_inodes=$(df --output=iavail ~ | tail -1)
             [ "$avail_inodes" -ge 100000 ] || { echo "::error::Under 100k free inodes on the EC2 host; the unzip and install would fail. Free inodes there before deploying."; exit 1; }
+
+            DOMAIN='${{ steps.config.outputs.DOMAIN_NAME }}'
+            LEGACY_DOMAIN='${{ steps.config.outputs.LEGACY_DOMAIN_NAME }}'
+            NEW_DOMAIN='${{ steps.config.outputs.NEW_DOMAIN_NAME }}'
+            # This runs before anything on the host changes. CERT_NAMES mirrors
+            # alliance.conf's server_name, minus staging's www. names, which its
+            # DNS doesn't serve.
+            CERT_NAMES="$LEGACY_DOMAIN $NEW_DOMAIN"
+            [ '${{ env.env_name }}' = production ] && CERT_NAMES="$CERT_NAMES www.$LEGACY_DOMAIN www.$NEW_DOMAIN"
+            sudo bash ~/check-cert.sh "$DOMAIN" $CERT_NAMES || exit 1
 
             sudo yum install -y unzip nginx
 
@@ -334,11 +346,6 @@ jobs:
             # loaded before this deploy, when deploys are under a week apart.
             find ~/output/build -type f -mtime +7 -delete || echo "::warning::could not prune old build files from ~/output/build"
 
-            # Source of truth is deploy/nginx/alliance.conf, uploaded to
-            # ~/alliance.conf; substitute the per-environment domains into
-            # server_name + cert paths.
-            DOMAIN='${{ steps.config.outputs.DOMAIN_NAME }}'
-            ALT_DOMAIN='${{ steps.config.outputs.ALT_DOMAIN_NAME }}'
             sudo mkdir -p /var/www/certbot
             # nginx creates the video cache directory, owned by its workers,
             # only inside a parent that exists.
@@ -349,7 +356,11 @@ jobs:
             # nginx serves /assets/ off disk under this directory, so it needs
             # to traverse it.
             chmod o+x /home/ec2-user
-            sed -e "s/__DOMAIN__/$DOMAIN/g" -e "s/__ALT_DOMAIN__/$ALT_DOMAIN/g" ~/alliance.conf \
+            # Source of truth is deploy/nginx/alliance.conf, uploaded to
+            # ~/alliance.conf; substitute the per-environment domains into
+            # server_name + cert paths.
+            sed -e "s/__DOMAIN__/$DOMAIN/g" -e "s/__LEGACY_DOMAIN__/$LEGACY_DOMAIN/g" \
+              -e "s/__NEW_DOMAIN__/$NEW_DOMAIN/g" ~/alliance.conf \
               | sudo tee /etc/nginx/conf.d/alliance.conf > /dev/null
             sudo nginx -t || { echo "nginx config invalid"; exit 1; }
             sudo systemctl reload nginx
@@ -385,6 +396,7 @@ jobs:
           files: |
             deploy/nginx/alliance_admin.conf
             deploy/nginx/alliance_admin_http.conf
+            deploy/nginx/check-cert.sh
             admin-build.zip
           script: |
             sudo yum install -y unzip nginx
@@ -396,11 +408,13 @@ jobs:
             chmod o+x /home/ec2-user
 
             DOMAIN='${{ steps.config.outputs.DOMAIN_NAME }}'
-            ALT_DOMAIN='${{ steps.config.outputs.ALT_DOMAIN_NAME }}'
+            LEGACY_DOMAIN='${{ steps.config.outputs.LEGACY_DOMAIN_NAME }}'
+            NEW_DOMAIN='${{ steps.config.outputs.NEW_DOMAIN_NAME }}'
             sudo mkdir -p /var/www/certbot
 
             render () {
-              sed -e "s/__DOMAIN__/$DOMAIN/g" -e "s/__ALT_DOMAIN__/$ALT_DOMAIN/g" "$HOME/$1" \
+              sed -e "s/__DOMAIN__/$DOMAIN/g" -e "s/__LEGACY_DOMAIN__/$LEGACY_DOMAIN/g" \
+                -e "s/__NEW_DOMAIN__/$NEW_DOMAIN/g" "$HOME/$1" \
                 | sudo tee "/etc/nginx/conf.d/$1" > /dev/null
             }
 
@@ -417,17 +431,7 @@ jobs:
             sudo rm -f /etc/nginx/conf.d/admin.conf
             reload
 
-            # A vhost pointing at a missing cert fails every later `nginx -t`,
-            # the frontend deploy's included, and one whose cert omits a
-            # server_name deploys clean then fails TLS in the browser.
-            CERT="/etc/letsencrypt/live/admin.$DOMAIN/fullchain.pem"
-            for name in "admin.$DOMAIN" "admin.$ALT_DOMAIN"; do
-              if ! sudo openssl x509 -noout -ext subjectAltName -in "$CERT" 2>/dev/null | grep -qF "DNS:$name"; then
-                echo "$CERT is missing or does not cover $name. The challenge is now served for both names; issue the cert on this box, then re-run this job:"
-                echo "  sudo certbot certonly --webroot -w /var/www/certbot --cert-name admin.$DOMAIN --expand -d admin.$DOMAIN -d admin.$ALT_DOMAIN"
-                exit 1
-              fi
-            done
+            sudo bash ~/check-cert.sh "admin.$DOMAIN" "admin.$LEGACY_DOMAIN" "admin.$NEW_DOMAIN" || exit 1
 
             render alliance_admin.conf
             reload
@@ -566,11 +570,11 @@ jobs:
           curl --fail --silent --show-error http://${{ steps.config.outputs.DOMAIN_NAME }} > /dev/null
           echo "main app is reachable"
 
-      - name: Check main app on alt domain
+      - name: Check main app on the other domain
         run: |
           echo "Checking main app on ${{ steps.config.outputs.ALT_DOMAIN_NAME }}..."
           curl --fail --silent --show-error http://${{ steps.config.outputs.ALT_DOMAIN_NAME }} > /dev/null
-          echo "main app is reachable on the alt domain"
+          echo "main app is reachable on the other domain"
 
       - name: Check admin app
         run: |
@@ -599,19 +603,45 @@ jobs:
           curl --fail --silent --show-error https://${{ steps.config.outputs.DOMAIN_NAME }} > /dev/null
           echo "main app https ok"
 
-      - name: Check main app https on alt domain
+      # The legacy domain sends navigations, and requests asking for HTML
+      # without Sec-Fetch-Mode, to the new domain, and still answers fetches
+      # from tabs loaded before the cutover, old browsers' included. The new
+      # domain serves pages.
+      - name: Check page loads on both domains
+        env:
+          LEGACY: ${{ steps.config.outputs.LEGACY_DOMAIN_NAME }}
+          NEW: ${{ steps.config.outputs.NEW_DOMAIN_NAME }}
         run: |
-          echo "Checking main app https on ${{ steps.config.outputs.ALT_DOMAIN_NAME }}..."
-          curl --fail --silent --show-error https://${{ steps.config.outputs.ALT_DOMAIN_NAME }} > /dev/null
-          echo "alt domain https ok"
-
-      - name: Check Android app links file
-        run: |
-          for host in ${{ steps.config.outputs.DOMAIN_NAME }} ${{ steps.config.outputs.ALT_DOMAIN_NAME }}; do
-            echo "Checking assetlinks.json on $host..."
-            curl --fail --silent --show-error https://$host/.well-known/assetlinks.json > /dev/null
+          moved="https://$NEW/tasks?check=1"
+          for probe in "$LEGACY navigate $moved" "$LEGACY html $moved" "$LEGACY none " "$LEGACY cors " "$NEW navigate " "$NEW cors "; do
+            read -r host mode expected <<< "$probe"
+            url="https://$host/tasks?check=1"
+            case "$mode" in
+              html) header=(-H "Accept: text/html") ;;
+              none) header=() ;;
+              *) header=(-H "Sec-Fetch-Mode: $mode") ;;
+            esac
+            location=$(curl --fail --silent --show-error -o /dev/null -w '%{redirect_url}' "${header[@]}" "$url")
+            if [ "$location" != "$expected" ]; then
+              echo "$url probed as $mode redirected to '$location', expected '$expected'"
+              exit 1
+            fi
           done
-          echo "assetlinks.json ok"
+          echo "page loads ok"
+
+      # Apple and Android fetch each host's association file without following
+      # redirects.
+      - name: Check app association files
+        env:
+          HOSTS: ${{ steps.config.outputs.LEGACY_DOMAIN_NAME }} ${{ steps.config.outputs.NEW_DOMAIN_NAME }}
+        run: |
+          for host in $HOSTS; do
+            for path in .well-known/assetlinks.json .well-known/apple-app-site-association; do
+              status=$(curl --silent --show-error -o /dev/null -w '%{http_code}' "https://$host/$path")
+              if [ "$status" != 200 ]; then echo "https://$host/$path answered $status"; exit 1; fi
+            done
+          done
+          echo "association files ok"
 
       - name: Check admin app
         run: |
@@ -619,18 +649,24 @@ jobs:
           curl --fail --silent --show-error https://admin.${{ steps.config.outputs.DOMAIN_NAME }} > /dev/null
           echo "admin app https ok"
 
-      - name: Check admin app on alt domain
+      - name: Check admin app on the other domain
         run: |
           echo "Checking admin app on admin.${{ steps.config.outputs.ALT_DOMAIN_NAME }}..."
           curl --fail --silent --show-error https://admin.${{ steps.config.outputs.ALT_DOMAIN_NAME }} > /dev/null
-          echo "admin alt domain https ok"
+          echo "admin other domain https ok"
 
       # nginx -t can pass while every /events/ request fails, e.g. on PostHog's
       # certificate. Last, so a PostHog outage doesn't skip the checks above.
+      # Installed apps send analytics to the legacy domain.
       - name: Check PostHog proxy
+        env:
+          HOSTS: ${{ steps.config.outputs.LEGACY_DOMAIN_NAME }} ${{ steps.config.outputs.NEW_DOMAIN_NAME }}
         run: |
-          echo "Checking PostHog proxy..."
-          curl --fail --silent --show-error --max-time 30 https://${{ steps.config.outputs.DOMAIN_NAME }}/events/static/array.js > /dev/null
+          for host in $HOSTS; do
+            echo "Checking PostHog proxy on $host..."
+            status=$(curl --silent --show-error --max-time 30 -o /dev/null -w '%{http_code}' "https://$host/events/static/array.js")
+            if [ "$status" != 200 ]; then echo "https://$host/events/static/array.js answered $status"; exit 1; fi
+          done
           echo "PostHog proxy https ok"
 
   verify-api:
@@ -649,10 +685,16 @@ jobs:
         id: config
         uses: ./.github/actions/deployed-config
 
+      # Installed apps call the API on the legacy domain.
       - name: Check API health
+        env:
+          HOSTS: ${{ steps.config.outputs.LEGACY_DOMAIN_NAME }} ${{ steps.config.outputs.NEW_DOMAIN_NAME }}
         run: |
-          echo "Checking API health..."
-          curl --fail --silent --show-error https://${{ steps.config.outputs.DOMAIN_NAME }}/api/ > /dev/null
+          for host in $HOSTS; do
+            echo "Checking API health on $host..."
+            status=$(curl --silent --show-error -o /dev/null -w '%{http_code}' "https://$host/api/")
+            if [ "$status" != 200 ]; then echo "https://$host/api/ answered $status"; exit 1; fi
+          done
           echo "API health ok"
 
   notify:
