@@ -6,8 +6,8 @@ import path from "node:path";
 import { R } from "../../../../../../common/src/result";
 import { type AgentEvent, AgentEventKind, type AgentSession } from "../session";
 import { createClaudeBackend } from "./backend";
-import { CLAUDE_CODE_VERSION, claudeSessionArgs } from "./protocol";
-import { CaptureRecordKind, captureDir } from "./testing/capture";
+import { claudeSessionArgs } from "./protocol";
+import { CaptureRecordKind, captured } from "./testing/capture";
 import {
   stubCli as cli,
   replay,
@@ -16,8 +16,6 @@ import {
 } from "./testing/stub";
 import { onFifthDelta, text, turn } from "./testing/turn";
 
-const captured = (name: string) =>
-  path.join(captureDir(CLAUDE_CODE_VERSION), `${name}.jsonl`);
 const scratch = mkdtempSync(path.join(tmpdir(), "claude-backend-test-"));
 
 function stubCaptures(...files: string[]): void {

@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { R } from "../../../../../../../common/src/result";
+import { CLAUDE_CODE_VERSION } from "../protocol";
 
 export enum CaptureRecordKind {
   Start = "start",
@@ -57,6 +59,23 @@ export const formatCapture = (records: CaptureRecord[]): string =>
 
 export const captureDir = (version: string) =>
   fileURLToPath(new URL(`./captures/${version}/`, import.meta.url));
+
+export const captured = (name: string) =>
+  path.join(captureDir(CLAUDE_CODE_VERSION), `${name}.jsonl`);
+
+export const authStatusArgs = ["auth", "status", "--json"];
+
+/** What `claude auth status --json` writes, exiting 1 when signed out. */
+export const authStatusReply = (loggedIn: boolean): CaptureRecord[] => [
+  {
+    kind: CaptureRecordKind.Out,
+    text: JSON.stringify({
+      loggedIn,
+      authMethod: loggedIn ? "claude.ai" : "none",
+    }),
+  },
+  { kind: CaptureRecordKind.Exit, code: loggedIn ? 0 : 1 },
+];
 
 const stdinLine = z.object({
   type: z.string(),
